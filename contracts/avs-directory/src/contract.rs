@@ -75,10 +75,11 @@ pub fn register_operator(
 
     let delegation_manager_addr = Addr::unchecked("delegation_manager_address");
 
-    if !is_operator_registered(&deps.querier, &delegation_manager_addr, &operator)? {
+    if !is_operator_registered(&deps.querier, &env, &delegation_manager_addr, &operator)? {
         return Err(ContractError::OperatorNotRegistered {});
     }
 
+    // Calculate the digest hash
     let chain_id = env.block.chain_id.parse::<u64>().unwrap_or_default();
     let digest_hash = calculate_digest_hash(
         &operator,
@@ -89,7 +90,8 @@ pub fn register_operator(
         &env,
     );
 
-    if !verify_signature(&operator, &digest_hash, &operator_signature.signature).map_err(|_| ContractError::InvalidSignature {})? {
+    // Check that the signature is valid
+    if !verify_signature(&deps.querier, &operator, &digest_hash, &operator_signature.signature).map_err(|_| ContractError::InvalidSignature {})? {
         return Err(ContractError::InvalidSignature {});
     }
 
