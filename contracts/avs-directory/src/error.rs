@@ -6,21 +6,18 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
-    #[error("Unauthorized")]
-    Unauthorized {},
-
-    #[error("Signature expired")]
+    #[error("AVSDirectory.registerOperatorToAVS: operator signature expired")]
     SignatureExpired {},
 
-    #[error("Operator already registered")]
+    #[error("AVSDirectory.registerOperatorToAVS: operator already registered")]
     OperatorAlreadyRegistered {},
 
-    #[error("Salt already spent")]
+    #[error("AVSDirectory.registerOperatorToAVS: salt already spent")]
     SaltAlreadySpent {},
 
-    #[error("Operator not registered")]
+    #[error("AVSDirectory.registerOperatorToAVS: operator not registered to EigenLayer yet")]
     OperatorNotRegistered {},
 
-    #[error("Invalid signature")]
+    #[error("AVSDirectory.registerOperatorToAVS: invalid signature")]
     InvalidSignature {},
 }
