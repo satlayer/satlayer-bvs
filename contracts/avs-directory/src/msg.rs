@@ -5,6 +5,7 @@ use crate::state::OperatorStatus;
 #[cw_serde]
 pub struct InstantiateMsg {
     pub initial_owner: Addr,
+    pub chain_id: u64,
 }
 
 #[cw_serde]
@@ -44,4 +45,14 @@ pub enum QueryMsg {
 #[cw_serde]
 pub struct OperatorStatusResponse {
     pub status: OperatorStatus,
+}
+
+#[cw_serde]
+pub struct IsOperatorRegisteredQueryMsg {
+    pub operator: Addr,
+}
+
+#[cw_serde]
+pub struct IsOperatorRegisteredResponse {
+    pub registered: bool,
 }

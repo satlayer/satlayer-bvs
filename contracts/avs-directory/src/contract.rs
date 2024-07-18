@@ -2,11 +2,11 @@ use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg, OperatorStatusResponse, SignatureWithSaltAndExpiry},
     state::{OperatorStatus, AVSDirectoryStorage},
-    utils::{calculate_digest_hash, verify_signature},
-};
+    utils::{calculate_digest_hash, verify_signature, is_operator_registered},
+};  
 use babylon_bindings::BabylonQuery;
 use cosmwasm_std::{
-    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint64, Addr,
+    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint64, Addr, 
 };
 use cw2::set_contract_version;
 
@@ -53,11 +53,11 @@ pub fn register_operator(
     env: Env,
     info: MessageInfo,
     operator: Addr,
-    signature: SignatureWithSaltAndExpiry,
+    operator_signature: SignatureWithSaltAndExpiry,
 ) -> Result<Response, ContractError> {
     let current_time: Uint64 = env.block.time.seconds().into();
 
-    if signature.expiry < current_time {
+    if operator_signature.expiry < current_time {
         return Err(ContractError::SignatureExpired {});
     }
 
@@ -67,14 +67,29 @@ pub fn register_operator(
         return Err(ContractError::OperatorAlreadyRegistered {});
     }
 
-    let salt_str = signature.salt.to_base64();
+    let salt_str = operator_signature.salt.to_base64();
 
     if storage.salt_spent.contains(&salt_str) {
         return Err(ContractError::SaltAlreadySpent {});
     }
 
-    let digest_hash = calculate_digest_hash(&operator, &info.sender, &signature.salt, signature.expiry.into());
-    if !verify_signature(&operator, &digest_hash, &signature.signature).map_err(|_| ContractError::InvalidSignature {})? {
+    let delegation_manager_addr = Addr::unchecked("delegation_manager_address");
+
+    if !is_operator_registered(&deps.querier, &delegation_manager_addr, &operator)? {
+        return Err(ContractError::OperatorNotRegistered {});
+    }
+
+    let chain_id = env.block.chain_id.parse::<u64>().unwrap_or_default();
+    let digest_hash = calculate_digest_hash(
+        &operator,
+        &info.sender,
+        &operator_signature.salt,
+        operator_signature.expiry.into(),
+        chain_id,
+        &env,
+    );
+
+    if !verify_signature(&operator, &digest_hash, &operator_signature.signature).map_err(|_| ContractError::InvalidSignature {})? {
         return Err(ContractError::InvalidSignature {});
     }
 

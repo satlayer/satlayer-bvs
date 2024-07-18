@@ -21,6 +21,6 @@ pub enum ContractError {
     #[error("AVSDirectory.registerOperatorToAVS: invalid signature")]
     InvalidSignature {},
 
-    #[error("AVSDirectory: unauthorized")]
+    #[error("AVSDirectory.transferOwnership: unauthorized")]
     Unauthorized {},
 }
