@@ -1,0 +1,15 @@
+[package]
+name = "cw20"
+version.workspace = true
+edition = "2021"
+description = "Definition and types for the CosmWasm-20 interface"
+license = "Apache-2.0"
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+
+[dev-dependencies]
+cosmwasm-schema = { workspace = true }
