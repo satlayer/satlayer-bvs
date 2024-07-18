@@ -1,43 +1,52 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{StdResult, Storage};
+use cosmwasm_std::{Addr, StdResult, Storage, Binary};
 use cw_storage_plus::Map;
-use std::collections::HashSet;
 
 #[cw_serde]
-pub enum OperatorStatus {
+pub enum OperatorAVSRegistrationStatus {
     Registered,
     Unregistered,
 }
 
-#[cw_serde]
-pub struct OperatorRegistration {
-    pub operator: String,
-    pub status: OperatorStatus,
-    pub salt: String,
-}
-
 pub struct AVSDirectoryStorage<'a> {
-    pub operator_status: Map<'a, String, OperatorStatus>,
-    pub salt_spent: HashSet<String>,
+    pub avs_operator_status: Map<'a, (Addr, Addr), OperatorAVSRegistrationStatus>,
+    pub operator_salt_is_spent: Map<'a, (Addr, String), bool>,
 }
 
 impl<'a> Default for AVSDirectoryStorage<'a> {
     fn default() -> Self {
         AVSDirectoryStorage {
-            operator_status: Map::new("operator_status"),
-            salt_spent: HashSet::new(),
+            avs_operator_status: Map::new("avs_operator_status"),
+            operator_salt_is_spent: Map::new("operator_salt_is_spent"),
         }
     }
 }
 
 impl<'a> AVSDirectoryStorage<'a> {
-    pub fn save(&self, storage: &mut dyn Storage, operator: String, status: OperatorStatus) -> StdResult<()> {
-        self.operator_status.save(storage, operator, &status)?;
-        Ok(())
+    pub fn save_status(
+        &self,
+        storage: &mut dyn Storage,
+        avs: Addr,
+        operator: Addr,
+        status: OperatorAVSRegistrationStatus,
+    ) -> StdResult<()> {
+        self.avs_operator_status.save(storage, (avs, operator), &status)
     }
 
-    pub fn load(storage: &dyn Storage, operator: String) -> StdResult<OperatorStatus> {
-        let operator_status = Map::new("operator_status").load(storage, operator)?;
-        Ok(operator_status)
+    pub fn load_status(
+        &self,
+        storage: &dyn Storage,
+        avs: Addr,
+        operator: Addr,
+    ) -> StdResult<OperatorAVSRegistrationStatus> {
+        self.avs_operator_status.load(storage, (avs, operator))
+    }
+
+    pub fn save_salt(&self, storage: &mut dyn Storage, operator: Addr, salt: Binary) -> StdResult<()> {
+        self.operator_salt_is_spent.save(storage, (operator, salt.to_base64()), &true)
+    }
+
+    pub fn is_salt_spent(&self, storage: &dyn Storage, operator: Addr, salt: Binary) -> StdResult<bool> {
+        self.operator_salt_is_spent.may_load(storage, (operator, salt.to_base64())).map(|opt| opt.unwrap_or(false))
     }
 }

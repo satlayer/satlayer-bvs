@@ -1,7 +1,7 @@
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg, OperatorStatusResponse, SignatureWithSaltAndExpiry},
-    state::{OperatorStatus, AVSDirectoryStorage},
+    state::{OperatorAVSRegistrationStatus, AVSDirectoryStorage},
     utils::{calculate_digest_hash, verify_signature, is_operator_registered},
 };  
 use babylon_bindings::BabylonQuery;
@@ -41,9 +41,9 @@ pub fn execute(
         ExecuteMsg::RegisterOperatorToAVS { operator, signature } => {
             register_operator(deps, env, info, operator, signature)
         }
-        ExecuteMsg::DeregisterOperatorFromAVS { operator } => deregister_operator(deps, info, operator),
+        ExecuteMsg::DeregisterOperatorFromAVS { operator } => deregister_operator(deps, env, info, operator),
         ExecuteMsg::UpdateAVSMetadataURI { metadata_uri } => update_metadata_uri(info, metadata_uri),
-        ExecuteMsg::CancelSalt { salt } => cancel_salt(deps, info, salt),
+        ExecuteMsg::CancelSalt { salt } => cancel_salt(deps, env, info, salt),
         ExecuteMsg::TransferOwnership { new_owner } => transfer_ownership(deps, info, new_owner),
     }
 }
@@ -61,15 +61,13 @@ pub fn register_operator(
         return Err(ContractError::SignatureExpired {});
     }
 
-    let mut storage = AVSDirectoryStorage::default();
+    let storage = AVSDirectoryStorage::default();
 
-    if AVSDirectoryStorage::load(&(*deps.storage), operator.clone().into_string()).is_ok() {
+    if storage.load_status(deps.storage, info.sender.clone(), operator.clone()).is_ok() {
         return Err(ContractError::OperatorAlreadyRegistered {});
     }
 
-    let salt_str = operator_signature.salt.to_base64();
-
-    if storage.salt_spent.contains(&salt_str) {
+    if storage.is_salt_spent(deps.storage, operator.clone(), operator_signature.salt.clone())? {
         return Err(ContractError::SaltAlreadySpent {});
     }
 
@@ -95,30 +93,33 @@ pub fn register_operator(
         return Err(ContractError::InvalidSignature {});
     }
 
-    storage.save(deps.storage, operator.to_string(), OperatorStatus::Registered)?;
-    storage.salt_spent.insert(salt_str);
+    // Set the operator as registered
+    storage.save_status(deps.storage, info.sender.clone(), operator.clone(), OperatorAVSRegistrationStatus::Registered)?;
+
+    // Mark the salt as spent
+    storage.save_salt(deps.storage, operator.clone(), operator_signature.salt.clone())?;
 
     Ok(Response::new()
         .add_attribute("method", "register_operator")
-        .add_attribute("operator", operator)
+        .add_attribute("operator", operator.to_string())
         .add_attribute("avs", info.sender.to_string()))
 }
 
-
 pub fn deregister_operator(
     deps: DepsMut<BabylonQuery>,
+    _env: Env,
     info: MessageInfo,
     operator: Addr,
 ) -> Result<Response, ContractError> {
     let storage = AVSDirectoryStorage::default();
 
-    if let Ok(status) = AVSDirectoryStorage::load(&(*deps.storage), operator.clone().into_string()) {
-        if status == OperatorStatus::Registered {
-            storage.save(deps.storage, operator.clone().into_string(), OperatorStatus::Unregistered)?;
+    if let Ok(status) = storage.load_status(deps.storage, info.sender.clone(), operator.clone()) {
+        if status == OperatorAVSRegistrationStatus::Registered {
+            storage.save_status(deps.storage, info.sender.clone(), operator.clone(), OperatorAVSRegistrationStatus::Unregistered)?;
 
             return Ok(Response::new()
                 .add_attribute("method", "deregister_operator")
-                .add_attribute("operator", operator)
+                .add_attribute("operator", operator.to_string())
                 .add_attribute("avs", info.sender.to_string()));
         }
     }
@@ -138,24 +139,22 @@ pub fn update_metadata_uri(
 
 pub fn cancel_salt(
     deps: DepsMut<BabylonQuery>,
+    _env: Env,
     info: MessageInfo,
     salt: Binary,
 ) -> Result<Response, ContractError> {
-    let mut storage = AVSDirectoryStorage::default();
+    let storage = AVSDirectoryStorage::default();
 
-    let salt_str = salt.to_base64();
-
-    if storage.salt_spent.contains(&salt_str) {
+    if storage.is_salt_spent(deps.storage, info.sender.clone(), salt.clone())? {
         return Err(ContractError::SaltAlreadySpent {});
     }
 
-    storage.salt_spent.insert(salt_str.clone());
-    storage.save(deps.storage, info.sender.to_string(), OperatorStatus::Registered)?;
+    storage.save_salt(deps.storage, info.sender.clone(), salt.clone())?;
 
     Ok(Response::new()
         .add_attribute("method", "cancel_salt")
         .add_attribute("operator", info.sender.to_string())
-        .add_attribute("salt", salt_str))
+        .add_attribute("salt", salt.to_base64()))
 }
 
 pub fn transfer_ownership(
@@ -187,6 +186,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 fn query_operator(deps: Deps, operator: Addr) -> StdResult<OperatorStatusResponse> {
-    let status = AVSDirectoryStorage::load(deps.storage, operator.clone().into_string()).unwrap_or(OperatorStatus::Unregistered);
+    let storage = AVSDirectoryStorage::default();
+    let status = storage.load_status(deps.storage, deps.api.addr_validate("avs")?, operator)?;
     Ok(OperatorStatusResponse { status })
 }
