@@ -1,33 +1,36 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Uint64};
+use cosmwasm_std::{Addr, Uint64, Binary};
 use crate::state::OperatorStatus;
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub initial_owner: Addr
+    pub initial_owner: Addr,
 }
 
 #[cw_serde]
 pub enum ExecuteMsg {
     RegisterOperatorToAVS {
-        operator: String,
+        operator: Addr,
         signature: SignatureWithSaltAndExpiry,
     },
     DeregisterOperatorFromAVS {
-        operator: String,
+        operator: Addr,
     },
     UpdateAVSMetadataURI {
         metadata_uri: String,
     },
     CancelSalt {
-        salt: String,
+        salt: Binary,
+    },
+    TransferOwnership {
+        new_owner: Addr,
     },
 }
 
 #[cw_serde]
 pub struct SignatureWithSaltAndExpiry {
-    pub signature: Vec<u8>,
-    pub salt: String,
+    pub signature: Binary,
+    pub salt: Binary,
     pub expiry: Uint64,
 }
 
@@ -35,7 +38,7 @@ pub struct SignatureWithSaltAndExpiry {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(OperatorStatusResponse)]
-    QueryOperator { operator: String },
+    QueryOperator { operator: Addr },
 }
 
 #[cw_serde]

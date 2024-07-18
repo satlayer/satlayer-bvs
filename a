@@ -1,0 +1,259 @@
+diff --git a/contracts/avs-directory/src/contract.rs b/contracts/avs-directory/src/contract.rs
+index 12f3a42..bbea497 100644
+--- a/contracts/avs-directory/src/contract.rs
++++ b/contracts/avs-directory/src/contract.rs
+@@ -6,7 +6,7 @@ use crate::{
+ };
+ use babylon_bindings::BabylonQuery;
+ use cosmwasm_std::{
+-    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint64,
++    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint64, Addr,
+ };
+ use cw2::set_contract_version;
+ 
+@@ -32,7 +32,7 @@ pub fn instantiate(
+ 
+ #[cfg_attr(not(feature = "library"), entry_point)]
+ pub fn execute(
+-    deps: DepsMut,
++    deps: DepsMut<BabylonQuery>,
+     env: Env,
+     info: MessageInfo,
+     msg: ExecuteMsg,
+@@ -44,14 +44,15 @@ pub fn execute(
+         ExecuteMsg::DeregisterOperatorFromAVS { operator } => deregister_operator(deps, info, operator),
+         ExecuteMsg::UpdateAVSMetadataURI { metadata_uri } => update_metadata_uri(info, metadata_uri),
+         ExecuteMsg::CancelSalt { salt } => cancel_salt(deps, info, salt),
++        ExecuteMsg::TransferOwnership { new_owner } => transfer_ownership(deps, info, new_owner),
+     }
+ }
+ 
+ pub fn register_operator(
+-    deps: DepsMut,
++    deps: DepsMut<BabylonQuery>,
+     env: Env,
+     info: MessageInfo,
+-    operator: String,
++    operator: Addr,
+     signature: SignatureWithSaltAndExpiry,
+ ) -> Result<Response, ContractError> {
+     let current_time: Uint64 = env.block.time.seconds().into();
+@@ -62,11 +63,13 @@ pub fn register_operator(
+ 
+     let mut storage = AVSDirectoryStorage::default();
+ 
+-    if AVSDirectoryStorage::load(&(*deps.storage), operator.clone()).is_ok() {
++    if AVSDirectoryStorage::load(&(*deps.storage), operator.clone().into_string()).is_ok() {
+         return Err(ContractError::OperatorAlreadyRegistered {});
+     }
+ 
+-    if storage.salt_spent.contains(&signature.salt) {
++    let salt_str = signature.salt.to_base64();
++
++    if storage.salt_spent.contains(&salt_str) {
+         return Err(ContractError::SaltAlreadySpent {});
+     }
+ 
+@@ -75,8 +78,8 @@ pub fn register_operator(
+         return Err(ContractError::InvalidSignature {});
+     }
+ 
+-    storage.save(deps.storage, operator.clone(), OperatorStatus::Registered)?;
+-    storage.salt_spent.insert(signature.salt.clone());
++    storage.save(deps.storage, operator.to_string(), OperatorStatus::Registered)?;
++    storage.salt_spent.insert(salt_str);
+ 
+     Ok(Response::new()
+         .add_attribute("method", "register_operator")
+@@ -84,16 +87,17 @@ pub fn register_operator(
+         .add_attribute("avs", info.sender.to_string()))
+ }
+ 
++
+ pub fn deregister_operator(
+-    deps: DepsMut,
++    deps: DepsMut<BabylonQuery>,
+     info: MessageInfo,
+-    operator: String,
++    operator: Addr,
+ ) -> Result<Response, ContractError> {
+     let storage = AVSDirectoryStorage::default();
+ 
+-    if let Ok(status) = AVSDirectoryStorage::load(&(*deps.storage), operator.clone()) {
++    if let Ok(status) = AVSDirectoryStorage::load(&(*deps.storage), operator.clone().into_string()) {
+         if status == OperatorStatus::Registered {
+-            storage.save(deps.storage, operator.clone(), OperatorStatus::Unregistered)?;
++            storage.save(deps.storage, operator.clone().into_string(), OperatorStatus::Unregistered)?;
+ 
+             return Ok(Response::new()
+                 .add_attribute("method", "deregister_operator")
+@@ -116,23 +120,46 @@ pub fn update_metadata_uri(
+ }
+ 
+ pub fn cancel_salt(
+-    deps: DepsMut,
++    deps: DepsMut<BabylonQuery>,
+     info: MessageInfo,
+-    salt: String,
++    salt: Binary,
+ ) -> Result<Response, ContractError> {
+     let mut storage = AVSDirectoryStorage::default();
+ 
+-    if storage.salt_spent.contains(&salt) {
++    let salt_str = salt.to_base64();
++
++    if storage.salt_spent.contains(&salt_str) {
+         return Err(ContractError::SaltAlreadySpent {});
+     }
+ 
+-    storage.salt_spent.insert(salt.clone());
++    storage.salt_spent.insert(salt_str.clone());
+     storage.save(deps.storage, info.sender.to_string(), OperatorStatus::Registered)?;
+ 
+     Ok(Response::new()
+         .add_attribute("method", "cancel_salt")
+         .add_attribute("operator", info.sender.to_string())
+-        .add_attribute("salt", salt))
++        .add_attribute("salt", salt_str))
++}
++
++pub fn transfer_ownership(
++    deps: DepsMut<BabylonQuery>,
++    info: MessageInfo,
++    new_owner: Addr,
++) -> Result<Response, ContractError> {
++    // Load current owner from storage
++    let current_owner = deps.storage.get(b"owner").unwrap();
++    
++    // Ensure only current owner can transfer ownership
++    if current_owner != info.sender.as_bytes() {
++        return Err(ContractError::Unauthorized {});
++    }
++
++    // Update owner in storage
++    deps.storage.set(b"owner", new_owner.as_bytes());
++
++    Ok(Response::new()
++        .add_attribute("method", "transfer_ownership")
++        .add_attribute("new_owner", new_owner.to_string()))
+ }
+ 
+ #[cfg_attr(not(feature = "library"), entry_point)]
+@@ -142,7 +169,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+     }
+ }
+ 
+-fn query_operator(deps: Deps, operator: String) -> StdResult<OperatorStatusResponse> {
+-    let status = AVSDirectoryStorage::load(deps.storage, operator.clone()).unwrap_or(OperatorStatus::Unregistered);
++fn query_operator(deps: Deps, operator: Addr) -> StdResult<OperatorStatusResponse> {
++    let status = AVSDirectoryStorage::load(deps.storage, operator.clone().into_string()).unwrap_or(OperatorStatus::Unregistered);
+     Ok(OperatorStatusResponse { status })
+ }
+diff --git a/contracts/avs-directory/src/error.rs b/contracts/avs-directory/src/error.rs
+index f1ac66f..830506c 100644
+--- a/contracts/avs-directory/src/error.rs
++++ b/contracts/avs-directory/src/error.rs
+@@ -15,9 +15,12 @@ pub enum ContractError {
+     #[error("AVSDirectory.registerOperatorToAVS: salt already spent")]
+     SaltAlreadySpent {},
+ 
+-    #[error("AVSDirectory.registerOperatorToAVS: operator not registered to EigenLayer yet")]
++    #[error("AVSDirectory.deregisterOperatorFromAVS: operator not registered to EigenLayer yet")]
+     OperatorNotRegistered {},
+ 
+     #[error("AVSDirectory.registerOperatorToAVS: invalid signature")]
+     InvalidSignature {},
++
++    #[error("AVSDirectory: unauthorized")]
++    Unauthorized {},
+ }
+\ No newline at end of file
+diff --git a/contracts/avs-directory/src/msg.rs b/contracts/avs-directory/src/msg.rs
+index 0130533..33b6880 100644
+--- a/contracts/avs-directory/src/msg.rs
++++ b/contracts/avs-directory/src/msg.rs
+@@ -1,33 +1,36 @@
+ use cosmwasm_schema::{cw_serde, QueryResponses};
+-use cosmwasm_std::{Addr, Uint64};
++use cosmwasm_std::{Addr, Uint64, Binary};
+ use crate::state::OperatorStatus;
+ 
+ #[cw_serde]
+ pub struct InstantiateMsg {
+-    pub initial_owner: Addr
++    pub initial_owner: Addr,
+ }
+ 
+ #[cw_serde]
+ pub enum ExecuteMsg {
+     RegisterOperatorToAVS {
+-        operator: String,
++        operator: Addr,
+         signature: SignatureWithSaltAndExpiry,
+     },
+     DeregisterOperatorFromAVS {
+-        operator: String,
++        operator: Addr,
+     },
+     UpdateAVSMetadataURI {
+         metadata_uri: String,
+     },
+     CancelSalt {
+-        salt: String,
++        salt: Binary,
++    },
++    TransferOwnership {
++        new_owner: Addr,
+     },
+ }
+ 
+ #[cw_serde]
+ pub struct SignatureWithSaltAndExpiry {
+-    pub signature: Vec<u8>,
+-    pub salt: String,
++    pub signature: Binary,
++    pub salt: Binary,
+     pub expiry: Uint64,
+ }
+ 
+@@ -35,7 +38,7 @@ pub struct SignatureWithSaltAndExpiry {
+ #[derive(QueryResponses)]
+ pub enum QueryMsg {
+     #[returns(OperatorStatusResponse)]
+-    QueryOperator { operator: String },
++    QueryOperator { operator: Addr },
+ }
+ 
+ #[cw_serde]
+diff --git a/contracts/avs-directory/src/utils.rs b/contracts/avs-directory/src/utils.rs
+index c0283c7..002bbf4 100644
+--- a/contracts/avs-directory/src/utils.rs
++++ b/contracts/avs-directory/src/utils.rs
+@@ -1,22 +1,22 @@
+-use cosmwasm_std::Addr;
++use cosmwasm_std::{Addr, Binary};
+ use sha2::{Digest, Sha256};
+ 
+ pub fn calculate_digest_hash(
+-    operator: &str,
++    operator: &Addr,
+     avs: &Addr,
+-    salt: &str,
++    salt: &Binary,
+     expiry: u64,
+ ) -> Vec<u8> {
+     let mut hasher = Sha256::new();
+     hasher.update(operator.as_bytes());
+     hasher.update(avs.as_bytes());
+-    hasher.update(salt.as_bytes());
++    hasher.update(salt.as_slice());
+     hasher.update(expiry.to_le_bytes());
+     hasher.finalize().to_vec()
+ }
+ 
+ pub fn verify_signature(
+-    _operator: &str,
++    _operator: &Addr,
+     _digest_hash: &[u8],
+     _signature: &[u8],
+ ) -> Result<bool, ()> {
