@@ -1,11 +1,12 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint64, Binary};
-use crate::state::OperatorStatus;
+use crate::state::OperatorAVSRegistrationStatus;
 
 #[cw_serde]
 pub struct InstantiateMsg {
     pub initial_owner: Addr,
     pub chain_id: u64,
+    pub delegation_manager: Addr,
 }
 
 #[cw_serde]
@@ -44,7 +45,7 @@ pub enum QueryMsg {
 
 #[cw_serde]
 pub struct OperatorStatusResponse {
-    pub status: OperatorStatus,
+    pub status: OperatorAVSRegistrationStatus,
 }
 
 #[cw_serde]

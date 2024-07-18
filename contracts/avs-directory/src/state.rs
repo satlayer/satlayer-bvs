@@ -1,6 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, StdResult, Storage, Binary};
-use cw_storage_plus::Map;
+use cw_storage_plus::{Item, Map};
 
 #[cw_serde]
 pub enum OperatorAVSRegistrationStatus {
@@ -11,6 +11,7 @@ pub enum OperatorAVSRegistrationStatus {
 pub struct AVSDirectoryStorage<'a> {
     pub avs_operator_status: Map<'a, (Addr, Addr), OperatorAVSRegistrationStatus>,
     pub operator_salt_is_spent: Map<'a, (Addr, String), bool>,
+    pub delegation_manager: Item<'a, Addr>,
 }
 
 impl<'a> Default for AVSDirectoryStorage<'a> {
@@ -18,6 +19,7 @@ impl<'a> Default for AVSDirectoryStorage<'a> {
         AVSDirectoryStorage {
             avs_operator_status: Map::new("avs_operator_status"),
             operator_salt_is_spent: Map::new("operator_salt_is_spent"),
+            delegation_manager: Item::new("delegation_manager"), 
         }
     }
 }

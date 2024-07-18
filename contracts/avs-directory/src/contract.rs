@@ -23,7 +23,11 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let owner = msg.initial_owner;
+    let delegation_manager = msg.delegation_manager;
     deps.storage.set(b"owner", owner.as_bytes());
+
+    let storage = AVSDirectoryStorage::default();
+    storage.delegation_manager.save(deps.storage, &delegation_manager)?; 
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
@@ -71,8 +75,8 @@ pub fn register_operator(
         return Err(ContractError::SaltAlreadySpent {});
     }
 
-    let delegation_manager_addr = Addr::unchecked("delegation_manager_address");
-
+    let delegation_manager_addr = storage.delegation_manager.load(deps.storage)?; 
+    
     if !is_operator_registered(&deps.querier, &env, &delegation_manager_addr, &operator)? {
         return Err(ContractError::OperatorNotRegistered {});
     }
