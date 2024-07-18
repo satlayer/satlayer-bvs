@@ -4,6 +4,7 @@ use crate::{
     state::{OperatorStatus, AVSDirectoryStorage},
     utils::{calculate_digest_hash, verify_signature},
 };
+use babylon_bindings::BabylonQuery;
 use cosmwasm_std::{
     entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint64,
 };
@@ -14,16 +15,19 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    deps: DepsMut<BabylonQuery>,
     _env: Env,
-    info: MessageInfo,
-    _msg: InstantiateMsg,
+    _info: MessageInfo,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
+    let owner = msg.initial_owner;
+    deps.storage.set(b"owner", owner.as_bytes());
+
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("owner", info.sender))
+        .add_attribute("owner", owner))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -34,11 +38,11 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::RegisterOperator { operator, signature } => {
+        ExecuteMsg::RegisterOperatorToAVS { operator, signature } => {
             register_operator(deps, env, info, operator, signature)
         }
-        ExecuteMsg::DeregisterOperator { operator } => deregister_operator(deps, info, operator),
-        ExecuteMsg::UpdateMetadataURI { metadata_uri } => update_metadata_uri(info, metadata_uri),
+        ExecuteMsg::DeregisterOperatorFromAVS { operator } => deregister_operator(deps, info, operator),
+        ExecuteMsg::UpdateAVSMetadataURI { metadata_uri } => update_metadata_uri(info, metadata_uri),
         ExecuteMsg::CancelSalt { salt } => cancel_salt(deps, info, salt),
     }
 }

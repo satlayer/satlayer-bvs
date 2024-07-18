@@ -6,7 +6,6 @@ description = "Definition and types for the CosmWasm-20 interface"
 license = "Apache-2.0"
 
 [dependencies]
-cw-utils = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cosmwasm-std = { workspace = true }
 schemars = { workspace = true }

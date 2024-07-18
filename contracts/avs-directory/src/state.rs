@@ -16,12 +16,12 @@ pub struct OperatorRegistration {
     pub salt: String,
 }
 
-pub struct AVSDirectoryStorage {
-    pub operator_status: Map<String, OperatorStatus>,
+pub struct AVSDirectoryStorage<'a> {
+    pub operator_status: Map<'a, String, OperatorStatus>,
     pub salt_spent: HashSet<String>,
 }
 
-impl Default for AVSDirectoryStorage {
+impl<'a> Default for AVSDirectoryStorage<'a> {
     fn default() -> Self {
         AVSDirectoryStorage {
             operator_status: Map::new("operator_status"),
@@ -30,7 +30,7 @@ impl Default for AVSDirectoryStorage {
     }
 }
 
-impl AVSDirectoryStorage {
+impl<'a> AVSDirectoryStorage<'a> {
     pub fn save(&self, storage: &mut dyn Storage, operator: String, status: OperatorStatus) -> StdResult<()> {
         self.operator_status.save(storage, operator, &status)?;
         Ok(())
