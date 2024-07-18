@@ -7,18 +7,17 @@ resolver = "2"
 version = "2.0.0"
 
 [workspace.dependencies]
-cosmwasm-schema = "1.5.3"
-cosmwasm-std = "1.5.3"
-cw-storage-plus = "1.2.0"
+cosmwasm-schema = "2.1.0"
+cosmwasm-std = "2.1.0"
+cw-storage-plus = "2.0.0"
+cw-utils = "2.0.0"
 schemars = "0.8.15"
-cw2 = "1.1.2"
+cw2 = "2.0.0"
 hex = "0.4.3"
-secp256k1 = "0.22.0"
-serde_json = "1.0"
+sha2 = "0.10.8"
 serde = { version = "1.0.188", default-features = false, features = ["derive"] }
-thiserror = { version = "1.0.57" }
-tiny-keccak = { version = "2.0", features = ["keccak"] }
-babylon-bindings = {git = "https://github.com/babylonchain/bindings", tag = "v0.1.0"}
+thiserror = "1.0.57"
+babylon-bindings = { git = "https://github.com/babylonchain/bindings", tag = "v0.1.0" }
 
 avs-directory = { path = "contracts/avs-directory", version = "0.2.0", features = ["library"] }
 delegation-manager = { path = "contracts/delegation-manager", version = "0.2.0", features = ["library"] }
@@ -26,6 +25,38 @@ rewards-coordinator = { path = "contracts/rewards-coordinator", version = "0.2.0
 slash-manager = { path = "contracts/slash-manager", version = "0.2.0", features = ["library"] }
 strategy-manager = { path = "contracts/strategy-manager", version = "0.2.0", features = ["library"] }
 cw20 = { path = "packages/cw20", version = "2.0.0-rc.0" }
+
+[profile.release.package.cw1-subkeys]
+codegen-units = 1
+incremental = false
+
+[profile.release.package.cw1-whitelist]
+codegen-units = 1
+incremental = false
+
+[profile.release.package.cw3-fixed-multisig]
+codegen-units = 1
+incremental = false
+
+[profile.release.package.cw3-flex-multisig]
+codegen-units = 1
+incremental = false
+
+[profile.release.package.cw4-group]
+codegen-units = 1
+incremental = false
+
+[profile.release.package.cw4-stake]
+codegen-units = 1
+incremental = false
+
+[profile.release.package.cw20-base]
+codegen-units = 1
+incremental = false
+
+[profile.release.package.cw20-ics20]
+codegen-units = 1
+incremental = false
 
 [profile.release]
 rpath = false
