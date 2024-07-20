@@ -57,9 +57,3 @@ pub struct IsOperatorRegisteredQueryMsg {
 pub struct IsOperatorRegisteredResponse {
     pub registered: bool,
 }
-
-#[cw_serde]
-pub struct VerifySignatureMsg {
-    pub hash: Binary,
-    pub signature: Binary,
-}

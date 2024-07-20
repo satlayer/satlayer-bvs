@@ -1,5 +1,5 @@
 use cosmwasm_std::{Addr, Binary, StdResult, QuerierWrapper, WasmQuery, QueryRequest, Env, StdError, to_json_binary};
-use crate::msg::{IsOperatorRegisteredQueryMsg, IsOperatorRegisteredResponse, VerifySignatureMsg};
+use crate::msg::{IsOperatorRegisteredQueryMsg, IsOperatorRegisteredResponse};
 use tiny_keccak::{Hasher, Keccak};
 use secp256k1::{Message, Secp256k1, PublicKey};
 use secp256k1::ecdsa::Signature;
@@ -8,7 +8,6 @@ use bech32::FromBase32;
 const OPERATOR_AVS_REGISTRATION_TYPEHASH: &[u8] = b"OperatorAVSRegistration(address operator,address avs,bytes32 salt,uint256 expiry)";
 const DOMAIN_TYPEHASH: &[u8] = b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
 const DOMAIN_NAME: &[u8] = b"EigenLayer";
-const EIP1271_MAGICVALUE: [u8; 4] = [0x16, 0x26, 0xba, 0x7e];
 
 pub fn keccak256(input: &[u8]) -> Vec<u8> {
     let mut hasher = Keccak::v256();
@@ -91,19 +90,4 @@ pub fn is_operator_registered<Q: cosmwasm_std::CustomQuery>(
 
     let res: IsOperatorRegisteredResponse = querier.query(&query_request)?;
     Ok(res.registered)
-}
-
-fn is_contract_address<Q: cosmwasm_std::CustomQuery>(
-    querier: &QuerierWrapper<Q>,
-    address: &Addr,
-) -> StdResult<bool> {
-    let query = WasmQuery::ContractInfo {
-        contract_addr: address.to_string(),
-    };
-
-    let res: StdResult<cosmwasm_std::ContractInfoResponse> = querier.query(&QueryRequest::Wasm(query));
-    match res {
-        Ok(_) => Ok(true),
-        Err(_) => Ok(false),
-    }
 }

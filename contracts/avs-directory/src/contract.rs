@@ -336,4 +336,64 @@ mod tests {
         let is_salt_spent = storage.is_salt_spent(&deps.storage, operator.clone(), Binary::from(salt.as_bytes())).unwrap();
         assert!(is_salt_spent);
     }
+
+    #[test]
+    fn test_deregister_operator() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+
+        let (operator, secret_key, _public_key) = generate_operator();
+        println!("Operator Address: {:?}", operator);
+        println!("Secret Key: {:?}", secret_key);
+        println!("Public Key: {:?}", _public_key);
+
+        let current_time = env.block.time.seconds();
+        let expiry = current_time + 1000;
+        let salt = "salt";
+        let chain_id: u64 = 0;
+        let contract_addr = env.contract.address.clone();
+        let signature = mock_signature_with_message(&operator, &info.sender, salt, expiry, chain_id, &contract_addr, &secret_key);
+
+        println!("Operator: {:?}", operator);
+        println!("Signature: {:?}", signature);
+
+        let instantiate_msg = InstantiateMsg {
+            initial_owner: Addr::unchecked("owner"),
+            chain_id: 1,
+            delegation_manager: Addr::unchecked("delegation_manager"),
+        };
+        instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
+
+        let register_msg = ExecuteMsg::RegisterOperatorToAVS {
+            operator: operator.clone(),
+            signature: signature.clone(),
+        };
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), register_msg);
+        assert!(res.is_ok());
+
+        let deregister_msg = ExecuteMsg::DeregisterOperatorFromAVS {
+            operator: operator.clone(),
+        };
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), deregister_msg);
+
+        if let Err(ref err) = res {
+            println!("Error: {:?}", err);
+        }
+
+        assert!(res.is_ok());
+
+        let res = res.unwrap();
+        assert_eq!(res.attributes.len(), 3);
+        assert_eq!(res.attributes[0].key, "method");
+        assert_eq!(res.attributes[0].value, "deregister_operator");
+        assert_eq!(res.attributes[1].key, "operator");
+        assert_eq!(res.attributes[1].value, operator.to_string());
+        assert_eq!(res.attributes[2].key, "avs");
+        assert_eq!(res.attributes[2].value, info.sender.to_string());
+
+        let storage = AVSDirectoryStorage::default();
+        let status = storage.load_status(&deps.storage, info.sender.clone(), operator.clone()).unwrap();
+        assert_eq!(status, OperatorAVSRegistrationStatus::Unregistered);
+    }
 }
