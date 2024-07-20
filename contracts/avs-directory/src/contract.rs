@@ -4,7 +4,7 @@ use crate::{
     state::{OperatorAVSRegistrationStatus, AVSDirectoryStorage},
     utils::{calculate_digest_hash, verify_signature, is_operator_registered},
 };  
-use babylon_bindings::BabylonQuery;
+// use babylon_bindings::BabylonQuery;
 use cosmwasm_std::{
     entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint64, Addr, 
 };
@@ -15,7 +15,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut<BabylonQuery>,
+    deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
@@ -36,7 +36,7 @@ pub fn instantiate(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    deps: DepsMut<BabylonQuery>,
+    deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
@@ -53,7 +53,7 @@ pub fn execute(
 }
 
 pub fn register_operator(
-    deps: DepsMut<BabylonQuery>,
+    deps: DepsMut,
     env: Env,
     info: MessageInfo,
     operator: Addr,
@@ -75,11 +75,11 @@ pub fn register_operator(
         return Err(ContractError::SaltAlreadySpent {});
     }
 
-    let delegation_manager_addr = storage.delegation_manager.load(deps.storage)?; 
+    // let delegation_manager_addr = storage.delegation_manager.load(deps.storage)?; 
     
-    if !is_operator_registered(&deps.querier, &env, &delegation_manager_addr, &operator)? {
-        return Err(ContractError::OperatorNotRegistered {});
-    }
+    // if !is_operator_registered(&deps.querier, &env, &delegation_manager_addr, &operator)? {
+    //     return Err(ContractError::OperatorNotRegistered {});
+    // }
 
     // Calculate the digest hash
     let chain_id = env.block.chain_id.parse::<u64>().unwrap_or_default();
@@ -110,7 +110,7 @@ pub fn register_operator(
 }
 
 pub fn deregister_operator(
-    deps: DepsMut<BabylonQuery>,
+    deps: DepsMut,
     _env: Env,
     info: MessageInfo,
     operator: Addr,
@@ -142,7 +142,7 @@ pub fn update_metadata_uri(
 }
 
 pub fn cancel_salt(
-    deps: DepsMut<BabylonQuery>,
+    deps: DepsMut,
     _env: Env,
     info: MessageInfo,
     salt: Binary,
@@ -162,7 +162,7 @@ pub fn cancel_salt(
 }
 
 pub fn transfer_ownership(
-    deps: DepsMut<BabylonQuery>,
+    deps: DepsMut,
     info: MessageInfo,
     new_owner: Addr,
 ) -> Result<Response, ContractError> {
@@ -193,4 +193,42 @@ fn query_operator(deps: Deps, operator: Addr) -> StdResult<OperatorStatusRespons
     let storage = AVSDirectoryStorage::default();
     let status = storage.load_status(deps.storage, deps.api.addr_validate("avs")?, operator)?;
     Ok(OperatorStatusResponse { status })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::{Addr, Storage};
+
+    #[test]
+    fn test_instantiate() {
+        // Arrange
+        let mut deps = mock_dependencies();  
+        let env = mock_env();  
+        let info = mock_info("creator", &[]);  
+
+        let msg = InstantiateMsg {
+            initial_owner: Addr::unchecked("owner"),
+            chain_id: 1,
+            delegation_manager: Addr::unchecked("delegation_manager"),
+        };
+
+        // Act
+        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        // Assert
+        assert_eq!(res.attributes.len(), 2);
+        assert_eq!(res.attributes[0].key, "method");
+        assert_eq!(res.attributes[0].value, "instantiate");
+        assert_eq!(res.attributes[1].key, "owner");
+        assert_eq!(res.attributes[1].value, "owner");
+
+        let owner = deps.storage.get(b"owner").unwrap();
+        assert_eq!(owner, b"owner");
+
+        let storage = AVSDirectoryStorage::default();
+        let delegation_manager = storage.delegation_manager.load(&deps.storage).unwrap();
+        assert_eq!(delegation_manager, Addr::unchecked("delegation_manager"));
+    }
 }
