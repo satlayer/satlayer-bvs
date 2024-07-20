@@ -1,15 +1,16 @@
-use cosmwasm_std::{Addr, Binary, StdResult, QuerierWrapper, WasmQuery, QueryRequest, to_json_binary, Env};
+use cosmwasm_std::{Addr, Binary, StdResult, QuerierWrapper, WasmQuery, QueryRequest, Env, StdError, to_json_binary};
 use crate::msg::{IsOperatorRegisteredQueryMsg, IsOperatorRegisteredResponse, VerifySignatureMsg};
 use tiny_keccak::{Hasher, Keccak};
 use secp256k1::{Message, Secp256k1, PublicKey};
 use secp256k1::ecdsa::Signature;
+use bech32::FromBase32;
 
 const OPERATOR_AVS_REGISTRATION_TYPEHASH: &[u8] = b"OperatorAVSRegistration(address operator,address avs,bytes32 salt,uint256 expiry)";
 const DOMAIN_TYPEHASH: &[u8] = b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
 const DOMAIN_NAME: &[u8] = b"EigenLayer";
 const EIP1271_MAGICVALUE: [u8; 4] = [0x16, 0x26, 0xba, 0x7e];
 
-fn keccak256(input: &[u8]) -> Vec<u8> {
+pub fn keccak256(input: &[u8]) -> Vec<u8> {
     let mut hasher = Keccak::v256();
     let mut output = [0u8; 32];
     hasher.update(input);
@@ -58,46 +59,18 @@ pub fn calculate_digest_hash(
     keccak256(&digest_hash_input)
 }
 
-pub fn verify_signature<Q: cosmwasm_std::CustomQuery>(
-    querier: &QuerierWrapper<Q>,
-    operator: &Addr,
-    digest_hash: &[u8],
-    signature: &[u8],
-) -> Result<bool, cosmwasm_std::StdError> {
+pub fn recover(digest_hash: &[u8], signature: &[u8], operator: &Addr) -> StdResult<bool> {
     let secp = Secp256k1::verification_only();
+    let message = Message::from_slice(digest_hash).map_err(|_| StdError::generic_err("Invalid message"))?;
+    let signature = Signature::from_compact(signature).map_err(|_| StdError::generic_err("Invalid signature"))?;
 
-    // Check if operator is a contract
-    let is_contract = is_contract_address(querier, operator)?;
+    let (_, operator_bytes, _) = bech32::decode(operator.as_str()).map_err(|_| StdError::generic_err("Invalid operator address"))?;
+    let operator_bytes = Vec::<u8>::from_base32(&operator_bytes).map_err(|_| StdError::generic_err("Invalid operator address"))?;
+    let public_key = PublicKey::from_slice(&operator_bytes).map_err(|_| StdError::generic_err("Invalid public key"))?;
 
-    if is_contract {
-        // Implement EIP-1271 verification
-        let verify_msg = VerifySignatureMsg {
-            hash: digest_hash.to_vec().into(),
-            signature: signature.to_vec().into(),
-        };
-
-        let res: StdResult<Binary> = querier.query(&WasmQuery::Smart {
-            contract_addr: operator.to_string(),
-            msg: to_json_binary(&verify_msg)?,
-        }.into());
-
-        match res {
-            Ok(binary) => {
-                let magic_value: [u8; 4] = binary.as_slice().try_into().map_err(|_| cosmwasm_std::StdError::generic_err("Invalid magic value"))?;
-                Ok(magic_value == EIP1271_MAGICVALUE)
-            }
-            Err(_) => Err(cosmwasm_std::StdError::generic_err("EIP-1271 signature verification failed")),
-        }
-    } else {
-        // Implement ECDSA verification
-        let message = Message::from_slice(digest_hash).map_err(|_| cosmwasm_std::StdError::generic_err("Invalid message"))?;
-        let signature = Signature::from_compact(signature).map_err(|_| cosmwasm_std::StdError::generic_err("Invalid signature"))?;
-        let public_key = PublicKey::from_slice(operator.as_bytes()).map_err(|_| cosmwasm_std::StdError::generic_err("Invalid public key"))?;
-
-        match secp.verify_ecdsa(&message, &signature, &public_key) {
-            Ok(_) => Ok(true),
-            Err(_) => Ok(false),
-        }
+    match secp.verify_ecdsa(&message, &signature, &public_key) {
+        Ok(_) => Ok(true),
+        Err(_) => Ok(false),
     }
 }
 
