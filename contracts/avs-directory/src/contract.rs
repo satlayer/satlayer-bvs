@@ -396,4 +396,32 @@ mod tests {
         let status = storage.load_status(&deps.storage, info.sender.clone(), operator.clone()).unwrap();
         assert_eq!(status, OperatorAVSRegistrationStatus::Unregistered);
     }
+
+    #[test]
+    fn test_update_metadata_uri() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let metadata_uri = "http://metadata.uri".to_string();
+
+        let msg = ExecuteMsg::UpdateAVSMetadataURI {
+            metadata_uri: metadata_uri.clone(),
+        };
+        let res = execute(deps.as_mut(), env, info.clone(), msg);
+
+        if let Err(ref err) = res {
+            println!("Error: {:?}", err);
+        }
+
+        assert!(res.is_ok());
+
+        let res = res.unwrap();
+        assert_eq!(res.attributes.len(), 3);
+        assert_eq!(res.attributes[0].key, "method");
+        assert_eq!(res.attributes[0].value, "update_metadata_uri");
+        assert_eq!(res.attributes[1].key, "avs");
+        assert_eq!(res.attributes[1].value, info.sender.to_string());
+        assert_eq!(res.attributes[2].key, "metadata_uri");
+        assert_eq!(res.attributes[2].value, metadata_uri);
+    }
 }
