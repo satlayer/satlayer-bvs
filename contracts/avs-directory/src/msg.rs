@@ -5,7 +5,6 @@ use crate::state::OperatorAVSRegistrationStatus;
 #[cw_serde]
 pub struct InstantiateMsg {
     pub initial_owner: Addr,
-    pub chain_id: u64,
     pub delegation_manager: Addr,
 }
 

@@ -210,7 +210,6 @@ mod tests {
 
         let msg = InstantiateMsg {
             initial_owner: Addr::unchecked("owner"),
-            chain_id: 1,
             delegation_manager: Addr::unchecked("delegation_manager"),
         };
 
@@ -303,7 +302,6 @@ mod tests {
 
         let instantiate_msg = InstantiateMsg {
             initial_owner: Addr::unchecked("owner"),
-            chain_id: 1,
             delegation_manager: Addr::unchecked("delegation_manager"),
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
@@ -360,7 +358,6 @@ mod tests {
 
         let instantiate_msg = InstantiateMsg {
             initial_owner: Addr::unchecked("owner"),
-            chain_id: 1,
             delegation_manager: Addr::unchecked("delegation_manager"),
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
@@ -475,7 +472,6 @@ mod tests {
         // Instantiate the contract with the correct owner
         let instantiate_msg = InstantiateMsg {
             initial_owner: owner.clone(),
-            chain_id: 1,
             delegation_manager: Addr::unchecked("delegation_manager"),
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
