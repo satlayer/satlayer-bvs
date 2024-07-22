@@ -463,4 +463,45 @@ mod tests {
         assert_eq!(res.attributes[2].key, "salt");
         assert_eq!(res.attributes[2].value, salt.to_base64());
     }
+
+    #[test]
+    fn test_transfer_ownership() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let owner = Addr::unchecked("owner");
+        let info = mock_info(owner.as_str(), &[]);
+        let new_owner = Addr::unchecked("new_owner");
+    
+        // Instantiate the contract with the correct owner
+        let instantiate_msg = InstantiateMsg {
+            initial_owner: owner.clone(),
+            chain_id: 1,
+            delegation_manager: Addr::unchecked("delegation_manager"),
+        };
+        instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
+    
+        // Transfer ownership
+        let msg = ExecuteMsg::TransferOwnership {
+            new_owner: new_owner.clone(),
+        };
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+    
+        if let Err(ref err) = res {
+            println!("Error: {:?}", err);
+        }
+    
+        assert!(res.is_ok());
+    
+        // Verify the response attributes
+        let res = res.unwrap();
+        assert_eq!(res.attributes.len(), 2);
+        assert_eq!(res.attributes[0].key, "method");
+        assert_eq!(res.attributes[0].value, "transfer_ownership");
+        assert_eq!(res.attributes[1].key, "new_owner");
+        assert_eq!(res.attributes[1].value, new_owner.to_string());
+    
+        // Verify the new owner is set correctly
+        let owner = deps.storage.get(b"owner").unwrap();
+        assert_eq!(owner, new_owner.as_bytes());
+    }    
 }
