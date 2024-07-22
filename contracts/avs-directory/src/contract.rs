@@ -424,4 +424,43 @@ mod tests {
         assert_eq!(res.attributes[2].key, "metadata_uri");
         assert_eq!(res.attributes[2].value, metadata_uri);
     }
+
+    #[test]
+    fn test_cancel_salt() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+        let salt = Binary::from("unique_salt".as_bytes());
+
+        // First, mark the salt as unspent
+        let storage = AVSDirectoryStorage::default();
+        let is_salt_spent = storage.is_salt_spent(&deps.storage, info.sender.clone(), salt.clone()).unwrap();
+        assert!(!is_salt_spent);
+
+        // Execute the cancel_salt function
+        let msg = ExecuteMsg::CancelSalt {
+            salt: salt.clone(),
+        };
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+
+        if let Err(ref err) = res {
+            println!("Error: {:?}", err);
+        }
+
+        assert!(res.is_ok());
+
+        // Verify the salt is marked as spent
+        let is_salt_spent = storage.is_salt_spent(&deps.storage, info.sender.clone(), salt.clone()).unwrap();
+        assert!(is_salt_spent);
+
+        // Verify the response attributes
+        let res = res.unwrap();
+        assert_eq!(res.attributes.len(), 3);
+        assert_eq!(res.attributes[0].key, "method");
+        assert_eq!(res.attributes[0].value, "cancel_salt");
+        assert_eq!(res.attributes[1].key, "operator");
+        assert_eq!(res.attributes[1].value, info.sender.to_string());
+        assert_eq!(res.attributes[2].key, "salt");
+        assert_eq!(res.attributes[2].value, salt.to_base64());
+    }
 }
