@@ -10,16 +10,18 @@ crate-type = ["cdylib", "rlib"]
 library = []
 
 [dependencies]
-babylon-bindings = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cosmwasm-std = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
-hex = { workspace = true }
 thiserror = { workspace = true }
 serde = { workspace = true }
 tiny-keccak = { workspace = true }
 secp256k1 = { workspace = true }
 serde_json = { workspace = true }
+sha3 = { workspace = true }
+bech32 = { workspace = true }
+secp256k1-sys = { workspace = true }
+semver = { workspace =true }
 
 [dev-dependencies]
