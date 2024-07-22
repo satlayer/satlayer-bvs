@@ -21,5 +21,7 @@ secp256k1 = { workspace = true }
 serde_json = { workspace = true }
 sha3 = { workspace = true }
 bech32 = { workspace = true }
+secp256k1-sys = { workspace = true }
+semver = { workspace =true }
 
 [dev-dependencies]

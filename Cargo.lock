@@ -23,6 +23,8 @@ dependencies = [
  "cw-storage-plus",
  "cw2",
  "secp256k1",
+ "secp256k1-sys 0.10.0",
+ "semver",
  "serde",
  "serde_json",
  "sha3",
@@ -103,9 +105,9 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "cc"
-version = "1.1.5"
+version = "1.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "324c74f2155653c90b04f25b2a47a8a631360cb908f92a772695f430c7e31052"
+checksum = "2aba8f4e9906c7ce3c73463f62a7f0c65183ada1a2d47e397cc8810827f9694f"
 
 [[package]]
 name = "cfg-if"
@@ -619,18 +621,27 @@ dependencies = [
 
 [[package]]
 name = "secp256k1"
-version = "0.22.2"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "295642060261c80709ac034f52fca8e5a9fa2c7d341ded5cdb164b7c33768b2a"
+checksum = "25996b82292a7a57ed3508f052cfff8640d38d32018784acd714758b43da9c8f"
 dependencies = [
- "secp256k1-sys",
+ "secp256k1-sys 0.8.1",
 ]
 
 [[package]]
 name = "secp256k1-sys"
-version = "0.5.2"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "152e20a0fd0519390fc43ab404663af8a0b794273d2a91d60ad4a39f13ffe110"
+checksum = "70a129b9e9efbfb223753b9163c4ab3b13cff7fd9c7f010fbac25ab4099fa07e"
+dependencies = [
+ "cc",
+]
+
+[[package]]
+name = "secp256k1-sys"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1433bd67156263443f14d603720b082dd3121779323fce20cba2aa07b874bc1b"
 dependencies = [
  "cc",
 ]
