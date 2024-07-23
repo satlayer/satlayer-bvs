@@ -1,59 +1,19 @@
 [workspace]
-members = ["contracts/*"]
+members = ["contracts/avs-directory"]
 
 resolver = "2"
 
-[profile.release]
-opt-level = 3
-debug = false
-rpath = false
-lto = true
-debug-assertions = false
-codegen-units = 1
-panic = 'abort'
-incremental = false
-overflow-checks = true
-
 [workspace.dependencies]
-cosmwasm-schema = "1.0.0"
-cosmwasm-std = "1.0.0"
-cw-storage-plus = "0.13.2"
+cosmwasm-schema = "2.0.0"
+cosmwasm-std = "2.0.0"
+cw-storage-plus = "2.0.0"
 schemars = "0.8.8"
-cw2 = "0.13.2"
-sha3 = "0.10"
-secp256k1 = "0.29.0"
-serde_json = "1.0"
-bech32 = "0.8.0"
+cw2 = "2.0.0"
 serde = { version = "1.0.137", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.31" }
-tiny-keccak = { version = "2.0", features = ["keccak"] }
-secp256k1-sys = "0.10.0"
-semver = "1.0.23"
-cw-utils = "2.0.0"
-cw-multi-test = "0.13.2"
+cw-multi-test = "2.0.0"
+sha2 = { version = "0.10.8", default-features = false }
+hex = "0.4"
+cosmwasm-crypto = "2.1.0"
+secp256k1 = "0.29.0"
 
-avs-directory = { path = "contracts/avs-directory", version = "2.0.0", features = ["library"] }
-delegation-manager = { path = "contracts/delegation-manager", version = "2.0.0", features = ["library"] }
-rewards-coordinator = { path = "contracts/rewards-coordinator", version = "2.0.0", features = ["library"] }
-slash-manager = { path = "contracts/slash-manager", version = "2.0.0", features = ["library"] }
-strategy-manager = { path = "contracts/strategy-manager", version = "2.0.0", features = ["library"] }
-
-[profile.release.package.avs-directory]
-codegen-units = 1
-incremental = false
-
-[profile.release.package.delegation-manager]
-codegen-units = 1
-incremental = false
-
-[profile.release.package.rewards-coordinator]
-codegen-units = 1
-incremental = false
-
-[profile.release.package.slash-manager]
-codegen-units = 1
-incremental = false
-
-[profile.release.package.strategy-manager]
-codegen-units = 1
-incremental = false
