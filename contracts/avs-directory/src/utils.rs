@@ -60,7 +60,7 @@ pub fn calculate_digest_hash(
 
 pub fn recover(digest_hash: &[u8], signature: &[u8], operator: &Addr) -> StdResult<bool> {
     let secp = Secp256k1::verification_only();
-    let message = Message::from_slice(digest_hash).map_err(|_| StdError::generic_err("Invalid message"))?;
+    let message = Message::from_digest_slice(digest_hash).map_err(|_| StdError::generic_err("Invalid message"))?;
     let signature = Signature::from_compact(signature).map_err(|_| StdError::generic_err("Invalid signature"))?;
 
     let (_, operator_bytes, _) = bech32::decode(operator.as_str()).map_err(|_| StdError::generic_err("Invalid operator address"))?;

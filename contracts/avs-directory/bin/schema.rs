@@ -1,6 +1,6 @@
 use cosmwasm_schema::write_api;
 
-use avs_manager::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use avs_directory::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn main() {
     write_api! {

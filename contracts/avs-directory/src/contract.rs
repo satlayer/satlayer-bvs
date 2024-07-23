@@ -5,14 +5,13 @@ use crate::{
     utils::{calculate_digest_hash, recover, is_operator_registered},
 };  
 use cosmwasm_std::{
-    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint64, Addr, 
+    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint64, Addr, 
 };
 use cw2::set_contract_version;
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -33,7 +32,6 @@ pub fn instantiate(
         .add_attribute("owner", owner))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -180,7 +178,6 @@ pub fn transfer_ownership(
         .add_attribute("new_owner", new_owner.to_string()))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::QueryOperator { operator } => to_json_binary(&query_operator(deps, operator)?),
@@ -235,9 +232,8 @@ mod tests {
         let secp = Secp256k1::new();
         let secret_key = SecretKey::from_slice(&[0xcd; 32]).unwrap();
         let public_key = PublicKey::from_secret_key(&secp, &secret_key);
-        let operator_bytes = public_key.serialize();  // Use compressed public key
+        let operator_bytes = public_key.serialize();  
 
-        // 使用 Bech32 编码生成地址，确保前缀和 CLI 一致
         let bech32_address = encode("osmo", operator_bytes.to_base32(), Variant::Bech32).unwrap();
 
         let operator = Addr::unchecked(bech32_address);
@@ -266,7 +262,7 @@ mod tests {
         println!("Message Hash: {:?}", message_bytes);
 
         let secp = Secp256k1::new();
-        let message = Message::from_slice(&message_bytes).expect("32 bytes");
+        let message = Message::from_digest_slice(&message_bytes).expect("32 bytes");
         let signature = secp.sign_ecdsa(&message, secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
 
