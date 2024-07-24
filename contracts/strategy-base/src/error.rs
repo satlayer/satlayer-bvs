@@ -14,4 +14,7 @@ pub enum ContractError {
 
     #[error("StrategyBase.withdraw: insufficient shares")]
     InsufficientShares {},
+
+    #[error("StrategyBase._after_withdrawal: amount overflow")]
+    AmountOverflow {},
 }
