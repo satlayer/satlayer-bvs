@@ -4,12 +4,15 @@ use crate::{
     state::{StrategyState, STRATEGY_STATE},
 };
 use cosmwasm_std::{
-    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint256, Addr, Coin,
+    entry_point, to_json_binary, Addr, BankMsg, Binary, Coin, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdResult, Uint128, Uint256, WasmQuery, BankQuery, BalanceResponse,
 };
 use cw2::set_contract_version;
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+const SHARES_OFFSET: Uint128 = Uint128::new(1_000);
+const BALANCE_OFFSET: Uint128 = Uint128::new(1_000);
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -43,7 +46,6 @@ pub fn execute(
     match msg {
         ExecuteMsg::Deposit { amount } => deposit(deps, env, info, amount),
         ExecuteMsg::Withdraw { recipient, amount_shares } => withdraw(deps, env, info, recipient, amount_shares),
-        ExecuteMsg::TransferOwnership { new_owner } => transfer_ownership(deps, info, new_owner),
     }
 }
 
@@ -59,9 +61,10 @@ pub fn deposit(
         return Err(ContractError::Unauthorized {});
     }
 
-    let new_shares = calculate_new_shares(&state, amount)?;
-    state.total_shares += new_shares;
+    let balance = query_token_balance(&deps.querier, &state.underlying_token, &env.contract.address)?;
+    let new_shares = calculate_new_shares(&state, amount, balance)?;
 
+    state.total_shares += new_shares;
     STRATEGY_STATE.save(deps.storage, &state)?;
 
     Ok(Response::new()
@@ -87,9 +90,10 @@ pub fn withdraw(
         return Err(ContractError::InsufficientShares {});
     }
 
-    let amount_to_send = calculate_amount_to_send(&state, amount_shares)?;
-    state.total_shares -= amount_shares;
+    let balance = query_token_balance(&deps.querier, &state.underlying_token, &env.contract.address)?;
+    let amount_to_send = calculate_amount_to_send(&state, amount_shares, balance)?;
 
+    state.total_shares -= amount_shares;
     STRATEGY_STATE.save(deps.storage, &state)?;
 
     Ok(Response::new()
@@ -98,42 +102,30 @@ pub fn withdraw(
         .add_attribute("total_shares", state.total_shares.to_string()))
 }
 
-pub fn transfer_ownership(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_owner: Addr,
-) -> Result<Response, ContractError> {
-    let mut state = STRATEGY_STATE.load(deps.storage)?;
-
-    if info.sender != state.strategy_manager {
-        return Err(ContractError::Unauthorized {});
-    }
-
-    state.strategy_manager = new_owner.clone();
-
-    STRATEGY_STATE.save(deps.storage, &state)?;
-
-    Ok(Response::new()
-        .add_attribute("method", "transfer_ownership")
-        .add_attribute("new_owner", new_owner.to_string()))
-}
-
-fn calculate_new_shares(state: &StrategyState, amount: Uint256) -> StdResult<Uint256> {
-    let virtual_share_amount = state.total_shares + Uint256::from(1_000u128);
-    let virtual_token_balance = state.total_shares + Uint256::from(1_000u128);
+fn calculate_new_shares(state: &StrategyState, amount: Uint256, balance: Uint256) -> Result<Uint256, ContractError> {
+    let virtual_share_amount = state.total_shares + Uint256::from(SHARES_OFFSET.u128());
+    let virtual_token_balance = balance + Uint256::from(BALANCE_OFFSET.u128());
     let virtual_prior_token_balance = virtual_token_balance - amount;
     let new_shares = (amount * virtual_share_amount) / virtual_prior_token_balance;
     if new_shares.is_zero() {
-        return Err(StdError::generic_err("new_shares cannot be zero"));
+        return Err(ContractError::ZeroNewShares {});
     }
     Ok(new_shares)
 }
 
-fn calculate_amount_to_send(state: &StrategyState, amount_shares: Uint256) -> StdResult<Uint256> {
-    let virtual_total_shares = state.total_shares + Uint256::from(1_000u128);
-    let virtual_token_balance = state.total_shares + Uint256::from(1_000u128);
+fn calculate_amount_to_send(state: &StrategyState, amount_shares: Uint256, balance: Uint256) -> StdResult<Uint256> {
+    let virtual_total_shares = state.total_shares + Uint256::from(SHARES_OFFSET.u128());
+    let virtual_token_balance = balance + Uint256::from(BALANCE_OFFSET.u128());
     let amount_to_send = (virtual_token_balance * amount_shares) / virtual_total_shares;
     Ok(amount_to_send)
+}
+
+fn query_token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdResult<Uint256> {
+    let res: BalanceResponse = querier.query(&QueryRequest::Bank(BankQuery::Balance {
+        address: account.to_string(),
+        denom: token.to_string(),
+    }))?;
+    Ok(Uint256::from(res.amount.amount.u128()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -163,8 +155,8 @@ mod tests {
         let info = mock_info("creator", &[]);
 
         let msg = InstantiateMsg {
-            strategy_manager: "manager".to_string(),
-            underlying_token: "token".to_string(),
+            strategy_manager: Addr::unchecked("manager"),
+            underlying_token: Addr::unchecked("token"),
         };
 
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -184,8 +176,8 @@ mod tests {
         let info = mock_info("manager", &[]);
 
         let msg = InstantiateMsg {
-            strategy_manager: "manager".to_string(),
-            underlying_token: "token".to_string(),
+            strategy_manager: Addr::unchecked("manager"),
+            underlying_token: Addr::unchecked("token"),
         };
 
         instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
@@ -207,8 +199,8 @@ mod tests {
         let info = mock_info("manager", &[]);
 
         let msg = InstantiateMsg {
-            strategy_manager: "manager".to_string(),
-            underlying_token: "token".to_string(),
+            strategy_manager: Addr::unchecked("manager"),
+            underlying_token: Addr::unchecked("token"),
         };
 
         instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();

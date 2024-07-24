@@ -16,9 +16,6 @@ pub enum ExecuteMsg {
         recipient: Addr,
         amount_shares: Uint256,
     },
-    TransferOwnership {
-        new_owner: Addr,
-    },
 }
 
 #[cw_serde]

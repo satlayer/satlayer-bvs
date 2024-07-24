@@ -9,6 +9,9 @@ pub enum ContractError {
     #[error("StrategyBase: unauthorized")]
     Unauthorized {},
 
+    #[error("StrategyBase.deposit: new_shares cannot be zero")]
+    ZeroNewShares {},
+
     #[error("StrategyBase.withdraw: insufficient shares")]
     InsufficientShares {},
 }
