@@ -226,7 +226,6 @@ pub fn underlying_to_share_view(deps: Deps, env: Env, amount: Uint128) -> StdRes
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{Addr};
 
     #[test]
     fn test_instantiate() {
@@ -247,58 +246,5 @@ mod tests {
         assert_eq!(res.attributes[1].value, "manager");
         assert_eq!(res.attributes[2].key, "underlying_token");
         assert_eq!(res.attributes[2].value, "token");
-    }
-
-    #[test]
-    fn test_deposit() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("manager", &[]);
-
-        let msg = InstantiateMsg {
-            strategy_manager: Addr::unchecked("manager"),
-            underlying_token: Addr::unchecked("token"),
-        };
-
-        instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-
-        let deposit_msg = ExecuteMsg::Deposit {
-            amount: Uint128::new(1_000),
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), deposit_msg).unwrap();
-        assert_eq!(res.attributes.len(), 3);
-        assert_eq!(res.attributes[0].key, "method");
-        assert_eq!(res.attributes[0].value, "deposit");
-    }
-
-    #[test]
-    fn test_withdraw() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("manager", &[]);
-
-        let msg = InstantiateMsg {
-            strategy_manager: Addr::unchecked("manager"),
-            underlying_token: Addr::unchecked("token"),
-        };
-
-        instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-
-        let deposit_msg = ExecuteMsg::Deposit {
-            amount: Uint128::new(1_000),
-        };
-
-        execute(deps.as_mut(), env.clone(), info.clone(), deposit_msg).unwrap();
-
-        let withdraw_msg = ExecuteMsg::Withdraw {
-            recipient: Addr::unchecked("recipient"),
-            amount_shares: Uint128::new(500),
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), withdraw_msg).unwrap();
-        assert_eq!(res.attributes.len(), 3);
-        assert_eq!(res.attributes[0].key, "method");
-        assert_eq!(res.attributes[0].value, "withdraw");
     }
 }

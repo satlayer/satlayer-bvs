@@ -256,7 +256,7 @@ mod tests {
 
     
         let secp = Secp256k1::new();
-        let message = Message::from_slice(&message_bytes).expect("32 bytes");
+        let message = Message::from_digest_slice(&message_bytes).expect("32 bytes");
         let signature = secp.sign_ecdsa(&message, secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
     
