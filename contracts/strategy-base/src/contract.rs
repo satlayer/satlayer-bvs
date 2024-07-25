@@ -118,12 +118,15 @@ pub fn withdraw(
     state.total_shares -= amount_shares;
     STRATEGY_STATE.save(deps.storage, &state)?;
 
-    _after_withdrawal(&state.underlying_token, &recipient, amount_to_send)?;
+    let mut response = _after_withdrawal(&state.underlying_token, &recipient, amount_to_send)?;
 
-    Ok(Response::new()
-        .add_attribute("method", "withdraw")
-        .add_attribute("amount_to_send", amount_to_send.to_string())
-        .add_attribute("total_shares", state.total_shares.to_string()))
+    response = response.add_attributes(vec![
+        ("method", "withdraw"),
+        ("amount_to_send", amount_to_send.to_string().as_str()),
+        ("total_shares", state.total_shares.to_string().as_str()),
+    ]);
+
+    Ok(response)
 }
 
 fn _after_withdrawal(token: &Addr, recipient: &Addr, amount: Uint128) -> Result<Response, ContractError> {
@@ -144,6 +147,18 @@ fn calculate_new_shares(state: &StrategyState, amount: Uint128, balance: Uint128
     let virtual_token_balance = balance + BALANCE_OFFSET;
     let virtual_prior_token_balance = virtual_token_balance - amount;
     let new_shares = (amount * virtual_share_amount) / virtual_prior_token_balance;
+
+    // Debug print statements
+    println!("calculate_new_shares - state.total_shares: {}", state.total_shares);
+    println!("calculate_new_shares - SHARES_OFFSET: {}", SHARES_OFFSET);
+    println!("calculate_new_shares - virtual_share_amount: {}", virtual_share_amount);
+    println!("calculate_new_shares - balance: {}", balance);
+    println!("calculate_new_shares - BALANCE_OFFSET: {}", BALANCE_OFFSET);
+    println!("calculate_new_shares - virtual_token_balance: {}", virtual_token_balance);
+    println!("calculate_new_shares - amount: {}", amount);
+    println!("calculate_new_shares - virtual_prior_token_balance: {}", virtual_prior_token_balance);
+    println!("calculate_new_shares - new_shares: {}", new_shares);
+
     if new_shares.is_zero() {
         return Err(ContractError::ZeroNewShares {});
     }
@@ -313,5 +328,83 @@ mod tests {
         // Verify the balance query was made
         let balance = query_token_balance(&QuerierWrapper::new(&deps.querier), &Addr::unchecked("token"), &env.contract.address).unwrap();
         assert_eq!(balance, Uint128::new(1_000_000)); 
+    }
+
+    #[test]
+    fn test_withdraw() {
+        let mut deps = setup_contract();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("manager"), &[]);
+        
+        let contract_address = env.contract.address.clone();
+        
+        // Mock balance query response
+        deps.querier.update_wasm(move |query| {
+            match query {
+                WasmQuery::Smart { contract_addr, msg, .. } => {
+                    if contract_addr == "token" {
+                        let msg: Cw20QueryMsg = from_json(msg).unwrap();
+                        if let Cw20QueryMsg::Balance { address } = msg {
+                            if address == contract_address.to_string() {
+                                return SystemResult::Ok(ContractResult::Ok(to_json_binary(&Cw20BalanceResponse { balance: Uint128::new(1_000_000) }).unwrap()));
+                            }
+                        }
+                    }
+                    SystemResult::Err(SystemError::InvalidRequest {
+                        error: "not implemented".to_string(),
+                        request: msg.clone(), 
+                    })
+                },
+                _ => SystemResult::Err(SystemError::InvalidRequest {
+                    error: "not implemented".to_string(),
+                    request: Binary::from(b"other".as_ref()),
+                }),
+            }
+        });
+        
+        let deposit_amount = Uint128::new(1_000);
+        let msg_deposit = ExecuteMsg::Deposit { amount: deposit_amount };
+        execute(deps.as_mut(), env.clone(), info.clone(), msg_deposit).unwrap();
+        
+        // Verify the shares were added to total_shares
+        let state = STRATEGY_STATE.load(&deps.storage).unwrap();
+        assert_eq!(state.total_shares, Uint128::new(1)); // Ensure total_shares is as expected
+    
+        let withdraw_amount_shares = Uint128::new(1); // Adjust the withdraw amount to match available shares
+    
+        let recipient = Addr::unchecked("recipient");
+        let msg_withdraw = ExecuteMsg::Withdraw { recipient: recipient.clone(), amount_shares: withdraw_amount_shares };
+        
+        let res_withdraw = execute(deps.as_mut(), env.clone(), info.clone(), msg_withdraw);
+        match res_withdraw {
+            Ok(response) => {
+                assert_eq!(response.attributes.len(), 3);
+                assert_eq!(response.attributes[0].key, "method");
+                assert_eq!(response.attributes[0].value, "withdraw");
+                assert!(response.attributes[1].key == "amount_to_send");
+                assert!(response.attributes[2].key == "total_shares");
+                
+                // Check if a transfer message was added
+                assert_eq!(response.messages.len(), 1);
+                match &response.messages[0].msg {
+                    CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }) => {
+                        assert_eq!(contract_addr, "token");
+                        let msg: Cw20ExecuteMsg = from_json(msg).unwrap();
+                        match msg {
+                            Cw20ExecuteMsg::Transfer { recipient: rec, amount } => {
+                                assert_eq!(rec, recipient.to_string());
+                                assert_eq!(amount, Uint128::new(1_000)); // Adjust expected amount based on logic
+                            },
+                            _ => panic!("Unexpected message type"),
+                        }
+                    },
+                    _ => panic!("Unexpected CosmosMsg"),
+                }
+            }
+            Err(err) => {
+                println!("Withdraw failed with error: {:?}", err);
+                panic!("Withdraw test failed");
+            }
+        }
     }
 }
