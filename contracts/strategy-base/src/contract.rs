@@ -225,13 +225,29 @@ pub fn underlying_to_share_view(deps: Deps, env: Env, amount: Uint128) -> StdRes
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info, MockApi, MockQuerier, MockStorage};
+    use cosmwasm_std::{from_json, OwnedDeps, SystemResult, ContractResult, SystemError, Binary, WasmQuery};
+
+    // Helper function to setup contract with initial state
+    fn setup_contract() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("manager"),
+            underlying_token: Addr::unchecked("token"),
+        };
+
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+        deps
+    }
 
     #[test]
     fn test_instantiate() {
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let info = mock_info("creator", &[]);
+        let info = message_info(&Addr::unchecked("creator"), &[]);
 
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("manager"),
@@ -246,5 +262,56 @@ mod tests {
         assert_eq!(res.attributes[1].value, "manager");
         assert_eq!(res.attributes[2].key, "underlying_token");
         assert_eq!(res.attributes[2].value, "token");
+    }
+
+    #[test]
+    fn test_deposit() {
+        let mut deps = setup_contract();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("manager"), &[]);
+
+        let contract_address = env.contract.address.clone();
+
+        // Mock balance query response
+        deps.querier.update_wasm(move |query| {
+            match query {
+                WasmQuery::Smart { contract_addr, msg, .. } => {
+                    if contract_addr == "token" {
+                        let msg: Cw20QueryMsg = from_json(msg).unwrap();
+                        if let Cw20QueryMsg::Balance { address } = msg {
+                            if address == contract_address.to_string() {
+                                return SystemResult::Ok(ContractResult::Ok(to_json_binary(&Cw20BalanceResponse { balance: Uint128::new(1_000_000) }).unwrap()));
+                            }
+                        }
+                    }
+                    SystemResult::Err(SystemError::InvalidRequest {
+                        error: "not implemented".to_string(),
+                        request: msg.clone(), 
+                    })
+                },
+                _ => SystemResult::Err(SystemError::InvalidRequest {
+                    error: "not implemented".to_string(),
+                    request: Binary::from(b"other".as_ref()),
+                }),
+            }
+        });
+
+        let amount = Uint128::new(1_000);
+        let msg = ExecuteMsg::Deposit { amount };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        assert_eq!(res.attributes.len(), 3);
+        assert_eq!(res.attributes[0].key, "method");
+        assert_eq!(res.attributes[0].value, "deposit");
+        assert!(res.attributes[1].key == "new_shares");
+        assert!(res.attributes[2].key == "total_shares");
+
+        // Query state to check total_shares
+        let state = STRATEGY_STATE.load(&deps.storage).unwrap();
+        assert!(state.total_shares > Uint128::zero());
+
+        // Verify the balance query was made
+        let balance = query_token_balance(&QuerierWrapper::new(&deps.querier), &Addr::unchecked("token"), &env.contract.address).unwrap();
+        assert_eq!(balance, Uint128::new(1_000_000)); 
     }
 }

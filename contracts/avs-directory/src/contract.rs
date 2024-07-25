@@ -188,7 +188,7 @@ fn query_operator(deps: Deps, operator: Addr) -> StdResult<OperatorStatusRespons
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info};
     use cosmwasm_std::{Addr, Storage, Binary, Uint64};
     use secp256k1::{Secp256k1, SecretKey, PublicKey, Message};
 
@@ -197,7 +197,7 @@ mod tests {
         // Arrange
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let info = mock_info("creator", &[]);
+        let info = message_info(&Addr::unchecked("creator"), &[]);
 
         let msg = InstantiateMsg {
             initial_owner: Addr::unchecked("owner"),
@@ -228,7 +228,7 @@ mod tests {
         let public_key = PublicKey::from_secret_key(&secp, &secret_key);
         let operator_bytes = public_key.serialize(); 
     
-        let operator = Addr::unchecked(hex::encode(&operator_bytes));
+        let operator = Addr::unchecked(hex::encode(operator_bytes));
         (operator, secret_key, operator_bytes.to_vec())
     }
     
@@ -243,7 +243,7 @@ mod tests {
     ) -> SignatureWithSaltAndExpiry {
         let env = mock_env();
         let message_bytes = calculate_digest_hash(
-            &operator,
+            operator,
             sender,
             &Binary::from(salt.as_bytes()),
             expiry,
@@ -273,7 +273,7 @@ mod tests {
     fn test_register_operator() {
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let info = mock_info("creator", &[]);
+        let info = message_info(&Addr::unchecked("creator"), &[]);
     
         let (operator, secret_key, public_key_bytes) = generate_operator();
         println!("Operator Address: {:?}", operator);
@@ -329,7 +329,7 @@ mod tests {
     fn test_deregister_operator() {
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let info = mock_info("creator", &[]);
+        let info = message_info(&Addr::unchecked("creator"), &[]);
 
         let (operator, secret_key, public_key_bytes) = generate_operator();
         println!("Operator Address: {:?}", operator);
@@ -388,7 +388,7 @@ mod tests {
     fn test_update_metadata_uri() {
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let info = mock_info("creator", &[]);
+        let info = message_info(&Addr::unchecked("creator"), &[]);
         let metadata_uri = "http://metadata.uri".to_string();
 
         let msg = ExecuteMsg::UpdateAVSMetadataURI {
@@ -416,7 +416,7 @@ mod tests {
     fn test_cancel_salt() {
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let info = mock_info("creator", &[]);
+        let info = message_info(&Addr::unchecked("creator"), &[]);
         let salt = Binary::from("unique_salt".as_bytes());
 
         // First, mark the salt as unspent
@@ -456,7 +456,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let owner = Addr::unchecked("owner");
-        let info = mock_info(owner.as_str(), &[]);
+        let info = message_info(&Addr::unchecked(owner.as_str()), &[]);
         let new_owner = Addr::unchecked("new_owner");
     
         // Instantiate the contract with the correct owner
