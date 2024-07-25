@@ -17,4 +17,7 @@ pub enum ContractError {
 
     #[error("StrategyBase._after_withdrawal: amount overflow")]
     AmountOverflow {},
+
+    #[error("StrategyBase: invalid token")]
+    InvalidToken {},
 }
