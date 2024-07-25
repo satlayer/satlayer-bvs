@@ -22,10 +22,17 @@ pub enum ExecuteMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(SharesResponse)]
-    GetShares {},
+    GetShares {
+        user: Addr,
+    },
 }
 
 #[cw_serde]
 pub struct SharesResponse {
     pub total_shares: Uint128,
+}
+
+#[cw_serde]
+pub struct StakerStrategySharesResponse {
+    pub shares: Uint128,
 }

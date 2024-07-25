@@ -1,10 +1,10 @@
 use crate::{
     error::ContractError,
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg, SharesResponse},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg, SharesResponse, StakerStrategySharesResponse},
     state::{StrategyState, STRATEGY_STATE},
 };
 use cosmwasm_std::{
-    entry_point, to_json_binary, Addr, BankMsg, Binary, Coin, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdResult, Uint128, Uint256, WasmMsg, WasmQuery, BalanceResponse, CosmosMsg,
+    entry_point, to_json_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdResult, Uint128, WasmMsg, WasmQuery, CosmosMsg,
 
 };
 use cw20::{Cw20ExecuteMsg, Cw20QueryMsg, BalanceResponse as Cw20BalanceResponse};
@@ -59,6 +59,20 @@ fn ensure_strategy_manager(info: &MessageInfo, strategy_manager: &Addr) -> Resul
     Ok(())
 }
 
+fn _before_deposit(state: &StrategyState, token: &Addr) -> Result<(), ContractError> {
+    if token != state.underlying_token {
+        return Err(ContractError::InvalidToken {});
+    }
+    Ok(())
+}
+
+fn _before_withdrawal(state: &StrategyState, token: &Addr) -> Result<(), ContractError> {
+    if token != state.underlying_token {
+        return Err(ContractError::InvalidToken {});
+    }
+    Ok(())
+}
+
 pub fn deposit(
     deps: DepsMut,
     env: Env,
@@ -68,6 +82,7 @@ pub fn deposit(
     let mut state = STRATEGY_STATE.load(deps.storage)?;
 
     ensure_strategy_manager(&info, &state.strategy_manager)?;
+    _before_deposit(&state, &state.underlying_token)?;
 
     let balance = query_token_balance(&deps.querier, &state.underlying_token, &env.contract.address)?;
     let new_shares = calculate_new_shares(&state, amount, balance)?;
@@ -91,6 +106,7 @@ pub fn withdraw(
     let mut state = STRATEGY_STATE.load(deps.storage)?;
 
     ensure_strategy_manager(&info, &state.strategy_manager)?;
+    _before_withdrawal(&state, &state.underlying_token)?;
 
     if amount_shares > state.total_shares {
         return Err(ContractError::InsufficientShares {});
@@ -131,6 +147,7 @@ fn calculate_new_shares(state: &StrategyState, amount: Uint128, balance: Uint128
     if new_shares.is_zero() {
         return Err(ContractError::ZeroNewShares {});
     }
+
     Ok(new_shares)
 }
 
@@ -138,6 +155,7 @@ fn calculate_amount_to_send(state: &StrategyState, amount_shares: Uint128, balan
     let virtual_total_shares = state.total_shares + SHARES_OFFSET;
     let virtual_token_balance = balance + BALANCE_OFFSET;
     let amount_to_send = (virtual_token_balance * amount_shares) / virtual_total_shares;
+    
     Ok(amount_to_send)
 }
 
@@ -152,17 +170,56 @@ fn query_token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetShares {} => to_json_binary(&query_shares(deps)?),
+        QueryMsg::GetShares { user } => to_json_binary(&query_shares(deps, env, user)?),
     }
 }
 
-fn query_shares(deps: Deps) -> StdResult<SharesResponse> {
+fn query_shares(deps: Deps, env: Env, user: Addr) -> StdResult<SharesResponse> {
     let state = STRATEGY_STATE.load(deps.storage)?;
-    Ok(SharesResponse {
-        total_shares: state.total_shares,
-    })
+    let shares_response = query_staker_strategy_shares(&deps.querier, &state.strategy_manager, &user, &env.contract.address)?;
+    Ok(SharesResponse { total_shares: shares_response.shares })
+}
+
+fn query_staker_strategy_shares(querier: &QuerierWrapper, strategy_manager: &Addr, user: &Addr, _strategy: &Addr) -> StdResult<StakerStrategySharesResponse> {
+    let msg = to_json_binary(&QueryMsg::GetShares {
+        user: user.clone(),
+    })?;
+
+    let res: StakerStrategySharesResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: strategy_manager.to_string(),
+        msg,
+    }))?;
+
+    Ok(res)
+}
+
+pub fn query_explanation() -> StdResult<String> {
+    Ok("Base Strategy implementation to inherit from for more complex implementations".to_string())
+}
+
+pub fn shares_to_underlying_view(deps: Deps, env: Env, amount_shares: Uint128) -> StdResult<Uint128> {
+    let state = STRATEGY_STATE.load(deps.storage)?;
+    let balance = query_token_balance(&deps.querier, &state.underlying_token, &env.contract.address)?;
+    
+    let virtual_total_shares = state.total_shares + SHARES_OFFSET;
+    let virtual_token_balance = balance + BALANCE_OFFSET;
+    let amount_to_send = (virtual_token_balance * amount_shares) / virtual_total_shares;
+
+    Ok(amount_to_send)
+}
+
+pub fn underlying_to_share_view(deps: Deps, env: Env, amount: Uint128) -> StdResult<Uint128> {
+    let state = STRATEGY_STATE.load(deps.storage)?;
+    let balance = query_token_balance(&deps.querier, &state.underlying_token, &env.contract.address)?;
+    
+    let virtual_share_amount = state.total_shares + SHARES_OFFSET;
+    let virtual_token_balance = balance + BALANCE_OFFSET;
+    let virtual_prior_token_balance = virtual_token_balance - amount;
+    let share_to_send = (amount * virtual_share_amount) / virtual_prior_token_balance;
+
+    Ok(share_to_send)        
 }
 
 #[cfg(test)]
