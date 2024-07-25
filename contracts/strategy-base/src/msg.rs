@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Uint256};
+use cosmwasm_std::{Addr, Uint128};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -10,14 +10,11 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     Deposit {
-        amount: Uint256,
+        amount: Uint128,
     },
     Withdraw {
         recipient: Addr,
-        amount_shares: Uint256,
-    },
-    TransferOwnership {
-        new_owner: Addr,
+        amount_shares: Uint128,
     },
 }
 
@@ -30,5 +27,5 @@ pub enum QueryMsg {
 
 #[cw_serde]
 pub struct SharesResponse {
-    pub total_shares: Uint256,
+    pub total_shares: Uint128,
 }
