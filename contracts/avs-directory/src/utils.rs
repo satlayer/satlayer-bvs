@@ -20,7 +20,7 @@ pub fn calculate_digest_hash(
     avs: &Addr,
     salt: &Binary,
     expiry: u64,
-    chain_id: u64,
+    chain_id: &str,
     env: &Env,
 ) -> Vec<u8> {
     let struct_hash_input = [
@@ -36,7 +36,7 @@ pub fn calculate_digest_hash(
     let domain_separator = sha256(&[
         &sha256(DOMAIN_TYPEHASH)[..],
         &sha256(DOMAIN_NAME)[..],
-        &chain_id.to_le_bytes(),
+        &sha256(chain_id.as_bytes())[..],
         env.contract.address.as_bytes(),
     ].concat());
 

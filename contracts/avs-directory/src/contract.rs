@@ -74,7 +74,8 @@ pub fn register_operator(
         return Err(ContractError::SaltAlreadySpent {});
     }
 
-    let chain_id: u64 = env.block.chain_id.parse().unwrap_or(0);
+    let chain_id = &env.block.chain_id;
+    println!("chain_id = {}", chain_id); 
 
     let message_bytes = calculate_digest_hash(
         &operator,
@@ -93,7 +94,7 @@ pub fn register_operator(
 
     storage.save_salt(deps.storage, operator.clone(), operator_signature.salt.clone())?;
 
-    println!("register_operator: operator = {}", operator); // 添加打印
+    println!("register_operator: operator = {}", operator); 
     Ok(Response::new()
         .add_attribute("method", "register_operator")
         .add_attribute("operator", operator.to_string())
@@ -243,7 +244,7 @@ mod tests {
         sender: &Addr,
         salt: &str,
         expiry: u64,
-        chain_id: u64,
+        chain_id: &str,
         _contract_addr: &Addr,
         secret_key: &SecretKey,
     ) -> SignatureWithSaltAndExpiry {
@@ -283,7 +284,7 @@ mod tests {
         let current_time = env.block.time.seconds();
         let expiry = current_time + 1000;
         let salt = "salt";
-        let chain_id: u64 = 0;
+        let chain_id = "cosmos-testnet-14002";
         let contract_addr = env.contract.address.clone();
         let signature = mock_signature_with_message(&operator, &info.sender, salt, expiry, chain_id, &contract_addr, &secret_key);
     
@@ -339,7 +340,7 @@ mod tests {
         let current_time = env.block.time.seconds();
         let expiry = current_time + 1000;
         let salt = "salt";
-        let chain_id: u64 = 0;
+        let chain_id = "cosmos-testnet-14002";
         let contract_addr = env.contract.address.clone();
         let signature = mock_signature_with_message(&operator, &info.sender, salt, expiry, chain_id, &contract_addr, &secret_key);
 
@@ -496,7 +497,7 @@ mod tests {
         let current_time = env.block.time.seconds();
         let expiry = current_time + 1000;
         let salt = "salt";
-        let chain_id: u64 = 0;
+        let chain_id = "cosmos-testnet-14002";
         let contract_addr = env.contract.address.clone();
         let signature = mock_signature_with_message(&operator, &info.sender, salt, expiry, chain_id, &contract_addr, &secret_key);
 
