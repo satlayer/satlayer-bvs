@@ -8,13 +8,13 @@ pub enum OperatorAVSRegistrationStatus {
     Unregistered,
 }
 
-pub struct AVSDirectoryStorage<'a> {
-    pub avs_operator_status: Map<'a, (Addr, Addr), OperatorAVSRegistrationStatus>,
-    pub operator_salt_is_spent: Map<'a, (Addr, String), bool>,
-    pub delegation_manager: Item<'a, Addr>,
+pub struct AVSDirectoryStorage {
+    pub avs_operator_status: Map<(Addr, Addr), OperatorAVSRegistrationStatus>,
+    pub operator_salt_is_spent: Map<(Addr, String), bool>,
+    pub delegation_manager: Item<Addr>,
 }
 
-impl<'a> Default for AVSDirectoryStorage<'a> {
+impl Default for AVSDirectoryStorage {
     fn default() -> Self {
         AVSDirectoryStorage {
             avs_operator_status: Map::new("avs_operator_status"),
@@ -24,7 +24,7 @@ impl<'a> Default for AVSDirectoryStorage<'a> {
     }
 }
 
-impl<'a> AVSDirectoryStorage<'a> {
+impl AVSDirectoryStorage {
     pub fn save_status(
         &self,
         storage: &mut dyn Storage,
