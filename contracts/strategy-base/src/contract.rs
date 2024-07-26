@@ -470,7 +470,7 @@ mod tests {
         assert_eq!(new_shares, Uint128::new(1));
 
         let state_with_shares = StrategyState {
-            total_shares: Uint128::new(1000),
+            total_shares: Uint128::new(1_000),
             ..state
         };
 

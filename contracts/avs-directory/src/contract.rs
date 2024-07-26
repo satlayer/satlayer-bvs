@@ -66,7 +66,7 @@ pub fn register_operator(
 
     let storage = AVSDirectoryStorage::default();
 
-    if storage.load_status(deps.storage, info.sender.clone(), operator.clone()).is_ok() {
+    if storage.load_status(deps.storage, info.sender.clone(), operator.clone())? == OperatorAVSRegistrationStatus::Registered {
         return Err(ContractError::OperatorAlreadyRegistered {});
     }
 
@@ -546,5 +546,31 @@ mod tests {
 
         assert_eq!(query_res.status, OperatorAVSRegistrationStatus::Registered);
     }
-} 
 
+    #[test]
+    fn test_query_operator_unregistered() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+    
+        let (operator, _secret_key, _public_key_bytes) = generate_operator();
+        println!("Operator Address: {:?}", operator);
+    
+        let instantiate_msg = InstantiateMsg {
+            initial_owner: Addr::unchecked("owner"),
+            delegation_manager: Addr::unchecked("delegation_manager"),
+        };
+        instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
+    
+        // Before RegisterOperatorToAVS, the operator should be unregistered
+        let query_msg = QueryMsg::QueryOperator {
+            avs: info.sender.clone(),
+            operator: operator.clone(),
+        };
+        let query_res: OperatorStatusResponse = from_json(query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
+        println!("Query result before registration: {:?}", query_res);
+    
+        // Check if the status is Unregistered
+        assert_eq!(query_res.status, OperatorAVSRegistrationStatus::Unregistered);
+    }    
+}
