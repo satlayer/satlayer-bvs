@@ -50,7 +50,8 @@ pub fn calculate_digest_hash(
 }
 
 pub fn recover(digest_hash: &[u8], signature: &[u8], operator: &Addr) -> StdResult<bool> {
-    let public_key_bytes = hex::decode(operator.as_str()).map_err(|_| StdError::generic_err("Invalid operator address"))?;
+    let (_hrp, data, _variant) = bech32::decode(operator.as_str()).map_err(|_| StdError::generic_err("Invalid operator address"))?;
+    let public_key_bytes = Vec::<u8>::from_base32(&data).map_err(|_| StdError::generic_err("Invalid operator address"))?;
 
     match secp256k1_verify(digest_hash, signature, &public_key_bytes) {
         Ok(valid) => Ok(valid),
