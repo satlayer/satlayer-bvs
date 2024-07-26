@@ -149,15 +149,15 @@ fn calculate_new_shares(state: &StrategyState, amount: Uint128, balance: Uint128
     let new_shares = (amount * virtual_share_amount) / virtual_prior_token_balance;
 
     // Debug print statements
-    println!("calculate_new_shares - state.total_shares: {}", state.total_shares);
-    println!("calculate_new_shares - SHARES_OFFSET: {}", SHARES_OFFSET);
-    println!("calculate_new_shares - virtual_share_amount: {}", virtual_share_amount);
-    println!("calculate_new_shares - balance: {}", balance);
-    println!("calculate_new_shares - BALANCE_OFFSET: {}", BALANCE_OFFSET);
-    println!("calculate_new_shares - virtual_token_balance: {}", virtual_token_balance);
-    println!("calculate_new_shares - amount: {}", amount);
-    println!("calculate_new_shares - virtual_prior_token_balance: {}", virtual_prior_token_balance);
-    println!("calculate_new_shares - new_shares: {}", new_shares);
+    // println!("calculate_new_shares - state.total_shares: {}", state.total_shares);
+    // println!("calculate_new_shares - SHARES_OFFSET: {}", SHARES_OFFSET);
+    // println!("calculate_new_shares - virtual_share_amount: {}", virtual_share_amount);
+    // println!("calculate_new_shares - balance: {}", balance);
+    // println!("calculate_new_shares - BALANCE_OFFSET: {}", BALANCE_OFFSET);
+    // println!("calculate_new_shares - virtual_token_balance: {}", virtual_token_balance);
+    // println!("calculate_new_shares - amount: {}", amount);
+    // println!("calculate_new_shares - virtual_prior_token_balance: {}", virtual_prior_token_balance);
+    // println!("calculate_new_shares - new_shares: {}", new_shares);
 
     if new_shares.is_zero() {
         return Err(ContractError::ZeroNewShares {});
@@ -406,5 +406,58 @@ mod tests {
                 panic!("Withdraw test failed");
             }
         }
+    }
+
+    #[test]
+    fn test_ensure_strategy_manager() {
+        let info = message_info(&Addr::unchecked("manager"), &[]);
+        let strategy_manager = Addr::unchecked("manager");
+
+        // Should pass for correct manager
+        let result = ensure_strategy_manager(&info, &strategy_manager);
+        assert!(result.is_ok());
+
+        // Should fail for incorrect manager
+        let info_wrong = message_info(&Addr::unchecked("other_manager"), &[]);
+        let result_wrong = ensure_strategy_manager(&info_wrong, &strategy_manager);
+        assert!(result_wrong.is_err());
+    }
+
+    #[test]
+    fn test_before_deposit() {
+        let state = StrategyState {
+            strategy_manager: Addr::unchecked("manager"),
+            underlying_token: Addr::unchecked("token"),
+            total_shares: Uint128::zero(),
+        };
+
+        // Should pass for correct token
+        let token = Addr::unchecked("token");
+        let result = _before_deposit(&state, &token);
+        assert!(result.is_ok());
+
+        // Should fail for incorrect token
+        let wrong_token = Addr::unchecked("wrong_token");
+        let result_wrong = _before_deposit(&state, &wrong_token);
+        assert!(result_wrong.is_err());
+    }
+
+    #[test]
+    fn test_before_withdrawal() {
+        let state = StrategyState {
+            strategy_manager: Addr::unchecked("manager"),
+            underlying_token: Addr::unchecked("token"),
+            total_shares: Uint128::zero(),
+        };
+
+        // Should pass for correct token
+        let token = Addr::unchecked("token");
+        let result = _before_withdrawal(&state, &token);
+        assert!(result.is_ok());
+
+        // Should fail for incorrect token
+        let wrong_token = Addr::unchecked("wrong_token");
+        let result_wrong = _before_withdrawal(&state, &wrong_token);
+        assert!(result_wrong.is_err());
     }
 }
