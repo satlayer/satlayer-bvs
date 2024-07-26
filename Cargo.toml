@@ -1,5 +1,8 @@
 [workspace]
-members = ["contracts/avs-directory","contracts/strategy-base"]
+members = [
+    "contracts/avs-directory",
+    # "contracts/strategy-base"
+    ]
 
 resolver = "2"
 

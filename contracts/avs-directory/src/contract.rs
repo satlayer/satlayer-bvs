@@ -174,9 +174,11 @@ pub fn transfer_ownership(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, info: MessageInfo, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::QueryOperator { operator } => to_json_binary(&query_operator(deps, info.sender, operator)?),
+        QueryMsg::QueryOperator { avs, operator } => {
+            to_json_binary(&query_operator(deps, avs, operator)?)
+        },
     }
 }
 
@@ -536,9 +538,10 @@ mod tests {
         assert!(is_salt_spent);
 
         let query_msg = QueryMsg::QueryOperator {
+            avs: info.sender.clone(),
             operator: operator.clone(),
         };
-        let query_res: OperatorStatusResponse = from_json(query(deps.as_ref(), env.clone(), info, query_msg).unwrap()).unwrap();
+        let query_res: OperatorStatusResponse = from_json(query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
         println!("Query result: {:?}", query_res);
 
         assert_eq!(query_res.status, OperatorAVSRegistrationStatus::Registered);

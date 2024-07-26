@@ -1,4 +1,4 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint64, Binary};
 use crate::state::OperatorAVSRegistrationStatus;
 
@@ -36,10 +36,8 @@ pub struct SignatureWithSaltAndExpiry {
 }
 
 #[cw_serde]
-#[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(OperatorStatusResponse)]
-    QueryOperator { operator: Addr },
+    QueryOperator { avs: Addr, operator: Addr },
 }
 
 #[cw_serde]
