@@ -3,6 +3,7 @@ use cosmwasm_std::{Addr, Binary, StdResult, Env, StdError};
 // use cosmwasm_std::{QuerierWrapper, WasmQuery, QueryRequest, to_json_binary}
 use sha2::{Sha256, Digest};
 use cosmwasm_crypto::secp256k1_verify;
+use bech32::{self, FromBase32};
 
 const OPERATOR_AVS_REGISTRATION_TYPEHASH: &[u8] = b"OperatorAVSRegistration(address operator,address avs,bytes32 salt,uint256 expiry)";
 const DOMAIN_TYPEHASH: &[u8] = b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
@@ -19,7 +20,7 @@ pub fn calculate_digest_hash(
     avs: &Addr,
     salt: &Binary,
     expiry: u64,
-    chain_id: u64,
+    chain_id: &str,
     env: &Env,
 ) -> Vec<u8> {
     let struct_hash_input = [
@@ -35,7 +36,7 @@ pub fn calculate_digest_hash(
     let domain_separator = sha256(&[
         &sha256(DOMAIN_TYPEHASH)[..],
         &sha256(DOMAIN_NAME)[..],
-        &chain_id.to_le_bytes(),
+        &sha256(chain_id.as_bytes())[..],
         env.contract.address.as_bytes(),
     ].concat());
 

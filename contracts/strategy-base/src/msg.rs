@@ -25,6 +25,14 @@ pub enum QueryMsg {
     GetShares {
         user: Addr,
     },
+    #[returns(Uint128)]
+    SharesToUnderlyingView {
+        amount_shares: Uint128,
+    },
+    #[returns(Uint128)]
+    UnderlyingToShareView {
+        amount: Uint128,
+    },
 }
 
 #[cw_serde]

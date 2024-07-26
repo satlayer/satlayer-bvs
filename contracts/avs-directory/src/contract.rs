@@ -66,7 +66,7 @@ pub fn register_operator(
 
     let storage = AVSDirectoryStorage::default();
 
-    if storage.load_status(deps.storage, info.sender.clone(), operator.clone()).is_ok() {
+    if storage.load_status(deps.storage, info.sender.clone(), operator.clone())? == OperatorAVSRegistrationStatus::Registered {
         return Err(ContractError::OperatorAlreadyRegistered {});
     }
 
@@ -74,7 +74,8 @@ pub fn register_operator(
         return Err(ContractError::SaltAlreadySpent {});
     }
 
-    let chain_id: u64 = env.block.chain_id.parse().unwrap_or(0);
+    let chain_id = &env.block.chain_id;
+    println!("chain_id = {}", chain_id); 
 
     let message_bytes = calculate_digest_hash(
         &operator,
@@ -93,7 +94,7 @@ pub fn register_operator(
 
     storage.save_salt(deps.storage, operator.clone(), operator_signature.salt.clone())?;
 
-    println!("register_operator: operator = {}", operator); // 添加打印
+    println!("register_operator: operator = {}", operator); 
     Ok(Response::new()
         .add_attribute("method", "register_operator")
         .add_attribute("operator", operator.to_string())
@@ -243,7 +244,7 @@ mod tests {
         sender: &Addr,
         salt: &str,
         expiry: u64,
-        chain_id: u64,
+        chain_id: &str,
         _contract_addr: &Addr,
         secret_key: &SecretKey,
     ) -> SignatureWithSaltAndExpiry {
@@ -256,18 +257,12 @@ mod tests {
             chain_id,
             &env,
         );
-    
-        println!("Message Hash: {:?}", message_bytes);
-        println!("Operator: {:?}", operator);
 
-    
         let secp = Secp256k1::new();
         let message = Message::from_digest_slice(&message_bytes).expect("32 bytes");
         let signature = secp.sign_ecdsa(&message, secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
-    
-        println!("Signature: {:?}", signature_bytes);
-    
+
         SignatureWithSaltAndExpiry {
             salt: Binary::from(salt.as_bytes()),
             expiry: Uint64::from(expiry),
@@ -289,7 +284,7 @@ mod tests {
         let current_time = env.block.time.seconds();
         let expiry = current_time + 1000;
         let salt = "salt";
-        let chain_id: u64 = 0;
+        let chain_id = "cosmos-testnet-14002";
         let contract_addr = env.contract.address.clone();
         let signature = mock_signature_with_message(&operator, &info.sender, salt, expiry, chain_id, &contract_addr, &secret_key);
     
@@ -345,7 +340,7 @@ mod tests {
         let current_time = env.block.time.seconds();
         let expiry = current_time + 1000;
         let salt = "salt";
-        let chain_id: u64 = 0;
+        let chain_id = "cosmos-testnet-14002";
         let contract_addr = env.contract.address.clone();
         let signature = mock_signature_with_message(&operator, &info.sender, salt, expiry, chain_id, &contract_addr, &secret_key);
 
@@ -502,7 +497,7 @@ mod tests {
         let current_time = env.block.time.seconds();
         let expiry = current_time + 1000;
         let salt = "salt";
-        let chain_id: u64 = 0;
+        let chain_id = "cosmos-testnet-14002";
         let contract_addr = env.contract.address.clone();
         let signature = mock_signature_with_message(&operator, &info.sender, salt, expiry, chain_id, &contract_addr, &secret_key);
 
@@ -552,5 +547,31 @@ mod tests {
 
         assert_eq!(query_res.status, OperatorAVSRegistrationStatus::Registered);
     }
-} 
 
+    #[test]
+    fn test_query_operator_unregistered() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+    
+        let (operator, _secret_key, _public_key_bytes) = generate_operator();
+        println!("Operator Address: {:?}", operator);
+    
+        let instantiate_msg = InstantiateMsg {
+            initial_owner: Addr::unchecked("owner"),
+            delegation_manager: Addr::unchecked("delegation_manager"),
+        };
+        instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
+    
+        // Before RegisterOperatorToAVS, the operator should be unregistered
+        let query_msg = QueryMsg::QueryOperator {
+            avs: info.sender.clone(),
+            operator: operator.clone(),
+        };
+        let query_res: OperatorStatusResponse = from_json(query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
+        println!("Query result before registration: {:?}", query_res);
+    
+        // Check if the status is Unregistered
+        assert_eq!(query_res.status, OperatorAVSRegistrationStatus::Unregistered);
+    }    
+}
