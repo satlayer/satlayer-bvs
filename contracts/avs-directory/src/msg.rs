@@ -30,8 +30,8 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 pub struct SignatureWithSaltAndExpiry {
-    pub signature: Binary,
-    pub salt: Binary,
+    pub signature: String,
+    pub salt: String,
     pub expiry: Uint64,
 }
 

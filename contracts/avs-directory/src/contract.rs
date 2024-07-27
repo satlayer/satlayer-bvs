@@ -73,7 +73,9 @@ pub fn register_operator(
         return Err(ContractError::OperatorAlreadyRegistered {});
     }
 
-    if storage.is_salt_spent(deps.storage, operator.clone(), operator_signature.salt.clone())? {
+    let salt_binary = Binary::from(operator_signature.salt.as_bytes());
+
+    if storage.is_salt_spent(deps.storage, operator.clone(), salt_binary.clone())? {
         return Err(ContractError::SaltAlreadySpent {});
     }
 
@@ -83,19 +85,22 @@ pub fn register_operator(
     let message_bytes = calculate_digest_hash(
         &operator,
         &info.sender,
-        &operator_signature.salt,
+        &salt_binary,
         operator_signature.expiry.u64(),
         chain_id,
         &env,
     );
 
-    if !recover(&message_bytes, &operator_signature.signature, &operator)? {
+    let signature_bytes = hex::decode(&operator_signature.signature)
+    .map_err(|_| ContractError::InvalidSignature {})?;
+
+    if !recover(&message_bytes, &signature_bytes, &operator)? {
         return Err(ContractError::InvalidSignature {});
     }
 
     storage.save_status(deps.storage, info.sender.clone(), operator.clone(), OperatorAVSRegistrationStatus::Registered)?;
 
-    storage.save_salt(deps.storage, operator.clone(), operator_signature.salt.clone())?;
+    storage.save_salt(deps.storage, operator.clone(), salt_binary)?;
 
     println!("register_operator: operator = {}", operator); 
     Ok(Response::new()
@@ -260,18 +265,19 @@ mod tests {
             chain_id,
             &env,
         );
-
+    
         let secp = Secp256k1::new();
         let message = Message::from_digest_slice(&message_bytes).expect("32 bytes");
         let signature = secp.sign_ecdsa(&message, secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
-
+        let signature_hex = hex::encode(signature_bytes);
+    
         SignatureWithSaltAndExpiry {
-            salt: Binary::from(salt.as_bytes()),
+            salt: salt.to_string(),
             expiry: Uint64::from(expiry),
-            signature: Binary::from(signature_bytes),
+            signature: signature_hex,
         }
-    }
+    }    
     
     #[test]
     fn test_register_operator() {
