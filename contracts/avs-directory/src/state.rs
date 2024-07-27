@@ -8,6 +8,8 @@ pub enum OperatorAVSRegistrationStatus {
     Unregistered,
 }
 
+pub const OWNER: Item<Addr> = Item::new("owner");
+
 pub struct AVSDirectoryStorage {
     pub avs_operator_status: Map<(Addr, Addr), OperatorAVSRegistrationStatus>,
     pub operator_salt_is_spent: Map<(Addr, String), bool>,
