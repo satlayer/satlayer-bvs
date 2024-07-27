@@ -38,6 +38,23 @@ pub enum ExecuteMsg {
         expiry: Uint64,
         signature: String,
     },
+    RemoveShares {
+        staker: Addr,
+        strategy: Addr,
+        shares: Uint128,
+    },
+    WithdrawSharesAsTokens {
+        recipient: Addr,
+        strategy: Addr,
+        shares: Uint128,
+        token: Addr,
+    },
+}
+
+#[cw_serde]
+pub enum QueryMsg {
+    GetDeposits { staker: Addr },
+    StakerStrategyListLength { staker: Addr },
 }
 
 #[cw_serde]

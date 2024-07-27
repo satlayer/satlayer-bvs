@@ -1,7 +1,7 @@
 use crate::{
     error::ContractError,
     strategybase,
-    msg::{ExecuteMsg, InstantiateMsg},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{
         StrategyManagerState, STRATEGY_MANAGER_STATE, STRATEGY_WHITELIST, STRATEGY_WHITELISTER, OWNER,
         STAKER_STRATEGY_SHARES, STAKER_STRATEGY_LIST, MAX_STAKER_STRATEGY_LIST_LENGTH, THIRD_PARTY_TRANSFERS_FORBIDDEN, NONCES
@@ -10,7 +10,7 @@ use crate::{
 };
 use cosmwasm_std::{
     entry_point, to_json_binary, Addr, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, WasmMsg, SubMsg, StdError,
-    Uint64
+    Uint64, Binary
 };
 use strategybase::ExecuteMsg as StrategyExecuteMsg;
 use std::str::FromStr;
@@ -73,6 +73,16 @@ pub fn execute(
             };
             deposit_into_strategy_with_signature(deps, env, info, params)
         },
+        ExecuteMsg::RemoveShares { staker, strategy, shares } => remove_shares(deps, info, staker, strategy, shares),
+        ExecuteMsg::WithdrawSharesAsTokens { recipient, strategy, shares, token } => withdraw_shares_as_tokens(deps, info, recipient, strategy, shares, token),
+    }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::GetDeposits { staker } => to_json_binary(&get_deposits(deps, staker)?),
+        QueryMsg::StakerStrategyListLength { staker } => to_json_binary(&staker_strategy_list_length(deps, staker)?),
     }
 }
 
@@ -87,6 +97,14 @@ fn only_strategy_whitelister(deps: Deps, info: &MessageInfo) -> Result<(), Contr
 fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let owner = OWNER.load(deps.storage)?;
     if info.sender != owner {
+        return Err(ContractError::Unauthorized {});
+    }
+    Ok(())
+}
+
+fn only_delegation_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+    let state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
+    if info.sender != state.delegation_manager {
         return Err(ContractError::Unauthorized {});
     }
     Ok(())
@@ -226,10 +244,7 @@ fn deposit_into_strategy(
 
     let new_shares = query_new_shares_from_response(&deposit_response)?;
 
-    let add_shares_response = add_shares(deps, info.sender.clone(), strategy.clone(), new_shares)?;
-
-    // TODO:
-    // delegation.increaseDelegatedShares(staker, strategy, shares);
+    let add_shares_response = add_shares(deps, info.clone(), info.sender.clone(), strategy.clone(), new_shares)?;
 
     Ok(deposit_response.add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: env.contract.address.to_string(),
@@ -327,10 +342,13 @@ fn create_deposit_msg(
 
 fn add_shares(
     deps: DepsMut,
+    info: MessageInfo,
     staker: Addr,
     strategy: Addr,
     shares: Uint128,
 ) -> Result<Response, ContractError> {
+    only_delegation_manager(deps.as_ref(), &info)?;
+
     if shares.is_zero() {
         return Err(ContractError::InvalidShares {});
     }
@@ -359,4 +377,111 @@ fn add_shares(
         .add_attribute("staker", staker.to_string())
         .add_attribute("strategy", strategy.to_string())
         .add_attribute("shares", shares.to_string()))
+}
+
+fn remove_shares(
+    deps: DepsMut,
+    info: MessageInfo,
+    staker: Addr,
+    strategy: Addr,
+    shares: Uint128,
+) -> Result<Response, ContractError> {
+    only_delegation_manager(deps.as_ref(), &info)?;
+
+    // Get the current shares for the staker and strategy
+    let mut current_shares = STAKER_STRATEGY_SHARES
+        .may_load(deps.storage, (&staker, &strategy))?
+        .unwrap_or_else(Uint128::zero);
+
+    if shares > current_shares {
+        return Err(ContractError::InvalidShares {});
+    }
+
+    // Subtract the shares
+    current_shares = current_shares.checked_sub(shares).map_err(|_| ContractError::InvalidShares {})?;
+    STAKER_STRATEGY_SHARES.save(deps.storage, (&staker, &strategy), &current_shares)?;
+
+    // If the shares are zero, remove the strategy from the staker's list
+    if current_shares.is_zero() {
+        remove_strategy_from_staker_strategy_list(deps, staker.clone(), strategy.clone())?;
+    }
+
+    Ok(Response::new()
+        .add_attribute("method", "remove_shares")
+        .add_attribute("staker", staker.to_string())
+        .add_attribute("strategy", strategy.to_string())
+        .add_attribute("shares", shares.to_string()))
+}
+
+fn remove_strategy_from_staker_strategy_list(
+    deps: DepsMut,
+    staker: Addr,
+    strategy: Addr,
+) -> Result<(), ContractError> {
+    let mut strategy_list = STAKER_STRATEGY_LIST
+        .may_load(deps.storage, &staker)?
+        .unwrap_or_else(Vec::new);
+
+    if let Some(pos) = strategy_list.iter().position(|x| *x == strategy) {
+        strategy_list.swap_remove(pos);
+        STAKER_STRATEGY_LIST.save(deps.storage, &staker, &strategy_list)?;
+        Ok(())
+    } else {
+        Err(ContractError::StrategyNotFound {})
+    }
+}
+
+fn withdraw_shares_as_tokens(
+    deps: DepsMut,
+    info: MessageInfo,
+    recipient: Addr,
+    strategy: Addr,
+    shares: Uint128,
+    token: Addr,
+) -> Result<Response, ContractError> {
+    // Ensure only the delegation manager can call this function
+    only_delegation_manager(deps.as_ref(), &info)?;
+
+    // Create the message to call the withdraw function on the strategy
+    let withdraw_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: strategy.to_string(),
+        msg: to_json_binary(&StrategyExecuteMsg::Withdraw {
+            recipient: recipient.clone(),
+            amount_shares: shares,
+        })?,
+        funds: vec![],
+    });
+
+    Ok(Response::new()
+        .add_message(withdraw_msg)
+        .add_attribute("method", "withdraw_shares_as_tokens")
+        .add_attribute("recipient", recipient.to_string())
+        .add_attribute("strategy", strategy.to_string())
+        .add_attribute("shares", shares.to_string())
+        .add_attribute("token", token.to_string()))
+}
+
+pub fn get_deposits(deps: Deps, staker: Addr) -> StdResult<(Vec<Addr>, Vec<Uint128>)> {
+    // Load the staker's strategy list
+    let strategies = STAKER_STRATEGY_LIST.may_load(deps.storage, &staker)?
+        .unwrap_or_else(Vec::new);
+
+    // Initialize a vector to hold the shares for each strategy
+    let mut shares = Vec::with_capacity(strategies.len());
+
+    // Iterate over each strategy and fetch the corresponding shares
+    for strategy in &strategies {
+        let share = STAKER_STRATEGY_SHARES.may_load(deps.storage, (&staker, strategy))?
+            .unwrap_or_else(Uint128::zero);
+        shares.push(share);
+    }
+
+    // Return the strategies and their corresponding shares
+    Ok((strategies, shares))
+}
+
+pub fn staker_strategy_list_length(deps: Deps, staker: Addr) -> StdResult<Uint64> {
+    let strategies = STAKER_STRATEGY_LIST.may_load(deps.storage, &staker)?
+        .unwrap_or_else(Vec::new);
+    Ok(Uint64::new(strategies.len() as u64))
 }
