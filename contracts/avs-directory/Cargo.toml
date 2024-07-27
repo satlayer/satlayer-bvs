@@ -26,6 +26,7 @@ sha2 = { workspace = true }
 hex = { workspace = true }
 cosmwasm-crypto = { workspace = true }
 secp256k1 = { workspace = true }
+bech32 = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }

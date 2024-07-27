@@ -8,6 +8,8 @@ pub enum OperatorAVSRegistrationStatus {
     Unregistered,
 }
 
+pub const OWNER: Item<Addr> = Item::new("owner");
+
 pub struct AVSDirectoryStorage {
     pub avs_operator_status: Map<(Addr, Addr), OperatorAVSRegistrationStatus>,
     pub operator_salt_is_spent: Map<(Addr, String), bool>,
@@ -19,7 +21,7 @@ impl Default for AVSDirectoryStorage {
         AVSDirectoryStorage {
             avs_operator_status: Map::new("avs_operator_status"),
             operator_salt_is_spent: Map::new("operator_salt_is_spent"),
-            delegation_manager: Item::new("delegation_manager"), 
+            delegation_manager: Item::new("delegation_manager"),
         }
     }
 }
@@ -41,7 +43,10 @@ impl AVSDirectoryStorage {
         avs: Addr,
         operator: Addr,
     ) -> StdResult<OperatorAVSRegistrationStatus> {
-        self.avs_operator_status.load(storage, (avs, operator))
+        match self.avs_operator_status.may_load(storage, (avs, operator))? {
+            Some(status) => Ok(status),
+            None => Ok(OperatorAVSRegistrationStatus::Unregistered),
+        }
     }
 
     pub fn save_salt(&self, storage: &mut dyn Storage, operator: Addr, salt: Binary) -> StdResult<()> {

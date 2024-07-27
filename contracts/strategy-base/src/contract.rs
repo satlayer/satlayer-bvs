@@ -188,10 +188,12 @@ fn query_token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetShares { user } => to_json_binary(&query_shares(deps, env, user)?),
+        QueryMsg::SharesToUnderlyingView { amount_shares } => to_json_binary(&shares_to_underlying_view(deps, env, amount_shares)?),
+        QueryMsg::UnderlyingToShareView { amount } => to_json_binary(&underlying_to_share_view(deps, env, amount)?),
     }
 }
 
-// TODO
+// TODO:
 fn query_shares(deps: Deps, _env: Env, user: Addr) -> StdResult<SharesResponse> {
     let state = STRATEGY_STATE.load(deps.storage)?;
     
@@ -455,7 +457,6 @@ mod tests {
         assert!(result_wrong.is_err());
     }
 
-    // 1001000, 2000, 
     #[test]
     fn test_calculate_new_shares() {
         let state = StrategyState {
@@ -470,7 +471,7 @@ mod tests {
         assert_eq!(new_shares, Uint128::new(1));
 
         let state_with_shares = StrategyState {
-            total_shares: Uint128::new(1000),
+            total_shares: Uint128::new(1_000),
             ..state
         };
 
@@ -503,7 +504,6 @@ mod tests {
         let mut deps = setup_contract();
         let env = mock_env();
     
-        // 克隆 env.contract.address
         let contract_address = env.contract.address.clone();
     
         // Mock balance query response
@@ -618,9 +618,18 @@ mod tests {
                 WasmQuery::Smart { contract_addr, msg, .. } => {
                     if contract_addr == "manager" {
                         let msg: QueryMsg = from_json(msg).unwrap();
-                        let QueryMsg::GetShares { user } = msg; // Replace `if let` with `let`
-                        if user == Addr::unchecked("user") {
-                            return SystemResult::Ok(ContractResult::Ok(to_json_binary(&StakerStrategySharesResponse { shares: Uint128::new(1_000) }).unwrap()));
+                        match msg {
+                            QueryMsg::GetShares { user } => {
+                                if user == Addr::unchecked("user") {
+                                    return SystemResult::Ok(ContractResult::Ok(to_json_binary(&StakerStrategySharesResponse { shares: Uint128::new(1_000) }).unwrap()));
+                                }
+                            },
+                            QueryMsg::SharesToUnderlyingView { amount_shares: _ } => {
+                                // Handle SharesToUnderlyingView if needed
+                            },
+                            QueryMsg::UnderlyingToShareView { amount: _ } => {
+                                // Handle UnderlyingToShareView if needed
+                            },
                         }
                     }
                     SystemResult::Err(SystemError::InvalidRequest {
