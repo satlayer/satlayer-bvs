@@ -4,7 +4,7 @@ use crate::{
     msg::{ExecuteMsg, InstantiateMsg},
     state::{
         StrategyManagerState, STRATEGY_MANAGER_STATE, STRATEGY_WHITELIST, STRATEGY_WHITELISTER, OWNER,
-        STAKER_STRATEGY_SHARES, STAKER_STRATEGY_LIST, MAX_STAKER_STRATEGY_LIST_LENGTH, THIRD_PARTY_TRANSFERS_FORBIDDEN
+        STAKER_STRATEGY_SHARES, STAKER_STRATEGY_LIST, MAX_STAKER_STRATEGY_LIST_LENGTH, THIRD_PARTY_TRANSFERS_FORBIDDEN, NONCES
     },
     utils::{calculate_digest_hash, recover, DigestHashParams, DepositWithSignatureParams},
 };
@@ -55,7 +55,9 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AddStrategiesToWhitelist { strategies } => add_strategies_to_whitelist(deps, info, strategies),
+        ExecuteMsg::AddStrategiesToWhitelist { strategies, third_party_transfers_forbidden_values } => {
+            add_strategies_to_whitelist(deps, info, strategies, third_party_transfers_forbidden_values)
+        }
         ExecuteMsg::RemoveStrategiesFromWhitelist { strategies } => remove_strategies_from_whitelist(deps, info, strategies),
         ExecuteMsg::SetStrategyWhitelister { new_strategy_whitelister } => set_strategy_whitelister(deps, info, new_strategy_whitelister),
         ExecuteMsg::DepositIntoStrategy { strategy, token, amount } => deposit_into_strategy(deps, env, info, strategy, token, amount),
@@ -102,15 +104,41 @@ fn add_strategies_to_whitelist(
     deps: DepsMut,
     info: MessageInfo,
     strategies: Vec<Addr>,
+    third_party_transfers_forbidden_values: Vec<bool>,
 ) -> Result<Response, ContractError> {
+    // Ensure only the strategy whitelister can call this function
     only_strategy_whitelister(deps.as_ref(), &info)?;
 
-    for strategy in strategies {
-        STRATEGY_WHITELIST.save(deps.storage, &strategy, &true)?;
+    // Check if the length of strategies matches the length of third_party_transfers_forbidden_values
+    if strategies.len() != third_party_transfers_forbidden_values.len() {
+        return Err(ContractError::InvalidInput {});
     }
 
-    Ok(Response::new()
-        .add_attribute("method", "add_strategies_to_whitelist"))
+    // Initialize response
+    let mut response = Response::new()
+        .add_attribute("method", "add_strategies_to_whitelist");
+
+    // Iterate over strategies and third_party_transfers_forbidden_values
+    for (i, strategy) in strategies.iter().enumerate() {
+        let forbidden_value = third_party_transfers_forbidden_values[i];
+
+        // Check if the strategy is already whitelisted
+        let is_whitelisted = STRATEGY_WHITELIST.may_load(deps.storage, strategy)?.unwrap_or(false);
+        if !is_whitelisted {
+            // Save strategy to whitelist
+            STRATEGY_WHITELIST.save(deps.storage, strategy, &true)?;
+            
+            // Save third party transfers forbidden value
+            THIRD_PARTY_TRANSFERS_FORBIDDEN.save(deps.storage, strategy, &forbidden_value)?;
+            
+            // Add event attributes
+            response = response
+                .add_attribute("strategy_added", strategy.to_string())
+                .add_attribute("third_party_transfers_forbidden", forbidden_value.to_string());
+        }
+    }
+
+    Ok(response)
 }
 
 fn remove_strategies_from_whitelist(
@@ -118,14 +146,32 @@ fn remove_strategies_from_whitelist(
     info: MessageInfo,
     strategies: Vec<Addr>,
 ) -> Result<Response, ContractError> {
+    // Ensure only the strategy whitelister can call this function
     only_strategy_whitelister(deps.as_ref(), &info)?;
 
+    // Initialize response
+    let mut response = Response::new()
+        .add_attribute("method", "remove_strategies_from_whitelist");
+
+    // Iterate over strategies
     for strategy in strategies {
-        STRATEGY_WHITELIST.save(deps.storage, &strategy, &false)?;
+        // Check if the strategy is already whitelisted
+        let is_whitelisted = STRATEGY_WHITELIST.may_load(deps.storage, &strategy)?.unwrap_or(false);
+        if is_whitelisted {
+            // Remove strategy from whitelist
+            STRATEGY_WHITELIST.save(deps.storage, &strategy, &false)?;
+
+            // Set third party transfers forbidden value to false
+            THIRD_PARTY_TRANSFERS_FORBIDDEN.save(deps.storage, &strategy, &false)?;
+
+            // Add event attributes
+            response = response
+                .add_attribute("strategy_removed", strategy.to_string())
+                .add_attribute("third_party_transfers_forbidden", "false".to_string());
+        }
     }
 
-    Ok(Response::new()
-        .add_attribute("method", "remove_strategies_from_whitelist"))
+    Ok(response)
 }
 
 fn set_strategy_whitelister(
@@ -208,7 +254,9 @@ fn deposit_into_strategy_with_signature(
         return Err(ContractError::SignatureExpired {});
     }
 
-    let nonce = 1;
+    // Get the current nonce for the staker
+    let nonce = NONCES.may_load(deps.storage, &params.staker)?.unwrap_or(0);
+
     let chain_id = env.block.chain_id.clone();
 
     let digest_params = DigestHashParams {
@@ -229,6 +277,9 @@ fn deposit_into_strategy_with_signature(
     if !recover(&struct_hash, &signature_bytes, &params.staker)? {
         return Err(ContractError::InvalidSignature {});
     }
+
+    // Increment the nonce for the staker
+    NONCES.save(deps.storage, &params.staker, &(nonce + 1))?;
 
     deposit_into_strategy(deps, env, info, params.strategy, params.token, params.amount)
         .map(|mut res| {

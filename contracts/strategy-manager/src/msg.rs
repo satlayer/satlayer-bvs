@@ -13,6 +13,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     AddStrategiesToWhitelist {
         strategies: Vec<Addr>,
+        third_party_transfers_forbidden_values: Vec<bool>,
     },
     RemoveStrategiesFromWhitelist {
         strategies: Vec<Addr>,

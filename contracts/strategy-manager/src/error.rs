@@ -26,4 +26,7 @@ pub enum ContractError {
 
     #[error("StrategyManager.deposit_into_strategy_with_signature: third transfers disabled")]
     ThirdTransfersDisabled {},
+
+    #[error("StrategyManager.add_strategies_to_whitelist: Strategies and third_party_transfers_forbidden_values lengths do not match")]
+    InvalidInput {},
 }

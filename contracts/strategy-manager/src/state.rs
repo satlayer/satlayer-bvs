@@ -24,3 +24,4 @@ pub const STAKER_STRATEGY_LIST: Map<&Addr, Vec<Addr>> = Map::new("staker_strateg
 pub const MAX_STAKER_STRATEGY_LIST_LENGTH: usize = 10;
 
 pub const THIRD_PARTY_TRANSFERS_FORBIDDEN: Map<&Addr, bool> = Map::new("third_party_transfers_forbidden");
+pub const NONCES: Map<&Addr, u64> = Map::new("nonces");
