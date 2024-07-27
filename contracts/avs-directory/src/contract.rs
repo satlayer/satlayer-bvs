@@ -3,6 +3,7 @@ use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg, OperatorStatusResponse, SignatureWithSaltAndExpiry},
     state::{OperatorAVSRegistrationStatus, AVSDirectoryStorage},
     utils::{calculate_digest_hash, recover},
+    state::OWNER,
 };  
 use cosmwasm_std::{
     entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint64, Addr,
@@ -23,14 +24,16 @@ pub fn instantiate(
 
     let owner = msg.initial_owner;
     let delegation_manager = msg.delegation_manager;
-    deps.storage.set(b"owner", owner.as_bytes());
+
+    OWNER.save(deps.storage, &owner)?;
 
     let storage = AVSDirectoryStorage::default();
     storage.delegation_manager.save(deps.storage, &delegation_manager)?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("owner", owner))
+        .add_attribute("owner", owner.to_string())
+        .add_attribute("delegation_manager", delegation_manager.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -159,15 +162,15 @@ pub fn transfer_ownership(
     new_owner: Addr,
 ) -> Result<Response, ContractError> {
     // Load current owner from storage
-    let current_owner = deps.storage.get(b"owner").unwrap();
-    
+    let current_owner = OWNER.load(deps.storage)?;
+
     // Ensure only current owner can transfer ownership
-    if current_owner != info.sender.as_bytes() {
+    if current_owner != info.sender {
         return Err(ContractError::Unauthorized {});
     }
 
     // Update owner in storage
-    deps.storage.set(b"owner", new_owner.as_bytes());
+    OWNER.save(deps.storage, &new_owner)?;
 
     Ok(Response::new()
         .add_attribute("method", "transfer_ownership")
@@ -195,7 +198,7 @@ fn query_operator(deps: Deps, user_addr: Addr, operator: Addr) -> StdResult<Oper
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info};
-    use cosmwasm_std::{Addr, Storage, Binary, Uint64, from_json};
+    use cosmwasm_std::{Addr, Binary, Uint64, from_json};
     use secp256k1::{Secp256k1, SecretKey, PublicKey, Message};
     use bech32::{self, ToBase32, Variant};
 
@@ -212,14 +215,14 @@ mod tests {
 
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        assert_eq!(res.attributes.len(), 2);
+        assert_eq!(res.attributes.len(), 3);
         assert_eq!(res.attributes[0].key, "method");
         assert_eq!(res.attributes[0].value, "instantiate");
         assert_eq!(res.attributes[1].key, "owner");
         assert_eq!(res.attributes[1].value, "owner");
 
-        let owner = deps.storage.get(b"owner").unwrap();
-        assert_eq!(owner, b"owner");
+        let owner = OWNER.load(&deps.storage).unwrap();
+        assert_eq!(owner, Addr::unchecked("owner"));
 
         let storage = AVSDirectoryStorage::default();
         let delegation_manager = storage.delegation_manager.load(&deps.storage).unwrap();
@@ -449,39 +452,39 @@ mod tests {
     }
 
     #[test]
-    fn test_transfer_ownership() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let owner = Addr::unchecked("owner");
-        let info = message_info(&Addr::unchecked(owner.as_str()), &[]);
-        let new_owner = Addr::unchecked("new_owner");
-    
-        let instantiate_msg = InstantiateMsg {
-            initial_owner: owner.clone(),
-            delegation_manager: Addr::unchecked("delegation_manager"),
-        };
-        instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
-    
-        let msg = ExecuteMsg::TransferOwnership {
-            new_owner: new_owner.clone(),
-        };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
-    
-        if let Err(ref err) = res {
-            println!("Error: {:?}", err);
-        }
-    
-        assert!(res.is_ok());
-    
-        let res = res.unwrap();
-        assert_eq!(res.attributes.len(), 2);
-        assert_eq!(res.attributes[0].key, "method");
-        assert_eq!(res.attributes[0].value, "transfer_ownership");
-        assert_eq!(res.attributes[1].key, "new_owner");
-        assert_eq!(res.attributes[1].value, new_owner.to_string());
-    
-        let owner = deps.storage.get(b"owner").unwrap();
-        assert_eq!(owner, new_owner.as_bytes());
+fn test_transfer_ownership() {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let owner = Addr::unchecked("owner");
+    let info = message_info(&owner, &[]);
+    let new_owner = Addr::unchecked("new_owner");
+
+    let instantiate_msg = InstantiateMsg {
+        initial_owner: owner.clone(),
+        delegation_manager: Addr::unchecked("delegation_manager"),
+    };
+    instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
+
+    let msg = ExecuteMsg::TransferOwnership {
+        new_owner: new_owner.clone(),
+    };
+    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+
+    if let Err(ref err) = res {
+        println!("Error: {:?}", err);
+    }
+
+    assert!(res.is_ok());
+
+    let res = res.unwrap();
+    assert_eq!(res.attributes.len(), 2);
+    assert_eq!(res.attributes[0].key, "method");
+    assert_eq!(res.attributes[0].value, "transfer_ownership");
+    assert_eq!(res.attributes[1].key, "new_owner");
+    assert_eq!(res.attributes[1].value, new_owner.to_string());
+
+    let owner = OWNER.load(&deps.storage).unwrap();
+    assert_eq!(owner, new_owner);
     }
 
     #[test]

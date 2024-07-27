@@ -1,7 +1,7 @@
 use crate::{
     error::ContractError,
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg, SharesResponse},
-    state::{StrategyManagerState, STRATEGY_MANAGER_STATE},
+    msg::{ExecuteMsg, InstantiateMsg},
+    state::{StrategyManagerState, STRATEGY_MANAGER_STATE, STRATEGY_WHITELIST, STRATEGY_WHITELISTER, OWNER},
 };
 use cosmwasm_std::{
     entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, CosmosMsg, WasmMsg,
@@ -9,10 +9,10 @@ use cosmwasm_std::{
 use cw20::{Cw20ExecuteMsg, Cw20QueryMsg, BalanceResponse as Cw20BalanceResponse};
 use cw2::set_contract_version;
 
-const CONTRACT_NAME: &str = "crates.io:strategy-manager";
+const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -23,19 +23,22 @@ pub fn instantiate(
 
     let state = StrategyManagerState {
         delegation_manager: msg.delegation_manager,
-        eigen_pod_manager: msg.eigen_pod_manager,
         slasher: msg.slasher,
     };
+
     STRATEGY_MANAGER_STATE.save(deps.storage, &state)?;
+    STRATEGY_WHITELISTER.save(deps.storage, &msg.initial_strategy_whitelister)?;
+    OWNER.save(deps.storage, &msg.initial_owner)?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("delegation_manager", state.delegation_manager.to_string())
-        .add_attribute("eigen_pod_manager", state.eigen_pod_manager.to_string())
-        .add_attribute("slasher", state.slasher.to_string()))
+        .add_attribute("slasher", state.slasher.to_string())
+        .add_attribute("strategy_whitelister", msg.initial_strategy_whitelister.to_string())
+        .add_attribute("owner", msg.initial_owner.to_string()))
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -43,204 +46,114 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Deposit { strategy, amount } => deposit(deps, env, info, strategy, amount),
-        ExecuteMsg::Withdraw { strategy, amount_shares } => withdraw(deps, env, info, strategy, amount_shares),
+        ExecuteMsg::AddStrategiesToWhitelist { strategies } => add_strategies_to_whitelist(deps, info, strategies),
+        ExecuteMsg::RemoveStrategiesFromWhitelist { strategies } => remove_strategies_from_whitelist(deps, info, strategies),
+        ExecuteMsg::SetStrategyWhitelister { new_strategy_whitelister } => set_strategy_whitelister(deps, info, new_strategy_whitelister),
+        ExecuteMsg::DepositIntoStrategy { strategy, token, amount } => deposit_into_strategy(deps, env, info, strategy, token, amount),
     }
 }
 
-fn deposit(
+fn only_strategy_whitelister(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+    let whitelister = STRATEGY_WHITELISTER.load(deps.storage)?;
+    if info.sender != whitelister {
+        return Err(ContractError::Unauthorized {});
+    }
+    Ok(())
+}
+
+fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+    let owner = OWNER.load(deps.storage)?;
+    if info.sender != owner {
+        return Err(ContractError::Unauthorized {});
+    }
+    Ok(())
+}
+
+fn only_strategies_whitelisted_for_deposit(deps: Deps, strategy: &Addr) -> Result<(), ContractError> {
+    let whitelist = STRATEGY_WHITELIST.may_load(deps.storage, strategy)?.unwrap_or(false);
+    if !whitelist {
+        return Err(ContractError::StrategyNotWhitelisted {});
+    }
+    Ok(())
+}
+
+fn add_strategies_to_whitelist(
     deps: DepsMut,
-    env: Env,
     info: MessageInfo,
-    strategy: Addr,
-    amount: Uint128,
+    strategies: Vec<Addr>,
 ) -> Result<Response, ContractError> {
-    let state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
+    only_strategy_whitelister(deps.as_ref(), &info)?;
 
-    // 在这里你可以添加更多的逻辑，例如验证策略的白名单
-
-    let token_balance = query_token_balance(&deps.querier, &strategy, &env.contract.address)?;
-    let new_shares = calculate_new_shares(&state, amount, token_balance)?;
-
-    // 更新存储中的股份信息
-    // 省略：更新具体的用户股份逻辑
+    for strategy in strategies {
+        STRATEGY_WHITELIST.save(deps.storage, &strategy, &true)?;
+    }
 
     Ok(Response::new()
-        .add_attribute("method", "deposit")
-        .add_attribute("new_shares", new_shares.to_string()))
+        .add_attribute("method", "add_strategies_to_whitelist"))
 }
 
-fn withdraw(
+fn remove_strategies_from_whitelist(
+    deps: DepsMut,
+    info: MessageInfo,
+    strategies: Vec<Addr>,
+) -> Result<Response, ContractError> {
+    only_strategy_whitelister(deps.as_ref(), &info)?;
+
+    for strategy in strategies {
+        STRATEGY_WHITELIST.save(deps.storage, &strategy, &false)?;
+    }
+
+    Ok(Response::new()
+        .add_attribute("method", "remove_strategies_from_whitelist"))
+}
+
+fn set_strategy_whitelister(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_strategy_whitelister: Addr,
+) -> Result<Response, ContractError> {
+    only_owner(deps.as_ref(), &info)?;
+
+    STRATEGY_WHITELISTER.save(deps.storage, &new_strategy_whitelister)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "set_strategy_whitelister")
+        .add_attribute("new_strategy_whitelister", new_strategy_whitelister.to_string()))
+}
+
+fn deposit_into_strategy(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
     strategy: Addr,
-    amount_shares: Uint128,
+    token: Addr,
+    amount: Uint128,
 ) -> Result<Response, ContractError> {
-    let state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
-
-    // 在这里你可以添加更多的逻辑，例如验证策略的白名单
-
-    if amount_shares > state.total_shares {
-        return Err(ContractError::InsufficientShares {});
-    }
-
-    let token_balance = query_token_balance(&deps.querier, &strategy, &env.contract.address)?;
-    let amount_to_send = calculate_amount_to_send(&state, amount_shares, token_balance)?;
-
-    // 更新存储中的股份信息
-    // 省略：更新具体的用户股份逻辑
+    only_strategies_whitelisted_for_deposit(deps.as_ref(), &strategy)?;
 
     let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: strategy.to_string(),
-        msg: to_binary(&Cw20ExecuteMsg::Transfer {
-            recipient: info.sender.to_string(),
-            amount: amount_to_send,
+        contract_addr: token.to_string(),
+        msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
+            owner: info.sender.to_string(),
+            recipient: strategy.to_string(),
+            amount,
         })?,
         funds: vec![],
     });
 
+    // 调用策略合约的 deposit 函数
+    // let deposit_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+    //     contract_addr: strategy.to_string(),
+    //     msg: to_binary(&ExecuteMsg::Deposit { amount })?,
+    //     funds: vec![],
+    // });
+
+    // 增加股份
+    // 省略：更新具体的用户股份逻辑
+
     Ok(Response::new()
         .add_message(transfer_msg)
-        .add_attribute("method", "withdraw")
-        .add_attribute("amount_to_send", amount_to_send.to_string()))
-}
-
-fn calculate_new_shares(state: &StrategyManagerState, amount: Uint128, balance: Uint128) -> Result<Uint128, ContractError> {
-    // 计算新的股份逻辑，类似于你提供的示例
-    let new_shares = amount * state.total_shares / (balance + Uint128::new(1));
-    if new_shares.is_zero() {
-        return Err(ContractError::ZeroNewShares {});
-    }
-    Ok(new_shares)
-}
-
-fn calculate_amount_to_send(state: &StrategyManagerState, amount_shares: Uint128, balance: Uint128) -> StdResult<Uint128> {
-    // 计算要发送的金额，类似于你提供的示例
-    let amount_to_send = balance * amount_shares / (state.total_shares + Uint128::new(1));
-    Ok(amount_to_send)
-}
-
-fn query_token_balance(querier: &cosmwasm_std::QuerierWrapper, token: &Addr, account: &Addr) -> StdResult<Uint128> {
-    let res: Cw20BalanceResponse = querier.query(&cosmwasm_std::QueryRequest::Wasm(cosmwasm_std::WasmQuery::Smart {
-        contract_addr: token.to_string(),
-        msg: to_binary(&Cw20QueryMsg::Balance {
-            address: account.to_string(),
-        })?,
-    }))?;
-    Ok(res.balance)
-}
-
-#[entry_point]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    match msg {
-        QueryMsg::GetShares { user } => to_binary(&query_shares(deps, env, user)?),
-    }
-}
-
-fn query_shares(deps: Deps, _env: Env, user: Addr) -> StdResult<SharesResponse> {
-    // 查询用户的股份信息
-    let state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
-
-    // 假设从策略管理器合约中查询股份信息
-    let shares_response: SharesResponse = deps.querier.query(&cosmwasm_std::QueryRequest::Wasm(cosmwasm_std::WasmQuery::Smart {
-        contract_addr: state.delegation_manager.to_string(),
-        msg: to_binary(&QueryMsg::GetShares { user: user.clone() })?,
-    }))?;
-
-    Ok(SharesResponse { total_shares: shares_response.total_shares })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{from_binary, Addr};
-
-    #[test]
-    fn proper_initialization() {
-        let mut deps = mock_dependencies();
-
-        let msg = InstantiateMsg {
-            delegation_manager: Addr::unchecked("delegation_manager"),
-            eigen_pod_manager: Addr::unchecked("eigen_pod_manager"),
-            slasher: Addr::unchecked("slasher"),
-        };
-        let info = mock_info("creator", &[]);
-        let env = mock_env();
-
-        let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-        assert_eq!(res.attributes.len(), 4);
-        assert_eq!(res.attributes[0].value, "instantiate");
-    }
-
-    #[test]
-    fn test_deposit() {
-        let mut deps = mock_dependencies();
-
-        let msg = InstantiateMsg {
-            delegation_manager: Addr::unchecked("delegation_manager"),
-            eigen_pod_manager: Addr::unchecked("eigen_pod_manager"),
-            slasher: Addr::unchecked("slasher"),
-        };
-        let info = mock_info("creator", &[]);
-        let env = mock_env();
-
-        instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-
-        let deposit_msg = ExecuteMsg::Deposit {
-            strategy: Addr::unchecked("strategy"),
-            amount: Uint128::new(1000),
-        };
-        let info = mock_info("user", &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, deposit_msg).unwrap();
-        assert_eq!(res.attributes.len(), 2);
-        assert_eq!(res.attributes[0].value, "deposit");
-    }
-
-    #[test]
-    fn test_withdraw() {
-        let mut deps = mock_dependencies();
-
-        let msg = InstantiateMsg {
-            delegation_manager: Addr::unchecked("delegation_manager"),
-            eigen_pod_manager: Addr::unchecked("eigen_pod_manager"),
-            slasher: Addr::unchecked("slasher"),
-        };
-        let info = mock_info("creator", &[]);
-        let env = mock_env();
-
-        instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-
-        let withdraw_msg = ExecuteMsg::Withdraw {
-            strategy: Addr::unchecked("strategy"),
-            amount_shares: Uint128::new(1000),
-        };
-        let info = mock_info("user", &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, withdraw_msg).unwrap();
-        assert_eq!(res.attributes.len(), 3);
-        assert_eq!(res.attributes[0].value, "withdraw");
-    }
-
-    #[test]
-    fn query_shares_test() {
-        let mut deps = mock_dependencies();
-
-        let msg = InstantiateMsg {
-            delegation_manager: Addr::unchecked("delegation_manager"),
-            eigen_pod_manager: Addr::unchecked("eigen_pod_manager"),
-            slasher: Addr::unchecked("slasher"),
-        };
-        let info = mock_info("creator", &[]);
-        let env = mock_env();
-
-        instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-
-        let query_msg = QueryMsg::GetShares {
-            user: Addr::unchecked("user"),
-        };
-        let bin = query(deps.as_ref(), env, query_msg).unwrap();
-        let res: SharesResponse = from_binary(&bin).unwrap();
-        assert_eq!(res.total_shares, Uint128::zero());
-    }
+        .add_message(deposit_msg)
+        .add_attribute("method", "deposit_into_strategy")
+        .add_attribute("amount", amount.to_string()))
 }

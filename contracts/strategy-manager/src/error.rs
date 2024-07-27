@@ -6,12 +6,9 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
-    #[error("Unauthorized")]
+    #[error("StrategyManager: strategy not whitelisted")]
+    StrategyNotWhitelisted {},
+
+    #[error("StrategyManager: unauthorized")]
     Unauthorized {},
-
-    #[error("New shares cannot be zero")]
-    ZeroNewShares {},
-
-    #[error("Insufficient shares")]
-    InsufficientShares {},
 }
