@@ -17,4 +17,13 @@ pub enum ContractError {
 
     #[error("StrategyManager.add_shares: max strategy list length exceeded")]
     MaxStrategyListLengthExceeded {},
+
+    #[error("StrategyManager.deposit_into_strategy_with_signature: signature expired")]
+    SignatureExpired {},
+
+    #[error("StrategyManager.deposit_into_strategy_with_signature: invalid signature")]
+    InvalidSignature {},
+
+    #[error("StrategyManager.deposit_into_strategy_with_signature: third transfers disabled")]
+    ThirdTransfersDisabled {},
 }

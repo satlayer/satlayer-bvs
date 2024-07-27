@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::{Addr, Uint128, Uint64};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -25,4 +25,23 @@ pub enum ExecuteMsg {
         token: Addr,
         amount: Uint128,
     },
+    SetThirdPartyTransfersForbidden {
+        strategy: Addr,
+        value: bool,
+    },
+    DepositIntoStrategyWithSignature {
+        strategy: Addr,
+        token: Addr,
+        amount: Uint128,
+        staker: Addr,
+        expiry: Uint64,
+        signature: String,
+    },
+}
+
+#[cw_serde]
+pub struct SignatureWithSaltAndExpiry {
+    pub signature: String,
+    pub salt: String,
+    pub expiry: Uint64,
 }

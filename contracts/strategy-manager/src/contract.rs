@@ -4,11 +4,13 @@ use crate::{
     msg::{ExecuteMsg, InstantiateMsg},
     state::{
         StrategyManagerState, STRATEGY_MANAGER_STATE, STRATEGY_WHITELIST, STRATEGY_WHITELISTER, OWNER,
-        STAKER_STRATEGY_SHARES, STAKER_STRATEGY_LIST, MAX_STAKER_STRATEGY_LIST_LENGTH
+        STAKER_STRATEGY_SHARES, STAKER_STRATEGY_LIST, MAX_STAKER_STRATEGY_LIST_LENGTH, THIRD_PARTY_TRANSFERS_FORBIDDEN
     },
+    utils::{calculate_digest_hash, recover, DigestHashParams, DepositWithSignatureParams},
 };
 use cosmwasm_std::{
     entry_point, to_json_binary, Addr, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, WasmMsg, SubMsg, StdError,
+    Uint64
 };
 use strategybase::ExecuteMsg as StrategyExecuteMsg;
 use std::str::FromStr;
@@ -57,6 +59,18 @@ pub fn execute(
         ExecuteMsg::RemoveStrategiesFromWhitelist { strategies } => remove_strategies_from_whitelist(deps, info, strategies),
         ExecuteMsg::SetStrategyWhitelister { new_strategy_whitelister } => set_strategy_whitelister(deps, info, new_strategy_whitelister),
         ExecuteMsg::DepositIntoStrategy { strategy, token, amount } => deposit_into_strategy(deps, env, info, strategy, token, amount),
+        ExecuteMsg::SetThirdPartyTransfersForbidden { strategy, value } => set_third_party_transfers_forbidden(deps, info, strategy, value),
+        ExecuteMsg::DepositIntoStrategyWithSignature { strategy, token, amount, staker, expiry, signature } => {
+            let params = DepositWithSignatureParams {
+                strategy,
+                token,
+                amount,
+                staker,
+                expiry,
+                signature,
+            };
+            deposit_into_strategy_with_signature(deps, env, info, params)
+        },
     }
 }
 
@@ -128,6 +142,22 @@ fn set_strategy_whitelister(
         .add_attribute("new_strategy_whitelister", new_strategy_whitelister.to_string()))
 }
 
+fn set_third_party_transfers_forbidden(
+    deps: DepsMut,
+    info: MessageInfo,
+    strategy: Addr,
+    value: bool,
+) -> Result<Response, ContractError> {
+    only_strategy_whitelister(deps.as_ref(), &info)?;
+
+    THIRD_PARTY_TRANSFERS_FORBIDDEN.save(deps.storage, &strategy, &value)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "set_third_party_transfers_forbidden")
+        .add_attribute("strategy", strategy.to_string())
+        .add_attribute("value", value.to_string()))
+}
+
 fn deposit_into_strategy(
     deps: DepsMut,
     env: Env,
@@ -160,6 +190,51 @@ fn deposit_into_strategy(
         msg: to_json_binary(&add_shares_response)?,
         funds: vec![],
     }))))
+}
+
+fn deposit_into_strategy_with_signature(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    params: DepositWithSignatureParams,
+) -> Result<Response, ContractError> {
+    let forbidden = THIRD_PARTY_TRANSFERS_FORBIDDEN.may_load(deps.storage, &params.strategy)?.unwrap_or(false);
+    if forbidden {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let current_time: Uint64 = env.block.time.seconds().into();
+    if params.expiry < current_time {
+        return Err(ContractError::SignatureExpired {});
+    }
+
+    let nonce = 1;
+    let chain_id = env.block.chain_id.clone();
+
+    let digest_params = DigestHashParams {
+        staker: params.staker.clone(),
+        strategy: params.strategy.clone(),
+        token: params.token.clone(),
+        amount: params.amount.u128(),
+        nonce,
+        expiry: params.expiry.u64(),
+        chain_id,
+        contract_addr: env.contract.address.clone(),
+    };
+
+    let struct_hash = calculate_digest_hash(&digest_params);
+
+    let signature_bytes = hex::decode(&params.signature).map_err(|_| ContractError::InvalidSignature {})?;
+    
+    if !recover(&struct_hash, &signature_bytes, &params.staker)? {
+        return Err(ContractError::InvalidSignature {});
+    }
+
+    deposit_into_strategy(deps, env, info, params.strategy, params.token, params.amount)
+        .map(|mut res| {
+            res.attributes.push(("method".to_string(), "deposit_into_strategy_with_signature".to_string()).into());
+            res
+    })
 }
 
 fn query_new_shares_from_response(response: &Response) -> StdResult<Uint128> {
