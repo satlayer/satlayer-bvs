@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::{Addr, Uint128, Uint64};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -13,6 +13,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     AddStrategiesToWhitelist {
         strategies: Vec<Addr>,
+        third_party_transfers_forbidden_values: Vec<bool>,
     },
     RemoveStrategiesFromWhitelist {
         strategies: Vec<Addr>,
@@ -25,4 +26,40 @@ pub enum ExecuteMsg {
         token: Addr,
         amount: Uint128,
     },
+    SetThirdPartyTransfersForbidden {
+        strategy: Addr,
+        value: bool,
+    },
+    DepositIntoStrategyWithSignature {
+        strategy: Addr,
+        token: Addr,
+        amount: Uint128,
+        staker: Addr,
+        expiry: Uint64,
+        signature: String,
+    },
+    RemoveShares {
+        staker: Addr,
+        strategy: Addr,
+        shares: Uint128,
+    },
+    WithdrawSharesAsTokens {
+        recipient: Addr,
+        strategy: Addr,
+        shares: Uint128,
+        token: Addr,
+    },
+}
+
+#[cw_serde]
+pub enum QueryMsg {
+    GetDeposits { staker: Addr },
+    StakerStrategyListLength { staker: Addr },
+}
+
+#[cw_serde]
+pub struct SignatureWithSaltAndExpiry {
+    pub signature: String,
+    pub salt: String,
+    pub expiry: Uint64,
 }

@@ -29,13 +29,6 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
-pub struct SignatureWithSaltAndExpiry {
-    pub signature: String,
-    pub salt: String,
-    pub expiry: Uint64,
-}
-
-#[cw_serde]
 pub enum QueryMsg {
     QueryOperator { avs: Addr, operator: Addr },
 }
@@ -53,4 +46,11 @@ pub struct IsOperatorRegisteredQueryMsg {
 #[cw_serde]
 pub struct IsOperatorRegisteredResponse {
     pub registered: bool,
+}
+
+#[cw_serde]
+pub struct SignatureWithSaltAndExpiry {
+    pub signature: String,
+    pub salt: String,
+    pub expiry: Uint64,
 }
