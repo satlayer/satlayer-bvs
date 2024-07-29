@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "contracts/avs-directory",
+    # "contracts/avs-directory",
     # "contracts/strategy-base",
     "contracts/strategy-manager"
     ]

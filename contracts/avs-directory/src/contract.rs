@@ -582,5 +582,5 @@ fn test_transfer_ownership() {
     
         // Check if the status is Unregistered
         assert_eq!(query_res.status, OperatorAVSRegistrationStatus::Unregistered);
-    }    
+    }
 }
