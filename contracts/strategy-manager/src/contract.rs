@@ -1008,96 +1008,97 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn test_deposit_into_strategy() {
-    //     let mut deps = mock_dependencies();
-    //     let env = mock_env();
-    //     let info_creator = message_info(&Addr::unchecked("creator"), &[]);
-    //     let info_whitelister = message_info(&Addr::unchecked("whitelister"), &[]);
-    //     let info_staker = message_info(&Addr::unchecked("staker"), &[]);
+    #[test]
+    fn test_deposit_into_strategy_via_delegation_manager() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info_creator = message_info(&Addr::unchecked("creator"), &[]);
+        let info_whitelister = message_info(&Addr::unchecked("whitelister"), &[]);
+        let info_delegation_manager = message_info(&Addr::unchecked("delegation_manager"), &[]);
     
-    //     // Instantiate the contract with the whitelister
-    //     let msg = InstantiateMsg {
-    //         initial_owner: Addr::unchecked("owner"),
-    //         delegation_manager: Addr::unchecked("delegation_manager"),
-    //         slasher: Addr::unchecked("slasher"),
-    //         initial_strategy_whitelister: Addr::unchecked("whitelister"),
-    //     };
+        // Instantiate the contract with the whitelister and delegation manager
+        let msg = InstantiateMsg {
+            initial_owner: Addr::unchecked("owner"),
+            delegation_manager: Addr::unchecked("delegation_manager"),
+            slasher: Addr::unchecked("slasher"),
+            initial_strategy_whitelister: Addr::unchecked("whitelister"),
+        };
     
-    //     let _res = instantiate(deps.as_mut(), env.clone(), info_creator, msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info_creator, msg).unwrap();
     
-    //     // Whitelist a strategy
-    //     let strategy = Addr::unchecked("strategy1");
-    //     let token = Addr::unchecked("token1");
-    //     let amount = Uint128::new(100);
+        // Whitelist a strategy
+        let strategy = Addr::unchecked("strategy1");
+        let token = Addr::unchecked("token1");
+        let amount = Uint128::new(100);
     
-    //     let msg = ExecuteMsg::AddStrategiesToWhitelist {
-    //         strategies: vec![strategy.clone()],
-    //         third_party_transfers_forbidden_values: vec![false],
-    //     };
+        let msg = ExecuteMsg::AddStrategiesToWhitelist {
+            strategies: vec![strategy.clone()],
+            third_party_transfers_forbidden_values: vec![false],
+        };
     
-    //     let _res = execute(deps.as_mut(), env.clone(), info_whitelister.clone(), msg).unwrap();
+        let _res = execute(deps.as_mut(), env.clone(), info_whitelister.clone(), msg).unwrap();
     
-    //     // Test deposit into strategy with whitelisted strategy
-    //     let msg = ExecuteMsg::DepositIntoStrategy {
-    //         strategy: strategy.clone(),
-    //         token: token.clone(),
-    //         amount,
-    //     };
+        // Test deposit into strategy with whitelisted strategy via delegation manager
+        let msg = ExecuteMsg::DepositIntoStrategy {
+            strategy: strategy.clone(),
+            token: token.clone(),
+            amount,
+        };
     
-    //     let res = execute(deps.as_mut(), env.clone(), info_staker.clone(), msg).unwrap();
+        // 修改 owner 为 delegation_manager 合约地址
+        let res = execute(deps.as_mut(), env.clone(), info_delegation_manager.clone(), msg).unwrap();
     
-    //     assert_eq!(res.attributes.len(), 5); // Adjusted the expected length
-    //     assert_eq!(res.attributes[0].key, "method");
-    //     assert_eq!(res.attributes[0].value, "deposit_into_strategy");
-    //     assert_eq!(res.attributes[1].key, "strategy");
-    //     assert_eq!(res.attributes[1].value, strategy.to_string());
-    //     assert_eq!(res.attributes[2].key, "amount");
-    //     assert_eq!(res.attributes[2].value, amount.to_string());
-    //     assert_eq!(res.attributes[3].key, "new_shares");
-    //     assert_eq!(res.attributes[3].value, "50"); // Mock value used in the function
+        assert_eq!(res.attributes.len(), 4);
+        assert_eq!(res.attributes[0].key, "method");
+        assert_eq!(res.attributes[0].value, "deposit_into_strategy");
+        assert_eq!(res.attributes[1].key, "strategy");
+        assert_eq!(res.attributes[1].value, strategy.to_string());
+        assert_eq!(res.attributes[2].key, "amount");
+        assert_eq!(res.attributes[2].value, amount.to_string());
+        assert_eq!(res.attributes[3].key, "new_shares");
+        assert_eq!(res.attributes[3].value, "50"); // Mock value used in the function
     
-    //     // Verify the transfer and deposit messages
-    //     assert_eq!(res.messages.len(), 2);
-    //     if let CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }) = &res.messages[0].msg {
-    //         assert_eq!(contract_addr, &token.to_string());
-    //         let expected_msg = Cw20ExecuteMsg::TransferFrom {
-    //             owner: info_staker.sender.to_string(),
-    //             recipient: strategy.to_string(),
-    //             amount,
-    //         };
-    //         let actual_msg: Cw20ExecuteMsg = from_json(msg).unwrap();
-    //         assert_eq!(actual_msg, expected_msg);
-    //     } else {
-    //         panic!("Unexpected message type");
-    //     }
+        // Verify the transfer and deposit messages
+        assert_eq!(res.messages.len(), 3);
+        if let CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }) = &res.messages[0].msg {
+            assert_eq!(contract_addr, &token.to_string());
+            let expected_msg = Cw20ExecuteMsg::TransferFrom {
+                owner: info_delegation_manager.sender.to_string(), // Use the correct delegation manager address
+                recipient: strategy.to_string(),
+                amount,
+            };
+            let actual_msg: Cw20ExecuteMsg = from_json(msg).unwrap();
+            assert_eq!(actual_msg, expected_msg);
+        } else {
+            panic!("Unexpected message type");
+        }
     
-    //     if let CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }) = &res.messages[1].msg {
-    //         assert_eq!(contract_addr, &strategy.to_string());
-    //         let expected_msg = StrategyExecuteMsg::Deposit { amount };
-    //         let actual_msg: StrategyExecuteMsg = from_json(msg).unwrap();
-    //         assert_eq!(actual_msg, expected_msg);
-    //     } else {
-    //         panic!("Unexpected message type");
-    //     }
+        if let CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }) = &res.messages[1].msg {
+            assert_eq!(contract_addr, &strategy.to_string());
+            let expected_msg = StrategyExecuteMsg::Deposit { amount };
+            let actual_msg: StrategyExecuteMsg = from_json(msg).unwrap();
+            assert_eq!(actual_msg, expected_msg);
+        } else {
+            panic!("Unexpected message type");
+        }
     
-    //     // Test deposit into strategy with non-whitelisted strategy
-    //     let non_whitelisted_strategy = Addr::unchecked("non_whitelisted_strategy");
-    //     let msg = ExecuteMsg::DepositIntoStrategy {
-    //         strategy: non_whitelisted_strategy.clone(),
-    //         token: token.clone(),
-    //         amount,
-    //     };
+        // Test deposit into strategy with non-whitelisted strategy
+        let non_whitelisted_strategy = Addr::unchecked("non_whitelisted_strategy");
+        let msg = ExecuteMsg::DepositIntoStrategy {
+            strategy: non_whitelisted_strategy.clone(),
+            token: token.clone(),
+            amount,
+        };
     
-    //     let result = execute(deps.as_mut(), env.clone(), info_staker.clone(), msg);
-    //     assert!(result.is_err());
-    //     if let Err(err) = result {
-    //         match err {
-    //             ContractError::StrategyNotWhitelisted {} => (),
-    //             _ => panic!("Unexpected error: {:?}", err),
-    //         }
-    //     }
-    // }
+        let result = execute(deps.as_mut(), env.clone(), info_delegation_manager.clone(), msg);
+        assert!(result.is_err());
+        if let Err(err) = result {
+            match err {
+                ContractError::StrategyNotWhitelisted {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }        
 
     #[test]
     fn test_get_deposits() {
