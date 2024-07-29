@@ -1,12 +1,11 @@
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg, OperatorStatusResponse, SignatureWithSaltAndExpiry},
-    state::{OperatorAVSRegistrationStatus, AVSDirectoryStorage},
+    state::{OperatorAVSRegistrationStatus, AVSDirectoryStorage, OWNER},
     utils::{calculate_digest_hash, recover},
-    state::OWNER,
 };  
 use cosmwasm_std::{
-    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint64, Addr,
+    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint64, Addr, StdError
 };
 use cw2::set_contract_version;
 
@@ -44,12 +43,12 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::RegisterOperatorToAVS { operator, public_key_bytes, signature } => {
-            register_operator(deps, env, info, operator, &public_key_bytes, signature)
+        ExecuteMsg::RegisterOperatorToAVS { operator, public_key_hex, signature } => {
+            register_operator(deps, env, info, operator, &public_key_hex, signature)
         }
         ExecuteMsg::DeregisterOperatorFromAVS { operator } => deregister_operator(deps, env, info, operator),
         ExecuteMsg::UpdateAVSMetadataURI { metadata_uri } => update_metadata_uri(info, metadata_uri),
-        ExecuteMsg::CancelSalt { salt } => cancel_salt(deps, env, info, salt),
+        ExecuteMsg::CancelSalt { salt } => cancel_salt(deps, env, info, &salt),
         ExecuteMsg::TransferOwnership { new_owner } => transfer_ownership(deps, info, new_owner),
     }
 }
@@ -59,7 +58,7 @@ pub fn register_operator(
     env: Env,
     info: MessageInfo,
     operator: Addr,
-    public_key_bytes: &[u8],
+    public_key_hex: &str,
     operator_signature: SignatureWithSaltAndExpiry,
 ) -> Result<Response, ContractError> {
     let current_time: Uint64 = env.block.time.seconds().into();
@@ -81,10 +80,13 @@ pub fn register_operator(
     }
 
     let chain_id = &env.block.chain_id;
-    println!("chain_id = {}", chain_id); 
+    println!("chain_id = {}", chain_id);
+
+    let public_key_bytes = Binary::from(hex::decode(public_key_hex)
+    .map_err(|_| StdError::generic_err("public_key_hex decode failed"))?); 
 
     let message_bytes = calculate_digest_hash(
-        public_key_bytes,
+        &public_key_bytes,
         &info.sender,
         &salt_binary,
         operator_signature.expiry.u64(),
@@ -95,7 +97,7 @@ pub fn register_operator(
     let signature_bytes = hex::decode(&operator_signature.signature)
     .map_err(|_| ContractError::InvalidSignature {})?;
 
-    if !recover(&message_bytes, &signature_bytes, public_key_bytes)? {
+    if !recover(&message_bytes, &signature_bytes, public_key_bytes.as_slice())? {
         return Err(ContractError::InvalidSignature {});
     }
 
@@ -147,9 +149,11 @@ pub fn cancel_salt(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    salt: Binary,
+    salt: &str,
 ) -> Result<Response, ContractError> {
     let storage = AVSDirectoryStorage::default();
+
+    let salt = Binary::from(salt.as_bytes());
 
     if storage.is_salt_spent(deps.storage, info.sender.clone(), salt.clone())? {
         return Err(ContractError::SaltAlreadySpent {});
@@ -260,7 +264,7 @@ mod tests {
     ) -> SignatureWithSaltAndExpiry {
         let env = mock_env();
         let message_bytes = calculate_digest_hash(
-            public_key_bytes,
+            &Binary::from(public_key_bytes),
             sender,
             &Binary::from(salt.as_bytes()),
             expiry,
@@ -307,10 +311,12 @@ mod tests {
             delegation_manager: Addr::unchecked("delegation_manager"),
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
+
+        let public_key_hex = hex::encode(public_key_bytes);
     
         let msg = ExecuteMsg::RegisterOperatorToAVS {
             operator: operator.clone(),
-            public_key_bytes: public_key_bytes.clone(),
+            public_key_hex: public_key_hex.clone(),
             signature: signature.clone(),
         };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
@@ -364,10 +370,12 @@ mod tests {
             delegation_manager: Addr::unchecked("delegation_manager"),
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
+
+        let public_key_hex = hex::encode(public_key_bytes);
     
         let register_msg = ExecuteMsg::RegisterOperatorToAVS {
             operator: operator.clone(),
-            public_key_bytes: public_key_bytes.clone(),
+            public_key_hex: public_key_hex.clone(),
             signature: signature.clone(),
         };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), register_msg);
@@ -431,15 +439,13 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-        let salt = Binary::from("unique_salt".as_bytes());
+        let salt = "unique_salt".to_string();
 
         let storage = AVSDirectoryStorage::default();
-        let is_salt_spent = storage.is_salt_spent(&deps.storage, info.sender.clone(), salt.clone()).unwrap();
+        let is_salt_spent = storage.is_salt_spent(&deps.storage, info.sender.clone(), Binary::from(salt.as_bytes())).unwrap();
         assert!(!is_salt_spent);
 
-        let msg = ExecuteMsg::CancelSalt {
-            salt: salt.clone(),
-        };
+        let msg = ExecuteMsg::CancelSalt { salt: salt.clone() };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
 
         if let Err(ref err) = res {
@@ -448,7 +454,7 @@ mod tests {
 
         assert!(res.is_ok());
 
-        let is_salt_spent = storage.is_salt_spent(&deps.storage, info.sender.clone(), salt.clone()).unwrap();
+        let is_salt_spent = storage.is_salt_spent(&deps.storage, info.sender.clone(), Binary::from(salt.as_bytes())).unwrap();
         assert!(is_salt_spent);
 
         let res = res.unwrap();
@@ -458,7 +464,7 @@ mod tests {
         assert_eq!(res.attributes[1].key, "operator");
         assert_eq!(res.attributes[1].value, info.sender.to_string());
         assert_eq!(res.attributes[2].key, "salt");
-        assert_eq!(res.attributes[2].value, salt.to_base64());
+        assert_eq!(res.attributes[2].value, Binary::from(salt.as_bytes()).to_base64());
     }
 
     #[test]
@@ -523,10 +529,12 @@ mod tests {
             delegation_manager: Addr::unchecked("delegation_manager"),
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
-    
+
+        let public_key_hex = hex::encode(public_key_bytes);
+
         let msg = ExecuteMsg::RegisterOperatorToAVS {
             operator: operator.clone(),
-            public_key_bytes: public_key_bytes.clone(),
+            public_key_hex: public_key_hex.clone(),
             signature: signature.clone(),
         };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);

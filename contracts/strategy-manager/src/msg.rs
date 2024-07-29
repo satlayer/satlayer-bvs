@@ -35,7 +35,7 @@ pub enum ExecuteMsg {
         token: Addr,
         amount: Uint128,
         staker: Addr,
-        public_key_bytes: Vec<u8>,
+        public_key_hex: String,
         expiry: Uint64,
         signature: String,
     },

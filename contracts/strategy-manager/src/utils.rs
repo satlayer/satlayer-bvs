@@ -12,19 +12,19 @@ fn sha256(input: &[u8]) -> Vec<u8> {
     hasher.finalize().to_vec()
 }
 
-pub struct DepositWithSignatureParams<'a> {
+pub struct DepositWithSignatureParams {
     pub strategy: Addr,
     pub token: Addr,
     pub amount: Uint128,
     pub staker: Addr,
-    pub public_key_bytes: &'a [u8],
+    pub public_key_hex: String,
     pub expiry: Uint64,
     pub signature: String,
 }
 
-pub struct DigestHashParams<'a> {
+pub struct DigestHashParams {
     pub staker: Addr,
-    pub public_key_bytes: &'a [u8],
+    pub public_key_hex: String,
     pub strategy: Addr,
     pub token: Addr,
     pub amount: u128,
@@ -38,7 +38,7 @@ pub fn calculate_digest_hash(params: &DigestHashParams) -> Vec<u8> {
     let struct_hash_input = [
         &sha256(DEPOSIT_TYPEHASH)[..],
         params.staker.as_bytes(),
-        params.public_key_bytes, 
+        params.public_key_hex.as_bytes(), 
         params.strategy.as_bytes(),
         params.token.as_bytes(),
         &params.amount.to_le_bytes(),
