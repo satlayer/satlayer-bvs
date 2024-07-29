@@ -1,6 +1,6 @@
 use crate::{
     error::ContractError,
-    strategybase,
+    strategy_base,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{
         StrategyManagerState, STRATEGY_MANAGER_STATE, STRATEGY_WHITELIST, STRATEGY_WHITELISTER, OWNER,
@@ -12,7 +12,7 @@ use cosmwasm_std::{
     entry_point, to_json_binary, Addr, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, WasmMsg, SubMsg, StdError,
     Uint64, Binary
 };
-use strategybase::ExecuteMsg as StrategyExecuteMsg;
+use strategy_base::ExecuteMsg as StrategyExecuteMsg;
 use std::str::FromStr;
 
 use cw20::Cw20ExecuteMsg;
@@ -62,12 +62,13 @@ pub fn execute(
         ExecuteMsg::SetStrategyWhitelister { new_strategy_whitelister } => set_strategy_whitelister(deps, info, new_strategy_whitelister),
         ExecuteMsg::DepositIntoStrategy { strategy, token, amount } => deposit_into_strategy(deps, env, info, strategy, token, amount),
         ExecuteMsg::SetThirdPartyTransfersForbidden { strategy, value } => set_third_party_transfers_forbidden(deps, info, strategy, value),
-        ExecuteMsg::DepositIntoStrategyWithSignature { strategy, token, amount, staker, expiry, signature } => {
+        ExecuteMsg::DepositIntoStrategyWithSignature { strategy, token, amount, staker,public_key_bytes, expiry, signature } => {
             let params = DepositWithSignatureParams {
                 strategy,
                 token,
                 amount,
                 staker,
+                public_key_bytes: &public_key_bytes,
                 expiry,
                 signature,
             };
@@ -287,6 +288,7 @@ pub fn deposit_into_strategy_with_signature(
 
     let digest_params = DigestHashParams {
         staker: params.staker.clone(),
+        public_key_bytes: params.public_key_bytes,
         strategy: params.strategy.clone(),
         token: params.token.clone(),
         amount: params.amount.u128(),
@@ -300,7 +302,7 @@ pub fn deposit_into_strategy_with_signature(
 
     let signature_bytes = hex::decode(&params.signature).map_err(|_| ContractError::InvalidSignature {})?;
     
-    if !recover(&struct_hash, &signature_bytes, &params.staker)? {
+    if !recover(&struct_hash, &signature_bytes, params.public_key_bytes)? {
         return Err(ContractError::InvalidSignature {});
     }
 
@@ -323,7 +325,6 @@ pub fn deposit_into_strategy_with_signature(
     // Return the final response
     Ok(res)
 }
-
 
 fn create_transfer_msg(
     info: &MessageInfo,
@@ -505,8 +506,9 @@ mod tests {
     use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info};
     use cosmwasm_std::{Addr, from_json};
     use secp256k1::{Secp256k1, SecretKey, PublicKey, Message};
+    use sha2::{Sha256, Digest};
+    use ripemd::Ripemd160;
     use bech32::{self, ToBase32, Variant};
-    use crate::utils::_SignatureParams;
 
     #[test]
     fn test_instantiate() {
@@ -1398,28 +1400,27 @@ mod tests {
         assert!(strategy_list.contains(&strategy2));
     }
 
-    fn generate_operator() -> (Addr, SecretKey, Vec<u8>) {
+    fn generate_osmosis_public_key_from_private_key(private_key_hex: &str) -> (Addr, SecretKey, Vec<u8>) {
         let secp = Secp256k1::new();
-        let secret_key = SecretKey::from_slice(&[0xcd; 32]).unwrap();
+        let secret_key = SecretKey::from_slice(&hex::decode(private_key_hex).unwrap()).unwrap();
         let public_key = PublicKey::from_secret_key(&secp, &secret_key);
-        let operator_bytes = public_key.serialize();
-    
-        let operator_bech32 = bech32::encode("osmo", operator_bytes.to_base32(), Variant::Bech32).unwrap();
-        let operator = Addr::unchecked(operator_bech32);
-        println!("Operator Address: {:?}", operator);
-    
-        (operator, secret_key, operator_bytes.to_vec())
+        let public_key_bytes = public_key.serialize();
+        let sha256_result = Sha256::digest(public_key_bytes);
+        let ripemd160_result = Ripemd160::digest(sha256_result);
+        let address = bech32::encode("osmo", ripemd160_result.to_base32(), Variant::Bech32).unwrap();
+        (Addr::unchecked(address), secret_key, public_key_bytes.to_vec())
     }
     
     fn mock_signature_with_message(
-        params: _SignatureParams,
+        params: DigestHashParams,
         secret_key: &SecretKey,
     ) -> String {
         let params = DigestHashParams {
             staker: params.staker,
             strategy: params.strategy,
+            public_key_bytes: params.public_key_bytes,
             token: params.token,
-            amount: params.amount.u128(),
+            amount: params.amount,
             nonce: params.nonce,
             expiry: params.expiry,
             chain_id: params.chain_id,
@@ -1432,8 +1433,9 @@ mod tests {
         let message = Message::from_digest_slice(&message_bytes).expect("32 bytes");
         let signature = secp.sign_ecdsa(&message, secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
-        hex::encode(signature_bytes)
-    }
+        
+        hex::encode(signature_bytes) 
+    }    
 
     #[test]
     fn test_deposit_into_strategy_with_signature() {
@@ -1456,7 +1458,7 @@ mod tests {
         // Whitelist a strategy
         let strategy = Addr::unchecked("strategy1");
         let token = Addr::unchecked("token1");
-        let amount = Uint128::new(100);
+        let amount = 100;
     
         let msg = ExecuteMsg::AddStrategiesToWhitelist {
             strategies: vec![strategy.clone()],
@@ -1465,16 +1467,17 @@ mod tests {
     
         let _res = execute(deps.as_mut(), env.clone(), info_whitelister.clone(), msg).unwrap();
     
-        // Generate operator (staker) and create signature
-        let (staker, secret_key, _public_key_bytes) = generate_operator();
+        let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
+        let (staker, secret_key, public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
         let current_time = env.block.time.seconds();
         let expiry = current_time + 1000;
         let nonce = 0;
         let chain_id = env.block.chain_id.clone();
         let contract_addr = env.contract.address.clone();
 
-        let params = _SignatureParams {
+        let params = DigestHashParams {
             staker: staker.clone(),
+            public_key_bytes: &public_key_bytes.clone(),
             strategy: strategy.clone(),
             token: token.clone(),
             amount,
@@ -1490,8 +1493,9 @@ mod tests {
         let msg = ExecuteMsg::DepositIntoStrategyWithSignature {
             strategy: strategy.clone(),
             token: token.clone(),
-            amount,
+            amount: Uint128::from(amount),
             staker: staker.clone(),
+            public_key_bytes: public_key_bytes.clone(),
             expiry: Uint64::from(expiry),
             signature,
         };
@@ -1515,7 +1519,7 @@ mod tests {
             let expected_msg = Cw20ExecuteMsg::TransferFrom {
                 owner: info_delegation_manager.sender.to_string(),
                 recipient: strategy.to_string(),
-                amount,
+                amount:Uint128::from(amount),
             };
             let actual_msg: Cw20ExecuteMsg = from_json(msg).unwrap();
             assert_eq!(actual_msg, expected_msg);
@@ -1525,7 +1529,7 @@ mod tests {
     
         if let SubMsg { msg: CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }), .. } = &res.messages[1] {
             assert_eq!(contract_addr, &strategy.to_string());
-            let expected_msg = StrategyExecuteMsg::Deposit { amount };
+            let expected_msg = StrategyExecuteMsg::Deposit { amount:Uint128::from(amount) };
             let actual_msg: StrategyExecuteMsg = from_json(msg).unwrap();
             assert_eq!(actual_msg, expected_msg);
         } else {

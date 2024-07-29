@@ -12,6 +12,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     RegisterOperatorToAVS {
         operator: Addr,
+        public_key_bytes: Vec<u8>,
         signature: SignatureWithSaltAndExpiry,
     },
     DeregisterOperatorFromAVS {

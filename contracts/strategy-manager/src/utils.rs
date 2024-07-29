@@ -1,7 +1,6 @@
-use cosmwasm_std::{Addr, StdResult, StdError, Uint128, Uint64};
+use cosmwasm_std::{Addr, StdResult, Uint128, Uint64};
 use sha2::{Sha256, Digest};
 use cosmwasm_crypto::secp256k1_verify;
-use bech32::{self, FromBase32};
 
 const DEPOSIT_TYPEHASH: &[u8] = b"Deposit(address staker,address strategy,address token,uint256 amount,uint256 nonce,uint256 expiry)";
 const DOMAIN_TYPEHASH: &[u8] = b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
@@ -13,31 +12,22 @@ fn sha256(input: &[u8]) -> Vec<u8> {
     hasher.finalize().to_vec()
 }
 
-pub struct DepositWithSignatureParams {
+pub struct DepositWithSignatureParams<'a> {
     pub strategy: Addr,
     pub token: Addr,
     pub amount: Uint128,
     pub staker: Addr,
+    pub public_key_bytes: &'a [u8],
     pub expiry: Uint64,
     pub signature: String,
 }
 
-pub struct DigestHashParams {
+pub struct DigestHashParams<'a> {
     pub staker: Addr,
+    pub public_key_bytes: &'a [u8],
     pub strategy: Addr,
     pub token: Addr,
     pub amount: u128,
-    pub nonce: u64,
-    pub expiry: u64,
-    pub chain_id: String,
-    pub contract_addr: Addr,
-}
-
-pub struct _SignatureParams {
-    pub staker: Addr,
-    pub strategy: Addr,
-    pub token: Addr,
-    pub amount: Uint128,
     pub nonce: u64,
     pub expiry: u64,
     pub chain_id: String,
@@ -48,6 +38,7 @@ pub fn calculate_digest_hash(params: &DigestHashParams) -> Vec<u8> {
     let struct_hash_input = [
         &sha256(DEPOSIT_TYPEHASH)[..],
         params.staker.as_bytes(),
+        params.public_key_bytes, 
         params.strategy.as_bytes(),
         params.token.as_bytes(),
         &params.amount.to_le_bytes(),
@@ -74,11 +65,8 @@ pub fn calculate_digest_hash(params: &DigestHashParams) -> Vec<u8> {
     sha256(&digest_hash_input)
 }
 
-pub fn recover(digest_hash: &[u8], signature: &[u8], staker: &Addr) -> StdResult<bool> {
-    let (_hrp, data, _variant) = bech32::decode(staker.as_str()).map_err(|_| StdError::generic_err("Invalid staker address"))?;
-    let public_key_bytes = Vec::<u8>::from_base32(&data).map_err(|_| StdError::generic_err("Invalid staker address"))?;
-
-    match secp256k1_verify(digest_hash, signature, &public_key_bytes) {
+pub fn recover(digest_hash: &[u8], signature: &[u8], public_key_bytes: &[u8]) -> StdResult<bool> {
+    match secp256k1_verify(digest_hash, signature, public_key_bytes) {
         Ok(valid) => Ok(valid),
         Err(_) => Ok(false),
     }

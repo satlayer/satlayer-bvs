@@ -13,6 +13,7 @@ fn sha256(input: &[u8]) -> Vec<u8> {
     hasher.finalize().to_vec()
 }
 
+
 pub struct DigestHashParams {
     pub staker: Addr,
     pub operator: Addr,
