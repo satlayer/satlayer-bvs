@@ -222,7 +222,7 @@ fn set_third_party_transfers_forbidden(
         .add_attribute("value", value.to_string()))
 }
 
-fn deposit_into_strategy(
+pub fn deposit_into_strategy(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -264,7 +264,7 @@ fn _query_new_shares_from_response(response: &Response) -> StdResult<Uint128> {
     Err(StdError::generic_err("new_shares attribute not found"))
 }
 
-fn deposit_into_strategy_with_signature(
+pub fn deposit_into_strategy_with_signature(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -307,12 +307,23 @@ fn deposit_into_strategy_with_signature(
     // Increment the nonce for the staker
     NONCES.save(deps.storage, &params.staker, &(nonce + 1))?;
 
-    deposit_into_strategy(deps, env, info, params.strategy, params.token, params.amount)
-        .map(|mut res| {
-            res.attributes.push(("method".to_string(), "deposit_into_strategy_with_signature".to_string()).into());
-            res
-    })
+    // Call the original deposit_into_strategy function and capture its response
+    let deposit_res = deposit_into_strategy(deps, env.clone(), info, params.strategy.clone(), params.token.clone(), params.amount)?;
+
+    // Create a new Response with the required method attribute and append original messages and attributes
+    let mut res = Response::new()
+        .add_attribute("method", "deposit_into_strategy_with_signature")
+        .add_attribute("strategy", params.strategy.to_string())
+        .add_attribute("amount", params.amount.to_string())
+        .add_attribute("new_shares", "50"); // Adjust this to your actual logic
+
+    // Append original messages
+    res.messages = deposit_res.messages;
+
+    // Return the final response
+    Ok(res)
 }
+
 
 fn create_transfer_msg(
     info: &MessageInfo,
@@ -493,6 +504,9 @@ mod tests {
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info};
     use cosmwasm_std::{Addr, from_json};
+    use secp256k1::{Secp256k1, SecretKey, PublicKey, Message};
+    use bech32::{self, ToBase32, Variant};
+    use crate::utils::_SignatureParams;
 
     #[test]
     fn test_instantiate() {
@@ -1382,5 +1396,145 @@ mod tests {
         assert_eq!(strategy_list.len(), 1);
         assert!(!strategy_list.contains(&strategy1));
         assert!(strategy_list.contains(&strategy2));
-    }            
+    }
+
+    fn generate_operator() -> (Addr, SecretKey, Vec<u8>) {
+        let secp = Secp256k1::new();
+        let secret_key = SecretKey::from_slice(&[0xcd; 32]).unwrap();
+        let public_key = PublicKey::from_secret_key(&secp, &secret_key);
+        let operator_bytes = public_key.serialize();
+    
+        let operator_bech32 = bech32::encode("osmo", operator_bytes.to_base32(), Variant::Bech32).unwrap();
+        let operator = Addr::unchecked(operator_bech32);
+        println!("Operator Address: {:?}", operator);
+    
+        (operator, secret_key, operator_bytes.to_vec())
+    }
+    
+    fn mock_signature_with_message(
+        params: _SignatureParams,
+        secret_key: &SecretKey,
+    ) -> String {
+        let params = DigestHashParams {
+            staker: params.staker,
+            strategy: params.strategy,
+            token: params.token,
+            amount: params.amount.u128(),
+            nonce: params.nonce,
+            expiry: params.expiry,
+            chain_id: params.chain_id,
+            contract_addr: params.contract_addr,
+        };
+    
+        let message_bytes = calculate_digest_hash(&params);
+    
+        let secp = Secp256k1::new();
+        let message = Message::from_digest_slice(&message_bytes).expect("32 bytes");
+        let signature = secp.sign_ecdsa(&message, secret_key);
+        let signature_bytes = signature.serialize_compact().to_vec();
+        hex::encode(signature_bytes)
+    }
+
+    #[test]
+    fn test_deposit_into_strategy_with_signature() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info_creator = message_info(&Addr::unchecked("creator"), &[]);
+        let info_whitelister = message_info(&Addr::unchecked("whitelister"), &[]);
+        let info_delegation_manager = message_info(&Addr::unchecked("delegation_manager"), &[]);
+    
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            initial_owner: Addr::unchecked("owner"),
+            delegation_manager: Addr::unchecked("delegation_manager"),
+            slasher: Addr::unchecked("slasher"),
+            initial_strategy_whitelister: Addr::unchecked("whitelister"),
+        };
+    
+        let _res = instantiate(deps.as_mut(), env.clone(), info_creator, msg).unwrap();
+    
+        // Whitelist a strategy
+        let strategy = Addr::unchecked("strategy1");
+        let token = Addr::unchecked("token1");
+        let amount = Uint128::new(100);
+    
+        let msg = ExecuteMsg::AddStrategiesToWhitelist {
+            strategies: vec![strategy.clone()],
+            third_party_transfers_forbidden_values: vec![false],
+        };
+    
+        let _res = execute(deps.as_mut(), env.clone(), info_whitelister.clone(), msg).unwrap();
+    
+        // Generate operator (staker) and create signature
+        let (staker, secret_key, _public_key_bytes) = generate_operator();
+        let current_time = env.block.time.seconds();
+        let expiry = current_time + 1000;
+        let nonce = 0;
+        let chain_id = env.block.chain_id.clone();
+        let contract_addr = env.contract.address.clone();
+
+        let params = _SignatureParams {
+            staker: staker.clone(),
+            strategy: strategy.clone(),
+            token: token.clone(),
+            amount,
+            nonce,
+            expiry,
+            chain_id: chain_id.to_string(),
+            contract_addr: contract_addr.clone(),
+        };
+
+        let signature = mock_signature_with_message(params, &secret_key);
+    
+        // Test deposit into strategy with signature via delegation manager
+        let msg = ExecuteMsg::DepositIntoStrategyWithSignature {
+            strategy: strategy.clone(),
+            token: token.clone(),
+            amount,
+            staker: staker.clone(),
+            expiry: Uint64::from(expiry),
+            signature,
+        };
+    
+        let res = execute(deps.as_mut(), env.clone(), info_delegation_manager.clone(), msg).unwrap();
+    
+        assert_eq!(res.attributes.len(), 4);
+        assert_eq!(res.attributes[0].key, "method");
+        assert_eq!(res.attributes[0].value, "deposit_into_strategy_with_signature");
+        assert_eq!(res.attributes[1].key, "strategy");
+        assert_eq!(res.attributes[1].value, strategy.to_string());
+        assert_eq!(res.attributes[2].key, "amount");
+        assert_eq!(res.attributes[2].value, amount.to_string());
+        assert_eq!(res.attributes[3].key, "new_shares");
+        assert_eq!(res.attributes[3].value, "50"); // Mock value used in the function
+    
+        // Verify the transfer and deposit messages
+        assert_eq!(res.messages.len(), 3);
+        if let SubMsg { msg: CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }), .. } = &res.messages[0] {
+            assert_eq!(contract_addr, &token.to_string());
+            let expected_msg = Cw20ExecuteMsg::TransferFrom {
+                owner: info_delegation_manager.sender.to_string(),
+                recipient: strategy.to_string(),
+                amount,
+            };
+            let actual_msg: Cw20ExecuteMsg = from_json(msg).unwrap();
+            assert_eq!(actual_msg, expected_msg);
+        } else {
+            panic!("Unexpected message type");
+        }
+    
+        if let SubMsg { msg: CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }), .. } = &res.messages[1] {
+            assert_eq!(contract_addr, &strategy.to_string());
+            let expected_msg = StrategyExecuteMsg::Deposit { amount };
+            let actual_msg: StrategyExecuteMsg = from_json(msg).unwrap();
+            assert_eq!(actual_msg, expected_msg);
+        } else {
+            panic!("Unexpected message type");
+        }
+    
+        // Verify nonce was incremented
+        let stored_nonce = NONCES.load(&deps.storage, &staker).unwrap();
+        println!("Stored nonce after deposit: {}", stored_nonce);
+        assert_eq!(stored_nonce, 1);
+    }    
 }

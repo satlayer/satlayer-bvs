@@ -33,6 +33,17 @@ pub struct DigestHashParams {
     pub contract_addr: Addr,
 }
 
+pub struct _SignatureParams {
+    pub staker: Addr,
+    pub strategy: Addr,
+    pub token: Addr,
+    pub amount: Uint128,
+    pub nonce: u64,
+    pub expiry: u64,
+    pub chain_id: String,
+    pub contract_addr: Addr,
+}
+
 pub fn calculate_digest_hash(params: &DigestHashParams) -> Vec<u8> {
     let struct_hash_input = [
         &sha256(DEPOSIT_TYPEHASH)[..],
