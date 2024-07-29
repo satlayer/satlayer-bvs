@@ -940,12 +940,6 @@ mod tests {
     // #[test]
     // fn test_deposit_into_strategy_with_signature() {}
 
-    // #[test]
-    // fn test_add_shares() {}
-
-    // #[test]
-    // fn test_remove_shares() {}
-
     #[test]
     fn test_create_transfer_msg() {
         let info = message_info(&Addr::unchecked("sender"), &[]);
@@ -1184,5 +1178,209 @@ mod tests {
         let length: Uint64 = from_json(bin).unwrap();
     
         assert_eq!(length, Uint64::new(0));
-    }    
+    }
+
+    #[test]
+    fn test_add_shares() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info_creator = message_info(&Addr::unchecked("creator"), &[]);
+        let info_delegation_manager = message_info(&Addr::unchecked("delegation_manager"), &[]);
+        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
+    
+        // Instantiate the contract with the delegation manager
+        let msg = InstantiateMsg {
+            initial_owner: Addr::unchecked("owner"),
+            delegation_manager: Addr::unchecked("delegation_manager"),
+            slasher: Addr::unchecked("slasher"),
+            initial_strategy_whitelister: Addr::unchecked("whitelister"),
+        };
+    
+        let _res = instantiate(deps.as_mut(), env.clone(), info_creator, msg).unwrap();
+    
+        // Set up initial data
+        let staker = Addr::unchecked("staker");
+        let strategy = Addr::unchecked("strategy");
+        let shares = Uint128::new(100);
+    
+        // Test adding shares with the correct delegation manager
+        let res = add_shares(deps.as_mut(), info_delegation_manager.clone(), staker.clone(), strategy.clone(), shares).unwrap();
+    
+        // Verify the response
+        assert_eq!(res.attributes.len(), 4);
+        assert_eq!(res.attributes[0].key, "method");
+        assert_eq!(res.attributes[0].value, "add_shares");
+        assert_eq!(res.attributes[1].key, "staker");
+        assert_eq!(res.attributes[1].value, staker.to_string());
+        assert_eq!(res.attributes[2].key, "strategy");
+        assert_eq!(res.attributes[2].value, strategy.to_string());
+        assert_eq!(res.attributes[3].key, "shares");
+        assert_eq!(res.attributes[3].value, shares.to_string());
+    
+        // Verify the shares were added correctly
+        let stored_shares = STAKER_STRATEGY_SHARES.load(&deps.storage, (&staker, &strategy)).unwrap();
+        println!("stored_shares after first addition: {}", stored_shares);
+        assert_eq!(stored_shares, shares);
+    
+        // Verify the strategy was added to the staker's strategy list
+        let strategy_list = STAKER_STRATEGY_LIST.load(&deps.storage, &staker).unwrap();
+        assert_eq!(strategy_list.len(), 1);
+        assert_eq!(strategy_list[0], strategy);
+    
+        // Test adding more shares to the same strategy
+        let additional_shares = Uint128::new(50);
+        let res = add_shares(deps.as_mut(), info_delegation_manager.clone(), staker.clone(), strategy.clone(), additional_shares).unwrap();
+    
+        // Verify the response
+        assert_eq!(res.attributes.len(), 4);
+        assert_eq!(res.attributes[0].key, "method");
+        assert_eq!(res.attributes[0].value, "add_shares");
+        assert_eq!(res.attributes[1].key, "staker");
+        assert_eq!(res.attributes[1].value, staker.to_string());
+        assert_eq!(res.attributes[2].key, "strategy");
+        assert_eq!(res.attributes[2].value, strategy.to_string());
+        assert_eq!(res.attributes[3].key, "shares");
+        assert_eq!(res.attributes[3].value, additional_shares.to_string());
+    
+        // Verify the shares were added correctly
+        let stored_shares = STAKER_STRATEGY_SHARES.load(&deps.storage, (&staker, &strategy)).unwrap();
+        println!("stored_shares after second addition: {}", stored_shares);
+        assert_eq!(stored_shares, shares + additional_shares);
+    
+        // Test with an unauthorized user
+        let result = add_shares(deps.as_mut(), info_unauthorized.clone(), staker.clone(), strategy.clone(), shares);
+        assert!(result.is_err());
+        if let Err(err) = result {
+            match err {
+                ContractError::Unauthorized {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    
+        // Test with zero shares
+        let result = add_shares(deps.as_mut(), info_delegation_manager.clone(), staker.clone(), strategy.clone(), Uint128::zero());
+        assert!(result.is_err());
+        if let Err(err) = result {
+            match err {
+                ContractError::InvalidShares {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    
+        // Test exceeding the max strategy list length
+        let mut strategy_list = Vec::with_capacity(MAX_STAKER_STRATEGY_LIST_LENGTH);
+        for i in 0..MAX_STAKER_STRATEGY_LIST_LENGTH {
+            strategy_list.push(Addr::unchecked(format!("strategy{}", i)));
+        }
+        STAKER_STRATEGY_LIST.save(&mut deps.storage, &staker, &strategy_list).unwrap();
+    
+        let new_strategy = Addr::unchecked("new_strategy");
+        let result = add_shares(deps.as_mut(), info_delegation_manager, staker.clone(), new_strategy.clone(), shares);
+        assert!(result.is_err());
+        if let Err(err) = result {
+            match err {
+                ContractError::MaxStrategyListLengthExceeded {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
+
+    #[test]
+    fn test_remove_shares() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info_creator = message_info(&Addr::unchecked("creator"), &[]);
+        let info_delegation_manager = message_info(&Addr::unchecked("delegation_manager"), &[]);
+        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
+    
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            initial_owner: Addr::unchecked("owner"),
+            delegation_manager: Addr::unchecked("delegation_manager"),
+            slasher: Addr::unchecked("slasher"),
+            initial_strategy_whitelister: Addr::unchecked("whitelister"),
+        };
+    
+        let _res = instantiate(deps.as_mut(), env.clone(), info_creator, msg).unwrap();
+    
+        // Add some strategies and shares for a staker
+        let staker = Addr::unchecked("staker1");
+        let strategy1 = Addr::unchecked("strategy1");
+        let strategy2 = Addr::unchecked("strategy2");
+    
+        STAKER_STRATEGY_LIST.save(&mut deps.storage, &staker, &vec![strategy1.clone(), strategy2.clone()]).unwrap();
+        STAKER_STRATEGY_SHARES.save(&mut deps.storage, (&staker, &strategy1), &Uint128::new(100)).unwrap();
+        STAKER_STRATEGY_SHARES.save(&mut deps.storage, (&staker, &strategy2), &Uint128::new(200)).unwrap();
+    
+        // Test removing shares with the correct delegation manager
+        let msg = ExecuteMsg::RemoveShares {
+            staker: staker.clone(),
+            strategy: strategy1.clone(),
+            shares: Uint128::new(50),
+        };
+    
+        let res = execute(deps.as_mut(), env.clone(), info_delegation_manager.clone(), msg).unwrap();
+    
+        assert_eq!(res.attributes.len(), 4);
+        assert_eq!(res.attributes[0].key, "method");
+        assert_eq!(res.attributes[0].value, "remove_shares");
+        assert_eq!(res.attributes[1].key, "staker");
+        assert_eq!(res.attributes[1].value, staker.to_string());
+        assert_eq!(res.attributes[2].key, "strategy");
+        assert_eq!(res.attributes[2].value, strategy1.to_string());
+        assert_eq!(res.attributes[3].key, "shares");
+        assert_eq!(res.attributes[3].value, "50");
+    
+        // Verify the shares were updated correctly
+        let stored_shares = STAKER_STRATEGY_SHARES.load(&deps.storage, (&staker, &strategy1)).unwrap();
+        println!("Stored shares after removal: {}", stored_shares);
+        assert_eq!(stored_shares, Uint128::new(50));
+    
+        // Test removing shares with an unauthorized user
+        let msg = ExecuteMsg::RemoveShares {
+            staker: staker.clone(),
+            strategy: strategy2.clone(),
+            shares: Uint128::new(50),
+        };
+    
+        let result = execute(deps.as_mut(), env.clone(), info_unauthorized.clone(), msg);
+        assert!(result.is_err());
+        if let Err(err) = result {
+            match err {
+                ContractError::Unauthorized {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    
+        // Test removing more shares than available
+        let msg = ExecuteMsg::RemoveShares {
+            staker: staker.clone(),
+            strategy: strategy1.clone(),
+            shares: Uint128::new(60),
+        };
+    
+        let result = execute(deps.as_mut(), env.clone(), info_delegation_manager.clone(), msg);
+        assert!(result.is_err());
+        if let Err(err) = result {
+            match err {
+                ContractError::InvalidShares {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    
+        // Test removing all shares, which should remove the strategy from the staker's list
+        let msg = ExecuteMsg::RemoveShares {
+            staker: staker.clone(),
+            strategy: strategy1.clone(),
+            shares: Uint128::new(50),
+        };
+    
+        execute(deps.as_mut(), env.clone(), info_delegation_manager.clone(), msg).unwrap();
+    
+        let strategy_list = STAKER_STRATEGY_LIST.load(&deps.storage, &staker).unwrap();
+        println!("Strategy list after removal: {:?}", strategy_list);
+        assert_eq!(strategy_list.len(), 1);
+        assert!(!strategy_list.contains(&strategy1));
+        assert!(strategy_list.contains(&strategy2));
+    }            
 }
