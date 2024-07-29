@@ -62,13 +62,13 @@ pub fn execute(
         ExecuteMsg::SetStrategyWhitelister { new_strategy_whitelister } => set_strategy_whitelister(deps, info, new_strategy_whitelister),
         ExecuteMsg::DepositIntoStrategy { strategy, token, amount } => deposit_into_strategy(deps, env, info, strategy, token, amount),
         ExecuteMsg::SetThirdPartyTransfersForbidden { strategy, value } => set_third_party_transfers_forbidden(deps, info, strategy, value),
-        ExecuteMsg::DepositIntoStrategyWithSignature { strategy, token, amount, staker,public_key_bytes, expiry, signature } => {
+        ExecuteMsg::DepositIntoStrategyWithSignature { strategy, token, amount, staker,public_key_hex, expiry, signature } => {
             let params = DepositWithSignatureParams {
                 strategy,
                 token,
                 amount,
                 staker,
-                public_key_bytes: &public_key_bytes,
+                public_key_hex,
                 expiry,
                 signature,
             };
@@ -288,7 +288,7 @@ pub fn deposit_into_strategy_with_signature(
 
     let digest_params = DigestHashParams {
         staker: params.staker.clone(),
-        public_key_bytes: params.public_key_bytes,
+        public_key_hex: params.public_key_hex.clone(),
         strategy: params.strategy.clone(),
         token: params.token.clone(),
         amount: params.amount.u128(),
@@ -301,8 +301,11 @@ pub fn deposit_into_strategy_with_signature(
     let struct_hash = calculate_digest_hash(&digest_params);
 
     let signature_bytes = hex::decode(&params.signature).map_err(|_| ContractError::InvalidSignature {})?;
+
+    let public_key_bytes = Binary::from(hex::decode(&params.public_key_hex)
+    .map_err(|_| StdError::generic_err("public_key_hex decode failed"))?); 
     
-    if !recover(&struct_hash, &signature_bytes, params.public_key_bytes)? {
+    if !recover(&struct_hash, &signature_bytes, &public_key_bytes)? {
         return Err(ContractError::InvalidSignature {});
     }
 
@@ -1418,7 +1421,7 @@ mod tests {
         let params = DigestHashParams {
             staker: params.staker,
             strategy: params.strategy,
-            public_key_bytes: params.public_key_bytes,
+            public_key_hex: params.public_key_hex,
             token: params.token,
             amount: params.amount,
             nonce: params.nonce,
@@ -1475,9 +1478,11 @@ mod tests {
         let chain_id = env.block.chain_id.clone();
         let contract_addr = env.contract.address.clone();
 
+        let public_key_hex = hex::encode(public_key_bytes);
+
         let params = DigestHashParams {
             staker: staker.clone(),
-            public_key_bytes: &public_key_bytes.clone(),
+            public_key_hex: public_key_hex.clone(),
             strategy: strategy.clone(),
             token: token.clone(),
             amount,
@@ -1495,7 +1500,7 @@ mod tests {
             token: token.clone(),
             amount: Uint128::from(amount),
             staker: staker.clone(),
-            public_key_bytes: public_key_bytes.clone(),
+            public_key_hex: public_key_hex.clone(),
             expiry: Uint64::from(expiry),
             signature,
         };
