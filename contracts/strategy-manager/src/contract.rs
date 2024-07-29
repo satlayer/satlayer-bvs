@@ -485,3 +485,48 @@ pub fn staker_strategy_list_length(deps: Deps, staker: Addr) -> StdResult<Uint64
         .unwrap_or_else(Vec::new);
     Ok(Uint64::new(strategies.len() as u64))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info};
+    use cosmwasm_std::Addr;
+
+    #[test]
+    fn test_instantiate() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+
+        let msg = InstantiateMsg {
+            initial_owner: Addr::unchecked("owner"),
+            delegation_manager: Addr::unchecked("delegation_manager"),
+            slasher: Addr::unchecked("slasher"),
+            initial_strategy_whitelister: Addr::unchecked("whitelister"),
+        };
+
+        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        assert_eq!(res.attributes.len(), 5);
+        assert_eq!(res.attributes[0].key, "method");
+        assert_eq!(res.attributes[0].value, "instantiate");
+        assert_eq!(res.attributes[1].key, "delegation_manager");
+        assert_eq!(res.attributes[1].value, "delegation_manager");
+        assert_eq!(res.attributes[2].key, "slasher");
+        assert_eq!(res.attributes[2].value, "slasher");
+        assert_eq!(res.attributes[3].key, "strategy_whitelister");
+        assert_eq!(res.attributes[3].value, "whitelister");
+        assert_eq!(res.attributes[4].key, "owner");
+        assert_eq!(res.attributes[4].value, "owner");
+
+        let owner = OWNER.load(&deps.storage).unwrap();
+        assert_eq!(owner, Addr::unchecked("owner"));
+
+        let strategy_manager_state = STRATEGY_MANAGER_STATE.load(&deps.storage).unwrap();
+        assert_eq!(strategy_manager_state.delegation_manager, Addr::unchecked("delegation_manager"));
+        assert_eq!(strategy_manager_state.slasher, Addr::unchecked("slasher"));
+
+        let strategy_whitelister = STRATEGY_WHITELISTER.load(&deps.storage).unwrap();
+        assert_eq!(strategy_whitelister, Addr::unchecked("whitelister"));
+    }
+}

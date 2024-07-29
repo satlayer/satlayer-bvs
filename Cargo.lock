@@ -165,25 +165,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c4b4d0bd25bd0b74681c0ad21497610ce1b7c91b1022cd21c80c6fbdd9476b0"
 
 [[package]]
-name = "avs-directory"
-version = "0.1.0"
-dependencies = [
- "bech32 0.8.1",
- "cosmwasm-crypto 2.1.0",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "hex",
- "schemars",
- "secp256k1",
- "serde",
- "sha2 0.10.8",
- "thiserror",
-]
-
-[[package]]
 name = "base16ct"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
