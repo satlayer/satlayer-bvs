@@ -83,14 +83,6 @@ pub fn execute(
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    match msg {
-        QueryMsg::GetDeposits { staker } => to_json_binary(&get_deposits(deps, staker)?),
-        QueryMsg::StakerStrategyListLength { staker } => to_json_binary(&staker_strategy_list_length(deps, staker)?),
-    }
-}
-
 fn only_strategy_whitelister(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let whitelister: Addr = STRATEGY_WHITELISTER.load(deps.storage)?;
     if info.sender != whitelister {
@@ -254,7 +246,7 @@ fn _deposit_into_strategy(
     let transfer_msg = create_transfer_msg(&info, &token, &strategy, amount)?;
     let deposit_msg = create_deposit_msg(&strategy, amount)?;
 
-    let new_shares = Uint128::new(50); // Replace this with actual logic to get new shares
+    let new_shares = Uint128::new(50); // TODO: Replace this with actual logic to get new shares
 
     let deposit_response = Response::new()
         .add_message(transfer_msg)

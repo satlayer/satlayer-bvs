@@ -56,10 +56,7 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     GetDeposits { staker: Addr },
     StakerStrategyListLength { staker: Addr },
-    GetStakerStrategyShares {
-        staker: Addr,
-        strategy: Addr,
-    },
+    GetStakerStrategyShares { staker: Addr, strategy: Addr },
 }
 
 #[cw_serde]
