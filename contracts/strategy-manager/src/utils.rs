@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, StdResult, Uint128, Uint64};
+use cosmwasm_std::{Addr, StdResult, Uint128, Uint64, Binary};
 use sha2::{Sha256, Digest};
 use cosmwasm_crypto::secp256k1_verify;
 
@@ -17,14 +17,14 @@ pub struct DepositWithSignatureParams {
     pub token: Addr,
     pub amount: Uint128,
     pub staker: Addr,
-    pub public_key_hex: String,
+    pub public_key: Binary,
     pub expiry: Uint64,
-    pub signature: String,
+    pub signature: Binary,
 }
 
 pub struct DigestHashParams {
     pub staker: Addr,
-    pub public_key_hex: String,
+    pub public_key: Binary,
     pub strategy: Addr,
     pub token: Addr,
     pub amount: u128,
@@ -38,7 +38,7 @@ pub fn calculate_digest_hash(params: &DigestHashParams) -> Vec<u8> {
     let struct_hash_input = [
         &sha256(DEPOSIT_TYPEHASH)[..],
         params.staker.as_bytes(),
-        params.public_key_hex.as_bytes(), 
+        params.public_key.as_slice(), 
         params.strategy.as_bytes(),
         params.token.as_bytes(),
         &params.amount.to_le_bytes(),

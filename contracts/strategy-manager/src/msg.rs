@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Uint128, Uint64};
+use cosmwasm_std::{Addr, Uint128, Uint64, Binary};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -35,9 +35,9 @@ pub enum ExecuteMsg {
         token: Addr,
         amount: Uint128,
         staker: Addr,
-        public_key_hex: String,
+        public_key: Binary,
         expiry: Uint64,
-        signature: String,
+        signature: Binary,
     },
     RemoveShares {
         staker: Addr,
@@ -60,7 +60,7 @@ pub enum QueryMsg {
 
 #[cw_serde]
 pub struct SignatureWithSaltAndExpiry {
-    pub signature: String,
-    pub salt: String,
+    pub signature: Binary,
+    pub salt: Binary,
     pub expiry: Uint64,
 }

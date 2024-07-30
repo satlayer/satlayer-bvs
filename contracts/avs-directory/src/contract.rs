@@ -3,9 +3,9 @@ use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg, OperatorStatusResponse, SignatureWithSaltAndExpiry},
     state::{OperatorAVSRegistrationStatus, AVSDirectoryStorage, OWNER},
     utils::{calculate_digest_hash, recover},
-};  
+};
 use cosmwasm_std::{
-    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint64, Addr, StdError
+    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint64, Addr
 };
 use cw2::set_contract_version;
 
@@ -43,12 +43,12 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::RegisterOperatorToAVS { operator, public_key_hex, signature } => {
-            register_operator(deps, env, info, operator, &public_key_hex, signature)
+        ExecuteMsg::RegisterOperatorToAVS { operator, public_key, signature } => {
+            register_operator(deps, env, info, operator, public_key, signature)
         }
         ExecuteMsg::DeregisterOperatorFromAVS { operator } => deregister_operator(deps, env, info, operator),
         ExecuteMsg::UpdateAVSMetadataURI { metadata_uri } => update_metadata_uri(info, metadata_uri),
-        ExecuteMsg::CancelSalt { salt } => cancel_salt(deps, env, info, &salt),
+        ExecuteMsg::CancelSalt { salt } => cancel_salt(deps, env, info, salt),
         ExecuteMsg::TransferOwnership { new_owner } => transfer_ownership(deps, info, new_owner),
     }
 }
@@ -58,7 +58,7 @@ pub fn register_operator(
     env: Env,
     info: MessageInfo,
     operator: Addr,
-    public_key_hex: &str,
+    public_key: Binary,
     operator_signature: SignatureWithSaltAndExpiry,
 ) -> Result<Response, ContractError> {
     let current_time: Uint64 = env.block.time.seconds().into();
@@ -73,45 +73,36 @@ pub fn register_operator(
         return Err(ContractError::OperatorAlreadyRegistered {});
     }
 
-    let salt_binary = Binary::from(operator_signature.salt.as_bytes());
-
-    if storage.is_salt_spent(deps.storage, operator.clone(), salt_binary.clone())? {
+    if storage.is_salt_spent(deps.storage, operator.clone(), operator_signature.salt.clone())? {
         return Err(ContractError::SaltAlreadySpent {});
     }
 
     let chain_id = &env.block.chain_id;
     println!("chain_id = {}", chain_id);
 
-    let public_key_bytes = Binary::from(hex::decode(public_key_hex)
-    .map_err(|_| StdError::generic_err("public_key_hex decode failed"))?); 
-
     let message_bytes = calculate_digest_hash(
-        &public_key_bytes,
+        &public_key,
         &info.sender,
-        &salt_binary,
+        &operator_signature.salt,
         operator_signature.expiry.u64(),
         chain_id,
         &env,
     );
 
-    let signature_bytes = hex::decode(&operator_signature.signature)
-    .map_err(|_| ContractError::InvalidSignature {})?;
-
-    if !recover(&message_bytes, &signature_bytes, public_key_bytes.as_slice())? {
+    if !recover(&message_bytes, &operator_signature.signature, public_key.as_slice())? {
         return Err(ContractError::InvalidSignature {});
     }
 
     storage.save_status(deps.storage, info.sender.clone(), operator.clone(), OperatorAVSRegistrationStatus::Registered)?;
 
-    storage.save_salt(deps.storage, operator.clone(), salt_binary)?;
+    storage.save_salt(deps.storage, operator.clone(), operator_signature.salt)?;
 
-    println!("register_operator: operator = {}", operator); 
+    println!("register_operator: operator = {}", operator);
     Ok(Response::new()
         .add_attribute("method", "register_operator")
         .add_attribute("operator", operator.to_string())
         .add_attribute("avs", info.sender.to_string()))
 }
-
 
 pub fn deregister_operator(
     deps: DepsMut,
@@ -149,11 +140,9 @@ pub fn cancel_salt(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    salt: &str,
+    salt: Binary,
 ) -> Result<Response, ContractError> {
     let storage = AVSDirectoryStorage::default();
-
-    let salt = Binary::from(salt.as_bytes());
 
     if storage.is_salt_spent(deps.storage, info.sender.clone(), salt.clone())? {
         return Err(ContractError::SaltAlreadySpent {});
@@ -252,7 +241,7 @@ mod tests {
         let address = bech32::encode("osmo", ripemd160_result.to_base32(), Variant::Bech32).unwrap();
         (Addr::unchecked(address), secret_key, public_key_bytes.to_vec())
     }
-    
+
     fn mock_signature_with_message(
         public_key_bytes: &[u8],
         sender: &Addr,
@@ -271,62 +260,61 @@ mod tests {
             chain_id,
             &env,
         );
-    
+
         let secp = Secp256k1::new();
         let message = Message::from_digest_slice(&message_bytes).expect("32 bytes");
         let signature = secp.sign_ecdsa(&message, secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
-        let signature_hex = hex::encode(signature_bytes);
-    
+
         SignatureWithSaltAndExpiry {
-            salt: salt.to_string(),
+            salt: Binary::from(salt.as_bytes()),
             expiry: Uint64::from(expiry),
-            signature: signature_hex,
+            signature: Binary::from(signature_bytes.as_slice()),
         }
-    }    
-    
+    }
+
     #[test]
     fn test_register_operator() {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-    
+
         let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
         let (operator, secret_key, public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
         println!("Operator Address: {:?}", operator);
         println!("Secret Key: {:?}", secret_key);
-    
+
         let current_time = env.block.time.seconds();
         let expiry = current_time + 1000;
         let salt = "salt";
         let chain_id = "cosmos-testnet-14002";
         let contract_addr = env.contract.address.clone();
         let signature = mock_signature_with_message(&public_key_bytes, &info.sender, salt, expiry, chain_id, &contract_addr, &secret_key);
-    
+
         println!("Operator: {:?}", operator);
         println!("Signature: {:?}", signature);
-    
+
         let instantiate_msg = InstantiateMsg {
             initial_owner: Addr::unchecked("owner"),
             delegation_manager: Addr::unchecked("delegation_manager"),
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
 
-        let public_key_hex = hex::encode(public_key_bytes);
-    
+        let public_key = Binary::from(public_key_bytes.as_slice());
+
         let msg = ExecuteMsg::RegisterOperatorToAVS {
             operator: operator.clone(),
-            public_key_hex: public_key_hex.clone(),
+            public_key: public_key.clone(),
             signature: signature.clone(),
         };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
-    
+
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
         }
-    
+
         assert!(res.is_ok());
-    
+
         let res = res.unwrap();
         assert_eq!(res.attributes.len(), 3);
         assert_eq!(res.attributes[0].key, "method");
@@ -335,63 +323,63 @@ mod tests {
         assert_eq!(res.attributes[1].value, operator.to_string());
         assert_eq!(res.attributes[2].key, "avs");
         assert_eq!(res.attributes[2].value, info.sender.to_string());
-    
+
         let storage = AVSDirectoryStorage::default();
         let status = storage.load_status(&deps.storage, info.sender.clone(), operator.clone()).unwrap();
         assert_eq!(status, OperatorAVSRegistrationStatus::Registered);
-    
+
         let is_salt_spent = storage.is_salt_spent(&deps.storage, operator.clone(), Binary::from(salt.as_bytes())).unwrap();
         assert!(is_salt_spent);
     }
-            
+
     #[test]
     fn test_deregister_operator() {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-    
+
         let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
         let (operator, secret_key, public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
         println!("Operator Address: {:?}", operator);
         println!("Secret Key: {:?}", secret_key);
-    
+
         let current_time = env.block.time.seconds();
         let expiry = current_time + 1000;
         let salt = "salt";
         let chain_id = "cosmos-testnet-14002";
         let contract_addr = env.contract.address.clone();
         let signature = mock_signature_with_message(&public_key_bytes, &info.sender, salt, expiry, chain_id, &contract_addr, &secret_key);
-    
+
         println!("Operator: {:?}", operator);
         println!("Signature: {:?}", signature);
-    
+
         let instantiate_msg = InstantiateMsg {
             initial_owner: Addr::unchecked("owner"),
             delegation_manager: Addr::unchecked("delegation_manager"),
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
 
-        let public_key_hex = hex::encode(public_key_bytes);
-    
+        let public_key = Binary::from(public_key_bytes.as_slice());
+
         let register_msg = ExecuteMsg::RegisterOperatorToAVS {
             operator: operator.clone(),
-            public_key_hex: public_key_hex.clone(),
+            public_key: public_key.clone(),
             signature: signature.clone(),
         };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), register_msg);
         assert!(res.is_ok());
-    
+
         let deregister_msg = ExecuteMsg::DeregisterOperatorFromAVS {
             operator: operator.clone(),
         };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), deregister_msg);
-    
+
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
         }
-    
+
         assert!(res.is_ok());
-    
+
         let res = res.unwrap();
         assert_eq!(res.attributes.len(), 3);
         assert_eq!(res.attributes[0].key, "method");
@@ -400,12 +388,12 @@ mod tests {
         assert_eq!(res.attributes[1].value, operator.to_string());
         assert_eq!(res.attributes[2].key, "avs");
         assert_eq!(res.attributes[2].value, info.sender.to_string());
-    
+
         let storage = AVSDirectoryStorage::default();
         let status = storage.load_status(&deps.storage, info.sender.clone(), operator.clone()).unwrap();
         assert_eq!(status, OperatorAVSRegistrationStatus::Unregistered);
     }
-    
+
     #[test]
     fn test_update_metadata_uri() {
         let mut deps = mock_dependencies();
@@ -445,7 +433,7 @@ mod tests {
         let is_salt_spent = storage.is_salt_spent(&deps.storage, info.sender.clone(), Binary::from(salt.as_bytes())).unwrap();
         assert!(!is_salt_spent);
 
-        let msg = ExecuteMsg::CancelSalt { salt: salt.clone() };
+        let msg = ExecuteMsg::CancelSalt { salt: Binary::from(salt.as_bytes()) };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
 
         if let Err(ref err) = res {
@@ -469,38 +457,38 @@ mod tests {
 
     #[test]
     fn test_transfer_ownership() {
-    let mut deps = mock_dependencies();
-    let env = mock_env();
-    let owner = Addr::unchecked("owner");
-    let info = message_info(&owner, &[]);
-    let new_owner = Addr::unchecked("new_owner");
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let owner = Addr::unchecked("owner");
+        let info = message_info(&owner, &[]);
+        let new_owner = Addr::unchecked("new_owner");
 
-    let instantiate_msg = InstantiateMsg {
-        initial_owner: owner.clone(),
-        delegation_manager: Addr::unchecked("delegation_manager"),
-    };
-    instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
+        let instantiate_msg = InstantiateMsg {
+            initial_owner: owner.clone(),
+            delegation_manager: Addr::unchecked("delegation_manager"),
+        };
+        instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
 
-    let msg = ExecuteMsg::TransferOwnership {
-        new_owner: new_owner.clone(),
-    };
-    let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        let msg = ExecuteMsg::TransferOwnership {
+            new_owner: new_owner.clone(),
+        };
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
 
-    if let Err(ref err) = res {
-        println!("Error: {:?}", err);
-    }
+        if let Err(ref err) = res {
+            println!("Error: {:?}", err);
+        }
 
-    assert!(res.is_ok());
+        assert!(res.is_ok());
 
-    let res = res.unwrap();
-    assert_eq!(res.attributes.len(), 2);
-    assert_eq!(res.attributes[0].key, "method");
-    assert_eq!(res.attributes[0].value, "transfer_ownership");
-    assert_eq!(res.attributes[1].key, "new_owner");
-    assert_eq!(res.attributes[1].value, new_owner.to_string());
+        let res = res.unwrap();
+        assert_eq!(res.attributes.len(), 2);
+        assert_eq!(res.attributes[0].key, "method");
+        assert_eq!(res.attributes[0].value, "transfer_ownership");
+        assert_eq!(res.attributes[1].key, "new_owner");
+        assert_eq!(res.attributes[1].value, new_owner.to_string());
 
-    let owner = OWNER.load(&deps.storage).unwrap();
-    assert_eq!(owner, new_owner);
+        let owner = OWNER.load(&deps.storage).unwrap();
+        assert_eq!(owner, new_owner);
     }
 
     #[test]
@@ -508,43 +496,43 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-    
+
         let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
         let (operator, secret_key, public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
         println!("Operator Address: {:?}", operator);
         println!("Secret Key: {:?}", secret_key);
-    
+
         let current_time = env.block.time.seconds();
         let expiry = current_time + 1000;
         let salt = "salt";
         let chain_id = "cosmos-testnet-14002";
         let contract_addr = env.contract.address.clone();
         let signature = mock_signature_with_message(&public_key_bytes, &info.sender, salt, expiry, chain_id, &contract_addr, &secret_key);
-    
+
         println!("Operator: {:?}", operator);
         println!("Signature: {:?}", signature);
-    
+
         let instantiate_msg = InstantiateMsg {
             initial_owner: Addr::unchecked("owner"),
             delegation_manager: Addr::unchecked("delegation_manager"),
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
 
-        let public_key_hex = hex::encode(public_key_bytes);
+        let public_key = Binary::from(public_key_bytes.as_slice());
 
         let msg = ExecuteMsg::RegisterOperatorToAVS {
             operator: operator.clone(),
-            public_key_hex: public_key_hex.clone(),
+            public_key: public_key.clone(),
             signature: signature.clone(),
         };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
-    
+
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
         }
-    
+
         assert!(res.is_ok());
-    
+
         let res = res.unwrap();
         assert_eq!(res.attributes.len(), 3);
         assert_eq!(res.attributes[0].key, "method");
@@ -553,40 +541,40 @@ mod tests {
         assert_eq!(res.attributes[1].value, operator.to_string());
         assert_eq!(res.attributes[2].key, "avs");
         assert_eq!(res.attributes[2].value, info.sender.to_string());
-    
+
         let storage = AVSDirectoryStorage::default();
         let status = storage.load_status(&deps.storage, info.sender.clone(), operator.clone()).unwrap();
         assert_eq!(status, OperatorAVSRegistrationStatus::Registered);
-    
+
         let is_salt_spent = storage.is_salt_spent(&deps.storage, operator.clone(), Binary::from(salt.as_bytes())).unwrap();
         assert!(is_salt_spent);
-    
+
         let query_msg = QueryMsg::QueryOperator {
             avs: info.sender.clone(),
             operator: operator.clone(),
         };
         let query_res: OperatorStatusResponse = from_json(query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
         println!("Query result: {:?}", query_res);
-    
+
         assert_eq!(query_res.status, OperatorAVSRegistrationStatus::Registered);
-    }    
+    }
 
     #[test]
     fn test_query_operator_unregistered() {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-    
+
         let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
         let (operator, _secret_key, _public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
         println!("Operator Address: {:?}", operator);
-    
+
         let instantiate_msg = InstantiateMsg {
             initial_owner: Addr::unchecked("owner"),
             delegation_manager: Addr::unchecked("delegation_manager"),
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
-    
+
         // Before RegisterOperatorToAVS, the operator should be unregistered
         let query_msg = QueryMsg::QueryOperator {
             avs: info.sender.clone(),
@@ -594,8 +582,8 @@ mod tests {
         };
         let query_res: OperatorStatusResponse = from_json(query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
         println!("Query result before registration: {:?}", query_res);
-    
+
         // Check if the status is Unregistered
         assert_eq!(query_res.status, OperatorAVSRegistrationStatus::Unregistered);
-    }    
+    }
 }

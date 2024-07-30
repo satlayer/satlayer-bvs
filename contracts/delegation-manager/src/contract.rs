@@ -1,6 +1,6 @@
 use crate::{
     error::ContractError,
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg, StrategyManagerQueryMsg, SignatureWithSaltAndExpiry},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg, StrategyManagerQueryMsg, SignatureWithExpiry},
     state::{
         DelegationManagerState, DELEGATION_MANAGER_STATE, OPERATOR_DETAILS, OWNER, OperatorDetails,
         MIN_WITHDRAWAL_DELAY_BLOCKS, STRATEGY_WITHDRAWAL_DELAY_BLOCKS, OPERATOR_SHARES, DELEGATION_APPROVER_SALT_SPENT
@@ -86,13 +86,13 @@ pub fn set_operator_details(
         .add_attribute("staker_opt_out_window_blocks", new_operator_details.staker_opt_out_window_blocks.to_string()))
 }
 
-pub fn delegate(
+fn _delegate(
     deps: DepsMut,
     info: MessageInfo,
     env: Env,
     staker: Addr,
     operator: Addr,
-    approver_signature_and_expiry: SignatureWithSaltAndExpiry,
+    approver_signature_and_expiry: SignatureWithExpiry,
     approver_salt: String,
 ) -> Result<Response, ContractError> {
     let delegation_approver = OPERATOR_DETAILS.load(deps.storage, &operator)?.delegation_approver;

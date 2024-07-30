@@ -27,14 +27,14 @@ pub enum ExecuteMsg {
     },
     DelegateTo {
         staker: Addr,
-        approver_signature_and_expiry: SignatureWithSaltAndExpiry,
+        approver_signature_and_expiry: SignatureWithExpiry,
         approver_salt: String,
     },
     DelegateToBySignature {
         staker: Addr,
         operator: Addr,
-        staker_signature_and_expiry: SignatureWithSaltAndExpiry,
-        approver_signature_and_expiry: SignatureWithSaltAndExpiry,
+        staker_signature_and_expiry: SignatureWithExpiry,
+        approver_signature_and_expiry: SignatureWithExpiry,
         approver_salt: String,
     },
     Undelegate {
@@ -121,12 +121,5 @@ pub struct Withdrawal {
 #[cw_serde]
 pub struct SignatureWithExpiry {
     pub signature: String,
-    pub expiry: u64,
-}
-
-#[cw_serde]
-pub struct SignatureWithSaltAndExpiry {
-    pub signature: String,
-    pub salt: String,
     pub expiry: u64,
 }
