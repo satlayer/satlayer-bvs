@@ -6,4 +6,3 @@ mod utils;
 
 pub use crate::error::ContractError;
 pub mod strategy_manager;
-

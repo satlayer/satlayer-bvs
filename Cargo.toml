@@ -1,9 +1,9 @@
 [workspace]
 members = [
-    "contracts/avs-directory",
-    "contracts/strategy-base",
-    "contracts/strategy-manager",
-    # "contracts/delegation-manager"
+    # "contracts/avs-directory",
+    # "contracts/strategy-base",
+    # "contracts/strategy-manager",
+    "contracts/delegation-manager"
     ]
 
 resolver = "2"
