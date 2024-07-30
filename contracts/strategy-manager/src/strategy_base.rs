@@ -39,8 +39,3 @@ pub enum QueryMsg {
 pub struct SharesResponse {
     pub total_shares: Uint128,
 }
-
-#[cw_serde]
-pub struct StakerStrategySharesResponse {
-    pub shares: Uint128,
-}

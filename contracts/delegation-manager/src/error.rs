@@ -6,11 +6,20 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
-    #[error("Unauthorized")]
+    #[error("DelegationManager._only_owner: Unauthorized")]
     Unauthorized {},
 
     #[error("DelegationManager.set_operator_details: stakerOptOutWindowBlocks cannot be > MAX_STAKER_OPT_OUT_WINDOW_BLOCKS")]
-    InvalidInput {},
+    CannotBeExceedMAXSTAKEROPTOUTWINDOWBLOCKS {},
+
+    #[error("DelegationManager._set_strategy_withdrawal_delay_blocks: withdrawalDelayBlocks cannot be > MAX_WITHDRAWAL_DELAY_BLOCKS")]
+    CannotBeExceedMAXWITHDRAWALDELAYBLOCKS {},
+
+    #[error("DelegationManager._set_min_withdrawal_delay_blocks: minWithdrawalDelayBlocks cannot be > MAX_WITHDRAWAL_DELAY_BLOCKS")]
+    MinCannotBeExceedMAXWITHDRAWALDELAYBLOCKS {},
+
+    #[error("DelegationManager._set_strategy_withdrawal_delay_blocks: input length mismatch")]
+    InputLengthMismatch {},
 
     #[error("DelegationManager.set_operator_details: stakerOptOutWindowBlocks cannot be decreased")]
     CannotBeDecreased {},
@@ -21,24 +30,15 @@ pub enum ContractError {
     #[error("DelegationManager.delegate: approver salt spent")]
     ApproverSaltSpent {},
 
-    #[error("Signature Expired")]
-    SignatureExpired {},
+    #[error("DelegationManager.delegate_to: staker already delegated")]
+    StakerAlreadyDelegated {},
 
-    #[error("Invalid Signature")]
-    InvalidSignature {},
+    #[error("DelegationManager: operator not registered")]
+    OperatorNotRegistered {},
 
-    #[error("Strategy Not Whitelisted")]
-    StrategyNotWhitelisted {},
+    #[error("DelegationManager.delegate_to_by_signature: staker signature expired")]
+    StakerSignatureExpired {},
 
-    #[error("Invalid Shares")]
-    InvalidShares {},
-
-    #[error("Max Strategy List Length Exceeded")]
-    MaxStrategyListLengthExceeded {},
-
-    #[error("Third Transfers Disabled")]
-    ThirdTransfersDisabled {},
-
-    #[error("Strategy Not Found")]
-    StrategyNotFound {},
+    #[error("DelegationManager.delegate_to_by_signature: nonce overflow")]
+    NonceOverflow,
 }
