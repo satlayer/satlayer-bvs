@@ -10,7 +10,7 @@ use crate::{
 };
 use cosmwasm_std::{
     entry_point, to_json_binary, Addr, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, WasmMsg, SubMsg,
-    Uint64, Binary
+    Uint64, Binary, WasmQuery
 };
 use strategy_base::ExecuteMsg as StrategyExecuteMsg;
 use std::str::FromStr;
@@ -78,12 +78,12 @@ pub fn execute(
             };
             deposit_into_strategy_with_signature(deps, env, info, params)
         },
-        ExecuteMsg::RemoveShares { staker, strategy, shares } => remove_shares(deps, info, staker, strategy, shares),
+        ExecuteMsg::RemoveShares { staker, strategy, shares } => _remove_shares(deps, info, staker, strategy, shares),
         ExecuteMsg::WithdrawSharesAsTokens { recipient, strategy, shares, token } => withdraw_shares_as_tokens(deps, info, recipient, strategy, shares, token),
     }
 }
 
-fn only_strategy_whitelister(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+fn _only_strategy_whitelister(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let whitelister: Addr = STRATEGY_WHITELISTER.load(deps.storage)?;
     if info.sender != whitelister {
         return Err(ContractError::Unauthorized {});
@@ -91,7 +91,7 @@ fn only_strategy_whitelister(deps: Deps, info: &MessageInfo) -> Result<(), Contr
     Ok(())
 }
 
-fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+fn _only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let owner = OWNER.load(deps.storage)?;
     if info.sender != owner {
         return Err(ContractError::Unauthorized {});
@@ -99,7 +99,7 @@ fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     Ok(())
 }
 
-fn only_delegation_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+fn _only_delegation_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
     if info.sender != state.delegation_manager {
         return Err(ContractError::Unauthorized {});
@@ -107,7 +107,7 @@ fn only_delegation_manager(deps: Deps, info: &MessageInfo) -> Result<(), Contrac
     Ok(())
 }
 
-fn only_strategies_whitelisted_for_deposit(deps: Deps, strategy: &Addr) -> Result<(), ContractError> {
+fn _only_strategies_whitelisted_for_deposit(deps: Deps, strategy: &Addr) -> Result<(), ContractError> {
     let whitelist = STRATEGY_WHITELIST.may_load(deps.storage, strategy)?.unwrap_or(false);
     if !whitelist {
         return Err(ContractError::StrategyNotWhitelisted {});
@@ -115,14 +115,14 @@ fn only_strategies_whitelisted_for_deposit(deps: Deps, strategy: &Addr) -> Resul
     Ok(())
 }
 
-fn add_strategies_to_whitelist(
+pub fn add_strategies_to_whitelist(
     deps: DepsMut,
     info: MessageInfo,
     strategies: Vec<Addr>,
     third_party_transfers_forbidden_values: Vec<bool>,
 ) -> Result<Response, ContractError> {
     // Ensure only the strategy whitelister can call this function
-    only_strategy_whitelister(deps.as_ref(), &info)?;
+    _only_strategy_whitelister(deps.as_ref(), &info)?;
 
     // Check if the length of strategies matches the length of third_party_transfers_forbidden_values
     if strategies.len() != third_party_transfers_forbidden_values.len() {
@@ -156,13 +156,13 @@ fn add_strategies_to_whitelist(
     Ok(response)
 }
 
-fn remove_strategies_from_whitelist(
+pub fn remove_strategies_from_whitelist(
     deps: DepsMut,
     info: MessageInfo,
     strategies: Vec<Addr>,
 ) -> Result<Response, ContractError> {
     // Ensure only the strategy whitelister can call this function
-    only_strategy_whitelister(deps.as_ref(), &info)?;
+    _only_strategy_whitelister(deps.as_ref(), &info)?;
 
     // Initialize response
     let mut response = Response::new()
@@ -189,12 +189,12 @@ fn remove_strategies_from_whitelist(
     Ok(response)
 }
 
-fn set_strategy_whitelister(
+pub fn set_strategy_whitelister(
     deps: DepsMut,
     info: MessageInfo,
     new_strategy_whitelister: Addr,
 ) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), &info)?;
+    _only_owner(deps.as_ref(), &info)?;
 
     STRATEGY_WHITELISTER.save(deps.storage, &new_strategy_whitelister)?;
 
@@ -203,13 +203,13 @@ fn set_strategy_whitelister(
         .add_attribute("new_strategy_whitelister", new_strategy_whitelister.to_string()))
 }
 
-fn set_third_party_transfers_forbidden(
+pub fn set_third_party_transfers_forbidden(
     deps: DepsMut,
     info: MessageInfo,
     strategy: Addr,
     value: bool,
 ) -> Result<Response, ContractError> {
-    only_strategy_whitelister(deps.as_ref(), &info)?;
+    _only_strategy_whitelister(deps.as_ref(), &info)?;
 
     THIRD_PARTY_TRANSFERS_FORBIDDEN.save(deps.storage, &strategy, &value)?;
 
@@ -241,12 +241,18 @@ fn _deposit_into_strategy(
     token: Addr,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    only_strategies_whitelisted_for_deposit(deps.as_ref(), &strategy)?;
+    _only_strategies_whitelisted_for_deposit(deps.as_ref(), &strategy)?;
 
-    let transfer_msg = create_transfer_msg(&info, &token, &strategy, amount)?;
-    let deposit_msg = create_deposit_msg(&strategy, amount)?;
+    let transfer_msg = _create_transfer_msg(&info, &token, &strategy, amount)?;
+    let deposit_msg = _create_deposit_msg(&strategy, amount)?;
 
-    let new_shares = Uint128::new(50); // TODO: Replace this with actual logic to get new shares
+    // Call the deposit function of the strategy_base contract to get new_shares
+    let deposit_response: Response = deps.querier.query(&WasmQuery::Smart {
+        contract_addr: strategy.to_string(),
+        msg: to_json_binary(&StrategyExecuteMsg::Deposit { amount })?,
+    }.into())?;
+    
+    let new_shares = _query_new_shares_from_response(&deposit_response)?;
 
     let deposit_response = Response::new()
         .add_message(transfer_msg)
@@ -256,7 +262,7 @@ fn _deposit_into_strategy(
         .add_attribute("amount", amount.to_string())
         .add_attribute("new_shares", new_shares.to_string());
 
-    let add_shares_response = add_shares(deps, info.clone(), staker.clone(), token.clone(), strategy.clone(), new_shares)?;
+    let add_shares_response = _add_shares(deps, info.clone(), staker.clone(), token.clone(), strategy.clone(), new_shares)?;
 
     Ok(deposit_response.add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: env.contract.address.to_string(),
@@ -333,7 +339,7 @@ pub fn deposit_into_strategy_with_signature(
     Ok(res)
 }
 
-fn create_transfer_msg(
+fn _create_transfer_msg(
     info: &MessageInfo,
     token: &Addr,
     strategy: &Addr,
@@ -350,7 +356,7 @@ fn create_transfer_msg(
     }))
 }
 
-fn create_deposit_msg(
+fn _create_deposit_msg(
     strategy: &Addr,
     amount: Uint128,
 ) -> StdResult<CosmosMsg> {
@@ -361,7 +367,7 @@ fn create_deposit_msg(
     }))
 }
 
-fn add_shares(
+fn _add_shares(
     deps: DepsMut,
     info: MessageInfo,
     staker: Addr,
@@ -369,7 +375,7 @@ fn add_shares(
     strategy: Addr,
     shares: Uint128,
 ) -> Result<Response, ContractError> {
-    only_delegation_manager(deps.as_ref(), &info)?;
+    _only_delegation_manager(deps.as_ref(), &info)?;
 
     if shares.is_zero() {
         return Err(ContractError::InvalidShares {});
@@ -402,14 +408,14 @@ fn add_shares(
         .add_attribute("shares", shares.to_string()))
 }
 
-fn remove_shares(
+fn _remove_shares(
     deps: DepsMut,
     info: MessageInfo,
     staker: Addr,
     strategy: Addr,
     shares: Uint128,
 ) -> Result<Response, ContractError> {
-    only_delegation_manager(deps.as_ref(), &info)?;
+    _only_delegation_manager(deps.as_ref(), &info)?;
 
     // Get the current shares for the staker and strategy
     let mut current_shares = STAKER_STRATEGY_SHARES
@@ -436,7 +442,7 @@ fn remove_shares(
         .add_attribute("shares", shares.to_string()))
 }
 
-fn remove_strategy_from_staker_strategy_list(
+pub fn remove_strategy_from_staker_strategy_list(
     deps: DepsMut,
     staker: Addr,
     strategy: Addr,
@@ -454,7 +460,7 @@ fn remove_strategy_from_staker_strategy_list(
     }
 }
 
-fn withdraw_shares_as_tokens(
+pub fn withdraw_shares_as_tokens(
     deps: DepsMut,
     info: MessageInfo,
     recipient: Addr,
@@ -463,7 +469,7 @@ fn withdraw_shares_as_tokens(
     token: Addr,
 ) -> Result<Response, ContractError> {
     // Ensure only the delegation manager can call this function
-    only_delegation_manager(deps.as_ref(), &info)?;
+    _only_delegation_manager(deps.as_ref(), &info)?;
 
     // Create the message to call the withdraw function on the strategy
     let withdraw_msg = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -514,11 +520,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetDeposits { staker } => to_json_binary(&get_deposits(deps, staker)?),
         QueryMsg::StakerStrategyListLength { staker } => to_json_binary(&staker_strategy_list_length(deps, staker)?),
-        QueryMsg::GetStakerStrategyShares { staker, strategy } => to_json_binary(&get_staker_strategy_shares(deps, staker, strategy)?),
+        QueryMsg::GetStakerStrategyShares { staker, strategy } => to_json_binary(&_get_staker_strategy_shares(deps, staker, strategy)?),
     }
 }
 
-fn get_staker_strategy_shares(deps: Deps, staker: Addr, strategy: Addr) -> StdResult<Uint128> {
+fn _get_staker_strategy_shares(deps: Deps, staker: Addr, strategy: Addr) -> StdResult<Uint128> {
     let shares = STAKER_STRATEGY_SHARES.load(deps.storage, (&staker, &strategy))?;
     Ok(shares)
 }
@@ -527,7 +533,7 @@ fn get_staker_strategy_shares(deps: Deps, staker: Addr, strategy: Addr) -> StdRe
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info};
-    use cosmwasm_std::{Addr, from_json};
+    use cosmwasm_std::{Addr, from_json, SystemResult, SystemError, ContractResult, Empty};
     use secp256k1::{Secp256k1, SecretKey, PublicKey, Message};
     use sha2::{Sha256, Digest};
     use ripemd::Ripemd160;
@@ -590,11 +596,11 @@ mod tests {
         let _res = instantiate(deps.as_mut(), env.clone(), info_creator, msg).unwrap();
 
         // Test with the correct whitelister
-        let result = only_strategy_whitelister(deps.as_ref(), &info_whitelister);
+        let result = _only_strategy_whitelister(deps.as_ref(), &info_whitelister);
         assert!(result.is_ok());
 
         // Test with an unauthorized user
-        let result = only_strategy_whitelister(deps.as_ref(), &info_unauthorized);
+        let result = _only_strategy_whitelister(deps.as_ref(), &info_unauthorized);
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -624,11 +630,11 @@ mod tests {
         let _res = instantiate(deps.as_mut(), env.clone(), info_creator, msg).unwrap();
 
         // Test with the correct owner
-        let result = only_owner(deps.as_ref(), &info_owner);
+        let result = _only_owner(deps.as_ref(), &info_owner);
         assert!(result.is_ok());
 
         // Test with an unauthorized user
-        let result = only_owner(deps.as_ref(), &info_unauthorized);
+        let result = _only_owner(deps.as_ref(), &info_unauthorized);
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -656,11 +662,11 @@ mod tests {
         let _res = instantiate(deps.as_mut(), env.clone(), info_creator, msg).unwrap();
 
         // Test with the correct delegation manager
-        let result = only_delegation_manager(deps.as_ref(), &info_delegation_manager);
+        let result = _only_delegation_manager(deps.as_ref(), &info_delegation_manager);
         assert!(result.is_ok());
 
         // Test with an unauthorized user
-        let result = only_delegation_manager(deps.as_ref(), &info_unauthorized);
+        let result = _only_delegation_manager(deps.as_ref(), &info_unauthorized);
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -691,12 +697,12 @@ mod tests {
         STRATEGY_WHITELIST.save(&mut deps.storage, &strategy, &true).unwrap();
 
         // Test with a whitelisted strategy
-        let result = only_strategies_whitelisted_for_deposit(deps.as_ref(), &strategy);
+        let result = _only_strategies_whitelisted_for_deposit(deps.as_ref(), &strategy);
         assert!(result.is_ok());
 
         // Test with a non-whitelisted strategy
         let non_whitelisted_strategy = Addr::unchecked("non_whitelisted_strategy");
-        let result = only_strategies_whitelisted_for_deposit(deps.as_ref(), &non_whitelisted_strategy);
+        let result = _only_strategies_whitelisted_for_deposit(deps.as_ref(), &non_whitelisted_strategy);
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -984,7 +990,7 @@ mod tests {
         let amount = Uint128::new(100);
     
         // Call the create_transfer_msg function
-        let msg_result = create_transfer_msg(&info, &token, &strategy, amount);
+        let msg_result = _create_transfer_msg(&info, &token, &strategy, amount);
     
         // Assert that the result is Ok
         assert!(msg_result.is_ok());
@@ -1016,7 +1022,7 @@ mod tests {
         let amount = Uint128::new(100);
     
         // Call the create_deposit_msg function
-        let msg_result = create_deposit_msg(&strategy, amount);
+        let msg_result = _create_deposit_msg(&strategy, amount);
     
         // Assert that the result is Ok
         assert!(msg_result.is_ok());
@@ -1068,6 +1074,21 @@ mod tests {
     
         let _res = execute(deps.as_mut(), env.clone(), info_whitelister.clone(), msg).unwrap();
     
+        // Clone strategy to use it inside the closure
+        let strategy_for_closure = strategy.clone();
+    
+        // Mock the response from strategy_base's deposit function
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg } if *contract_addr == strategy_for_closure.to_string() => {
+                let _: StrategyExecuteMsg = from_json(msg).unwrap();
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&Response::<Empty>::new().add_attribute("new_shares", "50")).unwrap()))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+    
         // Test deposit into strategy with whitelisted strategy via delegation manager
         let msg = ExecuteMsg::DepositIntoStrategy {
             strategy: strategy.clone(),
@@ -1092,7 +1113,7 @@ mod tests {
         if let CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }) = &res.messages[0].msg {
             assert_eq!(contract_addr, &token.to_string());
             let expected_msg = Cw20ExecuteMsg::TransferFrom {
-                owner: info_delegation_manager.sender.to_string(), // Use the correct delegation manager address
+                owner: info_delegation_manager.sender.to_string(),
                 recipient: strategy.to_string(),
                 amount,
             };
@@ -1127,7 +1148,8 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    }        
+    }
+                        
 
     #[test]
     fn test_get_deposits() {
@@ -1240,7 +1262,7 @@ mod tests {
         let shares = Uint128::new(100);
     
         // Test adding shares with the correct delegation manager
-        let res = add_shares(deps.as_mut(), info_delegation_manager.clone(), staker.clone(), token.clone(), strategy.clone(), shares).unwrap();
+        let res = _add_shares(deps.as_mut(), info_delegation_manager.clone(), staker.clone(), token.clone(), strategy.clone(), shares).unwrap();
     
         // Verify the response
         assert_eq!(res.attributes.len(), 5);
@@ -1267,7 +1289,7 @@ mod tests {
     
         // Test adding more shares to the same strategy
         let additional_shares = Uint128::new(50);
-        let res = add_shares(deps.as_mut(), info_delegation_manager.clone(), staker.clone(), token.clone(), strategy.clone(), additional_shares).unwrap();
+        let res = _add_shares(deps.as_mut(), info_delegation_manager.clone(), staker.clone(), token.clone(), strategy.clone(), additional_shares).unwrap();
     
         // Verify the response
         assert_eq!(res.attributes.len(), 5);
@@ -1288,7 +1310,7 @@ mod tests {
         assert_eq!(stored_shares, shares + additional_shares);
     
         // Test with an unauthorized user
-        let result = add_shares(deps.as_mut(), info_unauthorized.clone(), staker.clone(), token.clone(), strategy.clone(), shares);
+        let result = _add_shares(deps.as_mut(), info_unauthorized.clone(), staker.clone(), token.clone(), strategy.clone(), shares);
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -1298,7 +1320,7 @@ mod tests {
         }
     
         // Test with zero shares
-        let result = add_shares(deps.as_mut(), info_delegation_manager.clone(), staker.clone(), token.clone(), strategy.clone(), Uint128::zero());
+        let result = _add_shares(deps.as_mut(), info_delegation_manager.clone(), staker.clone(), token.clone(), strategy.clone(), Uint128::zero());
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -1315,7 +1337,7 @@ mod tests {
         STAKER_STRATEGY_LIST.save(&mut deps.storage, &staker, &strategy_list).unwrap();
     
         let new_strategy = Addr::unchecked("new_strategy");
-        let result = add_shares(deps.as_mut(), info_delegation_manager, staker.clone(), token.clone(), new_strategy.clone(), shares);
+        let result = _add_shares(deps.as_mut(), info_delegation_manager, staker.clone(), token.clone(), new_strategy.clone(), shares);
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -1482,7 +1504,7 @@ mod tests {
         // Whitelist a strategy
         let strategy = Addr::unchecked("strategy1");
         let token = Addr::unchecked("token1");
-        let amount = 100;
+        let amount = Uint128::new(100);
     
         let msg = ExecuteMsg::AddStrategiesToWhitelist {
             strategies: vec![strategy.clone()],
@@ -1498,28 +1520,41 @@ mod tests {
         let nonce = 0;
         let chain_id = env.block.chain_id.clone();
         let contract_addr = env.contract.address.clone();
-
+    
         let public_key = Binary::from(public_key_bytes);
-
+    
         let params = DigestHashParams {
             staker: staker.clone(),
             public_key: public_key.clone(),
             strategy: strategy.clone(),
             token: token.clone(),
-            amount,
+            amount: amount.u128(),
             nonce,
             expiry,
             chain_id: chain_id.to_string(),
             contract_addr: contract_addr.clone(),
         };
-
+    
         let signature = mock_signature_with_message(params, &secret_key);
+    
+        // Mock the response from strategy_base's deposit function
+        let strategy_for_closure = strategy.clone();
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg } if *contract_addr == strategy_for_closure.to_string() => {
+                let _: StrategyExecuteMsg = from_json(msg).unwrap();
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&Response::<Empty>::new().add_attribute("new_shares", "50")).unwrap()))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
     
         // Test deposit into strategy with signature via delegation manager
         let msg = ExecuteMsg::DepositIntoStrategyWithSignature {
             strategy: strategy.clone(),
             token: token.clone(),
-            amount: Uint128::from(amount),
+            amount,
             staker: staker.clone(),
             public_key,
             expiry: Uint64::from(expiry),
@@ -1545,7 +1580,7 @@ mod tests {
             let expected_msg = Cw20ExecuteMsg::TransferFrom {
                 owner: info_delegation_manager.sender.to_string(),
                 recipient: strategy.to_string(),
-                amount: Uint128::from(amount),
+                amount,
             };
             let actual_msg: Cw20ExecuteMsg = from_json(msg).unwrap();
             assert_eq!(actual_msg, expected_msg);
@@ -1555,7 +1590,7 @@ mod tests {
     
         if let SubMsg { msg: CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }), .. } = &res.messages[1] {
             assert_eq!(contract_addr, &strategy.to_string());
-            let expected_msg = StrategyExecuteMsg::Deposit { amount: Uint128::from(amount) };
+            let expected_msg = StrategyExecuteMsg::Deposit { amount };
             let actual_msg: StrategyExecuteMsg = from_json(msg).unwrap();
             assert_eq!(actual_msg, expected_msg);
         } else {
@@ -1564,7 +1599,6 @@ mod tests {
     
         // Verify nonce was incremented
         let stored_nonce = NONCES.load(&deps.storage, &staker).unwrap();
-        println!("Stored nonce after deposit: {}", stored_nonce);
         assert_eq!(stored_nonce, 1);
-    }    
+    }        
 }
