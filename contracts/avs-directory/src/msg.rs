@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Uint64};
+use cosmwasm_std::{Addr, Uint64, Binary};
 use crate::state::OperatorAVSRegistrationStatus;
 
 #[cw_serde]
@@ -12,7 +12,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     RegisterOperatorToAVS {
         operator: Addr,
-        public_key_hex: String,
+        public_key: Binary,
         signature: SignatureWithSaltAndExpiry,
     },
     DeregisterOperatorFromAVS {
@@ -22,7 +22,7 @@ pub enum ExecuteMsg {
         metadata_uri: String,
     },
     CancelSalt {
-        salt: String,
+        salt: Binary,
     },
     TransferOwnership {
         new_owner: Addr,
@@ -51,7 +51,7 @@ pub struct IsOperatorRegisteredResponse {
 
 #[cw_serde]
 pub struct SignatureWithSaltAndExpiry {
-    pub signature: String,
-    pub salt: String,
+    pub signature: Binary,
+    pub salt: Binary,
     pub expiry: Uint64,
 }

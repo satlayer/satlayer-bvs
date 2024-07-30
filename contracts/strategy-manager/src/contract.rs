@@ -9,7 +9,7 @@ use crate::{
     utils::{calculate_digest_hash, recover, DigestHashParams, DepositWithSignatureParams},
 };
 use cosmwasm_std::{
-    entry_point, to_json_binary, Addr, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, WasmMsg, SubMsg, StdError,
+    entry_point, to_json_binary, Addr, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, WasmMsg, SubMsg,
     Uint64, Binary
 };
 use strategy_base::ExecuteMsg as StrategyExecuteMsg;
@@ -60,15 +60,19 @@ pub fn execute(
         }
         ExecuteMsg::RemoveStrategiesFromWhitelist { strategies } => remove_strategies_from_whitelist(deps, info, strategies),
         ExecuteMsg::SetStrategyWhitelister { new_strategy_whitelister } => set_strategy_whitelister(deps, info, new_strategy_whitelister),
-        ExecuteMsg::DepositIntoStrategy { strategy, token, amount } => deposit_into_strategy(deps, env, info, strategy, token, amount),
+        ExecuteMsg::DepositIntoStrategy { strategy, token, amount } => {
+            let staker = info.sender.clone();
+            let response = deposit_into_strategy(deps, env, info, staker, strategy.clone(), token.clone(), amount)?;
+            Ok(response)
+        },
         ExecuteMsg::SetThirdPartyTransfersForbidden { strategy, value } => set_third_party_transfers_forbidden(deps, info, strategy, value),
-        ExecuteMsg::DepositIntoStrategyWithSignature { strategy, token, amount, staker,public_key_hex, expiry, signature } => {
+        ExecuteMsg::DepositIntoStrategyWithSignature { strategy, token, amount, staker, public_key, expiry, signature } => {
             let params = DepositWithSignatureParams {
                 strategy,
                 token,
                 amount,
                 staker,
-                public_key_hex,
+                public_key,
                 expiry,
                 signature,
             };
@@ -76,14 +80,6 @@ pub fn execute(
         },
         ExecuteMsg::RemoveShares { staker, strategy, shares } => remove_shares(deps, info, staker, strategy, shares),
         ExecuteMsg::WithdrawSharesAsTokens { recipient, strategy, shares, token } => withdraw_shares_as_tokens(deps, info, recipient, strategy, shares, token),
-    }
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    match msg {
-        QueryMsg::GetDeposits { staker } => to_json_binary(&get_deposits(deps, staker)?),
-        QueryMsg::StakerStrategyListLength { staker } => to_json_binary(&staker_strategy_list_length(deps, staker)?),
     }
 }
 
@@ -227,6 +223,20 @@ pub fn deposit_into_strategy(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
+    staker: Addr,
+    strategy: Addr,
+    token: Addr,
+    amount: Uint128,
+) -> Result<Response, ContractError> {
+    let response = _deposit_into_strategy(deps, env, info, staker, strategy, token, amount)?;
+    Ok(response)
+}
+
+fn _deposit_into_strategy(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    staker: Addr,
     strategy: Addr,
     token: Addr,
     amount: Uint128,
@@ -236,18 +246,17 @@ pub fn deposit_into_strategy(
     let transfer_msg = create_transfer_msg(&info, &token, &strategy, amount)?;
     let deposit_msg = create_deposit_msg(&strategy, amount)?;
 
-    let mut deposit_response = Response::new()
+    let new_shares = Uint128::new(50); // TODO: Replace this with actual logic to get new shares
+
+    let deposit_response = Response::new()
         .add_message(transfer_msg)
         .add_message(deposit_msg)
         .add_attribute("method", "deposit_into_strategy")
         .add_attribute("strategy", strategy.to_string())
-        .add_attribute("amount", amount.to_string());
+        .add_attribute("amount", amount.to_string())
+        .add_attribute("new_shares", new_shares.to_string());
 
-    // Simulate new_shares returned from strategy's deposit function
-    let new_shares = Uint128::new(50); // Replace this with actual logic to get new shares
-    deposit_response = deposit_response.add_attribute("new_shares", new_shares.to_string());
-
-    let add_shares_response = add_shares(deps, info.clone(), info.sender.clone(), strategy.clone(), new_shares)?;
+    let add_shares_response = add_shares(deps, info.clone(), staker.clone(), token.clone(), strategy.clone(), new_shares)?;
 
     Ok(deposit_response.add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: env.contract.address.to_string(),
@@ -256,13 +265,13 @@ pub fn deposit_into_strategy(
     }))))
 }
 
-fn _query_new_shares_from_response(response: &Response) -> StdResult<Uint128> {
+fn _query_new_shares_from_response(response: &Response) -> Result<Uint128, ContractError> {
     for attr in &response.attributes {
         if attr.key == "new_shares" {
-            return Uint128::from_str(&attr.value).map_err(|_| StdError::generic_err("Failed to parse new_shares"));
+            return Uint128::from_str(&attr.value).map_err(|_| ContractError::InvalidShares {});
         }
     }
-    Err(StdError::generic_err("new_shares attribute not found"))
+    Err(ContractError::InvalidShares {})
 }
 
 pub fn deposit_into_strategy_with_signature(
@@ -288,7 +297,7 @@ pub fn deposit_into_strategy_with_signature(
 
     let digest_params = DigestHashParams {
         staker: params.staker.clone(),
-        public_key_hex: params.public_key_hex.clone(),
+        public_key: params.public_key.clone(),
         strategy: params.strategy.clone(),
         token: params.token.clone(),
         amount: params.amount.u128(),
@@ -300,12 +309,7 @@ pub fn deposit_into_strategy_with_signature(
 
     let struct_hash = calculate_digest_hash(&digest_params);
 
-    let signature_bytes = hex::decode(&params.signature).map_err(|_| ContractError::InvalidSignature {})?;
-
-    let public_key_bytes = Binary::from(hex::decode(&params.public_key_hex)
-    .map_err(|_| StdError::generic_err("public_key_hex decode failed"))?); 
-    
-    if !recover(&struct_hash, &signature_bytes, &public_key_bytes)? {
+    if !recover(&struct_hash, &params.signature, &params.public_key)? {
         return Err(ContractError::InvalidSignature {});
     }
 
@@ -313,7 +317,7 @@ pub fn deposit_into_strategy_with_signature(
     NONCES.save(deps.storage, &params.staker, &(nonce + 1))?;
 
     // Call the original deposit_into_strategy function and capture its response
-    let deposit_res = deposit_into_strategy(deps, env.clone(), info, params.strategy.clone(), params.token.clone(), params.amount)?;
+    let deposit_res = _deposit_into_strategy(deps, env.clone(), info, params.strategy.clone(), params.strategy.clone(), params.token.clone(), params.amount)?;
 
     // Create a new Response with the required method attribute and append original messages and attributes
     let mut res = Response::new()
@@ -361,6 +365,7 @@ fn add_shares(
     deps: DepsMut,
     info: MessageInfo,
     staker: Addr,
+    token: Addr,
     strategy: Addr,
     shares: Uint128,
 ) -> Result<Response, ContractError> {
@@ -392,6 +397,7 @@ fn add_shares(
     Ok(Response::new()
         .add_attribute("method", "add_shares")
         .add_attribute("staker", staker.to_string())
+        .add_attribute("token", token.to_string())
         .add_attribute("strategy", strategy.to_string())
         .add_attribute("shares", shares.to_string()))
 }
@@ -501,6 +507,20 @@ pub fn staker_strategy_list_length(deps: Deps, staker: Addr) -> StdResult<Uint64
     let strategies = STAKER_STRATEGY_LIST.may_load(deps.storage, &staker)?
         .unwrap_or_else(Vec::new);
     Ok(Uint64::new(strategies.len() as u64))
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::GetDeposits { staker } => to_json_binary(&get_deposits(deps, staker)?),
+        QueryMsg::StakerStrategyListLength { staker } => to_json_binary(&staker_strategy_list_length(deps, staker)?),
+        QueryMsg::GetStakerStrategyShares { staker, strategy } => to_json_binary(&get_staker_strategy_shares(deps, staker, strategy)?),
+    }
+}
+
+fn get_staker_strategy_shares(deps: Deps, staker: Addr, strategy: Addr) -> StdResult<Uint128> {
+    let shares = STAKER_STRATEGY_SHARES.load(deps.storage, (&staker, &strategy))?;
+    Ok(shares)
 }
 
 #[cfg(test)]
@@ -956,9 +976,6 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn test_deposit_into_strategy_with_signature() {}
-
     #[test]
     fn test_create_transfer_msg() {
         let info = message_info(&Addr::unchecked("sender"), &[]);
@@ -1058,7 +1075,6 @@ mod tests {
             amount,
         };
     
-        // 修改 owner 为 delegation_manager 合约地址
         let res = execute(deps.as_mut(), env.clone(), info_delegation_manager.clone(), msg).unwrap();
     
         assert_eq!(res.attributes.len(), 4);
@@ -1069,7 +1085,7 @@ mod tests {
         assert_eq!(res.attributes[2].key, "amount");
         assert_eq!(res.attributes[2].value, amount.to_string());
         assert_eq!(res.attributes[3].key, "new_shares");
-        assert_eq!(res.attributes[3].value, "50"); // Mock value used in the function
+        assert_eq!(res.attributes[3].value, "50");
     
         // Verify the transfer and deposit messages
         assert_eq!(res.messages.len(), 3);
@@ -1206,7 +1222,7 @@ mod tests {
         let info_creator = message_info(&Addr::unchecked("creator"), &[]);
         let info_delegation_manager = message_info(&Addr::unchecked("delegation_manager"), &[]);
         let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-    
+
         // Instantiate the contract with the delegation manager
         let msg = InstantiateMsg {
             initial_owner: Addr::unchecked("owner"),
@@ -1218,23 +1234,26 @@ mod tests {
         let _res = instantiate(deps.as_mut(), env.clone(), info_creator, msg).unwrap();
     
         // Set up initial data
+        let token = Addr::unchecked("token");
         let staker = Addr::unchecked("staker");
         let strategy = Addr::unchecked("strategy");
         let shares = Uint128::new(100);
     
         // Test adding shares with the correct delegation manager
-        let res = add_shares(deps.as_mut(), info_delegation_manager.clone(), staker.clone(), strategy.clone(), shares).unwrap();
+        let res = add_shares(deps.as_mut(), info_delegation_manager.clone(), staker.clone(), token.clone(), strategy.clone(), shares).unwrap();
     
         // Verify the response
-        assert_eq!(res.attributes.len(), 4);
+        assert_eq!(res.attributes.len(), 5);
         assert_eq!(res.attributes[0].key, "method");
         assert_eq!(res.attributes[0].value, "add_shares");
         assert_eq!(res.attributes[1].key, "staker");
         assert_eq!(res.attributes[1].value, staker.to_string());
-        assert_eq!(res.attributes[2].key, "strategy");
-        assert_eq!(res.attributes[2].value, strategy.to_string());
-        assert_eq!(res.attributes[3].key, "shares");
-        assert_eq!(res.attributes[3].value, shares.to_string());
+        assert_eq!(res.attributes[2].key, "token");
+        assert_eq!(res.attributes[2].value, token.to_string());
+        assert_eq!(res.attributes[3].key, "strategy");
+        assert_eq!(res.attributes[3].value, strategy.to_string());
+        assert_eq!(res.attributes[4].key, "shares");
+        assert_eq!(res.attributes[4].value, shares.to_string());
     
         // Verify the shares were added correctly
         let stored_shares = STAKER_STRATEGY_SHARES.load(&deps.storage, (&staker, &strategy)).unwrap();
@@ -1248,18 +1267,20 @@ mod tests {
     
         // Test adding more shares to the same strategy
         let additional_shares = Uint128::new(50);
-        let res = add_shares(deps.as_mut(), info_delegation_manager.clone(), staker.clone(), strategy.clone(), additional_shares).unwrap();
+        let res = add_shares(deps.as_mut(), info_delegation_manager.clone(), staker.clone(), token.clone(), strategy.clone(), additional_shares).unwrap();
     
         // Verify the response
-        assert_eq!(res.attributes.len(), 4);
+        assert_eq!(res.attributes.len(), 5);
         assert_eq!(res.attributes[0].key, "method");
         assert_eq!(res.attributes[0].value, "add_shares");
         assert_eq!(res.attributes[1].key, "staker");
         assert_eq!(res.attributes[1].value, staker.to_string());
-        assert_eq!(res.attributes[2].key, "strategy");
-        assert_eq!(res.attributes[2].value, strategy.to_string());
-        assert_eq!(res.attributes[3].key, "shares");
-        assert_eq!(res.attributes[3].value, additional_shares.to_string());
+        assert_eq!(res.attributes[2].key, "token");
+        assert_eq!(res.attributes[2].value, token.to_string());
+        assert_eq!(res.attributes[3].key, "strategy");
+        assert_eq!(res.attributes[3].value, strategy.to_string());
+        assert_eq!(res.attributes[4].key, "shares");
+        assert_eq!(res.attributes[4].value, additional_shares.to_string());
     
         // Verify the shares were added correctly
         let stored_shares = STAKER_STRATEGY_SHARES.load(&deps.storage, (&staker, &strategy)).unwrap();
@@ -1267,7 +1288,7 @@ mod tests {
         assert_eq!(stored_shares, shares + additional_shares);
     
         // Test with an unauthorized user
-        let result = add_shares(deps.as_mut(), info_unauthorized.clone(), staker.clone(), strategy.clone(), shares);
+        let result = add_shares(deps.as_mut(), info_unauthorized.clone(), staker.clone(), token.clone(), strategy.clone(), shares);
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -1277,7 +1298,7 @@ mod tests {
         }
     
         // Test with zero shares
-        let result = add_shares(deps.as_mut(), info_delegation_manager.clone(), staker.clone(), strategy.clone(), Uint128::zero());
+        let result = add_shares(deps.as_mut(), info_delegation_manager.clone(), staker.clone(), token.clone(), strategy.clone(), Uint128::zero());
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -1294,7 +1315,7 @@ mod tests {
         STAKER_STRATEGY_LIST.save(&mut deps.storage, &staker, &strategy_list).unwrap();
     
         let new_strategy = Addr::unchecked("new_strategy");
-        let result = add_shares(deps.as_mut(), info_delegation_manager, staker.clone(), new_strategy.clone(), shares);
+        let result = add_shares(deps.as_mut(), info_delegation_manager, staker.clone(), token.clone(), new_strategy.clone(), shares);
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -1417,11 +1438,11 @@ mod tests {
     fn mock_signature_with_message(
         params: DigestHashParams,
         secret_key: &SecretKey,
-    ) -> String {
+    ) -> Binary {
         let params = DigestHashParams {
             staker: params.staker,
             strategy: params.strategy,
-            public_key_hex: params.public_key_hex,
+            public_key: params.public_key,
             token: params.token,
             amount: params.amount,
             nonce: params.nonce,
@@ -1437,7 +1458,7 @@ mod tests {
         let signature = secp.sign_ecdsa(&message, secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
         
-        hex::encode(signature_bytes) 
+        Binary::from(signature_bytes)
     }    
 
     #[test]
@@ -1478,11 +1499,11 @@ mod tests {
         let chain_id = env.block.chain_id.clone();
         let contract_addr = env.contract.address.clone();
 
-        let public_key_hex = hex::encode(public_key_bytes);
+        let public_key = Binary::from(public_key_bytes);
 
         let params = DigestHashParams {
             staker: staker.clone(),
-            public_key_hex: public_key_hex.clone(),
+            public_key: public_key.clone(),
             strategy: strategy.clone(),
             token: token.clone(),
             amount,
@@ -1500,7 +1521,7 @@ mod tests {
             token: token.clone(),
             amount: Uint128::from(amount),
             staker: staker.clone(),
-            public_key_hex: public_key_hex.clone(),
+            public_key,
             expiry: Uint64::from(expiry),
             signature,
         };
@@ -1524,7 +1545,7 @@ mod tests {
             let expected_msg = Cw20ExecuteMsg::TransferFrom {
                 owner: info_delegation_manager.sender.to_string(),
                 recipient: strategy.to_string(),
-                amount:Uint128::from(amount),
+                amount: Uint128::from(amount),
             };
             let actual_msg: Cw20ExecuteMsg = from_json(msg).unwrap();
             assert_eq!(actual_msg, expected_msg);
@@ -1534,7 +1555,7 @@ mod tests {
     
         if let SubMsg { msg: CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }), .. } = &res.messages[1] {
             assert_eq!(contract_addr, &strategy.to_string());
-            let expected_msg = StrategyExecuteMsg::Deposit { amount:Uint128::from(amount) };
+            let expected_msg = StrategyExecuteMsg::Deposit { amount: Uint128::from(amount) };
             let actual_msg: StrategyExecuteMsg = from_json(msg).unwrap();
             assert_eq!(actual_msg, expected_msg);
         } else {
