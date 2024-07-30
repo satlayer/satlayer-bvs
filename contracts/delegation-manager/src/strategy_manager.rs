@@ -1,8 +1,5 @@
-// strategy_manager.rs
-
-use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Uint128, Uint64};
-use cw_storage_plus::{Item, Map};
+use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::{Addr, Uint128, Uint64, Binary};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -38,8 +35,9 @@ pub enum ExecuteMsg {
         token: Addr,
         amount: Uint128,
         staker: Addr,
+        public_key: Binary,
         expiry: Uint64,
-        signature: String,
+        signature: Binary,
     },
     RemoveShares {
         staker: Addr,
@@ -55,30 +53,30 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(SharesResponse)]
     GetDeposits { staker: Addr },
+    #[returns(LengthResponse)]
     StakerStrategyListLength { staker: Addr },
+    #[returns(SharesResponse)]
+    GetStakerStrategyShares { staker: Addr, strategy: Addr },
 }
 
 #[cw_serde]
 pub struct SignatureWithSaltAndExpiry {
-    pub signature: String,
-    pub salt: String,
+    pub signature: Binary,
+    pub salt: Binary,
     pub expiry: Uint64,
 }
 
 #[cw_serde]
-pub struct StrategyManagerState {
-    pub delegation_manager: Addr,
-    pub slasher: Addr,
+pub struct SharesResponse {
+    pub strategies: Vec<Addr>,
+    pub shares: Vec<Uint128>,
 }
 
-pub const STRATEGY_MANAGER_STATE: Item<StrategyManagerState> = Item::new("strategy_manager_state");
-pub const STRATEGY_WHITELISTER: Item<Addr> = Item::new("strategy_whitelister");
-pub const STRATEGY_WHITELIST: Map<&Addr, bool> = Map::new("strategy_whitelist");
-pub const OWNER: Item<Addr> = Item::new("owner");
-pub const STAKER_STRATEGY_SHARES: Map<(&Addr, &Addr), Uint128> = Map::new("staker_strategy_shares");
-pub const STAKER_STRATEGY_LIST: Map<&Addr, Vec<Addr>> = Map::new("staker_strategy_list");
-pub const MAX_STAKER_STRATEGY_LIST_LENGTH: usize = 10;
-pub const THIRD_PARTY_TRANSFERS_FORBIDDEN: Map<&Addr, bool> = Map::new("third_party_transfers_forbidden");
-pub const NONCES: Map<&Addr, u64> = Map::new("nonces");
+#[cw_serde]
+pub struct LengthResponse {
+    pub length: Uint64,
+}

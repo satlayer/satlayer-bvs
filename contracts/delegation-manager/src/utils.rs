@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, StdResult};
+use cosmwasm_std::{Addr, StdResult, Binary};
 use sha2::{Sha256, Digest};
 use cosmwasm_crypto::secp256k1_verify;
 
@@ -13,25 +13,32 @@ fn sha256(input: &[u8]) -> Vec<u8> {
     hasher.finalize().to_vec()
 }
 
-pub struct DigestHashParams {
+pub struct DelegateParams {
     pub staker: Addr,
     pub operator: Addr,
-    pub delegationApprover: Addr,
-    pub approver_public_key_hex: String,
-    pub nonce: u64,
+    pub public_key: Binary,
+    pub salt: Binary,
+}
+
+pub struct ApproverDigestHashParams {
+    pub staker: Addr,
+    pub operator: Addr,
+    pub delegation_approver: Addr,
+    pub approver_public_key: Binary,
+    pub approver_salt: Binary,
     pub expiry: u64,
     pub chain_id: String,
     pub contract_addr: Addr,
 }
 
-pub fn calculate_digest_hash(params: &DigestHashParams) -> Vec<u8> {
+pub fn calculate_delegation_approval_digest_hash(params: &ApproverDigestHashParams) -> Vec<u8> {
     let struct_hash_input = [
         &sha256(DELEGATION_APPROVAL_TYPEHASH)[..],
-        params.delegationApprover.as_bytes(),
-        params.approver_public_key_hex.as_bytes(),
+        params.delegation_approver.as_bytes(),
+        params.approver_public_key.as_slice(),
         params.staker.as_bytes(),
         params.operator.as_bytes(),
-        &params.nonce.to_le_bytes(),
+        params.approver_salt.as_slice(),
         &params.expiry.to_le_bytes(),
     ]
     .concat();
@@ -51,12 +58,50 @@ pub fn calculate_digest_hash(params: &DigestHashParams) -> Vec<u8> {
     ]
     .concat();
 
-    let approver_digest_hash = sha256(&digest_hash_input);
-    approver_digest_hash
+    sha256(&digest_hash_input)
 }
 
-pub fn recover(approver_digest_hash: &[u8], signature: &[u8], approver_public_key_bytes: &[u8]) -> StdResult<bool> {
-    match secp256k1_verify(approver_digest_hash, signature, approver_public_key_bytes) {
+pub struct StakerDigestHashParams {
+    pub staker: Addr,
+    pub staker_nonce: u128,
+    pub operator: Addr,
+    pub staker_public_key: Binary,
+    pub expiry: u64,
+    pub chain_id: String,
+    pub contract_addr: Addr,
+}
+
+pub fn calculate_staker_delegation_digest_hash(params: &StakerDigestHashParams) -> Vec<u8> {
+    let struct_hash_input = [
+        &sha256(STAKER_DELEGATION_TYPEHASH)[..],
+        params.staker.as_bytes(),
+        params.operator.as_bytes(),
+        params.staker_public_key.as_slice(),
+        &params.staker_nonce.to_le_bytes(),
+        &params.expiry.to_le_bytes()
+    ]
+    .concat();
+    let staker_struct_hash = sha256(&struct_hash_input);
+
+    let domain_separator = sha256(&[
+        &sha256(DOMAIN_TYPEHASH)[..],
+        &sha256(DOMAIN_NAME)[..],
+        &sha256(params.chain_id.as_bytes())[..],
+        params.contract_addr.as_bytes(),
+    ].concat());
+
+    let digest_hash_input = [
+        b"\x19\x01",
+        &domain_separator[..],
+        &staker_struct_hash[..],
+    ]
+    .concat();
+
+    sha256(&digest_hash_input)
+}
+
+pub fn recover(digest_hash: &[u8], signature: &[u8], public_key_bytes: &[u8]) -> StdResult<bool> {
+    match secp256k1_verify(digest_hash, signature, public_key_bytes) {
         Ok(valid) => Ok(valid),
         Err(_) => Ok(false),
     }
