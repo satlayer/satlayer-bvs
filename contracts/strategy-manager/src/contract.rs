@@ -517,6 +517,20 @@ pub fn staker_strategy_list_length(deps: Deps, staker: Addr) -> StdResult<Uint64
     Ok(Uint64::new(strategies.len() as u64))
 }
 
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::GetDeposits { staker } => to_json_binary(&get_deposits(deps, staker)?),
+        QueryMsg::StakerStrategyListLength { staker } => to_json_binary(&staker_strategy_list_length(deps, staker)?),
+        QueryMsg::GetStakerStrategyShares { staker, strategy } => to_json_binary(&get_staker_strategy_shares(deps, staker, strategy)?),
+    }
+}
+
+fn get_staker_strategy_shares(deps: Deps, staker: Addr, strategy: Addr) -> StdResult<Uint128> {
+    let shares = STAKER_STRATEGY_SHARES.load(deps.storage, (&staker, &strategy))?;
+    Ok(shares)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

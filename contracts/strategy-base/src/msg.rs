@@ -23,7 +23,8 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(SharesResponse)]
     GetShares {
-        user: Addr,
+        staker: Addr,
+        strategy: Addr, 
     },
     #[returns(Uint128)]
     SharesToUnderlyingView {
