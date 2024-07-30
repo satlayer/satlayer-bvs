@@ -52,7 +52,7 @@ pub fn execute(
     }
 }
 
-fn ensure_strategy_manager(info: &MessageInfo, strategy_manager: &Addr) -> Result<(), ContractError> {
+fn _ensure_strategy_manager(info: &MessageInfo, strategy_manager: &Addr) -> Result<(), ContractError> {
     if info.sender != strategy_manager {
         return Err(ContractError::Unauthorized {});
     }
@@ -81,11 +81,11 @@ pub fn deposit(
 ) -> Result<Response, ContractError> {
     let mut state = STRATEGY_STATE.load(deps.storage)?;
 
-    ensure_strategy_manager(&info, &state.strategy_manager)?;
+    _ensure_strategy_manager(&info, &state.strategy_manager)?;
     _before_deposit(&state, &state.underlying_token)?;
 
     let balance = query_token_balance(&deps.querier, &state.underlying_token, &env.contract.address)?;
-    let new_shares = calculate_new_shares(&state, amount, balance)?;
+    let new_shares = _calculate_new_shares(&state, amount, balance)?;
 
     state.total_shares += new_shares;
     STRATEGY_STATE.save(deps.storage, &state)?;
@@ -105,7 +105,7 @@ pub fn withdraw(
 ) -> Result<Response, ContractError> {
     let mut state = STRATEGY_STATE.load(deps.storage)?;
 
-    ensure_strategy_manager(&info, &state.strategy_manager)?;
+    _ensure_strategy_manager(&info, &state.strategy_manager)?;
     _before_withdrawal(&state, &state.underlying_token)?;
 
     if amount_shares > state.total_shares {
@@ -113,7 +113,7 @@ pub fn withdraw(
     }
 
     let balance = query_token_balance(&deps.querier, &state.underlying_token, &env.contract.address)?;
-    let amount_to_send = calculate_amount_to_send(&state, amount_shares, balance)?;
+    let amount_to_send = _calculate_amount_to_send(&state, amount_shares, balance)?;
 
     state.total_shares -= amount_shares;
     STRATEGY_STATE.save(deps.storage, &state)?;
@@ -142,7 +142,7 @@ fn _after_withdrawal(token: &Addr, recipient: &Addr, amount: Uint128) -> Result<
     Ok(Response::new().add_message(CosmosMsg::Wasm(msg)))
 }
 
-fn calculate_new_shares(state: &StrategyState, amount: Uint128, balance: Uint128) -> Result<Uint128, ContractError> {
+fn _calculate_new_shares(state: &StrategyState, amount: Uint128, balance: Uint128) -> Result<Uint128, ContractError> {
     let virtual_share_amount = state.total_shares + SHARES_OFFSET;
     let virtual_token_balance = balance + BALANCE_OFFSET;
     let virtual_prior_token_balance = virtual_token_balance - amount;
@@ -155,7 +155,7 @@ fn calculate_new_shares(state: &StrategyState, amount: Uint128, balance: Uint128
     Ok(new_shares)
 }
 
-fn calculate_amount_to_send(state: &StrategyState, amount_shares: Uint128, balance: Uint128) -> StdResult<Uint128> {
+fn _calculate_amount_to_send(state: &StrategyState, amount_shares: Uint128, balance: Uint128) -> StdResult<Uint128> {
     let virtual_total_shares = state.total_shares + SHARES_OFFSET;
     let virtual_token_balance = balance + BALANCE_OFFSET;
     let amount_to_send = (virtual_token_balance * amount_shares) / virtual_total_shares;
@@ -176,13 +176,13 @@ fn query_token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetShares { staker, strategy } => to_json_binary(&query_shares(deps, env, staker, strategy)?),
+        QueryMsg::GetShares { staker, strategy } => to_json_binary(&_query_shares(deps, env, staker, strategy)?),
         QueryMsg::SharesToUnderlyingView { amount_shares } => to_json_binary(&shares_to_underlying_view(deps, env, amount_shares)?),
         QueryMsg::UnderlyingToShareView { amount } => to_json_binary(&underlying_to_share_view(deps, env, amount)?),
     }
 }
 
-fn query_shares(deps: Deps, _env: Env, user: Addr, strategy: Addr) -> StdResult<SharesResponse> {
+fn _query_shares(deps: Deps, _env: Env, user: Addr, strategy: Addr) -> StdResult<SharesResponse> {
     let state = STRATEGY_STATE.load(deps.storage)?;
 
     // Query strategy manager contract for shares
@@ -390,11 +390,11 @@ mod tests {
         let info = message_info(&Addr::unchecked("manager"), &[]);
         let strategy_manager = Addr::unchecked("manager");
 
-        let result = ensure_strategy_manager(&info, &strategy_manager);
+        let result = _ensure_strategy_manager(&info, &strategy_manager);
         assert!(result.is_ok());
 
         let info_wrong = message_info(&Addr::unchecked("other_manager"), &[]);
-        let result_wrong = ensure_strategy_manager(&info_wrong, &strategy_manager);
+        let result_wrong = _ensure_strategy_manager(&info_wrong, &strategy_manager);
         assert!(result_wrong.is_err());
     }
 
@@ -442,7 +442,7 @@ mod tests {
         let amount = Uint128::new(1_000);
         let balance = Uint128::new(1_000_000);
 
-        let new_shares = calculate_new_shares(&state, amount, balance).unwrap();
+        let new_shares = _calculate_new_shares(&state, amount, balance).unwrap();
         assert_eq!(new_shares, Uint128::new(1));
 
         let state_with_shares = StrategyState {
@@ -450,7 +450,7 @@ mod tests {
             ..state
         };
 
-        let new_shares = calculate_new_shares(&state_with_shares, amount, balance).unwrap();
+        let new_shares = _calculate_new_shares(&state_with_shares, amount, balance).unwrap();
         assert_eq!(new_shares, Uint128::new(2));
     }
 
@@ -464,7 +464,7 @@ mod tests {
         let balance = Uint128::new(1_000_000);
         let amount_shares = Uint128::new(1);
 
-        let amount_to_send = calculate_amount_to_send(&state, amount_shares, balance).unwrap();
+        let amount_to_send = _calculate_amount_to_send(&state, amount_shares, balance).unwrap();
         assert_eq!(amount_to_send, Uint128::new(500));
     }
 
