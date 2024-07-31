@@ -653,6 +653,96 @@ fn _complete_queued_withdrawal(
     _middleware_times_index: u64,
     receive_as_tokens: bool,
 ) -> Result<Response, ContractError> {
+    let state = DELEGATION_MANAGER_STATE.load(deps.storage)?;
+
+    // Calculate the withdrawal root
+    let withdrawal_root = calculate_withdrawal_root(&withdrawal)?;
+
+    // Ensure the withdrawal is pending
+    if !PENDING_WITHDRAWALS.has(deps.storage, &withdrawal_root) {
+        return Err(ContractError::ActionNotInQueue {});
+    }
+
+    // Ensure minWithdrawalDelayBlocks period has passed
+    if withdrawal.start_block + MIN_WITHDRAWAL_DELAY_BLOCKS.load(deps.storage)? > env.block.height {
+        return Err(ContractError::MinWithdrawalDelayNotPassed {});
+    }
+
+    // Ensure only the withdrawer can complete the action
+    if info.sender != withdrawal.withdrawer {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // Check input length mismatch
+    if receive_as_tokens && tokens.len() != withdrawal.strategies.len() {
+        return Err(ContractError::InputLengthMismatch {});
+    }
+
+    // Remove the withdrawal from pending withdrawals
+    PENDING_WITHDRAWALS.remove(deps.storage, &withdrawal_root);
+
+    let mut response = Response::new();
+
+    if receive_as_tokens {
+        for (i, strategy) in withdrawal.strategies.iter().enumerate() {
+            // Ensure strategyWithdrawalDelayBlocks period has passed for this strategy
+            let delay_blocks = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.load(deps.storage, strategy)?;
+            if withdrawal.start_block + delay_blocks.u64() > env.block.height {
+                return Err(ContractError::StrategyWithdrawalDelayNotPassed {});
+            }
+
+            let sub_response = _withdraw_shares_as_tokens(
+                withdrawal.staker.clone(),
+                info.sender.clone(),
+                withdrawal.strategies[i].clone(),
+                withdrawal.shares[i],
+                tokens[i].clone(),
+            )?;
+
+            response = response.add_attributes(sub_response.attributes);
+        }
+    } else {
+        let current_operator = DELEGATED_TO.may_load(deps.storage, &info.sender)?;
+
+        for (i, strategy) in withdrawal.strategies.iter().enumerate() {
+            let delay_blocks = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.load(deps.storage, strategy)?;
+            if withdrawal.start_block + delay_blocks.u64() > env.block.height {
+                return Err(ContractError::StrategyWithdrawalDelayNotPassed {});
+            }
+
+            let msg = WasmMsg::Execute {
+                contract_addr: state.strategy_manager.to_string(),
+                msg: to_json_binary(&strategy_manager::ExecuteMsg::AddShares {
+                    staker: info.sender.clone(),
+                    token: tokens[i].clone(),
+                    strategy: withdrawal.strategies[i].clone(),
+                    shares: withdrawal.shares[i],
+                })?,
+                funds: vec![],
+            };
+
+            response = response.add_message(CosmosMsg::Wasm(msg));
+
+            if let Some(ref operator) = current_operator {
+                if operator != Addr::unchecked("0") {
+                    _increase_operator_shares(
+                        deps.branch(),
+                        operator.clone(),
+                        info.sender.clone(),
+                        strategy.clone(),
+                        withdrawal.shares[i],
+                    )?;
+                }
+            }
+        }
+    }
+
+    response = response.add_event(
+        Event::new("WithdrawalCompleted")
+            .add_attribute("withdrawal_root", withdrawal_root.to_string())
+    );
+
+    Ok(response)
 }
 
 fn _remove_shares_and_queue_withdrawal(
@@ -664,6 +754,75 @@ fn _remove_shares_and_queue_withdrawal(
     strategies: Vec<Addr>,
     shares: Vec<Uint128>,
 ) -> Result<String, ContractError> {
+    if staker == Addr::unchecked("0") {
+        return Err(ContractError::CannotBeZero {});
+    }
+
+    if strategies.is_empty() {
+        return Err(ContractError::CannotBeEmpty {});
+    }
+
+    let state = DELEGATION_MANAGER_STATE.load(deps.storage)?;
+
+    let mut response: Response<()> = Response::new();
+
+    for (i, strategy) in strategies.iter().enumerate() {
+        let share_amount = shares[i];
+
+        if operator != Addr::unchecked("0") {
+            _decrease_operator_shares(deps.branch(), operator.clone(), staker.clone(), strategy.clone(), share_amount)?;
+        }
+
+        let forbidden: bool = deps.querier.query_wasm_smart(
+            state.strategy_manager.clone(),
+            &strategy_manager::QueryMsg::IsThirdPartyTransfersForbidden {
+                strategy: strategy.clone(),
+            },
+        )?;
+
+        if staker != withdrawer && forbidden {
+            return Err(ContractError::MustBeSameAddress {});
+        }
+
+        let msg = WasmMsg::Execute {
+            contract_addr: state.strategy_manager.to_string(),
+            msg: to_json_binary(&strategy_manager::ExecuteMsg::RemoveShares {
+                staker: staker.clone(),
+                strategy: strategy.clone(),
+                shares: share_amount,
+            })?,
+            funds: vec![],
+        };
+
+        response = response.add_message(CosmosMsg::Wasm(msg));
+    }
+
+    let nonce = CUMULATIVE_WITHDRAWALS_QUEUED.may_load(deps.storage, &staker)?.unwrap_or(0);
+    let new_nonce = nonce + 1;
+    CUMULATIVE_WITHDRAWALS_QUEUED.save(deps.storage, &staker, &new_nonce)?;
+
+    let withdrawal = Withdrawal {
+        staker: staker.clone(),
+        delegated_to: operator.clone(),
+        withdrawer: withdrawer.clone(),
+        nonce,
+        start_block: env.block.height,
+        strategies: strategies.clone(),
+        shares: shares.clone(),
+    };
+
+    let withdrawal_root = calculate_withdrawal_root(&withdrawal)?;
+    PENDING_WITHDRAWALS.save(deps.storage, &withdrawal_root, &true)?;
+
+    response.add_event(
+        Event::new("WithdrawalQueued")
+            .add_attribute("withdrawal_root", withdrawal_root.to_string())
+            .add_attribute("staker", staker.to_string())
+            .add_attribute("operator", operator.to_string())
+            .add_attribute("withdrawer", withdrawer.to_string())
+    );
+
+    Ok(withdrawal_root.to_string())
 }
 
 fn _withdraw_shares_as_tokens(
