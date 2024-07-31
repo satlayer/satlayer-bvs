@@ -15,16 +15,22 @@ pub struct OperatorDetails {
     pub staker_opt_out_window_blocks: u64,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct QueuedWithdrawalParams {
+    pub withdrawer: Addr,
+    pub strategies: Vec<Addr>,
+    pub shares: Vec<Uint128>,
+}
+
 pub const DELEGATION_MANAGER_STATE: Item<DelegationManagerState> = Item::new("delegation_manager_state");
 pub const OPERATOR_DETAILS: Map<&Addr, OperatorDetails> = Map::new("operator_details");
 pub const DELEGATED_TO: Map<&Addr, Addr> = Map::new("delegated_to");
 pub const OPERATOR_SHARES: Map<(&Addr, &Addr), Uint128> = Map::new("operator_shares");
 pub const STAKER_NONCE: Map<&Addr, u128> = Map::new("staker_nonce");
-// pub const PENDING_WITHDRAWALS: Map<&Addr, Withdrawal> = Map::new("pending_withdrawals");
+pub const PENDING_WITHDRAWALS: Map<&[u8], bool> = Map::new("pending_withdrawals");
 pub const STRATEGY_WITHDRAWAL_DELAY_BLOCKS: Map<&Addr, Uint64> = Map::new("strategy_withdrawal_delay_blocks");
 pub const STRATEGY_MANAGER: Item<Addr> = Item::new("strategy_manager");
 pub const SLASHER: Item<Addr> = Item::new("slasher");
-pub const EIGEN_POD_MANAGER: Item<Addr> = Item::new("eigen_pod_manager");
 pub const MIN_WITHDRAWAL_DELAY_BLOCKS: Item<u64> = Item::new("min_withdrawal_delay_blocks");
 pub const CUMULATIVE_WITHDRAWALS_QUEUED: Map<&Addr, u128> = Map::new("cumulative_withdrawals_queued");
 pub const DOMAIN_SEPARATOR: Item<Binary> = Item::new("domain_separator");
