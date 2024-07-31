@@ -5,14 +5,16 @@ use crate::{
     state::{
         DelegationManagerState, DELEGATION_MANAGER_STATE, OPERATOR_DETAILS, OWNER, OperatorDetails, MIN_WITHDRAWAL_DELAY_BLOCKS,
         DELEGATED_TO, STRATEGY_WITHDRAWAL_DELAY_BLOCKS, OPERATOR_SHARES, DELEGATION_APPROVER_SALT_SPENT, DOMAIN_SEPARATOR,
-        STAKER_NONCE,
+        STAKER_NONCE, PENDING_WITHDRAWALS, CUMULATIVE_WITHDRAWALS_QUEUED, QueuedWithdrawalParams
     },
-    utils::{calculate_delegation_approval_digest_hash, calculate_staker_delegation_digest_hash, recover, ApproverDigestHashParams, StakerDigestHashParams, DelegateParams},
+    utils::{calculate_delegation_approval_digest_hash, calculate_staker_delegation_digest_hash, recover, 
+        ApproverDigestHashParams, StakerDigestHashParams, DelegateParams, calculate_withdrawal_root, Withdrawal
+    },
 };
 use strategy_manager::QueryMsg as StrategyManagerQueryMsg;
 use cosmwasm_std::{
     entry_point, to_json_binary, Addr, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint64, Uint128, WasmQuery, Event,
-    Binary
+    Binary, WasmMsg, CosmosMsg
 };
 use cw2::set_contract_version;
 
@@ -25,7 +27,6 @@ const MAX_WITHDRAWAL_DELAY_BLOCKS: u64 = 216_000;
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     mut deps: DepsMut,
-    info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
@@ -38,10 +39,10 @@ pub fn instantiate(
     DELEGATION_MANAGER_STATE.save(deps.storage, &state)?;
     DOMAIN_SEPARATOR.save(deps.storage, &msg.domain_separator)?;
     OWNER.save(deps.storage, &msg.initial_owner)?;
-    _set_min_withdrawal_delay_blocks(deps.branch(), info.clone(), msg.min_withdrawal_delay_blocks)?;
+    _set_min_withdrawal_delay_blocks(deps.branch(), msg.min_withdrawal_delay_blocks)?;
 
     let withdrawal_delay_blocks: Vec<Uint64> = msg.withdrawal_delay_blocks.iter().map(|&block| Uint64::from(block)).collect();
-    _set_strategy_withdrawal_delay_blocks(deps.branch(), info, msg.strategies, withdrawal_delay_blocks)?;
+    _set_strategy_withdrawal_delay_blocks(deps.branch(), msg.strategies, withdrawal_delay_blocks)?;
 
     let response = Response::new()
         .add_attribute("method", "instantiate")
@@ -61,14 +62,28 @@ fn _only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     Ok(())
 }
 
-fn _set_min_withdrawal_delay_blocks(
+fn _only_strategy_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+    let state = DELEGATION_MANAGER_STATE.load(deps.storage)?;
+    if info.sender != state.strategy_manager {
+        return Err(ContractError::Unauthorized {});
+    }
+    Ok(())
+}
+
+pub fn set_min_withdrawal_delay_blocks(
     deps: DepsMut,
     info: MessageInfo,
-    min_withdrawal_delay_blocks: u64,
+    new_min_withdrawal_delay_blocks: u64,
 ) -> Result<Response, ContractError> {
-
     _only_owner(deps.as_ref(), &info)?;
 
+    _set_min_withdrawal_delay_blocks(deps, new_min_withdrawal_delay_blocks)
+}
+
+fn _set_min_withdrawal_delay_blocks(
+    deps: DepsMut,
+    min_withdrawal_delay_blocks: u64,
+) -> Result<Response, ContractError> {
     if min_withdrawal_delay_blocks > MAX_WITHDRAWAL_DELAY_BLOCKS {
         return Err(ContractError::MinCannotBeExceedMAXWITHDRAWALDELAYBLOCKS {});
     }
@@ -85,15 +100,22 @@ fn _set_min_withdrawal_delay_blocks(
     Ok(Response::new().add_event(event))
 }
 
-fn _set_strategy_withdrawal_delay_blocks(
+pub fn set_strategy_withdrawal_delay_blocks(
     deps: DepsMut,
     info: MessageInfo,
     strategies: Vec<Addr>,
     withdrawal_delay_blocks: Vec<Uint64>,
 ) -> Result<Response, ContractError> {
-
     _only_owner(deps.as_ref(), &info)?;
 
+    _set_strategy_withdrawal_delay_blocks(deps, strategies, withdrawal_delay_blocks)
+}
+
+fn _set_strategy_withdrawal_delay_blocks(
+    deps: DepsMut,
+    strategies: Vec<Addr>,
+    withdrawal_delay_blocks: Vec<Uint64>,
+) -> Result<Response, ContractError> {
     if strategies.len() != withdrawal_delay_blocks.len() {
         return Err(ContractError::InputLengthMismatch {});
     }
@@ -364,6 +386,84 @@ fn _delegate(
     Ok(response)
 }
 
+pub fn undelegate(
+    mut deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    staker: Addr,
+) -> Result<Vec<String>, ContractError> {
+    // Ensure the staker is delegated
+    if DELEGATED_TO.may_load(deps.storage, &staker)?.is_none() {
+        return Err(ContractError::StakerNotDelegated {});
+    }
+
+    // Ensure the staker is not an operator
+    if OPERATOR_DETAILS.may_load(deps.storage, &staker)?.is_some() {
+        return Err(ContractError::OperatorCannotBeUndelegated {});
+    }
+
+    // Ensure the staker is not the zero address
+    if staker == Addr::unchecked("0") {
+        return Err(ContractError::CannotBeZero {});
+    }
+
+    let operator = DELEGATED_TO.load(deps.storage, &staker)?;
+
+    // Ensure the caller is the staker, operator, or delegation approver
+    let operator_details = OPERATOR_DETAILS.load(deps.storage, &operator)?;
+    if info.sender != staker && info.sender != operator && info.sender != operator_details.delegation_approver {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // Gather strategies and shares to remove from staker/operator during undelegation
+    let (strategies, shares) = get_delegatable_shares(deps.as_ref(), staker.clone())?;
+
+    // Emit an event if this action was not initiated by the staker themselves
+    let mut response: Response<()> = Response::new();
+    
+    if info.sender != staker {
+        response = response.add_event(
+            Event::new("StakerForceUndelegated")
+                .add_attribute("staker", staker.to_string())
+                .add_attribute("operator", operator.to_string())
+        );
+    }
+
+    // Emit the undelegation event
+    response.add_event(
+        Event::new("StakerUndelegated")
+            .add_attribute("staker", staker.to_string())
+            .add_attribute("operator", operator.to_string())
+    );
+
+    // Undelegate the staker
+    DELEGATED_TO.save(deps.storage, &staker, &Addr::unchecked("0"))?;
+
+    let mut withdrawal_roots = Vec::new();
+    if strategies.is_empty() {
+        Ok(withdrawal_roots)
+    } else {
+        for (strategy, share) in strategies.iter().zip(shares.iter()) {
+            let single_strategy = vec![strategy.clone()];
+            let single_share = vec![*share];
+
+            let withdrawal_root = _remove_shares_and_queue_withdrawal(
+                deps.branch(),
+                env.clone(),
+                staker.clone(),
+                operator.clone(),
+                staker.clone(),
+                single_strategy,
+                single_share,
+            )?;
+
+            withdrawal_roots.push(withdrawal_root);
+        }
+
+        Ok(withdrawal_roots)
+    }
+}
+
 pub fn get_delegatable_shares(
     deps: Deps,
     staker: Addr,
@@ -381,6 +481,22 @@ pub fn get_delegatable_shares(
     let response: (Vec<Addr>, Vec<Uint128>) = deps.querier.query(&query)?;
 
     Ok(response)
+}
+
+pub fn increase_delegated_shares(
+    deps: DepsMut,
+    info: MessageInfo,
+    staker: Addr,
+    strategy: Addr,
+    shares: Uint128,
+) -> Result<Response, ContractError> {
+    _only_strategy_manager(deps.as_ref(), &info)?;
+
+    if let Some(operator) = DELEGATED_TO.may_load(deps.storage, &staker)? {
+        _increase_operator_shares(deps, operator, staker, strategy, shares)
+    } else {
+        Ok(Response::new())
+    }
 }
 
 fn _increase_operator_shares(
@@ -405,4 +521,75 @@ fn _increase_operator_shares(
         .add_attribute("new_shares", new_shares.to_string());
 
     Ok(Response::new().add_event(event))
+}
+
+pub fn decrease_delegated_shares(
+    deps: DepsMut,
+    info: MessageInfo,
+    staker: Addr,
+    strategy: Addr,
+    shares: Uint128,
+) -> Result<Response, ContractError> {
+    _only_strategy_manager(deps.as_ref(), &info)?;
+
+    // Check if the staker is delegated to an operator
+    if let Some(operator) = DELEGATED_TO.may_load(deps.storage, &staker)? {
+        // Decrease the operator's shares
+        _decrease_operator_shares(deps, operator, staker, strategy, shares)
+    } else {
+        Ok(Response::new())
+    }
+}
+
+fn _decrease_operator_shares(
+    deps: DepsMut,
+    operator: Addr,
+    staker: Addr,
+    strategy: Addr,
+    shares: Uint128,
+) -> Result<Response, ContractError> {
+    let current_shares = OPERATOR_SHARES
+        .load(deps.storage, (&operator, &strategy))?
+        .checked_sub(shares)
+        .map_err(|_| ContractError::Underflow)?;
+
+    OPERATOR_SHARES.save(deps.storage, (&operator, &strategy), &current_shares)?;
+
+    let event = Event::new("OperatorSharesDecreased")
+        .add_attribute("operator", operator.to_string())
+        .add_attribute("staker", staker.to_string())
+        .add_attribute("strategy", strategy.to_string())
+        .add_attribute("shares", shares.to_string());
+
+    Ok(Response::new().add_event(event))
+}
+
+fn _withdraw_shares_as_tokens(
+    staker: Addr,
+    withdrawer: Addr,
+    strategy: Addr,
+    shares: Uint128,
+    token: Addr,
+) -> Result<Response, ContractError> {
+    let msg = WasmMsg::Execute {
+        contract_addr: strategy.to_string(), 
+        msg: to_json_binary(&strategy_manager::ExecuteMsg::WithdrawSharesAsTokens {
+            recipient: withdrawer.clone(),
+            strategy: strategy.clone(),
+            shares,
+            token: token.clone(),
+        })?,
+        funds: vec![],
+    };
+
+    let response = Response::new()
+        .add_message(CosmosMsg::Wasm(msg))
+        .add_attribute("method", "withdraw_shares_as_tokens")
+        .add_attribute("staker", staker.to_string())
+        .add_attribute("withdrawer", withdrawer.to_string())
+        .add_attribute("strategy", strategy.to_string())
+        .add_attribute("shares", shares.to_string())
+        .add_attribute("token", token.to_string());
+
+    Ok(response)
 }
