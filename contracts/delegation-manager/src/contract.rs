@@ -564,3 +564,32 @@ fn _decrease_operator_shares(
     Ok(Response::new().add_event(event))
 }
 
+fn _withdraw_shares_as_tokens(
+    staker: Addr,
+    withdrawer: Addr,
+    strategy: Addr,
+    shares: Uint128,
+    token: Addr,
+) -> Result<Response, ContractError> {
+    let msg = WasmMsg::Execute {
+        contract_addr: strategy.to_string(), 
+        msg: to_json_binary(&strategy_manager::ExecuteMsg::WithdrawSharesAsTokens {
+            recipient: withdrawer.clone(),
+            strategy: strategy.clone(),
+            shares,
+            token: token.clone(),
+        })?,
+        funds: vec![],
+    };
+
+    let response = Response::new()
+        .add_message(CosmosMsg::Wasm(msg))
+        .add_attribute("method", "withdraw_shares_as_tokens")
+        .add_attribute("staker", staker.to_string())
+        .add_attribute("withdrawer", withdrawer.to_string())
+        .add_attribute("strategy", strategy.to_string())
+        .add_attribute("shares", shares.to_string())
+        .add_attribute("token", token.to_string());
+
+    Ok(response)
+}
