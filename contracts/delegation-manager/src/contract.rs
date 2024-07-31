@@ -483,6 +483,22 @@ pub fn get_delegatable_shares(
     Ok(response)
 }
 
+pub fn increase_delegated_shares(
+    deps: DepsMut,
+    info: MessageInfo,
+    staker: Addr,
+    strategy: Addr,
+    shares: Uint128,
+) -> Result<Response, ContractError> {
+    _only_strategy_manager(deps.as_ref(), &info)?;
+
+    if let Some(operator) = DELEGATED_TO.may_load(deps.storage, &staker)? {
+        _increase_operator_shares(deps, operator, staker, strategy, shares)
+    } else {
+        Ok(Response::new())
+    }
+}
+
 fn _increase_operator_shares(
     deps: DepsMut,
     operator: Addr,
@@ -503,6 +519,47 @@ fn _increase_operator_shares(
         .add_attribute("strategy", strategy.to_string())
         .add_attribute("shares", shares.to_string())
         .add_attribute("new_shares", new_shares.to_string());
+
+    Ok(Response::new().add_event(event))
+}
+
+pub fn decrease_delegated_shares(
+    deps: DepsMut,
+    info: MessageInfo,
+    staker: Addr,
+    strategy: Addr,
+    shares: Uint128,
+) -> Result<Response, ContractError> {
+    _only_strategy_manager(deps.as_ref(), &info)?;
+
+    // Check if the staker is delegated to an operator
+    if let Some(operator) = DELEGATED_TO.may_load(deps.storage, &staker)? {
+        // Decrease the operator's shares
+        _decrease_operator_shares(deps, operator, staker, strategy, shares)
+    } else {
+        Ok(Response::new())
+    }
+}
+
+fn _decrease_operator_shares(
+    deps: DepsMut,
+    operator: Addr,
+    staker: Addr,
+    strategy: Addr,
+    shares: Uint128,
+) -> Result<Response, ContractError> {
+    let current_shares = OPERATOR_SHARES
+        .load(deps.storage, (&operator, &strategy))?
+        .checked_sub(shares)
+        .map_err(|_| ContractError::Underflow)?;
+
+    OPERATOR_SHARES.save(deps.storage, (&operator, &strategy), &current_shares)?;
+
+    let event = Event::new("OperatorSharesDecreased")
+        .add_attribute("operator", operator.to_string())
+        .add_attribute("staker", staker.to_string())
+        .add_attribute("strategy", strategy.to_string())
+        .add_attribute("shares", shares.to_string());
 
     Ok(Response::new().add_event(event))
 }
