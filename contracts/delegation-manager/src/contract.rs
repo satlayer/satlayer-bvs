@@ -564,6 +564,108 @@ fn _decrease_operator_shares(
     Ok(Response::new().add_event(event))
 }
 
+pub fn queue_withdrawals(
+    mut deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    queued_withdrawal_params: Vec<QueuedWithdrawalParams>,
+) -> Result<Vec<String>, ContractError> {
+    let operator = DELEGATED_TO.may_load(deps.storage, &info.sender)?.unwrap_or_else(|| Addr::unchecked(""));
+
+    let mut withdrawal_roots = Vec::with_capacity(queued_withdrawal_params.len());
+
+    for params in queued_withdrawal_params.iter() {
+        if params.strategies.len() != params.shares.len() {
+            return Err(ContractError::InputLengthMismatch {});
+        }
+        if params.withdrawer != info.sender {
+            return Err(ContractError::WithdrawerMustBeStaker {});
+        }
+
+        let withdrawal_root = _remove_shares_and_queue_withdrawal(
+            deps.branch(),
+            env.clone(),
+            info.sender.clone(),
+            operator.clone(),
+            params.withdrawer.clone(),
+            params.strategies.clone(),
+            params.shares.clone(),
+        )?;
+
+        withdrawal_roots.push(withdrawal_root.to_string());
+    }
+
+    Ok(withdrawal_roots)
+}
+
+pub fn complete_queued_withdrawals(
+    mut deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    withdrawals: Vec<Withdrawal>,
+    tokens: Vec<Vec<Addr>>,
+    middleware_times_indexes: Vec<u64>, 
+    receive_as_tokens: Vec<bool>,
+) -> Result<Response, ContractError> {
+    // Loop through each withdrawal and complete it
+    for (i, withdrawal) in withdrawals.iter().enumerate() {
+        _complete_queued_withdrawal(
+            deps.branch(),
+            env.clone(),
+            info.clone(),
+            withdrawal.clone(),
+            tokens[i].clone(),
+            middleware_times_indexes[i],
+            receive_as_tokens[i]
+        )?;
+    }
+
+    Ok(Response::new())
+}
+
+pub fn complete_queued_withdrawal(
+    mut deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    withdrawal: Withdrawal,
+    tokens: Vec<Addr>,
+    middleware_times_indexe: u64, 
+    receive_as_tokens: bool,
+) -> Result<Response, ContractError> {
+        let response = _complete_queued_withdrawal(
+            deps.branch(),
+            env.clone(),
+            info.clone(),
+            withdrawal.clone(),
+            tokens.clone(),
+            middleware_times_indexe,
+            receive_as_tokens)?;
+
+    Ok(response)
+}
+
+fn _complete_queued_withdrawal(
+    mut deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    withdrawal: Withdrawal,
+    tokens: Vec<Addr>,
+    _middleware_times_index: u64,
+    receive_as_tokens: bool,
+) -> Result<Response, ContractError> {
+}
+
+fn _remove_shares_and_queue_withdrawal(
+    mut deps: DepsMut,
+    env: Env,
+    staker: Addr,
+    operator: Addr,
+    withdrawer: Addr,
+    strategies: Vec<Addr>,
+    shares: Vec<Uint128>,
+) -> Result<String, ContractError> {
+}
+
 fn _withdraw_shares_as_tokens(
     staker: Addr,
     withdrawer: Addr,
