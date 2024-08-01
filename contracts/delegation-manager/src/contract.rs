@@ -228,7 +228,11 @@ fn _set_operator_details(
     operator: Addr,
     new_operator_details: OperatorDetails,
 ) -> Result<Response, ContractError> {
-    let current_operator_details = OPERATOR_DETAILS.load(deps.storage, &operator)?;
+    let current_operator_details = OPERATOR_DETAILS.may_load(deps.storage, &operator)?.unwrap_or_else(|| OperatorDetails {
+        staker_opt_out_window_blocks: 0,
+        deprecated_earnings_receiver: Addr::unchecked(""),
+        delegation_approver: Addr::unchecked(""),
+    });
 
     if new_operator_details.staker_opt_out_window_blocks > MAX_STAKER_OPT_OUT_WINDOW_BLOCKS {
         return Err(ContractError::CannotBeExceedMAXSTAKEROPTOUTWINDOWBLOCKS {});
@@ -1675,4 +1679,322 @@ mod tests {
         assert_eq!(res.events[0].attributes[1].value, staker.to_string());
         assert_eq!(res.events[0].attributes[2].value, operator.to_string());
     }
+
+    #[test]
+    fn test_register_as_operator() {
+        let mut deps = mock_dependencies();
+    
+        // Mock the response from strategy_manager contract
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg:_ } if contract_addr == "strategy_manager" => {
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&(vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")], vec![Uint128::new(100), Uint128::new(200)])).unwrap()))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+    
+        let env = mock_env();
+        
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+    
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        
+        // Operator details to be registered
+        let operator_details = OperatorDetails {
+            deprecated_earnings_receiver: Addr::unchecked("earnings_receiver"),
+            delegation_approver: Addr::unchecked("approver"),
+            staker_opt_out_window_blocks: 100,
+        };
+        
+        // Operator's public key
+        let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
+        let (sender_addr, _secret_key, sender_public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
+        let sender_public_key = Binary::from(sender_public_key_bytes.as_slice());
+    
+        // Create MessageInfo object
+        let info_operator = MessageInfo {
+            sender: sender_addr.clone(),
+            funds: vec![],
+        };
+        
+        // Register operator
+        let metadata_uri = "https://example.com/metadata";
+        let res = register_as_operator(
+            deps.as_mut(),
+            info_operator.clone(),
+            env.clone(),
+            sender_public_key.clone(),
+            operator_details.clone(),
+            metadata_uri.to_string(),
+        ).unwrap();
+        
+        // Check the events
+        assert_eq!(res.events.len(), 2);
+        
+        // Check the first event: OperatorRegistered
+        let event = &res.events[0];
+        assert_eq!(event.ty, "OperatorRegistered");
+        assert_eq!(event.attributes.len(), 1);
+        assert_eq!(event.attributes[0].key, "operator");
+        assert_eq!(event.attributes[0].value, info_operator.sender.to_string());
+        
+        // Check the second event: OperatorMetadataURIUpdated
+        let event = &res.events[1];
+        assert_eq!(event.ty, "OperatorMetadataURIUpdated");
+        assert_eq!(event.attributes.len(), 2);
+        assert_eq!(event.attributes[0].key, "operator");
+        assert_eq!(event.attributes[0].value, info_operator.sender.to_string());
+        assert_eq!(event.attributes[1].key, "metadata_uri");
+        assert_eq!(event.attributes[1].value, metadata_uri.to_string());
+        
+        // Verify the operator details saved
+        let stored_operator_details = OPERATOR_DETAILS.load(&deps.storage, &info_operator.sender).unwrap();
+        assert_eq!(stored_operator_details.deprecated_earnings_receiver, operator_details.deprecated_earnings_receiver);
+        assert_eq!(stored_operator_details.delegation_approver, operator_details.delegation_approver);
+        assert_eq!(stored_operator_details.staker_opt_out_window_blocks, operator_details.staker_opt_out_window_blocks);
+        
+        // Check that the operator is correctly delegated
+        let delegated_to = DELEGATED_TO.load(&deps.storage, &info_operator.sender).unwrap();
+        assert_eq!(delegated_to, info_operator.sender);
+        
+        // Check for an operator already registered error
+        let res = register_as_operator(
+            deps.as_mut(),
+            info_operator,
+            env.clone(),
+            sender_public_key.clone(),
+            operator_details.clone(),
+            metadata_uri.to_string(),
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::StakerAlreadyDelegated {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
+
+
+    #[test]
+    fn test_update_operator_metadata_uri() {
+        let mut deps = mock_dependencies();
+
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+
+        // Register operator details
+        let operator = Addr::unchecked("operator1");
+        let operator_details = OperatorDetails {
+            deprecated_earnings_receiver: Addr::unchecked("earnings_receiver"),
+            delegation_approver: Addr::unchecked("approver"),
+            staker_opt_out_window_blocks: 100,
+        };
+        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &operator_details).unwrap();
+
+        // Create MessageInfo object
+        let info_operator: MessageInfo = message_info(&Addr::unchecked("operator1"), &[]);
+
+
+        // Update operator metadata URI
+        let metadata_uri = "https://example.com/metadata";
+        let res = update_operator_metadata_uri(
+            deps.as_mut(),
+            info_operator.clone(),
+            metadata_uri.to_string(),
+        ).unwrap();
+
+        // Check the events
+        assert_eq!(res.events.len(), 1);
+
+        // Check the event: OperatorMetadataURIUpdated
+        let event = &res.events[0];
+        assert_eq!(event.ty, "OperatorMetadataURIUpdated");
+        assert_eq!(event.attributes.len(), 2);
+        assert_eq!(event.attributes[0].key, "operator");
+        assert_eq!(event.attributes[0].value, info_operator.sender.to_string());
+        assert_eq!(event.attributes[1].key, "metadata_uri");
+        assert_eq!(event.attributes[1].value, metadata_uri.to_string());
+
+        // Verify the operator metadata URI was updated (if stored, assuming there's a way to store and retrieve it)
+
+        // Check for an operator not registered error
+        let info_non_operator: MessageInfo = message_info(&Addr::unchecked("non_operator"), &[]);
+
+        let res = update_operator_metadata_uri(
+            deps.as_mut(),
+            info_non_operator,
+            metadata_uri.to_string(),
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::OperatorNotRegistered {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
+
+    #[test]
+    fn test_delegate_to() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info_operator: MessageInfo = message_info(&Addr::unchecked("operator"), &[]);
+        let info_delegation_approver: MessageInfo = message_info(&Addr::unchecked("approver"), &[]);
+
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+
+        // Register operator details
+        let operator = info_operator.sender.clone();
+        let operator_details = OperatorDetails {
+            deprecated_earnings_receiver: Addr::unchecked("earnings_receiver"),
+            delegation_approver: Addr::unchecked("approver"),
+            staker_opt_out_window_blocks: 100,
+        };
+        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &operator_details).unwrap();
+
+        // Mock the response from strategy_manager contract
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg: _ } if contract_addr == "strategy_manager" => {
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&(vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")], vec![Uint128::new(100), Uint128::new(200)])).unwrap()))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
+        let (_approver, secret_key, approver_public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
+
+        let approver_public_key = Binary::from(approver_public_key_bytes.as_slice());
+
+        // Test delegate_to function
+        let staker = Addr::unchecked("staker1");
+        let salt = Binary::from(vec![0]);
+
+        let delegate_params = DelegateParams {
+            staker: staker.clone(),
+            operator: operator.clone(),
+            public_key: approver_public_key.clone(),
+            salt: salt.clone(),
+        };
+
+        let current_time = env.block.time.seconds();
+        let expiry = current_time + 1000;
+        let chain_id = env.block.chain_id.clone();
+        let contract_addr = env.contract.address.clone();
+
+        let params = ApproverDigestHashParams {
+            staker: staker.clone(),
+            operator: operator.clone(),
+            delegation_approver: info_delegation_approver.sender.clone(),
+            approver_public_key: approver_public_key.clone(),
+            approver_salt: salt.clone(),
+            expiry,
+            chain_id: chain_id.clone(),
+            contract_addr: contract_addr.clone(),
+        };
+
+        let info_staker = message_info(&Addr::unchecked("staker1"), &[]);
+
+        let approver_signature_and_expiry = SignatureWithExpiry {
+            signature: mock_signature_with_message(params.clone(), &secret_key),
+            expiry,
+        };
+
+        let res = delegate_to(
+            deps.as_mut(),
+            info_staker.clone(),
+            env.clone(),
+            delegate_params.clone(),
+            approver_signature_and_expiry.clone(),
+        ).unwrap();
+
+        // Check the events
+        assert_eq!(res.events.len(), 1);
+
+        // Check the event: Delegate
+        let event = &res.events[0];
+        assert_eq!(event.ty, "Delegate");
+        assert_eq!(event.attributes.len(), 3);
+        assert_eq!(event.attributes[0].key, "method");
+        assert_eq!(event.attributes[0].value, "delegate");
+        assert_eq!(event.attributes[1].key, "staker");
+        assert_eq!(event.attributes[1].value, staker.to_string());
+        assert_eq!(event.attributes[2].key, "operator");
+        assert_eq!(event.attributes[2].value, operator.to_string());
+
+        // Verify that the staker is correctly delegated to the operator
+        let delegated_to = DELEGATED_TO.load(&deps.storage, &staker).unwrap();
+        assert_eq!(delegated_to, operator);
+
+        // Test staker already delegated error
+        let res = delegate_to(
+            deps.as_mut(),
+            info_staker.clone(),
+            env.clone(),
+            delegate_params,
+            approver_signature_and_expiry,
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::StakerAlreadyDelegated {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Test operator not registered error
+        let params_non_registered_operator = DelegateParams {
+            staker: Addr::unchecked("staker2"),
+            operator: Addr::unchecked("non_registered_operator"),
+            public_key: Binary::from(vec![1, 2, 3, 4, 5]),
+            salt: Binary::from(vec![6, 7, 8, 9, 0]),
+        };
+        let info_non_registered_staker = message_info(&Addr::unchecked("staker2"), &[]);
+
+
+        let res = delegate_to(
+            deps.as_mut(),
+            info_non_registered_staker.clone(),
+            env.clone(),
+            params_non_registered_operator,
+            SignatureWithExpiry { signature: Binary::from(vec![]), expiry: 0 },
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::OperatorNotRegistered {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }       
 }

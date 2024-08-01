@@ -1,6 +1,8 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Binary, Uint128};
 use crate::utils::{Withdrawal, CurrentStakerDigestHashParams, StakerDigestHashParams, ApproverDigestHashParams};
+use serde::{Serialize, Deserialize};
+use schemars::JsonSchema;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -109,7 +111,7 @@ pub struct QueuedWithdrawalParams {
     pub shares: Vec<u128>,
 }
 
-#[cw_serde]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct SignatureWithExpiry {
     pub signature: Binary,
     pub expiry: u64,
