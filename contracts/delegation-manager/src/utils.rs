@@ -15,6 +15,7 @@ fn sha256(input: &[u8]) -> Vec<u8> {
     hasher.finalize().to_vec()
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct DelegateParams {
     pub staker: Addr,
     pub operator: Addr,
