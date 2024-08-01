@@ -6,9 +6,7 @@ use crate::utils::{Withdrawal, CurrentStakerDigestHashParams, StakerDigestHashPa
 pub struct InstantiateMsg {
     pub strategy_manager: Addr,
     pub slasher: Addr,
-    pub eigen_pod_manager: Addr,
     pub min_withdrawal_delay_blocks: u64,
-    pub domain_separator: Binary,
     pub initial_owner: Addr,
     pub strategies: Vec<Addr>,
     pub withdrawal_delay_blocks: Vec<u64>,

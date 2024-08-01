@@ -508,11 +508,15 @@ fn _increase_operator_shares(
     strategy: Addr,
     shares: Uint128,
 ) -> Result<Response, ContractError> {
+    if shares.is_zero() {
+        return Err(ContractError::Underflow {});
+    }
+
     let current_shares = OPERATOR_SHARES
         .may_load(deps.storage, (&operator, &strategy))?
         .unwrap_or_else(Uint128::zero);
 
-    let new_shares = current_shares + shares;
+    let new_shares = current_shares.checked_add(shares).map_err(|_| ContractError::Underflow)?;
     OPERATOR_SHARES.save(deps.storage, (&operator, &strategy), &new_shares)?;
 
     let event = Event::new("OperatorSharesIncreased")
@@ -948,4 +952,173 @@ pub fn query_calculate_current_staker_delegation_digest_hash(
     };
 
     calculate_current_staker_delegation_digest_hash(params)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info};
+    use cosmwasm_std::{attr, Addr, Uint64, SystemResult, ContractResult, SystemError};
+    use secp256k1::{Secp256k1, SecretKey, PublicKey, Message};
+    use sha2::{Sha256, Digest};
+    use ripemd::Ripemd160;
+    use bech32::{self, ToBase32, Variant};
+
+    #[test]
+    fn test_instantiate() {
+        let mut deps = mock_dependencies();
+
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager_addr"),
+            slasher: Addr::unchecked("slasher_addr"),
+            min_withdrawal_delay_blocks: 100,
+            initial_owner: Addr::unchecked("owner_addr"),
+            strategies: vec![Addr::unchecked("strategy1_addr"), Addr::unchecked("strategy2_addr")],
+            withdrawal_delay_blocks: vec![50, 60],
+        };
+
+        let res = instantiate(deps.as_mut(), msg.clone()).unwrap();
+
+        assert_eq!(res.attributes.len(), 5);
+        assert_eq!(res.attributes[0], attr("method", "instantiate"));
+        assert_eq!(res.attributes[1], attr("strategy_manager", "strategy_manager_addr"));
+        assert_eq!(res.attributes[2], attr("slasher", "slasher_addr"));
+        assert_eq!(res.attributes[3], attr("min_withdrawal_delay_blocks", "100"));
+        assert_eq!(res.attributes[4], attr("owner", "owner_addr"));
+
+        let state = DELEGATION_MANAGER_STATE.load(&deps.storage).unwrap();
+        assert_eq!(state.strategy_manager, Addr::unchecked("strategy_manager_addr"));
+        assert_eq!(state.slasher, Addr::unchecked("slasher_addr"));
+
+        let strategy_manager = STRATEGY_MANAGER.load(&deps.storage).unwrap();
+        assert_eq!(strategy_manager, Addr::unchecked("strategy_manager_addr"));
+
+        let slasher = SLASHER.load(&deps.storage).unwrap();
+        assert_eq!(slasher, Addr::unchecked("slasher_addr"));
+
+        let owner = OWNER.load(&deps.storage).unwrap();
+        assert_eq!(owner, Addr::unchecked("owner_addr"));
+
+        let min_withdrawal_delay_blocks = MIN_WITHDRAWAL_DELAY_BLOCKS.load(&deps.storage).unwrap();
+        assert_eq!(min_withdrawal_delay_blocks, 100);
+
+        let withdrawal_delay_blocks1 = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.load(&deps.storage, &Addr::unchecked("strategy1_addr")).unwrap();
+        assert_eq!(withdrawal_delay_blocks1, Uint64::from(50u64));
+
+        let withdrawal_delay_blocks2 = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.load(&deps.storage, &Addr::unchecked("strategy2_addr")).unwrap();
+        assert_eq!(withdrawal_delay_blocks2, Uint64::from(60u64));
+    }
+
+    #[test]
+    fn test_only_owner() {
+        let mut deps = mock_dependencies();
+
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager_addr"),
+            slasher: Addr::unchecked("slasher_addr"),
+            min_withdrawal_delay_blocks: 100,
+            initial_owner: Addr::unchecked("owner_addr"),
+            strategies: vec![Addr::unchecked("strategy1_addr"), Addr::unchecked("strategy2_addr")],
+            withdrawal_delay_blocks: vec![50, 60],
+        };
+
+        let _res = instantiate(deps.as_mut(), msg.clone()).unwrap();
+
+        let owner_info = message_info(&Addr::unchecked("owner_addr"), &[]);
+
+        let result = _only_owner(deps.as_ref(), &owner_info);
+        assert!(result.is_ok());
+
+        let non_owner_info = message_info(&Addr::unchecked("not_owner"), &[]);
+
+        let result = _only_owner(deps.as_ref(), &non_owner_info);
+        assert!(result.is_err());
+
+        if let Err(err) = result {
+            match err {
+                ContractError::Unauthorized {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
+
+    #[test]
+    fn test_only_strategy_manager() {
+        let mut deps = mock_dependencies();
+
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager_addr"),
+            slasher: Addr::unchecked("slasher_addr"),
+            min_withdrawal_delay_blocks: 100,
+            initial_owner: Addr::unchecked("owner_addr"),
+            strategies: vec![Addr::unchecked("strategy1_addr"), Addr::unchecked("strategy2_addr")],
+            withdrawal_delay_blocks: vec![50, 60],
+        };
+
+        let _res = instantiate(deps.as_mut(), msg.clone()).unwrap();
+
+        let strategy_manager_info = message_info(&Addr::unchecked("strategy_manager_addr"), &[]);
+
+        let result = _only_strategy_manager(deps.as_ref(), &strategy_manager_info);
+        assert!(result.is_ok());
+
+        let non_strategy_manager_info = message_info(&Addr::unchecked("not_strategy_manager"), &[]);
+
+        let result = _only_strategy_manager(deps.as_ref(), &non_strategy_manager_info);
+        assert!(result.is_err());
+
+        if let Err(err) = result {
+            match err {
+                ContractError::Unauthorized {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
+
+    #[test]
+    fn test_set_min_withdrawal_delay_blocks() {
+        let mut deps = mock_dependencies();
+
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager_addr"),
+            slasher: Addr::unchecked("slasher_addr"),
+            min_withdrawal_delay_blocks: 100,
+            initial_owner: Addr::unchecked("owner_addr"),
+            strategies: vec![Addr::unchecked("strategy1_addr"), Addr::unchecked("strategy2_addr")],
+            withdrawal_delay_blocks: vec![50, 60],
+        };
+
+        let _res = instantiate(deps.as_mut(), msg.clone()).unwrap();
+
+        let owner_info = message_info(&Addr::unchecked("owner_addr"), &[]);
+
+        let new_min_delay = 150;
+        let result = set_min_withdrawal_delay_blocks(deps.as_mut(), owner_info, new_min_delay);
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert_eq!(response.attributes.len(), 0);
+        assert_eq!(response.events.len(), 1);
+
+        let event = &response.events[0];
+        assert_eq!(event.ty, "MinWithdrawalDelayBlocksSet");
+        assert_eq!(event.attributes.len(), 3);
+        assert_eq!(event.attributes[0].key, "method");
+        assert_eq!(event.attributes[0].value, "set_min_withdrawal_delay_blocks");
+        assert_eq!(event.attributes[1].key, "prev_min_withdrawal_delay_blocks");
+        assert_eq!(event.attributes[1].value, "100");
+        assert_eq!(event.attributes[2].key, "new_min_withdrawal_delay_blocks");
+        assert_eq!(event.attributes[2].value, new_min_delay.to_string());
+
+        let non_owner_info = message_info(&Addr::unchecked("not_owner"), &[]);
+    
+        let result = set_min_withdrawal_delay_blocks(deps.as_mut(), non_owner_info, new_min_delay);
+        assert!(result.is_err());
+        if let Err(err) = result {
+            match err {
+                ContractError::Unauthorized {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
+    
 }
