@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Binary, Uint128, Uint64};
+use cosmwasm_std::{Addr, Uint128, Uint64};
 use cw_storage_plus::{Item, Map};
 
 #[cw_serde]
@@ -33,6 +33,5 @@ pub const STRATEGY_MANAGER: Item<Addr> = Item::new("strategy_manager");
 pub const SLASHER: Item<Addr> = Item::new("slasher");
 pub const MIN_WITHDRAWAL_DELAY_BLOCKS: Item<u64> = Item::new("min_withdrawal_delay_blocks");
 pub const CUMULATIVE_WITHDRAWALS_QUEUED: Map<&Addr, u128> = Map::new("cumulative_withdrawals_queued");
-pub const DOMAIN_SEPARATOR: Item<Binary> = Item::new("domain_separator");
 pub const OWNER: Item<Addr> = Item::new("owner");
 pub const DELEGATION_APPROVER_SALT_SPENT: Map<(&Addr, &str), bool> = Map::new("delegation_approver_salt_spent");

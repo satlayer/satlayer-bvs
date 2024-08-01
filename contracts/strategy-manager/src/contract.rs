@@ -80,6 +80,7 @@ pub fn execute(
         },
         ExecuteMsg::RemoveShares { staker, strategy, shares } => _remove_shares(deps, info, staker, strategy, shares),
         ExecuteMsg::WithdrawSharesAsTokens { recipient, strategy, shares, token } => withdraw_shares_as_tokens(deps, info, recipient, strategy, shares, token),
+        ExecuteMsg::AddShares { staker, token, strategy, shares } => _add_shares(deps, info, staker, token, strategy, shares)
     }
 }
 
@@ -521,12 +522,18 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetDeposits { staker } => to_json_binary(&get_deposits(deps, staker)?),
         QueryMsg::StakerStrategyListLength { staker } => to_json_binary(&staker_strategy_list_length(deps, staker)?),
         QueryMsg::GetStakerStrategyShares { staker, strategy } => to_json_binary(&_get_staker_strategy_shares(deps, staker, strategy)?),
+        QueryMsg::IsThirdPartyTransfersForbidden { strategy } => to_json_binary(&_is_third_party_transfers_forbidden(deps, strategy)?)
     }
 }
 
 fn _get_staker_strategy_shares(deps: Deps, staker: Addr, strategy: Addr) -> StdResult<Uint128> {
     let shares = STAKER_STRATEGY_SHARES.load(deps.storage, (&staker, &strategy))?;
     Ok(shares)
+}
+
+fn _is_third_party_transfers_forbidden(deps: Deps, strategy: Addr) -> StdResult<bool> {
+    let forbidden = THIRD_PARTY_TRANSFERS_FORBIDDEN.may_load(deps.storage, &strategy)?.unwrap_or(false);
+    Ok(forbidden)
 }
 
 #[cfg(test)]

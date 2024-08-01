@@ -1,6 +1,8 @@
-use cosmwasm_std::{Addr, StdResult, Binary};
+use cosmwasm_std::{Addr, StdResult, Binary, Uint128, to_json_binary};
 use sha2::{Sha256, Digest};
 use cosmwasm_crypto::secp256k1_verify;
+use serde::{Serialize, Deserialize};
+use schemars::JsonSchema;
 
 const DELEGATION_APPROVAL_TYPEHASH: &[u8] = b"DelegationApproval(address delegationApprover,address staker,address operator,bytes32 salt,uint256 expiry)";
 const DOMAIN_TYPEHASH: &[u8] = b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
@@ -20,6 +22,7 @@ pub struct DelegateParams {
     pub salt: Binary,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ApproverDigestHashParams {
     pub staker: Addr,
     pub operator: Addr,
@@ -61,12 +64,24 @@ pub fn calculate_delegation_approval_digest_hash(params: &ApproverDigestHashPara
     sha256(&digest_hash_input)
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct StakerDigestHashParams {
     pub staker: Addr,
     pub staker_nonce: u128,
     pub operator: Addr,
     pub staker_public_key: Binary,
     pub expiry: u64,
+    pub chain_id: String,
+    pub contract_addr: Addr,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct CurrentStakerDigestHashParams {
+    pub staker: Addr,
+    pub operator: Addr,
+    pub staker_public_key: Binary,
+    pub expiry: u64,
+    pub current_nonce: u128,
     pub chain_id: String,
     pub contract_addr: Addr,
 }
@@ -100,9 +115,42 @@ pub fn calculate_staker_delegation_digest_hash(params: &StakerDigestHashParams) 
     sha256(&digest_hash_input)
 }
 
+pub fn calculate_current_staker_delegation_digest_hash(params:CurrentStakerDigestHashParams) -> StdResult<Binary> {
+
+    let params = StakerDigestHashParams {
+        staker: params.staker.clone(),
+        staker_nonce: params.current_nonce,
+        operator: params.operator.clone(),
+        staker_public_key: params.staker_public_key.clone(), 
+        expiry: params.expiry,
+        chain_id: params.chain_id.clone(),
+        contract_addr: params.contract_addr.clone()
+    };
+
+    let digest_hash = calculate_staker_delegation_digest_hash(&params);
+    to_json_binary(&digest_hash)
+}
+
 pub fn recover(digest_hash: &[u8], signature: &[u8], public_key_bytes: &[u8]) -> StdResult<bool> {
     match secp256k1_verify(digest_hash, signature, public_key_bytes) {
         Ok(valid) => Ok(valid),
         Err(_) => Ok(false),
     }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct Withdrawal {
+    pub staker: Addr,
+    pub delegated_to: Addr,
+    pub withdrawer: Addr,
+    pub nonce: u128,
+    pub start_block: u64,
+    pub strategies: Vec<Addr>,
+    pub shares: Vec<Uint128>,
+}
+
+pub fn calculate_withdrawal_root(withdrawal: &Withdrawal) -> StdResult<Binary> {
+    let mut hasher = Sha256::new();
+    hasher.update(to_json_binary(withdrawal)?.as_slice());
+    Ok(Binary::from(hasher.finalize().as_slice()))
 }
