@@ -1,6 +1,9 @@
-use cosmwasm_std::{Addr, StdResult, Binary};
+use cosmwasm_std::{Addr, StdResult, Binary, Uint128, to_json_binary};
 use sha2::{Sha256, Digest};
 use cosmwasm_crypto::secp256k1_verify;
+use serde::{Serialize, Deserialize};
+use schemars::JsonSchema;
+
 
 const DELEGATION_APPROVAL_TYPEHASH: &[u8] = b"DelegationApproval(address delegationApprover,address staker,address operator,bytes32 salt,uint256 expiry)";
 const DOMAIN_TYPEHASH: &[u8] = b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
@@ -100,9 +103,26 @@ pub fn calculate_staker_delegation_digest_hash(params: &StakerDigestHashParams) 
     sha256(&digest_hash_input)
 }
 
+
 pub fn recover(digest_hash: &[u8], signature: &[u8], public_key_bytes: &[u8]) -> StdResult<bool> {
     match secp256k1_verify(digest_hash, signature, public_key_bytes) {
         Ok(valid) => Ok(valid),
         Err(_) => Ok(false),
     }
+}
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct Withdrawal {
+    pub staker: Addr,
+    pub delegated_to: Addr,
+    pub withdrawer: Addr,
+    pub nonce: u128,
+    pub start_block: u64,
+    pub strategies: Vec<Addr>,
+    pub shares: Vec<Uint128>,
+}
+
+pub fn calculate_withdrawal_root(withdrawal: &Withdrawal) -> StdResult<Binary> {
+    let mut hasher = Sha256::new();
+    hasher.update(to_json_binary(withdrawal)?.as_slice());
+    Ok(Binary::from(hasher.finalize().as_slice()))
 }

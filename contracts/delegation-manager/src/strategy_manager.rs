@@ -1,4 +1,4 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128, Uint64, Binary};
 
 #[cw_serde]
@@ -50,17 +50,20 @@ pub enum ExecuteMsg {
         shares: Uint128,
         token: Addr,
     },
+    AddShares {
+        staker: Addr,
+        token: Addr,
+        strategy: Addr,
+        shares: Uint128,
+    }, 
 }
 
 #[cw_serde]
-#[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(SharesResponse)]
     GetDeposits { staker: Addr },
-    #[returns(LengthResponse)]
     StakerStrategyListLength { staker: Addr },
-    #[returns(SharesResponse)]
     GetStakerStrategyShares { staker: Addr, strategy: Addr },
+    IsThirdPartyTransfersForbidden { strategy: Addr },
 }
 
 #[cw_serde]
@@ -68,15 +71,4 @@ pub struct SignatureWithSaltAndExpiry {
     pub signature: Binary,
     pub salt: Binary,
     pub expiry: Uint64,
-}
-
-#[cw_serde]
-pub struct SharesResponse {
-    pub strategies: Vec<Addr>,
-    pub shares: Vec<Uint128>,
-}
-
-#[cw_serde]
-pub struct LengthResponse {
-    pub length: Uint64,
 }
