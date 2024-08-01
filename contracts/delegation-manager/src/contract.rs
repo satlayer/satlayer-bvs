@@ -547,7 +547,7 @@ pub fn decrease_delegated_shares(
         // Decrease the operator's shares
         _decrease_operator_shares(deps, operator, staker, strategy, shares)
     } else {
-        Ok(Response::new())
+        Err(ContractError::StakerNotDelegated {})
     }
 }
 
@@ -1470,7 +1470,7 @@ mod tests {
     }
 
     #[test]
-    fn test_increase_operator_shares() {
+    fn test_increase_operator_shares_internal() {
         let mut deps = mock_dependencies();
 
         let msg = InstantiateMsg {
@@ -1581,11 +1581,25 @@ mod tests {
         (Addr::unchecked(address), secret_key, public_key_bytes.to_vec())
     }
 
-    fn mock_signature_with_message(
+    fn mock_approver_signature_with_message(
         params: ApproverDigestHashParams,
         secret_key: &SecretKey,
     ) -> Binary {
         let message_bytes = calculate_delegation_approval_digest_hash(&params);
+    
+        let secp = Secp256k1::new();
+        let message = Message::from_digest_slice(&message_bytes).expect("32 bytes");
+        let signature = secp.sign_ecdsa(&message, secret_key);
+        let signature_bytes = signature.serialize_compact().to_vec();
+        
+        Binary::from(signature_bytes)
+    }
+
+    fn mock_staker_signature_with_message(
+        params: StakerDigestHashParams,
+        secret_key: &SecretKey,
+    ) -> Binary {
+        let message_bytes = calculate_staker_delegation_digest_hash(&params);
     
         let secp = Secp256k1::new();
         let message = Message::from_digest_slice(&message_bytes).expect("32 bytes");
@@ -1656,7 +1670,7 @@ mod tests {
         };
 
         let approver_signature_and_expiry = SignatureWithExpiry {
-            signature: mock_signature_with_message(params.clone(), &secret_key),
+            signature: mock_approver_signature_with_message(params.clone(), &secret_key),
             expiry,
         };
 
@@ -1926,7 +1940,7 @@ mod tests {
         let info_staker = message_info(&Addr::unchecked("staker1"), &[]);
 
         let approver_signature_and_expiry = SignatureWithExpiry {
-            signature: mock_signature_with_message(params.clone(), &secret_key),
+            signature: mock_approver_signature_with_message(params.clone(), &secret_key),
             expiry,
         };
 
@@ -1996,5 +2010,471 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    }       
+    }
+
+    #[test]
+    fn test_delegate_to_by_signature() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        // Mock the response from strategy_manager contract
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg: _ } if contract_addr == "strategy_manager" => {
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&(vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")], vec![Uint128::new(100), Uint128::new(200)])).unwrap()))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+        
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+
+        // Operator details to be registered
+        let operator_details = OperatorDetails {
+            deprecated_earnings_receiver: Addr::unchecked("earnings_receiver"),
+            delegation_approver: Addr::unchecked("approver"),
+            staker_opt_out_window_blocks: 100,
+        };
+        
+        // Operator's public key
+        let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
+        let (sender_addr, _secret_key, sender_public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
+        let sender_public_key = Binary::from(sender_public_key_bytes.as_slice());
+    
+        // Create MessageInfo object
+        let info_operator = MessageInfo {
+            sender: sender_addr.clone(),
+            funds: vec![],
+        };
+        
+        // Register operator
+        let metadata_uri = "https://example.com/metadata";
+        register_as_operator(
+            deps.as_mut(),
+            info_operator.clone(),
+            env.clone(),
+            sender_public_key.clone(),
+            operator_details.clone(),
+            metadata_uri.to_string(),
+        ).unwrap();
+
+        // Staker's public key
+        let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1991e97cd6430cefb65734eb9c804aa";
+        let (staker_addr, staker_secret_key, staker_public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
+        let staker_public_key = Binary::from(staker_public_key_bytes.as_slice());
+    
+        // Create MessageInfo object
+        let info_staker = MessageInfo {
+            sender: staker_addr.clone(),
+            funds: vec![],
+        };
+        
+        let salt = Binary::from(vec![0]);
+
+        let delegate_params = DelegateParams {
+            staker: staker_addr.clone(),
+            operator: sender_addr.clone(),
+            public_key: staker_public_key.clone(),
+            salt: salt.clone(),
+        };
+
+        let current_time = env.block.time.seconds();
+        let expiry = current_time + 1000;
+        let chain_id = env.block.chain_id.clone();
+        let contract_addr = env.contract.address.clone();
+
+        let staker_digest_params = StakerDigestHashParams {
+            staker: sender_addr.clone(),
+            staker_nonce: 0,
+            operator: sender_addr.clone(),
+            staker_public_key: staker_public_key.clone(),
+            expiry,
+            chain_id: chain_id.clone(),
+            contract_addr: contract_addr.clone(),
+        };
+
+        let staker_signature_and_expiry = SignatureWithExpiry {
+            signature: mock_staker_signature_with_message(staker_digest_params.clone(), &staker_secret_key),
+            expiry,
+        };
+
+        // Approver's public key
+        let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1995e97cd6430cefb65734eb9c804aa";
+        let (approver_addr, approver_secret_key, approver_public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
+        let approver_public_key = Binary::from(approver_public_key_bytes.as_slice());
+        
+        let salt = Binary::from(vec![0]);
+
+        let approver_digest_params = ApproverDigestHashParams {
+            staker: staker_addr.clone(),
+            operator: sender_addr.clone(),
+            delegation_approver: approver_addr.clone(),
+            approver_public_key: approver_public_key.clone(),
+            approver_salt: salt,
+            expiry,
+            chain_id: chain_id.clone(),
+            contract_addr: contract_addr.clone(),
+        };
+
+        let approver_signature_and_expiry = SignatureWithExpiry {
+            signature: mock_approver_signature_with_message(approver_digest_params, &approver_secret_key),
+            expiry,
+        };
+
+        let res = delegate_to_by_signature(
+            deps.as_mut(),
+            env.clone(),
+            info_staker.clone(),
+            delegate_params.clone(),
+            staker_public_key.clone(),
+            staker_signature_and_expiry.clone(),
+            approver_signature_and_expiry.clone(),
+        ).unwrap();
+
+        // Check the events
+        assert_eq!(res.events.len(), 1);
+
+        // Check the event: Delegate
+        let event = &res.events[0];
+        assert_eq!(event.ty, "Delegate");
+        assert_eq!(event.attributes.len(), 3);
+        assert_eq!(event.attributes[0].key, "method");
+        assert_eq!(event.attributes[0].value, "delegate");
+        assert_eq!(event.attributes[1].key, "staker");
+        assert_eq!(event.attributes[1].value, staker_addr.to_string());
+        assert_eq!(event.attributes[2].key, "operator");
+        assert_eq!(event.attributes[2].value, sender_addr.to_string());
+
+        // Verify that the staker is correctly delegated to the operator
+        let delegated_to = DELEGATED_TO.load(&deps.storage, &staker_addr).unwrap();
+        assert_eq!(delegated_to, sender_addr);
+
+        // Test staker signature expired error
+        let expired_staker_signature_and_expiry = SignatureWithExpiry {
+            signature: staker_signature_and_expiry.signature.clone(),
+            expiry: current_time - 1000,
+        };
+
+        let res = delegate_to_by_signature(
+            deps.as_mut(),
+            env.clone(),
+            info_staker.clone(),
+            delegate_params.clone(),
+            staker_public_key.clone(),
+            expired_staker_signature_and_expiry,
+            approver_signature_and_expiry.clone(),
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::StakerSignatureExpired {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Test staker already delegated error
+        let res = delegate_to_by_signature(
+            deps.as_mut(),
+            env.clone(),
+            info_staker.clone(),
+            delegate_params.clone(),
+            staker_public_key.clone(),
+            staker_signature_and_expiry.clone(),
+            approver_signature_and_expiry.clone(),
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::StakerAlreadyDelegated {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Test operator not registered error
+        let params_non_registered_operator = DelegateParams {
+            staker: Addr::unchecked("staker2"),
+            operator: Addr::unchecked("non_registered_operator"),
+            public_key: Binary::from(vec![1, 2, 3, 4, 5]),
+            salt: Binary::from(vec![6, 7, 8, 9, 0]),
+        };
+
+        let info_non_registered_staker = message_info(&Addr::unchecked("staker2"), &[]);
+
+        let res = delegate_to_by_signature(
+            deps.as_mut(),
+            env.clone(),
+            info_non_registered_staker.clone(),
+            params_non_registered_operator,
+            staker_public_key.clone(),
+            staker_signature_and_expiry.clone(),
+            approver_signature_and_expiry.clone(),
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::OperatorNotRegistered {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
+
+    #[test]
+    fn test_increase_delegated_shares() {
+        let mut deps = mock_dependencies();
+
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+
+        let strategy_manager_info = message_info(&Addr::unchecked("strategy_manager"), &[]);
+
+        // Register a staker delegated to an operator
+        let staker = Addr::unchecked("staker1");
+        let operator = Addr::unchecked("operator1");
+        let strategy = Addr::unchecked("strategy1");
+        let initial_shares = Uint128::new(100);
+
+        DELEGATED_TO.save(deps.as_mut().storage, &staker, &operator).unwrap();
+        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategy), &initial_shares).unwrap();
+
+        // Test increasing shares
+        let additional_shares = Uint128::new(50);
+        let res = increase_delegated_shares(
+            deps.as_mut(),
+            strategy_manager_info.clone(),
+            staker.clone(),
+            strategy.clone(),
+            additional_shares,
+        ).unwrap();
+
+        assert_eq!(res.events.len(), 1);
+        assert_eq!(res.events[0].ty, "OperatorSharesIncreased");
+        assert_eq!(res.events[0].attributes[0].value, operator.to_string());
+        assert_eq!(res.events[0].attributes[1].value, staker.to_string());
+        assert_eq!(res.events[0].attributes[2].value, strategy.to_string());
+        assert_eq!(res.events[0].attributes[3].value, additional_shares.to_string());
+        assert_eq!(res.events[0].attributes[4].value, (initial_shares + additional_shares).to_string());
+
+        let stored_shares = OPERATOR_SHARES.load(deps.as_ref().storage, (&operator, &strategy)).unwrap();
+        assert_eq!(stored_shares, initial_shares + additional_shares);
+
+        // Test increasing shares with zero value
+        let zero_shares = Uint128::new(0);
+        let res = increase_delegated_shares(
+            deps.as_mut(),
+            strategy_manager_info.clone(),
+            staker.clone(),
+            strategy.clone(),
+            zero_shares,
+        );
+
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::Underflow {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Test unauthorized increase
+        let unauthorized_info = message_info(&Addr::unchecked("not_strategy_manager"), &[]);
+
+        let res = increase_delegated_shares(
+            deps.as_mut(),
+            unauthorized_info,
+            staker.clone(),
+            strategy.clone(),
+            additional_shares,
+        );
+
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::Unauthorized {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Test increase when staker is not delegated
+        let non_delegated_staker = Addr::unchecked("staker2");
+        let res = increase_delegated_shares(
+            deps.as_mut(),
+            strategy_manager_info,
+            non_delegated_staker,
+            strategy,
+            additional_shares,
+        );
+
+        assert!(res.is_ok());
+        assert_eq!(res.unwrap().events.len(), 0); // No events should be emitted
+    }
+
+    #[test]
+    fn test_decrease_operator_shares_internal() {
+        let mut deps = mock_dependencies();
+
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+
+        let operator = Addr::unchecked("operator1");
+        let staker = Addr::unchecked("staker1");
+        let strategy = Addr::unchecked("strategy1");
+        let initial_shares = Uint128::new(100);
+        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategy), &initial_shares).unwrap();
+
+        // Test decreasing shares
+        let decrease_shares = Uint128::new(50);
+        let res = _decrease_operator_shares(deps.as_mut(), operator.clone(), staker.clone(), strategy.clone(), decrease_shares).unwrap();
+
+        assert_eq!(res.events.len(), 1);
+        assert_eq!(res.events[0].ty, "OperatorSharesDecreased");
+        assert_eq!(res.events[0].attributes[0].value, operator.to_string());
+        assert_eq!(res.events[0].attributes[1].value, staker.to_string());
+        assert_eq!(res.events[0].attributes[2].value, strategy.to_string());
+        assert_eq!(res.events[0].attributes[3].value, decrease_shares.to_string());
+
+        let stored_shares = OPERATOR_SHARES.load(deps.as_ref().storage, (&operator, &strategy)).unwrap();
+        assert_eq!(stored_shares, initial_shares - decrease_shares);
+
+        // Test decreasing shares with amount greater than current shares (should error)
+        let excess_decrease = Uint128::new(60);
+        let res = _decrease_operator_shares(deps.as_mut(), operator.clone(), staker.clone(), strategy.clone(), excess_decrease);
+
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::Underflow {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Test decreasing shares to zero
+        let res = _decrease_operator_shares(deps.as_mut(), operator.clone(), staker.clone(), strategy.clone(), decrease_shares).unwrap();
+
+        assert_eq!(res.events.len(), 1);
+        assert_eq!(res.events[0].ty, "OperatorSharesDecreased");
+        assert_eq!(res.events[0].attributes[0].value, operator.to_string());
+        assert_eq!(res.events[0].attributes[1].value, staker.to_string());
+        assert_eq!(res.events[0].attributes[2].value, strategy.to_string());
+        assert_eq!(res.events[0].attributes[3].value, decrease_shares.to_string());
+
+        let stored_shares = OPERATOR_SHARES.load(deps.as_ref().storage, (&operator, &strategy)).unwrap();
+        assert_eq!(stored_shares, Uint128::new(0));
+    }
+
+    #[test]
+    fn test_decrease_delegated_shares() {
+        let mut deps = mock_dependencies();
+        
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+
+        // Setup initial data
+        let staker = Addr::unchecked("staker1");
+        let operator = Addr::unchecked("operator1");
+        let strategy = Addr::unchecked("strategy1");
+        let initial_shares = Uint128::new(100);
+        let info_strategy_manager = message_info(&Addr::unchecked("strategy_manager"), &[]);
+
+        DELEGATED_TO.save(deps.as_mut().storage, &staker, &operator).unwrap();
+        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategy), &initial_shares).unwrap();
+
+        // Test decreasing shares
+        let decrease_shares = Uint128::new(50);
+        let res = decrease_delegated_shares(deps.as_mut(), info_strategy_manager.clone(), staker.clone(), strategy.clone(), decrease_shares).unwrap();
+
+        assert_eq!(res.events.len(), 1);
+        assert_eq!(res.events[0].ty, "OperatorSharesDecreased");
+        assert_eq!(res.events[0].attributes[0].value, operator.to_string());
+        assert_eq!(res.events[0].attributes[1].value, staker.to_string());
+        assert_eq!(res.events[0].attributes[2].value, strategy.to_string());
+        assert_eq!(res.events[0].attributes[3].value, decrease_shares.to_string());
+
+        let stored_shares = OPERATOR_SHARES.load(deps.as_ref().storage, (&operator, &strategy)).unwrap();
+        assert_eq!(stored_shares, initial_shares - decrease_shares);
+
+        // Test decreasing shares with amount greater than current shares (should error)
+        let excess_decrease = Uint128::new(60);
+        let res = decrease_delegated_shares(deps.as_mut(), info_strategy_manager.clone(), staker.clone(), strategy.clone(), excess_decrease);
+
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::Underflow {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Test decreasing shares to zero
+        let res = decrease_delegated_shares(deps.as_mut(), info_strategy_manager.clone(), staker.clone(), strategy.clone(), decrease_shares).unwrap();
+
+        assert_eq!(res.events.len(), 1);
+        assert_eq!(res.events[0].ty, "OperatorSharesDecreased");
+        assert_eq!(res.events[0].attributes[0].value, operator.to_string());
+        assert_eq!(res.events[0].attributes[1].value, staker.to_string());
+        assert_eq!(res.events[0].attributes[2].value, strategy.to_string());
+        assert_eq!(res.events[0].attributes[3].value, decrease_shares.to_string());
+
+        let stored_shares = OPERATOR_SHARES.load(deps.as_ref().storage, (&operator, &strategy)).unwrap();
+        assert_eq!(stored_shares, Uint128::new(0));
+
+        // Test non-strategy manager attempt to decrease shares (should error)
+        let non_strategy_manager_info = message_info(&Addr::unchecked("not_strategy_manager"), &[]);
+
+
+        let res = decrease_delegated_shares(deps.as_mut(), non_strategy_manager_info.clone(), staker.clone(), strategy.clone(), decrease_shares);
+
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::Unauthorized {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Test staker not delegated (should error)
+        let new_staker = Addr::unchecked("staker2");
+        let res = decrease_delegated_shares(deps.as_mut(), info_strategy_manager.clone(), new_staker.clone(), strategy.clone(), decrease_shares);
+
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::StakerNotDelegated {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
 }
