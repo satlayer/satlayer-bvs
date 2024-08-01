@@ -1,5 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Binary, Uint128};
+use crate::utils::{Withdrawal, CurrentStakerDigestHashParams, StakerDigestHashParams, ApproverDigestHashParams};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -82,19 +83,18 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 pub enum QueryMsg {
-    DomainSeparator {},
     IsDelegated { staker: Addr },
     IsOperator { operator: Addr },
     OperatorDetails { operator: Addr },
     DelegationApprover { operator: Addr },
     StakerOptOutWindowBlocks { operator: Addr },
-    OperatorShares { operator: Addr, strategies: Vec<Addr> },
-    DelegatableShares { staker: Addr },
-    WithdrawalDelay { strategies: Vec<Addr> },
-    WithdrawalRoot { withdrawal: Withdrawal },
-    CurrentStakerDelegationDigestHash { staker: Addr, operator: Addr, expiry: u64 },
-    StakerDelegationDigestHash { staker: Addr, nonce: u64, operator: Addr, expiry: u64 },
-    DelegationApprovalDigestHash { staker: Addr, operator: Addr, delegation_approver: Addr, approver_salt: String, expiry: u64 },
+    GetOperatorShares { operator: Addr, strategies: Vec<Addr> },
+    GetDelegatableShares { staker: Addr },
+    GetWithdrawalDelay { strategies: Vec<Addr> },
+    CalculateWithdrawalRoot { withdrawal: Withdrawal },
+    CurrentStakerDelegationDigestHash {current_staker_digest_hash_params: CurrentStakerDigestHashParams },
+    StakerDelegationDigestHash { staker_digest_hash_params: StakerDigestHashParams },
+    DelegationApprovalDigestHash { approver_digest_hash_params: ApproverDigestHashParams },
 }
 
 #[cw_serde]
@@ -106,13 +106,6 @@ pub struct OperatorDetails {
 
 #[cw_serde]
 pub struct QueuedWithdrawalParams {
-    pub staker: Addr,
-    pub strategies: Vec<Addr>,
-    pub shares: Vec<u128>,
-}
-
-#[cw_serde]
-pub struct Withdrawal {
     pub staker: Addr,
     pub strategies: Vec<Addr>,
     pub shares: Vec<u128>,

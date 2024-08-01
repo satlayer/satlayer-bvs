@@ -1,14 +1,15 @@
 use crate::{
     error::ContractError,
     strategy_manager,
-    msg::{InstantiateMsg, SignatureWithExpiry},
+    msg::{InstantiateMsg, SignatureWithExpiry, QueryMsg},
     state::{
         DelegationManagerState, DELEGATION_MANAGER_STATE, OPERATOR_DETAILS, OWNER, OperatorDetails, MIN_WITHDRAWAL_DELAY_BLOCKS,
-        DELEGATED_TO, STRATEGY_WITHDRAWAL_DELAY_BLOCKS, OPERATOR_SHARES, DELEGATION_APPROVER_SALT_SPENT, DOMAIN_SEPARATOR,
+        DELEGATED_TO, STRATEGY_WITHDRAWAL_DELAY_BLOCKS, OPERATOR_SHARES, DELEGATION_APPROVER_SALT_SPENT, STRATEGY_MANAGER, SLASHER,
         STAKER_NONCE, PENDING_WITHDRAWALS, CUMULATIVE_WITHDRAWALS_QUEUED, QueuedWithdrawalParams
     },
     utils::{calculate_delegation_approval_digest_hash, calculate_staker_delegation_digest_hash, recover, 
-        ApproverDigestHashParams, StakerDigestHashParams, DelegateParams, calculate_withdrawal_root, Withdrawal
+        ApproverDigestHashParams, StakerDigestHashParams, DelegateParams, calculate_withdrawal_root, Withdrawal,
+        calculate_current_staker_delegation_digest_hash, CurrentStakerDigestHashParams
     },
 };
 use strategy_manager::QueryMsg as StrategyManagerQueryMsg;
@@ -32,12 +33,13 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let state = DelegationManagerState {
-        strategy_manager: msg.strategy_manager,
-        slasher: msg.slasher,
+        strategy_manager: msg.strategy_manager.clone(),
+        slasher: msg.slasher.clone(),
     };
 
     DELEGATION_MANAGER_STATE.save(deps.storage, &state)?;
-    DOMAIN_SEPARATOR.save(deps.storage, &msg.domain_separator)?;
+    STRATEGY_MANAGER.save(deps.storage, &msg.strategy_manager)?;
+    SLASHER.save(deps.storage, &msg.slasher)?;
     OWNER.save(deps.storage, &msg.initial_owner)?;
     _set_min_withdrawal_delay_blocks(deps.branch(), msg.min_withdrawal_delay_blocks)?;
 
