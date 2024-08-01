@@ -877,3 +877,75 @@ pub fn query(
         QueryMsg::DelegationApprovalDigestHash { approver_digest_hash_params } => to_json_binary(&calculate_delegation_approval_digest_hash(&approver_digest_hash_params))
     }
 }
+
+// VIEW FUNCTIONS
+pub fn query_is_delegated(deps: Deps, staker: Addr) -> StdResult<bool> {
+    let is_delegated = DELEGATED_TO.may_load(deps.storage, &staker)?.unwrap_or_else(|| Addr::unchecked("")) != Addr::unchecked("");
+    Ok(is_delegated)
+}
+
+pub fn query_is_operator(deps: Deps, operator: Addr) -> StdResult<bool> {
+    let is_operator = operator != Addr::unchecked("0") && DELEGATED_TO.may_load(deps.storage, &operator)? == Some(operator.clone());
+    Ok(is_operator)
+}
+
+pub fn query_operator_details(deps: Deps, operator: Addr) -> StdResult<OperatorDetails> {
+    let details = OPERATOR_DETAILS.load(deps.storage, &operator)?;
+    Ok(details)
+}
+
+pub fn query_delegation_approver(deps: Deps, operator: Addr) -> StdResult<Addr> {
+    let details = OPERATOR_DETAILS.load(deps.storage, &operator)?;
+    Ok(details.delegation_approver)
+}
+
+pub fn query_staker_opt_out_window_blocks(deps: Deps, operator: Addr) -> StdResult<u64> {
+    let details = OPERATOR_DETAILS.load(deps.storage, &operator)?;
+    Ok(details.staker_opt_out_window_blocks)
+}
+
+pub fn query_get_operator_shares(deps: Deps, operator: Addr, strategies: Vec<Addr>) -> StdResult<Vec<Uint128>> {
+    let mut shares = Vec::with_capacity(strategies.len());
+    for strategy in strategies.iter() {
+        let share = OPERATOR_SHARES.may_load(deps.storage, (&operator, strategy))?.unwrap_or_else(Uint128::zero);
+        shares.push(share);
+    }
+    Ok(shares)
+}
+
+pub fn query_get_withdrawal_delay(deps: Deps, strategies: Vec<Addr>) -> StdResult<Uint64> {
+    let min_withdrawal_delay_blocks = MIN_WITHDRAWAL_DELAY_BLOCKS.load(deps.storage)?;
+
+    let mut withdrawal_delay = min_withdrawal_delay_blocks;
+    for strategy in strategies.iter() {
+        let curr_withdrawal_delay = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.load(deps.storage, strategy)?;
+        if curr_withdrawal_delay > withdrawal_delay.into() {
+            withdrawal_delay = curr_withdrawal_delay.into();
+        }
+    }
+
+    Ok(withdrawal_delay.into())
+}
+
+pub fn query_calculate_current_staker_delegation_digest_hash(
+    deps: Deps,
+    env: Env,
+    staker: Addr,
+    operator: Addr,
+    staker_public_key: Binary,
+    expiry: u64
+) -> StdResult<Binary> {
+    let current_staker_nonce: u128 = STAKER_NONCE.may_load(deps.storage, &staker)?.unwrap_or(0);
+
+    let params = CurrentStakerDigestHashParams {
+        staker: staker.clone(),
+        operator: operator.clone(),
+        staker_public_key: staker_public_key.clone(), 
+        expiry,
+        current_nonce: current_staker_nonce,
+        chain_id: env.block.chain_id.clone(),
+        contract_addr: env.contract.address.clone()
+    };
+
+    calculate_current_staker_delegation_digest_hash(params)
+}
