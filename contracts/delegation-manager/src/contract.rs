@@ -1121,4 +1121,558 @@ mod tests {
         }
     }
     
+    #[test]
+    fn test_set_min_withdrawal_delay_blocks_exceeds_max() {
+        let mut deps = mock_dependencies();
+
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager_addr"),
+            slasher: Addr::unchecked("slasher_addr"),
+            min_withdrawal_delay_blocks: 100,
+            initial_owner: Addr::unchecked("owner_addr"),
+            strategies: vec![Addr::unchecked("strategy1_addr"), Addr::unchecked("strategy2_addr")],
+            withdrawal_delay_blocks: vec![50, 60],
+        };
+
+
+        let _res = instantiate(deps.as_mut(), msg.clone()).unwrap();
+
+        let owner_info: MessageInfo = message_info(&Addr::unchecked("owner_addr"), &[]);
+        let new_min_delay = MAX_WITHDRAWAL_DELAY_BLOCKS + 1;
+        let result = set_min_withdrawal_delay_blocks(deps.as_mut(), owner_info, new_min_delay);
+        assert!(result.is_err());
+        if let Err(err) = result {
+            match err {
+                ContractError::MinCannotBeExceedMAXWITHDRAWALDELAYBLOCKS {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
+
+    #[test]
+    fn test_set_min_withdrawal_delay_blocks_internal() {
+        let mut deps = mock_dependencies();
+
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager_addr"),
+            slasher: Addr::unchecked("slasher_addr"),
+            min_withdrawal_delay_blocks: 100,
+            initial_owner: Addr::unchecked("owner_addr"),
+            strategies: vec![Addr::unchecked("strategy1_addr"), Addr::unchecked("strategy2_addr")],
+            withdrawal_delay_blocks: vec![50, 60],
+        };
+
+        let _res = instantiate(deps.as_mut(), msg.clone()).unwrap();
+
+        let new_min_delay = 150;
+        let result = _set_min_withdrawal_delay_blocks(deps.as_mut(), new_min_delay);
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert_eq!(response.attributes.len(), 0);
+        assert_eq!(response.events.len(), 1);
+
+        let event = &response.events[0];
+        assert_eq!(event.ty, "MinWithdrawalDelayBlocksSet");
+        assert_eq!(event.attributes.len(), 3);
+        assert_eq!(event.attributes[0].key, "method");
+        assert_eq!(event.attributes[0].value, "set_min_withdrawal_delay_blocks");
+        assert_eq!(event.attributes[1].key, "prev_min_withdrawal_delay_blocks");
+        assert_eq!(event.attributes[1].value, "100");
+        assert_eq!(event.attributes[2].key, "new_min_withdrawal_delay_blocks");
+        assert_eq!(event.attributes[2].value, new_min_delay.to_string());
+
+        let new_min_delay = MAX_WITHDRAWAL_DELAY_BLOCKS + 1;
+        let result = _set_min_withdrawal_delay_blocks(deps.as_mut(), new_min_delay);
+        assert!(result.is_err());
+        if let Err(err) = result {
+            match err {
+                ContractError::MinCannotBeExceedMAXWITHDRAWALDELAYBLOCKS {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
+
+    #[test]
+    fn test_set_strategy_withdrawal_delay_blocks() {
+        let mut deps = mock_dependencies();
+
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+
+        // Test set_strategy_withdrawal_delay_blocks
+        let strategies = vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")];
+        let withdrawal_delay_blocks = vec![Uint64::new(15), Uint64::new(20)];
+
+        let owner_info: MessageInfo = message_info(&Addr::unchecked("owner"), &[]);
+
+        let res = set_strategy_withdrawal_delay_blocks(deps.as_mut(), owner_info.clone(), strategies.clone(), withdrawal_delay_blocks.clone()).unwrap();
+
+        assert_eq!(res.events.len(), 2);
+        assert_eq!(res.events[0].ty, "StrategyWithdrawalDelayBlocksSet");
+        assert_eq!(res.events[0].attributes[0].value, "strategy1");
+        assert_eq!(res.events[0].attributes[1].value, "5");
+        assert_eq!(res.events[0].attributes[2].value, "15");
+
+        assert_eq!(res.events[1].ty, "StrategyWithdrawalDelayBlocksSet");
+        assert_eq!(res.events[1].attributes[0].value, "strategy2");
+        assert_eq!(res.events[1].attributes[1].value, "10");
+        assert_eq!(res.events[1].attributes[2].value, "20");
+
+        let non_owner_info = message_info(&Addr::unchecked("not_owner"), &[]);
+
+        let res = set_strategy_withdrawal_delay_blocks(deps.as_mut(), non_owner_info, strategies.clone(), withdrawal_delay_blocks.clone());
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::Unauthorized {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        let strategies = vec![Addr::unchecked("strategy1")];
+        let res = set_strategy_withdrawal_delay_blocks(deps.as_mut(), owner_info.clone(), strategies, withdrawal_delay_blocks.clone());
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::InputLengthMismatch {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        let strategies = vec![Addr::unchecked("strategy1")];
+        let withdrawal_delay_blocks = vec![Uint64::new(MAX_WITHDRAWAL_DELAY_BLOCKS + 1)];
+        let res = set_strategy_withdrawal_delay_blocks(deps.as_mut(), owner_info.clone(), strategies, withdrawal_delay_blocks);
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::CannotBeExceedMAXWITHDRAWALDELAYBLOCKS {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
+
+    #[test]
+    fn test_set_strategy_withdrawal_delay_blocks_internal() {
+        let mut deps = mock_dependencies();
+
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+
+        // Test _set_strategy_withdrawal_delay_blocks
+        let strategies = vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")];
+        let withdrawal_delay_blocks = vec![Uint64::new(15), Uint64::new(20)];
+
+        let res = _set_strategy_withdrawal_delay_blocks(deps.as_mut(), strategies.clone(), withdrawal_delay_blocks.clone()).unwrap();
+
+        assert_eq!(res.events.len(), 2);
+        assert_eq!(res.events[0].ty, "StrategyWithdrawalDelayBlocksSet");
+        assert_eq!(res.events[0].attributes[0].value, "strategy1");
+        assert_eq!(res.events[0].attributes[1].value, "5");
+        assert_eq!(res.events[0].attributes[2].value, "15");
+
+        assert_eq!(res.events[1].ty, "StrategyWithdrawalDelayBlocksSet");
+        assert_eq!(res.events[1].attributes[0].value, "strategy2");
+        assert_eq!(res.events[1].attributes[1].value, "10");
+        assert_eq!(res.events[1].attributes[2].value, "20");
+
+        // Test with input length mismatch
+        let strategies = vec![Addr::unchecked("strategy1")];
+        let res = _set_strategy_withdrawal_delay_blocks(deps.as_mut(), strategies, withdrawal_delay_blocks.clone());
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::InputLengthMismatch {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Test with delay blocks exceeding max
+        let strategies = vec![Addr::unchecked("strategy1")];
+        let withdrawal_delay_blocks = vec![Uint64::new(MAX_WITHDRAWAL_DELAY_BLOCKS + 1)];
+        let res = _set_strategy_withdrawal_delay_blocks(deps.as_mut(), strategies, withdrawal_delay_blocks);
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::CannotBeExceedMAXWITHDRAWALDELAYBLOCKS {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
+
+    #[test]
+    fn test_modify_operator_details() {
+        let mut deps = mock_dependencies();
+        let info_operator: MessageInfo = message_info(&Addr::unchecked("operator"), &[]);
+        let info_delegation_approver: MessageInfo = message_info(&Addr::unchecked("approver"), &[]);
+    
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+    
+        let operator = info_operator.sender.clone();
+    
+        let initial_operator_details = OperatorDetails {
+            deprecated_earnings_receiver: Addr::unchecked("earnings_receiver1"),
+            delegation_approver: info_delegation_approver.sender.clone(),
+            staker_opt_out_window_blocks: 100,
+        };
+    
+        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &initial_operator_details).unwrap();
+    
+        let new_operator_details = OperatorDetails {
+            deprecated_earnings_receiver: Addr::unchecked("earnings_receiver2"),
+            delegation_approver: Addr::unchecked("approver2"),
+            staker_opt_out_window_blocks: 200,
+        };
+    
+        let res = modify_operator_details(deps.as_mut(), info_operator.clone(), new_operator_details.clone()).unwrap();
+    
+        // Check events
+        assert_eq!(res.events.len(), 1);
+        assert_eq!(res.events[0].ty, "OperatorDetailsSet");
+        assert_eq!(res.events[0].attributes.len(), 2);
+        assert_eq!(res.events[0].attributes[0].key, "operator");
+        assert_eq!(res.events[0].attributes[0].value, operator.to_string());
+        assert_eq!(res.events[0].attributes[1].key, "staker_opt_out_window_blocks");
+        assert_eq!(res.events[0].attributes[1].value, new_operator_details.staker_opt_out_window_blocks.to_string());
+    
+        // Verify the updated operator details
+        let updated_details = OPERATOR_DETAILS.load(&deps.storage, &operator).unwrap();
+        assert_eq!(updated_details.deprecated_earnings_receiver, new_operator_details.deprecated_earnings_receiver);
+        assert_eq!(updated_details.delegation_approver, new_operator_details.delegation_approver);
+        assert_eq!(updated_details.staker_opt_out_window_blocks, new_operator_details.staker_opt_out_window_blocks);
+    
+        // Modify operator details with staker_opt_out_window_blocks exceeding max
+        let invalid_operator_details = OperatorDetails {
+            deprecated_earnings_receiver: Addr::unchecked("earnings_receiver3"),
+            delegation_approver: Addr::unchecked("approver3"),
+            staker_opt_out_window_blocks: MAX_STAKER_OPT_OUT_WINDOW_BLOCKS + 1,
+        };
+    
+        let res = modify_operator_details(deps.as_mut(), info_operator.clone(), invalid_operator_details);
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::CannotBeExceedMAXSTAKEROPTOUTWINDOWBLOCKS {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    
+        // Modify operator details with staker_opt_out_window_blocks decreasing
+        let decreasing_operator_details = OperatorDetails {
+            deprecated_earnings_receiver: Addr::unchecked("earnings_receiver4"),
+            delegation_approver: Addr::unchecked("approver4"),
+            staker_opt_out_window_blocks: 50,
+        };
+    
+        let res = modify_operator_details(deps.as_mut(), info_operator.clone(), decreasing_operator_details);
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::CannotBeDecreased {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }    
+
+    #[test]
+    fn test_set_operator_details() {
+        let mut deps = mock_dependencies();
+
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+
+        // Initialize operator details
+        let operator = Addr::unchecked("operator1");
+        let initial_operator_details = OperatorDetails {
+            deprecated_earnings_receiver: Addr::unchecked("earnings_receiver1"),
+            staker_opt_out_window_blocks: 100,
+            delegation_approver: Addr::unchecked("approver1"),
+        };
+        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &initial_operator_details).unwrap();
+
+        // Test setting operator details with valid data
+        let new_operator_details = OperatorDetails {
+            deprecated_earnings_receiver: Addr::unchecked("earnings_receiver2"),
+            staker_opt_out_window_blocks: 200,
+            delegation_approver: Addr::unchecked("approver2"),
+        };
+
+        let res = _set_operator_details(deps.as_mut(), operator.clone(), new_operator_details.clone()).unwrap();
+        assert_eq!(res.events.len(), 1);
+        assert_eq!(res.events[0].ty, "OperatorDetailsSet");
+        assert_eq!(res.events[0].attributes[0].value, operator.to_string());
+        assert_eq!(res.events[0].attributes[1].value, new_operator_details.staker_opt_out_window_blocks.to_string());
+
+        // Test setting operator details with staker_opt_out_window_blocks exceeding max
+        let invalid_operator_details = OperatorDetails {
+            deprecated_earnings_receiver: Addr::unchecked("earnings_receiver3"),
+            staker_opt_out_window_blocks: MAX_STAKER_OPT_OUT_WINDOW_BLOCKS + 1,
+            delegation_approver: Addr::unchecked("approver3"),
+        };
+
+        let res = _set_operator_details(deps.as_mut(), operator.clone(), invalid_operator_details);
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::CannotBeExceedMAXSTAKEROPTOUTWINDOWBLOCKS {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Test setting operator details with staker_opt_out_window_blocks decreasing
+        let decreasing_operator_details = OperatorDetails {
+            deprecated_earnings_receiver: Addr::unchecked("earnings_receiver4"),
+            staker_opt_out_window_blocks: 50,
+            delegation_approver: Addr::unchecked("approver4"),
+        };
+
+        let res = _set_operator_details(deps.as_mut(), operator.clone(), decreasing_operator_details);
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::CannotBeDecreased {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
+
+    #[test]
+    fn test_increase_operator_shares() {
+        let mut deps = mock_dependencies();
+
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+
+        let operator = Addr::unchecked("operator1");
+        let staker = Addr::unchecked("staker1");
+        let strategy = Addr::unchecked("strategy1");
+        let initial_shares = Uint128::new(100);
+        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategy), &initial_shares).unwrap();
+
+        let additional_shares = Uint128::new(50);
+        let res = _increase_operator_shares(deps.as_mut(), operator.clone(), staker.clone(), strategy.clone(), additional_shares).unwrap();
+
+        assert_eq!(res.events.len(), 1);
+        assert_eq!(res.events[0].ty, "OperatorSharesIncreased");
+        assert_eq!(res.events[0].attributes[0].value, operator.to_string());
+        assert_eq!(res.events[0].attributes[1].value, staker.to_string());
+        assert_eq!(res.events[0].attributes[2].value, strategy.to_string());
+        assert_eq!(res.events[0].attributes[3].value, additional_shares.to_string());
+        assert_eq!(res.events[0].attributes[4].value, (initial_shares + additional_shares).to_string());
+
+        let stored_shares = OPERATOR_SHARES.load(deps.as_ref().storage, (&operator, &strategy)).unwrap();
+        assert_eq!(stored_shares, initial_shares + additional_shares);
+
+        let more_shares = Uint128::new(25);
+        let res = _increase_operator_shares(deps.as_mut(), operator.clone(), staker.clone(), strategy.clone(), more_shares).unwrap();
+
+        assert_eq!(res.events.len(), 1);
+        assert_eq!(res.events[0].ty, "OperatorSharesIncreased");
+        assert_eq!(res.events[0].attributes[0].value, operator.to_string());
+        assert_eq!(res.events[0].attributes[1].value, staker.to_string());
+        assert_eq!(res.events[0].attributes[2].value, strategy.to_string());
+        assert_eq!(res.events[0].attributes[3].value, more_shares.to_string());
+        assert_eq!(res.events[0].attributes[4].value, (initial_shares + additional_shares + more_shares).to_string());
+
+        let updated_shares = OPERATOR_SHARES.load(deps.as_ref().storage, (&operator, &strategy)).unwrap();
+        assert_eq!(updated_shares, initial_shares + additional_shares + more_shares);
+
+        
+        let zero_shares = Uint128::new(0);
+        let res = _increase_operator_shares(deps.as_mut(), operator.clone(), staker.clone(), strategy.clone(), zero_shares);
+
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::Underflow {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
+
+    #[test]
+    fn test_get_delegatable_shares() {
+        let mut deps = mock_dependencies();
+        
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+
+        let staker = Addr::unchecked("staker1");
+        
+        // Mock the response from strategy_manager contract
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg:_ } if contract_addr == "strategy_manager" => {
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&(vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")], vec![Uint128::new(100), Uint128::new(200)])).unwrap()))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        // Call get_delegatable_shares
+        let (strategies, shares) = get_delegatable_shares(deps.as_ref(), staker.clone()).unwrap();
+
+        // Verify the results
+        assert_eq!(strategies.len(), 2);
+        assert_eq!(shares.len(), 2);
+        assert_eq!(strategies[0], Addr::unchecked("strategy1"));
+        assert_eq!(shares[0], Uint128::new(100));
+        assert_eq!(strategies[1], Addr::unchecked("strategy2"));
+        assert_eq!(shares[1], Uint128::new(200));
+    }
+
+    fn generate_osmosis_public_key_from_private_key(private_key_hex: &str) -> (Addr, SecretKey, Vec<u8>) {
+        let secp = Secp256k1::new();
+        let secret_key = SecretKey::from_slice(&hex::decode(private_key_hex).unwrap()).unwrap();
+        let public_key = PublicKey::from_secret_key(&secp, &secret_key);
+        let public_key_bytes = public_key.serialize();
+        let sha256_result = Sha256::digest(public_key_bytes);
+        let ripemd160_result = Ripemd160::digest(sha256_result);
+        let address = bech32::encode("osmo", ripemd160_result.to_base32(), Variant::Bech32).unwrap();
+        (Addr::unchecked(address), secret_key, public_key_bytes.to_vec())
+    }
+
+    fn mock_signature_with_message(
+        params: ApproverDigestHashParams,
+        secret_key: &SecretKey,
+    ) -> Binary {
+        let message_bytes = calculate_delegation_approval_digest_hash(&params);
+    
+        let secp = Secp256k1::new();
+        let message = Message::from_digest_slice(&message_bytes).expect("32 bytes");
+        let signature = secp.sign_ecdsa(&message, secret_key);
+        let signature_bytes = signature.serialize_compact().to_vec();
+        
+        Binary::from(signature_bytes)
+    }
+
+    #[test]
+    fn test_delegate() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info_operator: MessageInfo = message_info(&Addr::unchecked("operator"), &[]);
+        let info_delegation_approver: MessageInfo = message_info(&Addr::unchecked("approver"), &[]);
+
+    
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+
+        // Register operator details
+        let operator = info_operator.sender.clone();
+        let operator_details = OperatorDetails {
+            deprecated_earnings_receiver: Addr::unchecked("earnings_receiver"),
+            delegation_approver: info_delegation_approver.sender.clone(),
+            staker_opt_out_window_blocks: 100,
+        };
+
+        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &operator_details).unwrap();
+
+        let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
+        let (_approver, secret_key, approver_public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
+
+        let staker = Addr::unchecked("staker1");
+        let salt = Binary::from(vec![0]);
+
+        let approver_public_key = Binary::from(approver_public_key_bytes.as_slice());
+
+        let delegate_params = DelegateParams {
+            staker: staker.clone(),
+            operator: operator.clone(),
+            public_key: approver_public_key.clone(),
+            salt: salt.clone(),
+        };
+
+        let current_time = env.block.time.seconds();
+        let expiry = current_time + 1000;
+        let chain_id = env.block.chain_id.clone();
+        let contract_addr = env.contract.address.clone();
+
+        let params = ApproverDigestHashParams {
+            staker: staker.clone(),
+            operator: operator.clone(),
+            delegation_approver: info_delegation_approver.sender.clone(),
+            approver_public_key: approver_public_key.clone(),
+            approver_salt: salt.clone(),
+            expiry,
+            chain_id: chain_id.clone(),
+            contract_addr: contract_addr.clone(),
+        };
+
+        let approver_signature_and_expiry = SignatureWithExpiry {
+            signature: mock_signature_with_message(params.clone(), &secret_key),
+            expiry,
+        };
+
+        // Mock the response from strategy_manager contract
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg: _ } if contract_addr == "strategy_manager" => {
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&(vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")], vec![Uint128::new(100), Uint128::new(200)])).unwrap()))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        let res = _delegate(deps.as_mut(), info_delegation_approver.clone(), env.clone(), approver_signature_and_expiry, delegate_params).unwrap();
+
+        assert_eq!(res.events.len(), 1);
+        assert_eq!(res.events[0].ty, "Delegate");
+        assert_eq!(res.events[0].attributes[0].value, "delegate");
+        assert_eq!(res.events[0].attributes[1].value, staker.to_string());
+        assert_eq!(res.events[0].attributes[2].value, operator.to_string());
+    }
 }
