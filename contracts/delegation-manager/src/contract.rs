@@ -856,3 +856,24 @@ fn _withdraw_shares_as_tokens(
 
     Ok(response)
 }
+
+pub fn query(
+    deps: Deps,
+    _env: Env,
+    msg: QueryMsg,
+) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::IsDelegated { staker } => to_json_binary(&query_is_delegated(deps, staker)?),
+        QueryMsg::IsOperator { operator } => to_json_binary(&query_is_operator(deps, operator)?),
+        QueryMsg::OperatorDetails { operator } => to_json_binary(&query_operator_details(deps, operator)?),
+        QueryMsg::DelegationApprover { operator } => to_json_binary(&query_delegation_approver(deps, operator)?),
+        QueryMsg::StakerOptOutWindowBlocks { operator } => to_json_binary(&query_staker_opt_out_window_blocks(deps, operator)?),
+        QueryMsg::GetOperatorShares { operator, strategies } => to_json_binary(&query_get_operator_shares(deps, operator, strategies)?),
+        QueryMsg::GetDelegatableShares { staker } => to_json_binary(&get_delegatable_shares(deps, staker)?),
+        QueryMsg::GetWithdrawalDelay { strategies } => to_json_binary(&query_get_withdrawal_delay(deps, strategies)?),
+        QueryMsg::CalculateWithdrawalRoot { withdrawal } => to_json_binary(&calculate_withdrawal_root(&withdrawal)?),
+        QueryMsg::CurrentStakerDelegationDigestHash { current_staker_digest_hash_params } => to_json_binary(&calculate_current_staker_delegation_digest_hash(current_staker_digest_hash_params)?),
+        QueryMsg::StakerDelegationDigestHash { staker_digest_hash_params } => to_json_binary(&calculate_staker_delegation_digest_hash(&staker_digest_hash_params)),
+        QueryMsg::DelegationApprovalDigestHash { approver_digest_hash_params } => to_json_binary(&calculate_delegation_approval_digest_hash(&approver_digest_hash_params))
+    }
+}

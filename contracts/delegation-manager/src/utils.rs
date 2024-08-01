@@ -114,6 +114,23 @@ pub fn calculate_staker_delegation_digest_hash(params: &StakerDigestHashParams) 
 
     sha256(&digest_hash_input)
 }
+
+pub fn calculate_current_staker_delegation_digest_hash(params:CurrentStakerDigestHashParams) -> StdResult<Binary> {
+
+    let params = StakerDigestHashParams {
+        staker: params.staker.clone(),
+        staker_nonce: params.current_nonce,
+        operator: params.operator.clone(),
+        staker_public_key: params.staker_public_key.clone(), 
+        expiry: params.expiry,
+        chain_id: params.chain_id.clone(),
+        contract_addr: params.contract_addr.clone()
+    };
+
+    let digest_hash = calculate_staker_delegation_digest_hash(&params);
+    to_json_binary(&digest_hash)
+}
+
 pub fn recover(digest_hash: &[u8], signature: &[u8], public_key_bytes: &[u8]) -> StdResult<bool> {
     match secp256k1_verify(digest_hash, signature, public_key_bytes) {
         Ok(valid) => Ok(valid),
