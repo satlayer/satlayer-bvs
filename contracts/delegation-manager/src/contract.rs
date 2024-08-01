@@ -1121,4 +1121,197 @@ mod tests {
         }
     }
     
+    #[test]
+    fn test_set_min_withdrawal_delay_blocks_exceeds_max() {
+        let mut deps = mock_dependencies();
+
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager_addr"),
+            slasher: Addr::unchecked("slasher_addr"),
+            min_withdrawal_delay_blocks: 100,
+            initial_owner: Addr::unchecked("owner_addr"),
+            strategies: vec![Addr::unchecked("strategy1_addr"), Addr::unchecked("strategy2_addr")],
+            withdrawal_delay_blocks: vec![50, 60],
+        };
+
+
+        let _res = instantiate(deps.as_mut(), msg.clone()).unwrap();
+
+        let owner_info: MessageInfo = message_info(&Addr::unchecked("owner_addr"), &[]);
+        let new_min_delay = MAX_WITHDRAWAL_DELAY_BLOCKS + 1;
+        let result = set_min_withdrawal_delay_blocks(deps.as_mut(), owner_info, new_min_delay);
+        assert!(result.is_err());
+        if let Err(err) = result {
+            match err {
+                ContractError::MinCannotBeExceedMAXWITHDRAWALDELAYBLOCKS {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
+
+    #[test]
+    fn test_set_min_withdrawal_delay_blocks_internal() {
+        let mut deps = mock_dependencies();
+
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager_addr"),
+            slasher: Addr::unchecked("slasher_addr"),
+            min_withdrawal_delay_blocks: 100,
+            initial_owner: Addr::unchecked("owner_addr"),
+            strategies: vec![Addr::unchecked("strategy1_addr"), Addr::unchecked("strategy2_addr")],
+            withdrawal_delay_blocks: vec![50, 60],
+        };
+
+        let _res = instantiate(deps.as_mut(), msg.clone()).unwrap();
+
+        let new_min_delay = 150;
+        let result = _set_min_withdrawal_delay_blocks(deps.as_mut(), new_min_delay);
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert_eq!(response.attributes.len(), 0);
+        assert_eq!(response.events.len(), 1);
+
+        let event = &response.events[0];
+        assert_eq!(event.ty, "MinWithdrawalDelayBlocksSet");
+        assert_eq!(event.attributes.len(), 3);
+        assert_eq!(event.attributes[0].key, "method");
+        assert_eq!(event.attributes[0].value, "set_min_withdrawal_delay_blocks");
+        assert_eq!(event.attributes[1].key, "prev_min_withdrawal_delay_blocks");
+        assert_eq!(event.attributes[1].value, "100");
+        assert_eq!(event.attributes[2].key, "new_min_withdrawal_delay_blocks");
+        assert_eq!(event.attributes[2].value, new_min_delay.to_string());
+
+        let new_min_delay = MAX_WITHDRAWAL_DELAY_BLOCKS + 1;
+        let result = _set_min_withdrawal_delay_blocks(deps.as_mut(), new_min_delay);
+        assert!(result.is_err());
+        if let Err(err) = result {
+            match err {
+                ContractError::MinCannotBeExceedMAXWITHDRAWALDELAYBLOCKS {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
+
+    #[test]
+    fn test_set_strategy_withdrawal_delay_blocks() {
+        let mut deps = mock_dependencies();
+
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+
+        // Test set_strategy_withdrawal_delay_blocks
+        let strategies = vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")];
+        let withdrawal_delay_blocks = vec![Uint64::new(15), Uint64::new(20)];
+
+        let owner_info: MessageInfo = message_info(&Addr::unchecked("owner"), &[]);
+
+        let res = set_strategy_withdrawal_delay_blocks(deps.as_mut(), owner_info.clone(), strategies.clone(), withdrawal_delay_blocks.clone()).unwrap();
+
+        assert_eq!(res.events.len(), 2);
+        assert_eq!(res.events[0].ty, "StrategyWithdrawalDelayBlocksSet");
+        assert_eq!(res.events[0].attributes[0].value, "strategy1");
+        assert_eq!(res.events[0].attributes[1].value, "5");
+        assert_eq!(res.events[0].attributes[2].value, "15");
+
+        assert_eq!(res.events[1].ty, "StrategyWithdrawalDelayBlocksSet");
+        assert_eq!(res.events[1].attributes[0].value, "strategy2");
+        assert_eq!(res.events[1].attributes[1].value, "10");
+        assert_eq!(res.events[1].attributes[2].value, "20");
+
+        let non_owner_info = message_info(&Addr::unchecked("not_owner"), &[]);
+
+        let res = set_strategy_withdrawal_delay_blocks(deps.as_mut(), non_owner_info, strategies.clone(), withdrawal_delay_blocks.clone());
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::Unauthorized {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        let strategies = vec![Addr::unchecked("strategy1")];
+        let res = set_strategy_withdrawal_delay_blocks(deps.as_mut(), owner_info.clone(), strategies, withdrawal_delay_blocks.clone());
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::InputLengthMismatch {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        let strategies = vec![Addr::unchecked("strategy1")];
+        let withdrawal_delay_blocks = vec![Uint64::new(MAX_WITHDRAWAL_DELAY_BLOCKS + 1)];
+        let res = set_strategy_withdrawal_delay_blocks(deps.as_mut(), owner_info.clone(), strategies, withdrawal_delay_blocks);
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::CannotBeExceedMAXWITHDRAWALDELAYBLOCKS {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
+
+    #[test]
+    fn test_set_strategy_withdrawal_delay_blocks_internal() {
+        let mut deps = mock_dependencies();
+
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+
+        // Test _set_strategy_withdrawal_delay_blocks
+        let strategies = vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")];
+        let withdrawal_delay_blocks = vec![Uint64::new(15), Uint64::new(20)];
+
+        let res = _set_strategy_withdrawal_delay_blocks(deps.as_mut(), strategies.clone(), withdrawal_delay_blocks.clone()).unwrap();
+
+        assert_eq!(res.events.len(), 2);
+        assert_eq!(res.events[0].ty, "StrategyWithdrawalDelayBlocksSet");
+        assert_eq!(res.events[0].attributes[0].value, "strategy1");
+        assert_eq!(res.events[0].attributes[1].value, "5");
+        assert_eq!(res.events[0].attributes[2].value, "15");
+
+        assert_eq!(res.events[1].ty, "StrategyWithdrawalDelayBlocksSet");
+        assert_eq!(res.events[1].attributes[0].value, "strategy2");
+        assert_eq!(res.events[1].attributes[1].value, "10");
+        assert_eq!(res.events[1].attributes[2].value, "20");
+
+        // Test with input length mismatch
+        let strategies = vec![Addr::unchecked("strategy1")];
+        let res = _set_strategy_withdrawal_delay_blocks(deps.as_mut(), strategies, withdrawal_delay_blocks.clone());
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::InputLengthMismatch {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Test with delay blocks exceeding max
+        let strategies = vec![Addr::unchecked("strategy1")];
+        let withdrawal_delay_blocks = vec![Uint64::new(MAX_WITHDRAWAL_DELAY_BLOCKS + 1)];
+        let res = _set_strategy_withdrawal_delay_blocks(deps.as_mut(), strategies, withdrawal_delay_blocks);
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::CannotBeExceedMAXWITHDRAWALDELAYBLOCKS {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
+
+
 }
