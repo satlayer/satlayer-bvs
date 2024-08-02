@@ -2841,5 +2841,462 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_complete_queued_withdrawal_internal() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        
+        let staker = Addr::unchecked("staker1");
+        let operator = Addr::unchecked("operator1");
+        let withdrawer = staker.clone();
+        let strategy1 = Addr::unchecked("strategy1");
+        let strategy2 = Addr::unchecked("strategy2");
+        let tokens = vec![Addr::unchecked("token1"), Addr::unchecked("token2")];
+        let shares = vec![Uint128::new(100), Uint128::new(200)];
+        let strategies = vec![strategy1.clone(), strategy2.clone()];
+    
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: strategies.clone(),
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+    
+        // Mock current operator
+        DELEGATED_TO.save(deps.as_mut().storage, &withdrawer, &operator).unwrap();
+    
+        // Set pending withdrawals and withdrawal details
+        let withdrawal = Withdrawal {
+            staker: staker.clone(),
+            delegated_to: operator.clone(),
+            withdrawer: withdrawer.clone(),
+            nonce: 0,
+            start_block: env.block.height - 15,  // Simulate sufficient delay has passed
+            strategies: strategies.clone(),
+            shares: shares.clone(),
+        };
+    
+        let withdrawal_root = calculate_withdrawal_root(&withdrawal).unwrap();
+        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &withdrawal_root, &true).unwrap();
 
+        let strategy1_clone = strategy1.clone();
+        let strategy2_clone = strategy2.clone();
+    
+        // Mock the response for tokens to receive as shares
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg: _ } if contract_addr == "strategy_manager" => {
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&(vec![strategy1_clone.clone(), strategy2_clone.clone()], vec![Uint128::new(100), Uint128::new(200)])).unwrap()))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+    
+        let info = message_info(&withdrawer, &[]);
+    
+        // Call _complete_queued_withdrawal
+        let res = _complete_queued_withdrawal(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            withdrawal.clone(),
+            tokens.clone(),
+            0,  
+            true,
+        ).unwrap();
+    
+        // Verify the result
+        assert_eq!(res.events.len(), 1); // 2 withdrawals as tokens + 1 completion
+        assert_eq!(res.events[0].ty, "WithdrawalCompleted");
+    
+        assert_eq!(res.events[0].attributes[0].value, withdrawal_root.to_string());
+    
+        assert!(res.events[0].attributes.iter().any(|attr| attr.key == "withdrawal_root" && attr.value == withdrawal_root.to_string()));
+    
+        // Verify state changes: the pending withdrawal should be removed
+        assert!(!PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root));
+    
+        // Test for unauthorized attempt to complete
+        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &withdrawal_root, &true).unwrap();
+
+        let unauthorized_info = message_info(&Addr::unchecked("not_authorized"), &[]);
+        let res = _complete_queued_withdrawal(
+            deps.as_mut(),
+            env.clone(),
+            unauthorized_info,
+            withdrawal.clone(),
+            tokens.clone(),
+            0,
+            true,
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::Unauthorized {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    
+        // Test for insufficient delay
+        let premature_withdrawal = Withdrawal {
+            start_block: env.block.height - 5,  // Not enough delay
+            ..withdrawal.clone()
+        };
+        let premature_withdrawal_root: Binary = calculate_withdrawal_root(&premature_withdrawal).unwrap();
+        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &premature_withdrawal_root, &true).unwrap();
+        let res = _complete_queued_withdrawal(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            premature_withdrawal.clone(),
+            tokens.clone(),
+            0,
+            true,
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::MinWithdrawalDelayNotPassed {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    
+        // Test for input length mismatch error
+        let res = _complete_queued_withdrawal(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            withdrawal.clone(),
+            vec![Addr::unchecked("token1")],  // Incorrect length
+            0,
+            true,
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::InputLengthMismatch {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    
+        // Test for strategy withdrawal delay not passed
+        let withdrawal = Withdrawal {
+            staker: staker.clone(),
+            delegated_to: operator.clone(),
+            withdrawer: withdrawer.clone(),
+            nonce: 0,
+            start_block: env.block.height - 15,  // Simulate sufficient delay has passed
+            strategies: strategies.clone(),
+            shares: shares.clone(),
+        };
+
+        let premature_withdrawal_root: Binary = calculate_withdrawal_root(&withdrawal).unwrap();
+        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &premature_withdrawal_root, &true).unwrap();
+
+        let withdrawal_delay_blocks1 = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.load(&deps.storage, &Addr::unchecked("strategy1")).unwrap();
+        assert_eq!(withdrawal_delay_blocks1, Uint64::from(5u64));
+
+        let new_withdrawal_delay_blocks = Uint64::from(10000000u64);
+
+        let _ = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.save(deps.as_mut().storage, &strategy1.clone(), &new_withdrawal_delay_blocks);
+
+        println!("  start_block: {}", premature_withdrawal.start_block);
+        println!("  current block: {}", env.block.height);
+
+        let res = _complete_queued_withdrawal(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            withdrawal.clone(),
+            tokens.clone(),
+            0,
+            false,
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::StrategyWithdrawalDelayNotPassed {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
+
+    #[test]
+    fn test_complete_queued_withdrawal() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        let staker = Addr::unchecked("staker1");
+        let operator = Addr::unchecked("operator1");
+        let withdrawer = staker.clone();
+        let strategy1 = Addr::unchecked("strategy1");
+        let strategy2 = Addr::unchecked("strategy2");
+        let tokens = vec![Addr::unchecked("token1"), Addr::unchecked("token2")];
+        let shares = vec![Uint128::new(100), Uint128::new(200)];
+        let strategies = vec![strategy1.clone(), strategy2.clone()];
+
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: strategies.clone(),
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+
+        // Mock current operator
+        DELEGATED_TO.save(deps.as_mut().storage, &withdrawer, &operator).unwrap();
+
+        // Set pending withdrawals and withdrawal details
+        let withdrawal = Withdrawal {
+            staker: staker.clone(),
+            delegated_to: operator.clone(),
+            withdrawer: withdrawer.clone(),
+            nonce: 0,
+            start_block: env.block.height - 15, // Simulate sufficient delay has passed
+            strategies: strategies.clone(),
+            shares: shares.clone(),
+        };
+
+        let withdrawal_root = calculate_withdrawal_root(&withdrawal).unwrap();
+        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &withdrawal_root, &true).unwrap();
+
+        // Mock strategy withdrawal delay blocks
+        STRATEGY_WITHDRAWAL_DELAY_BLOCKS.save(deps.as_mut().storage, &strategy1.clone(), &Uint64::from(5u64)).unwrap();
+        STRATEGY_WITHDRAWAL_DELAY_BLOCKS.save(deps.as_mut().storage, &strategy2.clone(), &Uint64::from(10u64)).unwrap();
+
+        let strategy1_clone = strategy1.clone();
+        let strategy2_clone = strategy2.clone();
+
+        // Mock the response for tokens to receive as shares
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg: _ } if contract_addr == "strategy_manager" => {
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&(vec![strategy1_clone.clone(), strategy2_clone.clone()], vec![Uint128::new(100), Uint128::new(200)])).unwrap()))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        let info = message_info(&withdrawer, &[]);
+
+        // Call complete_queued_withdrawal
+        let res = complete_queued_withdrawal(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            withdrawal.clone(),
+            tokens.clone(),
+            0,
+            true,
+        ).unwrap();
+
+        // Verify the result
+        assert_eq!(res.events.len(), 1); // 1 completion event
+        assert_eq!(res.events[0].ty, "WithdrawalCompleted");
+        assert!(res.events[0].attributes.iter().any(|attr| attr.key == "withdrawal_root" && attr.value == withdrawal_root.to_string()));
+
+        // Verify state changes: the pending withdrawal should be removed
+        assert!(!PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root));
+
+        // Test for unauthorized attempt to complete
+        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &withdrawal_root, &true).unwrap();
+        let unauthorized_info = message_info(&Addr::unchecked("not_authorized"), &[]);
+
+        let res = complete_queued_withdrawal(
+            deps.as_mut(),
+            env.clone(),
+            unauthorized_info,
+            withdrawal.clone(),
+            tokens.clone(),
+            0,
+            true,
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::Unauthorized {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Test for insufficient delay
+        let premature_withdrawal = Withdrawal {
+            start_block: env.block.height - 5,  // Not enough delay
+            ..withdrawal.clone()
+        };
+        let premature_withdrawal_root = calculate_withdrawal_root(&premature_withdrawal).unwrap();
+        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &premature_withdrawal_root, &true).unwrap();
+        let res = complete_queued_withdrawal(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            premature_withdrawal.clone(),
+            tokens.clone(),
+            0,
+            true,
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::MinWithdrawalDelayNotPassed {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Test for input length mismatch error
+        let res = complete_queued_withdrawal(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            withdrawal.clone(),
+            vec![Addr::unchecked("token1")],  // Incorrect length
+            0,
+            true,
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::InputLengthMismatch {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Test for strategy withdrawal delay not passed
+        let delayed_withdrawal = Withdrawal {
+            staker: staker.clone(),
+            delegated_to: operator.clone(),
+            withdrawer: withdrawer.clone(),
+            nonce: 0,
+            start_block: env.block.height - 15,  // Simulate sufficient delay has passed
+            strategies: strategies.clone(),
+            shares: shares.clone(),
+        };
+
+        let delayed_withdrawal_root: Binary = calculate_withdrawal_root(&delayed_withdrawal).unwrap();
+        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &delayed_withdrawal_root, &true).unwrap();
+
+        let new_withdrawal_delay_blocks = Uint64::from(10000000u64);
+
+        let _ = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.save(deps.as_mut().storage, &strategy1.clone(), &new_withdrawal_delay_blocks);
+
+        let res = complete_queued_withdrawal(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            delayed_withdrawal.clone(),
+            tokens.clone(),
+            0,
+            false,
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::StrategyWithdrawalDelayNotPassed {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
+
+    #[test]
+    fn test_complete_queued_withdrawals() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+    
+        let staker = Addr::unchecked("staker1");
+        let operator = Addr::unchecked("operator1");
+        let withdrawer = staker.clone();
+        let strategy1 = Addr::unchecked("strategy1");
+        let strategy2 = Addr::unchecked("strategy2");
+        let tokens1 = vec![Addr::unchecked("token1"), Addr::unchecked("token2")];
+        let tokens2 = vec![Addr::unchecked("token3"), Addr::unchecked("token4")];
+        let shares1 = vec![Uint128::new(100), Uint128::new(200)];
+        let shares2 = vec![Uint128::new(150), Uint128::new(250)];
+        let strategies1 = vec![strategy1.clone(), strategy2.clone()];
+        let strategies2 = vec![strategy1.clone(), strategy2.clone()];
+    
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: strategies1.clone(),
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+    
+        // Mock current operator
+        DELEGATED_TO.save(deps.as_mut().storage, &withdrawer, &operator).unwrap();
+    
+        // Set pending withdrawals and withdrawal details
+        let withdrawal1 = Withdrawal {
+            staker: staker.clone(),
+            delegated_to: operator.clone(),
+            withdrawer: withdrawer.clone(),
+            nonce: 0,
+            start_block: env.block.height - 15, // Simulate sufficient delay has passed
+            strategies: strategies1.clone(),
+            shares: shares1.clone(),
+        };
+    
+        let withdrawal2 = Withdrawal {
+            staker: staker.clone(),
+            delegated_to: operator.clone(),
+            withdrawer: withdrawer.clone(),
+            nonce: 1,
+            start_block: env.block.height - 15, // Simulate sufficient delay has passed
+            strategies: strategies2.clone(),
+            shares: shares2.clone(),
+        };
+    
+        let withdrawal_root1 = calculate_withdrawal_root(&withdrawal1).unwrap();
+        let withdrawal_root2 = calculate_withdrawal_root(&withdrawal2).unwrap();
+        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &withdrawal_root1, &true).unwrap();
+        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &withdrawal_root2, &true).unwrap();
+    
+        // Mock the response for tokens to receive as shares
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg: _ } if contract_addr == "strategy_manager" => {
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&(vec![strategy1.clone(), strategy2.clone()], vec![Uint128::new(100), Uint128::new(200)])).unwrap()))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+    
+        let info = message_info(&withdrawer, &[]);
+    
+        // Call complete_queued_withdrawals
+        let res = complete_queued_withdrawals(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            vec![withdrawal1.clone(), withdrawal2.clone()],
+            vec![tokens1.clone(), tokens2.clone()],
+            vec![0, 1],
+            vec![true, true],
+        ).unwrap();
+    
+        // Verify the result
+        assert_eq!(res.events.len(), 2); // 2 completions
+        assert_eq!(res.events[0].ty, "WithdrawalCompleted");
+        assert_eq!(res.events[1].ty, "WithdrawalCompleted");
+    
+        assert!(res.events[0].attributes.iter().any(|attr| attr.key == "withdrawal_root" && attr.value == withdrawal_root1.to_string()));
+        assert!(res.events[1].attributes.iter().any(|attr| attr.key == "withdrawal_root" && attr.value == withdrawal_root2.to_string()));
+    
+        // Verify state changes: the pending withdrawals should be removed
+        assert!(!PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root1));
+        assert!(!PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root2));
+    }            
 }
