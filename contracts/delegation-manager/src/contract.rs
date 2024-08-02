@@ -397,7 +397,7 @@ pub fn undelegate(
     env: Env,
     info: MessageInfo,
     staker: Addr,
-) -> Result<Vec<String>, ContractError> {
+) -> Result<Vec<Response>, ContractError> {
     // Ensure the staker is delegated
     if DELEGATED_TO.may_load(deps.storage, &staker)?.is_none() {
         return Err(ContractError::StakerNotDelegated {});
@@ -579,7 +579,7 @@ pub fn queue_withdrawals(
     env: Env,
     info: MessageInfo,
     queued_withdrawal_params: Vec<QueuedWithdrawalParams>,
-) -> Result<Vec<String>, ContractError> {
+) -> Result<Vec<Response>, ContractError> {
     let operator = DELEGATED_TO.may_load(deps.storage, &info.sender)?.unwrap_or_else(|| Addr::unchecked(""));
 
     let mut withdrawal_roots = Vec::with_capacity(queued_withdrawal_params.len());
@@ -602,7 +602,7 @@ pub fn queue_withdrawals(
             params.shares.clone(),
         )?;
 
-        withdrawal_roots.push(withdrawal_root.to_string());
+        withdrawal_roots.push(withdrawal_root);
     }
 
     Ok(withdrawal_roots)
@@ -617,9 +617,11 @@ pub fn complete_queued_withdrawals(
     middleware_times_indexes: Vec<u64>, 
     receive_as_tokens: Vec<bool>,
 ) -> Result<Response, ContractError> {
+    let mut response = Response::new();
+
     // Loop through each withdrawal and complete it
     for (i, withdrawal) in withdrawals.iter().enumerate() {
-        _complete_queued_withdrawal(
+        let res = _complete_queued_withdrawal(
             deps.branch(),
             env.clone(),
             info.clone(),
@@ -628,9 +630,11 @@ pub fn complete_queued_withdrawals(
             middleware_times_indexes[i],
             receive_as_tokens[i]
         )?;
+        response = response.add_submessages(res.messages);
+        response = response.add_events(res.events);
     }
 
-    Ok(Response::new())
+    Ok(response)
 }
 
 pub fn complete_queued_withdrawal(
@@ -763,7 +767,7 @@ fn _remove_shares_and_queue_withdrawal(
     withdrawer: Addr,
     strategies: Vec<Addr>,
     shares: Vec<Uint128>,
-) -> Result<String, ContractError> {
+) -> Result<Response, ContractError> {
     if staker == Addr::unchecked("0") {
         return Err(ContractError::CannotBeZero {});
     }
@@ -774,7 +778,7 @@ fn _remove_shares_and_queue_withdrawal(
 
     let state = DELEGATION_MANAGER_STATE.load(deps.storage)?;
 
-    let mut response: Response<()> = Response::new();
+    let mut response = Response::new();
 
     for (i, strategy) in strategies.iter().enumerate() {
         let share_amount = shares[i];
@@ -809,6 +813,7 @@ fn _remove_shares_and_queue_withdrawal(
 
     let nonce = CUMULATIVE_WITHDRAWALS_QUEUED.may_load(deps.storage, &staker)?.unwrap_or(0);
     let new_nonce = nonce + 1;
+
     CUMULATIVE_WITHDRAWALS_QUEUED.save(deps.storage, &staker, &new_nonce)?;
 
     let withdrawal = Withdrawal {
@@ -824,15 +829,15 @@ fn _remove_shares_and_queue_withdrawal(
     let withdrawal_root = calculate_withdrawal_root(&withdrawal)?;
     PENDING_WITHDRAWALS.save(deps.storage, &withdrawal_root, &true)?;
 
-    response.add_event(
+    response = response.add_event(
         Event::new("WithdrawalQueued")
-            .add_attribute("withdrawal_root", withdrawal_root.to_string())
+            .add_attribute("withdrawal_root", withdrawal_root.to_base64())
             .add_attribute("staker", staker.to_string())
             .add_attribute("operator", operator.to_string())
             .add_attribute("withdrawer", withdrawer.to_string())
     );
 
-    Ok(withdrawal_root.to_string())
+    Ok(response)
 }
 
 fn _withdraw_shares_as_tokens(
@@ -962,7 +967,7 @@ pub fn query_calculate_current_staker_delegation_digest_hash(
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info};
-    use cosmwasm_std::{attr, Addr, Uint64, SystemResult, ContractResult, SystemError};
+    use cosmwasm_std::{attr, Addr, Uint64, SystemResult, ContractResult, SystemError, from_json};
     use secp256k1::{Secp256k1, SecretKey, PublicKey, Message};
     use sha2::{Sha256, Digest};
     use ripemd::Ripemd160;
@@ -2477,4 +2482,821 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn test_remove_shares_and_queue_withdrawal() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        let staker = Addr::unchecked("staker1");
+        let operator = Addr::unchecked("operator1");
+        let withdrawer = staker.clone(); 
+        let strategies = vec![Addr::unchecked("strategy1")];
+        let shares = vec![Uint128::new(100)];
+
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+
+        // Register operator details
+        let operator_details = OperatorDetails {
+            deprecated_earnings_receiver: Addr::unchecked("earnings_receiver"),
+            delegation_approver: Addr::unchecked("approver"),
+            staker_opt_out_window_blocks: 100,
+        };
+        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &operator_details).unwrap();
+
+        // Save initial shares
+        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategies[0]), &shares[0]).unwrap();
+
+        // Mock the response from strategy_manager contract
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg: _ } if contract_addr == "strategy_manager" => {
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&false).unwrap())) 
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        // Call _remove_shares_and_queue_withdrawal
+        let res = _remove_shares_and_queue_withdrawal(
+            deps.as_mut(),
+            env.clone(),
+            staker.clone(),
+            operator.clone(),
+            withdrawer.clone(),
+            strategies.clone(),
+            shares.clone(),
+        ).unwrap();
+
+        // Verify the event
+        let events = res.events;
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].ty, "WithdrawalQueued");
+        assert_eq!(events[0].attributes[0].key, "withdrawal_root");
+        assert_eq!(events[0].attributes[1].key, "staker");
+        assert_eq!(events[0].attributes[2].key, "operator");
+        assert_eq!(events[0].attributes[3].key, "withdrawer");
+
+        // Verify state changes
+        let stored_shares = OPERATOR_SHARES.load(deps.as_ref().storage, (&operator, &strategies[0])).unwrap();
+        assert_eq!(stored_shares, Uint128::zero());
+
+        let withdrawal_root_base64 = events[0].attributes[0].value.clone();
+        let withdrawal_root_bytes = Binary::from_base64(&withdrawal_root_base64).unwrap();
+        let pending_withdrawal_exists = PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root_bytes);
+        assert!(pending_withdrawal_exists);
+    }
+
+    #[test]
+    fn test_calculate_withdrawal_root() {
+        let staker = Addr::unchecked("staker");
+        let delegated_to = Addr::unchecked("operator");
+        let withdrawer = Addr::unchecked("withdrawer");
+        let strategies = vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")];
+        let shares = vec![Uint128::new(100), Uint128::new(200)];
+
+        let withdrawal = Withdrawal {
+            staker: staker.clone(),
+            delegated_to: delegated_to.clone(),
+            withdrawer: withdrawer.clone(),
+            nonce: 1,
+            start_block: 12345,
+            strategies: strategies.clone(),
+            shares: shares.clone(),
+        };
+
+        let result = calculate_withdrawal_root(&withdrawal).unwrap();
+        
+        let expected_hash = "276237a2fc2cfafbc9d76f7c65142be274fd4aff5db328d6eff6c7eb767ca75b";
+        assert_eq!(hex::encode(result), expected_hash);
+    }
+
+    #[test]
+    fn test_undelegate() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        
+        let staker = Addr::unchecked("staker1");
+        let operator = Addr::unchecked("operator1");
+        let strategies = vec![Addr::unchecked("strategy1")];
+        let shares = [Uint128::new(100)];
+    
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: strategies.clone(),
+            withdrawal_delay_blocks: vec![5],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+    
+        // Register operator details
+        let operator_details = OperatorDetails {
+            deprecated_earnings_receiver: Addr::unchecked("earnings_receiver"),
+            delegation_approver: Addr::unchecked("approver"),
+            staker_opt_out_window_blocks: 100,
+        };
+        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &operator_details).unwrap();
+    
+        // Save initial shares and delegated info
+        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategies[0]), &shares[0]).unwrap();
+        DELEGATED_TO.save(deps.as_mut().storage, &staker, &operator).unwrap();
+    
+        // First mock: response for get_delegatable_shares
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg } if contract_addr == "strategy_manager" => {
+                let query_msg: Result<StrategyManagerQueryMsg, _> = from_json(msg);
+                if let Ok(StrategyManagerQueryMsg::GetDeposits { staker: _ }) = query_msg {
+                    let simulated_response: (Vec<Addr>, Vec<Uint128>) = (
+                        vec![Addr::unchecked("strategy1")], 
+                        vec![Uint128::new(100)] 
+                    );
+                    SystemResult::Ok(ContractResult::Ok(to_json_binary(&simulated_response).unwrap()))
+                } else if let Ok(StrategyManagerQueryMsg::IsThirdPartyTransfersForbidden { strategy: _ }) = query_msg {
+                    SystemResult::Ok(ContractResult::Ok(to_json_binary(&false).unwrap())) 
+                } else {
+                    SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    })
+                }
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+        
+        let info = message_info(&staker, &[]);
+    
+        // Call undelegate
+        let res = undelegate(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            staker.clone(),
+        ).unwrap();
+    
+        // Verify the events
+        let events = res[0].events.clone();
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].ty, "WithdrawalQueued");
+        assert_eq!(events[0].attributes[0].value, "rBX2Z+HAvSnYe+GkZinE32HPi9k0r7C8DF/R+RVpmHE=");
+    
+        // Verify state changes
+        let stored_shares = OPERATOR_SHARES.load(deps.as_ref().storage, (&operator, &strategies[0])).unwrap();
+        assert_eq!(stored_shares, Uint128::zero());
+    
+        let withdrawal_root_base64 = events[0].attributes[0].value.clone();
+        let withdrawal_root_bytes = Binary::from_base64(&withdrawal_root_base64).unwrap();
+        let pending_withdrawal_exists = PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root_bytes);
+        assert!(pending_withdrawal_exists);
+    
+        // Test unauthorized call
+        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &operator_details).unwrap();
+        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategies[0]), &shares[0]).unwrap();
+        DELEGATED_TO.save(deps.as_mut().storage, &staker, &operator).unwrap();
+
+        let unauthorized_info = message_info(&Addr::unchecked("not_authorized"), &[]);
+        let res = undelegate(deps.as_mut(), env.clone(), unauthorized_info, staker.clone());    
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::Unauthorized {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    
+        // Test undelegating a non-delegated staker
+        let non_delegated_staker = Addr::unchecked("staker2");
+        let info = message_info(&non_delegated_staker, &[]);
+        let res = undelegate(deps.as_mut(), env.clone(), info, non_delegated_staker.clone());
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::StakerNotDelegated {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    
+        // Test staker as operator
+        let operator_staker = Addr::unchecked("operator_staker");
+        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator_staker, &operator_details).unwrap();
+        DELEGATED_TO.save(deps.as_mut().storage, &operator_staker, &operator_staker).unwrap();
+    
+        let info = message_info(&operator_staker, &[]);
+        let res = undelegate(deps.as_mut(), env.clone(), info, operator_staker.clone());
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::OperatorCannotBeUndelegated {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
+
+    #[test]
+    fn test_queue_withdrawals() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+    
+        let staker = Addr::unchecked("staker1");
+        let operator = Addr::unchecked("operator1");
+        let withdrawer = staker.clone();
+        let strategies = vec![Addr::unchecked("strategy1")];
+        let shares = vec![Uint128::new(100)];
+    
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: strategies.clone(),
+            withdrawal_delay_blocks: vec![5],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+    
+        // Register operator details
+        let operator_details = OperatorDetails {
+            deprecated_earnings_receiver: Addr::unchecked("earnings_receiver"),
+            delegation_approver: Addr::unchecked("approver"),
+            staker_opt_out_window_blocks: 100,
+        };
+        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &operator_details).unwrap();
+    
+        // Save initial shares and delegated info
+        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategies[0]), &shares[0]).unwrap();
+        DELEGATED_TO.save(deps.as_mut().storage, &staker, &operator).unwrap();
+    
+        // Mock the response from strategy_manager contract
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg } if contract_addr == "strategy_manager" => {
+                let query_msg: Result<StrategyManagerQueryMsg, _> = from_json(msg);
+                if let Ok(StrategyManagerQueryMsg::IsThirdPartyTransfersForbidden { strategy: _ }) = query_msg {
+                    SystemResult::Ok(ContractResult::Ok(to_json_binary(&false).unwrap())) 
+                } else {
+                    SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    })
+                }
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+    
+        // Create the queued withdrawal params
+        let queued_withdrawal_params = vec![
+            QueuedWithdrawalParams {
+                withdrawer: withdrawer.clone(),
+                strategies: strategies.clone(),
+                shares: shares.clone(),
+            }
+        ];
+    
+        let info = message_info(&staker, &[]);
+    
+        // Call queue_withdrawals
+        let res = queue_withdrawals(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            queued_withdrawal_params.clone(),
+        ).unwrap();
+    
+        // Verify the results
+        assert_eq!(res.len(), 1);
+        assert_eq!(res[0].events.len(), 1);
+        assert_eq!(res[0].events[0].ty, "WithdrawalQueued");
+        assert_eq!(res[0].events[0].attributes[1].value, staker.to_string());
+        assert_eq!(res[0].events[0].attributes[2].value, operator.to_string());
+        assert_eq!(res[0].events[0].attributes[3].value, withdrawer.to_string());
+    
+        // Verify the state changes
+        let stored_shares = OPERATOR_SHARES.load(deps.as_ref().storage, (&operator, &strategies[0])).unwrap();
+        assert_eq!(stored_shares, Uint128::zero());
+    
+        let withdrawal_root_base64 = res[0].events[0].attributes[0].value.clone();
+        let withdrawal_root_bytes = Binary::from_base64(&withdrawal_root_base64).unwrap();
+        let pending_withdrawal_exists = PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root_bytes);
+        assert!(pending_withdrawal_exists);
+    
+        // Test input length mismatch error
+        let invalid_withdrawal_params = vec![
+            QueuedWithdrawalParams {
+                withdrawer: withdrawer.clone(),
+                strategies: strategies.clone(),
+                shares: vec![Uint128::new(100), Uint128::new(200)],
+            }
+        ];
+        let res = queue_withdrawals(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            invalid_withdrawal_params,
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::InputLengthMismatch {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    
+        // Test withdrawer is not the staker
+        let invalid_withdrawal_params = vec![
+            QueuedWithdrawalParams {
+                withdrawer: Addr::unchecked("other_address"),
+                strategies: strategies.clone(),
+                shares: shares.clone(),
+            }
+        ];
+        let res = queue_withdrawals(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            invalid_withdrawal_params,
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::WithdrawerMustBeStaker {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
+
+    #[test]
+    fn test_complete_queued_withdrawal_internal() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        
+        let staker = Addr::unchecked("staker1");
+        let operator = Addr::unchecked("operator1");
+        let withdrawer = staker.clone();
+        let strategy1 = Addr::unchecked("strategy1");
+        let strategy2 = Addr::unchecked("strategy2");
+        let tokens = vec![Addr::unchecked("token1"), Addr::unchecked("token2")];
+        let shares = vec![Uint128::new(100), Uint128::new(200)];
+        let strategies = vec![strategy1.clone(), strategy2.clone()];
+    
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: strategies.clone(),
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+    
+        // Mock current operator
+        DELEGATED_TO.save(deps.as_mut().storage, &withdrawer, &operator).unwrap();
+    
+        // Set pending withdrawals and withdrawal details
+        let withdrawal = Withdrawal {
+            staker: staker.clone(),
+            delegated_to: operator.clone(),
+            withdrawer: withdrawer.clone(),
+            nonce: 0,
+            start_block: env.block.height - 15,  // Simulate sufficient delay has passed
+            strategies: strategies.clone(),
+            shares: shares.clone(),
+        };
+    
+        let withdrawal_root = calculate_withdrawal_root(&withdrawal).unwrap();
+        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &withdrawal_root, &true).unwrap();
+
+        let strategy1_clone = strategy1.clone();
+        let strategy2_clone = strategy2.clone();
+    
+        // Mock the response for tokens to receive as shares
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg: _ } if contract_addr == "strategy_manager" => {
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&(vec![strategy1_clone.clone(), strategy2_clone.clone()], vec![Uint128::new(100), Uint128::new(200)])).unwrap()))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+    
+        let info = message_info(&withdrawer, &[]);
+    
+        // Call _complete_queued_withdrawal
+        let res = _complete_queued_withdrawal(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            withdrawal.clone(),
+            tokens.clone(),
+            0,  
+            true,
+        ).unwrap();
+    
+        // Verify the result
+        assert_eq!(res.events.len(), 1); // 2 withdrawals as tokens + 1 completion
+        assert_eq!(res.events[0].ty, "WithdrawalCompleted");
+    
+        assert_eq!(res.events[0].attributes[0].value, withdrawal_root.to_string());
+    
+        assert!(res.events[0].attributes.iter().any(|attr| attr.key == "withdrawal_root" && attr.value == withdrawal_root.to_string()));
+    
+        // Verify state changes: the pending withdrawal should be removed
+        assert!(!PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root));
+    
+        // Test for unauthorized attempt to complete
+        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &withdrawal_root, &true).unwrap();
+
+        let unauthorized_info = message_info(&Addr::unchecked("not_authorized"), &[]);
+        let res = _complete_queued_withdrawal(
+            deps.as_mut(),
+            env.clone(),
+            unauthorized_info,
+            withdrawal.clone(),
+            tokens.clone(),
+            0,
+            true,
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::Unauthorized {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    
+        // Test for insufficient delay
+        let premature_withdrawal = Withdrawal {
+            start_block: env.block.height - 5,  // Not enough delay
+            ..withdrawal.clone()
+        };
+        let premature_withdrawal_root: Binary = calculate_withdrawal_root(&premature_withdrawal).unwrap();
+        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &premature_withdrawal_root, &true).unwrap();
+        let res = _complete_queued_withdrawal(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            premature_withdrawal.clone(),
+            tokens.clone(),
+            0,
+            true,
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::MinWithdrawalDelayNotPassed {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    
+        // Test for input length mismatch error
+        let res = _complete_queued_withdrawal(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            withdrawal.clone(),
+            vec![Addr::unchecked("token1")],  // Incorrect length
+            0,
+            true,
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::InputLengthMismatch {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    
+        // Test for strategy withdrawal delay not passed
+        let withdrawal = Withdrawal {
+            staker: staker.clone(),
+            delegated_to: operator.clone(),
+            withdrawer: withdrawer.clone(),
+            nonce: 0,
+            start_block: env.block.height - 15,  // Simulate sufficient delay has passed
+            strategies: strategies.clone(),
+            shares: shares.clone(),
+        };
+
+        let premature_withdrawal_root: Binary = calculate_withdrawal_root(&withdrawal).unwrap();
+        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &premature_withdrawal_root, &true).unwrap();
+
+        let withdrawal_delay_blocks1 = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.load(&deps.storage, &Addr::unchecked("strategy1")).unwrap();
+        assert_eq!(withdrawal_delay_blocks1, Uint64::from(5u64));
+
+        let new_withdrawal_delay_blocks = Uint64::from(10000000u64);
+
+        let _ = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.save(deps.as_mut().storage, &strategy1.clone(), &new_withdrawal_delay_blocks);
+
+        println!("  start_block: {}", premature_withdrawal.start_block);
+        println!("  current block: {}", env.block.height);
+
+        let res = _complete_queued_withdrawal(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            withdrawal.clone(),
+            tokens.clone(),
+            0,
+            false,
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::StrategyWithdrawalDelayNotPassed {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
+
+    #[test]
+    fn test_complete_queued_withdrawal() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        let staker = Addr::unchecked("staker1");
+        let operator = Addr::unchecked("operator1");
+        let withdrawer = staker.clone();
+        let strategy1 = Addr::unchecked("strategy1");
+        let strategy2 = Addr::unchecked("strategy2");
+        let tokens = vec![Addr::unchecked("token1"), Addr::unchecked("token2")];
+        let shares = vec![Uint128::new(100), Uint128::new(200)];
+        let strategies = vec![strategy1.clone(), strategy2.clone()];
+
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: strategies.clone(),
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+
+        // Mock current operator
+        DELEGATED_TO.save(deps.as_mut().storage, &withdrawer, &operator).unwrap();
+
+        // Set pending withdrawals and withdrawal details
+        let withdrawal = Withdrawal {
+            staker: staker.clone(),
+            delegated_to: operator.clone(),
+            withdrawer: withdrawer.clone(),
+            nonce: 0,
+            start_block: env.block.height - 15, // Simulate sufficient delay has passed
+            strategies: strategies.clone(),
+            shares: shares.clone(),
+        };
+
+        let withdrawal_root = calculate_withdrawal_root(&withdrawal).unwrap();
+        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &withdrawal_root, &true).unwrap();
+
+        // Mock strategy withdrawal delay blocks
+        STRATEGY_WITHDRAWAL_DELAY_BLOCKS.save(deps.as_mut().storage, &strategy1.clone(), &Uint64::from(5u64)).unwrap();
+        STRATEGY_WITHDRAWAL_DELAY_BLOCKS.save(deps.as_mut().storage, &strategy2.clone(), &Uint64::from(10u64)).unwrap();
+
+        let strategy1_clone = strategy1.clone();
+        let strategy2_clone = strategy2.clone();
+
+        // Mock the response for tokens to receive as shares
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg: _ } if contract_addr == "strategy_manager" => {
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&(vec![strategy1_clone.clone(), strategy2_clone.clone()], vec![Uint128::new(100), Uint128::new(200)])).unwrap()))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        let info = message_info(&withdrawer, &[]);
+
+        // Call complete_queued_withdrawal
+        let res = complete_queued_withdrawal(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            withdrawal.clone(),
+            tokens.clone(),
+            0,
+            true,
+        ).unwrap();
+
+        // Verify the result
+        assert_eq!(res.events.len(), 1); // 1 completion event
+        assert_eq!(res.events[0].ty, "WithdrawalCompleted");
+        assert!(res.events[0].attributes.iter().any(|attr| attr.key == "withdrawal_root" && attr.value == withdrawal_root.to_string()));
+
+        // Verify state changes: the pending withdrawal should be removed
+        assert!(!PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root));
+
+        // Test for unauthorized attempt to complete
+        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &withdrawal_root, &true).unwrap();
+        let unauthorized_info = message_info(&Addr::unchecked("not_authorized"), &[]);
+
+        let res = complete_queued_withdrawal(
+            deps.as_mut(),
+            env.clone(),
+            unauthorized_info,
+            withdrawal.clone(),
+            tokens.clone(),
+            0,
+            true,
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::Unauthorized {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Test for insufficient delay
+        let premature_withdrawal = Withdrawal {
+            start_block: env.block.height - 5,  // Not enough delay
+            ..withdrawal.clone()
+        };
+        let premature_withdrawal_root = calculate_withdrawal_root(&premature_withdrawal).unwrap();
+        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &premature_withdrawal_root, &true).unwrap();
+        let res = complete_queued_withdrawal(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            premature_withdrawal.clone(),
+            tokens.clone(),
+            0,
+            true,
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::MinWithdrawalDelayNotPassed {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Test for input length mismatch error
+        let res = complete_queued_withdrawal(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            withdrawal.clone(),
+            vec![Addr::unchecked("token1")],  // Incorrect length
+            0,
+            true,
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::InputLengthMismatch {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Test for strategy withdrawal delay not passed
+        let delayed_withdrawal = Withdrawal {
+            staker: staker.clone(),
+            delegated_to: operator.clone(),
+            withdrawer: withdrawer.clone(),
+            nonce: 0,
+            start_block: env.block.height - 15,  // Simulate sufficient delay has passed
+            strategies: strategies.clone(),
+            shares: shares.clone(),
+        };
+
+        let delayed_withdrawal_root: Binary = calculate_withdrawal_root(&delayed_withdrawal).unwrap();
+        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &delayed_withdrawal_root, &true).unwrap();
+
+        let new_withdrawal_delay_blocks = Uint64::from(10000000u64);
+
+        let _ = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.save(deps.as_mut().storage, &strategy1.clone(), &new_withdrawal_delay_blocks);
+
+        let res = complete_queued_withdrawal(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            delayed_withdrawal.clone(),
+            tokens.clone(),
+            0,
+            false,
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::StrategyWithdrawalDelayNotPassed {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+    }
+
+    #[test]
+    fn test_complete_queued_withdrawals() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+    
+        let staker = Addr::unchecked("staker1");
+        let operator = Addr::unchecked("operator1");
+        let withdrawer = staker.clone();
+        let strategy1 = Addr::unchecked("strategy1");
+        let strategy2 = Addr::unchecked("strategy2");
+        let tokens1 = vec![Addr::unchecked("token1"), Addr::unchecked("token2")];
+        let tokens2 = vec![Addr::unchecked("token3"), Addr::unchecked("token4")];
+        let shares1 = vec![Uint128::new(100), Uint128::new(200)];
+        let shares2 = vec![Uint128::new(150), Uint128::new(250)];
+        let strategies1 = vec![strategy1.clone(), strategy2.clone()];
+        let strategies2 = vec![strategy1.clone(), strategy2.clone()];
+    
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: strategies1.clone(),
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), msg).unwrap();
+    
+        // Mock current operator
+        DELEGATED_TO.save(deps.as_mut().storage, &withdrawer, &operator).unwrap();
+    
+        // Set pending withdrawals and withdrawal details
+        let withdrawal1 = Withdrawal {
+            staker: staker.clone(),
+            delegated_to: operator.clone(),
+            withdrawer: withdrawer.clone(),
+            nonce: 0,
+            start_block: env.block.height - 15, // Simulate sufficient delay has passed
+            strategies: strategies1.clone(),
+            shares: shares1.clone(),
+        };
+    
+        let withdrawal2 = Withdrawal {
+            staker: staker.clone(),
+            delegated_to: operator.clone(),
+            withdrawer: withdrawer.clone(),
+            nonce: 1,
+            start_block: env.block.height - 15, // Simulate sufficient delay has passed
+            strategies: strategies2.clone(),
+            shares: shares2.clone(),
+        };
+    
+        let withdrawal_root1 = calculate_withdrawal_root(&withdrawal1).unwrap();
+        let withdrawal_root2 = calculate_withdrawal_root(&withdrawal2).unwrap();
+        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &withdrawal_root1, &true).unwrap();
+        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &withdrawal_root2, &true).unwrap();
+    
+        // Mock the response for tokens to receive as shares
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg: _ } if contract_addr == "strategy_manager" => {
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&(vec![strategy1.clone(), strategy2.clone()], vec![Uint128::new(100), Uint128::new(200)])).unwrap()))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+    
+        let info = message_info(&withdrawer, &[]);
+    
+        // Call complete_queued_withdrawals
+        let res = complete_queued_withdrawals(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            vec![withdrawal1.clone(), withdrawal2.clone()],
+            vec![tokens1.clone(), tokens2.clone()],
+            vec![0, 1],
+            vec![true, true],
+        ).unwrap();
+    
+        // Verify the result
+        assert_eq!(res.events.len(), 2); // 2 completions
+        assert_eq!(res.events[0].ty, "WithdrawalCompleted");
+        assert_eq!(res.events[1].ty, "WithdrawalCompleted");
+    
+        assert!(res.events[0].attributes.iter().any(|attr| attr.key == "withdrawal_root" && attr.value == withdrawal_root1.to_string()));
+        assert!(res.events[1].attributes.iter().any(|attr| attr.key == "withdrawal_root" && attr.value == withdrawal_root2.to_string()));
+    
+        // Verify state changes: the pending withdrawals should be removed
+        assert!(!PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root1));
+        assert!(!PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root2));
+    }            
 }
