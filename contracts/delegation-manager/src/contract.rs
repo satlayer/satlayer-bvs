@@ -1487,6 +1487,8 @@ mod tests {
     #[test]
     fn test_increase_operator_shares_internal() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
 
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
@@ -1496,7 +1498,7 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let operator = Addr::unchecked("operator1");
         let staker = Addr::unchecked("staker1");
@@ -1548,6 +1550,8 @@ mod tests {
     #[test]
     fn test_get_delegatable_shares() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
         
         // Instantiate the contract
         let msg = InstantiateMsg {
@@ -1558,7 +1562,7 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let staker = Addr::unchecked("staker1");
         
@@ -1628,6 +1632,8 @@ mod tests {
     fn test_delegate() {
         let mut deps = mock_dependencies();
         let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+
         let info_operator: MessageInfo = message_info(&Addr::unchecked("operator"), &[]);
         let info_delegation_approver: MessageInfo = message_info(&Addr::unchecked("approver"), &[]);
 
@@ -1641,7 +1647,7 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         // Register operator details
         let operator = info_operator.sender.clone();
@@ -1712,6 +1718,8 @@ mod tests {
     #[test]
     fn test_register_as_operator() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
     
         // Mock the response from strategy_manager contract
         deps.querier.update_wasm(move |query| match query {
@@ -1724,7 +1732,6 @@ mod tests {
             }),
         });
     
-        let env = mock_env();
         
         // Instantiate the contract
         let msg = InstantiateMsg {
@@ -1736,7 +1743,7 @@ mod tests {
             withdrawal_delay_blocks: vec![5, 10],
         };
     
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
         
         // Operator details to be registered
         let operator_details = OperatorDetails {
@@ -1818,6 +1825,8 @@ mod tests {
     #[test]
     fn test_update_operator_metadata_uri() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
 
         // Instantiate the contract
         let msg = InstantiateMsg {
@@ -1828,7 +1837,7 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         // Register operator details
         let operator = Addr::unchecked("operator1");
@@ -1886,6 +1895,8 @@ mod tests {
     fn test_delegate_to() {
         let mut deps = mock_dependencies();
         let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+
         let info_operator: MessageInfo = message_info(&Addr::unchecked("operator"), &[]);
         let info_delegation_approver: MessageInfo = message_info(&Addr::unchecked("approver"), &[]);
 
@@ -1898,7 +1909,7 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         // Register operator details
         let operator = info_operator.sender.clone();
