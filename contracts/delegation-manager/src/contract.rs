@@ -28,6 +28,8 @@ const MAX_WITHDRAWAL_DELAY_BLOCKS: u64 = 216_000;
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     mut deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
@@ -926,18 +928,17 @@ pub fn query_get_operator_shares(deps: Deps, operator: Addr, strategies: Vec<Add
     Ok(shares)
 }
 
-pub fn query_get_withdrawal_delay(deps: Deps, strategies: Vec<Addr>) -> StdResult<Uint64> {
+pub fn query_get_withdrawal_delay(deps: Deps, strategies: Vec<Addr>) -> StdResult<Vec<u64>> {
     let min_withdrawal_delay_blocks = MIN_WITHDRAWAL_DELAY_BLOCKS.load(deps.storage)?;
 
-    let mut withdrawal_delay = min_withdrawal_delay_blocks;
+    let mut withdrawal_delays = vec![];
     for strategy in strategies.iter() {
-        let curr_withdrawal_delay = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.load(deps.storage, strategy)?;
-        if curr_withdrawal_delay > withdrawal_delay.into() {
-            withdrawal_delay = curr_withdrawal_delay.into();
-        }
+        let curr_withdrawal_delay = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.may_load(deps.storage, strategy)?;
+        let delay = curr_withdrawal_delay.unwrap_or(Uint64::zero()).u64();
+        withdrawal_delays.push(std::cmp::max(delay, min_withdrawal_delay_blocks));
     }
 
-    Ok(withdrawal_delay.into())
+    Ok(withdrawal_delays)
 }
 
 pub fn query_calculate_current_staker_delegation_digest_hash(
@@ -966,7 +967,7 @@ pub fn query_calculate_current_staker_delegation_digest_hash(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info};
+    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
     use cosmwasm_std::{attr, Addr, Uint64, SystemResult, ContractResult, SystemError, from_json};
     use secp256k1::{Secp256k1, SecretKey, PublicKey, Message};
     use sha2::{Sha256, Digest};
@@ -976,6 +977,8 @@ mod tests {
     #[test]
     fn test_instantiate() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
 
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager_addr"),
@@ -986,7 +989,7 @@ mod tests {
             withdrawal_delay_blocks: vec![50, 60],
         };
 
-        let res = instantiate(deps.as_mut(), msg.clone()).unwrap();
+        let res = instantiate(deps.as_mut(), env, info, msg.clone()).unwrap();
 
         assert_eq!(res.attributes.len(), 5);
         assert_eq!(res.attributes[0], attr("method", "instantiate"));
@@ -1021,6 +1024,9 @@ mod tests {
     #[test]
     fn test_only_owner() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+
 
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager_addr"),
@@ -1031,7 +1037,7 @@ mod tests {
             withdrawal_delay_blocks: vec![50, 60],
         };
 
-        let _res = instantiate(deps.as_mut(), msg.clone()).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg.clone()).unwrap();
 
         let owner_info = message_info(&Addr::unchecked("owner_addr"), &[]);
 
@@ -1054,6 +1060,8 @@ mod tests {
     #[test]
     fn test_only_strategy_manager() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
 
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager_addr"),
@@ -1064,7 +1072,7 @@ mod tests {
             withdrawal_delay_blocks: vec![50, 60],
         };
 
-        let _res = instantiate(deps.as_mut(), msg.clone()).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg.clone()).unwrap();
 
         let strategy_manager_info = message_info(&Addr::unchecked("strategy_manager_addr"), &[]);
 
@@ -1087,6 +1095,8 @@ mod tests {
     #[test]
     fn test_set_min_withdrawal_delay_blocks() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
 
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager_addr"),
@@ -1097,7 +1107,7 @@ mod tests {
             withdrawal_delay_blocks: vec![50, 60],
         };
 
-        let _res = instantiate(deps.as_mut(), msg.clone()).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg.clone()).unwrap();
 
         let owner_info = message_info(&Addr::unchecked("owner_addr"), &[]);
 
@@ -1477,6 +1487,8 @@ mod tests {
     #[test]
     fn test_increase_operator_shares_internal() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
 
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
@@ -1486,7 +1498,7 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let operator = Addr::unchecked("operator1");
         let staker = Addr::unchecked("staker1");
@@ -1538,6 +1550,8 @@ mod tests {
     #[test]
     fn test_get_delegatable_shares() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
         
         // Instantiate the contract
         let msg = InstantiateMsg {
@@ -1548,7 +1562,7 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let staker = Addr::unchecked("staker1");
         
@@ -1618,6 +1632,8 @@ mod tests {
     fn test_delegate() {
         let mut deps = mock_dependencies();
         let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+
         let info_operator: MessageInfo = message_info(&Addr::unchecked("operator"), &[]);
         let info_delegation_approver: MessageInfo = message_info(&Addr::unchecked("approver"), &[]);
 
@@ -1631,7 +1647,7 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         // Register operator details
         let operator = info_operator.sender.clone();
@@ -1702,6 +1718,8 @@ mod tests {
     #[test]
     fn test_register_as_operator() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
     
         // Mock the response from strategy_manager contract
         deps.querier.update_wasm(move |query| match query {
@@ -1714,7 +1732,6 @@ mod tests {
             }),
         });
     
-        let env = mock_env();
         
         // Instantiate the contract
         let msg = InstantiateMsg {
@@ -1726,7 +1743,7 @@ mod tests {
             withdrawal_delay_blocks: vec![5, 10],
         };
     
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
         
         // Operator details to be registered
         let operator_details = OperatorDetails {
@@ -1808,6 +1825,8 @@ mod tests {
     #[test]
     fn test_update_operator_metadata_uri() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
 
         // Instantiate the contract
         let msg = InstantiateMsg {
@@ -1818,7 +1837,7 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         // Register operator details
         let operator = Addr::unchecked("operator1");
@@ -1876,6 +1895,8 @@ mod tests {
     fn test_delegate_to() {
         let mut deps = mock_dependencies();
         let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+
         let info_operator: MessageInfo = message_info(&Addr::unchecked("operator"), &[]);
         let info_delegation_approver: MessageInfo = message_info(&Addr::unchecked("approver"), &[]);
 
@@ -1888,7 +1909,7 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         // Register operator details
         let operator = info_operator.sender.clone();
