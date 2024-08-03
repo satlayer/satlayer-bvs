@@ -1143,6 +1143,8 @@ mod tests {
     #[test]
     fn test_set_min_withdrawal_delay_blocks_exceeds_max() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
 
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager_addr"),
@@ -1154,7 +1156,7 @@ mod tests {
         };
 
 
-        let _res = instantiate(deps.as_mut(), msg.clone()).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg.clone()).unwrap();
 
         let owner_info: MessageInfo = message_info(&Addr::unchecked("owner_addr"), &[]);
         let new_min_delay = MAX_WITHDRAWAL_DELAY_BLOCKS + 1;
@@ -1171,6 +1173,8 @@ mod tests {
     #[test]
     fn test_set_min_withdrawal_delay_blocks_internal() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
 
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager_addr"),
@@ -1181,7 +1185,7 @@ mod tests {
             withdrawal_delay_blocks: vec![50, 60],
         };
 
-        let _res = instantiate(deps.as_mut(), msg.clone()).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg.clone()).unwrap();
 
         let new_min_delay = 150;
         let result = _set_min_withdrawal_delay_blocks(deps.as_mut(), new_min_delay);
@@ -1214,6 +1218,8 @@ mod tests {
     #[test]
     fn test_set_strategy_withdrawal_delay_blocks() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
 
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
@@ -1223,7 +1229,7 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         // Test set_strategy_withdrawal_delay_blocks
         let strategies = vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")];
@@ -1280,6 +1286,8 @@ mod tests {
     #[test]
     fn test_set_strategy_withdrawal_delay_blocks_internal() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
 
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
@@ -1289,7 +1297,7 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         // Test _set_strategy_withdrawal_delay_blocks
         let strategies = vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")];
@@ -1335,6 +1343,9 @@ mod tests {
     #[test]
     fn test_modify_operator_details() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+
         let info_operator: MessageInfo = message_info(&Addr::unchecked("operator"), &[]);
         let info_delegation_approver: MessageInfo = message_info(&Addr::unchecked("approver"), &[]);
     
@@ -1346,7 +1357,7 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
     
         let operator = info_operator.sender.clone();
     
@@ -1417,6 +1428,8 @@ mod tests {
     #[test]
     fn test_set_operator_details() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
 
         // Instantiate the contract
         let msg = InstantiateMsg {
@@ -1427,7 +1440,7 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         // Initialize operator details
         let operator = Addr::unchecked("operator1");
@@ -2042,6 +2055,7 @@ mod tests {
     fn test_delegate_to_by_signature() {
         let mut deps = mock_dependencies();
         let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
 
         // Mock the response from strategy_manager contract
         deps.querier.update_wasm(move |query| match query {
@@ -2063,7 +2077,7 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         // Operator details to be registered
         let operator_details = OperatorDetails {
@@ -2257,6 +2271,8 @@ mod tests {
     #[test]
     fn test_increase_delegated_shares() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
 
         // Instantiate the contract
         let msg = InstantiateMsg {
@@ -2267,7 +2283,7 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let strategy_manager_info = message_info(&Addr::unchecked("strategy_manager"), &[]);
 
@@ -2355,6 +2371,8 @@ mod tests {
     #[test]
     fn test_decrease_operator_shares_internal() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
 
         // Instantiate the contract
         let msg = InstantiateMsg {
@@ -2365,7 +2383,7 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let operator = Addr::unchecked("operator1");
         let staker = Addr::unchecked("staker1");
@@ -2416,6 +2434,8 @@ mod tests {
     #[test]
     fn test_decrease_delegated_shares() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
         
         // Instantiate the contract
         let msg = InstantiateMsg {
@@ -2426,7 +2446,7 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         // Setup initial data
         let staker = Addr::unchecked("staker1");
@@ -2508,6 +2528,7 @@ mod tests {
     fn test_remove_shares_and_queue_withdrawal() {
         let mut deps = mock_dependencies();
         let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
 
         let staker = Addr::unchecked("staker1");
         let operator = Addr::unchecked("operator1");
@@ -2524,7 +2545,7 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         // Register operator details
         let operator_details = OperatorDetails {
@@ -2606,6 +2627,7 @@ mod tests {
     fn test_undelegate() {
         let mut deps = mock_dependencies();
         let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
         
         let staker = Addr::unchecked("staker1");
         let operator = Addr::unchecked("operator1");
@@ -2621,7 +2643,7 @@ mod tests {
             strategies: strategies.clone(),
             withdrawal_delay_blocks: vec![5],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
     
         // Register operator details
         let operator_details = OperatorDetails {
@@ -2732,6 +2754,7 @@ mod tests {
     fn test_queue_withdrawals() {
         let mut deps = mock_dependencies();
         let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
     
         let staker = Addr::unchecked("staker1");
         let operator = Addr::unchecked("operator1");
@@ -2748,7 +2771,7 @@ mod tests {
             strategies: strategies.clone(),
             withdrawal_delay_blocks: vec![5],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
     
         // Register operator details
         let operator_details = OperatorDetails {
@@ -2866,6 +2889,7 @@ mod tests {
     fn test_complete_queued_withdrawal_internal() {
         let mut deps = mock_dependencies();
         let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
         
         let staker = Addr::unchecked("staker1");
         let operator = Addr::unchecked("operator1");
@@ -2885,7 +2909,7 @@ mod tests {
             strategies: strategies.clone(),
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
     
         // Mock current operator
         DELEGATED_TO.save(deps.as_mut().storage, &withdrawer, &operator).unwrap();
@@ -3051,6 +3075,7 @@ mod tests {
     fn test_complete_queued_withdrawal() {
         let mut deps = mock_dependencies();
         let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
 
         let staker = Addr::unchecked("staker1");
         let operator = Addr::unchecked("operator1");
@@ -3070,7 +3095,7 @@ mod tests {
             strategies: strategies.clone(),
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         // Mock current operator
         DELEGATED_TO.save(deps.as_mut().storage, &withdrawer, &operator).unwrap();
@@ -3231,6 +3256,7 @@ mod tests {
     fn test_complete_queued_withdrawals() {
         let mut deps = mock_dependencies();
         let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
     
         let staker = Addr::unchecked("staker1");
         let operator = Addr::unchecked("operator1");
@@ -3253,7 +3279,7 @@ mod tests {
             strategies: strategies1.clone(),
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
     
         // Mock current operator
         DELEGATED_TO.save(deps.as_mut().storage, &withdrawer, &operator).unwrap();
@@ -3309,7 +3335,7 @@ mod tests {
         ).unwrap();
     
         // Verify the result
-        assert_eq!(res.events.len(), 2); // 2 completions
+        assert_eq!(res.events.len(), 2); 
         assert_eq!(res.events[0].ty, "WithdrawalCompleted");
         assert_eq!(res.events[1].ty, "WithdrawalCompleted");
     
@@ -3319,5 +3345,5 @@ mod tests {
         // Verify state changes: the pending withdrawals should be removed
         assert!(!PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root1));
         assert!(!PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root2));
-    }            
+    }
 }
