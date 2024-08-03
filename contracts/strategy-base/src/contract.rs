@@ -84,7 +84,7 @@ pub fn deposit(
     _ensure_strategy_manager(&info, &state.strategy_manager)?;
     _before_deposit(&state, &state.underlying_token)?;
 
-    let balance = query_token_balance(&deps.querier, &state.underlying_token, &env.contract.address)?;
+    let balance = _token_balance(&deps.querier, &state.underlying_token, &env.contract.address)?;
     let new_shares = _calculate_new_shares(&state, amount, balance)?;
 
     state.total_shares += new_shares;
@@ -112,7 +112,7 @@ pub fn withdraw(
         return Err(ContractError::InsufficientShares {});
     }
 
-    let balance = query_token_balance(&deps.querier, &state.underlying_token, &env.contract.address)?;
+    let balance = _token_balance(&deps.querier, &state.underlying_token, &env.contract.address)?;
     let amount_to_send = _calculate_amount_to_send(&state, amount_shares, balance)?;
 
     state.total_shares -= amount_shares;
@@ -163,7 +163,55 @@ fn _calculate_amount_to_send(state: &StrategyState, amount_shares: Uint128, bala
     Ok(amount_to_send)
 }
 
-fn query_token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdResult<Uint128> {
+pub fn shares(deps: Deps, user: Addr, strategy: Addr) -> StdResult<SharesResponse> {
+    let state = STRATEGY_STATE.load(deps.storage)?;
+
+    // Query strategy manager contract for shares
+    let shares: Uint128 = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: state.strategy_manager.to_string(),
+        msg: to_json_binary(&StrategyManagerQueryMsg::GetStakerStrategyShares { staker: user.clone(), strategy })?,
+    }))?;
+
+    Ok(SharesResponse { total_shares: shares })
+}
+
+pub fn explanation() -> StdResult<String> {
+    Ok("Base Strategy implementation to inherit from for more complex implementations".to_string())
+}
+
+pub fn shares_to_underlying_view(deps: Deps, env: Env, amount_shares: Uint128) -> StdResult<Uint128> {
+    let state = STRATEGY_STATE.load(deps.storage)?;
+    let balance = _token_balance(&deps.querier, &state.underlying_token, &env.contract.address)?;
+    
+    let virtual_total_shares = state.total_shares + SHARES_OFFSET;
+    let virtual_token_balance = balance + BALANCE_OFFSET;
+    let amount_to_send = (virtual_token_balance * amount_shares) / virtual_total_shares;
+
+    Ok(amount_to_send)
+}
+
+pub fn underlying_to_share_view(deps: Deps, env: Env, amount: Uint128) -> StdResult<Uint128> {
+    let state = STRATEGY_STATE.load(deps.storage)?;
+    let balance = _token_balance(&deps.querier, &state.underlying_token, &env.contract.address)?;
+    
+    let virtual_share_amount = state.total_shares + SHARES_OFFSET;
+    let virtual_token_balance = balance + BALANCE_OFFSET;
+    let virtual_prior_token_balance = virtual_token_balance - amount;
+    let share_to_send = (amount * virtual_share_amount) / virtual_prior_token_balance;
+
+    Ok(share_to_send)        
+}
+
+pub fn user_underlying_view(deps: Deps, env: Env, user: Addr) -> StdResult<Uint128> {
+    let strategy = env.contract.address.clone(); 
+    let user_shares = shares(deps, user, strategy.clone())?.total_shares;
+
+    let amount_to_send = shares_to_underlying_view(deps, env, user_shares)?;
+
+    Ok(amount_to_send)
+}
+
+fn _token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdResult<Uint128> {
     let res: Cw20BalanceResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: token.to_string(),
         msg: to_json_binary(&Cw20QueryMsg::Balance {
@@ -176,49 +224,30 @@ fn query_token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetShares { staker, strategy } => to_json_binary(&_query_shares(deps, env, staker, strategy)?),
+        QueryMsg::GetShares { staker, strategy } => to_json_binary(&shares(deps, staker, strategy)?),
         QueryMsg::SharesToUnderlyingView { amount_shares } => to_json_binary(&shares_to_underlying_view(deps, env, amount_shares)?),
         QueryMsg::UnderlyingToShareView { amount } => to_json_binary(&underlying_to_share_view(deps, env, amount)?),
+        QueryMsg::UserUnderlyingView { user } => to_json_binary(&user_underlying_view(deps, env, user)?),
+        QueryMsg::GetStrategyManager {} => query_strategy_manager(deps),
+        QueryMsg::GetUnderlyingToken {} => query_underlying_token(deps),
+        QueryMsg::GetTotalShares {} => query_total_shares(deps),
+        QueryMsg::Explanation {} => to_json_binary(&explanation()?),
     }
 }
 
-fn _query_shares(deps: Deps, _env: Env, user: Addr, strategy: Addr) -> StdResult<SharesResponse> {
+pub fn query_strategy_manager(deps: Deps) -> StdResult<Binary> {
     let state = STRATEGY_STATE.load(deps.storage)?;
-
-    // Query strategy manager contract for shares
-    let shares: Uint128 = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: state.strategy_manager.to_string(),
-        msg: to_json_binary(&StrategyManagerQueryMsg::GetStakerStrategyShares { staker: user.clone(), strategy })?,
-    }))?;
-
-    Ok(SharesResponse { total_shares: shares })
+    to_json_binary(&state.strategy_manager)
 }
 
-pub fn query_explanation() -> StdResult<String> {
-    Ok("Base Strategy implementation to inherit from for more complex implementations".to_string())
+pub fn query_underlying_token(deps: Deps) -> StdResult<Binary> {
+    let state = STRATEGY_STATE.load(deps.storage)?;
+    to_json_binary(&state.underlying_token)
 }
 
-pub fn shares_to_underlying_view(deps: Deps, env: Env, amount_shares: Uint128) -> StdResult<Uint128> {
+pub fn query_total_shares(deps: Deps) -> StdResult<Binary> {
     let state = STRATEGY_STATE.load(deps.storage)?;
-    let balance = query_token_balance(&deps.querier, &state.underlying_token, &env.contract.address)?;
-    
-    let virtual_total_shares = state.total_shares + SHARES_OFFSET;
-    let virtual_token_balance = balance + BALANCE_OFFSET;
-    let amount_to_send = (virtual_token_balance * amount_shares) / virtual_total_shares;
-
-    Ok(amount_to_send)
-}
-
-pub fn underlying_to_share_view(deps: Deps, env: Env, amount: Uint128) -> StdResult<Uint128> {
-    let state = STRATEGY_STATE.load(deps.storage)?;
-    let balance = query_token_balance(&deps.querier, &state.underlying_token, &env.contract.address)?;
-    
-    let virtual_share_amount = state.total_shares + SHARES_OFFSET;
-    let virtual_token_balance = balance + BALANCE_OFFSET;
-    let virtual_prior_token_balance = virtual_token_balance - amount;
-    let share_to_send = (amount * virtual_share_amount) / virtual_prior_token_balance;
-
-    Ok(share_to_send)        
+    to_json_binary(&state.total_shares)
 }
 
 #[cfg(test)]
@@ -306,7 +335,7 @@ mod tests {
         let state = STRATEGY_STATE.load(&deps.storage).unwrap();
         assert!(state.total_shares > Uint128::zero());
 
-        let balance = query_token_balance(&QuerierWrapper::new(&deps.querier), &Addr::unchecked("token"), &env.contract.address).unwrap();
+        let balance = _token_balance(&QuerierWrapper::new(&deps.querier), &Addr::unchecked("token"), &env.contract.address).unwrap();
         assert_eq!(balance, Uint128::new(1_000_000)); 
     }
 
@@ -470,7 +499,7 @@ mod tests {
 
     #[test]
     fn test_query_explanation() {
-        let explanation = query_explanation().unwrap();
+        let explanation = explanation().unwrap();
         assert_eq!(explanation, "Base Strategy implementation to inherit from for more complex implementations".to_string());
     }
 
@@ -545,7 +574,7 @@ mod tests {
     }
 
     #[test]
-    fn test_query_shares() {
+    fn test_shares() {
         let mut deps = setup_contract();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("manager"), &[]);
@@ -619,5 +648,109 @@ mod tests {
         let res: SharesResponse = from_json(query(deps.as_ref(), env.clone(), query_msg).unwrap()).unwrap();
         
         assert_eq!(res.total_shares, Uint128::new(1_000));
+    }
+
+    #[test]
+    fn test_user_underlying_view() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("manager"), &[]);
+
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("manager"),
+            underlying_token: Addr::unchecked("token"),
+        };
+        instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+        let contract_address = env.contract.address.clone();
+
+        // Mock the balance query to return a specific amount
+        deps.querier.update_wasm(move |query| {
+            match query {
+                WasmQuery::Smart { contract_addr, msg, .. } => {
+                    if contract_addr == "token" {
+                        let msg: Cw20QueryMsg = from_json(msg).unwrap();
+                        if let Cw20QueryMsg::Balance { address } = msg {
+                            if address == contract_address.to_string() {
+                                return SystemResult::Ok(ContractResult::Ok(to_json_binary(&Cw20BalanceResponse { balance: Uint128::new(1_000_000) }).unwrap()));
+                            }
+                        }
+                    } else if contract_addr == "manager" {
+                        let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
+                        if let StrategyManagerQueryMsg::GetStakerStrategyShares { staker, strategy } = msg {
+                            if staker == Addr::unchecked("user") && strategy == contract_address {
+                                return SystemResult::Ok(ContractResult::Ok(to_json_binary(&Uint128::new(1_000)).unwrap()));
+                            }
+                        }
+                    }
+                    SystemResult::Err(SystemError::InvalidRequest {
+                        error: "not implemented".to_string(),
+                        request: msg.clone(),
+                    })
+                },
+                _ => SystemResult::Err(SystemError::InvalidRequest {
+                    error: "not implemented".to_string(),
+                    request: Binary::from(b"other".as_ref()),
+                }),
+            }
+        });
+
+        let user_addr = Addr::unchecked("user");
+        let underlying_amount = user_underlying_view(deps.as_ref(), env.clone(), user_addr).unwrap();
+
+        let expected_amount = Uint128::new(1001000);
+
+        assert_eq!(underlying_amount, expected_amount);
+    }
+
+    #[test]
+    fn test_query_strategy_manager() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("manager"),
+            underlying_token: Addr::unchecked("token"),
+        };
+        instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+        let res = query_strategy_manager(deps.as_ref()).unwrap();
+        let strategy_manager: Addr = from_json(res).unwrap();
+        assert_eq!(strategy_manager, Addr::unchecked("manager"));
+    }
+
+    #[test]
+    fn test_query_underlying_token() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("manager"),
+            underlying_token: Addr::unchecked("token"),
+        };
+        instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+        let res = query_underlying_token(deps.as_ref()).unwrap();
+        let underlying_token: Addr = from_json(res).unwrap();
+        assert_eq!(underlying_token, Addr::unchecked("token"));
+    }
+
+    #[test]
+    fn test_query_total_shares() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("manager"),
+            underlying_token: Addr::unchecked("token"),
+        };
+        instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+        let res = query_total_shares(deps.as_ref()).unwrap();
+        let total_shares: Uint128 = from_json(res).unwrap();
+        assert_eq!(total_shares, Uint128::zero());
     }
 }

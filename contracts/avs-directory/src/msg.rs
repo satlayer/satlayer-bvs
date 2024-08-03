@@ -32,6 +32,19 @@ pub enum ExecuteMsg {
 #[cw_serde]
 pub enum QueryMsg {
     QueryOperator { avs: Addr, operator: Addr },
+    CalculateDigestHash {
+        operator_public_key: Binary,
+        avs: Addr,
+        salt: Binary,
+        expiry: Uint64,
+        chain_id: String,
+    },
+    IsSaltSpent { operator: Addr, salt: String },
+    GetDelegationManager {},
+    GetOwner {},
+    GetOperatorAVSRegistrationTypeHash {},
+    GetDomainTypeHash {},
+    GetDomainName {},
 }
 
 #[cw_serde]

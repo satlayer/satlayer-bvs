@@ -3346,4 +3346,481 @@ mod tests {
         assert!(!PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root1));
         assert!(!PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root2));
     }
+
+    #[test]
+    fn test_withdraw_shares_as_tokens() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+
+        let staker1 = Addr::unchecked("staker1");
+        let operator = Addr::unchecked("operator1");
+        let withdrawer1 = staker1.clone();
+        let strategy1 = Addr::unchecked("strategy1");
+        let token1 = Addr::unchecked("token1");
+        let shares1 = Uint128::new(100);
+    
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![strategy1.clone()],
+            withdrawal_delay_blocks: vec![5],
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    
+        // Register operator details
+        let operator_details = OperatorDetails {
+            deprecated_earnings_receiver: Addr::unchecked("earnings_receiver"),
+            delegation_approver: Addr::unchecked("approver"),
+            staker_opt_out_window_blocks: 100,
+        };
+        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &operator_details).unwrap();
+    
+        // Save initial shares
+        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategy1), &shares1).unwrap();
+    
+        // Mock the response for the token received from strategy manager
+        let withdrawer1_clone = withdrawer1.clone();
+        let token1_clone = token1.clone(); 
+        let shares1_clone = shares1; 
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg } if contract_addr == "strategy_manager" => {
+                let execute_msg: Result<strategy_manager::ExecuteMsg, _> = from_json(msg);
+                if let Ok(strategy_manager::ExecuteMsg::WithdrawSharesAsTokens { recipient, strategy:_, shares:_, token:_ }) = execute_msg {
+                    if recipient == withdrawer1_clone {
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&vec![(token1_clone.clone(), shares1_clone)]).unwrap()))
+                    } else {
+                        SystemResult::Err(SystemError::InvalidRequest {
+                            error: "Recipient mismatch".to_string(),
+                            request: to_json_binary(&query).unwrap(),
+                        })
+                    }
+                } else {
+                    SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    })
+                }
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+    
+        // Call the function
+        let res = _withdraw_shares_as_tokens(
+            staker1.clone(),
+            withdrawer1.clone(),
+            strategy1.clone(),
+            shares1,
+            token1.clone(),
+        ).unwrap();
+    
+        // Verify the result: Check the message within the response
+        assert_eq!(res.messages.len(), 1); 
+        let msg = &res.messages[0].msg;
+        match msg {
+            cosmwasm_std::CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }) => {
+                assert_eq!(contract_addr, &strategy1.to_string());
+                let execute_msg: strategy_manager::ExecuteMsg = from_json(msg).unwrap();
+                if let strategy_manager::ExecuteMsg::WithdrawSharesAsTokens { recipient, strategy, shares, token } = execute_msg {
+                    assert_eq!(recipient, withdrawer1);
+                    assert_eq!(strategy, strategy1);
+                    assert_eq!(shares, shares1);
+                    assert_eq!(token, token1);
+                } else {
+                    panic!("Unexpected execute message: {:?}", execute_msg);
+                }
+            }
+            _ => panic!("Unexpected message type in response: {:?}", msg),
+        }
+    }
+
+    #[test]
+    fn test_query_is_delegated() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        // Define addresses
+        let staker = Addr::unchecked("staker1");
+        let operator = Addr::unchecked("operator1");
+
+        // Set the delegation
+        DELEGATED_TO.save(deps.as_mut().storage, &staker, &operator).unwrap();
+
+        // Create query message
+        let query_msg = QueryMsg::IsDelegated { staker: staker.clone() };
+
+        // Perform the query
+        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
+        let is_delegated: bool = from_json(res).unwrap();
+
+        // Assert that the staker is delegated
+        assert!(is_delegated);
+
+        // Test for a staker that is not delegated
+        let non_delegated_staker = Addr::unchecked("staker2");
+        let query_msg = QueryMsg::IsDelegated { staker: non_delegated_staker.clone() };
+
+        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
+        let is_delegated: bool = from_json(res).unwrap();
+
+        // Assert that the non-delegated staker is not delegated
+        assert!(!is_delegated);
+    }
+
+    #[test]
+    fn test_query_is_operator() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        // Define operator address and details
+        let operator = Addr::unchecked("operator1");
+        let operator_details = OperatorDetails {
+            deprecated_earnings_receiver: Addr::unchecked("earnings_receiver"),
+            delegation_approver: Addr::unchecked("approver"),
+            staker_opt_out_window_blocks: 100,
+        };
+
+        // Save the operator details to simulate an operator
+        DELEGATED_TO.save(deps.as_mut().storage, &operator.clone(), &operator.clone()).unwrap();
+        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator.clone(), &operator_details).unwrap();
+
+        // Create query message
+        let query_msg = QueryMsg::IsOperator { operator: operator.clone() };
+
+        // Perform the query
+        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
+        let is_operator: bool = from_json(res).unwrap();
+
+        // Assert that the address is an operator
+        assert!(is_operator);
+
+        // Test for an address that is not an operator
+        let non_operator = Addr::unchecked("non_operator");
+        let query_msg = QueryMsg::IsOperator { operator: non_operator.clone() };
+
+        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
+        let is_operator: bool = from_json(res).unwrap();
+
+        // Assert that the non-operator address is not an operator
+        assert!(!is_operator);
+    }
+
+    #[test]
+    fn test_query_operator_details() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), env, info ,msg).unwrap();
+
+        // Define operator address and details
+        let operator = Addr::unchecked("operator1");
+        let operator_details = OperatorDetails {
+            deprecated_earnings_receiver: Addr::unchecked("earnings_receiver"),
+            delegation_approver: Addr::unchecked("approver"),
+            staker_opt_out_window_blocks: 100,
+        };
+
+        // Save the operator details to simulate an operator
+        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &operator_details).unwrap();
+
+        // Create query message
+        let query_msg = QueryMsg::OperatorDetails { operator: operator.clone() };
+
+        // Perform the query
+        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
+        let details: OperatorDetails = from_json(res).unwrap();
+
+        // Assert that the returned operator details match the stored details
+        assert_eq!(details.deprecated_earnings_receiver, operator_details.deprecated_earnings_receiver);
+        assert_eq!(details.delegation_approver, operator_details.delegation_approver);
+        assert_eq!(details.staker_opt_out_window_blocks, operator_details.staker_opt_out_window_blocks);
+
+        // Test querying details for an operator that does not exist
+        let non_operator = Addr::unchecked("non_operator");
+        let query_msg = QueryMsg::OperatorDetails { operator: non_operator.clone() };
+
+        let res = query(deps.as_ref(), mock_env(), query_msg);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_query_delegation_approver() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+
+        // Define operator address and details
+        let operator = Addr::unchecked("operator1");
+        let operator_details = OperatorDetails {
+            deprecated_earnings_receiver: Addr::unchecked("earnings_receiver"),
+            delegation_approver: Addr::unchecked("approver"),
+            staker_opt_out_window_blocks: 100,
+        };
+
+        // Save the operator details to simulate an operator
+        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &operator_details).unwrap();
+
+        // Create query message
+        let query_msg = QueryMsg::DelegationApprover { operator: operator.clone() };
+
+        // Perform the query
+        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
+        let approver: Addr = from_json(res).unwrap();
+
+        // Assert that the returned delegation approver matches the stored details
+        assert_eq!(approver, operator_details.delegation_approver);
+    }
+
+    #[test]
+    fn test_query_staker_opt_out_window_blocks() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+    
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    
+        // Define operator address and details
+        let operator = Addr::unchecked("operator1");
+        let operator_details = OperatorDetails {
+            deprecated_earnings_receiver: Addr::unchecked("earnings_receiver"),
+            delegation_approver: Addr::unchecked("approver"),
+            staker_opt_out_window_blocks: 100,
+        };
+    
+        // Save the operator details to simulate an operator
+        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &operator_details).unwrap();
+    
+        // Create query message
+        let query_msg = QueryMsg::StakerOptOutWindowBlocks { operator: operator.clone() };
+    
+        // Perform the query
+        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
+        let opt_out_window_blocks: u64 = from_json(res).unwrap();
+    
+        assert_eq!(opt_out_window_blocks, operator_details.staker_opt_out_window_blocks);
+    }
+
+    #[test]
+    fn test_query_get_operator_shares() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+    
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    
+        // Define operator and strategy addresses
+        let operator = Addr::unchecked("operator1");
+        let strategies = vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")];
+    
+        // Set operator shares for each strategy
+        let shares_strategy1 = Uint128::new(100);
+        let shares_strategy2 = Uint128::new(200);
+    
+        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategies[0]), &shares_strategy1).unwrap();
+        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategies[1]), &shares_strategy2).unwrap();
+    
+        // Create query message
+        let query_msg = QueryMsg::GetOperatorShares {
+            operator: operator.clone(),
+            strategies: strategies.clone(),
+        };
+    
+        // Perform the query
+        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
+        let operator_shares: Vec<Uint128> = from_json(res).unwrap();
+    
+        // Assert that the returned shares match the expected values
+        assert_eq!(operator_shares.len(), 2);
+        assert_eq!(operator_shares[0], shares_strategy1);
+        assert_eq!(operator_shares[1], shares_strategy2);
+    
+        // Test querying shares for an operator with no shares set
+        let new_operator = Addr::unchecked("new_operator");
+        let query_msg = QueryMsg::GetOperatorShares {
+            operator: new_operator.clone(),
+            strategies: strategies.clone(),
+        };
+    
+        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
+        let operator_shares: Vec<Uint128> = from_json(res).unwrap();
+    
+        // Assert that the returned shares are zero for a new operator
+        assert_eq!(operator_shares.len(), 2);
+        assert_eq!(operator_shares[0], Uint128::zero());
+        assert_eq!(operator_shares[1], Uint128::zero());
+    }
+
+    #[test]
+    fn test_query_get_withdrawal_delay() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+    
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    
+        // Define strategy addresses
+        let strategies = vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")];
+    
+        // Set withdrawal delay blocks for each strategy
+        STRATEGY_WITHDRAWAL_DELAY_BLOCKS
+            .save(deps.as_mut().storage, &strategies[0], &Uint64::from(5u64))
+            .unwrap();
+        STRATEGY_WITHDRAWAL_DELAY_BLOCKS
+            .save(deps.as_mut().storage, &strategies[1], &Uint64::from(10u64))
+            .unwrap();
+    
+        // Create query message
+        let query_msg = QueryMsg::GetWithdrawalDelay {
+            strategies: strategies.clone(),
+        };
+    
+        // Perform the query
+        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
+        let withdrawal_delays: Vec<u64> = from_json(res).unwrap();
+    
+        // Assert that the returned withdrawal delays match the expected values
+        assert_eq!(withdrawal_delays.len(), 2);
+        assert_eq!(withdrawal_delays[0], 10); // Assuming we want max of min_delay and strategy delay
+        assert_eq!(withdrawal_delays[1], 10);
+    
+        // Test querying withdrawal delay for strategies with no delay set
+        let new_strategy = Addr::unchecked("strategy3");
+        let query_msg = QueryMsg::GetWithdrawalDelay {
+            strategies: vec![new_strategy.clone()],
+        };
+    
+        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
+        let withdrawal_delays: Vec<u64> = from_json(res).unwrap();
+    
+        // Assert that the returned delay is the min withdrawal delay block for a new strategy
+        assert_eq!(withdrawal_delays.len(), 1);
+        assert_eq!(withdrawal_delays[0], 10); 
+    }
+
+    #[test]
+    fn test_query_calculate_current_staker_delegation_digest_hash() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+    
+        // Instantiate the contract
+        let msg = InstantiateMsg {
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            slasher: Addr::unchecked("slasher"),
+            min_withdrawal_delay_blocks: 10,
+            initial_owner: Addr::unchecked("owner"),
+            strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+            withdrawal_delay_blocks: vec![5, 10],
+        };
+
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+        let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
+        let (staker, _secret_key, staker_public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
+        let staker_public_key = Binary::from(staker_public_key_bytes.as_slice());
+
+        // Define staker and other relevant details
+        let current_staker_digest_hash_params = CurrentStakerDigestHashParams {
+            staker: staker.clone(),
+            operator: Addr::unchecked("operator"),
+            staker_public_key: staker_public_key.clone(),
+            expiry: 1000,
+            current_nonce: 0,
+            chain_id: env.block.chain_id.clone(),
+            contract_addr: env.contract.address.clone()
+        };
+    
+        // Assume some pre-existing function or method that calculates the digest hash
+        let expected_digest_hash = calculate_current_staker_delegation_digest_hash(current_staker_digest_hash_params.clone()).unwrap();
+    
+        // Create query message
+        let query_msg = QueryMsg::CurrentStakerDelegationDigestHash {
+            current_staker_digest_hash_params: current_staker_digest_hash_params.clone(),
+        };
+    
+        // Perform the query
+        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
+        let digest_hash: Binary = from_json(res).unwrap();
+    
+        // Assert that the returned digest hash matches the expected hash
+        assert_eq!(digest_hash, expected_digest_hash)
+    }                
 }

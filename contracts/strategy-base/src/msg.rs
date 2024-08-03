@@ -34,14 +34,21 @@ pub enum QueryMsg {
     UnderlyingToShareView {
         amount: Uint128,
     },
+    #[returns(Uint128)]
+    UserUnderlyingView {
+        user: Addr,
+    },
+    #[returns(Addr)]
+    GetStrategyManager {},
+    #[returns(Addr)]
+    GetUnderlyingToken {},
+    #[returns(Uint128)]
+    GetTotalShares {},
+    #[returns(String)]
+    Explanation {},
 }
 
 #[cw_serde]
 pub struct SharesResponse {
     pub total_shares: Uint128,
-}
-
-#[cw_serde]
-pub struct StakerStrategySharesResponse {
-    pub shares: Uint128,
 }

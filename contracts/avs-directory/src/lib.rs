@@ -5,3 +5,4 @@ mod state;
 mod utils;
 
 pub use crate::error::ContractError;
+pub mod delegation_manager;
