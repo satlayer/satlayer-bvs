@@ -1,12 +1,10 @@
 use cosmwasm_std::{Addr, Binary, StdResult, Env};
-// use crate::msg::{IsOperatorRegisteredQueryMsg, IsOperatorRegisteredResponse};
-// use cosmwasm_std::{QuerierWrapper, WasmQuery, QueryRequest, to_json_binary}
 use sha2::{Sha256, Digest};
 use cosmwasm_crypto::secp256k1_verify;
 
-const OPERATOR_AVS_REGISTRATION_TYPEHASH: &[u8] = b"OperatorAVSRegistration(address operator,address avs,bytes32 salt,uint256 expiry)";
-const DOMAIN_TYPEHASH: &[u8] = b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
-const DOMAIN_NAME: &[u8] = b"EigenLayer";
+pub const OPERATOR_AVS_REGISTRATION_TYPEHASH: &[u8] = b"OperatorAVSRegistration(address operator,address avs,bytes32 salt,uint256 expiry)";
+pub const DOMAIN_TYPEHASH: &[u8] = b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
+pub const DOMAIN_NAME: &[u8] = b"EigenLayer";
 
 fn sha256(input: &[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();
@@ -55,22 +53,3 @@ pub fn recover(digest_hash: &[u8], signature: &[u8], public_key_bytes: &[u8]) ->
         Err(_) => Ok(false),
     }
 }
-
-// pub fn is_operator_registered<Q: cosmwasm_std::CustomQuery>(
-//     querier: &QuerierWrapper<Q>,
-//     _env: &Env,
-//     delegation_manager_addr: &Addr,
-//     operator: &Addr,
-// ) -> StdResult<bool> {
-//     let query_msg = IsOperatorRegisteredQueryMsg {
-//         operator: operator.clone(),
-//     };
-
-//     let query_request = QueryRequest::Wasm(WasmQuery::Smart {
-//         contract_addr: delegation_manager_addr.to_string(),
-//         msg: to_json_binary(&query_msg)?,
-//     });
-
-//     let res: IsOperatorRegisteredResponse = querier.query(&query_request)?;
-//     Ok(res.registered)
-// }
