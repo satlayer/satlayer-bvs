@@ -1,25 +1,12 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128, Uint64};
 use cw_storage_plus::{Item, Map};
+use crate::msg::OperatorDetails;
 
 #[cw_serde]
 pub struct DelegationManagerState {
     pub strategy_manager: Addr,
     pub slasher: Addr,
-}
-
-#[cw_serde]
-pub struct OperatorDetails {
-    pub deprecated_earnings_receiver: Addr,
-    pub delegation_approver: Addr,
-    pub staker_opt_out_window_blocks: u64,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct QueuedWithdrawalParams {
-    pub withdrawer: Addr,
-    pub strategies: Vec<Addr>,
-    pub shares: Vec<Uint128>,
 }
 
 pub const DELEGATION_MANAGER_STATE: Item<DelegationManagerState> = Item::new("delegation_manager_state");
