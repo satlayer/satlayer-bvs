@@ -1,5 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128, Uint64, Binary};
+use crate::utils::DigestHashParams;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -64,6 +65,16 @@ pub enum QueryMsg {
     StakerStrategyListLength { staker: Addr },
     GetStakerStrategyShares { staker: Addr, strategy: Addr },
     IsThirdPartyTransfersForbidden { strategy: Addr },
+    GetNonce { staker: Addr },
+    GetStakerStrategyList { staker: Addr },
+    GetOwner {},
+    IsStrategyWhitelisted { strategy: Addr },
+    CalculateDigestHash { digst_hash_params: DigestHashParams },
+    GetStrategyWhitelister {},
+    GetStrategyManagerState {},
+    GetDepositTypehash,
+    GetDomainTypehash,
+    GetDomainName,
 }
 
 #[cw_serde]

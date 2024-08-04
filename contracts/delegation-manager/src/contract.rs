@@ -1,11 +1,11 @@
 use crate::{
     error::ContractError,
     strategy_manager,
-    msg::{InstantiateMsg, SignatureWithExpiry, QueryMsg},
+    msg::{InstantiateMsg, SignatureWithExpiry, QueryMsg, ExecuteMsg, OperatorDetails, QueuedWithdrawalParams},
     state::{
-        DelegationManagerState, DELEGATION_MANAGER_STATE, OPERATOR_DETAILS, OWNER, OperatorDetails, MIN_WITHDRAWAL_DELAY_BLOCKS,
+        DelegationManagerState, DELEGATION_MANAGER_STATE, OPERATOR_DETAILS, OWNER, MIN_WITHDRAWAL_DELAY_BLOCKS,
         DELEGATED_TO, STRATEGY_WITHDRAWAL_DELAY_BLOCKS, OPERATOR_SHARES, DELEGATION_APPROVER_SALT_SPENT, STRATEGY_MANAGER, SLASHER,
-        STAKER_NONCE, PENDING_WITHDRAWALS, CUMULATIVE_WITHDRAWALS_QUEUED, QueuedWithdrawalParams
+        STAKER_NONCE, PENDING_WITHDRAWALS, CUMULATIVE_WITHDRAWALS_QUEUED
     },
     utils::{calculate_delegation_approval_digest_hash, calculate_staker_delegation_digest_hash, recover, 
         ApproverDigestHashParams, StakerDigestHashParams, DelegateParams, calculate_withdrawal_root, Withdrawal,
@@ -56,6 +56,118 @@ pub fn instantiate(
         .add_attribute("owner", msg.initial_owner.to_string());
 
     Ok(response)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn execute(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
+    match msg {
+        ExecuteMsg::RegisterAsOperator {
+            sender_public_key,
+            operator_details,
+            metadata_uri,
+        } => register_as_operator(deps, info, env, sender_public_key, operator_details, metadata_uri),
+
+        ExecuteMsg::ModifyOperatorDetails {
+            new_operator_details,
+        } => modify_operator_details(deps, info, new_operator_details),
+
+        ExecuteMsg::UpdateOperatorMetadataUri { metadata_uri } => {
+            update_operator_metadata_uri(deps, info, metadata_uri)
+        }
+
+        ExecuteMsg::DelegateTo {
+            staker,
+            approver_signature_and_expiry,
+            approver_salt,
+        } => {
+            let params = DelegateParams {
+                staker,
+                operator: info.sender.clone(),
+                public_key: approver_signature_and_expiry.signature.clone(),
+                salt: approver_salt,
+            };
+            delegate_to(deps, info, env, params, approver_signature_and_expiry)
+        }
+
+        ExecuteMsg::DelegateToBySignature {
+            params,
+            staker_public_key,
+            staker_signature_and_expiry,
+            approver_signature_and_expiry,
+        } => {
+            delegate_to_by_signature (
+                deps,
+                env,
+                info,
+                params,
+                staker_public_key,
+                staker_signature_and_expiry,
+                approver_signature_and_expiry,
+            )
+        }
+
+        ExecuteMsg::Undelegate { staker } => undelegate(deps, env, info, staker),
+
+        ExecuteMsg::QueueWithdrawals {
+            queued_withdrawal_params,
+        } => queue_withdrawals(deps, env, info, queued_withdrawal_params),
+
+        ExecuteMsg::CompleteQueuedWithdrawal {
+            withdrawal,
+            tokens,
+            middleware_times_index,
+            receive_as_tokens,
+        } => complete_queued_withdrawal(
+            deps,
+            env,
+            info,
+            withdrawal,
+            tokens,
+            middleware_times_index,
+            receive_as_tokens,
+        ),
+
+        ExecuteMsg::CompleteQueuedWithdrawals {
+            withdrawals,
+            tokens,
+            middleware_times_indexes,
+            receive_as_tokens,
+        } => complete_queued_withdrawals(
+            deps,
+            env,
+            info,
+            withdrawals,
+            tokens,
+            middleware_times_indexes,
+            receive_as_tokens,
+        ),
+
+        ExecuteMsg::IncreaseDelegatedShares {
+            staker,
+            strategy,
+            shares,
+        } => increase_delegated_shares(deps, info, staker, strategy, shares),
+
+        ExecuteMsg::DecreaseDelegatedShares {
+            staker,
+            strategy,
+            shares,
+        } => decrease_delegated_shares(deps, info, staker, strategy, shares),
+
+        ExecuteMsg::SetMinWithdrawalDelayBlocks {
+            new_min_withdrawal_delay_blocks,
+        } => set_min_withdrawal_delay_blocks(deps, info, new_min_withdrawal_delay_blocks),
+
+        ExecuteMsg::SetStrategyWithdrawalDelayBlocks {
+            strategies,
+            withdrawal_delay_blocks,
+        } => set_strategy_withdrawal_delay_blocks(deps, info, strategies, withdrawal_delay_blocks),
+    }
 }
 
 fn _only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
@@ -399,7 +511,7 @@ pub fn undelegate(
     env: Env,
     info: MessageInfo,
     staker: Addr,
-) -> Result<Vec<Response>, ContractError> {
+) -> Result<Response, ContractError> {
     // Ensure the staker is delegated
     if DELEGATED_TO.may_load(deps.storage, &staker)?.is_none() {
         return Err(ContractError::StakerNotDelegated {});
@@ -426,9 +538,9 @@ pub fn undelegate(
     // Gather strategies and shares to remove from staker/operator during undelegation
     let (strategies, shares) = get_delegatable_shares(deps.as_ref(), staker.clone())?;
 
+    let mut response = Response::new();
+
     // Emit an event if this action was not initiated by the staker themselves
-    let mut response: Response<()> = Response::new();
-    
     if info.sender != staker {
         response = response.add_event(
             Event::new("StakerForceUndelegated")
@@ -438,7 +550,7 @@ pub fn undelegate(
     }
 
     // Emit the undelegation event
-    response.add_event(
+    response = response.add_event(
         Event::new("StakerUndelegated")
             .add_attribute("staker", staker.to_string())
             .add_attribute("operator", operator.to_string())
@@ -447,15 +559,12 @@ pub fn undelegate(
     // Undelegate the staker
     DELEGATED_TO.save(deps.storage, &staker, &Addr::unchecked("0"))?;
 
-    let mut withdrawal_roots = Vec::new();
-    if strategies.is_empty() {
-        Ok(withdrawal_roots)
-    } else {
+    if !strategies.is_empty() {
         for (strategy, share) in strategies.iter().zip(shares.iter()) {
             let single_strategy = vec![strategy.clone()];
             let single_share = vec![*share];
 
-            let withdrawal_root = _remove_shares_and_queue_withdrawal(
+            let withdrawal_response = _remove_shares_and_queue_withdrawal(
                 deps.branch(),
                 env.clone(),
                 staker.clone(),
@@ -465,11 +574,13 @@ pub fn undelegate(
                 single_share,
             )?;
 
-            withdrawal_roots.push(withdrawal_root);
+            response = response.add_attributes(withdrawal_response.attributes);
+            response = response.add_events(withdrawal_response.events);
+            response = response.add_submessages(withdrawal_response.messages);
         }
-
-        Ok(withdrawal_roots)
     }
+
+    Ok(response)
 }
 
 pub fn get_delegatable_shares(
@@ -581,10 +692,12 @@ pub fn queue_withdrawals(
     env: Env,
     info: MessageInfo,
     queued_withdrawal_params: Vec<QueuedWithdrawalParams>,
-) -> Result<Vec<Response>, ContractError> {
-    let operator = DELEGATED_TO.may_load(deps.storage, &info.sender)?.unwrap_or_else(|| Addr::unchecked(""));
+) -> Result<Response, ContractError> {
+    let operator = DELEGATED_TO
+        .may_load(deps.storage, &info.sender)?
+        .unwrap_or_else(|| Addr::unchecked(""));
 
-    let mut withdrawal_roots = Vec::with_capacity(queued_withdrawal_params.len());
+    let mut response = Response::new();
 
     for params in queued_withdrawal_params.iter() {
         if params.strategies.len() != params.shares.len() {
@@ -594,7 +707,7 @@ pub fn queue_withdrawals(
             return Err(ContractError::WithdrawerMustBeStaker {});
         }
 
-        let withdrawal_root = _remove_shares_and_queue_withdrawal(
+        let withdrawal_response = _remove_shares_and_queue_withdrawal(
             deps.branch(),
             env.clone(),
             info.sender.clone(),
@@ -604,10 +717,12 @@ pub fn queue_withdrawals(
             params.shares.clone(),
         )?;
 
-        withdrawal_roots.push(withdrawal_root);
+        response = response
+            .add_submessages(withdrawal_response.messages)
+            .add_events(withdrawal_response.events);
     }
 
-    Ok(withdrawal_roots)
+    Ok(response)
 }
 
 pub fn complete_queued_withdrawals(
@@ -2693,16 +2808,15 @@ mod tests {
         ).unwrap();
     
         // Verify the events
-        let events = res[0].events.clone();
-        assert_eq!(events.len(), 1);
-        assert_eq!(events[0].ty, "WithdrawalQueued");
-        assert_eq!(events[0].attributes[0].value, "rBX2Z+HAvSnYe+GkZinE32HPi9k0r7C8DF/R+RVpmHE=");
+        let events = res.events.clone();
+        assert!(events.iter().any(|e| e.ty == "WithdrawalQueued"));
+        assert!(events.iter().any(|e| e.ty == "StakerUndelegated"));
     
         // Verify state changes
         let stored_shares = OPERATOR_SHARES.load(deps.as_ref().storage, (&operator, &strategies[0])).unwrap();
         assert_eq!(stored_shares, Uint128::zero());
     
-        let withdrawal_root_base64 = events[0].attributes[0].value.clone();
+        let withdrawal_root_base64 = events.iter().find(|e| e.ty == "WithdrawalQueued").unwrap().attributes[0].value.clone();
         let withdrawal_root_bytes = Binary::from_base64(&withdrawal_root_base64).unwrap();
         let pending_withdrawal_exists = PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root_bytes);
         assert!(pending_withdrawal_exists);
@@ -2711,7 +2825,7 @@ mod tests {
         OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &operator_details).unwrap();
         OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategies[0]), &shares[0]).unwrap();
         DELEGATED_TO.save(deps.as_mut().storage, &staker, &operator).unwrap();
-
+    
         let unauthorized_info = message_info(&Addr::unchecked("not_authorized"), &[]);
         let res = undelegate(deps.as_mut(), env.clone(), unauthorized_info, staker.clone());    
         assert!(res.is_err());
@@ -2748,7 +2862,7 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    }
+    }    
 
     #[test]
     fn test_queue_withdrawals() {
@@ -2824,18 +2938,17 @@ mod tests {
         ).unwrap();
     
         // Verify the results
-        assert_eq!(res.len(), 1);
-        assert_eq!(res[0].events.len(), 1);
-        assert_eq!(res[0].events[0].ty, "WithdrawalQueued");
-        assert_eq!(res[0].events[0].attributes[1].value, staker.to_string());
-        assert_eq!(res[0].events[0].attributes[2].value, operator.to_string());
-        assert_eq!(res[0].events[0].attributes[3].value, withdrawer.to_string());
+        assert_eq!(res.events.len(), 1);
+        assert_eq!(res.events[0].ty, "WithdrawalQueued");
+        assert_eq!(res.events[0].attributes[1].value, staker.to_string());
+        assert_eq!(res.events[0].attributes[2].value, operator.to_string());
+        assert_eq!(res.events[0].attributes[3].value, withdrawer.to_string());
     
         // Verify the state changes
         let stored_shares = OPERATOR_SHARES.load(deps.as_ref().storage, (&operator, &strategies[0])).unwrap();
         assert_eq!(stored_shares, Uint128::zero());
     
-        let withdrawal_root_base64 = res[0].events[0].attributes[0].value.clone();
+        let withdrawal_root_base64 = res.events[0].attributes[0].value.clone();
         let withdrawal_root_bytes = Binary::from_base64(&withdrawal_root_base64).unwrap();
         let pending_withdrawal_exists = PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root_bytes);
         assert!(pending_withdrawal_exists);
@@ -2883,7 +2996,7 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    }
+    }    
 
     #[test]
     fn test_complete_queued_withdrawal_internal() {

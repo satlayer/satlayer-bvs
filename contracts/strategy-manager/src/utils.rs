@@ -1,10 +1,12 @@
 use cosmwasm_std::{Addr, StdResult, Uint128, Uint64, Binary};
 use sha2::{Sha256, Digest};
 use cosmwasm_crypto::secp256k1_verify;
+use serde::{Serialize, Deserialize};
+use schemars::JsonSchema;
 
-const DEPOSIT_TYPEHASH: &[u8] = b"Deposit(address staker,address strategy,address token,uint256 amount,uint256 nonce,uint256 expiry)";
-const DOMAIN_TYPEHASH: &[u8] = b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
-const DOMAIN_NAME: &[u8] = b"EigenLayer";
+pub const DEPOSIT_TYPEHASH: &[u8] = b"Deposit(address staker,address strategy,address token,uint256 amount,uint256 nonce,uint256 expiry)";
+pub const DOMAIN_TYPEHASH: &[u8] = b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
+pub const DOMAIN_NAME: &[u8] = b"EigenLayer";
 
 fn sha256(input: &[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();
@@ -22,6 +24,7 @@ pub struct DepositWithSignatureParams {
     pub signature: Binary,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct DigestHashParams {
     pub staker: Addr,
     pub public_key: Binary,

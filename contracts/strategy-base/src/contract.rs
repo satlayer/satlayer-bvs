@@ -228,24 +228,24 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::SharesToUnderlyingView { amount_shares } => to_json_binary(&shares_to_underlying_view(deps, env, amount_shares)?),
         QueryMsg::UnderlyingToShareView { amount } => to_json_binary(&underlying_to_share_view(deps, env, amount)?),
         QueryMsg::UserUnderlyingView { user } => to_json_binary(&user_underlying_view(deps, env, user)?),
-        QueryMsg::GetStrategyManager {} => query_strategy_manager(deps),
-        QueryMsg::GetUnderlyingToken {} => query_underlying_token(deps),
-        QueryMsg::GetTotalShares {} => query_total_shares(deps),
+        QueryMsg::GetStrategyManager {} => _strategy_manager(deps),
+        QueryMsg::GetUnderlyingToken {} => _underlying_token(deps),
+        QueryMsg::GetTotalShares {} => _total_shares(deps),
         QueryMsg::Explanation {} => to_json_binary(&explanation()?),
     }
 }
 
-pub fn query_strategy_manager(deps: Deps) -> StdResult<Binary> {
+fn _strategy_manager(deps: Deps) -> StdResult<Binary> {
     let state = STRATEGY_STATE.load(deps.storage)?;
     to_json_binary(&state.strategy_manager)
 }
 
-pub fn query_underlying_token(deps: Deps) -> StdResult<Binary> {
+fn _underlying_token(deps: Deps) -> StdResult<Binary> {
     let state = STRATEGY_STATE.load(deps.storage)?;
     to_json_binary(&state.underlying_token)
 }
 
-pub fn query_total_shares(deps: Deps) -> StdResult<Binary> {
+fn _total_shares(deps: Deps) -> StdResult<Binary> {
     let state = STRATEGY_STATE.load(deps.storage)?;
     to_json_binary(&state.total_shares)
 }
@@ -715,7 +715,7 @@ mod tests {
         };
         instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        let res = query_strategy_manager(deps.as_ref()).unwrap();
+        let res = _strategy_manager(deps.as_ref()).unwrap();
         let strategy_manager: Addr = from_json(res).unwrap();
         assert_eq!(strategy_manager, Addr::unchecked("manager"));
     }
@@ -732,7 +732,7 @@ mod tests {
         };
         instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        let res = query_underlying_token(deps.as_ref()).unwrap();
+        let res = _underlying_token(deps.as_ref()).unwrap();
         let underlying_token: Addr = from_json(res).unwrap();
         assert_eq!(underlying_token, Addr::unchecked("token"));
     }
@@ -749,7 +749,7 @@ mod tests {
         };
         instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        let res = query_total_shares(deps.as_ref()).unwrap();
+        let res = _total_shares(deps.as_ref()).unwrap();
         let total_shares: Uint128 = from_json(res).unwrap();
         assert_eq!(total_shares, Uint128::zero());
     }

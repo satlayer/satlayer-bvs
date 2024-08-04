@@ -1,6 +1,6 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Binary, Uint128};
-use crate::utils::{Withdrawal, CurrentStakerDigestHashParams, StakerDigestHashParams, ApproverDigestHashParams};
+use cosmwasm_std::{Addr, Binary, Uint128, Uint64};
+use crate::utils::{Withdrawal, CurrentStakerDigestHashParams, StakerDigestHashParams, ApproverDigestHashParams, DelegateParams};
 use serde::{Serialize, Deserialize};
 use schemars::JsonSchema;
 
@@ -17,6 +17,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     RegisterAsOperator {
+        sender_public_key: Binary,
         operator_details: OperatorDetails,
         metadata_uri: String,
     },
@@ -32,11 +33,10 @@ pub enum ExecuteMsg {
         approver_salt: Binary,
     },
     DelegateToBySignature {
-        staker: Addr,
-        operator: Addr,
+        params: DelegateParams,
+        staker_public_key: Binary,
         staker_signature_and_expiry: SignatureWithExpiry,
         approver_signature_and_expiry: SignatureWithExpiry,
-        approver_salt: Binary,
     },
     Undelegate {
         staker: Addr,
@@ -59,25 +59,19 @@ pub enum ExecuteMsg {
     IncreaseDelegatedShares {
         staker: Addr,
         strategy: Addr,
-        shares: u128,
+        shares: Uint128,
     },
     DecreaseDelegatedShares {
         staker: Addr,
         strategy: Addr,
-        shares: u128,
+        shares: Uint128,
     },
     SetMinWithdrawalDelayBlocks {
         new_min_withdrawal_delay_blocks: u64,
     },
     SetStrategyWithdrawalDelayBlocks {
         strategies: Vec<Addr>,
-        withdrawal_delay_blocks: Vec<u64>,
-    },
-    IncreaseOperatorShares {
-        operator: Addr,
-        staker: Addr,
-        strategy: Addr,
-        shares: Uint128,
+        withdrawal_delay_blocks: Vec<Uint64>,
     },
 }
 
@@ -97,18 +91,18 @@ pub enum QueryMsg {
     DelegationApprovalDigestHash { approver_digest_hash_params: ApproverDigestHashParams },
 }
 
-#[cw_serde]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct OperatorDetails {
-    pub __deprecated_earnings_receiver: Addr,
+    pub deprecated_earnings_receiver: Addr,
     pub delegation_approver: Addr,
     pub staker_opt_out_window_blocks: u64,
 }
 
 #[cw_serde]
 pub struct QueuedWithdrawalParams {
-    pub staker: Addr,
+    pub withdrawer: Addr,
     pub strategies: Vec<Addr>,
-    pub shares: Vec<u128>,
+    pub shares: Vec<Uint128>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
