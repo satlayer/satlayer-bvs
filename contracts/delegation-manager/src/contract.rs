@@ -437,7 +437,6 @@ pub fn delegate_to_by_signature(
     _delegate(deps, info, env, approver_signature_and_expiry, params2)
 }
 
-
 fn _delegate(
     mut deps: DepsMut,
     info: MessageInfo,
