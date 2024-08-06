@@ -15,7 +15,6 @@ use cw2::set_contract_version;
 use cw20::Cw20ExecuteMsg;
 use strategy_manager::QueryMsg as StrategyQueryMsg;
 
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     mut deps: DepsMut,
@@ -53,5 +52,22 @@ pub fn instantiate(
         .add_attribute("owner", owner.to_string())
         .add_attribute("rewards_updater", msg.rewards_updater.to_string())
         .add_attribute("activation_delay", msg.activation_delay.to_string()))
+}
+
+fn _only_rewards_updater(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+    let rewards_updater = REWARDS_UPDATER.load(deps.storage)?;
+
+    if info.sender != rewards_updater {
+        return Err(ContractError::NotRewardsUpdater {});
+    }
+    Ok(())
+}
+
+fn _only_rewards_for_all_submitter(deps: Deps, info: &MessageInfo) ->  Result<(), ContractError> {
+    let is_submitter = REWARDS_FOR_ALL_SUBMITTER.load(deps.storage, info.sender.clone())?;
+    if !is_submitter {
+        return Err(ContractError::ValidCreateRewardsForAllSubmission {});
+    } 
+    Ok(())
 }
 
