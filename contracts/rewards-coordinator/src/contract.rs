@@ -201,3 +201,29 @@ fn _validate_rewards_submission(
     Ok(Response::new().add_attribute("action", "validate_rewards_submission"))
 }
 
+pub fn set_activation_delay(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_activation_delay: u32,    
+) -> Result<Response, ContractError> {
+    _only_owner(deps.as_ref(), &info)?;
+
+    let res = _set_activation_delay(deps, new_activation_delay)?;
+    Ok(res)
+}
+
+fn _set_activation_delay(
+    deps: DepsMut,
+    new_activation_delay: u32,
+) -> Result<Response, ContractError> {
+    let current_activation_delay = ACTIVATION_DELAY.load(deps.storage)?;
+
+    let event = Event::new("ActivationDelaySet")
+        .add_attribute("old_activation_delay", current_activation_delay.to_string())
+        .add_attribute("new_activation_delay", new_activation_delay.to_string());
+
+    ACTIVATION_DELAY.save(deps.storage, &new_activation_delay)?;
+
+    Ok(Response::new().add_event(event))
+}
+
