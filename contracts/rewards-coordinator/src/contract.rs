@@ -15,6 +15,15 @@ use cw2::set_contract_version;
 use cw20::Cw20ExecuteMsg;
 use strategy_manager::QueryMsg as StrategyQueryMsg;
 
+const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+const SNAPSHOT_CADENCE: u64 = 86_400;
+const DOMAIN_TYPEHASH: &[u8] = b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
+const MAX_REWARDS_AMOUNT: u128 = 100000000000000000000000000000000000000 - 1;
+const EARNER_LEAF_SALT: u8 = 0;
+const TOKEN_LEAF_SALT: u8 = 1;
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     mut deps: DepsMut,
@@ -68,6 +77,14 @@ fn _only_rewards_for_all_submitter(deps: Deps, info: &MessageInfo) ->  Result<()
     if !is_submitter {
         return Err(ContractError::ValidCreateRewardsForAllSubmission {});
     } 
+    Ok(())
+}
+
+fn _only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+    let owner = OWNER.load(deps.storage)?;
+    if info.sender != owner {
+        return Err(ContractError::Unauthorized {});
+    }
     Ok(())
 }
 
