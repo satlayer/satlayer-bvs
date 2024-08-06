@@ -227,3 +227,73 @@ fn _set_activation_delay(
     Ok(Response::new().add_event(event))
 }
 
+pub fn set_rewards_updater(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_updater: Addr,
+) -> Result<Response, ContractError> {
+    _only_owner(deps.as_ref(), &info)?;
+
+    let res = _set_rewards_updater(deps, new_updater)?;
+    Ok(res)
+}
+
+fn _set_rewards_updater(
+    deps: DepsMut,
+    new_updater: Addr,
+) -> Result<Response, ContractError> {
+    REWARDS_UPDATER.save(deps.storage, &new_updater)?;
+
+    let event = Event::new("SetRewardsUpdater")
+        .add_attribute("method", "set_rewards_updater")
+        .add_attribute("new_updater", new_updater.to_string());
+
+    Ok(Response::new().add_event(event))
+}
+
+pub fn set_global_operator_commission(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_commission_bips: u16,    
+) -> Result<Response, ContractError> {
+    _only_owner(deps.as_ref(), &info)?;
+
+    let res = _set_global_operator_commission(deps, new_commission_bips)?;
+    Ok(res)
+}
+
+fn _set_global_operator_commission(
+    deps: DepsMut,
+    new_commission_bips: u16,
+) -> Result<Response, ContractError> {
+    let current_commission_bips = GLOBAL_OPERATOR_COMMISSION_BIPS.may_load(deps.storage)?.unwrap_or(0);
+
+    GLOBAL_OPERATOR_COMMISSION_BIPS.save(deps.storage, &new_commission_bips)?;
+
+    let event = Event::new("GlobalCommissionBipsSet")
+        .add_attribute("old_commission_bips", current_commission_bips.to_string())
+        .add_attribute("new_commission_bips", new_commission_bips.to_string());
+
+    Ok(Response::new()
+        .add_event(event))
+}
+
+pub fn transfer_ownership(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_owner: Addr,
+) -> Result<Response, ContractError> {
+    let current_owner = OWNER.load(deps.storage)?;
+
+    if current_owner != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    OWNER.save(deps.storage, &new_owner)?;
+
+    let event = Event::new("TransferOwnership")
+        .add_attribute("method", "transfer_ownership")
+        .add_attribute("new_owner", new_owner.to_string());
+
+    Ok(Response::new().add_event(event))
+}
