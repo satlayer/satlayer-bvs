@@ -58,3 +58,26 @@ pub enum ExecuteMsg {
     }, 
 }
 
+#[cw_serde]
+pub enum QueryMsg {
+    GetDeposits { staker: Addr },
+    StakerStrategyListLength { staker: Addr },
+    GetStakerStrategyShares { staker: Addr, strategy: Addr },
+    IsThirdPartyTransfersForbidden { strategy: Addr },
+    GetNonce { staker: Addr },
+    GetStakerStrategyList { staker: Addr },
+    GetOwner {},
+    IsStrategyWhitelisted { strategy: Addr },
+    GetStrategyWhitelister {},
+    GetStrategyManagerState {},
+    GetDepositTypehash,
+    GetDomainTypehash,
+    GetDomainName,
+}
+
+#[cw_serde]
+pub struct SignatureWithSaltAndExpiry {
+    pub signature: Binary,
+    pub salt: Binary,
+    pub expiry: Uint64,
+}
