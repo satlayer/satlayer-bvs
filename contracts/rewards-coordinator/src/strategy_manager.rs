@@ -9,3 +9,52 @@ pub struct InstantiateMsg {
     pub initial_owner: Addr,
 }
 
+#[cw_serde]
+pub enum ExecuteMsg {
+    AddStrategiesToWhitelist {
+        strategies: Vec<Addr>,
+        third_party_transfers_forbidden_values: Vec<bool>,
+    },
+    RemoveStrategiesFromWhitelist {
+        strategies: Vec<Addr>,
+    },
+    SetStrategyWhitelister {
+        new_strategy_whitelister: Addr,
+    },
+    DepositIntoStrategy {
+        strategy: Addr,
+        token: Addr,
+        amount: Uint128,
+    },
+    SetThirdPartyTransfersForbidden {
+        strategy: Addr,
+        value: bool,
+    },
+    DepositIntoStrategyWithSignature {
+        strategy: Addr,
+        token: Addr,
+        amount: Uint128,
+        staker: Addr,
+        public_key: Binary,
+        expiry: Uint64,
+        signature: Binary,
+    },
+    RemoveShares {
+        staker: Addr,
+        strategy: Addr,
+        shares: Uint128,
+    },
+    WithdrawSharesAsTokens {
+        recipient: Addr,
+        strategy: Addr,
+        shares: Uint128,
+        token: Addr,
+    },
+    AddShares {
+        staker: Addr,
+        token: Addr,
+        strategy: Addr,
+        shares: Uint128,
+    }, 
+}
+
