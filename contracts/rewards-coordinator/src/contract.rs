@@ -324,3 +324,82 @@ pub fn process_claim(
     Ok(response)
 }
 
+pub fn submit_root(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    root: Binary,
+    rewards_calculation_end_timestamp: Uint64,
+) -> Result<Response, ContractError> {
+    _only_rewards_updater(deps.as_ref(), &info)?;
+
+    let curr_rewards_calculation_end_timestamp = CURR_REWARDS_CALCULATION_END_TIMESTAMP
+        .may_load(deps.storage)?
+        .unwrap_or(Uint64::zero());
+
+    if rewards_calculation_end_timestamp <= curr_rewards_calculation_end_timestamp {
+        return Err(ContractError::InvalidTimestamp {});
+    }
+    if rewards_calculation_end_timestamp.u64() >= env.block.time.seconds() {
+        return Err(ContractError::TimestampInFuture {});
+    }
+
+    let activation_delay = ACTIVATION_DELAY.load(deps.storage)?;
+
+    let activated_at = env.block.time.plus_seconds(activation_delay.into()).seconds();
+
+    let root_index = DISTRIBUTION_ROOTS_COUNT.may_load(deps.storage)?.unwrap_or(0);
+
+    let new_root = DistributionRoot {
+        root,
+        activated_at: Uint64::new(activated_at),
+        rewards_calculation_end_timestamp,
+        disabled: false,
+    };
+    DISTRIBUTION_ROOTS.save(deps.storage, root_index, &new_root)?;
+
+    CURR_REWARDS_CALCULATION_END_TIMESTAMP.save(deps.storage, &rewards_calculation_end_timestamp)?;
+
+    DISTRIBUTION_ROOTS_COUNT.save(deps.storage, &(root_index + 1))?;
+
+    let event = Event::new("DistributionRootSubmitted")
+        .add_attribute("root_index", root_index.to_string())
+        .add_attribute("root", format!("{:?}", new_root.root))
+        .add_attribute("rewards_calculation_end_timestamp", new_root.rewards_calculation_end_timestamp.to_string())
+        .add_attribute("activated_at", new_root.activated_at.to_string());
+
+    Ok(Response::new().add_event(event))
+}
+
+pub fn disable_root(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    root_index: u64,
+) -> Result<Response, ContractError> {
+    _only_rewards_updater(deps.as_ref(), &info)?;
+
+    let roots_length = DISTRIBUTION_ROOTS_COUNT.load(deps.storage)?;
+    if root_index >= roots_length {
+        return Err(ContractError::InvalidRootIndex {});
+    }
+
+    let mut root: DistributionRoot = DISTRIBUTION_ROOTS.load(deps.storage, root_index)
+        .map_err(|_| ContractError::RootNotExist {})?;
+
+    if root.disabled {
+        return Err(ContractError::AlreadyDisabled {});
+    }
+    if  env.block.time.seconds() >= root.activated_at.into() {
+        return Err(ContractError::AlreadyActivated {});
+    }
+
+    root.disabled = true;
+    DISTRIBUTION_ROOTS.save(deps.storage, root_index, &root)?;
+
+    let event = Event::new("DistributionRootDisabled")
+        .add_attribute("root_index", root_index.to_string());
+
+    Ok(Response::new().add_event(event))
+}
+
