@@ -403,6 +403,72 @@ pub fn disable_root(
     Ok(Response::new().add_event(event))
 }
 
+pub fn set_claimer_for(
+    deps: DepsMut,
+    info: MessageInfo,
+    claimer: Addr,
+) -> Result<Response, ContractError> {
+    let earner = info.sender;  
+    let prev_claimer = CLAIMER_FOR.may_load(deps.storage, earner.clone())?.unwrap_or(Addr::unchecked(""));
+
+    CLAIMER_FOR.save(deps.storage, earner.clone(), &claimer)?;
+
+    let event = Event::new("ClaimerForSet")
+        .add_attribute("earner", earner.to_string())
+        .add_attribute("previous_claimer", prev_claimer.to_string())
+        .add_attribute("new_claimer", claimer.to_string());
+
+    Ok(Response::new().add_event(event))
+}
+
+pub fn check_claim(env: Env, deps: Deps, claim: RewardsMerkleClaim) -> Result<bool, ContractError> {
+    let root = DISTRIBUTION_ROOTS
+        .may_load(deps.storage, claim.root_index.into())?
+        .ok_or(ContractError::RootNotExist {})?;
+
+    _check_claim(env, &claim, &root)?;
+
+    Ok(true)
+}
+
+
+fn _check_claim(env: Env, claim: &RewardsMerkleClaim, root: &DistributionRoot) -> Result<(), ContractError> {
+    if root.disabled {
+        return Err(ContractError::RootDisabled {});
+    }
+
+    if env.block.time.seconds() < root.activated_at.into() {
+        return Err(ContractError::RootNotActivatedYet {});
+    }
+
+    if claim.token_indices.len() != claim.token_tree_proofs.len() {
+        return Err(ContractError::TokenIndicesAndProofsMismatch {});
+    }
+
+    if claim.token_tree_proofs.len() != claim.token_leaves.len() {
+        return Err(ContractError::TokenProofsAndLeavesMismatch {});
+    }
+
+    _verify_earner_claim_proof(
+        root.root.clone(),
+        claim.earner_index,
+        &claim.earner_tree_proof,
+        &claim.earner_leaf,
+    )?;
+
+    for i in 0..claim.token_indices.len() {
+        _verify_token_claim_proof(
+            claim.earner_leaf.earner_token_root.clone(),
+            claim.token_indices[i],
+            &claim.token_tree_proofs[i],
+            &claim.token_leaves[i],
+        )?;
+    }
+
+    Ok(())
+}
+
+
 
 #[entry_point]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
