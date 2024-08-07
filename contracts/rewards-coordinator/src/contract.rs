@@ -1,15 +1,18 @@
 use crate::{
     error::ContractError,
     strategy_manager,
-    msg::InstantiateMsg,
-    state::{OWNER, REWARDS_UPDATER, CALCULATION_INTERVAL_SECONDS, REWARDS_FOR_ALL_SUBMITTER, IS_AVS_REWARDS_SUBMISSION_HASH, 
+    msg::{InstantiateMsg, DistributionRoot, QueryMsg},
+    state::{OWNER, REWARDS_UPDATER, CALCULATION_INTERVAL_SECONDS, REWARDS_FOR_ALL_SUBMITTER, IS_AVS_REWARDS_SUBMISSION_HASH, CLAIMER_FOR, DISTRIBUTION_ROOTS,
         MAX_REWARDS_DURATION, MAX_RETROACTIVE_LENGTH, MAX_FUTURE_LENGTH, GENESIS_REWARDS_TIMESTAMP, DELEGATION_MANAGER, STRATEGY_MANAGER, ACTIVATION_DELAY,
-        GLOBAL_OPERATOR_COMMISSION_BIPS, SUBMISSION_NONCE
+        GLOBAL_OPERATOR_COMMISSION_BIPS, SUBMISSION_NONCE, DISTRIBUTION_ROOTS_COUNT, CURR_REWARDS_CALCULATION_END_TIMESTAMP, CUMULATIVE_CLAIMED
     },
-    utils::{RewardsSubmission, calculate_rewards_submission_hash}
+    utils::{RewardsSubmission, calculate_rewards_submission_hash, TokenTreeMerkleLeaf, calculate_token_leaf_hash,
+        verify_inclusion_keccak, EarnerTreeMerkleLeaf, calculate_earner_leaf_hash, RewardsMerkleClaim, calculate_domain_separator
+    }
 };
 use cosmwasm_std::{
-    entry_point, Deps, DepsMut, Env, MessageInfo, Response, Addr, Event, CosmosMsg, WasmMsg, to_json_binary
+    entry_point, Deps, DepsMut, Env, MessageInfo, Response, Addr, Event, CosmosMsg, WasmMsg, to_json_binary, Binary, Uint64, Uint128,
+    HexBinary
 };
 use cw2::set_contract_version;
 use cw20::Cw20ExecuteMsg;
@@ -19,10 +22,7 @@ const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const SNAPSHOT_CADENCE: u64 = 86_400;
-const DOMAIN_TYPEHASH: &[u8] = b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
 const MAX_REWARDS_AMOUNT: u128 = 100000000000000000000000000000000000000 - 1;
-const EARNER_LEAF_SALT: u8 = 0;
-const TOKEN_LEAF_SALT: u8 = 1;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -138,6 +138,56 @@ pub fn create_avs_rewards_submission(
     Ok(response)
 }
 
+pub fn create_rewards_for_all_submission(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    rewards_submissions: Vec<RewardsSubmission>,
+) -> Result<Response, ContractError> {
+    _only_rewards_for_all_submitter(deps.as_ref(), &info)?;
+
+    let mut response = Response::new();
+    for submission in rewards_submissions {
+        let nonce = SUBMISSION_NONCE.may_load(deps.storage, info.sender.clone())?.unwrap_or_default();
+
+        let rewards_submission_hash = calculate_rewards_submission_hash(&info.sender, nonce, &submission);
+
+        _validate_rewards_submission(&deps.as_ref(), &submission, &env)?;
+
+        IS_AVS_REWARDS_SUBMISSION_HASH.save(
+            deps.storage,
+            (info.sender.clone(), rewards_submission_hash.to_vec()),
+            &true,
+        )?;
+
+        SUBMISSION_NONCE.save(deps.storage, info.sender.clone(), &(nonce + 1))?;
+
+        let event = Event::new("RewardsSubmissionForAllCreated")
+            .add_attribute("sender", info.sender.to_string())
+            .add_attribute("nonce", nonce.to_string())
+            .add_attribute("rewards_submission_hash", rewards_submission_hash.to_string())
+            .add_attribute("token", submission.token.to_string())
+            .add_attribute("amount", submission.amount.to_string());
+
+        response = response.add_event(event);
+
+        let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: submission.token.to_string(),
+            msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
+                owner: info.sender.to_string(), 
+                recipient: env.contract.address.to_string(), 
+                amount: submission.amount,
+            })?,
+            funds: vec![],
+        });
+
+        response = response.add_message(transfer_msg);
+    }
+
+    Ok(response)
+}
+
+
 fn _validate_rewards_submission(
     deps: &Deps,
     submission: &RewardsSubmission,
@@ -201,99 +251,76 @@ fn _validate_rewards_submission(
     Ok(Response::new().add_attribute("action", "validate_rewards_submission"))
 }
 
-pub fn set_activation_delay(
+pub fn process_claim(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
-    new_activation_delay: u32,    
+    claim: RewardsMerkleClaim,
+    recipient: Addr,
 ) -> Result<Response, ContractError> {
-    _only_owner(deps.as_ref(), &info)?;
+    let root: DistributionRoot = DISTRIBUTION_ROOTS
+        .may_load(deps.storage, claim.root_index.into())?
+        .ok_or(ContractError::RootNotExist {})?;
 
-    let res = _set_activation_delay(deps, new_activation_delay)?;
-    Ok(res)
-}
+    _check_claim(env.clone(), &claim, &root)?;
 
-fn _set_activation_delay(
-    deps: DepsMut,
-    new_activation_delay: u32,
-) -> Result<Response, ContractError> {
-    let current_activation_delay = ACTIVATION_DELAY.load(deps.storage)?;
+    let earner = claim.earner_leaf.earner.clone();
+    let mut claimer = CLAIMER_FOR.may_load(deps.storage, earner.clone())?.unwrap_or_else(|| earner.clone());
 
-    let event = Event::new("ActivationDelaySet")
-        .add_attribute("old_activation_delay", current_activation_delay.to_string())
-        .add_attribute("new_activation_delay", new_activation_delay.to_string());
-
-    ACTIVATION_DELAY.save(deps.storage, &new_activation_delay)?;
-
-    Ok(Response::new().add_event(event))
-}
-
-pub fn set_rewards_updater(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_updater: Addr,
-) -> Result<Response, ContractError> {
-    _only_owner(deps.as_ref(), &info)?;
-
-    let res = _set_rewards_updater(deps, new_updater)?;
-    Ok(res)
-}
-
-fn _set_rewards_updater(
-    deps: DepsMut,
-    new_updater: Addr,
-) -> Result<Response, ContractError> {
-    REWARDS_UPDATER.save(deps.storage, &new_updater)?;
-
-    let event = Event::new("SetRewardsUpdater")
-        .add_attribute("method", "set_rewards_updater")
-        .add_attribute("new_updater", new_updater.to_string());
-
-    Ok(Response::new().add_event(event))
-}
-
-pub fn set_global_operator_commission(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_commission_bips: u16,    
-) -> Result<Response, ContractError> {
-    _only_owner(deps.as_ref(), &info)?;
-
-    let res = _set_global_operator_commission(deps, new_commission_bips)?;
-    Ok(res)
-}
-
-fn _set_global_operator_commission(
-    deps: DepsMut,
-    new_commission_bips: u16,
-) -> Result<Response, ContractError> {
-    let current_commission_bips = GLOBAL_OPERATOR_COMMISSION_BIPS.may_load(deps.storage)?.unwrap_or(0);
-
-    GLOBAL_OPERATOR_COMMISSION_BIPS.save(deps.storage, &new_commission_bips)?;
-
-    let event = Event::new("GlobalCommissionBipsSet")
-        .add_attribute("old_commission_bips", current_commission_bips.to_string())
-        .add_attribute("new_commission_bips", new_commission_bips.to_string());
-
-    Ok(Response::new()
-        .add_event(event))
-}
-
-pub fn transfer_ownership(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_owner: Addr,
-) -> Result<Response, ContractError> {
-    let current_owner = OWNER.load(deps.storage)?;
-
-    if current_owner != info.sender {
-        return Err(ContractError::Unauthorized {});
+    if claimer == Addr::unchecked("") {
+        claimer = earner.clone();
     }
 
-    OWNER.save(deps.storage, &new_owner)?;
+    if info.sender != claimer {
+        return Err(ContractError::UnauthorizedClaimer {});
+    }
 
-    let event = Event::new("TransferOwnership")
-        .add_attribute("method", "transfer_ownership")
-        .add_attribute("new_owner", new_owner.to_string());
+    let mut response = Response::new();
 
-    Ok(Response::new().add_event(event))
+    for token_leaf in claim.token_leaves.iter() {
+        let token = &token_leaf.token;
+
+        let curr_cumulative_claimed = CUMULATIVE_CLAIMED
+            .may_load(deps.storage, (earner.clone(), token.to_string()))?
+            .unwrap_or_default();
+
+        if token_leaf.cumulative_earnings <= curr_cumulative_claimed.into() {
+            return Err(ContractError::CumulativeEarningsTooLow {});
+        }
+
+        let claim_amount = token_leaf.cumulative_earnings.u128() - curr_cumulative_claimed;
+
+        CUMULATIVE_CLAIMED.save(
+            deps.storage,
+            (earner.clone(), token.to_string()),
+            &token_leaf.cumulative_earnings.u128(),
+        )?;
+
+        // Prepare a transfer message for the token claim
+        let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: token.clone().into(),
+            msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: recipient.to_string(),
+                amount: claim_amount.into(),
+            })?,
+            funds: vec![],
+        });
+
+        // Add the transfer message to the response
+        response = response.add_message(transfer_msg);
+
+        // Record an event for the rewards claim
+        let event = Event::new("RewardsClaimed")
+            .add_attribute("root", format!("{:?}", root.root))
+            .add_attribute("earner", earner.to_string())
+            .add_attribute("claimer", claimer.to_string())
+            .add_attribute("recipient", recipient.to_string())
+            .add_attribute("token", token.to_string())
+            .add_attribute("amount", claim_amount.to_string());
+
+        response = response.add_event(event);
+    }
+
+    Ok(response)
 }
+
