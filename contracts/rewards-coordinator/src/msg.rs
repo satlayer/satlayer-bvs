@@ -41,8 +41,15 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 pub enum QueryMsg {
-    QueryRewards { earner: Addr, token: String },
-    IsRootDisabled { root_index: u64 },
+    CalculateEarnerLeafHash { earner: String, earner_token_root: String },
+    CalculateTokenLeafHash { token: String, cumulative_earnings: String },
+    QueryOperatorCommissionBips { operator: String, avs: String},
+    GetDistributionRootsLength {},
+    GetCurrentDistributionRoot {},  
+    GetDistributionRootAtIndex { index: String },
+    GetCurrentClaimableDistributionRoot {},
+    GetRootIndexFromHash { root_hash: String },
+    CalculateDomainSeparator { chain_id: String, contract_addr: String },
 }
 
 #[cw_serde]
@@ -58,6 +65,14 @@ pub struct RewardsStatusResponse {
     pub earner: Addr,
     pub token: String,
     pub claimed: u128,
+}
+
+#[cw_serde]
+pub struct DistributionRoot {
+    pub root: Binary,
+    pub rewards_calculation_end_timestamp: Uint64,
+    pub activated_at: Uint64,
+    pub disabled: bool,
 }
 
 #[cw_serde]

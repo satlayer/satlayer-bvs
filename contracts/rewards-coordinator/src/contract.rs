@@ -1,15 +1,18 @@
 use crate::{
     error::ContractError,
     strategy_manager,
-    msg::InstantiateMsg,
-    state::{OWNER, REWARDS_UPDATER, CALCULATION_INTERVAL_SECONDS, REWARDS_FOR_ALL_SUBMITTER, IS_AVS_REWARDS_SUBMISSION_HASH, 
+    msg::{InstantiateMsg, DistributionRoot, QueryMsg},
+    state::{OWNER, REWARDS_UPDATER, CALCULATION_INTERVAL_SECONDS, REWARDS_FOR_ALL_SUBMITTER, IS_AVS_REWARDS_SUBMISSION_HASH, CLAIMER_FOR, DISTRIBUTION_ROOTS,
         MAX_REWARDS_DURATION, MAX_RETROACTIVE_LENGTH, MAX_FUTURE_LENGTH, GENESIS_REWARDS_TIMESTAMP, DELEGATION_MANAGER, STRATEGY_MANAGER, ACTIVATION_DELAY,
-        GLOBAL_OPERATOR_COMMISSION_BIPS, SUBMISSION_NONCE
+        GLOBAL_OPERATOR_COMMISSION_BIPS, SUBMISSION_NONCE, DISTRIBUTION_ROOTS_COUNT, CURR_REWARDS_CALCULATION_END_TIMESTAMP, CUMULATIVE_CLAIMED
     },
-    utils::{RewardsSubmission, calculate_rewards_submission_hash}
+    utils::{RewardsSubmission, calculate_rewards_submission_hash, TokenTreeMerkleLeaf, calculate_token_leaf_hash,
+        verify_inclusion_keccak, EarnerTreeMerkleLeaf, calculate_earner_leaf_hash, RewardsMerkleClaim, calculate_domain_separator
+    }
 };
 use cosmwasm_std::{
-    entry_point, Deps, DepsMut, Env, MessageInfo, Response, Addr, Event, CosmosMsg, WasmMsg, to_json_binary
+    entry_point, Deps, DepsMut, Env, MessageInfo, Response, Addr, Event, CosmosMsg, WasmMsg, to_json_binary, Binary, Uint64, Uint128,
+    HexBinary
 };
 use cw2::set_contract_version;
 use cw20::Cw20ExecuteMsg;
@@ -19,10 +22,7 @@ const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const SNAPSHOT_CADENCE: u64 = 86_400;
-const DOMAIN_TYPEHASH: &[u8] = b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
 const MAX_REWARDS_AMOUNT: u128 = 100000000000000000000000000000000000000 - 1;
-const EARNER_LEAF_SALT: u8 = 0;
-const TOKEN_LEAF_SALT: u8 = 1;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -138,6 +138,56 @@ pub fn create_avs_rewards_submission(
     Ok(response)
 }
 
+pub fn create_rewards_for_all_submission(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    rewards_submissions: Vec<RewardsSubmission>,
+) -> Result<Response, ContractError> {
+    _only_rewards_for_all_submitter(deps.as_ref(), &info)?;
+
+    let mut response = Response::new();
+    for submission in rewards_submissions {
+        let nonce = SUBMISSION_NONCE.may_load(deps.storage, info.sender.clone())?.unwrap_or_default();
+
+        let rewards_submission_hash = calculate_rewards_submission_hash(&info.sender, nonce, &submission);
+
+        _validate_rewards_submission(&deps.as_ref(), &submission, &env)?;
+
+        IS_AVS_REWARDS_SUBMISSION_HASH.save(
+            deps.storage,
+            (info.sender.clone(), rewards_submission_hash.to_vec()),
+            &true,
+        )?;
+
+        SUBMISSION_NONCE.save(deps.storage, info.sender.clone(), &(nonce + 1))?;
+
+        let event = Event::new("RewardsSubmissionForAllCreated")
+            .add_attribute("sender", info.sender.to_string())
+            .add_attribute("nonce", nonce.to_string())
+            .add_attribute("rewards_submission_hash", rewards_submission_hash.to_string())
+            .add_attribute("token", submission.token.to_string())
+            .add_attribute("amount", submission.amount.to_string());
+
+        response = response.add_event(event);
+
+        let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: submission.token.to_string(),
+            msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
+                owner: info.sender.to_string(), 
+                recipient: env.contract.address.to_string(), 
+                amount: submission.amount,
+            })?,
+            funds: vec![],
+        });
+
+        response = response.add_message(transfer_msg);
+    }
+
+    Ok(response)
+}
+
+
 fn _validate_rewards_submission(
     deps: &Deps,
     submission: &RewardsSubmission,
@@ -201,6 +251,275 @@ fn _validate_rewards_submission(
     Ok(Response::new().add_attribute("action", "validate_rewards_submission"))
 }
 
+pub fn process_claim(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    claim: RewardsMerkleClaim,
+    recipient: Addr,
+) -> Result<Response, ContractError> {
+    let root: DistributionRoot = DISTRIBUTION_ROOTS
+        .may_load(deps.storage, claim.root_index.into())?
+        .ok_or(ContractError::RootNotExist {})?;
+
+    _check_claim(env.clone(), &claim, &root)?;
+
+    let earner = claim.earner_leaf.earner.clone();
+    let mut claimer = CLAIMER_FOR.may_load(deps.storage, earner.clone())?.unwrap_or_else(|| earner.clone());
+
+    if claimer == Addr::unchecked("") {
+        claimer = earner.clone();
+    }
+
+    if info.sender != claimer {
+        return Err(ContractError::UnauthorizedClaimer {});
+    }
+
+    let mut response = Response::new();
+
+    for token_leaf in claim.token_leaves.iter() {
+        let token = &token_leaf.token;
+
+        let curr_cumulative_claimed = CUMULATIVE_CLAIMED
+            .may_load(deps.storage, (earner.clone(), token.to_string()))?
+            .unwrap_or_default();
+
+        if token_leaf.cumulative_earnings <= curr_cumulative_claimed.into() {
+            return Err(ContractError::CumulativeEarningsTooLow {});
+        }
+
+        let claim_amount = token_leaf.cumulative_earnings.u128() - curr_cumulative_claimed;
+
+        CUMULATIVE_CLAIMED.save(
+            deps.storage,
+            (earner.clone(), token.to_string()),
+            &token_leaf.cumulative_earnings.u128(),
+        )?;
+
+        // Prepare a transfer message for the token claim
+        let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: token.clone().into(),
+            msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: recipient.to_string(),
+                amount: claim_amount.into(),
+            })?,
+            funds: vec![],
+        });
+
+        // Add the transfer message to the response
+        response = response.add_message(transfer_msg);
+
+        // Record an event for the rewards claim
+        let event = Event::new("RewardsClaimed")
+            .add_attribute("root", format!("{:?}", root.root))
+            .add_attribute("earner", earner.to_string())
+            .add_attribute("claimer", claimer.to_string())
+            .add_attribute("recipient", recipient.to_string())
+            .add_attribute("token", token.to_string())
+            .add_attribute("amount", claim_amount.to_string());
+
+        response = response.add_event(event);
+    }
+
+    Ok(response)
+}
+
+pub fn submit_root(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    root: Binary,
+    rewards_calculation_end_timestamp: Uint64,
+) -> Result<Response, ContractError> {
+    _only_rewards_updater(deps.as_ref(), &info)?;
+
+    let curr_rewards_calculation_end_timestamp = CURR_REWARDS_CALCULATION_END_TIMESTAMP
+        .may_load(deps.storage)?
+        .unwrap_or(Uint64::zero());
+
+    if rewards_calculation_end_timestamp <= curr_rewards_calculation_end_timestamp {
+        return Err(ContractError::InvalidTimestamp {});
+    }
+    if rewards_calculation_end_timestamp.u64() >= env.block.time.seconds() {
+        return Err(ContractError::TimestampInFuture {});
+    }
+
+    let activation_delay = ACTIVATION_DELAY.load(deps.storage)?;
+
+    let activated_at = env.block.time.plus_seconds(activation_delay.into()).seconds();
+
+    let root_index = DISTRIBUTION_ROOTS_COUNT.may_load(deps.storage)?.unwrap_or(0);
+
+    let new_root = DistributionRoot {
+        root,
+        activated_at: Uint64::new(activated_at),
+        rewards_calculation_end_timestamp,
+        disabled: false,
+    };
+    DISTRIBUTION_ROOTS.save(deps.storage, root_index, &new_root)?;
+
+    CURR_REWARDS_CALCULATION_END_TIMESTAMP.save(deps.storage, &rewards_calculation_end_timestamp)?;
+
+    DISTRIBUTION_ROOTS_COUNT.save(deps.storage, &(root_index + 1))?;
+
+    let event = Event::new("DistributionRootSubmitted")
+        .add_attribute("root_index", root_index.to_string())
+        .add_attribute("root", format!("{:?}", new_root.root))
+        .add_attribute("rewards_calculation_end_timestamp", new_root.rewards_calculation_end_timestamp.to_string())
+        .add_attribute("activated_at", new_root.activated_at.to_string());
+
+    Ok(Response::new().add_event(event))
+}
+
+pub fn disable_root(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    root_index: u64,
+) -> Result<Response, ContractError> {
+    _only_rewards_updater(deps.as_ref(), &info)?;
+
+    let roots_length = DISTRIBUTION_ROOTS_COUNT.load(deps.storage)?;
+    if root_index >= roots_length {
+        return Err(ContractError::InvalidRootIndex {});
+    }
+
+    let mut root: DistributionRoot = DISTRIBUTION_ROOTS.load(deps.storage, root_index)
+        .map_err(|_| ContractError::RootNotExist {})?;
+
+    if root.disabled {
+        return Err(ContractError::AlreadyDisabled {});
+    }
+    if  env.block.time.seconds() >= root.activated_at.into() {
+        return Err(ContractError::AlreadyActivated {});
+    }
+
+    root.disabled = true;
+    DISTRIBUTION_ROOTS.save(deps.storage, root_index, &root)?;
+
+    let event = Event::new("DistributionRootDisabled")
+        .add_attribute("root_index", root_index.to_string());
+
+    Ok(Response::new().add_event(event))
+}
+
+pub fn set_claimer_for(
+    deps: DepsMut,
+    info: MessageInfo,
+    claimer: Addr,
+) -> Result<Response, ContractError> {
+    let earner = info.sender;  
+    let prev_claimer = CLAIMER_FOR.may_load(deps.storage, earner.clone())?.unwrap_or(Addr::unchecked(""));
+
+    CLAIMER_FOR.save(deps.storage, earner.clone(), &claimer)?;
+
+    let event = Event::new("ClaimerForSet")
+        .add_attribute("earner", earner.to_string())
+        .add_attribute("previous_claimer", prev_claimer.to_string())
+        .add_attribute("new_claimer", claimer.to_string());
+
+    Ok(Response::new().add_event(event))
+}
+
+pub fn check_claim(env: Env, deps: Deps, claim: RewardsMerkleClaim) -> Result<bool, ContractError> {
+    let root = DISTRIBUTION_ROOTS
+        .may_load(deps.storage, claim.root_index.into())?
+        .ok_or(ContractError::RootNotExist {})?;
+
+    _check_claim(env, &claim, &root)?;
+
+    Ok(true)
+}
+
+
+fn _check_claim(env: Env, claim: &RewardsMerkleClaim, root: &DistributionRoot) -> Result<(), ContractError> {
+    if root.disabled {
+        return Err(ContractError::RootDisabled {});
+    }
+
+    if env.block.time.seconds() < root.activated_at.into() {
+        return Err(ContractError::RootNotActivatedYet {});
+    }
+
+    if claim.token_indices.len() != claim.token_tree_proofs.len() {
+        return Err(ContractError::TokenIndicesAndProofsMismatch {});
+    }
+
+    if claim.token_tree_proofs.len() != claim.token_leaves.len() {
+        return Err(ContractError::TokenProofsAndLeavesMismatch {});
+    }
+
+    _verify_earner_claim_proof(
+        root.root.clone(),
+        claim.earner_index,
+        &claim.earner_tree_proof,
+        &claim.earner_leaf,
+    )?;
+
+    for i in 0..claim.token_indices.len() {
+        _verify_token_claim_proof(
+            claim.earner_leaf.earner_token_root.clone(),
+            claim.token_indices[i],
+            &claim.token_tree_proofs[i],
+            &claim.token_leaves[i],
+        )?;
+    }
+
+    Ok(())
+}
+
+fn _verify_token_claim_proof(
+    earner_token_root: Binary,
+    token_leaf_index: u32,
+    token_proof: &[u8],
+    token_leaf: &TokenTreeMerkleLeaf,
+) -> Result<(), ContractError> {
+    if token_leaf_index >= (1 << (token_proof.len() / 32)) {
+        return Err(ContractError::InvalidTokenLeafIndex {});
+    }
+
+    let token_leaf_hash = calculate_token_leaf_hash(token_leaf);
+
+    let is_valid_proof = verify_inclusion_keccak(
+        token_proof,
+        earner_token_root.as_slice(),
+        &token_leaf_hash,
+        token_leaf_index as u64,
+    );
+
+    if !is_valid_proof {
+        return Err(ContractError::InvalidTokenClaimProof {});
+    }
+
+    Ok(())
+}
+
+fn _verify_earner_claim_proof(
+    root: Binary,
+    earner_leaf_index: u32,
+    earner_proof: &[u8],
+    earner_leaf: &EarnerTreeMerkleLeaf,
+) -> Result<(), ContractError> {
+    if earner_leaf_index >= (1 << (earner_proof.len() / 32)) {
+        return Err(ContractError::InvalidEarnerLeafIndex {});
+    }
+
+    let earner_leaf_hash = calculate_earner_leaf_hash(earner_leaf);
+
+    let is_valid_proof = verify_inclusion_keccak(
+        earner_proof,
+        root.as_slice(),
+        &earner_leaf_hash,
+        earner_leaf_index as u64,
+    );
+
+    if !is_valid_proof {
+        return Err(ContractError::InvalidEarnerClaimProof {});
+    }
+
+    Ok(())
+}
+
 pub fn set_activation_delay(
     deps: DepsMut,
     info: MessageInfo,
@@ -251,6 +570,24 @@ fn _set_rewards_updater(
     Ok(Response::new().add_event(event))
 }
 
+pub fn set_rewards_for_all_submitter(
+    deps: DepsMut,
+    info: MessageInfo,
+    submitter: Addr,
+    new_value: bool,
+) -> Result<Response, ContractError> {
+    _only_owner(deps.as_ref(), &info)?;
+
+    let prev_value = REWARDS_FOR_ALL_SUBMITTER.may_load(deps.storage, submitter.clone())?.unwrap_or(false);
+    REWARDS_FOR_ALL_SUBMITTER.save(deps.storage, submitter.clone(), &new_value)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "set_rewards_for_all_submitter")
+        .add_attribute("submitter", submitter.to_string())
+        .add_attribute("previous_value", prev_value.to_string())
+        .add_attribute("new_value", new_value.to_string()))
+}
+
 pub fn set_global_operator_commission(
     deps: DepsMut,
     info: MessageInfo,
@@ -296,4 +633,164 @@ pub fn transfer_ownership(
         .add_attribute("new_owner", new_owner.to_string());
 
     Ok(Response::new().add_event(event))
+}
+
+#[entry_point]
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+    match msg {
+        QueryMsg::CalculateEarnerLeafHash { earner, earner_token_root } => {
+            query_calculate_earner_leaf_hash(deps, earner, earner_token_root)
+        }
+        QueryMsg::CalculateTokenLeafHash { token, cumulative_earnings } => {
+            query_calculate_token_leaf_hash(deps, token, cumulative_earnings)
+        }
+        QueryMsg::QueryOperatorCommissionBips { operator, avs } => {
+            query_operator_commission_bips(deps, operator, avs)
+        }
+        QueryMsg::GetDistributionRootsLength { } => {
+            query_distribution_roots_length(deps)
+        }
+        QueryMsg::GetDistributionRootAtIndex { index } => {
+            query_get_distribution_root_at_index(deps, index)
+        }
+        QueryMsg::GetCurrentDistributionRoot {} => { 
+            query_get_current_distribution_root(deps)
+        }
+        QueryMsg::GetCurrentClaimableDistributionRoot {} => {
+            query_get_current_claimable_distribution_root(deps, env)
+        }
+        QueryMsg::GetRootIndexFromHash { root_hash } => {
+            query_get_root_index_from_hash(deps, root_hash)
+        }
+        QueryMsg::CalculateDomainSeparator { chain_id, contract_addr } => {
+            query_calculate_domain_separator(deps, chain_id, contract_addr)
+        }
+    }
+}
+
+fn query_calculate_earner_leaf_hash(
+    _deps: Deps,
+    earner: String,
+    earner_token_root: String,
+) -> Result<Binary, ContractError> {
+    let earner_addr: Addr = Addr::unchecked(earner);
+    let earner_token_root_binary = Binary::from_base64(&earner_token_root)?;
+
+    let leaf = EarnerTreeMerkleLeaf {
+        earner: earner_addr,
+        earner_token_root: earner_token_root_binary,
+    };
+
+    let hash = calculate_earner_leaf_hash(&leaf);
+
+    Ok(to_json_binary(&hash)?)
+}
+
+fn query_calculate_token_leaf_hash(
+    _deps: Deps,
+    token: String,
+    cumulative_earnings: String,
+) -> Result<Binary, ContractError> {
+    let token_addr: Addr = Addr::unchecked(token);
+
+    let cumulative_earnings_amount: Uint128 = cumulative_earnings
+        .parse::<u128>()
+        .map(Uint128::from)
+        .map_err(|_| ContractError::InvalidCumulativeEarnings {})?;
+
+    let leaf = TokenTreeMerkleLeaf {
+        token: token_addr,
+        cumulative_earnings: cumulative_earnings_amount,
+    };
+
+    let hash = calculate_token_leaf_hash(&leaf);
+
+    Ok(to_json_binary(&hash)?)
+}
+
+fn query_operator_commission_bips(
+    deps: Deps,
+    _operator: String, 
+    _avs: String, 
+) -> Result<Binary, ContractError> {
+    let commission_bips = GLOBAL_OPERATOR_COMMISSION_BIPS.load(deps.storage)?;
+
+    Ok(to_json_binary(&commission_bips)?)
+}
+
+fn query_distribution_roots_length(deps: Deps) -> Result<Binary, ContractError> {
+    let roots_length: u64 = DISTRIBUTION_ROOTS_COUNT.load(deps.storage)?;
+
+    let roots_length_as_uint64 = Uint64::from(roots_length);
+
+    Ok(to_json_binary(&roots_length_as_uint64)?)
+}
+
+fn query_get_distribution_root_at_index(
+    deps: Deps,
+    index: String,
+) -> Result<Binary, ContractError> {
+    let index: u64 = index.parse().map_err(|_| ContractError::InvalidIndexFormat {})?;
+
+    let root: DistributionRoot = DISTRIBUTION_ROOTS
+        .may_load(deps.storage, index)?
+        .ok_or(ContractError::RootNotExist {})?;
+
+    Ok(to_json_binary(&root)?)
+}
+
+fn query_get_current_distribution_root(deps: Deps) -> Result<Binary, ContractError> {
+    let length = DISTRIBUTION_ROOTS_COUNT.load(deps.storage)?;
+
+    for i in (0..length).rev() {
+        if let Some(root) = DISTRIBUTION_ROOTS.may_load(deps.storage, i)? {
+            if !root.disabled {
+                return Ok(to_json_binary(&root)?);
+            }
+        }
+    }
+
+    Err(ContractError::NoActiveRootFound {})
+}
+
+fn query_get_current_claimable_distribution_root(deps: Deps, env: Env) -> Result<Binary, ContractError> {
+    let length = DISTRIBUTION_ROOTS_COUNT.load(deps.storage)?;
+
+    for i in (0..length).rev() {
+        if let Some(root) = DISTRIBUTION_ROOTS.may_load(deps.storage, i)? {
+            if !root.disabled && env.block.time.seconds() >= root.activated_at.u64() {
+                return Ok(to_json_binary(&root)?);
+            }
+        }
+    }
+
+    Err(ContractError::NoClaimableRootFound {})
+}
+
+fn query_get_root_index_from_hash(deps: Deps, root_hash: String) -> Result<Binary, ContractError> {
+    let root_hash_bytes = HexBinary::from_hex(&root_hash)
+        .map_err(|_| ContractError::InvalidHexFormat {})?;
+
+    let length = DISTRIBUTION_ROOTS_COUNT.load(deps.storage)?;
+
+    for i in (0..length).rev() {
+        if let Some(root) = DISTRIBUTION_ROOTS.may_load(deps.storage, i)? {
+            if root.root.as_slice() == root_hash_bytes.as_slice() {
+                return Ok(to_json_binary(&(i as u32))?);
+            }
+        }
+    }
+
+    Err(ContractError::RootNotFound {})
+}
+
+fn query_calculate_domain_separator(
+    _deps: Deps,
+    chain_id: String,
+    contract_addr: String,
+) -> Result<Binary, ContractError> {
+    let contract_address = Addr::unchecked(contract_addr);
+    let domain_separator = calculate_domain_separator(&chain_id, &contract_address);
+
+    Ok(to_json_binary(&domain_separator)?)
 }
