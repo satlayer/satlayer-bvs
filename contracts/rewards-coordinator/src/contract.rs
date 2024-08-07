@@ -403,3 +403,163 @@ pub fn disable_root(
     Ok(Response::new().add_event(event))
 }
 
+
+#[entry_point]
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+    match msg {
+        QueryMsg::CalculateEarnerLeafHash { earner, earner_token_root } => {
+            query_calculate_earner_leaf_hash(deps, earner, earner_token_root)
+        }
+        QueryMsg::CalculateTokenLeafHash { token, cumulative_earnings } => {
+            query_calculate_token_leaf_hash(deps, token, cumulative_earnings)
+        }
+        QueryMsg::QueryOperatorCommissionBips { operator, avs } => {
+            query_operator_commission_bips(deps, operator, avs)
+        }
+        QueryMsg::GetDistributionRootsLength { } => {
+            query_distribution_roots_length(deps)
+        }
+        QueryMsg::GetDistributionRootAtIndex { index } => {
+            query_get_distribution_root_at_index(deps, index)
+        }
+        QueryMsg::GetCurrentDistributionRoot {} => { 
+            query_get_current_distribution_root(deps)
+        }
+        QueryMsg::GetCurrentClaimableDistributionRoot {} => {
+            query_get_current_claimable_distribution_root(deps, env)
+        }
+        QueryMsg::GetRootIndexFromHash { root_hash } => {
+            query_get_root_index_from_hash(deps, root_hash)
+        }
+        QueryMsg::CalculateDomainSeparator { chain_id, contract_addr } => {
+            query_calculate_domain_separator(deps, chain_id, contract_addr)
+        }
+    }
+}
+
+fn query_calculate_earner_leaf_hash(
+    _deps: Deps,
+    earner: String,
+    earner_token_root: String,
+) -> Result<Binary, ContractError> {
+    let earner_addr: Addr = Addr::unchecked(earner);
+    let earner_token_root_binary = Binary::from_base64(&earner_token_root)?;
+
+    let leaf = EarnerTreeMerkleLeaf {
+        earner: earner_addr,
+        earner_token_root: earner_token_root_binary,
+    };
+
+    let hash = calculate_earner_leaf_hash(&leaf);
+
+    Ok(to_json_binary(&hash)?)
+}
+
+fn query_calculate_token_leaf_hash(
+    _deps: Deps,
+    token: String,
+    cumulative_earnings: String,
+) -> Result<Binary, ContractError> {
+    let token_addr: Addr = Addr::unchecked(token);
+
+    let cumulative_earnings_amount: Uint128 = cumulative_earnings
+        .parse::<u128>()
+        .map(Uint128::from)
+        .map_err(|_| ContractError::InvalidCumulativeEarnings {})?;
+
+    let leaf = TokenTreeMerkleLeaf {
+        token: token_addr,
+        cumulative_earnings: cumulative_earnings_amount,
+    };
+
+    let hash = calculate_token_leaf_hash(&leaf);
+
+    Ok(to_json_binary(&hash)?)
+}
+
+fn query_operator_commission_bips(
+    deps: Deps,
+    _operator: String, 
+    _avs: String, 
+) -> Result<Binary, ContractError> {
+    let commission_bips = GLOBAL_OPERATOR_COMMISSION_BIPS.load(deps.storage)?;
+
+    Ok(to_json_binary(&commission_bips)?)
+}
+
+fn query_distribution_roots_length(deps: Deps) -> Result<Binary, ContractError> {
+    let roots_length: u64 = DISTRIBUTION_ROOTS_COUNT.load(deps.storage)?;
+
+    let roots_length_as_uint64 = Uint64::from(roots_length);
+
+    Ok(to_json_binary(&roots_length_as_uint64)?)
+}
+
+fn query_get_distribution_root_at_index(
+    deps: Deps,
+    index: String,
+) -> Result<Binary, ContractError> {
+    let index: u64 = index.parse().map_err(|_| ContractError::InvalidIndexFormat {})?;
+
+    let root: DistributionRoot = DISTRIBUTION_ROOTS
+        .may_load(deps.storage, index)?
+        .ok_or(ContractError::RootNotExist {})?;
+
+    Ok(to_json_binary(&root)?)
+}
+
+fn query_get_current_distribution_root(deps: Deps) -> Result<Binary, ContractError> {
+    let length = DISTRIBUTION_ROOTS_COUNT.load(deps.storage)?;
+
+    for i in (0..length).rev() {
+        if let Some(root) = DISTRIBUTION_ROOTS.may_load(deps.storage, i)? {
+            if !root.disabled {
+                return Ok(to_json_binary(&root)?);
+            }
+        }
+    }
+
+    Err(ContractError::NoActiveRootFound {})
+}
+
+fn query_get_current_claimable_distribution_root(deps: Deps, env: Env) -> Result<Binary, ContractError> {
+    let length = DISTRIBUTION_ROOTS_COUNT.load(deps.storage)?;
+
+    for i in (0..length).rev() {
+        if let Some(root) = DISTRIBUTION_ROOTS.may_load(deps.storage, i)? {
+            if !root.disabled && env.block.time.seconds() >= root.activated_at.u64() {
+                return Ok(to_json_binary(&root)?);
+            }
+        }
+    }
+
+    Err(ContractError::NoClaimableRootFound {})
+}
+
+fn query_get_root_index_from_hash(deps: Deps, root_hash: String) -> Result<Binary, ContractError> {
+    let root_hash_bytes = HexBinary::from_hex(&root_hash)
+        .map_err(|_| ContractError::InvalidHexFormat {})?;
+
+    let length = DISTRIBUTION_ROOTS_COUNT.load(deps.storage)?;
+
+    for i in (0..length).rev() {
+        if let Some(root) = DISTRIBUTION_ROOTS.may_load(deps.storage, i)? {
+            if root.root.as_slice() == root_hash_bytes.as_slice() {
+                return Ok(to_json_binary(&(i as u32))?);
+            }
+        }
+    }
+
+    Err(ContractError::RootNotFound {})
+}
+
+fn query_calculate_domain_separator(
+    _deps: Deps,
+    chain_id: String,
+    contract_addr: String,
+) -> Result<Binary, ContractError> {
+    let contract_address = Addr::unchecked(contract_addr);
+    let domain_separator = calculate_domain_separator(&chain_id, &contract_address);
+
+    Ok(to_json_binary(&domain_separator)?)
+}
