@@ -118,14 +118,14 @@ mod tests {
             key: "temperature".to_string(),
         };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let value: Option<i32> = from_json(&res).unwrap();
+        let value: Option<i32> = from_json(res).unwrap();
         assert_eq!(Some(25), value);
 
         let query_msg = QueryMsg::Get {
             key: "non_existent".to_string(),
         };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let value: Option<i32> = from_json(&res).unwrap();
+        let value: Option<i32> = from_json(res).unwrap();
         assert_eq!(None, value);
     }
 
@@ -156,7 +156,7 @@ mod tests {
                 assert_eq!(addr, contract_addr);
                 assert_eq!(funds, vec![]);
 
-                let parsed_msg: ExecuteMsg = from_json(&msg).unwrap();
+                let parsed_msg: ExecuteMsg = from_json(msg).unwrap();
                 match parsed_msg {
                     ExecuteMsg::Set { key: k, value: v } => {
                         assert_eq!(k, key);

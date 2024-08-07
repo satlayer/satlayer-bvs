@@ -114,7 +114,7 @@ mod tests {
                 assert_eq!(addr, contract_addr);
                 assert_eq!(funds, vec![]);
 
-                let parsed_msg: ExecuteMsg = from_json(&msg).unwrap();
+                let parsed_msg: ExecuteMsg = from_json(msg).unwrap();
                 match parsed_msg {
                     ExecuteMsg::ExecuteAvsOffchain { task_id: id } => {
                         assert_eq!(id, task_id);
