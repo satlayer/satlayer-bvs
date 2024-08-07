@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Binary, StdResult, Env};
+use cosmwasm_std::{Addr, Binary, StdResult};
 use sha2::{Sha256, Digest};
 use cosmwasm_crypto::secp256k1_verify;
 
@@ -12,13 +12,22 @@ fn sha256(input: &[u8]) -> Vec<u8> {
     hasher.finalize().to_vec()
 }
 
+pub struct DigestHashParams {
+    pub operator_public_key: Binary,
+    pub avs: Addr,
+    pub salt: Binary,
+    pub expiry: u64,
+    pub chain_id: String,
+    pub contract_addr: Addr,
+}
+
 pub fn calculate_digest_hash(
     operator_public_key: &[u8],
-    avs: &Addr,
+    avs: &str,
     salt: &Binary,
     expiry: u64,
     chain_id: &str,
-    env: &Env,
+    contract_addr: &str,
 ) -> Vec<u8> {
     let struct_hash_input = [
         &sha256(OPERATOR_AVS_REGISTRATION_TYPEHASH)[..],
@@ -34,7 +43,7 @@ pub fn calculate_digest_hash(
         &sha256(DOMAIN_TYPEHASH)[..],
         &sha256(DOMAIN_NAME)[..],
         chain_id.as_bytes(),
-        env.contract.address.as_bytes(),
+        contract_addr.as_bytes(),
     ].concat());
 
     let digest_hash_input = [

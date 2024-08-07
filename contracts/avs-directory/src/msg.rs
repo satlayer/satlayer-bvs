@@ -11,21 +11,22 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     RegisterOperatorToAVS {
-        operator: Addr,
-        public_key: Binary,
-        signature: SignatureWithSaltAndExpiry,
+        operator: String,
+        public_key: String,
+        contract_addr: String,
+        signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry,
     },
     DeregisterOperatorFromAVS {
-        operator: Addr,
+        operator: String,
     },
     UpdateAVSMetadataURI {
         metadata_uri: String,
     },
     CancelSalt {
-        salt: Binary,
+        salt: String,
     },
     TransferOwnership {
-        new_owner: Addr,
+        new_owner: String,
     },
 }
 
@@ -38,6 +39,7 @@ pub enum QueryMsg {
         salt: Binary,
         expiry: Uint64,
         chain_id: String,
+        contract_addr: Addr,
     },
     IsSaltSpent { operator: Addr, salt: String },
     GetDelegationManager {},
@@ -60,6 +62,13 @@ pub struct IsOperatorRegisteredQueryMsg {
 #[cw_serde]
 pub struct IsOperatorRegisteredResponse {
     pub registered: bool,
+}
+
+#[cw_serde]
+pub struct ExecuteSignatureWithSaltAndExpiry {
+    pub signature: String,
+    pub salt: String,
+    pub expiry: String,
 }
 
 #[cw_serde]

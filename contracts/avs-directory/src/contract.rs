@@ -3,7 +3,7 @@ use crate::{
     delegation_manager,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg, OperatorStatusResponse, SignatureWithSaltAndExpiry},
     state::{OperatorAVSRegistrationStatus, OWNER, AVS_OPERATOR_STATUS, OPERATOR_SALT_SPENT, DELEGATION_MANAGER},
-    utils::{calculate_digest_hash, recover, OPERATOR_AVS_REGISTRATION_TYPEHASH, DOMAIN_TYPEHASH, DOMAIN_NAME},
+    utils::{calculate_digest_hash, recover, OPERATOR_AVS_REGISTRATION_TYPEHASH, DOMAIN_TYPEHASH, DOMAIN_NAME, DigestHashParams},
 };
 use delegation_manager::QueryMsg as DelegationManagerQueryMsg;
 use cosmwasm_std::{
@@ -43,13 +43,52 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::RegisterOperatorToAVS { operator, public_key, signature } => {
-            register_operator(deps, env, info, operator, public_key, signature)
+        ExecuteMsg::RegisterOperatorToAVS {
+            operator,
+            public_key,
+            contract_addr,
+            signature_with_salt_and_expiry,
+        } => {
+            let operator_addr: Addr = Addr::unchecked(operator);
+            let contract_addr: Addr = Addr::unchecked(contract_addr);
+            let public_key_binary = Binary::from_base64(&public_key)?;
+            let signature = Binary::from_base64(&signature_with_salt_and_expiry.signature)?;
+            let salt = Binary::from_base64(&signature_with_salt_and_expiry.salt)?;
+            
+            let expiry_u64 = signature_with_salt_and_expiry.expiry.parse::<u64>().unwrap();
+            let expiry = Uint64::new(expiry_u64);
+
+            let signature_with_salt_and_expiry = SignatureWithSaltAndExpiry {
+                signature,
+                salt,
+                expiry,
+            };
+
+            register_operator(
+                deps,
+                env,
+                info,
+                contract_addr,
+                operator_addr,
+                public_key_binary,
+                signature_with_salt_and_expiry,
+            )
         }
-        ExecuteMsg::DeregisterOperatorFromAVS { operator } => deregister_operator(deps, env, info, operator),
-        ExecuteMsg::UpdateAVSMetadataURI { metadata_uri } => update_metadata_uri(info, metadata_uri),
-        ExecuteMsg::CancelSalt { salt } => cancel_salt(deps, env, info, salt),
-        ExecuteMsg::TransferOwnership { new_owner } => transfer_ownership(deps, info, new_owner),
+        ExecuteMsg::DeregisterOperatorFromAVS { operator } => {
+            let operator_addr: Addr = Addr::unchecked(operator);
+            deregister_operator(deps, env, info, operator_addr)
+        }
+        ExecuteMsg::UpdateAVSMetadataURI { metadata_uri } => {
+            update_metadata_uri(info, metadata_uri)
+        }
+        ExecuteMsg::CancelSalt { salt } => {
+            let salt_binary = Binary::from_base64(&salt)?;
+            cancel_salt(deps, env, info, salt_binary)
+        }
+        ExecuteMsg::TransferOwnership { new_owner } => {
+            let new_owner_addr: Addr = Addr::unchecked(new_owner);
+            transfer_ownership(deps, info, new_owner_addr)
+        }
     }
 }
 
@@ -57,6 +96,7 @@ pub fn register_operator(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
+    contract_addr: Addr,
     operator: Addr,
     public_key: Binary,
     operator_signature: SignatureWithSaltAndExpiry,
@@ -85,7 +125,7 @@ pub fn register_operator(
         return Err(ContractError::OperatorAlreadyRegistered {});
     }
 
-    let salt_str = operator_signature.salt.to_string();
+    let salt_str: String = operator_signature.salt.to_string();
 
     let salt_spent = OPERATOR_SALT_SPENT.may_load(deps.storage, (operator.clone(), salt_str.clone()))?;
     if salt_spent.unwrap_or(false) {
@@ -97,11 +137,11 @@ pub fn register_operator(
 
     let message_bytes = calculate_digest_hash(
         &public_key,
-        &info.sender,
+        info.sender.as_str(),
         &operator_signature.salt,
         operator_signature.expiry.u64(),
         chain_id,
-        &env,
+        contract_addr.as_str(),
     );
 
     if !recover(&message_bytes, &operator_signature.signature, public_key.as_slice())? {
@@ -203,15 +243,18 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             salt,
             expiry,
             chain_id,
-        } => to_json_binary(&_calculate_digest_hash(
-            deps,
-            env,
-            operator_public_key,
-            avs,
-            salt,
-            expiry.u64(),
-            chain_id,
-        )?),
+            contract_addr,
+        } => {
+            let params = DigestHashParams {
+                operator_public_key,
+                avs,
+                salt,
+                expiry: expiry.u64(),
+                chain_id,
+                contract_addr,
+            };
+            to_json_binary(&_calculate_digest_hash(deps, env, params)?)
+        },
         QueryMsg::IsSaltSpent { operator, salt } => _is_salt_spent(deps, operator, salt),
         QueryMsg::GetDelegationManager {} => _delegation_manager(deps),
         QueryMsg::GetOwner {} => _owner(deps),
@@ -229,20 +272,16 @@ fn _operator(deps: Deps, user_addr: Addr, operator: Addr) -> StdResult<OperatorS
 
 fn _calculate_digest_hash(
     _deps: Deps,
-    env: Env,
-    operator_public_key: Binary,
-    avs: Addr,
-    salt: Binary,
-    expiry: u64,
-    chain_id: String,
+    _env: Env,
+    params: DigestHashParams,
 ) -> StdResult<Binary> {
     let digest_hash = calculate_digest_hash(
-        operator_public_key.as_slice(),
-        &avs,
-        &salt,
-        expiry,
-        &chain_id,
-        &env,
+        params.operator_public_key.as_slice(),
+        params.avs.as_str(),
+        &params.salt,
+        params.expiry,
+        &params.chain_id,
+        params.contract_addr.as_str(),
     );
     Ok(Binary::new(digest_hash))
 }
@@ -286,6 +325,8 @@ mod tests {
     use sha2::{Sha256, Digest};
     use ripemd::Ripemd160;
     use bech32::{self, ToBase32, Variant};
+    use base64::{engine::general_purpose, Engine as _};
+    use crate::msg::ExecuteSignatureWithSaltAndExpiry;
 
     #[test]
     fn test_instantiate() {
@@ -324,73 +365,43 @@ mod tests {
         (Addr::unchecked(address), secret_key, public_key_bytes.to_vec())
     }
 
-    fn mock_signature_with_message(
-        public_key_bytes: &[u8],
-        sender: &Addr,
-        salt: Binary,
-        expiry: u64,
-        chain_id: &str,
-        _contract_addr: &Addr,
-        secret_key: &SecretKey,
-    ) -> SignatureWithSaltAndExpiry {
-        let env = mock_env();
-        let message_bytes = calculate_digest_hash(
-            &Binary::from(public_key_bytes),
-            sender,
-            &salt,
-            expiry,
-            chain_id,
-            &env,
-        );
-
-        let secp = Secp256k1::new();
-        let message = Message::from_digest_slice(&message_bytes).expect("32 bytes");
-        let signature = secp.sign_ecdsa(&message, secret_key);
-        let signature_bytes = signature.serialize_compact().to_vec();
-
-        SignatureWithSaltAndExpiry {
-            salt,
-            expiry: Uint64::from(expiry),
-            signature: Binary::from(signature_bytes.as_slice()),
-        }
-    }
-
     #[test]
     fn test_register_operator() {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-        
-        let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
-        let (operator, secret_key, public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
-        println!("Operator Address: {:?}", operator);
-        println!("Secret Key: {:?}", secret_key);
-        
-        let current_time = env.block.time.seconds();
-        let expiry = current_time + 1000;
-        let salt = Binary::from(b"salt"); 
-        let chain_id = "cosmos-testnet-14002";
-        let contract_addr = env.contract.address.clone();
-        let signature = mock_signature_with_message(
-            &public_key_bytes,
-            &info.sender,
-            salt.clone(),
-            expiry,
-            chain_id,
-            &contract_addr,
-            &secret_key,
-        );
-        
-        println!("Operator: {:?}", operator);
-        println!("Signature: {:?}", signature);
-        
+
         let instantiate_msg = InstantiateMsg {
             initial_owner: Addr::unchecked("owner"),
             delegation_manager: Addr::unchecked("delegation_manager"),
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
         
-        let public_key = Binary::from(public_key_bytes.as_slice());
+        let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (operator, secret_key, public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
+
+        let chain_id = "cosmos-testnet-14002";
+        let expiry = 2722875888;
+        let salt = Binary::from(b"salt"); 
+        let contract_addr: Addr = Addr::unchecked("osmo1wsjhxj3nl8kmrudsxlf7c40yw6crv4pcrk0twvvsp9jmyr675wjqc8t6an");
+
+        let message_byte = calculate_digest_hash(
+            &Binary::from(public_key_bytes.clone()),
+            info.sender.as_str(),
+            &salt,
+            expiry,
+            chain_id,
+            contract_addr.as_str(),
+        );
+
+        let secp = Secp256k1::new();
+        let message = Message::from_digest_slice(&message_byte).expect("32 bytes");
+        let signature = secp.sign_ecdsa(&message, &secret_key);
+        let signature_bytes = signature.serialize_compact().to_vec();
+
+        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
+
+        let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
     
         // Mock the response from the delegation_manager contract
         deps.querier.update_wasm(move |query| match query {
@@ -402,12 +413,18 @@ mod tests {
                 request: to_json_binary(&query).unwrap(),
             }),
         });
-        
+
         let msg = ExecuteMsg::RegisterOperatorToAVS {
-            operator: operator.clone(),
-            public_key: public_key.clone(),
-            signature: signature.clone(),
+            operator: operator.to_string(),
+            public_key: public_key_hex.to_string(),
+            contract_addr: contract_addr.to_string(),
+            signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
+                signature: signature_base64.to_string(),
+                salt: salt.to_string(),
+                expiry: expiry.to_string(),
+            },
         };
+
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
     
         if let Err(ref err) = res {
@@ -433,7 +450,7 @@ mod tests {
         
         let status = AVS_OPERATOR_STATUS.load(&deps.storage, (info.sender.clone(), operator.clone())).unwrap();
         assert_eq!(status, OperatorAVSRegistrationStatus::Registered);
-        
+            
         let is_salt_spent = OPERATOR_SALT_SPENT.load(&deps.storage, (operator.clone(), salt.to_string())).unwrap();
         assert!(is_salt_spent);
     }    
@@ -443,38 +460,39 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-        
-        let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
-        let (operator, secret_key, public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
-        println!("Operator Address: {:?}", operator);
-        println!("Secret Key: {:?}", secret_key);
-    
-        let current_time = env.block.time.seconds();
-        let expiry = current_time + 1000;
-        let salt = Binary::from(b"salt"); 
-        let chain_id = "cosmos-testnet-14002";
-        let contract_addr = env.contract.address.clone();
-        let signature = mock_signature_with_message(
-            &public_key_bytes,
-            &info.sender,
-            salt.clone(),
-            expiry,
-            chain_id,
-            &contract_addr,
-            &secret_key,
-        );
-    
-        println!("Operator: {:?}", operator);
-        println!("Signature: {:?}", signature);
-    
+
         let instantiate_msg = InstantiateMsg {
             initial_owner: Addr::unchecked("owner"),
             delegation_manager: Addr::unchecked("delegation_manager"),
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
-    
-        let public_key = Binary::from(public_key_bytes.as_slice());
-    
+        
+        let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (operator, secret_key, public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
+
+        let chain_id = "cosmos-testnet-14002";
+        let expiry = 2722875888;
+        let salt = Binary::from(b"salt"); 
+        let contract_addr: Addr = Addr::unchecked("osmo1wsjhxj3nl8kmrudsxlf7c40yw6crv4pcrk0twvvsp9jmyr675wjqc8t6an");
+
+        let message_byte = calculate_digest_hash(
+            &Binary::from(public_key_bytes.clone()),
+            info.sender.as_str(),
+            &salt,
+            expiry,
+            chain_id,
+            contract_addr.as_str(),
+        );
+
+        let secp = Secp256k1::new();
+        let message = Message::from_digest_slice(&message_byte).expect("32 bytes");
+        let signature = secp.sign_ecdsa(&message, &secret_key);
+        let signature_bytes = signature.serialize_compact().to_vec();
+
+        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
+
+        let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
+        
         // Mock the response from the delegation_manager contract
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart { contract_addr, msg: _ } if contract_addr == "delegation_manager" => {
@@ -486,18 +504,24 @@ mod tests {
             }),
         });
     
-        // Register the operator first
         let register_msg = ExecuteMsg::RegisterOperatorToAVS {
-            operator: operator.clone(),
-            public_key: public_key.clone(),
-            signature: signature.clone(),
+            operator: operator.to_string(),
+            public_key: public_key_hex.to_string(),
+            contract_addr: contract_addr.to_string(),
+            signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
+                signature: signature_base64.to_string(),
+                salt: salt.to_string(),
+                expiry: expiry.to_string(),
+            },
         };
+
         let res = execute(deps.as_mut(), env.clone(), info.clone(), register_msg);
+
         assert!(res.is_ok());
     
         // Deregister the operator
         let deregister_msg = ExecuteMsg::DeregisterOperatorFromAVS {
-            operator: operator.clone(),
+            operator: operator.to_string(),
         };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), deregister_msg);
     
@@ -570,7 +594,7 @@ mod tests {
         let is_salt_spent = OPERATOR_SALT_SPENT.may_load(&deps.storage, (info.sender.clone(), salt.to_string())).unwrap();
         assert!(is_salt_spent.is_none());
 
-        let msg = ExecuteMsg::CancelSalt { salt: salt.clone() };
+        let msg = ExecuteMsg::CancelSalt { salt: salt.to_string() };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
 
         if let Err(ref err) = res {
@@ -607,7 +631,7 @@ mod tests {
         instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
 
         let msg = ExecuteMsg::TransferOwnership {
-            new_owner: new_owner.clone(),
+            new_owner: new_owner.to_string(),
         };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
 
@@ -633,38 +657,42 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-    
-        let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
-        let (operator, secret_key, public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
-        println!("Operator Address: {:?}", operator);
-        println!("Secret Key: {:?}", secret_key);
-    
-        let current_time = env.block.time.seconds();
-        let expiry = current_time + 1000;
-        let salt = Binary::from(b"salt");
-        let chain_id = "cosmos-testnet-14002";
-        let contract_addr = env.contract.address.clone();
-        let signature = mock_signature_with_message(
-            &public_key_bytes,
-            &info.sender,
-            salt.clone(),
-            expiry,
-            chain_id,
-            &contract_addr,
-            &secret_key,
-        );
-    
+
         let instantiate_msg = InstantiateMsg {
             initial_owner: Addr::unchecked("owner"),
             delegation_manager: Addr::unchecked("delegation_manager"),
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
     
-        let public_key = Binary::from(public_key_bytes.as_slice());
-    
+        let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (operator, secret_key, public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
+
+        let chain_id = "cosmos-testnet-14002";
+        let expiry = 2722875888;
+        let salt = Binary::from(b"salt"); 
+        let contract_addr: Addr = Addr::unchecked("osmo1wsjhxj3nl8kmrudsxlf7c40yw6crv4pcrk0twvvsp9jmyr675wjqc8t6an");
+
+        let message_byte = calculate_digest_hash(
+            &Binary::from(public_key_bytes.clone()),
+            info.sender.as_str(),
+            &salt,
+            expiry,
+            chain_id,
+            contract_addr.as_str(),
+        );
+
+        let secp = Secp256k1::new();
+        let message = Message::from_digest_slice(&message_byte).expect("32 bytes");
+        let signature = secp.sign_ecdsa(&message, &secret_key);
+        let signature_bytes = signature.serialize_compact().to_vec();
+
+        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
+
+        let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
+        
         // Mock the response from the delegation_manager contract
         deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { contract_addr, msg: _ } if contract_addr == "delegation_manager" => {
+            WasmQuery::Smart { contract_addr: delegation_manager, msg: _ } if delegation_manager == "delegation_manager" => {
                 SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap())) // Mock operator is registered
             }
             _ => SystemResult::Err(SystemError::InvalidRequest {
@@ -674,10 +702,16 @@ mod tests {
         });
     
         let msg = ExecuteMsg::RegisterOperatorToAVS {
-            operator: operator.clone(),
-            public_key: public_key.clone(),
-            signature: signature.clone(),
+            operator: operator.to_string(),
+            public_key: public_key_hex.to_string(),
+            contract_addr: contract_addr.to_string(),
+            signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
+                signature: signature_base64.to_string(),
+                salt: salt.to_string(),
+                expiry: expiry.to_string(),
+            },
         };
+
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
     
         if let Err(ref err) = res {
@@ -733,7 +767,6 @@ mod tests {
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
 
-        // Before RegisterOperatorToAVS, the operator should be unregistered
         let query_msg = QueryMsg::QueryOperator {
             avs: info.sender.clone(),
             operator: operator.clone(),
@@ -741,7 +774,6 @@ mod tests {
         let query_res: OperatorStatusResponse = from_json(query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
         println!("Query result before registration: {:?}", query_res);
 
-        // Check if the status is Unregistered
         assert_eq!(query_res.status, OperatorAVSRegistrationStatus::Unregistered);
     }
 
@@ -751,34 +783,31 @@ mod tests {
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
     
-        let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
-        let (operator, secret_key, public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
-        println!("Operator Address: {:?}", operator);
-        println!("Secret Key: {:?}", secret_key);
-    
-        let current_time = env.block.time.seconds();
-        let expiry = current_time + 1000;
-        let salt = "salt";
+        let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (_operator, _secret_key, public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
+
         let chain_id = "cosmos-testnet-14002";
+        let expiry = 2722875888;
+        let salt = Binary::from(b"salt"); 
+        let contract_addr: Addr = Addr::unchecked("osmo1wsjhxj3nl8kmrudsxlf7c40yw6crv4pcrk0twvvsp9jmyr675wjqc8t6an");
     
-        // Create a CalculateDigestHash query message
         let query_msg = QueryMsg::CalculateDigestHash {
             operator_public_key: Binary::from(public_key_bytes.as_slice()),
             avs: info.sender.clone(),
-            salt: Binary::from(salt.as_bytes()),
+            salt: salt.clone(),
             expiry: Uint64::from(expiry),
             chain_id: chain_id.to_string(),
+            contract_addr: contract_addr.clone(),
         };
     
-        // Execute the query
         let query_res: Binary = from_json(query(deps.as_ref(), env.clone(), query_msg).unwrap()).unwrap();
         let expected_digest_hash = calculate_digest_hash(
             public_key_bytes.as_slice(),
-            &info.sender,
-            &Binary::from(salt.as_bytes()),
+            info.sender.as_ref(),
+            &salt,
             expiry,
             chain_id,
-            &env,
+            contract_addr.as_ref(),
         );
     
         assert_eq!(query_res.as_slice(), expected_digest_hash.as_slice());
@@ -790,39 +819,43 @@ mod tests {
     fn test_query_is_salt_spent() {
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let info = message_info(&Addr::unchecked("creator"), &[]);
-    
-        let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
-        let (operator, secret_key, public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
-        println!("Operator Address: {:?}", operator);
-        println!("Secret Key: {:?}", secret_key);
-    
-        let current_time = env.block.time.seconds();
-        let expiry = current_time + 1000;
-        let salt = Binary::from(b"salt");
-        let chain_id = "cosmos-testnet-14002";
-        let contract_addr = env.contract.address.clone();
-        let signature = mock_signature_with_message(
-            &public_key_bytes,
-            &info.sender,
-            salt.clone(),
-            expiry,
-            chain_id,
-            &contract_addr,
-            &secret_key,
-        );
-    
+        let info = message_info(&Addr::unchecked("osmo1l3u09t2x6ey8xcrhc5e48ygauqlxy3facyz34p"), &[]);
+
         let instantiate_msg = InstantiateMsg {
             initial_owner: Addr::unchecked("owner"),
             delegation_manager: Addr::unchecked("delegation_manager"),
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
-    
-        let public_key = Binary::from(public_key_bytes.as_slice());
+
+        let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (operator, secret_key, public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
+
+        let chain_id = "cosmos-testnet-14002";
+        let expiry = 2722875888;
+        let salt = Binary::from(b"salt"); 
+        let contract_addr: Addr = Addr::unchecked("osmo1wsjhxj3nl8kmrudsxlf7c40yw6crv4pcrk0twvvsp9jmyr675wjqc8t6an");
+
+        let message_byte = calculate_digest_hash(
+            &Binary::from(public_key_bytes.clone()),
+            info.sender.as_str(),
+            &salt,
+            expiry,
+            chain_id,
+            contract_addr.as_str(),
+        );
+
+        let secp = Secp256k1::new();
+        let message = Message::from_digest_slice(&message_byte).expect("32 bytes");
+        let signature = secp.sign_ecdsa(&message, &secret_key);
+        let signature_bytes = signature.serialize_compact().to_vec();
+
+        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
+
+        let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
     
         // Mock the response from the delegation_manager contract
         deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { contract_addr, msg: _ } if contract_addr == "delegation_manager" => {
+            WasmQuery::Smart { contract_addr: delegation_manager, msg: _ } if delegation_manager == "delegation_manager" => {
                 SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap())) // Mock operator is registered
             }
             _ => SystemResult::Err(SystemError::InvalidRequest {
@@ -832,10 +865,16 @@ mod tests {
         });
     
         let msg = ExecuteMsg::RegisterOperatorToAVS {
-            operator: operator.clone(),
-            public_key: public_key.clone(),
-            signature: signature.clone(),
+            operator: operator.to_string(),
+            public_key: public_key_hex.to_string(),
+            contract_addr: contract_addr.to_string(),
+            signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
+                signature: signature_base64.to_string(),
+                salt: salt.to_string(),
+                expiry: expiry.to_string(),
+            },
         };
+
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
     
         if let Err(ref err) = res {
@@ -850,10 +889,6 @@ mod tests {
         };
 
         let query_res: bool = from_json(query(deps.as_ref(), env.clone(), query_msg.clone()).unwrap()).unwrap();
-        assert!(query_res);
-        
-        // Query again to check the updated status
-        let query_res: bool = from_json(query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
         assert!(query_res);
     }
 
@@ -927,5 +962,110 @@ mod tests {
         let query_res: Vec<u8> = from_json(query(deps.as_ref(), env.clone(), query_msg).unwrap()).unwrap();
     
         assert_eq!(query_res, DOMAIN_NAME.to_vec());
-    }    
+    }
+
+    #[test]
+    fn test_register_operator_to_avs() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("osmo1l3u09t2x6ey8xcrhc5e48ygauqlxy3facyz34p"), &[]);
+
+        let instantiate_msg = InstantiateMsg {
+            initial_owner: Addr::unchecked("owner"),
+            delegation_manager: Addr::unchecked("delegation_manager"),
+        };
+        instantiate(deps.as_mut(), env.clone(), info.clone(), instantiate_msg).unwrap();
+
+        let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (operator, secret_key, public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
+
+        let chain_id = "cosmos-testnet-14002";
+        let expiry = 1722965888;
+        let salt = Binary::from(b"salt"); 
+        let contract_addr: Addr = Addr::unchecked("osmo1dhpupjecw7ltsckrckd4saraaf2266aq2dratwyjtwz5p7476yxspgc6td");
+
+        let message_byte = calculate_digest_hash(
+            &Binary::from(public_key_bytes.clone()),
+            info.sender.as_str(),
+            &salt,
+            expiry,
+            chain_id,
+            contract_addr.as_str(),
+        );
+
+        let secp = Secp256k1::new();
+        let message = Message::from_digest_slice(&message_byte).expect("32 bytes");
+        let signature = secp.sign_ecdsa(&message, &secret_key);
+        let signature_bytes = signature.serialize_compact().to_vec();
+
+        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
+
+        let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
+
+        // Mock the response from the delegation_manager contract
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr: delegation_manager, msg: _ } if delegation_manager == "delegation_manager" => {
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap())) // Mock operator is registered
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        let msg = ExecuteMsg::RegisterOperatorToAVS {
+            operator: operator.to_string(),
+            public_key: public_key_hex.to_string(),
+            contract_addr: contract_addr.to_string(),
+            signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
+                signature: signature_base64.to_string(),
+                salt: salt.to_string(),
+                expiry: expiry.to_string(),
+            },
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+    
+        if let Err(ref err) = res {
+            println!("Error: {:?}", err);
+        }
+        
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_recover() {
+        let info = message_info(&Addr::unchecked("osmo1l3u09t2x6ey8xcrhc5e48ygauqlxy3facyz34p"), &[]); 
+
+        let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (_operator, secret_key, public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
+
+        let chain_id = "cosmos-testnet-14002";
+        let expiry = 1722965888;
+        let salt = Binary::from(b"salt"); 
+        let contract_addr: Addr = Addr::unchecked("osmo1dhpupjecw7ltsckrckd4saraaf2266aq2dratwyjtwz5p7476yxspgc6td");
+
+        let message_byte = calculate_digest_hash(
+            &Binary::from(public_key_bytes.clone()),
+            info.sender.as_str(),
+            &salt,
+            expiry,
+            chain_id,
+            contract_addr.as_str(),
+        );
+
+        let secp = Secp256k1::new();
+        let message = Message::from_digest_slice(&message_byte).expect("32 bytes");
+        let signature = secp.sign_ecdsa(&message, &secret_key);
+        let signature_bytes = signature.serialize_compact().to_vec();
+
+        let signature_base64 = general_purpose::STANDARD.encode(&signature_bytes);
+
+        println!("signature5_base64: {:?}", signature_base64);
+
+        let result: Result<bool, cosmwasm_std::StdError> = recover(&message_byte, &signature_bytes, &public_key_bytes.clone());
+
+        assert!(result.is_ok());
+        assert!(result.unwrap());
+    }   
 }
