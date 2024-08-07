@@ -1,7 +1,10 @@
-use crate::{error::ContractError, msg::ExecuteMsg, msg::InstantiateMsg, msg::QueryMsg};
+use crate::{
+    error::ContractError, msg::ExecuteMsg, msg::InstantiateMsg, msg::QueryMsg, state::VALUES,
+};
 
 use cosmwasm_std::{
-    entry_point, Binary, Deps, DepsMut, Env, Event, MessageInfo, Response, StdResult,
+    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, Event, MessageInfo, Response,
+    StdResult,
 };
 use cw2::set_contract_version;
 
@@ -24,17 +27,24 @@ pub fn instantiate(
 
 #[entry_point]
 pub fn execute(
-    _deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> StdResult<Response> {
     match msg {
-        ExecuteMsg::Set { key, value } => execute_set(info, key, value),
+        ExecuteMsg::Set { key, value } => execute_set(deps, info, key, value),
     }
 }
 
-pub fn execute_set(info: MessageInfo, key: String, value: i32) -> StdResult<Response> {
+pub fn execute_set(
+    deps: DepsMut,
+    info: MessageInfo,
+    key: String,
+    value: i64,
+) -> StdResult<Response> {
+    VALUES.save(deps.storage, key.clone(), &value)?;
+
     let event = Event::new("UpdateState")
         .add_attribute("sender", info.sender.to_string())
         .add_attribute("key", key.clone())
@@ -48,8 +58,15 @@ pub fn execute_set(info: MessageInfo, key: String, value: i32) -> StdResult<Resp
 }
 
 #[entry_point]
-pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
-    Ok(Binary::default())
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::Get { key } => query_value(deps, key),
+    }
+}
+
+fn query_value(deps: Deps, key: String) -> StdResult<Binary> {
+    let value = VALUES.may_load(deps.storage, key)?;
+    to_json_binary(&value)
 }
 
 #[cfg(test)]
@@ -74,7 +91,7 @@ mod tests {
     }
 
     #[test]
-    fn test_set() {
+    fn test_set_and_get() {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("alice"), &[]);
@@ -96,9 +113,23 @@ mod tests {
             vec![("sender", "alice"), ("key", "temperature"), ("value", "25"),],
             res.events[0].attributes
         );
+
+        let query_msg = QueryMsg::Get {
+            key: "temperature".to_string(),
+        };
+        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
+        let value: Option<i32> = from_json(res).unwrap();
+        assert_eq!(Some(25), value);
+
+        let query_msg = QueryMsg::Get {
+            key: "non_existent".to_string(),
+        };
+        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
+        let value: Option<i32> = from_json(res).unwrap();
+        assert_eq!(None, value);
     }
 
-    pub fn _create_set_msg(contract_addr: String, key: String, value: i32) -> StdResult<CosmosMsg> {
+    fn _create_set_msg(contract_addr: String, key: String, value: i64) -> StdResult<CosmosMsg> {
         let msg = ExecuteMsg::Set { key, value };
         let wasm_msg = WasmMsg::Execute {
             contract_addr,
@@ -125,7 +156,7 @@ mod tests {
                 assert_eq!(addr, contract_addr);
                 assert_eq!(funds, vec![]);
 
-                let parsed_msg: ExecuteMsg = from_json(&msg).unwrap();
+                let parsed_msg: ExecuteMsg = from_json(msg).unwrap();
                 match parsed_msg {
                     ExecuteMsg::Set { key: k, value: v } => {
                         assert_eq!(k, key);

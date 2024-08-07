@@ -5,8 +5,10 @@ pub struct InstantiateMsg {}
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    Set { key: String, value: i32 },
+    Set { key: String, value: i64 },
 }
 
 #[cw_serde]
-pub enum QueryMsg {}
+pub enum QueryMsg {
+    Get { key: String },
+}

@@ -1,10 +1,12 @@
 [workspace]
 members = [
-    "contracts/avs-directory",
+    # "contracts/avs-directory",
     # "contracts/strategy-base",
     # "contracts/strategy-manager",
+    # "contracts/state-bank",
+    # "contracts/avs-driver",
     # "contracts/delegation-manager",
-    # "contracts/rewards-coordinator"
+    "contracts/rewards-coordinator",
     ]
 
 resolver = "2"
@@ -28,4 +30,3 @@ bech32 = "0.8.0"
 ripemd = "0.1.0"
 serde_json = "1.0.0"
 base64 = "0.22.1"
-
