@@ -84,11 +84,11 @@ pub fn calculate_token_leaf_hash(leaf: &TokenTreeMerkleLeaf) -> Vec<u8> {
     hasher.finalize().to_vec()
 }
 
-pub fn verify_inclusion_keccak(proof: &[u8], root: &[u8], leaf: &[u8], index: u64) -> bool {
-    process_inclusion_proof_keccak(proof, leaf, index) == root
+pub fn verify_inclusion_sha256(proof: &[u8], root: &[u8], leaf: &[u8], index: u64) -> bool {
+    process_inclusion_proof_sha256(proof, leaf, index) == root
 }
 
-fn process_inclusion_proof_keccak(proof: &[u8], leaf: &[u8], index: u64) -> Vec<u8> {
+fn process_inclusion_proof_sha256(proof: &[u8], leaf: &[u8], index: u64) -> Vec<u8> {
     if proof.len() % 32 != 0 {
         panic!("Proof length should be a multiple of 32");
     }

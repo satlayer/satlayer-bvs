@@ -7,7 +7,7 @@ use crate::{
         GLOBAL_OPERATOR_COMMISSION_BIPS, SUBMISSION_NONCE, DISTRIBUTION_ROOTS_COUNT, CURR_REWARDS_CALCULATION_END_TIMESTAMP, CUMULATIVE_CLAIMED
     },
     utils::{RewardsSubmission, calculate_rewards_submission_hash, TokenTreeMerkleLeaf, calculate_token_leaf_hash,
-        verify_inclusion_keccak, EarnerTreeMerkleLeaf, calculate_earner_leaf_hash, RewardsMerkleClaim, calculate_domain_separator
+        verify_inclusion_sha256, EarnerTreeMerkleLeaf, calculate_earner_leaf_hash, RewardsMerkleClaim, calculate_domain_separator
     }
 };
 use cosmwasm_std::{
@@ -73,7 +73,7 @@ fn _only_rewards_updater(deps: Deps, info: &MessageInfo) -> Result<(), ContractE
 }
 
 fn _only_rewards_for_all_submitter(deps: Deps, info: &MessageInfo) ->  Result<(), ContractError> {
-    let is_submitter = REWARDS_FOR_ALL_SUBMITTER.load(deps.storage, info.sender.clone())?;
+    let is_submitter = REWARDS_FOR_ALL_SUBMITTER.may_load(deps.storage, info.sender.clone())?.unwrap_or(false);
     if !is_submitter {
         return Err(ContractError::ValidCreateRewardsForAllSubmission {});
     } 
@@ -186,7 +186,6 @@ pub fn create_rewards_for_all_submission(
 
     Ok(response)
 }
-
 
 fn _validate_rewards_submission(
     deps: &Deps,
@@ -480,7 +479,7 @@ fn _verify_token_claim_proof(
 
     let token_leaf_hash = calculate_token_leaf_hash(token_leaf);
 
-    let is_valid_proof = verify_inclusion_keccak(
+    let is_valid_proof = verify_inclusion_sha256(
         token_proof,
         earner_token_root.as_slice(),
         &token_leaf_hash,
@@ -506,7 +505,7 @@ fn _verify_earner_claim_proof(
 
     let earner_leaf_hash = calculate_earner_leaf_hash(earner_leaf);
 
-    let is_valid_proof = verify_inclusion_keccak(
+    let is_valid_proof = verify_inclusion_sha256(
         earner_proof,
         root.as_slice(),
         &earner_leaf_hash,
@@ -535,7 +534,7 @@ fn _set_activation_delay(
     deps: DepsMut,
     new_activation_delay: u32,
 ) -> Result<Response, ContractError> {
-    let current_activation_delay = ACTIVATION_DELAY.load(deps.storage)?;
+    let current_activation_delay = ACTIVATION_DELAY.may_load(deps.storage)?.unwrap_or(0);
 
     let event = Event::new("ActivationDelaySet")
         .add_attribute("old_activation_delay", current_activation_delay.to_string())
@@ -794,3 +793,100 @@ fn query_calculate_domain_separator(
 
     Ok(to_json_binary(&domain_separator)?)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info};
+    use cosmwasm_std::{from_json, Addr, SystemResult, ContractResult, WasmQuery, SystemError, Timestamp};
+    use crate::utils::StrategyAndMultiplier;
+
+    #[test]
+    fn test_instantiate() {
+        let mut deps = mock_dependencies();
+
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+
+        let msg = InstantiateMsg {
+            initial_owner: Addr::unchecked("owner"),
+            calculation_interval_seconds: Uint64::new(86_400), // 1 day
+            max_rewards_duration: Uint64::new(30 * 86_400),   // 30 days
+            max_retroactive_length: Uint64::new(5 * 86_400),  // 5 days
+            max_future_length: Uint64::new(10 * 86_400),      // 10 days
+            genesis_rewards_timestamp: Uint64::new(env.block.time.seconds() / 86_400 * 86_400), 
+            delegation_manager: Addr::unchecked("delegation_manager"),
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            rewards_updater: Addr::unchecked("rewards_updater"),
+            activation_delay: 60,  // 1 minute
+        };
+
+        let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        assert_eq!(res.attributes.len(), 4);
+        assert_eq!(res.attributes[0].key, "method");
+        assert_eq!(res.attributes[0].value, "instantiate");
+        assert_eq!(res.attributes[1].key, "owner");
+        assert_eq!(res.attributes[1].value, "owner");
+        assert_eq!(res.attributes[2].key, "rewards_updater");
+        assert_eq!(res.attributes[2].value, "rewards_updater");
+
+        let stored_owner = OWNER.load(&deps.storage).unwrap();
+        assert_eq!(stored_owner, Addr::unchecked("owner"));
+
+        let stored_calculation_interval = CALCULATION_INTERVAL_SECONDS.load(&deps.storage).unwrap();
+        assert_eq!(stored_calculation_interval, 86_400);
+
+        let stored_max_rewards_duration = MAX_REWARDS_DURATION.load(&deps.storage).unwrap();
+        assert_eq!(stored_max_rewards_duration, 30 * 86_400);
+
+        let stored_max_retroactive_length = MAX_RETROACTIVE_LENGTH.load(&deps.storage).unwrap();
+        assert_eq!(stored_max_retroactive_length, 5 * 86_400);
+
+        let stored_max_future_length = MAX_FUTURE_LENGTH.load(&deps.storage).unwrap();
+        assert_eq!(stored_max_future_length, 10 * 86_400);
+
+        let stored_genesis_rewards_timestamp = GENESIS_REWARDS_TIMESTAMP.load(&deps.storage).unwrap();
+        assert_eq!(stored_genesis_rewards_timestamp, msg.genesis_rewards_timestamp.u64());
+
+        let stored_delegation_manager = DELEGATION_MANAGER.load(&deps.storage).unwrap();
+        assert_eq!(stored_delegation_manager, Addr::unchecked("delegation_manager"));
+
+        let stored_strategy_manager = STRATEGY_MANAGER.load(&deps.storage).unwrap();
+        assert_eq!(stored_strategy_manager, Addr::unchecked("strategy_manager"));
+        
+        let stored_activation_delay = ACTIVATION_DELAY.load(&deps.storage).unwrap();
+        assert_eq!(stored_activation_delay, 60);
+
+        let stored_rewards_updater = REWARDS_UPDATER.load(&deps.storage).unwrap();
+        assert_eq!(stored_rewards_updater, Addr::unchecked("rewards_updater"));
+    }
+
+    #[test]
+    fn test_only_rewards_updater_success() {
+        let mut deps = mock_dependencies();
+
+        let rewards_updater_addr = Addr::unchecked("rewards_updater");
+        REWARDS_UPDATER.save(&mut deps.storage, &rewards_updater_addr).unwrap();
+
+        let info = message_info(&Addr::unchecked("rewards_updater"), &[]);
+        let result = _only_rewards_updater(deps.as_ref(), &info);
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_only_rewards_updater_failure() {
+        let mut deps = mock_dependencies();
+
+        let rewards_updater_addr = Addr::unchecked("rewards_updater");
+        REWARDS_UPDATER.save(&mut deps.storage, &rewards_updater_addr).unwrap();
+
+        let info = message_info(&Addr::unchecked("not_rewards_updater"), &[]);
+        let result = _only_rewards_updater(deps.as_ref(), &info);
+
+        assert_eq!(result, Err(ContractError::NotRewardsUpdater {}));
+    }
+
+}
+
