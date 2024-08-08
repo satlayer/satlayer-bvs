@@ -1164,5 +1164,189 @@ mod tests {
         assert_eq!(event.attributes[4].key, "amount");
         assert_eq!(event.attributes[4].value, "100");
     }
+
+    #[test]
+    fn test_transfer_ownership() {
+        let mut deps = mock_dependencies();
+        let info = message_info(&Addr::unchecked("current_owner"), &[]);
+
+        OWNER.save(&mut deps.storage, &info.sender).unwrap();
+
+        let new_owner = Addr::unchecked("new_owner");
+
+        let result = transfer_ownership(deps.as_mut(), info, new_owner.clone());
+
+        assert!(result.is_ok());
+
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
+
+        let event = response.events.first().unwrap();
+        assert_eq!(event.ty, "TransferOwnership");
+        assert_eq!(event.attributes.len(), 2);
+        assert_eq!(event.attributes[0].key, "method");
+        assert_eq!(event.attributes[0].value, "transfer_ownership");
+        assert_eq!(event.attributes[1].key, "new_owner");
+        assert_eq!(event.attributes[1].value, new_owner.to_string());
+
+        let stored_owner = OWNER.load(&deps.storage).unwrap();
+        assert_eq!(stored_owner, new_owner);
+
+        let info_unauthorized = message_info(&Addr::unchecked("unauthorized_caller"), &[]);
+
+        let result = transfer_ownership(deps.as_mut(), info_unauthorized, new_owner.clone());
+
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::Unauthorized {});
+        }
+
+        let stored_owner = OWNER.load(&deps.storage).unwrap();
+        assert_eq!(stored_owner, new_owner);
+    }
+
+    #[test]
+    fn test_set_activation_delay_internal() {
+        let mut deps = mock_dependencies();
+    
+        let initial_activation_delay: u32 = 60; // 1 minute
+        ACTIVATION_DELAY.save(&mut deps.storage, &initial_activation_delay).unwrap();
+    
+        let new_activation_delay: u32 = 120; // 2 minutes
+    
+        let result = _set_activation_delay(deps.as_mut(), new_activation_delay);
+    
+        assert!(result.is_ok());
+    
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
+    
+        let event = response.events.first().unwrap();
+        assert_eq!(event.ty, "ActivationDelaySet");
+        assert_eq!(event.attributes.len(), 2);
+        assert_eq!(event.attributes[0].key, "old_activation_delay");
+        assert_eq!(event.attributes[0].value, initial_activation_delay.to_string());
+        assert_eq!(event.attributes[1].key, "new_activation_delay");
+        assert_eq!(event.attributes[1].value, new_activation_delay.to_string());
+    
+        let stored_activation_delay = ACTIVATION_DELAY.load(&deps.storage).unwrap();
+        assert_eq!(stored_activation_delay, new_activation_delay);
+    }
+
+    #[test]
+    fn test_set_activation_delay() {
+        let mut deps = mock_dependencies();
+    
+        let owner_addr = Addr::unchecked("owner");
+        OWNER.save(&mut deps.storage, &owner_addr).unwrap();
+    
+        let initial_activation_delay: u32 = 60; // 1 minute
+        ACTIVATION_DELAY.save(&mut deps.storage, &initial_activation_delay).unwrap();
+    
+        let new_activation_delay: u32 = 120; // 2 minutes
+    
+        let info = message_info(&owner_addr, &[]);
+    
+        let result = set_activation_delay(deps.as_mut(), info.clone(), new_activation_delay);
+    
+        assert!(result.is_ok());
+    
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
+    
+        let event = response.events.first().unwrap();
+        assert_eq!(event.ty, "ActivationDelaySet");
+        assert_eq!(event.attributes.len(), 2);
+        assert_eq!(event.attributes[0].key, "old_activation_delay");
+        assert_eq!(event.attributes[0].value, initial_activation_delay.to_string());
+        assert_eq!(event.attributes[1].key, "new_activation_delay");
+        assert_eq!(event.attributes[1].value, new_activation_delay.to_string());
+    
+        let stored_activation_delay = ACTIVATION_DELAY.load(&deps.storage).unwrap();
+        assert_eq!(stored_activation_delay, new_activation_delay);
+    
+        let unauthorized_info = message_info(&Addr::unchecked("not_owner"), &[]);
+        let result = set_activation_delay(deps.as_mut(), unauthorized_info, new_activation_delay);
+    
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::Unauthorized {});
+        }
+    
+        let stored_activation_delay_after_unauthorized_attempt = ACTIVATION_DELAY.load(&deps.storage).unwrap();
+        assert_eq!(stored_activation_delay_after_unauthorized_attempt, new_activation_delay);
+    }
+
+    #[test]
+    fn test_set_rewards_updater_internal() {
+        let mut deps = mock_dependencies();
+    
+        let initial_updater = Addr::unchecked("initial_updater");
+        REWARDS_UPDATER.save(&mut deps.storage, &initial_updater).unwrap();
+    
+        let new_updater = Addr::unchecked("new_updater");
+    
+        let result = _set_rewards_updater(deps.as_mut(), new_updater.clone());
+    
+        assert!(result.is_ok());
+    
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
+    
+        let event = response.events.first().unwrap();
+        assert_eq!(event.ty, "SetRewardsUpdater");
+        assert_eq!(event.attributes.len(), 2);
+        assert_eq!(event.attributes[0].key, "method");
+        assert_eq!(event.attributes[0].value, "set_rewards_updater");
+        assert_eq!(event.attributes[1].key, "new_updater");
+        assert_eq!(event.attributes[1].value, new_updater.to_string());
+    
+        let stored_updater = REWARDS_UPDATER.load(&deps.storage).unwrap();
+        assert_eq!(stored_updater, new_updater);
+    }
+
+    #[test]
+    fn test_set_rewards_updater() {
+        let mut deps = mock_dependencies();
+    
+        let owner = Addr::unchecked("owner");
+        OWNER.save(&mut deps.storage, &owner).unwrap();
+    
+        let initial_updater = Addr::unchecked("initial_updater");
+        REWARDS_UPDATER.save(&mut deps.storage, &initial_updater).unwrap();
+    
+        let new_updater = Addr::unchecked("new_updater");
+    
+        let info = message_info(&Addr::unchecked("owner"), &[]);
+        let result = set_rewards_updater(deps.as_mut(), info, new_updater.clone());
+    
+        assert!(result.is_ok());
+    
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
+    
+        let event = response.events.first().unwrap();
+        assert_eq!(event.ty, "SetRewardsUpdater");
+        assert_eq!(event.attributes.len(), 2);
+        assert_eq!(event.attributes[0].key, "method");
+        assert_eq!(event.attributes[0].value, "set_rewards_updater");
+        assert_eq!(event.attributes[1].key, "new_updater");
+        assert_eq!(event.attributes[1].value, new_updater.to_string());
+    
+        let stored_updater = REWARDS_UPDATER.load(&deps.storage).unwrap();
+        assert_eq!(stored_updater, new_updater);
+    
+        let unauthorized_info = message_info(&Addr::unchecked("not_owner"), &[]);
+        let result = set_rewards_updater(deps.as_mut(), unauthorized_info, Addr::unchecked("another_updater"));
+    
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::Unauthorized {});
+        }
+    
+        let stored_updater = REWARDS_UPDATER.load(&deps.storage).unwrap();
+        assert_eq!(stored_updater, new_updater);
+    }
+
 }
 
