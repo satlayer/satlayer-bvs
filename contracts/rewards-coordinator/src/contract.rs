@@ -1348,5 +1348,116 @@ mod tests {
         assert_eq!(stored_updater, new_updater);
     }
 
+    #[test]
+    fn test_set_rewards_for_all_submitter() {
+        let mut deps = mock_dependencies();
+    
+        let owner = Addr::unchecked("owner");
+        OWNER.save(&mut deps.storage, &owner).unwrap();
+    
+        let submitter = Addr::unchecked("submitter");
+        let initial_value = false;
+        REWARDS_FOR_ALL_SUBMITTER.save(&mut deps.storage, submitter.clone(), &initial_value).unwrap();
+    
+        let info = message_info(&Addr::unchecked("owner"), &[]);
+        let new_value = true;
+        let result = set_rewards_for_all_submitter(deps.as_mut(), info, submitter.clone(), new_value);
+    
+        assert!(result.is_ok());
+    
+        let response = result.unwrap();
+        assert_eq!(response.attributes.len(), 4);
+        assert_eq!(response.attributes[0].key, "method");
+        assert_eq!(response.attributes[0].value, "set_rewards_for_all_submitter");
+        assert_eq!(response.attributes[1].key, "submitter");
+        assert_eq!(response.attributes[1].value, submitter.to_string());
+        assert_eq!(response.attributes[2].key, "previous_value");
+        assert_eq!(response.attributes[2].value, initial_value.to_string());
+        assert_eq!(response.attributes[3].key, "new_value");
+        assert_eq!(response.attributes[3].value, new_value.to_string());
+    
+        let stored_value = REWARDS_FOR_ALL_SUBMITTER.load(&deps.storage, submitter.clone()).unwrap();
+        assert_eq!(stored_value, new_value);
+    
+        let unauthorized_info = message_info(&Addr::unchecked("not_owner"), &[]);
+        let result = set_rewards_for_all_submitter(deps.as_mut(), unauthorized_info, submitter.clone(), false);
+    
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::Unauthorized {});
+        }
+    
+        let stored_value = REWARDS_FOR_ALL_SUBMITTER.load(&deps.storage, submitter).unwrap();
+        assert_eq!(stored_value, new_value);
+    }
+
+    #[test]
+    fn test_set_global_operator_commission_internal() {
+        let mut deps = mock_dependencies();
+    
+        let initial_commission_bips = 100; 
+        GLOBAL_OPERATOR_COMMISSION_BIPS.save(&mut deps.storage, &initial_commission_bips).unwrap();
+    
+        let new_commission_bips = 150; 
+    
+        let result = _set_global_operator_commission(deps.as_mut(), new_commission_bips);
+    
+        assert!(result.is_ok());
+    
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
+    
+        let event = response.events.first().unwrap();
+        assert_eq!(event.ty, "GlobalCommissionBipsSet");
+        assert_eq!(event.attributes.len(), 2);
+        assert_eq!(event.attributes[0].key, "old_commission_bips");
+        assert_eq!(event.attributes[0].value, initial_commission_bips.to_string());
+        assert_eq!(event.attributes[1].key, "new_commission_bips");
+        assert_eq!(event.attributes[1].value, new_commission_bips.to_string());
+    
+        let stored_commission_bips = GLOBAL_OPERATOR_COMMISSION_BIPS.load(&deps.storage).unwrap();
+        assert_eq!(stored_commission_bips, new_commission_bips);
+    }
+
+    #[test]
+    fn test_set_global_operator_commission() {
+        let mut deps = mock_dependencies();
+        let info_owner = message_info(&Addr::unchecked("owner"), &[]);
+        let info_not_owner = message_info(&Addr::unchecked("not_owner"), &[]);
+    
+        OWNER.save(&mut deps.storage, &info_owner.sender).unwrap();
+    
+        let initial_commission_bips = 100; 
+        GLOBAL_OPERATOR_COMMISSION_BIPS
+            .save(&mut deps.storage, &initial_commission_bips)
+            .unwrap();
+    
+        let new_commission_bips = 150; 
+    
+        let result = set_global_operator_commission(deps.as_mut(), info_owner.clone(), new_commission_bips);
+    
+        assert!(result.is_ok());
+    
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
+    
+        let event = response.events.first().unwrap();
+        assert_eq!(event.ty, "GlobalCommissionBipsSet");
+        assert_eq!(event.attributes.len(), 2);
+        assert_eq!(event.attributes[0].key, "old_commission_bips");
+        assert_eq!(event.attributes[0].value, initial_commission_bips.to_string());
+        assert_eq!(event.attributes[1].key, "new_commission_bips");
+        assert_eq!(event.attributes[1].value, new_commission_bips.to_string());
+    
+        let stored_commission_bips = GLOBAL_OPERATOR_COMMISSION_BIPS.load(&deps.storage).unwrap();
+        assert_eq!(stored_commission_bips, new_commission_bips);
+    
+        let result = set_global_operator_commission(deps.as_mut(), info_not_owner, new_commission_bips);
+        assert!(result.is_err());
+    
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::Unauthorized {});
+        }
+    }                            
 }
 
