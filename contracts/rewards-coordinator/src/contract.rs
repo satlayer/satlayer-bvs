@@ -7,7 +7,7 @@ use crate::{
         GLOBAL_OPERATOR_COMMISSION_BIPS, SUBMISSION_NONCE, DISTRIBUTION_ROOTS_COUNT, CURR_REWARDS_CALCULATION_END_TIMESTAMP, CUMULATIVE_CLAIMED
     },
     utils::{RewardsSubmission, calculate_rewards_submission_hash, TokenTreeMerkleLeaf, calculate_token_leaf_hash,
-        verify_inclusion_keccak, EarnerTreeMerkleLeaf, calculate_earner_leaf_hash, RewardsMerkleClaim, calculate_domain_separator
+        verify_inclusion_sha256, EarnerTreeMerkleLeaf, calculate_earner_leaf_hash, RewardsMerkleClaim, calculate_domain_separator
     }
 };
 use cosmwasm_std::{
@@ -73,7 +73,7 @@ fn _only_rewards_updater(deps: Deps, info: &MessageInfo) -> Result<(), ContractE
 }
 
 fn _only_rewards_for_all_submitter(deps: Deps, info: &MessageInfo) ->  Result<(), ContractError> {
-    let is_submitter = REWARDS_FOR_ALL_SUBMITTER.load(deps.storage, info.sender.clone())?;
+    let is_submitter = REWARDS_FOR_ALL_SUBMITTER.may_load(deps.storage, info.sender.clone())?.unwrap_or(false);
     if !is_submitter {
         return Err(ContractError::ValidCreateRewardsForAllSubmission {});
     } 
@@ -186,7 +186,6 @@ pub fn create_rewards_for_all_submission(
 
     Ok(response)
 }
-
 
 fn _validate_rewards_submission(
     deps: &Deps,
@@ -480,7 +479,7 @@ fn _verify_token_claim_proof(
 
     let token_leaf_hash = calculate_token_leaf_hash(token_leaf);
 
-    let is_valid_proof = verify_inclusion_keccak(
+    let is_valid_proof = verify_inclusion_sha256(
         token_proof,
         earner_token_root.as_slice(),
         &token_leaf_hash,
@@ -506,7 +505,7 @@ fn _verify_earner_claim_proof(
 
     let earner_leaf_hash = calculate_earner_leaf_hash(earner_leaf);
 
-    let is_valid_proof = verify_inclusion_keccak(
+    let is_valid_proof = verify_inclusion_sha256(
         earner_proof,
         root.as_slice(),
         &earner_leaf_hash,
@@ -535,7 +534,7 @@ fn _set_activation_delay(
     deps: DepsMut,
     new_activation_delay: u32,
 ) -> Result<Response, ContractError> {
-    let current_activation_delay = ACTIVATION_DELAY.load(deps.storage)?;
+    let current_activation_delay = ACTIVATION_DELAY.may_load(deps.storage)?.unwrap_or(0);
 
     let event = Event::new("ActivationDelaySet")
         .add_attribute("old_activation_delay", current_activation_delay.to_string())
@@ -794,3 +793,376 @@ fn query_calculate_domain_separator(
 
     Ok(to_json_binary(&domain_separator)?)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info};
+    use cosmwasm_std::{from_json, Addr, SystemResult, ContractResult, WasmQuery, SystemError, Timestamp};
+    use crate::utils::StrategyAndMultiplier;
+
+    #[test]
+    fn test_instantiate() {
+        let mut deps = mock_dependencies();
+
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+
+        let msg = InstantiateMsg {
+            initial_owner: Addr::unchecked("owner"),
+            calculation_interval_seconds: Uint64::new(86_400), // 1 day
+            max_rewards_duration: Uint64::new(30 * 86_400),   // 30 days
+            max_retroactive_length: Uint64::new(5 * 86_400),  // 5 days
+            max_future_length: Uint64::new(10 * 86_400),      // 10 days
+            genesis_rewards_timestamp: Uint64::new(env.block.time.seconds() / 86_400 * 86_400), 
+            delegation_manager: Addr::unchecked("delegation_manager"),
+            strategy_manager: Addr::unchecked("strategy_manager"),
+            rewards_updater: Addr::unchecked("rewards_updater"),
+            activation_delay: 60,  // 1 minute
+        };
+
+        let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
+
+        assert_eq!(res.attributes.len(), 4);
+        assert_eq!(res.attributes[0].key, "method");
+        assert_eq!(res.attributes[0].value, "instantiate");
+        assert_eq!(res.attributes[1].key, "owner");
+        assert_eq!(res.attributes[1].value, "owner");
+        assert_eq!(res.attributes[2].key, "rewards_updater");
+        assert_eq!(res.attributes[2].value, "rewards_updater");
+
+        let stored_owner = OWNER.load(&deps.storage).unwrap();
+        assert_eq!(stored_owner, Addr::unchecked("owner"));
+
+        let stored_calculation_interval = CALCULATION_INTERVAL_SECONDS.load(&deps.storage).unwrap();
+        assert_eq!(stored_calculation_interval, 86_400);
+
+        let stored_max_rewards_duration = MAX_REWARDS_DURATION.load(&deps.storage).unwrap();
+        assert_eq!(stored_max_rewards_duration, 30 * 86_400);
+
+        let stored_max_retroactive_length = MAX_RETROACTIVE_LENGTH.load(&deps.storage).unwrap();
+        assert_eq!(stored_max_retroactive_length, 5 * 86_400);
+
+        let stored_max_future_length = MAX_FUTURE_LENGTH.load(&deps.storage).unwrap();
+        assert_eq!(stored_max_future_length, 10 * 86_400);
+
+        let stored_genesis_rewards_timestamp = GENESIS_REWARDS_TIMESTAMP.load(&deps.storage).unwrap();
+        assert_eq!(stored_genesis_rewards_timestamp, msg.genesis_rewards_timestamp.u64());
+
+        let stored_delegation_manager = DELEGATION_MANAGER.load(&deps.storage).unwrap();
+        assert_eq!(stored_delegation_manager, Addr::unchecked("delegation_manager"));
+
+        let stored_strategy_manager = STRATEGY_MANAGER.load(&deps.storage).unwrap();
+        assert_eq!(stored_strategy_manager, Addr::unchecked("strategy_manager"));
+        
+        let stored_activation_delay = ACTIVATION_DELAY.load(&deps.storage).unwrap();
+        assert_eq!(stored_activation_delay, 60);
+
+        let stored_rewards_updater = REWARDS_UPDATER.load(&deps.storage).unwrap();
+        assert_eq!(stored_rewards_updater, Addr::unchecked("rewards_updater"));
+    }
+
+    #[test]
+    fn test_only_rewards_updater_success() {
+        let mut deps = mock_dependencies();
+
+        let rewards_updater_addr = Addr::unchecked("rewards_updater");
+        REWARDS_UPDATER.save(&mut deps.storage, &rewards_updater_addr).unwrap();
+
+        let info = message_info(&Addr::unchecked("rewards_updater"), &[]);
+        let result = _only_rewards_updater(deps.as_ref(), &info);
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_only_rewards_updater_failure() {
+        let mut deps = mock_dependencies();
+
+        let rewards_updater_addr = Addr::unchecked("rewards_updater");
+        REWARDS_UPDATER.save(&mut deps.storage, &rewards_updater_addr).unwrap();
+
+        let info = message_info(&Addr::unchecked("not_rewards_updater"), &[]);
+        let result = _only_rewards_updater(deps.as_ref(), &info);
+
+        assert_eq!(result, Err(ContractError::NotRewardsUpdater {}));
+    }
+
+    #[test]
+    fn test_only_rewards_for_all_submitter() {
+        let mut deps = mock_dependencies();
+    
+        let valid_submitter = Addr::unchecked("valid_submitter");
+        REWARDS_FOR_ALL_SUBMITTER.save(&mut deps.storage, valid_submitter.clone(), &true).unwrap();
+    
+        let info = message_info(&Addr::unchecked("valid_submitter"), &[]);
+        let result = _only_rewards_for_all_submitter(deps.as_ref(), &info);
+        assert!(result.is_ok());
+    
+        let invalid_submitter = Addr::unchecked("invalid_submitter");
+        REWARDS_FOR_ALL_SUBMITTER.save(&mut deps.storage, invalid_submitter.clone(), &false).unwrap();
+    
+        let info = message_info(&Addr::unchecked("invalid_submitter"), &[]);
+        let result = _only_rewards_for_all_submitter(deps.as_ref(), &info);
+        assert_eq!(result, Err(ContractError::ValidCreateRewardsForAllSubmission {}));
+    
+        let info = message_info(&Addr::unchecked("unset_submitter"), &[]);
+        let result = _only_rewards_for_all_submitter(deps.as_ref(), &info);
+        assert_eq!(result, Err(ContractError::ValidCreateRewardsForAllSubmission {}));
+    }    
+
+    #[test]
+    fn test_only_owner() {
+    let mut deps = mock_dependencies();
+
+    let owner_addr = Addr::unchecked("owner");
+    OWNER.save(&mut deps.storage, &owner_addr).unwrap();
+
+    let info = message_info(&Addr::unchecked("owner"), &[]);
+    let result = _only_owner(deps.as_ref(), &info);
+    assert!(result.is_ok());
+
+    let info = message_info(&Addr::unchecked("not_owner"), &[]);
+    let result = _only_owner(deps.as_ref(), &info);
+    assert_eq!(result, Err(ContractError::Unauthorized {}));
+    }
+
+    #[test]
+    fn test_validate_rewards_submission() {
+        let mut deps = mock_dependencies();
+        let calc_interval = 86_400; // 1 day
+    
+        CALCULATION_INTERVAL_SECONDS.save(&mut deps.storage, &calc_interval).unwrap();
+        MAX_REWARDS_DURATION.save(&mut deps.storage, &(30 * calc_interval)).unwrap(); // 30 days
+        MAX_RETROACTIVE_LENGTH.save(&mut deps.storage, &(5 * calc_interval)).unwrap(); // 5 days
+        MAX_FUTURE_LENGTH.save(&mut deps.storage, &(10 * calc_interval)).unwrap(); // 10 days
+    
+        let block_time = mock_env().block.time.seconds();
+        let genesis_time = block_time - (2 * calc_interval);
+        GENESIS_REWARDS_TIMESTAMP.save(&mut deps.storage, &genesis_time).unwrap();
+    
+        let aligned_start_time = block_time - (block_time % calc_interval);
+        let aligned_start_timestamp = Timestamp::from_seconds(aligned_start_time);
+    
+        let valid_submission = RewardsSubmission {
+            strategies_and_multipliers: vec![StrategyAndMultiplier {
+                strategy: Addr::unchecked("strategy_1"),
+                multiplier: 1,
+            }],
+            amount: Uint128::new(100),
+            duration: calc_interval,
+            start_timestamp: aligned_start_timestamp,
+            token: Addr::unchecked("token"),
+        };
+    
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg } if contract_addr == "strategy_1" => {
+                let msg: StrategyQueryMsg = from_json(msg).unwrap();
+                match msg {
+                    StrategyQueryMsg::IsStrategyWhitelisted { .. } => {
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap()))
+                    },
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    }),
+                }
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+    
+        let result = _validate_rewards_submission(&deps.as_ref(), &valid_submission, &mock_env());
+        assert!(result.is_ok());
+    
+        let no_strategy_submission = RewardsSubmission {
+            strategies_and_multipliers: vec![],
+            amount: Uint128::new(100),
+            duration: calc_interval,
+            start_timestamp: aligned_start_timestamp,
+            token: Addr::unchecked("token"),
+        };
+    
+        let result = _validate_rewards_submission(&deps.as_ref(), &no_strategy_submission, &mock_env());
+        assert!(matches!(result, Err(ContractError::NoStrategiesSet {})));
+    
+        let zero_amount_submission = RewardsSubmission {
+            strategies_and_multipliers: vec![StrategyAndMultiplier {
+                strategy: Addr::unchecked("strategy_1"),
+                multiplier: 1,
+            }],
+            amount: Uint128::zero(),
+            duration: calc_interval,
+            start_timestamp: aligned_start_timestamp,
+            token: Addr::unchecked("token"),
+        };
+    
+        let result = _validate_rewards_submission(&deps.as_ref(), &zero_amount_submission, &mock_env());
+        assert!(matches!(result, Err(ContractError::AmountCannotBeZero {})));
+    
+        let exceeds_duration_submission = RewardsSubmission {
+            strategies_and_multipliers: vec![StrategyAndMultiplier {
+                strategy: Addr::unchecked("strategy_1"),
+                multiplier: 1,
+            }],
+            amount: Uint128::new(100),
+            duration: 30 * calc_interval + 1, 
+            start_timestamp: aligned_start_timestamp,
+            token: Addr::unchecked("token"),
+        };
+    
+        let result = _validate_rewards_submission(&deps.as_ref(), &exceeds_duration_submission, &mock_env());
+        assert!(matches!(result, Err(ContractError::ExceedsMaxRewardsDuration {})));
+    }    
+
+    #[test]
+    fn test_create_avs_rewards_submission() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("creator"), &[]);
+
+        let calc_interval = 86_400; // 1 day
+        CALCULATION_INTERVAL_SECONDS.save(&mut deps.storage, &calc_interval).unwrap(); 
+        MAX_REWARDS_DURATION.save(&mut deps.storage, &(30 * calc_interval)).unwrap(); // 30 days
+        MAX_RETROACTIVE_LENGTH.save(&mut deps.storage, &(5 * calc_interval)).unwrap(); // 5 days
+        MAX_FUTURE_LENGTH.save(&mut deps.storage, &(10 * calc_interval)).unwrap(); // 10 days
+        OWNER.save(&mut deps.storage, &Addr::unchecked("creator")).unwrap();
+        REWARDS_UPDATER.save(&mut deps.storage, &Addr::unchecked("creator")).unwrap();
+
+        let block_time = mock_env().block.time.seconds();
+        let genesis_time = block_time - (2 * calc_interval); 
+        GENESIS_REWARDS_TIMESTAMP.save(&mut deps.storage, &genesis_time).unwrap();
+
+        let aligned_start_time = block_time - (block_time % calc_interval);
+        let aligned_start_timestamp = Timestamp::from_seconds(aligned_start_time);
+
+        let submission = vec![RewardsSubmission {
+            strategies_and_multipliers: vec![StrategyAndMultiplier {
+                strategy: Addr::unchecked("strategy_1"),
+                multiplier: 1,
+            }],
+            amount: Uint128::new(100),
+            duration: calc_interval, // 1 day
+            start_timestamp: aligned_start_timestamp,
+            token: Addr::unchecked("token"),
+        }];
+    
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg } if contract_addr == "strategy_1" => {
+                let msg: StrategyQueryMsg = from_json(msg).unwrap();
+                match msg {
+                    StrategyQueryMsg::IsStrategyWhitelisted { .. } => {
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap())) 
+                    },
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    }),
+                }
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        let result = create_avs_rewards_submission(deps.as_mut(), env, info, submission);
+    
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert_eq!(response.messages.len(), 1);
+        assert_eq!(response.events.len(), 1);
+    
+        let event = response.events.first().unwrap();
+        assert_eq!(event.ty, "AVSRewardsSubmissionCreated");
+        assert_eq!(event.attributes.len(), 5);
+        assert_eq!(event.attributes[0].key, "sender");
+        assert_eq!(event.attributes[0].value, "creator");
+        assert_eq!(event.attributes[1].key, "nonce");
+        assert_eq!(event.attributes[1].value, "0");
+        assert_eq!(event.attributes[2].key, "rewards_submission_hash");
+        assert_eq!(event.attributes[2].value, "D+8YcM6Ak/8lhnToScMD6sXz0OP1Xi2Z076xuazagXs=");
+        assert_eq!(event.attributes[3].key, "token");
+        assert_eq!(event.attributes[3].value, "token");
+        assert_eq!(event.attributes[4].key, "amount");
+        assert_eq!(event.attributes[4].value, "100");
+    }
+
+    #[test]
+    fn test_create_rewards_for_all_submission() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("valid_submitter"), &[]);
+    
+        let calc_interval = 86_400; // 1 day
+        CALCULATION_INTERVAL_SECONDS.save(&mut deps.storage, &calc_interval).unwrap();
+        MAX_REWARDS_DURATION.save(&mut deps.storage, &(30 * calc_interval)).unwrap(); // 30 days
+        MAX_RETROACTIVE_LENGTH.save(&mut deps.storage, &(5 * calc_interval)).unwrap(); // 5 days
+        MAX_FUTURE_LENGTH.save(&mut deps.storage, &(10 * calc_interval)).unwrap(); // 10 days
+        OWNER.save(&mut deps.storage, &Addr::unchecked("creator")).unwrap();
+        REWARDS_FOR_ALL_SUBMITTER.save(&mut deps.storage, Addr::unchecked("valid_submitter"), &true).unwrap();
+    
+        let block_time = mock_env().block.time.seconds();
+        let genesis_time = block_time - (2 * calc_interval);
+        GENESIS_REWARDS_TIMESTAMP
+            .save(&mut deps.storage, &genesis_time)
+            .unwrap();
+    
+        let aligned_start_time = block_time - (block_time % calc_interval);
+        let aligned_start_timestamp = Timestamp::from_seconds(aligned_start_time);
+    
+        let submission = vec![RewardsSubmission {
+            strategies_and_multipliers: vec![StrategyAndMultiplier {
+                strategy: Addr::unchecked("strategy_1"),
+                multiplier: 1,
+            }],
+            amount: Uint128::new(100),
+            duration: calc_interval, // 1 day
+            start_timestamp: aligned_start_timestamp,
+            token: Addr::unchecked("token"),
+        }];
+    
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg } if contract_addr == "strategy_1" => {
+                let msg: StrategyQueryMsg = from_json(msg).unwrap();
+                match msg {
+                    StrategyQueryMsg::IsStrategyWhitelisted { .. } => {
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap()))
+                    }
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    }),
+                }
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+    
+        let result = create_rewards_for_all_submission(deps.as_mut(), env, info, submission);
+    
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert_eq!(response.messages.len(), 1);
+        assert_eq!(response.events.len(), 1);
+    
+        let event = response.events.first().unwrap();
+        assert_eq!(event.ty, "RewardsSubmissionForAllCreated");
+        assert_eq!(event.attributes.len(), 5);
+        assert_eq!(event.attributes[0].key, "sender");
+        assert_eq!(event.attributes[0].value, "valid_submitter");
+        assert_eq!(event.attributes[1].key, "nonce");
+        assert_eq!(event.attributes[1].value, "0");
+        assert_eq!(event.attributes[2].key, "rewards_submission_hash");
+        assert_eq!(event.attributes[2].value, "vyIVPmInZg5TBPxQlVNL3GBbMgJgauDMSZXhaaUuCyE=");
+        assert_eq!(event.attributes[3].key, "token");
+        assert_eq!(event.attributes[3].value, "token");
+        assert_eq!(event.attributes[4].key, "amount");
+        assert_eq!(event.attributes[4].value, "100");
+    }
+}
+
