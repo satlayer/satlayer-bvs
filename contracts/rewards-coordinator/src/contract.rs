@@ -1205,5 +1205,33 @@ mod tests {
         assert_eq!(stored_owner, new_owner);
     }
 
+    #[test]
+    fn test_set_activation_delay_internal() {
+        let mut deps = mock_dependencies();
+    
+        let initial_activation_delay: u32 = 60; // 1 minute
+        ACTIVATION_DELAY.save(&mut deps.storage, &initial_activation_delay).unwrap();
+    
+        let new_activation_delay: u32 = 120; // 2 minutes
+    
+        let result = _set_activation_delay(deps.as_mut(), new_activation_delay);
+    
+        assert!(result.is_ok());
+    
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
+    
+        let event = response.events.first().unwrap();
+        assert_eq!(event.ty, "ActivationDelaySet");
+        assert_eq!(event.attributes.len(), 2);
+        assert_eq!(event.attributes[0].key, "old_activation_delay");
+        assert_eq!(event.attributes[0].value, initial_activation_delay.to_string());
+        assert_eq!(event.attributes[1].key, "new_activation_delay");
+        assert_eq!(event.attributes[1].value, new_activation_delay.to_string());
+    
+        let stored_activation_delay = ACTIVATION_DELAY.load(&deps.storage).unwrap();
+        assert_eq!(stored_activation_delay, new_activation_delay);
+    }
+
 }
 
