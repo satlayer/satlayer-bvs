@@ -1090,5 +1090,79 @@ mod tests {
         assert_eq!(event.attributes[4].value, "100");
     }
 
+    #[test]
+    fn test_create_rewards_for_all_submission() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("valid_submitter"), &[]);
+    
+        let calc_interval = 86_400; // 1 day
+        CALCULATION_INTERVAL_SECONDS.save(&mut deps.storage, &calc_interval).unwrap();
+        MAX_REWARDS_DURATION.save(&mut deps.storage, &(30 * calc_interval)).unwrap(); // 30 days
+        MAX_RETROACTIVE_LENGTH.save(&mut deps.storage, &(5 * calc_interval)).unwrap(); // 5 days
+        MAX_FUTURE_LENGTH.save(&mut deps.storage, &(10 * calc_interval)).unwrap(); // 10 days
+        OWNER.save(&mut deps.storage, &Addr::unchecked("creator")).unwrap();
+        REWARDS_FOR_ALL_SUBMITTER.save(&mut deps.storage, Addr::unchecked("valid_submitter"), &true).unwrap();
+    
+        let block_time = mock_env().block.time.seconds();
+        let genesis_time = block_time - (2 * calc_interval);
+        GENESIS_REWARDS_TIMESTAMP
+            .save(&mut deps.storage, &genesis_time)
+            .unwrap();
+    
+        let aligned_start_time = block_time - (block_time % calc_interval);
+        let aligned_start_timestamp = Timestamp::from_seconds(aligned_start_time);
+    
+        let submission = vec![RewardsSubmission {
+            strategies_and_multipliers: vec![StrategyAndMultiplier {
+                strategy: Addr::unchecked("strategy_1"),
+                multiplier: 1,
+            }],
+            amount: Uint128::new(100),
+            duration: calc_interval, // 1 day
+            start_timestamp: aligned_start_timestamp,
+            token: Addr::unchecked("token"),
+        }];
+    
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg } if contract_addr == "strategy_1" => {
+                let msg: StrategyQueryMsg = from_json(msg).unwrap();
+                match msg {
+                    StrategyQueryMsg::IsStrategyWhitelisted { .. } => {
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap()))
+                    }
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    }),
+                }
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+    
+        let result = create_rewards_for_all_submission(deps.as_mut(), env, info, submission);
+    
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert_eq!(response.messages.len(), 1);
+        assert_eq!(response.events.len(), 1);
+    
+        let event = response.events.first().unwrap();
+        assert_eq!(event.ty, "RewardsSubmissionForAllCreated");
+        assert_eq!(event.attributes.len(), 5);
+        assert_eq!(event.attributes[0].key, "sender");
+        assert_eq!(event.attributes[0].value, "valid_submitter");
+        assert_eq!(event.attributes[1].key, "nonce");
+        assert_eq!(event.attributes[1].value, "0");
+        assert_eq!(event.attributes[2].key, "rewards_submission_hash");
+        assert_eq!(event.attributes[2].value, "vyIVPmInZg5TBPxQlVNL3GBbMgJgauDMSZXhaaUuCyE=");
+        assert_eq!(event.attributes[3].key, "token");
+        assert_eq!(event.attributes[3].value, "token");
+        assert_eq!(event.attributes[4].key, "amount");
+        assert_eq!(event.attributes[4].value, "100");
+    }
 }
 
