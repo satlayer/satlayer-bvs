@@ -1164,5 +1164,46 @@ mod tests {
         assert_eq!(event.attributes[4].key, "amount");
         assert_eq!(event.attributes[4].value, "100");
     }
+
+    #[test]
+    fn test_transfer_ownership() {
+        let mut deps = mock_dependencies();
+        let info = message_info(&Addr::unchecked("current_owner"), &[]);
+
+        OWNER.save(&mut deps.storage, &info.sender).unwrap();
+
+        let new_owner = Addr::unchecked("new_owner");
+
+        let result = transfer_ownership(deps.as_mut(), info, new_owner.clone());
+
+        assert!(result.is_ok());
+
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
+
+        let event = response.events.first().unwrap();
+        assert_eq!(event.ty, "TransferOwnership");
+        assert_eq!(event.attributes.len(), 2);
+        assert_eq!(event.attributes[0].key, "method");
+        assert_eq!(event.attributes[0].value, "transfer_ownership");
+        assert_eq!(event.attributes[1].key, "new_owner");
+        assert_eq!(event.attributes[1].value, new_owner.to_string());
+
+        let stored_owner = OWNER.load(&deps.storage).unwrap();
+        assert_eq!(stored_owner, new_owner);
+
+        let info_unauthorized = message_info(&Addr::unchecked("unauthorized_caller"), &[]);
+
+        let result = transfer_ownership(deps.as_mut(), info_unauthorized, new_owner.clone());
+
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::Unauthorized {});
+        }
+
+        let stored_owner = OWNER.load(&deps.storage).unwrap();
+        assert_eq!(stored_owner, new_owner);
+    }
+
 }
 
