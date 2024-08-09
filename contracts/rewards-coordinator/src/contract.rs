@@ -6,7 +6,7 @@ use crate::{
         MAX_REWARDS_DURATION, MAX_RETROACTIVE_LENGTH, MAX_FUTURE_LENGTH, GENESIS_REWARDS_TIMESTAMP, DELEGATION_MANAGER, STRATEGY_MANAGER, ACTIVATION_DELAY,
         GLOBAL_OPERATOR_COMMISSION_BIPS, SUBMISSION_NONCE, DISTRIBUTION_ROOTS_COUNT, CURR_REWARDS_CALCULATION_END_TIMESTAMP, CUMULATIVE_CLAIMED
     },
-    utils::{RewardsSubmission, calculate_rewards_submission_hash, TokenTreeMerkleLeaf, calculate_token_leaf_hash,
+    utils::{RewardsSubmission, calculate_rewards_submission_hash, TokenTreeMerkleLeaf, calculate_token_leaf_hash, merkleize_sha256, sha256,
         verify_inclusion_sha256, EarnerTreeMerkleLeaf, calculate_earner_leaf_hash, RewardsMerkleClaim, calculate_domain_separator
     }
 };
@@ -798,7 +798,7 @@ fn query_calculate_domain_separator(
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info};
-    use cosmwasm_std::{from_json, Addr, SystemResult, ContractResult, WasmQuery, SystemError, Timestamp};
+    use cosmwasm_std::{from_json, Addr, SystemResult, ContractResult, WasmQuery, SystemError, Timestamp, Binary};
     use crate::utils::StrategyAndMultiplier;
 
     #[test]
@@ -1458,6 +1458,83 @@ mod tests {
         if let Err(err) = result {
             assert_eq!(err, ContractError::Unauthorized {});
         }
-    }                            
+    }
+
+    #[test]
+    fn test_calculate_token_leaf_hash() {
+        let leaf_a = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_a"),
+            cumulative_earnings: Uint128::new(100),
+        };
+        
+        let leaf_b = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_b"),
+            cumulative_earnings: Uint128::new(200),
+        };
+        
+        let hash_a = calculate_token_leaf_hash(&leaf_a);
+        let hash_b = calculate_token_leaf_hash(&leaf_b);
+        
+        assert_ne!(hash_a, hash_b);
+
+        println!("Hash A: {:?}", hash_a);
+        println!("Hash B: {:?}", hash_b);
+    }
+
+    #[test]
+    fn test_token_leaf_merkle_tree_construction() {
+        let leaf_a = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_a"),
+            cumulative_earnings: Uint128::new(100),
+        };
+    
+        let leaf_b = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_b"),
+            cumulative_earnings: Uint128::new(200),
+        };
+    
+        let leaf_c = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_c"),
+            cumulative_earnings: Uint128::new(300),
+        };
+    
+        let leaf_d = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_d"),
+            cumulative_earnings: Uint128::new(400),
+        };
+    
+        let hash_a = calculate_token_leaf_hash(&leaf_a);
+        let hash_b = calculate_token_leaf_hash(&leaf_b);
+        let hash_c = calculate_token_leaf_hash(&leaf_c);
+        let hash_d = calculate_token_leaf_hash(&leaf_d);
+    
+        let leaves = vec![hash_a.clone(), hash_b.clone(), hash_c.clone(), hash_d.clone()];
+        let merkle_root = merkleize_sha256(leaves.clone());
+
+        // Expected parent hash & Expected root hash
+        let leaves_ab = vec![hash_a.clone(), hash_b.clone()];
+        let parent_ab = merkleize_sha256(leaves_ab.clone());
+
+        let leaves_cd = vec![hash_c.clone(), hash_d.clone()];
+        let parent_cd = merkleize_sha256(leaves_cd.clone());
+
+        let parent_hash = vec![parent_ab.clone(), parent_cd.clone()];
+        let expected_root_hash = merkleize_sha256(parent_hash.clone());
+    
+        assert!(!merkle_root.is_empty(), "Merkle root should not be empty");
+        assert_eq!(merkle_root, expected_root_hash);
+    
+        assert_eq!(parent_ab, sha256(&[hash_a.as_slice(), hash_b.as_slice()].concat()), "Parent AB hash is incorrect");
+        assert_eq!(parent_cd, sha256(&[hash_c.as_slice(), hash_d.as_slice()].concat()), "Parent CD hash is incorrect");
+    
+        println!("Hash A: {:?}", hash_a);
+        println!("Hash B: {:?}", hash_b);
+        println!("Parent AB: {:?}", parent_ab);
+        println!("Hash C: {:?}", hash_c);
+        println!("Hash D: {:?}", hash_d);
+        println!("Parent CD: {:?}", parent_cd);
+        println!("Merkle Root: {:?}", merkle_root);
+    }
+
 }
 

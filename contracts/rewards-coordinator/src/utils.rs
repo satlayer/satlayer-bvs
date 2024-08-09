@@ -9,7 +9,7 @@ pub const DOMAIN_NAME: &[u8] = b"EigenLayer";
 pub const EARNER_LEAF_SALT: u8 = 0;
 pub const TOKEN_LEAF_SALT: u8 = 1;
 
-fn sha256(input: &[u8]) -> Vec<u8> {
+pub fn sha256(input: &[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();
     hasher.update(input);
     hasher.finalize().to_vec()
@@ -82,6 +82,24 @@ pub fn calculate_token_leaf_hash(leaf: &TokenTreeMerkleLeaf) -> Vec<u8> {
     hasher.update(leaf.token.as_bytes());
     hasher.update(leaf.cumulative_earnings.to_be_bytes());
     hasher.finalize().to_vec()
+}
+
+pub fn merkleize_sha256(mut leaves: Vec<Vec<u8>>) -> Vec<u8> {
+    assert!(leaves.len().is_power_of_two(), "the number of leaf nodes must be a power of two");
+
+    while leaves.len() > 1 {
+        let mut next_layer = Vec::with_capacity(leaves.len() / 2);
+
+        for i in (0..leaves.len()).step_by(2) {
+            let combined = [leaves[i].as_slice(), leaves[i + 1].as_slice()].concat();
+            let parent_hash = sha256(&combined);
+            next_layer.push(parent_hash);
+        }
+
+        leaves = next_layer;
+    }
+
+    leaves[0].clone()
 }
 
 pub fn verify_inclusion_sha256(proof: &[u8], root: &[u8], leaf: &[u8], index: u64) -> bool {
