@@ -6,7 +6,7 @@ use crate::{
         MAX_REWARDS_DURATION, MAX_RETROACTIVE_LENGTH, MAX_FUTURE_LENGTH, GENESIS_REWARDS_TIMESTAMP, DELEGATION_MANAGER, STRATEGY_MANAGER, ACTIVATION_DELAY,
         GLOBAL_OPERATOR_COMMISSION_BIPS, SUBMISSION_NONCE, DISTRIBUTION_ROOTS_COUNT, CURR_REWARDS_CALCULATION_END_TIMESTAMP, CUMULATIVE_CLAIMED
     },
-    utils::{RewardsSubmission, calculate_rewards_submission_hash, TokenTreeMerkleLeaf, calculate_token_leaf_hash, merkleize_sha256, sha256,
+    utils::{RewardsSubmission, calculate_rewards_submission_hash, TokenTreeMerkleLeaf, calculate_token_leaf_hash,
         verify_inclusion_sha256, EarnerTreeMerkleLeaf, calculate_earner_leaf_hash, RewardsMerkleClaim, calculate_domain_separator
     }
 };
@@ -430,7 +430,6 @@ pub fn check_claim(env: Env, deps: Deps, claim: RewardsMerkleClaim) -> Result<bo
     Ok(true)
 }
 
-
 fn _check_claim(env: Env, claim: &RewardsMerkleClaim, root: &DistributionRoot) -> Result<(), ContractError> {
     if root.disabled {
         return Err(ContractError::RootDisabled {});
@@ -799,7 +798,8 @@ mod tests {
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info};
     use cosmwasm_std::{from_json, Addr, SystemResult, ContractResult, WasmQuery, SystemError, Timestamp, Binary};
-    use crate::utils::StrategyAndMultiplier;
+    use crate::utils::{StrategyAndMultiplier, sha256, merkleize_sha256};
+    use crate::msg::DistributionRoot;
 
     #[test]
     fn test_instantiate() {
@@ -1850,5 +1850,652 @@ mod tests {
         ));
     }
 
+    #[test]
+    fn test_verify_earner_claim_proof() {
+        let token_leaves_sets = vec![
+            vec![
+                TokenTreeMerkleLeaf {
+                    token: Addr::unchecked("token_a1"),
+                    cumulative_earnings: Uint128::new(100),
+                },
+                TokenTreeMerkleLeaf {
+                    token: Addr::unchecked("token_a2"),
+                    cumulative_earnings: Uint128::new(200),
+                },
+                TokenTreeMerkleLeaf {
+                    token: Addr::unchecked("token_a3"),
+                    cumulative_earnings: Uint128::new(300),
+                },
+                TokenTreeMerkleLeaf {
+                    token: Addr::unchecked("token_a4"),
+                    cumulative_earnings: Uint128::new(400),
+                },
+            ],
+            vec![
+                TokenTreeMerkleLeaf {
+                    token: Addr::unchecked("token_b1"),
+                    cumulative_earnings: Uint128::new(500),
+                },
+                TokenTreeMerkleLeaf {
+                    token: Addr::unchecked("token_b2"),
+                    cumulative_earnings: Uint128::new(600),
+                },
+                TokenTreeMerkleLeaf {
+                    token: Addr::unchecked("token_b3"),
+                    cumulative_earnings: Uint128::new(700),
+                },
+                TokenTreeMerkleLeaf {
+                    token: Addr::unchecked("token_b4"),
+                    cumulative_earnings: Uint128::new(800),
+                },
+            ],
+            vec![
+                TokenTreeMerkleLeaf {
+                    token: Addr::unchecked("token_c1"),
+                    cumulative_earnings: Uint128::new(900),
+                },
+                TokenTreeMerkleLeaf {
+                    token: Addr::unchecked("token_c2"),
+                    cumulative_earnings: Uint128::new(1000),
+                },
+                TokenTreeMerkleLeaf {
+                    token: Addr::unchecked("token_c3"),
+                    cumulative_earnings: Uint128::new(1100),
+                },
+                TokenTreeMerkleLeaf {
+                    token: Addr::unchecked("token_c4"),
+                    cumulative_earnings: Uint128::new(1200),
+                },
+            ],
+            vec![
+                TokenTreeMerkleLeaf {
+                    token: Addr::unchecked("token_d1"),
+                    cumulative_earnings: Uint128::new(1300),
+                },
+                TokenTreeMerkleLeaf {
+                    token: Addr::unchecked("token_d2"),
+                    cumulative_earnings: Uint128::new(1400),
+                },
+                TokenTreeMerkleLeaf {
+                    token: Addr::unchecked("token_d3"),
+                    cumulative_earnings: Uint128::new(1500),
+                },
+                TokenTreeMerkleLeaf {
+                    token: Addr::unchecked("token_d4"),
+                    cumulative_earnings: Uint128::new(1600),
+                },
+            ],
+        ];
+    
+        // Calculate Merkle roots for each set of token leaves
+        let mut merkle_roots = Vec::new();
+        for leaves in &token_leaves_sets {
+            let mut leaf_hashes = Vec::new();
+            for leaf in leaves {
+                leaf_hashes.push(calculate_token_leaf_hash(leaf));
+            }
+            let merkle_root = merkleize_sha256(leaf_hashes.clone());
+            merkle_roots.push(merkle_root.clone());
+        }
+    
+        // Setup earner leaves
+        let earner1 = EarnerTreeMerkleLeaf {
+            earner: Addr::unchecked("earner1"),
+            earner_token_root: Binary::from(merkle_roots[0].clone()),
+        };
+        let earner2 = EarnerTreeMerkleLeaf {
+            earner: Addr::unchecked("earner2"),
+            earner_token_root: Binary::from(merkle_roots[1].clone()),
+        };
+        let earner3 = EarnerTreeMerkleLeaf {
+            earner: Addr::unchecked("earner3"),
+            earner_token_root: Binary::from(merkle_roots[2].clone()),
+        };
+        let earner4 = EarnerTreeMerkleLeaf {
+            earner: Addr::unchecked("earner4"),
+            earner_token_root: Binary::from(merkle_roots[3].clone()),
+        };
+    
+        // Calculate earner leaf hashes
+        let earner_leaf_hash1 = calculate_earner_leaf_hash(&earner1);
+        let earner_leaf_hash2 = calculate_earner_leaf_hash(&earner2);
+        let earner_leaf_hash3 = calculate_earner_leaf_hash(&earner3);
+        let earner_leaf_hash4 = calculate_earner_leaf_hash(&earner4);
+    
+        let leaves = vec![
+            earner_leaf_hash1.clone(),
+            earner_leaf_hash2.clone(),
+            earner_leaf_hash3.clone(),
+            earner_leaf_hash4.clone(),
+        ];
+        let merkle_root = merkleize_sha256(leaves.clone());
+    
+        // Create proofs for earner leaf nodes
+        let proof1 = [earner_leaf_hash2.clone(), sha256(&[earner_leaf_hash3.clone(), earner_leaf_hash4.clone()].concat())];
+        let proof2 = [earner_leaf_hash1.clone(), sha256(&[earner_leaf_hash3.clone(), earner_leaf_hash4.clone()].concat())];
+        let proof3 = [earner_leaf_hash4.clone(), sha256(&[earner_leaf_hash1.clone(), earner_leaf_hash2.clone()].concat())];
+        let proof4 = [earner_leaf_hash3.clone(), sha256(&[earner_leaf_hash1.clone(), earner_leaf_hash2.clone()].concat())];
+    
+        // Verify proofs using _verify_earner_claim_proof function
+        assert!(_verify_earner_claim_proof(Binary::from(merkle_root.clone()), 0, &proof1.concat(), &earner1).is_ok());
+        assert!(_verify_earner_claim_proof(Binary::from(merkle_root.clone()), 1, &proof2.concat(), &earner2).is_ok());
+        assert!(_verify_earner_claim_proof(Binary::from(merkle_root.clone()), 2, &proof3.concat(), &earner3).is_ok());
+        assert!(_verify_earner_claim_proof(Binary::from(merkle_root.clone()), 3, &proof4.concat(), &earner4).is_ok());
+    }
+
+    #[test]
+    fn test_verify_token_claim_proof() {
+        let leaf_a = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_a"),
+            cumulative_earnings: Uint128::new(100),
+        };
+    
+        let leaf_b = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_b"),
+            cumulative_earnings: Uint128::new(200),
+        };
+    
+        let leaf_c = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_c"),
+            cumulative_earnings: Uint128::new(300),
+        };
+    
+        let leaf_d = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_d"),
+            cumulative_earnings: Uint128::new(400),
+        };
+    
+        // Calculate hashes for each leaf
+        let hash_a = calculate_token_leaf_hash(&leaf_a);
+        let hash_b = calculate_token_leaf_hash(&leaf_b);
+        let hash_c = calculate_token_leaf_hash(&leaf_c);
+        let hash_d = calculate_token_leaf_hash(&leaf_d);
+    
+        // Create the Merkle tree and calculate root
+        let leaves = vec![hash_a.clone(), hash_b.clone(), hash_c.clone(), hash_d.clone()];
+        let merkle_root = merkleize_sha256(leaves.clone());
+    
+        // Calculate parent hashes
+        let parent_ab = merkleize_sha256(vec![hash_a.clone(), hash_b.clone()]);
+        let parent_cd = merkleize_sha256(vec![hash_c.clone(), hash_d.clone()]);
+    
+        // Create proofs for each leaf
+        let proof_a = [hash_b.clone(), parent_cd.clone()];
+        let proof_b = [hash_a.clone(), parent_cd.clone()];
+        let proof_c = [hash_d.clone(), parent_ab.clone()];
+        let proof_d = [hash_c.clone(), parent_ab.clone()];
+    
+        // Verify proofs using _verify_token_claim_proof function
+        assert!(_verify_token_claim_proof(Binary::from(merkle_root.clone()), 0, &proof_a.concat(), &leaf_a).is_ok());
+        assert!(_verify_token_claim_proof(Binary::from(merkle_root.clone()), 1, &proof_b.concat(), &leaf_b).is_ok());
+        assert!(_verify_token_claim_proof(Binary::from(merkle_root.clone()), 2, &proof_c.concat(), &leaf_c).is_ok());
+        assert!(_verify_token_claim_proof(Binary::from(merkle_root.clone()), 3, &proof_d.concat(), &leaf_d).is_ok());
+    }
+
+    #[test]
+    fn test_verify_whole_claim_proof() {
+        let leaf_a = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_a"),
+            cumulative_earnings: Uint128::new(100),
+        };
+        
+        let leaf_b = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_b"),
+            cumulative_earnings: Uint128::new(200),
+        };
+
+        let leaf_c = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_c"),
+            cumulative_earnings: Uint128::new(300),
+        };
+
+        let leaf_d = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_d"),
+            cumulative_earnings: Uint128::new(400),
+        };
+
+        let leaf_a1 = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_a1"),
+            cumulative_earnings: Uint128::new(100),
+        };
+        
+        let leaf_b1 = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_b1"),
+            cumulative_earnings: Uint128::new(200),
+        };
+
+        let leaf_c1 = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_c1"),
+            cumulative_earnings: Uint128::new(300),
+        };
+
+        let leaf_d1 = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_d1"),
+            cumulative_earnings: Uint128::new(400),
+        };
+        
+        let hash_a = calculate_token_leaf_hash(&leaf_a);
+        let hash_b = calculate_token_leaf_hash(&leaf_b);
+        let hash_c = calculate_token_leaf_hash(&leaf_c);
+        let hash_d = calculate_token_leaf_hash(&leaf_d);
+
+        let hash_a1 = calculate_token_leaf_hash(&leaf_a1);
+        let hash_b1 = calculate_token_leaf_hash(&leaf_b1);
+        let hash_c1 = calculate_token_leaf_hash(&leaf_c1);
+        let hash_d1 = calculate_token_leaf_hash(&leaf_d1);
+
+        let leaves_a_b = vec![
+            hash_a.clone(),
+            hash_b.clone(),
+        ];
+        let parent_a_b = merkleize_sha256(leaves_a_b.clone());
+
+        let leaves_c_d = vec![
+            hash_c.clone(),
+            hash_d.clone(),
+        ];
+        let parent_c_d = merkleize_sha256(leaves_c_d.clone());
+
+        let root_a_b_c_d = vec![
+            parent_a_b.clone(),
+            parent_c_d.clone(),
+        ];
+        let root_a_b_c_d = merkleize_sha256(root_a_b_c_d.clone());
+
+        let leaves_a1_b1 = vec![
+            hash_a1.clone(),
+            hash_b1.clone(),
+        ];
+        let parent_a1_b1 = merkleize_sha256(leaves_a1_b1.clone());
+
+        let leaves_c1_d1 = vec![
+            hash_c1.clone(),
+            hash_d1.clone(),
+        ];
+        let parent_c1_d1 = merkleize_sha256(leaves_c1_d1.clone());
+
+        let root_a1_b1_c1_d1 = vec![
+            parent_a1_b1.clone(),
+            parent_c1_d1.clone(),
+        ];
+        let root_a1_b1_c1_d1 = merkleize_sha256(root_a1_b1_c1_d1.clone());
+
+        let earner1 = EarnerTreeMerkleLeaf {
+            earner: Addr::unchecked("earner1"),
+            earner_token_root: Binary::from(root_a_b_c_d.clone()),
+        };
+        let earner2 = EarnerTreeMerkleLeaf {
+            earner: Addr::unchecked("earner2"),
+            earner_token_root: Binary::from(root_a1_b1_c1_d1.clone()),
+        };
+
+        let earner_leaf_hash1 = calculate_earner_leaf_hash(&earner1);
+        let earner_leaf_hash2 = calculate_earner_leaf_hash(&earner2);
+
+        let leaves = vec![
+            earner_leaf_hash1.clone(),
+            earner_leaf_hash2.clone(),
+        ];
+        let earner_root = merkleize_sha256(leaves.clone());
+
+        let proof_a = [earner_leaf_hash2.clone()];
+        let proof_b = [hash_b.clone(), parent_c_d.clone()];
+
+        assert!(_verify_earner_claim_proof(Binary::from(earner_root.clone()), 0, &proof_a.concat(), &earner1).is_ok());
+        assert!(_verify_token_claim_proof(Binary::from(root_a_b_c_d.clone()), 0, &proof_b.concat(), &leaf_a).is_ok());        
+    }
+
+    #[test]
+    fn test_check_claim() {
+        let env = mock_env();
+
+        let leaf_a = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_a"),
+            cumulative_earnings: Uint128::new(100),
+        };
+    
+        let leaf_b = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_b"),
+            cumulative_earnings: Uint128::new(200),
+        };
+    
+        let leaf_c = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_c"),
+            cumulative_earnings: Uint128::new(300),
+        };
+    
+        let leaf_d = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_d"),
+            cumulative_earnings: Uint128::new(400),
+        };
+    
+        let hash_a = calculate_token_leaf_hash(&leaf_a);
+        let hash_b = calculate_token_leaf_hash(&leaf_b);
+        let hash_c = calculate_token_leaf_hash(&leaf_c);
+        let hash_d = calculate_token_leaf_hash(&leaf_d);
+    
+        let token_leaves = vec![hash_a.clone(), hash_b.clone(), hash_c.clone(), hash_d.clone()];
+        let token_root = merkleize_sha256(token_leaves.clone());
+    
+        let earner_leaf = EarnerTreeMerkleLeaf {
+            earner: Addr::unchecked("earner"),
+            earner_token_root: Binary::from(token_root.clone()),
+        };
+    
+        let earner_leaf_hash = calculate_earner_leaf_hash(&earner_leaf);
+    
+        let earner_leaves = vec![earner_leaf_hash.clone()];
+        let earner_root = merkleize_sha256(earner_leaves.clone());
+    
+        let distribution_root = DistributionRoot {
+            root: Binary::from(earner_root.clone()),
+            rewards_calculation_end_timestamp: Uint64::new(500),
+            activated_at: Uint64::new(500),
+            disabled: false,
+        };
+    
+        let claim = RewardsMerkleClaim {
+            root_index: 0,
+            earner_index: 0,
+            earner_tree_proof: vec![],
+            earner_leaf,
+            token_indices: vec![0, 1, 2, 3],
+            token_tree_proofs: vec![
+                [hash_b.clone(), merkleize_sha256(vec![hash_c.clone(), hash_d.clone()])].concat(),
+                [hash_a.clone(), merkleize_sha256(vec![hash_c.clone(), hash_d.clone()])].concat(),
+                [hash_d.clone(), merkleize_sha256(vec![hash_a.clone(), hash_b.clone()])].concat(),
+                [hash_c.clone(), merkleize_sha256(vec![hash_a.clone(), hash_b.clone()])].concat(),
+            ],
+            token_leaves: vec![leaf_a.clone(), leaf_b.clone(), leaf_c.clone(), leaf_d.clone()],
+        };
+    
+        assert!(_check_claim(env, &claim, &distribution_root).is_ok());
+    }
+
+    #[test]
+    fn test_submit_root() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("rewards_updater"), &[]);
+    
+        REWARDS_UPDATER.save(&mut deps.storage, &info.sender).unwrap();
+        CURR_REWARDS_CALCULATION_END_TIMESTAMP.save(&mut deps.storage, &Uint64::new(1000)).unwrap();
+        ACTIVATION_DELAY.save(&mut deps.storage, &60u32).unwrap(); // 1 minute delay
+    
+        let root = Binary::from(b"valid_root".to_vec());
+        let rewards_calculation_end_timestamp = Uint64::new(1100);
+    
+        let result = submit_root(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            root.clone(),
+            rewards_calculation_end_timestamp,
+        );
+    
+        assert!(result.is_ok());
+    
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
+    
+        let event = response.events.first().unwrap();
+        assert_eq!(event.ty, "DistributionRootSubmitted");
+        assert_eq!(event.attributes.len(), 4);
+        assert_eq!(event.attributes[0].key, "root_index");
+        assert_eq!(event.attributes[0].value, "0");
+        assert_eq!(event.attributes[1].key, "root");
+        assert_eq!(event.attributes[1].value, format!("{:?}", root));
+        assert_eq!(event.attributes[2].key, "rewards_calculation_end_timestamp");
+        assert_eq!(event.attributes[2].value, rewards_calculation_end_timestamp.to_string());
+        assert_eq!(event.attributes[3].key, "activated_at");
+        assert_eq!(
+            event.attributes[3].value,
+            (env.block.time.seconds() + 60).to_string()
+        );
+    
+        let past_timestamp = Uint64::new(500);
+        let result = submit_root(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            root.clone(),
+            past_timestamp,
+        );
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::InvalidTimestamp {});
+        }
+    
+        let future_timestamp = Uint64::new(env.block.time.seconds() + 100);
+        let result = submit_root(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            root.clone(),
+            future_timestamp,
+        );
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::TimestampInFuture {});
+        }
+    
+        let unauthorized_info = message_info(&Addr::unchecked("not_rewards_updater"), &[]);
+        let result = submit_root(
+            deps.as_mut(),
+            env.clone(),
+            unauthorized_info,
+            root,
+            rewards_calculation_end_timestamp,
+        );
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::NotRewardsUpdater {});
+        }
+    }
+
+    #[test]
+    fn test_process_claim() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("claimer"), &[]);
+    
+        let leaf_a = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_a"),
+            cumulative_earnings: Uint128::new(100),
+        };
+    
+        let leaf_b = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_b"),
+            cumulative_earnings: Uint128::new(200),
+        };
+    
+        let leaf_c = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_c"),
+            cumulative_earnings: Uint128::new(300),
+        };
+    
+        let leaf_d = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_d"),
+            cumulative_earnings: Uint128::new(400),
+        };
+    
+        let hash_a = calculate_token_leaf_hash(&leaf_a);
+        let hash_b = calculate_token_leaf_hash(&leaf_b);
+        let hash_c = calculate_token_leaf_hash(&leaf_c);
+        let hash_d = calculate_token_leaf_hash(&leaf_d);
+    
+        let token_leaves = vec![hash_a.clone(), hash_b.clone(), hash_c.clone(), hash_d.clone()];
+        let token_root = merkleize_sha256(token_leaves.clone());
+    
+        let earner_leaf = EarnerTreeMerkleLeaf {
+            earner: Addr::unchecked("earner"),
+            earner_token_root: Binary::from(token_root.clone()),
+        };
+    
+        let earner_leaf_hash = calculate_earner_leaf_hash(&earner_leaf);
+    
+        let earner_leaves = vec![earner_leaf_hash.clone()];
+        let earner_root = merkleize_sha256(earner_leaves.clone());
+    
+        let distribution_root = DistributionRoot {
+            root: Binary::from(earner_root.clone()),
+            rewards_calculation_end_timestamp: Uint64::new(500),
+            activated_at: Uint64::new(500),
+            disabled: false,
+        };
+    
+        let claim = RewardsMerkleClaim {
+            root_index: 0,
+            earner_index: 0,
+            earner_tree_proof: vec![],
+            earner_leaf,
+            token_indices: vec![0, 1, 2, 3],
+            token_tree_proofs: vec![
+                [hash_b.clone(), merkleize_sha256(vec![hash_c.clone(), hash_d.clone()])].concat(),
+                [hash_a.clone(), merkleize_sha256(vec![hash_c.clone(), hash_d.clone()])].concat(),
+                [hash_d.clone(), merkleize_sha256(vec![hash_a.clone(), hash_b.clone()])].concat(),
+                [hash_c.clone(), merkleize_sha256(vec![hash_a.clone(), hash_b.clone()])].concat(),
+            ],
+            token_leaves: vec![leaf_a.clone(), leaf_b.clone(), leaf_c.clone(), leaf_d.clone()],
+        };
+    
+        DISTRIBUTION_ROOTS.save(&mut deps.storage, 0, &distribution_root).unwrap();
+
+        CLAIMER_FOR.save(&mut deps.storage, Addr::unchecked("earner"), &Addr::unchecked("claimer")).unwrap();
+    
+        let recipient = Addr::unchecked("recipient");
+        let result = process_claim(deps.as_mut(), env.clone(), info.clone(), claim.clone(), recipient.clone());
+    
+        assert!(result.is_ok());
+    
+        let response = result.unwrap();
+        assert_eq!(response.messages.len(), 4);
+        assert_eq!(response.events.len(), 4);
+    
+        let event = response.events.first().unwrap();
+        assert_eq!(event.ty, "RewardsClaimed");
+        assert_eq!(event.attributes.len(), 6);
+        assert_eq!(event.attributes[0].key, "root");
+        assert_eq!(event.attributes[0].value, format!("{:?}", distribution_root.root));
+        assert_eq!(event.attributes[1].key, "earner");
+        assert_eq!(event.attributes[1].value, "earner");
+        assert_eq!(event.attributes[2].key, "claimer");
+        assert_eq!(event.attributes[2].value, "claimer");
+        assert_eq!(event.attributes[3].key, "recipient");
+        assert_eq!(event.attributes[3].value, "recipient");
+        assert_eq!(event.attributes[4].key, "token");
+        assert_eq!(event.attributes[4].value, "token_a");
+        assert_eq!(event.attributes[5].key, "amount");
+        assert_eq!(event.attributes[5].value, "100");
+    
+        // Test for unauthorized claimer
+        let unauthorized_info = message_info(&Addr::unchecked("unauthorized_claimer"), &[]);
+        let result = process_claim(deps.as_mut(), env.clone(), unauthorized_info, claim.clone(), recipient.clone());
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::UnauthorizedClaimer {});
+        }
+    
+        // Test for already claimed amount
+        CUMULATIVE_CLAIMED
+            .save(&mut deps.storage, (Addr::unchecked("earner"), "token_a".to_string()), &100u128)
+            .unwrap();
+    
+        let result = process_claim(deps.as_mut(), env.clone(), info.clone(), claim.clone(), recipient.clone());
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::CumulativeEarningsTooLow {});
+        }
+    
+        // Test for disabled root
+        let disabled_root = DistributionRoot {
+            root: Binary::from(earner_root.clone()),
+            rewards_calculation_end_timestamp: Uint64::new(500),
+            activated_at: Uint64::new(env.block.time.seconds() - 100),
+            disabled: true,
+        };
+    
+        DISTRIBUTION_ROOTS.save(&mut deps.storage, 0, &disabled_root).unwrap();
+    
+        let result = process_claim(deps.as_mut(), env.clone(), info.clone(), claim, recipient);
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::RootDisabled {});
+        }
+    }
+
+    #[test]
+    fn test_disable_root() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("rewards_updater"), &[]);
+    
+        REWARDS_UPDATER.save(&mut deps.storage, &info.sender).unwrap();
+    
+        let valid_root = DistributionRoot {
+            root: Binary::from(b"valid_root".to_vec()),
+            rewards_calculation_end_timestamp: Uint64::new(500),
+            activated_at: Uint64::new(env.block.time.seconds() + 1000), // Future activation
+            disabled: false,
+        };
+    
+        DISTRIBUTION_ROOTS.save(&mut deps.storage, 0, &valid_root).unwrap();
+        DISTRIBUTION_ROOTS_COUNT.save(&mut deps.storage, &1u64).unwrap();
+    
+        let result = disable_root(deps.as_mut(), env.clone(), info.clone(), 0);
+        assert!(result.is_ok());
+    
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
+    
+        let event = response.events.first().unwrap();
+        assert_eq!(event.ty, "DistributionRootDisabled");
+        assert_eq!(event.attributes.len(), 1);
+        assert_eq!(event.attributes[0].key, "root_index");
+        assert_eq!(event.attributes[0].value, "0");
+    
+        let stored_root = DISTRIBUTION_ROOTS.load(&deps.storage, 0).unwrap();
+        assert!(stored_root.disabled);
+    
+        // Test disabling an already disabled root
+        let result = disable_root(deps.as_mut(), env.clone(), info.clone(), 0);
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::AlreadyDisabled {});
+        }
+    
+        // Prepare an activated root
+        let activated_root = DistributionRoot {
+            root: Binary::from(b"activated_root".to_vec()),
+            rewards_calculation_end_timestamp: Uint64::new(500),
+            activated_at: Uint64::new(env.block.time.seconds() - 1000), // Past activation
+            disabled: false,
+        };
+    
+        DISTRIBUTION_ROOTS.save(&mut deps.storage, 1, &activated_root).unwrap();
+        DISTRIBUTION_ROOTS_COUNT.save(&mut deps.storage, &2u64).unwrap();
+    
+        // Test disabling an activated root
+        let result = disable_root(deps.as_mut(), env.clone(), info.clone(), 1);
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::AlreadyActivated {});
+        }
+    
+        // Test with an invalid root index
+        let result = disable_root(deps.as_mut(), env.clone(), info.clone(), 3);
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::InvalidRootIndex {});
+        }
+    
+        // Test unauthorized caller
+        let unauthorized_info = message_info(&Addr::unchecked("not_rewards_updater"), &[]);
+        let result = disable_root(deps.as_mut(), env, unauthorized_info, 0);
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::NotRewardsUpdater {});
+        }
+    }                                                    
 }
 
