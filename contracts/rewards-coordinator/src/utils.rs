@@ -129,6 +129,7 @@ fn process_inclusion_proof_sha256(proof: &[u8], leaf: &[u8], index: u64) -> Vec<
     computed_hash
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct RewardsMerkleClaim {
     pub root_index: u32,
     pub earner_index: u32,
