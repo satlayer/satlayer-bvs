@@ -2212,5 +2212,290 @@ mod tests {
         assert!(_check_claim(env, &claim, &distribution_root).is_ok());
     }
 
+    #[test]
+    fn test_submit_root() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("rewards_updater"), &[]);
+    
+        REWARDS_UPDATER.save(&mut deps.storage, &info.sender).unwrap();
+        CURR_REWARDS_CALCULATION_END_TIMESTAMP.save(&mut deps.storage, &Uint64::new(1000)).unwrap();
+        ACTIVATION_DELAY.save(&mut deps.storage, &60u32).unwrap(); // 1 minute delay
+    
+        let root = Binary::from(b"valid_root".to_vec());
+        let rewards_calculation_end_timestamp = Uint64::new(1100);
+    
+        let result = submit_root(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            root.clone(),
+            rewards_calculation_end_timestamp,
+        );
+    
+        assert!(result.is_ok());
+    
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
+    
+        let event = response.events.first().unwrap();
+        assert_eq!(event.ty, "DistributionRootSubmitted");
+        assert_eq!(event.attributes.len(), 4);
+        assert_eq!(event.attributes[0].key, "root_index");
+        assert_eq!(event.attributes[0].value, "0");
+        assert_eq!(event.attributes[1].key, "root");
+        assert_eq!(event.attributes[1].value, format!("{:?}", root));
+        assert_eq!(event.attributes[2].key, "rewards_calculation_end_timestamp");
+        assert_eq!(event.attributes[2].value, rewards_calculation_end_timestamp.to_string());
+        assert_eq!(event.attributes[3].key, "activated_at");
+        assert_eq!(
+            event.attributes[3].value,
+            (env.block.time.seconds() + 60).to_string()
+        );
+    
+        let past_timestamp = Uint64::new(500);
+        let result = submit_root(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            root.clone(),
+            past_timestamp,
+        );
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::InvalidTimestamp {});
+        }
+    
+        let future_timestamp = Uint64::new(env.block.time.seconds() + 100);
+        let result = submit_root(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            root.clone(),
+            future_timestamp,
+        );
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::TimestampInFuture {});
+        }
+    
+        let unauthorized_info = message_info(&Addr::unchecked("not_rewards_updater"), &[]);
+        let result = submit_root(
+            deps.as_mut(),
+            env.clone(),
+            unauthorized_info,
+            root,
+            rewards_calculation_end_timestamp,
+        );
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::NotRewardsUpdater {});
+        }
+    }
+
+    #[test]
+    fn test_process_claim() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("claimer"), &[]);
+    
+        let leaf_a = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_a"),
+            cumulative_earnings: Uint128::new(100),
+        };
+    
+        let leaf_b = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_b"),
+            cumulative_earnings: Uint128::new(200),
+        };
+    
+        let leaf_c = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_c"),
+            cumulative_earnings: Uint128::new(300),
+        };
+    
+        let leaf_d = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_d"),
+            cumulative_earnings: Uint128::new(400),
+        };
+    
+        let hash_a = calculate_token_leaf_hash(&leaf_a);
+        let hash_b = calculate_token_leaf_hash(&leaf_b);
+        let hash_c = calculate_token_leaf_hash(&leaf_c);
+        let hash_d = calculate_token_leaf_hash(&leaf_d);
+    
+        let token_leaves = vec![hash_a.clone(), hash_b.clone(), hash_c.clone(), hash_d.clone()];
+        let token_root = merkleize_sha256(token_leaves.clone());
+    
+        let earner_leaf = EarnerTreeMerkleLeaf {
+            earner: Addr::unchecked("earner"),
+            earner_token_root: Binary::from(token_root.clone()),
+        };
+    
+        let earner_leaf_hash = calculate_earner_leaf_hash(&earner_leaf);
+    
+        let earner_leaves = vec![earner_leaf_hash.clone()];
+        let earner_root = merkleize_sha256(earner_leaves.clone());
+    
+        let distribution_root = DistributionRoot {
+            root: Binary::from(earner_root.clone()),
+            rewards_calculation_end_timestamp: Uint64::new(500),
+            activated_at: Uint64::new(500),
+            disabled: false,
+        };
+    
+        let claim = RewardsMerkleClaim {
+            root_index: 0,
+            earner_index: 0,
+            earner_tree_proof: vec![],
+            earner_leaf,
+            token_indices: vec![0, 1, 2, 3],
+            token_tree_proofs: vec![
+                [hash_b.clone(), merkleize_sha256(vec![hash_c.clone(), hash_d.clone()])].concat(),
+                [hash_a.clone(), merkleize_sha256(vec![hash_c.clone(), hash_d.clone()])].concat(),
+                [hash_d.clone(), merkleize_sha256(vec![hash_a.clone(), hash_b.clone()])].concat(),
+                [hash_c.clone(), merkleize_sha256(vec![hash_a.clone(), hash_b.clone()])].concat(),
+            ],
+            token_leaves: vec![leaf_a.clone(), leaf_b.clone(), leaf_c.clone(), leaf_d.clone()],
+        };
+    
+        DISTRIBUTION_ROOTS.save(&mut deps.storage, 0, &distribution_root).unwrap();
+
+        CLAIMER_FOR.save(&mut deps.storage, Addr::unchecked("earner"), &Addr::unchecked("claimer")).unwrap();
+    
+        let recipient = Addr::unchecked("recipient");
+        let result = process_claim(deps.as_mut(), env.clone(), info.clone(), claim.clone(), recipient.clone());
+    
+        assert!(result.is_ok());
+    
+        let response = result.unwrap();
+        assert_eq!(response.messages.len(), 4);
+        assert_eq!(response.events.len(), 4);
+    
+        let event = response.events.first().unwrap();
+        assert_eq!(event.ty, "RewardsClaimed");
+        assert_eq!(event.attributes.len(), 6);
+        assert_eq!(event.attributes[0].key, "root");
+        assert_eq!(event.attributes[0].value, format!("{:?}", distribution_root.root));
+        assert_eq!(event.attributes[1].key, "earner");
+        assert_eq!(event.attributes[1].value, "earner");
+        assert_eq!(event.attributes[2].key, "claimer");
+        assert_eq!(event.attributes[2].value, "claimer");
+        assert_eq!(event.attributes[3].key, "recipient");
+        assert_eq!(event.attributes[3].value, "recipient");
+        assert_eq!(event.attributes[4].key, "token");
+        assert_eq!(event.attributes[4].value, "token_a");
+        assert_eq!(event.attributes[5].key, "amount");
+        assert_eq!(event.attributes[5].value, "100");
+    
+        // Test for unauthorized claimer
+        let unauthorized_info = message_info(&Addr::unchecked("unauthorized_claimer"), &[]);
+        let result = process_claim(deps.as_mut(), env.clone(), unauthorized_info, claim.clone(), recipient.clone());
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::UnauthorizedClaimer {});
+        }
+    
+        // Test for already claimed amount
+        CUMULATIVE_CLAIMED
+            .save(&mut deps.storage, (Addr::unchecked("earner"), "token_a".to_string()), &100u128)
+            .unwrap();
+    
+        let result = process_claim(deps.as_mut(), env.clone(), info.clone(), claim.clone(), recipient.clone());
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::CumulativeEarningsTooLow {});
+        }
+    
+        // Test for disabled root
+        let disabled_root = DistributionRoot {
+            root: Binary::from(earner_root.clone()),
+            rewards_calculation_end_timestamp: Uint64::new(500),
+            activated_at: Uint64::new(env.block.time.seconds() - 100),
+            disabled: true,
+        };
+    
+        DISTRIBUTION_ROOTS.save(&mut deps.storage, 0, &disabled_root).unwrap();
+    
+        let result = process_claim(deps.as_mut(), env.clone(), info.clone(), claim, recipient);
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::RootDisabled {});
+        }
+    }
+
+    #[test]
+    fn test_disable_root() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&Addr::unchecked("rewards_updater"), &[]);
+    
+        REWARDS_UPDATER.save(&mut deps.storage, &info.sender).unwrap();
+    
+        let valid_root = DistributionRoot {
+            root: Binary::from(b"valid_root".to_vec()),
+            rewards_calculation_end_timestamp: Uint64::new(500),
+            activated_at: Uint64::new(env.block.time.seconds() + 1000), // Future activation
+            disabled: false,
+        };
+    
+        DISTRIBUTION_ROOTS.save(&mut deps.storage, 0, &valid_root).unwrap();
+        DISTRIBUTION_ROOTS_COUNT.save(&mut deps.storage, &1u64).unwrap();
+    
+        let result = disable_root(deps.as_mut(), env.clone(), info.clone(), 0);
+        assert!(result.is_ok());
+    
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
+    
+        let event = response.events.first().unwrap();
+        assert_eq!(event.ty, "DistributionRootDisabled");
+        assert_eq!(event.attributes.len(), 1);
+        assert_eq!(event.attributes[0].key, "root_index");
+        assert_eq!(event.attributes[0].value, "0");
+    
+        let stored_root = DISTRIBUTION_ROOTS.load(&deps.storage, 0).unwrap();
+        assert!(stored_root.disabled);
+    
+        // Test disabling an already disabled root
+        let result = disable_root(deps.as_mut(), env.clone(), info.clone(), 0);
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::AlreadyDisabled {});
+        }
+    
+        // Prepare an activated root
+        let activated_root = DistributionRoot {
+            root: Binary::from(b"activated_root".to_vec()),
+            rewards_calculation_end_timestamp: Uint64::new(500),
+            activated_at: Uint64::new(env.block.time.seconds() - 1000), // Past activation
+            disabled: false,
+        };
+    
+        DISTRIBUTION_ROOTS.save(&mut deps.storage, 1, &activated_root).unwrap();
+        DISTRIBUTION_ROOTS_COUNT.save(&mut deps.storage, &2u64).unwrap();
+    
+        // Test disabling an activated root
+        let result = disable_root(deps.as_mut(), env.clone(), info.clone(), 1);
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::AlreadyActivated {});
+        }
+    
+        // Test with an invalid root index
+        let result = disable_root(deps.as_mut(), env.clone(), info.clone(), 3);
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::InvalidRootIndex {});
+        }
+    
+        // Test unauthorized caller
+        let unauthorized_info = message_info(&Addr::unchecked("not_rewards_updater"), &[]);
+        let result = disable_root(deps.as_mut(), env, unauthorized_info, 0);
+        assert!(result.is_err());
+        if let Err(err) = result {
+            assert_eq!(err, ContractError::NotRewardsUpdater {});
+        }
+    }                                                    
 }
 
