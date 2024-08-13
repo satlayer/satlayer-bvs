@@ -11,7 +11,7 @@ pub enum OperatorAVSRegistrationStatus {
 #[cw_serde]
 pub struct AVSInfo {
     pub avs_hash: String,
-    pub contract_addr: String,
+    pub avs_contract: String,
     pub state_bank: String,
     pub avs_driver: String,
 }
