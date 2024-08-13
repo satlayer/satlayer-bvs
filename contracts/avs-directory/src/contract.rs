@@ -268,8 +268,8 @@ pub fn transfer_ownership(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::QueryOperator { avs, operator } => {
-            to_json_binary(&_operator(deps, avs, operator)?)
+        QueryMsg::QueryOperatorStatus { avs, operator } => {
+            to_json_binary(&query_operator_status(deps, avs, operator)?)
         },
         QueryMsg::CalculateDigestHash {
             operator_public_key,
@@ -279,22 +279,47 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             chain_id,
             contract_addr,
         } => {
+            let public_key_binary = Binary::from_base64(&operator_public_key)?;
+            let salt = Binary::from_base64(&salt)?;
+
             let params = DigestHashParams {
-                operator_public_key,
+                operator_public_key: public_key_binary,
                 avs,
                 salt,
-                expiry: expiry.u64(),
+                expiry,
                 chain_id,
                 contract_addr,
             };
-            to_json_binary(&_calculate_digest_hash(deps, env, params)?)
+            to_json_binary(&query_calculate_digest_hash(deps, env, params)?)
         },
-        QueryMsg::IsSaltSpent { operator, salt } => _is_salt_spent(deps, operator, salt),
-        QueryMsg::GetDelegationManager {} => _delegation_manager(deps),
-        QueryMsg::GetOwner {} => _owner(deps),
-        QueryMsg::GetOperatorAVSRegistrationTypeHash {} => _operator_avs_registration_typehash(deps),
-        QueryMsg::GetDomainTypeHash {} => _domain_typehash(deps),
-        QueryMsg::GetDomainName {} => _domain_name(deps),
+        QueryMsg::IsSaltSpent { operator, salt } => {
+            let is_spent = query_is_salt_spent(deps, operator, salt)?;
+            to_json_binary(&is_spent)
+        },        
+        QueryMsg::GetDelegationManager {} => {
+            let delegation_manager_addr = query_delegation_manager(deps)?;
+            to_json_binary(&delegation_manager_addr.to_string())
+        },        
+        QueryMsg::GetOwner {} => {
+            let owner_addr = query_owner(deps)?;
+            to_json_binary(&owner_addr.to_string())
+        },
+        QueryMsg::GetOperatorAVSRegistrationTypeHash {} => {
+            let hash_str = query_operator_avs_registration_typehash(deps)?;
+            to_json_binary(&hash_str) 
+        },        
+        QueryMsg::GetDomainTypeHash {} => {
+            let hash_str = query_domain_typehash(deps)?;
+            to_json_binary(&hash_str)
+        },
+        QueryMsg::GetDomainName {} => {
+            let name_str = query_domain_name(deps)?;
+            to_json_binary(&name_str)
+        },
+        QueryMsg::GetAVSInfo { avs_hash } => {
+            let avs_info = query_avs_info(deps, avs_hash)?;
+            to_json_binary(&avs_info)
+        }
     }
 }
 
