@@ -227,7 +227,6 @@ pub fn set_third_party_transfers_forbidden(
     Ok(Response::new().add_event(event))
 }
 
-
 pub fn deposit_into_strategy(
     deps: DepsMut,
     env: Env,

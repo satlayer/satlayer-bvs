@@ -1,12 +1,12 @@
 [workspace]
 members = [
-    # "contracts/avs-directory",
+    "contracts/avs-directory",
     # "contracts/strategy-base",
     # "contracts/strategy-manager",
     # "contracts/state-bank",
     # "contracts/avs-driver",
     # "contracts/delegation-manager",
-    "contracts/rewards-coordinator",
+    # "contracts/rewards-coordinator",
     ]
 
 resolver = "2"
