@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Binary, StdResult};
+use cosmwasm_std::{Addr, Binary, StdResult, Uint64};
 use sha2::{Sha256, Digest};
 use cosmwasm_crypto::secp256k1_verify;
 
@@ -6,7 +6,7 @@ pub const OPERATOR_AVS_REGISTRATION_TYPEHASH: &[u8] = b"OperatorAVSRegistration(
 pub const DOMAIN_TYPEHASH: &[u8] = b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
 pub const DOMAIN_NAME: &[u8] = b"EigenLayer";
 
-fn sha256(input: &[u8]) -> Vec<u8> {
+pub fn sha256(input: &[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();
     hasher.update(input);
     hasher.finalize().to_vec()
@@ -16,18 +16,18 @@ pub struct DigestHashParams {
     pub operator_public_key: Binary,
     pub avs: Addr,
     pub salt: Binary,
-    pub expiry: u64,
+    pub expiry: Uint64,
     pub chain_id: String,
     pub contract_addr: Addr,
 }
 
 pub fn calculate_digest_hash(
     operator_public_key: &[u8],
-    avs: &str,
+    avs: &Addr,
     salt: &Binary,
     expiry: u64,
     chain_id: &str,
-    contract_addr: &str,
+    contract_addr: &Addr,
 ) -> Vec<u8> {
     let struct_hash_input = [
         &sha256(OPERATOR_AVS_REGISTRATION_TYPEHASH)[..],
