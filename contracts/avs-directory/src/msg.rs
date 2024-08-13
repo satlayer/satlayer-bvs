@@ -1,6 +1,6 @@
-use cosmwasm_schema::cw_serde;
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint64, Binary};
-use crate::state::OperatorAVSRegistrationStatus;
+use crate::state::{OperatorAVSRegistrationStatus, AVSInfo};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -11,7 +11,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     RegisterAVS {
-        contract_addr: String,
+        avs_contract: String,
         state_bank: String,
         avs_driver: String,
     },
@@ -36,8 +36,12 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(OperatorStatusResponse)]
     QueryOperatorStatus { avs: Addr, operator: Addr },
+
+    #[returns(Binary)]
     CalculateDigestHash {
         operator_public_key: String,
         avs: Addr,
@@ -46,12 +50,26 @@ pub enum QueryMsg {
         chain_id: String,
         contract_addr: Addr,
     },
+
+    #[returns(bool)]
     IsSaltSpent { operator: Addr, salt: String },
+
+    #[returns(AVSInfo)]
     GetAVSInfo { avs_hash: String },
+
+    #[returns(String)]
     GetDelegationManager {},
+
+    #[returns(String)]
     GetOwner {},
+
+    #[returns(String)]
     GetOperatorAVSRegistrationTypeHash {},
+
+    #[returns(String)]
     GetDomainTypeHash {},
+
+    #[returns(String)]
     GetDomainName {},
 }
 
@@ -86,7 +104,7 @@ pub struct SignatureWithSaltAndExpiry {
 
 #[cw_serde]
 pub struct AVSRegisterParams {
-    pub contract_addr: String,
+    pub avs_contract: String,
     pub state_bank: String,
     pub avs_driver: String,
 }

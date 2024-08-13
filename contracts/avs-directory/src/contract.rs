@@ -1,9 +1,9 @@
 use crate::{
     error::ContractError,
     delegation_manager,
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg, OperatorStatusResponse, SignatureWithSaltAndExpiry},
-    state::{OperatorAVSRegistrationStatus, OWNER, AVS_OPERATOR_STATUS, OPERATOR_SALT_SPENT, DELEGATION_MANAGER},
-    utils::{calculate_digest_hash, recover, OPERATOR_AVS_REGISTRATION_TYPEHASH, DOMAIN_TYPEHASH, DOMAIN_NAME, DigestHashParams},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg, OperatorStatusResponse, SignatureWithSaltAndExpiry, AVSRegisterParams},
+    state::{OperatorAVSRegistrationStatus, OWNER, AVS_OPERATOR_STATUS, OPERATOR_SALT_SPENT, DELEGATION_MANAGER, AVSInfo, AVS_INFO},
+    utils::{calculate_digest_hash, recover, OPERATOR_AVS_REGISTRATION_TYPEHASH, DOMAIN_TYPEHASH, DOMAIN_NAME, DigestHashParams, sha256},
 };
 use delegation_manager::QueryMsg as DelegationManagerQueryMsg;
 use cosmwasm_std::{
@@ -43,25 +43,32 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
+        ExecuteMsg::RegisterAVS {
+            avs_contract,
+            state_bank,
+            avs_driver,
+        } => {
+            let params = AVSRegisterParams {
+                avs_contract,
+                state_bank,
+                avs_driver,
+            };
+            register_avs(deps, params)
+        }
         ExecuteMsg::RegisterOperatorToAVS {
             operator,
             public_key,
             contract_addr,
             signature_with_salt_and_expiry,
         } => {
-            let operator_addr: Addr = Addr::unchecked(operator);
-            let contract_addr: Addr = Addr::unchecked(contract_addr);
             let public_key_binary = Binary::from_base64(&public_key)?;
             let signature = Binary::from_base64(&signature_with_salt_and_expiry.signature)?;
             let salt = Binary::from_base64(&signature_with_salt_and_expiry.salt)?;
-            
-            let expiry_u64 = signature_with_salt_and_expiry.expiry.parse::<u64>().unwrap();
-            let expiry = Uint64::new(expiry_u64);
 
             let signature_with_salt_and_expiry = SignatureWithSaltAndExpiry {
                 signature,
                 salt,
-                expiry,
+                expiry: signature_with_salt_and_expiry.expiry,
             };
 
             register_operator(
@@ -69,7 +76,7 @@ pub fn execute(
                 env,
                 info,
                 contract_addr,
-                operator_addr,
+                operator,
                 public_key_binary,
                 signature_with_salt_and_expiry,
             )
@@ -90,6 +97,33 @@ pub fn execute(
             transfer_ownership(deps, info, new_owner_addr)
         }
     }
+}
+
+pub fn register_avs(
+    deps: DepsMut,
+    params: AVSRegisterParams,
+) -> Result<Response, ContractError> {
+    let input = format!(
+        "{}{}{}",
+        params.avs_contract, params.state_bank, &params.avs_driver
+    );
+
+    let hash_result = sha256(input.as_bytes());
+
+    let avs_hash = hex::encode(hash_result);
+
+    let avs_info = AVSInfo {
+        avs_hash: avs_hash.clone(),
+        avs_contract: params.avs_contract.clone(),
+        state_bank: params.state_bank.clone(),
+        avs_driver: params.avs_driver.clone(),
+    };
+
+    AVS_INFO.save(deps.storage, avs_hash.clone(), &avs_info)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "register_avs")
+        .add_attribute("avs_hash", avs_hash))
 }
 
 pub fn register_operator(
@@ -137,11 +171,11 @@ pub fn register_operator(
 
     let message_bytes = calculate_digest_hash(
         &public_key,
-        info.sender.as_str(),
+        &info.sender,
         &operator_signature.salt,
         operator_signature.expiry.u64(),
         chain_id,
-        contract_addr.as_str(),
+        &contract_addr,
     );
 
     if !recover(&message_bytes, &operator_signature.signature, public_key.as_slice())? {
@@ -234,8 +268,8 @@ pub fn transfer_ownership(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::QueryOperator { avs, operator } => {
-            to_json_binary(&_operator(deps, avs, operator)?)
+        QueryMsg::QueryOperatorStatus { avs, operator } => {
+            to_json_binary(&query_operator_status(deps, avs, operator)?)
         },
         QueryMsg::CalculateDigestHash {
             operator_public_key,
@@ -245,22 +279,47 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             chain_id,
             contract_addr,
         } => {
+            let public_key_binary = Binary::from_base64(&operator_public_key)?;
+            let salt = Binary::from_base64(&salt)?;
+
             let params = DigestHashParams {
-                operator_public_key,
+                operator_public_key: public_key_binary,
                 avs,
                 salt,
-                expiry: expiry.u64(),
+                expiry,
                 chain_id,
                 contract_addr,
             };
-            to_json_binary(&_calculate_digest_hash(deps, env, params)?)
+            to_json_binary(&query_calculate_digest_hash(deps, env, params)?)
         },
-        QueryMsg::IsSaltSpent { operator, salt } => _is_salt_spent(deps, operator, salt),
-        QueryMsg::GetDelegationManager {} => _delegation_manager(deps),
-        QueryMsg::GetOwner {} => _owner(deps),
-        QueryMsg::GetOperatorAVSRegistrationTypeHash {} => _operator_avs_registration_typehash(deps),
-        QueryMsg::GetDomainTypeHash {} => _domain_typehash(deps),
-        QueryMsg::GetDomainName {} => _domain_name(deps),
+        QueryMsg::IsSaltSpent { operator, salt } => {
+            let is_spent = query_is_salt_spent(deps, operator, salt)?;
+            to_json_binary(&is_spent)
+        },        
+        QueryMsg::GetDelegationManager {} => {
+            let delegation_manager_addr = query_delegation_manager(deps)?;
+            to_json_binary(&delegation_manager_addr.to_string())
+        },        
+        QueryMsg::GetOwner {} => {
+            let owner_addr = query_owner(deps)?;
+            to_json_binary(&owner_addr.to_string())
+        },
+        QueryMsg::GetOperatorAVSRegistrationTypeHash {} => {
+            let hash_str = query_operator_avs_registration_typehash(deps)?;
+            to_json_binary(&hash_str) 
+        },        
+        QueryMsg::GetDomainTypeHash {} => {
+            let hash_str = query_domain_typehash(deps)?;
+            to_json_binary(&hash_str)
+        },
+        QueryMsg::GetDomainName {} => {
+            let name_str = query_domain_name(deps)?;
+            to_json_binary(&name_str)
+        },
+        QueryMsg::GetAVSInfo { avs_hash } => {
+            let avs_info = query_avs_info(deps, avs_hash)?;
+            to_json_binary(&avs_info)
+        }
     }
 }
 
