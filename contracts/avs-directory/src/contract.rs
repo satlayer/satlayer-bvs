@@ -323,56 +323,64 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-fn _operator(deps: Deps, user_addr: Addr, operator: Addr) -> StdResult<OperatorStatusResponse> {
+fn query_operator_status(deps: Deps, user_addr: Addr, operator: Addr) -> StdResult<OperatorStatusResponse> {
     let status = AVS_OPERATOR_STATUS.may_load(deps.storage, (user_addr.clone(), operator.clone()))?
         .unwrap_or(OperatorAVSRegistrationStatus::Unregistered);
     Ok(OperatorStatusResponse { status })
 }
 
-fn _calculate_digest_hash(
+fn query_calculate_digest_hash(
     _deps: Deps,
     _env: Env,
     params: DigestHashParams,
 ) -> StdResult<Binary> {
     let digest_hash = calculate_digest_hash(
-        params.operator_public_key.as_slice(),
-        params.avs.as_str(),
+        &params.operator_public_key,
+        &params.avs,
         &params.salt,
-        params.expiry,
+        params.expiry.u64(),
         &params.chain_id,
-        params.contract_addr.as_str(),
+        &params.contract_addr,
     );
     Ok(Binary::new(digest_hash))
 }
 
-fn _is_salt_spent(deps: Deps, operator: Addr, salt: String) -> StdResult<Binary> {
+fn query_is_salt_spent(deps: Deps, operator: Addr, salt: String) -> StdResult<bool> {
     let is_spent = OPERATOR_SALT_SPENT
         .may_load(deps.storage, (operator.clone(), salt.clone()))?
         .unwrap_or(false);
 
-    to_json_binary(&is_spent)
+    Ok(is_spent)
 }
 
-fn _delegation_manager(deps: Deps) -> StdResult<Binary> {
+fn query_delegation_manager(deps: Deps) -> StdResult<Addr> {
     let delegation_manager = DELEGATION_MANAGER.load(deps.storage)?;
-    to_json_binary(&delegation_manager)
+    Ok(delegation_manager)
 }
 
-fn _owner(deps: Deps) -> StdResult<Binary> {
+fn query_owner(deps: Deps) -> StdResult<Addr> {
     let owner = OWNER.load(deps.storage)?;
-    to_json_binary(&owner)
+    Ok(owner)
 }
 
-fn _operator_avs_registration_typehash(_deps: Deps) -> StdResult<Binary> {
-    to_json_binary(&OPERATOR_AVS_REGISTRATION_TYPEHASH.to_vec())
+fn query_operator_avs_registration_typehash(_deps: Deps) -> StdResult<String> {
+    let typehash_str = String::from_utf8_lossy(OPERATOR_AVS_REGISTRATION_TYPEHASH).to_string();
+    Ok(typehash_str)
 }
 
-fn _domain_typehash(_deps: Deps) -> StdResult<Binary> {
-    to_json_binary(&DOMAIN_TYPEHASH.to_vec())
+fn query_domain_typehash(_deps: Deps) -> StdResult<String> {
+    let typehash_str = String::from_utf8_lossy(DOMAIN_TYPEHASH).to_string();
+    Ok(typehash_str)
 }
 
-fn _domain_name(_deps: Deps) -> StdResult<Binary> {
-    to_json_binary(&DOMAIN_NAME.to_vec())
+fn query_domain_name(_deps: Deps) -> StdResult<String> {
+    let domain_name_str = String::from_utf8_lossy(DOMAIN_NAME).to_string();
+    Ok(domain_name_str)
+}
+
+fn query_avs_info(deps: Deps, avs_hash: String) -> StdResult<AVSInfo> {
+    let avs_info = AVS_INFO.load(deps.storage, avs_hash.to_string())?;
+    Ok(avs_info)
 }
 
 #[cfg(test)]
