@@ -26,26 +26,36 @@ pub enum QueryMsg {
         staker: Addr,
         strategy: Addr, 
     },
+
     #[returns(Uint128)]
     SharesToUnderlyingView {
         amount_shares: Uint128,
     },
+
     #[returns(Uint128)]
     UnderlyingToShareView {
         amount: Uint128,
     },
+
     #[returns(Uint128)]
     UserUnderlyingView {
         user: Addr,
     },
+
     #[returns(Addr)]
     GetStrategyManager {},
+
     #[returns(Addr)]
     GetUnderlyingToken {},
+
     #[returns(Uint128)]
     GetTotalShares {},
+
     #[returns(String)]
     Explanation {},
+
+    #[returns(Uint128)]
+    UnderlyingToShares { amount_underlying: Uint128 },
 }
 
 #[cw_serde]

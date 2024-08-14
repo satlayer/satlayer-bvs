@@ -8,14 +8,9 @@ pub struct StrategyManagerState {
     pub slasher: Addr,
 }
 
-#[cw_serde]
-pub struct StakerStrategyShares {
-    pub shares: Uint128,
-}
-
 pub const STRATEGY_MANAGER_STATE: Item<StrategyManagerState> = Item::new("strategy_manager_state");
 pub const STRATEGY_WHITELISTER: Item<Addr> = Item::new("strategy_whitelister");
-pub const STRATEGY_WHITELIST: Map<&Addr, bool> = Map::new("strategy_whitelist");
+pub const STRATEGY_IS_WHITELISTED_FOR_DEPOSIT: Map<&Addr, bool> = Map::new("strategy_whitelist");
 pub const OWNER: Item<Addr> = Item::new("owner");
 
 pub const STAKER_STRATEGY_SHARES: Map<(&Addr, &Addr), Uint128> = Map::new("staker_strategy_shares");
