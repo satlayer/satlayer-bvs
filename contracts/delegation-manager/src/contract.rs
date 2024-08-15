@@ -71,29 +71,22 @@ pub fn execute(
             operator_details,
             metadata_uri,
         } => register_as_operator(deps, info, env, sender_public_key, operator_details, metadata_uri),
-
-        ExecuteMsg::ModifyOperatorDetails {
-            new_operator_details,
-        } => modify_operator_details(deps, info, new_operator_details),
-
-        ExecuteMsg::UpdateOperatorMetadataUri { metadata_uri } => {
-            update_operator_metadata_uri(deps, info, metadata_uri)
-        }
-
+        ExecuteMsg::ModifyOperatorDetails {new_operator_details,} => modify_operator_details(deps, info, new_operator_details),
+        ExecuteMsg::UpdateOperatorMetadataUri { metadata_uri } => {update_operator_metadata_uri(deps, info, metadata_uri)}
         ExecuteMsg::DelegateTo {
             staker,
+            operator,
             approver_signature_and_expiry,
             approver_salt,
         } => {
             let params = DelegateParams {
                 staker,
-                operator: info.sender.clone(),
+                operator: operator.clone(),
                 public_key: approver_signature_and_expiry.signature.clone(),
                 salt: approver_salt,
             };
             delegate_to(deps, info, env, params, approver_signature_and_expiry)
         }
-
         ExecuteMsg::DelegateToBySignature {
             params,
             staker_public_key,
@@ -110,13 +103,22 @@ pub fn execute(
                 approver_signature_and_expiry,
             )
         }
+        ExecuteMsg::Undelegate { staker } => {
+            let (mut response, withdrawal_roots) = undelegate(deps, env, info, staker)?;
+            for root in withdrawal_roots {
+                response = response.add_attribute("withdrawal_root", root.to_base64());
+            }
 
-        ExecuteMsg::Undelegate { staker } => undelegate(deps, env, info, staker),
+            Ok(response)
+        }        
+        ExecuteMsg::QueueWithdrawals { queued_withdrawal_params } => {
+            let (response, withdrawal_roots) = queue_withdrawals(deps, env, info, queued_withdrawal_params)?;
+            
+            let root_strings: Vec<String> = withdrawal_roots.iter().map(|root| root.to_base64()).collect();
+            let response_with_roots = response.add_attribute("withdrawal_roots", root_strings.join(","));
 
-        ExecuteMsg::QueueWithdrawals {
-            queued_withdrawal_params,
-        } => queue_withdrawals(deps, env, info, queued_withdrawal_params),
-
+            Ok(response_with_roots)
+        }
         ExecuteMsg::CompleteQueuedWithdrawal {
             withdrawal,
             tokens,
@@ -131,7 +133,6 @@ pub fn execute(
             middleware_times_index,
             receive_as_tokens,
         ),
-
         ExecuteMsg::CompleteQueuedWithdrawals {
             withdrawals,
             tokens,
@@ -146,28 +147,46 @@ pub fn execute(
             middleware_times_indexes,
             receive_as_tokens,
         ),
-
         ExecuteMsg::IncreaseDelegatedShares {
             staker,
             strategy,
             shares,
         } => increase_delegated_shares(deps, info, staker, strategy, shares),
-
         ExecuteMsg::DecreaseDelegatedShares {
             staker,
             strategy,
             shares,
         } => decrease_delegated_shares(deps, info, staker, strategy, shares),
-
         ExecuteMsg::SetMinWithdrawalDelayBlocks {
             new_min_withdrawal_delay_blocks,
         } => set_min_withdrawal_delay_blocks(deps, info, new_min_withdrawal_delay_blocks),
-
         ExecuteMsg::SetStrategyWithdrawalDelayBlocks {
             strategies,
             withdrawal_delay_blocks,
         } => set_strategy_withdrawal_delay_blocks(deps, info, strategies, withdrawal_delay_blocks),
+        ExecuteMsg::TransferOwnership { new_owner } => {
+            let new_owner_addr: Addr = Addr::unchecked(new_owner);
+            transfer_ownership(deps, info, new_owner_addr)
+        }
     }
+}
+
+pub fn transfer_ownership(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_owner: Addr,
+) -> Result<Response, ContractError> {
+    let current_owner = OWNER.load(deps.storage)?;
+
+    if current_owner != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    OWNER.save(deps.storage, &new_owner)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "transfer_ownership")
+        .add_attribute("new_owner", new_owner.to_string()))
 }
 
 fn _only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
@@ -510,8 +529,7 @@ pub fn undelegate(
     env: Env,
     info: MessageInfo,
     staker: Addr,
-) -> Result<Response, ContractError> {
-    // Ensure the staker is delegated
+) -> Result<(Response, Vec<Binary>), ContractError> {
     if DELEGATED_TO.may_load(deps.storage, &staker)?.is_none() {
         return Err(ContractError::StakerNotDelegated {});
     }
@@ -521,14 +539,12 @@ pub fn undelegate(
         return Err(ContractError::OperatorCannotBeUndelegated {});
     }
 
-    // Ensure the staker is not the zero address
     if staker == Addr::unchecked("0") {
         return Err(ContractError::CannotBeZero {});
     }
 
     let operator = DELEGATED_TO.load(deps.storage, &staker)?;
 
-    // Ensure the caller is the staker, operator, or delegation approver
     let operator_details = OPERATOR_DETAILS.load(deps.storage, &operator)?;
     if info.sender != staker && info.sender != operator && info.sender != operator_details.delegation_approver {
         return Err(ContractError::Unauthorized {});
@@ -538,6 +554,7 @@ pub fn undelegate(
     let (strategies, shares) = get_delegatable_shares(deps.as_ref(), staker.clone())?;
 
     let mut response = Response::new();
+    let mut withdrawal_roots = Vec::new(); 
 
     // Emit an event if this action was not initiated by the staker themselves
     if info.sender != staker {
@@ -548,7 +565,6 @@ pub fn undelegate(
         );
     }
 
-    // Emit the undelegation event
     response = response.add_event(
         Event::new("StakerUndelegated")
             .add_attribute("staker", staker.to_string())
@@ -573,13 +589,21 @@ pub fn undelegate(
                 single_share,
             )?;
 
+            let withdrawal_root = withdrawal_response.attributes.iter()
+                .find(|attr| attr.key == "withdrawal_root")
+                .map(|attr| Binary::from_base64(&attr.value).unwrap());
+
+            if let Some(root) = withdrawal_root {
+                withdrawal_roots.push(root);
+        }
+
             response = response.add_attributes(withdrawal_response.attributes);
             response = response.add_events(withdrawal_response.events);
             response = response.add_submessages(withdrawal_response.messages);
         }
     }
 
-    Ok(response)
+    Ok((response, withdrawal_roots)) 
 }
 
 pub fn get_delegatable_shares(
@@ -589,7 +613,6 @@ pub fn get_delegatable_shares(
     let state = DELEGATION_MANAGER_STATE.load(deps.storage)?;
     let strategy_manager = state.strategy_manager;
 
-    // Query the strategy manager for the staker's deposits
     let query = WasmQuery::Smart {
         contract_addr: strategy_manager.to_string(),
         msg: to_json_binary(&StrategyManagerQueryMsg::GetDeposits { staker: staker.clone() })?,
@@ -628,9 +651,7 @@ fn _increase_operator_shares(
         return Err(ContractError::Underflow {});
     }
 
-    let current_shares = OPERATOR_SHARES
-        .may_load(deps.storage, (&operator, &strategy))?
-        .unwrap_or_else(Uint128::zero);
+    let current_shares = OPERATOR_SHARES.may_load(deps.storage, (&operator, &strategy))?.unwrap_or_else(Uint128::zero);
 
     let new_shares = current_shares.checked_add(shares).map_err(|_| ContractError::Underflow)?;
     OPERATOR_SHARES.save(deps.storage, (&operator, &strategy), &new_shares)?;
@@ -691,12 +712,13 @@ pub fn queue_withdrawals(
     env: Env,
     info: MessageInfo,
     queued_withdrawal_params: Vec<QueuedWithdrawalParams>,
-) -> Result<Response, ContractError> {
+) -> Result<(Response, Vec<Binary>), ContractError> {
     let operator = DELEGATED_TO
         .may_load(deps.storage, &info.sender)?
         .unwrap_or_else(|| Addr::unchecked(""));
 
     let mut response = Response::new();
+    let mut withdrawal_roots = Vec::new();
 
     for params in queued_withdrawal_params.iter() {
         if params.strategies.len() != params.shares.len() {
@@ -716,12 +738,21 @@ pub fn queue_withdrawals(
             params.shares.clone(),
         )?;
 
+        for event in &withdrawal_response.events {
+            if event.ty == "WithdrawalQueued" {
+                if let Some(attr) = event.attributes.iter().find(|attr| attr.key == "withdrawal_root") {
+                    let withdrawal_root = Binary::from_base64(&attr.value).unwrap();
+                    withdrawal_roots.push(withdrawal_root);
+                }
+            }
+        }
+
         response = response
             .add_submessages(withdrawal_response.messages)
             .add_events(withdrawal_response.events);
     }
 
-    Ok(response)
+    Ok((response, withdrawal_roots))
 }
 
 pub fn complete_queued_withdrawals(
