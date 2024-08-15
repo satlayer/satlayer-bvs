@@ -816,7 +816,6 @@ fn _complete_queued_withdrawal(
 ) -> Result<Response, ContractError> {
     let state = DELEGATION_MANAGER_STATE.load(deps.storage)?;
 
-    // Calculate the withdrawal root
     let withdrawal_root = calculate_withdrawal_root(&withdrawal)?;
 
     // Ensure the withdrawal is pending
@@ -984,6 +983,8 @@ fn _remove_shares_and_queue_withdrawal(
             .add_attribute("withdrawer", withdrawer.to_string())
     );
 
+    println!("Withdrawal queued with root: {}", withdrawal_root.to_base64());
+
     Ok(response)
 }
 
@@ -1028,17 +1029,17 @@ pub fn query(
         QueryMsg::OperatorDetails { operator } => to_json_binary(&query_operator_details(deps, operator)?),
         QueryMsg::DelegationApprover { operator } => to_json_binary(&query_delegation_approver(deps, operator)?),
         QueryMsg::StakerOptOutWindowBlocks { operator } => to_json_binary(&query_staker_opt_out_window_blocks(deps, operator)?),
-        QueryMsg::GetOperatorShares { operator, strategies } => to_json_binary(&query_get_operator_shares(deps, operator, strategies)?),
+        QueryMsg::GetOperatorShares { operator, strategies } => to_json_binary(&query_operator_shares(deps, operator, strategies)?),
         QueryMsg::GetDelegatableShares { staker } => to_json_binary(&get_delegatable_shares(deps, staker)?),
-        QueryMsg::GetWithdrawalDelay { strategies } => to_json_binary(&query_get_withdrawal_delay(deps, strategies)?),
+        QueryMsg::GetWithdrawalDelay { strategies } => to_json_binary(&query_withdrawal_delay(deps, strategies)?),
         QueryMsg::CalculateWithdrawalRoot { withdrawal } => to_json_binary(&calculate_withdrawal_root(&withdrawal)?),
         QueryMsg::CurrentStakerDelegationDigestHash { current_staker_digest_hash_params } => to_json_binary(&calculate_current_staker_delegation_digest_hash(current_staker_digest_hash_params)?),
         QueryMsg::StakerDelegationDigestHash { staker_digest_hash_params } => to_json_binary(&calculate_staker_delegation_digest_hash(&staker_digest_hash_params)),
-        QueryMsg::DelegationApprovalDigestHash { approver_digest_hash_params } => to_json_binary(&calculate_delegation_approval_digest_hash(&approver_digest_hash_params))
+        QueryMsg::DelegationApprovalDigestHash { approver_digest_hash_params } => to_json_binary(&calculate_delegation_approval_digest_hash(&approver_digest_hash_params)),
+        QueryMsg::CalculateCurrentStakerDelegationDigestHash { current_staker_digest_hash_params } => to_json_binary(&calculate_current_staker_delegation_digest_hash(current_staker_digest_hash_params)?),
     }
 }
 
-// VIEW FUNCTIONS
 pub fn query_is_delegated(deps: Deps, staker: Addr) -> StdResult<bool> {
     let is_delegated = DELEGATED_TO.may_load(deps.storage, &staker)?.unwrap_or_else(|| Addr::unchecked("")) != Addr::unchecked("");
     Ok(is_delegated)
@@ -1064,7 +1065,7 @@ pub fn query_staker_opt_out_window_blocks(deps: Deps, operator: Addr) -> StdResu
     Ok(details.staker_opt_out_window_blocks)
 }
 
-pub fn query_get_operator_shares(deps: Deps, operator: Addr, strategies: Vec<Addr>) -> StdResult<Vec<Uint128>> {
+pub fn query_operator_shares(deps: Deps, operator: Addr, strategies: Vec<Addr>) -> StdResult<Vec<Uint128>> {
     let mut shares = Vec::with_capacity(strategies.len());
     for strategy in strategies.iter() {
         let share = OPERATOR_SHARES.may_load(deps.storage, (&operator, strategy))?.unwrap_or_else(Uint128::zero);
@@ -1073,7 +1074,7 @@ pub fn query_get_operator_shares(deps: Deps, operator: Addr, strategies: Vec<Add
     Ok(shares)
 }
 
-pub fn query_get_withdrawal_delay(deps: Deps, strategies: Vec<Addr>) -> StdResult<Vec<u64>> {
+pub fn query_withdrawal_delay(deps: Deps, strategies: Vec<Addr>) -> StdResult<Vec<u64>> {
     let min_withdrawal_delay_blocks = MIN_WITHDRAWAL_DELAY_BLOCKS.load(deps.storage)?;
 
     let mut withdrawal_delays = vec![];
@@ -1290,7 +1291,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-
+    
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager_addr"),
             slasher: Addr::unchecked("slasher_addr"),
@@ -1299,13 +1300,18 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1_addr"), Addr::unchecked("strategy2_addr")],
             withdrawal_delay_blocks: vec![50, 60],
         };
-
-
-        let _res = instantiate(deps.as_mut(), env, info, msg.clone()).unwrap();
-
-        let owner_info: MessageInfo = message_info(&Addr::unchecked("owner_addr"), &[]);
+    
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
+    
+        let owner_info = message_info(&Addr::unchecked("owner_addr"), &[]);
         let new_min_delay = MAX_WITHDRAWAL_DELAY_BLOCKS + 1;
-        let result = set_min_withdrawal_delay_blocks(deps.as_mut(), owner_info, new_min_delay);
+    
+        let execute_msg = ExecuteMsg::SetMinWithdrawalDelayBlocks {
+            new_min_withdrawal_delay_blocks: new_min_delay,
+        };
+    
+        let result = execute(deps.as_mut(), env, owner_info, execute_msg);
+    
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -1313,7 +1319,7 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    }
+    }    
 
     #[test]
     fn test_set_min_withdrawal_delay_blocks_internal() {
