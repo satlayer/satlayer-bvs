@@ -1526,9 +1526,9 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-
-        let info_operator: MessageInfo = message_info(&Addr::unchecked("operator"), &[]);
-        let info_delegation_approver: MessageInfo = message_info(&Addr::unchecked("approver"), &[]);
+    
+        let info_operator = message_info(&Addr::unchecked("operator"), &[]);
+        let info_delegation_approver = message_info(&Addr::unchecked("approver"), &[]);
     
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
@@ -1538,7 +1538,7 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
     
         let operator = info_operator.sender.clone();
     
@@ -1556,7 +1556,11 @@ mod tests {
             staker_opt_out_window_blocks: 200,
         };
     
-        let res = modify_operator_details(deps.as_mut(), info_operator.clone(), new_operator_details.clone()).unwrap();
+        // Modify operator details using execute function
+        let modify_msg = ExecuteMsg::ModifyOperatorDetails {
+            new_operator_details: new_operator_details.clone(),
+        };
+        let res = execute(deps.as_mut(), env.clone(), info_operator.clone(), modify_msg).unwrap();
     
         // Check events
         assert_eq!(res.events.len(), 1);
@@ -1580,7 +1584,10 @@ mod tests {
             staker_opt_out_window_blocks: MAX_STAKER_OPT_OUT_WINDOW_BLOCKS + 1,
         };
     
-        let res = modify_operator_details(deps.as_mut(), info_operator.clone(), invalid_operator_details);
+        let modify_msg = ExecuteMsg::ModifyOperatorDetails {
+            new_operator_details: invalid_operator_details,
+        };
+        let res = execute(deps.as_mut(), env.clone(), info_operator.clone(), modify_msg);
         assert!(res.is_err());
         if let Err(err) = res {
             match err {
@@ -1596,7 +1603,10 @@ mod tests {
             staker_opt_out_window_blocks: 50,
         };
     
-        let res = modify_operator_details(deps.as_mut(), info_operator.clone(), decreasing_operator_details);
+        let modify_msg = ExecuteMsg::ModifyOperatorDetails {
+            new_operator_details: decreasing_operator_details,
+        };
+        let res = execute(deps.as_mut(), env, info_operator, modify_msg);
         assert!(res.is_err());
         if let Err(err) = res {
             match err {
@@ -1611,8 +1621,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-
-        // Instantiate the contract
+    
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
             slasher: Addr::unchecked("slasher"),
@@ -1621,8 +1630,8 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+    
         // Initialize operator details
         let operator = Addr::unchecked("operator1");
         let initial_operator_details = OperatorDetails {
@@ -1631,28 +1640,38 @@ mod tests {
             delegation_approver: Addr::unchecked("approver1"),
         };
         OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &initial_operator_details).unwrap();
-
-        // Test setting operator details with valid data
+    
+        // Test setting operator details with valid data using ExecuteMsg
         let new_operator_details = OperatorDetails {
             deprecated_earnings_receiver: Addr::unchecked("earnings_receiver2"),
             staker_opt_out_window_blocks: 200,
             delegation_approver: Addr::unchecked("approver2"),
         };
-
-        let res = _set_operator_details(deps.as_mut(), operator.clone(), new_operator_details.clone()).unwrap();
+    
+        let modify_msg = ExecuteMsg::ModifyOperatorDetails {
+            new_operator_details: new_operator_details.clone(),
+        };
+    
+        let operator_info = message_info(&operator, &[]);
+        let res = execute(deps.as_mut(), env.clone(), operator_info.clone(), modify_msg).unwrap();
+        
         assert_eq!(res.events.len(), 1);
         assert_eq!(res.events[0].ty, "OperatorDetailsSet");
         assert_eq!(res.events[0].attributes[0].value, operator.to_string());
         assert_eq!(res.events[0].attributes[1].value, new_operator_details.staker_opt_out_window_blocks.to_string());
-
+    
         // Test setting operator details with staker_opt_out_window_blocks exceeding max
         let invalid_operator_details = OperatorDetails {
             deprecated_earnings_receiver: Addr::unchecked("earnings_receiver3"),
             staker_opt_out_window_blocks: MAX_STAKER_OPT_OUT_WINDOW_BLOCKS + 1,
             delegation_approver: Addr::unchecked("approver3"),
         };
-
-        let res = _set_operator_details(deps.as_mut(), operator.clone(), invalid_operator_details);
+    
+        let modify_msg = ExecuteMsg::ModifyOperatorDetails {
+            new_operator_details: invalid_operator_details,
+        };
+    
+        let res = execute(deps.as_mut(), env.clone(), operator_info.clone(), modify_msg);
         assert!(res.is_err());
         if let Err(err) = res {
             match err {
@@ -1660,15 +1679,19 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-
+    
         // Test setting operator details with staker_opt_out_window_blocks decreasing
         let decreasing_operator_details = OperatorDetails {
             deprecated_earnings_receiver: Addr::unchecked("earnings_receiver4"),
             staker_opt_out_window_blocks: 50,
             delegation_approver: Addr::unchecked("approver4"),
         };
-
-        let res = _set_operator_details(deps.as_mut(), operator.clone(), decreasing_operator_details);
+    
+        let modify_msg = ExecuteMsg::ModifyOperatorDetails {
+            new_operator_details: decreasing_operator_details,
+        };
+    
+        let res = execute(deps.as_mut(), env, operator_info, modify_msg);
         assert!(res.is_err());
         if let Err(err) = res {
             match err {
@@ -1676,7 +1699,7 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    }
+    }    
 
     #[test]
     fn test_increase_operator_shares_internal() {
