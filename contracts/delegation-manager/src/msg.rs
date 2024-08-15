@@ -1,4 +1,4 @@
-use cosmwasm_schema::cw_serde;
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Binary, Uint128, Uint64};
 use crate::utils::{Withdrawal, CurrentStakerDigestHashParams, StakerDigestHashParams, ApproverDigestHashParams, DelegateParams};
 use serde::{Serialize, Deserialize};
@@ -29,6 +29,7 @@ pub enum ExecuteMsg {
     },
     DelegateTo {
         staker: Addr,
+        operator: Addr,
         approver_signature_and_expiry: SignatureWithExpiry,
         approver_salt: Binary,
     },
@@ -73,22 +74,52 @@ pub enum ExecuteMsg {
         strategies: Vec<Addr>,
         withdrawal_delay_blocks: Vec<Uint64>,
     },
+    TransferOwnership {
+        new_owner: Addr,
+    },
 }
 
 #[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(bool)]
     IsDelegated { staker: Addr },
+
+    #[returns(bool)]
     IsOperator { operator: Addr },
+
+    #[returns(OperatorDetails)]
     OperatorDetails { operator: Addr },
+
+    #[returns(Addr)]
     DelegationApprover { operator: Addr },
+
+    #[returns(u64)]
     StakerOptOutWindowBlocks { operator: Addr },
+
+    #[returns(Vec<Uint128>)]
     GetOperatorShares { operator: Addr, strategies: Vec<Addr> },
+
+    #[returns((Vec<Addr>, Vec<Uint128>))]
     GetDelegatableShares { staker: Addr },
+
+    #[returns(Vec<u64>)]
     GetWithdrawalDelay { strategies: Vec<Addr> },
+
+    #[returns(Binary)]
     CalculateWithdrawalRoot { withdrawal: Withdrawal },
+
+    #[returns(Binary)]
     CurrentStakerDelegationDigestHash {current_staker_digest_hash_params: CurrentStakerDigestHashParams },
+
+    #[returns(Binary)]
     StakerDelegationDigestHash { staker_digest_hash_params: StakerDigestHashParams },
+
+    #[returns(Binary)]
     DelegationApprovalDigestHash { approver_digest_hash_params: ApproverDigestHashParams },
+
+    #[returns(Binary)]
+    CalculateCurrentStakerDelegationDigestHash { current_staker_digest_hash_params: CurrentStakerDigestHashParams },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
