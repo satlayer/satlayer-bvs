@@ -1371,7 +1371,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-
+    
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
             slasher: Addr::unchecked("slasher"),
@@ -1380,30 +1380,42 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-
+        let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+    
         // Test set_strategy_withdrawal_delay_blocks
         let strategies = vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")];
         let withdrawal_delay_blocks = vec![Uint64::new(15), Uint64::new(20)];
-
-        let owner_info: MessageInfo = message_info(&Addr::unchecked("owner"), &[]);
-
-        let res = set_strategy_withdrawal_delay_blocks(deps.as_mut(), owner_info.clone(), strategies.clone(), withdrawal_delay_blocks.clone()).unwrap();
-
+    
+        let owner_info = message_info(&Addr::unchecked("owner"), &[]);
+        let execute_msg = ExecuteMsg::SetStrategyWithdrawalDelayBlocks {
+            strategies: strategies.clone(),
+            withdrawal_delay_blocks: withdrawal_delay_blocks.clone(),
+        };
+    
+        let res = execute(deps.as_mut(), env.clone(), owner_info.clone(), execute_msg).unwrap();
+    
         assert_eq!(res.events.len(), 2);
         assert_eq!(res.events[0].ty, "StrategyWithdrawalDelayBlocksSet");
         assert_eq!(res.events[0].attributes[0].value, "strategy1");
         assert_eq!(res.events[0].attributes[1].value, "5");
         assert_eq!(res.events[0].attributes[2].value, "15");
-
+    
         assert_eq!(res.events[1].ty, "StrategyWithdrawalDelayBlocksSet");
         assert_eq!(res.events[1].attributes[0].value, "strategy2");
         assert_eq!(res.events[1].attributes[1].value, "10");
         assert_eq!(res.events[1].attributes[2].value, "20");
-
+    
+        // Test unauthorized attempt
         let non_owner_info = message_info(&Addr::unchecked("not_owner"), &[]);
-
-        let res = set_strategy_withdrawal_delay_blocks(deps.as_mut(), non_owner_info, strategies.clone(), withdrawal_delay_blocks.clone());
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            non_owner_info,
+            ExecuteMsg::SetStrategyWithdrawalDelayBlocks {
+                strategies: strategies.clone(),
+                withdrawal_delay_blocks: withdrawal_delay_blocks.clone(),
+            },
+        );
         assert!(res.is_err());
         if let Err(err) = res {
             match err {
@@ -1411,9 +1423,18 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-
+    
+        // Test input length mismatch error
         let strategies = vec![Addr::unchecked("strategy1")];
-        let res = set_strategy_withdrawal_delay_blocks(deps.as_mut(), owner_info.clone(), strategies, withdrawal_delay_blocks.clone());
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            owner_info.clone(),
+            ExecuteMsg::SetStrategyWithdrawalDelayBlocks {
+                strategies,
+                withdrawal_delay_blocks: withdrawal_delay_blocks.clone(),
+            },
+        );
         assert!(res.is_err());
         if let Err(err) = res {
             match err {
@@ -1421,10 +1442,19 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-
+    
+        // Test exceeding max withdrawal delay blocks
         let strategies = vec![Addr::unchecked("strategy1")];
         let withdrawal_delay_blocks = vec![Uint64::new(MAX_WITHDRAWAL_DELAY_BLOCKS + 1)];
-        let res = set_strategy_withdrawal_delay_blocks(deps.as_mut(), owner_info.clone(), strategies, withdrawal_delay_blocks);
+        let res = execute(
+            deps.as_mut(),
+            env,
+            owner_info.clone(),
+            ExecuteMsg::SetStrategyWithdrawalDelayBlocks {
+                strategies,
+                withdrawal_delay_blocks,
+            },
+        );
         assert!(res.is_err());
         if let Err(err) = res {
             match err {
@@ -1432,7 +1462,7 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    }
+    }    
 
     #[test]
     fn test_set_strategy_withdrawal_delay_blocks_internal() {
