@@ -1065,6 +1065,7 @@ fn _withdraw_shares_as_tokens(
     Ok(response)
 }
 
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(
     deps: Deps,
     _env: Env,
@@ -1072,18 +1073,63 @@ pub fn query(
 ) -> StdResult<Binary> {
     match msg {
         QueryMsg::IsDelegated { staker } => to_json_binary(&query_is_delegated(deps, staker)?),
+
         QueryMsg::IsOperator { operator } => to_json_binary(&query_is_operator(deps, operator)?),
+
         QueryMsg::OperatorDetails { operator } => to_json_binary(&query_operator_details(deps, operator)?),
+
         QueryMsg::DelegationApprover { operator } => to_json_binary(&query_delegation_approver(deps, operator)?),
+
         QueryMsg::StakerOptOutWindowBlocks { operator } => to_json_binary(&query_staker_opt_out_window_blocks(deps, operator)?),
+
         QueryMsg::GetOperatorShares { operator, strategies } => to_json_binary(&query_operator_shares(deps, operator, strategies)?),
+
         QueryMsg::GetDelegatableShares { staker } => to_json_binary(&get_delegatable_shares(deps, staker)?),
+
         QueryMsg::GetWithdrawalDelay { strategies } => to_json_binary(&query_withdrawal_delay(deps, strategies)?),
+
         QueryMsg::CalculateWithdrawalRoot { withdrawal } => to_json_binary(&calculate_withdrawal_root(&withdrawal)?),
-        QueryMsg::CurrentStakerDelegationDigestHash { current_staker_digest_hash_params } => to_json_binary(&calculate_current_staker_delegation_digest_hash(current_staker_digest_hash_params)?),
-        QueryMsg::StakerDelegationDigestHash { staker_digest_hash_params } => to_json_binary(&calculate_staker_delegation_digest_hash(&staker_digest_hash_params)),
-        QueryMsg::DelegationApprovalDigestHash { approver_digest_hash_params } => to_json_binary(&calculate_delegation_approval_digest_hash(&approver_digest_hash_params)),
+
+        QueryMsg::StakerDelegationDigestHash { staker_digest_hash_params 
+        } => {
+            let public_key_binary = Binary::from_base64(&staker_digest_hash_params.staker_public_key)?;
+
+            let params = StakerDigestHashParams {
+                staker: staker_digest_hash_params.staker,
+                staker_nonce: staker_digest_hash_params.staker_nonce,
+                operator: staker_digest_hash_params.operator,
+                staker_public_key: public_key_binary,
+                expiry: staker_digest_hash_params.expiry,
+                chain_id: staker_digest_hash_params.chain_id,
+                contract_addr: staker_digest_hash_params.contract_addr,
+            };
+            to_json_binary(&calculate_staker_delegation_digest_hash(params))},
+
+        QueryMsg::DelegationApprovalDigestHash { approver_digest_hash_params 
+        } => {
+            let public_key_binary = Binary::from_base64(&approver_digest_hash_params.approver_public_key)?;
+            let salt = Binary::from_base64(&approver_digest_hash_params.approver_salt)?;
+
+            let params = ApproverDigestHashParams {
+                staker: approver_digest_hash_params.staker,
+                operator: approver_digest_hash_params.operator,
+                approver: approver_digest_hash_params.approver,
+                approver_public_key: public_key_binary,
+                approver_salt: salt,
+                expiry: approver_digest_hash_params.expiry,
+                chain_id: approver_digest_hash_params.chain_id,
+                contract_addr: approver_digest_hash_params.contract_addr,
+            };
+            to_json_binary(&calculate_delegation_approval_digest_hash(params))},
+
         QueryMsg::CalculateCurrentStakerDelegationDigestHash { current_staker_digest_hash_params } => to_json_binary(&calculate_current_staker_delegation_digest_hash(current_staker_digest_hash_params)?),
+
+        QueryMsg::GetStakerNonce { staker } => to_json_binary(&query_staker_nonce(deps, staker)?),
+
+        QueryMsg::GetOperatorStakers { operator } => {
+            let stakers_and_shares = query_operator_stakers(deps, operator)?;
+            to_json_binary(&stakers_and_shares)
+        }
     }
 }
 
@@ -1093,8 +1139,17 @@ pub fn query_is_delegated(deps: Deps, staker: Addr) -> StdResult<bool> {
 }
 
 pub fn query_is_operator(deps: Deps, operator: Addr) -> StdResult<bool> {
-    let is_operator = operator != Addr::unchecked("0") && DELEGATED_TO.may_load(deps.storage, &operator)? == Some(operator.clone());
-    Ok(is_operator)
+    if operator == Addr::unchecked("") {
+        return Ok(false); 
+    }
+
+    let delegated_to_operator = DELEGATED_TO.may_load(deps.storage, &operator)?;
+
+    if let Some(stored_operator) = delegated_to_operator {
+        Ok(stored_operator == operator)
+    } else {
+        Ok(false)
+    }
 }
 
 pub fn query_operator_details(deps: Deps, operator: Addr) -> StdResult<OperatorDetails> {
@@ -1140,7 +1195,7 @@ pub fn query_calculate_current_staker_delegation_digest_hash(
     staker: Addr,
     operator: Addr,
     staker_public_key: Binary,
-    expiry: u64
+    expiry: Uint64
 ) -> StdResult<Binary> {
     let current_staker_nonce: u128 = STAKER_NONCE.may_load(deps.storage, &staker)?.unwrap_or(0);
 
@@ -1149,13 +1204,51 @@ pub fn query_calculate_current_staker_delegation_digest_hash(
         operator: operator.clone(),
         staker_public_key: staker_public_key.clone(), 
         expiry,
-        current_nonce: current_staker_nonce,
+        current_nonce: Uint128::new(current_staker_nonce),
         chain_id: env.block.chain_id.clone(),
         contract_addr: env.contract.address.clone()
     };
 
     calculate_current_staker_delegation_digest_hash(params)
 }
+
+pub fn query_staker_nonce(deps: Deps, staker: Addr) -> StdResult<Uint128> {
+    let nonce = STAKER_NONCE.may_load(deps.storage, &staker)?.unwrap_or(0);
+    Ok(Uint128::new(nonce))
+}
+
+pub fn query_operator_stakers(deps: Deps, operator: Addr) -> StdResult<Vec<(Addr, Uint128)>> {
+    let mut stakers_and_shares: Vec<(Addr, Uint128)> = Vec::new();
+
+    let stakers: Vec<Addr> = DELEGATED_TO
+        .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+        .filter_map(|item| {
+            let (staker, delegated_operator) = item.ok()?;
+            if delegated_operator == operator {
+                Some(staker)
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    for staker in stakers.iter() {
+        let mut total_shares = Uint128::zero();
+
+        // Iterate over all strategies to sum the shares for each staker
+        for item in OPERATOR_SHARES.range(deps.storage, None, None, cosmwasm_std::Order::Ascending) {
+            let ((stored_operator, _strategy), shares) = item?;
+            if stored_operator == operator {
+                total_shares += shares;
+            }
+        }
+
+        stakers_and_shares.push((staker.clone(), total_shares));
+    }
+
+    Ok(stakers_and_shares)
+}
+
 
 #[cfg(test)]
 mod tests {
