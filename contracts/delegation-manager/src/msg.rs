@@ -1,6 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Binary, Uint128, Uint64};
-use crate::utils::{Withdrawal, CurrentStakerDigestHashParams, StakerDigestHashParams, ApproverDigestHashParams, DelegateParams};
+use crate::utils::{Withdrawal, CurrentStakerDigestHashParams, QueryStakerDigestHashParams, QueryApproverDigestHashParams, ExecuteDelegateParams};
 use serde::{Serialize, Deserialize};
 use schemars::JsonSchema;
 
@@ -28,14 +28,14 @@ pub enum ExecuteMsg {
         metadata_uri: String,
     },
     DelegateTo {
-        params: DelegateParams,
-        approver_signature_and_expiry: SignatureWithExpiry,
+        params: ExecuteDelegateParams,
+        approver_signature_and_expiry: ExecuteSignatureWithExpiry,
     },
     DelegateToBySignature {
-        params: DelegateParams,
-        staker_public_key: Binary,
-        staker_signature_and_expiry: SignatureWithExpiry,
-        approver_signature_and_expiry: SignatureWithExpiry,
+        params: ExecuteDelegateParams,
+        staker_public_key: String,
+        staker_signature_and_expiry: ExecuteSignatureWithExpiry,
+        approver_signature_and_expiry: ExecuteSignatureWithExpiry,
     },
     Undelegate {
         staker: Addr,
@@ -108,16 +108,19 @@ pub enum QueryMsg {
     CalculateWithdrawalRoot { withdrawal: Withdrawal },
 
     #[returns(Binary)]
-    CurrentStakerDelegationDigestHash {current_staker_digest_hash_params: CurrentStakerDigestHashParams },
+    StakerDelegationDigestHash { staker_digest_hash_params: QueryStakerDigestHashParams },
 
     #[returns(Binary)]
-    StakerDelegationDigestHash { staker_digest_hash_params: StakerDigestHashParams },
-
-    #[returns(Binary)]
-    DelegationApprovalDigestHash { approver_digest_hash_params: ApproverDigestHashParams },
+    DelegationApprovalDigestHash { approver_digest_hash_params: QueryApproverDigestHashParams },
 
     #[returns(Binary)]
     CalculateCurrentStakerDelegationDigestHash { current_staker_digest_hash_params: CurrentStakerDigestHashParams },
+    
+    #[returns(Uint128)]
+    GetStakerNonce { staker: Addr },
+
+    #[returns(Vec<(Addr, Uint128)>)]
+    GetOperatorStakers { operator: Addr },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -137,5 +140,11 @@ pub struct QueuedWithdrawalParams {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct SignatureWithExpiry {
     pub signature: Binary,
-    pub expiry: u64,
+    pub expiry: Uint64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ExecuteSignatureWithExpiry {
+    pub signature: String,
+    pub expiry: Uint64,
 }

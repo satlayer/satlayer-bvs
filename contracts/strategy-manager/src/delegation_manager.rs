@@ -46,7 +46,7 @@ pub enum ExecuteMsg {
     IncreaseDelegatedShares {
         staker: Addr,
         strategy: Addr,
-        shares: u128,
+        shares: Uint128,
     },
     DecreaseDelegatedShares {
         staker: Addr,

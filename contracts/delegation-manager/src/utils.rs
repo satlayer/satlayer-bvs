@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, StdResult, Binary, Uint128, to_json_binary};
+use cosmwasm_std::{Addr, StdResult, Binary, Uint128, to_json_binary, Uint64};
 use sha2::{Sha256, Digest};
 use cosmwasm_crypto::secp256k1_verify;
 use serde::{Serialize, Deserialize};
@@ -24,13 +24,44 @@ pub struct DelegateParams {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ExecuteDelegateParams {
+    pub staker: Addr,
+    pub operator: Addr,
+    pub public_key: String,
+    pub salt: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ApproverDigestHashParams {
     pub staker: Addr,
     pub operator: Addr,
     pub approver: Addr,
     pub approver_public_key: Binary, 
     pub approver_salt: Binary,
-    pub expiry: u64,
+    pub expiry: Uint64,
+    pub chain_id: String,
+    pub contract_addr: Addr,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct QueryApproverDigestHashParams {
+    pub staker: Addr,
+    pub operator: Addr,
+    pub approver: Addr,
+    pub approver_public_key: String, 
+    pub approver_salt: String,
+    pub expiry: Uint64,
+    pub chain_id: String,
+    pub contract_addr: Addr,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct QueryStakerDigestHashParams {
+    pub staker: Addr,
+    pub staker_nonce: Uint128,
+    pub operator: Addr,
+    pub staker_public_key: String, 
+    pub expiry: Uint64,
     pub chain_id: String,
     pub contract_addr: Addr,
 }
@@ -68,10 +99,10 @@ pub fn calculate_delegation_approval_digest_hash(params: ApproverDigestHashParam
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct StakerDigestHashParams {
     pub staker: Addr,
-    pub staker_nonce: u128,
+    pub staker_nonce: Uint128,
     pub operator: Addr,
     pub staker_public_key: Binary,
-    pub expiry: u64,
+    pub expiry: Uint64,
     pub chain_id: String,
     pub contract_addr: Addr,
 }
@@ -110,8 +141,8 @@ pub struct CurrentStakerDigestHashParams {
     pub staker: Addr,
     pub operator: Addr,
     pub staker_public_key: Binary,
-    pub expiry: u64,
-    pub current_nonce: u128,
+    pub expiry: Uint64,
+    pub current_nonce: Uint128,
     pub chain_id: String,
     pub contract_addr: Addr,
 }

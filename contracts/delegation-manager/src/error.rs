@@ -74,4 +74,7 @@ pub enum ContractError {
 
     #[error("DelegationManager._delegate: invalid signature")]
     InvalidSignature {},    
+
+    #[error("DelegationManager.increase_delegated_shares: not delegated")]
+    NotDelegated {},   
 }
