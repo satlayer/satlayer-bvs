@@ -28,10 +28,8 @@ pub enum ExecuteMsg {
         metadata_uri: String,
     },
     DelegateTo {
-        staker: Addr,
-        operator: Addr,
+        params: DelegateParams,
         approver_signature_and_expiry: SignatureWithExpiry,
-        approver_salt: Binary,
     },
     DelegateToBySignature {
         params: DelegateParams,

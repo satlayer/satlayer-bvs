@@ -71,4 +71,7 @@ pub enum ContractError {
 
     #[error("DelegationManager.undelegate: operators cannot be undelegated")]
     OperatorCannotBeUndelegated {},    
+
+    #[error("DelegationManager._delegate: invalid signature")]
+    InvalidSignature {},    
 }

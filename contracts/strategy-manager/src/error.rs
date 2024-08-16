@@ -32,4 +32,7 @@ pub enum ContractError {
 
     #[error("StrategyManager.remove_strategy_from_staker_strategy_list: strategy not found")]
     StrategyNotFound {},
+
+    #[error("StrategyManager._deposit_into_strategy: zero new shares")]
+    ZeroNewShares {},
 }

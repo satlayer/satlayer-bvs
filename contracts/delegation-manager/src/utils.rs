@@ -27,21 +27,21 @@ pub struct DelegateParams {
 pub struct ApproverDigestHashParams {
     pub staker: Addr,
     pub operator: Addr,
-    pub delegation_approver: Addr,
-    pub approver_public_key: Binary,
+    pub approver: Addr,
+    pub approver_public_key: Binary, 
     pub approver_salt: Binary,
     pub expiry: u64,
     pub chain_id: String,
     pub contract_addr: Addr,
 }
 
-pub fn calculate_delegation_approval_digest_hash(params: &ApproverDigestHashParams) -> Vec<u8> {
+pub fn calculate_delegation_approval_digest_hash(params: ApproverDigestHashParams) -> Vec<u8> {
     let struct_hash_input = [
         &sha256(DELEGATION_APPROVAL_TYPEHASH)[..],
-        params.delegation_approver.as_bytes(),
-        params.approver_public_key.as_slice(),
+        params.approver.as_bytes(),
         params.staker.as_bytes(),
         params.operator.as_bytes(),
+        &params.approver_public_key,
         params.approver_salt.as_slice(),
         &params.expiry.to_le_bytes(),
     ]
@@ -51,7 +51,7 @@ pub fn calculate_delegation_approval_digest_hash(params: &ApproverDigestHashPara
     let domain_separator = sha256(&[
         &sha256(DOMAIN_TYPEHASH)[..],
         &sha256(DOMAIN_NAME)[..],
-        &sha256(params.chain_id.as_bytes())[..],
+        params.chain_id.as_bytes(),
         params.contract_addr.as_bytes(),
     ].concat());
 
@@ -76,18 +76,7 @@ pub struct StakerDigestHashParams {
     pub contract_addr: Addr,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct CurrentStakerDigestHashParams {
-    pub staker: Addr,
-    pub operator: Addr,
-    pub staker_public_key: Binary,
-    pub expiry: u64,
-    pub current_nonce: u128,
-    pub chain_id: String,
-    pub contract_addr: Addr,
-}
-
-pub fn calculate_staker_delegation_digest_hash(params: &StakerDigestHashParams) -> Vec<u8> {
+pub fn calculate_staker_delegation_digest_hash(params: StakerDigestHashParams) -> Vec<u8> {
     let struct_hash_input = [
         &sha256(STAKER_DELEGATION_TYPEHASH)[..],
         params.staker.as_bytes(),
@@ -116,8 +105,18 @@ pub fn calculate_staker_delegation_digest_hash(params: &StakerDigestHashParams) 
     sha256(&digest_hash_input)
 }
 
-pub fn calculate_current_staker_delegation_digest_hash(params:CurrentStakerDigestHashParams) -> StdResult<Binary> {
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct CurrentStakerDigestHashParams {
+    pub staker: Addr,
+    pub operator: Addr,
+    pub staker_public_key: Binary,
+    pub expiry: u64,
+    pub current_nonce: u128,
+    pub chain_id: String,
+    pub contract_addr: Addr,
+}
 
+pub fn calculate_current_staker_delegation_digest_hash(params:CurrentStakerDigestHashParams) -> StdResult<Binary> {
     let params = StakerDigestHashParams {
         staker: params.staker.clone(),
         staker_nonce: params.current_nonce,
@@ -128,7 +127,7 @@ pub fn calculate_current_staker_delegation_digest_hash(params:CurrentStakerDiges
         contract_addr: params.contract_addr.clone()
     };
 
-    let digest_hash = calculate_staker_delegation_digest_hash(&params);
+    let digest_hash = calculate_staker_delegation_digest_hash(params);
     to_json_binary(&digest_hash)
 }
 

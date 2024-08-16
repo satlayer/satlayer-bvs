@@ -1,5 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint128};
+use crate::state::StrategyState;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -56,6 +57,9 @@ pub enum QueryMsg {
 
     #[returns(Uint128)]
     UnderlyingToShares { amount_underlying: Uint128 },
+
+    #[returns(StrategyState)]
+    GetStrategyState {},
 }
 
 #[cw_serde]

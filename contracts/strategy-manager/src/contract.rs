@@ -1,6 +1,7 @@
 use crate::{
     error::ContractError,
     strategy_base,
+    delegation_manager,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{
         StrategyManagerState, STRATEGY_MANAGER_STATE, STRATEGY_IS_WHITELISTED_FOR_DEPOSIT, STRATEGY_WHITELISTER, OWNER,
@@ -9,17 +10,21 @@ use crate::{
     utils::{calculate_digest_hash, recover, DigestHashParams, DepositWithSignatureParams, DEPOSIT_TYPEHASH, DOMAIN_TYPEHASH, DOMAIN_NAME},
 };
 use cosmwasm_std::{
-    entry_point, to_json_binary, Addr, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, WasmMsg, SubMsg,
-    Uint64, Binary, WasmQuery, Event
+    entry_point, to_json_binary, Addr, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, WasmMsg,
+    Uint64, Binary, WasmQuery, Event, QuerierWrapper, QueryRequest
 };
-use strategy_base::ExecuteMsg as StrategyExecuteMsg;
-use std::str::FromStr;
+use strategy_base::{ExecuteMsg as StrategyExecuteMsg, QueryMsg as StrategyQueryMsg, StrategyState};
+use delegation_manager::ExecuteMsg as DelegationExecuteMsg;
 
-use cw20::Cw20ExecuteMsg;
+use cw20::{Cw20ExecuteMsg, Cw20QueryMsg, BalanceResponse as Cw20BalanceResponse};
+
 use cw2::set_contract_version;
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+const SHARES_OFFSET: Uint128 = Uint128::new(1_000);
+const BALANCE_OFFSET: Uint128 = Uint128::new(1_000);
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -270,7 +275,7 @@ pub fn deposit_into_strategy(
 }
 
 fn _deposit_into_strategy(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     staker: Addr,
@@ -281,16 +286,22 @@ fn _deposit_into_strategy(
     _only_strategies_whitelisted_for_deposit(deps.as_ref(), &strategy)?;
 
     let transfer_msg = _create_transfer_msg(&info, &token, &strategy, amount)?;
+
+    let strategy_state: StrategyState = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: strategy.to_string(),
+        msg: to_json_binary(&StrategyQueryMsg::GetStrategyState {})?,
+    }))?;
+
+    let balance = _token_balance(&deps.querier, &strategy_state.underlying_token, &strategy)?;
+    let new_shares = _calculate_new_shares(strategy_state.total_shares, balance, amount);
+
+    if new_shares.is_zero() {
+        return Err(ContractError::ZeroNewShares {});
+    }
+
     let deposit_msg = _create_deposit_msg(&strategy, amount)?;
 
-    let deposit_response: Response = deps.querier.query(&WasmQuery::Smart {
-        contract_addr: strategy.to_string(),
-        msg: to_json_binary(&StrategyExecuteMsg::Deposit { amount })?,
-    }.into())?;
-    
-    let new_shares = _new_shares_from_response(&deposit_response)?;
-
-    let deposit_response = Response::new()
+    let mut deposit_response = Response::new()
         .add_message(transfer_msg)
         .add_message(deposit_msg)
         .add_attribute("method", "deposit_into_strategy")
@@ -298,13 +309,29 @@ fn _deposit_into_strategy(
         .add_attribute("amount", amount.to_string())
         .add_attribute("new_shares", new_shares.to_string());
 
-    let add_shares_response = add_shares(deps, info.clone(), staker.clone(), token.clone(), strategy.clone(), new_shares)?;
+    let add_shares_response = _add_shares(deps.branch(), staker.clone(), token.clone(), strategy.clone(), new_shares)?;
 
-    Ok(deposit_response.add_submessage(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+    let state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
+
+    let increase_delegated_shares_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: state.delegation_manager.to_string(),
+        msg: to_json_binary(&DelegationExecuteMsg::IncreaseDelegatedShares {
+            staker: staker.clone(),
+            strategy: strategy.clone(),
+            shares: new_shares.into(),
+        })?,
+        funds: vec![],
+    });
+
+    deposit_response = deposit_response.add_message(increase_delegated_shares_msg);    
+
+    deposit_response = deposit_response.add_message(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: env.contract.address.to_string(),
         msg: to_json_binary(&add_shares_response)?,
         funds: vec![],
-    }))))
+    }));
+
+    Ok(deposit_response)
 }
 
 pub fn deposit_into_strategy_with_signature(
@@ -363,34 +390,6 @@ pub fn deposit_into_strategy_with_signature(
     res.messages = deposit_res.messages;
 
     Ok(res)
-}
-
-fn _create_transfer_msg(
-    info: &MessageInfo,
-    token: &Addr,
-    strategy: &Addr,
-    amount: Uint128,
-) -> StdResult<CosmosMsg> {
-    Ok(CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: token.to_string(),
-        msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
-            owner: info.sender.to_string(),
-            recipient: strategy.to_string(),
-            amount,
-        })?,
-        funds: vec![],
-    }))
-}
-
-fn _create_deposit_msg(
-    strategy: &Addr,
-    amount: Uint128,
-) -> StdResult<CosmosMsg> {
-    Ok(CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: strategy.to_string(),
-        msg: to_json_binary(&StrategyExecuteMsg::Deposit { amount })?,
-        funds: vec![],
-    }))
 }
 
 pub fn add_shares(
@@ -542,27 +541,53 @@ pub fn withdraw_shares_as_tokens(
         .add_attribute("token", token.to_string()))
 }
 
-pub fn get_deposits(deps: Deps, staker: Addr) -> StdResult<(Vec<Addr>, Vec<Uint128>)> {
-    let strategies = STAKER_STRATEGY_LIST.may_load(deps.storage, &staker)?
-        .unwrap_or_else(Vec::new);
-
-    // Initialize a vector to hold the shares for each strategy
-    let mut shares = Vec::with_capacity(strategies.len());
-
-    // Iterate over each strategy and fetch the corresponding shares
-    for strategy in &strategies {
-        let share = STAKER_STRATEGY_SHARES.may_load(deps.storage, (&staker, strategy))?
-            .unwrap_or_else(Uint128::zero);
-        shares.push(share);
-    }
-
-    Ok((strategies, shares))
+fn _create_transfer_msg(
+    info: &MessageInfo,
+    token: &Addr,
+    strategy: &Addr,
+    amount: Uint128,
+) -> StdResult<CosmosMsg> {
+    Ok(CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: token.to_string(),
+        msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
+            owner: info.sender.to_string(),
+            recipient: strategy.to_string(),
+            amount,
+        })?,
+        funds: vec![],
+    }))
 }
 
-pub fn staker_strategy_list_length(deps: Deps, staker: Addr) -> StdResult<Uint64> {
-    let strategies = STAKER_STRATEGY_LIST.may_load(deps.storage, &staker)?
-        .unwrap_or_else(Vec::new);
-    Ok(Uint64::new(strategies.len() as u64))
+fn _create_deposit_msg(
+    strategy: &Addr,
+    amount: Uint128,
+) -> StdResult<CosmosMsg> {
+    Ok(CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: strategy.to_string(),
+        msg: to_json_binary(&StrategyExecuteMsg::Deposit { amount })?,
+        funds: vec![],
+    }))
+}
+
+fn _calculate_new_shares(
+    total_shares: Uint128,
+    token_balance: Uint128,
+    deposit_amount: Uint128,
+) -> Uint128 {
+    let virtual_share_amount = total_shares + SHARES_OFFSET;
+    let virtual_token_balance = token_balance + BALANCE_OFFSET;
+    let virtual_prior_token_balance = virtual_token_balance - deposit_amount;
+    (deposit_amount * virtual_share_amount) / virtual_prior_token_balance
+}
+
+fn _token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdResult<Uint128> {
+    let res: Cw20BalanceResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: token.to_string(),
+        msg: to_json_binary(&Cw20QueryMsg::Balance {
+            address: account.to_string(),
+        })?,
+    }))?;
+    Ok(res.balance)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -579,9 +604,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::CalculateDigestHash { digst_hash_params } => to_json_binary(&calculate_digest_hash(&digst_hash_params)),
         QueryMsg::GetStrategyWhitelister {} => to_json_binary(&query_strategy_whitelister(deps)?),
         QueryMsg::GetStrategyManagerState {} => to_json_binary(&query_strategy_manager_state(deps)?),
-        QueryMsg::GetDepositTypehash => to_json_binary(&query_deposit_typehash()?),
-        QueryMsg::GetDomainTypehash => to_json_binary(&query_domain_typehash()?),
-        QueryMsg::GetDomainName => to_json_binary(&query_domain_name()?),
+        QueryMsg::GetDepositTypehash {} => to_json_binary(&query_deposit_typehash()?),
+        QueryMsg::GetDomainTypehash {} => to_json_binary(&query_domain_typehash()?),
+        QueryMsg::GetDomainName {} => to_json_binary(&query_domain_name()?),
         QueryMsg::GetDelegationManager {} => to_json_binary(&query_delegation_manager(deps)?),
     }
 }
@@ -629,24 +654,18 @@ fn query_strategy_manager_state(deps: Deps) -> StdResult<StrategyManagerState> {
 }
 
 fn query_deposit_typehash() -> StdResult<String> {
-    Ok(hex::encode(DEPOSIT_TYPEHASH))
+    let deposit_typehash_str = String::from_utf8_lossy(DEPOSIT_TYPEHASH).to_string();
+    Ok(deposit_typehash_str)
 }
 
 fn query_domain_typehash() -> StdResult<String> {
-    Ok(hex::encode(DOMAIN_TYPEHASH))
+    let domain_typehash_str = String::from_utf8_lossy(DOMAIN_TYPEHASH).to_string();
+    Ok(domain_typehash_str)
 }
 
 fn query_domain_name() -> StdResult<String> {
-    Ok(String::from_utf8(DOMAIN_NAME.to_vec()).unwrap_or_default())
-}
-
-fn _new_shares_from_response(response: &Response) -> Result<Uint128, ContractError> {
-    for attr in &response.attributes {
-        if attr.key == "new_shares" {
-            return Uint128::from_str(&attr.value).map_err(|_| ContractError::InvalidShares {});
-        }
-    }
-    Err(ContractError::InvalidShares {})
+    let domain_name_str = String::from_utf8_lossy(DOMAIN_NAME).to_string();
+    Ok(domain_name_str)
 }
 
 fn query_delegation_manager(deps: Deps) -> StdResult<Addr> {
@@ -654,11 +673,34 @@ fn query_delegation_manager(deps: Deps) -> StdResult<Addr> {
     Ok(state.delegation_manager)
 }
 
+pub fn get_deposits(deps: Deps, staker: Addr) -> StdResult<(Vec<Addr>, Vec<Uint128>)> {
+    let strategies = STAKER_STRATEGY_LIST.may_load(deps.storage, &staker)?
+        .unwrap_or_else(Vec::new);
+
+    // Initialize a vector to hold the shares for each strategy
+    let mut shares = Vec::with_capacity(strategies.len());
+
+    // Iterate over each strategy and fetch the corresponding shares
+    for strategy in &strategies {
+        let share = STAKER_STRATEGY_SHARES.may_load(deps.storage, (&staker, strategy))?
+            .unwrap_or_else(Uint128::zero);
+        shares.push(share);
+    }
+
+    Ok((strategies, shares))
+}
+
+pub fn staker_strategy_list_length(deps: Deps, staker: Addr) -> StdResult<Uint64> {
+    let strategies = STAKER_STRATEGY_LIST.may_load(deps.storage, &staker)?
+        .unwrap_or_else(Vec::new);
+    Ok(Uint64::new(strategies.len() as u64))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info};
-    use cosmwasm_std::{Addr, from_json, SystemResult, SystemError, ContractResult, Empty};
+    use cosmwasm_std::{Addr, from_json, SystemResult, SystemError, ContractResult, SubMsg};
     use secp256k1::{Secp256k1, SecretKey, PublicKey, Message};
     use sha2::{Sha256, Digest};
     use ripemd::Ripemd160;
@@ -1092,21 +1134,15 @@ mod tests {
         let strategy = Addr::unchecked("strategy");
         let amount = Uint128::new(100);
     
-        // Call the create_transfer_msg function
         let msg_result = _create_transfer_msg(&info, &token, &strategy, amount);
     
-        // Assert that the result is Ok
         assert!(msg_result.is_ok());
     
-        // Extract the CosmosMsg from the result
         let cosmos_msg = msg_result.unwrap();
     
-        // Check that the CosmosMsg is a Wasm Execute message
         if let CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }) = cosmos_msg {
-            // Assert that the contract address matches the token address
             assert_eq!(contract_addr, token.to_string());
     
-            // Deserialize the message and assert that it matches the expected Cw20ExecuteMsg
             let expected_msg = Cw20ExecuteMsg::TransferFrom {
                 owner: info.sender.to_string(),
                 recipient: strategy.to_string(),
@@ -1124,21 +1160,15 @@ mod tests {
         let strategy = Addr::unchecked("strategy");
         let amount = Uint128::new(100);
     
-        // Call the create_deposit_msg function
         let msg_result = _create_deposit_msg(&strategy, amount);
     
-        // Assert that the result is Ok
         assert!(msg_result.is_ok());
     
-        // Extract the CosmosMsg from the result
         let cosmos_msg = msg_result.unwrap();
     
-        // Check that the CosmosMsg is a Wasm Execute message
         if let CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }) = cosmos_msg {
-            // Assert that the contract address matches the strategy address
             assert_eq!(contract_addr, strategy.to_string());
     
-            // Deserialize the message and assert that it matches the expected StrategyExecuteMsg::Deposit message
             let expected_msg = StrategyExecuteMsg::Deposit { amount };
             let actual_msg: StrategyExecuteMsg = from_json(msg).unwrap();
             assert_eq!(actual_msg, expected_msg);
@@ -1148,7 +1178,7 @@ mod tests {
     }
 
     #[test]
-    fn test_deposit_into_strategy_via_delegation_manager() {
+    fn test_deposit_into_strategy() {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info_creator = message_info(&Addr::unchecked("creator"), &[]);
@@ -1176,12 +1206,38 @@ mod tests {
         let _res = execute(deps.as_mut(), env.clone(), info_whitelister.clone(), msg).unwrap();
     
         let strategy_for_closure = strategy.clone();
+        let token_for_closure = token.clone();
     
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart { contract_addr, msg } if *contract_addr == strategy_for_closure.to_string() => {
-                let _: StrategyExecuteMsg = from_json(msg).unwrap();
-                SystemResult::Ok(ContractResult::Ok(to_json_binary(&Response::<Empty>::new().add_attribute("new_shares", "50")).unwrap()))
-            }
+                let strategy_query_msg: StrategyQueryMsg = from_json(msg).unwrap();
+                match strategy_query_msg {
+                    StrategyQueryMsg::GetStrategyState {} => {
+                        let strategy_state = StrategyState {
+                            strategy_manager: Addr::unchecked("delegation_manager"),
+                            underlying_token: token_for_closure.clone(),
+                            total_shares: Uint128::new(1000),
+                        };
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&strategy_state).unwrap()))
+                    },
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    }),
+                }
+            },
+            WasmQuery::Smart { contract_addr, msg } if *contract_addr == token_for_closure.to_string() => {
+                let cw20_query_msg: Cw20QueryMsg = from_json(msg).unwrap();
+                match cw20_query_msg {
+                    Cw20QueryMsg::Balance { address: _ } => {
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&Cw20BalanceResponse { balance: Uint128::new(1000) }).unwrap()))
+                    },
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    }),
+                }
+            },
             _ => SystemResult::Err(SystemError::InvalidRequest {
                 error: "Unhandled request".to_string(),
                 request: to_json_binary(&query).unwrap(),
@@ -1194,7 +1250,7 @@ mod tests {
             amount,
         };
     
-        let res = execute(deps.as_mut(), env.clone(), info_delegation_manager.clone(), msg).unwrap();
+        let res: Response = execute(deps.as_mut(), env.clone(), info_delegation_manager.clone(), msg).unwrap();
     
         assert_eq!(res.attributes.len(), 4);
         assert_eq!(res.attributes[0].key, "method");
@@ -1204,9 +1260,9 @@ mod tests {
         assert_eq!(res.attributes[2].key, "amount");
         assert_eq!(res.attributes[2].value, amount.to_string());
         assert_eq!(res.attributes[3].key, "new_shares");
-        assert_eq!(res.attributes[3].value, "50");
+        assert_eq!(res.attributes[3].value, "105");
     
-        assert_eq!(res.messages.len(), 3);
+        assert_eq!(res.messages.len(), 4);
         if let CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }) = &res.messages[0].msg {
             assert_eq!(contract_addr, &token.to_string());
             let expected_msg = Cw20ExecuteMsg::TransferFrom {
@@ -1245,7 +1301,7 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    }
+    }    
                         
     #[test]
     fn test_get_deposits() {
@@ -1889,11 +1945,37 @@ mod tests {
         let signature = mock_signature_with_message(params, &secret_key);
     
         let strategy_for_closure = strategy.clone();
+        let token_for_closure = token.clone();
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart { contract_addr, msg } if *contract_addr == strategy_for_closure.to_string() => {
-                let _: StrategyExecuteMsg = from_json(msg).unwrap();
-                SystemResult::Ok(ContractResult::Ok(to_json_binary(&Response::<Empty>::new().add_attribute("new_shares", "50")).unwrap()))
-            }
+                let strategy_query_msg: StrategyQueryMsg = from_json(msg).unwrap();
+                match strategy_query_msg {
+                    StrategyQueryMsg::GetStrategyState {} => {
+                        let strategy_state = StrategyState {
+                            strategy_manager: Addr::unchecked("delegation_manager"),
+                            underlying_token: token_for_closure.clone(),
+                            total_shares: Uint128::new(1000),
+                        };
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&strategy_state).unwrap()))
+                    },
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    }),
+                }
+            },
+            WasmQuery::Smart { contract_addr, msg } if *contract_addr == token_for_closure.to_string() => {
+                let cw20_query_msg: Cw20QueryMsg = from_json(msg).unwrap();
+                match cw20_query_msg {
+                    Cw20QueryMsg::Balance { address: _ } => {
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&Cw20BalanceResponse { balance: Uint128::new(1000) }).unwrap()))
+                    },
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    }),
+                }
+            },
             _ => SystemResult::Err(SystemError::InvalidRequest {
                 error: "Unhandled request".to_string(),
                 request: to_json_binary(&query).unwrap(),
@@ -1920,9 +2002,9 @@ mod tests {
         assert_eq!(res.attributes[2].key, "amount");
         assert_eq!(res.attributes[2].value, amount.to_string());
         assert_eq!(res.attributes[3].key, "new_shares");
-        assert_eq!(res.attributes[3].value, "50"); // Mock value used in the function
+        assert_eq!(res.attributes[3].value, "105"); 
     
-        assert_eq!(res.messages.len(), 3);
+        assert_eq!(res.messages.len(), 4);
         if let SubMsg { msg: CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }), .. } = &res.messages[0] {
             assert_eq!(contract_addr, &token.to_string());
             let expected_msg = Cw20ExecuteMsg::TransferFrom {
@@ -1935,7 +2017,7 @@ mod tests {
         } else {
             panic!("Unexpected message type");
         }
-    
+        
         if let SubMsg { msg: CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }), .. } = &res.messages[1] {
             assert_eq!(contract_addr, &strategy.to_string());
             let expected_msg = StrategyExecuteMsg::Deposit { amount };
@@ -1944,10 +2026,10 @@ mod tests {
         } else {
             panic!("Unexpected message type");
         }
-    
+        
         let stored_nonce = NONCES.load(&deps.storage, &staker).unwrap();
         assert_eq!(stored_nonce, 1);
-    }
+    }        
 
     #[test]
     fn test_is_third_party_transfers_forbidden() {
@@ -2115,19 +2197,22 @@ mod tests {
     #[test]
     fn test_get_deposit_typehash() {
         let typehash = query_deposit_typehash().unwrap();
-        assert_eq!(typehash, hex::encode(DEPOSIT_TYPEHASH));
+        let expected_str = String::from_utf8_lossy(DEPOSIT_TYPEHASH).to_string();
+        assert_eq!(typehash, expected_str);
     }
 
     #[test]
     fn test_get_domain_typehash() {
         let typehash = query_domain_typehash().unwrap();
-        assert_eq!(typehash, hex::encode(DOMAIN_TYPEHASH));
+        let expected_str = String::from_utf8_lossy(DOMAIN_TYPEHASH).to_string();
+        assert_eq!(typehash, expected_str);
     }
 
     #[test]
     fn test_get_domain_name() {
         let name = query_domain_name().unwrap();
-        assert_eq!(name, String::from_utf8(DOMAIN_NAME.to_vec()).unwrap_or_default());
+        let expected_str = String::from_utf8_lossy(DOMAIN_NAME).to_string();
+        assert_eq!(name, expected_str);
     }
 
     #[test]

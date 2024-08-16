@@ -1,8 +1,8 @@
 [workspace]
 members = [
     # "contracts/avs-directory",
-    # "contracts/strategy-base",
-    # "contracts/strategy-manager",
+    "contracts/strategy-base",
+    "contracts/strategy-manager",
     # "contracts/state-bank",
     # "contracts/avs-driver",
     "contracts/delegation-manager",
