@@ -318,7 +318,7 @@ fn _deposit_into_strategy(
         msg: to_json_binary(&DelegationExecuteMsg::IncreaseDelegatedShares {
             staker: staker.clone(),
             strategy: strategy.clone(),
-            shares: new_shares.into(),
+            shares: new_shares,
         })?,
         funds: vec![],
     });

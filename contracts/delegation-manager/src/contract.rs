@@ -8,8 +8,7 @@ use crate::{
         STAKER_NONCE, PENDING_WITHDRAWALS, CUMULATIVE_WITHDRAWALS_QUEUED
     },
     utils::{calculate_delegation_approval_digest_hash, calculate_staker_delegation_digest_hash, recover, 
-        ApproverDigestHashParams, StakerDigestHashParams, DelegateParams, calculate_withdrawal_root, Withdrawal,
-        calculate_current_staker_delegation_digest_hash, CurrentStakerDigestHashParams
+        ApproverDigestHashParams, StakerDigestHashParams, DelegateParams, calculate_withdrawal_root, Withdrawal, calculate_current_staker_delegation_digest_hash, CurrentStakerDigestHashParams
     },
 };
 use strategy_manager::QueryMsg as StrategyManagerQueryMsg;
@@ -71,38 +70,74 @@ pub fn execute(
             operator_details,
             metadata_uri,
         } => register_as_operator(deps, info, env, sender_public_key, operator_details, metadata_uri),
+
         ExecuteMsg::ModifyOperatorDetails {new_operator_details,} => modify_operator_details(deps, info, new_operator_details),
+
         ExecuteMsg::UpdateOperatorMetadataUri { metadata_uri } => {update_operator_metadata_uri(deps, info, metadata_uri)}
+
         ExecuteMsg::DelegateTo {
-            staker,
-            operator,
-            approver_signature_and_expiry,
-            approver_salt,
+            params,
+            approver_signature_and_expiry
         } => {
-            let params = DelegateParams {
-                staker,
-                operator: operator.clone(),
-                public_key: approver_signature_and_expiry.signature.clone(),
-                salt: approver_salt,
+            let public_key_binary = Binary::from_base64(&params.public_key)?;
+            let signature = Binary::from_base64(&approver_signature_and_expiry.signature)?;
+            let salt = Binary::from_base64(&params.salt)?;
+
+            let delegate_params = DelegateParams {
+                staker: params.staker.clone(),
+                operator: params.operator.clone(),
+                public_key: public_key_binary,
+                salt,
             };
-            delegate_to(deps, info, env, params, approver_signature_and_expiry)
-        }
+
+            let signature_and_expiry = SignatureWithExpiry {
+                signature,
+                expiry: approver_signature_and_expiry.expiry,
+            };
+
+            delegate_to(deps, info, env, delegate_params, signature_and_expiry)
+        },
+
         ExecuteMsg::DelegateToBySignature {
             params,
             staker_public_key,
             staker_signature_and_expiry,
             approver_signature_and_expiry,
         } => {
+            let staker_public_key_binary = Binary::from_base64(&staker_public_key)?;
+            let approver_public_key_binary = Binary::from_base64(&params.public_key)?;
+            let staker_signature = Binary::from_base64(&staker_signature_and_expiry.signature)?;
+            let approver_signature = Binary::from_base64(&approver_signature_and_expiry.signature)?;
+            let salt = Binary::from_base64(&params.salt)?;
+
+            let delegate_params = DelegateParams {
+                staker: params.staker.clone(),
+                operator: params.operator.clone(),
+                public_key: approver_public_key_binary,
+                salt,
+            };
+
+            let signature_and_expiry_staker = SignatureWithExpiry {
+                signature: staker_signature,
+                expiry: staker_signature_and_expiry.expiry,
+            };
+
+            let signature_and_expiry_approver = SignatureWithExpiry {
+                signature: approver_signature,
+                expiry: approver_signature_and_expiry.expiry,
+            };
+
             delegate_to_by_signature (
                 deps,
                 env,
                 info,
-                params,
-                staker_public_key,
-                staker_signature_and_expiry,
-                approver_signature_and_expiry,
+                delegate_params,
+                staker_public_key_binary,
+                signature_and_expiry_staker,
+                signature_and_expiry_approver,
             )
-        }
+        },
+
         ExecuteMsg::Undelegate { staker } => {
             let (mut response, withdrawal_roots) = undelegate(deps, env, info, staker)?;
             for root in withdrawal_roots {
@@ -110,7 +145,8 @@ pub fn execute(
             }
 
             Ok(response)
-        }        
+        },
+
         ExecuteMsg::QueueWithdrawals { queued_withdrawal_params } => {
             let (response, withdrawal_roots) = queue_withdrawals(deps, env, info, queued_withdrawal_params)?;
             
@@ -118,7 +154,8 @@ pub fn execute(
             let response_with_roots = response.add_attribute("withdrawal_roots", root_strings.join(","));
 
             Ok(response_with_roots)
-        }
+        },
+
         ExecuteMsg::CompleteQueuedWithdrawal {
             withdrawal,
             tokens,
@@ -133,6 +170,7 @@ pub fn execute(
             middleware_times_index,
             receive_as_tokens,
         ),
+
         ExecuteMsg::CompleteQueuedWithdrawals {
             withdrawals,
             tokens,
@@ -147,23 +185,28 @@ pub fn execute(
             middleware_times_indexes,
             receive_as_tokens,
         ),
+
         ExecuteMsg::IncreaseDelegatedShares {
             staker,
             strategy,
             shares,
         } => increase_delegated_shares(deps, info, staker, strategy, shares),
+
         ExecuteMsg::DecreaseDelegatedShares {
             staker,
             strategy,
             shares,
         } => decrease_delegated_shares(deps, info, staker, strategy, shares),
+
         ExecuteMsg::SetMinWithdrawalDelayBlocks {
             new_min_withdrawal_delay_blocks,
         } => set_min_withdrawal_delay_blocks(deps, info, new_min_withdrawal_delay_blocks),
+
         ExecuteMsg::SetStrategyWithdrawalDelayBlocks {
             strategies,
             withdrawal_delay_blocks,
         } => set_strategy_withdrawal_delay_blocks(deps, info, strategies, withdrawal_delay_blocks),
+
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner_addr: Addr = Addr::unchecked(new_owner);
             transfer_ownership(deps, info, new_owner_addr)
@@ -288,7 +331,7 @@ pub fn register_as_operator(
 ) -> Result<Response, ContractError> {
     let operator = info.sender.clone();
 
-    if DELEGATED_TO.may_load(deps.storage, &operator)?.is_some() {
+    if query_is_delegated(deps.as_ref(), operator.clone())? {
         return Err(ContractError::StakerAlreadyDelegated {});
     }
 
@@ -296,7 +339,7 @@ pub fn register_as_operator(
 
     let empty_signature_and_expiry = SignatureWithExpiry {
         signature: Binary::from(vec![]),
-        expiry: 0,
+        expiry: Uint64::new(0),
     };
 
     let params = DelegateParams {
@@ -329,7 +372,7 @@ pub fn modify_operator_details(
 ) -> Result<Response, ContractError> {
     let operator = info.sender.clone();
 
-    if OPERATOR_DETAILS.may_load(deps.storage, &operator)?.is_none() {
+    if !query_is_operator(deps.as_ref(), operator.clone())? {
         return Err(ContractError::OperatorNotRegistered {});
     }
 
@@ -343,7 +386,7 @@ pub fn update_operator_metadata_uri(
 ) -> Result<Response, ContractError> {
     let operator = info.sender.clone();
 
-    if OPERATOR_DETAILS.may_load(deps.storage, &operator)?.is_none() {
+    if !query_is_operator(deps.as_ref(), operator.clone())? {
         return Err(ContractError::OperatorNotRegistered {});
     }
 
@@ -392,11 +435,12 @@ pub fn delegate_to(
     approver_signature_and_expiry: SignatureWithExpiry,
 ) -> Result<Response, ContractError> {
     let staker = info.sender.clone();
-    if DELEGATED_TO.may_load(deps.storage, &staker)?.is_some() {
+
+    if query_is_delegated(deps.as_ref(), staker.clone())? {
         return Err(ContractError::StakerAlreadyDelegated {});
     }
 
-    if OPERATOR_DETAILS.may_load(deps.storage, &params.operator)?.is_none() {
+    if !query_is_operator(deps.as_ref(), params.operator.clone())? {
         return Err(ContractError::OperatorNotRegistered {});
     }
 
@@ -412,15 +456,15 @@ pub fn delegate_to_by_signature(
     staker_signature_and_expiry: SignatureWithExpiry,
     approver_signature_and_expiry: SignatureWithExpiry,
 ) -> Result<Response, ContractError> {
-    if staker_signature_and_expiry.expiry < env.block.time.seconds() {
+    if staker_signature_and_expiry.expiry < Uint64::new(env.block.time.seconds()) {
         return Err(ContractError::StakerSignatureExpired {});
     }
 
-    if DELEGATED_TO.may_load(deps.storage, &params.staker)?.is_some() {
+    if query_is_delegated(deps.as_ref(), params.staker.clone())? {
         return Err(ContractError::StakerAlreadyDelegated {});
     }
 
-    if OPERATOR_DETAILS.may_load(deps.storage, &params.operator)?.is_none() {
+    if !query_is_operator(deps.as_ref(), params.operator.clone())? {
         return Err(ContractError::OperatorNotRegistered {});
     }
 
@@ -430,7 +474,7 @@ pub fn delegate_to_by_signature(
 
     let digest_params = StakerDigestHashParams {
         staker: params.staker.clone(),
-        staker_nonce: current_staker_nonce,
+        staker_nonce: Uint128::new(current_staker_nonce),
         operator: params.operator.clone(),
         staker_public_key: staker_public_key.clone(),
         expiry: staker_signature_and_expiry.expiry,
@@ -438,13 +482,15 @@ pub fn delegate_to_by_signature(
         contract_addr: env.contract.address.clone(),
     };
 
-    let staker_digest_hash = calculate_staker_delegation_digest_hash(&digest_params);
+    let staker_digest_hash = calculate_staker_delegation_digest_hash(digest_params);
 
     let staker_nonce = current_staker_nonce.checked_add(1).ok_or(ContractError::NonceOverflow)?;
 
     STAKER_NONCE.save(deps.storage, &params.staker, &staker_nonce)?;
 
-    recover(&staker_digest_hash, &staker_signature_and_expiry.signature, &staker_public_key)?;
+    if !recover(&staker_digest_hash, &staker_signature_and_expiry.signature, &staker_public_key)?{
+        return Err(ContractError::InvalidSignature {});
+    }
 
     let params2 = DelegateParams {
         staker: params.staker.clone(),
@@ -468,7 +514,7 @@ fn _delegate(
     let current_time: Uint64 = env.block.time.seconds().into();
 
     if delegation_approver != Addr::unchecked("0") && info.sender != delegation_approver && info.sender != params.operator {
-        if approver_signature_and_expiry.expiry < current_time.u64() {
+        if approver_signature_and_expiry.expiry < current_time {
             return Err(ContractError::ApproverSignatureExpired {});
         }
 
@@ -483,7 +529,7 @@ fn _delegate(
         let digest_params = ApproverDigestHashParams {
             staker: params.staker.clone(),
             operator: params.operator.clone(),
-            delegation_approver: delegation_approver.clone(),
+            approver: delegation_approver.clone(),
             approver_public_key: params.public_key.clone(),
             approver_salt: params.salt.clone(),
             expiry: approver_signature_and_expiry.expiry,
@@ -491,9 +537,11 @@ fn _delegate(
             contract_addr: env.contract.address.clone(),
         };
 
-        let approver_digest_hash = calculate_delegation_approval_digest_hash(&digest_params);
+        let approver_digest_hash = calculate_delegation_approval_digest_hash(digest_params);
 
-        recover(&approver_digest_hash, &approver_signature_and_expiry.signature, &params.public_key)?;
+        if !recover(&approver_digest_hash, &approver_signature_and_expiry.signature, &params.public_key)?{
+            return Err(ContractError::InvalidSignature {});
+        }
 
         DELEGATION_APPROVER_SALT_SPENT.save(deps.storage, (&delegation_approver, approver_salt_str), &true)?;
     }
@@ -530,12 +578,11 @@ pub fn undelegate(
     info: MessageInfo,
     staker: Addr,
 ) -> Result<(Response, Vec<Binary>), ContractError> {
-    if DELEGATED_TO.may_load(deps.storage, &staker)?.is_none() {
+    if !query_is_delegated(deps.as_ref(), staker.clone())? {
         return Err(ContractError::StakerNotDelegated {});
     }
 
-    // Ensure the staker is not an operator
-    if OPERATOR_DETAILS.may_load(deps.storage, &staker)?.is_some() {
+    if query_is_operator(deps.as_ref(), staker.clone())? {
         return Err(ContractError::OperatorCannotBeUndelegated {});
     }
 
@@ -572,7 +619,7 @@ pub fn undelegate(
     );
 
     // Undelegate the staker
-    DELEGATED_TO.save(deps.storage, &staker, &Addr::unchecked("0"))?;
+    DELEGATED_TO.remove(deps.storage, &staker);
 
     if !strategies.is_empty() {
         for (strategy, share) in strategies.iter().zip(shares.iter()) {
@@ -633,10 +680,11 @@ pub fn increase_delegated_shares(
 ) -> Result<Response, ContractError> {
     _only_strategy_manager(deps.as_ref(), &info)?;
 
-    if let Some(operator) = DELEGATED_TO.may_load(deps.storage, &staker)? {
+    if query_is_delegated(deps.as_ref(), staker.clone())? {
+        let operator = DELEGATED_TO.load(deps.storage, &staker)?;
         _increase_operator_shares(deps, operator, staker, strategy, shares)
     } else {
-        Ok(Response::new())
+        Err(ContractError::NotDelegated {})
     }
 }
 
@@ -675,9 +723,8 @@ pub fn decrease_delegated_shares(
 ) -> Result<Response, ContractError> {
     _only_strategy_manager(deps.as_ref(), &info)?;
 
-    // Check if the staker is delegated to an operator
-    if let Some(operator) = DELEGATED_TO.may_load(deps.storage, &staker)? {
-        // Decrease the operator's shares
+    if query_is_delegated(deps.as_ref(), staker.clone())? {
+        let operator = DELEGATED_TO.load(deps.storage, &staker)?;
         _decrease_operator_shares(deps, operator, staker, strategy, shares)
     } else {
         Err(ContractError::StakerNotDelegated {})
