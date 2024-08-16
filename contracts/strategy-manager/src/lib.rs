@@ -6,3 +6,4 @@ mod utils;
 
 pub use crate::error::ContractError;
 pub mod strategy_base;
+pub mod delegation_manager;

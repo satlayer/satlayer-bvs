@@ -261,6 +261,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let share_to_send = underlying_to_shares(deps, env, amount_underlying)?;
             to_json_binary(&share_to_send)
         },
+        QueryMsg::GetStrategyState {} => to_json_binary(&query_strategy_state(deps)?),
     }
 }
 
@@ -281,6 +282,11 @@ fn query_total_shares(deps: Deps) -> StdResult<Binary> {
 
 fn query_explanation() -> StdResult<String> {
     Ok("Base Strategy implementation to inherit from for more complex implementations".to_string())
+}
+
+pub fn query_strategy_state(deps: Deps) -> StdResult<StrategyState> {
+    let state = STRATEGY_STATE.load(deps.storage)?;
+    Ok(state)
 }
 
 #[cfg(test)]

@@ -101,13 +101,13 @@ pub enum QueryMsg {
     GetStrategyManagerState {},
 
     #[returns(String)]
-    GetDepositTypehash,
+    GetDepositTypehash {},
 
     #[returns(String)]
-    GetDomainTypehash,
+    GetDomainTypehash {},
 
     #[returns(String)]
-    GetDomainName,
+    GetDomainName {},
 
     #[returns(Addr)]
     GetDelegationManager {},

@@ -1,6 +1,5 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Binary, Uint128, Uint64};
-use crate::utils::{Withdrawal, CurrentStakerDigestHashParams, StakerDigestHashParams, ApproverDigestHashParams, DelegateParams};
+use cosmwasm_schema::cw_serde;
+use cosmwasm_std::{Addr, Binary, Uint128};
 use serde::{Serialize, Deserialize};
 use schemars::JsonSchema;
 
@@ -17,7 +16,6 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     RegisterAsOperator {
-        sender_public_key: Binary,
         operator_details: OperatorDetails,
         metadata_uri: String,
     },
@@ -28,14 +26,16 @@ pub enum ExecuteMsg {
         metadata_uri: String,
     },
     DelegateTo {
-        params: DelegateParams,
+        staker: Addr,
         approver_signature_and_expiry: SignatureWithExpiry,
+        approver_salt: Binary,
     },
     DelegateToBySignature {
-        params: DelegateParams,
-        staker_public_key: Binary,
+        staker: Addr,
+        operator: Addr,
         staker_signature_and_expiry: SignatureWithExpiry,
         approver_signature_and_expiry: SignatureWithExpiry,
+        approver_salt: Binary,
     },
     Undelegate {
         staker: Addr,
@@ -43,95 +43,55 @@ pub enum ExecuteMsg {
     QueueWithdrawals {
         queued_withdrawal_params: Vec<QueuedWithdrawalParams>,
     },
-    CompleteQueuedWithdrawal {
-        withdrawal: Withdrawal,
-        tokens: Vec<Addr>,
-        middleware_times_index: u64,
-        receive_as_tokens: bool,
-    },
-    CompleteQueuedWithdrawals {
-        withdrawals: Vec<Withdrawal>,
-        tokens: Vec<Vec<Addr>>,
-        middleware_times_indexes: Vec<u64>,
-        receive_as_tokens: Vec<bool>,
-    },
     IncreaseDelegatedShares {
         staker: Addr,
         strategy: Addr,
-        shares: Uint128,
+        shares: u128,
     },
     DecreaseDelegatedShares {
         staker: Addr,
         strategy: Addr,
-        shares: Uint128,
+        shares: u128,
     },
     SetMinWithdrawalDelayBlocks {
         new_min_withdrawal_delay_blocks: u64,
     },
     SetStrategyWithdrawalDelayBlocks {
         strategies: Vec<Addr>,
-        withdrawal_delay_blocks: Vec<Uint64>,
+        withdrawal_delay_blocks: Vec<u64>,
     },
-    TransferOwnership {
-        new_owner: Addr,
+    IncreaseOperatorShares {
+        operator: Addr,
+        staker: Addr,
+        strategy: Addr,
+        shares: Uint128,
     },
 }
 
 #[cw_serde]
-#[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(bool)]
     IsDelegated { staker: Addr },
-
-    #[returns(bool)]
     IsOperator { operator: Addr },
-
-    #[returns(OperatorDetails)]
     OperatorDetails { operator: Addr },
-
-    #[returns(Addr)]
     DelegationApprover { operator: Addr },
-
-    #[returns(u64)]
     StakerOptOutWindowBlocks { operator: Addr },
-
-    #[returns(Vec<Uint128>)]
     GetOperatorShares { operator: Addr, strategies: Vec<Addr> },
-
-    #[returns((Vec<Addr>, Vec<Uint128>))]
     GetDelegatableShares { staker: Addr },
-
-    #[returns(Vec<u64>)]
     GetWithdrawalDelay { strategies: Vec<Addr> },
-
-    #[returns(Binary)]
-    CalculateWithdrawalRoot { withdrawal: Withdrawal },
-
-    #[returns(Binary)]
-    CurrentStakerDelegationDigestHash {current_staker_digest_hash_params: CurrentStakerDigestHashParams },
-
-    #[returns(Binary)]
-    StakerDelegationDigestHash { staker_digest_hash_params: StakerDigestHashParams },
-
-    #[returns(Binary)]
-    DelegationApprovalDigestHash { approver_digest_hash_params: ApproverDigestHashParams },
-
-    #[returns(Binary)]
-    CalculateCurrentStakerDelegationDigestHash { current_staker_digest_hash_params: CurrentStakerDigestHashParams },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct OperatorDetails {
-    pub deprecated_earnings_receiver: Addr,
+    pub __deprecated_earnings_receiver: Addr,
     pub delegation_approver: Addr,
     pub staker_opt_out_window_blocks: u64,
 }
 
 #[cw_serde]
 pub struct QueuedWithdrawalParams {
-    pub withdrawer: Addr,
+    pub staker: Addr,
     pub strategies: Vec<Addr>,
-    pub shares: Vec<Uint128>,
+    pub shares: Vec<u128>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
