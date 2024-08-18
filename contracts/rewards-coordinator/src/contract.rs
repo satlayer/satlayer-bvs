@@ -1,18 +1,18 @@
 use crate::{
     error::ContractError,
     strategy_manager,
-    msg::{InstantiateMsg, DistributionRoot, QueryMsg},
+    msg::{InstantiateMsg, DistributionRoot, QueryMsg, ExecuteMsg},
     state::{OWNER, REWARDS_UPDATER, CALCULATION_INTERVAL_SECONDS, REWARDS_FOR_ALL_SUBMITTER, IS_AVS_REWARDS_SUBMISSION_HASH, CLAIMER_FOR, DISTRIBUTION_ROOTS,
         MAX_REWARDS_DURATION, MAX_RETROACTIVE_LENGTH, MAX_FUTURE_LENGTH, GENESIS_REWARDS_TIMESTAMP, DELEGATION_MANAGER, STRATEGY_MANAGER, ACTIVATION_DELAY,
         GLOBAL_OPERATOR_COMMISSION_BIPS, SUBMISSION_NONCE, DISTRIBUTION_ROOTS_COUNT, CURR_REWARDS_CALCULATION_END_TIMESTAMP, CUMULATIVE_CLAIMED
     },
-    utils::{RewardsSubmission, calculate_rewards_submission_hash, TokenTreeMerkleLeaf, calculate_token_leaf_hash,
+    utils::{RewardsSubmission, calculate_rewards_submission_hash, TokenTreeMerkleLeaf, calculate_token_leaf_hash, merkleize_sha256,
         verify_inclusion_sha256, EarnerTreeMerkleLeaf, calculate_earner_leaf_hash, RewardsMerkleClaim, calculate_domain_separator
     }
 };
 use cosmwasm_std::{
     entry_point, Deps, DepsMut, Env, MessageInfo, Response, Addr, Event, CosmosMsg, WasmMsg, to_json_binary, Binary, Uint64, Uint128,
-    HexBinary
+    HexBinary, 
 };
 use cw2::set_contract_version;
 use cw20::Cw20ExecuteMsg;
@@ -33,11 +33,11 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    if msg.genesis_rewards_timestamp.u64() % msg.calculation_interval_seconds.u64() != 0 {
+    if msg.genesis_rewards_timestamp % msg.calculation_interval_seconds != 0 {
         return Err(ContractError::InvalidGenesisTimestamp {});
     }
 
-    if msg.calculation_interval_seconds.u64() % SNAPSHOT_CADENCE != 0 {
+    if msg.calculation_interval_seconds % SNAPSHOT_CADENCE != 0 {
         return Err(ContractError::InvalidCalculationInterval {});
     }
 
@@ -45,11 +45,11 @@ pub fn instantiate(
 
     OWNER.save(deps.storage, &owner)?;
 
-    CALCULATION_INTERVAL_SECONDS.save(deps.storage, &msg.calculation_interval_seconds.u64())?;
-    MAX_REWARDS_DURATION.save(deps.storage, &msg.max_rewards_duration.u64())?;
-    MAX_RETROACTIVE_LENGTH.save(deps.storage, &msg.max_retroactive_length.u64())?;
-    MAX_FUTURE_LENGTH.save(deps.storage, &msg.max_future_length.u64())?;
-    GENESIS_REWARDS_TIMESTAMP.save(deps.storage, &msg.genesis_rewards_timestamp.u64())?;
+    CALCULATION_INTERVAL_SECONDS.save(deps.storage, &msg.calculation_interval_seconds)?;
+    MAX_REWARDS_DURATION.save(deps.storage, &msg.max_rewards_duration)?;
+    MAX_RETROACTIVE_LENGTH.save(deps.storage, &msg.max_retroactive_length)?;
+    MAX_FUTURE_LENGTH.save(deps.storage, &msg.max_future_length)?;
+    GENESIS_REWARDS_TIMESTAMP.save(deps.storage, &msg.genesis_rewards_timestamp)?;
     DELEGATION_MANAGER.save(deps.storage, &msg.delegation_manager)?;
     STRATEGY_MANAGER.save(deps.storage, &msg.strategy_manager)?;
     
@@ -61,6 +61,68 @@ pub fn instantiate(
         .add_attribute("owner", owner.to_string())
         .add_attribute("rewards_updater", msg.rewards_updater.to_string())
         .add_attribute("activation_delay", msg.activation_delay.to_string()))
+}
+
+#[entry_point]
+pub fn execute(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
+    match msg {
+        ExecuteMsg::CreateAvsRewardsSubmission { rewards_submissions } => {
+            create_avs_rewards_submission(deps, env, info, rewards_submissions)
+        }
+        ExecuteMsg::CreateRewardsForAllSubmission { rewards_submissions } => {
+            create_rewards_for_all_submission(deps, env, info, rewards_submissions)
+        }
+        ExecuteMsg::ProcessClaim { claim, recipient } => {
+            let earner_token_root_binary = Binary::from_base64(&claim.earner_leaf.earner_token_root)?;
+
+            let earner_tree_merkle_leaf = EarnerTreeMerkleLeaf {
+                earner: claim.earner_leaf.earner,
+                earner_token_root: earner_token_root_binary,
+            };
+
+            let params = RewardsMerkleClaim {
+                root_index: claim.root_index,
+                earner_index: claim.earner_index,
+                earner_tree_proof: claim.earner_tree_proof,
+                earner_leaf: earner_tree_merkle_leaf,
+                token_indices: claim.token_indices,
+                token_tree_proofs: claim.token_tree_proofs,
+                token_leaves: claim.token_leaves,
+            };
+
+            process_claim(deps, env, info, params, recipient)
+        }
+        ExecuteMsg::SubmitRoot { root, rewards_calculation_end_timestamp } => {
+            let root = Binary::from_base64(&root)?;
+            submit_root(deps, env, info, root, rewards_calculation_end_timestamp)
+        }
+        ExecuteMsg::DisableRoot { root_index } => {
+            disable_root(deps, env, info, root_index)
+        }
+        ExecuteMsg::SetClaimerFor { claimer } => {
+            set_claimer_for(deps, info, claimer)
+        }
+        ExecuteMsg::SetActivationDelay { new_activation_delay } => {
+            set_activation_delay(deps, info, new_activation_delay)
+        }
+        ExecuteMsg::SetRewardsUpdater { new_updater } => {
+            set_rewards_updater(deps, info, new_updater)
+        }
+        ExecuteMsg::SetRewardsForAllSubmitter { submitter, new_value } => {
+            set_rewards_for_all_submitter(deps, info, submitter, new_value)
+        }
+        ExecuteMsg::SetGlobalOperatorCommission { new_commission_bips } => {
+            set_global_operator_commission(deps, info, new_commission_bips)
+        }
+        ExecuteMsg::TransferOwnership { new_owner } => {
+            transfer_ownership(deps, info, new_owner)
+        }
+    }
 }
 
 fn _only_rewards_updater(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
@@ -105,22 +167,9 @@ pub fn create_avs_rewards_submission(
 
         _validate_rewards_submission(&deps.as_ref(), &submission, &env)?;
 
-        IS_AVS_REWARDS_SUBMISSION_HASH.save(
-            deps.storage,
-            (info.sender.clone(), rewards_submission_hash.to_vec()),
-            &true,
-        )?;
+        IS_AVS_REWARDS_SUBMISSION_HASH.save(deps.storage, (info.sender.clone(), rewards_submission_hash.to_vec()),&true,)?;
 
         SUBMISSION_NONCE.save(deps.storage, info.sender.clone(), &(nonce + 1))?;
-
-        let event = Event::new("AVSRewardsSubmissionCreated")
-            .add_attribute("sender", info.sender.to_string())
-            .add_attribute("nonce", nonce.to_string())
-            .add_attribute("rewards_submission_hash", rewards_submission_hash.to_string())
-            .add_attribute("token", submission.token.to_string())
-            .add_attribute("amount", submission.amount.to_string());
-
-        response = response.add_event(event);
 
         let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: submission.token.to_string(),
@@ -131,8 +180,17 @@ pub fn create_avs_rewards_submission(
             })?,
             funds: vec![],
         });
-
+        
         response = response.add_message(transfer_msg);
+
+        let event = Event::new("AVSRewardsSubmissionCreated")
+            .add_attribute("sender", info.sender.to_string())
+            .add_attribute("nonce", nonce.to_string())
+            .add_attribute("rewards_submission_hash", rewards_submission_hash.to_string())
+            .add_attribute("token", submission.token.to_string())
+            .add_attribute("amount", submission.amount.to_string());
+
+        response = response.add_event(event);
     }
 
     Ok(response)
@@ -162,15 +220,6 @@ pub fn create_rewards_for_all_submission(
 
         SUBMISSION_NONCE.save(deps.storage, info.sender.clone(), &(nonce + 1))?;
 
-        let event = Event::new("RewardsSubmissionForAllCreated")
-            .add_attribute("sender", info.sender.to_string())
-            .add_attribute("nonce", nonce.to_string())
-            .add_attribute("rewards_submission_hash", rewards_submission_hash.to_string())
-            .add_attribute("token", submission.token.to_string())
-            .add_attribute("amount", submission.amount.to_string());
-
-        response = response.add_event(event);
-
         let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: submission.token.to_string(),
             msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
@@ -182,6 +231,15 @@ pub fn create_rewards_for_all_submission(
         });
 
         response = response.add_message(transfer_msg);
+
+        let event = Event::new("RewardsSubmissionForAllCreated")
+        .add_attribute("sender", info.sender.to_string())
+        .add_attribute("nonce", nonce.to_string())
+        .add_attribute("rewards_submission_hash", rewards_submission_hash.to_string())
+        .add_attribute("token", submission.token.to_string())
+        .add_attribute("amount", submission.amount.to_string());
+
+        response = response.add_event(event);
     }
 
     Ok(response)
@@ -229,11 +287,14 @@ fn _validate_rewards_submission(
     }
 
     let mut current_address = Addr::unchecked("");
+
+    let strategy_manager = STRATEGY_MANAGER.load(deps.storage)?;
+
     for strategy_multiplier in &submission.strategies_and_multipliers {
         let strategy = &strategy_multiplier.strategy;
 
         let is_strategy_whitelisted: bool = deps.querier.query_wasm_smart(
-            strategy,
+            strategy_manager.clone(),
             &StrategyQueryMsg::IsStrategyWhitelisted {
                 strategy: strategy.clone(),
             },
@@ -242,11 +303,13 @@ fn _validate_rewards_submission(
         if !is_strategy_whitelisted {
             return Err(ContractError::InvaildStrategyConsidered {});
         }
+
         if  current_address >= *strategy {
             return Err(ContractError::StrategiesMuseBeHandleDuplicates {});
         }
         current_address = strategy.clone();
     }
+    
     Ok(Response::new().add_attribute("action", "validate_rewards_submission"))
 }
 
@@ -639,29 +702,67 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         QueryMsg::CalculateEarnerLeafHash { earner, earner_token_root } => {
             query_calculate_earner_leaf_hash(deps, earner, earner_token_root)
         }
+
         QueryMsg::CalculateTokenLeafHash { token, cumulative_earnings } => {
             query_calculate_token_leaf_hash(deps, token, cumulative_earnings)
         }
+
         QueryMsg::QueryOperatorCommissionBips { operator, avs } => {
             query_operator_commission_bips(deps, operator, avs)
         }
+
         QueryMsg::GetDistributionRootsLength { } => {
             query_distribution_roots_length(deps)
         }
+
         QueryMsg::GetDistributionRootAtIndex { index } => {
             query_get_distribution_root_at_index(deps, index)
         }
+
         QueryMsg::GetCurrentDistributionRoot {} => { 
             query_get_current_distribution_root(deps)
         }
+
         QueryMsg::GetCurrentClaimableDistributionRoot {} => {
             query_get_current_claimable_distribution_root(deps, env)
         }
+
         QueryMsg::GetRootIndexFromHash { root_hash } => {
             query_get_root_index_from_hash(deps, root_hash)
         }
+
         QueryMsg::CalculateDomainSeparator { chain_id, contract_addr } => {
             query_calculate_domain_separator(deps, chain_id, contract_addr)
+        }
+
+        QueryMsg::MerkleizeLeaves { leaves } => {
+            let binary_leaves: Vec<Binary> = leaves
+            .iter()
+            .map(|leaf_str| Binary::from_base64(leaf_str))
+            .collect::<Result<Vec<Binary>, _>>()?;
+            
+            query_merkleize_leaves(binary_leaves) }
+            
+        QueryMsg::CheckClaim { claim } => {
+            let earner_token_root_binary = Binary::from_base64(&claim.earner_leaf.earner_token_root)?;
+
+            let earner_tree_merkle_leaf = EarnerTreeMerkleLeaf {
+                earner: claim.earner_leaf.earner,
+                earner_token_root: earner_token_root_binary,
+            };
+
+            let params = RewardsMerkleClaim {
+                root_index: claim.root_index,
+                earner_index: claim.earner_index,
+                earner_tree_proof: claim.earner_tree_proof,
+                earner_leaf: earner_tree_merkle_leaf,
+                token_indices: claim.token_indices,
+                token_tree_proofs: claim.token_tree_proofs,
+                token_leaves: claim.token_leaves,
+            };
+
+            let is_valid = check_claim(env, deps, params)?;
+            Ok(to_json_binary(&is_valid)?)
         }
     }
 }
@@ -793,12 +894,24 @@ fn query_calculate_domain_separator(
     Ok(to_json_binary(&domain_separator)?)
 }
 
+fn query_merkleize_leaves(leaves: Vec<Binary>) -> Result<Binary, ContractError> {
+    let leaf_hashes: Vec<Vec<u8>> = leaves.iter().map(|leaf| leaf.to_vec()).collect();
+
+    if !leaf_hashes.len().is_power_of_two() {
+        return Err(ContractError::InvalidNumberOfLeaves {});
+    }
+
+    let root_hash = merkleize_sha256(leaf_hashes);
+
+    Ok(Binary::from(root_hash))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info};
     use cosmwasm_std::{from_json, Addr, SystemResult, ContractResult, WasmQuery, SystemError, Timestamp, Binary};
-    use crate::utils::{StrategyAndMultiplier, sha256, merkleize_sha256};
+    use crate::utils::{StrategyAndMultiplier, sha256};
     use crate::msg::DistributionRoot;
 
     #[test]
@@ -810,11 +923,11 @@ mod tests {
 
         let msg = InstantiateMsg {
             initial_owner: Addr::unchecked("owner"),
-            calculation_interval_seconds: Uint64::new(86_400), // 1 day
-            max_rewards_duration: Uint64::new(30 * 86_400),   // 30 days
-            max_retroactive_length: Uint64::new(5 * 86_400),  // 5 days
-            max_future_length: Uint64::new(10 * 86_400),      // 10 days
-            genesis_rewards_timestamp: Uint64::new(env.block.time.seconds() / 86_400 * 86_400), 
+            calculation_interval_seconds: 86_400, // 1 day
+            max_rewards_duration: 30 * 86_400,   // 30 days
+            max_retroactive_length: 5 * 86_400,  // 5 days
+            max_future_length: 10 * 86_400,      // 10 days
+            genesis_rewards_timestamp: env.block.time.seconds() / 86_400 * 86_400, 
             delegation_manager: Addr::unchecked("delegation_manager"),
             strategy_manager: Addr::unchecked("strategy_manager"),
             rewards_updater: Addr::unchecked("rewards_updater"),
@@ -847,7 +960,7 @@ mod tests {
         assert_eq!(stored_max_future_length, 10 * 86_400);
 
         let stored_genesis_rewards_timestamp = GENESIS_REWARDS_TIMESTAMP.load(&deps.storage).unwrap();
-        assert_eq!(stored_genesis_rewards_timestamp, msg.genesis_rewards_timestamp.u64());
+        assert_eq!(stored_genesis_rewards_timestamp, msg.genesis_rewards_timestamp);
 
         let stored_delegation_manager = DELEGATION_MANAGER.load(&deps.storage).unwrap();
         assert_eq!(stored_delegation_manager, Addr::unchecked("delegation_manager"));
@@ -931,7 +1044,7 @@ mod tests {
     fn test_validate_rewards_submission() {
         let mut deps = mock_dependencies();
         let calc_interval = 86_400; // 1 day
-    
+        
         CALCULATION_INTERVAL_SECONDS.save(&mut deps.storage, &calc_interval).unwrap();
         MAX_REWARDS_DURATION.save(&mut deps.storage, &(30 * calc_interval)).unwrap(); // 30 days
         MAX_RETROACTIVE_LENGTH.save(&mut deps.storage, &(5 * calc_interval)).unwrap(); // 5 days
@@ -940,6 +1053,10 @@ mod tests {
         let block_time = mock_env().block.time.seconds();
         let genesis_time = block_time - (2 * calc_interval);
         GENESIS_REWARDS_TIMESTAMP.save(&mut deps.storage, &genesis_time).unwrap();
+    
+        // 初始化 STRATEGY_MANAGER 地址
+        let strategy_manager_addr = Addr::unchecked("strategy_manager");
+        STRATEGY_MANAGER.save(&mut deps.storage, &strategy_manager_addr).unwrap();
     
         let aligned_start_time = block_time - (block_time % calc_interval);
         let aligned_start_timestamp = Timestamp::from_seconds(aligned_start_time);
@@ -956,11 +1073,15 @@ mod tests {
         };
     
         deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { contract_addr, msg } if contract_addr == "strategy_1" => {
+            WasmQuery::Smart { contract_addr, msg } if Addr::unchecked(contract_addr) == strategy_manager_addr => {
                 let msg: StrategyQueryMsg = from_json(msg).unwrap();
                 match msg {
-                    StrategyQueryMsg::IsStrategyWhitelisted { .. } => {
-                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap()))
+                    StrategyQueryMsg::IsStrategyWhitelisted { strategy } => {
+                        if strategy == Addr::unchecked("strategy_1") {
+                            SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap())) 
+                        } else {
+                            SystemResult::Ok(ContractResult::Ok(to_json_binary(&false).unwrap()))
+                        }
                     },
                     _ => SystemResult::Err(SystemError::InvalidRequest {
                         error: "Unhandled request".to_string(),
@@ -1015,7 +1136,7 @@ mod tests {
     
         let result = _validate_rewards_submission(&deps.as_ref(), &exceeds_duration_submission, &mock_env());
         assert!(matches!(result, Err(ContractError::ExceedsMaxRewardsDuration {})));
-    }    
+    }        
 
     #[test]
     fn test_create_avs_rewards_submission() {
@@ -1030,14 +1151,17 @@ mod tests {
         MAX_FUTURE_LENGTH.save(&mut deps.storage, &(10 * calc_interval)).unwrap(); // 10 days
         OWNER.save(&mut deps.storage, &Addr::unchecked("creator")).unwrap();
         REWARDS_UPDATER.save(&mut deps.storage, &Addr::unchecked("creator")).unwrap();
-
+    
         let block_time = mock_env().block.time.seconds();
         let genesis_time = block_time - (2 * calc_interval); 
         GENESIS_REWARDS_TIMESTAMP.save(&mut deps.storage, &genesis_time).unwrap();
-
+    
+        let strategy_manager_addr = Addr::unchecked("strategy_manager");
+        STRATEGY_MANAGER.save(&mut deps.storage, &strategy_manager_addr).unwrap();
+    
         let aligned_start_time = block_time - (block_time % calc_interval);
         let aligned_start_timestamp = Timestamp::from_seconds(aligned_start_time);
-
+    
         let submission = vec![RewardsSubmission {
             strategies_and_multipliers: vec![StrategyAndMultiplier {
                 strategy: Addr::unchecked("strategy_1"),
@@ -1048,13 +1172,17 @@ mod tests {
             start_timestamp: aligned_start_timestamp,
             token: Addr::unchecked("token"),
         }];
-    
+        
         deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { contract_addr, msg } if contract_addr == "strategy_1" => {
+            WasmQuery::Smart { contract_addr, msg } if Addr::unchecked(contract_addr) == strategy_manager_addr => {
                 let msg: StrategyQueryMsg = from_json(msg).unwrap();
                 match msg {
-                    StrategyQueryMsg::IsStrategyWhitelisted { .. } => {
-                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap())) 
+                    StrategyQueryMsg::IsStrategyWhitelisted { strategy } => {
+                        if strategy == Addr::unchecked("strategy_1") {
+                            SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap())) 
+                        } else {
+                            SystemResult::Ok(ContractResult::Ok(to_json_binary(&false).unwrap()))
+                        }
                     },
                     _ => SystemResult::Err(SystemError::InvalidRequest {
                         error: "Unhandled request".to_string(),
@@ -1067,14 +1195,14 @@ mod tests {
                 request: to_json_binary(&query).unwrap(),
             }),
         });
-
-        let result = create_avs_rewards_submission(deps.as_mut(), env, info, submission);
     
+        let result = create_avs_rewards_submission(deps.as_mut(), env, info, submission);
+        
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(response.messages.len(), 1);
         assert_eq!(response.events.len(), 1);
-    
+        
         let event = response.events.first().unwrap();
         assert_eq!(event.ty, "AVSRewardsSubmissionCreated");
         assert_eq!(event.attributes.len(), 5);
@@ -1088,14 +1216,14 @@ mod tests {
         assert_eq!(event.attributes[3].value, "token");
         assert_eq!(event.attributes[4].key, "amount");
         assert_eq!(event.attributes[4].value, "100");
-    }
+    }    
 
     #[test]
     fn test_create_rewards_for_all_submission() {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("valid_submitter"), &[]);
-    
+
         let calc_interval = 86_400; // 1 day
         CALCULATION_INTERVAL_SECONDS.save(&mut deps.storage, &calc_interval).unwrap();
         MAX_REWARDS_DURATION.save(&mut deps.storage, &(30 * calc_interval)).unwrap(); // 30 days
@@ -1103,16 +1231,17 @@ mod tests {
         MAX_FUTURE_LENGTH.save(&mut deps.storage, &(10 * calc_interval)).unwrap(); // 10 days
         OWNER.save(&mut deps.storage, &Addr::unchecked("creator")).unwrap();
         REWARDS_FOR_ALL_SUBMITTER.save(&mut deps.storage, Addr::unchecked("valid_submitter"), &true).unwrap();
-    
+        
         let block_time = mock_env().block.time.seconds();
         let genesis_time = block_time - (2 * calc_interval);
-        GENESIS_REWARDS_TIMESTAMP
-            .save(&mut deps.storage, &genesis_time)
-            .unwrap();
+        GENESIS_REWARDS_TIMESTAMP.save(&mut deps.storage, &genesis_time).unwrap();
     
+        let strategy_manager_addr = Addr::unchecked("strategy_manager");
+        STRATEGY_MANAGER.save(&mut deps.storage, &strategy_manager_addr).unwrap();
+        
         let aligned_start_time = block_time - (block_time % calc_interval);
         let aligned_start_timestamp = Timestamp::from_seconds(aligned_start_time);
-    
+        
         let submission = vec![RewardsSubmission {
             strategies_and_multipliers: vec![StrategyAndMultiplier {
                 strategy: Addr::unchecked("strategy_1"),
@@ -1123,14 +1252,18 @@ mod tests {
             start_timestamp: aligned_start_timestamp,
             token: Addr::unchecked("token"),
         }];
-    
+        
         deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { contract_addr, msg } if contract_addr == "strategy_1" => {
+            WasmQuery::Smart { contract_addr, msg } if Addr::unchecked(contract_addr) == strategy_manager_addr => {
                 let msg: StrategyQueryMsg = from_json(msg).unwrap();
                 match msg {
-                    StrategyQueryMsg::IsStrategyWhitelisted { .. } => {
-                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap()))
-                    }
+                    StrategyQueryMsg::IsStrategyWhitelisted { strategy } => {
+                        if strategy == Addr::unchecked("strategy_1") {
+                            SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap())) 
+                        } else {
+                            SystemResult::Ok(ContractResult::Ok(to_json_binary(&false).unwrap()))
+                        }
+                    },
                     _ => SystemResult::Err(SystemError::InvalidRequest {
                         error: "Unhandled request".to_string(),
                         request: to_json_binary(&query).unwrap(),
@@ -1142,14 +1275,14 @@ mod tests {
                 request: to_json_binary(&query).unwrap(),
             }),
         });
-    
+        
         let result = create_rewards_for_all_submission(deps.as_mut(), env, info, submission);
-    
+        
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(response.messages.len(), 1);
         assert_eq!(response.events.len(), 1);
-    
+        
         let event = response.events.first().unwrap();
         assert_eq!(event.ty, "RewardsSubmissionForAllCreated");
         assert_eq!(event.attributes.len(), 5);
@@ -1163,7 +1296,7 @@ mod tests {
         assert_eq!(event.attributes[3].value, "token");
         assert_eq!(event.attributes[4].key, "amount");
         assert_eq!(event.attributes[4].value, "100");
-    }
+    }    
 
     #[test]
     fn test_transfer_ownership() {

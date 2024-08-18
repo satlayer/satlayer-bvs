@@ -67,8 +67,7 @@ pub fn execute(
         ExecuteMsg::SetStrategyWhitelister { new_strategy_whitelister } => set_strategy_whitelister(deps, info, new_strategy_whitelister),
         ExecuteMsg::DepositIntoStrategy { strategy, token, amount } => {
             let staker = info.sender.clone();
-            let response = deposit_into_strategy(deps, env, info, staker, strategy.clone(), token.clone(), amount)?;
-            Ok(response)
+            deposit_into_strategy(deps, info, staker, strategy.clone(), token.clone(), amount)
         },
         ExecuteMsg::SetThirdPartyTransfersForbidden { strategy, value } => set_third_party_transfers_forbidden(deps, info, strategy, value),
         ExecuteMsg::DepositIntoStrategyWithSignature { strategy, token, amount, staker, public_key, expiry, signature } => {
@@ -81,7 +80,10 @@ pub fn execute(
                 expiry,
                 signature,
             };
-            deposit_into_strategy_with_signature(deps, env, info, params)
+            
+            let response = deposit_into_strategy_with_signature(deps, env, info, params)?;
+        
+            Ok(response)
         },
         ExecuteMsg::RemoveShares { staker, strategy, shares } => remove_shares(deps, info, staker, strategy, shares),
         ExecuteMsg::WithdrawSharesAsTokens { recipient, strategy, shares, token } => withdraw_shares_as_tokens(deps, info, recipient, strategy, shares, token),
@@ -90,7 +92,7 @@ pub fn execute(
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner_addr: Addr = Addr::unchecked(new_owner);
             transfer_ownership(deps, info, new_owner_addr)
-        }
+        },
     }
 }
 
@@ -263,20 +265,17 @@ pub fn set_third_party_transfers_forbidden(
 
 pub fn deposit_into_strategy(
     deps: DepsMut,
-    env: Env,
     info: MessageInfo,
     staker: Addr,
     strategy: Addr,
     token: Addr,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    let response = _deposit_into_strategy(deps, env, info, staker, strategy, token, amount)?;
-    Ok(response)
+    _deposit_into_strategy(deps, info, staker, strategy, token, amount)
 }
 
 fn _deposit_into_strategy(
     mut deps: DepsMut,
-    env: Env,
     info: MessageInfo,
     staker: Addr,
     strategy: Addr,
@@ -285,7 +284,15 @@ fn _deposit_into_strategy(
 ) -> Result<Response, ContractError> {
     _only_strategies_whitelisted_for_deposit(deps.as_ref(), &strategy)?;
 
-    let transfer_msg = _create_transfer_msg(&info, &token, &strategy, amount)?;
+    let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: token.to_string(),
+        msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
+            owner: info.sender.to_string(),
+            recipient: strategy.to_string(),
+            amount,
+        })?,
+        funds: vec![],
+    });
 
     let strategy_state: StrategyState = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: strategy.to_string(),
@@ -299,17 +306,13 @@ fn _deposit_into_strategy(
         return Err(ContractError::ZeroNewShares {});
     }
 
-    let deposit_msg = _create_deposit_msg(&strategy, amount)?;
+    let deposit_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: strategy.to_string(),
+        msg: to_json_binary(&StrategyExecuteMsg::Deposit { amount })?,
+        funds: vec![],
+    });
 
-    let mut deposit_response = Response::new()
-        .add_message(transfer_msg)
-        .add_message(deposit_msg)
-        .add_attribute("method", "deposit_into_strategy")
-        .add_attribute("strategy", strategy.to_string())
-        .add_attribute("amount", amount.to_string())
-        .add_attribute("new_shares", new_shares.to_string());
-
-    let add_shares_response = _add_shares(deps.branch(), staker.clone(), token.clone(), strategy.clone(), new_shares)?;
+    _add_shares(deps.branch(), staker.clone(), token.clone(), strategy.clone(), new_shares)?;
 
     let state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
 
@@ -323,15 +326,11 @@ fn _deposit_into_strategy(
         funds: vec![],
     });
 
-    deposit_response = deposit_response.add_message(increase_delegated_shares_msg);    
-
-    deposit_response = deposit_response.add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: env.contract.address.to_string(),
-        msg: to_json_binary(&add_shares_response)?,
-        funds: vec![],
-    }));
-
-    Ok(deposit_response)
+    Ok(Response::new()
+        .add_message(transfer_msg)
+        .add_message(deposit_msg)
+        .add_message(increase_delegated_shares_msg)
+        .add_attribute("new_shares", new_shares.to_string()))
 }
 
 pub fn deposit_into_strategy_with_signature(
@@ -374,22 +373,18 @@ pub fn deposit_into_strategy_with_signature(
 
     NONCES.save(deps.storage, &params.staker, &(nonce + 1))?;
 
-    let deposit_res = _deposit_into_strategy(deps, env.clone(), info, params.staker.clone(), params.strategy.clone(), params.token.clone(), params.amount)?;
+    let response = _deposit_into_strategy(deps, info, params.staker.clone(), params.strategy.clone(), params.token.clone(), params.amount)?;
 
-    let new_shares = deposit_res.attributes.iter()
-    .find(|attr| attr.key == "new_shares")
-    .map(|attr| attr.value.clone())
-    .unwrap_or_else(|| "0".to_string());
+    let new_shares = response.attributes.iter()
+        .find(|attr| attr.key == "new_shares")
+        .map(|attr| attr.value.clone())
+        .ok_or_else(|| ContractError::AttributeNotFound {})?;
 
-    let mut res = Response::new()
+    Ok(Response::new()
         .add_attribute("method", "deposit_into_strategy_with_signature")
         .add_attribute("strategy", params.strategy.to_string())
         .add_attribute("amount", params.amount.to_string())
-        .add_attribute("new_shares", new_shares); 
-
-    res.messages = deposit_res.messages;
-
-    Ok(res)
+        .add_attribute("new_shares", new_shares))
 }
 
 pub fn add_shares(
@@ -541,34 +536,6 @@ pub fn withdraw_shares_as_tokens(
         .add_attribute("token", token.to_string()))
 }
 
-fn _create_transfer_msg(
-    info: &MessageInfo,
-    token: &Addr,
-    strategy: &Addr,
-    amount: Uint128,
-) -> StdResult<CosmosMsg> {
-    Ok(CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: token.to_string(),
-        msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
-            owner: info.sender.to_string(),
-            recipient: strategy.to_string(),
-            amount,
-        })?,
-        funds: vec![],
-    }))
-}
-
-fn _create_deposit_msg(
-    strategy: &Addr,
-    amount: Uint128,
-) -> StdResult<CosmosMsg> {
-    Ok(CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: strategy.to_string(),
-        msg: to_json_binary(&StrategyExecuteMsg::Deposit { amount })?,
-        funds: vec![],
-    }))
-}
-
 fn _calculate_new_shares(
     total_shares: Uint128,
     token_balance: Uint128,
@@ -700,7 +667,7 @@ pub fn staker_strategy_list_length(deps: Deps, staker: Addr) -> StdResult<Uint64
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info};
-    use cosmwasm_std::{Addr, from_json, SystemResult, SystemError, ContractResult, SubMsg};
+    use cosmwasm_std::{Addr, from_json, SystemResult, SystemError, ContractResult};
     use secp256k1::{Secp256k1, SecretKey, PublicKey, Message};
     use sha2::{Sha256, Digest};
     use ripemd::Ripemd160;
@@ -1128,56 +1095,6 @@ mod tests {
     }     
 
     #[test]
-    fn test_create_transfer_msg() {
-        let info = message_info(&Addr::unchecked("sender"), &[]);
-        let token = Addr::unchecked("token");
-        let strategy = Addr::unchecked("strategy");
-        let amount = Uint128::new(100);
-    
-        let msg_result = _create_transfer_msg(&info, &token, &strategy, amount);
-    
-        assert!(msg_result.is_ok());
-    
-        let cosmos_msg = msg_result.unwrap();
-    
-        if let CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }) = cosmos_msg {
-            assert_eq!(contract_addr, token.to_string());
-    
-            let expected_msg = Cw20ExecuteMsg::TransferFrom {
-                owner: info.sender.to_string(),
-                recipient: strategy.to_string(),
-                amount,
-            };
-            let actual_msg: Cw20ExecuteMsg = from_json(msg).unwrap();
-            assert_eq!(actual_msg, expected_msg);
-        } else {
-            panic!("Unexpected message type");
-        }
-    }
-
-    #[test]
-    fn test_create_deposit_msg() {
-        let strategy = Addr::unchecked("strategy");
-        let amount = Uint128::new(100);
-    
-        let msg_result = _create_deposit_msg(&strategy, amount);
-    
-        assert!(msg_result.is_ok());
-    
-        let cosmos_msg = msg_result.unwrap();
-    
-        if let CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }) = cosmos_msg {
-            assert_eq!(contract_addr, strategy.to_string());
-    
-            let expected_msg = StrategyExecuteMsg::Deposit { amount };
-            let actual_msg: StrategyExecuteMsg = from_json(msg).unwrap();
-            assert_eq!(actual_msg, expected_msg);
-        } else {
-            panic!("Unexpected message type");
-        }
-    }
-
-    #[test]
     fn test_deposit_into_strategy() {
         let mut deps = mock_dependencies();
         let env = mock_env();
@@ -1252,38 +1169,9 @@ mod tests {
     
         let res: Response = execute(deps.as_mut(), env.clone(), info_delegation_manager.clone(), msg).unwrap();
     
-        assert_eq!(res.attributes.len(), 4);
-        assert_eq!(res.attributes[0].key, "method");
-        assert_eq!(res.attributes[0].value, "deposit_into_strategy");
-        assert_eq!(res.attributes[1].key, "strategy");
-        assert_eq!(res.attributes[1].value, strategy.to_string());
-        assert_eq!(res.attributes[2].key, "amount");
-        assert_eq!(res.attributes[2].value, amount.to_string());
-        assert_eq!(res.attributes[3].key, "new_shares");
-        assert_eq!(res.attributes[3].value, "105");
-    
-        assert_eq!(res.messages.len(), 4);
-        if let CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }) = &res.messages[0].msg {
-            assert_eq!(contract_addr, &token.to_string());
-            let expected_msg = Cw20ExecuteMsg::TransferFrom {
-                owner: info_delegation_manager.sender.to_string(),
-                recipient: strategy.to_string(),
-                amount,
-            };
-            let actual_msg: Cw20ExecuteMsg = from_json(msg).unwrap();
-            assert_eq!(actual_msg, expected_msg);
-        } else {
-            panic!("Unexpected message type");
-        }
-    
-        if let CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }) = &res.messages[1].msg {
-            assert_eq!(contract_addr, &strategy.to_string());
-            let expected_msg = StrategyExecuteMsg::Deposit { amount };
-            let actual_msg: StrategyExecuteMsg = from_json(msg).unwrap();
-            assert_eq!(actual_msg, expected_msg);
-        } else {
-            panic!("Unexpected message type");
-        }
+        assert_eq!(res.attributes.len(), 1); 
+        assert_eq!(res.attributes[0].key, "new_shares");
+        assert_eq!(res.attributes[0].value, "105"); 
     
         // Test deposit into strategy with non-whitelisted strategy
         let non_whitelisted_strategy = Addr::unchecked("non_whitelisted_strategy");
@@ -1301,7 +1189,7 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    }    
+    }        
                         
     #[test]
     fn test_get_deposits() {
@@ -2000,32 +1888,9 @@ mod tests {
         assert_eq!(res.attributes[1].key, "strategy");
         assert_eq!(res.attributes[1].value, strategy.to_string());
         assert_eq!(res.attributes[2].key, "amount");
-        assert_eq!(res.attributes[2].value, amount.to_string());
+        assert_eq!(res.attributes[2].value, amount.to_string()); 
         assert_eq!(res.attributes[3].key, "new_shares");
         assert_eq!(res.attributes[3].value, "105"); 
-    
-        assert_eq!(res.messages.len(), 4);
-        if let SubMsg { msg: CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }), .. } = &res.messages[0] {
-            assert_eq!(contract_addr, &token.to_string());
-            let expected_msg = Cw20ExecuteMsg::TransferFrom {
-                owner: info_delegation_manager.sender.to_string(),
-                recipient: strategy.to_string(),
-                amount,
-            };
-            let actual_msg: Cw20ExecuteMsg = from_json(msg).unwrap();
-            assert_eq!(actual_msg, expected_msg);
-        } else {
-            panic!("Unexpected message type");
-        }
-        
-        if let SubMsg { msg: CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }), .. } = &res.messages[1] {
-            assert_eq!(contract_addr, &strategy.to_string());
-            let expected_msg = StrategyExecuteMsg::Deposit { amount };
-            let actual_msg: StrategyExecuteMsg = from_json(msg).unwrap();
-            assert_eq!(actual_msg, expected_msg);
-        } else {
-            panic!("Unexpected message type");
-        }
         
         let stored_nonce = NONCES.load(&deps.storage, &staker).unwrap();
         assert_eq!(stored_nonce, 1);

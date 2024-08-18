@@ -1067,6 +1067,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "rewards-coordinator"
+version = "2.0.0"
+dependencies = [
+ "bech32 0.8.1",
+ "cosmwasm-crypto 2.1.0",
+ "cosmwasm-schema",
+ "cosmwasm-std 2.1.0",
+ "cosmwasm-storage",
+ "cw-multi-test",
+ "cw-storage-plus",
+ "cw2",
+ "cw20",
+ "hex",
+ "ripemd",
+ "schemars",
+ "secp256k1",
+ "serde",
+ "serde_json",
+ "sha2 0.10.8",
+ "thiserror",
+]
+
+[[package]]
 name = "rfc6979"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -116,4 +116,7 @@ pub enum ContractError {
 
     #[error("RewardsCoordinator.query_get_root_index_from_hash: invalid hex format")]
     InvalidHexFormat {},
+
+    #[error("RewardsCoordinator.query_merkleize_leaves: invalid number of leaves")]
+    InvalidNumberOfLeaves {},
 }

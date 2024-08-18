@@ -64,7 +64,7 @@ pub fn execute(
     }
 }
 
-fn _ensure_strategy_manager(info: &MessageInfo, strategy_manager: &Addr) -> Result<(), ContractError> {
+fn _only_strategy_manager(info: &MessageInfo, strategy_manager: &Addr) -> Result<(), ContractError> {
     if info.sender != strategy_manager {
         return Err(ContractError::Unauthorized {});
     }
@@ -93,7 +93,7 @@ pub fn deposit(
 ) -> Result<Response, ContractError> {
     let mut state = STRATEGY_STATE.load(deps.storage)?;
 
-    _ensure_strategy_manager(&info, &state.strategy_manager)?;
+    _only_strategy_manager(&info, &state.strategy_manager)?;
     _before_deposit(&state, &state.underlying_token)?;
 
     let balance = _token_balance(&deps.querier, &state.underlying_token, &env.contract.address)?;
@@ -134,7 +134,7 @@ pub fn withdraw(
 ) -> Result<Response, ContractError> {
     let mut state = STRATEGY_STATE.load(deps.storage)?;
 
-    _ensure_strategy_manager(&info, &state.strategy_manager)?;
+    _only_strategy_manager(&info, &state.strategy_manager)?;
     _before_withdrawal(&state, &state.underlying_token)?;
 
     if amount_shares > state.total_shares {
@@ -499,11 +499,11 @@ mod tests {
         let info = message_info(&Addr::unchecked("manager"), &[]);
         let strategy_manager = Addr::unchecked("manager");
 
-        let result = _ensure_strategy_manager(&info, &strategy_manager);
+        let result = _only_strategy_manager(&info, &strategy_manager);
         assert!(result.is_ok());
 
         let info_wrong = message_info(&Addr::unchecked("other_manager"), &[]);
-        let result_wrong = _ensure_strategy_manager(&info_wrong, &strategy_manager);
+        let result_wrong = _only_strategy_manager(&info_wrong, &strategy_manager);
         assert!(result_wrong.is_err());
     }
 

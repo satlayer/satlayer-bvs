@@ -6,7 +6,7 @@ members = [
     # "contracts/state-bank",
     # "contracts/avs-driver",
     "contracts/delegation-manager",
-    # "contracts/rewards-coordinator",
+    "contracts/rewards-coordinator",
     ]
 
 resolver = "2"
