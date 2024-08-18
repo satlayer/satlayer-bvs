@@ -139,3 +139,20 @@ pub struct RewardsMerkleClaim {
     pub token_tree_proofs: Vec<Vec<u8>>,
     pub token_leaves: Vec<TokenTreeMerkleLeaf>,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ExeuteRewardsMerkleClaim {
+    pub root_index: u32,
+    pub earner_index: u32,
+    pub earner_tree_proof: Vec<u8>,
+    pub earner_leaf: ExecuteEarnerTreeMerkleLeaf,
+    pub token_indices: Vec<u32>,
+    pub token_tree_proofs: Vec<Vec<u8>>,
+    pub token_leaves: Vec<TokenTreeMerkleLeaf>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ExecuteEarnerTreeMerkleLeaf {
+    pub earner: Addr,
+    pub earner_token_root: String,
+}

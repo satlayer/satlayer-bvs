@@ -35,4 +35,7 @@ pub enum ContractError {
 
     #[error("StrategyManager._deposit_into_strategy: zero new shares")]
     ZeroNewShares {},
+
+    #[error("StrategyManager.deposit_into_strategy_with_signature: attribute not found")]
+    AttributeNotFound {},
 }
