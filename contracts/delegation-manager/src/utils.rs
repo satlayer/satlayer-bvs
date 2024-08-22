@@ -9,6 +9,9 @@ const DOMAIN_TYPEHASH: &[u8] = b"EIP712Domain(string name,uint256 chainId,addres
 const STAKER_DELEGATION_TYPEHASH: &[u8] = b"StakerDelegation(address staker,address operator,uint256 nonce,uint256 expiry)";
 const DOMAIN_NAME: &[u8] = b"EigenLayer";
 
+type StrategyShares = Vec<(Addr, Uint128)>;
+pub type StakerShares = Vec<(Addr, StrategyShares)>;
+
 fn sha256(input: &[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();
     hasher.update(input);
@@ -174,8 +177,8 @@ pub struct Withdrawal {
     pub staker: Addr,
     pub delegated_to: Addr,
     pub withdrawer: Addr,
-    pub nonce: u128,
-    pub start_block: u64,
+    pub nonce: Uint128,
+    pub start_block: Uint64,
     pub strategies: Vec<Addr>,
     pub shares: Vec<Uint128>,
 }

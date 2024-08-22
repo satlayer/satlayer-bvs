@@ -7,8 +7,8 @@ use crate::{
         DELEGATED_TO, STRATEGY_WITHDRAWAL_DELAY_BLOCKS, OPERATOR_SHARES, DELEGATION_APPROVER_SALT_SPENT, STRATEGY_MANAGER, SLASHER,
         STAKER_NONCE, PENDING_WITHDRAWALS, CUMULATIVE_WITHDRAWALS_QUEUED
     },
-    utils::{calculate_delegation_approval_digest_hash, calculate_staker_delegation_digest_hash, recover, 
-        ApproverDigestHashParams, StakerDigestHashParams, DelegateParams, calculate_withdrawal_root, Withdrawal, calculate_current_staker_delegation_digest_hash, CurrentStakerDigestHashParams
+    utils::{calculate_delegation_approval_digest_hash, calculate_staker_delegation_digest_hash, recover, StakerShares, CurrentStakerDigestHashParams,
+        ApproverDigestHashParams, StakerDigestHashParams, DelegateParams, calculate_withdrawal_root, Withdrawal, calculate_current_staker_delegation_digest_hash
     },
 };
 use strategy_manager::QueryMsg as StrategyManagerQueryMsg;
@@ -167,7 +167,7 @@ pub fn execute(
             info,
             withdrawal,
             tokens,
-            middleware_times_index,
+            middleware_times_index.into(),
             receive_as_tokens,
         ),
 
@@ -688,7 +688,6 @@ pub fn increase_delegated_shares(
     }
 }
 
-
 fn _increase_operator_shares(
     deps: DepsMut,
     operator: Addr,
@@ -761,9 +760,7 @@ pub fn queue_withdrawals(
     info: MessageInfo,
     queued_withdrawal_params: Vec<QueuedWithdrawalParams>,
 ) -> Result<(Response, Vec<Binary>), ContractError> {
-    let operator = DELEGATED_TO
-        .may_load(deps.storage, &info.sender)?
-        .unwrap_or_else(|| Addr::unchecked(""));
+    let operator = DELEGATED_TO.may_load(deps.storage, &info.sender)?.unwrap_or_else(|| Addr::unchecked(""));
 
     let mut response = Response::new();
     let mut withdrawal_roots = Vec::new();
@@ -872,7 +869,7 @@ fn _complete_queued_withdrawal(
     }
 
     // Ensure minWithdrawalDelayBlocks period has passed
-    if withdrawal.start_block + MIN_WITHDRAWAL_DELAY_BLOCKS.load(deps.storage)? > env.block.height {
+    if withdrawal.start_block.u64() + MIN_WITHDRAWAL_DELAY_BLOCKS.load(deps.storage)? > env.block.height {
         return Err(ContractError::MinWithdrawalDelayNotPassed {});
     }
 
@@ -895,11 +892,12 @@ fn _complete_queued_withdrawal(
         for (i, strategy) in withdrawal.strategies.iter().enumerate() {
             // Ensure strategyWithdrawalDelayBlocks period has passed for this strategy
             let delay_blocks = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.load(deps.storage, strategy)?;
-            if withdrawal.start_block + delay_blocks.u64() > env.block.height {
+            if withdrawal.start_block.u64() + delay_blocks.u64() > env.block.height {
                 return Err(ContractError::StrategyWithdrawalDelayNotPassed {});
             }
 
             let sub_response = _withdraw_shares_as_tokens(
+                deps.as_ref(),
                 withdrawal.staker.clone(),
                 info.sender.clone(),
                 withdrawal.strategies[i].clone(),
@@ -914,7 +912,7 @@ fn _complete_queued_withdrawal(
 
         for (i, strategy) in withdrawal.strategies.iter().enumerate() {
             let delay_blocks = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.load(deps.storage, strategy)?;
-            if withdrawal.start_block + delay_blocks.u64() > env.block.height {
+            if withdrawal.start_block.u64() + delay_blocks.u64() > env.block.height {
                 return Err(ContractError::StrategyWithdrawalDelayNotPassed {});
             }
 
@@ -1014,8 +1012,8 @@ fn _remove_shares_and_queue_withdrawal(
         staker: staker.clone(),
         delegated_to: operator.clone(),
         withdrawer: withdrawer.clone(),
-        nonce,
-        start_block: env.block.height,
+        nonce: nonce.into(),
+        start_block: env.block.height.into(),
         strategies: strategies.clone(),
         shares: shares.clone(),
     };
@@ -1037,14 +1035,17 @@ fn _remove_shares_and_queue_withdrawal(
 }
 
 fn _withdraw_shares_as_tokens(
+    deps: Deps,
     staker: Addr,
     withdrawer: Addr,
     strategy: Addr,
     shares: Uint128,
     token: Addr,
 ) -> Result<Response, ContractError> {
+    let state = DELEGATION_MANAGER_STATE.load(deps.storage)?;
+
     let msg = WasmMsg::Execute {
-        contract_addr: strategy.to_string(), 
+        contract_addr: state.strategy_manager.to_string(), 
         msg: to_json_binary(&strategy_manager::ExecuteMsg::WithdrawSharesAsTokens {
             recipient: withdrawer.clone(),
             strategy: strategy.clone(),
@@ -1130,7 +1131,8 @@ pub fn query(
         QueryMsg::GetOperatorStakers { operator } => {
             let stakers_and_shares = query_operator_stakers(deps, operator)?;
             to_json_binary(&stakers_and_shares)
-        }
+        },
+        QueryMsg::GetCumulativeWithdrawalsQueuedNonce { staker } => { to_json_binary(&query_cumulative_withdrawals_queued(deps, staker)?) }
     }
 }
 
@@ -1218,8 +1220,8 @@ pub fn query_staker_nonce(deps: Deps, staker: Addr) -> StdResult<Uint128> {
     Ok(Uint128::new(nonce))
 }
 
-pub fn query_operator_stakers(deps: Deps, operator: Addr) -> StdResult<Vec<(Addr, Uint128)>> {
-    let mut stakers_and_shares: Vec<(Addr, Uint128)> = Vec::new();
+pub fn query_operator_stakers(deps: Deps, operator: Addr) -> StdResult<StakerShares> {
+    let mut stakers_and_shares: Vec<(Addr, Vec<(Addr, Uint128)>)> = Vec::new();
 
     let stakers: Vec<Addr> = DELEGATED_TO
         .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
@@ -1234,20 +1236,28 @@ pub fn query_operator_stakers(deps: Deps, operator: Addr) -> StdResult<Vec<(Addr
         .collect();
 
     for staker in stakers.iter() {
-        let mut total_shares = Uint128::zero();
+        let mut shares_per_strategy: Vec<(Addr, Uint128)> = Vec::new();
 
-        // Iterate over all strategies to sum the shares for each staker
+        // Iterate over all strategies and calculate the shares for each staker
         for item in OPERATOR_SHARES.range(deps.storage, None, None, cosmwasm_std::Order::Ascending) {
-            let ((stored_operator, _strategy), shares) = item?;
+            let ((stored_operator, strategy), shares) = item?;
             if stored_operator == operator {
-                total_shares += shares;
+                shares_per_strategy.push((strategy, shares));
             }
         }
 
-        stakers_and_shares.push((staker.clone(), total_shares));
+        stakers_and_shares.push((staker.clone(), shares_per_strategy));
     }
 
     Ok(stakers_and_shares)
+}
+
+pub fn query_cumulative_withdrawals_queued(deps: Deps, staker: Addr) -> StdResult<Uint128> {
+    let cumulative_withdrawals = CUMULATIVE_WITHDRAWALS_QUEUED
+        .may_load(deps.storage, &staker)?
+        .unwrap_or(0);
+
+    Ok(Uint128::new(cumulative_withdrawals))
 }
 
 #[cfg(test)]
@@ -2825,8 +2835,8 @@ mod tests {
             staker: staker.clone(),
             delegated_to: delegated_to.clone(),
             withdrawer: withdrawer.clone(),
-            nonce: 1,
-            start_block: 12345,
+            nonce: Uint128::new(1),
+            start_block: Uint64::new(12345),
             strategies: strategies.clone(),
             shares: shares.clone(),
         };
@@ -2835,7 +2845,7 @@ mod tests {
     
         let res: String = from_json(query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
     
-        let expected_hash = "J2I3ovws+vvJ1298ZRQr4nT9Sv9dsyjW7/bH63Z8p1s=";
+        let expected_hash = "fmAg05EX0z/mjX8aRMyovezcQNqcVU9zj1Mz53MpUeQ=";
         assert_eq!(res, expected_hash);
     }     
 
@@ -3121,8 +3131,8 @@ mod tests {
             staker: staker.clone(),
             delegated_to: operator.clone(),
             withdrawer: withdrawer.clone(),
-            nonce: 0,
-            start_block: env.block.height - 15,  // Simulate sufficient delay has passed
+            nonce: Uint128::new(0),
+            start_block: Uint64::new(env.block.height - 15),  // Simulate sufficient delay has passed
             strategies: strategies.clone(),
             shares: shares.clone(),
         };
@@ -3189,7 +3199,7 @@ mod tests {
     
         // Test for insufficient delay
         let premature_withdrawal = Withdrawal {
-            start_block: env.block.height - 5,  // Not enough delay
+            start_block: Uint64::new(env.block.height - 5),  // Not enough delay
             ..withdrawal.clone()
         };
         let premature_withdrawal_root: Binary = calculate_withdrawal_root(&premature_withdrawal).unwrap();
@@ -3234,8 +3244,8 @@ mod tests {
             staker: staker.clone(),
             delegated_to: operator.clone(),
             withdrawer: withdrawer.clone(),
-            nonce: 0,
-            start_block: env.block.height - 15,  // Simulate sufficient delay has passed
+            nonce: Uint128::new(0),
+            start_block: Uint64::new(env.block.height - 15),  // Simulate sufficient delay has passed
             strategies: strategies.clone(),
             shares: shares.clone(),
         };
@@ -3302,8 +3312,8 @@ mod tests {
             staker: staker.clone(),
             delegated_to: operator.clone(),
             withdrawer: withdrawer.clone(),
-            nonce: 0,
-            start_block: env.block.height - 15, // Simulate sufficient delay has passed
+            nonce: Uint128::new(0),
+            start_block: Uint64::new(env.block.height - 15), // Simulate sufficient delay has passed
             strategies: strategies.clone(),
             shares: shares.clone(),
         };
@@ -3332,7 +3342,7 @@ mod tests {
         let complete_msg = ExecuteMsg::CompleteQueuedWithdrawal {
             withdrawal: withdrawal.clone(),
             tokens: tokens.clone(),
-            middleware_times_index: 0,
+            middleware_times_index: Uint64::new(0),
             receive_as_tokens: true,
         };
     
@@ -3361,7 +3371,7 @@ mod tests {
     
         // Test for insufficient delay
         let premature_withdrawal = Withdrawal {
-            start_block: env.block.height - 5,  // Not enough delay
+            start_block: Uint64::new(env.block.height - 5),  // Not enough delay
             ..withdrawal.clone()
         };
         let premature_withdrawal_root = calculate_withdrawal_root(&premature_withdrawal).unwrap();
@@ -3369,7 +3379,7 @@ mod tests {
         let premature_msg = ExecuteMsg::CompleteQueuedWithdrawal {
             withdrawal: premature_withdrawal.clone(),
             tokens: tokens.clone(),
-            middleware_times_index: 0,
+            middleware_times_index: Uint64::new(0),
             receive_as_tokens: true,
         };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), premature_msg);
@@ -3385,7 +3395,7 @@ mod tests {
         let mismatch_msg = ExecuteMsg::CompleteQueuedWithdrawal {
             withdrawal: withdrawal.clone(),
             tokens: vec![Addr::unchecked("token1")],  // Incorrect length
-            middleware_times_index: 0,
+            middleware_times_index: Uint64::new(0),
             receive_as_tokens: true,
         };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), mismatch_msg);
@@ -3402,8 +3412,8 @@ mod tests {
             staker: staker.clone(),
             delegated_to: operator.clone(),
             withdrawer: withdrawer.clone(),
-            nonce: 0,
-            start_block: env.block.height - 15,  // Simulate sufficient delay has passed
+            nonce: Uint128::new(0),
+            start_block: Uint64::new(env.block.height - 15),  // Simulate sufficient delay has passed
             strategies: strategies.clone(),
             shares: shares.clone(),
         };
@@ -3418,7 +3428,7 @@ mod tests {
         let delay_msg = ExecuteMsg::CompleteQueuedWithdrawal {
             withdrawal: delayed_withdrawal.clone(),
             tokens: tokens.clone(),
-            middleware_times_index: 0,
+            middleware_times_index: Uint64::new(0),
             receive_as_tokens: false,
         };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), delay_msg);
@@ -3465,8 +3475,8 @@ mod tests {
             staker: staker.clone(),
             delegated_to: operator.clone(),
             withdrawer: withdrawer.clone(),
-            nonce: 0,
-            start_block: env.block.height - 15, // Simulate sufficient delay has passed
+            nonce: Uint128::new(0),
+            start_block: Uint64::new(env.block.height - 15), // Simulate sufficient delay has passed
             strategies: strategies1.clone(),
             shares: shares1.clone(),
         };
@@ -3475,8 +3485,8 @@ mod tests {
             staker: staker.clone(),
             delegated_to: operator.clone(),
             withdrawer: withdrawer.clone(),
-            nonce: 1,
-            start_block: env.block.height - 15, // Simulate sufficient delay has passed
+            nonce: Uint128::new(1),
+            start_block: Uint64::new(env.block.height - 15), // Simulate sufficient delay has passed
             strategies: strategies2.clone(),
             shares: shares2.clone(),
         };
@@ -3586,6 +3596,7 @@ mod tests {
     
         // Call the function
         let res = _withdraw_shares_as_tokens(
+            deps.as_ref(),
             staker1.clone(),
             withdrawer1.clone(),
             strategy1.clone(),
@@ -3598,7 +3609,7 @@ mod tests {
         let msg = &res.messages[0].msg;
         match msg {
             cosmwasm_std::CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }) => {
-                assert_eq!(contract_addr, &strategy1.to_string());
+                assert_eq!(contract_addr, "strategy_manager");
                 let execute_msg: strategy_manager::ExecuteMsg = from_json(msg).unwrap();
                 if let strategy_manager::ExecuteMsg::WithdrawSharesAsTokens { recipient, strategy, shares, token } = execute_msg {
                     assert_eq!(recipient, withdrawer1);
@@ -3991,36 +4002,41 @@ mod tests {
     #[test]
     fn test_query_operator_stakers() {
         let mut deps = mock_dependencies();
-    
+
         let operator = Addr::unchecked("operator");
         let staker1 = Addr::unchecked("staker1");
-        let staker2 = Addr::unchecked("staker2");
         let strategy1 = Addr::unchecked("strategy1");
         let strategy2 = Addr::unchecked("strategy2");
-    
+
         DELEGATED_TO.save(deps.as_mut().storage, &staker1, &operator).unwrap();
-        DELEGATED_TO.save(deps.as_mut().storage, &staker2, &operator).unwrap();
-    
+
         OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategy1), &Uint128::new(100)).unwrap();
         OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategy2), &Uint128::new(200)).unwrap();
-        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategy1), &Uint128::new(150)).unwrap();
-        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategy2), &Uint128::new(150)).unwrap();
-    
-        let msg = QueryMsg::GetOperatorStakers { operator: operator.clone() };
-    
-        let res: Vec<(Addr, Uint128)> = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
-    
-        assert_eq!(res.len(), 2);
-    
+
+        let res = query_operator_stakers(deps.as_ref(), operator.clone()).unwrap();
+
+        assert_eq!(res.len(), 1);
+
         let staker1_result = res.iter().find(|(staker, _)| staker == staker1).unwrap();
-        let staker2_result = res.iter().find(|(staker, _)| staker == staker2).unwrap();
-    
-        // Check staker1's total shares
         assert_eq!(staker1_result.0, staker1);
-        assert_eq!(staker1_result.1, Uint128::new(300)); // 100 (strategy1) + 200 (strategy2)
+        assert_eq!(staker1_result.1.len(), 2);
+        println!("staker1_result.1: {:?}", staker1_result.1);
+        println!("Checking if the tuple exists in the vector: {:?}", (strategy1.clone(), Uint128::new(100)));
+        assert!(staker1_result.1.contains(&(strategy1.clone(), Uint128::new(100))));
+        assert!(staker1_result.1.contains(&(strategy2.clone(), Uint128::new(200))));
+    }
+
+    #[test]
+    fn test_query_cumulative_withdrawals_queued() {
+        let mut deps = mock_dependencies();
+        let staker = Addr::unchecked("staker1");
     
-        // Check staker2's total shares
-        assert_eq!(staker2_result.0, staker2);
-        assert_eq!(staker2_result.1, Uint128::new(300)); // 150 (strategy1) + 150 (strategy2)
-    }                        
+        CUMULATIVE_WITHDRAWALS_QUEUED.save(deps.as_mut().storage, &staker, &5).unwrap();
+    
+        let msg = QueryMsg::GetCumulativeWithdrawalsQueuedNonce { staker: staker.clone() };
+    
+        let res: Uint128 = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+    
+        assert_eq!(res, Uint128::new(5));
+    }    
 }
