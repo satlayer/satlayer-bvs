@@ -320,9 +320,7 @@ pub fn process_claim(
     claim: RewardsMerkleClaim,
     recipient: Addr,
 ) -> Result<Response, ContractError> {
-    let root: DistributionRoot = DISTRIBUTION_ROOTS
-        .may_load(deps.storage, claim.root_index.into())?
-        .ok_or(ContractError::RootNotExist {})?;
+    let root: DistributionRoot = DISTRIBUTION_ROOTS.may_load(deps.storage, claim.root_index.into())?.ok_or(ContractError::RootNotExist {})?;
 
     _check_claim(env.clone(), &claim, &root)?;
 
@@ -394,7 +392,7 @@ pub fn submit_root(
     rewards_calculation_end_timestamp: Uint64,
 ) -> Result<Response, ContractError> {
     _only_rewards_updater(deps.as_ref(), &info)?;
-
+    
     let curr_rewards_calculation_end_timestamp = CURR_REWARDS_CALCULATION_END_TIMESTAMP
         .may_load(deps.storage)?
         .unwrap_or(Uint64::zero());
@@ -402,6 +400,7 @@ pub fn submit_root(
     if rewards_calculation_end_timestamp <= curr_rewards_calculation_end_timestamp {
         return Err(ContractError::InvalidTimestamp {});
     }
+
     if rewards_calculation_end_timestamp.u64() >= env.block.time.seconds() {
         return Err(ContractError::TimestampInFuture {});
     }
@@ -711,7 +710,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
             query_operator_commission_bips(deps, operator, avs)
         }
 
-        QueryMsg::GetDistributionRootsLength { } => {
+        QueryMsg::GetDistributionRootsLength {} => {
             query_distribution_roots_length(deps)
         }
 
@@ -736,10 +735,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
         }
 
         QueryMsg::MerkleizeLeaves { leaves } => {
-            let binary_leaves: Vec<Binary> = leaves
-            .iter()
-            .map(|leaf_str| Binary::from_base64(leaf_str))
-            .collect::<Result<Vec<Binary>, _>>()?;
+            let binary_leaves: Vec<Binary> = leaves.iter().map(|leaf_str| Binary::from_base64(leaf_str)).collect::<Result<Vec<Binary>, _>>()?;
             
             query_merkleize_leaves(binary_leaves) }
             

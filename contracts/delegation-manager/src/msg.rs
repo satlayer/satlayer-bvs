@@ -46,7 +46,7 @@ pub enum ExecuteMsg {
     CompleteQueuedWithdrawal {
         withdrawal: Withdrawal,
         tokens: Vec<Addr>,
-        middleware_times_index: u64,
+        middleware_times_index: Uint64,
         receive_as_tokens: bool,
     },
     CompleteQueuedWithdrawals {
@@ -121,6 +121,9 @@ pub enum QueryMsg {
 
     #[returns(Vec<(Addr, Uint128)>)]
     GetOperatorStakers { operator: Addr },
+
+    #[returns(Uint128)]
+    GetCumulativeWithdrawalsQueuedNonce { staker: Addr },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
