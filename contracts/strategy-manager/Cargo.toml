@@ -30,6 +30,7 @@ bech32 = { workspace = true }
 cosmwasm-storage = { workspace = true }
 cw20 = { workspace = true }
 ripemd = { workspace = true }
+common = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
