@@ -17,7 +17,8 @@ pub struct AVSInfo {
 }
 
 pub const OWNER: Item<Addr> = Item::new("owner");
-pub const AVS_OPERATOR_STATUS: Map<(Addr, Addr), OperatorAVSRegistrationStatus> = Map::new("avs_operator_status");
+pub const AVS_OPERATOR_STATUS: Map<(Addr, Addr), OperatorAVSRegistrationStatus> =
+    Map::new("avs_operator_status");
 pub const OPERATOR_SALT_SPENT: Map<(Addr, String), bool> = Map::new("operator_salt_is_spent");
 pub const DELEGATION_MANAGER: Item<Addr> = Item::new("delegation_manager");
 pub const AVS_INFO: Map<String, AVSInfo> = Map::new("avs_info");

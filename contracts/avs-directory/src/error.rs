@@ -23,7 +23,4 @@ pub enum ContractError {
 
     #[error("AVSDirectory.transferOwnership: unauthorized")]
     Unauthorized {},
-
-    #[error("AVSDirectory.execute: invaild expiry")]
-    InvalidExpiry {},
 }

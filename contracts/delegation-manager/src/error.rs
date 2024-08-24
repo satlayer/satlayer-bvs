@@ -21,7 +21,9 @@ pub enum ContractError {
     #[error("DelegationManager: input length mismatch")]
     InputLengthMismatch {},
 
-    #[error("DelegationManager.set_operator_details: stakerOptOutWindowBlocks cannot be decreased")]
+    #[error(
+        "DelegationManager.set_operator_details: stakerOptOutWindowBlocks cannot be decreased"
+    )]
     CannotBeDecreased {},
 
     #[error("DelegationManager.delegate: approver signature expired")]
@@ -45,7 +47,9 @@ pub enum ContractError {
     #[error("DelegationManager._decrease_operator_shares: underflow")]
     Underflow,
 
-    #[error("DelegationManager._remove_shares_and_queue_withdrawal: staker cannot be zero address")]
+    #[error(
+        "DelegationManager._remove_shares_and_queue_withdrawal: staker cannot be zero address"
+    )]
     CannotBeZero {},
 
     #[error("DelegationManager._remove_shares_and_queue_withdrawal: strategies cannot be empty")]
@@ -53,7 +57,7 @@ pub enum ContractError {
 
     #[error("DelegationManager._removeSharesAndQueueWithdrawal: withdrawer must be same address as staker if thirdPartyTransfersForbidden are set")]
     MustBeSameAddress {},
-    
+
     #[error("DelegationManager._completeQueuedWithdrawal: action is not in queue")]
     ActionNotInQueue {},
 
@@ -64,17 +68,17 @@ pub enum ContractError {
     StrategyWithdrawalDelayNotPassed {},
 
     #[error("DelegationManager.queueWithdrawal: withdrawer must be staker")]
-    WithdrawerMustBeStaker {},    
+    WithdrawerMustBeStaker {},
 
     #[error("DelegationManager.undelegate: staker must be delegated to undelegate")]
-    StakerNotDelegated {},    
+    StakerNotDelegated {},
 
     #[error("DelegationManager.undelegate: operators cannot be undelegated")]
-    OperatorCannotBeUndelegated {},    
+    OperatorCannotBeUndelegated {},
 
     #[error("DelegationManager._delegate: invalid signature")]
-    InvalidSignature {},    
+    InvalidSignature {},
 
     #[error("DelegationManager.increase_delegated_shares: not delegated")]
-    NotDelegated {},   
+    NotDelegated {},
 }

@@ -1,8 +1,11 @@
+use crate::utils::{
+    CurrentStakerDigestHashParams, ExecuteDelegateParams, QueryApproverDigestHashParams,
+    QueryStakerDigestHashParams, Withdrawal,
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Binary, Uint128, Uint64};
-use crate::utils::{Withdrawal, CurrentStakerDigestHashParams, QueryStakerDigestHashParams, QueryApproverDigestHashParams, ExecuteDelegateParams};
-use serde::{Serialize, Deserialize};
 use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -96,7 +99,10 @@ pub enum QueryMsg {
     StakerOptOutWindowBlocks { operator: Addr },
 
     #[returns(Vec<Uint128>)]
-    GetOperatorShares { operator: Addr, strategies: Vec<Addr> },
+    GetOperatorShares {
+        operator: Addr,
+        strategies: Vec<Addr>,
+    },
 
     #[returns((Vec<Addr>, Vec<Uint128>))]
     GetDelegatableShares { staker: Addr },
@@ -108,14 +114,20 @@ pub enum QueryMsg {
     CalculateWithdrawalRoot { withdrawal: Withdrawal },
 
     #[returns(Binary)]
-    StakerDelegationDigestHash { staker_digest_hash_params: QueryStakerDigestHashParams },
+    StakerDelegationDigestHash {
+        staker_digest_hash_params: QueryStakerDigestHashParams,
+    },
 
     #[returns(Binary)]
-    DelegationApprovalDigestHash { approver_digest_hash_params: QueryApproverDigestHashParams },
+    DelegationApprovalDigestHash {
+        approver_digest_hash_params: QueryApproverDigestHashParams,
+    },
 
     #[returns(Binary)]
-    CalculateCurrentStakerDelegationDigestHash { current_staker_digest_hash_params: CurrentStakerDigestHashParams },
-    
+    CalculateCurrentStakerDelegationDigestHash {
+        current_staker_digest_hash_params: CurrentStakerDigestHashParams,
+    },
+
     #[returns(Uint128)]
     GetStakerNonce { staker: Addr },
 

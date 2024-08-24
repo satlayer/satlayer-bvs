@@ -1,27 +1,34 @@
 use crate::{
     error::ContractError,
-    strategy_manager,
-    msg::{InstantiateMsg, SignatureWithExpiry, QueryMsg, ExecuteMsg, OperatorDetails, QueuedWithdrawalParams},
-    state::{
-        DelegationManagerState, DELEGATION_MANAGER_STATE, OPERATOR_DETAILS, OWNER, MIN_WITHDRAWAL_DELAY_BLOCKS,
-        DELEGATED_TO, STRATEGY_WITHDRAWAL_DELAY_BLOCKS, OPERATOR_SHARES, DELEGATION_APPROVER_SALT_SPENT, STRATEGY_MANAGER, SLASHER,
-        STAKER_NONCE, PENDING_WITHDRAWALS, CUMULATIVE_WITHDRAWALS_QUEUED
+    msg::{
+        ExecuteMsg, InstantiateMsg, OperatorDetails, QueryMsg, QueuedWithdrawalParams,
+        SignatureWithExpiry,
     },
-    utils::{calculate_delegation_approval_digest_hash, calculate_staker_delegation_digest_hash, recover, StakerShares, CurrentStakerDigestHashParams,
-        ApproverDigestHashParams, StakerDigestHashParams, DelegateParams, calculate_withdrawal_root, Withdrawal, calculate_current_staker_delegation_digest_hash
+    state::{
+        DelegationManagerState, CUMULATIVE_WITHDRAWALS_QUEUED, DELEGATED_TO,
+        DELEGATION_APPROVER_SALT_SPENT, DELEGATION_MANAGER_STATE, MIN_WITHDRAWAL_DELAY_BLOCKS,
+        OPERATOR_DETAILS, OPERATOR_SHARES, OWNER, PENDING_WITHDRAWALS, SLASHER, STAKER_NONCE,
+        STRATEGY_MANAGER, STRATEGY_WITHDRAWAL_DELAY_BLOCKS,
+    },
+    strategy_manager,
+    utils::{
+        calculate_current_staker_delegation_digest_hash, calculate_delegation_approval_digest_hash,
+        calculate_staker_delegation_digest_hash, calculate_withdrawal_root, recover,
+        ApproverDigestHashParams, CurrentStakerDigestHashParams, DelegateParams,
+        StakerDigestHashParams, StakerShares, Withdrawal,
     },
 };
-use strategy_manager::QueryMsg as StrategyManagerQueryMsg;
 use cosmwasm_std::{
-    entry_point, to_json_binary, Addr, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint64, Uint128, WasmQuery, Event,
-    Binary, WasmMsg, CosmosMsg
+    entry_point, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo,
+    Response, StdResult, Uint128, Uint64, WasmMsg, WasmQuery,
 };
 use cw2::set_contract_version;
+use strategy_manager::QueryMsg as StrategyManagerQueryMsg;
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const MAX_STAKER_OPT_OUT_WINDOW_BLOCKS: u64 = 180 * 24 * 60 * 60 / 12; 
+const MAX_STAKER_OPT_OUT_WINDOW_BLOCKS: u64 = 180 * 24 * 60 * 60 / 12;
 const MAX_WITHDRAWAL_DELAY_BLOCKS: u64 = 216_000;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -44,14 +51,21 @@ pub fn instantiate(
     OWNER.save(deps.storage, &msg.initial_owner)?;
     _set_min_withdrawal_delay_blocks(deps.branch(), msg.min_withdrawal_delay_blocks)?;
 
-    let withdrawal_delay_blocks: Vec<Uint64> = msg.withdrawal_delay_blocks.iter().map(|&block| Uint64::from(block)).collect();
+    let withdrawal_delay_blocks: Vec<Uint64> = msg
+        .withdrawal_delay_blocks
+        .iter()
+        .map(|&block| Uint64::from(block))
+        .collect();
     _set_strategy_withdrawal_delay_blocks(deps.branch(), msg.strategies, withdrawal_delay_blocks)?;
 
     let response = Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("strategy_manager", state.strategy_manager.to_string())
         .add_attribute("slasher", state.slasher.to_string())
-        .add_attribute("min_withdrawal_delay_blocks", msg.min_withdrawal_delay_blocks.to_string())
+        .add_attribute(
+            "min_withdrawal_delay_blocks",
+            msg.min_withdrawal_delay_blocks.to_string(),
+        )
         .add_attribute("owner", msg.initial_owner.to_string());
 
     Ok(response)
@@ -69,15 +83,26 @@ pub fn execute(
             sender_public_key,
             operator_details,
             metadata_uri,
-        } => register_as_operator(deps, info, env, sender_public_key, operator_details, metadata_uri),
+        } => register_as_operator(
+            deps,
+            info,
+            env,
+            sender_public_key,
+            operator_details,
+            metadata_uri,
+        ),
 
-        ExecuteMsg::ModifyOperatorDetails {new_operator_details,} => modify_operator_details(deps, info, new_operator_details),
+        ExecuteMsg::ModifyOperatorDetails {
+            new_operator_details,
+        } => modify_operator_details(deps, info, new_operator_details),
 
-        ExecuteMsg::UpdateOperatorMetadataUri { metadata_uri } => {update_operator_metadata_uri(deps, info, metadata_uri)}
+        ExecuteMsg::UpdateOperatorMetadataUri { metadata_uri } => {
+            update_operator_metadata_uri(deps, info, metadata_uri)
+        }
 
         ExecuteMsg::DelegateTo {
             params,
-            approver_signature_and_expiry
+            approver_signature_and_expiry,
         } => {
             let public_key_binary = Binary::from_base64(&params.public_key)?;
             let signature = Binary::from_base64(&approver_signature_and_expiry.signature)?;
@@ -96,7 +121,7 @@ pub fn execute(
             };
 
             delegate_to(deps, info, env, delegate_params, signature_and_expiry)
-        },
+        }
 
         ExecuteMsg::DelegateToBySignature {
             params,
@@ -127,7 +152,7 @@ pub fn execute(
                 expiry: approver_signature_and_expiry.expiry,
             };
 
-            delegate_to_by_signature (
+            delegate_to_by_signature(
                 deps,
                 env,
                 info,
@@ -136,7 +161,7 @@ pub fn execute(
                 signature_and_expiry_staker,
                 signature_and_expiry_approver,
             )
-        },
+        }
 
         ExecuteMsg::Undelegate { staker } => {
             let (mut response, withdrawal_roots) = undelegate(deps, env, info, staker)?;
@@ -145,16 +170,23 @@ pub fn execute(
             }
 
             Ok(response)
-        },
+        }
 
-        ExecuteMsg::QueueWithdrawals { queued_withdrawal_params } => {
-            let (response, withdrawal_roots) = queue_withdrawals(deps, env, info, queued_withdrawal_params)?;
-            
-            let root_strings: Vec<String> = withdrawal_roots.iter().map(|root| root.to_base64()).collect();
-            let response_with_roots = response.add_attribute("withdrawal_roots", root_strings.join(","));
+        ExecuteMsg::QueueWithdrawals {
+            queued_withdrawal_params,
+        } => {
+            let (response, withdrawal_roots) =
+                queue_withdrawals(deps, env, info, queued_withdrawal_params)?;
+
+            let root_strings: Vec<String> = withdrawal_roots
+                .iter()
+                .map(|root| root.to_base64())
+                .collect();
+            let response_with_roots =
+                response.add_attribute("withdrawal_roots", root_strings.join(","));
 
             Ok(response_with_roots)
-        },
+        }
 
         ExecuteMsg::CompleteQueuedWithdrawal {
             withdrawal,
@@ -266,14 +298,22 @@ fn _set_min_withdrawal_delay_blocks(
         return Err(ContractError::MinCannotBeExceedMAXWITHDRAWALDELAYBLOCKS {});
     }
 
-    let prev_min_withdrawal_delay_blocks = MIN_WITHDRAWAL_DELAY_BLOCKS.may_load(deps.storage)?.unwrap_or(0);
+    let prev_min_withdrawal_delay_blocks = MIN_WITHDRAWAL_DELAY_BLOCKS
+        .may_load(deps.storage)?
+        .unwrap_or(0);
 
     MIN_WITHDRAWAL_DELAY_BLOCKS.save(deps.storage, &min_withdrawal_delay_blocks)?;
 
     let event = Event::new("MinWithdrawalDelayBlocksSet")
         .add_attribute("method", "set_min_withdrawal_delay_blocks")
-        .add_attribute("prev_min_withdrawal_delay_blocks", prev_min_withdrawal_delay_blocks.to_string())
-        .add_attribute("new_min_withdrawal_delay_blocks", min_withdrawal_delay_blocks.to_string());
+        .add_attribute(
+            "prev_min_withdrawal_delay_blocks",
+            prev_min_withdrawal_delay_blocks.to_string(),
+        )
+        .add_attribute(
+            "new_min_withdrawal_delay_blocks",
+            min_withdrawal_delay_blocks.to_string(),
+        );
 
     Ok(Response::new().add_event(event))
 }
@@ -306,15 +346,21 @@ fn _set_strategy_withdrawal_delay_blocks(
             return Err(ContractError::CannotBeExceedMAXWITHDRAWALDELAYBLOCKS {});
         }
 
-        let prev_withdrawal_delay_blocks = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.may_load(deps.storage, strategy)?.unwrap_or(Uint64::new(0));
+        let prev_withdrawal_delay_blocks = STRATEGY_WITHDRAWAL_DELAY_BLOCKS
+            .may_load(deps.storage, strategy)?
+            .unwrap_or(Uint64::new(0));
 
-        STRATEGY_WITHDRAWAL_DELAY_BLOCKS.save(deps.storage, strategy, &new_withdrawal_delay_blocks)?;
+        STRATEGY_WITHDRAWAL_DELAY_BLOCKS.save(
+            deps.storage,
+            strategy,
+            &new_withdrawal_delay_blocks,
+        )?;
 
         let event = Event::new("StrategyWithdrawalDelayBlocksSet")
             .add_attribute("strategy", strategy.to_string())
             .add_attribute("prev", prev_withdrawal_delay_blocks.to_string())
             .add_attribute("new", new_withdrawal_delay_blocks.to_string());
-        
+
         response = response.add_event(event);
     }
 
@@ -335,7 +381,11 @@ pub fn register_as_operator(
         return Err(ContractError::StakerAlreadyDelegated {});
     }
 
-    _set_operator_details(deps.branch(), operator.clone(), registering_operator_details)?;
+    _set_operator_details(
+        deps.branch(),
+        operator.clone(),
+        registering_operator_details,
+    )?;
 
     let empty_signature_and_expiry = SignatureWithExpiry {
         signature: Binary::from(vec![]),
@@ -346,15 +396,15 @@ pub fn register_as_operator(
         staker: info.sender.clone(),
         operator: info.sender.clone(),
         public_key: sender_public_key,
-        salt: Binary::from(vec![0])
+        salt: Binary::from(vec![0]),
     };
 
     _delegate(deps, info, env, empty_signature_and_expiry, params)?;
 
     let mut response = Response::new();
 
-    let register_event = Event::new("OperatorRegistered")
-        .add_attribute("operator", operator.to_string());
+    let register_event =
+        Event::new("OperatorRegistered").add_attribute("operator", operator.to_string());
     response = response.add_event(register_event);
 
     let metadata_event = Event::new("OperatorMetadataURIUpdated")
@@ -404,17 +454,21 @@ fn _set_operator_details(
     operator: Addr,
     new_operator_details: OperatorDetails,
 ) -> Result<Response, ContractError> {
-    let current_operator_details = OPERATOR_DETAILS.may_load(deps.storage, &operator)?.unwrap_or_else(|| OperatorDetails {
-        staker_opt_out_window_blocks: 0,
-        deprecated_earnings_receiver: Addr::unchecked(""),
-        delegation_approver: Addr::unchecked(""),
-    });
+    let current_operator_details = OPERATOR_DETAILS
+        .may_load(deps.storage, &operator)?
+        .unwrap_or_else(|| OperatorDetails {
+            staker_opt_out_window_blocks: 0,
+            deprecated_earnings_receiver: Addr::unchecked(""),
+            delegation_approver: Addr::unchecked(""),
+        });
 
     if new_operator_details.staker_opt_out_window_blocks > MAX_STAKER_OPT_OUT_WINDOW_BLOCKS {
         return Err(ContractError::CannotBeExceedMAXSTAKEROPTOUTWINDOWBLOCKS {});
     }
 
-    if new_operator_details.staker_opt_out_window_blocks < current_operator_details.staker_opt_out_window_blocks {
+    if new_operator_details.staker_opt_out_window_blocks
+        < current_operator_details.staker_opt_out_window_blocks
+    {
         return Err(ContractError::CannotBeDecreased {});
     }
 
@@ -422,7 +476,12 @@ fn _set_operator_details(
 
     let event = Event::new("OperatorDetailsSet")
         .add_attribute("operator", operator.to_string())
-        .add_attribute("staker_opt_out_window_blocks", new_operator_details.staker_opt_out_window_blocks.to_string());
+        .add_attribute(
+            "staker_opt_out_window_blocks",
+            new_operator_details
+                .staker_opt_out_window_blocks
+                .to_string(),
+        );
 
     Ok(Response::new().add_event(event))
 }
@@ -468,7 +527,9 @@ pub fn delegate_to_by_signature(
         return Err(ContractError::OperatorNotRegistered {});
     }
 
-    let current_staker_nonce: u128 = STAKER_NONCE.may_load(deps.storage, &params.staker)?.unwrap_or(0);
+    let current_staker_nonce = STAKER_NONCE
+        .may_load(deps.storage, &params.staker)?
+        .unwrap_or(0);
 
     let chain_id = env.block.chain_id.clone();
 
@@ -484,11 +545,17 @@ pub fn delegate_to_by_signature(
 
     let staker_digest_hash = calculate_staker_delegation_digest_hash(digest_params);
 
-    let staker_nonce = current_staker_nonce.checked_add(1).ok_or(ContractError::NonceOverflow)?;
+    let staker_nonce = current_staker_nonce
+        .checked_add(1)
+        .ok_or(ContractError::NonceOverflow)?;
 
     STAKER_NONCE.save(deps.storage, &params.staker, &staker_nonce)?;
 
-    if !recover(&staker_digest_hash, &staker_signature_and_expiry.signature, &staker_public_key)?{
+    if !recover(
+        &staker_digest_hash,
+        &staker_signature_and_expiry.signature,
+        &staker_public_key,
+    )? {
         return Err(ContractError::InvalidSignature {});
     }
 
@@ -509,18 +576,26 @@ fn _delegate(
     approver_signature_and_expiry: SignatureWithExpiry,
     params: DelegateParams,
 ) -> Result<Response, ContractError> {
-    let delegation_approver = OPERATOR_DETAILS.load(deps.storage, &params.operator)?.delegation_approver;
+    let delegation_approver = OPERATOR_DETAILS
+        .load(deps.storage, &params.operator)?
+        .delegation_approver;
 
     let current_time: Uint64 = env.block.time.seconds().into();
 
-    if delegation_approver != Addr::unchecked("0") && info.sender != delegation_approver && info.sender != params.operator {
+    if delegation_approver != Addr::unchecked("0")
+        && info.sender != delegation_approver
+        && info.sender != params.operator
+    {
         if approver_signature_and_expiry.expiry < current_time {
             return Err(ContractError::ApproverSignatureExpired {});
         }
 
         let approver_salt_str = &params.salt.to_string();
 
-        if DELEGATION_APPROVER_SALT_SPENT.load(deps.storage, (&delegation_approver, approver_salt_str)).is_ok() {
+        if DELEGATION_APPROVER_SALT_SPENT
+            .load(deps.storage, (&delegation_approver, approver_salt_str))
+            .is_ok()
+        {
             return Err(ContractError::ApproverSaltSpent {});
         }
 
@@ -539,11 +614,19 @@ fn _delegate(
 
         let approver_digest_hash = calculate_delegation_approval_digest_hash(digest_params);
 
-        if !recover(&approver_digest_hash, &approver_signature_and_expiry.signature, &params.public_key)?{
+        if !recover(
+            &approver_digest_hash,
+            &approver_signature_and_expiry.signature,
+            &params.public_key,
+        )? {
             return Err(ContractError::InvalidSignature {});
         }
 
-        DELEGATION_APPROVER_SALT_SPENT.save(deps.storage, (&delegation_approver, approver_salt_str), &true)?;
+        DELEGATION_APPROVER_SALT_SPENT.save(
+            deps.storage,
+            (&delegation_approver, approver_salt_str),
+            &true,
+        )?;
     }
 
     DELEGATED_TO.save(deps.storage, &params.staker, &params.operator)?;
@@ -593,7 +676,10 @@ pub fn undelegate(
     let operator = DELEGATED_TO.load(deps.storage, &staker)?;
 
     let operator_details = OPERATOR_DETAILS.load(deps.storage, &operator)?;
-    if info.sender != staker && info.sender != operator && info.sender != operator_details.delegation_approver {
+    if info.sender != staker
+        && info.sender != operator
+        && info.sender != operator_details.delegation_approver
+    {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -601,21 +687,21 @@ pub fn undelegate(
     let (strategies, shares) = get_delegatable_shares(deps.as_ref(), staker.clone())?;
 
     let mut response = Response::new();
-    let mut withdrawal_roots = Vec::new(); 
+    let mut withdrawal_roots = Vec::new();
 
     // Emit an event if this action was not initiated by the staker themselves
     if info.sender != staker {
         response = response.add_event(
             Event::new("StakerForceUndelegated")
                 .add_attribute("staker", staker.to_string())
-                .add_attribute("operator", operator.to_string())
+                .add_attribute("operator", operator.to_string()),
         );
     }
 
     response = response.add_event(
         Event::new("StakerUndelegated")
             .add_attribute("staker", staker.to_string())
-            .add_attribute("operator", operator.to_string())
+            .add_attribute("operator", operator.to_string()),
     );
 
     // Undelegate the staker
@@ -636,13 +722,15 @@ pub fn undelegate(
                 single_share,
             )?;
 
-            let withdrawal_root = withdrawal_response.attributes.iter()
+            let withdrawal_root = withdrawal_response
+                .attributes
+                .iter()
                 .find(|attr| attr.key == "withdrawal_root")
                 .map(|attr| Binary::from_base64(&attr.value).unwrap());
 
             if let Some(root) = withdrawal_root {
                 withdrawal_roots.push(root);
-        }
+            }
 
             response = response.add_attributes(withdrawal_response.attributes);
             response = response.add_events(withdrawal_response.events);
@@ -650,19 +738,18 @@ pub fn undelegate(
         }
     }
 
-    Ok((response, withdrawal_roots)) 
+    Ok((response, withdrawal_roots))
 }
 
-pub fn get_delegatable_shares(
-    deps: Deps,
-    staker: Addr,
-) -> StdResult<(Vec<Addr>, Vec<Uint128>)> {
+pub fn get_delegatable_shares(deps: Deps, staker: Addr) -> StdResult<(Vec<Addr>, Vec<Uint128>)> {
     let state = DELEGATION_MANAGER_STATE.load(deps.storage)?;
     let strategy_manager = state.strategy_manager;
 
     let query = WasmQuery::Smart {
         contract_addr: strategy_manager.to_string(),
-        msg: to_json_binary(&StrategyManagerQueryMsg::GetDeposits { staker: staker.clone() })?,
+        msg: to_json_binary(&StrategyManagerQueryMsg::GetDeposits {
+            staker: staker.clone(),
+        })?,
     }
     .into();
 
@@ -699,9 +786,13 @@ fn _increase_operator_shares(
         return Err(ContractError::Underflow {});
     }
 
-    let current_shares = OPERATOR_SHARES.may_load(deps.storage, (&operator, &strategy))?.unwrap_or_else(Uint128::zero);
+    let current_shares = OPERATOR_SHARES
+        .may_load(deps.storage, (&operator, &strategy))?
+        .unwrap_or_else(Uint128::zero);
 
-    let new_shares = current_shares.checked_add(shares).map_err(|_| ContractError::Underflow)?;
+    let new_shares = current_shares
+        .checked_add(shares)
+        .map_err(|_| ContractError::Underflow)?;
     OPERATOR_SHARES.save(deps.storage, (&operator, &strategy), &new_shares)?;
 
     let event = Event::new("OperatorSharesIncreased")
@@ -760,7 +851,9 @@ pub fn queue_withdrawals(
     info: MessageInfo,
     queued_withdrawal_params: Vec<QueuedWithdrawalParams>,
 ) -> Result<(Response, Vec<Binary>), ContractError> {
-    let operator = DELEGATED_TO.may_load(deps.storage, &info.sender)?.unwrap_or_else(|| Addr::unchecked(""));
+    let operator = DELEGATED_TO
+        .may_load(deps.storage, &info.sender)?
+        .unwrap_or_else(|| Addr::unchecked(""));
 
     let mut response = Response::new();
     let mut withdrawal_roots = Vec::new();
@@ -785,7 +878,11 @@ pub fn queue_withdrawals(
 
         for event in &withdrawal_response.events {
             if event.ty == "WithdrawalQueued" {
-                if let Some(attr) = event.attributes.iter().find(|attr| attr.key == "withdrawal_root") {
+                if let Some(attr) = event
+                    .attributes
+                    .iter()
+                    .find(|attr| attr.key == "withdrawal_root")
+                {
                     let withdrawal_root = Binary::from_base64(&attr.value).unwrap();
                     withdrawal_roots.push(withdrawal_root);
                 }
@@ -806,7 +903,7 @@ pub fn complete_queued_withdrawals(
     info: MessageInfo,
     withdrawals: Vec<Withdrawal>,
     tokens: Vec<Vec<Addr>>,
-    middleware_times_indexes: Vec<u64>, 
+    middleware_times_indexes: Vec<u64>,
     receive_as_tokens: Vec<bool>,
 ) -> Result<Response, ContractError> {
     let mut response = Response::new();
@@ -820,7 +917,7 @@ pub fn complete_queued_withdrawals(
             withdrawal.clone(),
             tokens[i].clone(),
             middleware_times_indexes[i],
-            receive_as_tokens[i]
+            receive_as_tokens[i],
         )?;
         response = response.add_submessages(res.messages);
         response = response.add_events(res.events);
@@ -835,17 +932,18 @@ pub fn complete_queued_withdrawal(
     info: MessageInfo,
     withdrawal: Withdrawal,
     tokens: Vec<Addr>,
-    middleware_times_indexe: u64, 
+    middleware_times_indexe: u64,
     receive_as_tokens: bool,
 ) -> Result<Response, ContractError> {
-        let response = _complete_queued_withdrawal(
-            deps.branch(),
-            env.clone(),
-            info.clone(),
-            withdrawal.clone(),
-            tokens.clone(),
-            middleware_times_indexe,
-            receive_as_tokens)?;
+    let response = _complete_queued_withdrawal(
+        deps.branch(),
+        env.clone(),
+        info.clone(),
+        withdrawal.clone(),
+        tokens.clone(),
+        middleware_times_indexe,
+        receive_as_tokens,
+    )?;
 
     Ok(response)
 }
@@ -869,7 +967,9 @@ fn _complete_queued_withdrawal(
     }
 
     // Ensure minWithdrawalDelayBlocks period has passed
-    if withdrawal.start_block.u64() + MIN_WITHDRAWAL_DELAY_BLOCKS.load(deps.storage)? > env.block.height {
+    if withdrawal.start_block.u64() + MIN_WITHDRAWAL_DELAY_BLOCKS.load(deps.storage)?
+        > env.block.height
+    {
         return Err(ContractError::MinWithdrawalDelayNotPassed {});
     }
 
@@ -945,7 +1045,7 @@ fn _complete_queued_withdrawal(
 
     response = response.add_event(
         Event::new("WithdrawalCompleted")
-            .add_attribute("withdrawal_root", withdrawal_root.to_string())
+            .add_attribute("withdrawal_root", withdrawal_root.to_string()),
     );
 
     Ok(response)
@@ -976,7 +1076,13 @@ fn _remove_shares_and_queue_withdrawal(
         let share_amount = shares[i];
 
         if operator != Addr::unchecked("0") {
-            _decrease_operator_shares(deps.branch(), operator.clone(), staker.clone(), strategy.clone(), share_amount)?;
+            _decrease_operator_shares(
+                deps.branch(),
+                operator.clone(),
+                staker.clone(),
+                strategy.clone(),
+                share_amount,
+            )?;
         }
 
         let forbidden: bool = deps.querier.query_wasm_smart(
@@ -1003,7 +1109,9 @@ fn _remove_shares_and_queue_withdrawal(
         response = response.add_message(CosmosMsg::Wasm(msg));
     }
 
-    let nonce = CUMULATIVE_WITHDRAWALS_QUEUED.may_load(deps.storage, &staker)?.unwrap_or(0);
+    let nonce = CUMULATIVE_WITHDRAWALS_QUEUED
+        .may_load(deps.storage, &staker)?
+        .unwrap_or(0);
     let new_nonce = nonce + 1;
 
     CUMULATIVE_WITHDRAWALS_QUEUED.save(deps.storage, &staker, &new_nonce)?;
@@ -1026,10 +1134,13 @@ fn _remove_shares_and_queue_withdrawal(
             .add_attribute("withdrawal_root", withdrawal_root.to_base64())
             .add_attribute("staker", staker.to_string())
             .add_attribute("operator", operator.to_string())
-            .add_attribute("withdrawer", withdrawer.to_string())
+            .add_attribute("withdrawer", withdrawer.to_string()),
     );
 
-    println!("Withdrawal queued with root: {}", withdrawal_root.to_base64());
+    println!(
+        "Withdrawal queued with root: {}",
+        withdrawal_root.to_base64()
+    );
 
     Ok(response)
 }
@@ -1045,7 +1156,7 @@ fn _withdraw_shares_as_tokens(
     let state = DELEGATION_MANAGER_STATE.load(deps.storage)?;
 
     let msg = WasmMsg::Execute {
-        contract_addr: state.strategy_manager.to_string(), 
+        contract_addr: state.strategy_manager.to_string(),
         msg: to_json_binary(&strategy_manager::ExecuteMsg::WithdrawSharesAsTokens {
             recipient: withdrawer.clone(),
             strategy: strategy.clone(),
@@ -1068,33 +1179,46 @@ fn _withdraw_shares_as_tokens(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(
-    deps: Deps,
-    _env: Env,
-    msg: QueryMsg,
-) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::IsDelegated { staker } => to_json_binary(&query_is_delegated(deps, staker)?),
 
         QueryMsg::IsOperator { operator } => to_json_binary(&query_is_operator(deps, operator)?),
 
-        QueryMsg::OperatorDetails { operator } => to_json_binary(&query_operator_details(deps, operator)?),
+        QueryMsg::OperatorDetails { operator } => {
+            to_json_binary(&query_operator_details(deps, operator)?)
+        }
 
-        QueryMsg::DelegationApprover { operator } => to_json_binary(&query_delegation_approver(deps, operator)?),
+        QueryMsg::DelegationApprover { operator } => {
+            to_json_binary(&query_delegation_approver(deps, operator)?)
+        }
 
-        QueryMsg::StakerOptOutWindowBlocks { operator } => to_json_binary(&query_staker_opt_out_window_blocks(deps, operator)?),
+        QueryMsg::StakerOptOutWindowBlocks { operator } => {
+            to_json_binary(&query_staker_opt_out_window_blocks(deps, operator)?)
+        }
 
-        QueryMsg::GetOperatorShares { operator, strategies } => to_json_binary(&query_operator_shares(deps, operator, strategies)?),
+        QueryMsg::GetOperatorShares {
+            operator,
+            strategies,
+        } => to_json_binary(&query_operator_shares(deps, operator, strategies)?),
 
-        QueryMsg::GetDelegatableShares { staker } => to_json_binary(&get_delegatable_shares(deps, staker)?),
+        QueryMsg::GetDelegatableShares { staker } => {
+            to_json_binary(&get_delegatable_shares(deps, staker)?)
+        }
 
-        QueryMsg::GetWithdrawalDelay { strategies } => to_json_binary(&query_withdrawal_delay(deps, strategies)?),
+        QueryMsg::GetWithdrawalDelay { strategies } => {
+            to_json_binary(&query_withdrawal_delay(deps, strategies)?)
+        }
 
-        QueryMsg::CalculateWithdrawalRoot { withdrawal } => to_json_binary(&calculate_withdrawal_root(&withdrawal)?),
+        QueryMsg::CalculateWithdrawalRoot { withdrawal } => {
+            to_json_binary(&calculate_withdrawal_root(&withdrawal)?)
+        }
 
-        QueryMsg::StakerDelegationDigestHash { staker_digest_hash_params 
+        QueryMsg::StakerDelegationDigestHash {
+            staker_digest_hash_params,
         } => {
-            let public_key_binary = Binary::from_base64(&staker_digest_hash_params.staker_public_key)?;
+            let public_key_binary =
+                Binary::from_base64(&staker_digest_hash_params.staker_public_key)?;
 
             let params = StakerDigestHashParams {
                 staker: staker_digest_hash_params.staker,
@@ -1105,11 +1229,14 @@ pub fn query(
                 chain_id: staker_digest_hash_params.chain_id,
                 contract_addr: staker_digest_hash_params.contract_addr,
             };
-            to_json_binary(&calculate_staker_delegation_digest_hash(params))},
+            to_json_binary(&calculate_staker_delegation_digest_hash(params))
+        }
 
-        QueryMsg::DelegationApprovalDigestHash { approver_digest_hash_params 
+        QueryMsg::DelegationApprovalDigestHash {
+            approver_digest_hash_params,
         } => {
-            let public_key_binary = Binary::from_base64(&approver_digest_hash_params.approver_public_key)?;
+            let public_key_binary =
+                Binary::from_base64(&approver_digest_hash_params.approver_public_key)?;
             let salt = Binary::from_base64(&approver_digest_hash_params.approver_salt)?;
 
             let params = ApproverDigestHashParams {
@@ -1122,28 +1249,38 @@ pub fn query(
                 chain_id: approver_digest_hash_params.chain_id,
                 contract_addr: approver_digest_hash_params.contract_addr,
             };
-            to_json_binary(&calculate_delegation_approval_digest_hash(params))},
+            to_json_binary(&calculate_delegation_approval_digest_hash(params))
+        }
 
-        QueryMsg::CalculateCurrentStakerDelegationDigestHash { current_staker_digest_hash_params } => to_json_binary(&calculate_current_staker_delegation_digest_hash(current_staker_digest_hash_params)?),
+        QueryMsg::CalculateCurrentStakerDelegationDigestHash {
+            current_staker_digest_hash_params,
+        } => to_json_binary(&calculate_current_staker_delegation_digest_hash(
+            current_staker_digest_hash_params,
+        )?),
 
         QueryMsg::GetStakerNonce { staker } => to_json_binary(&query_staker_nonce(deps, staker)?),
 
         QueryMsg::GetOperatorStakers { operator } => {
             let stakers_and_shares = query_operator_stakers(deps, operator)?;
             to_json_binary(&stakers_and_shares)
-        },
-        QueryMsg::GetCumulativeWithdrawalsQueuedNonce { staker } => { to_json_binary(&query_cumulative_withdrawals_queued(deps, staker)?) }
+        }
+        QueryMsg::GetCumulativeWithdrawalsQueuedNonce { staker } => {
+            to_json_binary(&query_cumulative_withdrawals_queued(deps, staker)?)
+        }
     }
 }
 
 pub fn query_is_delegated(deps: Deps, staker: Addr) -> StdResult<bool> {
-    let is_delegated = DELEGATED_TO.may_load(deps.storage, &staker)?.unwrap_or_else(|| Addr::unchecked("")) != Addr::unchecked("");
+    let is_delegated = DELEGATED_TO
+        .may_load(deps.storage, &staker)?
+        .unwrap_or_else(|| Addr::unchecked(""))
+        != Addr::unchecked("");
     Ok(is_delegated)
 }
 
 pub fn query_is_operator(deps: Deps, operator: Addr) -> StdResult<bool> {
     if operator == Addr::unchecked("") {
-        return Ok(false); 
+        return Ok(false);
     }
 
     let delegated_to_operator = DELEGATED_TO.may_load(deps.storage, &operator)?;
@@ -1170,10 +1307,16 @@ pub fn query_staker_opt_out_window_blocks(deps: Deps, operator: Addr) -> StdResu
     Ok(details.staker_opt_out_window_blocks)
 }
 
-pub fn query_operator_shares(deps: Deps, operator: Addr, strategies: Vec<Addr>) -> StdResult<Vec<Uint128>> {
+pub fn query_operator_shares(
+    deps: Deps,
+    operator: Addr,
+    strategies: Vec<Addr>,
+) -> StdResult<Vec<Uint128>> {
     let mut shares = Vec::with_capacity(strategies.len());
     for strategy in strategies.iter() {
-        let share = OPERATOR_SHARES.may_load(deps.storage, (&operator, strategy))?.unwrap_or_else(Uint128::zero);
+        let share = OPERATOR_SHARES
+            .may_load(deps.storage, (&operator, strategy))?
+            .unwrap_or_else(Uint128::zero);
         shares.push(share);
     }
     Ok(shares)
@@ -1184,7 +1327,8 @@ pub fn query_withdrawal_delay(deps: Deps, strategies: Vec<Addr>) -> StdResult<Ve
 
     let mut withdrawal_delays = vec![];
     for strategy in strategies.iter() {
-        let curr_withdrawal_delay = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.may_load(deps.storage, strategy)?;
+        let curr_withdrawal_delay =
+            STRATEGY_WITHDRAWAL_DELAY_BLOCKS.may_load(deps.storage, strategy)?;
         let delay = curr_withdrawal_delay.unwrap_or(Uint64::zero()).u64();
         withdrawal_delays.push(std::cmp::max(delay, min_withdrawal_delay_blocks));
     }
@@ -1198,18 +1342,18 @@ pub fn query_calculate_current_staker_delegation_digest_hash(
     staker: Addr,
     operator: Addr,
     staker_public_key: Binary,
-    expiry: Uint64
+    expiry: Uint64,
 ) -> StdResult<Binary> {
     let current_staker_nonce: u128 = STAKER_NONCE.may_load(deps.storage, &staker)?.unwrap_or(0);
 
     let params = CurrentStakerDigestHashParams {
         staker: staker.clone(),
         operator: operator.clone(),
-        staker_public_key: staker_public_key.clone(), 
+        staker_public_key: staker_public_key.clone(),
         expiry,
         current_nonce: Uint128::new(current_staker_nonce),
         chain_id: env.block.chain_id.clone(),
-        contract_addr: env.contract.address.clone()
+        contract_addr: env.contract.address.clone(),
     };
 
     calculate_current_staker_delegation_digest_hash(params)
@@ -1239,7 +1383,8 @@ pub fn query_operator_stakers(deps: Deps, operator: Addr) -> StdResult<StakerSha
         let mut shares_per_strategy: Vec<(Addr, Uint128)> = Vec::new();
 
         // Iterate over all strategies and calculate the shares for each staker
-        for item in OPERATOR_SHARES.range(deps.storage, None, None, cosmwasm_std::Order::Ascending) {
+        for item in OPERATOR_SHARES.range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+        {
             let ((stored_operator, strategy), shares) = item?;
             if stored_operator == operator {
                 shares_per_strategy.push((strategy, shares));
@@ -1263,15 +1408,15 @@ pub fn query_cumulative_withdrawals_queued(deps: Deps, staker: Addr) -> StdResul
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
-    use cosmwasm_std::{attr, Addr, Uint64, SystemResult, ContractResult, SystemError, from_json};
-    use secp256k1::{Secp256k1, SecretKey, PublicKey, Message};
-    use sha2::{Sha256, Digest};
-    use ripemd::Ripemd160;
+    use crate::msg::ExecuteSignatureWithExpiry;
+    use crate::utils::ExecuteDelegateParams;
     use base64::{engine::general_purpose, Engine as _};
     use bech32::{self, ToBase32, Variant};
-    use crate::utils::ExecuteDelegateParams;
-    use crate::msg::ExecuteSignatureWithExpiry;
+    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
+    use cosmwasm_std::{attr, from_json, Addr, ContractResult, SystemError, SystemResult, Uint64};
+    use ripemd::Ripemd160;
+    use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
+    use sha2::{Digest, Sha256};
 
     #[test]
     fn test_instantiate() {
@@ -1284,7 +1429,10 @@ mod tests {
             slasher: Addr::unchecked("slasher_addr"),
             min_withdrawal_delay_blocks: 100,
             initial_owner: Addr::unchecked("owner_addr"),
-            strategies: vec![Addr::unchecked("strategy1_addr"), Addr::unchecked("strategy2_addr")],
+            strategies: vec![
+                Addr::unchecked("strategy1_addr"),
+                Addr::unchecked("strategy2_addr"),
+            ],
             withdrawal_delay_blocks: vec![50, 60],
         };
 
@@ -1292,13 +1440,22 @@ mod tests {
 
         assert_eq!(res.attributes.len(), 5);
         assert_eq!(res.attributes[0], attr("method", "instantiate"));
-        assert_eq!(res.attributes[1], attr("strategy_manager", "strategy_manager_addr"));
+        assert_eq!(
+            res.attributes[1],
+            attr("strategy_manager", "strategy_manager_addr")
+        );
         assert_eq!(res.attributes[2], attr("slasher", "slasher_addr"));
-        assert_eq!(res.attributes[3], attr("min_withdrawal_delay_blocks", "100"));
+        assert_eq!(
+            res.attributes[3],
+            attr("min_withdrawal_delay_blocks", "100")
+        );
         assert_eq!(res.attributes[4], attr("owner", "owner_addr"));
 
         let state = DELEGATION_MANAGER_STATE.load(&deps.storage).unwrap();
-        assert_eq!(state.strategy_manager, Addr::unchecked("strategy_manager_addr"));
+        assert_eq!(
+            state.strategy_manager,
+            Addr::unchecked("strategy_manager_addr")
+        );
         assert_eq!(state.slasher, Addr::unchecked("slasher_addr"));
 
         let strategy_manager = STRATEGY_MANAGER.load(&deps.storage).unwrap();
@@ -1313,10 +1470,14 @@ mod tests {
         let min_withdrawal_delay_blocks = MIN_WITHDRAWAL_DELAY_BLOCKS.load(&deps.storage).unwrap();
         assert_eq!(min_withdrawal_delay_blocks, 100);
 
-        let withdrawal_delay_blocks1 = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.load(&deps.storage, &Addr::unchecked("strategy1_addr")).unwrap();
+        let withdrawal_delay_blocks1 = STRATEGY_WITHDRAWAL_DELAY_BLOCKS
+            .load(&deps.storage, &Addr::unchecked("strategy1_addr"))
+            .unwrap();
         assert_eq!(withdrawal_delay_blocks1, Uint64::from(50u64));
 
-        let withdrawal_delay_blocks2 = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.load(&deps.storage, &Addr::unchecked("strategy2_addr")).unwrap();
+        let withdrawal_delay_blocks2 = STRATEGY_WITHDRAWAL_DELAY_BLOCKS
+            .load(&deps.storage, &Addr::unchecked("strategy2_addr"))
+            .unwrap();
         assert_eq!(withdrawal_delay_blocks2, Uint64::from(60u64));
     }
 
@@ -1326,13 +1487,15 @@ mod tests {
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
 
-
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager_addr"),
             slasher: Addr::unchecked("slasher_addr"),
             min_withdrawal_delay_blocks: 100,
             initial_owner: Addr::unchecked("owner_addr"),
-            strategies: vec![Addr::unchecked("strategy1_addr"), Addr::unchecked("strategy2_addr")],
+            strategies: vec![
+                Addr::unchecked("strategy1_addr"),
+                Addr::unchecked("strategy2_addr"),
+            ],
             withdrawal_delay_blocks: vec![50, 60],
         };
 
@@ -1367,7 +1530,10 @@ mod tests {
             slasher: Addr::unchecked("slasher_addr"),
             min_withdrawal_delay_blocks: 100,
             initial_owner: Addr::unchecked("owner_addr"),
-            strategies: vec![Addr::unchecked("strategy1_addr"), Addr::unchecked("strategy2_addr")],
+            strategies: vec![
+                Addr::unchecked("strategy1_addr"),
+                Addr::unchecked("strategy2_addr"),
+            ],
             withdrawal_delay_blocks: vec![50, 60],
         };
 
@@ -1402,7 +1568,10 @@ mod tests {
             slasher: Addr::unchecked("slasher_addr"),
             min_withdrawal_delay_blocks: 100,
             initial_owner: Addr::unchecked("owner_addr"),
-            strategies: vec![Addr::unchecked("strategy1_addr"), Addr::unchecked("strategy2_addr")],
+            strategies: vec![
+                Addr::unchecked("strategy1_addr"),
+                Addr::unchecked("strategy2_addr"),
+            ],
             withdrawal_delay_blocks: vec![50, 60],
         };
 
@@ -1428,7 +1597,7 @@ mod tests {
         assert_eq!(event.attributes[2].value, new_min_delay.to_string());
 
         let non_owner_info = message_info(&Addr::unchecked("not_owner"), &[]);
-    
+
         let result = set_min_withdrawal_delay_blocks(deps.as_mut(), non_owner_info, new_min_delay);
         assert!(result.is_err());
         if let Err(err) = result {
@@ -1438,33 +1607,36 @@ mod tests {
             }
         }
     }
-    
+
     #[test]
     fn test_set_min_withdrawal_delay_blocks_exceeds_max() {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-    
+
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager_addr"),
             slasher: Addr::unchecked("slasher_addr"),
             min_withdrawal_delay_blocks: 100,
             initial_owner: Addr::unchecked("owner_addr"),
-            strategies: vec![Addr::unchecked("strategy1_addr"), Addr::unchecked("strategy2_addr")],
+            strategies: vec![
+                Addr::unchecked("strategy1_addr"),
+                Addr::unchecked("strategy2_addr"),
+            ],
             withdrawal_delay_blocks: vec![50, 60],
         };
-    
+
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
-    
+
         let owner_info = message_info(&Addr::unchecked("owner_addr"), &[]);
         let new_min_delay = MAX_WITHDRAWAL_DELAY_BLOCKS + 1;
-    
+
         let execute_msg = ExecuteMsg::SetMinWithdrawalDelayBlocks {
             new_min_withdrawal_delay_blocks: new_min_delay,
         };
-    
+
         let result = execute(deps.as_mut(), env, owner_info, execute_msg);
-    
+
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -1472,7 +1644,7 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    }    
+    }
 
     #[test]
     fn test_set_min_withdrawal_delay_blocks_internal() {
@@ -1485,7 +1657,10 @@ mod tests {
             slasher: Addr::unchecked("slasher_addr"),
             min_withdrawal_delay_blocks: 100,
             initial_owner: Addr::unchecked("owner_addr"),
-            strategies: vec![Addr::unchecked("strategy1_addr"), Addr::unchecked("strategy2_addr")],
+            strategies: vec![
+                Addr::unchecked("strategy1_addr"),
+                Addr::unchecked("strategy2_addr"),
+            ],
             withdrawal_delay_blocks: vec![50, 60],
         };
 
@@ -1524,7 +1699,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-    
+
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
             slasher: Addr::unchecked("slasher"),
@@ -1534,30 +1709,30 @@ mod tests {
             withdrawal_delay_blocks: vec![5, 10],
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-    
+
         // Test set_strategy_withdrawal_delay_blocks
         let strategies = vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")];
         let withdrawal_delay_blocks = vec![Uint64::new(15), Uint64::new(20)];
-    
+
         let owner_info = message_info(&Addr::unchecked("owner"), &[]);
         let execute_msg = ExecuteMsg::SetStrategyWithdrawalDelayBlocks {
             strategies: strategies.clone(),
             withdrawal_delay_blocks: withdrawal_delay_blocks.clone(),
         };
-    
+
         let res = execute(deps.as_mut(), env.clone(), owner_info.clone(), execute_msg).unwrap();
-    
+
         assert_eq!(res.events.len(), 2);
         assert_eq!(res.events[0].ty, "StrategyWithdrawalDelayBlocksSet");
         assert_eq!(res.events[0].attributes[0].value, "strategy1");
         assert_eq!(res.events[0].attributes[1].value, "5");
         assert_eq!(res.events[0].attributes[2].value, "15");
-    
+
         assert_eq!(res.events[1].ty, "StrategyWithdrawalDelayBlocksSet");
         assert_eq!(res.events[1].attributes[0].value, "strategy2");
         assert_eq!(res.events[1].attributes[1].value, "10");
         assert_eq!(res.events[1].attributes[2].value, "20");
-    
+
         // Test unauthorized attempt
         let non_owner_info = message_info(&Addr::unchecked("not_owner"), &[]);
         let res = execute(
@@ -1576,7 +1751,7 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    
+
         // Test input length mismatch error
         let strategies = vec![Addr::unchecked("strategy1")];
         let res = execute(
@@ -1595,7 +1770,7 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    
+
         // Test exceeding max withdrawal delay blocks
         let strategies = vec![Addr::unchecked("strategy1")];
         let withdrawal_delay_blocks = vec![Uint64::new(MAX_WITHDRAWAL_DELAY_BLOCKS + 1)];
@@ -1615,7 +1790,7 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    }    
+    }
 
     #[test]
     fn test_set_strategy_withdrawal_delay_blocks_internal() {
@@ -1637,7 +1812,12 @@ mod tests {
         let strategies = vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")];
         let withdrawal_delay_blocks = vec![Uint64::new(15), Uint64::new(20)];
 
-        let res = _set_strategy_withdrawal_delay_blocks(deps.as_mut(), strategies.clone(), withdrawal_delay_blocks.clone()).unwrap();
+        let res = _set_strategy_withdrawal_delay_blocks(
+            deps.as_mut(),
+            strategies.clone(),
+            withdrawal_delay_blocks.clone(),
+        )
+        .unwrap();
 
         assert_eq!(res.events.len(), 2);
         assert_eq!(res.events[0].ty, "StrategyWithdrawalDelayBlocksSet");
@@ -1652,7 +1832,11 @@ mod tests {
 
         // Test with input length mismatch
         let strategies = vec![Addr::unchecked("strategy1")];
-        let res = _set_strategy_withdrawal_delay_blocks(deps.as_mut(), strategies, withdrawal_delay_blocks.clone());
+        let res = _set_strategy_withdrawal_delay_blocks(
+            deps.as_mut(),
+            strategies,
+            withdrawal_delay_blocks.clone(),
+        );
         assert!(res.is_err());
         if let Err(err) = res {
             match err {
@@ -1664,7 +1848,11 @@ mod tests {
         // Test with delay blocks exceeding max
         let strategies = vec![Addr::unchecked("strategy1")];
         let withdrawal_delay_blocks = vec![Uint64::new(MAX_WITHDRAWAL_DELAY_BLOCKS + 1)];
-        let res = _set_strategy_withdrawal_delay_blocks(deps.as_mut(), strategies, withdrawal_delay_blocks);
+        let res = _set_strategy_withdrawal_delay_blocks(
+            deps.as_mut(),
+            strategies,
+            withdrawal_delay_blocks,
+        );
         assert!(res.is_err());
         if let Err(err) = res {
             match err {
@@ -1679,10 +1867,10 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-        
+
         let info_operator = message_info(&Addr::unchecked("operator"), &[]);
         let info_delegation_approver = message_info(&Addr::unchecked("approver"), &[]);
-        
+
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
             slasher: Addr::unchecked("slasher"),
@@ -1692,55 +1880,87 @@ mod tests {
             withdrawal_delay_blocks: vec![5, 10],
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-        
+
         let operator = info_operator.sender.clone();
-        
-        DELEGATED_TO.save(deps.as_mut().storage, &operator, &operator).unwrap();
-        
+
+        DELEGATED_TO
+            .save(deps.as_mut().storage, &operator, &operator)
+            .unwrap();
+
         let initial_operator_details = OperatorDetails {
             deprecated_earnings_receiver: Addr::unchecked("earnings_receiver1"),
             delegation_approver: info_delegation_approver.sender.clone(),
             staker_opt_out_window_blocks: 100,
         };
-        
-        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &initial_operator_details).unwrap();
-        
+
+        OPERATOR_DETAILS
+            .save(deps.as_mut().storage, &operator, &initial_operator_details)
+            .unwrap();
+
         let new_operator_details = OperatorDetails {
             deprecated_earnings_receiver: Addr::unchecked("earnings_receiver2"),
             delegation_approver: Addr::unchecked("approver2"),
             staker_opt_out_window_blocks: 200,
         };
-        
+
         let modify_msg = ExecuteMsg::ModifyOperatorDetails {
             new_operator_details: new_operator_details.clone(),
         };
-        let res = execute(deps.as_mut(), env.clone(), info_operator.clone(), modify_msg).unwrap();
-        
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info_operator.clone(),
+            modify_msg,
+        )
+        .unwrap();
+
         assert_eq!(res.events.len(), 1);
         assert_eq!(res.events[0].ty, "OperatorDetailsSet");
         assert_eq!(res.events[0].attributes.len(), 2);
         assert_eq!(res.events[0].attributes[0].key, "operator");
         assert_eq!(res.events[0].attributes[0].value, operator.to_string());
-        assert_eq!(res.events[0].attributes[1].key, "staker_opt_out_window_blocks");
-        assert_eq!(res.events[0].attributes[1].value, new_operator_details.staker_opt_out_window_blocks.to_string());
-        
+        assert_eq!(
+            res.events[0].attributes[1].key,
+            "staker_opt_out_window_blocks"
+        );
+        assert_eq!(
+            res.events[0].attributes[1].value,
+            new_operator_details
+                .staker_opt_out_window_blocks
+                .to_string()
+        );
+
         // Verify the updated operator details
         let updated_details = OPERATOR_DETAILS.load(&deps.storage, &operator).unwrap();
-        assert_eq!(updated_details.deprecated_earnings_receiver, new_operator_details.deprecated_earnings_receiver);
-        assert_eq!(updated_details.delegation_approver, new_operator_details.delegation_approver);
-        assert_eq!(updated_details.staker_opt_out_window_blocks, new_operator_details.staker_opt_out_window_blocks);
-        
+        assert_eq!(
+            updated_details.deprecated_earnings_receiver,
+            new_operator_details.deprecated_earnings_receiver
+        );
+        assert_eq!(
+            updated_details.delegation_approver,
+            new_operator_details.delegation_approver
+        );
+        assert_eq!(
+            updated_details.staker_opt_out_window_blocks,
+            new_operator_details.staker_opt_out_window_blocks
+        );
+
         // Modify operator details with staker_opt_out_window_blocks exceeding max
         let invalid_operator_details = OperatorDetails {
             deprecated_earnings_receiver: Addr::unchecked("earnings_receiver3"),
             delegation_approver: Addr::unchecked("approver3"),
             staker_opt_out_window_blocks: MAX_STAKER_OPT_OUT_WINDOW_BLOCKS + 1,
         };
-        
+
         let modify_msg = ExecuteMsg::ModifyOperatorDetails {
             new_operator_details: invalid_operator_details,
         };
-        let res = execute(deps.as_mut(), env.clone(), info_operator.clone(), modify_msg);
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info_operator.clone(),
+            modify_msg,
+        );
         assert!(res.is_err());
         if let Err(err) = res {
             match err {
@@ -1748,14 +1968,14 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-        
+
         // Modify operator details with staker_opt_out_window_blocks decreasing
         let decreasing_operator_details = OperatorDetails {
             deprecated_earnings_receiver: Addr::unchecked("earnings_receiver4"),
             delegation_approver: Addr::unchecked("approver4"),
             staker_opt_out_window_blocks: 50,
         };
-        
+
         let modify_msg = ExecuteMsg::ModifyOperatorDetails {
             new_operator_details: decreasing_operator_details,
         };
@@ -1767,39 +1987,51 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    }        
+    }
 
     #[test]
     fn test_set_operator_details() {
         let mut deps = mock_dependencies();
-        
+
         let operator = Addr::unchecked("operator1");
         let initial_operator_details = OperatorDetails {
             deprecated_earnings_receiver: Addr::unchecked("earnings_receiver1"),
             staker_opt_out_window_blocks: 100,
             delegation_approver: Addr::unchecked("approver1"),
         };
-        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &initial_operator_details).unwrap();
-    
+        OPERATOR_DETAILS
+            .save(deps.as_mut().storage, &operator, &initial_operator_details)
+            .unwrap();
+
         let new_operator_details = OperatorDetails {
             deprecated_earnings_receiver: Addr::unchecked("earnings_receiver2"),
             staker_opt_out_window_blocks: 200,
             delegation_approver: Addr::unchecked("approver2"),
         };
-    
-        let res = _set_operator_details(deps.as_mut(), operator.clone(), new_operator_details.clone()).unwrap();
-    
+
+        let res = _set_operator_details(
+            deps.as_mut(),
+            operator.clone(),
+            new_operator_details.clone(),
+        )
+        .unwrap();
+
         assert_eq!(res.events.len(), 1);
         assert_eq!(res.events[0].ty, "OperatorDetailsSet");
         assert_eq!(res.events[0].attributes[0].value, operator.to_string());
-        assert_eq!(res.events[0].attributes[1].value, new_operator_details.staker_opt_out_window_blocks.to_string());
-    
+        assert_eq!(
+            res.events[0].attributes[1].value,
+            new_operator_details
+                .staker_opt_out_window_blocks
+                .to_string()
+        );
+
         let invalid_operator_details = OperatorDetails {
             deprecated_earnings_receiver: Addr::unchecked("earnings_receiver3"),
             staker_opt_out_window_blocks: MAX_STAKER_OPT_OUT_WINDOW_BLOCKS + 1,
             delegation_approver: Addr::unchecked("approver3"),
         };
-    
+
         let res = _set_operator_details(deps.as_mut(), operator.clone(), invalid_operator_details);
         assert!(res.is_err());
         if let Err(err) = res {
@@ -1808,13 +2040,13 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    
+
         let decreasing_operator_details = OperatorDetails {
             deprecated_earnings_receiver: Addr::unchecked("earnings_receiver4"),
             staker_opt_out_window_blocks: 50,
             delegation_approver: Addr::unchecked("approver4"),
         };
-    
+
         let res = _set_operator_details(deps.as_mut(), operator, decreasing_operator_details);
         assert!(res.is_err());
         if let Err(err) = res {
@@ -1823,7 +2055,7 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    }    
+    }
 
     #[test]
     fn test_increase_operator_shares_internal() {
@@ -1845,24 +2077,52 @@ mod tests {
         let staker = Addr::unchecked("staker1");
         let strategy = Addr::unchecked("strategy1");
         let initial_shares = Uint128::new(100);
-        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategy), &initial_shares).unwrap();
+        OPERATOR_SHARES
+            .save(
+                deps.as_mut().storage,
+                (&operator, &strategy),
+                &initial_shares,
+            )
+            .unwrap();
 
         let additional_shares = Uint128::new(50);
-        let res = _increase_operator_shares(deps.as_mut(), operator.clone(), staker.clone(), strategy.clone(), additional_shares).unwrap();
+        let res = _increase_operator_shares(
+            deps.as_mut(),
+            operator.clone(),
+            staker.clone(),
+            strategy.clone(),
+            additional_shares,
+        )
+        .unwrap();
 
         assert_eq!(res.events.len(), 1);
         assert_eq!(res.events[0].ty, "OperatorSharesIncreased");
         assert_eq!(res.events[0].attributes[0].value, operator.to_string());
         assert_eq!(res.events[0].attributes[1].value, staker.to_string());
         assert_eq!(res.events[0].attributes[2].value, strategy.to_string());
-        assert_eq!(res.events[0].attributes[3].value, additional_shares.to_string());
-        assert_eq!(res.events[0].attributes[4].value, (initial_shares + additional_shares).to_string());
+        assert_eq!(
+            res.events[0].attributes[3].value,
+            additional_shares.to_string()
+        );
+        assert_eq!(
+            res.events[0].attributes[4].value,
+            (initial_shares + additional_shares).to_string()
+        );
 
-        let stored_shares = OPERATOR_SHARES.load(deps.as_ref().storage, (&operator, &strategy)).unwrap();
+        let stored_shares = OPERATOR_SHARES
+            .load(deps.as_ref().storage, (&operator, &strategy))
+            .unwrap();
         assert_eq!(stored_shares, initial_shares + additional_shares);
 
         let more_shares = Uint128::new(25);
-        let res = _increase_operator_shares(deps.as_mut(), operator.clone(), staker.clone(), strategy.clone(), more_shares).unwrap();
+        let res = _increase_operator_shares(
+            deps.as_mut(),
+            operator.clone(),
+            staker.clone(),
+            strategy.clone(),
+            more_shares,
+        )
+        .unwrap();
 
         assert_eq!(res.events.len(), 1);
         assert_eq!(res.events[0].ty, "OperatorSharesIncreased");
@@ -1870,14 +2130,27 @@ mod tests {
         assert_eq!(res.events[0].attributes[1].value, staker.to_string());
         assert_eq!(res.events[0].attributes[2].value, strategy.to_string());
         assert_eq!(res.events[0].attributes[3].value, more_shares.to_string());
-        assert_eq!(res.events[0].attributes[4].value, (initial_shares + additional_shares + more_shares).to_string());
+        assert_eq!(
+            res.events[0].attributes[4].value,
+            (initial_shares + additional_shares + more_shares).to_string()
+        );
 
-        let updated_shares = OPERATOR_SHARES.load(deps.as_ref().storage, (&operator, &strategy)).unwrap();
-        assert_eq!(updated_shares, initial_shares + additional_shares + more_shares);
+        let updated_shares = OPERATOR_SHARES
+            .load(deps.as_ref().storage, (&operator, &strategy))
+            .unwrap();
+        assert_eq!(
+            updated_shares,
+            initial_shares + additional_shares + more_shares
+        );
 
-        
         let zero_shares = Uint128::new(0);
-        let res = _increase_operator_shares(deps.as_mut(), operator.clone(), staker.clone(), strategy.clone(), zero_shares);
+        let res = _increase_operator_shares(
+            deps.as_mut(),
+            operator.clone(),
+            staker.clone(),
+            strategy.clone(),
+            zero_shares,
+        );
 
         assert!(res.is_err());
         if let Err(err) = res {
@@ -1893,7 +2166,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-        
+
         // Instantiate the contract
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
@@ -1904,27 +2177,36 @@ mod tests {
             withdrawal_delay_blocks: vec![5, 10],
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-    
+
         let staker = Addr::unchecked("staker1");
-        
+
         // Mock the response from strategy_manager contract
         deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { contract_addr, msg: _ } if contract_addr == "strategy_manager" => {
-                SystemResult::Ok(ContractResult::Ok(to_json_binary(&(vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")], vec![Uint128::new(100), Uint128::new(200)])).unwrap()))
-            }
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } if contract_addr == "strategy_manager" => SystemResult::Ok(ContractResult::Ok(
+                to_json_binary(&(
+                    vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+                    vec![Uint128::new(100), Uint128::new(200)],
+                ))
+                .unwrap(),
+            )),
             _ => SystemResult::Err(SystemError::InvalidRequest {
                 error: "Unhandled request".to_string(),
                 request: to_json_binary(&query).unwrap(),
             }),
         });
-    
+
         // Call get_delegatable_shares using the query interface
-        let query_msg = QueryMsg::GetDelegatableShares { staker: staker.clone() };
+        let query_msg = QueryMsg::GetDelegatableShares {
+            staker: staker.clone(),
+        };
         let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-    
+
         // Deserialize the result
         let (strategies, shares): (Vec<Addr>, Vec<Uint128>) = from_json(res).unwrap();
-    
+
         // Verify the results
         assert_eq!(strategies.len(), 2);
         assert_eq!(shares.len(), 2);
@@ -1932,9 +2214,11 @@ mod tests {
         assert_eq!(shares[0], Uint128::new(100));
         assert_eq!(strategies[1], Addr::unchecked("strategy2"));
         assert_eq!(shares[1], Uint128::new(200));
-    }    
+    }
 
-    fn generate_osmosis_public_key_from_private_key(private_key_hex: &str) -> (Addr, SecretKey, Vec<u8>) {
+    fn generate_osmosis_public_key_from_private_key(
+        private_key_hex: &str,
+    ) -> (Addr, SecretKey, Vec<u8>) {
         let secp = Secp256k1::new();
         let secret_key = SecretKey::from_slice(&hex::decode(private_key_hex).unwrap()).unwrap();
         let public_key = PublicKey::from_secret_key(&secp, &secret_key);
@@ -1942,9 +2226,14 @@ mod tests {
 
         let sha256_result = Sha256::digest(public_key_bytes);
         let ripemd160_result = Ripemd160::digest(sha256_result);
-        let address = bech32::encode("osmo", ripemd160_result.to_base32(), Variant::Bech32).unwrap();
+        let address =
+            bech32::encode("osmo", ripemd160_result.to_base32(), Variant::Bech32).unwrap();
 
-        (Addr::unchecked(address), secret_key, public_key_bytes.to_vec())
+        (
+            Addr::unchecked(address),
+            secret_key,
+            public_key_bytes.to_vec(),
+        )
     }
 
     fn mock_approver_signature_with_message(
@@ -1952,12 +2241,12 @@ mod tests {
         secret_key: &SecretKey,
     ) -> Binary {
         let message_bytes = calculate_delegation_approval_digest_hash(params);
-        
+
         let secp = Secp256k1::new();
         let message = Message::from_digest_slice(&message_bytes).expect("32 bytes");
         let signature = secp.sign_ecdsa(&message, secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
-        
+
         Binary::from(signature_bytes)
     }
 
@@ -1966,12 +2255,12 @@ mod tests {
         secret_key: &SecretKey,
     ) -> Binary {
         let message_bytes = calculate_staker_delegation_digest_hash(params);
-    
+
         let secp = Secp256k1::new();
         let message = Message::from_digest_slice(&message_bytes).expect("32 bytes");
         let signature = secp.sign_ecdsa(&message, secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
-        
+
         Binary::from(signature_bytes)
     }
 
@@ -1991,12 +2280,13 @@ mod tests {
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-        let approver_private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
-        let (approver, approver_secret_key, approver_public_key_bytes) = generate_osmosis_public_key_from_private_key(approver_private_key_hex);
+        let approver_private_key_hex =
+            "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (approver, approver_secret_key, approver_public_key_bytes) =
+            generate_osmosis_public_key_from_private_key(approver_private_key_hex);
 
         let staker: Addr = Addr::unchecked("staker");
         let operator: Addr = Addr::unchecked("operator");
-
 
         let operator = operator.clone();
         let operator_details = OperatorDetails {
@@ -2005,9 +2295,11 @@ mod tests {
             staker_opt_out_window_blocks: 100,
         };
 
-        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &operator_details).unwrap();
+        OPERATOR_DETAILS
+            .save(deps.as_mut().storage, &operator, &operator_details)
+            .unwrap();
 
-        let salt = Binary::from(b"salt"); 
+        let salt = Binary::from(b"salt");
 
         let delegate_params = DelegateParams {
             staker: staker.clone(),
@@ -2037,20 +2329,37 @@ mod tests {
             expiry: Uint64::new(expiry),
         };
 
-        println!("signature: {}", mock_approver_signature_with_message(params.clone(), &approver_secret_key));
+        println!(
+            "signature: {}",
+            mock_approver_signature_with_message(params.clone(), &approver_secret_key)
+        );
 
         // Mock the response from strategy_manager contract
         deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { contract_addr, msg: _ } if contract_addr == "strategy_manager" => {
-                SystemResult::Ok(ContractResult::Ok(to_json_binary(&(vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")], vec![Uint128::new(100), Uint128::new(200)])).unwrap()))
-            }
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } if contract_addr == "strategy_manager" => SystemResult::Ok(ContractResult::Ok(
+                to_json_binary(&(
+                    vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+                    vec![Uint128::new(100), Uint128::new(200)],
+                ))
+                .unwrap(),
+            )),
             _ => SystemResult::Err(SystemError::InvalidRequest {
                 error: "Unhandled request".to_string(),
                 request: to_json_binary(&query).unwrap(),
             }),
         });
 
-        let res = _delegate(deps.as_mut(), info.clone(), env.clone(), approver_signature_and_expiry, delegate_params).unwrap();
+        let res = _delegate(
+            deps.as_mut(),
+            info.clone(),
+            env.clone(),
+            approver_signature_and_expiry,
+            delegate_params,
+        )
+        .unwrap();
 
         assert_eq!(res.events.len(), 1);
         assert_eq!(res.events[0].ty, "Delegate");
@@ -2075,8 +2384,10 @@ mod tests {
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-        let approver_private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
-        let (approver, approver_secret_key, approver_public_key_bytes) = generate_osmosis_public_key_from_private_key(approver_private_key_hex);
+        let approver_private_key_hex =
+            "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (approver, approver_secret_key, approver_public_key_bytes) =
+            generate_osmosis_public_key_from_private_key(approver_private_key_hex);
 
         let staker: Addr = Addr::unchecked("staker");
         let operator: Addr = Addr::unchecked("operator");
@@ -2088,11 +2399,15 @@ mod tests {
             staker_opt_out_window_blocks: 100,
         };
 
-        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &operator_details).unwrap();
+        OPERATOR_DETAILS
+            .save(deps.as_mut().storage, &operator, &operator_details)
+            .unwrap();
 
-        DELEGATED_TO.save(deps.as_mut().storage, &operator, &operator).unwrap();
+        DELEGATED_TO
+            .save(deps.as_mut().storage, &operator, &operator)
+            .unwrap();
 
-        let salt = Binary::from(b"salt"); 
+        let salt = Binary::from(b"salt");
         let approver_public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
 
         let delegate_params = ExecuteDelegateParams {
@@ -2118,7 +2433,8 @@ mod tests {
             contract_addr: contract_addr.clone(),
         };
 
-        let signature_bytes = mock_approver_signature_with_message(params.clone(), &approver_secret_key);
+        let signature_bytes =
+            mock_approver_signature_with_message(params.clone(), &approver_secret_key);
         let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
 
         let approver_signature_and_expiry = ExecuteSignatureWithExpiry {
@@ -2128,22 +2444,35 @@ mod tests {
 
         // Mock the response from strategy_manager contract
         deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { contract_addr, msg: _ } if contract_addr == "strategy_manager" => {
-                SystemResult::Ok(ContractResult::Ok(to_json_binary(&(vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")], vec![Uint128::new(100), Uint128::new(200)])).unwrap()))
-            }
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } if contract_addr == "strategy_manager" => SystemResult::Ok(ContractResult::Ok(
+                to_json_binary(&(
+                    vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+                    vec![Uint128::new(100), Uint128::new(200)],
+                ))
+                .unwrap(),
+            )),
             _ => SystemResult::Err(SystemError::InvalidRequest {
                 error: "Unhandled request".to_string(),
                 request: to_json_binary(&query).unwrap(),
             }),
         });
-    
+
         let execute_msg = ExecuteMsg::DelegateTo {
             params: delegate_params.clone(),
             approver_signature_and_expiry: approver_signature_and_expiry.clone(),
         };
-    
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), execute_msg.clone()).unwrap();
-    
+
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            execute_msg.clone(),
+        )
+        .unwrap();
+
         assert_eq!(res.events.len(), 1);
         let event = &res.events[0];
         assert_eq!(event.ty, "Delegate");
@@ -2154,7 +2483,7 @@ mod tests {
         assert_eq!(event.attributes[1].value, staker.to_string());
         assert_eq!(event.attributes[2].key, "operator");
         assert_eq!(event.attributes[2].value, operator.to_string());
-    
+
         let delegated_to = DELEGATED_TO.load(&deps.storage, &staker).unwrap();
         assert_eq!(delegated_to, operator);
     }
@@ -2166,7 +2495,7 @@ mod tests {
         let info = message_info(&Addr::unchecked("creator"), &[]);
 
         let operator: Addr = Addr::unchecked("operator");
-    
+
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
             slasher: Addr::unchecked("slasher"),
@@ -2178,11 +2507,14 @@ mod tests {
 
         let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-        let approver_private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
-        let (approver, approver_secret_key, approver_public_key_bytes) = generate_osmosis_public_key_from_private_key(approver_private_key_hex);
+        let approver_private_key_hex =
+            "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (approver, approver_secret_key, approver_public_key_bytes) =
+            generate_osmosis_public_key_from_private_key(approver_private_key_hex);
 
         let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
-        let (staker, staker_secret_key, staker_public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
+        let (staker, staker_secret_key, staker_public_key_bytes) =
+            generate_osmosis_public_key_from_private_key(private_key_hex);
 
         let operator = operator.clone();
         let operator_details = OperatorDetails {
@@ -2191,22 +2523,34 @@ mod tests {
             staker_opt_out_window_blocks: 100,
         };
 
-        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &operator_details).unwrap();
-        DELEGATED_TO.save(deps.as_mut().storage, &operator, &operator).unwrap();
+        OPERATOR_DETAILS
+            .save(deps.as_mut().storage, &operator, &operator_details)
+            .unwrap();
+        DELEGATED_TO
+            .save(deps.as_mut().storage, &operator, &operator)
+            .unwrap();
 
         deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { contract_addr, msg: _ } if contract_addr == "strategy_manager" => {
-                SystemResult::Ok(ContractResult::Ok(to_json_binary(&(vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")], vec![Uint128::new(100), Uint128::new(200)])).unwrap()))
-            }
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } if contract_addr == "strategy_manager" => SystemResult::Ok(ContractResult::Ok(
+                to_json_binary(&(
+                    vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
+                    vec![Uint128::new(100), Uint128::new(200)],
+                ))
+                .unwrap(),
+            )),
             _ => SystemResult::Err(SystemError::InvalidRequest {
                 error: "Unhandled request".to_string(),
                 request: to_json_binary(&query).unwrap(),
             }),
         });
-    
-        let salt = Binary::from(b"salt"); 
+
+        let salt = Binary::from(b"salt");
         let approver_public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
-        let staker_public_key_base64 = general_purpose::STANDARD.encode(staker_public_key_bytes.clone());
+        let staker_public_key_base64 =
+            general_purpose::STANDARD.encode(staker_public_key_bytes.clone());
 
         let delegate_params = ExecuteDelegateParams {
             staker: staker.clone(),
@@ -2230,23 +2574,25 @@ mod tests {
             chain_id: chain_id.clone(),
             contract_addr: contract_addr.clone(),
         };
-        
+
         let staker_digest_params = StakerDigestHashParams {
             staker: staker.clone(),
             staker_nonce: Uint128::new(0),
             operator: operator.clone(),
-            staker_public_key:  Binary::from(staker_public_key_bytes.clone()),
+            staker_public_key: Binary::from(staker_public_key_bytes.clone()),
             expiry: Uint64::new(expiry),
             chain_id: chain_id.clone(),
-            contract_addr: contract_addr.clone(),            
+            contract_addr: contract_addr.clone(),
         };
 
-        let approver_signature_bytes =  mock_approver_signature_with_message(approver_params.clone(), &approver_secret_key);
+        let approver_signature_bytes =
+            mock_approver_signature_with_message(approver_params.clone(), &approver_secret_key);
         let approver_signature_base64 = general_purpose::STANDARD.encode(approver_signature_bytes);
 
-        let staker_signature_bytes =  mock_staker_signature_with_message(staker_digest_params.clone(), &staker_secret_key);
+        let staker_signature_bytes =
+            mock_staker_signature_with_message(staker_digest_params.clone(), &staker_secret_key);
         let staker_signature_base64 = general_purpose::STANDARD.encode(staker_signature_bytes);
-    
+
         let approver_signature_and_expiry = ExecuteSignatureWithExpiry {
             signature: approver_signature_base64,
             expiry: Uint64::new(expiry),
@@ -2256,18 +2602,24 @@ mod tests {
             signature: staker_signature_base64,
             expiry: Uint64::new(expiry),
         };
-    
+
         let delegate_msg = ExecuteMsg::DelegateToBySignature {
             params: delegate_params.clone(),
             staker_public_key: staker_public_key_base64,
             staker_signature_and_expiry: staker_signature_and_expiry.clone(),
             approver_signature_and_expiry: approver_signature_and_expiry.clone(),
         };
-    
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), delegate_msg.clone()).unwrap();
-    
+
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            delegate_msg.clone(),
+        )
+        .unwrap();
+
         assert_eq!(res.events.len(), 1);
-    
+
         let event = &res.events[0];
         assert_eq!(event.ty, "Delegate");
         assert_eq!(event.attributes.len(), 3);
@@ -2277,17 +2629,17 @@ mod tests {
         assert_eq!(event.attributes[1].value, staker.to_string());
         assert_eq!(event.attributes[2].key, "operator");
         assert_eq!(event.attributes[2].value, operator.to_string());
-    
+
         let delegated_to = DELEGATED_TO.load(&deps.storage, &staker.clone()).unwrap();
         assert_eq!(delegated_to, operator.clone())
-    }   
+    }
 
     #[test]
     fn test_register_as_operator() {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-    
+
         // Mock the response from strategy_manager contract
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart {
@@ -2305,7 +2657,7 @@ mod tests {
                 request: to_json_binary(&query).unwrap(),
             }),
         });
-    
+
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
             slasher: Addr::unchecked("slasher"),
@@ -2314,28 +2666,28 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-    
+
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-    
+
         // Operator details to be registered
         let operator_details = OperatorDetails {
             deprecated_earnings_receiver: Addr::unchecked("earnings_receiver"),
             delegation_approver: Addr::unchecked("approver"),
             staker_opt_out_window_blocks: 100,
         };
-    
+
         // Operator's public key
         let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
         let (sender_addr, _secret_key, sender_public_key_bytes) =
             generate_osmosis_public_key_from_private_key(private_key_hex);
         let sender_public_key = Binary::from(sender_public_key_bytes.as_slice());
-    
+
         // Create MessageInfo object
         let info_operator = MessageInfo {
             sender: sender_addr.clone(),
             funds: vec![],
         };
-    
+
         // Create the execute message for registering as operator
         let metadata_uri = "https://example.com/metadata";
         let register_msg = ExecuteMsg::RegisterAsOperator {
@@ -2343,20 +2695,26 @@ mod tests {
             operator_details: operator_details.clone(),
             metadata_uri: metadata_uri.to_string(),
         };
-    
+
         // Execute the register message
-        let res = execute(deps.as_mut(), env.clone(), info_operator.clone(), register_msg).unwrap();
-    
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info_operator.clone(),
+            register_msg,
+        )
+        .unwrap();
+
         // Check the events
         assert_eq!(res.events.len(), 2);
-    
+
         // Check the first event: OperatorRegistered
         let event = &res.events[0];
         assert_eq!(event.ty, "OperatorRegistered");
         assert_eq!(event.attributes.len(), 1);
         assert_eq!(event.attributes[0].key, "operator");
         assert_eq!(event.attributes[0].value, info_operator.sender.to_string());
-    
+
         // Check the second event: OperatorMetadataURIUpdated
         let event = &res.events[1];
         assert_eq!(event.ty, "OperatorMetadataURIUpdated");
@@ -2365,7 +2723,7 @@ mod tests {
         assert_eq!(event.attributes[0].value, info_operator.sender.to_string());
         assert_eq!(event.attributes[1].key, "metadata_uri");
         assert_eq!(event.attributes[1].value, metadata_uri.to_string());
-    
+
         // Verify the operator details saved
         let stored_operator_details = OPERATOR_DETAILS
             .load(&deps.storage, &info_operator.sender)
@@ -2382,13 +2740,13 @@ mod tests {
             stored_operator_details.staker_opt_out_window_blocks,
             operator_details.staker_opt_out_window_blocks
         );
-    
+
         // Check that the operator is correctly delegated
         let delegated_to = DELEGATED_TO
             .load(&deps.storage, &info_operator.sender)
             .unwrap();
         assert_eq!(delegated_to, info_operator.sender);
-    
+
         // Check for an operator already registered error
         let res = execute(
             deps.as_mut(),
@@ -2407,14 +2765,14 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    }    
+    }
 
     #[test]
     fn test_update_operator_metadata_uri() {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-    
+
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
             slasher: Addr::unchecked("slasher"),
@@ -2424,7 +2782,7 @@ mod tests {
             withdrawal_delay_blocks: vec![5, 10],
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-    
+
         let operator = Addr::unchecked("operator1");
         let operator_details = OperatorDetails {
             deprecated_earnings_receiver: Addr::unchecked("earnings_receiver"),
@@ -2434,11 +2792,13 @@ mod tests {
         OPERATOR_DETAILS
             .save(deps.as_mut().storage, &operator, &operator_details)
             .unwrap();
-    
-        DELEGATED_TO.save(deps.as_mut().storage, &operator, &operator).unwrap();
-    
+
+        DELEGATED_TO
+            .save(deps.as_mut().storage, &operator, &operator)
+            .unwrap();
+
         let info_operator: MessageInfo = message_info(&Addr::unchecked("operator1"), &[]);
-    
+
         let metadata_uri = "https://example.com/metadata";
         let update_msg = ExecuteMsg::UpdateOperatorMetadataUri {
             metadata_uri: metadata_uri.to_string(),
@@ -2450,9 +2810,9 @@ mod tests {
             update_msg,
         )
         .unwrap();
-    
+
         assert_eq!(res.events.len(), 1);
-    
+
         let event = &res.events[0];
         assert_eq!(event.ty, "OperatorMetadataURIUpdated");
         assert_eq!(event.attributes.len(), 2);
@@ -2460,10 +2820,10 @@ mod tests {
         assert_eq!(event.attributes[0].value, info_operator.sender.to_string());
         assert_eq!(event.attributes[1].key, "metadata_uri");
         assert_eq!(event.attributes[1].value, metadata_uri.to_string());
-    
+
         // Check for an operator not registered error
         let info_non_operator: MessageInfo = message_info(&Addr::unchecked("non_operator"), &[]);
-    
+
         let update_msg = ExecuteMsg::UpdateOperatorMetadataUri {
             metadata_uri: metadata_uri.to_string(),
         };
@@ -2475,14 +2835,14 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    }             
+    }
 
     #[test]
     fn test_increase_delegated_shares() {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-    
+
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
             slasher: Addr::unchecked("slasher"),
@@ -2492,18 +2852,26 @@ mod tests {
             withdrawal_delay_blocks: vec![5, 10],
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-    
+
         let strategy_manager_info = message_info(&Addr::unchecked("strategy_manager"), &[]);
-    
+
         // Register a staker delegated to an operator
         let staker = Addr::unchecked("staker1");
         let operator = Addr::unchecked("operator1");
         let strategy = Addr::unchecked("strategy1");
         let initial_shares = Uint128::new(100);
-    
-        DELEGATED_TO.save(deps.as_mut().storage, &staker, &operator).unwrap();
-        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategy), &initial_shares).unwrap();
-    
+
+        DELEGATED_TO
+            .save(deps.as_mut().storage, &staker, &operator)
+            .unwrap();
+        OPERATOR_SHARES
+            .save(
+                deps.as_mut().storage,
+                (&operator, &strategy),
+                &initial_shares,
+            )
+            .unwrap();
+
         // Test increasing shares
         let additional_shares = Uint128::new(50);
         let increase_msg = ExecuteMsg::IncreaseDelegatedShares {
@@ -2511,9 +2879,15 @@ mod tests {
             strategy: strategy.clone(),
             shares: additional_shares,
         };
-    
-        let res = execute(deps.as_mut(), env.clone(), strategy_manager_info.clone(), increase_msg.clone()).unwrap();
-        
+
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            strategy_manager_info.clone(),
+            increase_msg.clone(),
+        )
+        .unwrap();
+
         assert_eq!(res.events.len(), 1);
         let event = &res.events[0];
         assert_eq!(event.ty, "OperatorSharesIncreased");
@@ -2521,19 +2895,29 @@ mod tests {
         assert_eq!(event.attributes[1].value, staker.to_string());
         assert_eq!(event.attributes[2].value, strategy.to_string());
         assert_eq!(event.attributes[3].value, additional_shares.to_string());
-        assert_eq!(event.attributes[4].value, (initial_shares + additional_shares).to_string());
-    
-        let stored_shares = OPERATOR_SHARES.load(deps.as_ref().storage, (&operator, &strategy)).unwrap();
+        assert_eq!(
+            event.attributes[4].value,
+            (initial_shares + additional_shares).to_string()
+        );
+
+        let stored_shares = OPERATOR_SHARES
+            .load(deps.as_ref().storage, (&operator, &strategy))
+            .unwrap();
         assert_eq!(stored_shares, initial_shares + additional_shares);
 
         // Test unauthorized increase (should fail)
         let unauthorized_info = message_info(&Addr::unchecked("not_strategy_manager"), &[]);
 
-        let res_unauthorized = execute(deps.as_mut(), env.clone(), unauthorized_info, increase_msg.clone());
+        let res_unauthorized = execute(
+            deps.as_mut(),
+            env.clone(),
+            unauthorized_info,
+            increase_msg.clone(),
+        );
         assert!(res_unauthorized.is_err());
         if let Err(err) = res_unauthorized {
             assert!(matches!(err, ContractError::Unauthorized {}));
-        } 
+        }
 
         // Test increase when staker is not delegated (should return an empty response)
         let non_delegated_staker = Addr::unchecked("staker2");
@@ -2544,8 +2928,13 @@ mod tests {
             strategy: strategy.clone(),
             shares: additional_shares,
         };
-    
-        let res = execute(deps.as_mut(), env.clone(), strategy_manager_info.clone(), increase_msg_non_delegated);
+
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            strategy_manager_info.clone(),
+            increase_msg_non_delegated,
+        );
         assert!(res.is_err());
         if let Err(err) = res {
             assert!(matches!(err, ContractError::NotDelegated {}));
@@ -2572,24 +2961,48 @@ mod tests {
         let staker = Addr::unchecked("staker1");
         let strategy = Addr::unchecked("strategy1");
         let initial_shares = Uint128::new(100);
-        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategy), &initial_shares).unwrap();
+        OPERATOR_SHARES
+            .save(
+                deps.as_mut().storage,
+                (&operator, &strategy),
+                &initial_shares,
+            )
+            .unwrap();
 
         let decrease_shares = Uint128::new(50);
-        let res = _decrease_operator_shares(deps.as_mut(), operator.clone(), staker.clone(), strategy.clone(), decrease_shares).unwrap();
+        let res = _decrease_operator_shares(
+            deps.as_mut(),
+            operator.clone(),
+            staker.clone(),
+            strategy.clone(),
+            decrease_shares,
+        )
+        .unwrap();
 
         assert_eq!(res.events.len(), 1);
         assert_eq!(res.events[0].ty, "OperatorSharesDecreased");
         assert_eq!(res.events[0].attributes[0].value, operator.to_string());
         assert_eq!(res.events[0].attributes[1].value, staker.to_string());
         assert_eq!(res.events[0].attributes[2].value, strategy.to_string());
-        assert_eq!(res.events[0].attributes[3].value, decrease_shares.to_string());
+        assert_eq!(
+            res.events[0].attributes[3].value,
+            decrease_shares.to_string()
+        );
 
-        let stored_shares = OPERATOR_SHARES.load(deps.as_ref().storage, (&operator, &strategy)).unwrap();
+        let stored_shares = OPERATOR_SHARES
+            .load(deps.as_ref().storage, (&operator, &strategy))
+            .unwrap();
         assert_eq!(stored_shares, initial_shares - decrease_shares);
 
         // Test decreasing shares with amount greater than current shares (should error)
         let excess_decrease = Uint128::new(60);
-        let res = _decrease_operator_shares(deps.as_mut(), operator.clone(), staker.clone(), strategy.clone(), excess_decrease);
+        let res = _decrease_operator_shares(
+            deps.as_mut(),
+            operator.clone(),
+            staker.clone(),
+            strategy.clone(),
+            excess_decrease,
+        );
 
         assert!(res.is_err());
         if let Err(err) = res {
@@ -2600,16 +3013,28 @@ mod tests {
         }
 
         // Test decreasing shares to zero
-        let res = _decrease_operator_shares(deps.as_mut(), operator.clone(), staker.clone(), strategy.clone(), decrease_shares).unwrap();
+        let res = _decrease_operator_shares(
+            deps.as_mut(),
+            operator.clone(),
+            staker.clone(),
+            strategy.clone(),
+            decrease_shares,
+        )
+        .unwrap();
 
         assert_eq!(res.events.len(), 1);
         assert_eq!(res.events[0].ty, "OperatorSharesDecreased");
         assert_eq!(res.events[0].attributes[0].value, operator.to_string());
         assert_eq!(res.events[0].attributes[1].value, staker.to_string());
         assert_eq!(res.events[0].attributes[2].value, strategy.to_string());
-        assert_eq!(res.events[0].attributes[3].value, decrease_shares.to_string());
+        assert_eq!(
+            res.events[0].attributes[3].value,
+            decrease_shares.to_string()
+        );
 
-        let stored_shares = OPERATOR_SHARES.load(deps.as_ref().storage, (&operator, &strategy)).unwrap();
+        let stored_shares = OPERATOR_SHARES
+            .load(deps.as_ref().storage, (&operator, &strategy))
+            .unwrap();
         assert_eq!(stored_shares, Uint128::new(0));
     }
 
@@ -2618,7 +3043,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-    
+
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
             slasher: Addr::unchecked("slasher"),
@@ -2628,16 +3053,24 @@ mod tests {
             withdrawal_delay_blocks: vec![5, 10],
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-    
+
         let staker = Addr::unchecked("staker1");
         let operator = Addr::unchecked("operator1");
         let strategy = Addr::unchecked("strategy1");
         let initial_shares = Uint128::new(100);
         let info_strategy_manager = message_info(&Addr::unchecked("strategy_manager"), &[]);
-    
-        DELEGATED_TO.save(deps.as_mut().storage, &staker, &operator).unwrap();
-        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategy), &initial_shares).unwrap();
-    
+
+        DELEGATED_TO
+            .save(deps.as_mut().storage, &staker, &operator)
+            .unwrap();
+        OPERATOR_SHARES
+            .save(
+                deps.as_mut().storage,
+                (&operator, &strategy),
+                &initial_shares,
+            )
+            .unwrap();
+
         // Test decreasing shares
         let decrease_shares = Uint128::new(50);
         let decrease_msg = ExecuteMsg::DecreaseDelegatedShares {
@@ -2645,24 +3078,30 @@ mod tests {
             strategy: strategy.clone(),
             shares: decrease_shares,
         };
-    
+
         let res = execute(
             deps.as_mut(),
             env.clone(),
             info_strategy_manager.clone(),
             decrease_msg.clone(),
-        ).unwrap();
-    
+        )
+        .unwrap();
+
         assert_eq!(res.events.len(), 1);
         assert_eq!(res.events[0].ty, "OperatorSharesDecreased");
         assert_eq!(res.events[0].attributes[0].value, operator.to_string());
         assert_eq!(res.events[0].attributes[1].value, staker.to_string());
         assert_eq!(res.events[0].attributes[2].value, strategy.to_string());
-        assert_eq!(res.events[0].attributes[3].value, decrease_shares.to_string());
-    
-        let stored_shares = OPERATOR_SHARES.load(deps.as_ref().storage, (&operator, &strategy)).unwrap();
+        assert_eq!(
+            res.events[0].attributes[3].value,
+            decrease_shares.to_string()
+        );
+
+        let stored_shares = OPERATOR_SHARES
+            .load(deps.as_ref().storage, (&operator, &strategy))
+            .unwrap();
         assert_eq!(stored_shares, initial_shares - decrease_shares);
-    
+
         // Test decreasing shares with amount greater than current shares (should error)
         let excess_decrease = Uint128::new(60);
         let decrease_msg_excess = ExecuteMsg::DecreaseDelegatedShares {
@@ -2670,14 +3109,14 @@ mod tests {
             strategy: strategy.clone(),
             shares: excess_decrease,
         };
-    
+
         let res = execute(
             deps.as_mut(),
             env.clone(),
             info_strategy_manager.clone(),
             decrease_msg_excess.clone(),
         );
-    
+
         assert!(res.is_err());
         if let Err(err) = res {
             match err {
@@ -2685,35 +3124,41 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    
+
         // Test decreasing shares to zero
         let res = execute(
             deps.as_mut(),
             env.clone(),
             info_strategy_manager.clone(),
             decrease_msg.clone(),
-        ).unwrap();
-    
+        )
+        .unwrap();
+
         assert_eq!(res.events.len(), 1);
         assert_eq!(res.events[0].ty, "OperatorSharesDecreased");
         assert_eq!(res.events[0].attributes[0].value, operator.to_string());
         assert_eq!(res.events[0].attributes[1].value, staker.to_string());
         assert_eq!(res.events[0].attributes[2].value, strategy.to_string());
-        assert_eq!(res.events[0].attributes[3].value, decrease_shares.to_string());
-    
-        let stored_shares = OPERATOR_SHARES.load(deps.as_ref().storage, (&operator, &strategy)).unwrap();
+        assert_eq!(
+            res.events[0].attributes[3].value,
+            decrease_shares.to_string()
+        );
+
+        let stored_shares = OPERATOR_SHARES
+            .load(deps.as_ref().storage, (&operator, &strategy))
+            .unwrap();
         assert_eq!(stored_shares, Uint128::new(0));
-    
+
         // Test non-strategy manager attempt to decrease shares (should error)
         let non_strategy_manager_info = message_info(&Addr::unchecked("not_strategy_manager"), &[]);
-    
+
         let res = execute(
             deps.as_mut(),
             env.clone(),
             non_strategy_manager_info.clone(),
             decrease_msg.clone(),
         );
-    
+
         assert!(res.is_err());
         if let Err(err) = res {
             match err {
@@ -2721,7 +3166,7 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    
+
         // Test staker not delegated (should error)
         let new_staker = Addr::unchecked("staker2");
         let decrease_msg_non_delegated = ExecuteMsg::DecreaseDelegatedShares {
@@ -2729,14 +3174,14 @@ mod tests {
             strategy: strategy.clone(),
             shares: decrease_shares,
         };
-    
+
         let res = execute(
             deps.as_mut(),
             env.clone(),
             info_strategy_manager.clone(),
             decrease_msg_non_delegated.clone(),
         );
-    
+
         assert!(res.is_err());
         if let Err(err) = res {
             match err {
@@ -2744,7 +3189,7 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    }    
+    }
 
     #[test]
     fn test_remove_shares_and_queue_withdrawal() {
@@ -2754,7 +3199,7 @@ mod tests {
 
         let staker = Addr::unchecked("staker1");
         let operator = Addr::unchecked("operator1");
-        let withdrawer = staker.clone(); 
+        let withdrawer = staker.clone();
         let strategies = vec![Addr::unchecked("strategy1")];
         let shares = vec![Uint128::new(100)];
 
@@ -2774,15 +3219,26 @@ mod tests {
             delegation_approver: Addr::unchecked("approver"),
             staker_opt_out_window_blocks: 100,
         };
-        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &operator_details).unwrap();
+        OPERATOR_DETAILS
+            .save(deps.as_mut().storage, &operator, &operator_details)
+            .unwrap();
 
         // Save initial shares
-        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategies[0]), &shares[0]).unwrap();
+        OPERATOR_SHARES
+            .save(
+                deps.as_mut().storage,
+                (&operator, &strategies[0]),
+                &shares[0],
+            )
+            .unwrap();
 
         // Mock the response from strategy_manager contract
         deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { contract_addr, msg: _ } if contract_addr == "strategy_manager" => {
-                SystemResult::Ok(ContractResult::Ok(to_json_binary(&false).unwrap())) 
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } if contract_addr == "strategy_manager" => {
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&false).unwrap()))
             }
             _ => SystemResult::Err(SystemError::InvalidRequest {
                 error: "Unhandled request".to_string(),
@@ -2799,7 +3255,8 @@ mod tests {
             withdrawer.clone(),
             strategies.clone(),
             shares.clone(),
-        ).unwrap();
+        )
+        .unwrap();
 
         // Verify the event
         let events = res.events;
@@ -2811,12 +3268,15 @@ mod tests {
         assert_eq!(events[0].attributes[3].key, "withdrawer");
 
         // Verify state changes
-        let stored_shares = OPERATOR_SHARES.load(deps.as_ref().storage, (&operator, &strategies[0])).unwrap();
+        let stored_shares = OPERATOR_SHARES
+            .load(deps.as_ref().storage, (&operator, &strategies[0]))
+            .unwrap();
         assert_eq!(stored_shares, Uint128::zero());
 
         let withdrawal_root_base64 = events[0].attributes[0].value.clone();
         let withdrawal_root_bytes = Binary::from_base64(&withdrawal_root_base64).unwrap();
-        let pending_withdrawal_exists = PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root_bytes);
+        let pending_withdrawal_exists =
+            PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root_bytes);
         assert!(pending_withdrawal_exists);
     }
 
@@ -2824,13 +3284,13 @@ mod tests {
     fn test_calculate_withdrawal_root() {
         let deps = mock_dependencies();
         let env = mock_env();
-    
+
         let staker = Addr::unchecked("staker");
         let delegated_to = Addr::unchecked("operator");
         let withdrawer = Addr::unchecked("withdrawer");
         let strategies = vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")];
         let shares = vec![Uint128::new(100), Uint128::new(200)];
-    
+
         let withdrawal = Withdrawal {
             staker: staker.clone(),
             delegated_to: delegated_to.clone(),
@@ -2840,26 +3300,28 @@ mod tests {
             strategies: strategies.clone(),
             shares: shares.clone(),
         };
-    
-        let query_msg = QueryMsg::CalculateWithdrawalRoot { withdrawal: withdrawal.clone() };
-    
+
+        let query_msg = QueryMsg::CalculateWithdrawalRoot {
+            withdrawal: withdrawal.clone(),
+        };
+
         let res: String = from_json(query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
-    
+
         let expected_hash = "fmAg05EX0z/mjX8aRMyovezcQNqcVU9zj1Mz53MpUeQ=";
         assert_eq!(res, expected_hash);
-    }     
+    }
 
     #[test]
     fn test_undelegate() {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-        
+
         let staker = Addr::unchecked("staker1");
         let operator = Addr::unchecked("operator1");
         let strategies = vec![Addr::unchecked("strategy1")];
         let shares = [Uint128::new(100)];
-    
+
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
             slasher: Addr::unchecked("slasher"),
@@ -2869,28 +3331,41 @@ mod tests {
             withdrawal_delay_blocks: vec![5],
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-    
+
         let operator_details = OperatorDetails {
             deprecated_earnings_receiver: Addr::unchecked("earnings_receiver"),
             delegation_approver: Addr::unchecked("approver"),
             staker_opt_out_window_blocks: 100,
         };
-        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &operator_details).unwrap();
-    
-        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategies[0]), &shares[0]).unwrap();
-        DELEGATED_TO.save(deps.as_mut().storage, &staker, &operator).unwrap();
-    
+        OPERATOR_DETAILS
+            .save(deps.as_mut().storage, &operator, &operator_details)
+            .unwrap();
+
+        OPERATOR_SHARES
+            .save(
+                deps.as_mut().storage,
+                (&operator, &strategies[0]),
+                &shares[0],
+            )
+            .unwrap();
+        DELEGATED_TO
+            .save(deps.as_mut().storage, &staker, &operator)
+            .unwrap();
+
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart { contract_addr, msg } if contract_addr == "strategy_manager" => {
                 let query_msg: Result<StrategyManagerQueryMsg, _> = from_json(msg);
                 if let Ok(StrategyManagerQueryMsg::GetDeposits { staker: _ }) = query_msg {
-                    let simulated_response: (Vec<Addr>, Vec<Uint128>) = (
-                        vec![Addr::unchecked("strategy1")], 
-                        vec![Uint128::new(100)] 
-                    );
-                    SystemResult::Ok(ContractResult::Ok(to_json_binary(&simulated_response).unwrap()))
-                } else if let Ok(StrategyManagerQueryMsg::IsThirdPartyTransfersForbidden { strategy: _ }) = query_msg {
-                    SystemResult::Ok(ContractResult::Ok(to_json_binary(&false).unwrap())) 
+                    let simulated_response: (Vec<Addr>, Vec<Uint128>) =
+                        (vec![Addr::unchecked("strategy1")], vec![Uint128::new(100)]);
+                    SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(&simulated_response).unwrap(),
+                    ))
+                } else if let Ok(StrategyManagerQueryMsg::IsThirdPartyTransfersForbidden {
+                    strategy: _,
+                }) = query_msg
+                {
+                    SystemResult::Ok(ContractResult::Ok(to_json_binary(&false).unwrap()))
                 } else {
                     SystemResult::Err(SystemError::InvalidRequest {
                         error: "Unhandled request".to_string(),
@@ -2903,37 +3378,61 @@ mod tests {
                 request: to_json_binary(&query).unwrap(),
             }),
         });
-        
+
         let info = message_info(&staker, &[]);
-    
+
         let undelegate_msg = ExecuteMsg::Undelegate {
             staker: staker.clone(),
         };
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), undelegate_msg.clone()).unwrap();
-    
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            undelegate_msg.clone(),
+        )
+        .unwrap();
+
         let events = res.events.clone();
         assert!(events.iter().any(|e| e.ty == "WithdrawalQueued"));
         assert!(events.iter().any(|e| e.ty == "StakerUndelegated"));
-    
+
         // Verify state changes
-        let stored_shares = OPERATOR_SHARES.load(deps.as_ref().storage, (&operator, &strategies[0])).unwrap();
+        let stored_shares = OPERATOR_SHARES
+            .load(deps.as_ref().storage, (&operator, &strategies[0]))
+            .unwrap();
         assert_eq!(stored_shares, Uint128::zero());
-    
+
         for withdrawal_root in &res.attributes {
             if withdrawal_root.key == "withdrawal_root" {
                 let withdrawal_root_bytes = Binary::from_base64(&withdrawal_root.value).unwrap();
-                assert!(PENDING_WITHDRAWALS.has(deps.as_ref().storage, withdrawal_root_bytes.as_slice()));
+                assert!(PENDING_WITHDRAWALS
+                    .has(deps.as_ref().storage, withdrawal_root_bytes.as_slice()));
             }
         }
-    
+
         // Test unauthorized call
-        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &operator_details).unwrap();
-        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategies[0]), &shares[0]).unwrap();
-        DELEGATED_TO.save(deps.as_mut().storage, &staker, &operator).unwrap();
-    
+        OPERATOR_DETAILS
+            .save(deps.as_mut().storage, &operator, &operator_details)
+            .unwrap();
+        OPERATOR_SHARES
+            .save(
+                deps.as_mut().storage,
+                (&operator, &strategies[0]),
+                &shares[0],
+            )
+            .unwrap();
+        DELEGATED_TO
+            .save(deps.as_mut().storage, &staker, &operator)
+            .unwrap();
+
         let unauthorized_info = message_info(&Addr::unchecked("not_authorized"), &[]);
-        let res = execute(deps.as_mut(), env.clone(), unauthorized_info, undelegate_msg.clone());
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            unauthorized_info,
+            undelegate_msg.clone(),
+        );
         assert!(res.is_err());
         if let Err(err) = res {
             match err {
@@ -2941,14 +3440,19 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    
+
         // Test undelegating a non-delegated staker
         let non_delegated_staker = Addr::unchecked("staker2");
         let undelegate_msg_non_delegated = ExecuteMsg::Undelegate {
             staker: non_delegated_staker.clone(),
         };
         let info = message_info(&non_delegated_staker, &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, undelegate_msg_non_delegated);
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info,
+            undelegate_msg_non_delegated,
+        );
         assert!(res.is_err());
         if let Err(err) = res {
             match err {
@@ -2956,12 +3460,16 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    
+
         // Test staker as operator
         let operator_staker = Addr::unchecked("operator_staker");
-        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator_staker, &operator_details).unwrap();
-        DELEGATED_TO.save(deps.as_mut().storage, &operator_staker, &operator_staker).unwrap();
-    
+        OPERATOR_DETAILS
+            .save(deps.as_mut().storage, &operator_staker, &operator_details)
+            .unwrap();
+        DELEGATED_TO
+            .save(deps.as_mut().storage, &operator_staker, &operator_staker)
+            .unwrap();
+
         let undelegate_msg_operator = ExecuteMsg::Undelegate {
             staker: operator_staker.clone(),
         };
@@ -2974,20 +3482,20 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    }    
+    }
 
     #[test]
     fn test_queue_withdrawals() {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-    
+
         let staker = Addr::unchecked("staker1");
         let operator = Addr::unchecked("operator1");
         let withdrawer = staker.clone();
         let strategies = vec![Addr::unchecked("strategy1")];
         let shares = vec![Uint128::new(100)];
-    
+
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
             slasher: Addr::unchecked("slasher"),
@@ -2997,22 +3505,34 @@ mod tests {
             withdrawal_delay_blocks: vec![5],
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-    
+
         let operator_details = OperatorDetails {
             deprecated_earnings_receiver: Addr::unchecked("earnings_receiver"),
             delegation_approver: Addr::unchecked("approver"),
             staker_opt_out_window_blocks: 100,
         };
-        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &operator_details).unwrap();
-    
-        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategies[0]), &shares[0]).unwrap();
-        DELEGATED_TO.save(deps.as_mut().storage, &staker, &operator).unwrap();
-    
+        OPERATOR_DETAILS
+            .save(deps.as_mut().storage, &operator, &operator_details)
+            .unwrap();
+
+        OPERATOR_SHARES
+            .save(
+                deps.as_mut().storage,
+                (&operator, &strategies[0]),
+                &shares[0],
+            )
+            .unwrap();
+        DELEGATED_TO
+            .save(deps.as_mut().storage, &staker, &operator)
+            .unwrap();
+
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart { contract_addr, msg } if contract_addr == "strategy_manager" => {
                 let query_msg: Result<StrategyManagerQueryMsg, _> = from_json(msg);
-                if let Ok(StrategyManagerQueryMsg::IsThirdPartyTransfersForbidden { strategy: _ }) = query_msg {
-                    SystemResult::Ok(ContractResult::Ok(to_json_binary(&false).unwrap())) 
+                if let Ok(StrategyManagerQueryMsg::IsThirdPartyTransfersForbidden { strategy: _ }) =
+                    query_msg
+                {
+                    SystemResult::Ok(ContractResult::Ok(to_json_binary(&false).unwrap()))
                 } else {
                     SystemResult::Err(SystemError::InvalidRequest {
                         error: "Unhandled request".to_string(),
@@ -3025,23 +3545,27 @@ mod tests {
                 request: to_json_binary(&query).unwrap(),
             }),
         });
-    
-        let queued_withdrawal_params = vec![
-            QueuedWithdrawalParams {
-                withdrawer: withdrawer.clone(),
-                strategies: strategies.clone(),
-                shares: shares.clone(),
-            }
-        ];
-    
+
+        let queued_withdrawal_params = vec![QueuedWithdrawalParams {
+            withdrawer: withdrawer.clone(),
+            strategies: strategies.clone(),
+            shares: shares.clone(),
+        }];
+
         let info = message_info(&staker, &[]);
-    
+
         let queue_withdrawals_msg = ExecuteMsg::QueueWithdrawals {
             queued_withdrawal_params: queued_withdrawal_params.clone(),
         };
-    
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), queue_withdrawals_msg.clone()).unwrap();
-        
+
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            queue_withdrawals_msg.clone(),
+        )
+        .unwrap();
+
         // Verify withdrawal roots
         let events = res.events.clone();
         assert_eq!(events.len(), 1);
@@ -3049,28 +3573,34 @@ mod tests {
         assert_eq!(events[0].attributes[1].value, staker.to_string());
         assert_eq!(events[0].attributes[2].value, operator.to_string());
         assert_eq!(events[0].attributes[3].value, withdrawer.to_string());
-    
+
         // Verify the state changes
-        let stored_shares = OPERATOR_SHARES.load(deps.as_ref().storage, (&operator, &strategies[0])).unwrap();
+        let stored_shares = OPERATOR_SHARES
+            .load(deps.as_ref().storage, (&operator, &strategies[0]))
+            .unwrap();
         assert_eq!(stored_shares, Uint128::zero());
-    
+
         let withdrawal_root_base64 = events[0].attributes[0].value.clone();
         let withdrawal_root_bytes = Binary::from_base64(&withdrawal_root_base64).unwrap();
-        let pending_withdrawal_exists = PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root_bytes);
+        let pending_withdrawal_exists =
+            PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root_bytes);
         assert!(pending_withdrawal_exists);
-    
+
         // Test input length mismatch error
-        let invalid_withdrawal_params = vec![
-            QueuedWithdrawalParams {
-                withdrawer: withdrawer.clone(),
-                strategies: strategies.clone(),
-                shares: vec![Uint128::new(100), Uint128::new(200)],
-            }
-        ];
+        let invalid_withdrawal_params = vec![QueuedWithdrawalParams {
+            withdrawer: withdrawer.clone(),
+            strategies: strategies.clone(),
+            shares: vec![Uint128::new(100), Uint128::new(200)],
+        }];
         let queue_withdrawals_msg_invalid = ExecuteMsg::QueueWithdrawals {
             queued_withdrawal_params: invalid_withdrawal_params,
         };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), queue_withdrawals_msg_invalid);
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            queue_withdrawals_msg_invalid,
+        );
         assert!(res.is_err());
         if let Err(err) = res {
             match err {
@@ -3078,19 +3608,22 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    
+
         // Test withdrawer is not the staker
-        let invalid_withdrawal_params = vec![
-            QueuedWithdrawalParams {
-                withdrawer: Addr::unchecked("other_address"),
-                strategies: strategies.clone(),
-                shares: shares.clone(),
-            }
-        ];
+        let invalid_withdrawal_params = vec![QueuedWithdrawalParams {
+            withdrawer: Addr::unchecked("other_address"),
+            strategies: strategies.clone(),
+            shares: shares.clone(),
+        }];
         let queue_withdrawals_msg_invalid_withdrawer = ExecuteMsg::QueueWithdrawals {
             queued_withdrawal_params: invalid_withdrawal_params,
         };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), queue_withdrawals_msg_invalid_withdrawer);
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            queue_withdrawals_msg_invalid_withdrawer,
+        );
         assert!(res.is_err());
         if let Err(err) = res {
             match err {
@@ -3098,14 +3631,14 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    }                    
+    }
 
     #[test]
     fn test_complete_queued_withdrawal_internal() {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-        
+
         let staker = Addr::unchecked("staker1");
         let operator = Addr::unchecked("operator1");
         let withdrawer = staker.clone();
@@ -3114,7 +3647,7 @@ mod tests {
         let tokens = vec![Addr::unchecked("token1"), Addr::unchecked("token2")];
         let shares = vec![Uint128::new(100), Uint128::new(200)];
         let strategies = vec![strategy1.clone(), strategy2.clone()];
-    
+
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
             slasher: Addr::unchecked("slasher"),
@@ -3124,60 +3657,83 @@ mod tests {
             withdrawal_delay_blocks: vec![5, 10],
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-    
-        DELEGATED_TO.save(deps.as_mut().storage, &withdrawer, &operator).unwrap();
-    
+
+        DELEGATED_TO
+            .save(deps.as_mut().storage, &withdrawer, &operator)
+            .unwrap();
+
         let withdrawal = Withdrawal {
             staker: staker.clone(),
             delegated_to: operator.clone(),
             withdrawer: withdrawer.clone(),
             nonce: Uint128::new(0),
-            start_block: Uint64::new(env.block.height - 15),  // Simulate sufficient delay has passed
+            start_block: Uint64::new(env.block.height - 15), // Simulate sufficient delay has passed
             strategies: strategies.clone(),
             shares: shares.clone(),
         };
-    
+
         let withdrawal_root = calculate_withdrawal_root(&withdrawal).unwrap();
-        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &withdrawal_root, &true).unwrap();
+        PENDING_WITHDRAWALS
+            .save(deps.as_mut().storage, &withdrawal_root, &true)
+            .unwrap();
 
         let strategy1_clone = strategy1.clone();
         let strategy2_clone = strategy2.clone();
-    
+
         deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { contract_addr, msg: _ } if contract_addr == "strategy_manager" => {
-                SystemResult::Ok(ContractResult::Ok(to_json_binary(&(vec![strategy1_clone.clone(), strategy2_clone.clone()], vec![Uint128::new(100), Uint128::new(200)])).unwrap()))
-            }
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } if contract_addr == "strategy_manager" => SystemResult::Ok(ContractResult::Ok(
+                to_json_binary(&(
+                    vec![strategy1_clone.clone(), strategy2_clone.clone()],
+                    vec![Uint128::new(100), Uint128::new(200)],
+                ))
+                .unwrap(),
+            )),
             _ => SystemResult::Err(SystemError::InvalidRequest {
                 error: "Unhandled request".to_string(),
                 request: to_json_binary(&query).unwrap(),
             }),
         });
-    
+
         let info = message_info(&withdrawer, &[]);
-    
+
         let res = _complete_queued_withdrawal(
             deps.as_mut(),
             env.clone(),
             info.clone(),
             withdrawal.clone(),
             tokens.clone(),
-            0,  
+            0,
             true,
-        ).unwrap();
-    
+        )
+        .unwrap();
+
         // Verify the result
         assert_eq!(res.events.len(), 1); // 2 withdrawals as tokens + 1 completion
         assert_eq!(res.events[0].ty, "WithdrawalCompleted");
-    
-        assert_eq!(res.events[0].attributes[0].value, withdrawal_root.to_string());
-    
-        assert!(res.events[0].attributes.iter().any(|attr| attr.key == "withdrawal_root" && attr.value == withdrawal_root.to_string()));
-    
+
+        assert_eq!(
+            res.events[0].attributes[0].value,
+            withdrawal_root.to_string()
+        );
+
+        assert!(
+            res.events[0]
+                .attributes
+                .iter()
+                .any(|attr| attr.key == "withdrawal_root"
+                    && attr.value == withdrawal_root.to_string())
+        );
+
         // Verify state changes: the pending withdrawal should be removed
         assert!(!PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root));
-    
+
         // Test for unauthorized attempt to complete
-        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &withdrawal_root, &true).unwrap();
+        PENDING_WITHDRAWALS
+            .save(deps.as_mut().storage, &withdrawal_root, &true)
+            .unwrap();
 
         let unauthorized_info = message_info(&Addr::unchecked("not_authorized"), &[]);
         let res = _complete_queued_withdrawal(
@@ -3196,14 +3752,17 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    
+
         // Test for insufficient delay
         let premature_withdrawal = Withdrawal {
-            start_block: Uint64::new(env.block.height - 5),  // Not enough delay
+            start_block: Uint64::new(env.block.height - 5), // Not enough delay
             ..withdrawal.clone()
         };
-        let premature_withdrawal_root: Binary = calculate_withdrawal_root(&premature_withdrawal).unwrap();
-        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &premature_withdrawal_root, &true).unwrap();
+        let premature_withdrawal_root: Binary =
+            calculate_withdrawal_root(&premature_withdrawal).unwrap();
+        PENDING_WITHDRAWALS
+            .save(deps.as_mut().storage, &premature_withdrawal_root, &true)
+            .unwrap();
         let res = _complete_queued_withdrawal(
             deps.as_mut(),
             env.clone(),
@@ -3220,14 +3779,14 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    
+
         // Test for input length mismatch error
         let res = _complete_queued_withdrawal(
             deps.as_mut(),
             env.clone(),
             info.clone(),
             withdrawal.clone(),
-            vec![Addr::unchecked("token1")],  // Incorrect length
+            vec![Addr::unchecked("token1")], // Incorrect length
             0,
             true,
         );
@@ -3238,27 +3797,35 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    
+
         // Test for strategy withdrawal delay not passed
         let withdrawal = Withdrawal {
             staker: staker.clone(),
             delegated_to: operator.clone(),
             withdrawer: withdrawer.clone(),
             nonce: Uint128::new(0),
-            start_block: Uint64::new(env.block.height - 15),  // Simulate sufficient delay has passed
+            start_block: Uint64::new(env.block.height - 15), // Simulate sufficient delay has passed
             strategies: strategies.clone(),
             shares: shares.clone(),
         };
 
         let premature_withdrawal_root: Binary = calculate_withdrawal_root(&withdrawal).unwrap();
-        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &premature_withdrawal_root, &true).unwrap();
+        PENDING_WITHDRAWALS
+            .save(deps.as_mut().storage, &premature_withdrawal_root, &true)
+            .unwrap();
 
-        let withdrawal_delay_blocks1 = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.load(&deps.storage, &Addr::unchecked("strategy1")).unwrap();
+        let withdrawal_delay_blocks1 = STRATEGY_WITHDRAWAL_DELAY_BLOCKS
+            .load(&deps.storage, &Addr::unchecked("strategy1"))
+            .unwrap();
         assert_eq!(withdrawal_delay_blocks1, Uint64::from(5u64));
 
         let new_withdrawal_delay_blocks = Uint64::from(10000000u64);
 
-        let _ = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.save(deps.as_mut().storage, &strategy1.clone(), &new_withdrawal_delay_blocks);
+        let _ = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.save(
+            deps.as_mut().storage,
+            &strategy1.clone(),
+            &new_withdrawal_delay_blocks,
+        );
 
         println!("  start_block: {}", premature_withdrawal.start_block);
         println!("  current block: {}", env.block.height);
@@ -3286,7 +3853,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-    
+
         let staker = Addr::unchecked("staker1");
         let operator = Addr::unchecked("operator1");
         let withdrawer = staker.clone();
@@ -3295,7 +3862,7 @@ mod tests {
         let tokens = vec![Addr::unchecked("token1"), Addr::unchecked("token2")];
         let shares = vec![Uint128::new(100), Uint128::new(200)];
         let strategies = vec![strategy1.clone(), strategy2.clone()];
-    
+
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
             slasher: Addr::unchecked("slasher"),
@@ -3305,9 +3872,11 @@ mod tests {
             withdrawal_delay_blocks: vec![5, 10],
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-    
-        DELEGATED_TO.save(deps.as_mut().storage, &withdrawer, &operator).unwrap();
-    
+
+        DELEGATED_TO
+            .save(deps.as_mut().storage, &withdrawer, &operator)
+            .unwrap();
+
         let withdrawal = Withdrawal {
             staker: staker.clone(),
             delegated_to: operator.clone(),
@@ -3317,50 +3886,90 @@ mod tests {
             strategies: strategies.clone(),
             shares: shares.clone(),
         };
-    
+
         let withdrawal_root = calculate_withdrawal_root(&withdrawal).unwrap();
-        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &withdrawal_root, &true).unwrap();
-    
-        STRATEGY_WITHDRAWAL_DELAY_BLOCKS.save(deps.as_mut().storage, &strategy1.clone(), &Uint64::from(5u64)).unwrap();
-        STRATEGY_WITHDRAWAL_DELAY_BLOCKS.save(deps.as_mut().storage, &strategy2.clone(), &Uint64::from(10u64)).unwrap();
-    
+        PENDING_WITHDRAWALS
+            .save(deps.as_mut().storage, &withdrawal_root, &true)
+            .unwrap();
+
+        STRATEGY_WITHDRAWAL_DELAY_BLOCKS
+            .save(
+                deps.as_mut().storage,
+                &strategy1.clone(),
+                &Uint64::from(5u64),
+            )
+            .unwrap();
+        STRATEGY_WITHDRAWAL_DELAY_BLOCKS
+            .save(
+                deps.as_mut().storage,
+                &strategy2.clone(),
+                &Uint64::from(10u64),
+            )
+            .unwrap();
+
         let strategy1_clone = strategy1.clone();
         let strategy2_clone = strategy2.clone();
-    
+
         deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { contract_addr, msg: _ } if contract_addr == "strategy_manager" => {
-                SystemResult::Ok(ContractResult::Ok(to_json_binary(&(vec![strategy1_clone.clone(), strategy2_clone.clone()], vec![Uint128::new(100), Uint128::new(200)])).unwrap()))
-            }
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } if contract_addr == "strategy_manager" => SystemResult::Ok(ContractResult::Ok(
+                to_json_binary(&(
+                    vec![strategy1_clone.clone(), strategy2_clone.clone()],
+                    vec![Uint128::new(100), Uint128::new(200)],
+                ))
+                .unwrap(),
+            )),
             _ => SystemResult::Err(SystemError::InvalidRequest {
                 error: "Unhandled request".to_string(),
                 request: to_json_binary(&query).unwrap(),
             }),
         });
-    
+
         let info = message_info(&withdrawer, &[]);
-    
+
         let complete_msg = ExecuteMsg::CompleteQueuedWithdrawal {
             withdrawal: withdrawal.clone(),
             tokens: tokens.clone(),
             middleware_times_index: Uint64::new(0),
             receive_as_tokens: true,
         };
-    
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), complete_msg.clone()).unwrap();
-    
+
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            complete_msg.clone(),
+        )
+        .unwrap();
+
         // Verify the result
         assert_eq!(res.events.len(), 1); // 1 completion event
         assert_eq!(res.events[0].ty, "WithdrawalCompleted");
-        assert!(res.events[0].attributes.iter().any(|attr| attr.key == "withdrawal_root" && attr.value == withdrawal_root.to_string()));
-    
+        assert!(
+            res.events[0]
+                .attributes
+                .iter()
+                .any(|attr| attr.key == "withdrawal_root"
+                    && attr.value == withdrawal_root.to_string())
+        );
+
         // Verify state changes: the pending withdrawal should be removed
         assert!(!PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root));
-    
+
         // Test for unauthorized attempt to complete
-        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &withdrawal_root, &true).unwrap();
+        PENDING_WITHDRAWALS
+            .save(deps.as_mut().storage, &withdrawal_root, &true)
+            .unwrap();
         let unauthorized_info = message_info(&Addr::unchecked("not_authorized"), &[]);
-    
-        let res = execute(deps.as_mut(), env.clone(), unauthorized_info, complete_msg.clone());
+
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            unauthorized_info,
+            complete_msg.clone(),
+        );
         assert!(res.is_err());
         if let Err(err) = res {
             match err {
@@ -3368,14 +3977,16 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    
+
         // Test for insufficient delay
         let premature_withdrawal = Withdrawal {
-            start_block: Uint64::new(env.block.height - 5),  // Not enough delay
+            start_block: Uint64::new(env.block.height - 5), // Not enough delay
             ..withdrawal.clone()
         };
         let premature_withdrawal_root = calculate_withdrawal_root(&premature_withdrawal).unwrap();
-        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &premature_withdrawal_root, &true).unwrap();
+        PENDING_WITHDRAWALS
+            .save(deps.as_mut().storage, &premature_withdrawal_root, &true)
+            .unwrap();
         let premature_msg = ExecuteMsg::CompleteQueuedWithdrawal {
             withdrawal: premature_withdrawal.clone(),
             tokens: tokens.clone(),
@@ -3390,11 +4001,11 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    
+
         // Test for input length mismatch error
         let mismatch_msg = ExecuteMsg::CompleteQueuedWithdrawal {
             withdrawal: withdrawal.clone(),
-            tokens: vec![Addr::unchecked("token1")],  // Incorrect length
+            tokens: vec![Addr::unchecked("token1")], // Incorrect length
             middleware_times_index: Uint64::new(0),
             receive_as_tokens: true,
         };
@@ -3406,25 +4017,32 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    
+
         // Test for strategy withdrawal delay not passed
         let delayed_withdrawal = Withdrawal {
             staker: staker.clone(),
             delegated_to: operator.clone(),
             withdrawer: withdrawer.clone(),
             nonce: Uint128::new(0),
-            start_block: Uint64::new(env.block.height - 15),  // Simulate sufficient delay has passed
+            start_block: Uint64::new(env.block.height - 15), // Simulate sufficient delay has passed
             strategies: strategies.clone(),
             shares: shares.clone(),
         };
-    
-        let delayed_withdrawal_root: Binary = calculate_withdrawal_root(&delayed_withdrawal).unwrap();
-        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &delayed_withdrawal_root, &true).unwrap();
-    
+
+        let delayed_withdrawal_root: Binary =
+            calculate_withdrawal_root(&delayed_withdrawal).unwrap();
+        PENDING_WITHDRAWALS
+            .save(deps.as_mut().storage, &delayed_withdrawal_root, &true)
+            .unwrap();
+
         let new_withdrawal_delay_blocks = Uint64::from(10000000u64);
-    
-        let _ = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.save(deps.as_mut().storage, &strategy1.clone(), &new_withdrawal_delay_blocks);
-    
+
+        let _ = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.save(
+            deps.as_mut().storage,
+            &strategy1.clone(),
+            &new_withdrawal_delay_blocks,
+        );
+
         let delay_msg = ExecuteMsg::CompleteQueuedWithdrawal {
             withdrawal: delayed_withdrawal.clone(),
             tokens: tokens.clone(),
@@ -3439,14 +4057,14 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    }    
+    }
 
     #[test]
     fn test_complete_queued_withdrawals() {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-    
+
         let staker = Addr::unchecked("staker1");
         let operator = Addr::unchecked("operator1");
         let withdrawer = staker.clone();
@@ -3458,7 +4076,7 @@ mod tests {
         let shares2 = vec![Uint128::new(150), Uint128::new(250)];
         let strategies1 = vec![strategy1.clone(), strategy2.clone()];
         let strategies2 = vec![strategy1.clone(), strategy2.clone()];
-    
+
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
             slasher: Addr::unchecked("slasher"),
@@ -3468,9 +4086,11 @@ mod tests {
             withdrawal_delay_blocks: vec![5, 10],
         };
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-    
-        DELEGATED_TO.save(deps.as_mut().storage, &withdrawer, &operator).unwrap();
-    
+
+        DELEGATED_TO
+            .save(deps.as_mut().storage, &withdrawer, &operator)
+            .unwrap();
+
         let withdrawal1 = Withdrawal {
             staker: staker.clone(),
             delegated_to: operator.clone(),
@@ -3480,7 +4100,7 @@ mod tests {
             strategies: strategies1.clone(),
             shares: shares1.clone(),
         };
-    
+
         let withdrawal2 = Withdrawal {
             staker: staker.clone(),
             delegated_to: operator.clone(),
@@ -3490,45 +4110,60 @@ mod tests {
             strategies: strategies2.clone(),
             shares: shares2.clone(),
         };
-    
+
         let withdrawal_root1 = calculate_withdrawal_root(&withdrawal1).unwrap();
         let withdrawal_root2 = calculate_withdrawal_root(&withdrawal2).unwrap();
-        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &withdrawal_root1, &true).unwrap();
-        PENDING_WITHDRAWALS.save(deps.as_mut().storage, &withdrawal_root2, &true).unwrap();
-    
+        PENDING_WITHDRAWALS
+            .save(deps.as_mut().storage, &withdrawal_root1, &true)
+            .unwrap();
+        PENDING_WITHDRAWALS
+            .save(deps.as_mut().storage, &withdrawal_root2, &true)
+            .unwrap();
+
         deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { contract_addr, msg: _ } if contract_addr == "strategy_manager" => {
-                SystemResult::Ok(ContractResult::Ok(to_json_binary(&(vec![strategy1.clone(), strategy2.clone()], vec![Uint128::new(100), Uint128::new(200)])).unwrap()))
-            }
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } if contract_addr == "strategy_manager" => SystemResult::Ok(ContractResult::Ok(
+                to_json_binary(&(
+                    vec![strategy1.clone(), strategy2.clone()],
+                    vec![Uint128::new(100), Uint128::new(200)],
+                ))
+                .unwrap(),
+            )),
             _ => SystemResult::Err(SystemError::InvalidRequest {
                 error: "Unhandled request".to_string(),
                 request: to_json_binary(&query).unwrap(),
             }),
         });
-    
+
         let info = message_info(&withdrawer, &[]);
-    
+
         let complete_msg = ExecuteMsg::CompleteQueuedWithdrawals {
             withdrawals: vec![withdrawal1.clone(), withdrawal2.clone()],
             tokens: vec![tokens1.clone(), tokens2.clone()],
             middleware_times_indexes: vec![0, 1],
             receive_as_tokens: vec![true, true],
         };
-    
+
         let res = execute(deps.as_mut(), env.clone(), info.clone(), complete_msg).unwrap();
-    
+
         // Verify the result
-        assert_eq!(res.events.len(), 2); 
+        assert_eq!(res.events.len(), 2);
         assert_eq!(res.events[0].ty, "WithdrawalCompleted");
         assert_eq!(res.events[1].ty, "WithdrawalCompleted");
-    
-        assert!(res.events[0].attributes.iter().any(|attr| attr.key == "withdrawal_root" && attr.value == withdrawal_root1.to_string()));
-        assert!(res.events[1].attributes.iter().any(|attr| attr.key == "withdrawal_root" && attr.value == withdrawal_root2.to_string()));
-    
+
+        assert!(res.events[0].attributes.iter().any(
+            |attr| attr.key == "withdrawal_root" && attr.value == withdrawal_root1.to_string()
+        ));
+        assert!(res.events[1].attributes.iter().any(
+            |attr| attr.key == "withdrawal_root" && attr.value == withdrawal_root2.to_string()
+        ));
+
         // Verify state changes: the pending withdrawals should be removed
         assert!(!PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root1));
         assert!(!PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root2));
-    }    
+    }
 
     #[test]
     fn test_withdraw_shares_as_tokens() {
@@ -3542,7 +4177,7 @@ mod tests {
         let strategy1 = Addr::unchecked("strategy1");
         let token1 = Addr::unchecked("token1");
         let shares1 = Uint128::new(100);
-    
+
         // Instantiate the contract
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
@@ -3553,28 +4188,40 @@ mod tests {
             withdrawal_delay_blocks: vec![5],
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-    
+
         // Register operator details
         let operator_details = OperatorDetails {
             deprecated_earnings_receiver: Addr::unchecked("earnings_receiver"),
             delegation_approver: Addr::unchecked("approver"),
             staker_opt_out_window_blocks: 100,
         };
-        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &operator_details).unwrap();
-    
+        OPERATOR_DETAILS
+            .save(deps.as_mut().storage, &operator, &operator_details)
+            .unwrap();
+
         // Save initial shares
-        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategy1), &shares1).unwrap();
-    
+        OPERATOR_SHARES
+            .save(deps.as_mut().storage, (&operator, &strategy1), &shares1)
+            .unwrap();
+
         // Mock the response for the token received from strategy manager
         let withdrawer1_clone = withdrawer1.clone();
-        let token1_clone = token1.clone(); 
-        let shares1_clone = shares1; 
+        let token1_clone = token1.clone();
+        let shares1_clone = shares1;
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart { contract_addr, msg } if contract_addr == "strategy_manager" => {
                 let execute_msg: Result<strategy_manager::ExecuteMsg, _> = from_json(msg);
-                if let Ok(strategy_manager::ExecuteMsg::WithdrawSharesAsTokens { recipient, strategy:_, shares:_, token:_ }) = execute_msg {
+                if let Ok(strategy_manager::ExecuteMsg::WithdrawSharesAsTokens {
+                    recipient,
+                    strategy: _,
+                    shares: _,
+                    token: _,
+                }) = execute_msg
+                {
                     if recipient == withdrawer1_clone {
-                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&vec![(token1_clone.clone(), shares1_clone)]).unwrap()))
+                        SystemResult::Ok(ContractResult::Ok(
+                            to_json_binary(&vec![(token1_clone.clone(), shares1_clone)]).unwrap(),
+                        ))
                     } else {
                         SystemResult::Err(SystemError::InvalidRequest {
                             error: "Recipient mismatch".to_string(),
@@ -3593,7 +4240,7 @@ mod tests {
                 request: to_json_binary(&query).unwrap(),
             }),
         });
-    
+
         // Call the function
         let res = _withdraw_shares_as_tokens(
             deps.as_ref(),
@@ -3602,16 +4249,25 @@ mod tests {
             strategy1.clone(),
             shares1,
             token1.clone(),
-        ).unwrap();
-    
+        )
+        .unwrap();
+
         // Verify the result: Check the message within the response
-        assert_eq!(res.messages.len(), 1); 
+        assert_eq!(res.messages.len(), 1);
         let msg = &res.messages[0].msg;
         match msg {
-            cosmwasm_std::CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, msg, .. }) => {
+            cosmwasm_std::CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr, msg, ..
+            }) => {
                 assert_eq!(contract_addr, "strategy_manager");
                 let execute_msg: strategy_manager::ExecuteMsg = from_json(msg).unwrap();
-                if let strategy_manager::ExecuteMsg::WithdrawSharesAsTokens { recipient, strategy, shares, token } = execute_msg {
+                if let strategy_manager::ExecuteMsg::WithdrawSharesAsTokens {
+                    recipient,
+                    strategy,
+                    shares,
+                    token,
+                } = execute_msg
+                {
                     assert_eq!(recipient, withdrawer1);
                     assert_eq!(strategy, strategy1);
                     assert_eq!(shares, shares1);
@@ -3643,9 +4299,13 @@ mod tests {
         let staker = Addr::unchecked("staker1");
         let operator = Addr::unchecked("operator1");
 
-        DELEGATED_TO.save(deps.as_mut().storage, &staker, &operator).unwrap();
+        DELEGATED_TO
+            .save(deps.as_mut().storage, &staker, &operator)
+            .unwrap();
 
-        let query_msg = QueryMsg::IsDelegated { staker: staker.clone() };
+        let query_msg = QueryMsg::IsDelegated {
+            staker: staker.clone(),
+        };
 
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let is_delegated: bool = from_json(res).unwrap();
@@ -3654,7 +4314,9 @@ mod tests {
 
         // Test for a staker that is not delegated
         let non_delegated_staker = Addr::unchecked("staker2");
-        let query_msg = QueryMsg::IsDelegated { staker: non_delegated_staker.clone() };
+        let query_msg = QueryMsg::IsDelegated {
+            staker: non_delegated_staker.clone(),
+        };
 
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let is_delegated: bool = from_json(res).unwrap();
@@ -3686,10 +4348,16 @@ mod tests {
             staker_opt_out_window_blocks: 100,
         };
 
-        DELEGATED_TO.save(deps.as_mut().storage, &operator.clone(), &operator.clone()).unwrap();
-        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator.clone(), &operator_details).unwrap();
+        DELEGATED_TO
+            .save(deps.as_mut().storage, &operator.clone(), &operator.clone())
+            .unwrap();
+        OPERATOR_DETAILS
+            .save(deps.as_mut().storage, &operator.clone(), &operator_details)
+            .unwrap();
 
-        let query_msg = QueryMsg::IsOperator { operator: operator.clone() };
+        let query_msg = QueryMsg::IsOperator {
+            operator: operator.clone(),
+        };
 
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let is_operator: bool = from_json(res).unwrap();
@@ -3698,7 +4366,9 @@ mod tests {
 
         // Test for an address that is not an operator
         let non_operator = Addr::unchecked("non_operator");
-        let query_msg = QueryMsg::IsOperator { operator: non_operator.clone() };
+        let query_msg = QueryMsg::IsOperator {
+            operator: non_operator.clone(),
+        };
 
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let is_operator: bool = from_json(res).unwrap();
@@ -3720,7 +4390,7 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-        let _res = instantiate(deps.as_mut(), env, info ,msg).unwrap();
+        let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
         let operator = Addr::unchecked("operator1");
         let operator_details = OperatorDetails {
@@ -3729,20 +4399,35 @@ mod tests {
             staker_opt_out_window_blocks: 100,
         };
 
-        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &operator_details).unwrap();
+        OPERATOR_DETAILS
+            .save(deps.as_mut().storage, &operator, &operator_details)
+            .unwrap();
 
-        let query_msg = QueryMsg::OperatorDetails { operator: operator.clone() };
+        let query_msg = QueryMsg::OperatorDetails {
+            operator: operator.clone(),
+        };
 
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let details: OperatorDetails = from_json(res).unwrap();
 
-        assert_eq!(details.deprecated_earnings_receiver, operator_details.deprecated_earnings_receiver);
-        assert_eq!(details.delegation_approver, operator_details.delegation_approver);
-        assert_eq!(details.staker_opt_out_window_blocks, operator_details.staker_opt_out_window_blocks);
+        assert_eq!(
+            details.deprecated_earnings_receiver,
+            operator_details.deprecated_earnings_receiver
+        );
+        assert_eq!(
+            details.delegation_approver,
+            operator_details.delegation_approver
+        );
+        assert_eq!(
+            details.staker_opt_out_window_blocks,
+            operator_details.staker_opt_out_window_blocks
+        );
 
         // Test querying details for an operator that does not exist
         let non_operator = Addr::unchecked("non_operator");
-        let query_msg = QueryMsg::OperatorDetails { operator: non_operator.clone() };
+        let query_msg = QueryMsg::OperatorDetails {
+            operator: non_operator.clone(),
+        };
 
         let res = query(deps.as_ref(), mock_env(), query_msg);
         assert!(res.is_err());
@@ -3771,9 +4456,13 @@ mod tests {
             staker_opt_out_window_blocks: 100,
         };
 
-        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &operator_details).unwrap();
+        OPERATOR_DETAILS
+            .save(deps.as_mut().storage, &operator, &operator_details)
+            .unwrap();
 
-        let query_msg = QueryMsg::DelegationApprover { operator: operator.clone() };
+        let query_msg = QueryMsg::DelegationApprover {
+            operator: operator.clone(),
+        };
 
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let approver: Addr = from_json(res).unwrap();
@@ -3786,7 +4475,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-    
+
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
             slasher: Addr::unchecked("slasher"),
@@ -3796,22 +4485,29 @@ mod tests {
             withdrawal_delay_blocks: vec![5, 10],
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-    
+
         let operator = Addr::unchecked("operator1");
         let operator_details = OperatorDetails {
             deprecated_earnings_receiver: Addr::unchecked("earnings_receiver"),
             delegation_approver: Addr::unchecked("approver"),
             staker_opt_out_window_blocks: 100,
         };
-    
-        OPERATOR_DETAILS.save(deps.as_mut().storage, &operator, &operator_details).unwrap();
-    
-        let query_msg = QueryMsg::StakerOptOutWindowBlocks { operator: operator.clone() };
-    
+
+        OPERATOR_DETAILS
+            .save(deps.as_mut().storage, &operator, &operator_details)
+            .unwrap();
+
+        let query_msg = QueryMsg::StakerOptOutWindowBlocks {
+            operator: operator.clone(),
+        };
+
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let opt_out_window_blocks: u64 = from_json(res).unwrap();
-    
-        assert_eq!(opt_out_window_blocks, operator_details.staker_opt_out_window_blocks);
+
+        assert_eq!(
+            opt_out_window_blocks,
+            operator_details.staker_opt_out_window_blocks
+        );
     }
 
     #[test]
@@ -3819,7 +4515,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-    
+
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
             slasher: Addr::unchecked("slasher"),
@@ -3829,38 +4525,50 @@ mod tests {
             withdrawal_delay_blocks: vec![5, 10],
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-    
+
         let operator = Addr::unchecked("operator1");
         let strategies = vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")];
-    
+
         let shares_strategy1 = Uint128::new(100);
         let shares_strategy2 = Uint128::new(200);
-    
-        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategies[0]), &shares_strategy1).unwrap();
-        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategies[1]), &shares_strategy2).unwrap();
-    
+
+        OPERATOR_SHARES
+            .save(
+                deps.as_mut().storage,
+                (&operator, &strategies[0]),
+                &shares_strategy1,
+            )
+            .unwrap();
+        OPERATOR_SHARES
+            .save(
+                deps.as_mut().storage,
+                (&operator, &strategies[1]),
+                &shares_strategy2,
+            )
+            .unwrap();
+
         let query_msg = QueryMsg::GetOperatorShares {
             operator: operator.clone(),
             strategies: strategies.clone(),
         };
-    
+
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let operator_shares: Vec<Uint128> = from_json(res).unwrap();
-    
+
         assert_eq!(operator_shares.len(), 2);
         assert_eq!(operator_shares[0], shares_strategy1);
         assert_eq!(operator_shares[1], shares_strategy2);
-    
+
         // Test querying shares for an operator with no shares set
         let new_operator = Addr::unchecked("new_operator");
         let query_msg = QueryMsg::GetOperatorShares {
             operator: new_operator.clone(),
             strategies: strategies.clone(),
         };
-    
+
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let operator_shares: Vec<Uint128> = from_json(res).unwrap();
-    
+
         assert_eq!(operator_shares.len(), 2);
         assert_eq!(operator_shares[0], Uint128::zero());
         assert_eq!(operator_shares[1], Uint128::zero());
@@ -3871,7 +4579,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-    
+
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
             slasher: Addr::unchecked("slasher"),
@@ -3881,38 +4589,38 @@ mod tests {
             withdrawal_delay_blocks: vec![5, 10],
         };
         let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-    
+
         let strategies = vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")];
-    
+
         STRATEGY_WITHDRAWAL_DELAY_BLOCKS
             .save(deps.as_mut().storage, &strategies[0], &Uint64::from(5u64))
             .unwrap();
         STRATEGY_WITHDRAWAL_DELAY_BLOCKS
             .save(deps.as_mut().storage, &strategies[1], &Uint64::from(10u64))
             .unwrap();
-    
+
         let query_msg = QueryMsg::GetWithdrawalDelay {
             strategies: strategies.clone(),
         };
-    
+
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let withdrawal_delays: Vec<u64> = from_json(res).unwrap();
-    
+
         assert_eq!(withdrawal_delays.len(), 2);
         assert_eq!(withdrawal_delays[0], 10); // Assuming we want max of min_delay and strategy delay
         assert_eq!(withdrawal_delays[1], 10);
-    
+
         // Test querying withdrawal delay for strategies with no delay set
         let new_strategy = Addr::unchecked("strategy3");
         let query_msg = QueryMsg::GetWithdrawalDelay {
             strategies: vec![new_strategy.clone()],
         };
-    
+
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let withdrawal_delays: Vec<u64> = from_json(res).unwrap();
-    
+
         assert_eq!(withdrawal_delays.len(), 1);
-        assert_eq!(withdrawal_delays[0], 10); 
+        assert_eq!(withdrawal_delays[0], 10);
     }
 
     #[test]
@@ -3920,7 +4628,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-    
+
         let msg = InstantiateMsg {
             strategy_manager: Addr::unchecked("strategy_manager"),
             slasher: Addr::unchecked("slasher"),
@@ -3929,34 +4637,38 @@ mod tests {
             strategies: vec![Addr::unchecked("strategy1"), Addr::unchecked("strategy2")],
             withdrawal_delay_blocks: vec![5, 10],
         };
-    
+
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-    
+
         let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
-        let (staker, _secret_key, staker_public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
+        let (staker, _secret_key, staker_public_key_bytes) =
+            generate_osmosis_public_key_from_private_key(private_key_hex);
         let staker_public_key = Binary::from(staker_public_key_bytes.as_slice());
-    
+
         let current_staker_digest_hash_params = CurrentStakerDigestHashParams {
             staker: staker.clone(),
             operator: Addr::unchecked("operator"),
             staker_public_key: staker_public_key.clone(),
-            expiry:  Uint64::new(1000),
+            expiry: Uint64::new(1000),
             current_nonce: Uint128::new(0),
             chain_id: env.block.chain_id.clone(),
             contract_addr: env.contract.address.clone(),
         };
-    
+
         let query_msg = QueryMsg::CalculateCurrentStakerDelegationDigestHash {
             current_staker_digest_hash_params: current_staker_digest_hash_params.clone(),
         };
-    
+
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let digest_hash: Binary = from_json(res).unwrap();
-    
-        let expected_digest_hash = calculate_current_staker_delegation_digest_hash(current_staker_digest_hash_params.clone()).unwrap();
-    
+
+        let expected_digest_hash = calculate_current_staker_delegation_digest_hash(
+            current_staker_digest_hash_params.clone(),
+        )
+        .unwrap();
+
         assert_eq!(digest_hash, expected_digest_hash);
-    }    
+    }
 
     #[test]
     fn test_transfer_ownership() {
@@ -4008,10 +4720,24 @@ mod tests {
         let strategy1 = Addr::unchecked("strategy1");
         let strategy2 = Addr::unchecked("strategy2");
 
-        DELEGATED_TO.save(deps.as_mut().storage, &staker1, &operator).unwrap();
+        DELEGATED_TO
+            .save(deps.as_mut().storage, &staker1, &operator)
+            .unwrap();
 
-        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategy1), &Uint128::new(100)).unwrap();
-        OPERATOR_SHARES.save(deps.as_mut().storage, (&operator, &strategy2), &Uint128::new(200)).unwrap();
+        OPERATOR_SHARES
+            .save(
+                deps.as_mut().storage,
+                (&operator, &strategy1),
+                &Uint128::new(100),
+            )
+            .unwrap();
+        OPERATOR_SHARES
+            .save(
+                deps.as_mut().storage,
+                (&operator, &strategy2),
+                &Uint128::new(200),
+            )
+            .unwrap();
 
         let res = query_operator_stakers(deps.as_ref(), operator.clone()).unwrap();
 
@@ -4021,22 +4747,33 @@ mod tests {
         assert_eq!(staker1_result.0, staker1);
         assert_eq!(staker1_result.1.len(), 2);
         println!("staker1_result.1: {:?}", staker1_result.1);
-        println!("Checking if the tuple exists in the vector: {:?}", (strategy1.clone(), Uint128::new(100)));
-        assert!(staker1_result.1.contains(&(strategy1.clone(), Uint128::new(100))));
-        assert!(staker1_result.1.contains(&(strategy2.clone(), Uint128::new(200))));
+        println!(
+            "Checking if the tuple exists in the vector: {:?}",
+            (strategy1.clone(), Uint128::new(100))
+        );
+        assert!(staker1_result
+            .1
+            .contains(&(strategy1.clone(), Uint128::new(100))));
+        assert!(staker1_result
+            .1
+            .contains(&(strategy2.clone(), Uint128::new(200))));
     }
 
     #[test]
     fn test_query_cumulative_withdrawals_queued() {
         let mut deps = mock_dependencies();
         let staker = Addr::unchecked("staker1");
-    
-        CUMULATIVE_WITHDRAWALS_QUEUED.save(deps.as_mut().storage, &staker, &5).unwrap();
-    
-        let msg = QueryMsg::GetCumulativeWithdrawalsQueuedNonce { staker: staker.clone() };
-    
+
+        CUMULATIVE_WITHDRAWALS_QUEUED
+            .save(deps.as_mut().storage, &staker, &5)
+            .unwrap();
+
+        let msg = QueryMsg::GetCumulativeWithdrawalsQueuedNonce {
+            staker: staker.clone(),
+        };
+
         let res: Uint128 = from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
-    
+
         assert_eq!(res, Uint128::new(5));
-    }    
+    }
 }

@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Uint128, Uint64, Binary};
+use cosmwasm_std::{Addr, Binary, Uint128, Uint64};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -56,10 +56,7 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     GetDeposits { staker: Addr },
     StakerStrategyListLength { staker: Addr },
-    GetStakerStrategyShares {
-        staker: Addr,
-        strategy: Addr,
-    },
+    GetStakerStrategyShares { staker: Addr, strategy: Addr },
 }
 
 #[cw_serde]

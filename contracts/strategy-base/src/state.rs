@@ -10,3 +10,4 @@ pub struct StrategyState {
 }
 
 pub const STRATEGY_STATE: Item<StrategyState> = Item::new("strategy_state");
+pub const OWNER: Item<Addr> = Item::new("owner");
