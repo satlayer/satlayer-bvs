@@ -1,11 +1,19 @@
+use crate::query::{
+    ExplanationResponse, SharesResponse, SharesToUnderlyingResponse, StrategeStateResponse,
+    StrategyManagerResponse, TotalSharesResponse, UnderlyingToShareResponse,
+    UnderlyingToSharesResponse, UnderlyingTokenResponse, UserUnderlyingResponse,
+};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Uint128};
-use crate::state::StrategyState;
+use cosmwasm_std::Uint128;
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub strategy_manager: Addr,
-    pub underlying_token: Addr,
+    pub initial_owner: String,
+    pub strategy_manager: String,
+    pub underlying_token: String,
+    pub pauser: String,
+    pub unpauser: String,
+    pub initial_paused_status: u64,
 }
 
 #[cw_serde]
@@ -14,8 +22,19 @@ pub enum ExecuteMsg {
         amount: Uint128,
     },
     Withdraw {
-        recipient: Addr,
+        recipient: String,
         amount_shares: Uint128,
+    },
+    TransferOwnership {
+        new_owner: String,
+    },
+    Pause {},
+    Unpause {},
+    SetPauser {
+        new_pauser: String,
+    },
+    SetUnpauser {
+        new_unpauser: String,
     },
 }
 
@@ -23,46 +42,35 @@ pub enum ExecuteMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(SharesResponse)]
-    GetShares {
-        staker: Addr,
-        strategy: Addr, 
-    },
+    GetShares { staker: String, strategy: String },
 
-    #[returns(Uint128)]
-    SharesToUnderlyingView {
-        amount_shares: Uint128,
-    },
+    #[returns(SharesToUnderlyingResponse)]
+    SharesToUnderlyingView { amount_shares: Uint128 },
 
-    #[returns(Uint128)]
-    UnderlyingToShareView {
-        amount: Uint128,
-    },
+    #[returns(UnderlyingToShareResponse)]
+    UnderlyingToShareView { amount: Uint128 },
 
-    #[returns(Uint128)]
-    UserUnderlyingView {
-        user: Addr,
-    },
+    #[returns(UserUnderlyingResponse)]
+    UserUnderlyingView { user: String },
 
-    #[returns(Addr)]
+    #[returns(StrategyManagerResponse)]
     GetStrategyManager {},
 
-    #[returns(Addr)]
+    #[returns(UnderlyingTokenResponse)]
     GetUnderlyingToken {},
 
-    #[returns(Uint128)]
+    #[returns(TotalSharesResponse)]
     GetTotalShares {},
 
-    #[returns(String)]
+    #[returns(ExplanationResponse)]
     Explanation {},
 
-    #[returns(Uint128)]
+    #[returns(UnderlyingToSharesResponse)]
     UnderlyingToShares { amount_underlying: Uint128 },
 
-    #[returns(StrategyState)]
+    #[returns(StrategeStateResponse)]
     GetStrategyState {},
 }
 
 #[cw_serde]
-pub struct SharesResponse {
-    pub total_shares: Uint128,
-}
+pub struct MigrateMsg {}

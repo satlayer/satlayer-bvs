@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Uint128, Uint64, Binary};
+use cosmwasm_std::{Addr, Binary, Uint128, Uint64};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -55,7 +55,7 @@ pub enum ExecuteMsg {
         token: Addr,
         strategy: Addr,
         shares: Uint128,
-    }, 
+    },
 }
 
 #[cw_serde]

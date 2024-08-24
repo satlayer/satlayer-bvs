@@ -1,8 +1,9 @@
 pub mod contract;
-mod error;
 pub mod msg;
-mod state;
+pub mod state;
+
+mod error;
+mod query;
 mod utils;
 
 pub use crate::error::ContractError;
-pub mod delegation_manager;

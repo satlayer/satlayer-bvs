@@ -1,11 +1,18 @@
+use crate::query::{
+    AVSInfoResponse, DelegationResponse, DigestHashResponse, DomainNameResponse,
+    DomainTypeHashResponse, OwnerResponse, RegistrationTypeHashResponse, SaltResponse,
+};
+use crate::state::OperatorAVSRegistrationStatus;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Uint64, Binary};
-use crate::state::{OperatorAVSRegistrationStatus, AVSInfo};
+use cosmwasm_std::Binary;
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub initial_owner: Addr,
-    pub delegation_manager: Addr,
+    pub initial_owner: String,
+    pub delegation_manager: String,
+    pub pauser: String,
+    pub unpauser: String,
+    pub initial_paused_status: u64,
 }
 
 #[cw_serde]
@@ -16,13 +23,13 @@ pub enum ExecuteMsg {
         avs_driver: String,
     },
     RegisterOperatorToAVS {
-        operator: Addr,
+        operator: String,
         public_key: String,
-        contract_addr: Addr,
+        contract_addr: String,
         signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry,
     },
     DeregisterOperatorFromAVS {
-        operator: Addr,
+        operator: String,
     },
     UpdateAVSMetadataURI {
         metadata_uri: String,
@@ -31,7 +38,15 @@ pub enum ExecuteMsg {
         salt: String,
     },
     TransferOwnership {
-        new_owner: Addr,
+        new_owner: String,
+    },
+    Pause {},
+    Unpause {},
+    SetPauser {
+        new_pauser: String,
+    },
+    SetUnpauser {
+        new_unpauser: String,
     },
 }
 
@@ -39,39 +54,41 @@ pub enum ExecuteMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(OperatorStatusResponse)]
-    QueryOperatorStatus { avs: Addr, operator: Addr },
+    GetOperatorStatus { avs: String, operator: String },
 
-    #[returns(Binary)]
+    #[returns(DigestHashResponse)]
     CalculateDigestHash {
         operator_public_key: String,
-        avs: Addr,
+        avs: String,
         salt: String,
-        expiry: Uint64,
-        chain_id: String,
-        contract_addr: Addr,
+        expiry: u64,
+        contract_addr: String,
     },
 
-    #[returns(bool)]
-    IsSaltSpent { operator: Addr, salt: String },
+    #[returns(SaltResponse)]
+    IsSaltSpent { operator: String, salt: String },
 
-    #[returns(AVSInfo)]
+    #[returns(AVSInfoResponse)]
     GetAVSInfo { avs_hash: String },
 
-    #[returns(String)]
+    #[returns(DelegationResponse)]
     GetDelegationManager {},
 
-    #[returns(String)]
+    #[returns(OwnerResponse)]
     GetOwner {},
 
-    #[returns(String)]
+    #[returns(RegistrationTypeHashResponse)]
     GetOperatorAVSRegistrationTypeHash {},
 
-    #[returns(String)]
+    #[returns(DomainTypeHashResponse)]
     GetDomainTypeHash {},
 
-    #[returns(String)]
+    #[returns(DomainNameResponse)]
     GetDomainName {},
 }
+
+#[cw_serde]
+pub struct MigrateMsg {}
 
 #[cw_serde]
 pub struct OperatorStatusResponse {
@@ -79,27 +96,17 @@ pub struct OperatorStatusResponse {
 }
 
 #[cw_serde]
-pub struct IsOperatorRegisteredQueryMsg {
-    pub operator: Addr,
-}
-
-#[cw_serde]
-pub struct IsOperatorRegisteredResponse {
-    pub registered: bool,
-}
-
-#[cw_serde]
 pub struct ExecuteSignatureWithSaltAndExpiry {
     pub signature: String,
     pub salt: String,
-    pub expiry: Uint64,
+    pub expiry: u64,
 }
 
 #[cw_serde]
 pub struct SignatureWithSaltAndExpiry {
     pub signature: Binary,
     pub salt: Binary,
-    pub expiry: Uint64,
+    pub expiry: u64,
 }
 
 #[cw_serde]
