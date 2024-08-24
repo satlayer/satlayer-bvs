@@ -38,4 +38,13 @@ pub enum ContractError {
 
     #[error("StrategyManager.deposit_into_strategy_with_signature: attribute not found")]
     AttributeNotFound {},
+
+    #[error("StrategyManager.calculate_new_shares: Overflow occurred during calculation")]
+    Overflow,
+
+    #[error("StrategyManager.calculate_new_shares: Underflow occurred during calculation")]
+    Underflow,
+
+    #[error("StrategyManager.calculate_new_shares: Division by zero")]
+    DivideByZero,
 }

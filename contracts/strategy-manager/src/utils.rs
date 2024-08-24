@@ -1,11 +1,12 @@
-use cosmwasm_std::{Addr, StdResult, Uint128, Uint64, Binary};
-use sha2::{Sha256, Digest};
 use cosmwasm_crypto::secp256k1_verify;
-use serde::{Serialize, Deserialize};
+use cosmwasm_std::{Addr, Api, Binary, StdResult, Uint128};
 use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 pub const DEPOSIT_TYPEHASH: &[u8] = b"Deposit(address staker,address strategy,address token,uint256 amount,uint256 nonce,uint256 expiry)";
-pub const DOMAIN_TYPEHASH: &[u8] = b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
+pub const DOMAIN_TYPEHASH: &[u8] =
+    b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
 pub const DOMAIN_NAME: &[u8] = b"EigenLayer";
 
 fn sha256(input: &[u8]) -> Vec<u8> {
@@ -20,7 +21,7 @@ pub struct DepositWithSignatureParams {
     pub amount: Uint128,
     pub staker: Addr,
     pub public_key: Binary,
-    pub expiry: Uint64,
+    pub expiry: u64,
     pub signature: Binary,
 }
 
@@ -30,18 +31,31 @@ pub struct DigestHashParams {
     pub public_key: Binary,
     pub strategy: Addr,
     pub token: Addr,
-    pub amount: u128,
+    pub amount: Uint128,
     pub nonce: u64,
     pub expiry: u64,
     pub chain_id: String,
     pub contract_addr: Addr,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct QueryDigestHashParams {
+    pub staker: String,
+    pub public_key: String,
+    pub strategy: String,
+    pub token: String,
+    pub amount: Uint128,
+    pub nonce: u64,
+    pub expiry: u64,
+    pub chain_id: String,
+    pub contract_addr: String,
+}
+
 pub fn calculate_digest_hash(params: &DigestHashParams) -> Vec<u8> {
     let struct_hash_input = [
         &sha256(DEPOSIT_TYPEHASH)[..],
         params.staker.as_bytes(),
-        params.public_key.as_slice(), 
+        params.public_key.as_slice(),
         params.strategy.as_bytes(),
         params.token.as_bytes(),
         &params.amount.to_le_bytes(),
@@ -51,19 +65,17 @@ pub fn calculate_digest_hash(params: &DigestHashParams) -> Vec<u8> {
     .concat();
     let struct_hash = sha256(&struct_hash_input);
 
-    let domain_separator = sha256(&[
-        &sha256(DOMAIN_TYPEHASH)[..],
-        &sha256(DOMAIN_NAME)[..],
-        &sha256(params.chain_id.as_bytes())[..],
-        params.contract_addr.as_bytes(),
-    ].concat());
+    let domain_separator = sha256(
+        &[
+            &sha256(DOMAIN_TYPEHASH)[..],
+            &sha256(DOMAIN_NAME)[..],
+            &sha256(params.chain_id.as_bytes())[..],
+            params.contract_addr.as_bytes(),
+        ]
+        .concat(),
+    );
 
-    let digest_hash_input = [
-        b"\x19\x01",
-        &domain_separator[..],
-        &struct_hash[..],
-    ]
-    .concat();
+    let digest_hash_input = [b"\x19\x01", &domain_separator[..], &struct_hash[..]].concat();
 
     sha256(&digest_hash_input)
 }
@@ -73,4 +85,11 @@ pub fn recover(digest_hash: &[u8], signature: &[u8], public_key_bytes: &[u8]) ->
         Ok(valid) => Ok(valid),
         Err(_) => Ok(false),
     }
+}
+
+pub fn validate_addresses(api: &dyn Api, strategies: &[String]) -> StdResult<Vec<Addr>> {
+    strategies
+        .iter()
+        .map(|addr| api.addr_validate(addr))
+        .collect()
 }

@@ -1,66 +1,85 @@
+use crate::query::{
+    CalculateDigestHashResponse, DelegationManagerResponse, DepositTypehashResponse,
+    DepositsResponse, DomainNameResponse, DomainTypehashResponse, NonceResponse, OwnerResponse,
+    StakerStrategyLisResponse, StakerStrategyListLengthResponse, StakerStrategySharesResponse,
+    StrategyManagerStateResponse, StrategyWhitelistedResponse, StrategyWhitelisterResponse,
+    ThirdPartyTransfersForbiddenResponse,
+};
+use crate::utils::QueryDigestHashParams;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Uint128, Uint64, Binary};
-use crate::utils::DigestHashParams;
-use crate::state::StrategyManagerState;
+use cosmwasm_std::{Binary, Uint128};
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub delegation_manager: Addr,
-    pub slasher: Addr,
-    pub initial_strategy_whitelister: Addr,
-    pub initial_owner: Addr,
+    pub delegation_manager: String,
+    pub slasher: String,
+    pub initial_strategy_whitelister: String,
+    pub initial_owner: String,
+    pub pauser: String,
+    pub unpauser: String,
+    pub initial_paused_status: u64,
 }
 
 #[cw_serde]
 pub enum ExecuteMsg {
     AddStrategiesToWhitelist {
-        strategies: Vec<Addr>,
+        strategies: Vec<String>,
         third_party_transfers_forbidden_values: Vec<bool>,
     },
     RemoveStrategiesFromWhitelist {
-        strategies: Vec<Addr>,
+        strategies: Vec<String>,
     },
     SetStrategyWhitelister {
-        new_strategy_whitelister: Addr,
+        new_strategy_whitelister: String,
     },
     DepositIntoStrategy {
-        strategy: Addr,
-        token: Addr,
+        strategy: String,
+        token: String,
         amount: Uint128,
     },
     SetThirdPartyTransfersForbidden {
-        strategy: Addr,
+        strategy: String,
         value: bool,
     },
     DepositIntoStrategyWithSignature {
-        strategy: Addr,
-        token: Addr,
+        strategy: String,
+        token: String,
         amount: Uint128,
-        staker: Addr,
+        staker: String,
         public_key: Binary,
-        expiry: Uint64,
+        expiry: u64,
         signature: Binary,
     },
     RemoveShares {
-        staker: Addr,
-        strategy: Addr,
+        staker: String,
+        strategy: String,
         shares: Uint128,
     },
     WithdrawSharesAsTokens {
-        recipient: Addr,
-        strategy: Addr,
+        recipient: String,
+        strategy: String,
         shares: Uint128,
-        token: Addr,
+        token: String,
     },
     AddShares {
-        staker: Addr,
-        token: Addr,
-        strategy: Addr,
+        staker: String,
+        token: String,
+        strategy: String,
         shares: Uint128,
-    }, 
-    SetDelegationManager { new_delegation_manager: Addr },
+    },
+    SetDelegationManager {
+        new_delegation_manager: String,
+    },
     TransferOwnership {
-        new_owner: Addr,
+        new_owner: String,
+    },
+    Pause {},
+    Unpause {},
+    SetPauser {
+        new_pauser: String,
+    },
+    SetUnpauser {
+        new_unpauser: String,
     },
 }
 
@@ -68,60 +87,59 @@ pub enum ExecuteMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(DepositsResponse)]
-    GetDeposits { staker: Addr },
+    GetDeposits { staker: String },
 
-    #[returns(Uint64)]
-    StakerStrategyListLength { staker: Addr },
+    #[returns(StakerStrategyListLengthResponse)]
+    StakerStrategyListLength { staker: String },
 
-    #[returns(Uint128)]
-    GetStakerStrategyShares { staker: Addr, strategy: Addr },
+    #[returns(StakerStrategySharesResponse)]
+    GetStakerStrategyShares { staker: String, strategy: String },
 
-    #[returns(bool)]
-    IsThirdPartyTransfersForbidden { strategy: Addr },
+    #[returns(ThirdPartyTransfersForbiddenResponse)]
+    IsThirdPartyTransfersForbidden { strategy: String },
 
-    #[returns(Uint64)]
-    GetNonce { staker: Addr },
-    
-    #[returns(Vec<Addr>)]
-    GetStakerStrategyList { staker: Addr },
+    #[returns(NonceResponse)]
+    GetNonce { staker: String },
 
-    #[returns(Addr)]
+    #[returns(StakerStrategyLisResponse)]
+    GetStakerStrategyList { staker: String },
+
+    #[returns(OwnerResponse)]
     GetOwner {},
 
-    #[returns(bool)]
-    IsStrategyWhitelisted { strategy: Addr },
+    #[returns(StrategyWhitelistedResponse)]
+    IsStrategyWhitelisted { strategy: String },
 
-    #[returns(Binary)]
-    CalculateDigestHash { digst_hash_params: DigestHashParams },
+    #[returns(CalculateDigestHashResponse)]
+    CalculateDigestHash {
+        digst_hash_params: QueryDigestHashParams,
+    },
 
-    #[returns(Addr)]
+    #[returns(StrategyWhitelisterResponse)]
     GetStrategyWhitelister {},
 
-    #[returns(StrategyManagerState)]
+    #[returns(StrategyManagerStateResponse)]
     GetStrategyManagerState {},
 
-    #[returns(String)]
+    #[returns(DepositTypehashResponse)]
     GetDepositTypehash {},
 
-    #[returns(String)]
+    #[returns(DomainTypehashResponse)]
     GetDomainTypehash {},
 
-    #[returns(String)]
+    #[returns(DomainNameResponse)]
     GetDomainName {},
 
-    #[returns(Addr)]
+    #[returns(DelegationManagerResponse)]
     GetDelegationManager {},
 }
+
+#[cw_serde]
+pub struct MigrateMsg {}
 
 #[cw_serde]
 pub struct SignatureWithSaltAndExpiry {
     pub signature: Binary,
     pub salt: Binary,
-    pub expiry: Uint64,
-}
-
-#[cw_serde]
-pub struct DepositsResponse {
-    pub strategies: Vec<Addr>,
-    pub shares: Vec<Uint128>,
+    pub expiry: u64,
 }
