@@ -34,3 +34,8 @@ pub enum QueryMsg {
     #[returns(Vec<u64>)]
     GetWithdrawalDelay { strategies: Vec<Addr> },
 }
+
+#[cw_serde]
+pub struct OperatorResponse {
+    pub is_operator: bool,
+}

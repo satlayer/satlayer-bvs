@@ -10,13 +10,13 @@ pub enum ContractError {
     Unauthorized {},
 
     #[error("DelegationManager.set_operator_details: stakerOptOutWindowBlocks cannot be > MAX_STAKER_OPT_OUT_WINDOW_BLOCKS")]
-    CannotBeExceedMAXSTAKEROPTOUTWINDOWBLOCKS {},
+    CannotBeExceedMaxStakerOptOutWindowBlocks {},
 
     #[error("DelegationManager._set_strategy_withdrawal_delay_blocks: withdrawalDelayBlocks cannot be > MAX_WITHDRAWAL_DELAY_BLOCKS")]
-    CannotBeExceedMAXWITHDRAWALDELAYBLOCKS {},
+    CannotBeExceedMaxWithdrawalDelayBlocks {},
 
     #[error("DelegationManager._set_min_withdrawal_delay_blocks: minWithdrawalDelayBlocks cannot be > MAX_WITHDRAWAL_DELAY_BLOCKS")]
-    MinCannotBeExceedMAXWITHDRAWALDELAYBLOCKS {},
+    MinCannotBeExceedMaxWithdrawalDelayBlocks {},
 
     #[error("DelegationManager: input length mismatch")]
     InputLengthMismatch {},

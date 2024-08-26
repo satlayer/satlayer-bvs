@@ -50,6 +50,12 @@ pub enum ExecuteMsg {
         shares: Uint128,
         token: Addr,
     },
+    AddShares {
+        staker: Addr,
+        token: Addr,
+        strategy: Addr,
+        shares: Uint128,
+    },
 }
 
 #[cw_serde]
@@ -57,6 +63,7 @@ pub enum QueryMsg {
     GetDeposits { staker: Addr },
     StakerStrategyListLength { staker: Addr },
     GetStakerStrategyShares { staker: Addr, strategy: Addr },
+    IsThirdPartyTransfersForbidden { strategy: Addr },
 }
 
 #[cw_serde]

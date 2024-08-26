@@ -7,7 +7,7 @@ use crate::query::{
 };
 use crate::utils::QueryDigestHashParams;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Binary, Uint128};
+use cosmwasm_std::Uint128;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -46,9 +46,9 @@ pub enum ExecuteMsg {
         token: String,
         amount: Uint128,
         staker: String,
-        public_key: Binary,
+        public_key: String,
         expiry: u64,
-        signature: Binary,
+        signature: String,
     },
     RemoveShares {
         staker: String,
@@ -136,10 +136,3 @@ pub enum QueryMsg {
 
 #[cw_serde]
 pub struct MigrateMsg {}
-
-#[cw_serde]
-pub struct SignatureWithSaltAndExpiry {
-    pub signature: Binary,
-    pub salt: Binary,
-    pub expiry: u64,
-}
