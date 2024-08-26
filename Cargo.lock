@@ -165,6 +165,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c4b4d0bd25bd0b74681c0ad21497610ce1b7c91b1022cd21c80c6fbdd9476b0"
 
 [[package]]
+name = "avs-directory"
+version = "2.0.0"
+dependencies = [
+ "base64 0.22.1",
+ "bech32 0.8.1",
+ "common",
+ "cosmwasm-crypto 2.1.0",
+ "cosmwasm-schema",
+ "cosmwasm-std 2.1.0",
+ "cw-multi-test",
+ "cw-storage-plus",
+ "cw2",
+ "hex",
+ "ripemd",
+ "schemars",
+ "secp256k1",
+ "serde",
+ "sha2 0.10.8",
+ "thiserror",
+]
+
+[[package]]
 name = "base16ct"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -586,6 +608,30 @@ dependencies = [
  "cw-utils",
  "schemars",
  "serde",
+]
+
+[[package]]
+name = "delegation-manager"
+version = "2.0.0"
+dependencies = [
+ "base64 0.22.1",
+ "bech32 0.8.1",
+ "common",
+ "cosmwasm-crypto 2.1.0",
+ "cosmwasm-schema",
+ "cosmwasm-std 2.1.0",
+ "cosmwasm-storage",
+ "cw-multi-test",
+ "cw-storage-plus",
+ "cw2",
+ "cw20",
+ "hex",
+ "ripemd",
+ "schemars",
+ "secp256k1",
+ "serde",
+ "sha2 0.10.8",
+ "thiserror",
 ]
 
 [[package]]
@@ -1289,6 +1335,7 @@ dependencies = [
 name = "strategy-manager"
 version = "2.0.0"
 dependencies = [
+ "base64 0.22.1",
  "bech32 0.8.1",
  "common",
  "cosmwasm-crypto 2.1.0",

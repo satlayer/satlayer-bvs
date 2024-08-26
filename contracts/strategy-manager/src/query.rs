@@ -11,7 +11,7 @@ pub struct DepositsResponse {
 
 #[cw_serde]
 pub struct StakerStrategyListLengthResponse {
-    pub strategies_len: Uint128, 
+    pub strategies_len: Uint128,
 }
 
 #[cw_serde]

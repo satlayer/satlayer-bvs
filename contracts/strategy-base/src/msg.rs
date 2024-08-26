@@ -5,7 +5,6 @@ use crate::query::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
-use cw20::Cw20ReceiveMsg;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -26,7 +25,6 @@ pub enum ExecuteMsg {
         recipient: String,
         amount_shares: Uint128,
     },
-    Receive(Cw20ReceiveMsg),
     TransferOwnership {
         new_owner: String,
     },

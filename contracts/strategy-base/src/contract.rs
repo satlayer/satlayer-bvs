@@ -16,7 +16,7 @@ use cosmwasm_std::{
     QuerierWrapper, QueryRequest, Response, StdResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::set_contract_version;
-use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg, Cw20ReceiveMsg};
+use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -91,7 +91,6 @@ pub fn execute(
             let recipient_addr = deps.api.addr_validate(&recipient)?;
             withdraw(deps, env, info, recipient_addr, amount_shares)
         }
-        ExecuteMsg::Receive(cw20_msg) => receive_cw20(deps, env, info, cw20_msg),
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner_addr = deps.api.addr_validate(&new_owner)?;
             transfer_ownership(deps, info, new_owner_addr)
@@ -461,31 +460,6 @@ fn emit_exchange_rate(
         .add_attribute("exchange_rate", exchange_rate.to_string());
 
     Ok(Response::new().add_event(event))
-}
-
-pub fn receive_cw20(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    cw20_msg: Cw20ReceiveMsg,
-) -> Result<Response, ContractError> {
-    let state = STRATEGY_STATE.load(deps.storage)?;
-
-    if info.sender != state.underlying_token {
-        return Err(ContractError::Unauthorized {});
-    }
-
-    let sender_addr = deps.api.addr_validate(&cw20_msg.sender)?;
-
-    deposit(
-        deps,
-        env,
-        MessageInfo {
-            sender: sender_addr,
-            funds: vec![],
-        },
-        cw20_msg.amount,
-    )
 }
 
 pub fn migrate(

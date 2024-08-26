@@ -15,7 +15,7 @@ pub enum ContractError {
     #[error("AVSDirectory.registerOperatorToAVS: salt already spent")]
     SaltAlreadySpent {},
 
-    #[error("AVSDirectory.deregisterOperatorFromAVS: operator not registered to EigenLayer yet")]
+    #[error("AVSDirectory.deregisterOperatorFromAVS: operator not registered yet")]
     OperatorNotRegistered {},
 
     #[error("AVSDirectory.registerOperatorToAVS: invalid signature")]

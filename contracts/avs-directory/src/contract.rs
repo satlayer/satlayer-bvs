@@ -17,7 +17,7 @@ use crate::{
         OPERATOR_AVS_REGISTRATION_TYPEHASH,
     },
 };
-use common::delegation::QueryMsg as DelegationManagerQueryMsg;
+use common::delegation::{QueryMsg as DelegationManagerQueryMsg, OperatorResponse};
 use common::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use common::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use cosmwasm_std::{
@@ -188,16 +188,16 @@ pub fn register_operator(
 
     let delegation_manager = DELEGATION_MANAGER.load(deps.storage)?;
 
-    let is_operator_registered: bool = deps.querier.query_wasm_smart(
+    let is_operator_response: OperatorResponse = deps.querier.query_wasm_smart(
         delegation_manager.clone(),
         &DelegationManagerQueryMsg::IsOperator {
             operator: operator.clone(),
         },
     )?;
-
-    if !is_operator_registered {
+    
+    if !is_operator_response.is_operator {
         return Err(ContractError::OperatorNotRegistered {});
-    }
+    }    
 
     let status =
         AVS_OPERATOR_STATUS.may_load(deps.storage, (info.sender.clone(), operator.clone()))?;
