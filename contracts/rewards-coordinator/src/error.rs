@@ -1,7 +1,7 @@
 use cosmwasm_std::StdError;
 use thiserror::Error;
 
-#[derive(Error, Debug, PartialEq)] 
+#[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
@@ -30,7 +30,9 @@ pub enum ContractError {
     #[error("RewardsCoordinator.validate_rewards_submission: amount too large")]
     AmountTooLarge {},
 
-    #[error("RewardsCoordinator.validate_rewards_submission: duration exceeds MAX_REWARDS_DURATION")]
+    #[error(
+        "RewardsCoordinator.validate_rewards_submission: duration exceeds MAX_REWARDS_DURATION"
+    )]
     ExceedsMaxRewardsDuration {},
 
     #[error("RewardsCoordinator.validate_rewards_submission: duration must be a multiple of CALCULATION_INTERVAL_SECONDS")]
@@ -42,7 +44,9 @@ pub enum ContractError {
     #[error("RewardsCoordinator.validate_rewards_submission: startTimestamp too far in the past")]
     StartTimeStampTooFarInPase {},
 
-    #[error("RewardsCoordinator.validate_rewards_submission: startTimestamp too far in the future")]
+    #[error(
+        "RewardsCoordinator.validate_rewards_submission: startTimestamp too far in the future"
+    )]
     StartTimeStampTooFarInFuture {},
 
     #[error("RewardsCoordinator.validate_rewards_submission: invalid strategy considered")]
@@ -60,7 +64,9 @@ pub enum ContractError {
     #[error("RewardsCoordinator.disable_root: This root is already disabled")]
     AlreadyDisabled {},
 
-    #[error("RewardsCoordinator.disable_root: This root is already activated and cannot be disabled")]
+    #[error(
+        "RewardsCoordinator.disable_root: This root is already activated and cannot be disabled"
+    )]
     AlreadyActivated {},
 
     #[error("RewardsCoordinator.submit_root: new root must be for newer calculated period")]
@@ -96,27 +102,8 @@ pub enum ContractError {
     #[error("RewardsCoordinator.process_claim: caller is not valid claimer")]
     UnauthorizedClaimer {},
 
-    #[error("RewardsCoordinator.process_claim: cumulativeEarnings must be gt than cumulativeClaimed")]
+    #[error(
+        "RewardsCoordinator.process_claim: cumulativeEarnings must be gt than cumulativeClaimed"
+    )]
     CumulativeEarningsTooLow {},
-
-    #[error("RewardsCoordinator.query_calculate_token_leaf_hash: invalid cumulative earnings")]
-    InvalidCumulativeEarnings {},
-
-    #[error("RewardsCoordinator.query_get_distribution_root_at_index: invalid index format")]
-    InvalidIndexFormat {},
-
-    #[error("RewardsCoordinator.query_get_current_distribution_root: no active root found")]
-    NoActiveRootFound {},
-
-    #[error("RewardsCoordinator.query_get_current_claimable_distribution_root: no claimable root found")]
-    NoClaimableRootFound {},
-
-    #[error("RewardsCoordinator.query_get_root_index_from_hash: root not found")]
-    RootNotFound {},
-
-    #[error("RewardsCoordinator.query_get_root_index_from_hash: invalid hex format")]
-    InvalidHexFormat {},
-
-    #[error("RewardsCoordinator.query_merkleize_leaves: invalid number of leaves")]
-    InvalidNumberOfLeaves {},
 }

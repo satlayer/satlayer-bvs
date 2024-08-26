@@ -64,6 +64,7 @@ pub enum QueryMsg {
     StakerStrategyListLength { staker: Addr },
     GetStakerStrategyShares { staker: Addr, strategy: Addr },
     IsThirdPartyTransfersForbidden { strategy: Addr },
+    IsStrategyWhitelisted { strategy: String },
 }
 
 #[cw_serde]

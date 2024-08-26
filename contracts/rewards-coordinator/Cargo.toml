@@ -31,6 +31,8 @@ cosmwasm-storage = { workspace = true }
 cw20 = { workspace = true }
 ripemd = { workspace = true }
 serde_json = { workspace = true }
+common = { workspace = true }
+base64 = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }

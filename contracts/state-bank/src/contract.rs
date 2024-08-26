@@ -1,10 +1,11 @@
 use crate::{
-    error::ContractError, msg::ExecuteMsg, msg::InstantiateMsg, msg::QueryMsg, state::VALUES,
+    error::ContractError, msg::ExecuteMsg, msg::InstantiateMsg, msg::QueryMsg,
+    query::ValueResponse, state::VALUES,
 };
 
 use cosmwasm_std::{
     entry_point, to_json_binary, Binary, Deps, DepsMut, Env, Event, MessageInfo, Response,
-    StdResult,
+    StdError, StdResult,
 };
 use cw2::set_contract_version;
 
@@ -65,8 +66,13 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 fn query_value(deps: Deps, key: String) -> StdResult<Binary> {
-    let value = VALUES.may_load(deps.storage, key)?;
-    to_json_binary(&value)
+    let result = VALUES.may_load(deps.storage, key)?;
+
+    if let Some(value) = result {
+        return to_json_binary(&ValueResponse { value });
+    }
+
+    Err(StdError::generic_err("Value not found"))
 }
 
 #[cfg(test)]
@@ -118,15 +124,16 @@ mod tests {
             key: "temperature".to_string(),
         };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let value: Option<i32> = from_json(res).unwrap();
-        assert_eq!(Some(25), value);
+        println!("value {}", res);
+        let res: ValueResponse = from_json(res).unwrap();
+        assert_eq!(25, res.value);
 
         let query_msg = QueryMsg::Get {
             key: "non_existent".to_string(),
         };
-        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let value: Option<i32> = from_json(res).unwrap();
-        assert_eq!(None, value);
+
+        let res = query(deps.as_ref(), mock_env(), query_msg);
+        assert_eq!(true, res.is_err());
     }
 
     fn _create_set_msg(contract_addr: String, key: String, value: i64) -> StdResult<CosmosMsg> {
