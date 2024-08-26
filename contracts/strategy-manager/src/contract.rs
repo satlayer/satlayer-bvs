@@ -142,14 +142,17 @@ pub fn execute(
             let token_addr = deps.api.addr_validate(&token)?;
             let staker_addr = Addr::unchecked(staker);
 
+            let public_key_binary = Binary::from_base64(&public_key)?;
+            let signature_binary = Binary::from_base64(&signature)?;
+
             let params = DepositWithSignatureParams {
                 strategy: strategy_addr,
                 token: token_addr,
                 amount,
                 staker: staker_addr,
-                public_key,
+                public_key: public_key_binary,
                 expiry,
-                signature,
+                signature: signature_binary,
             };
 
             let response = deposit_into_strategy_with_signature(deps, env, info, params)?;
@@ -378,7 +381,7 @@ pub fn deposit_into_strategy(
 pub fn deposit_into_strategy_with_signature(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
+    _info: MessageInfo,
     params: DepositWithSignatureParams,
 ) -> Result<Response, ContractError> {
     only_when_not_paused(deps.as_ref(), PAUSED_DEPOSITS)?;
@@ -418,9 +421,14 @@ pub fn deposit_into_strategy_with_signature(
 
     NONCES.save(deps.storage, &params.staker, &(nonce + 1))?;
 
+    let staker_info = MessageInfo {
+        sender: params.staker.clone(),
+        funds: vec![],
+    };
+
     let response = deposit_into_strategy_internal(
         deps,
-        info,
+        staker_info,
         params.staker.clone(),
         params.strategy.clone(),
         params.token.clone(),
@@ -742,7 +750,7 @@ fn only_strategies_whitelisted_for_deposit(
 
 fn deposit_into_strategy_internal(
     mut deps: DepsMut,
-    _info: MessageInfo,
+    info: MessageInfo,
     staker: Addr,
     strategy: Addr,
     token: Addr,
@@ -750,16 +758,13 @@ fn deposit_into_strategy_internal(
 ) -> Result<Response, ContractError> {
     only_strategies_whitelisted_for_deposit(deps.as_ref(), &strategy)?;
 
-    let send_from_msg = Cw20ExecuteMsg::SendFrom {
-        owner: staker.to_string(),
-        contract: strategy.to_string(),
-        amount,
-        msg: Binary::default(),
-    };
-
-    let send_from_cosmos_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+    let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: token.to_string(),
-        msg: to_json_binary(&send_from_msg)?,
+        msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
+            owner: info.sender.to_string(),
+            recipient: strategy.to_string(),
+            amount,
+        })?,
         funds: vec![],
     });
 
@@ -803,7 +808,7 @@ fn deposit_into_strategy_internal(
     });
 
     Ok(Response::new()
-        .add_message(send_from_cosmos_msg)
+        .add_message(transfer_msg)
         .add_message(deposit_msg)
         .add_message(increase_delegated_shares_msg)
         .add_attribute("new_shares", new_shares.to_string()))
@@ -981,17 +986,19 @@ pub fn migrate(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use common::roles::{PAUSER, UNPAUSER};
+    use base64::{engine::general_purpose, Engine as _};
     use bech32::{self, ToBase32, Variant};
+    use common::roles::{PAUSER, UNPAUSER};
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
-    use cosmwasm_std::{from_json, Addr, ContractResult, OwnedDeps, SystemError, SystemResult, attr};
+    use cosmwasm_std::{
+        attr, from_json, Addr, ContractResult, OwnedDeps, SystemError, SystemResult,
+    };
+    use cw2::get_contract_version;
     use ripemd::Ripemd160;
     use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
     use sha2::{Digest, Sha256};
-
-    use cw2::get_contract_version;
 
     #[test]
     fn test_instantiate() {
@@ -1225,21 +1232,24 @@ mod tests {
             _pauser_info,
             _unpauser_info,
         ) = instantiate_contract();
-    
-        let strategies = vec![deps.api.addr_make("strategy1").to_string(), deps.api.addr_make("strategy2").to_string()];
-    
+
+        let strategies = vec![
+            deps.api.addr_make("strategy1").to_string(),
+            deps.api.addr_make("strategy2").to_string(),
+        ];
+
         let forbidden_values = vec![true, false];
         let msg = ExecuteMsg::AddStrategiesToWhitelist {
             strategies: strategies.clone(),
             third_party_transfers_forbidden_values: forbidden_values.clone(),
         };
-    
+
         let res = execute(deps.as_mut(), env.clone(), info_whitelister.clone(), msg).unwrap();
-    
+
         let events = res.events;
-    
+
         assert_eq!(events.len(), strategies.len());
-    
+
         for (i, event) in events.iter().enumerate() {
             assert_eq!(event.ty, "StrategyAddedToDepositWhitelist");
             assert_eq!(event.attributes.len(), 2);
@@ -1248,45 +1258,45 @@ mod tests {
             assert_eq!(event.attributes[1].key, "third_party_transfers_forbidden");
             assert_eq!(event.attributes[1].value, forbidden_values[i].to_string());
         }
-    
+
         for (i, strategy) in strategies.iter().enumerate() {
             let is_whitelisted = STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
                 .load(&deps.storage, &Addr::unchecked(strategy.clone()))
                 .unwrap();
             assert!(is_whitelisted);
-    
+
             let forbidden = THIRD_PARTY_TRANSFERS_FORBIDDEN
                 .load(&deps.storage, &Addr::unchecked(strategy.clone()))
                 .unwrap();
             assert_eq!(forbidden, forbidden_values[i]);
         }
-    
+
         let msg = ExecuteMsg::AddStrategiesToWhitelist {
             strategies: strategies.clone(),
             third_party_transfers_forbidden_values: forbidden_values.clone(),
         };
-    
+
         let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
         let result = execute(deps.as_mut(), env.clone(), info_unauthorized.clone(), msg);
         assert!(result.is_err());
-    
+
         if let Err(err) = result {
             match err {
                 ContractError::Unauthorized {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    
+
         // Test with mismatched strategies and forbidden_values length
         let strategies = vec![deps.api.addr_make("strategy3").to_string()];
         let msg = ExecuteMsg::AddStrategiesToWhitelist {
             strategies,
             third_party_transfers_forbidden_values: forbidden_values.clone(),
         };
-    
+
         let result = execute(deps.as_mut(), env.clone(), info_whitelister.clone(), msg);
         assert!(result.is_err());
-    
+
         if let Err(err) = result {
             match err {
                 ContractError::InvalidInput {} => (),
@@ -1306,9 +1316,11 @@ mod tests {
             _pauser_info,
             _unpauser_info,
         ) = instantiate_contract();
-    
 
-        let strategies = vec![deps.api.addr_make("strategy1").to_string(), deps.api.addr_make("strategy2").to_string()];
+        let strategies = vec![
+            deps.api.addr_make("strategy1").to_string(),
+            deps.api.addr_make("strategy2").to_string(),
+        ];
         let forbidden_values = vec![true, false];
         let msg = ExecuteMsg::AddStrategiesToWhitelist {
             strategies: strategies.clone(),
@@ -1365,7 +1377,9 @@ mod tests {
         let old_whitelister = STRATEGY_WHITELISTER.load(&deps.storage).unwrap();
         let new_whitelister = Addr::unchecked("new_whitelister");
 
-        let res = set_strategy_whitelister(deps.as_mut(), owner_info.clone(),new_whitelister.clone(),).unwrap();
+        let res =
+            set_strategy_whitelister(deps.as_mut(), owner_info.clone(), new_whitelister.clone())
+                .unwrap();
 
         let events = res.events;
         assert_eq!(events.len(), 1);
@@ -1428,7 +1442,9 @@ mod tests {
         assert_eq!(event.attributes[1].key, "value");
         assert_eq!(event.attributes[1].value, value.to_string());
 
-        let stored_value = THIRD_PARTY_TRANSFERS_FORBIDDEN.load(&deps.storage, &Addr::unchecked(strategy.clone())).unwrap();
+        let stored_value = THIRD_PARTY_TRANSFERS_FORBIDDEN
+            .load(&deps.storage, &Addr::unchecked(strategy.clone()))
+            .unwrap();
         assert_eq!(stored_value, value);
 
         // Test with an unauthorized user
@@ -1439,7 +1455,12 @@ mod tests {
 
         let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
 
-        let result = execute(deps.as_mut(), env.clone(), info_unauthorized.clone(), exec_msg_unauthorized);
+        let result = execute(
+            deps.as_mut(),
+            env.clone(),
+            info_unauthorized.clone(),
+            exec_msg_unauthorized,
+        );
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -1460,22 +1481,22 @@ mod tests {
             _pauser_info,
             _unpauser_info,
         ) = instantiate_contract();
-    
+
         let strategy = deps.api.addr_make("strategy1").to_string();
         let token = deps.api.addr_make("token").to_string();
         let amount = Uint128::new(100);
-    
+
         let msg = ExecuteMsg::AddStrategiesToWhitelist {
             strategies: vec![strategy.clone()],
             third_party_transfers_forbidden_values: vec![false],
         };
-    
+
         let _res = execute(deps.as_mut(), env.clone(), info_whitelister.clone(), msg).unwrap();
-    
+
         let strategy_for_closure = strategy.clone();
         let token_for_closure = token.clone();
-        let delegation_manager_sender = info_delegation_manager.sender.clone(); // 克隆 `sender` 字段
-    
+        let delegation_manager_sender = info_delegation_manager.sender.clone();
+
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart { contract_addr, msg } if *contract_addr == strategy_for_closure => {
                 let strategy_query_msg: StrategyQueryMsg = from_json(msg).unwrap();
@@ -1486,54 +1507,70 @@ mod tests {
                             underlying_token: Addr::unchecked(token_for_closure.clone()),
                             total_shares: Uint128::new(1000),
                         };
-                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&strategy_state).unwrap()))
-                    },
+                        SystemResult::Ok(ContractResult::Ok(
+                            to_json_binary(&strategy_state).unwrap(),
+                        ))
+                    }
                     _ => SystemResult::Err(SystemError::InvalidRequest {
                         error: "Unhandled request".to_string(),
                         request: to_json_binary(&query).unwrap(),
                     }),
                 }
-            },
+            }
             WasmQuery::Smart { contract_addr, msg } if *contract_addr == token_for_closure => {
                 let cw20_query_msg: Cw20QueryMsg = from_json(msg).unwrap();
                 match cw20_query_msg {
-                    Cw20QueryMsg::Balance { address: _ } => {
-                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&Cw20BalanceResponse { balance: Uint128::new(1000) }).unwrap()))
-                    },
+                    Cw20QueryMsg::Balance { address: _ } => SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(&Cw20BalanceResponse {
+                            balance: Uint128::new(1000),
+                        })
+                        .unwrap(),
+                    )),
                     _ => SystemResult::Err(SystemError::InvalidRequest {
                         error: "Unhandled request".to_string(),
                         request: to_json_binary(&query).unwrap(),
                     }),
                 }
-            },
+            }
             _ => SystemResult::Err(SystemError::InvalidRequest {
                 error: "Unhandled request".to_string(),
                 request: to_json_binary(&query).unwrap(),
             }),
         });
-    
+
         let msg = ExecuteMsg::DepositIntoStrategy {
             strategy: strategy.clone(),
             token: token.clone(),
             amount,
         };
-    
-        let res: Response = execute(deps.as_mut(), env.clone(), info_delegation_manager.clone(), msg).unwrap();
-    
+
+        let res: Response = execute(
+            deps.as_mut(),
+            env.clone(),
+            info_delegation_manager.clone(),
+            msg,
+        )
+        .unwrap();
+
         assert_eq!(res.attributes.len(), 1);
         assert_eq!(res.attributes[0].key, "new_shares");
         assert_eq!(res.attributes[0].value, "105");
-    
+
         // Test deposit into strategy with non-whitelisted strategy
         let non_whitelisted_strategy = deps.api.addr_make("non_whitelisted_strategy").to_string();
-    
+
         let msg = ExecuteMsg::DepositIntoStrategy {
             strategy: non_whitelisted_strategy.clone(),
             token: token.clone(),
             amount,
         };
-    
-        let result = execute(deps.as_mut(), env.clone(), info_delegation_manager.clone(), msg);
+
+        let result = execute(
+            deps.as_mut(),
+            env.clone(),
+            info_delegation_manager.clone(),
+            msg,
+        );
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -1541,7 +1578,7 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    }    
+    }
 
     #[test]
     fn test_get_deposits() {
@@ -1554,37 +1591,49 @@ mod tests {
             _pauser_info,
             _unpauser_info,
         ) = instantiate_contract();
-    
+
         let staker = deps.api.addr_make("staker1");
         let strategy1 = deps.api.addr_make("strategy1");
         let strategy2 = deps.api.addr_make("strategy2");
-    
-        STAKER_STRATEGY_LIST.save(&mut deps.storage, &staker.clone(), &vec![strategy1.clone(), strategy2.clone()]).unwrap();
-        STAKER_STRATEGY_SHARES.save(&mut deps.storage, (&staker, &strategy1), &Uint128::new(100)).unwrap();
-        STAKER_STRATEGY_SHARES.save(&mut deps.storage, (&staker, &strategy2), &Uint128::new(200)).unwrap();
-    
+
+        STAKER_STRATEGY_LIST
+            .save(
+                &mut deps.storage,
+                &staker.clone(),
+                &vec![strategy1.clone(), strategy2.clone()],
+            )
+            .unwrap();
+        STAKER_STRATEGY_SHARES
+            .save(&mut deps.storage, (&staker, &strategy1), &Uint128::new(100))
+            .unwrap();
+        STAKER_STRATEGY_SHARES
+            .save(&mut deps.storage, (&staker, &strategy2), &Uint128::new(200))
+            .unwrap();
+
         // Query deposits for the staker
-        let query_msg = QueryMsg::GetDeposits { staker: staker.to_string() };
+        let query_msg = QueryMsg::GetDeposits {
+            staker: staker.to_string(),
+        };
         let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
         let response: DepositsResponse = from_json(bin).unwrap();
-    
+
         assert_eq!(response.strategies.len(), 2);
         assert_eq!(response.shares.len(), 2);
         assert_eq!(response.strategies[0], strategy1);
         assert_eq!(response.shares[0], Uint128::new(100));
         assert_eq!(response.strategies[1], strategy2);
         assert_eq!(response.shares[1], Uint128::new(200));
-    
+
         // Test with a staker that has no deposits
         let new_staker = deps.api.addr_make("new_staker").to_string();
-    
+
         let query_msg = QueryMsg::GetDeposits { staker: new_staker };
         let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
         let response: DepositsResponse = from_json(bin).unwrap();
-    
+
         assert_eq!(response.strategies.len(), 0);
         assert_eq!(response.shares.len(), 0);
-    }    
+    }
 
     #[test]
     fn test_staker_strategy_list_length() {
@@ -1597,31 +1646,41 @@ mod tests {
             _pauser_info,
             _unpauser_info,
         ) = instantiate_contract();
-    
+
         let staker = deps.api.addr_make("staker1");
         let strategy1 = deps.api.addr_make("strategy1");
         let strategy2 = deps.api.addr_make("strategy2");
-    
-        STAKER_STRATEGY_LIST.save(&mut deps.storage, &staker, &vec![strategy1.clone(), strategy2.clone()]).unwrap();
-    
+
+        STAKER_STRATEGY_LIST
+            .save(
+                &mut deps.storage,
+                &staker,
+                &vec![strategy1.clone(), strategy2.clone()],
+            )
+            .unwrap();
+
         // Query the strategy list length for the staker
-        let query_msg = QueryMsg::StakerStrategyListLength { staker: staker.to_string() };
+        let query_msg = QueryMsg::StakerStrategyListLength {
+            staker: staker.to_string(),
+        };
         let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let response: StakerStrategyListLengthResponse = from_json(bin).unwrap();  
+        let response: StakerStrategyListLengthResponse = from_json(bin).unwrap();
         let length = response.strategies_len;
-    
+
         assert_eq!(length, Uint128::new(2));
-    
+
         // Test with a staker that has no strategies
         let new_staker = deps.api.addr_make("new_staker");
-    
-        let query_msg = QueryMsg::StakerStrategyListLength { staker: new_staker.to_string() };
+
+        let query_msg = QueryMsg::StakerStrategyListLength {
+            staker: new_staker.to_string(),
+        };
         let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let response: StakerStrategyListLengthResponse = from_json(bin).unwrap();  
+        let response: StakerStrategyListLengthResponse = from_json(bin).unwrap();
         let length = response.strategies_len;
-    
+
         assert_eq!(length, Uint128::new(0));
-    }        
+    }
 
     #[test]
     fn test_add_shares_internal() {
@@ -1634,14 +1693,21 @@ mod tests {
             _pauser_info,
             _unpauser_info,
         ) = instantiate_contract();
-    
+
         let token = Addr::unchecked("token");
         let staker = Addr::unchecked("staker");
         let strategy = Addr::unchecked("strategy");
         let shares = Uint128::new(100);
-    
-        let res = add_shares_internal(deps.as_mut(), staker.clone(), token.clone(), strategy.clone(), shares).unwrap();
-    
+
+        let res = add_shares_internal(
+            deps.as_mut(),
+            staker.clone(),
+            token.clone(),
+            strategy.clone(),
+            shares,
+        )
+        .unwrap();
+
         let events = res.events;
         assert_eq!(events.len(), 1);
         let event = &events[0];
@@ -1655,18 +1721,28 @@ mod tests {
         assert_eq!(event.attributes[2].value, strategy.to_string());
         assert_eq!(event.attributes[3].key, "shares");
         assert_eq!(event.attributes[3].value, shares.to_string());
-    
-        let stored_shares = STAKER_STRATEGY_SHARES.load(&deps.storage, (&staker, &strategy)).unwrap();
+
+        let stored_shares = STAKER_STRATEGY_SHARES
+            .load(&deps.storage, (&staker, &strategy))
+            .unwrap();
         println!("stored_shares after first addition: {}", stored_shares);
         assert_eq!(stored_shares, shares);
-    
+
         let strategy_list = STAKER_STRATEGY_LIST.load(&deps.storage, &staker).unwrap();
         assert_eq!(strategy_list.len(), 1);
         assert_eq!(strategy_list[0], strategy);
-    
+
         let additional_shares = Uint128::new(50);
-        let res = add_shares(deps.as_mut(), info_delegation_manager.clone(), staker.clone(), token.clone(), strategy.clone(), additional_shares).unwrap();
-    
+        let res = add_shares(
+            deps.as_mut(),
+            info_delegation_manager.clone(),
+            staker.clone(),
+            token.clone(),
+            strategy.clone(),
+            additional_shares,
+        )
+        .unwrap();
+
         let events = res.events;
         assert_eq!(events.len(), 1);
         let event = &events[0];
@@ -1680,13 +1756,22 @@ mod tests {
         assert_eq!(event.attributes[2].value, strategy.to_string());
         assert_eq!(event.attributes[3].key, "shares");
         assert_eq!(event.attributes[3].value, additional_shares.to_string());
-    
-        let stored_shares = STAKER_STRATEGY_SHARES.load(&deps.storage, (&staker, &strategy)).unwrap();
+
+        let stored_shares = STAKER_STRATEGY_SHARES
+            .load(&deps.storage, (&staker, &strategy))
+            .unwrap();
         println!("stored_shares after second addition: {}", stored_shares);
         assert_eq!(stored_shares, shares + additional_shares);
-    
+
         // Test with zero shares
-        let result = add_shares(deps.as_mut(), info_delegation_manager.clone(), staker.clone(), token.clone(), strategy.clone(), Uint128::zero());
+        let result = add_shares(
+            deps.as_mut(),
+            info_delegation_manager.clone(),
+            staker.clone(),
+            token.clone(),
+            strategy.clone(),
+            Uint128::zero(),
+        );
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -1694,16 +1779,24 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    
+
         // Test exceeding the max strategy list length
         let mut strategy_list = Vec::new();
         for i in 0..MAX_STAKER_STRATEGY_LIST_LENGTH {
             strategy_list.push(Addr::unchecked(format!("strategy{}", i)));
         }
-        STAKER_STRATEGY_LIST.save(&mut deps.storage, &staker, &strategy_list).unwrap();
-    
+        STAKER_STRATEGY_LIST
+            .save(&mut deps.storage, &staker, &strategy_list)
+            .unwrap();
+
         let new_strategy = Addr::unchecked("new_strategy");
-        let result = add_shares_internal(deps.as_mut(), staker.clone(), token.clone(), new_strategy.clone(), shares);
+        let result = add_shares_internal(
+            deps.as_mut(),
+            staker.clone(),
+            token.clone(),
+            new_strategy.clone(),
+            shares,
+        );
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -1711,7 +1804,7 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    }    
+    }
 
     #[test]
     fn test_add_shares() {
@@ -1941,8 +2034,9 @@ mod tests {
         assert_eq!(res.attributes[4].key, "strategy_removed");
         assert_eq!(res.attributes[4].value, "false");
 
-        let stored_shares =
-            STAKER_STRATEGY_SHARES.load(&deps.storage, (&staker, &strategy1)).unwrap();
+        let stored_shares = STAKER_STRATEGY_SHARES
+            .load(&deps.storage, (&staker, &strategy1))
+            .unwrap();
         println!("Stored shares after removal: {}", stored_shares);
         assert_eq!(stored_shares, Uint128::new(50));
 
@@ -1955,12 +2049,7 @@ mod tests {
 
         let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
 
-        let result = execute(
-            deps.as_mut(),
-            env.clone(),
-            info_unauthorized,
-            msg,
-        );
+        let result = execute(deps.as_mut(), env.clone(), info_unauthorized, msg);
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -2032,14 +2121,32 @@ mod tests {
         let strategy1 = Addr::unchecked("strategy1");
         let strategy2 = Addr::unchecked("strategy2");
 
-        STAKER_STRATEGY_LIST.save(&mut deps.storage,&staker,&vec![strategy1.clone(), strategy2.clone()],).unwrap();
-        STAKER_STRATEGY_SHARES.save(&mut deps.storage, (&staker, &strategy1), &Uint128::new(100)).unwrap();
-        STAKER_STRATEGY_SHARES.save(&mut deps.storage, (&staker, &strategy2), &Uint128::new(200)).unwrap();
+        STAKER_STRATEGY_LIST
+            .save(
+                &mut deps.storage,
+                &staker,
+                &vec![strategy1.clone(), strategy2.clone()],
+            )
+            .unwrap();
+        STAKER_STRATEGY_SHARES
+            .save(&mut deps.storage, (&staker, &strategy1), &Uint128::new(100))
+            .unwrap();
+        STAKER_STRATEGY_SHARES
+            .save(&mut deps.storage, (&staker, &strategy2), &Uint128::new(200))
+            .unwrap();
 
-        let result = remove_shares_internal(deps.as_mut(), staker.clone(), strategy1.clone(), Uint128::new(50),).unwrap();
+        let result = remove_shares_internal(
+            deps.as_mut(),
+            staker.clone(),
+            strategy1.clone(),
+            Uint128::new(50),
+        )
+        .unwrap();
         assert!(!result);
 
-        let stored_shares = STAKER_STRATEGY_SHARES.load(&deps.storage, (&staker, &strategy1)).unwrap();
+        let stored_shares = STAKER_STRATEGY_SHARES
+            .load(&deps.storage, (&staker, &strategy1))
+            .unwrap();
         println!("Stored shares after partial removal: {}", stored_shares);
 
         assert_eq!(stored_shares, Uint128::new(50));
@@ -2089,21 +2196,25 @@ mod tests {
         }
     }
 
-    fn generate_osmosis_public_key_from_private_key(private_key_hex: &str) -> (Addr, SecretKey, Vec<u8>) {
+    fn generate_osmosis_public_key_from_private_key(
+        private_key_hex: &str,
+    ) -> (Addr, SecretKey, Vec<u8>) {
         let secp = Secp256k1::new();
         let secret_key = SecretKey::from_slice(&hex::decode(private_key_hex).unwrap()).unwrap();
         let public_key = PublicKey::from_secret_key(&secp, &secret_key);
         let public_key_bytes = public_key.serialize();
         let sha256_result = Sha256::digest(public_key_bytes);
         let ripemd160_result = Ripemd160::digest(sha256_result);
-        let address = bech32::encode("osmo", ripemd160_result.to_base32(), Variant::Bech32).unwrap();
-        (Addr::unchecked(address), secret_key, public_key_bytes.to_vec())
+        let address =
+            bech32::encode("osmo", ripemd160_result.to_base32(), Variant::Bech32).unwrap();
+        (
+            Addr::unchecked(address),
+            secret_key,
+            public_key_bytes.to_vec(),
+        )
     }
 
-    fn mock_signature_with_message(
-        params: DigestHashParams,
-        secret_key: &SecretKey,
-    ) -> Binary {
+    fn mock_signature_with_message(params: DigestHashParams, secret_key: &SecretKey) -> Binary {
         let params = DigestHashParams {
             staker: params.staker,
             strategy: params.strategy,
@@ -2150,7 +2261,8 @@ mod tests {
         let _res = execute(deps.as_mut(), env.clone(), info_whitelister.clone(), msg).unwrap();
 
         let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
-        let (staker, secret_key, public_key_bytes) = generate_osmosis_public_key_from_private_key(private_key_hex);
+        let (staker, secret_key, public_key_bytes) =
+            generate_osmosis_public_key_from_private_key(private_key_hex);
         let current_time = env.block.time.seconds();
         let expiry = current_time + 1000;
         let nonce = 0;
@@ -2158,10 +2270,11 @@ mod tests {
         let contract_addr = env.contract.address.clone();
 
         let public_key = Binary::from(public_key_bytes);
+        let public_key_base64 = general_purpose::STANDARD.encode(public_key.clone());
 
         let params = DigestHashParams {
             staker: staker.clone(),
-            public_key: public_key.clone(),
+            public_key,
             strategy: strategy.clone(),
             token: token.clone(),
             amount,
@@ -2172,11 +2285,14 @@ mod tests {
         };
 
         let signature = mock_signature_with_message(params, &secret_key);
+        let signature_base64 = general_purpose::STANDARD.encode(signature);
 
         let strategy_for_closure = strategy.clone();
         let token_for_closure = token.clone();
         deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { contract_addr, msg } if *contract_addr == strategy_for_closure.to_string() => {
+            WasmQuery::Smart { contract_addr, msg }
+                if *contract_addr == strategy_for_closure.to_string() =>
+            {
                 let strategy_query_msg: StrategyQueryMsg = from_json(msg).unwrap();
                 match strategy_query_msg {
                     StrategyQueryMsg::GetStrategyState {} => {
@@ -2185,26 +2301,33 @@ mod tests {
                             underlying_token: token_for_closure.clone(),
                             total_shares: Uint128::new(1000),
                         };
-                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&strategy_state).unwrap()))
-                    },
+                        SystemResult::Ok(ContractResult::Ok(
+                            to_json_binary(&strategy_state).unwrap(),
+                        ))
+                    }
                     _ => SystemResult::Err(SystemError::InvalidRequest {
                         error: "Unhandled request".to_string(),
                         request: to_json_binary(&query).unwrap(),
                     }),
                 }
-            },
-            WasmQuery::Smart { contract_addr, msg } if *contract_addr == token_for_closure.to_string() => {
+            }
+            WasmQuery::Smart { contract_addr, msg }
+                if *contract_addr == token_for_closure.to_string() =>
+            {
                 let cw20_query_msg: Cw20QueryMsg = from_json(msg).unwrap();
                 match cw20_query_msg {
-                    Cw20QueryMsg::Balance { address: _ } => {
-                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&Cw20BalanceResponse { balance: Uint128::new(1000) }).unwrap()))
-                    },
+                    Cw20QueryMsg::Balance { address: _ } => SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(&Cw20BalanceResponse {
+                            balance: Uint128::new(1000),
+                        })
+                        .unwrap(),
+                    )),
                     _ => SystemResult::Err(SystemError::InvalidRequest {
                         error: "Unhandled request".to_string(),
                         request: to_json_binary(&query).unwrap(),
                     }),
                 }
-            },
+            }
             _ => SystemResult::Err(SystemError::InvalidRequest {
                 error: "Unhandled request".to_string(),
                 request: to_json_binary(&query).unwrap(),
@@ -2216,16 +2339,25 @@ mod tests {
             token: token.to_string(),
             amount,
             staker: staker.to_string(),
-            public_key,
+            public_key: public_key_base64,
             expiry,
-            signature,
+            signature: signature_base64,
         };
 
-        let res = execute(deps.as_mut(), env.clone(), info_delegation_manager.clone(), msg).unwrap();
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info_delegation_manager.clone(),
+            msg,
+        )
+        .unwrap();
 
         assert_eq!(res.attributes.len(), 4);
         assert_eq!(res.attributes[0].key, "method");
-        assert_eq!(res.attributes[0].value, "deposit_into_strategy_with_signature");
+        assert_eq!(
+            res.attributes[0].value,
+            "deposit_into_strategy_with_signature"
+        );
         assert_eq!(res.attributes[1].key, "strategy");
         assert_eq!(res.attributes[1].value, strategy.to_string());
         assert_eq!(res.attributes[2].key, "amount");
@@ -2248,22 +2380,28 @@ mod tests {
             _pauser_info,
             _unpauser_info,
         ) = instantiate_contract();
-    
+
         let strategy = deps.api.addr_make("strategy1");
-        THIRD_PARTY_TRANSFERS_FORBIDDEN.save(&mut deps.storage, &strategy, &true).unwrap();
-    
-        let query_msg = QueryMsg::IsThirdPartyTransfersForbidden { strategy: strategy.to_string() };
+        THIRD_PARTY_TRANSFERS_FORBIDDEN
+            .save(&mut deps.storage, &strategy, &true)
+            .unwrap();
+
+        let query_msg = QueryMsg::IsThirdPartyTransfersForbidden {
+            strategy: strategy.to_string(),
+        };
         let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
         let result: ThirdPartyTransfersForbiddenResponse = from_json(bin).unwrap();
         assert!(result.is_forbidden);
-    
+
         let non_forbidden_strategy = deps.api.addr_make("non_forbidden_strategy");
 
-        let query_msg = QueryMsg::IsThirdPartyTransfersForbidden { strategy: non_forbidden_strategy.to_string() };
+        let query_msg = QueryMsg::IsThirdPartyTransfersForbidden {
+            strategy: non_forbidden_strategy.to_string(),
+        };
         let bin = query(deps.as_ref(), env, query_msg).unwrap();
         let result: ThirdPartyTransfersForbiddenResponse = from_json(bin).unwrap();
         assert!(!result.is_forbidden);
-    }    
+    }
 
     #[test]
     fn test_get_nonce() {
@@ -2276,24 +2414,28 @@ mod tests {
             _pauser_info,
             _unpauser_info,
         ) = instantiate_contract();
-    
+
         let staker = deps.api.addr_make("staker1");
-    
+
         NONCES.save(&mut deps.storage, &staker, &5).unwrap();
-    
-        let query_msg = QueryMsg::GetNonce { staker: staker.to_string() };
+
+        let query_msg = QueryMsg::GetNonce {
+            staker: staker.to_string(),
+        };
         let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
         let nonce_response: NonceResponse = from_json(bin).unwrap();
         assert_eq!(nonce_response.nonce, 5);
-    
+
         let new_staker = deps.api.addr_make("new_staker");
 
-        let query_msg = QueryMsg::GetNonce { staker: new_staker.to_string() };
+        let query_msg = QueryMsg::GetNonce {
+            staker: new_staker.to_string(),
+        };
         let bin = query(deps.as_ref(), env, query_msg).unwrap();
         let nonce_response: NonceResponse = from_json(bin).unwrap();
         assert_eq!(nonce_response.nonce, 0);
     }
-    
+
     #[test]
     fn test_get_staker_strategy_list() {
         let (
@@ -2305,25 +2447,34 @@ mod tests {
             _pauser_info,
             _unpauser_info,
         ) = instantiate_contract();
-    
+
         let staker = deps.api.addr_make("staker1");
-    
-        let strategies = vec![deps.api.addr_make("strategy1"), deps.api.addr_make("strategy2")];
-        STAKER_STRATEGY_LIST.save(&mut deps.storage, &staker, &strategies.clone()).unwrap();
-    
-        let query_msg = QueryMsg::GetStakerStrategyList { staker: staker.to_string() };
+
+        let strategies = vec![
+            deps.api.addr_make("strategy1"),
+            deps.api.addr_make("strategy2"),
+        ];
+        STAKER_STRATEGY_LIST
+            .save(&mut deps.storage, &staker, &strategies.clone())
+            .unwrap();
+
+        let query_msg = QueryMsg::GetStakerStrategyList {
+            staker: staker.to_string(),
+        };
         let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
         let strategy_list_response: StakerStrategyLisResponse = from_json(bin).unwrap();
         assert_eq!(strategy_list_response.strategies, strategies);
-    
+
         let new_staker = deps.api.addr_make("new_staker");
 
-        let query_msg = QueryMsg::GetStakerStrategyList { staker: new_staker.to_string() };
+        let query_msg = QueryMsg::GetStakerStrategyList {
+            staker: new_staker.to_string(),
+        };
         let bin = query(deps.as_ref(), env, query_msg).unwrap();
         let strategy_list_response: StakerStrategyLisResponse = from_json(bin).unwrap();
         assert!(strategy_list_response.strategies.is_empty());
     }
-    
+
     #[test]
     fn test_get_owner() {
         let (
@@ -2335,14 +2486,14 @@ mod tests {
             _pauser_info,
             _unpauser_info,
         ) = instantiate_contract();
-    
+
         let query_msg = QueryMsg::GetOwner {};
         let bin = query(deps.as_ref(), env, query_msg).unwrap();
         let owner_response: OwnerResponse = from_json(bin).unwrap();
 
         assert_eq!(owner_response.owner_addr, owner_info.sender);
     }
-    
+
     #[test]
     fn test_is_strategy_whitelisted() {
         let (
@@ -2354,20 +2505,23 @@ mod tests {
             _pauser_info,
             _unpauser_info,
         ) = instantiate_contract();
-    
+
         let strategy = deps.api.addr_make("strategy1");
-    
-        STRATEGY_IS_WHITELISTED_FOR_DEPOSIT.save(&mut deps.storage, &strategy, &true).unwrap();
-    
+
+        STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
+            .save(&mut deps.storage, &strategy, &true)
+            .unwrap();
+
         let result = query_is_strategy_whitelisted(deps.as_ref(), strategy.clone()).unwrap();
         assert!(result.is_whitelisted);
-    
+
         let non_whitelisted_strategy = deps.api.addr_make("non_whitelisted_strategy");
 
-        let result = query_is_strategy_whitelisted(deps.as_ref(), non_whitelisted_strategy).unwrap();
+        let result =
+            query_is_strategy_whitelisted(deps.as_ref(), non_whitelisted_strategy).unwrap();
         assert!(!result.is_whitelisted);
     }
-    
+
     #[test]
     fn test_get_strategy_whitelister() {
         let (
@@ -2379,10 +2533,10 @@ mod tests {
             _pauser_info,
             _unpauser_info,
         ) = instantiate_contract();
-    
+
         let response = query_strategy_whitelister(deps.as_ref()).unwrap();
         assert_eq!(response.whitelister, info_whitelister.sender);
-    }    
+    }
 
     #[test]
     fn test_get_strategy_manager_state() {
@@ -2397,7 +2551,10 @@ mod tests {
         ) = instantiate_contract();
 
         let state = query_strategy_manager_state(deps.as_ref()).unwrap();
-        assert_eq!(state.state.delegation_manager, info_delegation_manager.sender);
+        assert_eq!(
+            state.state.delegation_manager,
+            info_delegation_manager.sender
+        );
     }
 
     #[test]
@@ -2432,22 +2589,29 @@ mod tests {
             _pauser_info,
             _unpauser_info,
         ) = instantiate_contract();
-    
+
         let staker = Addr::unchecked("staker1");
         let strategy = deps.api.addr_make("strategy");
         let shares = Uint128::new(100);
-    
-        STAKER_STRATEGY_SHARES.save(&mut deps.storage, (&staker, &strategy), &shares).unwrap();
-    
-        let retrieved_shares = query_staker_strategy_shares(deps.as_ref(), staker.clone(), strategy.clone()).unwrap();
+
+        STAKER_STRATEGY_SHARES
+            .save(&mut deps.storage, (&staker, &strategy), &shares)
+            .unwrap();
+
+        let retrieved_shares =
+            query_staker_strategy_shares(deps.as_ref(), staker.clone(), strategy.clone()).unwrap();
         assert_eq!(retrieved_shares.shares, shares);
-    
+
         let new_staker = Addr::unchecked("new_staker");
-        let retrieved_shares = query_staker_strategy_shares(deps.as_ref(), new_staker.clone(), strategy.clone()).unwrap();
+        let retrieved_shares =
+            query_staker_strategy_shares(deps.as_ref(), new_staker.clone(), strategy.clone())
+                .unwrap();
         assert_eq!(retrieved_shares.shares, Uint128::zero());
-    
+
         let new_strategy = Addr::unchecked("new_strategy");
-        let retrieved_shares = query_staker_strategy_shares(deps.as_ref(), staker.clone(), new_strategy.clone()).unwrap();
+        let retrieved_shares =
+            query_staker_strategy_shares(deps.as_ref(), staker.clone(), new_strategy.clone())
+                .unwrap();
         assert_eq!(retrieved_shares.shares, Uint128::zero());
     }
 
@@ -2462,12 +2626,15 @@ mod tests {
             _pauser_info,
             _unpauser_info,
         ) = instantiate_contract();
-    
+
         let query_msg = QueryMsg::GetDelegationManager {};
         let bin = query(deps.as_ref(), env, query_msg).unwrap();
         let delegation_manager: DelegationManagerResponse = from_json(bin).unwrap();
-    
-        assert_eq!(delegation_manager.delegation_manager, info_delegation_manager.sender);
+
+        assert_eq!(
+            delegation_manager.delegation_manager,
+            info_delegation_manager.sender
+        );
     }
 
     #[test]
@@ -2481,7 +2648,7 @@ mod tests {
             _pauser_info,
             _unpauser_info,
         ) = instantiate_contract();
-    
+
         let new_delegation_manager = deps.api.addr_make("new_delegation_manager");
 
         let msg = ExecuteMsg::SetDelegationManager {
@@ -2489,10 +2656,10 @@ mod tests {
         };
 
         execute(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();
-    
+
         let state = STRATEGY_MANAGER_STATE.load(&deps.storage).unwrap();
         assert_eq!(state.delegation_manager, new_delegation_manager);
-    
+
         // Test with an unauthorized user
         let msg = ExecuteMsg::SetDelegationManager {
             new_delegation_manager: new_delegation_manager.to_string(),
@@ -2529,24 +2696,29 @@ mod tests {
         };
         let res = execute(deps.as_mut(), env.clone(), owner_info.clone(), transfer_msg);
         assert!(res.is_ok());
-    
+
         let res = res.unwrap();
         assert_eq!(res.attributes.len(), 2);
         assert_eq!(res.attributes[0].key, "method");
         assert_eq!(res.attributes[0].value, "transfer_ownership");
         assert_eq!(res.attributes[1].key, "new_owner");
         assert_eq!(res.attributes[1].value, new_owner.to_string());
-    
+
         let stored_owner = OWNER.load(&deps.storage).unwrap();
         assert_eq!(stored_owner, new_owner);
 
         let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-    
+
         let transfer_msg = ExecuteMsg::TransferOwnership {
             new_owner: new_owner.to_string(),
         };
-        let res = execute(deps.as_mut(), env.clone(), info_unauthorized.clone(), transfer_msg);
-    
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info_unauthorized.clone(),
+            transfer_msg,
+        );
+
         assert!(res.is_err());
         if let Err(err) = res {
             match err {
@@ -2554,23 +2726,28 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
-    
+
         let stored_owner = OWNER.load(&deps.storage).unwrap();
         assert_eq!(stored_owner, new_owner);
-    
+
         let transfer_msg = ExecuteMsg::TransferOwnership {
             new_owner: new_owner.to_string(),
         };
-        let res = execute(deps.as_mut(), env.clone(), message_info(&new_owner, &[]), transfer_msg);
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            message_info(&new_owner, &[]),
+            transfer_msg,
+        );
         assert!(res.is_ok());
-    
+
         let res = res.unwrap();
         assert_eq!(res.attributes.len(), 2);
         assert_eq!(res.attributes[0].key, "method");
         assert_eq!(res.attributes[0].value, "transfer_ownership");
         assert_eq!(res.attributes[1].key, "new_owner");
         assert_eq!(res.attributes[1].value, new_owner.to_string());
-    
+
         let stored_owner = OWNER.load(&deps.storage).unwrap();
         assert_eq!(stored_owner, new_owner);
     }
@@ -2671,7 +2848,13 @@ mod tests {
         let set_pauser_msg = ExecuteMsg::SetPauser {
             new_pauser: new_pauser.to_string(),
         };
-        let res = execute(deps.as_mut(), env.clone(), owner_info.clone(), set_pauser_msg).unwrap();
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            owner_info.clone(),
+            set_pauser_msg,
+        )
+        .unwrap();
 
         assert!(res
             .attributes
@@ -2699,7 +2882,13 @@ mod tests {
         let set_unpauser_msg = ExecuteMsg::SetUnpauser {
             new_unpauser: new_unpauser.to_string(),
         };
-        let res = execute(deps.as_mut(), env.clone(), owner_info.clone(), set_unpauser_msg).unwrap();
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            owner_info.clone(),
+            set_unpauser_msg,
+        )
+        .unwrap();
 
         assert!(res
             .attributes

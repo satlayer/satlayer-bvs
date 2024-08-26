@@ -1,31 +1,42 @@
+use crate::query::{
+    CalculateWithdrawalRootResponse, CumulativeWithdrawalsQueuedResponse,
+    CurrentStakerDelegationDigestHashResponse, DelegatableSharesResponse, DelegatedResponse,
+    DelegationApprovalDigestHashResponse, DelegationApproverResponse, OperatorDetailsResponse,
+    OperatorResponse, OperatorSharesResponse, OperatorStakersResponse,
+    StakerDelegationDigestHashResponse, StakerNonceResponse, StakerOptOutWindowBlocksResponse,
+    WithdrawalDelayResponse,
+};
 use crate::utils::{
-    CurrentStakerDigestHashParams, ExecuteDelegateParams, QueryApproverDigestHashParams,
+    ExecuteDelegateParams, QueryApproverDigestHashParams, QueryCurrentStakerDigestHashParams,
     QueryStakerDigestHashParams, Withdrawal,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Binary, Uint128, Uint64};
+use cosmwasm_std::{Addr, Binary, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub strategy_manager: Addr,
-    pub slasher: Addr,
+    pub strategy_manager: String,
+    pub slasher: String,
     pub min_withdrawal_delay_blocks: u64,
-    pub initial_owner: Addr,
-    pub strategies: Vec<Addr>,
+    pub initial_owner: String,
+    pub strategies: Vec<String>,
     pub withdrawal_delay_blocks: Vec<u64>,
+    pub pauser: String,
+    pub unpauser: String,
+    pub initial_paused_status: u64,
 }
 
 #[cw_serde]
 pub enum ExecuteMsg {
     RegisterAsOperator {
-        sender_public_key: Binary,
-        operator_details: OperatorDetails,
+        sender_public_key: String,
+        operator_details: ExecuteOperatorDetails,
         metadata_uri: String,
     },
     ModifyOperatorDetails {
-        new_operator_details: OperatorDetails,
+        new_operator_details: ExecuteOperatorDetails,
     },
     UpdateOperatorMetadataUri {
         metadata_uri: String,
@@ -41,7 +52,7 @@ pub enum ExecuteMsg {
         approver_signature_and_expiry: ExecuteSignatureWithExpiry,
     },
     Undelegate {
-        staker: Addr,
+        staker: String,
     },
     QueueWithdrawals {
         queued_withdrawal_params: Vec<QueuedWithdrawalParams>,
@@ -49,7 +60,7 @@ pub enum ExecuteMsg {
     CompleteQueuedWithdrawal {
         withdrawal: Withdrawal,
         tokens: Vec<Addr>,
-        middleware_times_index: Uint64,
+        middleware_times_index: u64,
         receive_as_tokens: bool,
     },
     CompleteQueuedWithdrawals {
@@ -59,89 +70,107 @@ pub enum ExecuteMsg {
         receive_as_tokens: Vec<bool>,
     },
     IncreaseDelegatedShares {
-        staker: Addr,
-        strategy: Addr,
+        staker: String,
+        strategy: String,
         shares: Uint128,
     },
     DecreaseDelegatedShares {
-        staker: Addr,
-        strategy: Addr,
+        staker: String,
+        strategy: String,
         shares: Uint128,
     },
     SetMinWithdrawalDelayBlocks {
         new_min_withdrawal_delay_blocks: u64,
     },
     SetStrategyWithdrawalDelayBlocks {
-        strategies: Vec<Addr>,
-        withdrawal_delay_blocks: Vec<Uint64>,
+        strategies: Vec<String>,
+        withdrawal_delay_blocks: Vec<u64>,
     },
     TransferOwnership {
-        new_owner: Addr,
+        new_owner: String,
+    },
+    Pause {},
+    Unpause {},
+    SetPauser {
+        new_pauser: String,
+    },
+    SetUnpauser {
+        new_unpauser: String,
     },
 }
 
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(bool)]
-    IsDelegated { staker: Addr },
+    #[returns(DelegatedResponse)]
+    IsDelegated { staker: String },
 
-    #[returns(bool)]
-    IsOperator { operator: Addr },
+    #[returns(OperatorResponse)]
+    IsOperator { operator: String },
 
-    #[returns(OperatorDetails)]
-    OperatorDetails { operator: Addr },
+    #[returns(OperatorDetailsResponse)]
+    OperatorDetails { operator: String },
 
-    #[returns(Addr)]
-    DelegationApprover { operator: Addr },
+    #[returns(DelegationApproverResponse)]
+    DelegationApprover { operator: String },
 
-    #[returns(u64)]
-    StakerOptOutWindowBlocks { operator: Addr },
+    #[returns(StakerOptOutWindowBlocksResponse)]
+    StakerOptOutWindowBlocks { operator: String },
 
-    #[returns(Vec<Uint128>)]
+    #[returns(OperatorSharesResponse)]
     GetOperatorShares {
-        operator: Addr,
-        strategies: Vec<Addr>,
+        operator: String,
+        strategies: Vec<String>,
     },
 
-    #[returns((Vec<Addr>, Vec<Uint128>))]
-    GetDelegatableShares { staker: Addr },
+    #[returns(DelegatableSharesResponse)]
+    GetDelegatableShares { staker: String },
 
-    #[returns(Vec<u64>)]
-    GetWithdrawalDelay { strategies: Vec<Addr> },
+    #[returns(WithdrawalDelayResponse)]
+    GetWithdrawalDelay { strategies: Vec<String> },
 
-    #[returns(Binary)]
+    #[returns(CalculateWithdrawalRootResponse)]
     CalculateWithdrawalRoot { withdrawal: Withdrawal },
 
-    #[returns(Binary)]
+    #[returns(StakerDelegationDigestHashResponse)]
     StakerDelegationDigestHash {
         staker_digest_hash_params: QueryStakerDigestHashParams,
     },
 
-    #[returns(Binary)]
+    #[returns(DelegationApprovalDigestHashResponse)]
     DelegationApprovalDigestHash {
         approver_digest_hash_params: QueryApproverDigestHashParams,
     },
 
-    #[returns(Binary)]
+    #[returns(CurrentStakerDelegationDigestHashResponse)]
     CalculateCurrentStakerDelegationDigestHash {
-        current_staker_digest_hash_params: CurrentStakerDigestHashParams,
+        current_staker_digest_hash_params: QueryCurrentStakerDigestHashParams,
     },
 
-    #[returns(Uint128)]
-    GetStakerNonce { staker: Addr },
+    #[returns(StakerNonceResponse)]
+    GetStakerNonce { staker: String },
 
-    #[returns(Vec<(Addr, Uint128)>)]
-    GetOperatorStakers { operator: Addr },
+    #[returns(OperatorStakersResponse)]
+    GetOperatorStakers { operator: String },
 
-    #[returns(Uint128)]
-    GetCumulativeWithdrawalsQueuedNonce { staker: Addr },
+    #[returns(CumulativeWithdrawalsQueuedResponse)]
+    GetCumulativeWithdrawalsQueued { staker: String },
 }
+
+#[cw_serde]
+pub struct MigrateMsg {}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct OperatorDetails {
     pub deprecated_earnings_receiver: Addr,
     pub delegation_approver: Addr,
+    pub staker_opt_out_window_blocks: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ExecuteOperatorDetails {
+    pub deprecated_earnings_receiver: String,
+    pub delegation_approver: String,
     pub staker_opt_out_window_blocks: u64,
 }
 
@@ -155,11 +184,11 @@ pub struct QueuedWithdrawalParams {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct SignatureWithExpiry {
     pub signature: Binary,
-    pub expiry: Uint64,
+    pub expiry: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ExecuteSignatureWithExpiry {
     pub signature: String,
-    pub expiry: Uint64,
+    pub expiry: u64,
 }
