@@ -1,19 +1,29 @@
+use crate::query::{
+    CalculateDomainSeparatorResponse, CalculateEarnerLeafHashResponse,
+    CalculateTokenLeafHashResponse, CheckClaimResponse,
+    GetCurrentClaimableDistributionRootResponse, GetCurrentDistributionRootResponse,
+    GetDistributionRootAtIndexResponse, GetDistributionRootsLengthResponse,
+    GetRootIndexFromHashResponse, MerkleizeLeavesResponse, OperatorCommissionBipsResponse,
+};
+use crate::utils::{ExecuteRewardsMerkleClaim, RewardsSubmission};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Uint64, Binary, Uint128};
-use crate::utils::{RewardsSubmission, ExeuteRewardsMerkleClaim};
+use cosmwasm_std::{Binary, Uint128};
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub initial_owner: Addr,
-    pub rewards_updater: Addr,
+    pub initial_owner: String,
+    pub rewards_updater: String,
     pub calculation_interval_seconds: u64,
     pub max_rewards_duration: u64,
     pub max_retroactive_length: u64,
     pub max_future_length: u64,
     pub genesis_rewards_timestamp: u64,
-    pub delegation_manager: Addr,
-    pub strategy_manager: Addr,
-    pub activation_delay: u32, 
+    pub delegation_manager: String,
+    pub strategy_manager: String,
+    pub activation_delay: u32,
+    pub pauser: String,
+    pub unpauser: String,
+    pub initial_paused_status: u64,
 }
 
 #[cw_serde]
@@ -25,100 +35,98 @@ pub enum ExecuteMsg {
         rewards_submissions: Vec<RewardsSubmission>,
     },
     ProcessClaim {
-        claim: ExeuteRewardsMerkleClaim,
-        recipient: Addr,
+        claim: ExecuteRewardsMerkleClaim,
+        recipient: String,
     },
     SubmitRoot {
         root: String,
-        rewards_calculation_end_timestamp: Uint64,
+        rewards_calculation_end_timestamp: u64,
     },
     DisableRoot {
         root_index: u64,
     },
     SetClaimerFor {
-        claimer: Addr,
+        claimer: String,
     },
     SetActivationDelay {
         new_activation_delay: u32,
     },
     SetRewardsUpdater {
-        new_updater: Addr,
+        new_updater: String,
     },
     SetRewardsForAllSubmitter {
-        submitter: Addr,
+        submitter: String,
         new_value: bool,
     },
     SetGlobalOperatorCommission {
         new_commission_bips: u16,
     },
     TransferOwnership {
-        new_owner: Addr,
+        new_owner: String,
+    },
+    Pause {},
+    Unpause {},
+    SetPauser {
+        new_pauser: String,
+    },
+    SetUnpauser {
+        new_unpauser: String,
     },
 }
 
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(Binary)]
-    CalculateEarnerLeafHash { earner: String, earner_token_root: String },
+    #[returns(CalculateEarnerLeafHashResponse)]
+    CalculateEarnerLeafHash {
+        earner: String,
+        earner_token_root: String,
+    },
 
-    #[returns(Binary)]
-    CalculateTokenLeafHash { token: String, cumulative_earnings: String },
+    #[returns(CalculateTokenLeafHashResponse)]
+    CalculateTokenLeafHash {
+        token: String,
+        cumulative_earnings: Uint128,
+    },
 
-    #[returns(Uint128)]
-    QueryOperatorCommissionBips { operator: String, avs: String },
+    #[returns(OperatorCommissionBipsResponse)]
+    OperatorCommissionBips { operator: String, avs: String },
 
-    #[returns(Uint64)]
+    #[returns(GetDistributionRootsLengthResponse)]
     GetDistributionRootsLength {},
 
-    #[returns(DistributionRoot)]
-    GetCurrentDistributionRoot {},  
+    #[returns(GetCurrentDistributionRootResponse)]
+    GetCurrentDistributionRoot {},
 
-    #[returns(DistributionRoot)]
+    #[returns(GetDistributionRootAtIndexResponse)]
     GetDistributionRootAtIndex { index: String },
 
-    #[returns(DistributionRoot)]
+    #[returns(GetCurrentClaimableDistributionRootResponse)]
     GetCurrentClaimableDistributionRoot {},
 
-    #[returns(u32)]
+    #[returns(GetRootIndexFromHashResponse)]
     GetRootIndexFromHash { root_hash: String },
 
-    #[returns(Binary)]
-    CalculateDomainSeparator { chain_id: String, contract_addr: String },
+    #[returns(CalculateDomainSeparatorResponse)]
+    CalculateDomainSeparator {
+        chain_id: String,
+        contract_addr: String,
+    },
 
-    #[returns(Binary)]
+    #[returns(MerkleizeLeavesResponse)]
     MerkleizeLeaves { leaves: Vec<String> },
 
-    #[returns(bool)]
-    CheckClaim { claim: ExeuteRewardsMerkleClaim },
+    #[returns(CheckClaimResponse)]
+    CheckClaim { claim: ExecuteRewardsMerkleClaim },
 }
 
 #[cw_serde]
-pub struct MerkleRootSubmission {
-    pub earner: Addr,
-    pub token: String,
-    pub amount: Uint64,
-    pub start_timestamp: Uint64,
-}
-
-#[cw_serde]
-pub struct RewardsStatusResponse {
-    pub earner: Addr,
-    pub token: String,
-    pub claimed: u128,
-}
+pub struct MigrateMsg {}
 
 #[cw_serde]
 pub struct DistributionRoot {
     pub root: Binary,
-    pub rewards_calculation_end_timestamp: Uint64,
-    pub activated_at: Uint64,
+    pub rewards_calculation_end_timestamp: u64,
+    pub activated_at: u64,
     pub disabled: bool,
-}
-
-#[cw_serde]
-pub struct SignatureWithSaltAndExpiry {
-    pub signature: Binary,
-    pub salt: Binary,
-    pub expiry: Uint64,
 }

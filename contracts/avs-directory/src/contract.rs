@@ -197,7 +197,7 @@ pub fn register_operator(
     
     if !is_operator_response.is_operator {
         return Err(ContractError::OperatorNotRegistered {});
-    }    
+    }
 
     let status =
         AVS_OPERATOR_STATUS.may_load(deps.storage, (info.sender.clone(), operator.clone()))?;
@@ -659,16 +659,16 @@ mod tests {
     fn test_register_operator() {
         let (mut deps, env, info, _pauser_info, _unpauser_info, delegation_manager) =
             instantiate_contract();
-
+    
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
             generate_osmosis_public_key_from_private_key(private_key_hex);
-
+    
         let expiry = 2722875888;
         let salt = Binary::from(b"salt");
         let contract_addr: Addr =
             Addr::unchecked("osmo1wsjhxj3nl8kmrudsxlf7c40yw6crv4pcrk0twvvsp9jmyr675wjqc8t6an");
-
+    
         let message_byte = calculate_digest_hash(
             env.clone(),
             &Binary::from(public_key_bytes.clone()),
@@ -677,29 +677,34 @@ mod tests {
             expiry,
             &contract_addr,
         );
-
+    
         let secp = Secp256k1::new();
         let message = Message::from_digest_slice(&message_byte).expect("32 bytes");
         let signature = secp.sign_ecdsa(&message, &secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
-
+    
         let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
-
+    
         let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
-
+    
+        // Update the mock to return the OperatorResponse struct instead of a boolean
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart {
                 contract_addr,
                 msg: _,
             } if contract_addr == &delegation_manager => {
-                SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap()))
+                // Simulate a successful IsOperator response
+                let operator_response = OperatorResponse {
+                    is_operator: true,
+                };
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&operator_response).unwrap()))
             }
             _ => SystemResult::Err(SystemError::InvalidRequest {
                 error: "Unhandled request".to_string(),
                 request: to_json_binary(&query).unwrap(),
             }),
         });
-
+    
         let msg = ExecuteMsg::RegisterOperatorToAVS {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
@@ -710,20 +715,20 @@ mod tests {
                 expiry,
             },
         };
-
+    
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
-
+    
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
         }
-
+    
         assert!(res.is_ok());
-
+    
         let res = res.unwrap();
-
+    
         assert_eq!(res.attributes.len(), 0);
         assert_eq!(res.events.len(), 1);
-
+    
         let event = &res.events[0];
         assert_eq!(event.ty, "OperatorAVSRegistrationStatusUpdated");
         assert_eq!(event.attributes.len(), 4);
@@ -735,32 +740,32 @@ mod tests {
         assert_eq!(event.attributes[2].value, info.sender.to_string());
         assert_eq!(event.attributes[3].key, "operator_avs_registration_status");
         assert_eq!(event.attributes[3].value, "REGISTERED");
-
+    
         let status = AVS_OPERATOR_STATUS
             .load(&deps.storage, (info.sender.clone(), operator.clone()))
             .unwrap();
         assert_eq!(status, OperatorAVSRegistrationStatus::Registered);
-
+    
         let is_salt_spent = OPERATOR_SALT_SPENT
             .load(&deps.storage, (operator.clone(), salt.to_string()))
             .unwrap();
         assert!(is_salt_spent);
-    }
+    }    
 
     #[test]
     fn test_deregister_operator() {
         let (mut deps, env, info, _pauser_info, _unpauser_info, delegation_manager) =
             instantiate_contract();
-
+    
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
             generate_osmosis_public_key_from_private_key(private_key_hex);
-
+    
         let expiry = 2722875888;
         let salt = Binary::from(b"salt");
         let contract_addr: Addr =
             Addr::unchecked("osmo1wsjhxj3nl8kmrudsxlf7c40yw6crv4pcrk0twvvsp9jmyr675wjqc8t6an");
-
+    
         let message_byte = calculate_digest_hash(
             env.clone(),
             &Binary::from(public_key_bytes.clone()),
@@ -769,29 +774,32 @@ mod tests {
             expiry,
             &contract_addr,
         );
-
+    
         let secp = Secp256k1::new();
         let message = Message::from_digest_slice(&message_byte).expect("32 bytes");
         let signature = secp.sign_ecdsa(&message, &secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
-
+    
         let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
-
+    
         let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
-
+    
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart {
                 contract_addr,
                 msg: _,
             } if contract_addr == &delegation_manager => {
-                SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap()))
+                let operator_response = OperatorResponse {
+                    is_operator: true,
+                };
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&operator_response).unwrap()))
             }
             _ => SystemResult::Err(SystemError::InvalidRequest {
                 error: "Unhandled request".to_string(),
                 request: to_json_binary(&query).unwrap(),
             }),
         });
-
+    
         let register_msg = ExecuteMsg::RegisterOperatorToAVS {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
@@ -802,27 +810,27 @@ mod tests {
                 expiry,
             },
         };
-
+    
         let res = execute(deps.as_mut(), env.clone(), info.clone(), register_msg);
-
+    
         assert!(res.is_ok());
-
+    
         let deregister_msg = ExecuteMsg::DeregisterOperatorFromAVS {
             operator: operator.to_string(),
         };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), deregister_msg);
-
+    
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
         }
-
+    
         assert!(res.is_ok());
-
+    
         let res = res.unwrap();
-
+    
         assert_eq!(res.attributes.len(), 0);
         assert_eq!(res.events.len(), 1);
-
+    
         let event = &res.events[0];
         assert_eq!(event.ty, "OperatorAVSRegistrationStatusUpdated");
         assert_eq!(event.attributes.len(), 4);
@@ -834,12 +842,12 @@ mod tests {
         assert_eq!(event.attributes[2].value, info.sender.to_string());
         assert_eq!(event.attributes[3].key, "operator_avs_registration_status");
         assert_eq!(event.attributes[3].value, "UNREGISTERED");
-
+    
         let status = AVS_OPERATOR_STATUS
             .load(&deps.storage, (info.sender.clone(), operator.clone()))
             .unwrap();
         assert_eq!(status, OperatorAVSRegistrationStatus::Unregistered);
-    }
+    }    
 
     #[test]
     fn test_update_metadata_uri() {
@@ -946,16 +954,16 @@ mod tests {
     fn test_query_operator() {
         let (mut deps, env, info, _pauser_info, _unpauser_info, delegation_manager) =
             instantiate_contract();
-
+    
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
             generate_osmosis_public_key_from_private_key(private_key_hex);
-
+    
         let expiry = 2722875888;
         let salt = Binary::from(b"salt");
         let contract_addr: Addr =
             Addr::unchecked("osmo1wsjhxj3nl8kmrudsxlf7c40yw6crv4pcrk0twvvsp9jmyr675wjqc8t6an");
-
+    
         let message_byte = calculate_digest_hash(
             env.clone(),
             &Binary::from(public_key_bytes.clone()),
@@ -964,29 +972,32 @@ mod tests {
             expiry,
             &contract_addr,
         );
-
+    
         let secp = Secp256k1::new();
         let message = Message::from_digest_slice(&message_byte).expect("32 bytes");
         let signature = secp.sign_ecdsa(&message, &secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
-
+    
         let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
-
+    
         let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
-
+    
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart {
                 contract_addr,
                 msg: _,
             } if contract_addr == &delegation_manager => {
-                SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap()))
+                let operator_response = OperatorResponse {
+                    is_operator: true,
+                };
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&operator_response).unwrap()))
             }
             _ => SystemResult::Err(SystemError::InvalidRequest {
                 error: "Unhandled request".to_string(),
                 request: to_json_binary(&query).unwrap(),
             }),
         });
-
+    
         let msg = ExecuteMsg::RegisterOperatorToAVS {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
@@ -997,20 +1008,20 @@ mod tests {
                 expiry,
             },
         };
-
+    
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
-
+    
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
         }
-
+    
         assert!(res.is_ok());
-
+    
         let res = res.unwrap();
-
+    
         assert_eq!(res.attributes.len(), 0);
         assert_eq!(res.events.len(), 1);
-
+    
         let event = &res.events[0];
         assert_eq!(event.ty, "OperatorAVSRegistrationStatusUpdated");
         assert_eq!(event.attributes.len(), 4);
@@ -1022,17 +1033,17 @@ mod tests {
         assert_eq!(event.attributes[2].value, info.sender.to_string());
         assert_eq!(event.attributes[3].key, "operator_avs_registration_status");
         assert_eq!(event.attributes[3].value, "REGISTERED");
-
+    
         let status = AVS_OPERATOR_STATUS
             .load(&deps.storage, (info.sender.clone(), operator.clone()))
             .unwrap();
         assert_eq!(status, OperatorAVSRegistrationStatus::Registered);
-
+    
         let is_salt_spent = OPERATOR_SALT_SPENT
             .load(&deps.storage, (operator.clone(), salt.to_string()))
             .unwrap();
         assert!(is_salt_spent);
-
+    
         let query_msg = QueryMsg::GetOperatorStatus {
             avs: info.sender.to_string(),
             operator: operator.to_string(),
@@ -1040,9 +1051,9 @@ mod tests {
         let query_res: OperatorStatusResponse =
             from_json(query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
         println!("Query result: {:?}", query_res);
-
+    
         assert_eq!(query_res.status, OperatorAVSRegistrationStatus::Registered);
-    }
+    }    
 
     #[test]
     fn test_query_operator_unregistered() {
@@ -1115,16 +1126,16 @@ mod tests {
     fn test_query_is_salt_spent() {
         let (mut deps, env, info, _pauser_info, _unpauser_info, delegation_manager) =
             instantiate_contract();
-
+    
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
             generate_osmosis_public_key_from_private_key(private_key_hex);
-
+    
         let expiry = 2722875888;
         let salt = Binary::from(b"salt");
         let contract_addr: Addr =
             Addr::unchecked("osmo1wsjhxj3nl8kmrudsxlf7c40yw6crv4pcrk0twvvsp9jmyr675wjqc8t6an");
-
+    
         let message_byte = calculate_digest_hash(
             env.clone(),
             &Binary::from(public_key_bytes.clone()),
@@ -1133,29 +1144,32 @@ mod tests {
             expiry,
             &contract_addr,
         );
-
+    
         let secp = Secp256k1::new();
         let message = Message::from_digest_slice(&message_byte).expect("32 bytes");
         let signature = secp.sign_ecdsa(&message, &secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
-
+    
         let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
-
+    
         let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
-
+    
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart {
                 contract_addr,
                 msg: _,
             } if contract_addr == &delegation_manager => {
-                SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap()))
+                let operator_response = OperatorResponse {
+                    is_operator: true,
+                };
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&operator_response).unwrap()))
             }
             _ => SystemResult::Err(SystemError::InvalidRequest {
                 error: "Unhandled request".to_string(),
                 request: to_json_binary(&query).unwrap(),
             }),
         });
-
+    
         let msg = ExecuteMsg::RegisterOperatorToAVS {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
@@ -1166,25 +1180,25 @@ mod tests {
                 expiry,
             },
         };
-
+    
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
-
+    
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
         }
-
+    
         assert!(res.is_ok());
-
+    
         let query_msg = QueryMsg::IsSaltSpent {
             operator: operator.to_string(),
             salt: salt.to_string(),
         };
-
+    
         let response: SaltResponse =
             from_json(query(deps.as_ref(), env.clone(), query_msg).unwrap()).unwrap();
-
+    
         assert!(response.is_salt_spent);
-    }
+    }    
 
     #[test]
     fn test_query_delegation_manager() {
@@ -1262,16 +1276,16 @@ mod tests {
     fn test_register_operator_to_avs() {
         let (mut deps, env, info, _pauser_info, _unpauser_info, delegation_manager) =
             instantiate_contract();
-
+    
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
             generate_osmosis_public_key_from_private_key(private_key_hex);
-
+    
         let expiry = 1722965888;
         let salt = Binary::from(b"salt");
         let contract_addr: Addr =
             Addr::unchecked("osmo1dhpupjecw7ltsckrckd4saraaf2266aq2dratwyjtwz5p7476yxspgc6td");
-
+    
         let message_byte = calculate_digest_hash(
             env.clone(),
             &Binary::from(public_key_bytes.clone()),
@@ -1280,29 +1294,32 @@ mod tests {
             expiry,
             &contract_addr,
         );
-
+    
         let secp = Secp256k1::new();
         let message = Message::from_digest_slice(&message_byte).expect("32 bytes");
         let signature = secp.sign_ecdsa(&message, &secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
-
+    
         let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
-
+    
         let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
-
+    
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart {
                 contract_addr,
                 msg: _,
             } if contract_addr == &delegation_manager => {
-                SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap()))
+                let operator_response = OperatorResponse {
+                    is_operator: true,
+                };
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&operator_response).unwrap()))
             }
             _ => SystemResult::Err(SystemError::InvalidRequest {
                 error: "Unhandled request".to_string(),
                 request: to_json_binary(&query).unwrap(),
             }),
         });
-
+    
         let msg = ExecuteMsg::RegisterOperatorToAVS {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
@@ -1313,15 +1330,15 @@ mod tests {
                 expiry,
             },
         };
-
+    
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
-
+    
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
         }
-
+    
         assert!(res.is_ok());
-    }
+    }    
 
     #[test]
     fn test_recover() {

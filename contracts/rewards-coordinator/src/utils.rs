@@ -1,9 +1,10 @@
-use cosmwasm_std::{Addr, Uint128, Timestamp, Binary};
-use sha2::{Sha256, Digest};
-use serde::{Serialize, Deserialize};
+use cosmwasm_std::{Addr, Binary, Timestamp, Uint128};
 use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
-pub const DOMAIN_TYPEHASH: &[u8] = b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
+pub const DOMAIN_TYPEHASH: &[u8] =
+    b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
 pub const DOMAIN_NAME: &[u8] = b"EigenLayer";
 
 pub const EARNER_LEAF_SALT: u8 = 0;
@@ -30,7 +31,7 @@ pub fn calculate_domain_separator(chain_id: &str, contract_addr: &Addr) -> Vec<u
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct RewardsSubmission {
     pub strategies_and_multipliers: Vec<StrategyAndMultiplier>,
-    pub token: Addr,    
+    pub token: Addr,
     pub amount: Uint128,
     pub start_timestamp: Timestamp,
     pub duration: u64,
@@ -38,11 +39,21 @@ pub struct RewardsSubmission {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct StrategyAndMultiplier {
-    pub strategy: Addr, 
+    pub strategy: Addr,
     pub multiplier: u64,
 }
 
-pub fn calculate_rewards_submission_hash(sender: &Addr, nonce: u64, submission: &RewardsSubmission) -> Binary {
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ExecuteStrategyAndMultiplier {
+    pub strategy: String,
+    pub multiplier: u64,
+}
+
+pub fn calculate_rewards_submission_hash(
+    sender: &Addr,
+    nonce: u64,
+    submission: &RewardsSubmission,
+) -> Binary {
     let sender_bytes = sender.as_bytes();
     let nonce_bytes = nonce.to_be_bytes();
 
@@ -85,7 +96,10 @@ pub fn calculate_token_leaf_hash(leaf: &TokenTreeMerkleLeaf) -> Vec<u8> {
 }
 
 pub fn merkleize_sha256(mut leaves: Vec<Vec<u8>>) -> Vec<u8> {
-    assert!(leaves.len().is_power_of_two(), "the number of leaf nodes must be a power of two");
+    assert!(
+        leaves.len().is_power_of_two(),
+        "the number of leaf nodes must be a power of two"
+    );
 
     while leaves.len() > 1 {
         let mut next_layer = Vec::with_capacity(leaves.len() / 2);
@@ -141,7 +155,7 @@ pub struct RewardsMerkleClaim {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct ExeuteRewardsMerkleClaim {
+pub struct ExecuteRewardsMerkleClaim {
     pub root_index: u32,
     pub earner_index: u32,
     pub earner_tree_proof: Vec<u8>,
@@ -153,6 +167,6 @@ pub struct ExeuteRewardsMerkleClaim {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ExecuteEarnerTreeMerkleLeaf {
-    pub earner: Addr,
+    pub earner: String,
     pub earner_token_root: String,
 }

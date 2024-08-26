@@ -1,8 +1,9 @@
 pub mod contract;
-mod error;
-pub mod msg;
 pub mod state;
+pub mod msg;
+
+mod error;
+mod query;
 mod utils;
 
 pub use crate::error::ContractError;
-pub mod strategy_manager;

@@ -1353,34 +1353,28 @@ fn complete_queued_withdrawal_internal(
 
     let withdrawal_root = calculate_withdrawal_root(&withdrawal)?;
 
-    // Ensure the withdrawal is pending
     if !PENDING_WITHDRAWALS.has(deps.storage, &withdrawal_root) {
         return Err(ContractError::ActionNotInQueue {});
     }
 
-    // Ensure minWithdrawalDelayBlocks period has passed
     if withdrawal.start_block + MIN_WITHDRAWAL_DELAY_BLOCKS.load(deps.storage)? > env.block.height {
         return Err(ContractError::MinWithdrawalDelayNotPassed {});
     }
 
-    // Ensure only the withdrawer can complete the action
     if info.sender != withdrawal.withdrawer {
         return Err(ContractError::Unauthorized {});
     }
 
-    // Check input length mismatch
     if receive_as_tokens && tokens.len() != withdrawal.strategies.len() {
         return Err(ContractError::InputLengthMismatch {});
     }
 
-    // Remove the withdrawal from pending withdrawals
     PENDING_WITHDRAWALS.remove(deps.storage, &withdrawal_root);
 
     let mut response = Response::new();
 
     if receive_as_tokens {
         for (i, strategy) in withdrawal.strategies.iter().enumerate() {
-            // Ensure strategyWithdrawalDelayBlocks period has passed for this strategy
             let delay_blocks = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.load(deps.storage, strategy)?;
             if withdrawal.start_block + delay_blocks > env.block.height {
                 return Err(ContractError::StrategyWithdrawalDelayNotPassed {});
