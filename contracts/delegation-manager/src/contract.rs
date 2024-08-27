@@ -8,7 +8,7 @@ use crate::{
         CumulativeWithdrawalsQueuedResponse, CurrentStakerDelegationDigestHashResponse,
         DelegatedResponse, DelegationApproverResponse, OperatorDetailsResponse, OperatorResponse,
         OperatorSharesResponse, OperatorStakersResponse, StakerNonceResponse,
-        StakerOptOutWindowBlocksResponse, StakerShares, WithdrawalDelayResponse,
+        StakerOptOutWindowBlocksResponse, StakerShares, WithdrawalDelayResponse, DelegatableSharesResponse
     },
     state::{
         DelegationManagerState, CUMULATIVE_WITHDRAWALS_QUEUED, DELEGATED_TO,
@@ -834,7 +834,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::GetDelegatableShares { staker } => {
             let staker_addr = deps.api.addr_validate(&staker)?;
-            to_json_binary(&get_delegatable_shares(deps, staker_addr)?)
+            to_json_binary(&query_delegatable_shares(deps, staker_addr)?)
         }
         QueryMsg::GetWithdrawalDelay { strategies } => {
             let strategies_addr = validate_addresses(deps.api, &strategies)?;
@@ -911,6 +911,12 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&query_cumulative_withdrawals_queued(deps, staker_addr)?)
         }
     }
+}
+
+pub fn query_delegatable_shares(deps: Deps, staker: Addr) -> StdResult<DelegatableSharesResponse> {
+    let (strategies, shares) = get_delegatable_shares(deps, staker)?;
+
+    Ok(DelegatableSharesResponse { strategies, shares })
 }
 
 pub fn query_is_delegated(deps: Deps, staker: Addr) -> StdResult<DelegatedResponse> {
@@ -2283,9 +2289,9 @@ mod tests {
     fn test_get_delegatable_shares() {
         let (mut deps, env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
             instantiate_contract();
-
+    
         let staker = deps.api.addr_make("staker1");
-
+    
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart {
                 contract_addr,
@@ -2307,21 +2313,22 @@ mod tests {
                 request: to_json_binary(&query).unwrap(),
             }),
         });
-
+    
         let query_msg = QueryMsg::GetDelegatableShares {
             staker: staker.to_string(),
         };
+    
         let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-
-        let (strategies, shares): (Vec<Addr>, Vec<Uint128>) = from_json(res).unwrap();
-
-        assert_eq!(strategies.len(), 2);
-        assert_eq!(shares.len(), 2);
-        assert_eq!(strategies[0], deps.api.addr_make("strategy1"));
-        assert_eq!(shares[0], Uint128::new(100));
-        assert_eq!(strategies[1], deps.api.addr_make("strategy2"));
-        assert_eq!(shares[1], Uint128::new(200));
-    }
+    
+        let delegatable_shares: DelegatableSharesResponse = from_json(res).unwrap();
+    
+        assert_eq!(delegatable_shares.strategies.len(), 2);
+        assert_eq!(delegatable_shares.shares.len(), 2);
+        assert_eq!(delegatable_shares.strategies[0], deps.api.addr_make("strategy1"));
+        assert_eq!(delegatable_shares.shares[0], Uint128::new(100));
+        assert_eq!(delegatable_shares.strategies[1], deps.api.addr_make("strategy2"));
+        assert_eq!(delegatable_shares.shares[1], Uint128::new(200));
+    }    
 
     fn generate_osmosis_public_key_from_private_key(
         private_key_hex: &str,
