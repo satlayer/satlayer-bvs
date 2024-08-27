@@ -1,8 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
 
-use crate::state::StrategyState;
-
 #[cw_serde]
 pub struct SharesResponse {
     pub total_shares: Uint128,
@@ -46,9 +44,4 @@ pub struct ExplanationResponse {
 #[cw_serde]
 pub struct UnderlyingToSharesResponse {
     pub share_to_send: Uint128,
-}
-
-#[cw_serde]
-pub struct StrategeStateResponse {
-    pub state: StrategyState,
 }

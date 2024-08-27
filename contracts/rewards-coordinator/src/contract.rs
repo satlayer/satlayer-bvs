@@ -24,7 +24,7 @@ use crate::{
 };
 use common::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use common::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
-use common::strategy::QueryMsg as StrategyManagerQueryMsg;
+use common::strategy::{QueryMsg as StrategyManagerQueryMsg, StrategyWhitelistedResponse};
 use cosmwasm_std::{
     entry_point, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, HexBinary,
     MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg,
@@ -896,14 +896,14 @@ fn validate_rewards_submission(
     for strategy_multiplier in &submission.strategies_and_multipliers {
         let strategy = &strategy_multiplier.strategy;
 
-        let is_strategy_whitelisted: bool = deps.querier.query_wasm_smart(
+        let response: StrategyWhitelistedResponse = deps.querier.query_wasm_smart(
             strategy_manager.clone(),
             &StrategyManagerQueryMsg::IsStrategyWhitelisted {
                 strategy: strategy.to_string(),
             },
         )?;
 
-        if !is_strategy_whitelisted {
+        if !response.is_whitelisted {
             return Err(ContractError::InvaildStrategyConsidered {});
         }
 
@@ -1377,9 +1377,15 @@ mod tests {
                 match msg {
                     StrategyManagerQueryMsg::IsStrategyWhitelisted { strategy } => {
                         if strategy == deps.api.addr_make("strategy1").to_string() {
-                            SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap()))
+                            SystemResult::Ok(ContractResult::Ok(
+                                to_json_binary(&StrategyWhitelistedResponse { is_whitelisted: true })
+                                    .unwrap(),
+                            ))
                         } else {
-                            SystemResult::Ok(ContractResult::Ok(to_json_binary(&false).unwrap()))
+                            SystemResult::Ok(ContractResult::Ok(
+                                to_json_binary(&StrategyWhitelistedResponse { is_whitelisted: false })
+                                    .unwrap(),
+                            ))
                         }
                     }
                     _ => SystemResult::Err(SystemError::InvalidRequest {
@@ -1481,11 +1487,12 @@ mod tests {
                 let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
                 match msg {
                     StrategyManagerQueryMsg::IsStrategyWhitelisted { strategy } => {
-                        if strategy == deps.api.addr_make("strategy1").to_string() {
-                            SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap()))
+                        let response = if strategy == deps.api.addr_make("strategy1").to_string() {
+                            StrategyWhitelistedResponse { is_whitelisted: true }
                         } else {
-                            SystemResult::Ok(ContractResult::Ok(to_json_binary(&false).unwrap()))
-                        }
+                            StrategyWhitelistedResponse { is_whitelisted: false }
+                        };
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
                     }
                     _ => SystemResult::Err(SystemError::InvalidRequest {
                         error: "Unhandled request".to_string(),
@@ -1497,7 +1504,7 @@ mod tests {
                 error: "Unhandled request".to_string(),
                 request: to_json_binary(&query).unwrap(),
             }),
-        });
+        });        
     
         let msg = ExecuteMsg::CreateAvsRewardsSubmission {
             rewards_submissions: submission,
@@ -1566,11 +1573,12 @@ mod tests {
                 let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
                 match msg {
                     StrategyManagerQueryMsg::IsStrategyWhitelisted { strategy } => {
-                        if strategy == deps.api.addr_make("strategy1").to_string() {
-                            SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap()))
+                        let response = if strategy == deps.api.addr_make("strategy1").to_string() {
+                            StrategyWhitelistedResponse { is_whitelisted: true }
                         } else {
-                            SystemResult::Ok(ContractResult::Ok(to_json_binary(&false).unwrap()))
-                        }
+                            StrategyWhitelistedResponse { is_whitelisted: false }
+                        };
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
                     }
                     _ => SystemResult::Err(SystemError::InvalidRequest {
                         error: "Unhandled request".to_string(),
@@ -1582,7 +1590,7 @@ mod tests {
                 error: "Unhandled request".to_string(),
                 request: to_json_binary(&query).unwrap(),
             }),
-        });
+        });        
 
         let msg_set_submitter = ExecuteMsg::SetRewardsForAllSubmitter {
             submitter: deps.api.addr_make("submitter").to_string(),

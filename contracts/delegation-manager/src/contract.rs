@@ -6,9 +6,10 @@ use crate::{
     },
     query::{
         CumulativeWithdrawalsQueuedResponse, CurrentStakerDelegationDigestHashResponse,
-        DelegatedResponse, DelegationApproverResponse, OperatorDetailsResponse, OperatorResponse,
-        OperatorSharesResponse, OperatorStakersResponse, StakerNonceResponse,
-        StakerOptOutWindowBlocksResponse, StakerShares, WithdrawalDelayResponse, DelegatableSharesResponse
+        DelegatableSharesResponse, DelegatedResponse, DelegationApproverResponse,
+        OperatorDetailsResponse, OperatorResponse, OperatorSharesResponse, OperatorStakersResponse,
+        StakerNonceResponse, StakerOptOutWindowBlocksResponse, StakerShares,
+        WithdrawalDelayResponse,
     },
     state::{
         DelegationManagerState, CUMULATIVE_WITHDRAWALS_QUEUED, DELEGATED_TO,
@@ -24,7 +25,8 @@ use crate::{
     },
 };
 use common::strategy::{
-    ExecuteMsg as StrategyManagerExecuteMsg, QueryMsg as StrategyManagerQueryMsg,
+    DepositsResponse, ExecuteMsg as StrategyManagerExecuteMsg, QueryMsg as StrategyManagerQueryMsg,
+    ThirdPartyTransfersForbiddenResponse,
 };
 use cosmwasm_std::{
     entry_point, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo,
@@ -628,9 +630,9 @@ pub fn get_delegatable_shares(deps: Deps, staker: Addr) -> StdResult<(Vec<Addr>,
     }
     .into();
 
-    let response: (Vec<Addr>, Vec<Uint128>) = deps.querier.query(&query)?;
+    let response: DepositsResponse = deps.querier.query(&query)?;
 
-    Ok(response)
+    Ok((response.strategies, response.shares))
 }
 
 pub fn increase_delegated_shares(
@@ -1475,12 +1477,15 @@ fn remove_shares_and_queue_withdrawal(
             )?;
         }
 
-        let forbidden: bool = deps.querier.query_wasm_smart(
-            state.strategy_manager.clone(),
-            &StrategyManagerQueryMsg::IsThirdPartyTransfersForbidden {
-                strategy: strategy.clone(),
-            },
-        )?;
+        let forbidden_response: ThirdPartyTransfersForbiddenResponse =
+            deps.querier.query_wasm_smart(
+                state.strategy_manager.clone(),
+                &StrategyManagerQueryMsg::IsThirdPartyTransfersForbidden {
+                    strategy: strategy.clone(),
+                },
+            )?;
+
+        let forbidden = forbidden_response.is_forbidden;
 
         if staker != withdrawer && forbidden {
             return Err(ContractError::MustBeSameAddress {});
@@ -1527,10 +1532,10 @@ fn remove_shares_and_queue_withdrawal(
             .add_attribute("withdrawer", withdrawer.to_string()),
     );
 
-    println!(
-        "Withdrawal queued with root: {}",
-        withdrawal_root.to_base64()
-    );
+    // println!(
+    //     "Withdrawal queued with root: {}",
+    //     withdrawal_root.to_base64()
+    // );
 
     Ok(response)
 }
@@ -2289,22 +2294,22 @@ mod tests {
     fn test_get_delegatable_shares() {
         let (mut deps, env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
             instantiate_contract();
-    
+
         let staker = deps.api.addr_make("staker1");
-    
+
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart {
                 contract_addr,
                 msg: _,
             } if *contract_addr == deps.api.addr_make("strategy_manager").to_string() => {
                 SystemResult::Ok(ContractResult::Ok(
-                    to_json_binary(&(
-                        vec![
+                    to_json_binary(&DepositsResponse {
+                        strategies: vec![
                             deps.api.addr_make("strategy1"),
                             deps.api.addr_make("strategy2"),
                         ],
-                        vec![Uint128::new(100), Uint128::new(200)],
-                    ))
+                        shares: vec![Uint128::new(100), Uint128::new(200)],
+                    })
                     .unwrap(),
                 ))
             }
@@ -2313,22 +2318,28 @@ mod tests {
                 request: to_json_binary(&query).unwrap(),
             }),
         });
-    
+
         let query_msg = QueryMsg::GetDelegatableShares {
             staker: staker.to_string(),
         };
-    
+
         let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-    
+
         let delegatable_shares: DelegatableSharesResponse = from_json(res).unwrap();
-    
+
         assert_eq!(delegatable_shares.strategies.len(), 2);
         assert_eq!(delegatable_shares.shares.len(), 2);
-        assert_eq!(delegatable_shares.strategies[0], deps.api.addr_make("strategy1"));
+        assert_eq!(
+            delegatable_shares.strategies[0],
+            deps.api.addr_make("strategy1")
+        );
         assert_eq!(delegatable_shares.shares[0], Uint128::new(100));
-        assert_eq!(delegatable_shares.strategies[1], deps.api.addr_make("strategy2"));
+        assert_eq!(
+            delegatable_shares.strategies[1],
+            deps.api.addr_make("strategy2")
+        );
         assert_eq!(delegatable_shares.shares[1], Uint128::new(200));
-    }    
+    }
 
     fn generate_osmosis_public_key_from_private_key(
         private_key_hex: &str,
@@ -2442,13 +2453,13 @@ mod tests {
                 msg: _,
             } if *contract_addr == deps.api.addr_make("strategy_manager").to_string() => {
                 SystemResult::Ok(ContractResult::Ok(
-                    to_json_binary(&(
-                        vec![
+                    to_json_binary(&DepositsResponse {
+                        strategies: vec![
                             deps.api.addr_make("strategy1"),
                             deps.api.addr_make("strategy2"),
                         ],
-                        vec![Uint128::new(100), Uint128::new(200)],
-                    ))
+                        shares: vec![Uint128::new(100), Uint128::new(200)],
+                    })
                     .unwrap(),
                 ))
             }
@@ -2541,13 +2552,13 @@ mod tests {
                 msg: _,
             } if *contract_addr == deps.api.addr_make("strategy_manager").to_string() => {
                 SystemResult::Ok(ContractResult::Ok(
-                    to_json_binary(&(
-                        vec![
+                    to_json_binary(&DepositsResponse {
+                        strategies: vec![
                             deps.api.addr_make("strategy1"),
                             deps.api.addr_make("strategy2"),
                         ],
-                        vec![Uint128::new(100), Uint128::new(200)],
-                    ))
+                        shares: vec![Uint128::new(100), Uint128::new(200)],
+                    })
                     .unwrap(),
                 ))
             }
@@ -2620,13 +2631,13 @@ mod tests {
                 msg: _,
             } if *contract_addr == deps.api.addr_make("strategy_manager").to_string() => {
                 SystemResult::Ok(ContractResult::Ok(
-                    to_json_binary(&(
-                        vec![
+                    to_json_binary(&DepositsResponse {
+                        strategies: vec![
                             deps.api.addr_make("strategy1"),
                             deps.api.addr_make("strategy2"),
                         ],
-                        vec![Uint128::new(100), Uint128::new(200)],
-                    ))
+                        shares: vec![Uint128::new(100), Uint128::new(200)],
+                    })
                     .unwrap(),
                 ))
             }
@@ -2737,13 +2748,13 @@ mod tests {
                 msg: _,
             } if *contract_addr == deps.api.addr_make("strategy_manager").to_string() => {
                 SystemResult::Ok(ContractResult::Ok(
-                    to_json_binary(&(
-                        vec![
+                    to_json_binary(&DepositsResponse {
+                        strategies: vec![
                             deps.api.addr_make("strategy1"),
                             deps.api.addr_make("strategy2"),
                         ],
-                        vec![Uint128::new(100), Uint128::new(200)],
-                    ))
+                        shares: vec![Uint128::new(100), Uint128::new(200)],
+                    })
                     .unwrap(),
                 ))
             }
@@ -3243,11 +3254,34 @@ mod tests {
             .unwrap();
 
         deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart {
-                contract_addr,
-                msg: _,
-            } if *contract_addr == deps.api.addr_make("strategy_manager").to_string() => {
-                SystemResult::Ok(ContractResult::Ok(to_json_binary(&false).unwrap()))
+            WasmQuery::Smart { contract_addr, msg }
+                if *contract_addr == deps.api.addr_make("strategy_manager").to_string() =>
+            {
+                let query_msg: Result<StrategyManagerQueryMsg, _> = from_json(msg);
+                if let Ok(StrategyManagerQueryMsg::GetDeposits { staker: _ }) = query_msg {
+                    let simulated_response = DepositsResponse {
+                        strategies: vec![deps.api.addr_make("strategy1")],
+                        shares: vec![Uint128::new(100)],
+                    };
+                    SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(&simulated_response).unwrap(),
+                    ))
+                } else if let Ok(StrategyManagerQueryMsg::IsThirdPartyTransfersForbidden {
+                    strategy: _,
+                }) = query_msg
+                {
+                    SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(&ThirdPartyTransfersForbiddenResponse {
+                            is_forbidden: false,
+                        })
+                        .unwrap(),
+                    ))
+                } else {
+                    SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    })
+                }
             }
             _ => SystemResult::Err(SystemError::InvalidRequest {
                 error: "Unhandled request".to_string(),
@@ -3356,10 +3390,10 @@ mod tests {
             {
                 let query_msg: Result<StrategyManagerQueryMsg, _> = from_json(msg);
                 if let Ok(StrategyManagerQueryMsg::GetDeposits { staker: _ }) = query_msg {
-                    let simulated_response: (Vec<Addr>, Vec<Uint128>) = (
-                        vec![deps.api.addr_make("strategy1")],
-                        vec![Uint128::new(100)],
-                    );
+                    let simulated_response = DepositsResponse {
+                        strategies: vec![deps.api.addr_make("strategy1")],
+                        shares: vec![Uint128::new(100)],
+                    };
                     SystemResult::Ok(ContractResult::Ok(
                         to_json_binary(&simulated_response).unwrap(),
                     ))
@@ -3367,7 +3401,12 @@ mod tests {
                     strategy: _,
                 }) = query_msg
                 {
-                    SystemResult::Ok(ContractResult::Ok(to_json_binary(&false).unwrap()))
+                    SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(&ThirdPartyTransfersForbiddenResponse {
+                            is_forbidden: false,
+                        })
+                        .unwrap(),
+                    ))
                 } else {
                     SystemResult::Err(SystemError::InvalidRequest {
                         error: "Unhandled request".to_string(),
@@ -3521,10 +3560,24 @@ mod tests {
                 if *contract_addr == deps.api.addr_make("strategy_manager").to_string() =>
             {
                 let query_msg: Result<StrategyManagerQueryMsg, _> = from_json(msg);
-                if let Ok(StrategyManagerQueryMsg::IsThirdPartyTransfersForbidden { strategy: _ }) =
-                    query_msg
+                if let Ok(StrategyManagerQueryMsg::GetDeposits { staker: _ }) = query_msg {
+                    let simulated_response = DepositsResponse {
+                        strategies: vec![deps.api.addr_make("strategy1")],
+                        shares: vec![Uint128::new(100)],
+                    };
+                    SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(&simulated_response).unwrap(),
+                    ))
+                } else if let Ok(StrategyManagerQueryMsg::IsThirdPartyTransfersForbidden {
+                    strategy: _,
+                }) = query_msg
                 {
-                    SystemResult::Ok(ContractResult::Ok(to_json_binary(&false).unwrap()))
+                    SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(&ThirdPartyTransfersForbiddenResponse {
+                            is_forbidden: false,
+                        })
+                        .unwrap(),
+                    ))
                 } else {
                     SystemResult::Err(SystemError::InvalidRequest {
                         error: "Unhandled request".to_string(),

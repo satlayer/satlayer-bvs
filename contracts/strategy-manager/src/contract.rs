@@ -768,14 +768,13 @@ fn deposit_into_strategy_internal(
         funds: vec![],
     });
 
-    let strategy_state: StrategyState =
-        deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-            contract_addr: strategy.to_string(),
-            msg: to_json_binary(&StrategyQueryMsg::GetStrategyState {})?,
-        }))?;
+    let state: StrategyState = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: strategy.to_string(),
+        msg: to_json_binary(&StrategyQueryMsg::GetStrategyState {})?,
+    }))?;
 
-    let balance = token_balance(&deps.querier, &strategy_state.underlying_token, &strategy)?;
-    let new_shares = calculate_new_shares(strategy_state.total_shares, balance, amount)?;
+    let balance = token_balance(&deps.querier, &state.underlying_token, &strategy)?;
+    let new_shares = calculate_new_shares(state.total_shares, balance, amount)?;
 
     if new_shares.is_zero() {
         return Err(ContractError::ZeroNewShares {});
