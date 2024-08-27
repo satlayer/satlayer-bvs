@@ -18,21 +18,6 @@ pub enum QueryMsg {
 
     #[returns(bool)]
     IsOperator { operator: Addr },
-
-    #[returns(u64)]
-    StakerOptOutWindowBlocks { operator: Addr },
-
-    #[returns(Vec<Uint128>)]
-    GetOperatorShares {
-        operator: Addr,
-        strategies: Vec<Addr>,
-    },
-
-    #[returns((Vec<Addr>, Vec<Uint128>))]
-    GetDelegatableShares { staker: Addr },
-
-    #[returns(Vec<u64>)]
-    GetWithdrawalDelay { strategies: Vec<Addr> },
 }
 
 #[cw_serde]

@@ -133,7 +133,7 @@ mod tests {
         };
 
         let res = query(deps.as_ref(), mock_env(), query_msg);
-        assert_eq!(true, res.is_err());
+        assert!(res.is_err());
     }
 
     fn _create_set_msg(contract_addr: String, key: String, value: i64) -> StdResult<CosmosMsg> {

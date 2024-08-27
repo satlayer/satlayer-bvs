@@ -1,44 +1,8 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Binary, Uint128, Uint64};
-
-#[cw_serde]
-pub struct InstantiateMsg {
-    pub delegation_manager: Addr,
-    pub slasher: Addr,
-    pub initial_strategy_whitelister: Addr,
-    pub initial_owner: Addr,
-}
+use cosmwasm_std::{Addr, Uint128};
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    AddStrategiesToWhitelist {
-        strategies: Vec<Addr>,
-        third_party_transfers_forbidden_values: Vec<bool>,
-    },
-    RemoveStrategiesFromWhitelist {
-        strategies: Vec<Addr>,
-    },
-    SetStrategyWhitelister {
-        new_strategy_whitelister: Addr,
-    },
-    DepositIntoStrategy {
-        strategy: Addr,
-        token: Addr,
-        amount: Uint128,
-    },
-    SetThirdPartyTransfersForbidden {
-        strategy: Addr,
-        value: bool,
-    },
-    DepositIntoStrategyWithSignature {
-        strategy: Addr,
-        token: Addr,
-        amount: Uint128,
-        staker: Addr,
-        public_key: Binary,
-        expiry: Uint64,
-        signature: Binary,
-    },
     RemoveShares {
         staker: Addr,
         strategy: Addr,
@@ -61,15 +25,28 @@ pub enum ExecuteMsg {
 #[cw_serde]
 pub enum QueryMsg {
     GetDeposits { staker: Addr },
-    StakerStrategyListLength { staker: Addr },
     GetStakerStrategyShares { staker: Addr, strategy: Addr },
     IsThirdPartyTransfersForbidden { strategy: Addr },
     IsStrategyWhitelisted { strategy: String },
 }
 
 #[cw_serde]
-pub struct SignatureWithSaltAndExpiry {
-    pub signature: Binary,
-    pub salt: Binary,
-    pub expiry: Uint64,
+pub struct DepositsResponse {
+    pub strategies: Vec<Addr>,
+    pub shares: Vec<Uint128>,
+}
+
+#[cw_serde]
+pub struct ThirdPartyTransfersForbiddenResponse {
+    pub is_forbidden: bool,
+}
+
+#[cw_serde]
+pub struct StakerStrategySharesResponse {
+    pub shares: Uint128,
+}
+
+#[cw_serde]
+pub struct StrategyWhitelistedResponse {
+    pub is_whitelisted: bool,
 }

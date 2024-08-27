@@ -1,8 +1,9 @@
 use crate::query::{
-    ExplanationResponse, SharesResponse, SharesToUnderlyingResponse, StrategeStateResponse,
-    StrategyManagerResponse, TotalSharesResponse, UnderlyingToShareResponse,
-    UnderlyingToSharesResponse, UnderlyingTokenResponse, UserUnderlyingResponse,
+    ExplanationResponse, SharesResponse, SharesToUnderlyingResponse, StrategyManagerResponse,
+    TotalSharesResponse, UnderlyingToShareResponse, UnderlyingToSharesResponse,
+    UnderlyingTokenResponse, UserUnderlyingResponse,
 };
+use crate::state::StrategyState;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 
@@ -68,7 +69,7 @@ pub enum QueryMsg {
     #[returns(UnderlyingToSharesResponse)]
     UnderlyingToShares { amount_underlying: Uint128 },
 
-    #[returns(StrategeStateResponse)]
+    #[returns(StrategyState)]
     GetStrategyState {},
 }
 

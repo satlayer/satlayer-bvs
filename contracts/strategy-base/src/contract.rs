@@ -2,15 +2,15 @@ use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{
-        ExplanationResponse, SharesResponse, SharesToUnderlyingResponse, StrategeStateResponse,
-        StrategyManagerResponse, TotalSharesResponse, UnderlyingToShareResponse,
-        UnderlyingToSharesResponse, UnderlyingTokenResponse, UserUnderlyingResponse,
+        ExplanationResponse, SharesResponse, SharesToUnderlyingResponse, StrategyManagerResponse,
+        TotalSharesResponse, UnderlyingToShareResponse, UnderlyingToSharesResponse,
+        UnderlyingTokenResponse, UserUnderlyingResponse,
     },
     state::{StrategyState, OWNER, STRATEGY_STATE},
 };
 use common::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use common::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
-use common::strategy::QueryMsg as StrategyManagerQueryMsg;
+use common::strategy::{QueryMsg as StrategyManagerQueryMsg, StakerStrategySharesResponse};
 use cosmwasm_std::{
     entry_point, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo,
     QuerierWrapper, QueryRequest, Response, StdResult, Uint128, WasmMsg, WasmQuery,
@@ -207,16 +207,17 @@ pub fn withdraw(
 pub fn shares(deps: Deps, user: Addr, strategy: Addr) -> StdResult<SharesResponse> {
     let state = STRATEGY_STATE.load(deps.storage)?;
 
-    let shares: Uint128 = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: state.strategy_manager.to_string(),
-        msg: to_json_binary(&StrategyManagerQueryMsg::GetStakerStrategyShares {
-            staker: user.clone(),
-            strategy,
-        })?,
-    }))?;
+    let response: StakerStrategySharesResponse =
+        deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+            contract_addr: state.strategy_manager.to_string(),
+            msg: to_json_binary(&StrategyManagerQueryMsg::GetStakerStrategyShares {
+                staker: user.clone(),
+                strategy,
+            })?,
+        }))?;
 
     Ok(SharesResponse {
-        total_shares: shares,
+        total_shares: response.shares,
     })
 }
 
@@ -266,7 +267,8 @@ pub fn underlying_to_shares(
 
 pub fn user_underlying_view(deps: Deps, env: Env, user: Addr) -> StdResult<Uint128> {
     let strategy = env.contract.address.clone();
-    let user_shares = shares(deps, user, strategy.clone())?.total_shares;
+    let shares_response = shares(deps, user, strategy.clone())?;
+    let user_shares = shares_response.total_shares;
 
     let amount_to_send = shares_to_underlying_view(deps, env, user_shares)?;
 
@@ -350,9 +352,9 @@ fn query_explanation() -> StdResult<ExplanationResponse> {
     })
 }
 
-pub fn query_strategy_state(deps: Deps) -> StdResult<StrategeStateResponse> {
+pub fn query_strategy_state(deps: Deps) -> StdResult<StrategyState> {
     let state = STRATEGY_STATE.load(deps.storage)?;
-    Ok(StrategeStateResponse { state })
+    Ok(state)
 }
 
 pub fn query_shares_to_underlying_view(
@@ -993,7 +995,10 @@ mod tests {
                                 } => {
                                     if staker == user_address && strategy == contract_address {
                                         return SystemResult::Ok(ContractResult::Ok(
-                                            to_json_binary(&Uint128::new(1_000)).unwrap(),
+                                            to_json_binary(&StakerStrategySharesResponse {
+                                                shares: Uint128::new(1_000),
+                                            })
+                                            .unwrap(),
                                         ));
                                     }
                                 }
@@ -1064,7 +1069,10 @@ mod tests {
                                 && strategy == contract_address_clone
                             {
                                 return SystemResult::Ok(ContractResult::Ok(
-                                    to_json_binary(&Uint128::new(1_000)).unwrap(),
+                                    to_json_binary(&StakerStrategySharesResponse {
+                                        shares: Uint128::new(1_000),
+                                    })
+                                    .unwrap(),
                                 ));
                             }
                         }
