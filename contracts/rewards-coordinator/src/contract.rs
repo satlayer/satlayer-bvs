@@ -19,7 +19,7 @@ use crate::{
     utils::{
         calculate_domain_separator, calculate_earner_leaf_hash, calculate_rewards_submission_hash,
         calculate_token_leaf_hash, merkleize_sha256, verify_inclusion_sha256, EarnerTreeMerkleLeaf,
-        RewardsMerkleClaim, RewardsSubmission, TokenTreeMerkleLeaf
+        RewardsMerkleClaim, RewardsSubmission, TokenTreeMerkleLeaf,
     },
 };
 use common::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
@@ -896,14 +896,16 @@ fn validate_rewards_submission(
     for strategy_multiplier in &submission.strategies_and_multipliers {
         let strategy = &strategy_multiplier.strategy;
 
-        let response: StrategyWhitelistedResponse = deps.querier.query_wasm_smart(
+        let whitelisted_response: StrategyWhitelistedResponse = deps.querier.query_wasm_smart(
             strategy_manager.clone(),
             &StrategyManagerQueryMsg::IsStrategyWhitelisted {
                 strategy: strategy.to_string(),
             },
         )?;
 
-        if !response.is_whitelisted {
+        let whitelisted = whitelisted_response.is_whitelisted;
+
+        if !whitelisted {
             return Err(ContractError::InvaildStrategyConsidered {});
         }
 
@@ -1070,17 +1072,19 @@ pub fn migrate(
 mod tests {
     use super::*;
     use crate::msg::DistributionRoot;
-    use crate::utils::{sha256, StrategyAndMultiplier, ExecuteRewardsMerkleClaim, ExecuteEarnerTreeMerkleLeaf};
+    use crate::utils::{
+        sha256, ExecuteEarnerTreeMerkleLeaf, ExecuteRewardsMerkleClaim, StrategyAndMultiplier,
+    };
+    use base64::{engine::general_purpose, Engine as _};
+    use common::roles::{PAUSER, UNPAUSER};
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
     use cosmwasm_std::{
-        from_json, Addr, Binary, ContractResult, OwnedDeps, SystemError, SystemResult, Timestamp,
-        WasmQuery, attr
+        attr, from_json, Addr, Binary, ContractResult, OwnedDeps, SystemError, SystemResult,
+        Timestamp, WasmQuery,
     };
-    use base64::{engine::general_purpose, Engine as _};
     use cw2::get_contract_version;
-    use common::roles::{PAUSER, UNPAUSER};
 
     type OwnedDepsType = OwnedDeps<MockStorage, MockApi, MockQuerier>;
 
@@ -1378,13 +1382,17 @@ mod tests {
                     StrategyManagerQueryMsg::IsStrategyWhitelisted { strategy } => {
                         if strategy == deps.api.addr_make("strategy1").to_string() {
                             SystemResult::Ok(ContractResult::Ok(
-                                to_json_binary(&StrategyWhitelistedResponse { is_whitelisted: true })
-                                    .unwrap(),
+                                to_json_binary(&StrategyWhitelistedResponse {
+                                    is_whitelisted: true,
+                                })
+                                .unwrap(),
                             ))
                         } else {
                             SystemResult::Ok(ContractResult::Ok(
-                                to_json_binary(&StrategyWhitelistedResponse { is_whitelisted: false })
-                                    .unwrap(),
+                                to_json_binary(&StrategyWhitelistedResponse {
+                                    is_whitelisted: false,
+                                })
+                                .unwrap(),
                             ))
                         }
                     }
@@ -1461,14 +1469,14 @@ mod tests {
             _delegation_manager_info,
             _rewards_updater_info,
         ) = instantiate_contract();
-                    
+
         let calc_interval = 86_400; // 1 day
-    
+
         let block_time = mock_env().block.time.seconds();
-    
+
         let aligned_start_time = block_time - (block_time % calc_interval);
         let aligned_start_timestamp = Timestamp::from_seconds(aligned_start_time);
-    
+
         let submission = vec![RewardsSubmission {
             strategies_and_multipliers: vec![StrategyAndMultiplier {
                 strategy: deps.api.addr_make("strategy1"),
@@ -1479,7 +1487,7 @@ mod tests {
             start_timestamp: aligned_start_timestamp,
             token: deps.api.addr_make("token"),
         }];
-    
+
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart { contract_addr, msg }
                 if Addr::unchecked(contract_addr) == deps.api.addr_make("strategy_manager") =>
@@ -1488,9 +1496,13 @@ mod tests {
                 match msg {
                     StrategyManagerQueryMsg::IsStrategyWhitelisted { strategy } => {
                         let response = if strategy == deps.api.addr_make("strategy1").to_string() {
-                            StrategyWhitelistedResponse { is_whitelisted: true }
+                            StrategyWhitelistedResponse {
+                                is_whitelisted: true,
+                            }
                         } else {
-                            StrategyWhitelistedResponse { is_whitelisted: false }
+                            StrategyWhitelistedResponse {
+                                is_whitelisted: false,
+                            }
                         };
                         SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
                     }
@@ -1504,24 +1516,27 @@ mod tests {
                 error: "Unhandled request".to_string(),
                 request: to_json_binary(&query).unwrap(),
             }),
-        });        
-    
+        });
+
         let msg = ExecuteMsg::CreateAvsRewardsSubmission {
             rewards_submissions: submission,
         };
-        
+
         let result = execute(deps.as_mut(), env.clone(), owner_info.clone(), msg);
-    
+
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(response.messages.len(), 1);
         assert_eq!(response.events.len(), 1);
-    
+
         let event = response.events.first().unwrap();
         assert_eq!(event.ty, "AVSRewardsSubmissionCreated");
         assert_eq!(event.attributes.len(), 5);
         assert_eq!(event.attributes[0].key, "sender");
-        assert_eq!(event.attributes[0].value, deps.api.addr_make("initial_owner").to_string());
+        assert_eq!(
+            event.attributes[0].value,
+            deps.api.addr_make("initial_owner").to_string()
+        );
         assert_eq!(event.attributes[1].key, "nonce");
         assert_eq!(event.attributes[1].value, "0");
         assert_eq!(event.attributes[2].key, "rewards_submission_hash");
@@ -1530,10 +1545,13 @@ mod tests {
             "FWMKFRHYNewOAaP1Ol9hEq89dlsUbU9m3PehWbAwIi8="
         );
         assert_eq!(event.attributes[3].key, "token");
-        assert_eq!(event.attributes[3].value, deps.api.addr_make("token").to_string());
+        assert_eq!(
+            event.attributes[3].value,
+            deps.api.addr_make("token").to_string()
+        );
         assert_eq!(event.attributes[4].key, "amount");
         assert_eq!(event.attributes[4].value, "100");
-    }    
+    }
 
     #[test]
     fn test_create_rewards_for_all_submission() {
@@ -1547,11 +1565,11 @@ mod tests {
             _delegation_manager_info,
             _rewards_updater_info,
         ) = instantiate_contract();
-                    
+
         let calc_interval = 86_400; // 1 day
-    
+
         let block_time = mock_env().block.time.seconds();
-    
+
         let aligned_start_time = block_time - (block_time % calc_interval);
         let aligned_start_timestamp = Timestamp::from_seconds(aligned_start_time);
 
@@ -1574,9 +1592,13 @@ mod tests {
                 match msg {
                     StrategyManagerQueryMsg::IsStrategyWhitelisted { strategy } => {
                         let response = if strategy == deps.api.addr_make("strategy1").to_string() {
-                            StrategyWhitelistedResponse { is_whitelisted: true }
+                            StrategyWhitelistedResponse {
+                                is_whitelisted: true,
+                            }
                         } else {
-                            StrategyWhitelistedResponse { is_whitelisted: false }
+                            StrategyWhitelistedResponse {
+                                is_whitelisted: false,
+                            }
                         };
                         SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
                     }
@@ -1590,14 +1612,19 @@ mod tests {
                 error: "Unhandled request".to_string(),
                 request: to_json_binary(&query).unwrap(),
             }),
-        });        
+        });
 
         let msg_set_submitter = ExecuteMsg::SetRewardsForAllSubmitter {
             submitter: deps.api.addr_make("submitter").to_string(),
-            new_value: true
+            new_value: true,
         };
 
-        let _ = execute(deps.as_mut(), env.clone(), owner_info.clone(), msg_set_submitter);
+        let _ = execute(
+            deps.as_mut(),
+            env.clone(),
+            owner_info.clone(),
+            msg_set_submitter,
+        );
 
         let msg = ExecuteMsg::CreateRewardsForAllSubmission {
             rewards_submissions: submission,
@@ -1610,7 +1637,7 @@ mod tests {
         if let Err(err) = &result {
             println!("Error: {:?}", err);
         }
-    
+
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(response.messages.len(), 1);
@@ -1620,7 +1647,10 @@ mod tests {
         assert_eq!(event.ty, "RewardsSubmissionForAllCreated");
         assert_eq!(event.attributes.len(), 5);
         assert_eq!(event.attributes[0].key, "sender");
-        assert_eq!(event.attributes[0].value, deps.api.addr_make("submitter").to_string());
+        assert_eq!(
+            event.attributes[0].value,
+            deps.api.addr_make("submitter").to_string()
+        );
         assert_eq!(event.attributes[1].key, "nonce");
         assert_eq!(event.attributes[1].value, "0");
         assert_eq!(event.attributes[2].key, "rewards_submission_hash");
@@ -1629,7 +1659,10 @@ mod tests {
             "6iTJDz8b/ym1GayJcb5UVJB1h+3Pab9z07oOboL8kfU="
         );
         assert_eq!(event.attributes[3].key, "token");
-        assert_eq!(event.attributes[3].value, deps.api.addr_make("token").to_string());
+        assert_eq!(
+            event.attributes[3].value,
+            deps.api.addr_make("token").to_string()
+        );
         assert_eq!(event.attributes[4].key, "amount");
         assert_eq!(event.attributes[4].value, "100");
     }
@@ -1828,7 +1861,7 @@ mod tests {
 
         let new_updater = deps.api.addr_make("new_updater");
 
-        let msg =  ExecuteMsg::SetRewardsUpdater {
+        let msg = ExecuteMsg::SetRewardsUpdater {
             new_updater: new_updater.to_string(),
         };
 
@@ -1886,13 +1919,12 @@ mod tests {
             .save(&mut deps.storage, submitter.clone(), &initial_value)
             .unwrap();
 
-        let msg = ExecuteMsg::SetRewardsForAllSubmitter { 
+        let msg = ExecuteMsg::SetRewardsForAllSubmitter {
             submitter: submitter.to_string(),
-            new_value: true
+            new_value: true,
         };
 
-        let result =
-            execute(deps.as_mut(), env.clone(), owner_info, msg.clone());
+        let result = execute(deps.as_mut(), env.clone(), owner_info, msg.clone());
 
         assert!(result.is_ok());
 
@@ -1916,9 +1948,8 @@ mod tests {
         assert!(stored_value);
 
         let unauthorized_info = message_info(&Addr::unchecked("not_owner"), &[]);
-        
-        let result =
-            execute(deps.as_mut(), env, unauthorized_info, msg);
+
+        let result = execute(deps.as_mut(), env, unauthorized_info, msg);
 
         assert!(result.is_err());
 
@@ -1995,12 +2026,11 @@ mod tests {
 
         let new_commission_bips = 150;
 
-        let msg = ExecuteMsg::SetGlobalOperatorCommission { 
+        let msg = ExecuteMsg::SetGlobalOperatorCommission {
             new_commission_bips,
-         };
+        };
 
-        let result =
-            execute(deps.as_mut(), env.clone(), owner_info.clone(), msg.clone());
+        let result = execute(deps.as_mut(), env.clone(), owner_info.clone(), msg.clone());
 
         assert!(result.is_ok());
 
@@ -2023,8 +2053,7 @@ mod tests {
 
         let info_not_owner = message_info(&Addr::unchecked("info_not_owner"), &[]);
 
-        let result =
-            execute(deps.as_mut(), env, info_not_owner, msg);
+        let result = execute(deps.as_mut(), env, info_not_owner, msg);
         assert!(result.is_err());
 
         if let Err(err) = result {
@@ -2045,9 +2074,9 @@ mod tests {
             _rewards_updater_info,
         ) = instantiate_contract();
 
-        let msg = QueryMsg::CalculateTokenLeafHash { 
-            token: deps.api.addr_make("token_a").to_string(), 
-            cumulative_earnings: Uint128::new(100)
+        let msg = QueryMsg::CalculateTokenLeafHash {
+            token: deps.api.addr_make("token_a").to_string(),
+            cumulative_earnings: Uint128::new(100),
         };
 
         let result = query(deps.as_ref(), env, msg);
@@ -2061,60 +2090,59 @@ mod tests {
             token: Addr::unchecked("token_a"),
             cumulative_earnings: Uint128::new(100),
         };
-    
+
         let leaf_b = TokenTreeMerkleLeaf {
             token: Addr::unchecked("token_b"),
             cumulative_earnings: Uint128::new(200),
         };
-    
+
         let leaf_c = TokenTreeMerkleLeaf {
             token: Addr::unchecked("token_c"),
             cumulative_earnings: Uint128::new(300),
         };
-    
+
         let leaf_d = TokenTreeMerkleLeaf {
             token: Addr::unchecked("token_d"),
             cumulative_earnings: Uint128::new(400),
         };
-    
+
         let hash_a = calculate_token_leaf_hash(&leaf_a);
         let hash_b = calculate_token_leaf_hash(&leaf_b);
         let hash_c = calculate_token_leaf_hash(&leaf_c);
         let hash_d = calculate_token_leaf_hash(&leaf_d);
-    
+
         let leaves = [
             Binary::from(hash_a.clone()),
             Binary::from(hash_b.clone()),
             Binary::from(hash_c.clone()),
             Binary::from(hash_d.clone()),
         ];
-    
-        let msg = QueryMsg::MerkleizeLeaves { 
+
+        let msg = QueryMsg::MerkleizeLeaves {
             leaves: leaves.iter().map(|leaf| leaf.to_base64()).collect(),
         };
-    
+
         let deps = mock_dependencies();
         let env = mock_env();
-    
-        let res: MerkleizeLeavesResponse = from_json(
-            query(deps.as_ref(), env, msg).unwrap(),
-        ).unwrap();
-    
+
+        let res: MerkleizeLeavesResponse =
+            from_json(query(deps.as_ref(), env, msg).unwrap()).unwrap();
+
         let merkle_root = res.root_hash_binary.to_vec();
-    
+
         // Expected parent hash & Expected root hash
         let leaves_ab = vec![hash_a.clone(), hash_b.clone()];
         let parent_ab = merkleize_sha256(leaves_ab.clone());
-    
+
         let leaves_cd = vec![hash_c.clone(), hash_d.clone()];
         let parent_cd = merkleize_sha256(leaves_cd.clone());
-    
+
         let parent_hash = vec![parent_ab.clone(), parent_cd.clone()];
         let expected_root_hash = merkleize_sha256(parent_hash.clone());
-    
+
         assert!(!merkle_root.is_empty(), "Merkle root should not be empty");
         assert_eq!(merkle_root, expected_root_hash);
-    
+
         assert_eq!(
             parent_ab,
             sha256(&[hash_a.as_slice(), hash_b.as_slice()].concat()),
@@ -2125,7 +2153,7 @@ mod tests {
             sha256(&[hash_c.as_slice(), hash_d.as_slice()].concat()),
             "Parent CD hash is incorrect"
         );
-    
+
         println!("Hash A: {:?}", hash_a);
         println!("Hash B: {:?}", hash_b);
         println!("Parent AB: {:?}", parent_ab);
@@ -2133,7 +2161,7 @@ mod tests {
         println!("Hash D: {:?}", hash_d);
         println!("Parent CD: {:?}", parent_cd);
         println!("Merkle Root: {:?}", merkle_root);
-    }    
+    }
 
     #[test]
     fn test_earner_leaf_merkle_tree_construction() {
@@ -2934,28 +2962,33 @@ mod tests {
             _delegation_manager_info,
             rewards_updater_info,
         ) = instantiate_contract();
-    
+
         CURR_REWARDS_CALCULATION_END_TIMESTAMP
             .save(&mut deps.storage, &1000)
             .unwrap();
         ACTIVATION_DELAY.save(&mut deps.storage, &60u32).unwrap();
-    
+
         let root = Binary::from(b"valid_root".to_vec());
         let root_base64 = root.to_base64();
         let rewards_calculation_end_timestamp = 1100;
-    
+
         let msg = ExecuteMsg::SubmitRoot {
             root: root_base64.clone(),
             rewards_calculation_end_timestamp,
         };
-    
-        let result = execute(deps.as_mut(), env.clone(), rewards_updater_info.clone(), msg);
-    
+
+        let result = execute(
+            deps.as_mut(),
+            env.clone(),
+            rewards_updater_info.clone(),
+            msg,
+        );
+
         assert!(result.is_ok());
-    
+
         let response = result.unwrap();
         assert_eq!(response.events.len(), 1);
-    
+
         let event = response.events.first().unwrap();
         assert_eq!(event.ty, "DistributionRootSubmitted");
         assert_eq!(event.attributes.len(), 4);
@@ -2973,43 +3006,53 @@ mod tests {
             event.attributes[3].value,
             (env.block.time.seconds() + 60).to_string()
         );
-    
+
         let past_timestamp = 500;
         let msg = ExecuteMsg::SubmitRoot {
             root: root_base64.clone(),
             rewards_calculation_end_timestamp: past_timestamp,
         };
-    
-        let result = execute(deps.as_mut(), env.clone(), rewards_updater_info.clone(), msg);
+
+        let result = execute(
+            deps.as_mut(),
+            env.clone(),
+            rewards_updater_info.clone(),
+            msg,
+        );
         assert!(result.is_err());
         if let Err(err) = result {
             assert_eq!(err, ContractError::InvalidTimestamp {});
         }
-    
+
         let future_timestamp = env.block.time.seconds() + 100;
         let msg = ExecuteMsg::SubmitRoot {
             root: root_base64.clone(),
             rewards_calculation_end_timestamp: future_timestamp,
         };
-    
-        let result = execute(deps.as_mut(), env.clone(), rewards_updater_info.clone(), msg);
+
+        let result = execute(
+            deps.as_mut(),
+            env.clone(),
+            rewards_updater_info.clone(),
+            msg,
+        );
         assert!(result.is_err());
         if let Err(err) = result {
             assert_eq!(err, ContractError::TimestampInFuture {});
         }
-    
+
         let unauthorized_info = message_info(&Addr::unchecked("not_rewards_updater"), &[]);
         let msg = ExecuteMsg::SubmitRoot {
             root: root_base64,
             rewards_calculation_end_timestamp,
         };
-    
+
         let result = execute(deps.as_mut(), env.clone(), unauthorized_info, msg);
         assert!(result.is_err());
         if let Err(err) = result {
             assert_eq!(err, ContractError::NotRewardsUpdater {});
         }
-    }    
+    }
 
     #[test]
     fn test_process_claim() {
@@ -3025,52 +3068,57 @@ mod tests {
         ) = instantiate_contract();
 
         let info = message_info(&deps.api.addr_make("claimer"), &[]);
-    
+
         let leaf_a = TokenTreeMerkleLeaf {
             token: Addr::unchecked("token_a"),
             cumulative_earnings: Uint128::new(100),
         };
-    
+
         let leaf_b = TokenTreeMerkleLeaf {
             token: Addr::unchecked("token_b"),
             cumulative_earnings: Uint128::new(200),
         };
-    
+
         let leaf_c = TokenTreeMerkleLeaf {
             token: Addr::unchecked("token_c"),
             cumulative_earnings: Uint128::new(300),
         };
-    
+
         let leaf_d = TokenTreeMerkleLeaf {
             token: Addr::unchecked("token_d"),
             cumulative_earnings: Uint128::new(400),
         };
-    
+
         let hash_a = calculate_token_leaf_hash(&leaf_a);
         let hash_b = calculate_token_leaf_hash(&leaf_b);
         let hash_c = calculate_token_leaf_hash(&leaf_c);
         let hash_d = calculate_token_leaf_hash(&leaf_d);
-    
-        let token_leaves = vec![hash_a.clone(), hash_b.clone(), hash_c.clone(), hash_d.clone()];
+
+        let token_leaves = vec![
+            hash_a.clone(),
+            hash_b.clone(),
+            hash_c.clone(),
+            hash_d.clone(),
+        ];
         let token_root = merkleize_sha256(token_leaves.clone());
-    
+
         let earner_leaf = EarnerTreeMerkleLeaf {
             earner: deps.api.addr_make("earner"),
             earner_token_root: Binary::from(token_root.clone()),
         };
-    
+
         let earner_leaf_hash = calculate_earner_leaf_hash(&earner_leaf);
-    
+
         let earner_leaves = vec![earner_leaf_hash.clone()];
         let earner_root = merkleize_sha256(earner_leaves.clone());
-    
+
         let distribution_root = DistributionRoot {
             root: Binary::from(earner_root.clone()),
             rewards_calculation_end_timestamp: 500,
             activated_at: 500,
             disabled: false,
         };
-    
+
         let claim = RewardsMerkleClaim {
             root_index: 0,
             earner_index: 0,
@@ -3078,18 +3126,47 @@ mod tests {
             earner_leaf,
             token_indices: vec![0, 1, 2, 3],
             token_tree_proofs: vec![
-                [hash_b.clone(), merkleize_sha256(vec![hash_c.clone(), hash_d.clone()])].concat(),
-                [hash_a.clone(), merkleize_sha256(vec![hash_c.clone(), hash_d.clone()])].concat(),
-                [hash_d.clone(), merkleize_sha256(vec![hash_a.clone(), hash_b.clone()])].concat(),
-                [hash_c.clone(), merkleize_sha256(vec![hash_a.clone(), hash_b.clone()])].concat(),
+                [
+                    hash_b.clone(),
+                    merkleize_sha256(vec![hash_c.clone(), hash_d.clone()]),
+                ]
+                .concat(),
+                [
+                    hash_a.clone(),
+                    merkleize_sha256(vec![hash_c.clone(), hash_d.clone()]),
+                ]
+                .concat(),
+                [
+                    hash_d.clone(),
+                    merkleize_sha256(vec![hash_a.clone(), hash_b.clone()]),
+                ]
+                .concat(),
+                [
+                    hash_c.clone(),
+                    merkleize_sha256(vec![hash_a.clone(), hash_b.clone()]),
+                ]
+                .concat(),
             ],
-            token_leaves: vec![leaf_a.clone(), leaf_b.clone(), leaf_c.clone(), leaf_d.clone()],
+            token_leaves: vec![
+                leaf_a.clone(),
+                leaf_b.clone(),
+                leaf_c.clone(),
+                leaf_d.clone(),
+            ],
         };
-    
-        DISTRIBUTION_ROOTS.save(&mut deps.storage, 0, &distribution_root).unwrap();
 
-        CLAIMER_FOR.save(&mut deps.storage, deps.api.addr_make("earner"), &deps.api.addr_make("claimer")).unwrap();
-        
+        DISTRIBUTION_ROOTS
+            .save(&mut deps.storage, 0, &distribution_root)
+            .unwrap();
+
+        CLAIMER_FOR
+            .save(
+                &mut deps.storage,
+                deps.api.addr_make("earner"),
+                &deps.api.addr_make("claimer"),
+            )
+            .unwrap();
+
         let recipient = deps.api.addr_make("recipient");
 
         let earner_leaf = ExecuteEarnerTreeMerkleLeaf {
@@ -3104,62 +3181,111 @@ mod tests {
             earner_leaf,
             token_indices: vec![0, 1, 2, 3],
             token_tree_proofs: vec![
-                [hash_b.clone(), merkleize_sha256(vec![hash_c.clone(), hash_d.clone()])].concat(),
-                [hash_a.clone(), merkleize_sha256(vec![hash_c.clone(), hash_d.clone()])].concat(),
-                [hash_d.clone(), merkleize_sha256(vec![hash_a.clone(), hash_b.clone()])].concat(),
-                [hash_c.clone(), merkleize_sha256(vec![hash_a.clone(), hash_b.clone()])].concat(),
+                [
+                    hash_b.clone(),
+                    merkleize_sha256(vec![hash_c.clone(), hash_d.clone()]),
+                ]
+                .concat(),
+                [
+                    hash_a.clone(),
+                    merkleize_sha256(vec![hash_c.clone(), hash_d.clone()]),
+                ]
+                .concat(),
+                [
+                    hash_d.clone(),
+                    merkleize_sha256(vec![hash_a.clone(), hash_b.clone()]),
+                ]
+                .concat(),
+                [
+                    hash_c.clone(),
+                    merkleize_sha256(vec![hash_a.clone(), hash_b.clone()]),
+                ]
+                .concat(),
             ],
-            token_leaves: vec![leaf_a.clone(), leaf_b.clone(), leaf_c.clone(), leaf_d.clone()],
+            token_leaves: vec![
+                leaf_a.clone(),
+                leaf_b.clone(),
+                leaf_c.clone(),
+                leaf_d.clone(),
+            ],
         };
 
         let msg = ExecuteMsg::ProcessClaim {
             claim: exeute_claim.clone(),
             recipient: recipient.to_string(),
         };
-    
+
         let result = execute(deps.as_mut(), env.clone(), info.clone(), msg);
-    
+
         assert!(result.is_ok());
-    
+
         let response = result.unwrap();
         assert_eq!(response.messages.len(), 4);
         assert_eq!(response.events.len(), 4);
-    
+
         let event = response.events.first().unwrap();
         assert_eq!(event.ty, "RewardsClaimed");
         assert_eq!(event.attributes.len(), 6);
         assert_eq!(event.attributes[0].key, "root");
-        assert_eq!(event.attributes[0].value, format!("{:?}", distribution_root.root));
+        assert_eq!(
+            event.attributes[0].value,
+            format!("{:?}", distribution_root.root)
+        );
         assert_eq!(event.attributes[1].key, "earner");
-        assert_eq!(event.attributes[1].value, deps.api.addr_make("earner").to_string());
+        assert_eq!(
+            event.attributes[1].value,
+            deps.api.addr_make("earner").to_string()
+        );
         assert_eq!(event.attributes[2].key, "claimer");
-        assert_eq!(event.attributes[2].value, deps.api.addr_make("claimer").to_string());
+        assert_eq!(
+            event.attributes[2].value,
+            deps.api.addr_make("claimer").to_string()
+        );
         assert_eq!(event.attributes[3].key, "recipient");
-        assert_eq!(event.attributes[3].value, deps.api.addr_make("recipient").to_string());
+        assert_eq!(
+            event.attributes[3].value,
+            deps.api.addr_make("recipient").to_string()
+        );
         assert_eq!(event.attributes[4].key, "token");
         assert_eq!(event.attributes[4].value, "token_a");
         assert_eq!(event.attributes[5].key, "amount");
         assert_eq!(event.attributes[5].value, "100");
-    
+
         // Test for unauthorized claimer
         let unauthorized_info = message_info(&Addr::unchecked("unauthorized_claimer"), &[]);
-        let result = process_claim(deps.as_mut(), env.clone(), unauthorized_info, claim.clone(), recipient.clone());
+        let result = process_claim(
+            deps.as_mut(),
+            env.clone(),
+            unauthorized_info,
+            claim.clone(),
+            recipient.clone(),
+        );
         assert!(result.is_err());
         if let Err(err) = result {
             assert_eq!(err, ContractError::UnauthorizedClaimer {});
         }
-    
+
         // Test for already claimed amount
         CUMULATIVE_CLAIMED
-            .save(&mut deps.storage, (Addr::unchecked("earner"), "token_a".to_string()), &Uint128::new(100))
+            .save(
+                &mut deps.storage,
+                (Addr::unchecked("earner"), "token_a".to_string()),
+                &Uint128::new(100),
+            )
             .unwrap();
-    
-        let result = process_claim(deps.as_mut(), env.clone(), info.clone(), claim.clone(), recipient.clone());
+
+        let result = process_claim(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            claim.clone(),
+            recipient.clone(),
+        );
         assert!(result.is_err());
         if let Err(err) = result {
             assert_eq!(err, ContractError::CumulativeEarningsTooLow {});
         }
-    
+
         // Test for disabled root
         let disabled_root = DistributionRoot {
             root: Binary::from(earner_root.clone()),
@@ -3167,15 +3293,17 @@ mod tests {
             activated_at: env.block.time.seconds() - 100,
             disabled: true,
         };
-    
-        DISTRIBUTION_ROOTS.save(&mut deps.storage, 0, &disabled_root).unwrap();
-    
+
+        DISTRIBUTION_ROOTS
+            .save(&mut deps.storage, 0, &disabled_root)
+            .unwrap();
+
         let result = process_claim(deps.as_mut(), env.clone(), info.clone(), claim, recipient);
         assert!(result.is_err());
         if let Err(err) = result {
             assert_eq!(err, ContractError::RootDisabled {});
         }
-    }        
+    }
 
     #[test]
     fn test_disable_root() {
@@ -3211,11 +3339,14 @@ mod tests {
             .save(&mut deps.storage, &1u64)
             .unwrap();
 
-        let msg = ExecuteMsg::DisableRoot {
-            root_index: 0,
-        };
+        let msg = ExecuteMsg::DisableRoot { root_index: 0 };
 
-        let result = execute(deps.as_mut(), env.clone(), rewards_updater_info.clone(), msg.clone());
+        let result = execute(
+            deps.as_mut(),
+            env.clone(),
+            rewards_updater_info.clone(),
+            msg.clone(),
+        );
         assert!(result.is_ok());
 
         let response = result.unwrap();
@@ -3231,7 +3362,12 @@ mod tests {
         assert!(stored_root.disabled);
 
         // Test disabling an already disabled root
-        let result = execute(deps.as_mut(), env.clone(), rewards_updater_info.clone(), msg.clone());
+        let result = execute(
+            deps.as_mut(),
+            env.clone(),
+            rewards_updater_info.clone(),
+            msg.clone(),
+        );
         assert!(result.is_err());
         if let Err(err) = result {
             assert_eq!(err, ContractError::AlreadyDisabled {});
@@ -3252,23 +3388,29 @@ mod tests {
             .save(&mut deps.storage, &2u64)
             .unwrap();
 
-        let msg_activated = ExecuteMsg::DisableRoot {
-            root_index: 1,
-        };
+        let msg_activated = ExecuteMsg::DisableRoot { root_index: 1 };
 
         // Test disabling an activated root
-        let result = execute(deps.as_mut(), env.clone(), rewards_updater_info.clone(), msg_activated);
+        let result = execute(
+            deps.as_mut(),
+            env.clone(),
+            rewards_updater_info.clone(),
+            msg_activated,
+        );
         assert!(result.is_err());
         if let Err(err) = result {
             assert_eq!(err, ContractError::AlreadyActivated {});
         }
 
         // Test with an invalid root index
-        let msg_invalid_index = ExecuteMsg::DisableRoot {
-            root_index: 3,
-        };
+        let msg_invalid_index = ExecuteMsg::DisableRoot { root_index: 3 };
 
-        let result = execute(deps.as_mut(), env.clone(), rewards_updater_info.clone(), msg_invalid_index);
+        let result = execute(
+            deps.as_mut(),
+            env.clone(),
+            rewards_updater_info.clone(),
+            msg_invalid_index,
+        );
         assert!(result.is_err());
         if let Err(err) = result {
             assert_eq!(err, ContractError::InvalidRootIndex {});
@@ -3383,7 +3525,13 @@ mod tests {
         let set_pauser_msg = ExecuteMsg::SetPauser {
             new_pauser: new_pauser.to_string(),
         };
-        let res = execute(deps.as_mut(), env.clone(), owner_info.clone(), set_pauser_msg).unwrap();
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            owner_info.clone(),
+            set_pauser_msg,
+        )
+        .unwrap();
 
         assert!(res
             .attributes
@@ -3412,7 +3560,13 @@ mod tests {
         let set_unpauser_msg = ExecuteMsg::SetUnpauser {
             new_unpauser: new_unpauser.to_string(),
         };
-        let res = execute(deps.as_mut(), env.clone(), owner_info.clone(), set_unpauser_msg).unwrap();
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            owner_info.clone(),
+            set_unpauser_msg,
+        )
+        .unwrap();
 
         assert!(res
             .attributes

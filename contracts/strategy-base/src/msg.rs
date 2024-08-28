@@ -24,6 +24,7 @@ pub enum ExecuteMsg {
     },
     Withdraw {
         recipient: String,
+        token: String,
         amount_shares: Uint128,
     },
     TransferOwnership {

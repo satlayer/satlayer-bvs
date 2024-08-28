@@ -68,10 +68,10 @@ cargo run --package optimizer --release -- --input ./target/wasm32-unknown-unkno
 
 ### Deployed Contract Addresses
 
-- strategy_base: osmo1s5ewgu3hwr97v5jhrs0zc24thgdwmta3pcrfgcc8pw7s6tk92ycstctdks
-- strategy_manager: osmo1awfdmz6axemyec4pdg80e4ah64m8g469lf5lffpaty6gdddfjgssrywm02
+- strategy_base: osmo1wze87hhzqqvw9nk0ctlm428sek50aa3nr6au7hcacrnssy4mpdcqyzq3zx
+- strategy_manager: osmo1kzg85f5em9ty4tcdzxkd3mda5nluz58jfsnh85pj6krhjkkgwrfseha3wc
 - avs-directory: osmo1s06n72vlzzksu2fvlk0e2lm737nyvjrx2vtlv80gzmgzg7q5aayqfs9zme
-- delegation_manager: osmo1znthd5xtj7x5e0c3jh88exkvkmtpkt0a25hqfexz35f7q9xthssqul325y
+- delegation_manager: osmo1t8wt8p3xvzt6eza5d4hrfnccky7kyjqlkratp7n6lylwmal8k60qjsq780
 - state_bank: osmo1ha0wv4l764qwh4qs39duj9sutraqntqhrj9vcgpcpgca3z6sjmtsyrpqh6
 - rewards-coordinator: osmo1fuh4gyp993zeayww2q82qn623pqvyau4h6dcehd05r44svyhsrrsjsns4z
 - cw20: osmo1z63lzuke2v9azva2kktccuecgcrm4ue4hhqrw0kfkf3crtxpqpdsyl8uj5

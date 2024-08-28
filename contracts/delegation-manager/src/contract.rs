@@ -26,7 +26,7 @@ use crate::{
 };
 use common::strategy::{
     DepositsResponse, ExecuteMsg as StrategyManagerExecuteMsg, QueryMsg as StrategyManagerQueryMsg,
-    ThirdPartyTransfersForbiddenResponse,
+    StakerStrategyLisResponse, StakerStrategySharesResponse, ThirdPartyTransfersForbiddenResponse,
 };
 use cosmwasm_std::{
     entry_point, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo,
@@ -625,7 +625,7 @@ pub fn get_delegatable_shares(deps: Deps, staker: Addr) -> StdResult<(Vec<Addr>,
     let query = WasmQuery::Smart {
         contract_addr: strategy_manager.to_string(),
         msg: to_json_binary(&StrategyManagerQueryMsg::GetDeposits {
-            staker: staker.clone(),
+            staker: staker.to_string(),
         })?,
     }
     .into();
@@ -1055,12 +1055,25 @@ pub fn query_operator_stakers(deps: Deps, operator: Addr) -> StdResult<OperatorS
     for staker in stakers.iter() {
         let mut shares_per_strategy: Vec<(Addr, Uint128)> = Vec::new();
 
-        for item in OPERATOR_SHARES.range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
-        {
-            let ((stored_operator, strategy), shares) = item?;
+        let strategy_list_response: StakerStrategyLisResponse = deps.querier.query_wasm_smart(
+            STRATEGY_MANAGER.load(deps.storage)?,
+            &StrategyManagerQueryMsg::GetStakerStrategyList {
+                staker: staker.to_string(),
+            },
+        )?;
+        let strategies = strategy_list_response.strategies;
 
-            if stored_operator == operator {
-                shares_per_strategy.push((strategy, shares));
+        for strategy in strategies {
+            let shares_response: StakerStrategySharesResponse = deps.querier.query_wasm_smart(
+                STRATEGY_MANAGER.load(deps.storage)?,
+                &StrategyManagerQueryMsg::GetStakerStrategyShares {
+                    staker: staker.to_string(),
+                    strategy: strategy.to_string(),
+                },
+            )?;
+
+            if !shares_response.shares.is_zero() {
+                shares_per_strategy.push((strategy, shares_response.shares));
             }
         }
 
@@ -1388,16 +1401,29 @@ fn complete_queued_withdrawal_internal(
                 return Err(ContractError::StrategyWithdrawalDelayNotPassed {});
             }
 
-            let sub_response = withdraw_shares_as_tokens(
-                deps.as_ref(),
-                withdrawal.staker.clone(),
-                info.sender.clone(),
-                withdrawal.strategies[i].clone(),
-                withdrawal.shares[i],
-                tokens[i].clone(),
-            )?;
+            let state: DelegationManagerState = DELEGATION_MANAGER_STATE.load(deps.storage)?;
 
-            response = response.add_attributes(sub_response.attributes);
+            let strategy_manager = state.strategy_manager;
+
+            let msg = WasmMsg::Execute {
+                contract_addr: strategy_manager.to_string(),
+                msg: to_json_binary(&StrategyManagerExecuteMsg::WithdrawSharesAsTokens {
+                    recipient: info.sender.to_string(),
+                    strategy: strategy.to_string(),
+                    shares: withdrawal.shares[i],
+                    token: tokens[i].to_string(),
+                })?,
+                funds: vec![],
+            };
+
+            response = response
+                .add_message(CosmosMsg::Wasm(msg))
+                .add_attribute("method", "withdraw_shares_as_tokens_internal")
+                .add_attribute("staker", withdrawal.staker.to_string())
+                .add_attribute("withdrawer", info.sender.to_string())
+                .add_attribute("strategy", strategy.to_string())
+                .add_attribute("shares", withdrawal.shares[i].to_string())
+                .add_attribute("token", tokens[i].to_string());
         }
     } else {
         let current_operator = DELEGATED_TO.may_load(deps.storage, &info.sender)?;
@@ -1411,9 +1437,9 @@ fn complete_queued_withdrawal_internal(
             let msg = WasmMsg::Execute {
                 contract_addr: state.strategy_manager.to_string(),
                 msg: to_json_binary(&StrategyManagerExecuteMsg::AddShares {
-                    staker: info.sender.clone(),
-                    token: tokens[i].clone(),
-                    strategy: withdrawal.strategies[i].clone(),
+                    staker: info.sender.to_string(),
+                    token: tokens[i].to_string(),
+                    strategy: withdrawal.strategies[i].to_string(),
                     shares: withdrawal.shares[i],
                 })?,
                 funds: vec![],
@@ -1481,7 +1507,7 @@ fn remove_shares_and_queue_withdrawal(
             deps.querier.query_wasm_smart(
                 state.strategy_manager.clone(),
                 &StrategyManagerQueryMsg::IsThirdPartyTransfersForbidden {
-                    strategy: strategy.clone(),
+                    strategy: strategy.to_string(),
                 },
             )?;
 
@@ -1494,8 +1520,8 @@ fn remove_shares_and_queue_withdrawal(
         let msg = WasmMsg::Execute {
             contract_addr: state.strategy_manager.to_string(),
             msg: to_json_binary(&StrategyManagerExecuteMsg::RemoveShares {
-                staker: staker.clone(),
-                strategy: strategy.clone(),
+                staker: staker.to_string(),
+                strategy: strategy.to_string(),
                 shares: share_amount,
             })?,
             funds: vec![],
@@ -1532,44 +1558,6 @@ fn remove_shares_and_queue_withdrawal(
             .add_attribute("withdrawer", withdrawer.to_string()),
     );
 
-    // println!(
-    //     "Withdrawal queued with root: {}",
-    //     withdrawal_root.to_base64()
-    // );
-
-    Ok(response)
-}
-
-fn withdraw_shares_as_tokens(
-    deps: Deps,
-    staker: Addr,
-    withdrawer: Addr,
-    strategy: Addr,
-    shares: Uint128,
-    token: Addr,
-) -> Result<Response, ContractError> {
-    let state = DELEGATION_MANAGER_STATE.load(deps.storage)?;
-
-    let msg = WasmMsg::Execute {
-        contract_addr: state.strategy_manager.to_string(),
-        msg: to_json_binary(&StrategyManagerExecuteMsg::WithdrawSharesAsTokens {
-            recipient: withdrawer.clone(),
-            strategy: strategy.clone(),
-            shares,
-            token: token.clone(),
-        })?,
-        funds: vec![],
-    };
-
-    let response = Response::new()
-        .add_message(CosmosMsg::Wasm(msg))
-        .add_attribute("method", "withdraw_shares_as_tokens")
-        .add_attribute("staker", staker.to_string())
-        .add_attribute("withdrawer", withdrawer.to_string())
-        .add_attribute("strategy", strategy.to_string())
-        .add_attribute("shares", shares.to_string())
-        .add_attribute("token", token.to_string());
-
     Ok(response)
 }
 
@@ -1595,7 +1583,6 @@ mod tests {
     use base64::{engine::general_purpose, Engine as _};
     use bech32::{self, ToBase32, Variant};
     use common::roles::{PAUSER, UNPAUSER};
-    use common::strategy;
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
@@ -4172,114 +4159,6 @@ mod tests {
     }
 
     #[test]
-    fn test_withdraw_shares_as_tokens() {
-        let (mut deps, _env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
-
-        let staker1 = deps.api.addr_make("staker1");
-        let operator = deps.api.addr_make("operator1");
-        let withdrawer1 = staker1.clone();
-        let strategy1 = deps.api.addr_make("strategy1");
-        let token1 = deps.api.addr_make("token1");
-        let shares1 = Uint128::new(100);
-
-        // Register operator details
-        let operator_details = OperatorDetails {
-            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
-            delegation_approver: deps.api.addr_make("approver"),
-            staker_opt_out_window_blocks: 100,
-        };
-        OPERATOR_DETAILS
-            .save(deps.as_mut().storage, &operator, &operator_details)
-            .unwrap();
-
-        // Save initial shares
-        OPERATOR_SHARES
-            .save(deps.as_mut().storage, (&operator, &strategy1), &shares1)
-            .unwrap();
-
-        // Mock the response for the token received from strategy manager
-        let withdrawer1_clone = withdrawer1.clone();
-        let token1_clone = token1.clone();
-        let shares1_clone = shares1;
-        deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { contract_addr, msg }
-                if *contract_addr == deps.api.addr_make("strategy_manager").to_string() =>
-            {
-                let execute_msg: Result<strategy::ExecuteMsg, _> = from_json(msg);
-                if let Ok(strategy::ExecuteMsg::WithdrawSharesAsTokens {
-                    recipient,
-                    strategy: _,
-                    shares: _,
-                    token: _,
-                }) = execute_msg
-                {
-                    if recipient == withdrawer1_clone {
-                        SystemResult::Ok(ContractResult::Ok(
-                            to_json_binary(&vec![(token1_clone.clone(), shares1_clone)]).unwrap(),
-                        ))
-                    } else {
-                        SystemResult::Err(SystemError::InvalidRequest {
-                            error: "Recipient mismatch".to_string(),
-                            request: to_json_binary(&query).unwrap(),
-                        })
-                    }
-                } else {
-                    SystemResult::Err(SystemError::InvalidRequest {
-                        error: "Unhandled request".to_string(),
-                        request: to_json_binary(&query).unwrap(),
-                    })
-                }
-            }
-            _ => SystemResult::Err(SystemError::InvalidRequest {
-                error: "Unhandled request".to_string(),
-                request: to_json_binary(&query).unwrap(),
-            }),
-        });
-
-        // Call the function
-        let res = withdraw_shares_as_tokens(
-            deps.as_ref(),
-            staker1.clone(),
-            withdrawer1.clone(),
-            strategy1.clone(),
-            shares1,
-            token1.clone(),
-        )
-        .unwrap();
-
-        // Verify the result: Check the message within the response
-        assert_eq!(res.messages.len(), 1);
-        let msg = &res.messages[0].msg;
-        match msg {
-            cosmwasm_std::CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr, msg, ..
-            }) => {
-                assert_eq!(
-                    *contract_addr,
-                    deps.api.addr_make("strategy_manager").to_string()
-                );
-                let execute_msg: strategy::ExecuteMsg = from_json(msg).unwrap();
-                if let strategy::ExecuteMsg::WithdrawSharesAsTokens {
-                    recipient,
-                    strategy,
-                    shares,
-                    token,
-                } = execute_msg
-                {
-                    assert_eq!(recipient, withdrawer1);
-                    assert_eq!(strategy, strategy1);
-                    assert_eq!(shares, shares1);
-                    assert_eq!(token, token1);
-                } else {
-                    panic!("Unexpected execute message: {:?}", execute_msg);
-                }
-            }
-            _ => panic!("Unexpected message type in response: {:?}", msg),
-        }
-    }
-
-    #[test]
     fn test_query_is_delegated() {
         let (mut deps, _env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
             instantiate_contract();
@@ -4652,20 +4531,62 @@ mod tests {
             .save(deps.as_mut().storage, &staker1, &operator)
             .unwrap();
 
-        OPERATOR_SHARES
-            .save(
-                deps.as_mut().storage,
-                (&operator, &strategy1),
-                &Uint128::new(100),
-            )
-            .unwrap();
-        OPERATOR_SHARES
-            .save(
-                deps.as_mut().storage,
-                (&operator, &strategy2),
-                &Uint128::new(200),
-            )
-            .unwrap();
+        let staker1_clone = staker1.clone();
+        let strategy1_clone = strategy1.clone();
+        let strategy2_clone = strategy2.clone();
+
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg }
+                if *contract_addr == deps.api.addr_make("strategy_manager").to_string() =>
+            {
+                let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
+                match msg {
+                    StrategyManagerQueryMsg::GetStakerStrategyList { staker } => {
+                        assert_eq!(staker, staker1_clone.to_string());
+                        SystemResult::Ok(ContractResult::Ok(
+                            to_json_binary(&StakerStrategyLisResponse {
+                                strategies: vec![strategy1_clone.clone(), strategy2_clone.clone()],
+                            })
+                            .unwrap(),
+                        ))
+                    }
+                    StrategyManagerQueryMsg::GetStakerStrategyShares { staker, strategy } => {
+                        if staker == staker1_clone.to_string()
+                            && strategy == strategy1_clone.to_string()
+                        {
+                            SystemResult::Ok(ContractResult::Ok(
+                                to_json_binary(&StakerStrategySharesResponse {
+                                    shares: Uint128::new(100),
+                                })
+                                .unwrap(),
+                            ))
+                        } else if staker == staker1_clone.to_string()
+                            && strategy == strategy2_clone.to_string()
+                        {
+                            SystemResult::Ok(ContractResult::Ok(
+                                to_json_binary(&StakerStrategySharesResponse {
+                                    shares: Uint128::new(200),
+                                })
+                                .unwrap(),
+                            ))
+                        } else {
+                            SystemResult::Err(SystemError::InvalidRequest {
+                                error: "Unhandled request".to_string(),
+                                request: to_json_binary(&query).unwrap(),
+                            })
+                        }
+                    }
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    }),
+                }
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
 
         let res = query_operator_stakers(deps.as_ref(), operator.clone()).unwrap();
 

@@ -4,30 +4,31 @@ use cosmwasm_std::{Addr, Uint128};
 #[cw_serde]
 pub enum ExecuteMsg {
     RemoveShares {
-        staker: Addr,
-        strategy: Addr,
+        staker: String,
+        strategy: String,
         shares: Uint128,
     },
     WithdrawSharesAsTokens {
-        recipient: Addr,
-        strategy: Addr,
+        recipient: String,
+        strategy: String,
         shares: Uint128,
-        token: Addr,
+        token: String,
     },
     AddShares {
-        staker: Addr,
-        token: Addr,
-        strategy: Addr,
+        staker: String,
+        token: String,
+        strategy: String,
         shares: Uint128,
     },
 }
 
 #[cw_serde]
 pub enum QueryMsg {
-    GetDeposits { staker: Addr },
-    GetStakerStrategyShares { staker: Addr, strategy: Addr },
-    IsThirdPartyTransfersForbidden { strategy: Addr },
+    GetDeposits { staker: String },
+    GetStakerStrategyShares { staker: String, strategy: String },
+    IsThirdPartyTransfersForbidden { strategy: String },
     IsStrategyWhitelisted { strategy: String },
+    GetStakerStrategyList { staker: String },
 }
 
 #[cw_serde]
@@ -49,4 +50,9 @@ pub struct StakerStrategySharesResponse {
 #[cw_serde]
 pub struct StrategyWhitelistedResponse {
     pub is_whitelisted: bool,
+}
+
+#[cw_serde]
+pub struct StakerStrategyLisResponse {
+    pub strategies: Vec<Addr>,
 }

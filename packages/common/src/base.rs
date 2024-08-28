@@ -1,4 +1,4 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
 
 #[cw_serde]
@@ -7,18 +7,14 @@ pub enum ExecuteMsg {
         amount: Uint128,
     },
     Withdraw {
-        recipient: Addr,
+        recipient: String,
+        token: String,
         amount_shares: Uint128,
     },
 }
 
 #[cw_serde]
-#[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(SharesResponse)]
-    GetShares { user: Addr },
-
-    #[returns(StrategyState)]
     GetStrategyState {},
 }
 

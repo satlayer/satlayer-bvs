@@ -86,10 +86,12 @@ pub fn execute(
         ExecuteMsg::Deposit { amount } => deposit(deps, env, info, amount),
         ExecuteMsg::Withdraw {
             recipient,
+            token,
             amount_shares,
         } => {
             let recipient_addr = deps.api.addr_validate(&recipient)?;
-            withdraw(deps, env, info, recipient_addr, amount_shares)
+            let token_addr = deps.api.addr_validate(&token)?;
+            withdraw(deps, env, info, recipient_addr, token_addr, amount_shares)
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner_addr = deps.api.addr_validate(&new_owner)?;
@@ -126,7 +128,7 @@ pub fn deposit(
 
     let mut state = STRATEGY_STATE.load(deps.storage)?;
 
-    only_strategy_manager(&info, &state.strategy_manager)?;
+    only_strategy_manager(deps.as_ref(), &info)?;
     before_deposit(&state, &state.underlying_token)?;
 
     let balance = token_balance(
@@ -164,14 +166,15 @@ pub fn withdraw(
     env: Env,
     info: MessageInfo,
     recipient: Addr,
+    token: Addr,
     amount_shares: Uint128,
 ) -> Result<Response, ContractError> {
     only_when_not_paused(deps.as_ref(), PAUSED_WITHDRAWALS)?;
 
     let mut state = STRATEGY_STATE.load(deps.storage)?;
 
-    only_strategy_manager(&info, &state.strategy_manager)?;
-    before_withdrawal(&state, &state.underlying_token)?;
+    only_strategy_manager(deps.as_ref(), &info)?;
+    before_withdrawal(&state, &token)?;
 
     if amount_shares > state.total_shares {
         return Err(ContractError::InsufficientShares {});
@@ -187,6 +190,10 @@ pub fn withdraw(
     let virtual_token_balance = balance + BALANCE_OFFSET;
     let amount_to_send = (virtual_token_balance * amount_shares) / virtual_total_shares;
 
+    if amount_to_send.is_zero() {
+        return Err(ContractError::ZeroAmountToSend {});
+    }
+
     state.total_shares -= amount_shares;
     STRATEGY_STATE.save(deps.storage, &state)?;
 
@@ -195,13 +202,26 @@ pub fn withdraw(
         state.total_shares + SHARES_OFFSET,
     )?;
 
-    let response = after_withdrawal(&state.underlying_token, &recipient, amount_to_send)?
+    let underlying_token = state.underlying_token;
+
+    let transfer_msg = WasmMsg::Execute {
+        contract_addr: underlying_token.to_string(),
+        msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
+            recipient: recipient.to_string(),
+            amount: amount_to_send,
+        })?,
+        funds: vec![],
+    };
+
+    let transfer_cosmos_msg: CosmosMsg = transfer_msg.into();
+
+    let response = Response::new().add_message(transfer_cosmos_msg);
+
+    Ok(response
         .add_attribute("method", "withdraw")
         .add_attribute("amount_to_send", amount_to_send.to_string())
         .add_attribute("total_shares", state.total_shares.to_string())
-        .add_event(exchange_rate_event.events[0].clone());
-
-    Ok(response)
+        .add_event(exchange_rate_event.events[0].clone()))
 }
 
 pub fn shares(deps: Deps, user: Addr, strategy: Addr) -> StdResult<SharesResponse> {
@@ -211,8 +231,8 @@ pub fn shares(deps: Deps, user: Addr, strategy: Addr) -> StdResult<SharesRespons
         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: state.strategy_manager.to_string(),
             msg: to_json_binary(&StrategyManagerQueryMsg::GetStakerStrategyShares {
-                staker: user.clone(),
-                strategy,
+                staker: user.to_string(),
+                strategy: strategy.to_string(),
             })?,
         }))?;
 
@@ -403,8 +423,10 @@ fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     Ok(())
 }
 
-fn only_strategy_manager(info: &MessageInfo, strategy_manager: &Addr) -> Result<(), ContractError> {
-    if info.sender != strategy_manager {
+fn only_strategy_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+    let state = STRATEGY_STATE.load(deps.storage)?;
+
+    if info.sender != state.strategy_manager {
         return Err(ContractError::Unauthorized {});
     }
     Ok(())
@@ -422,23 +444,6 @@ fn before_withdrawal(state: &StrategyState, token: &Addr) -> Result<(), Contract
         return Err(ContractError::InvalidToken {});
     }
     Ok(())
-}
-
-fn after_withdrawal(
-    token: &Addr,
-    recipient: &Addr,
-    amount: Uint128,
-) -> Result<Response, ContractError> {
-    let msg = WasmMsg::Execute {
-        contract_addr: token.to_string(),
-        msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
-            recipient: recipient.to_string(),
-            amount,
-        })?,
-        funds: vec![],
-    };
-
-    Ok(Response::new().add_message(CosmosMsg::Wasm(msg)))
 }
 
 fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdResult<Uint128> {
@@ -485,7 +490,8 @@ mod tests {
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
     use cosmwasm_std::{
-        attr, from_json, Binary, ContractResult, OwnedDeps, SystemError, SystemResult, WasmQuery,
+        attr, from_json, Binary, ContractResult, CosmosMsg, OwnedDeps, SystemError, SystemResult,
+        WasmQuery,
     };
     use cw2::get_contract_version;
     use cw20::TokenInfoResponse;
@@ -713,6 +719,7 @@ mod tests {
 
         let msg_withdraw = ExecuteMsg::Withdraw {
             recipient: recipient.clone(),
+            token: token.clone(),
             amount_shares: withdraw_amount_shares,
         };
 
@@ -731,8 +738,8 @@ mod tests {
                         contract_addr, msg, ..
                     }) => {
                         assert_eq!(*contract_addr, token);
-                        let msg: Cw20ExecuteMsg = from_json(msg).unwrap();
-                        match msg {
+                        let cw20_msg: Cw20ExecuteMsg = from_json(msg).unwrap();
+                        match cw20_msg {
                             Cw20ExecuteMsg::Transfer {
                                 recipient: rec,
                                 amount,
@@ -765,20 +772,16 @@ mod tests {
 
     #[test]
     fn test_only_strategy_manager() {
-        let (mut _deps, _env, _info, _pauser_info, _unpauser_info, _token, strategy_manager) =
+        let (deps, _env, _info, _pauser_info, _unpauser_info, _token, strategy_manager) =
             instantiate_contract();
 
         let info_strategy_manager = message_info(&Addr::unchecked(strategy_manager.clone()), &[]);
 
-        let result = only_strategy_manager(
-            &info_strategy_manager,
-            &Addr::unchecked(strategy_manager.clone()),
-        );
+        let result = only_strategy_manager(deps.as_ref(), &info_strategy_manager.clone());
         assert!(result.is_ok());
 
         let info_wrong = message_info(&Addr::unchecked("other_manager"), &[]);
-        let result_wrong =
-            only_strategy_manager(&info_wrong, &Addr::unchecked(strategy_manager.clone()));
+        let result_wrong = only_strategy_manager(deps.as_ref(), &info_wrong);
         assert!(result_wrong.is_err());
     }
 
@@ -993,7 +996,9 @@ mod tests {
                                     staker,
                                     strategy,
                                 } => {
-                                    if staker == user_address && strategy == contract_address {
+                                    if staker == user_address.to_string()
+                                        && strategy == contract_address.to_string()
+                                    {
                                         return SystemResult::Ok(ContractResult::Ok(
                                             to_json_binary(&StakerStrategySharesResponse {
                                                 shares: Uint128::new(1_000),
@@ -1065,8 +1070,8 @@ mod tests {
                             strategy,
                         } = msg
                         {
-                            if staker == Addr::unchecked(user_addr_clone.clone())
-                                && strategy == contract_address_clone
+                            if staker == user_addr_clone.clone()
+                                && strategy == contract_address_clone.to_string()
                             {
                                 return SystemResult::Ok(ContractResult::Ok(
                                     to_json_binary(&StakerStrategySharesResponse {

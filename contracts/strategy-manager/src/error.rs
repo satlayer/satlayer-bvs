@@ -47,4 +47,10 @@ pub enum ContractError {
 
     #[error("StrategyManager.calculate_new_shares: Division by zero")]
     DivideByZero,
+
+    #[error("StrategyManager.deposit_into_strategy_internal: Amount cannot be zero")]
+    ZeroAmount,
+
+    #[error("StrategyManager.deposit_into_strategy_with_signature: TransferMsg not found")]
+    TransferMsgNotFound,
 }

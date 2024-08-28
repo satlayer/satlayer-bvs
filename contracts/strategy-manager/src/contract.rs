@@ -11,7 +11,7 @@ use crate::{
     state::{
         StrategyManagerState, MAX_STAKER_STRATEGY_LIST_LENGTH, NONCES, OWNER, STAKER_STRATEGY_LIST,
         STAKER_STRATEGY_SHARES, STRATEGY_IS_WHITELISTED_FOR_DEPOSIT, STRATEGY_MANAGER_STATE,
-        STRATEGY_WHITELISTER, THIRD_PARTY_TRANSFERS_FORBIDDEN,
+        STRATEGY_WHITELISTER, THIRD_PARTY_TRANSFERS_FORBIDDEN
     },
     utils::{
         calculate_digest_hash, recover, validate_addresses, DepositWithSignatureParams,
@@ -22,7 +22,7 @@ use common::base::{ExecuteMsg as StrategyExecuteMsg, QueryMsg as StrategyQueryMs
 use common::delegation::ExecuteMsg as DelegationManagerExecuteMsg;
 use cosmwasm_std::{
     entry_point, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo,
-    QuerierWrapper, QueryRequest, Response, StdResult, Uint128, WasmMsg, WasmQuery,
+    QuerierWrapper, QueryRequest, Response, StdResult, Uint128, WasmMsg, WasmQuery
 };
 
 use common::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
@@ -381,7 +381,7 @@ pub fn deposit_into_strategy(
 pub fn deposit_into_strategy_with_signature(
     deps: DepsMut,
     env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     params: DepositWithSignatureParams,
 ) -> Result<Response, ContractError> {
     only_when_not_paused(deps.as_ref(), PAUSED_DEPOSITS)?;
@@ -399,8 +399,6 @@ pub fn deposit_into_strategy_with_signature(
 
     let nonce = NONCES.may_load(deps.storage, &params.staker)?.unwrap_or(0);
 
-    let chain_id = env.block.chain_id.clone();
-
     let digest_params = DigestHashParams {
         staker: params.staker.clone(),
         public_key: params.public_key.clone(),
@@ -409,7 +407,7 @@ pub fn deposit_into_strategy_with_signature(
         amount: params.amount,
         nonce,
         expiry: params.expiry,
-        chain_id,
+        chain_id: env.block.chain_id.clone(),
         contract_addr: env.contract.address.clone(),
     };
 
@@ -421,32 +419,14 @@ pub fn deposit_into_strategy_with_signature(
 
     NONCES.save(deps.storage, &params.staker, &(nonce + 1))?;
 
-    let staker_info = MessageInfo {
-        sender: params.staker.clone(),
-        funds: vec![],
-    };
-
-    let response = deposit_into_strategy_internal(
+    deposit_into_strategy_internal(
         deps,
-        staker_info,
+        info,
         params.staker.clone(),
         params.strategy.clone(),
         params.token.clone(),
         params.amount,
-    )?;
-
-    let new_shares = response
-        .attributes
-        .iter()
-        .find(|attr| attr.key == "new_shares")
-        .map(|attr| attr.value.clone())
-        .ok_or_else(|| ContractError::AttributeNotFound {})?;
-
-    Ok(Response::new()
-        .add_attribute("method", "deposit_into_strategy_with_signature")
-        .add_attribute("strategy", params.strategy.to_string())
-        .add_attribute("amount", params.amount.to_string())
-        .add_attribute("new_shares", new_shares))
+    )
 }
 
 pub fn add_shares(
@@ -492,22 +472,19 @@ pub fn withdraw_shares_as_tokens(
 ) -> Result<Response, ContractError> {
     only_delegation_manager(deps.as_ref(), &info)?;
 
-    let withdraw_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+    let withdraw_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: strategy.to_string(),
         msg: to_json_binary(&StrategyExecuteMsg::Withdraw {
-            recipient: recipient.clone(),
+            recipient: recipient.to_string(),
+            token: token.to_string(),
             amount_shares: shares,
         })?,
         funds: vec![],
     });
 
-    Ok(Response::new()
-        .add_message(withdraw_msg)
-        .add_attribute("method", "withdraw_shares_as_tokens")
-        .add_attribute("recipient", recipient.to_string())
-        .add_attribute("strategy", strategy.to_string())
-        .add_attribute("shares", shares.to_string())
-        .add_attribute("token", token.to_string()))
+    let response = Response::new().add_message(withdraw_msg);
+
+    Ok(response)
 }
 
 pub fn transfer_ownership(
@@ -758,7 +735,11 @@ fn deposit_into_strategy_internal(
 ) -> Result<Response, ContractError> {
     only_strategies_whitelisted_for_deposit(deps.as_ref(), &strategy)?;
 
-    let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+    if amount.is_zero() {
+        return Err(ContractError::ZeroAmount {});
+    }
+
+    let transfer_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: token.to_string(),
         msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
             owner: info.sender.to_string(),
@@ -767,6 +748,8 @@ fn deposit_into_strategy_internal(
         })?,
         funds: vec![],
     });
+
+    let mut response = Response::new().add_message(transfer_msg);
 
     let state: StrategyState = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: strategy.to_string(),
@@ -786,6 +769,8 @@ fn deposit_into_strategy_internal(
         funds: vec![],
     });
 
+    response = response.add_message(deposit_msg);
+
     add_shares_internal(
         deps.branch(),
         staker.clone(),
@@ -799,16 +784,14 @@ fn deposit_into_strategy_internal(
     let increase_delegated_shares_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: state.delegation_manager.to_string(),
         msg: to_json_binary(&DelegationManagerExecuteMsg::IncreaseDelegatedShares {
-            staker: staker.clone(),
-            strategy: strategy.clone(),
+            staker: staker.to_string(),
+            strategy: strategy.to_string(),
             shares: new_shares,
         })?,
         funds: vec![],
     });
 
-    Ok(Response::new()
-        .add_message(transfer_msg)
-        .add_message(deposit_msg)
+    Ok(response
         .add_message(increase_delegated_shares_msg)
         .add_attribute("new_shares", new_shares.to_string()))
 }
@@ -1510,10 +1493,6 @@ mod tests {
                             to_json_binary(&strategy_state).unwrap(),
                         ))
                     }
-                    _ => SystemResult::Err(SystemError::InvalidRequest {
-                        error: "Unhandled request".to_string(),
-                        request: to_json_binary(&query).unwrap(),
-                    }),
                 }
             }
             WasmQuery::Smart { contract_addr, msg } if *contract_addr == token_for_closure => {
@@ -1521,7 +1500,7 @@ mod tests {
                 match cw20_query_msg {
                     Cw20QueryMsg::Balance { address: _ } => SystemResult::Ok(ContractResult::Ok(
                         to_json_binary(&Cw20BalanceResponse {
-                            balance: Uint128::new(1000),
+                            balance: Uint128::new(1000), 
                         })
                         .unwrap(),
                     )),
@@ -2304,10 +2283,6 @@ mod tests {
                             to_json_binary(&strategy_state).unwrap(),
                         ))
                     }
-                    _ => SystemResult::Err(SystemError::InvalidRequest {
-                        error: "Unhandled request".to_string(),
-                        request: to_json_binary(&query).unwrap(),
-                    }),
                 }
             }
             WasmQuery::Smart { contract_addr, msg }
@@ -2351,18 +2326,9 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(res.attributes.len(), 4);
-        assert_eq!(res.attributes[0].key, "method");
-        assert_eq!(
-            res.attributes[0].value,
-            "deposit_into_strategy_with_signature"
-        );
-        assert_eq!(res.attributes[1].key, "strategy");
-        assert_eq!(res.attributes[1].value, strategy.to_string());
-        assert_eq!(res.attributes[2].key, "amount");
-        assert_eq!(res.attributes[2].value, amount.to_string());
-        assert_eq!(res.attributes[3].key, "new_shares");
-        assert_eq!(res.attributes[3].value, "105");
+        assert_eq!(res.attributes.len(), 1);
+        assert_eq!(res.attributes[0].key, "new_shares");
+        assert_eq!(res.attributes[0].value, "105");
 
         let stored_nonce = NONCES.load(&deps.storage, &staker).unwrap();
         assert_eq!(stored_nonce, 1);

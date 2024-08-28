@@ -12,6 +12,9 @@ pub enum ContractError {
     #[error("StrategyBase.deposit: new_shares cannot be zero")]
     ZeroNewShares {},
 
+    #[error("StrategyBase.withdraw: amount to send cannot be zero")]
+    ZeroAmountToSend {},
+
     #[error("StrategyBase.withdraw: insufficient shares")]
     InsufficientShares {},
 

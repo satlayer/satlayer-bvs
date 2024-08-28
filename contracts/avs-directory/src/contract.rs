@@ -191,7 +191,7 @@ pub fn register_operator(
     let is_operator_response: OperatorResponse = deps.querier.query_wasm_smart(
         delegation_manager.clone(),
         &DelegationManagerQueryMsg::IsOperator {
-            operator: operator.clone(),
+            operator: operator.to_string(),
         },
     )?;
 
