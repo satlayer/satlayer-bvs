@@ -27,8 +27,8 @@ use common::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use common::strategy::{QueryMsg as StrategyManagerQueryMsg, StrategyWhitelistedResponse};
 use cosmwasm_std::{
     entry_point, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, HexBinary,
-    MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg, QuerierWrapper, QueryRequest,
-    WasmQuery
+    MessageInfo, QuerierWrapper, QueryRequest, Response, StdError, StdResult, Uint128, WasmMsg,
+    WasmQuery,
 };
 use cw2::set_contract_version;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
@@ -342,11 +342,7 @@ pub fn process_claim(
 
         let claim_amount = token_leaf.cumulative_earnings - curr_cumulative_claimed;
 
-        let balance = token_balance(
-            &deps.querier,
-            &token,
-            &env.contract.address,
-        )?;
+        let balance = token_balance(&deps.querier, &token, &env.contract.address)?;
 
         if claim_amount > balance {
             return Err(ContractError::InsufficientBalance {});
@@ -1096,11 +1092,12 @@ mod tests {
     use base64::{engine::general_purpose, Engine as _};
     use common::roles::{PAUSER, UNPAUSER};
     use cosmwasm_std::testing::{
-        message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage, mock_dependencies_with_balances
+        message_info, mock_dependencies, mock_dependencies_with_balances, mock_env, MockApi,
+        MockQuerier, MockStorage,
     };
     use cosmwasm_std::{
-        attr, from_json, Addr, Binary, ContractResult, OwnedDeps, SystemError, SystemResult,
-        Timestamp, WasmQuery, coins
+        attr, coins, from_json, Addr, Binary, ContractResult, OwnedDeps, SystemError, SystemResult,
+        Timestamp, WasmQuery,
     };
     use cw2::get_contract_version;
 
@@ -3072,32 +3069,47 @@ mod tests {
         }
     }
 
-    fn setup_test_environment() -> (OwnedDeps<MockStorage, MockApi, MockQuerier>, Env, MessageInfo) {
+    fn setup_test_environment() -> (
+        OwnedDeps<MockStorage, MockApi, MockQuerier>,
+        Env,
+        MessageInfo,
+    ) {
         let mut deps = mock_dependencies_with_balances(&[
             ("token_a", &coins(1000, "token_a")),
             ("token_b", &coins(1000, "token_b")),
             ("token_c", &coins(1000, "token_c")),
             ("token_d", &coins(1000, "token_d")),
         ]);
-    
+
         deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { contract_addr, msg:_ } => {
-                if contract_addr == "token_a" || contract_addr == "token_b" || contract_addr == "token_c" || contract_addr == "token_d" {
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } => {
+                if contract_addr == "token_a"
+                    || contract_addr == "token_b"
+                    || contract_addr == "token_c"
+                    || contract_addr == "token_d"
+                {
                     let balance_response = cw20::BalanceResponse {
                         balance: Uint128::new(1000),
                     };
-                    SystemResult::Ok(ContractResult::Ok(to_json_binary(&balance_response).unwrap()))
+                    SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(&balance_response).unwrap(),
+                    ))
                 } else {
-                    SystemResult::Err(cosmwasm_std::SystemError::NoSuchContract { addr: contract_addr.clone() })
+                    SystemResult::Err(cosmwasm_std::SystemError::NoSuchContract {
+                        addr: contract_addr.clone(),
+                    })
                 }
             }
             _ => SystemResult::Err(cosmwasm_std::SystemError::Unknown {}),
         });
-    
+
         let env = mock_env();
         let info = message_info(&deps.api.addr_make("claimer"), &[]);
         (deps, env, info)
-    }    
+    }
 
     #[test]
     fn test_process_claim() {
@@ -3111,7 +3123,7 @@ mod tests {
         let rewards_updater = deps.api.addr_make("rewards_updater").to_string();
 
         let owner_info = message_info(&Addr::unchecked(initial_owner.clone()), &[]);
-            message_info(&Addr::unchecked(delegation_manager.clone()), &[]);
+        message_info(&Addr::unchecked(delegation_manager.clone()), &[]);
 
         let msg = InstantiateMsg {
             initial_owner: initial_owner.clone(),
