@@ -58,8 +58,7 @@ pub fn instantiate(
     STRATEGY_STATE.save(deps.storage, &state)?;
     PAUSED_STATE.save(deps.storage, &msg.initial_paused_status)?;
 
-    MAX_PER_DEPOSIT.save(deps.storage, &msg.max_per_deposit)?;
-    MAX_TOTAL_DEPOSITS.save(deps.storage, &msg.max_total_deposits)?;
+    set_tvl_limits_internal(deps.branch(), msg.max_per_deposit, msg.max_total_deposits)?;
 
     let underlying_token = msg.underlying_token.clone();
 
@@ -117,6 +116,9 @@ pub fn execute(
             only_owner(deps.as_ref(), &info.clone())?;
             let new_unpauser_addr = deps.api.addr_validate(&new_unpauser)?;
             set_unpauser(deps, new_unpauser_addr).map_err(ContractError::Std)
+        }
+        ExecuteMsg::SetTVLLimits { max_per_deposit, max_total_deposits } => {
+            set_tvl_limits(deps, info, max_per_deposit, max_total_deposits)
         }
     }
 }
@@ -367,6 +369,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&query_underlying_to_shares(deps, env, amount_underlying)?)
         }
         QueryMsg::GetStrategyState {} => to_json_binary(&query_strategy_state(deps)?),
+        QueryMsg::GetTVLLimits {} => to_json_binary(&query_tvl_limits(deps)?)
     }
 }
 
@@ -478,8 +481,8 @@ fn set_tvl_limits_internal(
         return Err(ContractError::InvalidTVLLimits {});
     }
 
-    let old_max_per_deposit = MAX_PER_DEPOSIT.load(deps.storage)?;
-    let old_max_total_deposits = MAX_TOTAL_DEPOSITS.load(deps.storage)?;
+    let old_max_per_deposit = MAX_PER_DEPOSIT.may_load(deps.storage)?.unwrap_or(Uint128::zero());
+    let old_max_total_deposits = MAX_TOTAL_DEPOSITS.may_load(deps.storage)?.unwrap_or(Uint128::zero());
 
     MAX_PER_DEPOSIT.save(deps.storage, &max_per_deposit)?;
     MAX_TOTAL_DEPOSITS.save(deps.storage, &max_total_deposits)?;
@@ -1377,4 +1380,157 @@ mod tests {
         let unpauser = UNPAUSER.load(&deps.storage).unwrap();
         assert_eq!(unpauser, Addr::unchecked(new_unpauser));
     }
+
+    #[test]
+    fn test_set_tvl_limits() {
+        let (mut deps, env, owner_info, _pauser_info, _unpauser_info, _token, _strategy_manager) =
+            instantiate_contract();
+    
+        let new_max_per_deposit = Uint128::new(500_000);
+        let new_max_total_deposits = Uint128::new(1_000_000);
+    
+        let set_tvl_msg = ExecuteMsg::SetTVLLimits {
+            max_per_deposit: new_max_per_deposit,
+            max_total_deposits: new_max_total_deposits,
+        };
+    
+        let res = execute(deps.as_mut(), env.clone(), owner_info.clone(), set_tvl_msg).unwrap();
+    
+        assert_eq!(res.attributes.len(), 5);
+        assert_eq!(res.attributes[0].key, "method");
+        assert_eq!(res.attributes[0].value, "set_tvl_limits");
+        assert_eq!(res.attributes[1].key, "old_max_per_deposit");
+        assert_eq!(res.attributes[2].key, "new_max_per_deposit");
+        assert_eq!(res.attributes[3].key, "old_max_total_deposits");
+        assert_eq!(res.attributes[4].key, "new_max_total_deposits");
+    
+        let max_per_deposit = MAX_PER_DEPOSIT.load(&deps.storage).unwrap();
+        let max_total_deposits = MAX_TOTAL_DEPOSITS.load(&deps.storage).unwrap();
+    
+        assert_eq!(max_per_deposit, new_max_per_deposit);
+        assert_eq!(max_total_deposits, new_max_total_deposits);
+    }
+
+    #[test]
+    fn test_query_tvl_limits() {
+        let (mut deps, env, owner_info, _pauser_info, _unpauser_info, _token, _strategy_manager) =
+            instantiate_contract();
+    
+        let new_max_per_deposit = Uint128::new(500_000);
+        let new_max_total_deposits = Uint128::new(1_000_000);
+    
+        let set_tvl_msg = ExecuteMsg::SetTVLLimits {
+            max_per_deposit: new_max_per_deposit,
+            max_total_deposits: new_max_total_deposits,
+        };
+    
+        execute(deps.as_mut(), env.clone(), owner_info.clone(), set_tvl_msg).unwrap();
+    
+        let query_msg = QueryMsg::GetTVLLimits {};
+    
+        let res = query(deps.as_ref(), env, query_msg).unwrap();
+    
+        let tvl_limits_response: TVLLimitsResponse = from_json(res).unwrap();
+    
+        assert_eq!(tvl_limits_response.max_per_deposit, new_max_per_deposit);
+        assert_eq!(tvl_limits_response.max_total_deposits, new_max_total_deposits);
+    }
+
+    #[test]
+    fn test_deposit_exceeding_limits() {
+        let (mut deps, env, _info, _pauser_info, _unpauser_info, token, strategy_manager) =
+            instantiate_contract();
+    
+        // Step 1: Test for exceeding max_per_deposit
+        let amount_exceeding_max_per_deposit = Uint128::new(2_000); 
+        let deposit_msg_exceeding_max_per_deposit = ExecuteMsg::Deposit {
+            amount: amount_exceeding_max_per_deposit,
+        };
+    
+        let info = message_info(&Addr::unchecked(strategy_manager.clone()), &[]);
+    
+        MAX_PER_DEPOSIT.save(&mut deps.storage, &Uint128::new(1_000)).unwrap();
+        MAX_TOTAL_DEPOSITS.save(&mut deps.storage, &Uint128::new(1_000_000)).unwrap();
+    
+        let max_per_deposit = MAX_PER_DEPOSIT.load(&deps.storage).unwrap();
+        let max_total_deposits = MAX_TOTAL_DEPOSITS.load(&deps.storage).unwrap();
+        println!("max_per_deposit: {}, max_total_deposits: {}", max_per_deposit, max_total_deposits);
+    
+        let err = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            deposit_msg_exceeding_max_per_deposit,
+        )
+        .unwrap_err();
+    
+        match err {
+            ContractError::MaxPerDepositExceeded {} => {}
+            _ => panic!("Expected MaxPerDepositExceeded error, but got: {:?}", err),
+        }
+    
+        // Step 2: Test for exceeding max_total_deposits
+        MAX_PER_DEPOSIT.save(&mut deps.storage, &Uint128::new(1_000_000)).unwrap();
+    
+        let amount_exceeding_max_total_deposits = Uint128::new(500_000);
+        let deposit_msg_exceeding_max_total_deposits = ExecuteMsg::Deposit {
+            amount: amount_exceeding_max_total_deposits,
+        };
+    
+        deps.querier.update_wasm({
+            let token_clone = token.clone();
+            let contract_address = env.contract.address.clone();
+            move |query| match query {
+                WasmQuery::Smart {
+                    contract_addr, msg, ..
+                } => {
+                    if contract_addr == &token_clone {
+                        let msg: Cw20QueryMsg = from_json(msg).unwrap();
+                        if let Cw20QueryMsg::Balance { address } = msg {
+                            if address == contract_address.to_string() {
+                                return SystemResult::Ok(ContractResult::Ok(
+                                    to_json_binary(&Cw20BalanceResponse {
+                                        balance: Uint128::new(900_000), 
+                                    })
+                                    .unwrap(),
+                                ));
+                            }
+                        }
+                    }
+                    SystemResult::Err(SystemError::InvalidRequest {
+                        error: "not implemented".to_string(),
+                        request: msg.clone(),
+                    })
+                }
+                _ => SystemResult::Err(SystemError::InvalidRequest {
+                    error: "not implemented".to_string(),
+                    request: Binary::from(b"other".as_ref()),
+                }),
+            }
+        });
+    
+        let querier_wrapper = QuerierWrapper::new(&deps.querier);
+    
+        let balance = token_balance(
+            &querier_wrapper,
+            &Addr::unchecked(token.clone()),
+            &env.contract.address,
+        )
+        .unwrap();
+        println!("Simulated contract balance: {}", balance);
+    
+        let err = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            deposit_msg_exceeding_max_total_deposits,
+        )
+        .unwrap_err();
+    
+        match err {
+            ContractError::MaxTotalDepositsExceeded {} => {}
+            _ => panic!("Expected MaxTotalDepositsExceeded error, but got: {:?}", err),
+        }
+    }
+                       
 }
