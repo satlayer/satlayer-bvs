@@ -20,4 +20,7 @@ pub enum ContractError {
 
     #[error("StrategyBase: invalid token")]
     InvalidToken {},
+
+    #[error("StrategyBase.withdraw: insufficient balance")]
+    InsufficientBalance {},
 }

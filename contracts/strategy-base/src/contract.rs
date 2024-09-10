@@ -194,6 +194,10 @@ pub fn withdraw(
         return Err(ContractError::ZeroAmountToSend {});
     }
 
+    if amount_to_send > balance {
+        return Err(ContractError::InsufficientBalance {});
+    }
+
     state.total_shares -= amount_shares;
     STRATEGY_STATE.save(deps.storage, &state)?;
 

@@ -581,7 +581,6 @@ pub fn undelegate(
             .add_attribute("operator", operator.to_string()),
     );
 
-    // Undelegate the staker
     DELEGATED_TO.remove(deps.storage, &staker);
 
     if !strategies.is_empty() {

@@ -27,10 +27,11 @@ use common::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use common::strategy::{QueryMsg as StrategyManagerQueryMsg, StrategyWhitelistedResponse};
 use cosmwasm_std::{
     entry_point, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, HexBinary,
-    MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg,
+    MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg, QuerierWrapper, QueryRequest,
+    WasmQuery
 };
 use cw2::set_contract_version;
-use cw20::Cw20ExecuteMsg;
+use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -341,13 +342,22 @@ pub fn process_claim(
 
         let claim_amount = token_leaf.cumulative_earnings - curr_cumulative_claimed;
 
+        let balance = token_balance(
+            &deps.querier,
+            &token,
+            &env.contract.address,
+        )?;
+
+        if claim_amount > balance {
+            return Err(ContractError::InsufficientBalance {});
+        }
+
         CUMULATIVE_CLAIMED.save(
             deps.storage,
             (earner.clone(), token.to_string()),
             &token_leaf.cumulative_earnings,
         )?;
 
-        // Prepare a transfer message for the token claim
         let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token.clone().into(),
             msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
@@ -357,10 +367,8 @@ pub fn process_claim(
             funds: vec![],
         });
 
-        // Add the transfer message to the response
         response = response.add_message(transfer_msg);
 
-        // Record an event for the rewards claim
         let event = Event::new("RewardsClaimed")
             .add_attribute("root", format!("{:?}", root.root))
             .add_attribute("earner", earner.to_string())
@@ -1055,6 +1063,16 @@ fn set_rewards_updater_internal(
     Ok(Response::new().add_event(event))
 }
 
+fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdResult<Uint128> {
+    let res: Cw20BalanceResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: token.to_string(),
+        msg: to_json_binary(&Cw20QueryMsg::Balance {
+            address: account.to_string(),
+        })?,
+    }))?;
+    Ok(res.balance)
+}
+
 pub fn migrate(
     deps: DepsMut,
     _env: Env,
@@ -1078,11 +1096,11 @@ mod tests {
     use base64::{engine::general_purpose, Engine as _};
     use common::roles::{PAUSER, UNPAUSER};
     use cosmwasm_std::testing::{
-        message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
+        message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage, mock_dependencies_with_balances
     };
     use cosmwasm_std::{
         attr, from_json, Addr, Binary, ContractResult, OwnedDeps, SystemError, SystemResult,
-        Timestamp, WasmQuery,
+        Timestamp, WasmQuery, coins
     };
     use cw2::get_contract_version;
 
@@ -3054,18 +3072,64 @@ mod tests {
         }
     }
 
+    fn setup_test_environment() -> (OwnedDeps<MockStorage, MockApi, MockQuerier>, Env, MessageInfo) {
+        let mut deps = mock_dependencies_with_balances(&[
+            ("token_a", &coins(1000, "token_a")),
+            ("token_b", &coins(1000, "token_b")),
+            ("token_c", &coins(1000, "token_c")),
+            ("token_d", &coins(1000, "token_d")),
+        ]);
+    
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg:_ } => {
+                if contract_addr == "token_a" || contract_addr == "token_b" || contract_addr == "token_c" || contract_addr == "token_d" {
+                    let balance_response = cw20::BalanceResponse {
+                        balance: Uint128::new(1000),
+                    };
+                    SystemResult::Ok(ContractResult::Ok(to_json_binary(&balance_response).unwrap()))
+                } else {
+                    SystemResult::Err(cosmwasm_std::SystemError::NoSuchContract { addr: contract_addr.clone() })
+                }
+            }
+            _ => SystemResult::Err(cosmwasm_std::SystemError::Unknown {}),
+        });
+    
+        let env = mock_env();
+        let info = message_info(&deps.api.addr_make("claimer"), &[]);
+        (deps, env, info)
+    }    
+
     #[test]
     fn test_process_claim() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            _pauser_info,
-            _unpauser_info,
-            _strategy_manager_info,
-            _delegation_manager_info,
-            _rewards_updater_info,
-        ) = instantiate_contract();
+        let (mut deps, env, _info) = setup_test_environment();
+
+        let initial_owner = deps.api.addr_make("initial_owner").to_string();
+        let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
+        let strategy_manager = deps.api.addr_make("strategy_manager").to_string();
+        let pauser = deps.api.addr_make("pauser").to_string();
+        let unpauser = deps.api.addr_make("unpauser").to_string();
+        let rewards_updater = deps.api.addr_make("rewards_updater").to_string();
+
+        let owner_info = message_info(&Addr::unchecked(initial_owner.clone()), &[]);
+            message_info(&Addr::unchecked(delegation_manager.clone()), &[]);
+
+        let msg = InstantiateMsg {
+            initial_owner: initial_owner.clone(),
+            calculation_interval_seconds: 86_400, // 1 day
+            max_rewards_duration: 30 * 86_400,    // 30 days
+            max_retroactive_length: 5 * 86_400,   // 5 days
+            max_future_length: 10 * 86_400,       // 10 days
+            genesis_rewards_timestamp: env.block.time.seconds() / 86_400 * 86_400,
+            delegation_manager: delegation_manager.clone(),
+            strategy_manager: strategy_manager.clone(),
+            rewards_updater: rewards_updater.clone(),
+            pauser: pauser.clone(),
+            unpauser: unpauser.clone(),
+            initial_paused_status: 0,
+            activation_delay: 60, // 1 minute
+        };
+
+        instantiate(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();
 
         let info = message_info(&deps.api.addr_make("claimer"), &[]);
 
@@ -3216,7 +3280,7 @@ mod tests {
         };
 
         let result = execute(deps.as_mut(), env.clone(), info.clone(), msg);
-
+        println!("Error: {:?}", result);
         assert!(result.is_ok());
 
         let response = result.unwrap();

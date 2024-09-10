@@ -106,4 +106,7 @@ pub enum ContractError {
         "RewardsCoordinator.process_claim: cumulativeEarnings must be gt than cumulativeClaimed"
     )]
     CumulativeEarningsTooLow {},
+
+    #[error("RewardsCoordinator.process_claim: insufficient balance")]
+    InsufficientBalance {},
 }
