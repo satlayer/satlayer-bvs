@@ -1,74 +1,33 @@
 use crate::query::{
-    CalculateDigestHashResponse, DelegationManagerResponse, DepositTypehashResponse,
-    DepositsResponse, DomainNameResponse, DomainTypehashResponse, NonceResponse, OwnerResponse,
-    StakerStrategyLisResponse, StakerStrategyListLengthResponse, StakerStrategySharesResponse,
-    StrategyManagerStateResponse, StrategyWhitelistedResponse, StrategyWhitelisterResponse,
-    ThirdPartyTransfersForbiddenResponse,
+    ExplanationResponse, SharesResponse, SharesToUnderlyingResponse, StrategyManagerResponse,
+    TotalSharesResponse, UnderlyingToShareResponse, UnderlyingToSharesResponse,
+    UnderlyingTokenResponse, UserUnderlyingResponse,
 };
-use crate::utils::QueryDigestHashParams;
+use crate::state::StrategyState;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub delegation_manager: String,
-    pub slasher: String,
-    pub initial_strategy_whitelister: String,
     pub initial_owner: String,
+    pub strategy_manager: String,
+    pub underlying_token: String,
     pub pauser: String,
     pub unpauser: String,
     pub initial_paused_status: u64,
+    pub max_per_deposit: Uint128,
+    pub max_total_deposits: Uint128
 }
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    AddStrategiesToWhitelist {
-        strategies: Vec<String>,
-        third_party_transfers_forbidden_values: Vec<bool>,
-    },
-    RemoveStrategiesFromWhitelist {
-        strategies: Vec<String>,
-    },
-    SetStrategyWhitelister {
-        new_strategy_whitelister: String,
-    },
-    DepositIntoStrategy {
-        strategy: String,
-        token: String,
+    Deposit {
         amount: Uint128,
     },
-    SetThirdPartyTransfersForbidden {
-        strategy: String,
-        value: bool,
-    },
-    DepositIntoStrategyWithSignature {
-        strategy: String,
-        token: String,
-        amount: Uint128,
-        staker: String,
-        public_key: String,
-        expiry: u64,
-        signature: String,
-    },
-    RemoveShares {
-        staker: String,
-        strategy: String,
-        shares: Uint128,
-    },
-    WithdrawSharesAsTokens {
+    Withdraw {
         recipient: String,
-        strategy: String,
-        shares: Uint128,
         token: String,
-    },
-    AddShares {
-        staker: String,
-        token: String,
-        strategy: String,
-        shares: Uint128,
-    },
-    SetDelegationManager {
-        new_delegation_manager: String,
+        amount_shares: Uint128,
     },
     TransferOwnership {
         new_owner: String,
@@ -86,52 +45,35 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(DepositsResponse)]
-    GetDeposits { staker: String },
+    #[returns(SharesResponse)]
+    GetShares { staker: String, strategy: String },
 
-    #[returns(StakerStrategyListLengthResponse)]
-    StakerStrategyListLength { staker: String },
+    #[returns(SharesToUnderlyingResponse)]
+    SharesToUnderlyingView { amount_shares: Uint128 },
 
-    #[returns(StakerStrategySharesResponse)]
-    GetStakerStrategyShares { staker: String, strategy: String },
+    #[returns(UnderlyingToShareResponse)]
+    UnderlyingToShareView { amount: Uint128 },
 
-    #[returns(ThirdPartyTransfersForbiddenResponse)]
-    IsThirdPartyTransfersForbidden { strategy: String },
+    #[returns(UserUnderlyingResponse)]
+    UserUnderlyingView { user: String },
 
-    #[returns(NonceResponse)]
-    GetNonce { staker: String },
+    #[returns(StrategyManagerResponse)]
+    GetStrategyManager {},
 
-    #[returns(StakerStrategyLisResponse)]
-    GetStakerStrategyList { staker: String },
+    #[returns(UnderlyingTokenResponse)]
+    GetUnderlyingToken {},
 
-    #[returns(OwnerResponse)]
-    GetOwner {},
+    #[returns(TotalSharesResponse)]
+    GetTotalShares {},
 
-    #[returns(StrategyWhitelistedResponse)]
-    IsStrategyWhitelisted { strategy: String },
+    #[returns(ExplanationResponse)]
+    Explanation {},
 
-    #[returns(CalculateDigestHashResponse)]
-    CalculateDigestHash {
-        digst_hash_params: QueryDigestHashParams,
-    },
+    #[returns(UnderlyingToSharesResponse)]
+    UnderlyingToShares { amount_underlying: Uint128 },
 
-    #[returns(StrategyWhitelisterResponse)]
-    GetStrategyWhitelister {},
-
-    #[returns(StrategyManagerStateResponse)]
-    GetStrategyManagerState {},
-
-    #[returns(DepositTypehashResponse)]
-    GetDepositTypehash {},
-
-    #[returns(DomainTypehashResponse)]
-    GetDomainTypehash {},
-
-    #[returns(DomainNameResponse)]
-    GetDomainName {},
-
-    #[returns(DelegationManagerResponse)]
-    GetDelegationManager {},
+    #[returns(StrategyState)]
+    GetStrategyState {},
 }
 
 #[cw_serde]

@@ -2,31 +2,19 @@ use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{
-        CalculateDigestHashResponse, DelegationManagerResponse, DepositTypehashResponse,
-        DepositsResponse, DomainNameResponse, DomainTypehashResponse, NonceResponse, OwnerResponse,
-        StakerStrategyLisResponse, StakerStrategyListLengthResponse, StakerStrategySharesResponse,
-        StrategyManagerStateResponse, StrategyWhitelistedResponse, StrategyWhitelisterResponse,
-        ThirdPartyTransfersForbiddenResponse,
+        ExplanationResponse, SharesResponse, SharesToUnderlyingResponse, StrategyManagerResponse,
+        TotalSharesResponse, UnderlyingToShareResponse, UnderlyingToSharesResponse,
+        UnderlyingTokenResponse, UserUnderlyingResponse,
     },
-    state::{
-        StrategyManagerState, MAX_STAKER_STRATEGY_LIST_LENGTH, NONCES, OWNER, STAKER_STRATEGY_LIST,
-        STAKER_STRATEGY_SHARES, STRATEGY_IS_WHITELISTED_FOR_DEPOSIT, STRATEGY_MANAGER_STATE,
-        STRATEGY_WHITELISTER, THIRD_PARTY_TRANSFERS_FORBIDDEN
-    },
-    utils::{
-        calculate_digest_hash, recover, validate_addresses, DepositWithSignatureParams,
-        DigestHashParams, QueryDigestHashParams, DEPOSIT_TYPEHASH, DOMAIN_NAME, DOMAIN_TYPEHASH,
-    },
+    state::{StrategyState, OWNER, STRATEGY_STATE, MAX_PER_DEPOSIT, MAX_TOTAL_DEPOSITS},
 };
-use common::base::{ExecuteMsg as StrategyExecuteMsg, QueryMsg as StrategyQueryMsg, StrategyState};
-use common::delegation::ExecuteMsg as DelegationManagerExecuteMsg;
-use cosmwasm_std::{
-    entry_point, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo,
-    QuerierWrapper, QueryRequest, Response, StdResult, Uint128, WasmMsg, WasmQuery
-};
-
 use common::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use common::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
+use common::strategy::{QueryMsg as StrategyManagerQueryMsg, StakerStrategySharesResponse};
+use cosmwasm_std::{
+    entry_point, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo,
+    QuerierWrapper, QueryRequest, Response, StdResult, Uint128, WasmMsg, WasmQuery,
+};
 use cw2::set_contract_version;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
@@ -34,6 +22,7 @@ const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const PAUSED_DEPOSITS: u8 = 0;
+const PAUSED_WITHDRAWALS: u8 = 1;
 
 const SHARES_OFFSET: Uint128 = Uint128::new(1_000);
 const BALANCE_OFFSET: Uint128 = Uint128::new(1_000);
@@ -47,14 +36,17 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let delegation_manager = deps.api.addr_validate(&msg.delegation_manager)?;
-    let slasher = deps.api.addr_validate(&msg.slasher)?;
-    let initial_strategy_whitelister = deps.api.addr_validate(&msg.initial_strategy_whitelister)?;
-    let initial_owner = deps.api.addr_validate(&msg.initial_owner)?;
+    let owner = deps.api.addr_validate(&msg.initial_owner)?;
 
-    let state = StrategyManagerState {
-        delegation_manager: delegation_manager.clone(),
-        slasher: slasher.clone(),
+    let strategy_manager = deps.api.addr_validate(&msg.strategy_manager)?;
+    let underlying_token = deps.api.addr_validate(&msg.underlying_token)?;
+
+    OWNER.save(deps.storage, &owner)?;
+
+    let state = StrategyState {
+        strategy_manager: strategy_manager.clone(),
+        underlying_token: underlying_token.clone(),
+        total_shares: Uint128::zero(),
     };
 
     let pauser = deps.api.addr_validate(&msg.pauser)?;
@@ -63,20 +55,27 @@ pub fn instantiate(
     set_pauser(deps.branch(), pauser)?;
     set_unpauser(deps.branch(), unpauser)?;
 
+    STRATEGY_STATE.save(deps.storage, &state)?;
     PAUSED_STATE.save(deps.storage, &msg.initial_paused_status)?;
-    STRATEGY_MANAGER_STATE.save(deps.storage, &state)?;
-    STRATEGY_WHITELISTER.save(deps.storage, &initial_strategy_whitelister)?;
-    OWNER.save(deps.storage, &initial_owner)?;
+
+    MAX_PER_DEPOSIT.save(deps.storage, &msg.max_per_deposit)?;
+    MAX_TOTAL_DEPOSITS.save(deps.storage, &msg.max_total_deposits)?;
+
+    let underlying_token = msg.underlying_token.clone();
+
+    let token_info: cw20::TokenInfoResponse =
+        deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+            contract_addr: underlying_token.to_string(),
+            msg: to_json_binary(&Cw20QueryMsg::TokenInfo {})?,
+        }))?;
+
+    let decimals = token_info.decimals;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("delegation_manager", state.delegation_manager.to_string())
-        .add_attribute("slasher", state.slasher.to_string())
-        .add_attribute(
-            "strategy_whitelister",
-            msg.initial_strategy_whitelister.to_string(),
-        )
-        .add_attribute("owner", msg.initial_owner.to_string()))
+        .add_attribute("strategy_manager", state.strategy_manager.to_string())
+        .add_attribute("underlying_token", state.underlying_token.to_string())
+        .add_attribute("underlying_token_decimals", decimals.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -87,128 +86,18 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AddStrategiesToWhitelist {
-            strategies,
-            third_party_transfers_forbidden_values,
-        } => {
-            let strategies_addr = validate_addresses(deps.api, &strategies)?;
-
-            add_strategies_to_deposit_whitelist(
-                deps,
-                info,
-                strategies_addr,
-                third_party_transfers_forbidden_values,
-            )
-        }
-        ExecuteMsg::RemoveStrategiesFromWhitelist { strategies } => {
-            let strategies_addr = validate_addresses(deps.api, &strategies)?;
-
-            remove_strategies_from_deposit_whitelist(deps, info, strategies_addr)
-        }
-        ExecuteMsg::SetStrategyWhitelister {
-            new_strategy_whitelister,
-        } => {
-            let new_strategy_whitelister_addr =
-                deps.api.addr_validate(&new_strategy_whitelister)?;
-
-            set_strategy_whitelister(deps, info, new_strategy_whitelister_addr)
-        }
-        ExecuteMsg::DepositIntoStrategy {
-            strategy,
-            token,
-            amount,
-        } => {
-            let strategy_addr = deps.api.addr_validate(&strategy)?;
-            let token_addr = deps.api.addr_validate(&token)?;
-
-            let staker = info.sender.clone();
-            deposit_into_strategy(deps, info, staker, strategy_addr, token_addr, amount)
-        }
-        ExecuteMsg::SetThirdPartyTransfersForbidden { strategy, value } => {
-            let strategy_addr = deps.api.addr_validate(&strategy)?;
-
-            set_third_party_transfers_forbidden(deps, info, strategy_addr, value)
-        }
-        ExecuteMsg::DepositIntoStrategyWithSignature {
-            strategy,
-            token,
-            amount,
-            staker,
-            public_key,
-            expiry,
-            signature,
-        } => {
-            let strategy_addr = deps.api.addr_validate(&strategy)?;
-            let token_addr = deps.api.addr_validate(&token)?;
-            let staker_addr = Addr::unchecked(staker);
-
-            let public_key_binary = Binary::from_base64(&public_key)?;
-            let signature_binary = Binary::from_base64(&signature)?;
-
-            let params = DepositWithSignatureParams {
-                strategy: strategy_addr,
-                token: token_addr,
-                amount,
-                staker: staker_addr,
-                public_key: public_key_binary,
-                expiry,
-                signature: signature_binary,
-            };
-
-            let response = deposit_into_strategy_with_signature(deps, env, info, params)?;
-
-            Ok(response)
-        }
-        ExecuteMsg::RemoveShares {
-            staker,
-            strategy,
-            shares,
-        } => {
-            let staker_addr = deps.api.addr_validate(&staker)?;
-            let strategy_addr = deps.api.addr_validate(&strategy)?;
-
-            remove_shares(deps, info, staker_addr, strategy_addr, shares)
-        }
-        ExecuteMsg::WithdrawSharesAsTokens {
+        ExecuteMsg::Deposit { amount } => deposit(deps, env, info, amount),
+        ExecuteMsg::Withdraw {
             recipient,
-            strategy,
-            shares,
             token,
+            amount_shares,
         } => {
-            let strategy_addr = deps.api.addr_validate(&strategy)?;
             let recipient_addr = deps.api.addr_validate(&recipient)?;
             let token_addr = deps.api.addr_validate(&token)?;
-
-            withdraw_shares_as_tokens(
-                deps,
-                info,
-                recipient_addr,
-                strategy_addr,
-                shares,
-                token_addr,
-            )
-        }
-        ExecuteMsg::AddShares {
-            staker,
-            token,
-            strategy,
-            shares,
-        } => {
-            let staker_addr = deps.api.addr_validate(&staker)?;
-            let token_addr = deps.api.addr_validate(&token)?;
-            let strategy_addr = deps.api.addr_validate(&strategy)?;
-
-            add_shares(deps, info, staker_addr, token_addr, strategy_addr, shares)
-        }
-        ExecuteMsg::SetDelegationManager {
-            new_delegation_manager,
-        } => {
-            let new_delegation_manager_addr = deps.api.addr_validate(&new_delegation_manager)?;
-
-            set_delegation_manager(deps, info, new_delegation_manager_addr)
+            withdraw(deps, env, info, recipient_addr, token_addr, amount_shares)
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
-            let new_owner_addr: Addr = Addr::unchecked(new_owner);
+            let new_owner_addr = deps.api.addr_validate(&new_owner)?;
             transfer_ownership(deps, info, new_owner_addr)
         }
         ExecuteMsg::Pause {} => {
@@ -232,259 +121,195 @@ pub fn execute(
     }
 }
 
-pub fn set_delegation_manager(
+pub fn set_tvl_limits(
     deps: DepsMut,
     info: MessageInfo,
-    new_delegation_manager: Addr,
+    max_per_deposit: Uint128,
+    max_total_deposits: Uint128,
 ) -> Result<Response, ContractError> {
     only_owner(deps.as_ref(), &info)?;
-
-    let mut state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
-
-    state.delegation_manager = new_delegation_manager.clone();
-    STRATEGY_MANAGER_STATE.save(deps.storage, &state)?;
-
-    Ok(Response::new())
+    set_tvl_limits_internal(deps, max_per_deposit, max_total_deposits)
 }
 
-pub fn add_strategies_to_deposit_whitelist(
-    mut deps: DepsMut,
-    info: MessageInfo,
-    strategies_to_whitelist: Vec<Addr>,
-    third_party_transfers_forbidden_values: Vec<bool>,
-) -> Result<Response, ContractError> {
-    only_strategy_whitelister(deps.as_ref(), &info)?;
-
-    if strategies_to_whitelist.len() != third_party_transfers_forbidden_values.len() {
-        return Err(ContractError::InvalidInput {});
-    }
-
-    let mut events = vec![];
-
-    for (i, strategy) in strategies_to_whitelist.iter().enumerate() {
-        let forbidden_value = third_party_transfers_forbidden_values[i];
-
-        let is_whitelisted = STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
-            .may_load(deps.storage, strategy)?
-            .unwrap_or(false);
-
-        if !is_whitelisted {
-            STRATEGY_IS_WHITELISTED_FOR_DEPOSIT.save(deps.storage, strategy, &true)?;
-            set_third_party_transfers_forbidden(
-                deps.branch(),
-                info.clone(),
-                strategy.clone(),
-                forbidden_value,
-            )?;
-
-            let event = Event::new("StrategyAddedToDepositWhitelist")
-                .add_attribute("strategy", strategy.to_string())
-                .add_attribute(
-                    "third_party_transfers_forbidden",
-                    forbidden_value.to_string(),
-                );
-            events.push(event);
-        }
-    }
-
-    let mut response = Response::new();
-    for event in events {
-        response = response.add_event(event);
-    }
-
-    Ok(response)
-}
-
-pub fn remove_strategies_from_deposit_whitelist(
-    mut deps: DepsMut,
-    info: MessageInfo,
-    strategies: Vec<Addr>,
-) -> Result<Response, ContractError> {
-    only_strategy_whitelister(deps.as_ref(), &info)?;
-
-    let mut events = vec![];
-
-    for strategy in strategies {
-        let is_whitelisted = STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
-            .may_load(deps.storage, &strategy)?
-            .unwrap_or(false);
-
-        if is_whitelisted {
-            STRATEGY_IS_WHITELISTED_FOR_DEPOSIT.save(deps.storage, &strategy, &false)?;
-            set_third_party_transfers_forbidden(
-                deps.branch(),
-                info.clone(),
-                strategy.clone(),
-                false,
-            )?;
-
-            let event = Event::new("StrategyRemovedFromDepositWhitelist")
-                .add_attribute("strategy", strategy.to_string());
-
-            events.push(event);
-        }
-    }
-
-    Ok(Response::new().add_events(events))
-}
-
-pub fn set_strategy_whitelister(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_strategy_whitelister: Addr,
-) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), &info)?;
-
-    let strategy_whitelister = STRATEGY_WHITELISTER.load(deps.storage)?;
-
-    STRATEGY_WHITELISTER.save(deps.storage, &new_strategy_whitelister)?;
-
-    let event = Event::new("set_strategy_whitelister")
-        .add_attribute("old_strategy_whitelister", strategy_whitelister.to_string())
-        .add_attribute(
-            "new_strategy_whitelister",
-            new_strategy_whitelister.to_string(),
-        );
-
-    Ok(Response::new().add_event(event))
-}
-
-pub fn set_third_party_transfers_forbidden(
-    deps: DepsMut,
-    info: MessageInfo,
-    strategy: Addr,
-    value: bool,
-) -> Result<Response, ContractError> {
-    only_strategy_whitelister(deps.as_ref(), &info)?;
-
-    THIRD_PARTY_TRANSFERS_FORBIDDEN.save(deps.storage, &strategy, &value)?;
-
-    let event = Event::new("set_third_party_transfers_forbidden")
-        .add_attribute("strategy", strategy.to_string())
-        .add_attribute("value", value.to_string());
-
-    Ok(Response::new().add_event(event))
-}
-
-pub fn deposit_into_strategy(
-    deps: DepsMut,
-    info: MessageInfo,
-    staker: Addr,
-    strategy: Addr,
-    token: Addr,
-    amount: Uint128,
-) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_DEPOSITS)?;
-    deposit_into_strategy_internal(deps, info, staker, strategy, token, amount)
-}
-
-pub fn deposit_into_strategy_with_signature(
+pub fn deposit(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    params: DepositWithSignatureParams,
+    amount: Uint128,
 ) -> Result<Response, ContractError> {
     only_when_not_paused(deps.as_ref(), PAUSED_DEPOSITS)?;
 
-    let forbidden = THIRD_PARTY_TRANSFERS_FORBIDDEN
-        .may_load(deps.storage, &params.strategy)?
-        .unwrap_or(false);
-    if forbidden {
-        return Err(ContractError::Unauthorized {});
+    let mut state = STRATEGY_STATE.load(deps.storage)?;
+
+    only_strategy_manager(deps.as_ref(), &info)?;
+    before_deposit(&state, &state.underlying_token)?;
+
+    let balance = token_balance(
+        &deps.querier,
+        &state.underlying_token,
+        &env.contract.address,
+    )?;
+
+    let virtual_share_amount = state.total_shares + SHARES_OFFSET;
+    let virtual_token_balance = balance + BALANCE_OFFSET;
+    let virtual_prior_token_balance = virtual_token_balance - amount;
+    let new_shares = (amount * virtual_share_amount) / virtual_prior_token_balance;
+
+    if new_shares.is_zero() {
+        return Err(ContractError::ZeroNewShares {});
     }
 
-    if params.expiry < env.block.time.seconds() {
-        return Err(ContractError::SignatureExpired {});
-    }
+    state.total_shares += new_shares;
+    STRATEGY_STATE.save(deps.storage, &state)?;
 
-    let nonce = NONCES.may_load(deps.storage, &params.staker)?.unwrap_or(0);
-
-    let digest_params = DigestHashParams {
-        staker: params.staker.clone(),
-        public_key: params.public_key.clone(),
-        strategy: params.strategy.clone(),
-        token: params.token.clone(),
-        amount: params.amount,
-        nonce,
-        expiry: params.expiry,
-        chain_id: env.block.chain_id.clone(),
-        contract_addr: env.contract.address.clone(),
-    };
-
-    let struct_hash = calculate_digest_hash(&digest_params);
-
-    if !recover(&struct_hash, &params.signature, &params.public_key)? {
-        return Err(ContractError::InvalidSignature {});
-    }
-
-    NONCES.save(deps.storage, &params.staker, &(nonce + 1))?;
-
-    deposit_into_strategy_internal(
-        deps,
-        info,
-        params.staker.clone(),
-        params.strategy.clone(),
-        params.token.clone(),
-        params.amount,
-    )
-}
-
-pub fn add_shares(
-    deps: DepsMut,
-    info: MessageInfo,
-    staker: Addr,
-    token: Addr,
-    strategy: Addr,
-    shares: Uint128,
-) -> Result<Response, ContractError> {
-    only_delegation_manager(deps.as_ref(), &info)?;
-
-    add_shares_internal(deps, staker, token, strategy, shares)
-}
-
-pub fn remove_shares(
-    deps: DepsMut,
-    info: MessageInfo,
-    staker: Addr,
-    strategy: Addr,
-    shares: Uint128,
-) -> Result<Response, ContractError> {
-    only_delegation_manager(deps.as_ref(), &info)?;
-    let strategy_removed = remove_shares_internal(deps, staker.clone(), strategy.clone(), shares)?;
+    let exchange_rate_event =
+        emit_exchange_rate(virtual_token_balance, state.total_shares + SHARES_OFFSET)?;
 
     let response = Response::new()
-        .add_attribute("method", "remove_shares")
-        .add_attribute("staker", staker.to_string())
-        .add_attribute("strategy", strategy.to_string())
-        .add_attribute("shares", shares.to_string())
-        .add_attribute("strategy_removed", strategy_removed.to_string());
+        .add_attribute("method", "deposit")
+        .add_attribute("new_shares", new_shares.to_string())
+        .add_attribute("total_shares", state.total_shares.to_string())
+        .add_event(exchange_rate_event.events[0].clone());
 
     Ok(response)
 }
 
-pub fn withdraw_shares_as_tokens(
+pub fn withdraw(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     recipient: Addr,
-    strategy: Addr,
-    shares: Uint128,
     token: Addr,
+    amount_shares: Uint128,
 ) -> Result<Response, ContractError> {
-    only_delegation_manager(deps.as_ref(), &info)?;
+    only_when_not_paused(deps.as_ref(), PAUSED_WITHDRAWALS)?;
 
-    let withdraw_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: strategy.to_string(),
-        msg: to_json_binary(&StrategyExecuteMsg::Withdraw {
+    let mut state = STRATEGY_STATE.load(deps.storage)?;
+
+    only_strategy_manager(deps.as_ref(), &info)?;
+    before_withdrawal(&state, &token)?;
+
+    if amount_shares > state.total_shares {
+        return Err(ContractError::InsufficientShares {});
+    }
+
+    let balance = token_balance(
+        &deps.querier,
+        &state.underlying_token,
+        &env.contract.address,
+    )?;
+
+    let virtual_total_shares = state.total_shares + SHARES_OFFSET;
+    let virtual_token_balance = balance + BALANCE_OFFSET;
+    let amount_to_send = (virtual_token_balance * amount_shares) / virtual_total_shares;
+
+    if amount_to_send.is_zero() {
+        return Err(ContractError::ZeroAmountToSend {});
+    }
+
+    if amount_to_send > balance {
+        return Err(ContractError::InsufficientBalance {});
+    }
+
+    state.total_shares -= amount_shares;
+    STRATEGY_STATE.save(deps.storage, &state)?;
+
+    let exchange_rate_event = emit_exchange_rate(
+        virtual_token_balance - amount_to_send,
+        state.total_shares + SHARES_OFFSET,
+    )?;
+
+    let underlying_token = state.underlying_token;
+
+    let transfer_msg = WasmMsg::Execute {
+        contract_addr: underlying_token.to_string(),
+        msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
             recipient: recipient.to_string(),
-            token: token.to_string(),
-            amount_shares: shares,
+            amount: amount_to_send,
         })?,
         funds: vec![],
-    });
+    };
 
-    let response = Response::new().add_message(withdraw_msg);
+    let transfer_cosmos_msg: CosmosMsg = transfer_msg.into();
 
-    Ok(response)
+    let response = Response::new().add_message(transfer_cosmos_msg);
+
+    Ok(response
+        .add_attribute("method", "withdraw")
+        .add_attribute("amount_to_send", amount_to_send.to_string())
+        .add_attribute("total_shares", state.total_shares.to_string())
+        .add_event(exchange_rate_event.events[0].clone()))
+}
+
+pub fn shares(deps: Deps, user: Addr, strategy: Addr) -> StdResult<SharesResponse> {
+    let state = STRATEGY_STATE.load(deps.storage)?;
+
+    let response: StakerStrategySharesResponse =
+        deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+            contract_addr: state.strategy_manager.to_string(),
+            msg: to_json_binary(&StrategyManagerQueryMsg::GetStakerStrategyShares {
+                staker: user.to_string(),
+                strategy: strategy.to_string(),
+            })?,
+        }))?;
+
+    Ok(SharesResponse {
+        total_shares: response.shares,
+    })
+}
+
+pub fn shares_to_underlying_view(
+    deps: Deps,
+    env: Env,
+    amount_shares: Uint128,
+) -> StdResult<Uint128> {
+    let state = STRATEGY_STATE.load(deps.storage)?;
+    let balance = token_balance(
+        &deps.querier,
+        &state.underlying_token,
+        &env.contract.address,
+    )?;
+
+    let virtual_total_shares = state.total_shares + SHARES_OFFSET;
+    let virtual_token_balance = balance + BALANCE_OFFSET;
+    let amount_to_send = (virtual_token_balance * amount_shares) / virtual_total_shares;
+
+    Ok(amount_to_send)
+}
+
+pub fn underlying_to_share_view(deps: Deps, env: Env, amount: Uint128) -> StdResult<Uint128> {
+    let state: StrategyState = STRATEGY_STATE.load(deps.storage)?;
+    let balance = token_balance(
+        &deps.querier,
+        &state.underlying_token,
+        &env.contract.address,
+    )?;
+
+    let virtual_share_amount = state.total_shares + SHARES_OFFSET;
+    let virtual_token_balance = balance + BALANCE_OFFSET;
+    let virtual_prior_token_balance = virtual_token_balance - amount;
+    let share_to_send = (amount * virtual_share_amount) / virtual_prior_token_balance;
+
+    Ok(share_to_send)
+}
+
+pub fn underlying_to_shares(
+    deps: Deps,
+    env: Env,
+    amount_underlying: Uint128,
+) -> StdResult<Uint128> {
+    let share_to_send = underlying_to_share_view(deps, env, amount_underlying)?;
+    Ok(share_to_send)
+}
+
+pub fn user_underlying_view(deps: Deps, env: Env, user: Addr) -> StdResult<Uint128> {
+    let strategy = env.contract.address.clone();
+    let shares_response = shares(deps, user, strategy.clone())?;
+    let user_shares = shares_response.total_shares;
+
+    let amount_to_send = shares_to_underlying_view(deps, env, user_shares)?;
+
+    Ok(amount_to_send)
 }
 
 pub fn transfer_ownership(
@@ -506,194 +331,105 @@ pub fn transfer_ownership(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetDeposits { staker } => {
+        QueryMsg::GetShares { staker, strategy } => {
             let staker_addr = deps.api.addr_validate(&staker)?;
+            let strategy_addr = Addr::unchecked(strategy);
 
-            to_json_binary(&query_get_deposits(deps, staker_addr)?)
+            to_json_binary(&shares(deps, staker_addr, strategy_addr)?)
         }
-        QueryMsg::StakerStrategyListLength { staker } => {
-            let staker_addr = deps.api.addr_validate(&staker)?;
-
-            to_json_binary(&query_staker_strategy_list_length(deps, staker_addr)?)
+        QueryMsg::SharesToUnderlyingView { amount_shares } => {
+            to_json_binary(&query_shares_to_underlying_view(deps, env, amount_shares)?)
         }
-        QueryMsg::GetStakerStrategyShares { staker, strategy } => {
-            let staker_addr = deps.api.addr_validate(&staker)?;
-            let strategy_addr = deps.api.addr_validate(&strategy)?;
-
-            to_json_binary(&query_staker_strategy_shares(
-                deps,
-                staker_addr,
-                strategy_addr,
-            )?)
+        QueryMsg::UnderlyingToShareView { amount } => {
+            to_json_binary(&query_underlying_to_view(deps, env, amount)?)
         }
-        QueryMsg::IsThirdPartyTransfersForbidden { strategy } => {
-            let strategy_addr = deps.api.addr_validate(&strategy)?;
-
-            to_json_binary(&query_is_third_party_transfers_forbidden(
-                deps,
-                strategy_addr,
-            )?)
+        QueryMsg::UserUnderlyingView { user } => {
+            let user_addr = deps.api.addr_validate(&user)?;
+            to_json_binary(&query_user_underlying_view(deps, env, user_addr)?)
         }
-        QueryMsg::GetNonce { staker } => {
-            let staker_addr = deps.api.addr_validate(&staker)?;
-
-            to_json_binary(&query_nonce(deps, staker_addr)?)
+        QueryMsg::GetStrategyManager {} => to_json_binary(&query_strategy_manager(deps)?),
+        QueryMsg::GetUnderlyingToken {} => to_json_binary(&query_underlying_token(deps)?),
+        QueryMsg::GetTotalShares {} => to_json_binary(&query_total_shares(deps)?),
+        QueryMsg::Explanation {} => to_json_binary(&query_explanation()?),
+        QueryMsg::UnderlyingToShares { amount_underlying } => {
+            to_json_binary(&query_underlying_to_shares(deps, env, amount_underlying)?)
         }
-        QueryMsg::GetStakerStrategyList { staker } => {
-            let staker_addr = deps.api.addr_validate(&staker)?;
-
-            to_json_binary(&query_staker_strategy_list(deps, staker_addr)?)
-        }
-        QueryMsg::GetOwner {} => to_json_binary(&query_owner(deps)?),
-        QueryMsg::IsStrategyWhitelisted { strategy } => {
-            let strategy_addr = deps.api.addr_validate(&strategy)?;
-
-            to_json_binary(&query_is_strategy_whitelisted(deps, strategy_addr)?)
-        }
-        QueryMsg::CalculateDigestHash { digst_hash_params } => {
-            let response = query_calculate_digest_hash(deps, digst_hash_params)?;
-            to_json_binary(&response)
-        }
-        QueryMsg::GetStrategyWhitelister {} => to_json_binary(&query_strategy_whitelister(deps)?),
-        QueryMsg::GetStrategyManagerState {} => {
-            to_json_binary(&query_strategy_manager_state(deps)?)
-        }
-        QueryMsg::GetDepositTypehash {} => to_json_binary(&query_deposit_typehash()?),
-        QueryMsg::GetDomainTypehash {} => to_json_binary(&query_domain_typehash()?),
-        QueryMsg::GetDomainName {} => to_json_binary(&query_domain_name()?),
-        QueryMsg::GetDelegationManager {} => to_json_binary(&query_delegation_manager(deps)?),
+        QueryMsg::GetStrategyState {} => to_json_binary(&query_strategy_state(deps)?),
     }
 }
 
-fn query_calculate_digest_hash(
-    deps: Deps,
-    digst_hash_params: QueryDigestHashParams,
-) -> StdResult<CalculateDigestHashResponse> {
-    let staker_addr = deps.api.addr_validate(&digst_hash_params.staker)?;
-    let strategy_addr = deps.api.addr_validate(&digst_hash_params.strategy)?;
-    let token_addr = deps.api.addr_validate(&digst_hash_params.token)?;
-    let contract_addr = Addr::unchecked(&digst_hash_params.contract_addr);
-
-    let public_key_binary = Binary::from_base64(&digst_hash_params.public_key)?;
-
-    let params = DigestHashParams {
-        staker: staker_addr,
-        public_key: public_key_binary,
-        strategy: strategy_addr,
-        token: token_addr,
-        amount: digst_hash_params.amount,
-        nonce: digst_hash_params.nonce,
-        expiry: digst_hash_params.expiry,
-        chain_id: digst_hash_params.chain_id,
-        contract_addr,
-    };
-
-    let digest_hash = calculate_digest_hash(&params);
-    let digest_hash = Binary::new(digest_hash);
-    Ok(CalculateDigestHashResponse { digest_hash })
-}
-
-fn query_staker_strategy_shares(
-    deps: Deps,
-    staker: Addr,
-    strategy: Addr,
-) -> StdResult<StakerStrategySharesResponse> {
-    let shares = STAKER_STRATEGY_SHARES
-        .may_load(deps.storage, (&staker, &strategy))?
-        .unwrap_or(Uint128::zero());
-    Ok(StakerStrategySharesResponse { shares })
-}
-
-fn query_is_third_party_transfers_forbidden(
-    deps: Deps,
-    strategy: Addr,
-) -> StdResult<ThirdPartyTransfersForbiddenResponse> {
-    let is_forbidden = THIRD_PARTY_TRANSFERS_FORBIDDEN
-        .may_load(deps.storage, &strategy)?
-        .unwrap_or(false);
-    Ok(ThirdPartyTransfersForbiddenResponse { is_forbidden })
-}
-
-fn query_nonce(deps: Deps, staker: Addr) -> StdResult<NonceResponse> {
-    let nonce = NONCES.may_load(deps.storage, &staker)?.unwrap_or(0);
-    Ok(NonceResponse { nonce })
-}
-
-fn query_staker_strategy_list(deps: Deps, staker: Addr) -> StdResult<StakerStrategyLisResponse> {
-    let strategies = STAKER_STRATEGY_LIST
-        .may_load(deps.storage, &staker)?
-        .unwrap_or_else(Vec::new);
-    Ok(StakerStrategyLisResponse { strategies })
-}
-
-fn query_owner(deps: Deps) -> StdResult<OwnerResponse> {
-    let owner_addr = OWNER.load(deps.storage)?;
-    Ok(OwnerResponse { owner_addr })
-}
-
-fn query_is_strategy_whitelisted(
-    deps: Deps,
-    strategy: Addr,
-) -> StdResult<StrategyWhitelistedResponse> {
-    let is_whitelisted = STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
-        .may_load(deps.storage, &strategy)?
-        .unwrap_or(false);
-    Ok(StrategyWhitelistedResponse { is_whitelisted })
-}
-
-fn query_strategy_whitelister(deps: Deps) -> StdResult<StrategyWhitelisterResponse> {
-    let whitelister = STRATEGY_WHITELISTER.load(deps.storage)?;
-    Ok(StrategyWhitelisterResponse { whitelister })
-}
-
-fn query_strategy_manager_state(deps: Deps) -> StdResult<StrategyManagerStateResponse> {
-    let state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
-    Ok(StrategyManagerStateResponse { state })
-}
-
-fn query_deposit_typehash() -> StdResult<DepositTypehashResponse> {
-    let deposit_type_hash = String::from_utf8_lossy(DEPOSIT_TYPEHASH).to_string();
-    Ok(DepositTypehashResponse { deposit_type_hash })
-}
-
-fn query_domain_typehash() -> StdResult<DomainTypehashResponse> {
-    let domain_type_hash = String::from_utf8_lossy(DOMAIN_TYPEHASH).to_string();
-    Ok(DomainTypehashResponse { domain_type_hash })
-}
-
-fn query_domain_name() -> StdResult<DomainNameResponse> {
-    let domain_name = String::from_utf8_lossy(DOMAIN_NAME).to_string();
-    Ok(DomainNameResponse { domain_name })
-}
-
-fn query_delegation_manager(deps: Deps) -> StdResult<DelegationManagerResponse> {
-    let state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
-    Ok(DelegationManagerResponse {
-        delegation_manager: state.delegation_manager,
+pub fn query_strategy_manager(deps: Deps) -> StdResult<StrategyManagerResponse> {
+    let state = STRATEGY_STATE.load(deps.storage)?;
+    Ok(StrategyManagerResponse {
+        strate_manager_addr: state.strategy_manager,
     })
 }
 
-fn query_get_deposits(deps: Deps, staker: Addr) -> StdResult<DepositsResponse> {
-    let (strategies, shares) = get_deposits(deps, staker)?;
-    Ok(DepositsResponse { strategies, shares })
+fn query_underlying_token(deps: Deps) -> StdResult<UnderlyingTokenResponse> {
+    let state = STRATEGY_STATE.load(deps.storage)?;
+    Ok(UnderlyingTokenResponse {
+        underlying_token_addr: state.underlying_token,
+    })
 }
 
-fn query_staker_strategy_list_length(
+fn query_total_shares(deps: Deps) -> StdResult<TotalSharesResponse> {
+    let state = STRATEGY_STATE.load(deps.storage)?;
+    Ok(TotalSharesResponse {
+        total_shares: state.total_shares,
+    })
+}
+
+fn query_explanation() -> StdResult<ExplanationResponse> {
+    Ok(ExplanationResponse {
+        explanation:
+            "Base Strategy implementation to inherit from for more complex implementations"
+                .to_string(),
+    })
+}
+
+pub fn query_strategy_state(deps: Deps) -> StdResult<StrategyState> {
+    let state = STRATEGY_STATE.load(deps.storage)?;
+    Ok(state)
+}
+
+pub fn query_shares_to_underlying_view(
     deps: Deps,
-    staker: Addr,
-) -> StdResult<StakerStrategyListLengthResponse> {
-    let strategies_len = staker_strategy_list_length(deps, staker)?;
-    Ok(StakerStrategyListLengthResponse { strategies_len })
+    env: Env,
+    amount_shares: Uint128,
+) -> StdResult<SharesToUnderlyingResponse> {
+    let amount_to_send = shares_to_underlying_view(deps, env, amount_shares)?;
+
+    Ok(SharesToUnderlyingResponse { amount_to_send })
 }
 
-fn only_strategy_whitelister(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
-    let whitelister: Addr = STRATEGY_WHITELISTER.load(deps.storage)?;
-    if info.sender != whitelister {
-        return Err(ContractError::Unauthorized {});
-    }
-    Ok(())
+pub fn query_underlying_to_view(
+    deps: Deps,
+    env: Env,
+    amount: Uint128,
+) -> StdResult<UnderlyingToShareResponse> {
+    let share_to_send = underlying_to_share_view(deps, env, amount)?;
+
+    Ok(UnderlyingToShareResponse { share_to_send })
+}
+
+pub fn query_user_underlying_view(
+    deps: Deps,
+    env: Env,
+    user: Addr,
+) -> StdResult<UserUnderlyingResponse> {
+    let amount_to_send = user_underlying_view(deps, env, user)?;
+    Ok(UserUnderlyingResponse { amount_to_send })
+}
+
+pub fn query_underlying_to_shares(
+    deps: Deps,
+    env: Env,
+    amount_underlying: Uint128,
+) -> StdResult<UnderlyingToSharesResponse> {
+    let share_to_send = underlying_to_shares(deps, env, amount_underlying)?;
+    Ok(UnderlyingToSharesResponse { share_to_send })
 }
 
 fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
@@ -704,218 +440,50 @@ fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     Ok(())
 }
 
-fn only_delegation_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
-    let state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
-    if info.sender != state.delegation_manager {
+fn only_strategy_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+    let state = STRATEGY_STATE.load(deps.storage)?;
+
+    if info.sender != state.strategy_manager {
         return Err(ContractError::Unauthorized {});
     }
     Ok(())
 }
 
-fn only_strategies_whitelisted_for_deposit(
-    deps: Deps,
-    strategy: &Addr,
-) -> Result<(), ContractError> {
-    let whitelist = STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
-        .may_load(deps.storage, strategy)?
-        .unwrap_or(false);
-    if !whitelist {
-        return Err(ContractError::StrategyNotWhitelisted {});
+fn set_tvl_limits_internal(
+    deps: DepsMut,
+    max_per_deposit: Uint128,
+    max_total_deposits: Uint128,
+) -> Result<Response, ContractError> {
+    if max_per_deposit > max_total_deposits {
+        return Err(ContractError::InvalidTVLLimits {});
+    }
+
+    let old_max_per_deposit = MAX_PER_DEPOSIT.load(deps.storage)?;
+    let old_max_total_deposits = MAX_TOTAL_DEPOSITS.load(deps.storage)?;
+
+    MAX_PER_DEPOSIT.save(deps.storage, &max_per_deposit)?;
+    MAX_TOTAL_DEPOSITS.save(deps.storage, &max_total_deposits)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "set_tvl_limits")
+        .add_attribute("old_max_per_deposit", old_max_per_deposit.to_string())
+        .add_attribute("new_max_per_deposit", max_per_deposit.to_string())
+        .add_attribute("old_max_total_deposits", old_max_total_deposits.to_string())
+        .add_attribute("new_max_total_deposits", max_total_deposits.to_string()))
+}
+
+fn before_deposit(state: &StrategyState, token: &Addr) -> Result<(), ContractError> {
+    if token != state.underlying_token {
+        return Err(ContractError::InvalidToken {});
     }
     Ok(())
 }
 
-fn deposit_into_strategy_internal(
-    mut deps: DepsMut,
-    info: MessageInfo,
-    staker: Addr,
-    strategy: Addr,
-    token: Addr,
-    amount: Uint128,
-) -> Result<Response, ContractError> {
-    only_strategies_whitelisted_for_deposit(deps.as_ref(), &strategy)?;
-
-    if amount.is_zero() {
-        return Err(ContractError::ZeroAmount {});
+fn before_withdrawal(state: &StrategyState, token: &Addr) -> Result<(), ContractError> {
+    if token != state.underlying_token {
+        return Err(ContractError::InvalidToken {});
     }
-
-    let transfer_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: token.to_string(),
-        msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
-            owner: info.sender.to_string(),
-            recipient: strategy.to_string(),
-            amount,
-        })?,
-        funds: vec![],
-    });
-
-    let mut response = Response::new().add_message(transfer_msg);
-
-    let state: StrategyState = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: strategy.to_string(),
-        msg: to_json_binary(&StrategyQueryMsg::GetStrategyState {})?,
-    }))?;
-
-    let balance = token_balance(&deps.querier, &state.underlying_token, &strategy)?;
-    let new_shares = calculate_new_shares(state.total_shares, balance, amount)?;
-
-    if new_shares.is_zero() {
-        return Err(ContractError::ZeroNewShares {});
-    }
-
-    let deposit_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: strategy.to_string(),
-        msg: to_json_binary(&StrategyExecuteMsg::Deposit { amount })?,
-        funds: vec![],
-    });
-
-    response = response.add_message(deposit_msg);
-
-    add_shares_internal(
-        deps.branch(),
-        staker.clone(),
-        token.clone(),
-        strategy.clone(),
-        new_shares,
-    )?;
-
-    let state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
-
-    let increase_delegated_shares_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: state.delegation_manager.to_string(),
-        msg: to_json_binary(&DelegationManagerExecuteMsg::IncreaseDelegatedShares {
-            staker: staker.to_string(),
-            strategy: strategy.to_string(),
-            shares: new_shares,
-        })?,
-        funds: vec![],
-    });
-
-    Ok(response
-        .add_message(increase_delegated_shares_msg)
-        .add_attribute("new_shares", new_shares.to_string()))
-}
-
-fn add_shares_internal(
-    deps: DepsMut,
-    staker: Addr,
-    token: Addr,
-    strategy: Addr,
-    shares: Uint128,
-) -> Result<Response, ContractError> {
-    if shares.is_zero() {
-        return Err(ContractError::InvalidShares {});
-    }
-
-    let mut strategy_list = STAKER_STRATEGY_LIST
-        .may_load(deps.storage, &staker)?
-        .unwrap_or_else(Vec::new);
-
-    let current_shares = STAKER_STRATEGY_SHARES
-        .may_load(deps.storage, (&staker, &strategy))?
-        .unwrap_or_else(Uint128::zero);
-
-    if current_shares.is_zero() {
-        if strategy_list.len() >= MAX_STAKER_STRATEGY_LIST_LENGTH {
-            return Err(ContractError::MaxStrategyListLengthExceeded {});
-        }
-        strategy_list.push(strategy.clone());
-        STAKER_STRATEGY_LIST.save(deps.storage, &staker, &strategy_list)?;
-    }
-
-    let new_shares = current_shares + shares;
-    STAKER_STRATEGY_SHARES.save(deps.storage, (&staker, &strategy), &new_shares)?;
-
-    let event = Event::new("add_shares")
-        .add_attribute("staker", staker.to_string())
-        .add_attribute("token", token.to_string())
-        .add_attribute("strategy", strategy.to_string())
-        .add_attribute("shares", shares.to_string());
-
-    Ok(Response::new().add_event(event))
-}
-
-fn remove_shares_internal(
-    deps: DepsMut,
-    staker: Addr,
-    strategy: Addr,
-    shares: Uint128,
-) -> Result<bool, ContractError> {
-    if shares.is_zero() {
-        return Err(ContractError::InvalidShares {});
-    }
-
-    let mut current_shares = STAKER_STRATEGY_SHARES
-        .may_load(deps.storage, (&staker, &strategy))?
-        .unwrap_or_else(Uint128::zero);
-
-    if shares > current_shares {
-        return Err(ContractError::InvalidShares {});
-    }
-
-    // Subtract the shares
-    current_shares = current_shares
-        .checked_sub(shares)
-        .map_err(|_| ContractError::InvalidShares {})?;
-    STAKER_STRATEGY_SHARES.save(deps.storage, (&staker, &strategy), &current_shares)?;
-
-    // If no existing shares, remove the strategy from the staker's list
-    if current_shares.is_zero() {
-        remove_strategy_from_staker_strategy_list(deps, staker.clone(), strategy.clone())?;
-        return Ok(true);
-    }
-
-    Ok(false)
-}
-
-fn remove_strategy_from_staker_strategy_list(
-    deps: DepsMut,
-    staker: Addr,
-    strategy: Addr,
-) -> Result<(), ContractError> {
-    let mut strategy_list = STAKER_STRATEGY_LIST
-        .may_load(deps.storage, &staker)?
-        .unwrap_or_else(Vec::new);
-
-    if let Some(pos) = strategy_list.iter().position(|x| *x == strategy) {
-        strategy_list.swap_remove(pos);
-        STAKER_STRATEGY_LIST.save(deps.storage, &staker, &strategy_list)?;
-        Ok(())
-    } else {
-        Err(ContractError::StrategyNotFound {})
-    }
-}
-
-fn calculate_new_shares(
-    total_shares: Uint128,
-    token_balance: Uint128,
-    deposit_amount: Uint128,
-) -> Result<Uint128, ContractError> {
-    let virtual_share_amount = total_shares
-        .checked_add(SHARES_OFFSET)
-        .map_err(|_| ContractError::Overflow)?;
-
-    let virtual_token_balance = token_balance
-        .checked_add(BALANCE_OFFSET)
-        .map_err(|_| ContractError::Overflow)?;
-
-    let virtual_prior_token_balance = virtual_token_balance
-        .checked_sub(deposit_amount)
-        .map_err(|_| ContractError::Underflow)?;
-
-    let numerator = deposit_amount
-        .checked_mul(virtual_share_amount)
-        .map_err(|_| ContractError::Overflow)?;
-
-    if virtual_prior_token_balance.is_zero() {
-        return Err(ContractError::DivideByZero);
-    }
-
-    let new_shares = numerator
-        .checked_div(virtual_prior_token_balance)
-        .map_err(|_| ContractError::DivideByZero)?;
-
-    Ok(new_shares)
+    Ok(())
 }
 
 fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdResult<Uint128> {
@@ -928,28 +496,17 @@ fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdR
     Ok(res.balance)
 }
 
-pub fn get_deposits(deps: Deps, staker: Addr) -> StdResult<(Vec<Addr>, Vec<Uint128>)> {
-    let strategies = STAKER_STRATEGY_LIST
-        .may_load(deps.storage, &staker)?
-        .unwrap_or_else(Vec::new);
+fn emit_exchange_rate(
+    virtual_token_balance: Uint128,
+    virtual_total_shares: Uint128,
+) -> StdResult<Response> {
+    let exchange_rate = (virtual_token_balance.checked_mul(Uint128::new(1_000_000))?)
+        .checked_div(virtual_total_shares)?;
 
-    let mut shares = Vec::with_capacity(strategies.len());
+    let event = Event::new("exchange_rate_emitted")
+        .add_attribute("exchange_rate", exchange_rate.to_string());
 
-    for strategy in &strategies {
-        let share = STAKER_STRATEGY_SHARES
-            .may_load(deps.storage, (&staker, strategy))?
-            .unwrap_or_else(Uint128::zero);
-        shares.push(share);
-    }
-
-    Ok((strategies, shares))
-}
-
-pub fn staker_strategy_list_length(deps: Deps, staker: Addr) -> StdResult<Uint128> {
-    let strategies = STAKER_STRATEGY_LIST
-        .may_load(deps.storage, &staker)?
-        .unwrap_or_else(Vec::new);
-    Ok(Uint128::new(strategies.len() as u128))
+    Ok(Response::new().add_event(event))
 }
 
 pub fn migrate(
@@ -968,19 +525,16 @@ pub fn migrate(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use base64::{engine::general_purpose, Engine as _};
-    use bech32::{self, ToBase32, Variant};
     use common::roles::{PAUSER, UNPAUSER};
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
     use cosmwasm_std::{
-        attr, from_json, Addr, ContractResult, OwnedDeps, SystemError, SystemResult,
+        attr, from_json, Binary, ContractResult, CosmosMsg, OwnedDeps, SystemError, SystemResult,
+        WasmQuery,
     };
     use cw2::get_contract_version;
-    use ripemd::Ripemd160;
-    use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
-    use sha2::{Digest, Sha256};
+    use cw20::TokenInfoResponse;
 
     #[test]
     fn test_instantiate() {
@@ -989,54 +543,67 @@ mod tests {
         let info = message_info(&Addr::unchecked("creator"), &[]);
 
         let owner = deps.api.addr_make("owner").to_string();
-        let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
-        let slasher = deps.api.addr_make("slasher").to_string();
-        let strategy_whitelister = deps.api.addr_make("strategy_whitelister").to_string();
+
         let pauser = deps.api.addr_make("pauser").to_string();
         let unpauser = deps.api.addr_make("unpauser").to_string();
 
+        let strategy_manager = deps.api.addr_make("strategy_manager").to_string();
+        let token = deps.api.addr_make("token").to_string();
+
         let msg = InstantiateMsg {
             initial_owner: owner.clone(),
-            delegation_manager: delegation_manager.clone(),
-            slasher: slasher.clone(),
-            initial_strategy_whitelister: strategy_whitelister.clone(),
+            strategy_manager: strategy_manager.clone(),
+            underlying_token: token.clone(),
             pauser: pauser.clone(),
             unpauser: unpauser.clone(),
             initial_paused_status: 0,
+            max_per_deposit: Uint128::new(999999999999999),
+            max_total_deposits: Uint128::new(999999999999999)
         };
+
+        deps.querier.update_wasm({
+            let token_clone = token.clone();
+            move |query| match query {
+                WasmQuery::Smart {
+                    contract_addr, msg, ..
+                } => {
+                    if contract_addr == &token_clone {
+                        let msg: Cw20QueryMsg = from_json(msg).unwrap();
+                        if let Cw20QueryMsg::TokenInfo {} = msg {
+                            return SystemResult::Ok(ContractResult::Ok(
+                                to_json_binary(&TokenInfoResponse {
+                                    name: "Mock Token".to_string(),
+                                    symbol: "MTK".to_string(),
+                                    decimals: 8,
+                                    total_supply: Uint128::new(1_000_000),
+                                })
+                                .unwrap(),
+                            ));
+                        }
+                    }
+                    SystemResult::Err(SystemError::InvalidRequest {
+                        error: "not implemented".to_string(),
+                        request: msg.clone(),
+                    })
+                }
+                _ => SystemResult::Err(SystemError::InvalidRequest {
+                    error: "not implemented".to_string(),
+                    request: Binary::from(b"other".as_ref()),
+                }),
+            }
+        });
 
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        assert_eq!(res.attributes.len(), 5);
+        assert_eq!(res.attributes.len(), 4);
         assert_eq!(res.attributes[0].key, "method");
         assert_eq!(res.attributes[0].value, "instantiate");
-        assert_eq!(res.attributes[1].key, "delegation_manager");
-        assert_eq!(res.attributes[1].value, delegation_manager.clone());
-        assert_eq!(res.attributes[2].key, "slasher");
-        assert_eq!(res.attributes[2].value, slasher.clone());
-        assert_eq!(res.attributes[3].key, "strategy_whitelister");
-        assert_eq!(res.attributes[3].value, strategy_whitelister.clone());
-        assert_eq!(res.attributes[4].key, "owner");
-        assert_eq!(res.attributes[4].value, owner.clone());
-
-        let owner = OWNER.load(&deps.storage).unwrap();
-        assert_eq!(owner, owner.clone());
-
-        let strategy_manager_state = STRATEGY_MANAGER_STATE.load(&deps.storage).unwrap();
-        assert_eq!(
-            strategy_manager_state.delegation_manager,
-            Addr::unchecked(delegation_manager.clone())
-        );
-        assert_eq!(
-            strategy_manager_state.slasher,
-            Addr::unchecked(slasher.clone())
-        );
-
-        let strategy_whitelister = STRATEGY_WHITELISTER.load(&deps.storage).unwrap();
-        assert_eq!(
-            strategy_whitelister,
-            Addr::unchecked(strategy_whitelister.clone())
-        );
+        assert_eq!(res.attributes[1].key, "strategy_manager");
+        assert_eq!(res.attributes[1].value, strategy_manager);
+        assert_eq!(res.attributes[2].key, "underlying_token");
+        assert_eq!(res.attributes[2].value, token);
+        assert_eq!(res.attributes[3].key, "underlying_token_decimals");
+        assert_eq!(res.attributes[3].value, "8");
     }
 
     fn instantiate_contract() -> (
@@ -1045,8 +612,8 @@ mod tests {
         MessageInfo,
         MessageInfo,
         MessageInfo,
-        MessageInfo,
-        MessageInfo,
+        String,
+        String,
     ) {
         let mut deps = mock_dependencies();
         let env = mock_env();
@@ -1054,1683 +621,650 @@ mod tests {
         let owner = deps.api.addr_make("owner").to_string();
         let owner_info = message_info(&Addr::unchecked(owner.clone()), &[]);
 
-        let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
-        let slasher = deps.api.addr_make("slasher").to_string();
-        let strategy_whitelister = deps.api.addr_make("strategy_whitelister").to_string();
-
         let pauser = deps.api.addr_make("pauser").to_string();
         let unpauser = deps.api.addr_make("unpauser").to_string();
 
         let pauser_info = message_info(&Addr::unchecked(pauser.clone()), &[]);
         let unpauser_info = message_info(&Addr::unchecked(unpauser.clone()), &[]);
-        let strategy_whitelister_info =
-            message_info(&Addr::unchecked(strategy_whitelister.clone()), &[]);
-        let delegation_manager_info =
-            message_info(&Addr::unchecked(delegation_manager.clone()), &[]);
+
+        let strategy_manager = deps.api.addr_make("strategy_manager").to_string();
+        let token = deps.api.addr_make("token").to_string();
 
         let msg = InstantiateMsg {
             initial_owner: owner.clone(),
-            delegation_manager: delegation_manager.clone(),
-            slasher: slasher.clone(),
-            initial_strategy_whitelister: strategy_whitelister.clone(),
+            strategy_manager: strategy_manager.clone(),
+            underlying_token: token.clone(),
             pauser: pauser.clone(),
             unpauser: unpauser.clone(),
             initial_paused_status: 0,
+            max_per_deposit: Uint128::new(999999999999999),
+            max_total_deposits: Uint128::new(999999999999999)
         };
+
+        deps.querier.update_wasm({
+            let token_clone = token.clone();
+            move |query| match query {
+                WasmQuery::Smart {
+                    contract_addr, msg, ..
+                } => {
+                    if contract_addr == &token_clone {
+                        let msg: Cw20QueryMsg = from_json(msg).unwrap();
+                        match msg {
+                            Cw20QueryMsg::TokenInfo {} => {
+                                return SystemResult::Ok(ContractResult::Ok(
+                                    to_json_binary(&TokenInfoResponse {
+                                        name: "Mock Token".to_string(),
+                                        symbol: "MTK".to_string(),
+                                        decimals: 8,
+                                        total_supply: Uint128::new(1_000_000),
+                                    })
+                                    .unwrap(),
+                                ));
+                            }
+                            Cw20QueryMsg::Balance { address: _ } => {
+                                return SystemResult::Ok(ContractResult::Ok(
+                                    to_json_binary(&Cw20BalanceResponse {
+                                        balance: Uint128::new(1_000_000),
+                                    })
+                                    .unwrap(),
+                                ));
+                            }
+                            _ => {}
+                        }
+                        SystemResult::Err(SystemError::InvalidRequest {
+                            error: "not implemented".to_string(),
+                            request: to_json_binary(&msg).unwrap(),
+                        })
+                    } else {
+                        SystemResult::Err(SystemError::InvalidRequest {
+                            error: "not implemented".to_string(),
+                            request: to_json_binary(&msg).unwrap(),
+                        })
+                    }
+                }
+                _ => SystemResult::Err(SystemError::InvalidRequest {
+                    error: "not implemented".to_string(),
+                    request: Binary::from(b"other".as_ref()),
+                }),
+            }
+        });
 
         let _res = instantiate(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();
         (
             deps,
             env,
             owner_info,
-            delegation_manager_info,
-            strategy_whitelister_info,
             pauser_info,
             unpauser_info,
+            token,
+            strategy_manager,
         )
     }
 
     #[test]
-    fn test_only_strategy_whitelister() {
-        let (
-            deps,
-            _env,
-            _owner_info,
-            _info_delegation_manager,
-            info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+    fn test_deposit() {
+        let (mut deps, env, _info, _pauser_info, _unpauser_info, token, strategy_manager) =
+            instantiate_contract();
 
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
+        let amount = Uint128::new(1_000);
+        let msg = ExecuteMsg::Deposit { amount };
 
-        let result = only_strategy_whitelister(deps.as_ref(), &info_whitelister);
+        let info = message_info(&Addr::unchecked(strategy_manager), &[]);
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        assert_eq!(res.attributes.len(), 3);
+        assert_eq!(res.attributes[0].key, "method");
+        assert_eq!(res.attributes[0].value, "deposit");
+        assert!(res.attributes[1].key == "new_shares");
+        assert!(res.attributes[2].key == "total_shares");
+
+        assert_eq!(res.events.len(), 1);
+        let event = &res.events[0];
+        assert_eq!(event.ty, "exchange_rate_emitted");
+        assert_eq!(event.attributes.len(), 1);
+        assert_eq!(event.attributes[0].key, "exchange_rate");
+        assert_eq!(event.attributes[0].value, "1000000000");
+
+        let exchange_rate = event.attributes[0].value.parse::<u128>().unwrap();
+        assert!(exchange_rate > 0, "Exchange rate should be positive");
+
+        let state = STRATEGY_STATE.load(&deps.storage).unwrap();
+        assert!(state.total_shares > Uint128::zero());
+
+        let balance = token_balance(
+            &QuerierWrapper::new(&deps.querier),
+            &Addr::unchecked(token),
+            &env.contract.address,
+        )
+        .unwrap();
+        assert_eq!(balance, Uint128::new(1_000_000));
+    }
+
+    #[test]
+    fn test_withdraw() {
+        let (mut deps, env, _info, _pauser_info, _unpauser_info, token, strategy_manager) =
+            instantiate_contract();
+
+        let deposit_amount = Uint128::new(1_000);
+        let msg_deposit = ExecuteMsg::Deposit {
+            amount: deposit_amount,
+        };
+
+        let info = message_info(&Addr::unchecked(strategy_manager), &[]);
+
+        execute(deps.as_mut(), env.clone(), info.clone(), msg_deposit).unwrap();
+
+        let state = STRATEGY_STATE.load(&deps.storage).unwrap();
+        assert_eq!(state.total_shares, Uint128::new(1));
+
+        let withdraw_amount_shares = Uint128::new(1);
+        let recipient = deps.api.addr_make("recipient").to_string();
+
+        let msg_withdraw = ExecuteMsg::Withdraw {
+            recipient: recipient.clone(),
+            token: token.clone(),
+            amount_shares: withdraw_amount_shares,
+        };
+
+        let res_withdraw = execute(deps.as_mut(), env.clone(), info.clone(), msg_withdraw);
+        match res_withdraw {
+            Ok(response) => {
+                assert_eq!(response.attributes.len(), 3);
+                assert_eq!(response.attributes[0].key, "method");
+                assert_eq!(response.attributes[0].value, "withdraw");
+                assert!(response.attributes[1].key == "amount_to_send");
+                assert!(response.attributes[2].key == "total_shares");
+
+                assert_eq!(response.messages.len(), 1);
+                match &response.messages[0].msg {
+                    CosmosMsg::Wasm(WasmMsg::Execute {
+                        contract_addr, msg, ..
+                    }) => {
+                        assert_eq!(*contract_addr, token);
+                        let cw20_msg: Cw20ExecuteMsg = from_json(msg).unwrap();
+                        match cw20_msg {
+                            Cw20ExecuteMsg::Transfer {
+                                recipient: rec,
+                                amount,
+                            } => {
+                                assert_eq!(rec, recipient.to_string());
+                                assert_eq!(amount, Uint128::new(1_000));
+                            }
+                            _ => panic!("Unexpected message type"),
+                        }
+                    }
+                    _ => panic!("Unexpected CosmosMsg"),
+                }
+
+                assert_eq!(response.events.len(), 1);
+                let event = &response.events[0];
+                assert_eq!(event.ty, "exchange_rate_emitted");
+                assert_eq!(event.attributes.len(), 1);
+                assert_eq!(event.attributes[0].key, "exchange_rate");
+                assert_eq!(event.attributes[0].value, "1000000000");
+
+                let exchange_rate = event.attributes[0].value.parse::<u128>().unwrap();
+                assert!(exchange_rate > 0, "Exchange rate should be positive");
+            }
+            Err(err) => {
+                println!("Withdraw failed with error: {:?}", err);
+                panic!("Withdraw test failed");
+            }
+        }
+    }
+
+    #[test]
+    fn test_only_strategy_manager() {
+        let (deps, _env, _info, _pauser_info, _unpauser_info, _token, strategy_manager) =
+            instantiate_contract();
+
+        let info_strategy_manager = message_info(&Addr::unchecked(strategy_manager.clone()), &[]);
+
+        let result = only_strategy_manager(deps.as_ref(), &info_strategy_manager.clone());
         assert!(result.is_ok());
 
-        let result = only_strategy_whitelister(deps.as_ref(), &info_unauthorized);
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
+        let info_wrong = message_info(&Addr::unchecked("other_manager"), &[]);
+        let result_wrong = only_strategy_manager(deps.as_ref(), &info_wrong);
+        assert!(result_wrong.is_err());
     }
 
     #[test]
-    fn test_only_owner() {
-        let (
-            deps,
-            _env,
-            owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+    fn test_before_deposit() {
+        let (mut _deps, _env, _info, _pauser_info, _unpauser_info, token, strategy_manager) =
+            instantiate_contract();
 
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
+        let state = StrategyState {
+            strategy_manager: Addr::unchecked(strategy_manager),
+            underlying_token: Addr::unchecked(token.clone()),
+            total_shares: Uint128::zero(),
+        };
 
-        let result = only_owner(deps.as_ref(), &owner_info);
+        let result = before_deposit(&state, &Addr::unchecked(token));
         assert!(result.is_ok());
 
-        let result = only_owner(deps.as_ref(), &info_unauthorized);
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
+        let wrong_token = Addr::unchecked("wrong_token");
+        let result_wrong = before_deposit(&state, &wrong_token);
+        assert!(result_wrong.is_err());
     }
 
     #[test]
-    fn test_only_delegation_manager() {
-        let (
-            deps,
-            _env,
-            _owner_info,
-            info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+    fn test_before_withdrawal() {
+        let (mut _deps, _env, _info, _pauser_info, _unpauser_info, token, strategy_manager) =
+            instantiate_contract();
 
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
+        let state = StrategyState {
+            strategy_manager: Addr::unchecked(strategy_manager),
+            underlying_token: Addr::unchecked(token.clone()),
+            total_shares: Uint128::zero(),
+        };
 
-        let result = only_delegation_manager(deps.as_ref(), &info_delegation_manager);
+        let result = before_withdrawal(&state, &Addr::unchecked(token));
         assert!(result.is_ok());
 
-        let result = only_delegation_manager(deps.as_ref(), &info_unauthorized);
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
+        let wrong_token = Addr::unchecked("wrong_token");
+        let result_wrong = before_withdrawal(&state, &wrong_token);
+        assert!(result_wrong.is_err());
     }
-
     #[test]
-    fn test_only_strategies_whitelisted_for_deposit() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+    fn test_query_explanation() {
+        let (deps, env, _info, _pauser_info, _unpauser_info, _token, _strategy_manager) =
+            instantiate_contract();
 
-        let strategy = Addr::unchecked("strategy");
-        STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
-            .save(&mut deps.storage, &strategy, &true)
-            .unwrap();
+        let query_msg = QueryMsg::Explanation {};
 
-        let result = only_strategies_whitelisted_for_deposit(deps.as_ref(), &strategy);
-        assert!(result.is_ok());
+        let res = query(deps.as_ref(), env, query_msg).unwrap();
 
-        let non_whitelisted_strategy = Addr::unchecked("non_whitelisted_strategy");
-        let result =
-            only_strategies_whitelisted_for_deposit(deps.as_ref(), &non_whitelisted_strategy);
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::StrategyNotWhitelisted {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-    }
+        let explanation_response: ExplanationResponse = from_json(res).unwrap();
 
-    #[test]
-    fn test_add_strategies_to_deposit_whitelist() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            _info_delegation_manager,
-            info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let strategies = vec![
-            deps.api.addr_make("strategy1").to_string(),
-            deps.api.addr_make("strategy2").to_string(),
-        ];
-
-        let forbidden_values = vec![true, false];
-        let msg = ExecuteMsg::AddStrategiesToWhitelist {
-            strategies: strategies.clone(),
-            third_party_transfers_forbidden_values: forbidden_values.clone(),
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info_whitelister.clone(), msg).unwrap();
-
-        let events = res.events;
-
-        assert_eq!(events.len(), strategies.len());
-
-        for (i, event) in events.iter().enumerate() {
-            assert_eq!(event.ty, "StrategyAddedToDepositWhitelist");
-            assert_eq!(event.attributes.len(), 2);
-            assert_eq!(event.attributes[0].key, "strategy");
-            assert_eq!(event.attributes[0].value, strategies[i]);
-            assert_eq!(event.attributes[1].key, "third_party_transfers_forbidden");
-            assert_eq!(event.attributes[1].value, forbidden_values[i].to_string());
-        }
-
-        for (i, strategy) in strategies.iter().enumerate() {
-            let is_whitelisted = STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
-                .load(&deps.storage, &Addr::unchecked(strategy.clone()))
-                .unwrap();
-            assert!(is_whitelisted);
-
-            let forbidden = THIRD_PARTY_TRANSFERS_FORBIDDEN
-                .load(&deps.storage, &Addr::unchecked(strategy.clone()))
-                .unwrap();
-            assert_eq!(forbidden, forbidden_values[i]);
-        }
-
-        let msg = ExecuteMsg::AddStrategiesToWhitelist {
-            strategies: strategies.clone(),
-            third_party_transfers_forbidden_values: forbidden_values.clone(),
-        };
-
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-        let result = execute(deps.as_mut(), env.clone(), info_unauthorized.clone(), msg);
-        assert!(result.is_err());
-
-        if let Err(err) = result {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-
-        // Test with mismatched strategies and forbidden_values length
-        let strategies = vec![deps.api.addr_make("strategy3").to_string()];
-        let msg = ExecuteMsg::AddStrategiesToWhitelist {
-            strategies,
-            third_party_transfers_forbidden_values: forbidden_values.clone(),
-        };
-
-        let result = execute(deps.as_mut(), env.clone(), info_whitelister.clone(), msg);
-        assert!(result.is_err());
-
-        if let Err(err) = result {
-            match err {
-                ContractError::InvalidInput {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-    }
-
-    #[test]
-    fn test_remove_strategies_from_deposit_whitelist() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            _info_delegation_manager,
-            info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let strategies = vec![
-            deps.api.addr_make("strategy1").to_string(),
-            deps.api.addr_make("strategy2").to_string(),
-        ];
-        let forbidden_values = vec![true, false];
-        let msg = ExecuteMsg::AddStrategiesToWhitelist {
-            strategies: strategies.clone(),
-            third_party_transfers_forbidden_values: forbidden_values.clone(),
-        };
-
-        let _res = execute(deps.as_mut(), env.clone(), info_whitelister.clone(), msg).unwrap();
-
-        let msg = ExecuteMsg::RemoveStrategiesFromWhitelist {
-            strategies: strategies.clone(),
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info_whitelister.clone(), msg).unwrap();
-
-        let events = res.events;
-        assert_eq!(events.len(), 2);
-
-        for (i, strategy) in strategies.iter().enumerate() {
-            let event = &events[i];
-            assert_eq!(event.ty, "StrategyRemovedFromDepositWhitelist");
-            assert_eq!(event.attributes.len(), 1);
-            assert_eq!(event.attributes[0].key, "strategy");
-            assert_eq!(event.attributes[0].value, strategy.to_string());
-        }
-
-        // Test with an unauthorized user
-        let msg = ExecuteMsg::RemoveStrategiesFromWhitelist {
-            strategies: strategies.clone(),
-        };
-
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-        let result = execute(deps.as_mut(), env.clone(), info_unauthorized.clone(), msg);
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-    }
-
-    #[test]
-    fn test_set_strategy_whitelister() {
-        let (
-            mut deps,
-            _env,
-            owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let old_whitelister = STRATEGY_WHITELISTER.load(&deps.storage).unwrap();
-        let new_whitelister = Addr::unchecked("new_whitelister");
-
-        let res =
-            set_strategy_whitelister(deps.as_mut(), owner_info.clone(), new_whitelister.clone())
-                .unwrap();
-
-        let events = res.events;
-        assert_eq!(events.len(), 1);
-        let event = &events[0];
-        assert_eq!(event.ty, "set_strategy_whitelister");
-        assert_eq!(event.attributes.len(), 2);
-        assert_eq!(event.attributes[0].key, "old_strategy_whitelister");
-        assert_eq!(event.attributes[0].value, old_whitelister.to_string());
-        assert_eq!(event.attributes[1].key, "new_strategy_whitelister");
-        assert_eq!(event.attributes[1].value, new_whitelister.to_string());
-
-        let stored_whitelister = STRATEGY_WHITELISTER.load(&deps.storage).unwrap();
-        assert_eq!(stored_whitelister, new_whitelister);
-
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-
-        let result = set_strategy_whitelister(
-            deps.as_mut(),
-            info_unauthorized.clone(),
-            Addr::unchecked("another_whitelister"),
+        assert_eq!(
+            explanation_response.explanation,
+            "Base Strategy implementation to inherit from for more complex implementations"
+                .to_string()
         );
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
     }
 
     #[test]
-    fn test_set_third_party_transfers_forbidden() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            _info_delegation_manager,
-            info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+    fn test_shares_to_underlying_view() {
+        let (mut deps, env, _info, _pauser_info, _unpauser_info, token, _strategy_manager) =
+            instantiate_contract();
 
-        let strategy = deps.api.addr_make("strategy1").to_string();
-        let value = true;
-
-        let msg = ExecuteMsg::SetThirdPartyTransfersForbidden {
-            strategy: strategy.clone(),
-            value,
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info_whitelister.clone(), msg).unwrap();
-
-        let events = res.events;
-        assert_eq!(events.len(), 1);
-        let event = &events[0];
-        assert_eq!(event.ty, "set_third_party_transfers_forbidden");
-        assert_eq!(event.attributes.len(), 2);
-        assert_eq!(event.attributes[0].key, "strategy");
-        assert_eq!(event.attributes[0].value, strategy.to_string());
-        assert_eq!(event.attributes[1].key, "value");
-        assert_eq!(event.attributes[1].value, value.to_string());
-
-        let stored_value = THIRD_PARTY_TRANSFERS_FORBIDDEN
-            .load(&deps.storage, &Addr::unchecked(strategy.clone()))
-            .unwrap();
-        assert_eq!(stored_value, value);
-
-        // Test with an unauthorized user
-        let exec_msg_unauthorized = ExecuteMsg::SetThirdPartyTransfersForbidden {
-            strategy: strategy.clone(),
-            value,
-        };
-
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-
-        let result = execute(
-            deps.as_mut(),
-            env.clone(),
-            info_unauthorized.clone(),
-            exec_msg_unauthorized,
-        );
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-    }
-
-    #[test]
-    fn test_deposit_into_strategy() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            info_delegation_manager,
-            info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let strategy = deps.api.addr_make("strategy1").to_string();
-        let token = deps.api.addr_make("token").to_string();
-        let amount = Uint128::new(100);
-
-        let msg = ExecuteMsg::AddStrategiesToWhitelist {
-            strategies: vec![strategy.clone()],
-            third_party_transfers_forbidden_values: vec![false],
-        };
-
-        let _res = execute(deps.as_mut(), env.clone(), info_whitelister.clone(), msg).unwrap();
-
-        let strategy_for_closure = strategy.clone();
-        let token_for_closure = token.clone();
-        let delegation_manager_sender = info_delegation_manager.sender.clone();
+        let contract_address = env.contract.address.clone();
 
         deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { contract_addr, msg } if *contract_addr == strategy_for_closure => {
-                let strategy_query_msg: StrategyQueryMsg = from_json(msg).unwrap();
-                match strategy_query_msg {
-                    StrategyQueryMsg::GetStrategyState {} => {
-                        let strategy_state = StrategyState {
-                            strategy_manager: delegation_manager_sender.clone(),
-                            underlying_token: Addr::unchecked(token_for_closure.clone()),
-                            total_shares: Uint128::new(1000),
-                        };
-                        SystemResult::Ok(ContractResult::Ok(
-                            to_json_binary(&strategy_state).unwrap(),
-                        ))
+            WasmQuery::Smart {
+                contract_addr, msg, ..
+            } => {
+                let msg_clone = msg.clone();
+                if contract_addr == &token {
+                    let msg: Cw20QueryMsg = from_json(msg).unwrap();
+                    if let Cw20QueryMsg::Balance { address } = msg {
+                        if address == contract_address.to_string() {
+                            return SystemResult::Ok(ContractResult::Ok(
+                                to_json_binary(&Cw20BalanceResponse {
+                                    balance: Uint128::new(1_000_000),
+                                })
+                                .unwrap(),
+                            ));
+                        }
                     }
                 }
-            }
-            WasmQuery::Smart { contract_addr, msg } if *contract_addr == token_for_closure => {
-                let cw20_query_msg: Cw20QueryMsg = from_json(msg).unwrap();
-                match cw20_query_msg {
-                    Cw20QueryMsg::Balance { address: _ } => SystemResult::Ok(ContractResult::Ok(
-                        to_json_binary(&Cw20BalanceResponse {
-                            balance: Uint128::new(1000), 
-                        })
-                        .unwrap(),
-                    )),
-                    _ => SystemResult::Err(SystemError::InvalidRequest {
-                        error: "Unhandled request".to_string(),
-                        request: to_json_binary(&query).unwrap(),
-                    }),
-                }
+                SystemResult::Err(SystemError::InvalidRequest {
+                    error: "not implemented".to_string(),
+                    request: msg_clone,
+                })
             }
             _ => SystemResult::Err(SystemError::InvalidRequest {
-                error: "Unhandled request".to_string(),
-                request: to_json_binary(&query).unwrap(),
+                error: "not implemented".to_string(),
+                request: Binary::from(b"other".as_ref()),
             }),
         });
 
-        let msg = ExecuteMsg::DepositIntoStrategy {
-            strategy: strategy.clone(),
-            token: token.clone(),
-            amount,
-        };
+        let amount_shares = Uint128::new(1_000);
+        let result = shares_to_underlying_view(deps.as_ref(), env.clone(), amount_shares);
 
-        let res: Response = execute(
-            deps.as_mut(),
-            env.clone(),
-            info_delegation_manager.clone(),
-            msg,
-        )
-        .unwrap();
-
-        assert_eq!(res.attributes.len(), 1);
-        assert_eq!(res.attributes[0].key, "new_shares");
-        assert_eq!(res.attributes[0].value, "105");
-
-        // Test deposit into strategy with non-whitelisted strategy
-        let non_whitelisted_strategy = deps.api.addr_make("non_whitelisted_strategy").to_string();
-
-        let msg = ExecuteMsg::DepositIntoStrategy {
-            strategy: non_whitelisted_strategy.clone(),
-            token: token.clone(),
-            amount,
-        };
-
-        let result = execute(
-            deps.as_mut(),
-            env.clone(),
-            info_delegation_manager.clone(),
-            msg,
-        );
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::StrategyNotWhitelisted {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
+        match result {
+            Ok(amount_to_send) => {
+                assert_eq!(amount_to_send, Uint128::new(1_001_000));
+            }
+            Err(e) => {
+                panic!("Failed to convert shares to underlying: {:?}", e);
             }
         }
     }
 
     #[test]
-    fn test_get_deposits() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+    fn test_underlying_to_share_view() {
+        let (mut deps, env, _info, _pauser_info, _unpauser_info, token, _strategy_manager) =
+            instantiate_contract();
 
-        let staker = deps.api.addr_make("staker1");
-        let strategy1 = deps.api.addr_make("strategy1");
-        let strategy2 = deps.api.addr_make("strategy2");
+        let contract_address = env.contract.address.clone();
 
-        STAKER_STRATEGY_LIST
-            .save(
-                &mut deps.storage,
-                &staker.clone(),
-                &vec![strategy1.clone(), strategy2.clone()],
-            )
-            .unwrap();
-        STAKER_STRATEGY_SHARES
-            .save(&mut deps.storage, (&staker, &strategy1), &Uint128::new(100))
-            .unwrap();
-        STAKER_STRATEGY_SHARES
-            .save(&mut deps.storage, (&staker, &strategy2), &Uint128::new(200))
-            .unwrap();
-
-        // Query deposits for the staker
-        let query_msg = QueryMsg::GetDeposits {
-            staker: staker.to_string(),
-        };
-        let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let response: DepositsResponse = from_json(bin).unwrap();
-
-        assert_eq!(response.strategies.len(), 2);
-        assert_eq!(response.shares.len(), 2);
-        assert_eq!(response.strategies[0], strategy1);
-        assert_eq!(response.shares[0], Uint128::new(100));
-        assert_eq!(response.strategies[1], strategy2);
-        assert_eq!(response.shares[1], Uint128::new(200));
-
-        // Test with a staker that has no deposits
-        let new_staker = deps.api.addr_make("new_staker").to_string();
-
-        let query_msg = QueryMsg::GetDeposits { staker: new_staker };
-        let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let response: DepositsResponse = from_json(bin).unwrap();
-
-        assert_eq!(response.strategies.len(), 0);
-        assert_eq!(response.shares.len(), 0);
-    }
-
-    #[test]
-    fn test_staker_strategy_list_length() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let staker = deps.api.addr_make("staker1");
-        let strategy1 = deps.api.addr_make("strategy1");
-        let strategy2 = deps.api.addr_make("strategy2");
-
-        STAKER_STRATEGY_LIST
-            .save(
-                &mut deps.storage,
-                &staker,
-                &vec![strategy1.clone(), strategy2.clone()],
-            )
-            .unwrap();
-
-        // Query the strategy list length for the staker
-        let query_msg = QueryMsg::StakerStrategyListLength {
-            staker: staker.to_string(),
-        };
-        let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let response: StakerStrategyListLengthResponse = from_json(bin).unwrap();
-        let length = response.strategies_len;
-
-        assert_eq!(length, Uint128::new(2));
-
-        // Test with a staker that has no strategies
-        let new_staker = deps.api.addr_make("new_staker");
-
-        let query_msg = QueryMsg::StakerStrategyListLength {
-            staker: new_staker.to_string(),
-        };
-        let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let response: StakerStrategyListLengthResponse = from_json(bin).unwrap();
-        let length = response.strategies_len;
-
-        assert_eq!(length, Uint128::new(0));
-    }
-
-    #[test]
-    fn test_add_shares_internal() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let token = Addr::unchecked("token");
-        let staker = Addr::unchecked("staker");
-        let strategy = Addr::unchecked("strategy");
-        let shares = Uint128::new(100);
-
-        let res = add_shares_internal(
-            deps.as_mut(),
-            staker.clone(),
-            token.clone(),
-            strategy.clone(),
-            shares,
-        )
-        .unwrap();
-
-        let events = res.events;
-        assert_eq!(events.len(), 1);
-        let event = &events[0];
-        assert_eq!(event.ty, "add_shares");
-        assert_eq!(event.attributes.len(), 4);
-        assert_eq!(event.attributes[0].key, "staker");
-        assert_eq!(event.attributes[0].value, staker.to_string());
-        assert_eq!(event.attributes[1].key, "token");
-        assert_eq!(event.attributes[1].value, token.to_string());
-        assert_eq!(event.attributes[2].key, "strategy");
-        assert_eq!(event.attributes[2].value, strategy.to_string());
-        assert_eq!(event.attributes[3].key, "shares");
-        assert_eq!(event.attributes[3].value, shares.to_string());
-
-        let stored_shares = STAKER_STRATEGY_SHARES
-            .load(&deps.storage, (&staker, &strategy))
-            .unwrap();
-        println!("stored_shares after first addition: {}", stored_shares);
-        assert_eq!(stored_shares, shares);
-
-        let strategy_list = STAKER_STRATEGY_LIST.load(&deps.storage, &staker).unwrap();
-        assert_eq!(strategy_list.len(), 1);
-        assert_eq!(strategy_list[0], strategy);
-
-        let additional_shares = Uint128::new(50);
-        let res = add_shares(
-            deps.as_mut(),
-            info_delegation_manager.clone(),
-            staker.clone(),
-            token.clone(),
-            strategy.clone(),
-            additional_shares,
-        )
-        .unwrap();
-
-        let events = res.events;
-        assert_eq!(events.len(), 1);
-        let event = &events[0];
-        assert_eq!(event.ty, "add_shares");
-        assert_eq!(event.attributes.len(), 4);
-        assert_eq!(event.attributes[0].key, "staker");
-        assert_eq!(event.attributes[0].value, staker.to_string());
-        assert_eq!(event.attributes[1].key, "token");
-        assert_eq!(event.attributes[1].value, token.to_string());
-        assert_eq!(event.attributes[2].key, "strategy");
-        assert_eq!(event.attributes[2].value, strategy.to_string());
-        assert_eq!(event.attributes[3].key, "shares");
-        assert_eq!(event.attributes[3].value, additional_shares.to_string());
-
-        let stored_shares = STAKER_STRATEGY_SHARES
-            .load(&deps.storage, (&staker, &strategy))
-            .unwrap();
-        println!("stored_shares after second addition: {}", stored_shares);
-        assert_eq!(stored_shares, shares + additional_shares);
-
-        // Test with zero shares
-        let result = add_shares(
-            deps.as_mut(),
-            info_delegation_manager.clone(),
-            staker.clone(),
-            token.clone(),
-            strategy.clone(),
-            Uint128::zero(),
-        );
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::InvalidShares {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-
-        // Test exceeding the max strategy list length
-        let mut strategy_list = Vec::new();
-        for i in 0..MAX_STAKER_STRATEGY_LIST_LENGTH {
-            strategy_list.push(Addr::unchecked(format!("strategy{}", i)));
-        }
-        STAKER_STRATEGY_LIST
-            .save(&mut deps.storage, &staker, &strategy_list)
-            .unwrap();
-
-        let new_strategy = Addr::unchecked("new_strategy");
-        let result = add_shares_internal(
-            deps.as_mut(),
-            staker.clone(),
-            token.clone(),
-            new_strategy.clone(),
-            shares,
-        );
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::MaxStrategyListLengthExceeded {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-    }
-
-    #[test]
-    fn test_add_shares() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let token = deps.api.addr_make("token");
-        let staker = deps.api.addr_make("staker");
-        let strategy = deps.api.addr_make("strategy");
-        let shares = Uint128::new(100);
-
-        let msg = ExecuteMsg::AddShares {
-            staker: staker.to_string(),
-            token: token.to_string(),
-            strategy: strategy.to_string(),
-            shares,
-        };
-
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            info_delegation_manager.clone(),
-            msg,
-        )
-        .unwrap();
-
-        let events = res.events;
-        assert_eq!(events.len(), 1);
-        let event = &events[0];
-        assert_eq!(event.ty, "add_shares");
-        assert_eq!(event.attributes.len(), 4);
-        assert_eq!(event.attributes[0].key, "staker");
-        assert_eq!(event.attributes[0].value, staker.to_string());
-        assert_eq!(event.attributes[1].key, "token");
-        assert_eq!(event.attributes[1].value, token.to_string());
-        assert_eq!(event.attributes[2].key, "strategy");
-        assert_eq!(event.attributes[2].value, strategy.to_string());
-        assert_eq!(event.attributes[3].key, "shares");
-        assert_eq!(event.attributes[3].value, shares.to_string());
-
-        let stored_shares = STAKER_STRATEGY_SHARES
-            .load(&deps.storage, (&staker, &strategy))
-            .unwrap();
-        println!("stored_shares after first addition: {}", stored_shares);
-        assert_eq!(stored_shares, shares);
-
-        let strategy_list = STAKER_STRATEGY_LIST.load(&deps.storage, &staker).unwrap();
-        assert_eq!(strategy_list.len(), 1);
-        assert_eq!(strategy_list[0], strategy);
-
-        // Test adding more shares to the same strategy
-        let additional_shares = Uint128::new(50);
-        let exec_msg = ExecuteMsg::AddShares {
-            staker: staker.to_string(),
-            token: token.to_string(),
-            strategy: strategy.to_string(),
-            shares: additional_shares,
-        };
-
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            info_delegation_manager.clone(),
-            exec_msg,
-        )
-        .unwrap();
-
-        let events = res.events;
-        assert_eq!(events.len(), 1);
-        let event = &events[0];
-        assert_eq!(event.ty, "add_shares");
-        assert_eq!(event.attributes.len(), 4);
-        assert_eq!(event.attributes[0].key, "staker");
-        assert_eq!(event.attributes[0].value, staker.to_string());
-        assert_eq!(event.attributes[1].key, "token");
-        assert_eq!(event.attributes[1].value, token.to_string());
-        assert_eq!(event.attributes[2].key, "strategy");
-        assert_eq!(event.attributes[2].value, strategy.to_string());
-        assert_eq!(event.attributes[3].key, "shares");
-        assert_eq!(event.attributes[3].value, additional_shares.to_string());
-
-        let stored_shares = STAKER_STRATEGY_SHARES
-            .load(&deps.storage, (&staker, &strategy))
-            .unwrap();
-        println!("stored_shares after second addition: {}", stored_shares);
-        assert_eq!(stored_shares, shares + additional_shares);
-
-        // Test with an unauthorized user
-        let exec_msg = ExecuteMsg::AddShares {
-            staker: staker.to_string(),
-            token: token.to_string(),
-            strategy: strategy.to_string(),
-            shares,
-        };
-
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-
-        let result = execute(
-            deps.as_mut(),
-            env.clone(),
-            info_unauthorized.clone(),
-            exec_msg,
-        );
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-
-        // Test with zero shares
-        let exec_msg = ExecuteMsg::AddShares {
-            staker: staker.to_string(),
-            token: token.to_string(),
-            strategy: strategy.to_string(),
-            shares: Uint128::zero(),
-        };
-
-        let result = execute(
-            deps.as_mut(),
-            env.clone(),
-            info_delegation_manager.clone(),
-            exec_msg,
-        );
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::InvalidShares {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-
-        // Test exceeding the max strategy list length
-        let mut strategy_list = Vec::new();
-        for i in 0..MAX_STAKER_STRATEGY_LIST_LENGTH {
-            strategy_list.push(Addr::unchecked(format!("strategy{}", i)));
-        }
-        STAKER_STRATEGY_LIST
-            .save(&mut deps.storage, &staker, &strategy_list)
-            .unwrap();
-
-        let new_strategy = deps.api.addr_make("new_strategy");
-
-        let exec_msg = ExecuteMsg::AddShares {
-            staker: staker.to_string(),
-            token: token.to_string(),
-            strategy: new_strategy.to_string(),
-            shares,
-        };
-
-        let result = execute(
-            deps.as_mut(),
-            env.clone(),
-            info_delegation_manager,
-            exec_msg,
-        );
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::MaxStrategyListLengthExceeded {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-    }
-
-    #[test]
-    fn test_remove_shares() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let staker = deps.api.addr_make("staker");
-        let strategy1 = deps.api.addr_make("strategy1");
-        let strategy2 = deps.api.addr_make("strategy2");
-
-        STAKER_STRATEGY_LIST
-            .save(
-                &mut deps.storage,
-                &staker,
-                &vec![strategy1.clone(), strategy2.clone()],
-            )
-            .unwrap();
-        STAKER_STRATEGY_SHARES
-            .save(&mut deps.storage, (&staker, &strategy1), &Uint128::new(100))
-            .unwrap();
-        STAKER_STRATEGY_SHARES
-            .save(&mut deps.storage, (&staker, &strategy2), &Uint128::new(200))
-            .unwrap();
-
-        let msg = ExecuteMsg::RemoveShares {
-            staker: staker.to_string(),
-            strategy: strategy1.to_string(),
-            shares: Uint128::new(50),
-        };
-
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            info_delegation_manager.clone(),
-            msg,
-        )
-        .unwrap();
-
-        assert_eq!(res.attributes.len(), 5);
-        assert_eq!(res.attributes[0].key, "method");
-        assert_eq!(res.attributes[0].value, "remove_shares");
-        assert_eq!(res.attributes[1].key, "staker");
-        assert_eq!(res.attributes[1].value, staker.to_string());
-        assert_eq!(res.attributes[2].key, "strategy");
-        assert_eq!(res.attributes[2].value, strategy1.to_string());
-        assert_eq!(res.attributes[3].key, "shares");
-        assert_eq!(res.attributes[3].value, "50");
-        assert_eq!(res.attributes[4].key, "strategy_removed");
-        assert_eq!(res.attributes[4].value, "false");
-
-        let stored_shares = STAKER_STRATEGY_SHARES
-            .load(&deps.storage, (&staker, &strategy1))
-            .unwrap();
-        println!("Stored shares after removal: {}", stored_shares);
-        assert_eq!(stored_shares, Uint128::new(50));
-
-        // Test removing shares with an unauthorized user
-        let msg = ExecuteMsg::RemoveShares {
-            staker: staker.to_string(),
-            strategy: strategy2.to_string(),
-            shares: Uint128::new(50),
-        };
-
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-
-        let result = execute(deps.as_mut(), env.clone(), info_unauthorized, msg);
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-
-        // Test removing more shares than available
-        let msg = ExecuteMsg::RemoveShares {
-            staker: staker.to_string(),
-            strategy: strategy1.to_string(),
-            shares: Uint128::new(60),
-        };
-
-        let result = execute(
-            deps.as_mut(),
-            env.clone(),
-            info_delegation_manager.clone(),
-            msg,
-        );
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::InvalidShares {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-
-        // Test removing all shares, which should remove the strategy from the staker's list
-        let msg = ExecuteMsg::RemoveShares {
-            staker: staker.to_string(),
-            strategy: strategy1.to_string(),
-            shares: Uint128::new(50),
-        };
-
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            info_delegation_manager.clone(),
-            msg,
-        )
-        .unwrap();
-
-        assert_eq!(res.attributes.len(), 5);
-        assert_eq!(res.attributes[4].key, "strategy_removed");
-        assert_eq!(res.attributes[4].value, "true");
-
-        let strategy_list = STAKER_STRATEGY_LIST.load(&deps.storage, &staker).unwrap();
-        println!("Strategy list after removal: {:?}", strategy_list);
-        assert_eq!(strategy_list.len(), 1);
-        assert!(!strategy_list.contains(&strategy1));
-        assert!(strategy_list.contains(&strategy2));
-    }
-
-    #[test]
-    fn test_remove_shares_internal() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let staker = Addr::unchecked("staker1");
-        let strategy1 = Addr::unchecked("strategy1");
-        let strategy2 = Addr::unchecked("strategy2");
-
-        STAKER_STRATEGY_LIST
-            .save(
-                &mut deps.storage,
-                &staker,
-                &vec![strategy1.clone(), strategy2.clone()],
-            )
-            .unwrap();
-        STAKER_STRATEGY_SHARES
-            .save(&mut deps.storage, (&staker, &strategy1), &Uint128::new(100))
-            .unwrap();
-        STAKER_STRATEGY_SHARES
-            .save(&mut deps.storage, (&staker, &strategy2), &Uint128::new(200))
-            .unwrap();
-
-        let result = remove_shares_internal(
-            deps.as_mut(),
-            staker.clone(),
-            strategy1.clone(),
-            Uint128::new(50),
-        )
-        .unwrap();
-        assert!(!result);
-
-        let stored_shares = STAKER_STRATEGY_SHARES
-            .load(&deps.storage, (&staker, &strategy1))
-            .unwrap();
-        println!("Stored shares after partial removal: {}", stored_shares);
-
-        assert_eq!(stored_shares, Uint128::new(50));
-
-        let result = remove_shares_internal(
-            deps.as_mut(),
-            staker.clone(),
-            strategy1.clone(),
-            Uint128::new(50),
-        )
-        .unwrap();
-
-        assert!(result);
-
-        let strategy_list = STAKER_STRATEGY_LIST.load(&deps.storage, &staker).unwrap();
-        println!("Strategy list after full removal: {:?}", strategy_list);
-        assert_eq!(strategy_list.len(), 1);
-        assert!(!strategy_list.contains(&strategy1));
-        assert!(strategy_list.contains(&strategy2));
-
-        let result = remove_shares_internal(
-            deps.as_mut(),
-            staker.clone(),
-            strategy2.clone(),
-            Uint128::new(300),
-        );
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::InvalidShares {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-
-        let result = remove_shares_internal(
-            deps.as_mut(),
-            staker.clone(),
-            strategy2.clone(),
-            Uint128::zero(),
-        );
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::InvalidShares {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-    }
-
-    fn generate_osmosis_public_key_from_private_key(
-        private_key_hex: &str,
-    ) -> (Addr, SecretKey, Vec<u8>) {
-        let secp = Secp256k1::new();
-        let secret_key = SecretKey::from_slice(&hex::decode(private_key_hex).unwrap()).unwrap();
-        let public_key = PublicKey::from_secret_key(&secp, &secret_key);
-        let public_key_bytes = public_key.serialize();
-        let sha256_result = Sha256::digest(public_key_bytes);
-        let ripemd160_result = Ripemd160::digest(sha256_result);
-        let address =
-            bech32::encode("osmo", ripemd160_result.to_base32(), Variant::Bech32).unwrap();
-        (
-            Addr::unchecked(address),
-            secret_key,
-            public_key_bytes.to_vec(),
-        )
-    }
-
-    fn mock_signature_with_message(params: DigestHashParams, secret_key: &SecretKey) -> Binary {
-        let params = DigestHashParams {
-            staker: params.staker,
-            strategy: params.strategy,
-            public_key: params.public_key,
-            token: params.token,
-            amount: params.amount,
-            nonce: params.nonce,
-            expiry: params.expiry,
-            chain_id: params.chain_id,
-            contract_addr: params.contract_addr,
-        };
-
-        let message_bytes = calculate_digest_hash(&params);
-
-        let secp = Secp256k1::new();
-        let message = Message::from_digest_slice(&message_bytes).expect("32 bytes");
-        let signature = secp.sign_ecdsa(&message, secret_key);
-        let signature_bytes = signature.serialize_compact().to_vec();
-
-        Binary::from(signature_bytes)
-    }
-
-    #[test]
-    fn test_deposit_into_strategy_with_signature() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            info_delegation_manager,
-            info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let strategy = deps.api.addr_make("strategy");
-        let token = deps.api.addr_make("token");
-        let amount = Uint128::new(100);
-
-        let msg = ExecuteMsg::AddStrategiesToWhitelist {
-            strategies: vec![strategy.to_string()],
-            third_party_transfers_forbidden_values: vec![false],
-        };
-
-        let _res = execute(deps.as_mut(), env.clone(), info_whitelister.clone(), msg).unwrap();
-
-        let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
-        let (staker, secret_key, public_key_bytes) =
-            generate_osmosis_public_key_from_private_key(private_key_hex);
-        let current_time = env.block.time.seconds();
-        let expiry = current_time + 1000;
-        let nonce = 0;
-        let chain_id = env.block.chain_id.clone();
-        let contract_addr = env.contract.address.clone();
-
-        let public_key = Binary::from(public_key_bytes);
-        let public_key_base64 = general_purpose::STANDARD.encode(public_key.clone());
-
-        let params = DigestHashParams {
-            staker: staker.clone(),
-            public_key,
-            strategy: strategy.clone(),
-            token: token.clone(),
-            amount,
-            nonce,
-            expiry,
-            chain_id: chain_id.to_string(),
-            contract_addr: contract_addr.clone(),
-        };
-
-        let signature = mock_signature_with_message(params, &secret_key);
-        let signature_base64 = general_purpose::STANDARD.encode(signature);
-
-        let strategy_for_closure = strategy.clone();
-        let token_for_closure = token.clone();
         deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { contract_addr, msg }
-                if *contract_addr == strategy_for_closure.to_string() =>
-            {
-                let strategy_query_msg: StrategyQueryMsg = from_json(msg).unwrap();
-                match strategy_query_msg {
-                    StrategyQueryMsg::GetStrategyState {} => {
-                        let strategy_state = StrategyState {
-                            strategy_manager: Addr::unchecked("delegation_manager"),
-                            underlying_token: token_for_closure.clone(),
-                            total_shares: Uint128::new(1000),
-                        };
-                        SystemResult::Ok(ContractResult::Ok(
-                            to_json_binary(&strategy_state).unwrap(),
-                        ))
+            WasmQuery::Smart {
+                contract_addr, msg, ..
+            } => {
+                let msg_clone = msg.clone();
+                if contract_addr == &token {
+                    let msg: Cw20QueryMsg = from_json(msg).unwrap();
+                    if let Cw20QueryMsg::Balance { address } = msg {
+                        if address == contract_address.to_string() {
+                            return SystemResult::Ok(ContractResult::Ok(
+                                to_json_binary(&Cw20BalanceResponse {
+                                    balance: Uint128::new(1_000_000),
+                                })
+                                .unwrap(),
+                            ));
+                        }
                     }
                 }
-            }
-            WasmQuery::Smart { contract_addr, msg }
-                if *contract_addr == token_for_closure.to_string() =>
-            {
-                let cw20_query_msg: Cw20QueryMsg = from_json(msg).unwrap();
-                match cw20_query_msg {
-                    Cw20QueryMsg::Balance { address: _ } => SystemResult::Ok(ContractResult::Ok(
-                        to_json_binary(&Cw20BalanceResponse {
-                            balance: Uint128::new(1000),
-                        })
-                        .unwrap(),
-                    )),
-                    _ => SystemResult::Err(SystemError::InvalidRequest {
-                        error: "Unhandled request".to_string(),
-                        request: to_json_binary(&query).unwrap(),
-                    }),
-                }
+                SystemResult::Err(SystemError::InvalidRequest {
+                    error: "not implemented".to_string(),
+                    request: msg_clone,
+                })
             }
             _ => SystemResult::Err(SystemError::InvalidRequest {
-                error: "Unhandled request".to_string(),
-                request: to_json_binary(&query).unwrap(),
+                error: "not implemented".to_string(),
+                request: Binary::from(b"other".as_ref()),
             }),
         });
 
-        let msg = ExecuteMsg::DepositIntoStrategyWithSignature {
-            strategy: strategy.to_string(),
-            token: token.to_string(),
-            amount,
-            staker: staker.to_string(),
-            public_key: public_key_base64,
-            expiry,
-            signature: signature_base64,
-        };
+        let amount = Uint128::new(1_000);
+        let share_to_send = underlying_to_share_view(deps.as_ref(), env.clone(), amount).unwrap();
 
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            info_delegation_manager.clone(),
-            msg,
-        )
-        .unwrap();
-
-        assert_eq!(res.attributes.len(), 1);
-        assert_eq!(res.attributes[0].key, "new_shares");
-        assert_eq!(res.attributes[0].value, "105");
-
-        let stored_nonce = NONCES.load(&deps.storage, &staker).unwrap();
-        assert_eq!(stored_nonce, 1);
+        assert_eq!(share_to_send, Uint128::new(1));
     }
 
     #[test]
-    fn test_is_third_party_transfers_forbidden() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+    fn test_shares() {
+        let (mut deps, env, _info, _pauser_info, _unpauser_info, token, strategy_manager) =
+            instantiate_contract();
 
-        let strategy = deps.api.addr_make("strategy1");
-        THIRD_PARTY_TRANSFERS_FORBIDDEN
-            .save(&mut deps.storage, &strategy, &true)
+        let contract_address = env.contract.address.clone();
+        deps.querier.update_wasm({
+            let contract_address = contract_address.clone();
+            move |query| match query {
+                WasmQuery::Smart {
+                    contract_addr, msg, ..
+                } => {
+                    if *contract_addr == token {
+                        let msg: Cw20QueryMsg = from_json(msg).unwrap();
+                        if let Cw20QueryMsg::Balance { address } = msg {
+                            if address == contract_address.to_string() {
+                                return SystemResult::Ok(ContractResult::Ok(
+                                    to_json_binary(&Cw20BalanceResponse {
+                                        balance: Uint128::new(1_000_000),
+                                    })
+                                    .unwrap(),
+                                ));
+                            }
+                        }
+                    }
+                    SystemResult::Err(SystemError::InvalidRequest {
+                        error: "not implemented".to_string(),
+                        request: msg.clone(),
+                    })
+                }
+                _ => SystemResult::Err(SystemError::InvalidRequest {
+                    error: "not implemented".to_string(),
+                    request: Binary::from(b"other".as_ref()),
+                }),
+            }
+        });
+
+        let deposit_amount = Uint128::new(1_000);
+        let msg_deposit = ExecuteMsg::Deposit {
+            amount: deposit_amount,
+        };
+
+        let info = message_info(&Addr::unchecked(strategy_manager.clone()), &[]);
+        let user = deps.api.addr_make("user").to_string();
+
+        execute(deps.as_mut(), env.clone(), info.clone(), msg_deposit).unwrap();
+
+        let state = STRATEGY_STATE.load(&deps.storage).unwrap();
+        assert!(state.total_shares > Uint128::zero());
+
+        deps.querier.update_wasm({
+            let contract_address = contract_address.clone();
+            let user_address = Addr::unchecked(user.clone());
+            move |query| {
+                match query {
+                    WasmQuery::Smart {
+                        contract_addr, msg, ..
+                    } => {
+                        if contract_addr == &strategy_manager {
+                            let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
+                            match msg {
+                                StrategyManagerQueryMsg::GetStakerStrategyShares {
+                                    staker,
+                                    strategy,
+                                } => {
+                                    if staker == user_address.to_string()
+                                        && strategy == contract_address.to_string()
+                                    {
+                                        return SystemResult::Ok(ContractResult::Ok(
+                                            to_json_binary(&StakerStrategySharesResponse {
+                                                shares: Uint128::new(1_000),
+                                            })
+                                            .unwrap(),
+                                        ));
+                                    }
+                                }
+                                _ => {
+                                    // Handle other cases if needed
+                                }
+                            }
+                        }
+                        SystemResult::Err(SystemError::InvalidRequest {
+                            error: "not implemented".to_string(),
+                            request: msg.clone(),
+                        })
+                    }
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "not implemented".to_string(),
+                        request: Binary::from(b"other".as_ref()),
+                    }),
+                }
+            }
+        });
+
+        let query_msg = QueryMsg::GetShares {
+            staker: user,
+            strategy: contract_address.to_string(),
+        };
+        let res: SharesResponse =
+            from_json(query(deps.as_ref(), env.clone(), query_msg).unwrap()).unwrap();
+
+        assert_eq!(res.total_shares, Uint128::new(1_000));
+    }
+
+    #[test]
+    fn test_user_underlying_view() {
+        let (mut deps, env, _info, _pauser_info, _unpauser_info, token, strategy_manager) =
+            instantiate_contract();
+
+        let contract_address = env.contract.address.clone();
+        let user_addr = deps.api.addr_make("user").to_string();
+
+        // Mock the balance query and staker strategy shares
+        deps.querier.update_wasm({
+            let user_addr_clone = user_addr.clone();
+            let contract_address_clone = contract_address.clone();
+            move |query| match query {
+                WasmQuery::Smart {
+                    contract_addr, msg, ..
+                } => {
+                    if contract_addr == &token {
+                        let msg: Cw20QueryMsg = from_json(msg).unwrap();
+                        if let Cw20QueryMsg::Balance { address } = msg {
+                            if address == contract_address_clone.to_string() {
+                                return SystemResult::Ok(ContractResult::Ok(
+                                    to_json_binary(&Cw20BalanceResponse {
+                                        balance: Uint128::new(1_000_000),
+                                    })
+                                    .unwrap(),
+                                ));
+                            }
+                        }
+                    } else if contract_addr == &strategy_manager {
+                        let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
+                        if let StrategyManagerQueryMsg::GetStakerStrategyShares {
+                            staker,
+                            strategy,
+                        } = msg
+                        {
+                            if staker == user_addr_clone.clone()
+                                && strategy == contract_address_clone.to_string()
+                            {
+                                return SystemResult::Ok(ContractResult::Ok(
+                                    to_json_binary(&StakerStrategySharesResponse {
+                                        shares: Uint128::new(1_000),
+                                    })
+                                    .unwrap(),
+                                ));
+                            }
+                        }
+                    }
+                    SystemResult::Err(SystemError::InvalidRequest {
+                        error: "not implemented".to_string(),
+                        request: msg.clone(),
+                    })
+                }
+                _ => SystemResult::Err(SystemError::InvalidRequest {
+                    error: "not implemented".to_string(),
+                    request: Binary::from(b"other".as_ref()),
+                }),
+            }
+        });
+
+        let underlying_amount =
+            user_underlying_view(deps.as_ref(), env.clone(), Addr::unchecked(user_addr)).unwrap();
+
+        let expected_amount = Uint128::new(1_001_000);
+        assert_eq!(underlying_amount, expected_amount);
+    }
+
+    #[test]
+    fn test_query_strategy_manager() {
+        let (deps, env, _info, _pauser_info, _unpauser_info, _token, strategy_manager) =
+            instantiate_contract();
+
+        let query_msg = QueryMsg::GetStrategyManager {};
+        let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+
+        let strategy_manager_response: StrategyManagerResponse = from_json(res).unwrap();
+
+        let current_strategy_manager = strategy_manager_response.strate_manager_addr;
+
+        assert_eq!(current_strategy_manager, Addr::unchecked(strategy_manager));
+    }
+
+    #[test]
+    fn test_query_underlying_token() {
+        let (deps, env, _info, _pauser_info, _unpauser_info, token, _strategy_manager) =
+            instantiate_contract();
+
+        let query_msg = QueryMsg::GetUnderlyingToken {};
+
+        let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+        let underlying_token_response: UnderlyingTokenResponse = from_json(res).unwrap();
+
+        let underlying_token = underlying_token_response.underlying_token_addr;
+
+        assert_eq!(underlying_token, Addr::unchecked(token));
+    }
+
+    #[test]
+    fn test_query_total_shares() {
+        let (deps, env, _info, _pauser_info, _unpauser_info, _token, _strategy_manager) =
+            instantiate_contract();
+
+        let query_msg = QueryMsg::GetTotalShares {};
+        let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+
+        let total_shares_response: TotalSharesResponse = from_json(res).unwrap();
+
+        assert_eq!(total_shares_response.total_shares, Uint128::zero());
+    }
+
+    #[test]
+    fn test_emit_exchange_rate() {
+        let virtual_token_balance = Uint128::new(1_000_000_000);
+        let virtual_total_shares = Uint128::new(1_000_000);
+
+        let expected_exchange_rate = virtual_token_balance
+            .checked_mul(Uint128::new(1_000_000))
+            .unwrap()
+            .checked_div(virtual_total_shares)
             .unwrap();
 
-        let query_msg = QueryMsg::IsThirdPartyTransfersForbidden {
-            strategy: strategy.to_string(),
-        };
-        let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let result: ThirdPartyTransfersForbiddenResponse = from_json(bin).unwrap();
-        assert!(result.is_forbidden);
+        let res = emit_exchange_rate(virtual_token_balance, virtual_total_shares).unwrap();
 
-        let non_forbidden_strategy = deps.api.addr_make("non_forbidden_strategy");
+        let expected_event = Event::new("exchange_rate_emitted")
+            .add_attribute("exchange_rate", expected_exchange_rate.to_string());
 
-        let query_msg = QueryMsg::IsThirdPartyTransfersForbidden {
-            strategy: non_forbidden_strategy.to_string(),
-        };
-        let bin = query(deps.as_ref(), env, query_msg).unwrap();
-        let result: ThirdPartyTransfersForbiddenResponse = from_json(bin).unwrap();
-        assert!(!result.is_forbidden);
+        assert!(res.events.contains(&expected_event));
+
+        println!("{:?}", res);
     }
 
     #[test]
-    fn test_get_nonce() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+    fn test_underlying_to_shares() {
+        let (mut deps, env, _info, _pauser_info, _unpauser_info, token, _strategy_manager) =
+            instantiate_contract();
 
-        let staker = deps.api.addr_make("staker1");
+        let contract_address: Addr = env.contract.address.clone();
 
-        NONCES.save(&mut deps.storage, &staker, &5).unwrap();
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart {
+                contract_addr, msg, ..
+            } => {
+                let msg_clone = msg.clone();
+                if contract_addr == &token {
+                    let msg: Cw20QueryMsg = from_json(msg).unwrap();
+                    if let Cw20QueryMsg::Balance { address } = msg {
+                        if address == contract_address.to_string() {
+                            return SystemResult::Ok(ContractResult::Ok(
+                                to_json_binary(&Cw20BalanceResponse {
+                                    balance: Uint128::new(1_000_000),
+                                })
+                                .unwrap(),
+                            ));
+                        }
+                    }
+                }
+                SystemResult::Err(SystemError::InvalidRequest {
+                    error: "not implemented".to_string(),
+                    request: msg_clone,
+                })
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "not implemented".to_string(),
+                request: Binary::from(b"other".as_ref()),
+            }),
+        });
 
-        let query_msg = QueryMsg::GetNonce {
-            staker: staker.to_string(),
-        };
-        let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let nonce_response: NonceResponse = from_json(bin).unwrap();
-        assert_eq!(nonce_response.nonce, 5);
+        let amount_underlying = Uint128::new(1_000);
+        let result = underlying_to_shares(deps.as_ref(), env.clone(), amount_underlying);
 
-        let new_staker = deps.api.addr_make("new_staker");
-
-        let query_msg = QueryMsg::GetNonce {
-            staker: new_staker.to_string(),
-        };
-        let bin = query(deps.as_ref(), env, query_msg).unwrap();
-        let nonce_response: NonceResponse = from_json(bin).unwrap();
-        assert_eq!(nonce_response.nonce, 0);
-    }
-
-    #[test]
-    fn test_get_staker_strategy_list() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let staker = deps.api.addr_make("staker1");
-
-        let strategies = vec![
-            deps.api.addr_make("strategy1"),
-            deps.api.addr_make("strategy2"),
-        ];
-        STAKER_STRATEGY_LIST
-            .save(&mut deps.storage, &staker, &strategies.clone())
-            .unwrap();
-
-        let query_msg = QueryMsg::GetStakerStrategyList {
-            staker: staker.to_string(),
-        };
-        let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let strategy_list_response: StakerStrategyLisResponse = from_json(bin).unwrap();
-        assert_eq!(strategy_list_response.strategies, strategies);
-
-        let new_staker = deps.api.addr_make("new_staker");
-
-        let query_msg = QueryMsg::GetStakerStrategyList {
-            staker: new_staker.to_string(),
-        };
-        let bin = query(deps.as_ref(), env, query_msg).unwrap();
-        let strategy_list_response: StakerStrategyLisResponse = from_json(bin).unwrap();
-        assert!(strategy_list_response.strategies.is_empty());
-    }
-
-    #[test]
-    fn test_get_owner() {
-        let (
-            deps,
-            env,
-            owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let query_msg = QueryMsg::GetOwner {};
-        let bin = query(deps.as_ref(), env, query_msg).unwrap();
-        let owner_response: OwnerResponse = from_json(bin).unwrap();
-
-        assert_eq!(owner_response.owner_addr, owner_info.sender);
-    }
-
-    #[test]
-    fn test_is_strategy_whitelisted() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let strategy = deps.api.addr_make("strategy1");
-
-        STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
-            .save(&mut deps.storage, &strategy, &true)
-            .unwrap();
-
-        let result = query_is_strategy_whitelisted(deps.as_ref(), strategy.clone()).unwrap();
-        assert!(result.is_whitelisted);
-
-        let non_whitelisted_strategy = deps.api.addr_make("non_whitelisted_strategy");
-
-        let result =
-            query_is_strategy_whitelisted(deps.as_ref(), non_whitelisted_strategy).unwrap();
-        assert!(!result.is_whitelisted);
-    }
-
-    #[test]
-    fn test_get_strategy_whitelister() {
-        let (
-            deps,
-            _env,
-            _owner_info,
-            _info_delegation_manager,
-            info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let response = query_strategy_whitelister(deps.as_ref()).unwrap();
-        assert_eq!(response.whitelister, info_whitelister.sender);
-    }
-
-    #[test]
-    fn test_get_strategy_manager_state() {
-        let (
-            deps,
-            _env,
-            _owner_info,
-            info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let state = query_strategy_manager_state(deps.as_ref()).unwrap();
-        assert_eq!(
-            state.state.delegation_manager,
-            info_delegation_manager.sender
-        );
-    }
-
-    #[test]
-    fn test_get_deposit_typehash() {
-        let typehash = query_deposit_typehash().unwrap();
-        let expected_str = String::from_utf8_lossy(DEPOSIT_TYPEHASH).to_string();
-        assert_eq!(typehash.deposit_type_hash, expected_str);
-    }
-
-    #[test]
-    fn test_get_domain_typehash() {
-        let typehash = query_domain_typehash().unwrap();
-        let expected_str = String::from_utf8_lossy(DOMAIN_TYPEHASH).to_string();
-        assert_eq!(typehash.domain_type_hash, expected_str);
-    }
-
-    #[test]
-    fn test_get_domain_name() {
-        let name = query_domain_name().unwrap();
-        let expected_str = String::from_utf8_lossy(DOMAIN_NAME).to_string();
-        assert_eq!(name.domain_name, expected_str);
-    }
-
-    #[test]
-    fn test_get_staker_strategy_shares() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let staker = Addr::unchecked("staker1");
-        let strategy = deps.api.addr_make("strategy");
-        let shares = Uint128::new(100);
-
-        STAKER_STRATEGY_SHARES
-            .save(&mut deps.storage, (&staker, &strategy), &shares)
-            .unwrap();
-
-        let retrieved_shares =
-            query_staker_strategy_shares(deps.as_ref(), staker.clone(), strategy.clone()).unwrap();
-        assert_eq!(retrieved_shares.shares, shares);
-
-        let new_staker = Addr::unchecked("new_staker");
-        let retrieved_shares =
-            query_staker_strategy_shares(deps.as_ref(), new_staker.clone(), strategy.clone())
-                .unwrap();
-        assert_eq!(retrieved_shares.shares, Uint128::zero());
-
-        let new_strategy = Addr::unchecked("new_strategy");
-        let retrieved_shares =
-            query_staker_strategy_shares(deps.as_ref(), staker.clone(), new_strategy.clone())
-                .unwrap();
-        assert_eq!(retrieved_shares.shares, Uint128::zero());
-    }
-
-    #[test]
-    fn test_get_delegation_manager() {
-        let (
-            deps,
-            env,
-            _owner_info,
-            info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let query_msg = QueryMsg::GetDelegationManager {};
-        let bin = query(deps.as_ref(), env, query_msg).unwrap();
-        let delegation_manager: DelegationManagerResponse = from_json(bin).unwrap();
-
-        assert_eq!(
-            delegation_manager.delegation_manager,
-            info_delegation_manager.sender
-        );
-    }
-
-    #[test]
-    fn test_set_delegation_manager() {
-        let (
-            mut deps,
-            env,
-            owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let new_delegation_manager = deps.api.addr_make("new_delegation_manager");
-
-        let msg = ExecuteMsg::SetDelegationManager {
-            new_delegation_manager: new_delegation_manager.to_string(),
-        };
-
-        execute(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();
-
-        let state = STRATEGY_MANAGER_STATE.load(&deps.storage).unwrap();
-        assert_eq!(state.delegation_manager, new_delegation_manager);
-
-        // Test with an unauthorized user
-        let msg = ExecuteMsg::SetDelegationManager {
-            new_delegation_manager: new_delegation_manager.to_string(),
-        };
-
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-
-        let result = execute(deps.as_mut(), env.clone(), info_unauthorized, msg);
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
+        match result {
+            Ok(share_to_send) => {
+                assert_eq!(share_to_send, Uint128::new(1));
+            }
+            Err(e) => {
+                panic!("Failed to convert underlying to shares: {:?}", e);
             }
         }
-    }
-
-    #[test]
-    fn test_transfer_ownership() {
-        let (
-            mut deps,
-            env,
-            owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let new_owner = deps.api.addr_make("new_owner");
-
-        let transfer_msg = ExecuteMsg::TransferOwnership {
-            new_owner: new_owner.to_string(),
-        };
-        let res = execute(deps.as_mut(), env.clone(), owner_info.clone(), transfer_msg);
-        assert!(res.is_ok());
-
-        let res = res.unwrap();
-        assert_eq!(res.attributes.len(), 2);
-        assert_eq!(res.attributes[0].key, "method");
-        assert_eq!(res.attributes[0].value, "transfer_ownership");
-        assert_eq!(res.attributes[1].key, "new_owner");
-        assert_eq!(res.attributes[1].value, new_owner.to_string());
-
-        let stored_owner = OWNER.load(&deps.storage).unwrap();
-        assert_eq!(stored_owner, new_owner);
-
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-
-        let transfer_msg = ExecuteMsg::TransferOwnership {
-            new_owner: new_owner.to_string(),
-        };
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            info_unauthorized.clone(),
-            transfer_msg,
-        );
-
-        assert!(res.is_err());
-        if let Err(err) = res {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-
-        let stored_owner = OWNER.load(&deps.storage).unwrap();
-        assert_eq!(stored_owner, new_owner);
-
-        let transfer_msg = ExecuteMsg::TransferOwnership {
-            new_owner: new_owner.to_string(),
-        };
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            message_info(&new_owner, &[]),
-            transfer_msg,
-        );
-        assert!(res.is_ok());
-
-        let res = res.unwrap();
-        assert_eq!(res.attributes.len(), 2);
-        assert_eq!(res.attributes[0].key, "method");
-        assert_eq!(res.attributes[0].value, "transfer_ownership");
-        assert_eq!(res.attributes[1].key, "new_owner");
-        assert_eq!(res.attributes[1].value, new_owner.to_string());
-
-        let stored_owner = OWNER.load(&deps.storage).unwrap();
-        assert_eq!(stored_owner, new_owner);
     }
 
     #[test]
     fn test_migrate_owner_vs_non_owner() {
-        let (
-            mut deps,
-            env,
-            owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (mut deps, env, info, _pauser_info, _unpauser_info, _token, _strategy_manager) =
+            instantiate_contract();
 
         let migrate_msg = MigrateMsg {};
-        let res = migrate(deps.as_mut(), env.clone(), &owner_info, migrate_msg.clone()).unwrap();
+        let res = migrate(deps.as_mut(), env.clone(), &info, migrate_msg.clone()).unwrap();
 
         assert_eq!(res, Response::new().add_attribute("method", "migrate"));
 
@@ -2750,15 +1284,8 @@ mod tests {
 
     #[test]
     fn test_pause() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (mut deps, env, _info, pauser_info, _unpauser_info, _token, _strategy_manager) =
+            instantiate_contract();
 
         let pause_msg = ExecuteMsg::Pause {};
         let res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg).unwrap();
@@ -2771,15 +1298,8 @@ mod tests {
 
     #[test]
     fn test_unpause() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            unpauser_info,
-        ) = instantiate_contract();
+        let (mut deps, env, _info, _pauser_info, unpauser_info, _token, _strategy_manager) =
+            instantiate_contract();
 
         let unpause_msg = ExecuteMsg::Unpause {};
         let res = execute(
@@ -2798,28 +1318,15 @@ mod tests {
 
     #[test]
     fn test_set_pauser() {
-        let (
-            mut deps,
-            env,
-            owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (mut deps, env, info, _pauser_info, _unpauser_info, _token, _strategy_manager) =
+            instantiate_contract();
 
         let new_pauser = deps.api.addr_make("new_pauser").to_string();
 
         let set_pauser_msg = ExecuteMsg::SetPauser {
             new_pauser: new_pauser.to_string(),
         };
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            owner_info.clone(),
-            set_pauser_msg,
-        )
-        .unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), set_pauser_msg).unwrap();
 
         assert!(res
             .attributes
@@ -2832,28 +1339,15 @@ mod tests {
 
     #[test]
     fn test_set_unpauser() {
-        let (
-            mut deps,
-            env,
-            owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (mut deps, env, info, _pauser_info, _unpauser_info, _token, _strategy_manager) =
+            instantiate_contract();
 
         let new_unpauser = deps.api.addr_make("new_unpauser").to_string();
 
         let set_unpauser_msg = ExecuteMsg::SetUnpauser {
             new_unpauser: new_unpauser.to_string(),
         };
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            owner_info.clone(),
-            set_unpauser_msg,
-        )
-        .unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), set_unpauser_msg).unwrap();
 
         assert!(res
             .attributes

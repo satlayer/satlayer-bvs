@@ -7,6 +7,7 @@ members = [
     "contracts/avs-driver",
     "contracts/delegation-manager",
     "contracts/rewards-coordinator",
+    "contracts/strategy-base-TVLLimits"
     ]
 
 resolver = "2"

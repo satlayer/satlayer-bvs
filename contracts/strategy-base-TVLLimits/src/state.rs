@@ -1,23 +1,15 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
-use cw_storage_plus::{Item, Map};
+use cw_storage_plus::Item;
 
 #[cw_serde]
-pub struct StrategyManagerState {
-    pub delegation_manager: Addr,
-    pub slasher: Addr,
+pub struct StrategyState {
+    pub strategy_manager: Addr,
+    pub underlying_token: Addr,
+    pub total_shares: Uint128,
 }
 
-pub const STRATEGY_MANAGER_STATE: Item<StrategyManagerState> = Item::new("strategy_manager_state");
-pub const STRATEGY_WHITELISTER: Item<Addr> = Item::new("strategy_whitelister");
-pub const STRATEGY_IS_WHITELISTED_FOR_DEPOSIT: Map<&Addr, bool> = Map::new("strategy_whitelist");
+pub const STRATEGY_STATE: Item<StrategyState> = Item::new("strategy_state");
 pub const OWNER: Item<Addr> = Item::new("owner");
-
-pub const STAKER_STRATEGY_SHARES: Map<(&Addr, &Addr), Uint128> = Map::new("staker_strategy_shares");
-
-pub const STAKER_STRATEGY_LIST: Map<&Addr, Vec<Addr>> = Map::new("staker_strategy_list");
-pub const MAX_STAKER_STRATEGY_LIST_LENGTH: usize = 10;
-
-pub const THIRD_PARTY_TRANSFERS_FORBIDDEN: Map<&Addr, bool> =
-    Map::new("third_party_transfers_forbidden");
-pub const NONCES: Map<&Addr, u64> = Map::new("nonces");
+pub const MAX_PER_DEPOSIT: Item<Uint128> = Item::new("max_per_deposit");
+pub const MAX_TOTAL_DEPOSITS: Item<Uint128> = Item::new("max_total_deposits");
