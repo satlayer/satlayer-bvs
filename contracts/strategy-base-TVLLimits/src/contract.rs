@@ -3,10 +3,10 @@ use crate::{
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{
         ExplanationResponse, SharesResponse, SharesToUnderlyingResponse, StrategyManagerResponse,
-        TotalSharesResponse, UnderlyingToShareResponse, UnderlyingToSharesResponse,
-        UnderlyingTokenResponse, UserUnderlyingResponse,
+        TVLLimitsResponse, TotalSharesResponse, UnderlyingToShareResponse,
+        UnderlyingToSharesResponse, UnderlyingTokenResponse, UserUnderlyingResponse,
     },
-    state::{StrategyState, OWNER, STRATEGY_STATE, MAX_PER_DEPOSIT, MAX_TOTAL_DEPOSITS},
+    state::{StrategyState, MAX_PER_DEPOSIT, MAX_TOTAL_DEPOSITS, OWNER, STRATEGY_STATE},
 };
 use common::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use common::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
@@ -144,11 +144,21 @@ pub fn deposit(
     only_strategy_manager(deps.as_ref(), &info)?;
     before_deposit(&state, &state.underlying_token)?;
 
+    let max_per_deposit = MAX_PER_DEPOSIT.load(deps.storage)?;
+    if amount > max_per_deposit {
+        return Err(ContractError::MaxPerDepositExceeded {});
+    }
+
     let balance = token_balance(
         &deps.querier,
         &state.underlying_token,
         &env.contract.address,
     )?;
+
+    let max_total_deposits = MAX_TOTAL_DEPOSITS.load(deps.storage)?;
+    if balance + amount > max_total_deposits {
+        return Err(ContractError::MaxTotalDepositsExceeded {});
+    }
 
     let virtual_share_amount = state.total_shares + SHARES_OFFSET;
     let virtual_token_balance = balance + BALANCE_OFFSET;
@@ -432,6 +442,16 @@ pub fn query_underlying_to_shares(
     Ok(UnderlyingToSharesResponse { share_to_send })
 }
 
+pub fn query_tvl_limits(deps: Deps) -> StdResult<TVLLimitsResponse> {
+    let max_per_deposit = MAX_PER_DEPOSIT.load(deps.storage)?;
+    let max_total_deposits = MAX_TOTAL_DEPOSITS.load(deps.storage)?;
+
+    Ok(TVLLimitsResponse {
+        max_per_deposit,
+        max_total_deposits,
+    })
+}
+
 fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let owner = OWNER.load(deps.storage)?;
     if info.sender != owner {
@@ -558,7 +578,7 @@ mod tests {
             unpauser: unpauser.clone(),
             initial_paused_status: 0,
             max_per_deposit: Uint128::new(999999999999999),
-            max_total_deposits: Uint128::new(999999999999999)
+            max_total_deposits: Uint128::new(999999999999999),
         };
 
         deps.querier.update_wasm({
@@ -638,7 +658,7 @@ mod tests {
             unpauser: unpauser.clone(),
             initial_paused_status: 0,
             max_per_deposit: Uint128::new(999999999999999),
-            max_total_deposits: Uint128::new(999999999999999)
+            max_total_deposits: Uint128::new(999999999999999),
         };
 
         deps.querier.update_wasm({

@@ -45,3 +45,9 @@ pub struct ExplanationResponse {
 pub struct UnderlyingToSharesResponse {
     pub share_to_send: Uint128,
 }
+
+#[cw_serde]
+pub struct TVLLimitsResponse {
+    pub max_per_deposit: Uint128,
+    pub max_total_deposits: Uint128,
+}

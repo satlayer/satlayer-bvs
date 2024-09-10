@@ -11,7 +11,7 @@ use crate::{
     state::{
         StrategyManagerState, MAX_STAKER_STRATEGY_LIST_LENGTH, NONCES, OWNER, STAKER_STRATEGY_LIST,
         STAKER_STRATEGY_SHARES, STRATEGY_IS_WHITELISTED_FOR_DEPOSIT, STRATEGY_MANAGER_STATE,
-        STRATEGY_WHITELISTER, THIRD_PARTY_TRANSFERS_FORBIDDEN
+        STRATEGY_WHITELISTER, THIRD_PARTY_TRANSFERS_FORBIDDEN,
     },
     utils::{
         calculate_digest_hash, recover, validate_addresses, DepositWithSignatureParams,
@@ -22,7 +22,7 @@ use common::base::{ExecuteMsg as StrategyExecuteMsg, QueryMsg as StrategyQueryMs
 use common::delegation::ExecuteMsg as DelegationManagerExecuteMsg;
 use cosmwasm_std::{
     entry_point, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo,
-    QuerierWrapper, QueryRequest, Response, StdResult, Uint128, WasmMsg, WasmQuery
+    QuerierWrapper, QueryRequest, Response, StdResult, Uint128, WasmMsg, WasmQuery,
 };
 
 use common::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
@@ -1500,7 +1500,7 @@ mod tests {
                 match cw20_query_msg {
                     Cw20QueryMsg::Balance { address: _ } => SystemResult::Ok(ContractResult::Ok(
                         to_json_binary(&Cw20BalanceResponse {
-                            balance: Uint128::new(1000), 
+                            balance: Uint128::new(1000),
                         })
                         .unwrap(),
                     )),

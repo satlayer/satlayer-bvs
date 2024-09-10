@@ -6,24 +6,30 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
-    #[error("StrategyBase: unauthorized")]
+    #[error("StrategyBaseTVLLimits: unauthorized")]
     Unauthorized {},
 
-    #[error("StrategyBase.deposit: new_shares cannot be zero")]
+    #[error("StrategyBaseTVLLimits.deposit: new_shares cannot be zero")]
     ZeroNewShares {},
 
-    #[error("StrategyBase.withdraw: amount to send cannot be zero")]
+    #[error("StrategyBaseTVLLimits.withdraw: amount to send cannot be zero")]
     ZeroAmountToSend {},
 
-    #[error("StrategyBase.withdraw: insufficient shares")]
+    #[error("StrategyBaseTVLLimits.withdraw: insufficient shares")]
     InsufficientShares {},
 
-    #[error("StrategyBase: invalid token")]
+    #[error("StrategyBaseTVLLimits: invalid token")]
     InvalidToken {},
 
-    #[error("StrategyBase.withdraw: insufficient balance")]
+    #[error("StrategyBaseTVLLimits.withdraw: insufficient balance")]
     InsufficientBalance {},
 
-    #[error("StrategyBase.set_tvl_limits: invalid TVL limits")]
+    #[error("StrategyBaseTVLLimits.set_tvl_limits: invalid TVL limits")]
     InvalidTVLLimits {},
+
+    #[error("StrategyBaseTVLLimits.deposit: max per deposit exceeded")]
+    MaxPerDepositExceeded {},
+
+    #[error("StrategyBaseTVLLimits.deposit: max total deposits exceeded")]
+    MaxTotalDepositsExceeded {},
 }

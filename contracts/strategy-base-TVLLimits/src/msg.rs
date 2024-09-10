@@ -16,7 +16,7 @@ pub struct InstantiateMsg {
     pub unpauser: String,
     pub initial_paused_status: u64,
     pub max_per_deposit: Uint128,
-    pub max_total_deposits: Uint128
+    pub max_total_deposits: Uint128,
 }
 
 #[cw_serde]
