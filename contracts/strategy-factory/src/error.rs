@@ -17,4 +17,7 @@ pub enum ContractError {
 
     #[error("StrategyFactory.update_config: unauthorized")]
     Unauthorized {},
+
+    #[error("StrategyFactory.blacklist_tokens: token already blacklisted")]
+    TokenAlreadyBlacklisted {},
 }

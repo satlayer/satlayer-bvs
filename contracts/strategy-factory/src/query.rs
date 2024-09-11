@@ -1,6 +1,5 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
-use serde::Deserialize;
 
 #[cw_serde]
 pub struct SharesResponse {
@@ -45,9 +44,4 @@ pub struct ExplanationResponse {
 #[cw_serde]
 pub struct UnderlyingToSharesResponse {
     pub share_to_send: Uint128,
-}
-
-#[derive(Deserialize)]
-pub struct MsgInstantiateContractResponse {
-    pub contract_address: String,
 }
