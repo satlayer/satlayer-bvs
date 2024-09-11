@@ -7,7 +7,8 @@ members = [
     # "contracts/avs-driver",
     # "contracts/delegation-manager",
     # "contracts/rewards-coordinator",
-    "contracts/strategy-base-TVLLimits"
+    # "contracts/strategy-base-TVLLimits",
+    "contracts/strategy-factory"
     ]
 
 resolver = "2"
@@ -31,5 +32,6 @@ bech32 = "0.8.0"
 ripemd = "0.1.0"
 serde_json = "1.0.0"
 base64 = "0.22.1"
+cw-utils = "2.0.0"
 
 common = { path = "packages/common"}

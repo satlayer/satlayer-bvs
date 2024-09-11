@@ -20,6 +20,13 @@ pub enum ExecuteMsg {
         strategy: String,
         shares: Uint128,
     },
+    RemoveStrategiesFromWhitelist {
+        strategies: Vec<String>,
+    },
+    SetThirdPartyTransfersForbidden {
+        strategy: String,
+        value: bool,
+    },
 }
 
 #[cw_serde]
