@@ -1,5 +1,5 @@
 [package]
-name = "strategy-base-tvl_limits"
+name = "strategy-factory"
 version = "2.0.0"
 edition = "2021"
 
@@ -32,6 +32,7 @@ cw20 = { workspace = true }
 ripemd = { workspace = true }
 common = { workspace = true }
 base64 = { workspace = true }
+cw-utils = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
