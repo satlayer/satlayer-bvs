@@ -1,25 +1,27 @@
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::{Config, CONFIG, DEPLOYEDSTRATEGIES, IS_BLACKLISTED};
 use cosmwasm_std::{
-    entry_point, from_json, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Order, Reply, Response, StdError, StdResult, SubMsg, WasmMsg,
+    entry_point, to_json_binary, Addr, Api, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Order, Reply, Response, StdError, StdResult, SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
 
-use common::base::{InstantiateMsg as StrategyInstantiateMsg, StrategyState};
-use common::strategy::{DepositsResponse, ExecuteMsg as StrategyManagerExecuteMsg};
+use common::base::InstantiateMsg as StrategyInstantiateMsg;
 use common::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use common::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
+use common::strategy::ExecuteMsg as StrategyManagerExecuteMsg;
 
 const CONTRACT_NAME: &str = "strategy-factory";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+const PAUSED_NEW_STRATEGIES: u8 = 0;
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     mut deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    _env: Env,
+    _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
@@ -41,6 +43,8 @@ pub fn instantiate(
     set_pauser(deps.branch(), pauser)?;
     set_unpauser(deps.branch(), unpauser)?;
 
+    PAUSED_STATE.save(deps.storage, &msg.initial_paused_status)?;
+
     Ok(Response::new().add_attribute("method", "instantiate"))
 }
 
@@ -52,7 +56,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::CreateStrategy {
+        ExecuteMsg::DeployNewStrategy {
             token,
             pauser,
             unpauser,
@@ -78,6 +82,53 @@ pub fn execute(
                 only_owner_can_create,
             )
         }
+        ExecuteMsg::BlacklistTokens { tokens } => {
+            let token_addrs = validate_addresses(deps.api, &tokens)?;
+            blacklist_tokens(deps, info, token_addrs)
+        }
+        ExecuteMsg::RemoveStrategiesFromWhitelist { strategies } => {
+            let strategies_addrs = validate_addresses(deps.api, &strategies)?;
+            remove_strategies_from_whitelist(deps, info, strategies_addrs)
+        }
+        ExecuteMsg::SetThirdPartyTransfersForBidden { strategy, value } => {
+            let strategy_addr = deps.api.addr_validate(&strategy)?;
+            set_third_party_transfers_forbidden(deps, env, info, strategy_addr, value)
+        }
+        ExecuteMsg::WhitelistStrategies {
+            strategies_to_whitelist,
+            third_party_transfers_forbidden_values,
+        } => {
+            let strategies_to_whitelist_addr =
+                validate_addresses(deps.api, &strategies_to_whitelist)?;
+            whitelist_strategies(
+                deps,
+                info,
+                strategies_to_whitelist_addr,
+                third_party_transfers_forbidden_values,
+            )
+        }
+        ExecuteMsg::TransferOwnership { new_owner } => {
+            let new_owner_addr = deps.api.addr_validate(&new_owner)?;
+            transfer_ownership(deps, info, new_owner_addr)
+        }
+        ExecuteMsg::Pause {} => {
+            check_pauser(deps.as_ref(), info.clone())?;
+            pause(deps, &info).map_err(ContractError::Std)
+        }
+        ExecuteMsg::Unpause {} => {
+            check_unpauser(deps.as_ref(), info.clone())?;
+            unpause(deps, &info).map_err(ContractError::Std)
+        }
+        ExecuteMsg::SetPauser { new_pauser } => {
+            only_owner(deps.as_ref(), &info.clone())?;
+            let new_pauser_addr = deps.api.addr_validate(&new_pauser)?;
+            set_pauser(deps, new_pauser_addr).map_err(ContractError::Std)
+        }
+        ExecuteMsg::SetUnpauser { new_unpauser } => {
+            only_owner(deps.as_ref(), &info.clone())?;
+            let new_unpauser_addr = deps.api.addr_validate(&new_unpauser)?;
+            set_unpauser(deps, new_unpauser_addr).map_err(ContractError::Std)
+        }
     }
 }
 
@@ -89,7 +140,23 @@ pub fn deploy_new_strategy(
     pauser: Addr,
     unpauser: Addr,
 ) -> Result<Response, ContractError> {
+    only_when_not_paused(deps.as_ref(), PAUSED_NEW_STRATEGIES)?;
+
     let config = CONFIG.load(deps.storage)?;
+
+    let is_blacklisted = IS_BLACKLISTED
+        .may_load(deps.storage, &token)?
+        .unwrap_or(false);
+    if is_blacklisted {
+        return Err(ContractError::TokenBlacklisted {});
+    }
+
+    let existing_strategy = DEPLOYEDSTRATEGIES
+        .may_load(deps.storage, &token)?
+        .unwrap_or(Addr::unchecked(""));
+    if existing_strategy != Addr::unchecked("") {
+        return Err(ContractError::StrategyAlreadyExists {});
+    }
 
     let instantiate_msg = WasmMsg::Instantiate {
         admin: Some(info.sender.to_string()),
@@ -119,12 +186,16 @@ pub fn deploy_new_strategy(
 pub fn blacklist_tokens(
     deps: DepsMut,
     info: MessageInfo,
-    tokens: Vec<Addr>, 
+    tokens: Vec<Addr>,
 ) -> Result<Response, ContractError> {
+    only_owner(deps.as_ref(), &info)?;
+
     let mut strategies_to_remove: Vec<Addr> = Vec::new();
 
     for token in &tokens {
-        let is_already_blacklisted = IS_BLACKLISTED.may_load(deps.storage, token)?.unwrap_or(false);
+        let is_already_blacklisted = IS_BLACKLISTED
+            .may_load(deps.storage, token)?
+            .unwrap_or(false);
         if is_already_blacklisted {
             return Err(ContractError::TokenAlreadyBlacklisted {});
         }
@@ -179,9 +250,8 @@ pub fn set_third_party_transfers_forbidden(
     value: bool,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-    if info.sender != config.owner {
-        return Err(ContractError::Unauthorized {});
-    }
+
+    only_owner(deps.as_ref(), &info)?;
 
     let msg = StrategyManagerExecuteMsg::SetThirdPartyTransfersForbidden {
         strategy: strategy.to_string(),
@@ -201,6 +271,39 @@ pub fn set_third_party_transfers_forbidden(
         .add_attribute("value", value.to_string()))
 }
 
+pub fn whitelist_strategies(
+    deps: DepsMut,
+    info: MessageInfo,
+    strategies_to_whitelist: Vec<Addr>,
+    third_party_transfers_forbidden_values: Vec<bool>,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+
+    only_owner(deps.as_ref(), &info)?;
+
+    if strategies_to_whitelist.len() != third_party_transfers_forbidden_values.len() {
+        return Err(ContractError::InvalidInput {});
+    }
+
+    let msg = StrategyManagerExecuteMsg::AddStrategiesToWhitelist {
+        strategies: strategies_to_whitelist
+            .iter()
+            .map(|s| s.to_string())
+            .collect(),
+        third_party_transfers_forbidden_values,
+    };
+
+    let exec_msg = WasmMsg::Execute {
+        contract_addr: config.strategy_manager.to_string(),
+        msg: to_json_binary(&msg)?,
+        funds: vec![],
+    };
+
+    Ok(Response::new()
+        .add_message(CosmosMsg::Wasm(exec_msg))
+        .add_attribute("method", "whitelist_strategies"))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     match msg.id {
@@ -210,36 +313,65 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 }
 
 fn handle_instantiate_reply(deps: DepsMut, msg: Reply) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+
     let contract_address = extract_contract_address_from_reply(&msg)?;
 
     let token_address = DEPLOYEDSTRATEGIES
         .keys(deps.storage, None, None, Order::Ascending)
-        .last() 
+        .last()
         .ok_or(StdError::not_found("Token"))??;
 
-    set_strategy_for_token(deps, token_address.clone(), Addr::unchecked(contract_address.clone()))?;
+    set_strategy_for_token(
+        deps,
+        token_address.clone(),
+        Addr::unchecked(contract_address.clone()),
+    )?;
+
+    let strategies_to_whitelist = vec![Addr::unchecked(contract_address.clone())];
+    let third_party_transfers_forbidden_values = vec![false];
+
+    let msg = StrategyManagerExecuteMsg::AddStrategiesToWhitelist {
+        strategies: strategies_to_whitelist
+            .iter()
+            .map(|s| s.to_string())
+            .collect(),
+        third_party_transfers_forbidden_values,
+    };
+
+    let exec_msg = WasmMsg::Execute {
+        contract_addr: config.strategy_manager.to_string(),
+        msg: to_json_binary(&msg)?,
+        funds: vec![],
+    };
 
     Ok(Response::new()
         .add_attribute("method", "reply_instantiate")
         .add_attribute("new_strategy_address", contract_address)
-        .add_attribute("token_address", token_address.to_string()))
+        .add_attribute("token_address", token_address.to_string())
+        .add_message(CosmosMsg::Wasm(exec_msg)))
 }
 
 fn extract_contract_address_from_reply(msg: &Reply) -> Result<String, ContractError> {
     let res = msg.result.clone().into_result().map_err(|e| {
         println!("InstantiateError: {:?}", e);
         ContractError::InstantiateError {}
-    })?;    
+    })?;
 
     let data = res
         .msg_responses
         .get(0)
         .ok_or(ContractError::MissingInstantiateData {})?;
 
-    let instantiate_response = cw_utils::parse_instantiate_response_data(&Binary::from(data.value.clone()))
-        .map_err(|_| {
-            StdError::parse_err("MsgInstantiateContractResponse", "failed to parse instantiate data")
-        })?;
+    let instantiate_response = cw_utils::parse_instantiate_response_data(&Binary::from(
+        data.value.clone(),
+    ))
+    .map_err(|_| {
+        StdError::parse_err(
+            "MsgInstantiateContractResponse",
+            "failed to parse instantiate data",
+        )
+    })?;
 
     Ok(instantiate_response.contract_address)
 }
@@ -247,44 +379,75 @@ fn extract_contract_address_from_reply(msg: &Reply) -> Result<String, ContractEr
 fn update_config(
     deps: DepsMut,
     info: MessageInfo,
-    new_owner: Addr,           
-    strategy_code_id: u64,       
+    new_owner: Addr,
+    strategy_code_id: u64,
     only_owner_can_create: bool,
 ) -> Result<Response, ContractError> {
     let mut config = CONFIG.load(deps.storage)?;
+
+    only_owner(deps.as_ref(), &info)?;
 
     if info.sender != config.owner {
         return Err(ContractError::Unauthorized {});
     }
 
-    config.owner = new_owner; 
-    config.strategy_code_id = strategy_code_id; 
-    config.only_owner_can_create = only_owner_can_create; 
+    config.owner = new_owner;
+    config.strategy_code_id = strategy_code_id;
+    config.only_owner_can_create = only_owner_can_create;
 
     CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::new().add_attribute("method", "update_config"))
 }
 
+fn validate_addresses(api: &dyn Api, addresses: &[String]) -> StdResult<Vec<Addr>> {
+    addresses
+        .iter()
+        .map(|addr| api.addr_validate(addr))
+        .collect()
+}
+
+pub fn transfer_ownership(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_owner: Addr,
+) -> Result<Response, ContractError> {
+    let mut config = CONFIG.load(deps.storage)?;
+
+    only_owner(deps.as_ref(), &info)?;
+
+    config.owner = new_owner.clone();
+    CONFIG.save(deps.storage, &config)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "transfer_ownership")
+        .add_attribute("new_owner", new_owner.to_string()))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        // QueryMsg::GetConfig {} => to_binary(&query_config(deps)?),
         QueryMsg::GetStrategy { token } => {
             let token_addr = deps.api.addr_validate(&token)?;
             to_json_binary(&query_strategy(deps, token_addr)?)
         }
+        QueryMsg::IsTokenBlacklisted { token } => {
+            let token_addr = deps.api.addr_validate(&token)?;
+            to_json_binary(&query_blacklist_status(deps, token_addr)?)
+        }
     }
 }
-
-// fn query_config(deps: Deps) -> StdResult<Config> {
-//     let config = CONFIG.load(deps.storage)?;
-//     Ok(config)
-// }
 
 fn query_strategy(deps: Deps, token_address: Addr) -> StdResult<Addr> {
     let strategy = DEPLOYEDSTRATEGIES.load(deps.storage, &token_address)?;
     Ok(strategy)
+}
+
+fn query_blacklist_status(deps: Deps, token: Addr) -> StdResult<bool> {
+    let is_blacklisted = IS_BLACKLISTED
+        .may_load(deps.storage, &token)?
+        .unwrap_or(false);
+    Ok(is_blacklisted)
 }
 
 fn set_strategy_for_token(
@@ -308,13 +471,27 @@ fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     Ok(())
 }
 
+pub fn migrate(
+    deps: DepsMut,
+    _env: Env,
+    info: &MessageInfo,
+    _msg: MigrateMsg,
+) -> Result<Response, ContractError> {
+    only_owner(deps.as_ref(), info)?;
+
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    Ok(Response::new().add_attribute("method", "migrate"))
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::{from_binary, Addr, Binary, DepsMut, Env, MessageInfo, Response, OwnedDeps, Uint128};
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
+    };
+    use cosmwasm_std::{
+        from_json, Addr, Binary, DepsMut, Env, MessageInfo, OwnedDeps, Response, Uint128,
     };
 
     fn setup_contract() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
@@ -350,7 +527,7 @@ mod tests {
         let pauser = deps.api.addr_make("pauser");
         let unpauser = deps.api.addr_make("unpauser");
 
-        let msg = ExecuteMsg::CreateStrategy {
+        let msg = ExecuteMsg::DeployNewStrategy {
             token: token.to_string(),
             pauser: pauser.to_string(),
             unpauser: unpauser.to_string(),
@@ -360,7 +537,7 @@ mod tests {
 
         assert!(result.is_ok());
         let response: Response = result.unwrap();
-    
+
         assert_eq!(response.messages.len(), 1);
         let msg = &response.messages[0];
         if let CosmosMsg::Wasm(WasmMsg::Instantiate { label, .. }) = &msg.msg {
@@ -368,8 +545,10 @@ mod tests {
         } else {
             panic!("Expected WasmMsg::Instantiate");
         }
-    
-        let strategy_addr = DEPLOYEDSTRATEGIES.load(&deps.storage, &Addr::unchecked(token)).unwrap();
+
+        let strategy_addr = DEPLOYEDSTRATEGIES
+            .load(&deps.storage, &Addr::unchecked(token))
+            .unwrap();
         assert_eq!(strategy_addr, &Addr::unchecked(""));
     }
 }

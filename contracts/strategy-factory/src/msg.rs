@@ -13,23 +13,48 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    // 创建新的策略，传入token地址以及可选的 pauser 和 unpauser 地址
-    CreateStrategy {
+    DeployNewStrategy {
         token: String,
-        pauser: String,   // 可选的 pauser 地址
-        unpauser: String, // 可选的 unpauser 地址
+        pauser: String,
+        unpauser: String,
     },
-
-    // 更新合约配置
     UpdateConfig {
-        new_owner: String,           // 可选的新 owner
-        strategy_code_id: u64,       // 可选的新策略 code ID
-        only_owner_can_create: bool, // 是否只有 owner 可以创建策略
+        new_owner: String,
+        strategy_code_id: u64,
+        only_owner_can_create: bool,
+    },
+    BlacklistTokens {
+        tokens: Vec<String>,
+    },
+    RemoveStrategiesFromWhitelist {
+        strategies: Vec<String>,
+    },
+    SetThirdPartyTransfersForBidden {
+        strategy: String,
+        value: bool,
+    },
+    WhitelistStrategies {
+        strategies_to_whitelist: Vec<String>,
+        third_party_transfers_forbidden_values: Vec<bool>,
+    },
+    TransferOwnership {
+        new_owner: String,
+    },
+    Pause {},
+    Unpause {},
+    SetPauser {
+        new_pauser: String,
+    },
+    SetUnpauser {
+        new_unpauser: String,
     },
 }
 
 #[cw_serde]
 pub enum QueryMsg {
-    // 获取策略的接口，通过 token_address 查询
     GetStrategy { token: String },
+    IsTokenBlacklisted { token: String },
 }
+
+#[cw_serde]
+pub struct MigrateMsg {}
