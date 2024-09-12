@@ -20,4 +20,13 @@ pub enum ContractError {
 
     #[error("StrategyFactory.blacklist_tokens: token already blacklisted")]
     TokenAlreadyBlacklisted {},
+
+    #[error("StrategyFactory.whitelist_strategies: invalid input")]
+    InvalidInput {},
+
+    #[error("StrategyFactory.deploy_new_strategy: token blacklisted")]
+    TokenBlacklisted {},
+
+    #[error("StrategyFactory.deploy_new_strategy: strategy already exists")]
+    StrategyAlreadyExists {},
 }

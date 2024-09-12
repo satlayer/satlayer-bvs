@@ -27,6 +27,10 @@ pub enum ExecuteMsg {
         strategy: String,
         value: bool,
     },
+    AddStrategiesToWhitelist {
+        strategies: Vec<String>,
+        third_party_transfers_forbidden_values: Vec<bool>,
+    },
 }
 
 #[cw_serde]

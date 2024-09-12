@@ -30,6 +30,6 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 pub enum QueryMsg {
-    // 获取策略的接口，通过 token_address 查询
     GetStrategy { token: String },
+    IsTokenBlacklisted { token: String },
 }
