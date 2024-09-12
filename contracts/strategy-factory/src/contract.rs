@@ -3,7 +3,7 @@ use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{Config, CONFIG, DEPLOYEDSTRATEGIES, IS_BLACKLISTED};
 use cosmwasm_std::{
     entry_point, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Order, Reply, Response, StdError, StdResult, SubMsg, WasmMsg,
+    MessageInfo, Order, Reply, Response, StdError, StdResult, SubMsg, WasmMsg, Api
 };
 use cw2::set_contract_version;
 
@@ -52,7 +52,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::CreateStrategy {
+        ExecuteMsg::DeployNewStrategy {
             token,
             pauser,
             unpauser,
@@ -77,6 +77,28 @@ pub fn execute(
                 strategy_code_id,
                 only_owner_can_create,
             )
+        }
+        ExecuteMsg::BlacklistTokens { tokens } => {
+            let token_addrs = validate_addresses(deps.api, &tokens)?;
+            blacklist_tokens(deps, info, token_addrs)
+        }
+        ExecuteMsg::RemoveStrategiesFromWhitelist { strategies } => {
+            let strategies_addrs = validate_addresses(deps.api, &strategies)?;
+            remove_strategies_from_whitelist(deps, info, strategies_addrs)
+        }
+        ExecuteMsg::SetThirdPartyTransfersForBidden { 
+            strategy,
+            value
+        } => {
+            let strategy_addr = deps.api.addr_validate(&strategy)?;
+            set_third_party_transfers_forbidden(deps, env, info, strategy_addr, value)
+        }
+        ExecuteMsg::WhitelistStrategies {
+            strategies_to_whitelist,
+            third_party_transfers_forbidden_values
+        } => {
+            let strategies_to_whitelist_addr = validate_addresses(deps.api, &strategies_to_whitelist)?;
+            whitelist_strategies(deps, info, strategies_to_whitelist_addr, third_party_transfers_forbidden_values)
         }
     }
 }
@@ -330,6 +352,13 @@ fn update_config(
     Ok(Response::new().add_attribute("method", "update_config"))
 }
 
+fn validate_addresses(api: &dyn Api, addresses: &[String]) -> StdResult<Vec<Addr>> {
+    addresses
+        .iter()
+        .map(|addr| api.addr_validate(addr))
+        .collect()
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -417,7 +446,7 @@ mod tests {
         let pauser = deps.api.addr_make("pauser");
         let unpauser = deps.api.addr_make("unpauser");
 
-        let msg = ExecuteMsg::CreateStrategy {
+        let msg = ExecuteMsg::DeployNewStrategy {
             token: token.to_string(),
             pauser: pauser.to_string(),
             unpauser: unpauser.to_string(),
