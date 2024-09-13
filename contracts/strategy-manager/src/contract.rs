@@ -51,10 +51,12 @@ pub fn instantiate(
     let slasher = deps.api.addr_validate(&msg.slasher)?;
     let initial_strategy_whitelister = deps.api.addr_validate(&msg.initial_strategy_whitelister)?;
     let initial_owner = deps.api.addr_validate(&msg.initial_owner)?;
+    let strategy_factory = deps.api.addr_validate(&msg.strategy_factory)?; 
 
     let state = StrategyManagerState {
         delegation_manager: delegation_manager.clone(),
         slasher: slasher.clone(),
+        strategy_factory: strategy_factory.clone()
     };
 
     let pauser = deps.api.addr_validate(&msg.pauser)?;
@@ -690,7 +692,9 @@ fn query_staker_strategy_list_length(
 
 fn only_strategy_whitelister(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let whitelister: Addr = STRATEGY_WHITELISTER.load(deps.storage)?;
-    if info.sender != whitelister {
+    let state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
+
+    if info.sender != whitelister && info.sender != state.strategy_factory {
         return Err(ContractError::Unauthorized {});
     }
     Ok(())
@@ -991,6 +995,7 @@ mod tests {
         let owner = deps.api.addr_make("owner").to_string();
         let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
         let slasher = deps.api.addr_make("slasher").to_string();
+        let strategy_factory = deps.api.addr_make("strategy_factory").to_string();
         let strategy_whitelister = deps.api.addr_make("strategy_whitelister").to_string();
         let pauser = deps.api.addr_make("pauser").to_string();
         let unpauser = deps.api.addr_make("unpauser").to_string();
@@ -999,6 +1004,7 @@ mod tests {
             initial_owner: owner.clone(),
             delegation_manager: delegation_manager.clone(),
             slasher: slasher.clone(),
+            strategy_factory: strategy_factory.clone(),
             initial_strategy_whitelister: strategy_whitelister.clone(),
             pauser: pauser.clone(),
             unpauser: unpauser.clone(),
@@ -1056,6 +1062,7 @@ mod tests {
 
         let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
         let slasher = deps.api.addr_make("slasher").to_string();
+        let strategy_factory = deps.api.addr_make("strategy_factory").to_string();
         let strategy_whitelister = deps.api.addr_make("strategy_whitelister").to_string();
 
         let pauser = deps.api.addr_make("pauser").to_string();
@@ -1072,6 +1079,7 @@ mod tests {
             initial_owner: owner.clone(),
             delegation_manager: delegation_manager.clone(),
             slasher: slasher.clone(),
+            strategy_factory: strategy_factory.clone(),
             initial_strategy_whitelister: strategy_whitelister.clone(),
             pauser: pauser.clone(),
             unpauser: unpauser.clone(),
