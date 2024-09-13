@@ -37,6 +37,9 @@ pub enum ExecuteMsg {
         strategies_to_whitelist: Vec<String>,
         third_party_transfers_forbidden_values: Vec<bool>,
     },
+    SetStrategyManager {
+        new_strategy_manager: String,
+    },
     TransferOwnership {
         new_owner: String,
     },
