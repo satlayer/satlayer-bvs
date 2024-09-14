@@ -8,7 +8,8 @@ members = [
     "contracts/delegation-manager",
     "contracts/rewards-coordinator",
     "contracts/strategy-base-TVLLimits",
-    "contracts/strategy-factory"
+    "contracts/strategy-factory",
+    "contracts/slash-manager"
     ]
 
 resolver = "2"
