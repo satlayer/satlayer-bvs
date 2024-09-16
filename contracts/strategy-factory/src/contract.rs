@@ -73,12 +73,7 @@ pub fn execute(
         } => {
             let new_owner_addr = deps.api.addr_validate(&new_owner)?;
 
-            update_config(
-                deps,
-                info,
-                new_owner_addr,
-                strategy_code_id,
-            )
+            update_config(deps, info, new_owner_addr, strategy_code_id)
         }
         ExecuteMsg::BlacklistTokens { tokens } => {
             let token_addrs = validate_addresses(deps.api, &tokens)?;
@@ -146,7 +141,7 @@ pub fn deploy_new_strategy(
     unpauser: Addr,
 ) -> Result<Response, ContractError> {
     only_when_not_paused(deps.as_ref(), PAUSED_NEW_STRATEGIES)?;
-    
+
     only_owner(deps.as_ref(), &info)?;
 
     let config = CONFIG.load(deps.storage)?;
@@ -711,7 +706,7 @@ mod tests {
 
         let msg = ExecuteMsg::UpdateConfig {
             new_owner: new_owner.to_string(),
-            strategy_code_id: new_strategy_code_id
+            strategy_code_id: new_strategy_code_id,
         };
 
         let result = execute(deps.as_mut(), mock_env(), info.clone(), msg);
