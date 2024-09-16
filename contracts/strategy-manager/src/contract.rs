@@ -51,12 +51,12 @@ pub fn instantiate(
     let slasher = deps.api.addr_validate(&msg.slasher)?;
     let initial_strategy_whitelister = deps.api.addr_validate(&msg.initial_strategy_whitelister)?;
     let initial_owner = deps.api.addr_validate(&msg.initial_owner)?;
-    let strategy_factory = deps.api.addr_validate(&msg.strategy_factory)?; 
+    let strategy_factory = deps.api.addr_validate(&msg.strategy_factory)?;
 
     let state = StrategyManagerState {
         delegation_manager: delegation_manager.clone(),
         slasher: slasher.clone(),
-        strategy_factory: strategy_factory.clone()
+        strategy_factory: strategy_factory.clone(),
     };
 
     let pauser = deps.api.addr_validate(&msg.pauser)?;

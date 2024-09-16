@@ -1,7 +1,7 @@
 use crate::query::{
     ExplanationResponse, SharesResponse, SharesToUnderlyingResponse, StrategyManagerResponse,
-    TotalSharesResponse, UnderlyingToShareResponse, UnderlyingToSharesResponse,
-    UnderlyingTokenResponse, UserUnderlyingResponse, TVLLimitsResponse
+    TVLLimitsResponse, TotalSharesResponse, UnderlyingToShareResponse, UnderlyingToSharesResponse,
+    UnderlyingTokenResponse, UserUnderlyingResponse,
 };
 use crate::state::StrategyState;
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -42,8 +42,8 @@ pub enum ExecuteMsg {
     },
     SetTVLLimits {
         max_per_deposit: Uint128,
-        max_total_deposits: Uint128
-    }
+        max_total_deposits: Uint128,
+    },
 }
 
 #[cw_serde]
