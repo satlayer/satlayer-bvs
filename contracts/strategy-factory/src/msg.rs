@@ -4,7 +4,6 @@ use cosmwasm_schema::cw_serde;
 pub struct InstantiateMsg {
     pub initial_owner: String,
     pub strategy_code_id: u64,
-    pub only_owner_can_create: bool,
     pub strategy_manager: String,
     pub pauser: String,
     pub unpauser: String,
@@ -21,7 +20,6 @@ pub enum ExecuteMsg {
     UpdateConfig {
         new_owner: String,
         strategy_code_id: u64,
-        only_owner_can_create: bool,
     },
     BlacklistTokens {
         tokens: Vec<String>,

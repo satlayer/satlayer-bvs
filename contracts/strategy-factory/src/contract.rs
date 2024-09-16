@@ -30,7 +30,6 @@ pub fn instantiate(
     let config = Config {
         owner: deps.api.addr_validate(&msg.initial_owner)?,
         strategy_code_id: msg.strategy_code_id,
-        only_owner_can_create: msg.only_owner_can_create,
         strategy_manager: deps.api.addr_validate(&msg.strategy_manager)?,
         pauser: deps.api.addr_validate(&msg.pauser)?,
         unpauser: deps.api.addr_validate(&msg.unpauser)?,
@@ -71,7 +70,6 @@ pub fn execute(
         ExecuteMsg::UpdateConfig {
             new_owner,
             strategy_code_id,
-            only_owner_can_create,
         } => {
             let new_owner_addr = deps.api.addr_validate(&new_owner)?;
 
@@ -80,7 +78,6 @@ pub fn execute(
                 info,
                 new_owner_addr,
                 strategy_code_id,
-                only_owner_can_create,
             )
         }
         ExecuteMsg::BlacklistTokens { tokens } => {
@@ -423,7 +420,6 @@ fn update_config(
     info: MessageInfo,
     new_owner: Addr,
     strategy_code_id: u64,
-    only_owner_can_create: bool,
 ) -> Result<Response, ContractError> {
     let mut config = CONFIG.load(deps.storage)?;
 
@@ -435,7 +431,6 @@ fn update_config(
 
     config.owner = new_owner;
     config.strategy_code_id = strategy_code_id;
-    config.only_owner_can_create = only_owner_can_create;
 
     CONFIG.save(deps.storage, &config)?;
 
@@ -554,7 +549,6 @@ mod tests {
         let msg = InstantiateMsg {
             initial_owner: initial_owner.to_string(),
             strategy_code_id: 1,
-            only_owner_can_create: true,
             strategy_manager: strategy_manager.to_string(),
             pauser: pauser.to_string(),
             unpauser: unpauser.to_string(),
@@ -714,12 +708,10 @@ mod tests {
 
         let new_owner = deps.api.addr_make("new_owner");
         let new_strategy_code_id = 2;
-        let new_only_owner_can_create = false;
 
         let msg = ExecuteMsg::UpdateConfig {
             new_owner: new_owner.to_string(),
-            strategy_code_id: new_strategy_code_id,
-            only_owner_can_create: new_only_owner_can_create,
+            strategy_code_id: new_strategy_code_id
         };
 
         let result = execute(deps.as_mut(), mock_env(), info.clone(), msg);
@@ -734,13 +726,11 @@ mod tests {
         let config = CONFIG.load(&deps.storage).unwrap();
         assert_eq!(config.owner, new_owner);
         assert_eq!(config.strategy_code_id, new_strategy_code_id);
-        assert_eq!(config.only_owner_can_create, new_only_owner_can_create);
 
         let unauthorized_user = message_info(&Addr::unchecked("unauthorized_user"), &[]);
         let msg = ExecuteMsg::UpdateConfig {
             new_owner: new_owner.to_string(),
             strategy_code_id: new_strategy_code_id,
-            only_owner_can_create: new_only_owner_can_create,
         };
 
         let result = execute(deps.as_mut(), mock_env(), unauthorized_user, msg);

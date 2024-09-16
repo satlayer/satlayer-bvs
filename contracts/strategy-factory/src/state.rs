@@ -11,7 +11,6 @@ pub const IS_BLACKLISTED: Map<&Addr, bool> = Map::new("is_blacklisted");
 pub struct Config {
     pub owner: Addr,
     pub strategy_code_id: u64,
-    pub only_owner_can_create: bool,
     pub strategy_manager: Addr,
     pub pauser: Addr,
     pub unpauser: Addr,
