@@ -1,4 +1,6 @@
-use cosmwasm_schema::cw_serde;
+use crate::query::{MinimalSlashSignatureResponse, SlashDetailsResponse, ValidatorResponse};
+use crate::utils::SlashDetails;
+use cosmwasm_schema::{cw_serde, QueryResponses};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -16,21 +18,21 @@ pub enum ExecuteMsg {
     },
     ExecuteSlashRequest {
         slash_hash: String,
-        signatures: Vec<String>
+        signatures: Vec<String>,
     },
     CancelSlashRequest {
-        slash_hash: String
+        slash_hash: String,
     },
     SetMinimalSlashSignature {
-        minimal_signature: u64
+        minimal_signature: u64,
     },
     SetSlasher {
         slasher: String,
-        value: bool
+        value: bool,
     },
     SetSlasherValidator {
         validator: String,
-        value: bool
+        value: bool,
     },
     TransferOwnership {
         new_owner: String,
@@ -48,8 +50,14 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(OperatorStatusResponse)]
-    GetOperatorStatus { avs: String, operator: String },
+    #[returns(SlashDetailsResponse)]
+    GetSlashDetails { slash_hash: String },
+
+    #[returns(ValidatorResponse)]
+    IsValidator { validator: String },
+
+    #[returns(MinimalSlashSignatureResponse)]
+    GetMinimalSlashSignature {},
 }
 
 #[cw_serde]

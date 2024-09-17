@@ -1,9 +1,8 @@
 use crate::{
     error::ContractError,
-    msg::{
-        ExecuteMsg, InstantiateMsg, MigrateMsg,QueryMsg
-    },
-    state::{OWNER, DELEGATION_MANAGER}
+    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    query::{MinimalSlashSignatureResponse, SlashDetailsResponse, ValidatorResponse},
+    state::{DELEGATION_MANAGER, OWNER},
 };
 use common::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use common::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
@@ -53,37 +52,21 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::SubmitSlashRequest {
-            slash_details
-        } => {
+        ExecuteMsg::SubmitSlashRequest { slash_details } => {
             submit_slash_request(deps, info, slash_details)
         }
         ExecuteMsg::ExecuteSlashRequest {
             slash_hash,
-            signatures
-        } => {
-            execute_slash_request(deps, env, info, slash_hash, signatures)
-        }
-        ExecuteMsg::CancelSlashRequest {
-            slash_hash
-        } => {
+            signatures,
+        } => execute_slash_request(deps, env, info, slash_hash, signatures),
+        ExecuteMsg::CancelSlashRequest { slash_hash } => {
             cancel_slash_request(deps, env, info, slash_hash)
         }
-        ExecuteMsg::SetMinimalSlashSignature {
-            minimal_signature
-        } => {
+        ExecuteMsg::SetMinimalSlashSignature { minimal_signature } => {
             set_minimal_slash_signature(deps, env, info, minimal_signature)
         }
-        ExecuteMsg::SetSlasher {
-            slasher,
-            value
-        } => {
-            set_slasher(deps, env, info, slasher, value)
-        }
-        ExecuteMsg::SetSlasherValidator {
-            validator,
-            value
-        } => {
+        ExecuteMsg::SetSlasher { slasher, value } => set_slasher(deps, env, info, slasher, value),
+        ExecuteMsg::SetSlasherValidator { validator, value } => {
             set_slasher_validator(deps, env, info, validator, value)
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
@@ -114,9 +97,8 @@ pub fn execute(
 pub fn submit_slash_request(
     deps: DepsMut,
     info: MessageInfo,
-    slash_details: SlashDetails
+    slash_details: SlashDetails,
 ) -> Result<Response, ContractError> {
-
 }
 
 pub fn execute_slash_request(
@@ -124,27 +106,24 @@ pub fn execute_slash_request(
     env: Env,
     info: MessageInfo,
     slash_hash: Binary,
-    signatures: Vec<Binary>
+    signatures: Vec<Binary>,
 ) -> Result<Response, ContractError> {
-
 }
 
 pub fn cancel_slash_request(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    slash_hash: Binary
+    slash_hash: Binary,
 ) -> Result<Response, ContractError> {
-
 }
 
 pub fn set_minimal_slash_signature(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    minimal_signature: u64
+    minimal_signature: u64,
 ) -> Result<Response, ContractError> {
-
 }
 
 pub fn set_slasher(
@@ -152,9 +131,8 @@ pub fn set_slasher(
     env: Env,
     info: MessageInfo,
     slasher: Addr,
-    value: bool
+    value: bool,
 ) -> Result<Response, ContractError> {
-
 }
 
 pub fn set_slasher_validator(
@@ -162,9 +140,8 @@ pub fn set_slasher_validator(
     env: Env,
     info: MessageInfo,
     validator: Addr,
-    value: bool
+    value: bool,
 ) -> Result<Response, ContractError> {
-
 }
 
 pub fn transfer_ownership(
@@ -188,24 +165,23 @@ pub fn transfer_ownership(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetOperatorStatus { avs, operator } => {
-            let avs_addr = Addr::unchecked(avs);
-            let operator_addr = Addr::unchecked(operator);
-            to_json_binary(&query_operator_status(deps, avs_addr, operator_addr)?)
+        QueryMsg::GetSlashDetails { slash_hash } => {
+            to_json_binary(&query_slash_details(deps, slash_hash)?)
+        }
+        QueryMsg::IsValidator { validator } => {
+            to_json_binary(&query_is_validator(deps, validator)?)
+        }
+        QueryMsg::GetMinimalSlashSignature {} => {
+            to_json_binary(&query_minimal_slash_signature(deps)?)
         }
     }
 }
 
-fn query_operator_status(
-    deps: Deps,
-    user_addr: Addr,
-    operator: Addr,
-) -> StdResult<OperatorStatusResponse> {
-    let status = AVS_OPERATOR_STATUS
-        .may_load(deps.storage, (user_addr.clone(), operator.clone()))?
-        .unwrap_or(OperatorAVSRegistrationStatus::Unregistered);
-    Ok(OperatorStatusResponse { status })
-}
+fn query_slash_details(deps: Deps, slash_hash: Binary) -> StdResult<SlashDetailsResponse> {}
+
+fn query_is_validator(deps: Deps, validator: Addr) -> StdResult<ValidatorResponse> {}
+
+fn query_minimal_slash_signature(deps: Deps) -> StdResult<MinimalSlashSignatureResponse> {}
 
 fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let owner = OWNER.load(deps.storage)?;
@@ -215,9 +191,7 @@ fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     Ok(())
 }
 
-fn only_slasher(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
-
-}
+fn only_slasher(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {}
 
 pub fn migrate(
     deps: DepsMut,
