@@ -11,10 +11,26 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    RegisterAVS {
-        avs_contract: String,
-        state_bank: String,
-        avs_driver: String,
+    SubmitSlashRequest {
+        slash_details: SlashDetails,
+    },
+    ExecuteSlashRequest {
+        slash_hash: String,
+        signatures: Vec<String>
+    },
+    CancelSlashRequest {
+        slash_hash: String
+    },
+    SetMinimalSlashSignature {
+        minimal_signature: u64
+    },
+    SetSlasher {
+        slasher: String,
+        value: bool
+    },
+    SetSlasherValidator {
+        validator: String,
+        value: bool
     },
     TransferOwnership {
         new_owner: String,
