@@ -11,4 +11,19 @@ pub enum ContractError {
 
     #[error("SlashManager.set_slash_validator: invalid input length")]
     InvalidInputLength {},
+
+    #[error("SlashManager.submit_slash_request: invalid slash gignature")]
+    InvalidSlashSignature {},
+
+    #[error("SlashManager.submit_slash_request: invalid share")]
+    InvalidShare {},
+
+    #[error("SlashManager.submit_slash_request: invalid start time")]
+    InvalidStartTime {},
+
+    #[error("SlashManager.submit_slash_request: invalid end time")]
+    InvalidEndTime {},
+
+    #[error("SlashManager.submit_slash_request: invalid slash status")]
+    InvalidSlashStatus {},
 }

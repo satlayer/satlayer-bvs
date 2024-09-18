@@ -2,8 +2,8 @@ use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{MinimalSlashSignatureResponse, SlashDetailsResponse, ValidatorResponse},
-    state::{DELEGATION_MANAGER, OWNER, SLASHER, VALIDATOR, MINIMAL_SLASH_SIGNATURE},
-    utils::validate_addresses,
+    state::{DELEGATION_MANAGER, OWNER, SLASHER, VALIDATOR, MINIMAL_SLASH_SIGNATURE, SLASH_DETAILS},
+    utils::{validate_addresses, SlashDetails, calculate_slash_hash},
 };
 
 use common::delegation::{QueryMsg as DelegationManagerQueryMsg, ExecuteMsg as DelegationManagerExecuteMsg};
@@ -56,7 +56,23 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::SubmitSlashRequest { slash_details } => {
-            submit_slash_request(deps, info, slash_details)
+            let slasher_addr = deps.api.addr_validate(&slash_details.slasher)?;
+            let operator_addr = deps.api.addr_validate(&slash_details.operator)?;
+            let slash_validator = validate_addresses(deps.api, &slash_details.slash_validator)?;
+
+            let params = SlashDetails {
+                slasher: slasher_addr,
+                operator: operator_addr,
+                share: slash_details.share,
+                slash_signature: slash_details.slash_signature,
+                slash_validator,
+                reason: slash_details.reason,
+                start_time: slash_details.start_time,
+                end_time: slash_details.end_time,
+                status: slash_details.status
+            };
+
+            submit_slash_request(deps, info, env, params)
         }
         ExecuteMsg::ExecuteSlashRequest {
             slash_hash,
@@ -104,8 +120,52 @@ pub fn execute(
 pub fn submit_slash_request(
     deps: DepsMut,
     info: MessageInfo,
+    env: Env,
     slash_details: SlashDetails,
 ) -> Result<Response, ContractError> {
+    only_slasher(deps.as_ref(), &info)?;
+
+    if slash_details.share.is_zero() {
+        return Err(ContractError::InvalidShare {});
+    }
+
+    if !slash_details.status {
+        return Err(ContractError::InvalidSlashStatus {});
+    }
+
+    let current_minimal_signature = MINIMAL_SLASH_SIGNATURE.load(deps.storage)?;
+
+    if slash_details.slash_signature < current_minimal_signature {
+        return Err(ContractError::InvalidSlashSignature {});
+    }
+
+    for validator in slash_details.slash_validator.iter() {
+        if !VALIDATOR.load(deps.storage, validator.clone())? {
+            return Err(ContractError::Unauthorized {});
+        }
+    }
+
+    if slash_details.start_time.is_zero() || slash_details.start_time < env.block.time.seconds().into() {
+        return Err(ContractError::InvalidStartTime {});
+    }
+    
+    if slash_details.end_time.is_zero() || slash_details.end_time < env.block.time.seconds().into() {
+        return Err(ContractError::InvalidEndTime {});
+    }
+
+    let slash_hash = calculate_slash_hash(&info.sender, &slash_details);
+    SLASH_DETAILS.save(deps.storage, slash_hash.to_vec(), &slash_details.clone())?;
+
+    let event = Event::new("slash_request_submitted")
+        .add_attribute("slash_hash", hex::encode(&slash_hash))
+        .add_attribute("sender", info.sender.to_string())
+        .add_attribute("operator", slash_details.operator.to_string())
+        .add_attribute("share", slash_details.share.to_string())
+        .add_attribute("start_time", slash_details.start_time.to_string())
+        .add_attribute("end_time", slash_details.end_time.to_string())
+        .add_attribute("status", slash_details.status.to_string());
+
+    Ok(Response::new().add_event(event))
 }
 
 pub fn execute_slash_request(
