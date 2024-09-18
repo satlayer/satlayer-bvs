@@ -1,5 +1,5 @@
 use crate::query::{MinimalSlashSignatureResponse, SlashDetailsResponse, ValidatorResponse};
-use crate::utils::SlashDetails;
+use crate::utils::ExecuteSlashDetails;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
 #[cw_serde]
@@ -14,7 +14,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     SubmitSlashRequest {
-        slash_details: SlashDetails,
+        slash_details: ExecuteSlashDetails,
     },
     ExecuteSlashRequest {
         slash_hash: String,
@@ -31,8 +31,8 @@ pub enum ExecuteMsg {
         value: bool,
     },
     SetSlasherValidator {
-        validator: String,
-        value: bool,
+        validators: Vec<String>,
+        values: Vec<bool>,
     },
     TransferOwnership {
         new_owner: String,
