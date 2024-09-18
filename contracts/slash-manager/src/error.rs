@@ -6,6 +6,9 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
-    #[error("AVSDirectory.transferOwnership: unauthorized")]
+    #[error("SlashManager: unauthorized")]
     Unauthorized {},
+
+    #[error("SlashManager.set_slash_validator: invalid input length")]
+    InvalidInputLength {},
 }

@@ -31,8 +31,8 @@ pub enum ExecuteMsg {
         value: bool,
     },
     SetSlasherValidator {
-        validator: String,
-        value: bool,
+        validators: Vec<String>,
+        values: Vec<bool>,
     },
     TransferOwnership {
         new_owner: String,

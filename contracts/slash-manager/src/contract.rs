@@ -2,8 +2,11 @@ use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{MinimalSlashSignatureResponse, SlashDetailsResponse, ValidatorResponse},
-    state::{DELEGATION_MANAGER, OWNER},
+    state::{DELEGATION_MANAGER, OWNER, SLASHER, VALIDATOR, MINIMAL_SLASH_SIGNATURE},
+    utils::validate_addresses,
 };
+
+use common::delegation::{QueryMsg as DelegationManagerQueryMsg, ExecuteMsg as DelegationManagerExecuteMsg};
 use common::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use common::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use cosmwasm_std::{
@@ -63,11 +66,15 @@ pub fn execute(
             cancel_slash_request(deps, env, info, slash_hash)
         }
         ExecuteMsg::SetMinimalSlashSignature { minimal_signature } => {
-            set_minimal_slash_signature(deps, env, info, minimal_signature)
+            set_minimal_slash_signature(deps, info, minimal_signature)
         }
-        ExecuteMsg::SetSlasher { slasher, value } => set_slasher(deps, env, info, slasher, value),
-        ExecuteMsg::SetSlasherValidator { validator, value } => {
-            set_slasher_validator(deps, env, info, validator, value)
+        ExecuteMsg::SetSlasher { slasher, value } => {
+            let slasher_addr = deps.api.addr_validate(&slasher)?;
+            set_slasher(deps, info, slasher_addr, value)
+        }
+        ExecuteMsg::SetSlasherValidator { validators, values } => {
+            let validators = validate_addresses(deps.api, &validators)?;
+            set_slash_validator(deps, info, validators, values)
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner_addr = deps.api.addr_validate(&new_owner)?;
@@ -120,28 +127,70 @@ pub fn cancel_slash_request(
 
 pub fn set_minimal_slash_signature(
     deps: DepsMut,
-    env: Env,
     info: MessageInfo,
     minimal_signature: u64,
 ) -> Result<Response, ContractError> {
+    only_slasher(deps.as_ref(), &info)?;
+
+    let old_minimal_signature = MINIMAL_SLASH_SIGNATURE.load(deps.storage)?;
+
+    MINIMAL_SLASH_SIGNATURE.save(deps.storage, &minimal_signature)?;
+
+    let event = Event::new("minimal_slash_signature_set")
+        .add_attribute("method", "set_minimal_slash_signature")
+        .add_attribute("old_minimal_signature", old_minimal_signature.to_string())
+        .add_attribute("minimal_signature", minimal_signature.to_string())
+        .add_attribute("sender", info.sender.to_string());
+
+    Ok(Response::new().add_event(event))
 }
 
 pub fn set_slasher(
     deps: DepsMut,
-    env: Env,
     info: MessageInfo,
     slasher: Addr,
     value: bool,
 ) -> Result<Response, ContractError> {
+    only_owner(deps.as_ref(), &info)?;
+
+    SLASHER.save(deps.storage, slasher.clone(), &value)?;
+
+    let event = Event::new("slasher_set")
+        .add_attribute("method", "set_slasher")
+        .add_attribute("slasher", slasher.to_string())
+        .add_attribute("value", value.to_string())
+        .add_attribute("sender", info.sender.to_string());
+
+    Ok(Response::new().add_event(event))
 }
 
-pub fn set_slasher_validator(
+pub fn set_slash_validator(
     deps: DepsMut,
-    env: Env,
     info: MessageInfo,
-    validator: Addr,
-    value: bool,
+    validators: Vec<Addr>,
+    values: Vec<bool>,
 ) -> Result<Response, ContractError> {
+    if validators.len() != values.len() {
+        return Err(ContractError::InvalidInputLength {});
+    }
+
+    only_slasher(deps.as_ref(), &info)?;
+
+    let mut response = Response::new();
+
+    for (validator, value) in validators.iter().zip(values.iter()) {
+        VALIDATOR.save(deps.storage, validator.clone(), value)?;
+
+        let event = Event::new("slash_validator_set")
+            .add_attribute("method", "set_slash_validator")
+            .add_attribute("validator", validator.to_string())
+            .add_attribute("value", value.to_string())
+            .add_attribute("sender", info.sender.to_string());
+
+        response = response.add_event(event);
+    }
+
+    Ok(response)
 }
 
 pub fn transfer_ownership(
@@ -191,7 +240,13 @@ fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     Ok(())
 }
 
-fn only_slasher(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {}
+fn only_slasher(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+    let is_slasher = SLASHER.load(deps.storage, info.sender.clone())?;
+    if !is_slasher {
+        return Err(ContractError::Unauthorized {});
+    }
+    Ok(())
+}
 
 pub fn migrate(
     deps: DepsMut,

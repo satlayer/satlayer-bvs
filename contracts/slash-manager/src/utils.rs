@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::{Addr, Uint128, Api, StdResult};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -13,4 +13,11 @@ pub struct SlashDetails {
     pub start_time: Uint128,
     pub end_time: Uint128,
     pub status: bool,
+}
+
+pub fn validate_addresses(api: &dyn Api, validators: &[String]) -> StdResult<Vec<Addr>> {
+    validators
+        .iter()
+        .map(|addr| api.addr_validate(addr))
+        .collect()
 }
