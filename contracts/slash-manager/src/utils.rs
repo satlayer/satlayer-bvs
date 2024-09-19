@@ -11,8 +11,8 @@ pub struct SlashDetails {
     pub slash_signature: u64,
     pub slash_validator: Vec<Addr>,
     pub reason: String,
-    pub start_time: Uint128,
-    pub end_time: Uint128,
+    pub start_time: u64,
+    pub end_time: u64,
     pub status: bool,
 }
 
@@ -24,8 +24,8 @@ pub struct ExecuteSlashDetails {
     pub slash_signature: u64,
     pub slash_validator: Vec<String>,
     pub reason: String,
-    pub start_time: Uint128,
-    pub end_time: Uint128,
+    pub start_time: u64,
+    pub end_time: u64,
     pub status: bool,
 }
 

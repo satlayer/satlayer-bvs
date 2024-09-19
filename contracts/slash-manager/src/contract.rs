@@ -79,7 +79,7 @@ pub fn execute(
             signatures,
         } => execute_slash_request(deps, env, info, slash_hash, signatures),
         ExecuteMsg::CancelSlashRequest { slash_hash } => {
-            cancel_slash_request(deps, env, info, slash_hash)
+            cancel_slash_request(deps, info, slash_hash)
         }
         ExecuteMsg::SetMinimalSlashSignature { minimal_signature } => {
             set_minimal_slash_signature(deps, info, minimal_signature)
@@ -145,11 +145,11 @@ pub fn submit_slash_request(
         }
     }
 
-    if slash_details.start_time.is_zero() || slash_details.start_time < env.block.time.seconds().into() {
+    if slash_details.start_time == 0 || slash_details.start_time < env.block.time.seconds() {
         return Err(ContractError::InvalidStartTime {});
     }
     
-    if slash_details.end_time.is_zero() || slash_details.end_time < env.block.time.seconds().into() {
+    if slash_details.end_time == 0 || slash_details.end_time < env.block.time.seconds() {
         return Err(ContractError::InvalidEndTime {});
     }
 
@@ -180,10 +180,25 @@ pub fn execute_slash_request(
 
 pub fn cancel_slash_request(
     deps: DepsMut,
-    env: Env,
     info: MessageInfo,
-    slash_hash: Binary,
+    slash_hash: String,
 ) -> Result<Response, ContractError> {
+    only_slasher(deps.as_ref(), &info)?;
+
+    let mut slash_details = match SLASH_DETAILS.may_load(deps.storage, slash_hash.clone())? {
+        Some(details) => details,
+        None => return Err(ContractError::SlashDetailsNotFound {}),
+    };
+
+    slash_details.status = false;
+    SLASH_DETAILS.save(deps.storage, slash_hash.clone(), &slash_details)?;
+
+    let event = Event::new("cancel_slash_request")
+        .add_attribute("method", "cancel_slash_request")
+        .add_attribute("slash_hash", slash_hash)
+        .add_attribute("slash_details_status", slash_details.status.to_string());
+    
+    Ok(Response::new().add_event(event))
 }
 
 pub fn set_minimal_slash_signature(

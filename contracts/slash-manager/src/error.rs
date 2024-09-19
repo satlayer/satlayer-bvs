@@ -26,4 +26,7 @@ pub enum ContractError {
 
     #[error("SlashManager.submit_slash_request: invalid slash status")]
     InvalidSlashStatus {},
+
+    #[error("SlashManager.cancel_slash_request: slash details not found")]
+    SlashDetailsNotFound {},
 }
