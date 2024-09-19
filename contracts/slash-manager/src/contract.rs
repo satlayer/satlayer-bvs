@@ -154,10 +154,11 @@ pub fn submit_slash_request(
     }
 
     let slash_hash = calculate_slash_hash(&info.sender, &slash_details);
-    SLASH_DETAILS.save(deps.storage, slash_hash.to_vec(), &slash_details.clone())?;
+    let slash_hash_hex = hex::encode(slash_hash.clone());
+    SLASH_DETAILS.save(deps.storage, slash_hash_hex.clone(), &slash_details)?;
 
     let event = Event::new("slash_request_submitted")
-        .add_attribute("slash_hash", hex::encode(&slash_hash))
+        .add_attribute("slash_hash", slash_hash_hex.clone())
         .add_attribute("sender", info.sender.to_string())
         .add_attribute("operator", slash_details.operator.to_string())
         .add_attribute("share", slash_details.share.to_string())
