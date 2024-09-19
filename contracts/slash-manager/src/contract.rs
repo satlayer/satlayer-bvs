@@ -190,6 +190,10 @@ pub fn cancel_slash_request(
         None => return Err(ContractError::SlashDetailsNotFound {}),
     };
 
+    if !slash_details.status {
+        return Err(ContractError::InvalidSlashStatus {});
+    }
+
     slash_details.status = false;
     SLASH_DETAILS.save(deps.storage, slash_hash.clone(), &slash_details)?;
 
