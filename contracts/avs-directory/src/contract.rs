@@ -180,9 +180,7 @@ pub fn register_operator(
 ) -> Result<Response, ContractError> {
     only_when_not_paused(deps.as_ref(), PAUSED_OPERATOR_REGISTER_DEREGISTER_TO_AVS)?;
 
-    let current_time = env.block.time.seconds();
-
-    if operator_signature.expiry < current_time {
+    if operator_signature.expiry < env.block.time.seconds() {
         return Err(ContractError::SignatureExpired {});
     }
 
