@@ -29,4 +29,10 @@ pub enum ContractError {
 
     #[error("SlashManager.cancel_slash_request: slash details not found")]
     SlashDetailsNotFound {},
+
+    #[error("SlashManager.submit_slash_request: operator not registered")]
+    OperatorNotRegistered {},
+
+    #[error("SlashManager.execute_slash_request: invalid signature")]
+    InvalidSignature {},
 }

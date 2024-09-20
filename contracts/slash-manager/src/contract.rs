@@ -2,11 +2,16 @@ use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{MinimalSlashSignatureResponse, SlashDetailsResponse, ValidatorResponse},
-    state::{DELEGATION_MANAGER, OWNER, SLASHER, VALIDATOR, MINIMAL_SLASH_SIGNATURE, SLASH_DETAILS},
-    utils::{validate_addresses, SlashDetails, calculate_slash_hash},
+    state::{
+        DELEGATION_MANAGER, MINIMAL_SLASH_SIGNATURE, OWNER, SLASHER, SLASH_DETAILS, VALIDATOR,
+    },
+    utils::{calculate_slash_hash, recover, validate_addresses, SlashDetails},
 };
 
-use common::delegation::{QueryMsg as DelegationManagerQueryMsg, ExecuteMsg as DelegationManagerExecuteMsg};
+use common::delegation::{
+    ExecuteMsg as DelegationManagerExecuteMsg, OperatorResponse,
+    QueryMsg as DelegationManagerQueryMsg
+};
 use common::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use common::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use cosmwasm_std::{
@@ -69,7 +74,7 @@ pub fn execute(
                 reason: slash_details.reason,
                 start_time: slash_details.start_time,
                 end_time: slash_details.end_time,
-                status: slash_details.status
+                status: slash_details.status,
             };
 
             submit_slash_request(deps, info, env, params)
@@ -122,6 +127,7 @@ pub fn submit_slash_request(
     info: MessageInfo,
     env: Env,
     slash_details: SlashDetails,
+    validators_public_keys: Vec<Binary>,
 ) -> Result<Response, ContractError> {
     only_slasher(deps.as_ref(), &info)?;
 
@@ -131,6 +137,19 @@ pub fn submit_slash_request(
 
     if !slash_details.status {
         return Err(ContractError::InvalidSlashStatus {});
+    }
+
+    let delegation_manager = DELEGATION_MANAGER.load(deps.storage)?;
+
+    let is_operator_response: OperatorResponse = deps.querier.query_wasm_smart(
+        delegation_manager.clone(),
+        &DelegationManagerQueryMsg::IsOperator {
+            operator: slash_details.operator.to_string(),
+        },
+    )?;
+
+    if !is_operator_response.is_operator {
+        return Err(ContractError::OperatorNotRegistered {});
     }
 
     let current_minimal_signature = MINIMAL_SLASH_SIGNATURE.load(deps.storage)?;
@@ -148,12 +167,20 @@ pub fn submit_slash_request(
     if slash_details.start_time == 0 || slash_details.start_time < env.block.time.seconds() {
         return Err(ContractError::InvalidStartTime {});
     }
-    
+
     if slash_details.end_time == 0 || slash_details.end_time < env.block.time.seconds() {
         return Err(ContractError::InvalidEndTime {});
     }
 
-    let slash_hash = calculate_slash_hash(&info.sender, &slash_details);
+    let slash_hash = calculate_slash_hash(
+        &info.sender,
+        &slash_details,
+        &env.contract.address,
+        &validators_public_keys
+            .iter()
+            .map(|b| b.to_vec())
+            .collect::<Vec<_>>(),
+    );
     let slash_hash_hex = hex::encode(slash_hash.clone());
     SLASH_DETAILS.save(deps.storage, slash_hash_hex.clone(), &slash_details)?;
 
@@ -173,9 +200,63 @@ pub fn execute_slash_request(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    slash_hash: Binary,
+    slash_hash: String,
     signatures: Vec<Binary>,
+    validators_public_keys: Vec<Binary>,
 ) -> Result<Response, ContractError> {
+    only_slasher(deps.as_ref(), &info)?;
+
+    let mut slash_details = match SLASH_DETAILS.may_load(deps.storage, slash_hash.clone())? {
+        Some(details) => details,
+        None => return Err(ContractError::SlashDetailsNotFound {}),
+    };
+
+    if !slash_details.status {
+        return Err(ContractError::InvalidSlashStatus {});
+    }
+
+    let message_bytes = calculate_slash_hash(
+        &info.sender,
+        &slash_details,
+        &env.contract.address,
+        &validators_public_keys
+            .iter()
+            .map(|b| b.to_vec())
+            .collect::<Vec<_>>(),
+    );
+
+    for (signature, public_key) in signatures.iter().zip(validators_public_keys.iter()) {
+        if !recover(&message_bytes, signature.as_slice(), public_key.as_slice())? {
+            return Err(ContractError::InvalidSignature {});
+        }
+    }
+
+    let delegation_msg = DelegationManagerExecuteMsg::DecreaseOperatorShare {
+        operator: slash_details.operator.clone(),
+        amount: slash_details.share,
+    };
+
+    let delegation_submsg = SubMsg::new(WasmMsg::Execute {
+        contract_addr: DELEGATION_MANAGER.load(deps.storage)?.to_string(),
+        msg: to_json_binary(&delegation_msg)?,
+        funds: vec![],
+    });
+
+    // 将子消息添加到响应中
+    let mut response = Response::new();
+    response = response.add_submessage(delegation_submsg);
+
+    // 添加事件属性
+    response = response.add_attribute("decreased_share", slash_details.share.to_string());
+
+    slash_details.status = false;
+    SLASH_DETAILS.save(deps.storage, slash_hash.clone(), &slash_details)?;
+
+    let event = Event::new("slash_request_executed")
+        .add_attribute("slash_hash", slash_hash)
+        .add_attribute("operator", slash_details.operator.to_string());
+
+    Ok(Response::new().add_event(event))
 }
 
 pub fn cancel_slash_request(
@@ -201,7 +282,7 @@ pub fn cancel_slash_request(
         .add_attribute("method", "cancel_slash_request")
         .add_attribute("slash_hash", slash_hash)
         .add_attribute("slash_details_status", slash_details.status.to_string());
-    
+
     Ok(Response::new().add_event(event))
 }
 
