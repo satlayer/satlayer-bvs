@@ -35,4 +35,7 @@ pub enum ContractError {
 
     #[error("SlashManager.execute_slash_request: invalid signature")]
     InvalidSignature {},
+
+    #[error("SlashManager.ExecuteSlashRequest: invalid validator")]
+    InvalidValidator {},
 }

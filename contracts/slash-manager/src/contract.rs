@@ -3,20 +3,21 @@ use crate::{
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{MinimalSlashSignatureResponse, SlashDetailsResponse, ValidatorResponse},
     state::{
-        DELEGATION_MANAGER, MINIMAL_SLASH_SIGNATURE, OWNER, SLASHER, SLASH_DETAILS, VALIDATOR,
+        DELEGATION_MANAGER, MINIMAL_SLASH_SIGNATURE, OWNER, SLASHER, SLASH_DETAILS, VALIDATOR, STRATEGY_MANAGER
     },
     utils::{calculate_slash_hash, recover, validate_addresses, SlashDetails},
 };
 
 use common::delegation::{
     ExecuteMsg as DelegationManagerExecuteMsg, OperatorResponse,
-    QueryMsg as DelegationManagerQueryMsg
+    QueryMsg as DelegationManagerQueryMsg, OperatorStakersResponse
 };
+use common::strategy::ExecuteMsg as StrategyManagerExecuteMsg;
 use common::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use common::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use cosmwasm_std::{
     entry_point, to_json_binary, Addr, Binary, Deps, DepsMut, Env, Event, MessageInfo, Response,
-    StdResult,
+    StdResult, Uint128, SubMsg, WasmMsg
 };
 use cw2::set_contract_version;
 
@@ -60,10 +61,19 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::SubmitSlashRequest { slash_details } => {
+        ExecuteMsg::SubmitSlashRequest { 
+            slash_details,
+            validators_public_keys 
+        } => {
             let slasher_addr = deps.api.addr_validate(&slash_details.slasher)?;
             let operator_addr = deps.api.addr_validate(&slash_details.operator)?;
             let slash_validator = validate_addresses(deps.api, &slash_details.slash_validator)?;
+
+            let validators_public_keys_binary: Result<Vec<Binary>, ContractError> = validators_public_keys
+            .iter()
+            .map(|val| Binary::from_base64(val).map_err(|_| ContractError::InvalidValidator {}))
+            .collect();
+        let validators_binary = validators_public_keys_binary?;
 
             let params = SlashDetails {
                 slasher: slasher_addr,
@@ -77,12 +87,27 @@ pub fn execute(
                 status: slash_details.status,
             };
 
-            submit_slash_request(deps, info, env, params)
+            submit_slash_request(deps, info, env, params, validators_binary)
         }
         ExecuteMsg::ExecuteSlashRequest {
             slash_hash,
             signatures,
-        } => execute_slash_request(deps, env, info, slash_hash, signatures),
+            validators_public_keys
+        } => { 
+            let signatures_binary: Result<Vec<Binary>, ContractError> = signatures
+                .iter()
+                .map(|sig| Binary::from_base64(sig).map_err(|_| ContractError::InvalidSignature {}))
+                .collect();
+            let signatures_binary = signatures_binary?;
+
+            let validators_binary: Result<Vec<Binary>, ContractError> = validators_public_keys
+                .iter()
+                .map(|val| Binary::from_base64(val).map_err(|_| ContractError::InvalidValidator {}))
+                .collect();
+            let validators_binary = validators_binary?;
+            
+            execute_slash_request(deps, env, info, slash_hash, signatures_binary, validators_binary) 
+        },
         ExecuteMsg::CancelSlashRequest { slash_hash } => {
             cancel_slash_request(deps, info, slash_hash)
         }
@@ -231,32 +256,62 @@ pub fn execute_slash_request(
         }
     }
 
-    let delegation_msg = DelegationManagerExecuteMsg::DecreaseOperatorShare {
-        operator: slash_details.operator.clone(),
-        amount: slash_details.share,
+    let query_msg = DelegationManagerQueryMsg::GetOperatorStakers {
+        operator: slash_details.operator.to_string(),
     };
+    let stakers_response: OperatorStakersResponse = deps.querier.query_wasm_smart(
+        DELEGATION_MANAGER.load(deps.storage)?,
+        &query_msg
+    )?;
 
-    let delegation_submsg = SubMsg::new(WasmMsg::Execute {
-        contract_addr: DELEGATION_MANAGER.load(deps.storage)?.to_string(),
-        msg: to_json_binary(&delegation_msg)?,
-        funds: vec![],
-    });
+    let total_shares: Uint128 = stakers_response.stakers_and_shares
+        .iter()
+        .flat_map(|staker_shares| &staker_shares.shares_per_strategy)
+        .map(|(_, shares)| shares)
+        .sum();
 
-    // 将子消息添加到响应中
-    let mut response = Response::new();
-    response = response.add_submessage(delegation_submsg);
+    let mut messages = vec![];
 
-    // 添加事件属性
-    response = response.add_attribute("decreased_share", slash_details.share.to_string());
+    for staker_shares in stakers_response.stakers_and_shares {
+        for (strategy, shares) in staker_shares.shares_per_strategy {
+            let slash_amount = slash_details.share.multiply_ratio(shares, total_shares);
+            
+            let decrease_delegated_msg = DelegationManagerExecuteMsg::DecreaseDelegatedShares {
+                staker: staker_shares.staker.to_string(),
+                strategy: strategy.to_string(),
+                shares: slash_amount,
+            };
+            messages.push(SubMsg::new(WasmMsg::Execute {
+                contract_addr: DELEGATION_MANAGER.load(deps.storage)?.to_string(),
+                msg: to_json_binary(&decrease_delegated_msg)?,
+                funds: vec![],
+            }));
+
+            let remove_share_msg = StrategyManagerExecuteMsg::RemoveShares {
+                staker: staker_shares.staker.to_string(),
+                strategy: strategy.to_string(),
+                shares: slash_amount,
+            };
+
+            messages.push(SubMsg::new(WasmMsg::Execute {
+                contract_addr: STRATEGY_MANAGER.load(deps.storage)?.to_string(),
+                msg: to_json_binary(&remove_share_msg)?,
+                funds: vec![],
+            }));
+        }
+    }
 
     slash_details.status = false;
     SLASH_DETAILS.save(deps.storage, slash_hash.clone(), &slash_details)?;
 
-    let event = Event::new("slash_request_executed")
+    let response = Response::new()
+        .add_submessages(messages)
+        .add_attribute("action", "execute_slash_request")
         .add_attribute("slash_hash", slash_hash)
-        .add_attribute("operator", slash_details.operator.to_string());
+        .add_attribute("operator", slash_details.operator.to_string())
+        .add_attribute("decreased_share", slash_details.share.to_string());
 
-    Ok(Response::new().add_event(event))
+    Ok(response)
 }
 
 pub fn cancel_slash_request(

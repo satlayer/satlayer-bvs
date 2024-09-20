@@ -15,10 +15,12 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     SubmitSlashRequest {
         slash_details: ExecuteSlashDetails,
+        validators_public_keys: Vec<String>
     },
     ExecuteSlashRequest {
         slash_hash: String,
         signatures: Vec<String>,
+        validators_public_keys: Vec<String>
     },
     CancelSlashRequest {
         slash_hash: String,
