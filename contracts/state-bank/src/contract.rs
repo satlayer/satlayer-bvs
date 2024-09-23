@@ -1,12 +1,10 @@
 use crate::{
-    error::ContractError,
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    query::ValueResponse,
-    state::{IS_AVS_CONTRACT_REGISTERED, VALUES},
+    error::ContractError, msg::ExecuteMsg, msg::InstantiateMsg, msg::QueryMsg,
+    query::ValueResponse, state::VALUES,
 };
 
 use cosmwasm_std::{
-    entry_point, to_json_binary, Addr, Binary, Deps, DepsMut, Env, Event, MessageInfo, Response,
+    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, Event, MessageInfo, Response,
     StdError, StdResult,
 };
 use cw2::set_contract_version;
@@ -34,12 +32,9 @@ pub fn execute(
     _env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
+) -> StdResult<Response> {
     match msg {
         ExecuteMsg::Set { key, value } => execute_set(deps, info, key, value),
-        ExecuteMsg::AddRegisteredAvsContract { address } => {
-            add_registered_avs_contract(deps, info, Addr::unchecked(address))
-        }
     }
 }
 
@@ -48,20 +43,11 @@ pub fn execute_set(
     info: MessageInfo,
     key: String,
     value: i64,
-) -> Result<Response, ContractError> {
-    let sender = info.sender;
-    let is_registered = IS_AVS_CONTRACT_REGISTERED
-        .may_load(deps.storage, &sender)?
-        .unwrap_or(false);
-
-    if !is_registered {
-        return Err(ContractError::AvsContractNotRegistered {});
-    }
-
+) -> StdResult<Response> {
     VALUES.save(deps.storage, key.clone(), &value)?;
 
     let event = Event::new("UpdateState")
-        .add_attribute("sender", sender.clone().to_string())
+        .add_attribute("sender", info.sender.to_string())
         .add_attribute("key", key.clone())
         .add_attribute("value", value.to_string());
 
@@ -69,23 +55,6 @@ pub fn execute_set(
         .add_attribute("method", "set")
         .add_attribute("key", key)
         .add_attribute("value", value.to_string())
-        .add_event(event))
-}
-
-pub fn add_registered_avs_contract(
-    deps: DepsMut,
-    info: MessageInfo,
-    address: Addr,
-) -> Result<Response, ContractError> {
-    IS_AVS_CONTRACT_REGISTERED.save(deps.storage, &Addr::unchecked(address.clone()), &true)?;
-
-    let event = Event::new("RegisteredAvsContractAdded")
-        .add_attribute("sender", info.sender.to_string())
-        .add_attribute("address", address.to_string());
-
-    Ok(Response::new()
-        .add_attribute("method", "add_registered_avs_contract")
-        .add_attribute("address", address.to_string())
         .add_event(event))
 }
 
@@ -131,20 +100,13 @@ mod tests {
     fn test_set_and_get() {
         let mut deps = mock_dependencies();
         let env = mock_env();
-
-        let admin_info = message_info(&Addr::unchecked("admin"), &[]);
-        let register_msg = ExecuteMsg::AddRegisteredAvsContract {
-            address: "alice".to_string(),
-        };
-        execute(deps.as_mut(), env.clone(), admin_info, register_msg).unwrap();
-
         let info = message_info(&Addr::unchecked("alice"), &[]);
         let msg = ExecuteMsg::Set {
             key: "temperature".to_string(),
             value: 25,
         };
 
-        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
         assert_eq!(3, res.attributes.len());
         assert_eq!(("method", "set"), res.attributes[0]);
@@ -172,14 +134,6 @@ mod tests {
 
         let res = query(deps.as_ref(), mock_env(), query_msg);
         assert!(res.is_err());
-
-        let unregistered_info = message_info(&Addr::unchecked("bob"), &[]);
-        let unregistered_msg = ExecuteMsg::Set {
-            key: "pressure".to_string(),
-            value: 1013,
-        };
-        let unregistered_res = execute(deps.as_mut(), env, unregistered_info, unregistered_msg);
-        assert!(unregistered_res.is_err());
     }
 
     fn _create_set_msg(contract_addr: String, key: String, value: i64) -> StdResult<CosmosMsg> {
@@ -215,55 +169,9 @@ mod tests {
                         assert_eq!(k, key);
                         assert_eq!(v, value);
                     }
-                    _ => panic!("Unexpected ExecuteMsg type"),
                 }
             }
             _ => panic!("Unexpected CosmosMsg type"),
         }
-    }
-
-    #[test]
-    fn test_add_registered_avs_contract() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = message_info(&Addr::unchecked("admin"), &[]);
-        let avs_contract_address = "avs_contract_123";
-
-        let msg = ExecuteMsg::AddRegisteredAvsContract {
-            address: avs_contract_address.to_string(),
-        };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-
-        assert_eq!(2, res.attributes.len());
-        assert_eq!(("method", "add_registered_avs_contract"), res.attributes[0]);
-        assert_eq!(("address", avs_contract_address), res.attributes[1]);
-
-        assert_eq!(1, res.events.len());
-        assert_eq!("RegisteredAvsContractAdded", res.events[0].ty);
-        assert_eq!(
-            vec![("sender", "admin"), ("address", avs_contract_address),],
-            res.events[0].attributes
-        );
-
-        let is_registered = IS_AVS_CONTRACT_REGISTERED
-            .may_load(
-                deps.as_ref().storage,
-                &Addr::unchecked(avs_contract_address),
-            )
-            .unwrap()
-            .unwrap_or(false);
-        assert!(is_registered);
-
-        let set_msg = ExecuteMsg::Set {
-            key: "temperature".to_string(),
-            value: 25,
-        };
-        let set_info = message_info(&Addr::unchecked(avs_contract_address), &[]);
-        let set_res = execute(deps.as_mut(), env, set_info, set_msg).unwrap();
-
-        assert_eq!(3, set_res.attributes.len());
-        assert_eq!(("method", "set"), set_res.attributes[0]);
-        assert_eq!(("key", "temperature"), set_res.attributes[1]);
-        assert_eq!(("value", "25"), set_res.attributes[2]);
     }
 }

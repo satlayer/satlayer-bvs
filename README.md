@@ -72,7 +72,6 @@ cargo run --package optimizer --release -- --input ./target/wasm32-unknown-unkno
 - strategy_manager: osmo12cqmhqdecwcl8eheawuhwnz9hcuagdfttm8rgjyh6ucfvdvt5gpqd2lz7u
 - avs-directory: osmo1s06n72vlzzksu2fvlk0e2lm737nyvjrx2vtlv80gzmgzg7q5aayqfs9zme
 - delegation_manager: osmo1f8c99usxzd8a0e4p02jcfldc4w4v97q96jxy9y9k9an6ka84ep3s6nnvnj
-- state_bank: osmo1axj63dymth3sln5vptqy5dde28a8ptjvuukdpwrz44wp0lexgpmqpucn7k
-- avs_driver: osmo1vxexrvx2prd33ny9ydh5ksnyt2nylcw0q87as5ph824jgxc3kcyqagrf9t
+- state_bank: osmo1ha0wv4l764qwh4qs39duj9sutraqntqhrj9vcgpcpgca3z6sjmtsyrpqh6
 - rewards-coordinator: osmo1w3qsxj4smkfupts8vwtgn00f72qkpwns5jw0hexrnhv4vzw6gnmshus9l7
 - cw20: osmo1z63lzuke2v9azva2kktccuecgcrm4ue4hhqrw0kfkf3crtxpqpdsyl8uj5
