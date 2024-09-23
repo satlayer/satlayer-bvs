@@ -189,12 +189,10 @@ mod tests {
 
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
-        // Check response attributes
         assert_eq!(2, res.attributes.len());
         assert_eq!(("method", "add_registered_avs_contract"), res.attributes[0]);
         assert_eq!(("address", avs_contract_address), res.attributes[1]);
 
-        // Check event
         assert_eq!(1, res.events.len());
         assert_eq!("RegisteredAvsContractAdded", res.events[0].ty);
         assert_eq!(
@@ -202,7 +200,6 @@ mod tests {
             res.events[0].attributes
         );
 
-        // Verify that the contract is now registered
         let is_registered = IS_AVS_CONTRACT_REGISTERED
             .may_load(
                 deps.as_ref().storage,
