@@ -24,6 +24,8 @@ use cw2::set_contract_version;
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+const PAUSED_EXECUTE_SLASH_REQUEST: u8 = 0;
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     mut deps: DepsMut,
@@ -229,6 +231,8 @@ pub fn execute_slash_request(
     signatures: Vec<Binary>,
     validators_public_keys: Vec<Binary>,
 ) -> Result<Response, ContractError> {
+    only_when_not_paused(deps.as_ref(), PAUSED_EXECUTE_SLASH_REQUEST)?;
+
     only_slasher(deps.as_ref(), &info)?;
 
     let mut slash_details = match SLASH_DETAILS.may_load(deps.storage, slash_hash.clone())? {
@@ -428,13 +432,14 @@ pub fn transfer_ownership(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetSlashDetails { slash_hash } => {
             to_json_binary(&query_slash_details(deps, slash_hash)?)
         }
         QueryMsg::IsValidator { validator } => {
-            to_json_binary(&query_is_validator(deps, validator)?)
+            let validator_addr = deps.api.addr_validate(&validator)?;
+            to_json_binary(&query_is_validator(deps, validator_addr)?)
         }
         QueryMsg::GetMinimalSlashSignature {} => {
             to_json_binary(&query_minimal_slash_signature(deps)?)
@@ -442,11 +447,20 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-fn query_slash_details(deps: Deps, slash_hash: Binary) -> StdResult<SlashDetailsResponse> {}
+fn query_slash_details(deps: Deps, slash_hash: String) -> StdResult<SlashDetailsResponse> {
+    let slash_details = SLASH_DETAILS.load(deps.storage, slash_hash)?;
+    Ok(SlashDetailsResponse { slash_details })
+}
 
-fn query_is_validator(deps: Deps, validator: Addr) -> StdResult<ValidatorResponse> {}
+fn query_is_validator(deps: Deps, validator: Addr) -> StdResult<ValidatorResponse> {
+    let is_validator = VALIDATOR.load(deps.storage, validator)?;
+    Ok(ValidatorResponse { is_validator })
+}
 
-fn query_minimal_slash_signature(deps: Deps) -> StdResult<MinimalSlashSignatureResponse> {}
+fn query_minimal_slash_signature(deps: Deps) -> StdResult<MinimalSlashSignatureResponse> {
+    let minimal_slash_signature = MINIMAL_SLASH_SIGNATURE.load(deps.storage)?;
+    Ok(MinimalSlashSignatureResponse { minimal_slash_signature })
+}
 
 fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let owner = OWNER.load(deps.storage)?;
