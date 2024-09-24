@@ -124,6 +124,10 @@ pub fn execute(
             let validators = validate_addresses(deps.api, &validators)?;
             set_slash_validator(deps, info, validators, values)
         }
+        ExecuteMsg::SetDelegationManager { new_delegation_manager } => {
+            let new_delegation_manager_addr = deps.api.addr_validate(&new_delegation_manager)?;
+            set_delegation_manager(deps, info, new_delegation_manager_addr)
+        }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner_addr = deps.api.addr_validate(&new_owner)?;
             transfer_ownership(deps, info, new_owner_addr)
@@ -411,6 +415,23 @@ pub fn set_slash_validator(
     }
 
     Ok(response)
+}
+
+pub fn set_delegation_manager(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_delegation_manager: Addr,
+) -> Result<Response, ContractError> {
+    only_owner(deps.as_ref(), &info)?;
+
+    DELEGATION_MANAGER.save(deps.storage, &new_delegation_manager.clone())?;
+
+    let event = Event::new("delegation_manager_set")
+        .add_attribute("method", "set_delegation_manager")
+        .add_attribute("new_delegation_manager", new_delegation_manager.to_string())
+        .add_attribute("sender", info.sender.to_string());
+
+    Ok(Response::new().add_event(event))
 }
 
 pub fn transfer_ownership(

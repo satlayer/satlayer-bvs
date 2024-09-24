@@ -209,6 +209,13 @@ pub fn execute(
 
             set_delegation_manager(deps, info, new_delegation_manager_addr)
         }
+        ExecuteMsg::SetStrategyFactory {
+            new_strategy_factory,
+        } => {
+            let new_strategy_factory_addr = deps.api.addr_validate(&new_strategy_factory)?;
+
+            set_strategy_factory(deps, info, new_strategy_factory_addr)
+        }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner_addr: Addr = Addr::unchecked(new_owner);
             transfer_ownership(deps, info, new_owner_addr)
@@ -244,6 +251,21 @@ pub fn set_delegation_manager(
     let mut state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
 
     state.delegation_manager = new_delegation_manager.clone();
+    STRATEGY_MANAGER_STATE.save(deps.storage, &state)?;
+
+    Ok(Response::new())
+}
+
+pub fn set_strategy_factory(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_strategy_factory: Addr,
+) -> Result<Response, ContractError> {
+    only_owner(deps.as_ref(), &info)?;
+
+    let mut state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
+
+    state.strategy_factory = new_strategy_factory.clone();
     STRATEGY_MANAGER_STATE.save(deps.storage, &state)?;
 
     Ok(Response::new())
@@ -710,7 +732,7 @@ fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
 
 fn only_delegation_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
-    if info.sender != state.delegation_manager {
+    if info.sender != state.delegation_manager && info.sender != state.slasher{
         return Err(ContractError::Unauthorized {});
     }
     Ok(())
