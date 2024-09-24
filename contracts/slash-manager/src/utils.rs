@@ -30,12 +30,6 @@ pub struct ExecuteSlashDetails {
     pub status: bool,
 }
 
-pub fn sha256(input: &[u8]) -> Vec<u8> {
-    let mut hasher = Sha256::new();
-    hasher.update(input);
-    hasher.finalize().to_vec()
-}
-
 pub fn calculate_slash_hash(
     sender: &Addr,
     slash_details: &SlashDetails,
