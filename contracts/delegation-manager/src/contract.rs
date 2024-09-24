@@ -1110,7 +1110,7 @@ fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
 
 fn only_strategy_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let state = DELEGATION_MANAGER_STATE.load(deps.storage)?;
-    if info.sender != state.strategy_manager {
+    if info.sender != state.strategy_manager && info.sender != state.slasher {
         return Err(ContractError::Unauthorized {});
     }
     Ok(())
