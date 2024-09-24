@@ -36,6 +36,9 @@ pub enum ExecuteMsg {
         validators: Vec<String>,
         values: Vec<bool>,
     },
+    SetDelegationManager {
+        new_delegation_manager: String,
+    },
     TransferOwnership {
         new_owner: String,
     },

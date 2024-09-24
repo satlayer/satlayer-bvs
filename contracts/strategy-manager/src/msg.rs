@@ -71,6 +71,9 @@ pub enum ExecuteMsg {
     SetDelegationManager {
         new_delegation_manager: String,
     },
+    SetStrategyFactory {
+        new_strategy_factory: String,
+    },
     TransferOwnership {
         new_owner: String,
     },
