@@ -96,3 +96,9 @@ cargo run --package optimizer --release -- --input ./target/wasm32-unknown-unkno
 - strategy-factory: bbn1999u8suptza3rtxwk7lspve02m406xe7l622erg3np3aq05gawxsu7x00m, tx_hash: 65BE1A342E1465B2FF61E8A29C615C9B5CC7CE652C29D91E56118FB4DED4F44D
 
 - strategy-base-TVLLimits: bbn1fventeva948ue0fzhp6xselr522rnqwger9wg7r0g9f4jemsqh6sv9ms6p, tx_hash: 1144EA6D894BC61F4AD34EBAAB3F8364AD5FAE4B5EF5AE61DC9679CEF2551783
+
+- avs-driver: bbn18yn206ypuxay79gjqv6msvd9t2y49w4fz8q7fyenx5aggj0ua37qsgnhl9, tx_hash:
+C0946703440EF1F665B0AB47B466555EA4CA08B8E86258DE5F34FECBF10B840D
+
+- state-bank: bbn1l6z44fupg8l5mapmuxnrnmvxyclw5wnh5f5hfrtkaq5r0d9s24msp7np7z, tx_hash:
+6DA57B4AFC4BBF8CBEA583CF8C61EEC2B68D69B7DAD45CA83E0FEE9E63CD3578

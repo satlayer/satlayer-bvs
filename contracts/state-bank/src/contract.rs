@@ -60,16 +60,11 @@ pub fn execute_set(
 
     VALUES.save(deps.storage, key.clone(), &value)?;
 
-    let event = Event::new("UpdateState")
-        .add_attribute("sender", sender.clone().to_string())
-        .add_attribute("key", key.clone())
-        .add_attribute("value", value.to_string());
-
     Ok(Response::new()
-        .add_attribute("method", "set")
-        .add_attribute("key", key)
-        .add_attribute("value", value.to_string())
-        .add_event(event))
+        .add_event(Event::new("execute_set")
+            .add_attribute("sender", sender.to_string())
+            .add_attribute("key", key)
+            .add_attribute("value", value.to_string())))
 }
 
 pub fn add_registered_avs_contract(
@@ -79,14 +74,10 @@ pub fn add_registered_avs_contract(
 ) -> Result<Response, ContractError> {
     IS_AVS_CONTRACT_REGISTERED.save(deps.storage, &Addr::unchecked(address.clone()), &true)?;
 
-    let event = Event::new("RegisteredAvsContractAdded")
-        .add_attribute("sender", info.sender.to_string())
-        .add_attribute("address", address.to_string());
-
     Ok(Response::new()
-        .add_attribute("method", "add_registered_avs_contract")
-        .add_attribute("address", address.to_string())
-        .add_event(event))
+        .add_event(Event::new("add_registered_avs_contract")
+            .add_attribute("sender", info.sender.to_string())
+            .add_attribute("address", address.to_string())))
 }
 
 #[entry_point]
