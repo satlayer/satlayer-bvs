@@ -79,7 +79,8 @@ cargo run --package optimizer --release -- --input ./target/wasm32-unknown-unkno
 
 ### Deployed Contract Addresses on Babylon testnet
 
-- cw20: bbn1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sp4gequ, tx_hash: 9A2AC4E9DF6D9FFDDF0CD6B7F9D0B5AB1C5B274F93C38BE0CCB6F986CF6A610E
+- cw20: bbn1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sp4gequ
+  tx_hash: 9A2AC4E9DF6D9FFDDF0CD6B7F9D0B5AB1C5B274F93C38BE0CCB6F986CF6A610E
 
 - slash-manager: bbn1zwv6feuzhy6a9wekh96cd57lsarmqlwxdypdsplw6zhfncqw6ftq6wts0h, tx_hash: 1C822AE8EB476327D6B9A422BFF175CFB1FA725E68865B0AA412B7631FF138EB
 
