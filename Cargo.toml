@@ -1,14 +1,14 @@
 [workspace]
 members = [
-    "contracts/avs-directory",
-    "contracts/strategy-base",
-    "contracts/strategy-manager",
-    "contracts/state-bank",
-    "contracts/avs-driver",
-    "contracts/delegation-manager",
-    "contracts/rewards-coordinator",
-    "contracts/strategy-base-TVLLimits",
-    "contracts/strategy-factory",
+    # "contracts/avs-directory",
+    # "contracts/strategy-base",
+    # "contracts/strategy-manager",
+    # "contracts/state-bank",
+    # "contracts/avs-driver",
+    # "contracts/delegation-manager",
+    # "contracts/rewards-coordinator",
+    # "contracts/strategy-base-TVLLimits",
+    # "contracts/strategy-factory",
     "contracts/slash-manager"
     ]
 

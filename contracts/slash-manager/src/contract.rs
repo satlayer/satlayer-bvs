@@ -356,7 +356,7 @@ pub fn set_minimal_slash_signature(
 ) -> Result<Response, ContractError> {
     only_slasher(deps.as_ref(), &info)?;
 
-    let old_minimal_signature = MINIMAL_SLASH_SIGNATURE.load(deps.storage)?;
+    let old_minimal_signature = MINIMAL_SLASH_SIGNATURE.may_load(deps.storage)?.unwrap_or(0);
 
     MINIMAL_SLASH_SIGNATURE.save(deps.storage, &minimal_signature)?;
 
@@ -510,4 +510,202 @@ pub fn migrate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     Ok(Response::new().add_attribute("method", "migrate"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info, MockStorage, MockApi, MockQuerier};
+    use cosmwasm_std::{attr, OwnedDeps};
+
+    #[test]
+    fn test_instantiate() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        let initial_owner = deps.api.addr_make("creator");
+        let delegation_manager = deps.api.addr_make("delegation_manager");
+        let pauser = deps.api.addr_make("pauser");
+        let unpauser = deps.api.addr_make("unpauser");
+
+        let info = message_info(&initial_owner, &[]);
+
+        let msg = InstantiateMsg {
+            initial_owner: initial_owner.to_string(),
+            delegation_manager: delegation_manager.to_string(),
+            pauser: pauser.to_string(),
+            unpauser: unpauser.to_string(),
+            initial_paused_status: 0,
+        };
+
+        let response = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        assert_eq!(
+            response.attributes,
+            vec![
+                attr("method", "instantiate"),
+                attr("owner", info.sender.to_string()),
+                attr("delegation_manager", delegation_manager.to_string()),
+            ]
+        );
+
+        let owner = OWNER.load(&deps.storage).unwrap();
+        assert_eq!(owner, deps.api.addr_make("creator"));
+
+        let delegation_manager = DELEGATION_MANAGER.load(&deps.storage).unwrap();
+        assert_eq!(delegation_manager, deps.api.addr_make("delegation_manager"));
+
+        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
+        assert_eq!(paused_state, 0);
+
+        let pauser_addr = deps.api.addr_make("pauser");
+        let unpauser_addr = deps.api.addr_make("unpauser");
+        assert!(set_pauser(deps.as_mut(), pauser_addr).is_ok());
+        assert!(set_unpauser(deps.as_mut(), unpauser_addr).is_ok());
+
+        let invalid_info = message_info(&deps.api.addr_make("invalid_creator"), &[]);
+
+        let invalid_msg = InstantiateMsg {
+            initial_owner: "invalid_address".to_string(),
+            delegation_manager: delegation_manager.to_string(),
+            pauser: pauser.to_string(),
+            unpauser: unpauser.to_string(),
+            initial_paused_status: 0,
+        };
+    
+        let result = instantiate(deps.as_mut(), env.clone(), invalid_info.clone(), invalid_msg);
+        assert!(result.is_err()); 
+    }
+
+    fn instantiate_contract() -> (
+        OwnedDeps<MockStorage, MockApi, MockQuerier>,
+        Env,
+        MessageInfo,
+        Addr,
+        Addr,
+        Addr,
+        Addr
+    ) {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        let initial_owner = deps.api.addr_make("creator");
+        let delegation_manager = deps.api.addr_make("delegation_manager");
+        let pauser = deps.api.addr_make("pauser");
+        let unpauser = deps.api.addr_make("unpauser");
+
+        let info = message_info(&initial_owner, &[]);
+
+        let msg = InstantiateMsg {
+            initial_owner: initial_owner.to_string(),
+            delegation_manager: delegation_manager.to_string(),
+            pauser: pauser.to_string(),
+            unpauser: unpauser.to_string(),
+            initial_paused_status: 0,
+        };
+
+        instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        (
+            deps,
+            env,
+            info,
+            delegation_manager,
+            initial_owner,
+            pauser,
+            unpauser
+        )
+    }
+
+    #[test]
+    fn test_set_delegation_manager() {
+        let (mut deps, env, info, _delegation_manager, _owner, _pauser, _unpauser) = instantiate_contract();
+    
+        let new_delegation_manager = deps.api.addr_make("new_delegation_manager");
+    
+        let execute_msg = ExecuteMsg::SetDelegationManager {
+            new_delegation_manager: new_delegation_manager.to_string(),
+        };
+        let response = execute(deps.as_mut(), env.clone(), info.clone(), execute_msg).unwrap();
+    
+        assert_eq!(response.events.len(), 1);
+        let event = &response.events[0];
+    
+        assert_eq!(event.ty, "delegation_manager_set");
+    
+        assert_eq!(event.attributes.len(), 3);
+    
+        assert_eq!(event.attributes[0].key, "method");
+        assert_eq!(event.attributes[0].value, "set_delegation_manager");
+    
+        assert_eq!(event.attributes[1].key, "new_delegation_manager");
+        assert_eq!(event.attributes[1].value, new_delegation_manager.to_string());
+    
+        let delegation_manager = DELEGATION_MANAGER.load(&deps.storage).unwrap();
+        assert_eq!(delegation_manager, new_delegation_manager);
+    }     
+
+    #[test]
+    fn test_set_slasher() {
+        let (mut deps, env, info, _delegation_manager, _owner, _pauser, _unpauser) = instantiate_contract();
+
+        let new_slasher = deps.api.addr_make("new_slasher");
+        
+        let execute_msg = ExecuteMsg::SetSlasher {
+            slasher: new_slasher.to_string(),
+            value: true,
+        };
+
+        let response = execute(deps.as_mut(), env.clone(), info.clone(), execute_msg).unwrap();
+
+        assert_eq!(response.events.len(), 1);
+        let event = &response.events[0];
+
+        assert_eq!(event.ty, "slasher_set");
+
+        assert_eq!(event.attributes.len(), 4);
+
+        assert_eq!(event.attributes[0].key, "method");
+        assert_eq!(event.attributes[0].value, "set_slasher");
+
+        assert_eq!(event.attributes[1].key, "slasher");
+        assert_eq!(event.attributes[1].value, new_slasher.to_string());
+
+        assert_eq!(event.attributes[2].key, "value");
+        assert_eq!(event.attributes[2].value, "true");
+
+        let is_slasher = SLASHER.load(&deps.storage, new_slasher.clone()).unwrap();
+        assert_eq!(is_slasher, true);
+    }            
+
+    #[test]
+    fn test_set_minimal_slash_signature() {
+        let (mut deps, env, _info, _delegation_manager, _owner, _pauser, _unpauser) = instantiate_contract();
+    
+        let slasher_addr = deps.api.addr_make("slasher");
+        SLASHER.save(&mut deps.storage, slasher_addr.clone(), &true).unwrap();
+    
+        let slasher_info = message_info(&slasher_addr, &[]);
+        let new_minimal_signature = 10;
+    
+        let execute_msg = ExecuteMsg::SetMinimalSlashSignature {
+            minimal_signature: new_minimal_signature,
+        };
+    
+        let response = execute(deps.as_mut(), env.clone(), slasher_info, execute_msg).unwrap();
+    
+        assert_eq!(response.events.len(), 1);
+        let event = &response.events[0];
+        assert_eq!(event.ty, "minimal_slash_signature_set");
+        assert_eq!(event.attributes.len(), 4);
+        assert_eq!(event.attributes[0].key, "method");
+        assert_eq!(event.attributes[0].value, "set_minimal_slash_signature");
+        assert_eq!(event.attributes[1].key, "old_minimal_signature");
+        assert_eq!(event.attributes[1].value, "0");
+        assert_eq!(event.attributes[2].key, "minimal_signature");
+        assert_eq!(event.attributes[2].value, new_minimal_signature.to_string());
+    
+        let stored_signature = MINIMAL_SLASH_SIGNATURE.load(&deps.storage).unwrap();
+        assert_eq!(stored_signature, new_minimal_signature);
+    }      
 }
