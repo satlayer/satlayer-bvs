@@ -511,3 +511,109 @@ pub fn migrate(
 
     Ok(Response::new().add_attribute("method", "migrate"))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info, MockStorage, MockApi, MockQuerier};
+    use cosmwasm_std::{attr, OwnedDeps};
+
+    #[test]
+    fn test_instantiate() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        let initial_owner = deps.api.addr_make("creator");
+        let delegation_manager = deps.api.addr_make("delegation_manager");
+        let pauser = deps.api.addr_make("pauser");
+        let unpauser = deps.api.addr_make("unpauser");
+
+        let info = message_info(&initial_owner, &[]);
+
+        let msg = InstantiateMsg {
+            initial_owner: initial_owner.to_string(),
+            delegation_manager: delegation_manager.to_string(),
+            pauser: pauser.to_string(),
+            unpauser: unpauser.to_string(),
+            initial_paused_status: 0,
+        };
+
+        let response = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        assert_eq!(
+            response.attributes,
+            vec![
+                attr("method", "instantiate"),
+                attr("owner", info.sender.to_string()),
+                attr("delegation_manager", delegation_manager.to_string()),
+            ]
+        );
+
+        let owner = OWNER.load(&deps.storage).unwrap();
+        assert_eq!(owner, deps.api.addr_make("creator"));
+
+        let delegation_manager = DELEGATION_MANAGER.load(&deps.storage).unwrap();
+        assert_eq!(delegation_manager, deps.api.addr_make("delegation_manager"));
+
+        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
+        assert_eq!(paused_state, 0);
+
+        let pauser_addr = deps.api.addr_make("pauser");
+        let unpauser_addr = deps.api.addr_make("unpauser");
+        assert!(set_pauser(deps.as_mut(), pauser_addr).is_ok());
+        assert!(set_unpauser(deps.as_mut(), unpauser_addr).is_ok());
+
+        let invalid_info = message_info(&deps.api.addr_make("invalid_creator"), &[]);
+
+        let invalid_msg = InstantiateMsg {
+            initial_owner: "invalid_address".to_string(),
+            delegation_manager: delegation_manager.to_string(),
+            pauser: pauser.to_string(),
+            unpauser: unpauser.to_string(),
+            initial_paused_status: 0,
+        };
+    
+        let result = instantiate(deps.as_mut(), env.clone(), invalid_info.clone(), invalid_msg);
+        assert!(result.is_err()); 
+    }
+
+    fn instantiate_contract() -> (
+        OwnedDeps<MockStorage, MockApi, MockQuerier>,
+        Env,
+        MessageInfo,
+        Addr,
+        Addr,
+        Addr,
+        Addr
+    ) {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        let initial_owner = deps.api.addr_make("creator");
+        let delegation_manager = deps.api.addr_make("delegation_manager");
+        let pauser = deps.api.addr_make("pauser");
+        let unpauser = deps.api.addr_make("unpauser");
+
+        let info = message_info(&initial_owner, &[]);
+
+        let msg = InstantiateMsg {
+            initial_owner: initial_owner.to_string(),
+            delegation_manager: delegation_manager.to_string(),
+            pauser: pauser.to_string(),
+            unpauser: unpauser.to_string(),
+            initial_paused_status: 0,
+        };
+
+        instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        (
+            deps,
+            env,
+            info,
+            delegation_manager,
+            initial_owner,
+            pauser,
+            unpauser
+        )
+    }
+}
