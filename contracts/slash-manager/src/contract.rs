@@ -460,9 +460,12 @@ pub fn transfer_ownership(
 
     OWNER.save(deps.storage, &new_owner)?;
 
-    Ok(Response::new()
+    let event = Event::new("transfer_ownership")
         .add_attribute("method", "transfer_ownership")
-        .add_attribute("new_owner", new_owner.to_string()))
+        .add_attribute("new_owner", new_owner.to_string())
+        .add_attribute("sender", info.sender.to_string());
+
+    Ok(Response::new().add_event(event))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -790,4 +793,47 @@ mod tests {
             assert_eq!(stored_value, *value);
         }
     }
+
+    #[test]
+    fn test_transfer_ownership() {
+        let (mut deps, env, info, _delegation_manager, initial_owner, _pauser, _unpauser) =
+            instantiate_contract();
+    
+        let stored_owner = OWNER.load(&deps.storage).unwrap();
+        assert_eq!(stored_owner, initial_owner);
+    
+        let new_owner = deps.api.addr_make("new_owner");
+    
+        let execute_msg = ExecuteMsg::TransferOwnership {
+            new_owner: new_owner.to_string(),
+        };
+        let response = execute(deps.as_mut(), env.clone(), info.clone(), execute_msg).unwrap();
+    
+        assert_eq!(response.events.len(), 1);
+        let event = &response.events[0];
+        assert_eq!(event.ty, "transfer_ownership");
+        assert_eq!(event.attributes.len(), 3);
+    
+        assert_eq!(event.attributes[0].key, "method");
+        assert_eq!(event.attributes[0].value, "transfer_ownership");
+        assert_eq!(event.attributes[1].key, "new_owner");
+        assert_eq!(event.attributes[1].value, new_owner.to_string());
+    
+        let stored_owner = OWNER.load(&deps.storage).unwrap();
+        assert_eq!(stored_owner, new_owner);
+    
+        let invalid_user = deps.api.addr_make("invalid_user");
+        let invalid_info = message_info(&invalid_user, &[]);
+    
+        let execute_msg = ExecuteMsg::TransferOwnership {
+            new_owner: "another_new_owner".to_string(),
+        };
+    
+        let result = execute(deps.as_mut(), env.clone(), invalid_info.clone(), execute_msg);
+
+        assert!(result.is_err());
+    
+        let stored_owner = OWNER.load(&deps.storage).unwrap();
+        assert_eq!(stored_owner, new_owner);
+    }    
 }
