@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Uint128, Addr};
+use cosmwasm_std::{Addr, Uint128};
 
 #[cw_serde]
 pub enum ExecuteMsg {
