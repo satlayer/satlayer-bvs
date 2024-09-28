@@ -3,21 +3,22 @@ use crate::{
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{MinimalSlashSignatureResponse, SlashDetailsResponse, ValidatorResponse},
     state::{
-        DELEGATION_MANAGER, MINIMAL_SLASH_SIGNATURE, OWNER, SLASHER, SLASH_DETAILS, VALIDATOR, STRATEGY_MANAGER
+        DELEGATION_MANAGER, MINIMAL_SLASH_SIGNATURE, OWNER, SLASHER, SLASH_DETAILS,
+        STRATEGY_MANAGER, VALIDATOR,
     },
     utils::{calculate_slash_hash, recover, validate_addresses, SlashDetails},
 };
 
 use common::delegation::{
-    ExecuteMsg as DelegationManagerExecuteMsg, OperatorResponse,
-    QueryMsg as DelegationManagerQueryMsg, OperatorStakersResponse
+    ExecuteMsg as DelegationManagerExecuteMsg, OperatorResponse, OperatorStakersResponse,
+    QueryMsg as DelegationManagerQueryMsg,
 };
-use common::strategy::ExecuteMsg as StrategyManagerExecuteMsg;
 use common::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use common::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
+use common::strategy::ExecuteMsg as StrategyManagerExecuteMsg;
 use cosmwasm_std::{
     entry_point, to_json_binary, Addr, Binary, Deps, DepsMut, Env, Event, MessageInfo, Response,
-    StdResult, Uint128, SubMsg, WasmMsg
+    StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 
@@ -63,19 +64,22 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::SubmitSlashRequest { 
+        ExecuteMsg::SubmitSlashRequest {
             slash_details,
-            validators_public_keys 
+            validators_public_keys,
         } => {
             let slasher_addr = deps.api.addr_validate(&slash_details.slasher)?;
             let operator_addr = deps.api.addr_validate(&slash_details.operator)?;
             let slash_validator = validate_addresses(deps.api, &slash_details.slash_validator)?;
 
-            let validators_public_keys_binary: Result<Vec<Binary>, ContractError> = validators_public_keys
-            .iter()
-            .map(|val| Binary::from_base64(val).map_err(|_| ContractError::InvalidValidator {}))
-            .collect();
-        let validators_binary = validators_public_keys_binary?;
+            let validators_public_keys_binary: Result<Vec<Binary>, ContractError> =
+                validators_public_keys
+                    .iter()
+                    .map(|val| {
+                        Binary::from_base64(val).map_err(|_| ContractError::InvalidValidator {})
+                    })
+                    .collect();
+            let validators_binary = validators_public_keys_binary?;
 
             let params = SlashDetails {
                 slasher: slasher_addr,
@@ -94,8 +98,8 @@ pub fn execute(
         ExecuteMsg::ExecuteSlashRequest {
             slash_hash,
             signatures,
-            validators_public_keys
-        } => { 
+            validators_public_keys,
+        } => {
             let signatures_binary: Result<Vec<Binary>, ContractError> = signatures
                 .iter()
                 .map(|sig| Binary::from_base64(sig).map_err(|_| ContractError::InvalidSignature {}))
@@ -107,9 +111,16 @@ pub fn execute(
                 .map(|val| Binary::from_base64(val).map_err(|_| ContractError::InvalidValidator {}))
                 .collect();
             let validators_binary = validators_binary?;
-            
-            execute_slash_request(deps, env, info, slash_hash, signatures_binary, validators_binary) 
-        },
+
+            execute_slash_request(
+                deps,
+                env,
+                info,
+                slash_hash,
+                signatures_binary,
+                validators_binary,
+            )
+        }
         ExecuteMsg::CancelSlashRequest { slash_hash } => {
             cancel_slash_request(deps, info, slash_hash)
         }
@@ -124,7 +135,9 @@ pub fn execute(
             let validators = validate_addresses(deps.api, &validators)?;
             set_slash_validator(deps, info, validators, values)
         }
-        ExecuteMsg::SetDelegationManager { new_delegation_manager } => {
+        ExecuteMsg::SetDelegationManager {
+            new_delegation_manager,
+        } => {
             let new_delegation_manager_addr = deps.api.addr_validate(&new_delegation_manager)?;
             set_delegation_manager(deps, info, new_delegation_manager_addr)
         }
@@ -267,12 +280,12 @@ pub fn execute_slash_request(
     let query_msg = DelegationManagerQueryMsg::GetOperatorStakers {
         operator: slash_details.operator.to_string(),
     };
-    let stakers_response: OperatorStakersResponse = deps.querier.query_wasm_smart(
-        DELEGATION_MANAGER.load(deps.storage)?,
-        &query_msg
-    )?;
+    let stakers_response: OperatorStakersResponse = deps
+        .querier
+        .query_wasm_smart(DELEGATION_MANAGER.load(deps.storage)?, &query_msg)?;
 
-    let total_shares: Uint128 = stakers_response.stakers_and_shares
+    let total_shares: Uint128 = stakers_response
+        .stakers_and_shares
         .iter()
         .flat_map(|staker_shares| &staker_shares.shares_per_strategy)
         .map(|(_, shares)| shares)
@@ -283,7 +296,7 @@ pub fn execute_slash_request(
     for staker_shares in stakers_response.stakers_and_shares {
         for (strategy, shares) in staker_shares.shares_per_strategy {
             let slash_amount = slash_details.share.multiply_ratio(shares, total_shares);
-            
+
             let decrease_delegated_msg = DelegationManagerExecuteMsg::DecreaseDelegatedShares {
                 staker: staker_shares.staker.to_string(),
                 strategy: strategy.to_string(),
@@ -480,7 +493,9 @@ fn query_is_validator(deps: Deps, validator: Addr) -> StdResult<ValidatorRespons
 
 fn query_minimal_slash_signature(deps: Deps) -> StdResult<MinimalSlashSignatureResponse> {
     let minimal_slash_signature = MINIMAL_SLASH_SIGNATURE.load(deps.storage)?;
-    Ok(MinimalSlashSignatureResponse { minimal_slash_signature })
+    Ok(MinimalSlashSignatureResponse {
+        minimal_slash_signature,
+    })
 }
 
 fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
@@ -515,7 +530,9 @@ pub fn migrate(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info, MockStorage, MockApi, MockQuerier};
+    use cosmwasm_std::testing::{
+        message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
+    };
     use cosmwasm_std::{attr, OwnedDeps};
 
     #[test]
@@ -572,9 +589,14 @@ mod tests {
             unpauser: unpauser.to_string(),
             initial_paused_status: 0,
         };
-    
-        let result = instantiate(deps.as_mut(), env.clone(), invalid_info.clone(), invalid_msg);
-        assert!(result.is_err()); 
+
+        let result = instantiate(
+            deps.as_mut(),
+            env.clone(),
+            invalid_info.clone(),
+            invalid_msg,
+        );
+        assert!(result.is_err());
     }
 
     fn instantiate_contract() -> (
@@ -584,7 +606,7 @@ mod tests {
         Addr,
         Addr,
         Addr,
-        Addr
+        Addr,
     ) {
         let mut deps = mock_dependencies();
         let env = mock_env();
@@ -613,44 +635,49 @@ mod tests {
             delegation_manager,
             initial_owner,
             pauser,
-            unpauser
+            unpauser,
         )
     }
 
     #[test]
     fn test_set_delegation_manager() {
-        let (mut deps, env, info, _delegation_manager, _owner, _pauser, _unpauser) = instantiate_contract();
-    
+        let (mut deps, env, info, _delegation_manager, _owner, _pauser, _unpauser) =
+            instantiate_contract();
+
         let new_delegation_manager = deps.api.addr_make("new_delegation_manager");
-    
+
         let execute_msg = ExecuteMsg::SetDelegationManager {
             new_delegation_manager: new_delegation_manager.to_string(),
         };
         let response = execute(deps.as_mut(), env.clone(), info.clone(), execute_msg).unwrap();
-    
+
         assert_eq!(response.events.len(), 1);
         let event = &response.events[0];
-    
+
         assert_eq!(event.ty, "delegation_manager_set");
-    
+
         assert_eq!(event.attributes.len(), 3);
-    
+
         assert_eq!(event.attributes[0].key, "method");
         assert_eq!(event.attributes[0].value, "set_delegation_manager");
-    
+
         assert_eq!(event.attributes[1].key, "new_delegation_manager");
-        assert_eq!(event.attributes[1].value, new_delegation_manager.to_string());
-    
+        assert_eq!(
+            event.attributes[1].value,
+            new_delegation_manager.to_string()
+        );
+
         let delegation_manager = DELEGATION_MANAGER.load(&deps.storage).unwrap();
         assert_eq!(delegation_manager, new_delegation_manager);
-    }     
+    }
 
     #[test]
     fn test_set_slasher() {
-        let (mut deps, env, info, _delegation_manager, _owner, _pauser, _unpauser) = instantiate_contract();
+        let (mut deps, env, info, _delegation_manager, _owner, _pauser, _unpauser) =
+            instantiate_contract();
 
         let new_slasher = deps.api.addr_make("new_slasher");
-        
+
         let execute_msg = ExecuteMsg::SetSlasher {
             slasher: new_slasher.to_string(),
             value: true,
@@ -676,24 +703,27 @@ mod tests {
 
         let is_slasher = SLASHER.load(&deps.storage, new_slasher.clone()).unwrap();
         assert_eq!(is_slasher, true);
-    }            
+    }
 
     #[test]
     fn test_set_minimal_slash_signature() {
-        let (mut deps, env, _info, _delegation_manager, _owner, _pauser, _unpauser) = instantiate_contract();
-    
+        let (mut deps, env, _info, _delegation_manager, _owner, _pauser, _unpauser) =
+            instantiate_contract();
+
         let slasher_addr = deps.api.addr_make("slasher");
-        SLASHER.save(&mut deps.storage, slasher_addr.clone(), &true).unwrap();
-    
+        SLASHER
+            .save(&mut deps.storage, slasher_addr.clone(), &true)
+            .unwrap();
+
         let slasher_info = message_info(&slasher_addr, &[]);
         let new_minimal_signature = 10;
-    
+
         let execute_msg = ExecuteMsg::SetMinimalSlashSignature {
             minimal_signature: new_minimal_signature,
         };
-    
+
         let response = execute(deps.as_mut(), env.clone(), slasher_info, execute_msg).unwrap();
-    
+
         assert_eq!(response.events.len(), 1);
         let event = &response.events[0];
         assert_eq!(event.ty, "minimal_slash_signature_set");
@@ -704,8 +734,60 @@ mod tests {
         assert_eq!(event.attributes[1].value, "0");
         assert_eq!(event.attributes[2].key, "minimal_signature");
         assert_eq!(event.attributes[2].value, new_minimal_signature.to_string());
-    
+
         let stored_signature = MINIMAL_SLASH_SIGNATURE.load(&deps.storage).unwrap();
         assert_eq!(stored_signature, new_minimal_signature);
-    }      
+    }
+
+    #[test]
+    fn test_set_slash_validator() {
+        let (mut deps, env, _info, _delegation_manager, _owner, _pauser, _unpauser) =
+            instantiate_contract();
+
+        let slasher_addr = deps.api.addr_make("slasher");
+        SLASHER
+            .save(&mut deps.storage, slasher_addr.clone(), &true)
+            .unwrap();
+
+        let slasher_info = message_info(&slasher_addr, &[]);
+
+        let validators = vec![
+            deps.api.addr_make("validator1"),
+            deps.api.addr_make("validator2"),
+        ];
+        let values = vec![true, false];
+
+        let execute_msg = ExecuteMsg::SetSlasherValidator {
+            validators: validators.iter().map(|v| v.to_string()).collect(),
+            values: values.clone(),
+        };
+
+        let response = execute(deps.as_mut(), env.clone(), slasher_info.clone(), execute_msg).unwrap();
+
+        assert_eq!(response.events.len(), 2); 
+
+        for (i, validator) in validators.iter().enumerate() {
+            let event = &response.events[i];
+
+            assert_eq!(event.ty, "slash_validator_set");
+            assert_eq!(event.attributes.len(), 4);
+
+            assert_eq!(event.attributes[0].key, "method");
+            assert_eq!(event.attributes[0].value, "set_slash_validator");
+
+            assert_eq!(event.attributes[1].key, "validator");
+            assert_eq!(event.attributes[1].value, validator.to_string());
+
+            assert_eq!(event.attributes[2].key, "value");
+            assert_eq!(event.attributes[2].value, values[i].to_string());
+
+            assert_eq!(event.attributes[3].key, "sender");
+            assert_eq!(event.attributes[3].value, slasher_addr.to_string());
+        }
+
+        for (validator, value) in validators.iter().zip(values.iter()) {
+            let stored_value = VALIDATOR.load(&deps.storage, validator.clone()).unwrap();
+            assert_eq!(stored_value, *value);
+        }
+    }
 }
