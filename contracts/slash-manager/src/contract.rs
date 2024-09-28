@@ -490,7 +490,7 @@ fn query_slash_details(deps: Deps, slash_hash: String) -> StdResult<SlashDetails
 }
 
 fn query_is_validator(deps: Deps, validator: Addr) -> StdResult<ValidatorResponse> {
-    let is_validator = VALIDATOR.load(deps.storage, validator)?;
+    let is_validator = VALIDATOR.may_load(deps.storage, validator)?.unwrap_or(false);
     Ok(ValidatorResponse { is_validator })
 }
 
@@ -536,7 +536,7 @@ mod tests {
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
-    use cosmwasm_std::{attr, OwnedDeps};
+    use cosmwasm_std::{attr, OwnedDeps, from_json};
 
     #[test]
     fn test_instantiate() {
@@ -835,5 +835,64 @@ mod tests {
     
         let stored_owner = OWNER.load(&deps.storage).unwrap();
         assert_eq!(stored_owner, new_owner);
-    }    
+    }
+
+    #[test]
+    fn test_is_validator() {
+        let (mut deps, env, _info, _delegation_manager, _initial_owner, _pauser, _unpauser) =
+            instantiate_contract();
+    
+        let validator_addr = deps.api.addr_make("validator");
+    
+        VALIDATOR
+            .save(&mut deps.storage, validator_addr.clone(), &true)
+            .unwrap();
+    
+        let query_msg = QueryMsg::IsValidator {
+            validator: validator_addr.to_string(),
+        };
+    
+        let response: ValidatorResponse =
+            from_json(&query(deps.as_ref(), env.clone(), query_msg).unwrap()).unwrap();
+    
+        assert_eq!(response.is_validator, true);
+    
+        let non_existent_validator = deps.api.addr_make("non_existent_validator");
+        let query_msg = QueryMsg::IsValidator {
+            validator: non_existent_validator.to_string(),
+        };
+    
+        let response: ValidatorResponse =
+            from_json(&query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
+    
+        assert_eq!(response.is_validator, false);
+    }
+
+    #[test]
+    fn test_get_minimal_slash_signature() {
+        let (mut deps, env, _info, _delegation_manager, _initial_owner, _pauser, _unpauser) =
+            instantiate_contract();
+    
+        let minimal_signature: u64 = 10;
+        MINIMAL_SLASH_SIGNATURE
+            .save(&mut deps.storage, &minimal_signature)
+            .unwrap();
+    
+        let query_msg = QueryMsg::GetMinimalSlashSignature {};
+    
+        let response: MinimalSlashSignatureResponse =
+            from_json(&query(deps.as_ref(), env.clone(), query_msg.clone()).unwrap()).unwrap();
+    
+        assert_eq!(response.minimal_slash_signature, minimal_signature);
+    
+        let new_minimal_signature: u64 = 20;
+        MINIMAL_SLASH_SIGNATURE
+            .save(&mut deps.storage, &new_minimal_signature)
+            .unwrap();
+    
+        let response: MinimalSlashSignatureResponse =
+            from_json(&query(deps.as_ref(), env, query_msg.clone()).unwrap()).unwrap();
+    
+        assert_eq!(response.minimal_slash_signature, new_minimal_signature);
+    }                
 }
