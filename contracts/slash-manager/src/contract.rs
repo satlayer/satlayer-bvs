@@ -196,7 +196,7 @@ pub fn submit_slash_request(
         return Err(ContractError::OperatorNotRegistered {});
     }
 
-    let current_minimal_signature = MINIMAL_SLASH_SIGNATURE.load(deps.storage)?;
+    let current_minimal_signature = MINIMAL_SLASH_SIGNATURE.may_load(deps.storage)?.unwrap_or(0);
 
     if slash_details.slash_signature < current_minimal_signature {
         return Err(ContractError::InvalidSlashSignature {});
@@ -490,7 +490,9 @@ fn query_slash_details(deps: Deps, slash_hash: String) -> StdResult<SlashDetails
 }
 
 fn query_is_validator(deps: Deps, validator: Addr) -> StdResult<ValidatorResponse> {
-    let is_validator = VALIDATOR.may_load(deps.storage, validator)?.unwrap_or(false);
+    let is_validator = VALIDATOR
+        .may_load(deps.storage, validator)?
+        .unwrap_or(false);
     Ok(ValidatorResponse { is_validator })
 }
 
@@ -533,10 +535,13 @@ pub fn migrate(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::ExecuteSlashDetails;
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
-    use cosmwasm_std::{attr, OwnedDeps, from_json};
+    use cosmwasm_std::{
+        attr, from_json, ContractResult, OwnedDeps, SystemError, SystemResult, WasmQuery,
+    };
 
     #[test]
     fn test_instantiate() {
@@ -765,9 +770,15 @@ mod tests {
             values: values.clone(),
         };
 
-        let response = execute(deps.as_mut(), env.clone(), slasher_info.clone(), execute_msg).unwrap();
+        let response = execute(
+            deps.as_mut(),
+            env.clone(),
+            slasher_info.clone(),
+            execute_msg,
+        )
+        .unwrap();
 
-        assert_eq!(response.events.len(), 2); 
+        assert_eq!(response.events.len(), 2);
 
         for (i, validator) in validators.iter().enumerate() {
             let event = &response.events[i];
@@ -798,41 +809,46 @@ mod tests {
     fn test_transfer_ownership() {
         let (mut deps, env, info, _delegation_manager, initial_owner, _pauser, _unpauser) =
             instantiate_contract();
-    
+
         let stored_owner = OWNER.load(&deps.storage).unwrap();
         assert_eq!(stored_owner, initial_owner);
-    
+
         let new_owner = deps.api.addr_make("new_owner");
-    
+
         let execute_msg = ExecuteMsg::TransferOwnership {
             new_owner: new_owner.to_string(),
         };
         let response = execute(deps.as_mut(), env.clone(), info.clone(), execute_msg).unwrap();
-    
+
         assert_eq!(response.events.len(), 1);
         let event = &response.events[0];
         assert_eq!(event.ty, "transfer_ownership");
         assert_eq!(event.attributes.len(), 3);
-    
+
         assert_eq!(event.attributes[0].key, "method");
         assert_eq!(event.attributes[0].value, "transfer_ownership");
         assert_eq!(event.attributes[1].key, "new_owner");
         assert_eq!(event.attributes[1].value, new_owner.to_string());
-    
+
         let stored_owner = OWNER.load(&deps.storage).unwrap();
         assert_eq!(stored_owner, new_owner);
-    
+
         let invalid_user = deps.api.addr_make("invalid_user");
         let invalid_info = message_info(&invalid_user, &[]);
-    
+
         let execute_msg = ExecuteMsg::TransferOwnership {
             new_owner: "another_new_owner".to_string(),
         };
-    
-        let result = execute(deps.as_mut(), env.clone(), invalid_info.clone(), execute_msg);
+
+        let result = execute(
+            deps.as_mut(),
+            env.clone(),
+            invalid_info.clone(),
+            execute_msg,
+        );
 
         assert!(result.is_err());
-    
+
         let stored_owner = OWNER.load(&deps.storage).unwrap();
         assert_eq!(stored_owner, new_owner);
     }
@@ -841,30 +857,30 @@ mod tests {
     fn test_is_validator() {
         let (mut deps, env, _info, _delegation_manager, _initial_owner, _pauser, _unpauser) =
             instantiate_contract();
-    
+
         let validator_addr = deps.api.addr_make("validator");
-    
+
         VALIDATOR
             .save(&mut deps.storage, validator_addr.clone(), &true)
             .unwrap();
-    
+
         let query_msg = QueryMsg::IsValidator {
             validator: validator_addr.to_string(),
         };
-    
+
         let response: ValidatorResponse =
             from_json(&query(deps.as_ref(), env.clone(), query_msg).unwrap()).unwrap();
-    
+
         assert_eq!(response.is_validator, true);
-    
+
         let non_existent_validator = deps.api.addr_make("non_existent_validator");
         let query_msg = QueryMsg::IsValidator {
             validator: non_existent_validator.to_string(),
         };
-    
+
         let response: ValidatorResponse =
             from_json(&query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
-    
+
         assert_eq!(response.is_validator, false);
     }
 
@@ -872,27 +888,150 @@ mod tests {
     fn test_get_minimal_slash_signature() {
         let (mut deps, env, _info, _delegation_manager, _initial_owner, _pauser, _unpauser) =
             instantiate_contract();
-    
+
         let minimal_signature: u64 = 10;
         MINIMAL_SLASH_SIGNATURE
             .save(&mut deps.storage, &minimal_signature)
             .unwrap();
-    
+
         let query_msg = QueryMsg::GetMinimalSlashSignature {};
-    
+
         let response: MinimalSlashSignatureResponse =
             from_json(&query(deps.as_ref(), env.clone(), query_msg.clone()).unwrap()).unwrap();
-    
+
         assert_eq!(response.minimal_slash_signature, minimal_signature);
-    
+
         let new_minimal_signature: u64 = 20;
         MINIMAL_SLASH_SIGNATURE
             .save(&mut deps.storage, &new_minimal_signature)
             .unwrap();
-    
+
         let response: MinimalSlashSignatureResponse =
             from_json(&query(deps.as_ref(), env, query_msg.clone()).unwrap()).unwrap();
-    
+
         assert_eq!(response.minimal_slash_signature, new_minimal_signature);
-    }                
+    }
+
+    #[test]
+    fn test_submit_slash_request() {
+        let (mut deps, env, _info, delegation_manager, _owner, _pauser, _unpauser) =
+            instantiate_contract();
+
+        let slasher_addr = deps.api.addr_make("slasher");
+        let operator_addr = deps.api.addr_make("operator");
+        let slash_validator = vec![
+            deps.api.addr_make("validator1").to_string(),
+            deps.api.addr_make("validator2").to_string(),
+        ];
+        let slash_validator_addr = vec![
+            deps.api.addr_make("validator1"),
+            deps.api.addr_make("validator2"),
+        ];
+
+        let slash_details = ExecuteSlashDetails {
+            slasher: slasher_addr.to_string(),
+            operator: operator_addr.to_string(),
+            share: Uint128::new(10),
+            slash_signature: 1,
+            slash_validator: slash_validator.clone(),
+            reason: "Invalid action".to_string(),
+            start_time: env.block.time.seconds(),
+            end_time: env.block.time.seconds() + 1000,
+            status: true,
+        };
+
+        let expected_slash_details = SlashDetails {
+            slasher: slasher_addr.clone(),
+            operator: operator_addr.clone(),
+            share: Uint128::new(10),
+            slash_signature: 1,
+            slash_validator: slash_validator_addr.clone(),
+            reason: "Invalid action".to_string(),
+            start_time: env.block.time.seconds(),
+            end_time: env.block.time.seconds() + 1000,
+            status: true,
+        };
+
+        let validators_public_keys =
+            vec!["A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()];
+
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } if *contract_addr == delegation_manager.to_string() => {
+                let operator_response = OperatorResponse { is_operator: true };
+                SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&operator_response).unwrap(),
+                ))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        MINIMAL_SLASH_SIGNATURE.save(&mut deps.storage, &1).unwrap();
+
+        SLASHER
+            .save(&mut deps.storage, slasher_addr.clone(), &true)
+            .unwrap();
+
+        let slasher_info = message_info(&slasher_addr, &[]);
+
+        VALIDATOR
+            .save(&mut deps.storage, slash_validator_addr[0].clone(), &true)
+            .unwrap();
+
+        let msg = ExecuteMsg::SubmitSlashRequest {
+            slash_details: slash_details.clone(),
+            validators_public_keys: validators_public_keys.clone(),
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), slasher_info.clone(), msg);
+
+        if let Err(ref err) = res {
+            println!("Error: {:?}", err);
+        }
+
+        assert!(res.is_ok());
+
+        let res = res.unwrap();
+        assert_eq!(res.events.len(), 1);
+
+        let event = &res.events[0];
+        assert_eq!(event.ty, "slash_request_submitted");
+        assert_eq!(event.attributes.len(), 7);
+
+        assert_eq!(event.attributes[0].key, "slash_hash");
+        assert!(event.attributes[0].value.len() > 0);
+
+        assert_eq!(event.attributes[1].key, "sender");
+        assert_eq!(event.attributes[1].value, slasher_addr.to_string());
+
+        assert_eq!(event.attributes[2].key, "operator");
+        assert_eq!(event.attributes[2].value, operator_addr.to_string());
+
+        assert_eq!(event.attributes[3].key, "share");
+        assert_eq!(event.attributes[3].value, slash_details.share.to_string());
+
+        assert_eq!(event.attributes[4].key, "start_time");
+        assert_eq!(
+            event.attributes[4].value,
+            slash_details.start_time.to_string()
+        );
+
+        assert_eq!(event.attributes[5].key, "end_time");
+        assert_eq!(
+            event.attributes[5].value,
+            slash_details.end_time.to_string()
+        );
+
+        assert_eq!(event.attributes[6].key, "status");
+        assert_eq!(event.attributes[6].value, slash_details.status.to_string());
+
+        let slash_hash = event.attributes[0].value.clone();
+        let stored_slash_details = SLASH_DETAILS.load(&deps.storage, slash_hash).unwrap();
+        assert_eq!(stored_slash_details, expected_slash_details.clone());
+    }
 }
