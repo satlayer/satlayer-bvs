@@ -979,9 +979,9 @@ mod tests {
 
         let slasher_info = message_info(&slasher_addr, &[]);
 
-        VALIDATOR
-            .save(&mut deps.storage, slash_validator_addr[0].clone(), &true)
-            .unwrap();
+        for validator in slash_validator_addr.iter() {
+            VALIDATOR.save(&mut deps.storage, validator.clone(), &true).unwrap();
+        }
 
         let msg = ExecuteMsg::SubmitSlashRequest {
             slash_details: slash_details.clone(),
@@ -1034,4 +1034,101 @@ mod tests {
         let stored_slash_details = SLASH_DETAILS.load(&deps.storage, slash_hash).unwrap();
         assert_eq!(stored_slash_details, expected_slash_details.clone());
     }
+
+    #[test]
+    fn test_cancel_slash_request() {
+        let (mut deps, env, _info, delegation_manager, _owner, _pauser, _unpauser) =
+            instantiate_contract();
+    
+        let slasher_addr = deps.api.addr_make("slasher");
+        let operator_addr = deps.api.addr_make("operator");
+        let slash_validator = vec![
+            deps.api.addr_make("validator1").to_string(),
+            deps.api.addr_make("validator2").to_string(),
+        ];
+        let slash_validator_addr = vec![
+            deps.api.addr_make("validator1"),
+            deps.api.addr_make("validator2"),
+        ];
+    
+        let slash_details = ExecuteSlashDetails {
+            slasher: slasher_addr.to_string(),
+            operator: operator_addr.to_string(),
+            share: Uint128::new(10),
+            slash_signature: 1,
+            slash_validator: slash_validator.clone(),
+            reason: "Invalid action".to_string(),
+            start_time: env.block.time.seconds(),
+            end_time: env.block.time.seconds() + 1000,
+            status: true,
+        };
+    
+        let validators_public_keys =
+            vec!["A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()];
+    
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } if *contract_addr == delegation_manager.to_string() => {
+                let operator_response = OperatorResponse { is_operator: true };
+                SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&operator_response).unwrap(),
+                ))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+    
+        MINIMAL_SLASH_SIGNATURE.save(&mut deps.storage, &1).unwrap();
+    
+        SLASHER
+            .save(&mut deps.storage, slasher_addr.clone(), &true)
+            .unwrap();
+    
+        let slasher_info = message_info(&slasher_addr, &[]);
+    
+        for validator in slash_validator_addr.iter() {
+            VALIDATOR.save(&mut deps.storage, validator.clone(), &true).unwrap();
+        }
+    
+        let msg = ExecuteMsg::SubmitSlashRequest {
+            slash_details: slash_details.clone(),
+            validators_public_keys: validators_public_keys.clone(),
+        };
+    
+        let res = execute(deps.as_mut(), env.clone(), slasher_info.clone(), msg);
+        assert!(res.is_ok());
+    
+        let res = res.unwrap();
+        let slash_hash = res.events[0].attributes[0].value.clone();
+    
+        let cancel_msg = ExecuteMsg::CancelSlashRequest {
+            slash_hash: slash_hash.clone(),
+        };
+    
+        let cancel_res = execute(deps.as_mut(), env.clone(), slasher_info.clone(), cancel_msg);
+        assert!(cancel_res.is_ok());
+    
+        let cancel_res = cancel_res.unwrap();
+        assert_eq!(cancel_res.events.len(), 1);
+    
+        let event = &cancel_res.events[0];
+        assert_eq!(event.ty, "cancel_slash_request");
+        assert_eq!(event.attributes.len(), 3);
+    
+        assert_eq!(event.attributes[0].key, "method");
+        assert_eq!(event.attributes[0].value, "cancel_slash_request");
+    
+        assert_eq!(event.attributes[1].key, "slash_hash");
+        assert_eq!(event.attributes[1].value, slash_hash.clone());
+    
+        assert_eq!(event.attributes[2].key, "slash_details_status");
+        assert_eq!(event.attributes[2].value, "false");
+    
+        let updated_slash_details = SLASH_DETAILS.load(&deps.storage, slash_hash).unwrap();
+        assert_eq!(updated_slash_details.status, false);
+    }    
 }
