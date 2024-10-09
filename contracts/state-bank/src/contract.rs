@@ -60,11 +60,12 @@ pub fn execute_set(
 
     VALUES.save(deps.storage, key.clone(), &value)?;
 
-    Ok(Response::new()
-        .add_event(Event::new("execute_set")
+    Ok(Response::new().add_event(
+        Event::new("execute_set")
             .add_attribute("sender", sender.to_string())
             .add_attribute("key", key)
-            .add_attribute("value", value.to_string())))
+            .add_attribute("value", value.to_string()),
+    ))
 }
 
 pub fn add_registered_avs_contract(
@@ -74,10 +75,11 @@ pub fn add_registered_avs_contract(
 ) -> Result<Response, ContractError> {
     IS_AVS_CONTRACT_REGISTERED.save(deps.storage, &Addr::unchecked(address.clone()), &true)?;
 
-    Ok(Response::new()
-        .add_event(Event::new("add_registered_avs_contract")
+    Ok(Response::new().add_event(
+        Event::new("add_registered_avs_contract")
             .add_attribute("sender", info.sender.to_string())
-            .add_attribute("address", address.to_string())))
+            .add_attribute("address", address.to_string()),
+    ))
 }
 
 #[entry_point]
