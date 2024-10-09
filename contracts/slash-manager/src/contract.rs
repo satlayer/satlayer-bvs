@@ -1,7 +1,7 @@
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-    query::{MinimalSlashSignatureResponse, SlashDetailsResponse, ValidatorResponse},
+    query::{MinimalSlashSignatureResponse, SlashDetailsResponse, ValidatorResponse, CalculateSlashHashResponse},
     state::{
         DELEGATION_MANAGER, MINIMAL_SLASH_SIGNATURE, OWNER, SLASHER, SLASH_DETAILS,
         STRATEGY_MANAGER, VALIDATOR,
@@ -110,7 +110,7 @@ pub fn execute(
                 .iter()
                 .map(|val| Binary::from_base64(val).map_err(|_| ContractError::InvalidValidator {}))
                 .collect();
-            let validators_binary = validators_binary?;
+            let validators_binary = validators_binary.unwrap();
 
             execute_slash_request(
                 deps,
@@ -226,6 +226,9 @@ pub fn submit_slash_request(
             .collect::<Vec<_>>(),
     );
     let slash_hash_hex = hex::encode(slash_hash.clone());
+
+    println!("Submit Slash Request - Calculated Slash Hash: {:?}", slash_hash_hex);
+
     SLASH_DETAILS.save(deps.storage, slash_hash_hex.clone(), &slash_details)?;
 
     let event = Event::new("slash_request_submitted")
@@ -472,7 +475,7 @@ pub fn transfer_ownership(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, info: MessageInfo, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetSlashDetails { slash_hash } => {
             to_json_binary(&query_slash_details(deps, slash_hash)?)
@@ -483,6 +486,40 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::GetMinimalSlashSignature {} => {
             to_json_binary(&query_minimal_slash_signature(deps)?)
+        }
+        QueryMsg::CalculateSlashHash { 
+            slash_details, 
+            validators_public_keys
+        } => {
+
+            let slasher_addr = deps.api.addr_validate(&slash_details.slasher)?;
+            let operator_addr = deps.api.addr_validate(&slash_details.operator)?;
+            let slash_validator = validate_addresses(deps.api, &slash_details.slash_validator)?;
+
+            let validators_public_keys_binary: Result<Vec<Binary>, ContractError> =
+                validators_public_keys
+                    .iter()
+                    .map(|val| {
+                        Binary::from_base64(val).map_err(|_| ContractError::InvalidValidator {})
+                    })
+                    .collect();
+            let validators_binary = validators_public_keys_binary.unwrap();
+
+            let params = SlashDetails {
+                slasher: slasher_addr,
+                operator: operator_addr,
+                share: slash_details.share,
+                slash_signature: slash_details.slash_signature,
+                slash_validator,
+                reason: slash_details.reason,
+                start_time: slash_details.start_time,
+                end_time: slash_details.end_time,
+                status: slash_details.status,
+            };
+
+            let res = query_calculate_slash_hash(env, info, params, validators_binary)?;
+
+            to_json_binary(&res)
         }
     }
 }
@@ -504,6 +541,27 @@ fn query_minimal_slash_signature(deps: Deps) -> StdResult<MinimalSlashSignatureR
     Ok(MinimalSlashSignatureResponse {
         minimal_slash_signature,
     })
+}
+
+fn query_calculate_slash_hash(
+    env: Env,
+    info: MessageInfo,
+    slash_details: SlashDetails, 
+    validators_public_keys: Vec<Binary>
+) -> StdResult<CalculateSlashHashResponse> {
+    let message_bytes = calculate_slash_hash(
+        &info.sender,
+        &slash_details,
+        &env.contract.address,
+        &validators_public_keys
+            .iter()
+            .map(|b| b.to_vec())
+            .collect::<Vec<_>>(),
+    );
+
+    let message_bytes_hex = hex::encode(message_bytes.clone());
+
+    Ok(CalculateSlashHashResponse { message_bytes_hex })
 }
 
 fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
@@ -864,7 +922,7 @@ mod tests {
 
     #[test]
     fn test_is_validator() {
-        let (mut deps, env, _info, _delegation_manager, _initial_owner, _pauser, _unpauser) =
+        let (mut deps, env, info, _delegation_manager, _initial_owner, _pauser, _unpauser) =
             instantiate_contract();
 
         let validator_addr = deps.api.addr_make("validator");
@@ -878,7 +936,7 @@ mod tests {
         };
 
         let response: ValidatorResponse =
-            from_json(&query(deps.as_ref(), env.clone(), query_msg).unwrap()).unwrap();
+            from_json(&query(deps.as_ref(), env.clone(), info.clone(),query_msg).unwrap()).unwrap();
 
         assert_eq!(response.is_validator, true);
 
@@ -888,14 +946,98 @@ mod tests {
         };
 
         let response: ValidatorResponse =
-            from_json(&query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
+            from_json(&query(deps.as_ref(), env, info.clone(), query_msg).unwrap()).unwrap();
 
         assert_eq!(response.is_validator, false);
     }
 
     #[test]
+    fn test_query_calculate_slash_hash() {
+        let (mut deps, env, _info, delegation_manager, _initial_owner, _pauser, _unpauser) =
+        instantiate_contract();
+
+        let slasher_addr = deps.api.addr_make("slasher");
+        let operator_addr = deps.api.addr_make("operator");
+        let slash_validator = vec![
+            deps.api.addr_make("validator1").to_string(),
+            deps.api.addr_make("validator2").to_string(),
+        ];
+        let slash_validator_addr = vec![
+            deps.api.addr_make("validator1"),
+            deps.api.addr_make("validator2"),
+        ];
+
+        let slash_details = ExecuteSlashDetails {
+            slasher: slasher_addr.to_string(),
+            operator: operator_addr.to_string(),
+            share: Uint128::new(10),
+            slash_signature: 1,
+            slash_validator: slash_validator.clone(),
+            reason: "Invalid action".to_string(),
+            start_time: env.block.time.seconds(),
+            end_time: env.block.time.seconds() + 1000,
+            status: true,
+        };
+
+        let validators_public_keys =
+            vec!["A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()];
+
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } if *contract_addr == delegation_manager.to_string() => {
+                let operator_response = OperatorResponse { is_operator: true };
+                SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&operator_response).unwrap(),
+                ))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        MINIMAL_SLASH_SIGNATURE.save(&mut deps.storage, &1).unwrap();
+
+        SLASHER
+            .save(&mut deps.storage, slasher_addr.clone(), &true)
+            .unwrap();
+
+        let slasher_info = message_info(&slasher_addr, &[]);
+
+        for validator in slash_validator_addr.iter() {
+            VALIDATOR
+                .save(&mut deps.storage, validator.clone(), &true)
+                .unwrap();
+        }
+
+        let msg = ExecuteMsg::SubmitSlashRequest {
+            slash_details: slash_details.clone(),
+            validators_public_keys: validators_public_keys.clone(),
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), slasher_info.clone(), msg);
+
+        assert!(res.is_ok());
+
+        let msg = QueryMsg::CalculateSlashHash {
+            slash_details: slash_details.clone(),
+            validators_public_keys: validators_public_keys.clone(),
+        };
+
+        let res_query = query(deps.as_ref(), env.clone(), slasher_info.clone(), msg).unwrap();
+
+        let result: CalculateSlashHashResponse = from_json(&res_query).unwrap();
+
+        let slash_hash = res.unwrap().events[0].attributes[0].value.clone();
+
+        assert_eq!(slash_hash, result.message_bytes_hex);
+    }
+
+    #[test]
     fn test_get_minimal_slash_signature() {
-        let (mut deps, env, _info, _delegation_manager, _initial_owner, _pauser, _unpauser) =
+        let (mut deps, env, info, _delegation_manager, _initial_owner, _pauser, _unpauser) =
             instantiate_contract();
 
         let minimal_signature: u64 = 10;
@@ -906,7 +1048,7 @@ mod tests {
         let query_msg = QueryMsg::GetMinimalSlashSignature {};
 
         let response: MinimalSlashSignatureResponse =
-            from_json(&query(deps.as_ref(), env.clone(), query_msg.clone()).unwrap()).unwrap();
+            from_json(&query(deps.as_ref(), env.clone(), info.clone(),query_msg.clone()).unwrap()).unwrap();
 
         assert_eq!(response.minimal_slash_signature, minimal_signature);
 
@@ -916,7 +1058,7 @@ mod tests {
             .unwrap();
 
         let response: MinimalSlashSignatureResponse =
-            from_json(&query(deps.as_ref(), env, query_msg.clone()).unwrap()).unwrap();
+            from_json(&query(deps.as_ref(), env, info.clone(), query_msg.clone()).unwrap()).unwrap();
 
         assert_eq!(response.minimal_slash_signature, new_minimal_signature);
     }

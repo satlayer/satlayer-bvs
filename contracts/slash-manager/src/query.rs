@@ -15,3 +15,8 @@ pub struct ValidatorResponse {
 pub struct MinimalSlashSignatureResponse {
     pub minimal_slash_signature: u64,
 }
+
+#[cw_serde]
+pub struct CalculateSlashHashResponse {
+    pub message_bytes_hex: String,
+}
