@@ -1,7 +1,10 @@
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-    query::{MinimalSlashSignatureResponse, SlashDetailsResponse, ValidatorResponse, CalculateSlashHashResponse},
+    query::{
+        CalculateSlashHashResponse, MinimalSlashSignatureResponse, SlashDetailsResponse,
+        ValidatorResponse,
+    },
     state::{
         DELEGATION_MANAGER, MINIMAL_SLASH_SIGNATURE, OWNER, SLASHER, SLASH_DETAILS,
         STRATEGY_MANAGER, VALIDATOR,
@@ -227,7 +230,10 @@ pub fn submit_slash_request(
     );
     let slash_hash_hex = hex::encode(slash_hash.clone());
 
-    println!("Submit Slash Request - Calculated Slash Hash: {:?}", slash_hash_hex);
+    println!(
+        "Submit Slash Request - Calculated Slash Hash: {:?}",
+        slash_hash_hex
+    );
 
     SLASH_DETAILS.save(deps.storage, slash_hash_hex.clone(), &slash_details)?;
 
@@ -487,11 +493,10 @@ pub fn query(deps: Deps, env: Env, info: MessageInfo, msg: QueryMsg) -> StdResul
         QueryMsg::GetMinimalSlashSignature {} => {
             to_json_binary(&query_minimal_slash_signature(deps)?)
         }
-        QueryMsg::CalculateSlashHash { 
-            slash_details, 
-            validators_public_keys
+        QueryMsg::CalculateSlashHash {
+            slash_details,
+            validators_public_keys,
         } => {
-
             let slasher_addr = deps.api.addr_validate(&slash_details.slasher)?;
             let operator_addr = deps.api.addr_validate(&slash_details.operator)?;
             let slash_validator = validate_addresses(deps.api, &slash_details.slash_validator)?;
@@ -546,8 +551,8 @@ fn query_minimal_slash_signature(deps: Deps) -> StdResult<MinimalSlashSignatureR
 fn query_calculate_slash_hash(
     env: Env,
     info: MessageInfo,
-    slash_details: SlashDetails, 
-    validators_public_keys: Vec<Binary>
+    slash_details: SlashDetails,
+    validators_public_keys: Vec<Binary>,
 ) -> StdResult<CalculateSlashHashResponse> {
     let message_bytes = calculate_slash_hash(
         &info.sender,
@@ -936,7 +941,8 @@ mod tests {
         };
 
         let response: ValidatorResponse =
-            from_json(&query(deps.as_ref(), env.clone(), info.clone(),query_msg).unwrap()).unwrap();
+            from_json(&query(deps.as_ref(), env.clone(), info.clone(), query_msg).unwrap())
+                .unwrap();
 
         assert_eq!(response.is_validator, true);
 
@@ -954,7 +960,7 @@ mod tests {
     #[test]
     fn test_query_calculate_slash_hash() {
         let (mut deps, env, _info, delegation_manager, _initial_owner, _pauser, _unpauser) =
-        instantiate_contract();
+            instantiate_contract();
 
         let slasher_addr = deps.api.addr_make("slasher");
         let operator_addr = deps.api.addr_make("operator");
@@ -1048,7 +1054,8 @@ mod tests {
         let query_msg = QueryMsg::GetMinimalSlashSignature {};
 
         let response: MinimalSlashSignatureResponse =
-            from_json(&query(deps.as_ref(), env.clone(), info.clone(),query_msg.clone()).unwrap()).unwrap();
+            from_json(&query(deps.as_ref(), env.clone(), info.clone(), query_msg.clone()).unwrap())
+                .unwrap();
 
         assert_eq!(response.minimal_slash_signature, minimal_signature);
 
@@ -1058,7 +1065,8 @@ mod tests {
             .unwrap();
 
         let response: MinimalSlashSignatureResponse =
-            from_json(&query(deps.as_ref(), env, info.clone(), query_msg.clone()).unwrap()).unwrap();
+            from_json(&query(deps.as_ref(), env, info.clone(), query_msg.clone()).unwrap())
+                .unwrap();
 
         assert_eq!(response.minimal_slash_signature, new_minimal_signature);
     }

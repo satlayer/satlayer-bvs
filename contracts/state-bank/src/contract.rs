@@ -139,13 +139,8 @@ mod tests {
 
         let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-        assert_eq!(3, res.attributes.len());
-        assert_eq!(("method", "set"), res.attributes[0]);
-        assert_eq!(("key", "temperature"), res.attributes[1]);
-        assert_eq!(("value", "25"), res.attributes[2]);
-
         assert_eq!(1, res.events.len());
-        assert_eq!("UpdateState", res.events[0].ty);
+        assert_eq!("execute_set", res.events[0].ty);
         assert_eq!(
             vec![("sender", "alice"), ("key", "temperature"), ("value", "25"),],
             res.events[0].attributes
@@ -227,12 +222,8 @@ mod tests {
         };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-        assert_eq!(2, res.attributes.len());
-        assert_eq!(("method", "add_registered_avs_contract"), res.attributes[0]);
-        assert_eq!(("address", avs_contract_address), res.attributes[1]);
-
         assert_eq!(1, res.events.len());
-        assert_eq!("RegisteredAvsContractAdded", res.events[0].ty);
+        assert_eq!("add_registered_avs_contract", res.events[0].ty);
         assert_eq!(
             vec![("sender", "admin"), ("address", avs_contract_address),],
             res.events[0].attributes
@@ -254,9 +245,11 @@ mod tests {
         let set_info = message_info(&Addr::unchecked(avs_contract_address), &[]);
         let set_res = execute(deps.as_mut(), env, set_info, set_msg).unwrap();
 
-        assert_eq!(3, set_res.attributes.len());
-        assert_eq!(("method", "set"), set_res.attributes[0]);
-        assert_eq!(("key", "temperature"), set_res.attributes[1]);
-        assert_eq!(("value", "25"), set_res.attributes[2]);
+        assert_eq!(1, set_res.events.len());
+        assert_eq!("execute_set", set_res.events[0].ty);
+        assert_eq!(
+            vec![("sender", avs_contract_address), ("key", "temperature"), ("value", "25"),],
+            set_res.events[0].attributes
+        );
     }
 }
