@@ -69,6 +69,7 @@ pub enum QueryMsg {
 
     #[returns(CalculateSlashHashResponse)]
     CalculateSlashHash {
+        sender: String,
         slash_details: ExecuteSlashDetails,
         validators_public_keys: Vec<String>,
     },
