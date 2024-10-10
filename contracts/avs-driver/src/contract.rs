@@ -122,18 +122,22 @@ mod tests {
         let msg = ExecuteMsg::ExecuteAvsOffchain { task_id };
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
-        assert_eq!(2, res.attributes.len());
-        assert_eq!(("method", "ExecuteAvsOffchain"), res.attributes[0]);
-        assert_eq!(("taskId", task_id.to_string()), res.attributes[1]);
-
         assert_eq!(1, res.events.len());
-        assert_eq!("ExecuteAVSOffchain", res.events[0].ty);
+
+        assert_eq!("execute_avs_offchain", res.events[0].ty);
+
         assert_eq!(
+            res.events[0].attributes,
             vec![
-                ("sender", avs_contract.as_str()),
-                ("taskId", &task_id.to_string()),
-            ],
-            res.events[0].attributes
+                cosmwasm_std::Attribute {
+                    key: "sender".to_string(),
+                    value: avs_contract.to_string(),
+                },
+                cosmwasm_std::Attribute {
+                    key: "task_id".to_string(),
+                    value: task_id.to_string(),
+                },
+            ]
         );
     }
 
@@ -183,12 +187,8 @@ mod tests {
 
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
-        assert_eq!(2, res.attributes.len());
-        assert_eq!(("method", "add_registered_avs_contract"), res.attributes[0]);
-        assert_eq!(("address", avs_contract_address), res.attributes[1]);
-
         assert_eq!(1, res.events.len());
-        assert_eq!("RegisteredAvsContractAdded", res.events[0].ty);
+        assert_eq!("add_registered_avs_contract", res.events[0].ty);
         assert_eq!(
             vec![("sender", "admin"), ("address", avs_contract_address),],
             res.events[0].attributes

@@ -1,4 +1,7 @@
-use crate::query::{MinimalSlashSignatureResponse, SlashDetailsResponse, ValidatorResponse, CalculateSlashHashResponse};
+use crate::query::{
+    CalculateSlashHashResponse, MinimalSlashSignatureResponse, SlashDetailsResponse,
+    ValidatorResponse,
+};
 use crate::utils::ExecuteSlashDetails;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
@@ -65,10 +68,11 @@ pub enum QueryMsg {
     GetMinimalSlashSignature {},
 
     #[returns(CalculateSlashHashResponse)]
-    CalculateSlashHash { 
+    CalculateSlashHash {
+        sender: String,
         slash_details: ExecuteSlashDetails,
-        validators_public_keys: Vec<String> 
-    }
+        validators_public_keys: Vec<String>,
+    },
 }
 
 #[cw_serde]
