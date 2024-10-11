@@ -6,7 +6,7 @@ use cw_storage_plus::{Item, Map};
 #[cw_serde]
 pub struct DelegationManagerState {
     pub strategy_manager: Addr,
-    pub slasher: Addr,
+    pub slash_manager: Addr,
 }
 
 pub const DELEGATION_MANAGER_STATE: Item<DelegationManagerState> =
@@ -19,7 +19,7 @@ pub const PENDING_WITHDRAWALS: Map<&[u8], bool> = Map::new("pending_withdrawals"
 pub const STRATEGY_WITHDRAWAL_DELAY_BLOCKS: Map<&Addr, u64> =
     Map::new("strategy_withdrawal_delay_blocks");
 pub const STRATEGY_MANAGER: Item<Addr> = Item::new("strategy_manager");
-pub const SLASHER: Item<Addr> = Item::new("slasher");
+pub const SLASH_MANAGER: Item<Addr> = Item::new("slash_manager");
 pub const MIN_WITHDRAWAL_DELAY_BLOCKS: Item<u64> = Item::new("min_withdrawal_delay_blocks");
 pub const CUMULATIVE_WITHDRAWALS_QUEUED: Map<&Addr, Uint128> =
     Map::new("cumulative_withdrawals_queued");
