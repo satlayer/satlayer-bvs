@@ -14,7 +14,7 @@ use crate::{
     state::{
         DelegationManagerState, CUMULATIVE_WITHDRAWALS_QUEUED, DELEGATED_TO,
         DELEGATION_APPROVER_SALT_SPENT, DELEGATION_MANAGER_STATE, MIN_WITHDRAWAL_DELAY_BLOCKS,
-        OPERATOR_DETAILS, OPERATOR_SHARES, OWNER, PENDING_WITHDRAWALS, SLASHER, STAKER_NONCE,
+        OPERATOR_DETAILS, OPERATOR_SHARES, OWNER, PENDING_WITHDRAWALS, SLASH_MANAGER, STAKER_NONCE,
         STRATEGY_MANAGER, STRATEGY_WITHDRAWAL_DELAY_BLOCKS,
     },
     utils::{
@@ -57,12 +57,12 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let strategy_manager = deps.api.addr_validate(&msg.strategy_manager)?;
-    let slasher = deps.api.addr_validate(&msg.slasher)?;
+    let slash_manager = deps.api.addr_validate(&msg.slasher)?;
     let initial_owner = deps.api.addr_validate(&msg.initial_owner)?;
 
     let state = DelegationManagerState {
         strategy_manager: strategy_manager.clone(),
-        slasher: slasher.clone(),
+        slash_manager: slash_manager.clone(),
     };
 
     let pauser = deps.api.addr_validate(&msg.pauser)?;
@@ -73,7 +73,7 @@ pub fn instantiate(
 
     DELEGATION_MANAGER_STATE.save(deps.storage, &state)?;
     STRATEGY_MANAGER.save(deps.storage, &strategy_manager)?;
-    SLASHER.save(deps.storage, &slasher)?;
+    SLASH_MANAGER.save(deps.storage, &slash_manager)?;
     OWNER.save(deps.storage, &initial_owner)?;
     PAUSED_STATE.save(deps.storage, &msg.initial_paused_status)?;
 
@@ -92,7 +92,7 @@ pub fn instantiate(
     let response = Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("strategy_manager", state.strategy_manager.to_string())
-        .add_attribute("slasher", state.slasher.to_string())
+        .add_attribute("slasher", state.slash_manager.to_string())
         .add_attribute(
             "min_withdrawal_delay_blocks",
             msg.min_withdrawal_delay_blocks.to_string(),
@@ -297,6 +297,10 @@ pub fn execute(
 
             decrease_delegated_shares(deps, info, staker_addr, strategy_addr, shares)
         }
+        ExecuteMsg::SetSlashManager { new_slash_manager } => {
+            let new_slash_manager_addr = deps.api.addr_validate(&new_slash_manager)?;
+            set_slash_manager(deps, info, new_slash_manager_addr)
+        }
         ExecuteMsg::SetMinWithdrawalDelayBlocks {
             new_min_withdrawal_delay_blocks,
         } => set_min_withdrawal_delay_blocks(deps, info, new_min_withdrawal_delay_blocks),
@@ -346,6 +350,23 @@ pub fn set_min_withdrawal_delay_blocks(
     only_owner(deps.as_ref(), &info)?;
 
     set_min_withdrawal_delay_blocks_internal(deps, new_min_withdrawal_delay_blocks)
+}
+
+pub fn set_slash_manager(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_slash_manager: Addr
+) -> Result<Response, ContractError> {
+    only_owner(deps.as_ref(), &info)?;
+
+    SLASH_MANAGER.save(deps.storage, &new_slash_manager)?;
+
+    let event = Event::new("SlashManagerSet")
+        .add_attribute("method", "set_slash_manager")
+        .add_attribute("new_slash_manager", new_slash_manager.to_string());
+
+    Ok(Response::new().add_event(event))
+
 }
 
 pub fn set_strategy_withdrawal_delay_blocks(
@@ -1110,7 +1131,7 @@ fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
 
 fn only_strategy_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let state = DELEGATION_MANAGER_STATE.load(deps.storage)?;
-    if info.sender != state.strategy_manager && info.sender != state.slasher {
+    if info.sender != state.strategy_manager && info.sender != state.slash_manager {
         return Err(ContractError::Unauthorized {});
     }
     Ok(())
@@ -1636,12 +1657,12 @@ mod tests {
 
         let state = DELEGATION_MANAGER_STATE.load(&deps.storage).unwrap();
         assert_eq!(state.strategy_manager, Addr::unchecked(strategy_manager));
-        assert_eq!(state.slasher, Addr::unchecked(slasher));
+        assert_eq!(state.slash_manager, Addr::unchecked(slasher));
 
         let strategy_manager = STRATEGY_MANAGER.load(&deps.storage).unwrap();
         assert_eq!(strategy_manager, Addr::unchecked(strategy_manager.clone()));
 
-        let slasher = SLASHER.load(&deps.storage).unwrap();
+        let slasher = SLASH_MANAGER.load(&deps.storage).unwrap();
         assert_eq!(slasher, Addr::unchecked(slasher.clone()));
 
         let owner = OWNER.load(&deps.storage).unwrap();
@@ -1753,6 +1774,28 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
+    }
+
+    #[test]
+    fn test_set_slash_manager() {
+        let (mut deps, env, owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
+            instantiate_contract();
+
+        let new_slash_manager = deps.api.addr_make("new_slash_manager").to_string();
+        let execute_msg = ExecuteMsg::SetSlashManager { 
+            new_slash_manager: new_slash_manager.clone() 
+        };
+        let res = execute(deps.as_mut(), env.clone(), owner_info.clone(), execute_msg).unwrap();
+
+        assert_eq!(res.events.len(), 1);
+        assert_eq!(res.events[0].ty, "SlashManagerSet");
+        assert_eq!(res.events[0].attributes[0].key, "method");
+        assert_eq!(res.events[0].attributes[0].value, "set_slash_manager");
+        assert_eq!(res.events[0].attributes[1].key, "new_slash_manager");
+        assert_eq!(res.events[0].attributes[1].value, new_slash_manager.clone());
+
+        let state = SLASH_MANAGER.load(&deps.storage).unwrap();
+        assert_eq!(state, Addr::unchecked(new_slash_manager));
     }
 
     #[test]

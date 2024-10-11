@@ -82,6 +82,9 @@ pub enum ExecuteMsg {
     SetMinWithdrawalDelayBlocks {
         new_min_withdrawal_delay_blocks: u64,
     },
+    SetSlashManager {
+        new_slash_manager: String,
+    },
     SetStrategyWithdrawalDelayBlocks {
         strategies: Vec<String>,
         withdrawal_delay_blocks: Vec<u64>,
