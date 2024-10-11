@@ -41,9 +41,11 @@ pub fn instantiate(
 
     let owner = deps.api.addr_validate(&msg.initial_owner)?;
     let delegation_manager = deps.api.addr_validate(&msg.delegation_manager)?;
+    let strategy_manager = deps.api.addr_validate(&msg.strategy_manager)?;
 
     OWNER.save(deps.storage, &owner)?;
     DELEGATION_MANAGER.save(deps.storage, &delegation_manager)?;
+    STRATEGY_MANAGER.save(deps.storage, &strategy_manager)?;
 
     let pauser = deps.api.addr_validate(&msg.pauser)?;
     let unpauser = deps.api.addr_validate(&msg.unpauser)?;
@@ -624,6 +626,7 @@ mod tests {
 
         let initial_owner = deps.api.addr_make("creator");
         let delegation_manager = deps.api.addr_make("delegation_manager");
+        let strategy_manager = deps.api.addr_make("strategy_manager");
         let pauser = deps.api.addr_make("pauser");
         let unpauser = deps.api.addr_make("unpauser");
 
@@ -632,6 +635,7 @@ mod tests {
         let msg = InstantiateMsg {
             initial_owner: initial_owner.to_string(),
             delegation_manager: delegation_manager.to_string(),
+            strategy_manager: strategy_manager.to_string(),
             pauser: pauser.to_string(),
             unpauser: unpauser.to_string(),
             initial_paused_status: 0,
@@ -667,6 +671,7 @@ mod tests {
         let invalid_msg = InstantiateMsg {
             initial_owner: "invalid_address".to_string(),
             delegation_manager: delegation_manager.to_string(),
+            strategy_manager: strategy_manager.to_string(),
             pauser: pauser.to_string(),
             unpauser: unpauser.to_string(),
             initial_paused_status: 0,
@@ -695,6 +700,7 @@ mod tests {
 
         let initial_owner = deps.api.addr_make("creator");
         let delegation_manager = deps.api.addr_make("delegation_manager");
+        let strategy_manager = deps.api.addr_make("strategy_manager");
         let pauser = deps.api.addr_make("pauser");
         let unpauser = deps.api.addr_make("unpauser");
 
@@ -703,6 +709,7 @@ mod tests {
         let msg = InstantiateMsg {
             initial_owner: initial_owner.to_string(),
             delegation_manager: delegation_manager.to_string(),
+            strategy_manager: strategy_manager.to_string(),
             pauser: pauser.to_string(),
             unpauser: unpauser.to_string(),
             initial_paused_status: 0,
