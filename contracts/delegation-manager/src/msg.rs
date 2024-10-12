@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 #[cw_serde]
 pub struct InstantiateMsg {
     pub strategy_manager: String,
-    pub slasher: String,
+    pub slash_manager: String,
     pub min_withdrawal_delay_blocks: u64,
     pub initial_owner: String,
     pub strategies: Vec<String>,

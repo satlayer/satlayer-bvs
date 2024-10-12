@@ -57,7 +57,7 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let strategy_manager = deps.api.addr_validate(&msg.strategy_manager)?;
-    let slash_manager = deps.api.addr_validate(&msg.slasher)?;
+    let slash_manager = deps.api.addr_validate(&msg.slash_manager)?;
     let initial_owner = deps.api.addr_validate(&msg.initial_owner)?;
 
     let state = DelegationManagerState {
@@ -1629,7 +1629,7 @@ mod tests {
 
         let msg = InstantiateMsg {
             strategy_manager: strategy_manager.clone(),
-            slasher: slasher.clone(),
+            slash_manager: slasher.clone(),
             min_withdrawal_delay_blocks: 100,
             initial_owner: initial_owner.clone(),
             pauser: pauser.clone(),
@@ -1711,7 +1711,7 @@ mod tests {
 
         let msg = InstantiateMsg {
             strategy_manager: strategy_manager.clone(),
-            slasher: slasher.clone(),
+            slash_manager: slasher.clone(),
             min_withdrawal_delay_blocks: 100,
             initial_owner: owner.clone(),
             pauser: pauser.clone(),
