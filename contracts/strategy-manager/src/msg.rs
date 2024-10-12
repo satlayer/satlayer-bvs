@@ -12,7 +12,7 @@ use cosmwasm_std::Uint128;
 #[cw_serde]
 pub struct InstantiateMsg {
     pub delegation_manager: String,
-    pub slasher: String,
+    pub slash_manager: String,
     pub strategy_factory: String,
     pub initial_strategy_whitelister: String,
     pub initial_owner: String,
@@ -70,6 +70,9 @@ pub enum ExecuteMsg {
     },
     SetDelegationManager {
         new_delegation_manager: String,
+    },
+    SetSlashManager {
+        new_slash_manager: String,
     },
     SetStrategyFactory {
         new_strategy_factory: String,

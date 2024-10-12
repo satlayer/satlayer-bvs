@@ -355,7 +355,7 @@ pub fn set_min_withdrawal_delay_blocks(
 pub fn set_slash_manager(
     deps: DepsMut,
     info: MessageInfo,
-    new_slash_manager: Addr
+    new_slash_manager: Addr,
 ) -> Result<Response, ContractError> {
     only_owner(deps.as_ref(), &info)?;
 
@@ -366,7 +366,6 @@ pub fn set_slash_manager(
         .add_attribute("new_slash_manager", new_slash_manager.to_string());
 
     Ok(Response::new().add_event(event))
-
 }
 
 pub fn set_strategy_withdrawal_delay_blocks(
@@ -1782,8 +1781,8 @@ mod tests {
             instantiate_contract();
 
         let new_slash_manager = deps.api.addr_make("new_slash_manager").to_string();
-        let execute_msg = ExecuteMsg::SetSlashManager { 
-            new_slash_manager: new_slash_manager.clone() 
+        let execute_msg = ExecuteMsg::SetSlashManager {
+            new_slash_manager: new_slash_manager.clone(),
         };
         let res = execute(deps.as_mut(), env.clone(), owner_info.clone(), execute_msg).unwrap();
 
