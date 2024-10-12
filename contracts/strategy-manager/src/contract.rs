@@ -48,14 +48,14 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let delegation_manager = deps.api.addr_validate(&msg.delegation_manager)?;
-    let slasher = deps.api.addr_validate(&msg.slasher)?;
+    let slash_manager = deps.api.addr_validate(&msg.slash_manager)?;
     let initial_strategy_whitelister = deps.api.addr_validate(&msg.initial_strategy_whitelister)?;
     let initial_owner = deps.api.addr_validate(&msg.initial_owner)?;
     let strategy_factory = deps.api.addr_validate(&msg.strategy_factory)?;
 
     let state = StrategyManagerState {
         delegation_manager: delegation_manager.clone(),
-        slasher: slasher.clone(),
+        slash_manager: slash_manager.clone(),
         strategy_factory: strategy_factory.clone(),
     };
 
@@ -73,7 +73,7 @@ pub fn instantiate(
     Ok(Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("delegation_manager", state.delegation_manager.to_string())
-        .add_attribute("slasher", state.slasher.to_string())
+        .add_attribute("slasher", state.slash_manager.to_string())
         .add_attribute(
             "strategy_whitelister",
             msg.initial_strategy_whitelister.to_string(),
@@ -209,6 +209,11 @@ pub fn execute(
 
             set_delegation_manager(deps, info, new_delegation_manager_addr)
         }
+        ExecuteMsg::SetSlashManager { new_slash_manager } => {
+            let new_slash_manager_addr = deps.api.addr_validate(&new_slash_manager)?;
+
+            set_slash_manager(deps, info, new_slash_manager_addr)
+        }
         ExecuteMsg::SetStrategyFactory {
             new_strategy_factory,
         } => {
@@ -254,6 +259,25 @@ pub fn set_delegation_manager(
     STRATEGY_MANAGER_STATE.save(deps.storage, &state)?;
 
     Ok(Response::new())
+}
+
+pub fn set_slash_manager(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_slash_manager: Addr,
+) -> Result<Response, ContractError> {
+    only_owner(deps.as_ref(), &info)?;
+
+    let mut state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
+
+    state.slash_manager = new_slash_manager.clone();
+    STRATEGY_MANAGER_STATE.save(deps.storage, &state)?;
+
+    let event = Event::new("SlashManagerSet")
+        .add_attribute("method", "set_slash_manager")
+        .add_attribute("new_slash_manager", new_slash_manager.to_string());
+
+    Ok(Response::new().add_event(event))
 }
 
 pub fn set_strategy_factory(
@@ -732,7 +756,7 @@ fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
 
 fn only_delegation_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
-    if info.sender != state.delegation_manager && info.sender != state.slasher {
+    if info.sender != state.delegation_manager && info.sender != state.slash_manager {
         return Err(ContractError::Unauthorized {});
     }
     Ok(())
@@ -1025,7 +1049,7 @@ mod tests {
         let msg = InstantiateMsg {
             initial_owner: owner.clone(),
             delegation_manager: delegation_manager.clone(),
-            slasher: slasher.clone(),
+            slash_manager: slasher.clone(),
             strategy_factory: strategy_factory.clone(),
             initial_strategy_whitelister: strategy_whitelister.clone(),
             pauser: pauser.clone(),
@@ -1056,7 +1080,7 @@ mod tests {
             Addr::unchecked(delegation_manager.clone())
         );
         assert_eq!(
-            strategy_manager_state.slasher,
+            strategy_manager_state.slash_manager,
             Addr::unchecked(slasher.clone())
         );
 
@@ -1100,7 +1124,7 @@ mod tests {
         let msg = InstantiateMsg {
             initial_owner: owner.clone(),
             delegation_manager: delegation_manager.clone(),
-            slasher: slasher.clone(),
+            slash_manager: slasher.clone(),
             strategy_factory: strategy_factory.clone(),
             initial_strategy_whitelister: strategy_whitelister.clone(),
             pauser: pauser.clone(),
@@ -2670,6 +2694,59 @@ mod tests {
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
+    }
+
+    #[test]
+    fn test_set_slash_manager() {
+        let (
+            mut deps,
+            env,
+            owner_info,
+            _info_delegation_manager,
+            _info_whitelister,
+            _pauser_info,
+            _unpauser_info,
+        ) = instantiate_contract();
+
+        let new_slash_manager = deps.api.addr_make("new_slash_manager");
+
+        let msg = ExecuteMsg::SetSlashManager {
+            new_slash_manager: new_slash_manager.to_string(),
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();
+
+        let events = res.events;
+        assert_eq!(events.len(), 1);
+        let event = &events[0];
+        assert_eq!(event.ty, "SlashManagerSet");
+        assert_eq!(event.attributes.len(), 2);
+        assert_eq!(event.attributes[0].key, "method");
+        assert_eq!(event.attributes[0].value, "set_slash_manager");
+        assert_eq!(event.attributes[1].key, "new_slash_manager");
+        assert_eq!(event.attributes[1].value, new_slash_manager.to_string());
+
+        let state = STRATEGY_MANAGER_STATE.load(&deps.storage).unwrap();
+        assert_eq!(state.slash_manager, new_slash_manager);
+
+        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
+
+        let msg = ExecuteMsg::SetSlashManager {
+            new_slash_manager: new_slash_manager.to_string(),
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), info_unauthorized, msg);
+
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::Unauthorized {} => (),
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        let state = STRATEGY_MANAGER_STATE.load(&deps.storage).unwrap();
+        assert_eq!(state.slash_manager, new_slash_manager);
     }
 
     #[test]

@@ -950,8 +950,7 @@ mod tests {
         };
 
         let response: ValidatorResponse =
-            from_json(&query(deps.as_ref(), env.clone(), query_msg).unwrap())
-                .unwrap();
+            from_json(&query(deps.as_ref(), env.clone(), query_msg).unwrap()).unwrap();
 
         assert_eq!(response.is_validator, true);
 
@@ -1064,8 +1063,7 @@ mod tests {
         let query_msg = QueryMsg::GetMinimalSlashSignature {};
 
         let response: MinimalSlashSignatureResponse =
-            from_json(&query(deps.as_ref(), env.clone(), query_msg.clone()).unwrap())
-                .unwrap();
+            from_json(&query(deps.as_ref(), env.clone(), query_msg.clone()).unwrap()).unwrap();
 
         assert_eq!(response.minimal_slash_signature, minimal_signature);
 
@@ -1075,8 +1073,7 @@ mod tests {
             .unwrap();
 
         let response: MinimalSlashSignatureResponse =
-            from_json(&query(deps.as_ref(), env, query_msg.clone()).unwrap())
-                .unwrap();
+            from_json(&query(deps.as_ref(), env, query_msg.clone()).unwrap()).unwrap();
 
         assert_eq!(response.minimal_slash_signature, new_minimal_signature);
     }

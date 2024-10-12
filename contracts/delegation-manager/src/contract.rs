@@ -57,7 +57,7 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let strategy_manager = deps.api.addr_validate(&msg.strategy_manager)?;
-    let slash_manager = deps.api.addr_validate(&msg.slasher)?;
+    let slash_manager = deps.api.addr_validate(&msg.slash_manager)?;
     let initial_owner = deps.api.addr_validate(&msg.initial_owner)?;
 
     let state = DelegationManagerState {
@@ -355,7 +355,7 @@ pub fn set_min_withdrawal_delay_blocks(
 pub fn set_slash_manager(
     deps: DepsMut,
     info: MessageInfo,
-    new_slash_manager: Addr
+    new_slash_manager: Addr,
 ) -> Result<Response, ContractError> {
     only_owner(deps.as_ref(), &info)?;
 
@@ -366,7 +366,6 @@ pub fn set_slash_manager(
         .add_attribute("new_slash_manager", new_slash_manager.to_string());
 
     Ok(Response::new().add_event(event))
-
 }
 
 pub fn set_strategy_withdrawal_delay_blocks(
@@ -1630,7 +1629,7 @@ mod tests {
 
         let msg = InstantiateMsg {
             strategy_manager: strategy_manager.clone(),
-            slasher: slasher.clone(),
+            slash_manager: slasher.clone(),
             min_withdrawal_delay_blocks: 100,
             initial_owner: initial_owner.clone(),
             pauser: pauser.clone(),
@@ -1712,7 +1711,7 @@ mod tests {
 
         let msg = InstantiateMsg {
             strategy_manager: strategy_manager.clone(),
-            slasher: slasher.clone(),
+            slash_manager: slasher.clone(),
             min_withdrawal_delay_blocks: 100,
             initial_owner: owner.clone(),
             pauser: pauser.clone(),
@@ -1782,8 +1781,8 @@ mod tests {
             instantiate_contract();
 
         let new_slash_manager = deps.api.addr_make("new_slash_manager").to_string();
-        let execute_msg = ExecuteMsg::SetSlashManager { 
-            new_slash_manager: new_slash_manager.clone() 
+        let execute_msg = ExecuteMsg::SetSlashManager {
+            new_slash_manager: new_slash_manager.clone(),
         };
         let res = execute(deps.as_mut(), env.clone(), owner_info.clone(), execute_msg).unwrap();
 

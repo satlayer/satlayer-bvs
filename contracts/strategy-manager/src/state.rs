@@ -5,7 +5,7 @@ use cw_storage_plus::{Item, Map};
 #[cw_serde]
 pub struct StrategyManagerState {
     pub delegation_manager: Addr,
-    pub slasher: Addr,
+    pub slash_manager: Addr,
     pub strategy_factory: Addr,
 }
 

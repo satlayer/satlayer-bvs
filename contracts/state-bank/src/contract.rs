@@ -248,7 +248,11 @@ mod tests {
         assert_eq!(1, set_res.events.len());
         assert_eq!("execute_set", set_res.events[0].ty);
         assert_eq!(
-            vec![("sender", avs_contract_address), ("key", "temperature"), ("value", "25"),],
+            vec![
+                ("sender", avs_contract_address),
+                ("key", "temperature"),
+                ("value", "25"),
+            ],
             set_res.events[0].attributes
         );
     }
