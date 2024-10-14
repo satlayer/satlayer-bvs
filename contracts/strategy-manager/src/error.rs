@@ -12,7 +12,7 @@ pub enum ContractError {
     #[error("StrategyManager: unauthorized")]
     Unauthorized {},
 
-    #[error("StrategyManager.add_shares: invalid shares")]
+    #[error("StrategyManager: invalid shares")]
     InvalidShares {},
 
     #[error("StrategyManager.add_shares: max strategy list length exceeded")]

@@ -24,8 +24,8 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const PAUSED_DEPOSITS: u8 = 0;
 const PAUSED_WITHDRAWALS: u8 = 1;
 
-const SHARES_OFFSET: Uint128 = Uint128::new(1_000);
-const BALANCE_OFFSET: Uint128 = Uint128::new(1_000);
+const SHARES_OFFSET: Uint128 = Uint128::new(1000000000000000000);
+const BALANCE_OFFSET: Uint128 = Uint128::new(1000000000000000000);
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -684,7 +684,7 @@ mod tests {
         assert_eq!(event.ty, "exchange_rate_emitted");
         assert_eq!(event.attributes.len(), 1);
         assert_eq!(event.attributes[0].key, "exchange_rate");
-        assert_eq!(event.attributes[0].value, "1000000000");
+        assert_eq!(event.attributes[0].value, "1000000");
 
         let exchange_rate = event.attributes[0].value.parse::<u128>().unwrap();
         assert!(exchange_rate > 0, "Exchange rate should be positive");
@@ -716,7 +716,7 @@ mod tests {
         execute(deps.as_mut(), env.clone(), info.clone(), msg_deposit).unwrap();
 
         let state = STRATEGY_STATE.load(&deps.storage).unwrap();
-        assert_eq!(state.total_shares, Uint128::new(1));
+        assert_eq!(state.total_shares, Uint128::new(999));
 
         let withdraw_amount_shares = Uint128::new(1);
         let recipient = deps.api.addr_make("recipient").to_string();
@@ -749,7 +749,7 @@ mod tests {
                                 amount,
                             } => {
                                 assert_eq!(rec, recipient.to_string());
-                                assert_eq!(amount, Uint128::new(1_000));
+                                assert_eq!(amount, Uint128::new(1));
                             }
                             _ => panic!("Unexpected message type"),
                         }
@@ -762,7 +762,7 @@ mod tests {
                 assert_eq!(event.ty, "exchange_rate_emitted");
                 assert_eq!(event.attributes.len(), 1);
                 assert_eq!(event.attributes[0].key, "exchange_rate");
-                assert_eq!(event.attributes[0].value, "1000000000");
+                assert_eq!(event.attributes[0].value, "1000000");
 
                 let exchange_rate = event.attributes[0].value.parse::<u128>().unwrap();
                 assert!(exchange_rate > 0, "Exchange rate should be positive");
@@ -885,7 +885,7 @@ mod tests {
 
         match result {
             Ok(amount_to_send) => {
-                assert_eq!(amount_to_send, Uint128::new(1_001_000));
+                assert_eq!(amount_to_send, Uint128::new(1000));
             }
             Err(e) => {
                 panic!("Failed to convert shares to underlying: {:?}", e);
@@ -932,7 +932,7 @@ mod tests {
         let amount = Uint128::new(1_000);
         let share_to_send = underlying_to_share_view(deps.as_ref(), env.clone(), amount).unwrap();
 
-        assert_eq!(share_to_send, Uint128::new(1));
+        assert_eq!(share_to_send, Uint128::new(999));
     }
 
     #[test]
@@ -1101,7 +1101,7 @@ mod tests {
         let underlying_amount =
             user_underlying_view(deps.as_ref(), env.clone(), Addr::unchecked(user_addr)).unwrap();
 
-        let expected_amount = Uint128::new(1_001_000);
+        let expected_amount = Uint128::new(1000);
         assert_eq!(underlying_amount, expected_amount);
     }
 
@@ -1210,7 +1210,7 @@ mod tests {
 
         match result {
             Ok(share_to_send) => {
-                assert_eq!(share_to_send, Uint128::new(1));
+                assert_eq!(share_to_send, Uint128::new(999));
             }
             Err(e) => {
                 panic!("Failed to convert underlying to shares: {:?}", e);

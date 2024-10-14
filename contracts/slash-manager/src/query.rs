@@ -18,5 +18,5 @@ pub struct MinimalSlashSignatureResponse {
 
 #[cw_serde]
 pub struct CalculateSlashHashResponse {
-    pub message_bytes_hex: String,
+    pub message_bytes: Vec<u8>,
 }

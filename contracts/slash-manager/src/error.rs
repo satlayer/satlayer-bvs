@@ -38,4 +38,19 @@ pub enum ContractError {
 
     #[error("SlashManager.ExecuteSlashRequest: invalid validator")]
     InvalidValidator {},
+
+    #[error("SlashManager.execute_slash_request: no stakers under operator")]
+    NoStakersUnderOperator {},
+
+    #[error("SlashManager.execute_slash_request: slash share too small")]
+    SlashShareTooSmall {},
+
+    #[error("SlashManager.execute_slash_request: overflow")]
+    Overflow {},
+
+    #[error("SlashManager.execute_slash_request: underflow")]
+    Underflow {},
+
+    #[error("SlashManager.execute_slash_request: insufficient shares for staker")]
+    InsufficientSharesForStaker { staker: String },
 }
