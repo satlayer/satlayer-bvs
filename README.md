@@ -69,13 +69,16 @@ cargo run --package optimizer --release -- --input ./target/wasm32-unknown-unkno
 ### Deployed Contract Addresses on Osmosis testnet
 
 - strategy_base: osmo1arx9pfke8pc3x72xnf5rcthyq5zp2lu757x8j736a0jp5afe7ayq6v64sl
-- strategy_manager: osmo12cqmhqdecwcl8eheawuhwnz9hcuagdfttm8rgjyh6ucfvdvt5gpqd2lz7u
+- strategy_manager: osmo1p7lcc7drqdc4qlv3v5j9wd3hjey8wylyn9rtqxygl7tdxhcqvn2qhfwnt2
 - avs-directory: osmo1s06n72vlzzksu2fvlk0e2lm737nyvjrx2vtlv80gzmgzg7q5aayqfs9zme
-- delegation_manager: osmo1f8c99usxzd8a0e4p02jcfldc4w4v97q96jxy9y9k9an6ka84ep3s6nnvnj
+- delegation_manager: osmo1uplxqr00x57dd2dt9j3vnfmhxz5j9qwn2dyv6587exgsf0zpwjkqpzuzm0
 - state_bank: osmo1axj63dymth3sln5vptqy5dde28a8ptjvuukdpwrz44wp0lexgpmqpucn7k
 - avs_driver: osmo1vxexrvx2prd33ny9ydh5ksnyt2nylcw0q87as5ph824jgxc3kcyqagrf9t
 - rewards-coordinator: osmo1w3qsxj4smkfupts8vwtgn00f72qkpwns5jw0hexrnhv4vzw6gnmshus9l7
 - cw20: osmo1z63lzuke2v9azva2kktccuecgcrm4ue4hhqrw0kfkf3crtxpqpdsyl8uj5
+- strategy-base-TVLLimits: osmo1fzu4779d8yfgs5dw8k8upx5fqj3e38cewqhthpym47rrmpwjq40sc7ptdm
+- strategy-factory: osmo1f2aup80qnq3knlkjgcm98pcakvy2x3u6jn4att5makpflpptspdq8fk37g
+- slash-manager: osmo1xu6xnd47qay5dqaujlvqg6m43y2gjza3w0urfj0e2zau74mj9dlq90pxdl
 
 ### Deployed Contract Addresses on Babylon testnet
 
