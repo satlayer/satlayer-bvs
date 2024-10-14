@@ -24,8 +24,8 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const PAUSED_DEPOSITS: u8 = 0;
 const PAUSED_WITHDRAWALS: u8 = 1;
 
-const SHARES_OFFSET: Uint128 = Uint128::new(1_000);
-const BALANCE_OFFSET: Uint128 = Uint128::new(1_000);
+const SHARES_OFFSET: Uint128 = Uint128::new(1000000000000000000);
+const BALANCE_OFFSET: Uint128 = Uint128::new(1000000000000000000);
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -58,7 +58,8 @@ pub fn instantiate(
     STRATEGY_STATE.save(deps.storage, &state)?;
     PAUSED_STATE.save(deps.storage, &msg.initial_paused_status)?;
 
-    set_tvl_limits_internal(deps.branch(), msg.max_per_deposit, msg.max_total_deposits)?;
+    MAX_PER_DEPOSIT.save(deps.storage, &msg.max_per_deposit)?;
+    MAX_TOTAL_DEPOSITS.save(deps.storage, &msg.max_total_deposits)?;
 
     let underlying_token = msg.underlying_token.clone();
 
@@ -158,8 +159,10 @@ pub fn deposit(
         &env.contract.address,
     )?;
 
+    let before_balance = balance - amount;
+
     let max_total_deposits = MAX_TOTAL_DEPOSITS.load(deps.storage)?;
-    if balance + amount > max_total_deposits {
+    if before_balance + amount > max_total_deposits {
         return Err(ContractError::MaxTotalDepositsExceeded {});
     }
 

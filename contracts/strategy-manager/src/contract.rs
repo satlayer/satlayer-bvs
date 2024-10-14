@@ -35,8 +35,8 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const PAUSED_DEPOSITS: u8 = 0;
 
-const SHARES_OFFSET: Uint128 = Uint128::new(1_000);
-const BALANCE_OFFSET: Uint128 = Uint128::new(1_000);
+const SHARES_OFFSET: Uint128 = Uint128::new(1000000000000000000);
+const BALANCE_OFFSET: Uint128 = Uint128::new(1000000000000000000);
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -1586,7 +1586,7 @@ mod tests {
 
         assert_eq!(res.attributes.len(), 1);
         assert_eq!(res.attributes[0].key, "new_shares");
-        assert_eq!(res.attributes[0].value, "105");
+        assert_eq!(res.attributes[0].value, "100");
 
         // Test deposit into strategy with non-whitelisted strategy
         let non_whitelisted_strategy = deps.api.addr_make("non_whitelisted_strategy").to_string();
@@ -2382,7 +2382,7 @@ mod tests {
 
         assert_eq!(res.attributes.len(), 1);
         assert_eq!(res.attributes[0].key, "new_shares");
-        assert_eq!(res.attributes[0].value, "105");
+        assert_eq!(res.attributes[0].value, "100");
 
         let stored_nonce = NONCES.load(&deps.storage, &staker).unwrap();
         assert_eq!(stored_nonce, 1);
