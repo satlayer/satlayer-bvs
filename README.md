@@ -68,7 +68,8 @@ cargo run --package optimizer --release -- --input ./target/wasm32-unknown-unkno
 
 ### Deployed Contract Addresses on Osmosis testnet
 
-- strategy_base: osmo1arx9pfke8pc3x72xnf5rcthyq5zp2lu757x8j736a0jp5afe7ayq6v64sl
+- strategy_base1: osmo1xy70s05t52fnyzvd8z3hn99nfcqrrcds84gm9rzhfrryltt3kz6sxlnkxy
+- strategy_base2: osmo1w9d24cv5ve4xclx7usrvdgyu35y6ytk2v5rjgc6uesyyunfc4snsvlc8nc
 - strategy_manager: osmo1p7lcc7drqdc4qlv3v5j9wd3hjey8wylyn9rtqxygl7tdxhcqvn2qhfwnt2
 - avs-directory: osmo1s06n72vlzzksu2fvlk0e2lm737nyvjrx2vtlv80gzmgzg7q5aayqfs9zme
 - delegation_manager: osmo1uplxqr00x57dd2dt9j3vnfmhxz5j9qwn2dyv6587exgsf0zpwjkqpzuzm0
