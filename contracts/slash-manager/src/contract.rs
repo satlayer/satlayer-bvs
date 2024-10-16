@@ -234,16 +234,25 @@ pub fn submit_slash_request(
 
     SLASH_DETAILS.save(deps.storage, slash_hash_hex.clone(), &slash_details)?;
 
-    let event = Event::new("slash_request_submitted")
-        .add_attribute("slash_hash", slash_hash_hex.clone())
-        .add_attribute("sender", info.sender.to_string())
-        .add_attribute("operator", slash_details.operator.to_string())
-        .add_attribute("share", slash_details.share.to_string())
-        .add_attribute("start_time", slash_details.start_time.to_string())
-        .add_attribute("end_time", slash_details.end_time.to_string())
-        .add_attribute("status", slash_details.status.to_string());
+    let mut response = Response::new().add_event(
+        Event::new("slash_request_submitted")
+            .add_attribute("slash_hash", slash_hash_hex.clone())
+            .add_attribute("sender", info.sender.to_string())
+            .add_attribute("operator", slash_details.operator.to_string())
+            .add_attribute("share", slash_details.share.to_string())
+            .add_attribute("start_time", slash_details.start_time.to_string())
+            .add_attribute("end_time", slash_details.end_time.to_string())
+            .add_attribute("status", slash_details.status.to_string())
+    );
 
-    Ok(Response::new().add_event(event))
+    for validator in slash_details.slash_validator.iter() {
+        let validator_event = Event::new("slash_validator_checked")
+            .add_attribute("validator", validator.to_string());
+
+        response = response.add_event(validator_event);
+    }
+
+    Ok(response) 
 }
 
 pub fn execute_slash_request(
@@ -1145,7 +1154,7 @@ mod tests {
         assert!(res.is_ok());
 
         let res = res.unwrap();
-        assert_eq!(res.events.len(), 1);
+        assert_eq!(res.events.len(), 3);
 
         let event = &res.events[0];
         assert_eq!(event.ty, "slash_request_submitted");
@@ -1177,6 +1186,14 @@ mod tests {
 
         assert_eq!(event.attributes[6].key, "status");
         assert_eq!(event.attributes[6].value, slash_details.status.to_string());
+
+        for (i, validator) in slash_validator.iter().enumerate() {
+            let event = &res.events[i + 1];
+            assert_eq!(event.ty, "slash_validator_checked");
+            assert_eq!(event.attributes.len(), 1);
+            assert_eq!(event.attributes[0].key, "validator");
+            assert_eq!(event.attributes[0].value, validator.to_string());
+        }
 
         let slash_hash = event.attributes[0].value.clone();
         let stored_slash_details = SLASH_DETAILS.load(&deps.storage, slash_hash).unwrap();

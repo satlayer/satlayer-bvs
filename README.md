@@ -4,10 +4,10 @@ This repository contains five smart contracts developed for the Babylon blockcha
 
 ## Contracts
 
-1. **AVSManager**
+1. **AVSDirectory**
 
-   - **Description**: The AVSManager contract manages the administration and validation of services within the Babylon chain.
-   - **Purpose**: To provide robust administrative control and validation mechanisms.
+   - **Description**: The AVSDirectory contract is responsible for managing the registration and deregistration of operators with Assured Verification Services (AVS) within the Babylon blockchain ecosystem. It enables AVS providers to register their services and allows operators to securely register or deregister with an AVS. The contract ensures the integrity and security of the registration process through digital signature verification, the use of unique salts to prevent replay attacks, and expiration checks on signatures. Additionally, it offers functionality to update AVS metadata URIs, transfer ownership of the contract, and pause or unpause contract operations.
+   - **Purpose**: To provide a secure and efficient mechanism for managing the relationships between operators and AVS providers. The AVSDirectory contract ensures that only authorized operators can register with AVS services by verifying digital signatures and preventing unauthorized or duplicate registrations. By implementing strict validation and control over operator and AVS interactions, it enhances the overall security and reliability of services on the Babylon blockchain. This contract plays a crucial role in maintaining the integrity of operator registrations, safeguarding against malicious activities, and supporting the dynamic needs of AVS providers and operators.
 
 2. **DelegationManager**
 
@@ -19,17 +19,22 @@ This repository contains five smart contracts developed for the Babylon blockcha
    - **Description**: The StrategyManager contract defines and manages operational strategies.
    - **Purpose**: To implement and oversee various strategic operations.
 
-4. **SlashManager**
+4. **StrategyBase**
+
+   - **Description**: The StrategyBase contract serves as a foundational implementation for investment strategies within the Babylon blockchain ecosystem. It provides core functionalities for depositing and withdrawing underlying tokens, calculating shares, and managing the total shares of the strategy. This contract handles the conversion between underlying tokens and strategy shares using a virtual balance mechanism to mitigate rounding errors and improve precision. It also includes mechanisms to pause deposits and withdrawals, transfer ownership, and emit events related to exchange rates.
+   - **Purpose**: To offer a basic, extensible framework for building more complex investment strategies. The StrategyBase contract abstracts common functionalities required by various strategies, allowing developers to focus on implementing specific logic for yield optimization, risk management, or other strategic behaviors. By providing standardized methods for token handling and share calculations, it ensures consistency and reliability across different strategy implementations, enhancing the overall robustness of the investment ecosystem on the Babylon blockchain.
+
+5. **SlashManager**
 
    - **Description**: The SlashManager contract is responsible for slashing misbehaving validators.
    - **Purpose**: To maintain the integrity and security of the network by penalizing faulty validators.
 
-5. **RewardsCoordinator**
+6. **RewardsCoordinator**
 
    - **Description**: The RewardsCoordinator contract manages the distribution of rewards to participants.
    - **Purpose**: To ensure fair and efficient distribution of rewards to contributors.
 
-6. **StateBank**
+7. **StateBank**
    - **Description**: The StateBank contract just can be called by "set" method and emit UpdateState event.
    - **Purpose**: To UpdateState event so that it can be handled by offchain service.
 
