@@ -346,21 +346,15 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
     }
 }
 
-fn handle_instantiate_reply(deps: DepsMut, msg: Reply) -> Result<Response, ContractError> {
+fn handle_instantiate_reply(mut deps: DepsMut, msg: Reply) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
-    let contract_address = extract_contract_address_from_reply(&msg)?;
+    let contract_address = extract_contract_address_from_reply(&msg, &mut deps)?;
 
     let token_address = DEPLOYEDSTRATEGIES
         .keys(deps.storage, None, None, Order::Ascending)
         .last()
         .ok_or(StdError::not_found("Token"))??;
-
-    set_strategy_for_token(
-        deps,
-        token_address.clone(),
-        Addr::unchecked(contract_address.clone()),
-    )?;
 
     let strategies_to_whitelist = vec![Addr::unchecked(contract_address.clone())];
     let third_party_transfers_forbidden_values = vec![false];
@@ -386,7 +380,7 @@ fn handle_instantiate_reply(deps: DepsMut, msg: Reply) -> Result<Response, Contr
         .add_message(CosmosMsg::Wasm(exec_msg)))
 }
 
-fn extract_contract_address_from_reply(msg: &Reply) -> Result<String, ContractError> {
+fn extract_contract_address_from_reply(msg: &Reply, deps: &mut DepsMut) -> Result<String, ContractError> {
     let res = msg.result.clone().into_result().map_err(|e| {
         println!("InstantiateError: {:?}", e);
         ContractError::InstantiateError {}
@@ -406,6 +400,15 @@ fn extract_contract_address_from_reply(msg: &Reply) -> Result<String, ContractEr
             "failed to parse instantiate data",
         )
     })?;
+
+    let contract_address = instantiate_response.contract_address.clone();
+
+    let token_address = DEPLOYEDSTRATEGIES
+        .keys(deps.storage, None, None, Order::Ascending)
+        .last()
+        .ok_or(StdError::not_found("Token"))??;
+
+    set_strategy_for_token(deps, Addr::unchecked(token_address.clone()), Addr::unchecked(contract_address.clone()))?;
 
     Ok(instantiate_response.contract_address)
 }
@@ -483,7 +486,7 @@ fn validate_addresses(api: &dyn Api, addresses: &[String]) -> StdResult<Vec<Addr
 }
 
 fn set_strategy_for_token(
-    deps: DepsMut,
+    deps: &mut DepsMut,
     token: Addr,
     strategy: Addr,
 ) -> Result<Response, ContractError> {
@@ -857,7 +860,7 @@ mod tests {
         let token = deps.api.addr_make("token_address");
         let strategy = deps.api.addr_make("strategy_address");
 
-        let result = set_strategy_for_token(deps.as_mut(), token.clone(), strategy.clone());
+        let result = set_strategy_for_token(&mut deps.as_mut(), token.clone(), strategy.clone());
 
         assert!(result.is_ok());
 

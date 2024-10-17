@@ -87,7 +87,7 @@ docker run --rm -v "$(pwd)":/code custom-cosmwasm-optimizer:latest
 - rewards-coordinator: osmo1w3qsxj4smkfupts8vwtgn00f72qkpwns5jw0hexrnhv4vzw6gnmshus9l7
 - cw20: osmo1z63lzuke2v9azva2kktccuecgcrm4ue4hhqrw0kfkf3crtxpqpdsyl8uj5
 - strategy-base-TVLLimits: osmo1fzu4779d8yfgs5dw8k8upx5fqj3e38cewqhthpym47rrmpwjq40sc7ptdm
-- strategy-factory: osmo1f2aup80qnq3knlkjgcm98pcakvy2x3u6jn4att5makpflpptspdq8fk37g
+- strategy-factory: osmo1j7dpzhxq7kt6s59zqcdkv7e7fuz5rv5jtp3x5w9yejllan07nhtsc6d4tx
 - slash-manager: osmo1xu6xnd47qay5dqaujlvqg6m43y2gjza3w0urfj0e2zau74mj9dlq90pxdl
 
 ### Deployed Contract Addresses on Babylon testnet
