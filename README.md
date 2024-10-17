@@ -1,6 +1,6 @@
 # Satlayer
 
-This repository contains five smart contracts developed for the Babylon blockchain using Rust and CosmWasm. These contracts are designed to handle various functionalities within the Babylon ecosystem.
+ Satlayer is a comprehensive blockchain ecosystem on the Babylon network that includes a suite of interconnected contracts for managing staking, delegation, slashing, rewards distribution, and automated validator selection (AVS). The StrategyManager facilitates staker interactions with investment strategies; the DelegationManager manages the delegation of staker shares to operators; the SlashManager enforces slashing penalties for protocol violations; the RewardsCoordinator oversees the distribution and claiming of rewards; the StateBank provides a key-value store for AVS contracts; and the AVS Driver enables secure off-chain task execution for AVS contracts. Together, these contracts create a secure and efficient system for staking, delegating, rewarding, and selecting validators within the Babylon blockchain ecosystem.
 
 ## Contracts
 
@@ -10,13 +10,11 @@ This repository contains five smart contracts developed for the Babylon blockcha
 
 2. **DelegationManager**
 
-   - **Description**: The DelegationManager contract handles the delegation of tasks and roles.
-   - **Purpose**: To streamline task delegation and role assignment processes.
+   - **Description**: The DelegationManager contract is a core component of the Babylon blockchain ecosystem that facilitates the delegation of staker shares to operators. It allows stakers to delegate their shares from various strategies to trusted operators, who can manage staking operations on their behalf. The contract handles the registration of operators, including their details and metadata, and enforces delegation through signature verification to ensure security. It manages the delegation lifecycle, including delegating shares, undelegating, and queuing withdrawals with configurable delay blocks for security purposes. The contract integrates with other system components like the StrategyManager and SlashManager to coordinate share management, enforce slashing penalties, and maintain the integrity of the staking process. By providing mechanisms for controlled delegation and secure withdrawal processes, the DelegationManager enhances the flexibility and efficiency of staking operations within the Babylon network.
 
 3. **StrategyManager**
 
-   - **Description**: The StrategyManager contract defines and manages operational strategies.
-   - **Purpose**: To implement and oversee various strategic operations.
+   - **Description**: The StrategyManager contract serves as a central hub in the Babylon blockchain ecosystem, facilitating stakers' interactions with various investment strategies. It manages the processes of depositing tokens into whitelisted strategies, tracking staker shares, and enabling withdrawals of shares as tokens. The contract ensures secure and efficient management of staker assets by maintaining accurate share accounting and enforcing strict access controls. It supports off-chain approvals through signature verification, integrates with delegation and slashing mechanisms, and allows for the dynamic addition or removal of strategies from the whitelist by authorized entities. The StrategyManager enhances the overall functionality and security of staking and investment operations within the network by providing a standardized and secure interface for stakers to engage with approved strategies.
 
 4. **StrategyBase**
 
@@ -32,17 +30,19 @@ This repository contains five smart contracts developed for the Babylon blockcha
 
 7. **SlashManager**
 
-   - **Description**: The SlashManager contract is responsible for slashing misbehaving validators.
-   - **Purpose**: To maintain the integrity and security of the network by penalizing faulty validators.
+   - **Description**: The SlashManager contract is a critical component in the Babylon blockchain ecosystem responsible for enforcing slashing penalties on operators and their associated stakers for protocol violations or misconduct. Authorized entities known as slashers can submit and execute slash requests, specifying the operator to be penalized, the amount of shares to reduce, and the reason for the slashing. The contract validates these requests, ensuring they meet required criteria such as minimum signature thresholds and validator approvals. Upon validation, it interacts with the DelegationManager and StrategyManager contracts to proportionally reduce the shares of affected stakers, effectively implementing the penalty. This mechanism helps maintain network integrity and security by deterring malicious behavior and ensuring compliance with protocol rules.
 
 8. **RewardsCoordinator**
 
-   - **Description**: The RewardsCoordinator contract manages the distribution of rewards to participants.
-   - **Purpose**: To ensure fair and efficient distribution of rewards to contributors.
+   - **Description**: The RewardsCoordinator contract is responsible for managing the distribution and claiming of rewards within the Babylon blockchain ecosystem. It allows authorized entities to submit reward distributions in the form of Merkle roots, which represent the rewards allocated to earners over specific periods. Participants can claim their rewards by providing Merkle proofs that verify their entitlement within these distributions. The contract ensures that only legitimate and authorized claims are processed, thereby maintaining the integrity and fairness of the reward system. By coordinating the distribution and secure claiming of rewards, the RewardsCoordinator plays a crucial role in incentivizing participation and upholding the fairness of the network's reward mechanisms.
 
 9. **StateBank**
-   - **Description**: The StateBank contract just can be called by "set" method and emit UpdateState event.
-   - **Purpose**: To UpdateState event so that it can be handled by offchain service.
+    
+   - **Description**: The StateBank contract functions as a simple on-chain key-value store within the Babylon blockchain ecosystem. It allows registered Automated Validator Selection (AVS) contracts to securely store and update integer values associated with specific string keys. Only AVS contracts that have been registered with the StateBank can modify the stored values, ensuring that only authorized entities have write access. This mechanism enhances security by preventing unauthorized modifications while promoting transparency, as any user can query the stored values by providing the corresponding key. The StateBank thus provides a reliable and straightforward way for AVS contracts to persist and share state information on the blockchain, supporting the overall functionality and integrity of the ecosystem.
+
+10. **AVSDriver**
+    
+    - **Description**: The AVS Driver contract serves as an interface for Automated Validator Selection (AVS) contracts within the Babylon blockchain ecosystem to securely initiate off-chain tasks. It maintains a registry of authorized AVS contracts, allowing only registered contracts to trigger off-chain executions via the execute_avs_offchain function, which includes a task_id identifying the specific task. The contract emits events containing the sender's address and the task ID, enabling off-chain services to monitor and execute the corresponding tasks. By enforcing strict access control and providing a standardized mechanism for initiating off-chain operations, the AVS Driver enhances the security and reliability of interactions between on-chain contracts and off-chain services in the network.
 
 ## Development
 
@@ -57,24 +57,22 @@ These contracts are developed using Rust and CosmWasm, a powerful framework for 
 
 Each contract is located in its own directory under the `contracts` directory. You can build and test the contracts using Cargo.
 
-To build a contract:
-
-```sh
-cd contracts/AVSManager
-cargo wasm
-```
-
-To build a contract:
+Unit test contracts:
 
 ```sh
 cargo test
 ```
 
-Optimizing Wasm
-Use the provided script to optimize the Wasm output for deployment:
+Build custom cosmwasm optimizer with docker
 
 ```sh
-cargo run --package optimizer --release -- --input ./target/wasm32-unknown-unknown/release/avsmanager_contract.wasm --output ./target/wasm32-unknown-unknown/release/avsmanager_contract_optimized.wasm
+sudo docker build -t custom-cosmwasm-optimizer -f Dockerfile .
+```
+
+Generate and optimizing Wasm:
+
+```sh
+docker run --rm -v "$(pwd)":/code custom-cosmwasm-optimizer:latest
 ```
 
 ### Deployed Contract Addresses on Osmosis testnet
