@@ -7,7 +7,6 @@ This repository contains five smart contracts developed for the Babylon blockcha
 1. **AVSDirectory**
 
    - **Description**: The AVSDirectory contract is responsible for managing the registration and deregistration of operators with Assured Verification Services (AVS) within the Babylon blockchain ecosystem. It enables AVS providers to register their services and allows operators to securely register or deregister with an AVS. The contract ensures the integrity and security of the registration process through digital signature verification, the use of unique salts to prevent replay attacks, and expiration checks on signatures. Additionally, it offers functionality to update AVS metadata URIs, transfer ownership of the contract, and pause or unpause contract operations.
-   - **Purpose**: To provide a secure and efficient mechanism for managing the relationships between operators and AVS providers. The AVSDirectory contract ensures that only authorized operators can register with AVS services by verifying digital signatures and preventing unauthorized or duplicate registrations. By implementing strict validation and control over operator and AVS interactions, it enhances the overall security and reliability of services on the Babylon blockchain. This contract plays a crucial role in maintaining the integrity of operator registrations, safeguarding against malicious activities, and supporting the dynamic needs of AVS providers and operators.
 
 2. **DelegationManager**
 
@@ -22,24 +21,26 @@ This repository contains five smart contracts developed for the Babylon blockcha
 4. **StrategyBase**
 
    - **Description**: The StrategyBase contract serves as a foundational implementation for investment strategies within the Babylon blockchain ecosystem. It provides core functionalities for depositing and withdrawing underlying tokens, calculating shares, and managing the total shares of the strategy. This contract handles the conversion between underlying tokens and strategy shares using a virtual balance mechanism to mitigate rounding errors and improve precision. It also includes mechanisms to pause deposits and withdrawals, transfer ownership, and emit events related to exchange rates.
-   - **Purpose**: To offer a basic, extensible framework for building more complex investment strategies. The StrategyBase contract abstracts common functionalities required by various strategies, allowing developers to focus on implementing specific logic for yield optimization, risk management, or other strategic behaviors. By providing standardized methods for token handling and share calculations, it ensures consistency and reliability across different strategy implementations, enhancing the overall robustness of the investment ecosystem on the Babylon blockchain.
 
 5. **StrategyTVLLimits**
 
    - **Description**: The StrategyTVLLimits contract is an extension of the base strategy implementation within the Babylon blockchain ecosystem. It introduces Total Value Locked (TVL) limits to the strategy, allowing the contract owner to set maximum limits on individual deposits and the total deposits in the strategy. This contract maintains core functionalities such as depositing and withdrawing underlying tokens, calculating shares, and managing the total shares of the strategy. It includes mechanisms to pause deposits and withdrawals, transfer ownership, and emit events related to exchange rates. The addition of TVL limits provides an extra layer of control over the strategy's growth and risk exposure.
-   - **Purpose**: To enhance the basic strategy framework by incorporating TVL limits, enabling better risk management and control over the strategy's assets under management. The StrategyTVLLimits contract allows the contract owner to define maximum per-deposit amounts and total deposit limits, preventing excessive inflows that could potentially destabilize the strategy or the underlying assets. By setting these limits, the contract aims to protect the interests of all participants, maintain the strategy's stability, and align with regulatory or operational considerations. This contract is suitable for strategies where controlling the total capital invested is crucial for performance optimization and risk mitigation.
 
-5. **SlashManager**
+6. **StrategyFactory**
+
+   - **Description**: The StrategyFactory contract serves as a centralized factory for deploying and managing investment strategy contracts within the Babylon blockchain ecosystem. It allows the contract owner to create new strategy contracts for specific tokens, manage existing strategies, and enforce policies such as blacklisting tokens and controlling strategy access. The contract interacts with a StrategyManager contract to maintain a whitelist of approved strategies and to set permissions related to third-party transfers. It also includes functionalities for pausing the deployment of new strategies, transferring ownership, and updating configuration parameters like the strategy code ID and the strategy manager address.
+
+7. **SlashManager**
 
    - **Description**: The SlashManager contract is responsible for slashing misbehaving validators.
    - **Purpose**: To maintain the integrity and security of the network by penalizing faulty validators.
 
-6. **RewardsCoordinator**
+8. **RewardsCoordinator**
 
    - **Description**: The RewardsCoordinator contract manages the distribution of rewards to participants.
    - **Purpose**: To ensure fair and efficient distribution of rewards to contributors.
 
-7. **StateBank**
+9. **StateBank**
    - **Description**: The StateBank contract just can be called by "set" method and emit UpdateState event.
    - **Purpose**: To UpdateState event so that it can be handled by offchain service.
 
