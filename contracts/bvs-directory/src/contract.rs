@@ -1,20 +1,20 @@
 use crate::{
     error::ContractError,
     msg::{
-        AVSRegisterParams, ExecuteMsg, InstantiateMsg, MigrateMsg, OperatorStatusResponse,
+        BVSRegisterParams, ExecuteMsg, InstantiateMsg, MigrateMsg, OperatorStatusResponse,
         QueryMsg, SignatureWithSaltAndExpiry,
     },
     query::{
-        AVSInfoResponse, DelegationResponse, DigestHashResponse, DomainNameResponse,
+        BVSInfoResponse, DelegationResponse, DigestHashResponse, DomainNameResponse,
         DomainTypeHashResponse, OwnerResponse, RegistrationTypeHashResponse, SaltResponse,
     },
     state::{
-        AVSInfo, OperatorAVSRegistrationStatus, AVS_INFO, AVS_OPERATOR_STATUS, DELEGATION_MANAGER,
+        BVSInfo, OperatorBVSRegistrationStatus, BVS_INFO, BVS_OPERATOR_STATUS, DELEGATION_MANAGER,
         OPERATOR_SALT_SPENT, OWNER,
     },
     utils::{
         calculate_digest_hash, recover, sha256, DigestHashParams, DOMAIN_NAME, DOMAIN_TYPEHASH,
-        OPERATOR_AVS_REGISTRATION_TYPEHASH,
+        OPERATOR_BVS_REGISTRATION_TYPEHASH,
     },
 };
 use common::delegation::{OperatorResponse, QueryMsg as DelegationManagerQueryMsg};
@@ -29,7 +29,7 @@ use cw2::set_contract_version;
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const PAUSED_OPERATOR_REGISTER_DEREGISTER_TO_AVS: u8 = 0;
+const PAUSED_OPERATOR_REGISTER_DEREGISTER_TO_BVS: u8 = 0;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -68,19 +68,19 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::RegisterAVS {
-            avs_contract,
+        ExecuteMsg::RegisterBVS {
+            bvs_contract,
             state_bank,
-            avs_driver,
+            bvs_driver,
         } => {
-            let params = AVSRegisterParams {
-                avs_contract,
+            let params = BVSRegisterParams {
+                bvs_contract,
                 state_bank,
-                avs_driver,
+                bvs_driver,
             };
-            register_avs(deps, params)
+            register_bvs(deps, params)
         }
-        ExecuteMsg::RegisterOperatorToAVS {
+        ExecuteMsg::RegisterOperatorToBVS {
             operator,
             public_key,
             contract_addr,
@@ -109,11 +109,11 @@ pub fn execute(
                 signature_with_salt_and_expiry,
             )
         }
-        ExecuteMsg::DeregisterOperatorFromAVS { operator } => {
+        ExecuteMsg::DeregisterOperatorFromBVS { operator } => {
             let operator_addr = Addr::unchecked(operator);
             deregister_operator(deps, env, info, operator_addr)
         }
-        ExecuteMsg::UpdateAVSMetadataURI { metadata_uri } => {
+        ExecuteMsg::UpdateBVSMetadataURI { metadata_uri } => {
             update_metadata_uri(info, metadata_uri)
         }
         ExecuteMsg::CancelSalt { salt } => {
@@ -145,28 +145,28 @@ pub fn execute(
     }
 }
 
-pub fn register_avs(deps: DepsMut, params: AVSRegisterParams) -> Result<Response, ContractError> {
+pub fn register_bvs(deps: DepsMut, params: BVSRegisterParams) -> Result<Response, ContractError> {
     let input = format!(
         "{}{}{}",
-        params.avs_contract, params.state_bank, &params.avs_driver
+        params.bvs_contract, params.state_bank, &params.bvs_driver
     );
 
     let hash_result = sha256(input.as_bytes());
 
-    let avs_hash = hex::encode(hash_result);
+    let bvs_hash = hex::encode(hash_result);
 
-    let avs_info = AVSInfo {
-        avs_hash: avs_hash.clone(),
-        avs_contract: params.avs_contract.clone(),
+    let bvs_info = BVSInfo {
+        bvs_hash: bvs_hash.clone(),
+        bvs_contract: params.bvs_contract.clone(),
         state_bank: params.state_bank.clone(),
-        avs_driver: params.avs_driver.clone(),
+        bvs_driver: params.bvs_driver.clone(),
     };
 
-    AVS_INFO.save(deps.storage, avs_hash.clone(), &avs_info)?;
+    BVS_INFO.save(deps.storage, bvs_hash.clone(), &bvs_info)?;
 
     Ok(Response::new()
-        .add_attribute("method", "register_avs")
-        .add_attribute("avs_hash", avs_hash))
+        .add_attribute("method", "register_bvs")
+        .add_attribute("bvs_hash", bvs_hash))
 }
 
 pub fn register_operator(
@@ -178,7 +178,7 @@ pub fn register_operator(
     public_key: Binary,
     operator_signature: SignatureWithSaltAndExpiry,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_OPERATOR_REGISTER_DEREGISTER_TO_AVS)?;
+    only_when_not_paused(deps.as_ref(), PAUSED_OPERATOR_REGISTER_DEREGISTER_TO_BVS)?;
 
     if operator_signature.expiry < env.block.time.seconds() {
         return Err(ContractError::SignatureExpired {});
@@ -198,8 +198,8 @@ pub fn register_operator(
     }
 
     let status =
-        AVS_OPERATOR_STATUS.may_load(deps.storage, (info.sender.clone(), operator.clone()))?;
-    if status == Some(OperatorAVSRegistrationStatus::Registered) {
+        BVS_OPERATOR_STATUS.may_load(deps.storage, (info.sender.clone(), operator.clone()))?;
+    if status == Some(OperatorBVSRegistrationStatus::Registered) {
         return Err(ContractError::OperatorAlreadyRegistered {});
     }
 
@@ -228,18 +228,18 @@ pub fn register_operator(
         return Err(ContractError::InvalidSignature {});
     }
 
-    AVS_OPERATOR_STATUS.save(
+    BVS_OPERATOR_STATUS.save(
         deps.storage,
         (info.sender.clone(), operator.clone()),
-        &OperatorAVSRegistrationStatus::Registered,
+        &OperatorBVSRegistrationStatus::Registered,
     )?;
     OPERATOR_SALT_SPENT.save(deps.storage, (operator.clone(), salt_str.clone()), &true)?;
 
-    let event = Event::new("OperatorAVSRegistrationStatusUpdated")
+    let event = Event::new("OperatorBVSRegistrationStatusUpdated")
         .add_attribute("method", "register_operator")
         .add_attribute("operator", operator.to_string())
-        .add_attribute("avs", info.sender.to_string())
-        .add_attribute("operator_avs_registration_status", "REGISTERED");
+        .add_attribute("bvs", info.sender.to_string())
+        .add_attribute("operator_bvs_registration_status", "REGISTERED");
 
     Ok(Response::new().add_event(event))
 }
@@ -250,22 +250,22 @@ pub fn deregister_operator(
     info: MessageInfo,
     operator: Addr,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_OPERATOR_REGISTER_DEREGISTER_TO_AVS)?;
+    only_when_not_paused(deps.as_ref(), PAUSED_OPERATOR_REGISTER_DEREGISTER_TO_BVS)?;
 
     let status =
-        AVS_OPERATOR_STATUS.may_load(deps.storage, (info.sender.clone(), operator.clone()))?;
-    if status == Some(OperatorAVSRegistrationStatus::Registered) {
-        AVS_OPERATOR_STATUS.save(
+        BVS_OPERATOR_STATUS.may_load(deps.storage, (info.sender.clone(), operator.clone()))?;
+    if status == Some(OperatorBVSRegistrationStatus::Registered) {
+        BVS_OPERATOR_STATUS.save(
             deps.storage,
             (info.sender.clone(), operator.clone()),
-            &OperatorAVSRegistrationStatus::Unregistered,
+            &OperatorBVSRegistrationStatus::Unregistered,
         )?;
 
-        let event = Event::new("OperatorAVSRegistrationStatusUpdated")
+        let event = Event::new("OperatorBVSRegistrationStatusUpdated")
             .add_attribute("method", "deregister_operator")
             .add_attribute("operator", operator.to_string())
-            .add_attribute("avs", info.sender.to_string())
-            .add_attribute("operator_avs_registration_status", "UNREGISTERED");
+            .add_attribute("bvs", info.sender.to_string())
+            .add_attribute("operator_bvs_registration_status", "UNREGISTERED");
 
         return Ok(Response::new().add_event(event));
     }
@@ -277,9 +277,9 @@ pub fn update_metadata_uri(
     info: MessageInfo,
     metadata_uri: String,
 ) -> Result<Response, ContractError> {
-    let event = Event::new("AVSMetadataURIUpdated")
+    let event = Event::new("BVSMetadataURIUpdated")
         .add_attribute("method", "update_metadata_uri")
-        .add_attribute("avs", info.sender.to_string())
+        .add_attribute("bvs", info.sender.to_string())
         .add_attribute("metadata_uri", metadata_uri.clone());
 
     Ok(Response::new().add_event(event))
@@ -326,26 +326,26 @@ pub fn transfer_ownership(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetOperatorStatus { avs, operator } => {
-            let avs_addr = Addr::unchecked(avs);
+        QueryMsg::GetOperatorStatus { bvs, operator } => {
+            let bvs_addr = Addr::unchecked(bvs);
             let operator_addr = Addr::unchecked(operator);
-            to_json_binary(&query_operator_status(deps, avs_addr, operator_addr)?)
+            to_json_binary(&query_operator_status(deps, bvs_addr, operator_addr)?)
         }
         QueryMsg::CalculateDigestHash {
             operator_public_key,
-            avs,
+            bvs,
             salt,
             expiry,
             contract_addr,
         } => {
             let public_key_binary = Binary::from_base64(&operator_public_key)?;
             let salt = Binary::from_base64(&salt)?;
-            let avs_addr = Addr::unchecked(avs);
+            let bvs_addr = Addr::unchecked(bvs);
             let contract_addr = Addr::unchecked(contract_addr);
 
             let params = DigestHashParams {
                 operator_public_key: public_key_binary,
-                avs: avs_addr,
+                bvs: bvs_addr,
                 salt,
                 expiry,
                 contract_addr,
@@ -365,8 +365,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let owner_addr = query_owner(deps)?;
             to_json_binary(&owner_addr)
         }
-        QueryMsg::GetOperatorAVSRegistrationTypeHash {} => {
-            let hash_str = query_operator_avs_registration_typehash(deps)?;
+        QueryMsg::GetOperatorBVSRegistrationTypeHash {} => {
+            let hash_str = query_operator_bvs_registration_typehash(deps)?;
             to_json_binary(&hash_str)
         }
         QueryMsg::GetDomainTypeHash {} => {
@@ -377,9 +377,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let name_str = query_domain_name(deps)?;
             to_json_binary(&name_str)
         }
-        QueryMsg::GetAVSInfo { avs_hash } => {
-            let avs_info = query_avs_info(deps, avs_hash)?;
-            to_json_binary(&avs_info)
+        QueryMsg::GetBVSInfo { bvs_hash } => {
+            let bvs_info = query_bvs_info(deps, bvs_hash)?;
+            to_json_binary(&bvs_info)
         }
     }
 }
@@ -389,9 +389,9 @@ fn query_operator_status(
     user_addr: Addr,
     operator: Addr,
 ) -> StdResult<OperatorStatusResponse> {
-    let status = AVS_OPERATOR_STATUS
+    let status = BVS_OPERATOR_STATUS
         .may_load(deps.storage, (user_addr.clone(), operator.clone()))?
-        .unwrap_or(OperatorAVSRegistrationStatus::Unregistered);
+        .unwrap_or(OperatorBVSRegistrationStatus::Unregistered);
     Ok(OperatorStatusResponse { status })
 }
 
@@ -403,7 +403,7 @@ fn query_calculate_digest_hash(
     let digest_hash = calculate_digest_hash(
         env,
         &params.operator_public_key,
-        &params.avs,
+        &params.bvs,
         &params.salt,
         params.expiry,
         &params.contract_addr,
@@ -431,13 +431,13 @@ fn query_owner(deps: Deps) -> StdResult<OwnerResponse> {
     Ok(OwnerResponse { owner_addr })
 }
 
-fn query_operator_avs_registration_typehash(
+fn query_operator_bvs_registration_typehash(
     _deps: Deps,
 ) -> StdResult<RegistrationTypeHashResponse> {
-    let operator_avs_registration_type_hash =
-        String::from_utf8_lossy(OPERATOR_AVS_REGISTRATION_TYPEHASH).to_string();
+    let operator_bvs_registration_type_hash =
+        String::from_utf8_lossy(OPERATOR_BVS_REGISTRATION_TYPEHASH).to_string();
     Ok(RegistrationTypeHashResponse {
-        operator_avs_registration_type_hash,
+        operator_bvs_registration_type_hash,
     })
 }
 
@@ -451,13 +451,13 @@ fn query_domain_name(_deps: Deps) -> StdResult<DomainNameResponse> {
     Ok(DomainNameResponse { domain_name })
 }
 
-fn query_avs_info(deps: Deps, avs_hash: String) -> StdResult<AVSInfoResponse> {
-    let avs_info = AVS_INFO.load(deps.storage, avs_hash.to_string())?;
-    Ok(AVSInfoResponse {
-        avs_hash,
-        avs_contract: avs_info.avs_contract,
-        state_bank: avs_info.state_bank,
-        avs_driver: avs_info.avs_driver,
+fn query_bvs_info(deps: Deps, bvs_hash: String) -> StdResult<BVSInfoResponse> {
+    let bvs_info = BVS_INFO.load(deps.storage, bvs_hash.to_string())?;
+    Ok(BVSInfoResponse {
+        bvs_hash,
+        bvs_contract: bvs_info.bvs_contract,
+        state_bank: bvs_info.state_bank,
+        bvs_driver: bvs_info.bvs_driver,
     })
 }
 
@@ -607,7 +607,7 @@ mod tests {
     }
 
     #[test]
-    fn test_register_avs() {
+    fn test_register_bvs() {
         let (mut deps, env, info, _pauser_info, _unpauser_info, delegation_manager) =
             instantiate_contract();
 
@@ -624,33 +624,33 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterAVS {
-            avs_contract: "avs_contract".to_string(),
+        let msg = ExecuteMsg::RegisterBVS {
+            bvs_contract: "bvs_contract".to_string(),
             state_bank: "state_bank".to_string(),
-            avs_driver: "avs_driver".to_string(),
+            bvs_driver: "bvs_driver".to_string(),
         };
 
         let result = execute(deps.as_mut(), env, info, msg).unwrap();
 
-        let avs_hash = &result
+        let bvs_hash = &result
             .attributes
             .iter()
-            .find(|a| a.key == "avs_hash")
+            .find(|a| a.key == "bvs_hash")
             .unwrap()
             .value;
 
-        let avs_info = AVS_INFO.load(&deps.storage, avs_hash.clone()).unwrap();
+        let bvs_info = BVS_INFO.load(&deps.storage, bvs_hash.clone()).unwrap();
 
         assert_eq!(result.attributes.len(), 2);
         assert_eq!(result.attributes[0].key, "method");
-        assert_eq!(result.attributes[0].value, "register_avs");
-        assert_eq!(result.attributes[1].key, "avs_hash");
-        assert_eq!(result.attributes[1].value, *avs_hash);
+        assert_eq!(result.attributes[0].value, "register_bvs");
+        assert_eq!(result.attributes[1].key, "bvs_hash");
+        assert_eq!(result.attributes[1].value, *bvs_hash);
 
-        assert_eq!(avs_info.avs_hash, *avs_hash);
-        assert_eq!(avs_info.avs_contract, "avs_contract");
-        assert_eq!(avs_info.state_bank, "state_bank");
-        assert_eq!(avs_info.avs_driver, "avs_driver");
+        assert_eq!(bvs_info.bvs_hash, *bvs_hash);
+        assert_eq!(bvs_info.bvs_contract, "bvs_contract");
+        assert_eq!(bvs_info.state_bank, "state_bank");
+        assert_eq!(bvs_info.bvs_driver, "bvs_driver");
     }
 
     #[test]
@@ -703,7 +703,7 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToAVS {
+        let msg = ExecuteMsg::RegisterOperatorToBVS {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
             contract_addr: contract_addr.to_string(),
@@ -728,21 +728,21 @@ mod tests {
         assert_eq!(res.events.len(), 1);
 
         let event = &res.events[0];
-        assert_eq!(event.ty, "OperatorAVSRegistrationStatusUpdated");
+        assert_eq!(event.ty, "OperatorBVSRegistrationStatusUpdated");
         assert_eq!(event.attributes.len(), 4);
         assert_eq!(event.attributes[0].key, "method");
         assert_eq!(event.attributes[0].value, "register_operator");
         assert_eq!(event.attributes[1].key, "operator");
         assert_eq!(event.attributes[1].value, operator.to_string());
-        assert_eq!(event.attributes[2].key, "avs");
+        assert_eq!(event.attributes[2].key, "bvs");
         assert_eq!(event.attributes[2].value, info.sender.to_string());
-        assert_eq!(event.attributes[3].key, "operator_avs_registration_status");
+        assert_eq!(event.attributes[3].key, "operator_bvs_registration_status");
         assert_eq!(event.attributes[3].value, "REGISTERED");
 
-        let status = AVS_OPERATOR_STATUS
+        let status = BVS_OPERATOR_STATUS
             .load(&deps.storage, (info.sender.clone(), operator.clone()))
             .unwrap();
-        assert_eq!(status, OperatorAVSRegistrationStatus::Registered);
+        assert_eq!(status, OperatorBVSRegistrationStatus::Registered);
 
         let is_salt_spent = OPERATOR_SALT_SPENT
             .load(&deps.storage, (operator.clone(), salt.to_string()))
@@ -798,7 +798,7 @@ mod tests {
             }),
         });
 
-        let register_msg = ExecuteMsg::RegisterOperatorToAVS {
+        let register_msg = ExecuteMsg::RegisterOperatorToBVS {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
             contract_addr: contract_addr.to_string(),
@@ -813,7 +813,7 @@ mod tests {
 
         assert!(res.is_ok());
 
-        let deregister_msg = ExecuteMsg::DeregisterOperatorFromAVS {
+        let deregister_msg = ExecuteMsg::DeregisterOperatorFromBVS {
             operator: operator.to_string(),
         };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), deregister_msg);
@@ -830,21 +830,21 @@ mod tests {
         assert_eq!(res.events.len(), 1);
 
         let event = &res.events[0];
-        assert_eq!(event.ty, "OperatorAVSRegistrationStatusUpdated");
+        assert_eq!(event.ty, "OperatorBVSRegistrationStatusUpdated");
         assert_eq!(event.attributes.len(), 4);
         assert_eq!(event.attributes[0].key, "method");
         assert_eq!(event.attributes[0].value, "deregister_operator");
         assert_eq!(event.attributes[1].key, "operator");
         assert_eq!(event.attributes[1].value, operator.to_string());
-        assert_eq!(event.attributes[2].key, "avs");
+        assert_eq!(event.attributes[2].key, "bvs");
         assert_eq!(event.attributes[2].value, info.sender.to_string());
-        assert_eq!(event.attributes[3].key, "operator_avs_registration_status");
+        assert_eq!(event.attributes[3].key, "operator_bvs_registration_status");
         assert_eq!(event.attributes[3].value, "UNREGISTERED");
 
-        let status = AVS_OPERATOR_STATUS
+        let status = BVS_OPERATOR_STATUS
             .load(&deps.storage, (info.sender.clone(), operator.clone()))
             .unwrap();
-        assert_eq!(status, OperatorAVSRegistrationStatus::Unregistered);
+        assert_eq!(status, OperatorBVSRegistrationStatus::Unregistered);
     }
 
     #[test]
@@ -854,7 +854,7 @@ mod tests {
 
         let metadata_uri = "http://metadata.uri".to_string();
 
-        let msg = ExecuteMsg::UpdateAVSMetadataURI {
+        let msg = ExecuteMsg::UpdateBVSMetadataURI {
             metadata_uri: metadata_uri.clone(),
         };
         let res = execute(deps.as_mut(), env, info.clone(), msg);
@@ -871,11 +871,11 @@ mod tests {
         assert_eq!(res.events.len(), 1);
 
         let event = &res.events[0];
-        assert_eq!(event.ty, "AVSMetadataURIUpdated");
+        assert_eq!(event.ty, "BVSMetadataURIUpdated");
         assert_eq!(event.attributes.len(), 3);
         assert_eq!(event.attributes[0].key, "method");
         assert_eq!(event.attributes[0].value, "update_metadata_uri");
-        assert_eq!(event.attributes[1].key, "avs");
+        assert_eq!(event.attributes[1].key, "bvs");
         assert_eq!(event.attributes[1].value, info.sender.to_string());
         assert_eq!(event.attributes[2].key, "metadata_uri");
         assert_eq!(event.attributes[2].value, metadata_uri);
@@ -996,7 +996,7 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToAVS {
+        let msg = ExecuteMsg::RegisterOperatorToBVS {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
             contract_addr: contract_addr.to_string(),
@@ -1021,21 +1021,21 @@ mod tests {
         assert_eq!(res.events.len(), 1);
 
         let event = &res.events[0];
-        assert_eq!(event.ty, "OperatorAVSRegistrationStatusUpdated");
+        assert_eq!(event.ty, "OperatorBVSRegistrationStatusUpdated");
         assert_eq!(event.attributes.len(), 4);
         assert_eq!(event.attributes[0].key, "method");
         assert_eq!(event.attributes[0].value, "register_operator");
         assert_eq!(event.attributes[1].key, "operator");
         assert_eq!(event.attributes[1].value, operator.to_string());
-        assert_eq!(event.attributes[2].key, "avs");
+        assert_eq!(event.attributes[2].key, "bvs");
         assert_eq!(event.attributes[2].value, info.sender.to_string());
-        assert_eq!(event.attributes[3].key, "operator_avs_registration_status");
+        assert_eq!(event.attributes[3].key, "operator_bvs_registration_status");
         assert_eq!(event.attributes[3].value, "REGISTERED");
 
-        let status = AVS_OPERATOR_STATUS
+        let status = BVS_OPERATOR_STATUS
             .load(&deps.storage, (info.sender.clone(), operator.clone()))
             .unwrap();
-        assert_eq!(status, OperatorAVSRegistrationStatus::Registered);
+        assert_eq!(status, OperatorBVSRegistrationStatus::Registered);
 
         let is_salt_spent = OPERATOR_SALT_SPENT
             .load(&deps.storage, (operator.clone(), salt.to_string()))
@@ -1043,14 +1043,14 @@ mod tests {
         assert!(is_salt_spent);
 
         let query_msg = QueryMsg::GetOperatorStatus {
-            avs: info.sender.to_string(),
+            bvs: info.sender.to_string(),
             operator: operator.to_string(),
         };
         let query_res: OperatorStatusResponse =
             from_json(query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
         println!("Query result: {:?}", query_res);
 
-        assert_eq!(query_res.status, OperatorAVSRegistrationStatus::Registered);
+        assert_eq!(query_res.status, OperatorBVSRegistrationStatus::Registered);
     }
 
     #[test]
@@ -1064,7 +1064,7 @@ mod tests {
         println!("Operator Address: {:?}", operator);
 
         let query_msg = QueryMsg::GetOperatorStatus {
-            avs: info.sender.to_string(),
+            bvs: info.sender.to_string(),
             operator: operator.to_string(),
         };
         let query_res: OperatorStatusResponse =
@@ -1073,7 +1073,7 @@ mod tests {
 
         assert_eq!(
             query_res.status,
-            OperatorAVSRegistrationStatus::Unregistered
+            OperatorBVSRegistrationStatus::Unregistered
         );
     }
 
@@ -1094,7 +1094,7 @@ mod tests {
 
         let query_msg = QueryMsg::CalculateDigestHash {
             operator_public_key: public_key_hex.to_string(),
-            avs: info.sender.to_string(),
+            bvs: info.sender.to_string(),
             salt: salt.to_string(),
             expiry,
             contract_addr: contract_addr.to_string(),
@@ -1168,7 +1168,7 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToAVS {
+        let msg = ExecuteMsg::RegisterOperatorToBVS {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
             contract_addr: contract_addr.to_string(),
@@ -1228,18 +1228,18 @@ mod tests {
     }
 
     #[test]
-    fn test_query_operator_avs_registration_typehash() {
+    fn test_query_operator_bvs_registration_typehash() {
         let (deps, env, _info, _pauser_info, _unpauser_info, _delegation_manager) =
             instantiate_contract();
 
-        let query_msg = QueryMsg::GetOperatorAVSRegistrationTypeHash {};
+        let query_msg = QueryMsg::GetOperatorBVSRegistrationTypeHash {};
         let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
 
         let response: RegistrationTypeHashResponse = from_json(query_res).unwrap();
 
-        let expected_str = String::from_utf8_lossy(OPERATOR_AVS_REGISTRATION_TYPEHASH).to_string();
+        let expected_str = String::from_utf8_lossy(OPERATOR_BVS_REGISTRATION_TYPEHASH).to_string();
 
-        assert_eq!(response.operator_avs_registration_type_hash, expected_str);
+        assert_eq!(response.operator_bvs_registration_type_hash, expected_str);
     }
     #[test]
     fn test_query_domain_typehash() {
@@ -1271,7 +1271,7 @@ mod tests {
     }
 
     #[test]
-    fn test_register_operator_to_avs() {
+    fn test_register_operator_to_bvs() {
         let (mut deps, env, info, _pauser_info, _unpauser_info, delegation_manager) =
             instantiate_contract();
 
@@ -1318,7 +1318,7 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToAVS {
+        let msg = ExecuteMsg::RegisterOperatorToBVS {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
             contract_addr: contract_addr.to_string(),
@@ -1381,37 +1381,37 @@ mod tests {
     }
 
     #[test]
-    fn test_query_avs_info() {
+    fn test_query_bvs_info() {
         let (mut deps, env, _info, _pauser_info, _unpauser_info, _delegation_manager) =
             instantiate_contract();
 
-        let params = AVSRegisterParams {
-            avs_contract: "avs_contract".to_string(),
+        let params = BVSRegisterParams {
+            bvs_contract: "bvs_contract".to_string(),
             state_bank: "state_bank".to_string(),
-            avs_driver: "avs_driver".to_string(),
+            bvs_driver: "bvs_driver".to_string(),
         };
 
-        let result = register_avs(deps.as_mut(), params.clone());
+        let result = register_bvs(deps.as_mut(), params.clone());
         assert!(result.is_ok());
 
         let input = format!(
             "{}{}{}",
-            params.avs_contract, params.state_bank, params.avs_driver
+            params.bvs_contract, params.state_bank, params.bvs_driver
         );
         let hash_result = sha256(input.as_bytes());
 
-        let avs_hash = hex::encode(hash_result);
+        let bvs_hash = hex::encode(hash_result);
 
-        let query_msg = QueryMsg::GetAVSInfo {
-            avs_hash: avs_hash.clone(),
+        let query_msg = QueryMsg::GetBVSInfo {
+            bvs_hash: bvs_hash.clone(),
         };
         let query_response = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let avs_info: AVSInfo = from_json(query_response).unwrap();
+        let bvs_info: BVSInfo = from_json(query_response).unwrap();
 
-        assert_eq!(avs_info.avs_hash, avs_hash);
-        assert_eq!(avs_info.avs_contract, params.avs_contract);
-        assert_eq!(avs_info.state_bank, params.state_bank);
-        assert_eq!(avs_info.avs_driver, params.avs_driver);
+        assert_eq!(bvs_info.bvs_hash, bvs_hash);
+        assert_eq!(bvs_info.bvs_contract, params.bvs_contract);
+        assert_eq!(bvs_info.state_bank, params.state_bank);
+        assert_eq!(bvs_info.bvs_driver, params.bvs_driver);
     }
 
     #[test]

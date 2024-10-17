@@ -2,8 +2,8 @@ use cosmwasm_crypto::secp256k1_verify;
 use cosmwasm_std::{Addr, Binary, Env, StdResult};
 use sha2::{Digest, Sha256};
 
-pub const OPERATOR_AVS_REGISTRATION_TYPEHASH: &[u8] =
-    b"OperatorAVSRegistration(address operator,address avs,bytes32 salt,uint256 expiry)";
+pub const OPERATOR_BVS_REGISTRATION_TYPEHASH: &[u8] =
+    b"OperatorBVSRegistration(address operator,address bvs,bytes32 salt,uint256 expiry)";
 pub const DOMAIN_TYPEHASH: &[u8] =
     b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
 pub const DOMAIN_NAME: &[u8] = b"EigenLayer";
@@ -16,7 +16,7 @@ pub fn sha256(input: &[u8]) -> Vec<u8> {
 
 pub struct DigestHashParams {
     pub operator_public_key: Binary,
-    pub avs: Addr,
+    pub bvs: Addr,
     pub salt: Binary,
     pub expiry: u64,
     pub contract_addr: Addr,
@@ -25,15 +25,15 @@ pub struct DigestHashParams {
 pub fn calculate_digest_hash(
     env: Env,
     operator_public_key: &[u8],
-    avs: &Addr,
+    bvs: &Addr,
     salt: &Binary,
     expiry: u64,
     contract_addr: &Addr,
 ) -> Vec<u8> {
     let struct_hash_input = [
-        &sha256(OPERATOR_AVS_REGISTRATION_TYPEHASH)[..],
+        &sha256(OPERATOR_BVS_REGISTRATION_TYPEHASH)[..],
         operator_public_key,
-        avs.as_bytes(),
+        bvs.as_bytes(),
         salt.as_slice(),
         &expiry.to_le_bytes(),
     ]

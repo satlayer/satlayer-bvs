@@ -2,7 +2,7 @@ use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     query::ValueResponse,
-    state::{IS_AVS_CONTRACT_REGISTERED, VALUES},
+    state::{IS_BVS_CONTRACT_REGISTERED, VALUES},
 };
 
 use cosmwasm_std::{
@@ -37,8 +37,8 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Set { key, value } => execute_set(deps, info, key, value),
-        ExecuteMsg::AddRegisteredAvsContract { address } => {
-            add_registered_avs_contract(deps, info, Addr::unchecked(address))
+        ExecuteMsg::AddRegisteredBvsContract { address } => {
+            add_registered_bvs_contract(deps, info, Addr::unchecked(address))
         }
     }
 }
@@ -50,12 +50,12 @@ pub fn execute_set(
     value: i64,
 ) -> Result<Response, ContractError> {
     let sender = info.sender;
-    let is_registered = IS_AVS_CONTRACT_REGISTERED
+    let is_registered = IS_BVS_CONTRACT_REGISTERED
         .may_load(deps.storage, &sender)?
         .unwrap_or(false);
 
     if !is_registered {
-        return Err(ContractError::AvsContractNotRegistered {});
+        return Err(ContractError::BvsContractNotRegistered {});
     }
 
     VALUES.save(deps.storage, key.clone(), &value)?;
@@ -68,15 +68,15 @@ pub fn execute_set(
     ))
 }
 
-pub fn add_registered_avs_contract(
+pub fn add_registered_bvs_contract(
     deps: DepsMut,
     info: MessageInfo,
     address: Addr,
 ) -> Result<Response, ContractError> {
-    IS_AVS_CONTRACT_REGISTERED.save(deps.storage, &Addr::unchecked(address.clone()), &true)?;
+    IS_BVS_CONTRACT_REGISTERED.save(deps.storage, &Addr::unchecked(address.clone()), &true)?;
 
     Ok(Response::new().add_event(
-        Event::new("add_registered_avs_contract")
+        Event::new("add_registered_bvs_contract")
             .add_attribute("sender", info.sender.to_string())
             .add_attribute("address", address.to_string()),
     ))
@@ -126,7 +126,7 @@ mod tests {
         let env = mock_env();
 
         let admin_info = message_info(&Addr::unchecked("admin"), &[]);
-        let register_msg = ExecuteMsg::AddRegisteredAvsContract {
+        let register_msg = ExecuteMsg::AddRegisteredBvsContract {
             address: "alice".to_string(),
         };
         execute(deps.as_mut(), env.clone(), admin_info, register_msg).unwrap();
@@ -211,28 +211,28 @@ mod tests {
     }
 
     #[test]
-    fn test_add_registered_avs_contract() {
+    fn test_add_registered_bvs_contract() {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("admin"), &[]);
-        let avs_contract_address = "avs_contract_123";
+        let bvs_contract_address = "bvs_contract_123";
 
-        let msg = ExecuteMsg::AddRegisteredAvsContract {
-            address: avs_contract_address.to_string(),
+        let msg = ExecuteMsg::AddRegisteredBvsContract {
+            address: bvs_contract_address.to_string(),
         };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
         assert_eq!(1, res.events.len());
-        assert_eq!("add_registered_avs_contract", res.events[0].ty);
+        assert_eq!("add_registered_bvs_contract", res.events[0].ty);
         assert_eq!(
-            vec![("sender", "admin"), ("address", avs_contract_address),],
+            vec![("sender", "admin"), ("address", bvs_contract_address),],
             res.events[0].attributes
         );
 
-        let is_registered = IS_AVS_CONTRACT_REGISTERED
+        let is_registered = IS_BVS_CONTRACT_REGISTERED
             .may_load(
                 deps.as_ref().storage,
-                &Addr::unchecked(avs_contract_address),
+                &Addr::unchecked(bvs_contract_address),
             )
             .unwrap()
             .unwrap_or(false);
@@ -242,14 +242,14 @@ mod tests {
             key: "temperature".to_string(),
             value: 25,
         };
-        let set_info = message_info(&Addr::unchecked(avs_contract_address), &[]);
+        let set_info = message_info(&Addr::unchecked(bvs_contract_address), &[]);
         let set_res = execute(deps.as_mut(), env, set_info, set_msg).unwrap();
 
         assert_eq!(1, set_res.events.len());
         assert_eq!("execute_set", set_res.events[0].ty);
         assert_eq!(
             vec![
-                ("sender", avs_contract_address),
+                ("sender", bvs_contract_address),
                 ("key", "temperature"),
                 ("value", "25"),
             ],

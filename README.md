@@ -1,12 +1,12 @@
 # SatLayer
 
- SatLayer is a comprehensive blockchain ecosystem on the Babylon network that includes a suite of interconnected contracts for managing staking, delegation, slashing, rewards distribution, and automated validator selection (AVS). The StrategyManager facilitates staker interactions with investment strategies; the DelegationManager manages the delegation of staker shares to operators; the SlashManager enforces slashing penalties for protocol violations; the RewardsCoordinator oversees the distribution and claiming of rewards; the StateBank provides a key-value store for AVS contracts; and the AVS Driver enables secure off-chain task execution for AVS contracts. Together, these contracts create a secure and efficient system for staking, delegating, rewarding, and selecting validators within the Babylon blockchain ecosystem.
+ SatLayer is a comprehensive blockchain ecosystem on the Babylon network that includes a suite of interconnected contracts for managing staking, delegation, slashing, rewards distribution, and automated validator selection (BVS). The StrategyManager facilitates staker interactions with investment strategies; the DelegationManager manages the delegation of staker shares to operators; the SlashManager enforces slashing penalties for protocol violations; the RewardsCoordinator oversees the distribution and claiming of rewards; the StateBank provides a key-value store for BVS contracts; and the BVS Driver enables secure off-chain task execution for BVS contracts. Together, these contracts create a secure and efficient system for staking, delegating, rewarding, and selecting validators within the Babylon blockchain ecosystem.
 
 ## Contracts
 
-1. **AVSDirectory**
+1. **BVSDirectory**
 
-   - **Description**: The AVSDirectory contract is responsible for managing the registration and deregistration of operators with Assured Verification Services (AVS) within the Babylon blockchain ecosystem. It enables AVS providers to register their services and allows operators to securely register or deregister with an AVS. The contract ensures the integrity and security of the registration process through digital signature verification, the use of unique salts to prevent replay attacks, and expiration checks on signatures. Additionally, it offers functionality to update AVS metadata URIs, transfer ownership of the contract, and pause or unpause contract operations.
+   - **Description**: The BVSDirectory contract is responsible for managing the registration and deregistration of operators with Assured Verification Services (BVS) within the Babylon blockchain ecosystem. It enables BVS providers to register their services and allows operators to securely register or deregister with an BVS. The contract ensures the integrity and security of the registration process through digital signature verification, the use of unique salts to prevent replay attacks, and expiration checks on signatures. Additionally, it offers functionality to update BVS metadata URIs, transfer ownership of the contract, and pause or unpause contract operations.
 
 2. **DelegationManager**
 
@@ -38,11 +38,11 @@
 
 9. **StateBank**
     
-   - **Description**: The StateBank contract functions as a simple on-chain key-value store within the Babylon blockchain ecosystem. It allows registered Automated Validator Selection (AVS) contracts to securely store and update integer values associated with specific string keys. Only AVS contracts that have been registered with the StateBank can modify the stored values, ensuring that only authorized entities have write access. This mechanism enhances security by preventing unauthorized modifications while promoting transparency, as any user can query the stored values by providing the corresponding key. The StateBank thus provides a reliable and straightforward way for AVS contracts to persist and share state information on the blockchain, supporting the overall functionality and integrity of the ecosystem.
+   - **Description**: The StateBank contract functions as a simple on-chain key-value store within the Babylon blockchain ecosystem. It allows registered Automated Validator Selection (BVS) contracts to securely store and update integer values associated with specific string keys. Only BVS contracts that have been registered with the StateBank can modify the stored values, ensuring that only authorized entities have write access. This mechanism enhances security by preventing unauthorized modifications while promoting transparency, as any user can query the stored values by providing the corresponding key. The StateBank thus provides a reliable and straightforward way for BVS contracts to persist and share state information on the blockchain, supporting the overall functionality and integrity of the ecosystem.
 
-10. **AVSDriver**
+10. **BVSDriver**
     
-    - **Description**: The AVS Driver contract serves as an interface for Automated Validator Selection (AVS) contracts within the Babylon blockchain ecosystem to securely initiate off-chain tasks. It maintains a registry of authorized AVS contracts, allowing only registered contracts to trigger off-chain executions via the execute_avs_offchain function, which includes a task_id identifying the specific task. The contract emits events containing the sender's address and the task ID, enabling off-chain services to monitor and execute the corresponding tasks. By enforcing strict access control and providing a standardized mechanism for initiating off-chain operations, the AVS Driver enhances the security and reliability of interactions between on-chain contracts and off-chain services in the network.
+    - **Description**: The BVS Driver contract serves as an interface for Automated Validator Selection (BVS) contracts within the Babylon blockchain ecosystem to securely initiate off-chain tasks. It maintains a registry of authorized BVS contracts, allowing only registered contracts to trigger off-chain executions via the execute_bvs_offchain function, which includes a task_id identifying the specific task. The contract emits events containing the sender's address and the task ID, enabling off-chain services to monitor and execute the corresponding tasks. By enforcing strict access control and providing a standardized mechanism for initiating off-chain operations, the BVS Driver enhances the security and reliability of interactions between on-chain contracts and off-chain services in the network.
 
 ## Development
 
@@ -80,10 +80,10 @@ docker run --rm -v "$(pwd)":/code custom-cosmwasm-optimizer:latest
 - strategy_base1: osmo1xy70s05t52fnyzvd8z3hn99nfcqrrcds84gm9rzhfrryltt3kz6sxlnkxy
 - strategy_base2: osmo1w9d24cv5ve4xclx7usrvdgyu35y6ytk2v5rjgc6uesyyunfc4snsvlc8nc
 - strategy_manager: osmo1p7lcc7drqdc4qlv3v5j9wd3hjey8wylyn9rtqxygl7tdxhcqvn2qhfwnt2
-- avs-directory: osmo1s06n72vlzzksu2fvlk0e2lm737nyvjrx2vtlv80gzmgzg7q5aayqfs9zme
+- bvs-directory: osmo1s06n72vlzzksu2fvlk0e2lm737nyvjrx2vtlv80gzmgzg7q5aayqfs9zme
 - delegation_manager: osmo1uplxqr00x57dd2dt9j3vnfmhxz5j9qwn2dyv6587exgsf0zpwjkqpzuzm0
 - state_bank: osmo1axj63dymth3sln5vptqy5dde28a8ptjvuukdpwrz44wp0lexgpmqpucn7k
-- avs_driver: osmo1vxexrvx2prd33ny9ydh5ksnyt2nylcw0q87as5ph824jgxc3kcyqagrf9t
+- bvs_driver: osmo1vxexrvx2prd33ny9ydh5ksnyt2nylcw0q87as5ph824jgxc3kcyqagrf9t
 - rewards-coordinator: osmo1w3qsxj4smkfupts8vwtgn00f72qkpwns5jw0hexrnhv4vzw6gnmshus9l7
 - cw20: osmo1z63lzuke2v9azva2kktccuecgcrm4ue4hhqrw0kfkf3crtxpqpdsyl8uj5
 - strategy-base-TVLLimits: osmo1fzu4779d8yfgs5dw8k8upx5fqj3e38cewqhthpym47rrmpwjq40sc7ptdm
@@ -104,7 +104,7 @@ docker run --rm -v "$(pwd)":/code custom-cosmwasm-optimizer:latest
 
 - delegation-manager: bbn18glh4zetf3nkdu724dxqvlw2gw6fdwnhrycazt32dgysq5gvyj4sd5n53x, tx_hash: 8A82789CA76116218193A13F107E0420470FB2888B9F923E357C18F88A8FB9E9
 
-- avs-directory: bbn13v6dgzhf9nu4fzdkrc6tpvxxd8eqg546ynjep8cqvl4n27xlvf7suqvspx, tx_hash: 0C44390F32198AB04165A73B1037AAC2AF8984D02C39D56F9765407EA4031D18
+- bvs-directory: bbn13v6dgzhf9nu4fzdkrc6tpvxxd8eqg546ynjep8cqvl4n27xlvf7suqvspx, tx_hash: 0C44390F32198AB04165A73B1037AAC2AF8984D02C39D56F9765407EA4031D18
 
 - rewards-coordinator: bbn1w95u2w477a852mpex72t4u0qs0vyjkme4gq4m2ltgf84km47wf0sxzlx3w, tx_hash: 8D89CAB034D7956ABC269E469AFBC2764994C373DC4847B4E50C9691427525FE
 
@@ -112,7 +112,7 @@ docker run --rm -v "$(pwd)":/code custom-cosmwasm-optimizer:latest
 
 - strategy-base-TVLLimits: bbn1m85zj4fm3u6zmcj950rj6mjwuv54r5et9al8yhcee5j3ua8keqyst7zld4, tx_hash: A51F6EDFF7E7110C0C011677B3EAF24861A61F7B809710B507CEB60B2B99FA13
 
-- avs-driver: bbn1heufwzln70cc9c6tpj45nsn02pm7xjffgmy5h7gvs3c57ndqr8dskx53lf, tx_hash:
+- bvs-driver: bbn1heufwzln70cc9c6tpj45nsn02pm7xjffgmy5h7gvs3c57ndqr8dskx53lf, tx_hash:
 F1F850A839262D896919538F25838635ECC901A038B2C3D9AC9E65A24BBDCEED
 
 - state-bank: bbn18nnde5tpn76xj3wm53n0tmuf3q06nruj3p6kdemcllzxqwzkpqzq5mssn4, tx_hash:
