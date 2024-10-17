@@ -12,11 +12,11 @@ pub struct SaltResponse {
 }
 
 #[cw_serde]
-pub struct AVSInfoResponse {
-    pub avs_hash: String,
-    pub avs_contract: String,
+pub struct BVSInfoResponse {
+    pub bvs_hash: String,
+    pub bvs_contract: String,
     pub state_bank: String,
-    pub avs_driver: String,
+    pub bvs_driver: String,
 }
 
 #[cw_serde]
@@ -31,7 +31,7 @@ pub struct OwnerResponse {
 
 #[cw_serde]
 pub struct RegistrationTypeHashResponse {
-    pub operator_avs_registration_type_hash: String,
+    pub operator_bvs_registration_type_hash: String,
 }
 
 #[cw_serde]

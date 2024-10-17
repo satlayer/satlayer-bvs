@@ -10,8 +10,8 @@ pub const CUMULATIVE_CLAIMED: Map<(Addr, String), Uint128> = Map::new("cumulativ
 pub const SUBMISSION_NONCE: Map<Addr, u64> = Map::new("submission_nonce");
 pub const REWARDS_FOR_ALL_SUBMITTER: Map<Addr, bool> = Map::new("rewards_for_all_submitter");
 pub const ACTIVATION_DELAY: Item<u32> = Item::new("activation_delay");
-pub const IS_AVS_REWARDS_SUBMISSION_HASH: Map<(Addr, Vec<u8>), bool> =
-    Map::new("avs_rewards_submission_hash");
+pub const IS_BVS_REWARDS_SUBMISSION_HASH: Map<(Addr, Vec<u8>), bool> =
+    Map::new("bvs_rewards_submission_hash");
 
 pub const CALCULATION_INTERVAL_SECONDS: Item<u64> = Item::new("calculation_interval_seconds");
 pub const MAX_REWARDS_DURATION: Item<u64> = Item::new("max_rewards_duration");

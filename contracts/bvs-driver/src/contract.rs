@@ -1,6 +1,6 @@
 use crate::{
     error::ContractError, msg::ExecuteMsg, msg::InstantiateMsg, msg::QueryMsg,
-    state::IS_AVS_CONTRACT_REGISTERED,
+    state::IS_BVS_CONTRACT_REGISTERED,
 };
 
 use cosmwasm_std::{
@@ -33,43 +33,43 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::ExecuteAvsOffchain { task_id } => execute_avs_offchain(deps, info, task_id),
-        ExecuteMsg::AddRegisteredAvsContract { address } => {
-            add_registered_avs_contract(deps, info, Addr::unchecked(address))
+        ExecuteMsg::ExecuteBvsOffchain { task_id } => execute_bvs_offchain(deps, info, task_id),
+        ExecuteMsg::AddRegisteredBvsContract { address } => {
+            add_registered_bvs_contract(deps, info, Addr::unchecked(address))
         }
     }
 }
 
-pub fn execute_avs_offchain(
+pub fn execute_bvs_offchain(
     deps: DepsMut,
     info: MessageInfo,
     task_id: u64,
 ) -> Result<Response, ContractError> {
     let sender = info.sender;
-    let is_registered = IS_AVS_CONTRACT_REGISTERED
+    let is_registered = IS_BVS_CONTRACT_REGISTERED
         .may_load(deps.storage, &sender)?
         .unwrap_or(false);
 
     if !is_registered {
-        return Err(ContractError::AvsContractNotRegistered {});
+        return Err(ContractError::BvsContractNotRegistered {});
     }
 
     Ok(Response::new().add_event(
-        Event::new("execute_avs_offchain")
+        Event::new("execute_bvs_offchain")
             .add_attribute("sender", sender.to_string())
             .add_attribute("task_id", task_id.to_string()),
     ))
 }
 
-pub fn add_registered_avs_contract(
+pub fn add_registered_bvs_contract(
     deps: DepsMut,
     info: MessageInfo,
     address: Addr,
 ) -> Result<Response, ContractError> {
-    IS_AVS_CONTRACT_REGISTERED.save(deps.storage, &Addr::unchecked(address.clone()), &true)?;
+    IS_BVS_CONTRACT_REGISTERED.save(deps.storage, &Addr::unchecked(address.clone()), &true)?;
 
     Ok(Response::new().add_event(
-        Event::new("add_registered_avs_contract")
+        Event::new("add_registered_bvs_contract")
             .add_attribute("sender", info.sender.to_string())
             .add_attribute("address", address.to_string()),
     ))
@@ -102,36 +102,36 @@ mod tests {
     }
 
     #[test]
-    fn test_executeavsoffchain() {
+    fn test_executebvsoffchain() {
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let avs_contract = Addr::unchecked("avs_contract");
-        let info = message_info(&avs_contract, &[]);
+        let bvs_contract = Addr::unchecked("bvs_contract");
+        let info = message_info(&bvs_contract, &[]);
         let task_id = 1000;
 
         execute(
             deps.as_mut(),
             env.clone(),
             info.clone(),
-            ExecuteMsg::AddRegisteredAvsContract {
-                address: avs_contract.to_string(),
+            ExecuteMsg::AddRegisteredBvsContract {
+                address: bvs_contract.to_string(),
             },
         )
         .unwrap();
 
-        let msg = ExecuteMsg::ExecuteAvsOffchain { task_id };
+        let msg = ExecuteMsg::ExecuteBvsOffchain { task_id };
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
         assert_eq!(1, res.events.len());
 
-        assert_eq!("execute_avs_offchain", res.events[0].ty);
+        assert_eq!("execute_bvs_offchain", res.events[0].ty);
 
         assert_eq!(
             res.events[0].attributes,
             vec![
                 cosmwasm_std::Attribute {
                     key: "sender".to_string(),
-                    value: avs_contract.to_string(),
+                    value: bvs_contract.to_string(),
                 },
                 cosmwasm_std::Attribute {
                     key: "task_id".to_string(),
@@ -142,11 +142,11 @@ mod tests {
     }
 
     #[test]
-    fn test_create_executeavsoffchain_msg() {
+    fn test_create_executebvsoffchain_msg() {
         let contract_addr = "contract123".to_string();
         let task_id = 100;
 
-        let msg = ExecuteMsg::ExecuteAvsOffchain { task_id };
+        let msg = ExecuteMsg::ExecuteBvsOffchain { task_id };
 
         let cosmos_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: contract_addr.clone(),
@@ -165,7 +165,7 @@ mod tests {
 
                 let parsed_msg: ExecuteMsg = from_json(msg).unwrap();
                 match parsed_msg {
-                    ExecuteMsg::ExecuteAvsOffchain { task_id: id } => {
+                    ExecuteMsg::ExecuteBvsOffchain { task_id: id } => {
                         assert_eq!(id, task_id);
                     }
                     _ => panic!("Unexpected ExecuteMsg type"),
@@ -176,28 +176,28 @@ mod tests {
     }
 
     #[test]
-    fn test_add_registered_avs_contract() {
+    fn test_add_registered_bvs_contract() {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("admin"), &[]);
-        let avs_contract_address = "avs_contract_123";
-        let msg = ExecuteMsg::AddRegisteredAvsContract {
-            address: avs_contract_address.to_string(),
+        let bvs_contract_address = "bvs_contract_123";
+        let msg = ExecuteMsg::AddRegisteredBvsContract {
+            address: bvs_contract_address.to_string(),
         };
 
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
         assert_eq!(1, res.events.len());
-        assert_eq!("add_registered_avs_contract", res.events[0].ty);
+        assert_eq!("add_registered_bvs_contract", res.events[0].ty);
         assert_eq!(
-            vec![("sender", "admin"), ("address", avs_contract_address),],
+            vec![("sender", "admin"), ("address", bvs_contract_address),],
             res.events[0].attributes
         );
 
-        let is_registered = IS_AVS_CONTRACT_REGISTERED
+        let is_registered = IS_BVS_CONTRACT_REGISTERED
             .may_load(
                 deps.as_ref().storage,
-                &Addr::unchecked(avs_contract_address),
+                &Addr::unchecked(bvs_contract_address),
             )
             .unwrap()
             .unwrap_or(false);

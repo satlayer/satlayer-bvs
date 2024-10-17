@@ -5,8 +5,8 @@ pub struct InstantiateMsg {}
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    ExecuteAvsOffchain { task_id: u64 },
-    AddRegisteredAvsContract { address: String },
+    ExecuteBvsOffchain { task_id: u64 },
+    AddRegisteredBvsContract { address: String },
 }
 
 #[cw_serde]

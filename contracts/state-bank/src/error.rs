@@ -6,6 +6,6 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
-    #[error("Statebank: Avs contract is not registered")]
-    AvsContractNotRegistered {},
+    #[error("Statebank: Bvs contract is not registered")]
+    BvsContractNotRegistered {},
 }

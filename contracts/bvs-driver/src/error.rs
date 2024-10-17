@@ -6,6 +6,6 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
-    #[error("AvsDriver: Avs contract is not registered")]
-    AvsContractNotRegistered {},
+    #[error("BvsDriver: Bvs contract is not registered")]
+    BvsContractNotRegistered {},
 }

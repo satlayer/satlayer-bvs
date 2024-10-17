@@ -12,7 +12,7 @@ use crate::{
         ACTIVATION_DELAY, CALCULATION_INTERVAL_SECONDS, CLAIMER_FOR, CUMULATIVE_CLAIMED,
         CURR_REWARDS_CALCULATION_END_TIMESTAMP, DELEGATION_MANAGER, DISTRIBUTION_ROOTS,
         DISTRIBUTION_ROOTS_COUNT, GENESIS_REWARDS_TIMESTAMP, GLOBAL_OPERATOR_COMMISSION_BIPS,
-        IS_AVS_REWARDS_SUBMISSION_HASH, MAX_FUTURE_LENGTH, MAX_RETROACTIVE_LENGTH,
+        IS_BVS_REWARDS_SUBMISSION_HASH, MAX_FUTURE_LENGTH, MAX_RETROACTIVE_LENGTH,
         MAX_REWARDS_DURATION, OWNER, REWARDS_FOR_ALL_SUBMITTER, REWARDS_UPDATER, STRATEGY_MANAGER,
         SUBMISSION_NONCE,
     },
@@ -36,7 +36,7 @@ use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg}
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const PAUSED_AVS_REWARDS_SUBMISSION: u8 = 0;
+const PAUSED_BVS_REWARDS_SUBMISSION: u8 = 0;
 const PAUSED_REWARDS_FOR_ALL_SUBMISSION: u8 = 1;
 const PAUSED_PROCESS_CLAIM: u8 = 2;
 const PAUSED_SUBMIT_DISABLE_ROOTS: u8 = 3;
@@ -102,9 +102,9 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::CreateAvsRewardsSubmission {
+        ExecuteMsg::CreateBvsRewardsSubmission {
             rewards_submissions,
-        } => create_avs_rewards_submission(deps, env, info, rewards_submissions),
+        } => create_bvs_rewards_submission(deps, env, info, rewards_submissions),
         ExecuteMsg::CreateRewardsForAllSubmission {
             rewards_submissions,
         } => create_rewards_for_all_submission(deps, env, info, rewards_submissions),
@@ -186,13 +186,13 @@ pub fn execute(
     }
 }
 
-pub fn create_avs_rewards_submission(
+pub fn create_bvs_rewards_submission(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
     rewards_submissions: Vec<RewardsSubmission>,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_AVS_REWARDS_SUBMISSION)?;
+    only_when_not_paused(deps.as_ref(), PAUSED_BVS_REWARDS_SUBMISSION)?;
 
     let mut response = Response::new();
 
@@ -206,7 +206,7 @@ pub fn create_avs_rewards_submission(
 
         validate_rewards_submission(&deps.as_ref(), &submission, &env)?;
 
-        IS_AVS_REWARDS_SUBMISSION_HASH.save(
+        IS_BVS_REWARDS_SUBMISSION_HASH.save(
             deps.storage,
             (info.sender.clone(), rewards_submission_hash.to_vec()),
             &true,
@@ -226,7 +226,7 @@ pub fn create_avs_rewards_submission(
 
         response = response.add_message(transfer_msg);
 
-        let event = Event::new("AVSRewardsSubmissionCreated")
+        let event = Event::new("BVSRewardsSubmissionCreated")
             .add_attribute("sender", info.sender.to_string())
             .add_attribute("nonce", nonce.to_string())
             .add_attribute(
@@ -263,7 +263,7 @@ pub fn create_rewards_for_all_submission(
 
         validate_rewards_submission(&deps.as_ref(), &submission, &env)?;
 
-        IS_AVS_REWARDS_SUBMISSION_HASH.save(
+        IS_BVS_REWARDS_SUBMISSION_HASH.save(
             deps.storage,
             (info.sender.clone(), rewards_submission_hash.to_vec()),
             &true,
@@ -597,8 +597,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             cumulative_earnings,
         )?),
 
-        QueryMsg::OperatorCommissionBips { operator, avs } => {
-            to_json_binary(&query_operator_commission_bips(deps, operator, avs)?)
+        QueryMsg::OperatorCommissionBips { operator, bvs } => {
+            to_json_binary(&query_operator_commission_bips(deps, operator, bvs)?)
         }
 
         QueryMsg::GetDistributionRootsLength {} => {
@@ -705,7 +705,7 @@ fn query_calculate_token_leaf_hash(
 fn query_operator_commission_bips(
     deps: Deps,
     _operator: String,
-    _avs: String,
+    _bvs: String,
 ) -> StdResult<OperatorCommissionBipsResponse> {
     let commission_bips = GLOBAL_OPERATOR_COMMISSION_BIPS.load(deps.storage)?;
 
@@ -1473,7 +1473,7 @@ mod tests {
     }
 
     #[test]
-    fn test_create_avs_rewards_submission() {
+    fn test_create_bvs_rewards_submission() {
         let (
             mut deps,
             env,
@@ -1533,7 +1533,7 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::CreateAvsRewardsSubmission {
+        let msg = ExecuteMsg::CreateBvsRewardsSubmission {
             rewards_submissions: submission,
         };
 
@@ -1545,7 +1545,7 @@ mod tests {
         assert_eq!(response.events.len(), 1);
 
         let event = response.events.first().unwrap();
-        assert_eq!(event.ty, "AVSRewardsSubmissionCreated");
+        assert_eq!(event.ty, "BVSRewardsSubmissionCreated");
         assert_eq!(event.attributes.len(), 5);
         assert_eq!(event.attributes[0].key, "sender");
         assert_eq!(

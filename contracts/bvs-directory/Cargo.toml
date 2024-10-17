@@ -1,5 +1,5 @@
 [package]
-name = "avs-driver"
+name = "bvs-directory"
 version = "2.0.0"
 edition = "2021"
 
@@ -25,10 +25,12 @@ cosmwasm-schema = { workspace = true }
 sha2 = { workspace = true }
 hex = { workspace = true }
 cosmwasm-crypto = { workspace = true }
+secp256k1 = { workspace = true }
 bech32 = { workspace = true }
-cosmwasm-storage = { workspace = true }
-cw20 = { workspace = true }
 ripemd = { workspace = true }
+base64 = { workspace = true }
+
+common = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
