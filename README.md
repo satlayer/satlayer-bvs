@@ -82,8 +82,8 @@ docker run --rm -v "$(pwd)":/code custom-cosmwasm-optimizer:latest
 - strategy_manager: osmo1ayukz2qfgp77yv3uscpd4xf97zpuax4ejnv2adw652qw9x50avzsyfa2q4
 - bvs-directory: osmo1c8hrsyncq8w95gwvxx8yh4lkl8syrnf0qwttx2f6dsmlxt88prsq79fpuz
 - delegation_manager: osmo1zr7kmhn7s62jsk4nrlsasuuvkec9sanksqqkps2gf5tlw9stx6zsnrs200
-- state_bank: osmo1axj63dymth3sln5vptqy5dde28a8ptjvuukdpwrz44wp0lexgpmqpucn7k
-- bvs_driver: osmo1vxexrvx2prd33ny9ydh5ksnyt2nylcw0q87as5ph824jgxc3kcyqagrf9t
+- state_bank: osmo14me62ahp32xrkrqnllmsfthfzqxgf0xqshxtk5ghdfwjltdjh2pqdhn8j9
+- bvs_driver: osmo14rrkya0p6h0xf8v3f33grp6dv7lqs2r5xg09zpzjgnggjgfc08fs9kz9ru
 - rewards-coordinator: osmo1rnv0dzld0agh9akt92dttewkuyfj6753ew5k49rscfdc04as5krqn8pufs
 - cw20: osmo1sahxe3sylexuga6mz6qssmcqempk7rknge0amyj6dynu2gq0gmeqnvr60s
 - strategy-base-TVLLimits: osmo12wq3w24nqetleqjgpyeth5uj7280mmwcdukdl62n06cz6l8jtmzsarr7gh
