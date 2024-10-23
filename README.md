@@ -1,6 +1,6 @@
 # SatLayer
 
- SatLayer is a comprehensive blockchain ecosystem on the Babylon network that includes a suite of interconnected contracts for managing staking, delegation, slashing, rewards distribution, and automated validator selection (BVS). The StrategyManager facilitates staker interactions with investment strategies; the DelegationManager manages the delegation of staker shares to operators; the SlashManager enforces slashing penalties for protocol violations; the RewardsCoordinator oversees the distribution and claiming of rewards; the StateBank provides a key-value store for BVS contracts; and the BVS Driver enables secure off-chain task execution for BVS contracts. Together, these contracts create a secure and efficient system for staking, delegating, rewarding, and selecting validators within the Babylon blockchain ecosystem.
+SatLayer is a comprehensive blockchain ecosystem on the Babylon network that includes a suite of interconnected contracts for managing staking, delegation, slashing, rewards distribution, and automated validator selection (BVS). The StrategyManager facilitates staker interactions with investment strategies; the DelegationManager manages the delegation of staker shares to operators; the SlashManager enforces slashing penalties for protocol violations; the RewardsCoordinator oversees the distribution and claiming of rewards; the StateBank provides a key-value store for BVS contracts; and the BVS Driver enables secure off-chain task execution for BVS contracts. Together, these contracts create a secure and efficient system for staking, delegating, rewarding, and selecting validators within the Babylon blockchain ecosystem.
 
 ## Contracts
 
@@ -37,11 +37,11 @@
    - **Description**: The RewardsCoordinator contract is responsible for managing the distribution and claiming of rewards within the Babylon blockchain ecosystem. It allows authorized entities to submit reward distributions in the form of Merkle roots, which represent the rewards allocated to earners over specific periods. Participants can claim their rewards by providing Merkle proofs that verify their entitlement within these distributions. The contract ensures that only legitimate and authorized claims are processed, thereby maintaining the integrity and fairness of the reward system. By coordinating the distribution and secure claiming of rewards, the RewardsCoordinator plays a crucial role in incentivizing participation and upholding the fairness of the network's reward mechanisms.
 
 9. **StateBank**
-    
+
    - **Description**: The StateBank contract functions as a simple on-chain key-value store within the Babylon blockchain ecosystem. It allows registered Automated Validator Selection (BVS) contracts to securely store and update integer values associated with specific string keys. Only BVS contracts that have been registered with the StateBank can modify the stored values, ensuring that only authorized entities have write access. This mechanism enhances security by preventing unauthorized modifications while promoting transparency, as any user can query the stored values by providing the corresponding key. The StateBank thus provides a reliable and straightforward way for BVS contracts to persist and share state information on the blockchain, supporting the overall functionality and integrity of the ecosystem.
 
 10. **BVSDriver**
-    
+
     - **Description**: The BVS Driver contract serves as an interface for Automated Validator Selection (BVS) contracts within the Babylon blockchain ecosystem to securely initiate off-chain tasks. It maintains a registry of authorized BVS contracts, allowing only registered contracts to trigger off-chain executions via the execute_bvs_offchain function, which includes a task_id identifying the specific task. The contract emits events containing the sender's address and the task ID, enabling off-chain services to monitor and execute the corresponding tasks. By enforcing strict access control and providing a standardized mechanism for initiating off-chain operations, the BVS Driver enhances the security and reliability of interactions between on-chain contracts and off-chain services in the network.
 
 ## Development
@@ -94,26 +94,26 @@ docker run --rm -v "$(pwd)":/code custom-cosmwasm-optimizer:latest
 
 - cw20: bbn1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sp4gequ, tx_hash: 9A2AC4E9DF6D9FFDDF0CD6B7F9D0B5AB1C5B274F93C38BE0CCB6F986CF6A610E
 
-- slash-manager: bbn1d4sad30uj59lxg56ylwn7457v8z4k5m3323r9u360q85w8ga3kfsghm2sx, tx_hash: 75950867AAC6AD413AA9593C57B96F8A00AED62DF7790A4CC673DA9756C4466B
+- slash-manager: bbn1ht8js7p6y5jxthze8hy3egfxflh8t9mvkl79w75mg6atu4ssfc0ssk77p4, tx_hash: BDB73BC4CDB6EA0F26AB8A0717205C01CAA30064799583C835E41CE2096A5857
 
-- strategy-manager: bbn1hyja4uyjktpeh0fxzuw2fmjudr85rk2qu98fa6nuh6d4qru9l0ssdhxckk, tx_hash: 0F0F16B50C25F73A80BBDB10711DF1C45AAEDB432F7E2F4A1F4153D8345703F5
+- strategy-manager: bbn1lna95mcmgm8qe3eaa4d45tug4g27xu2v23r8909jkpd93fteldxqscfte3, tx_hash: 9F8615CC859BB8FC6258D0FC56A3A38619DD9650A35B4A1434D74A9B32B71D9D
 
-- strategy-base1: bbn1fxkx7wd4q7z5zgm8qh0vaxptx4gp0ppgjm0ke56jr55azpzecpcsru2d8p, tx_hash: 470167FEAEE173BEB8A452DA44F926C088399297825725E71F3E9330D8D921BB
+- strategy-base1: bbn102zy555uul67xct4f29plgt6wq63wacmjp93csxpz8z538jrzcdqmj993a, tx_hash: FEA0CBC744A4D3EDA78593CDB126410D594322E0859776B2E4D339A8B68510CE
 
-- strategy-base2: bbn105w0chel9d69cdzj62m4h2vqtj6vfuh7yzty2en825t2nyxw74es4xcf7s, tx_hash: E444322972DF19310F93B6A06BC9A88D73E7B3AD2AF2B034AD3B764A56613F99
+- strategy-base2: bbn1dxmq2c5vt5en8u9llhklhqtvzdpnl5wdfentmy8hxew2cfyu0xnqygc65u, tx_hash: 8D6A003A220BE9D3B70ED7478C0B576C10AC437F8E735A1BF08D053DDF64F21A
 
-- delegation-manager: bbn18glh4zetf3nkdu724dxqvlw2gw6fdwnhrycazt32dgysq5gvyj4sd5n53x, tx_hash: 8A82789CA76116218193A13F107E0420470FB2888B9F923E357C18F88A8FB9E9
+- delegation-manager: bbn18zjcdsttnfhxxjjv29twnum3gxlqj54tlcmflwqsee9crmn9pk0syy0vw0, tx_hash: A9700B31FF2923CBC3F0750B6B42BFA8D1650497E462F9C7177A2EC9CFDDE64F
 
-- bvs-directory: bbn13v6dgzhf9nu4fzdkrc6tpvxxd8eqg546ynjep8cqvl4n27xlvf7suqvspx, tx_hash: 0C44390F32198AB04165A73B1037AAC2AF8984D02C39D56F9765407EA4031D18
+- bvs-directory: bbn1cdt80emmltg76scs47h3fr42u37hvrcp8v5nt9sg6vfhkrsg32gqrwhdy0, tx_hash: 7E2EFCC649546BD4AC98366B85EF3D09AA5F131CC750CD4EADDAC0415375B097
 
-- rewards-coordinator: bbn1w95u2w477a852mpex72t4u0qs0vyjkme4gq4m2ltgf84km47wf0sxzlx3w, tx_hash: 8D89CAB034D7956ABC269E469AFBC2764994C373DC4847B4E50C9691427525FE
+- rewards-coordinator: bbn1kg8uzrhqnjp0a4rp6c6wtnl3y4prth7v54h5gwnkwgtn82yealxsrsfqdq, tx_hash: E548F9E598AD018FD3043FB25B54E0693159B87C974D8D90AEFC5229787B3AB4
 
-- strategy-factory: bbn1p4lqunauqgstt6ydszx59y3pg2tkaxlnujl9m5ldz7nqcrn6tjzqsqv454, tx_hash: 5DCE08D2631116AAF7DB6401BF92F88861C9CEEDEF590073B27C8D5253465D80
+- strategy-factory: bbn18h8ncg9szj3v92cz289qz3ndwqk5zema4cr2t4e7amjaehrae52qyw07y9, tx_hash: 0D063699617E1D85E38E632BB9D95797A06403D0289A6D62D87410177ECF89EA
 
-- strategy-base-TVLLimits: bbn1m85zj4fm3u6zmcj950rj6mjwuv54r5et9al8yhcee5j3ua8keqyst7zld4, tx_hash: A51F6EDFF7E7110C0C011677B3EAF24861A61F7B809710B507CEB60B2B99FA13
+- strategy-base-TVLLimits: bbn1x6ttpp3vpzaknxcc25u0mjrlnagu3agvwnyl0wpwhtjdljaw8aks5dntmr, tx_hash: 65E96952C87DBF83D541C0A07A9EEA9D06FFAFF79DF9955551CCC94D69EDDD0A
 
-- bvs-driver: bbn1heufwzln70cc9c6tpj45nsn02pm7xjffgmy5h7gvs3c57ndqr8dskx53lf, tx_hash:
-F1F850A839262D896919538F25838635ECC901A038B2C3D9AC9E65A24BBDCEED
+- bvs-driver: bbn1ytn4v3pd9ecklqf32pusephxpnfvnev7657rprr3jh43rchygvmqlatdtm, tx_hash:
+  1CD70B531A7ACB7195B200EBC6EFCFEC279832A8D6F92F0D1068B29A40278DB4
 
-- state-bank: bbn18nnde5tpn76xj3wm53n0tmuf3q06nruj3p6kdemcllzxqwzkpqzq5mssn4, tx_hash:
-EFA69375C9961B51D8814E0BFE9D14E9ED45E0AD9E04ADAE7D33677BFE846CBE
+- state-bank: bbn1xwyr5fqrgpueffa84uj8aglfea23qwlr00medkserpk3r7wpvslqpvdq6p, tx_hash:
+  31AE4B52FC2234F5818F1F5ED303F0E3008AF3C1C29A8AF9E6FCA4F495FAACD9

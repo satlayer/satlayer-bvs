@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::query::{BlacklistStatusResponse, StrategyResponse};
-use crate::state::{Config, CONFIG, DEPLOYEDSTRATEGIES, IS_BLACKLISTED};
+use crate::state::{Config, CONFIG, DEPLOYED_STRATEGIES, IS_BLACKLISTED};
 use cosmwasm_std::{
     entry_point, to_json_binary, Addr, Api, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
     Order, Reply, Response, StdError, StdResult, SubMsg, WasmMsg,
@@ -153,7 +153,7 @@ pub fn deploy_new_strategy(
         return Err(ContractError::TokenBlacklisted {});
     }
 
-    let existing_strategy = DEPLOYEDSTRATEGIES
+    let existing_strategy = DEPLOYED_STRATEGIES
         .may_load(deps.storage, &token)?
         .unwrap_or(Addr::unchecked(""));
     if existing_strategy != Addr::unchecked("") {
@@ -177,7 +177,7 @@ pub fn deploy_new_strategy(
 
     let sub_msg = SubMsg::reply_on_success(CosmosMsg::Wasm(instantiate_msg), 1);
 
-    DEPLOYEDSTRATEGIES.save(deps.storage, &token, &Addr::unchecked(""))?;
+    DEPLOYED_STRATEGIES.save(deps.storage, &token, &Addr::unchecked(""))?;
 
     Ok(Response::new()
         .add_submessage(sub_msg)
@@ -206,7 +206,7 @@ pub fn blacklist_tokens(
 
         IS_BLACKLISTED.save(deps.storage, token, &true)?;
 
-        if let Some(deployed_strategy) = DEPLOYEDSTRATEGIES.may_load(deps.storage, token)? {
+        if let Some(deployed_strategy) = DEPLOYED_STRATEGIES.may_load(deps.storage, token)? {
             if deployed_strategy != Addr::unchecked("") {
                 strategies_to_remove.push(deployed_strategy);
             }
@@ -351,7 +351,7 @@ fn handle_instantiate_reply(mut deps: DepsMut, msg: Reply) -> Result<Response, C
 
     let contract_address = extract_contract_address_from_reply(&msg, &mut deps)?;
 
-    let token_address = DEPLOYEDSTRATEGIES
+    let token_address = DEPLOYED_STRATEGIES
         .keys(deps.storage, None, None, Order::Ascending)
         .last()
         .ok_or(StdError::not_found("Token"))??;
@@ -403,7 +403,7 @@ fn extract_contract_address_from_reply(msg: &Reply, deps: &mut DepsMut) -> Resul
 
     let contract_address = instantiate_response.contract_address.clone();
 
-    let token_address = DEPLOYEDSTRATEGIES
+    let token_address = DEPLOYED_STRATEGIES
         .keys(deps.storage, None, None, Order::Ascending)
         .last()
         .ok_or(StdError::not_found("Token"))??;
@@ -467,7 +467,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 fn query_strategy(deps: Deps, token: Addr) -> StdResult<StrategyResponse> {
-    let strategy = DEPLOYEDSTRATEGIES.load(deps.storage, &token)?;
+    let strategy = DEPLOYED_STRATEGIES.load(deps.storage, &token)?;
     Ok(StrategyResponse { strategy })
 }
 
@@ -490,7 +490,7 @@ fn set_strategy_for_token(
     token: Addr,
     strategy: Addr,
 ) -> Result<Response, ContractError> {
-    DEPLOYEDSTRATEGIES.save(deps.storage, &token, &strategy)?;
+    DEPLOYED_STRATEGIES.save(deps.storage, &token, &strategy)?;
 
     Ok(Response::new()
         .add_attribute("method", "set_strategy_for_token")
@@ -584,7 +584,7 @@ mod tests {
             panic!("Expected WasmMsg::Instantiate");
         }
 
-        let strategy_addr = DEPLOYEDSTRATEGIES
+        let strategy_addr = DEPLOYED_STRATEGIES
             .load(&deps.storage, &Addr::unchecked(token))
             .unwrap();
         assert_eq!(strategy_addr, &Addr::unchecked(""));
@@ -602,10 +602,10 @@ mod tests {
         let strategy1 = deps.api.addr_make("strategy1");
         let strategy2 = deps.api.addr_make("strategy2");
 
-        DEPLOYEDSTRATEGIES
+        DEPLOYED_STRATEGIES
             .save(deps.as_mut().storage, &token1, &strategy1)
             .unwrap();
-        DEPLOYEDSTRATEGIES
+        DEPLOYED_STRATEGIES
             .save(deps.as_mut().storage, &token2, &strategy2)
             .unwrap();
 
@@ -825,7 +825,7 @@ mod tests {
         let token = deps.api.addr_make("token_address");
         let strategy = deps.api.addr_make("strategy_address");
 
-        DEPLOYEDSTRATEGIES
+        DEPLOYED_STRATEGIES
             .save(deps.as_mut().storage, &token, &strategy)
             .unwrap();
 
@@ -873,7 +873,7 @@ mod tests {
         assert_eq!(response.attributes[2].key, "strategy");
         assert_eq!(response.attributes[2].value, strategy.to_string());
 
-        let stored_strategy = DEPLOYEDSTRATEGIES.load(&deps.storage, &token).unwrap();
+        let stored_strategy = DEPLOYED_STRATEGIES.load(&deps.storage, &token).unwrap();
         assert_eq!(stored_strategy, strategy);
     }
 }

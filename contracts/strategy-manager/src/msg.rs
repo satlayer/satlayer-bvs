@@ -18,7 +18,7 @@ pub struct InstantiateMsg {
     pub initial_owner: String,
     pub pauser: String,
     pub unpauser: String,
-    pub initial_paused_status: u64,
+    pub initial_paused_status: u8,
 }
 
 #[cw_serde]

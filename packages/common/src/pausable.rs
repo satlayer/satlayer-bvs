@@ -2,10 +2,10 @@ use crate::roles::{check_pauser, check_unpauser};
 use cosmwasm_std::{Deps, DepsMut, MessageInfo, Response, StdError, StdResult};
 use cw_storage_plus::Item;
 
-pub const PAUSED: u64 = 1;
-pub const UNPAUSED: u64 = 0;
+pub const PAUSED: u8 = 1;
+pub const UNPAUSED: u8 = 0;
 
-pub const PAUSED_STATE: Item<u64> = Item::new("paused_state");
+pub const PAUSED_STATE: Item<u8> = Item::new("paused_state");
 
 pub fn pause(deps: DepsMut, info: &MessageInfo) -> StdResult<Response> {
     check_pauser(deps.as_ref(), info.clone())?;

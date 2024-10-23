@@ -25,7 +25,7 @@ pub struct InstantiateMsg {
     pub withdrawal_delay_blocks: Vec<u64>,
     pub pauser: String,
     pub unpauser: String,
-    pub initial_paused_status: u64,
+    pub initial_paused_status: u8,
 }
 
 #[cw_serde]
