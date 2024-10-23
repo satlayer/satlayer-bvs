@@ -47,7 +47,7 @@ pub fn execute_set(
     deps: DepsMut,
     info: MessageInfo,
     key: String,
-    value: i64,
+    value: String,
 ) -> Result<Response, ContractError> {
     let sender = info.sender;
     let is_registered = IS_BVS_CONTRACT_REGISTERED
@@ -134,13 +134,13 @@ mod tests {
         let info = message_info(&Addr::unchecked("alice"), &[]);
         let msg = ExecuteMsg::Set {
             key: "temperature".to_string(),
-            value: 25,
+            value: 25.to_string(),
         };
 
         let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         assert_eq!(1, res.events.len());
-        assert_eq!("execute_set", res.events[0].ty);
+        assert_eq!("UpdateState", res.events[0].ty);
         assert_eq!(
             vec![("sender", "alice"), ("key", "temperature"), ("value", "25"),],
             res.events[0].attributes
@@ -152,7 +152,7 @@ mod tests {
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         println!("value {}", res);
         let res: ValueResponse = from_json(res).unwrap();
-        assert_eq!(25, res.value);
+        assert_eq!("25", res.value);
 
         let query_msg = QueryMsg::Get {
             key: "non_existent".to_string(),
@@ -164,13 +164,13 @@ mod tests {
         let unregistered_info = message_info(&Addr::unchecked("bob"), &[]);
         let unregistered_msg = ExecuteMsg::Set {
             key: "pressure".to_string(),
-            value: 1013,
+            value: 1013.to_string(),
         };
         let unregistered_res = execute(deps.as_mut(), env, unregistered_info, unregistered_msg);
         assert!(unregistered_res.is_err());
     }
 
-    fn _create_set_msg(contract_addr: String, key: String, value: i64) -> StdResult<CosmosMsg> {
+    fn _create_set_msg(contract_addr: String, key: String, value: String) -> StdResult<CosmosMsg> {
         let msg = ExecuteMsg::Set { key, value };
         let wasm_msg = WasmMsg::Execute {
             contract_addr,
@@ -184,9 +184,10 @@ mod tests {
     fn test_create_set_msg() {
         let contract_addr = "contract123".to_string();
         let key = "pressure".to_string();
-        let value = 1013;
+        let value = 1013.to_string();
 
-        let cosmos_msg = _create_set_msg(contract_addr.clone(), key.clone(), value).unwrap();
+        let cosmos_msg =
+            _create_set_msg(contract_addr.clone(), key.clone(), value.clone()).unwrap();
 
         match cosmos_msg {
             CosmosMsg::Wasm(WasmMsg::Execute {
@@ -240,13 +241,13 @@ mod tests {
 
         let set_msg = ExecuteMsg::Set {
             key: "temperature".to_string(),
-            value: 25,
+            value: 25.to_string(),
         };
         let set_info = message_info(&Addr::unchecked(bvs_contract_address), &[]);
         let set_res = execute(deps.as_mut(), env, set_info, set_msg).unwrap();
 
         assert_eq!(1, set_res.events.len());
-        assert_eq!("execute_set", set_res.events[0].ty);
+        assert_eq!("UpdateState", set_res.events[0].ty);
         assert_eq!(
             vec![
                 ("sender", bvs_contract_address),

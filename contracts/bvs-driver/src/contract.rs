@@ -43,7 +43,7 @@ pub fn execute(
 pub fn execute_bvs_offchain(
     deps: DepsMut,
     info: MessageInfo,
-    task_id: u64,
+    task_id: String,
 ) -> Result<Response, ContractError> {
     let sender = info.sender;
     let is_registered = IS_BVS_CONTRACT_REGISTERED
@@ -107,7 +107,7 @@ mod tests {
         let env = mock_env();
         let bvs_contract = Addr::unchecked("bvs_contract");
         let info = message_info(&bvs_contract, &[]);
-        let task_id = 1000;
+        let task_id = "1000".to_string();
 
         execute(
             deps.as_mut(),
@@ -119,12 +119,14 @@ mod tests {
         )
         .unwrap();
 
-        let msg = ExecuteMsg::ExecuteBvsOffchain { task_id };
+        let msg = ExecuteMsg::ExecuteBvsOffchain {
+            task_id: task_id.clone(),
+        };
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
 
         assert_eq!(1, res.events.len());
 
-        assert_eq!("execute_bvs_offchain", res.events[0].ty);
+        assert_eq!("ExecuteAVSOffchain", res.events[0].ty);
 
         assert_eq!(
             res.events[0].attributes,
@@ -135,7 +137,7 @@ mod tests {
                 },
                 cosmwasm_std::Attribute {
                     key: "task_id".to_string(),
-                    value: task_id.to_string(),
+                    value: task_id.clone(),
                 },
             ]
         );
@@ -144,9 +146,11 @@ mod tests {
     #[test]
     fn test_create_executebvsoffchain_msg() {
         let contract_addr = "contract123".to_string();
-        let task_id = 100;
+        let task_id = 1000.to_string();
 
-        let msg = ExecuteMsg::ExecuteBvsOffchain { task_id };
+        let msg = ExecuteMsg::ExecuteBvsOffchain {
+            task_id: task_id.clone(),
+        };
 
         let cosmos_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: contract_addr.clone(),
