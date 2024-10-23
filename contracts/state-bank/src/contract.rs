@@ -61,7 +61,7 @@ pub fn execute_set(
     VALUES.save(deps.storage, key.clone(), &value)?;
 
     Ok(Response::new().add_event(
-        Event::new("execute_set")
+        Event::new("UpdateState")
             .add_attribute("sender", sender.to_string())
             .add_attribute("key", key)
             .add_attribute("value", value.to_string()),

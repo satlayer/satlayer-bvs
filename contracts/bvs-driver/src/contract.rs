@@ -55,7 +55,7 @@ pub fn execute_bvs_offchain(
     }
 
     Ok(Response::new().add_event(
-        Event::new("execute_bvs_offchain")
+        Event::new("ExecuteAVSOffchain")
             .add_attribute("sender", sender.to_string())
             .add_attribute("task_id", task_id.to_string()),
     ))

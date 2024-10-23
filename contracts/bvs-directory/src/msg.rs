@@ -12,7 +12,7 @@ pub struct InstantiateMsg {
     pub delegation_manager: String,
     pub pauser: String,
     pub unpauser: String,
-    pub initial_paused_status: u64,
+    pub initial_paused_status: u8,
 }
 
 #[cw_serde]
