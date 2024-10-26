@@ -6,7 +6,7 @@ pub struct InstantiateMsg {}
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    Set { key: String, value: i64 },
+    Set { key: String, value: String },
     AddRegisteredBvsContract { address: String },
 }
 

@@ -1,15 +1,15 @@
 [workspace]
 members = [
     "contracts/bvs-directory",
-    # "contracts/strategy-base",
-    # "contracts/strategy-manager",
-    # "contracts/state-bank",
-    # "contracts/bvs-driver",
-    # "contracts/delegation-manager",
-    # "contracts/rewards-coordinator",
-    # "contracts/strategy-base-TVLLimits",
-    # "contracts/strategy-factory",
-    # "contracts/slash-manager"
+    "contracts/strategy-base",
+    "contracts/strategy-manager",
+    "contracts/state-bank",
+    "contracts/bvs-driver",
+    "contracts/delegation-manager",
+    "contracts/rewards-coordinator",
+    "contracts/strategy-base-TVLLimits",
+    "contracts/strategy-factory",
+    "contracts/slash-manager"
     ]
 
 resolver = "2"

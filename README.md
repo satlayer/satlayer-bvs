@@ -1,6 +1,6 @@
 # SatLayer
 
- SatLayer is a comprehensive blockchain ecosystem on the Babylon network that includes a suite of interconnected contracts for managing staking, delegation, slashing, rewards distribution, and automated validator selection (BVS). The StrategyManager facilitates staker interactions with investment strategies; the DelegationManager manages the delegation of staker shares to operators; the SlashManager enforces slashing penalties for protocol violations; the RewardsCoordinator oversees the distribution and claiming of rewards; the StateBank provides a key-value store for BVS contracts; and the BVS Driver enables secure off-chain task execution for BVS contracts. Together, these contracts create a secure and efficient system for staking, delegating, rewarding, and selecting validators within the Babylon blockchain ecosystem.
+SatLayer is a comprehensive blockchain ecosystem on the Babylon network that includes a suite of interconnected contracts for managing staking, delegation, slashing, rewards distribution, and automated validator selection (BVS). The StrategyManager facilitates staker interactions with investment strategies; the DelegationManager manages the delegation of staker shares to operators; the SlashManager enforces slashing penalties for protocol violations; the RewardsCoordinator oversees the distribution and claiming of rewards; the StateBank provides a key-value store for BVS contracts; and the BVS Driver enables secure off-chain task execution for BVS contracts. Together, these contracts create a secure and efficient system for staking, delegating, rewarding, and selecting validators within the Babylon blockchain ecosystem.
 
 ## Contracts
 
@@ -37,11 +37,11 @@
    - **Description**: The RewardsCoordinator contract is responsible for managing the distribution and claiming of rewards within the Babylon blockchain ecosystem. It allows authorized entities to submit reward distributions in the form of Merkle roots, which represent the rewards allocated to earners over specific periods. Participants can claim their rewards by providing Merkle proofs that verify their entitlement within these distributions. The contract ensures that only legitimate and authorized claims are processed, thereby maintaining the integrity and fairness of the reward system. By coordinating the distribution and secure claiming of rewards, the RewardsCoordinator plays a crucial role in incentivizing participation and upholding the fairness of the network's reward mechanisms.
 
 9. **StateBank**
-    
+
    - **Description**: The StateBank contract functions as a simple on-chain key-value store within the Babylon blockchain ecosystem. It allows registered Automated Validator Selection (BVS) contracts to securely store and update integer values associated with specific string keys. Only BVS contracts that have been registered with the StateBank can modify the stored values, ensuring that only authorized entities have write access. This mechanism enhances security by preventing unauthorized modifications while promoting transparency, as any user can query the stored values by providing the corresponding key. The StateBank thus provides a reliable and straightforward way for BVS contracts to persist and share state information on the blockchain, supporting the overall functionality and integrity of the ecosystem.
 
 10. **BVSDriver**
-    
+
     - **Description**: The BVS Driver contract serves as an interface for Automated Validator Selection (BVS) contracts within the Babylon blockchain ecosystem to securely initiate off-chain tasks. It maintains a registry of authorized BVS contracts, allowing only registered contracts to trigger off-chain executions via the execute_bvs_offchain function, which includes a task_id identifying the specific task. The contract emits events containing the sender's address and the task ID, enabling off-chain services to monitor and execute the corresponding tasks. By enforcing strict access control and providing a standardized mechanism for initiating off-chain operations, the BVS Driver enhances the security and reliability of interactions between on-chain contracts and off-chain services in the network.
 
 ## Development
@@ -113,7 +113,7 @@ docker run --rm -v "$(pwd)":/code custom-cosmwasm-optimizer:latest
 - strategy-base-TVLLimits: bbn1x6ttpp3vpzaknxcc25u0mjrlnagu3agvwnyl0wpwhtjdljaw8aks5dntmr, tx_hash: 65E96952C87DBF83D541C0A07A9EEA9D06FFAFF79DF9955551CCC94D69EDDD0A
 
 - bvs-driver: bbn1ytn4v3pd9ecklqf32pusephxpnfvnev7657rprr3jh43rchygvmqlatdtm, tx_hash:
-1CD70B531A7ACB7195B200EBC6EFCFEC279832A8D6F92F0D1068B29A40278DB4
+  1CD70B531A7ACB7195B200EBC6EFCFEC279832A8D6F92F0D1068B29A40278DB4
 
-- state-bank: bbn1u9mt6xgrwtxxlzzjyze2j8upancg900jggxuymf0dev6yxgsqapqzq87wc, tx_hash:
-82540C8BBF1B1FCB94236FE1FA35657E67B6CCFEBEB73F547138B5ABD14E340D
+- state-bank: bbn1xwyr5fqrgpueffa84uj8aglfea23qwlr00medkserpk3r7wpvslqpvdq6p, tx_hash:
+  31AE4B52FC2234F5818F1F5ED303F0E3008AF3C1C29A8AF9E6FCA4F495FAACD9
