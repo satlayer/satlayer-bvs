@@ -104,7 +104,7 @@ docker run --rm -v "$(pwd)":/code custom-cosmwasm-optimizer:latest
 
 - delegation-manager: bbn18zjcdsttnfhxxjjv29twnum3gxlqj54tlcmflwqsee9crmn9pk0syy0vw0, tx_hash: A9700B31FF2923CBC3F0750B6B42BFA8D1650497E462F9C7177A2EC9CFDDE64F
 
-- bvs-directory: bbn1cdt80emmltg76scs47h3fr42u37hvrcp8v5nt9sg6vfhkrsg32gqrwhdy0, tx_hash: 7E2EFCC649546BD4AC98366B85EF3D09AA5F131CC750CD4EADDAC0415375B097
+- bvs-directory: bbn1xep2ztktjkd0w8nu6kt5ac99cxewwpn0h7p2afz3lqkkr7y3ds9qgcqj7j, tx_hash: 6935D8CC13A7CEC76FCDAD399954F85C8A209CBD495AEB718BCE962F8460B00C
 
 - rewards-coordinator: bbn1kg8uzrhqnjp0a4rp6c6wtnl3y4prth7v54h5gwnkwgtn82yealxsrsfqdq, tx_hash: E548F9E598AD018FD3043FB25B54E0693159B87C974D8D90AEFC5229787B3AB4
 

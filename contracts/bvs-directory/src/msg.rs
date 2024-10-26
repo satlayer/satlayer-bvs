@@ -18,9 +18,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     RegisterBVS {
-        bvs_contract: String,
-        state_bank: String,
-        bvs_driver: String,
+        bvs_contract: String
     },
     RegisterOperatorToBVS {
         operator: String,
