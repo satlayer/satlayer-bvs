@@ -1,8 +1,8 @@
 use crate::{
     error::ContractError,
     msg::{
-        BVSRegisterParams, ExecuteMsg, InstantiateMsg, MigrateMsg, OperatorStatusResponse,
-        QueryMsg, SignatureWithSaltAndExpiry,
+        ExecuteMsg, InstantiateMsg, MigrateMsg, OperatorStatusResponse, QueryMsg,
+        SignatureWithSaltAndExpiry,
     },
     query::{
         BVSInfoResponse, DelegationResponse, DigestHashResponse, DomainNameResponse,
@@ -68,18 +68,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::RegisterBVS {
-            bvs_contract,
-            state_bank,
-            bvs_driver,
-        } => {
-            let params = BVSRegisterParams {
-                bvs_contract,
-                state_bank,
-                bvs_driver,
-            };
-            register_bvs(deps, params)
-        }
+        ExecuteMsg::RegisterBVS { bvs_contract } => register_bvs(deps, bvs_contract),
         ExecuteMsg::RegisterOperatorToBVS {
             operator,
             public_key,
@@ -145,21 +134,14 @@ pub fn execute(
     }
 }
 
-pub fn register_bvs(deps: DepsMut, params: BVSRegisterParams) -> Result<Response, ContractError> {
-    let input = format!(
-        "{}{}{}",
-        params.bvs_contract, params.state_bank, &params.bvs_driver
-    );
-
-    let hash_result = sha256(input.as_bytes());
+pub fn register_bvs(deps: DepsMut, bvs_contract: String) -> Result<Response, ContractError> {
+    let hash_result = sha256(bvs_contract.as_bytes());
 
     let bvs_hash = hex::encode(hash_result);
 
     let bvs_info = BVSInfo {
         bvs_hash: bvs_hash.clone(),
-        bvs_contract: params.bvs_contract.clone(),
-        state_bank: params.state_bank.clone(),
-        bvs_driver: params.bvs_driver.clone(),
+        bvs_contract: bvs_contract.clone(),
     };
 
     BVS_INFO.save(deps.storage, bvs_hash.clone(), &bvs_info)?;
@@ -456,8 +438,6 @@ fn query_bvs_info(deps: Deps, bvs_hash: String) -> StdResult<BVSInfoResponse> {
     Ok(BVSInfoResponse {
         bvs_hash,
         bvs_contract: bvs_info.bvs_contract,
-        state_bank: bvs_info.state_bank,
-        bvs_driver: bvs_info.bvs_driver,
     })
 }
 
@@ -626,8 +606,6 @@ mod tests {
 
         let msg = ExecuteMsg::RegisterBVS {
             bvs_contract: "bvs_contract".to_string(),
-            state_bank: "state_bank".to_string(),
-            bvs_driver: "bvs_driver".to_string(),
         };
 
         let result = execute(deps.as_mut(), env, info, msg).unwrap();
@@ -648,9 +626,7 @@ mod tests {
         assert_eq!(result.attributes[1].value, *bvs_hash);
 
         assert_eq!(bvs_info.bvs_hash, *bvs_hash);
-        assert_eq!(bvs_info.bvs_contract, "bvs_contract");
-        assert_eq!(bvs_info.state_bank, "state_bank");
-        assert_eq!(bvs_info.bvs_driver, "bvs_driver");
+        assert_eq!(bvs_info.bvs_contract, "bvs_contract")
     }
 
     #[test]
@@ -1385,20 +1361,12 @@ mod tests {
         let (mut deps, env, _info, _pauser_info, _unpauser_info, _delegation_manager) =
             instantiate_contract();
 
-        let params = BVSRegisterParams {
-            bvs_contract: "bvs_contract".to_string(),
-            state_bank: "state_bank".to_string(),
-            bvs_driver: "bvs_driver".to_string(),
-        };
+        let bvs_contract = "bvs_contract".to_string();
 
-        let result = register_bvs(deps.as_mut(), params.clone());
+        let result = register_bvs(deps.as_mut(), bvs_contract.clone());
         assert!(result.is_ok());
 
-        let input = format!(
-            "{}{}{}",
-            params.bvs_contract, params.state_bank, params.bvs_driver
-        );
-        let hash_result = sha256(input.as_bytes());
+        let hash_result = sha256(bvs_contract.as_bytes());
 
         let bvs_hash = hex::encode(hash_result);
 
@@ -1409,9 +1377,7 @@ mod tests {
         let bvs_info: BVSInfo = from_json(query_response).unwrap();
 
         assert_eq!(bvs_info.bvs_hash, bvs_hash);
-        assert_eq!(bvs_info.bvs_contract, params.bvs_contract);
-        assert_eq!(bvs_info.state_bank, params.state_bank);
-        assert_eq!(bvs_info.bvs_driver, params.bvs_driver);
+        assert_eq!(bvs_info.bvs_contract, bvs_contract.clone())
     }
 
     #[test]

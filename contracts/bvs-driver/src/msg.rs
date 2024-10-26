@@ -5,7 +5,7 @@ pub struct InstantiateMsg {}
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    ExecuteBvsOffchain { task_id: String },
+    ExecuteBvsOffchain { task_id: u64 },
     AddRegisteredBvsContract { address: String },
 }
 
