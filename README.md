@@ -112,7 +112,7 @@ docker run --rm -v "$(pwd)":/code custom-cosmwasm-optimizer:latest
 
 - strategy-base-TVLLimits: bbn1x6ttpp3vpzaknxcc25u0mjrlnagu3agvwnyl0wpwhtjdljaw8aks5dntmr, tx_hash: 65E96952C87DBF83D541C0A07A9EEA9D06FFAFF79DF9955551CCC94D69EDDD0A
 
-- bvs-driver: bbn1ytn4v3pd9ecklqf32pusephxpnfvnev7657rprr3jh43rchygvmqlatdtm, tx_hash:
+- bvs-driver: bbn1jskphr9zxs2yp3e9vwamyeqwxkfkg5zghyv52qcy4tlql3qjjwgsk6zhwq, tx_hash:
   1CD70B531A7ACB7195B200EBC6EFCFEC279832A8D6F92F0D1068B29A40278DB4
 
 - state-bank: bbn1xwyr5fqrgpueffa84uj8aglfea23qwlr00medkserpk3r7wpvslqpvdq6p, tx_hash:
