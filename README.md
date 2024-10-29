@@ -104,7 +104,7 @@ docker run --rm -v "$(pwd)":/code custom-cosmwasm-optimizer:latest
 
 - delegation-manager: bbn18zjcdsttnfhxxjjv29twnum3gxlqj54tlcmflwqsee9crmn9pk0syy0vw0, tx_hash: A9700B31FF2923CBC3F0750B6B42BFA8D1650497E462F9C7177A2EC9CFDDE64F
 
-- bvs-directory: bbn1xep2ztktjkd0w8nu6kt5ac99cxewwpn0h7p2afz3lqkkr7y3ds9qgcqj7j, tx_hash: 6935D8CC13A7CEC76FCDAD399954F85C8A209CBD495AEB718BCE962F8460B00C
+- bvs-directory: bbn1xnf6w2jg3uh76d4mavjpu539zcgv5wzg5xa00fnkf4fcd6carrasd6wa88, tx_hash: 9A424F59BBB7692090D5378F873C1E07B0A6F1F87056F280F969C414729172D1
 
 - rewards-coordinator: bbn1kg8uzrhqnjp0a4rp6c6wtnl3y4prth7v54h5gwnkwgtn82yealxsrsfqdq, tx_hash: E548F9E598AD018FD3043FB25B54E0693159B87C974D8D90AEFC5229787B3AB4
 
@@ -112,7 +112,7 @@ docker run --rm -v "$(pwd)":/code custom-cosmwasm-optimizer:latest
 
 - strategy-base-TVLLimits: bbn1x6ttpp3vpzaknxcc25u0mjrlnagu3agvwnyl0wpwhtjdljaw8aks5dntmr, tx_hash: 65E96952C87DBF83D541C0A07A9EEA9D06FFAFF79DF9955551CCC94D69EDDD0A
 
-- bvs-driver: bbn1jskphr9zxs2yp3e9vwamyeqwxkfkg5zghyv52qcy4tlql3qjjwgsk6zhwq, tx_hash:
+- bvs-driver: bbn1ytn4v3pd9ecklqf32pusephxpnfvnev7657rprr3jh43rchygvmqlatdtm, tx_hash:
   1CD70B531A7ACB7195B200EBC6EFCFEC279832A8D6F92F0D1068B29A40278DB4
 
 - state-bank: bbn1xwyr5fqrgpueffa84uj8aglfea23qwlr00medkserpk3r7wpvslqpvdq6p, tx_hash:

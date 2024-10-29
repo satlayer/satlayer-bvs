@@ -55,7 +55,7 @@ pub fn execute_bvs_offchain(
     }
 
     Ok(Response::new().add_event(
-        Event::new("ExecuteBVSOffchain")
+        Event::new("ExecuteAVSOffchain")
             .add_attribute("sender", sender.to_string())
             .add_attribute("task_id", task_id.to_string()),
     ))
@@ -126,7 +126,7 @@ mod tests {
 
         assert_eq!(1, res.events.len());
 
-        assert_eq!("ExecuteBVSOffchain", res.events[0].ty);
+        assert_eq!("ExecuteAVSOffchain", res.events[0].ty);
 
         assert_eq!(
             res.events[0].attributes,

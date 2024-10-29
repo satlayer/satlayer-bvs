@@ -23,4 +23,7 @@ pub enum ContractError {
 
     #[error("BVSDirectory.transferOwnership: unauthorized")]
     Unauthorized {},
+
+    #[error("DelegationManager.IsOperator: operator not registered yet from delegation manager")]
+    OperatorNotRegisteredFromDelegationManager {},
 }
