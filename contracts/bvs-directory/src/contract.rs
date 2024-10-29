@@ -176,7 +176,7 @@ pub fn register_operator(
     )?;
 
     if !is_operator_response.is_operator {
-        return Err(ContractError::OperatorNotRegistered {});
+        return Err(ContractError::OperatorNotRegisteredFromDelegationManager {});
     }
 
     let status =
