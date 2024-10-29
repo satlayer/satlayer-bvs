@@ -242,17 +242,17 @@ pub fn submit_slash_request(
             .add_attribute("share", slash_details.share.to_string())
             .add_attribute("start_time", slash_details.start_time.to_string())
             .add_attribute("end_time", slash_details.end_time.to_string())
-            .add_attribute("status", slash_details.status.to_string())
+            .add_attribute("status", slash_details.status.to_string()),
     );
 
     for validator in slash_details.slash_validator.iter() {
-        let validator_event = Event::new("slash_validator_checked")
-            .add_attribute("validator", validator.to_string());
+        let validator_event =
+            Event::new("slash_validator_checked").add_attribute("validator", validator.to_string());
 
         response = response.add_event(validator_event);
     }
 
-    Ok(response) 
+    Ok(response)
 }
 
 pub fn execute_slash_request(

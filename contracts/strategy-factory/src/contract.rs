@@ -380,7 +380,10 @@ fn handle_instantiate_reply(mut deps: DepsMut, msg: Reply) -> Result<Response, C
         .add_message(CosmosMsg::Wasm(exec_msg)))
 }
 
-fn extract_contract_address_from_reply(msg: &Reply, deps: &mut DepsMut) -> Result<String, ContractError> {
+fn extract_contract_address_from_reply(
+    msg: &Reply,
+    deps: &mut DepsMut,
+) -> Result<String, ContractError> {
     let res = msg.result.clone().into_result().map_err(|e| {
         println!("InstantiateError: {:?}", e);
         ContractError::InstantiateError {}
@@ -408,7 +411,11 @@ fn extract_contract_address_from_reply(msg: &Reply, deps: &mut DepsMut) -> Resul
         .last()
         .ok_or(StdError::not_found("Token"))??;
 
-    set_strategy_for_token(deps, Addr::unchecked(token_address.clone()), Addr::unchecked(contract_address.clone()))?;
+    set_strategy_for_token(
+        deps,
+        Addr::unchecked(token_address.clone()),
+        Addr::unchecked(contract_address.clone()),
+    )?;
 
     Ok(instantiate_response.contract_address)
 }

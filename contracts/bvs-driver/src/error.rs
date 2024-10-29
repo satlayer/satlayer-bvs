@@ -8,4 +8,7 @@ pub enum ContractError {
 
     #[error("BvsDriver: Bvs contract is not registered")]
     BvsContractNotRegistered {},
+
+    #[error("BvsDriver.migrate: unauthorized")]
+    Unauthorized {},
 }
