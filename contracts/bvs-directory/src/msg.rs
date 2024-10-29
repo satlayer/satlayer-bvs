@@ -18,7 +18,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     RegisterBVS {
-        bvs_contract: String
+        bvs_contract: String,
     },
     RegisterOperatorToBVS {
         operator: String,
@@ -105,11 +105,4 @@ pub struct SignatureWithSaltAndExpiry {
     pub signature: Binary,
     pub salt: Binary,
     pub expiry: u64,
-}
-
-#[cw_serde]
-pub struct BVSRegisterParams {
-    pub bvs_contract: String,
-    pub state_bank: String,
-    pub bvs_driver: String,
 }

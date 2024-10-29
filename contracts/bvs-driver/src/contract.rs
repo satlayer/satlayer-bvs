@@ -1,6 +1,10 @@
 use crate::{
-    error::ContractError, msg::ExecuteMsg, msg::InstantiateMsg, msg::QueryMsg,
-    state::IS_BVS_CONTRACT_REGISTERED,
+    error::ContractError,
+    msg::ExecuteMsg,
+    msg::InstantiateMsg,
+    msg::MigrateMsg,
+    msg::QueryMsg,
+    state::{IS_BVS_CONTRACT_REGISTERED, OWNER},
 };
 
 use cosmwasm_std::{
@@ -16,9 +20,12 @@ pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    let owner = deps.api.addr_validate(&msg.initial_owner)?;
+    OWNER.save(deps.storage, &owner)?;
 
     let response = Response::new().add_attribute("method", "instantiate");
 
@@ -36,6 +43,10 @@ pub fn execute(
         ExecuteMsg::ExecuteBvsOffchain { task_id } => execute_bvs_offchain(deps, info, task_id),
         ExecuteMsg::AddRegisteredBvsContract { address } => {
             add_registered_bvs_contract(deps, info, Addr::unchecked(address))
+        }
+        ExecuteMsg::TransferOwnership { new_owner } => {
+            let new_owner_addr = deps.api.addr_validate(&new_owner)?;
+            transfer_ownership(deps, info, new_owner_addr)
         }
     }
 }
@@ -75,9 +86,48 @@ pub fn add_registered_bvs_contract(
     ))
 }
 
+pub fn transfer_ownership(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_owner: Addr,
+) -> Result<Response, ContractError> {
+    let current_owner = OWNER.load(deps.storage)?;
+
+    if current_owner != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    OWNER.save(deps.storage, &new_owner)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "transfer_ownership")
+        .add_attribute("new_owner", new_owner.to_string()))
+}
+
 #[entry_point]
 pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
     Ok(Binary::default())
+}
+
+fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+    let owner = OWNER.load(deps.storage)?;
+    if info.sender != owner {
+        return Err(ContractError::Unauthorized {});
+    }
+    Ok(())
+}
+
+pub fn migrate(
+    deps: DepsMut,
+    _env: Env,
+    info: &MessageInfo,
+    _msg: MigrateMsg,
+) -> Result<Response, ContractError> {
+    only_owner(deps.as_ref(), info)?;
+
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    Ok(Response::new().add_attribute("method", "migrate"))
 }
 
 #[cfg(test)]
@@ -94,7 +144,10 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
-        let msg = InstantiateMsg {};
+        let owner = deps.api.addr_make("owner").to_string();
+        let msg = InstantiateMsg {
+            initial_owner: owner,
+        };
 
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(1, res.attributes.len());
@@ -206,5 +259,35 @@ mod tests {
             .unwrap()
             .unwrap_or(false);
         assert!(is_registered);
+    }
+
+    #[test]
+    fn test_transfer_ownership() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        let initial_owner = deps.api.addr_make("initial_owner");
+        let init_msg = InstantiateMsg {
+            initial_owner: initial_owner.to_string(),
+        };
+        let init_info = message_info(&Addr::unchecked("creator"), &[]);
+        instantiate(deps.as_mut(), env.clone(), init_info, init_msg).unwrap();
+
+        let info = message_info(&initial_owner, &[]);
+        let new_owner = deps.api.addr_make("new_owner").to_string();
+        let msg = ExecuteMsg::TransferOwnership {
+            new_owner: new_owner.clone(),
+        };
+
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
+
+        assert_eq!(2, res.attributes.len());
+        assert_eq!(
+            vec![
+                ("method", "transfer_ownership"),
+                ("new_owner", new_owner.as_str())
+            ],
+            res.attributes
+        );
     }
 }
