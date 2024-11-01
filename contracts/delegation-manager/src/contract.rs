@@ -114,9 +114,7 @@ pub fn execute(
             metadata_uri,
         } => {
             let sender_public_key_binary = Binary::from_base64(&sender_public_key)?;
-            let delegation_approver_addr = deps
-                .api
-                .addr_validate(&operator_details.delegation_approver)?;
+            let delegation_approver_addr = Addr::unchecked(operator_details.delegation_approver);
             let deprecated_earnings_receiver_addr =
                 Addr::unchecked(&operator_details.deprecated_earnings_receiver);
 
