@@ -5,7 +5,7 @@ use sha2::{Digest, Sha256};
 
 pub const DOMAIN_TYPEHASH: &[u8] =
     b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
-pub const DOMAIN_NAME: &[u8] = b"EigenLayer";
+pub const DOMAIN_NAME: &[u8] = b"SatLayer";
 
 pub const EARNER_LEAF_SALT: u8 = 0;
 pub const TOKEN_LEAF_SALT: u8 = 1;

@@ -146,6 +146,10 @@ pub fn execute(
             let new_delegation_manager_addr = deps.api.addr_validate(&new_delegation_manager)?;
             set_delegation_manager(deps, info, new_delegation_manager_addr)
         }
+        ExecuteMsg::SetStrategyManager { new_strategy_manager } => {
+            let new_strategy_manager_addr = deps.api.addr_validate(&new_strategy_manager)?;
+            set_strategy_manager(deps, info, new_strategy_manager_addr)
+        }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner_addr = deps.api.addr_validate(&new_owner)?;
             transfer_ownership(deps, info, new_owner_addr)
@@ -495,6 +499,23 @@ pub fn set_delegation_manager(
     let event = Event::new("delegation_manager_set")
         .add_attribute("method", "set_delegation_manager")
         .add_attribute("new_delegation_manager", new_delegation_manager.to_string())
+        .add_attribute("sender", info.sender.to_string());
+
+    Ok(Response::new().add_event(event))
+}
+
+pub fn set_strategy_manager(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_strategy_manager: Addr,
+) -> Result<Response, ContractError> {
+    only_owner(deps.as_ref(), &info)?;
+
+    STRATEGY_MANAGER.save(deps.storage, &new_strategy_manager)?;
+
+    let event = Event::new("strategy_manager_set")
+        .add_attribute("method", "set_strategy_manager")
+        .add_attribute("new_strategy_manager", new_strategy_manager.to_string())
         .add_attribute("sender", info.sender.to_string());
 
     Ok(Response::new().add_event(event))
@@ -1491,5 +1512,30 @@ mod tests {
 
         let updated_slash_details = SLASH_DETAILS.load(&deps.storage, slash_hash).unwrap();
         assert_eq!(updated_slash_details.status, false);
+    }
+
+    #[test]
+    fn test_set_strategy_manager() {
+        let (mut deps, env, info, _delegation_manager, _owner, _pauser, _unpauser) =
+            instantiate_contract();
+
+        let new_strategy_manager = deps.api.addr_make("new_strategy_manager").to_string();
+
+        let set_strategy_manager_msg = ExecuteMsg::SetStrategyManager {
+            new_strategy_manager: new_strategy_manager.clone(),
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), set_strategy_manager_msg);
+        assert!(res.is_ok());
+
+        let strategy_manager_addr = STRATEGY_MANAGER.load(&deps.storage).unwrap();
+        assert_eq!(strategy_manager_addr, Addr::unchecked(new_strategy_manager.clone()));
+
+        let event = res.unwrap().events[0].clone();
+        assert_eq!(event.ty, "strategy_manager_set");
+        assert_eq!(event.attributes[0].key, "method");
+        assert_eq!(event.attributes[0].value, "set_strategy_manager");
+        assert_eq!(event.attributes[1].key, "new_strategy_manager");
+        assert_eq!(event.attributes[1].value, new_strategy_manager.clone());
     }
 }

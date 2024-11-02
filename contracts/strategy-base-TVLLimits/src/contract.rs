@@ -96,6 +96,10 @@ pub fn execute(
             let token_addr = deps.api.addr_validate(&token)?;
             withdraw(deps, env, info, recipient_addr, token_addr, amount_shares)
         }
+        ExecuteMsg::SetStrategyManager { new_strategy_manager } => {
+            let new_strategy_manager_addr = deps.api.addr_validate(&new_strategy_manager)?;
+            set_strategy_manager(deps, info, new_strategy_manager_addr)
+        }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner_addr = deps.api.addr_validate(&new_owner)?;
             transfer_ownership(deps, info, new_owner_addr)
@@ -503,6 +507,24 @@ fn set_tvl_limits_internal(
         .add_attribute("new_max_total_deposits", max_total_deposits.to_string()))
 }
 
+fn set_strategy_manager(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_strategy_manager: Addr,
+) -> Result<Response, ContractError> {
+    only_owner(deps.as_ref(), &info)?;
+
+    let mut state = STRATEGY_STATE.load(deps.storage)?;
+    state.strategy_manager = new_strategy_manager.clone();
+    STRATEGY_STATE.save(deps.storage, &state)?;
+
+    let event = Event::new("strategy_manager_set")
+        .add_attribute("method", "set_strategy_manager")
+        .add_attribute("new_strategy_manager", new_strategy_manager.to_string());
+
+    Ok(Response::new().add_event(event))
+}
+
 fn before_deposit(state: &StrategyState, token: &Addr) -> Result<(), ContractError> {
     if token != state.underlying_token {
         return Err(ContractError::InvalidToken {});
@@ -904,7 +926,7 @@ mod tests {
 
         let query_msg = QueryMsg::Explanation {};
 
-        let res = query(deps.as_ref(), env, query_msg).unwrap();
+        let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
 
         let explanation_response: ExplanationResponse = from_json(res).unwrap();
 
@@ -1554,5 +1576,32 @@ mod tests {
                 err
             ),
         }
+    }
+
+    #[test]
+    fn test_set_strategy_manager() {
+        let (mut deps, env, info, _pauser_info, _unpauser_info, _token, _strategy_manager) =
+            instantiate_contract();
+
+        let new_strategy_manager = deps.api.addr_make("new_strategy_manager").to_string();
+
+        let set_strategy_manager_msg = ExecuteMsg::SetStrategyManager {
+            new_strategy_manager: new_strategy_manager.clone(),
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), set_strategy_manager_msg)
+            .unwrap();
+
+        assert!(res.events.iter().any(|e| e.ty == "strategy_manager_set"));
+
+        let state = STRATEGY_STATE.load(&deps.storage).unwrap();
+        assert_eq!(state.strategy_manager, Addr::unchecked(new_strategy_manager.clone()));
+
+        let event = res.events[0].clone();
+        assert_eq!(event.ty, "strategy_manager_set");
+        assert_eq!(event.attributes[0].key, "method");
+        assert_eq!(event.attributes[0].value, "set_strategy_manager");
+        assert_eq!(event.attributes[1].key, "new_strategy_manager");
+        assert_eq!(event.attributes[1].value, new_strategy_manager.clone());
     }
 }

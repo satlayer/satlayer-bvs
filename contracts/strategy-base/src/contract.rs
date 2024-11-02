@@ -93,6 +93,10 @@ pub fn execute(
             let token_addr = deps.api.addr_validate(&token)?;
             withdraw(deps, env, info, recipient_addr, token_addr, amount_shares)
         }
+        ExecuteMsg::SetStrategyManager { new_strategy_manager } => {
+            let new_strategy_manager_addr = deps.api.addr_validate(&new_strategy_manager)?;
+            set_strategy_manager(deps, info, new_strategy_manager_addr)
+        }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner_addr = deps.api.addr_validate(&new_owner)?;
             transfer_ownership(deps, info, new_owner_addr)
@@ -297,6 +301,24 @@ pub fn user_underlying_view(deps: Deps, env: Env, user: Addr) -> StdResult<Uint1
     let amount_to_send = shares_to_underlying_view(deps, env, user_shares)?;
 
     Ok(amount_to_send)
+}
+
+pub fn set_strategy_manager(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_strategy_manager: Addr,
+) -> Result<Response, ContractError> {
+    only_owner(deps.as_ref(), &info)?;
+
+    let mut state = STRATEGY_STATE.load(deps.storage)?;
+    state.strategy_manager = new_strategy_manager.clone();
+    STRATEGY_STATE.save(deps.storage, &state)?;
+
+    let event = Event::new("strategy_manager_set")
+        .add_attribute("method", "set_strategy_manager")
+        .add_attribute("new_strategy_manager", new_strategy_manager.to_string());
+
+    Ok(Response::new().add_event(event))
 }
 
 pub fn transfer_ownership(
@@ -851,33 +873,36 @@ mod tests {
 
         let contract_address = env.contract.address.clone();
 
-        deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart {
-                contract_addr, msg, ..
-            } => {
-                let msg_clone = msg.clone();
-                if contract_addr == &token {
-                    let msg: Cw20QueryMsg = from_json(msg).unwrap();
-                    if let Cw20QueryMsg::Balance { address } = msg {
-                        if address == contract_address.to_string() {
-                            return SystemResult::Ok(ContractResult::Ok(
-                                to_json_binary(&Cw20BalanceResponse {
-                                    balance: Uint128::new(1_000_000),
-                                })
-                                .unwrap(),
-                            ));
+        deps.querier.update_wasm({
+            let token_clone = token.clone();
+            move |query| match query {
+                WasmQuery::Smart {
+                    contract_addr, msg, ..
+                } => {
+                    let msg_clone = msg.clone();
+                    if contract_addr == &token_clone {
+                        let msg: Cw20QueryMsg = from_json(msg).unwrap();
+                        if let Cw20QueryMsg::Balance { address } = msg {
+                            if address == contract_address.to_string() {
+                                return SystemResult::Ok(ContractResult::Ok(
+                                    to_json_binary(&Cw20BalanceResponse {
+                                        balance: Uint128::new(1_000_000),
+                                    })
+                                    .unwrap(),
+                                ));
+                            }
                         }
                     }
+                    SystemResult::Err(SystemError::InvalidRequest {
+                        error: "not implemented".to_string(),
+                        request: msg_clone,
+                    })
                 }
-                SystemResult::Err(SystemError::InvalidRequest {
+                _ => SystemResult::Err(SystemError::InvalidRequest {
                     error: "not implemented".to_string(),
-                    request: msg_clone,
-                })
+                    request: Binary::from(b"other".as_ref()),
+                }),
             }
-            _ => SystemResult::Err(SystemError::InvalidRequest {
-                error: "not implemented".to_string(),
-                request: Binary::from(b"other".as_ref()),
-            }),
         });
 
         let amount_shares = Uint128::new(1_000);
@@ -1316,5 +1341,25 @@ mod tests {
 
         let unpauser = UNPAUSER.load(&deps.storage).unwrap();
         assert_eq!(unpauser, Addr::unchecked(new_unpauser));
+    }
+
+    #[test]
+    fn test_set_strategy_manager() {
+        let (mut deps, env, info, _pauser_info, _unpauser_info, _token, _strategy_manager) =
+            instantiate_contract();
+
+        let new_strategy_manager = deps.api.addr_make("new_strategy_manager").to_string();
+
+        let set_strategy_manager_msg = ExecuteMsg::SetStrategyManager {
+            new_strategy_manager: new_strategy_manager.clone(),
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), set_strategy_manager_msg)
+            .unwrap();
+
+        assert!(res.events.iter().any(|e| e.ty == "strategy_manager_set"));
+
+        let state = STRATEGY_STATE.load(&deps.storage).unwrap();
+        assert_eq!(state.strategy_manager, Addr::unchecked(new_strategy_manager));
     }
 }
