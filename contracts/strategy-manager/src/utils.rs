@@ -7,7 +7,7 @@ use sha2::{Digest, Sha256};
 pub const DEPOSIT_TYPEHASH: &[u8] = b"Deposit(address staker,address strategy,address token,uint256 amount,uint256 nonce,uint256 expiry)";
 pub const DOMAIN_TYPEHASH: &[u8] =
     b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
-pub const DOMAIN_NAME: &[u8] = b"EigenLayer";
+pub const DOMAIN_NAME: &[u8] = b"SatLayer";
 
 fn sha256(input: &[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();

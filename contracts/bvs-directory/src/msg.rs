@@ -32,6 +32,9 @@ pub enum ExecuteMsg {
     UpdateBVSMetadataURI {
         metadata_uri: String,
     },
+    SetDelegationManager {
+        delegation_manager: String,
+    },
     CancelSalt {
         salt: String,
     },

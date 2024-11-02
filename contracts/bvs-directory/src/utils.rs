@@ -6,7 +6,7 @@ pub const OPERATOR_BVS_REGISTRATION_TYPEHASH: &[u8] =
     b"OperatorBVSRegistration(address operator,address bvs,bytes32 salt,uint256 expiry)";
 pub const DOMAIN_TYPEHASH: &[u8] =
     b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
-pub const DOMAIN_NAME: &[u8] = b"EigenLayer";
+pub const DOMAIN_NAME: &[u8] = b"SatLayer";
 
 pub fn sha256(input: &[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();

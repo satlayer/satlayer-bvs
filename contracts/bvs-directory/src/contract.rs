@@ -105,6 +105,10 @@ pub fn execute(
         ExecuteMsg::UpdateBVSMetadataURI { metadata_uri } => {
             update_metadata_uri(info, metadata_uri)
         }
+        ExecuteMsg::SetDelegationManager { delegation_manager } => {
+            let delegation_manager_addr = deps.api.addr_validate(&delegation_manager)?;
+            set_delegation_manager(deps, info, delegation_manager_addr)
+        }
         ExecuteMsg::CancelSalt { salt } => {
             let salt_binary = Binary::from_base64(&salt)?;
             cancel_salt(deps, env, info, salt_binary)
@@ -265,6 +269,19 @@ pub fn update_metadata_uri(
         .add_attribute("metadata_uri", metadata_uri.clone());
 
     Ok(Response::new().add_event(event))
+}
+
+pub fn set_delegation_manager(
+    deps: DepsMut,
+    info: MessageInfo,
+    delegation_manager: Addr,
+) -> Result<Response, ContractError> {
+    only_owner(deps.as_ref(), &info)?;
+    DELEGATION_MANAGER.save(deps.storage, &delegation_manager)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "set_delegation_manager")
+        .add_attribute("delegation_manager", delegation_manager.to_string()))
 }
 
 pub fn cancel_salt(
@@ -1478,5 +1495,28 @@ mod tests {
 
         let unpauser = UNPAUSER.load(&deps.storage).unwrap();
         assert_eq!(unpauser, Addr::unchecked(new_unpauser));
+    }
+
+    #[test]
+    fn test_set_delegation_manager() {
+        let (mut deps, env, info, _pauser_info, _unpauser_info, _delegation_manager) =
+            instantiate_contract();
+
+        let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
+
+        let set_delegation_manager_msg = ExecuteMsg::SetDelegationManager {
+            delegation_manager: delegation_manager.to_string(),
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), set_delegation_manager_msg)
+            .unwrap();
+
+        assert!(res
+            .attributes
+            .iter()
+            .any(|a| a.key == "method" && a.value == "set_delegation_manager"));
+
+        let delegation_manager_addr = DELEGATION_MANAGER.load(&deps.storage).unwrap();
+        assert_eq!(delegation_manager_addr, Addr::unchecked(delegation_manager));
     }
 }

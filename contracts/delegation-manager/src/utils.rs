@@ -9,7 +9,7 @@ const DOMAIN_TYPEHASH: &[u8] =
     b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
 const STAKER_DELEGATION_TYPEHASH: &[u8] =
     b"StakerDelegation(address staker,address operator,uint256 nonce,uint256 expiry)";
-const DOMAIN_NAME: &[u8] = b"EigenLayer";
+const DOMAIN_NAME: &[u8] = b"SatLayer";
 
 fn sha256(input: &[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();

@@ -27,6 +27,9 @@ pub enum ExecuteMsg {
         token: String,
         amount_shares: Uint128,
     },
+    SetStrategyManager {
+        new_strategy_manager: String,
+    },
     TransferOwnership {
         new_owner: String,
     },
