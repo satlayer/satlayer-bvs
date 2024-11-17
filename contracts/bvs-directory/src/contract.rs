@@ -1508,8 +1508,13 @@ mod tests {
             delegation_manager: delegation_manager.to_string(),
         };
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), set_delegation_manager_msg)
-            .unwrap();
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            set_delegation_manager_msg,
+        )
+        .unwrap();
 
         assert!(res
             .attributes

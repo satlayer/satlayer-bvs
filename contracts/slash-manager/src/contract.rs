@@ -146,7 +146,9 @@ pub fn execute(
             let new_delegation_manager_addr = deps.api.addr_validate(&new_delegation_manager)?;
             set_delegation_manager(deps, info, new_delegation_manager_addr)
         }
-        ExecuteMsg::SetStrategyManager { new_strategy_manager } => {
+        ExecuteMsg::SetStrategyManager {
+            new_strategy_manager,
+        } => {
             let new_strategy_manager_addr = deps.api.addr_validate(&new_strategy_manager)?;
             set_strategy_manager(deps, info, new_strategy_manager_addr)
         }
@@ -1525,11 +1527,19 @@ mod tests {
             new_strategy_manager: new_strategy_manager.clone(),
         };
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), set_strategy_manager_msg);
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            set_strategy_manager_msg,
+        );
         assert!(res.is_ok());
 
         let strategy_manager_addr = STRATEGY_MANAGER.load(&deps.storage).unwrap();
-        assert_eq!(strategy_manager_addr, Addr::unchecked(new_strategy_manager.clone()));
+        assert_eq!(
+            strategy_manager_addr,
+            Addr::unchecked(new_strategy_manager.clone())
+        );
 
         let event = res.unwrap().events[0].clone();
         assert_eq!(event.ty, "strategy_manager_set");

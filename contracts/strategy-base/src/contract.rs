@@ -93,7 +93,9 @@ pub fn execute(
             let token_addr = deps.api.addr_validate(&token)?;
             withdraw(deps, env, info, recipient_addr, token_addr, amount_shares)
         }
-        ExecuteMsg::SetStrategyManager { new_strategy_manager } => {
+        ExecuteMsg::SetStrategyManager {
+            new_strategy_manager,
+        } => {
             let new_strategy_manager_addr = deps.api.addr_validate(&new_strategy_manager)?;
             set_strategy_manager(deps, info, new_strategy_manager_addr)
         }
@@ -1354,12 +1356,20 @@ mod tests {
             new_strategy_manager: new_strategy_manager.clone(),
         };
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), set_strategy_manager_msg)
-            .unwrap();
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            set_strategy_manager_msg,
+        )
+        .unwrap();
 
         assert!(res.events.iter().any(|e| e.ty == "strategy_manager_set"));
 
         let state = STRATEGY_STATE.load(&deps.storage).unwrap();
-        assert_eq!(state.strategy_manager, Addr::unchecked(new_strategy_manager));
+        assert_eq!(
+            state.strategy_manager,
+            Addr::unchecked(new_strategy_manager)
+        );
     }
 }
