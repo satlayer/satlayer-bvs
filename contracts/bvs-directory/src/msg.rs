@@ -114,6 +114,5 @@ pub struct SignatureWithSaltAndExpiry {
 pub struct BVSContractParams {
     pub bvs_contract: String,
     pub chain_name: String,
-    pub chain_id: u64,
-    pub evm_bvs_directory: String,
+    pub chain_id: String
 }

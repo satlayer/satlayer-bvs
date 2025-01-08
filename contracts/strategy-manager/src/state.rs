@@ -7,6 +7,7 @@ pub struct StrategyManagerState {
     pub delegation_manager: Addr,
     pub slash_manager: Addr,
     pub strategy_factory: Addr,
+    pub mirrored_token: Addr,
 }
 
 pub const STRATEGY_MANAGER_STATE: Item<StrategyManagerState> = Item::new("strategy_manager_state");
