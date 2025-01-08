@@ -9,8 +9,7 @@ members = [
     "contracts/rewards-coordinator",
     "contracts/strategy-base-TVLLimits",
     "contracts/strategy-factory",
-    "contracts/slash-manager",
-    "contracts/mirrored-token"
+    "contracts/slash-manager"
     ]
 
 resolver = "2"

@@ -14,7 +14,6 @@ pub struct InstantiateMsg {
     pub delegation_manager: String,
     pub slash_manager: String,
     pub strategy_factory: String,
-    pub mirrored_token: String,
     pub initial_strategy_whitelister: String,
     pub initial_owner: String,
     pub pauser: String,
@@ -34,9 +33,6 @@ pub enum ExecuteMsg {
     SetStrategyWhitelister {
         new_strategy_whitelister: String,
     },
-    SetMirroredToken {
-        mirrored_token: String,
-    },
     DepositIntoStrategy {
         strategy: String,
         token: String,
@@ -47,15 +43,6 @@ pub enum ExecuteMsg {
         value: bool,
     },
     DepositIntoStrategyWithSignature {
-        strategy: String,
-        token: String,
-        amount: Uint128,
-        staker: String,
-        public_key: String,
-        expiry: u64,
-        signature: String,
-    },
-    DepositViaMirroredTokenWithSignature {
         strategy: String,
         token: String,
         amount: Uint128,

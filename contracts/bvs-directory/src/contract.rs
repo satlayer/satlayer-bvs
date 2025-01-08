@@ -2,7 +2,7 @@ use crate::{
     error::ContractError,
     msg::{
         ExecuteMsg, InstantiateMsg, MigrateMsg, OperatorStatusResponse, QueryMsg,
-        SignatureWithSaltAndExpiry, BVSContractParams
+        SignatureWithSaltAndExpiry,
     },
     query::{
         BVSInfoResponse, DelegationResponse, DigestHashResponse, DomainNameResponse,
@@ -14,7 +14,7 @@ use crate::{
     },
     utils::{
         calculate_digest_hash, recover, sha256, DigestHashParams, DOMAIN_NAME, DOMAIN_TYPEHASH,
-        OPERATOR_BVS_REGISTRATION_TYPEHASH
+        OPERATOR_BVS_REGISTRATION_TYPEHASH,
     },
 };
 use common::delegation::{OperatorResponse, QueryMsg as DelegationManagerQueryMsg};
@@ -138,32 +138,21 @@ pub fn execute(
     }
 }
 
-pub fn register_bvs(deps: DepsMut, bvs_contract: BVSContractParams) -> Result<Response, ContractError> {
-    let combined_input = format!(
-        "{}-{}-{}",
-        bvs_contract.bvs_contract, bvs_contract.chain_name, bvs_contract.chain_id
-    );
+pub fn register_bvs(deps: DepsMut, bvs_contract: String) -> Result<Response, ContractError> {
+    let hash_result = sha256(bvs_contract.as_bytes());
 
-    let hash_result = sha256(combined_input.as_bytes());
     let bvs_hash = hex::encode(hash_result);
 
     let bvs_info = BVSInfo {
         bvs_hash: bvs_hash.clone(),
-        bvs_contract: bvs_contract.bvs_contract.clone(),
-        chain_name: bvs_contract.chain_name.clone(),
-        chain_id: bvs_contract.chain_id.clone(),
+        bvs_contract: bvs_contract.clone(),
     };
 
     BVS_INFO.save(deps.storage, bvs_hash.clone(), &bvs_info)?;
 
-    let event = Event::new("BVSRegistered")
+    Ok(Response::new()
         .add_attribute("method", "register_bvs")
-        .add_attribute("bvs_hash", bvs_hash)
-        .add_attribute("chain_name", bvs_contract.chain_name)
-        .add_attribute("chain_id", bvs_contract.chain_id)
-        .add_attribute("bvs_contract", bvs_contract.bvs_contract);
-
-    Ok(Response::new().add_event(event))
+        .add_attribute("bvs_hash", bvs_hash))
 }
 
 pub fn register_operator(
@@ -632,14 +621,8 @@ mod tests {
             }),
         });
 
-        let bvs_contract = BVSContractParams {
-            bvs_contract: "bvs_contract".to_string(),
-            chain_name: "test-chain".to_string(),
-            chain_id: "1".to_string()
-        };
-
         let msg = ExecuteMsg::RegisterBVS {
-            bvs_contract: bvs_contract.clone(),
+            bvs_contract: "bvs_contract".to_string(),
         };
 
         let result = execute(deps.as_mut(), env, info, msg).unwrap();
@@ -653,7 +636,7 @@ mod tests {
 
         let bvs_info = BVS_INFO.load(&deps.storage, bvs_hash.clone()).unwrap();
 
-        assert_eq!(result.attributes.len(), 4);
+        assert_eq!(result.attributes.len(), 2);
         assert_eq!(result.attributes[0].key, "method");
         assert_eq!(result.attributes[0].value, "register_bvs");
         assert_eq!(result.attributes[1].key, "bvs_hash");
@@ -1395,32 +1378,23 @@ mod tests {
         let (mut deps, env, _info, _pauser_info, _unpauser_info, _delegation_manager) =
             instantiate_contract();
 
-        let bvs_contract = BVSContractParams {
-            bvs_contract: "bvs_contract".to_string(),
-            chain_name: "test-chain".to_string(),
-            chain_id: "1".to_string()
-        };
+        let bvs_contract = "bvs_contract".to_string();
 
         let result = register_bvs(deps.as_mut(), bvs_contract.clone());
         assert!(result.is_ok());
 
-        let combined_input = format!(
-            "{}-{}-{}",
-            bvs_contract.bvs_contract, 
-            bvs_contract.chain_name, 
-            bvs_contract.chain_id
-        );
-        let hash_result = sha256(combined_input.as_bytes());
+        let hash_result = sha256(bvs_contract.as_bytes());
+
         let bvs_hash = hex::encode(hash_result);
 
         let query_msg = QueryMsg::GetBVSInfo {
             bvs_hash: bvs_hash.clone(),
         };
         let query_response = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let bvs_info: BVSInfoResponse = from_json(query_response).unwrap();
-        
+        let bvs_info: BVSInfo = from_json(query_response).unwrap();
+
         assert_eq!(bvs_info.bvs_hash, bvs_hash);
-        assert_eq!(bvs_info.bvs_contract, bvs_contract.bvs_contract);
+        assert_eq!(bvs_info.bvs_contract, bvs_contract.clone())
     }
 
     #[test]

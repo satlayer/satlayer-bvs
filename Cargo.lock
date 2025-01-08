@@ -330,9 +330,9 @@ checksum = "8d075f6bb1483a6ce83b5cbc73a3a1207e0316ac1e34ed1f2a4d9fc3a0f07bf6"
 
 [[package]]
 name = "cosmwasm-crypto"
-version = "1.5.9"
+version = "1.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eba94b9f3fb79b9f1101b3e0c61995a557828e2c0d3f5579c1d0bfbea333c19e"
+checksum = "58535cbcd599b3c193e3967c8292fe1dbbb5de7c2a2d87380661091dd4744044"
 dependencies = [
  "digest 0.10.7",
  "ed25519-zebra 3.1.0",
@@ -366,9 +366,9 @@ dependencies = [
 
 [[package]]
 name = "cosmwasm-derive"
-version = "1.5.9"
+version = "1.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d67457e4acb04e738788d3489e343957455df2c4643f2b53050eb052ca631d19"
+checksum = "a8e07de16c800ac82fd188d055ecdb923ead0cf33960d3350089260bb982c09f"
 dependencies = [
  "syn 1.0.109",
 ]
@@ -410,15 +410,15 @@ dependencies = [
 
 [[package]]
 name = "cosmwasm-std"
-version = "1.5.9"
+version = "1.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3745e9fd9aad96236c3d6f1a6d844249ed3bb6b92fcdae16d8fe067c7a5121e8"
+checksum = "c21fde95ccd20044a23c0ac6fd8c941f3e8c158169dc94b5aa6491a2d9551a8d"
 dependencies = [
  "base64 0.21.7",
  "bech32 0.9.1",
  "bnum 0.10.0",
- "cosmwasm-crypto 1.5.9",
- "cosmwasm-derive 1.5.9",
+ "cosmwasm-crypto 1.5.8",
+ "cosmwasm-derive 1.5.8",
  "derivative",
  "forward_ref",
  "hex",
@@ -459,7 +459,7 @@ version = "1.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "66de2ab9db04757bcedef2b5984fbe536903ada4a8a9766717a4a71197ef34f6"
 dependencies = [
- "cosmwasm-std 1.5.9",
+ "cosmwasm-std 1.5.8",
  "serde",
 ]
 
@@ -943,29 +943,6 @@ name = "libc"
 version = "0.2.155"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97b3888a4aecf77e811145cadf6eef5901f4782c53886191b2f693f24761847c"
-
-[[package]]
-name = "mirrored-token"
-version = "2.0.0"
-dependencies = [
- "base64 0.22.1",
- "bech32 0.8.1",
- "common",
- "cosmwasm-crypto 2.1.0",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "hex",
- "ripemd",
- "schemars",
- "secp256k1",
- "serde",
- "sha2 0.10.8",
- "thiserror",
-]
 
 [[package]]
 name = "num-bigint"
