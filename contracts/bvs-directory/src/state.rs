@@ -12,9 +12,6 @@ pub enum OperatorBVSRegistrationStatus {
 pub struct BVSInfo {
     pub bvs_hash: String,
     pub bvs_contract: String,
-    pub chain_name: String,
-    pub chain_id: u64,
-    pub evm_bvs_directory: String,
 }
 
 pub const OWNER: Item<Addr> = Item::new("owner");
