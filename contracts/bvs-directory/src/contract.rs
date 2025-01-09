@@ -140,30 +140,30 @@ pub fn execute(
 
 pub fn register_bvs(deps: DepsMut, bvs_contract: BVSContractParams) -> Result<Response, ContractError> {
     let combined_input = format!(
-        "{}-{}-{}-{}",
-        bvs_contract.bvs_contract, bvs_contract.chain_name, bvs_contract.chain_id, bvs_contract.evm_bvs_directory
+        "{}-{}-{}",
+        bvs_contract.bvs_contract, bvs_contract.chain_name, bvs_contract.chain_id
     );
 
     let hash_result = sha256(combined_input.as_bytes());
-
     let bvs_hash = hex::encode(hash_result);
 
     let bvs_info = BVSInfo {
         bvs_hash: bvs_hash.clone(),
         bvs_contract: bvs_contract.bvs_contract.clone(),
         chain_name: bvs_contract.chain_name.clone(),
-        chain_id: bvs_contract.chain_id,
-        evm_bvs_directory: bvs_contract.evm_bvs_directory.clone(),
+        chain_id: bvs_contract.chain_id.clone(),
     };
 
     BVS_INFO.save(deps.storage, bvs_hash.clone(), &bvs_info)?;
 
-    Ok(Response::new()
+    let event = Event::new("BVSRegistered")
         .add_attribute("method", "register_bvs")
         .add_attribute("bvs_hash", bvs_hash)
         .add_attribute("chain_name", bvs_contract.chain_name)
-        .add_attribute("chain_id", bvs_contract.chain_id.to_string())
-        .add_attribute("evm_bvs_directory", bvs_contract.evm_bvs_directory))
+        .add_attribute("chain_id", bvs_contract.chain_id)
+        .add_attribute("bvs_contract", bvs_contract.bvs_contract);
+
+    Ok(Response::new().add_event(event))
 }
 
 pub fn register_operator(
@@ -635,8 +635,7 @@ mod tests {
         let bvs_contract = BVSContractParams {
             bvs_contract: "bvs_contract".to_string(),
             chain_name: "test-chain".to_string(),
-            chain_id: 1,
-            evm_bvs_directory: "evm_directory".to_string(),
+            chain_id: "1".to_string()
         };
 
         let msg = ExecuteMsg::RegisterBVS {
@@ -654,7 +653,7 @@ mod tests {
 
         let bvs_info = BVS_INFO.load(&deps.storage, bvs_hash.clone()).unwrap();
 
-        assert_eq!(result.attributes.len(), 5);
+        assert_eq!(result.attributes.len(), 4);
         assert_eq!(result.attributes[0].key, "method");
         assert_eq!(result.attributes[0].value, "register_bvs");
         assert_eq!(result.attributes[1].key, "bvs_hash");
@@ -1399,19 +1398,17 @@ mod tests {
         let bvs_contract = BVSContractParams {
             bvs_contract: "bvs_contract".to_string(),
             chain_name: "test-chain".to_string(),
-            chain_id: 1,
-            evm_bvs_directory: "evm_directory".to_string(),
+            chain_id: "1".to_string()
         };
 
         let result = register_bvs(deps.as_mut(), bvs_contract.clone());
         assert!(result.is_ok());
 
         let combined_input = format!(
-            "{}-{}-{}-{}",
+            "{}-{}-{}",
             bvs_contract.bvs_contract, 
             bvs_contract.chain_name, 
-            bvs_contract.chain_id, 
-            bvs_contract.evm_bvs_directory
+            bvs_contract.chain_id
         );
         let hash_result = sha256(combined_input.as_bytes());
         let bvs_hash = hex::encode(hash_result);
