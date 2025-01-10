@@ -14,7 +14,7 @@ use crate::{
     },
     utils::{
         calculate_digest_hash, recover, sha256, DigestHashParams, DOMAIN_NAME, DOMAIN_TYPEHASH,
-        OPERATOR_BVS_REGISTRATION_TYPEHASH,
+        OPERATOR_BVS_REGISTRATION_TYPEHASH
     },
 };
 use common::delegation::{OperatorResponse, QueryMsg as DelegationManagerQueryMsg};
