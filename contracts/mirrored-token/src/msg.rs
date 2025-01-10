@@ -19,6 +19,15 @@ pub enum ExecuteMsg {
         expiry: u64,
         signature: String,
     },
+    SetMinter {
+        minter: String,
+    },
+    SetStrategyManager {
+        strategy_manager: String,
+    },
+    TransferOwnership {
+        new_owner: String,
+    },
 }
 
 #[cw_serde]

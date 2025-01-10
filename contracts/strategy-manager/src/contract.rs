@@ -198,6 +198,36 @@ pub fn execute(
 
             Ok(response)
         }
+        ExecuteMsg::DepositViaMirroredTokenWithSignature {
+            strategy,
+            token,
+            amount,
+            staker,
+            public_key,
+            expiry,
+            signature,
+        } => {
+            let strategy_addr = deps.api.addr_validate(&strategy)?;
+            let token_addr = deps.api.addr_validate(&token)?;
+            let staker_addr = Addr::unchecked(staker);
+
+            let public_key_binary = Binary::from_base64(&public_key)?;
+            let signature_binary = Binary::from_base64(&signature)?;
+
+            let params = DepositWithSignatureParams {
+                strategy: strategy_addr,
+                token: token_addr,
+                amount,
+                staker: staker_addr,
+                public_key: public_key_binary,
+                expiry,
+                signature: signature_binary,
+            };
+
+            let response = deposit_via_mirrored_token_with_signature(deps, env, params)?;
+
+            Ok(response)
+        }
         ExecuteMsg::RemoveShares {
             staker,
             strategy,
