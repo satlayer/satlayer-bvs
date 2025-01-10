@@ -80,6 +80,18 @@ pub fn execute(
             expiry,
             signature,
         ),
+        ExecuteMsg::SetMinter { minter } => {
+            let minter_addr = deps.api.addr_validate(&minter)?;
+            set_minter(deps, info, minter_addr)
+        }
+        ExecuteMsg::SetStrategyManager { strategy_manager } => {
+            let strategy_manager_addr = deps.api.addr_validate(&strategy_manager)?;
+            set_strategy_manager(deps, info, strategy_manager_addr)
+        }
+        ExecuteMsg::TransferOwnership { new_owner } => {
+            let new_owner_addr = deps.api.addr_validate(&new_owner)?;
+            transfer_ownership(deps, info, new_owner_addr)
+        }
     }
 }
 
@@ -150,7 +162,7 @@ fn execute_deposit_with_mint_and_strategy(
         .add_attribute("amount", amount))
 }
 
-pub fn set_strategy_manager(
+fn set_strategy_manager(
     deps: DepsMut,
     info: MessageInfo,
     strategy_manager: Addr,
@@ -164,6 +176,30 @@ pub fn set_strategy_manager(
         .add_attribute("new_strategy_manager", strategy_manager.to_string());
 
     Ok(Response::new().add_event(event))
+}
+
+fn set_minter(
+    deps: DepsMut,
+    info: MessageInfo,
+    minter: Addr,
+) -> Result<Response, ContractError> {
+    only_owner(deps.as_ref(), &info)?;
+
+    MINTER.save(deps.storage, &minter)?;
+
+    Ok(Response::new())
+}
+
+fn transfer_ownership(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_owner: Addr,
+) -> Result<Response, ContractError> {
+    only_owner(deps.as_ref(), &info)?;
+
+    OWNER.save(deps.storage, &new_owner)?;
+
+    Ok(Response::new())
 }
 
 pub fn migrate(
