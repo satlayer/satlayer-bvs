@@ -51,6 +51,12 @@ pub enum ExecuteMsg {
     SetActivationDelay {
         new_activation_delay: u32,
     },
+    SetStrategyManager {
+        new_strategy_manager: String,
+    },
+    SetDelegationManager {
+        new_delegation_manager: String,
+    },
     SetRewardsUpdater {
         new_updater: String,
     },

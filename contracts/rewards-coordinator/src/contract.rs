@@ -147,6 +147,18 @@ pub fn execute(
         ExecuteMsg::SetActivationDelay {
             new_activation_delay,
         } => set_activation_delay(deps, info, new_activation_delay),
+        ExecuteMsg::SetStrategyManager {
+            new_strategy_manager,
+        } => {
+            let new_strategy_manager = deps.api.addr_validate(&new_strategy_manager)?;
+            set_strategy_manager(deps, info, new_strategy_manager)
+        }
+        ExecuteMsg::SetDelegationManager {
+            new_delegation_manager,
+        } => {
+            let new_delegation_manager = deps.api.addr_validate(&new_delegation_manager)?;
+            set_delegation_manager(deps, info, new_delegation_manager)
+        }
         ExecuteMsg::SetRewardsUpdater { new_updater } => {
             let new_updater = deps.api.addr_validate(&new_updater)?;
             set_rewards_updater(deps, info, new_updater)
@@ -513,6 +525,36 @@ pub fn set_activation_delay(
 
     let res = set_activation_delay_internal(deps, new_activation_delay)?;
     Ok(res)
+}
+
+pub fn set_strategy_manager(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_strategy_manager: Addr,
+) -> Result<Response, ContractError> {
+    only_owner(deps.as_ref(), &info)?;
+
+    STRATEGY_MANAGER.save(deps.storage, &new_strategy_manager)?;
+
+    let event = Event::new("StrategyManagerSet")
+        .add_attribute("new_manager", new_strategy_manager.to_string());
+
+    Ok(Response::new().add_event(event))
+}
+
+pub fn set_delegation_manager(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_delegation_manager: Addr,
+) -> Result<Response, ContractError> {
+    only_owner(deps.as_ref(), &info)?;
+
+    DELEGATION_MANAGER.save(deps.storage, &new_delegation_manager)?;
+
+    let event = Event::new("DelegationManagerSet")
+        .add_attribute("new_manager", new_delegation_manager.to_string());
+
+    Ok(Response::new().add_event(event))
 }
 
 pub fn set_rewards_updater(
