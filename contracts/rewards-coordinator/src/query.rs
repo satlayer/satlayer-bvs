@@ -56,3 +56,8 @@ pub struct MerkleizeLeavesResponse {
 pub struct CheckClaimResponse {
     pub check_claim: bool,
 }
+
+#[cw_serde]
+pub struct IsRewardsUpdaterResponse {
+    pub is_rewards_updater: bool,
+}
