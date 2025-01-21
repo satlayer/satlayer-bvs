@@ -378,6 +378,7 @@ pub fn process_claim(
         response = response.add_message(transfer_msg);
 
         let event = Event::new("RewardsClaimed")
+            .add_attribute("root_index", claim.root_index.to_string())
             .add_attribute("root", format!("{:?}", root.root))
             .add_attribute("earner", earner.to_string())
             .add_attribute("claimer", claimer.to_string())
@@ -681,6 +682,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&query_merkleize_leaves(binary_leaves)?)
         }
 
+        QueryMsg::IsRewardsUpdater { address } => {
+            to_json_binary(&query_is_rewards_updater(deps, address)?)
+        }
+
         QueryMsg::CheckClaim { claim } => {
             let earner = deps.api.addr_validate(&claim.earner_leaf.earner)?;
 
@@ -864,6 +869,12 @@ pub fn query_check_claim(
         check_claim(env, deps, claim).map_err(|err| StdError::generic_err(format!("{:?}", err)))?;
 
     Ok(CheckClaimResponse { check_claim })
+}
+
+fn query_is_rewards_updater(deps: Deps, address: String) -> StdResult<bool> {
+    let addr = deps.api.addr_validate(&address)?;
+    let rewards_updater = REWARDS_UPDATER.load(deps.storage)?;
+    Ok(addr == rewards_updater)
 }
 
 fn only_rewards_updater(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {

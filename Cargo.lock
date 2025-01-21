@@ -237,49 +237,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3e31ea183f6ee62ac8b8a8cf7feddd766317adfb13ff469de57ce033efd6a790"
 
 [[package]]
-name = "bvs-directory"
-version = "2.0.0"
-dependencies = [
- "base64 0.22.1",
- "bech32 0.8.1",
- "common",
- "cosmwasm-crypto 2.1.0",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "hex",
- "ripemd",
- "schemars",
- "secp256k1",
- "serde",
- "sha2 0.10.8",
- "thiserror",
-]
-
-[[package]]
-name = "bvs-driver"
-version = "2.0.0"
-dependencies = [
- "bech32 0.8.1",
- "cosmwasm-crypto 2.1.0",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cosmwasm-storage",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "hex",
- "ripemd",
- "schemars",
- "serde",
- "sha2 0.10.8",
- "thiserror",
-]
-
-[[package]]
 name = "byteorder"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -632,30 +589,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "delegation-manager"
-version = "2.0.0"
-dependencies = [
- "base64 0.22.1",
- "bech32 0.8.1",
- "common",
- "cosmwasm-crypto 2.1.0",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cosmwasm-storage",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "hex",
- "ripemd",
- "schemars",
- "secp256k1",
- "serde",
- "sha2 0.10.8",
- "thiserror",
-]
-
-[[package]]
 name = "der"
 version = "0.7.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -943,29 +876,6 @@ name = "libc"
 version = "0.2.155"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97b3888a4aecf77e811145cadf6eef5901f4782c53886191b2f693f24761847c"
-
-[[package]]
-name = "mirrored-token"
-version = "2.0.0"
-dependencies = [
- "base64 0.22.1",
- "bech32 0.8.1",
- "common",
- "cosmwasm-crypto 2.1.0",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "hex",
- "ripemd",
- "schemars",
- "secp256k1",
- "serde",
- "sha2 0.10.8",
- "thiserror",
-]
 
 [[package]]
 name = "num-bigint"
@@ -1368,31 +1278,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "slash-manager"
-version = "2.0.0"
-dependencies = [
- "base64 0.22.1",
- "bech32 0.8.1",
- "common",
- "cosmwasm-crypto 2.1.0",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cosmwasm-storage",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "hex",
- "ripemd",
- "schemars",
- "secp256k1",
- "serde",
- "serde_json",
- "sha2 0.10.8",
- "thiserror",
-]
-
-[[package]]
 name = "spki"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1403,121 +1288,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "state-bank"
-version = "2.0.0"
-dependencies = [
- "bech32 0.8.1",
- "cosmwasm-crypto 2.1.0",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cosmwasm-storage",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "hex",
- "ripemd",
- "schemars",
- "serde",
- "sha2 0.10.8",
- "thiserror",
-]
-
-[[package]]
 name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
-
-[[package]]
-name = "strategy-base"
-version = "2.0.0"
-dependencies = [
- "common",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cosmwasm-storage",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
-name = "strategy-base-tvl_limits"
-version = "2.0.0"
-dependencies = [
- "base64 0.22.1",
- "bech32 0.8.1",
- "common",
- "cosmwasm-crypto 2.1.0",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cosmwasm-storage",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "hex",
- "ripemd",
- "schemars",
- "secp256k1",
- "serde",
- "sha2 0.10.8",
- "thiserror",
-]
-
-[[package]]
-name = "strategy-factory"
-version = "2.0.0"
-dependencies = [
- "base64 0.22.1",
- "bech32 0.8.1",
- "common",
- "cosmwasm-crypto 2.1.0",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cosmwasm-storage",
- "cw-multi-test",
- "cw-storage-plus",
- "cw-utils",
- "cw2",
- "cw20",
- "hex",
- "ripemd",
- "schemars",
- "secp256k1",
- "serde",
- "sha2 0.10.8",
- "thiserror",
-]
-
-[[package]]
-name = "strategy-manager"
-version = "2.0.0"
-dependencies = [
- "base64 0.22.1",
- "bech32 0.8.1",
- "common",
- "cosmwasm-crypto 2.1.0",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cosmwasm-storage",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "hex",
- "ripemd",
- "schemars",
- "secp256k1",
- "serde",
- "sha2 0.10.8",
- "thiserror",
-]
 
 [[package]]
 name = "subtle"
