@@ -1,16 +1,16 @@
 [workspace]
 members = [
-    # "contracts/bvs-directory",
-    # "contracts/strategy-base",
-    # "contracts/strategy-manager",
-    # "contracts/state-bank",
-    # "contracts/bvs-driver",
-    # "contracts/delegation-manager",
+    "contracts/bvs-directory",
+    "contracts/strategy-base",
+    "contracts/strategy-manager",
+    "contracts/state-bank",
+    "contracts/bvs-driver",
+    "contracts/delegation-manager",
     "contracts/rewards-coordinator",
-    # "contracts/strategy-base-TVLLimits",
-    # "contracts/strategy-factory",
-    # "contracts/slash-manager",
-    # "contracts/mirrored-token"
+    "contracts/strategy-base-TVLLimits",
+    "contracts/strategy-factory",
+    "contracts/slash-manager",
+    "contracts/mirrored-token"
     ]
 
 resolver = "2"
