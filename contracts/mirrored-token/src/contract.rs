@@ -5,8 +5,8 @@ use crate::{
 };
 
 use cosmwasm_std::{
-    entry_point, to_json_binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, Uint128,
-    WasmMsg, Event, Addr
+    entry_point, to_json_binary, Addr, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo, Response,
+    Uint128, WasmMsg,
 };
 
 use cw2::set_contract_version;
@@ -69,16 +69,7 @@ pub fn execute(
             expiry,
             signature,
         } => execute_deposit_with_mint_and_strategy(
-            deps,
-            env,
-            info,
-            token,
-            strategy,
-            recipient,
-            amount,
-            public_key,
-            expiry,
-            signature,
+            deps, env, info, token, strategy, recipient, amount, public_key, expiry, signature,
         ),
         ExecuteMsg::SetMinter { minter } => {
             let minter_addr = deps.api.addr_validate(&minter)?;
@@ -178,11 +169,7 @@ fn set_strategy_manager(
     Ok(Response::new().add_event(event))
 }
 
-fn set_minter(
-    deps: DepsMut,
-    info: MessageInfo,
-    minter: Addr,
-) -> Result<Response, ContractError> {
+fn set_minter(deps: DepsMut, info: MessageInfo, minter: Addr) -> Result<Response, ContractError> {
     only_owner(deps.as_ref(), &info)?;
 
     MINTER.save(deps.storage, &minter)?;
