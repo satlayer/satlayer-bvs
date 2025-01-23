@@ -14,7 +14,7 @@ use crate::{
     },
     utils::{
         calculate_digest_hash, recover, sha256, DigestHashParams, DOMAIN_NAME, DOMAIN_TYPEHASH,
-        OPERATOR_BVS_REGISTRATION_TYPEHASH
+        OPERATOR_BVS_REGISTRATION_TYPEHASH,
     },
 };
 use common::delegation::{OperatorResponse, QueryMsg as DelegationManagerQueryMsg};
@@ -621,7 +621,7 @@ mod tests {
     fn test_register_bvs() {
         let (mut deps, env, info, _pauser_info, _unpauser_info, delegation_manager) =
             instantiate_contract();
-    
+
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart {
                 contract_addr,
@@ -634,19 +634,19 @@ mod tests {
                 request: to_json_binary(&query).unwrap(),
             }),
         });
-    
+
         let bvs_contract = BVSContractParams {
             bvs_contract: "bvs_contract".to_string(),
             chain_name: "test-chain".to_string(),
             chain_id: "1".to_string(),
         };
-    
+
         let msg = ExecuteMsg::RegisterBVS {
             bvs_contract: bvs_contract.clone(),
         };
-    
+
         let result = execute(deps.as_mut(), env, info, msg).unwrap();
-    
+
         let bvs_hash = result
             .events
             .iter()
@@ -655,12 +655,12 @@ mod tests {
             .expect("bvs_hash attribute not found")
             .value
             .clone();
-    
+
         let bvs_info = BVS_INFO.load(&deps.storage, bvs_hash.clone()).unwrap();
-    
+
         let total_attributes: usize = result.events.iter().map(|e| e.attributes.len()).sum();
-        assert_eq!(total_attributes, 5); 
-    
+        assert_eq!(total_attributes, 5);
+
         let method = result
             .events
             .iter()
@@ -670,10 +670,10 @@ mod tests {
             .value
             .clone();
         assert_eq!(method, "register_bvs");
-    
+
         assert_eq!(bvs_info.bvs_hash, bvs_hash);
         assert_eq!(bvs_info.bvs_contract, "bvs_contract");
-    }    
+    }
 
     #[test]
     fn test_register_operator() {

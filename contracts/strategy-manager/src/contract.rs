@@ -167,7 +167,7 @@ pub fn execute(
             let response = deposit_into_strategy_with_signature(deps, env, info, params)?;
 
             Ok(response)
-        },
+        }
         ExecuteMsg::DepositViaMirroredTokenWithSignature {
             strategy,
             token,

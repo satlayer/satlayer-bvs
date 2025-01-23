@@ -3354,31 +3354,33 @@ mod tests {
 
         let event = response.events.first().unwrap();
         assert_eq!(event.ty, "RewardsClaimed");
-        assert_eq!(event.attributes.len(), 6);
-        assert_eq!(event.attributes[0].key, "root");
-        assert_eq!(
-            event.attributes[0].value,
-            format!("{:?}", distribution_root.root)
-        );
-        assert_eq!(event.attributes[1].key, "earner");
+        assert_eq!(event.attributes.len(), 7);
+        assert_eq!(event.attributes[0].key, "root_index");
+        assert_eq!(event.attributes[0].value, "0");
+        assert_eq!(event.attributes[1].key, "root");
         assert_eq!(
             event.attributes[1].value,
-            deps.api.addr_make("earner").to_string()
+            format!("{:?}", distribution_root.root)
         );
-        assert_eq!(event.attributes[2].key, "claimer");
+        assert_eq!(event.attributes[2].key, "earner");
         assert_eq!(
             event.attributes[2].value,
-            deps.api.addr_make("claimer").to_string()
+            deps.api.addr_make("earner").to_string()
         );
-        assert_eq!(event.attributes[3].key, "recipient");
+        assert_eq!(event.attributes[3].key, "claimer");
         assert_eq!(
             event.attributes[3].value,
+            deps.api.addr_make("claimer").to_string()
+        );
+        assert_eq!(event.attributes[4].key, "recipient");
+        assert_eq!(
+            event.attributes[4].value,
             deps.api.addr_make("recipient").to_string()
         );
-        assert_eq!(event.attributes[4].key, "token");
-        assert_eq!(event.attributes[4].value, "token_a");
-        assert_eq!(event.attributes[5].key, "amount");
-        assert_eq!(event.attributes[5].value, "100");
+        assert_eq!(event.attributes[5].key, "token");
+        assert_eq!(event.attributes[5].value, "token_a");
+        assert_eq!(event.attributes[6].key, "amount");
+        assert_eq!(event.attributes[6].value, "100");
 
         // Test for unauthorized claimer
         let unauthorized_info = message_info(&Addr::unchecked("unauthorized_claimer"), &[]);
