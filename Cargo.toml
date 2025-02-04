@@ -23,7 +23,7 @@ cosmwasm-storage = "1.5.2"
 schemars = "0.8.8"
 cw2 = "2.0.0"
 serde = { version = "1.0.137", default-features = false, features = ["derive"] }
-thiserror = { version = "1.0.31" }
+thiserror = { version = "1.0.69" }
 cw-multi-test = "2.0.0"
 sha2 = { version = "0.10.8", default-features = false }
 hex = "0.4"
