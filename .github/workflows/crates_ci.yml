@@ -1,4 +1,4 @@
-name: CI
+name: [Crates] CI
 
 on:
   push:
@@ -17,8 +17,7 @@ env:
   RUSTFLAGS: -Dwarnings
 
 jobs:
-  crates_fmt:
-    name: "[Crates] Fmt"
+  Fmt:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,8 +26,7 @@ jobs:
 
       - run: cargo fmt --all -- --check
 
-  crates_clippy:
-    name: "[Crates] Clippy"
+  Clippy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,8 +35,7 @@ jobs:
 
       - run: cargo clippy --all-targets
 
-  crates_build:
-    name: "[Crates] Build"
+  Build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -47,8 +44,7 @@ jobs:
 
       - run: cargo build
 
-  crates_test:
-    name: "[Crates] Test"
+  Test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -57,8 +53,7 @@ jobs:
 
       - run: cargo test
 
-  crates_schema:
-    name: "Build [cw]"
+  Schema:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
