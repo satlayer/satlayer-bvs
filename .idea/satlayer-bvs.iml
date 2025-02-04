@@ -3,18 +3,18 @@
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
     <content url="file://$MODULE_DIR$">
-      <sourceFolder url="file://$MODULE_DIR$/contracts/bvs-directory/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/contracts/bvs-driver/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/contracts/delegation-manager/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/contracts/mirrored-token/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/contracts/rewards-coordinator/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/contracts/slash-manager/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/contracts/state-bank/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/contracts/strategy-base-TVLLimits/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/contracts/strategy-base/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/contracts/strategy-factory/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/contracts/strategy-manager/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/packages/common/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/bvs-directory/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/bvs-driver/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/common/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/delegation-manager/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/mirrored-token/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/rewards-coordinator/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/slash-manager/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/state-bank/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/strategy-base-TVLLimits/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/strategy-base/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/strategy-factory/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/strategy-manager/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />

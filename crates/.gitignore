@@ -1,0 +1,10 @@
+# Build results
+debug/
+target/
+schema/
+
+# Text file backups
+**/*.rs.bk
+
+# CosmWasm Artifact
+artifacts
