@@ -14,6 +14,14 @@ crate-type = ["cdylib", "rlib"]
 [features]
 library = []
 
+[package.metadata.scripts]
+cosmwasm = """docker run --rm -v "$(pwd)":/code \
+  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
+  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+  cosmwasm/optimizer:0.16.0
+"""
+schema = "cargo run --bin schema"
+
 [dependencies]
 cosmwasm-std = { workspace = true }
 cw-storage-plus = { workspace = true }

@@ -17,42 +17,62 @@ env:
   RUSTFLAGS: -Dwarnings
 
 jobs:
-  fmt:
-    name: Fmt
+  crates_fmt:
+    name: "[Crates] Fmt"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: rustup toolchain install stable --profile minimal
+      - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
       - run: cargo fmt --all -- --check
 
-  clippy:
-    name: Clippy
+  crates_clippy:
+    name: "[Crates] Clippy"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: rustup toolchain install stable --profile minimal
+      - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
       - run: cargo clippy --all-targets
 
-  build:
-    name: Build
+  crates_build:
+    name: "[Crates] Build"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: rustup toolchain install stable --profile minimal
+      - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
       - run: cargo build
 
-  test:
-    name: Test
+  crates_test:
+    name: "[Crates] Test"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: rustup toolchain install stable --profile minimal
+      - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
       - run: cargo test
+
+  crates_schema:
+    name: "Build [cw]"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        contract:
+          - bvs-directory
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - run: |
+          docker run --rm -v "$(pwd)":/code \
+            --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
+            --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+            cosmwasm/optimizer:0.16.0
+        working-directory: crates/${{ matrix.contract }}
