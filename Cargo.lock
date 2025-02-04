@@ -190,12 +190,6 @@ checksum = "8c3c1a368f70d6cf7302d78f8f7093da241fb8e8807c05cc9e51a125895a6d5b"
 
 [[package]]
 name = "bech32"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf9ff0bbfd639f15c74af777d81383cf53efb7c93613f6cab67c6c11e05bbf8b"
-
-[[package]]
-name = "bech32"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d86b93f97252c47b41663388e6d155714a9d0c398b99f1005cbc5f978b29f445"
@@ -241,7 +235,7 @@ name = "bvs-directory"
 version = "2.0.0"
 dependencies = [
  "base64 0.22.1",
- "bech32 0.8.1",
+ "bech32 0.11.0",
  "common",
  "cosmwasm-crypto 2.1.0",
  "cosmwasm-schema",
@@ -262,7 +256,7 @@ dependencies = [
 name = "bvs-driver"
 version = "2.0.0"
 dependencies = [
- "bech32 0.8.1",
+ "bech32 0.11.0",
  "cosmwasm-crypto 2.1.0",
  "cosmwasm-schema",
  "cosmwasm-std 2.1.0",
@@ -636,7 +630,7 @@ name = "delegation-manager"
 version = "2.0.0"
 dependencies = [
  "base64 0.22.1",
- "bech32 0.8.1",
+ "bech32 0.11.0",
  "common",
  "cosmwasm-crypto 2.1.0",
  "cosmwasm-schema",
@@ -949,7 +943,7 @@ name = "mirrored-token"
 version = "2.0.0"
 dependencies = [
  "base64 0.22.1",
- "bech32 0.8.1",
+ "bech32 0.11.0",
  "common",
  "cosmwasm-crypto 2.1.0",
  "cosmwasm-schema",
@@ -1151,7 +1145,7 @@ name = "rewards-coordinator"
 version = "2.0.0"
 dependencies = [
  "base64 0.22.1",
- "bech32 0.8.1",
+ "bech32 0.11.0",
  "common",
  "cosmwasm-crypto 2.1.0",
  "cosmwasm-schema",
@@ -1372,7 +1366,7 @@ name = "slash-manager"
 version = "2.0.0"
 dependencies = [
  "base64 0.22.1",
- "bech32 0.8.1",
+ "bech32 0.11.0",
  "common",
  "cosmwasm-crypto 2.1.0",
  "cosmwasm-schema",
@@ -1406,7 +1400,7 @@ dependencies = [
 name = "state-bank"
 version = "2.0.0"
 dependencies = [
- "bech32 0.8.1",
+ "bech32 0.11.0",
  "cosmwasm-crypto 2.1.0",
  "cosmwasm-schema",
  "cosmwasm-std 2.1.0",
@@ -1451,7 +1445,7 @@ name = "strategy-base-tvl_limits"
 version = "2.0.0"
 dependencies = [
  "base64 0.22.1",
- "bech32 0.8.1",
+ "bech32 0.11.0",
  "common",
  "cosmwasm-crypto 2.1.0",
  "cosmwasm-schema",
@@ -1475,7 +1469,7 @@ name = "strategy-factory"
 version = "2.0.0"
 dependencies = [
  "base64 0.22.1",
- "bech32 0.8.1",
+ "bech32 0.11.0",
  "common",
  "cosmwasm-crypto 2.1.0",
  "cosmwasm-schema",
@@ -1500,7 +1494,7 @@ name = "strategy-manager"
 version = "2.0.0"
 dependencies = [
  "base64 0.22.1",
- "bech32 0.8.1",
+ "bech32 0.11.0",
  "common",
  "cosmwasm-crypto 2.1.0",
  "cosmwasm-schema",
