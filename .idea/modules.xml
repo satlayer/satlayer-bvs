@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/satlayer-core.iml" filepath="$PROJECT_DIR$/.idea/satlayer-core.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/satlayer-bvs.iml" filepath="$PROJECT_DIR$/.idea/satlayer-bvs.iml" />
     </modules>
   </component>
 </project>
