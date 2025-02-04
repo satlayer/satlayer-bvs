@@ -65,6 +65,7 @@ jobs:
       matrix:
         contract:
           - bvs-directory
+          - bvs-driver
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -74,5 +75,4 @@ jobs:
           docker run --rm -v "$(pwd)":/code \
             --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
             --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-            cosmwasm/optimizer:0.16.0
-        working-directory: crates/${{ matrix.contract }}
+            cosmwasm/optimizer:0.16.0 ./crates/${{ matrix.contract }}
