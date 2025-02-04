@@ -86,6 +86,7 @@ pub fn execute(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn execute_deposit_with_mint_and_strategy(
     deps: DepsMut,
     env: Env,
