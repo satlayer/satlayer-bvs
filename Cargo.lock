@@ -243,7 +243,7 @@ dependencies = [
  "base64 0.22.1",
  "bech32 0.8.1",
  "common",
- "cosmwasm-crypto 2.1.0",
+ "cosmwasm-crypto 2.2.0",
  "cosmwasm-schema",
  "cosmwasm-std 2.1.0",
  "cw-multi-test",
@@ -263,7 +263,7 @@ name = "bvs-driver"
 version = "2.0.0"
 dependencies = [
  "bech32 0.8.1",
- "cosmwasm-crypto 2.1.0",
+ "cosmwasm-crypto 2.2.0",
  "cosmwasm-schema",
  "cosmwasm-std 2.1.0",
  "cosmwasm-storage",
@@ -324,9 +324,9 @@ checksum = "c2459377285ad874054d797f3ccebf984978aa39129f6eafde5cdc8315b612f8"
 
 [[package]]
 name = "cosmwasm-core"
-version = "2.1.0"
+version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d075f6bb1483a6ce83b5cbc73a3a1207e0316ac1e34ed1f2a4d9fc3a0f07bf6"
+checksum = "c34c440d4d8e3ecec783d0f9c89d25565168b0f4cdb80a1f6a387cf2168c0740"
 
 [[package]]
 name = "cosmwasm-crypto"
@@ -343,15 +343,16 @@ dependencies = [
 
 [[package]]
 name = "cosmwasm-crypto"
-version = "2.1.0"
+version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88ced5a6dd2801a383d3e14e5ae5caa7fdfeff1bd9f22b30e810e0aded8a5869"
+checksum = "134e765161d60228cc27635032d2a466542ca83fd6c87f3c87f4963c0bd51008"
 dependencies = [
  "ark-bls12-381",
  "ark-ec",
  "ark-ff",
  "ark-serialize",
  "cosmwasm-core",
+ "curve25519-dalek 4.1.3",
  "digest 0.10.7",
  "ecdsa",
  "ed25519-zebra 4.0.3",
@@ -440,7 +441,7 @@ dependencies = [
  "bech32 0.11.0",
  "bnum 0.11.0",
  "cosmwasm-core",
- "cosmwasm-crypto 2.1.0",
+ "cosmwasm-crypto 2.2.0",
  "cosmwasm-derive 2.1.0",
  "derive_more",
  "hex",
@@ -638,7 +639,7 @@ dependencies = [
  "base64 0.22.1",
  "bech32 0.8.1",
  "common",
- "cosmwasm-crypto 2.1.0",
+ "cosmwasm-crypto 2.2.0",
  "cosmwasm-schema",
  "cosmwasm-std 2.1.0",
  "cosmwasm-storage",
@@ -951,7 +952,7 @@ dependencies = [
  "base64 0.22.1",
  "bech32 0.8.1",
  "common",
- "cosmwasm-crypto 2.1.0",
+ "cosmwasm-crypto 2.2.0",
  "cosmwasm-schema",
  "cosmwasm-std 2.1.0",
  "cw-multi-test",
@@ -1153,7 +1154,7 @@ dependencies = [
  "base64 0.22.1",
  "bech32 0.8.1",
  "common",
- "cosmwasm-crypto 2.1.0",
+ "cosmwasm-crypto 2.2.0",
  "cosmwasm-schema",
  "cosmwasm-std 2.1.0",
  "cosmwasm-storage",
@@ -1374,7 +1375,7 @@ dependencies = [
  "base64 0.22.1",
  "bech32 0.8.1",
  "common",
- "cosmwasm-crypto 2.1.0",
+ "cosmwasm-crypto 2.2.0",
  "cosmwasm-schema",
  "cosmwasm-std 2.1.0",
  "cosmwasm-storage",
@@ -1407,7 +1408,7 @@ name = "state-bank"
 version = "2.0.0"
 dependencies = [
  "bech32 0.8.1",
- "cosmwasm-crypto 2.1.0",
+ "cosmwasm-crypto 2.2.0",
  "cosmwasm-schema",
  "cosmwasm-std 2.1.0",
  "cosmwasm-storage",
@@ -1453,7 +1454,7 @@ dependencies = [
  "base64 0.22.1",
  "bech32 0.8.1",
  "common",
- "cosmwasm-crypto 2.1.0",
+ "cosmwasm-crypto 2.2.0",
  "cosmwasm-schema",
  "cosmwasm-std 2.1.0",
  "cosmwasm-storage",
@@ -1477,7 +1478,7 @@ dependencies = [
  "base64 0.22.1",
  "bech32 0.8.1",
  "common",
- "cosmwasm-crypto 2.1.0",
+ "cosmwasm-crypto 2.2.0",
  "cosmwasm-schema",
  "cosmwasm-std 2.1.0",
  "cosmwasm-storage",
@@ -1502,7 +1503,7 @@ dependencies = [
  "base64 0.22.1",
  "bech32 0.8.1",
  "common",
- "cosmwasm-crypto 2.1.0",
+ "cosmwasm-crypto 2.2.0",
  "cosmwasm-schema",
  "cosmwasm-std 2.1.0",
  "cosmwasm-storage",
