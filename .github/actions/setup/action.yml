@@ -4,17 +4,20 @@ description: "Install Rust, Go, Node.js, Corepack, PNPM"
 runs:
   using: "composite"
   steps:
+    # Rust
+    - uses: dtolnay/rust-toolchain@stable
+    - uses: Swatinem/rust-cache@v2
+
+    # Go
+    - uses: actions/setup-go@v5
+
     # Node.js and PNPM
     - uses: actions/setup-node@v4
       with:
         node-version-file: ".nvmrc"
-    - run: npm install -g corepack@latest
+    - run: |
+        npm install -g corepack@latest
+        corepack enable pnpm
+        pnpm install
+        pnpm install -g turbo
       shell: bash
-    - run: corepack enable pnpm
-      shell: bash
-
-    # Rust and Cache
-    - uses: dtolnay/rust-toolchain@stable
-    - uses: Swatinem/rust-cache@v2
-
-    # TODO: go
