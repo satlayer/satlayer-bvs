@@ -7,6 +7,8 @@ runs:
     # Rust
     - uses: dtolnay/rust-toolchain@stable
     - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: "crates -> crates/target"
 
     # Go
     - uses: actions/setup-go@v5
