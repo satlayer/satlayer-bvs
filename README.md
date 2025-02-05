@@ -38,4 +38,29 @@ pnpm install
 
 ### Why Monorepo?
 
+Proper separation of concerns is about grouping related functionality in ways
+that mirror how the software actually evolves,
+rather than defaulting to arbitrary technical boundaries (e.g., splitting everything by file type).
+No matter if our code is in Go, Rust, Solidity, or WASM, the central idea remains:
+separating concerns should make our code easier to navigate, understand,
+and maintain. 
+
+In practice, this means organizing functionality by features or responsibilities instead of just the code type.
+For instance, a feature that touches multiple languages or modules should be treated as a single “concern,”
+so that related logic is in one place and not scattered across repos.
+
 ### Why use Turbo, PNPM for a Rust/Go project? 
+
+Although the core of this monorepo is Rust and Go, we’re ultimately exporting libraries,
+SDKs, and user-facing code that often revolves around JavaScript.
+Adopting a JavaScript-centric toolchain like Turbo and PNPM offers a simpler,
+more popular, and faster alternative to Bazel-like systems.
+Turbo is feature-rich yet straightforward to configure,
+prioritizing convention over hermetic complexity and letting each language
+(Cargo for Rust, Go modules for Go, PNPM for JS) handle its own dependencies.
+This means a Go developer doesn’t need to manage Rust builds,
+and a JavaScript developer doesn’t have to worry about Cargo.
+As long as the necessary dependencies are installed, Turbo just works.
+Additionally, while Rust/Go monorepos aren’t as widely supported,
+combining them with Turbo and PNPM bridges the gap and streamlines multi-language development. 
+
