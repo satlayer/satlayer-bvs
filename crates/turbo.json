@@ -2,18 +2,8 @@
   "$schema": "https://turbo.build/schema.json",
   "extends": ["//"],
   "tasks": {
-    "lint": {
-      "cache": false,
-      "dependsOn": ["lint:fmt", "lint:clippy"],
-      "outputLogs": "errors-only"
-    },
-    "lint:fmt": {
-      "cache": false,
-      "outputLogs": "errors-only"
-    },
-    "lint:clippy": {
-      "cache": false,
-      "outputLogs": "errors-only"
+    "build": {
+      "cache": false
     }
   }
 }

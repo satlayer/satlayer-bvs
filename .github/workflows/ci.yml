@@ -22,6 +22,35 @@ jobs:
 
       - run: pnpm prettier --check .
 
+  format_cargo:
+    name: Format [cargo]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - run: cargo fmt --all -- --check
+        working-directory: ./crates
+
+  lint_clippy:
+    name: Lint [clippy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - run: cargo clippy -- -D warnings
+        working-directory: ./crates
+
+  lint_eslint:
+    name: Lint [eslint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - run: turbo run eslint
+
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -37,6 +66,20 @@ jobs:
       - uses: ./.github/actions/setup
 
       - run: turbo run build --filter="./${{ matrix.package }}/*"
+
+  generate:
+    name: Generate
+    runs-on: ubuntu-latest
+    matrix:
+      fail-fast: false
+      steps:
+        - name: Generate [schema]
+          run: turbo run generate:schema
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - run: ${{ matrix.steps.run }}
 
   test_plan:
     name: Test [plan]

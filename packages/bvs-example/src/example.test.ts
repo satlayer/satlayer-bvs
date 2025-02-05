@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+
 import { square } from "./example";
 
 test("should square", async () => {

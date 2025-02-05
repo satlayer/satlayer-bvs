@@ -4,6 +4,7 @@
   "scripts": {
     "build": "tsc",
     "clean": "tsc --build --clean",
+    "eslint": "eslint --flag unstable_config_lookup_from_file .",
     "test": "vitest run"
   },
   "lint-staged": {
@@ -11,6 +12,7 @@
       "prettier --write --ignore-unknown"
     ],
     "*.{js,jsx,ts,tsx}": [
+      "eslint --flag unstable_config_lookup_from_file --fix",
       "prettier --write"
     ]
   },

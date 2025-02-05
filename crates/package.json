@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "cargo build",
-    "lint:clippy": "cargo clippy -- -D warnings",
-    "lint:fmt": "cargo fmt"
+    "clippy": "cargo clippy -- -D warnings",
+    "format": "cargo fmt --all -- --check"
   }
 }

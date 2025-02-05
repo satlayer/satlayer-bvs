@@ -5,7 +5,7 @@
     "clean": {
       "cache": false
     },
-    "gen:schema": {
+    "generate:schema": {
       "inputs": ["src/**"],
       "outputs": ["schema/**"]
     },
@@ -18,7 +18,7 @@
       "inputs": ["tsconfig.json", "tsconfig.build.json", "src/**"],
       "dependsOn": ["^build"]
     },
-    "lint": {
+    "eslint": {
       "cache": false,
       "outputLogs": "errors-only"
     }
