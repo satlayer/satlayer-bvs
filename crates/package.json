@@ -2,8 +2,8 @@
   "name": "@workspace/crates",
   "private": true,
   "scripts": {
-    "lint:fmt": "cargo fmt",
+    "build": "cargo build",
     "lint:clippy": "cargo clippy -- -D warnings",
-    "build": "cargo build"
+    "lint:fmt": "cargo fmt"
   }
 }

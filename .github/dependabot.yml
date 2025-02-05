@@ -6,17 +6,17 @@ updates:
       interval: "weekly"
 
   - package-ecosystem: npm
-    directory: '/'
+    directory: "/"
     schedule:
-      interval: 'daily'
+      interval: "daily"
     groups:
       dev:
         dependency-type: development
         update-types:
-          - 'minor'
-          - 'patch'
+          - "minor"
+          - "patch"
         exclude-patterns:
-          - 'typescript'
+          - "typescript"
 
   - package-ecosystem: cargo
     directory: "/crates"

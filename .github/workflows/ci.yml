@@ -2,17 +2,26 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   merge_group:
-    branches: [ main ]
+    branches: [main]
 
 permissions:
   contents: read
   packages: read
 
 jobs:
+  format_prettier:
+    name: Format [prettier]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - run: pnpm prettier --check .
+
   build:
     name: Build
     runs-on: ubuntu-latest

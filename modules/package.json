@@ -2,6 +2,7 @@
   "name": "@workspace/modules",
   "private": true,
   "scripts": {
+    "build": "go build -v ./...",
     "test": "go test -v ./..."
   }
 }

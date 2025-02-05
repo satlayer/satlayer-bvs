@@ -43,13 +43,13 @@ that mirror how the software actually evolves,
 rather than defaulting to arbitrary technical boundaries (e.g., splitting everything by file type).
 No matter if our code is in Go, Rust, Solidity, or WASM, the central idea remains:
 separating concerns should make our code easier to navigate, understand,
-and maintain. 
+and maintain.
 
 In practice, this means organizing functionality by features or responsibilities instead of just the code type.
 For instance, a feature that touches multiple languages or modules should be treated as a single “concern,”
 so that related logic is in one place and not scattered across repos.
 
-### Why use Turbo, PNPM for a Rust/Go project? 
+### Why use Turbo, PNPM for a Rust/Go project?
 
 Although the core of this monorepo is Rust and Go, we’re ultimately exporting libraries,
 SDKs, and user-facing code that often revolves around JavaScript.
@@ -64,10 +64,8 @@ As long as the necessary dependencies are installed, Turbo just works.
 Additionally, while Rust/Go monorepos aren’t as widely supported,
 combining them with Turbo and PNPM bridges the gap and streamlines multi-language development.
 
-> [!WARNING]
-> **A Note on Turbo**: Although Turbo greatly speeds up development by caching tasks based on their inputs and outputs, 
-> it’s not a magic bullet. 
-> If you encounter unexpected issues or incorrect build results, 
+> [!WARNING] > **A Note on Turbo**: Although Turbo greatly speeds up development by caching tasks based on their inputs and outputs,
+> it’s not a magic bullet.
+> If you encounter unexpected issues or incorrect build results,
 > try running turbo --force to invalidate the cache and rebuild everything from scratch.
 > If you spot any errors with our `turbo.json` files, please fix them promptly to avoid further headaches.
-

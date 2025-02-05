@@ -5,10 +5,17 @@
     "clean": {
       "cache": false
     },
+    "gen:schema": {
+      "inputs": ["src/**"],
+      "outputs": ["schema/**"]
+    },
     "build": {
+      "inputs": ["tsconfig.json", "tsconfig.build.json", "src/**"],
+      "outputs": ["dist/**"],
       "dependsOn": ["^build"]
     },
     "test": {
+      "inputs": ["tsconfig.json", "tsconfig.build.json", "src/**"],
       "dependsOn": ["^build"]
     },
     "lint": {

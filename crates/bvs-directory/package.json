@@ -2,8 +2,8 @@
   "name": "@satlayer/bvs-directory",
   "private": false,
   "scripts": {
-    "build:wasm": "cargo build --release --target wasm32-unknown-unknown",
-    "build:schema": "cargo run --bin schema",
+    "build": "cargo build",
+    "gen:schema": "cargo run --bin schema",
     "test": "cargo test"
   }
 }

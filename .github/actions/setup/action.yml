@@ -11,13 +11,15 @@ runs:
     # Go
     - uses: actions/setup-go@v5
 
-    # Node.js and PNPM
+    # Node.js, PNPM, Turbo
     - uses: actions/setup-node@v4
       with:
         node-version-file: ".nvmrc"
     - run: |
         npm install -g corepack@latest
         corepack enable pnpm
+        pnpm setup
         pnpm install
         pnpm install -g turbo
+        echo "NEXT_TELEMETRY_DISABLED=1" >> $GITHUB_ENV
       shell: bash
