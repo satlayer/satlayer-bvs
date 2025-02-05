@@ -70,11 +70,12 @@ jobs:
   generate:
     name: Generate
     runs-on: ubuntu-latest
-    matrix:
+    strategy:
       fail-fast: false
-      steps:
-        - name: Generate [schema]
-          run: turbo run generate:schema
+      matrix:
+        steps:
+          - name: Generate [schema]
+            run: turbo run generate:schema
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
