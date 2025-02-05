@@ -1,6 +1,6 @@
 # SatLayer BVS
 
-## Getting Started
+## Getting Started & Development Guide
 
 > [!TIP]  
 > We use JetBrains IDEs (IntelliJ IDEA) as our primary IDE.
@@ -14,12 +14,13 @@ You need to install the following tools to get started:
 2. Install Rust: `https://www.rust-lang.org/tools/install`
 3. Install Go: `https://go.dev/doc/install`
 
-## Project Layout & Development Guide
+## Project Layout 
 
 ```txt
 ├── crates/                   Rust
-│   ├── cw-*                  < CosmWasm contracts            
-│   └── *                     < Other rust crates
+│   ├── cw-*                  <- CosmWasm contracts            
+│   └── *                     <- Other rust crates
 ├── modules/                  Go
-├── packages/                 JavaScript, Solidity, etc.
+├── packages/                 <- JavaScript, Solidity, etc.
+└── README.md
 ```
