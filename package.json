@@ -3,7 +3,6 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "clean": "turbo run clean",
     "format": "prettier --write .",
     "prepare": "husky",
     "test": "turbo run test"
@@ -20,7 +19,9 @@
     "husky": "^9.0.11",
     "lint-staged": "^15.2.10",
     "prettier": "^3.4.2",
-    "turbo": "^2.4.0"
+    "turbo": "^2.4.0",
+    "typescript": "5.7.3",
+    "vitest": "^2.1.9"
   },
   "packageManager": "pnpm@9.15.4",
   "engines": {

@@ -1,0 +1,9 @@
+{
+  "name": "@workspace/crates",
+  "private": true,
+  "scripts": {
+    "lint:fmt": "cargo fmt",
+    "lint:clippy": "cargo clippy -- -D warnings",
+    "build": "cargo build"
+  }
+}

@@ -12,6 +12,7 @@
       "dependsOn": ["^build"]
     },
     "lint": {
+      "cache": false,
       "outputLogs": "errors-only"
     }
   }

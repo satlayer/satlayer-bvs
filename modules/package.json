@@ -1,0 +1,7 @@
+{
+  "name": "@workspace/modules",
+  "private": true,
+  "scripts": {
+    "test": "go test -v ./..."
+  }
+}

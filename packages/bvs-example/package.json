@@ -1,0 +1,24 @@
+{
+  "name": "@satlayer/bvs-example",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "clean": "tsc --build --clean",
+    "test": "vitest run"
+  },
+  "lint-staged": {
+    "*": [
+      "prettier --write --ignore-unknown"
+    ],
+    "*.{js,jsx,ts,tsx}": [
+      "prettier --write"
+    ]
+  },
+  "prettier": "@workspace/config-prettier",
+  "dependencies": {
+    "debug": "^4.4.0"
+  },
+  "devDependencies": {
+    "@types/debug": "^4.1.12"
+  }
+}
