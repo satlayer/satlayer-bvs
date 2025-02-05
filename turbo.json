@@ -1,0 +1,26 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "tui",
+  "tasks": {
+    "clean": {
+      "cache": false
+    },
+    "generate:schema": {
+      "inputs": ["src/**"],
+      "outputs": ["schema/**"]
+    },
+    "build": {
+      "inputs": ["tsconfig.json", "tsconfig.build.json", "src/**"],
+      "outputs": ["dist/**"],
+      "dependsOn": ["^build"]
+    },
+    "test": {
+      "inputs": ["tsconfig.json", "tsconfig.build.json", "src/**"],
+      "dependsOn": ["^build"]
+    },
+    "eslint": {
+      "cache": false,
+      "outputLogs": "errors-only"
+    }
+  }
+}

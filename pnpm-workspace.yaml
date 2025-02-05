@@ -1,0 +1,6 @@
+packages:
+  - "crates"
+  - "crates/*"
+  - "modules"
+  - "modules/*"
+  - "packages/*"

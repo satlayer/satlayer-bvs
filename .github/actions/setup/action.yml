@@ -4,17 +4,24 @@ description: "Install Rust, Go, Node.js, Corepack, PNPM"
 runs:
   using: "composite"
   steps:
-    # Node.js and PNPM
+    # Rust
+    - uses: dtolnay/rust-toolchain@stable
+    - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: "crates -> crates/target"
+
+    # Go
+    - uses: actions/setup-go@v5
+      with:
+        go-version: "1.23"
+
+    # Node.js, PNPM, Turbo
     - uses: actions/setup-node@v4
       with:
         node-version-file: ".nvmrc"
-    - run: npm install -g corepack@latest
+    - uses: pnpm/action-setup@v4
+    - run: |
+        echo "NEXT_TELEMETRY_DISABLED=1" >> $GITHUB_ENV
+        pnpm install -g turbo
+        pnpm install
       shell: bash
-    - run: corepack enable pnpm
-      shell: bash
-
-    # Rust and Cache
-    - uses: dtolnay/rust-toolchain@stable
-    - uses: Swatinem/rust-cache@v2
-
-    # TODO: go

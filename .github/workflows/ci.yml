@@ -2,53 +2,114 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   merge_group:
-    branches: [ main ]
+    branches: [main]
 
 permissions:
   contents: read
   packages: read
 
 jobs:
-  fmt:
-    name: Fmt
+  format_prettier:
+    name: Format [prettier]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - run: pnpm prettier --check .
+
+  format_cargo:
+    name: Format [cargo]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
 
       - run: cargo fmt --all -- --check
-        working-directory: crates
+        working-directory: ./crates
 
-  clippy:
-    name: Clippy
+  lint_clippy:
+    name: Lint [clippy]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
 
-      - run: cargo clippy --all-targets
-        working-directory: crates
+      - run: cargo clippy -- -D warnings
+        working-directory: ./crates
+
+  lint_eslint:
+    name: Lint [eslint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - run: turbo run eslint
 
   build:
     name: Build
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        directory:
+          - "crates"
+          - "modules"
+          - "packages"
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
 
-      - run: cargo build
-        working-directory: crates
+      - run: turbo run build --filter="./${{ matrix.package }}/*"
 
-  test:
-    name: Test
+  generate_schema:
+    name: Generate [schema]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
 
-      - run: cargo test
-        working-directory: crates
+      - run: turbo run generate:schema
+
+  test_plan:
+    name: Test [plan]
+    runs-on: ubuntu-latest
+    outputs:
+      packages: ${{ steps.plan.outputs.packages }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: fuxingloh/turbo-plan@v2
+        id: plan
+        with:
+          task: test
+
+  test_run:
+    name: Test [run]
+    needs: test_plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJSON(needs.test_plan.outputs.packages) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - run: turbo run test --filter=${{ matrix.package }}
+
+  test_completed:
+    name: Test [completed]
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - test_run
+    steps:
+      - run: |
+          if ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'skipped') || contains(needs.*.result, 'cancelled') }} ; then          
+            exit 1
+          fi

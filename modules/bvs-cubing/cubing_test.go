@@ -1,8 +1,8 @@
-package main
+package squaring
 
 import "testing"
 
-func TestSquare(t *testing.T) {
+func TestSquaring(t *testing.T) {
 	result := square(3)
 	expected := 9
 	if result != expected {

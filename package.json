@@ -1,0 +1,32 @@
+{
+  "name": "@workspace/root",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "format": "prettier --write .",
+    "prepare": "husky",
+    "test": "turbo run test"
+  },
+  "lint-staged": {
+    "*": [
+      "prettier --write --ignore-unknown"
+    ]
+  },
+  "prettier": "@workspace/config-prettier",
+  "devDependencies": {
+    "@types/node": "^20",
+    "@workspace/config-eslint": "workspace:*",
+    "@workspace/config-prettier": "workspace:*",
+    "eslint": "^9",
+    "husky": "^9",
+    "lint-staged": "^15",
+    "prettier": "^3",
+    "turbo": "^2.4.0",
+    "typescript": "5.7.3",
+    "vitest": "^2.1.9"
+  },
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": "^20 <21"
+  }
+}
