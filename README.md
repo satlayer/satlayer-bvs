@@ -17,16 +17,20 @@ You need to install the following tools to get started:
 After installing the tools, you need to install `pnpm` and `turbo` globally as well as the dependencies of the project:
 
 <details>
-<summary>Recommended Docker Settings:</summary>
+<summary>
+
+**Recommended Docker Settings:**
+
+</summary>
+
+Due to heavy usage of Docker,
+we recommend a higher defaultKeepStorage setting to avoid running out of disk space too quickly.
+And a bigger address pool to have more IP addresses available for Docker containers.
 
 **Docker Engine:**
 
 - `builder.gc.defaultKeepStorage`: `200GB`
 - `default-address-pools[0]`: `{"base": "10.32.0.0/12", "size": 26}`
-
-Due to heavy usage of Docker,
-we recommend a higher defaultKeepStorage setting to avoid running out of disk space too quickly.
-And a bigger address pool to have more IP addresses available for Docker containers.
 
 **Resource Allocation:**
 
