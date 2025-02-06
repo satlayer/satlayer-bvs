@@ -1,0 +1,9 @@
+{
+  "name": "@workspace/docker-cosmwasm-optimizer",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build:docker": "docker buildx build . --progress=plain --output type=tar,dest=docker.tar",
+    "docker:import": "cat docker.tar | docker import - ghcr.io/satlayer/cosmwasm-optimizer:$(node -p \"require('./package.json').version\")"
+  }
+}

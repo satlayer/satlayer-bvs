@@ -6,3 +6,6 @@ dist
 
 # turborepo
 .turbo
+
+# Docker
+docker.tar
