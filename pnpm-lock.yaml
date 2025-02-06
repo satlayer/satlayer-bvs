@@ -41,11 +41,7 @@ importers:
 
   crates: {}
 
-  crates/bvs-directory:
-    dependencies:
-      '@workspace/docker-cosmwasm-optimizer':
-        specifier: workspace:*
-        version: link:../../packages/docker-cosmwasm-optimizer
+  crates/bvs-directory: {}
 
   crates/bvs-driver: {}
 

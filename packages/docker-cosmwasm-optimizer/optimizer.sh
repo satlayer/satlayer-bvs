@@ -37,8 +37,8 @@ echo "Building project $(realpath "$PROJECTDIR") ..."
   /usr/local/bin/bob
 )
 
-# Prepare dist directory for later use
-mkdir -p "$PROJECTDIR/dist"
+# Prepare artifacts directory for later use
+mkdir -p "$PROJECTDIR/artifacts"
 
 echo "Optimizing artifacts ..."
 for WASM in /target/wasm32-unknown-unknown/release/*.wasm; do
@@ -47,12 +47,12 @@ for WASM in /target/wasm32-unknown-unknown/release/*.wasm; do
   OUT_FILENAME=$(basename "$WASM")
   echo "Optimizing $OUT_FILENAME ..."
   # --signext-lowering is needed to support blockchains running CosmWasm < 1.3. It can be removed eventually
-  wasm-opt -Os --signext-lowering "$WASM" -o "$PROJECTDIR/dist/$OUT_FILENAME"
+  wasm-opt -Os --signext-lowering "$WASM" -o "$PROJECTDIR/artifacts/$OUT_FILENAME"
 done
 
 echo "Post-processing artifacts..."
 (
-  cd "$PROJECTDIR/dist"
+  cd "$PROJECTDIR/artifacts"
 
   if test -n "$(find . -maxdepth 1 -name '*.wasm' -print -quit)"; then
     sha256sum -- *.wasm | tee checksums.txt

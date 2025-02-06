@@ -14,6 +14,11 @@
       "outputs": ["dist/**"],
       "dependsOn": ["^build"]
     },
+    "build:wasm": {
+      "inputs": ["src/**"],
+      "outputs": ["artifacts/**"],
+      "dependsOn": ["@workspace/docker-cosmwasm-optimizer#build"]
+    },
     "test": {
       "inputs": ["tsconfig.json", "tsconfig.build.json", "src/**"],
       "dependsOn": ["^build"]
