@@ -86,7 +86,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: ${{ fromJSON(needs.test_plan.outputs.packages) }}
+        package: ${{ fromJSON(needs.build_wasm_plan.outputs.packages) }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
