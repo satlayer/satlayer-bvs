@@ -75,7 +75,7 @@ jobs:
     name: Build [wasm] [plan]
     runs-on: ubuntu-latest
     outputs:
-      packages: ${{ steps.build.outputs.packages }}
+      packages: ${{ steps.plan.outputs.packages }}
     steps:
       - uses: actions/checkout@v4
       - uses: fuxingloh/turbo-plan@v2
