@@ -1,5 +1,5 @@
 {
-  "name": "@satlayer/bvs-directory",
+  "name": "@satlayer/bvs-driver",
   "private": false,
   "scripts": {
     "build": "cargo build",

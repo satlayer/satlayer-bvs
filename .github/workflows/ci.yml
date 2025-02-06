@@ -67,14 +67,19 @@ jobs:
 
       - run: turbo run build --filter="./${{ matrix.package }}/*"
 
-  generate_schema:
-    name: Generate [schema]
+  generate:
+    name: Generate
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        directory:
+          - "crates"
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
 
-      - run: turbo run generate:schema
+      - run: turbo run generate --filter="./${{ matrix.package }}/*"
 
   test_plan:
     name: Test [plan]

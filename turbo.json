@@ -5,7 +5,7 @@
     "clean": {
       "cache": false
     },
-    "generate:schema": {
+    "generate": {
       "inputs": ["src/**"],
       "outputs": ["schema/**"]
     },
