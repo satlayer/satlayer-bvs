@@ -17,11 +17,7 @@ You need to install the following tools to get started:
 After installing the tools, you need to install `pnpm` and `turbo` globally as well as the dependencies of the project:
 
 <details>
-<summary>
-
-**Recommended Docker Settings:**
-
-</summary>
+<summary><b>Recommended Docker Settings:</b></summary>
 
 Due to heavy usage of Docker,
 we recommend a higher defaultKeepStorage setting to avoid running out of disk space too quickly.
