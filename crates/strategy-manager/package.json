@@ -1,0 +1,9 @@
+{
+  "name": "@satlayer/strategy-manager",
+  "private": false,
+  "scripts": {
+    "build": "cargo build",
+    "generate": "cargo run --bin schema",
+    "test": "cargo test"
+  }
+}

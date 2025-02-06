@@ -43,6 +43,26 @@ importers:
 
   crates/bvs-directory: {}
 
+  crates/bvs-driver: {}
+
+  crates/delegation-manager: {}
+
+  crates/mirrored-token: {}
+
+  crates/rewards-coordinator: {}
+
+  crates/slash-manager: {}
+
+  crates/state-bank: {}
+
+  crates/strategy-base: {}
+
+  crates/strategy-base-tvl-limits: {}
+
+  crates/strategy-factory: {}
+
+  crates/strategy-manager: {}
+
   modules: {}
 
   packages/bvs-example:
