@@ -2,16 +2,16 @@
   "$schema": "https://turbo.build/schema.json",
   "extends": ["//"],
   "tasks": {
-    "build:docker": {
-      "inputs": ["Dockerfile"],
+    "docker:build": {
+      "inputs": ["Dockerfile", "optimizer.sh"],
       "outputs": ["docker.tar"]
     },
-    "docker:import": {
+    "docker:load": {
       "inputs": ["docker.tar"],
-      "dependsOn": ["build:docker"]
+      "dependsOn": ["docker:build"]
     },
     "build": {
-      "dependsOn": ["docker:import"]
+      "dependsOn": ["docker:load"]
     }
   }
 }
