@@ -1,0 +1,9 @@
+{
+  "name": "@satlayer/delegation-manager",
+  "private": false,
+  "scripts": {
+    "build": "cargo build",
+    "generate:schema": "cargo run --bin schema",
+    "test": "cargo test"
+  }
+}

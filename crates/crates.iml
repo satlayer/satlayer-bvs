@@ -11,10 +11,10 @@
       <sourceFolder url="file://$MODULE_DIR$/rewards-coordinator/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slash-manager/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/state-bank/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/strategy-base-TVLLimits/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/strategy-base/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/strategy-factory/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/strategy-manager/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/strategy-base-tvl-limits/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />

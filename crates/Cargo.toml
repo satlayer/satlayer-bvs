@@ -7,7 +7,7 @@ members = [
     "bvs-driver",
     "delegation-manager",
     "rewards-coordinator",
-    "strategy-base-TVLLimits",
+    "strategy-base-tvl-limits",
     "strategy-factory",
     "slash-manager",
     "mirrored-token"

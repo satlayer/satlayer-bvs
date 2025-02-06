@@ -2,5 +2,7 @@
 
 #### Which issue(s) will this PR fix?:
 
-<!-- Fix #<github_number> -->
-<!-- Fix SL-<linear_issue> -->
+<!-- delete below if not applicable -->
+
+Close #<github_number>
+Close SL-

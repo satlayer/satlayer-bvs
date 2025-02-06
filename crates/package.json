@@ -5,5 +5,10 @@
     "build": "cargo build",
     "clippy": "cargo clippy -- -D warnings",
     "format": "cargo fmt --all -- --check"
+  },
+  "lint-staged": {
+    "*.rs": [
+      "rustfmt"
+    ]
   }
 }
