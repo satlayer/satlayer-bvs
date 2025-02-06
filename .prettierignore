@@ -8,3 +8,5 @@ pnpm-lock.yaml
 *.go
 *.rs
 crates/target/
+crates/*/artifacts/
+crates/*/schema/

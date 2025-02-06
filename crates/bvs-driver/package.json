@@ -2,7 +2,7 @@
   "name": "@satlayer/bvs-driver",
   "private": false,
   "scripts": {
-    "build:wasm": "docker run --rm -v $(pwd)/..:/code --mount type=volume,source=satlayer_bvs_crates_cache,target=/target --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry ghcr.io/satlayer/cosmwasm-optimizer:local ./$(basename $(pwd))",
+    "build:wasm": "docker run --rm -v $(pwd)/..:/code --mount type=volume,source=slbvs_cache_$(basename $(pwd)),target=/target --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry ghcr.io/satlayer/cosmwasm-optimizer:local ./$(basename $(pwd))",
     "generate:schema": "cargo run --bin schema",
     "test": "cargo test"
   }
