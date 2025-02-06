@@ -1,6 +1,4 @@
-use crate::query::{
-    StrategyResponse, BlacklistStatusResponse,
-};
+use crate::query::{BlacklistStatusResponse, StrategyResponse};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
 #[cw_serde]
