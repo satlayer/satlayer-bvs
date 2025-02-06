@@ -3,7 +3,7 @@
   "private": false,
   "scripts": {
     "build": "cargo build",
-    "generate": "cargo run --bin schema",
+    "generate:schema": "cargo run --bin schema",
     "test": "cargo test"
   }
 }
