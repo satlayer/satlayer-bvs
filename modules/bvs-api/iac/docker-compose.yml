@@ -1,0 +1,63 @@
+services:
+  kafka:
+    container_name: kafka
+    image: "bitnami/kafka:3.5"
+    networks:
+      - kafka_network
+    ports:
+      - "19092:9092"
+      - "19093:9093"
+    environment:
+      ### General Configuration
+      # Enable KRaft, which allows Kafka to replace Zookeeper
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_NODE_ID=1
+      # Kafka role, acting as both broker and controller
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      # Define Kafka server socket listening port (IP address and port within Docker)
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://kafka:9092,CONTROLLER://kafka:9093
+      # Define external access address (IP address and port on the host machine), IP cannot be 0.0.0.0
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:19092
+      # Define security protocol
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      # Cluster address
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      # Specify controller request information for external use
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      # Set the maximum and initial memory for the broker
+      - KAFKA_HEAP_OPTS=-Xmx512M -Xms256M
+      # Cluster ID used when using Kafka; all Kafka instances in the cluster must use this ID for initialization, generate a UUID (22 bytes)
+      - KAFKA_KRAFT_CLUSTER_ID=xYcCyHmJlIaLzLoBzVwIcP
+      # Allow the use of PLAINTEXT listeners, default is false; not recommended for production environments
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      # Testing allows topic creation, should be changed to not allow automatic topic creation in production
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      # broker.id, must be unique and match KAFKA_CFG_NODE_ID
+      - KAFKA_BROKER_ID=1
+    volumes:
+      - kafka_data:/bitnami/kafka:rw
+
+  kafka-ui:
+    container_name: kafka-ui
+    image: provectuslabs/kafka-ui:latest
+    networks:
+      - kafka_network
+    restart: always
+    ports:
+      - 8080:8080
+    depends_on:
+      - kafka
+    volumes:
+      - /etc/localtime:/etc/localtime
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG_ENABLED: "TRUE"
+
+volumes:
+  kafka_data:
+    driver: local
+
+networks:
+  kafka_network:
+    driver: bridge
