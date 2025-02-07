@@ -111,6 +111,8 @@ importers:
         specifier: ^0.6.11
         version: 0.6.11(prettier@3.4.2)
 
+  packages/docker-cosmwasm-optimizer: {}
+
 packages:
 
   '@esbuild/aix-ppc64@0.24.2':

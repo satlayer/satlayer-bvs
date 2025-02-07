@@ -12,8 +12,28 @@ You need to install the following tools to get started:
 1. Install Node (NVM): `https://github.com/nvm-sh/nvm?tab=readme-ov-file#install--update-script`
 2. Install Rust: `https://www.rust-lang.org/tools/install`
 3. Install Go: `https://go.dev/doc/install`
+4. Install Docker: `https://docs.docker.com/get-started/get-docker/`
 
 After installing the tools, you need to install `pnpm` and `turbo` globally as well as the dependencies of the project:
+
+<details>
+<summary><b>Recommended Docker Settings:</b></summary>
+
+Due to heavy usage of Docker,
+we recommend a higher defaultKeepStorage setting to avoid running out of disk space too quickly.
+And a bigger address pool to have more IP addresses available for Docker containers.
+
+**Docker Engine:**
+
+- `builder.gc.defaultKeepStorage`: `200GB`
+- `default-address-pools[0]`: `{"base": "10.32.0.0/12", "size": 26}`
+
+**Resource Allocation:**
+
+- `Memory`: Half of the total memory, ideally above 16GB
+- `CPU`: More than 80% of available cores, ideally 7 or more
+
+</details>
 
 ### Install Pnpm, Turbo, and Dependencies
 

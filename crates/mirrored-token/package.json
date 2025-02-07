@@ -2,7 +2,7 @@
   "name": "@satlayer/mirrored-token",
   "private": false,
   "scripts": {
-    "build": "cargo build",
+    "build:wasm": "docker run --rm -v $(pwd)/..:/code --mount type=volume,source=slbvs_cache_$(basename $(pwd)),target=/target --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry ghcr.io/satlayer/cosmwasm-optimizer:local ./$(basename $(pwd))",
     "generate:schema": "cargo run --bin schema",
     "test": "cargo test"
   }
