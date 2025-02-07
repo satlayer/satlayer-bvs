@@ -1,0 +1,7 @@
+{
+  "name": "@satlayer/go-bvs-cubing",
+  "private": true,
+  "scripts": {
+    "test": "go test -v ./..."
+  }
+}
