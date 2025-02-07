@@ -15,8 +15,8 @@ if (process.env.CI) {
   // TODO(fuxingloh): We can pull from the cache (but our repo is not public, so that will complicate things)
   baseCommand.push(`--cache-from=ghcr.io/satlayer/cosmwasm-optimizer-cache:${projectName}`);
 } else {
-  baseCommand.push(`--mount type=volume,source=sl_bvs_wasm_cache_${projectName},target=/target`);
-  baseCommand.push("--mount type=volume,source=sl_bvs_registry_cache,target=/usr/local/cargo/registry");
+  baseCommand.push(`--mount type=volume,source=sl_bvs_cache_wasm_${projectName},target=/target`);
+  baseCommand.push(`--mount type=volume,source=sl_bvs_cache_registry_${projectName},target=/usr/local/cargo/registry`);
 }
 
 // Compose final command
