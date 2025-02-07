@@ -1,0 +1,7 @@
+{
+  "name": "@satlayer/go-bvs-squaring",
+  "private": true,
+  "scripts": {
+    "test": "go test -v ./..."
+  }
+}
