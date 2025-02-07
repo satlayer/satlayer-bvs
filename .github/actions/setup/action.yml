@@ -13,7 +13,8 @@ runs:
     # Go
     - uses: actions/setup-go@v5
       with:
-        go-version: "1.23"
+        go-version-file: "modules/go.mod"
+        cache-dependency-path: "modules/go.sum"
 
     # Node.js, PNPM, Turbo
     - uses: actions/setup-node@v4
@@ -24,4 +25,13 @@ runs:
         echo "NEXT_TELEMETRY_DISABLED=1" >> $GITHUB_ENV
         pnpm install -g turbo
         pnpm install
+
+        # We're using Turbo for non-npm scripts as well. 
+        # To suppress npm warnings, this simple script mkdir `node_modules` for all workspaces. 
+        workspace_paths=$(pnpm m ls --depth=-1 --json | jq -r '.[].path')
+        for path in $workspace_paths; do
+          if [ ! -d "$path/node_modules" ]; then
+            mkdir "$path/node_modules"
+          fi
+        done
       shell: bash
