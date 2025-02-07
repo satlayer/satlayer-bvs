@@ -16,10 +16,10 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 
-	"github.com/satlayer/satlayer-api/chainio/types"
-	"github.com/satlayer/satlayer-api/logger"
-	transactionprocess "github.com/satlayer/satlayer-api/metrics/indicators/transaction_process"
-	"github.com/satlayer/satlayer-api/signer"
+	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
+	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
+	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
+	"github.com/satlayer/satlayer-bvs/bvs-api/signer"
 )
 
 type ETHChainIO interface {

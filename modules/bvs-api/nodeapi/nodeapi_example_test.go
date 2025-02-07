@@ -1,8 +1,8 @@
 package nodeapi_test
 
 import (
-	elklogger "github.com/satlayer/satlayer-api/logger"
-	"github.com/satlayer/satlayer-api/nodeapi"
+	elklogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
+	"github.com/satlayer/satlayer-bvs/bvs-api/nodeapi"
 )
 
 func ExampleNodeApi() {

@@ -5,9 +5,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/satlayer/satlayer-api/comparablelayer/logging"
-	"github.com/satlayer/satlayer-api/metrics"
-	satlayerdefault "github.com/satlayer/satlayer-api/metrics/indicators/satlayer_default"
+	"github.com/satlayer/satlayer-bvs/bvs-api/comparablelayer/logging"
+	"github.com/satlayer/satlayer-bvs/bvs-api/metrics"
+	satlayerdefault "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/satlayer_default"
 )
 
 // SatLayerMetrics contains instrumented metrics that should be incremented by the bvs node using the methods below

@@ -8,8 +8,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	sdktypes "github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/satlayer/satlayer-api/chainio/io"
-	"github.com/satlayer/satlayer-api/chainio/types"
+	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
+	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
 )
 
 type ETHSlashManager interface {

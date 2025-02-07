@@ -13,11 +13,11 @@ import (
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/exp/rand"
 
-	"github.com/satlayer/satlayer-api/chainio/api"
-	"github.com/satlayer/satlayer-api/chainio/io"
-	"github.com/satlayer/satlayer-api/chainio/types"
-	apilogger "github.com/satlayer/satlayer-api/logger"
-	transactionprocess "github.com/satlayer/satlayer-api/metrics/indicators/transaction_process"
+	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
+	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
+	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
+	apilogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
+	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 )
 
 type delegationTestSuite struct {

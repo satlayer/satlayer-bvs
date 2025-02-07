@@ -24,10 +24,10 @@ import (
 	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 
-	"github.com/satlayer/satlayer-api/chainio/types"
-	"github.com/satlayer/satlayer-api/logger"
-	transactionprocess "github.com/satlayer/satlayer-api/metrics/indicators/transaction_process"
-	"github.com/satlayer/satlayer-api/signer"
+	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
+	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
+	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
+	"github.com/satlayer/satlayer-bvs/bvs-api/signer"
 )
 
 type ChainIO interface {

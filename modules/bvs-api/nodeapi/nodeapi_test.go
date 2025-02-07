@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	elklogger "github.com/satlayer/satlayer-api/logger"
+	elklogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
 )
 
 var logger = elklogger.NewMockELKLogger()

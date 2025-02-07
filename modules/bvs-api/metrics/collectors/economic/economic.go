@@ -5,9 +5,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/satlayer/satlayer-api/chainio/api"
-	"github.com/satlayer/satlayer-api/logger"
-	"github.com/satlayer/satlayer-api/metrics/consts"
+	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
+	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
+	"github.com/satlayer/satlayer-bvs/bvs-api/metrics/consts"
 )
 
 type Collector struct {

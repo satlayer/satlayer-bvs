@@ -11,8 +11,8 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bn254"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 
-	bn254utils "github.com/satlayer/satlayer-api/comparablelayer/crypto/bn254"
-	"github.com/satlayer/satlayer-api/comparablelayer/crypto/encrypt"
+	bn254utils "github.com/satlayer/satlayer-bvs/bvs-api/comparablelayer/crypto/bn254"
+	"github.com/satlayer/satlayer-bvs/bvs-api/comparablelayer/crypto/encrypt"
 )
 
 type encryptedBLSKeyJSON struct {

@@ -4,7 +4,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	"github.com/satlayer/satlayer-api/metrics/consts"
+	"github.com/satlayer/satlayer-bvs/bvs-api/metrics/consts"
 )
 
 type PromIndicators struct {

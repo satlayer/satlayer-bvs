@@ -11,7 +11,7 @@ import (
 	cosmossecp256k1 "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	"github.com/satlayer/satlayer-api/comparablelayer/crypto/encrypt"
+	"github.com/satlayer/satlayer-bvs/bvs-api/comparablelayer/crypto/encrypt"
 )
 
 type encryptedJSON struct {

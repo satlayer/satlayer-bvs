@@ -6,7 +6,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bn254"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fp"
 
-	bn254utils "github.com/satlayer/satlayer-api/comparablelayer/crypto/bn254"
+	bn254utils "github.com/satlayer/satlayer-bvs/bvs-api/comparablelayer/crypto/bn254"
 )
 
 // G2Point represents a point on the G2 curve

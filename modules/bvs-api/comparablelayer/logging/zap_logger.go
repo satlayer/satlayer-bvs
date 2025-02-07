@@ -3,7 +3,7 @@ package logging
 import (
 	"fmt"
 
-	"github.com/satlayer/satlayer-api/logger"
+	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
 )
 
 type LogLevel string

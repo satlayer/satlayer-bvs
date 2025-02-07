@@ -12,9 +12,9 @@ import (
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"golang.org/x/time/rate"
 
-	"github.com/satlayer/satlayer-api/chainio/indexer"
-	"github.com/satlayer/satlayer-api/chainio/io"
-	"github.com/satlayer/satlayer-api/chainio/types"
+	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/indexer"
+	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
+	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
 )
 
 var wasmUpdateState sync.Map

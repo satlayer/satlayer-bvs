@@ -10,17 +10,17 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/satlayer/satlayer-api/chainio/abi"
+	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/abi"
 
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/satlayer/satlayer-api/chainio/io"
-	"github.com/satlayer/satlayer-api/chainio/types"
-	apilogger "github.com/satlayer/satlayer-api/logger"
-	transactionprocess "github.com/satlayer/satlayer-api/metrics/indicators/transaction_process"
+	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
+	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
+	apilogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
+	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 )
 
 type ioTestSuite struct {

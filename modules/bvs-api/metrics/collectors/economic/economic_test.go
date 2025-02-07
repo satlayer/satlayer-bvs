@@ -8,11 +8,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/satlayer/satlayer-api/chainio/api"
-	"github.com/satlayer/satlayer-api/chainio/io"
-	"github.com/satlayer/satlayer-api/chainio/types"
-	logger2 "github.com/satlayer/satlayer-api/logger"
-	transactionprocess "github.com/satlayer/satlayer-api/metrics/indicators/transaction_process"
+	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
+	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
+	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
+	logger2 "github.com/satlayer/satlayer-bvs/bvs-api/logger"
+	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 )
 
 func TestEconomicCollector(t *testing.T) {

@@ -1,8 +1,8 @@
 package nodeapi
 
 import (
-	"github.com/satlayer/satlayer-api/comparablelayer/logging"
-	"github.com/satlayer/satlayer-api/nodeapi"
+	"github.com/satlayer/satlayer-bvs/bvs-api/comparablelayer/logging"
+	"github.com/satlayer/satlayer-bvs/bvs-api/nodeapi"
 )
 
 type NodeHealth int

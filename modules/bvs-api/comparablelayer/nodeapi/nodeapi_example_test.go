@@ -1,8 +1,8 @@
 package nodeapi_test
 
 import (
-	"github.com/satlayer/satlayer-api/comparablelayer/logging"
-	"github.com/satlayer/satlayer-api/comparablelayer/nodeapi"
+	"github.com/satlayer/satlayer-bvs/bvs-api/comparablelayer/logging"
+	"github.com/satlayer/satlayer-bvs/bvs-api/comparablelayer/nodeapi"
 )
 
 func ExampleNodeApi() {

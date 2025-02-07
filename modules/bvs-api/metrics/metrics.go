@@ -8,8 +8,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/satlayer/satlayer-api/logger"
-	"github.com/satlayer/satlayer-api/utils"
+	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
+	"github.com/satlayer/satlayer-bvs/bvs-api/utils"
 )
 
 type Metrics interface {

@@ -1,7 +1,7 @@
 package bls
 
 import (
-	bn254utils "github.com/satlayer/satlayer-api/comparablelayer/crypto/bn254"
+	bn254utils "github.com/satlayer/satlayer-bvs/bvs-api/comparablelayer/crypto/bn254"
 )
 
 // Signature represents a BLS signature

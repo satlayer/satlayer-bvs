@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/satlayer/satlayer-api/logger"
-	"github.com/satlayer/satlayer-api/metrics"
-	satlayerdefault "github.com/satlayer/satlayer-api/metrics/indicators/satlayer_default"
+	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
+	"github.com/satlayer/satlayer-bvs/bvs-api/metrics"
+	satlayerdefault "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/satlayer_default"
 )
 
 type SatlayerMetricsTestSuite struct {

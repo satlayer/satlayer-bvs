@@ -10,7 +10,7 @@ import (
 	"strings"
 	"syscall"
 
-	elklogger "github.com/satlayer/satlayer-api/logger"
+	elklogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
 )
 
 const (

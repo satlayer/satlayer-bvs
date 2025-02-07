@@ -1,6 +1,6 @@
 package logging
 
-import "github.com/satlayer/satlayer-api/logger"
+import "github.com/satlayer/satlayer-bvs/bvs-api/logger"
 
 type Logger interface {
 	Debug(msg string, tags ...any)

@@ -12,8 +12,8 @@ import (
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"golang.org/x/exp/rand"
 
-	"github.com/satlayer/satlayer-api/chainio/io"
-	"github.com/satlayer/satlayer-api/chainio/types"
+	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
+	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
 )
 
 type BVSDirectory interface {

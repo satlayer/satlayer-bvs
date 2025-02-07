@@ -3,9 +3,9 @@ package economic
 import (
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/satlayer/satlayer-api/chainio/api"
-	"github.com/satlayer/satlayer-api/comparablelayer/logging"
-	"github.com/satlayer/satlayer-api/metrics/collectors/economic"
+	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
+	"github.com/satlayer/satlayer-bvs/bvs-api/comparablelayer/logging"
+	"github.com/satlayer/satlayer-bvs/bvs-api/metrics/collectors/economic"
 )
 
 // Collector exports the economic metrics listed at

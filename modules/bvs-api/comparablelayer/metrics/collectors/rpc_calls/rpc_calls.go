@@ -3,7 +3,7 @@ package rpccalls
 import (
 	"github.com/prometheus/client_golang/prometheus"
 
-	rpccalls "github.com/satlayer/satlayer-api/metrics/indicators/rpc_calls"
+	rpccalls "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/rpc_calls"
 )
 
 type Collector struct {
