@@ -17,6 +17,7 @@
     "@types/node": "^20",
     "@workspace/config-eslint": "workspace:*",
     "@workspace/config-prettier": "workspace:*",
+    "@workspace/docker-cosmwasm-optimizer": "workspace:*",
     "eslint": "^9",
     "husky": "^9",
     "lint-staged": "^15",

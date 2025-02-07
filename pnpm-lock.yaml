@@ -17,6 +17,9 @@ importers:
       '@workspace/config-prettier':
         specifier: workspace:*
         version: link:packages/config-prettier
+      '@workspace/docker-cosmwasm-optimizer':
+        specifier: workspace:*
+        version: link:packages/docker-cosmwasm-optimizer
       eslint:
         specifier: ^9
         version: 9.19.0
@@ -64,6 +67,12 @@ importers:
   crates/strategy-manager: {}
 
   modules: {}
+
+  modules/bvs-api: {}
+
+  modules/bvs-cubing: {}
+
+  modules/bvs-squaring: {}
 
   packages/bvs-example:
     dependencies:

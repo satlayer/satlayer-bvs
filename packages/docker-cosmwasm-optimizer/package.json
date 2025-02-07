@@ -1,6 +1,9 @@
 {
   "name": "@workspace/docker-cosmwasm-optimizer",
   "private": true,
+  "bin": {
+    "cosmwasm-optimizer": "bin.js"
+  },
   "scripts": {
     "docker:build": "docker buildx build . --progress=plain -t ghcr.io/satlayer/cosmwasm-optimizer:local && docker save ghcr.io/satlayer/cosmwasm-optimizer:local -o docker.tar",
     "docker:load": "docker load < docker.tar"
