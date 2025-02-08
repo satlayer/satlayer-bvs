@@ -70,10 +70,6 @@ importers:
 
   modules/bvs-api: {}
 
-  modules/bvs-cubing: {}
-
-  modules/bvs-squaring: {}
-
   packages/bvs-example:
     dependencies:
       debug:
