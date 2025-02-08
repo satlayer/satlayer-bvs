@@ -1,4 +1,4 @@
-# BVS Squaring Example
+# BVS Squaring
 
 Offchain computation for squaring a number.
 
@@ -8,6 +8,6 @@ Offchain computation for squaring a number.
 
 ```txt
 squaring/
-├── cw-squaring-contract/
+├── cw-squaring-contract/     <- CosmWasm contract
 └── README.md
 ```

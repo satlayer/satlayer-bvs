@@ -8,3 +8,5 @@
 # Rust (CosmWasm)
 **/*.rs.bk
 target/
+artifacts/
+schema/
