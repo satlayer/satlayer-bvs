@@ -6,8 +6,8 @@ Offchain computation for squaring a number.
 
 1. Install Rust: `https://www.rust-lang.org/tools/install`
 
-```txt filename="Project Structure"
+```txt
 squaring/
-├── cw-squaring-contract/
+├── cw-squaring-contract/     <- CosmWasm contract
 └── README.md
 ```

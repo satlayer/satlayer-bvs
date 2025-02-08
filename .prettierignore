@@ -10,3 +10,4 @@ pnpm-lock.yaml
 crates/target/
 crates/*/artifacts/
 crates/*/schema/
+.github/pull_request_template.md

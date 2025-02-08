@@ -7,7 +7,7 @@
     "start": "next start"
   },
   "lint-staged": {
-    "*": [
+    "!(**/page.md|*.{js,jsx,ts,tsx})": [
       "prettier --write --ignore-unknown"
     ],
     "*.{js,jsx,ts,tsx}": [
