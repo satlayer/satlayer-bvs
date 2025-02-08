@@ -15,9 +15,6 @@ runs:
       with:
         go-version-file: "modules/go.mod"
         cache-dependency-path: "modules/go.sum"
-    - run: |
-        echo "GOTESTSUM_FORMAT=testname" >> $GITHUB_ENV
-      shell: bash
 
     # Node.js, PNPM, Turbo
     - uses: actions/setup-node@v4
