@@ -1,7 +1,1 @@
-/*
-We're using nextra-theme-docs, we don’t need to include the @tailwind base directive.
-These themes already import Tailwind’s preflight styles in their style.css files.
-@tailwind base;
-*/
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
