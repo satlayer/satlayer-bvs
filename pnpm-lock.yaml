@@ -112,6 +112,8 @@ importers:
         specifier: 15.1.6
         version: 15.1.6(eslint@9.19.0(jiti@2.4.2))(typescript@5.7.3)
 
+  examples/squaring/cw-squaring-contract: {}
+
   modules: {}
 
   modules/bvs-api: {}
