@@ -1,0 +1,10 @@
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+*.iml
+
+# Rust (CosmWasm)
+**/*.rs.bk
+target/
