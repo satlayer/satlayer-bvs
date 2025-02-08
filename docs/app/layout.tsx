@@ -4,7 +4,7 @@ import { getPageMap } from "nextra/page-map";
 import "nextra-theme-docs/style.css";
 import { ReactNode } from "react";
 import { Metadata } from "next";
-import { SatLayerIcon } from "./icon";
+import { SatLayerIcon } from "./Icon";
 import "./globals.css";
 
 export const metadata: Metadata = {
