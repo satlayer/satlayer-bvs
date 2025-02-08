@@ -1,6 +1,7 @@
 {
   "name": "@workspace/docs",
   "scripts": {
+    "build": "next build",
     "dev": "next",
     "eslint": "next lint",
     "start": "next start"
