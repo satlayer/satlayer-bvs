@@ -356,7 +356,7 @@ fn handle_instantiate_reply(mut deps: DepsMut, msg: Reply) -> Result<Response, C
         .last()
         .ok_or(StdError::not_found("Token"))??;
 
-    let strategies_to_whitelist = vec![Addr::unchecked(contract_address.clone())];
+    let strategies_to_whitelist = [Addr::unchecked(contract_address.clone())];
     let third_party_transfers_forbidden_values = vec![false];
 
     let msg = StrategyManagerExecuteMsg::AddStrategiesToWhitelist {
@@ -391,18 +391,16 @@ fn extract_contract_address_from_reply(
 
     let data = res
         .msg_responses
-        .get(0)
+        .first()
         .ok_or(ContractError::MissingInstantiateData {})?;
 
-    let instantiate_response = cw_utils::parse_instantiate_response_data(&Binary::from(
-        data.value.clone(),
-    ))
-    .map_err(|_| {
-        StdError::parse_err(
-            "MsgInstantiateContractResponse",
-            "failed to parse instantiate data",
-        )
-    })?;
+    let instantiate_response = cw_utils::parse_instantiate_response_data(&data.value.clone())
+        .map_err(|_| {
+            StdError::parse_err(
+                "MsgInstantiateContractResponse",
+                "failed to parse instantiate data",
+            )
+        })?;
 
     let contract_address = instantiate_response.contract_address.clone();
 
