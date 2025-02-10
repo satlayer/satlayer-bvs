@@ -48,7 +48,7 @@ impl BVSDriver {
 
     pub fn register(&self, app: &mut App, contract: String) -> AnyResult<AppResponse> {
         let msg = bvs_driver::msg::ExecuteMsg::AddRegisteredBvsContract { address: contract };
-        let binary = to_json_binary::<bvs_driver::msg::ExecuteMsg>(&msg.into())?;
+        let binary = to_json_binary::<bvs_driver::msg::ExecuteMsg>(&msg)?;
         let cosmos_msg: CosmosMsg = WasmMsg::Execute {
             contract_addr: self.addr.to_string(),
             msg: binary,
