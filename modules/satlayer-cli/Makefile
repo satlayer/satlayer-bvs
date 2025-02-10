@@ -1,7 +1,7 @@
 .PHONY: build install test
 
 build:
-	go build -v -o dist/satlayer-cli .
+	go build -o dist/satlayer-cli .
 
 install:
 	go build -o dist/satlayer-cli .
