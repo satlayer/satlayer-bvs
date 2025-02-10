@@ -1,5 +1,6 @@
-use cosmwasm_std::{Addr, Coin, Empty, Uint128};
-use cw_multi_test::{App, AppBuilder, Contract, ContractWrapper, Executor};
+use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, Empty, WasmMsg};
+use cw_multi_test::error::AnyResult;
+use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
 
 pub struct StateBank {
     pub addr: Addr,
@@ -19,8 +20,8 @@ impl StateBank {
     }
 
     pub fn instantiate(app: &mut App) -> StateBank {
-        let contract_admin = app.api().addr_make("BVSDriverContract:admin");
-        let owner = app.api().addr_make("BVSDriverContract:owner");
+        let contract_admin = app.api().addr_make("StateBank:admin");
+        let owner = app.api().addr_make("StateBank:owner");
         let contract_id = app.store_code(StateBank::contract());
 
         let init_msg = state_bank::msg::InstantiateMsg {
@@ -44,12 +45,27 @@ impl StateBank {
             init_msg,
         }
     }
+
+    pub fn register(&self, app: &mut App, contract: String) -> AnyResult<AppResponse> {
+        let msg = state_bank::msg::ExecuteMsg::AddRegisteredBvsContract { address: contract };
+        let binary = to_json_binary::<state_bank::msg::ExecuteMsg>(&msg.into())?;
+        let cosmos_msg: CosmosMsg = WasmMsg::Execute {
+            contract_addr: self.addr.to_string(),
+            msg: binary,
+            funds: vec![],
+        }
+        .into();
+
+        app.execute(Addr::unchecked("anyone"), cosmos_msg)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use cosmwasm_std::testing::MockApi;
+    use cosmwasm_std::{Coin, Uint128};
+    use cw_multi_test::AppBuilder;
 
     const ADMIN: &str = "ADMIN";
     const NATIVE_DENOM: &str = "tSATLAYER";

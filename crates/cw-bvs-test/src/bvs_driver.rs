@@ -1,7 +1,6 @@
-use crate::tester::BVSApp;
-use cosmwasm_std::{to_json_binary, Addr, Coin, CosmosMsg, Empty, StdResult, Uint128, WasmMsg};
-use cw_multi_test::error::{AnyResult, Error};
-use cw_multi_test::{App, AppBuilder, AppResponse, Contract, ContractWrapper, Executor};
+use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, Empty, WasmMsg};
+use cw_multi_test::error::AnyResult;
+use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
 
 pub struct BVSDriver {
     pub addr: Addr,
@@ -21,8 +20,8 @@ impl BVSDriver {
     }
 
     pub fn instantiate(app: &mut App) -> BVSDriver {
-        let contract_admin = app.api().addr_make("BVSDriverContract:admin");
-        let owner = app.api().addr_make("BVSDriverContract:owner");
+        let contract_admin = app.api().addr_make("BVSDriver:admin");
+        let owner = app.api().addr_make("BVSDriver:owner");
         let contract_id = app.store_code(BVSDriver::contract());
 
         let init_msg = bvs_driver::msg::InstantiateMsg {
@@ -46,12 +45,27 @@ impl BVSDriver {
             init_msg,
         }
     }
+
+    pub fn register(&self, app: &mut App, contract: String) -> AnyResult<AppResponse> {
+        let msg = bvs_driver::msg::ExecuteMsg::AddRegisteredBvsContract { address: contract };
+        let binary = to_json_binary::<bvs_driver::msg::ExecuteMsg>(&msg.into())?;
+        let cosmos_msg: CosmosMsg = WasmMsg::Execute {
+            contract_addr: self.addr.to_string(),
+            msg: binary,
+            funds: vec![],
+        }
+        .into();
+
+        app.execute(Addr::unchecked("anyone"), cosmos_msg)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use cosmwasm_std::testing::MockApi;
+    use cosmwasm_std::{Coin, Uint128};
+    use cw_multi_test::AppBuilder;
 
     const ADMIN: &str = "ADMIN";
     const NATIVE_DENOM: &str = "tSATLAYER";

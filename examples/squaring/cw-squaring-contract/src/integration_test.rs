@@ -90,6 +90,10 @@ mod tests {
             )
             .unwrap();
 
+        driver.register(&mut app, contract_addr.to_string()).unwrap();
+        state_bank.register(&mut app, contract_addr.to_string()).unwrap();
+
+
         let contract = SquaringContract(contract_addr);
         (app, contract)
     }
@@ -105,8 +109,6 @@ mod tests {
             let msg = ExecuteMsg::CreateNewTask {
                 input: 3,
             };
-            // TODO(fuxingloh): this test will fail because we don't have aggregator, state_bank, bvs_driver contracts
-            //  to call
             let cosmos_msg = contract.call(msg).unwrap();
             app.execute(Addr::unchecked("anyone"), cosmos_msg).unwrap();
         }
