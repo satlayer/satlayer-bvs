@@ -1,0 +1,7 @@
+{
+  "name": "@satlayer/cw-bvs-test",
+  "private": false,
+  "scripts": {
+    "test": "cargo test"
+  }
+}
