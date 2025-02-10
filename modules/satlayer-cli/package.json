@@ -2,7 +2,7 @@
   "name": "@satlayer/satlayer-cli",
   "private": true,
   "scripts": {
-    "build": "make build",
-    "test": "make test"
+    "build": "go build -o ${PWD}/dist/satlayer-cli .",
+    "test": "export SATLAYER_CONFIG=${PWD}/tests/config.toml && go test -v ${PWD}/tests/e2e/..."
   }
 }
