@@ -2,14 +2,14 @@ use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, Empty, WasmMsg};
 use cw_multi_test::error::AnyResult;
 use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
 
-pub struct BVSDriver {
+pub struct BvsDriver {
     pub addr: Addr,
     pub contract_id: u64,
     pub contract_admin: Addr,
     pub init_msg: bvs_driver::msg::InstantiateMsg,
 }
 
-impl BVSDriver {
+impl BvsDriver {
     pub fn contract() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(
             bvs_driver::contract::execute,
@@ -19,10 +19,10 @@ impl BVSDriver {
         Box::new(contract)
     }
 
-    pub fn instantiate(app: &mut App) -> BVSDriver {
+    pub fn instantiate(app: &mut App) -> BvsDriver {
         let contract_admin = app.api().addr_make("BVSDriver:admin");
         let owner = app.api().addr_make("BVSDriver:owner");
-        let contract_id = app.store_code(BVSDriver::contract());
+        let contract_id = app.store_code(BvsDriver::contract());
 
         let init_msg = bvs_driver::msg::InstantiateMsg {
             initial_owner: owner.to_string(),
@@ -38,7 +38,7 @@ impl BVSDriver {
             )
             .unwrap();
 
-        BVSDriver {
+        BvsDriver {
             addr,
             contract_id,
             contract_admin,
@@ -89,6 +89,6 @@ mod tests {
     #[test]
     fn instantiate() {
         let mut app = mock_app();
-        BVSDriver::instantiate(&mut app);
+        BvsDriver::instantiate(&mut app);
     }
 }

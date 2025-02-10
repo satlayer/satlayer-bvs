@@ -29,7 +29,7 @@ mod tests {
     use cosmwasm_std::testing::MockApi;
     use cosmwasm_std::{Addr, Coin, Empty, Uint128};
     use cw_multi_test::{App, AppBuilder, Contract, ContractWrapper, Executor};
-    use cw_bvs_test::{BVSDriver, StateBank};
+    use cw_bvs_test::{BvsDriver, StateBank};
 
     pub fn contract() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(
@@ -65,7 +65,7 @@ mod tests {
         let mut app = mock_app();
 
         let contract_id = app.store_code(contract());
-        let driver = BVSDriver::instantiate(&mut app);
+        let driver = BvsDriver::instantiate(&mut app);
         let state_bank = StateBank::instantiate(&mut app);
 
         let admin = app.api().addr_make(ADMIN);
