@@ -3,6 +3,6 @@
   "private": true,
   "scripts": {
     "build": "go build -v ./...",
-    "prepare": "go install gotest.tools/gotestsum@latest"
+    "prepare": "go mod tidy && go install gotest.tools/gotestsum@latest"
   }
 }

@@ -118,6 +118,12 @@ importers:
 
   modules/bvs-api: {}
 
+  modules/bvs-cubing: {}
+
+  modules/bvs-squaring: {}
+
+  modules/satlayer-cli: {}
+
   packages/bvs-example:
     dependencies:
       debug:
