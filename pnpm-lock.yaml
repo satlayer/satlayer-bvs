@@ -74,6 +74,8 @@ importers:
 
   modules/bvs-squaring: {}
 
+  modules/satlayer-cli: {}
+
   packages/bvs-example:
     dependencies:
       debug:

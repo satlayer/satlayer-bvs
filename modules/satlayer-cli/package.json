@@ -1,0 +1,8 @@
+{
+  "name": "@satlayer/satlayer-cli",
+  "private": true,
+  "scripts": {
+    "build": "make build",
+    "test": "make test"
+  }
+}
