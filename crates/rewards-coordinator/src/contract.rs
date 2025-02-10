@@ -354,7 +354,7 @@ pub fn process_claim(
 
         let claim_amount = token_leaf.cumulative_earnings - curr_cumulative_claimed;
 
-        let balance = token_balance(&deps.querier, &token, &env.contract.address)?;
+        let balance = token_balance(&deps.querier, token, &env.contract.address)?;
 
         if claim_amount > balance {
             return Err(ContractError::InsufficientBalance {});
