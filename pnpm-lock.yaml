@@ -80,8 +80,8 @@ importers:
         specifier: ^4.2.4
         version: 4.2.4(acorn@8.14.0)(next@15.1.6(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.7.3)
       nextra-theme-docs:
-        specifier: ^4.2.4
-        version: 4.2.4(@types/react@19.0.8)(next@15.1.6(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(nextra@4.2.4(acorn@8.14.0)(next@15.1.6(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.7.3))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        specifier: ^4.2.7
+        version: 4.2.7(@types/react@19.0.8)(next@15.1.6(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(nextra@4.2.4(acorn@8.14.0)(next@15.1.6(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.7.3))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       postcss:
         specifier: ^8.5.1
         version: 8.5.1
@@ -2922,11 +2922,11 @@ packages:
       sass:
         optional: true
 
-  nextra-theme-docs@4.2.4:
-    resolution: {integrity: sha512-8xXn88EkIg9CLP/O+xcrze1fZFg3kzT2DW6auZYGbR+fruMbGAXcsqntJ+vOdbBPx/z4KjWMt6mWPiI5Whtrvw==}
+  nextra-theme-docs@4.2.7:
+    resolution: {integrity: sha512-6ZxMEGazlNIapvoMA+R2Xu1+IxWu4TUjuUL2A2RIvZEnNOTgjnSE553Z/R4aTgjywcGDGGJ63L3I4k/Et4xThQ==}
     peerDependencies:
       next: '>=14'
-      nextra: 4.2.4
+      nextra: 4.2.7
       react: '>=18'
       react-dom: '>=18'
 
@@ -7300,7 +7300,7 @@ snapshots:
       - '@babel/core'
       - babel-plugin-macros
 
-  nextra-theme-docs@4.2.4(@types/react@19.0.8)(next@15.1.6(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(nextra@4.2.4(acorn@8.14.0)(next@15.1.6(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.7.3))(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
+  nextra-theme-docs@4.2.7(@types/react@19.0.8)(next@15.1.6(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(nextra@4.2.4(acorn@8.14.0)(next@15.1.6(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.7.3))(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
     dependencies:
       '@headlessui/react': 2.2.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       clsx: 2.1.1
