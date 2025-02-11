@@ -1,17 +1,16 @@
-use crate::msg::ExecuteMsg;
 use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, StdResult, WasmMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-pub struct BvsDriverContract(pub Addr);
+struct BvsDriverContract(pub Addr);
 
 impl BvsDriverContract {
     pub fn addr(&self) -> Addr {
         self.0.clone()
     }
 
-    pub fn call<T: Into<ExecuteMsg>>(&self, msg: T) -> StdResult<CosmosMsg> {
+    pub fn call<T: Into<cw_bvs_driver::msg::ExecuteMsg>>(&self, msg: T) -> StdResult<CosmosMsg> {
         let msg = to_json_binary(&msg.into())?;
         Ok(WasmMsg::Execute {
             contract_addr: self.addr().into(),
@@ -25,16 +24,15 @@ impl BvsDriverContract {
 #[cfg(test)]
 mod tests {
     use super::BvsDriverContract;
-    use crate::msg::InstantiateMsg;
     use cosmwasm_std::testing::MockApi;
     use cosmwasm_std::{Addr, Coin, Empty, Uint128};
     use cw_multi_test::{App, AppBuilder, Contract, ContractWrapper, Executor};
 
     pub fn contract() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(
-            crate::contract::execute,
-            crate::contract::instantiate,
-            crate::contract::query,
+            cw_bvs_driver::contract::execute,
+            cw_bvs_driver::contract::instantiate,
+            cw_bvs_driver::contract::query,
         );
         Box::new(contract)
     }
@@ -62,7 +60,7 @@ mod tests {
         let admin = app.api().addr_make("admin");
         let owner = app.api().addr_make("owner");
 
-        let msg = InstantiateMsg {
+        let msg = cw_bvs_driver::msg::InstantiateMsg {
             initial_owner: owner.to_string(),
         };
         let contract_addr = app
@@ -75,8 +73,7 @@ mod tests {
 
     mod tasks {
         use super::*;
-        use crate::msg::ExecuteMsg;
-        use crate::ContractError;
+        use cw_bvs_driver::msg::ExecuteMsg;
 
         #[test]
         fn add_registered_bvs_contract() {
@@ -141,7 +138,7 @@ mod tests {
             let error = app.execute(not_owner, cosmos_msg).unwrap_err();
             assert_eq!(
                 error.root_cause().to_string(),
-                ContractError::Unauthorized {}.to_string()
+                cw_bvs_driver::ContractError::Unauthorized {}.to_string()
             );
         }
     }
