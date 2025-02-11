@@ -5,8 +5,7 @@ use crate::{
 };
 
 use cosmwasm_std::{
-    entry_point, to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo,
-    Response, WasmMsg,
+    entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response
 };
 use cw2::set_contract_version;
 
@@ -30,7 +29,7 @@ pub fn instantiate(
     Ok(response)
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     _env: Env,
@@ -38,145 +37,184 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::CreateNewTask { input } => create_new_task(deps, info, input),
+        ExecuteMsg::CreateNewTask { input } => execute::create_new_task(deps, info, input),
         ExecuteMsg::RespondToTask {
             task_id,
             result,
             operators,
-        } => respond_to_task(deps, info, task_id, result, operators),
-        _ => Ok(Response::default()),
+        } => execute::respond_to_task(deps, info, task_id, result, operators),
     }
 }
 
-fn create_new_task(
-    deps: DepsMut,
-    _info: MessageInfo,
-    input: i64,
-) -> Result<Response, ContractError> {
-    let id = MAX_ID.may_load(deps.storage)?;
-    let new_id = id.unwrap_or(0) + 1;
+pub mod state_bank {
+    // TODO(fuxingloh): putting this mod here is not clean,
+    //   but it's better that putting it in crate::msg::ExecuteMsg
+    //   since it doesn't belong there.
+    use cosmwasm_schema::cw_serde;
 
-    MAX_ID.save(deps.storage, &new_id)?;
+    #[cw_serde]
+    pub enum ExecuteMsg {
+        Set { key: String, value: String },
+    }
+}
 
-    CREATED_TASKS.save(deps.storage, new_id, &input)?;
+pub mod bvs_driver {
+    // TODO(fuxingloh): putting this mod here is not clean,
+    //   but it's better that putting it in crate::msg::ExecuteMsg
+    //   since it doesn't belong there.
+    use cosmwasm_schema::cw_serde;
 
-    // Call the state bank contract to save the task input
-    let state_bank_msg = {
-        let msg = ExecuteMsg::Set {
-            key: format!("taskId.{}", new_id),
-            value: input.to_string(),
-        };
+    #[cw_serde]
+    pub enum ExecuteMsg {
+        ExecuteBvsOffchain { task_id: String },
+    }
+}
 
-        let state_bank_address = STATE_BANK.load(deps.storage)?;
-        let wasm_msg = WasmMsg::Execute {
-            contract_addr: state_bank_address.into_string(),
-            msg: to_json_binary(&msg)?,
-            funds: vec![],
-        };
-
-        CosmosMsg::Wasm(wasm_msg)
+pub mod execute {
+    use super::state_bank;
+    use super::bvs_driver;
+    use crate::state::{
+        AGGREGATOR, BVS_DRIVER, CREATED_TASKS, MAX_ID, RESPONDED_TASKS, STATE_BANK,
     };
+    use crate::ContractError;
+    use cosmwasm_std::{to_json_binary, CosmosMsg, DepsMut, Event, MessageInfo, Response, WasmMsg};
 
-    // Call the bvs driver contract to execute the task off-chain
-    let bvs_driver_msg = {
-        let msg = ExecuteMsg::ExecuteBvsOffchain {
-            task_id: new_id.to_string(),
+    pub fn create_new_task(
+        deps: DepsMut,
+        _info: MessageInfo,
+        input: i64,
+    ) -> Result<Response, ContractError> {
+        let id = MAX_ID.may_load(deps.storage)?;
+        let new_id = id.unwrap_or(0) + 1;
+
+        MAX_ID.save(deps.storage, &new_id)?;
+
+        CREATED_TASKS.save(deps.storage, new_id, &input)?;
+
+        // Call the state bank contract to save the task input
+        let state_bank_msg = {
+            let msg = state_bank::ExecuteMsg::Set {
+                key: format!("taskId.{}", new_id),
+                value: input.to_string(),
+            };
+
+            let state_bank_address = STATE_BANK.load(deps.storage)?;
+            let wasm_msg = WasmMsg::Execute {
+                contract_addr: state_bank_address.into_string(),
+                msg: to_json_binary(&msg)?,
+                funds: vec![],
+            };
+
+            CosmosMsg::Wasm(wasm_msg)
         };
 
-        let bvs_driver_address = BVS_DRIVER.load(deps.storage)?;
-        let wasm_msg = WasmMsg::Execute {
-            contract_addr: bvs_driver_address.into_string(),
-            msg: to_json_binary(&msg)?,
-            funds: vec![],
+        // Call the bvs driver contract to execute the task off-chain
+        let bvs_driver_msg = {
+            let msg = bvs_driver::ExecuteMsg::ExecuteBvsOffchain {
+                task_id: new_id.to_string(),
+            };
+
+            let bvs_driver_address = BVS_DRIVER.load(deps.storage)?;
+            let wasm_msg = WasmMsg::Execute {
+                contract_addr: bvs_driver_address.into_string(),
+                msg: to_json_binary(&msg)?,
+                funds: vec![],
+            };
+
+            CosmosMsg::Wasm(wasm_msg)
         };
 
-        CosmosMsg::Wasm(wasm_msg)
-    };
+        // emit event
+        let event = Event::new("NewTaskCreated")
+            .add_attribute("taskId", new_id.to_string())
+            .add_attribute("input", input.to_string());
 
-    // emit event
-    let event = Event::new("NewTaskCreated")
-        .add_attribute("taskId", new_id.to_string())
-        .add_attribute("input", input.to_string());
-
-    Ok(Response::new()
-        .add_message(state_bank_msg)
-        .add_message(bvs_driver_msg)
-        .add_attribute("method", "CreateNewTask")
-        .add_attribute("input", input.to_string())
-        .add_attribute("taskId", new_id.to_string())
-        .add_event(event))
-}
-
-fn respond_to_task(
-    deps: DepsMut,
-    info: MessageInfo,
-    task_id: u64,
-    result: i64,
-    operators: String,
-) -> Result<Response, ContractError> {
-    let aggregator = AGGREGATOR.load(deps.storage)?;
-
-    // only aggregator can respond to task
-    if info.sender != aggregator {
-        return Err(ContractError::Unauthorized {});
+        Ok(Response::new()
+            .add_message(state_bank_msg)
+            .add_message(bvs_driver_msg)
+            .add_attribute("method", "CreateNewTask")
+            .add_attribute("input", input.to_string())
+            .add_attribute("taskId", new_id.to_string())
+            .add_event(event))
     }
 
-    let responded_result = RESPONDED_TASKS.may_load(deps.storage, task_id)?;
+    pub fn respond_to_task(
+        deps: DepsMut,
+        info: MessageInfo,
+        task_id: u64,
+        result: i64,
+        operators: String,
+    ) -> Result<Response, ContractError> {
+        let aggregator = AGGREGATOR.load(deps.storage)?;
 
-    // result already submitted
-    if let Some(_) = responded_result {
-        return Err(ContractError::ResultSubmitted {});
+        // only aggregator can respond to task
+        if info.sender != aggregator {
+            return Err(ContractError::Unauthorized {});
+        }
+
+        let responded_result = RESPONDED_TASKS.may_load(deps.storage, task_id)?;
+
+        // result already submitted
+        if let Some(_) = responded_result {
+            return Err(ContractError::ResultSubmitted {});
+        }
+
+        // save task result
+        RESPONDED_TASKS.save(deps.storage, task_id, &result)?;
+
+        // emit event
+        let event = Event::new("TaskResponded")
+            .add_attribute("taskId", task_id.to_string())
+            .add_attribute("result", result.to_string())
+            .add_attribute("operators", operators);
+
+        Ok(Response::new()
+            .add_attribute("method", "RespondToTask")
+            .add_attribute("taskId", task_id.to_string())
+            .add_attribute("result", result.to_string())
+            .add_event(event))
     }
-
-    // save task result
-    RESPONDED_TASKS.save(deps.storage, task_id, &result)?;
-
-    // emit event
-    let event = Event::new("TaskResponded")
-        .add_attribute("taskId", task_id.to_string())
-        .add_attribute("result", result.to_string())
-        .add_attribute("operators", operators);
-
-    Ok(Response::new()
-        .add_attribute("method", "RespondToTask")
-        .add_attribute("taskId", task_id.to_string())
-        .add_attribute("result", result.to_string())
-        .add_event(event))
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::GetTaskInput { task_id } => query_task_input(deps, task_id),
-        QueryMsg::GetTaskResult { task_id } => query_task_result(deps, task_id),
-        QueryMsg::GetLatestTaskId {} => query_latest_task_id(deps),
+        QueryMsg::GetTaskInput { task_id } => query::task_input(deps, task_id),
+        QueryMsg::GetTaskResult { task_id } => query::task_result(deps, task_id),
+        QueryMsg::GetLatestTaskId {} => query::latest_task_id(deps),
     }
 }
 
-fn query_task_input(deps: Deps, task_id: u64) -> Result<Binary, ContractError> {
-    let result = CREATED_TASKS.may_load(deps.storage, task_id)?;
+pub mod query {
+    use crate::state::{CREATED_TASKS, MAX_ID, RESPONDED_TASKS};
+    use crate::ContractError;
+    use cosmwasm_std::{to_json_binary, Binary, Deps};
 
-    if let Some(input) = result {
-        return Ok(to_json_binary(&input)?);
+    pub fn task_input(deps: Deps, task_id: u64) -> Result<Binary, ContractError> {
+        let result = CREATED_TASKS.may_load(deps.storage, task_id)?;
+
+        if let Some(input) = result {
+            return Ok(to_json_binary(&input)?);
+        }
+
+        Err(ContractError::NoValueFound {})
     }
 
-    Err(ContractError::NoValueFound {})
-}
+    pub fn task_result(deps: Deps, task_id: u64) -> Result<Binary, ContractError> {
+        let result = RESPONDED_TASKS.may_load(deps.storage, task_id)?;
 
-fn query_task_result(deps: Deps, task_id: u64) -> Result<Binary, ContractError> {
-    let result = RESPONDED_TASKS.may_load(deps.storage, task_id)?;
+        if let Some(result) = result {
+            return Ok(to_json_binary(&result)?);
+        }
 
-    if let Some(result) = result {
-        return Ok(to_json_binary(&result)?);
+        Err(ContractError::NoValueFound {})
     }
 
-    Err(ContractError::NoValueFound {})
-}
+    pub fn latest_task_id(deps: Deps) -> Result<Binary, ContractError> {
+        let result = MAX_ID.load(deps.storage)?;
 
-fn query_latest_task_id(deps: Deps) -> Result<Binary, ContractError> {
-    let result = MAX_ID.load(deps.storage)?;
-
-    Ok(to_json_binary(&result)?)
+        Ok(to_json_binary(&result)?)
+    }
 }
 
 #[cfg(test)]
@@ -231,7 +269,7 @@ mod tests {
     }
 
     #[test]
-    fn test_create_new_task() {
+    fn create_new_task() {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("creator", &[]);
@@ -265,9 +303,9 @@ mod tests {
                 contract_addr, msg, ..
             }) => {
                 assert_eq!(contract_addr, "state_bank");
-                let parsed_msg: ExecuteMsg = from_json(msg).unwrap();
+                let parsed_msg: state_bank::ExecuteMsg = from_json(msg).unwrap();
                 match parsed_msg {
-                    ExecuteMsg::Set { key, value } => {
+                    state_bank::ExecuteMsg::Set { key, value } => {
                         assert_eq!(key, "taskId.1");
                         assert_eq!(value, "42");
                     }
@@ -282,9 +320,9 @@ mod tests {
                 contract_addr, msg, ..
             }) => {
                 assert_eq!(contract_addr, "bvs_driver");
-                let parsed_msg: ExecuteMsg = from_json(msg).unwrap();
+                let parsed_msg: bvs_driver::ExecuteMsg = from_json(msg).unwrap();
                 match parsed_msg {
-                    ExecuteMsg::ExecuteBvsOffchain { task_id } => {
+                    bvs_driver::ExecuteMsg::ExecuteBvsOffchain { task_id } => {
                         assert_eq!(task_id, "1");
                     }
                     _ => panic!("Unexpected message type"),
@@ -295,7 +333,7 @@ mod tests {
     }
 
     #[test]
-    fn test_respond_to_task() {
+    fn respond_to_task() {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let info = mock_info("creator", &[]);

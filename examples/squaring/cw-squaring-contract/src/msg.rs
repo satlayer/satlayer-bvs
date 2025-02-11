@@ -18,13 +18,6 @@ pub enum ExecuteMsg {
         result: i64,
         operators: String,
     },
-    Set {
-        key: String,
-        value: String,
-    },
-    ExecuteBvsOffchain {
-        task_id: String,
-    },
 }
 
 #[cw_serde]
