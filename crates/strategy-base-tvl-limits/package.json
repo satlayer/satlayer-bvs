@@ -1,9 +1,0 @@
-{
-  "name": "@satlayer/strategy-base-tvl-limits",
-  "private": false,
-  "scripts": {
-    "build:wasm": "cosmwasm-optimizer",
-    "generate:schema": "cargo run --bin schema",
-    "test": "cargo test"
-  }
-}
