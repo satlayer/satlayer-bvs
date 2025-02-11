@@ -13,12 +13,12 @@
       "prettier --write --ignore-unknown"
     ]
   },
-  "prettier": "@workspace/config-prettier",
+  "prettier": "@packages/config-prettier",
   "devDependencies": {
+    "@packages/config-eslint": "workspace:*",
+    "@packages/config-prettier": "workspace:*",
+    "@packages/docker-cosmwasm-optimizer": "workspace:*",
     "@types/node": "^20",
-    "@workspace/config-eslint": "workspace:*",
-    "@workspace/config-prettier": "workspace:*",
-    "@workspace/docker-cosmwasm-optimizer": "workspace:*",
     "eslint": "^9",
     "husky": "^9",
     "lint-staged": "^15",

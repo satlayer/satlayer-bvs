@@ -8,18 +8,18 @@ importers:
 
   .:
     devDependencies:
+      '@packages/config-eslint':
+        specifier: workspace:*
+        version: link:packages/config-eslint
+      '@packages/config-prettier':
+        specifier: workspace:*
+        version: link:packages/config-prettier
+      '@packages/docker-cosmwasm-optimizer':
+        specifier: workspace:*
+        version: link:packages/docker-cosmwasm-optimizer
       '@types/node':
         specifier: ^20
         version: 20.17.17
-      '@workspace/config-eslint':
-        specifier: workspace:*
-        version: link:packages/config-eslint
-      '@workspace/config-prettier':
-        specifier: workspace:*
-        version: link:packages/config-prettier
-      '@workspace/docker-cosmwasm-optimizer':
-        specifier: workspace:*
-        version: link:packages/docker-cosmwasm-optimizer
       eslint:
         specifier: ^9
         version: 9.20.0(jiti@2.4.2)
@@ -121,16 +121,6 @@ importers:
   modules/bvs-api: {}
 
   modules/bvs-cli: {}
-
-  packages/bvs-example:
-    dependencies:
-      debug:
-        specifier: ^4.4.0
-        version: 4.4.0
-    devDependencies:
-      '@types/debug':
-        specifier: ^4.1.12
-        version: 4.1.12
 
   packages/config-eslint:
     dependencies:
