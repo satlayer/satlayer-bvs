@@ -44,29 +44,29 @@ importers:
 
   crates: {}
 
-  crates/bvs-directory: {}
+  crates/cw-bvs-directory: {}
 
-  crates/bvs-driver: {}
+  crates/cw-bvs-driver: {}
 
   crates/cw-bvs-test: {}
 
-  crates/delegation-manager: {}
+  crates/cw-delegation-manager: {}
 
-  crates/mirrored-token: {}
+  crates/cw-mirrored-token: {}
 
-  crates/rewards-coordinator: {}
+  crates/cw-rewards-coordinator: {}
 
-  crates/slash-manager: {}
+  crates/cw-slash-manager: {}
 
-  crates/state-bank: {}
+  crates/cw-state-bank: {}
 
-  crates/strategy-base: {}
+  crates/cw-strategy-base: {}
 
-  crates/strategy-base-tvl-limits: {}
+  crates/cw-strategy-base-tvl-limits: {}
 
-  crates/strategy-factory: {}
+  crates/cw-strategy-factory: {}
 
-  crates/strategy-manager: {}
+  crates/cw-strategy-manager: {}
 
   docs:
     dependencies:
