@@ -8,18 +8,18 @@ importers:
 
   .:
     devDependencies:
+      '@packages/config-eslint':
+        specifier: workspace:*
+        version: link:packages/config-eslint
+      '@packages/config-prettier':
+        specifier: workspace:*
+        version: link:packages/config-prettier
+      '@packages/docker-cosmwasm-optimizer':
+        specifier: workspace:*
+        version: link:packages/docker-cosmwasm-optimizer
       '@types/node':
         specifier: ^20
         version: 20.17.17
-      '@workspace/config-eslint':
-        specifier: workspace:*
-        version: link:packages/config-eslint
-      '@workspace/config-prettier':
-        specifier: workspace:*
-        version: link:packages/config-prettier
-      '@workspace/docker-cosmwasm-optimizer':
-        specifier: workspace:*
-        version: link:packages/docker-cosmwasm-optimizer
       eslint:
         specifier: ^9
         version: 9.20.0(jiti@2.4.2)
@@ -44,29 +44,29 @@ importers:
 
   crates: {}
 
-  crates/bvs-directory: {}
+  crates/cw-bvs-directory: {}
 
-  crates/bvs-driver: {}
+  crates/cw-bvs-driver: {}
 
   crates/cw-bvs-test: {}
 
-  crates/delegation-manager: {}
+  crates/cw-delegation-manager: {}
 
-  crates/mirrored-token: {}
+  crates/cw-mirrored-token: {}
 
-  crates/rewards-coordinator: {}
+  crates/cw-rewards-coordinator: {}
 
-  crates/slash-manager: {}
+  crates/cw-slash-manager: {}
 
-  crates/state-bank: {}
+  crates/cw-state-bank: {}
 
-  crates/strategy-base: {}
+  crates/cw-strategy-base: {}
 
-  crates/strategy-base-tvl-limits: {}
+  crates/cw-strategy-base-tvl-limits: {}
 
-  crates/strategy-factory: {}
+  crates/cw-strategy-factory: {}
 
-  crates/strategy-manager: {}
+  crates/cw-strategy-manager: {}
 
   docs:
     dependencies:
@@ -121,16 +121,6 @@ importers:
   modules/bvs-api: {}
 
   modules/bvs-cli: {}
-
-  packages/bvs-example:
-    dependencies:
-      debug:
-        specifier: ^4.4.0
-        version: 4.4.0
-    devDependencies:
-      '@types/debug':
-        specifier: ^4.1.12
-        version: 4.1.12
 
   packages/config-eslint:
     dependencies:

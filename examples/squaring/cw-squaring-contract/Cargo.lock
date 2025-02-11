@@ -237,26 +237,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3e31ea183f6ee62ac8b8a8cf7feddd766317adfb13ff469de57ce033efd6a790"
 
 [[package]]
-name = "bvs-driver"
-version = "2.0.0"
-dependencies = [
- "bech32 0.8.1",
- "cosmwasm-crypto 2.2.1",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cosmwasm-storage",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "hex",
- "ripemd",
- "schemars",
- "serde",
- "sha2 0.10.8",
- "thiserror",
-]
-
-[[package]]
 name = "byteorder"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -519,13 +499,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-bvs-driver"
+version = "2.0.0"
+dependencies = [
+ "bech32 0.8.1",
+ "cosmwasm-crypto 2.2.1",
+ "cosmwasm-schema",
+ "cosmwasm-std 2.1.0",
+ "cosmwasm-storage",
+ "cw-storage-plus",
+ "cw2",
+ "cw20",
+ "hex",
+ "ripemd",
+ "schemars",
+ "serde",
+ "sha2 0.10.8",
+ "thiserror",
+]
+
+[[package]]
 name = "cw-bvs-test"
 version = "0.1.0"
 dependencies = [
- "bvs-driver",
  "cosmwasm-std 2.1.0",
+ "cw-bvs-driver",
  "cw-multi-test",
- "state-bank",
+ "cw-state-bank",
 ]
 
 [[package]]
@@ -542,6 +542,26 @@ dependencies = [
  "derivative",
  "itertools 0.12.1",
  "prost",
+ "schemars",
+ "serde",
+ "sha2 0.10.8",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-state-bank"
+version = "2.0.0"
+dependencies = [
+ "bech32 0.8.1",
+ "cosmwasm-crypto 2.2.1",
+ "cosmwasm-schema",
+ "cosmwasm-std 2.1.0",
+ "cosmwasm-storage",
+ "cw-storage-plus",
+ "cw2",
+ "cw20",
+ "hex",
+ "ripemd",
  "schemars",
  "serde",
  "sha2 0.10.8",
@@ -1272,26 +1292,6 @@ dependencies = [
  "cw2",
  "schemars",
  "serde",
- "thiserror",
-]
-
-[[package]]
-name = "state-bank"
-version = "2.0.0"
-dependencies = [
- "bech32 0.8.1",
- "cosmwasm-crypto 2.2.1",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cosmwasm-storage",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "hex",
- "ripemd",
- "schemars",
- "serde",
- "sha2 0.10.8",
  "thiserror",
 ]
 

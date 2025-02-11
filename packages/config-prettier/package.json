@@ -1,5 +1,5 @@
 {
-  "name": "@workspace/config-prettier",
+  "name": "@packages/config-prettier",
   "private": true,
   "main": "index.cjs",
   "dependencies": {

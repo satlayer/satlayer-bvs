@@ -1,5 +1,5 @@
 {
-  "name": "@workspace/modules",
+  "name": "@modules/root",
   "private": true,
   "scripts": {
     "build": "go build -v ./...",

@@ -1,5 +1,5 @@
 {
-  "name": "@workspace/crates",
+  "name": "@crates/root",
   "private": true,
   "scripts": {
     "build": "cargo build",

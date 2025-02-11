@@ -1,5 +1,5 @@
 {
-  "name": "@workspace/docs",
+  "name": "@docs/root",
   "scripts": {
     "build": "next build",
     "dev": "next",
@@ -15,7 +15,7 @@
       "prettier --write"
     ]
   },
-  "prettier": "@workspace/config-prettier",
+  "prettier": "@packages/config-prettier",
   "dependencies": {
     "@tailwindcss/postcss": "^4.0.4",
     "next": "^15.1.6",
