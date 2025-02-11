@@ -29,6 +29,7 @@ mod tests {
     use cosmwasm_std::testing::MockApi;
     use cosmwasm_std::{Addr, Coin, Empty, Uint128};
     use cw_multi_test::{App, AppBuilder, Contract, ContractWrapper, Executor};
+    use cw_bvs_test::{BvsDriver, StateBank};
 
     pub fn contract() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(
@@ -41,8 +42,6 @@ mod tests {
 
     const ADMIN: &str = "ADMIN";
     const AGGREGATOR: &str = "AGGREGATOR";
-    const STATE_BANK: &str = "STATE_BANK";
-    const BVS_DRIVER: &str = "BVS_DRIVER";
 
     const NATIVE_DENOM: &str = "tBABY";
 
@@ -64,7 +63,10 @@ mod tests {
 
     fn instantiate() -> (App, SquaringContract) {
         let mut app = mock_app();
+
         let contract_id = app.store_code(contract());
+        let driver = BvsDriver::instantiate(&mut app);
+        let state_bank = StateBank::instantiate(&mut app);
 
         let admin = app.api().addr_make(ADMIN);
         assert_eq!(
@@ -74,8 +76,8 @@ mod tests {
 
         let msg = InstantiateMsg {
             aggregator: app.api().addr_make(AGGREGATOR),
-            state_bank: app.api().addr_make(STATE_BANK),
-            bvs_driver: app.api().addr_make(BVS_DRIVER),
+            state_bank: state_bank.addr.clone(),
+            bvs_driver: driver.addr.clone(),
         };
         let contract_addr = app
             .instantiate_contract(
@@ -83,10 +85,14 @@ mod tests {
                 admin,
                 &msg,
                 &[],
-                "test",
+                "BVS Squaring Example",
                 None,
             )
             .unwrap();
+
+        driver.register(&mut app, contract_addr.to_string()).unwrap();
+        state_bank.register(&mut app, contract_addr.to_string()).unwrap();
+
 
         let contract = SquaringContract(contract_addr);
         (app, contract)
@@ -103,8 +109,6 @@ mod tests {
             let msg = ExecuteMsg::CreateNewTask {
                 input: 3,
             };
-            // TODO(fuxingloh): this test will fail because we don't have aggregator, state_bank, bvs_driver contracts
-            //  to call
             let cosmos_msg = contract.call(msg).unwrap();
             app.execute(Addr::unchecked("anyone"), cosmos_msg).unwrap();
         }

@@ -560,10 +560,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-bvs-test"
+version = "0.1.0"
+dependencies = [
+ "bvs-driver",
+ "cosmwasm-std 2.1.0",
+ "cw-multi-test",
+ "state-bank",
+]
+
+[[package]]
 name = "cw-multi-test"
-version = "2.1.0"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0034bfb4c06dfc8b50f0b1a06c3fc0f2312a1bae568a97db65930de071288ba"
+checksum = "b7b69c1ba533753a2c90e60f4c803f52ee80cf3ba183c3ca0645fd1796561951"
 dependencies = [
  "anyhow",
  "bech32 0.11.0",
@@ -571,7 +581,7 @@ dependencies = [
  "cw-storage-plus",
  "cw-utils",
  "derivative",
- "itertools 0.13.0",
+ "itertools 0.12.1",
  "prost",
  "schemars",
  "serde",
@@ -911,9 +921,9 @@ dependencies = [
 
 [[package]]
 name = "itertools"
-version = "0.13.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
+checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
 dependencies = [
  "either",
 ]

@@ -48,6 +48,8 @@ importers:
 
   crates/bvs-driver: {}
 
+  crates/cw-bvs-test: {}
+
   crates/delegation-manager: {}
 
   crates/mirrored-token: {}
