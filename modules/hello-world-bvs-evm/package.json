@@ -1,5 +1,5 @@
 {
-  "name": "@satlayer/hello-world-bvs-evm",
+  "name": "@modules/hello-world-bvs-evm",
   "private": true,
   "scripts": {
     "build": "go build -o ${PWD}/dist/satlayer-hello-world-bvs-evm-task-cli ${PWD}/task/main.go && go build -o ${PWD}/dist/satlayer-hello-world-bvs-evm-aggregator ${PWD}/aggregator/. && go build -o ${PWD}/dist/satlayer-hello-world-bvs-evm-offchain ${PWD}/offchain/.",
