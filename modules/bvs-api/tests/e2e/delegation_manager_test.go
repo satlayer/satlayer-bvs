@@ -4,20 +4,19 @@ import (
 	"context"
 	"encoding/base64"
 	"math/big"
-	"strconv"
 	"testing"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/exp/rand"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
 	apilogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
 	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
+	"github.com/satlayer/satlayer-bvs/bvs-api/utils"
 )
 
 type delegationTestSuite struct {
@@ -39,7 +38,7 @@ func (suite *delegationTestSuite) SetupTest() {
 	chainIO, err := io.NewChainIO(chainID, rpcURI, homeDir, "bbn", logger, metricsIndicators, types.TxManagerParams{
 		MaxRetries:             3,
 		RetryInterval:          2 * time.Second,
-		ConfirmationTimeout:    60 * time.Second,
+		ConfirmationTimeout:    15 * time.Second,
 		GasPriceAdjustmentRate: "1.1",
 	})
 	suite.Require().NoError(err)
@@ -312,21 +311,17 @@ func (suite *delegationTestSuite) Test_DelegateTransferOwnership() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
-	txResp, err := delegation.TransferOwnership(context.Background(), "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv")
+	txResp, err := delegation.TransferOwnership(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 	assert.NoError(t, err, "transfer ownership")
 	t.Logf("txResp: %v", txResp)
 
 	// not owner to transfer ownership will be failed
-	txResp, err = delegation.TransferOwnership(context.Background(), "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv")
-	assert.Error(t, err, "transfer ownership not failed")
-	t.Logf("not owner to transfer ownership txResp: %v", txResp)
-
 	RecoverClient, err := suite.chainIO.SetupKeyring("aggregator", "test")
 	assert.NoError(t, err, "create cosmos client")
 	recoverDelegation := api.NewDelegationImpl(RecoverClient, suite.contrAddr)
 	recoverResp, err := recoverDelegation.TransferOwnership(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
-	assert.NoError(t, err, "transfer ownership")
-	t.Logf("recoverResp: %v", recoverResp)
+	assert.Error(t, err, "transfer ownership failed")
+	assert.Nil(t, recoverResp, "transfer ownership resp nil")
 }
 
 func (suite *delegationTestSuite) Test_DelegationPause() {
@@ -583,7 +578,9 @@ func (suite *delegationTestSuite) Test_DelegationApprovalDigestHash() {
 	assert.NoError(t, err, "query node status")
 
 	expiry := uint64(nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000)
-	salt := "salt" + strconv.FormatUint(rand.New(rand.NewSource(uint64(time.Now().Unix()))).Uint64(), 10)
+	randomStr, err := utils.GenerateRandomString(16)
+	assert.NoError(suite.T(), err)
+	salt := "salt" + randomStr
 
 	approverAccount, err := chainIO.GetCurrentAccount()
 	assert.NoError(t, err, "get account")

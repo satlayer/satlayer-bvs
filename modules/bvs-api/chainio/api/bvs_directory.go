@@ -4,16 +4,14 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"strconv"
-	"time"
 
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
-	"golang.org/x/exp/rand"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
+	"github.com/satlayer/satlayer-bvs/bvs-api/utils"
 )
 
 type BVSDirectory interface {
@@ -90,7 +88,11 @@ func (a *bvsDirectoryImpl) RegisterOperator(ctx context.Context, operator string
 		return nil, err
 	}
 	expiry := uint64(nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000)
-	salt := "salt" + strconv.FormatUint(rand.New(rand.NewSource(uint64(time.Now().Unix()))).Uint64(), 10)
+	randomStr, err := utils.GenerateRandomString(16)
+	if err != nil {
+		return nil, err
+	}
+	salt := "salt" + randomStr
 	msgHashResp, err := a.CalculateDigestHash(publicKey, operator, salt, expiry)
 	if err != nil {
 		return nil, err

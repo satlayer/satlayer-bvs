@@ -52,7 +52,7 @@ func (suite *signerTestSuite) SetupTest() {
 	chainIO, err := io.NewChainIO(chainID, rpcURI, homeDir, "bbn", logger, metricsIndicators, types.TxManagerParams{
 		MaxRetries:             3,
 		RetryInterval:          1 * time.Second,
-		ConfirmationTimeout:    60 * time.Second,
+		ConfirmationTimeout:    15 * time.Second,
 		GasPriceAdjustmentRate: "1.1",
 	})
 	suite.Require().NoError(err)

@@ -37,7 +37,7 @@ func (suite *ethSlashManagerTestSuite) SetupTest() {
 	ethChainIO, err := io.NewETHChainIO(endpoint, keystorePath, logger, metricsIndicators, types.TxManagerParams{
 		MaxRetries:                 3,
 		RetryInterval:              2 * time.Second,
-		ConfirmationTimeout:        60 * time.Second,
+		ConfirmationTimeout:        15 * time.Second,
 		ETHGasFeeCapAdjustmentRate: 2,
 		ETHGasLimitAdjustmentRate:  1.1,
 		GasLimit:                   1000000000,

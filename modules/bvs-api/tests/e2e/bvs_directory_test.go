@@ -2,20 +2,19 @@ package e2e
 
 import (
 	"context"
-	"strconv"
 	"testing"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/exp/rand"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
 	apilogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
 	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
+	"github.com/satlayer/satlayer-bvs/bvs-api/utils"
 )
 
 type bvsDirectoryTestSuite struct {
@@ -36,7 +35,7 @@ func (suite *bvsDirectoryTestSuite) SetupTest() {
 	chainIO, err := io.NewChainIO(chainID, rpcURI, homeDir, "bbn", logger, metricsIndicators, types.TxManagerParams{
 		MaxRetries:             3,
 		RetryInterval:          2 * time.Second,
-		ConfirmationTimeout:    60 * time.Second,
+		ConfirmationTimeout:    15 * time.Second,
 		GasPriceAdjustmentRate: "1.1",
 	})
 	suite.Require().NoError(err)
@@ -111,7 +110,9 @@ func (suite *bvsDirectoryTestSuite) Test_CancelSalt() {
 	keyName := "caller"
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(suite.T(), err)
-	salt := "salt" + strconv.FormatUint(rand.New(rand.NewSource(uint64(time.Now().Unix()))).Uint64(), 10)
+	randomStr, err := utils.GenerateRandomString(16)
+	assert.NoError(suite.T(), err)
+	salt := "salt" + randomStr
 	txResp, err := api.NewBVSDirectoryImpl(chainIO, suite.contrAddr).CancelSalt(context.Background(), salt)
 	assert.NoError(t, err, "TestCancelSalt")
 	assert.NotNil(t, txResp, "response nil")
@@ -123,23 +124,17 @@ func (suite *bvsDirectoryTestSuite) Test_TransferOwnership() {
 	chainIO, err := suite.chainIO.SetupKeyring("caller", "test")
 	assert.NoError(t, err)
 
-	updateResp, err := api.NewBVSDirectoryImpl(chainIO, suite.contrAddr).TransferOwnership(context.Background(), "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv")
+	updateResp, err := api.NewBVSDirectoryImpl(chainIO, suite.contrAddr).TransferOwnership(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 	assert.NoError(t, err, "TestTransferOwnership")
 	assert.NotNil(t, updateResp, "response nil")
 	t.Logf("updateResp:%+v", updateResp)
 
 	// not owner to transfer ownership will be failed
-	updateResp, err = api.NewBVSDirectoryImpl(chainIO, suite.contrAddr).TransferOwnership(context.Background(), "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv")
-	assert.Error(t, err, "TestTransferOwnership not failed")
-	assert.Nil(t, updateResp, "response not nil")
-	t.Logf("TransferOwnership failed Resp:%+v", updateResp)
-
 	recoverClient, err := suite.chainIO.SetupKeyring("aggregator", "test")
 	assert.NoError(t, err, "create client")
 	recoverResp, err := api.NewBVSDirectoryImpl(recoverClient, suite.contrAddr).TransferOwnership(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
-	assert.NoError(t, err, "TestTransferOwnership")
-	assert.NotNil(t, recoverResp, "response nil")
-	t.Logf("recoverResp:%+v", recoverResp)
+	assert.Error(t, err, "TestTransferOwnership failed")
+	assert.Nil(t, recoverResp, "response nil")
 }
 
 func (suite *bvsDirectoryTestSuite) Test_Pause() {
@@ -211,7 +206,9 @@ func (suite *bvsDirectoryTestSuite) Test_CalculateDigestHash() {
 	nodeStatus, err := chainIO.QueryNodeStatus(context.Background())
 	assert.NoError(t, err, "query node status")
 	expiry := uint64(nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000)
-	salt := "salt" + strconv.FormatUint(rand.New(rand.NewSource(uint64(time.Now().Unix()))).Uint64(), 10)
+	randomStr, err := utils.GenerateRandomString(16)
+	assert.NoError(suite.T(), err)
+	salt := "salt" + randomStr
 	account, err := chainIO.GetCurrentAccount()
 	assert.NoError(t, err, "get account")
 	msgHashResp, err := api.NewBVSDirectoryImpl(chainIO, suite.contrAddr).CalculateDigestHash(

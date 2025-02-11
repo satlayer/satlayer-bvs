@@ -178,7 +178,7 @@ func (c chainIO) BroadcastTx(signedTx sdktypes.Tx) (*sdktypes.TxResponse, error)
 }
 
 func (c chainIO) waitForConfirmation(ctx context.Context, txHash string) (*coretypes.ResultTx, error) {
-	ticker := time.NewTicker(3 * time.Second)
+	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
 	timeout := time.After(c.params.ConfirmationTimeout)
