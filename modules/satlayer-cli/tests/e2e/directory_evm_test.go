@@ -8,13 +8,15 @@ import (
 
 //var evmUserAddr = "0xC97705a8FaA9Bec2A50B5bbCc0661251BcB537A4"
 
-func Test_EVMDirectoryRegBVS(t *testing.T) {
-	var evmUserAddr = "0xC97705a8FaA9Bec2A50B5bbCc0661251BcB537A4"
-	var password = "123"
-	bvsContract := "0xaA0851f2939EF2D8B51971B510383Fcb5c246a17"
-	bvsHash := "226466AF1CF2ECDA66821E7833C325F15037D6BB7CC0CE39A8908587D02C1046"
-	directoryevm.RegBVS(evmUserAddr, password, bvsHash, bvsContract)
-}
+// HACK: SL-96 - disable on chain registration due to hard coded contract address
+// until we can run testnet locally
+// func Test_EVMDirectoryRegBVS(t *testing.T) {
+// 	var evmUserAddr = "0xC97705a8FaA9Bec2A50B5bbCc0661251BcB537A4"
+// 	var password = "123"
+// 	bvsContract := "0xaA0851f2939EF2D8B51971B510383Fcb5c246a17"
+// 	bvsHash := "226466AF1CF2ECDA66821E7833C325F15037D6BB7CC0CE39A8908587D02C1046"
+// 	directoryevm.RegBVS(evmUserAddr, password, bvsHash, bvsContract)
+// }
 
 func Test_EVMDirectoryGetOwner(t *testing.T) {
 	directoryevm.GetOwner()

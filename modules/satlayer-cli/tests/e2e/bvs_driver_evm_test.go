@@ -6,12 +6,14 @@ import (
 	"github.com/satlayer/satlayer-bvs/satlayer-cli/commands/bvsdriverevm"
 )
 
-func Test_EVMBVSDriverRegBVS(t *testing.T) {
-	var evmUserAddr = "0xC97705a8FaA9Bec2A50B5bbCc0661251BcB537A4"
-	var password = "123"
-	bvsContract := "0xaA0851f2939EF2D8B51971B510383Fcb5c246a17"
-	bvsdriverevm.RegBVS(evmUserAddr, password, bvsContract)
-}
+// HACK: SL-96 - disable on chain registration due to hard coded contract address
+// until we can run testnet locally
+// func Test_EVMBVSDriverRegBVS(t *testing.T) {
+// 	var evmUserAddr = "0xC97705a8FaA9Bec2A50B5bbCc0661251BcB537A4"
+// 	var password = "123"
+// 	bvsContract := "0xaA0851f2939EF2D8B51971B510383Fcb5c246a17"
+// 	bvsdriverevm.RegBVS(evmUserAddr, password, bvsContract)
+// }
 
 func Test_EVMBVSDriverGetOwner(t *testing.T) {
 	bvsdriverevm.GetOwner()
