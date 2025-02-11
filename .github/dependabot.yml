@@ -22,3 +22,8 @@ updates:
     directory: "/crates"
     schedule:
       interval: "weekly"
+
+  - package-ecosystem: gomod
+    directory: "/modules"
+    schedule:
+      interval: "weekly"
