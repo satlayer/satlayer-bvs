@@ -16,6 +16,7 @@
       <sourceFolder url="file://$MODULE_DIR$/cw-strategy-manager/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/cw-strategy-base-tvl-limits/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/cw-bvs-test/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/cw-bvs-driver/tests" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
