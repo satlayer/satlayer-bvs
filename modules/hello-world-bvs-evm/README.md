@@ -17,7 +17,7 @@ The BVS Program consists of the following key components:
 ## Run test
 
 ```bash
-make test
+pnpm test
 ```
 
 ## Development
