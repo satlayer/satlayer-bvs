@@ -1,0 +1,9 @@
+{
+  "name": "@satlayer/cw-bvs-directory",
+  "private": false,
+  "scripts": {
+    "build:wasm": "cosmwasm-optimizer",
+    "generate:schema": "cargo run --bin schema",
+    "test": "cargo test"
+  }
+}

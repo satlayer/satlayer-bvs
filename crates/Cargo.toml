@@ -1,16 +1,16 @@
 [workspace]
 members = [
-    "bvs-directory",
-    "strategy-base",
-    "strategy-manager",
-    "state-bank",
-    "bvs-driver",
-    "delegation-manager",
-    "rewards-coordinator",
-    "strategy-base-tvl-limits",
-    "strategy-factory",
-    "slash-manager",
-    "mirrored-token",
+    "cw-bvs-directory",
+    "cw-strategy-base",
+    "cw-strategy-manager",
+    "cw-state-bank",
+    "cw-bvs-driver",
+    "cw-delegation-manager",
+    "cw-rewards-coordinator",
+    "cw-strategy-base-tvl-limits",
+    "cw-strategy-factory",
+    "cw-slash-manager",
+    "cw-mirrored-token",
     "cw-bvs-test"
 ]
 
