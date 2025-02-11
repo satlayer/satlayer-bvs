@@ -5,8 +5,7 @@ use crate::{
 };
 
 use cosmwasm_std::{
-    entry_point, to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo,
-    Response, WasmMsg,
+    entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response
 };
 use cw2::set_contract_version;
 
@@ -44,7 +43,6 @@ pub fn execute(
             result,
             operators,
         } => execute::respond_to_task(deps, info, task_id, result, operators),
-        _ => Ok(Response::default()),
     }
 }
 
@@ -305,9 +303,9 @@ mod tests {
                 contract_addr, msg, ..
             }) => {
                 assert_eq!(contract_addr, "state_bank");
-                let parsed_msg: ExecuteMsg = from_json(msg).unwrap();
+                let parsed_msg: state_bank::ExecuteMsg = from_json(msg).unwrap();
                 match parsed_msg {
-                    execute::state_bank::ExecuteMsg::Set { key, value } => {
+                    state_bank::ExecuteMsg::Set { key, value } => {
                         assert_eq!(key, "taskId.1");
                         assert_eq!(value, "42");
                     }
@@ -322,7 +320,7 @@ mod tests {
                 contract_addr, msg, ..
             }) => {
                 assert_eq!(contract_addr, "bvs_driver");
-                let parsed_msg: ExecuteMsg = from_json(msg).unwrap();
+                let parsed_msg: bvs_driver::ExecuteMsg = from_json(msg).unwrap();
                 match parsed_msg {
                     bvs_driver::ExecuteMsg::ExecuteBvsOffchain { task_id } => {
                         assert_eq!(task_id, "1");
