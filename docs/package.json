@@ -20,7 +20,7 @@
     "@tailwindcss/postcss": "^4.0.4",
     "next": "^15.1.6",
     "nextra": "^4.2.4",
-    "nextra-theme-docs": "^4.2.4",
+    "nextra-theme-docs": "^4.2.7",
     "postcss": "^8.5.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
