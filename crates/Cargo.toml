@@ -1,20 +1,29 @@
 [workspace]
 members = [
     "cw-bvs-directory",
-    "cw-strategy-base",
-    "cw-strategy-manager",
-    "cw-state-bank",
     "cw-bvs-driver",
     "cw-delegation-manager",
+    "cw-mirrored-token",
     "cw-rewards-coordinator",
+    "cw-slash-manager",
+    "cw-state-bank",
+    "cw-strategy-base",
     "cw-strategy-base-tvl-limits",
     "cw-strategy-factory",
-    "cw-slash-manager",
-    "cw-mirrored-token",
-    "cw-bvs-test"
+    "cw-strategy-manager",
+    "cw-bvs-test",
 ]
 
 resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+authors = ["SatLayer"]
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/satlayer/satlayer-bvs.git"
+homepage = "https://satlayer.xyz/"
+documentation = "https://github.com/satlayer/satlayer-bvs.git"
 
 [workspace.dependencies]
 cosmwasm-schema = "2.0.0"

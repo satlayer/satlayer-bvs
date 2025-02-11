@@ -1,6 +1,6 @@
 use cosmwasm_schema::write_api;
 
-use mirrored_token::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use cw_mirrored_token::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn main() {
     write_api! {

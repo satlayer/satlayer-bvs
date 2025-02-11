@@ -6,15 +6,15 @@ pub struct BvsDriver {
     pub addr: Addr,
     pub contract_id: u64,
     pub contract_admin: Addr,
-    pub init_msg: bvs_driver::msg::InstantiateMsg,
+    pub init_msg: cw_bvs_driver::msg::InstantiateMsg,
 }
 
 impl BvsDriver {
     pub fn contract() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(
-            bvs_driver::contract::execute,
-            bvs_driver::contract::instantiate,
-            bvs_driver::contract::query,
+            cw_bvs_driver::contract::execute,
+            cw_bvs_driver::contract::instantiate,
+            cw_bvs_driver::contract::query,
         );
         Box::new(contract)
     }
@@ -24,7 +24,7 @@ impl BvsDriver {
         let owner = app.api().addr_make("BVSDriver:owner");
         let contract_id = app.store_code(BvsDriver::contract());
 
-        let init_msg = bvs_driver::msg::InstantiateMsg {
+        let init_msg = cw_bvs_driver::msg::InstantiateMsg {
             initial_owner: owner.to_string(),
         };
         let addr = app
@@ -47,8 +47,8 @@ impl BvsDriver {
     }
 
     pub fn register(&self, app: &mut App, contract: String) -> AnyResult<AppResponse> {
-        let msg = bvs_driver::msg::ExecuteMsg::AddRegisteredBvsContract { address: contract };
-        let binary = to_json_binary::<bvs_driver::msg::ExecuteMsg>(&msg)?;
+        let msg = cw_bvs_driver::msg::ExecuteMsg::AddRegisteredBvsContract { address: contract };
+        let binary = to_json_binary::<cw_bvs_driver::msg::ExecuteMsg>(&msg)?;
         let cosmos_msg: CosmosMsg = WasmMsg::Execute {
             contract_addr: self.addr.to_string(),
             msg: binary,

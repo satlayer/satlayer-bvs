@@ -1,6 +1,6 @@
 use cosmwasm_schema::write_api;
 
-use bvs_driver::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use cw_bvs_driver::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn main() {
     write_api! {

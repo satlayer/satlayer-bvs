@@ -6,15 +6,15 @@ pub struct StateBank {
     pub addr: Addr,
     pub contract_id: u64,
     pub contract_admin: Addr,
-    pub init_msg: state_bank::msg::InstantiateMsg,
+    pub init_msg: cw_state_bank::msg::InstantiateMsg,
 }
 
 impl StateBank {
     pub fn contract() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(
-            state_bank::contract::execute,
-            state_bank::contract::instantiate,
-            state_bank::contract::query,
+            cw_state_bank::contract::execute,
+            cw_state_bank::contract::instantiate,
+            cw_state_bank::contract::query,
         );
         Box::new(contract)
     }
@@ -24,7 +24,7 @@ impl StateBank {
         let owner = app.api().addr_make("StateBank:owner");
         let contract_id = app.store_code(StateBank::contract());
 
-        let init_msg = state_bank::msg::InstantiateMsg {
+        let init_msg = cw_state_bank::msg::InstantiateMsg {
             initial_owner: owner.to_string(),
         };
         let addr = app
@@ -47,8 +47,8 @@ impl StateBank {
     }
 
     pub fn register(&self, app: &mut App, contract: String) -> AnyResult<AppResponse> {
-        let msg = state_bank::msg::ExecuteMsg::AddRegisteredBvsContract { address: contract };
-        let binary = to_json_binary::<state_bank::msg::ExecuteMsg>(&msg)?;
+        let msg = cw_state_bank::msg::ExecuteMsg::AddRegisteredBvsContract { address: contract };
+        let binary = to_json_binary::<cw_state_bank::msg::ExecuteMsg>(&msg)?;
         let cosmos_msg: CosmosMsg = WasmMsg::Execute {
             contract_addr: self.addr.to_string(),
             msg: binary,

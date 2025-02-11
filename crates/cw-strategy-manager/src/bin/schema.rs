@@ -1,6 +1,6 @@
 use cosmwasm_schema::write_api;
 
-use strategy_manager::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use cw_strategy_manager::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn main() {
     write_api! {

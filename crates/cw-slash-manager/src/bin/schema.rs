@@ -1,6 +1,6 @@
 use cosmwasm_schema::write_api;
 
-use slash_manager::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use cw_slash_manager::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn main() {
     write_api! {

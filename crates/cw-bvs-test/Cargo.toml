@@ -6,5 +6,5 @@ edition = "2021"
 [dependencies]
 cosmwasm-std = { workspace = true }
 cw-multi-test = { workspace = true }
-bvs-driver = { path = "../bvs-driver" }
-state-bank = { path = "../state-bank" }
+cw-bvs-driver = { path = "../cw-bvs-driver" }
+cw-state-bank = { path = "../cw-state-bank" }
