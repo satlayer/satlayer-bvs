@@ -120,7 +120,7 @@ importers:
 
   modules/bvs-api: {}
 
-  modules/satlayer-cli: {}
+  modules/bvs-cli: {}
 
   packages/bvs-example:
     dependencies:

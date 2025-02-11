@@ -1,5 +1,5 @@
 {
-  "name": "@satlayer/go-bvs-api",
+  "name": "@modules/go-bvs-api",
   "private": true,
   "scripts": {
     "test": "gotestsum"
