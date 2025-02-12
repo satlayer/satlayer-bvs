@@ -1,6 +1,7 @@
 {
   "name": "@satlayer/cw-state-bank",
   "private": false,
+  "files": ["artifacts", "schema"],
   "scripts": {
     "build:wasm": "cosmwasm-optimizer",
     "generate:schema": "cargo run --bin schema",

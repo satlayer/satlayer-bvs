@@ -4,8 +4,9 @@
   "scripts": {
     "generate:schema": "node generate.mjs"
   },
-  "dependencies": {
+  "devDependencies": {
     "@satlayer/cw-bvs-driver": "workspace:*",
+    "@satlayer/cw-state-bank": "workspace:*",
     "quicktype-core": "^23.0.171"
   }
 }

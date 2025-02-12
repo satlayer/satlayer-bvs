@@ -123,10 +123,13 @@ importers:
   modules/bvs-cli: {}
 
   modules/bvs-cw-types:
-    dependencies:
+    devDependencies:
       '@satlayer/cw-bvs-driver':
         specifier: workspace:*
         version: link:../../crates/cw-bvs-driver
+      '@satlayer/cw-state-bank':
+        specifier: workspace:*
+        version: link:../../crates/cw-state-bank
       quicktype-core:
         specifier: ^23.0.171
         version: 23.0.171
