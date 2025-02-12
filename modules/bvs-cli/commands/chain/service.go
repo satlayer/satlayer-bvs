@@ -13,8 +13,7 @@ import (
 )
 
 type Service struct {
-	ChainIO    io.ChainIO
-	ETHChainIO io.ETHChainIO
+	ChainIO io.ChainIO
 }
 
 func NewService() *Service {
@@ -31,16 +30,5 @@ func NewService() *Service {
 	if err != nil {
 		panic(err)
 	}
-	ethChainIO, err := io.NewETHChainIO(conf.C.Chain.EVMRPC, conf.C.Account.EVMKeyDir, logger, metricsIndicators, types.TxManagerParams{
-		MaxRetries:                 3,
-		RetryInterval:              2 * time.Second,
-		ConfirmationTimeout:        60 * time.Second,
-		ETHGasFeeCapAdjustmentRate: 2,
-		ETHGasLimitAdjustmentRate:  1.1,
-		GasLimit:                   1000000000,
-	})
-	if err != nil {
-		panic(err)
-	}
-	return &Service{ChainIO: chainIO, ETHChainIO: ethChainIO}
+	return &Service{ChainIO: chainIO}
 }

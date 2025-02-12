@@ -4,16 +4,14 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"strconv"
-	"time"
 
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
-	"golang.org/x/exp/rand"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
+	"github.com/satlayer/satlayer-bvs/bvs-api/utils"
 )
 
 const zeroValueAddr = "0"
@@ -161,7 +159,11 @@ func (d *delegationImpl) DelegateTo(ctx context.Context, operator, approver, app
 			return nil, err
 		}
 		expiry := uint64(nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000)
-		salt := "salt" + strconv.FormatUint(rand.New(rand.NewSource(uint64(time.Now().Unix()))).Uint64(), 10)
+		randomStr, err := utils.GenerateRandomString(16)
+		if err != nil {
+			return nil, err
+		}
+		salt := "salt" + randomStr
 		approverDigestHashReq := types.ApproverDigestHashParams{
 			Staker:            stakerAccount.GetAddress().String(),
 			Operator:          operator,
@@ -242,7 +244,11 @@ func (d *delegationImpl) DelegateToBySignature(
 	}}
 
 	if approver != zeroValueAddr && approverKeyName != "" && approverPublicKey != nil {
-		salt := "salt" + strconv.FormatUint(rand.New(rand.NewSource(uint64(time.Now().Unix()))).Uint64(), 10)
+		randomStr, err := utils.GenerateRandomString(16)
+		if err != nil {
+			return nil, err
+		}
+		salt := "salt" + randomStr
 		approverDigestHashReq := types.ApproverDigestHashParams{
 			Staker:            staker,
 			Operator:          operator,

@@ -21,37 +21,6 @@ func newService(keyName string) (api.RewardsCoordinator, io.ChainIO) {
 	return reward, newChainIO
 }
 
-func Claim(userKeyName string) {
-	ctx := context.Background()
-	s, chainIO := newService(userKeyName)
-
-	// query account
-	account, err := chainIO.GetCurrentAccount()
-	if err != nil {
-		panic(err)
-	}
-	address := account.GetAddress().String()
-	// fetch user rewards
-	rewards, err := fetchReward(address)
-	if err != nil {
-		panic(err)
-	}
-	totalRewards := len(rewards)
-	if totalRewards == 0 {
-		fmt.Println("No rewards to claim")
-		return
-	}
-	fmt.Printf("Found %d rewards to claim\n", totalRewards)
-	for i, reward := range rewards {
-		fmt.Printf("Claiming reward %d/%d\n", i+1, totalRewards)
-		txnHash, tokens, err := claimReward(ctx, s, address, reward)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Printf("Claim success. txn: %s\n tokens: %v\n", txnHash, tokens)
-	}
-}
-
 func SetClaimer(userKeyName, claimer string) {
 	ctx := context.Background()
 	reward, _ := newService(userKeyName)
@@ -140,14 +109,4 @@ func TransferOwner(userKeyName, newOwner string) {
 		panic(err)
 	}
 	fmt.Printf("Transfer ownership success. txn: %s\n", resp.Hash.String())
-}
-
-func DisabledRoot(userKeyName string, rootIndex uint64) {
-	ctx := context.Background()
-	reward, _ := newService(userKeyName)
-	resp, err := reward.DisableRoot(ctx, rootIndex)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Disabled root success. txn: %s\n", resp.Hash.String())
 }

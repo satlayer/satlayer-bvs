@@ -4,16 +4,14 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"strconv"
-	"time"
 
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
-	"golang.org/x/exp/rand"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
+	"github.com/satlayer/satlayer-bvs/bvs-api/utils"
 )
 
 type BVSDirectory interface {
@@ -21,7 +19,7 @@ type BVSDirectory interface {
 	WithGasPrice(gasPrice sdktypes.DecCoin) BVSDirectory
 	WithGasLimit(gasLimit uint64) BVSDirectory
 
-	RegisterBVS(ctx context.Context, bvsContract, chainName, chainID string) (*coretypes.ResultTx, error)
+	RegisterBVS(ctx context.Context, bvsContract string) (*coretypes.ResultTx, error)
 	RegisterOperator(ctx context.Context, operator string, publicKey cryptotypes.PubKey) (*coretypes.ResultTx, error)
 	DeregisterOperator(ctx context.Context, operator string) (*coretypes.ResultTx, error)
 	UpdateMetadataURI(ctx context.Context, metadataURI string) (*coretypes.ResultTx, error)
@@ -67,13 +65,9 @@ func (a *bvsDirectoryImpl) WithGasLimit(gasLimit uint64) BVSDirectory {
 	return a
 }
 
-func (a *bvsDirectoryImpl) RegisterBVS(ctx context.Context, bvsContract, chainName, chainID string) (*coretypes.ResultTx, error) {
+func (a *bvsDirectoryImpl) RegisterBVS(ctx context.Context, bvsContract string) (*coretypes.ResultTx, error) {
 	executeMsg := types.RegisterBVSReq{RegisterBVS: types.RegisterBVS{
-		BVSContract: types.BVSContract{
-			BVSContract: bvsContract,
-			ChainName:   chainName,
-			ChainID:     chainID,
-		},
+		BVSContract: bvsContract,
 	}}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
@@ -90,7 +84,13 @@ func (a *bvsDirectoryImpl) RegisterOperator(ctx context.Context, operator string
 		return nil, err
 	}
 	expiry := uint64(nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000)
-	salt := "salt" + strconv.FormatUint(rand.New(rand.NewSource(uint64(time.Now().Unix()))).Uint64(), 10)
+
+	randomStr, err := utils.GenerateRandomString(16)
+	if err != nil {
+		return nil, err
+	}
+	salt := "salt" + randomStr
+
 	msgHashResp, err := a.CalculateDigestHash(publicKey, operator, salt, expiry)
 	if err != nil {
 		return nil, err
@@ -135,7 +135,7 @@ func (a *bvsDirectoryImpl) UpdateMetadataURI(ctx context.Context, metadataURI st
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := a.newExecuteOptions(a.contractAddr, executeMsgBytes, "DeregisterOperator")
+	executeOptions := a.newExecuteOptions(a.contractAddr, executeMsgBytes, "UpdateMetadataURI")
 
 	return a.io.SendTransaction(ctx, executeOptions)
 }
@@ -146,7 +146,7 @@ func (a *bvsDirectoryImpl) CancelSalt(ctx context.Context, salt string) (*corety
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := a.newExecuteOptions(a.contractAddr, executeMsgBytes, "DeregisterOperator")
+	executeOptions := a.newExecuteOptions(a.contractAddr, executeMsgBytes, "CancelSalt")
 
 	return a.io.SendTransaction(ctx, executeOptions)
 }
@@ -157,7 +157,7 @@ func (a *bvsDirectoryImpl) TransferOwnership(ctx context.Context, newOwner strin
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := a.newExecuteOptions(a.contractAddr, executeMsgBytes, "DeregisterOperator")
+	executeOptions := a.newExecuteOptions(a.contractAddr, executeMsgBytes, "TransferOwnership")
 
 	return a.io.SendTransaction(ctx, executeOptions)
 }

@@ -208,11 +208,3 @@ type RewardsSubmission struct {
 	StartTimestamp           string                  `json:"start_timestamp"`
 	Duration                 uint64                  `json:"duration"`
 }
-
-type IsRewardsUpdaterReq struct {
-	IsRewardsUpdater IsRewardsUpdater `json:"is_rewards_updater"`
-}
-
-type IsRewardsUpdater struct {
-	Address string `json:"address"`
-}

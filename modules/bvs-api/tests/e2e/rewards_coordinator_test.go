@@ -21,10 +21,10 @@ import (
 	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 )
 
-const rewardsCoordinatorAddr = "bbn1xwpk5mrrrm7zsl606mhdj5lmtmegcu9c72ve7hyd7kf7n3v2jnrq2wgyxf"
-const staker = "bbn17y9szawx0gsjcrycukr3kud36kfcclee7zwwvc"
-const strategyAddress = "bbn14rruau4y52cqyag6d9pxa3rrwhhh9xu7egndpafu55ztd8dprj8s860s8w"
-const token = "bbn1mx295r0mph0xvetqqcapsj4xxreg9mek7nlzhcacu4y0r83hhxfqu9mn0v"
+const rewardsCoordinatorAddr = "bbn1v9gyy4nzegj8z2w63gdkrtathenkqvght3yaa72edkp0rs5aks3sfkyg0t"
+const staker = "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
+const strategyAddress = "bbn1326vx56sy7ra2qk4perr2tg8td3ln4qll3s2l4vu8jclxdplzj5scxzahc"
+const token = "bbn1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sp4gequ"
 
 type rewardsTestSuite struct {
 	suite.Suite
@@ -50,7 +50,7 @@ func (suite *rewardsTestSuite) SetupTest() {
 
 func (suite *rewardsTestSuite) Test_ExecuteRewardsCoordinator() {
 	t := suite.T()
-	keyName := "uploader"
+	keyName := "caller"
 
 	t.Logf("TestRewards")
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
@@ -81,22 +81,10 @@ func (suite *rewardsTestSuite) Test_ExecuteRewardsCoordinator() {
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)
 
-	chainIO, err = suite.chainIO.SetupKeyring("wallet2", "test")
-	assert.NoError(t, err)
-
-	rewardsCoordinator = api.NewRewardsCoordinator(chainIO)
-	rewardsCoordinator.BindClient(rewardsCoordinatorAddr)
-
 	resp, err = rewardsCoordinator.SetRewardsForAllSubmitter(context.Background(), staker, true)
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)
-
-	chainIO, err = suite.chainIO.SetupKeyring("uploader", "test")
-	assert.NoError(t, err)
-
-	rewardsCoordinator = api.NewRewardsCoordinator(chainIO)
-	rewardsCoordinator.BindClient(rewardsCoordinatorAddr)
 
 	resp, err = rewardsCoordinator.CreateRewardsForAllSubmission(
 		context.Background(),
@@ -114,12 +102,6 @@ func (suite *rewardsTestSuite) Test_ExecuteRewardsCoordinator() {
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)
-
-	chainIO, err = suite.chainIO.SetupKeyring("wallet2", "test")
-	assert.NoError(t, err)
-
-	rewardsCoordinator = api.NewRewardsCoordinator(chainIO)
-	rewardsCoordinator.BindClient(rewardsCoordinatorAddr)
 
 	resp, err = rewardsCoordinator.SetRewardsUpdater(context.Background(), staker)
 	assert.NoError(t, err, "execute contract")
@@ -193,7 +175,7 @@ func (suite *rewardsTestSuite) test_QueryRewardsCoordinator() {
 
 func (suite *rewardsTestSuite) Test_SubmitRoot() {
 	t := suite.T()
-	keyName := "uploader"
+	keyName := "caller"
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
@@ -341,19 +323,6 @@ func (suite *rewardsTestSuite) test_ProcessClaim() {
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, checkResp, "response nil")
 	t.Logf("resp:%+v", checkResp)
-}
-
-func (suite *rewardsTestSuite) Test_IsRewardsUpdater() {
-	t := suite.T()
-	keyName := "wallet1"
-
-	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
-	assert.NoError(t, err)
-	rewardsCoordinator := api.NewRewardsCoordinator(chainIO)
-	rewardsCoordinator.BindClient(rewardsCoordinatorAddr)
-	result, err := rewardsCoordinator.IsRewardsUpdater("bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x")
-	assert.NoError(t, err, "execute contract")
-	t.Logf("result:%v", result)
 }
 
 func bytesToUints(arr []byte) []uint16 {

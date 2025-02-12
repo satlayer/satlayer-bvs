@@ -31,28 +31,8 @@ func keysCmd() *cobra.Command {
 		},
 	}
 
-	evmCreateAccount := &cobra.Command{
-		Use:   "evm-create-account <password>",
-		Short: "To create evm account",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			keys.EVMCreateAccount(args[0])
-		},
-	}
-
-	evmImportKey := &cobra.Command{
-		Use:   "evm-import-key <privateKey> <password>",
-		Short: "To create evm account",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			keys.EVMImportKey(args[0], args[1])
-		},
-	}
-
 	subCmd.AddCommand(showCmd)
 	subCmd.AddCommand(checkCmd)
-	subCmd.AddCommand(evmCreateAccount)
-	subCmd.AddCommand(evmImportKey)
 
 	return subCmd
 }

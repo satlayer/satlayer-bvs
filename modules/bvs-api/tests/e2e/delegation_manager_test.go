@@ -4,20 +4,19 @@ import (
 	"context"
 	"encoding/base64"
 	"math/big"
-	"strconv"
 	"testing"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/exp/rand"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
 	apilogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
 	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
+	"github.com/satlayer/satlayer-bvs/bvs-api/utils"
 )
 
 type delegationTestSuite struct {
@@ -583,7 +582,9 @@ func (suite *delegationTestSuite) Test_DelegationApprovalDigestHash() {
 	assert.NoError(t, err, "query node status")
 
 	expiry := uint64(nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000)
-	salt := "salt" + strconv.FormatUint(rand.New(rand.NewSource(uint64(time.Now().Unix()))).Uint64(), 10)
+	randomStr, err := utils.GenerateRandomString(16)
+	assert.NoError(t, err, "generate random string")
+	salt := "salt" + randomStr
 
 	approverAccount, err := chainIO.GetCurrentAccount()
 	assert.NoError(t, err, "get account")

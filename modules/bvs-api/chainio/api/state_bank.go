@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"sync"
 
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
@@ -82,11 +81,7 @@ func (s *stateBankImpl) Indexer(clientCtx client.Context, contractAddress string
 
 func (s *stateBankImpl) EventHandler(ch chan *indexer.Event) {
 	for event := range ch {
-		sender, ok := event.AttrMap["sender"].(string)
-		if !ok {
-			continue
-		}
-		if strings.ToLower(s.registeredBVSContract) != strings.ToLower(sender) {
+		if s.registeredBVSContract != event.AttrMap["sender"] {
 			continue
 		}
 

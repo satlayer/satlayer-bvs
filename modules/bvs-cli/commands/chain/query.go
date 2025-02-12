@@ -32,7 +32,7 @@ func QueryTxn(txnHash string) {
 		fmt.Printf("Query Txn Failed. Error msg: %s", err)
 		return
 	}
-	fmt.Printf("===TxnInfo===\n1. Index: %d\n2. TxHash: %s\n3. Height: %d\n4. Events: %v\n", resp.Index, resp.Hash.String(), resp.Height, resp.TxResult.Events)
+	fmt.Printf("===TxnInfo===\n1. Index: %d\n2. TxHash: %s\n3. Height: %d\n4. Events: %s\n", resp.Index, resp.Hash.String(), resp.Height, resp.TxResult.Events)
 }
 
 func QueryAccount(account string) {
@@ -44,15 +44,4 @@ func QueryAccount(account string) {
 	}
 	resp.GetPubKey()
 	fmt.Printf("===AccountInfo===\n1. Address: %s\n2. AccountNumber: %d\n3. Sequence: %d\n", resp.GetAddress(), resp.GetAccountNumber(), resp.GetSequence())
-}
-
-func QueryChainID() {
-	s := NewService()
-	ctx := context.Background()
-	resp, err := s.ETHChainIO.GetChainID(ctx)
-	if err != nil {
-		fmt.Printf("Failed. Error msg: %+v", err)
-		return
-	}
-	fmt.Printf("ChainID: %s", resp.String())
 }
