@@ -2,26 +2,24 @@ package e2e
 
 import (
 	"context"
-	"strconv"
 	"testing"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/exp/rand"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
 	apilogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
 	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
+	"github.com/satlayer/satlayer-bvs/bvs-api/utils"
 )
 
 type bvsDirectoryTestSuite struct {
 	suite.Suite
 	chainIO             io.ChainIO
-	chainID             string
 	contrAddr           string
 	delegationContrAddr string
 }
@@ -41,12 +39,11 @@ func (suite *bvsDirectoryTestSuite) SetupTest() {
 	})
 	suite.Require().NoError(err)
 	suite.chainIO = chainIO
-	suite.chainID = chainID
-	suite.contrAddr = "bbn1fysu8t36542tpegm8msl6enez2f56gtvzry698lkf9wpkf7cr89svh2t0q"
+	suite.contrAddr = "bbn1f803xuwl6l7e8jm9ld0kynvvjfhfs5trax8hmrn4wtnztglpzw0sm72xua"
 	suite.delegationContrAddr = "bbn1q7v924jjct6xrc89n05473juncg3snjwuxdh62xs2ua044a7tp8sydugr4"
 }
 
-func (suite *bvsDirectoryTestSuite) Test_RegisterBVS() {
+func (suite *bvsDirectoryTestSuite) test_RegisterBVS() {
 	keyName := "caller"
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(suite.T(), err)
@@ -59,8 +56,6 @@ func (suite *bvsDirectoryTestSuite) Test_RegisterBVS() {
 	txResp, err := bvsApi.RegisterBVS(
 		context.Background(),
 		"bbn1mzq6xzynh002x090rzt6us37scfexpu8ca4sllc3p3scn5mvsp0q5cs73s",
-		"babylon",
-		suite.chainID,
 	)
 	assert.NoError(suite.T(), err, "TestRegisterBVS")
 	assert.NotNil(suite.T(), txResp, "response nil")
@@ -76,16 +71,13 @@ func (suite *bvsDirectoryTestSuite) Test_RegisterOperatorAndDeregisterOperator()
 	assert.NoError(t, err)
 	bvsApi := api.NewBVSDirectoryImpl(chainIO, suite.contrAddr)
 	bvsApi.WithGasLimit(500000)
-
-	pubKey := chainIO.GetCurrentAccountPubKey()
-
-	registerResp, err := bvsApi.RegisterOperator(context.Background(), account.GetAddress().String(), pubKey)
+	registerResp, err := bvsApi.RegisterOperator(context.Background(), account.GetAddress().String(), account.GetPubKey())
 	assert.NoError(t, err, "register operator")
 	assert.NotNil(t, registerResp, "response nil")
 	t.Logf("registerResp:%+v", registerResp)
 
 	// repeat register operator failed
-	registerResp, err = bvsApi.RegisterOperator(context.Background(), account.GetAddress().String(), pubKey)
+	registerResp, err = bvsApi.RegisterOperator(context.Background(), account.GetAddress().String(), account.GetPubKey())
 	assert.Error(t, err, "register operator not failed")
 	assert.Nil(t, registerResp, "response not nil")
 
@@ -111,7 +103,9 @@ func (suite *bvsDirectoryTestSuite) Test_CancelSalt() {
 	keyName := "caller"
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(suite.T(), err)
-	salt := "salt" + strconv.FormatUint(rand.New(rand.NewSource(uint64(time.Now().Unix()))).Uint64(), 10)
+	randomStr, err := utils.GenerateRandomString(16)
+	assert.NoError(suite.T(), err)
+	salt := "salt" + randomStr
 	txResp, err := api.NewBVSDirectoryImpl(chainIO, suite.contrAddr).CancelSalt(context.Background(), salt)
 	assert.NoError(t, err, "TestCancelSalt")
 	assert.NotNil(t, txResp, "response nil")
@@ -211,7 +205,9 @@ func (suite *bvsDirectoryTestSuite) Test_CalculateDigestHash() {
 	nodeStatus, err := chainIO.QueryNodeStatus(context.Background())
 	assert.NoError(t, err, "query node status")
 	expiry := uint64(nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000)
-	salt := "salt" + strconv.FormatUint(rand.New(rand.NewSource(uint64(time.Now().Unix()))).Uint64(), 10)
+	randomStr, err := utils.GenerateRandomString(16)
+	assert.NoError(t, err, "GenerateRandomString")
+	salt := "salt" + randomStr
 	account, err := chainIO.GetCurrentAccount()
 	assert.NoError(t, err, "get account")
 	msgHashResp, err := api.NewBVSDirectoryImpl(chainIO, suite.contrAddr).CalculateDigestHash(

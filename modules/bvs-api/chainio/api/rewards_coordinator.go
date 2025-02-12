@@ -46,7 +46,6 @@ type RewardsCoordinator interface {
 	CalculateDomainSeparator(chainId string, contractAddr string) (*wasmtypes.QuerySmartContractStateResponse, error)
 	MerkleizeLeaves(leaves []string) (*wasmtypes.QuerySmartContractStateResponse, error)
 	CheckClaim(claim types.ExeuteRewardsMerkleClaim) (*wasmtypes.QuerySmartContractStateResponse, error)
-	IsRewardsUpdater(address string) (bool, error)
 }
 
 type rewardsCoordinatorImpl struct {
@@ -360,23 +359,6 @@ func (a *rewardsCoordinatorImpl) CheckClaim(claim types.ExeuteRewardsMerkleClaim
 	}
 
 	return a.query(msg)
-}
-
-func (a *rewardsCoordinatorImpl) IsRewardsUpdater(address string) (bool, error) {
-	var isRewardsUpdater bool
-	msg := types.IsRewardsUpdaterReq{
-		IsRewardsUpdater: types.IsRewardsUpdater{
-			Address: address,
-		},
-	}
-	result, err := a.query(msg)
-	if err != nil {
-		return false, err
-	}
-	if err := json.Unmarshal(result.Data, &isRewardsUpdater); err != nil {
-		return false, err
-	}
-	return isRewardsUpdater, nil
 }
 
 func NewRewardsCoordinator(chainIO io.ChainIO) RewardsCoordinator {

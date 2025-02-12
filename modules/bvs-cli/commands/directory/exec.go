@@ -21,7 +21,7 @@ func newService(keyName string) (api.BVSDirectory, io.ChainIO) {
 	return directory, newChainIO
 }
 
-func RegBVS(userKeyName, BVSAddr, chainName, chainID string) {
+func RegBVS(userKeyName, BVSAddr string) {
 	ctx := context.Background()
 	directory, newChainIO := newService(userKeyName)
 
@@ -41,14 +41,14 @@ func RegBVS(userKeyName, BVSAddr, chainName, chainID string) {
 	}
 	fmt.Printf("StateBank register BVS success. txn: %s\n", txn.Hash)
 
-	txn, err = directory.RegisterBVS(ctx, BVSAddr, chainName, chainID)
+	txn, err = directory.RegisterBVS(ctx, BVSAddr)
 	if err != nil {
 		fmt.Printf("Register BVS error! %v\n", err)
 		return
 	}
 	fmt.Printf("Directory register BVS success. txn: %s\n", txn.Hash)
 	for _, event := range txn.TxResult.Events {
-		if event.Type == "wasm-BVSRegistered" {
+		if event.Type == "wasm" {
 			for _, attr := range event.Attributes {
 				if attr.Key == "bvs_hash" {
 					fmt.Printf("Register BVS success. BVS Hash: %s\n", attr.Value)

@@ -38,3 +38,22 @@ func TestEcdsaPrivateKeyToCosmosAddress(t *testing.T) {
 		})
 	}
 }
+
+func TestGenerateRandomString(t *testing.T) {
+	testCases := []struct {
+		name string
+		len  int
+	}{
+		{"rand16", 16},
+		{"rand10", 10},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			generatedString, err := GenerateRandomString(tc.len)
+			require.NoError(t, err)
+			assert.Len(t, generatedString, tc.len)
+			t.Log(generatedString)
+		})
+	}
+}

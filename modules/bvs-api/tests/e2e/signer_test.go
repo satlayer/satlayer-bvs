@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
-	"encoding/hex"
 	"encoding/json"
 	"testing"
 	"time"
@@ -92,15 +91,13 @@ func (suite *signerTestSuite) Test_BuildAndSignTx() {
 
 func (suite *signerTestSuite) Test_Sign() {
 	t := suite.T()
-	keyName := "caller2" // Please refer to the readme to obtain
+	keyName := "caller" // Please refer to the readme to obtain
 	client, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 	ac, err := client.GetCurrentAccount()
 	assert.NoError(t, err)
 	t.Log(ac.GetAddress().String())
-	ct, err := hex.DecodeString("638789a8cd83d13edab39fcf89b7044e693a5e96ee56348328f2405442ec6d09")
-	assert.NoError(t, err)
-	signStr, err := client.GetSigner().SignByKeyName(ct, keyName)
+	signStr, err := client.GetSigner().SignByKeyName([]byte{12}, keyName)
 	assert.NoError(t, err)
 	t.Log(signStr)
 }

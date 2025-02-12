@@ -5,13 +5,7 @@ type RegisterBVSReq struct {
 }
 
 type RegisterBVS struct {
-	BVSContract BVSContract `json:"bvs_contract"`
-}
-
-type BVSContract struct {
 	BVSContract string `json:"bvs_contract"`
-	ChainName   string `json:"chain_name"`
-	ChainID     string `json:"chain_id"`
 }
 
 type RegisterOperatorReq struct {

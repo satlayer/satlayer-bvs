@@ -15,15 +15,6 @@ func rewardCmd() *cobra.Command {
 		Short: "Reward related commands",
 	}
 
-	claimCmd := &cobra.Command{
-		Use:   "claim <userKeyName>",
-		Short: "To claim the rewards.",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			reward.Claim(args[0])
-		},
-	}
-
 	setClaimerCmd := &cobra.Command{
 		Use:   "set-claimer <userKeyName> <claimerAddress>",
 		Short: "To set the claimer.",
@@ -147,29 +138,6 @@ func rewardCmd() *cobra.Command {
 		},
 	}
 
-	disableRoot := &cobra.Command{
-		Use:   "disable-root <userKeyName> <index>",
-		Short: "To disable the root at index.",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			index, err := strconv.ParseUint(args[1], 10, 64)
-			if err != nil {
-				fmt.Printf("Cmd Args: %s\n", args)
-			}
-			reward.DisabledRoot(args[0], index)
-		},
-	}
-
-	isUpdater := &cobra.Command{
-		Use:   "is-updater <userAddress>",
-		Short: "To check the userAddress is updater.",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			reward.IsUpdater(args[0])
-		},
-	}
-
-	subCmd.AddCommand(claimCmd)
 	subCmd.AddCommand(setClaimerCmd)
 	subCmd.AddCommand(setActivationDelayCmd)
 	subCmd.AddCommand(setGlobalOperatorCommissionCmd)
@@ -184,8 +152,6 @@ func rewardCmd() *cobra.Command {
 	subCmd.AddCommand(getDistributionRootAtIndexCmd)
 	subCmd.AddCommand(getCurrentClaimableDistributionRootCmd)
 	subCmd.AddCommand(getRootIndexFromHashCmd)
-	subCmd.AddCommand(disableRoot)
-	subCmd.AddCommand(isUpdater)
 
 	return subCmd
 }

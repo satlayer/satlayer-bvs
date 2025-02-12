@@ -17,11 +17,11 @@ func directoryCmd() *cobra.Command {
 
 	// reg-bvs
 	regBVSCmd := &cobra.Command{
-		Use:   "reg-bvs <userKeyName> <bvsAddr> <chainName> <chainID>",
+		Use:   "reg-bvs <userKeyName> <bvsAddr>",
 		Short: "To register the bvs within the directory contract.",
-		Args:  cobra.ExactArgs(4),
+		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			directory.RegBVS(args[0], args[1], args[2], args[3])
+			directory.RegBVS(args[0], args[1])
 		},
 	}
 

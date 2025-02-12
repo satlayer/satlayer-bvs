@@ -39,16 +39,6 @@ func chainCmd() *cobra.Command {
 			chain.QueryAccount(args[0])
 		},
 	}
-
-	evmQueryChainID := &cobra.Command{
-		Use:   "evm-get-chain-id",
-		Short: "To query the account.",
-		Args:  cobra.NoArgs,
-		Run: func(cmd *cobra.Command, args []string) {
-			chain.QueryChainID()
-		},
-	}
-
 	increaseTokenAllowance := &cobra.Command{
 		Use:   "increase-token-allowance <userKeyName> <tokenAddress> <spenderAddress> <amount>",
 		Short: "To increase the token allowance.",
@@ -66,7 +56,6 @@ func chainCmd() *cobra.Command {
 	subCmd.AddCommand(queryTxnCmd)
 	subCmd.AddCommand(queryAccountCmd)
 	subCmd.AddCommand(increaseTokenAllowance)
-	subCmd.AddCommand(evmQueryChainID)
 
 	return subCmd
 }

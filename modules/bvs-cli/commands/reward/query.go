@@ -48,12 +48,3 @@ func GetRootIndexFromHash(rootHash string) {
 	}
 	fmt.Printf("%s\n", resp.Data)
 }
-
-func IsUpdater(userAddress string) {
-	s := NewService()
-	resp, err := s.Reward.IsRewardsUpdater(userAddress)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("%t\n", resp)
-}

@@ -10,14 +10,17 @@ var directoryKeyName = "caller"
 
 func Test_RegBVS(t *testing.T) {
 	BVSAddress := "bbn15zstqljcjlkyz4kmmhnhvq7mlprcccerukm9x27rt6teqelc057qhthy6l"
-	chainName := "babylond"
-	chainId := "sat-bbn-testnet1"
-	directory.RegBVS(directoryKeyName, BVSAddress, chainName, chainId)
+	directory.RegBVS(directoryKeyName, BVSAddress)
 }
 
 func Test_UpdateMetadata(t *testing.T) {
 	metadata := "https://satlayer.com"
 	directory.UpdateMetadata(directoryKeyName, metadata)
+}
+
+func Test_PauseAndUnpause(t *testing.T) {
+	directory.Pause(directoryKeyName)
+	directory.Unpause(directoryKeyName)
 }
 
 func Test_GetOperator(t *testing.T) {
@@ -58,6 +61,6 @@ func Test_GetOperatorBVSRegistrationTypeHash(t *testing.T) {
 }
 
 func Test_GetBVSInfo(t *testing.T) {
-	hash := "23b6ff0d376632650684c0d3e773eaff7faaf864ef5d05a99eddcd51c99efc74"
+	hash := "3e9dd8890daa53e3b07af614231c9ccaac51805c449b8df61f62e2afb30d6685"
 	directory.GetBVSInfo(hash)
 }
