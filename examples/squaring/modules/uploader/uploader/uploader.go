@@ -18,7 +18,7 @@ import (
 	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 	"github.com/shopspring/decimal"
 
-	"github.com/satlayer/hello-world-bvs/uploader/core"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/uploader/core"
 )
 
 type Uploader struct {

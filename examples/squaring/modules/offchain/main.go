@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 
-	"github.com/satlayer/hello-world-bvs/offchain/core"
-	"github.com/satlayer/hello-world-bvs/offchain/node"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/offchain/core"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/offchain/node"
 )
 
 // main is the entry point of the program.

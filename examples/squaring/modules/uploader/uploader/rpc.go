@@ -15,7 +15,7 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
 	"github.com/shopspring/decimal"
 
-	"github.com/satlayer/hello-world-bvs/uploader/core"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/uploader/core"
 )
 
 const calcInterval = 86_400 // 1 day

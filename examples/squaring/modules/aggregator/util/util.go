@@ -7,7 +7,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/cosmos-sdk/types"
 
-	"github.com/satlayer/hello-world-bvs/aggregator/core"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/core"
 )
 
 // PubKeyToAddress converts a base64 encoded public key to a secp256k1 public key and its corresponding Cosmos address.

@@ -9,10 +9,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/satlayer/satlayer-bvs/bvs-api/signer"
 
-	"github.com/satlayer/hello-world-bvs/aggregator/core"
-	"github.com/satlayer/hello-world-bvs/aggregator/svc"
-	"github.com/satlayer/hello-world-bvs/aggregator/util"
-	"github.com/satlayer/hello-world-bvs/aggregator/util/resp"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/core"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/svc"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/util"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/util/resp"
 )
 
 type Payload struct {

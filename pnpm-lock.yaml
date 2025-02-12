@@ -52,8 +52,6 @@ importers:
 
   crates/cw-delegation-manager: {}
 
-  crates/cw-mirrored-token: {}
-
   crates/cw-rewards-coordinator: {}
 
   crates/cw-slash-manager: {}
@@ -115,6 +113,8 @@ importers:
         version: 15.1.7(eslint@9.20.0(jiti@2.4.2))(typescript@5.7.3)
 
   examples/squaring/cw-squaring-contract: {}
+
+  examples/squaring/modules: {}
 
   modules: {}
 
