@@ -1,0 +1,11 @@
+{
+  "name": "@modules/bvs-cw-types",
+  "private": true,
+  "scripts": {
+    "generate:schema": "node generate.mjs"
+  },
+  "dependencies": {
+    "@satlayer/cw-bvs-driver": "workspace:*",
+    "quicktype-core": "^23.0.171"
+  }
+}
