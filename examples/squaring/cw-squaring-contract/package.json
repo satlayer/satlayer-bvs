@@ -1,5 +1,5 @@
 {
-  "name": "@examples/squaring--cw-squaring-contract",
+  "name": "@examples/squaring-cw-squaring-contract",
   "private": false,
   "scripts": {
     "generate:schema": "cargo run --bin schema",
