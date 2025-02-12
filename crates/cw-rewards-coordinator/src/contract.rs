@@ -147,18 +147,6 @@ pub fn execute(
         ExecuteMsg::SetActivationDelay {
             new_activation_delay,
         } => set_activation_delay(deps, info, new_activation_delay),
-        ExecuteMsg::SetStrategyManager {
-            new_strategy_manager,
-        } => {
-            let new_strategy_manager = deps.api.addr_validate(&new_strategy_manager)?;
-            set_strategy_manager(deps, info, new_strategy_manager)
-        }
-        ExecuteMsg::SetDelegationManager {
-            new_delegation_manager,
-        } => {
-            let new_delegation_manager = deps.api.addr_validate(&new_delegation_manager)?;
-            set_delegation_manager(deps, info, new_delegation_manager)
-        }
         ExecuteMsg::SetRewardsUpdater { new_updater } => {
             let new_updater = deps.api.addr_validate(&new_updater)?;
             set_rewards_updater(deps, info, new_updater)
@@ -354,7 +342,7 @@ pub fn process_claim(
 
         let claim_amount = token_leaf.cumulative_earnings - curr_cumulative_claimed;
 
-        let balance = token_balance(&deps.querier, token, &env.contract.address)?;
+        let balance = token_balance(&deps.querier, &token, &env.contract.address)?;
 
         if claim_amount > balance {
             return Err(ContractError::InsufficientBalance {});
@@ -378,7 +366,6 @@ pub fn process_claim(
         response = response.add_message(transfer_msg);
 
         let event = Event::new("RewardsClaimed")
-            .add_attribute("root_index", claim.root_index.to_string())
             .add_attribute("root", format!("{:?}", root.root))
             .add_attribute("earner", earner.to_string())
             .add_attribute("claimer", claimer.to_string())
@@ -528,36 +515,6 @@ pub fn set_activation_delay(
     Ok(res)
 }
 
-pub fn set_strategy_manager(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_strategy_manager: Addr,
-) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), &info)?;
-
-    STRATEGY_MANAGER.save(deps.storage, &new_strategy_manager)?;
-
-    let event = Event::new("StrategyManagerSet")
-        .add_attribute("new_manager", new_strategy_manager.to_string());
-
-    Ok(Response::new().add_event(event))
-}
-
-pub fn set_delegation_manager(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_delegation_manager: Addr,
-) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), &info)?;
-
-    DELEGATION_MANAGER.save(deps.storage, &new_delegation_manager)?;
-
-    let event = Event::new("DelegationManagerSet")
-        .add_attribute("new_manager", new_delegation_manager.to_string());
-
-    Ok(Response::new().add_event(event))
-}
-
 pub fn set_rewards_updater(
     deps: DepsMut,
     info: MessageInfo,
@@ -680,10 +637,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 .collect::<Result<Vec<Binary>, _>>()?;
 
             to_json_binary(&query_merkleize_leaves(binary_leaves)?)
-        }
-
-        QueryMsg::IsRewardsUpdater { address } => {
-            to_json_binary(&query_is_rewards_updater(deps, address)?)
         }
 
         QueryMsg::CheckClaim { claim } => {
@@ -869,12 +822,6 @@ pub fn query_check_claim(
         check_claim(env, deps, claim).map_err(|err| StdError::generic_err(format!("{:?}", err)))?;
 
     Ok(CheckClaimResponse { check_claim })
-}
-
-fn query_is_rewards_updater(deps: Deps, address: String) -> StdResult<bool> {
-    let addr = deps.api.addr_validate(&address)?;
-    let rewards_updater = REWARDS_UPDATER.load(deps.storage)?;
-    Ok(addr == rewards_updater)
 }
 
 fn only_rewards_updater(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
@@ -3354,33 +3301,31 @@ mod tests {
 
         let event = response.events.first().unwrap();
         assert_eq!(event.ty, "RewardsClaimed");
-        assert_eq!(event.attributes.len(), 7);
-        assert_eq!(event.attributes[0].key, "root_index");
-        assert_eq!(event.attributes[0].value, "0");
-        assert_eq!(event.attributes[1].key, "root");
+        assert_eq!(event.attributes.len(), 6);
+        assert_eq!(event.attributes[0].key, "root");
         assert_eq!(
-            event.attributes[1].value,
+            event.attributes[0].value,
             format!("{:?}", distribution_root.root)
         );
-        assert_eq!(event.attributes[2].key, "earner");
+        assert_eq!(event.attributes[1].key, "earner");
         assert_eq!(
-            event.attributes[2].value,
+            event.attributes[1].value,
             deps.api.addr_make("earner").to_string()
         );
-        assert_eq!(event.attributes[3].key, "claimer");
+        assert_eq!(event.attributes[2].key, "claimer");
         assert_eq!(
-            event.attributes[3].value,
+            event.attributes[2].value,
             deps.api.addr_make("claimer").to_string()
         );
-        assert_eq!(event.attributes[4].key, "recipient");
+        assert_eq!(event.attributes[3].key, "recipient");
         assert_eq!(
-            event.attributes[4].value,
+            event.attributes[3].value,
             deps.api.addr_make("recipient").to_string()
         );
-        assert_eq!(event.attributes[5].key, "token");
-        assert_eq!(event.attributes[5].value, "token_a");
-        assert_eq!(event.attributes[6].key, "amount");
-        assert_eq!(event.attributes[6].value, "100");
+        assert_eq!(event.attributes[4].key, "token");
+        assert_eq!(event.attributes[4].value, "token_a");
+        assert_eq!(event.attributes[5].key, "amount");
+        assert_eq!(event.attributes[5].value, "100");
 
         // Test for unauthorized claimer
         let unauthorized_info = message_info(&Addr::unchecked("unauthorized_claimer"), &[]);

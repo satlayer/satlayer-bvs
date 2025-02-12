@@ -3,7 +3,6 @@ members = [
     "cw-bvs-directory",
     "cw-bvs-driver",
     "cw-delegation-manager",
-    "cw-mirrored-token",
     "cw-rewards-coordinator",
     "cw-slash-manager",
     "cw-state-bank",

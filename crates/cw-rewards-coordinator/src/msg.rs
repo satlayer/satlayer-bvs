@@ -3,8 +3,7 @@ use crate::query::{
     CalculateTokenLeafHashResponse, CheckClaimResponse,
     GetCurrentClaimableDistributionRootResponse, GetCurrentDistributionRootResponse,
     GetDistributionRootAtIndexResponse, GetDistributionRootsLengthResponse,
-    GetRootIndexFromHashResponse, IsRewardsUpdaterResponse, MerkleizeLeavesResponse,
-    OperatorCommissionBipsResponse,
+    GetRootIndexFromHashResponse, MerkleizeLeavesResponse, OperatorCommissionBipsResponse,
 };
 use crate::utils::{ExecuteRewardsMerkleClaim, RewardsSubmission};
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -51,12 +50,6 @@ pub enum ExecuteMsg {
     },
     SetActivationDelay {
         new_activation_delay: u32,
-    },
-    SetStrategyManager {
-        new_strategy_manager: String,
-    },
-    SetDelegationManager {
-        new_delegation_manager: String,
     },
     SetRewardsUpdater {
         new_updater: String,
@@ -125,9 +118,6 @@ pub enum QueryMsg {
 
     #[returns(CheckClaimResponse)]
     CheckClaim { claim: ExecuteRewardsMerkleClaim },
-
-    #[returns(IsRewardsUpdaterResponse)]
-    IsRewardsUpdater { address: String },
 }
 
 #[cw_serde]

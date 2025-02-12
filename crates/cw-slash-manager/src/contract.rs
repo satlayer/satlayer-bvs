@@ -323,7 +323,7 @@ pub fn execute_slash_request(
 
     let mut messages = vec![];
 
-    for staker_shares in stakers_response.stakers_and_shares.iter() {
+    for (_index, staker_shares) in stakers_response.stakers_and_shares.iter().enumerate() {
         let mut remaining_slash_amount = slash_share_per_staker;
 
         if remaining_slash_amount.is_zero() {

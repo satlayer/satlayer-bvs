@@ -594,29 +594,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-mirrored-token"
-version = "2.0.0"
-dependencies = [
- "base64 0.22.1",
- "bech32 0.8.1",
- "common",
- "cosmwasm-crypto 2.1.0",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "hex",
- "ripemd",
- "schemars",
- "secp256k1",
- "serde",
- "sha2 0.10.8",
- "thiserror",
-]
-
-[[package]]
 name = "cw-multi-test"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

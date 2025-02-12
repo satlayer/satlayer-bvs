@@ -52,13 +52,11 @@ pub fn instantiate(
     let initial_strategy_whitelister = deps.api.addr_validate(&msg.initial_strategy_whitelister)?;
     let initial_owner = deps.api.addr_validate(&msg.initial_owner)?;
     let strategy_factory = deps.api.addr_validate(&msg.strategy_factory)?;
-    let mirrored_token = deps.api.addr_validate(&msg.mirrored_token)?;
 
     let state = StrategyManagerState {
         delegation_manager: delegation_manager.clone(),
         slash_manager: slash_manager.clone(),
         strategy_factory: strategy_factory.clone(),
-        mirrored_token: mirrored_token.clone(),
     };
 
     let pauser = deps.api.addr_validate(&msg.pauser)?;
@@ -108,11 +106,6 @@ pub fn execute(
             let strategies_addr = validate_addresses(deps.api, &strategies)?;
 
             remove_strategies_from_deposit_whitelist(deps, info, strategies_addr)
-        }
-        ExecuteMsg::SetMirroredToken { mirrored_token } => {
-            let mirrored_token_addr = deps.api.addr_validate(&mirrored_token)?;
-
-            set_mirrored_token(deps, info, mirrored_token_addr)
         }
         ExecuteMsg::SetStrategyWhitelister {
             new_strategy_whitelister,
@@ -165,36 +158,6 @@ pub fn execute(
             };
 
             let response = deposit_into_strategy_with_signature(deps, env, info, params)?;
-
-            Ok(response)
-        }
-        ExecuteMsg::DepositViaMirroredTokenWithSignature {
-            strategy,
-            token,
-            amount,
-            staker,
-            public_key,
-            expiry,
-            signature,
-        } => {
-            let strategy_addr = deps.api.addr_validate(&strategy)?;
-            let token_addr = deps.api.addr_validate(&token)?;
-            let staker_addr = Addr::unchecked(staker);
-
-            let public_key_binary = Binary::from_base64(&public_key)?;
-            let signature_binary = Binary::from_base64(&signature)?;
-
-            let params = DepositWithSignatureParams {
-                strategy: strategy_addr,
-                token: token_addr,
-                amount,
-                staker: staker_addr,
-                public_key: public_key_binary,
-                expiry,
-                signature: signature_binary,
-            };
-
-            let response = deposit_via_mirrored_token_with_signature(deps, env, params)?;
 
             Ok(response)
         }
@@ -434,24 +397,6 @@ pub fn set_strategy_whitelister(
     Ok(Response::new().add_event(event))
 }
 
-pub fn set_mirrored_token(
-    deps: DepsMut,
-    info: MessageInfo,
-    mirrored_token: Addr,
-) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), &info)?;
-
-    let mut state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
-    state.mirrored_token = mirrored_token.clone();
-    STRATEGY_MANAGER_STATE.save(deps.storage, &state)?;
-
-    let event = Event::new("set_mirrored_token")
-        .add_attribute("old_mirrored_token", state.mirrored_token.to_string())
-        .add_attribute("new_mirrored_token", mirrored_token.to_string());
-
-    Ok(Response::new().add_event(event))
-}
-
 pub fn set_third_party_transfers_forbidden(
     deps: DepsMut,
     info: MessageInfo,
@@ -525,55 +470,6 @@ pub fn deposit_into_strategy_with_signature(
     deposit_into_strategy_internal(
         deps,
         info,
-        params.staker.clone(),
-        params.strategy.clone(),
-        params.token.clone(),
-        params.amount,
-    )
-}
-
-pub fn deposit_via_mirrored_token_with_signature(
-    deps: DepsMut,
-    env: Env,
-    params: DepositWithSignatureParams,
-) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_DEPOSITS)?;
-
-    let forbidden = THIRD_PARTY_TRANSFERS_FORBIDDEN
-        .may_load(deps.storage, &params.strategy)?
-        .unwrap_or(false);
-    if forbidden {
-        return Err(ContractError::Unauthorized {});
-    }
-
-    if params.expiry < env.block.time.seconds() {
-        return Err(ContractError::SignatureExpired {});
-    }
-
-    let nonce = NONCES.may_load(deps.storage, &params.staker)?.unwrap_or(0);
-
-    let digest_params = DigestHashParams {
-        staker: params.staker.clone(),
-        public_key: params.public_key.clone(),
-        strategy: params.strategy.clone(),
-        token: params.token.clone(),
-        amount: params.amount,
-        nonce,
-        expiry: params.expiry,
-        chain_id: env.block.chain_id.clone(),
-        contract_addr: env.contract.address.clone(),
-    };
-
-    let struct_hash = calculate_digest_hash(&digest_params);
-
-    if !recover(&struct_hash, &params.signature, &params.public_key)? {
-        return Err(ContractError::InvalidSignature {});
-    }
-
-    NONCES.save(deps.storage, &params.staker, &(nonce + 1))?;
-
-    deposit_via_mirrored_token_with_signature_internal(
-        deps,
         params.staker.clone(),
         params.strategy.clone(),
         params.token.clone(),
@@ -950,79 +846,6 @@ fn deposit_into_strategy_internal(
         .add_attribute("new_shares", new_shares.to_string()))
 }
 
-fn deposit_via_mirrored_token_with_signature_internal(
-    mut deps: DepsMut,
-    staker: Addr,
-    strategy: Addr,
-    token: Addr,
-    amount: Uint128,
-) -> Result<Response, ContractError> {
-    only_strategies_whitelisted_for_deposit(deps.as_ref(), &strategy)?;
-
-    if amount.is_zero() {
-        return Err(ContractError::ZeroAmount {});
-    }
-
-    let state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
-    let mirrored_token = state.mirrored_token;
-
-    let transfer_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: token.to_string(),
-        msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
-            owner: mirrored_token.to_string(),
-            recipient: strategy.to_string(),
-            amount,
-        })?,
-        funds: vec![],
-    });
-
-    let mut response = Response::new().add_message(transfer_msg);
-
-    let state: StrategyState = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: strategy.to_string(),
-        msg: to_json_binary(&StrategyQueryMsg::GetStrategyState {})?,
-    }))?;
-
-    let balance = token_balance(&deps.querier, &state.underlying_token, &strategy)?;
-    let new_shares = calculate_new_shares(state.total_shares, balance, amount)?;
-
-    if new_shares.is_zero() {
-        return Err(ContractError::ZeroNewShares {});
-    }
-
-    let deposit_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: strategy.to_string(),
-        msg: to_json_binary(&StrategyExecuteMsg::Deposit { amount })?,
-        funds: vec![],
-    });
-
-    response = response.add_message(deposit_msg);
-
-    add_shares_internal(
-        deps.branch(),
-        staker.clone(),
-        token.clone(),
-        strategy.clone(),
-        new_shares,
-    )?;
-
-    let state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
-
-    let increase_delegated_shares_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: state.delegation_manager.to_string(),
-        msg: to_json_binary(&DelegationManagerExecuteMsg::IncreaseDelegatedShares {
-            staker: staker.to_string(),
-            strategy: strategy.to_string(),
-            shares: new_shares,
-        })?,
-        funds: vec![],
-    });
-
-    Ok(response
-        .add_message(increase_delegated_shares_msg)
-        .add_attribute("new_shares", new_shares.to_string()))
-}
-
 fn add_shares_internal(
     deps: DepsMut,
     staker: Addr,
@@ -1219,7 +1042,6 @@ mod tests {
         let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
         let slasher = deps.api.addr_make("slasher").to_string();
         let strategy_factory = deps.api.addr_make("strategy_factory").to_string();
-        let mirrored_token = deps.api.addr_make("mirrored_token").to_string();
         let strategy_whitelister = deps.api.addr_make("strategy_whitelister").to_string();
         let pauser = deps.api.addr_make("pauser").to_string();
         let unpauser = deps.api.addr_make("unpauser").to_string();
@@ -1229,7 +1051,6 @@ mod tests {
             delegation_manager: delegation_manager.clone(),
             slash_manager: slasher.clone(),
             strategy_factory: strategy_factory.clone(),
-            mirrored_token: mirrored_token.clone(),
             initial_strategy_whitelister: strategy_whitelister.clone(),
             pauser: pauser.clone(),
             unpauser: unpauser.clone(),
@@ -1288,7 +1109,6 @@ mod tests {
         let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
         let slasher = deps.api.addr_make("slasher").to_string();
         let strategy_factory = deps.api.addr_make("strategy_factory").to_string();
-        let mirrored_token = deps.api.addr_make("mirrored_token").to_string();
         let strategy_whitelister = deps.api.addr_make("strategy_whitelister").to_string();
 
         let pauser = deps.api.addr_make("pauser").to_string();
@@ -1306,7 +1126,6 @@ mod tests {
             delegation_manager: delegation_manager.clone(),
             slash_manager: slasher.clone(),
             strategy_factory: strategy_factory.clone(),
-            mirrored_token: mirrored_token.clone(),
             initial_strategy_whitelister: strategy_whitelister.clone(),
             pauser: pauser.clone(),
             unpauser: unpauser.clone(),
