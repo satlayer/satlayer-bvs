@@ -13,7 +13,7 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
 	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 
-	"github.com/satlayer/hello-world-bvs/initprogram/core"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/initprogram/core"
 )
 
 func main() {

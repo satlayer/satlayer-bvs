@@ -2,9 +2,13 @@ package e2e
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/redis"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -19,9 +23,9 @@ import (
 	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 	"golang.org/x/exp/rand"
 
-	"github.com/satlayer/hello-world-bvs/aggregator/api"
-	"github.com/satlayer/hello-world-bvs/aggregator/core"
-	"github.com/satlayer/hello-world-bvs/aggregator/svc"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/api"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/core"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/svc"
 )
 
 type Payload struct {
@@ -41,11 +45,23 @@ func TestAggregator(t *testing.T) {
 	homeDir := "../../../.babylond"
 	keyName := "operator2"
 
-	err := os.Setenv("KEY_DIR", homeDir)
+	redisContainer, err := startRedis()
+	if err != nil {
+		t.Fatalf("failed to start redis container: %s", err)
+		return
+	}
+
+	redisUrl := fmt.Sprintf("%s:%s", redisContainer.Host, redisContainer.Port)
+
+	err = os.Setenv("KEY_DIR", homeDir)
 	if err != nil {
 		return
 	}
-	core.InitConfig()
+	core.InitConfig(core.Config{
+		Database: core.Database{
+			RedisHost: redisUrl,
+		},
+	})
 	svc.InitMonitor()
 
 	elkLogger := logger.NewMockELKLogger()
@@ -120,4 +136,41 @@ func sendTaskResult(payload Payload, router *gin.Engine, t *testing.T) {
 
 	t.Logf("Response Body: %s\n", w.Body.String())
 	t.Logf("")
+}
+
+type RedisContainer struct {
+	Container testcontainers.Container
+	Host      string
+	Port      string
+}
+
+func startRedis() (*RedisContainer, error) {
+	ctx := context.Background()
+
+	rc, err := redis.Run(ctx,
+		"redis:7",
+		redis.WithLogLevel(redis.LogLevelVerbose),
+	)
+
+	if err != nil {
+		log.Printf("failed to start container: %s", err)
+		return nil, err
+	}
+
+	host, err := rc.Host(context.Background())
+	if err != nil {
+		log.Fatalf("failed to get redis container host: %s", err)
+		return nil, err
+	}
+
+	port, err := rc.MappedPort(context.Background(), "6379")
+	if err != nil {
+		log.Fatalf("failed to get redis container port: %s", err)
+		return nil, err
+	}
+	return &RedisContainer{
+		Container: rc,
+		Host:      host,
+		Port:      port.Port(),
+	}, nil
 }

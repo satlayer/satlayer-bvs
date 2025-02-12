@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/satlayer/hello-world-bvs/task/core"
-	"github.com/satlayer/hello-world-bvs/task/task"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/task/core"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/task/task"
 )
 
 // main checks parameters and runs the appropriate task based on the provided command-line argument.

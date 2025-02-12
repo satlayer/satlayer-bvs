@@ -6,9 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/satlayer/hello-world-bvs/aggregator/api"
-	"github.com/satlayer/hello-world-bvs/aggregator/core"
-	"github.com/satlayer/hello-world-bvs/aggregator/svc"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/api"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/core"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/svc"
 )
 
 // main is the entry point of the program.
@@ -17,7 +17,7 @@ import (
 // - startMonitor: checks the task queue and verifies the task result.
 // - startHttp: starts an HTTP server to receive operator task results.
 func main() {
-	core.InitConfig()
+	core.InitConfig(core.Config{})
 	ctx := context.Background()
 	// start to check task queue and verify the task result
 	go startMonitor(ctx)

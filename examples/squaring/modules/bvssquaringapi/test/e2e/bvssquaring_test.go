@@ -12,7 +12,7 @@ import (
 	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/satlayer/hello-world-bvs/bvssquaringapi"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/bvssquaringapi"
 )
 
 func testExecuteSquaring(t *testing.T) {

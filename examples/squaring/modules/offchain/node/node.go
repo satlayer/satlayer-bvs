@@ -19,7 +19,7 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
 	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 
-	"github.com/satlayer/hello-world-bvs/offchain/core"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/offchain/core"
 )
 
 type Node struct {

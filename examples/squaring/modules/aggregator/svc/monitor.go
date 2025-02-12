@@ -15,8 +15,8 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
 	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 
-	"github.com/satlayer/hello-world-bvs/aggregator/core"
-	"github.com/satlayer/hello-world-bvs/bvssquaringapi"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/core"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/bvssquaringapi"
 )
 
 var MonitorInstance Monitor
