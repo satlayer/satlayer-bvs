@@ -33,8 +33,24 @@ async function generate(schema) {
   await writeFile(join(dir, "schema.go"), lines.join("\n"));
 }
 
+import cw_bvs_directory from "@satlayer/cw-bvs-directory/schema/cw-bvs-directory.json" assert { type: "json" };
 import cw_bvs_driver from "@satlayer/cw-bvs-driver/schema/cw-bvs-driver.json" assert { type: "json" };
+import cw_delegation_manager from "@satlayer/cw-delegation-manager/schema/cw-delegation-manager.json" assert { type: "json" };
+import cw_rewards_coordinator from "@satlayer/cw-rewards-coordinator/schema/cw-rewards-coordinator.json" assert { type: "json" };
+import cw_slash_manager from "@satlayer/cw-slash-manager/schema/cw-slash-manager.json" assert { type: "json" };
 import cw_state_bank from "@satlayer/cw-state-bank/schema/cw-state-bank.json" assert { type: "json" };
+import cw_strategy_base from "@satlayer/cw-strategy-base/schema/cw-strategy-base.json" assert { type: "json" };
+import cw_strategy_base_tvl_limits from "@satlayer/cw-strategy-base-tvl-limits/schema/cw-strategy-base-tvl-limits.json" assert { type: "json" };
+import cw_strategy_factory from "@satlayer/cw-strategy-factory/schema/cw-strategy-factory.json" assert { type: "json" };
+import cw_strategy_manager from "@satlayer/cw-strategy-manager/schema/cw-strategy-manager.json" assert { type: "json" };
 
+await generate(cw_bvs_directory);
 await generate(cw_bvs_driver);
+await generate(cw_delegation_manager);
+await generate(cw_rewards_coordinator);
+await generate(cw_slash_manager);
 await generate(cw_state_bank);
+await generate(cw_strategy_base);
+await generate(cw_strategy_base_tvl_limits);
+await generate(cw_strategy_factory);
+await generate(cw_strategy_manager);

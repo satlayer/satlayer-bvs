@@ -124,12 +124,36 @@ importers:
 
   modules/bvs-cw:
     devDependencies:
+      '@satlayer/cw-bvs-directory':
+        specifier: workspace:*
+        version: link:../../crates/cw-bvs-directory
       '@satlayer/cw-bvs-driver':
         specifier: workspace:*
         version: link:../../crates/cw-bvs-driver
+      '@satlayer/cw-delegation-manager':
+        specifier: workspace:*
+        version: link:../../crates/cw-delegation-manager
+      '@satlayer/cw-rewards-coordinator':
+        specifier: workspace:*
+        version: link:../../crates/cw-rewards-coordinator
+      '@satlayer/cw-slash-manager':
+        specifier: workspace:*
+        version: link:../../crates/cw-slash-manager
       '@satlayer/cw-state-bank':
         specifier: workspace:*
         version: link:../../crates/cw-state-bank
+      '@satlayer/cw-strategy-base':
+        specifier: workspace:*
+        version: link:../../crates/cw-strategy-base
+      '@satlayer/cw-strategy-base-tvl-limits':
+        specifier: workspace:*
+        version: link:../../crates/cw-strategy-base-tvl-limits
+      '@satlayer/cw-strategy-factory':
+        specifier: workspace:*
+        version: link:../../crates/cw-strategy-factory
+      '@satlayer/cw-strategy-manager':
+        specifier: workspace:*
+        version: link:../../crates/cw-strategy-manager
       quicktype-core:
         specifier: ^23.0.171
         version: 23.0.171

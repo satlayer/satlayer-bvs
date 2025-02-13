@@ -1,6 +1,7 @@
 {
   "name": "@satlayer/cw-rewards-coordinator",
   "private": false,
+  "files": ["artifacts", "schema"],
   "scripts": {
     "build:wasm": "cosmwasm-optimizer",
     "generate:schema": "cargo run --bin schema",
