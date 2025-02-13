@@ -1,0 +1,19 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "test": {
+      "inputs": ["**.go"],
+      "dependsOn": ["@modules/bvs-cw#generate:schema"]
+    },
+    "test:e2e": {
+      "inputs": ["**.go"],
+      "dependsOn": ["@modules/bvs-cw#generate:schema"]
+    },
+    "build": {
+      "inputs": ["**.go"],
+      "outputs": ["dist"],
+      "dependsOn": ["@modules/bvs-cw#generate:schema"]
+    }
+  }
+}
