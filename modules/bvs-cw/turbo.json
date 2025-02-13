@@ -4,7 +4,7 @@
   "tasks": {
     "generate:schema": {
       "inputs": ["generate.mjs"],
-      "outputs": ["*.go"],
+      "outputs": ["types"],
       "dependsOn": ["^generate:schema"]
     }
   }
