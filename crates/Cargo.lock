@@ -277,6 +277,8 @@ dependencies = [
  "base64 0.22.1",
  "bech32 0.8.1",
  "bvs-base",
+ "bvs-delegation-manager",
+ "bvs-testing",
  "cosmwasm-crypto 2.1.0",
  "cosmwasm-schema",
  "cosmwasm-std 2.1.0",
@@ -495,6 +497,24 @@ dependencies = [
  "ripemd",
  "secp256k1",
  "sha2 0.10.8",
+]
+
+[[package]]
+name = "bvs-testing"
+version = "0.1.0"
+dependencies = [
+ "bvs-delegation-manager",
+ "bvs-directory",
+ "bvs-driver",
+ "bvs-rewards-coordinator",
+ "bvs-slash-manager",
+ "bvs-state-bank",
+ "bvs-strategy-base",
+ "bvs-strategy-base-tvl-limits",
+ "bvs-strategy-factory",
+ "bvs-strategy-manager",
+ "cosmwasm-std 2.1.0",
+ "cw-multi-test",
 ]
 
 [[package]]

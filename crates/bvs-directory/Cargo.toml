@@ -3,10 +3,7 @@ name = "bvs-directory"
 version = "2.0.0"
 edition = "2021"
 
-exclude = [
-  "contract.wasm",
-  "hash.txt",
-]
+exclude = ["contract.wasm", "hash.txt"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -34,3 +31,5 @@ bvs-base = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
+bvs-testing = { workspace = true }
+bvs-delegation-manager = { workspace = true }

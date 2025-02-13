@@ -1,0 +1,25 @@
+[package]
+name = "bvs-testing"
+description = "Utilities for testing BVS contracts"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+documentation = { workspace = true }
+keywords = { workspace = true }
+
+[dependencies]
+bvs-delegation-manager = { workspace = true }
+bvs-directory = { workspace = true }
+bvs-driver = { workspace = true }
+bvs-rewards-coordinator = { workspace = true }
+bvs-slash-manager = { workspace = true }
+bvs-state-bank = { workspace = true }
+bvs-strategy-base = { workspace = true }
+bvs-strategy-base-tvl-limits = { workspace = true }
+bvs-strategy-factory = { workspace = true }
+bvs-strategy-manager = { workspace = true }
+cosmwasm-std = { workspace = true }
+cw-multi-test = { workspace = true }
