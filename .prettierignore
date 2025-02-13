@@ -7,8 +7,10 @@ dist
 pnpm-lock.yaml
 *.go
 *.rs
+.github/pull_request_template.md
 crates/target/
 crates/*/artifacts/
 crates/*/schema/
-.github/pull_request_template.md
 examples/*/*/target/
+examples/*/*/artifacts/
+examples/*/*/schema/

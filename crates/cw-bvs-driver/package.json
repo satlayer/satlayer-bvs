@@ -1,7 +1,10 @@
 {
   "name": "@satlayer/cw-bvs-driver",
   "private": false,
-  "files": ["artifacts", "schema"],
+  "files": [
+    "artifacts",
+    "schema"
+  ],
   "scripts": {
     "build:wasm": "cosmwasm-optimizer",
     "generate:schema": "cargo run --bin schema",
