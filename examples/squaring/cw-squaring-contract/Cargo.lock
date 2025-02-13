@@ -1286,8 +1286,10 @@ version = "0.0.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std 2.1.0",
+ "cw-bvs-driver",
  "cw-bvs-test",
  "cw-multi-test",
+ "cw-state-bank",
  "cw-storage-plus",
  "cw2",
  "schemars",

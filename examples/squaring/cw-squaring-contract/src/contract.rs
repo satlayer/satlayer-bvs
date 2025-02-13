@@ -4,9 +4,7 @@ use crate::{
     state::{AGGREGATOR, BVS_DRIVER, CREATED_TASKS, MAX_ID, RESPONDED_TASKS, STATE_BANK},
 };
 
-use cosmwasm_std::{
-    entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response
-};
+use cosmwasm_std::{entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response};
 use cw2::set_contract_version;
 
 const CONTRACT_NAME: &str = "BVS Squaring Example";
@@ -46,38 +44,14 @@ pub fn execute(
     }
 }
 
-pub mod state_bank {
-    // TODO(fuxingloh): putting this mod here is not clean,
-    //   but it's better that putting it in crate::msg::ExecuteMsg
-    //   since it doesn't belong there.
-    use cosmwasm_schema::cw_serde;
-
-    #[cw_serde]
-    pub enum ExecuteMsg {
-        Set { key: String, value: String },
-    }
-}
-
-pub mod bvs_driver {
-    // TODO(fuxingloh): putting this mod here is not clean,
-    //   but it's better that putting it in crate::msg::ExecuteMsg
-    //   since it doesn't belong there.
-    use cosmwasm_schema::cw_serde;
-
-    #[cw_serde]
-    pub enum ExecuteMsg {
-        ExecuteBvsOffchain { task_id: String },
-    }
-}
-
 pub mod execute {
-    use super::state_bank;
-    use super::bvs_driver;
     use crate::state::{
         AGGREGATOR, BVS_DRIVER, CREATED_TASKS, MAX_ID, RESPONDED_TASKS, STATE_BANK,
     };
     use crate::ContractError;
     use cosmwasm_std::{to_json_binary, CosmosMsg, DepsMut, Event, MessageInfo, Response, WasmMsg};
+    use cw_bvs_driver::msg::ExecuteMsg::ExecuteBvsOffchain;
+    use cw_state_bank::msg::ExecuteMsg::Set;
 
     pub fn create_new_task(
         deps: DepsMut,
@@ -93,7 +67,7 @@ pub mod execute {
 
         // Call the state bank contract to save the task input
         let state_bank_msg = {
-            let msg = state_bank::ExecuteMsg::Set {
+            let msg = Set {
                 key: format!("taskId.{}", new_id),
                 value: input.to_string(),
             };
@@ -110,7 +84,7 @@ pub mod execute {
 
         // Call the bvs driver contract to execute the task off-chain
         let bvs_driver_msg = {
-            let msg = bvs_driver::ExecuteMsg::ExecuteBvsOffchain {
+            let msg = ExecuteBvsOffchain {
                 task_id: new_id.to_string(),
             };
 
@@ -225,6 +199,8 @@ mod tests {
         testing::{mock_dependencies, mock_env},
         Addr, Coin, CosmosMsg, MessageInfo, WasmMsg,
     };
+    use cw_bvs_driver::msg::ExecuteMsg as bvsDriverExecuteMsg;
+    use cw_state_bank::msg::ExecuteMsg as stateBankExecuteMsg;
 
     fn mock_info(sender: &str, funds: &[Coin]) -> MessageInfo {
         MessageInfo {
@@ -303,9 +279,9 @@ mod tests {
                 contract_addr, msg, ..
             }) => {
                 assert_eq!(contract_addr, "state_bank");
-                let parsed_msg: state_bank::ExecuteMsg = from_json(msg).unwrap();
+                let parsed_msg: stateBankExecuteMsg = from_json(msg).unwrap();
                 match parsed_msg {
-                    state_bank::ExecuteMsg::Set { key, value } => {
+                    stateBankExecuteMsg::Set { key, value } => {
                         assert_eq!(key, "taskId.1");
                         assert_eq!(value, "42");
                     }
@@ -320,9 +296,9 @@ mod tests {
                 contract_addr, msg, ..
             }) => {
                 assert_eq!(contract_addr, "bvs_driver");
-                let parsed_msg: bvs_driver::ExecuteMsg = from_json(msg).unwrap();
+                let parsed_msg: bvsDriverExecuteMsg = from_json(msg).unwrap();
                 match parsed_msg {
-                    bvs_driver::ExecuteMsg::ExecuteBvsOffchain { task_id } => {
+                    bvsDriverExecuteMsg::ExecuteBvsOffchain { task_id } => {
                         assert_eq!(task_id, "1");
                     }
                     _ => panic!("Unexpected message type"),
