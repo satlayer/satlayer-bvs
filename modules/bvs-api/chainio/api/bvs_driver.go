@@ -9,7 +9,7 @@ import (
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	"github.com/satlayer/satlayer-bvs/bvs-cw-types/bvs-driver"
+	"github.com/satlayer/satlayer-bvs/bvs-cw/types/bvs-driver"
 )
 
 type BVSDriver interface {

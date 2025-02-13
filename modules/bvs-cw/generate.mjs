@@ -1,6 +1,7 @@
 import { quicktype, InputData, JSONSchemaInput, FetchingJSONSchemaStore } from "quicktype-core";
 
 import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 
 /**
  * @param schema {any}
@@ -17,18 +18,19 @@ async function generate(schema) {
   const inputData = new InputData();
   inputData.addInput(schemaInput);
 
-  const dir = schema.contract_name.replaceAll("cw-", "");
+  const name = schema.contract_name.replaceAll("cw-", "");
+  const dir = join("types", name);
 
   const { lines } = await quicktype({
     inputData,
     lang: "go",
     rendererOptions: {
-      package: dir.replaceAll("-", "_"),
+      package: name.replaceAll("-", "_"),
     },
   });
 
   await mkdir(dir, { recursive: true });
-  await writeFile(`${schema.contract_name.replaceAll("cw-", "")}/types.go`, lines.join("\n"));
+  await writeFile(join(dir, "schema.go"), lines.join("\n"));
 }
 
 import cw_bvs_driver from "@satlayer/cw-bvs-driver/schema/cw-bvs-driver.json" assert { type: "json" };

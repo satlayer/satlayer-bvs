@@ -1,5 +1,5 @@
 {
-  "name": "@modules/bvs-cw-types",
+  "name": "@modules/bvs-cw",
   "private": true,
   "scripts": {
     "generate:schema": "node generate.mjs"
