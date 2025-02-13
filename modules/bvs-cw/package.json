@@ -2,7 +2,8 @@
   "name": "@modules/bvs-cw",
   "private": true,
   "scripts": {
-    "generate:schema": "node generate.mjs"
+    "generate:schema": "node generate.mjs",
+    "test": "gotestsum"
   },
   "devDependencies": {
     "@satlayer/cw-bvs-directory": "workspace:*",
