@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func Test_GeneratedTypes(t *testing.T) {
+func TestGeneratedTypes(t *testing.T) {
 	msg := bvs_driver.ExecuteMsg{
 		TransferOwnership: &bvs_driver.TransferOwnership{
 			NewOwner: "new_owner",
