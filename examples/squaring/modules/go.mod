@@ -15,6 +15,7 @@ require (
 	github.com/satlayer/satlayer-bvs v0.0.0
 	github.com/shopspring/decimal v1.4.0
 	github.com/stretchr/testify v1.9.0
+	github.com/testcontainers/testcontainers-go v0.35.0
 	github.com/testcontainers/testcontainers-go/modules/redis v0.35.0
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
 )
@@ -215,7 +216,6 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
 	github.com/tendermint/go-amino v0.16.0 // indirect
 	github.com/tendermint/tendermint v0.35.9 // indirect
-	github.com/testcontainers/testcontainers-go v0.35.0 // indirect
 	github.com/tidwall/btree v1.7.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect

@@ -9,6 +9,7 @@ import (
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
+	"github.com/satlayer/satlayer-bvs/bvs-cw/types/bvs-driver"
 )
 
 type BVSDriver interface {
@@ -64,8 +65,8 @@ func (s *bvsDriverImpl) newExecuteOptions(executeMsg []byte, memo string) types.
 func (s *bvsDriverImpl) SetRegisteredBVSContract(ctx context.Context, addr string) (*coretypes.ResultTx, error) {
 	s.registeredBVSContract = addr
 
-	msg := types.AddRegisteredBVSContractReq{
-		AddRegisteredBVSContract: types.AddRegisteredBVSContract{
+	msg := bvs_driver.ExecuteMsg{
+		AddRegisteredBvsContract: &bvs_driver.AddRegisteredBvsContract{
 			Address: addr,
 		},
 	}
