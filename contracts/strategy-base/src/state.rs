@@ -11,3 +11,4 @@ pub struct StrategyState {
 
 pub const STRATEGY_STATE: Item<StrategyState> = Item::new("strategy_state");
 pub const OWNER: Item<Addr> = Item::new("owner");
+pub const PENDING_OWNER: Item<Option<Addr>> = Item::new("pending_owner");

@@ -38,9 +38,11 @@ pub enum ExecuteMsg {
     CancelSalt {
         salt: String,
     },
-    TransferOwnership {
+    TwoStepTransferOwnership {
         new_owner: String,
     },
+    AcceptOwnership {},
+    CancelOwnershipTransfer {},
     Pause {},
     Unpause {},
     SetPauser {

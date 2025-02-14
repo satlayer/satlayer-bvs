@@ -32,4 +32,7 @@ pub enum ContractError {
 
     #[error("StrategyBaseTVLLimits.deposit: max total deposits exceeded")]
     MaxTotalDepositsExceeded {},
+
+    #[error("StrategyBaseTVLLimits.twoStepTransferOwnership: no pending owner")]
+    NoPendingOwner {},
 }

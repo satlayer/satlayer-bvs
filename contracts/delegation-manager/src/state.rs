@@ -22,5 +22,6 @@ pub const MIN_WITHDRAWAL_DELAY_BLOCKS: Item<u64> = Item::new("min_withdrawal_del
 pub const CUMULATIVE_WITHDRAWALS_QUEUED: Map<&Addr, Uint128> =
     Map::new("cumulative_withdrawals_queued");
 pub const OWNER: Item<Addr> = Item::new("owner");
+pub const PENDING_OWNER: Item<Option<Addr>> = Item::new("pending_owner");
 pub const DELEGATION_APPROVER_SALT_SPENT: Map<(&Addr, String), bool> =
     Map::new("delegation_approver_salt_spent");

@@ -81,4 +81,7 @@ pub enum ContractError {
 
     #[error("DelegationManager.increase_delegated_shares: not delegated")]
     NotDelegated {},
+
+    #[error("DelegationManager.twoStepTransferOwnership: no pending owner")]
+    NoPendingOwner {},
 }

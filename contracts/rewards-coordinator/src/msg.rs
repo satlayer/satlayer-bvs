@@ -61,9 +61,11 @@ pub enum ExecuteMsg {
     SetGlobalOperatorCommission {
         new_commission_bips: u16,
     },
-    TransferOwnership {
+    TwoStepTransferOwnership {
         new_owner: String,
     },
+    AcceptOwnership {},
+    CancelOwnershipTransfer {},
     Pause {},
     Unpause {},
     SetPauser {

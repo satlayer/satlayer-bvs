@@ -11,4 +11,7 @@ pub enum ContractError {
 
     #[error("BvsDriver.migrate: unauthorized")]
     Unauthorized {},
+
+    #[error("BvsDriver.migrate: no pending owner")]
+    NoPendingOwner {},
 }

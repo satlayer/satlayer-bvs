@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const DEPLOYED_STRATEGIES: Map<&Addr, Addr> = Map::new("strategies");
 pub const IS_BLACKLISTED: Map<&Addr, bool> = Map::new("is_blacklisted");
+pub const PENDING_OWNER: Item<Option<Addr>> = Item::new("pending_owner");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {

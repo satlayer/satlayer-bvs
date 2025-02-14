@@ -74,4 +74,7 @@ pub enum ContractError {
 
     #[error("SlashManager.submit_slash_request: invalid time range")]
     InvalidTimeRange {},
+
+    #[error("SlashManager.twoStepTransferOwnership: no pending owner")]
+    NoPendingOwner {},
 }

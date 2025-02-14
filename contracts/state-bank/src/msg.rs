@@ -10,7 +10,9 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     Set { key: String, value: String },
     AddRegisteredBvsContract { address: String },
-    TransferOwnership { new_owner: String },
+    TwoStepTransferOwnership { new_owner: String },
+    AcceptOwnership {},
+    CancelOwnershipTransfer {},
 }
 
 #[cw_serde]

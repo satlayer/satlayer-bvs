@@ -26,4 +26,7 @@ pub enum ContractError {
 
     #[error("DelegationManager.IsOperator: operator not registered yet from delegation manager")]
     OperatorNotRegisteredFromDelegationManager {},
+
+    #[error("BVSDirectory.twoStepTransferOwnership: no pending owner")]
+    NoPendingOwner {},
 }

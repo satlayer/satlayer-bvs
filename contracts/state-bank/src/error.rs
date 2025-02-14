@@ -11,4 +11,7 @@ pub enum ContractError {
 
     #[error("Statebank.migrate: unauthorized")]
     Unauthorized {},
+
+    #[error("Statebank: No pending owner")]
+    NoPendingOwner {},
 }

@@ -11,5 +11,6 @@ pub struct StrategyState {
 
 pub const STRATEGY_STATE: Item<StrategyState> = Item::new("strategy_state");
 pub const OWNER: Item<Addr> = Item::new("owner");
+pub const PENDING_OWNER: Item<Option<Addr>> = Item::new("pending_owner");
 pub const MAX_PER_DEPOSIT: Item<Uint128> = Item::new("max_per_deposit");
 pub const MAX_TOTAL_DEPOSITS: Item<Uint128> = Item::new("max_total_deposits");
