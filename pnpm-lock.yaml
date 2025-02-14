@@ -118,6 +118,8 @@ importers:
 
   modules: {}
 
+  modules/babylon-testcontainer: {}
+
   modules/bvs-api: {}
 
   modules/bvs-cli: {}
