@@ -169,10 +169,8 @@ pub fn deposit(
         &env.contract.address,
     )?;
 
-    let before_balance = balance - amount;
-
     let max_total_deposits = MAX_TOTAL_DEPOSITS.load(deps.storage)?;
-    if before_balance + amount > max_total_deposits {
+    if balance > max_total_deposits {
         return Err(ContractError::MaxTotalDepositsExceeded {});
     }
 
