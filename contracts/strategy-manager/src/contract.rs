@@ -1035,14 +1035,8 @@ pub fn staker_strategy_list_length(deps: Deps, staker: Addr) -> StdResult<Uint12
     Ok(Uint128::new(strategies.len() as u128))
 }
 
-pub fn migrate(
-    deps: DepsMut,
-    _env: Env,
-    info: &MessageInfo,
-    _msg: MigrateMsg,
-) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), info)?;
-
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     Ok(Response::new().add_attribute("method", "migrate"))
@@ -1060,7 +1054,6 @@ mod tests {
     use cosmwasm_std::{
         attr, from_json, Addr, ContractResult, OwnedDeps, SystemError, SystemResult,
     };
-    use cw2::get_contract_version;
     use ripemd::Ripemd160;
     use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
     use sha2::{Digest, Sha256};
@@ -2859,37 +2852,6 @@ mod tests {
         match err {
             ContractError::Unauthorized {} => {}
             e => panic!("Expected Unauthorized error, got: {:?}", e),
-        }
-    }
-
-    #[test]
-    fn test_migrate_owner_vs_non_owner() {
-        let (
-            mut deps,
-            env,
-            owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let migrate_msg = MigrateMsg {};
-        let res = migrate(deps.as_mut(), env.clone(), &owner_info, migrate_msg.clone()).unwrap();
-
-        assert_eq!(res, Response::new().add_attribute("method", "migrate"));
-
-        let version = get_contract_version(deps.as_ref().storage).unwrap();
-        assert_eq!(version.contract, CONTRACT_NAME);
-        assert_eq!(version.version, CONTRACT_VERSION);
-
-        let non_owner_info = message_info(&Addr::unchecked("not_owner"), &[]);
-
-        let res = migrate(deps.as_mut(), env, &non_owner_info, migrate_msg);
-
-        match res {
-            Err(ContractError::Unauthorized {}) => {}
-            _ => panic!("Expected Unauthorized error"),
         }
     }
 
