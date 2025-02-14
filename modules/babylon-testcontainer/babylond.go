@@ -2,9 +2,15 @@ package babylond
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/cometbft/cometbft/rpc/client/http"
+	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/prometheus/client_golang/prometheus"
+	rio "io"
+	// TODO(fuxingloh): should remove internal dependencies from this package
+	//  this package should act as a standalone package for running babylond
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
 	apilogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
@@ -19,10 +25,7 @@ const (
 	apiPort  = "1317"
 	grpcPort = "9090"
 	rpcPort  = "26657"
-
-	BabylonHomePath   = "/home/babylon/.babylond"
-	BabylonOutputPath = "sat-bbn-localnet"
-	ChainId           = "sat-bbn-localnet"
+	ChainId  = "sat-bbn-localnet"
 )
 
 type BabylonContainer struct {
@@ -56,6 +59,12 @@ func (d *BabylonContainer) GetGrpcEndpoint() string {
 	return fmt.Sprintf("grcp://%s", d.getHost(grpcPort))
 }
 
+func (d *BabylonContainer) GetRpcClient() (*http.HTTP, error) {
+	endpoint := d.GetRpcUrl()
+	return client.NewClientFromNode(endpoint)
+}
+
+// Deprecated: GetChainIO is deprecated, use GetRpcClient instead
 func (d *BabylonContainer) GetChainIO() (io.ChainIO, error) {
 	homeDir := "../.babylon"
 	logger := apilogger.NewMockELKLogger()
@@ -69,33 +78,32 @@ func (d *BabylonContainer) GetChainIO() (io.ChainIO, error) {
 }
 
 func Run(ctx context.Context) (*BabylonContainer, error) {
-	// Setup Testnet
+	// Setup Testnet Config
 	initCmd := []string{
 		"babylond",
 		"testnet",
 		"--v",
 		"1",
+		"--blocks-per-year",
+		"31536000", // one block per second
 		"--output-dir",
-		BabylonOutputPath,
+		".localnet",
 		"--keyring-backend",
 		"test",
 		"--chain-id",
 		ChainId,
-		"--home",
-		BabylonHomePath,
 	}
 
 	startCmd := []string{
 		"babylond",
 		"start",
 		"--home",
-		fmt.Sprintf("%s/node0/babylond", BabylonOutputPath),
+		".localnet/node0/babylond",
 	}
 
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
 			Image: "babylonlabs/babylond:v1.0.0-rc.5",
-			// TODO(fuxingloh): change entrypoint to babylond
 			Entrypoint: []string{
 				"sh",
 				"-c",
@@ -104,7 +112,17 @@ func Run(ctx context.Context) (*BabylonContainer, error) {
 				strings.Join(initCmd[:], " ") + " && " + strings.Join(startCmd[:], " "),
 			},
 			ExposedPorts: []string{apiPort, grpcPort, rpcPort},
-			WaitingFor:   wait.ForHTTP("/status").WithPort(rpcPort),
+			WaitingFor: wait.ForHTTP("/status").
+				WithPort(rpcPort).WithResponseMatcher(func(body rio.Reader) bool {
+				var data map[string]interface{}
+				if err := json.NewDecoder(body).Decode(&data); err != nil {
+					return false
+				}
+				data = data["result"].(map[string]interface{})
+				data = data["sync_info"].(map[string]interface{})
+				height := data["latest_block_height"].(string)
+				return height != "0"
+			}),
 		},
 		Started: true,
 	})
