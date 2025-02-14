@@ -21,9 +21,8 @@ const (
 	rpcPort  = "26657"
 
 	BabylonHomePath   = "/home/babylon/.babylond"
-	BabylonOutputPath = ".localnet"
-	DockerVolume      = "babylon-node"
-	ChainId           = "localnet" // TODO: update chain-id to be unique
+	BabylonOutputPath = "sat-bbn-localnet"
+	ChainId           = "sat-bbn-localnet"
 )
 
 type BabylonContainer struct {
