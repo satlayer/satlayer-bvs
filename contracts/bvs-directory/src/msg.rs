@@ -10,6 +10,8 @@ use cosmwasm_std::Binary;
 pub struct InstantiateMsg {
     pub initial_owner: String,
     pub delegation_manager: String,
+    pub state_bank: String,
+    pub bvs_driver: String,
     pub pauser: String,
     pub unpauser: String,
     pub initial_paused_status: u8,

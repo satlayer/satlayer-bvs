@@ -4,7 +4,7 @@ use crate::{
     msg::InstantiateMsg,
     msg::MigrateMsg,
     msg::QueryMsg,
-    state::{IS_BVS_CONTRACT_REGISTERED, OWNER, PENDING_OWNER},
+    state::{BVS_DIRECTORY, IS_BVS_CONTRACT_REGISTERED, OWNER, PENDING_OWNER},
 };
 
 use cosmwasm_std::{
@@ -27,6 +27,9 @@ pub fn instantiate(
     let owner = deps.api.addr_validate(&msg.initial_owner)?;
     OWNER.save(deps.storage, &owner)?;
 
+    let bvs_directory = deps.api.addr_validate(&msg.bvs_directory)?;
+    BVS_DIRECTORY.save(deps.storage, &bvs_directory)?;
+
     let response = Response::new().add_attribute("method", "instantiate");
 
     Ok(response)
@@ -43,6 +46,9 @@ pub fn execute(
         ExecuteMsg::ExecuteBvsOffchain { task_id } => execute_bvs_offchain(deps, info, task_id),
         ExecuteMsg::AddRegisteredBvsContract { address } => {
             add_registered_bvs_contract(deps, info, Addr::unchecked(address))
+        }
+        ExecuteMsg::SetBVSDirectory { new_directory } => {
+            set_bvs_directory(deps, info, new_directory)
         }
         ExecuteMsg::TwoStepTransferOwnership { new_owner } => {
             let new_owner_addr = deps.api.addr_validate(&new_owner)?;
@@ -79,6 +85,8 @@ pub fn add_registered_bvs_contract(
     info: MessageInfo,
     address: Addr,
 ) -> Result<Response, ContractError> {
+    only_directory(deps.as_ref(), &info)?;
+
     IS_BVS_CONTRACT_REGISTERED.save(deps.storage, &Addr::unchecked(address.clone()), &true)?;
 
     Ok(Response::new().add_event(
@@ -86,6 +94,22 @@ pub fn add_registered_bvs_contract(
             .add_attribute("sender", info.sender.to_string())
             .add_attribute("address", address.to_string()),
     ))
+}
+
+pub fn set_bvs_directory(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_directory: String,
+) -> Result<Response, ContractError> {
+    only_owner(deps.as_ref(), &info)?;
+
+    let new_directory_addr = deps.api.addr_validate(&new_directory)?;
+
+    BVS_DIRECTORY.save(deps.storage, &new_directory_addr)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "set_bvs_directory")
+        .add_attribute("new_directory", new_directory))
 }
 
 pub fn two_step_transfer_ownership(
@@ -150,6 +174,14 @@ fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     Ok(())
 }
 
+fn only_directory(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+    let directory = BVS_DIRECTORY.load(deps.storage)?;
+    if info.sender != directory {
+        return Err(ContractError::NotBVSDirectory {});
+    }
+    Ok(())
+}
+
 pub fn migrate(
     deps: DepsMut,
     _env: Env,
@@ -178,8 +210,11 @@ mod tests {
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
         let owner = deps.api.addr_make("owner").to_string();
+        let directory = deps.api.addr_make("directory").to_string();
+
         let msg = InstantiateMsg {
             initial_owner: owner,
+            bvs_directory: directory,
         };
 
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -191,29 +226,34 @@ mod tests {
     fn test_executebvsoffchain() {
         let mut deps = mock_dependencies();
         let env = mock_env();
+
+        let owner = deps.api.addr_make("owner");
+        let directory = deps.api.addr_make("directory");
+
+        let init_msg = InstantiateMsg {
+            initial_owner: owner.to_string(),
+            bvs_directory: directory.to_string(),
+        };
+        let init_info = message_info(&Addr::unchecked("creator"), &[]);
+        instantiate(deps.as_mut(), env.clone(), init_info, init_msg).unwrap();
+
+        let directory_info = message_info(&directory, &[]);
+
         let bvs_contract = Addr::unchecked("bvs_contract");
-        let info = message_info(&bvs_contract, &[]);
+        let add_msg = ExecuteMsg::AddRegisteredBvsContract {
+            address: bvs_contract.to_string(),
+        };
+        execute(deps.as_mut(), env.clone(), directory_info.clone(), add_msg).unwrap();
+
+        let bvs_info = message_info(&bvs_contract, &[]);
         let task_id = "1000".to_string();
-
-        execute(
-            deps.as_mut(),
-            env.clone(),
-            info.clone(),
-            ExecuteMsg::AddRegisteredBvsContract {
-                address: bvs_contract.to_string(),
-            },
-        )
-        .unwrap();
-
-        let msg = ExecuteMsg::ExecuteBvsOffchain {
+        let offchain_msg = ExecuteMsg::ExecuteBvsOffchain {
             task_id: task_id.clone(),
         };
-        let res = execute(deps.as_mut(), env, info, msg).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), bvs_info.clone(), offchain_msg).unwrap();
 
         assert_eq!(1, res.events.len());
-
         assert_eq!("ExecuteBVSOffchain", res.events[0].ty);
-
         assert_eq!(
             res.events[0].attributes,
             vec![
@@ -269,18 +309,33 @@ mod tests {
     fn test_add_registered_bvs_contract() {
         let mut deps = mock_dependencies();
         let env = mock_env();
-        let info = message_info(&Addr::unchecked("admin"), &[]);
-        let bvs_contract_address = "bvs_contract_123";
+
+        let owner = deps.api.addr_make("owner");
+        let directory = deps.api.addr_make("directory");
+
+        let init_msg = InstantiateMsg {
+            initial_owner: owner.to_string(),
+            bvs_directory: directory.to_string(),
+        };
+        let init_info = message_info(&Addr::unchecked("creator"), &[]);
+        instantiate(deps.as_mut(), env.clone(), init_info, init_msg).unwrap();
+
+        let directory_addr = Addr::unchecked(&directory);
+        let info = message_info(&directory_addr, &[]);
+        let bvs_contract_address = "bvs_contract_123".to_string();
         let msg = ExecuteMsg::AddRegisteredBvsContract {
-            address: bvs_contract_address.to_string(),
+            address: bvs_contract_address.clone(),
         };
 
-        let res = execute(deps.as_mut(), env, info, msg).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         assert_eq!(1, res.events.len());
         assert_eq!("add_registered_bvs_contract", res.events[0].ty);
         assert_eq!(
-            vec![("sender", "admin"), ("address", bvs_contract_address),],
+            vec![
+                ("sender", directory_addr.to_string()),
+                ("address", bvs_contract_address.clone()),
+            ],
             res.events[0].attributes
         );
 
@@ -300,9 +355,11 @@ mod tests {
         let env = mock_env();
 
         let initial_owner = deps.api.addr_make("initial_owner");
+        let bvs_directory = deps.api.addr_make("bvs_directory");
 
         let init_msg = InstantiateMsg {
             initial_owner: initial_owner.to_string(),
+            bvs_directory: bvs_directory.to_string(),
         };
 
         let init_info = message_info(&Addr::unchecked("creator"), &[]);
@@ -378,5 +435,45 @@ mod tests {
             ContractError::Unauthorized {} => {}
             e => panic!("Expected Unauthorized error, got: {:?}", e),
         }
+    }
+
+    #[test]
+    fn test_set_bvs_directory() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        let owner = deps.api.addr_make("owner");
+        let initial_directory = deps.api.addr_make("initial_directory");
+
+        let init_msg = InstantiateMsg {
+            initial_owner: owner.to_string(),
+            bvs_directory: initial_directory.to_string(),
+        };
+        let init_info = message_info(&Addr::unchecked("creator"), &[]);
+        instantiate(deps.as_mut(), env.clone(), init_info, init_msg).unwrap();
+
+        let non_owner = deps.api.addr_make("non_owner");
+        let non_owner_info = message_info(&non_owner, &[]);
+        let new_directory = deps.api.addr_make("new_directory");
+
+        let msg = ExecuteMsg::SetBVSDirectory {
+            new_directory: new_directory.to_string(),
+        };
+        let err = execute(deps.as_mut(), env.clone(), non_owner_info, msg.clone()).unwrap_err();
+        assert!(matches!(err, ContractError::Unauthorized {}));
+
+        let owner_info = message_info(&owner, &[]);
+        let res = execute(deps.as_mut(), env.clone(), owner_info, msg).unwrap();
+
+        assert_eq!(
+            res.attributes,
+            vec![
+                ("action", "set_bvs_directory"),
+                ("new_directory", new_directory.as_str()),
+            ]
+        );
+
+        let stored_directory = BVS_DIRECTORY.load(&deps.storage).unwrap();
+        assert_eq!(stored_directory, new_directory);
     }
 }
