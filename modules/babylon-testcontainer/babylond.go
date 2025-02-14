@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
+	"github.com/cosmos/cosmos-sdk/codec"
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -57,10 +60,17 @@ func (d *BabylonContainer) ClientCtx() client.Context {
 		panic(err)
 	}
 
+	interfaceRegistry := codectypes.NewInterfaceRegistry()
+	protoCodec := codec.NewProtoCodec(interfaceRegistry)
+	txConfig := authtx.NewTxConfig(protoCodec, authtx.DefaultSignModes)
+
 	return client.Context{}.
 		WithChainID(ChainId).
 		WithClient(rpcClient).
 		WithOutputFormat("json").
+		WithTxConfig(txConfig).
+		WithCodec(protoCodec).
+		WithInterfaceRegistry(interfaceRegistry).
 		WithBroadcastMode(flags.BroadcastSync)
 }
 
@@ -71,14 +81,18 @@ func Run(ctx context.Context) (*BabylonContainer, error) {
 		"testnet",
 		"--v",
 		"1",
-		"--blocks-per-year",
-		"31536000", // one block per second
 		"--output-dir",
 		".localnet",
 		"--keyring-backend",
 		"test",
 		"--chain-id",
 		ChainId,
+		"&&",
+		// Update Timeout Commit from 5s to 1s
+		"sed",
+		"-i",
+		"'s/timeout_commit = \"5s\"/timeout_commit = \"1s\"/'",
+		".localnet/node0/babylond/config/config.toml",
 		"&&",
 		// Setup Keyring
 		"babylond",
@@ -91,7 +105,7 @@ func Run(ctx context.Context) (*BabylonContainer, error) {
 		"--home",
 		".localnet/node0/babylond",
 		"&&",
-		//// Setup Genesis Account
+		// Setup Genesis Account
 		"babylond",
 		"add-genesis-account",
 		"bbn1lmnc4gcvcu5dexa8p6vv2e6qkas5lu2r2nwlnv",
