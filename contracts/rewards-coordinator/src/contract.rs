@@ -987,6 +987,7 @@ fn check_claim_internal(
             claim.token_indices[i],
             &claim.token_tree_proofs[i],
             &claim.token_leaves[i],
+            claim.token_leaves.len(),
         )?;
     }
 
@@ -998,8 +999,21 @@ fn verify_token_claim_proof(
     token_leaf_index: u32,
     token_proof: &[u8],
     token_leaf: &TokenTreeMerkleLeaf,
+    total_token_leaves: usize,
 ) -> Result<(), ContractError> {
-    if token_leaf_index >= (1 << (token_proof.len() / 32)) {
+    let padded_leaves = total_token_leaves.next_power_of_two();
+
+    let expected_depth = padded_leaves.trailing_zeros() as usize;
+    let expected_proof_length = expected_depth * 32;
+
+    if token_proof.len() != expected_proof_length {
+        return Err(ContractError::InvalidProofLength {
+            expected: expected_proof_length,
+            actual: token_proof.len(),
+        });
+    }
+
+    if token_leaf_index >= padded_leaves as u32 {
         return Err(ContractError::InvalidTokenLeafIndex {});
     }
 
@@ -2778,13 +2792,11 @@ mod tests {
             cumulative_earnings: Uint128::new(400),
         };
 
-        // Calculate hashes for each leaf
         let hash_a = calculate_token_leaf_hash(&leaf_a);
         let hash_b = calculate_token_leaf_hash(&leaf_b);
         let hash_c = calculate_token_leaf_hash(&leaf_c);
         let hash_d = calculate_token_leaf_hash(&leaf_d);
 
-        // Create the Merkle tree and calculate root
         let leaves = vec![
             hash_a.clone(),
             hash_b.clone(),
@@ -2793,43 +2805,46 @@ mod tests {
         ];
         let merkle_root = merkleize_sha256(leaves.clone());
 
-        // Calculate parent hashes
         let parent_ab = merkleize_sha256(vec![hash_a.clone(), hash_b.clone()]);
         let parent_cd = merkleize_sha256(vec![hash_c.clone(), hash_d.clone()]);
 
-        // Create proofs for each leaf
-        let proof_a = [hash_b.clone(), parent_cd.clone()];
-        let proof_b = [hash_a.clone(), parent_cd.clone()];
-        let proof_c = [hash_d.clone(), parent_ab.clone()];
-        let proof_d = [hash_c.clone(), parent_ab.clone()];
+        let proof_a = [hash_b.clone(), parent_cd.clone()]; // proof for leaf at index 0
+        let proof_b = [hash_a.clone(), parent_cd.clone()]; // index 1
+        let proof_c = [hash_d.clone(), parent_ab.clone()]; // index 2
+        let proof_d = [hash_c.clone(), parent_ab.clone()]; // index 3
 
-        // Verify proofs using _verify_token_claim_proof function
+        let total_token_leaves = 4;
+
         assert!(verify_token_claim_proof(
             Binary::from(merkle_root.clone()),
             0,
             &proof_a.concat(),
-            &leaf_a
+            &leaf_a,
+            total_token_leaves
         )
         .is_ok());
         assert!(verify_token_claim_proof(
             Binary::from(merkle_root.clone()),
             1,
             &proof_b.concat(),
-            &leaf_b
+            &leaf_b,
+            total_token_leaves
         )
         .is_ok());
         assert!(verify_token_claim_proof(
             Binary::from(merkle_root.clone()),
             2,
             &proof_c.concat(),
-            &leaf_c
+            &leaf_c,
+            total_token_leaves
         )
         .is_ok());
         assert!(verify_token_claim_proof(
             Binary::from(merkle_root.clone()),
             3,
             &proof_d.concat(),
-            &leaf_d
+            &leaf_d,
+            total_token_leaves
         )
         .is_ok());
     }
@@ -2929,11 +2944,13 @@ mod tests {
             &earner1
         )
         .is_ok());
+
         assert!(verify_token_claim_proof(
             Binary::from(root_a_b_c_d.clone()),
             0,
             &proof_b.concat(),
-            &leaf_a
+            &leaf_a,
+            4
         )
         .is_ok());
     }

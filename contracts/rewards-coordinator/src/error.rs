@@ -112,4 +112,7 @@ pub enum ContractError {
 
     #[error("RewardsCoordinator.twoStepTransferOwnership: no pending owner")]
     NoPendingOwner {},
+
+    #[error("RewardsCoordinator.verify_token_claim_proof: invalid proof length")]
+    InvalidProofLength { expected: usize, actual: usize },
 }
