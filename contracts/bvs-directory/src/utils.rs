@@ -8,6 +8,11 @@ pub const DOMAIN_TYPEHASH: &[u8] =
     b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
 pub const DOMAIN_NAME: &[u8] = b"SatLayer";
 
+const SECP256K1_HALF_ORDER: [u8; 32] = [
+    0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0x5D, 0x57, 0x6E, 0x73, 0x57, 0xA4, 0x50, 0x1D, 0xDF, 0xE9, 0x2F, 0x46, 0x68, 0x1B, 0x20, 0xA1,
+];
+
 pub fn sha256(input: &[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();
     hasher.update(input);
@@ -59,6 +64,16 @@ pub fn calculate_digest_hash(
 }
 
 pub fn recover(digest_hash: &[u8], signature: &[u8], public_key_bytes: &[u8]) -> StdResult<bool> {
+    if signature.len() != 64 {
+        return Ok(false);
+    }
+
+    let s = &signature[32..];
+
+    if s > &SECP256K1_HALF_ORDER[..] {
+        return Ok(false);
+    }
+
     match secp256k1_verify(digest_hash, signature, public_key_bytes) {
         Ok(valid) => Ok(valid),
         Err(_) => Ok(false),
