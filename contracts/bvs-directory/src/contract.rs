@@ -246,6 +246,7 @@ pub fn register_operator(
 
     let message_bytes = calculate_digest_hash(
         env,
+        &operator,
         &public_key,
         &info.sender,
         &operator_signature.salt,
@@ -409,6 +410,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&query_operator_status(deps, bvs_addr, operator_addr)?)
         }
         QueryMsg::CalculateDigestHash {
+            operator,
             operator_public_key,
             bvs,
             salt,
@@ -419,8 +421,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let salt = Binary::from_base64(&salt)?;
             let bvs_addr = Addr::unchecked(bvs);
             let contract_addr = Addr::unchecked(contract_addr);
+            let operator_addr = Addr::unchecked(operator);
 
             let params = DigestHashParams {
+                operator: operator_addr,
                 operator_public_key: public_key_binary,
                 bvs: bvs_addr,
                 salt,
@@ -479,6 +483,7 @@ fn query_calculate_digest_hash(
 ) -> StdResult<DigestHashResponse> {
     let digest_hash = calculate_digest_hash(
         env,
+        &params.operator,
         &params.operator_public_key,
         &params.bvs,
         &params.salt,
@@ -786,6 +791,7 @@ mod tests {
 
         let message_byte = calculate_digest_hash(
             env.clone(),
+            &operator,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -883,6 +889,7 @@ mod tests {
 
         let message_byte = calculate_digest_hash(
             env.clone(),
+            &operator,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -1121,6 +1128,7 @@ mod tests {
 
         let message_byte = calculate_digest_hash(
             env.clone(),
+            &operator,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -1240,7 +1248,7 @@ mod tests {
             instantiate_contract();
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
-        let (_operator, _secret_key, public_key_bytes) =
+        let (operator, _secret_key, public_key_bytes) =
             generate_osmosis_public_key_from_private_key(private_key_hex);
 
         let salt = Binary::from(b"salt");
@@ -1250,6 +1258,7 @@ mod tests {
         let expiry = 2722875888;
 
         let query_msg = QueryMsg::CalculateDigestHash {
+            operator: operator.to_string(),
             operator_public_key: public_key_hex.to_string(),
             bvs: info.sender.to_string(),
             salt: salt.to_string(),
@@ -1262,6 +1271,7 @@ mod tests {
 
         let expected_digest_hash = calculate_digest_hash(
             env.clone(),
+            &operator,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -1293,6 +1303,7 @@ mod tests {
 
         let message_byte = calculate_digest_hash(
             env.clone(),
+            &operator,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -1443,6 +1454,7 @@ mod tests {
 
         let message_byte = calculate_digest_hash(
             env.clone(),
+            &operator,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -1504,7 +1516,7 @@ mod tests {
         );
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
-        let (_operator, secret_key, public_key_bytes) =
+        let (operator, secret_key, public_key_bytes) =
             generate_osmosis_public_key_from_private_key(private_key_hex);
 
         let expiry = 1722965888;
@@ -1514,6 +1526,7 @@ mod tests {
 
         let message_byte = calculate_digest_hash(
             env.clone(),
+            &operator,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
