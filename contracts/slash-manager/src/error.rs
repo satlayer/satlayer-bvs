@@ -53,4 +53,16 @@ pub enum ContractError {
 
     #[error("SlashManager.execute_slash_request: insufficient shares for staker")]
     InsufficientSharesForStaker { staker: String },
+
+    #[error("SlashManager.execute_slash_request: slash not started")]
+    SlashNotStarted {},
+
+    #[error("SlashManager.execute_slash_request: slash expired")]
+    SlashExpired {},
+
+    #[error("SlashManager.execute_slash_request: signature empty")]
+    SignatureEmpty {},
+
+    #[error("SlashManager.execute_slash_request: signature not enough")]
+    SignatureNotEnough {},
 }

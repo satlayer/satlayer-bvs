@@ -24,6 +24,7 @@ use cosmwasm_std::{
     StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
+use std::collections::HashSet;
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -270,16 +271,30 @@ pub fn execute_slash_request(
     validators_public_keys: Vec<Binary>,
 ) -> Result<Response, ContractError> {
     only_when_not_paused(deps.as_ref(), PAUSED_EXECUTE_SLASH_REQUEST)?;
-
     only_slasher(deps.as_ref(), &info)?;
 
-    let slash_details = match SLASH_DETAILS.may_load(deps.storage, slash_hash.clone())? {
-        Some(details) => details,
-        None => return Err(ContractError::SlashDetailsNotFound {}),
-    };
+    let mut slash_details = SLASH_DETAILS
+        .may_load(deps.storage, slash_hash.clone())?
+        .ok_or(ContractError::SlashDetailsNotFound {})?;
 
     if !slash_details.status {
         return Err(ContractError::InvalidSlashStatus {});
+    }
+
+    let current_time = env.block.time.seconds();
+    if current_time < slash_details.start_time {
+        return Err(ContractError::SlashNotStarted {});
+    }
+    if current_time > slash_details.end_time {
+        return Err(ContractError::SlashExpired {});
+    }
+
+    if signatures.is_empty() {
+        return Err(ContractError::SignatureEmpty {});
+    }
+
+    if signatures.len() != validators_public_keys.len() {
+        return Err(ContractError::InvalidInputLength {});
     }
 
     let message_bytes = calculate_slash_hash(
@@ -292,10 +307,22 @@ pub fn execute_slash_request(
             .collect::<Vec<_>>(),
     );
 
+    let mut valid_signatures_count = 0u64;
+    let mut used_pubkeys: HashSet<Vec<u8>> = HashSet::new();
+
     for (signature, public_key) in signatures.iter().zip(validators_public_keys.iter()) {
-        if !recover(&message_bytes, signature.as_slice(), public_key.as_slice())? {
+        if recover(&message_bytes, signature.as_slice(), public_key.as_slice())? {
+            if !used_pubkeys.contains(&public_key.to_vec()) {
+                used_pubkeys.insert(public_key.to_vec());
+                valid_signatures_count += 1;
+            }
+        } else {
             return Err(ContractError::InvalidSignature {});
         }
+    }
+
+    if valid_signatures_count < slash_details.slash_signature {
+        return Err(ContractError::SignatureNotEnough {});
     }
 
     let query_msg = DelegationManagerQueryMsg::GetOperatorStakers {
@@ -305,93 +332,112 @@ pub fn execute_slash_request(
         .querier
         .query_wasm_smart(DELEGATION_MANAGER.load(deps.storage)?, &query_msg)?;
 
-    let number_of_stakers = Uint128::from(stakers_response.stakers_and_shares.len() as u64);
+    if stakers_response.stakers_and_shares.is_empty() {
+        return Err(ContractError::NoStakersUnderOperator {});
+    }
 
-    if number_of_stakers.is_zero() {
+    let mut sum_of_shares = Uint128::zero();
+    for staker_info in &stakers_response.stakers_and_shares {
+        let staker_total_share = staker_info
+            .shares_per_strategy
+            .iter()
+            .fold(Uint128::zero(), |acc, (_, s)| acc + *s);
+        sum_of_shares += staker_total_share;
+    }
+    if sum_of_shares.is_zero() {
         return Err(ContractError::NoStakersUnderOperator {});
     }
 
     let total_slash_share = slash_details.share;
-
-    let slash_share_per_staker = total_slash_share
-        .checked_div(number_of_stakers)
-        .map_err(|_| ContractError::Overflow {})?;
-
-    if slash_share_per_staker.is_zero() {
+    if total_slash_share.is_zero() {
         return Err(ContractError::SlashShareTooSmall {});
     }
 
     let mut messages = vec![];
 
-    for (_index, staker_shares) in stakers_response.stakers_and_shares.iter().enumerate() {
-        let mut remaining_slash_amount = slash_share_per_staker;
+    for staker_info in &stakers_response.stakers_and_shares {
+        let staker_total_share = staker_info
+            .shares_per_strategy
+            .iter()
+            .fold(Uint128::zero(), |acc, (_, s)| acc + *s);
 
-        if remaining_slash_amount.is_zero() {
+        let staker_slash = staker_total_share
+            .checked_mul(total_slash_share)
+            .map_err(|_| ContractError::Overflow {})?
+            .checked_div(sum_of_shares)
+            .map_err(|_| ContractError::Overflow {})?;
+
+        if staker_slash.is_zero() {
             continue;
         }
 
-        for (strategy, shares) in &staker_shares.shares_per_strategy {
-            if remaining_slash_amount.is_zero() {
+        let mut remaining = staker_slash;
+
+        for (strategy_addr, strategy_share) in &staker_info.shares_per_strategy {
+            if remaining.is_zero() {
+                break;
+            }
+            if staker_total_share.is_zero() {
                 break;
             }
 
-            let slash_amount_in_strategy = remaining_slash_amount.min(*shares);
+            let slash_amount_in_strategy = staker_slash
+                .checked_mul(*strategy_share)
+                .map_err(|_| ContractError::Overflow {})?
+                .checked_div(staker_total_share)
+                .map_err(|_| ContractError::Overflow {})?;
 
-            if slash_amount_in_strategy.is_zero() {
+            let slash_in_strat = slash_amount_in_strategy.min(remaining);
+            if slash_in_strat.is_zero() {
                 continue;
             }
 
-            let decrease_delegated_msg = DelegationManagerExecuteMsg::DecreaseDelegatedShares {
-                staker: staker_shares.staker.to_string(),
-                strategy: strategy.to_string(),
-                shares: slash_amount_in_strategy,
-            };
+            if slash_in_strat > *strategy_share {
+                return Err(ContractError::InsufficientSharesForStaker {
+                    staker: staker_info.staker.to_string(),
+                });
+            }
 
+            let dec_msg = DelegationManagerExecuteMsg::DecreaseDelegatedShares {
+                staker: staker_info.staker.to_string(),
+                strategy: strategy_addr.to_string(),
+                shares: slash_in_strat,
+            };
             messages.push(SubMsg::new(WasmMsg::Execute {
                 contract_addr: DELEGATION_MANAGER.load(deps.storage)?.to_string(),
-                msg: to_json_binary(&decrease_delegated_msg)?,
+                msg: to_json_binary(&dec_msg)?,
                 funds: vec![],
             }));
 
-            let remove_share_msg = StrategyManagerExecuteMsg::RemoveShares {
-                staker: staker_shares.staker.to_string(),
-                strategy: strategy.to_string(),
-                shares: slash_amount_in_strategy,
+            let remove_msg = StrategyManagerExecuteMsg::RemoveShares {
+                staker: staker_info.staker.to_string(),
+                strategy: strategy_addr.to_string(),
+                shares: slash_in_strat,
             };
-
             messages.push(SubMsg::new(WasmMsg::Execute {
                 contract_addr: STRATEGY_MANAGER.load(deps.storage)?.to_string(),
-                msg: to_json_binary(&remove_share_msg)?,
+                msg: to_json_binary(&remove_msg)?,
                 funds: vec![],
             }));
 
-            remaining_slash_amount = remaining_slash_amount
-                .checked_sub(slash_amount_in_strategy)
+            remaining = remaining
+                .checked_sub(slash_in_strat)
                 .map_err(|_| ContractError::Underflow {})?;
-        }
-
-        if !remaining_slash_amount.is_zero() {
-            return Err(ContractError::InsufficientSharesForStaker {
-                staker: staker_shares.staker.to_string(),
-            });
         }
     }
 
-    let mut slash_details = slash_details;
     slash_details.status = false;
     SLASH_DETAILS.save(deps.storage, slash_hash.clone(), &slash_details)?;
 
-    let slash_event = Event::new("slash_executed")
+    let slash_event = Event::new("slash_executed_weighted")
         .add_attribute("action", "execute_slash_request")
-        .add_attribute("slash_hash", slash_hash.clone())
+        .add_attribute("slash_hash", slash_hash)
         .add_attribute("operator", slash_details.operator.to_string())
-        .add_attribute("decreased_share", slash_details.share.to_string());
+        .add_attribute("total_slash_share", slash_details.share.to_string());
 
-    let response = Response::new()
+    Ok(Response::new()
         .add_submessages(messages)
-        .add_event(slash_event);
-
-    Ok(response)
+        .add_event(slash_event))
 }
 
 pub fn cancel_slash_request(
@@ -1351,19 +1397,13 @@ mod tests {
 
         let slasher_addr = deps.api.addr_make("slasher");
         let operator_addr = deps.api.addr_make("operator");
-        let slash_validator = vec![
-            deps.api.addr_make("validator1").to_string(),
-            deps.api.addr_make("validator2").to_string(),
-        ];
-        let slash_validator_addr = vec![
-            deps.api.addr_make("validator1"),
-            deps.api.addr_make("validator2"),
-        ];
+        let slash_validator = vec![deps.api.addr_make("validator1").to_string()];
+        let slash_validator_addr = vec![deps.api.addr_make("validator1")];
 
         let slash_details = ExecuteSlashDetails {
             slasher: slasher_addr.to_string(),
             operator: operator_addr.to_string(),
-            share: Uint128::new(10),
+            share: Uint128::new(1000000),
             slash_signature: 1,
             slash_validator: slash_validator.clone(),
             reason: "Invalid action".to_string(),
@@ -1375,7 +1415,7 @@ mod tests {
         let expected_slash_details = SlashDetails {
             slasher: slasher_addr.clone(),
             operator: operator_addr.clone(),
-            share: Uint128::new(10),
+            share: Uint128::new(1000000),
             slash_signature: 1,
             slash_validator: slash_validator_addr.clone(),
             reason: "Invalid action".to_string(),
@@ -1409,15 +1449,15 @@ mod tests {
                                 StakerShares {
                                     staker: deps.api.addr_make("staker1"),
                                     shares_per_strategy: vec![
-                                        (deps.api.addr_make("strategy1"), Uint128::new(100)),
-                                        (deps.api.addr_make("strategy2"), Uint128::new(200)),
+                                        (deps.api.addr_make("strategy1"), Uint128::new(10000000)),
+                                        (deps.api.addr_make("strategy2"), Uint128::new(20000000)),
                                     ],
                                 },
                                 StakerShares {
                                     staker: deps.api.addr_make("staker2"),
                                     shares_per_strategy: vec![
-                                        (deps.api.addr_make("strategy1"), Uint128::new(150)),
-                                        (deps.api.addr_make("strategy2"), Uint128::new(250)),
+                                        (deps.api.addr_make("strategy1"), Uint128::new(15000000)),
+                                        (deps.api.addr_make("strategy2"), Uint128::new(25000000)),
                                     ],
                                 },
                             ],
@@ -1497,7 +1537,7 @@ mod tests {
 
         assert_eq!(execute_res.events.len(), 1);
         let event = &execute_res.events[0];
-        assert_eq!(event.ty, "slash_executed");
+        assert_eq!(event.ty, "slash_executed_weighted");
         assert_eq!(event.attributes.len(), 4);
 
         assert_eq!(event.attributes[0].key, "action");
@@ -1509,8 +1549,8 @@ mod tests {
         assert_eq!(event.attributes[2].key, "operator");
         assert_eq!(event.attributes[2].value, operator_addr.to_string());
 
-        assert_eq!(event.attributes[3].key, "decreased_share");
-        assert_eq!(event.attributes[3].value, "10");
+        assert_eq!(event.attributes[3].key, "total_slash_share");
+        assert_eq!(event.attributes[3].value, "1000000");
 
         let updated_slash_details = SLASH_DETAILS.load(&deps.storage, slash_hash).unwrap();
         assert_eq!(updated_slash_details.status, false);
