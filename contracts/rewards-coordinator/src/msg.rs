@@ -23,7 +23,7 @@ pub struct InstantiateMsg {
     pub activation_delay: u32,
     pub pauser: String,
     pub unpauser: String,
-    pub initial_paused_status: u8,
+    pub initial_paused_status: u64,
 }
 
 #[cw_serde]
@@ -66,8 +66,14 @@ pub enum ExecuteMsg {
     },
     AcceptOwnership {},
     CancelOwnershipTransfer {},
-    Pause {},
-    Unpause {},
+    PauseAll {},
+    UnpauseAll {},
+    PauseBit {
+        index: u8,
+    },
+    UnpauseBit {
+        index: u8,
+    },
     SetPauser {
         new_pauser: String,
     },
