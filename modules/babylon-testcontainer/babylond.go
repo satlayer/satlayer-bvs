@@ -4,21 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/cometbft/cometbft/rpc/client/http"
 	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/docker/go-connections/nat"
-	"github.com/prometheus/client_golang/prometheus"
-	rio "io"
-	// TODO(fuxingloh): should remove internal dependencies from this package
-	//  this package should act as a standalone package for running babylond
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	apilogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
-	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"io"
 	"strings"
-	"time"
 )
 
 const (
@@ -31,7 +23,6 @@ const (
 type BabylonContainer struct {
 	Ctx       context.Context
 	Container testcontainers.Container
-	// TODO: add http client + grpc client
 }
 
 func (d *BabylonContainer) getHost(port nat.Port) string {
@@ -47,39 +38,35 @@ func (d *BabylonContainer) getHost(port nat.Port) string {
 	return fmt.Sprintf("%s:%s", host, port.Port())
 }
 
-func (d *BabylonContainer) GetApiEndpoint() string {
+func (d *BabylonContainer) GetApiUri() string {
 	return fmt.Sprintf("http://%s", d.getHost(apiPort))
 }
 
-func (d *BabylonContainer) GetRpcUrl() string {
+func (d *BabylonContainer) GetRpcUri() string {
 	return fmt.Sprintf("http://%s", d.getHost(rpcPort))
 }
 
-func (d *BabylonContainer) GetGrpcEndpoint() string {
+func (d *BabylonContainer) GetGrpcUri() string {
 	return fmt.Sprintf("grcp://%s", d.getHost(grpcPort))
 }
 
-func (d *BabylonContainer) GetRpcClient() (*http.HTTP, error) {
-	endpoint := d.GetRpcUrl()
-	return client.NewClientFromNode(endpoint)
-}
+func (d *BabylonContainer) ClientCtx() client.Context {
+	nodeUri := d.GetRpcUri()
+	rpcClient, err := client.NewClientFromNode(nodeUri)
+	if err != nil {
+		panic(err)
+	}
 
-// Deprecated: GetChainIO is deprecated, use GetRpcClient instead
-func (d *BabylonContainer) GetChainIO() (io.ChainIO, error) {
-	homeDir := "../.babylon"
-	logger := apilogger.NewMockELKLogger()
-	metricsIndicators := transactionprocess.NewPromIndicators(prometheus.NewRegistry(), "io")
-	return io.NewChainIO(ChainId, d.GetRpcUrl(), homeDir, "bbn", logger, metricsIndicators, types.TxManagerParams{
-		MaxRetries:             3,
-		RetryInterval:          2 * time.Second,
-		ConfirmationTimeout:    60 * time.Second,
-		GasPriceAdjustmentRate: "1.1",
-	})
+	return client.Context{}.
+		WithChainID(ChainId).
+		WithClient(rpcClient).
+		WithOutputFormat("json").
+		WithBroadcastMode(flags.BroadcastSync)
 }
 
 func Run(ctx context.Context) (*BabylonContainer, error) {
-	// Setup Testnet Config
-	initCmd := []string{
+	cmd := []string{
+		// Setup Testnet
 		"babylond",
 		"testnet",
 		"--v",
@@ -92,9 +79,27 @@ func Run(ctx context.Context) (*BabylonContainer, error) {
 		"test",
 		"--chain-id",
 		ChainId,
-	}
-
-	startCmd := []string{
+		"&&",
+		// Setup Keyring
+		"babylond",
+		"keys",
+		"import-hex",
+		"genesis",
+		"230FAE50A4FFB19125F89D8F321996A46F805E7BCF0CDAC5D102E7A42741887A",
+		"--keyring-backend",
+		"test",
+		"--home",
+		".localnet/node0/babylond",
+		"&&",
+		//// Setup Genesis Account
+		"babylond",
+		"add-genesis-account",
+		"bbn1lmnc4gcvcu5dexa8p6vv2e6qkas5lu2r2nwlnv",
+		"1000000ubbn",
+		"--home",
+		".localnet/node0/babylond",
+		"&&",
+		// Start babylond
 		"babylond",
 		"start",
 		"--home",
@@ -109,11 +114,11 @@ func Run(ctx context.Context) (*BabylonContainer, error) {
 				"-c",
 			},
 			Cmd: []string{
-				strings.Join(initCmd[:], " ") + " && " + strings.Join(startCmd[:], " "),
+				strings.Join(cmd[:], " "),
 			},
 			ExposedPorts: []string{apiPort, grpcPort, rpcPort},
 			WaitingFor: wait.ForHTTP("/status").
-				WithPort(rpcPort).WithResponseMatcher(func(body rio.Reader) bool {
+				WithPort(rpcPort).WithResponseMatcher(func(body io.Reader) bool {
 				var data map[string]interface{}
 				if err := json.NewDecoder(body).Decode(&data); err != nil {
 					return false
