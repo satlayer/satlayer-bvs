@@ -214,10 +214,24 @@ pub fn submit_slash_request(
         return Err(ContractError::InvalidSlashSignature {});
     }
 
-    for validator in slash_details.slash_validator.iter() {
+    let mut unique_validators = std::collections::HashSet::new();
+    for validator in &slash_details.slash_validator {
         if !VALIDATOR.load(deps.storage, validator.clone())? {
             return Err(ContractError::Unauthorized {});
         }
+        if !unique_validators.insert(validator) {
+            return Err(ContractError::DuplicateValidator {});
+        }
+    }
+
+    if !slash_details.slash_validator.is_empty()
+        && slash_details.slash_signature as usize != slash_details.slash_validator.len()
+    {
+        return Err(ContractError::SlashValidatorNotMatch {});
+    }
+
+    if slash_details.start_time >= slash_details.end_time {
+        return Err(ContractError::InvalidTimeRange {});
     }
 
     if slash_details.start_time == 0 || slash_details.start_time < env.block.time.seconds() {
@@ -1147,14 +1161,8 @@ mod tests {
 
         let slasher_addr = deps.api.addr_make("slasher");
         let operator_addr = deps.api.addr_make("operator");
-        let slash_validator = vec![
-            deps.api.addr_make("validator1").to_string(),
-            deps.api.addr_make("validator2").to_string(),
-        ];
-        let slash_validator_addr = vec![
-            deps.api.addr_make("validator1"),
-            deps.api.addr_make("validator2"),
-        ];
+        let slash_validator = vec![deps.api.addr_make("validator1").to_string()];
+        let slash_validator_addr = vec![deps.api.addr_make("validator1")];
 
         let slash_details = ExecuteSlashDetails {
             slasher: slasher_addr.to_string(),
@@ -1223,7 +1231,7 @@ mod tests {
         assert!(res.is_ok());
 
         let res = res.unwrap();
-        assert_eq!(res.events.len(), 3);
+        assert_eq!(res.events.len(), 2);
 
         let event = &res.events[0];
         assert_eq!(event.ty, "slash_request_submitted");
@@ -1276,14 +1284,8 @@ mod tests {
 
         let slasher_addr = deps.api.addr_make("slasher");
         let operator_addr = deps.api.addr_make("operator");
-        let slash_validator = vec![
-            deps.api.addr_make("validator1").to_string(),
-            deps.api.addr_make("validator2").to_string(),
-        ];
-        let slash_validator_addr = vec![
-            deps.api.addr_make("validator1"),
-            deps.api.addr_make("validator2"),
-        ];
+        let slash_validator = vec![deps.api.addr_make("validator1").to_string()];
+        let slash_validator_addr = vec![deps.api.addr_make("validator1")];
 
         let slash_details = ExecuteSlashDetails {
             slasher: slasher_addr.to_string(),

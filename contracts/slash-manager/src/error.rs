@@ -65,4 +65,13 @@ pub enum ContractError {
 
     #[error("SlashManager.execute_slash_request: signature not enough")]
     SignatureNotEnough {},
+
+    #[error("SlashManager.submit_slash_request: duplicate validator")]
+    DuplicateValidator {},
+
+    #[error("SlashManager.submit_slash_request: slash validator not match")]
+    SlashValidatorNotMatch {},
+
+    #[error("SlashManager.submit_slash_request: invalid time range")]
+    InvalidTimeRange {},
 }
