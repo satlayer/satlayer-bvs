@@ -369,7 +369,7 @@ pub fn two_step_transfer_ownership(
     Ok(resp)
 }
 
-fn accept_ownership(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn accept_ownership(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     let pending_owner = PENDING_OWNER.load(deps.storage)?;
 
     let pending_owner_addr = match pending_owner {
@@ -391,7 +391,10 @@ fn accept_ownership(deps: DepsMut, info: MessageInfo) -> Result<Response, Contra
     Ok(resp)
 }
 
-fn cancel_ownership_transfer(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn cancel_ownership_transfer(
+    deps: DepsMut,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
     only_owner(deps.as_ref(), &info)?;
 
     PENDING_OWNER.save(deps.storage, &None)?;
@@ -465,7 +468,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-fn query_operator_status(
+pub fn query_operator_status(
     deps: Deps,
     user_addr: Addr,
     operator: Addr,
@@ -476,7 +479,7 @@ fn query_operator_status(
     Ok(OperatorStatusResponse { status })
 }
 
-fn query_calculate_digest_hash(
+pub fn query_calculate_digest_hash(
     _deps: Deps,
     env: Env,
     params: DigestHashParams,
@@ -495,7 +498,7 @@ fn query_calculate_digest_hash(
     Ok(DigestHashResponse { digest_hash })
 }
 
-fn query_is_salt_spent(deps: Deps, operator: Addr, salt: String) -> StdResult<SaltResponse> {
+pub fn query_is_salt_spent(deps: Deps, operator: Addr, salt: String) -> StdResult<SaltResponse> {
     let is_salt_spent = OPERATOR_SALT_SPENT
         .may_load(deps.storage, (operator.clone(), salt.clone()))?
         .unwrap_or(false);
@@ -503,17 +506,17 @@ fn query_is_salt_spent(deps: Deps, operator: Addr, salt: String) -> StdResult<Sa
     Ok(SaltResponse { is_salt_spent })
 }
 
-fn query_delegation_manager(deps: Deps) -> StdResult<DelegationResponse> {
+pub fn query_delegation_manager(deps: Deps) -> StdResult<DelegationResponse> {
     let delegation_addr = DELEGATION_MANAGER.load(deps.storage)?;
     Ok(DelegationResponse { delegation_addr })
 }
 
-fn query_owner(deps: Deps) -> StdResult<OwnerResponse> {
+pub fn query_owner(deps: Deps) -> StdResult<OwnerResponse> {
     let owner_addr = OWNER.load(deps.storage)?;
     Ok(OwnerResponse { owner_addr })
 }
 
-fn query_operator_bvs_registration_typehash(
+pub fn query_operator_bvs_registration_typehash(
     _deps: Deps,
 ) -> StdResult<RegistrationTypeHashResponse> {
     let operator_bvs_registration_type_hash =
@@ -523,17 +526,17 @@ fn query_operator_bvs_registration_typehash(
     })
 }
 
-fn query_domain_typehash(_deps: Deps) -> StdResult<DomainTypeHashResponse> {
+pub fn query_domain_typehash(_deps: Deps) -> StdResult<DomainTypeHashResponse> {
     let domain_type_hash = String::from_utf8_lossy(DOMAIN_TYPEHASH).to_string();
     Ok(DomainTypeHashResponse { domain_type_hash })
 }
 
-fn query_domain_name(_deps: Deps) -> StdResult<DomainNameResponse> {
+pub fn query_domain_name(_deps: Deps) -> StdResult<DomainNameResponse> {
     let domain_name = String::from_utf8_lossy(DOMAIN_NAME).to_string();
     Ok(DomainNameResponse { domain_name })
 }
 
-fn query_bvs_info(deps: Deps, bvs_hash: String) -> StdResult<BVSInfoResponse> {
+pub fn query_bvs_info(deps: Deps, bvs_hash: String) -> StdResult<BVSInfoResponse> {
     let bvs_info = BVS_INFO.load(deps.storage, bvs_hash.to_string())?;
     Ok(BVSInfoResponse {
         bvs_hash,
@@ -541,7 +544,7 @@ fn query_bvs_info(deps: Deps, bvs_hash: String) -> StdResult<BVSInfoResponse> {
     })
 }
 
-fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+pub fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let owner = OWNER.load(deps.storage)?;
     if info.sender != owner {
         return Err(ContractError::Unauthorized {});

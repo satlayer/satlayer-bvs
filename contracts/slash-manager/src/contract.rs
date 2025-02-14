@@ -602,7 +602,7 @@ pub fn two_step_transfer_ownership(
     Ok(resp)
 }
 
-fn accept_ownership(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn accept_ownership(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     let pending_owner = PENDING_OWNER.load(deps.storage)?;
 
     let pending_owner_addr = match pending_owner {
@@ -624,7 +624,10 @@ fn accept_ownership(deps: DepsMut, info: MessageInfo) -> Result<Response, Contra
     Ok(resp)
 }
 
-fn cancel_ownership_transfer(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn cancel_ownership_transfer(
+    deps: DepsMut,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
     only_owner(deps.as_ref(), &info)?;
 
     PENDING_OWNER.save(deps.storage, &None)?;
@@ -685,26 +688,26 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-fn query_slash_details(deps: Deps, slash_hash: String) -> StdResult<SlashDetailsResponse> {
+pub fn query_slash_details(deps: Deps, slash_hash: String) -> StdResult<SlashDetailsResponse> {
     let slash_details = SLASH_DETAILS.load(deps.storage, slash_hash)?;
     Ok(SlashDetailsResponse { slash_details })
 }
 
-fn query_is_validator(deps: Deps, validator: Addr) -> StdResult<ValidatorResponse> {
+pub fn query_is_validator(deps: Deps, validator: Addr) -> StdResult<ValidatorResponse> {
     let is_validator = VALIDATOR
         .may_load(deps.storage, validator)?
         .unwrap_or(false);
     Ok(ValidatorResponse { is_validator })
 }
 
-fn query_minimal_slash_signature(deps: Deps) -> StdResult<MinimalSlashSignatureResponse> {
+pub fn query_minimal_slash_signature(deps: Deps) -> StdResult<MinimalSlashSignatureResponse> {
     let minimal_slash_signature = MINIMAL_SLASH_SIGNATURE.load(deps.storage)?;
     Ok(MinimalSlashSignatureResponse {
         minimal_slash_signature,
     })
 }
 
-fn query_calculate_slash_hash(
+pub fn query_calculate_slash_hash(
     env: Env,
     sender: Addr,
     slash_details: SlashDetails,
@@ -723,7 +726,7 @@ fn query_calculate_slash_hash(
     Ok(CalculateSlashHashResponse { message_bytes })
 }
 
-fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+pub fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let owner = OWNER.load(deps.storage)?;
     if info.sender != owner {
         return Err(ContractError::Unauthorized {});
@@ -731,7 +734,7 @@ fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     Ok(())
 }
 
-fn only_slasher(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+pub fn only_slasher(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let is_slasher = SLASHER.load(deps.storage, info.sender.clone())?;
     if !is_slasher {
         return Err(ContractError::Unauthorized {});

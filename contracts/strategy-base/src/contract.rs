@@ -342,7 +342,7 @@ pub fn two_step_transfer_ownership(
     Ok(resp)
 }
 
-fn accept_ownership(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn accept_ownership(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     let pending_owner = PENDING_OWNER.load(deps.storage)?;
 
     let pending_owner_addr = match pending_owner {
@@ -364,7 +364,10 @@ fn accept_ownership(deps: DepsMut, info: MessageInfo) -> Result<Response, Contra
     Ok(resp)
 }
 
-fn cancel_ownership_transfer(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn cancel_ownership_transfer(
+    deps: DepsMut,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
     only_owner(deps.as_ref(), &info)?;
 
     PENDING_OWNER.save(deps.storage, &None)?;
@@ -411,21 +414,21 @@ pub fn query_strategy_manager(deps: Deps) -> StdResult<StrategyManagerResponse> 
     })
 }
 
-fn query_underlying_token(deps: Deps) -> StdResult<UnderlyingTokenResponse> {
+pub fn query_underlying_token(deps: Deps) -> StdResult<UnderlyingTokenResponse> {
     let state = STRATEGY_STATE.load(deps.storage)?;
     Ok(UnderlyingTokenResponse {
         underlying_token_addr: state.underlying_token,
     })
 }
 
-fn query_total_shares(deps: Deps) -> StdResult<TotalSharesResponse> {
+pub fn query_total_shares(deps: Deps) -> StdResult<TotalSharesResponse> {
     let state = STRATEGY_STATE.load(deps.storage)?;
     Ok(TotalSharesResponse {
         total_shares: state.total_shares,
     })
 }
 
-fn query_explanation() -> StdResult<ExplanationResponse> {
+pub fn query_explanation() -> StdResult<ExplanationResponse> {
     Ok(ExplanationResponse {
         explanation:
             "Base Strategy implementation to inherit from for more complex implementations"
@@ -476,7 +479,7 @@ pub fn query_underlying_to_shares(
     Ok(UnderlyingToSharesResponse { share_to_send })
 }
 
-fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+pub fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let owner = OWNER.load(deps.storage)?;
     if info.sender != owner {
         return Err(ContractError::Unauthorized {});
@@ -484,7 +487,7 @@ fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     Ok(())
 }
 
-fn only_strategy_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+pub fn only_strategy_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let state = STRATEGY_STATE.load(deps.storage)?;
 
     if info.sender != state.strategy_manager {
@@ -493,21 +496,21 @@ fn only_strategy_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractE
     Ok(())
 }
 
-fn before_deposit(state: &StrategyState, token: &Addr) -> Result<(), ContractError> {
+pub fn before_deposit(state: &StrategyState, token: &Addr) -> Result<(), ContractError> {
     if token != state.underlying_token {
         return Err(ContractError::InvalidToken {});
     }
     Ok(())
 }
 
-fn before_withdrawal(state: &StrategyState, token: &Addr) -> Result<(), ContractError> {
+pub fn before_withdrawal(state: &StrategyState, token: &Addr) -> Result<(), ContractError> {
     if token != state.underlying_token {
         return Err(ContractError::InvalidToken {});
     }
     Ok(())
 }
 
-fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdResult<Uint128> {
+pub fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdResult<Uint128> {
     let res: Cw20BalanceResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: token.to_string(),
         msg: to_json_binary(&Cw20QueryMsg::Balance {
@@ -517,7 +520,7 @@ fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdR
     Ok(res.balance)
 }
 
-fn emit_exchange_rate(
+pub fn emit_exchange_rate(
     virtual_token_balance: Uint128,
     virtual_total_shares: Uint128,
 ) -> StdResult<Response> {

@@ -129,7 +129,7 @@ pub fn two_step_transfer_ownership(
     Ok(resp)
 }
 
-fn accept_ownership(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn accept_ownership(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     let pending_owner = PENDING_OWNER.load(deps.storage)?;
 
     let pending_owner_addr = match pending_owner {
@@ -151,7 +151,10 @@ fn accept_ownership(deps: DepsMut, info: MessageInfo) -> Result<Response, Contra
     Ok(resp)
 }
 
-fn cancel_ownership_transfer(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn cancel_ownership_transfer(
+    deps: DepsMut,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
     only_owner(deps.as_ref(), &info)?;
 
     PENDING_OWNER.save(deps.storage, &None)?;
@@ -166,7 +169,7 @@ pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
     Ok(Binary::default())
 }
 
-fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+pub fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let owner = OWNER.load(deps.storage)?;
     if info.sender != owner {
         return Err(ContractError::Unauthorized {});
@@ -174,7 +177,7 @@ fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     Ok(())
 }
 
-fn only_directory(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+pub fn only_directory(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let directory = BVS_DIRECTORY.load(deps.storage)?;
     if info.sender != directory {
         return Err(ContractError::NotBVSDirectory {});

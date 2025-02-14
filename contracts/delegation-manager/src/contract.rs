@@ -817,7 +817,7 @@ pub fn two_step_transfer_ownership(
     Ok(resp)
 }
 
-fn accept_ownership(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn accept_ownership(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     let pending_owner = PENDING_OWNER.load(deps.storage)?;
 
     let pending_owner_addr = match pending_owner {
@@ -839,7 +839,10 @@ fn accept_ownership(deps: DepsMut, info: MessageInfo) -> Result<Response, Contra
     Ok(resp)
 }
 
-fn cancel_ownership_transfer(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn cancel_ownership_transfer(
+    deps: DepsMut,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
     only_owner(deps.as_ref(), &info)?;
 
     PENDING_OWNER.save(deps.storage, &None)?;
@@ -1153,7 +1156,7 @@ pub fn query_cumulative_withdrawals_queued(
     })
 }
 
-fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+pub fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let owner = OWNER.load(deps.storage)?;
     if info.sender != owner {
         return Err(ContractError::Unauthorized {});
@@ -1161,7 +1164,7 @@ fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     Ok(())
 }
 
-fn only_strategy_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+pub fn only_strategy_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let state = DELEGATION_MANAGER_STATE.load(deps.storage)?;
     if info.sender != state.strategy_manager && info.sender != state.slash_manager {
         return Err(ContractError::Unauthorized {});
@@ -1235,7 +1238,7 @@ fn set_strategy_withdrawal_delay_blocks_internal(
     Ok(response)
 }
 
-fn set_operator_details(
+pub fn set_operator_details(
     deps: DepsMut,
     operator: Addr,
     new_operator_details: OperatorDetails,
@@ -1272,7 +1275,7 @@ fn set_operator_details(
     Ok(Response::new().add_event(event))
 }
 
-fn delegate(
+pub fn delegate(
     mut deps: DepsMut,
     info: MessageInfo,
     env: Env,
@@ -1360,7 +1363,7 @@ fn delegate(
     Ok(response)
 }
 
-fn increase_operator_shares(
+pub fn increase_operator_shares(
     deps: DepsMut,
     operator: Addr,
     staker: Addr,
@@ -1390,7 +1393,7 @@ fn increase_operator_shares(
     Ok(Response::new().add_event(event))
 }
 
-fn decrease_operator_shares(
+pub fn decrease_operator_shares(
     deps: DepsMut,
     operator: Addr,
     staker: Addr,
@@ -1521,7 +1524,7 @@ fn complete_queued_withdrawal_internal(
     Ok(response)
 }
 
-fn remove_shares_and_queue_withdrawal(
+pub fn remove_shares_and_queue_withdrawal(
     mut deps: DepsMut,
     env: Env,
     staker: Addr,

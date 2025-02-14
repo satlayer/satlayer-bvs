@@ -576,7 +576,7 @@ pub fn two_step_transfer_ownership(
     Ok(resp)
 }
 
-fn accept_ownership(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn accept_ownership(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     let pending_owner = PENDING_OWNER.load(deps.storage)?;
 
     let pending_owner_addr = match pending_owner {
@@ -598,7 +598,10 @@ fn accept_ownership(deps: DepsMut, info: MessageInfo) -> Result<Response, Contra
     Ok(resp)
 }
 
-fn cancel_ownership_transfer(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn cancel_ownership_transfer(
+    deps: DepsMut,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
     only_owner(deps.as_ref(), &info)?;
 
     PENDING_OWNER.save(deps.storage, &None)?;
@@ -696,7 +699,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-fn query_calculate_earner_leaf_hash(
+pub fn query_calculate_earner_leaf_hash(
     _deps: Deps,
     earner: String,
     earner_token_root: String,
@@ -715,7 +718,7 @@ fn query_calculate_earner_leaf_hash(
     Ok(CalculateEarnerLeafHashResponse { hash_binary })
 }
 
-fn query_calculate_token_leaf_hash(
+pub fn query_calculate_token_leaf_hash(
     _deps: Deps,
     token: String,
     cumulative_earnings: Uint128,
@@ -733,7 +736,7 @@ fn query_calculate_token_leaf_hash(
     Ok(CalculateTokenLeafHashResponse { hash_binary })
 }
 
-fn query_operator_commission_bips(
+pub fn query_operator_commission_bips(
     deps: Deps,
     _operator: String,
     _bvs: String,
@@ -743,13 +746,15 @@ fn query_operator_commission_bips(
     Ok(OperatorCommissionBipsResponse { commission_bips })
 }
 
-fn query_distribution_roots_length(deps: Deps) -> StdResult<GetDistributionRootsLengthResponse> {
+pub fn query_distribution_roots_length(
+    deps: Deps,
+) -> StdResult<GetDistributionRootsLengthResponse> {
     let roots_length = DISTRIBUTION_ROOTS_COUNT.load(deps.storage)?;
 
     Ok(GetDistributionRootsLengthResponse { roots_length })
 }
 
-fn query_distribution_root_at_index(
+pub fn query_distribution_root_at_index(
     deps: Deps,
     index: String,
 ) -> StdResult<GetDistributionRootAtIndexResponse> {
@@ -764,7 +769,9 @@ fn query_distribution_root_at_index(
     Ok(GetDistributionRootAtIndexResponse { root })
 }
 
-fn query_current_distribution_root(deps: Deps) -> StdResult<GetCurrentDistributionRootResponse> {
+pub fn query_current_distribution_root(
+    deps: Deps,
+) -> StdResult<GetCurrentDistributionRootResponse> {
     let length = DISTRIBUTION_ROOTS_COUNT.load(deps.storage)?;
 
     for i in (0..length).rev() {
@@ -778,7 +785,7 @@ fn query_current_distribution_root(deps: Deps) -> StdResult<GetCurrentDistributi
     Err(StdError::generic_err("No enabled distribution root found"))
 }
 
-fn query_current_claimable_distribution_root(
+pub fn query_current_claimable_distribution_root(
     deps: Deps,
     env: Env,
 ) -> StdResult<GetCurrentClaimableDistributionRootResponse> {
@@ -795,7 +802,7 @@ fn query_current_claimable_distribution_root(
     Err(StdError::generic_err("No claimable root found"))
 }
 
-fn query_root_index_from_hash(
+pub fn query_root_index_from_hash(
     deps: Deps,
     root_hash: String,
 ) -> StdResult<GetRootIndexFromHashResponse> {
@@ -817,7 +824,7 @@ fn query_root_index_from_hash(
     Err(StdError::generic_err("Root not found"))
 }
 
-fn query_calculate_domain_separator(
+pub fn query_calculate_domain_separator(
     _deps: Deps,
     chain_id: String,
     contract_addr: String,
@@ -831,7 +838,7 @@ fn query_calculate_domain_separator(
     })
 }
 
-fn query_merkleize_leaves(leaves: Vec<Binary>) -> StdResult<MerkleizeLeavesResponse> {
+pub fn query_merkleize_leaves(leaves: Vec<Binary>) -> StdResult<MerkleizeLeavesResponse> {
     let leaf_hashes: Vec<Vec<u8>> = leaves.iter().map(|leaf| leaf.to_vec()).collect();
 
     if !leaf_hashes.len().is_power_of_two() {
@@ -855,7 +862,7 @@ pub fn query_check_claim(
     Ok(CheckClaimResponse { check_claim })
 }
 
-fn only_rewards_updater(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+pub fn only_rewards_updater(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let rewards_updater = REWARDS_UPDATER.load(deps.storage)?;
 
     if info.sender != rewards_updater {
@@ -864,7 +871,7 @@ fn only_rewards_updater(deps: Deps, info: &MessageInfo) -> Result<(), ContractEr
     Ok(())
 }
 
-fn only_rewards_for_all_submitter(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+pub fn only_rewards_for_all_submitter(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let is_submitter = REWARDS_FOR_ALL_SUBMITTER
         .may_load(deps.storage, info.sender.clone())?
         .unwrap_or(false);
@@ -874,7 +881,7 @@ fn only_rewards_for_all_submitter(deps: Deps, info: &MessageInfo) -> Result<(), 
     Ok(())
 }
 
-fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+pub fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let owner = OWNER.load(deps.storage)?;
     if info.sender != owner {
         return Err(ContractError::Unauthorized {});
@@ -882,7 +889,7 @@ fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     Ok(())
 }
 
-fn validate_rewards_submission(
+pub fn validate_rewards_submission(
     deps: &Deps,
     submission: &RewardsSubmission,
     env: &Env,
@@ -994,7 +1001,7 @@ fn check_claim_internal(
     Ok(())
 }
 
-fn verify_token_claim_proof(
+pub fn verify_token_claim_proof(
     earner_token_root: Binary,
     token_leaf_index: u32,
     token_proof: &[u8],
@@ -1033,7 +1040,7 @@ fn verify_token_claim_proof(
     Ok(())
 }
 
-fn verify_earner_claim_proof(
+pub fn verify_earner_claim_proof(
     root: Binary,
     earner_leaf_index: u32,
     earner_proof: &[u8],
@@ -1104,7 +1111,7 @@ fn set_rewards_updater_internal(
     Ok(Response::new().add_event(event))
 }
 
-fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdResult<Uint128> {
+pub fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdResult<Uint128> {
     let res: Cw20BalanceResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: token.to_string(),
         msg: to_json_binary(&Cw20QueryMsg::Balance {

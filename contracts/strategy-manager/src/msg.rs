@@ -11,7 +11,6 @@ use cosmwasm_std::Uint128;
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub delegation_manager: String,
     pub slash_manager: String,
     pub strategy_factory: String,
     pub initial_strategy_whitelister: String,

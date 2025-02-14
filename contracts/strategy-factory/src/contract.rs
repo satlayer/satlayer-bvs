@@ -351,7 +351,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
     handle_instantiate_reply(deps, msg.clone(), msg.id)
 }
 
-fn handle_instantiate_reply(
+pub fn handle_instantiate_reply(
     deps: DepsMut,
     msg: Reply,
     submsg_id: u64,
@@ -395,7 +395,7 @@ fn handle_instantiate_reply(
         .add_message(exec_msg))
 }
 
-fn parse_contract_address_from_reply(msg: &Reply) -> Result<String, ContractError> {
+pub fn parse_contract_address_from_reply(msg: &Reply) -> Result<String, ContractError> {
     let res = msg
         .result
         .clone()
@@ -416,14 +416,14 @@ fn parse_contract_address_from_reply(msg: &Reply) -> Result<String, ContractErro
     Ok(instantiate_response.contract_address)
 }
 
-fn next_submsg_id(store: &mut dyn cosmwasm_std::Storage) -> StdResult<u64> {
+pub fn next_submsg_id(store: &mut dyn cosmwasm_std::Storage) -> StdResult<u64> {
     let id = NEXT_DEPLOY_ID.may_load(store)?.unwrap_or(1);
 
     NEXT_DEPLOY_ID.save(store, &(id + 1))?;
     Ok(id)
 }
 
-fn update_config(
+pub fn update_config(
     deps: DepsMut,
     info: MessageInfo,
     new_owner: Addr,
@@ -511,26 +511,26 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-fn query_strategy(deps: Deps, token: Addr) -> StdResult<StrategyResponse> {
+pub fn query_strategy(deps: Deps, token: Addr) -> StdResult<StrategyResponse> {
     let strategy = DEPLOYED_STRATEGIES.load(deps.storage, &token)?;
     Ok(StrategyResponse { strategy })
 }
 
-fn query_blacklist_status(deps: Deps, token: Addr) -> StdResult<BlacklistStatusResponse> {
+pub fn query_blacklist_status(deps: Deps, token: Addr) -> StdResult<BlacklistStatusResponse> {
     let is_blacklisted = IS_BLACKLISTED
         .may_load(deps.storage, &token)?
         .unwrap_or(false);
     Ok(BlacklistStatusResponse { is_blacklisted })
 }
 
-fn validate_addresses(api: &dyn Api, addresses: &[String]) -> StdResult<Vec<Addr>> {
+pub fn validate_addresses(api: &dyn Api, addresses: &[String]) -> StdResult<Vec<Addr>> {
     addresses
         .iter()
         .map(|addr| api.addr_validate(addr))
         .collect()
 }
 
-fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+pub fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let config = CONFIG.load(deps.storage)?;
     if info.sender != config.owner {
         return Err(ContractError::Unauthorized {});
