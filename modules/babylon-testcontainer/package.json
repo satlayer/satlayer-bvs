@@ -1,0 +1,7 @@
+{
+  "name": "@modules/babylon-testcontainer",
+  "private": true,
+  "scripts": {
+    "test": "gotestsum"
+  }
+}
