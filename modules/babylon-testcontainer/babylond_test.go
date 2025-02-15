@@ -12,7 +12,6 @@ import (
 	authsigning "github.com/cosmos/cosmos-sdk/x/auth/signing"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/stretchr/testify/suite"
-
 	"testing"
 	"time"
 )
@@ -37,19 +36,19 @@ func TestBabylond(t *testing.T) {
 }
 
 func (suite *BabylondTestSuite) TestRpcUri() {
-	url := suite.Container.GetRpcUri()
+	url := suite.Container.RpcUri
 	suite.Regexp(`http://localhost:\d+`, url)
 }
 
 func (suite *BabylondTestSuite) TestClientContext() {
-	clientCtx := suite.Container.ClientCtx()
+	clientCtx := suite.Container.ClientCtx
 	status, err := clientCtx.Client.Status(context.Background())
 	suite.NoError(err)
 	suite.GreaterOrEqual(status.SyncInfo.LatestBlockHeight, int64(1))
 }
 
 func (suite *BabylondTestSuite) TestGenesisBalance() {
-	clientCtx := suite.Container.ClientCtx()
+	clientCtx := suite.Container.ClientCtx
 	queryClient := banktypes.NewQueryClient(clientCtx)
 	req := banktypes.QueryBalanceRequest{
 		Address: "bbn1lmnc4gcvcu5dexa8p6vv2e6qkas5lu2r2nwlnv",
@@ -61,11 +60,8 @@ func (suite *BabylondTestSuite) TestGenesisBalance() {
 	suite.Equal("1000000ubbn", res.Balance.String())
 }
 
-func (suite *BabylondTestSuite) TestSendCoins() {
-	config := sdk.GetConfig()
-	config.SetBech32PrefixForAccount("bbn", "bbnpub")
-
-	clientCtx := suite.Container.ClientCtx()
+func (suite *BabylondTestSuite) TestSendCoinsManually() {
+	clientCtx := suite.Container.ClientCtx
 
 	var receiver sdk.AccAddress
 	sender, err := sdk.AccAddressFromBech32("bbn1lmnc4gcvcu5dexa8p6vv2e6qkas5lu2r2nwlnv")
@@ -100,7 +96,7 @@ func (suite *BabylondTestSuite) TestSendCoins() {
 		PubKey: privKey.PubKey(),
 		Data: &signing.SingleSignatureData{
 			SignMode:  signMode,
-			Signature: nil, // remains nil
+			Signature: nil,
 		},
 		Sequence: account.GetSequence(),
 	}
@@ -145,4 +141,43 @@ func (suite *BabylondTestSuite) TestSendCoins() {
 	})
 	suite.NoError(err)
 	suite.Equal("10ubbn", balRes.Balance.String())
+}
+
+func (suite *BabylondTestSuite) TestSendCoinsTxFactory() {
+	from, err := sdk.AccAddressFromBech32("bbn1lmnc4gcvcu5dexa8p6vv2e6qkas5lu2r2nwlnv")
+	suite.NoError(err)
+	to, err := sdk.AccAddressFromBech32("bbn1whhg5wce9g9nn6frehnagh526f6thc7y380jhl")
+	suite.NoError(err)
+
+	clientCtx := suite.Container.ClientCtx.WithFromName("genesis").WithFromAddress(from)
+	txf, err := suite.Container.TxFactory.Prepare(clientCtx)
+	suite.NoError(err)
+
+	txBuilder := clientCtx.TxConfig.NewTxBuilder()
+	txBuilder.SetFeeAmount(sdk.NewCoins(sdk.NewCoin("ubbn", math.NewInt(1000))))
+	txBuilder.SetGasLimit(200000)
+	msg := banktypes.NewMsgSend(from, to, sdk.NewCoins(sdk.NewCoin("ubbn", math.NewInt(100))))
+	err = txBuilder.SetMsgs(msg)
+	suite.NoError(err)
+
+	ctx := context.Background()
+	err = tx.Sign(ctx, txf, clientCtx.FromName, txBuilder, true)
+	suite.NoError(err)
+
+	txBytes, err := clientCtx.TxConfig.TxEncoder()(txBuilder.GetTx())
+	suite.NoError(err)
+
+	res, err := clientCtx.BroadcastTxSync(txBytes)
+	suite.NoError(err)
+	suite.Equal(uint32(0), res.Code)
+
+	time.Sleep(2 * time.Second)
+
+	queryClient := banktypes.NewQueryClient(clientCtx)
+	balRes, err := queryClient.Balance(context.Background(), &banktypes.QueryBalanceRequest{
+		Address: to.String(),
+		Denom:   "ubbn",
+	})
+	suite.NoError(err)
+	suite.Equal("100ubbn", balRes.Balance.String())
 }

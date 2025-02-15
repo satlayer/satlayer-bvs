@@ -9,11 +9,10 @@ import (
 	"time"
 )
 
-func (d *BabylonContainer) GetChainIO() (io.ChainIO, error) {
-	homeDir := "../.babylon"
+func (c *BabylonContainer) GetChainIO(homeDir string) (io.ChainIO, error) {
 	logger := apilogger.NewMockELKLogger()
 	metricsIndicators := transactionprocess.NewPromIndicators(prometheus.NewRegistry(), "io")
-	return io.NewChainIO(ChainId, d.GetRpcUri(), homeDir, "bbn", logger, metricsIndicators, types.TxManagerParams{
+	return io.NewChainIO(ChainId, c.RpcUri, homeDir, "bbn", logger, metricsIndicators, types.TxManagerParams{
 		MaxRetries:             3,
 		RetryInterval:          2 * time.Second,
 		ConfirmationTimeout:    60 * time.Second,
