@@ -28,4 +28,4 @@ thiserror = { version = "1.0.69" }
 
 [dev-dependencies]
 cw-multi-test = "=2.0.0"
-cw-bvs-test = { path = "../../../crates/cw-bvs-test" }
+bvs-test = { path = "../../../crates/bvs-test" }

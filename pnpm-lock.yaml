@@ -44,27 +44,27 @@ importers:
 
   crates: {}
 
-  crates/cw-bvs-directory: {}
+  crates/bvs-delegation-manager: {}
 
-  crates/cw-bvs-driver: {}
+  crates/bvs-directory: {}
 
-  crates/cw-bvs-test: {}
+  crates/bvs-driver: {}
 
-  crates/cw-delegation-manager: {}
+  crates/bvs-rewards-coordinator: {}
 
-  crates/cw-rewards-coordinator: {}
+  crates/bvs-slash-manager: {}
 
-  crates/cw-slash-manager: {}
+  crates/bvs-state-bank: {}
 
-  crates/cw-state-bank: {}
+  crates/bvs-strategy-base: {}
 
-  crates/cw-strategy-base: {}
+  crates/bvs-strategy-base-tvl-limits: {}
 
-  crates/cw-strategy-base-tvl-limits: {}
+  crates/bvs-strategy-factory: {}
 
-  crates/cw-strategy-factory: {}
+  crates/bvs-strategy-manager: {}
 
-  crates/cw-strategy-manager: {}
+  crates/bvs-test: {}
 
   docs:
     dependencies:
@@ -112,13 +112,13 @@ importers:
         specifier: 15.1.7
         version: 15.1.7(eslint@9.20.1(jiti@2.4.2))(typescript@5.7.3)
 
-  examples/squaring/cw-squaring-contract: {}
+  examples/squaring/bvs-squaring-contract: {}
 
   examples/squaring/modules: {}
 
   modules: {}
 
-  modules/babylon-testcontainer: {}
+  modules/babylond: {}
 
   modules/bvs-api: {}
 
@@ -126,36 +126,36 @@ importers:
 
   modules/bvs-cw:
     devDependencies:
-      '@satlayer/cw-bvs-directory':
+      '@satlayer/bvs-delegation-manager':
         specifier: workspace:*
-        version: link:../../crates/cw-bvs-directory
-      '@satlayer/cw-bvs-driver':
+        version: link:../../crates/bvs-delegation-manager
+      '@satlayer/bvs-directory':
         specifier: workspace:*
-        version: link:../../crates/cw-bvs-driver
-      '@satlayer/cw-delegation-manager':
+        version: link:../../crates/bvs-directory
+      '@satlayer/bvs-driver':
         specifier: workspace:*
-        version: link:../../crates/cw-delegation-manager
-      '@satlayer/cw-rewards-coordinator':
+        version: link:../../crates/bvs-driver
+      '@satlayer/bvs-rewards-coordinator':
         specifier: workspace:*
-        version: link:../../crates/cw-rewards-coordinator
-      '@satlayer/cw-slash-manager':
+        version: link:../../crates/bvs-rewards-coordinator
+      '@satlayer/bvs-slash-manager':
         specifier: workspace:*
-        version: link:../../crates/cw-slash-manager
-      '@satlayer/cw-state-bank':
+        version: link:../../crates/bvs-slash-manager
+      '@satlayer/bvs-state-bank':
         specifier: workspace:*
-        version: link:../../crates/cw-state-bank
-      '@satlayer/cw-strategy-base':
+        version: link:../../crates/bvs-state-bank
+      '@satlayer/bvs-strategy-base':
         specifier: workspace:*
-        version: link:../../crates/cw-strategy-base
-      '@satlayer/cw-strategy-base-tvl-limits':
+        version: link:../../crates/bvs-strategy-base
+      '@satlayer/bvs-strategy-base-tvl-limits':
         specifier: workspace:*
-        version: link:../../crates/cw-strategy-base-tvl-limits
-      '@satlayer/cw-strategy-factory':
+        version: link:../../crates/bvs-strategy-base-tvl-limits
+      '@satlayer/bvs-strategy-factory':
         specifier: workspace:*
-        version: link:../../crates/cw-strategy-factory
-      '@satlayer/cw-strategy-manager':
+        version: link:../../crates/bvs-strategy-factory
+      '@satlayer/bvs-strategy-manager':
         specifier: workspace:*
-        version: link:../../crates/cw-strategy-manager
+        version: link:../../crates/bvs-strategy-manager
       quicktype-core:
         specifier: ^23.0.171
         version: 23.0.171
@@ -5943,7 +5943,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.12.0(@typescript-eslint/parser@8.24.0(eslint@9.20.1(jiti@2.4.2))(typescript@5.7.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.7.0)(eslint@9.20.1(jiti@2.4.2)):
+  eslint-module-utils@2.12.0(@typescript-eslint/parser@8.24.0(eslint@9.20.1(jiti@2.4.2))(typescript@5.7.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.7.0(eslint-plugin-import@2.31.0)(eslint@9.20.1(jiti@2.4.2)))(eslint@9.20.1(jiti@2.4.2)):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
@@ -5994,7 +5994,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.20.1(jiti@2.4.2)
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.0(@typescript-eslint/parser@8.24.0(eslint@9.20.1(jiti@2.4.2))(typescript@5.7.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.7.0)(eslint@9.20.1(jiti@2.4.2))
+      eslint-module-utils: 2.12.0(@typescript-eslint/parser@8.24.0(eslint@9.20.1(jiti@2.4.2))(typescript@5.7.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.7.0(eslint-plugin-import@2.31.0)(eslint@9.20.1(jiti@2.4.2)))(eslint@9.20.1(jiti@2.4.2))
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3
