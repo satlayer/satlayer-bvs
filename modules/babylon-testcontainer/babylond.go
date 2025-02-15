@@ -4,11 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/CosmWasm/wasmd/x/wasm"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
+	"github.com/cosmos/cosmos-sdk/std"
+	"github.com/cosmos/cosmos-sdk/types/module"
 	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -61,6 +66,14 @@ func (d *BabylonContainer) ClientCtx() client.Context {
 	}
 
 	interfaceRegistry := codectypes.NewInterfaceRegistry()
+	authtypes.RegisterInterfaces(interfaceRegistry)
+	cryptocodec.RegisterInterfaces(interfaceRegistry)
+	std.RegisterInterfaces(interfaceRegistry)
+
+	legacyAmino := codec.NewLegacyAmino()
+	std.RegisterLegacyAminoCodec(legacyAmino)
+	module.NewBasicManager(wasm.AppModuleBasic{}).RegisterInterfaces(interfaceRegistry)
+
 	protoCodec := codec.NewProtoCodec(interfaceRegistry)
 	txConfig := authtx.NewTxConfig(protoCodec, authtx.DefaultSignModes)
 
@@ -68,9 +81,11 @@ func (d *BabylonContainer) ClientCtx() client.Context {
 		WithChainID(ChainId).
 		WithClient(rpcClient).
 		WithOutputFormat("json").
+		WithInterfaceRegistry(interfaceRegistry).
 		WithTxConfig(txConfig).
 		WithCodec(protoCodec).
-		WithInterfaceRegistry(interfaceRegistry).
+		WithLegacyAmino(legacyAmino).
+		WithAccountRetriever(authtypes.AccountRetriever{}).
 		WithBroadcastMode(flags.BroadcastSync)
 }
 
