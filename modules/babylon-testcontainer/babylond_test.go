@@ -4,7 +4,6 @@ import (
 	"context"
 	"cosmossdk.io/math"
 	"encoding/hex"
-	"fmt"
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -60,17 +59,6 @@ func (suite *BabylondTestSuite) TestGenesisBalance() {
 	res, err := queryClient.Balance(context.Background(), &req)
 	suite.NoError(err)
 	suite.Equal("1000000ubbn", res.Balance.String())
-}
-
-func (suite *BabylondTestSuite) TestAccount() {
-	// TODO(fuxingloh): delete this
-	privKeyBytes, _ := hex.DecodeString("230FAE50A4FFB19125F89D8F321996A46F805E7BCF0CDAC5D102E7A42741887A")
-	privKey := secp256k1.PrivKey{Key: privKeyBytes}
-	pubKey := privKey.PubKey()
-
-	bech32Addr, err := bech32.ConvertAndEncode("bbn", pubKey.Address())
-	suite.NoError(err)
-	fmt.Println("Computed address from privKey:", bech32Addr)
 }
 
 func (suite *BabylondTestSuite) TestSendCoins() {
