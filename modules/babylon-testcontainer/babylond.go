@@ -2,33 +2,35 @@ package babylond
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/CosmWasm/wasmd/x/wasm"
+	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/client/flags"
+	"github.com/cosmos/cosmos-sdk/codec"
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
+	"github.com/cosmos/cosmos-sdk/std"
+	"github.com/cosmos/cosmos-sdk/types/module"
+	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/docker/go-connections/nat"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	apilogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
-	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"io"
 	"strings"
-	"time"
 )
 
 const (
 	apiPort  = "1317"
 	grpcPort = "9090"
 	rpcPort  = "26657"
-
-	BabylonHomePath   = "/home/babylon/.babylond"
-	BabylonOutputPath = "sat-bbn-localnet"
-	ChainId           = "sat-bbn-localnet"
+	ChainId  = "sat-bbn-localnet"
 )
 
 type BabylonContainer struct {
 	Ctx       context.Context
 	Container testcontainers.Container
-	// TODO: add http client + grpc client
 }
 
 func (d *BabylonContainer) getHost(port nat.Port) string {
@@ -44,67 +46,117 @@ func (d *BabylonContainer) getHost(port nat.Port) string {
 	return fmt.Sprintf("%s:%s", host, port.Port())
 }
 
-func (d *BabylonContainer) GetApiEndpoint() string {
+func (d *BabylonContainer) GetApiUri() string {
 	return fmt.Sprintf("http://%s", d.getHost(apiPort))
 }
 
-func (d *BabylonContainer) GetRpcUrl() string {
+func (d *BabylonContainer) GetRpcUri() string {
 	return fmt.Sprintf("http://%s", d.getHost(rpcPort))
 }
 
-func (d *BabylonContainer) GetGrpcEndpoint() string {
+func (d *BabylonContainer) GetGrpcUri() string {
 	return fmt.Sprintf("grcp://%s", d.getHost(grpcPort))
 }
 
-func (d *BabylonContainer) GetChainIO() (io.ChainIO, error) {
-	homeDir := "../.babylon"
-	logger := apilogger.NewMockELKLogger()
-	metricsIndicators := transactionprocess.NewPromIndicators(prometheus.NewRegistry(), "io")
-	return io.NewChainIO(ChainId, d.GetRpcUrl(), homeDir, "bbn", logger, metricsIndicators, types.TxManagerParams{
-		MaxRetries:             3,
-		RetryInterval:          2 * time.Second,
-		ConfirmationTimeout:    60 * time.Second,
-		GasPriceAdjustmentRate: "1.1",
-	})
+func (d *BabylonContainer) ClientCtx() client.Context {
+	nodeUri := d.GetRpcUri()
+	rpcClient, err := client.NewClientFromNode(nodeUri)
+	if err != nil {
+		panic(err)
+	}
+
+	interfaceRegistry := codectypes.NewInterfaceRegistry()
+	authtypes.RegisterInterfaces(interfaceRegistry)
+	cryptocodec.RegisterInterfaces(interfaceRegistry)
+	std.RegisterInterfaces(interfaceRegistry)
+
+	legacyAmino := codec.NewLegacyAmino()
+	std.RegisterLegacyAminoCodec(legacyAmino)
+	module.NewBasicManager(wasm.AppModuleBasic{}).RegisterInterfaces(interfaceRegistry)
+
+	protoCodec := codec.NewProtoCodec(interfaceRegistry)
+	txConfig := authtx.NewTxConfig(protoCodec, authtx.DefaultSignModes)
+
+	return client.Context{}.
+		WithChainID(ChainId).
+		WithClient(rpcClient).
+		WithOutputFormat("json").
+		WithInterfaceRegistry(interfaceRegistry).
+		WithTxConfig(txConfig).
+		WithCodec(protoCodec).
+		WithLegacyAmino(legacyAmino).
+		WithAccountRetriever(authtypes.AccountRetriever{}).
+		WithBroadcastMode(flags.BroadcastSync)
 }
 
 func Run(ctx context.Context) (*BabylonContainer, error) {
-	// Setup Testnet
-	initCmd := []string{
+	cmd := []string{
+		// Setup Testnet
 		"babylond",
 		"testnet",
 		"--v",
 		"1",
 		"--output-dir",
-		BabylonOutputPath,
+		".localnet",
 		"--keyring-backend",
 		"test",
 		"--chain-id",
 		ChainId,
+		"&&",
+		// Update Timeout Commit from 5s to 1s
+		"sed",
+		"-i",
+		"'s/timeout_commit = \"5s\"/timeout_commit = \"1s\"/'",
+		".localnet/node0/babylond/config/config.toml",
+		"&&",
+		// Setup Keyring
+		"babylond",
+		"keys",
+		"import-hex",
+		"genesis",
+		"230FAE50A4FFB19125F89D8F321996A46F805E7BCF0CDAC5D102E7A42741887A",
+		"--keyring-backend",
+		"test",
 		"--home",
-		BabylonHomePath,
-	}
-
-	startCmd := []string{
+		".localnet/node0/babylond",
+		"&&",
+		// Setup Genesis Account
+		"babylond",
+		"add-genesis-account",
+		"bbn1lmnc4gcvcu5dexa8p6vv2e6qkas5lu2r2nwlnv",
+		"1000000ubbn",
+		"--home",
+		".localnet/node0/babylond",
+		"&&",
+		// Start babylond
 		"babylond",
 		"start",
 		"--home",
-		fmt.Sprintf("%s/node0/babylond", BabylonOutputPath),
+		".localnet/node0/babylond",
 	}
 
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
 			Image: "babylonlabs/babylond:v1.0.0-rc.5",
-			// TODO(fuxingloh): change entrypoint to babylond
 			Entrypoint: []string{
 				"sh",
 				"-c",
 			},
 			Cmd: []string{
-				strings.Join(initCmd[:], " ") + " && " + strings.Join(startCmd[:], " "),
+				strings.Join(cmd[:], " "),
 			},
 			ExposedPorts: []string{apiPort, grpcPort, rpcPort},
-			WaitingFor:   wait.ForHTTP("/status").WithPort(rpcPort),
+			WaitingFor: wait.ForHTTP("/status").
+				WithPort(rpcPort).WithResponseMatcher(func(body io.Reader) bool {
+				var data map[string]interface{}
+				if err := json.NewDecoder(body).Decode(&data); err != nil {
+					return false
+				}
+				data = data["result"].(map[string]interface{})
+				data = data["sync_info"].(map[string]interface{})
+				height := data["latest_block_height"].(string)
+				return height != "0"
+			}),
 		},
 		Started: true,
 	})
