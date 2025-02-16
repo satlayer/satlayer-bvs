@@ -14,9 +14,11 @@ func TestWasmStoreCode(t *testing.T) {
 	data, err := os.ReadFile("cw_bvs_driver.wasm")
 	assert.NoError(t, err)
 
-	res, err := container.StoreWasmCode(data, "genesis")
+	ctx := context.Background()
+	res, err := container.StoreWasmCode(ctx, data, "genesis")
 	assert.NoError(t, err)
-	assert.Equal(t, uint32(0), res.Code)
-	assert.Equal(t, "", res.RawLog)
-	//assert.Equal(t, uint32(1), res.CodeID)
+	assert.Equal(t, uint32(0), res.TxResult.Code)
+
+	codeId, err := GetCodeId(res)
+	assert.Equal(t, "1", codeId)
 }
