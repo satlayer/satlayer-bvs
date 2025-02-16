@@ -57,7 +57,7 @@ func (suite *BabylondTestSuite) TestGenesisBalance() {
 
 	res, err := queryClient.Balance(context.Background(), &req)
 	suite.NoError(err)
-	suite.Equal("1000000ubbn", res.Balance.String())
+	suite.Equal("100000000000000000ubbn", res.Balance.String())
 }
 
 func (suite *BabylondTestSuite) TestSendCoinsManually() {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/CosmWasm/wasmd/x/wasm"
+	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/tx"
@@ -21,6 +22,8 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"io"
 	"strings"
 )
@@ -56,22 +59,23 @@ func getHost(
 	return fmt.Sprintf("%s:%s", host, port.Port())
 }
 
-func newClientCtx(nodeUri string) client.Context {
+func newClientCtx(rpcUri, grpcUri string) client.Context {
 	config := sdk.GetConfig()
 	config.SetBech32PrefixForAccount("bbn", "bbnpub")
 
-	rpcClient, err := client.NewClientFromNode(nodeUri)
+	rpcClient, err := client.NewClientFromNode(rpcUri)
 	if err != nil {
 		panic(err)
 	}
-
 	interfaceRegistry := codectypes.NewInterfaceRegistry()
 	authtypes.RegisterInterfaces(interfaceRegistry)
 	cryptocodec.RegisterInterfaces(interfaceRegistry)
 	std.RegisterInterfaces(interfaceRegistry)
+	wasmtypes.RegisterInterfaces(interfaceRegistry)
 
 	legacyAmino := codec.NewLegacyAmino()
 	std.RegisterLegacyAminoCodec(legacyAmino)
+	wasmtypes.RegisterLegacyAminoCodec(legacyAmino)
 	module.NewBasicManager(wasm.AppModuleBasic{}).RegisterInterfaces(interfaceRegistry)
 
 	protoCodec := codec.NewProtoCodec(interfaceRegistry)
@@ -83,9 +87,16 @@ func newClientCtx(nodeUri string) client.Context {
 		panic(err)
 	}
 
+	dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	grpcClient, err := grpc.NewClient(grpcUri, dialOptions...)
+	if err != nil {
+		panic(err)
+	}
+
 	return client.Context{}.
 		WithChainID(ChainId).
 		WithClient(rpcClient).
+		WithGRPCClient(grpcClient).
 		WithKeyring(memoryKeyring).
 		WithOutputFormat("json").
 		WithInterfaceRegistry(interfaceRegistry).
@@ -147,7 +158,7 @@ func Run(ctx context.Context) (*BabylonContainer, error) {
 		"babylond",
 		"add-genesis-account",
 		"bbn1lmnc4gcvcu5dexa8p6vv2e6qkas5lu2r2nwlnv",
-		"1000000ubbn",
+		"100000000000000000ubbn",
 		"--home",
 		".localnet/node0/babylond",
 		"&&",
@@ -190,8 +201,8 @@ func Run(ctx context.Context) (*BabylonContainer, error) {
 
 	ApiUri := fmt.Sprintf("http://%s", getHost(ctx, container, apiPort))
 	RpcUri := fmt.Sprintf("http://%s", getHost(ctx, container, rpcPort))
-	GrpcUri := fmt.Sprintf("grpc://%s", getHost(ctx, container, grpcPort))
-	ClientCtx := newClientCtx(RpcUri)
+	GrpcUri := fmt.Sprintf("%s", getHost(ctx, container, grpcPort))
+	ClientCtx := newClientCtx(RpcUri, GrpcUri)
 	TxFactory := newTxFactory(ClientCtx)
 
 	return &BabylonContainer{
