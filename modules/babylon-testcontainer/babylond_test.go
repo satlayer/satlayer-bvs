@@ -57,7 +57,8 @@ func (s *BabylondTestSuite) TestGenesisBalance() {
 
 	res, err := queryClient.Balance(context.Background(), &req)
 	s.NoError(err)
-	s.Equal("100000000000000000ubbn", res.Balance.String())
+	// Greater than 10^16, because the genesis balance is 10^17, concurrently running tests may have spent some
+	s.Greater(res.Balance.Amount.Int64(), int64(10000000000000000))
 }
 
 func (s *BabylondTestSuite) TestSendCoinsManually() {
