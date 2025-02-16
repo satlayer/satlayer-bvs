@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func (c *BabylonContainer) GetChainIO(homeDir string) (io.ChainIO, error) {
+func (c *BabylonContainer) NewChainIO(homeDir string) (io.ChainIO, error) {
 	logger := apilogger.NewMockELKLogger()
 	metricsIndicators := transactionprocess.NewPromIndicators(prometheus.NewRegistry(), "io")
 	return io.NewChainIO(ChainId, c.RpcUri, homeDir, "bbn", logger, metricsIndicators, types.TxManagerParams{

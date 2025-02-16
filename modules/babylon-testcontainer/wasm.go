@@ -12,7 +12,39 @@ import (
 	"strconv"
 )
 
-func (c *BabylonContainer) StoreWasmCode(ctx context.Context, WASMByteCode []byte, from string) (*coretypes.ResultBroadcastTxCommit, error) {
+type DeployedWasmContract struct {
+	CodeId  uint64
+	Address string
+}
+
+func (c *BabylonContainer) DeployWasmCode(wasmByteCode []byte, initMsg []byte, label, from string) (*DeployedWasmContract, error) {
+	res, err := c.StoreWasmCode(wasmByteCode, from)
+	if err != nil {
+		panic(err)
+	}
+
+	codeId, err := GetCodeId(res)
+	if err != nil {
+		panic(err)
+	}
+
+	res, err = c.InitWasmCode(codeId, initMsg, label, from)
+	if err != nil {
+		panic(err)
+	}
+
+	addr, err := GetContractAddress(res)
+	if err != nil {
+		panic(err)
+	}
+
+	return &DeployedWasmContract{
+		CodeId:  codeId,
+		Address: addr,
+	}, nil
+}
+
+func (c *BabylonContainer) StoreWasmCode(wasmByteCode []byte, from string) (*coretypes.ResultBroadcastTxCommit, error) {
 	clientCtx := c.withFromClientContext(from)
 	txf, err := c.TxFactory.Prepare(clientCtx)
 	if err != nil {
@@ -21,7 +53,7 @@ func (c *BabylonContainer) StoreWasmCode(ctx context.Context, WASMByteCode []byt
 
 	msg := &wasmtypes.MsgStoreCode{
 		Sender:       clientCtx.FromAddress.String(),
-		WASMByteCode: WASMByteCode,
+		WASMByteCode: wasmByteCode,
 		InstantiatePermission: &wasmtypes.AccessConfig{
 			Permission: wasmtypes.AccessTypeAnyOfAddresses,
 			Addresses:  []string{clientCtx.FromAddress.String()},
@@ -35,7 +67,7 @@ func (c *BabylonContainer) StoreWasmCode(ctx context.Context, WASMByteCode []byt
 		return nil, fmt.Errorf("setting msg: %w", err)
 	}
 
-	if err := tx.Sign(ctx, txf, from, txBuilder, true); err != nil {
+	if err := tx.Sign(context.Background(), txf, from, txBuilder, true); err != nil {
 		return nil, fmt.Errorf("signing transaction: %w", err)
 	}
 
@@ -49,10 +81,10 @@ func (c *BabylonContainer) StoreWasmCode(ctx context.Context, WASMByteCode []byt
 		return nil, err
 	}
 
-	return node.BroadcastTxCommit(ctx, txBytes)
+	return node.BroadcastTxCommit(context.Background(), txBytes)
 }
 
-func (c *BabylonContainer) InitWasmCode(ctx context.Context, codeId uint64, initMsg []byte, label, from string) (*coretypes.ResultBroadcastTxCommit, error) {
+func (c *BabylonContainer) InitWasmCode(codeId uint64, initMsg []byte, label, from string) (*coretypes.ResultBroadcastTxCommit, error) {
 	clientCtx := c.withFromClientContext(from)
 	txf, err := c.TxFactory.Prepare(clientCtx)
 	if err != nil {
@@ -73,7 +105,7 @@ func (c *BabylonContainer) InitWasmCode(ctx context.Context, codeId uint64, init
 		return nil, fmt.Errorf("setting msg: %w", err)
 	}
 
-	if err := tx.Sign(ctx, txf, from, txBuilder, true); err != nil {
+	if err := tx.Sign(context.Background(), txf, from, txBuilder, true); err != nil {
 		return nil, fmt.Errorf("signing transaction: %w", err)
 	}
 
@@ -87,7 +119,7 @@ func (c *BabylonContainer) InitWasmCode(ctx context.Context, codeId uint64, init
 		return nil, err
 	}
 
-	return node.BroadcastTxCommit(ctx, txBytes)
+	return node.BroadcastTxCommit(context.Background(), txBytes)
 }
 
 func (c *BabylonContainer) withFromClientContext(from string) client.Context {
@@ -106,7 +138,7 @@ func (c *BabylonContainer) withFromClientContext(from string) client.Context {
 
 func GetCodeId(res *coretypes.ResultBroadcastTxCommit) (uint64, error) {
 	if res.TxResult.Code != 0 {
-		return 0, fmt.Errorf("CheckTx failed: %s", res.CheckTx.Log)
+		return 0, fmt.Errorf("CheckTx failed: %s", res.TxResult.Log)
 	}
 
 	for _, event := range res.TxResult.Events {
@@ -124,7 +156,7 @@ func GetCodeId(res *coretypes.ResultBroadcastTxCommit) (uint64, error) {
 
 func GetContractAddress(res *coretypes.ResultBroadcastTxCommit) (string, error) {
 	if res.TxResult.Code != 0 {
-		return "", fmt.Errorf("CheckTx failed: %s", res.CheckTx.Log)
+		return "", fmt.Errorf("CheckTx failed: %s", res.TxResult.Log)
 	}
 
 	for _, event := range res.TxResult.Events {

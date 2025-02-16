@@ -143,41 +143,16 @@ func (s *BabylondTestSuite) TestSendCoinsManually() {
 	s.Equal("10ubbn", balRes.Balance.String())
 }
 
-func (s *BabylondTestSuite) TestSendCoinsTxFactory() {
-	from, err := sdk.AccAddressFromBech32("bbn1lmnc4gcvcu5dexa8p6vv2e6qkas5lu2r2nwlnv")
+func (s *BabylondTestSuite) TestFundAccount() {
+	res, err := s.Container.FundAccountUbbn("bbn1whhg5wce9g9nn6frehnagh526f6thc7y380jhl", 10000)
 	s.NoError(err)
-	to, err := sdk.AccAddressFromBech32("bbn1whhg5wce9g9nn6frehnagh526f6thc7y380jhl")
-	s.NoError(err)
+	s.Equal(uint32(0), res.TxResult.Code)
 
-	clientCtx := s.Container.ClientCtx.WithFromName("genesis").WithFromAddress(from)
-	txf, err := s.Container.TxFactory.Prepare(clientCtx)
-	s.NoError(err)
-
-	txBuilder := clientCtx.TxConfig.NewTxBuilder()
-	txBuilder.SetFeeAmount(sdk.NewCoins(sdk.NewCoin("ubbn", math.NewInt(1000))))
-	txBuilder.SetGasLimit(200000)
-	msg := banktypes.NewMsgSend(from, to, sdk.NewCoins(sdk.NewCoin("ubbn", math.NewInt(100))))
-	err = txBuilder.SetMsgs(msg)
-	s.NoError(err)
-
-	ctx := context.Background()
-	err = tx.Sign(ctx, txf, clientCtx.FromName, txBuilder, true)
-	s.NoError(err)
-
-	txBytes, err := clientCtx.TxConfig.TxEncoder()(txBuilder.GetTx())
-	s.NoError(err)
-
-	res, err := clientCtx.BroadcastTxSync(txBytes)
-	s.NoError(err)
-	s.Equal(uint32(0), res.Code)
-
-	time.Sleep(2 * time.Second)
-
-	queryClient := banktypes.NewQueryClient(clientCtx)
+	queryClient := banktypes.NewQueryClient(s.Container.ClientCtx)
 	balRes, err := queryClient.Balance(context.Background(), &banktypes.QueryBalanceRequest{
-		Address: to.String(),
+		Address: "bbn1whhg5wce9g9nn6frehnagh526f6thc7y380jhl",
 		Denom:   "ubbn",
 	})
 	s.NoError(err)
-	s.Equal("100ubbn", balRes.Balance.String())
+	s.Equal("10000ubbn", balRes.Balance.String())
 }

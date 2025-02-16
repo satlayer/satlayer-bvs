@@ -32,8 +32,7 @@ func (s *WasmTestSuite) TestWasm() {
 	data, err := os.ReadFile("wasm_test.wasm")
 	s.NoError(err)
 
-	ctx := context.Background()
-	res, err := s.Container.StoreWasmCode(ctx, data, "genesis")
+	res, err := s.Container.StoreWasmCode(data, "genesis")
 	s.NoError(err)
 	s.Equal(uint32(0), res.TxResult.Code)
 
@@ -41,7 +40,7 @@ func (s *WasmTestSuite) TestWasm() {
 	s.Equal(uint64(1), codeId)
 
 	json := `{"count": 10}`
-	res, err = s.Container.InitWasmCode(ctx, codeId, []byte(json), "example", "genesis")
+	res, err = s.Container.InitWasmCode(codeId, []byte(json), "example", "genesis")
 	s.NoError(err)
 	s.Equal(uint32(0), res.TxResult.Code)
 

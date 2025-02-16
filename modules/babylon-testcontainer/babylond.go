@@ -2,10 +2,13 @@ package babylond
 
 import (
 	"context"
+	"cosmossdk.io/math"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/CosmWasm/wasmd/x/wasm"
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
+	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/tx"
@@ -13,12 +16,14 @@ import (
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/cosmos-sdk/std"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -213,4 +218,80 @@ func Run(ctx context.Context) (*BabylonContainer, error) {
 		ClientCtx,
 		TxFactory,
 	}, nil
+}
+
+func (c *BabylonContainer) GenerateAddress(uid string) sdk.AccAddress {
+	record, err := c.ClientCtx.Keyring.Key(uid)
+	if record == nil {
+		privKey := secp256k1.GenPrivKey()
+		err := c.ClientCtx.Keyring.ImportPrivKeyHex(uid, hex.EncodeToString(privKey.Bytes()), "secp256k1")
+		if err != nil {
+			panic(err)
+		}
+
+		record, err = c.ClientCtx.Keyring.Key(uid)
+		if record == nil {
+			panic(err)
+		}
+	}
+
+	address, err := record.GetAddress()
+	if err != nil {
+		panic(err)
+	}
+	return address
+}
+
+func (c *BabylonContainer) FundAccount(
+	address string,
+	coin sdk.Coin,
+) (*coretypes.ResultBroadcastTxCommit, error) {
+	ctx := context.Background()
+
+	from, err := sdk.AccAddressFromBech32("bbn1lmnc4gcvcu5dexa8p6vv2e6qkas5lu2r2nwlnv")
+	if err != nil {
+		return nil, err
+	}
+	to, err := sdk.AccAddressFromBech32(address)
+	if err != nil {
+		return nil, err
+	}
+
+	clientCtx := c.ClientCtx.WithFromName("genesis").WithFromAddress(from)
+	txf, err := c.TxFactory.Prepare(clientCtx)
+	if err != nil {
+		return nil, err
+	}
+
+	txBuilder := clientCtx.TxConfig.NewTxBuilder()
+	txBuilder.SetFeeAmount(sdk.NewCoins(sdk.NewCoin("ubbn", math.NewInt(1000))))
+	txBuilder.SetGasLimit(200000)
+	msg := banktypes.NewMsgSend(from, to, sdk.NewCoins(coin))
+	err = txBuilder.SetMsgs(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	err = tx.Sign(ctx, txf, clientCtx.FromName, txBuilder, true)
+	if err != nil {
+		return nil, err
+	}
+
+	txBytes, err := clientCtx.TxConfig.TxEncoder()(txBuilder.GetTx())
+	if err != nil {
+		return nil, err
+	}
+
+	node, err := clientCtx.GetNode()
+	if err != nil {
+		return nil, err
+	}
+	return node.BroadcastTxCommit(context.Background(), txBytes)
+}
+
+func (c *BabylonContainer) FundAccountUbbn(
+	address string,
+	amount int64,
+) (*coretypes.ResultBroadcastTxCommit, error) {
+	return c.FundAccount(address, sdk.NewCoin("ubbn", math.NewInt(amount)))
 }
