@@ -44,4 +44,8 @@ func (s *WasmTestSuite) TestWasm() {
 	res, err = s.Container.InitWasmCode(ctx, codeId, []byte(json), "example", "genesis")
 	s.NoError(err)
 	s.Equal(uint32(0), res.TxResult.Code)
+
+	addr, err := GetContractAddress(res)
+	s.NoError(err)
+	s.NotEmpty(addr)
 }

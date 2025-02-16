@@ -121,3 +121,21 @@ func GetCodeId(res *coretypes.ResultBroadcastTxCommit) (uint64, error) {
 
 	return 0, fmt.Errorf("code_id not found")
 }
+
+func GetContractAddress(res *coretypes.ResultBroadcastTxCommit) (string, error) {
+	if res.TxResult.Code != 0 {
+		return "", fmt.Errorf("CheckTx failed: %s", res.CheckTx.Log)
+	}
+
+	for _, event := range res.TxResult.Events {
+		if event.Type == "instantiate" {
+			for _, attr := range event.Attributes {
+				if string(attr.Key) == "_contract_address" {
+					return attr.Value, nil
+				}
+			}
+		}
+	}
+
+	return "", fmt.Errorf("contract_address not found")
+}
