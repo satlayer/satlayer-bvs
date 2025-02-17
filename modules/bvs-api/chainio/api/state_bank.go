@@ -14,7 +14,7 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/indexer"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	"github.com/satlayer/satlayer-bvs/bvs-cw/state-bank"
+	statebank "github.com/satlayer/satlayer-bvs/bvs-cw/state-bank"
 )
 
 var wasmUpdateState sync.Map

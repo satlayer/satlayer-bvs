@@ -53,6 +53,24 @@ jobs:
 
       - run: turbo run eslint
 
+  lint_goimports:
+    name: Lint [goimports]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Check goimports formatting
+        run: |
+          fmt_files=$(goimports -l .)
+          if [ -n "$fmt_files" ]; then
+            echo "The following files are not formatted properly:"
+            echo "$fmt_files"
+            exit 1
+          else
+            echo "All files are properly formatted."
+          fi
+
   build:
     name: Build
     runs-on: ubuntu-latest
