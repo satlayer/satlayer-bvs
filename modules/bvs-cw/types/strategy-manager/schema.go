@@ -10,7 +10,7 @@
 //    queryMsg, err := UnmarshalQueryMsg(bytes)
 //    bytes, err = queryMsg.Marshal()
 
-package strategy_manager
+package strategymanager
 
 import "encoding/json"
 

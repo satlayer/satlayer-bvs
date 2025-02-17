@@ -25,7 +25,7 @@ async function generate(schema) {
     inputData,
     lang: "go",
     rendererOptions: {
-      package: name.replaceAll("-", "_"),
+      package: name.replaceAll("-", ""),
     },
   });
 

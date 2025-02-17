@@ -10,7 +10,7 @@
 //    queryMsg, err := UnmarshalQueryMsg(bytes)
 //    bytes, err = queryMsg.Marshal()
 
-package rewards_coordinator
+package rewardscoordinator
 
 import "encoding/json"
 

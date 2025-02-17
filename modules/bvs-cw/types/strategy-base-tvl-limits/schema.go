@@ -10,7 +10,7 @@
 //    queryMsg, err := UnmarshalQueryMsg(bytes)
 //    bytes, err = queryMsg.Marshal()
 
-package strategy_base_tvl_limits
+package strategybasetvllimits
 
 import "encoding/json"
 
