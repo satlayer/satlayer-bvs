@@ -106,10 +106,7 @@ mod tests {
                 assert_eq!(
                     res.events[1],
                     Event::new("wasm-UpdateState")
-                        .add_attribute(
-                            "_contract_address",
-                            res.events[0].attributes[0].value.clone()
-                        )
+                        .add_attribute("_contract_address", contract.addr())
                         .add_attribute("sender", state_bank_address.to_string())
                         .add_attribute("key", "weather")
                         .add_attribute("value", "winter"),
@@ -142,10 +139,7 @@ mod tests {
                 assert_eq!(
                     res.events[1],
                     Event::new("wasm-UpdateState")
-                        .add_attribute(
-                            "_contract_address",
-                            res.events[0].attributes[0].value.clone()
-                        )
+                        .add_attribute("_contract_address", contract.addr())
                         .add_attribute("sender", state_bank_address.to_string())
                         .add_attribute("key", "temperature")
                         .add_attribute("value", "cold"),
