@@ -50,9 +50,7 @@ type BabylonContainer struct {
 	TxFactory tx.Factory
 }
 
-func getHost(
-	ctx context.Context,
-	container testcontainers.Container, port nat.Port) string {
+func getHost(ctx context.Context, container testcontainers.Container, port nat.Port) string {
 	// Technically, Container.Host should be Container.Hostname
 	host, err := container.Host(ctx)
 	if err != nil {
@@ -113,9 +111,7 @@ func newClientCtx(rpcUri, grpcUri string) client.Context {
 		WithBroadcastMode(flags.BroadcastSync)
 }
 
-func newTxFactory(
-	clientCtx client.Context,
-) tx.Factory {
+func newTxFactory(clientCtx client.Context) tx.Factory {
 	txf := tx.Factory{}.
 		WithChainID(clientCtx.ChainID).
 		WithKeybase(clientCtx.Keyring).
@@ -247,10 +243,7 @@ func (c *BabylonContainer) GenerateAddress(uid string) sdk.AccAddress {
 	return address
 }
 
-func (c *BabylonContainer) FundAccount(
-	address string,
-	coin sdk.Coin,
-) (*coretypes.ResultBroadcastTxCommit, error) {
+func (c *BabylonContainer) FundAccount(address string, coin sdk.Coin) (*coretypes.ResultBroadcastTxCommit, error) {
 	ctx := context.Background()
 
 	from, err := sdk.AccAddressFromBech32("bbn1lmnc4gcvcu5dexa8p6vv2e6qkas5lu2r2nwlnv")
@@ -294,9 +287,6 @@ func (c *BabylonContainer) FundAccount(
 	return node.BroadcastTxCommit(context.Background(), txBytes)
 }
 
-func (c *BabylonContainer) FundAccountUbbn(
-	address string,
-	amount int64,
-) (*coretypes.ResultBroadcastTxCommit, error) {
+func (c *BabylonContainer) FundAccountUbbn(address string, amount int64) (*coretypes.ResultBroadcastTxCommit, error) {
 	return c.FundAccount(address, sdk.NewCoin("ubbn", math.NewInt(amount)))
 }
