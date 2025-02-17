@@ -1,4 +1,4 @@
-package wasm
+package bvscw
 
 import (
 	"os"
@@ -13,6 +13,6 @@ func ReadWasmFile(name string) ([]byte, error) {
 	baseDir := filepath.Dir(currentFile)
 
 	artifactName := strings.ReplaceAll(name, "-", "_")
-	targetFile := filepath.Join(baseDir, "../node_modules/@satlayer", name, "artifacts", artifactName+".wasm")
+	targetFile := filepath.Join(baseDir, "./node_modules/@satlayer", name, "artifacts", artifactName+".wasm")
 	return os.ReadFile(targetFile)
 }

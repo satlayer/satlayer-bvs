@@ -19,7 +19,6 @@ async function generate(schema) {
   inputData.addInput(schemaInput);
 
   const name = schema.contract_name.replaceAll("bvs-", "");
-  const dir = join("types", name);
 
   const { lines } = await quicktype({
     inputData,
@@ -29,8 +28,8 @@ async function generate(schema) {
     },
   });
 
-  await mkdir(dir, { recursive: true });
-  await writeFile(join(dir, "schema.go"), lines.join("\n"));
+  await mkdir(name, { recursive: true });
+  await writeFile(join(name, "schema.go"), lines.join("\n"));
 }
 
 import bvs_delegation_manager from "@satlayer/bvs-delegation-manager/schema/bvs-delegation-manager.json" with { type: "json" };

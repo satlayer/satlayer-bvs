@@ -3,7 +3,6 @@ package e2e
 import (
 	"context"
 	"fmt"
-	statebank "github.com/satlayer/satlayer-bvs/bvs-cw/types/state-bank"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,6 +12,7 @@ import (
 	"github.com/satlayer/satlayer-bvs/babylond"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
+	"github.com/satlayer/satlayer-bvs/bvs-cw/state-bank"
 )
 
 type stateBankTestSuite struct {

@@ -1,10 +1,11 @@
-package types
+package bvscw
 
 import (
 	"testing"
 
-	"github.com/satlayer/satlayer-bvs/bvs-cw/types/driver"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/satlayer/satlayer-bvs/bvs-cw/driver"
 )
 
 func TestGeneratedTypes(t *testing.T) {

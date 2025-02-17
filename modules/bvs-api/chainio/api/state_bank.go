@@ -9,12 +9,12 @@ import (
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/client"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
-	statebank "github.com/satlayer/satlayer-bvs/bvs-cw/types/state-bank"
 	"golang.org/x/time/rate"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/indexer"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
+	"github.com/satlayer/satlayer-bvs/bvs-cw/state-bank"
 )
 
 var wasmUpdateState sync.Map
