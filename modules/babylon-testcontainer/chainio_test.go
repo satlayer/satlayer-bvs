@@ -2,8 +2,9 @@ package babylond
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestChainIOQueryNodeStatus(t *testing.T) {

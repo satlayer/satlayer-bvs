@@ -2,8 +2,11 @@ package babylond
 
 import (
 	"context"
-	"cosmossdk.io/math"
 	"encoding/hex"
+	"testing"
+	"time"
+
+	"cosmossdk.io/math"
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -12,8 +15,6 @@ import (
 	authsigning "github.com/cosmos/cosmos-sdk/x/auth/signing"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/stretchr/testify/suite"
-	"testing"
-	"time"
 )
 
 type BabylondTestSuite struct {
@@ -58,7 +59,7 @@ func (s *BabylondTestSuite) TestGenesisBalance() {
 	res, err := queryClient.Balance(context.Background(), &req)
 	s.NoError(err)
 	// Greater than 10^16, because the genesis balance is 10^17, concurrently running tests may have spent some
-	s.Greater(res.Balance.Amount.Int64(), int64(10000000000000000))
+	s.Greater(res.Balance.Amount.Int64(), int64(10e16))
 }
 
 func (s *BabylondTestSuite) TestSendCoinsManually() {

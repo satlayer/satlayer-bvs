@@ -2,10 +2,15 @@ package babylond
 
 import (
 	"context"
-	"cosmossdk.io/math"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/testcontainers/testcontainers-go/wait"
+	"google.golang.org/grpc"
+	"io"
+	"strings"
+
+	"cosmossdk.io/math"
 	"github.com/CosmWasm/wasmd/x/wasm"
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
@@ -26,11 +31,7 @@ import (
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"io"
-	"strings"
 )
 
 const (
@@ -231,6 +232,10 @@ func (c *BabylonContainer) GenerateAddress(uid string) sdk.AccAddress {
 
 		record, err = c.ClientCtx.Keyring.Key(uid)
 		if record == nil {
+			panic(err)
+		}
+	} else {
+		if err != nil {
 			panic(err)
 		}
 	}

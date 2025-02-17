@@ -2,14 +2,15 @@ package babylond
 
 import (
 	"context"
-	"cosmossdk.io/math"
 	"fmt"
+	"strconv"
+
+	"cosmossdk.io/math"
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"strconv"
 )
 
 type DeployedWasmContract struct {
