@@ -4,9 +4,9 @@
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
     <content url="file://$MODULE_DIR$">
-      <sourceFolder url="file://$MODULE_DIR$/examples/squaring/cw-squaring-contract/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/squaring/squaring-contract/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/.turbo" />
-      <excludeFolder url="file://$MODULE_DIR$/examples/squaring/cw-squaring-contract/target" />
+      <excludeFolder url="file://$MODULE_DIR$/examples/squaring/squaring-contract/target" />
       <excludePattern pattern=".turbo" />
       <excludePattern pattern="dist" />
     </content>

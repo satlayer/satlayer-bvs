@@ -30,7 +30,7 @@ func (suite *stateBankTestSuite) SetupTest() {
 	initMsg := statebank.InstantiateMsg{InitialOwner: owner}
 	initBytes, err := initMsg.Marshal()
 	suite.Require().NoError(err)
-	contract, err := container.DeployCrate("cw-state-bank", initBytes, "BVS State Bank", "genesis")
+	contract, err := container.DeployCrate("bvs-state-bank", initBytes, "BVS State Bank", "genesis")
 	suite.Require().NoError(err)
 
 	suite.contrAddr = contract.Address

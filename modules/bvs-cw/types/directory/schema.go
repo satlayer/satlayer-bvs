@@ -10,7 +10,7 @@
 //    queryMsg, err := UnmarshalQueryMsg(bytes)
 //    bytes, err = queryMsg.Marshal()
 
-package bvsdirectory
+package directory
 
 import "encoding/json"
 
