@@ -2,9 +2,10 @@ package babylond
 
 import (
 	"context"
-	"github.com/stretchr/testify/suite"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/suite"
 )
 
 type WasmTestSuite struct {

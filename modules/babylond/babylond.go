@@ -5,10 +5,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/testcontainers/testcontainers-go/wait"
-	"google.golang.org/grpc"
 	"io"
 	"strings"
+
+	"github.com/testcontainers/testcontainers-go/wait"
+	"google.golang.org/grpc"
 
 	"cosmossdk.io/math"
 	"github.com/CosmWasm/wasmd/x/wasm"
