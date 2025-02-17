@@ -1,0 +1,13 @@
+{
+  "name": "@satlayer/bvs-strategy-manager",
+  "private": false,
+  "files": [
+    "artifacts",
+    "schema"
+  ],
+  "scripts": {
+    "build:wasm": "cosmwasm-optimizer",
+    "generate:schema": "cargo run --bin schema",
+    "test": "cargo test"
+  }
+}

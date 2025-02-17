@@ -18,7 +18,7 @@ async function generate(schema) {
   const inputData = new InputData();
   inputData.addInput(schemaInput);
 
-  const name = schema.contract_name.replaceAll("cw-", "");
+  const name = schema.contract_name.replaceAll("bvs-", "");
   const dir = join("types", name);
 
   const { lines } = await quicktype({
@@ -33,24 +33,24 @@ async function generate(schema) {
   await writeFile(join(dir, "schema.go"), lines.join("\n"));
 }
 
-import cw_bvs_directory from "@satlayer/cw-bvs-directory/schema/cw-bvs-directory.json" with { type: "json" };
-import cw_bvs_driver from "@satlayer/cw-bvs-driver/schema/cw-bvs-driver.json" with { type: "json" };
-import cw_delegation_manager from "@satlayer/cw-delegation-manager/schema/cw-delegation-manager.json" with { type: "json" };
-import cw_rewards_coordinator from "@satlayer/cw-rewards-coordinator/schema/cw-rewards-coordinator.json" with { type: "json" };
-import cw_slash_manager from "@satlayer/cw-slash-manager/schema/cw-slash-manager.json" with { type: "json" };
-import cw_state_bank from "@satlayer/cw-state-bank/schema/cw-state-bank.json" with { type: "json" };
-import cw_strategy_base from "@satlayer/cw-strategy-base/schema/cw-strategy-base.json" with { type: "json" };
-import cw_strategy_base_tvl_limits from "@satlayer/cw-strategy-base-tvl-limits/schema/cw-strategy-base-tvl-limits.json" with { type: "json" };
-import cw_strategy_factory from "@satlayer/cw-strategy-factory/schema/cw-strategy-factory.json" with { type: "json" };
-import cw_strategy_manager from "@satlayer/cw-strategy-manager/schema/cw-strategy-manager.json" with { type: "json" };
+import bvs_delegation_manager from "@satlayer/bvs-delegation-manager/schema/bvs-delegation-manager.json" with { type: "json" };
+import bvs_directory from "@satlayer/bvs-directory/schema/bvs-directory.json" with { type: "json" };
+import bvs_driver from "@satlayer/bvs-driver/schema/bvs-driver.json" with { type: "json" };
+import bvs_rewards_coordinator from "@satlayer/bvs-rewards-coordinator/schema/bvs-rewards-coordinator.json" with { type: "json" };
+import bvs_slash_manager from "@satlayer/bvs-slash-manager/schema/bvs-slash-manager.json" with { type: "json" };
+import bvs_state_bank from "@satlayer/bvs-state-bank/schema/bvs-state-bank.json" with { type: "json" };
+import bvs_strategy_base from "@satlayer/bvs-strategy-base/schema/bvs-strategy-base.json" with { type: "json" };
+import bvs_strategy_base_tvl_limits from "@satlayer/bvs-strategy-base-tvl-limits/schema/bvs-strategy-base-tvl-limits.json" with { type: "json" };
+import bvs_strategy_factory from "@satlayer/bvs-strategy-factory/schema/bvs-strategy-factory.json" with { type: "json" };
+import bvs_strategy_manager from "@satlayer/bvs-strategy-manager/schema/bvs-strategy-manager.json" with { type: "json" };
 
-await generate(cw_bvs_directory);
-await generate(cw_bvs_driver);
-await generate(cw_delegation_manager);
-await generate(cw_rewards_coordinator);
-await generate(cw_slash_manager);
-await generate(cw_state_bank);
-await generate(cw_strategy_base);
-await generate(cw_strategy_base_tvl_limits);
-await generate(cw_strategy_factory);
-await generate(cw_strategy_manager);
+await generate(bvs_delegation_manager);
+await generate(bvs_directory);
+await generate(bvs_driver);
+await generate(bvs_rewards_coordinator);
+await generate(bvs_slash_manager);
+await generate(bvs_state_bank);
+await generate(bvs_strategy_base);
+await generate(bvs_strategy_base_tvl_limits);
+await generate(bvs_strategy_factory);
+await generate(bvs_strategy_manager);

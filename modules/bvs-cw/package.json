@@ -6,16 +6,16 @@
     "test": "gotestsum"
   },
   "devDependencies": {
-    "@satlayer/cw-bvs-directory": "workspace:*",
-    "@satlayer/cw-bvs-driver": "workspace:*",
-    "@satlayer/cw-delegation-manager": "workspace:*",
-    "@satlayer/cw-rewards-coordinator": "workspace:*",
-    "@satlayer/cw-slash-manager": "workspace:*",
-    "@satlayer/cw-state-bank": "workspace:*",
-    "@satlayer/cw-strategy-base": "workspace:*",
-    "@satlayer/cw-strategy-base-tvl-limits": "workspace:*",
-    "@satlayer/cw-strategy-factory": "workspace:*",
-    "@satlayer/cw-strategy-manager": "workspace:*",
+    "@satlayer/bvs-delegation-manager": "workspace:*",
+    "@satlayer/bvs-directory": "workspace:*",
+    "@satlayer/bvs-driver": "workspace:*",
+    "@satlayer/bvs-rewards-coordinator": "workspace:*",
+    "@satlayer/bvs-slash-manager": "workspace:*",
+    "@satlayer/bvs-state-bank": "workspace:*",
+    "@satlayer/bvs-strategy-base": "workspace:*",
+    "@satlayer/bvs-strategy-base-tvl-limits": "workspace:*",
+    "@satlayer/bvs-strategy-factory": "workspace:*",
+    "@satlayer/bvs-strategy-manager": "workspace:*",
     "quicktype-core": "^23.0.171"
   }
 }
