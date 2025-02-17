@@ -7,7 +7,7 @@
 //    executeMsg, err := UnmarshalExecuteMsg(bytes)
 //    bytes, err = executeMsg.Marshal()
 
-package bvs_driver
+package bvsdriver
 
 import "encoding/json"
 

@@ -65,8 +65,8 @@ func (s *bvsDriverImpl) newExecuteOptions(executeMsg []byte, memo string) types.
 func (s *bvsDriverImpl) SetRegisteredBVSContract(ctx context.Context, addr string) (*coretypes.ResultTx, error) {
 	s.registeredBVSContract = addr
 
-	msg := bvs_driver.ExecuteMsg{
-		AddRegisteredBvsContract: &bvs_driver.AddRegisteredBvsContract{
+	msg := bvsdriver.ExecuteMsg{
+		AddRegisteredBvsContract: &bvsdriver.AddRegisteredBvsContract{
 			Address: addr,
 		},
 	}
