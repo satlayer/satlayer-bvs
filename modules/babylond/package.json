@@ -1,5 +1,5 @@
 {
-  "name": "@modules/babylon-testcontainer",
+  "name": "@modules/babylond",
   "private": true,
   "scripts": {
     "test": "gotestsum"

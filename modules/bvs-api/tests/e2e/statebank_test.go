@@ -3,15 +3,16 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"github.com/satlayer/satlayer-bvs/babylon-testcontainer"
-	"github.com/satlayer/satlayer-bvs/bvs-cw/wasm"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/time/rate"
-	"testing"
 
+	"github.com/satlayer/satlayer-bvs/babylond"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
+	"github.com/satlayer/satlayer-bvs/bvs-cw/wasm"
 )
 
 type stateBankTestSuite struct {
