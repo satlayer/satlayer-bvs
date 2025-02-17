@@ -12,7 +12,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	"github.com/satlayer/satlayer-bvs/bvs-cw"
+	bvscw "github.com/satlayer/satlayer-bvs/bvs-cw"
 )
 
 type DeployedWasmContract struct {
