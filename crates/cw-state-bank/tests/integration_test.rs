@@ -73,7 +73,7 @@ mod tests {
 
     mod tasks {
         use super::*;
-        use cosmwasm_std::{Addr, Attribute};
+        use cosmwasm_std::{Addr, Event};
         use cw_state_bank::msg::ExecuteMsg;
         use cw_state_bank::query::ValueResponse;
 
@@ -100,33 +100,20 @@ mod tests {
                 let cosmos_msg = contract.call(msg).unwrap();
                 let res = app.execute(state_bank_address.clone(), cosmos_msg).unwrap();
 
+                // expect 2 events, 1 for execute and 1 for update state
                 assert_eq!(res.events.len(), 2, "expected 2 events");
-                assert_eq!(
-                    res.events[1].ty, "wasm-UpdateState",
-                    "expected UpdateState event"
-                );
 
                 assert_eq!(
-                    res.events[1].attributes,
-                    vec![
-                        Attribute {
-                            key: "_contract_address".to_string(),
-                            value: res.events[0].attributes[0].value.clone(),
-                        },
-                        Attribute {
-                            key: "sender".to_string(),
-                            value: state_bank_address.to_string(),
-                        },
-                        Attribute {
-                            key: "key".to_string(),
-                            value: "weather".to_string(),
-                        },
-                        Attribute {
-                            key: "value".to_string(),
-                            value: "winter".to_string(),
-                        },
-                    ],
-                    "expected 4 attributes for UpdateState event"
+                    res.events[1],
+                    Event::new("wasm-UpdateState")
+                        .add_attribute(
+                            "_contract_address",
+                            res.events[0].attributes[0].value.clone()
+                        )
+                        .add_attribute("sender", state_bank_address.to_string())
+                        .add_attribute("key", "weather")
+                        .add_attribute("value", "winter"),
+                    "expected UpdateState event and 4 attributes"
                 );
 
                 // assert the state is updated with the key-value pair
@@ -149,33 +136,20 @@ mod tests {
                 let cosmos_msg = contract.call(msg).unwrap();
                 let res = app.execute(state_bank_address.clone(), cosmos_msg).unwrap();
 
+                // expect 2 events, 1 for execute and 1 for update state
                 assert_eq!(res.events.len(), 2, "expected 2 events");
-                assert_eq!(
-                    res.events[1].ty, "wasm-UpdateState",
-                    "expected UpdateState event"
-                );
 
                 assert_eq!(
-                    res.events[1].attributes,
-                    vec![
-                        Attribute {
-                            key: "_contract_address".to_string(),
-                            value: res.events[0].attributes[0].value.clone(),
-                        },
-                        Attribute {
-                            key: "sender".to_string(),
-                            value: state_bank_address.to_string(),
-                        },
-                        Attribute {
-                            key: "key".to_string(),
-                            value: "temperature".to_string(),
-                        },
-                        Attribute {
-                            key: "value".to_string(),
-                            value: "cold".to_string(),
-                        },
-                    ],
-                    "expected 4 attributes for UpdateState event"
+                    res.events[1],
+                    Event::new("wasm-UpdateState")
+                        .add_attribute(
+                            "_contract_address",
+                            res.events[0].attributes[0].value.clone()
+                        )
+                        .add_attribute("sender", state_bank_address.to_string())
+                        .add_attribute("key", "temperature")
+                        .add_attribute("value", "cold"),
+                    "expected UpdateState event and 4 attributes"
                 );
 
                 // assert the state is updated with the key-value pair
