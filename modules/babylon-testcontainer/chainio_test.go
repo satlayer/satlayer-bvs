@@ -2,15 +2,16 @@ package babylond
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestChainIOQueryNodeStatus(t *testing.T) {
 	container, err := Run(context.Background())
 	assert.NoError(t, err)
 
-	chainIO, err := container.GetChainIO()
+	chainIO, err := container.NewChainIO("../.babylon")
 	assert.NoError(t, err)
 
 	status, err := chainIO.QueryNodeStatus(context.Background())

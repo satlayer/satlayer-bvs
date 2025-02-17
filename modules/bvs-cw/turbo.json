@@ -6,6 +6,9 @@
       "inputs": ["generate.mjs"],
       "outputs": ["types"],
       "dependsOn": ["^generate:schema"]
+    },
+    "build:wasm": {
+      "dependsOn": ["^build:wasm"]
     }
   }
 }

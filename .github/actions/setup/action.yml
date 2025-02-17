@@ -23,6 +23,7 @@ runs:
     - uses: pnpm/action-setup@v4
     - run: |
         echo "NEXT_TELEMETRY_DISABLED=1" >> $GITHUB_ENV
+        echo "TURBO_TELEMETRY_DISABLED=1" >> $GITHUB_ENV
         pnpm install -g turbo
         pnpm install
 
