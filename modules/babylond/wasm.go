@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/satlayer/satlayer-bvs/bvs-cw/wasm"
+
 	"cosmossdk.io/math"
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
@@ -16,6 +18,15 @@ import (
 type DeployedWasmContract struct {
 	CodeId  uint64
 	Address string
+}
+
+func (c *BabylonContainer) DeployCrate(crate string, initMsg []byte, label, from string) (*DeployedWasmContract, error) {
+	wasmByteCode, err := wasm.ReadWasmFile(crate)
+	if err != nil {
+		panic(err)
+	}
+
+	return c.DeployWasmCode(wasmByteCode, initMsg, label, from)
 }
 
 func (c *BabylonContainer) DeployWasmCode(wasmByteCode []byte, initMsg []byte, label, from string) (*DeployedWasmContract, error) {

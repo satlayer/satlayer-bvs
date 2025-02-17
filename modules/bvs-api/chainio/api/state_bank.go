@@ -9,6 +9,7 @@ import (
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/client"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
+	statebank "github.com/satlayer/satlayer-bvs/bvs-cw/types/state-bank"
 	"golang.org/x/time/rate"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/indexer"
@@ -29,7 +30,7 @@ type StateBank interface {
 		eventTypes []string, rateLimit rate.Limit, maxRetries int) *indexer.EventIndexer
 	EventHandler(ch chan *indexer.Event)
 	SetRegisteredBVSContract(ctx context.Context, addr string) (*coretypes.ResultTx, error)
-	Set(ctx context.Context, key string, value int64) (*coretypes.ResultTx, error)
+	Set(ctx context.Context, key string, value string) (*coretypes.ResultTx, error)
 	BindClient(contractAddress string)
 }
 
@@ -113,8 +114,8 @@ func (s *stateBankImpl) newExecuteOptions(executeMsg []byte, memo string) types.
 func (s *stateBankImpl) SetRegisteredBVSContract(ctx context.Context, addr string) (*coretypes.ResultTx, error) {
 	s.registeredBVSContract = addr
 
-	msg := types.AddRegisteredBVSContractReq{
-		AddRegisteredBVSContract: types.AddRegisteredBVSContract{
+	msg := statebank.ExecuteMsg{
+		AddRegisteredBvsContract: &statebank.AddRegisteredBvsContract{
 			Address: addr,
 		},
 	}
@@ -128,15 +129,15 @@ func (s *stateBankImpl) SetRegisteredBVSContract(ctx context.Context, addr strin
 	return s.io.SendTransaction(ctx, executeOptions)
 }
 
-func (s *stateBankImpl) Set(ctx context.Context, key string, value int64) (*coretypes.ResultTx, error) {
-	msg := types.SetReq{
-		Set: types.Set{
+func (s *stateBankImpl) Set(ctx context.Context, key string, value string) (*coretypes.ResultTx, error) {
+	msg := statebank.ExecuteMsg{
+		Set: &statebank.Set{
 			Key:   key,
 			Value: value,
 		},
 	}
 
-	msgBytes, err := json.Marshal(msg)
+	msgBytes, err := msg.Marshal()
 	if err != nil {
 		return nil, err
 	}
