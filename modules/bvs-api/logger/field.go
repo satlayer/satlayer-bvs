@@ -12,3 +12,7 @@ func WithField(key string, val interface{}) Field {
 func WithF(key string, val interface{}) Field {
 	return Field{Key: key, Val: val}
 }
+
+func WithA(key string, val interface{}) Field {
+	return Field{Key: key, Val: val}
+}
