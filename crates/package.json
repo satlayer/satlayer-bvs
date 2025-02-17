@@ -9,6 +9,9 @@
   "lint-staged": {
     "*.rs": [
       "rustfmt"
+    ],
+    "package.json": [
+      "prettier --write"
     ]
   }
 }

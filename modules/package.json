@@ -4,9 +4,12 @@
   "scripts": {
     "prepare": "go mod tidy && go install gotest.tools/gotestsum@latest"
   },
- "lint-staged": {
+  "lint-staged": {
     "*.go": [
       "goimports -w"
+    ],
+    "package.json": [
+      "prettier --write"
     ]
   }
 }
