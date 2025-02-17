@@ -7,8 +7,8 @@ import (
 )
 
 func TestGeneratedTypes(t *testing.T) {
-	msg := bvs_driver.ExecuteMsg{
-		TransferOwnership: &bvs_driver.TransferOwnership{
+	msg := bvsdriver.ExecuteMsg{
+		TransferOwnership: &bvsdriver.TransferOwnership{
 			NewOwner: "new_owner",
 		},
 	}
