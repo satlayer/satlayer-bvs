@@ -1,6 +1,6 @@
 use cosmwasm_schema::write_api;
 
-use squaring::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use squaring_contract::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn main() {
     write_api! {

@@ -1,14 +1,16 @@
-package types
+package bvscw
 
 import (
-	"github.com/satlayer/satlayer-bvs/bvs-cw/types/bvs-driver"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/satlayer/satlayer-bvs/bvs-cw/driver"
 )
 
 func TestGeneratedTypes(t *testing.T) {
-	msg := bvsdriver.ExecuteMsg{
-		TransferOwnership: &bvsdriver.TransferOwnership{
+	msg := driver.ExecuteMsg{
+		TransferOwnership: &driver.TransferOwnership{
 			NewOwner: "new_owner",
 		},
 	}

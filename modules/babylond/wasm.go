@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/satlayer/satlayer-bvs/bvs-cw/wasm"
-
 	"cosmossdk.io/math"
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	"github.com/satlayer/satlayer-bvs/bvs-cw"
 )
 
 type DeployedWasmContract struct {
@@ -21,7 +21,7 @@ type DeployedWasmContract struct {
 }
 
 func (c *BabylonContainer) DeployCrate(crate string, initMsg []byte, label, from string) (*DeployedWasmContract, error) {
-	wasmByteCode, err := wasm.ReadWasmFile(crate)
+	wasmByteCode, err := bvscw.ReadWasmFile(crate)
 	if err != nil {
 		panic(err)
 	}

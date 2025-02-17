@@ -3,7 +3,6 @@ package e2e
 import (
 	"context"
 	"fmt"
-	statebank "github.com/satlayer/satlayer-bvs/bvs-cw/types/state-bank"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,6 +12,7 @@ import (
 	"github.com/satlayer/satlayer-bvs/babylond"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
+	"github.com/satlayer/satlayer-bvs/bvs-cw/state-bank"
 )
 
 type stateBankTestSuite struct {
@@ -30,7 +30,7 @@ func (suite *stateBankTestSuite) SetupTest() {
 	initMsg := statebank.InstantiateMsg{InitialOwner: owner}
 	initBytes, err := initMsg.Marshal()
 	suite.Require().NoError(err)
-	contract, err := container.DeployCrate("cw-state-bank", initBytes, "BVS State Bank", "genesis")
+	contract, err := container.DeployCrate("bvs-state-bank", initBytes, "BVS State Bank", "genesis")
 	suite.Require().NoError(err)
 
 	suite.contrAddr = contract.Address
