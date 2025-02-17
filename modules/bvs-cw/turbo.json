@@ -4,7 +4,7 @@
   "tasks": {
     "generate:schema": {
       "inputs": ["generate.mjs"],
-      "outputs": ["/*/schema.go"],
+      "outputs": ["*/schema.go"],
       "dependsOn": ["^generate:schema"]
     },
     "build:wasm": {
