@@ -3,8 +3,9 @@ package babylond
 import (
 	"context"
 	"fmt"
-	"github.com/satlayer/satlayer-bvs/bvs-cw/wasm"
 	"strconv"
+
+	"github.com/satlayer/satlayer-bvs/bvs-cw/wasm"
 
 	"cosmossdk.io/math"
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
@@ -19,7 +20,7 @@ type DeployedWasmContract struct {
 	Address string
 }
 
-func (c *BabylonContainer) DeployBvs(crate string, initMsg []byte, label, from string) (*DeployedWasmContract, error) {
+func (c *BabylonContainer) DeployCrate(crate string, initMsg []byte, label, from string) (*DeployedWasmContract, error) {
 	wasmByteCode, err := wasm.ReadWasmFile(crate)
 	if err != nil {
 		panic(err)

@@ -27,7 +27,7 @@ func (suite *stateBankTestSuite) SetupTest() {
 
 	owner := container.GenerateAddress("initial_owner").String()
 	initJson := fmt.Sprintf(`{"initial_owner": "%s"}`, owner)
-	contract, err := container.DeployBvs("cw-state-bank", []byte(initJson), "BVS State Bank", "genesis")
+	contract, err := container.DeployCrate("cw-state-bank", []byte(initJson), "BVS State Bank", "genesis")
 	suite.Require().NoError(err)
 
 	suite.contrAddr = contract.Address
