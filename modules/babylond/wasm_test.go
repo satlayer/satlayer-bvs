@@ -14,9 +14,7 @@ type WasmTestSuite struct {
 }
 
 func (s *WasmTestSuite) SetupSuite() {
-	container, err := Run(context.Background())
-	s.Require().NoError(err)
-	s.Container = container
+	s.Container = Run(context.Background())
 }
 
 func (s *WasmTestSuite) TearDownSuite() {

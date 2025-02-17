@@ -11,8 +11,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-
-	bvscw "github.com/satlayer/satlayer-bvs/bvs-cw"
 )
 
 type DeployedWasmContract struct {
@@ -20,16 +18,7 @@ type DeployedWasmContract struct {
 	Address string
 }
 
-func (c *BabylonContainer) DeployCrate(crate string, initMsg []byte, label, from string) (*DeployedWasmContract, error) {
-	wasmByteCode, err := bvscw.ReadWasmFile(crate)
-	if err != nil {
-		panic(err)
-	}
-
-	return c.DeployWasmCode(wasmByteCode, initMsg, label, from)
-}
-
-func (c *BabylonContainer) DeployWasmCode(wasmByteCode []byte, initMsg []byte, label, from string) (*DeployedWasmContract, error) {
+func (c *BabylonContainer) StoreAndInitWasm(wasmByteCode []byte, initMsg []byte, label, from string) (*DeployedWasmContract, error) {
 	res, err := c.StoreWasmCode(wasmByteCode, from)
 	if err != nil {
 		panic(err)

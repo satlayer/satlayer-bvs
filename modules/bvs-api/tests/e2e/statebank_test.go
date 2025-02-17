@@ -12,7 +12,6 @@ import (
 	"github.com/satlayer/satlayer-bvs/babylond"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
-	statebank "github.com/satlayer/satlayer-bvs/bvs-cw/state-bank"
 )
 
 type stateBankTestSuite struct {
@@ -23,24 +22,12 @@ type stateBankTestSuite struct {
 }
 
 func (suite *stateBankTestSuite) SetupTest() {
-	container, err := babylond.Run(context.Background())
-	suite.Require().NoError(err)
+	container := babylond.Run(context.Background())
+	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
 
-	owner := container.GenerateAddress("initial_owner").String()
-	initMsg := statebank.InstantiateMsg{InitialOwner: owner}
-	initBytes, err := initMsg.Marshal()
-	suite.Require().NoError(err)
-	contract, err := container.DeployCrate("bvs-state-bank", initBytes, "BVS State Bank", "genesis")
-	suite.Require().NoError(err)
-
-	suite.contrAddr = contract.Address
+	suite.contrAddr = container.DeployStateBank().Address
 	suite.callerAddr = "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
-	_, err = container.FundAccountUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
-	suite.Require().NoError(err)
-
-	chainIO, err := container.NewChainIO("../.babylon")
-	suite.Require().NoError(err)
-	suite.chainIO = chainIO
+	suite.chainIO = container.NewChainIO("../.babylon")
 }
 
 func (suite *stateBankTestSuite) Test_ExecuteStateBank() {

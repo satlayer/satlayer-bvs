@@ -8,11 +8,8 @@ import (
 )
 
 func TestChainIOQueryNodeStatus(t *testing.T) {
-	container, err := Run(context.Background())
-	assert.NoError(t, err)
-
-	chainIO, err := container.NewChainIO("../.babylon")
-	assert.NoError(t, err)
+	container := Run(context.Background())
+	chainIO := container.NewChainIO("../.babylon")
 
 	status, err := chainIO.QueryNodeStatus(context.Background())
 	assert.NoError(t, err)
