@@ -3,5 +3,10 @@
   "private": true,
   "scripts": {
     "test": "gotestsum"
+  },
+  "lint-staged": {
+    "*.go": [
+      "go fmt"
+    ]
   }
 }
