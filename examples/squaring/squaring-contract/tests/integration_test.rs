@@ -1,7 +1,7 @@
+use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, StdResult, WasmMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, StdResult, WasmMsg};
-use crate::msg::ExecuteMsg;
+use squaring_contract::msg::ExecuteMsg;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct SquaringContract(pub Addr);
@@ -25,17 +25,17 @@ impl SquaringContract {
 #[cfg(test)]
 mod tests {
     use super::SquaringContract;
-    use crate::msg::InstantiateMsg;
+    use bvs_test::{BvsDriver, StateBank};
     use cosmwasm_std::testing::MockApi;
     use cosmwasm_std::{Addr, Coin, Empty, Uint128};
     use cw_multi_test::{App, AppBuilder, Contract, ContractWrapper, Executor};
-    use bvs_test::{BvsDriver, StateBank};
+    use squaring_contract::msg::InstantiateMsg;
 
     pub fn contract() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(
-            crate::contract::execute,
-            crate::contract::instantiate,
-            crate::contract::query,
+            squaring_contract::contract::execute,
+            squaring_contract::contract::instantiate,
+            squaring_contract::contract::query,
         );
         Box::new(contract)
     }
@@ -70,7 +70,10 @@ mod tests {
 
         let admin = app.api().addr_make(ADMIN);
         assert_eq!(
-            app.wrap().query_balance(&admin, NATIVE_DENOM).unwrap().amount,
+            app.wrap()
+                .query_balance(&admin, NATIVE_DENOM)
+                .unwrap()
+                .amount,
             Uint128::new(100)
         );
 
@@ -80,19 +83,15 @@ mod tests {
             bvs_driver: driver.addr.clone(),
         };
         let contract_addr = app
-            .instantiate_contract(
-                contract_id,
-                admin,
-                &msg,
-                &[],
-                "BVS Squaring Example",
-                None,
-            )
+            .instantiate_contract(contract_id, admin, &msg, &[], "BVS Squaring Example", None)
             .unwrap();
 
-        driver.register(&mut app, contract_addr.to_string()).unwrap();
-        state_bank.register(&mut app, contract_addr.to_string()).unwrap();
-
+        driver
+            .register(&mut app, contract_addr.to_string())
+            .unwrap();
+        state_bank
+            .register(&mut app, contract_addr.to_string())
+            .unwrap();
 
         let contract = SquaringContract(contract_addr);
         (app, contract)
@@ -100,15 +99,13 @@ mod tests {
 
     mod tasks {
         use super::*;
-        use crate::msg::ExecuteMsg;
+        use squaring_contract::msg::ExecuteMsg;
 
         #[test]
         fn create_new_task() {
             let (mut app, contract) = instantiate();
 
-            let msg = ExecuteMsg::CreateNewTask {
-                input: 3,
-            };
+            let msg = ExecuteMsg::CreateNewTask { input: 3 };
             let cosmos_msg = contract.call(msg).unwrap();
             app.execute(Addr::unchecked("anyone"), cosmos_msg).unwrap();
         }
