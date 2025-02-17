@@ -18,6 +18,7 @@
       <sourceFolder url="file://$MODULE_DIR$/bvs-driver/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/common/bvs" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/common/bvs/base/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-state-bank/tests" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />

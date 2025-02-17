@@ -10,7 +10,7 @@ impl StateBankContract {
         self.0.clone()
     }
 
-    pub fn call<T: Into<cw_state_bank::msg::ExecuteMsg>>(&self, msg: T) -> StdResult<CosmosMsg> {
+    pub fn call<T: Into<bvs_state_bank::msg::ExecuteMsg>>(&self, msg: T) -> StdResult<CosmosMsg> {
         let msg = to_json_binary(&msg.into())?;
         Ok(WasmMsg::Execute {
             contract_addr: self.addr().into(),
@@ -30,9 +30,9 @@ mod tests {
 
     pub fn contract() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(
-            cw_state_bank::contract::execute,
-            cw_state_bank::contract::instantiate,
-            cw_state_bank::contract::query,
+            bvs_state_bank::contract::execute,
+            bvs_state_bank::contract::instantiate,
+            bvs_state_bank::contract::query,
         );
         Box::new(contract)
     }
@@ -60,7 +60,7 @@ mod tests {
         let admin = app.api().addr_make("admin");
         let owner = app.api().addr_make("owner");
 
-        let msg = cw_state_bank::msg::InstantiateMsg {
+        let msg = bvs_state_bank::msg::InstantiateMsg {
             initial_owner: owner.to_string(),
         };
         let contract_addr = app
@@ -73,9 +73,9 @@ mod tests {
 
     mod tasks {
         use super::*;
+        use bvs_state_bank::msg::ExecuteMsg;
+        use bvs_state_bank::query::ValueResponse;
         use cosmwasm_std::{Addr, Event};
-        use cw_state_bank::msg::ExecuteMsg;
-        use cw_state_bank::query::ValueResponse;
 
         #[test]
         fn execute_set() {
@@ -114,7 +114,7 @@ mod tests {
                 );
 
                 // assert the state is updated with the key-value pair
-                let query_msg = cw_state_bank::msg::QueryMsg::Get {
+                let query_msg = bvs_state_bank::msg::QueryMsg::Get {
                     key: "weather".to_string(),
                 };
                 let res: ValueResponse = app
@@ -147,7 +147,7 @@ mod tests {
                 );
 
                 // assert the state is updated with the key-value pair
-                let query_msg = cw_state_bank::msg::QueryMsg::Get {
+                let query_msg = bvs_state_bank::msg::QueryMsg::Get {
                     key: "temperature".to_string(),
                 };
                 let res: ValueResponse = app
@@ -158,7 +158,7 @@ mod tests {
                 assert_eq!(res.value, "cold".to_string());
 
                 // assert the previous state is preserved
-                let query_msg = cw_state_bank::msg::QueryMsg::Get {
+                let query_msg = bvs_state_bank::msg::QueryMsg::Get {
                     key: "weather".to_string(),
                 };
                 let res: ValueResponse = app
@@ -194,7 +194,7 @@ mod tests {
                 app.execute(state_bank_address.clone(), cosmos_msg).unwrap();
 
                 // assert the state is updated with the key-value pair
-                let query_msg = cw_state_bank::msg::QueryMsg::Get {
+                let query_msg = bvs_state_bank::msg::QueryMsg::Get {
                     key: "weather".to_string(),
                 };
                 let res: ValueResponse = app
@@ -214,7 +214,7 @@ mod tests {
                 app.execute(state_bank_address.clone(), cosmos_msg).unwrap();
 
                 // assert the state is updated with the key-value pair
-                let query_msg = cw_state_bank::msg::QueryMsg::Get {
+                let query_msg = bvs_state_bank::msg::QueryMsg::Get {
                     key: "weather".to_string(),
                 };
                 let res: ValueResponse = app
@@ -264,7 +264,7 @@ mod tests {
             let error = app.execute(owner, cosmos_msg).unwrap_err();
             assert_eq!(
                 error.root_cause().to_string(),
-                cw_state_bank::ContractError::Unauthorized {}.to_string()
+                bvs_state_bank::ContractError::Unauthorized {}.to_string()
             );
         }
     }
