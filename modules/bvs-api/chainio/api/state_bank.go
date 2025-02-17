@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	statebank "github.com/satlayer/satlayer-bvs/bvs-cw/types/state-bank"
 	"sync"
 
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/client"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
+	statebank "github.com/satlayer/satlayer-bvs/bvs-cw/types/state-bank"
 	"golang.org/x/time/rate"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/indexer"
