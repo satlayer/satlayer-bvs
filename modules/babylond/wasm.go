@@ -3,6 +3,7 @@ package babylond
 import (
 	"context"
 	"fmt"
+	"github.com/satlayer/satlayer-bvs/bvs-cw/wasm"
 	"strconv"
 
 	"cosmossdk.io/math"
@@ -16,6 +17,15 @@ import (
 type DeployedWasmContract struct {
 	CodeId  uint64
 	Address string
+}
+
+func (c *BabylonContainer) DeployBvs(crate string, initMsg []byte, label, from string) (*DeployedWasmContract, error) {
+	wasmByteCode, err := wasm.ReadWasmFile(crate)
+	if err != nil {
+		panic(err)
+	}
+
+	return c.DeployWasmCode(wasmByteCode, initMsg, label, from)
 }
 
 func (c *BabylonContainer) DeployWasmCode(wasmByteCode []byte, initMsg []byte, label, from string) (*DeployedWasmContract, error) {

@@ -4,18 +4,14 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/time/rate"
 
+	"github.com/satlayer/satlayer-bvs/babylond"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	apilogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
-	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 )
 
 type stateBankTestSuite struct {
@@ -26,22 +22,22 @@ type stateBankTestSuite struct {
 }
 
 func (suite *stateBankTestSuite) SetupTest() {
-	chainID := "sat-bbn-testnet1"
-	rpcURI := "https://rpc.sat-bbn-testnet1.satlayer.net"
-	homeDir := "../.babylon" // Please refer to the readme to obtain
+	container, err := babylond.Run(context.Background())
+	suite.Require().NoError(err)
 
-	logger := apilogger.NewMockELKLogger()
-	metricsIndicators := transactionprocess.NewPromIndicators(prometheus.NewRegistry(), "stateBank")
-	chainIO, err := io.NewChainIO(chainID, rpcURI, homeDir, "bbn", logger, metricsIndicators, types.TxManagerParams{
-		MaxRetries:             3,
-		RetryInterval:          2 * time.Second,
-		ConfirmationTimeout:    60 * time.Second,
-		GasPriceAdjustmentRate: "1.1",
-	})
+	owner := container.GenerateAddress("initial_owner").String()
+	initJson := fmt.Sprintf(`{"initial_owner": "%s"}`, owner)
+	contract, err := container.DeployBvs("cw-state-bank", []byte(initJson), "BVS State Bank", "genesis")
+	suite.Require().NoError(err)
+
+	suite.contrAddr = contract.Address
+	suite.callerAddr = "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
+	_, err = container.FundAccountUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
+	suite.Require().NoError(err)
+
+	chainIO, err := container.NewChainIO("../.babylon")
 	suite.Require().NoError(err)
 	suite.chainIO = chainIO
-	suite.contrAddr = "bbn1u9mt6xgrwtxxlzzjyze2j8upancg900jggxuymf0dev6yxgsqapqzq87wc"
-	suite.callerAddr = "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
 }
 
 func (suite *stateBankTestSuite) Test_ExecuteStateBank() {
@@ -60,7 +56,7 @@ func (suite *stateBankTestSuite) Test_ExecuteStateBank() {
 	t.Logf("SetRegisteredBVSContract resp: %+v", resp)
 
 	key := "count"
-	value := int64(11)
+	value := "11"
 	resp, err = stateBank.Set(context.Background(), key, value)
 	assert.NoError(t, err, "set key-value")
 	assert.NotNil(t, resp, "response nil")
