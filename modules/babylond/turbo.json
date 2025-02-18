@@ -5,7 +5,7 @@
     "test": {
       "dependsOn": ["^test", "^build:wasm"]
     },
-    "build": {
+    "build:wasm": {
       "dependsOn": ["^build:wasm"]
     }
   }
