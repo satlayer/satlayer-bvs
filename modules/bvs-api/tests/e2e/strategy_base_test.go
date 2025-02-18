@@ -3,17 +3,14 @@ package e2e
 import (
 	"context"
 	"testing"
-	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/satlayer/satlayer-bvs/babylond"
+	"github.com/satlayer/satlayer-bvs/babylond/cw20"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	apilogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
-	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 )
 
 type strategyBaseTestSuite struct {
@@ -24,26 +21,38 @@ type strategyBaseTestSuite struct {
 }
 
 func (suite *strategyBaseTestSuite) SetupTest() {
-	chainID := "sat-bbn-testnet1"
-	rpcURI := "https://rpc.sat-bbn-testnet1.satlayer.net"
-	homeDir := "../.babylon" // Please refer to the readme to obtain
+	container := babylond.Run(context.Background())
+	suite.chainIO = container.NewChainIO("../.babylon")
 
-	logger := apilogger.NewMockELKLogger()
-	metricsIndicators := transactionprocess.NewPromIndicators(prometheus.NewRegistry(), "strategy_base")
-	chainIO, err := io.NewChainIO(chainID, rpcURI, homeDir, "bbn", logger, metricsIndicators, types.TxManagerParams{
-		MaxRetries:             3,
-		RetryInterval:          2 * time.Second,
-		ConfirmationTimeout:    60 * time.Second,
-		GasPriceAdjustmentRate: "1.1",
+	minter := container.GenerateAddress("cw20:minter")
+	token := cw20.DeployCw20(container, cw20.InstantiateMsg{
+		Decimals: 6,
+		InitialBalances: []cw20.Cw20Coin{
+			{
+				Address: minter.String(),
+				Amount:  "1000000000",
+			},
+		},
+		Mint: &cw20.MinterResponse{
+			Minter: minter.String(),
+		},
+		Name:   "Test Token",
+		Symbol: "TEST",
 	})
-	suite.Require().NoError(err)
-	suite.chainIO = chainIO
-	suite.strategyManager = "bbn1mju0w4qagjcgtrgepr796zmg083qurq9sngy0eyxm8wzf78cjt3qzfq7qy"
+
+	container.ImportPrivKey("strategy-base:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
+	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
+
+	// TODO: Circular Deps, StrategyManager should be set via ExecuteMsg and not injected in InitMsg
+	strategyBase := container.DeployStrategyBase(token.Address, "bbn1mju0w4qagjcgtrgepr796zmg083qurq9sngy0eyxm8wzf78cjt3qzfq7qy")
+
+	suite.contrAddr = strategyBase.Address
+	suite.strategyManager = container.GenerateAddress("throw-away").String()
+
 }
 
 func (suite *strategyBaseTestSuite) Test_ExecuteStrategyBase() {
 	t := suite.T()
-	contrAddr := "bbn1326vx56sy7ra2qk4perr2tg8td3ln4qll3s2l4vu8jclxdplzj5scxzahc"
 	keyName := "caller"
 
 	t.Logf("TestExecuteSquaring")
@@ -51,7 +60,7 @@ func (suite *strategyBaseTestSuite) Test_ExecuteStrategyBase() {
 	assert.NoError(t, err)
 
 	strategyBase := api.NewStrategyBase(chainIO)
-	strategyBase.BindClient(contrAddr)
+	strategyBase.BindClient(suite.contrAddr)
 
 	resp, err := strategyBase.SetStrategyManager(context.Background(), suite.strategyManager)
 	assert.NoError(t, err)
@@ -71,14 +80,13 @@ func (suite *strategyBaseTestSuite) Test_ExecuteStrategyBase() {
 
 func (suite *strategyBaseTestSuite) Test_QueryStrategyBase() {
 	t := suite.T()
-	contrAddr := "bbn1326vx56sy7ra2qk4perr2tg8td3ln4qll3s2l4vu8jclxdplzj5scxzahc"
 	keyName := "wallet1"
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
 	strategyBase := api.NewStrategyBase(chainIO)
-	strategyBase.BindClient(contrAddr)
+	strategyBase.BindClient(suite.contrAddr)
 
 	/*resp, err := strategyBase.GetShares("osmo1fxqtqvcsglst7pmnd0a9ftytsxt8g75r6cugv7", "osmo1p4ee54wcu54vcxht5spk5dpklr39qjpxxk38rm9p36c48rlgyawstwl3q8")
 	assert.NoError(t, err, "execute contract")

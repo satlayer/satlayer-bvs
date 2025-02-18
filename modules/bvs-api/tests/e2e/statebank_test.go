@@ -23,11 +23,12 @@ type stateBankTestSuite struct {
 
 func (suite *stateBankTestSuite) SetupTest() {
 	container := babylond.Run(context.Background())
-	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
+	suite.chainIO = container.NewChainIO("../.babylon")
 
 	suite.contrAddr = container.DeployStateBank().Address
 	suite.callerAddr = "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
-	suite.chainIO = container.NewChainIO("../.babylon")
+
+	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
 }
 
 func (suite *stateBankTestSuite) Test_ExecuteStateBank() {
