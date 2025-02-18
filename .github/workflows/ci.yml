@@ -154,11 +154,20 @@ jobs:
       fail-fast: false
       matrix:
         package: ${{ fromJSON(needs.test_plan.outputs.packages) }}
+    env:
+      GOTESTSUM_JUNITFILE: reports/gotestsum-junit.xml
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
 
       - run: turbo run test --filter=${{ matrix.package }}
+
+      - uses: dorny/test-reporter@v1
+        if: ${{ (success() || failure()) && startsWith(matrix.package, '@modules/') }}
+        with:
+          name: ${{matrix.package}} Tests
+          path: reports/gotestsum-*.xml
+          reporter: java-junit
 
   test_completed:
     name: Test [completed]
