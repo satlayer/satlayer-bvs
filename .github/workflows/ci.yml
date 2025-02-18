@@ -9,6 +9,8 @@ on:
 permissions:
   contents: read
   packages: read
+  actions: read
+  checks: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
@@ -156,9 +158,6 @@ jobs:
         package: ${{ fromJSON(needs.test_plan.outputs.packages) }}
     env:
       GOTESTSUM_JUNITFILE: reports/gotestsum-junit.xml
-    permissions:
-      actions: read
-      checks: write
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
