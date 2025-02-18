@@ -9,6 +9,8 @@ on:
 permissions:
   contents: read
   packages: read
+  actions: read
+  checks: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
@@ -154,11 +156,20 @@ jobs:
       fail-fast: false
       matrix:
         package: ${{ fromJSON(needs.test_plan.outputs.packages) }}
+    env:
+      GOTESTSUM_JUNITFILE: reports/gotestsum-junit.xml
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
 
       - run: turbo run test --filter=${{ matrix.package }}
+
+      - uses: dorny/test-reporter@v1
+        if: ${{ (success() || failure()) && startsWith(matrix.package, '@modules/') && !github.event.pull_request.head.repo.fork }}
+        with:
+          name: Test [report] (${{matrix.package}})
+          path: modules/*/reports/gotestsum-junit.xml
+          reporter: java-junit
 
   test_completed:
     name: Test [completed]
