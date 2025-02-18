@@ -1,16 +1,14 @@
-package bvscw
+package driver
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/satlayer/satlayer-bvs/bvs-cw/driver"
 )
 
 func TestGeneratedTypes(t *testing.T) {
-	msg := driver.ExecuteMsg{
-		TransferOwnership: &driver.TransferOwnership{
+	msg := ExecuteMsg{
+		TransferOwnership: &TransferOwnership{
 			NewOwner: "new_owner",
 		},
 	}

@@ -1,19 +1,23 @@
-package babylond
+package bvs
 
 import (
 	"context"
 	"testing"
+
+	"github.com/satlayer/satlayer-bvs/babylond"
 
 	"github.com/stretchr/testify/suite"
 )
 
 type BvsTestSuite struct {
 	suite.Suite
-	Container *BabylonContainer
+	Container *babylond.BabylonContainer
+	Deployer  *Deployer
 }
 
 func (s *BvsTestSuite) SetupSuite() {
-	s.Container = Run(context.Background())
+	s.Container = babylond.Run(context.Background())
+	s.Deployer = &Deployer{s.Container}
 }
 
 func (s *BvsTestSuite) TearDownSuite() {
@@ -25,12 +29,12 @@ func TestBvs(t *testing.T) {
 }
 
 func (s *BvsTestSuite) TestDeployStateBank() {
-	contract := s.Container.DeployStateBank()
+	contract := s.Deployer.DeployStateBank()
 	s.NotEmpty(contract.Address)
 }
 
 func (s *BvsTestSuite) TestDeployDriver() {
-	contract := s.Container.DeployDriver()
+	contract := s.Deployer.DeployDriver()
 	s.NotEmpty(contract.Address)
 }
 

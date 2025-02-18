@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/satlayer/satlayer-bvs/babylond/bvs"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/time/rate"
@@ -25,7 +27,8 @@ func (suite *stateBankTestSuite) SetupTest() {
 	container := babylond.Run(context.Background())
 	suite.chainIO = container.NewChainIO("../.babylon")
 
-	suite.contrAddr = container.DeployStateBank().Address
+	deployer := &bvs.Deployer{BabylonContainer: container}
+	suite.contrAddr = deployer.DeployStateBank().Address
 	suite.callerAddr = "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
 
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)

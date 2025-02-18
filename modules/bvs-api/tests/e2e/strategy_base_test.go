@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/satlayer/satlayer-bvs/babylond/bvs"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
@@ -43,8 +45,9 @@ func (suite *strategyBaseTestSuite) SetupTest() {
 	container.ImportPrivKey("strategy-base:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
 
+	deployer := &bvs.Deployer{BabylonContainer: container}
 	// TODO: Circular Deps, StrategyManager should be set via ExecuteMsg and not injected in InitMsg
-	strategyBase := container.DeployStrategyBase(token.Address, "bbn1mju0w4qagjcgtrgepr796zmg083qurq9sngy0eyxm8wzf78cjt3qzfq7qy")
+	strategyBase := deployer.DeployStrategyBase(token.Address, "bbn1mju0w4qagjcgtrgepr796zmg083qurq9sngy0eyxm8wzf78cjt3qzfq7qy")
 
 	suite.contrAddr = strategyBase.Address
 	suite.strategyManager = container.GenerateAddress("throw-away").String()
