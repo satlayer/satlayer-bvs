@@ -2,8 +2,7 @@
   "name": "@modules/bvs-cli",
   "private": true,
   "scripts": {
-    "build": "go build -o ${PWD}/dist/bvs-cli .",
-    "test": "export SATLAYER_CONFIG=${PWD}/tests/config.toml && go test -v ${PWD}/tests/...",
-    "test:e2e": "export SATLAYER_CONFIG=${PWD}/tests/config.toml && go test -v ${PWD}/tests/e2e/..."
+    "build": "go build -o ./dist/bvs-cli .",
+    "test": "export SATLAYER_CONFIG=${PWD}/tests/config.toml && gotestsum"
   }
 }

@@ -24,10 +24,6 @@
       "dependsOn": ["^build"],
       "env": ["GOTESTSUM_JUNITFILE"]
     },
-    "test:e2e": {
-      "inputs": ["tsconfig.json", "tsconfig.build.json", "src/**"],
-      "dependsOn": ["^build"]
-    },
     "eslint": {
       "cache": false,
       "outputLogs": "errors-only"
