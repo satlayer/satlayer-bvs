@@ -5,8 +5,7 @@
     "build": "turbo run build",
     "format": "prettier --write .",
     "prepare": "husky",
-    "test": "turbo run test",
-    "test:e2e": "turbo run test:e2e"
+    "test": "turbo run test"
   },
   "lint-staged": {
     "*": [
