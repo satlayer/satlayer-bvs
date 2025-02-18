@@ -81,30 +81,30 @@ mod tests {
 
     #[test]
     fn test_new() {
-        let wallet = Account::new("seed".to_string());
+        let account = Account::new("seed".to_string());
         assert_eq!(
-            wallet.public_key.to_string(),
+            account.public_key.to_string(),
             "02c8f031561c4758c9551cff47246f2c347189fe684c04da35cf88e813f810e3c2"
         );
         assert_eq!(
-            wallet.address.to_string(),
+            account.address.to_string(),
             "cosmos1efqyslkz34qurfjajpruzwv5v22c65kqxzdels"
         );
     }
 
     #[test]
     fn test_sign() {
-        let wallet = Account::new("seed".to_string());
+        let account = Account::new("seed".to_string());
         let message = "hello".to_string();
         let message_hash = Account::message_hash(message.clone());
-        let signature = wallet.sign(message_hash.clone());
+        let signature = account.sign(message_hash.clone());
         assert_eq!(signature.to_string(), "3044022067e20eddd4e86a76c80382e80852ffbccd3131962070ee1ad524a798be5d83cb022000d7a45e0faa08dee805381df8c4a7ead53f8e319c69bd67fa3cc031ef519cbb");
 
         // verify the signature + public key with secp256k1_verify
         let verify_res = secp256k1_verify(
             &message_hash,
             &signature.serialize_compact(),
-            &wallet.public_key.serialize(),
+            &account.public_key.serialize(),
         )
         .unwrap();
         assert_eq!(verify_res, true);
