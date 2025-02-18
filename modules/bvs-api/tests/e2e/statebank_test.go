@@ -16,16 +16,16 @@ import (
 
 type stateBankTestSuite struct {
 	suite.Suite
-	chainIO       io.ChainIO
-	stateBankAddr string
-	callerAddr    string
+	chainIO    io.ChainIO
+	contrAddr  string
+	callerAddr string
 }
 
 func (suite *stateBankTestSuite) SetupTest() {
 	container := babylond.Run(context.Background())
 	suite.chainIO = container.NewChainIO("../.babylon")
 
-	suite.stateBankAddr = container.DeployStateBank().Address
+	suite.contrAddr = container.DeployStateBank().Address
 	suite.callerAddr = "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
 
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
@@ -39,7 +39,7 @@ func (suite *stateBankTestSuite) Test_ExecuteStateBank() {
 	assert.NoError(t, err)
 
 	stateBank := api.NewStateBankImpl(chainIO)
-	stateBank.BindClient(suite.stateBankAddr)
+	stateBank.BindClient(suite.contrAddr)
 
 	resp, err := stateBank.SetRegisteredBVSContract(context.Background(), suite.callerAddr)
 	assert.NoError(t, err, "set registered BVS contract")
@@ -65,7 +65,7 @@ func (suite *stateBankTestSuite) test_StateBankIndexer() {
 		panic(err)
 	}
 	latestBlock := res.SyncInfo.LatestBlockHeight
-	idxer := stateBankApi.Indexer(chainIO.GetClientCtx(), suite.stateBankAddr, suite.callerAddr, latestBlock-10, []string{"wasm-UpdateState"}, rate.Limit(5), 3)
+	idxer := stateBankApi.Indexer(chainIO.GetClientCtx(), suite.contrAddr, suite.callerAddr, latestBlock-10, []string{"wasm-UpdateState"}, rate.Limit(5), 3)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	processingQueue, err := idxer.Run(ctx)

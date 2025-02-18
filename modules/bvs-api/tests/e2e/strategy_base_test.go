@@ -15,9 +15,9 @@ import (
 
 type strategyBaseTestSuite struct {
 	suite.Suite
-	chainIO             io.ChainIO
-	strategyBaseAddr    string
-	strategyManagerAddr string
+	chainIO         io.ChainIO
+	contrAddr       string
+	strategyManager string
 }
 
 func (suite *strategyBaseTestSuite) SetupTest() {
@@ -46,8 +46,8 @@ func (suite *strategyBaseTestSuite) SetupTest() {
 	// TODO: Circular Deps, StrategyManager should be set via ExecuteMsg and not injected in InitMsg
 	strategyBase := container.DeployStrategyBase(token.Address, "bbn1mju0w4qagjcgtrgepr796zmg083qurq9sngy0eyxm8wzf78cjt3qzfq7qy")
 
-	suite.strategyBaseAddr = strategyBase.Address
-	suite.strategyManagerAddr = container.GenerateAddress("throw-away").String()
+	suite.contrAddr = strategyBase.Address
+	suite.strategyManager = container.GenerateAddress("throw-away").String()
 
 }
 
@@ -60,9 +60,9 @@ func (suite *strategyBaseTestSuite) Test_ExecuteStrategyBase() {
 	assert.NoError(t, err)
 
 	strategyBase := api.NewStrategyBase(chainIO)
-	strategyBase.BindClient(suite.strategyBaseAddr)
+	strategyBase.BindClient(suite.contrAddr)
 
-	resp, err := strategyBase.SetStrategyManager(context.Background(), suite.strategyManagerAddr)
+	resp, err := strategyBase.SetStrategyManager(context.Background(), suite.strategyManager)
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 
@@ -86,7 +86,7 @@ func (suite *strategyBaseTestSuite) Test_QueryStrategyBase() {
 	assert.NoError(t, err)
 
 	strategyBase := api.NewStrategyBase(chainIO)
-	strategyBase.BindClient(suite.strategyBaseAddr)
+	strategyBase.BindClient(suite.contrAddr)
 
 	/*resp, err := strategyBase.GetShares("osmo1fxqtqvcsglst7pmnd0a9ftytsxt8g75r6cugv7", "osmo1p4ee54wcu54vcxht5spk5dpklr39qjpxxk38rm9p36c48rlgyawstwl3q8")
 	assert.NoError(t, err, "execute contract")
