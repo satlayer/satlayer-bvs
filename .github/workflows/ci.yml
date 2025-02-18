@@ -166,7 +166,7 @@ jobs:
         if: ${{ (success() || failure()) && startsWith(matrix.package, '@modules/') }}
         with:
           name: ${{matrix.package}} Tests
-          path: reports/gotestsum-*.xml
+          path: /modules/*/reports/gotestsum-junit.xml
           reporter: java-junit
 
   test_completed:
