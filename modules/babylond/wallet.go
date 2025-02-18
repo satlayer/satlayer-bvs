@@ -90,3 +90,10 @@ func (c *BabylonContainer) FundAddress(address string, coin sdk.Coin) *coretypes
 func (c *BabylonContainer) FundAddressUbbn(address string, amount int64) *coretypes.ResultBroadcastTxCommit {
 	return c.FundAddress(address, sdk.NewCoin("ubbn", math.NewInt(amount)))
 }
+
+func (c *BabylonContainer) ImportPrivKey(uid string, hex string) {
+	err := c.ClientCtx.Keyring.ImportPrivKeyHex(uid, hex, "secp256k1")
+	if err != nil {
+		panic(err)
+	}
+}

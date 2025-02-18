@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/satlayer/satlayer-bvs/babylond/cw20"
+
 	"github.com/satlayer/satlayer-bvs/babylond"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -23,10 +25,31 @@ func (suite *strategyBaseTestSuite) SetupTest() {
 	container := babylond.Run(context.Background())
 	suite.chainIO = container.NewChainIO("../.babylon")
 
-	suite.strategyBaseAddr = "bbn1326vx56sy7ra2qk4perr2tg8td3ln4qll3s2l4vu8jclxdplzj5scxzahc"
-	suite.strategyManagerAddr = "bbn1mju0w4qagjcgtrgepr796zmg083qurq9sngy0eyxm8wzf78cjt3qzfq7qy"
+	minter := container.GenerateAddress("cw20:minter")
+	token := cw20.DeployCw20(container, cw20.InstantiateMsg{
+		Decimals: 6,
+		InitialBalances: []cw20.Cw20Coin{
+			{
+				Address: minter.String(),
+				Amount:  "1000000000",
+			},
+		},
+		Mint: &cw20.MinterResponse{
+			Minter: minter.String(),
+		},
+		Name:   "Test Token",
+		Symbol: "TEST",
+	})
 
+	container.ImportPrivKey("strategy-base:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
+
+	// TODO: Circular Deps, StrategyManager should be set via ExecuteMsg and not injected in InitMsg
+	strategyBase := container.DeployStrategyBase(token.Address, "bbn1mju0w4qagjcgtrgepr796zmg083qurq9sngy0eyxm8wzf78cjt3qzfq7qy")
+
+	suite.strategyBaseAddr = strategyBase.Address
+	suite.strategyManagerAddr = container.GenerateAddress("throw-away").String()
+
 }
 
 func (suite *strategyBaseTestSuite) Test_ExecuteStrategyBase() {

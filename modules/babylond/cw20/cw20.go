@@ -10,6 +10,8 @@ import (
 	"github.com/satlayer/satlayer-bvs/babylond"
 )
 
+// TODO(fuxingloh): Separate out Store and Init to allow for more flexibility/reusability
+
 // DeployCw20 deploys the cw20 contract with the given initMsg
 // The contract is in https://github.com/fuxingloh/cw20-test
 func DeployCw20(c *babylond.BabylonContainer, initMsg InstantiateMsg) *babylond.DeployedWasmContract {
