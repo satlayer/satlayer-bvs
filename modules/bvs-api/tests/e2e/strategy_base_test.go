@@ -4,12 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/satlayer/satlayer-bvs/babylond/cw20"
-
-	"github.com/satlayer/satlayer-bvs/babylond"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/satlayer/satlayer-bvs/babylond"
+	"github.com/satlayer/satlayer-bvs/babylond/cw20"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 )
