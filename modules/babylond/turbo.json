@@ -3,8 +3,10 @@
   "extends": ["//"],
   "tasks": {
     "test": {
-      "inputs": ["**.go"],
-      "dependsOn": ["@modules/bvs-cw#generate:schema", "@modules/babylond#build"]
+      "dependsOn": ["^test", "^build:wasm"]
+    },
+    "build": {
+      "dependsOn": ["^build:wasm"]
     }
   }
 }

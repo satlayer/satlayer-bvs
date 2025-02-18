@@ -6,9 +6,6 @@
       "inputs": ["generate.mjs"],
       "outputs": ["*/schema.go"],
       "dependsOn": ["^generate:schema"]
-    },
-    "build:wasm": {
-      "dependsOn": ["^build:wasm"]
     }
   }
 }

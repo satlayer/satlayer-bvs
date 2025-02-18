@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/satlayer/satlayer-bvs/babylond/bvs"
+
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/satlayer/satlayer-bvs/babylond"
 	"github.com/stretchr/testify/assert"
@@ -30,7 +32,8 @@ func (suite *slashManagerTestSuite) SetupTest() {
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
 
 	address := container.GenerateAddress("throw-away").String()
-	slashManager := container.DeploySlashManager(address, address)
+	deployer := &bvs.Deployer{BabylonContainer: container}
+	slashManager := deployer.DeploySlashManager(address, address)
 	suite.contrAddr = slashManager.Address
 	suite.strategyManagerContrAddr = address
 }

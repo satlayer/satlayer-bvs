@@ -118,7 +118,38 @@ importers:
 
   modules: {}
 
-  modules/babylond: {}
+  modules/babylond:
+    devDependencies:
+      '@satlayer/bvs-delegation-manager':
+        specifier: workspace:*
+        version: link:../../crates/bvs-delegation-manager
+      '@satlayer/bvs-directory':
+        specifier: workspace:*
+        version: link:../../crates/bvs-directory
+      '@satlayer/bvs-driver':
+        specifier: workspace:*
+        version: link:../../crates/bvs-driver
+      '@satlayer/bvs-rewards-coordinator':
+        specifier: workspace:*
+        version: link:../../crates/bvs-rewards-coordinator
+      '@satlayer/bvs-slash-manager':
+        specifier: workspace:*
+        version: link:../../crates/bvs-slash-manager
+      '@satlayer/bvs-state-bank':
+        specifier: workspace:*
+        version: link:../../crates/bvs-state-bank
+      '@satlayer/bvs-strategy-base':
+        specifier: workspace:*
+        version: link:../../crates/bvs-strategy-base
+      '@satlayer/bvs-strategy-base-tvl-limits':
+        specifier: workspace:*
+        version: link:../../crates/bvs-strategy-base-tvl-limits
+      '@satlayer/bvs-strategy-factory':
+        specifier: workspace:*
+        version: link:../../crates/bvs-strategy-factory
+      '@satlayer/bvs-strategy-manager':
+        specifier: workspace:*
+        version: link:../../crates/bvs-strategy-manager
 
   modules/bvs-api: {}
 
