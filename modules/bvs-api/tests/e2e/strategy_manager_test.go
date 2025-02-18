@@ -4,18 +4,17 @@ import (
 	"context"
 	"encoding/base64"
 	"testing"
-	"time"
 
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/satlayer/satlayer-bvs/babylond"
+	"github.com/satlayer/satlayer-bvs/babylond/bvs"
+	"github.com/satlayer/satlayer-bvs/babylond/cw20"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	apilogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
-	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 )
 
 const managerAddr = "bbn1mju0w4qagjcgtrgepr796zmg083qurq9sngy0eyxm8wzf78cjt3qzfq7qy"
@@ -41,24 +40,41 @@ const ownerAddr = "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
 
 type strategyManagerTestSuite struct {
 	suite.Suite
-	chainIO   io.ChainIO
-	contrAddr string
+	chainIO     io.ChainIO
+	container   *babylond.BabylonContainer
+	managerAddr string
+	tokenAddr   string
 }
 
 func (suite *strategyManagerTestSuite) SetupTest() {
-	chainID := "sat-bbn-testnet1"
-	rpcURI := "https://rpc.sat-bbn-testnet1.satlayer.net"
+	suite.container = babylond.Run(context.Background())
+	suite.chainIO = suite.container.NewChainIO("../.babylon")
 
-	logger := apilogger.NewMockELKLogger()
-	metricsIndicators := transactionprocess.NewPromIndicators(prometheus.NewRegistry(), "state_manager")
-	chainIO, err := io.NewChainIO(chainID, rpcURI, homeDir, "bbn", logger, metricsIndicators, types.TxManagerParams{
-		MaxRetries:             3,
-		RetryInterval:          2 * time.Second,
-		ConfirmationTimeout:    60 * time.Second,
-		GasPriceAdjustmentRate: "1.1",
+	deployer := &bvs.Deployer{BabylonContainer: suite.container}
+	addr := suite.container.GenerateAddress("throw-away").String()
+
+	suite.container.ImportPrivKey("strategy-manager:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
+	strategyManager := deployer.DeployStrategyManager(addr, addr, addr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+
+	suite.managerAddr = strategyManager.Address
+	suite.container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
+
+	minter := suite.container.GenerateAddress("cw20:minter")
+	token := cw20.DeployCw20(suite.container, cw20.InstantiateMsg{
+		Decimals: 6,
+		InitialBalances: []cw20.Cw20Coin{
+			{
+				Address: minter.String(),
+				Amount:  "1000000000",
+			},
+		},
+		Mint: &cw20.MinterResponse{
+			Minter: minter.String(),
+		},
+		Name:   "Test Token",
+		Symbol: "TEST",
 	})
-	suite.Require().NoError(err)
-	suite.chainIO = chainIO
+	suite.tokenAddr = token.Address
 }
 
 func (suite *strategyManagerTestSuite) Test_Init() {
@@ -68,7 +84,7 @@ func (suite *strategyManagerTestSuite) Test_Init() {
 	chainIO, err := suite.chainIO.SetupKeyring("caller", "test")
 	assert.NoError(t, err)
 	strategyManager := api.NewStrategyManager(chainIO)
-	strategyManager.BindClient(managerAddr)
+	strategyManager.BindClient(suite.managerAddr)
 
 	resp, err := strategyManager.TransferOwnership(context.Background(), ownerAddr)
 	assert.NoError(t, err, "execute contract")
@@ -105,7 +121,7 @@ func (suite *strategyManagerTestSuite) Test_Init() {
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)
 
-	resp, err = api.IncreaseTokenAllowance(context.Background(), chainIO, 100, tokenAddr, managerAddr, sdktypes.NewInt64DecCoin("ubbn", 1))
+	resp, err = api.IncreaseTokenAllowance(context.Background(), chainIO, 100, suite.tokenAddr, suite.managerAddr, sdktypes.NewInt64DecCoin("ubbn", 1))
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)
