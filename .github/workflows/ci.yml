@@ -165,8 +165,8 @@ jobs:
       - uses: dorny/test-reporter@v1
         if: ${{ (success() || failure()) && startsWith(matrix.package, '@modules/') }}
         with:
-          name: ${{matrix.package}} Tests
-          path: /modules/*/reports/gotestsum-junit.xml
+          name: ${{matrix.package}}
+          path: modules/bvs-cw/reports/gotestsum-junit.xml
           reporter: java-junit
 
   test_completed:
