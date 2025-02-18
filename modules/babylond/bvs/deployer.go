@@ -141,8 +141,8 @@ func (d *Deployer) DeployDirectory(
 func (d *Deployer) DeployStrategyBaseTvlLimits(
 	strategyManager string,
 	underlyingToken string,
-	maxPerDeposit big.Int,
-	maxTotalDeposits big.Int,
+	maxPerDeposit *big.Int,
+	maxTotalDeposits *big.Int,
 ) *Contract[strategybasetvllimits.InstantiateMsg] {
 	initMsg := strategybasetvllimits.InstantiateMsg{
 		InitialPausedStatus: 0,
