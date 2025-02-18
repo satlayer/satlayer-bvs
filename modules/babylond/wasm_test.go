@@ -26,7 +26,7 @@ func TestWasm(t *testing.T) {
 }
 
 // TestWasm tests the wasm module using a simple contract that increments a counter.
-// See https://github.com/fuxingloh/cw-test
+// Test contract is in https://github.com/fuxingloh/cw-test
 func (s *WasmTestSuite) TestWasm() {
 	data, err := os.ReadFile("wasm_test.wasm")
 	s.NoError(err)
