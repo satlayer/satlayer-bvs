@@ -69,7 +69,7 @@ func (suite *ioTestSuite) Test_QueryTransaction() {
 	chainIO, err := suite.chainIO.SetupKeyring("caller", "test")
 	assert.NoError(t, err)
 
-	executeMsgBytes, _ := json.Marshal(&types.UpdateMetadataURIReq{UpdateMetadataURI: types.UpdateMetadataURI{MetadataURI: "test.cn"}})
+	executeMsgBytes, _ := json.Marshal(&types.UpdateMetadataURIReq{UpdateMetadataURI: types.UpdateMetadataURI{MetadataURI: "example.com"}})
 	assert.NoError(t, err, "marshal execute msg")
 	executeOptions := types.ExecuteOptions{
 		ContractAddr:  bvsDirContrAddr,

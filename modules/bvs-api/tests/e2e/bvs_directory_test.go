@@ -92,7 +92,7 @@ func (suite *bvsDirectoryTestSuite) Test_UpdateMetadataURI() {
 	keyName := "caller"
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(suite.T(), err)
-	txResp, err := api.NewBVSDirectoryImpl(chainIO, suite.contrAddr).UpdateMetadataURI(context.Background(), "test.cn")
+	txResp, err := api.NewBVSDirectoryImpl(chainIO, suite.contrAddr).UpdateMetadataURI(context.Background(), "example.com")
 	assert.NoError(t, err, "update metadata uri")
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
