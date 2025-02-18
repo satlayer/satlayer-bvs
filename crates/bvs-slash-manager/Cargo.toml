@@ -36,3 +36,4 @@ serde_json = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
+bvs-test-utils = { workspace = true }

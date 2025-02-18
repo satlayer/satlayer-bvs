@@ -11,6 +11,7 @@ members = [
     "bvs-strategy-factory",
     "bvs-strategy-manager",
     "bvs-test",
+    "common/bvs/test-utils",
 ]
 
 resolver = "2"
@@ -47,3 +48,4 @@ cw-utils = "2.0.0"
 
 # common cosmwasm crates
 bvs-base = { path = "./common/bvs/base" }
+bvs-test-utils = { path = "./common/bvs/test-utils" }
