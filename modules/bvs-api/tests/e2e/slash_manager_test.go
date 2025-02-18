@@ -3,18 +3,15 @@ package e2e
 import (
 	"context"
 	"testing"
-	"time"
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/satlayer/satlayer-bvs/babylond"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	apilogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
-	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 )
 
 type slashManagerTestSuite struct {
@@ -25,22 +22,17 @@ type slashManagerTestSuite struct {
 }
 
 func (suite *slashManagerTestSuite) SetupTest() {
-	chainID := "sat-bbn-testnet1"
-	rpcURI := "https://rpc.sat-bbn-testnet1.satlayer.net"
-	homeDir := "../.babylon"
+	container := babylond.Run(context.Background())
+	suite.chainIO = container.NewChainIO("../.babylon")
 
-	logger := apilogger.NewMockELKLogger()
-	metricsIndicators := transactionprocess.NewPromIndicators(prometheus.NewRegistry(), "slash_manager")
-	chainIO, err := io.NewChainIO(chainID, rpcURI, homeDir, "bbn", logger, metricsIndicators, types.TxManagerParams{
-		MaxRetries:             3,
-		RetryInterval:          2 * time.Second,
-		ConfirmationTimeout:    60 * time.Second,
-		GasPriceAdjustmentRate: "1.1",
-	})
-	suite.Require().NoError(err)
-	suite.chainIO = chainIO
-	suite.contrAddr = "bbn1z52hmh7ht0364lzcs8700sgrnns84sa3wr9c8upd80es5n5x65mq2dedfp"
-	suite.strategyManagerContrAddr = "bbn1mju0w4qagjcgtrgepr796zmg083qurq9sngy0eyxm8wzf78cjt3qzfq7qy"
+	// Import And Fund Caller
+	container.ImportPrivKey("slash-manager:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
+	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
+
+	address := container.GenerateAddress("throw-away").String()
+	slashManager := container.DeploySlashManager(address, address)
+	suite.contrAddr = slashManager.Address
+	suite.strategyManagerContrAddr = address
 }
 
 func (suite *slashManagerTestSuite) Test_SetMinimalSlashSignature() {
@@ -52,6 +44,11 @@ func (suite *slashManagerTestSuite) Test_SetMinimalSlashSignature() {
 	slashApi := api.NewSlashManagerImpl(chainIO, suite.contrAddr)
 	slashApi.BindClient(suite.contrAddr)
 	slashApi.WithGasLimit(300000)
+
+	{ // Setup SetSlasher
+		_, err = slashApi.SetSlasher(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", true)
+		suite.Require().NoError(err)
+	}
 
 	minimalSignature := uint64(1)
 	txResp, err := slashApi.SetMinimalSlashSignature(context.Background(), minimalSignature)
@@ -155,6 +152,11 @@ func (suite *slashManagerTestSuite) Test_Pause() {
 	slashApi.BindClient(suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
+	{ // Setup SetPauser
+		_, err = slashApi.SetPauser(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+		suite.Require().NoError(err)
+	}
+
 	txResp, err := slashApi.Pause(context.Background())
 	assert.NoError(t, err, "Pause failed")
 	assert.NotNil(t, txResp, "response nil")
@@ -171,6 +173,11 @@ func (suite *slashManagerTestSuite) Test_Unpause() {
 	slashApi.BindClient(suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
+	{ // Setup SetPauser
+		_, err = slashApi.SetUnpauser(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+		suite.Require().NoError(err)
+	}
+
 	txResp, err := slashApi.Unpause(context.Background())
 	assert.NoError(t, err, "Unpause failed")
 	assert.NotNil(t, txResp, "response nil")
@@ -186,6 +193,11 @@ func (suite *slashManagerTestSuite) Test_SetSlasherValidator() {
 	slashApi := api.NewSlashManagerImpl(chainIO, suite.contrAddr)
 	slashApi.BindClient(suite.contrAddr)
 	slashApi.WithGasLimit(300000)
+
+	{ // Setup SetSlasher
+		_, err = slashApi.SetSlasher(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", true)
+		suite.Require().NoError(err)
+	}
 
 	validators := []string{"bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"}
 	values := []bool{true}
@@ -335,8 +347,6 @@ func (suite *slashManagerTestSuite) Test_CalculateSlashHash() {
 	keyName := "caller"
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	account, err := chainIO.GetCurrentAccount()
-	assert.NoError(t, err)
 
 	slashApi := api.NewSlashManagerImpl(chainIO, suite.contrAddr)
 	slashApi.BindClient(suite.contrAddr)
@@ -355,7 +365,8 @@ func (suite *slashManagerTestSuite) Test_CalculateSlashHash() {
 		Status:         true,
 	}
 
-	validatorsPublicKeys := []cryptotypes.PubKey{account.GetPubKey()}
+	pubKey := chainIO.GetCurrentAccountPubKey()
+	validatorsPublicKeys := []cryptotypes.PubKey{pubKey}
 
 	txResp, err := slashApi.CalculateSlashHash(sender, slashDetails, validatorsPublicKeys)
 	assert.NoError(t, err, "CalculateSlashHash failed")
