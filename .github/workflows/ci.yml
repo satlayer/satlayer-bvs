@@ -167,7 +167,7 @@ jobs:
       - uses: dorny/test-reporter@v1
         if: ${{ (success() || failure()) && startsWith(matrix.package, '@modules/') && !github.event.pull_request.head.repo.fork }}
         with:
-          name: ${{matrix.package}}
+          name: Test [report] (${{matrix.package}})
           path: modules/*/reports/gotestsum-junit.xml
           reporter: java-junit
 
