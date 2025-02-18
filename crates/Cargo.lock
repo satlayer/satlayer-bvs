@@ -560,16 +560,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-bvs-test"
-version = "0.1.0"
-dependencies = [
- "cosmwasm-std 2.1.0",
- "cw-bvs-driver",
- "cw-multi-test",
- "cw-state-bank",
-]
-
-[[package]]
 name = "cw-delegation-manager"
 version = "2.0.0"
 dependencies = [
