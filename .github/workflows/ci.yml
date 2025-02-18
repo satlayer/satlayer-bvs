@@ -156,6 +156,9 @@ jobs:
         package: ${{ fromJSON(needs.test_plan.outputs.packages) }}
     env:
       GOTESTSUM_JUNITFILE: reports/gotestsum-junit.xml
+    permission:
+      actions: read
+      checks: write
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
@@ -163,7 +166,7 @@ jobs:
       - run: turbo run test --filter=${{ matrix.package }}
 
       - uses: dorny/test-reporter@v1
-        if: ${{ (success() || failure()) && startsWith(matrix.package, '@modules/') }}
+        if: ${{ (success() || failure()) && startsWith(matrix.package, '@modules/') && !github.event.pull_request.head.repo.fork }}
         with:
           name: ${{matrix.package}}
           path: modules/*/reports/gotestsum-junit.xml
