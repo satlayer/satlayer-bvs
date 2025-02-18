@@ -31,14 +31,13 @@ impl Account {
         let public_key_bytes = public_key.serialize();
 
         // Compute the SHA-256 hash of the public key
-        let sha256_result = Sha256::digest(&public_key_bytes);
+        let sha256_result = Sha256::digest(public_key_bytes);
 
         // Compute the RIPEMD-160 hash of the SHA-256 hash
-        let ripemd160_result = Ripemd160::digest(&sha256_result);
+        let ripemd160_result = Ripemd160::digest(sha256_result);
 
         // Encode the RIPEMD-160 hash as a Bech32 address
-        let address =
-            bech32::encode("cosmwasm", ripemd160_result.to_base32(), Variant::Bech32).unwrap();
+        let address = bech32::encode("bbn", ripemd160_result.to_base32(), Variant::Bech32).unwrap();
 
         Account {
             secret_key,
@@ -88,7 +87,7 @@ mod tests {
         );
         assert_eq!(
             account.address.to_string(),
-            "cosmos1efqyslkz34qurfjajpruzwv5v22c65kqxzdels"
+            "bbn1efqyslkz34qurfjajpruzwv5v22c65kq3uugqf"
         );
     }
 
