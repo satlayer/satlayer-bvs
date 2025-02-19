@@ -97,8 +97,11 @@ func (a *bvsDirectoryImpl) RegisterOperator(ctx context.Context, operator string
 	if err != nil {
 		return nil, err
 	}
-	// TODO(fuxingloh): fix htis.
-	sig, err := a.io.GetSigner().Sign([]byte(msgHashResp.DigestHash))
+	bytes, err := base64.StdEncoding.DecodeString(msgHashResp.DigestHash)
+	if err != nil {
+		return nil, err
+	}
+	sig, err := a.io.GetSigner().Sign(bytes)
 	if err != nil {
 		return nil, err
 	}
