@@ -3,41 +3,37 @@ package e2e
 import (
 	"context"
 	"testing"
-	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/satlayer/satlayer-bvs/babylond"
+	"github.com/satlayer/satlayer-bvs/babylond/bvs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	apilogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
-	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 )
 
 type strategyFactoryTestSuite struct {
 	suite.Suite
 	chainIO   io.ChainIO
 	contrAddr string
+	container *babylond.BabylonContainer
+	deployer  *bvs.Deployer
 }
 
 func (suite *strategyFactoryTestSuite) SetupTest() {
-	chainID := "sat-bbn-testnet1"
-	rpcURI := "https://rpc.sat-bbn-testnet1.satlayer.net"
-	homeDir := "../.babylon"
+	suite.container = babylond.Run(context.Background())
+	suite.chainIO = suite.container.NewChainIO("../.babylon")
 
-	logger := apilogger.NewMockELKLogger()
-	metricsIndicators := transactionprocess.NewPromIndicators(prometheus.NewRegistry(), "strategy_factory")
-	chainIO, err := io.NewChainIO(chainID, rpcURI, homeDir, "bbn", logger, metricsIndicators, types.TxManagerParams{
-		MaxRetries:             3,
-		RetryInterval:          2 * time.Second,
-		ConfirmationTimeout:    60 * time.Second,
-		GasPriceAdjustmentRate: "1.1",
-	})
-	suite.Require().NoError(err)
-	suite.chainIO = chainIO
-	suite.contrAddr = "bbn18h8ncg9szj3v92cz289qz3ndwqk5zema4cr2t4e7amjaehrae52qyw07y9"
+	// Import And Fund Caller
+	suite.container.ImportPrivKey("strategy-factory:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
+	suite.container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
+
+	// Deployment
+	suite.deployer = &bvs.Deployer{BabylonContainer: suite.container}
+	strategyManager := suite.container.GenerateAddress("throw-away").String()
+	slashManager := suite.deployer.DeployStrategyFactory(strategyManager, 1)
+	suite.contrAddr = slashManager.Address
 }
 
 func (suite *strategyFactoryTestSuite) test_DeployNewStrategy() {
@@ -69,8 +65,14 @@ func (suite *strategyFactoryTestSuite) Test_SetThirdPartyTransfersForBidden() {
 	factoryApi.BindClient(suite.contrAddr)
 	factoryApi.WithGasLimit(300000)
 
-	strategy := "bbn102zy555uul67xct4f29plgt6wq63wacmjp93csxpz8z538jrzcdqmj993a"
-	txResp, err := factoryApi.SetThirdPartyTransfersForBidden(context.Background(), strategy, true)
+	// Setup StrategyManager
+	address := suite.container.GenerateAddress("throw-away").String()
+	suite.container.ImportPrivKey("strategy-manager:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
+	strategyManager := suite.deployer.DeployStrategyManager(address, address, suite.contrAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+	_, err = factoryApi.SetStrategyManager(context.Background(), strategyManager.Address)
+	assert.NoError(t, err)
+
+	txResp, err := factoryApi.SetThirdPartyTransfersForBidden(context.Background(), strategyManager.Address, true)
 	assert.NoError(t, err, "SetThirdPartyTransfersForBidden failed")
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
@@ -207,6 +209,12 @@ func (suite *strategyFactoryTestSuite) Test_Pause() {
 	factoryApi.BindClient(suite.contrAddr)
 	factoryApi.WithGasLimit(300000)
 
+	{
+		// Setup Pauser
+		_, err := factoryApi.SetPauser(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+		suite.Require().NoError(err)
+	}
+
 	txResp, err := factoryApi.Pause(context.Background())
 	assert.NoError(t, err, "Pause failed")
 	assert.NotNil(t, txResp, "response nil")
@@ -239,6 +247,12 @@ func (suite *strategyFactoryTestSuite) Test_Unpause() {
 	factoryApi := api.NewStrategyFactoryImpl(chainIO, suite.contrAddr)
 	factoryApi.BindClient(suite.contrAddr)
 	factoryApi.WithGasLimit(300000)
+
+	{
+		// Setup Pauser
+		_, err := factoryApi.SetUnpauser(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+		suite.Require().NoError(err)
+	}
 
 	txResp, err := factoryApi.Unpause(context.Background())
 	assert.NoError(t, err, "Unpause failed")
