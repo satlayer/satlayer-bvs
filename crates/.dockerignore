@@ -1,0 +1,13 @@
+# Build results
+debug/
+target/
+schema/
+artifacts/
+
+# Text file backups
+**/*.rs.bk
+
+.turbo
+crates.iml
+package.json
+turbo.json

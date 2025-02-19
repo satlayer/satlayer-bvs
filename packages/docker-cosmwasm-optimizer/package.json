@@ -6,7 +6,6 @@
   },
   "scripts": {
     "clean": "rm docker.tar",
-    "docker:build": "docker buildx build . --progress=plain -t ghcr.io/satlayer/cosmwasm-optimizer:local && docker save ghcr.io/satlayer/cosmwasm-optimizer:local -o docker.tar",
-    "docker:load": "docker load < docker.tar"
+    "docker:build": "docker buildx build . --progress=plain -f Dockerfile.optimizer -t ghcr.io/satlayer/cosmwasm-optimizer:local"
   }
 }

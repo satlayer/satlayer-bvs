@@ -3,15 +3,11 @@
   "extends": ["//"],
   "tasks": {
     "docker:build": {
-      "inputs": ["Dockerfile", "optimizer.sh"],
-      "outputs": ["docker.tar"]
-    },
-    "docker:load": {
-      "inputs": ["docker.tar"],
-      "dependsOn": ["docker:build"]
+      "inputs": ["Dockerfile.optimizer", "Dockerfile.builder", "bin.js", "optimizer.sh"],
+      "outputs": []
     },
     "build": {
-      "dependsOn": ["docker:load"]
+      "dependsOn": ["docker:build"]
     }
   }
 }

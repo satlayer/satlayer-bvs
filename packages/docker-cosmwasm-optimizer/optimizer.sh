@@ -23,7 +23,7 @@ rm -f /target/wasm32-unknown-unknown/release/*.wasm
 
 # This parameter allows us to mount a folder into docker container's "/code"
 # and build "/code/contracts/mycontract".
-# The default value for $1 is "." (see CMD in the Dockerfile).
+# The default value for $1 is "." (see CMD in the Dockerfile.optimizer.builder.optimizer).
 
 # Ensure we get exactly one argument and this is a directory (the path to the Cargo project to be built)
 if [ "$#" -ne 1 ] || ! [ -d "$1" ]; then
