@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "generate:schema": "node generate.mjs",
-    "test": "gotestsum"
+    "test": "gotestsum -- ./... -p 4"
   },
   "devDependencies": {
     "@satlayer/bvs-delegation-manager": "workspace:*",
