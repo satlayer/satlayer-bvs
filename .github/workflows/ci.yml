@@ -8,7 +8,7 @@ on:
 
 permissions:
   contents: read
-  packages: read
+  packages: write
   actions: read
   checks: write
   id-token: write
