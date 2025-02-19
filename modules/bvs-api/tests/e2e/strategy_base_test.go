@@ -20,11 +20,13 @@ type strategyBaseTestSuite struct {
 	chainIO         io.ChainIO
 	contrAddr       string
 	strategyManager string
+	container       *babylond.BabylonContainer
 }
 
 func (suite *strategyBaseTestSuite) SetupTest() {
 	container := babylond.Run(context.Background())
 	suite.chainIO = container.NewChainIO("../.babylon")
+	suite.container = container
 
 	minter := container.GenerateAddress("cw20:minter")
 	token := cw20.DeployCw20(container, cw20.InstantiateMsg{
@@ -50,8 +52,12 @@ func (suite *strategyBaseTestSuite) SetupTest() {
 	strategyBase := deployer.DeployStrategyBase(token.Address, "bbn1mju0w4qagjcgtrgepr796zmg083qurq9sngy0eyxm8wzf78cjt3qzfq7qy")
 
 	suite.contrAddr = strategyBase.Address
-	suite.strategyManager = container.GenerateAddress("throw-away").String()
+	tAddr := container.GenerateAddress("test-address").String()
+	suite.strategyManager = tAddr
+}
 
+func (suite *strategyBaseTestSuite) TearDownSuite() {
+	suite.Require().NoError(suite.container.Terminate(context.Background()))
 }
 
 func (suite *strategyBaseTestSuite) Test_ExecuteStrategyBase() {

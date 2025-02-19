@@ -21,7 +21,7 @@ type strategyFactoryTestSuite struct {
 	deployer  *bvs.Deployer
 }
 
-func (suite *strategyFactoryTestSuite) SetupTest() {
+func (suite *strategyFactoryTestSuite) SetupSuite() {
 	suite.container = babylond.Run(context.Background())
 	suite.chainIO = suite.container.NewChainIO("../.babylon")
 
@@ -31,9 +31,13 @@ func (suite *strategyFactoryTestSuite) SetupTest() {
 
 	// Deployment
 	suite.deployer = &bvs.Deployer{BabylonContainer: suite.container}
-	strategyManager := suite.container.GenerateAddress("throw-away").String()
-	slashManager := suite.deployer.DeployStrategyFactory(strategyManager, 1)
+	tAddr := suite.container.GenerateAddress("test-address").String()
+	slashManager := suite.deployer.DeployStrategyFactory(tAddr, 1)
 	suite.contrAddr = slashManager.Address
+}
+
+func (suite *strategyFactoryTestSuite) TearDownSuite() {
+	suite.Require().NoError(suite.container.Terminate(context.Background()))
 }
 
 func (suite *strategyFactoryTestSuite) test_DeployNewStrategy() {
@@ -66,9 +70,9 @@ func (suite *strategyFactoryTestSuite) Test_SetThirdPartyTransfersForBidden() {
 	factoryApi.WithGasLimit(300000)
 
 	// Setup StrategyManager
-	address := suite.container.GenerateAddress("throw-away").String()
+	tAddr := suite.container.GenerateAddress("test-address").String()
 	suite.container.ImportPrivKey("strategy-manager:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
-	strategyManager := suite.deployer.DeployStrategyManager(address, address, suite.contrAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+	strategyManager := suite.deployer.DeployStrategyManager(tAddr, tAddr, suite.contrAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 	_, err = factoryApi.SetStrategyManager(context.Background(), strategyManager.Address)
 	assert.NoError(t, err)
 
