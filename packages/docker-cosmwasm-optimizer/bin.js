@@ -8,7 +8,7 @@ const crate = path.basename(cwd);
 const parentDir = path.dirname(cwd);
 
 const command = [
-  "docker build",
+  "docker buildx build",
   "-f",
   path.join(path.dirname(require.main.filename), "Dockerfile.builder"),
   `--output=./artifacts`,
