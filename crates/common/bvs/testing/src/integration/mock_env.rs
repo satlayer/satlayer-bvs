@@ -1,6 +1,7 @@
-use cosmwasm_std::testing::MockApi;
 use cosmwasm_std::{coin, Addr, Coin, StdResult, Uint128};
-use cw_multi_test::{App, AppBuilder, BankSudo, BasicApp, Executor, SudoMsg};
+use cw_multi_test::{error::AnyResult, App, AppResponse, BankSudo, BasicApp, Executor, SudoMsg};
+use serde::Serialize;
+use std::fmt::Debug;
 use std::{collections::HashMap, mem::take};
 
 use crate::integration::mock_contracts::{
@@ -64,6 +65,54 @@ impl MockEnv {
     pub fn query_all_balances(&self, addr: &Addr) -> HashMap<String, Uint128> {
         let res: Vec<Coin> = self.app.wrap().query_all_balances(addr).unwrap();
         res.into_iter().map(|r| (r.denom, r.amount)).collect()
+    }
+}
+
+impl BvsDelegationManager {
+    pub fn execute<T: Serialize + Debug>(
+        &self,
+        env: &mut MockEnv,
+        sender: Addr,
+        msg: &T,
+        send_funds: &[Coin],
+    ) -> AnyResult<AppResponse> {
+        env.app
+            .execute_contract(sender, self.contract_addr.clone(), msg, send_funds)
+    }
+
+    pub fn migrate<T: Serialize + Debug>(
+        &self,
+        env: &mut MockEnv,
+        sender: Addr,
+        msg: &T,
+        new_code_id: u64,
+    ) -> AnyResult<AppResponse> {
+        env.app
+            .migrate_contract(sender, self.contract_addr.clone(), msg, new_code_id)
+    }
+}
+
+impl BvsDirectory {
+    pub fn execute<T: Serialize + Debug>(
+        &self,
+        env: &mut MockEnv,
+        sender: Addr,
+        msg: &T,
+        send_funds: &[Coin],
+    ) -> AnyResult<AppResponse> {
+        env.app
+            .execute_contract(sender, self.contract_addr.clone(), msg, send_funds)
+    }
+
+    pub fn migrate<T: Serialize + Debug>(
+        &self,
+        env: &mut MockEnv,
+        sender: Addr,
+        msg: &T,
+        new_code_id: u64,
+    ) -> AnyResult<AppResponse> {
+        env.app
+            .migrate_contract(sender, self.contract_addr.clone(), msg, new_code_id)
     }
 }
 

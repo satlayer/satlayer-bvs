@@ -1,8 +1,6 @@
 use cosmwasm_std::{
-    from_json,
-    testing::{MockQuerier, MOCK_CONTRACT_ADDR},
-    Addr, Coin, Decimal, Empty, Querier, QuerierResult, QueryRequest, StdResult, SystemError,
-    SystemResult, Uint128, WasmQuery,
+    from_json, testing::MockQuerier, Empty, Querier, QuerierResult, QueryRequest, StdResult,
+    SystemError, SystemResult, WasmQuery,
 };
 
 use crate::bvs_delegation_manager_querier::BvsDelegationManagerQuerier;

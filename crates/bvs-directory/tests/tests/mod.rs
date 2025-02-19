@@ -1,2 +1,2 @@
 mod helpers;
-mod test_register;
+mod integration_test;
