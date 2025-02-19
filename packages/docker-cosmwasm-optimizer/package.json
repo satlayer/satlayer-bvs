@@ -3,9 +3,5 @@
   "private": true,
   "bin": {
     "cosmwasm-optimizer": "bin.js"
-  },
-  "scripts": {
-    "clean": "rm docker.tar",
-    "docker:build": "docker buildx build . --progress=plain -f Dockerfile.optimizer --load -t ghcr.io/satlayer/cosmwasm-optimizer:local"
   }
 }
