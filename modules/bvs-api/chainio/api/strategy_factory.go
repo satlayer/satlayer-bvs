@@ -4,14 +4,13 @@ import (
 	"context"
 	"encoding/json"
 
-	strategyfactory "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-factory"
-
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
+	strategyfactory "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-factory"
 )
 
 type StrategyFactory interface {
@@ -34,8 +33,8 @@ type StrategyFactory interface {
 	SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error)
 	SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error)
 
-	GetStrategy(token string) (*types.GetStrategyResponse, error)
-	IsTokenBlacklisted(token string) (*types.BlacklistStatusResponse, error)
+	GetStrategy(token string) (*strategyfactory.StrategyResponse, error)
+	IsTokenBlacklisted(token string) (*strategyfactory.BlacklistStatusResponse, error)
 }
 
 type strategyFactoryImpl struct {
@@ -225,9 +224,9 @@ func (s *strategyFactoryImpl) SetUnpauser(ctx context.Context, newUnpauser strin
 
 // Query Functions
 
-func (s *strategyFactoryImpl) GetStrategy(token string) (*types.GetStrategyResponse, error) {
-	queryMsg := types.GetStrategyReq{
-		GetStrategy: types.GetStrategy{
+func (s *strategyFactoryImpl) GetStrategy(token string) (*strategyfactory.StrategyResponse, error) {
+	queryMsg := strategyfactory.QueryMsg{
+		GetStrategy: &strategyfactory.GetStrategy{
 			Token: token,
 		},
 	}
@@ -237,15 +236,11 @@ func (s *strategyFactoryImpl) GetStrategy(token string) (*types.GetStrategyRespo
 		return nil, err
 	}
 
-	var result types.GetStrategyResponse
-	if err := json.Unmarshal(resp.Data, &result); err != nil {
-		return nil, err
-	}
-
-	return &result, nil
+	res, err := strategyfactory.UnmarshalStrategyResponse(resp.Data)
+	return &res, err
 }
 
-func (s *strategyFactoryImpl) IsTokenBlacklisted(token string) (*types.BlacklistStatusResponse, error) {
+func (s *strategyFactoryImpl) IsTokenBlacklisted(token string) (*strategyfactory.BlacklistStatusResponse, error) {
 	queryMsg := strategyfactory.QueryMsg{
 		IsTokenBlacklisted: &strategyfactory.IsTokenBlacklisted{
 			Token: token,
@@ -257,12 +252,8 @@ func (s *strategyFactoryImpl) IsTokenBlacklisted(token string) (*types.Blacklist
 		return nil, err
 	}
 
-	var result types.BlacklistStatusResponse
-	if err := json.Unmarshal(resp.Data, &result); err != nil {
-		return nil, err
-	}
-
-	return &result, nil
+	res, err := strategyfactory.UnmarshalBlacklistStatusResponse(resp.Data)
+	return &res, err
 }
 
 func NewStrategyFactoryImpl(chainIO io.ChainIO, contractAddr string) StrategyFactory {

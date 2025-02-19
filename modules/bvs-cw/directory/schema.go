@@ -9,6 +9,33 @@
 //
 //    queryMsg, err := UnmarshalQueryMsg(bytes)
 //    bytes, err = queryMsg.Marshal()
+//
+//    digestHashResponse, err := UnmarshalDigestHashResponse(bytes)
+//    bytes, err = digestHashResponse.Marshal()
+//
+//    bVSInfoResponse, err := UnmarshalBVSInfoResponse(bytes)
+//    bytes, err = bVSInfoResponse.Marshal()
+//
+//    delegationResponse, err := UnmarshalDelegationResponse(bytes)
+//    bytes, err = delegationResponse.Marshal()
+//
+//    domainNameResponse, err := UnmarshalDomainNameResponse(bytes)
+//    bytes, err = domainNameResponse.Marshal()
+//
+//    domainTypeHashResponse, err := UnmarshalDomainTypeHashResponse(bytes)
+//    bytes, err = domainTypeHashResponse.Marshal()
+//
+//    registrationTypeHashResponse, err := UnmarshalRegistrationTypeHashResponse(bytes)
+//    bytes, err = registrationTypeHashResponse.Marshal()
+//
+//    operatorStatusResponse, err := UnmarshalOperatorStatusResponse(bytes)
+//    bytes, err = operatorStatusResponse.Marshal()
+//
+//    ownerResponse, err := UnmarshalOwnerResponse(bytes)
+//    bytes, err = ownerResponse.Marshal()
+//
+//    saltResponse, err := UnmarshalSaltResponse(bytes)
+//    bytes, err = saltResponse.Marshal()
 
 package directory
 
@@ -41,6 +68,96 @@ func UnmarshalQueryMsg(data []byte) (QueryMsg, error) {
 }
 
 func (r *QueryMsg) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalDigestHashResponse(data []byte) (DigestHashResponse, error) {
+	var r DigestHashResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *DigestHashResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalBVSInfoResponse(data []byte) (BVSInfoResponse, error) {
+	var r BVSInfoResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *BVSInfoResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalDelegationResponse(data []byte) (DelegationResponse, error) {
+	var r DelegationResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *DelegationResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalDomainNameResponse(data []byte) (DomainNameResponse, error) {
+	var r DomainNameResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *DomainNameResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalDomainTypeHashResponse(data []byte) (DomainTypeHashResponse, error) {
+	var r DomainTypeHashResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *DomainTypeHashResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalRegistrationTypeHashResponse(data []byte) (RegistrationTypeHashResponse, error) {
+	var r RegistrationTypeHashResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *RegistrationTypeHashResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalOperatorStatusResponse(data []byte) (OperatorStatusResponse, error) {
+	var r OperatorStatusResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *OperatorStatusResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalOwnerResponse(data []byte) (OwnerResponse, error) {
+	var r OwnerResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *OwnerResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalSaltResponse(data []byte) (SaltResponse, error) {
+	var r SaltResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *SaltResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -165,3 +282,47 @@ type IsSaltSpent struct {
 	Operator string `json:"operator"`
 	Salt     string `json:"salt"`
 }
+
+type DigestHashResponse struct {
+	DigestHash string `json:"digest_hash"`
+}
+
+type BVSInfoResponse struct {
+	BvsContract string `json:"bvs_contract"`
+	BvsHash     string `json:"bvs_hash"`
+}
+
+type DelegationResponse struct {
+	DelegationAddr string `json:"delegation_addr"`
+}
+
+type DomainNameResponse struct {
+	DomainName string `json:"domain_name"`
+}
+
+type DomainTypeHashResponse struct {
+	DomainTypeHash string `json:"domain_type_hash"`
+}
+
+type RegistrationTypeHashResponse struct {
+	OperatorBvsRegistrationTypeHash string `json:"operator_bvs_registration_type_hash"`
+}
+
+type OperatorStatusResponse struct {
+	Status OperatorBVSRegistrationStatus `json:"status"`
+}
+
+type OwnerResponse struct {
+	OwnerAddr string `json:"owner_addr"`
+}
+
+type SaltResponse struct {
+	IsSaltSpent bool `json:"is_salt_spent"`
+}
+
+type OperatorBVSRegistrationStatus string
+
+const (
+	Registered   OperatorBVSRegistrationStatus = "registered"
+	Unregistered OperatorBVSRegistrationStatus = "unregistered"
+)

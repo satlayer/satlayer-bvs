@@ -28,7 +28,7 @@ func strategyFactoryCmd() *cobra.Command {
 		Short: "To update the config.",
 		Args:  cobra.ExactArgs(3),
 		Run: func(cmd *cobra.Command, args []string) {
-			value, err := strconv.ParseUint(args[2], 10, 64)
+			value, err := strconv.ParseInt(args[2], 10, 64)
 			if err != nil {
 				fmt.Println("Error: Unable to convert input to uint64")
 				return
