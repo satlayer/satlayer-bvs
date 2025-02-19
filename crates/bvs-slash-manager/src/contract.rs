@@ -334,29 +334,15 @@ pub fn execute_slash_request(
             .iter()
             .fold(Uint128::zero(), |acc, (_, s)| acc + *s);
 
-        let staker_slash = staker_total_share
-            .checked_multiply_ratio(total_slash_share, sum_of_shares)
-            .map_err(|_| ContractError::Overflow {})?;
-
-        if staker_slash.is_zero() {
-            continue;
-        }
-
-        let mut remaining = staker_slash;
-
         for (strategy_addr, strategy_share) in &staker_info.shares_per_strategy {
-            if remaining.is_zero() {
-                break;
-            }
             if staker_total_share.is_zero() {
                 break;
             }
 
-            let slash_amount_in_strategy = staker_slash
+            let slash_in_strat = strategy_share
                 .checked_multiply_ratio(*strategy_share, staker_total_share)
                 .map_err(|_| ContractError::Overflow {})?;
 
-            let slash_in_strat = slash_amount_in_strategy.min(remaining);
             if slash_in_strat.is_zero() {
                 continue;
             }
@@ -388,10 +374,6 @@ pub fn execute_slash_request(
                 msg: to_json_binary(&remove_msg)?,
                 funds: vec![],
             }));
-
-            remaining = remaining
-                .checked_sub(slash_in_strat)
-                .map_err(|_| ContractError::Underflow {})?;
         }
     }
 
