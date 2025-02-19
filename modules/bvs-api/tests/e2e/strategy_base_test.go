@@ -50,7 +50,8 @@ func (suite *strategyBaseTestSuite) SetupTest() {
 	strategyBase := deployer.DeployStrategyBase(token.Address, "bbn1mju0w4qagjcgtrgepr796zmg083qurq9sngy0eyxm8wzf78cjt3qzfq7qy")
 
 	suite.contrAddr = strategyBase.Address
-	suite.strategyManager = container.GenerateAddress("throw-away").String()
+	tAddr := container.GenerateAddress("test-address").String()
+	suite.strategyManager = tAddr
 
 }
 

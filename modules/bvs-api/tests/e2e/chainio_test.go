@@ -27,8 +27,8 @@ func (suite *ioTestSuite) SetupTest() {
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
 
 	deployer := &bvs.Deployer{BabylonContainer: container}
-	delegationManager := container.GenerateAddress("throw-away")
-	suite.directory = deployer.DeployDirectory(delegationManager.String())
+	tAddr := container.GenerateAddress("throw-away")
+	suite.directory = deployer.DeployDirectory(tAddr.String())
 }
 
 func (suite *ioTestSuite) Test_QueryContract() {

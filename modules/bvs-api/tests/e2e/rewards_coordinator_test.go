@@ -10,42 +10,74 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/satlayer/satlayer-bvs/babylond"
+	"github.com/satlayer/satlayer-bvs/babylond/bvs"
+	"github.com/satlayer/satlayer-bvs/babylond/cw20"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	apilogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
-	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 )
 
-const rewardsCoordinatorAddr = "bbn1v9gyy4nzegj8z2w63gdkrtathenkqvght3yaa72edkp0rs5aks3sfkyg0t"
 const staker = "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
-const strategyAddress = "bbn1326vx56sy7ra2qk4perr2tg8td3ln4qll3s2l4vu8jclxdplzj5scxzahc"
-const token = "bbn1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sp4gequ"
 
 type rewardsTestSuite struct {
 	suite.Suite
-	chainIO io.ChainIO
+	chainIO                io.ChainIO
+	rewardsCoordinatorAddr string
+	tokenAddr              string
+	strategyManagerAddr    string
 }
 
 func (suite *rewardsTestSuite) SetupTest() {
-	chainID := "sat-bbn-testnet1"
-	rpcURI := "https://rpc.sat-bbn-testnet1.satlayer.net"
-	homeDir := "../.babylon" // Please refer to the readme to obtain
+	container := babylond.Run(context.Background())
+	suite.chainIO = container.NewChainIO("../.babylon")
 
-	logger := apilogger.NewMockELKLogger()
-	metricsIndicators := transactionprocess.NewPromIndicators(prometheus.NewRegistry(), "rewards")
-	chainIO, err := io.NewChainIO(chainID, rpcURI, homeDir, "bbn", logger, metricsIndicators, types.TxManagerParams{
-		MaxRetries:             3,
-		RetryInterval:          2 * time.Second,
-		ConfirmationTimeout:    60 * time.Second,
-		GasPriceAdjustmentRate: "1.1",
+	// Fund Caller
+	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
+
+	tAddr := container.GenerateAddress("test-address").String()
+	deployer := &bvs.Deployer{BabylonContainer: container}
+
+	minter := container.GenerateAddress("cw20:minter")
+	token := cw20.DeployCw20(container, cw20.InstantiateMsg{
+		Decimals: 6,
+		InitialBalances: []cw20.Cw20Coin{
+			{
+				Address: minter.String(),
+				Amount:  "1000000000",
+			},
+		},
+		Mint: &cw20.MinterResponse{
+			Minter: minter.String(),
+		},
+		Name:   "Test Token",
+		Symbol: "TEST",
 	})
+	suite.tokenAddr = token.Address
+
+	status, err := container.ClientCtx.Client.Status(context.Background())
 	suite.Require().NoError(err)
-	suite.chainIO = chainIO
+	blockTime := status.SyncInfo.LatestBlockTime.Second()
+
+	strategyManager := deployer.DeployStrategyManager(tAddr, tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+	rewardsCoordinator := deployer.DeployRewardsCoordinator(
+		tAddr,
+		strategyManager.Address,
+		// Test Vector taken from: bvs-rewards-coordinator/src/contract.rs
+		60,     // 1 minute
+		86_400, // 1 day
+		int64(blockTime)/86_400*86_400,
+		10*86_400, // 10 days
+		5*86_400,  // 5 days
+		30*86_400, // 30 days
+		tAddr,
+	)
+	suite.rewardsCoordinatorAddr = rewardsCoordinator.Address
+	suite.strategyManagerAddr = strategyManager.Address
 }
 
 func (suite *rewardsTestSuite) Test_ExecuteRewardsCoordinator() {
@@ -57,7 +89,7 @@ func (suite *rewardsTestSuite) Test_ExecuteRewardsCoordinator() {
 	assert.NoError(t, err)
 
 	rewardsCoordinator := api.NewRewardsCoordinator(chainIO)
-	rewardsCoordinator.BindClient(rewardsCoordinatorAddr)
+	rewardsCoordinator.BindClient(suite.rewardsCoordinatorAddr)
 
 	const calcInterval = 86_400 // 1 day
 	now := time.Now().Unix()
@@ -68,10 +100,10 @@ func (suite *rewardsTestSuite) Test_ExecuteRewardsCoordinator() {
 		context.Background(),
 		[]types.RewardsSubmission{{
 			StrategiesAndMultipliers: []types.StrategyAndMultiplier{{
-				Strategy:   strategyAddress,
+				Strategy:   suite.strategyManagerAddr,
 				Multiplier: 1,
 			}},
-			Token:          token,
+			Token:          suite.tokenAddr,
 			Amount:         fmt.Sprintf("%d", 10),                 // need to convert to string type
 			StartTimestamp: fmt.Sprintf("%d000000000", startTime), //need to convert to string type, unit is nano second
 			Duration:       calcInterval,
@@ -90,10 +122,10 @@ func (suite *rewardsTestSuite) Test_ExecuteRewardsCoordinator() {
 		context.Background(),
 		[]types.RewardsSubmission{{
 			StrategiesAndMultipliers: []types.StrategyAndMultiplier{{
-				Strategy:   strategyAddress,
+				Strategy:   suite.strategyManagerAddr,
 				Multiplier: 1,
 			}},
-			Token:          token,
+			Token:          suite.tokenAddr,
 			Amount:         fmt.Sprintf("%d", 10),                 // need to convert to string type
 			StartTimestamp: fmt.Sprintf("%d000000000", startTime), //need to convert to string type
 			Duration:       calcInterval,
@@ -128,7 +160,7 @@ func (suite *rewardsTestSuite) test_QueryRewardsCoordinator() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 	rewardsCoordinator := api.NewRewardsCoordinator(chainIO)
-	rewardsCoordinator.BindClient(rewardsCoordinatorAddr)
+	rewardsCoordinator.BindClient(suite.rewardsCoordinatorAddr)
 
 	resp, err := rewardsCoordinator.OperatorCommissionBips("bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x", "bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x")
 	assert.Error(t, err, "execute contract")
@@ -167,7 +199,7 @@ func (suite *rewardsTestSuite) test_QueryRewardsCoordinator() {
 	assert.Nil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)
 
-	resp, err = rewardsCoordinator.CalculateDomainSeparator("sat-bbn-testnet1", token)
+	resp, err = rewardsCoordinator.CalculateDomainSeparator(suite.chainIO.GetClientCtx().ChainID, suite.tokenAddr)
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)
@@ -181,12 +213,12 @@ func (suite *rewardsTestSuite) Test_SubmitRoot() {
 	assert.NoError(t, err)
 
 	rewardsCoordinator := api.NewRewardsCoordinator(chainIO)
-	rewardsCoordinator.BindClient(rewardsCoordinatorAddr)
+	rewardsCoordinator.BindClient(suite.rewardsCoordinatorAddr)
 
-	earnerLeaf, tokenRootHash, leafB := calculateEarnerLeaf(rewardsCoordinator, t)
+	earnerLeaf, tokenRootHash, leafB := calculateEarnerLeaf(suite.tokenAddr, rewardsCoordinator, t)
 	t.Logf("earner leaf:%+v", bytesToString(earnerLeaf))
 
-	earnerLeaf1, tokenRootHash1, _ := calculateEarnerLeaf(rewardsCoordinator, t)
+	earnerLeaf1, tokenRootHash1, _ := calculateEarnerLeaf(suite.tokenAddr, rewardsCoordinator, t)
 	t.Logf("earner leaf1:%+v", bytesToString(earnerLeaf1))
 
 	resp, err := rewardsCoordinator.MerkleizeLeaves([]string{
@@ -224,7 +256,7 @@ func (suite *rewardsTestSuite) test_CheckClaim() {
 	assert.NoError(t, err)
 
 	rewardsCoordinator := api.NewRewardsCoordinator(chainIO)
-	rewardsCoordinator.BindClient(rewardsCoordinatorAddr)
+	rewardsCoordinator.BindClient(suite.rewardsCoordinatorAddr)
 
 	earnerLeaf1 := []byte{219, 9, 161, 135, 125, 102, 17, 167, 215, 74, 251, 185, 74, 116, 4, 92, 77, 131, 254, 124, 32, 111, 16, 125, 221, 212, 50, 124, 91, 169, 109, 36}
 	tokenRootHash := []byte{157, 182, 190, 113, 122, 8, 74, 164, 14, 216, 104, 83, 161, 117, 200, 187, 2, 25, 18, 169, 181, 254, 114, 62, 226, 208, 14, 25, 176, 189, 118, 122}
@@ -246,7 +278,7 @@ func (suite *rewardsTestSuite) test_CheckClaim() {
 
 	tokenLeaves := []types.TokenTreeMerkleLeaf{
 		{
-			Token:              token,
+			Token:              suite.tokenAddr,
 			CumulativeEarnings: "15",
 		},
 	}
@@ -279,7 +311,7 @@ func (suite *rewardsTestSuite) test_ProcessClaim() {
 	assert.NoError(t, err)
 
 	rewardsCoordinator := api.NewRewardsCoordinator(chainIO)
-	rewardsCoordinator.BindClient(rewardsCoordinatorAddr)
+	rewardsCoordinator.BindClient(suite.rewardsCoordinatorAddr)
 
 	earnerLeaf1 := []byte{193, 236, 171, 13, 54, 199, 205, 10, 46, 215, 61, 182, 187, 231, 93, 170, 79, 252, 86, 54, 113, 168, 1, 43, 25, 96, 174, 173, 3, 88, 168, 122}
 	tokenRootHash := []byte{226, 185, 241, 197, 117, 165, 165, 145, 104, 161, 171, 134, 48, 163, 31, 74, 225, 159, 66, 82, 123, 59, 225, 60, 46, 218, 55, 192, 124, 52, 61, 177}
@@ -300,7 +332,7 @@ func (suite *rewardsTestSuite) test_ProcessClaim() {
 
 	tokenLeaves := []types.TokenTreeMerkleLeaf{
 		{
-			Token:              token,
+			Token:              suite.tokenAddr,
 			CumulativeEarnings: "30",
 		},
 	}
@@ -335,8 +367,10 @@ func bytesToUints(arr []byte) []uint16 {
 	return int8Array
 }
 
-func calculateParentNode(rewardsCoordinator api.RewardsCoordinator, t *testing.T) ([]byte, []byte, []byte) {
-	resp, err := rewardsCoordinator.CalculateTokenLeafHash(token, "30")
+func calculateParentNode(
+	tokenAddr string,
+	rewardsCoordinator api.RewardsCoordinator, t *testing.T) ([]byte, []byte, []byte) {
+	resp, err := rewardsCoordinator.CalculateTokenLeafHash(tokenAddr, "30")
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, resp, "response nil")
 	//t.Logf("resp:%+v", resp)
@@ -349,7 +383,7 @@ func calculateParentNode(rewardsCoordinator api.RewardsCoordinator, t *testing.T
 	hashBytes = hashResponse.HashBinary
 	t.Logf("hash:%+v", bytesToString(hashBytes))
 
-	resp, err = rewardsCoordinator.CalculateTokenLeafHash(token, "30")
+	resp, err = rewardsCoordinator.CalculateTokenLeafHash(tokenAddr, "30")
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, resp, "response nil")
 	//t.Logf("resp:%+v", resp)
@@ -378,9 +412,9 @@ func calculateParentNode(rewardsCoordinator api.RewardsCoordinator, t *testing.T
 	return parentNode, hashBytes, hashBytes1
 }
 
-func calculateEarnerLeaf(rewardsCoordinator api.RewardsCoordinator, t *testing.T) ([]byte, []byte, []byte) {
-	parentNode, _, leafB := calculateParentNode(rewardsCoordinator, t)
-	parentNode1, _, _ := calculateParentNode(rewardsCoordinator, t)
+func calculateEarnerLeaf(tokenAddr string, rewardsCoordinator api.RewardsCoordinator, t *testing.T) ([]byte, []byte, []byte) {
+	parentNode, _, leafB := calculateParentNode(tokenAddr, rewardsCoordinator, t)
+	parentNode1, _, _ := calculateParentNode(tokenAddr, rewardsCoordinator, t)
 
 	resp, err := rewardsCoordinator.MerkleizeLeaves([]string{
 		base64.StdEncoding.EncodeToString(parentNode), base64.StdEncoding.EncodeToString(parentNode1)})

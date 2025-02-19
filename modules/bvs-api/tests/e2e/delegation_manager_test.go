@@ -5,17 +5,17 @@ import (
 	"encoding/base64"
 	"math/big"
 	"testing"
-	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/satlayer/satlayer-bvs/babylond"
+	"github.com/satlayer/satlayer-bvs/babylond/bvs"
+	"github.com/satlayer/satlayer-bvs/babylond/cw20"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	apilogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
-	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 	"github.com/satlayer/satlayer-bvs/bvs-api/utils"
 )
 
@@ -24,32 +24,50 @@ type delegationTestSuite struct {
 	chainIO      io.ChainIO
 	contrAddr    string
 	strategies   []string
-	token        string
+	tokenAddr    string
 	slashManager string
 }
 
 func (suite *delegationTestSuite) SetupTest() {
-	chainID := "sat-bbn-testnet1"
-	rpcURI := "https://rpc.sat-bbn-testnet1.satlayer.net"
-	homeDir := "../.babylon" // Please refer to the readme to obtain
+	container := babylond.Run(context.Background())
+	suite.chainIO = container.NewChainIO("../.babylon")
 
-	logger := apilogger.NewMockELKLogger()
-	metricsIndicators := transactionprocess.NewPromIndicators(prometheus.NewRegistry(), "delegation")
-	chainIO, err := io.NewChainIO(chainID, rpcURI, homeDir, "bbn", logger, metricsIndicators, types.TxManagerParams{
-		MaxRetries:             3,
-		RetryInterval:          2 * time.Second,
-		ConfirmationTimeout:    60 * time.Second,
-		GasPriceAdjustmentRate: "1.1",
+	// Fund Caller
+	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
+
+	minter := container.GenerateAddress("cw20:minter")
+	token := cw20.DeployCw20(container, cw20.InstantiateMsg{
+		Decimals: 6,
+		InitialBalances: []cw20.Cw20Coin{
+			{
+				Address: minter.String(),
+				Amount:  "1000000000",
+			},
+		},
+		Mint: &cw20.MinterResponse{
+			Minter: minter.String(),
+		},
+		Name:   "Test Token",
+		Symbol: "TEST",
 	})
-	suite.Require().NoError(err)
-	suite.chainIO = chainIO
-	suite.contrAddr = "bbn1q7v924jjct6xrc89n05473juncg3snjwuxdh62xs2ua044a7tp8sydugr4"
+	suite.tokenAddr = token.Address
+
+	deployer := &bvs.Deployer{BabylonContainer: container}
+	tAddr := container.GenerateAddress("test-address").String()
+	tAddr1 := container.GenerateAddress("test-address-1").String()
+	tAddr2 := container.GenerateAddress("test-address-2").String()
+
+	delegationManager := deployer.DeployDelegationManager(
+		tAddr, tAddr, 100, []string{tAddr1, tAddr2}, []int64{50, 60},
+	)
+	suite.contrAddr = delegationManager.Address
 	suite.strategies = []string{
-		"bbn1326vx56sy7ra2qk4perr2tg8td3ln4qll3s2l4vu8jclxdplzj5scxzahc",
-		"bbn1df8tu3pxrxf2cs0s4rjcvdjuhs25he9l8v720yvl59hj7phvgmyqp873ay",
+		// Replace with actual strategy addresses
+		tAddr1,
+		tAddr2,
 	}
-	suite.token = "bbn1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sp4gequ"
-	suite.slashManager = "bbn1z52hmh7ht0364lzcs8700sgrnns84sa3wr9c8upd80es5n5x65mq2dedfp"
+	slashManager := deployer.DeploySlashManager(tAddr, tAddr)
+	suite.slashManager = slashManager.Address
 }
 
 // KeyName needs to be changed every time it is executed
@@ -205,7 +223,7 @@ func (suite *delegationTestSuite) test_CompleteQueuedWithdrawal() {
 			Strategies:  suite.strategies,
 			Shares:      []string{"41"},
 		},
-		[]string{suite.token},
+		[]string{suite.tokenAddr},
 		0,
 		true,
 	)
@@ -271,8 +289,8 @@ func (suite *delegationTestSuite) test_CompleteQueuedWithdrawals() {
 		},
 	}
 	tokens := [][]string{
-		{suite.token},
-		{suite.token},
+		{suite.tokenAddr},
+		{suite.tokenAddr},
 	}
 
 	txResp, err := delegation.CompleteQueuedWithdrawals(context.Background(), withdrawals, tokens, []uint64{0, 0}, []bool{true, true})

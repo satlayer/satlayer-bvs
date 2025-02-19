@@ -51,10 +51,10 @@ func (suite *strategyManagerTestSuite) SetupTest() {
 	suite.chainIO = suite.container.NewChainIO("../.babylon")
 
 	deployer := &bvs.Deployer{BabylonContainer: suite.container}
-	addr := suite.container.GenerateAddress("throw-away").String()
+	tAddr := suite.container.GenerateAddress("test-address").String()
 
 	suite.container.ImportPrivKey("strategy-manager:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
-	strategyManager := deployer.DeployStrategyManager(addr, addr, addr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+	strategyManager := deployer.DeployStrategyManager(tAddr, tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 
 	suite.managerAddr = strategyManager.Address
 	suite.container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
@@ -336,7 +336,7 @@ func (suite *strategyManagerTestSuite) test_QueryStrategyManager() {
 		Amount:       "10",
 		Nonce:        1,
 		Expiry:       1,
-		ChainId:      "sat-bbn-testnet1",
+		ChainId:      "sat-bbn-testnet1", // TODO: change ChainId (when test enabled)
 		ContractAddr: managerAddr,
 	}
 
