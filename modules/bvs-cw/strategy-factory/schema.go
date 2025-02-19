@@ -9,6 +9,12 @@
 //
 //    queryMsg, err := UnmarshalQueryMsg(bytes)
 //    bytes, err = queryMsg.Marshal()
+//
+//    strategyResponse, err := UnmarshalStrategyResponse(bytes)
+//    bytes, err = strategyResponse.Marshal()
+//
+//    blacklistStatusResponse, err := UnmarshalBlacklistStatusResponse(bytes)
+//    bytes, err = blacklistStatusResponse.Marshal()
 
 package strategyfactory
 
@@ -41,6 +47,26 @@ func UnmarshalQueryMsg(data []byte) (QueryMsg, error) {
 }
 
 func (r *QueryMsg) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalStrategyResponse(data []byte) (StrategyResponse, error) {
+	var r StrategyResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *StrategyResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalBlacklistStatusResponse(data []byte) (BlacklistStatusResponse, error) {
+	var r BlacklistStatusResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *BlacklistStatusResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -130,4 +156,12 @@ type GetStrategy struct {
 
 type IsTokenBlacklisted struct {
 	Token string `json:"token"`
+}
+
+type StrategyResponse struct {
+	Strategy string `json:"strategy"`
+}
+
+type BlacklistStatusResponse struct {
+	IsBlacklisted bool `json:"is_blacklisted"`
 }

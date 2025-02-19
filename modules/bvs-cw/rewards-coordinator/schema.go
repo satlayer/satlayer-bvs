@@ -9,6 +9,39 @@
 //
 //    queryMsg, err := UnmarshalQueryMsg(bytes)
 //    bytes, err = queryMsg.Marshal()
+//
+//    calculateDomainSeparatorResponse, err := UnmarshalCalculateDomainSeparatorResponse(bytes)
+//    bytes, err = calculateDomainSeparatorResponse.Marshal()
+//
+//    calculateEarnerLeafHashResponse, err := UnmarshalCalculateEarnerLeafHashResponse(bytes)
+//    bytes, err = calculateEarnerLeafHashResponse.Marshal()
+//
+//    calculateTokenLeafHashResponse, err := UnmarshalCalculateTokenLeafHashResponse(bytes)
+//    bytes, err = calculateTokenLeafHashResponse.Marshal()
+//
+//    checkClaimResponse, err := UnmarshalCheckClaimResponse(bytes)
+//    bytes, err = checkClaimResponse.Marshal()
+//
+//    getCurrentClaimableDistributionRootResponse, err := UnmarshalGetCurrentClaimableDistributionRootResponse(bytes)
+//    bytes, err = getCurrentClaimableDistributionRootResponse.Marshal()
+//
+//    getCurrentDistributionRootResponse, err := UnmarshalGetCurrentDistributionRootResponse(bytes)
+//    bytes, err = getCurrentDistributionRootResponse.Marshal()
+//
+//    getDistributionRootAtIndexResponse, err := UnmarshalGetDistributionRootAtIndexResponse(bytes)
+//    bytes, err = getDistributionRootAtIndexResponse.Marshal()
+//
+//    getDistributionRootsLengthResponse, err := UnmarshalGetDistributionRootsLengthResponse(bytes)
+//    bytes, err = getDistributionRootsLengthResponse.Marshal()
+//
+//    getRootIndexFromHashResponse, err := UnmarshalGetRootIndexFromHashResponse(bytes)
+//    bytes, err = getRootIndexFromHashResponse.Marshal()
+//
+//    merkleizeLeavesResponse, err := UnmarshalMerkleizeLeavesResponse(bytes)
+//    bytes, err = merkleizeLeavesResponse.Marshal()
+//
+//    operatorCommissionBipsResponse, err := UnmarshalOperatorCommissionBipsResponse(bytes)
+//    bytes, err = operatorCommissionBipsResponse.Marshal()
 
 package rewardscoordinator
 
@@ -41,6 +74,116 @@ func UnmarshalQueryMsg(data []byte) (QueryMsg, error) {
 }
 
 func (r *QueryMsg) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalCalculateDomainSeparatorResponse(data []byte) (CalculateDomainSeparatorResponse, error) {
+	var r CalculateDomainSeparatorResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *CalculateDomainSeparatorResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalCalculateEarnerLeafHashResponse(data []byte) (CalculateEarnerLeafHashResponse, error) {
+	var r CalculateEarnerLeafHashResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *CalculateEarnerLeafHashResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalCalculateTokenLeafHashResponse(data []byte) (CalculateTokenLeafHashResponse, error) {
+	var r CalculateTokenLeafHashResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *CalculateTokenLeafHashResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalCheckClaimResponse(data []byte) (CheckClaimResponse, error) {
+	var r CheckClaimResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *CheckClaimResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalGetCurrentClaimableDistributionRootResponse(data []byte) (GetCurrentClaimableDistributionRootResponse, error) {
+	var r GetCurrentClaimableDistributionRootResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *GetCurrentClaimableDistributionRootResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalGetCurrentDistributionRootResponse(data []byte) (GetCurrentDistributionRootResponse, error) {
+	var r GetCurrentDistributionRootResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *GetCurrentDistributionRootResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalGetDistributionRootAtIndexResponse(data []byte) (GetDistributionRootAtIndexResponse, error) {
+	var r GetDistributionRootAtIndexResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *GetDistributionRootAtIndexResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalGetDistributionRootsLengthResponse(data []byte) (GetDistributionRootsLengthResponse, error) {
+	var r GetDistributionRootsLengthResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *GetDistributionRootsLengthResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalGetRootIndexFromHashResponse(data []byte) (GetRootIndexFromHashResponse, error) {
+	var r GetRootIndexFromHashResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *GetRootIndexFromHashResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalMerkleizeLeavesResponse(data []byte) (MerkleizeLeavesResponse, error) {
+	var r MerkleizeLeavesResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *MerkleizeLeavesResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalOperatorCommissionBipsResponse(data []byte) (OperatorCommissionBipsResponse, error) {
+	var r OperatorCommissionBipsResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *OperatorCommissionBipsResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -249,4 +392,69 @@ type MerkleizeLeaves struct {
 type OperatorCommissionBips struct {
 	Bvs      string `json:"bvs"`
 	Operator string `json:"operator"`
+}
+
+type CalculateDomainSeparatorResponse struct {
+	DomainSeparatorBinary string `json:"domain_separator_binary"`
+}
+
+type CalculateEarnerLeafHashResponse struct {
+	HashBinary string `json:"hash_binary"`
+}
+
+type CalculateTokenLeafHashResponse struct {
+	HashBinary string `json:"hash_binary"`
+}
+
+type CheckClaimResponse struct {
+	CheckClaim bool `json:"check_claim"`
+}
+
+type GetCurrentClaimableDistributionRootResponse struct {
+	Root GetCurrentClaimableDistributionRootResponseRoot `json:"root"`
+}
+
+type GetCurrentClaimableDistributionRootResponseRoot struct {
+	ActivatedAt                    int64  `json:"activated_at"`
+	Disabled                       bool   `json:"disabled"`
+	RewardsCalculationEndTimestamp int64  `json:"rewards_calculation_end_timestamp"`
+	Root                           string `json:"root"`
+}
+
+type GetCurrentDistributionRootResponse struct {
+	Root GetCurrentDistributionRootResponseRoot `json:"root"`
+}
+
+type GetCurrentDistributionRootResponseRoot struct {
+	ActivatedAt                    int64  `json:"activated_at"`
+	Disabled                       bool   `json:"disabled"`
+	RewardsCalculationEndTimestamp int64  `json:"rewards_calculation_end_timestamp"`
+	Root                           string `json:"root"`
+}
+
+type GetDistributionRootAtIndexResponse struct {
+	Root GetDistributionRootAtIndexResponseRoot `json:"root"`
+}
+
+type GetDistributionRootAtIndexResponseRoot struct {
+	ActivatedAt                    int64  `json:"activated_at"`
+	Disabled                       bool   `json:"disabled"`
+	RewardsCalculationEndTimestamp int64  `json:"rewards_calculation_end_timestamp"`
+	Root                           string `json:"root"`
+}
+
+type GetDistributionRootsLengthResponse struct {
+	RootsLength int64 `json:"roots_length"`
+}
+
+type GetRootIndexFromHashResponse struct {
+	RootIndex int64 `json:"root_index"`
+}
+
+type MerkleizeLeavesResponse struct {
+	RootHashBinary string `json:"root_hash_binary"`
+}
+
+type OperatorCommissionBipsResponse struct {
+	CommissionBips int64 `json:"commission_bips"`
 }
