@@ -59,6 +59,7 @@ func (suite *bvsDirectoryTestSuite) test_RegisterBVS() {
 }
 
 func (suite *bvsDirectoryTestSuite) Test_RegisterOperatorAndDeregisterOperator() {
+	// TODO(fuxingloh): Fix DelegationManager not getting deployed
 	t := suite.T()
 	keyName := "operator1"
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
