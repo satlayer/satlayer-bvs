@@ -335,9 +335,7 @@ pub fn execute_slash_request(
             .fold(Uint128::zero(), |acc, (_, s)| acc + *s);
 
         let staker_slash = staker_total_share
-            .checked_mul(total_slash_share)
-            .map_err(|_| ContractError::Overflow {})?
-            .checked_div(sum_of_shares)
+            .checked_multiply_ratio(total_slash_share, sum_of_shares)
             .map_err(|_| ContractError::Overflow {})?;
 
         if staker_slash.is_zero() {
@@ -355,9 +353,7 @@ pub fn execute_slash_request(
             }
 
             let slash_amount_in_strategy = staker_slash
-                .checked_mul(*strategy_share)
-                .map_err(|_| ContractError::Overflow {})?
-                .checked_div(staker_total_share)
+                .checked_multiply_ratio(*strategy_share, staker_total_share)
                 .map_err(|_| ContractError::Overflow {})?;
 
             let slash_in_strat = slash_amount_in_strategy.min(remaining);
@@ -1376,7 +1372,7 @@ mod tests {
         let slash_details = ExecuteSlashDetails {
             slasher: slasher_addr.to_string(),
             operator: operator_addr.to_string(),
-            share: Uint128::new(1000000),
+            share: Uint128::new(1_000_000),
             slash_signature: 1,
             slash_validator: slash_validator.clone(),
             reason: "Invalid action".to_string(),
@@ -1388,7 +1384,7 @@ mod tests {
         let expected_slash_details = SlashDetails {
             slasher: slasher_addr.clone(),
             operator: operator_addr.clone(),
-            share: Uint128::new(1000000),
+            share: Uint128::new(1_000_000),
             slash_signature: 1,
             slash_validator: slash_validator_addr.clone(),
             reason: "Invalid action".to_string(),
@@ -1422,15 +1418,15 @@ mod tests {
                                 StakerShares {
                                     staker: deps.api.addr_make("staker1"),
                                     shares_per_strategy: vec![
-                                        (deps.api.addr_make("strategy1"), Uint128::new(10000000)),
-                                        (deps.api.addr_make("strategy2"), Uint128::new(20000000)),
+                                        (deps.api.addr_make("strategy1"), Uint128::new(10_000_000)),
+                                        (deps.api.addr_make("strategy2"), Uint128::new(20_000_000)),
                                     ],
                                 },
                                 StakerShares {
                                     staker: deps.api.addr_make("staker2"),
                                     shares_per_strategy: vec![
-                                        (deps.api.addr_make("strategy1"), Uint128::new(15000000)),
-                                        (deps.api.addr_make("strategy2"), Uint128::new(25000000)),
+                                        (deps.api.addr_make("strategy1"), Uint128::new(15_000_000)),
+                                        (deps.api.addr_make("strategy2"), Uint128::new(25_000_000)),
                                     ],
                                 },
                             ],
