@@ -38,7 +38,7 @@ func rewardCmd() *cobra.Command {
 	setGlobalOperatorCommissionCmd := &cobra.Command{
 		Use:   "set-global-operator-commission <userKeyName> <newCommissionBips>",
 		Short: "To set the global operator commission.",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			newCommissionBips, err := strconv.ParseUint(args[1], 10, 64)
 			if err != nil {
@@ -100,7 +100,7 @@ func rewardCmd() *cobra.Command {
 	getDistributionRootLengthCmd := &cobra.Command{
 		Use:   "get-distribution-root-length",
 		Short: "To get the distribution root length.",
-		Args:  cobra.ExactArgs(0),
+		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 			reward.GetDistributionRootLength()
 		},
@@ -108,7 +108,7 @@ func rewardCmd() *cobra.Command {
 	getCurrentDistributionRootCmd := &cobra.Command{
 		Use:   "get-current-distribution-root",
 		Short: "To get the current distribution root.",
-		Args:  cobra.ExactArgs(0),
+		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 			reward.GetCurrentDistributionRoot()
 		},
@@ -124,7 +124,7 @@ func rewardCmd() *cobra.Command {
 	getCurrentClaimableDistributionRootCmd := &cobra.Command{
 		Use:   "get-current-claimable-distribution-root",
 		Short: "To get the current claimable distribution root.",
-		Args:  cobra.ExactArgs(0),
+		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 			reward.GetCurrentClaimableDistributionRoot()
 		},
