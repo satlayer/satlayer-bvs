@@ -5,17 +5,17 @@ import (
 	"encoding/base64"
 	"math/big"
 	"testing"
-	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/satlayer/satlayer-bvs/babylond"
+	"github.com/satlayer/satlayer-bvs/babylond/bvs"
+	"github.com/satlayer/satlayer-bvs/babylond/cw20"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	apilogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
-	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 	"github.com/satlayer/satlayer-bvs/bvs-api/utils"
 )
 
@@ -24,32 +24,76 @@ type delegationTestSuite struct {
 	chainIO      io.ChainIO
 	contrAddr    string
 	strategies   []string
-	token        string
+	tokenAddr    string
 	slashManager string
+	container    *babylond.BabylonContainer
 }
 
-func (suite *delegationTestSuite) SetupTest() {
-	chainID := "sat-bbn-testnet1"
-	rpcURI := "https://rpc.sat-bbn-testnet1.satlayer.net"
-	homeDir := "../.babylon" // Please refer to the readme to obtain
+func (suite *delegationTestSuite) SetupSuite() {
+	container := babylond.Run(context.Background())
+	suite.chainIO = container.NewChainIO("../.babylon")
+	suite.container = container
 
-	logger := apilogger.NewMockELKLogger()
-	metricsIndicators := transactionprocess.NewPromIndicators(prometheus.NewRegistry(), "delegation")
-	chainIO, err := io.NewChainIO(chainID, rpcURI, homeDir, "bbn", logger, metricsIndicators, types.TxManagerParams{
-		MaxRetries:             3,
-		RetryInterval:          2 * time.Second,
-		ConfirmationTimeout:    60 * time.Second,
-		GasPriceAdjustmentRate: "1.1",
+	// Fund Callers
+	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
+	container.FundAddressUbbn("bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x", 1e8)
+	container.FundAddressUbbn("bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv", 1e7)
+	container.FundAddressUbbn("bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk", 1e7)
+
+	// TODO(fuxingloh): operator1, operator2, operator3
+
+	minter := container.GenerateAddress("cw20:minter")
+	token := cw20.DeployCw20(container, cw20.InstantiateMsg{
+		Decimals: 6,
+		InitialBalances: []cw20.Cw20Coin{
+			{
+				Address: minter.String(),
+				Amount:  "1000000000",
+			},
+		},
+		Mint: &cw20.MinterResponse{
+			Minter: minter.String(),
+		},
+		Name:   "Test Token",
+		Symbol: "TEST",
 	})
-	suite.Require().NoError(err)
-	suite.chainIO = chainIO
-	suite.contrAddr = "bbn1q7v924jjct6xrc89n05473juncg3snjwuxdh62xs2ua044a7tp8sydugr4"
+	suite.tokenAddr = token.Address
+
+	deployer := &bvs.Deployer{BabylonContainer: container}
+	tAddr := container.GenerateAddress("test-address").String()
+	tAddr1 := container.GenerateAddress("test-address-1").String()
+	tAddr2 := container.GenerateAddress("test-address-2").String()
+
+	container.ImportPrivKey("delegation-manager:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
+	container.ImportPrivKey("delegation-manager:pauser", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
+	container.ImportPrivKey("delegation-manager:unpauser", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
+
+	strategyManager := deployer.DeployStrategyManager(tAddr, tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+	delegationManager := deployer.DeployDelegationManager(
+		tAddr, strategyManager.Address, 100, []string{tAddr}, []int64{50},
+	)
+
+	suite.contrAddr = delegationManager.Address
 	suite.strategies = []string{
-		"bbn1326vx56sy7ra2qk4perr2tg8td3ln4qll3s2l4vu8jclxdplzj5scxzahc",
-		"bbn1df8tu3pxrxf2cs0s4rjcvdjuhs25he9l8v720yvl59hj7phvgmyqp873ay",
+		// Replace with actual strategy addresses
+		tAddr1,
+		tAddr2,
 	}
-	suite.token = "bbn1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sp4gequ"
-	suite.slashManager = "bbn1z52hmh7ht0364lzcs8700sgrnns84sa3wr9c8upd80es5n5x65mq2dedfp"
+	slashManager := deployer.DeploySlashManager(tAddr, tAddr)
+	suite.slashManager = slashManager.Address
+
+	chainIO, err := suite.chainIO.SetupKeyring("operator1", "test")
+	delegationApi := api.NewDelegationImpl(chainIO, delegationManager.Address)
+	suite.Require().NoError(err, "setup keyring")
+
+	ctx := context.Background()
+	txResp, err := delegationApi.RegisterAsOperator(ctx, getPubKeyFromKeychainByUid(chainIO, "operator1"), "", "0", "", 0)
+	suite.Require().NoError(err, "register as operator")
+	suite.Require().NotNil(txResp, "tx resp is nil")
+}
+
+func (suite *delegationTestSuite) TearDownSuite() {
+	suite.Require().NoError(suite.container.Terminate(context.Background()))
 }
 
 // KeyName needs to be changed every time it is executed
@@ -60,14 +104,13 @@ func (suite *delegationTestSuite) test_RegisterAsOperator() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	account, err := chainIO.GetCurrentAccount()
-	assert.NoError(t, err, "get account")
+	accountPubKey := getPubKeyFromKeychainByUid(chainIO, "operator1")
 
 	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr).WithGasLimit(400000)
 
 	txResp, err := delegation.RegisterAsOperator(
 		context.Background(),
-		account.GetPubKey(),
+		accountPubKey,
 		"",
 		"0",
 		"",
@@ -154,10 +197,10 @@ func (suite *delegationTestSuite) Test_DelegateToBySignatureAndUnDelegate() {
 	assert.NoError(t, err)
 	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
 
-	stakerAccount, err := chainIO.QueryAccount("bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk")
+	stakerAccountPubKey := getPubKeyFromKeychainByAddress(chainIO, "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk")
 	assert.NoError(t, err, "get account")
 
-	approverAccount, err := chainIO.QueryAccount("bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv")
+	approverAccountPubKey := getPubKeyFromKeychainByAddress(chainIO, "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv")
 	assert.NoError(t, err, "get account")
 
 	txResp, err := delegation.DelegateToBySignature(
@@ -167,8 +210,8 @@ func (suite *delegationTestSuite) Test_DelegateToBySignatureAndUnDelegate() {
 		"staker1",
 		"bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv",
 		"aggregator",
-		stakerAccount.GetPubKey(),
-		approverAccount.GetPubKey(),
+		stakerAccountPubKey,
+		approverAccountPubKey,
 	)
 	assert.NoError(t, err, "delegate to by signature")
 	t.Logf("txResp: %v", txResp)
@@ -205,7 +248,7 @@ func (suite *delegationTestSuite) test_CompleteQueuedWithdrawal() {
 			Strategies:  suite.strategies,
 			Shares:      []string{"41"},
 		},
-		[]string{suite.token},
+		[]string{suite.tokenAddr},
 		0,
 		true,
 	)
@@ -271,8 +314,8 @@ func (suite *delegationTestSuite) test_CompleteQueuedWithdrawals() {
 		},
 	}
 	tokens := [][]string{
-		{suite.token},
-		{suite.token},
+		{suite.tokenAddr},
+		{suite.tokenAddr},
 	}
 
 	txResp, err := delegation.CompleteQueuedWithdrawals(context.Background(), withdrawals, tokens, []uint64{0, 0}, []bool{true, true})
@@ -525,7 +568,8 @@ func (suite *delegationTestSuite) Test_CalculateCurrentStakerDelegationDigestHas
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
-	stakerAccount, err := chainIO.GetCurrentAccount()
+
+	stakeAccountPubKey := getPubKeyFromKeychainByUid(chainIO, "caller")
 	assert.NoError(t, err, "get account")
 	nodeStatus, err := chainIO.QueryNodeStatus(context.Background())
 	assert.NoError(t, err, "query node status")
@@ -533,7 +577,7 @@ func (suite *delegationTestSuite) Test_CalculateCurrentStakerDelegationDigestHas
 	req := types.CurrentStakerDigestHashParams{
 		Staker:          "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
 		Operator:        "bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
-		StakerPublicKey: base64.StdEncoding.EncodeToString(stakerAccount.GetPubKey().Bytes()),
+		StakerPublicKey: base64.StdEncoding.EncodeToString(stakeAccountPubKey.Bytes()),
 		Expiry:          expiry,
 		CurrentNonce:    "0",
 		ContractAddr:    suite.contrAddr,
@@ -551,7 +595,8 @@ func (suite *delegationTestSuite) Test_StakerDelegationDigestHash() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
-	stakerAccount, err := chainIO.GetCurrentAccount()
+
+	stakerPubKey := getPubKeyFromKeychainByUid(chainIO, "staker1")
 	assert.NoError(t, err, "get account")
 	nodeStatus, err := chainIO.QueryNodeStatus(context.Background())
 	assert.NoError(t, err, "query node status")
@@ -560,7 +605,7 @@ func (suite *delegationTestSuite) Test_StakerDelegationDigestHash() {
 		Staker:          "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
 		StakerNonce:     "0",
 		Operator:        "bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
-		StakerPublicKey: base64.StdEncoding.EncodeToString(stakerAccount.GetPubKey().Bytes()),
+		StakerPublicKey: base64.StdEncoding.EncodeToString(stakerPubKey.Bytes()),
 		Expiry:          expiry,
 		ContractAddr:    suite.contrAddr,
 	}
@@ -586,14 +631,14 @@ func (suite *delegationTestSuite) Test_DelegationApprovalDigestHash() {
 	assert.NoError(t, err, "generate random string")
 	salt := "salt" + randomStr
 
-	approverAccount, err := chainIO.GetCurrentAccount()
+	approvePubKey := getPubKeyFromKeychainByUid(chainIO, "aggregator")
 	assert.NoError(t, err, "get account")
 
 	req := types.ApproverDigestHashParams{
 		Staker:            "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
 		Operator:          "bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
 		Approver:          "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv",
-		ApproverPublicKey: base64.StdEncoding.EncodeToString(approverAccount.GetPubKey().Bytes()),
+		ApproverPublicKey: base64.StdEncoding.EncodeToString(approvePubKey.Bytes()),
 		ApproverSalt:      base64.StdEncoding.EncodeToString([]byte(salt)),
 		Expiry:            expiry,
 		ContractAddr:      suite.contrAddr,

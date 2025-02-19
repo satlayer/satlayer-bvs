@@ -39,6 +39,7 @@ const (
 
 type BabylonContainer struct {
 	testcontainers.Container
+	ChainId   string
 	ApiUri    string
 	RpcUri    string
 	GrpcUri   string
@@ -205,6 +206,7 @@ func Run(ctx context.Context) *BabylonContainer {
 
 	return &BabylonContainer{
 		container,
+		ChainId,
 		ApiUri,
 		RpcUri,
 		GrpcUri,
