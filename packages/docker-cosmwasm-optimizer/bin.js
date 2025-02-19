@@ -19,8 +19,8 @@ const command = [
 if (process.env.CI) {
   command.push("--cache-from", `type=registry,ref=ghcr.io/satlayer/cosmwasm-optimizer-cache:${crate}`);
 
-  command.push("--cache-to", `type=registry,ref=ghcr.io/satlayer/cosmwasm-optimizer-cache:${crate},mode=max`);
   if (process.env.GITHUB_REF_NAME === "main") {
+    command.push("--cache-to", `type=registry,ref=ghcr.io/satlayer/cosmwasm-optimizer-cache:${crate},mode=max`);
   }
 }
 

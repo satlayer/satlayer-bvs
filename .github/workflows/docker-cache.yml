@@ -14,40 +14,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build_wasm_plan:
-    name: Build [wasm] [plan]
+  build_wasm:
+    name: Build [wasm]
     runs-on: ubuntu-latest
-    outputs:
-      packages: ${{ steps.plan.outputs.packages }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: fuxingloh/turbo-plan@v2
-        id: plan
-        with:
-          task: build:wasm
-
-  build_wasm_run:
-    name: Build [wasm] [run]
-    needs: build_wasm_plan
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package: ${{ fromJSON(needs.build_wasm_plan.outputs.packages) }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
 
-      - run: turbo run build:wasm --filter=${{ matrix.package }}
-
-  build_wasm_completed:
-    name: Build [wasm] [completed]
-    runs-on: ubuntu-latest
-    if: always()
-    needs:
-      - build_wasm_run
-    steps:
-      - run: |
-          if ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'skipped') || contains(needs.*.result, 'cancelled') }} ; then          
-            exit 1
-          fi
+      - run: turbo build:wasm
