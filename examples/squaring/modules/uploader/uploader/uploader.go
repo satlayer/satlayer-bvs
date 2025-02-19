@@ -2,10 +2,9 @@ package uploader
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"sort"
+	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,7 +15,6 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
 	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
 	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
-	"github.com/shopspring/decimal"
 
 	"github.com/satlayer/satlayer-bvs/examples/squaring/uploader/core"
 )
@@ -26,7 +24,6 @@ type Uploader struct {
 	delegation         api.Delegation
 	chainIO            io.ChainIO
 	rewardsCoordinator api.RewardsCoordinator
-	pubKeyStr          string
 }
 
 func NewUploader() *Uploader {
@@ -49,8 +46,6 @@ func NewUploader() *Uploader {
 	if err != nil {
 		panic(err)
 	}
-	pubKey := client.GetCurrentAccountPubKey()
-	pubKeyStr := base64.StdEncoding.EncodeToString(pubKey.Bytes())
 
 	txResp, err := api.NewBVSDirectoryImpl(client, core.C.Chain.BVSDirectory).GetBVSInfo(core.C.Chain.BVSHash)
 	if err != nil {
@@ -67,7 +62,6 @@ func NewUploader() *Uploader {
 		delegation:         delegation,
 		bvsContract:        txResp.BVSContract,
 		rewardsCoordinator: rewardsCoordinator,
-		pubKeyStr:          pubKeyStr,
 	}
 }
 
@@ -96,9 +90,9 @@ func (u *Uploader) Run() {
 		case "wasm-TaskResponded":
 			blockHeight := evt.BlockHeight
 			txnHash := evt.TxHash
-			taskId := fmt.Sprintf("%s", evt.AttrMap["taskId"])
-			taskResult := fmt.Sprintf("%s", evt.AttrMap["result"])
-			taskOperators := fmt.Sprintf("%s", evt.AttrMap["operators"])
+			taskId := evt.AttrMap["taskId"]
+			taskResult := evt.AttrMap["result"]
+			taskOperators := evt.AttrMap["operators"]
 			fmt.Printf("[TaskResponded] blockHeight: %d, txnHash: %s, taskId: %s, taskResult: %s, taskOperators: %s\n", blockHeight, txnHash, taskId, taskResult, taskOperators)
 			u.calcReward(ctx, taskId, taskOperators)
 		default:
@@ -127,17 +121,15 @@ func (u *Uploader) calcReward(ctx context.Context, taskId string, operators stri
 
 	operatorList := strings.Split(operators, "&")
 	operatorCnt := len(operatorList)
-	rewardAmount := decimal.NewFromFloat(core.C.Reward.Amount)
 
-	fmt.Println("rewardAmount: ", rewardAmount)
-	operatorAmount := rewardAmount.Div(decimal.NewFromInt(int64(operatorCnt)))
+	operatorAmount := core.C.Reward.Amount / float64(operatorCnt)
 	fmt.Println("operatorAmount: ", operatorAmount)
 
 	submissionMap := make(map[string]*Submission)
 	totalEarners := make([]Earner, 0)
 
-	sAmount := operatorAmount.Mul(decimal.NewFromFloat(core.C.Reward.OperatorRatio)).Div(decimal.NewFromInt(100))
-	oAmount := operatorAmount.Sub(sAmount)
+	sAmount := operatorAmount * core.C.Reward.OperatorRatio / 100
+	oAmount := operatorAmount - sAmount
 	fmt.Println("sAmount: ", sAmount)
 	fmt.Println("oAmount: ", oAmount)
 
@@ -148,20 +140,22 @@ func (u *Uploader) calcReward(ctx context.Context, taskId string, operators stri
 		}
 		fmt.Println("GetOperatorStakers txnRsp: ", txnRsp)
 
-		totalStakerAmount := decimal.Zero
+		totalStakerAmount := 0.0
 		earners := make([]Earner, 0)
 
 		for _, staker := range txnRsp.StakersAndShares {
-			stakerAmount := decimal.Zero
+			stakerAmount := 0.0
 			earnerTokens := make([]*TokenAmount, 0)
 
 			for _, strategy := range staker.SharesPerStrategy {
-				strategyAmount, err := decimal.NewFromString(strategy[1])
+				amount, err := strconv.ParseUint(strategy[1], 10, 0)
 				if err != nil {
 					fmt.Println("parse float err: ", err)
 					continue
 				}
-				stakerAmount = stakerAmount.Add(strategyAmount)
+
+				strategyAmount := float64(amount)
+				stakerAmount += strategyAmount
 				strategyToken, err := u.rpcUnderlyingToken(strategy[0])
 				if err != nil {
 					fmt.Println("get strategy token err: ", err)
@@ -175,32 +169,31 @@ func (u *Uploader) calcReward(ctx context.Context, taskId string, operators stri
 					StakeAmount:  strategyAmount,
 				})
 			}
-			sort.Slice(earnerTokens, func(i, j int) bool {
-				return earnerTokens[i].Token < earnerTokens[j].Token
-			})
 
 			earners = append(earners, Earner{
 				Earner:           staker.Staker,
 				TotalStakeAmount: stakerAmount,
 				Tokens:           earnerTokens,
 			})
-			totalStakerAmount = totalStakerAmount.Add(stakerAmount)
+			totalStakerAmount += stakerAmount
 		}
 
 		fmt.Println("totalStakerAmount: ", totalStakerAmount)
 		for _, s := range earners {
-			if totalStakerAmount == decimal.Zero || s.TotalStakeAmount == decimal.Zero {
+			if totalStakerAmount == 0.0 || s.TotalStakeAmount == 0.0 {
 				continue
 			}
-			stakerReward := sAmount.Mul(s.TotalStakeAmount.Div(totalStakerAmount))
+
+			stakerReward := sAmount * (s.TotalStakeAmount / totalStakerAmount)
 
 			for _, t := range s.Tokens {
-				rewardAmount := stakerReward.Mul(t.StakeAmount).Div(s.TotalStakeAmount)
-				if rewardAmount == decimal.Zero {
+				rewardAmount := stakerReward * t.StakeAmount / s.TotalStakeAmount
+				if rewardAmount == 0.0 {
 					continue
 				}
 				fmt.Println("rewardAmount: ", rewardAmount)
-				t.RewardAmount = rewardAmount.Ceil().String()
+
+				t.RewardAmount = strconv.FormatFloat(math.Floor(rewardAmount), 'f', -1, 64)
 				if a, ok := submissionMap[t.Strategy]; !ok {
 					submissionMap[t.Strategy] = &Submission{
 						Strategy: t.Strategy,
@@ -208,7 +201,7 @@ func (u *Uploader) calcReward(ctx context.Context, taskId string, operators stri
 						Amount:   rewardAmount,
 					}
 				} else {
-					a.Amount = a.Amount.Add(rewardAmount)
+					a.Amount += rewardAmount
 				}
 			}
 		}
@@ -224,9 +217,9 @@ func (u *Uploader) calcReward(ctx context.Context, taskId string, operators stri
 				Amount:   oAmount,
 			}
 		} else {
-			a.Amount = a.Amount.Add(oAmount)
+			a.Amount += oAmount
 		}
-		operatorRewardAmount := oAmount.Ceil().String()
+		operatorRewardAmount := strconv.FormatFloat(math.Floor(oAmount), 'f', -1, 64)
 		earners = append(earners, Earner{
 			Earner:           operator,
 			TotalStakeAmount: oAmount,
@@ -243,43 +236,13 @@ func (u *Uploader) calcReward(ctx context.Context, taskId string, operators stri
 		totalEarners = append(totalEarners, earners...)
 	}
 
-	// update earner reward token amount
-	var totalEarnerTokenAmount []EarnerTokenAmount
-	for _, earner := range totalEarners {
-		for _, token := range earner.Tokens {
-			oldAmount, err := u.getEarnerTokenAmount(earner.Earner, token.Token)
-			if err != nil {
-				fmt.Println("rpc update earner amount err: ", err)
-				return
-			}
-			rAmount, _ := decimal.NewFromString(token.RewardAmount)
-			newAmount := oldAmount.Add(rAmount).Ceil().String()
-			token.RewardAmount = newAmount
-			earnerTokenAmount := EarnerTokenAmount{
-				Earner: earner.Earner,
-				Token:  token.Token,
-				Amount: newAmount,
-			}
-			totalEarnerTokenAmount = append(totalEarnerTokenAmount, earnerTokenAmount)
-		}
-	}
-
-	totalEarnersJSON, err := json.Marshal(totalEarners)
-	if err != nil {
-		fmt.Println("totalEarnersJSON json err: ", err)
-	}
-	fmt.Println("totalEarnersJSON: ", string(totalEarnersJSON))
-
 	// submission
 	submissions := make([]Submission, 0)
 	for _, submission := range submissionMap {
 		submissions = append(submissions, *submission)
+		fmt.Printf("strategy: %s, token: %s, amount: %f\n", submission.Strategy, submission.Token, submission.Amount)
 	}
-	submissionsJSON, err := json.Marshal(submissions)
-	if err != nil {
-		fmt.Println("submissionsJSON json err: ", err)
-	}
-	fmt.Println("submissionsJSON: ", string(submissionsJSON))
+	fmt.Printf("earners: %+v\n", totalEarners)
 
 	if err := u.rpcSubmission(submissions); err != nil {
 		fmt.Println("rpc submission err: ", err)
@@ -287,88 +250,89 @@ func (u *Uploader) calcReward(ctx context.Context, taskId string, operators stri
 	}
 
 	// merkle tree
-	rootHash, rewardEarner, err := u.merkleTree(totalEarners)
+	rootHash, err := u.merkleTree(totalEarners)
 	if err != nil {
 		fmt.Println("merkle tree err: ", err)
 		return
 	}
+	fmt.Printf("root Hash: %s\n", rootHash)
 
-	if err := u.rpcSubmitHashRoot(rootHash, rewardEarner, totalEarnerTokenAmount); err != nil {
+	if err := u.rpcSubmitHashRoot(rootHash); err != nil {
 		fmt.Println("rpc root hash err: ", err)
 		return
 	}
 }
 
-//
-
 // merkleTree builds a merkle tree from the given earners, and returns the hash of the root node.
 // The merkle tree is built by first calculating the merkle tree of each earner's tokens, and
 // then building a merkle tree from the hashes of the earner token merkle trees.
 // If an error occurs in the process, an error is returned.
-func (u *Uploader) merkleTree(earners []Earner) (string, []*RewardEarner, error) {
-	earnerHashes := make([]string, 0)
-	rewardEarner := make([]*RewardEarner, 0)
-
+func (u *Uploader) merkleTree(earners []Earner) (string, error) {
+	// calc earner token merkle tree
+	earnerNodes := make([]*MerkleNode, 0)
 	for _, earner := range earners {
-		rewardTokens := make([]*RewardToken, 0)
-		for _, token := range earner.Tokens {
-			rewardToken := &RewardToken{
-				Token:  token.Token,
-				Amount: token.RewardAmount,
-			}
-			rewardTokens = append(rewardTokens, rewardToken)
-		}
 		tokenHash := u.calcTokenLeafs(earner.Tokens)
-		rewardEarner = append(rewardEarner, &RewardEarner{
-			Earner:    earner.Earner,
-			TokenHash: tokenHash,
-			Tokens:    rewardTokens,
-		})
-		fmt.Printf("token hash: %s\n", tokenHash)
 		earnerHash, err := u.rpcEarnerLeafHash(earner.Earner, tokenHash)
 		if err != nil {
 			fmt.Println("calc earner hash err: ", err)
-			return "", rewardEarner, err
+			return "", err
 		}
-		earnerHashes = append(earnerHashes, earnerHash)
+		earnerNodes = append(earnerNodes, &MerkleNode{Hash: earnerHash})
 	}
 
-	fmt.Println("earn hashs: ", earnerHashes)
-	if len(earnerHashes) == 1 {
-		return earnerHashes[0], rewardEarner, nil
-	}
-	rootHash, err := u.rpcMerkleizeLeaves(earnerHashes)
-	if err != nil {
-		fmt.Println("merkleizeLeaves err: ", err)
-		return "", rewardEarner, err
-	}
-	fmt.Println("earner rootHash: ", rootHash)
-
-	return rootHash, rewardEarner, nil
+	root := u.calcMerkleTree(earnerNodes)
+	return root.Hash, nil
 }
 
 // calcTokenLeafs calculates the merkle root hash of the given tokens.
 // It does this by first calculating the merkle tree of the tokens, and
 // then returning the hash of the root node.
 func (u *Uploader) calcTokenLeafs(tokens []*TokenAmount) string {
-	var hashes []string
+	tokenNodes := make([]*MerkleNode, 0)
 	for _, token := range tokens {
 		hash, err := u.rpcTokenHash(token)
 		if err != nil {
 			fmt.Println("calc token hash err: ", err)
 			continue
 		}
-		hashes = append(hashes, hash)
+		tokenNodes = append(tokenNodes, &MerkleNode{Hash: hash})
 	}
-	fmt.Println("token leaf hashes: ", hashes)
-	if len(hashes) == 1 {
-		return hashes[0]
+	fmt.Println("tokenHashs: ", tokenNodes)
+	root := u.calcMerkleTree(tokenNodes)
+	return root.Hash
+}
+
+// calcMerkleTree calculates the merkle tree of the given nodes and returns the root node.
+// The merkle tree is built by iterating through the nodes in pairs, and for each pair,
+// calculating the root hash of the two nodes and appending it to the new level.
+func (u *Uploader) calcMerkleTree(nodes []*MerkleNode) *MerkleNode {
+	// calc merkle tree
+	for len(nodes) > 1 {
+		if len(nodes)%2 != 0 {
+			nodes = append(nodes, nodes[len(nodes)-1])
+		}
+
+		var newLevel []*MerkleNode
+		for i := 0; i < len(nodes); i += 2 {
+			var left, right *MerkleNode
+			left = nodes[i]
+			right = nodes[i+1]
+			leaves := []string{left.Hash, right.Hash}
+			rootHash, err := u.rpcMerkleizeLeaves(leaves)
+			if err != nil {
+				fmt.Println("merkleizeLeaves err: ", err)
+				continue
+			}
+
+			newNode := &MerkleNode{
+				Left:  left,
+				Right: right,
+				Hash:  rootHash,
+			}
+
+			newLevel = append(newLevel, newNode)
+		}
+		nodes = newLevel
 	}
-	rootHash, err := u.rpcMerkleizeLeaves(hashes)
-	if err != nil {
-		fmt.Println("merkleizeLeaves err: ", err)
-		return ""
-	}
-	fmt.Println("token root hash: ", rootHash)
-	return rootHash
+	return nodes[0]
 }

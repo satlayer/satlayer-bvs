@@ -1,29 +1,24 @@
 package uploader
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	rio "io"
-	"net/http"
+	"math"
 	"strconv"
 	"time"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	"github.com/shopspring/decimal"
-
-	"github.com/satlayer/satlayer-bvs/examples/squaring/uploader/core"
 )
 
 const calcInterval = 86_400 // 1 day
 
 type MerkleNode struct {
-	Hash  string      `json:"hash"`
-	Left  *MerkleNode `json:"left,omitempty"`
-	Right *MerkleNode `json:"right,omitempty"`
+	Left  *MerkleNode
+	Right *MerkleNode
+	Hash  string
 }
 
 type HashResponse struct {
@@ -63,7 +58,7 @@ func (u *Uploader) rpcSubmission(rewards []Submission) error {
 				Multiplier: 1,
 			}},
 			Token:          reward.Token,
-			Amount:         reward.Amount.Ceil().String(),
+			Amount:         strconv.FormatFloat(math.Floor(reward.Amount), 'f', -1, 64),
 			StartTimestamp: fmt.Sprintf("%d000000000", startTime),
 			Duration:       calcInterval,
 		})
@@ -139,148 +134,13 @@ func (u *Uploader) rpcUnderlyingToken(strategy string) (string, error) {
 // timestamp that is one hour ago from the current time.
 //
 // The method returns an error if the transaction fails.
-func (u *Uploader) rpcSubmitHashRoot(rootHash string, earners []*RewardEarner, totalEarnerTokenAmount []EarnerTokenAmount) error {
-	nowTs := time.Now().Unix()
-	timestamp := nowTs - 3600
+func (u *Uploader) rpcSubmitHashRoot(rootHash string) error {
+	timestamp := time.Now().Unix() - 3600
 	rsp, err := u.rewardsCoordinator.SubmitRoot(context.Background(), rootHash, uint64(timestamp))
 	if err != nil {
 		fmt.Println("SubmitRootHash err: ", err)
 		return err
 	}
-	txnHash := rsp.Hash.String()
-	rootIndex := 0
-	rewardsCalculationEndTimestamp := 0
-	activatedAt := 0
-	for _, event := range rsp.TxResult.Events {
-		if event.Type == "wasm-DistributionRootSubmitted" {
-			fmt.Println("SubmitRootHash event: ", event.Attributes)
-			for _, attr := range event.Attributes {
-				if attr.Key == "root_index" {
-					rootIndex, _ = strconv.Atoi(attr.Value)
-				} else if attr.Key == "rewards_calculation_end_timestamp" {
-					rewardsCalculationEndTimestamp, _ = strconv.Atoi(attr.Value)
-				} else if attr.Key == "activated_at" {
-					activatedAt, _ = strconv.Atoi(attr.Value)
-				}
-			}
-		}
-	}
-	u.saveRewardEarner(rootIndex, rootHash, txnHash, nowTs, int64(rewardsCalculationEndTimestamp), int64(activatedAt), earners)
-	u.updateEarnerTokenAmount(totalEarnerTokenAmount)
 	fmt.Println("SubmitRootHash txn hash: ", rsp.Hash.String())
 	return err
-}
-
-func (u *Uploader) saveRewardEarner(rootIndex int, rootHash, txnHash string, createTs, CalcEndTs, activatedTs int64, earners []*RewardEarner) {
-	nowTs := time.Now().Unix()
-	earner, err := json.Marshal(earners)
-	if err != nil {
-		return
-	}
-	earnerStr := string(earner)
-	msgPayload := fmt.Sprintf("%d-%d-%s-%s", nowTs, rootIndex, txnHash, earnerStr)
-	msgBytes := []byte(msgPayload)
-	signature, err := u.chainIO.GetSigner().Sign(msgBytes)
-
-	payload := RewardUploadRequest{
-		RootIndex:   int64(rootIndex),
-		RootHash:    rootHash,
-		CalcEndTs:   CalcEndTs,
-		TxnHash:     txnHash,
-		CreateTs:    createTs,
-		ActivatedTs: activatedTs,
-		Timestamp:   nowTs,
-		Signature:   signature,
-		PubKey:      u.pubKeyStr,
-		Earners:     earners,
-	}
-	fmt.Printf("task result send aggregator payload: %+v\n", payload)
-	if err != nil {
-		return
-	}
-	jsonData, err := json.Marshal(payload)
-	if err != nil {
-		fmt.Printf("Error marshaling JSON: %s", err)
-		return
-	}
-
-	resp, err := http.Post(fmt.Sprintf("%s/api/v1/rewards", core.C.Reward.UploadAPI), "application/json", bytes.NewBuffer(jsonData))
-	if err != nil {
-		fmt.Printf("Error sending reward api : %s\n", err)
-		return
-	}
-	if resp.StatusCode != 200 {
-		body, _ := rio.ReadAll(resp.Body)
-		fmt.Printf("Error sending rewarda api : %s\n", string(body))
-		return
-	}
-	return
-}
-
-func (u *Uploader) getEarnerTokenAmount(earner, token string) (decimal.Decimal, error) {
-	zero := decimal.NewFromFloat(0.0)
-	resp, err := http.Get(fmt.Sprintf("%s/api/v1/token/%s/%s", core.C.Reward.UploadAPI, earner, token))
-	if err != nil {
-		fmt.Printf("Error sending reward api : %s\n", err)
-		return zero, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		body, _ := rio.ReadAll(resp.Body)
-		return zero, fmt.Errorf("error response from api: %s", string(body))
-	}
-
-	var result struct {
-		Amount string `json:"amount"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return zero, fmt.Errorf("error decoding response: %v", err)
-	}
-
-	amount, err := decimal.NewFromString(result.Amount)
-	if err != nil {
-		return zero, fmt.Errorf("error converting amount to decimal: %v", err)
-	}
-
-	return amount, nil
-}
-
-func (u *Uploader) updateEarnerTokenAmount(totalEarnerTokenAmount []EarnerTokenAmount) {
-	nowTs := time.Now().Unix()
-	earner, err := json.Marshal(totalEarnerTokenAmount)
-	if err != nil {
-		return
-	}
-	earnerStr := string(earner)
-	msgPayload := fmt.Sprintf("%d-%s", nowTs, earnerStr)
-	msgBytes := []byte(msgPayload)
-	signature, err := u.chainIO.GetSigner().Sign(msgBytes)
-	payload := EarnerTokenRequest{
-		Timestamp:    nowTs,
-		Signature:    signature,
-		PubKey:       u.pubKeyStr,
-		EarnerTokens: totalEarnerTokenAmount,
-	}
-	if err != nil {
-		return
-	}
-	jsonData, err := json.Marshal(payload)
-	if err != nil {
-		fmt.Printf("Error marshaling JSON: %s", err)
-		return
-	}
-
-	resp, err := http.Post(fmt.Sprintf("%s/api/v1/token", core.C.Reward.UploadAPI), "application/json", bytes.NewBuffer(jsonData))
-	if err != nil {
-		fmt.Printf("Error sending reward api : %s\n", err)
-		return
-	}
-	if resp.StatusCode != 200 {
-		body, _ := rio.ReadAll(resp.Body)
-		fmt.Printf("Error sending reward api : %s\n", string(body))
-		return
-	}
-	return
 }
