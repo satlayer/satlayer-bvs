@@ -2,7 +2,7 @@
   "name": "@modules/babylond",
   "private": true,
   "scripts": {
-    "test": "gotestsum"
+    "test": "gotestsum -- -p 4"
   },
   "devDependencies": {
     "@satlayer/bvs-delegation-manager": "workspace:*",
