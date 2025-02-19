@@ -26,6 +26,7 @@ type strategyBaseTVLLimitsTestSuite struct {
 func (suite *strategyBaseTVLLimitsTestSuite) SetupSuite() {
 	container := babylond.Run(context.Background())
 	suite.chainIO = container.NewChainIO("../.babylon")
+	suite.container = container
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
 
 	deployer := &bvs.Deployer{BabylonContainer: container}

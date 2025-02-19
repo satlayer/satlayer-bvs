@@ -24,6 +24,7 @@ type ioTestSuite struct {
 
 func (suite *ioTestSuite) SetupSuite() {
 	container := babylond.Run(context.Background())
+	suite.container = container
 	suite.chainIO = container.NewChainIO("../.babylon")
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
 
