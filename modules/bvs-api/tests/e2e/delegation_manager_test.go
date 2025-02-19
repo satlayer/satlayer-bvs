@@ -32,12 +32,15 @@ type delegationTestSuite struct {
 func (suite *delegationTestSuite) SetupSuite() {
 	container := babylond.Run(context.Background())
 	suite.chainIO = container.NewChainIO("../.babylon")
+	suite.container = container
 
 	// Fund Callers
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
 	container.FundAddressUbbn("bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x", 1e8)
 	container.FundAddressUbbn("bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv", 1e7)
 	container.FundAddressUbbn("bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk", 1e7)
+
+	// TODO(fuxingloh): operator1, operator2, operator3
 
 	minter := container.GenerateAddress("cw20:minter")
 	token := cw20.DeployCw20(container, cw20.InstantiateMsg{
@@ -64,9 +67,12 @@ func (suite *delegationTestSuite) SetupSuite() {
 	container.ImportPrivKey("delegation-manager:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
 	container.ImportPrivKey("delegation-manager:pauser", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
 	container.ImportPrivKey("delegation-manager:unpauser", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
+
+	strategyManager := deployer.DeployStrategyManager(tAddr, tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 	delegationManager := deployer.DeployDelegationManager(
-		tAddr, tAddr, 100, []string{tAddr1, tAddr2}, []int64{50, 60},
+		tAddr, strategyManager.Address, 100, []string{tAddr}, []int64{50},
 	)
+
 	suite.contrAddr = delegationManager.Address
 	suite.strategies = []string{
 		// Replace with actual strategy addresses
@@ -75,6 +81,15 @@ func (suite *delegationTestSuite) SetupSuite() {
 	}
 	slashManager := deployer.DeploySlashManager(tAddr, tAddr)
 	suite.slashManager = slashManager.Address
+
+	chainIO, err := suite.chainIO.SetupKeyring("operator1", "test")
+	delegationApi := api.NewDelegationImpl(chainIO, delegationManager.Address)
+	suite.Require().NoError(err, "setup keyring")
+
+	ctx := context.Background()
+	txResp, err := delegationApi.RegisterAsOperator(ctx, getPubKeyFromKeychainByUid(chainIO, "operator1"), "", "0", "", 0)
+	suite.Require().NoError(err, "register as operator")
+	suite.Require().NotNil(txResp, "tx resp is nil")
 }
 
 func (suite *delegationTestSuite) TearDownSuite() {
@@ -580,7 +595,8 @@ func (suite *delegationTestSuite) Test_StakerDelegationDigestHash() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
-	stakerAccount, err := chainIO.GetCurrentAccount()
+
+	stakerPubKey := getPubKeyFromKeychainByUid(chainIO, "staker1")
 	assert.NoError(t, err, "get account")
 	nodeStatus, err := chainIO.QueryNodeStatus(context.Background())
 	assert.NoError(t, err, "query node status")
@@ -589,7 +605,7 @@ func (suite *delegationTestSuite) Test_StakerDelegationDigestHash() {
 		Staker:          "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
 		StakerNonce:     "0",
 		Operator:        "bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
-		StakerPublicKey: base64.StdEncoding.EncodeToString(stakerAccount.GetPubKey().Bytes()),
+		StakerPublicKey: base64.StdEncoding.EncodeToString(stakerPubKey.Bytes()),
 		Expiry:          expiry,
 		ContractAddr:    suite.contrAddr,
 	}
@@ -615,14 +631,14 @@ func (suite *delegationTestSuite) Test_DelegationApprovalDigestHash() {
 	assert.NoError(t, err, "generate random string")
 	salt := "salt" + randomStr
 
-	approverAccount, err := chainIO.GetCurrentAccount()
+	approvePubKey := getPubKeyFromKeychainByUid(chainIO, "aggregator")
 	assert.NoError(t, err, "get account")
 
 	req := types.ApproverDigestHashParams{
 		Staker:            "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
 		Operator:          "bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
 		Approver:          "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv",
-		ApproverPublicKey: base64.StdEncoding.EncodeToString(approverAccount.GetPubKey().Bytes()),
+		ApproverPublicKey: base64.StdEncoding.EncodeToString(approvePubKey.Bytes()),
 		ApproverSalt:      base64.StdEncoding.EncodeToString([]byte(salt)),
 		Expiry:            expiry,
 		ContractAddr:      suite.contrAddr,
