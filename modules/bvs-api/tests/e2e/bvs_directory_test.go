@@ -3,17 +3,14 @@ package e2e
 import (
 	"context"
 	"testing"
-	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/satlayer/satlayer-bvs/babylond"
+	"github.com/satlayer/satlayer-bvs/babylond/bvs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	apilogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
-	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 	"github.com/satlayer/satlayer-bvs/bvs-api/utils"
 )
 
@@ -22,24 +19,23 @@ type bvsDirectoryTestSuite struct {
 	chainIO             io.ChainIO
 	contrAddr           string
 	delegationContrAddr string
+	container           *babylond.BabylonContainer
 }
 
 func (suite *bvsDirectoryTestSuite) SetupTest() {
-	chainID := "sat-bbn-testnet1"
-	rpcURI := "https://rpc.sat-bbn-testnet1.satlayer.net"
-	homeDir := "../.babylon" // Please refer to the readme to obtain
+	container := babylond.Run(context.Background())
+	suite.chainIO = container.NewChainIO("../.babylon")
+	suite.container = container
 
-	logger := apilogger.NewMockELKLogger()
-	metricsIndicators := transactionprocess.NewPromIndicators(prometheus.NewRegistry(), "bvs_directory")
-	chainIO, err := io.NewChainIO(chainID, rpcURI, homeDir, "bbn", logger, metricsIndicators, types.TxManagerParams{
-		MaxRetries:             3,
-		RetryInterval:          2 * time.Second,
-		ConfirmationTimeout:    60 * time.Second,
-		GasPriceAdjustmentRate: "1.1",
-	})
-	suite.Require().NoError(err)
-	suite.chainIO = chainIO
-	suite.contrAddr = "bbn1f803xuwl6l7e8jm9ld0kynvvjfhfs5trax8hmrn4wtnztglpzw0sm72xua"
+	// Import And Fund Caller
+	container.ImportPrivKey("directory:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
+	container.ImportPrivKey("directory:initial_owner:replaced", "4D895710FBC2F9B50239FEFBD0747CED0A1C10AEBEEAA21044BAF36244888D2B")
+	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
+	container.FundAddressUbbn("bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv", 1e7)
+
+	tAddr := container.GenerateAddress("test-address").String()
+	deployer := &bvs.Deployer{BabylonContainer: container}
+	suite.contrAddr = deployer.DeployDirectory(tAddr).Address
 	suite.delegationContrAddr = "bbn1q7v924jjct6xrc89n05473juncg3snjwuxdh62xs2ua044a7tp8sydugr4"
 }
 
@@ -67,21 +63,28 @@ func (suite *bvsDirectoryTestSuite) Test_RegisterOperatorAndDeregisterOperator()
 	keyName := "operator1"
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	account, err := chainIO.GetCurrentAccount()
+	suite.container.FundAddressUbbn("bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x", 1e8)
+
+	account, err := chainIO.GetClientCtx().Keyring.Key("caller")
 	assert.NoError(t, err)
+	address, err := account.GetAddress()
+	assert.NoError(t, err)
+	pubKey, err := account.GetPubKey()
+	assert.NoError(t, err)
+
 	bvsApi := api.NewBVSDirectoryImpl(chainIO, suite.contrAddr)
 	bvsApi.WithGasLimit(500000)
-	registerResp, err := bvsApi.RegisterOperator(context.Background(), account.GetAddress().String(), account.GetPubKey())
+	registerResp, err := bvsApi.RegisterOperator(context.Background(), address.String(), pubKey)
 	assert.NoError(t, err, "register operator")
 	assert.NotNil(t, registerResp, "response nil")
 	t.Logf("registerResp:%+v", registerResp)
 
 	// repeat register operator failed
-	registerResp, err = bvsApi.RegisterOperator(context.Background(), account.GetAddress().String(), account.GetPubKey())
+	registerResp, err = bvsApi.RegisterOperator(context.Background(), address.String(), pubKey)
 	assert.Error(t, err, "register operator not failed")
 	assert.Nil(t, registerResp, "response not nil")
 
-	deregisterResp, err := bvsApi.DeregisterOperator(context.Background(), account.GetAddress().String())
+	deregisterResp, err := bvsApi.DeregisterOperator(context.Background(), address.String())
 	assert.NoError(t, err, "deregister operator")
 	assert.NotNil(t, deregisterResp, "response nil")
 	t.Logf("deregisterResp:%+v", deregisterResp)
@@ -142,12 +145,20 @@ func (suite *bvsDirectoryTestSuite) Test_Pause() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	txResp, err := api.NewBVSDirectoryImpl(chainIO, suite.contrAddr).Pause(context.Background())
+	bvsDirectory := api.NewBVSDirectoryImpl(chainIO, suite.contrAddr)
+	{
+		_, err = bvsDirectory.SetPauser(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+		suite.Require().NoError(err)
+		_, err = bvsDirectory.SetUnpauser(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+		suite.Require().NoError(err)
+	}
+
+	txResp, err := bvsDirectory.Pause(context.Background())
 	assert.NoError(t, err)
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
 
-	recoverResp, err := api.NewBVSDirectoryImpl(chainIO, suite.contrAddr).Unpause(context.Background())
+	recoverResp, err := bvsDirectory.Unpause(context.Background())
 	assert.NoError(t, err)
 	assert.NotNil(t, recoverResp, "response nil")
 	t.Logf("txResp:%+v", recoverResp)
@@ -208,10 +219,13 @@ func (suite *bvsDirectoryTestSuite) Test_CalculateDigestHash() {
 	randomStr, err := utils.GenerateRandomString(16)
 	assert.NoError(t, err, "GenerateRandomString")
 	salt := "salt" + randomStr
-	account, err := chainIO.GetCurrentAccount()
+
+	key, err := chainIO.GetClientCtx().Keyring.Key("caller")
+	assert.NoError(t, err, "get key")
+	pubKey, err := key.GetPubKey()
 	assert.NoError(t, err, "get account")
 	msgHashResp, err := api.NewBVSDirectoryImpl(chainIO, suite.contrAddr).CalculateDigestHash(
-		account.GetPubKey(),
+		pubKey,
 		"bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
 		salt,
 		expiry,
