@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	sdktypes "github.com/cosmos/cosmos-sdk/types"
+
 	"github.com/satlayer/satlayer-bvs/babylond"
 	"github.com/satlayer/satlayer-bvs/babylond/bvs"
 	"github.com/satlayer/satlayer-bvs/babylond/cw20"
@@ -22,37 +24,38 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
 )
 
-const staker = "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
-
 type rewardsTestSuite struct {
 	suite.Suite
 	chainIO                io.ChainIO
 	rewardsCoordinatorAddr string
 	tokenAddr              string
 	strategyManagerAddr    string
+	container              *babylond.BabylonContainer
+	caller                 string
 }
 
 func (suite *rewardsTestSuite) SetupTest() {
 	container := babylond.Run(context.Background())
 	suite.chainIO = container.NewChainIO("../.babylon")
+	suite.container = container
+	suite.caller = "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
 
 	// Fund Caller
-	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
-
+	container.ImportPrivKey("rewards-coordinator:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
+	container.FundAddressUbbn(suite.caller, 1e8)
 	tAddr := container.GenerateAddress("test-address").String()
 	deployer := &bvs.Deployer{BabylonContainer: container}
 
-	minter := container.GenerateAddress("cw20:minter")
 	token := cw20.DeployCw20(container, cw20.InstantiateMsg{
 		Decimals: 6,
 		InitialBalances: []cw20.Cw20Coin{
 			{
-				Address: minter.String(),
+				Address: suite.caller,
 				Amount:  "1000000000",
 			},
 		},
 		Mint: &cw20.MinterResponse{
-			Minter: minter.String(),
+			Minter: suite.caller,
 		},
 		Name:   "Test Token",
 		Symbol: "TEST",
@@ -74,7 +77,7 @@ func (suite *rewardsTestSuite) SetupTest() {
 		10*86_400, // 10 days
 		5*86_400,  // 5 days
 		30*86_400, // 30 days
-		tAddr,
+		suite.caller,
 	)
 	suite.rewardsCoordinatorAddr = rewardsCoordinator.Address
 	suite.strategyManagerAddr = strategyManager.Address
@@ -96,11 +99,42 @@ func (suite *rewardsTestSuite) Test_ExecuteRewardsCoordinator() {
 	startTime := now - now%calcInterval
 	//t.Log("startTime:", fmt.Sprintf("%d", startTime), startTime%calcInterval)
 
+	strategyManagerAddr := suite.container.GenerateAddress("strategy")
+
+	smApi := api.NewStrategyManager(chainIO)
+	smApi.BindClient(suite.strategyManagerAddr)
+	tx, err := smApi.AddStrategiesToWhitelist(context.Background(), []string{strategyManagerAddr.String()}, []bool{true})
+	assert.NoError(t, err, "execute contract")
+	suite.Equal(uint32(0), tx.TxResult.Code)
+
+	allowanceMsg := cw20.ExecuteMsg{
+		IncreaseAllowance: &cw20.IncreaseAllowance{
+			Spender: suite.rewardsCoordinatorAddr,
+			Amount:  "1000000000",
+		},
+	}
+
+	bytes, err := allowanceMsg.Marshal()
+	assert.NoError(t, err, "marshal allowanceMsg")
+
+	res, err := chainIO.ExecuteContract(types.ExecuteOptions{
+		ContractAddr:  suite.tokenAddr,
+		ExecuteMsg:    bytes,
+		Funds:         "",
+		GasAdjustment: 1.2,
+		GasPrice:      sdktypes.NewInt64DecCoin("ubbn", 1),
+		Gas:           1000000,
+		Memo:          "Allowance",
+		Simulate:      true,
+	})
+	assert.NoError(t, err, "execute contract")
+	suite.Equal(uint32(0), res.Code)
+
 	resp, err := rewardsCoordinator.CreateBVSRewardsSubmission(
 		context.Background(),
 		[]types.RewardsSubmission{{
 			StrategiesAndMultipliers: []types.StrategyAndMultiplier{{
-				Strategy:   suite.strategyManagerAddr,
+				Strategy:   strategyManagerAddr.String(),
 				Multiplier: 1,
 			}},
 			Token:          suite.tokenAddr,
@@ -113,7 +147,7 @@ func (suite *rewardsTestSuite) Test_ExecuteRewardsCoordinator() {
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)
 
-	resp, err = rewardsCoordinator.SetRewardsForAllSubmitter(context.Background(), staker, true)
+	resp, err = rewardsCoordinator.SetRewardsForAllSubmitter(context.Background(), suite.caller, true)
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)
@@ -122,7 +156,7 @@ func (suite *rewardsTestSuite) Test_ExecuteRewardsCoordinator() {
 		context.Background(),
 		[]types.RewardsSubmission{{
 			StrategiesAndMultipliers: []types.StrategyAndMultiplier{{
-				Strategy:   suite.strategyManagerAddr,
+				Strategy:   strategyManagerAddr.String(),
 				Multiplier: 1,
 			}},
 			Token:          suite.tokenAddr,
@@ -135,7 +169,7 @@ func (suite *rewardsTestSuite) Test_ExecuteRewardsCoordinator() {
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)
 
-	resp, err = rewardsCoordinator.SetRewardsUpdater(context.Background(), staker)
+	resp, err = rewardsCoordinator.SetRewardsUpdater(context.Background(), suite.caller)
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)
@@ -215,10 +249,10 @@ func (suite *rewardsTestSuite) Test_SubmitRoot() {
 	rewardsCoordinator := api.NewRewardsCoordinator(chainIO)
 	rewardsCoordinator.BindClient(suite.rewardsCoordinatorAddr)
 
-	earnerLeaf, tokenRootHash, leafB := calculateEarnerLeaf(suite.tokenAddr, rewardsCoordinator, t)
+	earnerLeaf, tokenRootHash, leafB := suite.calculateEarnerLeaf(rewardsCoordinator, t)
 	t.Logf("earner leaf:%+v", bytesToString(earnerLeaf))
 
-	earnerLeaf1, tokenRootHash1, _ := calculateEarnerLeaf(suite.tokenAddr, rewardsCoordinator, t)
+	earnerLeaf1, tokenRootHash1, _ := suite.calculateEarnerLeaf(rewardsCoordinator, t)
 	t.Logf("earner leaf1:%+v", bytesToString(earnerLeaf1))
 
 	resp, err := rewardsCoordinator.MerkleizeLeaves([]string{
@@ -268,7 +302,7 @@ func (suite *rewardsTestSuite) test_CheckClaim() {
 	earnerTreeProof := bytesToUints(earnerLeaf1)
 
 	leaf := types.ExecuteEarnerTreeMerkleLeaf{
-		Earner:          staker,
+		Earner:          suite.caller,
 		EarnerTokenRoot: base64.StdEncoding.EncodeToString(tokenRootHash),
 	}
 
@@ -322,7 +356,7 @@ func (suite *rewardsTestSuite) test_ProcessClaim() {
 	earnerTreeProof := bytesToUints(earnerLeaf1)
 
 	leaf := types.ExecuteEarnerTreeMerkleLeaf{
-		Earner:          staker,
+		Earner:          suite.caller,
 		EarnerTokenRoot: base64.StdEncoding.EncodeToString(tokenRootHash),
 	}
 
@@ -350,7 +384,7 @@ func (suite *rewardsTestSuite) test_ProcessClaim() {
 		}
 	t.Logf("claim:%+v", claim)
 
-	checkResp, err := rewardsCoordinator.ProcessClaim(context.Background(), claim, staker)
+	checkResp, err := rewardsCoordinator.ProcessClaim(context.Background(), claim, suite.caller)
 
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, checkResp, "response nil")
@@ -412,9 +446,9 @@ func calculateParentNode(
 	return parentNode, hashBytes, hashBytes1
 }
 
-func calculateEarnerLeaf(tokenAddr string, rewardsCoordinator api.RewardsCoordinator, t *testing.T) ([]byte, []byte, []byte) {
-	parentNode, _, leafB := calculateParentNode(tokenAddr, rewardsCoordinator, t)
-	parentNode1, _, _ := calculateParentNode(tokenAddr, rewardsCoordinator, t)
+func (suite *rewardsTestSuite) calculateEarnerLeaf(rewardsCoordinator api.RewardsCoordinator, t *testing.T) ([]byte, []byte, []byte) {
+	parentNode, _, leafB := calculateParentNode(suite.tokenAddr, rewardsCoordinator, t)
+	parentNode1, _, _ := calculateParentNode(suite.tokenAddr, rewardsCoordinator, t)
 
 	resp, err := rewardsCoordinator.MerkleizeLeaves([]string{
 		base64.StdEncoding.EncodeToString(parentNode), base64.StdEncoding.EncodeToString(parentNode1)})
@@ -428,7 +462,7 @@ func calculateEarnerLeaf(tokenAddr string, rewardsCoordinator api.RewardsCoordin
 	rootHash := rootHashResponse.RootHashBinary
 	t.Logf("root hash:%+v", bytesToString(rootHash))
 
-	resp, err = rewardsCoordinator.CalculateEarnerLeafHash(staker, base64.StdEncoding.EncodeToString(rootHash))
+	resp, err = rewardsCoordinator.CalculateEarnerLeafHash(suite.caller, base64.StdEncoding.EncodeToString(rootHash))
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, resp, "response nil")
 	//t.Logf("earner leaf:%+v", resp.Data)
