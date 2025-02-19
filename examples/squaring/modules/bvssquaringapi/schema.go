@@ -1,4 +1,5 @@
 package bvssquaringapi
+
 type CreateNewTaskReq struct {
 	CreateNewTask CreateNewTask `json:"create_new_task"`
 }
@@ -32,4 +33,3 @@ type GetTaskResultReq struct {
 type GetTaskResult struct {
 	TaskID int64 `json:"task_id"`
 }
-

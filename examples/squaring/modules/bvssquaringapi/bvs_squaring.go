@@ -3,6 +3,7 @@ package bvssquaringapi
 import (
 	"context"
 	"encoding/json"
+
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
 
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
