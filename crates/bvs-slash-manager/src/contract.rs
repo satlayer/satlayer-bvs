@@ -345,6 +345,7 @@ pub fn execute_slash_request(
             }
 
             // Formula: slash_in_strat = staker_per_strategy_share * (total_slash_share / sum_of_shares)
+            // Formula: slash_in_strat = staker_per_strategy_share * (total_slash_share / sum_of_shares)
             let slash_in_strat = strategy_share
                 .checked_multiply_ratio(total_slash_share, sum_of_shares)
                 .map_err(|_| ContractError::Overflow {})?;
@@ -1425,13 +1426,18 @@ mod tests {
         VALIDATOR
             .save(&mut deps.storage, validator.clone(), &true)
             .unwrap();
+        let validator = deps.api.addr_make("validator");
+
+        VALIDATOR
+            .save(&mut deps.storage, validator.clone(), &true)
+            .unwrap();
 
         let slash_details = SlashDetails {
             slasher: slasher_addr.clone(),
             operator: operator_addr.clone(),
             share: total_slash_amount,
             slash_signature: 1,
-            slash_validator: vec![validator.clone()],
+            slash_validator: vec![validator.to_string()],
             reason: "Test slash".to_string(),
             start_time: env.block.time.seconds(),
             end_time: env.block.time.seconds() + 1000,
@@ -1488,15 +1494,13 @@ mod tests {
 
         let slasher_info = message_info(&slasher_addr, &[]);
 
-        let submit_res = submit_slash_request(
-            deps.as_mut(),
-            slasher_info.clone(),
-            env.clone(),
-            slash_details.clone(),
-            vec![Binary::from_base64("A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD").unwrap()],
-        )
-        .unwrap();
+        let submit_msg = ExecuteMsg::SubmitSlashRequest {
+            slash_details: slash_details.clone(),
+            validators_public_keys: vec!["A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()],
+        };
 
+        let submit_res =
+            execute(deps.as_mut(), env.clone(), slasher_info.clone(), submit_msg).unwrap();
         let slash_hash = submit_res.events[0].attributes[0].value.clone();
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
@@ -1510,6 +1514,7 @@ mod tests {
                 operator: operator_addr.clone(),
                 share: total_slash_amount,
                 slash_signature: 1,
+                slash_validator: vec![validator.clone()],
                 slash_validator: vec![validator.clone()],
                 reason: "Test slash".to_string(),
                 start_time: env.block.time.seconds(),
@@ -1527,15 +1532,13 @@ mod tests {
 
         let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
 
-        let res = execute_slash_request(
-            deps.as_mut(),
-            env.clone(),
-            slasher_info,
-            slash_hash.clone(),
-            vec![Binary::from_base64(&signature_base64).unwrap()],
-            vec![Binary::from_base64("A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD").unwrap()],
-        )
-        .unwrap();
+        let execute_msg = ExecuteMsg::ExecuteSlashRequest {
+            slash_hash,
+            signatures: vec![signature_base64],
+            validators_public_keys: vec!["A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()],
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), slasher_info, execute_msg).unwrap();
 
         let mut found_messages = vec![];
         for submsg in res.messages {
@@ -1562,6 +1565,10 @@ mod tests {
         // Staker A - Strategy 2: 15e6 * (40e6 / 66e6) ≈ 9.090909e6
         // Staker B - Strategy 1: 30e6 * (40e6 / 66e6) ≈ 18.181818e6
         // Staker B - Strategy 2: 1e6 * (40e6 / 66e6) ≈ 0.606061e6
+        // Staker A - Strategy 1: 20e6 * (40e6 / 66e6) ≈ 12.121212e6
+        // Staker A - Strategy 2: 15e6 * (40e6 / 66e6) ≈ 9.090909e6
+        // Staker B - Strategy 1: 30e6 * (40e6 / 66e6) ≈ 18.181818e6
+        // Staker B - Strategy 2: 1e6 * (40e6 / 66e6) ≈ 0.606061e6
 
         // Total shares = 12.121212e6 + 9.090909e6 + 18.181818e6 + 0.606061e6 = 40e6
 
@@ -1573,6 +1580,7 @@ mod tests {
         ];
 
         for (i, shares) in found_messages.iter().enumerate() {
+            let diff = shares.u128().abs_diff(expected_shares[i].u128());
             let diff = shares.u128().abs_diff(expected_shares[i].u128());
 
             // Allow 1 unit of error due to rounding
@@ -1610,12 +1618,12 @@ mod tests {
 
         // test case 1: total_slash_share is 0
         {
-            let slash_details = SlashDetails {
-                slasher: slasher_addr.clone(),
-                operator: operator_addr.clone(),
+            let slash_details = ExecuteSlashDetails {
+                slasher: slasher_addr.to_string(),
+                operator: operator_addr.to_string(),
                 share: Uint128::zero(),
                 slash_signature: 1,
-                slash_validator: vec![validator.clone()],
+                slash_validator: vec![validator.to_string()],
                 reason: "Test slash".to_string(),
                 start_time: env.block.time.seconds(),
                 end_time: env.block.time.seconds() + 1000,
@@ -1623,16 +1631,15 @@ mod tests {
             };
 
             let slasher_info = message_info(&slasher_addr, &[]);
+            let submit_msg = ExecuteMsg::SubmitSlashRequest {
+                slash_details: slash_details.clone(),
+                validators_public_keys: vec![
+                    "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()
+                ],
+            };
 
-            let err = submit_slash_request(
-                deps.as_mut(),
-                slasher_info.clone(),
-                env.clone(),
-                slash_details.clone(),
-                vec![Binary::from_base64("A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD").unwrap()],
-            )
-            .unwrap_err();
-
+            let err =
+                execute(deps.as_mut(), env.clone(), slasher_info.clone(), submit_msg).unwrap_err();
             assert_eq!(err, ContractError::InvalidShare {});
         }
 
@@ -1683,12 +1690,12 @@ mod tests {
                 }),
             });
 
-            let slash_details = SlashDetails {
-                slasher: slasher_addr.clone(),
-                operator: operator_addr.clone(),
+            let slash_details = ExecuteSlashDetails {
+                slasher: slasher_addr.to_string(),
+                operator: operator_addr.to_string(),
                 share: Uint128::new(10), // total_slash_share > sum_of_shares
                 slash_signature: 1,
-                slash_validator: vec![validator.clone()],
+                slash_validator: vec![validator.to_string()],
                 reason: "Test slash".to_string(),
                 start_time: env.block.time.seconds(),
                 end_time: env.block.time.seconds() + 1000,
@@ -1696,16 +1703,15 @@ mod tests {
             };
 
             let slasher_info = message_info(&slasher_addr, &[]);
+            let submit_msg = ExecuteMsg::SubmitSlashRequest {
+                slash_details: slash_details.clone(),
+                validators_public_keys: vec![
+                    "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()
+                ],
+            };
 
-            let submit_res = submit_slash_request(
-                deps.as_mut(),
-                slasher_info.clone(),
-                env.clone(),
-                slash_details.clone(),
-                vec![Binary::from_base64("A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD").unwrap()],
-            )
-            .unwrap();
-
+            let submit_res =
+                execute(deps.as_mut(), env.clone(), slasher_info.clone(), submit_msg).unwrap();
             let slash_hash = submit_res.events[0].attributes[0].value.clone();
 
             let private_key_hex =
@@ -1737,16 +1743,15 @@ mod tests {
 
             let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
 
-            let err = execute_slash_request(
-                deps.as_mut(),
-                env.clone(),
-                slasher_info,
-                slash_hash.clone(),
-                vec![Binary::from_base64(&signature_base64).unwrap()],
-                vec![Binary::from_base64("A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD").unwrap()],
-            )
-            .unwrap_err();
+            let execute_msg = ExecuteMsg::ExecuteSlashRequest {
+                slash_hash,
+                signatures: vec![signature_base64],
+                validators_public_keys: vec![
+                    "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()
+                ],
+            };
 
+            let err = execute(deps.as_mut(), env.clone(), slasher_info, execute_msg).unwrap_err();
             assert_eq!(
                 err,
                 ContractError::InsufficientSharesForStaker {
