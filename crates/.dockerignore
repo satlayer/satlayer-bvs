@@ -1,0 +1,15 @@
+**/*.rs.bk
+
+debug/
+target/
+node_modules/
+.turbo/
+
+crates.iml
+package.json
+README.md
+turbo.json
+
+*/.turbo/
+*/schema/
+*/artifacts/
