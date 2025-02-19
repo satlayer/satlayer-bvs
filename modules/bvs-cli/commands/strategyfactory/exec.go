@@ -30,7 +30,7 @@ func CreateStrategy(userKeyName, token, pauser, unpauser string) {
 	fmt.Printf("Deploy new strategy success. txn: %s\n", resp.Hash)
 }
 
-func UpdateConfig(userKeyName, newOwner string, strategyCodeId uint64) {
+func UpdateConfig(userKeyName, newOwner string, strategyCodeId int64) {
 	strategyFactory, _ := newService(userKeyName)
 	resp, err := strategyFactory.UpdateConfig(context.Background(), newOwner, strategyCodeId)
 	if err != nil {

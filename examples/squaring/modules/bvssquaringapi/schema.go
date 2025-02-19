@@ -1,4 +1,4 @@
-package types
+package bvssquaringapi
 
 type CreateNewTaskReq struct {
 	CreateNewTask CreateNewTask `json:"create_new_task"`

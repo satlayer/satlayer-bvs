@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
+
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
 )
 
 type GetLatestTaskIDReq struct {
@@ -49,8 +50,8 @@ func (a *bvsSquaringImpl) BindClient(contractAddress string) {
 }
 
 func (a *bvsSquaringImpl) CreateNewTask(ctx context.Context, input int64) (*coretypes.ResultTx, error) {
-	msg := types.CreateNewTaskReq{
-		CreateNewTask: types.CreateNewTask{
+	msg := CreateNewTaskReq{
+		CreateNewTask: CreateNewTask{
 			Input: input,
 		},
 	}
@@ -66,8 +67,8 @@ func (a *bvsSquaringImpl) CreateNewTask(ctx context.Context, input int64) (*core
 }
 
 func (a *bvsSquaringImpl) RespondToTask(ctx context.Context, taskId int64, result int64, operators string) (*coretypes.ResultTx, error) {
-	msg := types.RespondToTaskReq{
-		RespondToTask: types.RespondToTask{
+	msg := RespondToTaskReq{
+		RespondToTask: RespondToTask{
 			TaskID:    taskId,
 			Result:    result,
 			Operators: operators,
@@ -85,8 +86,8 @@ func (a *bvsSquaringImpl) RespondToTask(ctx context.Context, taskId int64, resul
 }
 
 func (a *bvsSquaringImpl) GetTaskInput(taskId int64) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := types.GetTaskInputReq{
-		GetTaskInput: types.GetTaskInput{
+	msg := GetTaskInputReq{
+		GetTaskInput: GetTaskInput{
 			TaskID: taskId,
 		},
 	}
@@ -102,8 +103,8 @@ func (a *bvsSquaringImpl) GetTaskInput(taskId int64) (*wasmtypes.QuerySmartContr
 }
 
 func (a *bvsSquaringImpl) GetTaskResult(taskId int64) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := types.GetTaskResultReq{
-		GetTaskResult: types.GetTaskResult{
+	msg := GetTaskResultReq{
+		GetTaskResult: GetTaskResult{
 			TaskID: taskId,
 		},
 	}

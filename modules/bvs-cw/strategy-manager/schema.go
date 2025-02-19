@@ -9,6 +9,51 @@
 //
 //    queryMsg, err := UnmarshalQueryMsg(bytes)
 //    bytes, err = queryMsg.Marshal()
+//
+//    calculateDigestHashResponse, err := UnmarshalCalculateDigestHashResponse(bytes)
+//    bytes, err = calculateDigestHashResponse.Marshal()
+//
+//    delegationManagerResponse, err := UnmarshalDelegationManagerResponse(bytes)
+//    bytes, err = delegationManagerResponse.Marshal()
+//
+//    depositTypehashResponse, err := UnmarshalDepositTypehashResponse(bytes)
+//    bytes, err = depositTypehashResponse.Marshal()
+//
+//    depositsResponse, err := UnmarshalDepositsResponse(bytes)
+//    bytes, err = depositsResponse.Marshal()
+//
+//    domainNameResponse, err := UnmarshalDomainNameResponse(bytes)
+//    bytes, err = domainNameResponse.Marshal()
+//
+//    domainTypehashResponse, err := UnmarshalDomainTypehashResponse(bytes)
+//    bytes, err = domainTypehashResponse.Marshal()
+//
+//    nonceResponse, err := UnmarshalNonceResponse(bytes)
+//    bytes, err = nonceResponse.Marshal()
+//
+//    ownerResponse, err := UnmarshalOwnerResponse(bytes)
+//    bytes, err = ownerResponse.Marshal()
+//
+//    stakerStrategyLisResponse, err := UnmarshalStakerStrategyLisResponse(bytes)
+//    bytes, err = stakerStrategyLisResponse.Marshal()
+//
+//    stakerStrategySharesResponse, err := UnmarshalStakerStrategySharesResponse(bytes)
+//    bytes, err = stakerStrategySharesResponse.Marshal()
+//
+//    strategyManagerStateResponse, err := UnmarshalStrategyManagerStateResponse(bytes)
+//    bytes, err = strategyManagerStateResponse.Marshal()
+//
+//    strategyWhitelisterResponse, err := UnmarshalStrategyWhitelisterResponse(bytes)
+//    bytes, err = strategyWhitelisterResponse.Marshal()
+//
+//    strategyWhitelistedResponse, err := UnmarshalStrategyWhitelistedResponse(bytes)
+//    bytes, err = strategyWhitelistedResponse.Marshal()
+//
+//    thirdPartyTransfersForbiddenResponse, err := UnmarshalThirdPartyTransfersForbiddenResponse(bytes)
+//    bytes, err = thirdPartyTransfersForbiddenResponse.Marshal()
+//
+//    stakerStrategyListLengthResponse, err := UnmarshalStakerStrategyListLengthResponse(bytes)
+//    bytes, err = stakerStrategyListLengthResponse.Marshal()
 
 package strategymanager
 
@@ -41,6 +86,156 @@ func UnmarshalQueryMsg(data []byte) (QueryMsg, error) {
 }
 
 func (r *QueryMsg) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalCalculateDigestHashResponse(data []byte) (CalculateDigestHashResponse, error) {
+	var r CalculateDigestHashResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *CalculateDigestHashResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalDelegationManagerResponse(data []byte) (DelegationManagerResponse, error) {
+	var r DelegationManagerResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *DelegationManagerResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalDepositTypehashResponse(data []byte) (DepositTypehashResponse, error) {
+	var r DepositTypehashResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *DepositTypehashResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalDepositsResponse(data []byte) (DepositsResponse, error) {
+	var r DepositsResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *DepositsResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalDomainNameResponse(data []byte) (DomainNameResponse, error) {
+	var r DomainNameResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *DomainNameResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalDomainTypehashResponse(data []byte) (DomainTypehashResponse, error) {
+	var r DomainTypehashResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *DomainTypehashResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalNonceResponse(data []byte) (NonceResponse, error) {
+	var r NonceResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *NonceResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalOwnerResponse(data []byte) (OwnerResponse, error) {
+	var r OwnerResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *OwnerResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalStakerStrategyLisResponse(data []byte) (StakerStrategyLisResponse, error) {
+	var r StakerStrategyLisResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *StakerStrategyLisResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalStakerStrategySharesResponse(data []byte) (StakerStrategySharesResponse, error) {
+	var r StakerStrategySharesResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *StakerStrategySharesResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalStrategyManagerStateResponse(data []byte) (StrategyManagerStateResponse, error) {
+	var r StrategyManagerStateResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *StrategyManagerStateResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalStrategyWhitelisterResponse(data []byte) (StrategyWhitelisterResponse, error) {
+	var r StrategyWhitelisterResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *StrategyWhitelisterResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalStrategyWhitelistedResponse(data []byte) (StrategyWhitelistedResponse, error) {
+	var r StrategyWhitelistedResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *StrategyWhitelistedResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalThirdPartyTransfersForbiddenResponse(data []byte) (ThirdPartyTransfersForbiddenResponse, error) {
+	var r ThirdPartyTransfersForbiddenResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *ThirdPartyTransfersForbiddenResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalStakerStrategyListLengthResponse(data []byte) (StakerStrategyListLengthResponse, error) {
+	var r StakerStrategyListLengthResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *StakerStrategyListLengthResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -241,4 +436,71 @@ type IsThirdPartyTransfersForbidden struct {
 
 type StakerStrategyListLength struct {
 	Staker string `json:"staker"`
+}
+
+type CalculateDigestHashResponse struct {
+	DigestHash string `json:"digest_hash"`
+}
+
+type DelegationManagerResponse struct {
+	DelegationManager string `json:"delegation_manager"`
+}
+
+type DepositTypehashResponse struct {
+	DepositTypeHash string `json:"deposit_type_hash"`
+}
+
+type DepositsResponse struct {
+	Shares     []string `json:"shares"`
+	Strategies []string `json:"strategies"`
+}
+
+type DomainNameResponse struct {
+	DomainName string `json:"domain_name"`
+}
+
+type DomainTypehashResponse struct {
+	DomainTypeHash string `json:"domain_type_hash"`
+}
+
+type NonceResponse struct {
+	Nonce int64 `json:"nonce"`
+}
+
+type OwnerResponse struct {
+	OwnerAddr string `json:"owner_addr"`
+}
+
+type StakerStrategyLisResponse struct {
+	Strategies []string `json:"strategies"`
+}
+
+type StakerStrategySharesResponse struct {
+	Shares string `json:"shares"`
+}
+
+type StrategyManagerStateResponse struct {
+	State StrategyManagerState `json:"state"`
+}
+
+type StrategyManagerState struct {
+	DelegationManager string `json:"delegation_manager"`
+	SlashManager      string `json:"slash_manager"`
+	StrategyFactory   string `json:"strategy_factory"`
+}
+
+type StrategyWhitelisterResponse struct {
+	Whitelister string `json:"whitelister"`
+}
+
+type StrategyWhitelistedResponse struct {
+	IsWhitelisted bool `json:"is_whitelisted"`
+}
+
+type ThirdPartyTransfersForbiddenResponse struct {
+	IsForbidden bool `json:"is_forbidden"`
+}
+
+type StakerStrategyListLengthResponse struct {
+	StrategiesLen string `json:"strategies_len"`
 }

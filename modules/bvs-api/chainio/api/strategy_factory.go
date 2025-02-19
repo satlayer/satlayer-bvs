@@ -10,6 +10,7 @@ import (
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
+	strategyfactory "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-factory"
 )
 
 type StrategyFactory interface {
@@ -20,7 +21,7 @@ type StrategyFactory interface {
 	BindClient(string)
 
 	DeployNewStrategy(ctx context.Context, token, pauser, unpauser string) (*coretypes.ResultTx, error)
-	UpdateConfig(ctx context.Context, newOwner string, strategyCodeId uint64) (*coretypes.ResultTx, error)
+	UpdateConfig(ctx context.Context, newOwner string, strategyCodeId int64) (*coretypes.ResultTx, error)
 	BlacklistTokens(ctx context.Context, tokens []string) (*coretypes.ResultTx, error)
 	RemoveStrategiesFromWhitelist(ctx context.Context, strategies []string) (*coretypes.ResultTx, error)
 	SetThirdPartyTransfersForBidden(ctx context.Context, strategy string, value bool) (*coretypes.ResultTx, error)
@@ -32,8 +33,8 @@ type StrategyFactory interface {
 	SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error)
 	SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error)
 
-	GetStrategy(token string) (*types.GetStrategyResponse, error)
-	IsTokenBlacklisted(token string) (*types.BlacklistStatusResponse, error)
+	GetStrategy(token string) (*strategyfactory.StrategyResponse, error)
+	IsTokenBlacklisted(token string) (*strategyfactory.BlacklistStatusResponse, error)
 }
 
 type strategyFactoryImpl struct {
@@ -101,8 +102,8 @@ func (s *strategyFactoryImpl) query(msg any) (*wasmtypes.QuerySmartContractState
 // Execute Functions
 
 func (s *strategyFactoryImpl) DeployNewStrategy(ctx context.Context, token, pauser, unpauser string) (*coretypes.ResultTx, error) {
-	executeMsg := types.DeployNewStrategyReq{
-		DeployNewStrategy: types.DeployNewStrategy{
+	executeMsg := strategyfactory.ExecuteMsg{
+		DeployNewStrategy: &strategyfactory.DeployNewStrategy{
 			Token:    token,
 			Pauser:   pauser,
 			Unpauser: unpauser,
@@ -112,11 +113,11 @@ func (s *strategyFactoryImpl) DeployNewStrategy(ctx context.Context, token, paus
 	return s.execute(ctx, executeMsg)
 }
 
-func (s *strategyFactoryImpl) UpdateConfig(ctx context.Context, newOwner string, strategyCodeId uint64) (*coretypes.ResultTx, error) {
-	executeMsg := types.UpdateConfigReq{
-		UpdateConfig: types.UpdateConfig{
+func (s *strategyFactoryImpl) UpdateConfig(ctx context.Context, newOwner string, strategyCodeId int64) (*coretypes.ResultTx, error) {
+	executeMsg := strategyfactory.ExecuteMsg{
+		UpdateConfig: &strategyfactory.UpdateConfig{
 			NewOwner:       newOwner,
-			StrategyCodeId: strategyCodeId,
+			StrategyCodeID: strategyCodeId,
 		},
 	}
 
@@ -124,8 +125,8 @@ func (s *strategyFactoryImpl) UpdateConfig(ctx context.Context, newOwner string,
 }
 
 func (s *strategyFactoryImpl) BlacklistTokens(ctx context.Context, tokens []string) (*coretypes.ResultTx, error) {
-	executeMsg := types.BlacklistTokensReq{
-		BlacklistTokens: types.BlacklistTokens{
+	executeMsg := strategyfactory.ExecuteMsg{
+		BlacklistTokens: &strategyfactory.BlacklistTokens{
 			Tokens: tokens,
 		},
 	}
@@ -134,8 +135,8 @@ func (s *strategyFactoryImpl) BlacklistTokens(ctx context.Context, tokens []stri
 }
 
 func (s *strategyFactoryImpl) RemoveStrategiesFromWhitelist(ctx context.Context, strategies []string) (*coretypes.ResultTx, error) {
-	executeMsg := types.RemoveStrategiesFromWhitelistReq{
-		RemoveStrategiesFromWhitelist: types.RemoveStrategiesFromWhitelist{
+	executeMsg := strategyfactory.ExecuteMsg{
+		RemoveStrategiesFromWhitelist: &strategyfactory.RemoveStrategiesFromWhitelist{
 			Strategies: strategies,
 		},
 	}
@@ -144,8 +145,8 @@ func (s *strategyFactoryImpl) RemoveStrategiesFromWhitelist(ctx context.Context,
 }
 
 func (s *strategyFactoryImpl) SetThirdPartyTransfersForBidden(ctx context.Context, strategy string, value bool) (*coretypes.ResultTx, error) {
-	executeMsg := types.SetThirdPartyTransfersForBiddenReq{
-		SetThirdPartyTransfersForBidden: types.SetThirdPartyTransfersForBidden{
+	executeMsg := strategyfactory.ExecuteMsg{
+		SetThirdPartyTransfersForBidden: &strategyfactory.SetThirdPartyTransfersForBidden{
 			Strategy: strategy,
 			Value:    value,
 		},
@@ -155,8 +156,8 @@ func (s *strategyFactoryImpl) SetThirdPartyTransfersForBidden(ctx context.Contex
 }
 
 func (s *strategyFactoryImpl) WhitelistStrategies(ctx context.Context, strategies []string, forbiddenValues []bool) (*coretypes.ResultTx, error) {
-	executeMsg := types.WhitelistStrategiesReq{
-		WhitelistStrategies: types.WhitelistStrategies{
+	executeMsg := strategyfactory.ExecuteMsg{
+		WhitelistStrategies: &strategyfactory.WhitelistStrategies{
 			StrategiesToWhitelist:              strategies,
 			ThirdPartyTransfersForbiddenValues: forbiddenValues,
 		},
@@ -166,8 +167,8 @@ func (s *strategyFactoryImpl) WhitelistStrategies(ctx context.Context, strategie
 }
 
 func (s *strategyFactoryImpl) SetStrategyManager(ctx context.Context, newStrategyManager string) (*coretypes.ResultTx, error) {
-	executeMsg := types.SetStrategyManagerReq{
-		SetStrategyManager: types.SetStrategyManager{
+	executeMsg := strategyfactory.ExecuteMsg{
+		SetStrategyManager: &strategyfactory.SetStrategyManager{
 			NewStrategyManager: newStrategyManager,
 		},
 	}
@@ -176,8 +177,8 @@ func (s *strategyFactoryImpl) SetStrategyManager(ctx context.Context, newStrateg
 }
 
 func (s *strategyFactoryImpl) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
-	executeMsg := types.TransferOwnershipReq{
-		TransferOwnership: types.TransferOwnership{
+	executeMsg := strategyfactory.ExecuteMsg{
+		TransferOwnership: &strategyfactory.TransferOwnership{
 			NewOwner: newOwner,
 		},
 	}
@@ -186,20 +187,24 @@ func (s *strategyFactoryImpl) TransferOwnership(ctx context.Context, newOwner st
 }
 
 func (s *strategyFactoryImpl) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
-	executeMsg := types.PauseReq{}
+	executeMsg := strategyfactory.ExecuteMsg{
+		Pause: &strategyfactory.Pause{},
+	}
 
 	return s.execute(ctx, executeMsg)
 }
 
 func (s *strategyFactoryImpl) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
-	executeMsg := types.UnpauseFactoryReq{}
+	executeMsg := strategyfactory.ExecuteMsg{
+		Unpause: &strategyfactory.Unpause{},
+	}
 
 	return s.execute(ctx, executeMsg)
 }
 
 func (s *strategyFactoryImpl) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
-	executeMsg := types.SetPauserReq{
-		SetPauser: types.SetPauser{
+	executeMsg := strategyfactory.ExecuteMsg{
+		SetPauser: &strategyfactory.SetPauser{
 			NewPauser: newPauser,
 		},
 	}
@@ -208,8 +213,8 @@ func (s *strategyFactoryImpl) SetPauser(ctx context.Context, newPauser string) (
 }
 
 func (s *strategyFactoryImpl) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
-	executeMsg := types.SetUnpauserReq{
-		SetUnpauser: types.SetUnpauser{
+	executeMsg := strategyfactory.ExecuteMsg{
+		SetUnpauser: &strategyfactory.SetUnpauser{
 			NewUnpauser: newUnpauser,
 		},
 	}
@@ -219,9 +224,9 @@ func (s *strategyFactoryImpl) SetUnpauser(ctx context.Context, newUnpauser strin
 
 // Query Functions
 
-func (s *strategyFactoryImpl) GetStrategy(token string) (*types.GetStrategyResponse, error) {
-	queryMsg := types.GetStrategyReq{
-		GetStrategy: types.GetStrategy{
+func (s *strategyFactoryImpl) GetStrategy(token string) (*strategyfactory.StrategyResponse, error) {
+	queryMsg := strategyfactory.QueryMsg{
+		GetStrategy: &strategyfactory.GetStrategy{
 			Token: token,
 		},
 	}
@@ -231,17 +236,13 @@ func (s *strategyFactoryImpl) GetStrategy(token string) (*types.GetStrategyRespo
 		return nil, err
 	}
 
-	var result types.GetStrategyResponse
-	if err := json.Unmarshal(resp.Data, &result); err != nil {
-		return nil, err
-	}
-
-	return &result, nil
+	res, err := strategyfactory.UnmarshalStrategyResponse(resp.Data)
+	return &res, err
 }
 
-func (s *strategyFactoryImpl) IsTokenBlacklisted(token string) (*types.BlacklistStatusResponse, error) {
-	queryMsg := types.IsTokenBlacklistedReq{
-		IsTokenBlacklisted: types.IsTokenBlacklisted{
+func (s *strategyFactoryImpl) IsTokenBlacklisted(token string) (*strategyfactory.BlacklistStatusResponse, error) {
+	queryMsg := strategyfactory.QueryMsg{
+		IsTokenBlacklisted: &strategyfactory.IsTokenBlacklisted{
 			Token: token,
 		},
 	}
@@ -251,12 +252,8 @@ func (s *strategyFactoryImpl) IsTokenBlacklisted(token string) (*types.Blacklist
 		return nil, err
 	}
 
-	var result types.BlacklistStatusResponse
-	if err := json.Unmarshal(resp.Data, &result); err != nil {
-		return nil, err
-	}
-
-	return &result, nil
+	res, err := strategyfactory.UnmarshalBlacklistStatusResponse(resp.Data)
+	return &res, err
 }
 
 func NewStrategyFactoryImpl(chainIO io.ChainIO, contractAddr string) StrategyFactory {

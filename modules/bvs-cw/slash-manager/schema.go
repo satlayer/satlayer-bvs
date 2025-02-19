@@ -9,6 +9,18 @@
 //
 //    queryMsg, err := UnmarshalQueryMsg(bytes)
 //    bytes, err = queryMsg.Marshal()
+//
+//    calculateSlashHashResponse, err := UnmarshalCalculateSlashHashResponse(bytes)
+//    bytes, err = calculateSlashHashResponse.Marshal()
+//
+//    minimalSlashSignatureResponse, err := UnmarshalMinimalSlashSignatureResponse(bytes)
+//    bytes, err = minimalSlashSignatureResponse.Marshal()
+//
+//    slashDetailsResponse, err := UnmarshalSlashDetailsResponse(bytes)
+//    bytes, err = slashDetailsResponse.Marshal()
+//
+//    validatorResponse, err := UnmarshalValidatorResponse(bytes)
+//    bytes, err = validatorResponse.Marshal()
 
 package slashmanager
 
@@ -41,6 +53,46 @@ func UnmarshalQueryMsg(data []byte) (QueryMsg, error) {
 }
 
 func (r *QueryMsg) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalCalculateSlashHashResponse(data []byte) (CalculateSlashHashResponse, error) {
+	var r CalculateSlashHashResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *CalculateSlashHashResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalMinimalSlashSignatureResponse(data []byte) (MinimalSlashSignatureResponse, error) {
+	var r MinimalSlashSignatureResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *MinimalSlashSignatureResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalSlashDetailsResponse(data []byte) (SlashDetailsResponse, error) {
+	var r SlashDetailsResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *SlashDetailsResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalValidatorResponse(data []byte) (ValidatorResponse, error) {
+	var r ValidatorResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *ValidatorResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -170,4 +222,32 @@ type GetSlashDetails struct {
 
 type IsValidator struct {
 	Validator string `json:"validator"`
+}
+
+type CalculateSlashHashResponse struct {
+	MessageBytes []int64 `json:"message_bytes"`
+}
+
+type MinimalSlashSignatureResponse struct {
+	MinimalSlashSignature int64 `json:"minimal_slash_signature"`
+}
+
+type SlashDetailsResponse struct {
+	SlashDetails SlashDetails `json:"slash_details"`
+}
+
+type SlashDetails struct {
+	EndTime        int64    `json:"end_time"`
+	Operator       string   `json:"operator"`
+	Reason         string   `json:"reason"`
+	Share          string   `json:"share"`
+	SlashSignature int64    `json:"slash_signature"`
+	SlashValidator []string `json:"slash_validator"`
+	Slasher        string   `json:"slasher"`
+	StartTime      int64    `json:"start_time"`
+	Status         bool     `json:"status"`
+}
+
+type ValidatorResponse struct {
+	IsValidator bool `json:"is_validator"`
 }

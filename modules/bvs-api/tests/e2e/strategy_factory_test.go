@@ -93,7 +93,7 @@ func (suite *strategyFactoryTestSuite) Test_UpdateConfig() {
 	factoryApi.WithGasLimit(300000)
 
 	newOwner := "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
-	strategyCodeID := uint64(10995)
+	strategyCodeID := int64(10995)
 	txResp, err := factoryApi.UpdateConfig(context.Background(), newOwner, strategyCodeID)
 	assert.NoError(t, err, "UpdateConfig failed")
 	assert.NotNil(t, txResp, "response nil")
