@@ -35,8 +35,36 @@ func (suite *bvsDirectoryTestSuite) SetupTest() {
 
 	tAddr := container.GenerateAddress("test-address").String()
 	deployer := &bvs.Deployer{BabylonContainer: container}
-	suite.contrAddr = deployer.DeployDirectory(tAddr).Address
-	suite.delegationContrAddr = "bbn1q7v924jjct6xrc89n05473juncg3snjwuxdh62xs2ua044a7tp8sydugr4"
+
+	// Setup DelegationManager,
+	// Setup StrategyManager,
+	// Add Operator to DelegationManager
+	suite.container.FundAddressUbbn("bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x", 1e8)
+
+	strategyManager := deployer.DeployStrategyManager(tAddr, tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+
+	delegationManager := deployer.DeployDelegationManager(
+		tAddr, strategyManager.Address, 100, []string{tAddr}, []int64{50},
+	)
+
+	chainIO, err := suite.chainIO.SetupKeyring("operator1", "test")
+	delegationApi := api.NewDelegationImpl(chainIO, delegationManager.Address)
+	suite.Require().NoError(err, "setup keyring")
+	accountPubKey := getPubKeyFromKeychainByUid(chainIO, "operator1")
+
+	txResp, err := delegationApi.RegisterAsOperator(
+		context.Background(),
+		accountPubKey,
+		"",
+		"0",
+		"",
+		0,
+	)
+	suite.Require().NoError(err, "register as operator")
+	suite.Require().NotNil(txResp, "response nil")
+
+	suite.contrAddr = deployer.DeployDirectory(delegationManager.Address).Address
+	suite.delegationContrAddr = delegationManager.Address
 }
 
 func (suite *bvsDirectoryTestSuite) test_RegisterBVS() {
@@ -59,33 +87,32 @@ func (suite *bvsDirectoryTestSuite) test_RegisterBVS() {
 }
 
 func (suite *bvsDirectoryTestSuite) Test_RegisterOperatorAndDeregisterOperator() {
-	// TODO(fuxingloh): Fix DelegationManager not getting deployed
 	t := suite.T()
 	keyName := "operator1"
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 	suite.container.FundAddressUbbn("bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x", 1e8)
 
-	account, err := chainIO.GetClientCtx().Keyring.Key("caller")
+	operatorKey, err := chainIO.GetClientCtx().Keyring.Key("operator1")
 	assert.NoError(t, err)
-	address, err := account.GetAddress()
+	operatorAddr, err := operatorKey.GetAddress()
 	assert.NoError(t, err)
-	pubKey, err := account.GetPubKey()
+	operatorPubKey, err := operatorKey.GetPubKey()
 	assert.NoError(t, err)
 
 	bvsApi := api.NewBVSDirectoryImpl(chainIO, suite.contrAddr)
 	bvsApi.WithGasLimit(500000)
-	registerResp, err := bvsApi.RegisterOperator(context.Background(), address.String(), pubKey)
+	registerResp, err := bvsApi.RegisterOperator(context.Background(), operatorAddr.String(), operatorPubKey)
 	assert.NoError(t, err, "register operator")
 	assert.NotNil(t, registerResp, "response nil")
 	t.Logf("registerResp:%+v", registerResp)
 
 	// repeat register operator failed
-	registerResp, err = bvsApi.RegisterOperator(context.Background(), address.String(), pubKey)
+	registerResp, err = bvsApi.RegisterOperator(context.Background(), operatorAddr.String(), operatorPubKey)
 	assert.Error(t, err, "register operator not failed")
 	assert.Nil(t, registerResp, "response not nil")
 
-	deregisterResp, err := bvsApi.DeregisterOperator(context.Background(), address.String())
+	deregisterResp, err := bvsApi.DeregisterOperator(context.Background(), operatorAddr.String())
 	assert.NoError(t, err, "deregister operator")
 	assert.NotNil(t, deregisterResp, "response nil")
 	t.Logf("deregisterResp:%+v", deregisterResp)

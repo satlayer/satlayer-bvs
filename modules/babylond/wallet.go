@@ -97,3 +97,5 @@ func (c *BabylonContainer) ImportPrivKey(uid string, hex string) {
 		panic(err)
 	}
 }
+
+// TODO: ImportPubKey? In general, we need a better way to setup keychain for testing.
