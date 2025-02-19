@@ -51,7 +51,7 @@ func (suite *strategyBaseTVLLimitsTestSuite) SetupSuite() {
 	strategyManager := deployer.DeployStrategyManager(tAddr, tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 	container.ImportPrivKey("strategy-base-tvl-limits:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
 	suite.contrAddr = deployer.DeployStrategyBaseTvlLimits(strategyManager.Address, token.Address, big.NewInt(1e8), big.NewInt(1e8)).Address
-	suite.strategyManager = "bbn1mju0w4qagjcgtrgepr796zmg083qurq9sngy0eyxm8wzf78cjt3qzfq7qy"
+	suite.strategyManager = strategyManager.Address
 }
 
 func (suite *strategyBaseTVLLimitsTestSuite) TearDownSuite() {
