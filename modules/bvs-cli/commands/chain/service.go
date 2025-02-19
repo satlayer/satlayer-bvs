@@ -22,7 +22,7 @@ func NewService() *Service {
 	logger.SetLogLevel(conf.C.LogLevel)
 	metricsIndicators := transactionprocess.NewPromIndicators(prometheus.NewRegistry(), "chain")
 	chainIO, err := io.NewChainIO(conf.C.Chain.ID, conf.C.Chain.RPC, conf.C.Account.KeyDir, conf.C.Account.Bech32Prefix, logger, metricsIndicators, types.TxManagerParams{
-		MaxRetries:             5,
+		MaxRetries:             1,
 		RetryInterval:          3 * time.Second,
 		ConfirmationTimeout:    60 * time.Second,
 		GasPriceAdjustmentRate: "1.1",
