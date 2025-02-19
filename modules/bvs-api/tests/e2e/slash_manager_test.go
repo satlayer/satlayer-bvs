@@ -26,6 +26,7 @@ type slashManagerTestSuite struct {
 
 func (suite *slashManagerTestSuite) SetupSuite() {
 	container := babylond.Run(context.Background())
+	suite.container = container
 	suite.chainIO = container.NewChainIO("../.babylon")
 
 	// Import And Fund Caller
