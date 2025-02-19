@@ -69,19 +69,42 @@ func (s *Signer) BuildUnsignedTx(gasAdjustment float64, gasPrice sdktypes.DecCoi
 }
 
 func (s *Signer) setFactory(gasAdjustment float64, gasPrice sdktypes.DecCoin, maxGas uint64, memo string, simulate bool) tx.Factory {
+	account, err := s.ClientCtx.AccountRetriever.GetAccount(s.ClientCtx, s.ClientCtx.GetFromAddress())
+	if err != nil {
+		return s.defaultFactory(gasAdjustment, gasPrice, maxGas, memo, simulate)
+	}
+
 	txf := tx.Factory{}.
-		WithChainID(s.ClientCtx.ChainID).                   // Set the chain ID to specify the blockchain the transaction will be sent to
-		WithKeybase(s.ClientCtx.Keyring).                   // Set up the keystore, using the keystore instance configured in client.Context
-		WithTxConfig(s.ClientCtx.TxConfig).                 // Set up transaction configurations to specify how transactions are encoded and decoded
-		WithAccountRetriever(s.ClientCtx.AccountRetriever). // Set up an account retriever to obtain account information from the chain
-		WithSimulateAndExecute(simulate).                   // Set up simulation and execution, first simulate the transaction to obtain the estimated gas, and then execute the transaction
-		WithSignMode(signing.SignMode_SIGN_MODE_DIRECT).    // Set the signature mode to SIGN_MODE_DIRECT and use direct signature mode
-		WithGas(maxGas).                                    // Set the gas limit
-		WithGasAdjustment(gasAdjustment).                   // Set the gas adjustment factor to 1.3 to increase the estimated gas to ensure transaction success
-		WithGasPrices(gasPrice.String()).                   // Set the gas price to 0.1uosmo and specify the token and amount to pay for the transaction fee
-		WithFromName(s.ClientCtx.FromName).                 // Set from name
-		WithMemo(memo)                                      // Set the transaction note to an empty string, and you can add custom note information
+		WithChainID(s.ClientCtx.ChainID).
+		WithKeybase(s.ClientCtx.Keyring).
+		WithTxConfig(s.ClientCtx.TxConfig).
+		WithAccountRetriever(s.ClientCtx.AccountRetriever).
+		WithSimulateAndExecute(simulate).
+		WithSignMode(signing.SignMode_SIGN_MODE_DIRECT).
+		WithGas(maxGas).
+		WithGasAdjustment(gasAdjustment).
+		WithGasPrices(gasPrice.String()).
+		WithFromName(s.ClientCtx.FromName).
+		WithMemo(memo).
+		WithAccountNumber(account.GetAccountNumber()).
+		WithSequence(account.GetSequence())
+
 	return txf
+}
+
+func (s *Signer) defaultFactory(gasAdjustment float64, gasPrice sdktypes.DecCoin, maxGas uint64, memo string, simulate bool) tx.Factory {
+	return tx.Factory{}.
+		WithChainID(s.ClientCtx.ChainID).
+		WithKeybase(s.ClientCtx.Keyring).
+		WithTxConfig(s.ClientCtx.TxConfig).
+		WithAccountRetriever(s.ClientCtx.AccountRetriever).
+		WithSimulateAndExecute(simulate).
+		WithSignMode(signing.SignMode_SIGN_MODE_DIRECT).
+		WithGas(maxGas).
+		WithGasAdjustment(gasAdjustment).
+		WithGasPrices(gasPrice.String()).
+		WithFromName(s.ClientCtx.FromName).
+		WithMemo(memo)
 }
 
 func (s *Signer) checkMsg(msgs ...sdktypes.Msg) ([]sdktypes.Msg, error) {

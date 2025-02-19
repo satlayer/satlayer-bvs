@@ -110,7 +110,6 @@ func (c chainIO) SendTransaction(ctx context.Context, opts types.ExecuteOptions)
 		if err == nil {
 			break
 		}
-		c.logger.Warn("Failed to send transaction", logger.WithField("attempt", attempt+1), logger.WithField("err", err))
 		if attempt == c.params.MaxRetries-1 {
 			c.metricsIndicators.IncrementProcessedTxsTotal("failure")
 			return nil, fmt.Errorf("max retries exceeded: %w", err)
@@ -176,21 +175,22 @@ func (c chainIO) BroadcastTx(signedTx sdktypes.Tx) (*sdktypes.TxResponse, error)
 }
 
 func (c chainIO) waitForConfirmation(ctx context.Context, txHash string) (*coretypes.ResultTx, error) {
-	ticker := time.NewTicker(3 * time.Second)
+	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
 	timeout := time.After(c.params.ConfirmationTimeout)
+	var lastQueryErr error
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-timeout:
-			return nil, fmt.Errorf("transaction confirmation timed out")
+			return nil, fmt.Errorf("tx:%s transaction confirmation timed out, last query error: %v", txHash, lastQueryErr)
 		case <-ticker.C:
 			txResp, err := c.QueryTransaction(txHash)
 			if err != nil {
-				c.logger.Debug("Failed to query transaction", logger.WithField("txHash", txHash), logger.WithField("error", err))
+				lastQueryErr = err
 				continue
 			}
 
