@@ -1,0 +1,8 @@
+{
+  "name": "@examples/squaring-contract",
+  "private": false,
+  "scripts": {
+    "generate:schema": "cargo run --bin schema",
+    "test": "cargo test"
+  }
+}

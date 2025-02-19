@@ -1,16 +1,17 @@
 [workspace]
 members = [
-    "cw-bvs-directory",
-    "cw-bvs-driver",
-    "cw-delegation-manager",
-    "cw-rewards-coordinator",
-    "cw-slash-manager",
-    "cw-state-bank",
-    "cw-strategy-base",
-    "cw-strategy-base-tvl-limits",
-    "cw-strategy-factory",
-    "cw-strategy-manager",
-    # "cw-bvs-test",
+    "bvs-delegation-manager",
+    "bvs-directory",
+    "bvs-driver",
+    "bvs-rewards-coordinator",
+    "bvs-slash-manager",
+    "bvs-state-bank",
+    "bvs-strategy-base",
+    "bvs-strategy-base-tvl-limits",
+    "bvs-strategy-factory",
+    "bvs-strategy-manager",
+    "bvs-test",
+    "common/bvs/test-utils",
 ]
 
 resolver = "2"
@@ -33,7 +34,7 @@ schemars = "0.8.8"
 cw2 = "2.0.0"
 serde = { version = "1.0.137", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.31" }
-cw-multi-test = "2.0.0"
+cw-multi-test = "=2.0.0"
 sha2 = { version = "0.10.8", default-features = false }
 hex = "0.4"
 cosmwasm-crypto = "2.1.0"
@@ -45,4 +46,6 @@ serde_json = "1.0.0"
 base64 = "0.22.1"
 cw-utils = "2.0.0"
 
-common = { path = "common" }
+# common cosmwasm crates
+bvs-base = { path = "./common/bvs/base" }
+bvs-test-utils = { path = "./common/bvs/test-utils" }

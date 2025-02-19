@@ -8,6 +8,6 @@ Offchain computation for squaring a number.
 
 ```txt
 squaring/
-├── cw-squaring-contract/     <- CosmWasm contract
+├── squaring-contract/     <- CosmWasm contract
 └── README.md
 ```

@@ -2,18 +2,17 @@ package e2e
 
 import (
 	"context"
+	"math/big"
 	"testing"
-	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/satlayer/satlayer-bvs/babylond"
+	"github.com/satlayer/satlayer-bvs/babylond/bvs"
+	"github.com/satlayer/satlayer-bvs/babylond/cw20"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	apilogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
-	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 )
 
 type strategyBaseTVLLimitsTestSuite struct {
@@ -24,26 +23,37 @@ type strategyBaseTVLLimitsTestSuite struct {
 }
 
 func (suite *strategyBaseTVLLimitsTestSuite) SetupTest() {
-	chainID := "sat-bbn-testnet1"
-	rpcURI := "https://rpc.sat-bbn-testnet1.satlayer.net"
-	homeDir := "../.babylon"
+	container := babylond.Run(context.Background())
+	suite.chainIO = container.NewChainIO("../.babylon")
+	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
 
-	logger := apilogger.NewMockELKLogger()
-	metricsIndicators := transactionprocess.NewPromIndicators(prometheus.NewRegistry(), "strategy_tvl_limits")
-	chainIO, err := io.NewChainIO(chainID, rpcURI, homeDir, "bbn", logger, metricsIndicators, types.TxManagerParams{
-		MaxRetries:             3,
-		RetryInterval:          2 * time.Second,
-		ConfirmationTimeout:    60 * time.Second,
-		GasPriceAdjustmentRate: "1.1",
+	deployer := &bvs.Deployer{BabylonContainer: container}
+
+	minter := container.GenerateAddress("cw20:minter")
+	token := cw20.DeployCw20(container, cw20.InstantiateMsg{
+		Decimals: 6,
+		InitialBalances: []cw20.Cw20Coin{
+			{
+				Address: minter.String(),
+				Amount:  "1000000000",
+			},
+		},
+		Mint: &cw20.MinterResponse{
+			Minter: minter.String(),
+		},
+		Name:   "Test Token",
+		Symbol: "TEST",
 	})
-	suite.Require().NoError(err)
-	suite.chainIO = chainIO
+	addr := container.GenerateAddress("addr").String()
+
+	strategyManager := deployer.DeployStrategyManager(addr, addr, addr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+	container.ImportPrivKey("strategy-base-tvl-limits:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
+	suite.contrAddr = deployer.DeployStrategyBaseTvlLimits(strategyManager.Address, token.Address, big.NewInt(1e8), big.NewInt(1e8)).Address
 	suite.strategyManager = "bbn1mju0w4qagjcgtrgepr796zmg083qurq9sngy0eyxm8wzf78cjt3qzfq7qy"
 }
 
 func (suite *strategyBaseTVLLimitsTestSuite) Test_ExecuteStrategyTVLLimits() {
 	t := suite.T()
-	contrAddr := "bbn18czayk3z6k2zk6yjqpcagdvzgw6rjhy65g88vqdzjg4l5k4rhngs7v7geg"
 	keyName := "caller"
 
 	t.Logf("TestExecuteStrategyTVLLimits")
@@ -51,7 +61,7 @@ func (suite *strategyBaseTVLLimitsTestSuite) Test_ExecuteStrategyTVLLimits() {
 	assert.NoError(t, err)
 
 	strategyTVLLimits := api.NewStrategyBaseTVLLimits(chainIO)
-	strategyTVLLimits.BindClient(contrAddr)
+	strategyTVLLimits.BindClient(suite.contrAddr)
 
 	resp, err := strategyTVLLimits.SetStrategyManager(context.Background(), suite.strategyManager)
 	assert.NoError(t, err)
@@ -101,14 +111,13 @@ func (suite *strategyBaseTVLLimitsTestSuite) Test_ExecuteStrategyTVLLimits() {
 
 func (suite *strategyBaseTVLLimitsTestSuite) Test_QueryStrategyTVLLimits() {
 	t := suite.T()
-	contrAddr := "bbn108l2c6l5aw0pv68mhq764kq9344h4prefft4uufelmweasfstfzsxv0w5p"
 	keyName := "wallet1"
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
 	strategyTVLLimits := api.NewStrategyBaseTVLLimits(chainIO)
-	strategyTVLLimits.BindClient(contrAddr)
+	strategyTVLLimits.BindClient(suite.contrAddr)
 
 	tvlLimitsResp, err := strategyTVLLimits.GetTVLLimits()
 	assert.NoError(t, err, "GetTVLLimits failed")

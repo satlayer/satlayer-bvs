@@ -3,20 +3,23 @@
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
     <content url="file://$MODULE_DIR$">
-      <sourceFolder url="file://$MODULE_DIR$/cw-bvs-directory/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/cw-bvs-driver/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/common/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/cw-delegation-manager/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/cw-mirrored-token/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/cw-rewards-coordinator/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/cw-slash-manager/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/cw-state-bank/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/cw-strategy-base/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/cw-strategy-factory/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/cw-strategy-manager/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/cw-strategy-base-tvl-limits/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/cw-bvs-test/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/cw-bvs-driver/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-delegation-manager/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-directory/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-driver/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-mirrored-token/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-rewards-coordinator/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-slash-manager/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-state-bank/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-strategy-base/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-strategy-factory/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-strategy-manager/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-strategy-base-tvl-limits/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-test/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-driver/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/common/bvs" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/common/bvs/base/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-state-bank/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/common/bvs/test-utils/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />

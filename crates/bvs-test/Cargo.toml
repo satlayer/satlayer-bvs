@@ -1,0 +1,10 @@
+[package]
+name = "bvs-test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cw-multi-test = { workspace = true }
+bvs-driver = { path = "../bvs-driver" }
+bvs-state-bank = { path = "../bvs-state-bank" }

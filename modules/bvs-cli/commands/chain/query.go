@@ -32,7 +32,7 @@ func QueryTxn(txnHash string) {
 		fmt.Printf("Query Txn Failed. Error msg: %s", err)
 		return
 	}
-	fmt.Printf("===TxnInfo===\n1. Index: %d\n2. TxHash: %s\n3. Height: %d\n4. Events: %s\n", resp.Index, resp.Hash.String(), resp.Height, resp.TxResult.Events)
+	fmt.Printf("===TxnInfo===\n1. Index: %d\n2. TxHash: %s\n3. Height: %d\n4. Events: %+v\n", resp.Index, resp.Hash.String(), resp.Height, resp.TxResult.Events)
 }
 
 func QueryAccount(account string) {

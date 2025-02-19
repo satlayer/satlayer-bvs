@@ -237,6 +237,267 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3e31ea183f6ee62ac8b8a8cf7feddd766317adfb13ff469de57ce033efd6a790"
 
 [[package]]
+name = "bvs-base"
+version = "2.0.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std 2.1.0",
+ "cw-storage-plus",
+ "thiserror",
+]
+
+[[package]]
+name = "bvs-delegation-manager"
+version = "2.0.0"
+dependencies = [
+ "base64 0.22.1",
+ "bech32 0.8.1",
+ "bvs-base",
+ "cosmwasm-crypto 2.1.0",
+ "cosmwasm-schema",
+ "cosmwasm-std 2.1.0",
+ "cosmwasm-storage",
+ "cw-multi-test",
+ "cw-storage-plus",
+ "cw2",
+ "cw20",
+ "hex",
+ "ripemd",
+ "schemars",
+ "secp256k1",
+ "serde",
+ "sha2 0.10.8",
+ "thiserror",
+]
+
+[[package]]
+name = "bvs-directory"
+version = "2.0.0"
+dependencies = [
+ "base64 0.22.1",
+ "bech32 0.8.1",
+ "bvs-base",
+ "cosmwasm-crypto 2.1.0",
+ "cosmwasm-schema",
+ "cosmwasm-std 2.1.0",
+ "cw-multi-test",
+ "cw-storage-plus",
+ "cw2",
+ "hex",
+ "ripemd",
+ "schemars",
+ "secp256k1",
+ "serde",
+ "sha2 0.10.8",
+ "thiserror",
+]
+
+[[package]]
+name = "bvs-driver"
+version = "2.0.0"
+dependencies = [
+ "bech32 0.8.1",
+ "cosmwasm-crypto 2.1.0",
+ "cosmwasm-schema",
+ "cosmwasm-std 2.1.0",
+ "cosmwasm-storage",
+ "cw-multi-test",
+ "cw-storage-plus",
+ "cw2",
+ "cw20",
+ "hex",
+ "ripemd",
+ "schemars",
+ "serde",
+ "sha2 0.10.8",
+ "thiserror",
+]
+
+[[package]]
+name = "bvs-rewards-coordinator"
+version = "2.0.0"
+dependencies = [
+ "base64 0.22.1",
+ "bech32 0.8.1",
+ "bvs-base",
+ "cosmwasm-crypto 2.1.0",
+ "cosmwasm-schema",
+ "cosmwasm-std 2.1.0",
+ "cosmwasm-storage",
+ "cw-multi-test",
+ "cw-storage-plus",
+ "cw2",
+ "cw20",
+ "hex",
+ "ripemd",
+ "schemars",
+ "secp256k1",
+ "serde",
+ "serde_json",
+ "sha2 0.10.8",
+ "thiserror",
+]
+
+[[package]]
+name = "bvs-slash-manager"
+version = "2.0.0"
+dependencies = [
+ "base64 0.22.1",
+ "bech32 0.8.1",
+ "bvs-base",
+ "bvs-test-utils",
+ "cosmwasm-crypto 2.1.0",
+ "cosmwasm-schema",
+ "cosmwasm-std 2.1.0",
+ "cosmwasm-storage",
+ "cw-multi-test",
+ "cw-storage-plus",
+ "cw2",
+ "cw20",
+ "hex",
+ "ripemd",
+ "schemars",
+ "secp256k1",
+ "serde",
+ "serde_json",
+ "sha2 0.10.8",
+ "thiserror",
+]
+
+[[package]]
+name = "bvs-state-bank"
+version = "2.0.0"
+dependencies = [
+ "bech32 0.8.1",
+ "cosmwasm-crypto 2.1.0",
+ "cosmwasm-schema",
+ "cosmwasm-std 2.1.0",
+ "cosmwasm-storage",
+ "cw-multi-test",
+ "cw-storage-plus",
+ "cw2",
+ "cw20",
+ "hex",
+ "ripemd",
+ "schemars",
+ "serde",
+ "sha2 0.10.8",
+ "thiserror",
+]
+
+[[package]]
+name = "bvs-strategy-base"
+version = "2.0.0"
+dependencies = [
+ "bvs-base",
+ "cosmwasm-schema",
+ "cosmwasm-std 2.1.0",
+ "cosmwasm-storage",
+ "cw-multi-test",
+ "cw-storage-plus",
+ "cw2",
+ "cw20",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "bvs-strategy-base-tvl-limits"
+version = "2.0.0"
+dependencies = [
+ "base64 0.22.1",
+ "bech32 0.8.1",
+ "bvs-base",
+ "cosmwasm-crypto 2.1.0",
+ "cosmwasm-schema",
+ "cosmwasm-std 2.1.0",
+ "cosmwasm-storage",
+ "cw-multi-test",
+ "cw-storage-plus",
+ "cw2",
+ "cw20",
+ "hex",
+ "ripemd",
+ "schemars",
+ "secp256k1",
+ "serde",
+ "sha2 0.10.8",
+ "thiserror",
+]
+
+[[package]]
+name = "bvs-strategy-factory"
+version = "2.0.0"
+dependencies = [
+ "base64 0.22.1",
+ "bech32 0.8.1",
+ "bvs-base",
+ "cosmwasm-crypto 2.1.0",
+ "cosmwasm-schema",
+ "cosmwasm-std 2.1.0",
+ "cosmwasm-storage",
+ "cw-multi-test",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw2",
+ "cw20",
+ "hex",
+ "ripemd",
+ "schemars",
+ "secp256k1",
+ "serde",
+ "sha2 0.10.8",
+ "thiserror",
+]
+
+[[package]]
+name = "bvs-strategy-manager"
+version = "2.0.0"
+dependencies = [
+ "base64 0.22.1",
+ "bech32 0.8.1",
+ "bvs-base",
+ "cosmwasm-crypto 2.1.0",
+ "cosmwasm-schema",
+ "cosmwasm-std 2.1.0",
+ "cosmwasm-storage",
+ "cw-multi-test",
+ "cw-storage-plus",
+ "cw2",
+ "cw20",
+ "hex",
+ "ripemd",
+ "schemars",
+ "secp256k1",
+ "serde",
+ "sha2 0.10.8",
+ "thiserror",
+]
+
+[[package]]
+name = "bvs-test"
+version = "0.1.0"
+dependencies = [
+ "bvs-driver",
+ "bvs-state-bank",
+ "cosmwasm-std 2.1.0",
+ "cw-multi-test",
+]
+
+[[package]]
+name = "bvs-test-utils"
+version = "0.0.0"
+dependencies = [
+ "bech32 0.8.1",
+ "cosmwasm-crypto 2.1.0",
+ "cosmwasm-std 2.1.0",
+ "ripemd",
+ "secp256k1",
+ "sha2 0.10.8",
+]
+
+[[package]]
 name = "byteorder"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -262,16 +523,6 @@ name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
-
-[[package]]
-name = "common"
-version = "2.0.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cw-storage-plus",
- "thiserror",
-]
 
 [[package]]
 name = "const-oid"
@@ -517,73 +768,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-bvs-directory"
-version = "2.0.0"
-dependencies = [
- "base64 0.22.1",
- "bech32 0.8.1",
- "common",
- "cosmwasm-crypto 2.1.0",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "hex",
- "ripemd",
- "schemars",
- "secp256k1",
- "serde",
- "sha2 0.10.8",
- "thiserror",
-]
-
-[[package]]
-name = "cw-bvs-driver"
-version = "2.0.0"
-dependencies = [
- "bech32 0.8.1",
- "cosmwasm-crypto 2.1.0",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cosmwasm-storage",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "hex",
- "ripemd",
- "schemars",
- "serde",
- "sha2 0.10.8",
- "thiserror",
-]
-
-[[package]]
-name = "cw-delegation-manager"
-version = "2.0.0"
-dependencies = [
- "base64 0.22.1",
- "bech32 0.8.1",
- "common",
- "cosmwasm-crypto 2.1.0",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cosmwasm-storage",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "hex",
- "ripemd",
- "schemars",
- "secp256k1",
- "serde",
- "sha2 0.10.8",
- "thiserror",
-]
-
-[[package]]
 name = "cw-multi-test"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -604,77 +788,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-rewards-coordinator"
-version = "2.0.0"
-dependencies = [
- "base64 0.22.1",
- "bech32 0.8.1",
- "common",
- "cosmwasm-crypto 2.1.0",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cosmwasm-storage",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "hex",
- "ripemd",
- "schemars",
- "secp256k1",
- "serde",
- "serde_json",
- "sha2 0.10.8",
- "thiserror",
-]
-
-[[package]]
-name = "cw-slash-manager"
-version = "2.0.0"
-dependencies = [
- "base64 0.22.1",
- "bech32 0.8.1",
- "common",
- "cosmwasm-crypto 2.1.0",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cosmwasm-storage",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "hex",
- "ripemd",
- "schemars",
- "secp256k1",
- "serde",
- "serde_json",
- "sha2 0.10.8",
- "thiserror",
-]
-
-[[package]]
-name = "cw-state-bank"
-version = "2.0.0"
-dependencies = [
- "bech32 0.8.1",
- "cosmwasm-crypto 2.1.0",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cosmwasm-storage",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "hex",
- "ripemd",
- "schemars",
- "serde",
- "sha2 0.10.8",
- "thiserror",
-]
-
-[[package]]
 name = "cw-storage-plus"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -683,96 +796,6 @@ dependencies = [
  "cosmwasm-std 2.1.0",
  "schemars",
  "serde",
-]
-
-[[package]]
-name = "cw-strategy-base"
-version = "2.0.0"
-dependencies = [
- "common",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cosmwasm-storage",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
-name = "cw-strategy-base-tvl-limits"
-version = "2.0.0"
-dependencies = [
- "base64 0.22.1",
- "bech32 0.8.1",
- "common",
- "cosmwasm-crypto 2.1.0",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cosmwasm-storage",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "hex",
- "ripemd",
- "schemars",
- "secp256k1",
- "serde",
- "sha2 0.10.8",
- "thiserror",
-]
-
-[[package]]
-name = "cw-strategy-factory"
-version = "2.0.0"
-dependencies = [
- "base64 0.22.1",
- "bech32 0.8.1",
- "common",
- "cosmwasm-crypto 2.1.0",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cosmwasm-storage",
- "cw-multi-test",
- "cw-storage-plus",
- "cw-utils",
- "cw2",
- "cw20",
- "hex",
- "ripemd",
- "schemars",
- "secp256k1",
- "serde",
- "sha2 0.10.8",
- "thiserror",
-]
-
-[[package]]
-name = "cw-strategy-manager"
-version = "2.0.0"
-dependencies = [
- "base64 0.22.1",
- "bech32 0.8.1",
- "common",
- "cosmwasm-crypto 2.1.0",
- "cosmwasm-schema",
- "cosmwasm-std 2.1.0",
- "cosmwasm-storage",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "hex",
- "ripemd",
- "schemars",
- "secp256k1",
- "serde",
- "sha2 0.10.8",
- "thiserror",
 ]
 
 [[package]]
