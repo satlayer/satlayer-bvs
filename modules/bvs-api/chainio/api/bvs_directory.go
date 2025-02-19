@@ -85,7 +85,7 @@ func (a *bvsDirectoryImpl) RegisterOperator(ctx context.Context, operator string
 	if err != nil {
 		return nil, err
 	}
-	expiry := int64(nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000)
+	expiry := nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000
 
 	randomStr, err := utils.GenerateRandomString(16)
 	if err != nil {
@@ -97,6 +97,7 @@ func (a *bvsDirectoryImpl) RegisterOperator(ctx context.Context, operator string
 	if err != nil {
 		return nil, err
 	}
+	// TODO(fuxingloh): fix htis.
 	sig, err := a.io.GetSigner().Sign([]byte(msgHashResp.DigestHash))
 	if err != nil {
 		return nil, err
