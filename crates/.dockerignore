@@ -7,7 +7,9 @@ artifacts/
 # Text file backups
 **/*.rs.bk
 
-.turbo
+node_modules/
+.turbo/
 crates.iml
 package.json
+README.md
 turbo.json
