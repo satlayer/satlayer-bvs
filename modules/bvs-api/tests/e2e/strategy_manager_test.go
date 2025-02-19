@@ -46,7 +46,7 @@ type strategyManagerTestSuite struct {
 	tokenAddr   string
 }
 
-func (suite *strategyManagerTestSuite) SetupTest() {
+func (suite *strategyManagerTestSuite) SetupSuite() {
 	suite.container = babylond.Run(context.Background())
 	suite.chainIO = suite.container.NewChainIO("../.babylon")
 
@@ -75,6 +75,10 @@ func (suite *strategyManagerTestSuite) SetupTest() {
 		Symbol: "TEST",
 	})
 	suite.tokenAddr = token.Address
+}
+
+func (suite *strategyManagerTestSuite) TearDownSuite() {
+	suite.Require().NoError(suite.container.Terminate(context.Background()))
 }
 
 func (suite *strategyManagerTestSuite) Test_Init() {

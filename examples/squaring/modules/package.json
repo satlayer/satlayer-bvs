@@ -4,6 +4,6 @@
   "scripts": {
     "build": "go build -o ${PWD}/dist/squaring-task-cli ${PWD}/task/main.go && go build -o ${PWD}/dist/squaring-aggregator ${PWD}/aggregator/. && go build -o ${PWD}/dist/squaring-offchain ${PWD}/offchain/. && go build -o ${PWD}/dist/squaring-uploader ${PWD}/uploader/.",
     "prepare": "go mod tidy",
-    "test": "gotestsum -- ./... -p 4"
+    "test": "gotestsum"
   }
 }

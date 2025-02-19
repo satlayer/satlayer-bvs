@@ -19,9 +19,10 @@ type ioTestSuite struct {
 	suite.Suite
 	chainIO   io.ChainIO
 	directory *bvs.Contract[directory.InstantiateMsg]
+	container *babylond.BabylonContainer
 }
 
-func (suite *ioTestSuite) SetupTest() {
+func (suite *ioTestSuite) SetupSuite() {
 	container := babylond.Run(context.Background())
 	suite.chainIO = container.NewChainIO("../.babylon")
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
@@ -29,6 +30,10 @@ func (suite *ioTestSuite) SetupTest() {
 	deployer := &bvs.Deployer{BabylonContainer: container}
 	tAddr := container.GenerateAddress("throw-away")
 	suite.directory = deployer.DeployDirectory(tAddr.String())
+}
+
+func (suite *ioTestSuite) TearDownSuite() {
+	suite.Require().NoError(suite.container.Terminate(context.Background()))
 }
 
 func (suite *ioTestSuite) Test_QueryContract() {

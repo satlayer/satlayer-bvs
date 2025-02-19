@@ -21,7 +21,7 @@ type strategyFactoryTestSuite struct {
 	deployer  *bvs.Deployer
 }
 
-func (suite *strategyFactoryTestSuite) SetupTest() {
+func (suite *strategyFactoryTestSuite) SetupSuite() {
 	suite.container = babylond.Run(context.Background())
 	suite.chainIO = suite.container.NewChainIO("../.babylon")
 
@@ -34,6 +34,10 @@ func (suite *strategyFactoryTestSuite) SetupTest() {
 	tAddr := suite.container.GenerateAddress("test-address").String()
 	slashManager := suite.deployer.DeployStrategyFactory(tAddr, 1)
 	suite.contrAddr = slashManager.Address
+}
+
+func (suite *strategyFactoryTestSuite) TearDownSuite() {
+	suite.Require().NoError(suite.container.Terminate(context.Background()))
 }
 
 func (suite *strategyFactoryTestSuite) test_DeployNewStrategy() {

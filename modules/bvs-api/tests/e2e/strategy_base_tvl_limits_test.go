@@ -20,9 +20,10 @@ type strategyBaseTVLLimitsTestSuite struct {
 	chainIO         io.ChainIO
 	contrAddr       string
 	strategyManager string
+	container       *babylond.BabylonContainer
 }
 
-func (suite *strategyBaseTVLLimitsTestSuite) SetupTest() {
+func (suite *strategyBaseTVLLimitsTestSuite) SetupSuite() {
 	container := babylond.Run(context.Background())
 	suite.chainIO = container.NewChainIO("../.babylon")
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
@@ -50,6 +51,10 @@ func (suite *strategyBaseTVLLimitsTestSuite) SetupTest() {
 	container.ImportPrivKey("strategy-base-tvl-limits:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
 	suite.contrAddr = deployer.DeployStrategyBaseTvlLimits(strategyManager.Address, token.Address, big.NewInt(1e8), big.NewInt(1e8)).Address
 	suite.strategyManager = "bbn1mju0w4qagjcgtrgepr796zmg083qurq9sngy0eyxm8wzf78cjt3qzfq7qy"
+}
+
+func (suite *strategyBaseTVLLimitsTestSuite) TearDownSuite() {
+	suite.Require().NoError(suite.container.Terminate(context.Background()))
 }
 
 func (suite *strategyBaseTVLLimitsTestSuite) Test_ExecuteStrategyTVLLimits() {

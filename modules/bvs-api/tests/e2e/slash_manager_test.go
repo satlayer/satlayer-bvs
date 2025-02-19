@@ -21,9 +21,10 @@ type slashManagerTestSuite struct {
 	chainIO                  io.ChainIO
 	contrAddr                string
 	strategyManagerContrAddr string
+	container                *babylond.BabylonContainer
 }
 
-func (suite *slashManagerTestSuite) SetupTest() {
+func (suite *slashManagerTestSuite) SetupSuite() {
 	container := babylond.Run(context.Background())
 	suite.chainIO = container.NewChainIO("../.babylon")
 
@@ -36,6 +37,10 @@ func (suite *slashManagerTestSuite) SetupTest() {
 	slashManager := deployer.DeploySlashManager(tAddr, tAddr)
 	suite.contrAddr = slashManager.Address
 	suite.strategyManagerContrAddr = tAddr
+}
+
+func (suite *slashManagerTestSuite) TearDownSuite() {
+	suite.Require().NoError(suite.container.Terminate(context.Background()))
 }
 
 func (suite *slashManagerTestSuite) Test_SetMinimalSlashSignature() {

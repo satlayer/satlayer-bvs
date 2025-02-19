@@ -22,7 +22,7 @@ type bvsDirectoryTestSuite struct {
 	container           *babylond.BabylonContainer
 }
 
-func (suite *bvsDirectoryTestSuite) SetupTest() {
+func (suite *bvsDirectoryTestSuite) SetupSuite() {
 	container := babylond.Run(context.Background())
 	suite.chainIO = container.NewChainIO("../.babylon")
 	suite.container = container
@@ -65,6 +65,10 @@ func (suite *bvsDirectoryTestSuite) SetupTest() {
 
 	suite.contrAddr = deployer.DeployDirectory(delegationManager.Address).Address
 	suite.delegationContrAddr = delegationManager.Address
+}
+
+func (suite *bvsDirectoryTestSuite) TearDownSuite() {
+	suite.Require().NoError(suite.container.Terminate(context.Background()))
 }
 
 func (suite *bvsDirectoryTestSuite) test_RegisterBVS() {

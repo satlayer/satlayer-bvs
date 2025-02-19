@@ -34,7 +34,7 @@ type rewardsTestSuite struct {
 	caller                 string
 }
 
-func (suite *rewardsTestSuite) SetupTest() {
+func (suite *rewardsTestSuite) SetupSuite() {
 	container := babylond.Run(context.Background())
 	suite.chainIO = container.NewChainIO("../.babylon")
 	suite.container = container
@@ -81,6 +81,10 @@ func (suite *rewardsTestSuite) SetupTest() {
 	)
 	suite.rewardsCoordinatorAddr = rewardsCoordinator.Address
 	suite.strategyManagerAddr = strategyManager.Address
+}
+
+func (suite *rewardsTestSuite) TearDownSuite() {
+	suite.Require().NoError(suite.container.Terminate(context.Background()))
 }
 
 func (suite *rewardsTestSuite) Test_ExecuteRewardsCoordinator() {

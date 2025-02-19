@@ -39,11 +39,13 @@ type signerTestSuite struct {
 	chainIO         io.ChainIO
 	chaiID          string
 	bvsDirContrAddr string
+	container       *babylond.BabylonContainer
 }
 
-func (suite *signerTestSuite) SetupTest() {
+func (suite *signerTestSuite) SetupSuite() {
 	container := babylond.Run(context.Background())
 	suite.chainIO = container.NewChainIO("../.babylon")
+	suite.container = container
 
 	// Import And Fund Caller
 	container.ImportPrivKey("directory:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
@@ -55,6 +57,10 @@ func (suite *signerTestSuite) SetupTest() {
 
 	suite.chaiID = container.ChainId
 	suite.bvsDirContrAddr = directory.Address
+}
+
+func (suite *signerTestSuite) TearDownSuite() {
+	suite.Require().NoError(suite.container.Terminate(context.Background()))
 }
 
 func (suite *signerTestSuite) Test_BuildAndSignTx() {
