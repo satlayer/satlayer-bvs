@@ -1501,7 +1501,7 @@ mod tests {
         assert_eq!(event.attributes[2].value, operator_addr.to_string());
 
         assert_eq!(event.attributes[3].key, "total_slash_share");
-        assert_eq!(event.attributes[3].value, "1000000");
+        assert_eq!(event.attributes[3].value, 1_000_000.to_string());
 
         let updated_slash_details = SLASH_DETAILS.load(&deps.storage, slash_hash).unwrap();
         assert_eq!(updated_slash_details.status, false);
