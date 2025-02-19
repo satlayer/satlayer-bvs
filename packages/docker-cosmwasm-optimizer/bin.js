@@ -7,10 +7,6 @@ const cwd = process.cwd();
 const crate = path.basename(cwd);
 const parentDir = path.dirname(cwd);
 
-if (process.env.CI) {
-  // TODO(fuxingloh): setup remote caching
-}
-
 const command = [
   "docker build",
   "-f",
@@ -18,6 +14,11 @@ const command = [
   `--output=./artifacts`,
   `--build-arg CRATE=${crate}`,
   parentDir,
-].join(" ");
+];
 
-execSync(command, { stdio: "inherit" });
+if (process.env.CI) {
+  command.push("--cache-from", `type=registry,ref=ghcr.io/satlayer/cosmwasm-optimizer-cache:${crate}`);
+  command.push("--cache-to", `type=registry,ref=ghcr.io/satlayer/cosmwasm-optimizer-cache:${crate},mode=max`);
+}
+
+execSync(command.join(" "), { stdio: "inherit" });
