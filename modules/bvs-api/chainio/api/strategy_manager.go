@@ -101,8 +101,8 @@ func (a *strategyManagerImpl) BindClient(contractAddress string) {
 }
 
 func (a *strategyManagerImpl) AddStrategiesToWhitelist(ctx context.Context, strategies []string, thirdPartyTransfersForbiddenValues []bool) (*coretypes.ResultTx, error) {
-	msg := types.AddStrategiesToWhitelistReq{
-		AddStrategiesToWhitelist: types.AddStrategiesToWhitelist{
+	msg := strategymanager.ExecuteMsg{
+		AddStrategiesToWhitelist: &strategymanager.AddStrategiesToWhitelist{
 			Strategies:                         strategies,
 			ThirdPartyTransfersForbiddenValues: thirdPartyTransfersForbiddenValues,
 		},
@@ -112,8 +112,8 @@ func (a *strategyManagerImpl) AddStrategiesToWhitelist(ctx context.Context, stra
 }
 
 func (a *strategyManagerImpl) RemoveStrategiesFromWhitelist(ctx context.Context, strategies []string) (*coretypes.ResultTx, error) {
-	msg := types.RemoveStrategiesFromWhitelistReq{
-		RemoveStrategiesFromWhitelist: types.RemoveStrategiesFromWhitelist{
+	msg := strategymanager.ExecuteMsg{
+		RemoveStrategiesFromWhitelist: &strategymanager.RemoveStrategiesFromWhitelist{
 			Strategies: strategies,
 		},
 	}
@@ -122,8 +122,8 @@ func (a *strategyManagerImpl) RemoveStrategiesFromWhitelist(ctx context.Context,
 }
 
 func (a *strategyManagerImpl) SetStrategyWhitelister(ctx context.Context, newStrategyWhitelister string) (*coretypes.ResultTx, error) {
-	msg := types.SetStrategyWhitelisterReq{
-		SetStrategyWhitelister: types.SetStrategyWhitelister{
+	msg := strategymanager.ExecuteMsg{
+		SetStrategyWhitelister: &strategymanager.SetStrategyWhitelister{
 			NewStrategyWhitelister: newStrategyWhitelister,
 		},
 	}
@@ -132,8 +132,8 @@ func (a *strategyManagerImpl) SetStrategyWhitelister(ctx context.Context, newStr
 }
 
 func (a *strategyManagerImpl) DepositIntoStrategy(ctx context.Context, strategy string, token string, amount uint64) (*coretypes.ResultTx, error) {
-	msg := types.DepositIntoStrategyReq{
-		DepositIntoStrategy: types.DepositIntoStrategy{
+	msg := strategymanager.ExecuteMsg{
+		DepositIntoStrategy: &strategymanager.DepositIntoStrategy{
 			Strategy: strategy,
 			Token:    token,
 			Amount:   fmt.Sprintf("%d", amount),
@@ -144,8 +144,8 @@ func (a *strategyManagerImpl) DepositIntoStrategy(ctx context.Context, strategy 
 }
 
 func (a *strategyManagerImpl) SetThirdPartyTransfersForbidden(ctx context.Context, strategy string, value bool) (*coretypes.ResultTx, error) {
-	msg := types.SetThirdPartyTransfersForbiddenReq{
-		SetThirdPartyTransfersForbidden: types.SetThirdPartyTransfersForbidden{
+	msg := strategymanager.ExecuteMsg{
+		SetThirdPartyTransfersForbidden: &strategymanager.SetThirdPartyTransfersForbidden{
 			Strategy: strategy,
 			Value:    value,
 		},
