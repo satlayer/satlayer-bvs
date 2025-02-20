@@ -23,10 +23,10 @@ type StrategyBaseTVLLimits interface {
 	Deposit(ctx context.Context, amount uint64) (*coretypes.ResultTx, error)
 	Withdraw(ctx context.Context, recipient string, amountShares uint64) (*coretypes.ResultTx, error)
 	GetShares(staker string, strategy string) (*wasmtypes.QuerySmartContractStateResponse, error)
-	GetTVLLimits() (*types.TVLLimitsResponse, error)
-	GetTotalDeposits() (*types.GetTotalSharesResponse, error)
-	Explanation() (*types.ExplanationResponse, error)
-	GetStrategyState() (*types.GetStrategyStateResponse, error)
+	GetTVLLimits() (*strategybasetvllimits.TVLLimitsResponse, error)
+	GetTotalDeposits() (*strategybasetvllimits.TotalSharesResponse, error)
+	Explanation() (*strategybasetvllimits.ExplanationResponse, error)
+	GetStrategyState() (*strategybasetvllimits.StrategyState, error)
 	SharesToUnderlyingView(amountShares uint64) (*wasmtypes.QuerySmartContractStateResponse, error)
 	UnderlyingToShareView(amount uint64) (*wasmtypes.QuerySmartContractStateResponse, error)
 	UnderlyingView(user string) (*wasmtypes.QuerySmartContractStateResponse, error)
@@ -37,7 +37,7 @@ type StrategyBaseTVLLimits interface {
 	SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error)
 	TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error)
 	SetTVLLimits(ctx context.Context, maxPerDeposit string, maxTotalDeposits string) (*coretypes.ResultTx, error)
-	UnderlyingToShares(amount_underlying string) (*types.UnderlyingToSharesResponse, error)
+	UnderlyingToShares(amount_underlying string) (*strategybasetvllimits.UnderlyingToSharesResponse, error)
 	GetStrategyManager() (*wasmtypes.QuerySmartContractStateResponse, error)
 	SetStrategyManager(ctx context.Context, newStrategyManager string) (*coretypes.ResultTx, error)
 }
@@ -168,7 +168,7 @@ func (a *strategyBaseTVLLimitsImpl) UnderlyingView(user string) (*wasmtypes.Quer
 	return a.sendQuery(msg)
 }
 
-func (a *strategyBaseTVLLimitsImpl) GetTVLLimits() (*types.TVLLimitsResponse, error) {
+func (a *strategyBaseTVLLimitsImpl) GetTVLLimits() (*strategybasetvllimits.TVLLimitsResponse, error) {
 	msg := strategybasetvllimits.QueryMsg{
 		GetTVLLimits: &strategybasetvllimits.GetTVLLimits{},
 	}
@@ -177,7 +177,7 @@ func (a *strategyBaseTVLLimitsImpl) GetTVLLimits() (*types.TVLLimitsResponse, er
 		return nil, err
 	}
 
-	var result types.TVLLimitsResponse
+	var result strategybasetvllimits.TVLLimitsResponse
 	if err := json.Unmarshal(resp.Data, &result); err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func (a *strategyBaseTVLLimitsImpl) GetTVLLimits() (*types.TVLLimitsResponse, er
 	return &result, nil
 }
 
-func (a *strategyBaseTVLLimitsImpl) GetTotalDeposits() (*types.GetTotalSharesResponse, error) {
+func (a *strategyBaseTVLLimitsImpl) GetTotalDeposits() (*strategybasetvllimits.TotalSharesResponse, error) {
 	msg := strategybasetvllimits.QueryMsg{
 		GetTotalShares: &strategybasetvllimits.GetTotalShares{},
 	}
@@ -194,7 +194,7 @@ func (a *strategyBaseTVLLimitsImpl) GetTotalDeposits() (*types.GetTotalSharesRes
 		return nil, err
 	}
 
-	var result types.GetTotalSharesResponse
+	var result strategybasetvllimits.TotalSharesResponse
 	if err := json.Unmarshal(resp.Data, &result); err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func (a *strategyBaseTVLLimitsImpl) GetTotalDeposits() (*types.GetTotalSharesRes
 	return &result, nil
 }
 
-func (a *strategyBaseTVLLimitsImpl) Explanation() (*types.ExplanationResponse, error) {
+func (a *strategyBaseTVLLimitsImpl) Explanation() (*strategybasetvllimits.ExplanationResponse, error) {
 	msg := strategybasetvllimits.QueryMsg{
 		Explanation: &strategybasetvllimits.Explanation{},
 	}
@@ -211,7 +211,7 @@ func (a *strategyBaseTVLLimitsImpl) Explanation() (*types.ExplanationResponse, e
 		return nil, err
 	}
 
-	var result types.ExplanationResponse
+	var result strategybasetvllimits.ExplanationResponse
 	if err := json.Unmarshal(resp.Data, &result); err != nil {
 		return nil, err
 	}
@@ -219,7 +219,7 @@ func (a *strategyBaseTVLLimitsImpl) Explanation() (*types.ExplanationResponse, e
 	return &result, nil
 }
 
-func (a *strategyBaseTVLLimitsImpl) GetStrategyState() (*types.GetStrategyStateResponse, error) {
+func (a *strategyBaseTVLLimitsImpl) GetStrategyState() (*strategybasetvllimits.StrategyState, error) {
 	msg := strategybasetvllimits.QueryMsg{
 		GetStrategyState: &strategybasetvllimits.GetStrategyState{},
 	}
@@ -228,7 +228,7 @@ func (a *strategyBaseTVLLimitsImpl) GetStrategyState() (*types.GetStrategyStateR
 		return nil, err
 	}
 
-	var result types.GetStrategyStateResponse
+	var result strategybasetvllimits.StrategyState
 	if err := json.Unmarshal(resp.Data, &result); err != nil {
 		return nil, err
 	}
@@ -243,7 +243,7 @@ func (a *strategyBaseTVLLimitsImpl) UnderlyingToken() (*wasmtypes.QuerySmartCont
 	return a.sendQuery(msg)
 }
 
-func (a *strategyBaseTVLLimitsImpl) UnderlyingToShares(amount_underlying string) (*types.UnderlyingToSharesResponse, error) {
+func (a *strategyBaseTVLLimitsImpl) UnderlyingToShares(amount_underlying string) (*strategybasetvllimits.UnderlyingToSharesResponse, error) {
 	msg := strategybasetvllimits.QueryMsg{
 		UnderlyingToShares: &strategybasetvllimits.UnderlyingToShares{
 			AmountUnderlying: amount_underlying,
@@ -255,7 +255,7 @@ func (a *strategyBaseTVLLimitsImpl) UnderlyingToShares(amount_underlying string)
 		return nil, err
 	}
 
-	var result types.UnderlyingToSharesResponse
+	var result strategybasetvllimits.UnderlyingToSharesResponse
 	if err := json.Unmarshal(resp.Data, &result); err != nil {
 		return nil, err
 	}
