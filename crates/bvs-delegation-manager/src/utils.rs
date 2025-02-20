@@ -1,7 +1,6 @@
 use cosmwasm_crypto::secp256k1_verify;
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{to_json_binary, Addr, Api, Binary, Env, StdResult, Uint128};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 const DELEGATION_APPROVAL_TYPEHASH: &[u8] = b"DelegationApproval(address delegationApprover,address staker,address operator,bytes32 salt,uint256 expiry)";
@@ -17,7 +16,7 @@ fn sha256(input: &[u8]) -> Vec<u8> {
     hasher.finalize().to_vec()
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct DelegateParams {
     pub staker: Addr,
     pub operator: Addr,
@@ -25,7 +24,7 @@ pub struct DelegateParams {
     pub salt: Binary,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct ExecuteDelegateParams {
     pub staker: String,
     pub operator: String,
@@ -33,7 +32,7 @@ pub struct ExecuteDelegateParams {
     pub salt: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct ApproverDigestHashParams {
     pub staker: Addr,
     pub operator: Addr,
@@ -44,7 +43,7 @@ pub struct ApproverDigestHashParams {
     pub contract_addr: Addr,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct QueryApproverDigestHashParams {
     pub staker: String,
     pub operator: String,
@@ -55,7 +54,7 @@ pub struct QueryApproverDigestHashParams {
     pub contract_addr: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct QueryStakerDigestHashParams {
     pub staker: String,
     pub staker_nonce: Uint128,
@@ -101,7 +100,7 @@ pub fn calculate_delegation_approval_digest_hash(
     sha256(&digest_hash_input)
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct StakerDigestHashParams {
     pub staker: Addr,
     pub staker_nonce: Uint128,
@@ -141,7 +140,7 @@ pub fn calculate_staker_delegation_digest_hash(
     sha256(&digest_hash_input)
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct CurrentStakerDigestHashParams {
     pub staker: Addr,
     pub operator: Addr,
@@ -151,7 +150,7 @@ pub struct CurrentStakerDigestHashParams {
     pub contract_addr: Addr,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct QueryCurrentStakerDigestHashParams {
     pub staker: String,
     pub operator: String,
@@ -185,7 +184,7 @@ pub fn recover(digest_hash: &[u8], signature: &[u8], public_key_bytes: &[u8]) ->
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct Withdrawal {
     pub staker: Addr,
     pub delegated_to: Addr,
