@@ -120,7 +120,7 @@ func directoryCmd() *cobra.Command {
 		Short: "To calculate the digest hash for the operator.",
 		Args:  cobra.ExactArgs(3),
 		Run: func(cmd *cobra.Command, args []string) {
-			expiry, err := strconv.ParseUint(args[2], 10, 64)
+			expiry, err := strconv.ParseInt(args[2], 10, 64)
 			if err != nil {
 				panic(fmt.Sprintf("expire must be an integer. Error: %s\n", err))
 			}
