@@ -11,7 +11,7 @@ var delegationUserKey = "operator1"
 func Test_UpdateOperatorDetails(t *testing.T) {
 	receiver := "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv"
 	delegationApprover := "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv"
-	stakerOptOutWindowBlocks := uint64(0)
+	stakerOptOutWindowBlocks := int64(0)
 	delegation.UpdateOperatorDetails(delegationUserKey, receiver, delegationApprover, stakerOptOutWindowBlocks)
 }
 

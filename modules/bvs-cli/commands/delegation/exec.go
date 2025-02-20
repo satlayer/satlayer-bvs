@@ -40,7 +40,7 @@ func RegOperator(KeyName, approverAddress string) {
 	fmt.Printf("Delegation Register operator success. txn: %s\n", txResp.Hash)
 }
 
-func UpdateOperatorDetails(userKeyName, receiver, delegationApprover string, stakerOptOutWindowBlocks uint64) {
+func UpdateOperatorDetails(userKeyName, receiver, delegationApprover string, stakerOptOutWindowBlocks int64) {
 	ctx := context.Background()
 	delegation, _ := newService(userKeyName)
 	txResp, err := delegation.ModifyOperatorDetails(
@@ -140,7 +140,7 @@ func DelegateBySignature(stakerKeyName, operatorAddress, approverKeyName string)
 	fmt.Printf("Delegation DelegateBySignature success. txn: %s\n", txResp.Hash)
 }
 
-func SetMinWithdrawDelayBlocks(userKeyName string, blocks uint64) {
+func SetMinWithdrawDelayBlocks(userKeyName string, blocks int64) {
 	ctx := context.Background()
 	delegation, _ := newService(userKeyName)
 	txResp, err := delegation.SetMinWithdrawalDelayBlocks(ctx, blocks)
@@ -150,7 +150,7 @@ func SetMinWithdrawDelayBlocks(userKeyName string, blocks uint64) {
 	fmt.Printf("Set min withdraw delay blocks success. txn: %s\n", txResp.Hash)
 }
 
-func SetStrategyWithdrawDelayBlocks(userKeyName string, strategies []string, blocks []uint64) {
+func SetStrategyWithdrawDelayBlocks(userKeyName string, strategies []string, blocks []int64) {
 	ctx := context.Background()
 	delegation, _ := newService(userKeyName)
 	txResp, err := delegation.SetStrategyWithdrawalDelayBlocks(ctx, strategies, blocks)
