@@ -8,7 +8,9 @@ runs:
     - uses: dtolnay/rust-toolchain@stable
     - uses: Swatinem/rust-cache@v2
       with:
-        workspaces: "crates -> crates/target"
+        workspaces: |
+          crates -> crates/target
+          examples/squaring/squaring-contract -> examples/squaring/squaring-contract/target
 
     # Go
     - uses: actions/setup-go@v5
