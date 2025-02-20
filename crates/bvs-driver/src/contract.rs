@@ -2,7 +2,6 @@ use crate::{
     error::ContractError,
     msg::ExecuteMsg,
     msg::InstantiateMsg,
-    msg::MigrateMsg,
     msg::QueryMsg,
     state::{IS_BVS_CONTRACT_REGISTERED, OWNER},
 };

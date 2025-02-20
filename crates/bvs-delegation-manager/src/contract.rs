@@ -1,7 +1,7 @@
 use crate::{
     error::ContractError,
     msg::{
-        ExecuteMsg, InstantiateMsg, MigrateMsg, OperatorDetails, QueryMsg, QueuedWithdrawalParams,
+        ExecuteMsg, InstantiateMsg, OperatorDetails, QueryMsg, QueuedWithdrawalParams,
         SignatureWithExpiry,
     },
     query::{

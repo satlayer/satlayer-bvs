@@ -1,5 +1,5 @@
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::query::{BlacklistStatusResponse, StrategyResponse};
 use crate::state::{Config, CONFIG, DEPLOYED_STRATEGIES, IS_BLACKLISTED};
 use cosmwasm_std::{

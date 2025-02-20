@@ -1,6 +1,6 @@
 use crate::{
     error::ContractError,
-    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
         CalculateDigestHashResponse, DelegationManagerResponse, DepositTypehashResponse,
         DepositsResponse, DomainNameResponse, DomainTypehashResponse, NonceResponse, OwnerResponse,

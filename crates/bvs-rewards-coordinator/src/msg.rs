@@ -121,9 +121,6 @@ pub enum QueryMsg {
 }
 
 #[cw_serde]
-pub struct MigrateMsg {}
-
-#[cw_serde]
 pub struct DistributionRoot {
     pub root: Binary,
     pub rewards_calculation_end_timestamp: u64,

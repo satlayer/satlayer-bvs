@@ -1,6 +1,6 @@
 use crate::{
     error::ContractError,
-    msg::{DistributionRoot, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    msg::{DistributionRoot, ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
         CalculateDomainSeparatorResponse, CalculateEarnerLeafHashResponse,
         CalculateTokenLeafHashResponse, CheckClaimResponse,

@@ -1,8 +1,7 @@
 use crate::{
     error::ContractError,
     msg::{
-        ExecuteMsg, InstantiateMsg, MigrateMsg, OperatorStatusResponse, QueryMsg,
-        SignatureWithSaltAndExpiry,
+        ExecuteMsg, InstantiateMsg, OperatorStatusResponse, QueryMsg, SignatureWithSaltAndExpiry,
     },
     query::{
         BVSInfoResponse, DelegationResponse, DigestHashResponse, DomainNameResponse,
