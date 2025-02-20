@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  update_release_draft:
+  Draft:
     permissions:
       contents: write
       pull-requests: read
