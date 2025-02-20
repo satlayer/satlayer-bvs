@@ -1,10 +1,9 @@
 use cosmwasm_crypto::secp256k1_verify;
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Api, StdResult, Uint128};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct SlashDetails {
     pub slasher: Addr,
     pub operator: Addr,
@@ -17,7 +16,7 @@ pub struct SlashDetails {
     pub status: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct ExecuteSlashDetails {
     pub slasher: String,
     pub operator: String,

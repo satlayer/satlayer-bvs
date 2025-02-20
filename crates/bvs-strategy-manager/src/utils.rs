@@ -1,7 +1,6 @@
 use cosmwasm_crypto::secp256k1_verify;
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Api, Binary, StdResult, Uint128};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 pub const DEPOSIT_TYPEHASH: &[u8] = b"Deposit(address staker,address strategy,address token,uint256 amount,uint256 nonce,uint256 expiry)";
@@ -25,7 +24,7 @@ pub struct DepositWithSignatureParams {
     pub signature: Binary,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct DigestHashParams {
     pub staker: Addr,
     pub public_key: Binary,
@@ -38,7 +37,7 @@ pub struct DigestHashParams {
     pub contract_addr: Addr,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct QueryDigestHashParams {
     pub staker: String,
     pub public_key: String,
