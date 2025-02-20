@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	rewardscoordinator "github.com/satlayer/satlayer-bvs/bvs-cw/rewards-coordinator"
+
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/satlayer/satlayer-bvs/babylond"
@@ -136,8 +138,8 @@ func (suite *rewardsTestSuite) Test_ExecuteRewardsCoordinator() {
 
 	resp, err := rewardsCoordinator.CreateBVSRewardsSubmission(
 		context.Background(),
-		[]types.RewardsSubmission{{
-			StrategiesAndMultipliers: []types.StrategyAndMultiplier{{
+		[]rewardscoordinator.RewardsSubmission{{
+			StrategiesAndMultipliers: []rewardscoordinator.StrategyAndMultiplier{{
 				Strategy:   strategyManagerAddr.String(),
 				Multiplier: 1,
 			}},
@@ -158,8 +160,8 @@ func (suite *rewardsTestSuite) Test_ExecuteRewardsCoordinator() {
 
 	resp, err = rewardsCoordinator.CreateRewardsForAllSubmission(
 		context.Background(),
-		[]types.RewardsSubmission{{
-			StrategiesAndMultipliers: []types.StrategyAndMultiplier{{
+		[]rewardscoordinator.RewardsSubmission{{
+			StrategiesAndMultipliers: []rewardscoordinator.StrategyAndMultiplier{{
 				Strategy:   strategyManagerAddr.String(),
 				Multiplier: 1,
 			}},
@@ -275,7 +277,7 @@ func (suite *rewardsTestSuite) Test_SubmitRoot() {
 	t.Logf("root hash:%+v", rootHash)
 
 	timestamp := time.Now().Unix() - 3600
-	res, err := rewardsCoordinator.SubmitRoot(context.Background(), base64.StdEncoding.EncodeToString(rootHash), uint64(timestamp))
+	res, err := rewardsCoordinator.SubmitRoot(context.Background(), base64.StdEncoding.EncodeToString(rootHash), timestamp)
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, res, "response nil")
 	t.Logf("resp:%+v", res)
@@ -301,20 +303,20 @@ func (suite *rewardsTestSuite) test_CheckClaim() {
 	leafB := []byte{206, 115, 226, 107, 25, 126, 7, 79, 220, 253, 12, 111, 1, 16, 210, 149, 171, 32, 239, 250, 170, 1, 225, 240, 187, 214, 142, 240, 36, 15, 155, 97}
 	parentCD := []byte{127, 135, 181, 129, 134, 0, 46, 147, 5, 33, 229, 55, 20, 214, 171, 170, 192, 53, 195, 132, 255, 84, 26, 58, 251, 12, 31, 137, 253, 223, 171, 243}
 
-	rootIndex := uint32(0)
-	earnerIndex := uint32(0)
+	rootIndex := int64(0)
+	earnerIndex := int64(0)
 	earnerTreeProof := bytesToUints(earnerLeaf1)
 
-	leaf := types.ExecuteEarnerTreeMerkleLeaf{
+	leaf := rewardscoordinator.FluffyExecuteEarnerTreeMerkleLeaf{
 		Earner:          suite.caller,
 		EarnerTokenRoot: base64.StdEncoding.EncodeToString(tokenRootHash),
 	}
 
-	tokenIndices := []uint32{0}
+	tokenIndices := []int64{0}
 
-	tokenTreeProofs := [][]uint16{append(bytesToUints(leafB), bytesToUints(parentCD)...)} // parent node hash for C, D
+	tokenTreeProofs := [][]int64{append(bytesToUints(leafB), bytesToUints(parentCD)...)} // parent node hash for C, D
 
-	tokenLeaves := []types.TokenTreeMerkleLeaf{
+	tokenLeaves := []rewardscoordinator.FluffyTokenTreeMerkleLeaf{
 		{
 			Token:              suite.tokenAddr,
 			CumulativeEarnings: "15",
@@ -322,16 +324,15 @@ func (suite *rewardsTestSuite) test_CheckClaim() {
 	}
 
 	// earnerTreeProof, leaf, tokenTreeProofs
-	claim :=
-		types.ExeuteRewardsMerkleClaim{
-			RootIndex:       rootIndex,
-			EarnerIndex:     earnerIndex,
-			EarnerTreeProof: earnerTreeProof,
-			EarnerLeaf:      leaf,
-			TokenIndices:    tokenIndices,
-			TokenTreeProofs: tokenTreeProofs,
-			TokenLeaves:     tokenLeaves,
-		}
+	claim := rewardscoordinator.CheckClaimClaim{
+		RootIndex:       rootIndex,
+		EarnerIndex:     earnerIndex,
+		EarnerTreeProof: earnerTreeProof,
+		EarnerLeaf:      leaf,
+		TokenIndices:    tokenIndices,
+		TokenTreeProofs: tokenTreeProofs,
+		TokenLeaves:     tokenLeaves,
+	}
 	t.Logf("claim:%+v", claim)
 
 	checkResp, err := rewardsCoordinator.CheckClaim(claim)
@@ -355,20 +356,20 @@ func (suite *rewardsTestSuite) test_ProcessClaim() {
 	tokenRootHash := []byte{226, 185, 241, 197, 117, 165, 165, 145, 104, 161, 171, 134, 48, 163, 31, 74, 225, 159, 66, 82, 123, 59, 225, 60, 46, 218, 55, 192, 124, 52, 61, 177}
 	leafB := []byte{210, 69, 106, 161, 254, 2, 52, 3, 108, 143, 253, 152, 113, 19, 132, 27, 24, 82, 101, 150, 109, 94, 102, 107, 205, 14, 7, 15, 79, 41, 89, 43}
 	parentCD := []byte{103, 51, 76, 183, 37, 230, 19, 197, 35, 70, 76, 43, 118, 87, 119, 67, 86, 241, 16, 36, 93, 129, 24, 173, 51, 94, 223, 165, 116, 18, 214, 112}
-	rootIndex := uint32(2)
-	earnerIndex := uint32(0)
+	rootIndex := int64(2)
+	earnerIndex := int64(0)
 	earnerTreeProof := bytesToUints(earnerLeaf1)
 
-	leaf := types.ExecuteEarnerTreeMerkleLeaf{
+	leaf := rewardscoordinator.PurpleExecuteEarnerTreeMerkleLeaf{
 		Earner:          suite.caller,
 		EarnerTokenRoot: base64.StdEncoding.EncodeToString(tokenRootHash),
 	}
 
-	tokenIndices := []uint32{0}
+	tokenIndices := []int64{0}
 
-	tokenTreeProofs := [][]uint16{append(bytesToUints(leafB), bytesToUints(parentCD)...)} // parent node hash for C, D
+	tokenTreeProofs := [][]int64{append(bytesToUints(leafB), bytesToUints(parentCD)...)} // parent node hash for C, D
 
-	tokenLeaves := []types.TokenTreeMerkleLeaf{
+	tokenLeaves := []rewardscoordinator.PurpleTokenTreeMerkleLeaf{
 		{
 			Token:              suite.tokenAddr,
 			CumulativeEarnings: "30",
@@ -376,16 +377,15 @@ func (suite *rewardsTestSuite) test_ProcessClaim() {
 	}
 
 	// earnerTreeProof, leaf, tokenTreeProofs
-	claim :=
-		types.ExeuteRewardsMerkleClaim{
-			RootIndex:       rootIndex,
-			EarnerIndex:     earnerIndex,
-			EarnerTreeProof: earnerTreeProof,
-			EarnerLeaf:      leaf,
-			TokenIndices:    tokenIndices,
-			TokenTreeProofs: tokenTreeProofs,
-			TokenLeaves:     tokenLeaves,
-		}
+	claim := rewardscoordinator.ProcessClaimClaim{
+		RootIndex:       rootIndex,
+		EarnerIndex:     earnerIndex,
+		EarnerTreeProof: earnerTreeProof,
+		EarnerLeaf:      leaf,
+		TokenIndices:    tokenIndices,
+		TokenTreeProofs: tokenTreeProofs,
+		TokenLeaves:     tokenLeaves,
+	}
 	t.Logf("claim:%+v", claim)
 
 	checkResp, err := rewardsCoordinator.ProcessClaim(context.Background(), claim, suite.caller)
@@ -395,11 +395,11 @@ func (suite *rewardsTestSuite) test_ProcessClaim() {
 	t.Logf("resp:%+v", checkResp)
 }
 
-func bytesToUints(arr []byte) []uint16 {
-	int8Array := make([]uint16, len(arr))
+func bytesToUints(arr []byte) []int64 {
+	int8Array := make([]int64, len(arr))
 
 	for i, b := range arr {
-		int8Array[i] = uint16(b)
+		int8Array[i] = int64(b)
 	}
 
 	return int8Array
