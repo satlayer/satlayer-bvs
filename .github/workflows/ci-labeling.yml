@@ -1,4 +1,4 @@
-name: Release Labeling
+name: CI
 
 on:
   pull_request_target:
@@ -12,7 +12,8 @@ permissions:
   checks: write
 
 jobs:
-  Label:
+  labeler:
+    name: Release Labeler
     runs-on: ubuntu-latest
     steps:
       - uses: fuxingloh/multi-labeler@v4
