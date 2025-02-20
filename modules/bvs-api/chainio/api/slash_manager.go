@@ -5,6 +5,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 
+	slashmanager "github.com/satlayer/satlayer-bvs/bvs-cw/slash-manager"
+
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
@@ -21,10 +23,10 @@ type SlashManager interface {
 
 	BindClient(string)
 
-	SubmitSlashRequest(ctx context.Context, slashDetails types.ExecuteSlashDetails, validatorsPublicKeys []cryptotypes.PubKey) (*coretypes.ResultTx, error)
+	SubmitSlashRequest(ctx context.Context, slashDetails slashmanager.SubmitSlashRequestSlashDetails, validatorsPublicKeys []cryptotypes.PubKey) (*coretypes.ResultTx, error)
 	ExecuteSlashRequest(ctx context.Context, slashHash string, validatorsPublicKeys []cryptotypes.PubKey) (*coretypes.ResultTx, error)
 	CancelSlashRequest(ctx context.Context, slashHash string) (*coretypes.ResultTx, error)
-	SetMinimalSlashSignature(ctx context.Context, minimalSignature uint64) (*coretypes.ResultTx, error)
+	SetMinimalSlashSignature(ctx context.Context, minimalSignature int64) (*coretypes.ResultTx, error)
 	SetSlasher(ctx context.Context, slasher string, value bool) (*coretypes.ResultTx, error)
 	SetSlasherValidator(ctx context.Context, validators []string, values []bool) (*coretypes.ResultTx, error)
 	SetDelegationManager(ctx context.Context, newDelegationManager string) (*coretypes.ResultTx, error)
@@ -83,15 +85,15 @@ func (s *slashManagerImpl) BindClient(contractAddress string) {
 	}
 }
 
-func (s *slashManagerImpl) SubmitSlashRequest(ctx context.Context, slashDetails types.ExecuteSlashDetails, validatorsPublicKeys []cryptotypes.PubKey) (*coretypes.ResultTx, error) {
+func (s *slashManagerImpl) SubmitSlashRequest(ctx context.Context, slashDetails slashmanager.SubmitSlashRequestSlashDetails, validatorsPublicKeys []cryptotypes.PubKey) (*coretypes.ResultTx, error) {
 	var encodedPublicKeys []string
 
 	for _, pubKey := range validatorsPublicKeys {
 		encodedPublicKeys = append(encodedPublicKeys, base64.StdEncoding.EncodeToString(pubKey.Bytes()))
 	}
 
-	executeMsg := types.SubmitSlashRequestReq{
-		SubmitSlashRequest: types.SubmitSlashRequest{
+	executeMsg := slashmanager.ExecuteMsg{
+		SubmitSlashRequest: &slashmanager.SubmitSlashRequest{
 			SlashDetails:         slashDetails,
 			ValidatorsPublicKeys: encodedPublicKeys,
 		},
@@ -138,8 +140,8 @@ func (s *slashManagerImpl) ExecuteSlashRequest(ctx context.Context, slashHash st
 		encodedPublicKeys = append(encodedPublicKeys, base64.StdEncoding.EncodeToString(pubKey.Bytes()))
 	}
 
-	executeMsg := types.ExecuteSlashRequestReq{
-		ExecuteSlashRequest: types.ExecuteSlashRequest{
+	executeMsg := slashmanager.ExecuteMsg{
+		ExecuteSlashRequest: &slashmanager.ExecuteSlashRequest{
 			SlashHash:            slashHash,
 			Signatures:           sigs,
 			ValidatorsPublicKeys: encodedPublicKeys,
@@ -150,8 +152,8 @@ func (s *slashManagerImpl) ExecuteSlashRequest(ctx context.Context, slashHash st
 }
 
 func (s *slashManagerImpl) CancelSlashRequest(ctx context.Context, slashHash string) (*coretypes.ResultTx, error) {
-	executeMsg := types.CancelSlashRequestReq{
-		CancelSlashRequest: types.CancelSlashRequest{
+	executeMsg := slashmanager.ExecuteMsg{
+		CancelSlashRequest: &slashmanager.CancelSlashRequest{
 			SlashHash: slashHash,
 		},
 	}
@@ -159,19 +161,19 @@ func (s *slashManagerImpl) CancelSlashRequest(ctx context.Context, slashHash str
 	return s.execute(ctx, executeMsg)
 }
 
-func (s *slashManagerImpl) SetMinimalSlashSignature(ctx context.Context, minimalSignature uint64) (*coretypes.ResultTx, error) {
-	exeuteMsg := types.SetMinimalSlashSignatureReq{
-		SetMinimalSlashSignature: types.SetMinimalSlashSignature{
+func (s *slashManagerImpl) SetMinimalSlashSignature(ctx context.Context, minimalSignature int64) (*coretypes.ResultTx, error) {
+	executeMsg := slashmanager.ExecuteMsg{
+		SetMinimalSlashSignature: &slashmanager.SetMinimalSlashSignature{
 			MinimalSignature: minimalSignature,
 		},
 	}
 
-	return s.execute(ctx, exeuteMsg)
+	return s.execute(ctx, executeMsg)
 }
 
 func (s *slashManagerImpl) SetSlasher(ctx context.Context, slasher string, value bool) (*coretypes.ResultTx, error) {
-	executeMsg := types.SetSlasherReq{
-		SetSlasher: types.SetSlasher{
+	executeMsg := slashmanager.ExecuteMsg{
+		SetSlasher: &slashmanager.SetSlasher{
 			Slasher: slasher,
 			Value:   value,
 		},
@@ -181,8 +183,8 @@ func (s *slashManagerImpl) SetSlasher(ctx context.Context, slasher string, value
 }
 
 func (s *slashManagerImpl) SetSlasherValidator(ctx context.Context, validators []string, values []bool) (*coretypes.ResultTx, error) {
-	executeMsg := types.SetSlasherValidatorReq{
-		SetSlasherValidator: types.SetSlasherValidator{
+	executeMsg := slashmanager.ExecuteMsg{
+		SetSlasherValidator: &slashmanager.SetSlasherValidator{
 			Validators: validators,
 			Values:     values,
 		},
@@ -192,8 +194,8 @@ func (s *slashManagerImpl) SetSlasherValidator(ctx context.Context, validators [
 }
 
 func (s *slashManagerImpl) SetDelegationManager(ctx context.Context, newDelegationManager string) (*coretypes.ResultTx, error) {
-	executeMsg := types.SetDelegationManagerSlashManagerReq{
-		SetDelegationManager: types.SetDelegationManagerSlashManager{
+	executeMsg := slashmanager.ExecuteMsg{
+		SetDelegationManager: &slashmanager.SetDelegationManager{
 			NewDelegationManager: newDelegationManager,
 		},
 	}
@@ -202,43 +204,49 @@ func (s *slashManagerImpl) SetDelegationManager(ctx context.Context, newDelegati
 }
 
 func (s *slashManagerImpl) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
-	executeMsg := types.SlashPauseReq{}
+	executeMsg := slashmanager.ExecuteMsg{
+		Pause: &slashmanager.Pause{},
+	}
 
 	return s.execute(ctx, executeMsg)
 }
 
 func (s *slashManagerImpl) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
-	executeMsg := types.SlashUnPauseReq{}
+	executeMsg := slashmanager.ExecuteMsg{
+		Unpause: &slashmanager.Unpause{},
+	}
 
 	return s.execute(ctx, executeMsg)
 }
 
 func (s *slashManagerImpl) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
-	executeMsg := types.SetSlashPauserReq{
-		SetPauser: types.SetSlashPauser{NewPauser: newPauser},
+	executeMsg := slashmanager.ExecuteMsg{
+		SetPauser: &slashmanager.SetPauser{NewPauser: newPauser},
 	}
 
 	return s.execute(ctx, executeMsg)
 }
 
 func (s *slashManagerImpl) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
-	executeMsg := types.SetSlashUnpauserReq{
-		SetUnpauser: types.SetSlashUnpauser{NewUnpauser: newUnpauser},
+	executeMsg := slashmanager.ExecuteMsg{
+		SetUnpauser: &slashmanager.SetUnpauser{NewUnpauser: newUnpauser},
 	}
 
 	return s.execute(ctx, executeMsg)
 }
 
 func (s *slashManagerImpl) SetStrategyManager(ctx context.Context, newStrategyManager string) (*coretypes.ResultTx, error) {
-	executeMsg := types.SlashSetStrategyManagerReq{
-		SetStrategyManager: types.SlashSetStrategyManager{NewStrategyManager: newStrategyManager},
+	executeMsg := slashmanager.ExecuteMsg{
+		SetStrategyManager: &slashmanager.SetStrategyManager{NewStrategyManager: newStrategyManager},
 	}
 
 	return s.execute(ctx, executeMsg)
 }
 
 func (s *slashManagerImpl) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
-	executeMsg := types.TransferSlashManagerOwnershipReq{TransferOwnership: types.TransferSlashManagerOwnership{NewOwner: newOwner}}
+	executeMsg := slashmanager.ExecuteMsg{
+		TransferOwnership: &slashmanager.TransferOwnership{NewOwner: newOwner},
+	}
 	return s.execute(ctx, executeMsg)
 }
 
