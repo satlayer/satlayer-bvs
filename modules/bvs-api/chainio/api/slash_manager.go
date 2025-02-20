@@ -37,10 +37,10 @@ type SlashManager interface {
 	SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error)
 	SetStrategyManager(ctx context.Context, newStrategyManager string) (*coretypes.ResultTx, error)
 
-	GetSlashDetails(slashHash string) (*types.GetSlashDetailsResp, error)
-	IsValidator(validator string) (*types.IsValidatorResp, error)
-	GetMinimalSlashSignature() (*types.GetMinimalSlashSignatureResp, error)
-	CalculateSlashHash(sender string, slashDetails types.ExecuteSlashDetails, validatorsPublicKeys []cryptotypes.PubKey) (*types.CalculateSlashHashResp, error)
+	GetSlashDetails(slashHash string) (*slashmanager.SlashDetailsResponse, error)
+	IsValidator(validator string) (*slashmanager.ValidatorResponse, error)
+	GetMinimalSlashSignature() (*slashmanager.MinimalSlashSignatureResponse, error)
+	CalculateSlashHash(sender string, slashDetails slashmanager.CalculateSlashHashSlashDetails, validatorsPublicKeys []cryptotypes.PubKey) (*slashmanager.CalculateSlashHashResponse, error)
 }
 
 type slashManagerImpl struct {
@@ -120,14 +120,29 @@ func (s *slashManagerImpl) ExecuteSlashRequest(ctx context.Context, slashHash st
 	for _, validatorPublicKey := range validatorsPublicKeys {
 		msgHashResp, err := s.CalculateSlashHash(
 			slasherAccount.GetAddress().String(),
-			slashDetails,
+			slashmanager.CalculateSlashHashSlashDetails{
+				Slasher:        slashDetails.Slasher,
+				Operator:       slashDetails.Operator,
+				Share:          slashDetails.Share,
+				SlashSignature: slashDetails.SlashSignature,
+				SlashValidator: slashDetails.SlashValidator,
+				Reason:         slashDetails.Reason,
+				StartTime:      slashDetails.StartTime,
+				EndTime:        slashDetails.EndTime,
+				Status:         slashDetails.Status,
+			},
 			[]cryptotypes.PubKey{validatorPublicKey},
 		)
 		if err != nil {
 			return nil, err
 		}
 
-		sig, err := s.io.GetSigner().Sign(msgHashResp.MessageBytes)
+		// convert from int64 into byte, see SL-184
+		bytes := make([]byte, len(msgHashResp.MessageBytes))
+		for i, v := range msgHashResp.MessageBytes {
+			bytes[i] = byte(v)
+		}
+		sig, err := s.io.GetSigner().Sign(bytes)
 		if err != nil {
 			return nil, err
 		}
@@ -272,9 +287,9 @@ func (s *slashManagerImpl) query(msg any) (*wasmtypes.QuerySmartContractStateRes
 	return s.io.QueryContract(*s.queryOptions)
 }
 
-func (s *slashManagerImpl) GetSlashDetails(slashHash string) (*types.GetSlashDetailsResp, error) {
-	queryMsg := types.GetSlashDetailsReq{
-		GetSlashDetails: types.GetSlashDetails{
+func (s *slashManagerImpl) GetSlashDetails(slashHash string) (*slashmanager.SlashDetailsResponse, error) {
+	queryMsg := slashmanager.QueryMsg{
+		GetSlashDetails: &slashmanager.GetSlashDetails{
 			SlashHash: slashHash,
 		},
 	}
@@ -284,7 +299,7 @@ func (s *slashManagerImpl) GetSlashDetails(slashHash string) (*types.GetSlashDet
 		return nil, err
 	}
 
-	var result types.GetSlashDetailsResp
+	var result slashmanager.SlashDetailsResponse
 	if err := json.Unmarshal(resp.Data, &result); err != nil {
 		return nil, err
 	}
@@ -292,9 +307,9 @@ func (s *slashManagerImpl) GetSlashDetails(slashHash string) (*types.GetSlashDet
 	return &result, nil
 }
 
-func (s *slashManagerImpl) IsValidator(validator string) (*types.IsValidatorResp, error) {
-	queryMsg := types.IsValidatorReq{
-		IsValidator: types.IsValidator{
+func (s *slashManagerImpl) IsValidator(validator string) (*slashmanager.ValidatorResponse, error) {
+	queryMsg := slashmanager.QueryMsg{
+		IsValidator: &slashmanager.IsValidator{
 			Validator: validator,
 		},
 	}
@@ -304,7 +319,7 @@ func (s *slashManagerImpl) IsValidator(validator string) (*types.IsValidatorResp
 		return nil, err
 	}
 
-	var result types.IsValidatorResp
+	var result slashmanager.ValidatorResponse
 	if err := json.Unmarshal(resp.Data, &result); err != nil {
 		return nil, err
 	}
@@ -312,15 +327,17 @@ func (s *slashManagerImpl) IsValidator(validator string) (*types.IsValidatorResp
 	return &result, nil
 }
 
-func (s *slashManagerImpl) GetMinimalSlashSignature() (*types.GetMinimalSlashSignatureResp, error) {
-	queryMsg := types.GetMinimalSlashSignatureReq{}
+func (s *slashManagerImpl) GetMinimalSlashSignature() (*slashmanager.MinimalSlashSignatureResponse, error) {
+	queryMsg := slashmanager.QueryMsg{
+		GetMinimalSlashSignature: &slashmanager.GetMinimalSlashSignature{},
+	}
 
 	resp, err := s.query(queryMsg)
 	if err != nil {
 		return nil, err
 	}
 
-	var result types.GetMinimalSlashSignatureResp
+	var result slashmanager.MinimalSlashSignatureResponse
 	if err := json.Unmarshal(resp.Data, &result); err != nil {
 		return nil, err
 	}
@@ -330,17 +347,17 @@ func (s *slashManagerImpl) GetMinimalSlashSignature() (*types.GetMinimalSlashSig
 
 func (s *slashManagerImpl) CalculateSlashHash(
 	sender string,
-	slashDetails types.ExecuteSlashDetails,
+	slashDetails slashmanager.CalculateSlashHashSlashDetails,
 	validatorsPublicKeys []cryptotypes.PubKey,
-) (*types.CalculateSlashHashResp, error) {
+) (*slashmanager.CalculateSlashHashResponse, error) {
 	var encodedPublicKeys []string
 
 	for _, pubKey := range validatorsPublicKeys {
 		encodedPublicKeys = append(encodedPublicKeys, base64.StdEncoding.EncodeToString(pubKey.Bytes()))
 	}
 
-	queryMsg := types.CalculateSlashHashReq{
-		CalculateSlashHash: types.CalculateSlashHash{
+	queryMsg := slashmanager.QueryMsg{
+		CalculateSlashHash: &slashmanager.CalculateSlashHash{
 			Sender:               sender,
 			SlashDetails:         slashDetails,
 			ValidatorsPublicKeys: encodedPublicKeys,
@@ -352,7 +369,7 @@ func (s *slashManagerImpl) CalculateSlashHash(
 		return nil, err
 	}
 
-	var result types.CalculateSlashHashResp
+	var result slashmanager.CalculateSlashHashResponse
 	if err := json.Unmarshal(resp.Data, &result); err != nil {
 		return nil, err
 	}

@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	slashmanager "github.com/satlayer/satlayer-bvs/bvs-cw/slash-manager"
+
 	"github.com/satlayer/satlayer-bvs/babylond/bvs"
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
@@ -13,7 +15,6 @@ import (
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
 )
 
 type slashManagerTestSuite struct {
@@ -59,7 +60,7 @@ func (suite *slashManagerTestSuite) Test_SetMinimalSlashSignature() {
 		suite.Require().NoError(err)
 	}
 
-	minimalSignature := uint64(1)
+	minimalSignature := int64(1)
 	txResp, err := slashApi.SetMinimalSlashSignature(context.Background(), minimalSignature)
 	assert.NoError(t, err, "SetMinimalSlashSignature failed")
 	assert.NotNil(t, txResp, "response nil")
@@ -362,7 +363,7 @@ func (suite *slashManagerTestSuite) Test_CalculateSlashHash() {
 	slashApi.WithGasLimit(300000)
 
 	sender := "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
-	slashDetails := types.ExecuteSlashDetails{
+	slashDetails := slashmanager.CalculateSlashHashSlashDetails{
 		Slasher:        sender,
 		Operator:       "bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
 		Share:          "10000",
