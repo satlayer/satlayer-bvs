@@ -498,19 +498,6 @@ fn emit_exchange_rate(
     Ok(Response::new().add_event(event))
 }
 
-pub fn migrate(
-    deps: DepsMut,
-    _env: Env,
-    info: &MessageInfo,
-    _msg: MigrateMsg,
-) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), info)?;
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    Ok(Response::new().add_attribute("method", "migrate"))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1243,30 +1230,6 @@ mod tests {
             Err(e) => {
                 panic!("Failed to convert underlying to shares: {:?}", e);
             }
-        }
-    }
-
-    #[test]
-    fn test_migrate_owner_vs_non_owner() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, _token, _strategy_manager) =
-            instantiate_contract();
-
-        let migrate_msg = MigrateMsg {};
-        let res = migrate(deps.as_mut(), env.clone(), &info, migrate_msg.clone()).unwrap();
-
-        assert_eq!(res, Response::new().add_attribute("method", "migrate"));
-
-        let version = get_contract_version(deps.as_ref().storage).unwrap();
-        assert_eq!(version.contract, CONTRACT_NAME);
-        assert_eq!(version.version, CONTRACT_VERSION);
-
-        let non_owner_info = message_info(&Addr::unchecked("not_owner"), &[]);
-
-        let res = migrate(deps.as_mut(), env, &non_owner_info, migrate_msg);
-
-        match res {
-            Err(ContractError::Unauthorized {}) => {}
-            _ => panic!("Expected Unauthorized error"),
         }
     }
 
