@@ -24,6 +24,7 @@
       <sourceFolder url="file://$MODULE_DIR$/common/bvs/testing/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludePattern pattern=".turbo" />
+      <excludePattern pattern="Cargo.lock" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
