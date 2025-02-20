@@ -199,7 +199,7 @@ pub fn register_operator(
     }
 
     let message_bytes = calculate_digest_hash(
-        env,
+        env.block.chain_id,
         &public_key,
         &info.sender,
         &operator_signature.salt,
@@ -401,7 +401,7 @@ fn query_calculate_digest_hash(
     params: DigestHashParams,
 ) -> StdResult<DigestHashResponse> {
     let digest_hash = calculate_digest_hash(
-        env,
+        env.block.chain_id,
         &params.operator_public_key,
         &params.bvs,
         &params.salt,
@@ -662,7 +662,7 @@ mod tests {
             Addr::unchecked("osmo1wsjhxj3nl8kmrudsxlf7c40yw6crv4pcrk0twvvsp9jmyr675wjqc8t6an");
 
         let message_byte = calculate_digest_hash(
-            env.clone(),
+            env.clone().block.chain_id,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -759,7 +759,7 @@ mod tests {
             Addr::unchecked("osmo1wsjhxj3nl8kmrudsxlf7c40yw6crv4pcrk0twvvsp9jmyr675wjqc8t6an");
 
         let message_byte = calculate_digest_hash(
-            env.clone(),
+            env.clone().block.chain_id,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -957,7 +957,7 @@ mod tests {
             Addr::unchecked("osmo1wsjhxj3nl8kmrudsxlf7c40yw6crv4pcrk0twvvsp9jmyr675wjqc8t6an");
 
         let message_byte = calculate_digest_hash(
-            env.clone(),
+            env.clone().block.chain_id,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -1098,7 +1098,7 @@ mod tests {
             from_json(query(deps.as_ref(), env.clone(), query_msg).unwrap()).unwrap();
 
         let expected_digest_hash = calculate_digest_hash(
-            env.clone(),
+            env.clone().block.chain_id,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -1129,7 +1129,7 @@ mod tests {
             Addr::unchecked("osmo1wsjhxj3nl8kmrudsxlf7c40yw6crv4pcrk0twvvsp9jmyr675wjqc8t6an");
 
         let message_byte = calculate_digest_hash(
-            env.clone(),
+            env.clone().block.chain_id,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -1279,7 +1279,7 @@ mod tests {
             Addr::unchecked("osmo1dhpupjecw7ltsckrckd4saraaf2266aq2dratwyjtwz5p7476yxspgc6td");
 
         let message_byte = calculate_digest_hash(
-            env.clone(),
+            env.clone().block.chain_id,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -1350,7 +1350,7 @@ mod tests {
             Addr::unchecked("osmo1dhpupjecw7ltsckrckd4saraaf2266aq2dratwyjtwz5p7476yxspgc6td");
 
         let message_byte = calculate_digest_hash(
-            env.clone(),
+            env.clone().block.chain_id,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,

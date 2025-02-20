@@ -30,7 +30,7 @@ func Test_GetOperator(t *testing.T) {
 
 func Test_CalcDigestHash(t *testing.T) {
 	salt := "salt"
-	expire := uint64(1000)
+	expire := int64(1000)
 	directory.CalcDigestHash(directoryKeyName, salt, expire)
 }
 

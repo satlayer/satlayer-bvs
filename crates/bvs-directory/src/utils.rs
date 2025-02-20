@@ -1,5 +1,5 @@
 use cosmwasm_crypto::secp256k1_verify;
-use cosmwasm_std::{Addr, Binary, Env, StdResult};
+use cosmwasm_std::{Addr, Binary, StdResult};
 use sha2::{Digest, Sha256};
 
 pub const OPERATOR_BVS_REGISTRATION_TYPEHASH: &[u8] =
@@ -23,7 +23,7 @@ pub struct DigestHashParams {
 }
 
 pub fn calculate_digest_hash(
-    env: Env,
+    chain_id: String,
     operator_public_key: &[u8],
     bvs: &Addr,
     salt: &Binary,
@@ -44,7 +44,7 @@ pub fn calculate_digest_hash(
         &[
             &sha256(DOMAIN_TYPEHASH)[..],
             &sha256(DOMAIN_NAME)[..],
-            env.block.chain_id.as_bytes(),
+            chain_id.as_bytes(),
             contract_addr.as_bytes(),
         ]
         .concat(),

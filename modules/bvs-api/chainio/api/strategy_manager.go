@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	strategymanager "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-manager"
+
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
@@ -480,7 +482,9 @@ func (a *strategyManagerImpl) GetDomainName() (*wasmtypes.QuerySmartContractStat
 }
 
 func (a *strategyManagerImpl) GetDelegationManager() (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := types.GetDelegationManagerReq{}
+	msg := strategymanager.QueryMsg{
+		GetDelegationManager: &strategymanager.GetDelegationManager{},
+	}
 
 	return a.query(msg)
 }

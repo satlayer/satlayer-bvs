@@ -37,7 +37,7 @@ func NewService() *Service {
 		panic("Contract address for Strategy Factory is empty!")
 	}
 
-	strategyFactory := api.NewStrategyFactoryImpl(chainIO, conf.C.Contract.StrategyFactory).WithGasLimit(2000000)
-	strategyFactory.BindClient(conf.C.Contract.StrategyFactory)
-	return &Service{ChainIO: chainIO, StrategyFactory: strategyFactory}
+	factoryApi := api.NewStrategyFactoryImpl(chainIO).WithGasLimit(2000000)
+	factoryApi.BindClient(conf.C.Contract.StrategyFactory)
+	return &Service{ChainIO: chainIO, StrategyFactory: factoryApi}
 }

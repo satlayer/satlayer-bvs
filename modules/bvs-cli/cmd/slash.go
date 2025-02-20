@@ -41,7 +41,7 @@ func slashCmd() *cobra.Command {
 		Short: "To set the minimal slash signature.",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			signature, err := strconv.ParseUint(args[1], 10, 64)
+			signature, err := strconv.ParseInt(args[1], 10, 64)
 			if err != nil {
 				fmt.Printf("Error: %v\n", err)
 				return
@@ -115,9 +115,9 @@ func slashCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			keyNames := strings.Split(args[0], ",")
 			slashValidators := strings.Split(args[5], ",")
-			slashSignature, _ := strconv.ParseUint(args[4], 10, 64)
-			startTime, _ := strconv.ParseUint(args[7], 10, 64)
-			endTime, _ := strconv.ParseUint(args[8], 10, 64)
+			slashSignature, _ := strconv.ParseInt(args[4], 10, 64)
+			startTime, _ := strconv.ParseInt(args[7], 10, 64)
+			endTime, _ := strconv.ParseInt(args[8], 10, 64)
 			status, _ := strconv.ParseBool(args[9])
 			slash.SubmitSlashRequest(keyNames, args[1], args[2], args[3], slashSignature, slashValidators, args[6], startTime, endTime, status)
 		},
@@ -177,11 +177,11 @@ func slashCmd() *cobra.Command {
 			slasher := args[2]
 			operator := args[3]
 			share := args[4]
-			slashSignature, _ := strconv.ParseUint(args[5], 10, 64)
+			slashSignature, _ := strconv.ParseInt(args[5], 10, 64)
 			slashValidators := strings.Split(args[6], ",")
 			reason := args[7]
-			startTime, _ := strconv.ParseUint(args[8], 10, 64)
-			endTime, _ := strconv.ParseUint(args[9], 10, 64)
+			startTime, _ := strconv.ParseInt(args[8], 10, 64)
+			endTime, _ := strconv.ParseInt(args[9], 10, 64)
 			status, _ := strconv.ParseBool(args[10])
 
 			slash.CalculateSlashHash(keyNames, sender, slasher, operator, share, slashSignature, slashValidators, reason, startTime, endTime, status)
