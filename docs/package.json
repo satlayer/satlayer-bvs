@@ -17,7 +17,7 @@
   },
   "prettier": "@packages/config-prettier",
   "dependencies": {
-    "@tailwindcss/postcss": "^4.0.4",
+    "@tailwindcss/postcss": "^4.0.7",
     "next": "^15.1.7",
     "nextra": "^4.2.4",
     "nextra-theme-docs": "^4.2.7",
