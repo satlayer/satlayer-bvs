@@ -5,8 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 
-	slashmanager "github.com/satlayer/satlayer-bvs/bvs-cw/slash-manager"
-
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
@@ -14,6 +12,7 @@ import (
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
+	slashmanager "github.com/satlayer/satlayer-bvs/bvs-cw/slash-manager"
 )
 
 type SlashManager interface {

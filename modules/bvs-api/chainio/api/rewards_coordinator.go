@@ -10,6 +10,7 @@ import (
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
+	rewardscoordinator "github.com/satlayer/satlayer-bvs/bvs-cw/rewards-coordinator"
 )
 
 type RewardsCoordinator interface {
@@ -173,28 +174,33 @@ func (a *rewardsCoordinatorImpl) SetGlobalOperatorCommission(ctx context.Context
 }
 
 func (a *rewardsCoordinatorImpl) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
-	msg := types.PauseReq{}
+	msg := rewardscoordinator.ExecuteMsg{
+		Pause: &rewardscoordinator.Pause{},
+	}
 
 	return a.execute(ctx, msg)
 }
 
 func (a *rewardsCoordinatorImpl) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
-	msg := types.UnPauseReq{}
-
+	msg := rewardscoordinator.ExecuteMsg{
+		Unpause: &rewardscoordinator.Unpause{},
+	}
 	return a.execute(ctx, msg)
 }
 
 func (a *rewardsCoordinatorImpl) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
-	msg := types.SetPauserReq{
-		SetPauser: types.SetPauser{NewPauser: newPauser},
+	msg := rewardscoordinator.ExecuteMsg{
+		SetPauser: &rewardscoordinator.SetPauser{
+			NewPauser: newPauser,
+		},
 	}
 
 	return a.execute(ctx, msg)
 }
 
 func (a *rewardsCoordinatorImpl) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
-	msg := types.SetUnpauserReq{
-		SetUnpauser: types.SetUnpauser{NewUnpauser: newUnpauser},
+	msg := rewardscoordinator.ExecuteMsg{
+		SetUnpauser: &rewardscoordinator.SetUnpauser{NewUnpauser: newUnpauser},
 	}
 
 	return a.execute(ctx, msg)

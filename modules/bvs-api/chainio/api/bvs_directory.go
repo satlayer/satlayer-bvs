@@ -5,8 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 
-	"github.com/satlayer/satlayer-bvs/bvs-cw/directory"
-
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
@@ -14,6 +12,7 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
 	"github.com/satlayer/satlayer-bvs/bvs-api/utils"
+	"github.com/satlayer/satlayer-bvs/bvs-cw/directory"
 )
 
 type BVSDirectory interface {

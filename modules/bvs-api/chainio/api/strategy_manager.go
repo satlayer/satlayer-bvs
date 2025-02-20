@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	strategymanager "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-manager"
-
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
@@ -15,6 +13,7 @@ import (
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
+	strategymanager "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-manager"
 )
 
 type StrategyManager interface {
@@ -271,8 +270,8 @@ func (a *strategyManagerImpl) AddShares(ctx context.Context, staker string, toke
 }
 
 func (a *strategyManagerImpl) SetDelegationManager(ctx context.Context, newDelegationManager string) (*coretypes.ResultTx, error) {
-	msg := types.SetDelegationManagerReq{
-		SetDelegationManager: types.SetDelegationManager{
+	msg := strategymanager.ExecuteMsg{
+		SetDelegationManager: &strategymanager.SetDelegationManager{
 			NewDelegationManager: newDelegationManager,
 		},
 	}
@@ -281,28 +280,32 @@ func (a *strategyManagerImpl) SetDelegationManager(ctx context.Context, newDeleg
 }
 
 func (a *strategyManagerImpl) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
-	msg := types.PauseReq{}
+	msg := strategymanager.ExecuteMsg{
+		Pause: &strategymanager.Pause{},
+	}
 
 	return a.execute(ctx, msg)
 }
 
 func (a *strategyManagerImpl) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
-	msg := types.UnPauseReq{}
+	msg := strategymanager.ExecuteMsg{
+		Unpause: &strategymanager.Unpause{},
+	}
 
 	return a.execute(ctx, msg)
 }
 
 func (a *strategyManagerImpl) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
-	msg := types.SetPauserReq{
-		SetPauser: types.SetPauser{NewPauser: newPauser},
+	msg := strategymanager.ExecuteMsg{
+		SetPauser: &strategymanager.SetPauser{NewPauser: newPauser},
 	}
 
 	return a.execute(ctx, msg)
 }
 
 func (a *strategyManagerImpl) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
-	msg := types.SetUnpauserReq{
-		SetUnpauser: types.SetUnpauser{NewUnpauser: newUnpauser},
+	msg := strategymanager.ExecuteMsg{
+		SetUnpauser: &strategymanager.SetUnpauser{NewUnpauser: newUnpauser},
 	}
 
 	return a.execute(ctx, msg)
