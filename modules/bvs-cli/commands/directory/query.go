@@ -1,7 +1,6 @@
 package directory
 
 import (
-	"encoding/hex"
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -20,7 +19,7 @@ func GetOperator(operatorAddress string) {
 	fmt.Printf("%s\n", result)
 }
 
-func CalcDigestHash(userKeyName, salt string, expire uint64) {
+func CalcDigestHash(userKeyName, salt string, expire int64) {
 	s := NewService()
 	newChainIO, err := s.ChainIO.SetupKeyring(userKeyName, conf.C.Account.KeyringBackend)
 	if err != nil {
@@ -34,8 +33,7 @@ func CalcDigestHash(userKeyName, salt string, expire uint64) {
 		fmt.Printf("Calculate digest hash error! %+v\n", err)
 		return
 	}
-	result := hex.EncodeToString(resp.DigestHash)
-	fmt.Printf("%s\n", string(result))
+	fmt.Printf("%s\n", resp.DigestHash)
 }
 
 func IsSaltSpent(operatorAddress, salt string) {
@@ -45,7 +43,7 @@ func IsSaltSpent(operatorAddress, salt string) {
 		fmt.Printf("Is salt spent error! %+v\n", err)
 		return
 	}
-	result := resp.IsSpent
+	result := resp.IsSaltSpent
 	fmt.Printf("%t\n", result)
 }
 
@@ -67,8 +65,7 @@ func GetOwner() {
 		fmt.Printf("Get owner error! %+v\n", err)
 		return
 	}
-	result := resp.OwnerAddr
-	fmt.Printf("%s\n", *result)
+	fmt.Printf("%s\n", resp.OwnerAddr)
 }
 
 func GetOperatorBVSRegistrationTypeHash() {
@@ -78,7 +75,7 @@ func GetOperatorBVSRegistrationTypeHash() {
 		fmt.Printf("Get operator BVS registration type hash error! %+v\n", err)
 		return
 	}
-	result := resp.OperatorBVSRegistrationTypeHash
+	result := resp.OperatorBvsRegistrationTypeHash
 	fmt.Printf("%s\n", result)
 }
 
@@ -111,5 +108,5 @@ func GetBVSInfo(BVSHash string) {
 		fmt.Printf("Get BVS info error! %s\n", err)
 		return
 	}
-	fmt.Printf("BVSContract: %s\n", resp.BVSContract)
+	fmt.Printf("BVSContract: %s\n", resp.BvsContract)
 }

@@ -60,7 +60,7 @@ func NewUploader() *Uploader {
 	return &Uploader{
 		chainIO:            client,
 		delegation:         delegation,
-		bvsContract:        txResp.BVSContract,
+		bvsContract:        txResp.BvsContract,
 		rewardsCoordinator: rewardsCoordinator,
 	}
 }

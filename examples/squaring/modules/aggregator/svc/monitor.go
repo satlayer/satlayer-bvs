@@ -71,7 +71,7 @@ func NewMonitor() *Monitor {
 	bvsDirectoryApi := api.NewBVSDirectoryImpl(chainIO, core.C.Chain.BvsDirectory)
 
 	return &Monitor{
-		bvsContract:     txResp.BVSContract,
+		bvsContract:     txResp.BvsContract,
 		bvsDirectoryApi: bvsDirectoryApi,
 		chainIO:         chainIO,
 	}

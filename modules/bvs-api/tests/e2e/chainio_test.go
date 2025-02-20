@@ -44,9 +44,9 @@ func (suite *ioTestSuite) Test_QueryContract() {
 	assert.NoError(t, err)
 	account, err := chainIO.GetCurrentAccount()
 	assert.NoError(t, err, "get account")
-	queryMsg, err := json.Marshal(types.GetOperatorStatusReq{GetOperatorStatus: types.GetOperatorStatus{
+	queryMsg, err := json.Marshal(directory.QueryMsg{GetOperatorStatus: &directory.GetOperatorStatus{
 		Operator: account.GetAddress().String(),
-		BVS:      account.GetAddress().String(),
+		Bvs:      account.GetAddress().String(),
 	}})
 	assert.NoError(t, err, "marshal query msg")
 	QueryOptions := types.QueryOptions{
@@ -64,7 +64,7 @@ func (suite *ioTestSuite) Test_QueryTransaction() {
 	chainIO, err := suite.chainIO.SetupKeyring("caller", "test")
 	assert.NoError(t, err)
 
-	executeMsgBytes, _ := json.Marshal(&types.UpdateMetadataURIReq{UpdateMetadataURI: types.UpdateMetadataURI{MetadataURI: "example.com"}})
+	executeMsgBytes, _ := json.Marshal(&directory.ExecuteMsg{UpdateBVSMetadataURI: &directory.UpdateBVSMetadataURI{MetadataURI: "example.com"}})
 	assert.NoError(t, err, "marshal execute msg")
 	executeOptions := types.ExecuteOptions{
 		ContractAddr:  suite.directory.Address,

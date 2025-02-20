@@ -73,7 +73,7 @@ func NewNode() *Node {
 	stateBank := api.NewStateBankImpl(chainIO)
 
 	return &Node{
-		bvsContract: txResp.BVSContract,
+		bvsContract: txResp.BvsContract,
 		stateBank:   stateBank,
 		chainIO:     chainIO,
 		pubKeyStr:   pubKeyStr,

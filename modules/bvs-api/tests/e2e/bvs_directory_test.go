@@ -247,7 +247,7 @@ func (suite *bvsDirectoryTestSuite) Test_CalculateDigestHash() {
 	assert.NoError(t, err)
 	nodeStatus, err := chainIO.QueryNodeStatus(context.Background())
 	assert.NoError(t, err, "query node status")
-	expiry := uint64(nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000)
+	expiry := nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000
 	randomStr, err := utils.GenerateRandomString(16)
 	assert.NoError(t, err, "GenerateRandomString")
 	salt := "salt" + randomStr
