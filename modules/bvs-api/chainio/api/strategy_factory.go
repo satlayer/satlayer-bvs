@@ -256,7 +256,7 @@ func (s *strategyFactoryImpl) IsTokenBlacklisted(token string) (*strategyfactory
 	return &res, err
 }
 
-func NewStrategyFactoryImpl(chainIO io.ChainIO, contractAddr string) StrategyFactory {
+func NewStrategyFactoryImpl(chainIO io.ChainIO) StrategyFactory {
 	return &strategyFactoryImpl{
 		io:            chainIO,
 		gasAdjustment: 1.2,
