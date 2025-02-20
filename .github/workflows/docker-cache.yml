@@ -22,3 +22,5 @@ jobs:
       - uses: ./.github/actions/setup
 
       - run: turbo build:wasm
+        env:
+          DOCKER_CACHE_TO: ghcr
