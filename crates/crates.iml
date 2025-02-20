@@ -20,7 +20,10 @@
       <sourceFolder url="file://$MODULE_DIR$/common/bvs/base/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-state-bank/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/common/bvs/test-utils/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-directory/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/common/bvs/testing/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
+      <excludePattern pattern=".turbo" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
   </component>

@@ -34,7 +34,7 @@ func Test_SetDelegationManager(t *testing.T) {
 }
 
 func Test_SetMinimalSlashSignature(t *testing.T) {
-	minimalSignature := uint64(1)
+	minimalSignature := int64(1)
 	slash.SetMinimalSlashSignature(slashKeyName, minimalSignature)
 }
 
