@@ -19,7 +19,7 @@ const command = [
 if (process.env.CI) {
   command.push("--cache-from", `type=registry,ref=ghcr.io/satlayer/cosmwasm-optimizer-cache:${crate}`);
 
-  if (process.env.GITHUB_REF_NAME === "main") {
+  if (process.env.DOCKER_CACHE_TO === "ghcr") {
     command.push("--cache-to", `type=registry,ref=ghcr.io/satlayer/cosmwasm-optimizer-cache:${crate},mode=max`);
   }
 }
