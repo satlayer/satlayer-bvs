@@ -27,7 +27,7 @@ func InitMonitor() {
 
 type Monitor struct {
 	bvsContract     string
-	bvsDirectoryApi api.BVSDirectory
+	bvsDirectoryApi api.BvsDirectory
 	chainIO         io.ChainIO
 }
 
@@ -64,11 +64,11 @@ func NewMonitor() *Monitor {
 	}
 
 	// get bvs contract
-	txResp, err := api.NewBVSDirectoryImpl(chainIO, core.C.Chain.BvsDirectory).GetBVSInfo(core.C.Chain.BvsHash)
+	txResp, err := api.NewBvsDirectory(chainIO, core.C.Chain.BvsDirectory).GetBVSInfo(core.C.Chain.BvsHash)
 	if err != nil {
 		panic(err)
 	}
-	bvsDirectoryApi := api.NewBVSDirectoryImpl(chainIO, core.C.Chain.BvsDirectory)
+	bvsDirectoryApi := api.NewBvsDirectory(chainIO, core.C.Chain.BvsDirectory)
 
 	return &Monitor{
 		bvsContract:     txResp.BvsContract,

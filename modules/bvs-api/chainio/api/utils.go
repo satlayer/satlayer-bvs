@@ -28,6 +28,8 @@ type increaseAllowance struct {
 	Amount  string `json:"amount"`
 }
 
+// TODO: this is cw20 code, should not be here.
+
 func IncreaseTokenAllowance(ctx context.Context, chainIO io.ChainIO, amount uint64, tokenContractAddr, spenderAddr string, gasPrice sdktypes.DecCoin) (*coretypes.ResultTx, error) {
 	msg := increaseAllowanceReq{
 		IncreaseAllowance: increaseAllowance{

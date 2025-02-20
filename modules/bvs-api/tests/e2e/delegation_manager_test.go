@@ -88,7 +88,7 @@ func (suite *delegationTestSuite) SetupSuite() {
 	suite.Require().NoError(err, "setup keyring")
 
 	ctx := context.Background()
-	txResp, err := delegationApi.RegisterAsOperator(ctx, getPubKeyFromKeychainByUid(chainIO, "operator1"), "", "0", "", 0)
+	txResp, err := delegationApi.RegisterAsOperator(ctx, GetPubKeyFromKeychainByUid(chainIO, "operator1"), "", "0", "", 0)
 	suite.Require().NoError(err, "register as operator")
 	suite.Require().NotNil(txResp, "tx resp is nil")
 }
@@ -105,7 +105,7 @@ func (suite *delegationTestSuite) test_RegisterAsOperator() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	accountPubKey := getPubKeyFromKeychainByUid(chainIO, "operator1")
+	accountPubKey := GetPubKeyFromKeychainByUid(chainIO, "operator1")
 
 	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr).WithGasLimit(400000)
 
@@ -198,10 +198,10 @@ func (suite *delegationTestSuite) Test_DelegateToBySignatureAndUnDelegate() {
 	assert.NoError(t, err)
 	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
 
-	stakerAccountPubKey := getPubKeyFromKeychainByAddress(chainIO, "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk")
+	stakerAccountPubKey := GetPubKeyFromKeychainByAddress(chainIO, "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk")
 	assert.NoError(t, err, "get account")
 
-	approverAccountPubKey := getPubKeyFromKeychainByAddress(chainIO, "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv")
+	approverAccountPubKey := GetPubKeyFromKeychainByAddress(chainIO, "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv")
 	assert.NoError(t, err, "get account")
 
 	txResp, err := delegation.DelegateToBySignature(
@@ -570,7 +570,7 @@ func (suite *delegationTestSuite) Test_CalculateCurrentStakerDelegationDigestHas
 	assert.NoError(t, err)
 	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
 
-	stakeAccountPubKey := getPubKeyFromKeychainByUid(chainIO, "caller")
+	stakeAccountPubKey := GetPubKeyFromKeychainByUid(chainIO, "caller")
 	assert.NoError(t, err, "get account")
 	nodeStatus, err := chainIO.QueryNodeStatus(context.Background())
 	assert.NoError(t, err, "query node status")
@@ -597,7 +597,7 @@ func (suite *delegationTestSuite) Test_StakerDelegationDigestHash() {
 	assert.NoError(t, err)
 	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
 
-	stakerPubKey := getPubKeyFromKeychainByUid(chainIO, "staker1")
+	stakerPubKey := GetPubKeyFromKeychainByUid(chainIO, "staker1")
 	assert.NoError(t, err, "get account")
 	nodeStatus, err := chainIO.QueryNodeStatus(context.Background())
 	assert.NoError(t, err, "query node status")
@@ -632,7 +632,7 @@ func (suite *delegationTestSuite) Test_DelegationApprovalDigestHash() {
 	assert.NoError(t, err, "generate random string")
 	salt := "salt" + randomStr
 
-	approvePubKey := getPubKeyFromKeychainByUid(chainIO, "aggregator")
+	approvePubKey := GetPubKeyFromKeychainByUid(chainIO, "aggregator")
 	assert.NoError(t, err, "get account")
 
 	req := delegationmanager.QueryApproverDigestHashParams{

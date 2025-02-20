@@ -15,7 +15,7 @@ import (
 
 type Service struct {
 	ChainIO   io.ChainIO
-	Directory api.BVSDirectory
+	Directory *api.BvsDirectory
 }
 
 func NewService() *Service {
@@ -32,6 +32,6 @@ func NewService() *Service {
 	if err != nil {
 		panic(err)
 	}
-	directory := api.NewBVSDirectoryImpl(chainIO, conf.C.Contract.Directory)
+	directory := api.NewBvsDirectory(chainIO, conf.C.Contract.Directory)
 	return &Service{ChainIO: chainIO, Directory: directory}
 }

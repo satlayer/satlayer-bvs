@@ -47,7 +47,7 @@ func NewUploader() *Uploader {
 		panic(err)
 	}
 
-	txResp, err := api.NewBVSDirectoryImpl(client, core.C.Chain.BVSDirectory).GetBVSInfo(core.C.Chain.BVSHash)
+	txResp, err := api.NewBvsDirectory(client, core.C.Chain.BVSDirectory).GetBVSInfo(core.C.Chain.BVSHash)
 	if err != nil {
 		panic(err)
 	}
