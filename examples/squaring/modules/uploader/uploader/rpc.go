@@ -5,12 +5,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	rewardscoordinator "github.com/satlayer/satlayer-bvs/bvs-cw/rewards-coordinator"
 	"math"
 	"strconv"
 	"time"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
+	rewardscoordinator "github.com/satlayer/satlayer-bvs/bvs-cw/rewards-coordinator"
 )
 
 const calcInterval = 86_400 // 1 day

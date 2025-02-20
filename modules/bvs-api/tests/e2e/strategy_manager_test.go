@@ -5,8 +5,6 @@ import (
 	"encoding/base64"
 	"testing"
 
-	strategymanager "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-manager"
-
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/satlayer/satlayer-bvs/babylond"
 	"github.com/satlayer/satlayer-bvs/babylond/bvs"
@@ -16,6 +14,7 @@ import (
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
+	strategymanager "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-manager"
 )
 
 const managerAddr = "bbn1mju0w4qagjcgtrgepr796zmg083qurq9sngy0eyxm8wzf78cjt3qzfq7qy"
