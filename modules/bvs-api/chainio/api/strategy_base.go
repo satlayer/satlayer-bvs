@@ -11,6 +11,7 @@ import (
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
+	strategybase "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-base"
 )
 
 type StrategyBase interface {
@@ -88,8 +89,8 @@ func (a *strategyBaseImpl) execute(ctx context.Context, msg any) (*coretypes.Res
 }
 
 func (a *strategyBaseImpl) Deposit(ctx context.Context, amount uint64) (*coretypes.ResultTx, error) {
-	msg := types.DepositReq{
-		Deposit: types.Deposit{
+	msg := strategybase.ExecuteMsg{
+		Deposit: &strategybase.Deposit{
 			Amount: fmt.Sprintf("%d", amount),
 		},
 	}
@@ -98,8 +99,8 @@ func (a *strategyBaseImpl) Deposit(ctx context.Context, amount uint64) (*coretyp
 }
 
 func (a *strategyBaseImpl) Withdraw(ctx context.Context, recipient string, amountShares uint64) (*coretypes.ResultTx, error) {
-	msg := types.WithdrawReq{
-		Withdraw: types.Withdraw{
+	msg := strategybase.ExecuteMsg{
+		Withdraw: &strategybase.Withdraw{
 			Recipient:    recipient,
 			AmountShares: fmt.Sprintf("%d", amountShares),
 		},
@@ -120,8 +121,8 @@ func (a *strategyBaseImpl) sendQuery(msg any) (*wasmtypes.QuerySmartContractStat
 }
 
 func (a *strategyBaseImpl) GetShares(staker string, strategy string) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := types.GetSharesReq{
-		GetShares: types.GetShares{
+	msg := strategybase.QueryMsg{
+		GetShares: &strategybase.GetShares{
 			Staker:   staker,
 			Strategy: strategy,
 		},
@@ -131,8 +132,8 @@ func (a *strategyBaseImpl) GetShares(staker string, strategy string) (*wasmtypes
 }
 
 func (a *strategyBaseImpl) SharesToUnderlyingView(amountShares uint64) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := types.SharesToUnderlyingViewReq{
-		SharesToUnderlyingView: types.SharesToUnderlyingView{
+	msg := strategybase.QueryMsg{
+		SharesToUnderlyingView: &strategybase.SharesToUnderlyingView{
 			AmountShares: fmt.Sprintf("%d", amountShares),
 		},
 	}
@@ -141,8 +142,8 @@ func (a *strategyBaseImpl) SharesToUnderlyingView(amountShares uint64) (*wasmtyp
 }
 
 func (a *strategyBaseImpl) UnderlyingToShareView(amount uint64) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := types.UnderlyingToShareViewReq{
-		UnderlyingToShareView: types.UnderlyingToShareView{
+	msg := strategybase.QueryMsg{
+		UnderlyingToShareView: &strategybase.UnderlyingToShareView{
 			Amount: fmt.Sprintf("%d", amount),
 		},
 	}
@@ -151,8 +152,8 @@ func (a *strategyBaseImpl) UnderlyingToShareView(amount uint64) (*wasmtypes.Quer
 }
 
 func (a *strategyBaseImpl) UnderlyingView(user string) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := types.UserUnderlyingViewReq{
-		UserUnderlyingView: types.UserUnderlyingView{
+	msg := strategybase.QueryMsg{
+		UserUnderlyingView: &strategybase.UserUnderlyingView{
 			User: user,
 		},
 	}
@@ -161,48 +162,55 @@ func (a *strategyBaseImpl) UnderlyingView(user string) (*wasmtypes.QuerySmartCon
 }
 
 func (a *strategyBaseImpl) UnderlyingToken() (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := types.UnderlyingTokenReq{}
+	msg := strategybase.QueryMsg{
+		GetUnderlyingToken: &strategybase.GetUnderlyingToken{},
+	}
 	return a.sendQuery(msg)
 }
 
 func (a *strategyBaseImpl) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
-	msg := types.PauseReq{}
+	msg := strategybase.ExecuteMsg{
+		Pause: &strategybase.Pause{},
+	}
 
 	return a.execute(ctx, msg)
 }
 
 func (a *strategyBaseImpl) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
-	msg := types.UnPauseReq{}
+	msg := strategybase.ExecuteMsg{
+		Unpause: &strategybase.Unpause{},
+	}
 
 	return a.execute(ctx, msg)
 }
 
 func (a *strategyBaseImpl) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
-	msg := types.SetPauserReq{
-		SetPauser: types.SetPauser{NewPauser: newPauser},
+	msg := strategybase.ExecuteMsg{
+		SetPauser: &strategybase.SetPauser{NewPauser: newPauser},
 	}
 
 	return a.execute(ctx, msg)
 }
 
 func (a *strategyBaseImpl) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
-	msg := types.SetUnpauserReq{
-		SetUnpauser: types.SetUnpauser{NewUnpauser: newUnpauser},
+	msg := strategybase.ExecuteMsg{
+		SetUnpauser: &strategybase.SetUnpauser{NewUnpauser: newUnpauser},
 	}
 
 	return a.execute(ctx, msg)
 }
 
 func (a *strategyBaseImpl) SetStrategyManager(ctx context.Context, newStrategyManager string) (*coretypes.ResultTx, error) {
-	msg := types.BaseSetStrategyManagerReq{
-		SetStrategyManager: types.BaseSetStrategyManager{NewStrategyManager: newStrategyManager},
+	msg := strategybase.ExecuteMsg{
+		SetStrategyManager: &strategybase.SetStrategyManager{NewStrategyManager: newStrategyManager},
 	}
 
 	return a.execute(ctx, msg)
 }
 
 func (a *strategyBaseImpl) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
-	msg := types.TransferStrategyBaseOwnershipReq{TransferOwnership: types.TransferStrategyBaseOwnership{NewOwner: newOwner}}
+	msg := strategybase.ExecuteMsg{
+		TransferOwnership: &strategybase.TransferOwnership{NewOwner: newOwner}}
 	return a.execute(ctx, msg)
 }
 

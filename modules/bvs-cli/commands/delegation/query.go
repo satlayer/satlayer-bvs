@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
+	delegationmanager "github.com/satlayer/satlayer-bvs/bvs-cw/delegation-manager"
 )
 
 func IsDelegated(stakerAddress string) {
@@ -100,9 +100,9 @@ func GetStakerNonce(stakerAddress string) {
 	fmt.Printf("%s\n", resp.Nonce)
 }
 
-func CalcWithdrawRoot(stakerAddress, delegatedAddress, withdrawerAddress, nonce string, startBlock uint64, strategies, shares []string) {
+func CalcWithdrawRoot(stakerAddress, delegatedAddress, withdrawerAddress, nonce string, startBlock int64, strategies, shares []string) {
 	s := NewService()
-	resp, err := s.Delegation.CalculateWithdrawalRoot(types.Withdrawal{
+	resp, err := s.Delegation.CalculateWithdrawalRoot(delegationmanager.CalculateWithdrawalRootWithdrawal{
 		Staker:      stakerAddress,
 		DelegatedTo: delegatedAddress,
 		Withdrawer:  withdrawerAddress,

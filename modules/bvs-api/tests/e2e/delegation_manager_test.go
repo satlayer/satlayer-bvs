@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"testing"
 
+	delegationmanager "github.com/satlayer/satlayer-bvs/bvs-cw/delegation-manager"
+
 	"github.com/satlayer/satlayer-bvs/babylond"
 	"github.com/satlayer/satlayer-bvs/babylond/bvs"
 	"github.com/satlayer/satlayer-bvs/babylond/cw20"
@@ -15,7 +17,6 @@ import (
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
 	"github.com/satlayer/satlayer-bvs/bvs-api/utils"
 )
 
@@ -239,7 +240,7 @@ func (suite *delegationTestSuite) test_CompleteQueuedWithdrawal() {
 	}
 	txResp, err := delegation.CompleteQueuedWithdrawal(
 		context.Background(),
-		types.Withdrawal{
+		delegationmanager.WithdrawalElement{
 			Staker:      "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
 			DelegatedTo: "bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
 			Withdrawer:  "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
@@ -263,14 +264,14 @@ func (suite *delegationTestSuite) test_QueueWithdrawals() {
 	assert.NoError(t, err)
 	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
 
-	req := []types.QueuedWithdrawalParams{
+	req := []delegationmanager.QueuedWithdrawalParams{
 		{
-			WithDrawer: "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
+			Withdrawer: "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
 			Strategies: suite.strategies,
 			Shares:     []string{"20"},
 		},
 		{
-			WithDrawer: "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
+			Withdrawer: "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
 			Strategies: suite.strategies,
 			Shares:     []string{"20"},
 		},
@@ -293,7 +294,7 @@ func (suite *delegationTestSuite) test_CompleteQueuedWithdrawals() {
 	_, ok := currentNonce.SetString(nonceResp.CumulativeWithdrawals, 10)
 	assert.True(t, ok)
 	// Note the special case where the resulting value is 0
-	withdrawals := []types.Withdrawal{
+	withdrawals := []delegationmanager.WithdrawalElement{
 		{
 			Staker:      "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
 			DelegatedTo: "bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
@@ -318,7 +319,7 @@ func (suite *delegationTestSuite) test_CompleteQueuedWithdrawals() {
 		{suite.tokenAddr},
 	}
 
-	txResp, err := delegation.CompleteQueuedWithdrawals(context.Background(), withdrawals, tokens, []uint64{0, 0}, []bool{true, true})
+	txResp, err := delegation.CompleteQueuedWithdrawals(context.Background(), withdrawals, tokens, []int64{0, 0}, []bool{true, true})
 	assert.NoError(t, err, "complete queued withdrawals")
 	t.Logf("txResp: %v", txResp)
 }
@@ -342,7 +343,7 @@ func (suite *delegationTestSuite) Test_SetStrategyWithdrawalDelayBlocks() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
-	txResp, err := delegation.SetStrategyWithdrawalDelayBlocks(context.Background(), suite.strategies, []uint64{5, 5})
+	txResp, err := delegation.SetStrategyWithdrawalDelayBlocks(context.Background(), suite.strategies, []int64{5, 5})
 	assert.NoError(t, err, "set strategy withdrawal delay blocks")
 	t.Logf("txResp: %v", txResp)
 }
@@ -546,7 +547,7 @@ func (suite *delegationTestSuite) Test_CalculateWithdrawalRoot() {
 	assert.NoError(t, err)
 	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
 
-	req := types.Withdrawal{
+	req := delegationmanager.CalculateWithdrawalRootWithdrawal{
 		Staker:      "bbn14x6wy9kfj8hxqh03c8zwmzy9xsn4yh55xxf9qu",
 		DelegatedTo: "bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
 		Withdrawer:  "bbn14x6wy9kfj8hxqh03c8zwmzy9xsn4yh55xxf9qu",
@@ -573,8 +574,8 @@ func (suite *delegationTestSuite) Test_CalculateCurrentStakerDelegationDigestHas
 	assert.NoError(t, err, "get account")
 	nodeStatus, err := chainIO.QueryNodeStatus(context.Background())
 	assert.NoError(t, err, "query node status")
-	expiry := uint64(nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000)
-	req := types.CurrentStakerDigestHashParams{
+	expiry := nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000
+	req := delegationmanager.QueryCurrentStakerDigestHashParams{
 		Staker:          "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
 		Operator:        "bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
 		StakerPublicKey: base64.StdEncoding.EncodeToString(stakeAccountPubKey.Bytes()),
@@ -600,8 +601,8 @@ func (suite *delegationTestSuite) Test_StakerDelegationDigestHash() {
 	assert.NoError(t, err, "get account")
 	nodeStatus, err := chainIO.QueryNodeStatus(context.Background())
 	assert.NoError(t, err, "query node status")
-	expiry := uint64(nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000)
-	req := types.StakerDigestHashParams{
+	expiry := nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000
+	req := delegationmanager.QueryStakerDigestHashParams{
 		Staker:          "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
 		StakerNonce:     "0",
 		Operator:        "bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
@@ -626,7 +627,7 @@ func (suite *delegationTestSuite) Test_DelegationApprovalDigestHash() {
 	nodeStatus, err := chainIO.QueryNodeStatus(context.Background())
 	assert.NoError(t, err, "query node status")
 
-	expiry := uint64(nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000)
+	expiry := nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000
 	randomStr, err := utils.GenerateRandomString(16)
 	assert.NoError(t, err, "generate random string")
 	salt := "salt" + randomStr
@@ -634,7 +635,7 @@ func (suite *delegationTestSuite) Test_DelegationApprovalDigestHash() {
 	approvePubKey := getPubKeyFromKeychainByUid(chainIO, "aggregator")
 	assert.NoError(t, err, "get account")
 
-	req := types.ApproverDigestHashParams{
+	req := delegationmanager.QueryApproverDigestHashParams{
 		Staker:            "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
 		Operator:          "bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
 		Approver:          "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv",

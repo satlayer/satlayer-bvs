@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
+	rewardscoordinator "github.com/satlayer/satlayer-bvs/bvs-cw/rewards-coordinator"
 )
 
 const calcInterval = 86_400 // 1 day
@@ -49,14 +49,16 @@ type UnderlyingTokenResponse struct {
 func (u *Uploader) rpcSubmission(rewards []Submission) error {
 	now := time.Now().Unix()
 	startTime := now - now%calcInterval
-	submissions := make([]types.RewardsSubmission, 0)
+	submissions := make([]rewardscoordinator.RewardsSubmission, 0)
 
 	for _, reward := range rewards {
-		submissions = append(submissions, types.RewardsSubmission{
-			StrategiesAndMultipliers: []types.StrategyAndMultiplier{{
-				Strategy:   reward.Strategy,
-				Multiplier: 1,
-			}},
+		submissions = append(submissions, rewardscoordinator.RewardsSubmission{
+			StrategiesAndMultipliers: []rewardscoordinator.StrategyAndMultiplier{
+				{
+					Strategy:   reward.Strategy,
+					Multiplier: 1,
+				},
+			},
 			Token:          reward.Token,
 			Amount:         strconv.FormatFloat(math.Floor(reward.Amount), 'f', -1, 64),
 			StartTimestamp: fmt.Sprintf("%d000000000", startTime),
@@ -136,7 +138,7 @@ func (u *Uploader) rpcUnderlyingToken(strategy string) (string, error) {
 // The method returns an error if the transaction fails.
 func (u *Uploader) rpcSubmitHashRoot(rootHash string) error {
 	timestamp := time.Now().Unix() - 3600
-	rsp, err := u.rewardsCoordinator.SubmitRoot(context.Background(), rootHash, uint64(timestamp))
+	rsp, err := u.rewardsCoordinator.SubmitRoot(context.Background(), rootHash, timestamp)
 	if err != nil {
 		fmt.Println("SubmitRootHash err: ", err)
 		return err
