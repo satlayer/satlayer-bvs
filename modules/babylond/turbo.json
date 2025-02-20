@@ -3,7 +3,7 @@
   "extends": ["//"],
   "tasks": {
     "test": {
-      "dependsOn": ["^test", "^build:wasm"]
+      "dependsOn": ["^build:wasm"]
     },
     "build:wasm": {
       "dependsOn": ["^build:wasm"]
