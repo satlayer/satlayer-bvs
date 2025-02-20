@@ -27,7 +27,7 @@ documentation = "https://github.com/satlayer/satlayer-bvs.git"
 keywords = ["SatLayer", "Restaking", "BTC", "cosmos", "cosmwasm"]
 
 [workspace.dependencies]
-cosmwasm-schema = "2.0.0"
+cosmwasm-schema = "2.2.1"
 cosmwasm-std = "2.0.0"
 cw-storage-plus = "2.0.0"
 cosmwasm-storage = "1.5.2"
