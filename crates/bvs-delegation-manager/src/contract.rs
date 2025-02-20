@@ -37,7 +37,7 @@ use bvs_base::strategy::{
     StakerStrategyLisResponse, StakerStrategySharesResponse, ThirdPartyTransfersForbiddenResponse,
 };
 
-const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
+const CONTRACT_NAME: &str = "BVS Delegation Manager";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const PAUSED_NEW_DELEGATION: u8 = 0;

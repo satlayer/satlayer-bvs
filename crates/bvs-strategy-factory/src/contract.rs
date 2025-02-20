@@ -13,7 +13,7 @@ use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use bvs_base::strategy::ExecuteMsg as StrategyManagerExecuteMsg;
 
-const CONTRACT_NAME: &str = "strategy-factory";
+const CONTRACT_NAME: &str = "BVS Strategy Factory";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const PAUSED_NEW_STRATEGIES: u8 = 0;

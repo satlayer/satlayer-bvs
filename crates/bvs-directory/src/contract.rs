@@ -27,7 +27,7 @@ use bvs_base::delegation::{OperatorResponse, QueryMsg as DelegationManagerQueryM
 use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 
-const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
+const CONTRACT_NAME: &str = "BVS Directory";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const PAUSED_OPERATOR_REGISTER_DEREGISTER_TO_BVS: u8 = 0;
