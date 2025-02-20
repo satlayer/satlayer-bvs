@@ -1,7 +1,6 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Addr;
 use cw_storage_plus::{Item, Map};
-use schemars::JsonSchema;
 
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const DEPLOYED_STRATEGIES: Map<&Addr, Addr> = Map::new("strategies");
