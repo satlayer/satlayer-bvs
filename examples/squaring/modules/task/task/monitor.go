@@ -63,7 +63,7 @@ func NewMonitor() *Monitor {
 		panic(err)
 	}
 	return &Monitor{
-		bvsContract: txResp.BVSContract,
+		bvsContract: txResp.BvsContract,
 		chainIO:     client,
 	}
 }

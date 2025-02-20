@@ -62,7 +62,7 @@ func NewCaller() *Caller {
 		panic(err)
 	}
 	return &Caller{
-		bvsContract: txResp.BVSContract,
+		bvsContract: txResp.BvsContract,
 		chainIO:     client,
 	}
 }
