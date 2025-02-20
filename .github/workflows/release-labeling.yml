@@ -18,4 +18,4 @@ jobs:
     steps:
       - uses: fuxingloh/multi-labeler@v4
         with:
-          config-path: .github/labeling.yml
+          config-path: .github/release-labeling.yml
