@@ -114,6 +114,9 @@ importers:
 
   examples/squaring/modules:
     dependencies:
+      '@modules/bvs-api':
+        specifier: workspace:*
+        version: link:../../../modules/bvs-api
       '@modules/bvs-cli':
         specifier: workspace:*
         version: link:../../../modules/bvs-cli

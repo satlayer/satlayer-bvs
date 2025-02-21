@@ -11,6 +11,7 @@
     "test": "gotestsum"
   },
   "dependencies": {
+    "@modules/bvs-api": "workspace:*",
     "@modules/bvs-cli": "workspace:*"
   }
 }
