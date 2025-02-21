@@ -7,7 +7,7 @@ use crate::bvs_delegation_manager_querier::BvsDelegationManagerQuerier;
 
 pub struct BvsMockQuerier {
     base: MockQuerier<Empty>,
-    bvs_delegation_mananger_querier: BvsDelegationManagerQuerier,
+    bvs_delegation_manager_querier: BvsDelegationManagerQuerier,
     // bvs_directory_querier: BvsDirectoryQuerier,
 }
 
@@ -31,7 +31,7 @@ impl BvsMockQuerier {
     pub fn new(base: MockQuerier<Empty>) -> Self {
         BvsMockQuerier {
             base,
-            bvs_delegation_mananger_querier: BvsDelegationManagerQuerier::default(),
+            bvs_delegation_manager_querier: BvsDelegationManagerQuerier::default(),
             // bvs_directory_querier: BvsDirectoryQuerier::default(),
         }
     }
@@ -41,7 +41,7 @@ impl BvsMockQuerier {
         operator: String,
         is_operator: bool,
     ) {
-        self.bvs_delegation_mananger_querier
+        self.bvs_delegation_manager_querier
             .is_operator
             .insert(operator, is_operator);
     }
@@ -57,7 +57,7 @@ impl BvsMockQuerier {
                 > = from_json(msg);
                 if let Ok(bvs_delegation_manager_query) = parse_bvs_delegation_manager_query {
                     return self
-                        .bvs_delegation_mananger_querier
+                        .bvs_delegation_manager_querier
                         .handle_query(bvs_delegation_manager_query);
                 }
 

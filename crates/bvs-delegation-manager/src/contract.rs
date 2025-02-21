@@ -34,7 +34,7 @@ use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use bvs_base::strategy::{
     DepositsResponse, ExecuteMsg as StrategyManagerExecuteMsg, QueryMsg as StrategyManagerQueryMsg,
-    StakerStrategyLisResponse, StakerStrategySharesResponse, ThirdPartyTransfersForbiddenResponse,
+    StakerStrategyListResponse, StakerStrategySharesResponse, ThirdPartyTransfersForbiddenResponse,
 };
 
 const CONTRACT_NAME: &str = "BVS Delegation Manager";
@@ -1074,7 +1074,7 @@ pub fn query_operator_stakers(deps: Deps, operator: Addr) -> StdResult<OperatorS
         let mut shares_per_strategy: Vec<(Addr, Uint128)> = Vec::new();
 
         let state = DELEGATION_MANAGER_STATE.load(deps.storage)?;
-        let strategy_list_response: StakerStrategyLisResponse = deps.querier.query_wasm_smart(
+        let strategy_list_response: StakerStrategyListResponse = deps.querier.query_wasm_smart(
             state.strategy_manager.clone(),
             &StrategyManagerQueryMsg::GetStakerStrategyList {
                 staker: staker.to_string(),
@@ -4573,7 +4573,7 @@ mod tests {
                     StrategyManagerQueryMsg::GetStakerStrategyList { staker } => {
                         assert_eq!(staker, staker1_clone.to_string());
                         SystemResult::Ok(ContractResult::Ok(
-                            to_json_binary(&StakerStrategyLisResponse {
+                            to_json_binary(&StakerStrategyListResponse {
                                 strategies: vec![strategy1_clone.clone(), strategy2_clone.clone()],
                             })
                             .unwrap(),

@@ -15,7 +15,7 @@ import (
 
 type Service struct {
 	ChainIO         io.ChainIO
-	StrategyFactory api.StrategyFactory
+	StrategyFactory *api.StrategyFactory
 }
 
 func NewService() *Service {
@@ -37,7 +37,7 @@ func NewService() *Service {
 		panic("Contract address for Strategy Factory is empty!")
 	}
 
-	factoryApi := api.NewStrategyFactoryImpl(chainIO).WithGasLimit(2000000)
+	factoryApi := api.NewStrategyFactory(chainIO).WithGasLimit(2000000)
 	factoryApi.BindClient(conf.C.Contract.StrategyFactory)
 	return &Service{ChainIO: chainIO, StrategyFactory: factoryApi}
 }

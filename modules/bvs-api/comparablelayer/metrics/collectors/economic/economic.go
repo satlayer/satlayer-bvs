@@ -15,7 +15,7 @@ type Collector struct {
 
 var _ prometheus.Collector = (*Collector)(nil)
 
-func NewCollector(bvsName, operatorAddr string, strategies []string, delegation api.Delegation, logger logging.Logger) *Collector {
+func NewCollector(bvsName, operatorAddr string, strategies []string, delegation *api.DelegationManager, logger logging.Logger) *Collector {
 	return &Collector{
 		satLayerEconomic: economic.NewCollector(bvsName, operatorAddr, strategies, delegation, logger.GetElkLogger()),
 	}

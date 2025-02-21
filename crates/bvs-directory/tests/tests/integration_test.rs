@@ -23,7 +23,7 @@ fn register_bvs() {
         })
         .build();
 
-    let register_bvs_msg = &bvs_directory::msg::ExecuteMsg::RegisterBVS {
+    let register_bvs_msg = &bvs_directory::msg::ExecuteMsg::RegisterBvs {
         bvs_contract: bvs_contract.clone(),
     };
 
@@ -132,7 +132,7 @@ fn register_bvs() {
 //         )
 //         .unwrap();
 
-//     let msg = bvs_directory::msg::ExecuteMsg::RegisterOperatorToBVS {
+//     let msg = bvs_directory::msg::ExecuteMsg::RegisterOperatorToBvs {
 //         operator: operator.to_string(),
 //         public_key: public_key_hex.to_string(),
 //         contract_addr: contract_addr.to_string(),

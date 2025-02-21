@@ -64,7 +64,7 @@ func (suite *ioTestSuite) Test_QueryTransaction() {
 	chainIO, err := suite.chainIO.SetupKeyring("caller", "test")
 	assert.NoError(t, err)
 
-	executeMsgBytes, _ := json.Marshal(directory.ExecuteMsg{UpdateBVSMetadataURI: &directory.UpdateBVSMetadataURI{MetadataURI: "example.com"}})
+	executeMsgBytes, _ := json.Marshal(directory.ExecuteMsg{UpdateBvsMetadataURI: &directory.UpdateBvsMetadataURI{MetadataURI: "example.com"}})
 	assert.NoError(t, err, "marshal execute msg")
 	executeOptions := types.ExecuteOptions{
 		ContractAddr:  suite.directory.Address,

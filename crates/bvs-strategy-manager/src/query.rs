@@ -30,7 +30,7 @@ pub struct NonceResponse {
 }
 
 #[cw_serde]
-pub struct StakerStrategyLisResponse {
+pub struct StakerStrategyListResponse {
     pub strategies: Vec<Addr>,
 }
 
@@ -60,12 +60,12 @@ pub struct StrategyManagerStateResponse {
 }
 
 #[cw_serde]
-pub struct DepositTypehashResponse {
+pub struct DepositTypeHashResponse {
     pub deposit_type_hash: String,
 }
 
 #[cw_serde]
-pub struct DomainTypehashResponse {
+pub struct DomainTypeHashResponse {
     pub domain_type_hash: String,
 }
 
