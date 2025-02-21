@@ -68,8 +68,8 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::RegisterBVS { bvs_contract } => register_bvs(deps, bvs_contract),
-        ExecuteMsg::RegisterOperatorToBVS {
+        ExecuteMsg::RegisterBvs { bvs_contract } => register_bvs(deps, bvs_contract),
+        ExecuteMsg::RegisterOperatorToBvs {
             operator,
             public_key,
             contract_addr,
@@ -98,11 +98,11 @@ pub fn execute(
                 signature_with_salt_and_expiry,
             )
         }
-        ExecuteMsg::DeregisterOperatorFromBVS { operator } => {
+        ExecuteMsg::DeregisterOperatorFromBvs { operator } => {
             let operator_addr = Addr::unchecked(operator);
             deregister_operator(deps, env, info, operator_addr)
         }
-        ExecuteMsg::UpdateBVSMetadataURI { metadata_uri } => {
+        ExecuteMsg::UpdateBvsMetadataURI { metadata_uri } => {
             update_metadata_uri(info, metadata_uri)
         }
         ExecuteMsg::SetDelegationManager { delegation_manager } => {
@@ -376,7 +376,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let name_str = query_domain_name(deps)?;
             to_json_binary(&name_str)
         }
-        QueryMsg::GetBVSInfo { bvs_hash } => {
+        QueryMsg::GetBvsInfo { bvs_hash } => {
             let bvs_info = query_bvs_info(deps, bvs_hash)?;
             to_json_binary(&bvs_info)
         }
@@ -608,7 +608,7 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterBVS {
+        let msg = ExecuteMsg::RegisterBvs {
             bvs_contract: "bvs_contract".to_string(),
         };
 
@@ -683,7 +683,7 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToBVS {
+        let msg = ExecuteMsg::RegisterOperatorToBvs {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
             contract_addr: contract_addr.to_string(),
@@ -778,7 +778,7 @@ mod tests {
             }),
         });
 
-        let register_msg = ExecuteMsg::RegisterOperatorToBVS {
+        let register_msg = ExecuteMsg::RegisterOperatorToBvs {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
             contract_addr: contract_addr.to_string(),
@@ -793,7 +793,7 @@ mod tests {
 
         assert!(res.is_ok());
 
-        let deregister_msg = ExecuteMsg::DeregisterOperatorFromBVS {
+        let deregister_msg = ExecuteMsg::DeregisterOperatorFromBvs {
             operator: operator.to_string(),
         };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), deregister_msg);
@@ -834,7 +834,7 @@ mod tests {
 
         let metadata_uri = "http://metadata.uri".to_string();
 
-        let msg = ExecuteMsg::UpdateBVSMetadataURI {
+        let msg = ExecuteMsg::UpdateBvsMetadataURI {
             metadata_uri: metadata_uri.clone(),
         };
         let res = execute(deps.as_mut(), env, info.clone(), msg);
@@ -976,7 +976,7 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToBVS {
+        let msg = ExecuteMsg::RegisterOperatorToBvs {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
             contract_addr: contract_addr.to_string(),
@@ -1148,7 +1148,7 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToBVS {
+        let msg = ExecuteMsg::RegisterOperatorToBvs {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
             contract_addr: contract_addr.to_string(),
@@ -1298,7 +1298,7 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToBVS {
+        let msg = ExecuteMsg::RegisterOperatorToBvs {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
             contract_addr: contract_addr.to_string(),
@@ -1374,7 +1374,7 @@ mod tests {
 
         let bvs_hash = hex::encode(hash_result);
 
-        let query_msg = QueryMsg::GetBVSInfo {
+        let query_msg = QueryMsg::GetBvsInfo {
             bvs_hash: bvs_hash.clone(),
         };
         let query_response = query(deps.as_ref(), env.clone(), query_msg).unwrap();

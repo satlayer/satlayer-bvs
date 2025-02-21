@@ -48,15 +48,15 @@ func (r *Directory) WithGasLimit(gasLimit uint64) *Directory {
 	return r
 }
 
-func (r *Directory) RegisterBVS(ctx context.Context, bvsContract string) (*coretypes.ResultTx, error) {
-	executeMsg := directory.ExecuteMsg{RegisterBVS: &directory.RegisterBVS{
+func (r *Directory) RegisterBvs(ctx context.Context, bvsContract string) (*coretypes.ResultTx, error) {
+	executeMsg := directory.ExecuteMsg{RegisterBvs: &directory.RegisterBvs{
 		BvsContract: bvsContract,
 	}}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "RegisterBVS")
+	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "RegisterBvs")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -86,7 +86,7 @@ func (r *Directory) RegisterOperator(ctx context.Context, operator string, publi
 	if err != nil {
 		return nil, err
 	}
-	executeMsg := directory.ExecuteMsg{RegisterOperatorToBVS: &directory.RegisterOperatorToBVS{
+	executeMsg := directory.ExecuteMsg{RegisterOperatorToBvs: &directory.RegisterOperatorToBvs{
 		Operator:     operator,
 		PublicKey:    base64.StdEncoding.EncodeToString(publicKey.Bytes()),
 		ContractAddr: r.contractAddr,
@@ -106,7 +106,7 @@ func (r *Directory) RegisterOperator(ctx context.Context, operator string, publi
 }
 
 func (r *Directory) DeregisterOperator(ctx context.Context, operator string) (*coretypes.ResultTx, error) {
-	executeMsg := directory.ExecuteMsg{DeregisterOperatorFromBVS: &directory.DeregisterOperatorFromBVS{Operator: operator}}
+	executeMsg := directory.ExecuteMsg{DeregisterOperatorFromBvs: &directory.DeregisterOperatorFromBvs{Operator: operator}}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		return nil, err
@@ -117,7 +117,7 @@ func (r *Directory) DeregisterOperator(ctx context.Context, operator string) (*c
 }
 
 func (r *Directory) UpdateMetadataURI(ctx context.Context, metadataURI string) (*coretypes.ResultTx, error) {
-	executeMsg := directory.ExecuteMsg{UpdateBVSMetadataURI: &directory.UpdateBVSMetadataURI{MetadataURI: metadataURI}}
+	executeMsg := directory.ExecuteMsg{UpdateBvsMetadataURI: &directory.UpdateBvsMetadataURI{MetadataURI: metadataURI}}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		return nil, err
@@ -370,9 +370,9 @@ func (r *Directory) GetDomainName() (*directory.DomainNameResponse, error) {
 	return result, nil
 }
 
-func (r *Directory) GetBVSInfo(bvsHash string) (*directory.BVSInfoResponse, error) {
+func (r *Directory) GetBvsInfo(bvsHash string) (*directory.BVSInfoResponse, error) {
 	result := new(directory.BVSInfoResponse)
-	queryMsg := directory.QueryMsg{GetBVSInfo: &directory.GetBVSInfo{BvsHash: bvsHash}}
+	queryMsg := directory.QueryMsg{GetBvsInfo: &directory.GetBvsInfo{BvsHash: bvsHash}}
 	queryMsgBytes, err := json.Marshal(queryMsg)
 	if err != nil {
 		return nil, err

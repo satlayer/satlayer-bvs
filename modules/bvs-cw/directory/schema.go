@@ -170,10 +170,10 @@ type InstantiateMsg struct {
 }
 
 type ExecuteMsg struct {
-	RegisterBVS               *RegisterBVS               `json:"register_b_v_s,omitempty"`
-	RegisterOperatorToBVS     *RegisterOperatorToBVS     `json:"register_operator_to_b_v_s,omitempty"`
-	DeregisterOperatorFromBVS *DeregisterOperatorFromBVS `json:"deregister_operator_from_b_v_s,omitempty"`
-	UpdateBVSMetadataURI      *UpdateBVSMetadataURI      `json:"update_b_v_s_metadata_u_r_i,omitempty"`
+	RegisterBvs               *RegisterBvs               `json:"register_bvs,omitempty"`
+	RegisterOperatorToBvs     *RegisterOperatorToBvs     `json:"register_operator_to_bvs,omitempty"`
+	DeregisterOperatorFromBvs *DeregisterOperatorFromBvs `json:"deregister_operator_from_bvs,omitempty"`
+	UpdateBvsMetadataURI      *UpdateBvsMetadataURI      `json:"update_bvs_metadata_u_r_i,omitempty"`
 	SetDelegationManager      *SetDelegationManager      `json:"set_delegation_manager,omitempty"`
 	CancelSalt                *CancelSalt                `json:"cancel_salt,omitempty"`
 	TransferOwnership         *TransferOwnership         `json:"transfer_ownership,omitempty"`
@@ -187,18 +187,18 @@ type CancelSalt struct {
 	Salt string `json:"salt"`
 }
 
-type DeregisterOperatorFromBVS struct {
+type DeregisterOperatorFromBvs struct {
 	Operator string `json:"operator"`
 }
 
 type Pause struct {
 }
 
-type RegisterBVS struct {
+type RegisterBvs struct {
 	BvsContract string `json:"bvs_contract"`
 }
 
-type RegisterOperatorToBVS struct {
+type RegisterOperatorToBvs struct {
 	ContractAddr               string                            `json:"contract_addr"`
 	Operator                   string                            `json:"operator"`
 	PublicKey                  string                            `json:"public_key"`
@@ -230,7 +230,7 @@ type TransferOwnership struct {
 type Unpause struct {
 }
 
-type UpdateBVSMetadataURI struct {
+type UpdateBvsMetadataURI struct {
 	MetadataURI string `json:"metadata_uri"`
 }
 
@@ -238,7 +238,7 @@ type QueryMsg struct {
 	GetOperatorStatus                  *GetOperatorStatus                  `json:"get_operator_status,omitempty"`
 	CalculateDigestHash                *CalculateDigestHash                `json:"calculate_digest_hash,omitempty"`
 	IsSaltSpent                        *IsSaltSpent                        `json:"is_salt_spent,omitempty"`
-	GetBVSInfo                         *GetBVSInfo                         `json:"get_b_v_s_info,omitempty"`
+	GetBvsInfo                         *GetBvsInfo                         `json:"get_bvs_info,omitempty"`
 	GetDelegationManager               *GetDelegationManager               `json:"get_delegation_manager,omitempty"`
 	GetOwner                           *GetOwner                           `json:"get_owner,omitempty"`
 	GetOperatorBVSRegistrationTypeHash *GetOperatorBVSRegistrationTypeHash `json:"get_operator_b_v_s_registration_type_hash,omitempty"`
@@ -254,7 +254,7 @@ type CalculateDigestHash struct {
 	Salt              string `json:"salt"`
 }
 
-type GetBVSInfo struct {
+type GetBvsInfo struct {
 	BvsHash string `json:"bvs_hash"`
 }
 

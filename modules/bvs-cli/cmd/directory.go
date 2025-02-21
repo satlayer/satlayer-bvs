@@ -187,7 +187,7 @@ func directoryCmd() *cobra.Command {
 		Short: "To get the bvs info from the directory contract.",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			directory.GetBVSInfo(args[0])
+			directory.GetBvsInfo(args[0])
 		},
 	}
 

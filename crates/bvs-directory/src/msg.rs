@@ -17,19 +17,19 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    RegisterBVS {
+    RegisterBvs {
         bvs_contract: String,
     },
-    RegisterOperatorToBVS {
+    RegisterOperatorToBvs {
         operator: String,
         public_key: String,
         contract_addr: String,
         signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry,
     },
-    DeregisterOperatorFromBVS {
+    DeregisterOperatorFromBvs {
         operator: String,
     },
-    UpdateBVSMetadataURI {
+    UpdateBvsMetadataURI {
         metadata_uri: String,
     },
     SetDelegationManager {
@@ -70,7 +70,7 @@ pub enum QueryMsg {
     IsSaltSpent { operator: String, salt: String },
 
     #[returns(BVSInfoResponse)]
-    GetBVSInfo { bvs_hash: String },
+    GetBvsInfo { bvs_hash: String },
 
     #[returns(DelegationResponse)]
     GetDelegationManager {},

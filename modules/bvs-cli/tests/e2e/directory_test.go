@@ -62,7 +62,7 @@ func Test_GetOperatorBVSRegistrationTypeHash(t *testing.T) {
 	directory.GetOperatorBVSRegistrationTypeHash()
 }
 
-func Test_GetBVSInfo(t *testing.T) {
+func Test_GetBvsInfo(t *testing.T) {
 	hash := "3e9dd8890daa53e3b07af614231c9ccaac51805c449b8df61f62e2afb30d6685"
-	directory.GetBVSInfo(hash)
+	directory.GetBvsInfo(hash)
 }

@@ -101,9 +101,9 @@ func GetDomainName() {
 	fmt.Printf("%s\n", result)
 }
 
-func GetBVSInfo(BVSHash string) {
+func GetBvsInfo(BVSHash string) {
 	s := NewService()
-	resp, err := s.Directory.GetBVSInfo(BVSHash)
+	resp, err := s.Directory.GetBvsInfo(BVSHash)
 	if err != nil {
 		fmt.Printf("Get BVS info error! %s\n", err)
 		return

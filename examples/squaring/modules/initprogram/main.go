@@ -89,7 +89,7 @@ func registerBvsContract() string {
 
 	fmt.Printf("registerBVSContract success, txn: %s\n", txResp.Hash.String())
 
-	txResp, err = api.NewDirectory(chainIO, core.C.Contract.DirectoryAddr).RegisterBVS(context.Background(), core.C.Contract.BVSContractAddr)
+	txResp, err = api.NewDirectory(chainIO, core.C.Contract.DirectoryAddr).RegisterBvs(context.Background(), core.C.Contract.BVSContractAddr)
 	if err != nil {
 		panic(err)
 	}
