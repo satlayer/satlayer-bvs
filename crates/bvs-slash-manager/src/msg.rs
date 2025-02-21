@@ -38,6 +38,7 @@ pub enum ExecuteMsg {
     },
     SetSlasherValidator {
         validators: Vec<String>,
+        validator_public_keys: Vec<String>,
         values: Vec<bool>,
     },
     SetDelegationManager {
