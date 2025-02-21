@@ -65,4 +65,10 @@ pub enum ContractError {
 
     #[error("SlashManager.execute_slash_request: duplicate validator public key")]
     DuplicateValidatorPublicKey {},
+
+    #[error("SlashManager.execute_slash_request: validator not found")]
+    ValidatorNotFound {},
+
+    #[error("SlashManager.execute_slash_request: pubkey mismatch")]
+    PubkeyMismatch {},
 }
