@@ -26,7 +26,7 @@ type Node struct {
 	bvsContract string
 	pubKeyStr   string
 	chainIO     io.ChainIO
-	stateBank   api.StateBank
+	stateBank   *api.StateBank
 }
 
 type Payload struct {
@@ -65,12 +65,12 @@ func NewNode() *Node {
 	pubKey := chainIO.GetCurrentAccountPubKey()
 
 	pubKeyStr := base64.StdEncoding.EncodeToString(pubKey.Bytes())
-	txResp, err := api.NewBVSDirectoryImpl(chainIO, core.C.Chain.BVSDirectory).GetBVSInfo(core.C.Chain.BVSHash)
+	txResp, err := api.NewDirectory(chainIO, core.C.Chain.BVSDirectory).GetBVSInfo(core.C.Chain.BVSHash)
 	if err != nil {
 		panic(err)
 	}
 
-	stateBank := api.NewStateBankImpl(chainIO)
+	stateBank := api.NewStateBank(chainIO)
 
 	return &Node{
 		bvsContract: txResp.BvsContract,

@@ -11,13 +11,13 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-cli/conf"
 )
 
-func newService(keyName string) (api.BVSDirectory, io.ChainIO) {
+func newService(keyName string) (*api.Directory, io.ChainIO) {
 	s := NewService()
 	newChainIO, err := s.ChainIO.SetupKeyring(keyName, conf.C.Account.KeyringBackend)
 	if err != nil {
 		panic(err)
 	}
-	directory := api.NewBVSDirectoryImpl(newChainIO, conf.C.Contract.Directory).WithGasLimit(400000)
+	directory := api.NewDirectory(newChainIO, conf.C.Contract.Directory).WithGasLimit(400000)
 	return directory, newChainIO
 }
 
@@ -25,7 +25,7 @@ func RegBVS(userKeyName, BVSAddr string) {
 	ctx := context.Background()
 	directory, newChainIO := newService(userKeyName)
 
-	BVSDriver := api.NewBVSDriverImpl(newChainIO)
+	BVSDriver := api.NewDriver(newChainIO)
 	BVSDriver.BindClient(conf.C.Contract.BVSDriver)
 	txn, err := BVSDriver.SetRegisteredBVSContract(ctx, BVSAddr)
 	if txn == nil || err != nil {
@@ -33,7 +33,7 @@ func RegBVS(userKeyName, BVSAddr string) {
 	}
 	fmt.Printf("BVSDriver register BVS success. txn: %s\n", txn.Hash)
 
-	stateBank := api.NewStateBankImpl(newChainIO)
+	stateBank := api.NewStateBank(newChainIO)
 	stateBank.BindClient(conf.C.Contract.StateBank)
 	txn, err = stateBank.SetRegisteredBVSContract(ctx, BVSAddr)
 	if txn == nil || err != nil {

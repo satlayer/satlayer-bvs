@@ -14,7 +14,7 @@ import (
 )
 
 type Service struct {
-	Strategy api.StrategyManager
+	Strategy *api.StrategyManager
 	ChainIO  io.ChainIO
 }
 

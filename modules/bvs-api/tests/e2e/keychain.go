@@ -6,9 +6,9 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 )
 
-// Temporary Wallet Utility (for testing), due to how the keychain is currently managed, too much headache
+// TODO: Temporary Wallet Utility (for testing), due to how the keychain is currently managed, too much headache
 
-func getPubKeyFromKeychainByAddress(chainio io.ChainIO, address string) cryptotypes.PubKey {
+func GetPubKeyFromKeychainByAddress(chainio io.ChainIO, address string) cryptotypes.PubKey {
 	addr, err := sdk.AccAddressFromBech32(address)
 	if err != nil {
 		panic(err)
@@ -24,7 +24,7 @@ func getPubKeyFromKeychainByAddress(chainio io.ChainIO, address string) cryptoty
 	return pubKey
 }
 
-func getPubKeyFromKeychainByUid(chainio io.ChainIO, uid string) cryptotypes.PubKey {
+func GetPubKeyFromKeychainByUid(chainio io.ChainIO, uid string) cryptotypes.PubKey {
 	key, err := chainio.GetClientCtx().Keyring.Key(uid)
 	if err != nil {
 		panic(err)
