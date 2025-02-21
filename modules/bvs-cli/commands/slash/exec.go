@@ -12,13 +12,13 @@ import (
 	slashmanager "github.com/satlayer/satlayer-bvs/bvs-cw/slash-manager"
 )
 
-func newService(keyName string) (api.SlashManager, io.ChainIO) {
+func newService(keyName string) (*api.SlashManager, io.ChainIO) {
 	s := NewService()
 	chainIO, err := s.ChainIO.SetupKeyring(keyName, conf.C.Account.KeyringBackend)
 	if err != nil {
 		panic(err)
 	}
-	slash := api.NewSlashManager(chainIO, conf.C.Contract.Slash).WithGasLimit(2000000)
+	slash := api.NewSlashManager(chainIO).WithGasLimit(2000000)
 	slash.BindClient(conf.C.Contract.Slash)
 	return slash, chainIO
 }

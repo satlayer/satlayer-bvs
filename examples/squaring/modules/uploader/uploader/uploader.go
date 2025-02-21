@@ -23,7 +23,7 @@ type Uploader struct {
 	bvsContract        string
 	delegation         *api.DelegationManager
 	chainIO            io.ChainIO
-	rewardsCoordinator api.RewardsCoordinator
+	rewardsCoordinator *api.RewardsCoordinator
 }
 
 func NewUploader() *Uploader {

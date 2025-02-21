@@ -10,7 +10,7 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-cli/conf"
 )
 
-func newService(keyName string) (api.StrategyFactory, io.ChainIO) {
+func newService(keyName string) (*api.StrategyFactory, io.ChainIO) {
 	s := NewService()
 	chainIO, err := s.ChainIO.SetupKeyring(keyName, conf.C.Account.KeyringBackend)
 	if err != nil {

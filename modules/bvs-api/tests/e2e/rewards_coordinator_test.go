@@ -407,7 +407,7 @@ func bytesToUints(arr []byte) []int64 {
 
 func calculateParentNode(
 	tokenAddr string,
-	rewardsCoordinator api.RewardsCoordinator, t *testing.T) ([]byte, []byte, []byte) {
+	rewardsCoordinator *api.RewardsCoordinator, t *testing.T) ([]byte, []byte, []byte) {
 	resp, err := rewardsCoordinator.CalculateTokenLeafHash(tokenAddr, "30")
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, resp, "response nil")
@@ -450,7 +450,7 @@ func calculateParentNode(
 	return parentNode, hashBytes, hashBytes1
 }
 
-func (suite *rewardsTestSuite) calculateEarnerLeaf(rewardsCoordinator api.RewardsCoordinator, t *testing.T) ([]byte, []byte, []byte) {
+func (suite *rewardsTestSuite) calculateEarnerLeaf(rewardsCoordinator *api.RewardsCoordinator, t *testing.T) ([]byte, []byte, []byte) {
 	parentNode, _, leafB := calculateParentNode(suite.tokenAddr, rewardsCoordinator, t)
 	parentNode1, _, _ := calculateParentNode(suite.tokenAddr, rewardsCoordinator, t)
 

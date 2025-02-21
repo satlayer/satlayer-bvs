@@ -12,16 +12,7 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-cw/driver"
 )
 
-type Driver interface {
-	WithGasAdjustment(gasAdjustment float64) Driver
-	WithGasPrice(gasPrice sdktypes.DecCoin) Driver
-	WithGasLimit(gasLimit uint64) Driver
-
-	SetRegisteredBVSContract(ctx context.Context, addr string) (*coretypes.ResultTx, error)
-	BindClient(contractAddress string)
-}
-
-type bvsDriverImpl struct {
+type Driver struct {
 	registeredBVSContract string
 	io                    io.ChainIO
 	contractAddr          string
@@ -30,8 +21,8 @@ type bvsDriverImpl struct {
 	gasLimit              uint64
 }
 
-func NewDriver(chainIO io.ChainIO) Driver {
-	return &bvsDriverImpl{
+func NewDriver(chainIO io.ChainIO) *Driver {
+	return &Driver{
 		io:            chainIO,
 		gasAdjustment: 1.2,
 		gasPrice:      sdktypes.NewInt64DecCoin("ubbn", 1),
@@ -39,26 +30,26 @@ func NewDriver(chainIO io.ChainIO) Driver {
 	}
 }
 
-func (r *bvsDriverImpl) WithGasAdjustment(gasAdjustment float64) Driver {
+func (r *Driver) WithGasAdjustment(gasAdjustment float64) *Driver {
 	r.gasAdjustment = gasAdjustment
 	return r
 }
 
-func (r *bvsDriverImpl) WithGasPrice(gasPrice sdktypes.DecCoin) Driver {
+func (r *Driver) WithGasPrice(gasPrice sdktypes.DecCoin) *Driver {
 	r.gasPrice = gasPrice
 	return r
 }
 
-func (r *bvsDriverImpl) WithGasLimit(gasLimit uint64) Driver {
+func (r *Driver) WithGasLimit(gasLimit uint64) *Driver {
 	r.gasLimit = gasLimit
 	return r
 }
 
-func (r *bvsDriverImpl) BindClient(contractAddress string) {
+func (r *Driver) BindClient(contractAddress string) {
 	r.contractAddr = contractAddress
 }
 
-func (r *bvsDriverImpl) newExecuteOptions(executeMsg []byte, memo string) types.ExecuteOptions {
+func (r *Driver) newExecuteOptions(executeMsg []byte, memo string) types.ExecuteOptions {
 	return types.ExecuteOptions{
 		ContractAddr:  r.contractAddr,
 		ExecuteMsg:    executeMsg,
@@ -71,7 +62,7 @@ func (r *bvsDriverImpl) newExecuteOptions(executeMsg []byte, memo string) types.
 	}
 }
 
-func (r *bvsDriverImpl) SetRegisteredBVSContract(ctx context.Context, addr string) (*coretypes.ResultTx, error) {
+func (r *Driver) SetRegisteredBVSContract(ctx context.Context, addr string) (*coretypes.ResultTx, error) {
 	r.registeredBVSContract = addr
 
 	msg := driver.ExecuteMsg{

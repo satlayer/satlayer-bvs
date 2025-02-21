@@ -15,7 +15,7 @@ import (
 
 type Service struct {
 	ChainIO         io.ChainIO
-	StrategyFactory api.StrategyFactory
+	StrategyFactory *api.StrategyFactory
 }
 
 func NewService() *Service {

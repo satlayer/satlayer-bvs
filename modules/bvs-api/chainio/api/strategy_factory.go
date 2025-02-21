@@ -13,31 +13,7 @@ import (
 	strategyfactory "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-factory"
 )
 
-type StrategyFactory interface {
-	WithGasAdjustment(gasAdjustment float64) StrategyFactory
-	WithGasPrice(gasPrice sdktypes.DecCoin) StrategyFactory
-	WithGasLimit(gasLimit uint64) StrategyFactory
-
-	BindClient(string)
-
-	DeployNewStrategy(ctx context.Context, token, pauser, unpauser string) (*coretypes.ResultTx, error)
-	UpdateConfig(ctx context.Context, newOwner string, strategyCodeId int64) (*coretypes.ResultTx, error)
-	BlacklistTokens(ctx context.Context, tokens []string) (*coretypes.ResultTx, error)
-	RemoveStrategiesFromWhitelist(ctx context.Context, strategies []string) (*coretypes.ResultTx, error)
-	SetThirdPartyTransfersForBidden(ctx context.Context, strategy string, value bool) (*coretypes.ResultTx, error)
-	WhitelistStrategies(ctx context.Context, strategies []string, forbiddenValues []bool) (*coretypes.ResultTx, error)
-	SetStrategyManager(ctx context.Context, newStrategyManager string) (*coretypes.ResultTx, error)
-	TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error)
-	Pause(ctx context.Context) (*coretypes.ResultTx, error)
-	Unpause(ctx context.Context) (*coretypes.ResultTx, error)
-	SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error)
-	SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error)
-
-	GetStrategy(token string) (*strategyfactory.StrategyResponse, error)
-	IsTokenBlacklisted(token string) (*strategyfactory.BlacklistStatusResponse, error)
-}
-
-type strategyFactoryImpl struct {
+type StrategyFactory struct {
 	io             io.ChainIO
 	executeOptions *types.ExecuteOptions
 	queryOptions   *types.QueryOptions
@@ -46,8 +22,8 @@ type strategyFactoryImpl struct {
 	gasLimit       uint64
 }
 
-func NewStrategyFactory(chainIO io.ChainIO) StrategyFactory {
-	return &strategyFactoryImpl{
+func NewStrategyFactory(chainIO io.ChainIO) *StrategyFactory {
+	return &StrategyFactory{
 		io:            chainIO,
 		gasAdjustment: 1.2,
 		gasPrice:      sdktypes.NewInt64DecCoin("ubbn", 1),
@@ -55,22 +31,22 @@ func NewStrategyFactory(chainIO io.ChainIO) StrategyFactory {
 	}
 }
 
-func (r *strategyFactoryImpl) WithGasAdjustment(gasAdjustment float64) StrategyFactory {
+func (r *StrategyFactory) WithGasAdjustment(gasAdjustment float64) *StrategyFactory {
 	r.gasAdjustment = gasAdjustment
 	return r
 }
 
-func (r *strategyFactoryImpl) WithGasPrice(gasPrice sdktypes.DecCoin) StrategyFactory {
+func (r *StrategyFactory) WithGasPrice(gasPrice sdktypes.DecCoin) *StrategyFactory {
 	r.gasPrice = gasPrice
 	return r
 }
 
-func (r *strategyFactoryImpl) WithGasLimit(gasLimit uint64) StrategyFactory {
+func (r *StrategyFactory) WithGasLimit(gasLimit uint64) *StrategyFactory {
 	r.gasLimit = gasLimit
 	return r
 }
 
-func (r *strategyFactoryImpl) BindClient(contractAddress string) {
+func (r *StrategyFactory) BindClient(contractAddress string) {
 	r.executeOptions = &types.ExecuteOptions{
 		ContractAddr:  contractAddress,
 		ExecuteMsg:    []byte{},
@@ -88,7 +64,7 @@ func (r *strategyFactoryImpl) BindClient(contractAddress string) {
 	}
 }
 
-func (r *strategyFactoryImpl) execute(ctx context.Context, msg any) (*coretypes.ResultTx, error) {
+func (r *StrategyFactory) execute(ctx context.Context, msg any) (*coretypes.ResultTx, error) {
 	msgBytes, err := json.Marshal(msg)
 	if err != nil {
 		return nil, err
@@ -98,7 +74,7 @@ func (r *strategyFactoryImpl) execute(ctx context.Context, msg any) (*coretypes.
 	return r.io.SendTransaction(ctx, *r.executeOptions)
 }
 
-func (r *strategyFactoryImpl) query(msg any) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyFactory) query(msg any) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msgBytes, err := json.Marshal(msg)
 	if err != nil {
 		return nil, err
@@ -110,7 +86,7 @@ func (r *strategyFactoryImpl) query(msg any) (*wasmtypes.QuerySmartContractState
 
 // Execute Functions
 
-func (r *strategyFactoryImpl) DeployNewStrategy(ctx context.Context, token, pauser, unpauser string) (*coretypes.ResultTx, error) {
+func (r *StrategyFactory) DeployNewStrategy(ctx context.Context, token, pauser, unpauser string) (*coretypes.ResultTx, error) {
 	executeMsg := strategyfactory.ExecuteMsg{
 		DeployNewStrategy: &strategyfactory.DeployNewStrategy{
 			Token:    token,
@@ -122,7 +98,7 @@ func (r *strategyFactoryImpl) DeployNewStrategy(ctx context.Context, token, paus
 	return r.execute(ctx, executeMsg)
 }
 
-func (r *strategyFactoryImpl) UpdateConfig(ctx context.Context, newOwner string, strategyCodeId int64) (*coretypes.ResultTx, error) {
+func (r *StrategyFactory) UpdateConfig(ctx context.Context, newOwner string, strategyCodeId int64) (*coretypes.ResultTx, error) {
 	executeMsg := strategyfactory.ExecuteMsg{
 		UpdateConfig: &strategyfactory.UpdateConfig{
 			NewOwner:       newOwner,
@@ -133,7 +109,7 @@ func (r *strategyFactoryImpl) UpdateConfig(ctx context.Context, newOwner string,
 	return r.execute(ctx, executeMsg)
 }
 
-func (r *strategyFactoryImpl) BlacklistTokens(ctx context.Context, tokens []string) (*coretypes.ResultTx, error) {
+func (r *StrategyFactory) BlacklistTokens(ctx context.Context, tokens []string) (*coretypes.ResultTx, error) {
 	executeMsg := strategyfactory.ExecuteMsg{
 		BlacklistTokens: &strategyfactory.BlacklistTokens{
 			Tokens: tokens,
@@ -143,7 +119,7 @@ func (r *strategyFactoryImpl) BlacklistTokens(ctx context.Context, tokens []stri
 	return r.execute(ctx, executeMsg)
 }
 
-func (r *strategyFactoryImpl) RemoveStrategiesFromWhitelist(ctx context.Context, strategies []string) (*coretypes.ResultTx, error) {
+func (r *StrategyFactory) RemoveStrategiesFromWhitelist(ctx context.Context, strategies []string) (*coretypes.ResultTx, error) {
 	executeMsg := strategyfactory.ExecuteMsg{
 		RemoveStrategiesFromWhitelist: &strategyfactory.RemoveStrategiesFromWhitelist{
 			Strategies: strategies,
@@ -153,7 +129,7 @@ func (r *strategyFactoryImpl) RemoveStrategiesFromWhitelist(ctx context.Context,
 	return r.execute(ctx, executeMsg)
 }
 
-func (r *strategyFactoryImpl) SetThirdPartyTransfersForBidden(ctx context.Context, strategy string, value bool) (*coretypes.ResultTx, error) {
+func (r *StrategyFactory) SetThirdPartyTransfersForBidden(ctx context.Context, strategy string, value bool) (*coretypes.ResultTx, error) {
 	executeMsg := strategyfactory.ExecuteMsg{
 		SetThirdPartyTransfersForBidden: &strategyfactory.SetThirdPartyTransfersForBidden{
 			Strategy: strategy,
@@ -164,7 +140,7 @@ func (r *strategyFactoryImpl) SetThirdPartyTransfersForBidden(ctx context.Contex
 	return r.execute(ctx, executeMsg)
 }
 
-func (r *strategyFactoryImpl) WhitelistStrategies(ctx context.Context, strategies []string, forbiddenValues []bool) (*coretypes.ResultTx, error) {
+func (r *StrategyFactory) WhitelistStrategies(ctx context.Context, strategies []string, forbiddenValues []bool) (*coretypes.ResultTx, error) {
 	executeMsg := strategyfactory.ExecuteMsg{
 		WhitelistStrategies: &strategyfactory.WhitelistStrategies{
 			StrategiesToWhitelist:              strategies,
@@ -175,7 +151,7 @@ func (r *strategyFactoryImpl) WhitelistStrategies(ctx context.Context, strategie
 	return r.execute(ctx, executeMsg)
 }
 
-func (r *strategyFactoryImpl) SetStrategyManager(ctx context.Context, newStrategyManager string) (*coretypes.ResultTx, error) {
+func (r *StrategyFactory) SetStrategyManager(ctx context.Context, newStrategyManager string) (*coretypes.ResultTx, error) {
 	executeMsg := strategyfactory.ExecuteMsg{
 		SetStrategyManager: &strategyfactory.SetStrategyManager{
 			NewStrategyManager: newStrategyManager,
@@ -185,7 +161,7 @@ func (r *strategyFactoryImpl) SetStrategyManager(ctx context.Context, newStrateg
 	return r.execute(ctx, executeMsg)
 }
 
-func (r *strategyFactoryImpl) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
+func (r *StrategyFactory) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
 	executeMsg := strategyfactory.ExecuteMsg{
 		TransferOwnership: &strategyfactory.TransferOwnership{
 			NewOwner: newOwner,
@@ -195,7 +171,7 @@ func (r *strategyFactoryImpl) TransferOwnership(ctx context.Context, newOwner st
 	return r.execute(ctx, executeMsg)
 }
 
-func (r *strategyFactoryImpl) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
+func (r *StrategyFactory) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
 	executeMsg := strategyfactory.ExecuteMsg{
 		Pause: &strategyfactory.Pause{},
 	}
@@ -203,7 +179,7 @@ func (r *strategyFactoryImpl) Pause(ctx context.Context) (*coretypes.ResultTx, e
 	return r.execute(ctx, executeMsg)
 }
 
-func (r *strategyFactoryImpl) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
+func (r *StrategyFactory) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
 	executeMsg := strategyfactory.ExecuteMsg{
 		Unpause: &strategyfactory.Unpause{},
 	}
@@ -211,7 +187,7 @@ func (r *strategyFactoryImpl) Unpause(ctx context.Context) (*coretypes.ResultTx,
 	return r.execute(ctx, executeMsg)
 }
 
-func (r *strategyFactoryImpl) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
+func (r *StrategyFactory) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
 	executeMsg := strategyfactory.ExecuteMsg{
 		SetPauser: &strategyfactory.SetPauser{
 			NewPauser: newPauser,
@@ -221,7 +197,7 @@ func (r *strategyFactoryImpl) SetPauser(ctx context.Context, newPauser string) (
 	return r.execute(ctx, executeMsg)
 }
 
-func (r *strategyFactoryImpl) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
+func (r *StrategyFactory) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
 	executeMsg := strategyfactory.ExecuteMsg{
 		SetUnpauser: &strategyfactory.SetUnpauser{
 			NewUnpauser: newUnpauser,
@@ -233,7 +209,7 @@ func (r *strategyFactoryImpl) SetUnpauser(ctx context.Context, newUnpauser strin
 
 // Query Functions
 
-func (r *strategyFactoryImpl) GetStrategy(token string) (*strategyfactory.StrategyResponse, error) {
+func (r *StrategyFactory) GetStrategy(token string) (*strategyfactory.StrategyResponse, error) {
 	queryMsg := strategyfactory.QueryMsg{
 		GetStrategy: &strategyfactory.GetStrategy{
 			Token: token,
@@ -249,7 +225,7 @@ func (r *strategyFactoryImpl) GetStrategy(token string) (*strategyfactory.Strate
 	return &res, err
 }
 
-func (r *strategyFactoryImpl) IsTokenBlacklisted(token string) (*strategyfactory.BlacklistStatusResponse, error) {
+func (r *StrategyFactory) IsTokenBlacklisted(token string) (*strategyfactory.BlacklistStatusResponse, error) {
 	queryMsg := strategyfactory.QueryMsg{
 		IsTokenBlacklisted: &strategyfactory.IsTokenBlacklisted{
 			Token: token,

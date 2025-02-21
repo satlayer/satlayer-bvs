@@ -14,35 +14,7 @@ import (
 	strategybasetvllimits "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-base-tvl-limits"
 )
 
-type StrategyBaseTVLLimits interface {
-	WithGasAdjustment(gasAdjustment float64) StrategyBaseTVLLimits
-	WithGasPrice(gasPrice sdktypes.DecCoin) StrategyBaseTVLLimits
-	WithGasLimit(gasLimit uint64) StrategyBaseTVLLimits
-
-	BindClient(string)
-	Deposit(ctx context.Context, amount uint64) (*coretypes.ResultTx, error)
-	Withdraw(ctx context.Context, recipient string, amountShares uint64) (*coretypes.ResultTx, error)
-	GetShares(staker string, strategy string) (*wasmtypes.QuerySmartContractStateResponse, error)
-	GetTVLLimits() (*strategybasetvllimits.TVLLimitsResponse, error)
-	GetTotalDeposits() (*strategybasetvllimits.TotalSharesResponse, error)
-	Explanation() (*strategybasetvllimits.ExplanationResponse, error)
-	GetStrategyState() (*strategybasetvllimits.StrategyState, error)
-	SharesToUnderlyingView(amountShares uint64) (*wasmtypes.QuerySmartContractStateResponse, error)
-	UnderlyingToShareView(amount uint64) (*wasmtypes.QuerySmartContractStateResponse, error)
-	UnderlyingView(user string) (*wasmtypes.QuerySmartContractStateResponse, error)
-	UnderlyingToken() (*wasmtypes.QuerySmartContractStateResponse, error)
-	Pause(ctx context.Context) (*coretypes.ResultTx, error)
-	Unpause(ctx context.Context) (*coretypes.ResultTx, error)
-	SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error)
-	SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error)
-	TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error)
-	SetTVLLimits(ctx context.Context, maxPerDeposit string, maxTotalDeposits string) (*coretypes.ResultTx, error)
-	UnderlyingToShares(amount_underlying string) (*strategybasetvllimits.UnderlyingToSharesResponse, error)
-	GetStrategyManager() (*wasmtypes.QuerySmartContractStateResponse, error)
-	SetStrategyManager(ctx context.Context, newStrategyManager string) (*coretypes.ResultTx, error)
-}
-
-type strategyBaseTVLLimitsImpl struct {
+type StrategyBaseTvlLimits struct {
 	io             io.ChainIO
 	executeOptions *types.ExecuteOptions
 	queryOptions   *types.QueryOptions
@@ -51,8 +23,8 @@ type strategyBaseTVLLimitsImpl struct {
 	gasLimit       uint64
 }
 
-func NewStrategyBaseTVLLimits(chainIO io.ChainIO) StrategyBaseTVLLimits {
-	return &strategyBaseTVLLimitsImpl{
+func NewStrategyBaseTVLLimits(chainIO io.ChainIO) *StrategyBaseTvlLimits {
+	return &StrategyBaseTvlLimits{
 		io:            chainIO,
 		gasAdjustment: 1.2,
 		gasPrice:      sdktypes.NewInt64DecCoin("ubbn", 1),
@@ -60,22 +32,22 @@ func NewStrategyBaseTVLLimits(chainIO io.ChainIO) StrategyBaseTVLLimits {
 	}
 }
 
-func (r *strategyBaseTVLLimitsImpl) WithGasAdjustment(gasAdjustment float64) StrategyBaseTVLLimits {
+func (r *StrategyBaseTvlLimits) WithGasAdjustment(gasAdjustment float64) *StrategyBaseTvlLimits {
 	r.gasAdjustment = gasAdjustment
 	return r
 }
 
-func (r *strategyBaseTVLLimitsImpl) WithGasPrice(gasPrice sdktypes.DecCoin) StrategyBaseTVLLimits {
+func (r *StrategyBaseTvlLimits) WithGasPrice(gasPrice sdktypes.DecCoin) *StrategyBaseTvlLimits {
 	r.gasPrice = gasPrice
 	return r
 }
 
-func (r *strategyBaseTVLLimitsImpl) WithGasLimit(gasLimit uint64) StrategyBaseTVLLimits {
+func (r *StrategyBaseTvlLimits) WithGasLimit(gasLimit uint64) *StrategyBaseTvlLimits {
 	r.gasLimit = gasLimit
 	return r
 }
 
-func (r *strategyBaseTVLLimitsImpl) BindClient(contractAddress string) {
+func (r *StrategyBaseTvlLimits) BindClient(contractAddress string) {
 	r.executeOptions = &types.ExecuteOptions{
 		ContractAddr:  contractAddress,
 		ExecuteMsg:    []byte{},
@@ -93,7 +65,7 @@ func (r *strategyBaseTVLLimitsImpl) BindClient(contractAddress string) {
 	}
 }
 
-func (r *strategyBaseTVLLimitsImpl) execute(ctx context.Context, msg any) (*coretypes.ResultTx, error) {
+func (r *StrategyBaseTvlLimits) execute(ctx context.Context, msg any) (*coretypes.ResultTx, error) {
 	msgBytes, err := json.Marshal(msg)
 
 	if err != nil {
@@ -104,7 +76,7 @@ func (r *strategyBaseTVLLimitsImpl) execute(ctx context.Context, msg any) (*core
 	return r.io.SendTransaction(ctx, *r.executeOptions)
 }
 
-func (r *strategyBaseTVLLimitsImpl) Deposit(ctx context.Context, amount uint64) (*coretypes.ResultTx, error) {
+func (r *StrategyBaseTvlLimits) Deposit(ctx context.Context, amount uint64) (*coretypes.ResultTx, error) {
 	msg := strategybasetvllimits.ExecuteMsg{
 		Deposit: &strategybasetvllimits.Deposit{
 			Amount: fmt.Sprintf("%d", amount),
@@ -114,7 +86,7 @@ func (r *strategyBaseTVLLimitsImpl) Deposit(ctx context.Context, amount uint64) 
 	return r.execute(ctx, msg)
 }
 
-func (r *strategyBaseTVLLimitsImpl) Withdraw(ctx context.Context, recipient string, amountShares uint64) (*coretypes.ResultTx, error) {
+func (r *StrategyBaseTvlLimits) Withdraw(ctx context.Context, recipient string, amountShares uint64) (*coretypes.ResultTx, error) {
 	msg := strategybasetvllimits.ExecuteMsg{
 		Withdraw: &strategybasetvllimits.Withdraw{
 			Recipient:    recipient,
@@ -125,7 +97,7 @@ func (r *strategyBaseTVLLimitsImpl) Withdraw(ctx context.Context, recipient stri
 	return r.execute(ctx, msg)
 }
 
-func (r *strategyBaseTVLLimitsImpl) sendQuery(msg any) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyBaseTvlLimits) sendQuery(msg any) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msgBytes, err := json.Marshal(msg)
 
 	if err != nil {
@@ -136,7 +108,7 @@ func (r *strategyBaseTVLLimitsImpl) sendQuery(msg any) (*wasmtypes.QuerySmartCon
 	return r.io.QueryContract(*r.queryOptions)
 }
 
-func (r *strategyBaseTVLLimitsImpl) GetShares(staker string, strategy string) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyBaseTvlLimits) GetShares(staker string, strategy string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategybasetvllimits.QueryMsg{
 		GetShares: &strategybasetvllimits.GetShares{
 			Staker:   staker,
@@ -147,7 +119,7 @@ func (r *strategyBaseTVLLimitsImpl) GetShares(staker string, strategy string) (*
 	return r.sendQuery(msg)
 }
 
-func (r *strategyBaseTVLLimitsImpl) SharesToUnderlyingView(amountShares uint64) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyBaseTvlLimits) SharesToUnderlyingView(amountShares uint64) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategybasetvllimits.QueryMsg{
 		SharesToUnderlyingView: &strategybasetvllimits.SharesToUnderlyingView{
 			AmountShares: fmt.Sprintf("%d", amountShares),
@@ -157,7 +129,7 @@ func (r *strategyBaseTVLLimitsImpl) SharesToUnderlyingView(amountShares uint64) 
 	return r.sendQuery(msg)
 }
 
-func (r *strategyBaseTVLLimitsImpl) UnderlyingToShareView(amount uint64) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyBaseTvlLimits) UnderlyingToShareView(amount uint64) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategybasetvllimits.QueryMsg{
 		UnderlyingToShareView: &strategybasetvllimits.UnderlyingToShareView{
 			Amount: fmt.Sprintf("%d", amount),
@@ -167,7 +139,7 @@ func (r *strategyBaseTVLLimitsImpl) UnderlyingToShareView(amount uint64) (*wasmt
 	return r.sendQuery(msg)
 }
 
-func (r *strategyBaseTVLLimitsImpl) UnderlyingView(user string) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyBaseTvlLimits) UnderlyingView(user string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategybasetvllimits.QueryMsg{
 		UserUnderlyingView: &strategybasetvllimits.UserUnderlyingView{
 			User: user,
@@ -177,7 +149,7 @@ func (r *strategyBaseTVLLimitsImpl) UnderlyingView(user string) (*wasmtypes.Quer
 	return r.sendQuery(msg)
 }
 
-func (r *strategyBaseTVLLimitsImpl) GetTVLLimits() (*strategybasetvllimits.TVLLimitsResponse, error) {
+func (r *StrategyBaseTvlLimits) GetTVLLimits() (*strategybasetvllimits.TVLLimitsResponse, error) {
 	msg := strategybasetvllimits.QueryMsg{
 		GetTVLLimits: &strategybasetvllimits.GetTVLLimits{},
 	}
@@ -194,7 +166,7 @@ func (r *strategyBaseTVLLimitsImpl) GetTVLLimits() (*strategybasetvllimits.TVLLi
 	return &result, nil
 }
 
-func (r *strategyBaseTVLLimitsImpl) GetTotalDeposits() (*strategybasetvllimits.TotalSharesResponse, error) {
+func (r *StrategyBaseTvlLimits) GetTotalDeposits() (*strategybasetvllimits.TotalSharesResponse, error) {
 	msg := strategybasetvllimits.QueryMsg{
 		GetTotalShares: &strategybasetvllimits.GetTotalShares{},
 	}
@@ -211,7 +183,7 @@ func (r *strategyBaseTVLLimitsImpl) GetTotalDeposits() (*strategybasetvllimits.T
 	return &result, nil
 }
 
-func (r *strategyBaseTVLLimitsImpl) Explanation() (*strategybasetvllimits.ExplanationResponse, error) {
+func (r *StrategyBaseTvlLimits) Explanation() (*strategybasetvllimits.ExplanationResponse, error) {
 	msg := strategybasetvllimits.QueryMsg{
 		Explanation: &strategybasetvllimits.Explanation{},
 	}
@@ -228,7 +200,7 @@ func (r *strategyBaseTVLLimitsImpl) Explanation() (*strategybasetvllimits.Explan
 	return &result, nil
 }
 
-func (r *strategyBaseTVLLimitsImpl) GetStrategyState() (*strategybasetvllimits.StrategyState, error) {
+func (r *StrategyBaseTvlLimits) GetStrategyState() (*strategybasetvllimits.StrategyState, error) {
 	msg := strategybasetvllimits.QueryMsg{
 		GetStrategyState: &strategybasetvllimits.GetStrategyState{},
 	}
@@ -245,14 +217,14 @@ func (r *strategyBaseTVLLimitsImpl) GetStrategyState() (*strategybasetvllimits.S
 	return &result, nil
 }
 
-func (r *strategyBaseTVLLimitsImpl) UnderlyingToken() (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyBaseTvlLimits) UnderlyingToken() (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategybasetvllimits.QueryMsg{
 		GetUnderlyingToken: &strategybasetvllimits.GetUnderlyingToken{},
 	}
 	return r.sendQuery(msg)
 }
 
-func (r *strategyBaseTVLLimitsImpl) UnderlyingToShares(amount_underlying string) (*strategybasetvllimits.UnderlyingToSharesResponse, error) {
+func (r *StrategyBaseTvlLimits) UnderlyingToShares(amount_underlying string) (*strategybasetvllimits.UnderlyingToSharesResponse, error) {
 	msg := strategybasetvllimits.QueryMsg{
 		UnderlyingToShares: &strategybasetvllimits.UnderlyingToShares{
 			AmountUnderlying: amount_underlying,
@@ -272,14 +244,14 @@ func (r *strategyBaseTVLLimitsImpl) UnderlyingToShares(amount_underlying string)
 	return &result, nil
 }
 
-func (r *strategyBaseTVLLimitsImpl) GetStrategyManager() (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyBaseTvlLimits) GetStrategyManager() (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategybasetvllimits.QueryMsg{
 		GetStrategyManager: &strategybasetvllimits.GetStrategyManager{},
 	}
 	return r.sendQuery(msg)
 }
 
-func (r *strategyBaseTVLLimitsImpl) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
+func (r *StrategyBaseTvlLimits) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
 	msg := strategybasetvllimits.ExecuteMsg{
 		Pause: &strategybasetvllimits.Pause{},
 	}
@@ -287,7 +259,7 @@ func (r *strategyBaseTVLLimitsImpl) Pause(ctx context.Context) (*coretypes.Resul
 	return r.execute(ctx, msg)
 }
 
-func (r *strategyBaseTVLLimitsImpl) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
+func (r *StrategyBaseTvlLimits) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
 	msg := strategybasetvllimits.ExecuteMsg{
 		Unpause: &strategybasetvllimits.Unpause{},
 	}
@@ -295,7 +267,7 @@ func (r *strategyBaseTVLLimitsImpl) Unpause(ctx context.Context) (*coretypes.Res
 	return r.execute(ctx, msg)
 }
 
-func (r *strategyBaseTVLLimitsImpl) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
+func (r *StrategyBaseTvlLimits) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
 	msg := strategybasetvllimits.ExecuteMsg{
 		SetPauser: &strategybasetvllimits.SetPauser{NewPauser: newPauser},
 	}
@@ -303,7 +275,7 @@ func (r *strategyBaseTVLLimitsImpl) SetPauser(ctx context.Context, newPauser str
 	return r.execute(ctx, msg)
 }
 
-func (r *strategyBaseTVLLimitsImpl) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
+func (r *StrategyBaseTvlLimits) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
 	msg := strategybasetvllimits.ExecuteMsg{
 		SetUnpauser: &strategybasetvllimits.SetUnpauser{NewUnpauser: newUnpauser},
 	}
@@ -311,7 +283,7 @@ func (r *strategyBaseTVLLimitsImpl) SetUnpauser(ctx context.Context, newUnpauser
 	return r.execute(ctx, msg)
 }
 
-func (r *strategyBaseTVLLimitsImpl) SetTVLLimits(ctx context.Context, maxPerDeposit string, maxTotalDeposits string) (*coretypes.ResultTx, error) {
+func (r *StrategyBaseTvlLimits) SetTVLLimits(ctx context.Context, maxPerDeposit string, maxTotalDeposits string) (*coretypes.ResultTx, error) {
 	msg := strategybasetvllimits.ExecuteMsg{
 		SetTVLLimits: &strategybasetvllimits.SetTVLLimits{
 			MaxPerDeposit:    maxPerDeposit,
@@ -322,7 +294,7 @@ func (r *strategyBaseTVLLimitsImpl) SetTVLLimits(ctx context.Context, maxPerDepo
 	return r.execute(ctx, msg)
 }
 
-func (r *strategyBaseTVLLimitsImpl) SetStrategyManager(ctx context.Context, newStrategyManager string) (*coretypes.ResultTx, error) {
+func (r *StrategyBaseTvlLimits) SetStrategyManager(ctx context.Context, newStrategyManager string) (*coretypes.ResultTx, error) {
 	msg := strategybasetvllimits.ExecuteMsg{
 		SetStrategyManager: &strategybasetvllimits.SetStrategyManager{NewStrategyManager: newStrategyManager},
 	}
@@ -330,7 +302,7 @@ func (r *strategyBaseTVLLimitsImpl) SetStrategyManager(ctx context.Context, newS
 	return r.execute(ctx, msg)
 }
 
-func (r *strategyBaseTVLLimitsImpl) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
+func (r *StrategyBaseTvlLimits) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
 	msg := strategybasetvllimits.ExecuteMsg{
 		TransferOwnership: &strategybasetvllimits.TransferOwnership{NewOwner: newOwner},
 	}

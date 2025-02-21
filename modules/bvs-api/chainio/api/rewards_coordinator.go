@@ -13,43 +13,7 @@ import (
 	rewardscoordinator "github.com/satlayer/satlayer-bvs/bvs-cw/rewards-coordinator"
 )
 
-type RewardsCoordinator interface {
-	WithGasAdjustment(gasAdjustment float64) RewardsCoordinator
-	WithGasPrice(gasPrice sdktypes.DecCoin) RewardsCoordinator
-	WithGasLimit(gasLimit uint64) RewardsCoordinator
-
-	BindClient(string)
-
-	CreateBVSRewardsSubmission(ctx context.Context, submissions []rewardscoordinator.RewardsSubmission) (*coretypes.ResultTx, error)
-	CreateRewardsForAllSubmission(ctx context.Context, submissions []rewardscoordinator.RewardsSubmission) (*coretypes.ResultTx, error)
-	ProcessClaim(ctx context.Context, claim rewardscoordinator.ProcessClaimClaim, recipient string) (*coretypes.ResultTx, error)
-	SubmitRoot(ctx context.Context, root string, rewardsCalculationEndTimestamp int64) (*coretypes.ResultTx, error)
-	DisableRoot(ctx context.Context, rootIndex int64) (*coretypes.ResultTx, error)
-	SetClaimerFor(ctx context.Context, claimer string) (*coretypes.ResultTx, error)
-	SetActivationDelay(ctx context.Context, newActivationDelay int64) (*coretypes.ResultTx, error)
-	SetGlobalOperatorCommission(ctx context.Context, newCommissionBips int64) (*coretypes.ResultTx, error)
-	SetRewardsUpdater(ctx context.Context, newUpdater string) (*coretypes.ResultTx, error)
-	SetRewardsForAllSubmitter(ctx context.Context, submitter string, newValue bool) (*coretypes.ResultTx, error)
-	Pause(ctx context.Context) (*coretypes.ResultTx, error)
-	Unpause(ctx context.Context) (*coretypes.ResultTx, error)
-	SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error)
-	SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error)
-	TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error)
-
-	CalculateEarnerLeafHash(earner string, earnerTokenRoot string) (*wasmtypes.QuerySmartContractStateResponse, error)
-	CalculateTokenLeafHash(token string, cumulativeEarnings string) (*wasmtypes.QuerySmartContractStateResponse, error)
-	OperatorCommissionBips(operator string, bvs string) (*wasmtypes.QuerySmartContractStateResponse, error)
-	GetDistributionRootsLength() (*wasmtypes.QuerySmartContractStateResponse, error)
-	GetCurrentDistributionRoot() (*wasmtypes.QuerySmartContractStateResponse, error)
-	GetDistributionRootAtIndex(index string) (*wasmtypes.QuerySmartContractStateResponse, error)
-	GetCurrentClaimableDistributionRoot() (*wasmtypes.QuerySmartContractStateResponse, error)
-	GetRootIndexFromHash(rootHash string) (*wasmtypes.QuerySmartContractStateResponse, error)
-	CalculateDomainSeparator(chainId string, contractAddr string) (*wasmtypes.QuerySmartContractStateResponse, error)
-	MerkleizeLeaves(leaves []string) (*wasmtypes.QuerySmartContractStateResponse, error)
-	CheckClaim(claim rewardscoordinator.CheckClaimClaim) (*wasmtypes.QuerySmartContractStateResponse, error)
-}
-
-type rewardsCoordinatorImpl struct {
+type RewardsCoordinator struct {
 	io             io.ChainIO
 	executeOptions *types.ExecuteOptions
 	queryOptions   *types.QueryOptions
@@ -58,8 +22,8 @@ type rewardsCoordinatorImpl struct {
 	gasLimit       uint64
 }
 
-func NewRewardsCoordinator(chainIO io.ChainIO) RewardsCoordinator {
-	return &rewardsCoordinatorImpl{
+func NewRewardsCoordinator(chainIO io.ChainIO) *RewardsCoordinator {
+	return &RewardsCoordinator{
 		io:            chainIO,
 		gasAdjustment: 1.2,
 		gasPrice:      sdktypes.NewInt64DecCoin("ubbn", 1),
@@ -67,22 +31,22 @@ func NewRewardsCoordinator(chainIO io.ChainIO) RewardsCoordinator {
 	}
 }
 
-func (r *rewardsCoordinatorImpl) WithGasAdjustment(gasAdjustment float64) RewardsCoordinator {
+func (r *RewardsCoordinator) WithGasAdjustment(gasAdjustment float64) *RewardsCoordinator {
 	r.gasAdjustment = gasAdjustment
 	return r
 }
 
-func (r *rewardsCoordinatorImpl) WithGasPrice(gasPrice sdktypes.DecCoin) RewardsCoordinator {
+func (r *RewardsCoordinator) WithGasPrice(gasPrice sdktypes.DecCoin) *RewardsCoordinator {
 	r.gasPrice = gasPrice
 	return r
 }
 
-func (r *rewardsCoordinatorImpl) WithGasLimit(gasLimit uint64) RewardsCoordinator {
+func (r *RewardsCoordinator) WithGasLimit(gasLimit uint64) *RewardsCoordinator {
 	r.gasLimit = gasLimit
 	return r
 }
 
-func (r *rewardsCoordinatorImpl) BindClient(contractAddress string) {
+func (r *RewardsCoordinator) BindClient(contractAddress string) {
 	r.executeOptions = &types.ExecuteOptions{
 		ContractAddr:  contractAddress,
 		ExecuteMsg:    []byte{},
@@ -100,7 +64,7 @@ func (r *rewardsCoordinatorImpl) BindClient(contractAddress string) {
 	}
 }
 
-func (r *rewardsCoordinatorImpl) CreateBVSRewardsSubmission(ctx context.Context, submissions []rewardscoordinator.RewardsSubmission) (*coretypes.ResultTx, error) {
+func (r *RewardsCoordinator) CreateBVSRewardsSubmission(ctx context.Context, submissions []rewardscoordinator.RewardsSubmission) (*coretypes.ResultTx, error) {
 	msg := rewardscoordinator.ExecuteMsg{
 		CreateBvsRewardsSubmission: &rewardscoordinator.CreateBvsRewardsSubmission{
 			RewardsSubmissions: submissions,
@@ -110,7 +74,7 @@ func (r *rewardsCoordinatorImpl) CreateBVSRewardsSubmission(ctx context.Context,
 	return r.execute(ctx, msg)
 }
 
-func (r *rewardsCoordinatorImpl) CreateRewardsForAllSubmission(ctx context.Context, submissions []rewardscoordinator.RewardsSubmission) (*coretypes.ResultTx, error) {
+func (r *RewardsCoordinator) CreateRewardsForAllSubmission(ctx context.Context, submissions []rewardscoordinator.RewardsSubmission) (*coretypes.ResultTx, error) {
 	msg := rewardscoordinator.ExecuteMsg{
 		CreateRewardsForAllSubmission: &rewardscoordinator.CreateRewardsForAllSubmission{
 			RewardsSubmissions: submissions,
@@ -120,7 +84,7 @@ func (r *rewardsCoordinatorImpl) CreateRewardsForAllSubmission(ctx context.Conte
 	return r.execute(ctx, msg)
 }
 
-func (r *rewardsCoordinatorImpl) ProcessClaim(ctx context.Context, claim rewardscoordinator.ProcessClaimClaim, recipient string) (*coretypes.ResultTx, error) {
+func (r *RewardsCoordinator) ProcessClaim(ctx context.Context, claim rewardscoordinator.ProcessClaimClaim, recipient string) (*coretypes.ResultTx, error) {
 	msg := rewardscoordinator.ExecuteMsg{
 		ProcessClaim: &rewardscoordinator.ProcessClaim{
 			Claim:     claim,
@@ -131,7 +95,7 @@ func (r *rewardsCoordinatorImpl) ProcessClaim(ctx context.Context, claim rewards
 	return r.execute(ctx, msg)
 }
 
-func (r *rewardsCoordinatorImpl) SubmitRoot(ctx context.Context, root string, rewardsCalculationEndTimestamp int64) (*coretypes.ResultTx, error) {
+func (r *RewardsCoordinator) SubmitRoot(ctx context.Context, root string, rewardsCalculationEndTimestamp int64) (*coretypes.ResultTx, error) {
 	msg := rewardscoordinator.ExecuteMsg{
 		SubmitRoot: &rewardscoordinator.SubmitRoot{
 			Root:                           root,
@@ -142,7 +106,7 @@ func (r *rewardsCoordinatorImpl) SubmitRoot(ctx context.Context, root string, re
 	return r.execute(ctx, msg)
 }
 
-func (r *rewardsCoordinatorImpl) DisableRoot(ctx context.Context, rootIndex int64) (*coretypes.ResultTx, error) {
+func (r *RewardsCoordinator) DisableRoot(ctx context.Context, rootIndex int64) (*coretypes.ResultTx, error) {
 	msg := rewardscoordinator.ExecuteMsg{
 		DisableRoot: &rewardscoordinator.DisableRoot{
 			RootIndex: rootIndex,
@@ -152,7 +116,7 @@ func (r *rewardsCoordinatorImpl) DisableRoot(ctx context.Context, rootIndex int6
 	return r.execute(ctx, msg)
 }
 
-func (r *rewardsCoordinatorImpl) SetClaimerFor(ctx context.Context, claimer string) (*coretypes.ResultTx, error) {
+func (r *RewardsCoordinator) SetClaimerFor(ctx context.Context, claimer string) (*coretypes.ResultTx, error) {
 	msg := rewardscoordinator.ExecuteMsg{
 		SetClaimerFor: &rewardscoordinator.SetClaimerFor{
 			Claimer: claimer,
@@ -162,7 +126,7 @@ func (r *rewardsCoordinatorImpl) SetClaimerFor(ctx context.Context, claimer stri
 	return r.execute(ctx, msg)
 }
 
-func (r *rewardsCoordinatorImpl) SetActivationDelay(ctx context.Context, newActivationDelay int64) (*coretypes.ResultTx, error) {
+func (r *RewardsCoordinator) SetActivationDelay(ctx context.Context, newActivationDelay int64) (*coretypes.ResultTx, error) {
 	msg := rewardscoordinator.ExecuteMsg{
 		SetActivationDelay: &rewardscoordinator.SetActivationDelay{
 			NewActivationDelay: newActivationDelay,
@@ -172,7 +136,7 @@ func (r *rewardsCoordinatorImpl) SetActivationDelay(ctx context.Context, newActi
 	return r.execute(ctx, msg)
 }
 
-func (r *rewardsCoordinatorImpl) SetGlobalOperatorCommission(ctx context.Context, newCommissionBips int64) (*coretypes.ResultTx, error) {
+func (r *RewardsCoordinator) SetGlobalOperatorCommission(ctx context.Context, newCommissionBips int64) (*coretypes.ResultTx, error) {
 	msg := rewardscoordinator.ExecuteMsg{
 		SetGlobalOperatorCommission: &rewardscoordinator.SetGlobalOperatorCommission{
 			NewCommissionBips: newCommissionBips,
@@ -182,7 +146,7 @@ func (r *rewardsCoordinatorImpl) SetGlobalOperatorCommission(ctx context.Context
 	return r.execute(ctx, msg)
 }
 
-func (r *rewardsCoordinatorImpl) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
+func (r *RewardsCoordinator) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
 	msg := rewardscoordinator.ExecuteMsg{
 		Pause: &rewardscoordinator.Pause{},
 	}
@@ -190,14 +154,14 @@ func (r *rewardsCoordinatorImpl) Pause(ctx context.Context) (*coretypes.ResultTx
 	return r.execute(ctx, msg)
 }
 
-func (r *rewardsCoordinatorImpl) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
+func (r *RewardsCoordinator) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
 	msg := rewardscoordinator.ExecuteMsg{
 		Unpause: &rewardscoordinator.Unpause{},
 	}
 	return r.execute(ctx, msg)
 }
 
-func (r *rewardsCoordinatorImpl) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
+func (r *RewardsCoordinator) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
 	msg := rewardscoordinator.ExecuteMsg{
 		SetPauser: &rewardscoordinator.SetPauser{
 			NewPauser: newPauser,
@@ -207,7 +171,7 @@ func (r *rewardsCoordinatorImpl) SetPauser(ctx context.Context, newPauser string
 	return r.execute(ctx, msg)
 }
 
-func (r *rewardsCoordinatorImpl) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
+func (r *RewardsCoordinator) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
 	msg := rewardscoordinator.ExecuteMsg{
 		SetUnpauser: &rewardscoordinator.SetUnpauser{NewUnpauser: newUnpauser},
 	}
@@ -215,7 +179,7 @@ func (r *rewardsCoordinatorImpl) SetUnpauser(ctx context.Context, newUnpauser st
 	return r.execute(ctx, msg)
 }
 
-func (r *rewardsCoordinatorImpl) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
+func (r *RewardsCoordinator) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
 	msg := rewardscoordinator.ExecuteMsg{
 		TransferOwnership: &rewardscoordinator.TransferOwnership{
 			NewOwner: newOwner,
@@ -225,7 +189,7 @@ func (r *rewardsCoordinatorImpl) TransferOwnership(ctx context.Context, newOwner
 	return r.execute(ctx, msg)
 }
 
-func (r *rewardsCoordinatorImpl) SetRewardsUpdater(ctx context.Context, newUpdater string) (*coretypes.ResultTx, error) {
+func (r *RewardsCoordinator) SetRewardsUpdater(ctx context.Context, newUpdater string) (*coretypes.ResultTx, error) {
 	msg := rewardscoordinator.ExecuteMsg{
 		SetRewardsUpdater: &rewardscoordinator.SetRewardsUpdater{
 			NewUpdater: newUpdater,
@@ -235,7 +199,7 @@ func (r *rewardsCoordinatorImpl) SetRewardsUpdater(ctx context.Context, newUpdat
 	return r.execute(ctx, msg)
 }
 
-func (r *rewardsCoordinatorImpl) SetRewardsForAllSubmitter(ctx context.Context, submitter string, newValue bool) (*coretypes.ResultTx, error) {
+func (r *RewardsCoordinator) SetRewardsForAllSubmitter(ctx context.Context, submitter string, newValue bool) (*coretypes.ResultTx, error) {
 	msg := rewardscoordinator.ExecuteMsg{
 		SetRewardsForAllSubmitter: &rewardscoordinator.SetRewardsForAllSubmitter{
 			Submitter: submitter,
@@ -246,7 +210,7 @@ func (r *rewardsCoordinatorImpl) SetRewardsForAllSubmitter(ctx context.Context, 
 	return r.execute(ctx, msg)
 }
 
-func (r *rewardsCoordinatorImpl) execute(ctx context.Context, msg any) (*coretypes.ResultTx, error) {
+func (r *RewardsCoordinator) execute(ctx context.Context, msg any) (*coretypes.ResultTx, error) {
 	msgBytes, err := json.Marshal(msg)
 
 	if err != nil {
@@ -257,7 +221,7 @@ func (r *rewardsCoordinatorImpl) execute(ctx context.Context, msg any) (*coretyp
 	return r.io.SendTransaction(ctx, *r.executeOptions)
 }
 
-func (r *rewardsCoordinatorImpl) query(msg any) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *RewardsCoordinator) query(msg any) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msgBytes, err := json.Marshal(msg)
 
 	if err != nil {
@@ -268,7 +232,7 @@ func (r *rewardsCoordinatorImpl) query(msg any) (*wasmtypes.QuerySmartContractSt
 	return r.io.QueryContract(*r.queryOptions)
 }
 
-func (r *rewardsCoordinatorImpl) CalculateEarnerLeafHash(earner string, earnerTokenRoot string) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *RewardsCoordinator) CalculateEarnerLeafHash(earner string, earnerTokenRoot string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := rewardscoordinator.QueryMsg{
 		CalculateEarnerLeafHash: &rewardscoordinator.CalculateEarnerLeafHash{
 			Earner:          earner,
@@ -279,7 +243,7 @@ func (r *rewardsCoordinatorImpl) CalculateEarnerLeafHash(earner string, earnerTo
 	return r.query(msg)
 }
 
-func (r *rewardsCoordinatorImpl) CalculateTokenLeafHash(token string, cumulativeEarnings string) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *RewardsCoordinator) CalculateTokenLeafHash(token string, cumulativeEarnings string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := rewardscoordinator.QueryMsg{
 		CalculateTokenLeafHash: &rewardscoordinator.CalculateTokenLeafHash{
 			Token:              token,
@@ -290,7 +254,7 @@ func (r *rewardsCoordinatorImpl) CalculateTokenLeafHash(token string, cumulative
 	return r.query(msg)
 }
 
-func (r *rewardsCoordinatorImpl) OperatorCommissionBips(operator string, bvs string) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *RewardsCoordinator) OperatorCommissionBips(operator string, bvs string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := rewardscoordinator.QueryMsg{
 		OperatorCommissionBips: &rewardscoordinator.OperatorCommissionBips{
 			Operator: operator,
@@ -301,7 +265,7 @@ func (r *rewardsCoordinatorImpl) OperatorCommissionBips(operator string, bvs str
 	return r.query(msg)
 }
 
-func (r *rewardsCoordinatorImpl) GetDistributionRootsLength() (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *RewardsCoordinator) GetDistributionRootsLength() (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := rewardscoordinator.QueryMsg{
 		GetDistributionRootsLength: &rewardscoordinator.GetDistributionRootsLength{},
 	}
@@ -309,7 +273,7 @@ func (r *rewardsCoordinatorImpl) GetDistributionRootsLength() (*wasmtypes.QueryS
 	return r.query(msg)
 }
 
-func (r *rewardsCoordinatorImpl) GetCurrentDistributionRoot() (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *RewardsCoordinator) GetCurrentDistributionRoot() (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := rewardscoordinator.QueryMsg{
 		GetCurrentDistributionRoot: &rewardscoordinator.GetCurrentDistributionRoot{},
 	}
@@ -317,7 +281,7 @@ func (r *rewardsCoordinatorImpl) GetCurrentDistributionRoot() (*wasmtypes.QueryS
 	return r.query(msg)
 }
 
-func (r *rewardsCoordinatorImpl) GetDistributionRootAtIndex(index string) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *RewardsCoordinator) GetDistributionRootAtIndex(index string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := rewardscoordinator.QueryMsg{
 		GetDistributionRootAtIndex: &rewardscoordinator.GetDistributionRootAtIndex{
 			Index: index,
@@ -327,7 +291,7 @@ func (r *rewardsCoordinatorImpl) GetDistributionRootAtIndex(index string) (*wasm
 	return r.query(msg)
 }
 
-func (r *rewardsCoordinatorImpl) GetCurrentClaimableDistributionRoot() (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *RewardsCoordinator) GetCurrentClaimableDistributionRoot() (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := rewardscoordinator.QueryMsg{
 		GetCurrentClaimableDistributionRoot: &rewardscoordinator.GetCurrentClaimableDistributionRoot{},
 	}
@@ -335,7 +299,7 @@ func (r *rewardsCoordinatorImpl) GetCurrentClaimableDistributionRoot() (*wasmtyp
 	return r.query(msg)
 }
 
-func (r *rewardsCoordinatorImpl) GetRootIndexFromHash(rootHash string) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *RewardsCoordinator) GetRootIndexFromHash(rootHash string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := rewardscoordinator.QueryMsg{
 		GetRootIndexFromHash: &rewardscoordinator.GetRootIndexFromHash{
 			RootHash: rootHash,
@@ -345,7 +309,7 @@ func (r *rewardsCoordinatorImpl) GetRootIndexFromHash(rootHash string) (*wasmtyp
 	return r.query(msg)
 }
 
-func (r *rewardsCoordinatorImpl) CalculateDomainSeparator(chainId string, contractAddr string) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *RewardsCoordinator) CalculateDomainSeparator(chainId string, contractAddr string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := rewardscoordinator.QueryMsg{
 		CalculateDomainSeparator: &rewardscoordinator.CalculateDomainSeparator{
 			ChainID:      chainId,
@@ -356,7 +320,7 @@ func (r *rewardsCoordinatorImpl) CalculateDomainSeparator(chainId string, contra
 	return r.query(msg)
 }
 
-func (r *rewardsCoordinatorImpl) MerkleizeLeaves(leaves []string) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *RewardsCoordinator) MerkleizeLeaves(leaves []string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := rewardscoordinator.QueryMsg{
 		MerkleizeLeaves: &rewardscoordinator.MerkleizeLeaves{
 			Leaves: leaves,
@@ -366,7 +330,7 @@ func (r *rewardsCoordinatorImpl) MerkleizeLeaves(leaves []string) (*wasmtypes.Qu
 	return r.query(msg)
 }
 
-func (r *rewardsCoordinatorImpl) CheckClaim(claim rewardscoordinator.CheckClaimClaim) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *RewardsCoordinator) CheckClaim(claim rewardscoordinator.CheckClaimClaim) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := rewardscoordinator.QueryMsg{
 		CheckClaim: &rewardscoordinator.CheckClaim{
 			Claim: claim,

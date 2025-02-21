@@ -26,7 +26,7 @@ type Node struct {
 	bvsContract string
 	pubKeyStr   string
 	chainIO     io.ChainIO
-	stateBank   api.StateBank
+	stateBank   *api.StateBank
 }
 
 type Payload struct {
