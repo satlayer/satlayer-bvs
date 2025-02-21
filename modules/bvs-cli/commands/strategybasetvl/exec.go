@@ -83,9 +83,9 @@ func TransferOwnership(userKeyName, newOwner string) {
 	fmt.Printf("Transfer ownership success. txn: %s\n", resp.Hash)
 }
 
-func SetTVLLimits(userKeyName, maxPerDeposit string, maxTotalDeposits string) {
+func SetTvlLimits(userKeyName, maxPerDeposit string, maxTotalDeposits string) {
 	StrategyBaseTVL, _ := newService(userKeyName)
-	resp, err := StrategyBaseTVL.SetTVLLimits(context.Background(), maxPerDeposit, maxTotalDeposits)
+	resp, err := StrategyBaseTVL.SetTvlLimits(context.Background(), maxPerDeposit, maxTotalDeposits)
 	if err != nil {
 		panic(err)
 	}

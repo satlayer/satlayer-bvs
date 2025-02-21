@@ -72,7 +72,7 @@ func (s *DirectoryTestSuite) TearDownSuite() {
 	s.Require().NoError(s.container.Terminate(context.Background()))
 }
 
-func (s *DirectoryTestSuite) test_RegisterBVS() {
+func (s *DirectoryTestSuite) test_RegisterBvs() {
 	keyName := "caller"
 	chainIO, err := s.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(s.T(), err)
@@ -82,11 +82,11 @@ func (s *DirectoryTestSuite) test_RegisterBVS() {
 	s.T().Logf("isAccountOnChain:%v", isAccountOnChain)
 	assert.True(s.T(), isAccountOnChain, "Account %s (%s) is not on chain", keyName, chainIO.GetClientCtx().GetFromAddress())
 
-	txResp, err := bvsApi.RegisterBVS(
+	txResp, err := bvsApi.RegisterBvs(
 		context.Background(),
 		"bbn1mzq6xzynh002x090rzt6us37scfexpu8ca4sllc3p3scn5mvsp0q5cs73s",
 	)
-	assert.NoError(s.T(), err, "TestRegisterBVS")
+	assert.NoError(s.T(), err, "TestRegisterBvs")
 	assert.NotNil(s.T(), txResp, "response nil")
 	s.T().Logf("txResp:%+v", txResp)
 }
@@ -302,12 +302,12 @@ func (s *DirectoryTestSuite) Test_GetOwner() {
 	t.Logf("txResp:%+v", txResp)
 }
 
-func (s *DirectoryTestSuite) Test_GetOperatorBVSRegistrationTypeHash() {
+func (s *DirectoryTestSuite) Test_GetOperatorBvsRegistrationTypeHash() {
 	t := s.T()
 	keyName := "caller"
 	chainIO, err := s.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	txResp, err := api.NewDirectory(chainIO, s.contrAddr).GetOperatorBVSRegistrationTypeHash()
+	txResp, err := api.NewDirectory(chainIO, s.contrAddr).GetOperatorBvsRegistrationTypeHash()
 	assert.NoError(t, err, "get operator bvs registration type hash")
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
@@ -335,19 +335,19 @@ func (s *DirectoryTestSuite) Test_GetDomainName() {
 	t.Logf("txResp:%+v", txResp)
 }
 
-func (s *DirectoryTestSuite) test_GetBVSInfo() {
+func (s *DirectoryTestSuite) test_GetBvsInfo() {
 	t := s.T()
 	keyName := "caller"
 	chainIO, err := s.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	txResp, err := api.NewDirectory(chainIO, s.contrAddr).GetBVSInfo("af0a809a3b8de8656c9b1af0389174a0ee49bf7094b84102171d4fe9f1d24770")
-	assert.NoError(t, err, "TestGetBVSInfo")
+	txResp, err := api.NewDirectory(chainIO, s.contrAddr).GetBvsInfo("af0a809a3b8de8656c9b1af0389174a0ee49bf7094b84102171d4fe9f1d24770")
+	assert.NoError(t, err, "TestGetBvsInfo")
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
 
 	// get non exist bvsHash will nil
-	txResp, err = api.NewDirectory(chainIO, s.contrAddr).GetBVSInfo("d2f665ee5cbc6e4d2fa992defb065fb1d51539db35654ed28feae24fcfa7cdbf")
-	assert.Error(t, err, "TestGetBVSInfo not failed")
+	txResp, err = api.NewDirectory(chainIO, s.contrAddr).GetBvsInfo("d2f665ee5cbc6e4d2fa992defb065fb1d51539db35654ed28feae24fcfa7cdbf")
+	assert.Error(t, err, "TestGetBvsInfo not failed")
 	assert.Nil(t, txResp, "response not nil")
 	t.Logf("Get not exist bvsHash txResp:%+v", txResp)
 }

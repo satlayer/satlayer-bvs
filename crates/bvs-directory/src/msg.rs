@@ -1,5 +1,5 @@
 use crate::query::{
-    BVSInfoResponse, DelegationResponse, DigestHashResponse, DomainNameResponse,
+    BvsInfoResponse, DelegationResponse, DigestHashResponse, DomainNameResponse,
     DomainTypeHashResponse, OwnerResponse, RegistrationTypeHashResponse, SaltResponse,
 };
 use crate::state::OperatorBVSRegistrationStatus;
@@ -17,19 +17,19 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    RegisterBVS {
+    RegisterBvs {
         bvs_contract: String,
     },
-    RegisterOperatorToBVS {
+    RegisterOperatorToBvs {
         operator: String,
         public_key: String,
         contract_addr: String,
         signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry,
     },
-    DeregisterOperatorFromBVS {
+    DeregisterOperatorFromBvs {
         operator: String,
     },
-    UpdateBVSMetadataURI {
+    UpdateBvsMetadataUri {
         metadata_uri: String,
     },
     SetDelegationManager {
@@ -69,8 +69,8 @@ pub enum QueryMsg {
     #[returns(SaltResponse)]
     IsSaltSpent { operator: String, salt: String },
 
-    #[returns(BVSInfoResponse)]
-    GetBVSInfo { bvs_hash: String },
+    #[returns(BvsInfoResponse)]
+    GetBvsInfo { bvs_hash: String },
 
     #[returns(DelegationResponse)]
     GetDelegationManager {},
@@ -79,7 +79,7 @@ pub enum QueryMsg {
     GetOwner {},
 
     #[returns(RegistrationTypeHashResponse)]
-    GetOperatorBVSRegistrationTypeHash {},
+    GetOperatorBvsRegistrationTypeHash {},
 
     #[returns(DomainTypeHashResponse)]
     GetDomainTypeHash {},

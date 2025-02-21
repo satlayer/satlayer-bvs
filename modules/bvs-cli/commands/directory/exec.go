@@ -41,7 +41,7 @@ func RegBVS(userKeyName, BVSAddr string) {
 	}
 	fmt.Printf("StateBank register BVS success. txn: %s\n", txn.Hash)
 
-	txn, err = directory.RegisterBVS(ctx, BVSAddr)
+	txn, err = directory.RegisterBvs(ctx, BVSAddr)
 	if err != nil {
 		fmt.Printf("Register BVS error! %v\n", err)
 		return

@@ -47,7 +47,7 @@ pub struct UnderlyingToSharesResponse {
 }
 
 #[cw_serde]
-pub struct TVLLimitsResponse {
+pub struct TvlLimitsResponse {
     pub max_per_deposit: Uint128,
     pub max_total_deposits: Uint128,
 }

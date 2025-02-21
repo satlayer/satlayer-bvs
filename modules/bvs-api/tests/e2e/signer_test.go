@@ -19,6 +19,7 @@ import (
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/signer"
+	"github.com/satlayer/satlayer-bvs/bvs-cw/directory"
 )
 
 const (
@@ -26,13 +27,6 @@ const (
 	DOMAIN_TYPEHASH                    = "EIP712Domain(string name,uint256 chainId,address verifyingContract)"
 	DOMAIN_NAME                        = "EigenLayer"
 )
-
-type TestUpdateBVSMetadataURIReq struct {
-	UpdateBVSMetadataURI TestUpdateBVSMetadataURI `json:"update_b_v_s_metadata_u_r_i"`
-}
-type TestUpdateBVSMetadataURI struct {
-	MetadataURI string `json:"metadata_uri"`
-}
 
 type signerTestSuite struct {
 	suite.Suite
@@ -53,10 +47,9 @@ func (suite *signerTestSuite) SetupSuite() {
 
 	tAddr := container.GenerateAddress("test-address").String()
 	deployer := &bvs.Deployer{BabylonContainer: container}
-	directory := deployer.DeployDirectory(tAddr)
 
 	suite.chaiID = container.ChainId
-	suite.bvsDirContrAddr = directory.Address
+	suite.bvsDirContrAddr = deployer.DeployDirectory(tAddr).Address
 }
 
 func (suite *signerTestSuite) TearDownSuite() {
@@ -65,9 +58,9 @@ func (suite *signerTestSuite) TearDownSuite() {
 
 func (suite *signerTestSuite) Test_BuildAndSignTx() {
 	t := suite.T()
-	keyName := "caller" // Please refer to the readme to obtain
-	executeMsg := TestUpdateBVSMetadataURIReq{
-		UpdateBVSMetadataURI: TestUpdateBVSMetadataURI{
+	keyName := "caller"
+	executeMsg := directory.ExecuteMsg{
+		UpdateBvsMetadataURI: &directory.UpdateBvsMetadataURI{
 			MetadataURI: "http://leek.test.uri",
 		},
 	}

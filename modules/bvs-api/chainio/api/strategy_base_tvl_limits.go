@@ -149,16 +149,16 @@ func (r *StrategyBaseTvlLimits) UnderlyingView(user string) (*wasmtypes.QuerySma
 	return r.sendQuery(msg)
 }
 
-func (r *StrategyBaseTvlLimits) GetTVLLimits() (*strategybasetvllimits.TVLLimitsResponse, error) {
+func (r *StrategyBaseTvlLimits) GetTvlLimits() (*strategybasetvllimits.TvlLimitsResponse, error) {
 	msg := strategybasetvllimits.QueryMsg{
-		GetTVLLimits: &strategybasetvllimits.GetTVLLimits{},
+		GetTvlLimits: &strategybasetvllimits.GetTvlLimits{},
 	}
 	resp, err := r.sendQuery(msg)
 	if err != nil {
 		return nil, err
 	}
 
-	var result strategybasetvllimits.TVLLimitsResponse
+	var result strategybasetvllimits.TvlLimitsResponse
 	if err := json.Unmarshal(resp.Data, &result); err != nil {
 		return nil, err
 	}
@@ -283,9 +283,9 @@ func (r *StrategyBaseTvlLimits) SetUnpauser(ctx context.Context, newUnpauser str
 	return r.execute(ctx, msg)
 }
 
-func (r *StrategyBaseTvlLimits) SetTVLLimits(ctx context.Context, maxPerDeposit string, maxTotalDeposits string) (*coretypes.ResultTx, error) {
+func (r *StrategyBaseTvlLimits) SetTvlLimits(ctx context.Context, maxPerDeposit string, maxTotalDeposits string) (*coretypes.ResultTx, error) {
 	msg := strategybasetvllimits.ExecuteMsg{
-		SetTVLLimits: &strategybasetvllimits.SetTVLLimits{
+		SetTvlLimits: &strategybasetvllimits.SetTvlLimits{
 			MaxPerDeposit:    maxPerDeposit,
 			MaxTotalDeposits: maxTotalDeposits,
 		},

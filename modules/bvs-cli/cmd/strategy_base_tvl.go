@@ -131,7 +131,7 @@ func strategyBaseTVLCmd() *cobra.Command {
 		Short: "To set the TVL limits.",
 		Args:  cobra.ExactArgs(3),
 		Run: func(cmd *cobra.Command, args []string) {
-			strategybasetvl.SetTVLLimits(args[0], args[1], args[2])
+			strategybasetvl.SetTvlLimits(args[0], args[1], args[2])
 		},
 	}
 
