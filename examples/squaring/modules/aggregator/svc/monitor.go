@@ -26,9 +26,9 @@ func InitMonitor() {
 }
 
 type Monitor struct {
-	bvsContract     string
-	bvsDirectoryApi api.BvsDirectory
-	chainIO         io.ChainIO
+	bvsContract  string
+	directoryApi *api.BvsDirectory
+	chainIO      io.ChainIO
 }
 
 // NewMonitor creates a new Monitor instance with a Cosmos client and BVS contract.
@@ -71,9 +71,9 @@ func NewMonitor() *Monitor {
 	bvsDirectoryApi := api.NewBvsDirectory(chainIO, core.C.Chain.BvsDirectory)
 
 	return &Monitor{
-		bvsContract:     txResp.BvsContract,
-		bvsDirectoryApi: bvsDirectoryApi,
-		chainIO:         chainIO,
+		bvsContract:  txResp.BvsContract,
+		directoryApi: bvsDirectoryApi,
+		chainIO:      chainIO,
 	}
 }
 
@@ -194,7 +194,7 @@ func (m *Monitor) sendTaskResult(taskId uint64, result int64, operators string) 
 // bool: true if the operator is registered, false otherwise
 // error: an error if the query fails
 func (m *Monitor) VerifyOperator(operator string) (bool, error) {
-	rsp, err := m.bvsDirectoryApi.QueryOperator(operator, operator)
+	rsp, err := m.directoryApi.QueryOperator(operator, operator)
 	if err != nil {
 		core.L.Error(fmt.Sprintf("Failed to query operator, due to {%s}", err))
 		return false, err
