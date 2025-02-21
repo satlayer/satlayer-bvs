@@ -84,10 +84,10 @@ func (suite *strategyBaseTVLLimitsTestSuite) Test_ExecuteStrategyTVLLimits() {
 	assert.NotNil(t, resp, "response is nil")
 	t.Logf("Withdraw Response: %+v", resp)*/
 
-	// resp, err := strategyTVLLimits.SetTVLLimits(context.Background(), "11000000", "13000000")
-	// assert.NoError(t, err, "SetTVLLimits failed")
+	// resp, err := strategyTVLLimits.SetTvlLimits(context.Background(), "11000000", "13000000")
+	// assert.NoError(t, err, "SetTvlLimits failed")
 	// assert.NotNil(t, resp, "response is nil")
-	// t.Logf("SetTVLLimits Response: %+v", resp)
+	// t.Logf("SetTvlLimits Response: %+v", resp)
 
 	// resp, err = strategyTVLLimits.TransferOwnership(context.Background(), "osmo1fxqtqvcsglst7pmnd0a9ftytsxt8g75r6cugv7")
 	// assert.NoError(t, err, "TransferOwnership failed")
@@ -125,8 +125,8 @@ func (suite *strategyBaseTVLLimitsTestSuite) Test_QueryStrategyTVLLimits() {
 	strategyTVLLimits := api.NewStrategyBaseTVLLimits(chainIO)
 	strategyTVLLimits.BindClient(suite.contrAddr)
 
-	tvlLimitsResp, err := strategyTVLLimits.GetTVLLimits()
-	assert.NoError(t, err, "GetTVLLimits failed")
+	tvlLimitsResp, err := strategyTVLLimits.GetTvlLimits()
+	assert.NoError(t, err, "GetTvlLimits failed")
 	assert.NotNil(t, tvlLimitsResp, "response is nil")
 	t.Logf("TVL Limits: %+v", tvlLimitsResp)
 

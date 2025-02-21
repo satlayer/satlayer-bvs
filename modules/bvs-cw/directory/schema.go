@@ -13,8 +13,8 @@
 //    digestHashResponse, err := UnmarshalDigestHashResponse(bytes)
 //    bytes, err = digestHashResponse.Marshal()
 //
-//    bVSInfoResponse, err := UnmarshalBVSInfoResponse(bytes)
-//    bytes, err = bVSInfoResponse.Marshal()
+//    bvsInfoResponse, err := UnmarshalBvsInfoResponse(bytes)
+//    bytes, err = bvsInfoResponse.Marshal()
 //
 //    delegationResponse, err := UnmarshalDelegationResponse(bytes)
 //    bytes, err = delegationResponse.Marshal()
@@ -81,13 +81,13 @@ func (r *DigestHashResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalBVSInfoResponse(data []byte) (BVSInfoResponse, error) {
-	var r BVSInfoResponse
+func UnmarshalBvsInfoResponse(data []byte) (BvsInfoResponse, error) {
+	var r BvsInfoResponse
 	err := json.Unmarshal(data, &r)
 	return r, err
 }
 
-func (r *BVSInfoResponse) Marshal() ([]byte, error) {
+func (r *BvsInfoResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -173,7 +173,7 @@ type ExecuteMsg struct {
 	RegisterBvs               *RegisterBvs               `json:"register_bvs,omitempty"`
 	RegisterOperatorToBvs     *RegisterOperatorToBvs     `json:"register_operator_to_bvs,omitempty"`
 	DeregisterOperatorFromBvs *DeregisterOperatorFromBvs `json:"deregister_operator_from_bvs,omitempty"`
-	UpdateBvsMetadataURI      *UpdateBvsMetadataURI      `json:"update_bvs_metadata_u_r_i,omitempty"`
+	UpdateBvsMetadataURI      *UpdateBvsMetadataURI      `json:"update_bvs_metadata_uri,omitempty"`
 	SetDelegationManager      *SetDelegationManager      `json:"set_delegation_manager,omitempty"`
 	CancelSalt                *CancelSalt                `json:"cancel_salt,omitempty"`
 	TransferOwnership         *TransferOwnership         `json:"transfer_ownership,omitempty"`
@@ -241,7 +241,7 @@ type QueryMsg struct {
 	GetBvsInfo                         *GetBvsInfo                         `json:"get_bvs_info,omitempty"`
 	GetDelegationManager               *GetDelegationManager               `json:"get_delegation_manager,omitempty"`
 	GetOwner                           *GetOwner                           `json:"get_owner,omitempty"`
-	GetOperatorBVSRegistrationTypeHash *GetOperatorBVSRegistrationTypeHash `json:"get_operator_b_v_s_registration_type_hash,omitempty"`
+	GetOperatorBvsRegistrationTypeHash *GetOperatorBvsRegistrationTypeHash `json:"get_operator_bvs_registration_type_hash,omitempty"`
 	GetDomainTypeHash                  *GetDomainTypeHash                  `json:"get_domain_type_hash,omitempty"`
 	GetDomainName                      *GetDomainName                      `json:"get_domain_name,omitempty"`
 }
@@ -267,7 +267,7 @@ type GetDomainName struct {
 type GetDomainTypeHash struct {
 }
 
-type GetOperatorBVSRegistrationTypeHash struct {
+type GetOperatorBvsRegistrationTypeHash struct {
 }
 
 type GetOperatorStatus struct {
@@ -287,7 +287,7 @@ type DigestHashResponse struct {
 	DigestHash string `json:"digest_hash"`
 }
 
-type BVSInfoResponse struct {
+type BvsInfoResponse struct {
 	BvsContract string `json:"bvs_contract"`
 	BvsHash     string `json:"bvs_hash"`
 }

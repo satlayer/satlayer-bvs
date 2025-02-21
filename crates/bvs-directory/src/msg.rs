@@ -1,5 +1,5 @@
 use crate::query::{
-    BVSInfoResponse, DelegationResponse, DigestHashResponse, DomainNameResponse,
+    BvsInfoResponse, DelegationResponse, DigestHashResponse, DomainNameResponse,
     DomainTypeHashResponse, OwnerResponse, RegistrationTypeHashResponse, SaltResponse,
 };
 use crate::state::OperatorBVSRegistrationStatus;
@@ -29,7 +29,7 @@ pub enum ExecuteMsg {
     DeregisterOperatorFromBvs {
         operator: String,
     },
-    UpdateBvsMetadataURI {
+    UpdateBvsMetadataUri {
         metadata_uri: String,
     },
     SetDelegationManager {
@@ -69,7 +69,7 @@ pub enum QueryMsg {
     #[returns(SaltResponse)]
     IsSaltSpent { operator: String, salt: String },
 
-    #[returns(BVSInfoResponse)]
+    #[returns(BvsInfoResponse)]
     GetBvsInfo { bvs_hash: String },
 
     #[returns(DelegationResponse)]
@@ -79,7 +79,7 @@ pub enum QueryMsg {
     GetOwner {},
 
     #[returns(RegistrationTypeHashResponse)]
-    GetOperatorBVSRegistrationTypeHash {},
+    GetOperatorBvsRegistrationTypeHash {},
 
     #[returns(DomainTypeHashResponse)]
     GetDomainTypeHash {},

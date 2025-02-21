@@ -160,7 +160,7 @@ func directoryCmd() *cobra.Command {
 		Short: "To get the operator registration typehash from the directory contract.",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			directory.GetOperatorBVSRegistrationTypeHash()
+			directory.GetOperatorBvsRegistrationTypeHash()
 		},
 	}
 

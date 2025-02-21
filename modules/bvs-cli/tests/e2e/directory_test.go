@@ -58,8 +58,8 @@ func Test_GetDomainTypeHash(t *testing.T) {
 	directory.GetDomainTypeHash()
 }
 
-func Test_GetOperatorBVSRegistrationTypeHash(t *testing.T) {
-	directory.GetOperatorBVSRegistrationTypeHash()
+func Test_GetOperatorBvsRegistrationTypeHash(t *testing.T) {
+	directory.GetOperatorBvsRegistrationTypeHash()
 }
 
 func Test_GetBvsInfo(t *testing.T) {

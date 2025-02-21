@@ -310,10 +310,10 @@ func (r *Directory) GetOwner() (*directory.OwnerResponse, error) {
 	return result, nil
 }
 
-func (r *Directory) GetOperatorBVSRegistrationTypeHash() (*directory.RegistrationTypeHashResponse, error) {
+func (r *Directory) GetOperatorBvsRegistrationTypeHash() (*directory.RegistrationTypeHashResponse, error) {
 	result := new(directory.RegistrationTypeHashResponse)
 	queryMsg := directory.QueryMsg{
-		GetOperatorBVSRegistrationTypeHash: &directory.GetOperatorBVSRegistrationTypeHash{},
+		GetOperatorBvsRegistrationTypeHash: &directory.GetOperatorBvsRegistrationTypeHash{},
 	}
 	queryMsgBytes, err := json.Marshal(queryMsg)
 	if err != nil {
@@ -370,8 +370,8 @@ func (r *Directory) GetDomainName() (*directory.DomainNameResponse, error) {
 	return result, nil
 }
 
-func (r *Directory) GetBvsInfo(bvsHash string) (*directory.BVSInfoResponse, error) {
-	result := new(directory.BVSInfoResponse)
+func (r *Directory) GetBvsInfo(bvsHash string) (*directory.BvsInfoResponse, error) {
+	result := new(directory.BvsInfoResponse)
 	queryMsg := directory.QueryMsg{GetBvsInfo: &directory.GetBvsInfo{BvsHash: bvsHash}}
 	queryMsgBytes, err := json.Marshal(queryMsg)
 	if err != nil {

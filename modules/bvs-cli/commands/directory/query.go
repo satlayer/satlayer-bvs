@@ -68,9 +68,9 @@ func GetOwner() {
 	fmt.Printf("%s\n", resp.OwnerAddr)
 }
 
-func GetOperatorBVSRegistrationTypeHash() {
+func GetOperatorBvsRegistrationTypeHash() {
 	s := NewService()
-	resp, err := s.Directory.GetOperatorBVSRegistrationTypeHash()
+	resp, err := s.Directory.GetOperatorBvsRegistrationTypeHash()
 	if err != nil {
 		fmt.Printf("Get operator BVS registration type hash error! %+v\n", err)
 		return

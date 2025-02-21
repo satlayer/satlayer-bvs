@@ -4,11 +4,11 @@ use crate::{
         ExecuteMsg, InstantiateMsg, OperatorStatusResponse, QueryMsg, SignatureWithSaltAndExpiry,
     },
     query::{
-        BVSInfoResponse, DelegationResponse, DigestHashResponse, DomainNameResponse,
+        BvsInfoResponse, DelegationResponse, DigestHashResponse, DomainNameResponse,
         DomainTypeHashResponse, OwnerResponse, RegistrationTypeHashResponse, SaltResponse,
     },
     state::{
-        BVSInfo, OperatorBVSRegistrationStatus, BVS_INFO, BVS_OPERATOR_STATUS, DELEGATION_MANAGER,
+        BvsInfo, OperatorBVSRegistrationStatus, BVS_INFO, BVS_OPERATOR_STATUS, DELEGATION_MANAGER,
         OPERATOR_SALT_SPENT, OWNER,
     },
     utils::{
@@ -102,7 +102,7 @@ pub fn execute(
             let operator_addr = Addr::unchecked(operator);
             deregister_operator(deps, env, info, operator_addr)
         }
-        ExecuteMsg::UpdateBvsMetadataURI { metadata_uri } => {
+        ExecuteMsg::UpdateBvsMetadataUri { metadata_uri } => {
             update_metadata_uri(info, metadata_uri)
         }
         ExecuteMsg::SetDelegationManager { delegation_manager } => {
@@ -143,7 +143,7 @@ pub fn register_bvs(deps: DepsMut, bvs_contract: String) -> Result<Response, Con
 
     let bvs_hash = hex::encode(hash_result);
 
-    let bvs_info = BVSInfo {
+    let bvs_info = BvsInfo {
         bvs_hash: bvs_hash.clone(),
         bvs_contract: bvs_contract.clone(),
     };
@@ -364,7 +364,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let owner_addr = query_owner(deps)?;
             to_json_binary(&owner_addr)
         }
-        QueryMsg::GetOperatorBVSRegistrationTypeHash {} => {
+        QueryMsg::GetOperatorBvsRegistrationTypeHash {} => {
             let hash_str = query_operator_bvs_registration_typehash(deps)?;
             to_json_binary(&hash_str)
         }
@@ -450,9 +450,9 @@ fn query_domain_name(_deps: Deps) -> StdResult<DomainNameResponse> {
     Ok(DomainNameResponse { domain_name })
 }
 
-fn query_bvs_info(deps: Deps, bvs_hash: String) -> StdResult<BVSInfoResponse> {
+fn query_bvs_info(deps: Deps, bvs_hash: String) -> StdResult<BvsInfoResponse> {
     let bvs_info = BVS_INFO.load(deps.storage, bvs_hash.to_string())?;
-    Ok(BVSInfoResponse {
+    Ok(BvsInfoResponse {
         bvs_hash,
         bvs_contract: bvs_info.bvs_contract,
     })
@@ -834,7 +834,7 @@ mod tests {
 
         let metadata_uri = "http://metadata.uri".to_string();
 
-        let msg = ExecuteMsg::UpdateBvsMetadataURI {
+        let msg = ExecuteMsg::UpdateBvsMetadataUri {
             metadata_uri: metadata_uri.clone(),
         };
         let res = execute(deps.as_mut(), env, info.clone(), msg);
@@ -1212,7 +1212,7 @@ mod tests {
         let (deps, env, _info, _pauser_info, _unpauser_info, _delegation_manager) =
             instantiate_contract();
 
-        let query_msg = QueryMsg::GetOperatorBVSRegistrationTypeHash {};
+        let query_msg = QueryMsg::GetOperatorBvsRegistrationTypeHash {};
         let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
 
         let response: RegistrationTypeHashResponse = from_json(query_res).unwrap();
@@ -1378,7 +1378,7 @@ mod tests {
             bvs_hash: bvs_hash.clone(),
         };
         let query_response = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let bvs_info: BVSInfo = from_json(query_response).unwrap();
+        let bvs_info: BvsInfo = from_json(query_response).unwrap();
 
         assert_eq!(bvs_info.bvs_hash, bvs_hash);
         assert_eq!(bvs_info.bvs_contract, bvs_contract.clone())

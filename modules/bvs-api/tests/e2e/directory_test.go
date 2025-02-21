@@ -302,12 +302,12 @@ func (s *DirectoryTestSuite) Test_GetOwner() {
 	t.Logf("txResp:%+v", txResp)
 }
 
-func (s *DirectoryTestSuite) Test_GetOperatorBVSRegistrationTypeHash() {
+func (s *DirectoryTestSuite) Test_GetOperatorBvsRegistrationTypeHash() {
 	t := s.T()
 	keyName := "caller"
 	chainIO, err := s.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	txResp, err := api.NewDirectory(chainIO, s.contrAddr).GetOperatorBVSRegistrationTypeHash()
+	txResp, err := api.NewDirectory(chainIO, s.contrAddr).GetOperatorBvsRegistrationTypeHash()
 	assert.NoError(t, err, "get operator bvs registration type hash")
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)

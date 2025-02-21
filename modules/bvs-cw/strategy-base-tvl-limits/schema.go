@@ -22,11 +22,11 @@
 //    strategyState, err := UnmarshalStrategyState(bytes)
 //    bytes, err = strategyState.Marshal()
 //
-//    tVLLimitsResponse, err := UnmarshalTVLLimitsResponse(bytes)
-//    bytes, err = tVLLimitsResponse.Marshal()
-//
 //    totalSharesResponse, err := UnmarshalTotalSharesResponse(bytes)
 //    bytes, err = totalSharesResponse.Marshal()
+//
+//    tvlLimitsResponse, err := UnmarshalTvlLimitsResponse(bytes)
+//    bytes, err = tvlLimitsResponse.Marshal()
 //
 //    underlyingTokenResponse, err := UnmarshalUnderlyingTokenResponse(bytes)
 //    bytes, err = underlyingTokenResponse.Marshal()
@@ -117,16 +117,6 @@ func (r *StrategyState) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalTVLLimitsResponse(data []byte) (TVLLimitsResponse, error) {
-	var r TVLLimitsResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *TVLLimitsResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
 func UnmarshalTotalSharesResponse(data []byte) (TotalSharesResponse, error) {
 	var r TotalSharesResponse
 	err := json.Unmarshal(data, &r)
@@ -134,6 +124,16 @@ func UnmarshalTotalSharesResponse(data []byte) (TotalSharesResponse, error) {
 }
 
 func (r *TotalSharesResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalTvlLimitsResponse(data []byte) (TvlLimitsResponse, error) {
+	var r TvlLimitsResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *TvlLimitsResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -207,7 +207,7 @@ type ExecuteMsg struct {
 	Unpause            *Unpause            `json:"unpause,omitempty"`
 	SetPauser          *SetPauser          `json:"set_pauser,omitempty"`
 	SetUnpauser        *SetUnpauser        `json:"set_unpauser,omitempty"`
-	SetTVLLimits       *SetTVLLimits       `json:"set_t_v_l_limits,omitempty"`
+	SetTvlLimits       *SetTvlLimits       `json:"set_tvl_limits,omitempty"`
 }
 
 type Deposit struct {
@@ -225,7 +225,7 @@ type SetStrategyManager struct {
 	NewStrategyManager string `json:"new_strategy_manager"`
 }
 
-type SetTVLLimits struct {
+type SetTvlLimits struct {
 	MaxPerDeposit    string `json:"max_per_deposit"`
 	MaxTotalDeposits string `json:"max_total_deposits"`
 }
@@ -258,7 +258,7 @@ type QueryMsg struct {
 	Explanation            *Explanation            `json:"explanation,omitempty"`
 	UnderlyingToShares     *UnderlyingToShares     `json:"underlying_to_shares,omitempty"`
 	GetStrategyState       *GetStrategyState       `json:"get_strategy_state,omitempty"`
-	GetTVLLimits           *GetTVLLimits           `json:"get_t_v_l_limits,omitempty"`
+	GetTvlLimits           *GetTvlLimits           `json:"get_tvl_limits,omitempty"`
 }
 
 type Explanation struct {
@@ -275,10 +275,10 @@ type GetStrategyManager struct {
 type GetStrategyState struct {
 }
 
-type GetTVLLimits struct {
+type GetTotalShares struct {
 }
 
-type GetTotalShares struct {
+type GetTvlLimits struct {
 }
 
 type GetUnderlyingToken struct {
@@ -318,13 +318,13 @@ type StrategyState struct {
 	UnderlyingToken string `json:"underlying_token"`
 }
 
-type TVLLimitsResponse struct {
-	MaxPerDeposit    string `json:"max_per_deposit"`
-	MaxTotalDeposits string `json:"max_total_deposits"`
-}
-
 type TotalSharesResponse struct {
 	TotalShares string `json:"total_shares"`
+}
+
+type TvlLimitsResponse struct {
+	MaxPerDeposit    string `json:"max_per_deposit"`
+	MaxTotalDeposits string `json:"max_total_deposits"`
 }
 
 type UnderlyingTokenResponse struct {
