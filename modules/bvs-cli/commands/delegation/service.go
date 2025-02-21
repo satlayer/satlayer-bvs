@@ -32,7 +32,7 @@ func NewService() *Service {
 	if err != nil {
 		panic(err)
 	}
-	delegation := api.NewDelegationImpl(chainIO, conf.C.Contract.Delegation).WithGasLimit(400000)
+	delegation := api.NewDelegation(chainIO, conf.C.Contract.Delegation).WithGasLimit(400000)
 	return &Service{ChainIO: chainIO, Delegation: delegation}
 
 }

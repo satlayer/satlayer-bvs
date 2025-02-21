@@ -71,7 +71,7 @@ func registerBvsContract() string {
 		panic(err)
 	}
 
-	bvsDriver := api.NewBVSDriverImpl(chainIO)
+	bvsDriver := api.NewBvsDriver(chainIO)
 	bvsDriver.BindClient(core.C.Contract.BVSDriverAddr)
 	txResp, err := bvsDriver.SetRegisteredBVSContract(context.Background(), core.C.Contract.BVSContractAddr)
 	if err != nil {
@@ -80,7 +80,7 @@ func registerBvsContract() string {
 
 	fmt.Printf("registerBvsContract success, txn: %s\n", txResp.Hash.String())
 
-	stateBank := api.NewStateBankImpl(chainIO)
+	stateBank := api.NewStateBank(chainIO)
 	stateBank.BindClient(core.C.Contract.StateBankAddr)
 	txResp, err = stateBank.SetRegisteredBVSContract(context.Background(), core.C.Contract.BVSContractAddr)
 	if err != nil {
@@ -120,7 +120,7 @@ func registerOperators(approverAddress string) {
 
 		pubKey := chainIO.GetCurrentAccountPubKey()
 		address := sdktypes.AccAddress(pubKey.Address()).String()
-		delegation := api.NewDelegationImpl(chainIO, core.C.Contract.DelegationManagerAddr)
+		delegation := api.NewDelegation(chainIO, core.C.Contract.DelegationManagerAddr)
 		txResp, err := delegation.RegisterAsOperator(
 			context.Background(),
 			pubKey,
@@ -208,7 +208,7 @@ func registerStakers(approverAddress string) {
 			panic(err)
 		}
 
-		delegation := api.NewDelegationImpl(sclient, core.C.Contract.DelegationManagerAddr)
+		delegation := api.NewDelegation(sclient, core.C.Contract.DelegationManagerAddr)
 		oClient, err := chainIO.SetupKeyring(staker.OperatorKeyName, core.C.Account.KeyringBackend)
 		if err != nil {
 			panic(err)

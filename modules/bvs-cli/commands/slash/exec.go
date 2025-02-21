@@ -18,7 +18,7 @@ func newService(keyName string) (api.SlashManager, io.ChainIO) {
 	if err != nil {
 		panic(err)
 	}
-	slash := api.NewSlashManagerImpl(chainIO, conf.C.Contract.Slash).WithGasLimit(2000000)
+	slash := api.NewSlashManager(chainIO, conf.C.Contract.Slash).WithGasLimit(2000000)
 	slash.BindClient(conf.C.Contract.Slash)
 	return slash, chainIO
 }

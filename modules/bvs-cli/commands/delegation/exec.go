@@ -18,7 +18,7 @@ func newService(keyName string) (api.Delegation, io.ChainIO) {
 	if err != nil {
 		panic(err)
 	}
-	delegation := api.NewDelegationImpl(newChainIO, conf.C.Contract.Delegation).WithGasLimit(400000)
+	delegation := api.NewDelegation(newChainIO, conf.C.Contract.Delegation).WithGasLimit(400000)
 	return delegation, newChainIO
 }
 
@@ -79,7 +79,7 @@ func DelegateTo(stakerKeyName, operatorAddress, approverKeyName string) {
 		approverAddress = sdk.AccAddress(approverPubKey.Address()).String()
 	}
 	newChainIO, err := s.ChainIO.SetupKeyring(stakerKeyName, conf.C.Account.KeyringBackend)
-	delegation := api.NewDelegationImpl(newChainIO, conf.C.Contract.Delegation).WithGasLimit(400000)
+	delegation := api.NewDelegation(newChainIO, conf.C.Contract.Delegation).WithGasLimit(400000)
 	txResp, err := delegation.DelegateTo(
 		ctx,
 		operatorAddress,
@@ -123,7 +123,7 @@ func DelegateBySignature(stakerKeyName, operatorAddress, approverKeyName string)
 	}
 	stakerPubKey := newChainIO.GetCurrentAccountPubKey()
 	stakerAddress := sdk.AccAddress(stakerPubKey.Address()).String()
-	delegation := api.NewDelegationImpl(newChainIO, conf.C.Contract.Delegation).WithGasLimit(400000)
+	delegation := api.NewDelegation(newChainIO, conf.C.Contract.Delegation).WithGasLimit(400000)
 	txResp, err := delegation.DelegateToBySignature(
 		ctx,
 		operatorAddress,

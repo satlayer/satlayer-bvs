@@ -71,22 +71,32 @@ type delegationImpl struct {
 	gasLimit      uint64
 }
 
-func (d *delegationImpl) WithGasAdjustment(gasAdjustment float64) Delegation {
-	d.gasAdjustment = gasAdjustment
-	return d
+func NewDelegation(chainIO io.ChainIO, contractAddr string) Delegation {
+	return &delegationImpl{
+		io:            chainIO,
+		contractAddr:  contractAddr,
+		gasAdjustment: 1.2,
+		gasPrice:      sdktypes.NewInt64DecCoin("ubbn", 1),
+		gasLimit:      700000,
+	}
 }
 
-func (d *delegationImpl) WithGasPrice(gasPrice sdktypes.DecCoin) Delegation {
-	d.gasPrice = gasPrice
-	return d
+func (r *delegationImpl) WithGasAdjustment(gasAdjustment float64) Delegation {
+	r.gasAdjustment = gasAdjustment
+	return r
 }
 
-func (d *delegationImpl) WithGasLimit(gasLimit uint64) Delegation {
-	d.gasLimit = gasLimit
-	return d
+func (r *delegationImpl) WithGasPrice(gasPrice sdktypes.DecCoin) Delegation {
+	r.gasPrice = gasPrice
+	return r
 }
 
-func (d *delegationImpl) RegisterAsOperator(
+func (r *delegationImpl) WithGasLimit(gasLimit uint64) Delegation {
+	r.gasLimit = gasLimit
+	return r
+}
+
+func (r *delegationImpl) RegisterAsOperator(
 	ctx context.Context,
 	senderPublicKey cryptotypes.PubKey,
 	deprecatedEarningsReceiver,
@@ -109,12 +119,12 @@ func (d *delegationImpl) RegisterAsOperator(
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := d.newExecuteOptions(d.contractAddr, executeMsgBytes, "RegisterAsOperator")
+	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "RegisterAsOperator")
 
-	return d.io.SendTransaction(ctx, executeOptions)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (d *delegationImpl) ModifyOperatorDetails(
+func (r *delegationImpl) ModifyOperatorDetails(
 	ctx context.Context,
 	deprecatedEarningsReceiver, delegationApprover string,
 	stakerOptOutWindowBlocks int64,
@@ -132,12 +142,12 @@ func (d *delegationImpl) ModifyOperatorDetails(
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := d.newExecuteOptions(d.contractAddr, executeMsgBytes, "ModifyOperatorDetails")
+	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "ModifyOperatorDetails")
 
-	return d.io.SendTransaction(ctx, executeOptions)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (d *delegationImpl) UpdateOperatorMetadataURI(ctx context.Context, metadataURI string) (*coretypes.ResultTx, error) {
+func (r *delegationImpl) UpdateOperatorMetadataURI(ctx context.Context, metadataURI string) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		UpdateOperatorMetadataURI: &delegationmanager.UpdateOperatorMetadataURI{MetadataURI: metadataURI},
 	}
@@ -145,13 +155,13 @@ func (d *delegationImpl) UpdateOperatorMetadataURI(ctx context.Context, metadata
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := d.newExecuteOptions(d.contractAddr, executeMsgBytes, "UpdateOperatorMetadataURI")
+	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "UpdateOperatorMetadataURI")
 
-	return d.io.SendTransaction(ctx, executeOptions)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (d *delegationImpl) DelegateTo(ctx context.Context, operator, approver, approverKeyName string, approverPublicKey cryptotypes.PubKey) (*coretypes.ResultTx, error) {
-	stakerAccount, err := d.io.GetCurrentAccount()
+func (r *delegationImpl) DelegateTo(ctx context.Context, operator, approver, approverKeyName string, approverPublicKey cryptotypes.PubKey) (*coretypes.ResultTx, error) {
+	stakerAccount, err := r.io.GetCurrentAccount()
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +172,7 @@ func (d *delegationImpl) DelegateTo(ctx context.Context, operator, approver, app
 		},
 	}}
 	if approver != zeroValueAddr && approverKeyName != "" && approverPublicKey != nil {
-		nodeStatus, err := d.io.QueryNodeStatus(context.Background())
+		nodeStatus, err := r.io.QueryNodeStatus(context.Background())
 		if err != nil {
 			return nil, err
 		}
@@ -179,14 +189,14 @@ func (d *delegationImpl) DelegateTo(ctx context.Context, operator, approver, app
 			ApproverPublicKey: base64.StdEncoding.EncodeToString(approverPublicKey.Bytes()),
 			ApproverSalt:      base64.StdEncoding.EncodeToString([]byte(salt)),
 			Expiry:            expiry,
-			ContractAddr:      d.contractAddr,
+			ContractAddr:      r.contractAddr,
 		}
-		hashBytes, err := d.DelegationApprovalDigestHash(digestHashParams)
+		hashBytes, err := r.DelegationApprovalDigestHash(digestHashParams)
 		if err != nil {
 			return nil, err
 		}
 
-		signature, err := d.io.GetSigner().SignByKeyName(hashBytes, approverKeyName)
+		signature, err := r.io.GetSigner().SignByKeyName(hashBytes, approverKeyName)
 		if err != nil {
 			return nil, err
 		}
@@ -203,21 +213,21 @@ func (d *delegationImpl) DelegateTo(ctx context.Context, operator, approver, app
 		return nil, err
 	}
 
-	executeOptions := d.newExecuteOptions(d.contractAddr, executeMsgBytes, "DelegateTo")
+	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "DelegateTo")
 
-	return d.io.SendTransaction(ctx, executeOptions)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (d *delegationImpl) DelegateToBySignature(
+func (r *delegationImpl) DelegateToBySignature(
 	ctx context.Context,
 	operator, staker, stakerKeyName, approver, approverKeyName string,
 	stakerPublicKey, approverPublicKey cryptotypes.PubKey,
 ) (*coretypes.ResultTx, error) {
-	nodeStatus, err := d.io.QueryNodeStatus(context.Background())
+	nodeStatus, err := r.io.QueryNodeStatus(context.Background())
 	if err != nil {
 		return nil, err
 	}
-	stakerNonceResp, err := d.GetStakerNonce(staker)
+	stakerNonceResp, err := r.GetStakerNonce(staker)
 	if err != nil {
 		return nil, err
 	}
@@ -228,13 +238,13 @@ func (d *delegationImpl) DelegateToBySignature(
 		Operator:        operator,
 		StakerPublicKey: base64.StdEncoding.EncodeToString(stakerPublicKey.Bytes()),
 		Expiry:          expiry,
-		ContractAddr:    d.contractAddr,
+		ContractAddr:    r.contractAddr,
 	}
-	stakerHashBytes, err := d.StakerDelegationDigestHash(digestHashParams)
+	stakerHashBytes, err := r.StakerDelegationDigestHash(digestHashParams)
 	if err != nil {
 		return nil, err
 	}
-	stakerSignature, err := d.io.GetSigner().SignByKeyName(stakerHashBytes, stakerKeyName)
+	stakerSignature, err := r.io.GetSigner().SignByKeyName(stakerHashBytes, stakerKeyName)
 	if err != nil {
 		return nil, err
 	}
@@ -266,13 +276,13 @@ func (d *delegationImpl) DelegateToBySignature(
 			ApproverPublicKey: base64.StdEncoding.EncodeToString(approverPublicKey.Bytes()),
 			ApproverSalt:      base64.StdEncoding.EncodeToString([]byte(salt)),
 			Expiry:            expiry,
-			ContractAddr:      d.contractAddr,
+			ContractAddr:      r.contractAddr,
 		}
-		approverHashBytes, err := d.DelegationApprovalDigestHash(approverDigestHashReq)
+		approverHashBytes, err := r.DelegationApprovalDigestHash(approverDigestHashReq)
 		if err != nil {
 			return nil, err
 		}
-		approverSignature, err := d.io.GetSigner().SignByKeyName(approverHashBytes, approverKeyName)
+		approverSignature, err := r.io.GetSigner().SignByKeyName(approverHashBytes, approverKeyName)
 		if err != nil {
 			return nil, err
 		}
@@ -288,12 +298,12 @@ func (d *delegationImpl) DelegateToBySignature(
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := d.newExecuteOptions(d.contractAddr, executeMsgBytes, "DelegateToBySignature")
+	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "DelegateToBySignature")
 
-	return d.io.SendTransaction(ctx, executeOptions)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (d *delegationImpl) UnDelegate(ctx context.Context, staker string) (*coretypes.ResultTx, error) {
+func (r *delegationImpl) UnDelegate(ctx context.Context, staker string) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		Undelegate: &delegationmanager.Undelegate{Staker: staker},
 	}
@@ -301,12 +311,12 @@ func (d *delegationImpl) UnDelegate(ctx context.Context, staker string) (*corety
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := d.newExecuteOptions(d.contractAddr, executeMsgBytes, "UnDelegate")
+	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "UnDelegate")
 
-	return d.io.SendTransaction(ctx, executeOptions)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (d *delegationImpl) QueueWithdrawals(ctx context.Context, withdrawalParams []delegationmanager.QueuedWithdrawalParams) (*coretypes.ResultTx, error) {
+func (r *delegationImpl) QueueWithdrawals(ctx context.Context, withdrawalParams []delegationmanager.QueuedWithdrawalParams) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		QueueWithdrawals: &delegationmanager.QueueWithdrawals{
 			QueuedWithdrawalParams: withdrawalParams,
@@ -316,12 +326,12 @@ func (d *delegationImpl) QueueWithdrawals(ctx context.Context, withdrawalParams 
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := d.newExecuteOptions(d.contractAddr, executeMsgBytes, "QueueWithdrawals")
+	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "QueueWithdrawals")
 
-	return d.io.SendTransaction(ctx, executeOptions)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (d *delegationImpl) CompleteQueuedWithdrawal(
+func (r *delegationImpl) CompleteQueuedWithdrawal(
 	ctx context.Context,
 	withdrawal delegationmanager.WithdrawalElement,
 	tokens []string,
@@ -340,12 +350,12 @@ func (d *delegationImpl) CompleteQueuedWithdrawal(
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := d.newExecuteOptions(d.contractAddr, executeMsgBytes, "CompleteQueuedWithdrawal")
+	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "CompleteQueuedWithdrawal")
 
-	return d.io.SendTransaction(ctx, executeOptions)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (d *delegationImpl) CompleteQueuedWithdrawals(
+func (r *delegationImpl) CompleteQueuedWithdrawals(
 	ctx context.Context,
 	withdrawals []delegationmanager.WithdrawalElement,
 	tokens [][]string,
@@ -364,12 +374,12 @@ func (d *delegationImpl) CompleteQueuedWithdrawals(
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := d.newExecuteOptions(d.contractAddr, executeMsgBytes, "CompleteQueuedWithdrawals")
+	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "CompleteQueuedWithdrawals")
 
-	return d.io.SendTransaction(ctx, executeOptions)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (d *delegationImpl) IncreaseDelegatedShares(ctx context.Context, staker, strategy, shares string) (*coretypes.ResultTx, error) {
+func (r *delegationImpl) IncreaseDelegatedShares(ctx context.Context, staker, strategy, shares string) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		IncreaseDelegatedShares: &delegationmanager.IncreaseDelegatedShares{
 			Staker:   staker,
@@ -381,12 +391,12 @@ func (d *delegationImpl) IncreaseDelegatedShares(ctx context.Context, staker, st
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := d.newExecuteOptions(d.contractAddr, executeMsgBytes, "IncreaseDelegatedShares")
+	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "IncreaseDelegatedShares")
 
-	return d.io.SendTransaction(ctx, executeOptions)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (d *delegationImpl) DecreaseDelegatedShares(ctx context.Context, staker, strategy, shares string) (*coretypes.ResultTx, error) {
+func (r *delegationImpl) DecreaseDelegatedShares(ctx context.Context, staker, strategy, shares string) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		DecreaseDelegatedShares: &delegationmanager.DecreaseDelegatedShares{
 			Staker:   staker,
@@ -398,12 +408,12 @@ func (d *delegationImpl) DecreaseDelegatedShares(ctx context.Context, staker, st
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := d.newExecuteOptions(d.contractAddr, executeMsgBytes, "DecreaseDelegatedShares")
+	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "DecreaseDelegatedShares")
 
-	return d.io.SendTransaction(ctx, executeOptions)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (d *delegationImpl) SetMinWithdrawalDelayBlocks(ctx context.Context, newMinWithdrawalDelayBlocks int64) (*coretypes.ResultTx, error) {
+func (r *delegationImpl) SetMinWithdrawalDelayBlocks(ctx context.Context, newMinWithdrawalDelayBlocks int64) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		SetMinWithdrawalDelayBlocks: &delegationmanager.SetMinWithdrawalDelayBlocks{
 			NewMinWithdrawalDelayBlocks: newMinWithdrawalDelayBlocks,
@@ -413,12 +423,12 @@ func (d *delegationImpl) SetMinWithdrawalDelayBlocks(ctx context.Context, newMin
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := d.newExecuteOptions(d.contractAddr, executeMsgBytes, "SetMinWithdrawalDelayBlocks")
+	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "SetMinWithdrawalDelayBlocks")
 
-	return d.io.SendTransaction(ctx, executeOptions)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (d *delegationImpl) SetStrategyWithdrawalDelayBlocks(ctx context.Context, strategies []string, withdrawalDelayBlocks []int64) (*coretypes.ResultTx, error) {
+func (r *delegationImpl) SetStrategyWithdrawalDelayBlocks(ctx context.Context, strategies []string, withdrawalDelayBlocks []int64) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		SetStrategyWithdrawalDelayBlocks: &delegationmanager.SetStrategyWithdrawalDelayBlocks{
 			Strategies:            strategies,
@@ -429,12 +439,12 @@ func (d *delegationImpl) SetStrategyWithdrawalDelayBlocks(ctx context.Context, s
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := d.newExecuteOptions(d.contractAddr, executeMsgBytes, "SetStrategyWithdrawalDelayBlocks")
+	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "SetStrategyWithdrawalDelayBlocks")
 
-	return d.io.SendTransaction(ctx, executeOptions)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (d *delegationImpl) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
+func (r *delegationImpl) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		TransferOwnership: &delegationmanager.TransferOwnership{NewOwner: newOwner},
 	}
@@ -442,12 +452,12 @@ func (d *delegationImpl) TransferOwnership(ctx context.Context, newOwner string)
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := d.newExecuteOptions(d.contractAddr, executeMsgBytes, "TransferOwnership")
+	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "TransferOwnership")
 
-	return d.io.SendTransaction(ctx, executeOptions)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (d *delegationImpl) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
+func (r *delegationImpl) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		Pause: &delegationmanager.Pause{},
 	}
@@ -455,12 +465,12 @@ func (d *delegationImpl) Pause(ctx context.Context) (*coretypes.ResultTx, error)
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := d.newExecuteOptions(d.contractAddr, executeMsgBytes, "Pause")
+	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "Pause")
 
-	return d.io.SendTransaction(ctx, executeOptions)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (d *delegationImpl) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
+func (r *delegationImpl) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		Unpause: &delegationmanager.Unpause{},
 	}
@@ -468,12 +478,12 @@ func (d *delegationImpl) Unpause(ctx context.Context) (*coretypes.ResultTx, erro
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := d.newExecuteOptions(d.contractAddr, executeMsgBytes, "Unpause")
+	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "Unpause")
 
-	return d.io.SendTransaction(ctx, executeOptions)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (d *delegationImpl) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
+func (r *delegationImpl) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		SetPauser: &delegationmanager.SetPauser{NewPauser: newPauser},
 	}
@@ -481,12 +491,12 @@ func (d *delegationImpl) SetPauser(ctx context.Context, newPauser string) (*core
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := d.newExecuteOptions(d.contractAddr, executeMsgBytes, "SetPauser")
+	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "SetPauser")
 
-	return d.io.SendTransaction(ctx, executeOptions)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (d *delegationImpl) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
+func (r *delegationImpl) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		SetUnpauser: &delegationmanager.SetUnpauser{NewUnpauser: newUnpauser},
 	}
@@ -494,12 +504,12 @@ func (d *delegationImpl) SetUnpauser(ctx context.Context, newUnpauser string) (*
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := d.newExecuteOptions(d.contractAddr, executeMsgBytes, "SetUnpauser")
+	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "SetUnpauser")
 
-	return d.io.SendTransaction(ctx, executeOptions)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (d *delegationImpl) SetSlashManager(ctx context.Context, newSlashManager string) (*coretypes.ResultTx, error) {
+func (r *delegationImpl) SetSlashManager(ctx context.Context, newSlashManager string) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		SetSlashManager: &delegationmanager.SetSlashManager{NewSlashManager: newSlashManager},
 	}
@@ -507,12 +517,12 @@ func (d *delegationImpl) SetSlashManager(ctx context.Context, newSlashManager st
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := d.newExecuteOptions(d.contractAddr, executeMsgBytes, "SetSlashManager")
+	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "SetSlashManager")
 
-	return d.io.SendTransaction(ctx, executeOptions)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (d *delegationImpl) IsDelegated(staker string) (*delegationmanager.DelegatedResponse, error) {
+func (r *delegationImpl) IsDelegated(staker string) (*delegationmanager.DelegatedResponse, error) {
 	result := new(delegationmanager.DelegatedResponse)
 	queryMsg := delegationmanager.QueryMsg{
 		IsDelegated: &delegationmanager.IsDelegated{Staker: staker},
@@ -521,8 +531,8 @@ func (d *delegationImpl) IsDelegated(staker string) (*delegationmanager.Delegate
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := d.newQueryOptions(d.contractAddr, queryMsgBytes)
-	resp, err := d.io.QueryContract(queryOptions)
+	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -532,7 +542,7 @@ func (d *delegationImpl) IsDelegated(staker string) (*delegationmanager.Delegate
 	return result, nil
 }
 
-func (d *delegationImpl) IsOperator(operator string) (*delegationmanager.OperatorResponse, error) {
+func (r *delegationImpl) IsOperator(operator string) (*delegationmanager.OperatorResponse, error) {
 	result := new(delegationmanager.OperatorResponse)
 	queryMsg := delegationmanager.QueryMsg{
 		IsOperator: &delegationmanager.IsOperator{Operator: operator},
@@ -541,8 +551,8 @@ func (d *delegationImpl) IsOperator(operator string) (*delegationmanager.Operato
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := d.newQueryOptions(d.contractAddr, queryMsgBytes)
-	resp, err := d.io.QueryContract(queryOptions)
+	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -552,7 +562,7 @@ func (d *delegationImpl) IsOperator(operator string) (*delegationmanager.Operato
 	return result, nil
 }
 
-func (d *delegationImpl) OperatorDetails(operator string) (*delegationmanager.OperatorDetailsResponse, error) {
+func (r *delegationImpl) OperatorDetails(operator string) (*delegationmanager.OperatorDetailsResponse, error) {
 	result := new(delegationmanager.OperatorDetailsResponse)
 	queryMsg := delegationmanager.QueryMsg{
 		OperatorDetails: &delegationmanager.OperatorDetails{Operator: operator},
@@ -561,8 +571,8 @@ func (d *delegationImpl) OperatorDetails(operator string) (*delegationmanager.Op
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := d.newQueryOptions(d.contractAddr, queryMsgBytes)
-	resp, err := d.io.QueryContract(queryOptions)
+	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -572,7 +582,7 @@ func (d *delegationImpl) OperatorDetails(operator string) (*delegationmanager.Op
 	return result, nil
 }
 
-func (d *delegationImpl) DelegationApprover(operator string) (*delegationmanager.DelegationApproverResponse, error) {
+func (r *delegationImpl) DelegationApprover(operator string) (*delegationmanager.DelegationApproverResponse, error) {
 	result := new(delegationmanager.DelegationApproverResponse)
 	queryMsg := delegationmanager.QueryMsg{
 		DelegationApprover: &delegationmanager.DelegationApprover{Operator: operator},
@@ -581,8 +591,8 @@ func (d *delegationImpl) DelegationApprover(operator string) (*delegationmanager
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := d.newQueryOptions(d.contractAddr, queryMsgBytes)
-	resp, err := d.io.QueryContract(queryOptions)
+	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -592,7 +602,7 @@ func (d *delegationImpl) DelegationApprover(operator string) (*delegationmanager
 	return result, nil
 }
 
-func (d *delegationImpl) StakerOptOutWindowBlocks(operator string) (*delegationmanager.StakerOptOutWindowBlocksResponse, error) {
+func (r *delegationImpl) StakerOptOutWindowBlocks(operator string) (*delegationmanager.StakerOptOutWindowBlocksResponse, error) {
 	result := new(delegationmanager.StakerOptOutWindowBlocksResponse)
 	queryMsg := delegationmanager.QueryMsg{
 		StakerOptOutWindowBlocks: &delegationmanager.StakerOptOutWindowBlocks{Operator: operator},
@@ -601,8 +611,8 @@ func (d *delegationImpl) StakerOptOutWindowBlocks(operator string) (*delegationm
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := d.newQueryOptions(d.contractAddr, queryMsgBytes)
-	resp, err := d.io.QueryContract(queryOptions)
+	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -612,7 +622,7 @@ func (d *delegationImpl) StakerOptOutWindowBlocks(operator string) (*delegationm
 	return result, nil
 }
 
-func (d *delegationImpl) GetOperatorShares(operator string, strategies []string) (*delegationmanager.OperatorSharesResponse, error) {
+func (r *delegationImpl) GetOperatorShares(operator string, strategies []string) (*delegationmanager.OperatorSharesResponse, error) {
 	result := new(delegationmanager.OperatorSharesResponse)
 	queryMsg := delegationmanager.QueryMsg{
 		GetOperatorShares: &delegationmanager.GetOperatorShares{
@@ -624,8 +634,8 @@ func (d *delegationImpl) GetOperatorShares(operator string, strategies []string)
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := d.newQueryOptions(d.contractAddr, queryMsgBytes)
-	resp, err := d.io.QueryContract(queryOptions)
+	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -635,7 +645,7 @@ func (d *delegationImpl) GetOperatorShares(operator string, strategies []string)
 	return result, nil
 }
 
-func (d *delegationImpl) GetOperatorStakers(operator string) (*delegationmanager.OperatorStakersResponse, error) {
+func (r *delegationImpl) GetOperatorStakers(operator string) (*delegationmanager.OperatorStakersResponse, error) {
 	result := new(delegationmanager.OperatorStakersResponse)
 	queryMsg := delegationmanager.QueryMsg{
 		GetOperatorStakers: &delegationmanager.GetOperatorStakers{Operator: operator},
@@ -644,8 +654,8 @@ func (d *delegationImpl) GetOperatorStakers(operator string) (*delegationmanager
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := d.newQueryOptions(d.contractAddr, queryMsgBytes)
-	resp, err := d.io.QueryContract(queryOptions)
+	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -655,7 +665,7 @@ func (d *delegationImpl) GetOperatorStakers(operator string) (*delegationmanager
 	return result, nil
 }
 
-func (d *delegationImpl) GetDelegatableShares(staker string) (*delegationmanager.DelegatableSharesResponse, error) {
+func (r *delegationImpl) GetDelegatableShares(staker string) (*delegationmanager.DelegatableSharesResponse, error) {
 	result := new(delegationmanager.DelegatableSharesResponse)
 	queryMsg := delegationmanager.QueryMsg{
 		GetDelegatableShares: &delegationmanager.GetDelegatableShares{Staker: staker},
@@ -664,8 +674,8 @@ func (d *delegationImpl) GetDelegatableShares(staker string) (*delegationmanager
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := d.newQueryOptions(d.contractAddr, queryMsgBytes)
-	resp, err := d.io.QueryContract(queryOptions)
+	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -675,7 +685,7 @@ func (d *delegationImpl) GetDelegatableShares(staker string) (*delegationmanager
 	return result, nil
 }
 
-func (d *delegationImpl) GetWithdrawalDelay(strategies []string) (*delegationmanager.WithdrawalDelayResponse, error) {
+func (r *delegationImpl) GetWithdrawalDelay(strategies []string) (*delegationmanager.WithdrawalDelayResponse, error) {
 	result := new(delegationmanager.WithdrawalDelayResponse)
 	queryMsg := delegationmanager.QueryMsg{
 		GetWithdrawalDelay: &delegationmanager.GetWithdrawalDelay{Strategies: strategies},
@@ -684,8 +694,8 @@ func (d *delegationImpl) GetWithdrawalDelay(strategies []string) (*delegationman
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := d.newQueryOptions(d.contractAddr, queryMsgBytes)
-	resp, err := d.io.QueryContract(queryOptions)
+	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -695,7 +705,7 @@ func (d *delegationImpl) GetWithdrawalDelay(strategies []string) (*delegationman
 	return result, nil
 }
 
-func (d *delegationImpl) CalculateWithdrawalRoot(withdrawal delegationmanager.CalculateWithdrawalRootWithdrawal) ([]byte, error) {
+func (r *delegationImpl) CalculateWithdrawalRoot(withdrawal delegationmanager.CalculateWithdrawalRootWithdrawal) ([]byte, error) {
 	var result []byte
 	queryMsg := delegationmanager.QueryMsg{
 		CalculateWithdrawalRoot: &delegationmanager.CalculateWithdrawalRoot{Withdrawal: withdrawal},
@@ -704,8 +714,8 @@ func (d *delegationImpl) CalculateWithdrawalRoot(withdrawal delegationmanager.Ca
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := d.newQueryOptions(d.contractAddr, queryMsgBytes)
-	resp, err := d.io.QueryContract(queryOptions)
+	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -715,7 +725,7 @@ func (d *delegationImpl) CalculateWithdrawalRoot(withdrawal delegationmanager.Ca
 	return result, nil
 }
 
-func (d *delegationImpl) CalculateCurrentStakerDelegationDigestHash(stakerDigestHashParams delegationmanager.QueryCurrentStakerDigestHashParams) ([]byte, error) {
+func (r *delegationImpl) CalculateCurrentStakerDelegationDigestHash(stakerDigestHashParams delegationmanager.QueryCurrentStakerDigestHashParams) ([]byte, error) {
 	var result []byte
 	queryMsg := delegationmanager.QueryMsg{
 		CalculateCurrentStakerDelegationDigestHash: &delegationmanager.CalculateCurrentStakerDelegationDigestHash{
@@ -726,8 +736,8 @@ func (d *delegationImpl) CalculateCurrentStakerDelegationDigestHash(stakerDigest
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := d.newQueryOptions(d.contractAddr, queryMsgBytes)
-	resp, err := d.io.QueryContract(queryOptions)
+	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -737,7 +747,7 @@ func (d *delegationImpl) CalculateCurrentStakerDelegationDigestHash(stakerDigest
 	return result, nil
 }
 
-func (d *delegationImpl) StakerDelegationDigestHash(stakerDigestHashParams delegationmanager.QueryStakerDigestHashParams) ([]byte, error) {
+func (r *delegationImpl) StakerDelegationDigestHash(stakerDigestHashParams delegationmanager.QueryStakerDigestHashParams) ([]byte, error) {
 	var result []byte
 	queryMsg := delegationmanager.QueryMsg{
 		StakerDelegationDigestHash: &delegationmanager.StakerDelegationDigestHash{
@@ -748,8 +758,8 @@ func (d *delegationImpl) StakerDelegationDigestHash(stakerDigestHashParams deleg
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := d.newQueryOptions(d.contractAddr, queryMsgBytes)
-	resp, err := d.io.QueryContract(queryOptions)
+	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -759,7 +769,7 @@ func (d *delegationImpl) StakerDelegationDigestHash(stakerDigestHashParams deleg
 	return result, nil
 }
 
-func (d *delegationImpl) DelegationApprovalDigestHash(digestHashParams delegationmanager.QueryApproverDigestHashParams) ([]byte, error) {
+func (r *delegationImpl) DelegationApprovalDigestHash(digestHashParams delegationmanager.QueryApproverDigestHashParams) ([]byte, error) {
 	var result []byte
 	queryMsg := delegationmanager.QueryMsg{
 		DelegationApprovalDigestHash: &delegationmanager.DelegationApprovalDigestHash{
@@ -770,8 +780,8 @@ func (d *delegationImpl) DelegationApprovalDigestHash(digestHashParams delegatio
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := d.newQueryOptions(d.contractAddr, queryMsgBytes)
-	resp, err := d.io.QueryContract(queryOptions)
+	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -781,7 +791,7 @@ func (d *delegationImpl) DelegationApprovalDigestHash(digestHashParams delegatio
 	return result, err
 }
 
-func (d *delegationImpl) GetStakerNonce(staker string) (*delegationmanager.StakerNonceResponse, error) {
+func (r *delegationImpl) GetStakerNonce(staker string) (*delegationmanager.StakerNonceResponse, error) {
 	result := new(delegationmanager.StakerNonceResponse)
 	queryMsg := delegationmanager.QueryMsg{
 		GetStakerNonce: &delegationmanager.GetStakerNonce{Staker: staker},
@@ -790,8 +800,8 @@ func (d *delegationImpl) GetStakerNonce(staker string) (*delegationmanager.Stake
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := d.newQueryOptions(d.contractAddr, queryMsgBytes)
-	resp, err := d.io.QueryContract(queryOptions)
+	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -801,7 +811,7 @@ func (d *delegationImpl) GetStakerNonce(staker string) (*delegationmanager.Stake
 	return result, nil
 }
 
-func (d *delegationImpl) GetCumulativeWithdrawalsQueuedNonce(staker string) (*delegationmanager.CumulativeWithdrawalsQueuedResponse, error) {
+func (r *delegationImpl) GetCumulativeWithdrawalsQueuedNonce(staker string) (*delegationmanager.CumulativeWithdrawalsQueuedResponse, error) {
 	result := new(delegationmanager.CumulativeWithdrawalsQueuedResponse)
 	queryMsg := delegationmanager.QueryMsg{
 		GetCumulativeWithdrawalsQueued: &delegationmanager.GetCumulativeWithdrawalsQueued{Staker: staker},
@@ -810,8 +820,8 @@ func (d *delegationImpl) GetCumulativeWithdrawalsQueuedNonce(staker string) (*de
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := d.newQueryOptions(d.contractAddr, queryMsgBytes)
-	resp, err := d.io.QueryContract(queryOptions)
+	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -821,32 +831,22 @@ func (d *delegationImpl) GetCumulativeWithdrawalsQueuedNonce(staker string) (*de
 	return result, nil
 }
 
-func (d *delegationImpl) newExecuteOptions(contractAddr string, executeMsg []byte, memo string) types.ExecuteOptions {
+func (r *delegationImpl) newExecuteOptions(contractAddr string, executeMsg []byte, memo string) types.ExecuteOptions {
 	return types.ExecuteOptions{
 		ContractAddr:  contractAddr,
 		ExecuteMsg:    executeMsg,
 		Funds:         "",
-		GasAdjustment: d.gasAdjustment,
-		GasPrice:      d.gasPrice,
-		Gas:           d.gasLimit,
+		GasAdjustment: r.gasAdjustment,
+		GasPrice:      r.gasPrice,
+		Gas:           r.gasLimit,
 		Memo:          memo,
 		Simulate:      true,
 	}
 }
 
-func (d *delegationImpl) newQueryOptions(contractAddr string, queryMsg []byte) types.QueryOptions {
+func (r *delegationImpl) newQueryOptions(contractAddr string, queryMsg []byte) types.QueryOptions {
 	return types.QueryOptions{
 		ContractAddr: contractAddr,
 		QueryMsg:     queryMsg,
-	}
-}
-
-func NewDelegationImpl(chainIO io.ChainIO, contractAddr string) Delegation {
-	return &delegationImpl{
-		io:            chainIO,
-		contractAddr:  contractAddr,
-		gasAdjustment: 1.2,
-		gasPrice:      sdktypes.NewInt64DecCoin("ubbn", 1),
-		gasLimit:      700000,
 	}
 }

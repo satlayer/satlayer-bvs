@@ -47,7 +47,7 @@ func (suite *stateBankTestSuite) Test_ExecuteStateBank() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	stateBank := api.NewStateBankImpl(chainIO)
+	stateBank := api.NewStateBank(chainIO)
 	stateBank.BindClient(suite.contrAddr)
 
 	resp, err := stateBank.SetRegisteredBVSContract(context.Background(), suite.callerAddr)
@@ -68,7 +68,7 @@ func (suite *stateBankTestSuite) test_StateBankIndexer() {
 	keyName := "caller"
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	stateBankApi := api.NewStateBankImpl(chainIO)
+	stateBankApi := api.NewStateBank(chainIO)
 	res, err := chainIO.QueryNodeStatus(context.Background())
 	if err != nil {
 		panic(err)

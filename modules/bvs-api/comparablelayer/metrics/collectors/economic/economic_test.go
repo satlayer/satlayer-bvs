@@ -26,7 +26,7 @@ func TestEconomicCollector(t *testing.T) {
 		tAddr, tAddr, 100, []string{tAddr}, []int64{50},
 	)
 
-	delegation := api.NewDelegationImpl(chainIO, delegationManager.Address)
+	delegation := api.NewDelegation(chainIO, delegationManager.Address)
 	economicCollector := NewCollector(
 		"localbvs",
 		"bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",

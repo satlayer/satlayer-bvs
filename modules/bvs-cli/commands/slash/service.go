@@ -37,7 +37,7 @@ func NewService() *Service {
 		panic("Contract address for Slash is empty!")
 	}
 
-	slashManager := api.NewSlashManagerImpl(chainIO, conf.C.Contract.Slash).WithGasLimit(2000000)
+	slashManager := api.NewSlashManager(chainIO, conf.C.Contract.Slash).WithGasLimit(2000000)
 	slashManager.BindClient(conf.C.Contract.Slash)
 	return &Service{ChainIO: chainIO, Slash: slashManager}
 }

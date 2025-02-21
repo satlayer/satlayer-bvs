@@ -30,40 +30,49 @@ type bvsDriverImpl struct {
 	gasLimit              uint64
 }
 
-func (s *bvsDriverImpl) WithGasAdjustment(gasAdjustment float64) BVSDriver {
-	s.gasAdjustment = gasAdjustment
-	return s
+func NewBvsDriver(chainIO io.ChainIO) BVSDriver {
+	return &bvsDriverImpl{
+		io:            chainIO,
+		gasAdjustment: 1.2,
+		gasPrice:      sdktypes.NewInt64DecCoin("ubbn", 1),
+		gasLimit:      700000,
+	}
 }
 
-func (s *bvsDriverImpl) WithGasPrice(gasPrice sdktypes.DecCoin) BVSDriver {
-	s.gasPrice = gasPrice
-	return s
+func (r *bvsDriverImpl) WithGasAdjustment(gasAdjustment float64) BVSDriver {
+	r.gasAdjustment = gasAdjustment
+	return r
 }
 
-func (s *bvsDriverImpl) WithGasLimit(gasLimit uint64) BVSDriver {
-	s.gasLimit = gasLimit
-	return s
+func (r *bvsDriverImpl) WithGasPrice(gasPrice sdktypes.DecCoin) BVSDriver {
+	r.gasPrice = gasPrice
+	return r
 }
 
-func (s *bvsDriverImpl) BindClient(contractAddress string) {
-	s.contractAddr = contractAddress
+func (r *bvsDriverImpl) WithGasLimit(gasLimit uint64) BVSDriver {
+	r.gasLimit = gasLimit
+	return r
 }
 
-func (s *bvsDriverImpl) newExecuteOptions(executeMsg []byte, memo string) types.ExecuteOptions {
+func (r *bvsDriverImpl) BindClient(contractAddress string) {
+	r.contractAddr = contractAddress
+}
+
+func (r *bvsDriverImpl) newExecuteOptions(executeMsg []byte, memo string) types.ExecuteOptions {
 	return types.ExecuteOptions{
-		ContractAddr:  s.contractAddr,
+		ContractAddr:  r.contractAddr,
 		ExecuteMsg:    executeMsg,
 		Funds:         "",
-		GasAdjustment: s.gasAdjustment,
-		GasPrice:      s.gasPrice,
-		Gas:           s.gasLimit,
+		GasAdjustment: r.gasAdjustment,
+		GasPrice:      r.gasPrice,
+		Gas:           r.gasLimit,
 		Memo:          memo,
 		Simulate:      true,
 	}
 }
 
-func (s *bvsDriverImpl) SetRegisteredBVSContract(ctx context.Context, addr string) (*coretypes.ResultTx, error) {
-	s.registeredBVSContract = addr
+func (r *bvsDriverImpl) SetRegisteredBVSContract(ctx context.Context, addr string) (*coretypes.ResultTx, error) {
+	r.registeredBVSContract = addr
 
 	msg := driver.ExecuteMsg{
 		AddRegisteredBvsContract: &driver.AddRegisteredBvsContract{
@@ -76,15 +85,6 @@ func (s *bvsDriverImpl) SetRegisteredBVSContract(ctx context.Context, addr strin
 		return nil, err
 	}
 
-	executeOptions := s.newExecuteOptions(msgBytes, "SetRegisteredBVSContract")
-	return s.io.SendTransaction(ctx, executeOptions)
-}
-
-func NewBVSDriverImpl(chainIO io.ChainIO) BVSDriver {
-	return &bvsDriverImpl{
-		io:            chainIO,
-		gasAdjustment: 1.2,
-		gasPrice:      sdktypes.NewInt64DecCoin("ubbn", 1),
-		gasLimit:      700000,
-	}
+	executeOptions := r.newExecuteOptions(msgBytes, "SetRegisteredBVSContract")
+	return r.io.SendTransaction(ctx, executeOptions)
 }

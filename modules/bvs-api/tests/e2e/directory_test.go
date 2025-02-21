@@ -49,7 +49,7 @@ func (s *DirectoryTestSuite) SetupSuite() {
 	)
 
 	chainIO, err := s.chainIO.SetupKeyring("operator1", "test")
-	delegationApi := api.NewDelegationImpl(chainIO, delegationManager.Address)
+	delegationApi := api.NewDelegation(chainIO, delegationManager.Address)
 	s.Require().NoError(err, "setup keyring")
 	accountPubKey := GetPubKeyFromKeychainByUid(chainIO, "operator1")
 

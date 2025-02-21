@@ -25,7 +25,7 @@ func RegBVS(userKeyName, BVSAddr string) {
 	ctx := context.Background()
 	directory, newChainIO := newService(userKeyName)
 
-	BVSDriver := api.NewBVSDriverImpl(newChainIO)
+	BVSDriver := api.NewBvsDriver(newChainIO)
 	BVSDriver.BindClient(conf.C.Contract.BVSDriver)
 	txn, err := BVSDriver.SetRegisteredBVSContract(ctx, BVSAddr)
 	if txn == nil || err != nil {
@@ -33,7 +33,7 @@ func RegBVS(userKeyName, BVSAddr string) {
 	}
 	fmt.Printf("BVSDriver register BVS success. txn: %s\n", txn.Hash)
 
-	stateBank := api.NewStateBankImpl(newChainIO)
+	stateBank := api.NewStateBank(newChainIO)
 	stateBank.BindClient(conf.C.Contract.StateBank)
 	txn, err = stateBank.SetRegisteredBVSContract(ctx, BVSAddr)
 	if txn == nil || err != nil {

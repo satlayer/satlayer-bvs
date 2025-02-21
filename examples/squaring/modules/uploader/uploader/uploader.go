@@ -52,7 +52,7 @@ func NewUploader() *Uploader {
 		panic(err)
 	}
 
-	delegation := api.NewDelegationImpl(client, core.C.Chain.DelegationManager)
+	delegation := api.NewDelegation(client, core.C.Chain.DelegationManager)
 
 	rewardsCoordinator := api.NewRewardsCoordinator(client)
 	rewardsCoordinator.BindClient(core.C.Chain.RewardCoordinator)
