@@ -120,7 +120,7 @@ func registerOperators(approverAddress string) {
 
 		pubKey := chainIO.GetCurrentAccountPubKey()
 		address := sdktypes.AccAddress(pubKey.Address()).String()
-		delegation := api.NewDelegation(chainIO, core.C.Contract.DelegationManagerAddr)
+		delegation := api.NewDelegationManager(chainIO, core.C.Contract.DelegationManagerAddr)
 		txResp, err := delegation.RegisterAsOperator(
 			context.Background(),
 			pubKey,
@@ -208,7 +208,7 @@ func registerStakers(approverAddress string) {
 			panic(err)
 		}
 
-		delegation := api.NewDelegation(sclient, core.C.Contract.DelegationManagerAddr)
+		delegation := api.NewDelegationManager(sclient, core.C.Contract.DelegationManagerAddr)
 		oClient, err := chainIO.SetupKeyring(staker.OperatorKeyName, core.C.Account.KeyringBackend)
 		if err != nil {
 			panic(err)

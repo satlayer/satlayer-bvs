@@ -18,52 +18,7 @@ import (
 
 const zeroValueAddr = "0"
 
-type Delegation interface {
-	WithGasAdjustment(gasAdjustment float64) Delegation
-	WithGasPrice(gasPrice sdktypes.DecCoin) Delegation
-	WithGasLimit(gasLimit uint64) Delegation
-
-	RegisterAsOperator(ctx context.Context, senderPublicKey cryptotypes.PubKey, deprecatedEarningsReceiver, delegationApprover,
-		metadataURI string, stakerOptOutWindowBlocks int64) (*coretypes.ResultTx, error)
-	ModifyOperatorDetails(ctx context.Context, deprecatedEarningsReceiver, delegationApprover string, stakerOptOutWindowBlocks int64) (*coretypes.ResultTx, error)
-	UpdateOperatorMetadataURI(ctx context.Context, metadataURI string) (*coretypes.ResultTx, error)
-	DelegateTo(ctx context.Context, operator, approver, approverKeyName string, approverPublicKey cryptotypes.PubKey) (*coretypes.ResultTx, error)
-	DelegateToBySignature(ctx context.Context, operator, staker, stakerKeyName, approver, approverKeyName string, stakerPublicKey,
-		approverPublicKey cryptotypes.PubKey) (*coretypes.ResultTx, error)
-	UnDelegate(ctx context.Context, staker string) (*coretypes.ResultTx, error)
-	QueueWithdrawals(ctx context.Context, queuedWithdrawalParams []delegationmanager.QueuedWithdrawalParams) (*coretypes.ResultTx, error)
-	CompleteQueuedWithdrawal(ctx context.Context, withdrawal delegationmanager.WithdrawalElement, tokens []string, middlewareTimesIndex int64, receiveAsTokens bool) (*coretypes.ResultTx, error)
-	CompleteQueuedWithdrawals(ctx context.Context, withdrawals []delegationmanager.WithdrawalElement, tokens [][]string, middlewareTimesIndexes []int64,
-		receiveAsTokens []bool) (*coretypes.ResultTx, error)
-	IncreaseDelegatedShares(ctx context.Context, staker, strategy, shares string) (*coretypes.ResultTx, error)
-	DecreaseDelegatedShares(ctx context.Context, staker, strategy, shares string) (*coretypes.ResultTx, error)
-	SetMinWithdrawalDelayBlocks(ctx context.Context, newMinWithdrawalDelayBlocks int64) (*coretypes.ResultTx, error)
-	SetStrategyWithdrawalDelayBlocks(ctx context.Context, strategies []string, withdrawalDelayBlocks []int64) (*coretypes.ResultTx, error)
-	TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error)
-	Pause(ctx context.Context) (*coretypes.ResultTx, error)
-	Unpause(ctx context.Context) (*coretypes.ResultTx, error)
-	SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error)
-	SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error)
-	SetSlashManager(ctx context.Context, newSlashManager string) (*coretypes.ResultTx, error)
-
-	IsDelegated(staker string) (*delegationmanager.DelegatedResponse, error)
-	IsOperator(operator string) (*delegationmanager.OperatorResponse, error)
-	OperatorDetails(operator string) (*delegationmanager.OperatorDetailsResponse, error)
-	DelegationApprover(operator string) (*delegationmanager.DelegationApproverResponse, error)
-	StakerOptOutWindowBlocks(operator string) (*delegationmanager.StakerOptOutWindowBlocksResponse, error)
-	GetOperatorShares(operator string, strategies []string) (*delegationmanager.OperatorSharesResponse, error)
-	GetOperatorStakers(operator string) (*delegationmanager.OperatorStakersResponse, error)
-	GetDelegatableShares(staker string) (*delegationmanager.DelegatableSharesResponse, error)
-	GetWithdrawalDelay(strategies []string) (*delegationmanager.WithdrawalDelayResponse, error)
-	CalculateWithdrawalRoot(withdrawal delegationmanager.CalculateWithdrawalRootWithdrawal) ([]byte, error)
-	CalculateCurrentStakerDelegationDigestHash(currentStakerDigestHashParams delegationmanager.QueryCurrentStakerDigestHashParams) ([]byte, error)
-	StakerDelegationDigestHash(stakerDigestHashParams delegationmanager.QueryStakerDigestHashParams) ([]byte, error)
-	DelegationApprovalDigestHash(approverDigestHashParams delegationmanager.QueryApproverDigestHashParams) ([]byte, error)
-	GetStakerNonce(staker string) (*delegationmanager.StakerNonceResponse, error)
-	GetCumulativeWithdrawalsQueuedNonce(staker string) (*delegationmanager.CumulativeWithdrawalsQueuedResponse, error)
-}
-
-type delegationImpl struct {
+type DelegationManager struct {
 	io            io.ChainIO
 	contractAddr  string
 	gasAdjustment float64
@@ -71,8 +26,8 @@ type delegationImpl struct {
 	gasLimit      uint64
 }
 
-func NewDelegation(chainIO io.ChainIO, contractAddr string) Delegation {
-	return &delegationImpl{
+func NewDelegationManager(chainIO io.ChainIO, contractAddr string) *DelegationManager {
+	return &DelegationManager{
 		io:            chainIO,
 		contractAddr:  contractAddr,
 		gasAdjustment: 1.2,
@@ -81,22 +36,22 @@ func NewDelegation(chainIO io.ChainIO, contractAddr string) Delegation {
 	}
 }
 
-func (r *delegationImpl) WithGasAdjustment(gasAdjustment float64) Delegation {
+func (r *DelegationManager) WithGasAdjustment(gasAdjustment float64) *DelegationManager {
 	r.gasAdjustment = gasAdjustment
 	return r
 }
 
-func (r *delegationImpl) WithGasPrice(gasPrice sdktypes.DecCoin) Delegation {
+func (r *DelegationManager) WithGasPrice(gasPrice sdktypes.DecCoin) *DelegationManager {
 	r.gasPrice = gasPrice
 	return r
 }
 
-func (r *delegationImpl) WithGasLimit(gasLimit uint64) Delegation {
+func (r *DelegationManager) WithGasLimit(gasLimit uint64) *DelegationManager {
 	r.gasLimit = gasLimit
 	return r
 }
 
-func (r *delegationImpl) RegisterAsOperator(
+func (r *DelegationManager) RegisterAsOperator(
 	ctx context.Context,
 	senderPublicKey cryptotypes.PubKey,
 	deprecatedEarningsReceiver,
@@ -124,7 +79,7 @@ func (r *delegationImpl) RegisterAsOperator(
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *delegationImpl) ModifyOperatorDetails(
+func (r *DelegationManager) ModifyOperatorDetails(
 	ctx context.Context,
 	deprecatedEarningsReceiver, delegationApprover string,
 	stakerOptOutWindowBlocks int64,
@@ -147,7 +102,7 @@ func (r *delegationImpl) ModifyOperatorDetails(
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *delegationImpl) UpdateOperatorMetadataURI(ctx context.Context, metadataURI string) (*coretypes.ResultTx, error) {
+func (r *DelegationManager) UpdateOperatorMetadataURI(ctx context.Context, metadataURI string) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		UpdateOperatorMetadataURI: &delegationmanager.UpdateOperatorMetadataURI{MetadataURI: metadataURI},
 	}
@@ -160,7 +115,7 @@ func (r *delegationImpl) UpdateOperatorMetadataURI(ctx context.Context, metadata
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *delegationImpl) DelegateTo(ctx context.Context, operator, approver, approverKeyName string, approverPublicKey cryptotypes.PubKey) (*coretypes.ResultTx, error) {
+func (r *DelegationManager) DelegateTo(ctx context.Context, operator, approver, approverKeyName string, approverPublicKey cryptotypes.PubKey) (*coretypes.ResultTx, error) {
 	stakerAccount, err := r.io.GetCurrentAccount()
 	if err != nil {
 		return nil, err
@@ -218,7 +173,7 @@ func (r *delegationImpl) DelegateTo(ctx context.Context, operator, approver, app
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *delegationImpl) DelegateToBySignature(
+func (r *DelegationManager) DelegateToBySignature(
 	ctx context.Context,
 	operator, staker, stakerKeyName, approver, approverKeyName string,
 	stakerPublicKey, approverPublicKey cryptotypes.PubKey,
@@ -303,7 +258,7 @@ func (r *delegationImpl) DelegateToBySignature(
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *delegationImpl) UnDelegate(ctx context.Context, staker string) (*coretypes.ResultTx, error) {
+func (r *DelegationManager) UnDelegate(ctx context.Context, staker string) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		Undelegate: &delegationmanager.Undelegate{Staker: staker},
 	}
@@ -316,7 +271,7 @@ func (r *delegationImpl) UnDelegate(ctx context.Context, staker string) (*corety
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *delegationImpl) QueueWithdrawals(ctx context.Context, withdrawalParams []delegationmanager.QueuedWithdrawalParams) (*coretypes.ResultTx, error) {
+func (r *DelegationManager) QueueWithdrawals(ctx context.Context, withdrawalParams []delegationmanager.QueuedWithdrawalParams) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		QueueWithdrawals: &delegationmanager.QueueWithdrawals{
 			QueuedWithdrawalParams: withdrawalParams,
@@ -331,7 +286,7 @@ func (r *delegationImpl) QueueWithdrawals(ctx context.Context, withdrawalParams 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *delegationImpl) CompleteQueuedWithdrawal(
+func (r *DelegationManager) CompleteQueuedWithdrawal(
 	ctx context.Context,
 	withdrawal delegationmanager.WithdrawalElement,
 	tokens []string,
@@ -355,7 +310,7 @@ func (r *delegationImpl) CompleteQueuedWithdrawal(
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *delegationImpl) CompleteQueuedWithdrawals(
+func (r *DelegationManager) CompleteQueuedWithdrawals(
 	ctx context.Context,
 	withdrawals []delegationmanager.WithdrawalElement,
 	tokens [][]string,
@@ -379,7 +334,7 @@ func (r *delegationImpl) CompleteQueuedWithdrawals(
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *delegationImpl) IncreaseDelegatedShares(ctx context.Context, staker, strategy, shares string) (*coretypes.ResultTx, error) {
+func (r *DelegationManager) IncreaseDelegatedShares(ctx context.Context, staker, strategy, shares string) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		IncreaseDelegatedShares: &delegationmanager.IncreaseDelegatedShares{
 			Staker:   staker,
@@ -396,7 +351,7 @@ func (r *delegationImpl) IncreaseDelegatedShares(ctx context.Context, staker, st
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *delegationImpl) DecreaseDelegatedShares(ctx context.Context, staker, strategy, shares string) (*coretypes.ResultTx, error) {
+func (r *DelegationManager) DecreaseDelegatedShares(ctx context.Context, staker, strategy, shares string) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		DecreaseDelegatedShares: &delegationmanager.DecreaseDelegatedShares{
 			Staker:   staker,
@@ -413,7 +368,7 @@ func (r *delegationImpl) DecreaseDelegatedShares(ctx context.Context, staker, st
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *delegationImpl) SetMinWithdrawalDelayBlocks(ctx context.Context, newMinWithdrawalDelayBlocks int64) (*coretypes.ResultTx, error) {
+func (r *DelegationManager) SetMinWithdrawalDelayBlocks(ctx context.Context, newMinWithdrawalDelayBlocks int64) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		SetMinWithdrawalDelayBlocks: &delegationmanager.SetMinWithdrawalDelayBlocks{
 			NewMinWithdrawalDelayBlocks: newMinWithdrawalDelayBlocks,
@@ -428,7 +383,7 @@ func (r *delegationImpl) SetMinWithdrawalDelayBlocks(ctx context.Context, newMin
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *delegationImpl) SetStrategyWithdrawalDelayBlocks(ctx context.Context, strategies []string, withdrawalDelayBlocks []int64) (*coretypes.ResultTx, error) {
+func (r *DelegationManager) SetStrategyWithdrawalDelayBlocks(ctx context.Context, strategies []string, withdrawalDelayBlocks []int64) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		SetStrategyWithdrawalDelayBlocks: &delegationmanager.SetStrategyWithdrawalDelayBlocks{
 			Strategies:            strategies,
@@ -444,7 +399,7 @@ func (r *delegationImpl) SetStrategyWithdrawalDelayBlocks(ctx context.Context, s
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *delegationImpl) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
+func (r *DelegationManager) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		TransferOwnership: &delegationmanager.TransferOwnership{NewOwner: newOwner},
 	}
@@ -457,7 +412,7 @@ func (r *delegationImpl) TransferOwnership(ctx context.Context, newOwner string)
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *delegationImpl) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
+func (r *DelegationManager) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		Pause: &delegationmanager.Pause{},
 	}
@@ -470,7 +425,7 @@ func (r *delegationImpl) Pause(ctx context.Context) (*coretypes.ResultTx, error)
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *delegationImpl) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
+func (r *DelegationManager) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		Unpause: &delegationmanager.Unpause{},
 	}
@@ -483,7 +438,7 @@ func (r *delegationImpl) Unpause(ctx context.Context) (*coretypes.ResultTx, erro
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *delegationImpl) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
+func (r *DelegationManager) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		SetPauser: &delegationmanager.SetPauser{NewPauser: newPauser},
 	}
@@ -496,7 +451,7 @@ func (r *delegationImpl) SetPauser(ctx context.Context, newPauser string) (*core
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *delegationImpl) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
+func (r *DelegationManager) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		SetUnpauser: &delegationmanager.SetUnpauser{NewUnpauser: newUnpauser},
 	}
@@ -509,7 +464,7 @@ func (r *delegationImpl) SetUnpauser(ctx context.Context, newUnpauser string) (*
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *delegationImpl) SetSlashManager(ctx context.Context, newSlashManager string) (*coretypes.ResultTx, error) {
+func (r *DelegationManager) SetSlashManager(ctx context.Context, newSlashManager string) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		SetSlashManager: &delegationmanager.SetSlashManager{NewSlashManager: newSlashManager},
 	}
@@ -522,7 +477,7 @@ func (r *delegationImpl) SetSlashManager(ctx context.Context, newSlashManager st
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *delegationImpl) IsDelegated(staker string) (*delegationmanager.DelegatedResponse, error) {
+func (r *DelegationManager) IsDelegated(staker string) (*delegationmanager.DelegatedResponse, error) {
 	result := new(delegationmanager.DelegatedResponse)
 	queryMsg := delegationmanager.QueryMsg{
 		IsDelegated: &delegationmanager.IsDelegated{Staker: staker},
@@ -542,7 +497,7 @@ func (r *delegationImpl) IsDelegated(staker string) (*delegationmanager.Delegate
 	return result, nil
 }
 
-func (r *delegationImpl) IsOperator(operator string) (*delegationmanager.OperatorResponse, error) {
+func (r *DelegationManager) IsOperator(operator string) (*delegationmanager.OperatorResponse, error) {
 	result := new(delegationmanager.OperatorResponse)
 	queryMsg := delegationmanager.QueryMsg{
 		IsOperator: &delegationmanager.IsOperator{Operator: operator},
@@ -562,7 +517,7 @@ func (r *delegationImpl) IsOperator(operator string) (*delegationmanager.Operato
 	return result, nil
 }
 
-func (r *delegationImpl) OperatorDetails(operator string) (*delegationmanager.OperatorDetailsResponse, error) {
+func (r *DelegationManager) OperatorDetails(operator string) (*delegationmanager.OperatorDetailsResponse, error) {
 	result := new(delegationmanager.OperatorDetailsResponse)
 	queryMsg := delegationmanager.QueryMsg{
 		OperatorDetails: &delegationmanager.OperatorDetails{Operator: operator},
@@ -582,7 +537,7 @@ func (r *delegationImpl) OperatorDetails(operator string) (*delegationmanager.Op
 	return result, nil
 }
 
-func (r *delegationImpl) DelegationApprover(operator string) (*delegationmanager.DelegationApproverResponse, error) {
+func (r *DelegationManager) DelegationApprover(operator string) (*delegationmanager.DelegationApproverResponse, error) {
 	result := new(delegationmanager.DelegationApproverResponse)
 	queryMsg := delegationmanager.QueryMsg{
 		DelegationApprover: &delegationmanager.DelegationApprover{Operator: operator},
@@ -602,7 +557,7 @@ func (r *delegationImpl) DelegationApprover(operator string) (*delegationmanager
 	return result, nil
 }
 
-func (r *delegationImpl) StakerOptOutWindowBlocks(operator string) (*delegationmanager.StakerOptOutWindowBlocksResponse, error) {
+func (r *DelegationManager) StakerOptOutWindowBlocks(operator string) (*delegationmanager.StakerOptOutWindowBlocksResponse, error) {
 	result := new(delegationmanager.StakerOptOutWindowBlocksResponse)
 	queryMsg := delegationmanager.QueryMsg{
 		StakerOptOutWindowBlocks: &delegationmanager.StakerOptOutWindowBlocks{Operator: operator},
@@ -622,7 +577,7 @@ func (r *delegationImpl) StakerOptOutWindowBlocks(operator string) (*delegationm
 	return result, nil
 }
 
-func (r *delegationImpl) GetOperatorShares(operator string, strategies []string) (*delegationmanager.OperatorSharesResponse, error) {
+func (r *DelegationManager) GetOperatorShares(operator string, strategies []string) (*delegationmanager.OperatorSharesResponse, error) {
 	result := new(delegationmanager.OperatorSharesResponse)
 	queryMsg := delegationmanager.QueryMsg{
 		GetOperatorShares: &delegationmanager.GetOperatorShares{
@@ -645,7 +600,7 @@ func (r *delegationImpl) GetOperatorShares(operator string, strategies []string)
 	return result, nil
 }
 
-func (r *delegationImpl) GetOperatorStakers(operator string) (*delegationmanager.OperatorStakersResponse, error) {
+func (r *DelegationManager) GetOperatorStakers(operator string) (*delegationmanager.OperatorStakersResponse, error) {
 	result := new(delegationmanager.OperatorStakersResponse)
 	queryMsg := delegationmanager.QueryMsg{
 		GetOperatorStakers: &delegationmanager.GetOperatorStakers{Operator: operator},
@@ -665,7 +620,7 @@ func (r *delegationImpl) GetOperatorStakers(operator string) (*delegationmanager
 	return result, nil
 }
 
-func (r *delegationImpl) GetDelegatableShares(staker string) (*delegationmanager.DelegatableSharesResponse, error) {
+func (r *DelegationManager) GetDelegatableShares(staker string) (*delegationmanager.DelegatableSharesResponse, error) {
 	result := new(delegationmanager.DelegatableSharesResponse)
 	queryMsg := delegationmanager.QueryMsg{
 		GetDelegatableShares: &delegationmanager.GetDelegatableShares{Staker: staker},
@@ -685,7 +640,7 @@ func (r *delegationImpl) GetDelegatableShares(staker string) (*delegationmanager
 	return result, nil
 }
 
-func (r *delegationImpl) GetWithdrawalDelay(strategies []string) (*delegationmanager.WithdrawalDelayResponse, error) {
+func (r *DelegationManager) GetWithdrawalDelay(strategies []string) (*delegationmanager.WithdrawalDelayResponse, error) {
 	result := new(delegationmanager.WithdrawalDelayResponse)
 	queryMsg := delegationmanager.QueryMsg{
 		GetWithdrawalDelay: &delegationmanager.GetWithdrawalDelay{Strategies: strategies},
@@ -705,7 +660,7 @@ func (r *delegationImpl) GetWithdrawalDelay(strategies []string) (*delegationman
 	return result, nil
 }
 
-func (r *delegationImpl) CalculateWithdrawalRoot(withdrawal delegationmanager.CalculateWithdrawalRootWithdrawal) ([]byte, error) {
+func (r *DelegationManager) CalculateWithdrawalRoot(withdrawal delegationmanager.CalculateWithdrawalRootWithdrawal) ([]byte, error) {
 	var result []byte
 	queryMsg := delegationmanager.QueryMsg{
 		CalculateWithdrawalRoot: &delegationmanager.CalculateWithdrawalRoot{Withdrawal: withdrawal},
@@ -725,7 +680,7 @@ func (r *delegationImpl) CalculateWithdrawalRoot(withdrawal delegationmanager.Ca
 	return result, nil
 }
 
-func (r *delegationImpl) CalculateCurrentStakerDelegationDigestHash(stakerDigestHashParams delegationmanager.QueryCurrentStakerDigestHashParams) ([]byte, error) {
+func (r *DelegationManager) CalculateCurrentStakerDelegationDigestHash(stakerDigestHashParams delegationmanager.QueryCurrentStakerDigestHashParams) ([]byte, error) {
 	var result []byte
 	queryMsg := delegationmanager.QueryMsg{
 		CalculateCurrentStakerDelegationDigestHash: &delegationmanager.CalculateCurrentStakerDelegationDigestHash{
@@ -747,7 +702,7 @@ func (r *delegationImpl) CalculateCurrentStakerDelegationDigestHash(stakerDigest
 	return result, nil
 }
 
-func (r *delegationImpl) StakerDelegationDigestHash(stakerDigestHashParams delegationmanager.QueryStakerDigestHashParams) ([]byte, error) {
+func (r *DelegationManager) StakerDelegationDigestHash(stakerDigestHashParams delegationmanager.QueryStakerDigestHashParams) ([]byte, error) {
 	var result []byte
 	queryMsg := delegationmanager.QueryMsg{
 		StakerDelegationDigestHash: &delegationmanager.StakerDelegationDigestHash{
@@ -769,7 +724,7 @@ func (r *delegationImpl) StakerDelegationDigestHash(stakerDigestHashParams deleg
 	return result, nil
 }
 
-func (r *delegationImpl) DelegationApprovalDigestHash(digestHashParams delegationmanager.QueryApproverDigestHashParams) ([]byte, error) {
+func (r *DelegationManager) DelegationApprovalDigestHash(digestHashParams delegationmanager.QueryApproverDigestHashParams) ([]byte, error) {
 	var result []byte
 	queryMsg := delegationmanager.QueryMsg{
 		DelegationApprovalDigestHash: &delegationmanager.DelegationApprovalDigestHash{
@@ -791,7 +746,7 @@ func (r *delegationImpl) DelegationApprovalDigestHash(digestHashParams delegatio
 	return result, err
 }
 
-func (r *delegationImpl) GetStakerNonce(staker string) (*delegationmanager.StakerNonceResponse, error) {
+func (r *DelegationManager) GetStakerNonce(staker string) (*delegationmanager.StakerNonceResponse, error) {
 	result := new(delegationmanager.StakerNonceResponse)
 	queryMsg := delegationmanager.QueryMsg{
 		GetStakerNonce: &delegationmanager.GetStakerNonce{Staker: staker},
@@ -811,7 +766,7 @@ func (r *delegationImpl) GetStakerNonce(staker string) (*delegationmanager.Stake
 	return result, nil
 }
 
-func (r *delegationImpl) GetCumulativeWithdrawalsQueuedNonce(staker string) (*delegationmanager.CumulativeWithdrawalsQueuedResponse, error) {
+func (r *DelegationManager) GetCumulativeWithdrawalsQueuedNonce(staker string) (*delegationmanager.CumulativeWithdrawalsQueuedResponse, error) {
 	result := new(delegationmanager.CumulativeWithdrawalsQueuedResponse)
 	queryMsg := delegationmanager.QueryMsg{
 		GetCumulativeWithdrawalsQueued: &delegationmanager.GetCumulativeWithdrawalsQueued{Staker: staker},
@@ -831,7 +786,7 @@ func (r *delegationImpl) GetCumulativeWithdrawalsQueuedNonce(staker string) (*de
 	return result, nil
 }
 
-func (r *delegationImpl) newExecuteOptions(contractAddr string, executeMsg []byte, memo string) types.ExecuteOptions {
+func (r *DelegationManager) newExecuteOptions(contractAddr string, executeMsg []byte, memo string) types.ExecuteOptions {
 	return types.ExecuteOptions{
 		ContractAddr:  contractAddr,
 		ExecuteMsg:    executeMsg,
@@ -844,7 +799,7 @@ func (r *delegationImpl) newExecuteOptions(contractAddr string, executeMsg []byt
 	}
 }
 
-func (r *delegationImpl) newQueryOptions(contractAddr string, queryMsg []byte) types.QueryOptions {
+func (r *DelegationManager) newQueryOptions(contractAddr string, queryMsg []byte) types.QueryOptions {
 	return types.QueryOptions{
 		ContractAddr: contractAddr,
 		QueryMsg:     queryMsg,

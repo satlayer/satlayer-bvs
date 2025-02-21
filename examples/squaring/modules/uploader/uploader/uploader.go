@@ -21,7 +21,7 @@ import (
 
 type Uploader struct {
 	bvsContract        string
-	delegation         api.Delegation
+	delegation         *api.DelegationManager
 	chainIO            io.ChainIO
 	rewardsCoordinator api.RewardsCoordinator
 }
@@ -52,7 +52,7 @@ func NewUploader() *Uploader {
 		panic(err)
 	}
 
-	delegation := api.NewDelegation(client, core.C.Chain.DelegationManager)
+	delegation := api.NewDelegationManager(client, core.C.Chain.DelegationManager)
 
 	rewardsCoordinator := api.NewRewardsCoordinator(client)
 	rewardsCoordinator.BindClient(core.C.Chain.RewardCoordinator)
