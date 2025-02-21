@@ -46,7 +46,7 @@ func (suite *strategyFactoryTestSuite) test_DeployNewStrategy() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	factoryApi := api.NewStrategyFactoryImpl(chainIO)
+	factoryApi := api.NewStrategyFactory(chainIO)
 	factoryApi.BindClient(suite.contrAddr)
 	factoryApi.WithGasLimit(400000)
 
@@ -59,13 +59,13 @@ func (suite *strategyFactoryTestSuite) test_DeployNewStrategy() {
 	t.Logf("txResp:%+v", txResp)
 }
 
-func (suite *strategyFactoryTestSuite) Test_SetThirdPartyTransfersForBidden() {
+func (suite *strategyFactoryTestSuite) Test_SetThirdPartyTransfersForbidden() {
 	t := suite.T()
 	keyName := "caller"
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	factoryApi := api.NewStrategyFactoryImpl(chainIO)
+	factoryApi := api.NewStrategyFactory(chainIO)
 	factoryApi.BindClient(suite.contrAddr)
 	factoryApi.WithGasLimit(300000)
 
@@ -76,8 +76,8 @@ func (suite *strategyFactoryTestSuite) Test_SetThirdPartyTransfersForBidden() {
 	_, err = factoryApi.SetStrategyManager(context.Background(), strategyManager.Address)
 	assert.NoError(t, err)
 
-	txResp, err := factoryApi.SetThirdPartyTransfersForBidden(context.Background(), strategyManager.Address, true)
-	assert.NoError(t, err, "SetThirdPartyTransfersForBidden failed")
+	txResp, err := factoryApi.SetThirdPartyTransfersForbidden(context.Background(), strategyManager.Address, true)
+	assert.NoError(t, err, "SetThirdPartyTransfersForbidden failed")
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
 }
@@ -88,7 +88,7 @@ func (suite *strategyFactoryTestSuite) Test_UpdateConfig() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	factoryApi := api.NewStrategyFactoryImpl(chainIO)
+	factoryApi := api.NewStrategyFactory(chainIO)
 	factoryApi.BindClient(suite.contrAddr)
 	factoryApi.WithGasLimit(300000)
 
@@ -106,7 +106,7 @@ func (suite *strategyFactoryTestSuite) test_BlacklistTokens() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	factoryApi := api.NewStrategyFactoryImpl(chainIO)
+	factoryApi := api.NewStrategyFactory(chainIO)
 	factoryApi.BindClient(suite.contrAddr)
 	factoryApi.WithGasLimit(300000)
 
@@ -123,7 +123,7 @@ func (suite *strategyFactoryTestSuite) test_RemoveStrategiesFromWhitelist() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	factoryApi := api.NewStrategyFactoryImpl(chainIO)
+	factoryApi := api.NewStrategyFactory(chainIO)
 	factoryApi.BindClient(suite.contrAddr)
 	factoryApi.WithGasLimit(300000)
 
@@ -140,7 +140,7 @@ func (suite *strategyFactoryTestSuite) test_WhitelistStrategies() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	factoryApi := api.NewStrategyFactoryImpl(chainIO)
+	factoryApi := api.NewStrategyFactory(chainIO)
 	factoryApi.BindClient(suite.contrAddr)
 	factoryApi.WithGasLimit(300000)
 
@@ -158,7 +158,7 @@ func (suite *strategyFactoryTestSuite) Test_SetStrategyManager() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	factoryApi := api.NewStrategyFactoryImpl(chainIO)
+	factoryApi := api.NewStrategyFactory(chainIO)
 	factoryApi.BindClient(suite.contrAddr)
 	factoryApi.WithGasLimit(300000)
 
@@ -175,7 +175,7 @@ func (suite *strategyFactoryTestSuite) Test_TransferOwnership() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	factoryApi := api.NewStrategyFactoryImpl(chainIO)
+	factoryApi := api.NewStrategyFactory(chainIO)
 	factoryApi.BindClient(suite.contrAddr)
 	factoryApi.WithGasLimit(300000)
 
@@ -192,7 +192,7 @@ func (suite *strategyFactoryTestSuite) Test_SetPauser() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	factoryApi := api.NewStrategyFactoryImpl(chainIO)
+	factoryApi := api.NewStrategyFactory(chainIO)
 	factoryApi.BindClient(suite.contrAddr)
 	factoryApi.WithGasLimit(300000)
 
@@ -209,7 +209,7 @@ func (suite *strategyFactoryTestSuite) Test_Pause() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	factoryApi := api.NewStrategyFactoryImpl(chainIO)
+	factoryApi := api.NewStrategyFactory(chainIO)
 	factoryApi.BindClient(suite.contrAddr)
 	factoryApi.WithGasLimit(300000)
 
@@ -231,7 +231,7 @@ func (suite *strategyFactoryTestSuite) Test_SetUnpauser() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	factoryApi := api.NewStrategyFactoryImpl(chainIO)
+	factoryApi := api.NewStrategyFactory(chainIO)
 	factoryApi.BindClient(suite.contrAddr)
 	factoryApi.WithGasLimit(300000)
 
@@ -248,7 +248,7 @@ func (suite *strategyFactoryTestSuite) Test_Unpause() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	factoryApi := api.NewStrategyFactoryImpl(chainIO)
+	factoryApi := api.NewStrategyFactory(chainIO)
 	factoryApi.BindClient(suite.contrAddr)
 	factoryApi.WithGasLimit(300000)
 
@@ -270,7 +270,7 @@ func (suite *strategyFactoryTestSuite) test_Query_GetStrategy() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	factoryApi := api.NewStrategyFactoryImpl(chainIO)
+	factoryApi := api.NewStrategyFactory(chainIO)
 	factoryApi.BindClient(suite.contrAddr)
 
 	token := "bbn1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sp4gequ"
@@ -286,7 +286,7 @@ func (suite *strategyFactoryTestSuite) Test_Query_IsTokenBlacklisted() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	factoryApi := api.NewStrategyFactoryImpl(chainIO)
+	factoryApi := api.NewStrategyFactory(chainIO)
 	factoryApi.BindClient(suite.contrAddr)
 
 	token := "bbn1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sp4gequ"

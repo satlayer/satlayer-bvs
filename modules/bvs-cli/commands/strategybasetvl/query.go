@@ -49,7 +49,7 @@ func UnderlyingToken() {
 
 func GetLimits() {
 	s := NewService()
-	resp, err := s.StrategyBaseTVL.GetTVLLimits()
+	resp, err := s.StrategyBaseTVL.GetTvlLimits()
 	if err != nil {
 		panic(err)
 	}

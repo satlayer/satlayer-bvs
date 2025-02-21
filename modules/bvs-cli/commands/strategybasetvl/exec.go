@@ -10,7 +10,7 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-cli/conf"
 )
 
-func newService(keyName string) (api.StrategyBaseTVLLimits, io.ChainIO) {
+func newService(keyName string) (*api.StrategyBaseTvlLimits, io.ChainIO) {
 	s := NewService()
 	chainIO, err := s.ChainIO.SetupKeyring(keyName, conf.C.Account.KeyringBackend)
 	if err != nil {
@@ -83,9 +83,9 @@ func TransferOwnership(userKeyName, newOwner string) {
 	fmt.Printf("Transfer ownership success. txn: %s\n", resp.Hash)
 }
 
-func SetTVLLimits(userKeyName, maxPerDeposit string, maxTotalDeposits string) {
+func SetTvlLimits(userKeyName, maxPerDeposit string, maxTotalDeposits string) {
 	StrategyBaseTVL, _ := newService(userKeyName)
-	resp, err := StrategyBaseTVL.SetTVLLimits(context.Background(), maxPerDeposit, maxTotalDeposits)
+	resp, err := StrategyBaseTVL.SetTvlLimits(context.Background(), maxPerDeposit, maxTotalDeposits)
 	if err != nil {
 		panic(err)
 	}

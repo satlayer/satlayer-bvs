@@ -23,7 +23,7 @@ pub struct UserUnderlyingResponse {
 
 #[cw_serde]
 pub struct StrategyManagerResponse {
-    pub strate_manager_addr: Addr,
+    pub strategy_manager_addr: Addr,
 }
 
 #[cw_serde]
@@ -47,7 +47,7 @@ pub struct UnderlyingToSharesResponse {
 }
 
 #[cw_serde]
-pub struct TVLLimitsResponse {
+pub struct TvlLimitsResponse {
     pub max_per_deposit: Uint128,
     pub max_total_deposits: Uint128,
 }

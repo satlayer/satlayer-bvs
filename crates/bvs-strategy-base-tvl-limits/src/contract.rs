@@ -3,7 +3,7 @@ use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
         ExplanationResponse, SharesResponse, SharesToUnderlyingResponse, StrategyManagerResponse,
-        TVLLimitsResponse, TotalSharesResponse, UnderlyingToShareResponse,
+        TotalSharesResponse, TvlLimitsResponse, UnderlyingToShareResponse,
         UnderlyingToSharesResponse, UnderlyingTokenResponse, UserUnderlyingResponse,
     },
     state::{StrategyState, MAX_PER_DEPOSIT, MAX_TOTAL_DEPOSITS, OWNER, STRATEGY_STATE},
@@ -125,7 +125,7 @@ pub fn execute(
             let new_unpauser_addr = deps.api.addr_validate(&new_unpauser)?;
             set_unpauser(deps, new_unpauser_addr).map_err(ContractError::Std)
         }
-        ExecuteMsg::SetTVLLimits {
+        ExecuteMsg::SetTvlLimits {
             max_per_deposit,
             max_total_deposits,
         } => set_tvl_limits(deps, info, max_per_deposit, max_total_deposits),
@@ -380,14 +380,14 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&query_underlying_to_shares(deps, env, amount_underlying)?)
         }
         QueryMsg::GetStrategyState {} => to_json_binary(&query_strategy_state(deps)?),
-        QueryMsg::GetTVLLimits {} => to_json_binary(&query_tvl_limits(deps)?),
+        QueryMsg::GetTvlLimits {} => to_json_binary(&query_tvl_limits(deps)?),
     }
 }
 
 pub fn query_strategy_manager(deps: Deps) -> StdResult<StrategyManagerResponse> {
     let state = STRATEGY_STATE.load(deps.storage)?;
     Ok(StrategyManagerResponse {
-        strate_manager_addr: state.strategy_manager,
+        strategy_manager_addr: state.strategy_manager,
     })
 }
 
@@ -456,11 +456,11 @@ pub fn query_underlying_to_shares(
     Ok(UnderlyingToSharesResponse { share_to_send })
 }
 
-pub fn query_tvl_limits(deps: Deps) -> StdResult<TVLLimitsResponse> {
+pub fn query_tvl_limits(deps: Deps) -> StdResult<TvlLimitsResponse> {
     let max_per_deposit = MAX_PER_DEPOSIT.load(deps.storage)?;
     let max_total_deposits = MAX_TOTAL_DEPOSITS.load(deps.storage)?;
 
-    Ok(TVLLimitsResponse {
+    Ok(TvlLimitsResponse {
         max_per_deposit,
         max_total_deposits,
     })
@@ -489,7 +489,7 @@ fn set_tvl_limits_internal(
     max_total_deposits: Uint128,
 ) -> Result<Response, ContractError> {
     if max_per_deposit > max_total_deposits {
-        return Err(ContractError::InvalidTVLLimits {});
+        return Err(ContractError::InvalidTvlLimits {});
     }
 
     let old_max_per_deposit = MAX_PER_DEPOSIT
@@ -1198,7 +1198,7 @@ mod tests {
 
         let strategy_manager_response: StrategyManagerResponse = from_json(res).unwrap();
 
-        let current_strategy_manager = strategy_manager_response.strate_manager_addr;
+        let current_strategy_manager = strategy_manager_response.strategy_manager_addr;
 
         assert_eq!(current_strategy_manager, Addr::unchecked(strategy_manager));
     }
@@ -1385,7 +1385,7 @@ mod tests {
         let new_max_per_deposit = Uint128::new(500_000);
         let new_max_total_deposits = Uint128::new(1_000_000);
 
-        let set_tvl_msg = ExecuteMsg::SetTVLLimits {
+        let set_tvl_msg = ExecuteMsg::SetTvlLimits {
             max_per_deposit: new_max_per_deposit,
             max_total_deposits: new_max_total_deposits,
         };
@@ -1415,18 +1415,18 @@ mod tests {
         let new_max_per_deposit = Uint128::new(500_000);
         let new_max_total_deposits = Uint128::new(1_000_000);
 
-        let set_tvl_msg = ExecuteMsg::SetTVLLimits {
+        let set_tvl_msg = ExecuteMsg::SetTvlLimits {
             max_per_deposit: new_max_per_deposit,
             max_total_deposits: new_max_total_deposits,
         };
 
         execute(deps.as_mut(), env.clone(), owner_info.clone(), set_tvl_msg).unwrap();
 
-        let query_msg = QueryMsg::GetTVLLimits {};
+        let query_msg = QueryMsg::GetTvlLimits {};
 
         let res = query(deps.as_ref(), env, query_msg).unwrap();
 
-        let tvl_limits_response: TVLLimitsResponse = from_json(res).unwrap();
+        let tvl_limits_response: TvlLimitsResponse = from_json(res).unwrap();
 
         assert_eq!(tvl_limits_response.max_per_deposit, new_max_per_deposit);
         assert_eq!(

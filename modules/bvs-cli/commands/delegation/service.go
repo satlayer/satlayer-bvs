@@ -15,7 +15,7 @@ import (
 
 type Service struct {
 	ChainIO    io.ChainIO
-	Delegation api.Delegation
+	Delegation *api.DelegationManager
 }
 
 func NewService() *Service {
@@ -32,7 +32,7 @@ func NewService() *Service {
 	if err != nil {
 		panic(err)
 	}
-	delegation := api.NewDelegationImpl(chainIO, conf.C.Contract.Delegation).WithGasLimit(400000)
+	delegation := api.NewDelegationManager(chainIO, conf.C.Contract.Delegation).WithGasLimit(400000)
 	return &Service{ChainIO: chainIO, Delegation: delegation}
 
 }
