@@ -375,7 +375,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn query_strategy_manager(deps: Deps) -> StdResult<StrategyManagerResponse> {
     let state = STRATEGY_STATE.load(deps.storage)?;
     Ok(StrategyManagerResponse {
-        strate_manager_addr: state.strategy_manager,
+        strategy_manager_addr: state.strategy_manager,
     })
 }
 
@@ -1130,7 +1130,7 @@ mod tests {
 
         let strategy_manager_response: StrategyManagerResponse = from_json(res).unwrap();
 
-        let current_strategy_manager = strategy_manager_response.strate_manager_addr;
+        let current_strategy_manager = strategy_manager_response.strategy_manager_addr;
 
         assert_eq!(current_strategy_manager, Addr::unchecked(strategy_manager));
     }

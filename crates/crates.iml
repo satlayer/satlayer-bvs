@@ -25,6 +25,8 @@
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludePattern pattern=".turbo" />
       <excludePattern pattern="Cargo.lock" />
+      <excludePattern pattern="artifacts" />
+      <excludePattern pattern="schema" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
   </component>

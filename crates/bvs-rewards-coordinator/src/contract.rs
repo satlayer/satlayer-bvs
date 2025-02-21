@@ -886,12 +886,12 @@ fn validate_rewards_submission(
     if env.block.time.seconds() - max_retroactive_length > submission.start_timestamp.seconds()
         || submission.start_timestamp.seconds() < genesis_rewards_timestamp
     {
-        return Err(ContractError::StartTimeStampTooFarInPase {});
+        return Err(ContractError::StartTimestampTooFarInPast {});
     }
 
     let max_future_length = MAX_FUTURE_LENGTH.load(deps.storage)?;
     if submission.start_timestamp.seconds() > env.block.time.seconds() + max_future_length {
-        return Err(ContractError::StartTimeStampTooFarInFuture {});
+        return Err(ContractError::StartTimestampTooFarInFuture {});
     }
 
     let mut current_address = Addr::unchecked("");
@@ -911,7 +911,7 @@ fn validate_rewards_submission(
         let whitelisted = whitelisted_response.is_whitelisted;
 
         if !whitelisted {
-            return Err(ContractError::InvaildStrategyConsidered {});
+            return Err(ContractError::InvalidStrategyConsidered {});
         }
 
         if current_address >= *strategy {

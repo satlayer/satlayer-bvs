@@ -28,7 +28,7 @@ pub enum ExecuteMsg {
     RemoveStrategiesFromWhitelist {
         strategies: Vec<String>,
     },
-    SetThirdPartyTransfersForBidden {
+    SetThirdPartyTransfersForbidden {
         strategy: String,
         value: bool,
     },

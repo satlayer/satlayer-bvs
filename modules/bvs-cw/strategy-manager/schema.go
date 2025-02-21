@@ -16,8 +16,8 @@
 //    delegationManagerResponse, err := UnmarshalDelegationManagerResponse(bytes)
 //    bytes, err = delegationManagerResponse.Marshal()
 //
-//    depositTypehashResponse, err := UnmarshalDepositTypehashResponse(bytes)
-//    bytes, err = depositTypehashResponse.Marshal()
+//    depositTypeHashResponse, err := UnmarshalDepositTypeHashResponse(bytes)
+//    bytes, err = depositTypeHashResponse.Marshal()
 //
 //    depositsResponse, err := UnmarshalDepositsResponse(bytes)
 //    bytes, err = depositsResponse.Marshal()
@@ -25,8 +25,8 @@
 //    domainNameResponse, err := UnmarshalDomainNameResponse(bytes)
 //    bytes, err = domainNameResponse.Marshal()
 //
-//    domainTypehashResponse, err := UnmarshalDomainTypehashResponse(bytes)
-//    bytes, err = domainTypehashResponse.Marshal()
+//    domainTypeHashResponse, err := UnmarshalDomainTypeHashResponse(bytes)
+//    bytes, err = domainTypeHashResponse.Marshal()
 //
 //    nonceResponse, err := UnmarshalNonceResponse(bytes)
 //    bytes, err = nonceResponse.Marshal()
@@ -34,8 +34,8 @@
 //    ownerResponse, err := UnmarshalOwnerResponse(bytes)
 //    bytes, err = ownerResponse.Marshal()
 //
-//    stakerStrategyLisResponse, err := UnmarshalStakerStrategyLisResponse(bytes)
-//    bytes, err = stakerStrategyLisResponse.Marshal()
+//    stakerStrategyListResponse, err := UnmarshalStakerStrategyListResponse(bytes)
+//    bytes, err = stakerStrategyListResponse.Marshal()
 //
 //    stakerStrategySharesResponse, err := UnmarshalStakerStrategySharesResponse(bytes)
 //    bytes, err = stakerStrategySharesResponse.Marshal()
@@ -109,13 +109,13 @@ func (r *DelegationManagerResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalDepositTypehashResponse(data []byte) (DepositTypehashResponse, error) {
-	var r DepositTypehashResponse
+func UnmarshalDepositTypeHashResponse(data []byte) (DepositTypeHashResponse, error) {
+	var r DepositTypeHashResponse
 	err := json.Unmarshal(data, &r)
 	return r, err
 }
 
-func (r *DepositTypehashResponse) Marshal() ([]byte, error) {
+func (r *DepositTypeHashResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -139,13 +139,13 @@ func (r *DomainNameResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalDomainTypehashResponse(data []byte) (DomainTypehashResponse, error) {
-	var r DomainTypehashResponse
+func UnmarshalDomainTypeHashResponse(data []byte) (DomainTypeHashResponse, error) {
+	var r DomainTypeHashResponse
 	err := json.Unmarshal(data, &r)
 	return r, err
 }
 
-func (r *DomainTypehashResponse) Marshal() ([]byte, error) {
+func (r *DomainTypeHashResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -169,13 +169,13 @@ func (r *OwnerResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalStakerStrategyLisResponse(data []byte) (StakerStrategyLisResponse, error) {
-	var r StakerStrategyLisResponse
+func UnmarshalStakerStrategyListResponse(data []byte) (StakerStrategyListResponse, error) {
+	var r StakerStrategyListResponse
 	err := json.Unmarshal(data, &r)
 	return r, err
 }
 
-func (r *StakerStrategyLisResponse) Marshal() ([]byte, error) {
+func (r *StakerStrategyListResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -366,14 +366,14 @@ type QueryMsg struct {
 	CalculateDigestHash            *CalculateDigestHash            `json:"calculate_digest_hash,omitempty"`
 	GetStrategyWhitelister         *GetStrategyWhitelister         `json:"get_strategy_whitelister,omitempty"`
 	GetStrategyManagerState        *GetStrategyManagerState        `json:"get_strategy_manager_state,omitempty"`
-	GetDepositTypehash             *GetDepositTypehash             `json:"get_deposit_typehash,omitempty"`
-	GetDomainTypehash              *GetDomainTypehash              `json:"get_domain_typehash,omitempty"`
+	GetDepositTypeHash             *GetDepositTypeHash             `json:"get_deposit_type_hash,omitempty"`
+	GetDomainTypeHash              *GetDomainTypeHash              `json:"get_domain_type_hash,omitempty"`
 	GetDomainName                  *GetDomainName                  `json:"get_domain_name,omitempty"`
 	GetDelegationManager           *GetDelegationManager           `json:"get_delegation_manager,omitempty"`
 }
 
 type CalculateDigestHash struct {
-	DigstHashParams QueryDigestHashParams `json:"digst_hash_params"`
+	DigestHashParams QueryDigestHashParams `json:"digest_hash_params"`
 }
 
 type QueryDigestHashParams struct {
@@ -391,7 +391,7 @@ type QueryDigestHashParams struct {
 type GetDelegationManager struct {
 }
 
-type GetDepositTypehash struct {
+type GetDepositTypeHash struct {
 }
 
 type GetDeposits struct {
@@ -401,7 +401,7 @@ type GetDeposits struct {
 type GetDomainName struct {
 }
 
-type GetDomainTypehash struct {
+type GetDomainTypeHash struct {
 }
 
 type GetNonce struct {
@@ -446,7 +446,7 @@ type DelegationManagerResponse struct {
 	DelegationManager string `json:"delegation_manager"`
 }
 
-type DepositTypehashResponse struct {
+type DepositTypeHashResponse struct {
 	DepositTypeHash string `json:"deposit_type_hash"`
 }
 
@@ -459,7 +459,7 @@ type DomainNameResponse struct {
 	DomainName string `json:"domain_name"`
 }
 
-type DomainTypehashResponse struct {
+type DomainTypeHashResponse struct {
 	DomainTypeHash string `json:"domain_type_hash"`
 }
 
@@ -471,7 +471,7 @@ type OwnerResponse struct {
 	OwnerAddr string `json:"owner_addr"`
 }
 
-type StakerStrategyLisResponse struct {
+type StakerStrategyListResponse struct {
 	Strategies []string `json:"strategies"`
 }
 

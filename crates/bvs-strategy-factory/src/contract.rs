@@ -83,7 +83,7 @@ pub fn execute(
             let strategies_addrs = validate_addresses(deps.api, &strategies)?;
             remove_strategies_from_whitelist(deps, info, strategies_addrs)
         }
-        ExecuteMsg::SetThirdPartyTransfersForBidden { strategy, value } => {
+        ExecuteMsg::SetThirdPartyTransfersForbidden { strategy, value } => {
             let strategy_addr = deps.api.addr_validate(&strategy)?;
             set_third_party_transfers_forbidden(deps, env, info, strategy_addr, value)
         }

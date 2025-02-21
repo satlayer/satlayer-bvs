@@ -6,9 +6,9 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
-    #[error("Statebank: Bvs contract is not registered")]
+    #[error("StateBank: contract is not registered")]
     BvsContractNotRegistered {},
 
-    #[error("Statebank: unauthorized")]
+    #[error("StateBank: unauthorized")]
     Unauthorized {},
 }

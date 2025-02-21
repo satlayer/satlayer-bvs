@@ -14,7 +14,7 @@ type Collector struct {
 	bvsName      string
 	operatorAddr string
 	strategies   []string
-	delegation   api.Delegation
+	delegation   *api.DelegationManager
 	logger       logger.Logger
 	// Contributions delegated by an operator in different strategies.
 	delegatedShares *prometheus.Desc
@@ -26,7 +26,7 @@ type Collector struct {
 
 var _ prometheus.Collector = (*Collector)(nil)
 
-func NewCollector(bvsName, operatorAddr string, strategies []string, delegation api.Delegation, logger logger.Logger) *Collector {
+func NewCollector(bvsName, operatorAddr string, strategies []string, delegation *api.DelegationManager, logger logger.Logger) *Collector {
 	return &Collector{
 		bvsName:      bvsName,
 		operatorAddr: operatorAddr,

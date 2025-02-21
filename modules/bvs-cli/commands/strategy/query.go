@@ -93,7 +93,7 @@ func GetStrategyManagerState() {
 
 func GetDepositTypeHash() {
 	s := NewService()
-	resp, err := s.Strategy.GetDepositTypehash()
+	resp, err := s.Strategy.GetDepositTypeHash()
 	if err != nil {
 		panic(err)
 	}
@@ -102,7 +102,7 @@ func GetDepositTypeHash() {
 
 func GetDomainTypeHash() {
 	s := NewService()
-	resp, err := s.Strategy.GetDomainTypehash()
+	resp, err := s.Strategy.GetDomainTypeHash()
 	if err != nil {
 		panic(err)
 	}
