@@ -284,7 +284,7 @@ type SharesResponse struct {
 }
 
 type StrategyManagerResponse struct {
-	StrateManagerAddr string `json:"strate_manager_addr"`
+	StrategyManagerAddr string `json:"strategy_manager_addr"`
 }
 
 type StrategyState struct {

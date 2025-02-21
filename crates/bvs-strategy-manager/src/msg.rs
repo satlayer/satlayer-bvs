@@ -108,7 +108,7 @@ pub enum QueryMsg {
     #[returns(NonceResponse)]
     GetNonce { staker: String },
 
-    #[returns(StakerStrategyLisResponse)]
+    #[returns(StakerStrategyListResponse)]
     GetStakerStrategyList { staker: String },
 
     #[returns(OwnerResponse)]

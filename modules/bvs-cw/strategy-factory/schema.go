@@ -84,7 +84,7 @@ type ExecuteMsg struct {
 	UpdateConfig                    *UpdateConfig                    `json:"update_config,omitempty"`
 	BlacklistTokens                 *BlacklistTokens                 `json:"blacklist_tokens,omitempty"`
 	RemoveStrategiesFromWhitelist   *RemoveStrategiesFromWhitelist   `json:"remove_strategies_from_whitelist,omitempty"`
-	SetThirdPartyTransfersForBidden *SetThirdPartyTransfersForBidden `json:"set_third_party_transfers_for_bidden,omitempty"`
+	SetThirdPartyTransfersForbidden *SetThirdPartyTransfersForbidden `json:"set_third_party_transfers_forbidden,omitempty"`
 	WhitelistStrategies             *WhitelistStrategies             `json:"whitelist_strategies,omitempty"`
 	SetStrategyManager              *SetStrategyManager              `json:"set_strategy_manager,omitempty"`
 	TransferOwnership               *TransferOwnership               `json:"transfer_ownership,omitempty"`
@@ -119,7 +119,7 @@ type SetStrategyManager struct {
 	NewStrategyManager string `json:"new_strategy_manager"`
 }
 
-type SetThirdPartyTransfersForBidden struct {
+type SetThirdPartyTransfersForbidden struct {
 	Strategy string `json:"strategy"`
 	Value    bool   `json:"value"`
 }

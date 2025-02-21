@@ -404,7 +404,7 @@ func (r *StrategyManager) IsStrategyWhitelisted(strategy string) (*wasmtypes.Que
 func (r *StrategyManager) CalculateDigestHash(params strategymanager.QueryDigestHashParams) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategymanager.QueryMsg{
 		CalculateDigestHash: &strategymanager.CalculateDigestHash{
-			DigstHashParams: params,
+			DigestHashParams: params,
 		},
 	}
 
@@ -427,17 +427,17 @@ func (r *StrategyManager) GetStrategyManagerState() (*wasmtypes.QuerySmartContra
 	return r.query(msg)
 }
 
-func (r *StrategyManager) GetDepositTypehash() (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyManager) GetDepositTypeHash() (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategymanager.QueryMsg{
-		GetDepositTypehash: &strategymanager.GetDepositTypehash{},
+		GetDepositTypeHash: &strategymanager.GetDepositTypeHash{},
 	}
 
 	return r.query(msg)
 }
 
-func (r *StrategyManager) GetDomainTypehash() (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyManager) GetDomainTypeHash() (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategymanager.QueryMsg{
-		GetDomainTypehash: &strategymanager.GetDomainTypehash{},
+		GetDomainTypeHash: &strategymanager.GetDomainTypeHash{},
 	}
 
 	return r.query(msg)

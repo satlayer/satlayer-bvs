@@ -59,7 +59,7 @@ func (suite *strategyFactoryTestSuite) test_DeployNewStrategy() {
 	t.Logf("txResp:%+v", txResp)
 }
 
-func (suite *strategyFactoryTestSuite) Test_SetThirdPartyTransfersForBidden() {
+func (suite *strategyFactoryTestSuite) Test_SetThirdPartyTransfersForbidden() {
 	t := suite.T()
 	keyName := "caller"
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
@@ -76,8 +76,8 @@ func (suite *strategyFactoryTestSuite) Test_SetThirdPartyTransfersForBidden() {
 	_, err = factoryApi.SetStrategyManager(context.Background(), strategyManager.Address)
 	assert.NoError(t, err)
 
-	txResp, err := factoryApi.SetThirdPartyTransfersForBidden(context.Background(), strategyManager.Address, true)
-	assert.NoError(t, err, "SetThirdPartyTransfersForBidden failed")
+	txResp, err := factoryApi.SetThirdPartyTransfersForbidden(context.Background(), strategyManager.Address, true)
+	assert.NoError(t, err, "SetThirdPartyTransfersForbidden failed")
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
 }
