@@ -31,7 +31,7 @@ pub fn instantiate(
     Ok(response)
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     _env: Env,
@@ -89,7 +89,7 @@ pub fn add_registered_bvs_contract(
     ))
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Get { key } => query_value(deps, key),

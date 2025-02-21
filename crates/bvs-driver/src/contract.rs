@@ -32,7 +32,7 @@ pub fn instantiate(
     Ok(response)
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     _env: Env,
@@ -104,7 +104,7 @@ pub fn transfer_ownership(
         .add_attribute("new_owner", new_owner.to_string()))
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
     Ok(Binary::default())
 }
