@@ -14,18 +14,33 @@ updates:
         update-types:
           - "minor"
           - "patch"
-        include:
-          - "eslint"
+        patterns:
           - "husky"
           - "lint-staged"
-          - "@eslint/*"
-          - "eslint-*"
+          - "eslint"
           - "globals"
-          - "*-eslint-*"
+          - "@eslint/*"
+          - "*eslint*"
+        exclude-patterns:
+          - "eslint-config-next"
       prettier:
-        include:
+        patterns:
           - "prettier"
           - "prettier-plugin-*"
+      docs:
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "eslint-config-next"
+          - "@tailwindcss/postcss"
+          - "tailwindcss"
+          - "postcss"
+          - "next"
+          - "nextra"
+          - "nextra-*"
+          - "react*"
+          - "@types/react*"
 
   - package-ecosystem: cargo
     directory: "/crates"
