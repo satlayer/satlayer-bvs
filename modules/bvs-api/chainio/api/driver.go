@@ -12,10 +12,10 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-cw/driver"
 )
 
-type BVSDriver interface {
-	WithGasAdjustment(gasAdjustment float64) BVSDriver
-	WithGasPrice(gasPrice sdktypes.DecCoin) BVSDriver
-	WithGasLimit(gasLimit uint64) BVSDriver
+type Driver interface {
+	WithGasAdjustment(gasAdjustment float64) Driver
+	WithGasPrice(gasPrice sdktypes.DecCoin) Driver
+	WithGasLimit(gasLimit uint64) Driver
 
 	SetRegisteredBVSContract(ctx context.Context, addr string) (*coretypes.ResultTx, error)
 	BindClient(contractAddress string)
@@ -30,7 +30,7 @@ type bvsDriverImpl struct {
 	gasLimit              uint64
 }
 
-func NewBvsDriver(chainIO io.ChainIO) BVSDriver {
+func NewDriver(chainIO io.ChainIO) Driver {
 	return &bvsDriverImpl{
 		io:            chainIO,
 		gasAdjustment: 1.2,
@@ -39,17 +39,17 @@ func NewBvsDriver(chainIO io.ChainIO) BVSDriver {
 	}
 }
 
-func (r *bvsDriverImpl) WithGasAdjustment(gasAdjustment float64) BVSDriver {
+func (r *bvsDriverImpl) WithGasAdjustment(gasAdjustment float64) Driver {
 	r.gasAdjustment = gasAdjustment
 	return r
 }
 
-func (r *bvsDriverImpl) WithGasPrice(gasPrice sdktypes.DecCoin) BVSDriver {
+func (r *bvsDriverImpl) WithGasPrice(gasPrice sdktypes.DecCoin) Driver {
 	r.gasPrice = gasPrice
 	return r
 }
 
-func (r *bvsDriverImpl) WithGasLimit(gasLimit uint64) BVSDriver {
+func (r *bvsDriverImpl) WithGasLimit(gasLimit uint64) Driver {
 	r.gasLimit = gasLimit
 	return r
 }

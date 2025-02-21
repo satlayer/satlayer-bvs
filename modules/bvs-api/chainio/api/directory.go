@@ -15,7 +15,7 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-cw/directory"
 )
 
-type BvsDirectory struct {
+type Directory struct {
 	io            io.ChainIO
 	contractAddr  string
 	gasAdjustment float64
@@ -23,8 +23,8 @@ type BvsDirectory struct {
 	gasLimit      uint64
 }
 
-func NewBvsDirectory(chainIO io.ChainIO, contractAddr string) *BvsDirectory {
-	return &BvsDirectory{
+func NewDirectory(chainIO io.ChainIO, contractAddr string) *Directory {
+	return &Directory{
 		io:            chainIO,
 		contractAddr:  contractAddr,
 		gasAdjustment: 1.2,
@@ -33,22 +33,22 @@ func NewBvsDirectory(chainIO io.ChainIO, contractAddr string) *BvsDirectory {
 	}
 }
 
-func (r *BvsDirectory) WithGasAdjustment(gasAdjustment float64) *BvsDirectory {
+func (r *Directory) WithGasAdjustment(gasAdjustment float64) *Directory {
 	r.gasAdjustment = gasAdjustment
 	return r
 }
 
-func (r *BvsDirectory) WithGasPrice(gasPrice sdktypes.DecCoin) *BvsDirectory {
+func (r *Directory) WithGasPrice(gasPrice sdktypes.DecCoin) *Directory {
 	r.gasPrice = gasPrice
 	return r
 }
 
-func (r *BvsDirectory) WithGasLimit(gasLimit uint64) *BvsDirectory {
+func (r *Directory) WithGasLimit(gasLimit uint64) *Directory {
 	r.gasLimit = gasLimit
 	return r
 }
 
-func (r *BvsDirectory) RegisterBVS(ctx context.Context, bvsContract string) (*coretypes.ResultTx, error) {
+func (r *Directory) RegisterBVS(ctx context.Context, bvsContract string) (*coretypes.ResultTx, error) {
 	executeMsg := directory.ExecuteMsg{RegisterBVS: &directory.RegisterBVS{
 		BvsContract: bvsContract,
 	}}
@@ -61,7 +61,7 @@ func (r *BvsDirectory) RegisterBVS(ctx context.Context, bvsContract string) (*co
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *BvsDirectory) RegisterOperator(ctx context.Context, operator string, publicKey cryptotypes.PubKey) (*coretypes.ResultTx, error) {
+func (r *Directory) RegisterOperator(ctx context.Context, operator string, publicKey cryptotypes.PubKey) (*coretypes.ResultTx, error) {
 	nodeStatus, err := r.io.QueryNodeStatus(context.Background())
 	if err != nil {
 		return nil, err
@@ -105,7 +105,7 @@ func (r *BvsDirectory) RegisterOperator(ctx context.Context, operator string, pu
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *BvsDirectory) DeregisterOperator(ctx context.Context, operator string) (*coretypes.ResultTx, error) {
+func (r *Directory) DeregisterOperator(ctx context.Context, operator string) (*coretypes.ResultTx, error) {
 	executeMsg := directory.ExecuteMsg{DeregisterOperatorFromBVS: &directory.DeregisterOperatorFromBVS{Operator: operator}}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
@@ -116,7 +116,7 @@ func (r *BvsDirectory) DeregisterOperator(ctx context.Context, operator string) 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *BvsDirectory) UpdateMetadataURI(ctx context.Context, metadataURI string) (*coretypes.ResultTx, error) {
+func (r *Directory) UpdateMetadataURI(ctx context.Context, metadataURI string) (*coretypes.ResultTx, error) {
 	executeMsg := directory.ExecuteMsg{UpdateBVSMetadataURI: &directory.UpdateBVSMetadataURI{MetadataURI: metadataURI}}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
@@ -127,7 +127,7 @@ func (r *BvsDirectory) UpdateMetadataURI(ctx context.Context, metadataURI string
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *BvsDirectory) CancelSalt(ctx context.Context, salt string) (*coretypes.ResultTx, error) {
+func (r *Directory) CancelSalt(ctx context.Context, salt string) (*coretypes.ResultTx, error) {
 	executeMsg := directory.ExecuteMsg{CancelSalt: &directory.CancelSalt{Salt: base64.StdEncoding.EncodeToString([]byte(salt))}}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
@@ -138,7 +138,7 @@ func (r *BvsDirectory) CancelSalt(ctx context.Context, salt string) (*coretypes.
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *BvsDirectory) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
+func (r *Directory) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
 	executeMsg := directory.ExecuteMsg{TransferOwnership: &directory.TransferOwnership{NewOwner: newOwner}}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
@@ -149,7 +149,7 @@ func (r *BvsDirectory) TransferOwnership(ctx context.Context, newOwner string) (
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *BvsDirectory) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
+func (r *Directory) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
 	executeMsg := directory.ExecuteMsg{Pause: &directory.Pause{}}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
@@ -160,7 +160,7 @@ func (r *BvsDirectory) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *BvsDirectory) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
+func (r *Directory) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
 	executeMsg := directory.ExecuteMsg{Unpause: &directory.Unpause{}}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
@@ -171,7 +171,7 @@ func (r *BvsDirectory) Unpause(ctx context.Context) (*coretypes.ResultTx, error)
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *BvsDirectory) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
+func (r *Directory) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
 	executeMsg := directory.ExecuteMsg{SetPauser: &directory.SetPauser{NewPauser: newPauser}}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
@@ -182,7 +182,7 @@ func (r *BvsDirectory) SetPauser(ctx context.Context, newPauser string) (*corety
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *BvsDirectory) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
+func (r *Directory) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
 	executeMsg := directory.ExecuteMsg{SetUnpauser: &directory.SetUnpauser{NewUnpauser: newUnpauser}}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
@@ -193,7 +193,7 @@ func (r *BvsDirectory) SetUnpauser(ctx context.Context, newUnpauser string) (*co
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *BvsDirectory) SetDelegationManager(ctx context.Context, delegationManager string) (*coretypes.ResultTx, error) {
+func (r *Directory) SetDelegationManager(ctx context.Context, delegationManager string) (*coretypes.ResultTx, error) {
 	executeMsg := directory.ExecuteMsg{SetDelegationManager: &directory.SetDelegationManager{DelegationManager: delegationManager}}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
@@ -204,7 +204,7 @@ func (r *BvsDirectory) SetDelegationManager(ctx context.Context, delegationManag
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *BvsDirectory) QueryOperator(bvs, operator string) (*directory.OperatorStatusResponse, error) {
+func (r *Directory) QueryOperator(bvs, operator string) (*directory.OperatorStatusResponse, error) {
 	result := new(directory.OperatorStatusResponse)
 	queryMsg := directory.QueryMsg{GetOperatorStatus: &directory.GetOperatorStatus{
 		Operator: operator,
@@ -225,7 +225,7 @@ func (r *BvsDirectory) QueryOperator(bvs, operator string) (*directory.OperatorS
 	return result, nil
 }
 
-func (r *BvsDirectory) CalculateDigestHash(operatorPublicKey cryptotypes.PubKey, bvs, salt string, expiry int64) (*directory.DigestHashResponse, error) {
+func (r *Directory) CalculateDigestHash(operatorPublicKey cryptotypes.PubKey, bvs, salt string, expiry int64) (*directory.DigestHashResponse, error) {
 	result := new(directory.DigestHashResponse)
 	queryMsg := &directory.QueryMsg{CalculateDigestHash: &directory.CalculateDigestHash{
 		OperatorPublicKey: base64.StdEncoding.EncodeToString(operatorPublicKey.Bytes()),
@@ -249,7 +249,7 @@ func (r *BvsDirectory) CalculateDigestHash(operatorPublicKey cryptotypes.PubKey,
 	return result, nil
 }
 
-func (r *BvsDirectory) IsSaltSpent(operator, salt string) (*directory.SaltResponse, error) {
+func (r *Directory) IsSaltSpent(operator, salt string) (*directory.SaltResponse, error) {
 	result := new(directory.SaltResponse)
 	queryMsg := directory.QueryMsg{IsSaltSpent: &directory.IsSaltSpent{
 		Operator: operator,
@@ -270,7 +270,7 @@ func (r *BvsDirectory) IsSaltSpent(operator, salt string) (*directory.SaltRespon
 	return result, nil
 }
 
-func (r *BvsDirectory) GetDelegationManager() (*directory.DelegationResponse, error) {
+func (r *Directory) GetDelegationManager() (*directory.DelegationResponse, error) {
 	result := new(directory.DelegationResponse)
 	queryMsg := directory.QueryMsg{
 		GetDelegationManager: &directory.GetDelegationManager{},
@@ -290,7 +290,7 @@ func (r *BvsDirectory) GetDelegationManager() (*directory.DelegationResponse, er
 	return result, nil
 }
 
-func (r *BvsDirectory) GetOwner() (*directory.OwnerResponse, error) {
+func (r *Directory) GetOwner() (*directory.OwnerResponse, error) {
 	result := new(directory.OwnerResponse)
 	queryMsg := directory.QueryMsg{
 		GetOwner: &directory.GetOwner{},
@@ -310,7 +310,7 @@ func (r *BvsDirectory) GetOwner() (*directory.OwnerResponse, error) {
 	return result, nil
 }
 
-func (r *BvsDirectory) GetOperatorBVSRegistrationTypeHash() (*directory.RegistrationTypeHashResponse, error) {
+func (r *Directory) GetOperatorBVSRegistrationTypeHash() (*directory.RegistrationTypeHashResponse, error) {
 	result := new(directory.RegistrationTypeHashResponse)
 	queryMsg := directory.QueryMsg{
 		GetOperatorBVSRegistrationTypeHash: &directory.GetOperatorBVSRegistrationTypeHash{},
@@ -330,7 +330,7 @@ func (r *BvsDirectory) GetOperatorBVSRegistrationTypeHash() (*directory.Registra
 	return result, nil
 }
 
-func (r *BvsDirectory) GetDomainTypeHash() (*directory.DomainTypeHashResponse, error) {
+func (r *Directory) GetDomainTypeHash() (*directory.DomainTypeHashResponse, error) {
 	result := new(directory.DomainTypeHashResponse)
 	queryMsg := directory.QueryMsg{
 		GetDomainTypeHash: &directory.GetDomainTypeHash{},
@@ -350,7 +350,7 @@ func (r *BvsDirectory) GetDomainTypeHash() (*directory.DomainTypeHashResponse, e
 	return result, nil
 }
 
-func (r *BvsDirectory) GetDomainName() (*directory.DomainNameResponse, error) {
+func (r *Directory) GetDomainName() (*directory.DomainNameResponse, error) {
 	result := new(directory.DomainNameResponse)
 	queryMsg := directory.QueryMsg{
 		GetDomainName: &directory.GetDomainName{},
@@ -370,7 +370,7 @@ func (r *BvsDirectory) GetDomainName() (*directory.DomainNameResponse, error) {
 	return result, nil
 }
 
-func (r *BvsDirectory) GetBVSInfo(bvsHash string) (*directory.BVSInfoResponse, error) {
+func (r *Directory) GetBVSInfo(bvsHash string) (*directory.BVSInfoResponse, error) {
 	result := new(directory.BVSInfoResponse)
 	queryMsg := directory.QueryMsg{GetBVSInfo: &directory.GetBVSInfo{BvsHash: bvsHash}}
 	queryMsgBytes, err := json.Marshal(queryMsg)
@@ -388,7 +388,7 @@ func (r *BvsDirectory) GetBVSInfo(bvsHash string) (*directory.BVSInfoResponse, e
 	return result, nil
 }
 
-func (r *BvsDirectory) newExecuteOptions(contractAddr string, executeMsg []byte, memo string) types.ExecuteOptions {
+func (r *Directory) newExecuteOptions(contractAddr string, executeMsg []byte, memo string) types.ExecuteOptions {
 	return types.ExecuteOptions{
 		ContractAddr:  contractAddr,
 		ExecuteMsg:    executeMsg,
@@ -401,7 +401,7 @@ func (r *BvsDirectory) newExecuteOptions(contractAddr string, executeMsg []byte,
 	}
 }
 
-func (r *BvsDirectory) newQueryOptions(contractAddr string, queryMsg []byte) types.QueryOptions {
+func (r *Directory) newQueryOptions(contractAddr string, queryMsg []byte) types.QueryOptions {
 	return types.QueryOptions{
 		ContractAddr: contractAddr,
 		QueryMsg:     queryMsg,

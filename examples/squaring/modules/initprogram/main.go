@@ -71,7 +71,7 @@ func registerBvsContract() string {
 		panic(err)
 	}
 
-	bvsDriver := api.NewBvsDriver(chainIO)
+	bvsDriver := api.NewDriver(chainIO)
 	bvsDriver.BindClient(core.C.Contract.BVSDriverAddr)
 	txResp, err := bvsDriver.SetRegisteredBVSContract(context.Background(), core.C.Contract.BVSContractAddr)
 	if err != nil {
@@ -89,7 +89,7 @@ func registerBvsContract() string {
 
 	fmt.Printf("registerBVSContract success, txn: %s\n", txResp.Hash.String())
 
-	txResp, err = api.NewBvsDirectory(chainIO, core.C.Contract.DirectoryAddr).RegisterBVS(context.Background(), core.C.Contract.BVSContractAddr)
+	txResp, err = api.NewDirectory(chainIO, core.C.Contract.DirectoryAddr).RegisterBVS(context.Background(), core.C.Contract.BVSContractAddr)
 	if err != nil {
 		panic(err)
 	}
@@ -135,7 +135,7 @@ func registerOperators(approverAddress string) {
 			fmt.Println("registerAsOperator to delegation success:", txResp)
 		}
 		// register operator to bvsDirectory
-		txResp, err = api.NewBvsDirectory(chainIO, core.C.Contract.DirectoryAddr).RegisterOperator(context.Background(), address, pubKey)
+		txResp, err = api.NewDirectory(chainIO, core.C.Contract.DirectoryAddr).RegisterOperator(context.Background(), address, pubKey)
 		if err != nil {
 			fmt.Println("Err: registerOperators to bvsDirectory failed: ", err)
 			return
