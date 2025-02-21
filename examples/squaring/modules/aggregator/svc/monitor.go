@@ -43,7 +43,7 @@ func NewMonitor() *Monitor {
 	fmt.Printf("homeDir: %s\n", keyDir)
 
 	// init log and chain
-	elkLogger := logger.NewELKLogger("bvs_demo")
+	elkLogger := logger.NewELKLogger(core.C.Chain.BvsHash)
 	elkLogger.SetLogLevel("info")
 	reg := prometheus.NewRegistry()
 	metricsIndicators := transactionprocess.NewPromIndicators(reg, "bvs_demo")

@@ -114,6 +114,13 @@ importers:
       '@modules/bvs-cli':
         specifier: workspace:*
         version: link:../../../modules/bvs-cli
+    devDependencies:
+      '@examples/squaring-contract':
+        specifier: workspace:*
+        version: link:../squaring-contract
+      quicktype-core:
+        specifier: ^23.0.171
+        version: 23.0.171
 
   examples/squaring/squaring-contract: {}
 

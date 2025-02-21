@@ -71,9 +71,9 @@ func (m MockELKLogger) SweetenFields(args []interface{}) []Field {
 }
 
 func NewMockELKLogger() Logger {
-	once.Do(func() {
+	if mockELKLogger == nil {
 		mockELKLogger = &MockELKLogger{}
-	})
+	}
 
 	return mockELKLogger
 }

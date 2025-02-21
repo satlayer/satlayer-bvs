@@ -1,7 +1,6 @@
 package core
 
 import (
-	"fmt"
 	"path/filepath"
 	"runtime"
 
@@ -22,16 +21,22 @@ func InitConfig(overrideConfig Config) {
 	// get env.file path
 	configDir := filepath.Dir(currentFile)
 	envFilePath := filepath.Join(configDir, "../env.toml")
-	fmt.Printf("envFilePath: %s", envFilePath)
 	if _, err := toml.DecodeFile(envFilePath, &C); err != nil {
 		panic(err)
 	}
 	// override config
+
 	// TODO: add more override and move to a separate function
 	if overrideConfig.Database.RedisHost != "" {
 		C.Database.RedisHost = overrideConfig.Database.RedisHost
 	}
-	fmt.Printf("C: %+v", C)
+	if overrideConfig.Owner.KeyName != "" {
+		C.Owner.KeyName = overrideConfig.Owner.KeyName
+	}
+	if overrideConfig.Owner.KeyDir != "" {
+		C.Owner.KeyDir = overrideConfig.Owner.KeyDir
+	}
+
 	// init logger
 	L = logger.NewELKLogger(C.Chain.BvsHash)
 	initStore(&C.Database)
