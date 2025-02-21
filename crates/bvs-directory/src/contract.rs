@@ -8,7 +8,7 @@ use crate::{
         DomainTypeHashResponse, OwnerResponse, RegistrationTypeHashResponse, SaltResponse,
     },
     state::{
-        BvsInfo, OperatorBVSRegistrationStatus, BVS_INFO, BVS_OPERATOR_STATUS, DELEGATION_MANAGER,
+        BvsInfo, OperatorBvsRegistrationStatus, BVS_INFO, BVS_OPERATOR_STATUS, DELEGATION_MANAGER,
         OPERATOR_SALT_SPENT, OWNER,
     },
     utils::{
@@ -185,7 +185,7 @@ pub fn register_operator(
 
     let status =
         BVS_OPERATOR_STATUS.may_load(deps.storage, (info.sender.clone(), operator.clone()))?;
-    if status == Some(OperatorBVSRegistrationStatus::Registered) {
+    if status == Some(OperatorBvsRegistrationStatus::Registered) {
         return Err(ContractError::OperatorAlreadyRegistered {});
     }
 
@@ -217,7 +217,7 @@ pub fn register_operator(
     BVS_OPERATOR_STATUS.save(
         deps.storage,
         (info.sender.clone(), operator.clone()),
-        &OperatorBVSRegistrationStatus::Registered,
+        &OperatorBvsRegistrationStatus::Registered,
     )?;
     OPERATOR_SALT_SPENT.save(deps.storage, (operator.clone(), salt_str.clone()), &true)?;
 
@@ -240,11 +240,11 @@ pub fn deregister_operator(
 
     let status =
         BVS_OPERATOR_STATUS.may_load(deps.storage, (info.sender.clone(), operator.clone()))?;
-    if status == Some(OperatorBVSRegistrationStatus::Registered) {
+    if status == Some(OperatorBvsRegistrationStatus::Registered) {
         BVS_OPERATOR_STATUS.save(
             deps.storage,
             (info.sender.clone(), operator.clone()),
-            &OperatorBVSRegistrationStatus::Unregistered,
+            &OperatorBvsRegistrationStatus::Unregistered,
         )?;
 
         let event = Event::new("OperatorBVSRegistrationStatusUpdated")
@@ -390,7 +390,7 @@ fn query_operator_status(
 ) -> StdResult<OperatorStatusResponse> {
     let status = BVS_OPERATOR_STATUS
         .may_load(deps.storage, (user_addr.clone(), operator.clone()))?
-        .unwrap_or(OperatorBVSRegistrationStatus::Unregistered);
+        .unwrap_or(OperatorBvsRegistrationStatus::Unregistered);
     Ok(OperatorStatusResponse { status })
 }
 
@@ -722,7 +722,7 @@ mod tests {
         let status = BVS_OPERATOR_STATUS
             .load(&deps.storage, (info.sender.clone(), operator.clone()))
             .unwrap();
-        assert_eq!(status, OperatorBVSRegistrationStatus::Registered);
+        assert_eq!(status, OperatorBvsRegistrationStatus::Registered);
 
         let is_salt_spent = OPERATOR_SALT_SPENT
             .load(&deps.storage, (operator.clone(), salt.to_string()))
@@ -824,7 +824,7 @@ mod tests {
         let status = BVS_OPERATOR_STATUS
             .load(&deps.storage, (info.sender.clone(), operator.clone()))
             .unwrap();
-        assert_eq!(status, OperatorBVSRegistrationStatus::Unregistered);
+        assert_eq!(status, OperatorBvsRegistrationStatus::Unregistered);
     }
 
     #[test]
@@ -1015,7 +1015,7 @@ mod tests {
         let status = BVS_OPERATOR_STATUS
             .load(&deps.storage, (info.sender.clone(), operator.clone()))
             .unwrap();
-        assert_eq!(status, OperatorBVSRegistrationStatus::Registered);
+        assert_eq!(status, OperatorBvsRegistrationStatus::Registered);
 
         let is_salt_spent = OPERATOR_SALT_SPENT
             .load(&deps.storage, (operator.clone(), salt.to_string()))
@@ -1030,7 +1030,7 @@ mod tests {
             from_json(query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
         println!("Query result: {:?}", query_res);
 
-        assert_eq!(query_res.status, OperatorBVSRegistrationStatus::Registered);
+        assert_eq!(query_res.status, OperatorBvsRegistrationStatus::Registered);
     }
 
     #[test]
@@ -1053,7 +1053,7 @@ mod tests {
 
         assert_eq!(
             query_res.status,
-            OperatorBVSRegistrationStatus::Unregistered
+            OperatorBvsRegistrationStatus::Unregistered
         );
     }
 

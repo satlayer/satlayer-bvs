@@ -129,9 +129,9 @@ func (r *StrategyFactory) RemoveStrategiesFromWhitelist(ctx context.Context, str
 	return r.execute(ctx, executeMsg)
 }
 
-func (r *StrategyFactory) SetThirdPartyTransfersForBidden(ctx context.Context, strategy string, value bool) (*coretypes.ResultTx, error) {
+func (r *StrategyFactory) SetThirdPartyTransfersForbidden(ctx context.Context, strategy string, value bool) (*coretypes.ResultTx, error) {
 	executeMsg := strategyfactory.ExecuteMsg{
-		SetThirdPartyTransfersForBidden: &strategyfactory.SetThirdPartyTransfersForBidden{
+		SetThirdPartyTransfersForbidden: &strategyfactory.SetThirdPartyTransfersForbidden{
 			Strategy: strategy,
 			Value:    value,
 		},

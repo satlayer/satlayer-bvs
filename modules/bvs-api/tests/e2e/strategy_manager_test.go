@@ -359,15 +359,15 @@ func (suite *strategyManagerTestSuite) test_QueryStrategyManager() {
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("GetStrategyManagerState resp:%+v", resp)
 
-	resp, err = strategyManager.GetDepositTypehash()
+	resp, err = strategyManager.GetDepositTypeHash()
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, resp, "response nil")
-	t.Logf("GetDepositTypehash resp:%+v", resp)
+	t.Logf("GetDepositTypeHash resp:%+v", resp)
 
-	resp, err = strategyManager.GetDomainTypehash()
+	resp, err = strategyManager.GetDomainTypeHash()
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, resp, "response nil")
-	t.Logf("GetDomainTypehash resp:%+v", resp)
+	t.Logf("GetDomainTypeHash resp:%+v", resp)
 
 	resp, err = strategyManager.GetDomainName()
 	assert.NoError(t, err, "execute contract")

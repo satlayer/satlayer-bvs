@@ -309,7 +309,7 @@ type RegistrationTypeHashResponse struct {
 }
 
 type OperatorStatusResponse struct {
-	Status OperatorBVSRegistrationStatus `json:"status"`
+	Status OperatorBvsRegistrationStatus `json:"status"`
 }
 
 type OwnerResponse struct {
@@ -320,9 +320,9 @@ type SaltResponse struct {
 	IsSaltSpent bool `json:"is_salt_spent"`
 }
 
-type OperatorBVSRegistrationStatus string
+type OperatorBvsRegistrationStatus string
 
 const (
-	Registered   OperatorBVSRegistrationStatus = "registered"
-	Unregistered OperatorBVSRegistrationStatus = "unregistered"
+	Registered   OperatorBvsRegistrationStatus = "registered"
+	Unregistered OperatorBvsRegistrationStatus = "unregistered"
 )

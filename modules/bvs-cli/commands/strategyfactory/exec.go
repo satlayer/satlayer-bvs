@@ -102,9 +102,9 @@ func RemoveStrategiesFromWhitelist(userKeyName string, strategies []string) {
 	fmt.Printf("Remove strategies from whitelist success. txn: %s\n", resp.Hash)
 }
 
-func SetThirdPartyTransfersForBidden(userKeyName, strategy string, value bool) {
+func SetThirdPartyTransfersForbidden(userKeyName, strategy string, value bool) {
 	strategyFactory, _ := newService(userKeyName)
-	resp, err := strategyFactory.SetThirdPartyTransfersForBidden(context.Background(), strategy, value)
+	resp, err := strategyFactory.SetThirdPartyTransfersForbidden(context.Background(), strategy, value)
 	if err != nil {
 		panic(err)
 	}

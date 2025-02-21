@@ -100,7 +100,7 @@ func strategyFactoryCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(3),
 		Run: func(cmd *cobra.Command, args []string) {
 			forbidden, _ := strconv.ParseBool(args[2])
-			strategyfactory.SetThirdPartyTransfersForBidden(args[0], args[1], forbidden)
+			strategyfactory.SetThirdPartyTransfersForbidden(args[0], args[1], forbidden)
 		},
 	}
 	whitelistStrategiesCmd := &cobra.Command{

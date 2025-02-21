@@ -30,7 +30,7 @@ func Test_TVL_UnderlyingToken(t *testing.T) {
 	strategybasetvl.UnderlyingToken()
 }
 
-// TODO: this test breaks because non hermetic
+// TODO(post-hermetic): break due to TVL to tvl rename
 func test_TVL_GetLimits(t *testing.T) {
 	strategybasetvl.GetLimits()
 }
