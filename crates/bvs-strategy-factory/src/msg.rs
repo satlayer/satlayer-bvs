@@ -60,6 +60,3 @@ pub enum QueryMsg {
     #[returns(BlacklistStatusResponse)]
     IsTokenBlacklisted { token: String },
 }
-
-#[cw_serde]
-pub struct MigrateMsg {}
