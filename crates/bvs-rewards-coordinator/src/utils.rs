@@ -1,6 +1,5 @@
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Binary, Timestamp, Uint128};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 pub const DOMAIN_TYPEHASH: &[u8] =
@@ -28,7 +27,7 @@ pub fn calculate_domain_separator(chain_id: &str, contract_addr: &Addr) -> Vec<u
     sha256(&encoded_data)
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct RewardsSubmission {
     pub strategies_and_multipliers: Vec<StrategyAndMultiplier>,
     pub token: Addr,
@@ -37,13 +36,13 @@ pub struct RewardsSubmission {
     pub duration: u64,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct StrategyAndMultiplier {
     pub strategy: Addr,
     pub multiplier: u64,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct ExecuteStrategyAndMultiplier {
     pub strategy: String,
     pub multiplier: u64,
@@ -67,13 +66,13 @@ pub fn calculate_rewards_submission_hash(
     Binary::new(hasher.finalize().to_vec())
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct TokenTreeMerkleLeaf {
     pub token: Addr,
     pub cumulative_earnings: Uint128,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct EarnerTreeMerkleLeaf {
     pub earner: Addr,
     pub earner_token_root: Binary,
@@ -143,7 +142,7 @@ fn process_inclusion_proof_sha256(proof: &[u8], leaf: &[u8], index: u64) -> Vec<
     computed_hash
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct RewardsMerkleClaim {
     pub root_index: u32,
     pub earner_index: u32,
@@ -154,7 +153,7 @@ pub struct RewardsMerkleClaim {
     pub token_leaves: Vec<TokenTreeMerkleLeaf>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct ExecuteRewardsMerkleClaim {
     pub root_index: u32,
     pub earner_index: u32,
@@ -165,7 +164,7 @@ pub struct ExecuteRewardsMerkleClaim {
     pub token_leaves: Vec<TokenTreeMerkleLeaf>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct ExecuteEarnerTreeMerkleLeaf {
     pub earner: String,
     pub earner_token_root: String,

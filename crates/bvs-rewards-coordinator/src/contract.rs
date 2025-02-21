@@ -1,6 +1,6 @@
 use crate::{
     error::ContractError,
-    msg::{DistributionRoot, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    msg::{DistributionRoot, ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
         CalculateDomainSeparatorResponse, CalculateEarnerLeafHashResponse,
         CalculateTokenLeafHashResponse, CheckClaimResponse,
@@ -34,7 +34,7 @@ use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use bvs_base::strategy::{QueryMsg as StrategyManagerQueryMsg, StrategyWhitelistedResponse};
 
-const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
+const CONTRACT_NAME: &str = "BVS Rewards Coordinator";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const PAUSED_BVS_REWARDS_SUBMISSION: u8 = 0;
@@ -1068,19 +1068,6 @@ fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdR
         })?,
     }))?;
     Ok(res.balance)
-}
-
-pub fn migrate(
-    deps: DepsMut,
-    _env: Env,
-    info: &MessageInfo,
-    _msg: MigrateMsg,
-) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), info)?;
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    Ok(Response::new().add_attribute("method", "migrate"))
 }
 
 #[cfg(test)]
@@ -3499,38 +3486,6 @@ mod tests {
         assert!(result.is_err());
         if let Err(err) = result {
             assert_eq!(err, ContractError::NotRewardsUpdater {});
-        }
-    }
-
-    #[test]
-    fn test_migrate_owner_vs_non_owner() {
-        let (
-            mut deps,
-            env,
-            owner_info,
-            _pauser_info,
-            _unpauser_info,
-            _strategy_manager_info,
-            _delegation_manager_info,
-            _rewards_updater_info,
-        ) = instantiate_contract();
-
-        let migrate_msg = MigrateMsg {};
-        let res = migrate(deps.as_mut(), env.clone(), &owner_info, migrate_msg.clone()).unwrap();
-
-        assert_eq!(res, Response::new().add_attribute("method", "migrate"));
-
-        let version = get_contract_version(deps.as_ref().storage).unwrap();
-        assert_eq!(version.contract, CONTRACT_NAME);
-        assert_eq!(version.version, CONTRACT_VERSION);
-
-        let non_owner_info = message_info(&Addr::unchecked("not_owner"), &[]);
-
-        let res = migrate(deps.as_mut(), env, &non_owner_info, migrate_msg);
-
-        match res {
-            Err(ContractError::Unauthorized {}) => {}
-            _ => panic!("Expected Unauthorized error"),
         }
     }
 

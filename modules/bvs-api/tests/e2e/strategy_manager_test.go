@@ -14,7 +14,7 @@ import (
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
+	strategymanager "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-manager"
 )
 
 const managerAddr = "bbn1mju0w4qagjcgtrgepr796zmg083qurq9sngy0eyxm8wzf78cjt3qzfq7qy"
@@ -332,7 +332,7 @@ func (suite *strategyManagerTestSuite) test_QueryStrategyManager() {
 	staker := account.GetAddress().String()
 	publicKey := account.GetPubKey()
 
-	params := types.DigestHashParams{
+	params := strategymanager.QueryDigestHashParams{
 		Staker:       staker,
 		PublicKey:    base64.StdEncoding.EncodeToString(publicKey.Bytes()),
 		Strategy:     strategyAddr,
@@ -340,7 +340,7 @@ func (suite *strategyManagerTestSuite) test_QueryStrategyManager() {
 		Amount:       "10",
 		Nonce:        1,
 		Expiry:       1,
-		ChainId:      "sat-bbn-testnet1", // TODO: change ChainId (when test enabled)
+		ChainID:      "sat-bbn-localnet",
 		ContractAddr: managerAddr,
 	}
 

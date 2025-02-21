@@ -9,6 +9,6 @@ pub enum ContractError {
     #[error("Statebank: Bvs contract is not registered")]
     BvsContractNotRegistered {},
 
-    #[error("Statebank.migrate: unauthorized")]
+    #[error("Statebank: unauthorized")]
     Unauthorized {},
 }

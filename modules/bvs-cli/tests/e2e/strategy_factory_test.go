@@ -15,7 +15,7 @@ func Test_IsTokenBlacklisted(t *testing.T) {
 
 func Test_UpdateConfig(t *testing.T) {
 	newOwnerAddress := "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
-	strategyCodeID := uint64(10995)
+	strategyCodeID := int64(10995)
 	strategyfactory.UpdateConfig(factoryUserKeyName, newOwnerAddress, strategyCodeID)
 }
 

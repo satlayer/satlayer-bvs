@@ -4,10 +4,10 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	slashmanager "github.com/satlayer/satlayer-bvs/bvs-cw/slash-manager"
-
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
+
 	"github.com/satlayer/satlayer-bvs/bvs-cli/conf"
+	slashmanager "github.com/satlayer/satlayer-bvs/bvs-cw/slash-manager"
 )
 
 func GetSlashDetails(slashHash string) {

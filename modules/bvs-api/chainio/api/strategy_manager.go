@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	strategymanager "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-manager"
-
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
@@ -15,6 +13,7 @@ import (
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
+	strategymanager "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-manager"
 )
 
 type StrategyManager interface {
@@ -50,7 +49,7 @@ type StrategyManager interface {
 	GetStakerStrategyList(staker string) (*wasmtypes.QuerySmartContractStateResponse, error)
 	GetOwner() (*wasmtypes.QuerySmartContractStateResponse, error)
 	IsStrategyWhitelisted(strategy string) (*wasmtypes.QuerySmartContractStateResponse, error)
-	CalculateDigestHash(params types.DigestHashParams) (*wasmtypes.QuerySmartContractStateResponse, error)
+	CalculateDigestHash(params strategymanager.QueryDigestHashParams) (*wasmtypes.QuerySmartContractStateResponse, error)
 	GetStrategyWhitelister() (*wasmtypes.QuerySmartContractStateResponse, error)
 	GetStrategyManagerState() (*wasmtypes.QuerySmartContractStateResponse, error)
 	GetDepositTypehash() (*wasmtypes.QuerySmartContractStateResponse, error)
@@ -102,8 +101,8 @@ func (a *strategyManagerImpl) BindClient(contractAddress string) {
 }
 
 func (a *strategyManagerImpl) AddStrategiesToWhitelist(ctx context.Context, strategies []string, thirdPartyTransfersForbiddenValues []bool) (*coretypes.ResultTx, error) {
-	msg := types.AddStrategiesToWhitelistReq{
-		AddStrategiesToWhitelist: types.AddStrategiesToWhitelist{
+	msg := strategymanager.ExecuteMsg{
+		AddStrategiesToWhitelist: &strategymanager.AddStrategiesToWhitelist{
 			Strategies:                         strategies,
 			ThirdPartyTransfersForbiddenValues: thirdPartyTransfersForbiddenValues,
 		},
@@ -113,8 +112,8 @@ func (a *strategyManagerImpl) AddStrategiesToWhitelist(ctx context.Context, stra
 }
 
 func (a *strategyManagerImpl) RemoveStrategiesFromWhitelist(ctx context.Context, strategies []string) (*coretypes.ResultTx, error) {
-	msg := types.RemoveStrategiesFromWhitelistReq{
-		RemoveStrategiesFromWhitelist: types.RemoveStrategiesFromWhitelist{
+	msg := strategymanager.ExecuteMsg{
+		RemoveStrategiesFromWhitelist: &strategymanager.RemoveStrategiesFromWhitelist{
 			Strategies: strategies,
 		},
 	}
@@ -123,8 +122,8 @@ func (a *strategyManagerImpl) RemoveStrategiesFromWhitelist(ctx context.Context,
 }
 
 func (a *strategyManagerImpl) SetStrategyWhitelister(ctx context.Context, newStrategyWhitelister string) (*coretypes.ResultTx, error) {
-	msg := types.SetStrategyWhitelisterReq{
-		SetStrategyWhitelister: types.SetStrategyWhitelister{
+	msg := strategymanager.ExecuteMsg{
+		SetStrategyWhitelister: &strategymanager.SetStrategyWhitelister{
 			NewStrategyWhitelister: newStrategyWhitelister,
 		},
 	}
@@ -133,8 +132,8 @@ func (a *strategyManagerImpl) SetStrategyWhitelister(ctx context.Context, newStr
 }
 
 func (a *strategyManagerImpl) DepositIntoStrategy(ctx context.Context, strategy string, token string, amount uint64) (*coretypes.ResultTx, error) {
-	msg := types.DepositIntoStrategyReq{
-		DepositIntoStrategy: types.DepositIntoStrategy{
+	msg := strategymanager.ExecuteMsg{
+		DepositIntoStrategy: &strategymanager.DepositIntoStrategy{
 			Strategy: strategy,
 			Token:    token,
 			Amount:   fmt.Sprintf("%d", amount),
@@ -145,8 +144,8 @@ func (a *strategyManagerImpl) DepositIntoStrategy(ctx context.Context, strategy 
 }
 
 func (a *strategyManagerImpl) SetThirdPartyTransfersForbidden(ctx context.Context, strategy string, value bool) (*coretypes.ResultTx, error) {
-	msg := types.SetThirdPartyTransfersForbiddenReq{
-		SetThirdPartyTransfersForbidden: types.SetThirdPartyTransfersForbidden{
+	msg := strategymanager.ExecuteMsg{
+		SetThirdPartyTransfersForbidden: &strategymanager.SetThirdPartyTransfersForbidden{
 			Strategy: strategy,
 			Value:    value,
 		},
@@ -155,21 +154,13 @@ func (a *strategyManagerImpl) SetThirdPartyTransfersForbidden(ctx context.Contex
 	return a.execute(ctx, msg)
 }
 
-type NonceResponse struct {
-	Nonce uint64 `json:"nonce"`
-}
-
-type DigestHashResponse struct {
-	DigestHash []byte `json:"digest_hash"`
-}
-
 func (a *strategyManagerImpl) DepositIntoStrategyWithSignature(ctx context.Context, strategy string, token string, amount uint64, staker string, publicKey cryptotypes.PubKey, stakerKeyName string) (*coretypes.ResultTx, error) {
 	nodeStatus, err := a.io.QueryNodeStatus(context.Background())
 	if err != nil {
 		return nil, err
 	}
 
-	expiry := uint64(nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000)
+	expiry := nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000
 	chainId := a.io.GetClientCtx().ChainID
 	contracAddr := a.executeOptions.ContractAddr
 
@@ -179,14 +170,14 @@ func (a *strategyManagerImpl) DepositIntoStrategyWithSignature(ctx context.Conte
 		return nil, err
 	}
 
-	var nonceRes NonceResponse
+	var nonceRes strategymanager.NonceResponse
 	err = json.Unmarshal(resp.Data, &nonceRes)
 
 	if err != nil {
 		return nil, err
 	}
 
-	params := types.DigestHashParams{
+	params := strategymanager.QueryDigestHashParams{
 		Staker:       staker,
 		PublicKey:    base64.StdEncoding.EncodeToString(publicKey.Bytes()),
 		Strategy:     strategy,
@@ -194,7 +185,7 @@ func (a *strategyManagerImpl) DepositIntoStrategyWithSignature(ctx context.Conte
 		Amount:       fmt.Sprintf("%d", amount),
 		Nonce:        nonceRes.Nonce,
 		Expiry:       expiry,
-		ChainId:      chainId,
+		ChainID:      chainId,
 		ContractAddr: contracAddr,
 	}
 
@@ -204,21 +195,26 @@ func (a *strategyManagerImpl) DepositIntoStrategyWithSignature(ctx context.Conte
 		return nil, err
 	}
 
-	var hashRes DigestHashResponse
+	var hashRes strategymanager.CalculateDigestHashResponse
 	err = json.Unmarshal(resp.Data, &hashRes)
 
 	if err != nil {
 		return nil, err
 	}
 
-	signature, err := a.io.GetSigner().SignByKeyName(hashRes.DigestHash, stakerKeyName)
+	bytes, err := base64.StdEncoding.DecodeString(hashRes.DigestHash)
+	if err != nil {
+		return nil, err
+	}
+
+	signature, err := a.io.GetSigner().SignByKeyName(bytes, stakerKeyName)
 
 	if err != nil {
 		return nil, err
 	}
 
-	msg := types.DepositIntoStrategyWithSignatureReq{
-		DepositIntoStrategyWithSignature: types.DepositIntoStrategyWithSignature{
+	msg := strategymanager.ExecuteMsg{
+		DepositIntoStrategyWithSignature: &strategymanager.DepositIntoStrategyWithSignature{
 			Strategy:  strategy,
 			Token:     token,
 			Amount:    fmt.Sprintf("%d", amount),
@@ -233,8 +229,8 @@ func (a *strategyManagerImpl) DepositIntoStrategyWithSignature(ctx context.Conte
 }
 
 func (a *strategyManagerImpl) RemoveShares(ctx context.Context, staker string, strategy string, shares uint64) (*coretypes.ResultTx, error) {
-	msg := types.RemoveSharesReq{
-		RemoveShares: types.RemoveShares{
+	msg := strategymanager.ExecuteMsg{
+		RemoveShares: &strategymanager.RemoveShares{
 			Staker:   staker,
 			Strategy: strategy,
 			Shares:   fmt.Sprintf("%d", shares),
@@ -245,8 +241,8 @@ func (a *strategyManagerImpl) RemoveShares(ctx context.Context, staker string, s
 }
 
 func (a *strategyManagerImpl) WithdrawSharesAsTokens(ctx context.Context, recipient string, strategy string, shares uint64, token string) (*coretypes.ResultTx, error) {
-	msg := types.WithdrawSharesAsTokensReq{
-		WithdrawSharesAsTokens: types.WithdrawSharesAsTokens{
+	msg := strategymanager.ExecuteMsg{
+		WithdrawSharesAsTokens: &strategymanager.WithdrawSharesAsTokens{
 			Recipient: recipient,
 			Strategy:  strategy,
 			Shares:    fmt.Sprintf("%d", shares),
@@ -258,8 +254,8 @@ func (a *strategyManagerImpl) WithdrawSharesAsTokens(ctx context.Context, recipi
 }
 
 func (a *strategyManagerImpl) AddShares(ctx context.Context, staker string, token string, strategy string, shares uint64) (*coretypes.ResultTx, error) {
-	msg := types.AddSharesReq{
-		AddShares: types.AddShares{
+	msg := strategymanager.ExecuteMsg{
+		AddShares: &strategymanager.AddShares{
 			Staker:   staker,
 			Token:    token,
 			Strategy: strategy,
@@ -271,8 +267,8 @@ func (a *strategyManagerImpl) AddShares(ctx context.Context, staker string, toke
 }
 
 func (a *strategyManagerImpl) SetDelegationManager(ctx context.Context, newDelegationManager string) (*coretypes.ResultTx, error) {
-	msg := types.SetDelegationManagerReq{
-		SetDelegationManager: types.SetDelegationManager{
+	msg := strategymanager.ExecuteMsg{
+		SetDelegationManager: &strategymanager.SetDelegationManager{
 			NewDelegationManager: newDelegationManager,
 		},
 	}
@@ -281,51 +277,57 @@ func (a *strategyManagerImpl) SetDelegationManager(ctx context.Context, newDeleg
 }
 
 func (a *strategyManagerImpl) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
-	msg := types.PauseReq{}
+	msg := strategymanager.ExecuteMsg{
+		Pause: &strategymanager.Pause{},
+	}
 
 	return a.execute(ctx, msg)
 }
 
 func (a *strategyManagerImpl) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
-	msg := types.UnPauseReq{}
+	msg := strategymanager.ExecuteMsg{
+		Unpause: &strategymanager.Unpause{},
+	}
 
 	return a.execute(ctx, msg)
 }
 
 func (a *strategyManagerImpl) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
-	msg := types.SetPauserReq{
-		SetPauser: types.SetPauser{NewPauser: newPauser},
+	msg := strategymanager.ExecuteMsg{
+		SetPauser: &strategymanager.SetPauser{NewPauser: newPauser},
 	}
 
 	return a.execute(ctx, msg)
 }
 
 func (a *strategyManagerImpl) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
-	msg := types.SetUnpauserReq{
-		SetUnpauser: types.SetUnpauser{NewUnpauser: newUnpauser},
+	msg := strategymanager.ExecuteMsg{
+		SetUnpauser: &strategymanager.SetUnpauser{NewUnpauser: newUnpauser},
 	}
 
 	return a.execute(ctx, msg)
 }
 
 func (a *strategyManagerImpl) SetSlashManager(ctx context.Context, newSlashManager string) (*coretypes.ResultTx, error) {
-	msg := types.SetSlashManagerReq{
-		SetSlashManager: types.SetSlashManager{NewSlashManager: newSlashManager},
+	msg := strategymanager.ExecuteMsg{
+		SetSlashManager: &strategymanager.SetSlashManager{NewSlashManager: newSlashManager},
 	}
 
 	return a.execute(ctx, msg)
 }
 
 func (a *strategyManagerImpl) SetStrategyFactory(ctx context.Context, newStrategyFactory string) (*coretypes.ResultTx, error) {
-	msg := types.SetStrategyFactoryReq{
-		SetStrategyFactory: types.SetStrategyFactory{NewStrategyFactory: newStrategyFactory},
+	msg := strategymanager.ExecuteMsg{
+		SetStrategyFactory: &strategymanager.SetStrategyFactory{NewStrategyFactory: newStrategyFactory},
 	}
 
 	return a.execute(ctx, msg)
 }
 
 func (a *strategyManagerImpl) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
-	msg := types.TransferStrategyManagerOwnershipReq{TransferOwnership: types.TransferStrategyManagerOwnership{NewOwner: newOwner}}
+	msg := strategymanager.ExecuteMsg{
+		TransferOwnership: &strategymanager.TransferOwnership{NewOwner: newOwner},
+	}
 	return a.execute(ctx, msg)
 }
 
@@ -352,10 +354,11 @@ func (a *strategyManagerImpl) query(msg any) (*wasmtypes.QuerySmartContractState
 }
 
 func (a *strategyManagerImpl) GetDeposits(staker string, strategy string) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := types.GetDepositsReq{
-		GetDeposits: types.GetDeposits{
-			Staker:   staker,
-			Strategy: strategy,
+	msg := strategymanager.QueryMsg{
+		GetDeposits: &strategymanager.GetDeposits{
+			Staker: staker,
+			// TODO: what happen to strategy field is not present on the Rust side
+			// Strategy: strategy,
 		},
 	}
 
@@ -363,8 +366,8 @@ func (a *strategyManagerImpl) GetDeposits(staker string, strategy string) (*wasm
 }
 
 func (a *strategyManagerImpl) StakerStrategyListLength(staker string) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := types.StakerStrategyListLengthReq{
-		StakerStrategyListLength: types.StakerStrategyListLength{
+	msg := strategymanager.QueryMsg{
+		StakerStrategyListLength: &strategymanager.StakerStrategyListLength{
 			Staker: staker,
 		},
 	}
@@ -373,8 +376,8 @@ func (a *strategyManagerImpl) StakerStrategyListLength(staker string) (*wasmtype
 }
 
 func (a *strategyManagerImpl) GetStakerStrategyShares(staker string, strategy string) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := types.GetStakerStrategySharesReq{
-		GetStakerStrategyShares: types.GetStakerStrategyShares{
+	msg := strategymanager.QueryMsg{
+		GetStakerStrategyShares: &strategymanager.GetStakerStrategyShares{
 			Staker:   staker,
 			Strategy: strategy,
 		},
@@ -384,8 +387,8 @@ func (a *strategyManagerImpl) GetStakerStrategyShares(staker string, strategy st
 }
 
 func (a *strategyManagerImpl) IsThirdPartyTransfersForbidden(strategy string) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := types.IsThirdPartyTransfersForbiddenReq{
-		IsThirdPartyTransfersForbidden: types.IsThirdPartyTransfersForbidden{
+	msg := strategymanager.QueryMsg{
+		IsThirdPartyTransfersForbidden: &strategymanager.IsThirdPartyTransfersForbidden{
 			Strategy: strategy,
 		},
 	}
@@ -394,8 +397,8 @@ func (a *strategyManagerImpl) IsThirdPartyTransfersForbidden(strategy string) (*
 }
 
 func (a *strategyManagerImpl) GetNonce(staker string) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := types.GetNonceReq{
-		GetNonce: types.GetNonce{
+	msg := strategymanager.QueryMsg{
+		GetNonce: &strategymanager.GetNonce{
 			Staker: staker,
 		},
 	}
@@ -404,8 +407,8 @@ func (a *strategyManagerImpl) GetNonce(staker string) (*wasmtypes.QuerySmartCont
 }
 
 func (a *strategyManagerImpl) GetStakerStrategyList(staker string) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := types.GetStakerStrategyListReq{
-		GetStakerStrategyList: types.GetStakerStrategyList{
+	msg := strategymanager.QueryMsg{
+		GetStakerStrategyList: &strategymanager.GetStakerStrategyList{
 			Staker: staker,
 		},
 	}
@@ -414,16 +417,16 @@ func (a *strategyManagerImpl) GetStakerStrategyList(staker string) (*wasmtypes.Q
 }
 
 func (a *strategyManagerImpl) GetOwner() (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := types.GetStrategyManagerOwnerReq{
-		GetOwner: types.GetOwner{},
+	msg := strategymanager.QueryMsg{
+		GetOwner: &strategymanager.GetOwner{},
 	}
 
 	return a.query(msg)
 }
 
 func (a *strategyManagerImpl) IsStrategyWhitelisted(strategy string) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := types.IsStrategyWhitelistedReq{
-		IsStrategyWhitelisted: types.IsStrategyWhitelisted{
+	msg := strategymanager.QueryMsg{
+		IsStrategyWhitelisted: &strategymanager.IsStrategyWhitelisted{
 			Strategy: strategy,
 		},
 	}
@@ -431,10 +434,10 @@ func (a *strategyManagerImpl) IsStrategyWhitelisted(strategy string) (*wasmtypes
 	return a.query(msg)
 }
 
-func (a *strategyManagerImpl) CalculateDigestHash(params types.DigestHashParams) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := types.CalculateStrategyManagerDigestHashReq{
-		CalculateDigestHash: types.CalculateStrategyManagerDigestHash{
-			DigestHashParams: params,
+func (a *strategyManagerImpl) CalculateDigestHash(params strategymanager.QueryDigestHashParams) (*wasmtypes.QuerySmartContractStateResponse, error) {
+	msg := strategymanager.QueryMsg{
+		CalculateDigestHash: &strategymanager.CalculateDigestHash{
+			DigstHashParams: params,
 		},
 	}
 
@@ -442,40 +445,40 @@ func (a *strategyManagerImpl) CalculateDigestHash(params types.DigestHashParams)
 }
 
 func (a *strategyManagerImpl) GetStrategyWhitelister() (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := types.GetStrategyWhitelisterReq{
-		GetStrategyWhitelister: types.GetStrategyWhitelister{},
+	msg := strategymanager.QueryMsg{
+		GetStrategyWhitelister: &strategymanager.GetStrategyWhitelister{},
 	}
 
 	return a.query(msg)
 }
 
 func (a *strategyManagerImpl) GetStrategyManagerState() (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := types.GetStrategyManagerStateReq{
-		GetStrategyManagerState: types.GetStrategyManagerState{},
+	msg := strategymanager.QueryMsg{
+		GetStrategyManagerState: &strategymanager.GetStrategyManagerState{},
 	}
 
 	return a.query(msg)
 }
 
 func (a *strategyManagerImpl) GetDepositTypehash() (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := types.GetDepositTypehashReq{
-		GetDepositTypehash: types.GetDepositTypehash{},
+	msg := strategymanager.QueryMsg{
+		GetDepositTypehash: &strategymanager.GetDepositTypehash{},
 	}
 
 	return a.query(msg)
 }
 
 func (a *strategyManagerImpl) GetDomainTypehash() (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := types.GetDomainTypehashReq{
-		GetDomainTypehash: types.GetDomainTypehash{},
+	msg := strategymanager.QueryMsg{
+		GetDomainTypehash: &strategymanager.GetDomainTypehash{},
 	}
 
 	return a.query(msg)
 }
 
 func (a *strategyManagerImpl) GetDomainName() (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := types.GetStrategyManagerDomainNameReq{
-		GetDomainName: types.GetDomainName{},
+	msg := strategymanager.QueryMsg{
+		GetDomainName: &strategymanager.GetDomainName{},
 	}
 
 	return a.query(msg)

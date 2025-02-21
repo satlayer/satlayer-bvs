@@ -33,7 +33,7 @@ func delegationCmd() *cobra.Command {
 		Short: "To update the operator details within the delegation contract.",
 		Args:  cobra.ExactArgs(4),
 		Run: func(cmd *cobra.Command, args []string) {
-			windowBlocks, err := strconv.ParseUint(args[3], 10, 64)
+			windowBlocks, err := strconv.ParseInt(args[3], 10, 64)
 			if err != nil {
 				panic(fmt.Sprintf("expire must be an integer. Error: %s\n", err))
 			}
@@ -89,7 +89,7 @@ func delegationCmd() *cobra.Command {
 		Short: "To set the min withdraw delay blocks.",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			blocks, err := strconv.ParseUint(args[1], 10, 64)
+			blocks, err := strconv.ParseInt(args[1], 10, 64)
 			if err != nil {
 				panic(fmt.Sprintf("minWithdrawDelayBlocks must be an integer. Error: %s\n", err))
 			}
@@ -103,10 +103,10 @@ func delegationCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(3),
 		Run: func(cmd *cobra.Command, args []string) {
 			strategies, blocks := strings.Split(args[1], ","), strings.Split(args[2], ",")
-			newBlocks := make([]uint64, len(blocks))
+			newBlocks := make([]int64, len(blocks))
 			var err error
 			for i := 0; i < len(blocks); i++ {
-				newBlocks[i], err = strconv.ParseUint(blocks[i], 10, 64)
+				newBlocks[i], err = strconv.ParseInt(blocks[i], 10, 64)
 				if err != nil {
 					panic(fmt.Sprintf("blockNumbers must be an integer. Error: %s\n", err))
 				}
@@ -247,7 +247,7 @@ func delegationCmd() *cobra.Command {
 		Short: "To get the withdraw root.",
 		Args:  cobra.ExactArgs(7),
 		Run: func(cmd *cobra.Command, args []string) {
-			startBlock, err := strconv.ParseUint(args[4], 10, 64)
+			startBlock, err := strconv.ParseInt(args[4], 10, 64)
 			if err != nil {
 				panic(fmt.Sprintf("startBlock must be an integer. Error: %s\n", err))
 			}

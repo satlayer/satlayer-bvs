@@ -23,7 +23,7 @@ type strategyBaseTestSuite struct {
 	container       *babylond.BabylonContainer
 }
 
-func (suite *strategyBaseTestSuite) SetupTest() {
+func (suite *strategyBaseTestSuite) SetupSuite() {
 	container := babylond.Run(context.Background())
 	suite.chainIO = container.NewChainIO("../.babylon")
 	suite.container = container

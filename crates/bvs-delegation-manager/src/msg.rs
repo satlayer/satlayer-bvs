@@ -12,8 +12,6 @@ use crate::utils::{
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Binary, Uint128};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -161,16 +159,13 @@ pub enum QueryMsg {
 }
 
 #[cw_serde]
-pub struct MigrateMsg {}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct OperatorDetails {
     pub deprecated_earnings_receiver: Addr,
     pub delegation_approver: Addr,
     pub staker_opt_out_window_blocks: u64,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct ExecuteOperatorDetails {
     pub deprecated_earnings_receiver: String,
     pub delegation_approver: String,
@@ -184,13 +179,13 @@ pub struct QueuedWithdrawalParams {
     pub shares: Vec<Uint128>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct SignatureWithExpiry {
     pub signature: Binary,
     pub expiry: u64,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct ExecuteSignatureWithExpiry {
     pub signature: String,
     pub expiry: u64,
