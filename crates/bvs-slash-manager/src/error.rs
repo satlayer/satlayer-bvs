@@ -77,4 +77,16 @@ pub enum ContractError {
 
     #[error("SlashManager.execute_slash_request: pubkey mismatch")]
     PubkeyMismatch {},
+
+    #[error("SlashManager.submit_slash_request: invalid time range")]
+    InvalidTimeRange {},
+
+    #[error("SlashManager.submit_slash_request: duplicate validator")]
+    DuplicateValidator {},
+
+    #[error("SlashManager.submit_slash_request: end time too large")]
+    EndTimeTooLarge {},
+
+    #[error("SlashManager.set_max_time_in_future: invalid max time in future")]
+    InvalidMaxTimeInFuture {},
 }
