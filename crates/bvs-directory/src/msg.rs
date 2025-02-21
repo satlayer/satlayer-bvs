@@ -2,7 +2,7 @@ use crate::query::{
     BvsInfoResponse, DelegationResponse, DigestHashResponse, DomainNameResponse,
     DomainTypeHashResponse, OwnerResponse, RegistrationTypeHashResponse, SaltResponse,
 };
-use crate::state::OperatorBVSRegistrationStatus;
+use crate::state::OperatorBvsRegistrationStatus;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Binary;
 
@@ -90,7 +90,7 @@ pub enum QueryMsg {
 
 #[cw_serde]
 pub struct OperatorStatusResponse {
-    pub status: OperatorBVSRegistrationStatus,
+    pub status: OperatorBvsRegistrationStatus,
 }
 
 #[cw_serde]

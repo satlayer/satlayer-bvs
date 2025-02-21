@@ -16,7 +16,7 @@
 //    delegationManagerResponse, err := UnmarshalDelegationManagerResponse(bytes)
 //    bytes, err = delegationManagerResponse.Marshal()
 //
-//    depositTypehashResponse, err := UnmarshalDepositTypehashResponse(bytes)
+//    depositTypehashResponse, err := UnmarshalDepositTypeHashResponse(bytes)
 //    bytes, err = depositTypehashResponse.Marshal()
 //
 //    depositsResponse, err := UnmarshalDepositsResponse(bytes)
@@ -25,7 +25,7 @@
 //    domainNameResponse, err := UnmarshalDomainNameResponse(bytes)
 //    bytes, err = domainNameResponse.Marshal()
 //
-//    domainTypehashResponse, err := UnmarshalDomainTypehashResponse(bytes)
+//    domainTypehashResponse, err := UnmarshalDomainTypeHashResponse(bytes)
 //    bytes, err = domainTypehashResponse.Marshal()
 //
 //    nonceResponse, err := UnmarshalNonceResponse(bytes)
@@ -109,13 +109,13 @@ func (r *DelegationManagerResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalDepositTypehashResponse(data []byte) (DepositTypehashResponse, error) {
-	var r DepositTypehashResponse
+func UnmarshalDepositTypeHashResponse(data []byte) (DepositTypeHashResponse, error) {
+	var r DepositTypeHashResponse
 	err := json.Unmarshal(data, &r)
 	return r, err
 }
 
-func (r *DepositTypehashResponse) Marshal() ([]byte, error) {
+func (r *DepositTypeHashResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -139,13 +139,13 @@ func (r *DomainNameResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalDomainTypehashResponse(data []byte) (DomainTypehashResponse, error) {
-	var r DomainTypehashResponse
+func UnmarshalDomainTypeHashResponse(data []byte) (DomainTypeHashResponse, error) {
+	var r DomainTypeHashResponse
 	err := json.Unmarshal(data, &r)
 	return r, err
 }
 
-func (r *DomainTypehashResponse) Marshal() ([]byte, error) {
+func (r *DomainTypeHashResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -446,7 +446,7 @@ type DelegationManagerResponse struct {
 	DelegationManager string `json:"delegation_manager"`
 }
 
-type DepositTypehashResponse struct {
+type DepositTypeHashResponse struct {
 	DepositTypeHash string `json:"deposit_type_hash"`
 }
 
@@ -459,7 +459,7 @@ type DomainNameResponse struct {
 	DomainName string `json:"domain_name"`
 }
 
-type DomainTypehashResponse struct {
+type DomainTypeHashResponse struct {
 	DomainTypeHash string `json:"domain_type_hash"`
 }
 

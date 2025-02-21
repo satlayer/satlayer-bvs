@@ -3,7 +3,7 @@ use cosmwasm_std::Addr;
 use cw_storage_plus::{Item, Map};
 
 #[cw_serde]
-pub enum OperatorBVSRegistrationStatus {
+pub enum OperatorBvsRegistrationStatus {
     Registered,
     Unregistered,
 }
@@ -15,7 +15,7 @@ pub struct BvsInfo {
 }
 
 pub const OWNER: Item<Addr> = Item::new("owner");
-pub const BVS_OPERATOR_STATUS: Map<(Addr, Addr), OperatorBVSRegistrationStatus> =
+pub const BVS_OPERATOR_STATUS: Map<(Addr, Addr), OperatorBvsRegistrationStatus> =
     Map::new("bvs_operator_status");
 pub const OPERATOR_SALT_SPENT: Map<(Addr, String), bool> = Map::new("operator_salt_is_spent");
 pub const DELEGATION_MANAGER: Item<Addr> = Item::new("delegation_manager");

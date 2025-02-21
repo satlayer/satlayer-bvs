@@ -1,7 +1,7 @@
 use crate::query::{
-    CalculateDigestHashResponse, DelegationManagerResponse, DepositTypehashResponse,
-    DepositsResponse, DomainNameResponse, DomainTypehashResponse, NonceResponse, OwnerResponse,
-    StakerStrategyLisResponse, StakerStrategyListLengthResponse, StakerStrategySharesResponse,
+    CalculateDigestHashResponse, DelegationManagerResponse, DepositTypeHashResponse,
+    DepositsResponse, DomainNameResponse, DomainTypeHashResponse, NonceResponse, OwnerResponse,
+    StakerStrategyListLengthResponse, StakerStrategyListResponse, StakerStrategySharesResponse,
     StrategyManagerStateResponse, StrategyWhitelistedResponse, StrategyWhitelisterResponse,
     ThirdPartyTransfersForbiddenResponse,
 };
@@ -119,7 +119,7 @@ pub enum QueryMsg {
 
     #[returns(CalculateDigestHashResponse)]
     CalculateDigestHash {
-        digst_hash_params: QueryDigestHashParams,
+        digest_hash_params: QueryDigestHashParams,
     },
 
     #[returns(StrategyWhitelisterResponse)]
@@ -128,11 +128,11 @@ pub enum QueryMsg {
     #[returns(StrategyManagerStateResponse)]
     GetStrategyManagerState {},
 
-    #[returns(DepositTypehashResponse)]
-    GetDepositTypehash {},
+    #[returns(DepositTypeHashResponse)]
+    GetDepositTypeHash {},
 
-    #[returns(DomainTypehashResponse)]
-    GetDomainTypehash {},
+    #[returns(DomainTypeHashResponse)]
+    GetDomainTypeHash {},
 
     #[returns(DomainNameResponse)]
     GetDomainName {},
