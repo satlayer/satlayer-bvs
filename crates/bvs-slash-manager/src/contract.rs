@@ -6,7 +6,7 @@ use crate::{
         ValidatorResponse,
     },
     state::{
-        DELEGATION_MANAGER, MINIMAL_SLASH_SIGNATURE, OWNER, SLASHER, SLASH_DETAILS,
+        Config, CONFIG, DELEGATION_MANAGER, MINIMAL_SLASH_SIGNATURE, OWNER, SLASHER, SLASH_DETAILS,
         STRATEGY_MANAGER, VALIDATOR, VALIDATOR_PUBKEYS,
     },
     utils::{calculate_slash_hash, recover, validate_addresses, SlashDetails},
@@ -48,6 +48,15 @@ pub fn instantiate(
     OWNER.save(deps.storage, &owner)?;
     DELEGATION_MANAGER.save(deps.storage, &delegation_manager)?;
     STRATEGY_MANAGER.save(deps.storage, &strategy_manager)?;
+
+    if msg.max_time_in_future == 0 {
+        return Err(ContractError::InvalidMaxTimeInFuture {});
+    }
+
+    let initial_cfg = Config {
+        max_time_in_future: msg.max_time_in_future,
+    };
+    CONFIG.save(deps.storage, &initial_cfg)?;
 
     let pauser = deps.api.addr_validate(&msg.pauser)?;
     let unpauser = deps.api.addr_validate(&msg.unpauser)?;
@@ -131,6 +140,9 @@ pub fn execute(
         ExecuteMsg::CancelSlashRequest { slash_hash } => {
             cancel_slash_request(deps, info, slash_hash)
         }
+        ExecuteMsg::SetMaxTimeInFuture { new_value } => {
+            set_max_time_in_future(deps, info, new_value)
+        }
         ExecuteMsg::SetMinimalSlashSignature { minimal_signature } => {
             set_minimal_slash_signature(deps, info, minimal_signature)
         }
@@ -213,6 +225,13 @@ pub fn submit_slash_request(
         return Err(ContractError::InvalidInputLength {});
     }
 
+    let mut unique_validators = std::collections::HashSet::new();
+    for validator in slash_details.slash_validator.iter() {
+        if !unique_validators.insert(validator) {
+            return Err(ContractError::DuplicateValidator {});
+        }
+    }
+
     let delegation_manager = DELEGATION_MANAGER.load(deps.storage)?;
 
     let is_operator_response: OperatorResponse = deps.querier.query_wasm_smart(
@@ -238,12 +257,23 @@ pub fn submit_slash_request(
         }
     }
 
+    if slash_details.start_time >= slash_details.end_time {
+        return Err(ContractError::InvalidTimeRange {});
+    }
+
     if slash_details.start_time == 0 || slash_details.start_time < env.block.time.seconds() {
         return Err(ContractError::InvalidStartTime {});
     }
 
     if slash_details.end_time == 0 || slash_details.end_time < env.block.time.seconds() {
         return Err(ContractError::InvalidEndTime {});
+    }
+
+    let cfg = CONFIG.load(deps.storage)?;
+
+    let max_allowed_end_time = env.block.time.seconds() + cfg.max_time_in_future;
+    if slash_details.end_time > max_allowed_end_time {
+        return Err(ContractError::EndTimeTooLarge {});
     }
 
     let slash_hash = calculate_slash_hash(
@@ -474,6 +504,30 @@ pub fn cancel_slash_request(
         .add_attribute("method", "cancel_slash_request")
         .add_attribute("slash_hash", slash_hash)
         .add_attribute("slash_details_status", slash_details.status.to_string());
+
+    Ok(Response::new().add_event(event))
+}
+
+pub fn set_max_time_in_future(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_value: u64,
+) -> Result<Response, ContractError> {
+    only_owner(deps.as_ref(), &info)?;
+
+    if new_value == 0 {
+        return Err(ContractError::InvalidMaxTimeInFuture {});
+    }
+
+    CONFIG.update(deps.storage, |mut c| -> Result<_, ContractError> {
+        c.max_time_in_future = new_value;
+        Ok(c)
+    })?;
+
+    let event = Event::new("max_time_in_future_set")
+        .add_attribute("method", "set_max_time_in_future")
+        .add_attribute("new_value", new_value.to_string())
+        .add_attribute("sender", info.sender.to_string());
 
     Ok(Response::new().add_event(event))
 }
@@ -753,6 +807,7 @@ mod tests {
             strategy_manager: strategy_manager.to_string(),
             pauser: pauser.to_string(),
             unpauser: unpauser.to_string(),
+            max_time_in_future: 1000000,
             initial_paused_status: 0,
         };
 
@@ -789,6 +844,7 @@ mod tests {
             strategy_manager: strategy_manager.to_string(),
             pauser: pauser.to_string(),
             unpauser: unpauser.to_string(),
+            max_time_in_future: 1000000,
             initial_paused_status: 0,
         };
 
@@ -827,6 +883,7 @@ mod tests {
             strategy_manager: strategy_manager.to_string(),
             pauser: pauser.to_string(),
             unpauser: unpauser.to_string(),
+            max_time_in_future: 1000000,
             initial_paused_status: 0,
         };
 
@@ -2179,6 +2236,160 @@ mod tests {
         match execute_res.unwrap_err() {
             ContractError::SignatureNotEnough {} => {}
             err => panic!("Expected SignatureNotEnough error, got: {:?}", err),
+        }
+    }
+
+    #[test]
+    fn test_submit_slash_request_duplicate_validator() {
+        let (mut deps, env, _info, delegation_manager, _owner, _pauser, _unpauser) =
+            instantiate_contract();
+
+        let slasher_addr = deps.api.addr_make("slasher");
+        let operator_addr = deps.api.addr_make("operator");
+        let slash_validator = vec![
+            deps.api.addr_make("validator1").to_string(),
+            deps.api.addr_make("validator1").to_string(),
+        ];
+        let slash_validator_addr = vec![
+            deps.api.addr_make("validator1"),
+            deps.api.addr_make("validator1"),
+        ];
+
+        let slash_details = ExecuteSlashDetails {
+            slasher: slasher_addr.to_string(),
+            operator: operator_addr.to_string(),
+            share: Uint128::new(10),
+            slash_signature: 2,
+            slash_validator: slash_validator.clone(),
+            reason: "Invalid action".to_string(),
+            start_time: env.block.time.seconds(),
+            end_time: env.block.time.seconds() + 1000,
+            status: true,
+        };
+
+        let validators_public_keys = vec![
+            "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string(),
+            "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string(),
+        ];
+
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } if *contract_addr == delegation_manager.to_string() => {
+                let operator_response = OperatorResponse { is_operator: true };
+                SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&operator_response).unwrap(),
+                ))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        MINIMAL_SLASH_SIGNATURE.save(&mut deps.storage, &1).unwrap();
+
+        SLASHER
+            .save(&mut deps.storage, slasher_addr.clone(), &true)
+            .unwrap();
+
+        let slasher_info = message_info(&slasher_addr, &[]);
+
+        for validator in slash_validator_addr.iter() {
+            VALIDATOR
+                .save(&mut deps.storage, validator.clone(), &true)
+                .unwrap();
+        }
+
+        let msg = ExecuteMsg::SubmitSlashRequest {
+            slash_details: slash_details.clone(),
+            validators_public_keys: validators_public_keys.clone(),
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), slasher_info.clone(), msg);
+
+        assert!(res.is_err());
+        match res.unwrap_err() {
+            ContractError::DuplicateValidator {} => {}
+            err => panic!("Expected DuplicateValidator error, got: {:?}", err),
+        }
+    }
+
+    #[test]
+    fn test_submit_slash_request_end_time_too_large() {
+        let (mut deps, env, _info, delegation_manager, _owner, _pauser, _unpauser) =
+            instantiate_contract();
+
+        let slasher_addr = deps.api.addr_make("slasher");
+        let operator_addr = deps.api.addr_make("operator");
+        let slash_validator = vec![
+            deps.api.addr_make("validator1").to_string(),
+            deps.api.addr_make("validator2").to_string(),
+        ];
+        let slash_validator_addr = vec![
+            deps.api.addr_make("validator1"),
+            deps.api.addr_make("validator2"),
+        ];
+
+        let slash_details = ExecuteSlashDetails {
+            slasher: slasher_addr.to_string(),
+            operator: operator_addr.to_string(),
+            share: Uint128::new(10),
+            slash_signature: 2,
+            slash_validator: slash_validator.clone(),
+            reason: "Invalid action".to_string(),
+            start_time: env.block.time.seconds(),
+            end_time: env.block.time.seconds() + 99999999999999999,
+            status: true,
+        };
+
+        let validators_public_keys = vec![
+            "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string(),
+            "AggozHu/LCQC7T7WATaTNHOm8XTOTKNzVz+s8SKoZm85".to_string(),
+        ];
+
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } if *contract_addr == delegation_manager.to_string() => {
+                let operator_response = OperatorResponse { is_operator: true };
+                SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&operator_response).unwrap(),
+                ))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        MINIMAL_SLASH_SIGNATURE.save(&mut deps.storage, &1).unwrap();
+
+        SLASHER
+            .save(&mut deps.storage, slasher_addr.clone(), &true)
+            .unwrap();
+
+        let slasher_info = message_info(&slasher_addr, &[]);
+
+        for validator in slash_validator_addr.iter() {
+            VALIDATOR
+                .save(&mut deps.storage, validator.clone(), &true)
+                .unwrap();
+        }
+
+        let msg = ExecuteMsg::SubmitSlashRequest {
+            slash_details: slash_details.clone(),
+            validators_public_keys: validators_public_keys.clone(),
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), slasher_info.clone(), msg);
+
+        assert!(res.is_err());
+        match res.unwrap_err() {
+            ContractError::EndTimeTooLarge {} => {}
+            err => panic!("Expected EndTimeTooLarge error, got: {:?}", err),
         }
     }
 }

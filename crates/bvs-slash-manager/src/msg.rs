@@ -12,6 +12,7 @@ pub struct InstantiateMsg {
     pub strategy_manager: String,
     pub pauser: String,
     pub unpauser: String,
+    pub max_time_in_future: u64,
     pub initial_paused_status: u8,
 }
 
@@ -28,6 +29,9 @@ pub enum ExecuteMsg {
     },
     CancelSlashRequest {
         slash_hash: String,
+    },
+    SetMaxTimeInFuture {
+        new_value: u64,
     },
     SetMinimalSlashSignature {
         minimal_signature: u64,
