@@ -53,4 +53,16 @@ pub enum ContractError {
 
     #[error("SlashManager.execute_slash_request: insufficient shares for staker")]
     InsufficientSharesForStaker { staker: String },
+
+    #[error("SlashManager.execute_slash_request: signature empty")]
+    SignatureEmpty {},
+
+    #[error("SlashManager.execute_slash_request: signature not enough")]
+    SignatureNotEnough {},
+
+    #[error("SlashManager.execute_slash_request: empty validator list")]
+    EmptyValidatorList {},
+
+    #[error("SlashManager.execute_slash_request: duplicate validator public key")]
+    DuplicateValidatorPublicKey {},
 }

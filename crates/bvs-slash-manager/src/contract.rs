@@ -17,6 +17,7 @@ use cosmwasm_std::{
     StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
+use std::collections::HashSet;
 
 use bvs_base::delegation::{
     ExecuteMsg as DelegationManagerExecuteMsg, OperatorResponse, OperatorStakersResponse,
@@ -195,6 +196,12 @@ pub fn submit_slash_request(
         return Err(ContractError::InvalidSlashStatus {});
     }
 
+    if slash_details.slash_validator.len() != validators_public_keys.len()
+        || slash_details.slash_validator.len() != slash_details.slash_signature as usize
+    {
+        return Err(ContractError::InvalidInputLength {});
+    }
+
     let delegation_manager = DELEGATION_MANAGER.load(deps.storage)?;
 
     let is_operator_response: OperatorResponse = deps.querier.query_wasm_smart(
@@ -282,6 +289,14 @@ pub fn execute_slash_request(
         return Err(ContractError::InvalidSlashStatus {});
     }
 
+    if signatures.is_empty() {
+        return Err(ContractError::SignatureEmpty {});
+    }
+
+    if signatures.len() != validators_public_keys.len() {
+        return Err(ContractError::InvalidInputLength {});
+    }
+
     let message_bytes = calculate_slash_hash(
         &info.sender,
         &slash_details,
@@ -292,10 +307,22 @@ pub fn execute_slash_request(
             .collect::<Vec<_>>(),
     );
 
+    let mut valid_signatures_count = 0u64;
+    let mut used_pubkeys: HashSet<Vec<u8>> = HashSet::new();
+
     for (signature, public_key) in signatures.iter().zip(validators_public_keys.iter()) {
-        if !recover(&message_bytes, signature.as_slice(), public_key.as_slice())? {
+        if recover(&message_bytes, signature.as_slice(), public_key.as_slice())? {
+            if !used_pubkeys.contains(&public_key.to_vec()) {
+                used_pubkeys.insert(public_key.to_vec());
+                valid_signatures_count += 1;
+            }
+        } else {
             return Err(ContractError::InvalidSignature {});
         }
+    }
+
+    if valid_signatures_count < slash_details.slash_signature {
+        return Err(ContractError::SignatureNotEnough {});
     }
 
     let query_msg = DelegationManagerQueryMsg::GetOperatorStakers {
@@ -1105,7 +1132,7 @@ mod tests {
             slasher: slasher_addr.to_string(),
             operator: operator_addr.to_string(),
             share: Uint128::new(10),
-            slash_signature: 1,
+            slash_signature: 2,
             slash_validator: slash_validator.clone(),
             reason: "Invalid action".to_string(),
             start_time: env.block.time.seconds(),
@@ -1117,7 +1144,7 @@ mod tests {
             slasher: slasher_addr.clone(),
             operator: operator_addr.clone(),
             share: Uint128::new(10),
-            slash_signature: 1,
+            slash_signature: 2,
             slash_validator: slash_validator_addr.clone(),
             reason: "Invalid action".to_string(),
             start_time: env.block.time.seconds(),
@@ -1125,8 +1152,10 @@ mod tests {
             status: true,
         };
 
-        let validators_public_keys =
-            vec!["A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()];
+        let validators_public_keys = vec![
+            "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string(),
+            "AggozHu/LCQC7T7WATaTNHOm8XTOTKNzVz+s8SKoZm85".to_string(),
+        ];
 
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart {
@@ -1234,7 +1263,7 @@ mod tests {
             slasher: slasher_addr.to_string(),
             operator: operator_addr.to_string(),
             share: Uint128::new(10),
-            slash_signature: 1,
+            slash_signature: 2,
             slash_validator: slash_validator.clone(),
             reason: "Invalid action".to_string(),
             start_time: env.block.time.seconds(),
@@ -1242,8 +1271,10 @@ mod tests {
             status: true,
         };
 
-        let validators_public_keys =
-            vec!["A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()];
+        let validators_public_keys = vec![
+            "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string(),
+            "AqYgz77kusvLMmrWWpiW7qYrUCDE3JfhxjgqY6ukj3tM".to_string(),
+        ];
 
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart {
@@ -1878,6 +1909,171 @@ mod tests {
                     staker: deps.api.addr_make("staker_a").to_string()
                 }
             );
+        }
+    }
+
+    #[test]
+    fn test_execute_slash_request_signature_not_enough() {
+        let (mut deps, env, _info, delegation_manager, _owner, _pauser, _unpauser) =
+            instantiate_contract();
+
+        STRATEGY_MANAGER
+            .save(&mut deps.storage, &deps.api.addr_make("strategy_manager"))
+            .unwrap();
+
+        let slasher_addr = deps.api.addr_make("slasher");
+        let operator_addr = deps.api.addr_make("operator");
+
+        let slash_validator = vec![
+            deps.api.addr_make("validator1").to_string(),
+            deps.api.addr_make("validator2").to_string(),
+        ];
+
+        let slash_validator_addr = vec![
+            deps.api.addr_make("validator1"),
+            deps.api.addr_make("validator2"),
+        ];
+
+        let slash_details = ExecuteSlashDetails {
+            slasher: slasher_addr.to_string(),
+            operator: operator_addr.to_string(),
+            share: Uint128::new(1_000_000),
+            slash_signature: 2,
+            slash_validator: slash_validator.clone(),
+            reason: "Invalid action".to_string(),
+            start_time: env.block.time.seconds(),
+            end_time: env.block.time.seconds() + 1000,
+            status: true,
+        };
+
+        let expected_slash_details = SlashDetails {
+            slasher: slasher_addr.clone(),
+            operator: operator_addr.clone(),
+            share: Uint128::new(1_000_000),
+            slash_signature: 2,
+            slash_validator: slash_validator_addr.clone(),
+            reason: "Invalid action".to_string(),
+            start_time: env.block.time.seconds(),
+            end_time: env.block.time.seconds() + 1000,
+            status: true,
+        };
+
+        let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (_validator, secret_key, public_key_bytes) =
+            generate_osmosis_public_key_from_private_key(private_key_hex);
+
+        let validators_public_keys = vec![
+            "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string(),
+            "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string(),
+        ];
+
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg }
+                if *contract_addr == delegation_manager.to_string() =>
+            {
+                let query_msg: DelegationManagerQueryMsg = from_json(msg).unwrap();
+                match query_msg {
+                    DelegationManagerQueryMsg::IsOperator { .. } => {
+                        let operator_response = OperatorResponse { is_operator: true };
+                        SystemResult::Ok(ContractResult::Ok(
+                            to_json_binary(&operator_response).unwrap(),
+                        ))
+                    }
+                    DelegationManagerQueryMsg::GetOperatorStakers { .. } => {
+                        let stakers_response = OperatorStakersResponse {
+                            stakers_and_shares: vec![
+                                StakerShares {
+                                    staker: deps.api.addr_make("staker1"),
+                                    shares_per_strategy: vec![
+                                        (deps.api.addr_make("strategy1"), Uint128::new(10_000_000)),
+                                        (deps.api.addr_make("strategy2"), Uint128::new(20_000_000)),
+                                    ],
+                                },
+                                StakerShares {
+                                    staker: deps.api.addr_make("staker2"),
+                                    shares_per_strategy: vec![
+                                        (deps.api.addr_make("strategy1"), Uint128::new(15_000_000)),
+                                        (deps.api.addr_make("strategy2"), Uint128::new(25_000_000)),
+                                    ],
+                                },
+                            ],
+                        };
+                        SystemResult::Ok(ContractResult::Ok(
+                            to_json_binary(&stakers_response).unwrap(),
+                        ))
+                    }
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query_msg).unwrap(),
+                    }),
+                }
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        MINIMAL_SLASH_SIGNATURE.save(&mut deps.storage, &1).unwrap();
+
+        SLASHER
+            .save(&mut deps.storage, slasher_addr.clone(), &true)
+            .unwrap();
+
+        let slasher_info = message_info(&slasher_addr, &[]);
+
+        for validator in slash_validator_addr.iter() {
+            VALIDATOR
+                .save(&mut deps.storage, validator.clone(), &true)
+                .unwrap();
+        }
+
+        let submit_msg = ExecuteMsg::SubmitSlashRequest {
+            slash_details: slash_details.clone(),
+            validators_public_keys: validators_public_keys.clone(),
+        };
+
+        let submit_res = execute(deps.as_mut(), env.clone(), slasher_info.clone(), submit_msg);
+
+        assert!(submit_res.is_ok());
+
+        let submit_res = submit_res.unwrap();
+        let slash_hash = submit_res.events[0].attributes[0].value.clone();
+
+        // In this case, the slash signature is 2, but the validator only has 1 public key
+        // So the signature is not enough
+
+        let message_byte = calculate_slash_hash(
+            &slasher_addr,
+            &expected_slash_details,
+            &env.contract.address,
+            &[public_key_bytes.clone(), public_key_bytes.clone()],
+        );
+
+        let secp = Secp256k1::new();
+        let message = Message::from_digest_slice(&message_byte).expect("32 bytes");
+        let signature = secp.sign_ecdsa(&message, &secret_key);
+        let signature_bytes = signature.serialize_compact().to_vec();
+
+        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
+
+        let execute_msg = ExecuteMsg::ExecuteSlashRequest {
+            slash_hash: slash_hash.clone(),
+            signatures: vec![signature_base64.clone(), signature_base64.clone()],
+            validators_public_keys: validators_public_keys.clone(),
+        };
+
+        let execute_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            slasher_info.clone(),
+            execute_msg,
+        );
+
+        assert!(execute_res.is_err());
+        match execute_res.unwrap_err() {
+            ContractError::SignatureNotEnough {} => {}
+            err => panic!("Expected SignatureNotEnough error, got: {:?}", err),
         }
     }
 }
