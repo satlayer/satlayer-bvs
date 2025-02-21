@@ -9,8 +9,8 @@ use crate::{
         ValidatorResponse,
     },
     state::{
-        DELEGATION_MANAGER, MINIMAL_SLASH_SIGNATURE, SLASHER, SLASH_DETAILS, STRATEGY_MANAGER,
-        VALIDATOR,
+        DELEGATION_MANAGER, MINIMAL_SLASH_SIGNATURE, OWNER, SLASHER, SLASH_DETAILS,
+        STRATEGY_MANAGER, VALIDATOR, VALIDATOR_PUBKEYS,
     },
     utils::{calculate_slash_hash, recover, validate_addresses, SlashDetails},
 };
@@ -143,9 +143,20 @@ pub fn execute(
             let slasher_addr = deps.api.addr_validate(&slasher)?;
             set_slasher(deps, info, slasher_addr, value)
         }
-        ExecuteMsg::SetSlasherValidator { validators, values } => {
+        ExecuteMsg::SetSlasherValidator {
+            validators,
+            validator_public_keys,
+            values,
+        } => {
             let validators = validate_addresses(deps.api, &validators)?;
-            set_slash_validator(deps, info, validators, values)
+
+            let pubkeys_binary: Result<Vec<Binary>, ContractError> = validator_public_keys
+                .iter()
+                .map(|val| Binary::from_base64(val).map_err(|_| ContractError::InvalidValidator {}))
+                .collect();
+            let pubkeys_binary = pubkeys_binary?;
+
+            set_slash_validator(deps, info, validators, pubkeys_binary, values)
         }
         ExecuteMsg::SetDelegationManager {
             new_delegation_manager,
@@ -300,6 +311,27 @@ pub fn execute_slash_request(
 
     if signatures.len() != validators_public_keys.len() {
         return Err(ContractError::InvalidInputLength {});
+    }
+
+    for (i, validator_addr) in slash_details.slash_validator.iter().enumerate() {
+        let pubkey_submitted = &validators_public_keys[i];
+
+        let is_valid = VALIDATOR.may_load(deps.storage, validator_addr.clone())?;
+        if is_valid != Some(true) {
+            return Err(ContractError::Unauthorized {});
+        }
+
+        let stored_pubkey = VALIDATOR_PUBKEYS.may_load(deps.storage, validator_addr.clone())?;
+        let stored_pubkey = match stored_pubkey {
+            Some(pk) => pk,
+            None => {
+                return Err(ContractError::ValidatorNotFound {});
+            }
+        };
+
+        if stored_pubkey != *pubkey_submitted {
+            return Err(ContractError::PubkeyMismatch {});
+        }
     }
 
     let message_bytes = calculate_slash_hash(
@@ -494,9 +526,10 @@ pub fn set_slash_validator(
     deps: DepsMut,
     info: MessageInfo,
     validators: Vec<Addr>,
+    validator_public_keys: Vec<Binary>,
     values: Vec<bool>,
 ) -> Result<Response, ContractError> {
-    if validators.len() != values.len() {
+    if validators.len() != values.len() || validators.len() != validator_public_keys.len() {
         return Err(ContractError::InvalidInputLength {});
     }
 
@@ -504,12 +537,22 @@ pub fn set_slash_validator(
 
     let mut response = Response::new();
 
-    for (validator, value) in validators.iter().zip(values.iter()) {
-        VALIDATOR.save(deps.storage, validator.clone(), value)?;
+    for ((validator_addr, &value), pubkey) in validators
+        .iter()
+        .zip(values.iter())
+        .zip(validator_public_keys.iter())
+    {
+        if value {
+            VALIDATOR.save(deps.storage, validator_addr.clone(), &true)?;
+            VALIDATOR_PUBKEYS.save(deps.storage, validator_addr.clone(), &pubkey.clone())?;
+        } else {
+            VALIDATOR.remove(deps.storage, validator_addr.clone());
+            VALIDATOR_PUBKEYS.remove(deps.storage, validator_addr.clone());
+        }
 
         let event = Event::new("slash_validator_set")
             .add_attribute("method", "set_slash_validator")
-            .add_attribute("validator", validator.to_string())
+            .add_attribute("validator", validator_addr.to_string())
             .add_attribute("value", value.to_string())
             .add_attribute("sender", info.sender.to_string());
 
@@ -872,19 +915,34 @@ mod tests {
             instantiate_contract();
 
         let slasher_addr = deps.api.addr_make("slasher");
+
+        let private_key_hex1 = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (validator1, _, _) = generate_osmosis_public_key_from_private_key(private_key_hex1);
+
+        let private_key_hex2 = "e5dbc50cb04311a2a5c3c0e0258d396e962f64c6c2f758458ffb677d7f0c0e94";
+        let (validator2, _, _) = generate_osmosis_public_key_from_private_key(private_key_hex2);
+
         SLASHER
             .save(&mut deps.storage, slasher_addr.clone(), &true)
             .unwrap();
 
         let slasher_info = message_info(&slasher_addr, &[]);
 
-        let validators = vec![
-            deps.api.addr_make("validator1"),
-            deps.api.addr_make("validator2"),
-        ];
-        let values = vec![true, false];
+        let validators = vec![validator1, validator2];
+        let values = vec![true, true];
 
-        let response = set_slash_validator(
+        let validators_public_keys = vec![
+            "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string(),
+            "AggozHu/LCQC7T7WATaTNHOm8XTOTKNzVz+s8SKoZm85".to_string(),
+        ];
+
+        let execute_msg = ExecuteMsg::SetSlasherValidator {
+            validators: validators.iter().map(|v| v.to_string()).collect(),
+            validator_public_keys: validators_public_keys,
+            values: values.clone(),
+        };
+
+        let response = execute(
             deps.as_mut(),
             slasher_info,
             validators.clone(),
@@ -1239,7 +1297,7 @@ mod tests {
         let sha256_result = Sha256::digest(public_key_bytes);
         let ripemd160_result = Ripemd160::digest(sha256_result);
         let address =
-            bech32::encode("osmo", ripemd160_result.to_base32(), Variant::Bech32).unwrap();
+            bech32::encode("cosmwasm", ripemd160_result.to_base32(), Variant::Bech32).unwrap();
         (
             Addr::unchecked(address),
             secret_key,
@@ -1258,14 +1316,23 @@ mod tests {
 
         let slasher_addr = deps.api.addr_make("slasher");
         let operator_addr = deps.api.addr_make("operator");
-        let slash_validator = vec![deps.api.addr_make("validator1")];
-        let slash_validator_addr = vec![deps.api.addr_make("validator1")];
+
+        let private_key_hex1 = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (validator1, secret_key1, public_key_bytes1) =
+            generate_osmosis_public_key_from_private_key(private_key_hex1);
+
+        let private_key_hex2 = "e5dbc50cb04311a2a5c3c0e0258d396e962f64c6c2f758458ffb677d7f0c0e94";
+        let (validator2, secret_key2, public_key_bytes2) =
+            generate_osmosis_public_key_from_private_key(private_key_hex2);
+
+        let slash_validator = vec![validator1.to_string(), validator2.to_string()];
+        let slash_validator_addr = vec![validator1, validator2];
 
         let slash_details = SlashDetails {
             slasher: slasher_addr.clone(),
             operator: operator_addr.clone(),
             share: Uint128::new(1_000_000),
-            slash_signature: 1,
+            slash_signature: 2,
             slash_validator: slash_validator.clone(),
             reason: "Invalid action".to_string(),
             start_time: env.block.time.seconds(),
@@ -1277,7 +1344,7 @@ mod tests {
             slasher: slasher_addr.clone(),
             operator: operator_addr.clone(),
             share: Uint128::new(1_000_000),
-            slash_signature: 1,
+            slash_signature: 2,
             slash_validator: slash_validator_addr.clone(),
             reason: "Invalid action".to_string(),
             start_time: env.block.time.seconds(),
@@ -1285,12 +1352,10 @@ mod tests {
             status: true,
         };
 
-        let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
-        let (_validator, secret_key, public_key_bytes) =
-            generate_osmosis_public_key_from_private_key(private_key_hex);
-
-        let validators_public_keys =
-            vec![Binary::from_base64("A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD").unwrap()];
+        let validators_public_keys = vec![
+            "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string(),
+            "AggozHu/LCQC7T7WATaTNHOm8XTOTKNzVz+s8SKoZm85".to_string(),
+        ];
 
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart { contract_addr, msg }
@@ -1347,38 +1412,57 @@ mod tests {
 
         let slasher_info = message_info(&slasher_addr, &[]);
 
-        for validator in slash_validator_addr.iter() {
-            VALIDATOR
-                .save(&mut deps.storage, validator.clone(), &true)
-                .unwrap();
-        }
+        let execute_msg = ExecuteMsg::SetSlasherValidator {
+            validators: slash_validator_addr.iter().map(|v| v.to_string()).collect(),
+            validator_public_keys: validators_public_keys.clone(),
+            values: vec![true, true],
+        };
 
-        let submit_res = submit_slash_request(
+        let response = execute(
             deps.as_mut(),
-            slasher_info.clone(),
             env.clone(),
-            expected_slash_details.clone(),
-            validators_public_keys.clone(),
-        )
-        .unwrap();
+            slasher_info.clone(),
+            execute_msg,
+        );
 
+        assert!(response.is_ok());
+
+        let submit_msg = ExecuteMsg::SubmitSlashRequest {
+            slash_details: slash_details.clone(),
+            validators_public_keys: validators_public_keys.clone(),
+        };
+
+        let submit_res = execute(deps.as_mut(), env.clone(), slasher_info.clone(), submit_msg);
+
+        assert!(submit_res.is_ok());
+
+        let submit_res = submit_res.unwrap();
         let slash_hash = submit_res.events[0].attributes[0].value.clone();
 
         let message_byte = calculate_slash_hash(
             &slasher_addr,
             &expected_slash_details,
             &env.contract.address,
-            &[public_key_bytes],
+            &[public_key_bytes1, public_key_bytes2],
         );
 
         let secp = Secp256k1::new();
         let message = Message::from_digest_slice(&message_byte).expect("32 bytes");
-        let signature = secp.sign_ecdsa(&message, &secret_key);
-        let signature_bytes = signature.serialize_compact().to_vec();
+        let signature1 = secp.sign_ecdsa(&message, &secret_key1);
+        let signature2 = secp.sign_ecdsa(&message, &secret_key2);
+        let signature_bytes1 = signature1.serialize_compact().to_vec();
+        let signature_bytes2 = signature2.serialize_compact().to_vec();
 
-        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
+        let signature_base64_1 = general_purpose::STANDARD.encode(signature_bytes1);
+        let signature_base64_2 = general_purpose::STANDARD.encode(signature_bytes2);
 
-        let execute_res = execute_slash_request(
+        let execute_msg = ExecuteMsg::ExecuteSlashRequest {
+            slash_hash: slash_hash.clone(),
+            signatures: vec![signature_base64_1.clone(), signature_base64_2.clone()],
+            validators_public_keys: validators_public_keys.clone(),
+        };
+
+        let execute_res = execute(
             deps.as_mut(),
             env.clone(),
             slasher_info,
@@ -1451,11 +1535,8 @@ mod tests {
         let operator_addr = deps.api.addr_make("operator");
         let total_slash_amount = Uint128::new(40_000_000); // 40e6
 
-        let validator = deps.api.addr_make("validator");
-
-        VALIDATOR
-            .save(&mut deps.storage, validator.clone(), &true)
-            .unwrap();
+        let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (validator, _, _) = generate_osmosis_public_key_from_private_key(private_key_hex);
 
         let slash_details = SlashDetails {
             slasher: slasher_addr.clone(),
@@ -1519,15 +1600,28 @@ mod tests {
 
         let slasher_info = message_info(&slasher_addr, &[]);
 
-        let submit_res = submit_slash_request(
-            deps.as_mut(),
-            slasher_info.clone(),
-            env.clone(),
-            slash_details.clone(),
-            vec![Binary::from_base64("A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD").unwrap()],
-        )
-        .unwrap();
+        let execute_msg = ExecuteMsg::SetSlasherValidator {
+            validators: vec![validator.to_string()],
+            validator_public_keys: vec!["A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()],
+            values: vec![true],
+        };
 
+        let response = execute(
+            deps.as_mut(),
+            env.clone(),
+            slasher_info.clone(),
+            execute_msg,
+        );
+
+        assert!(response.is_ok());
+
+        let submit_msg = ExecuteMsg::SubmitSlashRequest {
+            slash_details: slash_details.clone(),
+            validators_public_keys: vec!["A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()],
+        };
+
+        let submit_res =
+            execute(deps.as_mut(), env.clone(), slasher_info.clone(), submit_msg).unwrap();
         let slash_hash = submit_res.events[0].attributes[0].value.clone();
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
@@ -1633,11 +1727,9 @@ mod tests {
         MINIMAL_SLASH_SIGNATURE.save(&mut deps.storage, &1).unwrap();
 
         let operator_addr = deps.api.addr_make("operator");
-        let validator = deps.api.addr_make("validator");
 
-        VALIDATOR
-            .save(&mut deps.storage, validator.clone(), &true)
-            .unwrap();
+        let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (validator, _, _) = generate_osmosis_public_key_from_private_key(private_key_hex);
 
         // test case 1: total_slash_share is 0
         {
@@ -1655,15 +1747,32 @@ mod tests {
 
             let slasher_info = message_info(&slasher_addr, &[]);
 
-            let err = submit_slash_request(
-                deps.as_mut(),
-                slasher_info.clone(),
-                env.clone(),
-                slash_details.clone(),
-                vec![Binary::from_base64("A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD").unwrap()],
-            )
-            .unwrap_err();
+            let execute_msg = ExecuteMsg::SetSlasherValidator {
+                validators: vec![validator.to_string()],
+                validator_public_keys: vec![
+                    "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()
+                ],
+                values: vec![true],
+            };
 
+            let response = execute(
+                deps.as_mut(),
+                env.clone(),
+                slasher_info.clone(),
+                execute_msg,
+            );
+
+            assert!(response.is_ok());
+
+            let submit_msg = ExecuteMsg::SubmitSlashRequest {
+                slash_details: slash_details.clone(),
+                validators_public_keys: vec![
+                    "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()
+                ],
+            };
+
+            let err =
+                execute(deps.as_mut(), env.clone(), slasher_info.clone(), submit_msg).unwrap_err();
             assert_eq!(err, ContractError::InvalidShare {});
         }
 
@@ -1799,15 +1908,15 @@ mod tests {
         let slasher_addr = deps.api.addr_make("slasher");
         let operator_addr = deps.api.addr_make("operator");
 
-        let slash_validator = vec![
-            deps.api.addr_make("validator1").to_string(),
-            deps.api.addr_make("validator2").to_string(),
-        ];
+        let private_key_hex1 = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (validator1, secret_key1, public_key_bytes1) =
+            generate_osmosis_public_key_from_private_key(private_key_hex1);
 
-        let slash_validator_addr = vec![
-            deps.api.addr_make("validator1"),
-            deps.api.addr_make("validator2"),
-        ];
+        let private_key_hex2 = "e5dbc50cb04311a2a5c3c0e0258d396e962f64c6c2f758458ffb677d7f0c0e94";
+        let (validator2, _, _) = generate_osmosis_public_key_from_private_key(private_key_hex2);
+
+        let slash_validator = vec![validator1.to_string(), validator2.to_string()];
+        let slash_validator_addr = vec![validator1, validator2];
 
         let slash_details = ExecuteSlashDetails {
             slasher: slasher_addr.to_string(),
@@ -1832,10 +1941,6 @@ mod tests {
             end_time: env.block.time.seconds() + 1000,
             status: true,
         };
-
-        let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
-        let (_validator, secret_key, public_key_bytes) =
-            generate_osmosis_public_key_from_private_key(private_key_hex);
 
         let validators_public_keys = vec![
             "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string(),
@@ -1897,11 +2002,20 @@ mod tests {
 
         let slasher_info = message_info(&slasher_addr, &[]);
 
-        for validator in slash_validator_addr.iter() {
-            VALIDATOR
-                .save(&mut deps.storage, validator.clone(), &true)
-                .unwrap();
-        }
+        let execute_msg = ExecuteMsg::SetSlasherValidator {
+            validators: slash_validator_addr.iter().map(|v| v.to_string()).collect(),
+            validator_public_keys: validators_public_keys.clone(),
+            values: vec![true, true],
+        };
+
+        let response = execute(
+            deps.as_mut(),
+            env.clone(),
+            slasher_info.clone(),
+            execute_msg,
+        );
+
+        assert!(response.is_ok());
 
         let submit_msg = ExecuteMsg::SubmitSlashRequest {
             slash_details: slash_details.clone(),
@@ -1922,12 +2036,12 @@ mod tests {
             &slasher_addr,
             &expected_slash_details,
             &env.contract.address,
-            &[public_key_bytes.clone(), public_key_bytes.clone()],
+            &[public_key_bytes1.clone(), public_key_bytes1.clone()],
         );
 
         let secp = Secp256k1::new();
         let message = Message::from_digest_slice(&message_byte).expect("32 bytes");
-        let signature = secp.sign_ecdsa(&message, &secret_key);
+        let signature = secp.sign_ecdsa(&message, &secret_key1);
         let signature_bytes = signature.serialize_compact().to_vec();
 
         let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
