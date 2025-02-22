@@ -16,6 +16,7 @@ import (
 
 type StrategyBaseTvlLimits struct {
 	io             io.ChainIO
+	ContractAddr   string
 	executeOptions *types.ExecuteOptions
 	queryOptions   *types.QueryOptions
 	gasAdjustment  float64
@@ -63,6 +64,8 @@ func (r *StrategyBaseTvlLimits) BindClient(contractAddress string) {
 		ContractAddr: contractAddress,
 		QueryMsg:     []byte{},
 	}
+
+	r.ContractAddr = contractAddress
 }
 
 func (r *StrategyBaseTvlLimits) execute(ctx context.Context, msg any) (*coretypes.ResultTx, error) {
