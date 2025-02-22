@@ -14,4 +14,7 @@ pub enum ContractError {
 
     #[error("BvsDriver: no pending owner")]
     NoPendingOwner {},
+
+    #[error("BvsDriver.onlyDirectory: not BVS directory")]
+    NotBVSDirectory {},
 }

@@ -23,9 +23,11 @@ impl BvsDriver {
         let contract_admin = app.api().addr_make("BVSDriver:admin");
         let owner = app.api().addr_make("BVSDriver:owner");
         let contract_id = app.store_code(BvsDriver::contract());
+        let directory = app.api().addr_make("BVSDriver:directory");
 
         let init_msg = bvs_driver::msg::InstantiateMsg {
             initial_owner: owner.to_string(),
+            bvs_directory: directory.to_string(),
         };
         let addr = app
             .instantiate_contract(

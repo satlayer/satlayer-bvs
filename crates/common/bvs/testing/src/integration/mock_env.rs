@@ -200,6 +200,7 @@ impl MockEnvBuilder {
                 self.owner.clone(),
                 &bvs_driver::msg::InstantiateMsg {
                     initial_owner: self.owner.clone().into_string(),
+                    bvs_directory: self.bvs_directory.clone().into_string(),
                 },
                 &[],
                 "bvs_driver",

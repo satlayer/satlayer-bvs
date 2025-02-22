@@ -22,7 +22,7 @@ impl BvsDriverContract {
 mod tests {
     use super::BvsDriverContract;
     use cosmwasm_std::testing::MockApi;
-    use cosmwasm_std::{Addr, Coin, Empty, Uint128};
+    use cosmwasm_std::{Coin, Empty, Uint128};
     use cw_multi_test::{App, AppBuilder, Contract, ContractWrapper, Executor};
 
     pub fn contract() -> Box<dyn Contract<Empty>> {
@@ -56,9 +56,11 @@ mod tests {
         let contract_id = app.store_code(contract());
         let admin = app.api().addr_make("admin");
         let owner = app.api().addr_make("owner");
+        let directory = app.api().addr_make("directory");
 
         let msg = bvs_driver::msg::InstantiateMsg {
             initial_owner: owner.to_string(),
+            bvs_directory: directory.to_string(),
         };
         let contract_addr = app
             .instantiate_contract(contract_id, admin, &msg, &[], "BVS Driver", None)
@@ -77,11 +79,13 @@ mod tests {
             let (mut app, contract) = instantiate();
 
             let bvs_addr = app.api().addr_make("bvs_contract");
+            let directory = app.api().addr_make("directory");
+
             let msg = ExecuteMsg::AddRegisteredBvsContract {
                 address: bvs_addr.to_string(),
             };
             let cosmos_msg = contract.call(msg).unwrap();
-            app.execute(Addr::unchecked("anyone"), cosmos_msg).unwrap();
+            app.execute(directory, cosmos_msg).unwrap();
         }
 
         #[test]
@@ -89,6 +93,7 @@ mod tests {
             let (mut app, contract) = instantiate();
 
             let bvs_addr = app.api().addr_make("bvs_contract");
+            let directory = app.api().addr_make("directory");
 
             // Register the BVS contract
             {
@@ -96,7 +101,7 @@ mod tests {
                     address: bvs_addr.to_string(),
                 };
                 let cosmos_msg = contract.call(msg).unwrap();
-                app.execute(Addr::unchecked("anyone"), cosmos_msg).unwrap();
+                app.execute(directory, cosmos_msg).unwrap();
             }
 
             // ExecuteBvsOffchain task
