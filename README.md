@@ -33,6 +33,18 @@ And a bigger address pool to have more IP addresses available for Docker contain
 - `Memory`: Half of the total memory, ideally above 16GB
 - `CPU`: More than 80% of available cores, ideally 7 or more
 
+**Docker Remote Context**
+
+If you have a remote VM or server with Docker installed,
+you can offload the Docker builds to that machine by creating a remote context.
+
+```shell
+docker context create remote \
+  --description "Remote Docker Host" \
+  --docker "host=ssh://user@your-instance-ip"
+docker context use remote
+```
+
 </details>
 
 ### Install Pnpm, Turbo, and Dependencies
@@ -48,7 +60,7 @@ pnpm install
 
 ```txt
 ├── crates/                   Rust
-│   ├── cw-*                  <- CosmWasm contracts
+│   ├── bvs-*                 <- SatLayer CosmWasm contracts
 │   └── *                     <- Other rust crates
 ├── modules/                  Go
 ├── packages/                 <- JavaScript, Solidity, etc.
