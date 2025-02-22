@@ -53,4 +53,7 @@ pub enum ContractError {
 
     #[error("StrategyManager.deposit_into_strategy_with_signature: TransferMsg not found")]
     TransferMsgNotFound,
+
+    #[error("StrategyManager.acceptOwnership: no pending owner")]
+    NoPendingOwner {},
 }

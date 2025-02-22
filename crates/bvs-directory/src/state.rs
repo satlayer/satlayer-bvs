@@ -15,6 +15,7 @@ pub struct BvsInfo {
 }
 
 pub const OWNER: Item<Addr> = Item::new("owner");
+pub const PENDING_OWNER: Item<Option<Addr>> = Item::new("pending_owner");
 pub const BVS_OPERATOR_STATUS: Map<(Addr, Addr), OperatorBvsRegistrationStatus> =
     Map::new("bvs_operator_status");
 pub const OPERATOR_SALT_SPENT: Map<(Addr, String), bool> = Map::new("operator_salt_is_spent");

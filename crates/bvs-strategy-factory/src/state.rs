@@ -3,6 +3,7 @@ use cosmwasm_std::Addr;
 use cw_storage_plus::{Item, Map};
 
 pub const CONFIG: Item<Config> = Item::new("config");
+pub const PENDING_OWNER: Item<Option<Addr>> = Item::new("pending_owner");
 pub const DEPLOYED_STRATEGIES: Map<&Addr, Addr> = Map::new("strategies");
 pub const IS_BLACKLISTED: Map<&Addr, bool> = Map::new("is_blacklisted");
 

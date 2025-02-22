@@ -109,4 +109,7 @@ pub enum ContractError {
 
     #[error("RewardsCoordinator.process_claim: insufficient balance")]
     InsufficientBalance {},
+
+    #[error("RewardsCoordinator.acceptOwnership: no pending owner")]
+    NoPendingOwner {},
 }

@@ -77,9 +77,11 @@ pub enum ExecuteMsg {
     SetStrategyFactory {
         new_strategy_factory: String,
     },
-    TransferOwnership {
+    TwoStepTransferOwnership {
         new_owner: String,
     },
+    AcceptOwnership {},
+    CancelOwnershipTransfer {},
     Pause {},
     Unpause {},
     SetPauser {

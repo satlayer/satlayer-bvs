@@ -29,4 +29,7 @@ pub enum ContractError {
 
     #[error("StrategyFactory.deploy_new_strategy: strategy already exists")]
     StrategyAlreadyExists {},
+
+    #[error("StrategyFactory.acceptOwnership: no pending owner")]
+    NoPendingOwner {},
 }

@@ -4,6 +4,7 @@ use cw_storage_plus::{Item, Map};
 use serde::{Deserialize, Serialize};
 
 pub const OWNER: Item<Addr> = Item::new("owner");
+pub const PENDING_OWNER: Item<Option<Addr>> = Item::new("pending_owner");
 pub const DELEGATION_MANAGER: Item<Addr> = Item::new("delegation_manager");
 pub const STRATEGY_MANAGER: Item<Addr> = Item::new("strategy_manager");
 pub const SLASHER: Map<Addr, bool> = Map::new("slasher");

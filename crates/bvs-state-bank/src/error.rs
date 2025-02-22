@@ -11,4 +11,7 @@ pub enum ContractError {
 
     #[error("StateBank: unauthorized")]
     Unauthorized {},
+
+    #[error("StateBank.acceptOwnership: no pending owner")]
+    NoPendingOwner {},
 }

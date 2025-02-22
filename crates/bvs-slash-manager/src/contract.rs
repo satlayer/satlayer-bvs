@@ -6,8 +6,8 @@ use crate::{
         ValidatorResponse,
     },
     state::{
-        Config, CONFIG, DELEGATION_MANAGER, MINIMAL_SLASH_SIGNATURE, OWNER, SLASHER, SLASH_DETAILS,
-        STRATEGY_MANAGER, VALIDATOR, VALIDATOR_PUBKEYS,
+        Config, CONFIG, DELEGATION_MANAGER, MINIMAL_SLASH_SIGNATURE, OWNER, PENDING_OWNER, SLASHER,
+        SLASH_DETAILS, STRATEGY_MANAGER, VALIDATOR, VALIDATOR_PUBKEYS,
     },
     utils::{calculate_slash_hash, recover, validate_addresses, SlashDetails},
 };
@@ -177,10 +177,12 @@ pub fn execute(
             let new_strategy_manager_addr = deps.api.addr_validate(&new_strategy_manager)?;
             set_strategy_manager(deps, info, new_strategy_manager_addr)
         }
-        ExecuteMsg::TransferOwnership { new_owner } => {
+        ExecuteMsg::TwoStepTransferOwnership { new_owner } => {
             let new_owner_addr = deps.api.addr_validate(&new_owner)?;
-            transfer_ownership(deps, info, new_owner_addr)
+            two_step_transfer_ownership(deps, info, new_owner_addr)
         }
+        ExecuteMsg::AcceptOwnership {} => accept_ownership(deps, info),
+        ExecuteMsg::CancelOwnershipTransfer {} => cancel_ownership_transfer(deps, info),
         ExecuteMsg::Pause {} => {
             check_pauser(deps.as_ref(), info.clone())?;
             pause(deps, &info).map_err(ContractError::Std)
@@ -645,25 +647,56 @@ pub fn set_strategy_manager(
     Ok(Response::new().add_event(event))
 }
 
-pub fn transfer_ownership(
+pub fn two_step_transfer_ownership(
     deps: DepsMut,
     info: MessageInfo,
     new_owner: Addr,
 ) -> Result<Response, ContractError> {
-    let current_owner = OWNER.load(deps.storage)?;
+    only_owner(deps.as_ref(), &info)?;
 
-    if current_owner != info.sender {
+    PENDING_OWNER.save(deps.storage, &Some(new_owner.clone()))?;
+
+    let resp = Response::new()
+        .add_attribute("action", "two_step_transfer_ownership")
+        .add_attribute("old_owner", info.sender.to_string())
+        .add_attribute("pending_owner", new_owner.to_string());
+
+    Ok(resp)
+}
+
+pub fn accept_ownership(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+    let pending_owner = PENDING_OWNER.load(deps.storage)?;
+
+    let pending_owner_addr = match pending_owner {
+        Some(addr) => addr,
+        None => return Err(ContractError::NoPendingOwner {}),
+    };
+
+    if info.sender != pending_owner_addr {
         return Err(ContractError::Unauthorized {});
     }
 
-    OWNER.save(deps.storage, &new_owner)?;
+    OWNER.save(deps.storage, &info.sender)?;
+    PENDING_OWNER.save(deps.storage, &None)?;
 
-    let event = Event::new("transfer_ownership")
-        .add_attribute("method", "transfer_ownership")
-        .add_attribute("new_owner", new_owner.to_string())
-        .add_attribute("sender", info.sender.to_string());
+    let resp = Response::new()
+        .add_attribute("action", "accept_ownership")
+        .add_attribute("new_owner", info.sender.to_string());
 
-    Ok(Response::new().add_event(event))
+    Ok(resp)
+}
+
+pub fn cancel_ownership_transfer(
+    deps: DepsMut,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
+    only_owner(deps.as_ref(), &info)?;
+
+    PENDING_OWNER.save(deps.storage, &None)?;
+
+    let resp = Response::new().add_attribute("action", "cancel_ownership_transfer");
+
+    Ok(resp)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -807,7 +840,7 @@ mod tests {
             strategy_manager: strategy_manager.to_string(),
             pauser: pauser.to_string(),
             unpauser: unpauser.to_string(),
-            max_time_in_future: 1000000,
+            max_time_in_future: 1_000_000,
             initial_paused_status: 0,
         };
 
@@ -844,7 +877,7 @@ mod tests {
             strategy_manager: strategy_manager.to_string(),
             pauser: pauser.to_string(),
             unpauser: unpauser.to_string(),
-            max_time_in_future: 1000000,
+            max_time_in_future: 1_000_000,
             initial_paused_status: 0,
         };
 
@@ -883,7 +916,7 @@ mod tests {
             strategy_manager: strategy_manager.to_string(),
             pauser: pauser.to_string(),
             unpauser: unpauser.to_string(),
-            max_time_in_future: 1000000,
+            max_time_in_future: 1_000_000,
             initial_paused_status: 0,
         };
 
@@ -1075,51 +1108,72 @@ mod tests {
     }
 
     #[test]
-    fn test_transfer_ownership() {
-        let (mut deps, env, info, _delegation_manager, initial_owner, _pauser, _unpauser) =
+    fn test_two_step_transfer_ownership() {
+        let (mut deps, env, info, _delegation_manager, _owner, _pauser, _unpauser) =
             instantiate_contract();
 
-        let stored_owner = OWNER.load(&deps.storage).unwrap();
-        assert_eq!(stored_owner, initial_owner);
-
-        let new_owner = deps.api.addr_make("new_owner");
-
-        let execute_msg = ExecuteMsg::TransferOwnership {
-            new_owner: new_owner.to_string(),
-        };
-        let response = execute(deps.as_mut(), env.clone(), info.clone(), execute_msg).unwrap();
-
-        assert_eq!(response.events.len(), 1);
-        let event = &response.events[0];
-        assert_eq!(event.ty, "transfer_ownership");
-        assert_eq!(event.attributes.len(), 3);
-
-        assert_eq!(event.attributes[0].key, "method");
-        assert_eq!(event.attributes[0].value, "transfer_ownership");
-        assert_eq!(event.attributes[1].key, "new_owner");
-        assert_eq!(event.attributes[1].value, new_owner.to_string());
-
-        let stored_owner = OWNER.load(&deps.storage).unwrap();
-        assert_eq!(stored_owner, new_owner);
-
-        let invalid_user = deps.api.addr_make("invalid_user");
-        let invalid_info = message_info(&invalid_user, &[]);
-
-        let execute_msg = ExecuteMsg::TransferOwnership {
-            new_owner: "another_new_owner".to_string(),
+        let new_owner_addr = deps.api.addr_make("new_owner");
+        let msg = ExecuteMsg::TwoStepTransferOwnership {
+            new_owner: new_owner_addr.to_string(),
         };
 
-        let result = execute(
-            deps.as_mut(),
-            env.clone(),
-            invalid_info.clone(),
-            execute_msg,
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+        assert_eq!(res.attributes.len(), 3);
+        assert_eq!(res.attributes[0], ("action", "two_step_transfer_ownership"));
+        assert_eq!(res.attributes[1], ("old_owner", info.sender.to_string()));
+        assert_eq!(
+            res.attributes[2],
+            ("pending_owner", new_owner_addr.to_string())
         );
 
-        assert!(result.is_err());
+        let cancel_msg = ExecuteMsg::CancelOwnershipTransfer {};
+        let cancel_res = execute(deps.as_mut(), env.clone(), info.clone(), cancel_msg).unwrap();
+
+        assert_eq!(cancel_res.attributes.len(), 1);
+        assert_eq!(
+            cancel_res.attributes[0],
+            ("action", "cancel_ownership_transfer")
+        );
+
+        let msg2 = ExecuteMsg::TwoStepTransferOwnership {
+            new_owner: new_owner_addr.to_string(),
+        };
+        execute(deps.as_mut(), env.clone(), info.clone(), msg2).unwrap();
+
+        let new_owner_info = message_info(&new_owner_addr, &[]);
+
+        let accept_msg = ExecuteMsg::AcceptOwnership {};
+        let accept_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            new_owner_info.clone(),
+            accept_msg,
+        )
+        .unwrap();
+
+        assert_eq!(accept_res.attributes.len(), 2);
+        assert_eq!(accept_res.attributes[0], ("action", "accept_ownership"));
+        assert_eq!(
+            accept_res.attributes[1],
+            ("new_owner", new_owner_addr.to_string())
+        );
 
         let stored_owner = OWNER.load(&deps.storage).unwrap();
-        assert_eq!(stored_owner, new_owner);
+        assert_eq!(stored_owner, new_owner_addr);
+
+        let pending_owner = PENDING_OWNER.load(&deps.storage).unwrap();
+        assert_eq!(pending_owner, None);
+
+        let someone_else = deps.api.addr_make("someone_else").to_string();
+        let msg3 = ExecuteMsg::TwoStepTransferOwnership {
+            new_owner: someone_else,
+        };
+        let err = execute(deps.as_mut(), env.clone(), info.clone(), msg3).unwrap_err();
+        match err {
+            ContractError::Unauthorized {} => {}
+            e => panic!("Expected Unauthorized error, got: {:?}", e),
+        }
     }
 
     #[test]
@@ -2340,7 +2394,7 @@ mod tests {
             slash_validator: slash_validator.clone(),
             reason: "Invalid action".to_string(),
             start_time: env.block.time.seconds(),
-            end_time: env.block.time.seconds() + 99999999999999999,
+            end_time: env.block.time.seconds() + 999_999_999_999_999,
             status: true,
         };
 

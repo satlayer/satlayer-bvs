@@ -39,9 +39,11 @@ pub enum ExecuteMsg {
     SetStrategyManager {
         new_strategy_manager: String,
     },
-    TransferOwnership {
+    TwoStepTransferOwnership {
         new_owner: String,
     },
+    AcceptOwnership {},
+    CancelOwnershipTransfer {},
     Pause {},
     Unpause {},
     SetPauser {

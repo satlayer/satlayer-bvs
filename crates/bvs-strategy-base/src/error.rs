@@ -23,4 +23,7 @@ pub enum ContractError {
 
     #[error("StrategyBase.withdraw: insufficient balance")]
     InsufficientBalance {},
+
+    #[error("StrategyBase.acceptOwnership: no pending owner")]
+    NoPendingOwner {},
 }

@@ -87,9 +87,11 @@ pub enum ExecuteMsg {
         strategies: Vec<String>,
         withdrawal_delay_blocks: Vec<u64>,
     },
-    TransferOwnership {
+    TwoStepTransferOwnership {
         new_owner: String,
     },
+    AcceptOwnership {},
+    CancelOwnershipTransfer {},
     Pause {},
     Unpause {},
     SetPauser {

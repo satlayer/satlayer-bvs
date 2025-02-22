@@ -13,6 +13,7 @@ pub const STRATEGY_MANAGER_STATE: Item<StrategyManagerState> = Item::new("strate
 pub const STRATEGY_WHITELISTER: Item<Addr> = Item::new("strategy_whitelister");
 pub const STRATEGY_IS_WHITELISTED_FOR_DEPOSIT: Map<&Addr, bool> = Map::new("strategy_whitelist");
 pub const OWNER: Item<Addr> = Item::new("owner");
+pub const PENDING_OWNER: Item<Option<Addr>> = Item::new("pending_owner");
 
 pub const STAKER_STRATEGY_SHARES: Map<(&Addr, &Addr), Uint128> = Map::new("staker_strategy_shares");
 

@@ -3,6 +3,7 @@ use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
 
 pub const OWNER: Item<Addr> = Item::new("owner");
+pub const PENDING_OWNER: Item<Option<Addr>> = Item::new("pending_owner");
 pub const REWARDS_UPDATER: Item<Addr> = Item::new("rewards_updater");
 pub const DISTRIBUTION_ROOTS: Map<u64, DistributionRoot> = Map::new("distribution_roots");
 pub const DISTRIBUTION_ROOTS_COUNT: Item<u64> = Item::new("distribution_roots_count");

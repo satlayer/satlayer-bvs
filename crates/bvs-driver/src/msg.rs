@@ -9,7 +9,9 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     ExecuteBvsOffchain { task_id: String },
     AddRegisteredBvsContract { address: String },
-    TransferOwnership { new_owner: String },
+    TwoStepTransferOwnership { new_owner: String },
+    AcceptOwnership {},
+    CancelOwnershipTransfer {},
 }
 
 #[cw_serde]

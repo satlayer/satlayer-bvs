@@ -83,4 +83,7 @@ pub enum ContractError {
 
     #[error("SlashManager.set_max_time_in_future: invalid max time in future")]
     InvalidMaxTimeInFuture {},
+
+    #[error("SlashManager.acceptOwnership: no pending owner")]
+    NoPendingOwner {},
 }

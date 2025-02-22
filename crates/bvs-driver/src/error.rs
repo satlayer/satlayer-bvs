@@ -11,4 +11,7 @@ pub enum ContractError {
 
     #[error("BvsDriver: unauthorized")]
     Unauthorized {},
+
+    #[error("BvsDriver: no pending owner")]
+    NoPendingOwner {},
 }

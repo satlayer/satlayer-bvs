@@ -241,7 +241,7 @@ mod tests {
             let owner = app.api().addr_make("owner");
             let new_owner = app.api().addr_make("new_owner");
 
-            let msg = ExecuteMsg::TransferOwnership {
+            let msg = ExecuteMsg::TwoStepTransferOwnership {
                 new_owner: new_owner.to_string(),
             };
             let cosmos_msg = contract.call(msg).unwrap();
@@ -254,7 +254,7 @@ mod tests {
             let owner = app.api().addr_make("fake_owner");
             let new_owner = app.api().addr_make("new_owner");
 
-            let msg = ExecuteMsg::TransferOwnership {
+            let msg = ExecuteMsg::TwoStepTransferOwnership {
                 new_owner: new_owner.to_string(),
             };
             let cosmos_msg = contract.call(msg).unwrap();
