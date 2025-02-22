@@ -389,20 +389,23 @@ fn extract_contract_address_from_reply(
         ContractError::InstantiateError {}
     })?;
 
-    let data = res
-        .msg_responses
-        .first()
+    let contract_address = res
+        .events
+        .iter()
+        .find_map(|event| {
+            if event.ty == "instantiate" {
+                event.attributes.iter().find_map(|attr| {
+                    if attr.key == "_contract_address" {
+                        Some(attr.value.clone())
+                    } else {
+                        None
+                    }
+                })
+            } else {
+                None
+            }
+        })
         .ok_or(ContractError::MissingInstantiateData {})?;
-
-    let instantiate_response = cw_utils::parse_instantiate_response_data(&data.value.clone())
-        .map_err(|_| {
-            StdError::parse_err(
-                "MsgInstantiateContractResponse",
-                "failed to parse instantiate data",
-            )
-        })?;
-
-    let contract_address = instantiate_response.contract_address.clone();
 
     let token_address = DEPLOYED_STRATEGIES
         .keys(deps.storage, None, None, Order::Ascending)
@@ -415,7 +418,7 @@ fn extract_contract_address_from_reply(
         Addr::unchecked(contract_address.clone()),
     )?;
 
-    Ok(instantiate_response.contract_address)
+    Ok(contract_address)
 }
 
 fn update_config(
