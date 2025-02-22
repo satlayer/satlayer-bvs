@@ -15,7 +15,7 @@ import (
 type Driver struct {
 	registeredBVSContract string
 	io                    io.ChainIO
-	contractAddr          string
+	ContractAddr          string
 	gasAdjustment         float64
 	gasPrice              sdktypes.DecCoin
 	gasLimit              uint64
@@ -46,12 +46,12 @@ func (r *Driver) WithGasLimit(gasLimit uint64) *Driver {
 }
 
 func (r *Driver) BindClient(contractAddress string) {
-	r.contractAddr = contractAddress
+	r.ContractAddr = contractAddress
 }
 
 func (r *Driver) newExecuteOptions(executeMsg []byte, memo string) types.ExecuteOptions {
 	return types.ExecuteOptions{
-		ContractAddr:  r.contractAddr,
+		ContractAddr:  r.ContractAddr,
 		ExecuteMsg:    executeMsg,
 		Funds:         "",
 		GasAdjustment: r.gasAdjustment,
