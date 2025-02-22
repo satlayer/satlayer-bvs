@@ -15,6 +15,7 @@ import (
 
 type StrategyFactory struct {
 	io             io.ChainIO
+	ContractAddr   string
 	executeOptions *types.ExecuteOptions
 	queryOptions   *types.QueryOptions
 	gasAdjustment  float64
@@ -62,6 +63,8 @@ func (r *StrategyFactory) BindClient(contractAddress string) {
 		ContractAddr: contractAddress,
 		QueryMsg:     []byte{},
 	}
+
+	r.ContractAddr = contractAddress
 }
 
 func (r *StrategyFactory) execute(ctx context.Context, msg any) (*coretypes.ResultTx, error) {

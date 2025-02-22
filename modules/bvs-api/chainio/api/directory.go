@@ -17,7 +17,7 @@ import (
 
 type Directory struct {
 	io            io.ChainIO
-	contractAddr  string
+	ContractAddr  string
 	gasAdjustment float64
 	gasPrice      sdktypes.DecCoin
 	gasLimit      uint64
@@ -26,7 +26,7 @@ type Directory struct {
 func NewDirectory(chainIO io.ChainIO, contractAddr string) *Directory {
 	return &Directory{
 		io:            chainIO,
-		contractAddr:  contractAddr,
+		ContractAddr:  contractAddr,
 		gasAdjustment: 1.2,
 		gasPrice:      sdktypes.NewInt64DecCoin("ubbn", 1),
 		gasLimit:      700000,
@@ -56,7 +56,7 @@ func (r *Directory) RegisterBvs(ctx context.Context, bvsContract string) (*coret
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "RegisterBvs")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "RegisterBvs")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -89,7 +89,7 @@ func (r *Directory) RegisterOperator(ctx context.Context, operator string, publi
 	executeMsg := directory.ExecuteMsg{RegisterOperatorToBvs: &directory.RegisterOperatorToBvs{
 		Operator:     operator,
 		PublicKey:    base64.StdEncoding.EncodeToString(publicKey.Bytes()),
-		ContractAddr: r.contractAddr,
+		ContractAddr: r.ContractAddr,
 		SignatureWithSaltAndExpiry: directory.ExecuteSignatureWithSaltAndExpiry{
 			Signature: sig,
 			Salt:      base64.StdEncoding.EncodeToString([]byte(salt)),
@@ -100,7 +100,7 @@ func (r *Directory) RegisterOperator(ctx context.Context, operator string, publi
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "RegisterOperator")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "RegisterOperator")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -111,7 +111,7 @@ func (r *Directory) DeregisterOperator(ctx context.Context, operator string) (*c
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "DeregisterOperator")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "DeregisterOperator")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -122,7 +122,7 @@ func (r *Directory) UpdateMetadataURI(ctx context.Context, metadataURI string) (
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "UpdateMetadataURI")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "UpdateMetadataURI")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -133,7 +133,7 @@ func (r *Directory) CancelSalt(ctx context.Context, salt string) (*coretypes.Res
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "CancelSalt")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "CancelSalt")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -144,7 +144,7 @@ func (r *Directory) TransferOwnership(ctx context.Context, newOwner string) (*co
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "TransferOwnership")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "TransferOwnership")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -155,7 +155,7 @@ func (r *Directory) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "Pause")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "Pause")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -166,7 +166,7 @@ func (r *Directory) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "Unpause")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "Unpause")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -177,7 +177,7 @@ func (r *Directory) SetPauser(ctx context.Context, newPauser string) (*coretypes
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "SetPauser")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "SetPauser")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -188,7 +188,7 @@ func (r *Directory) SetUnpauser(ctx context.Context, newUnpauser string) (*coret
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "SetUnpauser")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "SetUnpauser")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -199,7 +199,7 @@ func (r *Directory) SetDelegationManager(ctx context.Context, delegationManager 
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "SetDelegationManager")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "SetDelegationManager")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -214,7 +214,7 @@ func (r *Directory) QueryOperator(bvs, operator string) (*directory.OperatorStat
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
@@ -232,13 +232,13 @@ func (r *Directory) CalculateDigestHash(operatorPublicKey cryptotypes.PubKey, bv
 		Bvs:               bvs,
 		Salt:              base64.StdEncoding.EncodeToString([]byte(salt)),
 		Expiry:            expiry,
-		ContractAddr:      r.contractAddr,
+		ContractAddr:      r.ContractAddr,
 	}}
 	queryMsgBytes, err := json.Marshal(queryMsg)
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
@@ -259,7 +259,7 @@ func (r *Directory) IsSaltSpent(operator, salt string) (*directory.SaltResponse,
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
@@ -279,7 +279,7 @@ func (r *Directory) GetDelegationManager() (*directory.DelegationResponse, error
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
@@ -299,7 +299,7 @@ func (r *Directory) GetOwner() (*directory.OwnerResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
@@ -319,7 +319,7 @@ func (r *Directory) GetOperatorBvsRegistrationTypeHash() (*directory.Registratio
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
@@ -339,7 +339,7 @@ func (r *Directory) GetDomainTypeHash() (*directory.DomainTypeHashResponse, erro
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
@@ -359,7 +359,7 @@ func (r *Directory) GetDomainName() (*directory.DomainNameResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
@@ -377,7 +377,7 @@ func (r *Directory) GetBvsInfo(bvsHash string) (*directory.BvsInfoResponse, erro
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err

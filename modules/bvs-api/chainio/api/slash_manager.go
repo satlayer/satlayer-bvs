@@ -17,6 +17,7 @@ import (
 
 type SlashManager struct {
 	io             io.ChainIO
+	ContractAddr   string
 	executeOptions *types.ExecuteOptions
 	queryOptions   *types.QueryOptions
 	gasAdjustment  float64
@@ -25,7 +26,7 @@ type SlashManager struct {
 }
 
 func NewSlashManager(chainIO io.ChainIO) *SlashManager {
-	// TODO(fuxingloh): unused contractAddr
+	// TODO(fuxingloh): unused ContractAddr
 	return &SlashManager{
 		io:            chainIO,
 		gasAdjustment: 1.2,
@@ -65,6 +66,8 @@ func (r *SlashManager) BindClient(contractAddress string) {
 		ContractAddr: contractAddress,
 		QueryMsg:     []byte{},
 	}
+
+	r.ContractAddr = contractAddress
 }
 
 func (r *SlashManager) SubmitSlashRequest(ctx context.Context, slashDetails slashmanager.SubmitSlashRequestSlashDetails, validatorsPublicKeys []cryptotypes.PubKey) (*coretypes.ResultTx, error) {

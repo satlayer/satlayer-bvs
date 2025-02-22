@@ -22,7 +22,7 @@ var wasmUpdateState sync.Map
 type StateBank struct {
 	registeredBVSContract string
 	io                    io.ChainIO
-	contractAddr          string
+	ContractAddr          string
 	gasAdjustment         float64
 	gasPrice              sdktypes.DecCoin
 	gasLimit              uint64
@@ -53,7 +53,7 @@ func (r *StateBank) WithGasLimit(gasLimit uint64) *StateBank {
 }
 
 func (r *StateBank) BindClient(contractAddress string) {
-	r.contractAddr = contractAddress
+	r.ContractAddr = contractAddress
 }
 
 func (r *StateBank) GetWasmUpdateState(key string) (string, error) {
@@ -94,7 +94,7 @@ func (r *StateBank) EventHandler(ch chan *indexer.Event) {
 
 func (r *StateBank) newExecuteOptions(executeMsg []byte, memo string) types.ExecuteOptions {
 	return types.ExecuteOptions{
-		ContractAddr:  r.contractAddr,
+		ContractAddr:  r.ContractAddr,
 		ExecuteMsg:    executeMsg,
 		Funds:         "",
 		GasAdjustment: r.gasAdjustment,
