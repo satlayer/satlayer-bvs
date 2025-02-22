@@ -112,4 +112,16 @@ pub enum ContractError {
 
     #[error("RewardsCoordinator.acceptOwnership: no pending owner")]
     NoPendingOwner {},
+
+    #[error("Incorrect token proof length")]
+    IncorrectTokenProofLength {},
+
+    #[error("Incorrect token proof depth, expected: {expected}, actual: {actual}")]
+    IncorrectTokenProofDepth { expected: u8, actual: u8 },
+
+    #[error("Incorrect earner proof length")]
+    IncorrectEarnerProofLength {},
+
+    #[error("Incorrect earner proof depth, expected: {expected}, actual: {actual}")]
+    IncorrectEarnerProofDepth { expected: u8, actual: u8 },
 }
