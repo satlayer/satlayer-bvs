@@ -56,6 +56,7 @@ pub enum QueryMsg {
 
     #[returns(CalculateDigestHashResponse)]
     CalculateDigestHash {
+        operator: String,
         operator_public_key: String,
         bvs: String,
         salt: String,
