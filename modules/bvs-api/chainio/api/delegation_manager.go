@@ -20,7 +20,7 @@ const zeroValueAddr = "0"
 
 type DelegationManager struct {
 	io            io.ChainIO
-	contractAddr  string
+	ContractAddr  string
 	gasAdjustment float64
 	gasPrice      sdktypes.DecCoin
 	gasLimit      uint64
@@ -29,7 +29,7 @@ type DelegationManager struct {
 func NewDelegationManager(chainIO io.ChainIO, contractAddr string) *DelegationManager {
 	return &DelegationManager{
 		io:            chainIO,
-		contractAddr:  contractAddr,
+		ContractAddr:  contractAddr,
 		gasAdjustment: 1.2,
 		gasPrice:      sdktypes.NewInt64DecCoin("ubbn", 1),
 		gasLimit:      700000,
@@ -74,7 +74,7 @@ func (r *DelegationManager) RegisterAsOperator(
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "RegisterAsOperator")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "RegisterAsOperator")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -97,7 +97,7 @@ func (r *DelegationManager) ModifyOperatorDetails(
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "ModifyOperatorDetails")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "ModifyOperatorDetails")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -110,7 +110,7 @@ func (r *DelegationManager) UpdateOperatorMetadataURI(ctx context.Context, metad
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "UpdateOperatorMetadataURI")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "UpdateOperatorMetadataURI")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -144,7 +144,7 @@ func (r *DelegationManager) DelegateTo(ctx context.Context, operator, approver, 
 			ApproverPublicKey: base64.StdEncoding.EncodeToString(approverPublicKey.Bytes()),
 			ApproverSalt:      base64.StdEncoding.EncodeToString([]byte(salt)),
 			Expiry:            expiry,
-			ContractAddr:      r.contractAddr,
+			ContractAddr:      r.ContractAddr,
 		}
 		hashBytes, err := r.DelegationApprovalDigestHash(digestHashParams)
 		if err != nil {
@@ -168,7 +168,7 @@ func (r *DelegationManager) DelegateTo(ctx context.Context, operator, approver, 
 		return nil, err
 	}
 
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "DelegateTo")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "DelegateTo")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -193,7 +193,7 @@ func (r *DelegationManager) DelegateToBySignature(
 		Operator:        operator,
 		StakerPublicKey: base64.StdEncoding.EncodeToString(stakerPublicKey.Bytes()),
 		Expiry:          expiry,
-		ContractAddr:    r.contractAddr,
+		ContractAddr:    r.ContractAddr,
 	}
 	stakerHashBytes, err := r.StakerDelegationDigestHash(digestHashParams)
 	if err != nil {
@@ -231,7 +231,7 @@ func (r *DelegationManager) DelegateToBySignature(
 			ApproverPublicKey: base64.StdEncoding.EncodeToString(approverPublicKey.Bytes()),
 			ApproverSalt:      base64.StdEncoding.EncodeToString([]byte(salt)),
 			Expiry:            expiry,
-			ContractAddr:      r.contractAddr,
+			ContractAddr:      r.ContractAddr,
 		}
 		approverHashBytes, err := r.DelegationApprovalDigestHash(approverDigestHashReq)
 		if err != nil {
@@ -253,7 +253,7 @@ func (r *DelegationManager) DelegateToBySignature(
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "DelegateToBySignature")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "DelegateToBySignature")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -266,7 +266,7 @@ func (r *DelegationManager) UnDelegate(ctx context.Context, staker string) (*cor
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "UnDelegate")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "UnDelegate")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -281,7 +281,7 @@ func (r *DelegationManager) QueueWithdrawals(ctx context.Context, withdrawalPara
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "QueueWithdrawals")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "QueueWithdrawals")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -305,7 +305,7 @@ func (r *DelegationManager) CompleteQueuedWithdrawal(
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "CompleteQueuedWithdrawal")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "CompleteQueuedWithdrawal")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -329,7 +329,7 @@ func (r *DelegationManager) CompleteQueuedWithdrawals(
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "CompleteQueuedWithdrawals")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "CompleteQueuedWithdrawals")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -346,7 +346,7 @@ func (r *DelegationManager) IncreaseDelegatedShares(ctx context.Context, staker,
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "IncreaseDelegatedShares")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "IncreaseDelegatedShares")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -363,7 +363,7 @@ func (r *DelegationManager) DecreaseDelegatedShares(ctx context.Context, staker,
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "DecreaseDelegatedShares")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "DecreaseDelegatedShares")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -378,7 +378,7 @@ func (r *DelegationManager) SetMinWithdrawalDelayBlocks(ctx context.Context, new
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "SetMinWithdrawalDelayBlocks")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "SetMinWithdrawalDelayBlocks")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -394,7 +394,7 @@ func (r *DelegationManager) SetStrategyWithdrawalDelayBlocks(ctx context.Context
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "SetStrategyWithdrawalDelayBlocks")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "SetStrategyWithdrawalDelayBlocks")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -407,7 +407,7 @@ func (r *DelegationManager) TransferOwnership(ctx context.Context, newOwner stri
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "TransferOwnership")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "TransferOwnership")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -420,7 +420,7 @@ func (r *DelegationManager) Pause(ctx context.Context) (*coretypes.ResultTx, err
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "Pause")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "Pause")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -433,7 +433,7 @@ func (r *DelegationManager) Unpause(ctx context.Context) (*coretypes.ResultTx, e
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "Unpause")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "Unpause")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -446,7 +446,7 @@ func (r *DelegationManager) SetPauser(ctx context.Context, newPauser string) (*c
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "SetPauser")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "SetPauser")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -459,7 +459,7 @@ func (r *DelegationManager) SetUnpauser(ctx context.Context, newUnpauser string)
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "SetUnpauser")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "SetUnpauser")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -472,7 +472,7 @@ func (r *DelegationManager) SetSlashManager(ctx context.Context, newSlashManager
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.contractAddr, executeMsgBytes, "SetSlashManager")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "SetSlashManager")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
@@ -486,7 +486,7 @@ func (r *DelegationManager) IsDelegated(staker string) (*delegationmanager.Deleg
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
@@ -506,7 +506,7 @@ func (r *DelegationManager) IsOperator(operator string) (*delegationmanager.Oper
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
@@ -526,7 +526,7 @@ func (r *DelegationManager) OperatorDetails(operator string) (*delegationmanager
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
@@ -546,7 +546,7 @@ func (r *DelegationManager) DelegationApprover(operator string) (*delegationmana
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
@@ -566,7 +566,7 @@ func (r *DelegationManager) StakerOptOutWindowBlocks(operator string) (*delegati
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
@@ -589,7 +589,7 @@ func (r *DelegationManager) GetOperatorShares(operator string, strategies []stri
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
@@ -609,7 +609,7 @@ func (r *DelegationManager) GetOperatorStakers(operator string) (*delegationmana
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
@@ -629,7 +629,7 @@ func (r *DelegationManager) GetDelegatableShares(staker string) (*delegationmana
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
@@ -649,7 +649,7 @@ func (r *DelegationManager) GetWithdrawalDelay(strategies []string) (*delegation
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
@@ -669,7 +669,7 @@ func (r *DelegationManager) CalculateWithdrawalRoot(withdrawal delegationmanager
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
@@ -691,7 +691,7 @@ func (r *DelegationManager) CalculateCurrentStakerDelegationDigestHash(stakerDig
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
@@ -713,7 +713,7 @@ func (r *DelegationManager) StakerDelegationDigestHash(stakerDigestHashParams de
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
@@ -735,7 +735,7 @@ func (r *DelegationManager) DelegationApprovalDigestHash(digestHashParams delega
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
@@ -755,7 +755,7 @@ func (r *DelegationManager) GetStakerNonce(staker string) (*delegationmanager.St
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
@@ -775,7 +775,7 @@ func (r *DelegationManager) GetCumulativeWithdrawalsQueuedNonce(staker string) (
 	if err != nil {
 		return nil, err
 	}
-	queryOptions := r.newQueryOptions(r.contractAddr, queryMsgBytes)
+	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
 	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
