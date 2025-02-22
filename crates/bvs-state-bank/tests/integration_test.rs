@@ -56,9 +56,11 @@ mod tests {
         let contract_id = app.store_code(contract());
         let admin = app.api().addr_make("admin");
         let owner = app.api().addr_make("owner");
+        let bvs_directory = app.api().addr_make("bvs_directory");
 
         let msg = bvs_state_bank::msg::InstantiateMsg {
             initial_owner: owner.to_string(),
+            bvs_directory: bvs_directory.to_string(),
         };
         let contract_addr = app
             .instantiate_contract(contract_id, admin, &msg, &[], "State Bank", None)
@@ -72,13 +74,14 @@ mod tests {
         use super::*;
         use bvs_state_bank::msg::ExecuteMsg;
         use bvs_state_bank::query::ValueResponse;
-        use cosmwasm_std::{Addr, Event};
+        use cosmwasm_std::Event;
 
         #[test]
         fn execute_set() {
             let (mut app, contract) = instantiate();
 
             let state_bank_address = app.api().addr_make("state_bank");
+            let bvs_directory = app.api().addr_make("bvs_directory");
 
             {
                 // Register BVS contract into State Bank
@@ -86,7 +89,7 @@ mod tests {
                     address: state_bank_address.to_string(),
                 };
                 let cosmos_msg = contract.call(msg).unwrap();
-                app.execute(Addr::unchecked("anyone"), cosmos_msg).unwrap();
+                app.execute(bvs_directory, cosmos_msg).unwrap();
             }
             {
                 // Execute set to update state
@@ -172,6 +175,7 @@ mod tests {
             let (mut app, contract) = instantiate();
 
             let state_bank_address = app.api().addr_make("state_bank");
+            let bvs_directory = app.api().addr_make("bvs_directory");
 
             {
                 // Register BVS contract into State Bank
@@ -179,7 +183,7 @@ mod tests {
                     address: state_bank_address.to_string(),
                 };
                 let cosmos_msg = contract.call(msg).unwrap();
-                app.execute(Addr::unchecked("anyone"), cosmos_msg).unwrap();
+                app.execute(bvs_directory, cosmos_msg).unwrap();
             }
             {
                 // Execute set to update state
@@ -228,11 +232,13 @@ mod tests {
             let (mut app, contract) = instantiate();
 
             let bvs_addr = app.api().addr_make("bvs_contract");
+            let bvs_directory = app.api().addr_make("bvs_directory");
+
             let msg = ExecuteMsg::AddRegisteredBvsContract {
                 address: bvs_addr.to_string(),
             };
             let cosmos_msg = contract.call(msg).unwrap();
-            app.execute(Addr::unchecked("anyone"), cosmos_msg).unwrap();
+            app.execute(bvs_directory, cosmos_msg).unwrap();
         }
 
         #[test]

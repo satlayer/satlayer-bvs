@@ -22,10 +22,12 @@ impl StateBank {
     pub fn instantiate(app: &mut App) -> StateBank {
         let contract_admin = app.api().addr_make("StateBank:admin");
         let owner = app.api().addr_make("StateBank:owner");
+        let bvs_directory = app.api().addr_make("StateBank:bvs_directory");
         let contract_id = app.store_code(StateBank::contract());
 
         let init_msg = bvs_state_bank::msg::InstantiateMsg {
             initial_owner: owner.to_string(),
+            bvs_directory: bvs_directory.to_string(),
         };
         let addr = app
             .instantiate_contract(

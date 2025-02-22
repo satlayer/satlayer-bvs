@@ -14,4 +14,7 @@ pub enum ContractError {
 
     #[error("StateBank.acceptOwnership: no pending owner")]
     NoPendingOwner {},
+
+    #[error("StateBank: not BVS directory")]
+    NotBVSDirectory {},
 }
