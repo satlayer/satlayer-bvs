@@ -36,6 +36,8 @@ pub enum ExecuteMsg {
     SubmitRoot {
         root: String,
         rewards_calculation_end_timestamp: u64,
+        earner_tree_depth: u8,
+        token_tree_depth: u8,
     },
     DisableRoot {
         root_index: u64,
@@ -112,4 +114,6 @@ pub struct DistributionRoot {
     pub rewards_calculation_end_timestamp: u64,
     pub activated_at: u64,
     pub disabled: bool,
+    pub earner_tree_depth: u8,
+    pub token_tree_depth: u8,
 }

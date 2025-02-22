@@ -119,9 +119,19 @@ pub fn execute(
         ExecuteMsg::SubmitRoot {
             root,
             rewards_calculation_end_timestamp,
+            earner_tree_depth,
+            token_tree_depth,
         } => {
             let root = Binary::from_base64(&root)?;
-            submit_root(deps, env, info, root, rewards_calculation_end_timestamp)
+            submit_root(
+                deps,
+                env,
+                info,
+                root,
+                rewards_calculation_end_timestamp,
+                earner_tree_depth,
+                token_tree_depth,
+            )
         }
         ExecuteMsg::DisableRoot { root_index } => disable_root(deps, env, info, root_index),
         ExecuteMsg::SetClaimerFor { claimer } => {
@@ -354,6 +364,8 @@ pub fn submit_root(
     info: MessageInfo,
     root: Binary,
     rewards_calculation_end_timestamp: u64,
+    earner_tree_depth: u8,
+    token_tree_depth: u8,
 ) -> Result<Response, ContractError> {
     auth::assert_rewards_updater(deps.as_ref(), &info)?;
 
@@ -386,6 +398,8 @@ pub fn submit_root(
         activated_at,
         rewards_calculation_end_timestamp,
         disabled: false,
+        earner_tree_depth,
+        token_tree_depth,
     };
     DISTRIBUTION_ROOTS.save(deps.storage, root_index, &new_root)?;
 
@@ -829,6 +843,14 @@ fn check_claim_internal(
         return Err(ContractError::RootNotActivatedYet {});
     }
 
+    verify_earner_claim_proof(
+        root.root.clone(),
+        claim.earner_index,
+        &claim.earner_tree_proof,
+        &claim.earner_leaf,
+        root.earner_tree_depth,
+    )?;
+
     if claim.token_indices.len() != claim.token_tree_proofs.len() {
         return Err(ContractError::TokenIndicesAndProofsMismatch {});
     }
@@ -837,19 +859,13 @@ fn check_claim_internal(
         return Err(ContractError::TokenProofsAndLeavesMismatch {});
     }
 
-    verify_earner_claim_proof(
-        root.root.clone(),
-        claim.earner_index,
-        &claim.earner_tree_proof,
-        &claim.earner_leaf,
-    )?;
-
     for i in 0..claim.token_indices.len() {
         verify_token_claim_proof(
             claim.earner_leaf.earner_token_root.clone(),
             claim.token_indices[i],
             &claim.token_tree_proofs[i],
             &claim.token_leaves[i],
+            root.token_tree_depth,
         )?;
     }
 
@@ -861,7 +877,19 @@ fn verify_token_claim_proof(
     token_leaf_index: u32,
     token_proof: &[u8],
     token_leaf: &TokenTreeMerkleLeaf,
+    token_depth: u8,
 ) -> Result<(), ContractError> {
+    if token_proof.len() % 32 != 0 {
+        return Err(ContractError::IncorrectTokenProofLength {});
+    }
+    let actual_depth = token_proof.len() / 32;
+    if actual_depth as u8 != token_depth {
+        return Err(ContractError::IncorrectTokenProofDepth {
+            expected: token_depth,
+            actual: actual_depth as u8,
+        });
+    }
+
     if token_leaf_index >= (1 << (token_proof.len() / 32)) {
         return Err(ContractError::InvalidTokenLeafIndex {});
     }
@@ -887,7 +915,19 @@ fn verify_earner_claim_proof(
     earner_leaf_index: u32,
     earner_proof: &[u8],
     earner_leaf: &EarnerTreeMerkleLeaf,
+    earner_depth: u8,
 ) -> Result<(), ContractError> {
+    if earner_proof.len() % 32 != 0 {
+        return Err(ContractError::IncorrectEarnerProofLength {});
+    }
+    let actual_depth = earner_proof.len() / 32;
+    if actual_depth as u8 != earner_depth {
+        return Err(ContractError::IncorrectEarnerProofDepth {
+            expected: earner_depth,
+            actual: actual_depth as u8,
+        });
+    }
+
     if earner_leaf_index >= (1 << (earner_proof.len() / 32)) {
         return Err(ContractError::InvalidEarnerLeafIndex {});
     }
@@ -2266,6 +2306,8 @@ mod tests {
             earner_token_root: Binary::from(merkle_roots[3].clone()),
         };
 
+        let earner_tree_depth = 2u8;
+
         // Calculate earner leaf hashes
         let earner_leaf_hash1 = calculate_earner_leaf_hash(&earner1);
         let earner_leaf_hash2 = calculate_earner_leaf_hash(&earner2);
@@ -2303,28 +2345,32 @@ mod tests {
             Binary::from(merkle_root.clone()),
             0,
             &proof1.concat(),
-            &earner1
+            &earner1,
+            earner_tree_depth
         )
         .is_ok());
         assert!(verify_earner_claim_proof(
             Binary::from(merkle_root.clone()),
             1,
             &proof2.concat(),
-            &earner2
+            &earner2,
+            earner_tree_depth
         )
         .is_ok());
         assert!(verify_earner_claim_proof(
             Binary::from(merkle_root.clone()),
             2,
             &proof3.concat(),
-            &earner3
+            &earner3,
+            earner_tree_depth
         )
         .is_ok());
         assert!(verify_earner_claim_proof(
             Binary::from(merkle_root.clone()),
             3,
             &proof4.concat(),
-            &earner4
+            &earner4,
+            earner_tree_depth
         )
         .is_ok());
     }
@@ -2350,6 +2396,8 @@ mod tests {
             token: Addr::unchecked("token_d"),
             cumulative_earnings: Uint128::new(400),
         };
+
+        let token_tree_depth = 2u8;
 
         // Calculate hashes for each leaf
         let hash_a = calculate_token_leaf_hash(&leaf_a);
@@ -2381,28 +2429,32 @@ mod tests {
             Binary::from(merkle_root.clone()),
             0,
             &proof_a.concat(),
-            &leaf_a
+            &leaf_a,
+            token_tree_depth
         )
         .is_ok());
         assert!(verify_token_claim_proof(
             Binary::from(merkle_root.clone()),
             1,
             &proof_b.concat(),
-            &leaf_b
+            &leaf_b,
+            token_tree_depth
         )
         .is_ok());
         assert!(verify_token_claim_proof(
             Binary::from(merkle_root.clone()),
             2,
             &proof_c.concat(),
-            &leaf_c
+            &leaf_c,
+            token_tree_depth
         )
         .is_ok());
         assert!(verify_token_claim_proof(
             Binary::from(merkle_root.clone()),
             3,
             &proof_d.concat(),
-            &leaf_d
+            &leaf_d,
+            token_tree_depth
         )
         .is_ok());
     }
@@ -2495,18 +2547,23 @@ mod tests {
         let proof_a = [earner_leaf_hash2.clone()];
         let proof_b = [hash_b.clone(), parent_c_d.clone()];
 
+        let earner_tree_depth = 1u8;
+        let token_tree_depth = 2u8;
+
         assert!(verify_earner_claim_proof(
             Binary::from(earner_root.clone()),
             0,
             &proof_a.concat(),
-            &earner1
+            &earner1,
+            earner_tree_depth
         )
         .is_ok());
         assert!(verify_token_claim_proof(
             Binary::from(root_a_b_c_d.clone()),
             0,
             &proof_b.concat(),
-            &leaf_a
+            &leaf_a,
+            token_tree_depth
         )
         .is_ok());
     }
@@ -2558,11 +2615,16 @@ mod tests {
         let earner_leaves = vec![earner_leaf_hash.clone()];
         let earner_root = merkleize_sha256(earner_leaves.clone());
 
+        let earner_tree_depth = 0u8;
+        let token_tree_depth = 2u8;
+
         let distribution_root = DistributionRoot {
             root: Binary::from(earner_root.clone()),
             rewards_calculation_end_timestamp: 500,
             activated_at: 500,
             disabled: false,
+            earner_tree_depth,
+            token_tree_depth,
         };
 
         let claim = RewardsMerkleClaim {
@@ -2628,7 +2690,17 @@ mod tests {
         let root = Binary::from(b"valid_root".to_vec());
         let rewards_calculation_end_timestamp = 1100;
 
-        let result = submit_root(
+        let earner_tree_depth = 0u8;
+        let token_tree_depth = 2u8;
+
+        let msg = ExecuteMsg::SubmitRoot {
+            root: root_base64.clone(),
+            rewards_calculation_end_timestamp,
+            earner_tree_depth,
+            token_tree_depth,
+        };
+
+        let result = execute(
             deps.as_mut(),
             env.clone(),
             rewards_updater_info.clone(),
@@ -2660,7 +2732,14 @@ mod tests {
         );
 
         let past_timestamp = 500;
-        let result = submit_root(
+        let msg = ExecuteMsg::SubmitRoot {
+            root: root_base64.clone(),
+            rewards_calculation_end_timestamp: past_timestamp,
+            earner_tree_depth,
+            token_tree_depth,
+        };
+
+        let result = execute(
             deps.as_mut(),
             env.clone(),
             rewards_updater_info.clone(),
@@ -2673,7 +2752,14 @@ mod tests {
         }
 
         let future_timestamp = env.block.time.seconds() + 100;
-        let result = submit_root(
+        let msg = ExecuteMsg::SubmitRoot {
+            root: root_base64.clone(),
+            rewards_calculation_end_timestamp: future_timestamp,
+            earner_tree_depth,
+            token_tree_depth,
+        };
+
+        let result = execute(
             deps.as_mut(),
             env.clone(),
             rewards_updater_info.clone(),
@@ -2693,7 +2779,11 @@ mod tests {
             unauthorized_info,
             root.clone(),
             rewards_calculation_end_timestamp,
-        );
+            earner_tree_depth,
+            token_tree_depth,
+        };
+
+        let result = execute(deps.as_mut(), env.clone(), unauthorized_info, msg);
         assert!(result.is_err());
         if let Err(err) = result {
             assert_eq!(err, ContractError::Unauthorized {});
@@ -2809,11 +2899,16 @@ mod tests {
         let earner_leaves = vec![earner_leaf_hash.clone()];
         let earner_root = merkleize_sha256(earner_leaves.clone());
 
+        let earner_tree_depth = 0u8;
+        let token_tree_depth = 2u8;
+
         let distribution_root = DistributionRoot {
             root: Binary::from(earner_root.clone()),
             rewards_calculation_end_timestamp: 500,
             activated_at: 500,
             disabled: false,
+            earner_tree_depth,
+            token_tree_depth,
         };
 
         let claim = RewardsMerkleClaim {
@@ -2990,6 +3085,8 @@ mod tests {
             rewards_calculation_end_timestamp: 500,
             activated_at: env.block.time.seconds() - 100,
             disabled: true,
+            earner_tree_depth,
+            token_tree_depth,
         };
 
         DISTRIBUTION_ROOTS
@@ -3023,11 +3120,16 @@ mod tests {
             .save(&mut deps.storage, &deps.api.addr_make("rewards_updater"))
             .unwrap();
 
+        let earner_tree_depth = 0u8;
+        let token_tree_depth = 2u8;
+
         let valid_root = DistributionRoot {
             root: Binary::from(b"valid_root".to_vec()),
             rewards_calculation_end_timestamp: 500,
             activated_at: env.block.time.seconds() + 1000, // Future activation
             disabled: false,
+            earner_tree_depth,
+            token_tree_depth,
         };
 
         DISTRIBUTION_ROOTS
@@ -3065,6 +3167,8 @@ mod tests {
             rewards_calculation_end_timestamp: 500,
             activated_at: env.block.time.seconds() - 1000, // Past activation
             disabled: false,
+            earner_tree_depth,
+            token_tree_depth,
         };
 
         DISTRIBUTION_ROOTS
