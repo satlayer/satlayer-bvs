@@ -15,6 +15,7 @@ pub fn sha256(input: &[u8]) -> Vec<u8> {
 }
 
 pub struct DigestHashParams {
+    pub operator: Addr,
     pub operator_public_key: Binary,
     pub bvs: Addr,
     pub salt: Binary,
@@ -24,6 +25,7 @@ pub struct DigestHashParams {
 
 pub fn calculate_digest_hash(
     chain_id: String,
+    operator: &Addr,
     operator_public_key: &[u8],
     bvs: &Addr,
     salt: &Binary,
@@ -32,6 +34,7 @@ pub fn calculate_digest_hash(
 ) -> Vec<u8> {
     let struct_hash_input = [
         &sha256(OPERATOR_BVS_REGISTRATION_TYPEHASH)[..],
+        operator.as_bytes(),
         operator_public_key,
         bvs.as_bytes(),
         salt.as_slice(),

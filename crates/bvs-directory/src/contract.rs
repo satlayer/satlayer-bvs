@@ -201,6 +201,7 @@ pub fn register_operator(
 
     let message_bytes = calculate_digest_hash(
         env.block.chain_id,
+        &operator,
         &public_key,
         &info.sender,
         &operator_signature.salt,
@@ -367,6 +368,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&query_operator_status(deps, bvs_addr, operator_addr)?)
         }
         QueryMsg::CalculateDigestHash {
+            operator,
             operator_public_key,
             bvs,
             salt,
@@ -377,8 +379,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let salt = Binary::from_base64(&salt)?;
             let bvs_addr = Addr::unchecked(bvs);
             let contract_addr = Addr::unchecked(contract_addr);
+            let operator_addr = Addr::unchecked(operator);
 
             let params = DigestHashParams {
+                operator: operator_addr,
                 operator_public_key: public_key_binary,
                 bvs: bvs_addr,
                 salt,
@@ -437,6 +441,7 @@ fn query_calculate_digest_hash(
 ) -> StdResult<DigestHashResponse> {
     let digest_hash = calculate_digest_hash(
         env.block.chain_id,
+        &params.operator,
         &params.operator_public_key,
         &params.bvs,
         &params.salt,
@@ -684,6 +689,7 @@ mod tests {
 
         let message_byte = calculate_digest_hash(
             env.clone().block.chain_id,
+            &operator,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -781,6 +787,7 @@ mod tests {
 
         let message_byte = calculate_digest_hash(
             env.clone().block.chain_id,
+            &operator,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -1019,6 +1026,7 @@ mod tests {
 
         let message_byte = calculate_digest_hash(
             env.clone().block.chain_id,
+            &operator,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -1138,7 +1146,7 @@ mod tests {
             instantiate_contract();
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
-        let (_operator, _secret_key, public_key_bytes) =
+        let (operator, _secret_key, public_key_bytes) =
             generate_osmosis_public_key_from_private_key(private_key_hex);
 
         let salt = Binary::from(b"salt");
@@ -1148,6 +1156,7 @@ mod tests {
         let expiry = 2722875888;
 
         let query_msg = QueryMsg::CalculateDigestHash {
+            operator: operator.to_string(),
             operator_public_key: public_key_hex.to_string(),
             bvs: info.sender.to_string(),
             salt: salt.to_string(),
@@ -1160,6 +1169,7 @@ mod tests {
 
         let expected_digest_hash = calculate_digest_hash(
             env.clone().block.chain_id,
+            &operator,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -1191,6 +1201,7 @@ mod tests {
 
         let message_byte = calculate_digest_hash(
             env.clone().block.chain_id,
+            &operator,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -1341,6 +1352,7 @@ mod tests {
 
         let message_byte = calculate_digest_hash(
             env.clone().block.chain_id,
+            &operator,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -1402,7 +1414,7 @@ mod tests {
         );
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
-        let (_operator, secret_key, public_key_bytes) =
+        let (operator, secret_key, public_key_bytes) =
             generate_osmosis_public_key_from_private_key(private_key_hex);
 
         let expiry = 1722965888;
@@ -1412,6 +1424,7 @@ mod tests {
 
         let message_byte = calculate_digest_hash(
             env.clone().block.chain_id,
+            &operator,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -1561,5 +1574,74 @@ mod tests {
 
         let delegation_manager_addr = DELEGATION_MANAGER.load(&deps.storage).unwrap();
         assert_eq!(delegation_manager_addr, Addr::unchecked(delegation_manager));
+    }
+
+    #[test]
+    fn test_register_operator_to_bvs_with_anthor_operator() {
+        let (mut deps, env, info, _pauser_info, _unpauser_info, delegation_manager) =
+            instantiate_contract();
+
+        let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (operator, secret_key, public_key_bytes) =
+            generate_osmosis_public_key_from_private_key(private_key_hex);
+
+        let expiry = 1722965888;
+        let salt = Binary::from(b"salt");
+        let contract_addr: Addr =
+            Addr::unchecked("osmo1dhpupjecw7ltsckrckd4saraaf2266aq2dratwyjtwz5p7476yxspgc6td");
+
+        let message_byte = calculate_digest_hash(
+            env.clone().block.chain_id,
+            &operator,
+            &Binary::from(public_key_bytes.clone()),
+            &info.sender,
+            &salt,
+            expiry,
+            &contract_addr,
+        );
+
+        let secp = Secp256k1::new();
+        let message = Message::from_digest_slice(&message_byte).expect("32 bytes");
+        let signature = secp.sign_ecdsa(&message, &secret_key);
+        let signature_bytes = signature.serialize_compact().to_vec();
+
+        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
+
+        let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
+
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } if contract_addr == &delegation_manager => {
+                let operator_response = OperatorResponse { is_operator: true };
+                SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&operator_response).unwrap(),
+                ))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        let msg = ExecuteMsg::RegisterOperatorToBvs {
+            operator: deps.api.addr_make("other_operator").to_string(),
+            public_key: public_key_hex.to_string(),
+            contract_addr: contract_addr.to_string(),
+            signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
+                signature: signature_base64.to_string(),
+                salt: salt.to_string(),
+                expiry,
+            },
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+
+        assert!(res.is_err());
+        match res {
+            Err(ContractError::InvalidSignature {}) => {}
+            _ => panic!("Expected InvalidSignature error"),
+        }
     }
 }
