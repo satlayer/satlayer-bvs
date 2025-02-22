@@ -15,6 +15,7 @@ import (
 
 type RewardsCoordinator struct {
 	io             io.ChainIO
+	ContractAddr   string
 	executeOptions *types.ExecuteOptions
 	queryOptions   *types.QueryOptions
 	gasAdjustment  float64
@@ -62,6 +63,8 @@ func (r *RewardsCoordinator) BindClient(contractAddress string) {
 		ContractAddr: contractAddress,
 		QueryMsg:     []byte{},
 	}
+
+	r.ContractAddr = contractAddress
 }
 
 func (r *RewardsCoordinator) CreateBVSRewardsSubmission(ctx context.Context, submissions []rewardscoordinator.RewardsSubmission) (*coretypes.ResultTx, error) {
