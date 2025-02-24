@@ -23,9 +23,9 @@ import (
 )
 
 const (
-	OPERATOR_BVS_REGISTRATION_TYPEHASH = "OperatorBVSRegistration(address operator,address bvs,bytes32 salt,uint256 expiry)"
-	DOMAIN_TYPEHASH                    = "EIP712Domain(string name,uint256 chainId,address verifyingContract)"
-	DOMAIN_NAME                        = "EigenLayer"
+	OPERATOR_BVS_REGISTRATION_TYPE_HASH = "OperatorBVSRegistration(address operator,address bvs,bytes32 salt,uint256 expiry)"
+	DOMAIN_TYPE_HASH                    = "EIP712Domain(string name,uint256 chainId,address verifyingContract)"
+	DOMAIN_NAME                         = "EigenLayer"
 )
 
 type signerTestSuite struct {
@@ -124,8 +124,8 @@ func (suite *signerTestSuite) Test_VerifySignature() {
 }
 
 func CalculateDigestHash(operatorPublicKey []byte, bvsAddr string, salt []byte, expiry uint64, chainID, contrAddr string) []byte {
-	operatorBVSRegistrationTypeHash := Sha256([]byte(OPERATOR_BVS_REGISTRATION_TYPEHASH))
-	domainTypeHash := Sha256([]byte(DOMAIN_TYPEHASH))
+	operatorBVSRegistrationTypeHash := Sha256([]byte(OPERATOR_BVS_REGISTRATION_TYPE_HASH))
+	domainTypeHash := Sha256([]byte(DOMAIN_TYPE_HASH))
 	domainNameHash := Sha256([]byte(DOMAIN_NAME))
 
 	structHashInput := bytes.Join([][]byte{

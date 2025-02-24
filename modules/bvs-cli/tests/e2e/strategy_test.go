@@ -28,12 +28,13 @@ func Test_GetStakerStrategyList(t *testing.T) {
 	strategy.GetStakerStrategyList("bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk")
 }
 
-func Test_GetStrategyOwner(t *testing.T) {
-	strategy.GetOwner()
+// TODO(post-hermetic): break due to rename from GetOwner
+func test_GetStrategyOwner(t *testing.T) {
+	strategy.Owner()
 }
 
 func Test_GetStrategyDetails(t *testing.T) {
-	strategy.IsStrategyWhiteListed("bbn102zy555uul67xct4f29plgt6wq63wacmjp93csxpz8z538jrzcdqmj993a")
+	strategy.IsStrategyWhitelisted("bbn102zy555uul67xct4f29plgt6wq63wacmjp93csxpz8z538jrzcdqmj993a")
 }
 
 func Test_GetStrategyManagerState(t *testing.T) {
@@ -47,13 +48,15 @@ func test_GetDepositTypeHash(t *testing.T) {
 
 // TODO(post-hermetic): break due to rename from GetDomainTypehash
 func test_GetStrategyDomainTypeHash(t *testing.T) {
-	strategy.GetDomainTypeHash()
+	strategy.DomainTypeHash()
 }
 
-func Test_GetStrategyDomainName(t *testing.T) {
-	strategy.GetDomainName()
+// TODO(post-hermetic): break due to rename from GetDomainName
+func test_GetStrategyDomainName(t *testing.T) {
+	strategy.DomainName()
 }
 
-func Test_GetStrategyDelegationManager(t *testing.T) {
-	strategy.GetDelegationManager()
+// TODO(post-hermetic): break due to rename from GetDelegation
+func test_GetStrategyDelegationManager(t *testing.T) {
+	strategy.DelegationManager()
 }

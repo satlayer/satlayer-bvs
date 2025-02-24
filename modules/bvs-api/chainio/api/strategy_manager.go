@@ -386,9 +386,9 @@ func (r *StrategyManager) GetStakerStrategyList(staker string) (*wasmtypes.Query
 	return r.query(msg)
 }
 
-func (r *StrategyManager) GetOwner() (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyManager) Owner() (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategymanager.QueryMsg{
-		GetOwner: &strategymanager.GetOwner{},
+		Owner: &strategymanager.Owner{},
 	}
 
 	return r.query(msg)
@@ -438,25 +438,25 @@ func (r *StrategyManager) GetDepositTypeHash() (*wasmtypes.QuerySmartContractSta
 	return r.query(msg)
 }
 
-func (r *StrategyManager) GetDomainTypeHash() (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyManager) DomainTypeHash() (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategymanager.QueryMsg{
-		GetDomainTypeHash: &strategymanager.GetDomainTypeHash{},
+		DomainTypeHash: &strategymanager.DomainTypeHash{},
 	}
 
 	return r.query(msg)
 }
 
-func (r *StrategyManager) GetDomainName() (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyManager) DomainName() (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategymanager.QueryMsg{
-		GetDomainName: &strategymanager.GetDomainName{},
+		DomainName: &strategymanager.DomainName{},
 	}
 
 	return r.query(msg)
 }
 
-func (r *StrategyManager) GetDelegationManager() (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyManager) DelegationManager() (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategymanager.QueryMsg{
-		GetDelegationManager: &strategymanager.GetDelegationManager{},
+		DelegationManager: &strategymanager.DelegationManager{},
 	}
 
 	return r.query(msg)

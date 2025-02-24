@@ -1,19 +1,18 @@
 use crate::{
     error::ContractError,
     msg::{
-        ExecuteMsg, InstantiateMsg, OperatorStatusResponse, QueryMsg, SignatureWithSaltAndExpiry,
-    },
-    query::{
-        BvsInfoResponse, DelegationResponse, DigestHashResponse, DomainNameResponse,
-        DomainTypeHashResponse, OwnerResponse, RegistrationTypeHashResponse, SaltResponse,
+        BvsInfoResponse, CalculateDigestHashResponse, DelegationManagerResponse,
+        DomainNameResponse, DomainTypeHashResponse, ExecuteMsg, InstantiateMsg,
+        IsSaltSpentResponse, OperatorBvsRegistrationTypeHashResponse, OperatorStatusResponse,
+        OwnerResponse, QueryMsg, SignatureWithSaltAndExpiry,
     },
     state::{
         BvsInfo, OperatorBvsRegistrationStatus, BVS_INFO, BVS_OPERATOR_STATUS, DELEGATION_MANAGER,
         OPERATOR_SALT_SPENT, OWNER,
     },
     utils::{
-        calculate_digest_hash, recover, sha256, DigestHashParams, DOMAIN_NAME, DOMAIN_TYPEHASH,
-        OPERATOR_BVS_REGISTRATION_TYPEHASH,
+        calculate_digest_hash, recover, sha256, DigestHashParams, DOMAIN_NAME, DOMAIN_TYPE_HASH,
+        OPERATOR_BVS_REGISTRATION_TYPE_HASH,
     },
 };
 use cosmwasm_std::{
@@ -325,7 +324,7 @@ pub fn transfer_ownership(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetOperatorStatus { bvs, operator } => {
+        QueryMsg::OperatorStatus { bvs, operator } => {
             let bvs_addr = Addr::unchecked(bvs);
             let operator_addr = Addr::unchecked(operator);
             to_json_binary(&query_operator_status(deps, bvs_addr, operator_addr)?)
@@ -356,30 +355,14 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let is_spent = query_is_salt_spent(deps, operator_addr, salt)?;
             to_json_binary(&is_spent)
         }
-        QueryMsg::GetDelegationManager {} => {
-            let delegation_manager_addr = query_delegation_manager(deps)?;
-            to_json_binary(&delegation_manager_addr)
+        QueryMsg::DelegationManager {} => to_json_binary(&query_delegation_manager(deps)?),
+        QueryMsg::Owner {} => to_json_binary(&query_owner(deps)?),
+        QueryMsg::OperatorBvsRegistrationTypeHash {} => {
+            to_json_binary(&query_operator_bvs_registration_type_hash(deps)?)
         }
-        QueryMsg::GetOwner {} => {
-            let owner_addr = query_owner(deps)?;
-            to_json_binary(&owner_addr)
-        }
-        QueryMsg::GetOperatorBvsRegistrationTypeHash {} => {
-            let hash_str = query_operator_bvs_registration_typehash(deps)?;
-            to_json_binary(&hash_str)
-        }
-        QueryMsg::GetDomainTypeHash {} => {
-            let hash_str = query_domain_typehash(deps)?;
-            to_json_binary(&hash_str)
-        }
-        QueryMsg::GetDomainName {} => {
-            let name_str = query_domain_name(deps)?;
-            to_json_binary(&name_str)
-        }
-        QueryMsg::GetBvsInfo { bvs_hash } => {
-            let bvs_info = query_bvs_info(deps, bvs_hash)?;
-            to_json_binary(&bvs_info)
-        }
+        QueryMsg::DomainTypeHash {} => to_json_binary(&query_domain_type_hash(deps)?),
+        QueryMsg::DomainName {} => to_json_binary(&query_domain_name(deps)?),
+        QueryMsg::BvsInfo { bvs_hash } => to_json_binary(&query_bvs_info(deps, bvs_hash)?),
     }
 }
 
@@ -398,7 +381,7 @@ fn query_calculate_digest_hash(
     _deps: Deps,
     env: Env,
     params: DigestHashParams,
-) -> StdResult<DigestHashResponse> {
+) -> StdResult<CalculateDigestHashResponse> {
     let digest_hash = calculate_digest_hash(
         env.block.chain_id,
         &params.operator_public_key,
@@ -409,20 +392,20 @@ fn query_calculate_digest_hash(
     );
 
     let digest_hash = Binary::new(digest_hash);
-    Ok(DigestHashResponse { digest_hash })
+    Ok(CalculateDigestHashResponse { digest_hash })
 }
 
-fn query_is_salt_spent(deps: Deps, operator: Addr, salt: String) -> StdResult<SaltResponse> {
+fn query_is_salt_spent(deps: Deps, operator: Addr, salt: String) -> StdResult<IsSaltSpentResponse> {
     let is_salt_spent = OPERATOR_SALT_SPENT
         .may_load(deps.storage, (operator.clone(), salt.clone()))?
         .unwrap_or(false);
 
-    Ok(SaltResponse { is_salt_spent })
+    Ok(IsSaltSpentResponse { is_salt_spent })
 }
 
-fn query_delegation_manager(deps: Deps) -> StdResult<DelegationResponse> {
+fn query_delegation_manager(deps: Deps) -> StdResult<DelegationManagerResponse> {
     let delegation_addr = DELEGATION_MANAGER.load(deps.storage)?;
-    Ok(DelegationResponse { delegation_addr })
+    Ok(DelegationManagerResponse { delegation_addr })
 }
 
 fn query_owner(deps: Deps) -> StdResult<OwnerResponse> {
@@ -430,18 +413,18 @@ fn query_owner(deps: Deps) -> StdResult<OwnerResponse> {
     Ok(OwnerResponse { owner_addr })
 }
 
-fn query_operator_bvs_registration_typehash(
+fn query_operator_bvs_registration_type_hash(
     _deps: Deps,
-) -> StdResult<RegistrationTypeHashResponse> {
+) -> StdResult<OperatorBvsRegistrationTypeHashResponse> {
     let operator_bvs_registration_type_hash =
-        String::from_utf8_lossy(OPERATOR_BVS_REGISTRATION_TYPEHASH).to_string();
-    Ok(RegistrationTypeHashResponse {
+        String::from_utf8_lossy(OPERATOR_BVS_REGISTRATION_TYPE_HASH).to_string();
+    Ok(OperatorBvsRegistrationTypeHashResponse {
         operator_bvs_registration_type_hash,
     })
 }
 
-fn query_domain_typehash(_deps: Deps) -> StdResult<DomainTypeHashResponse> {
-    let domain_type_hash = String::from_utf8_lossy(DOMAIN_TYPEHASH).to_string();
+fn query_domain_type_hash(_deps: Deps) -> StdResult<DomainTypeHashResponse> {
+    let domain_type_hash = String::from_utf8_lossy(DOMAIN_TYPE_HASH).to_string();
     Ok(DomainTypeHashResponse { domain_type_hash })
 }
 
@@ -1022,7 +1005,7 @@ mod tests {
             .unwrap();
         assert!(is_salt_spent);
 
-        let query_msg = QueryMsg::GetOperatorStatus {
+        let query_msg = QueryMsg::OperatorStatus {
             bvs: info.sender.to_string(),
             operator: operator.to_string(),
         };
@@ -1043,7 +1026,7 @@ mod tests {
             generate_osmosis_public_key_from_private_key(private_key_hex);
         println!("Operator Address: {:?}", operator);
 
-        let query_msg = QueryMsg::GetOperatorStatus {
+        let query_msg = QueryMsg::OperatorStatus {
             bvs: info.sender.to_string(),
             operator: operator.to_string(),
         };
@@ -1080,7 +1063,7 @@ mod tests {
             contract_addr: contract_addr.to_string(),
         };
 
-        let response: DigestHashResponse =
+        let response: CalculateDigestHashResponse =
             from_json(query(deps.as_ref(), env.clone(), query_msg).unwrap()).unwrap();
 
         let expected_digest_hash = calculate_digest_hash(
@@ -1172,7 +1155,7 @@ mod tests {
             salt: salt.to_string(),
         };
 
-        let response: SaltResponse =
+        let response: IsSaltSpentResponse =
             from_json(query(deps.as_ref(), env.clone(), query_msg).unwrap()).unwrap();
 
         assert!(response.is_salt_spent);
@@ -1183,10 +1166,10 @@ mod tests {
         let (deps, env, _info, _pauser_info, _unpauser_info, delegation_manager) =
             instantiate_contract();
 
-        let query_msg = QueryMsg::GetDelegationManager {};
+        let query_msg = QueryMsg::DelegationManager {};
         let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
 
-        let response: DelegationResponse = from_json(query_res).unwrap();
+        let response: DelegationManagerResponse = from_json(query_res).unwrap();
 
         assert_eq!(
             response.delegation_addr,
@@ -1199,7 +1182,7 @@ mod tests {
         let (deps, env, info, _pauser_info, _unpauser_info, _delegation_manager) =
             instantiate_contract();
 
-        let query_msg = QueryMsg::GetOwner {};
+        let query_msg = QueryMsg::Owner {};
         let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
 
         let response: OwnerResponse = from_json(query_res).unwrap();
@@ -1208,30 +1191,30 @@ mod tests {
     }
 
     #[test]
-    fn test_query_operator_bvs_registration_typehash() {
+    fn test_query_operator_bvs_registration_type_hash() {
         let (deps, env, _info, _pauser_info, _unpauser_info, _delegation_manager) =
             instantiate_contract();
 
-        let query_msg = QueryMsg::GetOperatorBvsRegistrationTypeHash {};
+        let query_msg = QueryMsg::OperatorBvsRegistrationTypeHash {};
         let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
 
-        let response: RegistrationTypeHashResponse = from_json(query_res).unwrap();
+        let response: OperatorBvsRegistrationTypeHashResponse = from_json(query_res).unwrap();
 
-        let expected_str = String::from_utf8_lossy(OPERATOR_BVS_REGISTRATION_TYPEHASH).to_string();
+        let expected_str = String::from_utf8_lossy(OPERATOR_BVS_REGISTRATION_TYPE_HASH).to_string();
 
         assert_eq!(response.operator_bvs_registration_type_hash, expected_str);
     }
     #[test]
-    fn test_query_domain_typehash() {
+    fn test_query_domain_type_hash() {
         let (deps, env, _info, _pauser_info, _unpauser_info, _delegation_manager) =
             instantiate_contract();
 
-        let query_msg = QueryMsg::GetDomainTypeHash {};
+        let query_msg = QueryMsg::DomainTypeHash {};
         let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
 
         let response: DomainTypeHashResponse = from_json(query_res).unwrap();
 
-        let expected_str = String::from_utf8_lossy(DOMAIN_TYPEHASH).to_string();
+        let expected_str = String::from_utf8_lossy(DOMAIN_TYPE_HASH).to_string();
 
         assert_eq!(response.domain_type_hash, expected_str);
     }
@@ -1241,7 +1224,7 @@ mod tests {
         let deps = mock_dependencies();
         let env = mock_env();
 
-        let query_msg = QueryMsg::GetDomainName {};
+        let query_msg = QueryMsg::DomainName {};
         let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
 
         let response: DomainNameResponse = from_json(query_res).unwrap();
@@ -1374,7 +1357,7 @@ mod tests {
 
         let bvs_hash = hex::encode(hash_result);
 
-        let query_msg = QueryMsg::GetBvsInfo {
+        let query_msg = QueryMsg::BvsInfo {
             bvs_hash: bvs_hash.clone(),
         };
         let query_response = query(deps.as_ref(), env.clone(), query_msg).unwrap();

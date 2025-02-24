@@ -206,7 +206,7 @@ func (r *Directory) SetDelegationManager(ctx context.Context, delegationManager 
 
 func (r *Directory) QueryOperator(bvs, operator string) (*directory.OperatorStatusResponse, error) {
 	result := new(directory.OperatorStatusResponse)
-	queryMsg := directory.QueryMsg{GetOperatorStatus: &directory.GetOperatorStatus{
+	queryMsg := directory.QueryMsg{OperatorStatus: &directory.OperatorStatus{
 		Operator: operator,
 		Bvs:      bvs,
 	}}
@@ -225,8 +225,8 @@ func (r *Directory) QueryOperator(bvs, operator string) (*directory.OperatorStat
 	return result, nil
 }
 
-func (r *Directory) CalculateDigestHash(operatorPublicKey cryptotypes.PubKey, bvs, salt string, expiry int64) (*directory.DigestHashResponse, error) {
-	result := new(directory.DigestHashResponse)
+func (r *Directory) CalculateDigestHash(operatorPublicKey cryptotypes.PubKey, bvs, salt string, expiry int64) (*directory.CalculateDigestHashResponse, error) {
+	result := new(directory.CalculateDigestHashResponse)
 	queryMsg := &directory.QueryMsg{CalculateDigestHash: &directory.CalculateDigestHash{
 		OperatorPublicKey: base64.StdEncoding.EncodeToString(operatorPublicKey.Bytes()),
 		Bvs:               bvs,
@@ -249,8 +249,8 @@ func (r *Directory) CalculateDigestHash(operatorPublicKey cryptotypes.PubKey, bv
 	return result, nil
 }
 
-func (r *Directory) IsSaltSpent(operator, salt string) (*directory.SaltResponse, error) {
-	result := new(directory.SaltResponse)
+func (r *Directory) IsSaltSpent(operator, salt string) (*directory.IsSaltSpentResponse, error) {
+	result := new(directory.IsSaltSpentResponse)
 	queryMsg := directory.QueryMsg{IsSaltSpent: &directory.IsSaltSpent{
 		Operator: operator,
 		Salt:     salt,
@@ -270,10 +270,10 @@ func (r *Directory) IsSaltSpent(operator, salt string) (*directory.SaltResponse,
 	return result, nil
 }
 
-func (r *Directory) GetDelegationManager() (*directory.DelegationResponse, error) {
-	result := new(directory.DelegationResponse)
+func (r *Directory) DelegationManager() (*directory.DelegationManagerResponse, error) {
+	result := new(directory.DelegationManagerResponse)
 	queryMsg := directory.QueryMsg{
-		GetDelegationManager: &directory.GetDelegationManager{},
+		DelegationManager: &directory.DelegationManager{},
 	}
 	queryMsgBytes, err := json.Marshal(queryMsg)
 	if err != nil {
@@ -290,10 +290,10 @@ func (r *Directory) GetDelegationManager() (*directory.DelegationResponse, error
 	return result, nil
 }
 
-func (r *Directory) GetOwner() (*directory.OwnerResponse, error) {
+func (r *Directory) Owner() (*directory.OwnerResponse, error) {
 	result := new(directory.OwnerResponse)
 	queryMsg := directory.QueryMsg{
-		GetOwner: &directory.GetOwner{},
+		Owner: &directory.Owner{},
 	}
 	queryMsgBytes, err := json.Marshal(queryMsg)
 	if err != nil {
@@ -310,10 +310,10 @@ func (r *Directory) GetOwner() (*directory.OwnerResponse, error) {
 	return result, nil
 }
 
-func (r *Directory) GetOperatorBvsRegistrationTypeHash() (*directory.RegistrationTypeHashResponse, error) {
-	result := new(directory.RegistrationTypeHashResponse)
+func (r *Directory) OperatorBvsRegistrationTypeHash() (*directory.OperatorBvsRegistrationTypeHashResponse, error) {
+	result := new(directory.OperatorBvsRegistrationTypeHashResponse)
 	queryMsg := directory.QueryMsg{
-		GetOperatorBvsRegistrationTypeHash: &directory.GetOperatorBvsRegistrationTypeHash{},
+		OperatorBvsRegistrationTypeHash: &directory.OperatorBvsRegistrationTypeHash{},
 	}
 	queryMsgBytes, err := json.Marshal(queryMsg)
 	if err != nil {
@@ -330,10 +330,10 @@ func (r *Directory) GetOperatorBvsRegistrationTypeHash() (*directory.Registratio
 	return result, nil
 }
 
-func (r *Directory) GetDomainTypeHash() (*directory.DomainTypeHashResponse, error) {
+func (r *Directory) DomainTypeHash() (*directory.DomainTypeHashResponse, error) {
 	result := new(directory.DomainTypeHashResponse)
 	queryMsg := directory.QueryMsg{
-		GetDomainTypeHash: &directory.GetDomainTypeHash{},
+		DomainTypeHash: &directory.DomainTypeHash{},
 	}
 	queryMsgBytes, err := json.Marshal(queryMsg)
 	if err != nil {
@@ -350,10 +350,10 @@ func (r *Directory) GetDomainTypeHash() (*directory.DomainTypeHashResponse, erro
 	return result, nil
 }
 
-func (r *Directory) GetDomainName() (*directory.DomainNameResponse, error) {
+func (r *Directory) DomainName() (*directory.DomainNameResponse, error) {
 	result := new(directory.DomainNameResponse)
 	queryMsg := directory.QueryMsg{
-		GetDomainName: &directory.GetDomainName{},
+		DomainName: &directory.DomainName{},
 	}
 	queryMsgBytes, err := json.Marshal(queryMsg)
 	if err != nil {
@@ -370,9 +370,9 @@ func (r *Directory) GetDomainName() (*directory.DomainNameResponse, error) {
 	return result, nil
 }
 
-func (r *Directory) GetBvsInfo(bvsHash string) (*directory.BvsInfoResponse, error) {
+func (r *Directory) BvsInfo(bvsHash string) (*directory.BvsInfoResponse, error) {
 	result := new(directory.BvsInfoResponse)
-	queryMsg := directory.QueryMsg{GetBvsInfo: &directory.GetBvsInfo{BvsHash: bvsHash}}
+	queryMsg := directory.QueryMsg{BvsInfo: &directory.BvsInfo{BvsHash: bvsHash}}
 	queryMsgBytes, err := json.Marshal(queryMsg)
 	if err != nil {
 		return nil, err

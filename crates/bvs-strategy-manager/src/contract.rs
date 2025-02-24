@@ -596,7 +596,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
             to_json_binary(&query_staker_strategy_list(deps, staker_addr)?)
         }
-        QueryMsg::GetOwner {} => to_json_binary(&query_owner(deps)?),
+        QueryMsg::Owner {} => to_json_binary(&query_owner(deps)?),
         QueryMsg::IsStrategyWhitelisted { strategy } => {
             let strategy_addr = deps.api.addr_validate(&strategy)?;
 
@@ -611,9 +611,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&query_strategy_manager_state(deps)?)
         }
         QueryMsg::GetDepositTypeHash {} => to_json_binary(&query_deposit_type_hash()?),
-        QueryMsg::GetDomainTypeHash {} => to_json_binary(&query_domain_type_hash()?),
-        QueryMsg::GetDomainName {} => to_json_binary(&query_domain_name()?),
-        QueryMsg::GetDelegationManager {} => to_json_binary(&query_delegation_manager(deps)?),
+        QueryMsg::DomainTypeHash {} => to_json_binary(&query_domain_type_hash()?),
+        QueryMsg::DomainName {} => to_json_binary(&query_domain_name()?),
+        QueryMsg::DelegationManager {} => to_json_binary(&query_delegation_manager(deps)?),
     }
 }
 
@@ -2495,7 +2495,7 @@ mod tests {
             _unpauser_info,
         ) = instantiate_contract();
 
-        let query_msg = QueryMsg::GetOwner {};
+        let query_msg = QueryMsg::Owner {};
         let bin = query(deps.as_ref(), env, query_msg).unwrap();
         let owner_response: OwnerResponse = from_json(bin).unwrap();
 
@@ -2566,17 +2566,17 @@ mod tests {
     }
 
     #[test]
-    fn test_get_deposit_typehash() {
-        let typehash = query_deposit_type_hash().unwrap();
+    fn test_get_deposit_type_hash() {
+        let type_hash = query_deposit_type_hash().unwrap();
         let expected_str = String::from_utf8_lossy(DEPOSIT_TYPEHASH).to_string();
-        assert_eq!(typehash.deposit_type_hash, expected_str);
+        assert_eq!(type_hash.deposit_type_hash, expected_str);
     }
 
     #[test]
-    fn test_get_domain_typehash() {
-        let typehash = query_domain_type_hash().unwrap();
+    fn test_get_domain_type_hash() {
+        let type_hash = query_domain_type_hash().unwrap();
         let expected_str = String::from_utf8_lossy(DOMAIN_TYPEHASH).to_string();
-        assert_eq!(typehash.domain_type_hash, expected_str);
+        assert_eq!(type_hash.domain_type_hash, expected_str);
     }
 
     #[test]
@@ -2635,7 +2635,7 @@ mod tests {
             _unpauser_info,
         ) = instantiate_contract();
 
-        let query_msg = QueryMsg::GetDelegationManager {};
+        let query_msg = QueryMsg::DelegationManager {};
         let bin = query(deps.as_ref(), env, query_msg).unwrap();
         let delegation_manager: DelegationManagerResponse = from_json(bin).unwrap();
 

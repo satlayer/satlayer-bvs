@@ -123,12 +123,12 @@ fn register_bvs() {
 //     let response = mock_env1.app.execute(owner.clone(), msg.into()).unwrap();
 //     println!("response: {:?}", response);
 
-//     let res: bvs_directory::query::DelegationResponse = mock_env1
+//     let res: bvs_directory::query::DelegationManagerResponse = mock_env1
 //         .app
 //         .wrap()
 //         .query_wasm_smart(
 //             mock_env1.bvs_directory.contract_addr.clone(),
-//             &bvs_directory::msg::QueryMsg::GetDelegationManager {},
+//             &bvs_directory::msg::QueryMsg::DelegationManager {},
 //         )
 //         .unwrap();
 

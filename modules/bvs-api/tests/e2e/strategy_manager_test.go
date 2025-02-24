@@ -317,10 +317,10 @@ func (suite *strategyManagerTestSuite) test_QueryStrategyManager() {
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("GetStakerStrategyList resp:%+v", resp)
 
-	resp, err = strategyManager.GetOwner()
-	assert.NoError(t, err, "GetOwner")
+	resp, err = strategyManager.Owner()
+	assert.NoError(t, err, "Owner")
 	assert.NotNil(t, resp, "response nil")
-	t.Logf("GetOwner resp:%+v", resp)
+	t.Logf("Owner resp:%+v", resp)
 
 	resp, err = strategyManager.IsStrategyWhitelisted(strategyAddr)
 	assert.NoError(t, err, "IsStrategyWhitelisted")
@@ -364,20 +364,20 @@ func (suite *strategyManagerTestSuite) test_QueryStrategyManager() {
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("GetDepositTypeHash resp:%+v", resp)
 
-	resp, err = strategyManager.GetDomainTypeHash()
+	resp, err = strategyManager.DomainTypeHash()
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, resp, "response nil")
-	t.Logf("GetDomainTypeHash resp:%+v", resp)
+	t.Logf("DomainTypeHash resp:%+v", resp)
 
-	resp, err = strategyManager.GetDomainName()
+	resp, err = strategyManager.DomainName()
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, resp, "response nil")
-	t.Logf("GetDomainName resp:%+v", resp)
+	t.Logf("DomainName resp:%+v", resp)
 
-	resp, err = strategyManager.GetDelegationManager()
+	resp, err = strategyManager.DelegationManager()
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, resp, "response nil")
-	t.Logf("GetDelegationManager resp:%+v", resp)
+	t.Logf("DelegationManager resp:%+v", resp)
 }
 
 func TestStrategyManagerTestSuite(t *testing.T) {
