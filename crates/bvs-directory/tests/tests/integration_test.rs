@@ -20,9 +20,6 @@ fn register_bvs() {
         .deploy_bvs_directory(&bvs_directory::msg::InstantiateMsg {
             initial_owner: owner.clone().to_string(),
             delegation_manager: delegation_manager.into_string(),
-            pauser: owner.clone().to_string(),
-            unpauser: owner.clone().to_string(),
-            initial_paused_status: 0,
             registry_addr: registry_addr.to_string(),
         })
         .build();
@@ -59,9 +56,6 @@ fn register_bvs_but_paused() {
     let delegation_manager = app.api().addr_make("delegation_manager");
     let bvs_contract = app.api().addr_make("bvs_contract").to_string();
 
-    let hash_result = bvs_directory::utils::sha256(bvs_contract.clone().as_bytes());
-    let bvs_hash = hex::encode(hash_result);
-
     let code_id = app.store_code(bvs_registry::testing::contract());
     let registry_owner = app.api().addr_make("owner").to_string();
     let (registry_addr, _) = bvs_registry::testing::instantiate(
@@ -78,9 +72,6 @@ fn register_bvs_but_paused() {
         .deploy_bvs_directory(&bvs_directory::msg::InstantiateMsg {
             initial_owner: owner.clone().to_string(),
             delegation_manager: delegation_manager.into_string(),
-            pauser: owner.clone().to_string(),
-            unpauser: owner.clone().to_string(),
-            initial_paused_status: 0,
             registry_addr: registry_addr.to_string(),
         })
         .build();

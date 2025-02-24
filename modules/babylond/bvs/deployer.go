@@ -112,11 +112,8 @@ func (d *Deployer) DeployDirectory(
 	delegationManager string,
 ) *Contract[directory.InstantiateMsg] {
 	initMsg := directory.InstantiateMsg{
-		InitialPausedStatus: 0,
-		InitialOwner:        d.GenerateAddress("directory:initial_owner").String(),
-		Pauser:              d.GenerateAddress("directory:pauser").String(),
-		Unpauser:            d.GenerateAddress("directory:unpauser").String(),
-		DelegationManager:   delegationManager,
+		InitialOwner:      d.GenerateAddress("directory:initial_owner").String(),
+		DelegationManager: delegationManager,
 	}
 
 	return deployCrate(d, "bvs-directory", initMsg, "BVS Directory")

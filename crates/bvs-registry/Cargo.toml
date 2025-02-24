@@ -26,3 +26,6 @@ serde = { workspace = true }
 schemars = { workspace = true }
 strum = { version = "0.27", features = ["derive"], optional = true }
 cw-multi-test = { workspace = true, optional = true }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true}

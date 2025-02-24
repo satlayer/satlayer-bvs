@@ -7,9 +7,6 @@ use cosmwasm_std::{Addr, Binary};
 pub struct InstantiateMsg {
     pub initial_owner: String,
     pub delegation_manager: String,
-    pub pauser: String,
-    pub unpauser: String,
-    pub initial_paused_status: u8,
     pub registry_addr: String,
 }
 
@@ -40,14 +37,6 @@ pub enum ExecuteMsg {
     },
     TransferOwnership {
         new_owner: String,
-    },
-    Pause {},
-    Unpause {},
-    SetPauser {
-        new_pauser: String,
-    },
-    SetUnpauser {
-        new_unpauser: String,
     },
 }
 
