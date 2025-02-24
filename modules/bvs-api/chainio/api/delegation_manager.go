@@ -114,7 +114,12 @@ func (r *DelegationManager) UpdateOperatorMetadataURI(ctx context.Context, metad
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *DelegationManager) DelegateTo(ctx context.Context, operator, approver, approverKeyName string, approverPublicKey cryptotypes.PubKey) (*coretypes.ResultTx, error) {
+func (r *DelegationManager) DelegateTo(
+	ctx context.Context,
+	operator, approver, approverKeyName string,
+	approverPublicKey cryptotypes.PubKey,
+	expiry int64,
+) (*coretypes.ResultTx, error) {
 	stakerAccount, err := r.io.GetCurrentAccount()
 	if err != nil {
 		return nil, err
@@ -126,11 +131,6 @@ func (r *DelegationManager) DelegateTo(ctx context.Context, operator, approver, 
 		},
 	}}
 	if approver != zeroValueAddr && approverKeyName != "" && approverPublicKey != nil {
-		nodeStatus, err := r.io.QueryNodeStatus(context.Background())
-		if err != nil {
-			return nil, err
-		}
-		expiry := nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000
 		randomStr, err := utils.GenerateRandomString(16)
 		if err != nil {
 			return nil, err
@@ -176,16 +176,12 @@ func (r *DelegationManager) DelegateToBySignature(
 	ctx context.Context,
 	operator, staker, stakerKeyName, approver, approverKeyName string,
 	stakerPublicKey, approverPublicKey cryptotypes.PubKey,
+	expiry int64,
 ) (*coretypes.ResultTx, error) {
-	nodeStatus, err := r.io.QueryNodeStatus(context.Background())
-	if err != nil {
-		return nil, err
-	}
 	stakerNonceResp, err := r.GetStakerNonce(staker)
 	if err != nil {
 		return nil, err
 	}
-	expiry := nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000
 	digestHashParams := delegationmanager.QueryStakerDigestHashParams{
 		Staker:          staker,
 		StakerNonce:     stakerNonceResp.Nonce,

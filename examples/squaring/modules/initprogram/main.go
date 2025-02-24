@@ -195,15 +195,21 @@ func registerStakers(approverAddress string) {
 			panic(err)
 		}
 
+		nodeStatus, err := chainIO.QueryNodeStatus(context.Background())
+		if err != nil {
+			panic(err)
+		}
+		expiry := nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000
+
 		pubKey := oClient.GetCurrentAccountPubKey()
 		address := sdktypes.AccAddress(pubKey.Address()).String()
-
 		txResp, err := delegation.DelegateTo(
 			context.Background(),
 			address,
 			approverAddress,
 			core.C.Account.ApproverKeyName,
 			pubKey,
+			expiry,
 		)
 		if err != nil {
 			fmt.Println("Err: ", err)

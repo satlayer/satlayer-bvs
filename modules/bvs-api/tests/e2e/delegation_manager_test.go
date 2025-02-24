@@ -164,12 +164,17 @@ func (suite *delegationTestSuite) Test_DelegateToAndUnDelegate() {
 	approverAccount, err := chainIO.QueryAccount("bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv")
 	assert.NoError(t, err, "get account")
 
+	nodeStatus, err := chainIO.QueryNodeStatus(context.Background())
+	assert.NoError(t, err, "query node status")
+	expiry := nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000
+
 	txResp, err := delegation.DelegateTo(
 		context.Background(),
 		"bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
 		approverAccount.GetAddress().String(),
 		"aggregator",
 		approverAccount.GetPubKey(),
+		expiry,
 	)
 	assert.NoError(t, err, "delegate to")
 	t.Logf("txResp: %v", txResp)
@@ -181,6 +186,7 @@ func (suite *delegationTestSuite) Test_DelegateToAndUnDelegate() {
 		approverAccount.GetAddress().String(),
 		"aggregator",
 		approverAccount.GetPubKey(),
+		expiry,
 	)
 	assert.Error(t, err, "delegate to no error")
 	t.Logf("txResp: %v", txResp)
@@ -204,6 +210,10 @@ func (suite *delegationTestSuite) Test_DelegateToBySignatureAndUnDelegate() {
 	approverAccountPubKey := GetPubKeyFromKeychainByAddress(chainIO, "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv")
 	assert.NoError(t, err, "get account")
 
+	nodeStatus, err := chainIO.QueryNodeStatus(context.Background())
+	assert.NoError(t, err, "query node status")
+	expiry := nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000
+
 	txResp, err := delegation.DelegateToBySignature(
 		context.Background(),
 		"bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
@@ -213,6 +223,7 @@ func (suite *delegationTestSuite) Test_DelegateToBySignatureAndUnDelegate() {
 		"aggregator",
 		stakerAccountPubKey,
 		approverAccountPubKey,
+		expiry,
 	)
 	assert.NoError(t, err, "delegate to by signature")
 	t.Logf("txResp: %v", txResp)

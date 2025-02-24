@@ -79,6 +79,14 @@ func DelegateTo(stakerKeyName, operatorAddress, approverKeyName string) {
 		approverAddress = sdk.AccAddress(approverPubKey.Address()).String()
 	}
 	newChainIO, err := s.ChainIO.SetupKeyring(stakerKeyName, conf.C.Account.KeyringBackend)
+	if err != nil {
+		panic(err)
+	}
+	nodeStatus, err := newChainIO.QueryNodeStatus(context.Background())
+	if err != nil {
+		panic(err)
+	}
+	expiry := nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000
 	delegation := api.NewDelegationManager(newChainIO, conf.C.Contract.Delegation).WithGasLimit(400000)
 	txResp, err := delegation.DelegateTo(
 		ctx,
@@ -86,6 +94,7 @@ func DelegateTo(stakerKeyName, operatorAddress, approverKeyName string) {
 		approverAddress,
 		approverKeyName,
 		approverPubKey,
+		expiry,
 	)
 	if err != nil {
 		panic(err)
@@ -121,6 +130,12 @@ func DelegateBySignature(stakerKeyName, operatorAddress, approverKeyName string)
 	if err != nil {
 		panic(err)
 	}
+	nodeStatus, err := newChainIO.QueryNodeStatus(context.Background())
+	if err != nil {
+		panic(err)
+	}
+	expiry := nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000
+
 	stakerPubKey := newChainIO.GetCurrentAccountPubKey()
 	stakerAddress := sdk.AccAddress(stakerPubKey.Address()).String()
 	delegation := api.NewDelegationManager(newChainIO, conf.C.Contract.Delegation).WithGasLimit(400000)
@@ -133,6 +148,7 @@ func DelegateBySignature(stakerKeyName, operatorAddress, approverKeyName string)
 		approverKeyName,
 		stakerPubKey,
 		approverPubKey,
+		expiry,
 	)
 	if err != nil {
 		panic(err)
