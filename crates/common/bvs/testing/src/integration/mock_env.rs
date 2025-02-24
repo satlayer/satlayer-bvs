@@ -185,24 +185,4 @@ impl MockEnvBuilder {
             .unwrap();
         self
     }
-
-    pub fn deploy_bvs_driver(mut self) -> Self {
-        let code_id = self.app.store_code(mock_bvs_driver());
-
-        self.bvs_driver = self
-            .app
-            .instantiate_contract(
-                code_id,
-                self.owner.clone(),
-                &bvs_driver::msg::InstantiateMsg {
-                    initial_owner: self.owner.clone().into_string(),
-                    bvs_directory: self.bvs_directory.clone().into_string(),
-                },
-                &[],
-                "bvs_driver",
-                self.admin.clone(),
-            )
-            .unwrap();
-        self
-    }
 }
