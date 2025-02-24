@@ -610,8 +610,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetStrategyManagerState {} => {
             to_json_binary(&query_strategy_manager_state(deps)?)
         }
-        QueryMsg::GetDepositTypeHash {} => to_json_binary(&query_deposit_typehash()?),
-        QueryMsg::GetDomainTypeHash {} => to_json_binary(&query_domain_typehash()?),
+        QueryMsg::GetDepositTypeHash {} => to_json_binary(&query_deposit_type_hash()?),
+        QueryMsg::GetDomainTypeHash {} => to_json_binary(&query_domain_type_hash()?),
         QueryMsg::GetDomainName {} => to_json_binary(&query_domain_name()?),
         QueryMsg::GetDelegationManager {} => to_json_binary(&query_delegation_manager(deps)?),
     }
@@ -703,12 +703,12 @@ fn query_strategy_manager_state(deps: Deps) -> StdResult<StrategyManagerStateRes
     Ok(StrategyManagerStateResponse { state })
 }
 
-fn query_deposit_typehash() -> StdResult<DepositTypeHashResponse> {
+fn query_deposit_type_hash() -> StdResult<DepositTypeHashResponse> {
     let deposit_type_hash = String::from_utf8_lossy(DEPOSIT_TYPEHASH).to_string();
     Ok(DepositTypeHashResponse { deposit_type_hash })
 }
 
-fn query_domain_typehash() -> StdResult<DomainTypeHashResponse> {
+fn query_domain_type_hash() -> StdResult<DomainTypeHashResponse> {
     let domain_type_hash = String::from_utf8_lossy(DOMAIN_TYPEHASH).to_string();
     Ok(DomainTypeHashResponse { domain_type_hash })
 }
@@ -2567,14 +2567,14 @@ mod tests {
 
     #[test]
     fn test_get_deposit_typehash() {
-        let typehash = query_deposit_typehash().unwrap();
+        let typehash = query_deposit_type_hash().unwrap();
         let expected_str = String::from_utf8_lossy(DEPOSIT_TYPEHASH).to_string();
         assert_eq!(typehash.deposit_type_hash, expected_str);
     }
 
     #[test]
     fn test_get_domain_typehash() {
-        let typehash = query_domain_typehash().unwrap();
+        let typehash = query_domain_type_hash().unwrap();
         let expected_str = String::from_utf8_lossy(DOMAIN_TYPEHASH).to_string();
         assert_eq!(typehash.domain_type_hash, expected_str);
     }
