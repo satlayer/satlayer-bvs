@@ -287,7 +287,7 @@ func (suite *strategyManagerTestSuite) test_QueryStrategyManager() {
 	strategyManager := api.NewStrategyManager(chainIO)
 	strategyManager.BindClient(managerAddr)
 
-	resp, err := strategyManager.GetDeposits(stakerAddr, strategyAddr)
+	resp, err := strategyManager.GetDeposits(stakerAddr)
 	assert.NoError(t, err, "GetDeposits")
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("GetDeposits resp:%+v", resp)
