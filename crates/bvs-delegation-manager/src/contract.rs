@@ -1,7 +1,7 @@
 use crate::{
     error::ContractError,
     msg::{
-        ExecuteMsg, InstantiateMsg, OperatorDetails, QueryMsg, QueuedWithdrawalParams,
+        ExecuteMsg, InstantiateMsg, MigrateMsg, OperatorDetails, QueryMsg, QueuedWithdrawalParams,
         SignatureWithExpiry,
     },
     query::{
@@ -1614,6 +1614,13 @@ fn remove_shares_and_queue_withdrawal(
     );
 
     Ok(response)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    Ok(Response::new().add_attribute("method", "migrate"))
 }
 
 #[cfg(test)]

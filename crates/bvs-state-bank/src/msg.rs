@@ -22,3 +22,6 @@ pub enum QueryMsg {
     #[returns(ValueResponse)]
     Get { key: String },
 }
+
+#[cw_serde]
+pub struct MigrateMsg {}

@@ -1,6 +1,6 @@
 use crate::{
     error::ContractError,
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{
         CalculateDigestHashResponse, DelegationManagerResponse, DepositTypeHashResponse,
         DepositsResponse, DomainNameResponse, DomainTypeHashResponse, NonceResponse, OwnerResponse,
@@ -1040,6 +1040,13 @@ pub fn staker_strategy_list_length(deps: Deps, staker: Addr) -> StdResult<Uint12
         .may_load(deps.storage, &staker)?
         .unwrap_or_else(Vec::new);
     Ok(Uint128::new(strategies.len() as u128))
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    Ok(Response::new().add_attribute("method", "migrate"))
 }
 
 #[cfg(test)]

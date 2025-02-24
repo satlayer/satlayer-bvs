@@ -1,6 +1,6 @@
 use crate::{
     error::ContractError,
-    msg::{DistributionRoot, ExecuteMsg, InstantiateMsg, QueryMsg},
+    msg::{DistributionRoot, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{
         CalculateDomainSeparatorResponse, CalculateEarnerLeafHashResponse,
         CalculateTokenLeafHashResponse, CheckClaimResponse,
@@ -1142,6 +1142,13 @@ fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdR
         })?,
     }))?;
     Ok(res.balance)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    Ok(Response::new().add_attribute("method", "migrate"))
 }
 
 #[cfg(test)]

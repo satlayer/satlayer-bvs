@@ -85,3 +85,6 @@ pub enum QueryMsg {
         validators_public_keys: Vec<String>,
     },
 }
+
+#[cw_serde]
+pub struct MigrateMsg {}

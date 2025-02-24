@@ -87,3 +87,6 @@ pub enum QueryMsg {
     #[returns(TvlLimitsResponse)]
     GetTvlLimits {},
 }
+
+#[cw_serde]
+pub struct MigrateMsg {}

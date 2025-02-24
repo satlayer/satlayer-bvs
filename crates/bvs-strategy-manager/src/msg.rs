@@ -142,3 +142,6 @@ pub enum QueryMsg {
     #[returns(DelegationManagerResponse)]
     GetDelegationManager {},
 }
+
+#[cw_serde]
+pub struct MigrateMsg {}

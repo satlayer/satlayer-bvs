@@ -1,6 +1,6 @@
 use crate::{
     error::ContractError,
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{
         CalculateSlashHashResponse, MinimalSlashSignatureResponse, SlashDetailsResponse,
         ValidatorResponse,
@@ -802,6 +802,13 @@ fn only_slasher(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
         return Err(ContractError::Unauthorized {});
     }
     Ok(())
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    Ok(Response::new().add_attribute("method", "migrate"))
 }
 
 #[cfg(test)]

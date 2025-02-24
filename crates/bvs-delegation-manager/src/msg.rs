@@ -161,6 +161,9 @@ pub enum QueryMsg {
 }
 
 #[cw_serde]
+pub struct MigrateMsg {}
+
+#[cw_serde]
 pub struct OperatorDetails {
     pub deprecated_earnings_receiver: Addr,
     pub delegation_approver: Addr,

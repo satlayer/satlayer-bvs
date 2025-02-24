@@ -78,3 +78,6 @@ pub enum QueryMsg {
     #[returns(StrategyState)]
     GetStrategyState {},
 }
+
+#[cw_serde]
+pub struct MigrateMsg {}

@@ -1,8 +1,6 @@
 use crate::{
     error::ContractError,
-    msg::ExecuteMsg,
-    msg::InstantiateMsg,
-    msg::QueryMsg,
+    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     state::{BVS_DIRECTORY, IS_BVS_CONTRACT_REGISTERED, OWNER, PENDING_OWNER},
 };
 
@@ -182,6 +180,13 @@ pub fn only_directory(deps: Deps, info: &MessageInfo) -> Result<(), ContractErro
         return Err(ContractError::NotBVSDirectory {});
     }
     Ok(())
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    Ok(Response::new().add_attribute("method", "migrate"))
 }
 
 #[cfg(test)]

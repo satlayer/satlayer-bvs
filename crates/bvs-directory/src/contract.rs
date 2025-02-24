@@ -1,7 +1,8 @@
 use crate::{
     error::ContractError,
     msg::{
-        ExecuteMsg, InstantiateMsg, OperatorStatusResponse, QueryMsg, SignatureWithSaltAndExpiry,
+        ExecuteMsg, InstantiateMsg, MigrateMsg, OperatorStatusResponse, QueryMsg,
+        SignatureWithSaltAndExpiry,
     },
     query::{
         BvsInfoResponse, DelegationResponse, DigestHashResponse, DomainNameResponse,
@@ -505,6 +506,13 @@ fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
         return Err(ContractError::Unauthorized {});
     }
     Ok(())
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    Ok(Response::new().add_attribute("method", "migrate"))
 }
 
 #[cfg(test)]
