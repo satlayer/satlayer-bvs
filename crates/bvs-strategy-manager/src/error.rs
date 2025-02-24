@@ -61,7 +61,7 @@ pub enum ContractError {
     StrategyAlreadyExists {},
 
     #[error(
-        "StrategyFactory.add_new_strategy: strategy does not have this manager as its manager"
+        "StrategyManager.add_new_strategy: strategy does not have this manager as its manager"
     )]
     StrategyNotCompitable {},
 }
