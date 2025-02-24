@@ -17,7 +17,7 @@ mod tests {
     use super::*;
     use bvs_registry::msg::{ExecuteMsg, InstantiateMsg, IsPausedResponse, QueryMsg};
     use cosmwasm_std::{Empty, Event};
-    use cw_multi_test::{App, BasicApp, Contract, ContractWrapper, Executor};
+    use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 
     pub fn contract() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(
@@ -29,7 +29,7 @@ mod tests {
     }
 
     fn instantiate(msg: Option<InstantiateMsg>) -> (App, BvsRegistryContract) {
-        let mut app = BasicApp::default();
+        let mut app = App::default();
         let code_id = app.store_code(contract());
 
         let sender = app.api().addr_make("sender");
@@ -76,6 +76,7 @@ mod tests {
         {
             let query_msg = QueryMsg::IsPaused {
                 sender: app.api().addr_make("caller").to_string(),
+                method: "any".to_string(),
             };
             let res: IsPausedResponse = app
                 .wrap()
@@ -110,6 +111,7 @@ mod tests {
         {
             let query_msg = QueryMsg::IsPaused {
                 sender: app.api().addr_make("caller").to_string(),
+                method: "any".to_string(),
             };
             let res: IsPausedResponse = app
                 .wrap()
@@ -123,7 +125,7 @@ mod tests {
     #[test]
     fn unauthorized_pause() {
         let (mut app, contract) = instantiate(Some(InstantiateMsg {
-            owner: BasicApp::default().api().addr_make("owner").to_string(),
+            owner: App::default().api().addr_make("owner").to_string(),
             initial_paused: false,
         }));
 
@@ -146,6 +148,7 @@ mod tests {
 
         let query_msg = QueryMsg::IsPaused {
             sender: app.api().addr_make("caller").to_string(),
+            method: "any".to_string(),
         };
         let res: IsPausedResponse = app
             .wrap()
@@ -158,7 +161,7 @@ mod tests {
     #[test]
     fn unauthorized_unpause() {
         let (mut app, contract) = instantiate(Some(InstantiateMsg {
-            owner: BasicApp::default().api().addr_make("owner").to_string(),
+            owner: App::default().api().addr_make("owner").to_string(),
             initial_paused: true,
         }));
 
@@ -181,6 +184,7 @@ mod tests {
 
         let query_msg = QueryMsg::IsPaused {
             sender: app.api().addr_make("caller").to_string(),
+            method: "any".to_string(),
         };
         let res: IsPausedResponse = app
             .wrap()

@@ -1,10 +1,10 @@
-use super::helpers::mock_app;
 use bvs_testing::integration::*;
-use cosmwasm_std::{Addr, Event};
+use cosmwasm_std::{Addr, Event, StdError};
+use cw_multi_test::{App, Executor};
 
 #[test]
 fn register_bvs() {
-    let app = mock_app();
+    let mut app = App::default();
 
     let owner = app.api().addr_make("owner");
     let delegation_manager = app.api().addr_make("delegation_manager");
@@ -13,6 +13,9 @@ fn register_bvs() {
     let hash_result = bvs_directory::utils::sha256(bvs_contract.clone().as_bytes());
     let bvs_hash = hex::encode(hash_result);
 
+    let code_id = app.store_code(bvs_registry::testing::contract());
+    let (registry_addr, _) = bvs_registry::testing::instantiate(&mut app, code_id, None);
+
     let mut mock_env1 = mock_env::MockEnvBuilder::new(app, None, owner.clone())
         .deploy_bvs_directory(&bvs_directory::msg::InstantiateMsg {
             initial_owner: owner.clone().to_string(),
@@ -20,6 +23,7 @@ fn register_bvs() {
             pauser: owner.clone().to_string(),
             unpauser: owner.clone().to_string(),
             initial_paused_status: 0,
+            registry_addr: registry_addr.to_string(),
         })
         .build();
 
@@ -27,8 +31,8 @@ fn register_bvs() {
         bvs_contract: bvs_contract.clone(),
     };
 
-    let bvs_driectory = mock_env1.bvs_directory.clone();
-    let response = bvs_driectory
+    let directory = mock_env1.bvs_directory.clone();
+    let response = directory
         .execute(
             &mut mock_env1,
             Addr::unchecked("anyone"),
@@ -44,6 +48,61 @@ fn register_bvs() {
             .add_attribute("_contract_address", mock_env1.bvs_directory.contract_addr)
             .add_attribute("method", "register_bvs")
             .add_attribute("bvs_hash", bvs_hash.clone())
+    );
+}
+
+#[test]
+fn register_bvs_but_paused() {
+    let mut app = App::default();
+
+    let owner = app.api().addr_make("owner");
+    let delegation_manager = app.api().addr_make("delegation_manager");
+    let bvs_contract = app.api().addr_make("bvs_contract").to_string();
+
+    let hash_result = bvs_directory::utils::sha256(bvs_contract.clone().as_bytes());
+    let bvs_hash = hex::encode(hash_result);
+
+    let code_id = app.store_code(bvs_registry::testing::contract());
+    let registry_owner = app.api().addr_make("owner").to_string();
+    let (registry_addr, _) = bvs_registry::testing::instantiate(
+        &mut app,
+        code_id,
+        bvs_registry::msg::InstantiateMsg {
+            owner: registry_owner,
+            initial_paused: true,
+        }
+        .into(),
+    );
+
+    let mut mock_env1 = mock_env::MockEnvBuilder::new(app, None, owner.clone())
+        .deploy_bvs_directory(&bvs_directory::msg::InstantiateMsg {
+            initial_owner: owner.clone().to_string(),
+            delegation_manager: delegation_manager.into_string(),
+            pauser: owner.clone().to_string(),
+            unpauser: owner.clone().to_string(),
+            initial_paused_status: 0,
+            registry_addr: registry_addr.to_string(),
+        })
+        .build();
+
+    let register_bvs_msg = &bvs_directory::msg::ExecuteMsg::RegisterBvs {
+        bvs_contract: bvs_contract.clone(),
+    };
+
+    let directory = mock_env1.bvs_directory.clone();
+
+    let err = directory
+        .execute(
+            &mut mock_env1,
+            Addr::unchecked("anyone"),
+            register_bvs_msg,
+            &[],
+        )
+        .unwrap_err();
+
+    assert_eq!(
+        err.root_cause().to_string(),
+        bvs_directory::ContractError::Std(StdError::generic_err("Paused")).to_string()
     );
 }
 

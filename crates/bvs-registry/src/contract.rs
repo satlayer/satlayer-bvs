@@ -75,7 +75,9 @@ pub mod execute {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::IsPaused { sender } => to_json_binary(&query::is_paused(deps, sender)?),
+        QueryMsg::IsPaused { sender, method } => {
+            to_json_binary(&query::is_paused(deps, sender, method)?)
+        }
     }
 }
 
@@ -84,9 +86,9 @@ pub mod query {
     use crate::msg::IsPausedResponse;
     use crate::state::PAUSED;
 
-    /// The sender is currently not used.
-    /// Added for future checking of paused status against the sender.
-    pub fn is_paused(deps: Deps, _sender: String) -> StdResult<IsPausedResponse> {
+    /// The sender and method are currently not used.
+    /// Added for future checking of paused status against the sender and method.
+    pub fn is_paused(deps: Deps, _sender: String, _method: String) -> StdResult<IsPausedResponse> {
         let state = PAUSED.load(deps.storage)?;
         Ok(IsPausedResponse { paused: state })
     }
@@ -115,6 +117,7 @@ mod tests {
             mock_env(),
             QueryMsg::IsPaused {
                 sender: deps.api.addr_make("anyone").to_string(),
+                method: "any_method".to_string(),
             },
         )
         .unwrap();
@@ -146,6 +149,7 @@ mod tests {
             mock_env(),
             QueryMsg::IsPaused {
                 sender: deps.api.addr_make("anyone").to_string(),
+                method: "any_method".to_string(),
             },
         )
         .unwrap();
@@ -172,6 +176,7 @@ mod tests {
             mock_env(),
             QueryMsg::IsPaused {
                 sender: deps.api.addr_make("anyone").to_string(),
+                method: "any_method".to_string(),
             },
         )
         .unwrap();
@@ -203,6 +208,7 @@ mod tests {
             mock_env(),
             QueryMsg::IsPaused {
                 sender: deps.api.addr_make("anyone").to_string(),
+                method: "any_method".to_string(),
             },
         )
         .unwrap();
@@ -229,6 +235,7 @@ mod tests {
             mock_env(),
             QueryMsg::IsPaused {
                 sender: deps.api.addr_make("anyone").to_string(),
+                method: "any_method".to_string(),
             },
         )
         .unwrap();

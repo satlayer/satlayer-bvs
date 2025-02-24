@@ -21,6 +21,8 @@ pub enum QueryMsg {
     IsPaused {
         /// The address of the caller (contract)
         sender: String,
+        /// The ExecuteMsg method to check if it is paused
+        method: String,
     },
 }
 
