@@ -4,9 +4,7 @@ use serde::Serialize;
 use std::fmt::Debug;
 use std::{collections::HashMap, mem::take};
 
-use crate::integration::mock_contracts::{
-    mock_bvs_delegation_manager, mock_bvs_directory, mock_bvs_driver,
-};
+use crate::integration::mock_contracts::{mock_bvs_delegation_manager, mock_bvs_directory};
 
 pub struct MockEnv {
     pub app: App,
@@ -122,7 +120,6 @@ pub struct MockEnvBuilder {
     owner: Addr,
     bvs_delegation_manager: Addr,
     bvs_directory: Addr,
-    bvs_driver: Addr,
 }
 
 impl MockEnvBuilder {
@@ -133,7 +130,6 @@ impl MockEnvBuilder {
             owner,
             bvs_delegation_manager: Addr::unchecked(""),
             bvs_directory: Addr::unchecked(""),
-            bvs_driver: Addr::unchecked(""),
         }
     }
 
@@ -184,25 +180,6 @@ impl MockEnvBuilder {
                 &instantiate_msg,
                 &[],
                 "bvs_directory",
-                self.admin.clone(),
-            )
-            .unwrap();
-        self
-    }
-
-    pub fn deploy_bvs_driver(mut self) -> Self {
-        let code_id = self.app.store_code(mock_bvs_driver());
-
-        self.bvs_driver = self
-            .app
-            .instantiate_contract(
-                code_id,
-                self.owner.clone(),
-                &bvs_driver::msg::InstantiateMsg {
-                    initial_owner: self.owner.clone().into_string(),
-                },
-                &[],
-                "bvs_driver",
                 self.admin.clone(),
             )
             .unwrap();

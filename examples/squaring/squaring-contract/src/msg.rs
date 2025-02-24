@@ -4,8 +4,6 @@ use cosmwasm_std::Addr;
 #[cw_serde]
 pub struct InstantiateMsg {
     pub aggregator: Addr,
-    pub state_bank: Addr,
-    pub bvs_driver: Addr,
 }
 
 #[cw_serde]

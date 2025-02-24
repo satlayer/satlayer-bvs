@@ -9,6 +9,7 @@ import (
 	rio "io"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -26,7 +27,6 @@ type Node struct {
 	bvsContract string
 	pubKeyStr   string
 	chainIO     io.ChainIO
-	stateBank   *api.StateBank
 }
 
 type Payload struct {
@@ -37,12 +37,13 @@ type Payload struct {
 	PubKey    string `json:"pub_key"`
 }
 
+var wasmUpdateState sync.Map
+
 // NewNode creates a new Node instance with the given configuration.
 //
 // It initializes a new Cosmos client, retrieves the account, and sets up the BVS contracts and state bank.
 // Returns a pointer to the newly created Node instance.
 func NewNode() *Node {
-
 	elkLogger := logger.NewELKLogger("bvs_demo")
 	elkLogger.SetLogLevel("info")
 	reg := prometheus.NewRegistry()
@@ -70,11 +71,8 @@ func NewNode() *Node {
 		panic(err)
 	}
 
-	stateBank := api.NewStateBank(chainIO)
-
 	return &Node{
 		bvsContract: txResp.BvsContract,
-		stateBank:   stateBank,
 		chainIO:     chainIO,
 		pubKeyStr:   pubKeyStr,
 	}
@@ -85,30 +83,41 @@ func NewNode() *Node {
 // ctx is the context for the Run function.
 // No return value.
 func (n *Node) Run(ctx context.Context) {
-	if err := n.syncStateBank(ctx); err != nil {
+	if err := n.syncState(ctx); err != nil {
 		panic(err)
 	}
 	n.monitorDriver(ctx)
 }
 
-// syncStateBank synchronizes the state bank with the latest blockchain state.
+// syncState synchronizes the state with the latest blockchain state from the BVS Contract.
 //
-// ctx is the context for the syncStateBank function.
+// ctx is the context for the syncState function.
 // Returns an error if the synchronization fails.
-func (n *Node) syncStateBank(ctx context.Context) (err error) {
+func (n *Node) syncState(ctx context.Context) (err error) {
 	res, err := n.chainIO.QueryNodeStatus(ctx)
 	if err != nil {
 		panic(err)
 	}
 	latestBlock := res.SyncInfo.LatestBlockHeight
-	idx := n.stateBank.Indexer(n.chainIO.GetClientCtx(), core.C.Chain.StateBank, n.bvsContract, latestBlock, []string{"wasm-UpdateState"}, 1, 10)
+
+	idx := indexer.NewEventIndexer(n.chainIO.GetClientCtx(), n.bvsContract, latestBlock, []string{"wasm-UpdateState"}, 1, 10)
 	processingQueue, err := idx.Run(ctx)
 	if err != nil {
 		panic(err)
 	}
 
 	go func() {
-		n.stateBank.EventHandler(processingQueue)
+		for event := range processingQueue {
+			key, ok := event.AttrMap["key"]
+			if !ok {
+				continue
+			}
+			val, ok := event.AttrMap["value"]
+			if !ok {
+				continue
+			}
+			wasmUpdateState.Store(key, val)
+		}
 	}()
 
 	ticker := time.NewTicker(time.Second * 2)
@@ -131,7 +140,6 @@ func (n *Node) syncStateBank(ctx context.Context) (err error) {
 // ctx is the context for the monitorDriver function.
 // Returns an error if there is an issue with the monitoring process.
 func (n *Node) monitorDriver(ctx context.Context) {
-
 	res, err := n.chainIO.QueryNodeStatus(ctx)
 	if err != nil {
 		panic(err)
@@ -141,7 +149,7 @@ func (n *Node) monitorDriver(ctx context.Context) {
 
 	evtIndexer := indexer.NewEventIndexer(
 		n.chainIO.GetClientCtx(),
-		core.C.Chain.BVSDriver,
+		n.bvsContract,
 		latestBlock,
 		[]string{"wasm-ExecuteBVSOffchain"},
 		1,
@@ -178,12 +186,12 @@ func (n *Node) monitorDriver(ctx context.Context) {
 func (n *Node) calcTask(taskId string) (err error) {
 	stateKey := fmt.Sprintf("taskId.%s", taskId)
 	fmt.Printf("stateKey: %s\n", stateKey)
-	value, err := n.stateBank.GetWasmUpdateState(stateKey)
-	if err != nil {
+	value, exists := wasmUpdateState.Load(stateKey)
+	if !exists {
 		return
 	}
 
-	input, err := strconv.Atoi(value)
+	input, err := strconv.Atoi(value.(string))
 	task, err := strconv.Atoi(taskId)
 	if err != nil {
 		fmt.Println("format err:", err)
