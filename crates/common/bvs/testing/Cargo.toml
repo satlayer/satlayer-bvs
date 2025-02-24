@@ -22,10 +22,8 @@ cosmwasm-crypto = { workspace = true }
 
 bvs-delegation-manager = { workspace = true }
 bvs-directory = { workspace = true }
-bvs-driver = { workspace = true }
 bvs-rewards-coordinator = { workspace = true }
 bvs-slash-manager = { workspace = true }
-bvs-state-bank = { workspace = true }
 bvs-strategy-base = { workspace = true }
 bvs-strategy-base-tvl-limits = { workspace = true }
 bvs-strategy-factory = { workspace = true }

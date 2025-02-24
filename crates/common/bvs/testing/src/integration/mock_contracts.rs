@@ -23,15 +23,6 @@ pub fn mock_bvs_directory() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn mock_bvs_driver() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        bvs_driver::contract::execute,
-        bvs_driver::contract::instantiate,
-        bvs_driver::contract::query,
-    );
-    Box::new(contract)
-}
-
 pub fn mock_bvs_rewards_coordinator() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         bvs_rewards_coordinator::contract::execute,
@@ -46,15 +37,6 @@ pub fn mock_bvs_slash_manager() -> Box<dyn Contract<Empty>> {
         bvs_slash_manager::contract::execute,
         bvs_slash_manager::contract::instantiate,
         bvs_slash_manager::contract::query,
-    );
-    Box::new(contract)
-}
-
-pub fn mock_bvs_state_bank() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        bvs_state_bank::contract::execute,
-        bvs_state_bank::contract::instantiate,
-        bvs_state_bank::contract::query,
     );
     Box::new(contract)
 }

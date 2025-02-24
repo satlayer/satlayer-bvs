@@ -8,10 +8,8 @@ import (
 
 	delegationmanager "github.com/satlayer/satlayer-bvs/bvs-cw/delegation-manager"
 	"github.com/satlayer/satlayer-bvs/bvs-cw/directory"
-	"github.com/satlayer/satlayer-bvs/bvs-cw/driver"
 	rewardscoordinator "github.com/satlayer/satlayer-bvs/bvs-cw/rewards-coordinator"
 	slashmanager "github.com/satlayer/satlayer-bvs/bvs-cw/slash-manager"
-	statebank "github.com/satlayer/satlayer-bvs/bvs-cw/state-bank"
 	strategybase "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-base"
 	strategybasetvllimits "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-base-tvl-limits"
 	strategyfactory "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-factory"
@@ -46,20 +44,6 @@ func deployCrate[T interface{}](deployer *Deployer, crate string, initMsg T, lab
 		DeployedWasmContract: *contract,
 		InstantiateMsg:       initMsg,
 	}
-}
-
-func (d *Deployer) DeployStateBank() *Contract[statebank.InstantiateMsg] {
-	initMsg := statebank.InstantiateMsg{
-		InitialOwner: d.GenerateAddress("state-bank:initial_owner").String(),
-	}
-	return deployCrate(d, "bvs-state-bank", initMsg, "BVS State Bank")
-}
-
-func (d *Deployer) DeployDriver() *Contract[driver.InstantiateMsg] {
-	initMsg := driver.InstantiateMsg{
-		InitialOwner: d.GenerateAddress("driver:initial_owner").String(),
-	}
-	return deployCrate(d, "bvs-driver", initMsg, "BVS Driver")
 }
 
 // TODO: every contract on top is considered "pure" can be deployed without circular dependency
