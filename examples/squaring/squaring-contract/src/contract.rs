@@ -172,7 +172,7 @@ mod tests {
     use cosmwasm_std::{
         from_json,
         testing::{mock_dependencies, mock_env},
-        Addr, Coin, CosmosMsg, MessageInfo, WasmMsg,
+        Addr, Coin, MessageInfo
     };
 
     fn mock_info(sender: &str, funds: &[Coin]) -> MessageInfo {
@@ -222,8 +222,7 @@ mod tests {
         let res = execute(deps.as_mut(), env, info, create_msg).unwrap();
 
         // Check if the task was created successfully
-        assert_eq!(2, res.messages.len());
-        assert_eq!(1, res.events.len());
+        assert_eq!(3, res.events.len());
 
         // Check if MAX_ID was incremented
         assert_eq!(MAX_ID.load(deps.as_ref().storage).unwrap(), 1);
