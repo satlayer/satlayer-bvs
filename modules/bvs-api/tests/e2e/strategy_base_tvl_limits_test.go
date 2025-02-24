@@ -66,8 +66,7 @@ func (suite *strategyBaseTVLLimitsTestSuite) Test_ExecuteStrategyTVLLimits() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	strategyTVLLimits := api.NewStrategyBaseTVLLimits(chainIO)
-	strategyTVLLimits.BindClient(suite.contrAddr)
+	strategyTVLLimits := api.NewStrategyBaseTVLLimits(chainIO, suite.contrAddr)
 
 	resp, err := strategyTVLLimits.SetStrategyManager(context.Background(), suite.strategyManager)
 	assert.NoError(t, err)
@@ -122,8 +121,7 @@ func (suite *strategyBaseTVLLimitsTestSuite) Test_QueryStrategyTVLLimits() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	strategyTVLLimits := api.NewStrategyBaseTVLLimits(chainIO)
-	strategyTVLLimits.BindClient(suite.contrAddr)
+	strategyTVLLimits := api.NewStrategyBaseTVLLimits(chainIO, suite.contrAddr)
 
 	tvlLimitsResp, err := strategyTVLLimits.GetTvlLimits()
 	assert.NoError(t, err, "GetTvlLimits failed")

@@ -87,8 +87,7 @@ func (suite *strategyManagerTestSuite) Test_Init() {
 	t.Logf("TestExecuteStrategyManager")
 	chainIO, err := suite.chainIO.SetupKeyring("caller", "test")
 	assert.NoError(t, err)
-	strategyManager := api.NewStrategyManager(chainIO)
-	strategyManager.BindClient(suite.managerAddr)
+	strategyManager := api.NewStrategyManager(chainIO, suite.managerAddr)
 
 	resp, err := strategyManager.TransferOwnership(context.Background(), ownerAddr)
 	assert.NoError(t, err, "execute contract")
@@ -192,8 +191,7 @@ func (suite *strategyManagerTestSuite) test_ExecuteStrategyManager() {
 	t.Logf("TestExecuteStrategyManager")
 	chainIO, err := suite.chainIO.SetupKeyring(actualStakerKeyName, "test")
 	assert.NoError(t, err)
-	strategyManager := api.NewStrategyManager(chainIO)
-	strategyManager.BindClient(managerAddr)
+	strategyManager := api.NewStrategyManager(chainIO, suite.managerAddr)
 
 	/*resp, err := strategyManager.TransferOwnership(context.Background(),stakerAddr)
 	assert.NoError(t, err, "execute contract")
@@ -284,8 +282,7 @@ func (suite *strategyManagerTestSuite) test_QueryStrategyManager() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	strategyManager := api.NewStrategyManager(chainIO)
-	strategyManager.BindClient(managerAddr)
+	strategyManager := api.NewStrategyManager(chainIO, suite.managerAddr)
 
 	resp, err := strategyManager.GetDeposits(stakerAddr)
 	assert.NoError(t, err, "GetDeposits")

@@ -16,8 +16,7 @@ func newService(keyName string) (*api.StrategyFactory, io.ChainIO) {
 	if err != nil {
 		panic(err)
 	}
-	factoryApi := api.NewStrategyFactory(chainIO).WithGasLimit(2000000)
-	factoryApi.BindClient(conf.C.Contract.StrategyFactory)
+	factoryApi := api.NewStrategyFactory(chainIO, conf.C.Contract.StrategyFactory).WithGasLimit(2000000)
 	return factoryApi, chainIO
 }
 

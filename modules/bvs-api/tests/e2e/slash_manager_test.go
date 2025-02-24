@@ -51,8 +51,7 @@ func (suite *slashManagerTestSuite) Test_SetMinimalSlashSignature() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManager(chainIO)
-	slashApi.BindClient(suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO, suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
 	{ // Setup SetSlasher
@@ -73,8 +72,7 @@ func (suite *slashManagerTestSuite) Test_SetSlasher() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManager(chainIO)
-	slashApi.BindClient(suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO, suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
 	slasher := "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
@@ -90,8 +88,7 @@ func (suite *slashManagerTestSuite) Test_SetSlasher() {
 // 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 // 	assert.NoError(t, err)
 
-// 	slashApi := api.NewSlashManager(chainIO)
-// 	slashApi.BindClient(suite.contrAddr)
+// 	slashApi := api.NewSlashManager(chainIO, suite.contrAddr)
 // 	slashApi.WithGasLimit(300000)
 
 // 	newOwner := "osmo1l3u09t2x6ey8xcrhc5e48ygauqlxy3facyz34p"
@@ -107,8 +104,7 @@ func (suite *slashManagerTestSuite) Test_SetDelegationManager() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManager(chainIO)
-	slashApi.BindClient(suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO, suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
 	newDelegationManager := "bbn1q7v924jjct6xrc89n05473juncg3snjwuxdh62xs2ua044a7tp8sydugr4"
@@ -124,8 +120,7 @@ func (suite *slashManagerTestSuite) Test_SetPauser() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManager(chainIO)
-	slashApi.BindClient(suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO, suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
 	newPauser := "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
@@ -141,8 +136,7 @@ func (suite *slashManagerTestSuite) Test_SetUnpauser() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManager(chainIO)
-	slashApi.BindClient(suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO, suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
 	newUnpauser := "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
@@ -158,8 +152,7 @@ func (suite *slashManagerTestSuite) Test_Pause() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManager(chainIO)
-	slashApi.BindClient(suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO, suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
 	{ // Setup SetPauser
@@ -179,8 +172,7 @@ func (suite *slashManagerTestSuite) Test_Unpause() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManager(chainIO)
-	slashApi.BindClient(suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO, suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
 	{ // Setup SetPauser
@@ -200,8 +192,7 @@ func (suite *slashManagerTestSuite) Test_SetSlasherValidator() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManager(chainIO)
-	slashApi.BindClient(suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO, suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
 	{ // Setup SetSlasher
@@ -223,8 +214,7 @@ func (suite *slashManagerTestSuite) Test_SetStrategyManager() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManager(chainIO)
-	slashApi.BindClient(suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO, suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
 	txResp, err := slashApi.SetStrategyManager(context.Background(), suite.strategyManagerContrAddr)
@@ -241,8 +231,7 @@ func (suite *slashManagerTestSuite) Test_SetStrategyManager() {
 // 	account, err := chainIO.GetCurrentAccount()
 // 	assert.NoError(t, err)
 
-// 	slashApi := api.NewSlashManager(chainIO)
-// 	slashApi.BindClient(suite.contrAddr)
+// 	slashApi := api.NewSlashManager(chainIO, suite.contrAddr)
 // 	slashApi.WithGasLimit(300000)
 
 // 	slashDetails := types.ExecuteSlashDetails{
@@ -271,8 +260,7 @@ func (suite *slashManagerTestSuite) Test_SetStrategyManager() {
 // 	account, err := chainIO.GetCurrentAccount()
 // 	assert.NoError(t, err)
 
-// 	slashApi := api.NewSlashManager(chainIO)
-// 	slashApi.BindClient(suite.contrAddr)
+// 	slashApi := api.NewSlashManager(chainIO, suite.contrAddr)
 // 	slashApi.WithGasLimit(2000000)
 
 // 	slashHash := "8644527532e4230b12809aade8cf2aa018b24e7c1f1051562d653744cc49bcab"
@@ -290,8 +278,7 @@ func (suite *slashManagerTestSuite) Test_SetStrategyManager() {
 // 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 // 	assert.NoError(t, err)
 
-// 	slashApi := api.NewSlashManager(chainIO)
-// 	slashApi.BindClient(suite.contrAddr)
+// 	slashApi := api.NewSlashManager(chainIO, suite.contrAddr)
 // 	slashApi.WithGasLimit(300000)
 
 // 	slashHash := "8644527532e4230b12809aade8cf2aa018b24e7c1f1051562d653744cc49bcab"
@@ -307,8 +294,7 @@ func (suite *slashManagerTestSuite) test_GetSlashDetails() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManager(chainIO)
-	slashApi.BindClient(suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO, suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
 	slashHash := "8644527532e4230b12809aade8cf2aa018b24e7c1f1051562d653744cc49bcab"
@@ -325,8 +311,7 @@ func (suite *slashManagerTestSuite) Test_IsValidator() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManager(chainIO)
-	slashApi.BindClient(suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO, suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
 	validator := "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
@@ -342,8 +327,7 @@ func (suite *slashManagerTestSuite) test_GetMinimalSlashSignature() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManager(chainIO)
-	slashApi.BindClient(suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO, suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
 	txResp, err := slashApi.GetMinimalSlashSignature()
@@ -358,8 +342,7 @@ func (suite *slashManagerTestSuite) Test_CalculateSlashHash() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManager(chainIO)
-	slashApi.BindClient(suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO, suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
 	sender := "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"

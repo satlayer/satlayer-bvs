@@ -16,8 +16,7 @@ func newService(keyName string) (*api.StrategyBaseTvlLimits, io.ChainIO) {
 	if err != nil {
 		panic(err)
 	}
-	StrategyBaseTVL := api.NewStrategyBaseTVLLimits(chainIO)
-	StrategyBaseTVL.BindClient(conf.C.Contract.StrategyBaseTVL)
+	StrategyBaseTVL := api.NewStrategyBaseTVLLimits(chainIO, conf.C.Contract.StrategyBaseTVL)
 	return StrategyBaseTVL, chainIO
 }
 func Deposit(userKeyName string, amount uint64) {

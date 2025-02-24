@@ -5,8 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 
-	delegationmanager "github.com/satlayer/satlayer-bvs/bvs-cw/delegation-manager"
-
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
@@ -14,6 +12,7 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
 	"github.com/satlayer/satlayer-bvs/bvs-api/utils"
+	delegationmanager "github.com/satlayer/satlayer-bvs/bvs-cw/delegation-manager"
 )
 
 const zeroValueAddr = "0"

@@ -54,8 +54,7 @@ func NewUploader() *Uploader {
 
 	delegation := api.NewDelegationManager(client, core.C.Chain.DelegationManager)
 
-	rewardsCoordinator := api.NewRewardsCoordinator(client)
-	rewardsCoordinator.BindClient(core.C.Chain.RewardCoordinator)
+	rewardsCoordinator := api.NewRewardsCoordinator(client, core.C.Chain.RewardCoordinator)
 
 	return &Uploader{
 		chainIO:            client,

@@ -145,8 +145,7 @@ func registerStrategy() {
 	}
 	fmt.Println("set register")
 	chainIO, err = chainIO.SetupKeyring(core.C.Account.StrategyManagerKeyName, core.C.Account.KeyringBackend)
-	strategyManager := api.NewStrategyManager(chainIO)
-	strategyManager.BindClient(core.C.Contract.StrategyMangerAddr)
+	strategyManager := api.NewStrategyManager(chainIO, core.C.Contract.StrategyMangerAddr)
 	ctx := context.Background()
 	fmt.Println("hello.....")
 
@@ -218,8 +217,7 @@ func registerStakers(approverAddress string) {
 		fmt.Println("increaseTokenAllowance success:", txnResp)
 
 		// register staker to strategy
-		strategyManager := api.NewStrategyManager(sclient)
-		strategyManager.BindClient(core.C.Contract.StrategyMangerAddr)
+		strategyManager := api.NewStrategyManager(sclient, core.C.Contract.StrategyMangerAddr)
 		resp, err := strategyManager.DepositIntoStrategy(context.Background(), core.C.Contract.StrategyAddr, core.C.Contract.Cw20TokenAddr, staker.Amount)
 		if err != nil {
 			err := fmt.Errorf("DepositIntoStrategy failed: %v", err)

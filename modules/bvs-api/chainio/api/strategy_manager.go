@@ -17,18 +17,17 @@ import (
 )
 
 type StrategyManager struct {
-	io             io.ChainIO
-	ContractAddr   string
-	executeOptions *types.ExecuteOptions
-	queryOptions   *types.QueryOptions
-	gasAdjustment  float64
-	gasPrice       sdktypes.DecCoin
-	gasLimit       uint64
+	io            io.ChainIO
+	contractAddr  string
+	gasAdjustment float64
+	gasPrice      sdktypes.DecCoin
+	gasLimit      uint64
 }
 
-func NewStrategyManager(chainIO io.ChainIO) *StrategyManager {
+func NewStrategyManager(chainIO io.ChainIO, contractAddr string) *StrategyManager {
 	return &StrategyManager{
 		io:            chainIO,
+		contractAddr:  contractAddr,
 		gasAdjustment: 1.2,
 		gasPrice:      sdktypes.NewInt64DecCoin("ubbn", 1),
 		gasLimit:      700000,
@@ -50,26 +49,6 @@ func (r *StrategyManager) WithGasLimit(gasLimit uint64) *StrategyManager {
 	return r
 }
 
-func (r *StrategyManager) BindClient(contractAddress string) {
-	r.executeOptions = &types.ExecuteOptions{
-		ContractAddr:  contractAddress,
-		ExecuteMsg:    []byte{},
-		Funds:         "",
-		GasAdjustment: r.gasAdjustment,
-		GasPrice:      r.gasPrice,
-		Gas:           r.gasLimit,
-		Memo:          "test tx",
-		Simulate:      true,
-	}
-
-	r.queryOptions = &types.QueryOptions{
-		ContractAddr: contractAddress,
-		QueryMsg:     []byte{},
-	}
-
-	r.ContractAddr = contractAddress
-}
-
 func (r *StrategyManager) AddStrategiesToWhitelist(ctx context.Context, strategies []string, thirdPartyTransfersForbiddenValues []bool) (*coretypes.ResultTx, error) {
 	msg := strategymanager.ExecuteMsg{
 		AddStrategiesToWhitelist: &strategymanager.AddStrategiesToWhitelist{
@@ -77,8 +56,13 @@ func (r *StrategyManager) AddStrategiesToWhitelist(ctx context.Context, strategi
 			ThirdPartyTransfersForbiddenValues: thirdPartyTransfersForbiddenValues,
 		},
 	}
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "AddStrategiesToWhitelist")
 
-	return r.execute(ctx, msg)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyManager) RemoveStrategiesFromWhitelist(ctx context.Context, strategies []string) (*coretypes.ResultTx, error) {
@@ -88,7 +72,13 @@ func (r *StrategyManager) RemoveStrategiesFromWhitelist(ctx context.Context, str
 		},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "RemoveStrategiesFromWhitelist")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyManager) SetStrategyWhitelister(ctx context.Context, newStrategyWhitelister string) (*coretypes.ResultTx, error) {
@@ -98,7 +88,13 @@ func (r *StrategyManager) SetStrategyWhitelister(ctx context.Context, newStrateg
 		},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetStrategyWhitelister")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyManager) DepositIntoStrategy(ctx context.Context, strategy string, token string, amount uint64) (*coretypes.ResultTx, error) {
@@ -110,7 +106,13 @@ func (r *StrategyManager) DepositIntoStrategy(ctx context.Context, strategy stri
 		},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "DepositIntoStrategy")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyManager) SetThirdPartyTransfersForbidden(ctx context.Context, strategy string, value bool) (*coretypes.ResultTx, error) {
@@ -121,7 +123,13 @@ func (r *StrategyManager) SetThirdPartyTransfersForbidden(ctx context.Context, s
 		},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetThirdPartyTransfersForbidden")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyManager) DepositIntoStrategyWithSignature(ctx context.Context, strategy string, token string, amount uint64, staker string, publicKey cryptotypes.PubKey, stakerKeyName string) (*coretypes.ResultTx, error) {
@@ -132,7 +140,6 @@ func (r *StrategyManager) DepositIntoStrategyWithSignature(ctx context.Context, 
 
 	expiry := nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000
 	chainId := r.io.GetClientCtx().ChainID
-	contracAddr := r.executeOptions.ContractAddr
 
 	resp, err := r.GetNonce(staker)
 
@@ -156,7 +163,7 @@ func (r *StrategyManager) DepositIntoStrategyWithSignature(ctx context.Context, 
 		Nonce:        nonceRes.Nonce,
 		Expiry:       expiry,
 		ChainID:      chainId,
-		ContractAddr: contracAddr,
+		ContractAddr: r.contractAddr,
 	}
 
 	resp, err = r.CalculateDigestHash(params)
@@ -195,7 +202,13 @@ func (r *StrategyManager) DepositIntoStrategyWithSignature(ctx context.Context, 
 		},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "DepositIntoStrategyWithSignature")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyManager) RemoveShares(ctx context.Context, staker string, strategy string, shares uint64) (*coretypes.ResultTx, error) {
@@ -207,7 +220,13 @@ func (r *StrategyManager) RemoveShares(ctx context.Context, staker string, strat
 		},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "RemoveShares")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyManager) WithdrawSharesAsTokens(ctx context.Context, recipient string, strategy string, shares uint64, token string) (*coretypes.ResultTx, error) {
@@ -220,7 +239,13 @@ func (r *StrategyManager) WithdrawSharesAsTokens(ctx context.Context, recipient 
 		},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "WithdrawSharesAsTokens")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyManager) AddShares(ctx context.Context, staker string, token string, strategy string, shares uint64) (*coretypes.ResultTx, error) {
@@ -233,7 +258,13 @@ func (r *StrategyManager) AddShares(ctx context.Context, staker string, token st
 		},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "AddShares")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyManager) SetDelegationManager(ctx context.Context, newDelegationManager string) (*coretypes.ResultTx, error) {
@@ -243,7 +274,13 @@ func (r *StrategyManager) SetDelegationManager(ctx context.Context, newDelegatio
 		},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetDelegationManager")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyManager) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
@@ -251,7 +288,13 @@ func (r *StrategyManager) Pause(ctx context.Context) (*coretypes.ResultTx, error
 		Pause: &strategymanager.Pause{},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "Pause")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyManager) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
@@ -259,7 +302,13 @@ func (r *StrategyManager) Unpause(ctx context.Context) (*coretypes.ResultTx, err
 		Unpause: &strategymanager.Unpause{},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "Unpause")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyManager) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
@@ -267,7 +316,13 @@ func (r *StrategyManager) SetPauser(ctx context.Context, newPauser string) (*cor
 		SetPauser: &strategymanager.SetPauser{NewPauser: newPauser},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetPauser")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyManager) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
@@ -275,7 +330,13 @@ func (r *StrategyManager) SetUnpauser(ctx context.Context, newUnpauser string) (
 		SetUnpauser: &strategymanager.SetUnpauser{NewUnpauser: newUnpauser},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetUnpauser")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyManager) SetSlashManager(ctx context.Context, newSlashManager string) (*coretypes.ResultTx, error) {
@@ -283,7 +344,13 @@ func (r *StrategyManager) SetSlashManager(ctx context.Context, newSlashManager s
 		SetSlashManager: &strategymanager.SetSlashManager{NewSlashManager: newSlashManager},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetSlashManager")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyManager) SetStrategyFactory(ctx context.Context, newStrategyFactory string) (*coretypes.ResultTx, error) {
@@ -291,36 +358,26 @@ func (r *StrategyManager) SetStrategyFactory(ctx context.Context, newStrategyFac
 		SetStrategyFactory: &strategymanager.SetStrategyFactory{NewStrategyFactory: newStrategyFactory},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetStrategyFactory")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyManager) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
 	msg := strategymanager.ExecuteMsg{
 		TransferOwnership: &strategymanager.TransferOwnership{NewOwner: newOwner},
 	}
-	return r.execute(ctx, msg)
-}
-
-func (r *StrategyManager) execute(ctx context.Context, msg any) (*coretypes.ResultTx, error) {
-	msgBytes, err := json.Marshal(msg)
-
+	executeMsgBytes, err := json.Marshal(msg)
 	if err != nil {
 		return nil, err
 	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "TransferOwnership")
 
-	(*r.executeOptions).ExecuteMsg = msgBytes
-	return r.io.SendTransaction(ctx, *r.executeOptions)
-}
-
-func (r *StrategyManager) query(msg any) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msgBytes, err := json.Marshal(msg)
-
-	if err != nil {
-		return nil, err
-	}
-
-	(*r.queryOptions).QueryMsg = msgBytes
-	return r.io.QueryContract(*r.queryOptions)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyManager) GetDeposits(staker string) (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -330,7 +387,12 @@ func (r *StrategyManager) GetDeposits(staker string) (*wasmtypes.QuerySmartContr
 		},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *StrategyManager) StakerStrategyListLength(staker string) (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -340,7 +402,12 @@ func (r *StrategyManager) StakerStrategyListLength(staker string) (*wasmtypes.Qu
 		},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *StrategyManager) GetStakerStrategyShares(staker string, strategy string) (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -351,7 +418,12 @@ func (r *StrategyManager) GetStakerStrategyShares(staker string, strategy string
 		},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *StrategyManager) IsThirdPartyTransfersForbidden(strategy string) (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -361,7 +433,12 @@ func (r *StrategyManager) IsThirdPartyTransfersForbidden(strategy string) (*wasm
 		},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *StrategyManager) GetNonce(staker string) (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -371,7 +448,12 @@ func (r *StrategyManager) GetNonce(staker string) (*wasmtypes.QuerySmartContract
 		},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *StrategyManager) GetStakerStrategyList(staker string) (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -381,7 +463,12 @@ func (r *StrategyManager) GetStakerStrategyList(staker string) (*wasmtypes.Query
 		},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *StrategyManager) Owner() (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -389,7 +476,12 @@ func (r *StrategyManager) Owner() (*wasmtypes.QuerySmartContractStateResponse, e
 		Owner: &strategymanager.Owner{},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *StrategyManager) IsStrategyWhitelisted(strategy string) (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -399,7 +491,12 @@ func (r *StrategyManager) IsStrategyWhitelisted(strategy string) (*wasmtypes.Que
 		},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *StrategyManager) CalculateDigestHash(params strategymanager.QueryDigestHashParams) (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -409,7 +506,12 @@ func (r *StrategyManager) CalculateDigestHash(params strategymanager.QueryDigest
 		},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *StrategyManager) GetStrategyWhitelister() (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -417,7 +519,12 @@ func (r *StrategyManager) GetStrategyWhitelister() (*wasmtypes.QuerySmartContrac
 		GetStrategyWhitelister: &strategymanager.GetStrategyWhitelister{},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *StrategyManager) GetStrategyManagerState() (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -425,7 +532,12 @@ func (r *StrategyManager) GetStrategyManagerState() (*wasmtypes.QuerySmartContra
 		GetStrategyManagerState: &strategymanager.GetStrategyManagerState{},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *StrategyManager) GetDepositTypeHash() (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -433,7 +545,12 @@ func (r *StrategyManager) GetDepositTypeHash() (*wasmtypes.QuerySmartContractSta
 		GetDepositTypeHash: &strategymanager.GetDepositTypeHash{},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *StrategyManager) DomainTypeHash() (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -441,7 +558,12 @@ func (r *StrategyManager) DomainTypeHash() (*wasmtypes.QuerySmartContractStateRe
 		DomainTypeHash: &strategymanager.DomainTypeHash{},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *StrategyManager) DomainName() (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -449,7 +571,12 @@ func (r *StrategyManager) DomainName() (*wasmtypes.QuerySmartContractStateRespon
 		DomainName: &strategymanager.DomainName{},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *StrategyManager) DelegationManager() (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -457,5 +584,30 @@ func (r *StrategyManager) DelegationManager() (*wasmtypes.QuerySmartContractStat
 		DelegationManager: &strategymanager.DelegationManager{},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
+}
+
+func (r *StrategyManager) newExecuteOptions(executeMsg []byte, memo string) types.ExecuteOptions {
+	return types.ExecuteOptions{
+		ContractAddr:  r.contractAddr,
+		ExecuteMsg:    executeMsg,
+		Funds:         "",
+		GasAdjustment: r.gasAdjustment,
+		GasPrice:      r.gasPrice,
+		Gas:           r.gasLimit,
+		Memo:          memo,
+		Simulate:      true,
+	}
+}
+
+func (r *StrategyManager) newQueryOptions(queryMsg []byte) types.QueryOptions {
+	return types.QueryOptions{
+		ContractAddr: r.contractAddr,
+		QueryMsg:     queryMsg,
+	}
 }

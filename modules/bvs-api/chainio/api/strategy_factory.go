@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 
-	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 
@@ -14,18 +13,17 @@ import (
 )
 
 type StrategyFactory struct {
-	io             io.ChainIO
-	ContractAddr   string
-	executeOptions *types.ExecuteOptions
-	queryOptions   *types.QueryOptions
-	gasAdjustment  float64
-	gasPrice       sdktypes.DecCoin
-	gasLimit       uint64
+	io            io.ChainIO
+	contractAddr  string
+	gasAdjustment float64
+	gasPrice      sdktypes.DecCoin
+	gasLimit      uint64
 }
 
-func NewStrategyFactory(chainIO io.ChainIO) *StrategyFactory {
+func NewStrategyFactory(chainIO io.ChainIO, contractAddr string) *StrategyFactory {
 	return &StrategyFactory{
 		io:            chainIO,
+		contractAddr:  contractAddr,
 		gasAdjustment: 1.2,
 		gasPrice:      sdktypes.NewInt64DecCoin("ubbn", 1),
 		gasLimit:      2000000,
@@ -47,46 +45,6 @@ func (r *StrategyFactory) WithGasLimit(gasLimit uint64) *StrategyFactory {
 	return r
 }
 
-func (r *StrategyFactory) BindClient(contractAddress string) {
-	r.executeOptions = &types.ExecuteOptions{
-		ContractAddr:  contractAddress,
-		ExecuteMsg:    []byte{},
-		Funds:         "",
-		GasAdjustment: r.gasAdjustment,
-		GasPrice:      r.gasPrice,
-		Gas:           r.gasLimit,
-		Memo:          "test tx",
-		Simulate:      true,
-	}
-
-	r.queryOptions = &types.QueryOptions{
-		ContractAddr: contractAddress,
-		QueryMsg:     []byte{},
-	}
-
-	r.ContractAddr = contractAddress
-}
-
-func (r *StrategyFactory) execute(ctx context.Context, msg any) (*coretypes.ResultTx, error) {
-	msgBytes, err := json.Marshal(msg)
-	if err != nil {
-		return nil, err
-	}
-
-	(*r.executeOptions).ExecuteMsg = msgBytes
-	return r.io.SendTransaction(ctx, *r.executeOptions)
-}
-
-func (r *StrategyFactory) query(msg any) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msgBytes, err := json.Marshal(msg)
-	if err != nil {
-		return nil, err
-	}
-
-	(*r.queryOptions).QueryMsg = msgBytes
-	return r.io.QueryContract(*r.queryOptions)
-}
-
 // Execute Functions
 
 func (r *StrategyFactory) DeployNewStrategy(ctx context.Context, token, pauser, unpauser string) (*coretypes.ResultTx, error) {
@@ -98,7 +56,13 @@ func (r *StrategyFactory) DeployNewStrategy(ctx context.Context, token, pauser, 
 		},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "DeployNewStrategy")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyFactory) UpdateConfig(ctx context.Context, newOwner string, strategyCodeId int64) (*coretypes.ResultTx, error) {
@@ -109,7 +73,13 @@ func (r *StrategyFactory) UpdateConfig(ctx context.Context, newOwner string, str
 		},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "UpdateConfig")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyFactory) BlacklistTokens(ctx context.Context, tokens []string) (*coretypes.ResultTx, error) {
@@ -119,7 +89,13 @@ func (r *StrategyFactory) BlacklistTokens(ctx context.Context, tokens []string) 
 		},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "BlacklistTokens")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyFactory) RemoveStrategiesFromWhitelist(ctx context.Context, strategies []string) (*coretypes.ResultTx, error) {
@@ -129,7 +105,13 @@ func (r *StrategyFactory) RemoveStrategiesFromWhitelist(ctx context.Context, str
 		},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "RemoveStrategiesFromWhitelist")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyFactory) SetThirdPartyTransfersForbidden(ctx context.Context, strategy string, value bool) (*coretypes.ResultTx, error) {
@@ -140,7 +122,13 @@ func (r *StrategyFactory) SetThirdPartyTransfersForbidden(ctx context.Context, s
 		},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetThirdPartyTransfersForbidden")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyFactory) WhitelistStrategies(ctx context.Context, strategies []string, forbiddenValues []bool) (*coretypes.ResultTx, error) {
@@ -151,7 +139,13 @@ func (r *StrategyFactory) WhitelistStrategies(ctx context.Context, strategies []
 		},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "WhitelistStrategies")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyFactory) SetStrategyManager(ctx context.Context, newStrategyManager string) (*coretypes.ResultTx, error) {
@@ -161,7 +155,13 @@ func (r *StrategyFactory) SetStrategyManager(ctx context.Context, newStrategyMan
 		},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetStrategyManager")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyFactory) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
@@ -171,7 +171,13 @@ func (r *StrategyFactory) TransferOwnership(ctx context.Context, newOwner string
 		},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "TransferOwnership")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyFactory) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
@@ -179,7 +185,13 @@ func (r *StrategyFactory) Pause(ctx context.Context) (*coretypes.ResultTx, error
 		Pause: &strategyfactory.Pause{},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "Pause")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyFactory) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
@@ -187,7 +199,13 @@ func (r *StrategyFactory) Unpause(ctx context.Context) (*coretypes.ResultTx, err
 		Unpause: &strategyfactory.Unpause{},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "Unpause")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyFactory) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
@@ -197,7 +215,13 @@ func (r *StrategyFactory) SetPauser(ctx context.Context, newPauser string) (*cor
 		},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetPauser")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyFactory) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
@@ -207,7 +231,13 @@ func (r *StrategyFactory) SetUnpauser(ctx context.Context, newUnpauser string) (
 		},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetUnpauser")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 // Query Functions
@@ -219,7 +249,12 @@ func (r *StrategyFactory) GetStrategy(token string) (*strategyfactory.StrategyRe
 		},
 	}
 
-	resp, err := r.query(queryMsg)
+	queryMsgBytes, err := json.Marshal(queryMsg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -235,11 +270,36 @@ func (r *StrategyFactory) IsTokenBlacklisted(token string) (*strategyfactory.Bla
 		},
 	}
 
-	resp, err := r.query(queryMsg)
+	queryMsgBytes, err := json.Marshal(queryMsg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
 	}
 
 	res, err := strategyfactory.UnmarshalBlacklistStatusResponse(resp.Data)
 	return &res, err
+}
+
+func (r *StrategyFactory) newExecuteOptions(executeMsg []byte, memo string) types.ExecuteOptions {
+	return types.ExecuteOptions{
+		ContractAddr:  r.contractAddr,
+		ExecuteMsg:    executeMsg,
+		Funds:         "",
+		GasAdjustment: r.gasAdjustment,
+		GasPrice:      r.gasPrice,
+		Gas:           r.gasLimit,
+		Memo:          memo,
+		Simulate:      true,
+	}
+}
+
+func (r *StrategyFactory) newQueryOptions(queryMsg []byte) types.QueryOptions {
+	return types.QueryOptions{
+		ContractAddr: r.contractAddr,
+		QueryMsg:     queryMsg,
+	}
 }

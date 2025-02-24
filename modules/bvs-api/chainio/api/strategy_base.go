@@ -15,18 +15,17 @@ import (
 )
 
 type StrategyBase struct {
-	io             io.ChainIO
-	ContractAddr   string
-	executeOptions *types.ExecuteOptions
-	queryOptions   *types.QueryOptions
-	gasAdjustment  float64
-	gasPrice       sdktypes.DecCoin
-	gasLimit       uint64
+	io            io.ChainIO
+	contractAddr  string
+	gasAdjustment float64
+	gasPrice      sdktypes.DecCoin
+	gasLimit      uint64
 }
 
-func NewStrategyBase(chainIO io.ChainIO) *StrategyBase {
+func NewStrategyBase(chainIO io.ChainIO, contractAddr string) *StrategyBase {
 	return &StrategyBase{
 		io:            chainIO,
+		contractAddr:  contractAddr,
 		gasAdjustment: 1.2,
 		gasPrice:      sdktypes.NewInt64DecCoin("ubbn", 1),
 		gasLimit:      700000,
@@ -48,37 +47,6 @@ func (r *StrategyBase) WithGasLimit(gasLimit uint64) *StrategyBase {
 	return r
 }
 
-func (r *StrategyBase) BindClient(contractAddress string) {
-	r.executeOptions = &types.ExecuteOptions{
-		ContractAddr:  contractAddress,
-		ExecuteMsg:    []byte{},
-		Funds:         "",
-		GasAdjustment: r.gasAdjustment,
-		GasPrice:      r.gasPrice,
-		Gas:           r.gasLimit,
-		Memo:          "test tx",
-		Simulate:      true,
-	}
-
-	r.queryOptions = &types.QueryOptions{
-		ContractAddr: contractAddress,
-		QueryMsg:     []byte{},
-	}
-
-	r.ContractAddr = contractAddress
-}
-
-func (r *StrategyBase) execute(ctx context.Context, msg any) (*coretypes.ResultTx, error) {
-	msgBytes, err := json.Marshal(msg)
-
-	if err != nil {
-		return nil, err
-	}
-
-	(*r.executeOptions).ExecuteMsg = msgBytes
-	return r.io.SendTransaction(ctx, *r.executeOptions)
-}
-
 func (r *StrategyBase) Deposit(ctx context.Context, amount uint64) (*coretypes.ResultTx, error) {
 	msg := strategybase.ExecuteMsg{
 		Deposit: &strategybase.Deposit{
@@ -86,7 +54,13 @@ func (r *StrategyBase) Deposit(ctx context.Context, amount uint64) (*coretypes.R
 		},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "Deposit")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyBase) Withdraw(ctx context.Context, recipient string, amountShares uint64) (*coretypes.ResultTx, error) {
@@ -97,18 +71,95 @@ func (r *StrategyBase) Withdraw(ctx context.Context, recipient string, amountSha
 		},
 	}
 
-	return r.execute(ctx, msg)
-}
-
-func (r *StrategyBase) sendQuery(msg any) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msgBytes, err := json.Marshal(msg)
-
+	executeMsgBytes, err := json.Marshal(msg)
 	if err != nil {
 		return nil, err
 	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "Withdraw")
 
-	(*r.queryOptions).QueryMsg = msgBytes
-	return r.io.QueryContract(*r.queryOptions)
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *StrategyBase) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
+	msg := strategybase.ExecuteMsg{
+		Pause: &strategybase.Pause{},
+	}
+
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "Pause")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *StrategyBase) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
+	msg := strategybase.ExecuteMsg{
+		Unpause: &strategybase.Unpause{},
+	}
+
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "Unpause")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *StrategyBase) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
+	msg := strategybase.ExecuteMsg{
+		SetPauser: &strategybase.SetPauser{NewPauser: newPauser},
+	}
+
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetPauser")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *StrategyBase) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
+	msg := strategybase.ExecuteMsg{
+		SetUnpauser: &strategybase.SetUnpauser{NewUnpauser: newUnpauser},
+	}
+
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetUnpauser")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *StrategyBase) SetStrategyManager(ctx context.Context, newStrategyManager string) (*coretypes.ResultTx, error) {
+	msg := strategybase.ExecuteMsg{
+		SetStrategyManager: &strategybase.SetStrategyManager{NewStrategyManager: newStrategyManager},
+	}
+
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetStrategyManager")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *StrategyBase) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
+	msg := strategybase.ExecuteMsg{
+		TransferOwnership: &strategybase.TransferOwnership{NewOwner: newOwner}}
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "TransferOwnership")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *StrategyBase) GetShares(staker string, strategy string) (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -119,7 +170,12 @@ func (r *StrategyBase) GetShares(staker string, strategy string) (*wasmtypes.Que
 		},
 	}
 
-	return r.sendQuery(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *StrategyBase) SharesToUnderlyingView(amountShares uint64) (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -129,7 +185,12 @@ func (r *StrategyBase) SharesToUnderlyingView(amountShares uint64) (*wasmtypes.Q
 		},
 	}
 
-	return r.sendQuery(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *StrategyBase) UnderlyingToShareView(amount uint64) (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -139,7 +200,12 @@ func (r *StrategyBase) UnderlyingToShareView(amount uint64) (*wasmtypes.QuerySma
 		},
 	}
 
-	return r.sendQuery(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *StrategyBase) UnderlyingView(user string) (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -149,58 +215,42 @@ func (r *StrategyBase) UnderlyingView(user string) (*wasmtypes.QuerySmartContrac
 		},
 	}
 
-	return r.sendQuery(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *StrategyBase) UnderlyingToken() (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategybase.QueryMsg{
 		GetUnderlyingToken: &strategybase.GetUnderlyingToken{},
 	}
-	return r.sendQuery(msg)
-}
-
-func (r *StrategyBase) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
-	msg := strategybase.ExecuteMsg{
-		Pause: &strategybase.Pause{},
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
 	}
-
-	return r.execute(ctx, msg)
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
-func (r *StrategyBase) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
-	msg := strategybase.ExecuteMsg{
-		Unpause: &strategybase.Unpause{},
+func (r *StrategyBase) newExecuteOptions(executeMsg []byte, memo string) types.ExecuteOptions {
+	return types.ExecuteOptions{
+		ContractAddr:  r.contractAddr,
+		ExecuteMsg:    executeMsg,
+		Funds:         "",
+		GasAdjustment: r.gasAdjustment,
+		GasPrice:      r.gasPrice,
+		Gas:           r.gasLimit,
+		Memo:          memo,
+		Simulate:      true,
 	}
-
-	return r.execute(ctx, msg)
 }
 
-func (r *StrategyBase) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
-	msg := strategybase.ExecuteMsg{
-		SetPauser: &strategybase.SetPauser{NewPauser: newPauser},
+func (r *StrategyBase) newQueryOptions(queryMsg []byte) types.QueryOptions {
+	return types.QueryOptions{
+		ContractAddr: r.contractAddr,
+		QueryMsg:     queryMsg,
 	}
-
-	return r.execute(ctx, msg)
-}
-
-func (r *StrategyBase) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
-	msg := strategybase.ExecuteMsg{
-		SetUnpauser: &strategybase.SetUnpauser{NewUnpauser: newUnpauser},
-	}
-
-	return r.execute(ctx, msg)
-}
-
-func (r *StrategyBase) SetStrategyManager(ctx context.Context, newStrategyManager string) (*coretypes.ResultTx, error) {
-	msg := strategybase.ExecuteMsg{
-		SetStrategyManager: &strategybase.SetStrategyManager{NewStrategyManager: newStrategyManager},
-	}
-
-	return r.execute(ctx, msg)
-}
-
-func (r *StrategyBase) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
-	msg := strategybase.ExecuteMsg{
-		TransferOwnership: &strategybase.TransferOwnership{NewOwner: newOwner}}
-	return r.execute(ctx, msg)
 }

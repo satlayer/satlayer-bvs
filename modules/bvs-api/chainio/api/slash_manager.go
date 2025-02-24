@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 
-	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
@@ -16,19 +15,18 @@ import (
 )
 
 type SlashManager struct {
-	io             io.ChainIO
-	ContractAddr   string
-	executeOptions *types.ExecuteOptions
-	queryOptions   *types.QueryOptions
-	gasAdjustment  float64
-	gasPrice       sdktypes.DecCoin
-	gasLimit       uint64
+	io            io.ChainIO
+	contractAddr  string
+	gasAdjustment float64
+	gasPrice      sdktypes.DecCoin
+	gasLimit      uint64
 }
 
-func NewSlashManager(chainIO io.ChainIO) *SlashManager {
+func NewSlashManager(chainIO io.ChainIO, contractAddr string) *SlashManager {
 	// TODO(fuxingloh): unused ContractAddr
 	return &SlashManager{
 		io:            chainIO,
+		contractAddr:  contractAddr,
 		gasAdjustment: 1.2,
 		gasPrice:      sdktypes.NewInt64DecCoin("ubbn", 1),
 		gasLimit:      2000000,
@@ -50,26 +48,6 @@ func (r *SlashManager) WithGasLimit(gasLimit uint64) *SlashManager {
 	return r
 }
 
-func (r *SlashManager) BindClient(contractAddress string) {
-	r.executeOptions = &types.ExecuteOptions{
-		ContractAddr:  contractAddress,
-		ExecuteMsg:    []byte{},
-		Funds:         "",
-		GasAdjustment: r.gasAdjustment,
-		GasPrice:      r.gasPrice,
-		Gas:           r.gasLimit,
-		Memo:          "test tx",
-		Simulate:      true,
-	}
-
-	r.queryOptions = &types.QueryOptions{
-		ContractAddr: contractAddress,
-		QueryMsg:     []byte{},
-	}
-
-	r.ContractAddr = contractAddress
-}
-
 func (r *SlashManager) SubmitSlashRequest(ctx context.Context, slashDetails slashmanager.SubmitSlashRequestSlashDetails, validatorsPublicKeys []cryptotypes.PubKey) (*coretypes.ResultTx, error) {
 	var encodedPublicKeys []string
 
@@ -84,7 +62,13 @@ func (r *SlashManager) SubmitSlashRequest(ctx context.Context, slashDetails slas
 		},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SubmitSlashRequest")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *SlashManager) ExecuteSlashRequest(ctx context.Context, slashHash string, validatorsPublicKeys []cryptotypes.PubKey) (*coretypes.ResultTx, error) {
@@ -148,7 +132,13 @@ func (r *SlashManager) ExecuteSlashRequest(ctx context.Context, slashHash string
 		},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "ExecuteSlashRequest")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *SlashManager) CancelSlashRequest(ctx context.Context, slashHash string) (*coretypes.ResultTx, error) {
@@ -158,7 +148,13 @@ func (r *SlashManager) CancelSlashRequest(ctx context.Context, slashHash string)
 		},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "CancelSlashRequest")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *SlashManager) SetMinimalSlashSignature(ctx context.Context, minimalSignature int64) (*coretypes.ResultTx, error) {
@@ -168,7 +164,13 @@ func (r *SlashManager) SetMinimalSlashSignature(ctx context.Context, minimalSign
 		},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetMinimalSlashSignature")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *SlashManager) SetSlasher(ctx context.Context, slasher string, value bool) (*coretypes.ResultTx, error) {
@@ -179,7 +181,13 @@ func (r *SlashManager) SetSlasher(ctx context.Context, slasher string, value boo
 		},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetSlasher")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *SlashManager) SetSlasherValidator(ctx context.Context, validators []string, values []bool) (*coretypes.ResultTx, error) {
@@ -190,7 +198,13 @@ func (r *SlashManager) SetSlasherValidator(ctx context.Context, validators []str
 		},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetSlasherValidator")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *SlashManager) SetDelegationManager(ctx context.Context, newDelegationManager string) (*coretypes.ResultTx, error) {
@@ -200,7 +214,13 @@ func (r *SlashManager) SetDelegationManager(ctx context.Context, newDelegationMa
 		},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetDelegationManager")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *SlashManager) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
@@ -208,7 +228,13 @@ func (r *SlashManager) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
 		Pause: &slashmanager.Pause{},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "Pause")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *SlashManager) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
@@ -216,7 +242,13 @@ func (r *SlashManager) Unpause(ctx context.Context) (*coretypes.ResultTx, error)
 		Unpause: &slashmanager.Unpause{},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "Unpause")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *SlashManager) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
@@ -224,7 +256,13 @@ func (r *SlashManager) SetPauser(ctx context.Context, newPauser string) (*corety
 		SetPauser: &slashmanager.SetPauser{NewPauser: newPauser},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetPauser")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *SlashManager) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
@@ -232,7 +270,13 @@ func (r *SlashManager) SetUnpauser(ctx context.Context, newUnpauser string) (*co
 		SetUnpauser: &slashmanager.SetUnpauser{NewUnpauser: newUnpauser},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetUnpauser")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *SlashManager) SetStrategyManager(ctx context.Context, newStrategyManager string) (*coretypes.ResultTx, error) {
@@ -240,36 +284,26 @@ func (r *SlashManager) SetStrategyManager(ctx context.Context, newStrategyManage
 		SetStrategyManager: &slashmanager.SetStrategyManager{NewStrategyManager: newStrategyManager},
 	}
 
-	return r.execute(ctx, executeMsg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetStrategyManager")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *SlashManager) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
 	executeMsg := slashmanager.ExecuteMsg{
 		TransferOwnership: &slashmanager.TransferOwnership{NewOwner: newOwner},
 	}
-	return r.execute(ctx, executeMsg)
-}
-
-func (r *SlashManager) execute(ctx context.Context, msg any) (*coretypes.ResultTx, error) {
-	msgBytes, err := json.Marshal(msg)
-
+	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		return nil, err
 	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "TransferOwnership")
 
-	(*r.executeOptions).ExecuteMsg = msgBytes
-	return r.io.SendTransaction(ctx, *r.executeOptions)
-}
-
-func (r *SlashManager) query(msg any) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msgBytes, err := json.Marshal(msg)
-
-	if err != nil {
-		return nil, err
-	}
-
-	(*r.queryOptions).QueryMsg = msgBytes
-	return r.io.QueryContract(*r.queryOptions)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *SlashManager) GetSlashDetails(slashHash string) (*slashmanager.SlashDetailsResponse, error) {
@@ -278,8 +312,12 @@ func (r *SlashManager) GetSlashDetails(slashHash string) (*slashmanager.SlashDet
 			SlashHash: slashHash,
 		},
 	}
-
-	resp, err := r.query(queryMsg)
+	queryMsgBytes, err := json.Marshal(queryMsg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -299,7 +337,12 @@ func (r *SlashManager) IsValidator(validator string) (*slashmanager.ValidatorRes
 		},
 	}
 
-	resp, err := r.query(queryMsg)
+	queryMsgBytes, err := json.Marshal(queryMsg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -317,7 +360,12 @@ func (r *SlashManager) GetMinimalSlashSignature() (*slashmanager.MinimalSlashSig
 		GetMinimalSlashSignature: &slashmanager.GetMinimalSlashSignature{},
 	}
 
-	resp, err := r.query(queryMsg)
+	queryMsgBytes, err := json.Marshal(queryMsg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -349,7 +397,12 @@ func (r *SlashManager) CalculateSlashHash(
 		},
 	}
 
-	resp, err := r.query(queryMsg)
+	queryMsgBytes, err := json.Marshal(queryMsg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	resp, err := r.io.QueryContract(queryOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -360,4 +413,24 @@ func (r *SlashManager) CalculateSlashHash(
 	}
 
 	return &result, nil
+}
+
+func (r *SlashManager) newExecuteOptions(executeMsg []byte, memo string) types.ExecuteOptions {
+	return types.ExecuteOptions{
+		ContractAddr:  r.contractAddr,
+		ExecuteMsg:    executeMsg,
+		Funds:         "",
+		GasAdjustment: r.gasAdjustment,
+		GasPrice:      r.gasPrice,
+		Gas:           r.gasLimit,
+		Memo:          memo,
+		Simulate:      true,
+	}
+}
+
+func (r *SlashManager) newQueryOptions(queryMsg []byte) types.QueryOptions {
+	return types.QueryOptions{
+		ContractAddr: r.contractAddr,
+		QueryMsg:     queryMsg,
+	}
 }

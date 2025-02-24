@@ -120,8 +120,7 @@ func (u *Uploader) rpcEarnerLeafHash(staker, rootHash string) (string, error) {
 // rpcUnderlyingToken queries the underlying token address for the given strategy
 // and returns it as a string. If the query fails, an error is returned.
 func (u *Uploader) rpcUnderlyingToken(strategy string) (string, error) {
-	strategyBase := api.NewStrategyBase(u.chainIO)
-	strategyBase.BindClient(strategy)
+	strategyBase := api.NewStrategyBase(u.chainIO, strategy)
 	resp, err := strategyBase.UnderlyingToken()
 	if err != nil {
 		return "", err

@@ -32,8 +32,7 @@ func NewService() *Service {
 	if err != nil {
 		panic(err)
 	}
-	reward := api.NewRewardsCoordinator(chainIO)
-	reward.BindClient(conf.C.Contract.RewardCoordinator)
+	reward := api.NewRewardsCoordinator(chainIO, conf.C.Contract.RewardCoordinator)
 
 	return &Service{Reward: reward, ChainIO: chainIO}
 }

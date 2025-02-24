@@ -14,18 +14,17 @@ import (
 )
 
 type RewardsCoordinator struct {
-	io             io.ChainIO
-	ContractAddr   string
-	executeOptions *types.ExecuteOptions
-	queryOptions   *types.QueryOptions
-	gasAdjustment  float64
-	gasPrice       sdktypes.DecCoin
-	gasLimit       uint64
+	io            io.ChainIO
+	contractAddr  string
+	gasAdjustment float64
+	gasPrice      sdktypes.DecCoin
+	gasLimit      uint64
 }
 
-func NewRewardsCoordinator(chainIO io.ChainIO) *RewardsCoordinator {
+func NewRewardsCoordinator(chainIO io.ChainIO, contractAddr string) *RewardsCoordinator {
 	return &RewardsCoordinator{
 		io:            chainIO,
+		contractAddr:  contractAddr,
 		gasAdjustment: 1.2,
 		gasPrice:      sdktypes.NewInt64DecCoin("ubbn", 1),
 		gasLimit:      700000,
@@ -47,34 +46,19 @@ func (r *RewardsCoordinator) WithGasLimit(gasLimit uint64) *RewardsCoordinator {
 	return r
 }
 
-func (r *RewardsCoordinator) BindClient(contractAddress string) {
-	r.executeOptions = &types.ExecuteOptions{
-		ContractAddr:  contractAddress,
-		ExecuteMsg:    []byte{},
-		Funds:         "",
-		GasAdjustment: r.gasAdjustment,
-		GasPrice:      r.gasPrice,
-		Gas:           r.gasLimit,
-		Memo:          "test tx",
-		Simulate:      true,
-	}
-
-	r.queryOptions = &types.QueryOptions{
-		ContractAddr: contractAddress,
-		QueryMsg:     []byte{},
-	}
-
-	r.ContractAddr = contractAddress
-}
-
 func (r *RewardsCoordinator) CreateBVSRewardsSubmission(ctx context.Context, submissions []rewardscoordinator.RewardsSubmission) (*coretypes.ResultTx, error) {
 	msg := rewardscoordinator.ExecuteMsg{
 		CreateBvsRewardsSubmission: &rewardscoordinator.CreateBvsRewardsSubmission{
 			RewardsSubmissions: submissions,
 		},
 	}
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "CreateBVSRewardsSubmission")
 
-	return r.execute(ctx, msg)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *RewardsCoordinator) CreateRewardsForAllSubmission(ctx context.Context, submissions []rewardscoordinator.RewardsSubmission) (*coretypes.ResultTx, error) {
@@ -84,7 +68,13 @@ func (r *RewardsCoordinator) CreateRewardsForAllSubmission(ctx context.Context, 
 		},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "CreateRewardsForAllSubmission")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *RewardsCoordinator) ProcessClaim(ctx context.Context, claim rewardscoordinator.ProcessClaimClaim, recipient string) (*coretypes.ResultTx, error) {
@@ -95,7 +85,13 @@ func (r *RewardsCoordinator) ProcessClaim(ctx context.Context, claim rewardscoor
 		},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "ProcessClaim")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *RewardsCoordinator) SubmitRoot(ctx context.Context, root string, rewardsCalculationEndTimestamp int64) (*coretypes.ResultTx, error) {
@@ -106,7 +102,13 @@ func (r *RewardsCoordinator) SubmitRoot(ctx context.Context, root string, reward
 		},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SubmitRoot")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *RewardsCoordinator) DisableRoot(ctx context.Context, rootIndex int64) (*coretypes.ResultTx, error) {
@@ -116,7 +118,13 @@ func (r *RewardsCoordinator) DisableRoot(ctx context.Context, rootIndex int64) (
 		},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "DisableRoot")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *RewardsCoordinator) SetClaimerFor(ctx context.Context, claimer string) (*coretypes.ResultTx, error) {
@@ -126,7 +134,13 @@ func (r *RewardsCoordinator) SetClaimerFor(ctx context.Context, claimer string) 
 		},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetClaimerFor")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *RewardsCoordinator) SetActivationDelay(ctx context.Context, newActivationDelay int64) (*coretypes.ResultTx, error) {
@@ -136,7 +150,13 @@ func (r *RewardsCoordinator) SetActivationDelay(ctx context.Context, newActivati
 		},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetActivationDelay")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *RewardsCoordinator) SetGlobalOperatorCommission(ctx context.Context, newCommissionBips int64) (*coretypes.ResultTx, error) {
@@ -146,7 +166,13 @@ func (r *RewardsCoordinator) SetGlobalOperatorCommission(ctx context.Context, ne
 		},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetGlobalOperatorCommission")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *RewardsCoordinator) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
@@ -154,14 +180,26 @@ func (r *RewardsCoordinator) Pause(ctx context.Context) (*coretypes.ResultTx, er
 		Pause: &rewardscoordinator.Pause{},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "Pause")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *RewardsCoordinator) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
 	msg := rewardscoordinator.ExecuteMsg{
 		Unpause: &rewardscoordinator.Unpause{},
 	}
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "Unpause")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *RewardsCoordinator) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
@@ -171,7 +209,13 @@ func (r *RewardsCoordinator) SetPauser(ctx context.Context, newPauser string) (*
 		},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetPauser")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *RewardsCoordinator) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
@@ -179,7 +223,13 @@ func (r *RewardsCoordinator) SetUnpauser(ctx context.Context, newUnpauser string
 		SetUnpauser: &rewardscoordinator.SetUnpauser{NewUnpauser: newUnpauser},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetUnpauser")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *RewardsCoordinator) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
@@ -189,7 +239,13 @@ func (r *RewardsCoordinator) TransferOwnership(ctx context.Context, newOwner str
 		},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "TransferOwnership")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *RewardsCoordinator) SetRewardsUpdater(ctx context.Context, newUpdater string) (*coretypes.ResultTx, error) {
@@ -199,7 +255,13 @@ func (r *RewardsCoordinator) SetRewardsUpdater(ctx context.Context, newUpdater s
 		},
 	}
 
-	return r.execute(ctx, msg)
+	executeMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetRewardsUpdater")
+
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *RewardsCoordinator) SetRewardsForAllSubmitter(ctx context.Context, submitter string, newValue bool) (*coretypes.ResultTx, error) {
@@ -210,29 +272,13 @@ func (r *RewardsCoordinator) SetRewardsForAllSubmitter(ctx context.Context, subm
 		},
 	}
 
-	return r.execute(ctx, msg)
-}
-
-func (r *RewardsCoordinator) execute(ctx context.Context, msg any) (*coretypes.ResultTx, error) {
-	msgBytes, err := json.Marshal(msg)
-
+	executeMsgBytes, err := json.Marshal(msg)
 	if err != nil {
 		return nil, err
 	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "SetRewardsForAllSubmitter")
 
-	(*r.executeOptions).ExecuteMsg = msgBytes
-	return r.io.SendTransaction(ctx, *r.executeOptions)
-}
-
-func (r *RewardsCoordinator) query(msg any) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msgBytes, err := json.Marshal(msg)
-
-	if err != nil {
-		return nil, err
-	}
-
-	(*r.queryOptions).QueryMsg = msgBytes
-	return r.io.QueryContract(*r.queryOptions)
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
 func (r *RewardsCoordinator) CalculateEarnerLeafHash(earner string, earnerTokenRoot string) (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -243,7 +289,12 @@ func (r *RewardsCoordinator) CalculateEarnerLeafHash(earner string, earnerTokenR
 		},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *RewardsCoordinator) CalculateTokenLeafHash(token string, cumulativeEarnings string) (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -254,7 +305,12 @@ func (r *RewardsCoordinator) CalculateTokenLeafHash(token string, cumulativeEarn
 		},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *RewardsCoordinator) OperatorCommissionBips(operator string, bvs string) (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -265,7 +321,12 @@ func (r *RewardsCoordinator) OperatorCommissionBips(operator string, bvs string)
 		},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *RewardsCoordinator) GetDistributionRootsLength() (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -273,7 +334,12 @@ func (r *RewardsCoordinator) GetDistributionRootsLength() (*wasmtypes.QuerySmart
 		GetDistributionRootsLength: &rewardscoordinator.GetDistributionRootsLength{},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *RewardsCoordinator) GetCurrentDistributionRoot() (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -281,7 +347,12 @@ func (r *RewardsCoordinator) GetCurrentDistributionRoot() (*wasmtypes.QuerySmart
 		GetCurrentDistributionRoot: &rewardscoordinator.GetCurrentDistributionRoot{},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *RewardsCoordinator) GetDistributionRootAtIndex(index string) (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -291,7 +362,12 @@ func (r *RewardsCoordinator) GetDistributionRootAtIndex(index string) (*wasmtype
 		},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *RewardsCoordinator) GetCurrentClaimableDistributionRoot() (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -299,7 +375,12 @@ func (r *RewardsCoordinator) GetCurrentClaimableDistributionRoot() (*wasmtypes.Q
 		GetCurrentClaimableDistributionRoot: &rewardscoordinator.GetCurrentClaimableDistributionRoot{},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *RewardsCoordinator) GetRootIndexFromHash(rootHash string) (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -309,7 +390,12 @@ func (r *RewardsCoordinator) GetRootIndexFromHash(rootHash string) (*wasmtypes.Q
 		},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *RewardsCoordinator) CalculateDomainSeparator(chainId string, contractAddr string) (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -320,7 +406,12 @@ func (r *RewardsCoordinator) CalculateDomainSeparator(chainId string, contractAd
 		},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *RewardsCoordinator) MerkleizeLeaves(leaves []string) (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -330,7 +421,12 @@ func (r *RewardsCoordinator) MerkleizeLeaves(leaves []string) (*wasmtypes.QueryS
 		},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
 }
 
 func (r *RewardsCoordinator) CheckClaim(claim rewardscoordinator.CheckClaimClaim) (*wasmtypes.QuerySmartContractStateResponse, error) {
@@ -340,5 +436,30 @@ func (r *RewardsCoordinator) CheckClaim(claim rewardscoordinator.CheckClaimClaim
 		},
 	}
 
-	return r.query(msg)
+	queryMsgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	queryOptions := r.newQueryOptions(queryMsgBytes)
+	return r.io.QueryContract(queryOptions)
+}
+
+func (r *RewardsCoordinator) newExecuteOptions(executeMsg []byte, memo string) types.ExecuteOptions {
+	return types.ExecuteOptions{
+		ContractAddr:  r.contractAddr,
+		ExecuteMsg:    executeMsg,
+		Funds:         "",
+		GasAdjustment: r.gasAdjustment,
+		GasPrice:      r.gasPrice,
+		Gas:           r.gasLimit,
+		Memo:          memo,
+		Simulate:      true,
+	}
+}
+
+func (r *RewardsCoordinator) newQueryOptions(queryMsg []byte) types.QueryOptions {
+	return types.QueryOptions{
+		ContractAddr: r.contractAddr,
+		QueryMsg:     queryMsg,
+	}
 }

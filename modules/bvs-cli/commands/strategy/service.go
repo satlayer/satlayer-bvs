@@ -32,7 +32,6 @@ func NewService() *Service {
 	if err != nil {
 		panic(err)
 	}
-	strategy := api.NewStrategyManager(chainIO)
-	strategy.BindClient(conf.C.Contract.Strategy)
+	strategy := api.NewStrategyManager(chainIO, conf.C.Contract.Strategy)
 	return &Service{Strategy: strategy, ChainIO: chainIO}
 }

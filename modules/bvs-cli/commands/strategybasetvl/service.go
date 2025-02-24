@@ -33,7 +33,6 @@ func NewService() *Service {
 		panic(err)
 	}
 
-	strategyBaseTVL := api.NewStrategyBaseTVLLimits(chainIO)
-	strategyBaseTVL.BindClient(conf.C.Contract.StrategyBaseTVL)
+	strategyBaseTVL := api.NewStrategyBaseTVLLimits(chainIO, conf.C.Contract.StrategyBaseTVL)
 	return &Service{StrategyBaseTVL: strategyBaseTVL, ChainIO: chainIO}
 }

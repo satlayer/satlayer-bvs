@@ -16,8 +16,7 @@ func newService(keyName string) (*api.RewardsCoordinator, io.ChainIO) {
 	if err != nil {
 		panic(err)
 	}
-	reward := api.NewRewardsCoordinator(newChainIO).WithGasLimit(400000)
-	reward.BindClient(conf.C.Contract.RewardCoordinator)
+	reward := api.NewRewardsCoordinator(newChainIO, conf.C.Contract.RewardCoordinator).WithGasLimit(400000)
 	return reward, newChainIO
 }
 

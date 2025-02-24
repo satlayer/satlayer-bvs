@@ -97,8 +97,7 @@ func (suite *rewardsTestSuite) Test_ExecuteRewardsCoordinator() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	rewardsCoordinator := api.NewRewardsCoordinator(chainIO)
-	rewardsCoordinator.BindClient(suite.rewardsCoordinatorAddr)
+	rewardsCoordinator := api.NewRewardsCoordinator(chainIO, suite.rewardsCoordinatorAddr)
 
 	const calcInterval = 86_400 // 1 day
 	now := time.Now().Unix()
@@ -199,8 +198,7 @@ func (suite *rewardsTestSuite) test_QueryRewardsCoordinator() {
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	rewardsCoordinator := api.NewRewardsCoordinator(chainIO)
-	rewardsCoordinator.BindClient(suite.rewardsCoordinatorAddr)
+	rewardsCoordinator := api.NewRewardsCoordinator(chainIO, suite.rewardsCoordinatorAddr)
 
 	resp, err := rewardsCoordinator.OperatorCommissionBips("bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x", "bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x")
 	assert.Error(t, err, "execute contract")
@@ -252,8 +250,7 @@ func (suite *rewardsTestSuite) Test_SubmitRoot() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	rewardsCoordinator := api.NewRewardsCoordinator(chainIO)
-	rewardsCoordinator.BindClient(suite.rewardsCoordinatorAddr)
+	rewardsCoordinator := api.NewRewardsCoordinator(chainIO, suite.rewardsCoordinatorAddr)
 
 	earnerLeaf, tokenRootHash, leafB := suite.calculateEarnerLeaf(rewardsCoordinator, t)
 	t.Logf("earner leaf:%+v", bytesToString(earnerLeaf))
@@ -295,8 +292,7 @@ func (suite *rewardsTestSuite) test_CheckClaim() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	rewardsCoordinator := api.NewRewardsCoordinator(chainIO)
-	rewardsCoordinator.BindClient(suite.rewardsCoordinatorAddr)
+	rewardsCoordinator := api.NewRewardsCoordinator(chainIO, suite.rewardsCoordinatorAddr)
 
 	earnerLeaf1 := []byte{219, 9, 161, 135, 125, 102, 17, 167, 215, 74, 251, 185, 74, 116, 4, 92, 77, 131, 254, 124, 32, 111, 16, 125, 221, 212, 50, 124, 91, 169, 109, 36}
 	tokenRootHash := []byte{157, 182, 190, 113, 122, 8, 74, 164, 14, 216, 104, 83, 161, 117, 200, 187, 2, 25, 18, 169, 181, 254, 114, 62, 226, 208, 14, 25, 176, 189, 118, 122}
@@ -349,8 +345,7 @@ func (suite *rewardsTestSuite) test_ProcessClaim() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	rewardsCoordinator := api.NewRewardsCoordinator(chainIO)
-	rewardsCoordinator.BindClient(suite.rewardsCoordinatorAddr)
+	rewardsCoordinator := api.NewRewardsCoordinator(chainIO, suite.rewardsCoordinatorAddr)
 
 	earnerLeaf1 := []byte{193, 236, 171, 13, 54, 199, 205, 10, 46, 215, 61, 182, 187, 231, 93, 170, 79, 252, 86, 54, 113, 168, 1, 43, 25, 96, 174, 173, 3, 88, 168, 122}
 	tokenRootHash := []byte{226, 185, 241, 197, 117, 165, 165, 145, 104, 161, 171, 134, 48, 163, 31, 74, 225, 159, 66, 82, 123, 59, 225, 60, 46, 218, 55, 192, 124, 52, 61, 177}

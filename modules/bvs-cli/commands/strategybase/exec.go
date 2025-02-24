@@ -16,8 +16,7 @@ func newService(keyName string) (*api.StrategyBase, io.ChainIO) {
 	if err != nil {
 		panic(err)
 	}
-	strategyBase := api.NewStrategyBase(chainIO)
-	strategyBase.BindClient(conf.C.Contract.StrategyBase)
+	strategyBase := api.NewStrategyBase(chainIO, conf.C.Contract.StrategyBase)
 	return strategyBase, chainIO
 }
 

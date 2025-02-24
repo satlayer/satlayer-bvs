@@ -16,8 +16,7 @@ func newService(keyName string) (*api.StrategyManager, io.ChainIO) {
 	if err != nil {
 		panic(err)
 	}
-	strategy := api.NewStrategyManager(chainIO).WithGasLimit(4000000)
-	strategy.BindClient(conf.C.Contract.Strategy)
+	strategy := api.NewStrategyManager(chainIO, conf.C.Contract.Strategy).WithGasLimit(4000000)
 	return strategy, chainIO
 }
 

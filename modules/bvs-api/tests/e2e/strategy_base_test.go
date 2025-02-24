@@ -68,8 +68,7 @@ func (suite *strategyBaseTestSuite) Test_ExecuteStrategyBase() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	strategyBase := api.NewStrategyBase(chainIO)
-	strategyBase.BindClient(suite.contrAddr)
+	strategyBase := api.NewStrategyBase(chainIO, suite.contrAddr)
 
 	resp, err := strategyBase.SetStrategyManager(context.Background(), suite.strategyManager)
 	assert.NoError(t, err)
@@ -94,8 +93,7 @@ func (suite *strategyBaseTestSuite) Test_QueryStrategyBase() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	strategyBase := api.NewStrategyBase(chainIO)
-	strategyBase.BindClient(suite.contrAddr)
+	strategyBase := api.NewStrategyBase(chainIO, suite.contrAddr)
 
 	/*resp, err := strategyBase.GetShares("osmo1fxqtqvcsglst7pmnd0a9ftytsxt8g75r6cugv7", "osmo1p4ee54wcu54vcxht5spk5dpklr39qjpxxk38rm9p36c48rlgyawstwl3q8")
 	assert.NoError(t, err, "execute contract")
