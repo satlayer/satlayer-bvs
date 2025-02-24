@@ -8,6 +8,45 @@ SatLayer BVS is a comprehensive ecosystem on the Babylon network
 that includes a suite of interconnected contracts for managing staking,
 delegation, slashing, rewards distribution, and automated validator selection.
 
+```mermaid
+flowchart TD
+%% Nodes
+    BVS("BVS")
+    DR["Driver"]
+    ST["State Bank"]
+    DI["BVS Directory"]
+    DM["Delegation Manager"]
+    SM["Strategy Manager"]
+    SF["Strategy Factory"]
+    SB["Strategy Base"]
+    SBT["Strategy Base TLV Limits"]
+    SL["Slash Manager"]
+    RC["Rewards Coordinator"]
+
+
+%% Edge connections between nodes
+    subgraph SP[Actor: Service Provider]
+    BVS --> DR
+    BVS --> ST
+    end
+    subgraph IN["BVS Interface"]
+    DI --> DM
+    end
+    subgraph Strategy Subsystem
+    SM --> SB
+    SM --> SBT
+    SM <--> SF
+    SF -->|Deploy| SB
+    SF -->|Deploy| SBT
+    end
+    SL --> DM
+    RC --> SM
+    SP --> RC
+    DM --> SM
+    SP --> DI
+    SL --> SM
+```
+
 ## Contracts
 
 ### BVS Directory
