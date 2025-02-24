@@ -9,6 +9,9 @@
 //
 //    queryMsg, err := UnmarshalQueryMsg(bytes)
 //    bytes, err = queryMsg.Marshal()
+//
+//    valueResponse, err := UnmarshalValueResponse(bytes)
+//    bytes, err = valueResponse.Marshal()
 
 package statebank
 
@@ -44,6 +47,16 @@ func (r *QueryMsg) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
+func UnmarshalValueResponse(data []byte) (ValueResponse, error) {
+	var r ValueResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *ValueResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
 type InstantiateMsg struct {
 	InitialOwner string `json:"initial_owner"`
 }
@@ -73,4 +86,8 @@ type QueryMsg struct {
 
 type Get struct {
 	Key string `json:"key"`
+}
+
+type ValueResponse struct {
+	Value string `json:"value"`
 }

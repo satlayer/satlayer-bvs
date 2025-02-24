@@ -1,15 +1,14 @@
 use crate::{
     error::ContractError,
     msg::{
-        ExecuteMsg, InstantiateMsg, MigrateMsg, OperatorStatusResponse, QueryMsg,
-        SignatureWithSaltAndExpiry,
+        ExecuteMsg, InstantiateMsg, OperatorStatusResponse, QueryMsg, SignatureWithSaltAndExpiry,
     },
     query::{
-        BVSInfoResponse, DelegationResponse, DigestHashResponse, DomainNameResponse,
+        BvsInfoResponse, DelegationResponse, DigestHashResponse, DomainNameResponse,
         DomainTypeHashResponse, OwnerResponse, RegistrationTypeHashResponse, SaltResponse,
     },
     state::{
-        BVSInfo, OperatorBVSRegistrationStatus, BVS_INFO, BVS_OPERATOR_STATUS, DELEGATION_MANAGER,
+        BvsInfo, OperatorBvsRegistrationStatus, BVS_INFO, BVS_OPERATOR_STATUS, DELEGATION_MANAGER,
         OPERATOR_SALT_SPENT, OWNER,
     },
     utils::{
@@ -27,7 +26,7 @@ use bvs_base::delegation::{OperatorResponse, QueryMsg as DelegationManagerQueryM
 use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 
-const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
+const CONTRACT_NAME: &str = "BVS Directory";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const PAUSED_OPERATOR_REGISTER_DEREGISTER_TO_BVS: u8 = 0;
@@ -69,8 +68,8 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::RegisterBVS { bvs_contract } => register_bvs(deps, bvs_contract),
-        ExecuteMsg::RegisterOperatorToBVS {
+        ExecuteMsg::RegisterBvs { bvs_contract } => register_bvs(deps, bvs_contract),
+        ExecuteMsg::RegisterOperatorToBvs {
             operator,
             public_key,
             contract_addr,
@@ -99,11 +98,11 @@ pub fn execute(
                 signature_with_salt_and_expiry,
             )
         }
-        ExecuteMsg::DeregisterOperatorFromBVS { operator } => {
+        ExecuteMsg::DeregisterOperatorFromBvs { operator } => {
             let operator_addr = Addr::unchecked(operator);
             deregister_operator(deps, env, info, operator_addr)
         }
-        ExecuteMsg::UpdateBVSMetadataURI { metadata_uri } => {
+        ExecuteMsg::UpdateBvsMetadataUri { metadata_uri } => {
             update_metadata_uri(info, metadata_uri)
         }
         ExecuteMsg::SetDelegationManager { delegation_manager } => {
@@ -144,7 +143,7 @@ pub fn register_bvs(deps: DepsMut, bvs_contract: String) -> Result<Response, Con
 
     let bvs_hash = hex::encode(hash_result);
 
-    let bvs_info = BVSInfo {
+    let bvs_info = BvsInfo {
         bvs_hash: bvs_hash.clone(),
         bvs_contract: bvs_contract.clone(),
     };
@@ -186,7 +185,7 @@ pub fn register_operator(
 
     let status =
         BVS_OPERATOR_STATUS.may_load(deps.storage, (info.sender.clone(), operator.clone()))?;
-    if status == Some(OperatorBVSRegistrationStatus::Registered) {
+    if status == Some(OperatorBvsRegistrationStatus::Registered) {
         return Err(ContractError::OperatorAlreadyRegistered {});
     }
 
@@ -199,7 +198,7 @@ pub fn register_operator(
     }
 
     let message_bytes = calculate_digest_hash(
-        env,
+        env.block.chain_id,
         &public_key,
         &info.sender,
         &operator_signature.salt,
@@ -218,7 +217,7 @@ pub fn register_operator(
     BVS_OPERATOR_STATUS.save(
         deps.storage,
         (info.sender.clone(), operator.clone()),
-        &OperatorBVSRegistrationStatus::Registered,
+        &OperatorBvsRegistrationStatus::Registered,
     )?;
     OPERATOR_SALT_SPENT.save(deps.storage, (operator.clone(), salt_str.clone()), &true)?;
 
@@ -241,11 +240,11 @@ pub fn deregister_operator(
 
     let status =
         BVS_OPERATOR_STATUS.may_load(deps.storage, (info.sender.clone(), operator.clone()))?;
-    if status == Some(OperatorBVSRegistrationStatus::Registered) {
+    if status == Some(OperatorBvsRegistrationStatus::Registered) {
         BVS_OPERATOR_STATUS.save(
             deps.storage,
             (info.sender.clone(), operator.clone()),
-            &OperatorBVSRegistrationStatus::Unregistered,
+            &OperatorBvsRegistrationStatus::Unregistered,
         )?;
 
         let event = Event::new("OperatorBVSRegistrationStatusUpdated")
@@ -365,7 +364,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let owner_addr = query_owner(deps)?;
             to_json_binary(&owner_addr)
         }
-        QueryMsg::GetOperatorBVSRegistrationTypeHash {} => {
+        QueryMsg::GetOperatorBvsRegistrationTypeHash {} => {
             let hash_str = query_operator_bvs_registration_typehash(deps)?;
             to_json_binary(&hash_str)
         }
@@ -377,7 +376,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let name_str = query_domain_name(deps)?;
             to_json_binary(&name_str)
         }
-        QueryMsg::GetBVSInfo { bvs_hash } => {
+        QueryMsg::GetBvsInfo { bvs_hash } => {
             let bvs_info = query_bvs_info(deps, bvs_hash)?;
             to_json_binary(&bvs_info)
         }
@@ -391,7 +390,7 @@ fn query_operator_status(
 ) -> StdResult<OperatorStatusResponse> {
     let status = BVS_OPERATOR_STATUS
         .may_load(deps.storage, (user_addr.clone(), operator.clone()))?
-        .unwrap_or(OperatorBVSRegistrationStatus::Unregistered);
+        .unwrap_or(OperatorBvsRegistrationStatus::Unregistered);
     Ok(OperatorStatusResponse { status })
 }
 
@@ -401,7 +400,7 @@ fn query_calculate_digest_hash(
     params: DigestHashParams,
 ) -> StdResult<DigestHashResponse> {
     let digest_hash = calculate_digest_hash(
-        env,
+        env.block.chain_id,
         &params.operator_public_key,
         &params.bvs,
         &params.salt,
@@ -451,9 +450,9 @@ fn query_domain_name(_deps: Deps) -> StdResult<DomainNameResponse> {
     Ok(DomainNameResponse { domain_name })
 }
 
-fn query_bvs_info(deps: Deps, bvs_hash: String) -> StdResult<BVSInfoResponse> {
+fn query_bvs_info(deps: Deps, bvs_hash: String) -> StdResult<BvsInfoResponse> {
     let bvs_info = BVS_INFO.load(deps.storage, bvs_hash.to_string())?;
-    Ok(BVSInfoResponse {
+    Ok(BvsInfoResponse {
         bvs_hash,
         bvs_contract: bvs_info.bvs_contract,
     })
@@ -465,19 +464,6 @@ fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
         return Err(ContractError::Unauthorized {});
     }
     Ok(())
-}
-
-pub fn migrate(
-    deps: DepsMut,
-    _env: Env,
-    info: &MessageInfo,
-    _msg: MigrateMsg,
-) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), info)?;
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    Ok(Response::new().add_attribute("method", "migrate"))
 }
 
 #[cfg(test)]
@@ -622,7 +608,7 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterBVS {
+        let msg = ExecuteMsg::RegisterBvs {
             bvs_contract: "bvs_contract".to_string(),
         };
 
@@ -662,7 +648,7 @@ mod tests {
             Addr::unchecked("osmo1wsjhxj3nl8kmrudsxlf7c40yw6crv4pcrk0twvvsp9jmyr675wjqc8t6an");
 
         let message_byte = calculate_digest_hash(
-            env.clone(),
+            env.clone().block.chain_id,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -697,7 +683,7 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToBVS {
+        let msg = ExecuteMsg::RegisterOperatorToBvs {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
             contract_addr: contract_addr.to_string(),
@@ -736,7 +722,7 @@ mod tests {
         let status = BVS_OPERATOR_STATUS
             .load(&deps.storage, (info.sender.clone(), operator.clone()))
             .unwrap();
-        assert_eq!(status, OperatorBVSRegistrationStatus::Registered);
+        assert_eq!(status, OperatorBvsRegistrationStatus::Registered);
 
         let is_salt_spent = OPERATOR_SALT_SPENT
             .load(&deps.storage, (operator.clone(), salt.to_string()))
@@ -759,7 +745,7 @@ mod tests {
             Addr::unchecked("osmo1wsjhxj3nl8kmrudsxlf7c40yw6crv4pcrk0twvvsp9jmyr675wjqc8t6an");
 
         let message_byte = calculate_digest_hash(
-            env.clone(),
+            env.clone().block.chain_id,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -792,7 +778,7 @@ mod tests {
             }),
         });
 
-        let register_msg = ExecuteMsg::RegisterOperatorToBVS {
+        let register_msg = ExecuteMsg::RegisterOperatorToBvs {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
             contract_addr: contract_addr.to_string(),
@@ -807,7 +793,7 @@ mod tests {
 
         assert!(res.is_ok());
 
-        let deregister_msg = ExecuteMsg::DeregisterOperatorFromBVS {
+        let deregister_msg = ExecuteMsg::DeregisterOperatorFromBvs {
             operator: operator.to_string(),
         };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), deregister_msg);
@@ -838,7 +824,7 @@ mod tests {
         let status = BVS_OPERATOR_STATUS
             .load(&deps.storage, (info.sender.clone(), operator.clone()))
             .unwrap();
-        assert_eq!(status, OperatorBVSRegistrationStatus::Unregistered);
+        assert_eq!(status, OperatorBvsRegistrationStatus::Unregistered);
     }
 
     #[test]
@@ -848,7 +834,7 @@ mod tests {
 
         let metadata_uri = "http://metadata.uri".to_string();
 
-        let msg = ExecuteMsg::UpdateBVSMetadataURI {
+        let msg = ExecuteMsg::UpdateBvsMetadataUri {
             metadata_uri: metadata_uri.clone(),
         };
         let res = execute(deps.as_mut(), env, info.clone(), msg);
@@ -957,7 +943,7 @@ mod tests {
             Addr::unchecked("osmo1wsjhxj3nl8kmrudsxlf7c40yw6crv4pcrk0twvvsp9jmyr675wjqc8t6an");
 
         let message_byte = calculate_digest_hash(
-            env.clone(),
+            env.clone().block.chain_id,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -990,7 +976,7 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToBVS {
+        let msg = ExecuteMsg::RegisterOperatorToBvs {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
             contract_addr: contract_addr.to_string(),
@@ -1029,7 +1015,7 @@ mod tests {
         let status = BVS_OPERATOR_STATUS
             .load(&deps.storage, (info.sender.clone(), operator.clone()))
             .unwrap();
-        assert_eq!(status, OperatorBVSRegistrationStatus::Registered);
+        assert_eq!(status, OperatorBvsRegistrationStatus::Registered);
 
         let is_salt_spent = OPERATOR_SALT_SPENT
             .load(&deps.storage, (operator.clone(), salt.to_string()))
@@ -1044,7 +1030,7 @@ mod tests {
             from_json(query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
         println!("Query result: {:?}", query_res);
 
-        assert_eq!(query_res.status, OperatorBVSRegistrationStatus::Registered);
+        assert_eq!(query_res.status, OperatorBvsRegistrationStatus::Registered);
     }
 
     #[test]
@@ -1067,7 +1053,7 @@ mod tests {
 
         assert_eq!(
             query_res.status,
-            OperatorBVSRegistrationStatus::Unregistered
+            OperatorBvsRegistrationStatus::Unregistered
         );
     }
 
@@ -1098,7 +1084,7 @@ mod tests {
             from_json(query(deps.as_ref(), env.clone(), query_msg).unwrap()).unwrap();
 
         let expected_digest_hash = calculate_digest_hash(
-            env.clone(),
+            env.clone().block.chain_id,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -1129,7 +1115,7 @@ mod tests {
             Addr::unchecked("osmo1wsjhxj3nl8kmrudsxlf7c40yw6crv4pcrk0twvvsp9jmyr675wjqc8t6an");
 
         let message_byte = calculate_digest_hash(
-            env.clone(),
+            env.clone().block.chain_id,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -1162,7 +1148,7 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToBVS {
+        let msg = ExecuteMsg::RegisterOperatorToBvs {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
             contract_addr: contract_addr.to_string(),
@@ -1226,7 +1212,7 @@ mod tests {
         let (deps, env, _info, _pauser_info, _unpauser_info, _delegation_manager) =
             instantiate_contract();
 
-        let query_msg = QueryMsg::GetOperatorBVSRegistrationTypeHash {};
+        let query_msg = QueryMsg::GetOperatorBvsRegistrationTypeHash {};
         let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
 
         let response: RegistrationTypeHashResponse = from_json(query_res).unwrap();
@@ -1279,7 +1265,7 @@ mod tests {
             Addr::unchecked("osmo1dhpupjecw7ltsckrckd4saraaf2266aq2dratwyjtwz5p7476yxspgc6td");
 
         let message_byte = calculate_digest_hash(
-            env.clone(),
+            env.clone().block.chain_id,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -1312,7 +1298,7 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToBVS {
+        let msg = ExecuteMsg::RegisterOperatorToBvs {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
             contract_addr: contract_addr.to_string(),
@@ -1350,7 +1336,7 @@ mod tests {
             Addr::unchecked("osmo1dhpupjecw7ltsckrckd4saraaf2266aq2dratwyjtwz5p7476yxspgc6td");
 
         let message_byte = calculate_digest_hash(
-            env.clone(),
+            env.clone().block.chain_id,
             &Binary::from(public_key_bytes.clone()),
             &info.sender,
             &salt,
@@ -1388,38 +1374,14 @@ mod tests {
 
         let bvs_hash = hex::encode(hash_result);
 
-        let query_msg = QueryMsg::GetBVSInfo {
+        let query_msg = QueryMsg::GetBvsInfo {
             bvs_hash: bvs_hash.clone(),
         };
         let query_response = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let bvs_info: BVSInfo = from_json(query_response).unwrap();
+        let bvs_info: BvsInfo = from_json(query_response).unwrap();
 
         assert_eq!(bvs_info.bvs_hash, bvs_hash);
         assert_eq!(bvs_info.bvs_contract, bvs_contract.clone())
-    }
-
-    #[test]
-    fn test_migrate_owner_vs_non_owner() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
-
-        let migrate_msg = MigrateMsg {};
-        let res = migrate(deps.as_mut(), env.clone(), &info, migrate_msg.clone()).unwrap();
-
-        assert_eq!(res, Response::new().add_attribute("method", "migrate"));
-
-        let version = get_contract_version(deps.as_ref().storage).unwrap();
-        assert_eq!(version.contract, CONTRACT_NAME);
-        assert_eq!(version.version, CONTRACT_VERSION);
-
-        let non_owner_info = message_info(&Addr::unchecked("not_owner"), &[]);
-
-        let res = migrate(deps.as_mut(), env, &non_owner_info, migrate_msg);
-
-        match res {
-            Err(ContractError::Unauthorized {}) => {}
-            _ => panic!("Expected Unauthorized error"),
-        }
     }
 
     #[test]

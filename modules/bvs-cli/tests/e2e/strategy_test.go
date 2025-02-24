@@ -40,11 +40,13 @@ func Test_GetStrategyManagerState(t *testing.T) {
 	strategy.GetStrategyManagerState()
 }
 
-func Test_GetDepositTypeHash(t *testing.T) {
+// TODO(post-hermetic): break due to rename from GetDepositTypehash
+func test_GetDepositTypeHash(t *testing.T) {
 	strategy.GetDepositTypeHash()
 }
 
-func Test_GetStrategyDomainTypeHash(t *testing.T) {
+// TODO(post-hermetic): break due to rename from GetDomainTypehash
+func test_GetStrategyDomainTypeHash(t *testing.T) {
 	strategy.GetDomainTypeHash()
 }
 

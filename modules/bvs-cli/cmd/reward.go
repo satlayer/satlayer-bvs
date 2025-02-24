@@ -28,11 +28,11 @@ func rewardCmd() *cobra.Command {
 		Short: "To set the activation delay.",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			activationDelay, err := strconv.ParseUint(args[1], 10, 64)
+			activationDelay, err := strconv.ParseInt(args[1], 10, 64)
 			if err != nil {
 				fmt.Printf("Cmd Args: %s\n", args)
 			}
-			reward.SetActivationDelay(args[0], uint32(activationDelay))
+			reward.SetActivationDelay(args[0], activationDelay)
 		},
 	}
 	setGlobalOperatorCommissionCmd := &cobra.Command{
@@ -40,11 +40,11 @@ func rewardCmd() *cobra.Command {
 		Short: "To set the global operator commission.",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			newCommissionBips, err := strconv.ParseUint(args[1], 10, 64)
+			newCommissionBips, err := strconv.ParseInt(args[1], 10, 64)
 			if err != nil {
 				fmt.Printf("Cmd Args: %s\n", args)
 			}
-			reward.SetGlobalOperatorCommission(args[0], uint16(newCommissionBips))
+			reward.SetGlobalOperatorCommission(args[0], newCommissionBips)
 		},
 	}
 	setRewardsUpdaterCmd := &cobra.Command{

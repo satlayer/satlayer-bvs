@@ -20,11 +20,13 @@ type strategyBaseTVLLimitsTestSuite struct {
 	chainIO         io.ChainIO
 	contrAddr       string
 	strategyManager string
+	container       *babylond.BabylonContainer
 }
 
-func (suite *strategyBaseTVLLimitsTestSuite) SetupTest() {
+func (suite *strategyBaseTVLLimitsTestSuite) SetupSuite() {
 	container := babylond.Run(context.Background())
 	suite.chainIO = container.NewChainIO("../.babylon")
+	suite.container = container
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
 
 	deployer := &bvs.Deployer{BabylonContainer: container}
@@ -44,12 +46,16 @@ func (suite *strategyBaseTVLLimitsTestSuite) SetupTest() {
 		Name:   "Test Token",
 		Symbol: "TEST",
 	})
-	addr := container.GenerateAddress("addr").String()
+	tAddr := container.GenerateAddress("test-address").String()
 
-	strategyManager := deployer.DeployStrategyManager(addr, addr, addr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+	strategyManager := deployer.DeployStrategyManager(tAddr, tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 	container.ImportPrivKey("strategy-base-tvl-limits:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
 	suite.contrAddr = deployer.DeployStrategyBaseTvlLimits(strategyManager.Address, token.Address, big.NewInt(1e8), big.NewInt(1e8)).Address
-	suite.strategyManager = "bbn1mju0w4qagjcgtrgepr796zmg083qurq9sngy0eyxm8wzf78cjt3qzfq7qy"
+	suite.strategyManager = strategyManager.Address
+}
+
+func (suite *strategyBaseTVLLimitsTestSuite) TearDownSuite() {
+	suite.Require().NoError(suite.container.Terminate(context.Background()))
 }
 
 func (suite *strategyBaseTVLLimitsTestSuite) Test_ExecuteStrategyTVLLimits() {
@@ -78,10 +84,10 @@ func (suite *strategyBaseTVLLimitsTestSuite) Test_ExecuteStrategyTVLLimits() {
 	assert.NotNil(t, resp, "response is nil")
 	t.Logf("Withdraw Response: %+v", resp)*/
 
-	// resp, err := strategyTVLLimits.SetTVLLimits(context.Background(), "11000000", "13000000")
-	// assert.NoError(t, err, "SetTVLLimits failed")
+	// resp, err := strategyTVLLimits.SetTvlLimits(context.Background(), "11000000", "13000000")
+	// assert.NoError(t, err, "SetTvlLimits failed")
 	// assert.NotNil(t, resp, "response is nil")
-	// t.Logf("SetTVLLimits Response: %+v", resp)
+	// t.Logf("SetTvlLimits Response: %+v", resp)
 
 	// resp, err = strategyTVLLimits.TransferOwnership(context.Background(), "osmo1fxqtqvcsglst7pmnd0a9ftytsxt8g75r6cugv7")
 	// assert.NoError(t, err, "TransferOwnership failed")
@@ -119,8 +125,8 @@ func (suite *strategyBaseTVLLimitsTestSuite) Test_QueryStrategyTVLLimits() {
 	strategyTVLLimits := api.NewStrategyBaseTVLLimits(chainIO)
 	strategyTVLLimits.BindClient(suite.contrAddr)
 
-	tvlLimitsResp, err := strategyTVLLimits.GetTVLLimits()
-	assert.NoError(t, err, "GetTVLLimits failed")
+	tvlLimitsResp, err := strategyTVLLimits.GetTvlLimits()
+	assert.NoError(t, err, "GetTvlLimits failed")
 	assert.NotNil(t, tvlLimitsResp, "response is nil")
 	t.Logf("TVL Limits: %+v", tvlLimitsResp)
 

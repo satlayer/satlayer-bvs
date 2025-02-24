@@ -14,7 +14,7 @@ import (
 )
 
 type Service struct {
-	Reward  api.RewardsCoordinator
+	Reward  *api.RewardsCoordinator
 	ChainIO io.ChainIO
 }
 

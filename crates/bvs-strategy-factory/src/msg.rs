@@ -28,7 +28,7 @@ pub enum ExecuteMsg {
     RemoveStrategiesFromWhitelist {
         strategies: Vec<String>,
     },
-    SetThirdPartyTransfersForBidden {
+    SetThirdPartyTransfersForbidden {
         strategy: String,
         value: bool,
     },
@@ -60,6 +60,3 @@ pub enum QueryMsg {
     #[returns(BlacklistStatusResponse)]
     IsTokenBlacklisted { token: String },
 }
-
-#[cw_serde]
-pub struct MigrateMsg {}

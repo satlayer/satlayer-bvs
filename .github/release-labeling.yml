@@ -1,0 +1,63 @@
+version: v1
+
+labels:
+  - label: s/feat
+    sync: true
+    matcher:
+      title: "^feat: .+"
+
+  - label: s/fix
+    sync: true
+    matcher:
+      title: "^fix: .+"
+
+  - label: s/chore
+    sync: true
+    matcher:
+      title: "^chore(\\(.+\\))?: .+"
+
+  - label: a/crates
+    sync: true
+    matcher:
+      files: "crates/**"
+
+  - label: a/docs
+    sync: true
+    matcher:
+      files: "docs/**"
+
+  - label: a/examples
+    sync: true
+    matcher:
+      files: "examples/**"
+
+  - label: a/modules/babylond
+    sync: true
+    matcher:
+      files: "modules/babylond/**"
+
+  - label: a/modules/bvs-api
+    sync: true
+    matcher:
+      files: "modules/bvs-api/**"
+
+  - label: a/modules/bvs-cli
+    sync: true
+    matcher:
+      files: "modules/bvs-cli/**"
+
+  - label: a/modules/bvs-cw
+    sync: true
+    matcher:
+      files: "modules/bvs-cw/**"
+
+checks:
+  - context: "Semantic Pull Request"
+    description:
+      success: Ready for review & merge.
+      failure: "Missing semantic title [feat/fix/chore(optional): what's change]"
+    labels:
+      any:
+        - s/feat
+        - s/fix
+        - s/chore

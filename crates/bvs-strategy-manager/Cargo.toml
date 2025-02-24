@@ -27,7 +27,6 @@ hex = { workspace = true }
 cosmwasm-crypto = { workspace = true }
 secp256k1 = { workspace = true }
 bech32 = { workspace = true }
-cosmwasm-storage = { workspace = true }
 cw20 = { workspace = true }
 ripemd = { workspace = true }
 bvs-base = { workspace = true }

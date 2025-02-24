@@ -1,8 +1,5 @@
 use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, StdResult, WasmMsg};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 struct StateBankContract(pub Addr);
 
 impl StateBankContract {

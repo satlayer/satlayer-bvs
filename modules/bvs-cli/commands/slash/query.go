@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
 
 	"github.com/satlayer/satlayer-bvs/bvs-cli/conf"
+	slashmanager "github.com/satlayer/satlayer-bvs/bvs-cw/slash-manager"
 )
 
 func GetSlashDetails(slashHash string) {
@@ -48,7 +48,7 @@ func GetMinimalSlashSignature() {
 	fmt.Printf("Minimal slash signature value: %d\n", resp.MinimalSlashSignature)
 }
 
-func CalculateSlashHash(KeyNames []string, sender string, slasher string, operator string, share string, slashSignature uint64, slashValidators []string, reason string, startTime uint64, endTime uint64, status bool) {
+func CalculateSlashHash(KeyNames []string, sender string, slasher string, operator string, share string, slashSignature int64, slashValidators []string, reason string, startTime int64, endTime int64, status bool) {
 	s := NewService()
 
 	var validatorsPublicKeys []cryptotypes.PubKey
@@ -63,7 +63,7 @@ func CalculateSlashHash(KeyNames []string, sender string, slasher string, operat
 		validatorsPublicKeys = append(validatorsPublicKeys, pubKey)
 	}
 
-	slashDetails := types.ExecuteSlashDetails{
+	slashDetails := slashmanager.CalculateSlashHashSlashDetails{
 		Slasher:        slasher,
 		Operator:       operator,
 		Share:          share,
@@ -80,6 +80,11 @@ func CalculateSlashHash(KeyNames []string, sender string, slasher string, operat
 		panic(fmt.Sprintf("Failed to calculate slash hash: %v", err))
 	}
 
-	slashHashHex := hex.EncodeToString(resp.MessageBytes)
+	// convert from int64 into byte, see SL-184
+	bytes := make([]byte, len(resp.MessageBytes))
+	for i, v := range resp.MessageBytes {
+		bytes[i] = byte(v)
+	}
+	slashHashHex := hex.EncodeToString(bytes)
 	fmt.Printf("Slash Hash (Hex): %s\n", slashHashHex)
 }

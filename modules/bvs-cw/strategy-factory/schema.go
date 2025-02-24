@@ -9,6 +9,12 @@
 //
 //    queryMsg, err := UnmarshalQueryMsg(bytes)
 //    bytes, err = queryMsg.Marshal()
+//
+//    strategyResponse, err := UnmarshalStrategyResponse(bytes)
+//    bytes, err = strategyResponse.Marshal()
+//
+//    blacklistStatusResponse, err := UnmarshalBlacklistStatusResponse(bytes)
+//    bytes, err = blacklistStatusResponse.Marshal()
 
 package strategyfactory
 
@@ -44,6 +50,26 @@ func (r *QueryMsg) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
+func UnmarshalStrategyResponse(data []byte) (StrategyResponse, error) {
+	var r StrategyResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *StrategyResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalBlacklistStatusResponse(data []byte) (BlacklistStatusResponse, error) {
+	var r BlacklistStatusResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *BlacklistStatusResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
 type InstantiateMsg struct {
 	InitialOwner        string `json:"initial_owner"`
 	InitialPausedStatus int64  `json:"initial_paused_status"`
@@ -58,7 +84,7 @@ type ExecuteMsg struct {
 	UpdateConfig                    *UpdateConfig                    `json:"update_config,omitempty"`
 	BlacklistTokens                 *BlacklistTokens                 `json:"blacklist_tokens,omitempty"`
 	RemoveStrategiesFromWhitelist   *RemoveStrategiesFromWhitelist   `json:"remove_strategies_from_whitelist,omitempty"`
-	SetThirdPartyTransfersForBidden *SetThirdPartyTransfersForBidden `json:"set_third_party_transfers_for_bidden,omitempty"`
+	SetThirdPartyTransfersForbidden *SetThirdPartyTransfersForbidden `json:"set_third_party_transfers_forbidden,omitempty"`
 	WhitelistStrategies             *WhitelistStrategies             `json:"whitelist_strategies,omitempty"`
 	SetStrategyManager              *SetStrategyManager              `json:"set_strategy_manager,omitempty"`
 	TransferOwnership               *TransferOwnership               `json:"transfer_ownership,omitempty"`
@@ -93,7 +119,7 @@ type SetStrategyManager struct {
 	NewStrategyManager string `json:"new_strategy_manager"`
 }
 
-type SetThirdPartyTransfersForBidden struct {
+type SetThirdPartyTransfersForbidden struct {
 	Strategy string `json:"strategy"`
 	Value    bool   `json:"value"`
 }
@@ -130,4 +156,12 @@ type GetStrategy struct {
 
 type IsTokenBlacklisted struct {
 	Token string `json:"token"`
+}
+
+type StrategyResponse struct {
+	Strategy string `json:"strategy"`
+}
+
+type BlacklistStatusResponse struct {
+	IsBlacklisted bool `json:"is_blacklisted"`
 }

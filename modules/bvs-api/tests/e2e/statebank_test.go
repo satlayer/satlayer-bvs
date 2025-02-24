@@ -21,17 +21,23 @@ type stateBankTestSuite struct {
 	chainIO    io.ChainIO
 	contrAddr  string
 	callerAddr string
+	container  *babylond.BabylonContainer
 }
 
-func (suite *stateBankTestSuite) SetupTest() {
+func (suite *stateBankTestSuite) SetupSuite() {
 	container := babylond.Run(context.Background())
 	suite.chainIO = container.NewChainIO("../.babylon")
+	suite.container = container
 
 	deployer := &bvs.Deployer{BabylonContainer: container}
 	suite.contrAddr = deployer.DeployStateBank().Address
 	suite.callerAddr = "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
 
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
+}
+
+func (suite *stateBankTestSuite) TearDownSuite() {
+	suite.Require().NoError(suite.container.Terminate(context.Background()))
 }
 
 func (suite *stateBankTestSuite) Test_ExecuteStateBank() {
@@ -41,7 +47,7 @@ func (suite *stateBankTestSuite) Test_ExecuteStateBank() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	stateBank := api.NewStateBankImpl(chainIO)
+	stateBank := api.NewStateBank(chainIO)
 	stateBank.BindClient(suite.contrAddr)
 
 	resp, err := stateBank.SetRegisteredBVSContract(context.Background(), suite.callerAddr)
@@ -62,7 +68,7 @@ func (suite *stateBankTestSuite) test_StateBankIndexer() {
 	keyName := "caller"
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	stateBankApi := api.NewStateBankImpl(chainIO)
+	stateBankApi := api.NewStateBank(chainIO)
 	res, err := chainIO.QueryNodeStatus(context.Background())
 	if err != nil {
 		panic(err)

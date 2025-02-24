@@ -27,7 +27,6 @@ hex = { workspace = true }
 cosmwasm-crypto = { workspace = true }
 secp256k1 = { workspace = true }
 bech32 = { workspace = true }
-cosmwasm-storage = { workspace = true }
 cw20 = { workspace = true }
 ripemd = { workspace = true }
 base64 = { workspace = true }
@@ -36,4 +35,4 @@ serde_json = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
-bvs-test-utils = { workspace = true }
+bvs-testing = { workspace = true }

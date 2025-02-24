@@ -15,6 +15,9 @@ async function generate(schema) {
   if (schema.query.enum?.length !== 0) {
     await schemaInput.addSource({ name: "QueryMsg", schema: JSON.stringify(schema.query) });
   }
+  for (const [key, res] of Object.entries(schema.responses)) {
+    await schemaInput.addSource({ name: key, schema: JSON.stringify(res) });
+  }
   const inputData = new InputData();
   inputData.addInput(schemaInput);
 

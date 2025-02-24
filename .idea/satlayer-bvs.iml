@@ -10,6 +10,7 @@
       <excludeFolder url="file://$MODULE_DIR$/examples/squaring/squaring-contract/target" />
       <excludePattern pattern=".turbo" />
       <excludePattern pattern="dist" />
+      <excludePattern pattern="Cargo.lock" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
   </component>

@@ -1,7 +1,7 @@
 use crate::query::{
-    CalculateDigestHashResponse, DelegationManagerResponse, DepositTypehashResponse,
-    DepositsResponse, DomainNameResponse, DomainTypehashResponse, NonceResponse, OwnerResponse,
-    StakerStrategyLisResponse, StakerStrategyListLengthResponse, StakerStrategySharesResponse,
+    CalculateDigestHashResponse, DelegationManagerResponse, DepositTypeHashResponse,
+    DepositsResponse, DomainNameResponse, DomainTypeHashResponse, NonceResponse, OwnerResponse,
+    StakerStrategyListLengthResponse, StakerStrategyListResponse, StakerStrategySharesResponse,
     StrategyManagerStateResponse, StrategyWhitelistedResponse, StrategyWhitelisterResponse,
     ThirdPartyTransfersForbiddenResponse,
 };
@@ -108,7 +108,7 @@ pub enum QueryMsg {
     #[returns(NonceResponse)]
     GetNonce { staker: String },
 
-    #[returns(StakerStrategyLisResponse)]
+    #[returns(StakerStrategyListResponse)]
     GetStakerStrategyList { staker: String },
 
     #[returns(OwnerResponse)]
@@ -119,7 +119,7 @@ pub enum QueryMsg {
 
     #[returns(CalculateDigestHashResponse)]
     CalculateDigestHash {
-        digst_hash_params: QueryDigestHashParams,
+        digest_hash_params: QueryDigestHashParams,
     },
 
     #[returns(StrategyWhitelisterResponse)]
@@ -128,11 +128,11 @@ pub enum QueryMsg {
     #[returns(StrategyManagerStateResponse)]
     GetStrategyManagerState {},
 
-    #[returns(DepositTypehashResponse)]
-    GetDepositTypehash {},
+    #[returns(DepositTypeHashResponse)]
+    GetDepositTypeHash {},
 
-    #[returns(DomainTypehashResponse)]
-    GetDomainTypehash {},
+    #[returns(DomainTypeHashResponse)]
+    GetDomainTypeHash {},
 
     #[returns(DomainNameResponse)]
     GetDomainName {},
@@ -140,6 +140,3 @@ pub enum QueryMsg {
     #[returns(DelegationManagerResponse)]
     GetDelegationManager {},
 }
-
-#[cw_serde]
-pub struct MigrateMsg {}

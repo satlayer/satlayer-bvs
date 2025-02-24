@@ -10,7 +10,7 @@
       "outputs": ["schema/**"]
     },
     "build": {
-      "inputs": ["tsconfig.json", "tsconfig.build.json", "src/**"],
+      "inputs": ["tsconfig.json", "tsconfig.build.json", "src/**", "**.go"],
       "outputs": ["dist/**"],
       "dependsOn": ["^build"]
     },

@@ -10,15 +10,15 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-cli/conf"
 )
 
-func newService(keyName string) (api.StrategyFactory, io.ChainIO) {
+func newService(keyName string) (*api.StrategyFactory, io.ChainIO) {
 	s := NewService()
 	chainIO, err := s.ChainIO.SetupKeyring(keyName, conf.C.Account.KeyringBackend)
 	if err != nil {
 		panic(err)
 	}
-	strategyFactory := api.NewStrategyFactoryImpl(chainIO, conf.C.Contract.StrategyFactory).WithGasLimit(2000000)
-	strategyFactory.BindClient(conf.C.Contract.StrategyFactory)
-	return strategyFactory, chainIO
+	factoryApi := api.NewStrategyFactory(chainIO).WithGasLimit(2000000)
+	factoryApi.BindClient(conf.C.Contract.StrategyFactory)
+	return factoryApi, chainIO
 }
 
 func CreateStrategy(userKeyName, token, pauser, unpauser string) {
@@ -30,7 +30,7 @@ func CreateStrategy(userKeyName, token, pauser, unpauser string) {
 	fmt.Printf("Deploy new strategy success. txn: %s\n", resp.Hash)
 }
 
-func UpdateConfig(userKeyName, newOwner string, strategyCodeId uint64) {
+func UpdateConfig(userKeyName, newOwner string, strategyCodeId int64) {
 	strategyFactory, _ := newService(userKeyName)
 	resp, err := strategyFactory.UpdateConfig(context.Background(), newOwner, strategyCodeId)
 	if err != nil {
@@ -102,9 +102,9 @@ func RemoveStrategiesFromWhitelist(userKeyName string, strategies []string) {
 	fmt.Printf("Remove strategies from whitelist success. txn: %s\n", resp.Hash)
 }
 
-func SetThirdPartyTransfersForBidden(userKeyName, strategy string, value bool) {
+func SetThirdPartyTransfersForbidden(userKeyName, strategy string, value bool) {
 	strategyFactory, _ := newService(userKeyName)
-	resp, err := strategyFactory.SetThirdPartyTransfersForBidden(context.Background(), strategy, value)
+	resp, err := strategyFactory.SetThirdPartyTransfersForbidden(context.Background(), strategy, value)
 	if err != nil {
 		panic(err)
 	}

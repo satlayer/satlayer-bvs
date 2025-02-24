@@ -9,6 +9,51 @@
 //
 //    queryMsg, err := UnmarshalQueryMsg(bytes)
 //    bytes, err = queryMsg.Marshal()
+//
+//    currentStakerDelegationDigestHashResponse, err := UnmarshalCurrentStakerDelegationDigestHashResponse(bytes)
+//    bytes, err = currentStakerDelegationDigestHashResponse.Marshal()
+//
+//    calculateWithdrawalRootResponse, err := UnmarshalCalculateWithdrawalRootResponse(bytes)
+//    bytes, err = calculateWithdrawalRootResponse.Marshal()
+//
+//    delegationApprovalDigestHashResponse, err := UnmarshalDelegationApprovalDigestHashResponse(bytes)
+//    bytes, err = delegationApprovalDigestHashResponse.Marshal()
+//
+//    delegationApproverResponse, err := UnmarshalDelegationApproverResponse(bytes)
+//    bytes, err = delegationApproverResponse.Marshal()
+//
+//    cumulativeWithdrawalsQueuedResponse, err := UnmarshalCumulativeWithdrawalsQueuedResponse(bytes)
+//    bytes, err = cumulativeWithdrawalsQueuedResponse.Marshal()
+//
+//    delegatableSharesResponse, err := UnmarshalDelegatableSharesResponse(bytes)
+//    bytes, err = delegatableSharesResponse.Marshal()
+//
+//    operatorSharesResponse, err := UnmarshalOperatorSharesResponse(bytes)
+//    bytes, err = operatorSharesResponse.Marshal()
+//
+//    operatorStakersResponse, err := UnmarshalOperatorStakersResponse(bytes)
+//    bytes, err = operatorStakersResponse.Marshal()
+//
+//    stakerNonceResponse, err := UnmarshalStakerNonceResponse(bytes)
+//    bytes, err = stakerNonceResponse.Marshal()
+//
+//    withdrawalDelayResponse, err := UnmarshalWithdrawalDelayResponse(bytes)
+//    bytes, err = withdrawalDelayResponse.Marshal()
+//
+//    delegatedResponse, err := UnmarshalDelegatedResponse(bytes)
+//    bytes, err = delegatedResponse.Marshal()
+//
+//    operatorResponse, err := UnmarshalOperatorResponse(bytes)
+//    bytes, err = operatorResponse.Marshal()
+//
+//    operatorDetailsResponse, err := UnmarshalOperatorDetailsResponse(bytes)
+//    bytes, err = operatorDetailsResponse.Marshal()
+//
+//    stakerDelegationDigestHashResponse, err := UnmarshalStakerDelegationDigestHashResponse(bytes)
+//    bytes, err = stakerDelegationDigestHashResponse.Marshal()
+//
+//    stakerOptOutWindowBlocksResponse, err := UnmarshalStakerOptOutWindowBlocksResponse(bytes)
+//    bytes, err = stakerOptOutWindowBlocksResponse.Marshal()
 
 package delegationmanager
 
@@ -41,6 +86,156 @@ func UnmarshalQueryMsg(data []byte) (QueryMsg, error) {
 }
 
 func (r *QueryMsg) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalCurrentStakerDelegationDigestHashResponse(data []byte) (CurrentStakerDelegationDigestHashResponse, error) {
+	var r CurrentStakerDelegationDigestHashResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *CurrentStakerDelegationDigestHashResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalCalculateWithdrawalRootResponse(data []byte) (CalculateWithdrawalRootResponse, error) {
+	var r CalculateWithdrawalRootResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *CalculateWithdrawalRootResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalDelegationApprovalDigestHashResponse(data []byte) (DelegationApprovalDigestHashResponse, error) {
+	var r DelegationApprovalDigestHashResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *DelegationApprovalDigestHashResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalDelegationApproverResponse(data []byte) (DelegationApproverResponse, error) {
+	var r DelegationApproverResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *DelegationApproverResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalCumulativeWithdrawalsQueuedResponse(data []byte) (CumulativeWithdrawalsQueuedResponse, error) {
+	var r CumulativeWithdrawalsQueuedResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *CumulativeWithdrawalsQueuedResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalDelegatableSharesResponse(data []byte) (DelegatableSharesResponse, error) {
+	var r DelegatableSharesResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *DelegatableSharesResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalOperatorSharesResponse(data []byte) (OperatorSharesResponse, error) {
+	var r OperatorSharesResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *OperatorSharesResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalOperatorStakersResponse(data []byte) (OperatorStakersResponse, error) {
+	var r OperatorStakersResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *OperatorStakersResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalStakerNonceResponse(data []byte) (StakerNonceResponse, error) {
+	var r StakerNonceResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *StakerNonceResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalWithdrawalDelayResponse(data []byte) (WithdrawalDelayResponse, error) {
+	var r WithdrawalDelayResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *WithdrawalDelayResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalDelegatedResponse(data []byte) (DelegatedResponse, error) {
+	var r DelegatedResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *DelegatedResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalOperatorResponse(data []byte) (OperatorResponse, error) {
+	var r OperatorResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *OperatorResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalOperatorDetailsResponse(data []byte) (OperatorDetailsResponse, error) {
+	var r OperatorDetailsResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *OperatorDetailsResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalStakerDelegationDigestHashResponse(data []byte) (StakerDelegationDigestHashResponse, error) {
+	var r StakerDelegationDigestHashResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *StakerDelegationDigestHashResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalStakerOptOutWindowBlocksResponse(data []byte) (StakerOptOutWindowBlocksResponse, error) {
+	var r StakerOptOutWindowBlocksResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *StakerOptOutWindowBlocksResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -318,4 +513,76 @@ type QueryStakerDigestHashParams struct {
 
 type StakerOptOutWindowBlocks struct {
 	Operator string `json:"operator"`
+}
+
+type CurrentStakerDelegationDigestHashResponse struct {
+	CurrentStakerDelegationDigestHash string `json:"current_staker_delegation_digest_hash"`
+}
+
+type CalculateWithdrawalRootResponse struct {
+	WithdrawalRoot string `json:"withdrawal_root"`
+}
+
+type DelegationApprovalDigestHashResponse struct {
+	ApproverDelegationDigestHash string `json:"approver_delegation_digest_hash"`
+}
+
+type DelegationApproverResponse struct {
+	DelegationApprover string `json:"delegation_approver"`
+}
+
+type CumulativeWithdrawalsQueuedResponse struct {
+	CumulativeWithdrawals string `json:"cumulative_withdrawals"`
+}
+
+type DelegatableSharesResponse struct {
+	Shares     []string `json:"shares"`
+	Strategies []string `json:"strategies"`
+}
+
+type OperatorSharesResponse struct {
+	Shares []string `json:"shares"`
+}
+
+type OperatorStakersResponse struct {
+	StakersAndShares []StakerShares `json:"stakers_and_shares"`
+}
+
+type StakerShares struct {
+	SharesPerStrategy [][]string `json:"shares_per_strategy"`
+	Staker            string     `json:"staker"`
+}
+
+type StakerNonceResponse struct {
+	Nonce string `json:"nonce"`
+}
+
+type WithdrawalDelayResponse struct {
+	WithdrawalDelays []int64 `json:"withdrawal_delays"`
+}
+
+type DelegatedResponse struct {
+	IsDelegated bool `json:"is_delegated"`
+}
+
+type OperatorResponse struct {
+	IsOperator bool `json:"is_operator"`
+}
+
+type OperatorDetailsResponse struct {
+	Details DetailsClass `json:"details"`
+}
+
+type DetailsClass struct {
+	DelegationApprover         string `json:"delegation_approver"`
+	DeprecatedEarningsReceiver string `json:"deprecated_earnings_receiver"`
+	StakerOptOutWindowBlocks   int64  `json:"staker_opt_out_window_blocks"`
+}
+
+type StakerDelegationDigestHashResponse struct {
+	StakerDelegationDigestHash string `json:"staker_delegation_digest_hash"`
+}
+
+type StakerOptOutWindowBlocksResponse struct {
+	StakerOptOutWindowBlocks int64 `json:"staker_opt_out_window_blocks"`
 }

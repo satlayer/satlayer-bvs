@@ -19,16 +19,22 @@ type ioTestSuite struct {
 	suite.Suite
 	chainIO   io.ChainIO
 	directory *bvs.Contract[directory.InstantiateMsg]
+	container *babylond.BabylonContainer
 }
 
-func (suite *ioTestSuite) SetupTest() {
+func (suite *ioTestSuite) SetupSuite() {
 	container := babylond.Run(context.Background())
+	suite.container = container
 	suite.chainIO = container.NewChainIO("../.babylon")
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
 
 	deployer := &bvs.Deployer{BabylonContainer: container}
-	delegationManager := container.GenerateAddress("throw-away")
-	suite.directory = deployer.DeployDirectory(delegationManager.String())
+	tAddr := container.GenerateAddress("throw-away")
+	suite.directory = deployer.DeployDirectory(tAddr.String())
+}
+
+func (suite *ioTestSuite) TearDownSuite() {
+	suite.Require().NoError(suite.container.Terminate(context.Background()))
 }
 
 func (suite *ioTestSuite) Test_QueryContract() {
@@ -38,9 +44,9 @@ func (suite *ioTestSuite) Test_QueryContract() {
 	assert.NoError(t, err)
 	account, err := chainIO.GetCurrentAccount()
 	assert.NoError(t, err, "get account")
-	queryMsg, err := json.Marshal(types.GetOperatorStatusReq{GetOperatorStatus: types.GetOperatorStatus{
+	queryMsg, err := json.Marshal(directory.QueryMsg{GetOperatorStatus: &directory.GetOperatorStatus{
 		Operator: account.GetAddress().String(),
-		BVS:      account.GetAddress().String(),
+		Bvs:      account.GetAddress().String(),
 	}})
 	assert.NoError(t, err, "marshal query msg")
 	QueryOptions := types.QueryOptions{
@@ -58,7 +64,7 @@ func (suite *ioTestSuite) Test_QueryTransaction() {
 	chainIO, err := suite.chainIO.SetupKeyring("caller", "test")
 	assert.NoError(t, err)
 
-	executeMsgBytes, _ := json.Marshal(&types.UpdateMetadataURIReq{UpdateMetadataURI: types.UpdateMetadataURI{MetadataURI: "example.com"}})
+	executeMsgBytes, _ := json.Marshal(directory.ExecuteMsg{UpdateBvsMetadataURI: &directory.UpdateBvsMetadataURI{MetadataURI: "example.com"}})
 	assert.NoError(t, err, "marshal execute msg")
 	executeOptions := types.ExecuteOptions{
 		ContractAddr:  suite.directory.Address,
