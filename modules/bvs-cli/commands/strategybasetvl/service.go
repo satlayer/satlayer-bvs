@@ -14,7 +14,7 @@ import (
 )
 
 type Service struct {
-	StrategyBaseTVL api.StrategyBaseTVLLimits
+	StrategyBaseTVL *api.StrategyBaseTvlLimits
 	ChainIO         io.ChainIO
 }
 

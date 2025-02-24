@@ -10,7 +10,7 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-cli/conf"
 )
 
-func newService(keyName string) (api.RewardsCoordinator, io.ChainIO) {
+func newService(keyName string) (*api.RewardsCoordinator, io.ChainIO) {
 	s := NewService()
 	newChainIO, err := s.ChainIO.SetupKeyring(keyName, conf.C.Account.KeyringBackend)
 	if err != nil {
@@ -31,7 +31,7 @@ func SetClaimer(userKeyName, claimer string) {
 	fmt.Printf("Set claimer success. txn: %s\n", resp.Hash.String())
 }
 
-func SetActivationDelay(userKeyName string, newActivationDelay uint32) {
+func SetActivationDelay(userKeyName string, newActivationDelay int64) {
 	ctx := context.Background()
 	reward, _ := newService(userKeyName)
 	resp, err := reward.SetActivationDelay(ctx, newActivationDelay)
@@ -41,7 +41,7 @@ func SetActivationDelay(userKeyName string, newActivationDelay uint32) {
 	fmt.Printf("Set activation delay success. txn: %s\n", resp.Hash.String())
 }
 
-func SetGlobalOperatorCommission(userKeyName string, newCommissionBips uint16) {
+func SetGlobalOperatorCommission(userKeyName string, newCommissionBips int64) {
 	ctx := context.Background()
 	reward, _ := newService(userKeyName)
 	resp, err := reward.SetGlobalOperatorCommission(ctx, newCommissionBips)

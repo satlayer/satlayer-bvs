@@ -56,13 +56,13 @@ func NewCaller() *Caller {
 		panic(err)
 	}
 
-	txResp, err := api.NewBVSDirectoryImpl(client, core.C.Chain.BVSDirectory).GetBVSInfo(core.C.Chain.BVSHash)
+	txResp, err := api.NewDirectory(client, core.C.Chain.BVSDirectory).GetBvsInfo(core.C.Chain.BVSHash)
 
 	if err != nil {
 		panic(err)
 	}
 	return &Caller{
-		bvsContract: txResp.BVSContract,
+		bvsContract: txResp.BvsContract,
 		chainIO:     client,
 	}
 }

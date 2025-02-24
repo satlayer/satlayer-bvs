@@ -8,6 +8,8 @@ import (
 
 const DefaultKeyringServiceName = "babylon"
 
+// TODO(fuxingloh): this file should be moved to the api module.
+
 type ExecuteOptions struct {
 	ContractAddr  string           // ContractAddr: Address of the smart contract
 	ExecuteMsg    []byte           // ExecuteMsg: Message to be executed, represented as a struct

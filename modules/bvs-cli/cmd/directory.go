@@ -120,7 +120,7 @@ func directoryCmd() *cobra.Command {
 		Short: "To calculate the digest hash for the operator.",
 		Args:  cobra.ExactArgs(3),
 		Run: func(cmd *cobra.Command, args []string) {
-			expiry, err := strconv.ParseUint(args[2], 10, 64)
+			expiry, err := strconv.ParseInt(args[2], 10, 64)
 			if err != nil {
 				panic(fmt.Sprintf("expire must be an integer. Error: %s\n", err))
 			}
@@ -160,7 +160,7 @@ func directoryCmd() *cobra.Command {
 		Short: "To get the operator registration typehash from the directory contract.",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			directory.GetOperatorBVSRegistrationTypeHash()
+			directory.GetOperatorBvsRegistrationTypeHash()
 		},
 	}
 
@@ -187,7 +187,7 @@ func directoryCmd() *cobra.Command {
 		Short: "To get the bvs info from the directory contract.",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			directory.GetBVSInfo(args[0])
+			directory.GetBvsInfo(args[0])
 		},
 	}
 

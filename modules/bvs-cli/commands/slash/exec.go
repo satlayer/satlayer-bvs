@@ -7,18 +7,18 @@ import (
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-
 	"github.com/satlayer/satlayer-bvs/bvs-cli/conf"
+
+	slashmanager "github.com/satlayer/satlayer-bvs/bvs-cw/slash-manager"
 )
 
-func newService(keyName string) (api.SlashManager, io.ChainIO) {
+func newService(keyName string) (*api.SlashManager, io.ChainIO) {
 	s := NewService()
 	chainIO, err := s.ChainIO.SetupKeyring(keyName, conf.C.Account.KeyringBackend)
 	if err != nil {
 		panic(err)
 	}
-	slash := api.NewSlashManagerImpl(chainIO, conf.C.Contract.Slash).WithGasLimit(2000000)
+	slash := api.NewSlashManager(chainIO).WithGasLimit(2000000)
 	slash.BindClient(conf.C.Contract.Slash)
 	return slash, chainIO
 }
@@ -43,7 +43,7 @@ func SetDelegationManager(userKeyName, newDelegationManager string) {
 	fmt.Printf("Set delegation manager success. txn: %s\n", txResp.Hash)
 }
 
-func SetMinimalSlashSignature(userKeyName string, minimalSignature uint64) {
+func SetMinimalSlashSignature(userKeyName string, minimalSignature int64) {
 	ctx := context.Background()
 	slash, _ := newService(userKeyName)
 	txResp, err := slash.SetMinimalSlashSignature(ctx, minimalSignature)
@@ -113,7 +113,7 @@ func TransferOwnership(userKeyName, newOwner string) {
 	fmt.Printf("Transfer ownership success. txn: %s\n", txResp.Hash)
 }
 
-func SubmitSlashRequest(userKeyNames []string, slasher string, operator string, share string, slashSignature uint64, slashValidators []string, reason string, startTime uint64, endTime uint64, status bool) {
+func SubmitSlashRequest(userKeyNames []string, slasher string, operator string, share string, slashSignature int64, slashValidators []string, reason string, startTime int64, endTime int64, status bool) {
 	s := NewService()
 	ctx := context.Background()
 
@@ -129,7 +129,7 @@ func SubmitSlashRequest(userKeyNames []string, slasher string, operator string, 
 		validatorsPublicKeys = append(validatorsPublicKeys, pubKey)
 	}
 
-	slashDetails := types.ExecuteSlashDetails{
+	slashDetails := slashmanager.SubmitSlashRequestSlashDetails{
 		Slasher:        slasher,
 		Operator:       operator,
 		Share:          share,

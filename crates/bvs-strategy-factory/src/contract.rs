@@ -1,5 +1,5 @@
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::query::{BlacklistStatusResponse, StrategyResponse};
 use crate::state::{Config, CONFIG, DEPLOYED_STRATEGIES, IS_BLACKLISTED};
 use cosmwasm_std::{
@@ -13,7 +13,7 @@ use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use bvs_base::strategy::ExecuteMsg as StrategyManagerExecuteMsg;
 
-const CONTRACT_NAME: &str = "strategy-factory";
+const CONTRACT_NAME: &str = "BVS Strategy Factory";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const PAUSED_NEW_STRATEGIES: u8 = 0;
@@ -83,7 +83,7 @@ pub fn execute(
             let strategies_addrs = validate_addresses(deps.api, &strategies)?;
             remove_strategies_from_whitelist(deps, info, strategies_addrs)
         }
-        ExecuteMsg::SetThirdPartyTransfersForBidden { strategy, value } => {
+        ExecuteMsg::SetThirdPartyTransfersForbidden { strategy, value } => {
             let strategy_addr = deps.api.addr_validate(&strategy)?;
             set_third_party_transfers_forbidden(deps, env, info, strategy_addr, value)
         }
@@ -509,19 +509,6 @@ fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
         return Err(ContractError::Unauthorized {});
     }
     Ok(())
-}
-
-pub fn migrate(
-    deps: DepsMut,
-    _env: Env,
-    info: &MessageInfo,
-    _msg: MigrateMsg,
-) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), info)?;
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    Ok(Response::new().add_attribute("method", "migrate"))
 }
 
 #[cfg(test)]

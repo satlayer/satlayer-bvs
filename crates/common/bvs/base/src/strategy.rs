@@ -64,6 +64,6 @@ pub struct StrategyWhitelistedResponse {
 }
 
 #[cw_serde]
-pub struct StakerStrategyLisResponse {
+pub struct StakerStrategyListResponse {
     pub strategies: Vec<Addr>,
 }

@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	slashmanager "github.com/satlayer/satlayer-bvs/bvs-cw/slash-manager"
+
 	"github.com/satlayer/satlayer-bvs/babylond/bvs"
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
@@ -13,7 +15,6 @@ import (
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
 )
 
 type slashManagerTestSuite struct {
@@ -21,21 +22,27 @@ type slashManagerTestSuite struct {
 	chainIO                  io.ChainIO
 	contrAddr                string
 	strategyManagerContrAddr string
+	container                *babylond.BabylonContainer
 }
 
-func (suite *slashManagerTestSuite) SetupTest() {
+func (suite *slashManagerTestSuite) SetupSuite() {
 	container := babylond.Run(context.Background())
+	suite.container = container
 	suite.chainIO = container.NewChainIO("../.babylon")
 
 	// Import And Fund Caller
 	container.ImportPrivKey("slash-manager:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
 
-	address := container.GenerateAddress("throw-away").String()
+	tAddr := container.GenerateAddress("test-address").String()
 	deployer := &bvs.Deployer{BabylonContainer: container}
-	slashManager := deployer.DeploySlashManager(address, address)
+	slashManager := deployer.DeploySlashManager(tAddr, tAddr)
 	suite.contrAddr = slashManager.Address
-	suite.strategyManagerContrAddr = address
+	suite.strategyManagerContrAddr = tAddr
+}
+
+func (suite *slashManagerTestSuite) TearDownSuite() {
+	suite.Require().NoError(suite.container.Terminate(context.Background()))
 }
 
 func (suite *slashManagerTestSuite) Test_SetMinimalSlashSignature() {
@@ -44,7 +51,7 @@ func (suite *slashManagerTestSuite) Test_SetMinimalSlashSignature() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManagerImpl(chainIO, suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO)
 	slashApi.BindClient(suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
@@ -53,7 +60,7 @@ func (suite *slashManagerTestSuite) Test_SetMinimalSlashSignature() {
 		suite.Require().NoError(err)
 	}
 
-	minimalSignature := uint64(1)
+	minimalSignature := int64(1)
 	txResp, err := slashApi.SetMinimalSlashSignature(context.Background(), minimalSignature)
 	assert.NoError(t, err, "SetMinimalSlashSignature failed")
 	assert.NotNil(t, txResp, "response nil")
@@ -66,7 +73,7 @@ func (suite *slashManagerTestSuite) Test_SetSlasher() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManagerImpl(chainIO, suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO)
 	slashApi.BindClient(suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
@@ -83,7 +90,7 @@ func (suite *slashManagerTestSuite) Test_SetSlasher() {
 // 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 // 	assert.NoError(t, err)
 
-// 	slashApi := api.NewSlashManagerImpl(chainIO, suite.contrAddr)
+// 	slashApi := api.NewSlashManager(chainIO)
 // 	slashApi.BindClient(suite.contrAddr)
 // 	slashApi.WithGasLimit(300000)
 
@@ -100,7 +107,7 @@ func (suite *slashManagerTestSuite) Test_SetDelegationManager() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManagerImpl(chainIO, suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO)
 	slashApi.BindClient(suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
@@ -117,7 +124,7 @@ func (suite *slashManagerTestSuite) Test_SetPauser() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManagerImpl(chainIO, suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO)
 	slashApi.BindClient(suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
@@ -134,7 +141,7 @@ func (suite *slashManagerTestSuite) Test_SetUnpauser() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManagerImpl(chainIO, suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO)
 	slashApi.BindClient(suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
@@ -151,7 +158,7 @@ func (suite *slashManagerTestSuite) Test_Pause() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManagerImpl(chainIO, suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO)
 	slashApi.BindClient(suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
@@ -172,7 +179,7 @@ func (suite *slashManagerTestSuite) Test_Unpause() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManagerImpl(chainIO, suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO)
 	slashApi.BindClient(suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
@@ -193,7 +200,7 @@ func (suite *slashManagerTestSuite) Test_SetSlasherValidator() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManagerImpl(chainIO, suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO)
 	slashApi.BindClient(suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
@@ -216,7 +223,7 @@ func (suite *slashManagerTestSuite) Test_SetStrategyManager() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManagerImpl(chainIO, suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO)
 	slashApi.BindClient(suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
@@ -234,7 +241,7 @@ func (suite *slashManagerTestSuite) Test_SetStrategyManager() {
 // 	account, err := chainIO.GetCurrentAccount()
 // 	assert.NoError(t, err)
 
-// 	slashApi := api.NewSlashManagerImpl(chainIO, suite.contrAddr)
+// 	slashApi := api.NewSlashManager(chainIO)
 // 	slashApi.BindClient(suite.contrAddr)
 // 	slashApi.WithGasLimit(300000)
 
@@ -264,7 +271,7 @@ func (suite *slashManagerTestSuite) Test_SetStrategyManager() {
 // 	account, err := chainIO.GetCurrentAccount()
 // 	assert.NoError(t, err)
 
-// 	slashApi := api.NewSlashManagerImpl(chainIO, suite.contrAddr)
+// 	slashApi := api.NewSlashManager(chainIO)
 // 	slashApi.BindClient(suite.contrAddr)
 // 	slashApi.WithGasLimit(2000000)
 
@@ -283,7 +290,7 @@ func (suite *slashManagerTestSuite) Test_SetStrategyManager() {
 // 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 // 	assert.NoError(t, err)
 
-// 	slashApi := api.NewSlashManagerImpl(chainIO, suite.contrAddr)
+// 	slashApi := api.NewSlashManager(chainIO)
 // 	slashApi.BindClient(suite.contrAddr)
 // 	slashApi.WithGasLimit(300000)
 
@@ -300,7 +307,7 @@ func (suite *slashManagerTestSuite) test_GetSlashDetails() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManagerImpl(chainIO, suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO)
 	slashApi.BindClient(suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
@@ -318,7 +325,7 @@ func (suite *slashManagerTestSuite) Test_IsValidator() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManagerImpl(chainIO, suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO)
 	slashApi.BindClient(suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
@@ -335,7 +342,7 @@ func (suite *slashManagerTestSuite) test_GetMinimalSlashSignature() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManagerImpl(chainIO, suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO)
 	slashApi.BindClient(suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
@@ -351,12 +358,12 @@ func (suite *slashManagerTestSuite) Test_CalculateSlashHash() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	slashApi := api.NewSlashManagerImpl(chainIO, suite.contrAddr)
+	slashApi := api.NewSlashManager(chainIO)
 	slashApi.BindClient(suite.contrAddr)
 	slashApi.WithGasLimit(300000)
 
 	sender := "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
-	slashDetails := types.ExecuteSlashDetails{
+	slashDetails := slashmanager.CalculateSlashHashSlashDetails{
 		Slasher:        sender,
 		Operator:       "bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
 		Share:          "10000",

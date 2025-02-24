@@ -1,6 +1,6 @@
 use crate::query::{
     ExplanationResponse, SharesResponse, SharesToUnderlyingResponse, StrategyManagerResponse,
-    TVLLimitsResponse, TotalSharesResponse, UnderlyingToShareResponse, UnderlyingToSharesResponse,
+    TotalSharesResponse, TvlLimitsResponse, UnderlyingToShareResponse, UnderlyingToSharesResponse,
     UnderlyingTokenResponse, UserUnderlyingResponse,
 };
 use crate::state::StrategyState;
@@ -43,7 +43,7 @@ pub enum ExecuteMsg {
     SetUnpauser {
         new_unpauser: String,
     },
-    SetTVLLimits {
+    SetTvlLimits {
         max_per_deposit: Uint128,
         max_total_deposits: Uint128,
     },
@@ -82,9 +82,6 @@ pub enum QueryMsg {
     #[returns(StrategyState)]
     GetStrategyState {},
 
-    #[returns(TVLLimitsResponse)]
-    GetTVLLimits {},
+    #[returns(TvlLimitsResponse)]
+    GetTvlLimits {},
 }
-
-#[cw_serde]
-pub struct MigrateMsg {}

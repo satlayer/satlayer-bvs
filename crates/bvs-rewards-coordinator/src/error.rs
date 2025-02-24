@@ -42,15 +42,15 @@ pub enum ContractError {
     TimeMustBeMultipleOfCalcIntervalSec {},
 
     #[error("RewardsCoordinator.validate_rewards_submission: startTimestamp too far in the past")]
-    StartTimeStampTooFarInPase {},
+    StartTimestampTooFarInPast {},
 
     #[error(
         "RewardsCoordinator.validate_rewards_submission: startTimestamp too far in the future"
     )]
-    StartTimeStampTooFarInFuture {},
+    StartTimestampTooFarInFuture {},
 
     #[error("RewardsCoordinator.validate_rewards_submission: invalid strategy considered")]
-    InvaildStrategyConsidered {},
+    InvalidStrategyConsidered {},
 
     #[error("RewardsCoordinator.validate_rewards_submission: strategies must be in ascending order to handle duplicates")]
     StrategiesMuseBeHandleDuplicates {},

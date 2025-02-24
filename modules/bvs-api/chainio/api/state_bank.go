@@ -19,50 +19,44 @@ import (
 
 var wasmUpdateState sync.Map
 
-type StateBank interface {
-	WithGasAdjustment(gasAdjustment float64) StateBank
-	WithGasPrice(gasPrice sdktypes.DecCoin) StateBank
-	WithGasLimit(gasLimit uint64) StateBank
-
-	GetWasmUpdateState(key string) (string, error)
-	GetStateMap() *sync.Map
-	Indexer(ClientCtx client.Context, contractAddress string, bvsContractAddr string, startBlockHeight int64,
-		eventTypes []string, rateLimit rate.Limit, maxRetries int) *indexer.EventIndexer
-	EventHandler(ch chan *indexer.Event)
-	SetRegisteredBVSContract(ctx context.Context, addr string) (*coretypes.ResultTx, error)
-	Set(ctx context.Context, key string, value string) (*coretypes.ResultTx, error)
-	BindClient(contractAddress string)
-}
-
-type stateBankImpl struct {
+type StateBank struct {
 	registeredBVSContract string
 	io                    io.ChainIO
-	contractAddr          string
+	ContractAddr          string
 	gasAdjustment         float64
 	gasPrice              sdktypes.DecCoin
 	gasLimit              uint64
 }
 
-func (s *stateBankImpl) WithGasAdjustment(gasAdjustment float64) StateBank {
-	s.gasAdjustment = gasAdjustment
-	return s
+func NewStateBank(chainIO io.ChainIO) *StateBank {
+	return &StateBank{
+		io:            chainIO,
+		gasAdjustment: 1.2,
+		gasPrice:      sdktypes.NewInt64DecCoin("ubbn", 1),
+		gasLimit:      700000,
+	}
 }
 
-func (s *stateBankImpl) WithGasPrice(gasPrice sdktypes.DecCoin) StateBank {
-	s.gasPrice = gasPrice
-	return s
+func (r *StateBank) WithGasAdjustment(gasAdjustment float64) *StateBank {
+	r.gasAdjustment = gasAdjustment
+	return r
 }
 
-func (s *stateBankImpl) WithGasLimit(gasLimit uint64) StateBank {
-	s.gasLimit = gasLimit
-	return s
+func (r *StateBank) WithGasPrice(gasPrice sdktypes.DecCoin) *StateBank {
+	r.gasPrice = gasPrice
+	return r
 }
 
-func (s *stateBankImpl) BindClient(contractAddress string) {
-	s.contractAddr = contractAddress
+func (r *StateBank) WithGasLimit(gasLimit uint64) *StateBank {
+	r.gasLimit = gasLimit
+	return r
 }
 
-func (s *stateBankImpl) GetWasmUpdateState(key string) (string, error) {
+func (r *StateBank) BindClient(contractAddress string) {
+	r.ContractAddr = contractAddress
+}
+
+func (r *StateBank) GetWasmUpdateState(key string) (string, error) {
 	value, exists := wasmUpdateState.Load(key)
 	if !exists {
 		return "", fmt.Errorf("does not exist: %s", key)
@@ -70,19 +64,19 @@ func (s *stateBankImpl) GetWasmUpdateState(key string) (string, error) {
 	return value.(string), nil
 }
 
-func (s *stateBankImpl) GetStateMap() *sync.Map {
+func (r *StateBank) GetStateMap() *sync.Map {
 	return &wasmUpdateState
 }
 
-func (s *stateBankImpl) Indexer(clientCtx client.Context, contractAddress string, bvsContractAddr string, startBlockHeight int64,
+func (r *StateBank) Indexer(clientCtx client.Context, contractAddress string, bvsContractAddr string, startBlockHeight int64,
 	eventTypes []string, rateLimit rate.Limit, maxRetries int) *indexer.EventIndexer {
-	s.registeredBVSContract = bvsContractAddr
+	r.registeredBVSContract = bvsContractAddr
 	return indexer.NewEventIndexer(clientCtx, contractAddress, startBlockHeight, eventTypes, rateLimit, maxRetries)
 }
 
-func (s *stateBankImpl) EventHandler(ch chan *indexer.Event) {
+func (r *StateBank) EventHandler(ch chan *indexer.Event) {
 	for event := range ch {
-		if s.registeredBVSContract != event.AttrMap["sender"] {
+		if r.registeredBVSContract != event.AttrMap["sender"] {
 			continue
 		}
 
@@ -98,21 +92,21 @@ func (s *stateBankImpl) EventHandler(ch chan *indexer.Event) {
 	}
 }
 
-func (s *stateBankImpl) newExecuteOptions(executeMsg []byte, memo string) types.ExecuteOptions {
+func (r *StateBank) newExecuteOptions(executeMsg []byte, memo string) types.ExecuteOptions {
 	return types.ExecuteOptions{
-		ContractAddr:  s.contractAddr,
+		ContractAddr:  r.ContractAddr,
 		ExecuteMsg:    executeMsg,
 		Funds:         "",
-		GasAdjustment: s.gasAdjustment,
-		GasPrice:      s.gasPrice,
-		Gas:           s.gasLimit,
+		GasAdjustment: r.gasAdjustment,
+		GasPrice:      r.gasPrice,
+		Gas:           r.gasLimit,
 		Memo:          memo,
 		Simulate:      true,
 	}
 }
 
-func (s *stateBankImpl) SetRegisteredBVSContract(ctx context.Context, addr string) (*coretypes.ResultTx, error) {
-	s.registeredBVSContract = addr
+func (r *StateBank) SetRegisteredBVSContract(ctx context.Context, addr string) (*coretypes.ResultTx, error) {
+	r.registeredBVSContract = addr
 
 	msg := statebank.ExecuteMsg{
 		AddRegisteredBvsContract: &statebank.AddRegisteredBvsContract{
@@ -125,11 +119,11 @@ func (s *stateBankImpl) SetRegisteredBVSContract(ctx context.Context, addr strin
 		return nil, err
 	}
 
-	executeOptions := s.newExecuteOptions(msgBytes, "SetRegisteredBVSContract")
-	return s.io.SendTransaction(ctx, executeOptions)
+	executeOptions := r.newExecuteOptions(msgBytes, "SetRegisteredBVSContract")
+	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (s *stateBankImpl) Set(ctx context.Context, key string, value string) (*coretypes.ResultTx, error) {
+func (r *StateBank) Set(ctx context.Context, key string, value string) (*coretypes.ResultTx, error) {
 	msg := statebank.ExecuteMsg{
 		Set: &statebank.Set{
 			Key:   key,
@@ -142,15 +136,6 @@ func (s *stateBankImpl) Set(ctx context.Context, key string, value string) (*cor
 		return nil, err
 	}
 
-	executeOptions := s.newExecuteOptions(msgBytes, "Set")
-	return s.io.SendTransaction(ctx, executeOptions)
-}
-
-func NewStateBankImpl(chainIO io.ChainIO) StateBank {
-	return &stateBankImpl{
-		io:            chainIO,
-		gasAdjustment: 1.2,
-		gasPrice:      sdktypes.NewInt64DecCoin("ubbn", 1),
-		gasLimit:      700000,
-	}
+	executeOptions := r.newExecuteOptions(msgBytes, "Set")
+	return r.io.SendTransaction(ctx, executeOptions)
 }

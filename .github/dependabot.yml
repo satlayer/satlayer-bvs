@@ -10,13 +10,37 @@ updates:
     schedule:
       interval: "daily"
     groups:
-      dev:
-        dependency-type: development
+      eslint:
         update-types:
           - "minor"
           - "patch"
+        patterns:
+          - "husky"
+          - "lint-staged"
+          - "eslint"
+          - "globals"
+          - "@eslint/*"
+          - "*eslint*"
         exclude-patterns:
-          - "typescript"
+          - "eslint-config-next"
+      prettier:
+        patterns:
+          - "prettier"
+          - "prettier-plugin-*"
+      docs:
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "eslint-config-next"
+          - "@tailwindcss/postcss"
+          - "tailwindcss"
+          - "postcss"
+          - "next"
+          - "nextra"
+          - "nextra-*"
+          - "react*"
+          - "@types/react*"
 
   - package-ecosystem: cargo
     directory: "/crates"

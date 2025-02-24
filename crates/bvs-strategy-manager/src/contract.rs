@@ -1,10 +1,10 @@
 use crate::{
     error::ContractError,
-    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
-        CalculateDigestHashResponse, DelegationManagerResponse, DepositTypehashResponse,
-        DepositsResponse, DomainNameResponse, DomainTypehashResponse, NonceResponse, OwnerResponse,
-        StakerStrategyLisResponse, StakerStrategyListLengthResponse, StakerStrategySharesResponse,
+        CalculateDigestHashResponse, DelegationManagerResponse, DepositTypeHashResponse,
+        DepositsResponse, DomainNameResponse, DomainTypeHashResponse, NonceResponse, OwnerResponse,
+        StakerStrategyListLengthResponse, StakerStrategyListResponse, StakerStrategySharesResponse,
         StrategyManagerStateResponse, StrategyWhitelistedResponse, StrategyWhitelisterResponse,
         ThirdPartyTransfersForbiddenResponse,
     },
@@ -32,7 +32,7 @@ use bvs_base::delegation::ExecuteMsg as DelegationManagerExecuteMsg;
 use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 
-const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
+const CONTRACT_NAME: &str = "BVS Strategy Manager";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const PAUSED_DEPOSITS: u8 = 0;
@@ -602,7 +602,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
             to_json_binary(&query_is_strategy_whitelisted(deps, strategy_addr)?)
         }
-        QueryMsg::CalculateDigestHash { digst_hash_params } => {
+        QueryMsg::CalculateDigestHash {
+            digest_hash_params: digst_hash_params,
+        } => {
             let response = query_calculate_digest_hash(deps, digst_hash_params)?;
             to_json_binary(&response)
         }
@@ -610,8 +612,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetStrategyManagerState {} => {
             to_json_binary(&query_strategy_manager_state(deps)?)
         }
-        QueryMsg::GetDepositTypehash {} => to_json_binary(&query_deposit_typehash()?),
-        QueryMsg::GetDomainTypehash {} => to_json_binary(&query_domain_typehash()?),
+        QueryMsg::GetDepositTypeHash {} => to_json_binary(&query_deposit_typehash()?),
+        QueryMsg::GetDomainTypeHash {} => to_json_binary(&query_domain_typehash()?),
         QueryMsg::GetDomainName {} => to_json_binary(&query_domain_name()?),
         QueryMsg::GetDelegationManager {} => to_json_binary(&query_delegation_manager(deps)?),
     }
@@ -671,11 +673,11 @@ fn query_nonce(deps: Deps, staker: Addr) -> StdResult<NonceResponse> {
     Ok(NonceResponse { nonce })
 }
 
-fn query_staker_strategy_list(deps: Deps, staker: Addr) -> StdResult<StakerStrategyLisResponse> {
+fn query_staker_strategy_list(deps: Deps, staker: Addr) -> StdResult<StakerStrategyListResponse> {
     let strategies = STAKER_STRATEGY_LIST
         .may_load(deps.storage, &staker)?
         .unwrap_or_else(Vec::new);
-    Ok(StakerStrategyLisResponse { strategies })
+    Ok(StakerStrategyListResponse { strategies })
 }
 
 fn query_owner(deps: Deps) -> StdResult<OwnerResponse> {
@@ -703,14 +705,14 @@ fn query_strategy_manager_state(deps: Deps) -> StdResult<StrategyManagerStateRes
     Ok(StrategyManagerStateResponse { state })
 }
 
-fn query_deposit_typehash() -> StdResult<DepositTypehashResponse> {
+fn query_deposit_typehash() -> StdResult<DepositTypeHashResponse> {
     let deposit_type_hash = String::from_utf8_lossy(DEPOSIT_TYPEHASH).to_string();
-    Ok(DepositTypehashResponse { deposit_type_hash })
+    Ok(DepositTypeHashResponse { deposit_type_hash })
 }
 
-fn query_domain_typehash() -> StdResult<DomainTypehashResponse> {
+fn query_domain_typehash() -> StdResult<DomainTypeHashResponse> {
     let domain_type_hash = String::from_utf8_lossy(DOMAIN_TYPEHASH).to_string();
-    Ok(DomainTypehashResponse { domain_type_hash })
+    Ok(DomainTypeHashResponse { domain_type_hash })
 }
 
 fn query_domain_name() -> StdResult<DomainNameResponse> {
@@ -1002,19 +1004,6 @@ pub fn staker_strategy_list_length(deps: Deps, staker: Addr) -> StdResult<Uint12
         .may_load(deps.storage, &staker)?
         .unwrap_or_else(Vec::new);
     Ok(Uint128::new(strategies.len() as u128))
-}
-
-pub fn migrate(
-    deps: DepsMut,
-    _env: Env,
-    info: &MessageInfo,
-    _msg: MigrateMsg,
-) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), info)?;
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    Ok(Response::new().add_attribute("method", "migrate"))
 }
 
 #[cfg(test)]
@@ -2483,7 +2472,7 @@ mod tests {
             staker: staker.to_string(),
         };
         let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let strategy_list_response: StakerStrategyLisResponse = from_json(bin).unwrap();
+        let strategy_list_response: StakerStrategyListResponse = from_json(bin).unwrap();
         assert_eq!(strategy_list_response.strategies, strategies);
 
         let new_staker = deps.api.addr_make("new_staker");
@@ -2492,7 +2481,7 @@ mod tests {
             staker: new_staker.to_string(),
         };
         let bin = query(deps.as_ref(), env, query_msg).unwrap();
-        let strategy_list_response: StakerStrategyLisResponse = from_json(bin).unwrap();
+        let strategy_list_response: StakerStrategyListResponse = from_json(bin).unwrap();
         assert!(strategy_list_response.strategies.is_empty());
     }
 
@@ -2824,37 +2813,6 @@ mod tests {
 
         let stored_owner = OWNER.load(&deps.storage).unwrap();
         assert_eq!(stored_owner, new_owner);
-    }
-
-    #[test]
-    fn test_migrate_owner_vs_non_owner() {
-        let (
-            mut deps,
-            env,
-            owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let migrate_msg = MigrateMsg {};
-        let res = migrate(deps.as_mut(), env.clone(), &owner_info, migrate_msg.clone()).unwrap();
-
-        assert_eq!(res, Response::new().add_attribute("method", "migrate"));
-
-        let version = get_contract_version(deps.as_ref().storage).unwrap();
-        assert_eq!(version.contract, CONTRACT_NAME);
-        assert_eq!(version.version, CONTRACT_VERSION);
-
-        let non_owner_info = message_info(&Addr::unchecked("not_owner"), &[]);
-
-        let res = migrate(deps.as_mut(), env, &non_owner_info, migrate_msg);
-
-        match res {
-            Err(ContractError::Unauthorized {}) => {}
-            _ => panic!("Expected Unauthorized error"),
-        }
     }
 
     #[test]

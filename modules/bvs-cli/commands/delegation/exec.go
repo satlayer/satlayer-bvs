@@ -12,13 +12,13 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-cli/conf"
 )
 
-func newService(keyName string) (api.Delegation, io.ChainIO) {
+func newService(keyName string) (*api.DelegationManager, io.ChainIO) {
 	s := NewService()
 	newChainIO, err := s.ChainIO.SetupKeyring(keyName, conf.C.Account.KeyringBackend)
 	if err != nil {
 		panic(err)
 	}
-	delegation := api.NewDelegationImpl(newChainIO, conf.C.Contract.Delegation).WithGasLimit(400000)
+	delegation := api.NewDelegationManager(newChainIO, conf.C.Contract.Delegation).WithGasLimit(400000)
 	return delegation, newChainIO
 }
 
@@ -40,7 +40,7 @@ func RegOperator(KeyName, approverAddress string) {
 	fmt.Printf("Delegation Register operator success. txn: %s\n", txResp.Hash)
 }
 
-func UpdateOperatorDetails(userKeyName, receiver, delegationApprover string, stakerOptOutWindowBlocks uint64) {
+func UpdateOperatorDetails(userKeyName, receiver, delegationApprover string, stakerOptOutWindowBlocks int64) {
 	ctx := context.Background()
 	delegation, _ := newService(userKeyName)
 	txResp, err := delegation.ModifyOperatorDetails(
@@ -79,7 +79,7 @@ func DelegateTo(stakerKeyName, operatorAddress, approverKeyName string) {
 		approverAddress = sdk.AccAddress(approverPubKey.Address()).String()
 	}
 	newChainIO, err := s.ChainIO.SetupKeyring(stakerKeyName, conf.C.Account.KeyringBackend)
-	delegation := api.NewDelegationImpl(newChainIO, conf.C.Contract.Delegation).WithGasLimit(400000)
+	delegation := api.NewDelegationManager(newChainIO, conf.C.Contract.Delegation).WithGasLimit(400000)
 	txResp, err := delegation.DelegateTo(
 		ctx,
 		operatorAddress,
@@ -123,7 +123,7 @@ func DelegateBySignature(stakerKeyName, operatorAddress, approverKeyName string)
 	}
 	stakerPubKey := newChainIO.GetCurrentAccountPubKey()
 	stakerAddress := sdk.AccAddress(stakerPubKey.Address()).String()
-	delegation := api.NewDelegationImpl(newChainIO, conf.C.Contract.Delegation).WithGasLimit(400000)
+	delegation := api.NewDelegationManager(newChainIO, conf.C.Contract.Delegation).WithGasLimit(400000)
 	txResp, err := delegation.DelegateToBySignature(
 		ctx,
 		operatorAddress,
@@ -140,7 +140,7 @@ func DelegateBySignature(stakerKeyName, operatorAddress, approverKeyName string)
 	fmt.Printf("Delegation DelegateBySignature success. txn: %s\n", txResp.Hash)
 }
 
-func SetMinWithdrawDelayBlocks(userKeyName string, blocks uint64) {
+func SetMinWithdrawDelayBlocks(userKeyName string, blocks int64) {
 	ctx := context.Background()
 	delegation, _ := newService(userKeyName)
 	txResp, err := delegation.SetMinWithdrawalDelayBlocks(ctx, blocks)
@@ -150,7 +150,7 @@ func SetMinWithdrawDelayBlocks(userKeyName string, blocks uint64) {
 	fmt.Printf("Set min withdraw delay blocks success. txn: %s\n", txResp.Hash)
 }
 
-func SetStrategyWithdrawDelayBlocks(userKeyName string, strategies []string, blocks []uint64) {
+func SetStrategyWithdrawDelayBlocks(userKeyName string, strategies []string, blocks []int64) {
 	ctx := context.Background()
 	delegation, _ := newService(userKeyName)
 	txResp, err := delegation.SetStrategyWithdrawalDelayBlocks(ctx, strategies, blocks)

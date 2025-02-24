@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    # production contracts
     "bvs-delegation-manager",
     "bvs-directory",
     "bvs-driver",
@@ -11,7 +12,6 @@ members = [
     "bvs-strategy-factory",
     "bvs-strategy-manager",
     "bvs-test",
-    "common/bvs/test-utils",
 ]
 
 resolver = "2"
@@ -24,28 +24,46 @@ license = "MIT"
 repository = "https://github.com/satlayer/satlayer-bvs.git"
 homepage = "https://satlayer.xyz/"
 documentation = "https://github.com/satlayer/satlayer-bvs.git"
+keywords = ["SatLayer", "Restaking", "BTC", "cosmos", "cosmwasm"]
 
 [workspace.dependencies]
-cosmwasm-schema = "2.0.0"
-cosmwasm-std = "2.0.0"
+# cosmwasm core
+cosmwasm-schema = "=2.1.0"
+cosmwasm-std = { version = "=2.1.0", features = [
+    # https://github.com/babylonlabs-io/babylon/blob/d065cdd9d7f1219fece38cb678d1233566cf530b/app/keepers/keepers.go#L101
+    "cosmwasm_2_0",
+] }
+cosmwasm-crypto = "=2.1.0"
 cw-storage-plus = "2.0.0"
-cosmwasm-storage = "1.5.2"
-schemars = "0.8.8"
 cw2 = "2.0.0"
-serde = { version = "1.0.137", default-features = false, features = ["derive"] }
-thiserror = { version = "1.0.31" }
+schemars = "0.8.16"
+serde = { version = "1.0.197", default-features = false, features = ["derive"] }
+thiserror = { version = "1.0.58" }
 cw-multi-test = "=2.0.0"
+
+# cosmwasm utils
 sha2 = { version = "0.10.8", default-features = false }
 hex = "0.4"
-cosmwasm-crypto = "2.1.0"
 secp256k1 = "0.29.0"
 cw20 = "2.0.0"
 bech32 = "0.8.0"
 ripemd = "0.1.0"
-serde_json = "1.0.0"
+serde_json = "1.0.139"
 base64 = "0.22.1"
 cw-utils = "2.0.0"
 
+# contracts
+bvs-delegation-manager = { path = "./bvs-delegation-manager" }
+bvs-directory = { path = "./bvs-directory" }
+bvs-driver = { path = "./bvs-driver" }
+bvs-rewards-coordinator = { path = "./bvs-rewards-coordinator" }
+bvs-slash-manager = { path = "./bvs-slash-manager" }
+bvs-state-bank = { path = "./bvs-state-bank" }
+bvs-strategy-base = { path = "./bvs-strategy-base" }
+bvs-strategy-base-tvl-limits = { path = "./bvs-strategy-base-tvl-limits" }
+bvs-strategy-factory = { path = "./bvs-strategy-factory" }
+bvs-strategy-manager = { path = "./bvs-strategy-manager" }
+
 # common cosmwasm crates
 bvs-base = { path = "./common/bvs/base" }
-bvs-test-utils = { path = "./common/bvs/test-utils" }
+bvs-testing = { path = "./common/bvs/testing" }

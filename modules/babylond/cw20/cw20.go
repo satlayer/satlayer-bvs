@@ -36,6 +36,8 @@ func DeployCw20(c *babylond.BabylonContainer, initMsg InstantiateMsg) *babylond.
 	return contract
 }
 
+// TODO(fuxingloh): add utility to CW20 contract
+
 func (r *InstantiateMsg) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }

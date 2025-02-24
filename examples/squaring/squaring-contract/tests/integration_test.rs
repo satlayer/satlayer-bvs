@@ -1,9 +1,6 @@
 use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, StdResult, WasmMsg};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use squaring_contract::msg::ExecuteMsg;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct SquaringContract(pub Addr);
 
 impl SquaringContract {

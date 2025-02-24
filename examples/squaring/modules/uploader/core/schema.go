@@ -30,7 +30,6 @@ type Reward struct {
 	Amount           float64 `json:"amount"`
 	OperatorRatio    float64 `json:"operatorRatio"`
 	OperatorStrategy string  `json:"operatorStrategy"`
-	UploadAPI        string  `json:"uploadAPI"`
 }
 
 type Database struct {

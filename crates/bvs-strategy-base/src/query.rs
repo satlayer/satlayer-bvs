@@ -23,7 +23,7 @@ pub struct UserUnderlyingResponse {
 
 #[cw_serde]
 pub struct StrategyManagerResponse {
-    pub strate_manager_addr: Addr,
+    pub strategy_manager_addr: Addr,
 }
 
 #[cw_serde]

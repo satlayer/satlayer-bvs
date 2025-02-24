@@ -5,17 +5,18 @@ import (
 	"encoding/base64"
 	"math/big"
 	"testing"
-	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
+	delegationmanager "github.com/satlayer/satlayer-bvs/bvs-cw/delegation-manager"
+
+	"github.com/satlayer/satlayer-bvs/babylond"
+	"github.com/satlayer/satlayer-bvs/babylond/bvs"
+	"github.com/satlayer/satlayer-bvs/babylond/cw20"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	apilogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
-	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 	"github.com/satlayer/satlayer-bvs/bvs-api/utils"
 )
 
@@ -24,32 +25,76 @@ type delegationTestSuite struct {
 	chainIO      io.ChainIO
 	contrAddr    string
 	strategies   []string
-	token        string
+	tokenAddr    string
 	slashManager string
+	container    *babylond.BabylonContainer
 }
 
-func (suite *delegationTestSuite) SetupTest() {
-	chainID := "sat-bbn-testnet1"
-	rpcURI := "https://rpc.sat-bbn-testnet1.satlayer.net"
-	homeDir := "../.babylon" // Please refer to the readme to obtain
+func (suite *delegationTestSuite) SetupSuite() {
+	container := babylond.Run(context.Background())
+	suite.chainIO = container.NewChainIO("../.babylon")
+	suite.container = container
 
-	logger := apilogger.NewMockELKLogger()
-	metricsIndicators := transactionprocess.NewPromIndicators(prometheus.NewRegistry(), "delegation")
-	chainIO, err := io.NewChainIO(chainID, rpcURI, homeDir, "bbn", logger, metricsIndicators, types.TxManagerParams{
-		MaxRetries:             3,
-		RetryInterval:          2 * time.Second,
-		ConfirmationTimeout:    60 * time.Second,
-		GasPriceAdjustmentRate: "1.1",
+	// Fund Callers
+	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
+	container.FundAddressUbbn("bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x", 1e8)
+	container.FundAddressUbbn("bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv", 1e7)
+	container.FundAddressUbbn("bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk", 1e7)
+
+	// TODO(fuxingloh): operator1, operator2, operator3
+
+	minter := container.GenerateAddress("cw20:minter")
+	token := cw20.DeployCw20(container, cw20.InstantiateMsg{
+		Decimals: 6,
+		InitialBalances: []cw20.Cw20Coin{
+			{
+				Address: minter.String(),
+				Amount:  "1000000000",
+			},
+		},
+		Mint: &cw20.MinterResponse{
+			Minter: minter.String(),
+		},
+		Name:   "Test Token",
+		Symbol: "TEST",
 	})
-	suite.Require().NoError(err)
-	suite.chainIO = chainIO
-	suite.contrAddr = "bbn1q7v924jjct6xrc89n05473juncg3snjwuxdh62xs2ua044a7tp8sydugr4"
+	suite.tokenAddr = token.Address
+
+	deployer := &bvs.Deployer{BabylonContainer: container}
+	tAddr := container.GenerateAddress("test-address").String()
+	tAddr1 := container.GenerateAddress("test-address-1").String()
+	tAddr2 := container.GenerateAddress("test-address-2").String()
+
+	container.ImportPrivKey("delegation-manager:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
+	container.ImportPrivKey("delegation-manager:pauser", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
+	container.ImportPrivKey("delegation-manager:unpauser", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
+
+	strategyManager := deployer.DeployStrategyManager(tAddr, tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+	delegationManager := deployer.DeployDelegationManager(
+		tAddr, strategyManager.Address, 100, []string{tAddr}, []int64{50},
+	)
+
+	suite.contrAddr = delegationManager.Address
 	suite.strategies = []string{
-		"bbn1326vx56sy7ra2qk4perr2tg8td3ln4qll3s2l4vu8jclxdplzj5scxzahc",
-		"bbn1df8tu3pxrxf2cs0s4rjcvdjuhs25he9l8v720yvl59hj7phvgmyqp873ay",
+		// Replace with actual strategy addresses
+		tAddr1,
+		tAddr2,
 	}
-	suite.token = "bbn1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sp4gequ"
-	suite.slashManager = "bbn1z52hmh7ht0364lzcs8700sgrnns84sa3wr9c8upd80es5n5x65mq2dedfp"
+	slashManager := deployer.DeploySlashManager(tAddr, tAddr)
+	suite.slashManager = slashManager.Address
+
+	chainIO, err := suite.chainIO.SetupKeyring("operator1", "test")
+	delegationApi := api.NewDelegationManager(chainIO, delegationManager.Address)
+	suite.Require().NoError(err, "setup keyring")
+
+	ctx := context.Background()
+	txResp, err := delegationApi.RegisterAsOperator(ctx, GetPubKeyFromKeychainByUid(chainIO, "operator1"), "", "0", "", 0)
+	suite.Require().NoError(err, "register as operator")
+	suite.Require().NotNil(txResp, "tx resp is nil")
+}
+
+func (suite *delegationTestSuite) TearDownSuite() {
+	suite.Require().NoError(suite.container.Terminate(context.Background()))
 }
 
 // KeyName needs to be changed every time it is executed
@@ -60,14 +105,13 @@ func (suite *delegationTestSuite) test_RegisterAsOperator() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	account, err := chainIO.GetCurrentAccount()
-	assert.NoError(t, err, "get account")
+	accountPubKey := GetPubKeyFromKeychainByUid(chainIO, "operator1")
 
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr).WithGasLimit(400000)
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr).WithGasLimit(400000)
 
 	txResp, err := delegation.RegisterAsOperator(
 		context.Background(),
-		account.GetPubKey(),
+		accountPubKey,
 		"",
 		"0",
 		"",
@@ -84,7 +128,7 @@ func (suite *delegationTestSuite) Test_ModifyOperatorDetails() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
 
 	txResp, err := delegation.ModifyOperatorDetails(
 		context.Background(),
@@ -102,7 +146,7 @@ func (suite *delegationTestSuite) Test_UpdateOperatorMetadataURI() {
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
 	txResp, err := delegation.UpdateOperatorMetadataURI(context.Background(), "metadata.uri")
 	assert.NoError(t, err, "update operator metadata uri")
 	assert.NotNil(t, txResp, "tx resp is nil")
@@ -115,7 +159,7 @@ func (suite *delegationTestSuite) Test_DelegateToAndUnDelegate() {
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
 
 	approverAccount, err := chainIO.QueryAccount("bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv")
 	assert.NoError(t, err, "get account")
@@ -152,12 +196,12 @@ func (suite *delegationTestSuite) Test_DelegateToBySignatureAndUnDelegate() {
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
 
-	stakerAccount, err := chainIO.QueryAccount("bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk")
+	stakerAccountPubKey := GetPubKeyFromKeychainByAddress(chainIO, "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk")
 	assert.NoError(t, err, "get account")
 
-	approverAccount, err := chainIO.QueryAccount("bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv")
+	approverAccountPubKey := GetPubKeyFromKeychainByAddress(chainIO, "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv")
 	assert.NoError(t, err, "get account")
 
 	txResp, err := delegation.DelegateToBySignature(
@@ -167,8 +211,8 @@ func (suite *delegationTestSuite) Test_DelegateToBySignatureAndUnDelegate() {
 		"staker1",
 		"bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv",
 		"aggregator",
-		stakerAccount.GetPubKey(),
-		approverAccount.GetPubKey(),
+		stakerAccountPubKey,
+		approverAccountPubKey,
 	)
 	assert.NoError(t, err, "delegate to by signature")
 	t.Logf("txResp: %v", txResp)
@@ -184,7 +228,7 @@ func (suite *delegationTestSuite) test_CompleteQueuedWithdrawal() {
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
 	nonceResp, err := delegation.GetCumulativeWithdrawalsQueuedNonce("bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk")
 	assert.NoError(t, err, "get nonce")
 	currentNonce := new(big.Int)
@@ -196,7 +240,7 @@ func (suite *delegationTestSuite) test_CompleteQueuedWithdrawal() {
 	}
 	txResp, err := delegation.CompleteQueuedWithdrawal(
 		context.Background(),
-		types.Withdrawal{
+		delegationmanager.WithdrawalElement{
 			Staker:      "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
 			DelegatedTo: "bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
 			Withdrawer:  "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
@@ -205,7 +249,7 @@ func (suite *delegationTestSuite) test_CompleteQueuedWithdrawal() {
 			Strategies:  suite.strategies,
 			Shares:      []string{"41"},
 		},
-		[]string{suite.token},
+		[]string{suite.tokenAddr},
 		0,
 		true,
 	)
@@ -218,16 +262,16 @@ func (suite *delegationTestSuite) test_QueueWithdrawals() {
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
 
-	req := []types.QueuedWithdrawalParams{
+	req := []delegationmanager.QueuedWithdrawalParams{
 		{
-			WithDrawer: "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
+			Withdrawer: "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
 			Strategies: suite.strategies,
 			Shares:     []string{"20"},
 		},
 		{
-			WithDrawer: "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
+			Withdrawer: "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
 			Strategies: suite.strategies,
 			Shares:     []string{"20"},
 		},
@@ -243,14 +287,14 @@ func (suite *delegationTestSuite) test_CompleteQueuedWithdrawals() {
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
 	nonceResp, err := delegation.GetCumulativeWithdrawalsQueuedNonce("bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk")
 	assert.NoError(t, err, "get nonce")
 	currentNonce := new(big.Int)
 	_, ok := currentNonce.SetString(nonceResp.CumulativeWithdrawals, 10)
 	assert.True(t, ok)
 	// Note the special case where the resulting value is 0
-	withdrawals := []types.Withdrawal{
+	withdrawals := []delegationmanager.WithdrawalElement{
 		{
 			Staker:      "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
 			DelegatedTo: "bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
@@ -271,11 +315,11 @@ func (suite *delegationTestSuite) test_CompleteQueuedWithdrawals() {
 		},
 	}
 	tokens := [][]string{
-		{suite.token},
-		{suite.token},
+		{suite.tokenAddr},
+		{suite.tokenAddr},
 	}
 
-	txResp, err := delegation.CompleteQueuedWithdrawals(context.Background(), withdrawals, tokens, []uint64{0, 0}, []bool{true, true})
+	txResp, err := delegation.CompleteQueuedWithdrawals(context.Background(), withdrawals, tokens, []int64{0, 0}, []bool{true, true})
 	assert.NoError(t, err, "complete queued withdrawals")
 	t.Logf("txResp: %v", txResp)
 }
@@ -286,7 +330,7 @@ func (suite *delegationTestSuite) Test_SetMinWithdrawalDelayBlocks() {
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
 	txResp, err := delegation.SetMinWithdrawalDelayBlocks(context.Background(), 10)
 	assert.NoError(t, err, "set min withdrawal delay blocks")
 	t.Logf("txResp: %v", txResp)
@@ -298,8 +342,8 @@ func (suite *delegationTestSuite) Test_SetStrategyWithdrawalDelayBlocks() {
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
-	txResp, err := delegation.SetStrategyWithdrawalDelayBlocks(context.Background(), suite.strategies, []uint64{5, 5})
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
+	txResp, err := delegation.SetStrategyWithdrawalDelayBlocks(context.Background(), suite.strategies, []int64{5, 5})
 	assert.NoError(t, err, "set strategy withdrawal delay blocks")
 	t.Logf("txResp: %v", txResp)
 }
@@ -310,7 +354,7 @@ func (suite *delegationTestSuite) Test_DelegateTransferOwnership() {
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
 	txResp, err := delegation.TransferOwnership(context.Background(), "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv")
 	assert.NoError(t, err, "transfer ownership")
 	t.Logf("txResp: %v", txResp)
@@ -322,7 +366,7 @@ func (suite *delegationTestSuite) Test_DelegateTransferOwnership() {
 
 	RecoverClient, err := suite.chainIO.SetupKeyring("aggregator", "test")
 	assert.NoError(t, err, "create cosmos client")
-	recoverDelegation := api.NewDelegationImpl(RecoverClient, suite.contrAddr)
+	recoverDelegation := api.NewDelegationManager(RecoverClient, suite.contrAddr)
 	recoverResp, err := recoverDelegation.TransferOwnership(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 	assert.NoError(t, err, "transfer ownership")
 	t.Logf("recoverResp: %v", recoverResp)
@@ -334,12 +378,12 @@ func (suite *delegationTestSuite) Test_DelegationPause() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	txResp, err := api.NewDelegationImpl(chainIO, suite.contrAddr).Pause(context.Background())
+	txResp, err := api.NewDelegationManager(chainIO, suite.contrAddr).Pause(context.Background())
 	assert.NoError(t, err)
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
 
-	recoverResp, err := api.NewDelegationImpl(chainIO, suite.contrAddr).Unpause(context.Background())
+	recoverResp, err := api.NewDelegationManager(chainIO, suite.contrAddr).Unpause(context.Background())
 	assert.NoError(t, err)
 	assert.NotNil(t, recoverResp, "response nil")
 	t.Logf("txResp:%+v", recoverResp)
@@ -350,7 +394,7 @@ func (suite *delegationTestSuite) Test_DelegationSetPauser() {
 	keyName := "caller"
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	txResp, err := api.NewDelegationImpl(chainIO, suite.contrAddr).SetPauser(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+	txResp, err := api.NewDelegationManager(chainIO, suite.contrAddr).SetPauser(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 	assert.NoError(t, err)
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
@@ -361,7 +405,7 @@ func (suite *delegationTestSuite) Test_DelegationSetUnpauser() {
 	keyName := "caller"
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	txResp, err := api.NewDelegationImpl(chainIO, suite.contrAddr).SetUnpauser(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+	txResp, err := api.NewDelegationManager(chainIO, suite.contrAddr).SetUnpauser(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 	assert.NoError(t, err)
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
@@ -372,7 +416,7 @@ func (suite *delegationTestSuite) Test_SetSlashManager() {
 	keyName := "caller"
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	txResp, err := api.NewDelegationImpl(chainIO, suite.contrAddr).SetSlashManager(context.Background(), suite.slashManager)
+	txResp, err := api.NewDelegationManager(chainIO, suite.contrAddr).SetSlashManager(context.Background(), suite.slashManager)
 	assert.NoError(t, err)
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
@@ -384,7 +428,7 @@ func (suite *delegationTestSuite) Test_IsDelegated() {
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
 	txResp, err := delegation.IsDelegated("bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk")
 	assert.NoError(t, err, "check delegation")
 	t.Logf("txResp: %+v", txResp)
@@ -396,7 +440,7 @@ func (suite *delegationTestSuite) Test_IsOperator() {
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
 	txResp, err := delegation.IsOperator("bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x")
 	assert.NoError(t, err, "check operator")
 	t.Logf("txResp: %+v", txResp)
@@ -408,7 +452,7 @@ func (suite *delegationTestSuite) Test_OperatorDetails() {
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
 	txResp, err := delegation.OperatorDetails("bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x")
 	assert.NoError(t, err, "operator details")
 	t.Logf("txResp: %v", txResp)
@@ -426,7 +470,7 @@ func (suite *delegationTestSuite) Test_DelegationApprover() {
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
 	txResp, err := delegation.DelegationApprover("bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x")
 	assert.NoError(t, err, "delegation approver")
 	t.Logf("txResp: %+v", txResp)
@@ -438,7 +482,7 @@ func (suite *delegationTestSuite) Test_StakerOptOutWindowBlocks() {
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
 	txResp, err := delegation.StakerOptOutWindowBlocks("bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x")
 	assert.NoError(t, err, "staker opt out window blocks")
 	t.Logf("txResp: %+v", txResp)
@@ -450,7 +494,7 @@ func (suite *delegationTestSuite) Test_GetOperatorShares() {
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
 	txResp, err := delegation.GetOperatorShares(
 		"bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
 		suite.strategies,
@@ -465,7 +509,7 @@ func (suite *delegationTestSuite) Test_GetOperatorStakers() {
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
 	txResp, err := delegation.GetOperatorStakers("bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x")
 	assert.NoError(t, err, "get operator stakers")
 	t.Logf("txResp: %+v", txResp)
@@ -477,7 +521,7 @@ func (suite *delegationTestSuite) Test_GetDelegatableShares() {
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
 	txResp, err := delegation.GetDelegatableShares("bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk")
 	assert.NoError(t, err, "get delegatable shares")
 	t.Logf("txResp: %+v", txResp)
@@ -489,7 +533,7 @@ func (suite *delegationTestSuite) Test_GetWithdrawalDelay() {
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
 	txResp, err := delegation.GetWithdrawalDelay(suite.strategies)
 	assert.NoError(t, err, "get withdrawal delay")
 	t.Logf("txResp: %+v", txResp)
@@ -501,9 +545,9 @@ func (suite *delegationTestSuite) Test_CalculateWithdrawalRoot() {
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
 
-	req := types.Withdrawal{
+	req := delegationmanager.CalculateWithdrawalRootWithdrawal{
 		Staker:      "bbn14x6wy9kfj8hxqh03c8zwmzy9xsn4yh55xxf9qu",
 		DelegatedTo: "bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
 		Withdrawer:  "bbn14x6wy9kfj8hxqh03c8zwmzy9xsn4yh55xxf9qu",
@@ -524,16 +568,17 @@ func (suite *delegationTestSuite) Test_CalculateCurrentStakerDelegationDigestHas
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
-	stakerAccount, err := chainIO.GetCurrentAccount()
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
+
+	stakeAccountPubKey := GetPubKeyFromKeychainByUid(chainIO, "caller")
 	assert.NoError(t, err, "get account")
 	nodeStatus, err := chainIO.QueryNodeStatus(context.Background())
 	assert.NoError(t, err, "query node status")
-	expiry := uint64(nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000)
-	req := types.CurrentStakerDigestHashParams{
+	expiry := nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000
+	req := delegationmanager.QueryCurrentStakerDigestHashParams{
 		Staker:          "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
 		Operator:        "bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
-		StakerPublicKey: base64.StdEncoding.EncodeToString(stakerAccount.GetPubKey().Bytes()),
+		StakerPublicKey: base64.StdEncoding.EncodeToString(stakeAccountPubKey.Bytes()),
 		Expiry:          expiry,
 		CurrentNonce:    "0",
 		ContractAddr:    suite.contrAddr,
@@ -550,17 +595,18 @@ func (suite *delegationTestSuite) Test_StakerDelegationDigestHash() {
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
-	stakerAccount, err := chainIO.GetCurrentAccount()
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
+
+	stakerPubKey := GetPubKeyFromKeychainByUid(chainIO, "staker1")
 	assert.NoError(t, err, "get account")
 	nodeStatus, err := chainIO.QueryNodeStatus(context.Background())
 	assert.NoError(t, err, "query node status")
-	expiry := uint64(nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000)
-	req := types.StakerDigestHashParams{
+	expiry := nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000
+	req := delegationmanager.QueryStakerDigestHashParams{
 		Staker:          "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
 		StakerNonce:     "0",
 		Operator:        "bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
-		StakerPublicKey: base64.StdEncoding.EncodeToString(stakerAccount.GetPubKey().Bytes()),
+		StakerPublicKey: base64.StdEncoding.EncodeToString(stakerPubKey.Bytes()),
 		Expiry:          expiry,
 		ContractAddr:    suite.contrAddr,
 	}
@@ -577,23 +623,23 @@ func (suite *delegationTestSuite) Test_DelegationApprovalDigestHash() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
 	nodeStatus, err := chainIO.QueryNodeStatus(context.Background())
 	assert.NoError(t, err, "query node status")
 
-	expiry := uint64(nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000)
+	expiry := nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000
 	randomStr, err := utils.GenerateRandomString(16)
 	assert.NoError(t, err, "generate random string")
 	salt := "salt" + randomStr
 
-	approverAccount, err := chainIO.GetCurrentAccount()
+	approvePubKey := GetPubKeyFromKeychainByUid(chainIO, "aggregator")
 	assert.NoError(t, err, "get account")
 
-	req := types.ApproverDigestHashParams{
+	req := delegationmanager.QueryApproverDigestHashParams{
 		Staker:            "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk",
 		Operator:          "bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
 		Approver:          "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv",
-		ApproverPublicKey: base64.StdEncoding.EncodeToString(approverAccount.GetPubKey().Bytes()),
+		ApproverPublicKey: base64.StdEncoding.EncodeToString(approvePubKey.Bytes()),
 		ApproverSalt:      base64.StdEncoding.EncodeToString([]byte(salt)),
 		Expiry:            expiry,
 		ContractAddr:      suite.contrAddr,
@@ -610,7 +656,7 @@ func (suite *delegationTestSuite) Test_GetStakerNonce() {
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
 	txResp, err := delegation.GetStakerNonce("bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk")
 	assert.NoError(t, err, "get withdrawal delay")
 	t.Logf("txResp: %+v", txResp)
@@ -622,7 +668,7 @@ func (suite *delegationTestSuite) Test_GetCumulativeWithdrawalsQueuedNonce() {
 
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	delegation := api.NewDelegationImpl(chainIO, suite.contrAddr)
+	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
 	txResp, err := delegation.GetCumulativeWithdrawalsQueuedNonce("bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk")
 	assert.NoError(t, err, "get withdrawal queued nonce")
 	t.Logf("txResp: %+v", txResp)

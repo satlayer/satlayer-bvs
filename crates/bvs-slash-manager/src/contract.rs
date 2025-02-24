@@ -1,6 +1,6 @@
 use crate::{
     error::ContractError,
-    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
         CalculateSlashHashResponse, MinimalSlashSignatureResponse, SlashDetailsResponse,
         ValidatorResponse,
@@ -26,7 +26,7 @@ use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use bvs_base::strategy::ExecuteMsg as StrategyManagerExecuteMsg;
 
-const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
+const CONTRACT_NAME: &str = "BVS Slash Manager";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const PAUSED_EXECUTE_SLASH_REQUEST: u8 = 0;
@@ -648,19 +648,6 @@ fn only_slasher(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
         return Err(ContractError::Unauthorized {});
     }
     Ok(())
-}
-
-pub fn migrate(
-    deps: DepsMut,
-    _env: Env,
-    info: &MessageInfo,
-    _msg: MigrateMsg,
-) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), info)?;
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    Ok(Response::new().add_attribute("method", "migrate"))
 }
 
 #[cfg(test)]

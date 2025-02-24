@@ -1,7 +1,7 @@
 use crate::{
     error::ContractError,
     msg::{
-        ExecuteMsg, InstantiateMsg, MigrateMsg, OperatorDetails, QueryMsg, QueuedWithdrawalParams,
+        ExecuteMsg, InstantiateMsg, OperatorDetails, QueryMsg, QueuedWithdrawalParams,
         SignatureWithExpiry,
     },
     query::{
@@ -34,10 +34,10 @@ use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use bvs_base::strategy::{
     DepositsResponse, ExecuteMsg as StrategyManagerExecuteMsg, QueryMsg as StrategyManagerQueryMsg,
-    StakerStrategyLisResponse, StakerStrategySharesResponse, ThirdPartyTransfersForbiddenResponse,
+    StakerStrategyListResponse, StakerStrategySharesResponse, ThirdPartyTransfersForbiddenResponse,
 };
 
-const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
+const CONTRACT_NAME: &str = "BVS Delegation Manager";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const PAUSED_NEW_DELEGATION: u8 = 0;
@@ -1074,7 +1074,7 @@ pub fn query_operator_stakers(deps: Deps, operator: Addr) -> StdResult<OperatorS
         let mut shares_per_strategy: Vec<(Addr, Uint128)> = Vec::new();
 
         let state = DELEGATION_MANAGER_STATE.load(deps.storage)?;
-        let strategy_list_response: StakerStrategyLisResponse = deps.querier.query_wasm_smart(
+        let strategy_list_response: StakerStrategyListResponse = deps.querier.query_wasm_smart(
             state.strategy_manager.clone(),
             &StrategyManagerQueryMsg::GetStakerStrategyList {
                 staker: staker.to_string(),
@@ -1578,19 +1578,6 @@ fn remove_shares_and_queue_withdrawal(
     );
 
     Ok(response)
-}
-
-pub fn migrate(
-    deps: DepsMut,
-    _env: Env,
-    info: &MessageInfo,
-    _msg: MigrateMsg,
-) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), info)?;
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    Ok(Response::new().add_attribute("method", "migrate"))
 }
 
 #[cfg(test)]
@@ -4586,7 +4573,7 @@ mod tests {
                     StrategyManagerQueryMsg::GetStakerStrategyList { staker } => {
                         assert_eq!(staker, staker1_clone.to_string());
                         SystemResult::Ok(ContractResult::Ok(
-                            to_json_binary(&StakerStrategyLisResponse {
+                            to_json_binary(&StakerStrategyListResponse {
                                 strategies: vec![strategy1_clone.clone(), strategy2_clone.clone()],
                             })
                             .unwrap(),
@@ -4674,30 +4661,6 @@ mod tests {
             from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
         assert_eq!(res.cumulative_withdrawals, Uint128::new(5));
-    }
-
-    #[test]
-    fn test_migrate_owner_vs_non_owner() {
-        let (mut deps, env, owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
-
-        let migrate_msg = MigrateMsg {};
-        let res = migrate(deps.as_mut(), env.clone(), &owner_info, migrate_msg.clone()).unwrap();
-
-        assert_eq!(res, Response::new().add_attribute("method", "migrate"));
-
-        let version = get_contract_version(deps.as_ref().storage).unwrap();
-        assert_eq!(version.contract, CONTRACT_NAME);
-        assert_eq!(version.version, CONTRACT_VERSION);
-
-        let non_owner_info = message_info(&Addr::unchecked("not_owner"), &[]);
-
-        let res = migrate(deps.as_mut(), env, &non_owner_info, migrate_msg);
-
-        match res {
-            Err(ContractError::Unauthorized {}) => {}
-            _ => panic!("Expected Unauthorized error"),
-        }
     }
 
     #[test]
