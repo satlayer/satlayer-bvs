@@ -29,4 +29,10 @@ pub enum ContractError {
 
     #[error("BVSDirectory.acceptOwnership: no pending owner")]
     NoPendingOwner {},
+
+    #[error("BVSDirectory.RegisterBvs: BVS already registered")]
+    BVSAlreadyRegistered {},
+
+    #[error("BVSDirectory.RegisterBvs: invalid contract address")]
+    InvalidContractAddress {},
 }

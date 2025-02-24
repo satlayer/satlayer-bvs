@@ -12,7 +12,7 @@ pub struct SaltResponse {
 }
 
 #[cw_serde]
-pub struct BvsInfoResponse {
+pub struct BVSInfoResponse {
     pub bvs_hash: String,
     pub bvs_contract: String,
 }

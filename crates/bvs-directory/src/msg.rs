@@ -1,5 +1,5 @@
 use crate::query::{
-    BvsInfoResponse, DelegationResponse, DigestHashResponse, DomainNameResponse,
+    BVSInfoResponse, DelegationResponse, DigestHashResponse, DomainNameResponse,
     DomainTypeHashResponse, OwnerResponse, RegistrationTypeHashResponse, SaltResponse,
 };
 use crate::state::OperatorBvsRegistrationStatus;
@@ -10,6 +10,8 @@ use cosmwasm_std::Binary;
 pub struct InstantiateMsg {
     pub initial_owner: String,
     pub delegation_manager: String,
+    pub state_bank: String,
+    pub bvs_driver: String,
     pub pauser: String,
     pub unpauser: String,
     pub initial_paused_status: u8,
@@ -17,7 +19,7 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    RegisterBvs {
+    RegisterBVS {
         bvs_contract: String,
     },
     RegisterOperatorToBvs {
@@ -72,8 +74,8 @@ pub enum QueryMsg {
     #[returns(SaltResponse)]
     IsSaltSpent { operator: String, salt: String },
 
-    #[returns(BvsInfoResponse)]
-    GetBvsInfo { bvs_hash: String },
+    #[returns(BVSInfoResponse)]
+    GetBVSInfo { bvs_hash: String },
 
     #[returns(DelegationResponse)]
     GetDelegationManager {},
