@@ -1,12 +1,10 @@
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    state::{AGGREGATOR, BVS_DRIVER, CREATED_TASKS, MAX_ID, RESPONDED_TASKS, STATE_BANK},
+    state::{AGGREGATOR, CREATED_TASKS, MAX_ID, RESPONDED_TASKS},
 };
 
-use cosmwasm_std::{
-    entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response
-};
+use cosmwasm_std::{entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response};
 use cw2::set_contract_version;
 
 const CONTRACT_NAME: &str = "BVS Squaring Example";
@@ -22,8 +20,6 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     MAX_ID.save(deps.storage, &0)?;
     AGGREGATOR.save(deps.storage, &msg.aggregator)?;
-    STATE_BANK.save(deps.storage, &msg.state_bank)?;
-    BVS_DRIVER.save(deps.storage, &msg.bvs_driver)?;
 
     let response = Response::new().add_attribute("method", "instantiate");
     Ok(response)
@@ -46,96 +42,42 @@ pub fn execute(
     }
 }
 
-pub mod state_bank {
-    // TODO(fuxingloh): putting this mod here is not clean,
-    //   but it's better that putting it in crate::msg::ExecuteMsg
-    //   since it doesn't belong there.
-    use cosmwasm_schema::cw_serde;
-
-    #[cw_serde]
-    pub enum ExecuteMsg {
-        Set { key: String, value: String },
-    }
-}
-
-pub mod bvs_driver {
-    // TODO(fuxingloh): putting this mod here is not clean,
-    //   but it's better that putting it in crate::msg::ExecuteMsg
-    //   since it doesn't belong there.
-    use cosmwasm_schema::cw_serde;
-
-    #[cw_serde]
-    pub enum ExecuteMsg {
-        ExecuteBvsOffchain { task_id: String },
-    }
-}
-
 pub mod execute {
-    use super::state_bank;
-    use super::bvs_driver;
-    use crate::state::{
-        AGGREGATOR, BVS_DRIVER, CREATED_TASKS, MAX_ID, RESPONDED_TASKS, STATE_BANK,
-    };
+    use crate::state::{AGGREGATOR, CREATED_TASKS, MAX_ID, RESPONDED_TASKS};
     use crate::ContractError;
-    use cosmwasm_std::{to_json_binary, CosmosMsg, DepsMut, Event, MessageInfo, Response, WasmMsg};
+    use cosmwasm_std::{DepsMut, Event, MessageInfo, Response};
 
     pub fn create_new_task(
         deps: DepsMut,
-        _info: MessageInfo,
+        info: MessageInfo,
         input: i64,
     ) -> Result<Response, ContractError> {
         let id = MAX_ID.may_load(deps.storage)?;
         let new_id = id.unwrap_or(0) + 1;
 
         MAX_ID.save(deps.storage, &new_id)?;
-
         CREATED_TASKS.save(deps.storage, new_id, &input)?;
 
-        // Call the state bank contract to save the task input
-        let state_bank_msg = {
-            let msg = state_bank::ExecuteMsg::Set {
-                key: format!("taskId.{}", new_id),
-                value: input.to_string(),
-            };
+        let state_env = Event::new("UpdateState")
+            .add_attribute("sender", info.sender.to_string())
+            .add_attribute("key", format!("taskId.{}", new_id))
+            .add_attribute("value", input.to_string());
 
-            let state_bank_address = STATE_BANK.load(deps.storage)?;
-            let wasm_msg = WasmMsg::Execute {
-                contract_addr: state_bank_address.into_string(),
-                msg: to_json_binary(&msg)?,
-                funds: vec![],
-            };
+        let offchain_env = Event::new("ExecuteBVSOffchain")
+            .add_attribute("sender", info.sender.to_string())
+            .add_attribute("task_id", new_id.to_string());
 
-            CosmosMsg::Wasm(wasm_msg)
-        };
-
-        // Call the bvs driver contract to execute the task off-chain
-        let bvs_driver_msg = {
-            let msg = bvs_driver::ExecuteMsg::ExecuteBvsOffchain {
-                task_id: new_id.to_string(),
-            };
-
-            let bvs_driver_address = BVS_DRIVER.load(deps.storage)?;
-            let wasm_msg = WasmMsg::Execute {
-                contract_addr: bvs_driver_address.into_string(),
-                msg: to_json_binary(&msg)?,
-                funds: vec![],
-            };
-
-            CosmosMsg::Wasm(wasm_msg)
-        };
-
-        // emit event
-        let event = Event::new("NewTaskCreated")
+        let task_event = Event::new("NewTaskCreated")
             .add_attribute("taskId", new_id.to_string())
             .add_attribute("input", input.to_string());
 
         Ok(Response::new()
-            .add_message(state_bank_msg)
-            .add_message(bvs_driver_msg)
             .add_attribute("method", "CreateNewTask")
             .add_attribute("input", input.to_string())
             .add_attribute("taskId", new_id.to_string())
-            .add_event(event))
+            .add_event(task_event)
+            .add_event(state_env)
+            .add_event(offchain_env))
     }
 
     pub fn respond_to_task(
@@ -161,6 +103,13 @@ pub mod execute {
 
         // save task result
         RESPONDED_TASKS.save(deps.storage, task_id, &result)?;
+
+        // .add_event(
+        //         Event::new("UpdateState")
+        //             .add_attribute("sender", sender.to_string())
+        //             .add_attribute("key", key)
+        //             .add_attribute("value", value.to_string()),
+        //     )
 
         // emit event
         let event = Event::new("TaskResponded")
@@ -223,7 +172,7 @@ mod tests {
     use cosmwasm_std::{
         from_json,
         testing::{mock_dependencies, mock_env},
-        Addr, Coin, CosmosMsg, MessageInfo, WasmMsg,
+        Addr, Coin, MessageInfo
     };
 
     fn mock_info(sender: &str, funds: &[Coin]) -> MessageInfo {
@@ -240,8 +189,6 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             aggregator: Addr::unchecked("aggregator"),
-            state_bank: Addr::unchecked("state_bank"),
-            bvs_driver: Addr::unchecked("bvs_driver"),
         };
 
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -258,14 +205,6 @@ mod tests {
             AGGREGATOR.load(deps.as_ref().storage).unwrap(),
             Addr::unchecked("aggregator")
         );
-        assert_eq!(
-            STATE_BANK.load(deps.as_ref().storage).unwrap(),
-            Addr::unchecked("state_bank")
-        );
-        assert_eq!(
-            BVS_DRIVER.load(deps.as_ref().storage).unwrap(),
-            Addr::unchecked("bvs_driver")
-        );
     }
 
     #[test]
@@ -275,8 +214,6 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             aggregator: Addr::unchecked("aggregator"),
-            state_bank: Addr::unchecked("state_bank"),
-            bvs_driver: Addr::unchecked("bvs_driver"),
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -285,51 +222,13 @@ mod tests {
         let res = execute(deps.as_mut(), env, info, create_msg).unwrap();
 
         // Check if the task was created successfully
-        assert_eq!(2, res.messages.len());
-        assert_eq!(1, res.events.len());
+        assert_eq!(3, res.events.len());
 
         // Check if MAX_ID was incremented
         assert_eq!(MAX_ID.load(deps.as_ref().storage).unwrap(), 1);
 
         // Check if the task was saved
         assert_eq!(CREATED_TASKS.load(deps.as_ref().storage, 1).unwrap(), 42);
-
-        // Check if the correct messages were created
-        let state_bank_msg = &res.messages[0];
-        let bvs_driver_msg = &res.messages[1];
-
-        match &state_bank_msg.msg {
-            CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr, msg, ..
-            }) => {
-                assert_eq!(contract_addr, "state_bank");
-                let parsed_msg: state_bank::ExecuteMsg = from_json(msg).unwrap();
-                match parsed_msg {
-                    state_bank::ExecuteMsg::Set { key, value } => {
-                        assert_eq!(key, "taskId.1");
-                        assert_eq!(value, "42");
-                    }
-                    _ => panic!("Unexpected message type"),
-                }
-            }
-            _ => panic!("Unexpected message type"),
-        }
-
-        match &bvs_driver_msg.msg {
-            CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr, msg, ..
-            }) => {
-                assert_eq!(contract_addr, "bvs_driver");
-                let parsed_msg: bvs_driver::ExecuteMsg = from_json(msg).unwrap();
-                match parsed_msg {
-                    bvs_driver::ExecuteMsg::ExecuteBvsOffchain { task_id } => {
-                        assert_eq!(task_id, "1");
-                    }
-                    _ => panic!("Unexpected message type"),
-                }
-            }
-            _ => panic!("Unexpected message type"),
-        }
     }
 
     #[test]
@@ -339,8 +238,6 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             aggregator: Addr::unchecked("aggregator"),
-            state_bank: Addr::unchecked("state_bank"),
-            bvs_driver: Addr::unchecked("bvs_driver"),
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -372,8 +269,6 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             aggregator: Addr::unchecked("aggregator"),
-            state_bank: Addr::unchecked("state_bank"),
-            bvs_driver: Addr::unchecked("bvs_driver"),
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -405,8 +300,6 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             aggregator: Addr::unchecked("aggregator"),
-            state_bank: Addr::unchecked("state_bank"),
-            bvs_driver: Addr::unchecked("bvs_driver"),
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -428,8 +321,6 @@ mod tests {
         let info = mock_info("creator", &[]);
         let msg = InstantiateMsg {
             aggregator: Addr::unchecked("aggregator"),
-            state_bank: Addr::unchecked("state_bank"),
-            bvs_driver: Addr::unchecked("bvs_driver"),
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 

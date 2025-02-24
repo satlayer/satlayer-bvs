@@ -2,9 +2,9 @@ package strategy
 
 import "fmt"
 
-func GetDeposits(stakerAddress, strategyAddress string) {
+func GetDeposits(stakerAddress string) {
 	s := NewService()
-	resp, err := s.Strategy.GetDeposits(stakerAddress, strategyAddress)
+	resp, err := s.Strategy.GetDeposits(stakerAddress)
 	if err != nil {
 		panic(err)
 	}

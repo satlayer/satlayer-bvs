@@ -163,11 +163,11 @@ func strategyCmd() *cobra.Command {
 		},
 	}
 	getDepositsCmd := &cobra.Command{
-		Use:   "get-deposits <stakerAddress> <strategyAddress>",
+		Use:   "get-deposits <stakerAddress>",
 		Short: "To get the deposits.",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			strategy.GetDeposits(args[0], args[1])
+			strategy.GetDeposits(args[0])
 		},
 	}
 

@@ -11,9 +11,7 @@ delegation, slashing, rewards distribution, and automated validator selection.
 ```mermaid
 flowchart TD
 %% Nodes
-    BVS("BVS")
-    DR["Driver"]
-    ST["State Bank"]
+    BVS("Bitcoin Validated Service")
     DI["BVS Directory"]
     DM["Delegation Manager"]
     SM["Strategy Manager"]
@@ -26,8 +24,7 @@ flowchart TD
 
 %% Edge connections between nodes
     subgraph SP[Actor: Service Provider]
-    BVS --> DR
-    BVS --> ST
+    BVS
     end
     subgraph IN["BVS Interface"]
     DI --> DM
@@ -149,28 +146,3 @@ thereby maintaining the integrity and fairness of the reward system.
 By coordinating the distribution and secure claiming of rewards,
 the RewardsCoordinator plays a crucial role in incentivizing participation
 and upholding the fairness of the network's reward mechanisms.
-
-### BVS State Bank
-
-The StateBank contract functions as a simple on-chain key-value store within the BVS ecosystem.
-It allows registered Bitcoin Validated Service (BVS)
-contracts to securely store and update integer values associated with specific string keys.
-Only BVS contracts that have been registered with the StateBank can modify the stored values,
-ensuring that only authorized entities have write access.
-This mechanism enhances security by preventing unauthorized modifications while promoting transparency,
-as any user can query the stored values by providing the corresponding key.
-The StateBank thus provides a reliable and straightforward way for BVS contracts
-to persist and share state information on the blockchain,
-supporting the overall functionality and integrity of the ecosystem.
-
-### BVS Driver
-
-The BVS Driver contract serves as an interface for Bitcoin Validated Service (BVS)
-contracts within the BVS ecosystem to securely initiate off-chain tasks.
-It maintains a registry of authorized BVS contracts,
-allowing only registered contracts to trigger off-chain executions via the execute_bvs_offchain function,
-which includes a task_id identifying the specific task.
-The contract emits events containing the sender's address and the task ID,
-enabling off-chain services to monitor and execute the corresponding tasks.
-By enforcing strict access control and providing a standardized mechanism for initiating off-chain operations,
-the BVS Driver enhances the security and reliability of interactions between on-chain contracts and off-chain services in the network.

@@ -323,12 +323,10 @@ func (r *StrategyManager) query(msg any) (*wasmtypes.QuerySmartContractStateResp
 	return r.io.QueryContract(*r.queryOptions)
 }
 
-func (r *StrategyManager) GetDeposits(staker string, strategy string) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyManager) GetDeposits(staker string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategymanager.QueryMsg{
 		GetDeposits: &strategymanager.GetDeposits{
 			Staker: staker,
-			// TODO: what happen to strategy field is not present on the Rust side
-			// Strategy: strategy,
 		},
 	}
 
