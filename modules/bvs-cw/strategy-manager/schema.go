@@ -16,23 +16,20 @@
 //    delegationManagerResponse, err := UnmarshalDelegationManagerResponse(bytes)
 //    bytes, err = delegationManagerResponse.Marshal()
 //
-//    depositTypeHashResponse, err := UnmarshalDepositTypeHashResponse(bytes)
-//    bytes, err = depositTypeHashResponse.Marshal()
-//
-//    depositsResponse, err := UnmarshalDepositsResponse(bytes)
-//    bytes, err = depositsResponse.Marshal()
-//
 //    domainNameResponse, err := UnmarshalDomainNameResponse(bytes)
 //    bytes, err = domainNameResponse.Marshal()
 //
 //    domainTypeHashResponse, err := UnmarshalDomainTypeHashResponse(bytes)
 //    bytes, err = domainTypeHashResponse.Marshal()
 //
+//    depositTypeHashResponse, err := UnmarshalDepositTypeHashResponse(bytes)
+//    bytes, err = depositTypeHashResponse.Marshal()
+//
+//    depositsResponse, err := UnmarshalDepositsResponse(bytes)
+//    bytes, err = depositsResponse.Marshal()
+//
 //    nonceResponse, err := UnmarshalNonceResponse(bytes)
 //    bytes, err = nonceResponse.Marshal()
-//
-//    ownerResponse, err := UnmarshalOwnerResponse(bytes)
-//    bytes, err = ownerResponse.Marshal()
 //
 //    stakerStrategyListResponse, err := UnmarshalStakerStrategyListResponse(bytes)
 //    bytes, err = stakerStrategyListResponse.Marshal()
@@ -51,6 +48,9 @@
 //
 //    thirdPartyTransfersForbiddenResponse, err := UnmarshalThirdPartyTransfersForbiddenResponse(bytes)
 //    bytes, err = thirdPartyTransfersForbiddenResponse.Marshal()
+//
+//    ownerResponse, err := UnmarshalOwnerResponse(bytes)
+//    bytes, err = ownerResponse.Marshal()
 //
 //    stakerStrategyListLengthResponse, err := UnmarshalStakerStrategyListLengthResponse(bytes)
 //    bytes, err = stakerStrategyListLengthResponse.Marshal()
@@ -109,26 +109,6 @@ func (r *DelegationManagerResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalDepositTypeHashResponse(data []byte) (DepositTypeHashResponse, error) {
-	var r DepositTypeHashResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *DepositTypeHashResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalDepositsResponse(data []byte) (DepositsResponse, error) {
-	var r DepositsResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *DepositsResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
 func UnmarshalDomainNameResponse(data []byte) (DomainNameResponse, error) {
 	var r DomainNameResponse
 	err := json.Unmarshal(data, &r)
@@ -149,6 +129,26 @@ func (r *DomainTypeHashResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
+func UnmarshalDepositTypeHashResponse(data []byte) (DepositTypeHashResponse, error) {
+	var r DepositTypeHashResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *DepositTypeHashResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalDepositsResponse(data []byte) (DepositsResponse, error) {
+	var r DepositsResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *DepositsResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
 func UnmarshalNonceResponse(data []byte) (NonceResponse, error) {
 	var r NonceResponse
 	err := json.Unmarshal(data, &r)
@@ -156,16 +156,6 @@ func UnmarshalNonceResponse(data []byte) (NonceResponse, error) {
 }
 
 func (r *NonceResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalOwnerResponse(data []byte) (OwnerResponse, error) {
-	var r OwnerResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *OwnerResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -226,6 +216,16 @@ func UnmarshalThirdPartyTransfersForbiddenResponse(data []byte) (ThirdPartyTrans
 }
 
 func (r *ThirdPartyTransfersForbiddenResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalOwnerResponse(data []byte) (OwnerResponse, error) {
+	var r OwnerResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *OwnerResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -361,15 +361,15 @@ type QueryMsg struct {
 	IsThirdPartyTransfersForbidden *IsThirdPartyTransfersForbidden `json:"is_third_party_transfers_forbidden,omitempty"`
 	GetNonce                       *GetNonce                       `json:"get_nonce,omitempty"`
 	GetStakerStrategyList          *GetStakerStrategyList          `json:"get_staker_strategy_list,omitempty"`
-	GetOwner                       *GetOwner                       `json:"get_owner,omitempty"`
+	Owner                          *Owner                          `json:"owner,omitempty"`
 	IsStrategyWhitelisted          *IsStrategyWhitelisted          `json:"is_strategy_whitelisted,omitempty"`
 	CalculateDigestHash            *CalculateDigestHash            `json:"calculate_digest_hash,omitempty"`
 	GetStrategyWhitelister         *GetStrategyWhitelister         `json:"get_strategy_whitelister,omitempty"`
 	GetStrategyManagerState        *GetStrategyManagerState        `json:"get_strategy_manager_state,omitempty"`
 	GetDepositTypeHash             *GetDepositTypeHash             `json:"get_deposit_type_hash,omitempty"`
-	GetDomainTypeHash              *GetDomainTypeHash              `json:"get_domain_type_hash,omitempty"`
-	GetDomainName                  *GetDomainName                  `json:"get_domain_name,omitempty"`
-	GetDelegationManager           *GetDelegationManager           `json:"get_delegation_manager,omitempty"`
+	DomainTypeHash                 *DomainTypeHash                 `json:"domain_type_hash,omitempty"`
+	DomainName                     *DomainName                     `json:"domain_name,omitempty"`
+	DelegationManager              *DelegationManager              `json:"delegation_manager,omitempty"`
 }
 
 type CalculateDigestHash struct {
@@ -388,7 +388,13 @@ type QueryDigestHashParams struct {
 	Token        string `json:"token"`
 }
 
-type GetDelegationManager struct {
+type DelegationManager struct {
+}
+
+type DomainName struct {
+}
+
+type DomainTypeHash struct {
 }
 
 type GetDepositTypeHash struct {
@@ -398,17 +404,8 @@ type GetDeposits struct {
 	Staker string `json:"staker"`
 }
 
-type GetDomainName struct {
-}
-
-type GetDomainTypeHash struct {
-}
-
 type GetNonce struct {
 	Staker string `json:"staker"`
-}
-
-type GetOwner struct {
 }
 
 type GetStakerStrategyList struct {
@@ -434,6 +431,9 @@ type IsThirdPartyTransfersForbidden struct {
 	Strategy string `json:"strategy"`
 }
 
+type Owner struct {
+}
+
 type StakerStrategyListLength struct {
 	Staker string `json:"staker"`
 }
@@ -446,6 +446,14 @@ type DelegationManagerResponse struct {
 	DelegationManager string `json:"delegation_manager"`
 }
 
+type DomainNameResponse struct {
+	DomainName string `json:"domain_name"`
+}
+
+type DomainTypeHashResponse struct {
+	DomainTypeHash string `json:"domain_type_hash"`
+}
+
 type DepositTypeHashResponse struct {
 	DepositTypeHash string `json:"deposit_type_hash"`
 }
@@ -455,20 +463,8 @@ type DepositsResponse struct {
 	Strategies []string `json:"strategies"`
 }
 
-type DomainNameResponse struct {
-	DomainName string `json:"domain_name"`
-}
-
-type DomainTypeHashResponse struct {
-	DomainTypeHash string `json:"domain_type_hash"`
-}
-
 type NonceResponse struct {
 	Nonce int64 `json:"nonce"`
-}
-
-type OwnerResponse struct {
-	OwnerAddr string `json:"owner_addr"`
 }
 
 type StakerStrategyListResponse struct {
@@ -499,6 +495,10 @@ type StrategyWhitelistedResponse struct {
 
 type ThirdPartyTransfersForbiddenResponse struct {
 	IsForbidden bool `json:"is_forbidden"`
+}
+
+type OwnerResponse struct {
+	OwnerAddr string `json:"owner_addr"`
 }
 
 type StakerStrategyListLengthResponse struct {

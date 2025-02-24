@@ -58,7 +58,7 @@ func NewMonitor() *Monitor {
 	}
 
 	// create Directory
-	txResp, err := api.NewDirectory(client, core.C.Chain.BVSDirectory).GetBvsInfo(core.C.Chain.BVSHash)
+	txResp, err := api.NewDirectory(client, core.C.Chain.BVSDirectory).BvsInfo(core.C.Chain.BVSHash)
 	if err != nil {
 		panic(err)
 	}

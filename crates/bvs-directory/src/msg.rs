@@ -1,10 +1,6 @@
-use crate::query::{
-    BvsInfoResponse, DelegationResponse, DigestHashResponse, DomainNameResponse,
-    DomainTypeHashResponse, OwnerResponse, RegistrationTypeHashResponse, SaltResponse,
-};
 use crate::state::OperatorBvsRegistrationStatus;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Binary;
+use cosmwasm_std::{Addr, Binary};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -18,13 +14,14 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     RegisterBvs {
+        // TODO(fuxingloh): rename to contract_addr
         bvs_contract: String,
     },
     RegisterOperatorToBvs {
         operator: String,
-        public_key: String,
+        public_key: Binary,
         contract_addr: String,
-        signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry,
+        signature_with_salt_and_expiry: SignatureWithSaltAndExpiry,
     },
     DeregisterOperatorFromBvs {
         operator: String,
@@ -36,7 +33,7 @@ pub enum ExecuteMsg {
         delegation_manager: String,
     },
     CancelSalt {
-        salt: String,
+        salt: Binary,
     },
     TransferOwnership {
         new_owner: String,
@@ -52,12 +49,20 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
+pub struct SignatureWithSaltAndExpiry {
+    pub signature: Binary,
+    pub salt: Binary,
+    // expiry full-range will be under u53, it's safe to use u64 for this field.
+    pub expiry: u64,
+}
+
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(OperatorStatusResponse)]
-    GetOperatorStatus { bvs: String, operator: String },
+    OperatorStatus { bvs: String, operator: String },
 
-    #[returns(DigestHashResponse)]
+    #[returns(CalculateDigestHashResponse)]
     CalculateDigestHash {
         operator_public_key: String,
         bvs: String,
@@ -66,26 +71,26 @@ pub enum QueryMsg {
         contract_addr: String,
     },
 
-    #[returns(SaltResponse)]
+    #[returns(IsSaltSpentResponse)]
     IsSaltSpent { operator: String, salt: String },
 
     #[returns(BvsInfoResponse)]
-    GetBvsInfo { bvs_hash: String },
+    BvsInfo { bvs_hash: String },
 
-    #[returns(DelegationResponse)]
-    GetDelegationManager {},
+    #[returns(DelegationManagerResponse)]
+    DelegationManager {},
 
     #[returns(OwnerResponse)]
-    GetOwner {},
+    Owner {},
 
-    #[returns(RegistrationTypeHashResponse)]
-    GetOperatorBvsRegistrationTypeHash {},
+    #[returns(OperatorBvsRegistrationTypeHashResponse)]
+    OperatorBvsRegistrationTypeHash {},
 
     #[returns(DomainTypeHashResponse)]
-    GetDomainTypeHash {},
+    DomainTypeHash {},
 
     #[returns(DomainNameResponse)]
-    GetDomainName {},
+    DomainName {},
 }
 
 #[cw_serde]
@@ -94,15 +99,42 @@ pub struct OperatorStatusResponse {
 }
 
 #[cw_serde]
-pub struct ExecuteSignatureWithSaltAndExpiry {
-    pub signature: String,
-    pub salt: String,
-    pub expiry: u64,
+pub struct CalculateDigestHashResponse {
+    pub digest_hash: Binary,
 }
 
 #[cw_serde]
-pub struct SignatureWithSaltAndExpiry {
-    pub signature: Binary,
-    pub salt: Binary,
-    pub expiry: u64,
+pub struct IsSaltSpentResponse {
+    pub is_salt_spent: bool,
+}
+
+#[cw_serde]
+pub struct BvsInfoResponse {
+    pub bvs_hash: String,
+    pub bvs_contract: String,
+}
+
+#[cw_serde]
+pub struct DelegationManagerResponse {
+    pub delegation_addr: Addr,
+}
+
+#[cw_serde]
+pub struct OwnerResponse {
+    pub owner_addr: Addr,
+}
+
+#[cw_serde]
+pub struct OperatorBvsRegistrationTypeHashResponse {
+    pub operator_bvs_registration_type_hash: String,
+}
+
+#[cw_serde]
+pub struct DomainTypeHashResponse {
+    pub domain_type_hash: String,
+}
+
+#[cw_serde]
+pub struct DomainNameResponse {
+    pub domain_name: String,
 }

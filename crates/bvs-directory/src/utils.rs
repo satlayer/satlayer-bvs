@@ -2,9 +2,9 @@ use cosmwasm_crypto::secp256k1_verify;
 use cosmwasm_std::{Addr, Binary, StdResult};
 use sha2::{Digest, Sha256};
 
-pub const OPERATOR_BVS_REGISTRATION_TYPEHASH: &[u8] =
+pub const OPERATOR_BVS_REGISTRATION_TYPE_HASH: &[u8] =
     b"OperatorBVSRegistration(address operator,address bvs,bytes32 salt,uint256 expiry)";
-pub const DOMAIN_TYPEHASH: &[u8] =
+pub const DOMAIN_TYPE_HASH: &[u8] =
     b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
 pub const DOMAIN_NAME: &[u8] = b"SatLayer";
 
@@ -31,7 +31,7 @@ pub fn calculate_digest_hash(
     contract_addr: &Addr,
 ) -> Vec<u8> {
     let struct_hash_input = [
-        &sha256(OPERATOR_BVS_REGISTRATION_TYPEHASH)[..],
+        &sha256(OPERATOR_BVS_REGISTRATION_TYPE_HASH)[..],
         operator_public_key,
         bvs.as_bytes(),
         salt.as_slice(),
@@ -42,7 +42,7 @@ pub fn calculate_digest_hash(
 
     let domain_separator = sha256(
         &[
-            &sha256(DOMAIN_TYPEHASH)[..],
+            &sha256(DOMAIN_TYPE_HASH)[..],
             &sha256(DOMAIN_NAME)[..],
             chain_id.as_bytes(),
             contract_addr.as_bytes(),

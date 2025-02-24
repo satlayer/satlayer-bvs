@@ -10,14 +10,14 @@
 //    queryMsg, err := UnmarshalQueryMsg(bytes)
 //    bytes, err = queryMsg.Marshal()
 //
-//    digestHashResponse, err := UnmarshalDigestHashResponse(bytes)
-//    bytes, err = digestHashResponse.Marshal()
-//
 //    bvsInfoResponse, err := UnmarshalBvsInfoResponse(bytes)
 //    bytes, err = bvsInfoResponse.Marshal()
 //
-//    delegationResponse, err := UnmarshalDelegationResponse(bytes)
-//    bytes, err = delegationResponse.Marshal()
+//    calculateDigestHashResponse, err := UnmarshalCalculateDigestHashResponse(bytes)
+//    bytes, err = calculateDigestHashResponse.Marshal()
+//
+//    delegationManagerResponse, err := UnmarshalDelegationManagerResponse(bytes)
+//    bytes, err = delegationManagerResponse.Marshal()
 //
 //    domainNameResponse, err := UnmarshalDomainNameResponse(bytes)
 //    bytes, err = domainNameResponse.Marshal()
@@ -25,17 +25,17 @@
 //    domainTypeHashResponse, err := UnmarshalDomainTypeHashResponse(bytes)
 //    bytes, err = domainTypeHashResponse.Marshal()
 //
-//    registrationTypeHashResponse, err := UnmarshalRegistrationTypeHashResponse(bytes)
-//    bytes, err = registrationTypeHashResponse.Marshal()
+//    isSaltSpentResponse, err := UnmarshalIsSaltSpentResponse(bytes)
+//    bytes, err = isSaltSpentResponse.Marshal()
+//
+//    operatorBvsRegistrationTypeHashResponse, err := UnmarshalOperatorBvsRegistrationTypeHashResponse(bytes)
+//    bytes, err = operatorBvsRegistrationTypeHashResponse.Marshal()
 //
 //    operatorStatusResponse, err := UnmarshalOperatorStatusResponse(bytes)
 //    bytes, err = operatorStatusResponse.Marshal()
 //
 //    ownerResponse, err := UnmarshalOwnerResponse(bytes)
 //    bytes, err = ownerResponse.Marshal()
-//
-//    saltResponse, err := UnmarshalSaltResponse(bytes)
-//    bytes, err = saltResponse.Marshal()
 
 package directory
 
@@ -71,16 +71,6 @@ func (r *QueryMsg) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalDigestHashResponse(data []byte) (DigestHashResponse, error) {
-	var r DigestHashResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *DigestHashResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
 func UnmarshalBvsInfoResponse(data []byte) (BvsInfoResponse, error) {
 	var r BvsInfoResponse
 	err := json.Unmarshal(data, &r)
@@ -91,13 +81,23 @@ func (r *BvsInfoResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalDelegationResponse(data []byte) (DelegationResponse, error) {
-	var r DelegationResponse
+func UnmarshalCalculateDigestHashResponse(data []byte) (CalculateDigestHashResponse, error) {
+	var r CalculateDigestHashResponse
 	err := json.Unmarshal(data, &r)
 	return r, err
 }
 
-func (r *DelegationResponse) Marshal() ([]byte, error) {
+func (r *CalculateDigestHashResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalDelegationManagerResponse(data []byte) (DelegationManagerResponse, error) {
+	var r DelegationManagerResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *DelegationManagerResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -121,13 +121,23 @@ func (r *DomainTypeHashResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalRegistrationTypeHashResponse(data []byte) (RegistrationTypeHashResponse, error) {
-	var r RegistrationTypeHashResponse
+func UnmarshalIsSaltSpentResponse(data []byte) (IsSaltSpentResponse, error) {
+	var r IsSaltSpentResponse
 	err := json.Unmarshal(data, &r)
 	return r, err
 }
 
-func (r *RegistrationTypeHashResponse) Marshal() ([]byte, error) {
+func (r *IsSaltSpentResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalOperatorBvsRegistrationTypeHashResponse(data []byte) (OperatorBvsRegistrationTypeHashResponse, error) {
+	var r OperatorBvsRegistrationTypeHashResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *OperatorBvsRegistrationTypeHashResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -148,16 +158,6 @@ func UnmarshalOwnerResponse(data []byte) (OwnerResponse, error) {
 }
 
 func (r *OwnerResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalSaltResponse(data []byte) (SaltResponse, error) {
-	var r SaltResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *SaltResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -199,13 +199,13 @@ type RegisterBvs struct {
 }
 
 type RegisterOperatorToBvs struct {
-	ContractAddr               string                            `json:"contract_addr"`
-	Operator                   string                            `json:"operator"`
-	PublicKey                  string                            `json:"public_key"`
-	SignatureWithSaltAndExpiry ExecuteSignatureWithSaltAndExpiry `json:"signature_with_salt_and_expiry"`
+	ContractAddr               string                     `json:"contract_addr"`
+	Operator                   string                     `json:"operator"`
+	PublicKey                  string                     `json:"public_key"`
+	SignatureWithSaltAndExpiry SignatureWithSaltAndExpiry `json:"signature_with_salt_and_expiry"`
 }
 
-type ExecuteSignatureWithSaltAndExpiry struct {
+type SignatureWithSaltAndExpiry struct {
 	Expiry    int64  `json:"expiry"`
 	Salt      string `json:"salt"`
 	Signature string `json:"signature"`
@@ -235,15 +235,19 @@ type UpdateBvsMetadataURI struct {
 }
 
 type QueryMsg struct {
-	GetOperatorStatus                  *GetOperatorStatus                  `json:"get_operator_status,omitempty"`
-	CalculateDigestHash                *CalculateDigestHash                `json:"calculate_digest_hash,omitempty"`
-	IsSaltSpent                        *IsSaltSpent                        `json:"is_salt_spent,omitempty"`
-	GetBvsInfo                         *GetBvsInfo                         `json:"get_bvs_info,omitempty"`
-	GetDelegationManager               *GetDelegationManager               `json:"get_delegation_manager,omitempty"`
-	GetOwner                           *GetOwner                           `json:"get_owner,omitempty"`
-	GetOperatorBvsRegistrationTypeHash *GetOperatorBvsRegistrationTypeHash `json:"get_operator_bvs_registration_type_hash,omitempty"`
-	GetDomainTypeHash                  *GetDomainTypeHash                  `json:"get_domain_type_hash,omitempty"`
-	GetDomainName                      *GetDomainName                      `json:"get_domain_name,omitempty"`
+	OperatorStatus                  *OperatorStatus                  `json:"operator_status,omitempty"`
+	CalculateDigestHash             *CalculateDigestHash             `json:"calculate_digest_hash,omitempty"`
+	IsSaltSpent                     *IsSaltSpent                     `json:"is_salt_spent,omitempty"`
+	BvsInfo                         *BvsInfo                         `json:"bvs_info,omitempty"`
+	DelegationManager               *DelegationManager               `json:"delegation_manager,omitempty"`
+	Owner                           *Owner                           `json:"owner,omitempty"`
+	OperatorBvsRegistrationTypeHash *OperatorBvsRegistrationTypeHash `json:"operator_bvs_registration_type_hash,omitempty"`
+	DomainTypeHash                  *DomainTypeHash                  `json:"domain_type_hash,omitempty"`
+	DomainName                      *DomainName                      `json:"domain_name,omitempty"`
+}
+
+type BvsInfo struct {
+	BvsHash string `json:"bvs_hash"`
 }
 
 type CalculateDigestHash struct {
@@ -254,28 +258,13 @@ type CalculateDigestHash struct {
 	Salt              string `json:"salt"`
 }
 
-type GetBvsInfo struct {
-	BvsHash string `json:"bvs_hash"`
+type DelegationManager struct {
 }
 
-type GetDelegationManager struct {
+type DomainName struct {
 }
 
-type GetDomainName struct {
-}
-
-type GetDomainTypeHash struct {
-}
-
-type GetOperatorBvsRegistrationTypeHash struct {
-}
-
-type GetOperatorStatus struct {
-	Bvs      string `json:"bvs"`
-	Operator string `json:"operator"`
-}
-
-type GetOwner struct {
+type DomainTypeHash struct {
 }
 
 type IsSaltSpent struct {
@@ -283,8 +272,15 @@ type IsSaltSpent struct {
 	Salt     string `json:"salt"`
 }
 
-type DigestHashResponse struct {
-	DigestHash string `json:"digest_hash"`
+type OperatorBvsRegistrationTypeHash struct {
+}
+
+type OperatorStatus struct {
+	Bvs      string `json:"bvs"`
+	Operator string `json:"operator"`
+}
+
+type Owner struct {
 }
 
 type BvsInfoResponse struct {
@@ -292,7 +288,11 @@ type BvsInfoResponse struct {
 	BvsHash     string `json:"bvs_hash"`
 }
 
-type DelegationResponse struct {
+type CalculateDigestHashResponse struct {
+	DigestHash string `json:"digest_hash"`
+}
+
+type DelegationManagerResponse struct {
 	DelegationAddr string `json:"delegation_addr"`
 }
 
@@ -304,7 +304,11 @@ type DomainTypeHashResponse struct {
 	DomainTypeHash string `json:"domain_type_hash"`
 }
 
-type RegistrationTypeHashResponse struct {
+type IsSaltSpentResponse struct {
+	IsSaltSpent bool `json:"is_salt_spent"`
+}
+
+type OperatorBvsRegistrationTypeHashResponse struct {
 	OperatorBvsRegistrationTypeHash string `json:"operator_bvs_registration_type_hash"`
 }
 
@@ -314,10 +318,6 @@ type OperatorStatusResponse struct {
 
 type OwnerResponse struct {
 	OwnerAddr string `json:"owner_addr"`
-}
-
-type SaltResponse struct {
-	IsSaltSpent bool `json:"is_salt_spent"`
 }
 
 type OperatorBvsRegistrationStatus string

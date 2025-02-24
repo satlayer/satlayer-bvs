@@ -216,7 +216,7 @@ func strategyCmd() *cobra.Command {
 		Short: "To get the owner.",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			strategy.GetOwner()
+			strategy.Owner()
 		},
 	}
 	isStrategyWhitelistedCmd := &cobra.Command{
@@ -224,7 +224,7 @@ func strategyCmd() *cobra.Command {
 		Short: "To check if the strategy is whitelisted.",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			strategy.IsStrategyWhiteListed(args[0])
+			strategy.IsStrategyWhitelisted(args[0])
 		},
 	}
 	getStrategyWhitelistCmd := &cobra.Command{
@@ -257,7 +257,7 @@ func strategyCmd() *cobra.Command {
 		Short: "To get the domain type hash.",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			strategy.GetDomainTypeHash()
+			strategy.DomainTypeHash()
 		},
 	}
 
@@ -266,7 +266,7 @@ func strategyCmd() *cobra.Command {
 		Short: "To get the domain name.",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			strategy.GetDomainName()
+			strategy.DomainName()
 		},
 	}
 
@@ -275,7 +275,7 @@ func strategyCmd() *cobra.Command {
 		Short: "To get the delegation manager.",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			strategy.GetDelegationManager()
+			strategy.DelegationManager()
 		},
 	}
 

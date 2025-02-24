@@ -142,7 +142,7 @@ func directoryCmd() *cobra.Command {
 		Short: "To get the delegation manager details from the directory contract.",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			directory.GetDelegationManager()
+			directory.DelegationManager()
 		},
 	}
 
@@ -151,25 +151,25 @@ func directoryCmd() *cobra.Command {
 		Short: "To get the owner details from the directory contract.",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			directory.GetOwner()
+			directory.Owner()
 		},
 	}
 
-	getOperatorRegTypehashCmd := &cobra.Command{
-		Use:   "get-operator-reg-typehash",
-		Short: "To get the operator registration typehash from the directory contract.",
+	getOperatorRegTypeHashCmd := &cobra.Command{
+		Use:   "get-operator-reg-type-hash",
+		Short: "To get the operator registration type hash from the directory contract.",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			directory.GetOperatorBvsRegistrationTypeHash()
+			directory.OperatorBvsRegistrationTypeHash()
 		},
 	}
 
-	getDomainTypehashCmd := &cobra.Command{
-		Use:   "get-domain-typehash",
-		Short: "To get the domain typehash from the directory contract.",
+	getDomainTypeHashCmd := &cobra.Command{
+		Use:   "get-domain-type-hash",
+		Short: "To get the domain type hash from the directory contract.",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			directory.GetDomainTypeHash()
+			directory.DomainTypeHash()
 		},
 	}
 
@@ -178,7 +178,7 @@ func directoryCmd() *cobra.Command {
 		Short: "To get the domain name from the directory contract.",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			directory.GetDomainName()
+			directory.DomainName()
 		},
 	}
 
@@ -187,7 +187,7 @@ func directoryCmd() *cobra.Command {
 		Short: "To get the bvs info from the directory contract.",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			directory.GetBvsInfo(args[0])
+			directory.BvsInfo(args[0])
 		},
 	}
 
@@ -206,8 +206,8 @@ func directoryCmd() *cobra.Command {
 	subCmd.AddCommand(isSaltSpentCmd)
 	subCmd.AddCommand(getDelegationManagerCmd)
 	subCmd.AddCommand(getOwnerCmd)
-	subCmd.AddCommand(getOperatorRegTypehashCmd)
-	subCmd.AddCommand(getDomainTypehashCmd)
+	subCmd.AddCommand(getOperatorRegTypeHashCmd)
+	subCmd.AddCommand(getDomainTypeHashCmd)
 	subCmd.AddCommand(getDomainNameCmd)
 	subCmd.AddCommand(getBVSInfoCmd)
 	return subCmd

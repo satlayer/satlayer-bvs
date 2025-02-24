@@ -44,7 +44,7 @@ func (suite *ioTestSuite) Test_QueryContract() {
 	assert.NoError(t, err)
 	account, err := chainIO.GetCurrentAccount()
 	assert.NoError(t, err, "get account")
-	queryMsg, err := json.Marshal(directory.QueryMsg{GetOperatorStatus: &directory.GetOperatorStatus{
+	queryMsg, err := json.Marshal(directory.QueryMsg{OperatorStatus: &directory.OperatorStatus{
 		Operator: account.GetAddress().String(),
 		Bvs:      account.GetAddress().String(),
 	}})
