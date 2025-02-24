@@ -106,8 +106,7 @@ func (suite *rewardsTestSuite) Test_ExecuteRewardsCoordinator() {
 
 	strategyManagerAddr := suite.container.GenerateAddress("strategy")
 
-	smApi := api.NewStrategyManager(chainIO)
-	smApi.BindClient(suite.strategyManagerAddr)
+	smApi := api.NewStrategyManager(chainIO, suite.strategyManagerAddr)
 	tx, err := smApi.AddStrategiesToWhitelist(context.Background(), []string{strategyManagerAddr.String()}, []bool{true})
 	assert.NoError(t, err, "execute contract")
 	suite.Equal(uint32(0), tx.TxResult.Code)
