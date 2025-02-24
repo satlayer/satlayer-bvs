@@ -4,9 +4,7 @@ use serde::Serialize;
 use std::fmt::Debug;
 use std::{collections::HashMap, mem::take};
 
-use crate::integration::mock_contracts::{
-    mock_bvs_delegation_manager, mock_bvs_directory, mock_bvs_driver,
-};
+use crate::integration::mock_contracts::{mock_bvs_delegation_manager, mock_bvs_directory};
 
 pub struct MockEnv {
     pub app: App,
@@ -122,7 +120,6 @@ pub struct MockEnvBuilder {
     owner: Addr,
     bvs_delegation_manager: Addr,
     bvs_directory: Addr,
-    bvs_driver: Addr,
 }
 
 impl MockEnvBuilder {
@@ -133,7 +130,6 @@ impl MockEnvBuilder {
             owner,
             bvs_delegation_manager: Addr::unchecked(""),
             bvs_directory: Addr::unchecked(""),
-            bvs_driver: Addr::unchecked(""),
         }
     }
 

@@ -23,25 +23,9 @@ func newService(keyName string) (*api.Directory, io.ChainIO) {
 
 func RegBVS(userKeyName, BVSAddr string) {
 	ctx := context.Background()
-	directory, newChainIO := newService(userKeyName)
+	directory, _ := newService(userKeyName)
 
-	BVSDriver := api.NewDriver(newChainIO)
-	BVSDriver.BindClient(conf.C.Contract.BVSDriver)
-	txn, err := BVSDriver.SetRegisteredBVSContract(ctx, BVSAddr)
-	if txn == nil || err != nil {
-		panic(err)
-	}
-	fmt.Printf("BVSDriver register BVS success. txn: %s\n", txn.Hash)
-
-	stateBank := api.NewStateBank(newChainIO)
-	stateBank.BindClient(conf.C.Contract.StateBank)
-	txn, err = stateBank.SetRegisteredBVSContract(ctx, BVSAddr)
-	if txn == nil || err != nil {
-		panic("StateBank register BVS error!")
-	}
-	fmt.Printf("StateBank register BVS success. txn: %s\n", txn.Hash)
-
-	txn, err = directory.RegisterBvs(ctx, BVSAddr)
+	txn, err := directory.RegisterBvs(ctx, BVSAddr)
 	if err != nil {
 		fmt.Printf("Register BVS error! %v\n", err)
 		return
