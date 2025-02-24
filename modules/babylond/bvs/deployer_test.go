@@ -28,13 +28,9 @@ func TestBvs(t *testing.T) {
 	suite.Run(t, new(BvsTestSuite))
 }
 
-func (s *BvsTestSuite) TestDeployStateBank() {
-	contract := s.Deployer.DeployStateBank()
-	s.NotEmpty(contract.Address)
-}
-
-func (s *BvsTestSuite) TestDeployDriver() {
-	contract := s.Deployer.DeployDriver()
+func (s *BvsTestSuite) TestDeployDirectory() {
+	tAddr := s.Container.GenerateAddress("throw-away")
+	contract := s.Deployer.DeployDirectory(tAddr.String())
 	s.NotEmpty(contract.Address)
 }
 

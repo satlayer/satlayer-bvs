@@ -71,25 +71,7 @@ func registerBvsContract() string {
 		panic(err)
 	}
 
-	bvsDriver := api.NewDriver(chainIO)
-	bvsDriver.BindClient(core.C.Contract.BVSDriverAddr)
-	txResp, err := bvsDriver.SetRegisteredBVSContract(context.Background(), core.C.Contract.BVSContractAddr)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("registerBvsContract success, txn: %s\n", txResp.Hash.String())
-
-	stateBank := api.NewStateBank(chainIO)
-	stateBank.BindClient(core.C.Contract.StateBankAddr)
-	txResp, err = stateBank.SetRegisteredBVSContract(context.Background(), core.C.Contract.BVSContractAddr)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("registerBVSContract success, txn: %s\n", txResp.Hash.String())
-
-	txResp, err = api.NewDirectory(chainIO, core.C.Contract.DirectoryAddr).RegisterBvs(context.Background(), core.C.Contract.BVSContractAddr)
+	txResp, err := api.NewDirectory(chainIO, core.C.Contract.DirectoryAddr).RegisterBvs(context.Background(), core.C.Contract.BVSContractAddr)
 	if err != nil {
 		panic(err)
 	}

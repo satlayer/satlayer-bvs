@@ -22,7 +22,6 @@ impl SquaringContract {
 #[cfg(test)]
 mod tests {
     use super::SquaringContract;
-    use bvs_test::{BvsDriver, StateBank};
     use cosmwasm_std::testing::MockApi;
     use cosmwasm_std::{Addr, Coin, Empty, Uint128};
     use cw_multi_test::{App, AppBuilder, Contract, ContractWrapper, Executor};
@@ -62,8 +61,6 @@ mod tests {
         let mut app = mock_app();
 
         let contract_id = app.store_code(contract());
-        let driver = BvsDriver::instantiate(&mut app);
-        let state_bank = StateBank::instantiate(&mut app);
 
         let admin = app.api().addr_make(ADMIN);
         assert_eq!(
@@ -76,18 +73,9 @@ mod tests {
 
         let msg = InstantiateMsg {
             aggregator: app.api().addr_make(AGGREGATOR),
-            state_bank: state_bank.addr.clone(),
-            bvs_driver: driver.addr.clone(),
         };
         let contract_addr = app
             .instantiate_contract(contract_id, admin, &msg, &[], "BVS Squaring Example", None)
-            .unwrap();
-
-        driver
-            .register(&mut app, contract_addr.to_string())
-            .unwrap();
-        state_bank
-            .register(&mut app, contract_addr.to_string())
             .unwrap();
 
         let contract = SquaringContract(contract_addr);

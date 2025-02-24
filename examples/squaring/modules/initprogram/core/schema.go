@@ -27,8 +27,6 @@ type Account struct {
 
 type Contract struct {
 	BVSContractAddr       string `json:"bvsContractAddr"`
-	BVSDriverAddr         string `json:"bvsDriverAddr"`
-	StateBankAddr         string `json:"stateBankAddr"`
 	DirectoryAddr         string `json:"directoryAddr"`
 	RewardCoordinatorAddr string `json:"rewardCoordinatorAddr"`
 	DelegationManagerAddr string `json:"delegationManagerAddr"`
