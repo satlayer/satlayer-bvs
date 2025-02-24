@@ -602,10 +602,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
             to_json_binary(&query_is_strategy_whitelisted(deps, strategy_addr)?)
         }
-        QueryMsg::CalculateDigestHash {
-            digest_hash_params: digst_hash_params,
-        } => {
-            let response = query_calculate_digest_hash(deps, digst_hash_params)?;
+        QueryMsg::CalculateDigestHash { digest_hash_params } => {
+            let response = query_calculate_digest_hash(deps, digest_hash_params)?;
             to_json_binary(&response)
         }
         QueryMsg::GetStrategyWhitelister {} => to_json_binary(&query_strategy_whitelister(deps)?),
@@ -621,24 +619,24 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 fn query_calculate_digest_hash(
     deps: Deps,
-    digst_hash_params: QueryDigestHashParams,
+    digest_hash_params: QueryDigestHashParams,
 ) -> StdResult<CalculateDigestHashResponse> {
-    let staker_addr = deps.api.addr_validate(&digst_hash_params.staker)?;
-    let strategy_addr = deps.api.addr_validate(&digst_hash_params.strategy)?;
-    let token_addr = deps.api.addr_validate(&digst_hash_params.token)?;
-    let contract_addr = Addr::unchecked(&digst_hash_params.contract_addr);
+    let staker_addr = deps.api.addr_validate(&digest_hash_params.staker)?;
+    let strategy_addr = deps.api.addr_validate(&digest_hash_params.strategy)?;
+    let token_addr = deps.api.addr_validate(&digest_hash_params.token)?;
+    let contract_addr = Addr::unchecked(&digest_hash_params.contract_addr);
 
-    let public_key_binary = Binary::from_base64(&digst_hash_params.public_key)?;
+    let public_key_binary = Binary::from_base64(&digest_hash_params.public_key)?;
 
     let params = DigestHashParams {
         staker: staker_addr,
         public_key: public_key_binary,
         strategy: strategy_addr,
         token: token_addr,
-        amount: digst_hash_params.amount,
-        nonce: digst_hash_params.nonce,
-        expiry: digst_hash_params.expiry,
-        chain_id: digst_hash_params.chain_id,
+        amount: digest_hash_params.amount,
+        nonce: digest_hash_params.nonce,
+        expiry: digest_hash_params.expiry,
+        chain_id: digest_hash_params.chain_id,
         contract_addr,
     };
 
