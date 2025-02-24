@@ -9,6 +9,7 @@ members = [
     "bvs-strategy-base-tvl-limits",
     "bvs-strategy-factory",
     "bvs-strategy-manager",
+    "bvs-registry",
     "bvs-test",
 ]
 
