@@ -46,6 +46,9 @@ pub fn execute(
         ExecuteMsg::AddRegisteredBvsContract { address } => {
             add_registered_bvs_contract(deps, info, Addr::unchecked(address))
         }
+        ExecuteMsg::SetBVSDirectory { new_directory } => {
+            set_bvs_directory(deps, info, new_directory)
+        }
         ExecuteMsg::TwoStepTransferOwnership { new_owner } => {
             let new_owner_addr = deps.api.addr_validate(&new_owner)?;
             two_step_transfer_ownership(deps, info, new_owner_addr)
@@ -70,7 +73,8 @@ pub fn execute_set(
         return Err(ContractError::BvsContractNotRegistered {});
     }
 
-    VALUES.save(deps.storage, key.clone(), &value)?;
+    let composite_key = format!("{}:{}", sender, key);
+    VALUES.save(deps.storage, composite_key, &value)?;
 
     Ok(Response::new().add_event(
         Event::new("UpdateState")
@@ -112,15 +116,16 @@ pub fn set_bvs_directory(
         .add_attribute("new_directory", new_directory))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[entry_point]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Get { key } => query_value(deps, key),
+        QueryMsg::Get { bvs_contract, key } => query_value(deps, bvs_contract, key),
     }
 }
 
-fn query_value(deps: Deps, key: String) -> StdResult<Binary> {
-    let result = VALUES.may_load(deps.storage, key)?;
+pub fn query_value(deps: Deps, bvs_contract: String, key: String) -> StdResult<Binary> {
+    let composite_key = format!("{}:{}", bvs_contract, key);
+    let result = VALUES.may_load(deps.storage, composite_key)?;
 
     if let Some(value) = result {
         return to_json_binary(&ValueResponse { value });
@@ -267,6 +272,7 @@ mod tests {
         );
 
         let query_msg = QueryMsg::Get {
+            bvs_contract: "alice".to_string(),
             key: "temperature".to_string(),
         };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
@@ -274,6 +280,7 @@ mod tests {
         assert_eq!("25", res.value);
 
         let query_msg = QueryMsg::Get {
+            bvs_contract: "alice".to_string(),
             key: "non_existent".to_string(),
         };
         let res = query(deps.as_ref(), mock_env(), query_msg);
@@ -459,5 +466,45 @@ mod tests {
             ContractError::Unauthorized {} => {}
             e => panic!("Expected Unauthorized error, got: {:?}", e),
         }
+    }
+
+    #[test]
+    fn test_set_bvs_directory() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        let owner = deps.api.addr_make("owner");
+        let initial_directory = deps.api.addr_make("initial_directory");
+
+        let init_msg = InstantiateMsg {
+            initial_owner: owner.to_string(),
+            bvs_directory: initial_directory.to_string(),
+        };
+        let init_info = message_info(&Addr::unchecked("creator"), &[]);
+        instantiate(deps.as_mut(), env.clone(), init_info, init_msg).unwrap();
+
+        let non_owner = deps.api.addr_make("non_owner");
+        let non_owner_info = message_info(&non_owner, &[]);
+        let new_directory = deps.api.addr_make("new_directory");
+
+        let msg = ExecuteMsg::SetBVSDirectory {
+            new_directory: new_directory.to_string(),
+        };
+        let err = execute(deps.as_mut(), env.clone(), non_owner_info, msg.clone()).unwrap_err();
+        assert!(matches!(err, ContractError::Unauthorized {}));
+
+        let owner_info = message_info(&owner, &[]);
+        let res = execute(deps.as_mut(), env.clone(), owner_info, msg).unwrap();
+
+        assert_eq!(
+            res.attributes,
+            vec![
+                ("action", "set_bvs_directory"),
+                ("new_directory", new_directory.as_str()),
+            ]
+        );
+
+        let stored_directory = BVS_DIRECTORY.load(&deps.storage).unwrap();
+        assert_eq!(stored_directory, new_directory);
     }
 }

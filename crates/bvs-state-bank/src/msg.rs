@@ -11,6 +11,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     Set { key: String, value: String },
     AddRegisteredBvsContract { address: String },
+    SetBVSDirectory { new_directory: String },
     TwoStepTransferOwnership { new_owner: String },
     AcceptOwnership {},
     CancelOwnershipTransfer {},
