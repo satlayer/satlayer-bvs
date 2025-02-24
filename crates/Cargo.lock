@@ -250,26 +250,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bvs-driver"
-version = "2.0.0"
-dependencies = [
- "bech32 0.8.1",
- "cosmwasm-crypto",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "hex",
- "ripemd",
- "schemars",
- "serde",
- "sha2",
- "thiserror",
-]
-
-[[package]]
 name = "bvs-rewards-coordinator"
 version = "2.0.0"
 dependencies = [
@@ -314,26 +294,6 @@ dependencies = [
  "secp256k1",
  "serde",
  "serde_json",
- "sha2",
- "thiserror",
-]
-
-[[package]]
-name = "bvs-state-bank"
-version = "2.0.0"
-dependencies = [
- "bech32 0.8.1",
- "cosmwasm-crypto",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "hex",
- "ripemd",
- "schemars",
- "serde",
  "sha2",
  "thiserror",
 ]
@@ -428,8 +388,6 @@ dependencies = [
 name = "bvs-test"
 version = "0.1.0"
 dependencies = [
- "bvs-driver",
- "bvs-state-bank",
  "cosmwasm-std",
  "cw-multi-test",
 ]
@@ -441,10 +399,8 @@ dependencies = [
  "bech32 0.8.1",
  "bvs-delegation-manager",
  "bvs-directory",
- "bvs-driver",
  "bvs-rewards-coordinator",
  "bvs-slash-manager",
- "bvs-state-bank",
  "bvs-strategy-base",
  "bvs-strategy-base-tvl-limits",
  "bvs-strategy-factory",

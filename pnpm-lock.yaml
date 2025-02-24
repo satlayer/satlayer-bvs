@@ -48,13 +48,9 @@ importers:
 
   crates/bvs-directory: {}
 
-  crates/bvs-driver: {}
-
   crates/bvs-rewards-coordinator: {}
 
   crates/bvs-slash-manager: {}
-
-  crates/bvs-state-bank: {}
 
   crates/bvs-strategy-base: {}
 
@@ -133,18 +129,12 @@ importers:
       '@satlayer/bvs-directory':
         specifier: workspace:*
         version: link:../../crates/bvs-directory
-      '@satlayer/bvs-driver':
-        specifier: workspace:*
-        version: link:../../crates/bvs-driver
       '@satlayer/bvs-rewards-coordinator':
         specifier: workspace:*
         version: link:../../crates/bvs-rewards-coordinator
       '@satlayer/bvs-slash-manager':
         specifier: workspace:*
         version: link:../../crates/bvs-slash-manager
-      '@satlayer/bvs-state-bank':
-        specifier: workspace:*
-        version: link:../../crates/bvs-state-bank
       '@satlayer/bvs-strategy-base':
         specifier: workspace:*
         version: link:../../crates/bvs-strategy-base
@@ -170,18 +160,12 @@ importers:
       '@satlayer/bvs-directory':
         specifier: workspace:*
         version: link:../../crates/bvs-directory
-      '@satlayer/bvs-driver':
-        specifier: workspace:*
-        version: link:../../crates/bvs-driver
       '@satlayer/bvs-rewards-coordinator':
         specifier: workspace:*
         version: link:../../crates/bvs-rewards-coordinator
       '@satlayer/bvs-slash-manager':
         specifier: workspace:*
         version: link:../../crates/bvs-slash-manager
-      '@satlayer/bvs-state-bank':
-        specifier: workspace:*
-        version: link:../../crates/bvs-state-bank
       '@satlayer/bvs-strategy-base':
         specifier: workspace:*
         version: link:../../crates/bvs-strategy-base
