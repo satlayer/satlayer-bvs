@@ -90,7 +90,7 @@ func (r *Directory) RegisterOperator(ctx context.Context, operator string, publi
 		Operator:     operator,
 		PublicKey:    base64.StdEncoding.EncodeToString(publicKey.Bytes()),
 		ContractAddr: r.ContractAddr,
-		SignatureWithSaltAndExpiry: directory.ExecuteSignatureWithSaltAndExpiry{
+		SignatureWithSaltAndExpiry: directory.SignatureWithSaltAndExpiry{
 			Signature: sig,
 			Salt:      base64.StdEncoding.EncodeToString([]byte(salt)),
 			Expiry:    expiry,

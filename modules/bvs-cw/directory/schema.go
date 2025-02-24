@@ -199,13 +199,13 @@ type RegisterBvs struct {
 }
 
 type RegisterOperatorToBvs struct {
-	ContractAddr               string                            `json:"contract_addr"`
-	Operator                   string                            `json:"operator"`
-	PublicKey                  string                            `json:"public_key"`
-	SignatureWithSaltAndExpiry ExecuteSignatureWithSaltAndExpiry `json:"signature_with_salt_and_expiry"`
+	ContractAddr               string                     `json:"contract_addr"`
+	Operator                   string                     `json:"operator"`
+	PublicKey                  string                     `json:"public_key"`
+	SignatureWithSaltAndExpiry SignatureWithSaltAndExpiry `json:"signature_with_salt_and_expiry"`
 }
 
-type ExecuteSignatureWithSaltAndExpiry struct {
+type SignatureWithSaltAndExpiry struct {
 	Expiry    int64  `json:"expiry"`
 	Salt      string `json:"salt"`
 	Signature string `json:"signature"`

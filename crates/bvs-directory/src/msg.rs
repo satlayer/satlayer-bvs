@@ -14,13 +14,14 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     RegisterBvs {
+        // TODO(fuxingloh): rename to contract_addr
         bvs_contract: String,
     },
     RegisterOperatorToBvs {
         operator: String,
-        public_key: String,
+        public_key: Binary,
         contract_addr: String,
-        signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry,
+        signature_with_salt_and_expiry: SignatureWithSaltAndExpiry,
     },
     DeregisterOperatorFromBvs {
         operator: String,
@@ -32,7 +33,7 @@ pub enum ExecuteMsg {
         delegation_manager: String,
     },
     CancelSalt {
-        salt: String,
+        salt: Binary,
     },
     TransferOwnership {
         new_owner: String,
@@ -48,9 +49,10 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
-pub struct ExecuteSignatureWithSaltAndExpiry {
-    pub signature: String,
-    pub salt: String,
+pub struct SignatureWithSaltAndExpiry {
+    pub signature: Binary,
+    pub salt: Binary,
+    // expiry full-range will be under u53, it's safe to use u64 for this field.
     pub expiry: u64,
 }
 
@@ -89,13 +91,6 @@ pub enum QueryMsg {
 
     #[returns(DomainNameResponse)]
     DomainName {},
-}
-
-#[cw_serde]
-pub struct SignatureWithSaltAndExpiry {
-    pub signature: Binary,
-    pub salt: Binary,
-    pub expiry: u64,
 }
 
 #[cw_serde]

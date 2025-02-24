@@ -77,23 +77,13 @@ pub fn execute(
             let operator_addr = Addr::unchecked(operator);
             let contract_addr = Addr::unchecked(contract_addr);
 
-            let public_key_binary = Binary::from_base64(&public_key)?;
-            let signature = Binary::from_base64(&signature_with_salt_and_expiry.signature)?;
-            let salt = Binary::from_base64(&signature_with_salt_and_expiry.salt)?;
-
-            let signature_with_salt_and_expiry = SignatureWithSaltAndExpiry {
-                signature,
-                salt,
-                expiry: signature_with_salt_and_expiry.expiry,
-            };
-
             register_operator(
                 deps,
                 env,
                 info,
                 contract_addr,
                 operator_addr,
-                public_key_binary,
+                public_key,
                 signature_with_salt_and_expiry,
             )
         }
@@ -108,10 +98,7 @@ pub fn execute(
             let delegation_manager_addr = deps.api.addr_validate(&delegation_manager)?;
             set_delegation_manager(deps, info, delegation_manager_addr)
         }
-        ExecuteMsg::CancelSalt { salt } => {
-            let salt_binary = Binary::from_base64(&salt)?;
-            cancel_salt(deps, env, info, salt_binary)
-        }
+        ExecuteMsg::CancelSalt { salt } => cancel_salt(deps, env, info, salt),
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner_addr = deps.api.addr_validate(&new_owner)?;
             transfer_ownership(deps, info, new_owner_addr)
@@ -452,7 +439,6 @@ fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::msg::ExecuteSignatureWithSaltAndExpiry;
     use base64::{engine::general_purpose, Engine as _};
     use bech32::{self, ToBase32, Variant};
     use bvs_base::roles::{PAUSER, UNPAUSER};
@@ -463,7 +449,6 @@ mod tests {
         attr, from_json, Addr, Binary, ContractResult, OwnedDeps, SystemError, SystemResult,
         WasmQuery,
     };
-    use cw2::get_contract_version;
     use ripemd::Ripemd160;
     use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
     use sha2::{Digest, Sha256};
@@ -644,8 +629,6 @@ mod tests {
         let signature = secp.sign_ecdsa(&message, &secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
 
-        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
-
         let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
 
         // Update the mock to return the OperatorResponse struct instead of a boolean
@@ -668,11 +651,11 @@ mod tests {
 
         let msg = ExecuteMsg::RegisterOperatorToBvs {
             operator: operator.to_string(),
-            public_key: public_key_hex.to_string(),
+            public_key: Binary::from_base64(public_key_hex).unwrap(),
             contract_addr: contract_addr.to_string(),
-            signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
-                signature: signature_base64.to_string(),
-                salt: salt.to_string(),
+            signature_with_salt_and_expiry: SignatureWithSaltAndExpiry {
+                signature: Binary::new(signature_bytes),
+                salt: salt.clone(),
                 expiry,
             },
         };
@@ -741,8 +724,6 @@ mod tests {
         let signature = secp.sign_ecdsa(&message, &secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
 
-        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
-
         let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
 
         deps.querier.update_wasm(move |query| match query {
@@ -763,11 +744,11 @@ mod tests {
 
         let register_msg = ExecuteMsg::RegisterOperatorToBvs {
             operator: operator.to_string(),
-            public_key: public_key_hex.to_string(),
+            public_key: Binary::from_base64(public_key_hex).unwrap(),
             contract_addr: contract_addr.to_string(),
-            signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
-                signature: signature_base64.to_string(),
-                salt: salt.to_string(),
+            signature_with_salt_and_expiry: SignatureWithSaltAndExpiry {
+                signature: Binary::new(signature_bytes),
+                salt: salt.clone(),
                 expiry,
             },
         };
@@ -856,10 +837,8 @@ mod tests {
             .unwrap();
         assert!(is_salt_spent.is_none());
 
-        let msg = ExecuteMsg::CancelSalt {
-            salt: salt.to_string(),
-        };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        let executeMsg = ExecuteMsg::CancelSalt { salt: salt.clone() };
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), executeMsg);
 
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
@@ -939,8 +918,6 @@ mod tests {
         let signature = secp.sign_ecdsa(&message, &secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
 
-        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
-
         let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
 
         deps.querier.update_wasm(move |query| match query {
@@ -961,11 +938,11 @@ mod tests {
 
         let msg = ExecuteMsg::RegisterOperatorToBvs {
             operator: operator.to_string(),
-            public_key: public_key_hex.to_string(),
+            public_key: Binary::from_base64(public_key_hex).unwrap(),
             contract_addr: contract_addr.to_string(),
-            signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
-                signature: signature_base64.to_string(),
-                salt: salt.to_string(),
+            signature_with_salt_and_expiry: SignatureWithSaltAndExpiry {
+                signature: Binary::new(signature_bytes),
+                salt: salt.clone(),
                 expiry,
             },
         };
@@ -1111,8 +1088,6 @@ mod tests {
         let signature = secp.sign_ecdsa(&message, &secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
 
-        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
-
         let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
 
         deps.querier.update_wasm(move |query| match query {
@@ -1133,11 +1108,11 @@ mod tests {
 
         let msg = ExecuteMsg::RegisterOperatorToBvs {
             operator: operator.to_string(),
-            public_key: public_key_hex.to_string(),
+            public_key: Binary::from_base64(public_key_hex).unwrap(),
             contract_addr: contract_addr.to_string(),
-            signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
-                signature: signature_base64.to_string(),
-                salt: salt.to_string(),
+            signature_with_salt_and_expiry: SignatureWithSaltAndExpiry {
+                signature: Binary::new(signature_bytes),
+                salt: salt.clone(),
                 expiry,
             },
         };
@@ -1261,8 +1236,6 @@ mod tests {
         let signature = secp.sign_ecdsa(&message, &secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
 
-        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
-
         let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
 
         deps.querier.update_wasm(move |query| match query {
@@ -1283,11 +1256,11 @@ mod tests {
 
         let msg = ExecuteMsg::RegisterOperatorToBvs {
             operator: operator.to_string(),
-            public_key: public_key_hex.to_string(),
+            public_key: Binary::from_base64(public_key_hex).unwrap(),
             contract_addr: contract_addr.to_string(),
-            signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
-                signature: signature_base64.to_string(),
-                salt: salt.to_string(),
+            signature_with_salt_and_expiry: SignatureWithSaltAndExpiry {
+                signature: Binary::new(signature_bytes),
+                salt: salt.clone(),
                 expiry,
             },
         };

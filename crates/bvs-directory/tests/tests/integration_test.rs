@@ -136,7 +136,7 @@ fn register_bvs() {
 //         operator: operator.to_string(),
 //         public_key: public_key_hex.to_string(),
 //         contract_addr: contract_addr.to_string(),
-//         signature_with_salt_and_expiry: bvs_directory::msg::ExecuteSignatureWithSaltAndExpiry {
+//         signature_with_salt_and_expiry: bvs_directory::msg::SignatureWithSaltAndExpiry {
 //             signature: signature_base64.to_string(),
 //             salt: salt.to_string(),
 //             expiry,
