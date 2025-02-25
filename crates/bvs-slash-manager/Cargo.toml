@@ -35,6 +35,7 @@ serde_json = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
 bvs-strategy-manager = { workspace = true, features = ["library"] }
 bvs-delegation-manager = { workspace = true, features = ["library"] }
+bvs-registry = { workspace = true, features = ["library"] }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
