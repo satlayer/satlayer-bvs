@@ -15,9 +15,7 @@ flowchart TD
     DI["BVS Directory"]
     DM["Delegation Manager"]
     SM["Strategy Manager"]
-    SF["Strategy Factory"]
     SB["Strategy Base"]
-    SBT["Strategy Base TLV Limits"]
     SL["Slash Manager"]
     RC["Rewards Coordinator"]
 
@@ -30,11 +28,7 @@ flowchart TD
     DI --> DM
     end
     subgraph Strategy Subsystem
-    SM --> SB
-    SM --> SBT
-    SM <--> SF
-    SF -->|Deploy| SB
-    SF -->|Deploy| SBT
+    SM -->|manages| SB
     end
     SL --> DM
     RC --> SM
@@ -95,16 +89,6 @@ This contract handles the conversion between underlying tokens and strategy shar
 using a virtual balance mechanism to mitigate rounding errors and improve precision.
 It also includes mechanisms to pause deposits and withdrawals,
 transfer ownership, and emit events related to exchange rates.
-
-### BVS Strategy TVL Limits
-
-The StrategyTVLLimits contract is an extension of the base strategy implementation within the BVS ecosystem.
-It introduces Total Value Locked (TVL) limits to the strategy,
-allowing the contract owner to set maximum limits on individual deposits and the total deposits in the strategy.
-This contract maintains core functionalities such as depositing and withdrawing underlying tokens,
-calculating shares, and managing the total shares of the strategy.
-It includes mechanisms to pause deposits and withdrawals, transfer ownership, and emit events related to exchange rates.
-The addition of TVL limits provides an extra layer of control over the strategy's growth and risk exposure.
 
 ### BVS Strategy Factory
 

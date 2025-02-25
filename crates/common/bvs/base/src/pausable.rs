@@ -1,4 +1,3 @@
-#[allow(deprecated)]
 use crate::roles::{check_pauser, check_unpauser};
 use cosmwasm_std::{Deps, DepsMut, MessageInfo, Response, StdError, StdResult};
 use cw_storage_plus::Item;
