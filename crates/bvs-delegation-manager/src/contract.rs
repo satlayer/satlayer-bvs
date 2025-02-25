@@ -8,11 +8,10 @@ use crate::{
         SignatureWithExpiry,
     },
     query::{
-        CumulativeWithdrawalsQueuedResponse, CurrentStakerDelegationDigestHashResponse,
-        DelegatableSharesResponse, DelegatedResponse, DelegationApproverResponse,
-        OperatorDetailsResponse, OperatorResponse, OperatorSharesResponse, OperatorStakersResponse,
-        StakerNonceResponse, StakerOptOutWindowBlocksResponse, StakerShares,
-        WithdrawalDelayResponse,
+        CumulativeWithdrawalsQueuedResponse, DelegatableSharesResponse, DelegatedResponse,
+        DelegationApproverResponse, OperatorDetailsResponse, OperatorResponse,
+        OperatorSharesResponse, OperatorStakersResponse, StakerNonceResponse,
+        StakerOptOutWindowBlocksResponse, StakerShares, WithdrawalDelayResponse,
     },
     state::{
         DelegationManagerState, CUMULATIVE_WITHDRAWALS_QUEUED, DELEGATED_TO,
@@ -21,10 +20,8 @@ use crate::{
         STRATEGY_WITHDRAWAL_DELAY_BLOCKS,
     },
     utils::{
-        calculate_current_staker_delegation_digest_hash, calculate_delegation_approval_digest_hash,
-        calculate_staker_delegation_digest_hash, calculate_withdrawal_root, recover,
-        validate_addresses, ApproverDigestHashParams, CurrentStakerDigestHashParams,
-        DelegateParams, StakerDigestHashParams, Withdrawal,
+        calculate_delegation_approval_digest_hash, calculate_withdrawal_root, recover,
+        validate_addresses, ApproverDigestHashParams, DelegateParams, Withdrawal,
     },
 };
 use cosmwasm_std::{
@@ -182,48 +179,6 @@ pub fn execute(
             };
 
             delegate_to(deps, info, env, delegate_params, signature_and_expiry)
-        }
-        ExecuteMsg::DelegateToBySignature {
-            params,
-            staker_public_key,
-            staker_signature_and_expiry,
-            approver_signature_and_expiry,
-        } => {
-            let staker_public_key_binary = Binary::from_base64(&staker_public_key)?;
-            let approver_public_key_binary = Binary::from_base64(&params.public_key)?;
-            let staker_signature = Binary::from_base64(&staker_signature_and_expiry.signature)?;
-            let approver_signature = Binary::from_base64(&approver_signature_and_expiry.signature)?;
-            let salt = Binary::from_base64(&params.salt)?;
-
-            let staker_addr = Addr::unchecked(&params.staker);
-            let operator_addr = Addr::unchecked(&params.operator);
-
-            let delegate_params = DelegateParams {
-                staker: staker_addr.clone(),
-                operator: operator_addr.clone(),
-                public_key: approver_public_key_binary,
-                salt,
-            };
-
-            let signature_and_expiry_staker = SignatureWithExpiry {
-                signature: staker_signature,
-                expiry: staker_signature_and_expiry.expiry,
-            };
-
-            let signature_and_expiry_approver = SignatureWithExpiry {
-                signature: approver_signature,
-                expiry: approver_signature_and_expiry.expiry,
-            };
-
-            delegate_to_by_signature(
-                deps,
-                env,
-                info,
-                delegate_params,
-                staker_public_key_binary,
-                signature_and_expiry_staker,
-                signature_and_expiry_approver,
-            )
         }
         ExecuteMsg::Undelegate { staker } => {
             let staker_addr = deps.api.addr_validate(&staker)?;
@@ -488,68 +443,6 @@ pub fn delegate_to(
     }
 
     delegate(deps, info, env, approver_signature_and_expiry, params)
-}
-
-pub fn delegate_to_by_signature(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    params: DelegateParams,
-    staker_public_key: Binary,
-    staker_signature_and_expiry: SignatureWithExpiry,
-    approver_signature_and_expiry: SignatureWithExpiry,
-) -> Result<Response, ContractError> {
-    if staker_signature_and_expiry.expiry < env.block.time.seconds() {
-        return Err(ContractError::StakerSignatureExpired {});
-    }
-
-    let is_delegated_response = query_is_delegated(deps.as_ref(), params.staker.clone())?;
-    if is_delegated_response.is_delegated {
-        return Err(ContractError::StakerAlreadyDelegated {});
-    }
-
-    let operator_response = query_is_operator(deps.as_ref(), params.operator.clone())?;
-    if !operator_response.is_operator {
-        return Err(ContractError::OperatorNotRegistered {});
-    }
-
-    let current_staker_nonce = STAKER_NONCE
-        .may_load(deps.storage, &params.staker)?
-        .unwrap_or(Uint128::new(0));
-
-    let digest_params = StakerDigestHashParams {
-        staker: params.staker.clone(),
-        staker_nonce: current_staker_nonce,
-        operator: params.operator.clone(),
-        staker_public_key: staker_public_key.clone(),
-        expiry: staker_signature_and_expiry.expiry,
-        contract_addr: env.contract.address.clone(),
-    };
-
-    let staker_digest_hash = calculate_staker_delegation_digest_hash(env.clone(), digest_params);
-
-    let staker_nonce = current_staker_nonce
-        .checked_add(Uint128::new(1))
-        .map_err(|_| ContractError::NonceOverflow)?;
-
-    STAKER_NONCE.save(deps.storage, &params.staker, &staker_nonce)?;
-
-    if !recover(
-        &staker_digest_hash,
-        &staker_signature_and_expiry.signature,
-        &staker_public_key,
-    )? {
-        return Err(ContractError::InvalidSignature {});
-    }
-
-    let params2 = DelegateParams {
-        staker: params.staker.clone(),
-        operator: params.operator.clone(),
-        public_key: params.public_key.clone(),
-        salt: params.salt.clone(),
-    };
-
-    delegate(deps, info, env, approver_signature_and_expiry, params2)
 }
 
 pub fn undelegate(
@@ -868,22 +761,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::CalculateWithdrawalRoot { withdrawal } => {
             to_json_binary(&calculate_withdrawal_root(&withdrawal)?)
         }
-        QueryMsg::StakerDelegationDigestHash {
-            staker_digest_hash_params,
-        } => {
-            let public_key_binary =
-                Binary::from_base64(&staker_digest_hash_params.staker_public_key)?;
-
-            let params = StakerDigestHashParams {
-                staker: Addr::unchecked(staker_digest_hash_params.staker),
-                staker_nonce: staker_digest_hash_params.staker_nonce,
-                operator: Addr::unchecked(staker_digest_hash_params.operator),
-                staker_public_key: public_key_binary,
-                expiry: staker_digest_hash_params.expiry,
-                contract_addr: Addr::unchecked(staker_digest_hash_params.contract_addr),
-            };
-            to_json_binary(&calculate_staker_delegation_digest_hash(env, params))
-        }
         QueryMsg::DelegationApprovalDigestHash {
             approver_digest_hash_params,
         } => {
@@ -901,25 +778,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 contract_addr: Addr::unchecked(approver_digest_hash_params.contract_addr),
             };
             to_json_binary(&calculate_delegation_approval_digest_hash(env, params))
-        }
-        QueryMsg::CalculateCurrentStakerDelegationDigestHash {
-            current_staker_digest_hash_params,
-        } => {
-            let staker_public_key_binary =
-                Binary::from_base64(&current_staker_digest_hash_params.staker_public_key)?;
-
-            let params = CurrentStakerDigestHashParams {
-                staker: Addr::unchecked(current_staker_digest_hash_params.staker),
-                operator: Addr::unchecked(current_staker_digest_hash_params.operator),
-                staker_public_key: staker_public_key_binary,
-                expiry: current_staker_digest_hash_params.expiry,
-                current_nonce: current_staker_digest_hash_params.current_nonce,
-                contract_addr: Addr::unchecked(current_staker_digest_hash_params.contract_addr),
-            };
-
-            to_json_binary(&calculate_current_staker_delegation_digest_hash(
-                env, params,
-            )?)
         }
         QueryMsg::GetStakerNonce { staker } => {
             let staker_addr = deps.api.addr_validate(&staker)?;
@@ -1023,34 +881,6 @@ pub fn query_withdrawal_delay(
     }
 
     Ok(WithdrawalDelayResponse { withdrawal_delays })
-}
-
-pub fn query_calculate_current_staker_delegation_digest_hash(
-    deps: Deps,
-    env: Env,
-    staker: Addr,
-    operator: Addr,
-    staker_public_key: Binary,
-    expiry: u64,
-) -> StdResult<CurrentStakerDelegationDigestHashResponse> {
-    let current_staker_nonce = STAKER_NONCE
-        .may_load(deps.storage, &staker)?
-        .unwrap_or(Uint128::new(0));
-
-    let params = CurrentStakerDigestHashParams {
-        staker: staker.clone(),
-        operator: operator.clone(),
-        staker_public_key: staker_public_key.clone(),
-        expiry,
-        current_nonce: current_staker_nonce,
-        contract_addr: env.contract.address.clone(),
-    };
-
-    let current_staker_delegation_digest_hash =
-        calculate_current_staker_delegation_digest_hash(env, params)?;
-    Ok(CurrentStakerDelegationDigestHashResponse {
-        current_staker_delegation_digest_hash,
-    })
 }
 
 pub fn query_staker_nonce(deps: Deps, staker: Addr) -> StdResult<StakerNonceResponse> {
@@ -1590,7 +1420,7 @@ mod tests {
     use super::*;
     use crate::msg::ExecuteOperatorDetails;
     use crate::msg::ExecuteSignatureWithExpiry;
-    use crate::utils::{ExecuteDelegateParams, QueryCurrentStakerDigestHashParams};
+    use crate::utils::ExecuteDelegateParams;
     use base64::{engine::general_purpose, Engine as _};
     use bech32::{self, ToBase32, Variant};
     use bvs_base::roles::{PAUSER, UNPAUSER};
@@ -2396,21 +2226,6 @@ mod tests {
         Binary::from(signature_bytes)
     }
 
-    fn mock_staker_signature_with_message(
-        env: Env,
-        params: StakerDigestHashParams,
-        secret_key: &SecretKey,
-    ) -> Binary {
-        let message_bytes = calculate_staker_delegation_digest_hash(env, params);
-
-        let secp = Secp256k1::new();
-        let message = Message::from_digest_slice(&message_bytes).expect("32 bytes");
-        let signature = secp.sign_ecdsa(&message, secret_key);
-        let signature_bytes = signature.serialize_compact().to_vec();
-
-        Binary::from(signature_bytes)
-    }
-
     #[test]
     fn test_delegate() {
         let (mut deps, env, owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
@@ -2614,147 +2429,6 @@ mod tests {
 
         let delegated_to = DELEGATED_TO.load(&deps.storage, &staker).unwrap();
         assert_eq!(delegated_to, operator);
-    }
-
-    #[test]
-    fn test_delegate_to_by_signature() {
-        let (mut deps, env, owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
-
-        let operator: Addr = deps.api.addr_make("operator");
-
-        let approver_private_key_hex =
-            "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
-        let (approver, approver_secret_key, approver_public_key_bytes) =
-            generate_osmosis_public_key_from_private_key(approver_private_key_hex);
-
-        let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
-        let (staker, staker_secret_key, staker_public_key_bytes) =
-            generate_osmosis_public_key_from_private_key(private_key_hex);
-
-        let operator_details = OperatorDetails {
-            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
-            delegation_approver: approver.clone(),
-            staker_opt_out_window_blocks: 100,
-        };
-
-        OPERATOR_DETAILS
-            .save(deps.as_mut().storage, &operator, &operator_details)
-            .unwrap();
-        DELEGATED_TO
-            .save(deps.as_mut().storage, &operator, &operator)
-            .unwrap();
-
-        deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart {
-                contract_addr,
-                msg: _,
-            } if *contract_addr == deps.api.addr_make("strategy_manager").to_string() => {
-                SystemResult::Ok(ContractResult::Ok(
-                    to_json_binary(&DepositsResponse {
-                        strategies: vec![
-                            deps.api.addr_make("strategy1"),
-                            deps.api.addr_make("strategy2"),
-                        ],
-                        shares: vec![Uint128::new(100), Uint128::new(200)],
-                    })
-                    .unwrap(),
-                ))
-            }
-            _ => SystemResult::Err(SystemError::InvalidRequest {
-                error: "Unhandled request".to_string(),
-                request: to_json_binary(&query).unwrap(),
-            }),
-        });
-
-        let salt = Binary::from(b"salt");
-        let approver_public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
-        let staker_public_key_base64 =
-            general_purpose::STANDARD.encode(staker_public_key_bytes.clone());
-
-        let delegate_params = ExecuteDelegateParams {
-            staker: staker.to_string(),
-            operator: operator.to_string(),
-            public_key: approver_public_key_hex.to_string(),
-            salt: salt.to_string(),
-        };
-
-        let current_time = env.block.time.seconds();
-        let expiry = current_time + 1000;
-        let contract_addr = env.contract.address.clone();
-
-        let approver_params = ApproverDigestHashParams {
-            staker: staker.clone(),
-            operator: operator.clone(),
-            approver: approver.clone(),
-            approver_public_key: Binary::from(approver_public_key_bytes.clone()),
-            approver_salt: salt.clone(),
-            expiry,
-            contract_addr: contract_addr.clone(),
-        };
-
-        let staker_digest_params = StakerDigestHashParams {
-            staker: staker.clone(),
-            staker_nonce: Uint128::new(0),
-            operator: operator.clone(),
-            staker_public_key: Binary::from(staker_public_key_bytes.clone()),
-            expiry,
-            contract_addr: contract_addr.clone(),
-        };
-
-        let approver_signature_bytes = mock_approver_signature_with_message(
-            env.clone(),
-            approver_params.clone(),
-            &approver_secret_key,
-        );
-        let approver_signature_base64 = general_purpose::STANDARD.encode(approver_signature_bytes);
-
-        let staker_signature_bytes = mock_staker_signature_with_message(
-            env.clone(),
-            staker_digest_params.clone(),
-            &staker_secret_key,
-        );
-        let staker_signature_base64 = general_purpose::STANDARD.encode(staker_signature_bytes);
-
-        let approver_signature_and_expiry = ExecuteSignatureWithExpiry {
-            signature: approver_signature_base64,
-            expiry,
-        };
-
-        let staker_signature_and_expiry = ExecuteSignatureWithExpiry {
-            signature: staker_signature_base64,
-            expiry,
-        };
-
-        let delegate_msg = ExecuteMsg::DelegateToBySignature {
-            params: delegate_params.clone(),
-            staker_public_key: staker_public_key_base64,
-            staker_signature_and_expiry: staker_signature_and_expiry.clone(),
-            approver_signature_and_expiry: approver_signature_and_expiry.clone(),
-        };
-
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            owner_info.clone(),
-            delegate_msg.clone(),
-        )
-        .unwrap();
-
-        assert_eq!(res.events.len(), 1);
-
-        let event = &res.events[0];
-        assert_eq!(event.ty, "Delegate");
-        assert_eq!(event.attributes.len(), 3);
-        assert_eq!(event.attributes[0].key, "method");
-        assert_eq!(event.attributes[0].value, "delegate");
-        assert_eq!(event.attributes[1].key, "staker");
-        assert_eq!(event.attributes[1].value, staker.to_string());
-        assert_eq!(event.attributes[2].key, "operator");
-        assert_eq!(event.attributes[2].value, operator.to_string());
-
-        let delegated_to = DELEGATED_TO.load(&deps.storage, &staker.clone()).unwrap();
-        assert_eq!(delegated_to, operator.clone())
     }
 
     #[test]
@@ -4474,51 +4148,6 @@ mod tests {
 
         assert_eq!(withdrawal_delays_response.withdrawal_delays.len(), 1);
         assert_eq!(withdrawal_delays_response.withdrawal_delays[0], 100);
-    }
-
-    #[test]
-    fn test_query_calculate_current_staker_delegation_digest_hash() {
-        let (deps, env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
-
-        let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
-        let (staker, _secret_key, staker_public_key_bytes) =
-            generate_osmosis_public_key_from_private_key(private_key_hex);
-        let staker_public_key = Binary::from(staker_public_key_bytes.as_slice());
-        let signature_base64 = general_purpose::STANDARD.encode(staker_public_key.clone());
-
-        let query_current_staker_digest_hash_params = QueryCurrentStakerDigestHashParams {
-            staker: staker.to_string(),
-            operator: deps.api.addr_make("operator").to_string(),
-            staker_public_key: signature_base64.clone(),
-            expiry: 1000,
-            current_nonce: Uint128::new(0),
-            contract_addr: env.contract.address.to_string(),
-        };
-
-        let execute_current_staker_digest_hash_params = CurrentStakerDigestHashParams {
-            staker: staker.clone(),
-            operator: deps.api.addr_make("operator"),
-            staker_public_key: staker_public_key.clone(),
-            expiry: 1000,
-            current_nonce: Uint128::new(0),
-            contract_addr: env.contract.address.clone(),
-        };
-
-        let query_msg = QueryMsg::CalculateCurrentStakerDelegationDigestHash {
-            current_staker_digest_hash_params: query_current_staker_digest_hash_params.clone(),
-        };
-
-        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let digest_hash: Binary = from_json(res).unwrap();
-
-        let expected_digest_hash = calculate_current_staker_delegation_digest_hash(
-            env,
-            execute_current_staker_digest_hash_params.clone(),
-        )
-        .unwrap();
-
-        assert_eq!(digest_hash, expected_digest_hash);
     }
 
     #[test]

@@ -49,18 +49,8 @@ pub struct CalculateWithdrawalRootResponse {
 }
 
 #[cw_serde]
-pub struct StakerDelegationDigestHashResponse {
-    pub staker_delegation_digest_hash: Binary,
-}
-
-#[cw_serde]
 pub struct DelegationApprovalDigestHashResponse {
     pub approver_delegation_digest_hash: Binary,
-}
-
-#[cw_serde]
-pub struct CurrentStakerDelegationDigestHashResponse {
-    pub current_staker_delegation_digest_hash: Binary,
 }
 
 #[cw_serde]

@@ -1,15 +1,11 @@
 use crate::query::{
     CalculateWithdrawalRootResponse, CumulativeWithdrawalsQueuedResponse,
-    CurrentStakerDelegationDigestHashResponse, DelegatableSharesResponse, DelegatedResponse,
-    DelegationApprovalDigestHashResponse, DelegationApproverResponse, OperatorDetailsResponse,
-    OperatorResponse, OperatorSharesResponse, OperatorStakersResponse,
-    StakerDelegationDigestHashResponse, StakerNonceResponse, StakerOptOutWindowBlocksResponse,
+    DelegatableSharesResponse, DelegatedResponse, DelegationApprovalDigestHashResponse,
+    DelegationApproverResponse, OperatorDetailsResponse, OperatorResponse, OperatorSharesResponse,
+    OperatorStakersResponse, StakerNonceResponse, StakerOptOutWindowBlocksResponse,
     WithdrawalDelayResponse,
 };
-use crate::utils::{
-    ExecuteDelegateParams, QueryApproverDigestHashParams, QueryCurrentStakerDigestHashParams,
-    QueryStakerDigestHashParams, Withdrawal,
-};
+use crate::utils::{ExecuteDelegateParams, QueryApproverDigestHashParams, Withdrawal};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Binary, Uint128};
 
@@ -41,12 +37,6 @@ pub enum ExecuteMsg {
     },
     DelegateTo {
         params: ExecuteDelegateParams,
-        approver_signature_and_expiry: ExecuteSignatureWithExpiry,
-    },
-    DelegateToBySignature {
-        params: ExecuteDelegateParams,
-        staker_public_key: String,
-        staker_signature_and_expiry: ExecuteSignatureWithExpiry,
         approver_signature_and_expiry: ExecuteSignatureWithExpiry,
     },
     Undelegate {
@@ -133,19 +123,9 @@ pub enum QueryMsg {
     #[returns(CalculateWithdrawalRootResponse)]
     CalculateWithdrawalRoot { withdrawal: Withdrawal },
 
-    #[returns(StakerDelegationDigestHashResponse)]
-    StakerDelegationDigestHash {
-        staker_digest_hash_params: QueryStakerDigestHashParams,
-    },
-
     #[returns(DelegationApprovalDigestHashResponse)]
     DelegationApprovalDigestHash {
         approver_digest_hash_params: QueryApproverDigestHashParams,
-    },
-
-    #[returns(CurrentStakerDelegationDigestHashResponse)]
-    CalculateCurrentStakerDelegationDigestHash {
-        current_staker_digest_hash_params: QueryCurrentStakerDigestHashParams,
     },
 
     #[returns(StakerNonceResponse)]

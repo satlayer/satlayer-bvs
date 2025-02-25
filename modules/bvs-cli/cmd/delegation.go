@@ -72,18 +72,6 @@ func delegationCmd() *cobra.Command {
 		},
 	}
 
-	delegateBySignatureCmd := &cobra.Command{
-		Use:   "delegate-by-signature <stakerKeyName> <operatorAddress> [approverKeyName]",
-		Short: "To delegate by signature.",
-		Args:  cobra.RangeArgs(2, 3),
-		Run: func(cmd *cobra.Command, args []string) {
-			approverKeyName := ""
-			if len(args) == 3 {
-				approverKeyName = args[3]
-			}
-			delegation.DelegateBySignature(args[0], args[1], approverKeyName)
-		},
-	}
 	setMinWithdrawDelayBlocksCmd := &cobra.Command{
 		Use:   "set-minwithdraw-delayblocks <userKeyName> <minWithdrawDelayBlocks>",
 		Short: "To set the min withdraw delay blocks.",
@@ -279,7 +267,6 @@ func delegationCmd() *cobra.Command {
 	subCmd.AddCommand(updateOperatorMetadatauriCmd)
 	subCmd.AddCommand(delegateToCmd)
 	subCmd.AddCommand(undelegateCmd)
-	subCmd.AddCommand(delegateBySignatureCmd)
 	subCmd.AddCommand(setMinWithdrawDelayBlocksCmd)
 	subCmd.AddCommand(setStrategywithdrawDelayblocksCmd)
 	subCmd.AddCommand(transferOwnerCmd)

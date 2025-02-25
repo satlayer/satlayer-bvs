@@ -103,43 +103,6 @@ func Undelegate(stakerKeyName, operatorAddress string) {
 	fmt.Printf("Undelegate success. txn: %s\n", txResp.Hash)
 }
 
-func DelegateBySignature(stakerKeyName, operatorAddress, approverKeyName string) {
-	s := NewService()
-	ctx := context.Background()
-
-	approverAddress := "0"
-	var approverPubKey cryptotypes.PubKey = nil
-	if approverKeyName != "" {
-		newChainIO, err := s.ChainIO.SetupKeyring(approverKeyName, conf.C.Account.KeyringBackend)
-		if err != nil {
-			panic(err)
-		}
-		approverPubKey = newChainIO.GetCurrentAccountPubKey()
-		approverAddress = sdk.AccAddress(approverPubKey.Address()).String()
-	}
-	newChainIO, err := s.ChainIO.SetupKeyring(stakerKeyName, conf.C.Account.KeyringBackend)
-	if err != nil {
-		panic(err)
-	}
-	stakerPubKey := newChainIO.GetCurrentAccountPubKey()
-	stakerAddress := sdk.AccAddress(stakerPubKey.Address()).String()
-	delegation := api.NewDelegationManager(newChainIO, conf.C.Contract.Delegation).WithGasLimit(400000)
-	txResp, err := delegation.DelegateToBySignature(
-		ctx,
-		operatorAddress,
-		stakerAddress,
-		stakerKeyName,
-		approverAddress,
-		approverKeyName,
-		stakerPubKey,
-		approverPubKey,
-	)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Delegation DelegateBySignature success. txn: %s\n", txResp.Hash)
-}
-
 func SetMinWithdrawDelayBlocks(userKeyName string, blocks int64) {
 	ctx := context.Background()
 	delegation, _ := newService(userKeyName)
