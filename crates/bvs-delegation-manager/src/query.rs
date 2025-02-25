@@ -18,11 +18,6 @@ pub struct OperatorDetailsResponse {
 }
 
 #[cw_serde]
-pub struct DelegationApproverResponse {
-    pub delegation_approver: Addr,
-}
-
-#[cw_serde]
 pub struct StakerOptOutWindowBlocksResponse {
     pub staker_opt_out_window_blocks: u64,
 }
@@ -46,16 +41,6 @@ pub struct WithdrawalDelayResponse {
 #[cw_serde]
 pub struct CalculateWithdrawalRootResponse {
     pub withdrawal_root: Binary,
-}
-
-#[cw_serde]
-pub struct DelegationApprovalDigestHashResponse {
-    pub approver_delegation_digest_hash: Binary,
-}
-
-#[cw_serde]
-pub struct StakerNonceResponse {
-    pub nonce: Uint128,
 }
 
 #[cw_serde]

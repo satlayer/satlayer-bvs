@@ -3,26 +3,18 @@ use cosmwasm_std::entry_point;
 
 use crate::{
     error::ContractError,
-    msg::{
-        ExecuteMsg, InstantiateMsg, OperatorDetails, QueryMsg, QueuedWithdrawalParams,
-        SignatureWithExpiry,
-    },
+    msg::{ExecuteMsg, InstantiateMsg, OperatorDetails, QueryMsg, QueuedWithdrawalParams},
     query::{
         CumulativeWithdrawalsQueuedResponse, DelegatableSharesResponse, DelegatedResponse,
-        DelegationApproverResponse, OperatorDetailsResponse, OperatorResponse,
-        OperatorSharesResponse, OperatorStakersResponse, StakerNonceResponse,
+        OperatorDetailsResponse, OperatorResponse, OperatorSharesResponse, OperatorStakersResponse,
         StakerOptOutWindowBlocksResponse, StakerShares, WithdrawalDelayResponse,
     },
     state::{
         DelegationManagerState, CUMULATIVE_WITHDRAWALS_QUEUED, DELEGATED_TO,
-        DELEGATION_APPROVER_SALT_SPENT, DELEGATION_MANAGER_STATE, MIN_WITHDRAWAL_DELAY_BLOCKS,
-        OPERATOR_DETAILS, OPERATOR_SHARES, OWNER, PENDING_WITHDRAWALS, STAKER_NONCE,
-        STRATEGY_WITHDRAWAL_DELAY_BLOCKS,
+        DELEGATION_MANAGER_STATE, MIN_WITHDRAWAL_DELAY_BLOCKS, OPERATOR_DETAILS, OPERATOR_SHARES,
+        OWNER, PENDING_WITHDRAWALS, STRATEGY_WITHDRAWAL_DELAY_BLOCKS,
     },
-    utils::{
-        calculate_delegation_approval_digest_hash, calculate_withdrawal_root, recover,
-        validate_addresses, ApproverDigestHashParams, DelegateParams, Withdrawal,
-    },
+    utils::{calculate_withdrawal_root, validate_addresses, DelegateParams, Withdrawal},
 };
 use cosmwasm_std::{
     to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo, Response,
@@ -111,42 +103,27 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::RegisterAsOperator {
-            sender_public_key,
             operator_details,
             metadata_uri,
         } => {
-            let sender_public_key_binary = Binary::from_base64(&sender_public_key)?;
-            let delegation_approver_addr = Addr::unchecked(operator_details.delegation_approver);
             let deprecated_earnings_receiver_addr =
                 Addr::unchecked(&operator_details.deprecated_earnings_receiver);
 
             let operator_details = OperatorDetails {
                 deprecated_earnings_receiver: deprecated_earnings_receiver_addr,
-                delegation_approver: delegation_approver_addr,
                 staker_opt_out_window_blocks: operator_details.staker_opt_out_window_blocks,
             };
 
-            register_as_operator(
-                deps,
-                info,
-                env,
-                sender_public_key_binary,
-                operator_details,
-                metadata_uri,
-            )
+            register_as_operator(deps, info, env, operator_details, metadata_uri)
         }
         ExecuteMsg::ModifyOperatorDetails {
             new_operator_details,
         } => {
-            let delegation_approver_addr = deps
-                .api
-                .addr_validate(&new_operator_details.delegation_approver)?;
             let deprecated_earnings_receiver_addr =
                 Addr::unchecked(&new_operator_details.deprecated_earnings_receiver);
 
             let operator_details = OperatorDetails {
                 deprecated_earnings_receiver: deprecated_earnings_receiver_addr,
-                delegation_approver: delegation_approver_addr,
                 staker_opt_out_window_blocks: new_operator_details.staker_opt_out_window_blocks,
             };
 
@@ -155,30 +132,16 @@ pub fn execute(
         ExecuteMsg::UpdateOperatorMetadataUri { metadata_uri } => {
             update_operator_metadata_uri(deps, info, metadata_uri)
         }
-        ExecuteMsg::DelegateTo {
-            params,
-            approver_signature_and_expiry,
-        } => {
-            let public_key_binary = Binary::from_base64(&params.public_key)?;
-            let signature = Binary::from_base64(&approver_signature_and_expiry.signature)?;
-            let salt = Binary::from_base64(&params.salt)?;
-
+        ExecuteMsg::DelegateTo { params } => {
             let staker_addr = deps.api.addr_validate(&params.staker)?;
             let operator_addr = deps.api.addr_validate(&params.operator)?;
 
             let delegate_params = DelegateParams {
                 staker: staker_addr.clone(),
                 operator: operator_addr.clone(),
-                public_key: public_key_binary,
-                salt,
             };
 
-            let signature_and_expiry = SignatureWithExpiry {
-                signature,
-                expiry: approver_signature_and_expiry.expiry,
-            };
-
-            delegate_to(deps, info, env, delegate_params, signature_and_expiry)
+            delegate_to(deps, info, env, delegate_params)
         }
         ExecuteMsg::Undelegate { staker } => {
             let staker_addr = deps.api.addr_validate(&staker)?;
@@ -342,7 +305,6 @@ pub fn register_as_operator(
     mut deps: DepsMut,
     info: MessageInfo,
     env: Env,
-    sender_public_key: Binary,
     registering_operator_details: OperatorDetails,
     metadata_uri: String,
 ) -> Result<Response, ContractError> {
@@ -359,19 +321,12 @@ pub fn register_as_operator(
         registering_operator_details,
     )?;
 
-    let empty_signature_and_expiry = SignatureWithExpiry {
-        signature: Binary::from(vec![]),
-        expiry: 0,
-    };
-
     let params = DelegateParams {
         staker: info.sender.clone(),
         operator: info.sender.clone(),
-        public_key: sender_public_key,
-        salt: Binary::from(vec![0]),
     };
 
-    delegate(deps, info, env, empty_signature_and_expiry, params)?;
+    delegate(deps, info, env, params)?;
 
     let mut response = Response::new();
 
@@ -428,7 +383,6 @@ pub fn delegate_to(
     info: MessageInfo,
     env: Env,
     params: DelegateParams,
-    approver_signature_and_expiry: SignatureWithExpiry,
 ) -> Result<Response, ContractError> {
     let staker = info.sender.clone();
 
@@ -442,7 +396,7 @@ pub fn delegate_to(
         return Err(ContractError::OperatorNotRegistered {});
     }
 
-    delegate(deps, info, env, approver_signature_and_expiry, params)
+    delegate(deps, info, env, params)
 }
 
 pub fn undelegate(
@@ -469,11 +423,7 @@ pub fn undelegate(
 
     let operator = DELEGATED_TO.load(deps.storage, &staker)?;
 
-    let operator_details = OPERATOR_DETAILS.load(deps.storage, &operator)?;
-    if info.sender != staker
-        && info.sender != operator
-        && info.sender != operator_details.delegation_approver
-    {
+    if info.sender != staker && info.sender != operator {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -715,7 +665,7 @@ pub fn transfer_ownership(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::IsDelegated { staker } => {
             let staker_addr = deps.api.addr_validate(&staker)?;
@@ -728,10 +678,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::OperatorDetails { operator } => {
             let operator_addr = deps.api.addr_validate(&operator)?;
             to_json_binary(&query_operator_details(deps, operator_addr)?)
-        }
-        QueryMsg::DelegationApprover { operator } => {
-            let operator_addr = deps.api.addr_validate(&operator)?;
-            to_json_binary(&query_delegation_approver(deps, operator_addr)?)
         }
         QueryMsg::StakerOptOutWindowBlocks { operator } => {
             let operator_addr = deps.api.addr_validate(&operator)?;
@@ -760,28 +706,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::CalculateWithdrawalRoot { withdrawal } => {
             to_json_binary(&calculate_withdrawal_root(&withdrawal)?)
-        }
-        QueryMsg::DelegationApprovalDigestHash {
-            approver_digest_hash_params,
-        } => {
-            let public_key_binary =
-                Binary::from_base64(&approver_digest_hash_params.approver_public_key)?;
-            let salt = Binary::from_base64(&approver_digest_hash_params.approver_salt)?;
-
-            let params = ApproverDigestHashParams {
-                staker: Addr::unchecked(approver_digest_hash_params.staker),
-                operator: Addr::unchecked(approver_digest_hash_params.operator),
-                approver: Addr::unchecked(approver_digest_hash_params.approver),
-                approver_public_key: public_key_binary,
-                approver_salt: salt,
-                expiry: approver_digest_hash_params.expiry,
-                contract_addr: Addr::unchecked(approver_digest_hash_params.contract_addr),
-            };
-            to_json_binary(&calculate_delegation_approval_digest_hash(env, params))
-        }
-        QueryMsg::GetStakerNonce { staker } => {
-            let staker_addr = deps.api.addr_validate(&staker)?;
-            to_json_binary(&query_staker_nonce(deps, staker_addr)?)
         }
         QueryMsg::GetOperatorStakers { operator } => {
             let operator_addr = deps.api.addr_validate(&operator)?;
@@ -831,16 +755,6 @@ pub fn query_operator_details(deps: Deps, operator: Addr) -> StdResult<OperatorD
     Ok(OperatorDetailsResponse { details })
 }
 
-pub fn query_delegation_approver(
-    deps: Deps,
-    operator: Addr,
-) -> StdResult<DelegationApproverResponse> {
-    let details = OPERATOR_DETAILS.load(deps.storage, &operator)?;
-    Ok(DelegationApproverResponse {
-        delegation_approver: details.delegation_approver,
-    })
-}
-
 pub fn query_staker_opt_out_window_blocks(
     deps: Deps,
     operator: Addr,
@@ -881,13 +795,6 @@ pub fn query_withdrawal_delay(
     }
 
     Ok(WithdrawalDelayResponse { withdrawal_delays })
-}
-
-pub fn query_staker_nonce(deps: Deps, staker: Addr) -> StdResult<StakerNonceResponse> {
-    let nonce = STAKER_NONCE
-        .may_load(deps.storage, &staker)?
-        .unwrap_or(Uint128::new(0));
-    Ok(StakerNonceResponse { nonce })
 }
 
 pub fn query_operator_stakers(deps: Deps, operator: Addr) -> StdResult<OperatorStakersResponse> {
@@ -1047,7 +954,6 @@ fn set_operator_details(
         .unwrap_or_else(|| OperatorDetails {
             staker_opt_out_window_blocks: 0,
             deprecated_earnings_receiver: Addr::unchecked(""),
-            delegation_approver: Addr::unchecked(""),
         });
 
     if new_operator_details.staker_opt_out_window_blocks > MAX_STAKER_OPT_OUT_WINDOW_BLOCKS {
@@ -1076,65 +982,11 @@ fn set_operator_details(
 
 fn delegate(
     mut deps: DepsMut,
-    info: MessageInfo,
-    env: Env,
-    approver_signature_and_expiry: SignatureWithExpiry,
+    _info: MessageInfo,
+    _env: Env,
     params: DelegateParams,
 ) -> Result<Response, ContractError> {
     only_when_not_paused(deps.as_ref(), PAUSED_NEW_DELEGATION)?;
-
-    let delegation_approver = OPERATOR_DETAILS
-        .load(deps.storage, &params.operator)?
-        .delegation_approver;
-
-    let current_time = env.block.time.seconds();
-
-    if delegation_approver != Addr::unchecked("0")
-        && info.sender != delegation_approver
-        && info.sender != params.operator
-    {
-        if approver_signature_and_expiry.expiry < current_time {
-            return Err(ContractError::ApproverSignatureExpired {});
-        }
-
-        let approver_salt_str = params.salt.to_string();
-
-        if DELEGATION_APPROVER_SALT_SPENT
-            .load(
-                deps.storage,
-                (&delegation_approver, approver_salt_str.clone()),
-            )
-            .is_ok()
-        {
-            return Err(ContractError::ApproverSaltSpent {});
-        }
-
-        let digest_params = ApproverDigestHashParams {
-            staker: params.staker.clone(),
-            operator: params.operator.clone(),
-            approver: delegation_approver.clone(),
-            approver_public_key: params.public_key.clone(),
-            approver_salt: params.salt.clone(),
-            expiry: approver_signature_and_expiry.expiry,
-            contract_addr: env.contract.address.clone(),
-        };
-
-        let approver_digest_hash = calculate_delegation_approval_digest_hash(env, digest_params);
-
-        if !recover(
-            &approver_digest_hash,
-            &approver_signature_and_expiry.signature,
-            &params.public_key,
-        )? {
-            return Err(ContractError::InvalidSignature {});
-        }
-
-        DELEGATION_APPROVER_SALT_SPENT.save(
-            deps.storage,
-            (&delegation_approver, approver_salt_str),
-            &true,
-        )?;
-    }
 
     DELEGATED_TO.save(deps.storage, &params.staker, &params.operator)?;
 
@@ -1419,10 +1271,7 @@ fn remove_shares_and_queue_withdrawal(
 mod tests {
     use super::*;
     use crate::msg::ExecuteOperatorDetails;
-    use crate::msg::ExecuteSignatureWithExpiry;
     use crate::utils::ExecuteDelegateParams;
-    use base64::{engine::general_purpose, Engine as _};
-    use bech32::{self, ToBase32, Variant};
     use bvs_base::roles::{PAUSER, UNPAUSER};
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
@@ -1430,9 +1279,6 @@ mod tests {
     use cosmwasm_std::{
         attr, from_json, Addr, ContractResult, OwnedDeps, SystemError, SystemResult,
     };
-    use ripemd::Ripemd160;
-    use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
-    use sha2::{Digest, Sha256};
 
     #[test]
     fn test_instantiate() {
@@ -1867,7 +1713,6 @@ mod tests {
             instantiate_contract();
 
         let operator = deps.api.addr_make("operator");
-        let approver = deps.api.addr_make("approver");
         let earnings_receiver1 = deps.api.addr_make("earnings_receiver1");
 
         let info_operator = message_info(&Addr::unchecked(operator.clone()), &[]);
@@ -1878,7 +1723,6 @@ mod tests {
 
         let initial_operator_details = OperatorDetails {
             deprecated_earnings_receiver: earnings_receiver1,
-            delegation_approver: approver,
             staker_opt_out_window_blocks: 100,
         };
 
@@ -1888,7 +1732,6 @@ mod tests {
 
         let new_operator_details = ExecuteOperatorDetails {
             deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver2").to_string(),
-            delegation_approver: deps.api.addr_make("approver2").to_string(),
             staker_opt_out_window_blocks: 200,
         };
 
@@ -1926,10 +1769,6 @@ mod tests {
             Addr::unchecked(new_operator_details.deprecated_earnings_receiver)
         );
         assert_eq!(
-            updated_details.delegation_approver,
-            Addr::unchecked(new_operator_details.delegation_approver)
-        );
-        assert_eq!(
             updated_details.staker_opt_out_window_blocks,
             new_operator_details.staker_opt_out_window_blocks
         );
@@ -1937,7 +1776,6 @@ mod tests {
         // Modify operator details with staker_opt_out_window_blocks exceeding max
         let invalid_operator_details = ExecuteOperatorDetails {
             deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver3").to_string(),
-            delegation_approver: deps.api.addr_make("approver3").to_string(),
             staker_opt_out_window_blocks: MAX_STAKER_OPT_OUT_WINDOW_BLOCKS + 1,
         };
 
@@ -1961,7 +1799,6 @@ mod tests {
         // Modify operator details with staker_opt_out_window_blocks decreasing
         let decreasing_operator_details = ExecuteOperatorDetails {
             deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver4").to_string(),
-            delegation_approver: deps.api.addr_make("approver4").to_string(),
             staker_opt_out_window_blocks: 50,
         };
 
@@ -1987,7 +1824,6 @@ mod tests {
         let initial_operator_details = OperatorDetails {
             deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver1"),
             staker_opt_out_window_blocks: 100,
-            delegation_approver: deps.api.addr_make("approver1"),
         };
         OPERATOR_DETAILS
             .save(deps.as_mut().storage, &operator, &initial_operator_details)
@@ -1996,7 +1832,6 @@ mod tests {
         let new_operator_details = OperatorDetails {
             deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver2"),
             staker_opt_out_window_blocks: 200,
-            delegation_approver: deps.api.addr_make("approver2"),
         };
 
         let res = set_operator_details(
@@ -2019,7 +1854,6 @@ mod tests {
         let invalid_operator_details = OperatorDetails {
             deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver3"),
             staker_opt_out_window_blocks: MAX_STAKER_OPT_OUT_WINDOW_BLOCKS + 1,
-            delegation_approver: deps.api.addr_make("approver3"),
         };
 
         let res = set_operator_details(deps.as_mut(), operator.clone(), invalid_operator_details);
@@ -2034,7 +1868,6 @@ mod tests {
         let decreasing_operator_details = OperatorDetails {
             deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver4"),
             staker_opt_out_window_blocks: 50,
-            delegation_approver: deps.api.addr_make("approver4"),
         };
 
         let res = set_operator_details(deps.as_mut(), operator, decreasing_operator_details);
@@ -2191,50 +2024,10 @@ mod tests {
         assert_eq!(delegatable_shares.shares[1], Uint128::new(200));
     }
 
-    fn generate_osmosis_public_key_from_private_key(
-        private_key_hex: &str,
-    ) -> (Addr, SecretKey, Vec<u8>) {
-        let secp = Secp256k1::new();
-        let secret_key = SecretKey::from_slice(&hex::decode(private_key_hex).unwrap()).unwrap();
-        let public_key = PublicKey::from_secret_key(&secp, &secret_key);
-        let public_key_bytes = public_key.serialize();
-
-        let sha256_result = Sha256::digest(public_key_bytes);
-        let ripemd160_result = Ripemd160::digest(sha256_result);
-        let address =
-            bech32::encode("osmo", ripemd160_result.to_base32(), Variant::Bech32).unwrap();
-
-        (
-            Addr::unchecked(address),
-            secret_key,
-            public_key_bytes.to_vec(),
-        )
-    }
-
-    fn mock_approver_signature_with_message(
-        env: Env,
-        params: ApproverDigestHashParams,
-        secret_key: &SecretKey,
-    ) -> Binary {
-        let message_bytes = calculate_delegation_approval_digest_hash(env, params);
-
-        let secp = Secp256k1::new();
-        let message = Message::from_digest_slice(&message_bytes).expect("32 bytes");
-        let signature = secp.sign_ecdsa(&message, secret_key);
-        let signature_bytes = signature.serialize_compact().to_vec();
-
-        Binary::from(signature_bytes)
-    }
-
     #[test]
     fn test_delegate() {
         let (mut deps, env, owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
             instantiate_contract();
-
-        let approver_private_key_hex =
-            "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
-        let (approver, approver_secret_key, approver_public_key_bytes) =
-            generate_osmosis_public_key_from_private_key(approver_private_key_hex);
 
         let staker = deps.api.addr_make("staker");
         let operator = deps.api.addr_make("operator");
@@ -2242,7 +2035,6 @@ mod tests {
         let operator = operator.clone();
         let operator_details = OperatorDetails {
             deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
-            delegation_approver: approver.clone(),
             staker_opt_out_window_blocks: 100,
         };
 
@@ -2250,36 +2042,9 @@ mod tests {
             .save(deps.as_mut().storage, &operator, &operator_details)
             .unwrap();
 
-        let salt = Binary::from(b"salt");
-
         let delegate_params = DelegateParams {
             staker: staker.clone(),
             operator: operator.clone(),
-            public_key: Binary::from(approver_public_key_bytes.clone()),
-            salt: salt.clone(),
-        };
-
-        let current_time = env.block.time.seconds();
-        let expiry = current_time + 1000;
-        let contract_addr = env.contract.address.clone();
-
-        let params = ApproverDigestHashParams {
-            staker: staker.clone(),
-            operator: operator.clone(),
-            approver: approver.clone(),
-            approver_public_key: Binary::from(approver_public_key_bytes.clone()),
-            approver_salt: salt.clone(),
-            expiry,
-            contract_addr: contract_addr.clone(),
-        };
-
-        let approver_signature_and_expiry = SignatureWithExpiry {
-            signature: mock_approver_signature_with_message(
-                env.clone(),
-                params.clone(),
-                &approver_secret_key,
-            ),
-            expiry,
         };
 
         deps.querier.update_wasm(move |query| match query {
@@ -2308,7 +2073,6 @@ mod tests {
             deps.as_mut(),
             owner_info.clone(),
             env.clone(),
-            approver_signature_and_expiry,
             delegate_params,
         )
         .unwrap();
@@ -2325,18 +2089,12 @@ mod tests {
         let (mut deps, env, owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
             instantiate_contract();
 
-        let approver_private_key_hex =
-            "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
-        let (approver, approver_secret_key, approver_public_key_bytes) =
-            generate_osmosis_public_key_from_private_key(approver_private_key_hex);
-
         let staker: Addr = deps.api.addr_make("staker");
         let operator: Addr = deps.api.addr_make("operator");
 
         let operator = operator.clone();
         let operator_details = OperatorDetails {
             deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
-            delegation_approver: approver.clone(),
             staker_opt_out_window_blocks: 100,
         };
 
@@ -2348,37 +2106,9 @@ mod tests {
             .save(deps.as_mut().storage, &operator, &operator)
             .unwrap();
 
-        let salt = Binary::from(b"salt");
-        let approver_public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
-
         let delegate_params = ExecuteDelegateParams {
             staker: staker.to_string(),
             operator: operator.to_string(),
-            public_key: approver_public_key_hex.to_string(),
-            salt: salt.to_string(),
-        };
-
-        let current_time = env.block.time.seconds();
-        let expiry = current_time + 1000;
-        let contract_addr = env.contract.address.clone();
-
-        let params = ApproverDigestHashParams {
-            staker: staker.clone(),
-            operator: operator.clone(),
-            approver: approver.clone(),
-            approver_public_key: Binary::from(approver_public_key_bytes.clone()),
-            approver_salt: salt.clone(),
-            expiry,
-            contract_addr: contract_addr.clone(),
-        };
-
-        let signature_bytes =
-            mock_approver_signature_with_message(env.clone(), params.clone(), &approver_secret_key);
-        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
-
-        let approver_signature_and_expiry = ExecuteSignatureWithExpiry {
-            signature: signature_base64,
-            expiry,
         };
 
         deps.querier.update_wasm(move |query| match query {
@@ -2405,7 +2135,6 @@ mod tests {
 
         let execute_msg = ExecuteMsg::DelegateTo {
             params: delegate_params.clone(),
-            approver_signature_and_expiry: approver_signature_and_expiry.clone(),
         };
 
         let res = execute(
@@ -2460,16 +2189,10 @@ mod tests {
 
         let operator_details = ExecuteOperatorDetails {
             deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver").to_string(),
-            delegation_approver: deps.api.addr_make("approver").to_string(),
             staker_opt_out_window_blocks: 100,
         };
 
-        let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
-        let (sender_addr, _secret_key, sender_public_key_bytes) =
-            generate_osmosis_public_key_from_private_key(private_key_hex);
-
-        let public_key = Binary::from(sender_public_key_bytes);
-        let public_key_base64 = general_purpose::STANDARD.encode(public_key.clone());
+        let sender_addr = deps.api.addr_make("sender");
 
         let info_operator = MessageInfo {
             sender: sender_addr.clone(),
@@ -2478,7 +2201,6 @@ mod tests {
 
         let metadata_uri = "https://example.com/metadata";
         let register_msg = ExecuteMsg::RegisterAsOperator {
-            sender_public_key: public_key_base64.clone(),
             operator_details: operator_details.clone(),
             metadata_uri: metadata_uri.to_string(),
         };
@@ -2515,10 +2237,6 @@ mod tests {
             Addr::unchecked(operator_details.deprecated_earnings_receiver.clone())
         );
         assert_eq!(
-            stored_operator_details.delegation_approver,
-            Addr::unchecked(operator_details.delegation_approver.clone())
-        );
-        assert_eq!(
             stored_operator_details.staker_opt_out_window_blocks,
             operator_details.staker_opt_out_window_blocks
         );
@@ -2551,7 +2269,6 @@ mod tests {
         let operator = deps.api.addr_make("operator1");
         let operator_details = OperatorDetails {
             deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
-            delegation_approver: deps.api.addr_make("approver"),
             staker_opt_out_window_blocks: 100,
         };
         OPERATOR_DETAILS
@@ -2932,7 +2649,6 @@ mod tests {
 
         let operator_details = OperatorDetails {
             deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
-            delegation_approver: deps.api.addr_make("approver"),
             staker_opt_out_window_blocks: 100,
         };
         OPERATOR_DETAILS
@@ -3060,7 +2776,6 @@ mod tests {
 
         let operator_details = OperatorDetails {
             deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
-            delegation_approver: deps.api.addr_make("approver"),
             staker_opt_out_window_blocks: 100,
         };
         OPERATOR_DETAILS
@@ -3231,7 +2946,6 @@ mod tests {
 
         let operator_details = OperatorDetails {
             deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
-            delegation_approver: deps.api.addr_make("approver"),
             staker_opt_out_window_blocks: 100,
         };
         OPERATOR_DETAILS
@@ -3907,7 +3621,6 @@ mod tests {
         let operator = deps.api.addr_make("operator1");
         let operator_details = OperatorDetails {
             deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
-            delegation_approver: deps.api.addr_make("approver"),
             staker_opt_out_window_blocks: 100,
         };
 
@@ -3949,7 +3662,6 @@ mod tests {
         let operator = deps.api.addr_make("operator1");
         let operator_details = OperatorDetails {
             deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
-            delegation_approver: deps.api.addr_make("approver"),
             staker_opt_out_window_blocks: 100,
         };
 
@@ -3969,10 +3681,6 @@ mod tests {
             operator_details.deprecated_earnings_receiver
         );
         assert_eq!(
-            details_response.details.delegation_approver,
-            operator_details.delegation_approver
-        );
-        assert_eq!(
             details_response.details.staker_opt_out_window_blocks,
             operator_details.staker_opt_out_window_blocks
         );
@@ -3988,35 +3696,6 @@ mod tests {
     }
 
     #[test]
-    fn test_query_delegation_approver() {
-        let (mut deps, _env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
-
-        let operator = deps.api.addr_make("operator1");
-        let operator_details = OperatorDetails {
-            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
-            delegation_approver: deps.api.addr_make("approver"),
-            staker_opt_out_window_blocks: 100,
-        };
-
-        OPERATOR_DETAILS
-            .save(deps.as_mut().storage, &operator, &operator_details)
-            .unwrap();
-
-        let query_msg = QueryMsg::DelegationApprover {
-            operator: operator.to_string(),
-        };
-
-        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let approver_response: DelegationApproverResponse = from_json(res).unwrap();
-
-        assert_eq!(
-            approver_response.delegation_approver,
-            operator_details.delegation_approver
-        );
-    }
-
-    #[test]
     fn test_query_staker_opt_out_window_blocks() {
         let (mut deps, _env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
             instantiate_contract();
@@ -4024,7 +3703,6 @@ mod tests {
         let operator = deps.api.addr_make("operator1");
         let operator_details = OperatorDetails {
             deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
-            delegation_approver: deps.api.addr_make("approver"),
             staker_opt_out_window_blocks: 100,
         };
 
@@ -4251,8 +3929,6 @@ mod tests {
         });
 
         let res = query_operator_stakers(deps.as_ref(), operator.clone()).unwrap();
-
-        println!("OperatorStakersResponse: {:?}", res);
 
         assert_eq!(res.stakers_and_shares.len(), 1);
 

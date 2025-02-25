@@ -17,27 +17,23 @@ func delegationCmd() *cobra.Command {
 	}
 
 	regOperatorCmd := &cobra.Command{
-		Use:   "reg-operator <operatorKeyName> [approverAddress]",
+		Use:   "reg-operator <operatorKeyName>",
 		Short: "To register the operator within the delegation contract.",
-		Args:  cobra.RangeArgs(1, 2),
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			approverAddress := "0"
-			if len(args) == 2 {
-				approverAddress = args[1]
-			}
-			delegation.RegOperator(args[0], approverAddress)
+			delegation.RegOperator(args[0])
 		},
 	}
 	updateOperatorDetailsCmd := &cobra.Command{
-		Use:   "update-operator-details <userKeyName> <deprecatedEarningsReceiver> <delegationApprover> <stakerOptOutWindowBlocks>",
+		Use:   "update-operator-details <userKeyName> <deprecatedEarningsReceiver> <stakerOptOutWindowBlocks>",
 		Short: "To update the operator details within the delegation contract.",
-		Args:  cobra.ExactArgs(4),
+		Args:  cobra.ExactArgs(3),
 		Run: func(cmd *cobra.Command, args []string) {
-			windowBlocks, err := strconv.ParseInt(args[3], 10, 64)
+			windowBlocks, err := strconv.ParseInt(args[2], 10, 64)
 			if err != nil {
 				panic(fmt.Sprintf("expire must be an integer. Error: %s\n", err))
 			}
-			delegation.UpdateOperatorDetails(args[0], args[1], args[2], windowBlocks)
+			delegation.UpdateOperatorDetails(args[0], args[1], windowBlocks)
 		},
 	}
 
@@ -51,15 +47,11 @@ func delegationCmd() *cobra.Command {
 	}
 
 	delegateToCmd := &cobra.Command{
-		Use:   "delegate-to <stakerKeyName> <operatorAddress> [approverKeyName]",
+		Use:   "delegate-to <stakerKeyName> <operatorAddress>",
 		Short: "To delegate to the operator.",
-		Args:  cobra.RangeArgs(2, 3),
+		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			approverKeyName := ""
-			if len(args) == 3 {
-				approverKeyName = args[2]
-			}
-			delegation.DelegateTo(args[0], args[1], approverKeyName)
+			delegation.DelegateTo(args[0], args[1])
 		},
 	}
 
@@ -183,15 +175,6 @@ func delegationCmd() *cobra.Command {
 		},
 	}
 
-	getDelegationApproversCmd := &cobra.Command{
-		Use:   "get-delegation-approver <operatorAddress>",
-		Short: "To get the delegation approvers.",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			delegation.GetDelegationApprover(args[0])
-		},
-	}
-
 	getStakerOptoutwindowblocksCmd := &cobra.Command{
 		Use:   "get-staker-optoutwindowblocks <operatorAddress>",
 		Short: "To get the staker optoutwindowblocks.",
@@ -246,14 +229,6 @@ func delegationCmd() *cobra.Command {
 		},
 	}
 
-	getStakerNonceCmd := &cobra.Command{
-		Use:   "get-staker-nonce <stakerAddress>",
-		Short: "To get the staker nonce.",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			delegation.GetStakerNonce(args[0])
-		},
-	}
 	getCumulativeWithdrawQueuednoncesCmd := &cobra.Command{
 		Use:   "get-cumulative-withdraw-queuednonces <stakerAddress>",
 		Short: "To get the cumulative withdraw queuednonces.",
@@ -275,14 +250,12 @@ func delegationCmd() *cobra.Command {
 	subCmd.AddCommand(setPauserCmd)
 	subCmd.AddCommand(setUnpauserCmd)
 	subCmd.AddCommand(getOperatorDetailsCmd)
-	subCmd.AddCommand(getDelegationApproversCmd)
 	subCmd.AddCommand(getStakerOptoutwindowblocksCmd)
 	subCmd.AddCommand(getOperatorSharesCmd)
 	subCmd.AddCommand(getOperatorStakersCmd)
 	subCmd.AddCommand(getDelegatableSharesCmd)
 	subCmd.AddCommand(getWithdrawDelayCmd)
 	subCmd.AddCommand(calcWithdrawRootCmd)
-	subCmd.AddCommand(getStakerNonceCmd)
 	subCmd.AddCommand(getCumulativeWithdrawQueuednoncesCmd)
 	subCmd.AddCommand(isDelegatedCmd)
 	subCmd.AddCommand(isOperatorCmd)

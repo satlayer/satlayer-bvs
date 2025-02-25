@@ -33,17 +33,8 @@ func GetOperatorDetails(operatorAddress string) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("DelegationApprover: %s\nDeprecatedEarningsReceiver: %s\nStakerOptOutWindowBlocks: %d",
-		resp.Details.DelegationApprover, resp.Details.DeprecatedEarningsReceiver, resp.Details.StakerOptOutWindowBlocks)
-}
-
-func GetDelegationApprover(operatorAddress string) {
-	s := NewService()
-	resp, err := s.Delegation.DelegationApprover(operatorAddress)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("%s\n", resp.DelegationApprover)
+	fmt.Printf("DeprecatedEarningsReceiver: %s\nStakerOptOutWindowBlocks: %d",
+		resp.Details.DeprecatedEarningsReceiver, resp.Details.StakerOptOutWindowBlocks)
 }
 
 func GetStakerOptOutWindowBlocks(operatorAddress string) {
@@ -89,15 +80,6 @@ func GetWithdrawDelay(strategyAddress []string) {
 		panic(err)
 	}
 	fmt.Printf("%d\n", resp.WithdrawalDelays)
-}
-
-func GetStakerNonce(stakerAddress string) {
-	s := NewService()
-	resp, err := s.Delegation.GetStakerNonce(stakerAddress)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("%s\n", resp.Nonce)
 }
 
 func CalcWithdrawRoot(stakerAddress, delegatedAddress, withdrawerAddress, nonce string, startBlock int64, strategies, shares []string) {
