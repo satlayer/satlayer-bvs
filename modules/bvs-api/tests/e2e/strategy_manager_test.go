@@ -105,11 +105,6 @@ func (suite *strategyManagerTestSuite) Test_Init() {
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)
 
-	resp, err = strategyManager.SetStrategyFactory(context.Background(), factoryAddr)
-	assert.NoError(t, err, "SetStrategyFactory")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)
-
 	resp, err = strategyManager.SetStrategyWhitelister(context.Background(), ownerAddr)
 	assert.NoError(t, err, "SetStrategyWhitelister")
 	assert.NotNil(t, resp, "response nil")
