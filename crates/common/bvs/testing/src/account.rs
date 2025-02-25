@@ -1,3 +1,4 @@
+use base64::{engine::general_purpose, Engine as _};
 use bech32::{self, ToBase32, Variant};
 use cosmwasm_std::Addr;
 use ripemd::Ripemd160;
@@ -70,6 +71,11 @@ impl Account {
         // Create SHA-256 hash of the message and convert it to a 32-byte array
         let hash = Sha256::digest(message.as_bytes());
         hash.to_vec()
+    }
+
+    // Return base64 encoding format of public key
+    pub fn public_key_base64(&self) -> String {
+        general_purpose::STANDARD.encode(self.public_key.serialize())
     }
 }
 

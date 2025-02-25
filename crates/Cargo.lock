@@ -380,9 +380,11 @@ dependencies = [
 name = "bvs-testing"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "bech32 0.8.1",
  "bvs-delegation-manager",
  "bvs-directory",
+ "bvs-registry",
  "bvs-rewards-coordinator",
  "bvs-slash-manager",
  "bvs-strategy-base",

@@ -11,6 +11,7 @@ documentation = { workspace = true }
 keywords = { workspace = true }
 
 [dependencies]
+base64 = { workspace = true }
 cosmwasm-std = { workspace = true }
 cw-multi-test = { workspace = true }
 bech32 = { workspace = true }
@@ -22,6 +23,7 @@ cosmwasm-crypto = { workspace = true }
 
 bvs-delegation-manager = { workspace = true }
 bvs-directory = { workspace = true }
+bvs-registry = { workspace = true }
 bvs-rewards-coordinator = { workspace = true }
 bvs-slash-manager = { workspace = true }
 bvs-strategy-base = { workspace = true }
