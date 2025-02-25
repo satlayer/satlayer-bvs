@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Binary, Uint128};
+use cosmwasm_std::{Addr, Uint128};
 
 use crate::state::StrategyManagerState;
 
@@ -20,16 +20,6 @@ pub struct StakerStrategySharesResponse {
 }
 
 #[cw_serde]
-pub struct ThirdPartyTransfersForbiddenResponse {
-    pub is_forbidden: bool,
-}
-
-#[cw_serde]
-pub struct NonceResponse {
-    pub nonce: u64,
-}
-
-#[cw_serde]
 pub struct StakerStrategyListResponse {
     pub strategies: Vec<Addr>,
 }
@@ -45,11 +35,6 @@ pub struct StrategyWhitelistedResponse {
 }
 
 #[cw_serde]
-pub struct CalculateDigestHashResponse {
-    pub digest_hash: Binary,
-}
-
-#[cw_serde]
 pub struct StrategyWhitelisterResponse {
     pub whitelister: Addr,
 }
@@ -57,21 +42,6 @@ pub struct StrategyWhitelisterResponse {
 #[cw_serde]
 pub struct StrategyManagerStateResponse {
     pub state: StrategyManagerState,
-}
-
-#[cw_serde]
-pub struct DepositTypeHashResponse {
-    pub deposit_type_hash: String,
-}
-
-#[cw_serde]
-pub struct DomainTypeHashResponse {
-    pub domain_type_hash: String,
-}
-
-#[cw_serde]
-pub struct DomainNameResponse {
-    pub domain_name: String,
 }
 
 #[cw_serde]

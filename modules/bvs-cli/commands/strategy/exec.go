@@ -50,10 +50,10 @@ func SetStrategyWhitelist(userKeyName, strategyWhitelist string) {
 	}
 	fmt.Printf("Set strategy whitelist success. txn: %s\n", txResp.Hash)
 }
-func AddStrategyWhitelist(userKeyName string, strategies []string, values []bool) {
+func AddStrategyWhitelist(userKeyName string, strategies []string) {
 	ctx := context.Background()
 	strategy, _ := newService(userKeyName)
-	txResp, err := strategy.AddStrategiesToWhitelist(ctx, strategies, values)
+	txResp, err := strategy.AddStrategiesToWhitelist(ctx, strategies)
 	if err != nil {
 		panic(err)
 	}
@@ -67,16 +67,6 @@ func RemoveStrategyWhitelist(userKeyName string, strategies []string) {
 		panic(err)
 	}
 	fmt.Printf("Remove strategy whitelist success. txn: %s\n", txResp.Hash)
-}
-
-func SetThirdTransferForbidden(userKeyName, strategyAddress string, value bool) {
-	ctx := context.Background()
-	strategy, _ := newService(userKeyName)
-	txResp, err := strategy.SetThirdPartyTransfersForbidden(ctx, strategyAddress, value)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Set third party transfers forbidden success. txn: %s\n", txResp.Hash)
 }
 
 func DepositStrategy(userKeyName, strategyAddress, tokenAddress string, amount uint64) {

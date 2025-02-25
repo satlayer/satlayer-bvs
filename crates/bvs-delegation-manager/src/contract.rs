@@ -28,7 +28,7 @@ use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use bvs_strategy_manager::{
     msg::ExecuteMsg as StrategyManagerExecuteMsg, msg::QueryMsg as StrategyManagerQueryMsg,
     query::DepositsResponse, query::StakerStrategyListResponse,
-    query::StakerStrategySharesResponse, query::ThirdPartyTransfersForbiddenResponse,
+    query::StakerStrategySharesResponse,
 };
 
 const CONTRACT_NAME: &str = "BVS Delegation Manager";
@@ -1207,20 +1207,6 @@ fn remove_shares_and_queue_withdrawal(
                 strategy.clone(),
                 share_amount,
             )?;
-        }
-
-        let forbidden_response: ThirdPartyTransfersForbiddenResponse =
-            deps.querier.query_wasm_smart(
-                state.strategy_manager.clone(),
-                &StrategyManagerQueryMsg::IsThirdPartyTransfersForbidden {
-                    strategy: strategy.to_string(),
-                },
-            )?;
-
-        let forbidden = forbidden_response.is_forbidden;
-
-        if staker != withdrawer && forbidden {
-            return Err(ContractError::MustBeSameAddress {});
         }
 
         let msg = WasmMsg::Execute {
@@ -2676,16 +2662,6 @@ mod tests {
                     SystemResult::Ok(ContractResult::Ok(
                         to_json_binary(&simulated_response).unwrap(),
                     ))
-                } else if let Ok(StrategyManagerQueryMsg::IsThirdPartyTransfersForbidden {
-                    strategy: _,
-                }) = query_msg
-                {
-                    SystemResult::Ok(ContractResult::Ok(
-                        to_json_binary(&ThirdPartyTransfersForbiddenResponse {
-                            is_forbidden: false,
-                        })
-                        .unwrap(),
-                    ))
                 } else {
                     SystemResult::Err(SystemError::InvalidRequest {
                         error: "Unhandled request".to_string(),
@@ -2797,30 +2773,21 @@ mod tests {
             WasmQuery::Smart { contract_addr, msg }
                 if *contract_addr == deps.api.addr_make("strategy_manager").to_string() =>
             {
-                let query_msg: Result<StrategyManagerQueryMsg, _> = from_json(msg);
-                if let Ok(StrategyManagerQueryMsg::GetDeposits { staker: _ }) = query_msg {
-                    let simulated_response = DepositsResponse {
-                        strategies: vec![deps.api.addr_make("strategy1")],
-                        shares: vec![Uint128::new(100)],
-                    };
-                    SystemResult::Ok(ContractResult::Ok(
-                        to_json_binary(&simulated_response).unwrap(),
-                    ))
-                } else if let Ok(StrategyManagerQueryMsg::IsThirdPartyTransfersForbidden {
-                    strategy: _,
-                }) = query_msg
-                {
-                    SystemResult::Ok(ContractResult::Ok(
-                        to_json_binary(&ThirdPartyTransfersForbiddenResponse {
-                            is_forbidden: false,
-                        })
-                        .unwrap(),
-                    ))
-                } else {
-                    SystemResult::Err(SystemError::InvalidRequest {
+                let query_msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
+                match query_msg {
+                    StrategyManagerQueryMsg::GetDeposits { staker: _ } => {
+                        let simulated_response = DepositsResponse {
+                            strategies: vec![deps.api.addr_make("strategy1")],
+                            shares: vec![Uint128::new(100)],
+                        };
+                        SystemResult::Ok(ContractResult::Ok(
+                            to_json_binary(&simulated_response).unwrap(),
+                        ))
+                    }
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
                         error: "Unhandled request".to_string(),
                         request: to_json_binary(&query).unwrap(),
-                    })
+                    }),
                 }
             }
             _ => SystemResult::Err(SystemError::InvalidRequest {
@@ -2975,16 +2942,6 @@ mod tests {
                     };
                     SystemResult::Ok(ContractResult::Ok(
                         to_json_binary(&simulated_response).unwrap(),
-                    ))
-                } else if let Ok(StrategyManagerQueryMsg::IsThirdPartyTransfersForbidden {
-                    strategy: _,
-                }) = query_msg
-                {
-                    SystemResult::Ok(ContractResult::Ok(
-                        to_json_binary(&ThirdPartyTransfersForbiddenResponse {
-                            is_forbidden: false,
-                        })
-                        .unwrap(),
                     ))
                 } else {
                     SystemResult::Err(SystemError::InvalidRequest {
