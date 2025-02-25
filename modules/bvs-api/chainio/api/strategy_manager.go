@@ -286,14 +286,6 @@ func (r *StrategyManager) SetSlashManager(ctx context.Context, newSlashManager s
 	return r.execute(ctx, msg)
 }
 
-func (r *StrategyManager) SetStrategyFactory(ctx context.Context, newStrategyFactory string) (*coretypes.ResultTx, error) {
-	msg := strategymanager.ExecuteMsg{
-		SetStrategyFactory: &strategymanager.SetStrategyFactory{NewStrategyFactory: newStrategyFactory},
-	}
-
-	return r.execute(ctx, msg)
-}
-
 func (r *StrategyManager) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
 	msg := strategymanager.ExecuteMsg{
 		TransferOwnership: &strategymanager.TransferOwnership{NewOwner: newOwner},
