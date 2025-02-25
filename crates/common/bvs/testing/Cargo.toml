@@ -25,6 +25,5 @@ bvs-directory = { workspace = true }
 bvs-rewards-coordinator = { workspace = true }
 bvs-slash-manager = { workspace = true }
 bvs-strategy-base = { workspace = true }
-bvs-strategy-base-tvl-limits = { workspace = true }
 bvs-strategy-factory = { workspace = true }
 bvs-strategy-manager = { workspace = true }

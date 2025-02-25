@@ -50,15 +50,6 @@ pub fn mock_bvs_strategy_base() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn mock_bvs_strategy_base_tvl_limits() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        bvs_strategy_base_tvl_limits::contract::execute,
-        bvs_strategy_base_tvl_limits::contract::instantiate,
-        bvs_strategy_base_tvl_limits::contract::query,
-    );
-    Box::new(contract)
-}
-
 pub fn mock_bvs_strategy_factory() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         bvs_strategy_factory::contract::execute,

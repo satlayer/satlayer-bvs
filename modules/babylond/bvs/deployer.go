@@ -2,7 +2,6 @@ package bvs
 
 import (
 	"encoding/json"
-	"math/big"
 
 	"github.com/satlayer/satlayer-bvs/babylond"
 
@@ -11,7 +10,6 @@ import (
 	rewardscoordinator "github.com/satlayer/satlayer-bvs/bvs-cw/rewards-coordinator"
 	slashmanager "github.com/satlayer/satlayer-bvs/bvs-cw/slash-manager"
 	strategybase "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-base"
-	strategybasetvllimits "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-base-tvl-limits"
 	strategyfactory "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-factory"
 	strategymanager "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-manager"
 )
@@ -120,26 +118,6 @@ func (d *Deployer) DeployDirectory(
 	}
 
 	return deployCrate(d, "bvs-directory", initMsg, "BVS Directory")
-}
-
-func (d *Deployer) DeployStrategyBaseTvlLimits(
-	strategyManager string,
-	underlyingToken string,
-	maxPerDeposit *big.Int,
-	maxTotalDeposits *big.Int,
-) *Contract[strategybasetvllimits.InstantiateMsg] {
-	initMsg := strategybasetvllimits.InstantiateMsg{
-		InitialPausedStatus: 0,
-		InitialOwner:        d.GenerateAddress("strategy-base-tvl-limits:initial_owner").String(),
-		Pauser:              d.GenerateAddress("strategy-base-tvl-limits:pauser").String(),
-		Unpauser:            d.GenerateAddress("strategy-base-tvl-limits:unpauser").String(),
-		StrategyManager:     strategyManager,
-		UnderlyingToken:     underlyingToken,
-		MaxPerDeposit:       maxPerDeposit.String(),
-		MaxTotalDeposits:    maxTotalDeposits.String(),
-	}
-
-	return deployCrate(d, "bvs-strategy-base-tvl-limits", initMsg, "BVS Strategy Base TVL Limits")
 }
 
 func (d *Deployer) DeployRewardsCoordinator(
