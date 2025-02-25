@@ -27,7 +27,7 @@ use bvs_base::delegation::{
 };
 use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
-use bvs_base::strategy::ExecuteMsg as StrategyManagerExecuteMsg;
+use bvs_strategy_manager::msg::ExecuteMsg as StrategyManagerExecuteMsg;
 
 const CONTRACT_NAME: &str = "BVS Slash Manager";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");

@@ -1,8 +1,8 @@
 pub mod contract;
 pub mod msg;
+pub mod query;
 
 mod error;
-mod query;
 mod state;
 mod utils;
 

@@ -34,7 +34,10 @@ use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg}
 
 use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
-use bvs_base::strategy::{QueryMsg as StrategyManagerQueryMsg, StrategyWhitelistedResponse};
+
+use bvs_strategy_manager::{
+    msg::QueryMsg as StrategyManagerQueryMsg, query::StrategyWhitelistedResponse,
+};
 
 const CONTRACT_NAME: &str = "BVS Rewards Coordinator";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");

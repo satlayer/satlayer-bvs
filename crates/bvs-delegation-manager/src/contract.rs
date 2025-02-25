@@ -35,9 +35,11 @@ use cw2::set_contract_version;
 
 use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
-use bvs_base::strategy::{
-    DepositsResponse, ExecuteMsg as StrategyManagerExecuteMsg, QueryMsg as StrategyManagerQueryMsg,
-    StakerStrategyListResponse, StakerStrategySharesResponse, ThirdPartyTransfersForbiddenResponse,
+
+use bvs_strategy_manager::{
+    msg::ExecuteMsg as StrategyManagerExecuteMsg, msg::QueryMsg as StrategyManagerQueryMsg,
+    query::DepositsResponse, query::StakerStrategyListResponse,
+    query::StakerStrategySharesResponse, query::ThirdPartyTransfersForbiddenResponse,
 };
 
 const CONTRACT_NAME: &str = "BVS Delegation Manager";

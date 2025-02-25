@@ -209,6 +209,7 @@ dependencies = [
  "base64",
  "bech32 0.8.1",
  "bvs-base",
+ "bvs-strategy-manager",
  "cosmwasm-crypto",
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -270,6 +271,7 @@ version = "2.0.0"
 dependencies = [
  "base64",
  "bvs-base",
+ "bvs-strategy-manager",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
@@ -290,6 +292,7 @@ dependencies = [
  "base64",
  "bech32 0.8.1",
  "bvs-base",
+ "bvs-strategy-manager",
  "bvs-testing",
  "cosmwasm-crypto",
  "cosmwasm-schema",

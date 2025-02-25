@@ -33,6 +33,7 @@ base64 = { workspace = true }
 bvs-base = { workspace = true }
 serde_json = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
+bvs-strategy-manager = { workspace = true, features = ["library"] }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
