@@ -80,7 +80,6 @@ func (d *Deployer) DeploySlashManager(
 func (d *Deployer) DeployStrategyManager(
 	delegationManager string,
 	slashManager string,
-	strategyFactory string,
 	initialStrategyWhitelister string,
 ) *Contract[strategymanager.InstantiateMsg] {
 	initMsg := strategymanager.InstantiateMsg{
@@ -90,7 +89,6 @@ func (d *Deployer) DeployStrategyManager(
 		Unpauser:                   d.GenerateAddress("strategy-manager:unpauser").String(),
 		DelegationManager:          delegationManager,
 		SlashManager:               slashManager,
-		StrategyFactory:            strategyFactory,
 		InitialStrategyWhitelister: initialStrategyWhitelister,
 	}
 

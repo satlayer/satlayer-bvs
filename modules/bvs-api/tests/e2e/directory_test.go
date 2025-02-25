@@ -42,7 +42,7 @@ func (s *DirectoryTestSuite) SetupSuite() {
 	// Add Operator to DelegationManager
 	s.container.FundAddressUbbn("bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x", 1e8)
 
-	strategyManager := deployer.DeployStrategyManager(tAddr, tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+	strategyManager := deployer.DeployStrategyManager(tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 
 	delegationManager := deployer.DeployDelegationManager(
 		tAddr, strategyManager.Address, 100, []string{tAddr}, []int64{50},

@@ -69,7 +69,7 @@ func (suite *delegationTestSuite) SetupSuite() {
 	container.ImportPrivKey("delegation-manager:pauser", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
 	container.ImportPrivKey("delegation-manager:unpauser", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
 
-	strategyManager := deployer.DeployStrategyManager(tAddr, tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+	strategyManager := deployer.DeployStrategyManager(tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 	delegationManager := deployer.DeployDelegationManager(
 		tAddr, strategyManager.Address, 100, []string{tAddr}, []int64{50},
 	)
