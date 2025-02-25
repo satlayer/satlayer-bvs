@@ -31,8 +31,8 @@ use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg}
 use bvs_base::delegation::ExecuteMsg as DelegationManagerExecuteMsg;
 use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
-use bvs_strategy_base::msg::{
-    ExecuteMsg as StrategyExecuteMsg, QueryMsg as StrategyQueryMsg, StrategyState,
+use bvs_strategy_base::{
+    msg::ExecuteMsg as StrategyExecuteMsg, msg::QueryMsg as StrategyQueryMsg, state::StrategyState,
 };
 
 const CONTRACT_NAME: &str = "BVS Strategy Manager";
