@@ -1013,7 +1013,6 @@ mod tests {
     use base64::{engine::general_purpose, Engine as _};
     use bech32::{self, ToBase32, Variant};
     use bvs_base::roles::{PAUSER, UNPAUSER};
-    use bvs_strategy_base::msg::{QueryMsg as StrategyQueryMsg, StrategyState};
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };

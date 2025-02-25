@@ -1092,7 +1092,6 @@ mod tests {
         attr, coins, from_json, Addr, Binary, ContractResult, OwnedDeps, SystemError, SystemResult,
         Timestamp, WasmQuery,
     };
-    use cw2::get_contract_version;
 
     type OwnedDepsType = OwnedDeps<MockStorage, MockApi, MockQuerier>;
 

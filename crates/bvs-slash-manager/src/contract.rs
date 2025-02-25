@@ -25,7 +25,7 @@ use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use bvs_delegation_manager::{
     msg::ExecuteMsg as DelegationManagerExecuteMsg, msg::QueryMsg as DelegationManagerQueryMsg,
-    query::OperatorResponse, query::OperatorStakersResponse,
+    query::OperatorResponse, query::OperatorStakersResponse, query::StakerShares,
 };
 use bvs_strategy_manager::msg::ExecuteMsg as StrategyManagerExecuteMsg;
 
