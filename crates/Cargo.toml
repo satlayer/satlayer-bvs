@@ -8,7 +8,6 @@ members = [
     "bvs-strategy-base",
     "bvs-strategy-factory",
     "bvs-strategy-manager",
-    "bvs-test",
 ]
 
 resolver = "2"

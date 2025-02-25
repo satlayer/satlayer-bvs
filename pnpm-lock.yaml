@@ -58,8 +58,6 @@ importers:
 
   crates/bvs-strategy-manager: {}
 
-  crates/bvs-test: {}
-
   docs:
     dependencies:
       '@tailwindcss/postcss':

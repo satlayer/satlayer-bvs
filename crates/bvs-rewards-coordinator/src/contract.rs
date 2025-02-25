@@ -1,3 +1,6 @@
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
+
 use crate::{
     error::ContractError,
     msg::{DistributionRoot, ExecuteMsg, InstantiateMsg, QueryMsg},
@@ -23,9 +26,8 @@ use crate::{
     },
 };
 use cosmwasm_std::{
-    entry_point, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, HexBinary,
-    MessageInfo, QuerierWrapper, QueryRequest, Response, StdError, StdResult, Uint128, WasmMsg,
-    WasmQuery,
+    to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, HexBinary, MessageInfo,
+    QuerierWrapper, QueryRequest, Response, StdError, StdResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::set_contract_version;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
