@@ -33,6 +33,7 @@ ripemd = { workspace = true }
 bvs-base = { workspace = true }
 base64 = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
+bvs-strategy-base = { workspace = true, features = ["library"] }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }

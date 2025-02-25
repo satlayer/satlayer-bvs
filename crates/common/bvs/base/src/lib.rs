@@ -1,6 +1,3 @@
-// #[deprecated(note = "please use `strategy-base` instead")]
-pub mod base;
-
 // #[deprecated(note = "please use `bvs-delegation-manager` instead")]
 pub mod delegation;
 
