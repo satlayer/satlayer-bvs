@@ -16,12 +16,11 @@ pub struct InstantiateMsg {
     pub strategy_factory: String,
     pub initial_strategy_whitelister: String,
     pub initial_owner: String,
-    pub pauser: String,
-    pub unpauser: String,
-    pub initial_paused_status: u8,
+    pub registry: String,
 }
 
 #[cw_serde]
+#[derive(bvs_registry::api::Display)]
 pub enum ExecuteMsg {
     AddStrategiesToWhitelist {
         strategies: Vec<String>,
@@ -79,14 +78,6 @@ pub enum ExecuteMsg {
     },
     TransferOwnership {
         new_owner: String,
-    },
-    Pause {},
-    Unpause {},
-    SetPauser {
-        new_pauser: String,
-    },
-    SetUnpauser {
-        new_unpauser: String,
     },
 }
 

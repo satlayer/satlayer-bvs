@@ -21,8 +21,6 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 
-use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
-use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use bvs_delegation_manager::{
     msg::ExecuteMsg as DelegationManagerExecuteMsg, msg::QueryMsg as DelegationManagerQueryMsg,
     query::OperatorResponse, query::OperatorStakersResponse,
@@ -32,16 +30,15 @@ use bvs_strategy_manager::msg::ExecuteMsg as StrategyManagerExecuteMsg;
 const CONTRACT_NAME: &str = "BVS Slash Manager";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const PAUSED_EXECUTE_SLASH_REQUEST: u8 = 0;
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    mut deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    bvs_registry::api::set_registry(deps.storage, &deps.api.addr_validate(&msg.registry)?)?;
 
     let owner = deps.api.addr_validate(&msg.initial_owner)?;
     let delegation_manager = deps.api.addr_validate(&msg.delegation_manager)?;
@@ -50,14 +47,6 @@ pub fn instantiate(
     OWNER.save(deps.storage, &owner)?;
     DELEGATION_MANAGER.save(deps.storage, &delegation_manager)?;
     STRATEGY_MANAGER.save(deps.storage, &strategy_manager)?;
-
-    let pauser = deps.api.addr_validate(&msg.pauser)?;
-    let unpauser = deps.api.addr_validate(&msg.unpauser)?;
-
-    set_pauser(deps.branch(), pauser)?;
-    set_unpauser(deps.branch(), unpauser)?;
-
-    PAUSED_STATE.save(deps.storage, &msg.initial_paused_status)?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
@@ -72,6 +61,8 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    bvs_registry::api::is_paused(deps.as_ref(), &env, &msg)?;
+
     match msg {
         ExecuteMsg::SubmitSlashRequest {
             slash_details,
@@ -159,24 +150,6 @@ pub fn execute(
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner_addr = deps.api.addr_validate(&new_owner)?;
             transfer_ownership(deps, info, new_owner_addr)
-        }
-        ExecuteMsg::Pause {} => {
-            check_pauser(deps.as_ref(), info.clone())?;
-            pause(deps, &info).map_err(ContractError::Std)
-        }
-        ExecuteMsg::Unpause {} => {
-            check_unpauser(deps.as_ref(), info.clone())?;
-            unpause(deps, &info).map_err(ContractError::Std)
-        }
-        ExecuteMsg::SetPauser { new_pauser } => {
-            only_owner(deps.as_ref(), &info.clone())?;
-            let new_pauser_addr = deps.api.addr_validate(&new_pauser)?;
-            set_pauser(deps, new_pauser_addr).map_err(ContractError::Std)
-        }
-        ExecuteMsg::SetUnpauser { new_unpauser } => {
-            only_owner(deps.as_ref(), &info.clone())?;
-            let new_unpauser_addr = deps.api.addr_validate(&new_unpauser)?;
-            set_unpauser(deps, new_unpauser_addr).map_err(ContractError::Std)
         }
     }
 }
@@ -273,8 +246,6 @@ pub fn execute_slash_request(
     signatures: Vec<Binary>,
     validators_public_keys: Vec<Binary>,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_EXECUTE_SLASH_REQUEST)?;
-
     only_slasher(deps.as_ref(), &info)?;
 
     let slash_details = match SLASH_DETAILS.may_load(deps.storage, slash_hash.clone())? {

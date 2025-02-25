@@ -33,9 +33,6 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 
-use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
-use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
-
 use bvs_strategy_manager::{
     msg::ExecuteMsg as StrategyManagerExecuteMsg, msg::QueryMsg as StrategyManagerQueryMsg,
     query::DepositsResponse, query::StakerStrategyListResponse,
@@ -44,10 +41,6 @@ use bvs_strategy_manager::{
 
 const CONTRACT_NAME: &str = "BVS Delegation Manager";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-const PAUSED_NEW_DELEGATION: u8 = 0;
-const PAUSED_ENTER_WITHDRAWAL_QUEUE: u8 = 1;
-const PAUSED_EXIT_WITHDRAWAL_QUEUE: u8 = 2;
 
 const MAX_STAKER_OPT_OUT_WINDOW_BLOCKS: u64 = 180 * 24 * 60 * 60 / 12;
 const MAX_WITHDRAWAL_DELAY_BLOCKS: u64 = 216_000;
@@ -60,6 +53,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    bvs_registry::api::set_registry(deps.storage, &deps.api.addr_validate(&msg.registry)?)?;
 
     let strategy_manager = deps.api.addr_validate(&msg.strategy_manager)?;
     let slash_manager = deps.api.addr_validate(&msg.slash_manager)?;
@@ -70,15 +64,8 @@ pub fn instantiate(
         slash_manager: slash_manager.clone(),
     };
 
-    let pauser = deps.api.addr_validate(&msg.pauser)?;
-    let unpauser = deps.api.addr_validate(&msg.unpauser)?;
-
-    set_pauser(deps.branch(), pauser)?;
-    set_unpauser(deps.branch(), unpauser)?;
-
     DELEGATION_MANAGER_STATE.save(deps.storage, &state)?;
     OWNER.save(deps.storage, &initial_owner)?;
-    PAUSED_STATE.save(deps.storage, &msg.initial_paused_status)?;
 
     set_min_withdrawal_delay_blocks_internal(deps.branch(), msg.min_withdrawal_delay_blocks)?;
 
@@ -112,6 +99,8 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    bvs_registry::api::is_paused(deps.as_ref(), &env, &msg)?;
+
     match msg {
         ExecuteMsg::RegisterAsOperator {
             sender_public_key,
@@ -321,24 +310,6 @@ pub fn execute(
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner_addr: Addr = Addr::unchecked(new_owner);
             transfer_ownership(deps, info, new_owner_addr)
-        }
-        ExecuteMsg::Pause {} => {
-            check_pauser(deps.as_ref(), info.clone())?;
-            pause(deps, &info).map_err(ContractError::Std)
-        }
-        ExecuteMsg::Unpause {} => {
-            check_unpauser(deps.as_ref(), info.clone())?;
-            unpause(deps, &info).map_err(ContractError::Std)
-        }
-        ExecuteMsg::SetPauser { new_pauser } => {
-            only_owner(deps.as_ref(), &info.clone())?;
-            let new_pauser_addr = deps.api.addr_validate(&new_pauser)?;
-            set_pauser(deps, new_pauser_addr).map_err(ContractError::Std)
-        }
-        ExecuteMsg::SetUnpauser { new_unpauser } => {
-            only_owner(deps.as_ref(), &info.clone())?;
-            let new_unpauser_addr = deps.api.addr_validate(&new_unpauser)?;
-            set_unpauser(deps, new_unpauser_addr).map_err(ContractError::Std)
         }
     }
 }
@@ -558,8 +529,6 @@ pub fn undelegate(
     info: MessageInfo,
     staker: Addr,
 ) -> Result<(Response, Vec<Binary>), ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_ENTER_WITHDRAWAL_QUEUE)?;
-
     let is_delegated_response = query_is_delegated(deps.as_ref(), staker.clone())?;
     if !is_delegated_response.is_delegated {
         return Err(ContractError::StakerNotDelegated {});
@@ -700,8 +669,6 @@ pub fn queue_withdrawals(
     info: MessageInfo,
     queued_withdrawal_params: Vec<QueuedWithdrawalParams>,
 ) -> Result<(Response, Vec<Binary>), ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_ENTER_WITHDRAWAL_QUEUE)?;
-
     let operator = DELEGATED_TO
         .may_load(deps.storage, &info.sender)?
         .unwrap_or_else(|| Addr::unchecked(""));
@@ -757,8 +724,6 @@ pub fn complete_queued_withdrawals(
     middleware_times_indexes: Vec<u64>,
     receive_as_tokens: Vec<bool>,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_EXIT_WITHDRAWAL_QUEUE)?;
-
     let mut response = Response::new();
 
     // Loop through each withdrawal and complete it
@@ -788,8 +753,6 @@ pub fn complete_queued_withdrawal(
     middleware_times_indexe: u64,
     receive_as_tokens: bool,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_EXIT_WITHDRAWAL_QUEUE)?;
-
     let response = complete_queued_withdrawal_internal(
         deps.branch(),
         env.clone(),
@@ -1251,8 +1214,6 @@ fn delegate(
     approver_signature_and_expiry: SignatureWithExpiry,
     params: DelegateParams,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_NEW_DELEGATION)?;
-
     let delegation_approver = OPERATOR_DETAILS
         .load(deps.storage, &params.operator)?
         .delegation_approver;

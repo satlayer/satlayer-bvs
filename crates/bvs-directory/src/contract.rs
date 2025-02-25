@@ -24,7 +24,6 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 
 use bvs_base::delegation::{OperatorResponse, QueryMsg as DelegationManagerQueryMsg};
-use bvs_registry::api::{is_paused, set_registry};
 
 const CONTRACT_NAME: &str = "BVS Directory";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -37,7 +36,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    set_registry(deps.storage, &deps.api.addr_validate(&msg.registry)?)?;
+    bvs_registry::api::set_registry(deps.storage, &deps.api.addr_validate(&msg.registry)?)?;
 
     let owner = deps.api.addr_validate(&msg.initial_owner)?;
     let delegation_manager = deps.api.addr_validate(&msg.delegation_manager)?;
@@ -58,7 +57,7 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    is_paused(deps.as_ref(), &env, &msg)?;
+    bvs_registry::api::is_paused(deps.as_ref(), &env, &msg)?;
 
     match msg {
         ExecuteMsg::RegisterBvs { bvs_contract } => register_bvs(deps, bvs_contract),

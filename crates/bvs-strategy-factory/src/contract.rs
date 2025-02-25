@@ -137,8 +137,8 @@ pub fn deploy_new_strategy(
     _env: Env,
     info: MessageInfo,
     token: Addr,
-    pauser: Addr,
-    unpauser: Addr,
+    _pauser: Addr,
+    _unpauser: Addr,
 ) -> Result<Response, ContractError> {
     only_when_not_paused(deps.as_ref(), PAUSED_NEW_STRATEGIES)?;
 
@@ -167,9 +167,7 @@ pub fn deploy_new_strategy(
             initial_owner: config.owner.to_string(),
             strategy_manager: config.strategy_manager.to_string(),
             underlying_token: token.to_string(),
-            pauser: pauser.to_string(),
-            unpauser: unpauser.to_string(),
-            initial_paused_status: 0,
+            registry: Addr::unchecked("registry").to_string(),
         })?,
         funds: vec![],
         label: format!("Strategy for {}", token),

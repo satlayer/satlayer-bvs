@@ -29,8 +29,6 @@ use cw2::set_contract_version;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
 use bvs_base::delegation::ExecuteMsg as DelegationManagerExecuteMsg;
-use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
-use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use bvs_strategy_base::{
     msg::ExecuteMsg as StrategyExecuteMsg, msg::QueryMsg as StrategyQueryMsg, state::StrategyState,
 };
@@ -38,19 +36,18 @@ use bvs_strategy_base::{
 const CONTRACT_NAME: &str = "BVS Strategy Manager";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const PAUSED_DEPOSITS: u8 = 0;
-
 const SHARES_OFFSET: Uint128 = Uint128::new(1000000000000000000);
 const BALANCE_OFFSET: Uint128 = Uint128::new(1000000000000000000);
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    mut deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    bvs_registry::api::set_registry(deps.storage, &deps.api.addr_validate(&msg.registry)?)?;
 
     let delegation_manager = deps.api.addr_validate(&msg.delegation_manager)?;
     let slash_manager = deps.api.addr_validate(&msg.slash_manager)?;
@@ -64,13 +61,6 @@ pub fn instantiate(
         strategy_factory: strategy_factory.clone(),
     };
 
-    let pauser = deps.api.addr_validate(&msg.pauser)?;
-    let unpauser = deps.api.addr_validate(&msg.unpauser)?;
-
-    set_pauser(deps.branch(), pauser)?;
-    set_unpauser(deps.branch(), unpauser)?;
-
-    PAUSED_STATE.save(deps.storage, &msg.initial_paused_status)?;
     STRATEGY_MANAGER_STATE.save(deps.storage, &state)?;
     STRATEGY_WHITELISTER.save(deps.storage, &initial_strategy_whitelister)?;
     OWNER.save(deps.storage, &initial_owner)?;
@@ -93,6 +83,8 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    bvs_registry::api::is_paused(deps.as_ref(), &env, &msg)?;
+
     match msg {
         ExecuteMsg::AddStrategiesToWhitelist {
             strategies,
@@ -229,24 +221,6 @@ pub fn execute(
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner_addr: Addr = Addr::unchecked(new_owner);
             transfer_ownership(deps, info, new_owner_addr)
-        }
-        ExecuteMsg::Pause {} => {
-            check_pauser(deps.as_ref(), info.clone())?;
-            pause(deps, &info).map_err(ContractError::Std)
-        }
-        ExecuteMsg::Unpause {} => {
-            check_unpauser(deps.as_ref(), info.clone())?;
-            unpause(deps, &info).map_err(ContractError::Std)
-        }
-        ExecuteMsg::SetPauser { new_pauser } => {
-            only_owner(deps.as_ref(), &info.clone())?;
-            let new_pauser_addr = deps.api.addr_validate(&new_pauser)?;
-            set_pauser(deps, new_pauser_addr).map_err(ContractError::Std)
-        }
-        ExecuteMsg::SetUnpauser { new_unpauser } => {
-            only_owner(deps.as_ref(), &info.clone())?;
-            let new_unpauser_addr = deps.api.addr_validate(&new_unpauser)?;
-            set_unpauser(deps, new_unpauser_addr).map_err(ContractError::Std)
         }
     }
 }
@@ -427,7 +401,6 @@ pub fn deposit_into_strategy(
     token: Addr,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_DEPOSITS)?;
     deposit_into_strategy_internal(deps, info, staker, strategy, token, amount)
 }
 
@@ -437,8 +410,6 @@ pub fn deposit_into_strategy_with_signature(
     info: MessageInfo,
     params: DepositWithSignatureParams,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_DEPOSITS)?;
-
     let forbidden = THIRD_PARTY_TRANSFERS_FORBIDDEN
         .may_load(deps.storage, &params.strategy)?
         .unwrap_or(false);

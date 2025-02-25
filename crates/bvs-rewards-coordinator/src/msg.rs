@@ -21,12 +21,11 @@ pub struct InstantiateMsg {
     pub delegation_manager: String,
     pub strategy_manager: String,
     pub activation_delay: u32,
-    pub pauser: String,
-    pub unpauser: String,
-    pub initial_paused_status: u8,
+    pub registry: String,
 }
 
 #[cw_serde]
+#[derive(bvs_registry::api::Display)]
 pub enum ExecuteMsg {
     CreateBvsRewardsSubmission {
         rewards_submissions: Vec<RewardsSubmission>,
@@ -63,14 +62,6 @@ pub enum ExecuteMsg {
     },
     TransferOwnership {
         new_owner: String,
-    },
-    Pause {},
-    Unpause {},
-    SetPauser {
-        new_pauser: String,
-    },
-    SetUnpauser {
-        new_unpauser: String,
     },
 }
 

@@ -10,12 +10,11 @@ pub struct InstantiateMsg {
     pub initial_owner: String,
     pub delegation_manager: String,
     pub strategy_manager: String,
-    pub pauser: String,
-    pub unpauser: String,
-    pub initial_paused_status: u8,
+    pub registry: String,
 }
 
 #[cw_serde]
+#[derive(bvs_registry::api::Display)]
 pub enum ExecuteMsg {
     SubmitSlashRequest {
         slash_details: ExecuteSlashDetails,
@@ -48,14 +47,6 @@ pub enum ExecuteMsg {
     },
     TransferOwnership {
         new_owner: String,
-    },
-    Pause {},
-    Unpause {},
-    SetPauser {
-        new_pauser: String,
-    },
-    SetUnpauser {
-        new_unpauser: String,
     },
 }
 
