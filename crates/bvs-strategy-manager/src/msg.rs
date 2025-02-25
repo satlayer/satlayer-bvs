@@ -1,9 +1,9 @@
 use crate::query::{
     CalculateDigestHashResponse, DelegationManagerResponse, DepositTypeHashResponse,
-    DepositsResponse, DomainNameResponse, DomainTypeHashResponse, NonceResponse, OwnerResponse,
-    StakerStrategyListLengthResponse, StakerStrategyListResponse, StakerStrategySharesResponse,
-    StrategyManagerStateResponse, StrategyWhitelistedResponse, StrategyWhitelisterResponse,
-    ThirdPartyTransfersForbiddenResponse,
+    DepositsResponse, DomainNameResponse, DomainTypeHashResponse, IsTokenBlacklisted,
+    NonceResponse, OwnerResponse, StakerStrategyListLengthResponse, StakerStrategyListResponse,
+    StakerStrategySharesResponse, StrategyManagerStateResponse, StrategyWhitelistedResponse,
+    StrategyWhitelisterResponse, ThirdPartyTransfersForbiddenResponse, TokenStrategyResponse,
 };
 use crate::utils::QueryDigestHashParams;
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -23,6 +23,13 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
+    AddNewStrategy {
+        new_strategy: String,
+        token: String,
+    },
+    BlacklistTokens {
+        tokens: Vec<String>,
+    },
     AddStrategiesToWhitelist {
         strategies: Vec<String>,
         third_party_transfers_forbidden_values: Vec<bool>,
@@ -73,9 +80,6 @@ pub enum ExecuteMsg {
     },
     SetSlashManager {
         new_slash_manager: String,
-    },
-    SetStrategyFactory {
-        new_strategy_factory: String,
     },
     TransferOwnership {
         new_owner: String,
@@ -139,4 +143,10 @@ pub enum QueryMsg {
 
     #[returns(DelegationManagerResponse)]
     DelegationManager {},
+
+    #[returns(IsTokenBlacklisted)]
+    IsTokenBlacklisted { token: String },
+
+    #[returns(TokenStrategyResponse)]
+    GetTokenStrategy { token: String },
 }

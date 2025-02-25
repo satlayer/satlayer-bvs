@@ -53,4 +53,15 @@ pub enum ContractError {
 
     #[error("StrategyManager.deposit_into_strategy_with_signature: TransferMsg not found")]
     TransferMsgNotFound,
+
+    #[error("StrategyManager.blacklist_tokens: token already blacklisted")]
+    TokenAlreadyBlacklisted {},
+
+    #[error("StrategyManager.add_new_strategy: strategy already exists")]
+    StrategyAlreadyExists {},
+
+    #[error(
+        "StrategyFactory.add_new_strategy: strategy does not have this manager as its manager"
+    )]
+    StrategyNotCompitable {},
 }
