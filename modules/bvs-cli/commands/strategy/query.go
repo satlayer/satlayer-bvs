@@ -55,16 +55,16 @@ func GetStakerStrategyShares(staker string, strategy string) {
 	fmt.Printf("%s\n", resp.Data)
 }
 
-func GetOwner() {
+func Owner() {
 	s := NewService()
-	resp, err := s.Strategy.GetOwner()
+	resp, err := s.Strategy.Owner()
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("%s\n", resp.Data)
 }
 
-func IsStrategyWhiteListed(strategyAddress string) {
+func IsStrategyWhitelisted(strategyAddress string) {
 	s := NewService()
 	resp, err := s.Strategy.IsStrategyWhitelisted(strategyAddress)
 	if err != nil {
@@ -100,27 +100,27 @@ func GetDepositTypeHash() {
 	fmt.Printf("%s\n", resp.Data)
 }
 
-func GetDomainTypeHash() {
+func DomainTypeHash() {
 	s := NewService()
-	resp, err := s.Strategy.GetDomainTypeHash()
+	resp, err := s.Strategy.DomainTypeHash()
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("%s\n", resp.Data)
 }
 
-func GetDomainName() {
+func DomainName() {
 	s := NewService()
-	resp, err := s.Strategy.GetDomainName()
+	resp, err := s.Strategy.DomainName()
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("%s\n", resp.Data)
 }
 
-func GetDelegationManager() {
+func DelegationManager() {
 	s := NewService()
-	resp, err := s.Strategy.GetDelegationManager()
+	resp, err := s.Strategy.DelegationManager()
 	if err != nil {
 		panic(err)
 	}

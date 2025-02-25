@@ -8,10 +8,10 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 
-use bvs_base::base::InstantiateMsg as StrategyInstantiateMsg;
 use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use bvs_base::strategy::ExecuteMsg as StrategyManagerExecuteMsg;
+use bvs_strategy_base::msg::InstantiateMsg as StrategyInstantiateMsg;
 
 const CONTRACT_NAME: &str = "BVS Strategy Factory";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");

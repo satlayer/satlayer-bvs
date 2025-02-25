@@ -1,5 +1,5 @@
 {
-  "name": "@satlayer/bvs-strategy-base-tvl-limits",
+  "name": "@satlayer/bvs-registry",
   "private": false,
   "files": [
     "artifacts",

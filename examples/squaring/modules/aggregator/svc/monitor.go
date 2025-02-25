@@ -64,7 +64,7 @@ func NewMonitor() *Monitor {
 	}
 
 	// get bvs contract
-	txResp, err := api.NewDirectory(chainIO, core.C.Chain.BvsDirectory).GetBvsInfo(core.C.Chain.BvsHash)
+	txResp, err := api.NewDirectory(chainIO, core.C.Chain.BvsDirectory).BvsInfo(core.C.Chain.BvsHash)
 	if err != nil {
 		panic(err)
 	}

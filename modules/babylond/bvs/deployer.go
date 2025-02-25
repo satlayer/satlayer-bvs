@@ -2,16 +2,15 @@ package bvs
 
 import (
 	"encoding/json"
-	"math/big"
 
 	"github.com/satlayer/satlayer-bvs/babylond"
 
 	delegationmanager "github.com/satlayer/satlayer-bvs/bvs-cw/delegation-manager"
 	"github.com/satlayer/satlayer-bvs/bvs-cw/directory"
+	"github.com/satlayer/satlayer-bvs/bvs-cw/registry"
 	rewardscoordinator "github.com/satlayer/satlayer-bvs/bvs-cw/rewards-coordinator"
 	slashmanager "github.com/satlayer/satlayer-bvs/bvs-cw/slash-manager"
 	strategybase "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-base"
-	strategybasetvllimits "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-base-tvl-limits"
 	strategyfactory "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-factory"
 	strategymanager "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-manager"
 )
@@ -46,8 +45,20 @@ func deployCrate[T interface{}](deployer *Deployer, crate string, initMsg T, lab
 	}
 }
 
-// TODO: every contract on top is considered "pure" can be deployed without circular dependency
-//   For contracts below, we need to do cleanup.
+// TODO(fuxingloh): implement Deployer.Deploy()
+
+func (d *Deployer) DeployRegistry(
+	initMsg *registry.InstantiateMsg,
+) *Contract[registry.InstantiateMsg] {
+	if initMsg == nil {
+		initMsg = &registry.InstantiateMsg{
+			InitialPaused: false,
+			Owner:         d.GenerateAddress("registry:owner").String(),
+		}
+	}
+
+	return deployCrate(d, "bvs-registry", *initMsg, "BVS Registry")
+}
 
 // TODO: Too much initialization. Some can be moved to `ExecuteMsg` instead of `InstantiateMsg`
 
@@ -110,36 +121,15 @@ func (d *Deployer) DeployDelegationManager(
 
 func (d *Deployer) DeployDirectory(
 	delegationManager string,
+	registry string,
 ) *Contract[directory.InstantiateMsg] {
 	initMsg := directory.InstantiateMsg{
-		InitialPausedStatus: 0,
-		InitialOwner:        d.GenerateAddress("directory:initial_owner").String(),
-		Pauser:              d.GenerateAddress("directory:pauser").String(),
-		Unpauser:            d.GenerateAddress("directory:unpauser").String(),
-		DelegationManager:   delegationManager,
+		InitialOwner:      d.GenerateAddress("directory:initial_owner").String(),
+		DelegationManager: delegationManager,
+		Registry:          registry,
 	}
 
 	return deployCrate(d, "bvs-directory", initMsg, "BVS Directory")
-}
-
-func (d *Deployer) DeployStrategyBaseTvlLimits(
-	strategyManager string,
-	underlyingToken string,
-	maxPerDeposit *big.Int,
-	maxTotalDeposits *big.Int,
-) *Contract[strategybasetvllimits.InstantiateMsg] {
-	initMsg := strategybasetvllimits.InstantiateMsg{
-		InitialPausedStatus: 0,
-		InitialOwner:        d.GenerateAddress("strategy-base-tvl-limits:initial_owner").String(),
-		Pauser:              d.GenerateAddress("strategy-base-tvl-limits:pauser").String(),
-		Unpauser:            d.GenerateAddress("strategy-base-tvl-limits:unpauser").String(),
-		StrategyManager:     strategyManager,
-		UnderlyingToken:     underlyingToken,
-		MaxPerDeposit:       maxPerDeposit.String(),
-		MaxTotalDeposits:    maxTotalDeposits.String(),
-	}
-
-	return deployCrate(d, "bvs-strategy-base-tvl-limits", initMsg, "BVS Strategy Base TVL Limits")
 }
 
 func (d *Deployer) DeployRewardsCoordinator(

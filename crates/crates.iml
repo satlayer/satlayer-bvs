@@ -18,6 +18,8 @@
       <sourceFolder url="file://$MODULE_DIR$/common/bvs/test-utils/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-directory/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/common/bvs/testing/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-registry/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-registry/tests" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludePattern pattern=".turbo" />
       <excludePattern pattern="Cargo.lock" />

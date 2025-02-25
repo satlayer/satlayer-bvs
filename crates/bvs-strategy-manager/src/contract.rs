@@ -1,3 +1,6 @@
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
+
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
@@ -19,18 +22,18 @@ use crate::{
     },
 };
 use cosmwasm_std::{
-    entry_point, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo,
+    to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo,
     QuerierWrapper, QueryRequest, Response, StdResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::set_contract_version;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
-use bvs_base::base::{
-    ExecuteMsg as StrategyExecuteMsg, QueryMsg as StrategyQueryMsg, StrategyState,
-};
 use bvs_base::delegation::ExecuteMsg as DelegationManagerExecuteMsg;
 use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
+use bvs_strategy_base::{
+    msg::ExecuteMsg as StrategyExecuteMsg, msg::QueryMsg as StrategyQueryMsg, state::StrategyState,
+};
 
 const CONTRACT_NAME: &str = "BVS Strategy Manager";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -596,49 +599,47 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
             to_json_binary(&query_staker_strategy_list(deps, staker_addr)?)
         }
-        QueryMsg::GetOwner {} => to_json_binary(&query_owner(deps)?),
+        QueryMsg::Owner {} => to_json_binary(&query_owner(deps)?),
         QueryMsg::IsStrategyWhitelisted { strategy } => {
             let strategy_addr = deps.api.addr_validate(&strategy)?;
 
             to_json_binary(&query_is_strategy_whitelisted(deps, strategy_addr)?)
         }
-        QueryMsg::CalculateDigestHash {
-            digest_hash_params: digst_hash_params,
-        } => {
-            let response = query_calculate_digest_hash(deps, digst_hash_params)?;
+        QueryMsg::CalculateDigestHash { digest_hash_params } => {
+            let response = query_calculate_digest_hash(deps, digest_hash_params)?;
             to_json_binary(&response)
         }
         QueryMsg::GetStrategyWhitelister {} => to_json_binary(&query_strategy_whitelister(deps)?),
         QueryMsg::GetStrategyManagerState {} => {
             to_json_binary(&query_strategy_manager_state(deps)?)
         }
-        QueryMsg::GetDepositTypeHash {} => to_json_binary(&query_deposit_typehash()?),
-        QueryMsg::GetDomainTypeHash {} => to_json_binary(&query_domain_typehash()?),
-        QueryMsg::GetDomainName {} => to_json_binary(&query_domain_name()?),
-        QueryMsg::GetDelegationManager {} => to_json_binary(&query_delegation_manager(deps)?),
+        QueryMsg::GetDepositTypeHash {} => to_json_binary(&query_deposit_type_hash()?),
+        QueryMsg::DomainTypeHash {} => to_json_binary(&query_domain_type_hash()?),
+        QueryMsg::DomainName {} => to_json_binary(&query_domain_name()?),
+        QueryMsg::DelegationManager {} => to_json_binary(&query_delegation_manager(deps)?),
     }
 }
 
 fn query_calculate_digest_hash(
     deps: Deps,
-    digst_hash_params: QueryDigestHashParams,
+    digest_hash_params: QueryDigestHashParams,
 ) -> StdResult<CalculateDigestHashResponse> {
-    let staker_addr = deps.api.addr_validate(&digst_hash_params.staker)?;
-    let strategy_addr = deps.api.addr_validate(&digst_hash_params.strategy)?;
-    let token_addr = deps.api.addr_validate(&digst_hash_params.token)?;
-    let contract_addr = Addr::unchecked(&digst_hash_params.contract_addr);
+    let staker_addr = deps.api.addr_validate(&digest_hash_params.staker)?;
+    let strategy_addr = deps.api.addr_validate(&digest_hash_params.strategy)?;
+    let token_addr = deps.api.addr_validate(&digest_hash_params.token)?;
+    let contract_addr = Addr::unchecked(&digest_hash_params.contract_addr);
 
-    let public_key_binary = Binary::from_base64(&digst_hash_params.public_key)?;
+    let public_key_binary = Binary::from_base64(&digest_hash_params.public_key)?;
 
     let params = DigestHashParams {
         staker: staker_addr,
         public_key: public_key_binary,
         strategy: strategy_addr,
         token: token_addr,
-        amount: digst_hash_params.amount,
-        nonce: digst_hash_params.nonce,
-        expiry: digst_hash_params.expiry,
-        chain_id: digst_hash_params.chain_id,
+        amount: digest_hash_params.amount,
+        nonce: digest_hash_params.nonce,
+        expiry: digest_hash_params.expiry,
+        chain_id: digest_hash_params.chain_id,
         contract_addr,
     };
 
@@ -705,12 +706,12 @@ fn query_strategy_manager_state(deps: Deps) -> StdResult<StrategyManagerStateRes
     Ok(StrategyManagerStateResponse { state })
 }
 
-fn query_deposit_typehash() -> StdResult<DepositTypeHashResponse> {
+fn query_deposit_type_hash() -> StdResult<DepositTypeHashResponse> {
     let deposit_type_hash = String::from_utf8_lossy(DEPOSIT_TYPEHASH).to_string();
     Ok(DepositTypeHashResponse { deposit_type_hash })
 }
 
-fn query_domain_typehash() -> StdResult<DomainTypeHashResponse> {
+fn query_domain_type_hash() -> StdResult<DomainTypeHashResponse> {
     let domain_type_hash = String::from_utf8_lossy(DOMAIN_TYPEHASH).to_string();
     Ok(DomainTypeHashResponse { domain_type_hash })
 }
@@ -1018,7 +1019,6 @@ mod tests {
     use cosmwasm_std::{
         attr, from_json, Addr, ContractResult, OwnedDeps, SystemError, SystemResult,
     };
-    use cw2::get_contract_version;
     use ripemd::Ripemd160;
     use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
     use sha2::{Digest, Sha256};
@@ -1538,6 +1538,10 @@ mod tests {
                             to_json_binary(&strategy_state).unwrap(),
                         ))
                     }
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    }),
                 }
             }
             WasmQuery::Smart { contract_addr, msg } if *contract_addr == token_for_closure => {
@@ -2328,6 +2332,10 @@ mod tests {
                             to_json_binary(&strategy_state).unwrap(),
                         ))
                     }
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    }),
                 }
             }
             WasmQuery::Smart { contract_addr, msg }
@@ -2497,7 +2505,7 @@ mod tests {
             _unpauser_info,
         ) = instantiate_contract();
 
-        let query_msg = QueryMsg::GetOwner {};
+        let query_msg = QueryMsg::Owner {};
         let bin = query(deps.as_ref(), env, query_msg).unwrap();
         let owner_response: OwnerResponse = from_json(bin).unwrap();
 
@@ -2568,17 +2576,17 @@ mod tests {
     }
 
     #[test]
-    fn test_get_deposit_typehash() {
-        let typehash = query_deposit_typehash().unwrap();
+    fn test_get_deposit_type_hash() {
+        let type_hash = query_deposit_type_hash().unwrap();
         let expected_str = String::from_utf8_lossy(DEPOSIT_TYPEHASH).to_string();
-        assert_eq!(typehash.deposit_type_hash, expected_str);
+        assert_eq!(type_hash.deposit_type_hash, expected_str);
     }
 
     #[test]
-    fn test_get_domain_typehash() {
-        let typehash = query_domain_typehash().unwrap();
+    fn test_get_domain_type_hash() {
+        let type_hash = query_domain_type_hash().unwrap();
         let expected_str = String::from_utf8_lossy(DOMAIN_TYPEHASH).to_string();
-        assert_eq!(typehash.domain_type_hash, expected_str);
+        assert_eq!(type_hash.domain_type_hash, expected_str);
     }
 
     #[test]
@@ -2637,7 +2645,7 @@ mod tests {
             _unpauser_info,
         ) = instantiate_contract();
 
-        let query_msg = QueryMsg::GetDelegationManager {};
+        let query_msg = QueryMsg::DelegationManager {};
         let bin = query(deps.as_ref(), env, query_msg).unwrap();
         let delegation_manager: DelegationManagerResponse = from_json(bin).unwrap();
 

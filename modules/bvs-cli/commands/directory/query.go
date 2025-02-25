@@ -47,9 +47,9 @@ func IsSaltSpent(operatorAddress, salt string) {
 	fmt.Printf("%t\n", result)
 }
 
-func GetDelegationManager() {
+func DelegationManager() {
 	s := NewService()
-	resp, err := s.Directory.GetDelegationManager()
+	resp, err := s.Directory.DelegationManager()
 	if err != nil {
 		fmt.Printf("Get delegation manager error! %+v\n", err)
 		return
@@ -58,9 +58,9 @@ func GetDelegationManager() {
 	fmt.Printf("%s\n", result)
 }
 
-func GetOwner() {
+func Owner() {
 	s := NewService()
-	resp, err := s.Directory.GetOwner()
+	resp, err := s.Directory.Owner()
 	if err != nil {
 		fmt.Printf("Get owner error! %+v\n", err)
 		return
@@ -68,9 +68,9 @@ func GetOwner() {
 	fmt.Printf("%s\n", resp.OwnerAddr)
 }
 
-func GetOperatorBvsRegistrationTypeHash() {
+func OperatorBvsRegistrationTypeHash() {
 	s := NewService()
-	resp, err := s.Directory.GetOperatorBvsRegistrationTypeHash()
+	resp, err := s.Directory.OperatorBvsRegistrationTypeHash()
 	if err != nil {
 		fmt.Printf("Get operator BVS registration type hash error! %+v\n", err)
 		return
@@ -79,9 +79,9 @@ func GetOperatorBvsRegistrationTypeHash() {
 	fmt.Printf("%s\n", result)
 }
 
-func GetDomainTypeHash() {
+func DomainTypeHash() {
 	s := NewService()
-	resp, err := s.Directory.GetDomainTypeHash()
+	resp, err := s.Directory.DomainTypeHash()
 	if err != nil {
 		fmt.Printf("Get domain type hash error! %+v\n", err)
 		return
@@ -90,9 +90,9 @@ func GetDomainTypeHash() {
 	fmt.Printf("%s\n", result)
 }
 
-func GetDomainName() {
+func DomainName() {
 	s := NewService()
-	resp, err := s.Directory.GetDomainName()
+	resp, err := s.Directory.DomainName()
 	if err != nil {
 		fmt.Printf("Get domain name error! %+v\n", err)
 		return
@@ -101,9 +101,9 @@ func GetDomainName() {
 	fmt.Printf("%s\n", result)
 }
 
-func GetBvsInfo(BVSHash string) {
+func BvsInfo(BVSHash string) {
 	s := NewService()
-	resp, err := s.Directory.GetBvsInfo(BVSHash)
+	resp, err := s.Directory.BvsInfo(BVSHash)
 	if err != nil {
 		fmt.Printf("Get BVS info error! %s\n", err)
 		return

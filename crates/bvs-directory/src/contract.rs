@@ -1,58 +1,49 @@
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
+
 use crate::{
     error::ContractError,
     msg::{
-        ExecuteMsg, InstantiateMsg, OperatorStatusResponse, QueryMsg, SignatureWithSaltAndExpiry,
-    },
-    query::{
-        BvsInfoResponse, DelegationResponse, DigestHashResponse, DomainNameResponse,
-        DomainTypeHashResponse, OwnerResponse, RegistrationTypeHashResponse, SaltResponse,
+        BvsInfoResponse, CalculateDigestHashResponse, DelegationManagerResponse,
+        DomainNameResponse, DomainTypeHashResponse, ExecuteMsg, InstantiateMsg,
+        IsSaltSpentResponse, OperatorBvsRegistrationTypeHashResponse, OperatorStatusResponse,
+        OwnerResponse, QueryMsg, SignatureWithSaltAndExpiry,
     },
     state::{
         BvsInfo, OperatorBvsRegistrationStatus, BVS_INFO, BVS_OPERATOR_STATUS, DELEGATION_MANAGER,
         OPERATOR_SALT_SPENT, OWNER,
     },
     utils::{
-        calculate_digest_hash, recover, sha256, DigestHashParams, DOMAIN_NAME, DOMAIN_TYPEHASH,
-        OPERATOR_BVS_REGISTRATION_TYPEHASH,
+        calculate_digest_hash, recover, sha256, DigestHashParams, DOMAIN_NAME, DOMAIN_TYPE_HASH,
+        OPERATOR_BVS_REGISTRATION_TYPE_HASH,
     },
 };
 use cosmwasm_std::{
-    entry_point, to_json_binary, Addr, Binary, Deps, DepsMut, Env, Event, MessageInfo, Response,
-    StdResult,
+    to_json_binary, Addr, Binary, Deps, DepsMut, Env, Event, MessageInfo, Response, StdResult,
 };
 use cw2::set_contract_version;
 
 use bvs_base::delegation::{OperatorResponse, QueryMsg as DelegationManagerQueryMsg};
-use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
-use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
+use bvs_registry::api::{is_paused, set_registry};
 
 const CONTRACT_NAME: &str = "BVS Directory";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const PAUSED_OPERATOR_REGISTER_DEREGISTER_TO_BVS: u8 = 0;
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    mut deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    set_registry(deps.storage, &deps.api.addr_validate(&msg.registry)?)?;
 
     let owner = deps.api.addr_validate(&msg.initial_owner)?;
     let delegation_manager = deps.api.addr_validate(&msg.delegation_manager)?;
 
     OWNER.save(deps.storage, &owner)?;
     DELEGATION_MANAGER.save(deps.storage, &delegation_manager)?;
-
-    let pauser = deps.api.addr_validate(&msg.pauser)?;
-    let unpauser = deps.api.addr_validate(&msg.unpauser)?;
-
-    set_pauser(deps.branch(), pauser)?;
-    set_unpauser(deps.branch(), unpauser)?;
-
-    PAUSED_STATE.save(deps.storage, &msg.initial_paused_status)?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
@@ -67,6 +58,8 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    is_paused(deps.as_ref(), &env, &msg)?;
+
     match msg {
         ExecuteMsg::RegisterBvs { bvs_contract } => register_bvs(deps, bvs_contract),
         ExecuteMsg::RegisterOperatorToBvs {
@@ -78,23 +71,13 @@ pub fn execute(
             let operator_addr = Addr::unchecked(operator);
             let contract_addr = Addr::unchecked(contract_addr);
 
-            let public_key_binary = Binary::from_base64(&public_key)?;
-            let signature = Binary::from_base64(&signature_with_salt_and_expiry.signature)?;
-            let salt = Binary::from_base64(&signature_with_salt_and_expiry.salt)?;
-
-            let signature_with_salt_and_expiry = SignatureWithSaltAndExpiry {
-                signature,
-                salt,
-                expiry: signature_with_salt_and_expiry.expiry,
-            };
-
             register_operator(
                 deps,
                 env,
                 info,
                 contract_addr,
                 operator_addr,
-                public_key_binary,
+                public_key,
                 signature_with_salt_and_expiry,
             )
         }
@@ -109,31 +92,10 @@ pub fn execute(
             let delegation_manager_addr = deps.api.addr_validate(&delegation_manager)?;
             set_delegation_manager(deps, info, delegation_manager_addr)
         }
-        ExecuteMsg::CancelSalt { salt } => {
-            let salt_binary = Binary::from_base64(&salt)?;
-            cancel_salt(deps, env, info, salt_binary)
-        }
+        ExecuteMsg::CancelSalt { salt } => cancel_salt(deps, env, info, salt),
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner_addr = deps.api.addr_validate(&new_owner)?;
             transfer_ownership(deps, info, new_owner_addr)
-        }
-        ExecuteMsg::Pause {} => {
-            check_pauser(deps.as_ref(), info.clone())?;
-            pause(deps, &info).map_err(ContractError::Std)
-        }
-        ExecuteMsg::Unpause {} => {
-            check_unpauser(deps.as_ref(), info.clone())?;
-            unpause(deps, &info).map_err(ContractError::Std)
-        }
-        ExecuteMsg::SetPauser { new_pauser } => {
-            only_owner(deps.as_ref(), &info.clone())?;
-            let new_pauser_addr = deps.api.addr_validate(&new_pauser)?;
-            set_pauser(deps, new_pauser_addr).map_err(ContractError::Std)
-        }
-        ExecuteMsg::SetUnpauser { new_unpauser } => {
-            only_owner(deps.as_ref(), &info.clone())?;
-            let new_unpauser_addr = deps.api.addr_validate(&new_unpauser)?;
-            set_unpauser(deps, new_unpauser_addr).map_err(ContractError::Std)
         }
     }
 }
@@ -164,8 +126,6 @@ pub fn register_operator(
     public_key: Binary,
     operator_signature: SignatureWithSaltAndExpiry,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_OPERATOR_REGISTER_DEREGISTER_TO_BVS)?;
-
     if operator_signature.expiry < env.block.time.seconds() {
         return Err(ContractError::SignatureExpired {});
     }
@@ -236,8 +196,6 @@ pub fn deregister_operator(
     info: MessageInfo,
     operator: Addr,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_OPERATOR_REGISTER_DEREGISTER_TO_BVS)?;
-
     let status =
         BVS_OPERATOR_STATUS.may_load(deps.storage, (info.sender.clone(), operator.clone()))?;
     if status == Some(OperatorBvsRegistrationStatus::Registered) {
@@ -325,7 +283,7 @@ pub fn transfer_ownership(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetOperatorStatus { bvs, operator } => {
+        QueryMsg::OperatorStatus { bvs, operator } => {
             let bvs_addr = Addr::unchecked(bvs);
             let operator_addr = Addr::unchecked(operator);
             to_json_binary(&query_operator_status(deps, bvs_addr, operator_addr)?)
@@ -356,30 +314,14 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let is_spent = query_is_salt_spent(deps, operator_addr, salt)?;
             to_json_binary(&is_spent)
         }
-        QueryMsg::GetDelegationManager {} => {
-            let delegation_manager_addr = query_delegation_manager(deps)?;
-            to_json_binary(&delegation_manager_addr)
+        QueryMsg::DelegationManager {} => to_json_binary(&query_delegation_manager(deps)?),
+        QueryMsg::Owner {} => to_json_binary(&query_owner(deps)?),
+        QueryMsg::OperatorBvsRegistrationTypeHash {} => {
+            to_json_binary(&query_operator_bvs_registration_type_hash(deps)?)
         }
-        QueryMsg::GetOwner {} => {
-            let owner_addr = query_owner(deps)?;
-            to_json_binary(&owner_addr)
-        }
-        QueryMsg::GetOperatorBvsRegistrationTypeHash {} => {
-            let hash_str = query_operator_bvs_registration_typehash(deps)?;
-            to_json_binary(&hash_str)
-        }
-        QueryMsg::GetDomainTypeHash {} => {
-            let hash_str = query_domain_typehash(deps)?;
-            to_json_binary(&hash_str)
-        }
-        QueryMsg::GetDomainName {} => {
-            let name_str = query_domain_name(deps)?;
-            to_json_binary(&name_str)
-        }
-        QueryMsg::GetBvsInfo { bvs_hash } => {
-            let bvs_info = query_bvs_info(deps, bvs_hash)?;
-            to_json_binary(&bvs_info)
-        }
+        QueryMsg::DomainTypeHash {} => to_json_binary(&query_domain_type_hash(deps)?),
+        QueryMsg::DomainName {} => to_json_binary(&query_domain_name(deps)?),
+        QueryMsg::BvsInfo { bvs_hash } => to_json_binary(&query_bvs_info(deps, bvs_hash)?),
     }
 }
 
@@ -398,7 +340,7 @@ fn query_calculate_digest_hash(
     _deps: Deps,
     env: Env,
     params: DigestHashParams,
-) -> StdResult<DigestHashResponse> {
+) -> StdResult<CalculateDigestHashResponse> {
     let digest_hash = calculate_digest_hash(
         env.block.chain_id,
         &params.operator_public_key,
@@ -409,20 +351,20 @@ fn query_calculate_digest_hash(
     );
 
     let digest_hash = Binary::new(digest_hash);
-    Ok(DigestHashResponse { digest_hash })
+    Ok(CalculateDigestHashResponse { digest_hash })
 }
 
-fn query_is_salt_spent(deps: Deps, operator: Addr, salt: String) -> StdResult<SaltResponse> {
+fn query_is_salt_spent(deps: Deps, operator: Addr, salt: String) -> StdResult<IsSaltSpentResponse> {
     let is_salt_spent = OPERATOR_SALT_SPENT
         .may_load(deps.storage, (operator.clone(), salt.clone()))?
         .unwrap_or(false);
 
-    Ok(SaltResponse { is_salt_spent })
+    Ok(IsSaltSpentResponse { is_salt_spent })
 }
 
-fn query_delegation_manager(deps: Deps) -> StdResult<DelegationResponse> {
+fn query_delegation_manager(deps: Deps) -> StdResult<DelegationManagerResponse> {
     let delegation_addr = DELEGATION_MANAGER.load(deps.storage)?;
-    Ok(DelegationResponse { delegation_addr })
+    Ok(DelegationManagerResponse { delegation_addr })
 }
 
 fn query_owner(deps: Deps) -> StdResult<OwnerResponse> {
@@ -430,18 +372,18 @@ fn query_owner(deps: Deps) -> StdResult<OwnerResponse> {
     Ok(OwnerResponse { owner_addr })
 }
 
-fn query_operator_bvs_registration_typehash(
+fn query_operator_bvs_registration_type_hash(
     _deps: Deps,
-) -> StdResult<RegistrationTypeHashResponse> {
+) -> StdResult<OperatorBvsRegistrationTypeHashResponse> {
     let operator_bvs_registration_type_hash =
-        String::from_utf8_lossy(OPERATOR_BVS_REGISTRATION_TYPEHASH).to_string();
-    Ok(RegistrationTypeHashResponse {
+        String::from_utf8_lossy(OPERATOR_BVS_REGISTRATION_TYPE_HASH).to_string();
+    Ok(OperatorBvsRegistrationTypeHashResponse {
         operator_bvs_registration_type_hash,
     })
 }
 
-fn query_domain_typehash(_deps: Deps) -> StdResult<DomainTypeHashResponse> {
-    let domain_type_hash = String::from_utf8_lossy(DOMAIN_TYPEHASH).to_string();
+fn query_domain_type_hash(_deps: Deps) -> StdResult<DomainTypeHashResponse> {
+    let domain_type_hash = String::from_utf8_lossy(DOMAIN_TYPE_HASH).to_string();
     Ok(DomainTypeHashResponse { domain_type_hash })
 }
 
@@ -469,18 +411,15 @@ fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::msg::ExecuteSignatureWithSaltAndExpiry;
     use base64::{engine::general_purpose, Engine as _};
     use bech32::{self, ToBase32, Variant};
-    use bvs_base::roles::{PAUSER, UNPAUSER};
+    use bvs_delegation_manager::contract::update_operator_metadata_uri;
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
     use cosmwasm_std::{
-        attr, from_json, Addr, Binary, ContractResult, OwnedDeps, SystemError, SystemResult,
-        WasmQuery,
+        from_json, Addr, Binary, ContractResult, OwnedDeps, SystemError, SystemResult, WasmQuery,
     };
-    use cw2::get_contract_version;
     use ripemd::Ripemd160;
     use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
     use sha2::{Digest, Sha256};
@@ -494,15 +433,10 @@ mod tests {
         let owner = deps.api.addr_make("owner").to_string();
         let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
 
-        let pauser = deps.api.addr_make("pauser").to_string();
-        let unpauser = deps.api.addr_make("unpauser").to_string();
-
         let msg = InstantiateMsg {
             initial_owner: owner.clone(),
             delegation_manager: delegation_manager.clone(),
-            pauser: pauser.clone(),
-            unpauser: unpauser.clone(),
-            initial_paused_status: 0,
+            registry: deps.api.addr_make("registry").to_string(),
         };
 
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -529,8 +463,6 @@ mod tests {
         OwnedDeps<MockStorage, MockApi, MockQuerier>,
         Env,
         MessageInfo,
-        MessageInfo,
-        MessageInfo,
         String,
     ) {
         let mut deps = mock_dependencies();
@@ -541,18 +473,10 @@ mod tests {
 
         let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
 
-        let pauser = deps.api.addr_make("pauser").to_string();
-        let unpauser = deps.api.addr_make("unpauser").to_string();
-
-        let pauser_info = message_info(&Addr::unchecked(pauser.clone()), &[]);
-        let unpauser_info = message_info(&Addr::unchecked(unpauser.clone()), &[]);
-
         let msg = InstantiateMsg {
             initial_owner: owner.to_string(),
             delegation_manager: delegation_manager.to_string(),
-            pauser: pauser.clone(),
-            unpauser: unpauser.clone(),
-            initial_paused_status: 0,
+            registry: deps.api.addr_make("registry").to_string(),
         };
 
         let res = instantiate(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();
@@ -562,14 +486,7 @@ mod tests {
         assert_eq!(res.attributes[1].key, "owner");
         assert_eq!(res.attributes[1].value, owner.to_string());
 
-        (
-            deps,
-            env,
-            owner_info,
-            pauser_info,
-            unpauser_info,
-            delegation_manager,
-        )
+        (deps, env, owner_info, delegation_manager)
     }
 
     fn generate_osmosis_public_key_from_private_key(
@@ -592,8 +509,7 @@ mod tests {
 
     #[test]
     fn test_register_bvs() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, delegation_manager) =
-            instantiate_contract();
+        let (mut deps, env, info, delegation_manager) = instantiate_contract();
 
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart {
@@ -608,11 +524,7 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterBvs {
-            bvs_contract: "bvs_contract".to_string(),
-        };
-
-        let result = execute(deps.as_mut(), env, info, msg).unwrap();
+        let result = register_bvs(deps.as_mut(), "bvs_contract".to_string()).unwrap();
 
         let bvs_hash = &result
             .attributes
@@ -635,8 +547,7 @@ mod tests {
 
     #[test]
     fn test_register_operator() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, delegation_manager) =
-            instantiate_contract();
+        let (mut deps, env, info, delegation_manager) = instantiate_contract();
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
@@ -661,8 +572,6 @@ mod tests {
         let signature = secp.sign_ecdsa(&message, &secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
 
-        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
-
         let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
 
         // Update the mock to return the OperatorResponse struct instead of a boolean
@@ -683,18 +592,19 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToBvs {
-            operator: operator.to_string(),
-            public_key: public_key_hex.to_string(),
-            contract_addr: contract_addr.to_string(),
-            signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
-                signature: signature_base64.to_string(),
-                salt: salt.to_string(),
+        let res = register_operator(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            contract_addr.clone(),
+            operator.clone(),
+            Binary::from_base64(public_key_hex).unwrap(),
+            SignatureWithSaltAndExpiry {
+                signature: Binary::new(signature_bytes),
+                salt: salt.clone(),
                 expiry,
             },
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        );
 
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
@@ -732,8 +642,7 @@ mod tests {
 
     #[test]
     fn test_deregister_operator() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, delegation_manager) =
-            instantiate_contract();
+        let (mut deps, env, info, delegation_manager) = instantiate_contract();
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
@@ -758,8 +667,6 @@ mod tests {
         let signature = secp.sign_ecdsa(&message, &secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
 
-        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
-
         let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
 
         deps.querier.update_wasm(move |query| match query {
@@ -778,25 +685,23 @@ mod tests {
             }),
         });
 
-        let register_msg = ExecuteMsg::RegisterOperatorToBvs {
-            operator: operator.to_string(),
-            public_key: public_key_hex.to_string(),
-            contract_addr: contract_addr.to_string(),
-            signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
-                signature: signature_base64.to_string(),
-                salt: salt.to_string(),
+        let res = register_operator(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            contract_addr.clone(),
+            operator.clone(),
+            Binary::from_base64(public_key_hex).unwrap(),
+            SignatureWithSaltAndExpiry {
+                signature: Binary::new(signature_bytes),
+                salt: salt.clone(),
                 expiry,
             },
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), register_msg);
+        );
 
         assert!(res.is_ok());
 
-        let deregister_msg = ExecuteMsg::DeregisterOperatorFromBvs {
-            operator: operator.to_string(),
-        };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), deregister_msg);
+        let res = deregister_operator(deps.as_mut(), env.clone(), info.clone(), operator.clone());
 
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
@@ -829,15 +734,10 @@ mod tests {
 
     #[test]
     fn test_update_metadata_uri() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
+        let (deps, env, info, _delegation_manager) = instantiate_contract();
 
         let metadata_uri = "http://metadata.uri".to_string();
-
-        let msg = ExecuteMsg::UpdateBvsMetadataUri {
-            metadata_uri: metadata_uri.clone(),
-        };
-        let res = execute(deps.as_mut(), env, info.clone(), msg);
+        let res = update_metadata_uri(info.clone(), metadata_uri.clone());
 
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
@@ -863,8 +763,7 @@ mod tests {
 
     #[test]
     fn test_cancel_salt() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
+        let (mut deps, env, info, _delegation_manager) = instantiate_contract();
 
         let salt = Binary::from(b"salt");
 
@@ -873,10 +772,7 @@ mod tests {
             .unwrap();
         assert!(is_salt_spent.is_none());
 
-        let msg = ExecuteMsg::CancelSalt {
-            salt: salt.to_string(),
-        };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        let res = cancel_salt(deps.as_mut(), env.clone(), info.clone(), salt.clone());
 
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
@@ -901,15 +797,10 @@ mod tests {
 
     #[test]
     fn test_transfer_ownership() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
+        let (mut deps, env, info, _delegation_manager) = instantiate_contract();
 
-        let new_owner = deps.api.addr_make("new_owner").to_string();
-
-        let msg = ExecuteMsg::TransferOwnership {
-            new_owner: new_owner.to_string(),
-        };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        let new_owner = deps.api.addr_make("new_owner");
+        let res = transfer_ownership(deps.as_mut(), info.clone(), new_owner.clone());
 
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
@@ -925,13 +816,12 @@ mod tests {
         assert_eq!(res.attributes[1].value, new_owner.to_string());
 
         let current_owner = OWNER.load(&deps.storage).unwrap();
-        assert_eq!(current_owner, Addr::unchecked(new_owner));
+        assert_eq!(current_owner, new_owner);
     }
 
     #[test]
     fn test_query_operator() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, delegation_manager) =
-            instantiate_contract();
+        let (mut deps, env, info, delegation_manager) = instantiate_contract();
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
@@ -956,8 +846,6 @@ mod tests {
         let signature = secp.sign_ecdsa(&message, &secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
 
-        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
-
         let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
 
         deps.querier.update_wasm(move |query| match query {
@@ -976,18 +864,19 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToBvs {
-            operator: operator.to_string(),
-            public_key: public_key_hex.to_string(),
-            contract_addr: contract_addr.to_string(),
-            signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
-                signature: signature_base64.to_string(),
-                salt: salt.to_string(),
+        let res = register_operator(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            contract_addr.clone(),
+            operator.clone(),
+            Binary::from_base64(public_key_hex).unwrap(),
+            SignatureWithSaltAndExpiry {
+                signature: Binary::new(signature_bytes),
+                salt: salt.clone(),
                 expiry,
             },
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        );
 
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
@@ -1022,7 +911,7 @@ mod tests {
             .unwrap();
         assert!(is_salt_spent);
 
-        let query_msg = QueryMsg::GetOperatorStatus {
+        let query_msg = QueryMsg::OperatorStatus {
             bvs: info.sender.to_string(),
             operator: operator.to_string(),
         };
@@ -1035,15 +924,14 @@ mod tests {
 
     #[test]
     fn test_query_operator_unregistered() {
-        let (deps, env, info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
+        let (deps, env, info, _delegation_manager) = instantiate_contract();
 
         let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
         let (operator, _secret_key, _public_key_bytes) =
             generate_osmosis_public_key_from_private_key(private_key_hex);
         println!("Operator Address: {:?}", operator);
 
-        let query_msg = QueryMsg::GetOperatorStatus {
+        let query_msg = QueryMsg::OperatorStatus {
             bvs: info.sender.to_string(),
             operator: operator.to_string(),
         };
@@ -1059,8 +947,7 @@ mod tests {
 
     #[test]
     fn test_query_calculate_digest_hash() {
-        let (deps, env, info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
+        let (deps, env, info, _delegation_manager) = instantiate_contract();
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (_operator, _secret_key, public_key_bytes) =
@@ -1080,7 +967,7 @@ mod tests {
             contract_addr: contract_addr.to_string(),
         };
 
-        let response: DigestHashResponse =
+        let response: CalculateDigestHashResponse =
             from_json(query(deps.as_ref(), env.clone(), query_msg).unwrap()).unwrap();
 
         let expected_digest_hash = calculate_digest_hash(
@@ -1102,8 +989,7 @@ mod tests {
 
     #[test]
     fn test_query_is_salt_spent() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, delegation_manager) =
-            instantiate_contract();
+        let (mut deps, env, info, delegation_manager) = instantiate_contract();
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
@@ -1128,8 +1014,6 @@ mod tests {
         let signature = secp.sign_ecdsa(&message, &secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
 
-        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
-
         let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
 
         deps.querier.update_wasm(move |query| match query {
@@ -1148,18 +1032,19 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToBvs {
-            operator: operator.to_string(),
-            public_key: public_key_hex.to_string(),
-            contract_addr: contract_addr.to_string(),
-            signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
-                signature: signature_base64.to_string(),
-                salt: salt.to_string(),
+        let res = register_operator(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            contract_addr.clone(),
+            operator.clone(),
+            Binary::from_base64(public_key_hex).unwrap(),
+            SignatureWithSaltAndExpiry {
+                signature: Binary::new(signature_bytes),
+                salt: salt.clone(),
                 expiry,
             },
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        );
 
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
@@ -1172,7 +1057,7 @@ mod tests {
             salt: salt.to_string(),
         };
 
-        let response: SaltResponse =
+        let response: IsSaltSpentResponse =
             from_json(query(deps.as_ref(), env.clone(), query_msg).unwrap()).unwrap();
 
         assert!(response.is_salt_spent);
@@ -1180,13 +1065,12 @@ mod tests {
 
     #[test]
     fn test_query_delegation_manager() {
-        let (deps, env, _info, _pauser_info, _unpauser_info, delegation_manager) =
-            instantiate_contract();
+        let (deps, env, _info, delegation_manager) = instantiate_contract();
 
-        let query_msg = QueryMsg::GetDelegationManager {};
+        let query_msg = QueryMsg::DelegationManager {};
         let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
 
-        let response: DelegationResponse = from_json(query_res).unwrap();
+        let response: DelegationManagerResponse = from_json(query_res).unwrap();
 
         assert_eq!(
             response.delegation_addr,
@@ -1196,10 +1080,9 @@ mod tests {
 
     #[test]
     fn test_query_owner() {
-        let (deps, env, info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
+        let (deps, env, info, _delegation_manager) = instantiate_contract();
 
-        let query_msg = QueryMsg::GetOwner {};
+        let query_msg = QueryMsg::Owner {};
         let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
 
         let response: OwnerResponse = from_json(query_res).unwrap();
@@ -1208,30 +1091,28 @@ mod tests {
     }
 
     #[test]
-    fn test_query_operator_bvs_registration_typehash() {
-        let (deps, env, _info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
+    fn test_query_operator_bvs_registration_type_hash() {
+        let (deps, env, _info, _delegation_manager) = instantiate_contract();
 
-        let query_msg = QueryMsg::GetOperatorBvsRegistrationTypeHash {};
+        let query_msg = QueryMsg::OperatorBvsRegistrationTypeHash {};
         let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
 
-        let response: RegistrationTypeHashResponse = from_json(query_res).unwrap();
+        let response: OperatorBvsRegistrationTypeHashResponse = from_json(query_res).unwrap();
 
-        let expected_str = String::from_utf8_lossy(OPERATOR_BVS_REGISTRATION_TYPEHASH).to_string();
+        let expected_str = String::from_utf8_lossy(OPERATOR_BVS_REGISTRATION_TYPE_HASH).to_string();
 
         assert_eq!(response.operator_bvs_registration_type_hash, expected_str);
     }
     #[test]
-    fn test_query_domain_typehash() {
-        let (deps, env, _info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
+    fn test_query_domain_type_hash() {
+        let (deps, env, _info, _delegation_manager) = instantiate_contract();
 
-        let query_msg = QueryMsg::GetDomainTypeHash {};
+        let query_msg = QueryMsg::DomainTypeHash {};
         let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
 
         let response: DomainTypeHashResponse = from_json(query_res).unwrap();
 
-        let expected_str = String::from_utf8_lossy(DOMAIN_TYPEHASH).to_string();
+        let expected_str = String::from_utf8_lossy(DOMAIN_TYPE_HASH).to_string();
 
         assert_eq!(response.domain_type_hash, expected_str);
     }
@@ -1241,7 +1122,7 @@ mod tests {
         let deps = mock_dependencies();
         let env = mock_env();
 
-        let query_msg = QueryMsg::GetDomainName {};
+        let query_msg = QueryMsg::DomainName {};
         let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
 
         let response: DomainNameResponse = from_json(query_res).unwrap();
@@ -1252,8 +1133,7 @@ mod tests {
 
     #[test]
     fn test_register_operator_to_bvs() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, delegation_manager) =
-            instantiate_contract();
+        let (mut deps, env, info, delegation_manager) = instantiate_contract();
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
@@ -1278,8 +1158,6 @@ mod tests {
         let signature = secp.sign_ecdsa(&message, &secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
 
-        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
-
         let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
 
         deps.querier.update_wasm(move |query| match query {
@@ -1298,18 +1176,19 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToBvs {
-            operator: operator.to_string(),
-            public_key: public_key_hex.to_string(),
-            contract_addr: contract_addr.to_string(),
-            signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
-                signature: signature_base64.to_string(),
-                salt: salt.to_string(),
+        let res = register_operator(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            contract_addr.clone(),
+            operator.clone(),
+            Binary::from_base64(public_key_hex).unwrap(),
+            SignatureWithSaltAndExpiry {
+                signature: Binary::new(signature_bytes),
+                salt: salt.clone(),
                 expiry,
             },
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        );
 
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
@@ -1362,8 +1241,7 @@ mod tests {
 
     #[test]
     fn test_query_bvs_info() {
-        let (mut deps, env, _info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
+        let (mut deps, env, _info, _delegation_manager) = instantiate_contract();
 
         let bvs_contract = "bvs_contract".to_string();
 
@@ -1374,7 +1252,7 @@ mod tests {
 
         let bvs_hash = hex::encode(hash_result);
 
-        let query_msg = QueryMsg::GetBvsInfo {
+        let query_msg = QueryMsg::BvsInfo {
             bvs_hash: bvs_hash.clone(),
         };
         let query_response = query(deps.as_ref(), env.clone(), query_msg).unwrap();
@@ -1385,99 +1263,13 @@ mod tests {
     }
 
     #[test]
-    fn test_pause() {
-        let (mut deps, env, _info, pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
-
-        let pause_msg = ExecuteMsg::Pause {};
-        let res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg).unwrap();
-
-        assert_eq!(res.attributes, vec![attr("action", "PAUSED")]);
-
-        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_state, 1);
-    }
-
-    #[test]
-    fn test_unpause() {
-        let (mut deps, env, _info, _pauser_info, unpauser_info, _delegation_manager) =
-            instantiate_contract();
-
-        let unpause_msg = ExecuteMsg::Unpause {};
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            unpauser_info.clone(),
-            unpause_msg,
-        )
-        .unwrap();
-
-        assert_eq!(res.attributes, vec![attr("action", "UNPAUSED")]);
-
-        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_state, 0);
-    }
-
-    #[test]
-    fn test_set_pauser() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
-
-        let new_pauser = deps.api.addr_make("new_pauser").to_string();
-
-        let set_pauser_msg = ExecuteMsg::SetPauser {
-            new_pauser: new_pauser.to_string(),
-        };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), set_pauser_msg).unwrap();
-
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "method" && a.value == "set_pauser"));
-
-        let pauser = PAUSER.load(&deps.storage).unwrap();
-        assert_eq!(pauser, Addr::unchecked(new_pauser));
-    }
-
-    #[test]
-    fn test_set_unpauser() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
-
-        let new_unpauser = deps.api.addr_make("new_unpauser").to_string();
-
-        let set_unpauser_msg = ExecuteMsg::SetUnpauser {
-            new_unpauser: new_unpauser.to_string(),
-        };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), set_unpauser_msg).unwrap();
-
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "method" && a.value == "set_unpauser"));
-
-        let unpauser = UNPAUSER.load(&deps.storage).unwrap();
-        assert_eq!(unpauser, Addr::unchecked(new_unpauser));
-    }
-
-    #[test]
     fn test_set_delegation_manager() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
+        let (mut deps, env, info, _delegation_manager) = instantiate_contract();
 
-        let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
+        let delegation_manager = deps.api.addr_make("delegation_manager");
 
-        let set_delegation_manager_msg = ExecuteMsg::SetDelegationManager {
-            delegation_manager: delegation_manager.to_string(),
-        };
-
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            info.clone(),
-            set_delegation_manager_msg,
-        )
-        .unwrap();
+        let res = set_delegation_manager(deps.as_mut(), info.clone(), delegation_manager.clone())
+            .unwrap();
 
         assert!(res
             .attributes
@@ -1485,6 +1277,6 @@ mod tests {
             .any(|a| a.key == "method" && a.value == "set_delegation_manager"));
 
         let delegation_manager_addr = DELEGATION_MANAGER.load(&deps.storage).unwrap();
-        assert_eq!(delegation_manager_addr, Addr::unchecked(delegation_manager));
+        assert_eq!(delegation_manager_addr, delegation_manager);
     }
 }

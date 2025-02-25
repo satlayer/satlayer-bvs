@@ -20,10 +20,6 @@ var directoryKeyName = "caller"
 //	directory.UpdateMetadata(directoryKeyName, metadata)
 //}
 //
-//func Test_PauseAndUnpause(t *testing.T) {
-//	directory.Pause(directoryKeyName)
-//	directory.Unpause(directoryKeyName)
-//}
 
 func Test_GetOperator(t *testing.T) {
 	operatorAddress := "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
@@ -42,27 +38,27 @@ func Test_IsSaltSpent(t *testing.T) {
 	directory.IsSaltSpent(operatorAddress, salt)
 }
 
-func Test_GetDelegationManager(t *testing.T) {
-	directory.GetDelegationManager()
+func Test_DelegationManager(t *testing.T) {
+	directory.DelegationManager()
 }
 
-func Test_GetOwner(t *testing.T) {
-	directory.GetOwner()
+func Test_Owner(t *testing.T) {
+	directory.Owner()
 }
 
-func Test_GetDomainName(t *testing.T) {
-	directory.GetDomainName()
+func Test_DomainName(t *testing.T) {
+	directory.DomainName()
 }
 
-func Test_GetDomainTypeHash(t *testing.T) {
-	directory.GetDomainTypeHash()
+func Test_DomainTypeHash(t *testing.T) {
+	directory.DomainTypeHash()
 }
 
-func Test_GetOperatorBvsRegistrationTypeHash(t *testing.T) {
-	directory.GetOperatorBvsRegistrationTypeHash()
+func Test_OperatorBvsRegistrationTypeHash(t *testing.T) {
+	directory.OperatorBvsRegistrationTypeHash()
 }
 
-func Test_GetBvsInfo(t *testing.T) {
+func Test_BvsInfo(t *testing.T) {
 	hash := "3e9dd8890daa53e3b07af614231c9ccaac51805c449b8df61f62e2afb30d6685"
-	directory.GetBvsInfo(hash)
+	directory.BvsInfo(hash)
 }

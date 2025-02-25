@@ -112,7 +112,7 @@ pub enum QueryMsg {
     GetStakerStrategyList { staker: String },
 
     #[returns(OwnerResponse)]
-    GetOwner {},
+    Owner {},
 
     #[returns(StrategyWhitelistedResponse)]
     IsStrategyWhitelisted { strategy: String },
@@ -132,11 +132,11 @@ pub enum QueryMsg {
     GetDepositTypeHash {},
 
     #[returns(DomainTypeHashResponse)]
-    GetDomainTypeHash {},
+    DomainTypeHash {},
 
     #[returns(DomainNameResponse)]
-    GetDomainName {},
+    DomainName {},
 
     #[returns(DelegationManagerResponse)]
-    GetDelegationManager {},
+    DelegationManager {},
 }

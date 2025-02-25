@@ -1,3 +1,6 @@
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
+
 use crate::{
     error::ContractError,
     msg::{DistributionRoot, ExecuteMsg, InstantiateMsg, QueryMsg},
@@ -23,16 +26,18 @@ use crate::{
     },
 };
 use cosmwasm_std::{
-    entry_point, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, HexBinary,
-    MessageInfo, QuerierWrapper, QueryRequest, Response, StdError, StdResult, Uint128, WasmMsg,
-    WasmQuery,
+    to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, HexBinary, MessageInfo,
+    QuerierWrapper, QueryRequest, Response, StdError, StdResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::set_contract_version;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
 use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
-use bvs_base::strategy::{QueryMsg as StrategyManagerQueryMsg, StrategyWhitelistedResponse};
+
+use bvs_strategy_manager::{
+    msg::QueryMsg as StrategyManagerQueryMsg, query::StrategyWhitelistedResponse,
+};
 
 const CONTRACT_NAME: &str = "BVS Rewards Coordinator";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -1087,7 +1092,6 @@ mod tests {
         attr, coins, from_json, Addr, Binary, ContractResult, OwnedDeps, SystemError, SystemResult,
         Timestamp, WasmQuery,
     };
-    use cw2::get_contract_version;
 
     type OwnedDepsType = OwnedDeps<MockStorage, MockApi, MockQuerier>;
 

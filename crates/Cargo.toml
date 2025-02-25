@@ -6,10 +6,9 @@ members = [
     "bvs-rewards-coordinator",
     "bvs-slash-manager",
     "bvs-strategy-base",
-    "bvs-strategy-base-tvl-limits",
     "bvs-strategy-factory",
     "bvs-strategy-manager",
-    "bvs-test",
+    "bvs-registry"
 ]
 
 resolver = "2"
@@ -51,12 +50,12 @@ base64 = "0.22.1"
 cw-utils = "2.0.0"
 
 # contracts
+bvs-registry = { path = "./bvs-registry" }
 bvs-delegation-manager = { path = "./bvs-delegation-manager" }
 bvs-directory = { path = "./bvs-directory" }
 bvs-rewards-coordinator = { path = "./bvs-rewards-coordinator" }
 bvs-slash-manager = { path = "./bvs-slash-manager" }
 bvs-strategy-base = { path = "./bvs-strategy-base" }
-bvs-strategy-base-tvl-limits = { path = "./bvs-strategy-base-tvl-limits" }
 bvs-strategy-factory = { path = "./bvs-strategy-factory" }
 bvs-strategy-manager = { path = "./bvs-strategy-manager" }
 

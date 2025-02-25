@@ -48,19 +48,17 @@ importers:
 
   crates/bvs-directory: {}
 
+  crates/bvs-registry: {}
+
   crates/bvs-rewards-coordinator: {}
 
   crates/bvs-slash-manager: {}
 
   crates/bvs-strategy-base: {}
 
-  crates/bvs-strategy-base-tvl-limits: {}
-
   crates/bvs-strategy-factory: {}
 
   crates/bvs-strategy-manager: {}
-
-  crates/bvs-test: {}
 
   docs:
     dependencies:
@@ -129,6 +127,9 @@ importers:
       '@satlayer/bvs-directory':
         specifier: workspace:*
         version: link:../../crates/bvs-directory
+      '@satlayer/bvs-registry':
+        specifier: workspace:*
+        version: link:../../crates/bvs-registry
       '@satlayer/bvs-rewards-coordinator':
         specifier: workspace:*
         version: link:../../crates/bvs-rewards-coordinator
@@ -138,9 +139,6 @@ importers:
       '@satlayer/bvs-strategy-base':
         specifier: workspace:*
         version: link:../../crates/bvs-strategy-base
-      '@satlayer/bvs-strategy-base-tvl-limits':
-        specifier: workspace:*
-        version: link:../../crates/bvs-strategy-base-tvl-limits
       '@satlayer/bvs-strategy-factory':
         specifier: workspace:*
         version: link:../../crates/bvs-strategy-factory
@@ -160,6 +158,9 @@ importers:
       '@satlayer/bvs-directory':
         specifier: workspace:*
         version: link:../../crates/bvs-directory
+      '@satlayer/bvs-registry':
+        specifier: workspace:*
+        version: link:../../crates/bvs-registry
       '@satlayer/bvs-rewards-coordinator':
         specifier: workspace:*
         version: link:../../crates/bvs-rewards-coordinator
@@ -169,9 +170,6 @@ importers:
       '@satlayer/bvs-strategy-base':
         specifier: workspace:*
         version: link:../../crates/bvs-strategy-base
-      '@satlayer/bvs-strategy-base-tvl-limits':
-        specifier: workspace:*
-        version: link:../../crates/bvs-strategy-base-tvl-limits
       '@satlayer/bvs-strategy-factory':
         specifier: workspace:*
         version: link:../../crates/bvs-strategy-factory

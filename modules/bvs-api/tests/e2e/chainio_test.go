@@ -28,9 +28,11 @@ func (suite *ioTestSuite) SetupSuite() {
 	suite.chainIO = container.NewChainIO("../.babylon")
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
 
-	deployer := &bvs.Deployer{BabylonContainer: container}
+	deployer := bvs.Deployer{BabylonContainer: container}
+	registry := deployer.DeployRegistry(nil)
+
 	tAddr := container.GenerateAddress("throw-away")
-	suite.directory = deployer.DeployDirectory(tAddr.String())
+	suite.directory = deployer.DeployDirectory(tAddr.String(), registry.Address)
 }
 
 func (suite *ioTestSuite) TearDownSuite() {
@@ -44,7 +46,7 @@ func (suite *ioTestSuite) Test_QueryContract() {
 	assert.NoError(t, err)
 	account, err := chainIO.GetCurrentAccount()
 	assert.NoError(t, err, "get account")
-	queryMsg, err := json.Marshal(directory.QueryMsg{GetOperatorStatus: &directory.GetOperatorStatus{
+	queryMsg, err := json.Marshal(directory.QueryMsg{OperatorStatus: &directory.OperatorStatus{
 		Operator: account.GetAddress().String(),
 		Bvs:      account.GetAddress().String(),
 	}})

@@ -64,7 +64,9 @@ func (s *DirectoryTestSuite) SetupSuite() {
 	s.Require().NoError(err, "register as operator")
 	s.Require().NotNil(txResp, "response nil")
 
-	s.contrAddr = deployer.DeployDirectory(delegationManager.Address).Address
+	registry := deployer.DeployRegistry(nil)
+
+	s.contrAddr = deployer.DeployDirectory(delegationManager.Address, registry.Address).Address
 	s.delegationContrAddr = delegationManager.Address
 }
 
@@ -172,53 +174,6 @@ func (s *DirectoryTestSuite) Test_TransferOwnership() {
 	t.Logf("recoverResp:%+v", recoverResp)
 }
 
-func (s *DirectoryTestSuite) Test_Pause() {
-	t := s.T()
-	keyName := "caller"
-	chainIO, err := s.chainIO.SetupKeyring(keyName, "test")
-	assert.NoError(t, err)
-
-	bvsDirectory := api.NewDirectory(chainIO, s.contrAddr)
-	{
-		_, err = bvsDirectory.SetPauser(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
-		s.Require().NoError(err)
-		_, err = bvsDirectory.SetUnpauser(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
-		s.Require().NoError(err)
-	}
-
-	txResp, err := bvsDirectory.Pause(context.Background())
-	assert.NoError(t, err)
-	assert.NotNil(t, txResp, "response nil")
-	t.Logf("txResp:%+v", txResp)
-
-	recoverResp, err := bvsDirectory.Unpause(context.Background())
-	assert.NoError(t, err)
-	assert.NotNil(t, recoverResp, "response nil")
-	t.Logf("txResp:%+v", recoverResp)
-}
-
-func (s *DirectoryTestSuite) Test_SetPauser() {
-	t := s.T()
-	keyName := "caller"
-	chainIO, err := s.chainIO.SetupKeyring(keyName, "test")
-	assert.NoError(t, err)
-	txResp, err := api.NewDirectory(chainIO, s.contrAddr).SetPauser(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
-	assert.NoError(t, err)
-	assert.NotNil(t, txResp, "response nil")
-	t.Logf("txResp:%+v", txResp)
-}
-
-func (s *DirectoryTestSuite) Test_SetUnpauser() {
-	t := s.T()
-	keyName := "caller"
-	chainIO, err := s.chainIO.SetupKeyring(keyName, "test")
-	assert.NoError(t, err)
-	txResp, err := api.NewDirectory(chainIO, s.contrAddr).SetUnpauser(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
-	assert.NoError(t, err)
-	assert.NotNil(t, txResp, "response nil")
-	t.Logf("txResp:%+v", txResp)
-}
-
 func (s *DirectoryTestSuite) Test_SetDelegationManager() {
 	t := s.T()
 	keyName := "caller"
@@ -279,75 +234,75 @@ func (s *DirectoryTestSuite) Test_IsSaltSpent() {
 	t.Logf("txResp:%+v", txResp)
 }
 
-func (s *DirectoryTestSuite) Test_GetDelegationManager() {
+func (s *DirectoryTestSuite) Test_DelegationManager() {
 	t := s.T()
 	keyName := "caller"
 	chainIO, err := s.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	txResp, err := api.NewDirectory(chainIO, s.contrAddr).GetDelegationManager()
+	txResp, err := api.NewDirectory(chainIO, s.contrAddr).DelegationManager()
 	assert.NoError(t, err, "get delegation manager")
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
 
 }
 
-func (s *DirectoryTestSuite) Test_GetOwner() {
+func (s *DirectoryTestSuite) Test_Owner() {
 	t := s.T()
 	keyName := "caller"
 	chainIO, err := s.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	txResp, err := api.NewDirectory(chainIO, s.contrAddr).GetOwner()
-	assert.NoError(t, err, "GetOwner")
+	txResp, err := api.NewDirectory(chainIO, s.contrAddr).Owner()
+	assert.NoError(t, err, "Owner")
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
 }
 
-func (s *DirectoryTestSuite) Test_GetOperatorBvsRegistrationTypeHash() {
+func (s *DirectoryTestSuite) Test_OperatorBvsRegistrationTypeHash() {
 	t := s.T()
 	keyName := "caller"
 	chainIO, err := s.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	txResp, err := api.NewDirectory(chainIO, s.contrAddr).GetOperatorBvsRegistrationTypeHash()
+	txResp, err := api.NewDirectory(chainIO, s.contrAddr).OperatorBvsRegistrationTypeHash()
 	assert.NoError(t, err, "get operator bvs registration type hash")
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
 }
 
-func (s *DirectoryTestSuite) Test_GetDomainTypeHash() {
+func (s *DirectoryTestSuite) Test_DomainTypeHash() {
 	t := s.T()
 	keyName := "caller"
 	chainIO, err := s.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	txResp, err := api.NewDirectory(chainIO, s.contrAddr).GetDomainTypeHash()
-	assert.NoError(t, err, "TestGetDomainTypeHash")
+	txResp, err := api.NewDirectory(chainIO, s.contrAddr).DomainTypeHash()
+	assert.NoError(t, err, "TestDomainTypeHash")
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
 }
 
-func (s *DirectoryTestSuite) Test_GetDomainName() {
+func (s *DirectoryTestSuite) Test_DomainName() {
 	t := s.T()
 	keyName := "caller"
 	chainIO, err := s.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	txResp, err := api.NewDirectory(chainIO, s.contrAddr).GetDomainName()
-	assert.NoError(t, err, "GetDomainName")
+	txResp, err := api.NewDirectory(chainIO, s.contrAddr).DomainName()
+	assert.NoError(t, err, "DomainName")
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
 }
 
-func (s *DirectoryTestSuite) test_GetBvsInfo() {
+func (s *DirectoryTestSuite) test_BvsInfo() {
 	t := s.T()
 	keyName := "caller"
 	chainIO, err := s.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
-	txResp, err := api.NewDirectory(chainIO, s.contrAddr).GetBvsInfo("af0a809a3b8de8656c9b1af0389174a0ee49bf7094b84102171d4fe9f1d24770")
-	assert.NoError(t, err, "TestGetBvsInfo")
+	txResp, err := api.NewDirectory(chainIO, s.contrAddr).BvsInfo("af0a809a3b8de8656c9b1af0389174a0ee49bf7094b84102171d4fe9f1d24770")
+	assert.NoError(t, err, "TestBvsInfo")
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
 
 	// get non exist bvsHash will nil
-	txResp, err = api.NewDirectory(chainIO, s.contrAddr).GetBvsInfo("d2f665ee5cbc6e4d2fa992defb065fb1d51539db35654ed28feae24fcfa7cdbf")
-	assert.Error(t, err, "TestGetBvsInfo not failed")
+	txResp, err = api.NewDirectory(chainIO, s.contrAddr).BvsInfo("d2f665ee5cbc6e4d2fa992defb065fb1d51539db35654ed28feae24fcfa7cdbf")
+	assert.Error(t, err, "TestBvsInfo not failed")
 	assert.Nil(t, txResp, "response not nil")
 	t.Logf("Get not exist bvsHash txResp:%+v", txResp)
 }

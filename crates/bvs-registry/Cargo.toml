@@ -1,5 +1,5 @@
 [package]
-name = "bvs-delegation-manager"
+name = "bvs-registry"
 version = "2.0.0"
 edition = "2021"
 
@@ -12,27 +12,19 @@ exclude = [
 crate-type = ["cdylib", "rlib"]
 
 [features]
-library = []
 testing = ["library", "dep:cw-multi-test"]
+library = ["dep:strum"]
 
 [dependencies]
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
-cosmwasm-crypto = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
 thiserror = { workspace = true }
 serde = { workspace = true }
 schemars = { workspace = true }
-sha2 = { workspace = true }
-hex = { workspace = true }
-secp256k1 = { workspace = true }
-bech32 = { workspace = true }
-ripemd = { workspace = true }
-base64 = { workspace = true }
-bvs-base = { workspace = true }
+strum = { version = "0.27", features = ["derive"], optional = true }
 cw-multi-test = { workspace = true, optional = true }
-bvs-strategy-manager = { workspace = true, features = ["library"] }
 
 [dev-dependencies]
-cw-multi-test = { workspace = true }
+cw-multi-test = { workspace = true}
