@@ -292,6 +292,7 @@ dependencies = [
  "base64",
  "bech32 0.8.1",
  "bvs-base",
+ "bvs-delegation-manager",
  "bvs-strategy-manager",
  "bvs-testing",
  "cosmwasm-crypto",

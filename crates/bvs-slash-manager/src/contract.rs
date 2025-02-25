@@ -21,12 +21,12 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 
-use bvs_base::delegation::{
+use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
+use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
+use bvs_delegation_manager::msg::{
     ExecuteMsg as DelegationManagerExecuteMsg, OperatorResponse, OperatorStakersResponse,
     QueryMsg as DelegationManagerQueryMsg,
 };
-use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
-use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use bvs_strategy_manager::msg::ExecuteMsg as StrategyManagerExecuteMsg;
 
 const CONTRACT_NAME: &str = "BVS Slash Manager";
@@ -659,7 +659,6 @@ mod tests {
     use crate::utils::ExecuteSlashDetails;
     use base64::{engine::general_purpose, Engine as _};
     use bech32::{self, ToBase32, Variant};
-    use bvs_base::delegation::StakerShares;
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
