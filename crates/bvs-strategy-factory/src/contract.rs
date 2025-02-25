@@ -9,7 +9,9 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 
 use bvs_base::base::InstantiateMsg as StrategyInstantiateMsg;
-use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
+use bvs_base::pausable::{
+    only_when_not_paused, pause_all, pause_bit, unpause_all, unpause_bit, PAUSED_STATE,
+};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use bvs_base::strategy::ExecuteMsg as StrategyManagerExecuteMsg;
 
@@ -113,13 +115,25 @@ pub fn execute(
         }
         ExecuteMsg::AcceptOwnership {} => accept_ownership(deps, info),
         ExecuteMsg::CancelOwnershipTransfer {} => cancel_ownership_transfer(deps, info),
-        ExecuteMsg::Pause {} => {
+        ExecuteMsg::PauseAll {} => {
             check_pauser(deps.as_ref(), info.clone())?;
-            pause(deps, &info).map_err(ContractError::Std)
+            pause_all(deps, &info)?;
+            Ok(Response::new().add_attribute("method", "pause_all"))
         }
-        ExecuteMsg::Unpause {} => {
+        ExecuteMsg::UnpauseAll {} => {
             check_unpauser(deps.as_ref(), info.clone())?;
-            unpause(deps, &info).map_err(ContractError::Std)
+            unpause_all(deps, &info)?;
+            Ok(Response::new().add_attribute("method", "unpause_all"))
+        }
+        ExecuteMsg::PauseBit { index } => {
+            check_pauser(deps.as_ref(), info.clone())?;
+            pause_bit(deps, &info, index)?;
+            Ok(Response::new().add_attribute("method", "pause_bit"))
+        }
+        ExecuteMsg::UnpauseBit { index } => {
+            check_unpauser(deps.as_ref(), info.clone())?;
+            unpause_bit(deps, &info, index)?;
+            Ok(Response::new().add_attribute("method", "unpause_bit"))
         }
         ExecuteMsg::SetPauser { new_pauser } => {
             only_owner(deps.as_ref(), &info.clone())?;
@@ -570,6 +584,8 @@ mod tests {
         OwnedDeps<MockStorage, MockApi, MockQuerier>,
         Addr,
         MessageInfo,
+        Addr,
+        Addr,
     ) {
         let mut deps = mock_dependencies();
 
@@ -591,12 +607,12 @@ mod tests {
 
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-        (deps, initial_owner, info)
+        (deps, initial_owner, info, pauser, unpauser)
     }
 
     #[test]
     fn test_deploy_new_strategy() {
-        let (mut deps, _initial_owner, info) = setup_contract();
+        let (mut deps, _initial_owner, info, _pauser, _unpauser) = setup_contract();
         let token = deps.api.addr_make("token");
         let pauser = deps.api.addr_make("pauser");
         let unpauser = deps.api.addr_make("unpauser");
@@ -628,7 +644,7 @@ mod tests {
 
     #[test]
     fn test_blacklist_tokens() {
-        let (mut deps, initial_owner, _) = setup_contract();
+        let (mut deps, initial_owner, _, _pauser, _unpauser) = setup_contract();
 
         let info = message_info(&initial_owner, &[]);
 
@@ -713,7 +729,7 @@ mod tests {
 
     #[test]
     fn test_set_strategy_manager() {
-        let (mut deps, initial_owner, _) = setup_contract();
+        let (mut deps, initial_owner, _, _pauser, _unpauser) = setup_contract();
 
         let info = message_info(&initial_owner, &[]);
 
@@ -736,7 +752,7 @@ mod tests {
 
     #[test]
     fn test_update_config() {
-        let (mut deps, initial_owner, _) = setup_contract();
+        let (mut deps, initial_owner, _, _pauser, _unpauser) = setup_contract();
 
         let info = message_info(&initial_owner, &[]);
 
@@ -780,7 +796,7 @@ mod tests {
 
     #[test]
     fn test_two_step_transfer_ownership() {
-        let (mut deps, initial_owner, _) = setup_contract();
+        let (mut deps, initial_owner, _, _pauser, _unpauser) = setup_contract();
         let mock_env = mock_env();
         let old_owner_info = message_info(&initial_owner, &[]);
         let new_owner = deps.api.addr_make("new_owner");
@@ -865,7 +881,7 @@ mod tests {
 
     #[test]
     fn test_query_blacklist_status() {
-        let (mut deps, _initial_owner, _) = setup_contract();
+        let (mut deps, _initial_owner, _, _pauser, _unpauser) = setup_contract();
 
         let token1 = deps.api.addr_make("token1_address");
         let token2 = deps.api.addr_make("token2_address");
@@ -899,7 +915,7 @@ mod tests {
 
     #[test]
     fn test_query_strategy_combined() {
-        let (mut deps, _initial_owner, _) = setup_contract();
+        let (mut deps, _initial_owner, _, _pauser, _unpauser) = setup_contract();
 
         let token = deps.api.addr_make("token_address");
         let strategy = deps.api.addr_make("strategy_address");
@@ -934,7 +950,7 @@ mod tests {
 
     #[test]
     fn test_set_strategy_for_token() {
-        let (mut deps, _initial_owner, _) = setup_contract();
+        let (mut deps, _initial_owner, _, _pauser, _unpauser) = setup_contract();
 
         let token = deps.api.addr_make("token_address");
         let strategy = deps.api.addr_make("strategy_address");
@@ -954,5 +970,109 @@ mod tests {
 
         let stored_strategy = DEPLOYED_STRATEGIES.load(&deps.storage, &token).unwrap();
         assert_eq!(stored_strategy, strategy);
+    }
+
+    #[test]
+    fn test_pause_and_unpause_new_strategies() {
+        let (mut deps, initial_owner, _, pauser, unpauser) = setup_contract();
+
+        let info = message_info(&initial_owner, &[]);
+        let token = deps.api.addr_make("token");
+
+        let pauser_info = message_info(&pauser, &[]);
+        let unpauser_info = message_info(&unpauser, &[]);
+
+        // Pause the new strategies
+        let pause_msg = ExecuteMsg::PauseBit {
+            index: PAUSED_NEW_STRATEGIES,
+        };
+        let pause_res = execute(deps.as_mut(), mock_env(), pauser_info.clone(), pause_msg);
+
+        assert!(pause_res.is_ok());
+
+        // Try to deploy new strategy while paused, should fail
+        let deploy_msg = ExecuteMsg::DeployNewStrategy {
+            token: token.to_string(),
+            pauser: pauser.to_string(),
+            unpauser: unpauser.to_string(),
+        };
+        let deploy_res = execute(deps.as_mut(), mock_env(), info.clone(), deploy_msg.clone());
+        assert!(deploy_res.is_err());
+        if let Err(err) = deploy_res {
+            match err {
+                ContractError::Std(err) if err.to_string().contains("Functionality is paused") => {
+                    ()
+                }
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Unpause the new strategies
+        let unpause_msg = ExecuteMsg::UnpauseBit {
+            index: PAUSED_NEW_STRATEGIES,
+        };
+        let unpause_res = execute(
+            deps.as_mut(),
+            mock_env(),
+            unpauser_info.clone(),
+            unpause_msg,
+        );
+        assert!(unpause_res.is_ok());
+
+        // Try to deploy new strategy again, should succeed
+        let deploy_res = execute(deps.as_mut(), mock_env(), info.clone(), deploy_msg);
+        assert!(deploy_res.is_ok());
+    }
+
+    #[test]
+    fn test_pause_and_unpause_all() {
+        let (mut deps, initial_owner, _, pauser, unpauser) = setup_contract();
+
+        let info = message_info(&initial_owner, &[]);
+        let token = deps.api.addr_make("token");
+
+        let pauser_info = message_info(&pauser, &[]);
+        let unpauser_info = message_info(&unpauser, &[]);
+
+        // Pause all functionalities
+        let pause_all_msg = ExecuteMsg::PauseAll {};
+        let pause_all_res = execute(
+            deps.as_mut(),
+            mock_env(),
+            pauser_info.clone(),
+            pause_all_msg,
+        );
+        assert!(pause_all_res.is_ok());
+
+        // Try to deploy new strategy while all functionalities are paused, should fail
+        let deploy_msg = ExecuteMsg::DeployNewStrategy {
+            token: token.to_string(),
+            pauser: pauser.to_string(),
+            unpauser: unpauser.to_string(),
+        };
+        let deploy_res = execute(deps.as_mut(), mock_env(), info.clone(), deploy_msg.clone());
+        assert!(deploy_res.is_err());
+        if let Err(err) = deploy_res {
+            match err {
+                ContractError::Std(err) if err.to_string().contains("Functionality is paused") => {
+                    ()
+                }
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Unpause all functionalities
+        let unpause_all_msg = ExecuteMsg::UnpauseAll {};
+        let unpause_all_res = execute(
+            deps.as_mut(),
+            mock_env(),
+            unpauser_info.clone(),
+            unpause_all_msg,
+        );
+        assert!(unpause_all_res.is_ok());
+
+        // Try to deploy new strategy again, should succeed
+        let deploy_res = execute(deps.as_mut(), mock_env(), info.clone(), deploy_msg);
+        assert!(deploy_res.is_ok());
     }
 }

@@ -23,7 +23,9 @@ use bvs_base::delegation::{
     ExecuteMsg as DelegationManagerExecuteMsg, OperatorResponse, OperatorStakersResponse,
     QueryMsg as DelegationManagerQueryMsg,
 };
-use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
+use bvs_base::pausable::{
+    only_when_not_paused, pause_all, pause_bit, unpause_all, unpause_bit, PAUSED_STATE,
+};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use bvs_base::strategy::ExecuteMsg as StrategyManagerExecuteMsg;
 
@@ -183,13 +185,25 @@ pub fn execute(
         }
         ExecuteMsg::AcceptOwnership {} => accept_ownership(deps, info),
         ExecuteMsg::CancelOwnershipTransfer {} => cancel_ownership_transfer(deps, info),
-        ExecuteMsg::Pause {} => {
+        ExecuteMsg::PauseAll {} => {
             check_pauser(deps.as_ref(), info.clone())?;
-            pause(deps, &info).map_err(ContractError::Std)
+            pause_all(deps, &info)?;
+            Ok(Response::new().add_attribute("method", "pause_all"))
         }
-        ExecuteMsg::Unpause {} => {
+        ExecuteMsg::UnpauseAll {} => {
             check_unpauser(deps.as_ref(), info.clone())?;
-            unpause(deps, &info).map_err(ContractError::Std)
+            unpause_all(deps, &info)?;
+            Ok(Response::new().add_attribute("method", "unpause_all"))
+        }
+        ExecuteMsg::PauseBit { index } => {
+            check_pauser(deps.as_ref(), info.clone())?;
+            pause_bit(deps, &info, index)?;
+            Ok(Response::new().add_attribute("method", "pause_bit"))
+        }
+        ExecuteMsg::UnpauseBit { index } => {
+            check_unpauser(deps.as_ref(), info.clone())?;
+            unpause_bit(deps, &info, index)?;
+            Ok(Response::new().add_attribute("method", "unpause_bit"))
         }
         ExecuteMsg::SetPauser { new_pauser } => {
             only_owner(deps.as_ref(), &info.clone())?;
@@ -2452,5 +2466,445 @@ mod tests {
             ContractError::EndTimeTooLarge {} => {}
             err => panic!("Expected EndTimeTooLarge error, got: {:?}", err),
         }
+    }
+
+    #[test]
+    fn test_pause_and_unpause_execute_slash_request() {
+        let (mut deps, env, _info, delegation_manager, _owner, pauser, unpauser) =
+            instantiate_contract();
+
+        STRATEGY_MANAGER
+            .save(&mut deps.storage, &deps.api.addr_make("strategy_manager"))
+            .unwrap();
+
+        let slasher_addr = deps.api.addr_make("slasher");
+        let operator_addr = deps.api.addr_make("operator");
+
+        let private_key_hex1 = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (validator1, secret_key1, public_key_bytes1) =
+            generate_osmosis_public_key_from_private_key(private_key_hex1);
+
+        let slash_details = ExecuteSlashDetails {
+            slasher: slasher_addr.to_string(),
+            operator: operator_addr.to_string(),
+            share: Uint128::new(1000000),
+            slash_signature: 1,
+            slash_validator: vec![validator1.to_string()],
+            reason: "Invalid action".to_string(),
+            start_time: env.block.time.seconds(),
+            end_time: env.block.time.seconds() + 1000,
+            status: true,
+        };
+
+        let expected_slash_details = SlashDetails {
+            slasher: slasher_addr.clone(),
+            operator: operator_addr.clone(),
+            share: Uint128::new(1000000),
+            slash_signature: 1,
+            slash_validator: vec![validator1.clone()],
+            reason: "Invalid action".to_string(),
+            start_time: env.block.time.seconds(),
+            end_time: env.block.time.seconds() + 1000,
+            status: true,
+        };
+
+        let validators_public_keys =
+            vec!["A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()];
+
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg }
+                if *contract_addr == delegation_manager.to_string() =>
+            {
+                let query_msg: DelegationManagerQueryMsg = from_json(msg).unwrap();
+                match query_msg {
+                    DelegationManagerQueryMsg::IsOperator { .. } => {
+                        let operator_response = OperatorResponse { is_operator: true };
+                        SystemResult::Ok(ContractResult::Ok(
+                            to_json_binary(&operator_response).unwrap(),
+                        ))
+                    }
+                    DelegationManagerQueryMsg::GetOperatorStakers { .. } => {
+                        let stakers_response = OperatorStakersResponse {
+                            stakers_and_shares: vec![
+                                StakerShares {
+                                    staker: deps.api.addr_make("staker1"),
+                                    shares_per_strategy: vec![
+                                        (deps.api.addr_make("strategy1"), Uint128::new(10000000)),
+                                        (deps.api.addr_make("strategy2"), Uint128::new(20000000)),
+                                    ],
+                                },
+                                StakerShares {
+                                    staker: deps.api.addr_make("staker2"),
+                                    shares_per_strategy: vec![
+                                        (deps.api.addr_make("strategy1"), Uint128::new(15000000)),
+                                        (deps.api.addr_make("strategy2"), Uint128::new(25000000)),
+                                    ],
+                                },
+                            ],
+                        };
+                        SystemResult::Ok(ContractResult::Ok(
+                            to_json_binary(&stakers_response).unwrap(),
+                        ))
+                    }
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query_msg).unwrap(),
+                    }),
+                }
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        MINIMAL_SLASH_SIGNATURE.save(&mut deps.storage, &1).unwrap();
+
+        SLASHER
+            .save(&mut deps.storage, slasher_addr.clone(), &true)
+            .unwrap();
+
+        let slasher_info = message_info(&slasher_addr, &[]);
+
+        let execute_msg = ExecuteMsg::SetSlasherValidator {
+            validators: vec![validator1.to_string()],
+            validator_public_keys: validators_public_keys.clone(),
+            values: vec![true],
+        };
+
+        let response = execute(
+            deps.as_mut(),
+            env.clone(),
+            slasher_info.clone(),
+            execute_msg,
+        );
+
+        assert!(response.is_ok());
+
+        let submit_msg = ExecuteMsg::SubmitSlashRequest {
+            slash_details: slash_details.clone(),
+            validators_public_keys: validators_public_keys.clone(),
+        };
+
+        let submit_res = execute(deps.as_mut(), env.clone(), slasher_info.clone(), submit_msg);
+
+        assert!(submit_res.is_ok());
+
+        let submit_res = submit_res.unwrap();
+        let slash_hash = submit_res.events[0].attributes[0].value.clone();
+
+        let message_byte = calculate_slash_hash(
+            &slasher_addr,
+            &expected_slash_details,
+            &env.contract.address,
+            &[public_key_bytes1],
+        );
+
+        let secp = Secp256k1::new();
+        let message = Message::from_digest_slice(&message_byte).expect("32 bytes");
+        let signature = secp.sign_ecdsa(&message, &secret_key1);
+        let signature_bytes = signature.serialize_compact().to_vec();
+
+        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
+
+        let pauser_info = message_info(&pauser, &[]);
+
+        // Pause the execute slash request function
+        let pause_msg = ExecuteMsg::PauseBit {
+            index: PAUSED_EXECUTE_SLASH_REQUEST,
+        };
+        let pause_res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg);
+        assert!(pause_res.is_ok());
+
+        // Try to execute slash request while paused, should fail
+        let execute_msg = ExecuteMsg::ExecuteSlashRequest {
+            slash_hash: slash_hash.clone(),
+            signatures: vec![signature_base64.clone()],
+            validators_public_keys: validators_public_keys.clone(),
+        };
+
+        let execute_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            slasher_info.clone(),
+            execute_msg.clone(),
+        );
+
+        assert!(execute_res.is_err());
+        if let Err(err) = execute_res {
+            match err {
+                ContractError::Std(err) if err.to_string().contains("Functionality is paused") => {
+                    ()
+                }
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        let unpauser_info = message_info(&unpauser, &[]);
+
+        // Unpause the execute slash request function
+        let unpause_msg = ExecuteMsg::UnpauseBit {
+            index: PAUSED_EXECUTE_SLASH_REQUEST,
+        };
+        let unpause_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            unpauser_info.clone(),
+            unpause_msg,
+        );
+        assert!(unpause_res.is_ok());
+
+        // Try to execute slash request again, should succeed
+        let execute_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            slasher_info.clone(),
+            execute_msg,
+        );
+
+        assert!(execute_res.is_ok());
+
+        let execute_res = execute_res.unwrap();
+
+        assert_eq!(execute_res.events.len(), 1);
+        let event = &execute_res.events[0];
+        assert_eq!(event.ty, "slash_executed_weighted");
+        assert_eq!(event.attributes.len(), 4);
+
+        assert_eq!(event.attributes[0].key, "action");
+        assert_eq!(event.attributes[0].value, "execute_slash_request");
+
+        assert_eq!(event.attributes[1].key, "slash_hash");
+        assert_eq!(event.attributes[1].value, slash_hash.clone());
+
+        assert_eq!(event.attributes[2].key, "operator");
+        assert_eq!(event.attributes[2].value, operator_addr.to_string());
+
+        assert_eq!(event.attributes[3].key, "total_slash_share");
+        assert_eq!(event.attributes[3].value, "1000000");
+
+        let updated_slash_details = SLASH_DETAILS.load(&deps.storage, slash_hash).unwrap();
+        assert_eq!(updated_slash_details.status, false);
+    }
+
+    #[test]
+    fn test_pause_and_unpause_all() {
+        let (mut deps, env, _info, delegation_manager, _owner, pauser, unpauser) =
+            instantiate_contract();
+
+        STRATEGY_MANAGER
+            .save(&mut deps.storage, &deps.api.addr_make("strategy_manager"))
+            .unwrap();
+
+        let slasher_addr = deps.api.addr_make("slasher");
+        let operator_addr = deps.api.addr_make("operator");
+
+        let private_key_hex1 = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (validator1, secret_key1, public_key_bytes1) =
+            generate_osmosis_public_key_from_private_key(private_key_hex1);
+
+        let slash_details = ExecuteSlashDetails {
+            slasher: slasher_addr.to_string(),
+            operator: operator_addr.to_string(),
+            share: Uint128::new(1000000),
+            slash_signature: 1,
+            slash_validator: vec![validator1.to_string()],
+            reason: "Invalid action".to_string(),
+            start_time: env.block.time.seconds(),
+            end_time: env.block.time.seconds() + 1000,
+            status: true,
+        };
+
+        let expected_slash_details = SlashDetails {
+            slasher: slasher_addr.clone(),
+            operator: operator_addr.clone(),
+            share: Uint128::new(1000000),
+            slash_signature: 1,
+            slash_validator: vec![validator1.clone()],
+            reason: "Invalid action".to_string(),
+            start_time: env.block.time.seconds(),
+            end_time: env.block.time.seconds() + 1000,
+            status: true,
+        };
+
+        let validators_public_keys =
+            vec!["A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()];
+
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg }
+                if *contract_addr == delegation_manager.to_string() =>
+            {
+                let query_msg: DelegationManagerQueryMsg = from_json(msg).unwrap();
+                match query_msg {
+                    DelegationManagerQueryMsg::IsOperator { .. } => {
+                        let operator_response = OperatorResponse { is_operator: true };
+                        SystemResult::Ok(ContractResult::Ok(
+                            to_json_binary(&operator_response).unwrap(),
+                        ))
+                    }
+                    DelegationManagerQueryMsg::GetOperatorStakers { .. } => {
+                        let stakers_response = OperatorStakersResponse {
+                            stakers_and_shares: vec![
+                                StakerShares {
+                                    staker: deps.api.addr_make("staker1"),
+                                    shares_per_strategy: vec![
+                                        (deps.api.addr_make("strategy1"), Uint128::new(10000000)),
+                                        (deps.api.addr_make("strategy2"), Uint128::new(20000000)),
+                                    ],
+                                },
+                                StakerShares {
+                                    staker: deps.api.addr_make("staker2"),
+                                    shares_per_strategy: vec![
+                                        (deps.api.addr_make("strategy1"), Uint128::new(15000000)),
+                                        (deps.api.addr_make("strategy2"), Uint128::new(25000000)),
+                                    ],
+                                },
+                            ],
+                        };
+                        SystemResult::Ok(ContractResult::Ok(
+                            to_json_binary(&stakers_response).unwrap(),
+                        ))
+                    }
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query_msg).unwrap(),
+                    }),
+                }
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        MINIMAL_SLASH_SIGNATURE.save(&mut deps.storage, &1).unwrap();
+
+        SLASHER
+            .save(&mut deps.storage, slasher_addr.clone(), &true)
+            .unwrap();
+
+        let slasher_info = message_info(&slasher_addr, &[]);
+
+        let execute_msg = ExecuteMsg::SetSlasherValidator {
+            validators: vec![validator1.to_string()],
+            validator_public_keys: validators_public_keys.clone(),
+            values: vec![true],
+        };
+
+        let response = execute(
+            deps.as_mut(),
+            env.clone(),
+            slasher_info.clone(),
+            execute_msg,
+        );
+
+        assert!(response.is_ok());
+
+        let submit_msg = ExecuteMsg::SubmitSlashRequest {
+            slash_details: slash_details.clone(),
+            validators_public_keys: validators_public_keys.clone(),
+        };
+
+        let submit_res = execute(deps.as_mut(), env.clone(), slasher_info.clone(), submit_msg);
+
+        assert!(submit_res.is_ok());
+
+        let submit_res = submit_res.unwrap();
+        let slash_hash = submit_res.events[0].attributes[0].value.clone();
+
+        let message_byte = calculate_slash_hash(
+            &slasher_addr,
+            &expected_slash_details,
+            &env.contract.address,
+            &[public_key_bytes1],
+        );
+
+        let secp = Secp256k1::new();
+        let message = Message::from_digest_slice(&message_byte).expect("32 bytes");
+        let signature = secp.sign_ecdsa(&message, &secret_key1);
+        let signature_bytes = signature.serialize_compact().to_vec();
+
+        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
+
+        let pauser_info = message_info(&pauser, &[]);
+
+        // Pause all functions
+        let pause_all_msg = ExecuteMsg::PauseAll {};
+        let pause_all_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            pauser_info.clone(),
+            pause_all_msg,
+        );
+        println!("{:?}", pause_all_res);
+        assert!(pause_all_res.is_ok());
+
+        // Try to execute slash request while paused, should fail
+        let execute_msg = ExecuteMsg::ExecuteSlashRequest {
+            slash_hash: slash_hash.clone(),
+            signatures: vec![signature_base64.clone()],
+            validators_public_keys: validators_public_keys.clone(),
+        };
+
+        let execute_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            slasher_info.clone(),
+            execute_msg.clone(),
+        );
+
+        assert!(execute_res.is_err());
+        if let Err(err) = execute_res {
+            match err {
+                ContractError::Std(err) if err.to_string().contains("Functionality is paused") => {
+                    ()
+                }
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        let unpauser_info = message_info(&unpauser, &[]);
+
+        // Unpause all functions
+        let unpause_all_msg = ExecuteMsg::UnpauseAll {};
+        let unpause_all_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            unpauser_info.clone(),
+            unpause_all_msg,
+        );
+        assert!(unpause_all_res.is_ok());
+
+        // Try to execute slash request again, should succeed
+        let execute_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            slasher_info.clone(),
+            execute_msg,
+        );
+
+        assert!(execute_res.is_ok());
+
+        let execute_res = execute_res.unwrap();
+
+        assert_eq!(execute_res.events.len(), 1);
+        let event = &execute_res.events[0];
+        assert_eq!(event.ty, "slash_executed_weighted");
+        assert_eq!(event.attributes.len(), 4);
+
+        assert_eq!(event.attributes[0].key, "action");
+        assert_eq!(event.attributes[0].value, "execute_slash_request");
+
+        assert_eq!(event.attributes[1].key, "slash_hash");
+        assert_eq!(event.attributes[1].value, slash_hash.clone());
+
+        assert_eq!(event.attributes[2].key, "operator");
+        assert_eq!(event.attributes[2].value, operator_addr.to_string());
+
+        assert_eq!(event.attributes[3].key, "total_slash_share");
+        assert_eq!(event.attributes[3].value, "1000000");
+
+        let updated_slash_details = SLASH_DETAILS.load(&deps.storage, slash_hash).unwrap();
+        assert_eq!(updated_slash_details.status, false);
     }
 }

@@ -29,7 +29,9 @@ use bvs_base::base::{
     ExecuteMsg as StrategyExecuteMsg, QueryMsg as StrategyQueryMsg, StrategyState,
 };
 use bvs_base::delegation::ExecuteMsg as DelegationManagerExecuteMsg;
-use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
+use bvs_base::pausable::{
+    only_when_not_paused, pause_all, pause_bit, unpause_all, unpause_bit, PAUSED_STATE,
+};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 
 const CONTRACT_NAME: &str = "BVS Strategy Manager";
@@ -229,13 +231,25 @@ pub fn execute(
         }
         ExecuteMsg::AcceptOwnership {} => accept_ownership(deps, info),
         ExecuteMsg::CancelOwnershipTransfer {} => cancel_ownership_transfer(deps, info),
-        ExecuteMsg::Pause {} => {
+        ExecuteMsg::PauseAll {} => {
             check_pauser(deps.as_ref(), info.clone())?;
-            pause(deps, &info).map_err(ContractError::Std)
+            pause_all(deps, &info)?;
+            Ok(Response::new().add_attribute("method", "pause_all"))
         }
-        ExecuteMsg::Unpause {} => {
+        ExecuteMsg::UnpauseAll {} => {
             check_unpauser(deps.as_ref(), info.clone())?;
-            unpause(deps, &info).map_err(ContractError::Std)
+            unpause_all(deps, &info)?;
+            Ok(Response::new().add_attribute("method", "unpause_all"))
+        }
+        ExecuteMsg::PauseBit { index } => {
+            check_pauser(deps.as_ref(), info.clone())?;
+            pause_bit(deps, &info, index)?;
+            Ok(Response::new().add_attribute("method", "pause_bit"))
+        }
+        ExecuteMsg::UnpauseBit { index } => {
+            check_unpauser(deps.as_ref(), info.clone())?;
+            unpause_bit(deps, &info, index)?;
+            Ok(Response::new().add_attribute("method", "unpause_bit"))
         }
         ExecuteMsg::SetPauser { new_pauser } => {
             only_owner(deps.as_ref(), &info.clone())?;
@@ -1058,9 +1072,7 @@ mod tests {
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
-    use cosmwasm_std::{
-        attr, from_json, Addr, ContractResult, OwnedDeps, SystemError, SystemResult,
-    };
+    use cosmwasm_std::{from_json, Addr, ContractResult, OwnedDeps, SystemError, SystemResult};
     use ripemd::Ripemd160;
     use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
     use sha2::{Digest, Sha256};
@@ -2863,54 +2875,6 @@ mod tests {
     }
 
     #[test]
-    fn test_pause() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let pause_msg = ExecuteMsg::Pause {};
-        let res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg).unwrap();
-
-        assert_eq!(res.attributes, vec![attr("action", "PAUSED")]);
-
-        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_state, 1);
-    }
-
-    #[test]
-    fn test_unpause() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            unpauser_info,
-        ) = instantiate_contract();
-
-        let unpause_msg = ExecuteMsg::Unpause {};
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            unpauser_info.clone(),
-            unpause_msg,
-        )
-        .unwrap();
-
-        assert_eq!(res.attributes, vec![attr("action", "UNPAUSED")]);
-
-        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_state, 0);
-    }
-
-    #[test]
     fn test_set_pauser() {
         let (
             mut deps,
@@ -2976,5 +2940,264 @@ mod tests {
 
         let unpauser = UNPAUSER.load(&deps.storage).unwrap();
         assert_eq!(unpauser, Addr::unchecked(new_unpauser));
+    }
+
+    #[test]
+    fn test_pause_and_unpause_deposits() {
+        let (
+            mut deps,
+            env,
+            _owner_info,
+            info_delegation_manager,
+            info_whitelister,
+            pauser_info,
+            unpauser_info,
+        ) = instantiate_contract();
+
+        // Pause the deposits
+        let pause_msg = ExecuteMsg::PauseBit {
+            index: PAUSED_DEPOSITS,
+        };
+        let pause_res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg);
+        assert!(pause_res.is_ok());
+
+        let strategy = deps.api.addr_make("strategy1").to_string();
+        let token = deps.api.addr_make("token").to_string();
+        let amount = Uint128::new(100);
+
+        let msg = ExecuteMsg::AddStrategiesToWhitelist {
+            strategies: vec![strategy.clone()],
+            third_party_transfers_forbidden_values: vec![false],
+        };
+
+        let _res = execute(deps.as_mut(), env.clone(), info_whitelister.clone(), msg).unwrap();
+
+        let strategy_for_closure = strategy.clone();
+        let token_for_closure = token.clone();
+        let delegation_manager_sender = info_delegation_manager.sender.clone();
+
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg } if *contract_addr == strategy_for_closure => {
+                let strategy_query_msg: StrategyQueryMsg = from_json(msg).unwrap();
+                match strategy_query_msg {
+                    StrategyQueryMsg::GetStrategyState {} => {
+                        let strategy_state = StrategyState {
+                            strategy_manager: delegation_manager_sender.clone(),
+                            underlying_token: Addr::unchecked(token_for_closure.clone()),
+                            total_shares: Uint128::new(1000),
+                        };
+                        SystemResult::Ok(ContractResult::Ok(
+                            to_json_binary(&strategy_state).unwrap(),
+                        ))
+                    }
+                }
+            }
+            WasmQuery::Smart { contract_addr, msg } if *contract_addr == token_for_closure => {
+                let cw20_query_msg: Cw20QueryMsg = from_json(msg).unwrap();
+                match cw20_query_msg {
+                    Cw20QueryMsg::Balance { address: _ } => SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(&Cw20BalanceResponse {
+                            balance: Uint128::new(1000),
+                        })
+                        .unwrap(),
+                    )),
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    }),
+                }
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        // Try to deposit while paused, should fail
+        let deposit_msg = ExecuteMsg::DepositIntoStrategy {
+            strategy: strategy.clone(),
+            token: token.clone(),
+            amount,
+        };
+
+        let deposit_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info_delegation_manager.clone(),
+            deposit_msg.clone(),
+        );
+        assert!(deposit_res.is_err());
+        if let Err(err) = deposit_res {
+            match err {
+                ContractError::Std(err) if err.to_string().contains("Functionality is paused") => {
+                    ()
+                }
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Unpause the deposits
+        let unpause_msg = ExecuteMsg::UnpauseBit {
+            index: PAUSED_DEPOSITS,
+        };
+        let unpause_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            unpauser_info.clone(),
+            unpause_msg,
+        );
+        assert!(unpause_res.is_ok());
+
+        // Try to deposit again, should succeed
+        let deposit_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info_delegation_manager.clone(),
+            deposit_msg,
+        );
+        assert!(deposit_res.is_ok());
+
+        let deposit_res = deposit_res.unwrap();
+        assert_eq!(deposit_res.attributes.len(), 1);
+        assert_eq!(deposit_res.attributes[0].key, "new_shares");
+        assert_eq!(deposit_res.attributes[0].value, "100");
+
+        let balance = token_balance(
+            &QuerierWrapper::new(&deps.querier),
+            &Addr::unchecked(token),
+            &env.contract.address,
+        )
+        .unwrap();
+        assert_eq!(balance, Uint128::new(1000));
+    }
+
+    #[test]
+    fn test_pause_and_unpause_all() {
+        let (
+            mut deps,
+            env,
+            _owner_info,
+            info_delegation_manager,
+            info_whitelister,
+            pauser_info,
+            unpauser_info,
+        ) = instantiate_contract();
+
+        // Pause all functionalities
+        let pause_all_msg = ExecuteMsg::PauseAll {};
+        let pause_all_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            pauser_info.clone(),
+            pause_all_msg,
+        );
+        assert!(pause_all_res.is_ok());
+
+        let strategy = deps.api.addr_make("strategy1").to_string();
+        let token = deps.api.addr_make("token").to_string();
+        let amount = Uint128::new(100);
+
+        let msg = ExecuteMsg::AddStrategiesToWhitelist {
+            strategies: vec![strategy.clone()],
+            third_party_transfers_forbidden_values: vec![false],
+        };
+
+        let _res = execute(deps.as_mut(), env.clone(), info_whitelister.clone(), msg).unwrap();
+
+        let strategy_for_closure = strategy.clone();
+        let token_for_closure = token.clone();
+        let delegation_manager_sender = info_delegation_manager.sender.clone();
+
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg } if *contract_addr == strategy_for_closure => {
+                let strategy_query_msg: StrategyQueryMsg = from_json(msg).unwrap();
+                match strategy_query_msg {
+                    StrategyQueryMsg::GetStrategyState {} => {
+                        let strategy_state = StrategyState {
+                            strategy_manager: delegation_manager_sender.clone(),
+                            underlying_token: Addr::unchecked(token_for_closure.clone()),
+                            total_shares: Uint128::new(1000),
+                        };
+                        SystemResult::Ok(ContractResult::Ok(
+                            to_json_binary(&strategy_state).unwrap(),
+                        ))
+                    }
+                }
+            }
+            WasmQuery::Smart { contract_addr, msg } if *contract_addr == token_for_closure => {
+                let cw20_query_msg: Cw20QueryMsg = from_json(msg).unwrap();
+                match cw20_query_msg {
+                    Cw20QueryMsg::Balance { address: _ } => SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(&Cw20BalanceResponse {
+                            balance: Uint128::new(1000),
+                        })
+                        .unwrap(),
+                    )),
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    }),
+                }
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        // Try to deposit while all functionalities are paused, should fail
+        let deposit_msg = ExecuteMsg::DepositIntoStrategy {
+            strategy: strategy.clone(),
+            token: token.clone(),
+            amount,
+        };
+
+        let deposit_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info_delegation_manager.clone(),
+            deposit_msg.clone(),
+        );
+        assert!(deposit_res.is_err());
+        if let Err(err) = deposit_res {
+            match err {
+                ContractError::Std(err) if err.to_string().contains("Functionality is paused") => {
+                    ()
+                }
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Unpause all functionalities
+        let unpause_all_msg = ExecuteMsg::UnpauseAll {};
+        let unpause_all_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            unpauser_info.clone(),
+            unpause_all_msg,
+        );
+        assert!(unpause_all_res.is_ok());
+
+        // Try to deposit again, should succeed
+        let deposit_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info_delegation_manager.clone(),
+            deposit_msg,
+        );
+        assert!(deposit_res.is_ok());
+
+        let deposit_res = deposit_res.unwrap();
+        assert_eq!(deposit_res.attributes.len(), 1);
+        assert_eq!(deposit_res.attributes[0].key, "new_shares");
+        assert_eq!(deposit_res.attributes[0].value, "100");
+
+        let balance = token_balance(
+            &QuerierWrapper::new(&deps.querier),
+            &Addr::unchecked(token),
+            &env.contract.address,
+        )
+        .unwrap();
+        assert_eq!(balance, Uint128::new(1000));
     }
 }

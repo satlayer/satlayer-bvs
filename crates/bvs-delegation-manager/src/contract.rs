@@ -30,7 +30,9 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 
-use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
+use bvs_base::pausable::{
+    only_when_not_paused, pause_all, pause_bit, unpause_all, unpause_bit, PAUSED_STATE,
+};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use bvs_base::strategy::{
     DepositsResponse, ExecuteMsg as StrategyManagerExecuteMsg, QueryMsg as StrategyManagerQueryMsg,
@@ -319,13 +321,25 @@ pub fn execute(
         }
         ExecuteMsg::AcceptOwnership {} => accept_ownership(deps, info),
         ExecuteMsg::CancelOwnershipTransfer {} => cancel_ownership_transfer(deps, info),
-        ExecuteMsg::Pause {} => {
+        ExecuteMsg::PauseAll {} => {
             check_pauser(deps.as_ref(), info.clone())?;
-            pause(deps, &info).map_err(ContractError::Std)
+            pause_all(deps, &info)?;
+            Ok(Response::new().add_attribute("method", "pause_all"))
         }
-        ExecuteMsg::Unpause {} => {
+        ExecuteMsg::UnpauseAll {} => {
             check_unpauser(deps.as_ref(), info.clone())?;
-            unpause(deps, &info).map_err(ContractError::Std)
+            unpause_all(deps, &info)?;
+            Ok(Response::new().add_attribute("method", "unpause_all"))
+        }
+        ExecuteMsg::PauseBit { index } => {
+            check_pauser(deps.as_ref(), info.clone())?;
+            pause_bit(deps, &info, index)?;
+            Ok(Response::new().add_attribute("method", "pause_bit"))
+        }
+        ExecuteMsg::UnpauseBit { index } => {
+            check_unpauser(deps.as_ref(), info.clone())?;
+            unpause_bit(deps, &info, index)?;
+            Ok(Response::new().add_attribute("method", "unpause_bit"))
         }
         ExecuteMsg::SetPauser { new_pauser } => {
             only_owner(deps.as_ref(), &info.clone())?;
@@ -4750,40 +4764,6 @@ mod tests {
     }
 
     #[test]
-    fn test_pause() {
-        let (mut deps, env, _owner_info, pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
-
-        let pause_msg = ExecuteMsg::Pause {};
-        let res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg).unwrap();
-
-        assert_eq!(res.attributes, vec![attr("action", "PAUSED")]);
-
-        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_state, 1);
-    }
-
-    #[test]
-    fn test_unpause() {
-        let (mut deps, env, _owner_info, _pauser_info, unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
-
-        let unpause_msg = ExecuteMsg::Unpause {};
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            unpauser_info.clone(),
-            unpause_msg,
-        )
-        .unwrap();
-
-        assert_eq!(res.attributes, vec![attr("action", "UNPAUSED")]);
-
-        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_state, 0);
-    }
-
-    #[test]
     fn test_set_pauser() {
         let (mut deps, env, owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
             instantiate_contract();
@@ -4835,5 +4815,608 @@ mod tests {
 
         let unpauser = UNPAUSER.load(&deps.storage).unwrap();
         assert_eq!(unpauser, Addr::unchecked(new_unpauser));
+    }
+
+    #[test]
+    fn test_pause_and_unpause_delegate() {
+        let (mut deps, env, owner_info, pauser_info, unpauser_info, _strategy_manager_info) =
+            instantiate_contract();
+
+        // Pause the specific functionality
+        let pause_msg = ExecuteMsg::PauseBit {
+            index: PAUSED_NEW_DELEGATION,
+        };
+        let res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg).unwrap();
+        assert_eq!(res.attributes, vec![attr("method", "pause_bit")]);
+
+        let approver_private_key_hex =
+            "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (approver, approver_secret_key, approver_public_key_bytes) =
+            generate_osmosis_public_key_from_private_key(approver_private_key_hex);
+
+        let staker = deps.api.addr_make("staker");
+        let operator = deps.api.addr_make("operator");
+
+        let operator_details = OperatorDetails {
+            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
+            delegation_approver: approver.clone(),
+            staker_opt_out_window_blocks: 100,
+        };
+
+        OPERATOR_DETAILS
+            .save(deps.as_mut().storage, &operator, &operator_details)
+            .unwrap();
+
+        let salt = Binary::from(b"salt");
+
+        let delegate_params = DelegateParams {
+            staker: staker.clone(),
+            operator: operator.clone(),
+            public_key: Binary::from(approver_public_key_bytes.clone()),
+            salt: salt.clone(),
+        };
+
+        let current_time = env.block.time.seconds();
+        let expiry = current_time + 1000;
+        let contract_addr = env.contract.address.clone();
+
+        let params = ApproverDigestHashParams {
+            staker: staker.clone(),
+            operator: operator.clone(),
+            approver: approver.clone(),
+            approver_public_key: Binary::from(approver_public_key_bytes.clone()),
+            approver_salt: salt.clone(),
+            expiry,
+            contract_addr: contract_addr.clone(),
+        };
+
+        let approver_signature_and_expiry = SignatureWithExpiry {
+            signature: mock_approver_signature_with_message(
+                env.clone(),
+                params.clone(),
+                &approver_secret_key,
+            ),
+            expiry,
+        };
+
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } if *contract_addr == deps.api.addr_make("strategy_manager").to_string() => {
+                SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&DepositsResponse {
+                        strategies: vec![
+                            deps.api.addr_make("strategy1"),
+                            deps.api.addr_make("strategy2"),
+                        ],
+                        shares: vec![Uint128::new(100), Uint128::new(200)],
+                    })
+                    .unwrap(),
+                ))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        // Attempt to delegate while paused
+        let res = delegate(
+            deps.as_mut(),
+            owner_info.clone(),
+            env.clone(),
+            approver_signature_and_expiry.clone(),
+            delegate_params.clone(),
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::Std(err) if err.to_string().contains("Functionality is paused") => {
+                    ()
+                }
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Unpause the specific functionality
+        let unpause_msg = ExecuteMsg::UnpauseBit {
+            index: PAUSED_NEW_DELEGATION,
+        };
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            unpauser_info.clone(),
+            unpause_msg,
+        )
+        .unwrap();
+        assert_eq!(res.attributes, vec![attr("method", "unpause_bit")]);
+
+        // Attempt to delegate after unpausing
+        let res = delegate(
+            deps.as_mut(),
+            owner_info.clone(),
+            env.clone(),
+            approver_signature_and_expiry,
+            delegate_params,
+        );
+        assert!(res.is_ok());
+
+        let res = res.unwrap();
+        assert_eq!(res.events.len(), 1);
+        assert_eq!(res.events[0].ty, "Delegate");
+        assert_eq!(res.events[0].attributes.len(), 3);
+        assert_eq!(res.events[0].attributes[0].key, "method");
+        assert_eq!(res.events[0].attributes[0].value, "delegate");
+        assert_eq!(res.events[0].attributes[1].key, "staker");
+        assert_eq!(res.events[0].attributes[1].value, staker.to_string());
+        assert_eq!(res.events[0].attributes[2].key, "operator");
+        assert_eq!(res.events[0].attributes[2].value, operator.to_string());
+    }
+
+    #[test]
+    fn test_pause_and_unpause_undelegate() {
+        let (mut deps, env, _owner_info, pauser_info, unpauser_info, _strategy_manager_info) =
+            instantiate_contract();
+
+        // Pause the specific functionality
+        let pause_msg = ExecuteMsg::PauseBit {
+            index: PAUSED_ENTER_WITHDRAWAL_QUEUE,
+        };
+        let res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg).unwrap();
+        assert_eq!(res.attributes, vec![attr("method", "pause_bit")]);
+
+        let approver_private_key_hex =
+            "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (approver, approver_secret_key, approver_public_key_bytes) =
+            generate_osmosis_public_key_from_private_key(approver_private_key_hex);
+
+        let staker = deps.api.addr_make("staker");
+        let staker_info = message_info(&staker, &[]);
+
+        let operator = deps.api.addr_make("operator");
+
+        let operator_details = OperatorDetails {
+            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
+            delegation_approver: approver.clone(),
+            staker_opt_out_window_blocks: 100,
+        };
+
+        OPERATOR_DETAILS
+            .save(deps.as_mut().storage, &operator, &operator_details)
+            .unwrap();
+
+        let salt = Binary::from(b"salt");
+
+        let delegate_params = DelegateParams {
+            staker: staker.clone(),
+            operator: operator.clone(),
+            public_key: Binary::from(approver_public_key_bytes.clone()),
+            salt: salt.clone(),
+        };
+
+        let current_time = env.block.time.seconds();
+        let expiry = current_time + 1000;
+        let contract_addr = env.contract.address.clone();
+
+        let params = ApproverDigestHashParams {
+            staker: staker.clone(),
+            operator: operator.clone(),
+            approver: approver.clone(),
+            approver_public_key: Binary::from(approver_public_key_bytes.clone()),
+            approver_salt: salt.clone(),
+            expiry,
+            contract_addr: contract_addr.clone(),
+        };
+
+        let approver_signature_and_expiry = SignatureWithExpiry {
+            signature: mock_approver_signature_with_message(
+                env.clone(),
+                params.clone(),
+                &approver_secret_key,
+            ),
+            expiry,
+        };
+
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } if *contract_addr == deps.api.addr_make("strategy_manager").to_string() => {
+                SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&DepositsResponse {
+                        strategies: vec![
+                            deps.api.addr_make("strategy1"),
+                            deps.api.addr_make("strategy2"),
+                        ],
+                        shares: vec![Uint128::new(100), Uint128::new(200)],
+                    })
+                    .unwrap(),
+                ))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        // Attempt to delegate while paused
+        let res = delegate(
+            deps.as_mut(),
+            staker_info.clone(),
+            env.clone(),
+            approver_signature_and_expiry.clone(),
+            delegate_params.clone(),
+        );
+        assert!(res.is_ok());
+
+        // Attempt to undelegate while paused
+        let undelegate_msg = ExecuteMsg::Undelegate {
+            staker: staker.to_string(),
+        };
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            staker_info.clone(),
+            undelegate_msg.clone(),
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::Std(err) if err.to_string().contains("Functionality is paused") => {
+                    ()
+                }
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Unpause the specific functionality
+        let unpause_msg = ExecuteMsg::UnpauseBit {
+            index: PAUSED_ENTER_WITHDRAWAL_QUEUE,
+        };
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            unpauser_info.clone(),
+            unpause_msg,
+        )
+        .unwrap();
+        assert_eq!(res.attributes, vec![attr("method", "unpause_bit")]);
+
+        // Attempt to undelegate after unpausing
+        let staker = deps.api.addr_make("staker1");
+        let operator = deps.api.addr_make("operator1");
+        let strategies = [deps.api.addr_make("strategy1")];
+        let shares = [Uint128::new(100)];
+
+        let operator_details = OperatorDetails {
+            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
+            delegation_approver: deps.api.addr_make("approver"),
+            staker_opt_out_window_blocks: 100,
+        };
+        OPERATOR_DETAILS
+            .save(deps.as_mut().storage, &operator, &operator_details)
+            .unwrap();
+
+        OPERATOR_SHARES
+            .save(
+                deps.as_mut().storage,
+                (&operator, &strategies[0]),
+                &shares[0],
+            )
+            .unwrap();
+        DELEGATED_TO
+            .save(deps.as_mut().storage, &staker, &operator)
+            .unwrap();
+
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg }
+                if *contract_addr == deps.api.addr_make("strategy_manager").to_string() =>
+            {
+                let query_msg: Result<StrategyManagerQueryMsg, _> = from_json(msg);
+                if let Ok(StrategyManagerQueryMsg::GetDeposits { staker: _ }) = query_msg {
+                    let simulated_response = DepositsResponse {
+                        strategies: vec![deps.api.addr_make("strategy1")],
+                        shares: vec![Uint128::new(100)],
+                    };
+                    SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(&simulated_response).unwrap(),
+                    ))
+                } else if let Ok(StrategyManagerQueryMsg::IsThirdPartyTransfersForbidden {
+                    strategy: _,
+                }) = query_msg
+                {
+                    SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(&ThirdPartyTransfersForbiddenResponse {
+                            is_forbidden: false,
+                        })
+                        .unwrap(),
+                    ))
+                } else {
+                    SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    })
+                }
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        let info = message_info(&staker.clone(), &[]);
+
+        let undelegate_msg = ExecuteMsg::Undelegate {
+            staker: staker.to_string(),
+        };
+
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            undelegate_msg.clone(),
+        );
+
+        let events = res.unwrap().events.clone();
+        assert!(events.iter().any(|e| e.ty == "WithdrawalQueued"));
+        assert!(events.iter().any(|e| e.ty == "StakerUndelegated"));
+
+        let stored_shares = OPERATOR_SHARES
+            .load(deps.as_ref().storage, (&operator, &strategies[0]))
+            .unwrap();
+        assert_eq!(stored_shares, Uint128::zero());
+    }
+
+    #[test]
+    fn test_pause_and_unpause_withdrawal() {
+        let (mut deps, env, _owner_info, pauser_info, unpauser_info, _strategy_manager_info) =
+            instantiate_contract();
+
+        // Pause the specific functionality
+        let pause_msg = ExecuteMsg::PauseBit {
+            index: PAUSED_EXIT_WITHDRAWAL_QUEUE,
+        };
+        let res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg).unwrap();
+        assert_eq!(res.attributes, vec![attr("method", "pause_bit")]);
+
+        let staker = deps.api.addr_make("staker1");
+        let operator = deps.api.addr_make("operator1");
+        let withdrawer = staker.clone();
+        let strategy1 = deps.api.addr_make("strategy1");
+        let strategy2 = deps.api.addr_make("strategy2");
+        let tokens = vec![deps.api.addr_make("token1"), deps.api.addr_make("token2")];
+        let shares = vec![Uint128::new(100), Uint128::new(200)];
+        let strategies = vec![strategy1.clone(), strategy2.clone()];
+
+        DELEGATED_TO
+            .save(deps.as_mut().storage, &withdrawer, &operator)
+            .unwrap();
+
+        let withdrawal = Withdrawal {
+            staker: staker.clone(),
+            delegated_to: operator.clone(),
+            withdrawer: withdrawer.clone(),
+            nonce: Uint128::new(0),
+            start_block: env.block.height - 100, // Simulate sufficient delay has passed
+            strategies: strategies.clone(),
+            shares: shares.clone(),
+        };
+
+        let withdrawal_root = calculate_withdrawal_root(&withdrawal).unwrap();
+        PENDING_WITHDRAWALS
+            .save(deps.as_mut().storage, &withdrawal_root, &true)
+            .unwrap();
+
+        STRATEGY_WITHDRAWAL_DELAY_BLOCKS
+            .save(deps.as_mut().storage, &strategy1.clone(), &5u64)
+            .unwrap();
+        STRATEGY_WITHDRAWAL_DELAY_BLOCKS
+            .save(deps.as_mut().storage, &strategy2.clone(), &10u64)
+            .unwrap();
+
+        let strategy1_clone = strategy1.clone();
+        let strategy2_clone = strategy2.clone();
+
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } if *contract_addr == deps.api.addr_make("strategy_manager").to_string() => {
+                SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&(
+                        vec![strategy1_clone.clone(), strategy2_clone.clone()],
+                        vec![Uint128::new(100), Uint128::new(200)],
+                    ))
+                    .unwrap(),
+                ))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        let info = message_info(&withdrawer, &[]);
+
+        let complete_msg = ExecuteMsg::CompleteQueuedWithdrawal {
+            withdrawal: withdrawal.clone(),
+            tokens: tokens.clone(),
+            middleware_times_index: 0,
+            receive_as_tokens: true,
+        };
+
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            complete_msg.clone(),
+        );
+        assert!(res.is_err());
+
+        // Unpause the specific functionality
+        let unpause_msg = ExecuteMsg::UnpauseBit {
+            index: PAUSED_EXIT_WITHDRAWAL_QUEUE,
+        };
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            unpauser_info.clone(),
+            unpause_msg,
+        )
+        .unwrap();
+        assert_eq!(res.attributes, vec![attr("method", "unpause_bit")]);
+
+        // Attempt to complete withdrawal after unpausing
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            complete_msg.clone(),
+        );
+
+        assert_eq!(res.as_ref().unwrap().events.len(), 1);
+        assert_eq!(res.as_ref().unwrap().events[0].ty, "WithdrawalCompleted");
+        assert!(
+            res.as_ref().unwrap().events[0]
+                .attributes
+                .iter()
+                .any(|attr| attr.key == "withdrawal_root"
+                    && attr.value == withdrawal_root.to_string())
+        );
+
+        assert!(!PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root));
+    }
+
+    #[test]
+    fn test_pause_and_unpause_all() {
+        let (mut deps, env, owner_info, pauser_info, unpauser_info, _strategy_manager_info) =
+            instantiate_contract();
+
+        let pause_msg = ExecuteMsg::PauseAll {};
+        let res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg).unwrap();
+        assert_eq!(res.attributes, vec![attr("method", "pause_all")]);
+
+        let approver_private_key_hex =
+            "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (approver, approver_secret_key, approver_public_key_bytes) =
+            generate_osmosis_public_key_from_private_key(approver_private_key_hex);
+
+        let staker = deps.api.addr_make("staker");
+        let operator = deps.api.addr_make("operator");
+
+        let operator_details = OperatorDetails {
+            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
+            delegation_approver: approver.clone(),
+            staker_opt_out_window_blocks: 100,
+        };
+
+        OPERATOR_DETAILS
+            .save(deps.as_mut().storage, &operator, &operator_details)
+            .unwrap();
+
+        let salt = Binary::from(b"salt");
+
+        let delegate_params = DelegateParams {
+            staker: staker.clone(),
+            operator: operator.clone(),
+            public_key: Binary::from(approver_public_key_bytes.clone()),
+            salt: salt.clone(),
+        };
+
+        let current_time = env.block.time.seconds();
+        let expiry = current_time + 1000;
+        let contract_addr = env.contract.address.clone();
+
+        let params = ApproverDigestHashParams {
+            staker: staker.clone(),
+            operator: operator.clone(),
+            approver: approver.clone(),
+            approver_public_key: Binary::from(approver_public_key_bytes.clone()),
+            approver_salt: salt.clone(),
+            expiry,
+            contract_addr: contract_addr.clone(),
+        };
+
+        let approver_signature_and_expiry = SignatureWithExpiry {
+            signature: mock_approver_signature_with_message(
+                env.clone(),
+                params.clone(),
+                &approver_secret_key,
+            ),
+            expiry,
+        };
+
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } if *contract_addr == deps.api.addr_make("strategy_manager").to_string() => {
+                SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&DepositsResponse {
+                        strategies: vec![
+                            deps.api.addr_make("strategy1"),
+                            deps.api.addr_make("strategy2"),
+                        ],
+                        shares: vec![Uint128::new(100), Uint128::new(200)],
+                    })
+                    .unwrap(),
+                ))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        // Attempt to delegate while paused
+        let res = delegate(
+            deps.as_mut(),
+            owner_info.clone(),
+            env.clone(),
+            approver_signature_and_expiry.clone(),
+            delegate_params.clone(),
+        );
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::Std(err) if err.to_string().contains("Functionality is paused") => {
+                    ()
+                }
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Unpause the specific functionality
+        let unpause_msg = ExecuteMsg::UnpauseAll {};
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            unpauser_info.clone(),
+            unpause_msg,
+        )
+        .unwrap();
+        assert_eq!(res.attributes, vec![attr("method", "unpause_all")]);
+
+        // Attempt to delegate after unpausing
+        let res = delegate(
+            deps.as_mut(),
+            owner_info.clone(),
+            env.clone(),
+            approver_signature_and_expiry,
+            delegate_params,
+        );
+        assert!(res.is_ok());
+
+        let res = res.unwrap();
+        assert_eq!(res.events.len(), 1);
+        assert_eq!(res.events[0].ty, "Delegate");
+        assert_eq!(res.events[0].attributes.len(), 3);
+        assert_eq!(res.events[0].attributes[0].key, "method");
+        assert_eq!(res.events[0].attributes[0].value, "delegate");
+        assert_eq!(res.events[0].attributes[1].key, "staker");
+        assert_eq!(res.events[0].attributes[1].value, staker.to_string());
+        assert_eq!(res.events[0].attributes[2].key, "operator");
+        assert_eq!(res.events[0].attributes[2].value, operator.to_string());
     }
 }

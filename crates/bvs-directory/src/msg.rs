@@ -22,13 +22,13 @@ pub enum ExecuteMsg {
     RegisterBVS {
         bvs_contract: String,
     },
-    RegisterOperatorToBvs {
+    RegisterOperatorToBVS {
         operator: String,
         public_key: String,
         contract_addr: String,
         signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry,
     },
-    DeregisterOperatorFromBvs {
+    DeregisterOperatorFromBVS {
         operator: String,
     },
     UpdateBvsMetadataUri {
@@ -45,8 +45,14 @@ pub enum ExecuteMsg {
     },
     AcceptOwnership {},
     CancelOwnershipTransfer {},
-    Pause {},
-    Unpause {},
+    PauseAll {},
+    UnpauseAll {},
+    PauseBit {
+        index: u8,
+    },
+    UnpauseBit {
+        index: u8,
+    },
     SetPauser {
         new_pauser: String,
     },

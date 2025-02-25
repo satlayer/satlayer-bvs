@@ -92,8 +92,14 @@ pub enum ExecuteMsg {
     },
     AcceptOwnership {},
     CancelOwnershipTransfer {},
-    Pause {},
-    Unpause {},
+    PauseAll {},
+    UnpauseAll {},
+    PauseBit {
+        index: u8,
+    },
+    UnpauseBit {
+        index: u8,
+    },
     SetPauser {
         new_pauser: String,
     },

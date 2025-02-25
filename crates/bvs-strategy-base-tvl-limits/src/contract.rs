@@ -17,7 +17,9 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
-use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
+use bvs_base::pausable::{
+    only_when_not_paused, pause_all, pause_bit, unpause_all, unpause_bit, PAUSED_STATE,
+};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use bvs_base::strategy::{QueryMsg as StrategyManagerQueryMsg, StakerStrategySharesResponse};
 
@@ -111,13 +113,25 @@ pub fn execute(
         }
         ExecuteMsg::AcceptOwnership {} => accept_ownership(deps, info),
         ExecuteMsg::CancelOwnershipTransfer {} => cancel_ownership_transfer(deps, info),
-        ExecuteMsg::Pause {} => {
+        ExecuteMsg::PauseAll {} => {
             check_pauser(deps.as_ref(), info.clone())?;
-            pause(deps, &info).map_err(ContractError::Std)
+            pause_all(deps, &info)?;
+            Ok(Response::new().add_attribute("method", "pause_all"))
         }
-        ExecuteMsg::Unpause {} => {
+        ExecuteMsg::UnpauseAll {} => {
             check_unpauser(deps.as_ref(), info.clone())?;
-            unpause(deps, &info).map_err(ContractError::Std)
+            unpause_all(deps, &info)?;
+            Ok(Response::new().add_attribute("method", "unpause_all"))
+        }
+        ExecuteMsg::PauseBit { index } => {
+            check_pauser(deps.as_ref(), info.clone())?;
+            pause_bit(deps, &info, index)?;
+            Ok(Response::new().add_attribute("method", "pause_bit"))
+        }
+        ExecuteMsg::UnpauseBit { index } => {
+            check_unpauser(deps.as_ref(), info.clone())?;
+            unpause_bit(deps, &info, index)?;
+            Ok(Response::new().add_attribute("method", "unpause_bit"))
         }
         ExecuteMsg::SetPauser { new_pauser } => {
             only_owner(deps.as_ref(), &info.clone())?;
@@ -617,7 +631,7 @@ mod tests {
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
     use cosmwasm_std::{
-        attr, from_json, Binary, ContractResult, CosmosMsg, OwnedDeps, SystemError, SystemResult,
+        from_json, Binary, ContractResult, CosmosMsg, OwnedDeps, SystemError, SystemResult,
         WasmQuery,
     };
     use cw20::TokenInfoResponse;
@@ -1345,40 +1359,6 @@ mod tests {
     }
 
     #[test]
-    fn test_pause() {
-        let (mut deps, env, _info, pauser_info, _unpauser_info, _token, _strategy_manager) =
-            instantiate_contract();
-
-        let pause_msg = ExecuteMsg::Pause {};
-        let res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg).unwrap();
-
-        assert_eq!(res.attributes, vec![attr("action", "PAUSED")]);
-
-        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_state, 1);
-    }
-
-    #[test]
-    fn test_unpause() {
-        let (mut deps, env, _info, _pauser_info, unpauser_info, _token, _strategy_manager) =
-            instantiate_contract();
-
-        let unpause_msg = ExecuteMsg::Unpause {};
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            unpauser_info.clone(),
-            unpause_msg,
-        )
-        .unwrap();
-
-        assert_eq!(res.attributes, vec![attr("action", "UNPAUSED")]);
-
-        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_state, 0);
-    }
-
-    #[test]
     fn test_set_pauser() {
         let (mut deps, env, info, _pauser_info, _unpauser_info, _token, _strategy_manager) =
             instantiate_contract();
@@ -1689,5 +1669,228 @@ mod tests {
             ContractError::Unauthorized {} => {}
             e => panic!("Expected Unauthorized error, got: {:?}", e),
         }
+    }
+
+    #[test]
+    fn test_pause_and_unpause_deposits() {
+        let (mut deps, env, _owner_info, pauser_info, unpauser_info, token, strategy_manager) =
+            instantiate_contract();
+
+        let deposit_amount = Uint128::new(1_000);
+        let deposit_msg = ExecuteMsg::Deposit {
+            amount: deposit_amount,
+        };
+
+        let strategy_manager_info = message_info(&Addr::unchecked(strategy_manager), &[]);
+
+        // Pause the deposits
+        let pause_msg = ExecuteMsg::PauseBit {
+            index: PAUSED_DEPOSITS,
+        };
+        let pause_res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg);
+        assert!(pause_res.is_ok());
+
+        // Try to deposit while paused, should fail
+        let deposit_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            strategy_manager_info.clone(),
+            deposit_msg.clone(),
+        );
+        assert!(deposit_res.is_err());
+        if let Err(err) = deposit_res {
+            match err {
+                ContractError::Std(err) if err.to_string().contains("Functionality is paused") => {
+                    ()
+                }
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Unpause the deposits
+        let unpause_msg = ExecuteMsg::UnpauseBit {
+            index: PAUSED_DEPOSITS,
+        };
+        let unpause_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            unpauser_info.clone(),
+            unpause_msg,
+        );
+        assert!(unpause_res.is_ok());
+
+        // Try to deposit again, should succeed
+        let deposit_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            strategy_manager_info.clone(),
+            deposit_msg,
+        );
+        assert!(deposit_res.is_ok());
+
+        let deposit_res = deposit_res.unwrap();
+        assert_eq!(deposit_res.attributes.len(), 3);
+        assert_eq!(deposit_res.attributes[0].key, "method");
+        assert_eq!(deposit_res.attributes[0].value, "deposit");
+        assert!(deposit_res.attributes[1].key == "new_shares");
+        assert!(deposit_res.attributes[2].key == "total_shares");
+
+        assert_eq!(deposit_res.events.len(), 1);
+        let event = &deposit_res.events[0];
+        assert_eq!(event.ty, "exchange_rate_emitted");
+        assert_eq!(event.attributes.len(), 1);
+        assert_eq!(event.attributes[0].key, "exchange_rate");
+        assert_eq!(event.attributes[0].value, "1000000");
+
+        let exchange_rate = event.attributes[0].value.parse::<u128>().unwrap();
+        assert!(exchange_rate > 0, "Exchange rate should be positive");
+
+        let state = STRATEGY_STATE.load(&deps.storage).unwrap();
+        assert!(state.total_shares > Uint128::zero());
+
+        let balance = token_balance(
+            &QuerierWrapper::new(&deps.querier),
+            &Addr::unchecked(token),
+            &env.contract.address,
+        )
+        .unwrap();
+        assert_eq!(balance, Uint128::new(1_000_000));
+    }
+
+    #[test]
+    fn test_pause_and_unpause_withdrawals() {
+        let (mut deps, env, _owner_info, pauser_info, unpauser_info, token, strategy_manager) =
+            instantiate_contract();
+
+        let deposit_amount = Uint128::new(1_000);
+        let deposit_msg = ExecuteMsg::Deposit {
+            amount: deposit_amount,
+        };
+
+        let strategy_manager_info = message_info(&Addr::unchecked(strategy_manager.clone()), &[]);
+
+        // First, deposit some tokens to set up the state
+        let deposit_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            strategy_manager_info.clone(),
+            deposit_msg,
+        );
+        assert!(deposit_res.is_ok());
+
+        let withdraw_amount_shares = Uint128::new(1);
+        let recipient = deps.api.addr_make("recipient").to_string();
+        let withdraw_msg = ExecuteMsg::Withdraw {
+            recipient: recipient.clone(),
+            token: token.clone(),
+            amount_shares: withdraw_amount_shares,
+        };
+
+        // Pause the withdrawals
+        let pause_msg = ExecuteMsg::PauseBit {
+            index: PAUSED_WITHDRAWALS,
+        };
+        let pause_res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg);
+        assert!(pause_res.is_ok());
+
+        // Try to withdraw while paused, should fail
+        let withdraw_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            strategy_manager_info.clone(),
+            withdraw_msg.clone(),
+        );
+        assert!(withdraw_res.is_err());
+        if let Err(err) = withdraw_res {
+            match err {
+                ContractError::Std(err) if err.to_string().contains("Functionality is paused") => {
+                    ()
+                }
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Unpause the withdrawals
+        let unpause_msg = ExecuteMsg::UnpauseBit {
+            index: PAUSED_WITHDRAWALS,
+        };
+        let unpause_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            unpauser_info.clone(),
+            unpause_msg,
+        );
+        assert!(unpause_res.is_ok());
+
+        // Mock the balance query to reflect the withdrawal
+        let contract_address = env.contract.address.clone();
+        deps.querier.update_wasm({
+            let token_clone = token.clone();
+            let contract_address_clone = contract_address.clone();
+            move |query| match query {
+                WasmQuery::Smart {
+                    contract_addr, msg, ..
+                } => {
+                    if contract_addr == &token_clone {
+                        let msg: Cw20QueryMsg = from_json(msg).unwrap();
+                        if let Cw20QueryMsg::Balance { address } = msg {
+                            if address == contract_address_clone.to_string() {
+                                return SystemResult::Ok(ContractResult::Ok(
+                                    to_json_binary(&Cw20BalanceResponse {
+                                        balance: Uint128::new(999_999),
+                                    })
+                                    .unwrap(),
+                                ));
+                            }
+                        }
+                    }
+                    SystemResult::Err(SystemError::InvalidRequest {
+                        error: "not implemented".to_string(),
+                        request: msg.clone(),
+                    })
+                }
+                _ => SystemResult::Err(SystemError::InvalidRequest {
+                    error: "not implemented".to_string(),
+                    request: Binary::from(b"other".as_ref()),
+                }),
+            }
+        });
+
+        // Try to withdraw again, should succeed
+        let withdraw_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            strategy_manager_info.clone(),
+            withdraw_msg,
+        );
+        assert!(withdraw_res.is_ok());
+
+        let withdraw_res = withdraw_res.unwrap();
+        assert_eq!(withdraw_res.attributes.len(), 3);
+        assert_eq!(withdraw_res.attributes[0].key, "method");
+        assert_eq!(withdraw_res.attributes[0].value, "withdraw");
+        assert!(withdraw_res.attributes[1].key == "amount_to_send");
+        assert!(withdraw_res.attributes[2].key == "total_shares");
+
+        assert_eq!(withdraw_res.events.len(), 1);
+        let event = &withdraw_res.events[0];
+        assert_eq!(event.ty, "exchange_rate_emitted");
+        assert_eq!(event.attributes.len(), 1);
+        assert_eq!(event.attributes[0].key, "exchange_rate");
+        assert_eq!(event.attributes[0].value, "1000000");
+
+        let exchange_rate = event.attributes[0].value.parse::<u128>().unwrap();
+        assert!(exchange_rate > 0, "Exchange rate should be positive");
+
+        let state = STRATEGY_STATE.load(&deps.storage).unwrap();
+        assert!(state.total_shares > Uint128::zero());
+
+        let balance = token_balance(
+            &QuerierWrapper::new(&deps.querier),
+            &Addr::unchecked(token),
+            &contract_address,
+        )
+        .unwrap();
+        assert_eq!(balance, Uint128::new(999_999));
     }
 }

@@ -27,7 +27,9 @@ use bvs_base::bvsdriver::ExecuteMsg as BvsDriverExecuteMsg;
 use bvs_base::statebank::ExecuteMsg as StateBankExecuteMsg;
 
 use bvs_base::delegation::{OperatorResponse, QueryMsg as DelegationManagerQueryMsg};
-use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
+use bvs_base::pausable::{
+    only_when_not_paused, pause_all, pause_bit, unpause_all, unpause_bit, PAUSED_STATE,
+};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 
 const CONTRACT_NAME: &str = "BVS Directory";
@@ -78,7 +80,7 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::RegisterBVS { bvs_contract } => register_bvs(deps, bvs_contract),
-        ExecuteMsg::RegisterOperatorToBvs {
+        ExecuteMsg::RegisterOperatorToBVS {
             operator,
             public_key,
             contract_addr,
@@ -107,7 +109,7 @@ pub fn execute(
                 signature_with_salt_and_expiry,
             )
         }
-        ExecuteMsg::DeregisterOperatorFromBvs { operator } => {
+        ExecuteMsg::DeregisterOperatorFromBVS { operator } => {
             let operator_addr = Addr::unchecked(operator);
             deregister_operator(deps, env, info, operator_addr)
         }
@@ -128,13 +130,25 @@ pub fn execute(
         }
         ExecuteMsg::AcceptOwnership {} => accept_ownership(deps, info),
         ExecuteMsg::CancelOwnershipTransfer {} => cancel_ownership_transfer(deps, info),
-        ExecuteMsg::Pause {} => {
+        ExecuteMsg::PauseAll {} => {
             check_pauser(deps.as_ref(), info.clone())?;
-            pause(deps, &info).map_err(ContractError::Std)
+            pause_all(deps, &info)?;
+            Ok(Response::new().add_attribute("method", "pause_all"))
         }
-        ExecuteMsg::Unpause {} => {
+        ExecuteMsg::UnpauseAll {} => {
             check_unpauser(deps.as_ref(), info.clone())?;
-            unpause(deps, &info).map_err(ContractError::Std)
+            unpause_all(deps, &info)?;
+            Ok(Response::new().add_attribute("method", "unpause_all"))
+        }
+        ExecuteMsg::PauseBit { index } => {
+            check_pauser(deps.as_ref(), info.clone())?;
+            pause_bit(deps, &info, index)?;
+            Ok(Response::new().add_attribute("method", "pause_bit"))
+        }
+        ExecuteMsg::UnpauseBit { index } => {
+            check_unpauser(deps.as_ref(), info.clone())?;
+            unpause_bit(deps, &info, index)?;
+            Ok(Response::new().add_attribute("method", "unpause_bit"))
         }
         ExecuteMsg::SetPauser { new_pauser } => {
             only_owner(deps.as_ref(), &info.clone())?;
@@ -824,7 +838,7 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToBvs {
+        let msg = ExecuteMsg::RegisterOperatorToBVS {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
             contract_addr: contract_addr.to_string(),
@@ -920,7 +934,7 @@ mod tests {
             }),
         });
 
-        let register_msg = ExecuteMsg::RegisterOperatorToBvs {
+        let register_msg = ExecuteMsg::RegisterOperatorToBVS {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
             contract_addr: contract_addr.to_string(),
@@ -935,7 +949,7 @@ mod tests {
 
         assert!(res.is_ok());
 
-        let deregister_msg = ExecuteMsg::DeregisterOperatorFromBvs {
+        let deregister_msg = ExecuteMsg::DeregisterOperatorFromBVS {
             operator: operator.to_string(),
         };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), deregister_msg);
@@ -1159,7 +1173,7 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToBvs {
+        let msg = ExecuteMsg::RegisterOperatorToBVS {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
             contract_addr: contract_addr.to_string(),
@@ -1334,7 +1348,7 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToBvs {
+        let msg = ExecuteMsg::RegisterOperatorToBVS {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
             contract_addr: contract_addr.to_string(),
@@ -1485,7 +1499,7 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToBvs {
+        let msg = ExecuteMsg::RegisterOperatorToBVS {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
             contract_addr: contract_addr.to_string(),
@@ -1615,40 +1629,6 @@ mod tests {
     }
 
     #[test]
-    fn test_pause() {
-        let (mut deps, env, _info, pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
-
-        let pause_msg = ExecuteMsg::Pause {};
-        let res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg).unwrap();
-
-        assert_eq!(res.attributes, vec![attr("action", "PAUSED")]);
-
-        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_state, 1);
-    }
-
-    #[test]
-    fn test_unpause() {
-        let (mut deps, env, _info, _pauser_info, unpauser_info, _delegation_manager) =
-            instantiate_contract();
-
-        let unpause_msg = ExecuteMsg::Unpause {};
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            unpauser_info.clone(),
-            unpause_msg,
-        )
-        .unwrap();
-
-        assert_eq!(res.attributes, vec![attr("action", "UNPAUSED")]);
-
-        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_state, 0);
-    }
-
-    #[test]
     fn test_set_pauser() {
         let (mut deps, env, info, _pauser_info, _unpauser_info, _delegation_manager) =
             instantiate_contract();
@@ -1767,7 +1747,7 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToBvs {
+        let msg = ExecuteMsg::RegisterOperatorToBVS {
             operator: deps.api.addr_make("other_operator").to_string(),
             public_key: public_key_hex.to_string(),
             contract_addr: contract_addr.to_string(),
@@ -1785,5 +1765,251 @@ mod tests {
             Err(ContractError::InvalidSignature {}) => {}
             _ => panic!("Expected InvalidSignature error"),
         }
+    }
+
+    #[test]
+    fn test_register_operator_paused() {
+        let (mut deps, env, info, pauser_info, unpauser_info, delegation_manager) =
+            instantiate_contract();
+
+        // Pause the specific functionality
+        let pause_msg = ExecuteMsg::PauseBit {
+            index: PAUSED_OPERATOR_REGISTER_DEREGISTER_TO_BVS,
+        };
+        let res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg).unwrap();
+        assert_eq!(res.attributes, vec![attr("method", "pause_bit")]);
+
+        let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (operator, secret_key, public_key_bytes) =
+            generate_osmosis_public_key_from_private_key(private_key_hex);
+
+        let expiry = 2722875888;
+        let salt = Binary::from(b"salt");
+        let contract_addr: Addr =
+            Addr::unchecked("osmo1wsjhxj3nl8kmrudsxlf7c40yw6crv4pcrk0twvvsp9jmyr675wjqc8t6an");
+
+        let message_byte = calculate_digest_hash(
+            env.clone().block.chain_id,
+            &operator,
+            &Binary::from(public_key_bytes.clone()),
+            &info.sender,
+            &salt,
+            expiry,
+            &contract_addr,
+        );
+
+        let secp = Secp256k1::new();
+        let message = Message::from_digest_slice(&message_byte).expect("32 bytes");
+        let signature = secp.sign_ecdsa(&message, &secret_key);
+        let signature_bytes = signature.serialize_compact().to_vec();
+
+        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
+
+        let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
+
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } if contract_addr == &delegation_manager => {
+                let operator_response = OperatorResponse { is_operator: true };
+                SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&operator_response).unwrap(),
+                ))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        let msg = ExecuteMsg::RegisterOperatorToBVS {
+            operator: operator.to_string(),
+            public_key: public_key_hex.to_string(),
+            contract_addr: contract_addr.to_string(),
+            signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
+                signature: signature_base64.to_string(),
+                salt: salt.to_string(),
+                expiry,
+            },
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::Std(err) if err.to_string().contains("Functionality is paused") => {
+                    ()
+                }
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        let deregister_msg = ExecuteMsg::DeregisterOperatorFromBVS {
+            operator: operator.to_string(),
+        };
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), deregister_msg);
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::Std(err) if err.to_string().contains("Functionality is paused") => {
+                    ()
+                }
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Unpause the specific functionality
+        let unpause_msg = ExecuteMsg::UnpauseBit {
+            index: PAUSED_OPERATOR_REGISTER_DEREGISTER_TO_BVS,
+        };
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            unpauser_info.clone(),
+            unpause_msg,
+        )
+        .unwrap();
+        assert_eq!(res.attributes, vec![attr("method", "unpause_bit")]);
+
+        let msg = ExecuteMsg::RegisterOperatorToBVS {
+            operator: operator.to_string(),
+            public_key: public_key_hex.to_string(),
+            contract_addr: contract_addr.to_string(),
+            signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
+                signature: signature_base64.to_string(),
+                salt: salt.to_string(),
+                expiry,
+            },
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        assert!(res.is_ok());
+
+        let deregister_msg = ExecuteMsg::DeregisterOperatorFromBVS {
+            operator: operator.to_string(),
+        };
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), deregister_msg);
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_global_pause_and_unpause() {
+        let (mut deps, env, info, pauser_info, unpauser_info, delegation_manager) =
+            instantiate_contract();
+
+        let pause_msg = ExecuteMsg::PauseAll {};
+        let res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg).unwrap();
+        assert_eq!(res.attributes, vec![attr("method", "pause_all")]);
+
+        let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (operator, secret_key, public_key_bytes) =
+            generate_osmosis_public_key_from_private_key(private_key_hex);
+
+        let expiry = 2722875888;
+        let salt = Binary::from(b"salt");
+        let contract_addr: Addr =
+            Addr::unchecked("osmo1wsjhxj3nl8kmrudsxlf7c40yw6crv4pcrk0twvvsp9jmyr675wjqc8t6an");
+
+        let message_byte = calculate_digest_hash(
+            env.clone().block.chain_id,
+            &operator,
+            &Binary::from(public_key_bytes.clone()),
+            &info.sender,
+            &salt,
+            expiry,
+            &contract_addr,
+        );
+
+        let secp = Secp256k1::new();
+        let message = Message::from_digest_slice(&message_byte).expect("32 bytes");
+        let signature = secp.sign_ecdsa(&message, &secret_key);
+        let signature_bytes = signature.serialize_compact().to_vec();
+
+        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
+
+        let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
+
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } if contract_addr == &delegation_manager => {
+                let operator_response = OperatorResponse { is_operator: true };
+                SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&operator_response).unwrap(),
+                ))
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        let msg = ExecuteMsg::RegisterOperatorToBVS {
+            operator: operator.to_string(),
+            public_key: public_key_hex.to_string(),
+            contract_addr: contract_addr.to_string(),
+            signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
+                signature: signature_base64.to_string(),
+                salt: salt.to_string(),
+                expiry,
+            },
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::Std(err) if err.to_string().contains("Functionality is paused") => {
+                    ()
+                }
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        let deregister_msg = ExecuteMsg::DeregisterOperatorFromBVS {
+            operator: operator.to_string(),
+        };
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), deregister_msg);
+        assert!(res.is_err());
+        if let Err(err) = res {
+            match err {
+                ContractError::Std(err) if err.to_string().contains("Functionality is paused") => {
+                    ()
+                }
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        let unpause_msg = ExecuteMsg::UnpauseAll {};
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            unpauser_info.clone(),
+            unpause_msg,
+        )
+        .unwrap();
+        assert_eq!(res.attributes, vec![attr("method", "unpause_all")]);
+
+        let msg = ExecuteMsg::RegisterOperatorToBVS {
+            operator: operator.to_string(),
+            public_key: public_key_hex.to_string(),
+            contract_addr: contract_addr.to_string(),
+            signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
+                signature: signature_base64.to_string(),
+                salt: salt.to_string(),
+                expiry,
+            },
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        assert!(res.is_ok());
+
+        let deregister_msg = ExecuteMsg::DeregisterOperatorFromBVS {
+            operator: operator.to_string(),
+        };
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), deregister_msg);
+        assert!(res.is_ok());
     }
 }

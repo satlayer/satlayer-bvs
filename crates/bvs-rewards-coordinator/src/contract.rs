@@ -30,7 +30,9 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
-use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
+use bvs_base::pausable::{
+    only_when_not_paused, pause_all, pause_bit, unpause_all, unpause_bit, PAUSED_STATE,
+};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use bvs_base::strategy::{QueryMsg as StrategyManagerQueryMsg, StrategyWhitelistedResponse};
 
@@ -178,13 +180,25 @@ pub fn execute(
         }
         ExecuteMsg::AcceptOwnership {} => accept_ownership(deps, info),
         ExecuteMsg::CancelOwnershipTransfer {} => cancel_ownership_transfer(deps, info),
-        ExecuteMsg::Pause {} => {
+        ExecuteMsg::PauseAll {} => {
             check_pauser(deps.as_ref(), info.clone())?;
-            pause(deps, &info).map_err(ContractError::Std)
+            pause_all(deps, &info)?;
+            Ok(Response::new().add_attribute("method", "pause_all"))
         }
-        ExecuteMsg::Unpause {} => {
+        ExecuteMsg::UnpauseAll {} => {
             check_unpauser(deps.as_ref(), info.clone())?;
-            unpause(deps, &info).map_err(ContractError::Std)
+            unpause_all(deps, &info)?;
+            Ok(Response::new().add_attribute("method", "unpause_all"))
+        }
+        ExecuteMsg::PauseBit { index } => {
+            check_pauser(deps.as_ref(), info.clone())?;
+            pause_bit(deps, &info, index)?;
+            Ok(Response::new().add_attribute("method", "pause_bit"))
+        }
+        ExecuteMsg::UnpauseBit { index } => {
+            check_unpauser(deps.as_ref(), info.clone())?;
+            unpause_bit(deps, &info, index)?;
+            Ok(Response::new().add_attribute("method", "unpause_bit"))
         }
         ExecuteMsg::SetPauser { new_pauser } => {
             only_owner(deps.as_ref(), &info.clone())?;
@@ -1165,7 +1179,7 @@ mod tests {
         MockQuerier, MockStorage,
     };
     use cosmwasm_std::{
-        attr, coins, from_json, Addr, Binary, ContractResult, OwnedDeps, SystemError, SystemResult,
+        coins, from_json, Addr, Binary, ContractResult, OwnedDeps, SystemError, SystemResult,
         Timestamp, WasmQuery,
     };
 
@@ -3652,56 +3666,6 @@ mod tests {
     }
 
     #[test]
-    fn test_pause() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            pauser_info,
-            _unpauser_info,
-            _strategy_manager_info,
-            _delegation_manager_info,
-            _rewards_updater_info,
-        ) = instantiate_contract();
-
-        let pause_msg = ExecuteMsg::Pause {};
-        let res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg).unwrap();
-
-        assert_eq!(res.attributes, vec![attr("action", "PAUSED")]);
-
-        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_state, 1);
-    }
-
-    #[test]
-    fn test_unpause() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            _pauser_info,
-            unpauser_info,
-            _strategy_manager_info,
-            _delegation_manager_info,
-            _rewards_updater_info,
-        ) = instantiate_contract();
-
-        let unpause_msg = ExecuteMsg::Unpause {};
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            unpauser_info.clone(),
-            unpause_msg,
-        )
-        .unwrap();
-
-        assert_eq!(res.attributes, vec![attr("action", "UNPAUSED")]);
-
-        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_state, 0);
-    }
-
-    #[test]
     fn test_set_pauser() {
         let (
             mut deps,
@@ -3769,5 +3733,661 @@ mod tests {
 
         let unpauser = UNPAUSER.load(&deps.storage).unwrap();
         assert_eq!(unpauser, Addr::unchecked(new_unpauser));
+    }
+
+    #[test]
+    fn test_pause_and_unpause_bvs_rewards_submission() {
+        let (
+            mut deps,
+            env,
+            owner_info,
+            pauser_info,
+            unpauser_info,
+            _strategy_manager_info,
+            _delegation_manager_info,
+            _rewards_updater_info,
+        ) = instantiate_contract();
+
+        // Pause BVS rewards submission
+        let pause_msg = ExecuteMsg::PauseBit {
+            index: PAUSED_BVS_REWARDS_SUBMISSION,
+        };
+        let pause_res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg);
+        assert!(pause_res.is_ok());
+
+        let calc_interval = 86_400; // 1 day
+
+        let block_time = mock_env().block.time.seconds();
+
+        let aligned_start_time = block_time - (block_time % calc_interval);
+        let aligned_start_timestamp = Timestamp::from_seconds(aligned_start_time);
+
+        let submission = vec![RewardsSubmission {
+            strategies_and_multipliers: vec![StrategyAndMultiplier {
+                strategy: deps.api.addr_make("strategy1"),
+                multiplier: 1,
+            }],
+            amount: Uint128::new(100),
+            duration: calc_interval, // 1 day
+            start_timestamp: aligned_start_timestamp,
+            token: deps.api.addr_make("token"),
+        }];
+
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg }
+                if Addr::unchecked(contract_addr) == deps.api.addr_make("strategy_manager") =>
+            {
+                let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
+                match msg {
+                    StrategyManagerQueryMsg::IsStrategyWhitelisted { strategy } => {
+                        let response = if strategy == deps.api.addr_make("strategy1").to_string() {
+                            StrategyWhitelistedResponse {
+                                is_whitelisted: true,
+                            }
+                        } else {
+                            StrategyWhitelistedResponse {
+                                is_whitelisted: false,
+                            }
+                        };
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
+                    }
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    }),
+                }
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        // Try to create BVS rewards submission while paused, should fail
+        let msg = ExecuteMsg::CreateBvsRewardsSubmission {
+            rewards_submissions: submission.clone(),
+        };
+
+        let result = execute(deps.as_mut(), env.clone(), owner_info.clone(), msg.clone());
+        assert!(result.is_err());
+        if let Err(err) = result {
+            match err {
+                ContractError::Std(err) if err.to_string().contains("Functionality is paused") => {
+                    ()
+                }
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Unpause BVS rewards submission
+        let unpause_msg = ExecuteMsg::UnpauseBit {
+            index: PAUSED_BVS_REWARDS_SUBMISSION,
+        };
+        let unpause_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            unpauser_info.clone(),
+            unpause_msg,
+        );
+        assert!(unpause_res.is_ok());
+
+        // Try to create BVS rewards submission again, should succeed
+        let result = execute(deps.as_mut(), env.clone(), owner_info.clone(), msg);
+        assert!(result.is_ok());
+
+        let response = result.unwrap();
+        assert_eq!(response.messages.len(), 1);
+        assert_eq!(response.events.len(), 1);
+
+        let event = response.events.first().unwrap();
+        assert_eq!(event.ty, "BVSRewardsSubmissionCreated");
+        assert_eq!(event.attributes.len(), 5);
+        assert_eq!(event.attributes[0].key, "sender");
+        assert_eq!(
+            event.attributes[0].value,
+            deps.api.addr_make("initial_owner").to_string()
+        );
+        assert_eq!(event.attributes[1].key, "nonce");
+        assert_eq!(event.attributes[1].value, "0");
+        assert_eq!(event.attributes[2].key, "rewards_submission_hash");
+        assert_eq!(
+            event.attributes[2].value,
+            "FWMKFRHYNewOAaP1Ol9hEq89dlsUbU9m3PehWbAwIi8="
+        );
+        assert_eq!(event.attributes[3].key, "token");
+        assert_eq!(
+            event.attributes[3].value,
+            deps.api.addr_make("token").to_string()
+        );
+    }
+
+    #[test]
+    fn test_pause_and_unpause_rewards_for_all_submission() {
+        let (
+            mut deps,
+            env,
+            owner_info,
+            pauser_info,
+            unpauser_info,
+            _strategy_manager_info,
+            _delegation_manager_info,
+            _rewards_updater_info,
+        ) = instantiate_contract();
+
+        // Pause rewards for all submission
+        let pause_msg = ExecuteMsg::PauseBit {
+            index: PAUSED_REWARDS_FOR_ALL_SUBMISSION,
+        };
+        let pause_res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg);
+        assert!(pause_res.is_ok());
+
+        let calc_interval = 86_400; // 1 day
+
+        let block_time = mock_env().block.time.seconds();
+
+        let aligned_start_time = block_time - (block_time % calc_interval);
+        let aligned_start_timestamp = Timestamp::from_seconds(aligned_start_time);
+
+        let submission = vec![RewardsSubmission {
+            strategies_and_multipliers: vec![StrategyAndMultiplier {
+                strategy: deps.api.addr_make("strategy1"),
+                multiplier: 1,
+            }],
+            amount: Uint128::new(100),
+            duration: calc_interval, // 1 day
+            start_timestamp: aligned_start_timestamp,
+            token: deps.api.addr_make("token"),
+        }];
+
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg }
+                if Addr::unchecked(contract_addr) == deps.api.addr_make("strategy_manager") =>
+            {
+                let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
+                match msg {
+                    StrategyManagerQueryMsg::IsStrategyWhitelisted { strategy } => {
+                        let response = if strategy == deps.api.addr_make("strategy1").to_string() {
+                            StrategyWhitelistedResponse {
+                                is_whitelisted: true,
+                            }
+                        } else {
+                            StrategyWhitelistedResponse {
+                                is_whitelisted: false,
+                            }
+                        };
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
+                    }
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    }),
+                }
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        // Set rewards for all submitter
+        let msg_set_submitter = ExecuteMsg::SetRewardsForAllSubmitter {
+            submitter: deps.api.addr_make("submitter").to_string(),
+            new_value: true,
+        };
+
+        let _ = execute(
+            deps.as_mut(),
+            env.clone(),
+            owner_info.clone(),
+            msg_set_submitter,
+        );
+
+        // Try to create rewards for all submission while paused, should fail
+        let msg = ExecuteMsg::CreateRewardsForAllSubmission {
+            rewards_submissions: submission.clone(),
+        };
+
+        let submitter_info = message_info(&deps.api.addr_make("submitter"), &[]);
+        let result = execute(
+            deps.as_mut(),
+            env.clone(),
+            submitter_info.clone(),
+            msg.clone(),
+        );
+        assert!(result.is_err());
+        if let Err(err) = result {
+            match err {
+                ContractError::Std(err) if err.to_string().contains("Functionality is paused") => {
+                    ()
+                }
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Unpause rewards for all submission
+        let unpause_msg = ExecuteMsg::UnpauseBit {
+            index: PAUSED_REWARDS_FOR_ALL_SUBMISSION,
+        };
+        let unpause_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            unpauser_info.clone(),
+            unpause_msg,
+        );
+        assert!(unpause_res.is_ok());
+
+        // Try to create rewards for all submission again, should succeed
+        let result = execute(deps.as_mut(), env.clone(), submitter_info.clone(), msg);
+        assert!(result.is_ok());
+
+        let response = result.unwrap();
+        assert_eq!(response.messages.len(), 1);
+        assert_eq!(response.events.len(), 1);
+
+        let event = response.events.first().unwrap();
+        assert_eq!(event.ty, "RewardsSubmissionForAllCreated");
+        assert_eq!(event.attributes.len(), 5);
+        assert_eq!(event.attributes[0].key, "sender");
+        assert_eq!(
+            event.attributes[0].value,
+            deps.api.addr_make("submitter").to_string()
+        );
+        assert_eq!(event.attributes[1].key, "nonce");
+        assert_eq!(event.attributes[1].value, "0");
+        assert_eq!(event.attributes[2].key, "rewards_submission_hash");
+        assert_eq!(
+            event.attributes[2].value,
+            "6iTJDz8b/ym1GayJcb5UVJB1h+3Pab9z07oOboL8kfU="
+        );
+        assert_eq!(event.attributes[3].key, "token");
+        assert_eq!(
+            event.attributes[3].value,
+            deps.api.addr_make("token").to_string()
+        );
+        assert_eq!(event.attributes[4].key, "amount");
+        assert_eq!(event.attributes[4].value, "100");
+    }
+
+    #[test]
+    fn test_pause_and_unpause_process_claim() {
+        let (
+            mut deps,
+            env,
+            _owner_info,
+            pauser_info,
+            unpauser_info,
+            _strategy_manager_info,
+            _delegation_manager_info,
+            _rewards_updater_info,
+        ) = instantiate_contract();
+
+        // Pause process claim
+        let pause_msg = ExecuteMsg::PauseBit {
+            index: PAUSED_PROCESS_CLAIM,
+        };
+        let pause_res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg);
+        assert!(pause_res.is_ok());
+
+        let leaf_a = TokenTreeMerkleLeaf {
+            token: deps.api.addr_make("token_a"),
+            cumulative_earnings: Uint128::new(100),
+        };
+
+        let leaf_b = TokenTreeMerkleLeaf {
+            token: deps.api.addr_make("token_b"),
+            cumulative_earnings: Uint128::new(200),
+        };
+
+        let hash_a = calculate_token_leaf_hash(&leaf_a);
+        let hash_b = calculate_token_leaf_hash(&leaf_b);
+
+        let token_leaves = vec![hash_a.clone(), hash_b.clone()];
+        let token_root = merkleize_sha256(token_leaves.clone());
+
+        let earner_leaf = EarnerTreeMerkleLeaf {
+            earner: deps.api.addr_make("earner"),
+            earner_token_root: Binary::from(token_root.clone()),
+        };
+
+        let earner_leaf_hash = calculate_earner_leaf_hash(&earner_leaf);
+
+        let earner_leaves = vec![earner_leaf_hash.clone()];
+        let earner_root = merkleize_sha256(earner_leaves.clone());
+
+        let earner_tree_depth = 0u8;
+        let token_tree_depth = 0u8;
+
+        let distribution_root = DistributionRoot {
+            root: Binary::from(earner_root.clone()),
+            rewards_calculation_end_timestamp: 500,
+            activated_at: 500,
+            disabled: false,
+            earner_tree_depth,
+            token_tree_depth,
+        };
+
+        let _claim = RewardsMerkleClaim {
+            root_index: 0,
+            earner_index: 0,
+            earner_tree_proof: vec![],
+            earner_leaf,
+            token_indices: vec![0, 1],
+            token_tree_proofs: vec![[hash_b.clone()].concat(), [hash_a.clone()].concat()],
+            token_leaves: vec![leaf_a.clone(), leaf_b.clone()],
+        };
+
+        DISTRIBUTION_ROOTS
+            .save(&mut deps.storage, 0, &distribution_root)
+            .unwrap();
+
+        CLAIMER_FOR
+            .save(
+                &mut deps.storage,
+                deps.api.addr_make("earner"),
+                &deps.api.addr_make("claimer"),
+            )
+            .unwrap();
+
+        let recipient = deps.api.addr_make("recipient");
+
+        let earner_leaf = ExecuteEarnerTreeMerkleLeaf {
+            earner: deps.api.addr_make("earner").to_string(),
+            earner_token_root: general_purpose::STANDARD.encode(token_root),
+        };
+
+        let exeute_claim = ExecuteRewardsMerkleClaim {
+            root_index: 0,
+            earner_index: 0,
+            earner_tree_proof: vec![],
+            earner_leaf,
+            token_indices: vec![0, 1],
+            token_tree_proofs: vec![[hash_b.clone()].concat(), [hash_a.clone()].concat()],
+            token_leaves: vec![leaf_a.clone(), leaf_b.clone()],
+        };
+
+        // Mock the token balance query
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } if contract_addr == "token_a" => {
+                let balance_response = Cw20BalanceResponse {
+                    balance: Uint128::new(1000),
+                };
+                SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&balance_response).unwrap(),
+                ))
+            }
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } if contract_addr == "token_b" => {
+                let balance_response = Cw20BalanceResponse {
+                    balance: Uint128::new(1000),
+                };
+                SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&balance_response).unwrap(),
+                ))
+            }
+            WasmQuery::Smart {
+                contract_addr,
+                msg: _,
+            } => SystemResult::Err(SystemError::NoSuchContract {
+                addr: contract_addr.to_string(),
+            }),
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        // Try to process claim while paused, should fail
+        let msg = ExecuteMsg::ProcessClaim {
+            claim: exeute_claim.clone(),
+            recipient: recipient.to_string(),
+        };
+
+        let info = message_info(&deps.api.addr_make("claimer"), &[]);
+        let result = execute(deps.as_mut(), env.clone(), info.clone(), msg.clone());
+        assert!(result.is_err());
+        if let Err(err) = result {
+            match err {
+                ContractError::Std(err) if err.to_string().contains("Functionality is paused") => {
+                    ()
+                }
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Unpause process claim
+        let unpause_msg = ExecuteMsg::UnpauseBit {
+            index: PAUSED_PROCESS_CLAIM,
+        };
+        let unpause_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            unpauser_info.clone(),
+            unpause_msg,
+        );
+        assert!(unpause_res.is_ok());
+    }
+
+    #[test]
+    fn test_pause_and_unpause_submit_disable_roots() {
+        let (
+            mut deps,
+            env,
+            _owner_info,
+            pauser_info,
+            unpauser_info,
+            _strategy_manager_info,
+            _delegation_manager_info,
+            rewards_updater_info,
+        ) = instantiate_contract();
+
+        // Pause submit disable roots
+        let pause_msg = ExecuteMsg::PauseBit {
+            index: PAUSED_SUBMIT_DISABLE_ROOTS,
+        };
+        let pause_res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg);
+        assert!(pause_res.is_ok());
+
+        let root = Binary::from(b"valid_root".to_vec());
+        let rewards_calculation_end_timestamp = 1100;
+
+        let earner_tree_depth = 0u8;
+        let token_tree_depth = 0u8;
+
+        // Try to submit root while paused, should fail
+        let msg = ExecuteMsg::SubmitRoot {
+            root: root.to_base64(),
+            rewards_calculation_end_timestamp,
+            earner_tree_depth,
+            token_tree_depth,
+        };
+
+        let result = execute(
+            deps.as_mut(),
+            env.clone(),
+            rewards_updater_info.clone(),
+            msg.clone(),
+        );
+        assert!(result.is_err());
+        if let Err(err) = result {
+            match err {
+                ContractError::Std(err) if err.to_string().contains("Functionality is paused") => {
+                    ()
+                }
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Unpause submit disable roots
+        let unpause_msg = ExecuteMsg::UnpauseBit {
+            index: PAUSED_SUBMIT_DISABLE_ROOTS,
+        };
+        let unpause_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            unpauser_info.clone(),
+            unpause_msg,
+        );
+        assert!(unpause_res.is_ok());
+
+        // Try to submit root again, should succeed
+        let result = execute(
+            deps.as_mut(),
+            env.clone(),
+            rewards_updater_info.clone(),
+            msg,
+        );
+        println!("{:?}", result);
+        assert!(result.is_ok());
+
+        let response = result.unwrap();
+        assert_eq!(response.messages.len(), 0);
+        assert_eq!(response.events.len(), 1);
+
+        let event = response.events.first().unwrap();
+        assert_eq!(event.ty, "DistributionRootSubmitted");
+        assert_eq!(event.attributes.len(), 4);
+        assert_eq!(event.attributes[0].key, "root_index");
+        assert_eq!(event.attributes[0].value, "0");
+        assert_eq!(event.attributes[1].key, "root");
+        assert_eq!(event.attributes[1].value, format!("{:?}", root));
+        assert_eq!(event.attributes[2].key, "rewards_calculation_end_timestamp");
+        assert_eq!(
+            event.attributes[2].value,
+            rewards_calculation_end_timestamp.to_string()
+        );
+        assert_eq!(event.attributes[3].key, "activated_at");
+        assert_eq!(
+            event.attributes[3].value,
+            (env.block.time.seconds() + 60).to_string()
+        );
+    }
+
+    #[test]
+    fn test_global_pause_and_unpause() {
+        let (
+            mut deps,
+            env,
+            owner_info,
+            pauser_info,
+            unpauser_info,
+            _strategy_manager_info,
+            _delegation_manager_info,
+            _rewards_updater_info,
+        ) = instantiate_contract();
+
+        // Pause all functionalities
+        let pause_msg = ExecuteMsg::PauseAll {};
+        let pause_res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg);
+        assert!(pause_res.is_ok());
+
+        let calc_interval = 86_400; // 1 day
+
+        let block_time = mock_env().block.time.seconds();
+
+        let aligned_start_time = block_time - (block_time % calc_interval);
+        let aligned_start_timestamp = Timestamp::from_seconds(aligned_start_time);
+
+        let submission = vec![RewardsSubmission {
+            strategies_and_multipliers: vec![StrategyAndMultiplier {
+                strategy: deps.api.addr_make("strategy1"),
+                multiplier: 1,
+            }],
+            amount: Uint128::new(100),
+            duration: calc_interval, // 1 day
+            start_timestamp: aligned_start_timestamp,
+            token: deps.api.addr_make("token"),
+        }];
+
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg }
+                if Addr::unchecked(contract_addr) == deps.api.addr_make("strategy_manager") =>
+            {
+                let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
+                match msg {
+                    StrategyManagerQueryMsg::IsStrategyWhitelisted { strategy } => {
+                        let response = if strategy == deps.api.addr_make("strategy1").to_string() {
+                            StrategyWhitelistedResponse {
+                                is_whitelisted: true,
+                            }
+                        } else {
+                            StrategyWhitelistedResponse {
+                                is_whitelisted: false,
+                            }
+                        };
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
+                    }
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    }),
+                }
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        // Try to create BVS rewards submission while paused, should fail
+        let msg = ExecuteMsg::CreateBvsRewardsSubmission {
+            rewards_submissions: submission.clone(),
+        };
+
+        let result = execute(deps.as_mut(), env.clone(), owner_info.clone(), msg.clone());
+        assert!(result.is_err());
+        if let Err(err) = result {
+            match err {
+                ContractError::Std(err) if err.to_string().contains("Functionality is paused") => {
+                    ()
+                }
+                _ => panic!("Unexpected error: {:?}", err),
+            }
+        }
+
+        // Unpause all functionalities
+        let unpause_msg = ExecuteMsg::UnpauseAll {};
+        let unpause_res = execute(
+            deps.as_mut(),
+            env.clone(),
+            unpauser_info.clone(),
+            unpause_msg,
+        );
+        assert!(unpause_res.is_ok());
+
+        // Try to create BVS rewards submission again, should succeed
+        let result = execute(deps.as_mut(), env.clone(), owner_info.clone(), msg);
+        assert!(result.is_ok());
+
+        let response = result.unwrap();
+        assert_eq!(response.messages.len(), 1);
+        assert_eq!(response.events.len(), 1);
+
+        let event = response.events.first().unwrap();
+        assert_eq!(event.ty, "BVSRewardsSubmissionCreated");
+        assert_eq!(event.attributes.len(), 5);
+        assert_eq!(event.attributes[0].key, "sender");
+        assert_eq!(
+            event.attributes[0].value,
+            deps.api.addr_make("initial_owner").to_string()
+        );
+        assert_eq!(event.attributes[1].key, "nonce");
+        assert_eq!(event.attributes[1].value, "0");
+        assert_eq!(event.attributes[2].key, "rewards_submission_hash");
+        assert_eq!(
+            event.attributes[2].value,
+            "FWMKFRHYNewOAaP1Ol9hEq89dlsUbU9m3PehWbAwIi8="
+        );
+        assert_eq!(event.attributes[3].key, "token");
+        assert_eq!(
+            event.attributes[3].value,
+            deps.api.addr_make("token").to_string()
+        );
+        assert_eq!(event.attributes[4].key, "amount");
+        assert_eq!(event.attributes[4].value, "100");
     }
 }
