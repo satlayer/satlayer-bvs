@@ -24,36 +24,26 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 
 use bvs_base::delegation::{OperatorResponse, QueryMsg as DelegationManagerQueryMsg};
-use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
-use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
+use bvs_registry::api::{is_paused, set_registry};
 
 const CONTRACT_NAME: &str = "BVS Directory";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const PAUSED_OPERATOR_REGISTER_DEREGISTER_TO_BVS: u8 = 0;
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    mut deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    set_registry(deps.storage, &deps.api.addr_validate(&msg.registry)?)?;
 
     let owner = deps.api.addr_validate(&msg.initial_owner)?;
     let delegation_manager = deps.api.addr_validate(&msg.delegation_manager)?;
 
     OWNER.save(deps.storage, &owner)?;
     DELEGATION_MANAGER.save(deps.storage, &delegation_manager)?;
-
-    let pauser = deps.api.addr_validate(&msg.pauser)?;
-    let unpauser = deps.api.addr_validate(&msg.unpauser)?;
-
-    set_pauser(deps.branch(), pauser)?;
-    set_unpauser(deps.branch(), unpauser)?;
-
-    PAUSED_STATE.save(deps.storage, &msg.initial_paused_status)?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
@@ -68,6 +58,8 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    is_paused(deps.as_ref(), &env, &msg)?;
+
     match msg {
         ExecuteMsg::RegisterBvs { bvs_contract } => register_bvs(deps, bvs_contract),
         ExecuteMsg::RegisterOperatorToBvs {
@@ -105,24 +97,6 @@ pub fn execute(
             let new_owner_addr = deps.api.addr_validate(&new_owner)?;
             transfer_ownership(deps, info, new_owner_addr)
         }
-        ExecuteMsg::Pause {} => {
-            check_pauser(deps.as_ref(), info.clone())?;
-            pause(deps, &info).map_err(ContractError::Std)
-        }
-        ExecuteMsg::Unpause {} => {
-            check_unpauser(deps.as_ref(), info.clone())?;
-            unpause(deps, &info).map_err(ContractError::Std)
-        }
-        ExecuteMsg::SetPauser { new_pauser } => {
-            only_owner(deps.as_ref(), &info.clone())?;
-            let new_pauser_addr = deps.api.addr_validate(&new_pauser)?;
-            set_pauser(deps, new_pauser_addr).map_err(ContractError::Std)
-        }
-        ExecuteMsg::SetUnpauser { new_unpauser } => {
-            only_owner(deps.as_ref(), &info.clone())?;
-            let new_unpauser_addr = deps.api.addr_validate(&new_unpauser)?;
-            set_unpauser(deps, new_unpauser_addr).map_err(ContractError::Std)
-        }
     }
 }
 
@@ -152,8 +126,6 @@ pub fn register_operator(
     public_key: Binary,
     operator_signature: SignatureWithSaltAndExpiry,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_OPERATOR_REGISTER_DEREGISTER_TO_BVS)?;
-
     if operator_signature.expiry < env.block.time.seconds() {
         return Err(ContractError::SignatureExpired {});
     }
@@ -224,8 +196,6 @@ pub fn deregister_operator(
     info: MessageInfo,
     operator: Addr,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_OPERATOR_REGISTER_DEREGISTER_TO_BVS)?;
-
     let status =
         BVS_OPERATOR_STATUS.may_load(deps.storage, (info.sender.clone(), operator.clone()))?;
     if status == Some(OperatorBvsRegistrationStatus::Registered) {
@@ -443,13 +413,12 @@ mod tests {
     use super::*;
     use base64::{engine::general_purpose, Engine as _};
     use bech32::{self, ToBase32, Variant};
-    use bvs_base::roles::{PAUSER, UNPAUSER};
+    use bvs_delegation_manager::contract::update_operator_metadata_uri;
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
     use cosmwasm_std::{
-        attr, from_json, Addr, Binary, ContractResult, OwnedDeps, SystemError, SystemResult,
-        WasmQuery,
+        from_json, Addr, Binary, ContractResult, OwnedDeps, SystemError, SystemResult, WasmQuery,
     };
     use ripemd::Ripemd160;
     use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
@@ -464,15 +433,10 @@ mod tests {
         let owner = deps.api.addr_make("owner").to_string();
         let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
 
-        let pauser = deps.api.addr_make("pauser").to_string();
-        let unpauser = deps.api.addr_make("unpauser").to_string();
-
         let msg = InstantiateMsg {
             initial_owner: owner.clone(),
             delegation_manager: delegation_manager.clone(),
-            pauser: pauser.clone(),
-            unpauser: unpauser.clone(),
-            initial_paused_status: 0,
+            registry: deps.api.addr_make("registry").to_string(),
         };
 
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -499,8 +463,6 @@ mod tests {
         OwnedDeps<MockStorage, MockApi, MockQuerier>,
         Env,
         MessageInfo,
-        MessageInfo,
-        MessageInfo,
         String,
     ) {
         let mut deps = mock_dependencies();
@@ -511,18 +473,10 @@ mod tests {
 
         let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
 
-        let pauser = deps.api.addr_make("pauser").to_string();
-        let unpauser = deps.api.addr_make("unpauser").to_string();
-
-        let pauser_info = message_info(&Addr::unchecked(pauser.clone()), &[]);
-        let unpauser_info = message_info(&Addr::unchecked(unpauser.clone()), &[]);
-
         let msg = InstantiateMsg {
             initial_owner: owner.to_string(),
             delegation_manager: delegation_manager.to_string(),
-            pauser: pauser.clone(),
-            unpauser: unpauser.clone(),
-            initial_paused_status: 0,
+            registry: deps.api.addr_make("registry").to_string(),
         };
 
         let res = instantiate(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();
@@ -532,14 +486,7 @@ mod tests {
         assert_eq!(res.attributes[1].key, "owner");
         assert_eq!(res.attributes[1].value, owner.to_string());
 
-        (
-            deps,
-            env,
-            owner_info,
-            pauser_info,
-            unpauser_info,
-            delegation_manager,
-        )
+        (deps, env, owner_info, delegation_manager)
     }
 
     fn generate_osmosis_public_key_from_private_key(
@@ -562,8 +509,7 @@ mod tests {
 
     #[test]
     fn test_register_bvs() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, delegation_manager) =
-            instantiate_contract();
+        let (mut deps, env, info, delegation_manager) = instantiate_contract();
 
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart {
@@ -578,11 +524,7 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterBvs {
-            bvs_contract: "bvs_contract".to_string(),
-        };
-
-        let result = execute(deps.as_mut(), env, info, msg).unwrap();
+        let result = register_bvs(deps.as_mut(), "bvs_contract".to_string()).unwrap();
 
         let bvs_hash = &result
             .attributes
@@ -605,8 +547,7 @@ mod tests {
 
     #[test]
     fn test_register_operator() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, delegation_manager) =
-            instantiate_contract();
+        let (mut deps, env, info, delegation_manager) = instantiate_contract();
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
@@ -651,18 +592,19 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToBvs {
-            operator: operator.to_string(),
-            public_key: Binary::from_base64(public_key_hex).unwrap(),
-            contract_addr: contract_addr.to_string(),
-            signature_with_salt_and_expiry: SignatureWithSaltAndExpiry {
+        let res = register_operator(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            contract_addr.clone(),
+            operator.clone(),
+            Binary::from_base64(public_key_hex).unwrap(),
+            SignatureWithSaltAndExpiry {
                 signature: Binary::new(signature_bytes),
                 salt: salt.clone(),
                 expiry,
             },
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        );
 
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
@@ -700,8 +642,7 @@ mod tests {
 
     #[test]
     fn test_deregister_operator() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, delegation_manager) =
-            instantiate_contract();
+        let (mut deps, env, info, delegation_manager) = instantiate_contract();
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
@@ -744,25 +685,23 @@ mod tests {
             }),
         });
 
-        let register_msg = ExecuteMsg::RegisterOperatorToBvs {
-            operator: operator.to_string(),
-            public_key: Binary::from_base64(public_key_hex).unwrap(),
-            contract_addr: contract_addr.to_string(),
-            signature_with_salt_and_expiry: SignatureWithSaltAndExpiry {
+        let res = register_operator(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            contract_addr.clone(),
+            operator.clone(),
+            Binary::from_base64(public_key_hex).unwrap(),
+            SignatureWithSaltAndExpiry {
                 signature: Binary::new(signature_bytes),
                 salt: salt.clone(),
                 expiry,
             },
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), register_msg);
+        );
 
         assert!(res.is_ok());
 
-        let deregister_msg = ExecuteMsg::DeregisterOperatorFromBvs {
-            operator: operator.to_string(),
-        };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), deregister_msg);
+        let res = deregister_operator(deps.as_mut(), env.clone(), info.clone(), operator.clone());
 
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
@@ -795,15 +734,10 @@ mod tests {
 
     #[test]
     fn test_update_metadata_uri() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
+        let (deps, env, info, _delegation_manager) = instantiate_contract();
 
         let metadata_uri = "http://metadata.uri".to_string();
-
-        let msg = ExecuteMsg::UpdateBvsMetadataUri {
-            metadata_uri: metadata_uri.clone(),
-        };
-        let res = execute(deps.as_mut(), env, info.clone(), msg);
+        let res = update_metadata_uri(info.clone(), metadata_uri.clone());
 
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
@@ -829,8 +763,7 @@ mod tests {
 
     #[test]
     fn test_cancel_salt() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
+        let (mut deps, env, info, _delegation_manager) = instantiate_contract();
 
         let salt = Binary::from(b"salt");
 
@@ -839,8 +772,7 @@ mod tests {
             .unwrap();
         assert!(is_salt_spent.is_none());
 
-        let executeMsg = ExecuteMsg::CancelSalt { salt: salt.clone() };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), executeMsg);
+        let res = cancel_salt(deps.as_mut(), env.clone(), info.clone(), salt.clone());
 
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
@@ -865,15 +797,10 @@ mod tests {
 
     #[test]
     fn test_transfer_ownership() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
+        let (mut deps, env, info, _delegation_manager) = instantiate_contract();
 
-        let new_owner = deps.api.addr_make("new_owner").to_string();
-
-        let msg = ExecuteMsg::TransferOwnership {
-            new_owner: new_owner.to_string(),
-        };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        let new_owner = deps.api.addr_make("new_owner");
+        let res = transfer_ownership(deps.as_mut(), info.clone(), new_owner.clone());
 
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
@@ -889,13 +816,12 @@ mod tests {
         assert_eq!(res.attributes[1].value, new_owner.to_string());
 
         let current_owner = OWNER.load(&deps.storage).unwrap();
-        assert_eq!(current_owner, Addr::unchecked(new_owner));
+        assert_eq!(current_owner, new_owner);
     }
 
     #[test]
     fn test_query_operator() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, delegation_manager) =
-            instantiate_contract();
+        let (mut deps, env, info, delegation_manager) = instantiate_contract();
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
@@ -938,18 +864,19 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToBvs {
-            operator: operator.to_string(),
-            public_key: Binary::from_base64(public_key_hex).unwrap(),
-            contract_addr: contract_addr.to_string(),
-            signature_with_salt_and_expiry: SignatureWithSaltAndExpiry {
+        let res = register_operator(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            contract_addr.clone(),
+            operator.clone(),
+            Binary::from_base64(public_key_hex).unwrap(),
+            SignatureWithSaltAndExpiry {
                 signature: Binary::new(signature_bytes),
                 salt: salt.clone(),
                 expiry,
             },
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        );
 
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
@@ -997,8 +924,7 @@ mod tests {
 
     #[test]
     fn test_query_operator_unregistered() {
-        let (deps, env, info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
+        let (deps, env, info, _delegation_manager) = instantiate_contract();
 
         let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
         let (operator, _secret_key, _public_key_bytes) =
@@ -1021,8 +947,7 @@ mod tests {
 
     #[test]
     fn test_query_calculate_digest_hash() {
-        let (deps, env, info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
+        let (deps, env, info, _delegation_manager) = instantiate_contract();
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (_operator, _secret_key, public_key_bytes) =
@@ -1064,8 +989,7 @@ mod tests {
 
     #[test]
     fn test_query_is_salt_spent() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, delegation_manager) =
-            instantiate_contract();
+        let (mut deps, env, info, delegation_manager) = instantiate_contract();
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
@@ -1108,18 +1032,19 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToBvs {
-            operator: operator.to_string(),
-            public_key: Binary::from_base64(public_key_hex).unwrap(),
-            contract_addr: contract_addr.to_string(),
-            signature_with_salt_and_expiry: SignatureWithSaltAndExpiry {
+        let res = register_operator(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            contract_addr.clone(),
+            operator.clone(),
+            Binary::from_base64(public_key_hex).unwrap(),
+            SignatureWithSaltAndExpiry {
                 signature: Binary::new(signature_bytes),
                 salt: salt.clone(),
                 expiry,
             },
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        );
 
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
@@ -1140,8 +1065,7 @@ mod tests {
 
     #[test]
     fn test_query_delegation_manager() {
-        let (deps, env, _info, _pauser_info, _unpauser_info, delegation_manager) =
-            instantiate_contract();
+        let (deps, env, _info, delegation_manager) = instantiate_contract();
 
         let query_msg = QueryMsg::DelegationManager {};
         let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
@@ -1156,8 +1080,7 @@ mod tests {
 
     #[test]
     fn test_query_owner() {
-        let (deps, env, info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
+        let (deps, env, info, _delegation_manager) = instantiate_contract();
 
         let query_msg = QueryMsg::Owner {};
         let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
@@ -1169,8 +1092,7 @@ mod tests {
 
     #[test]
     fn test_query_operator_bvs_registration_type_hash() {
-        let (deps, env, _info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
+        let (deps, env, _info, _delegation_manager) = instantiate_contract();
 
         let query_msg = QueryMsg::OperatorBvsRegistrationTypeHash {};
         let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
@@ -1183,8 +1105,7 @@ mod tests {
     }
     #[test]
     fn test_query_domain_type_hash() {
-        let (deps, env, _info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
+        let (deps, env, _info, _delegation_manager) = instantiate_contract();
 
         let query_msg = QueryMsg::DomainTypeHash {};
         let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
@@ -1212,8 +1133,7 @@ mod tests {
 
     #[test]
     fn test_register_operator_to_bvs() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, delegation_manager) =
-            instantiate_contract();
+        let (mut deps, env, info, delegation_manager) = instantiate_contract();
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
@@ -1256,18 +1176,19 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToBvs {
-            operator: operator.to_string(),
-            public_key: Binary::from_base64(public_key_hex).unwrap(),
-            contract_addr: contract_addr.to_string(),
-            signature_with_salt_and_expiry: SignatureWithSaltAndExpiry {
+        let res = register_operator(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            contract_addr.clone(),
+            operator.clone(),
+            Binary::from_base64(public_key_hex).unwrap(),
+            SignatureWithSaltAndExpiry {
                 signature: Binary::new(signature_bytes),
                 salt: salt.clone(),
                 expiry,
             },
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        );
 
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
@@ -1320,8 +1241,7 @@ mod tests {
 
     #[test]
     fn test_query_bvs_info() {
-        let (mut deps, env, _info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
+        let (mut deps, env, _info, _delegation_manager) = instantiate_contract();
 
         let bvs_contract = "bvs_contract".to_string();
 
@@ -1343,99 +1263,13 @@ mod tests {
     }
 
     #[test]
-    fn test_pause() {
-        let (mut deps, env, _info, pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
-
-        let pause_msg = ExecuteMsg::Pause {};
-        let res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg).unwrap();
-
-        assert_eq!(res.attributes, vec![attr("action", "PAUSED")]);
-
-        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_state, 1);
-    }
-
-    #[test]
-    fn test_unpause() {
-        let (mut deps, env, _info, _pauser_info, unpauser_info, _delegation_manager) =
-            instantiate_contract();
-
-        let unpause_msg = ExecuteMsg::Unpause {};
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            unpauser_info.clone(),
-            unpause_msg,
-        )
-        .unwrap();
-
-        assert_eq!(res.attributes, vec![attr("action", "UNPAUSED")]);
-
-        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_state, 0);
-    }
-
-    #[test]
-    fn test_set_pauser() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
-
-        let new_pauser = deps.api.addr_make("new_pauser").to_string();
-
-        let set_pauser_msg = ExecuteMsg::SetPauser {
-            new_pauser: new_pauser.to_string(),
-        };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), set_pauser_msg).unwrap();
-
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "method" && a.value == "set_pauser"));
-
-        let pauser = PAUSER.load(&deps.storage).unwrap();
-        assert_eq!(pauser, Addr::unchecked(new_pauser));
-    }
-
-    #[test]
-    fn test_set_unpauser() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
-
-        let new_unpauser = deps.api.addr_make("new_unpauser").to_string();
-
-        let set_unpauser_msg = ExecuteMsg::SetUnpauser {
-            new_unpauser: new_unpauser.to_string(),
-        };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), set_unpauser_msg).unwrap();
-
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "method" && a.value == "set_unpauser"));
-
-        let unpauser = UNPAUSER.load(&deps.storage).unwrap();
-        assert_eq!(unpauser, Addr::unchecked(new_unpauser));
-    }
-
-    #[test]
     fn test_set_delegation_manager() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, _delegation_manager) =
-            instantiate_contract();
+        let (mut deps, env, info, _delegation_manager) = instantiate_contract();
 
-        let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
+        let delegation_manager = deps.api.addr_make("delegation_manager");
 
-        let set_delegation_manager_msg = ExecuteMsg::SetDelegationManager {
-            delegation_manager: delegation_manager.to_string(),
-        };
-
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            info.clone(),
-            set_delegation_manager_msg,
-        )
-        .unwrap();
+        let res = set_delegation_manager(deps.as_mut(), info.clone(), delegation_manager.clone())
+            .unwrap();
 
         assert!(res
             .attributes
@@ -1443,6 +1277,6 @@ mod tests {
             .any(|a| a.key == "method" && a.value == "set_delegation_manager"));
 
         let delegation_manager_addr = DELEGATION_MANAGER.load(&deps.storage).unwrap();
-        assert_eq!(delegation_manager_addr, Addr::unchecked(delegation_manager));
+        assert_eq!(delegation_manager_addr, delegation_manager);
     }
 }

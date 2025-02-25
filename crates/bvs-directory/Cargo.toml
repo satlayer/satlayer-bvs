@@ -29,8 +29,10 @@ ripemd = { workspace = true }
 base64 = { workspace = true }
 bvs-base = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
+bvs-registry = { workspace = true, features = ["library"] }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
 bvs-testing = { workspace = true }
+bvs-registry = { workspace = true, features = ["testing"] }
 bvs-delegation-manager = { workspace = true, features = ["testing"] }

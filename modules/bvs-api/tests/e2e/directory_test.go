@@ -64,7 +64,9 @@ func (s *DirectoryTestSuite) SetupSuite() {
 	s.Require().NoError(err, "register as operator")
 	s.Require().NotNil(txResp, "response nil")
 
-	s.contrAddr = deployer.DeployDirectory(delegationManager.Address).Address
+	registry := deployer.DeployRegistry(nil)
+
+	s.contrAddr = deployer.DeployDirectory(delegationManager.Address, registry.Address).Address
 	s.delegationContrAddr = delegationManager.Address
 }
 
@@ -170,53 +172,6 @@ func (s *DirectoryTestSuite) Test_TransferOwnership() {
 	assert.NoError(t, err, "TestTransferOwnership")
 	assert.NotNil(t, recoverResp, "response nil")
 	t.Logf("recoverResp:%+v", recoverResp)
-}
-
-func (s *DirectoryTestSuite) Test_Pause() {
-	t := s.T()
-	keyName := "caller"
-	chainIO, err := s.chainIO.SetupKeyring(keyName, "test")
-	assert.NoError(t, err)
-
-	bvsDirectory := api.NewDirectory(chainIO, s.contrAddr)
-	{
-		_, err = bvsDirectory.SetPauser(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
-		s.Require().NoError(err)
-		_, err = bvsDirectory.SetUnpauser(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
-		s.Require().NoError(err)
-	}
-
-	txResp, err := bvsDirectory.Pause(context.Background())
-	assert.NoError(t, err)
-	assert.NotNil(t, txResp, "response nil")
-	t.Logf("txResp:%+v", txResp)
-
-	recoverResp, err := bvsDirectory.Unpause(context.Background())
-	assert.NoError(t, err)
-	assert.NotNil(t, recoverResp, "response nil")
-	t.Logf("txResp:%+v", recoverResp)
-}
-
-func (s *DirectoryTestSuite) Test_SetPauser() {
-	t := s.T()
-	keyName := "caller"
-	chainIO, err := s.chainIO.SetupKeyring(keyName, "test")
-	assert.NoError(t, err)
-	txResp, err := api.NewDirectory(chainIO, s.contrAddr).SetPauser(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
-	assert.NoError(t, err)
-	assert.NotNil(t, txResp, "response nil")
-	t.Logf("txResp:%+v", txResp)
-}
-
-func (s *DirectoryTestSuite) Test_SetUnpauser() {
-	t := s.T()
-	keyName := "caller"
-	chainIO, err := s.chainIO.SetupKeyring(keyName, "test")
-	assert.NoError(t, err)
-	txResp, err := api.NewDirectory(chainIO, s.contrAddr).SetUnpauser(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
-	assert.NoError(t, err)
-	assert.NotNil(t, txResp, "response nil")
-	t.Logf("txResp:%+v", txResp)
 }
 
 func (s *DirectoryTestSuite) Test_SetDelegationManager() {

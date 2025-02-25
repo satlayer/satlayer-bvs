@@ -70,42 +70,6 @@ func directoryCmd() *cobra.Command {
 		},
 	}
 
-	pauseCmd := &cobra.Command{
-		Use:   "pause <userKeyName>",
-		Short: "To pause the directory contract.",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			directory.Pause(args[0])
-		},
-	}
-
-	unpauseCmd := &cobra.Command{
-		Use:   "unpause <userKeyName>",
-		Short: "To unpause the directory contract.",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			directory.Unpause(args[0])
-		},
-	}
-
-	setPauserCmd := &cobra.Command{
-		Use:   "set-pauser <userKeyName> <newPauser>",
-		Short: "To set the pauser of the directory contract.",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			directory.SetPauser(args[0], args[1])
-		},
-	}
-
-	setUnpauserCmd := &cobra.Command{
-		Use:   "set-unpauser <userKeyName> <newUnpauser>",
-		Short: "To set the unpauser of the directory contract.",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			directory.SetUnpauser(args[0], args[1])
-		},
-	}
-
 	getOperatorCmd := &cobra.Command{
 		Use:   "get-operator <operatorAddress>",
 		Short: "To get the operator details from the directory contract.",
@@ -197,10 +161,6 @@ func directoryCmd() *cobra.Command {
 	subCmd.AddCommand(updateMetadataCmd)
 	subCmd.AddCommand(cancelSaltCmd)
 	subCmd.AddCommand(transferOwnerCmd)
-	subCmd.AddCommand(pauseCmd)
-	subCmd.AddCommand(unpauseCmd)
-	subCmd.AddCommand(setPauserCmd)
-	subCmd.AddCommand(setUnpauserCmd)
 	subCmd.AddCommand(getOperatorCmd)
 	subCmd.AddCommand(calcDigesthashCmd)
 	subCmd.AddCommand(isSaltSpentCmd)

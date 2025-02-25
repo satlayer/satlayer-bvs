@@ -48,6 +48,8 @@ importers:
 
   crates/bvs-directory: {}
 
+  crates/bvs-registry: {}
+
   crates/bvs-rewards-coordinator: {}
 
   crates/bvs-slash-manager: {}
@@ -125,6 +127,9 @@ importers:
       '@satlayer/bvs-directory':
         specifier: workspace:*
         version: link:../../crates/bvs-directory
+      '@satlayer/bvs-registry':
+        specifier: workspace:*
+        version: link:../../crates/bvs-registry
       '@satlayer/bvs-rewards-coordinator':
         specifier: workspace:*
         version: link:../../crates/bvs-rewards-coordinator
@@ -153,6 +158,9 @@ importers:
       '@satlayer/bvs-directory':
         specifier: workspace:*
         version: link:../../crates/bvs-directory
+      '@satlayer/bvs-registry':
+        specifier: workspace:*
+        version: link:../../crates/bvs-registry
       '@satlayer/bvs-rewards-coordinator':
         specifier: workspace:*
         version: link:../../crates/bvs-rewards-coordinator

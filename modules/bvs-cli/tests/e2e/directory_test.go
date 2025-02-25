@@ -20,10 +20,6 @@ var directoryKeyName = "caller"
 //	directory.UpdateMetadata(directoryKeyName, metadata)
 //}
 //
-//func Test_PauseAndUnpause(t *testing.T) {
-//	directory.Pause(directoryKeyName)
-//	directory.Unpause(directoryKeyName)
-//}
 
 func Test_GetOperator(t *testing.T) {
 	operatorAddress := "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"

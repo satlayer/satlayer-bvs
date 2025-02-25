@@ -149,50 +149,6 @@ func (r *Directory) TransferOwnership(ctx context.Context, newOwner string) (*co
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *Directory) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
-	executeMsg := directory.ExecuteMsg{Pause: &directory.Pause{}}
-	executeMsgBytes, err := json.Marshal(executeMsg)
-	if err != nil {
-		return nil, err
-	}
-	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "Pause")
-
-	return r.io.SendTransaction(ctx, executeOptions)
-}
-
-func (r *Directory) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
-	executeMsg := directory.ExecuteMsg{Unpause: &directory.Unpause{}}
-	executeMsgBytes, err := json.Marshal(executeMsg)
-	if err != nil {
-		return nil, err
-	}
-	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "Unpause")
-
-	return r.io.SendTransaction(ctx, executeOptions)
-}
-
-func (r *Directory) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
-	executeMsg := directory.ExecuteMsg{SetPauser: &directory.SetPauser{NewPauser: newPauser}}
-	executeMsgBytes, err := json.Marshal(executeMsg)
-	if err != nil {
-		return nil, err
-	}
-	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "SetPauser")
-
-	return r.io.SendTransaction(ctx, executeOptions)
-}
-
-func (r *Directory) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
-	executeMsg := directory.ExecuteMsg{SetUnpauser: &directory.SetUnpauser{NewUnpauser: newUnpauser}}
-	executeMsgBytes, err := json.Marshal(executeMsg)
-	if err != nil {
-		return nil, err
-	}
-	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "SetUnpauser")
-
-	return r.io.SendTransaction(ctx, executeOptions)
-}
-
 func (r *Directory) SetDelegationManager(ctx context.Context, delegationManager string) (*coretypes.ResultTx, error) {
 	executeMsg := directory.ExecuteMsg{SetDelegationManager: &directory.SetDelegationManager{DelegationManager: delegationManager}}
 	executeMsgBytes, err := json.Marshal(executeMsg)

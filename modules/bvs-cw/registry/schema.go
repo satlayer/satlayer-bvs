@@ -1,0 +1,91 @@
+// This file was generated from JSON Schema using quicktype, do not modify it directly.
+// To parse and unparse this JSON data, add this code to your project and do:
+//
+//    instantiateMsg, err := UnmarshalInstantiateMsg(bytes)
+//    bytes, err = instantiateMsg.Marshal()
+//
+//    executeMsg, err := UnmarshalExecuteMsg(bytes)
+//    bytes, err = executeMsg.Marshal()
+//
+//    queryMsg, err := UnmarshalQueryMsg(bytes)
+//    bytes, err = queryMsg.Marshal()
+//
+//    isPausedResponse, err := UnmarshalIsPausedResponse(bytes)
+//    bytes, err = isPausedResponse.Marshal()
+
+package registry
+
+import "encoding/json"
+
+func UnmarshalInstantiateMsg(data []byte) (InstantiateMsg, error) {
+	var r InstantiateMsg
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *InstantiateMsg) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalExecuteMsg(data []byte) (ExecuteMsg, error) {
+	var r ExecuteMsg
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *ExecuteMsg) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalQueryMsg(data []byte) (QueryMsg, error) {
+	var r QueryMsg
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *QueryMsg) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func UnmarshalIsPausedResponse(data []byte) (IsPausedResponse, error) {
+	var r IsPausedResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *IsPausedResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+type InstantiateMsg struct {
+	// Initial pause state
+	InitialPaused bool `json:"initial_paused"`
+	// Owner of this contract, who can pause and unpause
+	Owner string `json:"owner"`
+}
+
+type ExecuteMsg struct {
+	Pause   *Pause   `json:"pause,omitempty"`
+	Unpause *Unpause `json:"unpause,omitempty"`
+}
+
+type Pause struct {
+}
+
+type Unpause struct {
+}
+
+type QueryMsg struct {
+	IsPaused IsPaused `json:"is_paused"`
+}
+
+type IsPaused struct {
+	// The ExecuteMsg method to check if it is paused
+	Method string `json:"method"`
+	// The address of the caller (contract)
+	Sender string `json:"sender"`
+}
+
+type IsPausedResponse struct {
+	Paused bool `json:"paused"`
+}

@@ -8,6 +8,7 @@ members = [
     "bvs-strategy-base",
     "bvs-strategy-factory",
     "bvs-strategy-manager",
+    "bvs-registry"
 ]
 
 resolver = "2"
@@ -49,6 +50,7 @@ base64 = "0.22.1"
 cw-utils = "2.0.0"
 
 # contracts
+bvs-registry = { path = "./bvs-registry" }
 bvs-delegation-manager = { path = "./bvs-delegation-manager" }
 bvs-directory = { path = "./bvs-directory" }
 bvs-rewards-coordinator = { path = "./bvs-rewards-coordinator" }

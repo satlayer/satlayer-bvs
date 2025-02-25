@@ -162,11 +162,9 @@ func (r *OwnerResponse) Marshal() ([]byte, error) {
 }
 
 type InstantiateMsg struct {
-	DelegationManager   string `json:"delegation_manager"`
-	InitialOwner        string `json:"initial_owner"`
-	InitialPausedStatus int64  `json:"initial_paused_status"`
-	Pauser              string `json:"pauser"`
-	Unpauser            string `json:"unpauser"`
+	DelegationManager string `json:"delegation_manager"`
+	InitialOwner      string `json:"initial_owner"`
+	Registry          string `json:"registry"`
 }
 
 type ExecuteMsg struct {
@@ -177,10 +175,6 @@ type ExecuteMsg struct {
 	SetDelegationManager      *SetDelegationManager      `json:"set_delegation_manager,omitempty"`
 	CancelSalt                *CancelSalt                `json:"cancel_salt,omitempty"`
 	TransferOwnership         *TransferOwnership         `json:"transfer_ownership,omitempty"`
-	Pause                     *Pause                     `json:"pause,omitempty"`
-	Unpause                   *Unpause                   `json:"unpause,omitempty"`
-	SetPauser                 *SetPauser                 `json:"set_pauser,omitempty"`
-	SetUnpauser               *SetUnpauser               `json:"set_unpauser,omitempty"`
 }
 
 type CancelSalt struct {
@@ -189,9 +183,6 @@ type CancelSalt struct {
 
 type DeregisterOperatorFromBvs struct {
 	Operator string `json:"operator"`
-}
-
-type Pause struct {
 }
 
 type RegisterBvs struct {
@@ -215,19 +206,8 @@ type SetDelegationManager struct {
 	DelegationManager string `json:"delegation_manager"`
 }
 
-type SetPauser struct {
-	NewPauser string `json:"new_pauser"`
-}
-
-type SetUnpauser struct {
-	NewUnpauser string `json:"new_unpauser"`
-}
-
 type TransferOwnership struct {
 	NewOwner string `json:"new_owner"`
-}
-
-type Unpause struct {
 }
 
 type UpdateBvsMetadataURI struct {
