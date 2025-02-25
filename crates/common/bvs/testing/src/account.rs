@@ -75,7 +75,7 @@ impl Account {
 
     // Return base64 encoding format of public key
     pub fn public_key_base64(&self) -> String {
-        general_purpose::STANDARD.encode(&self.public_key.serialize())
+        general_purpose::STANDARD.encode(self.public_key.serialize())
     }
 }
 
