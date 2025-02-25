@@ -128,7 +128,7 @@ func (d *Deployer) DeployDirectory(
 	initMsg := directory.InstantiateMsg{
 		InitialOwner:      d.GenerateAddress("directory:initial_owner").String(),
 		DelegationManager: delegationManager,
-		RegistryAddr:      registry,
+		Registry:          registry,
 	}
 
 	return deployCrate(d, "bvs-directory", initMsg, "BVS Directory")

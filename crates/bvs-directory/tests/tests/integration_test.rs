@@ -20,7 +20,7 @@ fn register_bvs() {
         .deploy_bvs_directory(&bvs_directory::msg::InstantiateMsg {
             initial_owner: owner.clone().to_string(),
             delegation_manager: delegation_manager.into_string(),
-            registry_addr: registry_addr.to_string(),
+            registry: registry_addr.to_string(),
         })
         .build();
 
@@ -72,7 +72,7 @@ fn register_bvs_but_paused() {
         .deploy_bvs_directory(&bvs_directory::msg::InstantiateMsg {
             initial_owner: owner.clone().to_string(),
             delegation_manager: delegation_manager.into_string(),
-            registry_addr: registry_addr.to_string(),
+            registry: registry_addr.to_string(),
         })
         .build();
 

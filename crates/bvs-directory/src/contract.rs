@@ -35,7 +35,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    set_registry(deps.storage, &deps.api.addr_validate(&msg.registry_addr)?)?;
+    set_registry(deps.storage, &deps.api.addr_validate(&msg.registry)?)?;
 
     let owner = deps.api.addr_validate(&msg.initial_owner)?;
     let delegation_manager = deps.api.addr_validate(&msg.delegation_manager)?;
@@ -434,7 +434,7 @@ mod tests {
         let msg = InstantiateMsg {
             initial_owner: owner.clone(),
             delegation_manager: delegation_manager.clone(),
-            registry_addr: deps.api.addr_make("registry_addr").to_string(),
+            registry: deps.api.addr_make("registry").to_string(),
         };
 
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -474,7 +474,7 @@ mod tests {
         let msg = InstantiateMsg {
             initial_owner: owner.to_string(),
             delegation_manager: delegation_manager.to_string(),
-            registry_addr: deps.api.addr_make("registry_addr").to_string(),
+            registry: deps.api.addr_make("registry").to_string(),
         };
 
         let res = instantiate(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();

@@ -164,7 +164,7 @@ func (r *OwnerResponse) Marshal() ([]byte, error) {
 type InstantiateMsg struct {
 	DelegationManager string `json:"delegation_manager"`
 	InitialOwner      string `json:"initial_owner"`
-	RegistryAddr      string `json:"registry_addr"`
+	Registry          string `json:"registry"`
 }
 
 type ExecuteMsg struct {

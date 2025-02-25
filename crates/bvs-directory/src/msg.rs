@@ -7,7 +7,7 @@ use cosmwasm_std::{Addr, Binary};
 pub struct InstantiateMsg {
     pub initial_owner: String,
     pub delegation_manager: String,
-    pub registry_addr: String,
+    pub registry: String,
 }
 
 #[cw_serde]
