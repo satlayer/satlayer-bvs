@@ -76,7 +76,7 @@ func SetUnpauser(userKeyName, unpauser string) {
 
 func TransferOwnership(userKeyName, newOwner string) {
 	strategyFactory, _ := newService(userKeyName)
-	resp, err := strategyFactory.TransferOwnership(context.Background(), newOwner)
+	resp, err := strategyFactory.TwoStepTransferOwnership(context.Background(), newOwner)
 	if err != nil {
 		panic(err)
 	}

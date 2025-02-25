@@ -163,7 +163,7 @@ func SetStrategyWithdrawDelayBlocks(userKeyName string, strategies []string, blo
 func TransferOwnership(userKeyName, newOwner string) {
 	ctx := context.Background()
 	delegation, _ := newService(userKeyName)
-	txResp, err := delegation.TransferOwnership(ctx, newOwner)
+	txResp, err := delegation.TwoStepTransferOwnership(ctx, newOwner)
 	if err != nil {
 		panic(err)
 	}

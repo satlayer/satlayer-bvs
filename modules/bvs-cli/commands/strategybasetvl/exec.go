@@ -75,7 +75,7 @@ func SetUnpauser(userKeyName, unpauser string) {
 
 func TransferOwnership(userKeyName, newOwner string) {
 	StrategyBaseTVL, _ := newService(userKeyName)
-	resp, err := StrategyBaseTVL.TransferOwnership(context.Background(), newOwner)
+	resp, err := StrategyBaseTVL.TwoStepTransferOwnership(context.Background(), newOwner)
 	if err != nil {
 		panic(err)
 	}

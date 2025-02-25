@@ -355,19 +355,19 @@ func (suite *delegationTestSuite) Test_DelegateTransferOwnership() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 	delegation := api.NewDelegationManager(chainIO, suite.contrAddr)
-	txResp, err := delegation.TransferOwnership(context.Background(), "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv")
+	txResp, err := delegation.TwoStepTransferOwnership(context.Background(), "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv")
 	assert.NoError(t, err, "transfer ownership")
 	t.Logf("txResp: %v", txResp)
 
 	// not owner to transfer ownership will be failed
-	txResp, err = delegation.TransferOwnership(context.Background(), "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv")
+	txResp, err = delegation.TwoStepTransferOwnership(context.Background(), "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv")
 	assert.Error(t, err, "transfer ownership not failed")
 	t.Logf("not owner to transfer ownership txResp: %v", txResp)
 
 	RecoverClient, err := suite.chainIO.SetupKeyring("aggregator", "test")
 	assert.NoError(t, err, "create cosmos client")
 	recoverDelegation := api.NewDelegationManager(RecoverClient, suite.contrAddr)
-	recoverResp, err := recoverDelegation.TransferOwnership(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+	recoverResp, err := recoverDelegation.TwoStepTransferOwnership(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 	assert.NoError(t, err, "transfer ownership")
 	t.Logf("recoverResp: %v", recoverResp)
 }

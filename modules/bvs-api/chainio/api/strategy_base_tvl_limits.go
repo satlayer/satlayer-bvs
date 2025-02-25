@@ -167,15 +167,45 @@ func (r *StrategyBaseTvlLimits) SetStrategyManager(ctx context.Context, newStrat
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *StrategyBaseTvlLimits) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
-	msg := strategybasetvllimits.ExecuteMsg{
-		TransferOwnership: &strategybasetvllimits.TransferOwnership{NewOwner: newOwner},
+func (r *StrategyBaseTvlLimits) TwoStepTransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
+	executeMsg := strategybasetvllimits.ExecuteMsg{
+		TwoStepTransferOwnership: &strategybasetvllimits.TwoStepTransferOwnership{
+			NewOwner: newOwner,
+		},
 	}
-	executeMsgBytes, err := json.Marshal(msg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(executeMsgBytes, "TransferOwnership")
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "TwoStepTransferOwnership")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *StrategyBaseTvlLimits) AcceptOwnership(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := strategybasetvllimits.ExecuteMsg{
+		AcceptOwnership: &strategybasetvllimits.AcceptOwnership{},
+	}
+
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "AcceptOwnership")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *StrategyBaseTvlLimits) CancelOwnershipTransfer(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := strategybasetvllimits.ExecuteMsg{
+		CancelOwnershipTransfer: &strategybasetvllimits.CancelOwnershipTransfer{},
+	}
+
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "CancelOwnershipTransfer")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }

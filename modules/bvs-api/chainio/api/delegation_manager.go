@@ -398,19 +398,6 @@ func (r *DelegationManager) SetStrategyWithdrawalDelayBlocks(ctx context.Context
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *DelegationManager) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
-	executeMsg := delegationmanager.ExecuteMsg{
-		TransferOwnership: &delegationmanager.TransferOwnership{NewOwner: newOwner},
-	}
-	executeMsgBytes, err := json.Marshal(executeMsg)
-	if err != nil {
-		return nil, err
-	}
-	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "TransferOwnership")
-
-	return r.io.SendTransaction(ctx, executeOptions)
-}
-
 func (r *DelegationManager) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		Pause: &delegationmanager.Pause{},
@@ -472,6 +459,49 @@ func (r *DelegationManager) SetSlashManager(ctx context.Context, newSlashManager
 		return nil, err
 	}
 	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "SetSlashManager")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *DelegationManager) TwoStepTransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
+	executeMsg := delegationmanager.ExecuteMsg{
+		TwoStepTransferOwnership: &delegationmanager.TwoStepTransferOwnership{
+			NewOwner: newOwner,
+		},
+	}
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "TwoStepTransferOwnership")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *DelegationManager) AcceptOwnership(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := delegationmanager.ExecuteMsg{
+		AcceptOwnership: &delegationmanager.AcceptOwnership{},
+	}
+
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "AcceptOwnership")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *DelegationManager) CancelOwnershipTransfer(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := delegationmanager.ExecuteMsg{
+		CancelOwnershipTransfer: &delegationmanager.CancelOwnershipTransfer{},
+	}
+
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "CancelOwnershipTransfer")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }

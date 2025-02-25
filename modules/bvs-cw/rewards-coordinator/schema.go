@@ -214,11 +214,13 @@ type ExecuteMsg struct {
 	SetRewardsUpdater             *SetRewardsUpdater             `json:"set_rewards_updater,omitempty"`
 	SetRewardsForAllSubmitter     *SetRewardsForAllSubmitter     `json:"set_rewards_for_all_submitter,omitempty"`
 	SetGlobalOperatorCommission   *SetGlobalOperatorCommission   `json:"set_global_operator_commission,omitempty"`
-	TransferOwnership             *TransferOwnership             `json:"transfer_ownership,omitempty"`
 	Pause                         *Pause                         `json:"pause,omitempty"`
 	Unpause                       *Unpause                       `json:"unpause,omitempty"`
 	SetPauser                     *SetPauser                     `json:"set_pauser,omitempty"`
 	SetUnpauser                   *SetUnpauser                   `json:"set_unpauser,omitempty"`
+	TwoStepTransferOwnership      *TwoStepTransferOwnership      `json:"two_step_transfer_ownership,omitempty"`
+	AcceptOwnership               *AcceptOwnership               `json:"accept_ownership,omitempty"`
+	CancelOwnershipTransfer       *CancelOwnershipTransfer       `json:"cancel_ownership_transfer,omitempty"`
 }
 
 type CreateBvsRewardsSubmission struct {
@@ -303,13 +305,19 @@ type SetUnpauser struct {
 	NewUnpauser string `json:"new_unpauser"`
 }
 
+type TwoStepTransferOwnership struct {
+	NewOwner string `json:"new_owner"`
+}
+
+type AcceptOwnership struct {
+}
+
+type CancelOwnershipTransfer struct {
+}
+
 type SubmitRoot struct {
 	RewardsCalculationEndTimestamp int64  `json:"rewards_calculation_end_timestamp"`
 	Root                           string `json:"root"`
-}
-
-type TransferOwnership struct {
-	NewOwner string `json:"new_owner"`
 }
 
 type Unpause struct {

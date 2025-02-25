@@ -184,14 +184,16 @@ type InstantiateMsg struct {
 }
 
 type ExecuteMsg struct {
-	Deposit            *Deposit            `json:"deposit,omitempty"`
-	Withdraw           *Withdraw           `json:"withdraw,omitempty"`
-	SetStrategyManager *SetStrategyManager `json:"set_strategy_manager,omitempty"`
-	TransferOwnership  *TransferOwnership  `json:"transfer_ownership,omitempty"`
-	Pause              *Pause              `json:"pause,omitempty"`
-	Unpause            *Unpause            `json:"unpause,omitempty"`
-	SetPauser          *SetPauser          `json:"set_pauser,omitempty"`
-	SetUnpauser        *SetUnpauser        `json:"set_unpauser,omitempty"`
+	Deposit                  *Deposit                  `json:"deposit,omitempty"`
+	Withdraw                 *Withdraw                 `json:"withdraw,omitempty"`
+	SetStrategyManager       *SetStrategyManager       `json:"set_strategy_manager,omitempty"`
+	Pause                    *Pause                    `json:"pause,omitempty"`
+	Unpause                  *Unpause                  `json:"unpause,omitempty"`
+	SetPauser                *SetPauser                `json:"set_pauser,omitempty"`
+	SetUnpauser              *SetUnpauser              `json:"set_unpauser,omitempty"`
+	TwoStepTransferOwnership *TwoStepTransferOwnership `json:"two_step_transfer_ownership,omitempty"`
+	AcceptOwnership          *AcceptOwnership          `json:"accept_ownership,omitempty"`
+	CancelOwnershipTransfer  *CancelOwnershipTransfer  `json:"cancel_ownership_transfer,omitempty"`
 }
 
 type Deposit struct {
@@ -213,8 +215,14 @@ type SetUnpauser struct {
 	NewUnpauser string `json:"new_unpauser"`
 }
 
-type TransferOwnership struct {
+type TwoStepTransferOwnership struct {
 	NewOwner string `json:"new_owner"`
+}
+
+type AcceptOwnership struct {
+}
+
+type CancelOwnershipTransfer struct {
 }
 
 type Unpause struct {

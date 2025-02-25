@@ -23,7 +23,7 @@ func newService(keyName string) (*api.StrategyManager, io.ChainIO) {
 func TransferOwner(userKeyName, newOwner string) {
 	ctx := context.Background()
 	strategy, _ := newService(userKeyName)
-	txResp, err := strategy.TransferOwnership(ctx, newOwner)
+	txResp, err := strategy.TwoStepTransferOwnership(ctx, newOwner)
 	if err != nil {
 		panic(err)
 	}

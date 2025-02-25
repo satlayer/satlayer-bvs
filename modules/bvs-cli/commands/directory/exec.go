@@ -95,7 +95,7 @@ func CancelSalt(userKeyName, salt string) {
 func TransferOwner(userKeyName, newOwner string) {
 	ctx := context.Background()
 	directory, _ := newService(userKeyName)
-	txn, err := directory.TransferOwnership(ctx, newOwner)
+	txn, err := directory.TwoStepTransferOwnership(ctx, newOwner)
 	if err != nil {
 		fmt.Printf("Transfer ownership error! %v\n", err)
 		return

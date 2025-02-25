@@ -293,15 +293,45 @@ func (r *SlashManager) SetStrategyManager(ctx context.Context, newStrategyManage
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *SlashManager) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
+func (r *SlashManager) TwoStepTransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
 	executeMsg := slashmanager.ExecuteMsg{
-		TransferOwnership: &slashmanager.TransferOwnership{NewOwner: newOwner},
+		TwoStepTransferOwnership: &slashmanager.TwoStepTransferOwnership{
+			NewOwner: newOwner,
+		},
 	}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(executeMsgBytes, "TransferOwnership")
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "TwoStepTransferOwnership")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *SlashManager) AcceptOwnership(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := slashmanager.ExecuteMsg{
+		AcceptOwnership: &slashmanager.AcceptOwnership{},
+	}
+
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "AcceptOwnership")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *SlashManager) CancelOwnershipTransfer(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := slashmanager.ExecuteMsg{
+		CancelOwnershipTransfer: &slashmanager.CancelOwnershipTransfer{},
+	}
+
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "CancelOwnershipTransfer")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }

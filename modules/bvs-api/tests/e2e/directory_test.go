@@ -153,20 +153,20 @@ func (s *DirectoryTestSuite) Test_TransferOwnership() {
 	chainIO, err := s.chainIO.SetupKeyring("caller", "test")
 	assert.NoError(t, err)
 
-	updateResp, err := api.NewDirectory(chainIO, s.contrAddr).TransferOwnership(context.Background(), "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv")
+	updateResp, err := api.NewDirectory(chainIO, s.contrAddr).TwoStepTransferOwnership(context.Background(), "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv")
 	assert.NoError(t, err, "TestTransferOwnership")
 	assert.NotNil(t, updateResp, "response nil")
 	t.Logf("updateResp:%+v", updateResp)
 
 	// not owner to transfer ownership will be failed
-	updateResp, err = api.NewDirectory(chainIO, s.contrAddr).TransferOwnership(context.Background(), "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv")
+	updateResp, err = api.NewDirectory(chainIO, s.contrAddr).TwoStepTransferOwnership(context.Background(), "bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv")
 	assert.Error(t, err, "TestTransferOwnership not failed")
 	assert.Nil(t, updateResp, "response not nil")
 	t.Logf("TransferOwnership failed Resp:%+v", updateResp)
 
 	recoverClient, err := s.chainIO.SetupKeyring("aggregator", "test")
 	assert.NoError(t, err, "create client")
-	recoverResp, err := api.NewDirectory(recoverClient, s.contrAddr).TransferOwnership(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+	recoverResp, err := api.NewDirectory(recoverClient, s.contrAddr).TwoStepTransferOwnership(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 	assert.NoError(t, err, "TestTransferOwnership")
 	assert.NotNil(t, recoverResp, "response nil")
 	t.Logf("recoverResp:%+v", recoverResp)

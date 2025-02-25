@@ -367,15 +367,45 @@ func (r *StrategyManager) SetStrategyFactory(ctx context.Context, newStrategyFac
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *StrategyManager) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
-	msg := strategymanager.ExecuteMsg{
-		TransferOwnership: &strategymanager.TransferOwnership{NewOwner: newOwner},
+func (r *StrategyManager) TwoStepTransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
+	executeMsg := strategymanager.ExecuteMsg{
+		TwoStepTransferOwnership: &strategymanager.TwoStepTransferOwnership{
+			NewOwner: newOwner,
+		},
 	}
-	executeMsgBytes, err := json.Marshal(msg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(executeMsgBytes, "TransferOwnership")
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "TwoStepTransferOwnership")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *StrategyManager) AcceptOwnership(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := strategymanager.ExecuteMsg{
+		AcceptOwnership: &strategymanager.AcceptOwnership{},
+	}
+
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "AcceptOwnership")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *StrategyManager) CancelOwnershipTransfer(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := strategymanager.ExecuteMsg{
+		CancelOwnershipTransfer: &strategymanager.CancelOwnershipTransfer{},
+	}
+
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "CancelOwnershipTransfer")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }

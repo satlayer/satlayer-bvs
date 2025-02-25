@@ -103,7 +103,7 @@ func SetUnpauser(userKeyName, unpauser string) {
 func TransferOwner(userKeyName, newOwner string) {
 	ctx := context.Background()
 	reward, _ := newService(userKeyName)
-	resp, err := reward.TransferOwnership(ctx, newOwner)
+	resp, err := reward.TwoStepTransferOwnership(ctx, newOwner)
 	if err != nil {
 		panic(err)
 	}

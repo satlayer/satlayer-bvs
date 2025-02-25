@@ -172,7 +172,7 @@ func (suite *strategyFactoryTestSuite) Test_TransferOwnership() {
 	factoryApi.WithGasLimit(300000)
 
 	newOwner := "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
-	txResp, err := factoryApi.TransferOwnership(context.Background(), newOwner)
+	txResp, err := factoryApi.TwoStepTransferOwnership(context.Background(), newOwner)
 	assert.NoError(t, err, "TransferOwnership failed")
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)

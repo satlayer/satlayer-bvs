@@ -105,7 +105,7 @@ func Unpause(userKeyName string) {
 func TransferOwnership(userKeyName, newOwner string) {
 	ctx := context.Background()
 	slash, _ := newService(userKeyName)
-	txResp, err := slash.TransferOwnership(ctx, newOwner)
+	txResp, err := slash.TwoStepTransferOwnership(ctx, newOwner)
 	if err != nil {
 		panic(err)
 	}

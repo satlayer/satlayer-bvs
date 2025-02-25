@@ -89,7 +89,7 @@ func (suite *strategyManagerTestSuite) Test_Init() {
 	assert.NoError(t, err)
 	strategyManager := api.NewStrategyManager(chainIO, suite.managerAddr)
 
-	resp, err := strategyManager.TransferOwnership(context.Background(), ownerAddr)
+	resp, err := strategyManager.TwoStepTransferOwnership(context.Background(), ownerAddr)
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)

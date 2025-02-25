@@ -138,13 +138,45 @@ func (r *Directory) CancelSalt(ctx context.Context, salt string) (*coretypes.Res
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *Directory) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
-	executeMsg := directory.ExecuteMsg{TransferOwnership: &directory.TransferOwnership{NewOwner: newOwner}}
+func (r *Directory) TwoStepTransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
+	executeMsg := directory.ExecuteMsg{
+		TwoStepTransferOwnership: &directory.TwoStepTransferOwnership{
+			NewOwner: newOwner,
+		},
+	}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "TransferOwnership")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "TwoStepTransferOwnership")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *Directory) AcceptOwnership(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := directory.ExecuteMsg{
+		AcceptOwnership: &directory.AcceptOwnership{},
+	}
+
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "AcceptOwnership")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *Directory) CancelOwnershipTransfer(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := directory.ExecuteMsg{
+		CancelOwnershipTransfer: &directory.CancelOwnershipTransfer{},
+	}
+
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "CancelOwnershipTransfer")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }

@@ -232,18 +232,45 @@ func (r *RewardsCoordinator) SetUnpauser(ctx context.Context, newUnpauser string
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *RewardsCoordinator) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
-	msg := rewardscoordinator.ExecuteMsg{
-		TransferOwnership: &rewardscoordinator.TransferOwnership{
+func (r *RewardsCoordinator) TwoStepTransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
+	executeMsg := rewardscoordinator.ExecuteMsg{
+		TwoStepTransferOwnership: &rewardscoordinator.TwoStepTransferOwnership{
 			NewOwner: newOwner,
 		},
 	}
-
-	executeMsgBytes, err := json.Marshal(msg)
+	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(executeMsgBytes, "TransferOwnership")
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "TwoStepTransferOwnership")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *RewardsCoordinator) AcceptOwnership(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := rewardscoordinator.ExecuteMsg{
+		AcceptOwnership: &rewardscoordinator.AcceptOwnership{},
+	}
+
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "AcceptOwnership")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *RewardsCoordinator) CancelOwnershipTransfer(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := rewardscoordinator.ExecuteMsg{
+		CancelOwnershipTransfer: &rewardscoordinator.CancelOwnershipTransfer{},
+	}
+
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "CancelOwnershipTransfer")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
