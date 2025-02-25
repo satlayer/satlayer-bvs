@@ -32,4 +32,7 @@ pub enum ContractError {
 
     #[error("StrategyFactory.acceptOwnership: no pending owner")]
     NoPendingOwner {},
+
+    #[error("ReplyError: {msg}")]
+    ReplyError { msg: String },
 }

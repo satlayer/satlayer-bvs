@@ -6,6 +6,8 @@ pub const CONFIG: Item<Config> = Item::new("config");
 pub const PENDING_OWNER: Item<Option<Addr>> = Item::new("pending_owner");
 pub const DEPLOYED_STRATEGIES: Map<&Addr, Addr> = Map::new("strategies");
 pub const IS_BLACKLISTED: Map<&Addr, bool> = Map::new("is_blacklisted");
+pub const NEXT_DEPLOY_ID: Item<u64> = Item::new("next_deploy_id");
+pub const PENDING_TOKENS: Map<u64, Addr> = Map::new("pending_tokens");
 
 #[cw_serde]
 pub struct Config {

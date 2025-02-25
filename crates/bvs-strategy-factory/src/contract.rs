@@ -1,12 +1,16 @@
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::query::{BlacklistStatusResponse, StrategyResponse};
-use crate::state::{Config, CONFIG, DEPLOYED_STRATEGIES, IS_BLACKLISTED, PENDING_OWNER};
+use crate::state::{
+    Config, CONFIG, DEPLOYED_STRATEGIES, IS_BLACKLISTED, NEXT_DEPLOY_ID, PENDING_OWNER,
+    PENDING_TOKENS,
+};
 use cosmwasm_std::{
     entry_point, to_json_binary, Addr, Api, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Order, Reply, Response, StdError, StdResult, SubMsg, WasmMsg,
+    Reply, Response, StdError, StdResult, SubMsg, SubMsgResponse, SubMsgResult, WasmMsg,
 };
 use cw2::set_contract_version;
+use cw_utils::parse_instantiate_response_data;
 
 use bvs_base::base::InstantiateMsg as StrategyInstantiateMsg;
 use bvs_base::pausable::{
@@ -191,7 +195,11 @@ pub fn deploy_new_strategy(
         label: format!("Strategy for {}", token),
     };
 
-    let sub_msg = SubMsg::reply_on_success(CosmosMsg::Wasm(instantiate_msg), 1);
+    let submsg_id = next_submsg_id(deps.storage)?;
+
+    PENDING_TOKENS.save(deps.storage, submsg_id, &token)?;
+
+    let sub_msg = SubMsg::reply_always(CosmosMsg::Wasm(instantiate_msg), submsg_id);
 
     DEPLOYED_STRATEGIES.save(deps.storage, &token, &Addr::unchecked(""))?;
 
@@ -356,23 +364,35 @@ pub fn whitelist_strategies(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    match msg.id {
-        1 => handle_instantiate_reply(deps, msg),
-        _ => Err(ContractError::UnknownReplyId {}),
+    match msg.result {
+        SubMsgResult::Ok(submsg_response) => {
+            handle_instantiate_reply_success_internal(deps, msg.id, submsg_response)
+        }
+        SubMsgResult::Err(err) => handle_instantiate_reply_failure_internal(deps, msg.id, err),
     }
 }
 
-fn handle_instantiate_reply(mut deps: DepsMut, msg: Reply) -> Result<Response, ContractError> {
+fn handle_instantiate_reply_success_internal(
+    deps: DepsMut,
+    submsg_id: u64,
+    submsg_response: SubMsgResponse,
+) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
-    let contract_address = extract_contract_address_from_reply(&msg, &mut deps)?;
+    let contract_address = parse_contract_address_from_submsg_response(&submsg_response)
+        .map_err(|_| ContractError::MissingInstantiateData {})?;
 
-    let token_address = DEPLOYED_STRATEGIES
-        .keys(deps.storage, None, None, Order::Ascending)
-        .last()
-        .ok_or(StdError::not_found("Token"))??;
+    let token_address = PENDING_TOKENS
+        .may_load(deps.storage, submsg_id)?
+        .ok_or_else(|| StdError::not_found("token for submsg_id"))?;
 
-    let strategies_to_whitelist = [Addr::unchecked(contract_address.clone())];
+    DEPLOYED_STRATEGIES.save(
+        deps.storage,
+        &token_address,
+        &Addr::unchecked(&contract_address),
+    )?;
+
+    let strategies_to_whitelist = vec![Addr::unchecked(contract_address.clone())];
     let third_party_transfers_forbidden_values = vec![false];
 
     let msg = StrategyManagerExecuteMsg::AddStrategiesToWhitelist {
@@ -391,47 +411,50 @@ fn handle_instantiate_reply(mut deps: DepsMut, msg: Reply) -> Result<Response, C
 
     Ok(Response::new()
         .add_attribute("method", "reply_instantiate")
-        .add_attribute("new_strategy_address", contract_address)
+        .add_attribute("new_strategy_address", contract_address.clone())
         .add_attribute("token_address", token_address.to_string())
-        .add_message(CosmosMsg::Wasm(exec_msg)))
+        .add_message(exec_msg))
 }
 
-fn extract_contract_address_from_reply(
-    msg: &Reply,
-    deps: &mut DepsMut,
+fn handle_instantiate_reply_failure_internal(
+    deps: DepsMut,
+    submsg_id: u64,
+    err: String,
+) -> Result<Response, ContractError> {
+    if let Some(token_address) = PENDING_TOKENS.may_load(deps.storage, submsg_id)? {
+        PENDING_TOKENS.remove(deps.storage, submsg_id);
+
+        DEPLOYED_STRATEGIES.remove(deps.storage, &token_address);
+    }
+
+    Ok(Response::new()
+        .add_attribute("method", "reply_instantiate_failure")
+        .add_attribute("error", err))
+}
+
+fn parse_contract_address_from_submsg_response(
+    submsg_response: &SubMsgResponse,
 ) -> Result<String, ContractError> {
-    let res = msg.result.clone().into_result().map_err(|e| {
-        println!("InstantiateError: {:?}", e);
-        ContractError::InstantiateError {}
-    })?;
-
-    let data = res
+    let data = submsg_response
         .msg_responses
-        .first()
-        .ok_or(ContractError::MissingInstantiateData {})?;
-
-    let instantiate_response = cw_utils::parse_instantiate_response_data(&data.value.clone())
-        .map_err(|_| {
-            StdError::parse_err(
-                "MsgInstantiateContractResponse",
-                "failed to parse instantiate data",
-            )
+        .get(0)
+        .ok_or_else(|| ContractError::ReplyError {
+            msg: "Empty msg_responses in submessage result".to_string(),
         })?;
 
-    let contract_address = instantiate_response.contract_address.clone();
-
-    let token_address = DEPLOYED_STRATEGIES
-        .keys(deps.storage, None, None, Order::Ascending)
-        .last()
-        .ok_or(StdError::not_found("Token"))??;
-
-    set_strategy_for_token(
-        deps,
-        Addr::unchecked(token_address.clone()),
-        Addr::unchecked(contract_address.clone()),
-    )?;
+    let instantiate_response = parse_instantiate_response_data(&Binary::from(data.value.clone()))
+        .map_err(|err_string| ContractError::ReplyError {
+        msg: format!("parse_instantiate_response_data failed: {}", err_string),
+    })?;
 
     Ok(instantiate_response.contract_address)
+}
+
+pub fn next_submsg_id(store: &mut dyn cosmwasm_std::Storage) -> StdResult<u64> {
+    let id = NEXT_DEPLOY_ID.may_load(store)?.unwrap_or(1);
+
+    NEXT_DEPLOY_ID.save(store, &(id + 1))?;
+    Ok(id)
 }
 
 fn update_config(
@@ -541,19 +564,6 @@ fn validate_addresses(api: &dyn Api, addresses: &[String]) -> StdResult<Vec<Addr
         .collect()
 }
 
-fn set_strategy_for_token(
-    deps: &mut DepsMut,
-    token: Addr,
-    strategy: Addr,
-) -> Result<Response, ContractError> {
-    DEPLOYED_STRATEGIES.save(deps.storage, &token, &strategy)?;
-
-    Ok(Response::new()
-        .add_attribute("method", "set_strategy_for_token")
-        .add_attribute("token", token.to_string())
-        .add_attribute("strategy", strategy.to_string()))
-}
-
 fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let config = CONFIG.load(deps.storage)?;
     if info.sender != config.owner {
@@ -611,11 +621,17 @@ mod tests {
     }
 
     #[test]
-    fn test_deploy_new_strategy() {
-        let (mut deps, _initial_owner, info, _pauser, _unpauser) = setup_contract();
+    fn test_deploy_multiple_new_strategies() {
+        let (mut deps, _initial_owner, info, pauser, unpauser) = setup_contract();
+
         let token = deps.api.addr_make("token");
-        let pauser = deps.api.addr_make("pauser");
-        let unpauser = deps.api.addr_make("unpauser");
+
+        // Deploy first strategy use token1
+        let existing_strategy = DEPLOYED_STRATEGIES
+            .may_load(deps.as_ref().storage, &token)
+            .unwrap()
+            .unwrap_or(Addr::unchecked(""));
+        assert_eq!(existing_strategy, Addr::unchecked(""));
 
         let msg = ExecuteMsg::DeployNewStrategy {
             token: token.to_string(),
@@ -623,23 +639,62 @@ mod tests {
             unpauser: unpauser.to_string(),
         };
 
-        let result = execute(deps.as_mut(), mock_env(), info, msg);
-
+        let result = execute(deps.as_mut(), mock_env(), info.clone(), msg);
         assert!(result.is_ok());
-        let response: Response = result.unwrap();
 
-        assert_eq!(response.messages.len(), 1);
-        let msg = &response.messages[0];
-        if let CosmosMsg::Wasm(WasmMsg::Instantiate { label, .. }) = &msg.msg {
-            assert_eq!(*label, format!("Strategy for {}", token));
-        } else {
-            panic!("Expected WasmMsg::Instantiate");
-        }
+        let next_id = NEXT_DEPLOY_ID.load(&deps.storage).unwrap();
+        assert_eq!(next_id, 2u64);
 
-        let strategy_addr = DEPLOYED_STRATEGIES
-            .load(&deps.storage, &Addr::unchecked(token))
-            .unwrap();
-        assert_eq!(strategy_addr, &Addr::unchecked(""));
+        let pending_token = PENDING_TOKENS.load(&deps.storage, 1u64).unwrap();
+        assert_eq!(pending_token, token);
+
+        // Deploy second strategy use token2
+        let token2 = deps.api.addr_make("token2");
+
+        let existing_strategy = DEPLOYED_STRATEGIES
+            .may_load(deps.as_ref().storage, &token2)
+            .unwrap()
+            .unwrap_or(Addr::unchecked(""));
+        assert_eq!(existing_strategy, Addr::unchecked(""));
+
+        let msg2 = ExecuteMsg::DeployNewStrategy {
+            token: token2.to_string(),
+            pauser: pauser.to_string(),
+            unpauser: unpauser.to_string(),
+        };
+
+        let result = execute(deps.as_mut(), mock_env(), info.clone(), msg2);
+        assert!(result.is_ok());
+
+        let next_id = NEXT_DEPLOY_ID.load(&deps.storage).unwrap();
+        assert_eq!(next_id, 3u64);
+
+        let pending_token = PENDING_TOKENS.load(&deps.storage, 2u64).unwrap();
+        assert_eq!(pending_token, token2);
+
+        // Deploy third strategy use token3
+        let token3 = deps.api.addr_make("token3");
+
+        let existing_strategy = DEPLOYED_STRATEGIES
+            .may_load(deps.as_ref().storage, &token3)
+            .unwrap()
+            .unwrap_or(Addr::unchecked(""));
+        assert_eq!(existing_strategy, Addr::unchecked(""));
+
+        let msg3 = ExecuteMsg::DeployNewStrategy {
+            token: token3.to_string(),
+            pauser: pauser.to_string(),
+            unpauser: unpauser.to_string(),
+        };
+
+        let result = execute(deps.as_mut(), mock_env(), info.clone(), msg3);
+        assert!(result.is_ok());
+
+        let next_id = NEXT_DEPLOY_ID.load(&deps.storage).unwrap();
+        assert_eq!(next_id, 4u64);
+
+        let pending_token = PENDING_TOKENS.load(&deps.storage, 3u64).unwrap();
+        assert_eq!(pending_token, token3);
     }
 
     #[test]
@@ -946,30 +1001,6 @@ mod tests {
         } else {
             panic!("Expected NotFound error");
         }
-    }
-
-    #[test]
-    fn test_set_strategy_for_token() {
-        let (mut deps, _initial_owner, _, _pauser, _unpauser) = setup_contract();
-
-        let token = deps.api.addr_make("token_address");
-        let strategy = deps.api.addr_make("strategy_address");
-
-        let result = set_strategy_for_token(&mut deps.as_mut(), token.clone(), strategy.clone());
-
-        assert!(result.is_ok());
-
-        let response = result.unwrap();
-        assert_eq!(response.attributes.len(), 3);
-        assert_eq!(response.attributes[0].key, "method");
-        assert_eq!(response.attributes[0].value, "set_strategy_for_token");
-        assert_eq!(response.attributes[1].key, "token");
-        assert_eq!(response.attributes[1].value, token.to_string());
-        assert_eq!(response.attributes[2].key, "strategy");
-        assert_eq!(response.attributes[2].value, strategy.to_string());
-
-        let stored_strategy = DEPLOYED_STRATEGIES.load(&deps.storage, &token).unwrap();
-        assert_eq!(stored_strategy, strategy);
     }
 
     #[test]

@@ -65,6 +65,7 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(StrategyResponse)]
     GetStrategy { token: String },
+
     #[returns(BlacklistStatusResponse)]
     IsTokenBlacklisted { token: String },
 }
