@@ -64,7 +64,9 @@ func (s *DirectoryTestSuite) SetupSuite() {
 	s.Require().NoError(err, "register as operator")
 	s.Require().NotNil(txResp, "response nil")
 
-	s.contrAddr = deployer.DeployDirectory(delegationManager.Address).Address
+	registry := deployer.DeployRegistry(nil)
+
+	s.contrAddr = deployer.DeployDirectory(delegationManager.Address, registry.Address).Address
 	s.delegationContrAddr = delegationManager.Address
 }
 

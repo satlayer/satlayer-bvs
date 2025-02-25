@@ -8,6 +8,7 @@ import (
 
 	delegationmanager "github.com/satlayer/satlayer-bvs/bvs-cw/delegation-manager"
 	"github.com/satlayer/satlayer-bvs/bvs-cw/directory"
+	"github.com/satlayer/satlayer-bvs/bvs-cw/registry"
 	rewardscoordinator "github.com/satlayer/satlayer-bvs/bvs-cw/rewards-coordinator"
 	slashmanager "github.com/satlayer/satlayer-bvs/bvs-cw/slash-manager"
 	strategybase "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-base"
@@ -46,8 +47,20 @@ func deployCrate[T interface{}](deployer *Deployer, crate string, initMsg T, lab
 	}
 }
 
-// TODO: every contract on top is considered "pure" can be deployed without circular dependency
-//   For contracts below, we need to do cleanup.
+// TODO(fuxingloh): implement Deployer.Deploy()
+
+func (d *Deployer) DeployRegistry(
+	initMsg *registry.InstantiateMsg,
+) *Contract[registry.InstantiateMsg] {
+	if initMsg == nil {
+		initMsg = &registry.InstantiateMsg{
+			InitialPaused: false,
+			Owner:         d.GenerateAddress("registry:owner").String(),
+		}
+	}
+
+	return deployCrate(d, "bvs-registry", *initMsg, "BVS Registry")
+}
 
 // TODO: Too much initialization. Some can be moved to `ExecuteMsg` instead of `InstantiateMsg`
 
@@ -110,10 +123,12 @@ func (d *Deployer) DeployDelegationManager(
 
 func (d *Deployer) DeployDirectory(
 	delegationManager string,
+	registry string,
 ) *Contract[directory.InstantiateMsg] {
 	initMsg := directory.InstantiateMsg{
 		InitialOwner:      d.GenerateAddress("directory:initial_owner").String(),
 		DelegationManager: delegationManager,
+		RegistryAddr:      registry,
 	}
 
 	return deployCrate(d, "bvs-directory", initMsg, "BVS Directory")

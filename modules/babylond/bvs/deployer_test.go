@@ -28,10 +28,14 @@ func TestBvs(t *testing.T) {
 	suite.Run(t, new(BvsTestSuite))
 }
 
-func (s *BvsTestSuite) TestDeployDirectory() {
-	tAddr := s.Container.GenerateAddress("throw-away")
-	contract := s.Deployer.DeployDirectory(tAddr.String())
+func (s *BvsTestSuite) Test_DeployRegistry() {
+	contract := s.Deployer.DeployRegistry(nil)
 	s.NotEmpty(contract.Address)
 }
 
-// TODO: deploy all CW contracts
+func (s *BvsTestSuite) Test_DeployDirectory() {
+	registry := s.Deployer.DeployRegistry(nil)
+	tAddr := s.Container.GenerateAddress("throw-away")
+	contract := s.Deployer.DeployDirectory(tAddr.String(), registry.Address)
+	s.NotEmpty(contract.Address)
+}

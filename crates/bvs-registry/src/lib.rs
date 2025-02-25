@@ -39,7 +39,7 @@ pub mod api {
     }
 }
 
-/// This is a integration testing module to allow easy testing of the contract in cw_multi_test
+/// This is an integration testing module to allow easy testing of the contract in cw_multi_test
 #[cfg(feature = "testing")]
 pub mod testing {
     use cosmwasm_std::{Addr, Empty};

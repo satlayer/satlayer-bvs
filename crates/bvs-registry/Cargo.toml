@@ -12,9 +12,8 @@ exclude = [
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["library", "dep:strum"]
 testing = ["library", "dep:cw-multi-test"]
-library = []
+library = ["dep:strum"]
 
 [dependencies]
 cosmwasm-std = { workspace = true }

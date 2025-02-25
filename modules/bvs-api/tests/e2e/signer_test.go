@@ -46,10 +46,11 @@ func (suite *signerTestSuite) SetupSuite() {
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
 
 	tAddr := container.GenerateAddress("test-address").String()
-	deployer := &bvs.Deployer{BabylonContainer: container}
+	deployer := bvs.Deployer{BabylonContainer: container}
+	registry := deployer.DeployRegistry(nil)
 
 	suite.chaiID = container.ChainId
-	suite.bvsDirContrAddr = deployer.DeployDirectory(tAddr).Address
+	suite.bvsDirContrAddr = deployer.DeployDirectory(tAddr, registry.Address).Address
 }
 
 func (suite *signerTestSuite) TearDownSuite() {
