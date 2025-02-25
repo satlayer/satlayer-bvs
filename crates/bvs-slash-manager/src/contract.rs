@@ -659,6 +659,7 @@ mod tests {
     use crate::utils::ExecuteSlashDetails;
     use base64::{engine::general_purpose, Engine as _};
     use bech32::{self, ToBase32, Variant};
+    use bvs_delegation_manager::query::StakerShares;
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
@@ -668,7 +669,6 @@ mod tests {
     use ripemd::Ripemd160;
     use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
     use sha2::{Digest, Sha256};
-
     #[test]
     fn test_instantiate() {
         let mut deps = mock_dependencies();
