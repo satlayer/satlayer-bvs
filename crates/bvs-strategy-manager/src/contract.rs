@@ -1098,7 +1098,7 @@ pub fn add_new_strategy(
         }))?;
 
     if manager_info.strategy_manager_addr != _env.contract.address {
-        return Err(ContractError::StrategyNotCompitable {});
+        return Err(ContractError::StrategyNotCompatible {});
     }
 
     DEPLOYED_STRATEGIES.save(deps.storage, &token, &strategy)?;
