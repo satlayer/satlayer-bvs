@@ -20,7 +20,6 @@ func Cmd() *cobra.Command {
 	reward := rewardCmd()
 	chain := chainCmd()
 	slash := slashCmd()
-	strategyBaseTVL := strategyBaseTVLCmd()
 	strategyFactory := strategyFactoryCmd()
 
 	rootCmd.AddCommand(keys)
@@ -31,7 +30,6 @@ func Cmd() *cobra.Command {
 	rootCmd.AddCommand(reward)
 	rootCmd.AddCommand(chain)
 	rootCmd.AddCommand(slash)
-	rootCmd.AddCommand(strategyBaseTVL)
 	rootCmd.AddCommand(strategyFactory)
 
 	rootCmd.Version = conf.GetVersion()

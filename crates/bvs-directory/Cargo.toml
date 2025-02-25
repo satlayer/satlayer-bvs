@@ -10,10 +10,11 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 library = []
+testing = ["library", "dep:cw-multi-test"]
 
 [dependencies]
-cosmwasm-schema = { workspace = true }
 cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
 cosmwasm-crypto = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
@@ -26,13 +27,12 @@ secp256k1 = { workspace = true }
 bech32 = { workspace = true }
 ripemd = { workspace = true }
 base64 = { workspace = true }
-bvs-registry = { workspace = true, features = ["library"] }
-
 bvs-base = { workspace = true }
+cw-multi-test = { workspace = true, optional = true }
+bvs-registry = { workspace = true, features = ["library"] }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
 bvs-testing = { workspace = true }
-bvs-delegation-manager = { workspace = true }
-
 bvs-registry = { workspace = true, features = ["testing"] }
+bvs-delegation-manager = { workspace = true, features = ["testing"] }

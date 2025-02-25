@@ -41,7 +41,6 @@ import bvs_directory from "@satlayer/bvs-directory/schema/bvs-directory.json" wi
 import bvs_rewards_coordinator from "@satlayer/bvs-rewards-coordinator/schema/bvs-rewards-coordinator.json" with { type: "json" };
 import bvs_slash_manager from "@satlayer/bvs-slash-manager/schema/bvs-slash-manager.json" with { type: "json" };
 import bvs_strategy_base from "@satlayer/bvs-strategy-base/schema/bvs-strategy-base.json" with { type: "json" };
-import bvs_strategy_base_tvl_limits from "@satlayer/bvs-strategy-base-tvl-limits/schema/bvs-strategy-base-tvl-limits.json" with { type: "json" };
 import bvs_strategy_factory from "@satlayer/bvs-strategy-factory/schema/bvs-strategy-factory.json" with { type: "json" };
 import bvs_strategy_manager from "@satlayer/bvs-strategy-manager/schema/bvs-strategy-manager.json" with { type: "json" };
 
@@ -51,6 +50,5 @@ await generate(bvs_directory);
 await generate(bvs_rewards_coordinator);
 await generate(bvs_slash_manager);
 await generate(bvs_strategy_base);
-await generate(bvs_strategy_base_tvl_limits);
 await generate(bvs_strategy_factory);
 await generate(bvs_strategy_manager);

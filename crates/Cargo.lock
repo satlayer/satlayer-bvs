@@ -215,7 +215,6 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus",
  "cw2",
- "cw20",
  "hex",
  "ripemd",
  "schemars",
@@ -270,19 +269,14 @@ name = "bvs-rewards-coordinator"
 version = "2.0.0"
 dependencies = [
  "base64",
- "bech32 0.8.1",
  "bvs-base",
- "cosmwasm-crypto",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus",
  "cw2",
  "cw20",
- "hex",
- "ripemd",
  "schemars",
- "secp256k1",
  "serde",
  "serde_json",
  "sha2",
@@ -303,7 +297,6 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus",
  "cw2",
- "cw20",
  "hex",
  "ripemd",
  "schemars",
@@ -327,29 +320,6 @@ dependencies = [
  "cw20",
  "schemars",
  "serde",
- "thiserror",
-]
-
-[[package]]
-name = "bvs-strategy-base-tvl-limits"
-version = "2.0.0"
-dependencies = [
- "base64",
- "bech32 0.8.1",
- "bvs-base",
- "cosmwasm-crypto",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "hex",
- "ripemd",
- "schemars",
- "secp256k1",
- "serde",
- "sha2",
  "thiserror",
 ]
 
@@ -401,14 +371,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bvs-test"
-version = "0.1.0"
-dependencies = [
- "cosmwasm-std",
- "cw-multi-test",
-]
-
-[[package]]
 name = "bvs-testing"
 version = "0.1.0"
 dependencies = [
@@ -418,7 +380,6 @@ dependencies = [
  "bvs-rewards-coordinator",
  "bvs-slash-manager",
  "bvs-strategy-base",
- "bvs-strategy-base-tvl-limits",
  "bvs-strategy-factory",
  "bvs-strategy-manager",
  "cosmwasm-crypto",
