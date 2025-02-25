@@ -1069,7 +1069,7 @@ pub fn blacklist_tokens(
 
 pub fn add_new_strategy(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     strategy: Addr,
     token: Addr,
@@ -1097,7 +1097,7 @@ pub fn add_new_strategy(
             msg: to_json_binary(&bvs_strategy_base::msg::QueryMsg::GetStrategyManager {})?,
         }))?;
 
-    if manager_info.strategy_manager_addr != _env.contract.address {
+    if manager_info.strategy_manager_addr != env.contract.address {
         return Err(ContractError::StrategyNotCompatible {});
     }
 
