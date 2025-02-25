@@ -10,9 +10,6 @@
 //    queryMsg, err := UnmarshalQueryMsg(bytes)
 //    bytes, err = queryMsg.Marshal()
 //
-//    calculateDomainSeparatorResponse, err := UnmarshalCalculateDomainSeparatorResponse(bytes)
-//    bytes, err = calculateDomainSeparatorResponse.Marshal()
-//
 //    calculateEarnerLeafHashResponse, err := UnmarshalCalculateEarnerLeafHashResponse(bytes)
 //    bytes, err = calculateEarnerLeafHashResponse.Marshal()
 //
@@ -74,16 +71,6 @@ func UnmarshalQueryMsg(data []byte) (QueryMsg, error) {
 }
 
 func (r *QueryMsg) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalCalculateDomainSeparatorResponse(data []byte) (CalculateDomainSeparatorResponse, error) {
-	var r CalculateDomainSeparatorResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *CalculateDomainSeparatorResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -324,14 +311,8 @@ type QueryMsg struct {
 	GetDistributionRootAtIndex          *GetDistributionRootAtIndex          `json:"get_distribution_root_at_index,omitempty"`
 	GetCurrentClaimableDistributionRoot *GetCurrentClaimableDistributionRoot `json:"get_current_claimable_distribution_root,omitempty"`
 	GetRootIndexFromHash                *GetRootIndexFromHash                `json:"get_root_index_from_hash,omitempty"`
-	CalculateDomainSeparator            *CalculateDomainSeparator            `json:"calculate_domain_separator,omitempty"`
 	MerkleizeLeaves                     *MerkleizeLeaves                     `json:"merkleize_leaves,omitempty"`
 	CheckClaim                          *CheckClaim                          `json:"check_claim,omitempty"`
-}
-
-type CalculateDomainSeparator struct {
-	ChainID      string `json:"chain_id"`
-	ContractAddr string `json:"contract_addr"`
 }
 
 type CalculateEarnerLeafHash struct {
@@ -392,10 +373,6 @@ type MerkleizeLeaves struct {
 type OperatorCommissionBips struct {
 	Bvs      string `json:"bvs"`
 	Operator string `json:"operator"`
-}
-
-type CalculateDomainSeparatorResponse struct {
-	DomainSeparatorBinary string `json:"domain_separator_binary"`
 }
 
 type CalculateEarnerLeafHashResponse struct {

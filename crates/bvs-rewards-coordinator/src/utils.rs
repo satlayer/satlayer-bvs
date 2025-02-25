@@ -2,10 +2,6 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Binary, Timestamp, Uint128};
 use sha2::{Digest, Sha256};
 
-pub const DOMAIN_TYPEHASH: &[u8] =
-    b"EIP712Domain(string name,uint256 chainId,address verifyingContract)";
-pub const DOMAIN_NAME: &[u8] = b"SatLayer";
-
 pub const EARNER_LEAF_SALT: u8 = 0;
 pub const TOKEN_LEAF_SALT: u8 = 1;
 
@@ -13,18 +9,6 @@ pub fn sha256(input: &[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();
     hasher.update(input);
     hasher.finalize().to_vec()
-}
-
-pub fn calculate_domain_separator(chain_id: &str, contract_addr: &Addr) -> Vec<u8> {
-    let encoded_data = [
-        DOMAIN_TYPEHASH,
-        &sha256(DOMAIN_NAME),
-        chain_id.as_bytes(),
-        contract_addr.as_bytes(),
-    ]
-    .concat();
-
-    sha256(&encoded_data)
 }
 
 #[cw_serde]
