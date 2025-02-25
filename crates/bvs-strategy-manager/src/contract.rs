@@ -6,7 +6,7 @@ use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
         CalculateDigestHashResponse, DelegationManagerResponse, DepositTypeHashResponse,
-        DepositsResponse, DomainNameResponse, DomainTypeHashResponse, IsTokenBlacklisted,
+        DepositsResponse, DomainNameResponse, DomainTypeHashResponse, IsTokenBlacklistedResponse,
         NonceResponse, OwnerResponse, StakerStrategyListLengthResponse, StakerStrategyListResponse,
         StakerStrategySharesResponse, StrategyManagerStateResponse, StrategyWhitelistedResponse,
         StrategyWhitelisterResponse, ThirdPartyTransfersForbiddenResponse, TokenStrategyResponse,
@@ -61,7 +61,6 @@ pub fn instantiate(
     let state = StrategyManagerState {
         delegation_manager: delegation_manager.clone(),
         slash_manager: slash_manager.clone(),
-        // strategy_factory: strategy_factory.clone(),
     };
 
     let pauser = deps.api.addr_validate(&msg.pauser)?;
@@ -557,7 +556,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
             to_json_binary(&query_blacklist_status_for_token(deps, token_addr)?)
         }
-        QueryMsg::GetTokenStrategy { token } => {
+        QueryMsg::TokenStrategy { token } => {
             let token_addr = deps.api.addr_validate(&token)?;
 
             to_json_binary(&query_strategy_for_token(deps, token_addr)?)
@@ -626,11 +625,14 @@ fn query_strategy_for_token(deps: Deps, token: Addr) -> StdResult<TokenStrategyR
     Ok(TokenStrategyResponse { strategy })
 }
 
-fn query_blacklist_status_for_token(deps: Deps, token: Addr) -> StdResult<IsTokenBlacklisted> {
+fn query_blacklist_status_for_token(
+    deps: Deps,
+    token: Addr,
+) -> StdResult<IsTokenBlacklistedResponse> {
     let is_blacklisted = IS_BLACKLISTED
         .may_load(deps.storage, &token)?
         .unwrap_or(false);
-    Ok(IsTokenBlacklisted {
+    Ok(IsTokenBlacklistedResponse {
         token,
         is_blacklisted,
     })
@@ -1317,7 +1319,7 @@ mod tests {
 
         assert_eq!(res.is_ok(), true);
 
-        let query_msg = QueryMsg::GetTokenStrategy {
+        let query_msg = QueryMsg::TokenStrategy {
             token: token.to_string(),
         };
 
@@ -1330,7 +1332,7 @@ mod tests {
             token: token.to_string(),
         };
 
-        let response: IsTokenBlacklisted =
+        let response: IsTokenBlacklistedResponse =
             from_json(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
 
         assert!(!response.is_blacklisted);
@@ -1387,7 +1389,7 @@ mod tests {
 
         assert_eq!(res.is_ok(), true);
 
-        let query_msg = QueryMsg::GetTokenStrategy {
+        let query_msg = QueryMsg::TokenStrategy {
             token: token.to_string(),
         };
 
@@ -1400,7 +1402,7 @@ mod tests {
             token: token.to_string(),
         };
 
-        let response: IsTokenBlacklisted =
+        let response: IsTokenBlacklistedResponse =
             from_json(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
 
         assert!(!response.is_blacklisted);
@@ -1415,7 +1417,7 @@ mod tests {
             token: token.to_string(),
         };
 
-        let response: IsTokenBlacklisted =
+        let response: IsTokenBlacklistedResponse =
             from_json(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
 
         assert!(response.is_blacklisted);

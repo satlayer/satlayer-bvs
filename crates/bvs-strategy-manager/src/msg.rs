@@ -1,6 +1,6 @@
 use crate::query::{
     CalculateDigestHashResponse, DelegationManagerResponse, DepositTypeHashResponse,
-    DepositsResponse, DomainNameResponse, DomainTypeHashResponse, IsTokenBlacklisted,
+    DepositsResponse, DomainNameResponse, DomainTypeHashResponse, IsTokenBlacklistedResponse,
     NonceResponse, OwnerResponse, StakerStrategyListLengthResponse, StakerStrategyListResponse,
     StakerStrategySharesResponse, StrategyManagerStateResponse, StrategyWhitelistedResponse,
     StrategyWhitelisterResponse, ThirdPartyTransfersForbiddenResponse, TokenStrategyResponse,
@@ -144,9 +144,9 @@ pub enum QueryMsg {
     #[returns(DelegationManagerResponse)]
     DelegationManager {},
 
-    #[returns(IsTokenBlacklisted)]
+    #[returns(IsTokenBlacklistedResponse)]
     IsTokenBlacklisted { token: String },
 
     #[returns(TokenStrategyResponse)]
-    GetTokenStrategy { token: String },
+    TokenStrategy { token: String },
 }
