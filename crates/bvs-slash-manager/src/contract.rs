@@ -21,13 +21,13 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 
-use bvs_base::delegation::{
-    ExecuteMsg as DelegationManagerExecuteMsg, OperatorResponse, OperatorStakersResponse,
-    QueryMsg as DelegationManagerQueryMsg,
-};
 use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
-use bvs_base::strategy::ExecuteMsg as StrategyManagerExecuteMsg;
+use bvs_delegation_manager::{
+    msg::ExecuteMsg as DelegationManagerExecuteMsg, msg::QueryMsg as DelegationManagerQueryMsg,
+    query::OperatorResponse, query::OperatorStakersResponse,
+};
+use bvs_strategy_manager::msg::ExecuteMsg as StrategyManagerExecuteMsg;
 
 const CONTRACT_NAME: &str = "BVS Slash Manager";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -659,7 +659,7 @@ mod tests {
     use crate::utils::ExecuteSlashDetails;
     use base64::{engine::general_purpose, Engine as _};
     use bech32::{self, ToBase32, Variant};
-    use bvs_base::delegation::StakerShares;
+    use bvs_delegation_manager::query::StakerShares;
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
@@ -669,7 +669,6 @@ mod tests {
     use ripemd::Ripemd160;
     use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
     use sha2::{Digest, Sha256};
-
     #[test]
     fn test_instantiate() {
         let mut deps = mock_dependencies();

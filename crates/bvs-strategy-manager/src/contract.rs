@@ -28,12 +28,12 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
-use bvs_base::base::{
-    ExecuteMsg as StrategyExecuteMsg, QueryMsg as StrategyQueryMsg, StrategyState,
-};
 use bvs_base::delegation::ExecuteMsg as DelegationManagerExecuteMsg;
 use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
+use bvs_strategy_base::{
+    msg::ExecuteMsg as StrategyExecuteMsg, msg::QueryMsg as StrategyQueryMsg, state::StrategyState,
+};
 
 const CONTRACT_NAME: &str = "BVS Strategy Manager";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -1019,7 +1019,6 @@ mod tests {
     use cosmwasm_std::{
         attr, from_json, Addr, ContractResult, OwnedDeps, SystemError, SystemResult,
     };
-    use cw2::get_contract_version;
     use ripemd::Ripemd160;
     use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
     use sha2::{Digest, Sha256};
@@ -1539,6 +1538,10 @@ mod tests {
                             to_json_binary(&strategy_state).unwrap(),
                         ))
                     }
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    }),
                 }
             }
             WasmQuery::Smart { contract_addr, msg } if *contract_addr == token_for_closure => {
@@ -2329,6 +2332,10 @@ mod tests {
                             to_json_binary(&strategy_state).unwrap(),
                         ))
                     }
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    }),
                 }
             }
             WasmQuery::Smart { contract_addr, msg }

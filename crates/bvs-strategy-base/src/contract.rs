@@ -20,6 +20,8 @@ use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg}
 
 use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
+
+// TODO: why circular dependency here, remove?
 use bvs_base::strategy::{QueryMsg as StrategyManagerQueryMsg, StakerStrategySharesResponse};
 
 const CONTRACT_NAME: &str = "BVS Strategy Base";
@@ -512,7 +514,6 @@ mod tests {
         attr, from_json, Binary, ContractResult, CosmosMsg, OwnedDeps, SystemError, SystemResult,
         WasmQuery,
     };
-    use cw2::get_contract_version;
     use cw20::TokenInfoResponse;
 
     #[test]
