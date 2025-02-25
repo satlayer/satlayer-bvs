@@ -1310,12 +1310,13 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::AddNewStrategy {
-            new_strategy: strategy.to_string(),
-            token: token.to_string(),
-        };
-
-        let res = execute(deps.as_mut(), mock_env(), _owner_info, msg);
+        let res = add_new_strategy(
+            deps.as_mut(),
+            mock_env(),
+            _owner_info.clone(),
+            strategy.clone(),
+            token.clone(),
+        );
 
         assert_eq!(res.is_ok(), true);
 
@@ -1380,12 +1381,13 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::AddNewStrategy {
-            new_strategy: strategy.to_string(),
-            token: token.to_string(),
-        };
-
-        let res = execute(deps.as_mut(), mock_env(), _owner_info.clone(), msg);
+        let res = add_new_strategy(
+            deps.as_mut(),
+            mock_env(),
+            _owner_info.clone(),
+            strategy.clone(),
+            token.clone(),
+        );
 
         assert_eq!(res.is_ok(), true);
 
@@ -1407,11 +1409,13 @@ mod tests {
 
         assert!(!response.is_blacklisted);
 
-        let msg = ExecuteMsg::BlacklistTokens {
-            tokens: vec![token.to_string()],
-        };
-
-        let _ = execute(deps.as_mut(), mock_env(), _info_whitelister, msg).unwrap();
+        let _ = blacklist_tokens(
+            deps.as_mut(),
+            mock_env(),
+            _info_whitelister,
+            vec![token.clone()],
+        )
+        .unwrap();
 
         let query_msg = QueryMsg::IsTokenBlacklisted {
             token: token.to_string(),
