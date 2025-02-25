@@ -27,7 +27,7 @@ pub mod api {
         let response: IsPausedResponse = deps.querier.query_wasm_smart(
             addr,
             &QueryMsg::IsPaused {
-                sender: env.contract.address.to_string(),
+                contract: env.contract.address.to_string(),
                 method,
             },
         )?;

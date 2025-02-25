@@ -75,7 +75,7 @@ mod tests {
 
         {
             let query_msg = QueryMsg::IsPaused {
-                sender: app.api().addr_make("caller").to_string(),
+                contract: app.api().addr_make("caller").to_string(),
                 method: "any".to_string(),
             };
             let res: IsPausedResponse = app
@@ -110,7 +110,7 @@ mod tests {
 
         {
             let query_msg = QueryMsg::IsPaused {
-                sender: app.api().addr_make("caller").to_string(),
+                contract: app.api().addr_make("caller").to_string(),
                 method: "any".to_string(),
             };
             let res: IsPausedResponse = app
@@ -147,7 +147,7 @@ mod tests {
         }
 
         let query_msg = QueryMsg::IsPaused {
-            sender: app.api().addr_make("caller").to_string(),
+            contract: app.api().addr_make("caller").to_string(),
             method: "any".to_string(),
         };
         let res: IsPausedResponse = app
@@ -183,7 +183,7 @@ mod tests {
         }
 
         let query_msg = QueryMsg::IsPaused {
-            sender: app.api().addr_make("caller").to_string(),
+            contract: app.api().addr_make("caller").to_string(),
             method: "any".to_string(),
         };
         let res: IsPausedResponse = app
