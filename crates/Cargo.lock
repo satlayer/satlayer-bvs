@@ -378,14 +378,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bvs-test"
-version = "0.1.0"
-dependencies = [
- "cosmwasm-std",
- "cw-multi-test",
-]
-
-[[package]]
 name = "bvs-testing"
 version = "0.1.0"
 dependencies = [

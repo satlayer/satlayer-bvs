@@ -33,4 +33,4 @@ cw-multi-test = { workspace = true, optional = true }
 [dev-dependencies]
 cw-multi-test = { workspace = true }
 bvs-testing = { workspace = true }
-bvs-delegation-manager = { workspace = true }
+bvs-delegation-manager = { workspace = true, features = ["testing"] }

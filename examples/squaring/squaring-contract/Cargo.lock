@@ -187,14 +187,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3e31ea183f6ee62ac8b8a8cf7feddd766317adfb13ff469de57ce033efd6a790"
 
 [[package]]
-name = "bvs-test"
-version = "0.1.0"
-dependencies = [
- "cosmwasm-std",
- "cw-multi-test",
-]
-
-[[package]]
 name = "byteorder"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1004,7 +996,6 @@ dependencies = [
 name = "squaring-contract"
 version = "0.0.0"
 dependencies = [
- "bvs-test",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",

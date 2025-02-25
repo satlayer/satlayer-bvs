@@ -9,7 +9,6 @@ members = [
     "bvs-strategy-base-tvl-limits",
     "bvs-strategy-factory",
     "bvs-strategy-manager",
-    "bvs-test",
 ]
 
 resolver = "2"
