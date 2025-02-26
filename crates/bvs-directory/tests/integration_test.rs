@@ -363,7 +363,7 @@ fn register_bvs_but_paused() {
 
     let code_id = app.store_code(bvs_registry::testing::contract());
     let registry_owner = app.api().addr_make("owner").to_string();
-    let (registry_addr, _) = bvs_registry::testing::instantiate(
+    let registry = bvs_registry::testing::instantiate(
         &mut app,
         code_id,
         BvsRegistryInstantiateMsg {
@@ -377,7 +377,7 @@ fn register_bvs_but_paused() {
         .deploy_bvs_directory(&bvs_directory::msg::InstantiateMsg {
             initial_owner: owner.clone().to_string(),
             delegation_manager: delegation_manager.into_string(),
-            registry: registry_addr.to_string(),
+            registry: registry.addr.to_string(),
         })
         .build();
 
