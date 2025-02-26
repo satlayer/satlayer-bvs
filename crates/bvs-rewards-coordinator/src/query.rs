@@ -43,11 +43,6 @@ pub struct GetRootIndexFromHashResponse {
 }
 
 #[cw_serde]
-pub struct CalculateDomainSeparatorResponse {
-    pub domain_separator_binary: Binary,
-}
-
-#[cw_serde]
 pub struct MerkleizeLeavesResponse {
     pub root_hash_binary: Binary,
 }

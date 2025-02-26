@@ -5,8 +5,7 @@ use crate::{
     error::ContractError,
     msg::{DistributionRoot, ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
-        CalculateDomainSeparatorResponse, CalculateEarnerLeafHashResponse,
-        CalculateTokenLeafHashResponse, CheckClaimResponse,
+        CalculateEarnerLeafHashResponse, CalculateTokenLeafHashResponse, CheckClaimResponse,
         GetCurrentClaimableDistributionRootResponse, GetCurrentDistributionRootResponse,
         GetDistributionRootAtIndexResponse, GetDistributionRootsLengthResponse,
         GetRootIndexFromHashResponse, MerkleizeLeavesResponse, OperatorCommissionBipsResponse,
@@ -20,9 +19,9 @@ use crate::{
         SUBMISSION_NONCE,
     },
     utils::{
-        calculate_domain_separator, calculate_earner_leaf_hash, calculate_rewards_submission_hash,
-        calculate_token_leaf_hash, merkleize_sha256, verify_inclusion_sha256, EarnerTreeMerkleLeaf,
-        RewardsMerkleClaim, RewardsSubmission, TokenTreeMerkleLeaf,
+        calculate_earner_leaf_hash, calculate_rewards_submission_hash, calculate_token_leaf_hash,
+        merkleize_sha256, verify_inclusion_sha256, EarnerTreeMerkleLeaf, RewardsMerkleClaim,
+        RewardsSubmission, TokenTreeMerkleLeaf,
     },
 };
 use cosmwasm_std::{
@@ -627,15 +626,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&query_root_index_from_hash(deps, root_hash)?)
         }
 
-        QueryMsg::CalculateDomainSeparator {
-            chain_id,
-            contract_addr,
-        } => to_json_binary(&query_calculate_domain_separator(
-            deps,
-            chain_id,
-            contract_addr,
-        )?),
-
         QueryMsg::MerkleizeLeaves { leaves } => {
             let binary_leaves: Vec<Binary> = leaves
                 .iter()
@@ -790,20 +780,6 @@ fn query_root_index_from_hash(
     }
 
     Err(StdError::generic_err("Root not found"))
-}
-
-fn query_calculate_domain_separator(
-    _deps: Deps,
-    chain_id: String,
-    contract_addr: String,
-) -> StdResult<CalculateDomainSeparatorResponse> {
-    let contract_address = Addr::unchecked(contract_addr);
-    let domain_separator = calculate_domain_separator(&chain_id, &contract_address);
-    let domain_separator_binary = Binary::from(domain_separator);
-
-    Ok(CalculateDomainSeparatorResponse {
-        domain_separator_binary,
-    })
 }
 
 fn query_merkleize_leaves(leaves: Vec<Binary>) -> StdResult<MerkleizeLeavesResponse> {

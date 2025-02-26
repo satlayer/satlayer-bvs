@@ -312,17 +312,6 @@ func (r *RewardsCoordinator) GetRootIndexFromHash(rootHash string) (*wasmtypes.Q
 	return r.query(msg)
 }
 
-func (r *RewardsCoordinator) CalculateDomainSeparator(chainId string, contractAddr string) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := rewardscoordinator.QueryMsg{
-		CalculateDomainSeparator: &rewardscoordinator.CalculateDomainSeparator{
-			ChainID:      chainId,
-			ContractAddr: contractAddr,
-		},
-	}
-
-	return r.query(msg)
-}
-
 func (r *RewardsCoordinator) MerkleizeLeaves(leaves []string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := rewardscoordinator.QueryMsg{
 		MerkleizeLeaves: &rewardscoordinator.MerkleizeLeaves{

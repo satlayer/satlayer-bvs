@@ -1,6 +1,5 @@
 use crate::query::{
-    CalculateDomainSeparatorResponse, CalculateEarnerLeafHashResponse,
-    CalculateTokenLeafHashResponse, CheckClaimResponse,
+    CalculateEarnerLeafHashResponse, CalculateTokenLeafHashResponse, CheckClaimResponse,
     GetCurrentClaimableDistributionRootResponse, GetCurrentDistributionRootResponse,
     GetDistributionRootAtIndexResponse, GetDistributionRootsLengthResponse,
     GetRootIndexFromHashResponse, MerkleizeLeavesResponse, OperatorCommissionBipsResponse,
@@ -106,12 +105,6 @@ pub enum QueryMsg {
 
     #[returns(GetRootIndexFromHashResponse)]
     GetRootIndexFromHash { root_hash: String },
-
-    #[returns(CalculateDomainSeparatorResponse)]
-    CalculateDomainSeparator {
-        chain_id: String,
-        contract_addr: String,
-    },
 
     #[returns(MerkleizeLeavesResponse)]
     MerkleizeLeaves { leaves: Vec<String> },

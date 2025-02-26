@@ -238,11 +238,6 @@ func (suite *rewardsTestSuite) test_QueryRewardsCoordinator() {
 	assert.Error(t, err, "execute contract")
 	assert.Nil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)
-
-	resp, err = rewardsCoordinator.CalculateDomainSeparator(suite.chainIO.GetClientCtx().ChainID, suite.tokenAddr)
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)
 }
 
 func (suite *rewardsTestSuite) Test_SubmitRoot() {
