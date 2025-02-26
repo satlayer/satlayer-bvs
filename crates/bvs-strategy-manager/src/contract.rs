@@ -5,16 +5,14 @@ use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
-         DelegationManagerResponse,
-        DepositsResponse,  OwnerResponse,
+        DelegationManagerResponse, DepositsResponse, OwnerResponse,
         StakerStrategyListLengthResponse, StakerStrategyListResponse, StakerStrategySharesResponse,
         StrategyManagerStateResponse, StrategyWhitelistedResponse, StrategyWhitelisterResponse,
-
     },
     state::{
-        StrategyManagerState, DEPLOYED_STRATEGIES, IS_BLACKLISTED,MAX_STAKER_STRATEGY_LIST_LENGTH, OWNER, STAKER_STRATEGY_LIST, STAKER_STRATEGY_SHARES,
-         STRATEGY_IS_WHITELISTED_FOR_DEPOSIT, STRATEGY_MANAGER_STATE,
-        STRATEGY_WHITELISTER,
+        StrategyManagerState, DEPLOYED_STRATEGIES, IS_BLACKLISTED, MAX_STAKER_STRATEGY_LIST_LENGTH,
+        OWNER, STAKER_STRATEGY_LIST, STAKER_STRATEGY_SHARES, STRATEGY_IS_WHITELISTED_FOR_DEPOSIT,
+        STRATEGY_MANAGER_STATE, STRATEGY_WHITELISTER,
     },
 };
 use cosmwasm_std::{
@@ -24,6 +22,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
+use crate::query::{IsTokenBlacklistedResponse, TokenStrategyResponse};
 use bvs_base::delegation::ExecuteMsg as DelegationManagerExecuteMsg;
 use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
@@ -83,7 +82,7 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
@@ -97,9 +96,8 @@ pub fn execute(
             add_new_strategy(deps, env, info, strategy_addr, token_addr)
         }
         ExecuteMsg::BlacklistTokens { tokens } => {
-            let toks = validate_addresses(deps.api, &tokens)?;
-
-            blacklist_tokens(deps, env, info, toks)
+            let tokens = crate::utils::validate_addresses(deps.api, &tokens)?;
+            blacklist_tokens(deps, env, info, tokens)
         }
         ExecuteMsg::AddStrategiesToWhitelist { strategies } => {
             let strategies: Result<Vec<_>, _> = strategies
@@ -906,6 +904,7 @@ pub fn add_new_strategy(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::query::IsTokenBlacklistedResponse;
     use bvs_base::roles::{PAUSER, UNPAUSER};
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
@@ -913,6 +912,7 @@ mod tests {
     use cosmwasm_std::{
         attr, from_json, Addr, ContractResult, OwnedDeps, SystemError, SystemResult,
     };
+
     #[test]
     fn test_instantiate() {
         let mut deps = mock_dependencies();

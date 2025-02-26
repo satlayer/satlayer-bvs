@@ -1,9 +1,8 @@
 use crate::query::{
-    CalculateDigestHashResponse, DelegationManagerResponse, DepositTypeHashResponse,
-    DepositsResponse, DomainNameResponse, DomainTypeHashResponse, IsTokenBlacklistedResponse,
-    NonceResponse, OwnerResponse, StakerStrategyListLengthResponse, StakerStrategyListResponse,
-    StakerStrategySharesResponse, StrategyManagerStateResponse, StrategyWhitelistedResponse,
-    StrategyWhitelisterResponse, ThirdPartyTransfersForbiddenResponse, TokenStrategyResponse,
+    DelegationManagerResponse, DepositsResponse, IsTokenBlacklistedResponse, OwnerResponse,
+    StakerStrategyListLengthResponse, StakerStrategyListResponse, StakerStrategySharesResponse,
+    StrategyManagerStateResponse, StrategyWhitelistedResponse, StrategyWhitelisterResponse,
+    TokenStrategyResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
