@@ -1231,8 +1231,6 @@ fn remove_shares_and_queue_withdrawal(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::ExecuteDelegateParams;
-    use bvs_base::roles::{PAUSER, UNPAUSER};
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
@@ -1405,21 +1403,21 @@ mod tests {
 
     #[test]
     fn test_set_slash_manager() {
-        let (mut deps, env, owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, _, owner_info, _, _, _) = instantiate_contract();
 
-        let new_slash_manager = deps.api.addr_make("new_slash_manager").to_string();
-        let execute_msg = ExecuteMsg::SetSlashManager {
-            new_slash_manager: new_slash_manager.clone(),
-        };
-        let res = execute(deps.as_mut(), env.clone(), owner_info.clone(), execute_msg).unwrap();
+        let new_slash_manager = deps.api.addr_make("new_slash_manager");
+        let result =
+            set_slash_manager(deps.as_mut(), owner_info.clone(), new_slash_manager.clone());
+        assert!(result.is_ok());
 
-        assert_eq!(res.events.len(), 1);
-        assert_eq!(res.events[0].ty, "SlashManagerSet");
-        assert_eq!(res.events[0].attributes[0].key, "method");
-        assert_eq!(res.events[0].attributes[0].value, "set_slash_manager");
-        assert_eq!(res.events[0].attributes[1].key, "new_slash_manager");
-        assert_eq!(res.events[0].attributes[1].value, new_slash_manager.clone());
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
+        assert_eq!(
+            response.events[0],
+            Event::new("SlashManagerSet")
+                .add_attribute("method", "set_slash_manager")
+                .add_attribute("new_slash_manager", new_slash_manager.to_string())
+        );
 
         let state = DELEGATION_MANAGER_STATE.load(&deps.storage).unwrap();
         assert_eq!(state.slash_manager, Addr::unchecked(new_slash_manager));
@@ -1427,28 +1425,24 @@ mod tests {
 
     #[test]
     fn test_set_min_withdrawal_delay_blocks() {
-        let (mut deps, _env, owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, _, owner_info, _, _, _) = instantiate_contract();
 
         let new_min_delay = 150;
         let result = set_min_withdrawal_delay_blocks(deps.as_mut(), owner_info, new_min_delay);
         assert!(result.is_ok());
+
         let response = result.unwrap();
         assert_eq!(response.attributes.len(), 0);
         assert_eq!(response.events.len(), 1);
-
-        let event = &response.events[0];
-        assert_eq!(event.ty, "MinWithdrawalDelayBlocksSet");
-        assert_eq!(event.attributes.len(), 3);
-        assert_eq!(event.attributes[0].key, "method");
-        assert_eq!(event.attributes[0].value, "set_min_withdrawal_delay_blocks");
-        assert_eq!(event.attributes[1].key, "prev_min_withdrawal_delay_blocks");
-        assert_eq!(event.attributes[1].value, "100");
-        assert_eq!(event.attributes[2].key, "new_min_withdrawal_delay_blocks");
-        assert_eq!(event.attributes[2].value, new_min_delay.to_string());
+        assert_eq!(
+            response.events[0],
+            Event::new("MinWithdrawalDelayBlocksSet")
+                .add_attribute("method", "set_min_withdrawal_delay_blocks")
+                .add_attribute("prev_min_withdrawal_delay_blocks", "100")
+                .add_attribute("new_min_withdrawal_delay_blocks", new_min_delay.to_string())
+        );
 
         let non_owner_info = message_info(&Addr::unchecked("not_owner"), &[]);
-
         let result = set_min_withdrawal_delay_blocks(deps.as_mut(), non_owner_info, new_min_delay);
         assert!(result.is_err());
         if let Err(err) = result {
@@ -1461,16 +1455,10 @@ mod tests {
 
     #[test]
     fn test_set_min_withdrawal_delay_blocks_exceeds_max() {
-        let (mut deps, env, owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, _, owner_info, _, _, _) = instantiate_contract();
 
         let new_min_delay = MAX_WITHDRAWAL_DELAY_BLOCKS + 1;
-
-        let execute_msg = ExecuteMsg::SetMinWithdrawalDelayBlocks {
-            new_min_withdrawal_delay_blocks: new_min_delay,
-        };
-
-        let result = execute(deps.as_mut(), env, owner_info, execute_msg);
+        let result = set_min_withdrawal_delay_blocks(deps.as_mut(), owner_info, new_min_delay);
 
         assert!(result.is_err());
         if let Err(err) = result {
@@ -1483,26 +1471,23 @@ mod tests {
 
     #[test]
     fn test_set_min_withdrawal_delay_blocks_internal() {
-        let (mut deps, _env, owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, _, owner_info, _, _, _) = instantiate_contract();
 
         let new_min_delay = 150;
         let result =
             set_min_withdrawal_delay_blocks(deps.as_mut(), owner_info.clone(), new_min_delay);
         assert!(result.is_ok());
+
         let response = result.unwrap();
         assert_eq!(response.attributes.len(), 0);
         assert_eq!(response.events.len(), 1);
-
-        let event = &response.events[0];
-        assert_eq!(event.ty, "MinWithdrawalDelayBlocksSet");
-        assert_eq!(event.attributes.len(), 3);
-        assert_eq!(event.attributes[0].key, "method");
-        assert_eq!(event.attributes[0].value, "set_min_withdrawal_delay_blocks");
-        assert_eq!(event.attributes[1].key, "prev_min_withdrawal_delay_blocks");
-        assert_eq!(event.attributes[1].value, "100");
-        assert_eq!(event.attributes[2].key, "new_min_withdrawal_delay_blocks");
-        assert_eq!(event.attributes[2].value, new_min_delay.to_string());
+        assert_eq!(
+            response.events[0],
+            Event::new("MinWithdrawalDelayBlocksSet")
+                .add_attribute("method", "set_min_withdrawal_delay_blocks")
+                .add_attribute("prev_min_withdrawal_delay_blocks", "100")
+                .add_attribute("new_min_withdrawal_delay_blocks", new_min_delay.to_string())
+        );
 
         let new_min_delay = MAX_WITHDRAWAL_DELAY_BLOCKS + 1;
         let result =
@@ -1518,48 +1503,50 @@ mod tests {
 
     #[test]
     fn test_set_strategy_withdrawal_delay_blocks() {
-        let (mut deps, env, owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
-
-        let strategy1 = deps.api.addr_make("strategy1").to_string();
-        let strategy2 = deps.api.addr_make("strategy2").to_string();
+        let (mut deps, _, owner_info, _, _, _) = instantiate_contract();
 
         // Test set_strategy_withdrawal_delay_blocks
-        let strategies_str = vec![strategy1.clone(), strategy2.clone()];
-
+        let strategy1 = deps.api.addr_make("strategy1");
+        let strategy2 = deps.api.addr_make("strategy2");
+        let strategies = vec![strategy1.clone(), strategy2.clone()];
         let withdrawal_delay_blocks = vec![15, 20];
 
-        let execute_msg = ExecuteMsg::SetStrategyWithdrawalDelayBlocks {
-            strategies: strategies_str.clone(),
-            withdrawal_delay_blocks: withdrawal_delay_blocks.clone(),
-        };
+        let result = set_strategy_withdrawal_delay_blocks(
+            deps.as_mut(),
+            owner_info.clone(),
+            strategies.clone(),
+            withdrawal_delay_blocks.clone(),
+        );
+        assert!(result.is_ok());
 
-        let res = execute(deps.as_mut(), env.clone(), owner_info.clone(), execute_msg).unwrap();
-
-        assert_eq!(res.events.len(), 2);
-        assert_eq!(res.events[0].ty, "StrategyWithdrawalDelayBlocksSet");
-        assert_eq!(res.events[0].attributes[0].value, strategy1.clone());
-        assert_eq!(res.events[0].attributes[1].value, "50");
-        assert_eq!(res.events[0].attributes[2].value, "15");
-
-        assert_eq!(res.events[1].ty, "StrategyWithdrawalDelayBlocksSet");
-        assert_eq!(res.events[1].attributes[0].value, strategy2.clone());
-        assert_eq!(res.events[1].attributes[1].value, "60");
-        assert_eq!(res.events[1].attributes[2].value, "20");
+        let response = result.unwrap();
+        assert_eq!(response.attributes.len(), 0);
+        assert_eq!(response.events.len(), 2);
+        assert_eq!(
+            response.events[0],
+            Event::new("StrategyWithdrawalDelayBlocksSet")
+                .add_attribute("strategy", strategy1.into_string())
+                .add_attribute("prev", "50")
+                .add_attribute("new", "15")
+        );
+        assert_eq!(
+            response.events[1],
+            Event::new("StrategyWithdrawalDelayBlocksSet")
+                .add_attribute("strategy", strategy2.into_string())
+                .add_attribute("prev", "60")
+                .add_attribute("new", "20")
+        );
 
         // Test unauthorized attempt
         let non_owner_info = message_info(&Addr::unchecked("not_owner"), &[]);
-        let res = execute(
+        let result = set_strategy_withdrawal_delay_blocks(
             deps.as_mut(),
-            env.clone(),
             non_owner_info,
-            ExecuteMsg::SetStrategyWithdrawalDelayBlocks {
-                strategies: strategies_str.clone(),
-                withdrawal_delay_blocks: withdrawal_delay_blocks.clone(),
-            },
+            strategies,
+            withdrawal_delay_blocks.clone(),
         );
-        assert!(res.is_err());
-        if let Err(err) = res {
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::Unauthorized {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -1567,18 +1554,15 @@ mod tests {
         }
 
         // Test input length mismatch error
-        let strategies = vec![deps.api.addr_make("strategy1").to_string()];
-        let res = execute(
+        let strategies = vec![deps.api.addr_make("strategy1")];
+        let result = set_strategy_withdrawal_delay_blocks(
             deps.as_mut(),
-            env.clone(),
             owner_info.clone(),
-            ExecuteMsg::SetStrategyWithdrawalDelayBlocks {
-                strategies: strategies.clone(),
-                withdrawal_delay_blocks: withdrawal_delay_blocks.clone(),
-            },
+            strategies,
+            withdrawal_delay_blocks,
         );
-        assert!(res.is_err());
-        if let Err(err) = res {
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::InputLengthMismatch {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -1586,19 +1570,16 @@ mod tests {
         }
 
         // Test exceeding max withdrawal delay blocks
-        let strategies = vec![deps.api.addr_make("strategy1").to_string()];
+        let strategies = vec![deps.api.addr_make("strategy1")];
         let withdrawal_delay_blocks = vec![MAX_WITHDRAWAL_DELAY_BLOCKS + 1];
-        let res = execute(
+        let result = set_strategy_withdrawal_delay_blocks(
             deps.as_mut(),
-            env,
             owner_info.clone(),
-            ExecuteMsg::SetStrategyWithdrawalDelayBlocks {
-                strategies: strategies.clone(),
-                withdrawal_delay_blocks: withdrawal_delay_blocks.clone(),
-            },
+            strategies,
+            withdrawal_delay_blocks,
         );
-        assert!(res.is_err());
-        if let Err(err) = res {
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::CannotBeExceedMaxWithdrawalDelayBlocks {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -1608,8 +1589,7 @@ mod tests {
 
     #[test]
     fn test_set_strategy_withdrawal_delay_blocks_internal() {
-        let (mut deps, _env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, _, _, _, _, _) = instantiate_contract();
 
         let strategy1 = deps.api.addr_make("strategy1");
         let strategy2 = deps.api.addr_make("strategy2");
@@ -1617,33 +1597,39 @@ mod tests {
         let strategies = vec![strategy1.clone(), strategy2.clone()];
         let withdrawal_delay_blocks = vec![15, 20];
 
-        let res = set_strategy_withdrawal_delay_blocks_internal(
+        let result = set_strategy_withdrawal_delay_blocks_internal(
             deps.as_mut(),
             strategies.clone(),
             withdrawal_delay_blocks.clone(),
-        )
-        .unwrap();
+        );
+        assert!(result.is_ok());
 
-        assert_eq!(res.events.len(), 2);
-        assert_eq!(res.events[0].ty, "StrategyWithdrawalDelayBlocksSet");
-        assert_eq!(res.events[0].attributes[0].value, strategy1.to_string());
-        assert_eq!(res.events[0].attributes[1].value, "50");
-        assert_eq!(res.events[0].attributes[2].value, "15");
-
-        assert_eq!(res.events[1].ty, "StrategyWithdrawalDelayBlocksSet");
-        assert_eq!(res.events[1].attributes[0].value, strategy2.to_string());
-        assert_eq!(res.events[1].attributes[1].value, "60");
-        assert_eq!(res.events[1].attributes[2].value, "20");
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 2);
+        assert_eq!(
+            response.events[0],
+            Event::new("StrategyWithdrawalDelayBlocksSet")
+                .add_attribute("strategy", strategy1.into_string())
+                .add_attribute("prev", "50")
+                .add_attribute("new", "15")
+        );
+        assert_eq!(
+            response.events[1],
+            Event::new("StrategyWithdrawalDelayBlocksSet")
+                .add_attribute("strategy", strategy2.into_string())
+                .add_attribute("prev", "60")
+                .add_attribute("new", "20")
+        );
 
         // Test with input length mismatch
         let strategies = vec![deps.api.addr_make("strategy1")];
-        let res = set_strategy_withdrawal_delay_blocks_internal(
+        let response = set_strategy_withdrawal_delay_blocks_internal(
             deps.as_mut(),
             strategies,
             withdrawal_delay_blocks.clone(),
         );
-        assert!(res.is_err());
-        if let Err(err) = res {
+        assert!(response.is_err());
+        if let Err(err) = response {
             match err {
                 ContractError::InputLengthMismatch {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -1653,13 +1639,13 @@ mod tests {
         // Test with delay blocks exceeding max
         let strategies = vec![deps.api.addr_make("strategy1")];
         let withdrawal_delay_blocks = vec![MAX_WITHDRAWAL_DELAY_BLOCKS + 1];
-        let res = set_strategy_withdrawal_delay_blocks_internal(
+        let response = set_strategy_withdrawal_delay_blocks_internal(
             deps.as_mut(),
             strategies,
             withdrawal_delay_blocks,
         );
-        assert!(res.is_err());
-        if let Err(err) = res {
+        assert!(response.is_err());
+        if let Err(err) = response {
             match err {
                 ContractError::CannotBeExceedMaxWithdrawalDelayBlocks {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -1669,12 +1655,9 @@ mod tests {
 
     #[test]
     fn test_modify_operator_details() {
-        let (mut deps, env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, _, _, _, _, _) = instantiate_contract();
 
         let operator = deps.api.addr_make("operator");
-        let earnings_receiver1 = deps.api.addr_make("earnings_receiver1");
-
         let info_operator = message_info(&Addr::unchecked(operator.clone()), &[]);
 
         DELEGATED_TO
@@ -1693,31 +1676,25 @@ mod tests {
             staker_opt_out_window_blocks: 200,
         };
 
-        let modify_msg = ExecuteMsg::ModifyOperatorDetails {
-            new_operator_details: new_operator_details.clone(),
-        };
-        let res = execute(
+        let result = modify_operator_details(
             deps.as_mut(),
-            env.clone(),
             info_operator.clone(),
-            modify_msg,
-        )
-        .unwrap();
-
-        assert_eq!(res.events.len(), 1);
-        assert_eq!(res.events[0].ty, "OperatorDetailsSet");
-        assert_eq!(res.events[0].attributes.len(), 2);
-        assert_eq!(res.events[0].attributes[0].key, "operator");
-        assert_eq!(res.events[0].attributes[0].value, operator.to_string());
-        assert_eq!(
-            res.events[0].attributes[1].key,
-            "staker_opt_out_window_blocks"
+            new_operator_details.clone(),
         );
+        assert!(result.is_ok());
+
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
         assert_eq!(
-            res.events[0].attributes[1].value,
-            new_operator_details
-                .staker_opt_out_window_blocks
-                .to_string()
+            response.events[0],
+            Event::new("OperatorDetailsSet")
+                .add_attribute("operator", operator.to_string())
+                .add_attribute(
+                    "staker_opt_out_window_blocks",
+                    new_operator_details
+                        .staker_opt_out_window_blocks
+                        .to_string()
+                )
         );
 
         // Verify the updated operator details
@@ -1731,18 +1708,13 @@ mod tests {
         let invalid_operator_details = OperatorDetails {
             staker_opt_out_window_blocks: MAX_STAKER_OPT_OUT_WINDOW_BLOCKS + 1,
         };
-
-        let modify_msg = ExecuteMsg::ModifyOperatorDetails {
-            new_operator_details: invalid_operator_details,
-        };
-        let res = execute(
+        let result = modify_operator_details(
             deps.as_mut(),
-            env.clone(),
             info_operator.clone(),
-            modify_msg,
+            invalid_operator_details,
         );
-        assert!(res.is_err());
-        if let Err(err) = res {
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::CannotBeExceedMaxStakerOptOutWindowBlocks {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -1753,13 +1725,10 @@ mod tests {
         let decreasing_operator_details = OperatorDetails {
             staker_opt_out_window_blocks: 50,
         };
-
-        let modify_msg = ExecuteMsg::ModifyOperatorDetails {
-            new_operator_details: decreasing_operator_details,
-        };
-        let res = execute(deps.as_mut(), env, info_operator, modify_msg);
-        assert!(res.is_err());
-        if let Err(err) = res {
+        let result =
+            modify_operator_details(deps.as_mut(), info_operator, decreasing_operator_details);
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::CannotBeDecreased {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -1769,8 +1738,7 @@ mod tests {
 
     #[test]
     fn test_set_operator_details() {
-        let (mut deps, _env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, _, _, _, _, _) = instantiate_contract();
 
         let operator = deps.api.addr_make("operator1");
         let initial_operator_details = OperatorDetails {
@@ -1783,31 +1751,34 @@ mod tests {
         let new_operator_details = OperatorDetails {
             staker_opt_out_window_blocks: 200,
         };
-
-        let res = set_operator_details(
+        let result = set_operator_details(
             deps.as_mut(),
             operator.clone(),
             new_operator_details.clone(),
-        )
-        .unwrap();
+        );
+        assert!(result.is_ok());
 
-        assert_eq!(res.events.len(), 1);
-        assert_eq!(res.events[0].ty, "OperatorDetailsSet");
-        assert_eq!(res.events[0].attributes[0].value, operator.to_string());
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
         assert_eq!(
-            res.events[0].attributes[1].value,
-            new_operator_details
-                .staker_opt_out_window_blocks
-                .to_string()
+            response.events[0],
+            Event::new("OperatorDetailsSet")
+                .add_attribute("operator", operator.to_string())
+                .add_attribute(
+                    "staker_opt_out_window_blocks",
+                    new_operator_details
+                        .staker_opt_out_window_blocks
+                        .to_string()
+                )
         );
 
         let invalid_operator_details = OperatorDetails {
             staker_opt_out_window_blocks: MAX_STAKER_OPT_OUT_WINDOW_BLOCKS + 1,
         };
-
-        let res = set_operator_details(deps.as_mut(), operator.clone(), invalid_operator_details);
-        assert!(res.is_err());
-        if let Err(err) = res {
+        let result =
+            set_operator_details(deps.as_mut(), operator.clone(), invalid_operator_details);
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::CannotBeExceedMaxStakerOptOutWindowBlocks {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -1817,10 +1788,9 @@ mod tests {
         let decreasing_operator_details = OperatorDetails {
             staker_opt_out_window_blocks: 50,
         };
-
-        let res = set_operator_details(deps.as_mut(), operator, decreasing_operator_details);
-        assert!(res.is_err());
-        if let Err(err) = res {
+        let result = set_operator_details(deps.as_mut(), operator, decreasing_operator_details);
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::CannotBeDecreased {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -1830,8 +1800,7 @@ mod tests {
 
     #[test]
     fn test_increase_operator_shares_internal() {
-        let (mut deps, _env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, _, _, _, _, _) = instantiate_contract();
 
         let operator = deps.api.addr_make("operator1");
         let staker = deps.api.addr_make("staker1");
@@ -1846,27 +1815,28 @@ mod tests {
             .unwrap();
 
         let additional_shares = Uint128::new(50);
-        let res = increase_operator_shares(
+        let result = increase_operator_shares(
             deps.as_mut(),
             operator.clone(),
             staker.clone(),
             strategy.clone(),
             additional_shares,
-        )
-        .unwrap();
-
-        assert_eq!(res.events.len(), 1);
-        assert_eq!(res.events[0].ty, "OperatorSharesIncreased");
-        assert_eq!(res.events[0].attributes[0].value, operator.to_string());
-        assert_eq!(res.events[0].attributes[1].value, staker.to_string());
-        assert_eq!(res.events[0].attributes[2].value, strategy.to_string());
-        assert_eq!(
-            res.events[0].attributes[3].value,
-            additional_shares.to_string()
         );
+        assert!(result.is_ok());
+
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
         assert_eq!(
-            res.events[0].attributes[4].value,
-            (initial_shares + additional_shares).to_string()
+            response.events[0],
+            Event::new("OperatorSharesIncreased")
+                .add_attribute("operator", operator.to_string())
+                .add_attribute("staker", staker.clone().to_string())
+                .add_attribute("strategy", strategy.clone().to_string())
+                .add_attribute("shares", additional_shares.to_string())
+                .add_attribute(
+                    "new_shares",
+                    (initial_shares + additional_shares).to_string()
+                )
         );
 
         let stored_shares = OPERATOR_SHARES
@@ -1875,24 +1845,27 @@ mod tests {
         assert_eq!(stored_shares, initial_shares + additional_shares);
 
         let more_shares = Uint128::new(25);
-        let res = increase_operator_shares(
+        let result = increase_operator_shares(
             deps.as_mut(),
             operator.clone(),
             staker.clone(),
             strategy.clone(),
             more_shares,
-        )
-        .unwrap();
+        );
+        assert!(result.is_ok());
 
-        assert_eq!(res.events.len(), 1);
-        assert_eq!(res.events[0].ty, "OperatorSharesIncreased");
-        assert_eq!(res.events[0].attributes[0].value, operator.to_string());
-        assert_eq!(res.events[0].attributes[1].value, staker.to_string());
-        assert_eq!(res.events[0].attributes[2].value, strategy.to_string());
-        assert_eq!(res.events[0].attributes[3].value, more_shares.to_string());
+        let response = result.unwrap();
         assert_eq!(
-            res.events[0].attributes[4].value,
-            (initial_shares + additional_shares + more_shares).to_string()
+            response.events[0],
+            Event::new("OperatorSharesIncreased")
+                .add_attribute("operator", operator.to_string())
+                .add_attribute("staker", staker.clone().to_string())
+                .add_attribute("strategy", strategy.clone().to_string())
+                .add_attribute("shares", more_shares.to_string())
+                .add_attribute(
+                    "new_shares",
+                    (initial_shares + additional_shares + more_shares).to_string()
+                )
         );
 
         let updated_shares = OPERATOR_SHARES
@@ -1904,16 +1877,15 @@ mod tests {
         );
 
         let zero_shares = Uint128::new(0);
-        let res = increase_operator_shares(
+        let result = increase_operator_shares(
             deps.as_mut(),
             operator.clone(),
             staker.clone(),
             strategy.clone(),
             zero_shares,
         );
-
-        assert!(res.is_err());
-        if let Err(err) = res {
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::Underflow {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -1923,8 +1895,7 @@ mod tests {
 
     #[test]
     fn test_get_delegatable_shares() {
-        let (mut deps, env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, _, _, _, _, _) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
 
@@ -1950,13 +1921,9 @@ mod tests {
             }),
         });
 
-        let query_msg = QueryMsg::GetDelegatableShares {
-            staker: staker.to_string(),
-        };
-
-        let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-
-        let delegatable_shares: DelegatableSharesResponse = from_json(res).unwrap();
+        let result = query_delegatable_shares(deps.as_ref(), staker);
+        assert!(result.is_ok());
+        let delegatable_shares = result.unwrap();
 
         assert_eq!(delegatable_shares.strategies.len(), 2);
         assert_eq!(delegatable_shares.shares.len(), 2);
@@ -1974,8 +1941,7 @@ mod tests {
 
     #[test]
     fn test_delegate() {
-        let (mut deps, env, owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, env, owner_info, _, _, _) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker");
         let operator = deps.api.addr_make("operator");
@@ -2016,25 +1982,28 @@ mod tests {
             }),
         });
 
-        let res = delegate(
+        let result = delegate(
             deps.as_mut(),
             owner_info.clone(),
             env.clone(),
             delegate_params,
-        )
-        .unwrap();
+        );
+        assert!(result.is_ok());
 
-        assert_eq!(res.events.len(), 1);
-        assert_eq!(res.events[0].ty, "Delegate");
-        assert_eq!(res.events[0].attributes[0].value, "delegate");
-        assert_eq!(res.events[0].attributes[1].value, staker.to_string());
-        assert_eq!(res.events[0].attributes[2].value, operator.to_string());
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
+        assert_eq!(
+            response.events[0],
+            Event::new("Delegate")
+                .add_attribute("method", "delegate")
+                .add_attribute("staker", staker.to_string())
+                .add_attribute("operator", operator.to_string())
+        );
     }
 
     #[test]
     fn test_delegate_to() {
-        let (mut deps, env, owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, env, owner_info, _, _, _) = instantiate_contract();
 
         let staker: Addr = deps.api.addr_make("staker");
         let operator: Addr = deps.api.addr_make("operator");
@@ -2052,11 +2021,6 @@ mod tests {
             .save(deps.as_mut().storage, &operator, &operator)
             .unwrap();
 
-        let delegate_params = ExecuteDelegateParams {
-            staker: staker.to_string(),
-            operator: operator.to_string(),
-        };
-
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart {
                 contract_addr,
@@ -2079,28 +2043,22 @@ mod tests {
             }),
         });
 
-        let execute_msg = ExecuteMsg::DelegateTo {
-            params: delegate_params.clone(),
+        let delegate_params = DelegateParams {
+            staker: staker.clone(),
+            operator: operator.clone(),
         };
+        let result = delegate_to(deps.as_mut(), owner_info, env, delegate_params.clone());
+        assert!(result.is_ok());
 
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            owner_info.clone(),
-            execute_msg.clone(),
-        )
-        .unwrap();
-
-        assert_eq!(res.events.len(), 1);
-        let event = &res.events[0];
-        assert_eq!(event.ty, "Delegate");
-        assert_eq!(event.attributes.len(), 3);
-        assert_eq!(event.attributes[0].key, "method");
-        assert_eq!(event.attributes[0].value, "delegate");
-        assert_eq!(event.attributes[1].key, "staker");
-        assert_eq!(event.attributes[1].value, staker.to_string());
-        assert_eq!(event.attributes[2].key, "operator");
-        assert_eq!(event.attributes[2].value, operator.to_string());
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
+        assert_eq!(
+            response.events[0],
+            Event::new("Delegate")
+                .add_attribute("method", "delegate")
+                .add_attribute("staker", staker.to_string())
+                .add_attribute("operator", operator.to_string())
+        );
 
         let delegated_to = DELEGATED_TO.load(&deps.storage, &staker).unwrap();
         assert_eq!(delegated_to, operator);
@@ -2108,8 +2066,7 @@ mod tests {
 
     #[test]
     fn test_register_as_operator() {
-        let (mut deps, env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, env, _, _, _, _) = instantiate_contract();
 
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart {
@@ -2136,43 +2093,35 @@ mod tests {
         let operator_details = OperatorDetails {
             staker_opt_out_window_blocks: 100,
         };
-
         let sender_addr = deps.api.addr_make("sender");
-
         let info_operator = MessageInfo {
             sender: sender_addr.clone(),
             funds: vec![],
         };
-
         let metadata_uri = "https://example.com/metadata";
-        let register_msg = ExecuteMsg::RegisterAsOperator {
-            operator_details: operator_details.clone(),
-            metadata_uri: metadata_uri.to_string(),
-        };
 
-        let res = execute(
+        let result = register_as_operator(
             deps.as_mut(),
-            env.clone(),
             info_operator.clone(),
-            register_msg.clone(),
-        )
-        .unwrap();
+            env.clone(),
+            operator_details.clone(),
+            metadata_uri.to_string(),
+        );
+        assert!(result.is_ok());
 
-        assert_eq!(res.events.len(), 2);
-
-        let event = &res.events[0];
-        assert_eq!(event.ty, "OperatorRegistered");
-        assert_eq!(event.attributes.len(), 1);
-        assert_eq!(event.attributes[0].key, "operator");
-        assert_eq!(event.attributes[0].value, info_operator.sender.to_string());
-
-        let event = &res.events[1];
-        assert_eq!(event.ty, "OperatorMetadataURIUpdated");
-        assert_eq!(event.attributes.len(), 2);
-        assert_eq!(event.attributes[0].key, "operator");
-        assert_eq!(event.attributes[0].value, info_operator.sender.to_string());
-        assert_eq!(event.attributes[1].key, "metadata_uri");
-        assert_eq!(event.attributes[1].value, metadata_uri.to_string());
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 2);
+        assert_eq!(
+            response.events[0],
+            Event::new("OperatorRegistered")
+                .add_attribute("operator", info_operator.sender.to_string())
+        );
+        assert_eq!(
+            response.events[1],
+            Event::new("OperatorMetadataURIUpdated")
+                .add_attribute("operator", info_operator.sender.to_string())
+                .add_attribute("metadata_uri", metadata_uri.to_string())
+        );
 
         let stored_operator_details = OPERATOR_DETAILS
             .load(&deps.storage, &info_operator.sender)
@@ -2187,14 +2136,15 @@ mod tests {
             .unwrap();
         assert_eq!(delegated_to, info_operator.sender);
 
-        let res = execute(
+        let result = register_as_operator(
             deps.as_mut(),
-            env.clone(),
             info_operator.clone(),
-            register_msg.clone(),
+            env.clone(),
+            operator_details.clone(),
+            metadata_uri.to_string(),
         );
-        assert!(res.is_err());
-        if let Err(err) = res {
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::StakerAlreadyDelegated {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -2204,8 +2154,7 @@ mod tests {
 
     #[test]
     fn test_update_operator_metadata_uri() {
-        let (mut deps, env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, _, _, _, _, _) = instantiate_contract();
 
         let operator = deps.api.addr_make("operator1");
         let operator_details = OperatorDetails {
@@ -2220,38 +2169,32 @@ mod tests {
             .unwrap();
 
         let info_operator: MessageInfo = message_info(&Addr::unchecked(operator), &[]);
-
         let metadata_uri = "https://example.com/metadata";
-        let update_msg = ExecuteMsg::UpdateOperatorMetadataUri {
-            metadata_uri: metadata_uri.to_string(),
-        };
-        let res = execute(
+        let result = update_operator_metadata_uri(
             deps.as_mut(),
-            env.clone(),
             info_operator.clone(),
-            update_msg,
-        )
-        .unwrap();
+            metadata_uri.to_string(),
+        );
+        assert!(result.is_ok());
 
-        assert_eq!(res.events.len(), 1);
-
-        let event = &res.events[0];
-        assert_eq!(event.ty, "OperatorMetadataURIUpdated");
-        assert_eq!(event.attributes.len(), 2);
-        assert_eq!(event.attributes[0].key, "operator");
-        assert_eq!(event.attributes[0].value, info_operator.sender.to_string());
-        assert_eq!(event.attributes[1].key, "metadata_uri");
-        assert_eq!(event.attributes[1].value, metadata_uri.to_string());
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
+        assert_eq!(
+            response.events[0],
+            Event::new("OperatorMetadataURIUpdated")
+                .add_attribute("operator", info_operator.sender.to_string())
+                .add_attribute("metadata_uri", metadata_uri.to_string())
+        );
 
         // Check for an operator not registered error
         let info_non_operator: MessageInfo = message_info(&Addr::unchecked("non_operator"), &[]);
-
-        let update_msg = ExecuteMsg::UpdateOperatorMetadataUri {
-            metadata_uri: metadata_uri.to_string(),
-        };
-        let res = execute(deps.as_mut(), env, info_non_operator, update_msg);
-        assert!(res.is_err());
-        if let Err(err) = res {
+        let result = update_operator_metadata_uri(
+            deps.as_mut(),
+            info_non_operator,
+            metadata_uri.to_string(),
+        );
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::OperatorNotRegistered {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -2261,8 +2204,7 @@ mod tests {
 
     #[test]
     fn test_increase_delegated_shares() {
-        let (mut deps, env, _owner_info, _pauser_info, _unpauser_info, strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, _, _, _, _, strategy_manager_info) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
         let operator = deps.api.addr_make("operator1");
@@ -2282,30 +2224,28 @@ mod tests {
 
         // Test increasing shares
         let additional_shares = Uint128::new(50);
-        let increase_msg = ExecuteMsg::IncreaseDelegatedShares {
-            staker: staker.to_string(),
-            strategy: strategy.to_string(),
-            shares: additional_shares,
-        };
-
-        let res = execute(
+        let result = increase_delegated_shares(
             deps.as_mut(),
-            env.clone(),
             strategy_manager_info.clone(),
-            increase_msg.clone(),
-        )
-        .unwrap();
+            staker.clone(),
+            strategy.clone(),
+            additional_shares,
+        );
+        assert!(result.is_ok());
 
-        assert_eq!(res.events.len(), 1);
-        let event = &res.events[0];
-        assert_eq!(event.ty, "OperatorSharesIncreased");
-        assert_eq!(event.attributes[0].value, operator.to_string());
-        assert_eq!(event.attributes[1].value, staker.to_string());
-        assert_eq!(event.attributes[2].value, strategy.to_string());
-        assert_eq!(event.attributes[3].value, additional_shares.to_string());
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
         assert_eq!(
-            event.attributes[4].value,
-            (initial_shares + additional_shares).to_string()
+            response.events[0],
+            Event::new("OperatorSharesIncreased")
+                .add_attribute("operator", operator.clone().to_string())
+                .add_attribute("staker", staker.clone().to_string())
+                .add_attribute("strategy", strategy.clone().to_string())
+                .add_attribute("shares", additional_shares.to_string())
+                .add_attribute(
+                    "new_shares",
+                    (initial_shares + additional_shares).to_string()
+                )
         );
 
         let stored_shares = OPERATOR_SHARES
@@ -2315,15 +2255,15 @@ mod tests {
 
         // Test unauthorized increase (should fail)
         let unauthorized_info = message_info(&Addr::unchecked("not_strategy_manager"), &[]);
-
-        let res_unauthorized = execute(
+        let result = increase_delegated_shares(
             deps.as_mut(),
-            env.clone(),
             unauthorized_info,
-            increase_msg.clone(),
+            staker,
+            strategy,
+            additional_shares,
         );
-        assert!(res_unauthorized.is_err());
-        if let Err(err) = res_unauthorized {
+        assert!(result.is_err());
+        if let Err(err) = result {
             assert!(matches!(err, ContractError::Unauthorized {}));
         }
 
@@ -2331,28 +2271,22 @@ mod tests {
         let non_delegated_staker = deps.api.addr_make("staker2");
         let strategy = deps.api.addr_make("stratey1");
         let additional_shares = Uint128::new(50);
-        let increase_msg_non_delegated = ExecuteMsg::IncreaseDelegatedShares {
-            staker: non_delegated_staker.to_string(),
-            strategy: strategy.to_string(),
-            shares: additional_shares,
-        };
-
-        let res = execute(
+        let result = increase_delegated_shares(
             deps.as_mut(),
-            env.clone(),
-            strategy_manager_info.clone(),
-            increase_msg_non_delegated,
+            strategy_manager_info,
+            non_delegated_staker,
+            strategy,
+            additional_shares,
         );
-        assert!(res.is_err());
-        if let Err(err) = res {
+        assert!(result.is_err());
+        if let Err(err) = result {
             assert!(matches!(err, ContractError::NotDelegated {}));
         }
     }
 
     #[test]
     fn test_decrease_operator_shares_internal() {
-        let (mut deps, _env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, _, _, _, _unpauser_info, _) = instantiate_contract();
 
         let operator = deps.api.addr_make("operator1");
         let staker = deps.api.addr_make("staker1");
@@ -2367,23 +2301,24 @@ mod tests {
             .unwrap();
 
         let decrease_shares = Uint128::new(50);
-        let res = decrease_operator_shares(
+        let result = decrease_operator_shares(
             deps.as_mut(),
             operator.clone(),
             staker.clone(),
             strategy.clone(),
             decrease_shares,
-        )
-        .unwrap();
+        );
+        assert!(result.is_ok());
 
-        assert_eq!(res.events.len(), 1);
-        assert_eq!(res.events[0].ty, "OperatorSharesDecreased");
-        assert_eq!(res.events[0].attributes[0].value, operator.to_string());
-        assert_eq!(res.events[0].attributes[1].value, staker.to_string());
-        assert_eq!(res.events[0].attributes[2].value, strategy.to_string());
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
         assert_eq!(
-            res.events[0].attributes[3].value,
-            decrease_shares.to_string()
+            response.events[0],
+            Event::new("OperatorSharesDecreased")
+                .add_attribute("operator", operator.clone().to_string())
+                .add_attribute("staker", staker.clone().to_string())
+                .add_attribute("strategy", strategy.clone().to_string())
+                .add_attribute("shares", decrease_shares.to_string())
         );
 
         let stored_shares = OPERATOR_SHARES
@@ -2393,16 +2328,15 @@ mod tests {
 
         // Test decreasing shares with amount greater than current shares (should error)
         let excess_decrease = Uint128::new(60);
-        let res = decrease_operator_shares(
+        let result = decrease_operator_shares(
             deps.as_mut(),
             operator.clone(),
             staker.clone(),
             strategy.clone(),
             excess_decrease,
         );
-
-        assert!(res.is_err());
-        if let Err(err) = res {
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::Underflow {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -2410,23 +2344,24 @@ mod tests {
         }
 
         // Test decreasing shares to zero
-        let res = decrease_operator_shares(
+        let result = decrease_operator_shares(
             deps.as_mut(),
             operator.clone(),
             staker.clone(),
             strategy.clone(),
             decrease_shares,
-        )
-        .unwrap();
+        );
+        assert!(result.is_ok());
 
-        assert_eq!(res.events.len(), 1);
-        assert_eq!(res.events[0].ty, "OperatorSharesDecreased");
-        assert_eq!(res.events[0].attributes[0].value, operator.to_string());
-        assert_eq!(res.events[0].attributes[1].value, staker.to_string());
-        assert_eq!(res.events[0].attributes[2].value, strategy.to_string());
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
         assert_eq!(
-            res.events[0].attributes[3].value,
-            decrease_shares.to_string()
+            response.events[0],
+            Event::new("OperatorSharesDecreased")
+                .add_attribute("operator", operator.clone().to_string())
+                .add_attribute("staker", staker.clone().to_string())
+                .add_attribute("strategy", strategy.clone().to_string())
+                .add_attribute("shares", decrease_shares.to_string())
         );
 
         let stored_shares = OPERATOR_SHARES
@@ -2437,7 +2372,7 @@ mod tests {
 
     #[test]
     fn test_decrease_delegated_shares() {
-        let (mut deps, env, _owner_info, _pauser_info, _unpauser_info, strategy_manager_info) =
+        let (mut deps, _, _owner_info, _pauser_info, _unpauser_info, strategy_manager_info) =
             instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
@@ -2458,28 +2393,24 @@ mod tests {
 
         // Test decreasing shares
         let decrease_shares = Uint128::new(50);
-        let decrease_msg = ExecuteMsg::DecreaseDelegatedShares {
-            staker: staker.to_string(),
-            strategy: strategy.to_string(),
-            shares: decrease_shares,
-        };
-
-        let res = execute(
+        let result = decrease_delegated_shares(
             deps.as_mut(),
-            env.clone(),
             strategy_manager_info.clone(),
-            decrease_msg.clone(),
-        )
-        .unwrap();
+            staker.clone(),
+            strategy.clone(),
+            decrease_shares,
+        );
+        assert!(result.is_ok());
 
-        assert_eq!(res.events.len(), 1);
-        assert_eq!(res.events[0].ty, "OperatorSharesDecreased");
-        assert_eq!(res.events[0].attributes[0].value, operator.to_string());
-        assert_eq!(res.events[0].attributes[1].value, staker.to_string());
-        assert_eq!(res.events[0].attributes[2].value, strategy.to_string());
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
         assert_eq!(
-            res.events[0].attributes[3].value,
-            decrease_shares.to_string()
+            response.events[0],
+            Event::new("OperatorSharesDecreased")
+                .add_attribute("operator", operator.clone().to_string())
+                .add_attribute("staker", staker.clone().to_string())
+                .add_attribute("strategy", strategy.clone().to_string())
+                .add_attribute("shares", decrease_shares.to_string())
         );
 
         let stored_shares = OPERATOR_SHARES
@@ -2489,21 +2420,17 @@ mod tests {
 
         // Test decreasing shares with amount greater than current shares (should error)
         let excess_decrease = Uint128::new(60);
-        let decrease_msg_excess = ExecuteMsg::DecreaseDelegatedShares {
-            staker: staker.to_string(),
-            strategy: strategy.to_string(),
-            shares: excess_decrease,
-        };
-
-        let res = execute(
+        let result = decrease_delegated_shares(
             deps.as_mut(),
-            env.clone(),
             strategy_manager_info.clone(),
-            decrease_msg_excess.clone(),
+            staker.clone(),
+            strategy.clone(),
+            excess_decrease,
         );
+        assert!(result.is_err());
 
-        assert!(res.is_err());
-        if let Err(err) = res {
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::Underflow {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -2511,22 +2438,24 @@ mod tests {
         }
 
         // Test decreasing shares to zero
-        let res = execute(
+        let result = decrease_delegated_shares(
             deps.as_mut(),
-            env.clone(),
             strategy_manager_info.clone(),
-            decrease_msg.clone(),
-        )
-        .unwrap();
+            staker.clone(),
+            strategy.clone(),
+            decrease_shares,
+        );
+        assert!(result.is_ok());
 
-        assert_eq!(res.events.len(), 1);
-        assert_eq!(res.events[0].ty, "OperatorSharesDecreased");
-        assert_eq!(res.events[0].attributes[0].value, operator.to_string());
-        assert_eq!(res.events[0].attributes[1].value, staker.to_string());
-        assert_eq!(res.events[0].attributes[2].value, strategy.to_string());
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
         assert_eq!(
-            res.events[0].attributes[3].value,
-            decrease_shares.to_string()
+            response.events[0],
+            Event::new("OperatorSharesDecreased")
+                .add_attribute("operator", operator.clone().to_string())
+                .add_attribute("staker", staker.clone().to_string())
+                .add_attribute("strategy", strategy.clone().to_string())
+                .add_attribute("shares", decrease_shares.to_string())
         );
 
         let stored_shares = OPERATOR_SHARES
@@ -2536,16 +2465,15 @@ mod tests {
 
         // Test non-strategy manager attempt to decrease shares (should error)
         let non_strategy_manager_info = message_info(&Addr::unchecked("not_strategy_manager"), &[]);
-
-        let res = execute(
+        let result = decrease_delegated_shares(
             deps.as_mut(),
-            env.clone(),
             non_strategy_manager_info.clone(),
-            decrease_msg.clone(),
+            staker.clone(),
+            strategy.clone(),
+            decrease_shares,
         );
-
-        assert!(res.is_err());
-        if let Err(err) = res {
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::Unauthorized {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -2554,21 +2482,15 @@ mod tests {
 
         // Test staker not delegated (should error)
         let new_staker = deps.api.addr_make("staker2");
-        let decrease_msg_non_delegated = ExecuteMsg::DecreaseDelegatedShares {
-            staker: new_staker.to_string(),
-            strategy: strategy.to_string(),
-            shares: decrease_shares,
-        };
-
-        let res = execute(
+        let result = decrease_delegated_shares(
             deps.as_mut(),
-            env.clone(),
             strategy_manager_info.clone(),
-            decrease_msg_non_delegated.clone(),
+            new_staker,
+            strategy,
+            decrease_shares,
         );
-
-        assert!(res.is_err());
-        if let Err(err) = res {
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::StakerNotDelegated {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -2578,8 +2500,7 @@ mod tests {
 
     #[test]
     fn test_remove_shares_and_queue_withdrawal() {
-        let (mut deps, env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, env, _, _, _, _) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
         let operator = deps.api.addr_make("operator1");
@@ -2628,7 +2549,7 @@ mod tests {
             }),
         });
 
-        let res = remove_shares_and_queue_withdrawal(
+        let result = remove_shares_and_queue_withdrawal(
             deps.as_mut(),
             env.clone(),
             staker.clone(),
@@ -2636,23 +2557,29 @@ mod tests {
             withdrawer.clone(),
             strategies.clone(),
             shares.clone(),
-        )
-        .unwrap();
+        );
+        assert!(result.is_ok());
 
-        let events = res.events;
-        assert_eq!(events.len(), 1);
-        assert_eq!(events[0].ty, "WithdrawalQueued");
-        assert_eq!(events[0].attributes[0].key, "withdrawal_root");
-        assert_eq!(events[0].attributes[1].key, "staker");
-        assert_eq!(events[0].attributes[2].key, "operator");
-        assert_eq!(events[0].attributes[3].key, "withdrawer");
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 1);
+        assert_eq!(
+            response.events[0],
+            Event::new("WithdrawalQueued")
+                .add_attribute(
+                    "withdrawal_root",
+                    "VppstttP5J8RI/NIIy6kpTX2cTqmQtgTQSGQGzWLd2M=".to_string()
+                )
+                .add_attribute("staker", staker.to_string())
+                .add_attribute("operator", operator.to_string())
+                .add_attribute("withdrawer", withdrawer.to_string())
+        );
 
         let stored_shares = OPERATOR_SHARES
             .load(deps.as_ref().storage, (&operator, &strategies[0]))
             .unwrap();
         assert_eq!(stored_shares, Uint128::zero());
 
-        let withdrawal_root_base64 = events[0].attributes[0].value.clone();
+        let withdrawal_root_base64 = response.events[0].attributes[0].value.clone();
         let withdrawal_root_bytes = Binary::from_base64(&withdrawal_root_base64).unwrap();
         let pending_withdrawal_exists =
             PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root_bytes);
@@ -2661,8 +2588,7 @@ mod tests {
 
     #[test]
     fn test_calculate_withdrawal_root() {
-        let (deps, env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (deps, _, _, _, _, _) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker");
         let delegated_to = deps.api.addr_make("operator");
@@ -2682,21 +2608,16 @@ mod tests {
             strategies: strategies.clone(),
             shares: shares.clone(),
         };
-
-        let query_msg = QueryMsg::CalculateWithdrawalRoot {
-            withdrawal: withdrawal.clone(),
-        };
-
-        let res: String = from_json(query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
+        let result = calculate_withdrawal_root(&withdrawal);
+        assert!(result.is_ok());
 
         let expected_hash = "5iYF5vxKZ9YCauoTabLxzUs45D9WQD8+IBXBVrjAZYg=";
-        assert_eq!(res, expected_hash);
+        assert_eq!(result.unwrap().to_string(), expected_hash);
     }
 
     #[test]
     fn test_undelegate() {
-        let (mut deps, env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, env, _, _, _, _) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
         let operator = deps.api.addr_make("operator1");
@@ -2749,29 +2670,35 @@ mod tests {
         });
 
         let info = message_info(&staker.clone(), &[]);
+        let result = undelegate(deps.as_mut(), env.clone(), info.clone(), staker.clone());
+        assert!(result.is_ok());
 
-        let undelegate_msg = ExecuteMsg::Undelegate {
-            staker: staker.to_string(),
-        };
-
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            info.clone(),
-            undelegate_msg.clone(),
-        )
-        .unwrap();
-
-        let events = res.events.clone();
-        assert!(events.iter().any(|e| e.ty == "WithdrawalQueued"));
-        assert!(events.iter().any(|e| e.ty == "StakerUndelegated"));
+        let response = result.unwrap();
+        assert_eq!(response.0.events.len(), 2);
+        assert_eq!(
+            response.0.events[0],
+            Event::new("StakerUndelegated")
+                .add_attribute("staker", staker.to_string())
+                .add_attribute("operator", operator.to_string())
+        );
+        assert_eq!(
+            response.0.events[1],
+            Event::new("WithdrawalQueued")
+                .add_attribute(
+                    "withdrawal_root",
+                    "VppstttP5J8RI/NIIy6kpTX2cTqmQtgTQSGQGzWLd2M=".to_string()
+                )
+                .add_attribute("staker", staker.clone().to_string())
+                .add_attribute("operator", operator.to_string())
+                .add_attribute("withdrawer", staker.to_string())
+        );
 
         let stored_shares = OPERATOR_SHARES
             .load(deps.as_ref().storage, (&operator, &strategies[0]))
             .unwrap();
         assert_eq!(stored_shares, Uint128::zero());
 
-        for withdrawal_root in &res.attributes {
+        for withdrawal_root in &response.0.attributes {
             if withdrawal_root.key == "withdrawal_root" {
                 let withdrawal_root_bytes = Binary::from_base64(&withdrawal_root.value).unwrap();
                 assert!(PENDING_WITHDRAWALS
@@ -2795,14 +2722,14 @@ mod tests {
             .unwrap();
 
         let unauthorized_info = message_info(&Addr::unchecked("not_authorized"), &[]);
-        let res = execute(
+        let result = undelegate(
             deps.as_mut(),
             env.clone(),
             unauthorized_info,
-            undelegate_msg.clone(),
+            staker.clone(),
         );
-        assert!(res.is_err());
-        if let Err(err) = res {
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::Unauthorized {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -2811,18 +2738,15 @@ mod tests {
 
         // Test undelegating a non-delegated staker
         let non_delegated_staker = deps.api.addr_make("staker2");
-        let undelegate_msg_non_delegated = ExecuteMsg::Undelegate {
-            staker: non_delegated_staker.to_string(),
-        };
         let info = message_info(&non_delegated_staker, &[]);
-        let res = execute(
+        let result = undelegate(
             deps.as_mut(),
             env.clone(),
             info,
-            undelegate_msg_non_delegated,
+            non_delegated_staker.clone(),
         );
-        assert!(res.is_err());
-        if let Err(err) = res {
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::StakerNotDelegated {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -2838,13 +2762,10 @@ mod tests {
             .save(deps.as_mut().storage, &operator_staker, &operator_staker)
             .unwrap();
 
-        let undelegate_msg_operator = ExecuteMsg::Undelegate {
-            staker: operator_staker.to_string(),
-        };
         let info = message_info(&operator_staker, &[]);
-        let res = execute(deps.as_mut(), env.clone(), info, undelegate_msg_operator);
-        assert!(res.is_err());
-        if let Err(err) = res {
+        let result = undelegate(deps.as_mut(), env.clone(), info, operator_staker);
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::OperatorCannotBeUndelegated {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -2854,8 +2775,7 @@ mod tests {
 
     #[test]
     fn test_queue_withdrawals() {
-        let (mut deps, env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, env, _, _, _, _) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
         let operator = deps.api.addr_make("operator1");
@@ -2914,26 +2834,27 @@ mod tests {
         }];
 
         let info = message_info(&staker, &[]);
-
-        let queue_withdrawals_msg = ExecuteMsg::QueueWithdrawals {
-            queued_withdrawal_params: queued_withdrawal_params.clone(),
-        };
-
-        let res = execute(
+        let result = queue_withdrawals(
             deps.as_mut(),
             env.clone(),
             info.clone(),
-            queue_withdrawals_msg.clone(),
-        )
-        .unwrap();
+            queued_withdrawal_params,
+        );
+        assert!(result.is_ok());
 
-        // Verify withdrawal roots
-        let events = res.events.clone();
-        assert_eq!(events.len(), 1);
-        assert_eq!(events[0].ty, "WithdrawalQueued");
-        assert_eq!(events[0].attributes[1].value, staker.to_string());
-        assert_eq!(events[0].attributes[2].value, operator.to_string());
-        assert_eq!(events[0].attributes[3].value, withdrawer.to_string());
+        let response = result.unwrap();
+        assert_eq!(response.0.events.len(), 1);
+        assert_eq!(
+            response.0.events[0],
+            Event::new("WithdrawalQueued")
+                .add_attribute(
+                    "withdrawal_root",
+                    "VppstttP5J8RI/NIIy6kpTX2cTqmQtgTQSGQGzWLd2M="
+                )
+                .add_attribute("staker", staker.to_string())
+                .add_attribute("operator", operator.to_string())
+                .add_attribute("withdrawer", withdrawer.to_string())
+        );
 
         // Verify the state changes
         let stored_shares = OPERATOR_SHARES
@@ -2941,7 +2862,7 @@ mod tests {
             .unwrap();
         assert_eq!(stored_shares, Uint128::zero());
 
-        let withdrawal_root_base64 = events[0].attributes[0].value.clone();
+        let withdrawal_root_base64 = response.0.events[0].attributes[0].value.clone();
         let withdrawal_root_bytes = Binary::from_base64(&withdrawal_root_base64).unwrap();
         let pending_withdrawal_exists =
             PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root_bytes);
@@ -2953,17 +2874,14 @@ mod tests {
             strategies: strategies.clone(),
             shares: vec![Uint128::new(100), Uint128::new(200)],
         }];
-        let queue_withdrawals_msg_invalid = ExecuteMsg::QueueWithdrawals {
-            queued_withdrawal_params: invalid_withdrawal_params,
-        };
-        let res = execute(
+        let result = queue_withdrawals(
             deps.as_mut(),
             env.clone(),
             info.clone(),
-            queue_withdrawals_msg_invalid,
+            invalid_withdrawal_params,
         );
-        assert!(res.is_err());
-        if let Err(err) = res {
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::InputLengthMismatch {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -2976,17 +2894,9 @@ mod tests {
             strategies: strategies.clone(),
             shares: shares.clone(),
         }];
-        let queue_withdrawals_msg_invalid_withdrawer = ExecuteMsg::QueueWithdrawals {
-            queued_withdrawal_params: invalid_withdrawal_params,
-        };
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            info.clone(),
-            queue_withdrawals_msg_invalid_withdrawer,
-        );
-        assert!(res.is_err());
-        if let Err(err) = res {
+        let result = queue_withdrawals(deps.as_mut(), env, info, invalid_withdrawal_params);
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::WithdrawerMustBeStaker {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -2996,8 +2906,7 @@ mod tests {
 
     #[test]
     fn test_complete_queued_withdrawal_internal() {
-        let (mut deps, env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, env, _, _, _, _) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
         let operator = deps.api.addr_make("operator1");
@@ -3050,8 +2959,7 @@ mod tests {
         });
 
         let info = message_info(&withdrawer, &[]);
-
-        let res = complete_queued_withdrawal_internal(
+        let result = complete_queued_withdrawal_internal(
             deps.as_mut(),
             env.clone(),
             info.clone(),
@@ -3059,23 +2967,18 @@ mod tests {
             tokens.clone(),
             0,
             true,
-        )
-        .unwrap();
-
-        assert_eq!(res.events.len(), 1); // 2 withdrawals as tokens + 1 completion
-        assert_eq!(res.events[0].ty, "WithdrawalCompleted");
-
-        assert_eq!(
-            res.events[0].attributes[0].value,
-            withdrawal_root.to_string()
         );
+        assert!(result.is_ok());
 
-        assert!(
-            res.events[0]
-                .attributes
-                .iter()
-                .any(|attr| attr.key == "withdrawal_root"
-                    && attr.value == withdrawal_root.to_string())
+        let response = result.unwrap();
+        assert_eq!(response.attributes.len(), 12);
+        assert_eq!(response.events.len(), 1);
+        assert_eq!(
+            response.events[0],
+            Event::new("WithdrawalCompleted").add_attribute(
+                "withdrawal_root",
+                "cinliaRx2x1H1SrD9so98/t4e2jgvAU3IEjCXoFgOiE="
+            )
         );
 
         // Verify state changes: the pending withdrawal should be removed
@@ -3087,7 +2990,7 @@ mod tests {
             .unwrap();
 
         let unauthorized_info = message_info(&Addr::unchecked("not_authorized"), &[]);
-        let res = complete_queued_withdrawal_internal(
+        let result = complete_queued_withdrawal_internal(
             deps.as_mut(),
             env.clone(),
             unauthorized_info,
@@ -3096,8 +2999,8 @@ mod tests {
             0,
             true,
         );
-        assert!(res.is_err());
-        if let Err(err) = res {
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::Unauthorized {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -3114,7 +3017,7 @@ mod tests {
         PENDING_WITHDRAWALS
             .save(deps.as_mut().storage, &premature_withdrawal_root, &true)
             .unwrap();
-        let res = complete_queued_withdrawal_internal(
+        let result = complete_queued_withdrawal_internal(
             deps.as_mut(),
             env.clone(),
             info.clone(),
@@ -3123,8 +3026,8 @@ mod tests {
             0,
             true,
         );
-        assert!(res.is_err());
-        if let Err(err) = res {
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::MinWithdrawalDelayNotPassed {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -3132,7 +3035,7 @@ mod tests {
         }
 
         // Test for input length mismatch error
-        let res = complete_queued_withdrawal_internal(
+        let result = complete_queued_withdrawal_internal(
             deps.as_mut(),
             env.clone(),
             info.clone(),
@@ -3141,8 +3044,8 @@ mod tests {
             0,
             true,
         );
-        assert!(res.is_err());
-        if let Err(err) = res {
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::InputLengthMismatch {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -3166,7 +3069,7 @@ mod tests {
             .unwrap();
 
         let withdrawal_delay_blocks1 = STRATEGY_WITHDRAWAL_DELAY_BLOCKS
-            .load(&deps.storage, &strategy1)
+            .load(&deps.storage, &strategy1.clone())
             .unwrap();
         assert_eq!(withdrawal_delay_blocks1, 50);
 
@@ -3178,7 +3081,7 @@ mod tests {
             &new_withdrawal_delay_blocks,
         );
 
-        let res = complete_queued_withdrawal_internal(
+        let result = complete_queued_withdrawal_internal(
             deps.as_mut(),
             env.clone(),
             info.clone(),
@@ -3187,8 +3090,8 @@ mod tests {
             0,
             false,
         );
-        assert!(res.is_err());
-        if let Err(err) = res {
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::StrategyWithdrawalDelayNotPassed {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -3198,8 +3101,7 @@ mod tests {
 
     #[test]
     fn test_complete_queued_withdrawal() {
-        let (mut deps, env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, env, _, _, _, _) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
         let operator = deps.api.addr_make("operator1");
@@ -3259,30 +3161,26 @@ mod tests {
         });
 
         let info = message_info(&withdrawer, &[]);
-
-        let complete_msg = ExecuteMsg::CompleteQueuedWithdrawal {
-            withdrawal: withdrawal.clone(),
-            tokens: tokens.clone(),
-            middleware_times_index: 0,
-            receive_as_tokens: true,
-        };
-
-        let res = execute(
+        let result = complete_queued_withdrawal(
             deps.as_mut(),
             env.clone(),
             info.clone(),
-            complete_msg.clone(),
-        )
-        .unwrap();
+            withdrawal.clone(),
+            tokens.clone(),
+            0,
+            true,
+        );
+        assert!(result.is_ok());
 
-        assert_eq!(res.events.len(), 1); // 1 completion event
-        assert_eq!(res.events[0].ty, "WithdrawalCompleted");
-        assert!(
-            res.events[0]
-                .attributes
-                .iter()
-                .any(|attr| attr.key == "withdrawal_root"
-                    && attr.value == withdrawal_root.to_string())
+        let response = result.unwrap();
+        assert_eq!(response.attributes.len(), 12);
+        assert_eq!(response.events.len(), 1);
+        assert_eq!(
+            response.events[0],
+            Event::new("WithdrawalCompleted").add_attribute(
+                "withdrawal_root",
+                "cinliaRx2x1H1SrD9so98/t4e2jgvAU3IEjCXoFgOiE="
+            )
         );
 
         // Verify state changes: the pending withdrawal should be removed
@@ -3294,15 +3192,17 @@ mod tests {
             .unwrap();
 
         let unauthorized_info = message_info(&Addr::unchecked("not_authorized"), &[]);
-
-        let res = execute(
+        let result = complete_queued_withdrawal(
             deps.as_mut(),
             env.clone(),
             unauthorized_info,
-            complete_msg.clone(),
+            withdrawal.clone(),
+            tokens.clone(),
+            0,
+            true,
         );
-        assert!(res.is_err());
-        if let Err(err) = res {
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::Unauthorized {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -3318,31 +3218,34 @@ mod tests {
         PENDING_WITHDRAWALS
             .save(deps.as_mut().storage, &premature_withdrawal_root, &true)
             .unwrap();
-        let premature_msg = ExecuteMsg::CompleteQueuedWithdrawal {
-            withdrawal: premature_withdrawal.clone(),
-            tokens: tokens.clone(),
-            middleware_times_index: 0,
-            receive_as_tokens: true,
-        };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), premature_msg);
-        assert!(res.is_err());
-        if let Err(err) = res {
+        let result = complete_queued_withdrawal(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            premature_withdrawal.clone(),
+            tokens.clone(),
+            0,
+            true,
+        );
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::MinWithdrawalDelayNotPassed {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
 
-        // Test for input length mismatch error
-        let mismatch_msg = ExecuteMsg::CompleteQueuedWithdrawal {
-            withdrawal: withdrawal.clone(),
-            tokens: vec![Addr::unchecked("token1")], // Incorrect length
-            middleware_times_index: 0,
-            receive_as_tokens: true,
-        };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), mismatch_msg);
-        assert!(res.is_err());
-        if let Err(err) = res {
+        let result = complete_queued_withdrawal(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            withdrawal.clone(),
+            vec![Addr::unchecked("token1")],
+            0,
+            true,
+        );
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::InputLengthMismatch {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -3374,15 +3277,17 @@ mod tests {
             &new_withdrawal_delay_blocks,
         );
 
-        let delay_msg = ExecuteMsg::CompleteQueuedWithdrawal {
-            withdrawal: delayed_withdrawal.clone(),
-            tokens: tokens.clone(),
-            middleware_times_index: 0,
-            receive_as_tokens: false,
-        };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), delay_msg);
-        assert!(res.is_err());
-        if let Err(err) = res {
+        let result = complete_queued_withdrawal(
+            deps.as_mut(),
+            env,
+            info,
+            delayed_withdrawal,
+            tokens,
+            0,
+            false,
+        );
+        assert!(result.is_err());
+        if let Err(err) = result {
             match err {
                 ContractError::StrategyWithdrawalDelayNotPassed {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -3392,8 +3297,7 @@ mod tests {
 
     #[test]
     fn test_complete_queued_withdrawals() {
-        let (mut deps, env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, env, _, _, _, _) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
         let operator = deps.api.addr_make("operator1");
@@ -3460,27 +3364,33 @@ mod tests {
         });
 
         let info = message_info(&withdrawer, &[]);
+        let result = complete_queued_withdrawals(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            vec![withdrawal1.clone(), withdrawal2.clone()],
+            vec![tokens1.clone(), tokens2.clone()],
+            vec![0, 1],
+            vec![true, true],
+        );
+        assert!(result.is_ok());
 
-        let complete_msg = ExecuteMsg::CompleteQueuedWithdrawals {
-            withdrawals: vec![withdrawal1.clone(), withdrawal2.clone()],
-            tokens: vec![tokens1.clone(), tokens2.clone()],
-            middleware_times_indexes: vec![0, 1],
-            receive_as_tokens: vec![true, true],
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), complete_msg).unwrap();
-
-        // Verify the result
-        assert_eq!(res.events.len(), 2);
-        assert_eq!(res.events[0].ty, "WithdrawalCompleted");
-        assert_eq!(res.events[1].ty, "WithdrawalCompleted");
-
-        assert!(res.events[0].attributes.iter().any(
-            |attr| attr.key == "withdrawal_root" && attr.value == withdrawal_root1.to_string()
-        ));
-        assert!(res.events[1].attributes.iter().any(
-            |attr| attr.key == "withdrawal_root" && attr.value == withdrawal_root2.to_string()
-        ));
+        let response = result.unwrap();
+        assert_eq!(response.events.len(), 2);
+        assert_eq!(
+            response.events[0],
+            Event::new("WithdrawalCompleted").add_attribute(
+                "withdrawal_root",
+                "cinliaRx2x1H1SrD9so98/t4e2jgvAU3IEjCXoFgOiE="
+            )
+        );
+        assert_eq!(
+            response.events[1],
+            Event::new("WithdrawalCompleted").add_attribute(
+                "withdrawal_root",
+                "iRMmN8kZgQG8vtJyU0Xhmo5Xh8II6DaDPFsIksmmElc="
+            )
+        );
 
         // Verify state changes: the pending withdrawals should be removed
         assert!(!PENDING_WITHDRAWALS.has(deps.as_ref().storage, &withdrawal_root1));
@@ -3489,8 +3399,7 @@ mod tests {
 
     #[test]
     fn test_query_is_delegated() {
-        let (mut deps, _env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, _, _, _, _, _) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
         let operator = deps.api.addr_make("operator1");
@@ -3499,72 +3408,49 @@ mod tests {
             .save(deps.as_mut().storage, &staker, &operator)
             .unwrap();
 
-        let query_msg = QueryMsg::IsDelegated {
-            staker: staker.to_string(),
-        };
+        let result = query_is_delegated(deps.as_ref(), staker);
+        assert!(result.is_ok());
 
-        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let response: DelegatedResponse = from_json(res).unwrap();
-
+        let response = result.unwrap();
         assert!(response.is_delegated);
 
         // Test for a staker that is not delegated
         let non_delegated_staker = deps.api.addr_make("staker2");
-        let query_msg = QueryMsg::IsDelegated {
-            staker: non_delegated_staker.to_string(),
-        };
-
-        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let response: DelegatedResponse = from_json(res).unwrap();
+        let result = query_is_delegated(deps.as_ref(), non_delegated_staker);
+        assert!(result.is_ok());
 
         // Assert that the non-delegated staker is not delegated
+        let response = result.unwrap();
         assert!(!response.is_delegated);
     }
 
     #[test]
     fn test_query_is_operator() {
-        let (mut deps, _env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, _, _, _, _, _) = instantiate_contract();
 
         let operator = deps.api.addr_make("operator1");
-        let operator_details = OperatorDetails {
-            staker_opt_out_window_blocks: 100,
-        };
-
         DELEGATED_TO
             .save(deps.as_mut().storage, &operator.clone(), &operator.clone())
             .unwrap();
-        OPERATOR_DETAILS
-            .save(deps.as_mut().storage, &operator.clone(), &operator_details)
-            .unwrap();
 
-        let query_msg = QueryMsg::IsOperator {
-            operator: operator.to_string(),
-        };
+        let result = query_is_operator(deps.as_ref(), operator);
+        assert!(result.is_ok());
 
-        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let response: OperatorResponse = from_json(res).unwrap();
-        let is_operator = response.is_operator;
-
-        assert!(is_operator);
+        let response = result.unwrap();
+        assert!(response.is_operator);
 
         // Test for an address that is not an operator
         let non_operator = deps.api.addr_make("non_operator");
-        let query_msg = QueryMsg::IsOperator {
-            operator: non_operator.to_string(),
-        };
+        let result = query_is_operator(deps.as_ref(), non_operator);
+        assert!(result.is_ok());
 
-        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let response: OperatorResponse = from_json(res).unwrap();
-        let is_operator = response.is_operator;
-
-        assert!(!is_operator);
+        let response = result.unwrap();
+        assert!(!response.is_operator);
     }
 
     #[test]
     fn test_query_operator_details() {
-        let (mut deps, _env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, _, _, _, _, _) = instantiate_contract();
 
         let operator = deps.api.addr_make("operator1");
         let operator_details = OperatorDetails {
@@ -3575,32 +3461,24 @@ mod tests {
             .save(deps.as_mut().storage, &operator, &operator_details)
             .unwrap();
 
-        let query_msg = QueryMsg::OperatorDetails {
-            operator: operator.to_string(),
-        };
+        let result = query_operator_details(deps.as_ref(), operator);
+        assert!(result.is_ok());
 
-        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let details_response: OperatorDetailsResponse = from_json(res).unwrap();
-
+        let response = result.unwrap();
         assert_eq!(
-            details_response.details.staker_opt_out_window_blocks,
+            response.details.staker_opt_out_window_blocks,
             operator_details.staker_opt_out_window_blocks
         );
 
         // Test querying details for an operator that does not exist
         let non_operator = deps.api.addr_make("non_operator");
-        let query_msg = QueryMsg::OperatorDetails {
-            operator: non_operator.to_string(),
-        };
-
-        let res = query(deps.as_ref(), mock_env(), query_msg);
-        assert!(res.is_err());
+        let result = query_operator_details(deps.as_ref(), non_operator);
+        assert!(result.is_err());
     }
 
     #[test]
     fn test_query_staker_opt_out_window_blocks() {
-        let (mut deps, _env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, _, _, _, _, _) = instantiate_contract();
 
         let operator = deps.api.addr_make("operator1");
         let operator_details = OperatorDetails {
@@ -3611,13 +3489,10 @@ mod tests {
             .save(deps.as_mut().storage, &operator, &operator_details)
             .unwrap();
 
-        let query_msg = QueryMsg::StakerOptOutWindowBlocks {
-            operator: operator.to_string(),
-        };
+        let result = query_staker_opt_out_window_blocks(deps.as_ref(), operator);
+        assert!(result.is_ok());
 
-        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let response: StakerOptOutWindowBlocksResponse = from_json(res).unwrap();
-
+        let response = result.unwrap();
         assert_eq!(
             response.staker_opt_out_window_blocks,
             operator_details.staker_opt_out_window_blocks
@@ -3626,13 +3501,12 @@ mod tests {
 
     #[test]
     fn test_query_operator_shares() {
-        let (mut deps, _env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, _, _, _, _, _) = instantiate_contract();
 
         let operator = deps.api.addr_make("operator1");
         let strategies = vec![
-            deps.api.addr_make("strategy1").to_string(),
-            deps.api.addr_make("strategy2").to_string(),
+            deps.api.addr_make("strategy1"),
+            deps.api.addr_make("strategy2"),
         ];
 
         let shares_strategy1 = Uint128::new(100);
@@ -3653,41 +3527,32 @@ mod tests {
             )
             .unwrap();
 
-        let query_msg = QueryMsg::GetOperatorShares {
-            operator: operator.to_string(),
-            strategies: strategies.clone(),
-        };
+        let result = query_operator_shares(deps.as_ref(), operator, strategies.clone());
+        assert!(result.is_ok());
 
-        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let operator_shares_response: OperatorSharesResponse = from_json(res).unwrap();
-
-        assert_eq!(operator_shares_response.shares.len(), 2);
-        assert_eq!(operator_shares_response.shares[0], shares_strategy1);
-        assert_eq!(operator_shares_response.shares[1], shares_strategy2);
+        let response = result.unwrap();
+        assert_eq!(response.shares.len(), 2);
+        assert_eq!(response.shares[0], shares_strategy1);
+        assert_eq!(response.shares[1], shares_strategy2);
 
         // Test querying shares for an operator with no shares set
         let new_operator = deps.api.addr_make("new_operator");
-        let query_msg = QueryMsg::GetOperatorShares {
-            operator: new_operator.to_string(),
-            strategies,
-        };
+        let result = query_operator_shares(deps.as_ref(), new_operator, strategies);
+        assert!(result.is_ok());
 
-        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let operator_shares_response: OperatorSharesResponse = from_json(res).unwrap();
-
-        assert_eq!(operator_shares_response.shares.len(), 2);
-        assert_eq!(operator_shares_response.shares[0], Uint128::zero());
-        assert_eq!(operator_shares_response.shares[1], Uint128::zero());
+        let response = result.unwrap();
+        assert_eq!(response.shares.len(), 2);
+        assert_eq!(response.shares[0], Uint128::zero());
+        assert_eq!(response.shares[1], Uint128::zero());
     }
 
     #[test]
     fn test_query_get_withdrawal_delay() {
-        let (mut deps, _env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, _, _, _, _, _) = instantiate_contract();
 
         let strategies = vec![
-            deps.api.addr_make("strategy1").to_string(),
-            deps.api.addr_make("strategy2").to_string(),
+            deps.api.addr_make("strategy1"),
+            deps.api.addr_make("strategy2"),
         ];
 
         STRATEGY_WITHDRAWAL_DELAY_BLOCKS
@@ -3705,54 +3570,38 @@ mod tests {
             )
             .unwrap();
 
-        let query_msg = QueryMsg::GetWithdrawalDelay {
-            strategies: strategies.clone(),
-        };
+        let result = query_withdrawal_delay(deps.as_ref(), strategies);
+        assert!(result.is_ok());
 
-        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let withdrawal_delays_response: WithdrawalDelayResponse = from_json(res).unwrap();
-
-        assert_eq!(withdrawal_delays_response.withdrawal_delays.len(), 2);
-        assert_eq!(withdrawal_delays_response.withdrawal_delays[0], 100); // Assuming we want max of min_delay and strategy delay
-        assert_eq!(withdrawal_delays_response.withdrawal_delays[1], 100);
+        let response = result.unwrap();
+        assert_eq!(response.withdrawal_delays.len(), 2);
+        assert_eq!(response.withdrawal_delays[0], 100); // Assuming we want max of min_delay and strategy delay
+        assert_eq!(response.withdrawal_delays[1], 100);
 
         // Test querying withdrawal delay for strategies with no delay set
         let new_strategy = deps.api.addr_make("strategy3");
-        let query_msg = QueryMsg::GetWithdrawalDelay {
-            strategies: vec![new_strategy.to_string()],
-        };
+        let result = query_withdrawal_delay(deps.as_ref(), vec![new_strategy]);
+        assert!(result.is_ok());
 
-        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let withdrawal_delays_response: WithdrawalDelayResponse = from_json(res).unwrap();
-
-        assert_eq!(withdrawal_delays_response.withdrawal_delays.len(), 1);
-        assert_eq!(withdrawal_delays_response.withdrawal_delays[0], 100);
+        let response = result.unwrap();
+        assert_eq!(response.withdrawal_delays.len(), 1);
+        assert_eq!(response.withdrawal_delays[0], 100);
     }
 
     #[test]
     fn test_transfer_ownership() {
-        let (mut deps, env, owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, _, owner_info, _, _, _) = instantiate_contract();
 
         let new_owner = deps.api.addr_make("new_owner");
+        let result = transfer_ownership(deps.as_mut(), owner_info, new_owner.clone());
+        assert!(result.is_ok());
 
-        let msg = ExecuteMsg::TransferOwnership {
-            new_owner: new_owner.to_string(),
-        };
-        let res = execute(deps.as_mut(), env.clone(), owner_info.clone(), msg);
-
-        if let Err(ref err) = res {
-            println!("Error: {:?}", err);
-        }
-
-        assert!(res.is_ok());
-
-        let res = res.unwrap();
-        assert_eq!(res.attributes.len(), 2);
-        assert_eq!(res.attributes[0].key, "method");
-        assert_eq!(res.attributes[0].value, "transfer_ownership");
-        assert_eq!(res.attributes[1].key, "new_owner");
-        assert_eq!(res.attributes[1].value, new_owner.to_string());
+        let response = result.unwrap();
+        assert_eq!(response.attributes.len(), 2);
+        assert_eq!(response.attributes[0].key, "method");
+        assert_eq!(response.attributes[0].value, "transfer_ownership");
+        assert_eq!(response.attributes[1].key, "new_owner");
+        assert_eq!(response.attributes[1].value, new_owner.to_string());
 
         let owner = OWNER.load(&deps.storage).unwrap();
         assert_eq!(owner, new_owner);
@@ -3760,8 +3609,7 @@ mod tests {
 
     #[test]
     fn test_query_operator_stakers() {
-        let (mut deps, _env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, _, _, _, _, _) = instantiate_contract();
 
         let operator = deps.api.addr_make("operator");
         let staker1 = deps.api.addr_make("staker1");
@@ -3829,24 +3677,23 @@ mod tests {
             }),
         });
 
-        let res = query_operator_stakers(deps.as_ref(), operator.clone()).unwrap();
+        let result = query_operator_stakers(deps.as_ref(), operator.clone());
+        assert!(result.is_ok());
 
-        assert_eq!(res.stakers_and_shares.len(), 1);
+        let response = result.unwrap();
+        assert_eq!(response.stakers_and_shares.len(), 1);
 
-        let staker1_result = res
+        let staker1_result = response
             .stakers_and_shares
             .iter()
             .find(|staker_shares| staker_shares.staker == staker1)
             .unwrap();
 
         assert_eq!(staker1_result.staker, staker1);
-
         assert_eq!(staker1_result.shares_per_strategy.len(), 2);
-
         assert!(staker1_result
             .shares_per_strategy
             .contains(&(strategy1.clone(), Uint128::new(100))));
-
         assert!(staker1_result
             .shares_per_strategy
             .contains(&(strategy2.clone(), Uint128::new(200))));
@@ -3854,110 +3701,17 @@ mod tests {
 
     #[test]
     fn test_query_cumulative_withdrawals_queued() {
-        let (mut deps, _env, _owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, _, _, _, _, _) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
-
         CUMULATIVE_WITHDRAWALS_QUEUED
             .save(deps.as_mut().storage, &staker, &Uint128::new(5))
             .unwrap();
 
-        let msg = QueryMsg::GetCumulativeWithdrawalsQueued {
-            staker: staker.to_string(),
-        };
+        let result = query_cumulative_withdrawals_queued(deps.as_ref(), staker);
+        assert!(result.is_ok());
 
-        let res: CumulativeWithdrawalsQueuedResponse =
-            from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
-
-        assert_eq!(res.cumulative_withdrawals, Uint128::new(5));
-    }
-
-    #[test]
-    fn test_pause() {
-        let (mut deps, env, _owner_info, pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
-
-        let pause_msg = ExecuteMsg::Pause {};
-        let res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg).unwrap();
-
-        assert_eq!(res.attributes, vec![attr("action", "PAUSED")]);
-
-        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_state, 1);
-    }
-
-    #[test]
-    fn test_unpause() {
-        let (mut deps, env, _owner_info, _pauser_info, unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
-
-        let unpause_msg = ExecuteMsg::Unpause {};
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            unpauser_info.clone(),
-            unpause_msg,
-        )
-        .unwrap();
-
-        assert_eq!(res.attributes, vec![attr("action", "UNPAUSED")]);
-
-        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_state, 0);
-    }
-
-    #[test]
-    fn test_set_pauser() {
-        let (mut deps, env, owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
-
-        let new_pauser = deps.api.addr_make("new_pauser").to_string();
-
-        let set_pauser_msg = ExecuteMsg::SetPauser {
-            new_pauser: new_pauser.to_string(),
-        };
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            owner_info.clone(),
-            set_pauser_msg,
-        )
-        .unwrap();
-
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "method" && a.value == "set_pauser"));
-
-        let pauser = PAUSER.load(&deps.storage).unwrap();
-        assert_eq!(pauser, Addr::unchecked(new_pauser));
-    }
-
-    #[test]
-    fn test_set_unpauser() {
-        let (mut deps, env, owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
-
-        let new_unpauser = deps.api.addr_make("new_unpauser").to_string();
-
-        let set_unpauser_msg = ExecuteMsg::SetUnpauser {
-            new_unpauser: new_unpauser.to_string(),
-        };
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            owner_info.clone(),
-            set_unpauser_msg,
-        )
-        .unwrap();
-
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "method" && a.value == "set_unpauser"));
-
-        let unpauser = UNPAUSER.load(&deps.storage).unwrap();
-        assert_eq!(unpauser, Addr::unchecked(new_unpauser));
+        let response = result.unwrap();
+        assert_eq!(response.cumulative_withdrawals, Uint128::new(5));
     }
 }
