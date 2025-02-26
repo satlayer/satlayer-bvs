@@ -24,13 +24,13 @@ fn register_bvs_successfully() {
     let bvs_hash = hex::encode(hash_result);
 
     let code_id = app.store_code(bvs_registry::testing::contract());
-    let (registry_addr, _) = bvs_registry::testing::instantiate(&mut app, code_id, None);
+    let registry = bvs_registry::testing::instantiate(&mut app, code_id, None);
 
     let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
         .deploy_bvs_directory(&BvsDirectoryInstantiateMsg {
             initial_owner: owner.clone().to_string(),
             delegation_manager: empty_addr.to_string(),
-            registry: registry_addr.to_string(),
+            registry: registry.addr.to_string(),
         })
         .build();
 
@@ -82,13 +82,13 @@ fn register_operator_failure() {
     let strategy2 = app.api().addr_make("strategy2").to_string();
 
     let code_id = app.store_code(bvs_registry::testing::contract());
-    let (registry_addr, _) = bvs_registry::testing::instantiate(&mut app, code_id, None);
+    let registry = bvs_registry::testing::instantiate(&mut app, code_id, None);
 
     let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
         .deploy_bvs_directory(&BvsDirectoryInstantiateMsg {
             initial_owner: owner.clone().to_string(),
             delegation_manager: empty_addr.clone().into_string(),
-            registry: registry_addr.to_string(),
+            registry: registry.addr.to_string(),
         })
         .deploy_bvs_delegation_manager(&BvsDelegationManagerInstantiateMsg {
             strategy_manager: empty_addr.clone().into_string(),
@@ -163,22 +163,21 @@ fn deregister_operator_failure() {
     let operator = app.api().addr_make("operator");
 
     let code_id = app.store_code(bvs_registry::testing::contract());
-    let (registry_addr, _) = bvs_registry::testing::instantiate(&mut app, code_id, None);
+    let registry = bvs_registry::testing::instantiate(&mut app, code_id, None);
 
     let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
         .deploy_bvs_directory(&BvsDirectoryInstantiateMsg {
             initial_owner: owner.clone().to_string(),
             delegation_manager: empty_addr.to_string(),
-            registry: registry_addr.to_string(),
+            registry: registry.addr.to_string(),
         })
         .build();
 
     let deregister_operator_msg = &BvsDirectoryExecuteMsg::DeregisterOperatorFromBvs {
         operator: operator.clone().into_string(),
     };
-    let bvs_driectory = mock_env.bvs_directory.clone();
-    let response =
-        bvs_driectory.execute(&mut mock_env, owner.clone(), deregister_operator_msg, &[]);
+    let directory = mock_env.bvs_directory.clone();
+    let response = directory.execute(&mut mock_env, owner.clone(), deregister_operator_msg, &[]);
 
     assert!(response.is_err());
 }
@@ -192,13 +191,13 @@ fn register_update_metadata_uri_successfully() {
     let anyone = app.api().addr_make("anyone");
 
     let code_id = app.store_code(bvs_registry::testing::contract());
-    let (registry_addr, _) = bvs_registry::testing::instantiate(&mut app, code_id, None);
+    let registry = bvs_registry::testing::instantiate(&mut app, code_id, None);
 
     let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
         .deploy_bvs_directory(&BvsDirectoryInstantiateMsg {
             initial_owner: owner.clone().to_string(),
             delegation_manager: empty_addr.to_string(),
-            registry: registry_addr.to_string(),
+            registry: registry.addr.to_string(),
         })
         .build();
 
@@ -232,13 +231,13 @@ fn set_delegation_manager_successfully() {
     let delegation_manager_addr = app.api().addr_make("delegation_manager");
 
     let code_id = app.store_code(bvs_registry::testing::contract());
-    let (registry_addr, _) = bvs_registry::testing::instantiate(&mut app, code_id, None);
+    let registry = bvs_registry::testing::instantiate(&mut app, code_id, None);
 
     let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
         .deploy_bvs_directory(&BvsDirectoryInstantiateMsg {
             initial_owner: owner.clone().to_string(),
             delegation_manager: empty_addr.to_string(),
-            registry: registry_addr.to_string(),
+            registry: registry.addr.to_string(),
         })
         .build();
 
@@ -276,13 +275,13 @@ fn cancel_salt_successfully() {
     let salt = Binary::from(b"salt");
 
     let code_id = app.store_code(bvs_registry::testing::contract());
-    let (registry_addr, _) = bvs_registry::testing::instantiate(&mut app, code_id, None);
+    let registry = bvs_registry::testing::instantiate(&mut app, code_id, None);
 
     let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
         .deploy_bvs_directory(&BvsDirectoryInstantiateMsg {
             initial_owner: owner.clone().to_string(),
             delegation_manager: empty_addr.to_string(),
-            registry: registry_addr.to_string(),
+            registry: registry.addr.to_string(),
         })
         .build();
 
@@ -318,13 +317,13 @@ fn transfer_ownership_successfully() {
     let anyone = app.api().addr_make("anyone");
 
     let code_id = app.store_code(bvs_registry::testing::contract());
-    let (registry_addr, _) = bvs_registry::testing::instantiate(&mut app, code_id, None);
+    let registry = bvs_registry::testing::instantiate(&mut app, code_id, None);
 
     let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
         .deploy_bvs_directory(&BvsDirectoryInstantiateMsg {
             initial_owner: owner.clone().to_string(),
             delegation_manager: empty_addr.to_string(),
-            registry: registry_addr.to_string(),
+            registry: registry.addr.to_string(),
         })
         .build();
 
@@ -363,7 +362,7 @@ fn register_bvs_but_paused() {
 
     let code_id = app.store_code(bvs_registry::testing::contract());
     let registry_owner = app.api().addr_make("owner").to_string();
-    let (registry_addr, _) = bvs_registry::testing::instantiate(
+    let registry = bvs_registry::testing::instantiate(
         &mut app,
         code_id,
         BvsRegistryInstantiateMsg {
@@ -377,7 +376,7 @@ fn register_bvs_but_paused() {
         .deploy_bvs_directory(&bvs_directory::msg::InstantiateMsg {
             initial_owner: owner.clone().to_string(),
             delegation_manager: delegation_manager.into_string(),
-            registry: registry_addr.to_string(),
+            registry: registry.addr.to_string(),
         })
         .build();
 

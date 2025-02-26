@@ -149,39 +149,6 @@ func (r *RewardsCoordinator) SetGlobalOperatorCommission(ctx context.Context, ne
 	return r.execute(ctx, msg)
 }
 
-func (r *RewardsCoordinator) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
-	msg := rewardscoordinator.ExecuteMsg{
-		Pause: &rewardscoordinator.Pause{},
-	}
-
-	return r.execute(ctx, msg)
-}
-
-func (r *RewardsCoordinator) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
-	msg := rewardscoordinator.ExecuteMsg{
-		Unpause: &rewardscoordinator.Unpause{},
-	}
-	return r.execute(ctx, msg)
-}
-
-func (r *RewardsCoordinator) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
-	msg := rewardscoordinator.ExecuteMsg{
-		SetPauser: &rewardscoordinator.SetPauser{
-			NewPauser: newPauser,
-		},
-	}
-
-	return r.execute(ctx, msg)
-}
-
-func (r *RewardsCoordinator) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
-	msg := rewardscoordinator.ExecuteMsg{
-		SetUnpauser: &rewardscoordinator.SetUnpauser{NewUnpauser: newUnpauser},
-	}
-
-	return r.execute(ctx, msg)
-}
-
 func (r *RewardsCoordinator) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
 	msg := rewardscoordinator.ExecuteMsg{
 		TransferOwnership: &rewardscoordinator.TransferOwnership{

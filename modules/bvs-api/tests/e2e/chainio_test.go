@@ -32,7 +32,7 @@ func (suite *ioTestSuite) SetupSuite() {
 	registry := deployer.DeployRegistry(nil)
 
 	tAddr := container.GenerateAddress("throw-away")
-	suite.directory = deployer.DeployDirectory(tAddr.String(), registry.Address)
+	suite.directory = deployer.DeployDirectory(registry.Address, tAddr.String())
 }
 
 func (suite *ioTestSuite) TearDownSuite() {

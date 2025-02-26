@@ -36,6 +36,6 @@ func (s *BvsTestSuite) Test_DeployRegistry() {
 func (s *BvsTestSuite) Test_DeployDirectory() {
 	registry := s.Deployer.DeployRegistry(nil)
 	tAddr := s.Container.GenerateAddress("throw-away")
-	contract := s.Deployer.DeployDirectory(tAddr.String(), registry.Address)
+	contract := s.Deployer.DeployDirectory(registry.Address, tAddr.String())
 	s.NotEmpty(contract.Address)
 }

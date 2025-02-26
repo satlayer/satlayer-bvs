@@ -1,10 +1,12 @@
 pub mod contract;
+mod error;
 pub mod msg;
 pub mod state;
 
-mod error;
-
 pub use crate::error::ContractError;
+
+#[cfg(feature = "testing")]
+pub mod testing;
 
 #[cfg(feature = "library")]
 pub mod api {
@@ -36,50 +38,5 @@ pub mod api {
             return Err(StdError::generic_err("Paused"));
         }
         Ok(())
-    }
-}
-
-#[cfg(feature = "testing")]
-pub mod testing {
-    use cosmwasm_std::{Addr, Empty};
-    use cw_multi_test::{App, Contract, ContractWrapper, Executor};
-
-    pub fn contract() -> Box<dyn Contract<Empty>> {
-        let contract = ContractWrapper::new(
-            crate::contract::execute,
-            crate::contract::instantiate,
-            crate::contract::query,
-        );
-        Box::new(contract)
-    }
-
-    impl crate::msg::InstantiateMsg {
-        pub fn default(app: &mut App) -> Self {
-            Self {
-                owner: app.api().addr_make("owner").to_string(),
-                initial_paused: false,
-            }
-        }
-    }
-
-    pub fn instantiate(
-        app: &mut App,
-        code_id: u64,
-        msg: Option<crate::msg::InstantiateMsg>,
-    ) -> (Addr, crate::msg::InstantiateMsg) {
-        let msg = msg.unwrap_or(crate::msg::InstantiateMsg::default(app));
-
-        let addr = app
-            .instantiate_contract(
-                code_id,
-                app.api().addr_make("sender"),
-                &msg,
-                &[],
-                "BVS Registry",
-                None,
-            )
-            .unwrap();
-
-        (addr, msg)
     }
 }

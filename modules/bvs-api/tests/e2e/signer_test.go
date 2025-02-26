@@ -50,7 +50,7 @@ func (suite *signerTestSuite) SetupSuite() {
 	registry := deployer.DeployRegistry(nil)
 
 	suite.chaiID = container.ChainId
-	suite.bvsDirContrAddr = deployer.DeployDirectory(tAddr, registry.Address).Address
+	suite.bvsDirContrAddr = deployer.DeployDirectory(registry.Address, tAddr).Address
 }
 
 func (suite *signerTestSuite) TearDownSuite() {

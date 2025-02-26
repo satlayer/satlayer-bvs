@@ -31,20 +31,12 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
-use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
-use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
-
 use bvs_strategy_manager::{
     msg::QueryMsg as StrategyManagerQueryMsg, query::StrategyWhitelistedResponse,
 };
 
 const CONTRACT_NAME: &str = "BVS Rewards Coordinator";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-const PAUSED_BVS_REWARDS_SUBMISSION: u8 = 0;
-const PAUSED_REWARDS_FOR_ALL_SUBMISSION: u8 = 1;
-const PAUSED_PROCESS_CLAIM: u8 = 2;
-const PAUSED_SUBMIT_DISABLE_ROOTS: u8 = 3;
 
 const SNAPSHOT_CADENCE: u64 = 86_400;
 const MAX_REWARDS_AMOUNT: u128 = 100000000000000000000000000000000000000 - 1;
@@ -57,6 +49,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    bvs_registry::api::set_registry(deps.storage, &deps.api.addr_validate(&msg.registry)?)?;
 
     if msg.genesis_rewards_timestamp % msg.calculation_interval_seconds != 0 {
         return Err(ContractError::InvalidGenesisTimestamp {});
@@ -66,17 +59,12 @@ pub fn instantiate(
         return Err(ContractError::InvalidCalculationInterval {});
     }
 
-    let pauser = deps.api.addr_validate(&msg.pauser)?;
-    let unpauser = deps.api.addr_validate(&msg.unpauser)?;
     let initial_owner = deps.api.addr_validate(&msg.initial_owner)?;
 
     let strategy_manager = deps.api.addr_validate(&msg.strategy_manager)?;
     let delegation_manager = deps.api.addr_validate(&msg.delegation_manager)?;
 
     let rewards_updater = deps.api.addr_validate(&msg.rewards_updater)?;
-
-    set_pauser(deps.branch(), pauser)?;
-    set_unpauser(deps.branch(), unpauser)?;
 
     OWNER.save(deps.storage, &initial_owner)?;
 
@@ -87,7 +75,6 @@ pub fn instantiate(
     GENESIS_REWARDS_TIMESTAMP.save(deps.storage, &msg.genesis_rewards_timestamp)?;
     DELEGATION_MANAGER.save(deps.storage, &delegation_manager)?;
     STRATEGY_MANAGER.save(deps.storage, &strategy_manager)?;
-    PAUSED_STATE.save(deps.storage, &msg.initial_paused_status)?;
 
     set_rewards_updater_internal(deps.branch(), rewards_updater.clone())?;
     set_activation_delay_internal(deps.branch(), msg.activation_delay)?;
@@ -106,6 +93,8 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    bvs_registry::api::is_paused(deps.as_ref(), &env, &msg)?;
+
     match msg {
         ExecuteMsg::CreateBvsRewardsSubmission {
             rewards_submissions,
@@ -170,24 +159,6 @@ pub fn execute(
             let new_owner = deps.api.addr_validate(&new_owner)?;
             transfer_ownership(deps, info, new_owner)
         }
-        ExecuteMsg::Pause {} => {
-            check_pauser(deps.as_ref(), info.clone())?;
-            pause(deps, &info).map_err(ContractError::Std)
-        }
-        ExecuteMsg::Unpause {} => {
-            check_unpauser(deps.as_ref(), info.clone())?;
-            unpause(deps, &info).map_err(ContractError::Std)
-        }
-        ExecuteMsg::SetPauser { new_pauser } => {
-            only_owner(deps.as_ref(), &info.clone())?;
-            let new_pauser_addr = deps.api.addr_validate(&new_pauser)?;
-            set_pauser(deps, new_pauser_addr).map_err(ContractError::Std)
-        }
-        ExecuteMsg::SetUnpauser { new_unpauser } => {
-            only_owner(deps.as_ref(), &info.clone())?;
-            let new_unpauser_addr = deps.api.addr_validate(&new_unpauser)?;
-            set_unpauser(deps, new_unpauser_addr).map_err(ContractError::Std)
-        }
     }
 }
 
@@ -197,8 +168,6 @@ pub fn create_bvs_rewards_submission(
     info: MessageInfo,
     rewards_submissions: Vec<RewardsSubmission>,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_BVS_REWARDS_SUBMISSION)?;
-
     let mut response = Response::new();
 
     for submission in rewards_submissions {
@@ -253,8 +222,6 @@ pub fn create_rewards_for_all_submission(
     info: MessageInfo,
     rewards_submissions: Vec<RewardsSubmission>,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_REWARDS_FOR_ALL_SUBMISSION)?;
-
     only_rewards_for_all_submitter(deps.as_ref(), &info)?;
 
     let mut response = Response::new();
@@ -311,8 +278,6 @@ pub fn process_claim(
     claim: RewardsMerkleClaim,
     recipient: Addr,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_PROCESS_CLAIM)?;
-
     let root: DistributionRoot = DISTRIBUTION_ROOTS
         .may_load(deps.storage, claim.root_index.into())?
         .ok_or(ContractError::RootNotExist {})?;
@@ -391,8 +356,6 @@ pub fn submit_root(
     root: Binary,
     rewards_calculation_end_timestamp: u64,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_SUBMIT_DISABLE_ROOTS)?;
-
     only_rewards_updater(deps.as_ref(), &info)?;
 
     let curr_rewards_calculation_end_timestamp = CURR_REWARDS_CALCULATION_END_TIMESTAMP
@@ -450,8 +413,6 @@ pub fn disable_root(
     info: MessageInfo,
     root_index: u64,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_SUBMIT_DISABLE_ROOTS)?;
-
     only_rewards_updater(deps.as_ref(), &info)?;
 
     let roots_length = DISTRIBUTION_ROOTS_COUNT.load(deps.storage)?;
@@ -1080,9 +1041,8 @@ mod tests {
         let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
         let strategy_manager = deps.api.addr_make("strategy_manager").to_string();
         let initial_owner = deps.api.addr_make("initial_owner").to_string();
-        let pauser = deps.api.addr_make("pauser").to_string();
-        let unpauser = deps.api.addr_make("unpauser").to_string();
         let rewards_updater = deps.api.addr_make("rewards_updater").to_string();
+        let registry = deps.api.addr_make("registry").to_string();
 
         let msg = InstantiateMsg {
             initial_owner: initial_owner.clone(),
@@ -1094,10 +1054,8 @@ mod tests {
             delegation_manager: delegation_manager.clone(),
             strategy_manager: strategy_manager.clone(),
             rewards_updater: rewards_updater.clone(),
-            pauser: pauser.clone(),
-            unpauser: unpauser.clone(),
-            initial_paused_status: 0,
             activation_delay: 60,
+            registry,
         };
 
         let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
@@ -1148,9 +1106,6 @@ mod tests {
 
         let stored_rewards_updater = REWARDS_UPDATER.load(&deps.storage).unwrap();
         assert_eq!(stored_rewards_updater, Addr::unchecked(rewards_updater));
-
-        let stored_paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(stored_paused_state, 0);
     }
 
     fn instantiate_contract() -> (
@@ -1180,6 +1135,7 @@ mod tests {
         let delegation_manager_info =
             message_info(&Addr::unchecked(delegation_manager.clone()), &[]);
         let rewards_updater_info = message_info(&Addr::unchecked(rewards_updater.clone()), &[]);
+        let registry = deps.api.addr_make("registry").to_string();
 
         let msg = InstantiateMsg {
             initial_owner: initial_owner.clone(),
@@ -1191,10 +1147,8 @@ mod tests {
             delegation_manager: delegation_manager.clone(),
             strategy_manager: strategy_manager.clone(),
             rewards_updater: rewards_updater.clone(),
-            pauser: pauser.clone(),
-            unpauser: unpauser.clone(),
-            initial_paused_status: 0,
             activation_delay: 60, // 1 minute
+            registry,
         };
 
         instantiate(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();
@@ -3043,12 +2997,12 @@ mod tests {
                         to_json_binary(&balance_response).unwrap(),
                     ))
                 } else {
-                    SystemResult::Err(cosmwasm_std::SystemError::NoSuchContract {
+                    SystemResult::Err(SystemError::NoSuchContract {
                         addr: contract_addr.clone(),
                     })
                 }
             }
-            _ => SystemResult::Err(cosmwasm_std::SystemError::Unknown {}),
+            _ => SystemResult::Err(SystemError::Unknown {}),
         });
 
         let env = mock_env();
@@ -3063,8 +3017,7 @@ mod tests {
         let initial_owner = deps.api.addr_make("initial_owner").to_string();
         let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
         let strategy_manager = deps.api.addr_make("strategy_manager").to_string();
-        let pauser = deps.api.addr_make("pauser").to_string();
-        let unpauser = deps.api.addr_make("unpauser").to_string();
+        let registry = deps.api.addr_make("registry").to_string();
         let rewards_updater = deps.api.addr_make("rewards_updater").to_string();
 
         let owner_info = message_info(&Addr::unchecked(initial_owner.clone()), &[]);
@@ -3080,10 +3033,8 @@ mod tests {
             delegation_manager: delegation_manager.clone(),
             strategy_manager: strategy_manager.clone(),
             rewards_updater: rewards_updater.clone(),
-            pauser: pauser.clone(),
-            unpauser: unpauser.clone(),
-            initial_paused_status: 0,
             activation_delay: 60, // 1 minute
+            registry,
         };
 
         instantiate(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();

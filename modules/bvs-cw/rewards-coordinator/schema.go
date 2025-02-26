@@ -180,14 +180,12 @@ type InstantiateMsg struct {
 	DelegationManager          string `json:"delegation_manager"`
 	GenesisRewardsTimestamp    int64  `json:"genesis_rewards_timestamp"`
 	InitialOwner               string `json:"initial_owner"`
-	InitialPausedStatus        int64  `json:"initial_paused_status"`
 	MaxFutureLength            int64  `json:"max_future_length"`
 	MaxRetroactiveLength       int64  `json:"max_retroactive_length"`
 	MaxRewardsDuration         int64  `json:"max_rewards_duration"`
-	Pauser                     string `json:"pauser"`
+	Registry                   string `json:"registry"`
 	RewardsUpdater             string `json:"rewards_updater"`
 	StrategyManager            string `json:"strategy_manager"`
-	Unpauser                   string `json:"unpauser"`
 }
 
 type ExecuteMsg struct {
@@ -202,10 +200,6 @@ type ExecuteMsg struct {
 	SetRewardsForAllSubmitter     *SetRewardsForAllSubmitter     `json:"set_rewards_for_all_submitter,omitempty"`
 	SetGlobalOperatorCommission   *SetGlobalOperatorCommission   `json:"set_global_operator_commission,omitempty"`
 	TransferOwnership             *TransferOwnership             `json:"transfer_ownership,omitempty"`
-	Pause                         *Pause                         `json:"pause,omitempty"`
-	Unpause                       *Unpause                       `json:"unpause,omitempty"`
-	SetPauser                     *SetPauser                     `json:"set_pauser,omitempty"`
-	SetUnpauser                   *SetUnpauser                   `json:"set_unpauser,omitempty"`
 }
 
 type CreateBvsRewardsSubmission struct {
@@ -231,9 +225,6 @@ type CreateRewardsForAllSubmission struct {
 
 type DisableRoot struct {
 	RootIndex int64 `json:"root_index"`
-}
-
-type Pause struct {
 }
 
 type ProcessClaim struct {
@@ -273,10 +264,6 @@ type SetGlobalOperatorCommission struct {
 	NewCommissionBips int64 `json:"new_commission_bips"`
 }
 
-type SetPauser struct {
-	NewPauser string `json:"new_pauser"`
-}
-
 type SetRewardsForAllSubmitter struct {
 	NewValue  bool   `json:"new_value"`
 	Submitter string `json:"submitter"`
@@ -286,10 +273,6 @@ type SetRewardsUpdater struct {
 	NewUpdater string `json:"new_updater"`
 }
 
-type SetUnpauser struct {
-	NewUnpauser string `json:"new_unpauser"`
-}
-
 type SubmitRoot struct {
 	RewardsCalculationEndTimestamp int64  `json:"rewards_calculation_end_timestamp"`
 	Root                           string `json:"root"`
@@ -297,9 +280,6 @@ type SubmitRoot struct {
 
 type TransferOwnership struct {
 	NewOwner string `json:"new_owner"`
-}
-
-type Unpause struct {
 }
 
 type QueryMsg struct {

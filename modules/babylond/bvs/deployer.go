@@ -117,19 +117,20 @@ func (d *Deployer) DeployDelegationManager(
 }
 
 func (d *Deployer) DeployDirectory(
-	delegationManager string,
 	registry string,
+	delegationManager string,
 ) *Contract[directory.InstantiateMsg] {
 	initMsg := directory.InstantiateMsg{
 		InitialOwner:      d.GenerateAddress("directory:initial_owner").String(),
-		DelegationManager: delegationManager,
 		Registry:          registry,
+		DelegationManager: delegationManager,
 	}
 
 	return deployCrate(d, "bvs-directory", initMsg, "BVS Directory")
 }
 
 func (d *Deployer) DeployRewardsCoordinator(
+	registry string,
 	delegationManager string,
 	strategyManager string,
 	activationDelay int64,
@@ -141,10 +142,8 @@ func (d *Deployer) DeployRewardsCoordinator(
 	rewardsUpdater string,
 ) *Contract[rewardscoordinator.InstantiateMsg] {
 	initMsg := rewardscoordinator.InstantiateMsg{
-		InitialPausedStatus:        0,
 		InitialOwner:               d.GenerateAddress("rewards-coordinator:initial_owner").String(),
-		Pauser:                     d.GenerateAddress("rewards-coordinator:pauser").String(),
-		Unpauser:                   d.GenerateAddress("rewards-coordinator:unpauser").String(),
+		Registry:                   registry,
 		StrategyManager:            strategyManager,
 		DelegationManager:          delegationManager,
 		ActivationDelay:            activationDelay,

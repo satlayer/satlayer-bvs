@@ -265,7 +265,6 @@ name = "bvs-rewards-coordinator"
 version = "0.1.0"
 dependencies = [
  "base64",
- "bvs-base",
  "bvs-registry",
  "bvs-strategy-manager",
  "cosmwasm-schema",

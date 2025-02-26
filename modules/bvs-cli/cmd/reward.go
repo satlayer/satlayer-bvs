@@ -55,39 +55,6 @@ func rewardCmd() *cobra.Command {
 			reward.SetRewardUpdater(args[0], args[1])
 		},
 	}
-	pauseCmd := &cobra.Command{
-		Use:   "pause <userKeyName>",
-		Short: "To pause the rewards.",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			reward.Pause(args[0])
-		},
-	}
-	unpauseCmd := &cobra.Command{
-		Use:   "unpause <userKeyName>",
-		Short: "To unpause the rewards.",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			reward.Unpause(args[0])
-		},
-	}
-	setPauserCmd := &cobra.Command{
-		Use:   "set-pauser <userKeyName> <pauserAddress>",
-		Short: "To set the pauser.",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			reward.SetPauser(args[0], args[1])
-		},
-	}
-
-	setUnpauserCmd := &cobra.Command{
-		Use:   "set-unpauser <userKeyName> <unpauserAddress>",
-		Short: "To set the unpauser.",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			reward.SetUnpauser(args[0], args[1])
-		},
-	}
 	transferOwnerCmd := &cobra.Command{
 		Use:   "transfer-owner <userKeyName> <NewOwnerAddress>",
 		Short: "To transfer the ownership.",
@@ -142,10 +109,6 @@ func rewardCmd() *cobra.Command {
 	subCmd.AddCommand(setActivationDelayCmd)
 	subCmd.AddCommand(setGlobalOperatorCommissionCmd)
 	subCmd.AddCommand(setRewardsUpdaterCmd)
-	subCmd.AddCommand(pauseCmd)
-	subCmd.AddCommand(unpauseCmd)
-	subCmd.AddCommand(setPauserCmd)
-	subCmd.AddCommand(setUnpauserCmd)
 	subCmd.AddCommand(transferOwnerCmd)
 	subCmd.AddCommand(getDistributionRootLengthCmd)
 	subCmd.AddCommand(getCurrentDistributionRootCmd)
