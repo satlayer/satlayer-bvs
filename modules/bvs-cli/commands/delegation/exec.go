@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 
@@ -22,15 +20,12 @@ func newService(keyName string) (*api.DelegationManager, io.ChainIO) {
 	return delegation, newChainIO
 }
 
-func RegOperator(KeyName, approverAddress string) {
+func RegOperator(KeyName string) {
 	ctx := context.Background()
-	delegation, newChainIO := newService(KeyName)
-	pubKey := newChainIO.GetCurrentAccountPubKey()
+	delegation, _ := newService(KeyName)
 	txResp, err := delegation.RegisterAsOperator(
 		ctx,
-		pubKey,
 		"",
-		approverAddress,
 		"",
 		0,
 	)
@@ -40,13 +35,12 @@ func RegOperator(KeyName, approverAddress string) {
 	fmt.Printf("Delegation Register operator success. txn: %s\n", txResp.Hash)
 }
 
-func UpdateOperatorDetails(userKeyName, receiver, delegationApprover string, stakerOptOutWindowBlocks int64) {
+func UpdateOperatorDetails(userKeyName, receiver string, stakerOptOutWindowBlocks int64) {
 	ctx := context.Background()
 	delegation, _ := newService(userKeyName)
 	txResp, err := delegation.ModifyOperatorDetails(
 		ctx,
 		receiver,
-		delegationApprover,
 		stakerOptOutWindowBlocks,
 	)
 	if err != nil {
@@ -65,27 +59,14 @@ func UpdateOperatorMetadataURI(userKeyName, uri string) {
 	fmt.Printf("Delegation Update operator metadata uri success. txn: %s\n", txResp.Hash)
 }
 
-func DelegateTo(stakerKeyName, operatorAddress, approverKeyName string) {
+func DelegateTo(stakerKeyName, operatorAddress string) {
 	s := NewService()
 	ctx := context.Background()
-	approverAddress := "0"
-	var approverPubKey cryptotypes.PubKey = nil
-	if approverKeyName != "" {
-		newChainIO, err := s.ChainIO.SetupKeyring(approverKeyName, conf.C.Account.KeyringBackend)
-		if err != nil {
-			panic(err)
-		}
-		approverPubKey = newChainIO.GetCurrentAccountPubKey()
-		approverAddress = sdk.AccAddress(approverPubKey.Address()).String()
-	}
 	newChainIO, err := s.ChainIO.SetupKeyring(stakerKeyName, conf.C.Account.KeyringBackend)
 	delegation := api.NewDelegationManager(newChainIO, conf.C.Contract.Delegation).WithGasLimit(400000)
 	txResp, err := delegation.DelegateTo(
 		ctx,
 		operatorAddress,
-		approverAddress,
-		approverKeyName,
-		approverPubKey,
 	)
 	if err != nil {
 		panic(err)
@@ -101,43 +82,6 @@ func Undelegate(stakerKeyName, operatorAddress string) {
 		panic(err)
 	}
 	fmt.Printf("Undelegate success. txn: %s\n", txResp.Hash)
-}
-
-func DelegateBySignature(stakerKeyName, operatorAddress, approverKeyName string) {
-	s := NewService()
-	ctx := context.Background()
-
-	approverAddress := "0"
-	var approverPubKey cryptotypes.PubKey = nil
-	if approverKeyName != "" {
-		newChainIO, err := s.ChainIO.SetupKeyring(approverKeyName, conf.C.Account.KeyringBackend)
-		if err != nil {
-			panic(err)
-		}
-		approverPubKey = newChainIO.GetCurrentAccountPubKey()
-		approverAddress = sdk.AccAddress(approverPubKey.Address()).String()
-	}
-	newChainIO, err := s.ChainIO.SetupKeyring(stakerKeyName, conf.C.Account.KeyringBackend)
-	if err != nil {
-		panic(err)
-	}
-	stakerPubKey := newChainIO.GetCurrentAccountPubKey()
-	stakerAddress := sdk.AccAddress(stakerPubKey.Address()).String()
-	delegation := api.NewDelegationManager(newChainIO, conf.C.Contract.Delegation).WithGasLimit(400000)
-	txResp, err := delegation.DelegateToBySignature(
-		ctx,
-		operatorAddress,
-		stakerAddress,
-		stakerKeyName,
-		approverAddress,
-		approverKeyName,
-		stakerPubKey,
-		approverPubKey,
-	)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Delegation DelegateBySignature success. txn: %s\n", txResp.Hash)
 }
 
 func SetMinWithdrawDelayBlocks(userKeyName string, blocks int64) {

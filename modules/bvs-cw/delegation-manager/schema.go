@@ -10,17 +10,8 @@
 //    queryMsg, err := UnmarshalQueryMsg(bytes)
 //    bytes, err = queryMsg.Marshal()
 //
-//    currentStakerDelegationDigestHashResponse, err := UnmarshalCurrentStakerDelegationDigestHashResponse(bytes)
-//    bytes, err = currentStakerDelegationDigestHashResponse.Marshal()
-//
 //    calculateWithdrawalRootResponse, err := UnmarshalCalculateWithdrawalRootResponse(bytes)
 //    bytes, err = calculateWithdrawalRootResponse.Marshal()
-//
-//    delegationApprovalDigestHashResponse, err := UnmarshalDelegationApprovalDigestHashResponse(bytes)
-//    bytes, err = delegationApprovalDigestHashResponse.Marshal()
-//
-//    delegationApproverResponse, err := UnmarshalDelegationApproverResponse(bytes)
-//    bytes, err = delegationApproverResponse.Marshal()
 //
 //    cumulativeWithdrawalsQueuedResponse, err := UnmarshalCumulativeWithdrawalsQueuedResponse(bytes)
 //    bytes, err = cumulativeWithdrawalsQueuedResponse.Marshal()
@@ -34,9 +25,6 @@
 //    operatorStakersResponse, err := UnmarshalOperatorStakersResponse(bytes)
 //    bytes, err = operatorStakersResponse.Marshal()
 //
-//    stakerNonceResponse, err := UnmarshalStakerNonceResponse(bytes)
-//    bytes, err = stakerNonceResponse.Marshal()
-//
 //    withdrawalDelayResponse, err := UnmarshalWithdrawalDelayResponse(bytes)
 //    bytes, err = withdrawalDelayResponse.Marshal()
 //
@@ -48,9 +36,6 @@
 //
 //    operatorDetailsResponse, err := UnmarshalOperatorDetailsResponse(bytes)
 //    bytes, err = operatorDetailsResponse.Marshal()
-//
-//    stakerDelegationDigestHashResponse, err := UnmarshalStakerDelegationDigestHashResponse(bytes)
-//    bytes, err = stakerDelegationDigestHashResponse.Marshal()
 //
 //    stakerOptOutWindowBlocksResponse, err := UnmarshalStakerOptOutWindowBlocksResponse(bytes)
 //    bytes, err = stakerOptOutWindowBlocksResponse.Marshal()
@@ -89,16 +74,6 @@ func (r *QueryMsg) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalCurrentStakerDelegationDigestHashResponse(data []byte) (CurrentStakerDelegationDigestHashResponse, error) {
-	var r CurrentStakerDelegationDigestHashResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *CurrentStakerDelegationDigestHashResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
 func UnmarshalCalculateWithdrawalRootResponse(data []byte) (CalculateWithdrawalRootResponse, error) {
 	var r CalculateWithdrawalRootResponse
 	err := json.Unmarshal(data, &r)
@@ -106,26 +81,6 @@ func UnmarshalCalculateWithdrawalRootResponse(data []byte) (CalculateWithdrawalR
 }
 
 func (r *CalculateWithdrawalRootResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalDelegationApprovalDigestHashResponse(data []byte) (DelegationApprovalDigestHashResponse, error) {
-	var r DelegationApprovalDigestHashResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *DelegationApprovalDigestHashResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalDelegationApproverResponse(data []byte) (DelegationApproverResponse, error) {
-	var r DelegationApproverResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *DelegationApproverResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -169,16 +124,6 @@ func (r *OperatorStakersResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalStakerNonceResponse(data []byte) (StakerNonceResponse, error) {
-	var r StakerNonceResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *StakerNonceResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
 func UnmarshalWithdrawalDelayResponse(data []byte) (WithdrawalDelayResponse, error) {
 	var r WithdrawalDelayResponse
 	err := json.Unmarshal(data, &r)
@@ -219,16 +164,6 @@ func (r *OperatorDetailsResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalStakerDelegationDigestHashResponse(data []byte) (StakerDelegationDigestHashResponse, error) {
-	var r StakerDelegationDigestHashResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *StakerDelegationDigestHashResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
 func UnmarshalStakerOptOutWindowBlocksResponse(data []byte) (StakerOptOutWindowBlocksResponse, error) {
 	var r StakerOptOutWindowBlocksResponse
 	err := json.Unmarshal(data, &r)
@@ -256,7 +191,6 @@ type ExecuteMsg struct {
 	ModifyOperatorDetails            *ModifyOperatorDetails            `json:"modify_operator_details,omitempty"`
 	UpdateOperatorMetadataURI        *UpdateOperatorMetadataURI        `json:"update_operator_metadata_uri,omitempty"`
 	DelegateTo                       *DelegateTo                       `json:"delegate_to,omitempty"`
-	DelegateToBySignature            *DelegateToBySignature            `json:"delegate_to_by_signature,omitempty"`
 	Undelegate                       *Undelegate                       `json:"undelegate,omitempty"`
 	QueueWithdrawals                 *QueueWithdrawals                 `json:"queue_withdrawals,omitempty"`
 	CompleteQueuedWithdrawal         *CompleteQueuedWithdrawal         `json:"complete_queued_withdrawal,omitempty"`
@@ -304,27 +238,12 @@ type DecreaseDelegatedShares struct {
 }
 
 type DelegateTo struct {
-	ApproverSignatureAndExpiry ExecuteSignatureWithExpiry `json:"approver_signature_and_expiry"`
-	Params                     ExecuteDelegateParams      `json:"params"`
-}
-
-type ExecuteSignatureWithExpiry struct {
-	Expiry    int64  `json:"expiry"`
-	Signature string `json:"signature"`
+	Params ExecuteDelegateParams `json:"params"`
 }
 
 type ExecuteDelegateParams struct {
-	Operator  string `json:"operator"`
-	PublicKey string `json:"public_key"`
-	Salt      string `json:"salt"`
-	Staker    string `json:"staker"`
-}
-
-type DelegateToBySignature struct {
-	ApproverSignatureAndExpiry ExecuteSignatureWithExpiry `json:"approver_signature_and_expiry"`
-	Params                     ExecuteDelegateParams      `json:"params"`
-	StakerPublicKey            string                     `json:"staker_public_key"`
-	StakerSignatureAndExpiry   ExecuteSignatureWithExpiry `json:"staker_signature_and_expiry"`
+	Operator string `json:"operator"`
+	Staker   string `json:"staker"`
 }
 
 type IncreaseDelegatedShares struct {
@@ -338,7 +257,6 @@ type ModifyOperatorDetails struct {
 }
 
 type ExecuteOperatorDetails struct {
-	DelegationApprover         string `json:"delegation_approver"`
 	DeprecatedEarningsReceiver string `json:"deprecated_earnings_receiver"`
 	StakerOptOutWindowBlocks   int64  `json:"staker_opt_out_window_blocks"`
 }
@@ -359,7 +277,6 @@ type QueuedWithdrawalParams struct {
 type RegisterAsOperator struct {
 	MetadataURI     string                 `json:"metadata_uri"`
 	OperatorDetails ExecuteOperatorDetails `json:"operator_details"`
-	SenderPublicKey string                 `json:"sender_public_key"`
 }
 
 type SetMinWithdrawalDelayBlocks struct {
@@ -399,34 +316,16 @@ type UpdateOperatorMetadataURI struct {
 }
 
 type QueryMsg struct {
-	IsDelegated                                *IsDelegated                                `json:"is_delegated,omitempty"`
-	IsOperator                                 *IsOperator                                 `json:"is_operator,omitempty"`
-	OperatorDetails                            *OperatorDetails                            `json:"operator_details,omitempty"`
-	DelegationApprover                         *DelegationApprover                         `json:"delegation_approver,omitempty"`
-	StakerOptOutWindowBlocks                   *StakerOptOutWindowBlocks                   `json:"staker_opt_out_window_blocks,omitempty"`
-	GetOperatorShares                          *GetOperatorShares                          `json:"get_operator_shares,omitempty"`
-	GetDelegatableShares                       *GetDelegatableShares                       `json:"get_delegatable_shares,omitempty"`
-	GetWithdrawalDelay                         *GetWithdrawalDelay                         `json:"get_withdrawal_delay,omitempty"`
-	CalculateWithdrawalRoot                    *CalculateWithdrawalRoot                    `json:"calculate_withdrawal_root,omitempty"`
-	StakerDelegationDigestHash                 *StakerDelegationDigestHash                 `json:"staker_delegation_digest_hash,omitempty"`
-	DelegationApprovalDigestHash               *DelegationApprovalDigestHash               `json:"delegation_approval_digest_hash,omitempty"`
-	CalculateCurrentStakerDelegationDigestHash *CalculateCurrentStakerDelegationDigestHash `json:"calculate_current_staker_delegation_digest_hash,omitempty"`
-	GetStakerNonce                             *GetStakerNonce                             `json:"get_staker_nonce,omitempty"`
-	GetOperatorStakers                         *GetOperatorStakers                         `json:"get_operator_stakers,omitempty"`
-	GetCumulativeWithdrawalsQueued             *GetCumulativeWithdrawalsQueued             `json:"get_cumulative_withdrawals_queued,omitempty"`
-}
-
-type CalculateCurrentStakerDelegationDigestHash struct {
-	CurrentStakerDigestHashParams QueryCurrentStakerDigestHashParams `json:"current_staker_digest_hash_params"`
-}
-
-type QueryCurrentStakerDigestHashParams struct {
-	ContractAddr    string `json:"contract_addr"`
-	CurrentNonce    string `json:"current_nonce"`
-	Expiry          int64  `json:"expiry"`
-	Operator        string `json:"operator"`
-	Staker          string `json:"staker"`
-	StakerPublicKey string `json:"staker_public_key"`
+	IsDelegated                    *IsDelegated                    `json:"is_delegated,omitempty"`
+	IsOperator                     *IsOperator                     `json:"is_operator,omitempty"`
+	OperatorDetails                *OperatorDetails                `json:"operator_details,omitempty"`
+	StakerOptOutWindowBlocks       *StakerOptOutWindowBlocks       `json:"staker_opt_out_window_blocks,omitempty"`
+	GetOperatorShares              *GetOperatorShares              `json:"get_operator_shares,omitempty"`
+	GetDelegatableShares           *GetDelegatableShares           `json:"get_delegatable_shares,omitempty"`
+	GetWithdrawalDelay             *GetWithdrawalDelay             `json:"get_withdrawal_delay,omitempty"`
+	CalculateWithdrawalRoot        *CalculateWithdrawalRoot        `json:"calculate_withdrawal_root,omitempty"`
+	GetOperatorStakers             *GetOperatorStakers             `json:"get_operator_stakers,omitempty"`
+	GetCumulativeWithdrawalsQueued *GetCumulativeWithdrawalsQueued `json:"get_cumulative_withdrawals_queued,omitempty"`
 }
 
 type CalculateWithdrawalRoot struct {
@@ -441,24 +340,6 @@ type CalculateWithdrawalRootWithdrawal struct {
 	StartBlock  int64    `json:"start_block"`
 	Strategies  []string `json:"strategies"`
 	Withdrawer  string   `json:"withdrawer"`
-}
-
-type DelegationApprovalDigestHash struct {
-	ApproverDigestHashParams QueryApproverDigestHashParams `json:"approver_digest_hash_params"`
-}
-
-type QueryApproverDigestHashParams struct {
-	Approver          string `json:"approver"`
-	ApproverPublicKey string `json:"approver_public_key"`
-	ApproverSalt      string `json:"approver_salt"`
-	ContractAddr      string `json:"contract_addr"`
-	Expiry            int64  `json:"expiry"`
-	Operator          string `json:"operator"`
-	Staker            string `json:"staker"`
-}
-
-type DelegationApprover struct {
-	Operator string `json:"operator"`
 }
 
 type GetCumulativeWithdrawalsQueued struct {
@@ -478,10 +359,6 @@ type GetOperatorStakers struct {
 	Operator string `json:"operator"`
 }
 
-type GetStakerNonce struct {
-	Staker string `json:"staker"`
-}
-
 type GetWithdrawalDelay struct {
 	Strategies []string `json:"strategies"`
 }
@@ -498,37 +375,12 @@ type OperatorDetails struct {
 	Operator string `json:"operator"`
 }
 
-type StakerDelegationDigestHash struct {
-	StakerDigestHashParams QueryStakerDigestHashParams `json:"staker_digest_hash_params"`
-}
-
-type QueryStakerDigestHashParams struct {
-	ContractAddr    string `json:"contract_addr"`
-	Expiry          int64  `json:"expiry"`
-	Operator        string `json:"operator"`
-	Staker          string `json:"staker"`
-	StakerNonce     string `json:"staker_nonce"`
-	StakerPublicKey string `json:"staker_public_key"`
-}
-
 type StakerOptOutWindowBlocks struct {
 	Operator string `json:"operator"`
 }
 
-type CurrentStakerDelegationDigestHashResponse struct {
-	CurrentStakerDelegationDigestHash string `json:"current_staker_delegation_digest_hash"`
-}
-
 type CalculateWithdrawalRootResponse struct {
 	WithdrawalRoot string `json:"withdrawal_root"`
-}
-
-type DelegationApprovalDigestHashResponse struct {
-	ApproverDelegationDigestHash string `json:"approver_delegation_digest_hash"`
-}
-
-type DelegationApproverResponse struct {
-	DelegationApprover string `json:"delegation_approver"`
 }
 
 type CumulativeWithdrawalsQueuedResponse struct {
@@ -553,10 +405,6 @@ type StakerShares struct {
 	Staker            string     `json:"staker"`
 }
 
-type StakerNonceResponse struct {
-	Nonce string `json:"nonce"`
-}
-
 type WithdrawalDelayResponse struct {
 	WithdrawalDelays []int64 `json:"withdrawal_delays"`
 }
@@ -574,13 +422,8 @@ type OperatorDetailsResponse struct {
 }
 
 type DetailsClass struct {
-	DelegationApprover         string `json:"delegation_approver"`
 	DeprecatedEarningsReceiver string `json:"deprecated_earnings_receiver"`
 	StakerOptOutWindowBlocks   int64  `json:"staker_opt_out_window_blocks"`
-}
-
-type StakerDelegationDigestHashResponse struct {
-	StakerDelegationDigestHash string `json:"staker_delegation_digest_hash"`
 }
 
 type StakerOptOutWindowBlocksResponse struct {

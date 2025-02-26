@@ -21,9 +21,9 @@ func main() {
 	approverAddress := getApproverAccount()
 	print("approverAddress: ", approverAddress)
 	registerBvsContract()
-	registerOperators(approverAddress)
+	registerOperators()
 	registerStrategy()
-	registerStakers("0")
+	registerStakers()
 }
 
 func getApproverAccount() string {
@@ -79,7 +79,7 @@ func registerBvsContract() string {
 	return txResp.Hash.String()
 }
 
-func registerOperators(approverAddress string) {
+func registerOperators() {
 	elkLogger := logger.NewELKLogger("bvs_demo")
 	elkLogger.SetLogLevel("info")
 	reg := prometheus.NewRegistry()
@@ -105,9 +105,7 @@ func registerOperators(approverAddress string) {
 		delegation := api.NewDelegationManager(chainIO, core.C.Contract.DelegationManagerAddr)
 		txResp, err := delegation.RegisterAsOperator(
 			context.Background(),
-			pubKey,
 			"",
-			approverAddress,
 			"",
 			0,
 		)
@@ -166,7 +164,7 @@ func registerStrategy() {
 	}
 }
 
-func registerStakers(approverAddress string) {
+func registerStakers() {
 	elkLogger := logger.NewELKLogger("bvs_demo")
 	elkLogger.SetLogLevel("info")
 
@@ -202,9 +200,6 @@ func registerStakers(approverAddress string) {
 		txResp, err := delegation.DelegateTo(
 			context.Background(),
 			address,
-			approverAddress,
-			core.C.Account.ApproverKeyName,
-			pubKey,
 		)
 		if err != nil {
 			fmt.Println("Err: ", err)
