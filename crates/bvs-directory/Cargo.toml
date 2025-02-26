@@ -41,8 +41,8 @@ bech32 = { workspace = true }
 ripemd = { workspace = true }
 base64 = { workspace = true }
 bvs-base = { workspace = true }
-cw-multi-test = { workspace = true, optional = true }
 bvs-registry = { workspace = true }
+cw-multi-test = { workspace = true, optional = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }

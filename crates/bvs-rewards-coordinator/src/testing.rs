@@ -2,7 +2,7 @@ use crate::msg::InstantiateMsg;
 use bvs_library::testing::TestingContract;
 use bvs_registry::msg::{ExecuteMsg, QueryMsg};
 use cosmwasm_std::{Addr, Empty, Env};
-use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use cw_multi_test::{App, Contract, ContractWrapper};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -12,7 +12,7 @@ pub struct RewardsContract {
 }
 
 impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for RewardsContract {
-    fn new_wrapper() -> Box<dyn Contract<Empty>> {
+    fn wrapper() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(
             crate::contract::execute,
             crate::contract::instantiate,
@@ -21,11 +21,9 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for RewardsContract {
         Box::new(contract)
     }
 
-    fn setup(app: &mut App, env: &Env, msg: Option<InstantiateMsg>) -> RewardsContract {
-        let code_id = app.store_code(Self::new_wrapper());
-
+    fn default_init(app: &mut App, env: &Env) -> InstantiateMsg {
         let owner = app.api().addr_make("owner");
-        let init = msg.unwrap_or(InstantiateMsg {
+        InstantiateMsg {
             initial_owner: owner.to_string(),
             calculation_interval_seconds: 86_400, // 1 day
             max_rewards_duration: 30 * 86_400,    // 30 days
@@ -37,10 +35,14 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for RewardsContract {
             rewards_updater: Addr::unchecked("").to_string(),
             strategy_manager: Addr::unchecked("").to_string(),
             registry: Addr::unchecked("").to_string(),
-        });
+        }
+    }
 
+    fn new(app: &mut App, env: &Env, msg: Option<InstantiateMsg>) -> Self {
+        let init = msg.unwrap_or(Self::default_init(app, env));
+        let code_id = Self::store_code(app);
         let addr = Self::instantiate(app, code_id, &init);
-        RewardsContract { addr, init }
+        Self { addr, init }
     }
 
     fn addr(&self) -> &Addr {

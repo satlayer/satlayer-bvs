@@ -9,7 +9,7 @@ use cw_multi_test::{App, Executor};
 fn instantiate(msg: Option<InstantiateMsg>) -> (App, RegistryContract) {
     let mut app = App::default();
     let env = mock_env();
-    let contract = RegistryContract::setup(&mut app, &env, msg);
+    let contract = RegistryContract::new(&mut app, &env, msg);
     (app, contract)
 }
 

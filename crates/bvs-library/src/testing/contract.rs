@@ -1,19 +1,22 @@
 use cosmwasm_std::{to_json_binary, Addr, Empty, Env, WasmMsg};
 use cw_multi_test::{App, Contract, Executor};
 
+/// TestingContract is a trait that provides a common interface for setting up testing contracts.
 pub trait TestingContract<IM, EM, QM>
 where
     IM: serde::Serialize,
     EM: serde::Serialize,
     QM: serde::Serialize,
 {
-    fn new_wrapper() -> Box<dyn Contract<Empty>>;
+    fn wrapper() -> Box<dyn Contract<Empty>>;
+
+    fn default_init(app: &mut App, env: &Env) -> IM;
+
+    fn new(app: &mut App, env: &Env, msg: Option<IM>) -> Self;
 
     fn store_code(app: &mut App) -> u64 {
-        app.store_code(Self::new_wrapper())
+        app.store_code(Self::wrapper())
     }
-
-    fn setup(app: &mut App, env: &Env, msg: Option<IM>) -> Self;
 
     fn instantiate(app: &mut App, code_id: u64, msg: &IM) -> Addr {
         let addr = app

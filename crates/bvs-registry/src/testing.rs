@@ -11,24 +11,26 @@ pub struct RegistryContract {
 }
 
 impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for RegistryContract {
-    fn new_wrapper() -> Box<dyn Contract<Empty>> {
-        let contract = ContractWrapper::new(
+    fn wrapper() -> Box<dyn Contract<Empty>> {
+        Box::new(ContractWrapper::new(
             crate::contract::execute,
             crate::contract::instantiate,
             crate::contract::query,
-        );
-        Box::new(contract)
+        ))
     }
 
-    fn setup(app: &mut App, _env: &Env, msg: Option<InstantiateMsg>) -> RegistryContract {
-        let code_id = app.store_code(Self::new_wrapper());
-        let init = msg.unwrap_or(InstantiateMsg {
+    fn default_init(app: &mut App, _env: &Env) -> InstantiateMsg {
+        InstantiateMsg {
             owner: app.api().addr_make("owner").to_string(),
             initial_paused: false,
-        });
+        }
+    }
 
+    fn new(app: &mut App, env: &Env, msg: Option<InstantiateMsg>) -> Self {
+        let init = msg.unwrap_or(Self::default_init(app, env));
+        let code_id = Self::store_code(app);
         let addr = Self::instantiate(app, code_id, &init);
-        RegistryContract { addr, init }
+        Self { addr, init }
     }
 
     fn addr(&self) -> &Addr {

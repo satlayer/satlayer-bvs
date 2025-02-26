@@ -10,8 +10,8 @@ fn instantiate() -> (App, RegistryContract, RewardsContract) {
     let mut app = App::default();
     let env = mock_env();
 
-    let registry = RegistryContract::setup(&mut app, &env, None);
-    let rewards = RewardsContract::setup(&mut app, &env, None);
+    let registry = RegistryContract::new(&mut app, &env, None);
+    let rewards = RewardsContract::new(&mut app, &env, None);
     (app, registry, rewards)
 }
 
