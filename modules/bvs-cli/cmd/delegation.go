@@ -25,15 +25,15 @@ func delegationCmd() *cobra.Command {
 		},
 	}
 	updateOperatorDetailsCmd := &cobra.Command{
-		Use:   "update-operator-details <userKeyName> <deprecatedEarningsReceiver> <stakerOptOutWindowBlocks>",
+		Use:   "update-operator-details <userKeyName> <stakerOptOutWindowBlocks>",
 		Short: "To update the operator details within the delegation contract.",
-		Args:  cobra.ExactArgs(3),
+		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			windowBlocks, err := strconv.ParseInt(args[2], 10, 64)
+			windowBlocks, err := strconv.ParseInt(args[1], 10, 64)
 			if err != nil {
 				panic(fmt.Sprintf("expire must be an integer. Error: %s\n", err))
 			}
-			delegation.UpdateOperatorDetails(args[0], args[1], windowBlocks)
+			delegation.UpdateOperatorDetails(args[0], windowBlocks)
 		},
 	}
 

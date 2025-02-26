@@ -86,7 +86,7 @@ func (suite *delegationTestSuite) SetupSuite() {
 	suite.Require().NoError(err, "setup keyring")
 
 	ctx := context.Background()
-	txResp, err := delegationApi.RegisterAsOperator(ctx, "", "", 0)
+	txResp, err := delegationApi.RegisterAsOperator(ctx, "", 0)
 	suite.Require().NoError(err, "register as operator")
 	suite.Require().NotNil(txResp, "tx resp is nil")
 }
@@ -108,7 +108,6 @@ func (suite *delegationTestSuite) test_RegisterAsOperator() {
 	txResp, err := delegation.RegisterAsOperator(
 		context.Background(),
 		"",
-		"",
 		0,
 	)
 	assert.NoError(t, err, "register as operator")
@@ -126,7 +125,6 @@ func (suite *delegationTestSuite) Test_ModifyOperatorDetails() {
 
 	txResp, err := delegation.ModifyOperatorDetails(
 		context.Background(),
-		"bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv",
 		0,
 	)
 	assert.NoError(t, err, "modify operator details")

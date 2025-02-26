@@ -253,12 +253,11 @@ type IncreaseDelegatedShares struct {
 }
 
 type ModifyOperatorDetails struct {
-	NewOperatorDetails ExecuteOperatorDetails `json:"new_operator_details"`
+	NewOperatorDetails NewOperatorDetailsClass `json:"new_operator_details"`
 }
 
-type ExecuteOperatorDetails struct {
-	DeprecatedEarningsReceiver string `json:"deprecated_earnings_receiver"`
-	StakerOptOutWindowBlocks   int64  `json:"staker_opt_out_window_blocks"`
+type NewOperatorDetailsClass struct {
+	StakerOptOutWindowBlocks int64 `json:"staker_opt_out_window_blocks"`
 }
 
 type Pause struct {
@@ -275,8 +274,8 @@ type QueuedWithdrawalParams struct {
 }
 
 type RegisterAsOperator struct {
-	MetadataURI     string                 `json:"metadata_uri"`
-	OperatorDetails ExecuteOperatorDetails `json:"operator_details"`
+	MetadataURI     string                  `json:"metadata_uri"`
+	OperatorDetails NewOperatorDetailsClass `json:"operator_details"`
 }
 
 type SetMinWithdrawalDelayBlocks struct {
@@ -422,8 +421,7 @@ type OperatorDetailsResponse struct {
 }
 
 type DetailsClass struct {
-	DeprecatedEarningsReceiver string `json:"deprecated_earnings_receiver"`
-	StakerOptOutWindowBlocks   int64  `json:"staker_opt_out_window_blocks"`
+	StakerOptOutWindowBlocks int64 `json:"staker_opt_out_window_blocks"`
 }
 
 type StakerOptOutWindowBlocksResponse struct {

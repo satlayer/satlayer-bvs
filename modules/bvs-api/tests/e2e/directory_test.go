@@ -55,7 +55,6 @@ func (s *DirectoryTestSuite) SetupSuite() {
 	txResp, err := delegationApi.RegisterAsOperator(
 		context.Background(),
 		"",
-		"",
 		0,
 	)
 	s.Require().NoError(err, "register as operator")

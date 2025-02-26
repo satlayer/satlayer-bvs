@@ -80,10 +80,10 @@ type QueryMsg struct {
 }
 
 type IsPaused struct {
+	// The contract of the caller (caller)
+	Contract string `json:"contract"`
 	// The ExecuteMsg method to check if it is paused
 	Method string `json:"method"`
-	// The address of the caller (contract)
-	Sender string `json:"sender"`
 }
 
 type IsPausedResponse struct {
