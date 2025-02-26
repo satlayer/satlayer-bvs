@@ -12,7 +12,7 @@ use crate::{
     state::{
         DelegationManagerState, CUMULATIVE_WITHDRAWALS_QUEUED, DELEGATED_TO,
         DELEGATION_MANAGER_STATE, MIN_WITHDRAWAL_DELAY_BLOCKS, OPERATOR_DETAILS, OPERATOR_SHARES,
-        OWNER, PENDING_WITHDRAWALS, STRATEGY_WITHDRAWAL_DELAY_BLOCKS,
+        OWNER, PENDING_WITHDRAWALS, STRATEGY_WITHDRAWAL_DELAY_BLOCKS, WITHDRAWAL_DELAYS,
     },
     utils::{calculate_withdrawal_root, validate_addresses, DelegateParams, Withdrawal},
 };
@@ -764,14 +764,13 @@ pub fn query_withdrawal_delay(
     deps: Deps,
     strategies: Vec<Addr>,
 ) -> StdResult<WithdrawalDelayResponse> {
-    let min_withdrawal_delay_blocks = MIN_WITHDRAWAL_DELAY_BLOCKS.load(deps.storage)?;
-
     let mut withdrawal_delays = vec![];
+
     for strategy in strategies.iter() {
         let curr_withdrawal_delay =
             STRATEGY_WITHDRAWAL_DELAY_BLOCKS.may_load(deps.storage, strategy)?;
         let delay = curr_withdrawal_delay.unwrap_or(0);
-        withdrawal_delays.push(std::cmp::max(delay, min_withdrawal_delay_blocks));
+        withdrawal_delays.push(delay);
     }
 
     Ok(WithdrawalDelayResponse { withdrawal_delays })
@@ -1055,6 +1054,12 @@ fn complete_queued_withdrawal_internal(
 
     let withdrawal_root = calculate_withdrawal_root(&withdrawal)?;
 
+    let strategy_delays = WITHDRAWAL_DELAYS.load(deps.storage, &withdrawal_root)?;
+
+    if withdrawal.strategies.len() != strategy_delays.len() {
+        return Err(ContractError::InputLengthMismatch {});
+    }
+
     if !PENDING_WITHDRAWALS.has(deps.storage, &withdrawal_root) {
         return Err(ContractError::ActionNotInQueue {});
     }
@@ -1071,14 +1076,12 @@ fn complete_queued_withdrawal_internal(
         return Err(ContractError::InputLengthMismatch {});
     }
 
-    PENDING_WITHDRAWALS.remove(deps.storage, &withdrawal_root);
-
     let mut response = Response::new();
 
     if receive_as_tokens {
         for (i, strategy) in withdrawal.strategies.iter().enumerate() {
-            let delay_blocks = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.load(deps.storage, strategy)?;
-            if withdrawal.start_block + delay_blocks > env.block.height {
+            let stored_delay = strategy_delays[i];
+            if withdrawal.start_block + stored_delay > env.block.height {
                 return Err(ContractError::StrategyWithdrawalDelayNotPassed {});
             }
 
@@ -1110,8 +1113,8 @@ fn complete_queued_withdrawal_internal(
         let current_operator = DELEGATED_TO.may_load(deps.storage, &info.sender)?;
 
         for (i, strategy) in withdrawal.strategies.iter().enumerate() {
-            let delay_blocks = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.load(deps.storage, strategy)?;
-            if withdrawal.start_block + delay_blocks > env.block.height {
+            let stored_delay = strategy_delays[i];
+            if withdrawal.start_block + stored_delay > env.block.height {
                 return Err(ContractError::StrategyWithdrawalDelayNotPassed {});
             }
 
@@ -1141,6 +1144,9 @@ fn complete_queued_withdrawal_internal(
             }
         }
     }
+
+    PENDING_WITHDRAWALS.remove(deps.storage, &withdrawal_root);
+    WITHDRAWAL_DELAYS.remove(deps.storage, withdrawal_root.as_slice());
 
     response = response.add_event(
         Event::new("WithdrawalCompleted")
@@ -1204,6 +1210,15 @@ fn remove_shares_and_queue_withdrawal(
 
     CUMULATIVE_WITHDRAWALS_QUEUED.save(deps.storage, &staker, &new_nonce)?;
 
+    let mut strategy_delays = Vec::with_capacity(strategies.len());
+    for strategy in strategies.iter() {
+        let curr_delay = STRATEGY_WITHDRAWAL_DELAY_BLOCKS
+            .may_load(deps.storage, strategy)?
+            .unwrap_or(0);
+
+        strategy_delays.push(curr_delay);
+    }
+
     let withdrawal = Withdrawal {
         staker: staker.clone(),
         delegated_to: operator.clone(),
@@ -1215,6 +1230,8 @@ fn remove_shares_and_queue_withdrawal(
     };
 
     let withdrawal_root = calculate_withdrawal_root(&withdrawal)?;
+
+    WITHDRAWAL_DELAYS.save(deps.storage, &withdrawal_root, &strategy_delays)?;
     PENDING_WITHDRAWALS.save(deps.storage, &withdrawal_root, &true)?;
 
     response = response.add_event(
@@ -1658,6 +1675,7 @@ mod tests {
         let (mut deps, _, _, _, _, _) = instantiate_contract();
 
         let operator = deps.api.addr_make("operator");
+
         let info_operator = message_info(&Addr::unchecked(operator.clone()), &[]);
 
         DELEGATED_TO
@@ -2936,6 +2954,10 @@ mod tests {
             .save(deps.as_mut().storage, &withdrawal_root, &true)
             .unwrap();
 
+        WITHDRAWAL_DELAYS
+            .save(deps.as_mut().storage, &withdrawal_root, &vec![0, 0])
+            .unwrap();
+
         let strategy1_clone = strategy1.clone();
         let strategy2_clone = strategy2.clone();
 
@@ -2989,6 +3011,10 @@ mod tests {
             .save(deps.as_mut().storage, &withdrawal_root, &true)
             .unwrap();
 
+        WITHDRAWAL_DELAYS
+            .save(deps.as_mut().storage, &withdrawal_root, &vec![10000, 0])
+            .unwrap();
+
         let unauthorized_info = message_info(&Addr::unchecked("not_authorized"), &[]);
         let result = complete_queued_withdrawal_internal(
             deps.as_mut(),
@@ -3014,6 +3040,15 @@ mod tests {
         };
         let premature_withdrawal_root: Binary =
             calculate_withdrawal_root(&premature_withdrawal).unwrap();
+
+        WITHDRAWAL_DELAYS
+            .save(
+                deps.as_mut().storage,
+                premature_withdrawal_root.as_slice(),
+                &vec![10000, 0],
+            )
+            .unwrap();
+
         PENDING_WITHDRAWALS
             .save(deps.as_mut().storage, &premature_withdrawal_root, &true)
             .unwrap();
@@ -3058,7 +3093,7 @@ mod tests {
             delegated_to: operator.clone(),
             withdrawer: withdrawer.clone(),
             nonce: Uint128::new(0),
-            start_block: env.block.height - 100, // Simulate sufficient delay has passed
+            start_block: env.block.height - 150,
             strategies: strategies.clone(),
             shares: shares.clone(),
         };
@@ -3068,18 +3103,13 @@ mod tests {
             .save(deps.as_mut().storage, &premature_withdrawal_root, &true)
             .unwrap();
 
-        let withdrawal_delay_blocks1 = STRATEGY_WITHDRAWAL_DELAY_BLOCKS
-            .load(&deps.storage, &strategy1.clone())
+        WITHDRAWAL_DELAYS
+            .save(
+                deps.as_mut().storage,
+                premature_withdrawal_root.as_slice(),
+                &vec![10000, 0],
+            )
             .unwrap();
-        assert_eq!(withdrawal_delay_blocks1, 50);
-
-        let new_withdrawal_delay_blocks = 10000000u64;
-
-        let _ = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.save(
-            deps.as_mut().storage,
-            &strategy1.clone(),
-            &new_withdrawal_delay_blocks,
-        );
 
         let result = complete_queued_withdrawal_internal(
             deps.as_mut(),
@@ -3121,7 +3151,7 @@ mod tests {
             delegated_to: operator.clone(),
             withdrawer: withdrawer.clone(),
             nonce: Uint128::new(0),
-            start_block: env.block.height - 100, // Simulate sufficient delay has passed
+            start_block: env.block.height - 100,
             strategies: strategies.clone(),
             shares: shares.clone(),
         };
@@ -3136,6 +3166,10 @@ mod tests {
             .unwrap();
         STRATEGY_WITHDRAWAL_DELAY_BLOCKS
             .save(deps.as_mut().storage, &strategy2.clone(), &10u64)
+            .unwrap();
+
+        WITHDRAWAL_DELAYS
+            .save(deps.as_mut().storage, &withdrawal_root, &vec![0, 0])
             .unwrap();
 
         let strategy1_clone = strategy1.clone();
@@ -3191,44 +3225,61 @@ mod tests {
             .save(deps.as_mut().storage, &withdrawal_root, &true)
             .unwrap();
 
+        WITHDRAWAL_DELAYS
+            .save(deps.as_mut().storage, &withdrawal_root, &vec![10000, 0])
+            .unwrap();
+
         let unauthorized_info = message_info(&Addr::unchecked("not_authorized"), &[]);
-        let result = complete_queued_withdrawal(
+
+        let res = execute(
             deps.as_mut(),
             env.clone(),
             unauthorized_info,
-            withdrawal.clone(),
-            tokens.clone(),
-            0,
-            true,
+            ExecuteMsg::CompleteQueuedWithdrawal {
+                withdrawal: withdrawal.clone(),
+                tokens: tokens.clone(),
+                middleware_times_index: 0,
+                receive_as_tokens: true,
+            },
         );
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
+        assert!(res.is_err());
+        if let Err(res) = res {
+            match res {
                 ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
+                _ => panic!("Unexpected error: {:?}", res),
             }
         }
 
         // Test for insufficient delay
-        let premature_withdrawal = Withdrawal {
-            start_block: env.block.height - 5, // Not enough delay
-            ..withdrawal.clone()
+        let withdrawal3 = Withdrawal {
+            staker: staker.clone(),
+            delegated_to: operator.clone(),
+            withdrawer: withdrawer.clone(),
+            nonce: Uint128::new(0),
+            start_block: env.block.height,
+            strategies: strategies.clone(),
+            shares: shares.clone(),
         };
-        let premature_withdrawal_root = calculate_withdrawal_root(&premature_withdrawal).unwrap();
+
+        let withdrawal_root3 = calculate_withdrawal_root(&withdrawal3).unwrap();
+
         PENDING_WITHDRAWALS
-            .save(deps.as_mut().storage, &premature_withdrawal_root, &true)
+            .save(deps.as_mut().storage, &withdrawal_root3, &true)
             .unwrap();
-        let result = complete_queued_withdrawal(
-            deps.as_mut(),
-            env.clone(),
-            info.clone(),
-            premature_withdrawal.clone(),
-            tokens.clone(),
-            0,
-            true,
-        );
-        assert!(result.is_err());
-        if let Err(err) = result {
+
+        WITHDRAWAL_DELAYS
+            .save(deps.as_mut().storage, &withdrawal_root3, &vec![10000, 0])
+            .unwrap();
+
+        let premature_msg3 = ExecuteMsg::CompleteQueuedWithdrawal {
+            withdrawal: withdrawal3.clone(),
+            tokens: tokens.clone(),
+            middleware_times_index: 0,
+            receive_as_tokens: true,
+        };
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), premature_msg3);
+        assert!(res.is_err());
+        if let Err(err) = res {
             match err {
                 ContractError::MinWithdrawalDelayNotPassed {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
@@ -3258,7 +3309,7 @@ mod tests {
             delegated_to: operator.clone(),
             withdrawer: withdrawer.clone(),
             nonce: Uint128::new(0),
-            start_block: env.block.height - 100, // Simulate sufficient delay has passed
+            start_block: env.block.height - 100,
             strategies: strategies.clone(),
             shares: shares.clone(),
         };
@@ -3269,13 +3320,13 @@ mod tests {
             .save(deps.as_mut().storage, &delayed_withdrawal_root, &true)
             .unwrap();
 
-        let new_withdrawal_delay_blocks = 10000000u64;
-
-        let _ = STRATEGY_WITHDRAWAL_DELAY_BLOCKS.save(
-            deps.as_mut().storage,
-            &strategy1.clone(),
-            &new_withdrawal_delay_blocks,
-        );
+        WITHDRAWAL_DELAYS
+            .save(
+                deps.as_mut().storage,
+                &delayed_withdrawal_root,
+                &vec![10000, 0],
+            )
+            .unwrap();
 
         let result = complete_queued_withdrawal(
             deps.as_mut(),
@@ -3342,6 +3393,13 @@ mod tests {
             .unwrap();
         PENDING_WITHDRAWALS
             .save(deps.as_mut().storage, &withdrawal_root2, &true)
+            .unwrap();
+
+        WITHDRAWAL_DELAYS
+            .save(deps.as_mut().storage, &withdrawal_root1, &vec![0, 0])
+            .unwrap();
+        WITHDRAWAL_DELAYS
+            .save(deps.as_mut().storage, &withdrawal_root2, &vec![0, 0])
             .unwrap();
 
         deps.querier.update_wasm(move |query| match query {
@@ -3570,22 +3628,28 @@ mod tests {
             )
             .unwrap();
 
-        let result = query_withdrawal_delay(deps.as_ref(), strategies);
-        assert!(result.is_ok());
+        let query_msg = QueryMsg::GetWithdrawalDelay {
+            strategies: strategies.iter().map(|s| s.to_string()).collect(),
+        };
 
-        let response = result.unwrap();
-        assert_eq!(response.withdrawal_delays.len(), 2);
-        assert_eq!(response.withdrawal_delays[0], 100); // Assuming we want max of min_delay and strategy delay
-        assert_eq!(response.withdrawal_delays[1], 100);
+        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
+        let withdrawal_delays_response: WithdrawalDelayResponse = from_json(res).unwrap();
+
+        assert_eq!(withdrawal_delays_response.withdrawal_delays.len(), 2);
+        assert_eq!(withdrawal_delays_response.withdrawal_delays[0], 5);
+        assert_eq!(withdrawal_delays_response.withdrawal_delays[1], 10);
 
         // Test querying withdrawal delay for strategies with no delay set
         let new_strategy = deps.api.addr_make("strategy3");
-        let result = query_withdrawal_delay(deps.as_ref(), vec![new_strategy]);
-        assert!(result.is_ok());
+        let query_msg = QueryMsg::GetWithdrawalDelay {
+            strategies: vec![new_strategy.to_string()],
+        };
 
-        let response = result.unwrap();
-        assert_eq!(response.withdrawal_delays.len(), 1);
-        assert_eq!(response.withdrawal_delays[0], 100);
+        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
+        let withdrawal_delays_response: WithdrawalDelayResponse = from_json(res).unwrap();
+
+        assert_eq!(withdrawal_delays_response.withdrawal_delays.len(), 1);
+        assert_eq!(withdrawal_delays_response.withdrawal_delays[0], 0);
     }
 
     #[test]
