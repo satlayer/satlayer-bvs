@@ -2,7 +2,7 @@
   "name": "@examples/squaring-contract",
   "private": false,
   "scripts": {
-    "generate:schema": "cargo run --bin schema",
+    "generate:schema": "cargo run --bin schema --no-default-features",
     "test": "cargo test"
   }
 }

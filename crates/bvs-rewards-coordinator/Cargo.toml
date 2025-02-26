@@ -36,10 +36,9 @@ serde = { workspace = true }
 schemars = { workspace = true }
 sha2 = { workspace = true }
 serde_json = { workspace = true }
-bvs-base = { workspace = true }
 base64 = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
-bvs-registry = { workspace = true}
+bvs-registry = { workspace = true }
 bvs-strategy-manager = { workspace = true}
 
 [dev-dependencies]
