@@ -36,9 +36,9 @@ serde = { workspace = true }
 schemars = { workspace = true }
 bvs-base = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
-bvs-registry = { workspace = true, features = ["library"] }
-bvs-strategy-base = { workspace = true, features = ["library"] }
+bvs-registry = { workspace = true }
+bvs-strategy-base = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
-bvs-registry = { workspace = true }
+bvs-registry = { workspace = true, features = ["testing"] }

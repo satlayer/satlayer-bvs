@@ -36,9 +36,9 @@ schemars = { workspace = true }
 sha2 = { workspace = true }
 bvs-base = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
-bvs-registry = { workspace = true, features = ["library"] }
-bvs-strategy-manager = { workspace = true, features = ["library"] }
+bvs-registry = { workspace = true }
+bvs-strategy-manager = { workspace = true}
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
-bvs-registry = { workspace = true }
+bvs-registry = { workspace = true, features = ["testing"] }

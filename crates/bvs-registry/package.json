@@ -8,6 +8,6 @@
   "scripts": {
     "build:wasm": "cosmwasm-optimizer",
     "generate:schema": "cargo run --bin schema",
-    "test": "cargo test"
+    "test": "cargo test --all-features"
   }
 }
