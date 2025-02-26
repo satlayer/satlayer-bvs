@@ -683,11 +683,10 @@ mod tests {
             instantiate_contract();
 
         let amount = Uint128::new(1_000);
-        let msg = ExecuteMsg::Deposit { amount };
 
         let info = message_info(&Addr::unchecked(strategy_manager), &[]);
 
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let res = deposit(deps.as_mut(), env.clone(), info.clone(), amount).unwrap();
 
         assert_eq!(res.attributes.len(), 3);
         assert_eq!(res.attributes[0].key, "method");
@@ -723,13 +722,14 @@ mod tests {
             instantiate_contract();
 
         let deposit_amount = Uint128::new(1_000);
-        let msg_deposit = ExecuteMsg::Deposit {
-            amount: deposit_amount,
-        };
 
-        let info = message_info(&Addr::unchecked(strategy_manager), &[]);
-
-        execute(deps.as_mut(), env.clone(), info.clone(), msg_deposit).unwrap();
+        let _ = deposit(
+            deps.as_mut(),
+            env.clone(),
+            message_info(&Addr::unchecked(strategy_manager.clone()), &[]),
+            deposit_amount,
+        )
+        .unwrap();
 
         let state = STRATEGY_STATE.load(&deps.storage).unwrap();
         assert_eq!(state.total_shares, Uint128::new(999));
@@ -737,13 +737,14 @@ mod tests {
         let withdraw_amount_shares = Uint128::new(1);
         let recipient = deps.api.addr_make("recipient").to_string();
 
-        let msg_withdraw = ExecuteMsg::Withdraw {
-            recipient: recipient.clone(),
-            token: token.clone(),
-            amount_shares: withdraw_amount_shares,
-        };
-
-        let res_withdraw = execute(deps.as_mut(), env.clone(), info.clone(), msg_withdraw);
+        let res_withdraw = withdraw(
+            deps.as_mut(),
+            env.clone(),
+            message_info(&Addr::unchecked(strategy_manager), &[]),
+            Addr::unchecked(recipient.clone()),
+            Addr::unchecked(token.clone()),
+            withdraw_amount_shares,
+        );
         match res_withdraw {
             Ok(response) => {
                 assert_eq!(response.attributes.len(), 3);
@@ -992,14 +993,11 @@ mod tests {
         });
 
         let deposit_amount = Uint128::new(1_000);
-        let msg_deposit = ExecuteMsg::Deposit {
-            amount: deposit_amount,
-        };
 
         let info = message_info(&Addr::unchecked(strategy_manager.clone()), &[]);
         let user = deps.api.addr_make("user").to_string();
 
-        execute(deps.as_mut(), env.clone(), info.clone(), msg_deposit).unwrap();
+        deposit(deps.as_mut(), env.clone(), info.clone(), deposit_amount).unwrap();
 
         let state = STRATEGY_STATE.load(&deps.storage).unwrap();
         assert!(state.total_shares > Uint128::zero());
@@ -1234,11 +1232,10 @@ mod tests {
 
     #[test]
     fn test_pause() {
-        let (mut deps, env, _info, pauser_info, _unpauser_info, _token, _strategy_manager) =
+        let (mut deps, _env, _info, pauser_info, _unpauser_info, _token, _strategy_manager) =
             instantiate_contract();
 
-        let pause_msg = ExecuteMsg::Pause {};
-        let res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg).unwrap();
+        let res = pause(deps.as_mut(), &pauser_info.clone()).unwrap();
 
         assert_eq!(res.attributes, vec![attr("action", "PAUSED")]);
 
@@ -1248,17 +1245,10 @@ mod tests {
 
     #[test]
     fn test_unpause() {
-        let (mut deps, env, _info, _pauser_info, unpauser_info, _token, _strategy_manager) =
+        let (mut deps, _env, _info, _pauser_info, unpauser_info, _token, _strategy_manager) =
             instantiate_contract();
 
-        let unpause_msg = ExecuteMsg::Unpause {};
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            unpauser_info.clone(),
-            unpause_msg,
-        )
-        .unwrap();
+        let res = unpause(deps.as_mut(), &unpauser_info.clone()).unwrap();
 
         assert_eq!(res.attributes, vec![attr("action", "UNPAUSED")]);
 
@@ -1268,15 +1258,12 @@ mod tests {
 
     #[test]
     fn test_set_pauser() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, _token, _strategy_manager) =
+        let (mut deps, _env, _info, _pauser_info, _unpauser_info, _token, _strategy_manager) =
             instantiate_contract();
 
-        let new_pauser = deps.api.addr_make("new_pauser").to_string();
+        let new_pauser = deps.api.addr_make("new_pauser");
 
-        let set_pauser_msg = ExecuteMsg::SetPauser {
-            new_pauser: new_pauser.to_string(),
-        };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), set_pauser_msg).unwrap();
+        let res = set_pauser(deps.as_mut(), new_pauser.clone()).unwrap();
 
         assert!(res
             .attributes
@@ -1289,15 +1276,12 @@ mod tests {
 
     #[test]
     fn test_set_unpauser() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, _token, _strategy_manager) =
+        let (mut deps, _env, _info, _pauser_info, _unpauser_info, _token, _strategy_manager) =
             instantiate_contract();
 
-        let new_unpauser = deps.api.addr_make("new_unpauser").to_string();
+        let new_unpauser = deps.api.addr_make("new_unpauser");
 
-        let set_unpauser_msg = ExecuteMsg::SetUnpauser {
-            new_unpauser: new_unpauser.to_string(),
-        };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), set_unpauser_msg).unwrap();
+        let res = set_unpauser(deps.as_mut(), new_unpauser.clone()).unwrap();
 
         assert!(res
             .attributes
