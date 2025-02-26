@@ -233,6 +233,7 @@ dependencies = [
  "bech32 0.8.1",
  "bvs-base",
  "bvs-delegation-manager",
+ "bvs-library",
  "bvs-registry",
  "bvs-testing",
  "cosmwasm-crypto",

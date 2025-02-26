@@ -16,7 +16,8 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["testing"]
-testing = ["dep:cw-multi-test"]
+library = []
+testing = ["library", "dep:cw-multi-test"]
 
 [dependencies]
 cosmwasm-std = { workspace = true }

@@ -34,5 +34,6 @@ bvs-registry = { workspace = true, features = ["library"] }
 [dev-dependencies]
 cw-multi-test = { workspace = true }
 bvs-testing = { workspace = true }
+bvs-library = { workspace = true, features = ["testing"] }
 bvs-registry = { workspace = true, features = ["testing"] }
 bvs-delegation-manager = { workspace = true, features = ["testing"] }

@@ -4,11 +4,9 @@ use bvs_directory::{
     msg::{ExecuteMsg as BvsDirectoryExecuteMsg, InstantiateMsg as BvsDirectoryInstantiateMsg},
     utils::{calculate_digest_hash, sha256},
 };
+use bvs_library::testing::Account;
 use bvs_registry::msg::InstantiateMsg as BvsRegistryInstantiateMsg;
-use bvs_testing::{
-    account::Account,
-    integration::{mock_contracts::mock_app, mock_env::MockEnvBuilder},
-};
+use bvs_testing::integration::{mock_contracts::mock_app, mock_env::MockEnvBuilder};
 use cosmwasm_std::{Binary, Event, StdError};
 
 #[test]
