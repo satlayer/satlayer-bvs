@@ -1,5 +1,4 @@
 use crate::state::OperatorBvsRegistrationStatus;
-use bvs_registry::api::Display;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Binary};
 
@@ -11,7 +10,7 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
-#[derive(Display)]
+#[derive(bvs_registry::api::Display)]
 pub enum ExecuteMsg {
     RegisterBvs {
         // TODO(fuxingloh): rename to contract_addr
