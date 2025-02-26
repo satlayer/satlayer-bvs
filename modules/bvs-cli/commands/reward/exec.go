@@ -61,46 +61,6 @@ func SetRewardUpdater(userKeyName, rewardUpdater string) {
 	fmt.Printf("Set reward updater success. txn: %s\n", resp.Hash.String())
 }
 
-func Pause(userKeyName string) {
-	ctx := context.Background()
-	reward, _ := newService(userKeyName)
-	resp, err := reward.Pause(ctx)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Pause success. txn: %s\n", resp.Hash.String())
-}
-
-func Unpause(userKeyName string) {
-	ctx := context.Background()
-	reward, _ := newService(userKeyName)
-	resp, err := reward.Unpause(ctx)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Unpause success. txn: %s\n", resp.Hash.String())
-}
-
-func SetPauser(userKeyName, newPauser string) {
-	ctx := context.Background()
-	reward, _ := newService(userKeyName)
-	resp, err := reward.SetPauser(ctx, newPauser)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Set pauser success. txn: %s\n", resp.Hash.String())
-}
-
-func SetUnpauser(userKeyName, unpauser string) {
-	ctx := context.Background()
-	reward, _ := newService(userKeyName)
-	resp, err := reward.SetUnpauser(ctx, unpauser)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Set unpauser success. txn: %s\n", resp.Hash.String())
-}
-
 func TransferOwner(userKeyName, newOwner string) {
 	ctx := context.Background()
 	reward, _ := newService(userKeyName)

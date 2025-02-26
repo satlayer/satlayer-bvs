@@ -62,7 +62,7 @@ func (s *DirectoryTestSuite) SetupSuite() {
 
 	registry := deployer.DeployRegistry(nil)
 
-	s.contrAddr = deployer.DeployDirectory(delegationManager.Address, registry.Address).Address
+	s.contrAddr = deployer.DeployDirectory(registry.Address, delegationManager.Address).Address
 	s.delegationContrAddr = delegationManager.Address
 }
 
