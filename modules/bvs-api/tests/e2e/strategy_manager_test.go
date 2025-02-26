@@ -54,7 +54,7 @@ func (suite *strategyManagerTestSuite) SetupSuite() {
 	tAddr := suite.container.GenerateAddress("test-address").String()
 
 	suite.container.ImportPrivKey("strategy-manager:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
-	strategyManager := deployer.DeployStrategyManager(tAddr, tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+	strategyManager := deployer.DeployStrategyManager(tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 
 	suite.managerAddr = strategyManager.Address
 	suite.container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
@@ -102,11 +102,6 @@ func (suite *strategyManagerTestSuite) Test_Init() {
 
 	resp, err = strategyManager.SetSlashManager(context.Background(), slashManagerAddr)
 	assert.NoError(t, err, "SetSlashManager")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)
-
-	resp, err = strategyManager.SetStrategyFactory(context.Background(), factoryAddr)
-	assert.NoError(t, err, "SetStrategyFactory")
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)
 

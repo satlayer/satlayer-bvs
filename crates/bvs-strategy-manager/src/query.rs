@@ -78,3 +78,14 @@ pub struct DomainNameResponse {
 pub struct DelegationManagerResponse {
     pub delegation_manager: Addr,
 }
+
+#[cw_serde]
+pub struct TokenStrategyResponse {
+    pub strategy: Addr,
+}
+
+#[cw_serde]
+pub struct IsTokenBlacklistedResponse {
+    pub token: Addr,
+    pub is_blacklisted: bool,
+}

@@ -68,7 +68,7 @@ func (suite *rewardsTestSuite) SetupSuite() {
 	suite.Require().NoError(err)
 	blockTime := status.SyncInfo.LatestBlockTime.Second()
 
-	strategyManager := deployer.DeployStrategyManager(tAddr, tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+	strategyManager := deployer.DeployStrategyManager(tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 	rewardsCoordinator := deployer.DeployRewardsCoordinator(
 		tAddr,
 		strategyManager.Address,

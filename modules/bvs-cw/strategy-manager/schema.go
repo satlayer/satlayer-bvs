@@ -49,11 +49,17 @@
 //    thirdPartyTransfersForbiddenResponse, err := UnmarshalThirdPartyTransfersForbiddenResponse(bytes)
 //    bytes, err = thirdPartyTransfersForbiddenResponse.Marshal()
 //
+//    isTokenBlacklistedResponse, err := UnmarshalIsTokenBlacklistedResponse(bytes)
+//    bytes, err = isTokenBlacklistedResponse.Marshal()
+//
 //    ownerResponse, err := UnmarshalOwnerResponse(bytes)
 //    bytes, err = ownerResponse.Marshal()
 //
 //    stakerStrategyListLengthResponse, err := UnmarshalStakerStrategyListLengthResponse(bytes)
 //    bytes, err = stakerStrategyListLengthResponse.Marshal()
+//
+//    tokenStrategyResponse, err := UnmarshalTokenStrategyResponse(bytes)
+//    bytes, err = tokenStrategyResponse.Marshal()
 
 package strategymanager
 
@@ -219,6 +225,16 @@ func (r *ThirdPartyTransfersForbiddenResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
+func UnmarshalIsTokenBlacklistedResponse(data []byte) (IsTokenBlacklistedResponse, error) {
+	var r IsTokenBlacklistedResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *IsTokenBlacklistedResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
 func UnmarshalOwnerResponse(data []byte) (OwnerResponse, error) {
 	var r OwnerResponse
 	err := json.Unmarshal(data, &r)
@@ -239,6 +255,16 @@ func (r *StakerStrategyListLengthResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
+func UnmarshalTokenStrategyResponse(data []byte) (TokenStrategyResponse, error) {
+	var r TokenStrategyResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *TokenStrategyResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
 type InstantiateMsg struct {
 	DelegationManager          string `json:"delegation_manager"`
 	InitialOwner               string `json:"initial_owner"`
@@ -251,6 +277,8 @@ type InstantiateMsg struct {
 }
 
 type ExecuteMsg struct {
+	AddNewStrategy                   *AddNewStrategy                   `json:"add_new_strategy,omitempty"`
+	BlacklistTokens                  *BlacklistTokens                  `json:"blacklist_tokens,omitempty"`
 	AddStrategiesToWhitelist         *AddStrategiesToWhitelist         `json:"add_strategies_to_whitelist,omitempty"`
 	RemoveStrategiesFromWhitelist    *RemoveStrategiesFromWhitelist    `json:"remove_strategies_from_whitelist,omitempty"`
 	SetStrategyWhitelister           *SetStrategyWhitelister           `json:"set_strategy_whitelister,omitempty"`
@@ -262,12 +290,16 @@ type ExecuteMsg struct {
 	AddShares                        *AddShares                        `json:"add_shares,omitempty"`
 	SetDelegationManager             *SetDelegationManager             `json:"set_delegation_manager,omitempty"`
 	SetSlashManager                  *SetSlashManager                  `json:"set_slash_manager,omitempty"`
-	SetStrategyFactory               *SetStrategyFactory               `json:"set_strategy_factory,omitempty"`
 	TransferOwnership                *TransferOwnership                `json:"transfer_ownership,omitempty"`
 	Pause                            *Pause                            `json:"pause,omitempty"`
 	Unpause                          *Unpause                          `json:"unpause,omitempty"`
 	SetPauser                        *SetPauser                        `json:"set_pauser,omitempty"`
 	SetUnpauser                      *SetUnpauser                      `json:"set_unpauser,omitempty"`
+}
+
+type AddNewStrategy struct {
+	NewStrategy string `json:"new_strategy"`
+	Token       string `json:"token"`
 }
 
 type AddShares struct {
@@ -280,6 +312,10 @@ type AddShares struct {
 type AddStrategiesToWhitelist struct {
 	Strategies                         []string `json:"strategies"`
 	ThirdPartyTransfersForbiddenValues []bool   `json:"third_party_transfers_forbidden_values"`
+}
+
+type BlacklistTokens struct {
+	Tokens []string `json:"tokens"`
 }
 
 type DepositIntoStrategy struct {
@@ -321,10 +357,6 @@ type SetPauser struct {
 
 type SetSlashManager struct {
 	NewSlashManager string `json:"new_slash_manager"`
-}
-
-type SetStrategyFactory struct {
-	NewStrategyFactory string `json:"new_strategy_factory"`
 }
 
 type SetStrategyWhitelister struct {
@@ -370,6 +402,8 @@ type QueryMsg struct {
 	DomainTypeHash                 *DomainTypeHash                 `json:"domain_type_hash,omitempty"`
 	DomainName                     *DomainName                     `json:"domain_name,omitempty"`
 	DelegationManager              *DelegationManager              `json:"delegation_manager,omitempty"`
+	IsTokenBlacklisted             *IsTokenBlacklisted             `json:"is_token_blacklisted,omitempty"`
+	TokenStrategy                  *TokenStrategy                  `json:"token_strategy,omitempty"`
 }
 
 type CalculateDigestHash struct {
@@ -431,11 +465,19 @@ type IsThirdPartyTransfersForbidden struct {
 	Strategy string `json:"strategy"`
 }
 
+type IsTokenBlacklisted struct {
+	Token string `json:"token"`
+}
+
 type Owner struct {
 }
 
 type StakerStrategyListLength struct {
 	Staker string `json:"staker"`
+}
+
+type TokenStrategy struct {
+	Token string `json:"token"`
 }
 
 type CalculateDigestHashResponse struct {
@@ -482,7 +524,6 @@ type StrategyManagerStateResponse struct {
 type StrategyManagerState struct {
 	DelegationManager string `json:"delegation_manager"`
 	SlashManager      string `json:"slash_manager"`
-	StrategyFactory   string `json:"strategy_factory"`
 }
 
 type StrategyWhitelisterResponse struct {
@@ -497,10 +538,19 @@ type ThirdPartyTransfersForbiddenResponse struct {
 	IsForbidden bool `json:"is_forbidden"`
 }
 
+type IsTokenBlacklistedResponse struct {
+	IsBlacklisted bool   `json:"is_blacklisted"`
+	Token         string `json:"token"`
+}
+
 type OwnerResponse struct {
 	OwnerAddr string `json:"owner_addr"`
 }
 
 type StakerStrategyListLengthResponse struct {
 	StrategiesLen string `json:"strategies_len"`
+}
+
+type TokenStrategyResponse struct {
+	Strategy string `json:"strategy"`
 }
