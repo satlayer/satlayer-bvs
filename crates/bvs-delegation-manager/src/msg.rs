@@ -24,11 +24,11 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     RegisterAsOperator {
-        operator_details: ExecuteOperatorDetails,
+        operator_details: OperatorDetails,
         metadata_uri: String,
     },
     ModifyOperatorDetails {
-        new_operator_details: ExecuteOperatorDetails,
+        new_operator_details: OperatorDetails,
     },
     UpdateOperatorMetadataUri {
         metadata_uri: String,
@@ -126,13 +126,6 @@ pub enum QueryMsg {
 
 #[cw_serde]
 pub struct OperatorDetails {
-    pub deprecated_earnings_receiver: Addr,
-    pub staker_opt_out_window_blocks: u64,
-}
-
-#[cw_serde]
-pub struct ExecuteOperatorDetails {
-    pub deprecated_earnings_receiver: String,
     pub staker_opt_out_window_blocks: u64,
 }
 
