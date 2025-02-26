@@ -49,7 +49,7 @@ func RegOperator(operatorKeyName string) {
 	directory, newChainIO := newService(operatorKeyName)
 	pubKey := newChainIO.GetCurrentAccountPubKey()
 	address := sdk.AccAddress(pubKey.Address()).String()
-	txn, err := directory.RegisterOperator(ctx, address, pubKey)
+	txn, err := directory.RegisterOperator(ctx, address, address, pubKey)
 	if err != nil {
 		fmt.Printf("Register operator error! %v\n", err)
 		return

@@ -252,6 +252,7 @@ type BvsInfo struct {
 
 type CalculateDigestHash struct {
 	Bvs               string `json:"bvs"`
+	Operator          string `json:"operator"`
 	ContractAddr      string `json:"contract_addr"`
 	Expiry            int64  `json:"expiry"`
 	OperatorPublicKey string `json:"operator_public_key"`

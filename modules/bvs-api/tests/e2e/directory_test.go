@@ -107,13 +107,13 @@ func (s *DirectoryTestSuite) Test_RegisterOperatorAndDeregisterOperator() {
 
 	bvsApi := api.NewDirectory(chainIO, s.contrAddr)
 	bvsApi.WithGasLimit(500000)
-	registerResp, err := bvsApi.RegisterOperator(context.Background(), operatorAddr.String(), operatorPubKey)
+	registerResp, err := bvsApi.RegisterOperator(context.Background(), operatorAddr.String(), operatorAddr.String(), operatorPubKey)
 	assert.NoError(t, err, "register operator")
 	assert.NotNil(t, registerResp, "response nil")
 	t.Logf("registerResp:%+v", registerResp)
 
 	// repeat register operator failed
-	registerResp, err = bvsApi.RegisterOperator(context.Background(), operatorAddr.String(), operatorPubKey)
+	registerResp, err = bvsApi.RegisterOperator(context.Background(), operatorAddr.String(), operatorAddr.String(), operatorPubKey)
 	assert.Error(t, err, "register operator not failed")
 	assert.Nil(t, registerResp, "response not nil")
 
@@ -259,6 +259,7 @@ func (s *DirectoryTestSuite) Test_CalculateDigestHash() {
 	assert.NoError(t, err, "get account")
 	msgHashResp, err := api.NewDirectory(chainIO, s.contrAddr).CalculateDigestHash(
 		pubKey,
+		"bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
 		"bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x",
 		salt,
 		expiry,

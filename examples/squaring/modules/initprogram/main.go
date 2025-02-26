@@ -117,7 +117,7 @@ func registerOperators(approverAddress string) {
 			fmt.Println("registerAsOperator to delegation success:", txResp)
 		}
 		// register operator to bvsDirectory
-		txResp, err = api.NewDirectory(chainIO, core.C.Contract.DirectoryAddr).RegisterOperator(context.Background(), address, pubKey)
+		txResp, err = api.NewDirectory(chainIO, core.C.Contract.DirectoryAddr).RegisterOperator(context.Background(), address, address, pubKey)
 		if err != nil {
 			fmt.Println("Err: registerOperators to bvsDirectory failed: ", err)
 			return

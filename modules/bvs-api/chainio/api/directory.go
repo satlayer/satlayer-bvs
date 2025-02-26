@@ -61,7 +61,7 @@ func (r *Directory) RegisterBvs(ctx context.Context, bvsContract string) (*coret
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *Directory) RegisterOperator(ctx context.Context, operator string, publicKey cryptotypes.PubKey) (*coretypes.ResultTx, error) {
+func (r *Directory) RegisterOperator(ctx context.Context, bvs, operator string, publicKey cryptotypes.PubKey) (*coretypes.ResultTx, error) {
 	nodeStatus, err := r.io.QueryNodeStatus(context.Background())
 	if err != nil {
 		return nil, err
@@ -74,7 +74,7 @@ func (r *Directory) RegisterOperator(ctx context.Context, operator string, publi
 	}
 	salt := "salt" + randomStr
 
-	msgHashResp, err := r.CalculateDigestHash(publicKey, operator, salt, expiry)
+	msgHashResp, err := r.CalculateDigestHash(publicKey, bvs, operator, salt, expiry)
 	if err != nil {
 		return nil, err
 	}
@@ -225,11 +225,12 @@ func (r *Directory) QueryOperator(bvs, operator string) (*directory.OperatorStat
 	return result, nil
 }
 
-func (r *Directory) CalculateDigestHash(operatorPublicKey cryptotypes.PubKey, bvs, salt string, expiry int64) (*directory.CalculateDigestHashResponse, error) {
+func (r *Directory) CalculateDigestHash(operatorPublicKey cryptotypes.PubKey, bvs, operator, salt string, expiry int64) (*directory.CalculateDigestHashResponse, error) {
 	result := new(directory.CalculateDigestHashResponse)
 	queryMsg := &directory.QueryMsg{CalculateDigestHash: &directory.CalculateDigestHash{
 		OperatorPublicKey: base64.StdEncoding.EncodeToString(operatorPublicKey.Bytes()),
 		Bvs:               bvs,
+		Operator:          operator,
 		Salt:              base64.StdEncoding.EncodeToString([]byte(salt)),
 		Expiry:            expiry,
 		ContractAddr:      r.ContractAddr,

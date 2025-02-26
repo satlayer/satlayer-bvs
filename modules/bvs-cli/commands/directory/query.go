@@ -28,7 +28,7 @@ func CalcDigestHash(userKeyName, salt string, expire int64) {
 	}
 	pubKey := newChainIO.GetCurrentAccountPubKey()
 	address := sdk.AccAddress(pubKey.Address()).String()
-	resp, err := s.Directory.CalculateDigestHash(pubKey, address, salt, expire)
+	resp, err := s.Directory.CalculateDigestHash(pubKey, address, address, salt, expire)
 	if err != nil {
 		fmt.Printf("Calculate digest hash error! %+v\n", err)
 		return
