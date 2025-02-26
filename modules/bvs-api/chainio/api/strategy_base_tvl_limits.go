@@ -80,30 +80,46 @@ func (r *StrategyBaseTvlLimits) Withdraw(ctx context.Context, recipient string, 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *StrategyBaseTvlLimits) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
-	msg := strategybasetvllimits.ExecuteMsg{
-		Pause: &strategybasetvllimits.Pause{},
-	}
-
-	executeMsgBytes, err := json.Marshal(msg)
+func (r *StrategyBaseTvlLimits) PauseAll(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := strategybasetvllimits.ExecuteMsg{PauseAll: &strategybasetvllimits.PauseAll{}}
+	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(executeMsgBytes, "Pause")
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "PauseAll")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *StrategyBaseTvlLimits) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
-	msg := strategybasetvllimits.ExecuteMsg{
-		Unpause: &strategybasetvllimits.Unpause{},
-	}
-
-	executeMsgBytes, err := json.Marshal(msg)
+func (r *StrategyBaseTvlLimits) UnpauseAll(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := strategybasetvllimits.ExecuteMsg{UnpauseAll: &strategybasetvllimits.UnpauseAll{}}
+	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(executeMsgBytes, "Unpause")
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "UnpauseAll")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *StrategyBaseTvlLimits) PauseBit(ctx context.Context, index uint8) (*coretypes.ResultTx, error) {
+	executeMsg := strategybasetvllimits.ExecuteMsg{PauseBit: &strategybasetvllimits.PauseBit{Index: index}}
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "PauseBit")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *StrategyBaseTvlLimits) UnpauseBit(ctx context.Context, index uint8) (*coretypes.ResultTx, error) {
+	executeMsg := strategybasetvllimits.ExecuteMsg{UnpauseBit: &strategybasetvllimits.UnpauseBit{Index: index}}
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "UnpauseBit")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }

@@ -160,7 +160,7 @@ func (suite *slashManagerTestSuite) Test_Pause() {
 		suite.Require().NoError(err)
 	}
 
-	txResp, err := slashApi.Pause(context.Background())
+	txResp, err := slashApi.PauseAll(context.Background())
 	assert.NoError(t, err, "Pause failed")
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
@@ -180,7 +180,7 @@ func (suite *slashManagerTestSuite) Test_Unpause() {
 		suite.Require().NoError(err)
 	}
 
-	txResp, err := slashApi.Unpause(context.Background())
+	txResp, err := slashApi.UnpauseAll(context.Background())
 	assert.NoError(t, err, "Unpause failed")
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)

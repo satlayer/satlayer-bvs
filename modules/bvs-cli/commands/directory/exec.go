@@ -106,7 +106,7 @@ func TransferOwner(userKeyName, newOwner string) {
 func Pause(userKeyName string) {
 	ctx := context.Background()
 	directory, _ := newService(userKeyName)
-	txn, err := directory.Pause(ctx)
+	txn, err := directory.PauseAll(ctx)
 	if err != nil {
 		fmt.Printf("Pause error! %v\n", err)
 		return
@@ -117,7 +117,7 @@ func Pause(userKeyName string) {
 func Unpause(userKeyName string) {
 	ctx := context.Background()
 	directory, _ := newService(userKeyName)
-	txn, err := directory.Unpause(ctx)
+	txn, err := directory.UnpauseAll(ctx)
 	if err != nil {
 		fmt.Printf("Unpause error! %v\n", err)
 		return

@@ -91,7 +91,7 @@ func DepositStrategy(userKeyName, strategyAddress, tokenAddress string, amount u
 func Pause(userKeyName string) {
 	ctx := context.Background()
 	strategy, _ := newService(userKeyName)
-	txResp, err := strategy.Pause(ctx)
+	txResp, err := strategy.PauseAll(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -101,7 +101,7 @@ func Pause(userKeyName string) {
 func Unpause(userKeyName string) {
 	ctx := context.Background()
 	strategy, _ := newService(userKeyName)
-	txResp, err := strategy.Unpause(ctx)
+	txResp, err := strategy.UnpauseAll(ctx)
 	if err != nil {
 		panic(err)
 	}

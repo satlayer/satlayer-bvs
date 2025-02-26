@@ -177,8 +177,10 @@ type ExecuteMsg struct {
 	SetDelegationManager      *SetDelegationManager      `json:"set_delegation_manager,omitempty"`
 	CancelSalt                *CancelSalt                `json:"cancel_salt,omitempty"`
 	TransferOwnership         *TransferOwnership         `json:"transfer_ownership,omitempty"`
-	Pause                     *Pause                     `json:"pause,omitempty"`
-	Unpause                   *Unpause                   `json:"unpause,omitempty"`
+	PauseAll                  *PauseAll                  `json:"pause_all,omitempty"`
+	UnpauseAll                *UnpauseAll                `json:"unpause_all,omitempty"`
+	PauseBit                  *PauseBit                  `json:"pause_bit,omitempty"`
+	UnpauseBit                *UnpauseBit                `json:"unpause_bit,omitempty"`
 	SetPauser                 *SetPauser                 `json:"set_pauser,omitempty"`
 	SetUnpauser               *SetUnpauser               `json:"set_unpauser,omitempty"`
 }
@@ -191,7 +193,18 @@ type DeregisterOperatorFromBvs struct {
 	Operator string `json:"operator"`
 }
 
-type Pause struct {
+type PauseAll struct {
+}
+
+type UnpauseAll struct {
+}
+
+type PauseBit struct {
+	Index uint8 `json:"index"`
+}
+
+type UnpauseBit struct {
+	Index uint8 `json:"index"`
 }
 
 type RegisterBvs struct {
@@ -225,9 +238,6 @@ type SetUnpauser struct {
 
 type TransferOwnership struct {
 	NewOwner string `json:"new_owner"`
-}
-
-type Unpause struct {
 }
 
 type UpdateBvsMetadataURI struct {

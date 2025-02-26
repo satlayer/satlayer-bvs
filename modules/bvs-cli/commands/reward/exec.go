@@ -63,7 +63,7 @@ func SetRewardUpdater(userKeyName, rewardUpdater string) {
 func Pause(userKeyName string) {
 	ctx := context.Background()
 	reward, _ := newService(userKeyName)
-	resp, err := reward.Pause(ctx)
+	resp, err := reward.PauseAll(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -73,7 +73,7 @@ func Pause(userKeyName string) {
 func Unpause(userKeyName string) {
 	ctx := context.Background()
 	reward, _ := newService(userKeyName)
-	resp, err := reward.Unpause(ctx)
+	resp, err := reward.UnpauseAll(ctx)
 	if err != nil {
 		panic(err)
 	}

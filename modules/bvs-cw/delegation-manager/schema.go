@@ -267,8 +267,10 @@ type ExecuteMsg struct {
 	SetSlashManager                  *SetSlashManager                  `json:"set_slash_manager,omitempty"`
 	SetStrategyWithdrawalDelayBlocks *SetStrategyWithdrawalDelayBlocks `json:"set_strategy_withdrawal_delay_blocks,omitempty"`
 	TransferOwnership                *TransferOwnership                `json:"transfer_ownership,omitempty"`
-	Pause                            *Pause                            `json:"pause,omitempty"`
-	Unpause                          *Unpause                          `json:"unpause,omitempty"`
+	PauseAll                         *PauseAll                         `json:"pause_all,omitempty"`
+	UnpauseAll                       *UnpauseAll                       `json:"unpause_all,omitempty"`
+	PauseBit                         *PauseBit                         `json:"pause_bit,omitempty"`
+	UnpauseBit                       *UnpauseBit                       `json:"unpause_bit,omitempty"`
 	SetPauser                        *SetPauser                        `json:"set_pauser,omitempty"`
 	SetUnpauser                      *SetUnpauser                      `json:"set_unpauser,omitempty"`
 }
@@ -343,7 +345,18 @@ type ExecuteOperatorDetails struct {
 	StakerOptOutWindowBlocks   int64  `json:"staker_opt_out_window_blocks"`
 }
 
-type Pause struct {
+type PauseAll struct {
+}
+
+type UnpauseAll struct {
+}
+
+type PauseBit struct {
+	Index uint8 `json:"index"`
+}
+
+type UnpauseBit struct {
+	Index uint8 `json:"index"`
 }
 
 type QueueWithdrawals struct {
@@ -389,9 +402,6 @@ type TransferOwnership struct {
 
 type Undelegate struct {
 	Staker string `json:"staker"`
-}
-
-type Unpause struct {
 }
 
 type UpdateOperatorMetadataURI struct {

@@ -411,28 +411,46 @@ func (r *DelegationManager) TransferOwnership(ctx context.Context, newOwner stri
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *DelegationManager) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
-	executeMsg := delegationmanager.ExecuteMsg{
-		Pause: &delegationmanager.Pause{},
-	}
+func (r *DelegationManager) PauseAll(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := delegationmanager.ExecuteMsg{PauseAll: &delegationmanager.PauseAll{}}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "Pause")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "PauseAll")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *DelegationManager) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
-	executeMsg := delegationmanager.ExecuteMsg{
-		Unpause: &delegationmanager.Unpause{},
-	}
+func (r *DelegationManager) UnpauseAll(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := delegationmanager.ExecuteMsg{UnpauseAll: &delegationmanager.UnpauseAll{}}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "Unpause")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "UnpauseAll")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *DelegationManager) PauseBit(ctx context.Context, index uint8) (*coretypes.ResultTx, error) {
+	executeMsg := delegationmanager.ExecuteMsg{PauseBit: &delegationmanager.PauseBit{Index: index}}
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "PauseBit")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *DelegationManager) UnpauseBit(ctx context.Context, index uint8) (*coretypes.ResultTx, error) {
+	executeMsg := delegationmanager.ExecuteMsg{UnpauseBit: &delegationmanager.UnpauseBit{Index: index}}
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "UnpauseBit")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }

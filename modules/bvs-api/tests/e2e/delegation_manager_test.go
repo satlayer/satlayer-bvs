@@ -378,12 +378,12 @@ func (suite *delegationTestSuite) Test_DelegationPause() {
 	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
 	assert.NoError(t, err)
 
-	txResp, err := api.NewDelegationManager(chainIO, suite.contrAddr).Pause(context.Background())
+	txResp, err := api.NewDelegationManager(chainIO, suite.contrAddr).PauseAll(context.Background())
 	assert.NoError(t, err)
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
 
-	recoverResp, err := api.NewDelegationManager(chainIO, suite.contrAddr).Unpause(context.Background())
+	recoverResp, err := api.NewDelegationManager(chainIO, suite.contrAddr).UnpauseAll(context.Background())
 	assert.NoError(t, err)
 	assert.NotNil(t, recoverResp, "response nil")
 	t.Logf("txResp:%+v", recoverResp)

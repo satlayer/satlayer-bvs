@@ -40,7 +40,7 @@ func Withdraw(userKeyName, recipient string, amount uint64) {
 
 func Pause(uerKeyName string) {
 	strategyBase, _ := newService(uerKeyName)
-	resp, err := strategyBase.Pause(context.Background())
+	resp, err := strategyBase.PauseAll(context.Background())
 	if err != nil {
 		panic(err)
 	}
@@ -49,7 +49,7 @@ func Pause(uerKeyName string) {
 
 func Unpause(userKeyName string) {
 	strategyBase, _ := newService(userKeyName)
-	resp, err := strategyBase.Unpause(context.Background())
+	resp, err := strategyBase.UnpauseAll(context.Background())
 	if err != nil {
 		panic(err)
 	}

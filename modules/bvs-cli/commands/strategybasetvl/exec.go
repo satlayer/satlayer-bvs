@@ -39,7 +39,7 @@ func Withdraw(userKeyName, recipient string, amount uint64) {
 
 func Pause(userKeyName string) {
 	StrategyBaseTVL, _ := newService(userKeyName)
-	resp, err := StrategyBaseTVL.Pause(context.Background())
+	resp, err := StrategyBaseTVL.PauseAll(context.Background())
 	if err != nil {
 		panic(err)
 	}
@@ -48,7 +48,7 @@ func Pause(userKeyName string) {
 
 func Unpause(userKeyName string) {
 	StrategyBaseTVL, _ := newService(userKeyName)
-	resp, err := StrategyBaseTVL.Unpause(context.Background())
+	resp, err := StrategyBaseTVL.UnpauseAll(context.Background())
 	if err != nil {
 		panic(err)
 	}

@@ -85,7 +85,7 @@ func SetSlasherValidator(userKeyName string, validators []string, values []bool)
 func Pause(userKeyName string) {
 	ctx := context.Background()
 	slash, _ := newService(userKeyName)
-	txResp, err := slash.Pause(ctx)
+	txResp, err := slash.PauseAll(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -95,7 +95,7 @@ func Pause(userKeyName string) {
 func Unpause(userKeyName string) {
 	ctx := context.Background()
 	slash, _ := newService(userKeyName)
-	txResp, err := slash.Unpause(ctx)
+	txResp, err := slash.UnpauseAll(ctx)
 	if err != nil {
 		panic(err)
 	}

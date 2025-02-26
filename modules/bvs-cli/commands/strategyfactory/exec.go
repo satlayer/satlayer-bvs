@@ -40,7 +40,7 @@ func UpdateConfig(userKeyName, newOwner string, strategyCodeId int64) {
 
 func Pause(userKeyName string) {
 	strategyFactory, _ := newService(userKeyName)
-	resp, err := strategyFactory.Pause(context.Background())
+	resp, err := strategyFactory.PauseAll(context.Background())
 	if err != nil {
 		panic(err)
 	}
@@ -49,7 +49,7 @@ func Pause(userKeyName string) {
 
 func Unpause(userKeyName string) {
 	strategyFactory, _ := newService(userKeyName)
-	resp, err := strategyFactory.Unpause(context.Background())
+	resp, err := strategyFactory.UnpauseAll(context.Background())
 	if err != nil {
 		panic(err)
 	}

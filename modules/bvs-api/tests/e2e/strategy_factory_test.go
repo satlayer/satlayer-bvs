@@ -209,7 +209,7 @@ func (suite *strategyFactoryTestSuite) Test_Pause() {
 		suite.Require().NoError(err)
 	}
 
-	txResp, err := factoryApi.Pause(context.Background())
+	txResp, err := factoryApi.PauseAll(context.Background())
 	assert.NoError(t, err, "Pause failed")
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
@@ -246,7 +246,7 @@ func (suite *strategyFactoryTestSuite) Test_Unpause() {
 		suite.Require().NoError(err)
 	}
 
-	txResp, err := factoryApi.Unpause(context.Background())
+	txResp, err := factoryApi.UnpauseAll(context.Background())
 	assert.NoError(t, err, "Unpause failed")
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)

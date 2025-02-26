@@ -203,8 +203,10 @@ type ExecuteMsg struct {
 	Withdraw           *Withdraw           `json:"withdraw,omitempty"`
 	SetStrategyManager *SetStrategyManager `json:"set_strategy_manager,omitempty"`
 	TransferOwnership  *TransferOwnership  `json:"transfer_ownership,omitempty"`
-	Pause              *Pause              `json:"pause,omitempty"`
-	Unpause            *Unpause            `json:"unpause,omitempty"`
+	PauseAll           *PauseAll           `json:"pause_all,omitempty"`
+	UnpauseAll         *UnpauseAll         `json:"unpause_all,omitempty"`
+	PauseBit           *PauseBit           `json:"pause_bit,omitempty"`
+	UnpauseBit         *UnpauseBit         `json:"unpause_bit,omitempty"`
 	SetPauser          *SetPauser          `json:"set_pauser,omitempty"`
 	SetUnpauser        *SetUnpauser        `json:"set_unpauser,omitempty"`
 	SetTvlLimits       *SetTvlLimits       `json:"set_tvl_limits,omitempty"`
@@ -214,7 +216,18 @@ type Deposit struct {
 	Amount string `json:"amount"`
 }
 
-type Pause struct {
+type PauseAll struct {
+}
+
+type UnpauseAll struct {
+}
+
+type PauseBit struct {
+	Index uint8 `json:"index"`
+}
+
+type UnpauseBit struct {
+	Index uint8 `json:"index"`
 }
 
 type SetPauser struct {
@@ -236,9 +249,6 @@ type SetUnpauser struct {
 
 type TransferOwnership struct {
 	NewOwner string `json:"new_owner"`
-}
-
-type Unpause struct {
 }
 
 type Withdraw struct {

@@ -175,29 +175,46 @@ func (r *RewardsCoordinator) SetGlobalOperatorCommission(ctx context.Context, ne
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *RewardsCoordinator) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
-	msg := rewardscoordinator.ExecuteMsg{
-		Pause: &rewardscoordinator.Pause{},
-	}
-
-	executeMsgBytes, err := json.Marshal(msg)
+func (r *RewardsCoordinator) PauseAll(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := rewardscoordinator.ExecuteMsg{PauseAll: &rewardscoordinator.PauseAll{}}
+	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(executeMsgBytes, "Pause")
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "PauseAll")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *RewardsCoordinator) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
-	msg := rewardscoordinator.ExecuteMsg{
-		Unpause: &rewardscoordinator.Unpause{},
-	}
-	executeMsgBytes, err := json.Marshal(msg)
+func (r *RewardsCoordinator) UnpauseAll(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := rewardscoordinator.ExecuteMsg{UnpauseAll: &rewardscoordinator.UnpauseAll{}}
+	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(executeMsgBytes, "Unpause")
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "UnpauseAll")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *RewardsCoordinator) PauseBit(ctx context.Context, index uint8) (*coretypes.ResultTx, error) {
+	executeMsg := rewardscoordinator.ExecuteMsg{PauseBit: &rewardscoordinator.PauseBit{Index: index}}
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "PauseBit")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *RewardsCoordinator) UnpauseBit(ctx context.Context, index uint8) (*coretypes.ResultTx, error) {
+	executeMsg := rewardscoordinator.ExecuteMsg{UnpauseBit: &rewardscoordinator.UnpauseBit{Index: index}}
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "UnpauseBit")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }

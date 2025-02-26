@@ -149,24 +149,46 @@ func (r *Directory) TransferOwnership(ctx context.Context, newOwner string) (*co
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *Directory) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
-	executeMsg := directory.ExecuteMsg{Pause: &directory.Pause{}}
+func (r *Directory) PauseAll(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := directory.ExecuteMsg{PauseAll: &directory.PauseAll{}}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "Pause")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "PauseAll")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *Directory) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
-	executeMsg := directory.ExecuteMsg{Unpause: &directory.Unpause{}}
+func (r *Directory) UnpauseAll(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := directory.ExecuteMsg{UnpauseAll: &directory.UnpauseAll{}}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "Unpause")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "UnpauseAll")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *Directory) PauseBit(ctx context.Context, index uint8) (*coretypes.ResultTx, error) {
+	executeMsg := directory.ExecuteMsg{PauseBit: &directory.PauseBit{Index: index}}
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "PauseBit")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *Directory) UnpauseBit(ctx context.Context, index uint8) (*coretypes.ResultTx, error) {
+	executeMsg := directory.ExecuteMsg{UnpauseBit: &directory.UnpauseBit{Index: index}}
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "UnpauseBit")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }

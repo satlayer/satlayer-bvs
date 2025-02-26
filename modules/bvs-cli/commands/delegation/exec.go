@@ -173,7 +173,7 @@ func TransferOwnership(userKeyName, newOwner string) {
 func Pause(userKeyName string) {
 	ctx := context.Background()
 	delegation, _ := newService(userKeyName)
-	txResp, err := delegation.Pause(ctx)
+	txResp, err := delegation.PauseAll(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -183,7 +183,7 @@ func Pause(userKeyName string) {
 func Unpause(userKeyName string) {
 	ctx := context.Background()
 	delegation, _ := newService(userKeyName)
-	txResp, err := delegation.Unpause(ctx)
+	txResp, err := delegation.UnpauseAll(ctx)
 	if err != nil {
 		panic(err)
 	}

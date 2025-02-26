@@ -186,12 +186,12 @@ func (s *DirectoryTestSuite) Test_Pause() {
 		s.Require().NoError(err)
 	}
 
-	txResp, err := bvsDirectory.Pause(context.Background())
+	txResp, err := bvsDirectory.PauseAll(context.Background())
 	assert.NoError(t, err)
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
 
-	recoverResp, err := bvsDirectory.Unpause(context.Background())
+	recoverResp, err := bvsDirectory.UnpauseAll(context.Background())
 	assert.NoError(t, err)
 	assert.NotNil(t, recoverResp, "response nil")
 	t.Logf("txResp:%+v", recoverResp)

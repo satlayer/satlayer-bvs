@@ -223,30 +223,46 @@ func (r *SlashManager) SetDelegationManager(ctx context.Context, newDelegationMa
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *SlashManager) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
-	executeMsg := slashmanager.ExecuteMsg{
-		Pause: &slashmanager.Pause{},
-	}
-
+func (r *SlashManager) PauseAll(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := slashmanager.ExecuteMsg{PauseAll: &slashmanager.PauseAll{}}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(executeMsgBytes, "Pause")
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "PauseAll")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *SlashManager) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
-	executeMsg := slashmanager.ExecuteMsg{
-		Unpause: &slashmanager.Unpause{},
-	}
-
+func (r *SlashManager) UnpauseAll(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := slashmanager.ExecuteMsg{UnpauseAll: &slashmanager.UnpauseAll{}}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(executeMsgBytes, "Unpause")
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "UnpauseAll")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *SlashManager) PauseBit(ctx context.Context, index uint8) (*coretypes.ResultTx, error) {
+	executeMsg := slashmanager.ExecuteMsg{PauseBit: &slashmanager.PauseBit{Index: index}}
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "PauseBit")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *SlashManager) UnpauseBit(ctx context.Context, index uint8) (*coretypes.ResultTx, error) {
+	executeMsg := slashmanager.ExecuteMsg{UnpauseBit: &slashmanager.UnpauseBit{Index: index}}
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "UnpauseBit")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }

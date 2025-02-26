@@ -180,30 +180,46 @@ func (r *StrategyFactory) TransferOwnership(ctx context.Context, newOwner string
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *StrategyFactory) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
-	executeMsg := strategyfactory.ExecuteMsg{
-		Pause: &strategyfactory.Pause{},
-	}
-
+func (r *StrategyFactory) PauseAll(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := strategyfactory.ExecuteMsg{PauseAll: &strategyfactory.PauseAll{}}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(executeMsgBytes, "Pause")
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "PauseAll")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *StrategyFactory) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
-	executeMsg := strategyfactory.ExecuteMsg{
-		Unpause: &strategyfactory.Unpause{},
-	}
-
+func (r *StrategyFactory) UnpauseAll(ctx context.Context) (*coretypes.ResultTx, error) {
+	executeMsg := strategyfactory.ExecuteMsg{UnpauseAll: &strategyfactory.UnpauseAll{}}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(executeMsgBytes, "Unpause")
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "UnpauseAll")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *StrategyFactory) PauseBit(ctx context.Context, index uint8) (*coretypes.ResultTx, error) {
+	executeMsg := strategyfactory.ExecuteMsg{PauseBit: &strategyfactory.PauseBit{Index: index}}
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "PauseBit")
+
+	return r.io.SendTransaction(ctx, executeOptions)
+}
+
+func (r *StrategyFactory) UnpauseBit(ctx context.Context, index uint8) (*coretypes.ResultTx, error) {
+	executeMsg := strategyfactory.ExecuteMsg{UnpauseBit: &strategyfactory.UnpauseBit{Index: index}}
+	executeMsgBytes, err := json.Marshal(executeMsg)
+	if err != nil {
+		return nil, err
+	}
+	executeOptions := r.newExecuteOptions(executeMsgBytes, "UnpauseBit")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }
