@@ -20,24 +20,6 @@ func GetStakerStrategyListLength(stakerAddress string) {
 	fmt.Printf("%s\n", resp.Data)
 }
 
-func IsThirdTransferForbidden(strategyAddress string) {
-	s := NewService()
-	resp, err := s.Strategy.IsThirdPartyTransfersForbidden(strategyAddress)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("%s\n", resp.Data)
-}
-
-func GetNonce(stakerAddress string) {
-	s := NewService()
-	resp, err := s.Strategy.GetNonce(stakerAddress)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("%s\n", resp.Data)
-}
-
 func GetStakerStrategyList(stakerAddress string) {
 	s := NewService()
 	resp, err := s.Strategy.GetStakerStrategyList(stakerAddress)
@@ -46,6 +28,7 @@ func GetStakerStrategyList(stakerAddress string) {
 	}
 	fmt.Printf("%s\n", resp.Data)
 }
+
 func GetStakerStrategyShares(staker string, strategy string) {
 	s := NewService()
 	resp, err := s.Strategy.GetStakerStrategyShares(staker, strategy)
@@ -85,33 +68,6 @@ func GetStrategyWhitelist() {
 func GetStrategyManagerState() {
 	s := NewService()
 	resp, err := s.Strategy.GetStrategyManagerState()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("%s\n", resp.Data)
-}
-
-func GetDepositTypeHash() {
-	s := NewService()
-	resp, err := s.Strategy.GetDepositTypeHash()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("%s\n", resp.Data)
-}
-
-func DomainTypeHash() {
-	s := NewService()
-	resp, err := s.Strategy.DomainTypeHash()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("%s\n", resp.Data)
-}
-
-func DomainName() {
-	s := NewService()
-	resp, err := s.Strategy.DomainName()
 	if err != nil {
 		panic(err)
 	}

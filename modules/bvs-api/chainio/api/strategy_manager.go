@@ -2,13 +2,11 @@ package api
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
-	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
@@ -70,11 +68,10 @@ func (r *StrategyManager) BindClient(contractAddress string) {
 	r.ContractAddr = contractAddress
 }
 
-func (r *StrategyManager) AddStrategiesToWhitelist(ctx context.Context, strategies []string, thirdPartyTransfersForbiddenValues []bool) (*coretypes.ResultTx, error) {
+func (r *StrategyManager) AddStrategiesToWhitelist(ctx context.Context, strategies []string) (*coretypes.ResultTx, error) {
 	msg := strategymanager.ExecuteMsg{
 		AddStrategiesToWhitelist: &strategymanager.AddStrategiesToWhitelist{
-			Strategies:                         strategies,
-			ThirdPartyTransfersForbiddenValues: thirdPartyTransfersForbiddenValues,
+			Strategies: strategies,
 		},
 	}
 
@@ -107,91 +104,6 @@ func (r *StrategyManager) DepositIntoStrategy(ctx context.Context, strategy stri
 			Strategy: strategy,
 			Token:    token,
 			Amount:   fmt.Sprintf("%d", amount),
-		},
-	}
-
-	return r.execute(ctx, msg)
-}
-
-func (r *StrategyManager) SetThirdPartyTransfersForbidden(ctx context.Context, strategy string, value bool) (*coretypes.ResultTx, error) {
-	msg := strategymanager.ExecuteMsg{
-		SetThirdPartyTransfersForbidden: &strategymanager.SetThirdPartyTransfersForbidden{
-			Strategy: strategy,
-			Value:    value,
-		},
-	}
-
-	return r.execute(ctx, msg)
-}
-
-func (r *StrategyManager) DepositIntoStrategyWithSignature(ctx context.Context, strategy string, token string, amount uint64, staker string, publicKey cryptotypes.PubKey, stakerKeyName string) (*coretypes.ResultTx, error) {
-	nodeStatus, err := r.io.QueryNodeStatus(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
-	expiry := nodeStatus.SyncInfo.LatestBlockTime.Unix() + 1000
-	chainId := r.io.GetClientCtx().ChainID
-	contracAddr := r.executeOptions.ContractAddr
-
-	resp, err := r.GetNonce(staker)
-
-	if err != nil {
-		return nil, err
-	}
-
-	var nonceRes strategymanager.NonceResponse
-	err = json.Unmarshal(resp.Data, &nonceRes)
-
-	if err != nil {
-		return nil, err
-	}
-
-	params := strategymanager.QueryDigestHashParams{
-		Staker:       staker,
-		PublicKey:    base64.StdEncoding.EncodeToString(publicKey.Bytes()),
-		Strategy:     strategy,
-		Token:        token,
-		Amount:       fmt.Sprintf("%d", amount),
-		Nonce:        nonceRes.Nonce,
-		Expiry:       expiry,
-		ChainID:      chainId,
-		ContractAddr: contracAddr,
-	}
-
-	resp, err = r.CalculateDigestHash(params)
-
-	if err != nil {
-		return nil, err
-	}
-
-	var hashRes strategymanager.CalculateDigestHashResponse
-	err = json.Unmarshal(resp.Data, &hashRes)
-
-	if err != nil {
-		return nil, err
-	}
-
-	bytes, err := base64.StdEncoding.DecodeString(hashRes.DigestHash)
-	if err != nil {
-		return nil, err
-	}
-
-	signature, err := r.io.GetSigner().SignByKeyName(bytes, stakerKeyName)
-
-	if err != nil {
-		return nil, err
-	}
-
-	msg := strategymanager.ExecuteMsg{
-		DepositIntoStrategyWithSignature: &strategymanager.DepositIntoStrategyWithSignature{
-			Strategy:  strategy,
-			Token:     token,
-			Amount:    fmt.Sprintf("%d", amount),
-			Staker:    staker,
-			PublicKey: base64.StdEncoding.EncodeToString(publicKey.Bytes()),
-			Expiry:    expiry,
-			Signature: signature,
 		},
 	}
 
@@ -346,26 +258,6 @@ func (r *StrategyManager) GetStakerStrategyShares(staker string, strategy string
 	return r.query(msg)
 }
 
-func (r *StrategyManager) IsThirdPartyTransfersForbidden(strategy string) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := strategymanager.QueryMsg{
-		IsThirdPartyTransfersForbidden: &strategymanager.IsThirdPartyTransfersForbidden{
-			Strategy: strategy,
-		},
-	}
-
-	return r.query(msg)
-}
-
-func (r *StrategyManager) GetNonce(staker string) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := strategymanager.QueryMsg{
-		GetNonce: &strategymanager.GetNonce{
-			Staker: staker,
-		},
-	}
-
-	return r.query(msg)
-}
-
 func (r *StrategyManager) GetStakerStrategyList(staker string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategymanager.QueryMsg{
 		GetStakerStrategyList: &strategymanager.GetStakerStrategyList{
@@ -394,16 +286,6 @@ func (r *StrategyManager) IsStrategyWhitelisted(strategy string) (*wasmtypes.Que
 	return r.query(msg)
 }
 
-func (r *StrategyManager) CalculateDigestHash(params strategymanager.QueryDigestHashParams) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := strategymanager.QueryMsg{
-		CalculateDigestHash: &strategymanager.CalculateDigestHash{
-			DigestHashParams: params,
-		},
-	}
-
-	return r.query(msg)
-}
-
 func (r *StrategyManager) GetStrategyWhitelister() (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategymanager.QueryMsg{
 		GetStrategyWhitelister: &strategymanager.GetStrategyWhitelister{},
@@ -415,30 +297,6 @@ func (r *StrategyManager) GetStrategyWhitelister() (*wasmtypes.QuerySmartContrac
 func (r *StrategyManager) GetStrategyManagerState() (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategymanager.QueryMsg{
 		GetStrategyManagerState: &strategymanager.GetStrategyManagerState{},
-	}
-
-	return r.query(msg)
-}
-
-func (r *StrategyManager) GetDepositTypeHash() (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := strategymanager.QueryMsg{
-		GetDepositTypeHash: &strategymanager.GetDepositTypeHash{},
-	}
-
-	return r.query(msg)
-}
-
-func (r *StrategyManager) DomainTypeHash() (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := strategymanager.QueryMsg{
-		DomainTypeHash: &strategymanager.DomainTypeHash{},
-	}
-
-	return r.query(msg)
-}
-
-func (r *StrategyManager) DomainName() (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := strategymanager.QueryMsg{
-		DomainName: &strategymanager.DomainName{},
 	}
 
 	return r.query(msg)

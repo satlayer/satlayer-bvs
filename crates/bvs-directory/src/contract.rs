@@ -412,7 +412,6 @@ mod tests {
     use super::*;
     use base64::{engine::general_purpose, Engine as _};
     use bech32::{self, ToBase32, Variant};
-    use bvs_delegation_manager::contract::update_operator_metadata_uri;
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };

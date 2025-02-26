@@ -50,38 +50,15 @@ func strategyCmd() *cobra.Command {
 		},
 	}
 	addStrategyToWhitelistCmd := &cobra.Command{
-		Use:   "add-strategy-to-whitelist <userKeyName> <strategyAddress> <thirdPartyTransfersForbiddenValues>",
+		Use:   "add-strategy-to-whitelist <userKeyName> <strategyAddress>",
 		Short: "To add the strategy to whitelist.",
-		Args:  cobra.ExactArgs(3),
+		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			strategies := strings.Split(args[1], ",")
-			args2 := strings.Split(args[2], ",")
-			var values []bool
-			for i := 0; i < len(args2); i++ {
-				value, err := strconv.ParseBool(args2[i])
-				if err != nil {
-					panic(err)
-				}
-				values = append(values, value)
-			}
-
-			strategy.AddStrategyWhitelist(args[0], strategies, values)
+			strategy.AddStrategyWhitelist(args[0], strategies)
 		},
 	}
 
-	setThirdTransferForbiddenCmd := &cobra.Command{
-		Use:   "set-third-transfer-forbidden <userKeyName> <strategyAddress> <value>",
-		Short: "To set the third party transfers forbidden.",
-		Args:  cobra.ExactArgs(3),
-		Run: func(cmd *cobra.Command, args []string) {
-			value, err := strconv.ParseBool(args[2])
-			if err != nil {
-				fmt.Printf("Error: %v\n", err)
-			}
-
-			strategy.SetThirdTransferForbidden(args[0], args[1], value)
-		},
-	}
 	depositStrategyCmd := &cobra.Command{
 		Use:   "deposit-strategy <userKeyName> <strategyAddress> <tokenAddress> <amount>",
 		Short: "To deposit the strategy.",
@@ -187,22 +164,6 @@ func strategyCmd() *cobra.Command {
 			strategy.GetStakerStrategyShares(args[0], args[1])
 		},
 	}
-	isThirdTransferForbiddenCmd := &cobra.Command{
-		Use:   "is-third-transfer-forbidden <strategyAddress>",
-		Short: "To check if the third party transfers are forbidden.",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			strategy.IsThirdTransferForbidden(args[0])
-		},
-	}
-	getNonceCmd := &cobra.Command{
-		Use:   "get-nonce <stakerAddress>",
-		Short: "To get the nonce.",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			strategy.GetNonce(args[0])
-		},
-	}
 	getStakerStrategyListCmd := &cobra.Command{
 		Use:   "get-staker-strategy-list <stakerAddress>",
 		Short: "To get the staker strategy list.",
@@ -244,31 +205,6 @@ func strategyCmd() *cobra.Command {
 			strategy.GetStrategyManagerState()
 		},
 	}
-	getDepositTypeHashCmd := &cobra.Command{
-		Use:   "get-deposit-type-hash",
-		Short: "To get the deposit type hash.",
-		Args:  cobra.NoArgs,
-		Run: func(cmd *cobra.Command, args []string) {
-			strategy.GetDepositTypeHash()
-		},
-	}
-	getDomainTypeHashCmd := &cobra.Command{
-		Use:   "get-domain-type hash",
-		Short: "To get the domain type hash.",
-		Args:  cobra.NoArgs,
-		Run: func(cmd *cobra.Command, args []string) {
-			strategy.DomainTypeHash()
-		},
-	}
-
-	getDomainNameCmd := &cobra.Command{
-		Use:   "get-domain-name",
-		Short: "To get the domain name.",
-		Args:  cobra.NoArgs,
-		Run: func(cmd *cobra.Command, args []string) {
-			strategy.DomainName()
-		},
-	}
 
 	getDelegationManagerCmd := &cobra.Command{
 		Use:   "get-delegation-manager",
@@ -283,23 +219,17 @@ func strategyCmd() *cobra.Command {
 	subCmd.AddCommand(setDelegationManagerCmd)
 	subCmd.AddCommand(removeStrategyFromWhitelistCmd)
 	subCmd.AddCommand(setStrategyWhitelistCmd)
-	subCmd.AddCommand(isThirdTransferForbiddenCmd)
-	subCmd.AddCommand(getNonceCmd)
 	subCmd.AddCommand(getStakerStrategyListCmd)
 	subCmd.AddCommand(getOwnerCmd)
 	subCmd.AddCommand(isStrategyWhitelistedCmd)
 	subCmd.AddCommand(getStrategyWhitelistCmd)
 	subCmd.AddCommand(getStrategyManagerStateCmd)
-	subCmd.AddCommand(getDepositTypeHashCmd)
-	subCmd.AddCommand(getDomainTypeHashCmd)
-	subCmd.AddCommand(getDomainNameCmd)
 	subCmd.AddCommand(getDelegationManagerCmd)
 	subCmd.AddCommand(pauseCmd)
 	subCmd.AddCommand(unpauseCmd)
 	subCmd.AddCommand(setUnpauserCmd)
 	subCmd.AddCommand(setPauserCmd)
 	subCmd.AddCommand(addStrategyToWhitelistCmd)
-	subCmd.AddCommand(setThirdTransferForbiddenCmd)
 	subCmd.AddCommand(depositStrategyCmd)
 	subCmd.AddCommand(removeSharesCmd)
 	subCmd.AddCommand(withdrawSharesAsTokensCmd)

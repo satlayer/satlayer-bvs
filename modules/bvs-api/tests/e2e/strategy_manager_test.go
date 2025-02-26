@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"context"
-	"encoding/base64"
 	"testing"
 
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
@@ -14,7 +13,6 @@ import (
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
-	strategymanager "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-manager"
 )
 
 const managerAddr = "bbn1mju0w4qagjcgtrgepr796zmg083qurq9sngy0eyxm8wzf78cjt3qzfq7qy"
@@ -111,7 +109,7 @@ func (suite *strategyManagerTestSuite) Test_Init() {
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)
 
-	resp, err = strategyManager.AddStrategiesToWhitelist(context.Background(), []string{strategyAddr}, []bool{true})
+	resp, err = strategyManager.AddStrategiesToWhitelist(context.Background(), []string{strategyAddr})
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)
@@ -293,16 +291,6 @@ func (suite *strategyManagerTestSuite) test_QueryStrategyManager() {
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("GetStakerStrategyShares resp:%+v", resp)
 
-	resp, err = strategyManager.IsThirdPartyTransfersForbidden(strategyAddr)
-	assert.NoError(t, err, "IsThirdPartyTransfersForbidden")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("IsThirdPartyTransfersForbidden resp:%+v", resp)
-
-	resp, err = strategyManager.GetNonce(stakerAddr)
-	assert.NoError(t, err, "GetNonce")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("GetNonce resp:%+v", resp)
-
 	resp, err = strategyManager.GetStakerStrategyList(strategyAddr)
 	assert.NoError(t, err, "GetStakerStrategyList")
 	assert.NotNil(t, resp, "response nil")
@@ -320,25 +308,6 @@ func (suite *strategyManagerTestSuite) test_QueryStrategyManager() {
 
 	account, err := chainIO.GetCurrentAccount()
 	assert.NoError(t, err, "get account", account)
-	staker := account.GetAddress().String()
-	publicKey := account.GetPubKey()
-
-	params := strategymanager.QueryDigestHashParams{
-		Staker:       staker,
-		PublicKey:    base64.StdEncoding.EncodeToString(publicKey.Bytes()),
-		Strategy:     strategyAddr,
-		Token:        tokenAddr,
-		Amount:       "10",
-		Nonce:        1,
-		Expiry:       1,
-		ChainID:      "sat-bbn-localnet",
-		ContractAddr: managerAddr,
-	}
-
-	resp, err = strategyManager.CalculateDigestHash(params)
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("CalculateDigestHash resp:%+v", resp)
 
 	resp, err = strategyManager.GetStrategyWhitelister()
 	assert.NoError(t, err, "execute contract")
@@ -349,21 +318,6 @@ func (suite *strategyManagerTestSuite) test_QueryStrategyManager() {
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("GetStrategyManagerState resp:%+v", resp)
-
-	resp, err = strategyManager.GetDepositTypeHash()
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("GetDepositTypeHash resp:%+v", resp)
-
-	resp, err = strategyManager.DomainTypeHash()
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("DomainTypeHash resp:%+v", resp)
-
-	resp, err = strategyManager.DomainName()
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("DomainName resp:%+v", resp)
 
 	resp, err = strategyManager.DelegationManager()
 	assert.NoError(t, err, "execute contract")
