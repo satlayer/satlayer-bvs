@@ -48,7 +48,6 @@ import bvs_delegation_manager from "@satlayer/bvs-delegation-manager/schema/bvs-
 await generate(bvs_directory);
 await generate(bvs_delegation_manager);
 
-
 import bvs_rewards_coordinator from "@satlayer/bvs-rewards-coordinator/schema/bvs-rewards-coordinator.json" with { type: "json" };
 await generate(bvs_rewards_coordinator);
 
