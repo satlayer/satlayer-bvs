@@ -19,8 +19,8 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(IsPausedResponse)]
     IsPaused {
-        /// The address of the caller (contract)
-        sender: String,
+        /// The contract of the caller (caller)
+        contract: String,
         /// The ExecuteMsg method to check if it is paused
         method: String,
     },
