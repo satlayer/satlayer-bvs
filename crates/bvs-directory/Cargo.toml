@@ -1,14 +1,27 @@
 [package]
 name = "bvs-directory"
-version = "2.0.0"
-edition = "2021"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
 
-exclude = ["contract.wasm", "hash.txt"]
+include = ["src"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[package.metadata.optimizer]
+standard-build = false
+builds = [
+    { name = "", default-features = false },
+]
+
 [features]
+default = ["testing"]
 library = []
 testing = ["library", "dep:cw-multi-test"]
 
@@ -34,5 +47,5 @@ bvs-registry = { workspace = true, features = ["library"] }
 [dev-dependencies]
 cw-multi-test = { workspace = true }
 bvs-testing = { workspace = true }
-bvs-registry = { workspace = true, features = ["testing"] }
-bvs-delegation-manager = { workspace = true, features = ["testing"] }
+bvs-registry = { workspace = true }
+bvs-delegation-manager = { workspace = true }

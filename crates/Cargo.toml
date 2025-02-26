@@ -1,13 +1,13 @@
 [workspace]
 members = [
-    # production contracts
+    # CosmWasm Contracts
     "bvs-registry",
-    "bvs-delegation-manager",
-    "bvs-directory",
-    "bvs-rewards-coordinator",
-    "bvs-slash-manager",
     "bvs-strategy-base",
     "bvs-strategy-manager",
+    "bvs-directory",
+    "bvs-delegation-manager",
+    "bvs-rewards-coordinator",
+    "bvs-slash-manager",
 ]
 
 resolver = "2"
@@ -16,14 +16,14 @@ resolver = "2"
 version = "0.1.0"
 authors = ["SatLayer"]
 edition = "2021"
-license = "MIT"
+license = "UNLICENSED"
 repository = "https://github.com/satlayer/satlayer-bvs.git"
 homepage = "https://satlayer.xyz/"
 documentation = "https://github.com/satlayer/satlayer-bvs.git"
 keywords = ["SatLayer", "Restaking", "BTC", "cosmos", "cosmwasm"]
 
 [workspace.dependencies]
-# cosmwasm core
+# CosmWasm Core
 cosmwasm-schema = "=2.1.0"
 cosmwasm-std = { version = "=2.1.0", features = [
     # https://github.com/babylonlabs-io/babylon/blob/d065cdd9d7f1219fece38cb678d1233566cf530b/app/keepers/keepers.go#L101
@@ -48,7 +48,8 @@ serde_json = "1.0.139"
 base64 = "0.22.1"
 cw-utils = "2.0.0"
 
-# contracts
+# CosmWasm Libraries & Contracts
+bvs-library = { path = "./bvs-library" }
 bvs-registry = { path = "./bvs-registry" }
 bvs-delegation-manager = { path = "./bvs-delegation-manager" }
 bvs-directory = { path = "./bvs-directory" }

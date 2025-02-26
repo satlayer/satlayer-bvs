@@ -1,17 +1,27 @@
 [package]
 name = "bvs-rewards-coordinator"
-version = "2.0.0"
-edition = "2021"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
 
-exclude = [
-  "contract.wasm",
-  "hash.txt",
-]
+include = ["src"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[package.metadata.optimizer]
+standard-build = false
+builds = [
+    { name = "", default-features = false },
+]
+
 [features]
+default = ["testing"]
 library = []
 testing = ["library", "dep:cw-multi-test"]
 
@@ -29,8 +39,9 @@ serde_json = { workspace = true }
 bvs-base = { workspace = true }
 base64 = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
-bvs-strategy-manager = { workspace = true, features = ["library"] }
 bvs-registry = { workspace = true, features = ["library"] }
+bvs-strategy-manager = { workspace = true, features = ["library"] }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
+bvs-registry = { workspace = true }

@@ -1,19 +1,29 @@
 [package]
 name = "bvs-registry"
-version = "2.0.0"
-edition = "2021"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
 
-exclude = [
-    "contract.wasm",
-    "hash.txt",
-]
+include = ["src"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[package.metadata.optimizer]
+standard-build = false
+builds = [
+    { name = "", default-features = false },
+]
+
 [features]
-testing = ["library", "dep:cw-multi-test"]
+default = ["testing"]
 library = ["dep:strum"]
+testing = ["library", "dep:cw-multi-test"]
 
 [dependencies]
 cosmwasm-std = { workspace = true }
