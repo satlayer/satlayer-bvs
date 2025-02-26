@@ -1059,13 +1059,12 @@ mod tests {
         sha256, ExecuteEarnerTreeMerkleLeaf, ExecuteRewardsMerkleClaim, StrategyAndMultiplier,
     };
     use base64::{engine::general_purpose, Engine as _};
-    use bvs_base::roles::{PAUSER, UNPAUSER};
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_dependencies_with_balances, mock_env, MockApi,
         MockQuerier, MockStorage,
     };
     use cosmwasm_std::{
-        attr, coins, from_json, Addr, Binary, ContractResult, OwnedDeps, SystemError, SystemResult,
+        coins, from_json, Addr, Binary, ContractResult, OwnedDeps, SystemError, SystemResult,
         Timestamp, WasmQuery,
     };
 
@@ -1501,11 +1500,12 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::CreateBvsRewardsSubmission {
-            rewards_submissions: submission,
-        };
-
-        let result = execute(deps.as_mut(), env.clone(), owner_info.clone(), msg);
+        let result = create_bvs_rewards_submission(
+            deps.as_mut(),
+            env.clone(),
+            owner_info.clone(),
+            submission,
+        );
 
         assert!(result.is_ok());
         let response = result.unwrap();
@@ -1597,25 +1597,22 @@ mod tests {
             }),
         });
 
-        let msg_set_submitter = ExecuteMsg::SetRewardsForAllSubmitter {
-            submitter: deps.api.addr_make("submitter").to_string(),
-            new_value: true,
-        };
-
-        let _ = execute(
+        let submitter = deps.api.addr_make("submitter");
+        let _ = set_rewards_for_all_submitter(
             deps.as_mut(),
-            env.clone(),
             owner_info.clone(),
-            msg_set_submitter,
+            submitter.clone(),
+            true,
         );
 
-        let msg = ExecuteMsg::CreateRewardsForAllSubmission {
-            rewards_submissions: submission,
-        };
+        let submmiter_info = message_info(&submitter, &[]);
 
-        let submmiter_info = message_info(&deps.api.addr_make("submitter"), &[]);
-
-        let result = execute(deps.as_mut(), env.clone(), submmiter_info.clone(), msg);
+        let result = create_rewards_for_all_submission(
+            deps.as_mut(),
+            env.clone(),
+            submmiter_info.clone(),
+            submission,
+        );
 
         if let Err(err) = &result {
             println!("Error: {:?}", err);
@@ -1833,7 +1830,7 @@ mod tests {
     fn test_set_rewards_updater() {
         let (
             mut deps,
-            env,
+            _env,
             owner_info,
             _pauser_info,
             _unpauser_info,
@@ -1843,12 +1840,7 @@ mod tests {
         ) = instantiate_contract();
 
         let new_updater = deps.api.addr_make("new_updater");
-
-        let msg = ExecuteMsg::SetRewardsUpdater {
-            new_updater: new_updater.to_string(),
-        };
-
-        let result = execute(deps.as_mut(), env, owner_info, msg);
+        let result = set_rewards_updater(deps.as_mut(), owner_info, new_updater.clone());
 
         assert!(result.is_ok());
 
@@ -1886,7 +1878,7 @@ mod tests {
     fn test_set_rewards_for_all_submitter() {
         let (
             mut deps,
-            env,
+            _env,
             owner_info,
             _pauser_info,
             _unpauser_info,
@@ -1902,12 +1894,8 @@ mod tests {
             .save(&mut deps.storage, submitter.clone(), &initial_value)
             .unwrap();
 
-        let msg = ExecuteMsg::SetRewardsForAllSubmitter {
-            submitter: submitter.to_string(),
-            new_value: true,
-        };
-
-        let result = execute(deps.as_mut(), env.clone(), owner_info, msg.clone());
+        let result =
+            set_rewards_for_all_submitter(deps.as_mut(), owner_info, submitter.clone(), true);
 
         assert!(result.is_ok());
 
@@ -1931,8 +1919,12 @@ mod tests {
         assert!(stored_value);
 
         let unauthorized_info = message_info(&Addr::unchecked("not_owner"), &[]);
-
-        let result = execute(deps.as_mut(), env, unauthorized_info, msg);
+        let result = set_rewards_for_all_submitter(
+            deps.as_mut(),
+            unauthorized_info,
+            submitter.clone(),
+            true,
+        );
 
         assert!(result.is_err());
 
@@ -1993,7 +1985,7 @@ mod tests {
     fn test_set_global_operator_commission() {
         let (
             mut deps,
-            env,
+            _env,
             owner_info,
             _pauser_info,
             _unpauser_info,
@@ -2008,12 +2000,8 @@ mod tests {
             .unwrap();
 
         let new_commission_bips = 150;
-
-        let msg = ExecuteMsg::SetGlobalOperatorCommission {
-            new_commission_bips,
-        };
-
-        let result = execute(deps.as_mut(), env.clone(), owner_info.clone(), msg.clone());
+        let result =
+            set_global_operator_commission(deps.as_mut(), owner_info.clone(), new_commission_bips);
 
         assert!(result.is_ok());
 
@@ -2035,8 +2023,8 @@ mod tests {
         assert_eq!(stored_commission_bips, new_commission_bips);
 
         let info_not_owner = message_info(&Addr::unchecked("info_not_owner"), &[]);
-
-        let result = execute(deps.as_mut(), env, info_not_owner, msg);
+        let result =
+            set_global_operator_commission(deps.as_mut(), info_not_owner, new_commission_bips);
         assert!(result.is_err());
 
         if let Err(err) = result {
@@ -2952,19 +2940,14 @@ mod tests {
         ACTIVATION_DELAY.save(&mut deps.storage, &60u32).unwrap();
 
         let root = Binary::from(b"valid_root".to_vec());
-        let root_base64 = root.to_base64();
         let rewards_calculation_end_timestamp = 1100;
 
-        let msg = ExecuteMsg::SubmitRoot {
-            root: root_base64.clone(),
-            rewards_calculation_end_timestamp,
-        };
-
-        let result = execute(
+        let result = submit_root(
             deps.as_mut(),
             env.clone(),
             rewards_updater_info.clone(),
-            msg,
+            root.clone(),
+            rewards_calculation_end_timestamp,
         );
 
         assert!(result.is_ok());
@@ -2991,16 +2974,12 @@ mod tests {
         );
 
         let past_timestamp = 500;
-        let msg = ExecuteMsg::SubmitRoot {
-            root: root_base64.clone(),
-            rewards_calculation_end_timestamp: past_timestamp,
-        };
-
-        let result = execute(
+        let result = submit_root(
             deps.as_mut(),
             env.clone(),
             rewards_updater_info.clone(),
-            msg,
+            root.clone(),
+            past_timestamp,
         );
         assert!(result.is_err());
         if let Err(err) = result {
@@ -3008,16 +2987,12 @@ mod tests {
         }
 
         let future_timestamp = env.block.time.seconds() + 100;
-        let msg = ExecuteMsg::SubmitRoot {
-            root: root_base64.clone(),
-            rewards_calculation_end_timestamp: future_timestamp,
-        };
-
-        let result = execute(
+        let result = submit_root(
             deps.as_mut(),
             env.clone(),
             rewards_updater_info.clone(),
-            msg,
+            root.clone(),
+            future_timestamp,
         );
         assert!(result.is_err());
         if let Err(err) = result {
@@ -3025,12 +3000,14 @@ mod tests {
         }
 
         let unauthorized_info = message_info(&Addr::unchecked("not_rewards_updater"), &[]);
-        let msg = ExecuteMsg::SubmitRoot {
-            root: root_base64,
-            rewards_calculation_end_timestamp,
-        };
 
-        let result = execute(deps.as_mut(), env.clone(), unauthorized_info, msg);
+        let result = submit_root(
+            deps.as_mut(),
+            env.clone(),
+            unauthorized_info,
+            root.clone(),
+            rewards_calculation_end_timestamp,
+        );
         assert!(result.is_err());
         if let Err(err) = result {
             assert_eq!(err, ContractError::NotRewardsUpdater {});
@@ -3218,7 +3195,7 @@ mod tests {
             earner_token_root: general_purpose::STANDARD.encode(token_root),
         };
 
-        let exeute_claim = ExecuteRewardsMerkleClaim {
+        let execute_claim = ExecuteRewardsMerkleClaim {
             root_index: 0,
             earner_index: 0,
             earner_tree_proof: vec![],
@@ -3254,12 +3231,13 @@ mod tests {
             ],
         };
 
-        let msg = ExecuteMsg::ProcessClaim {
-            claim: exeute_claim.clone(),
-            recipient: recipient.to_string(),
-        };
-
-        let result = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        let result = process_claim(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            claim.clone(),
+            recipient.clone(),
+        );
         println!("Error: {:?}", result);
         assert!(result.is_ok());
 
@@ -3383,14 +3361,7 @@ mod tests {
             .save(&mut deps.storage, &1u64)
             .unwrap();
 
-        let msg = ExecuteMsg::DisableRoot { root_index: 0 };
-
-        let result = execute(
-            deps.as_mut(),
-            env.clone(),
-            rewards_updater_info.clone(),
-            msg.clone(),
-        );
+        let result = disable_root(deps.as_mut(), env.clone(), rewards_updater_info.clone(), 0);
         assert!(result.is_ok());
 
         let response = result.unwrap();
@@ -3406,12 +3377,7 @@ mod tests {
         assert!(stored_root.disabled);
 
         // Test disabling an already disabled root
-        let result = execute(
-            deps.as_mut(),
-            env.clone(),
-            rewards_updater_info.clone(),
-            msg.clone(),
-        );
+        let result = disable_root(deps.as_mut(), env.clone(), rewards_updater_info.clone(), 0);
         assert!(result.is_err());
         if let Err(err) = result {
             assert_eq!(err, ContractError::AlreadyDisabled {});
@@ -3432,29 +3398,15 @@ mod tests {
             .save(&mut deps.storage, &2u64)
             .unwrap();
 
-        let msg_activated = ExecuteMsg::DisableRoot { root_index: 1 };
-
         // Test disabling an activated root
-        let result = execute(
-            deps.as_mut(),
-            env.clone(),
-            rewards_updater_info.clone(),
-            msg_activated,
-        );
+        let result = disable_root(deps.as_mut(), env.clone(), rewards_updater_info.clone(), 1);
         assert!(result.is_err());
         if let Err(err) = result {
             assert_eq!(err, ContractError::AlreadyActivated {});
         }
 
         // Test with an invalid root index
-        let msg_invalid_index = ExecuteMsg::DisableRoot { root_index: 3 };
-
-        let result = execute(
-            deps.as_mut(),
-            env.clone(),
-            rewards_updater_info.clone(),
-            msg_invalid_index,
-        );
+        let result = disable_root(deps.as_mut(), env.clone(), rewards_updater_info.clone(), 3);
         assert!(result.is_err());
         if let Err(err) = result {
             assert_eq!(err, ContractError::InvalidRootIndex {});
@@ -3462,130 +3414,10 @@ mod tests {
 
         // Test unauthorized caller
         let unauthorized_info = message_info(&Addr::unchecked("not_rewards_updater"), &[]);
-        let result = execute(deps.as_mut(), env, unauthorized_info, msg);
+        let result = disable_root(deps.as_mut(), env, unauthorized_info, 1);
         assert!(result.is_err());
         if let Err(err) = result {
             assert_eq!(err, ContractError::NotRewardsUpdater {});
         }
-    }
-
-    #[test]
-    fn test_pause() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            pauser_info,
-            _unpauser_info,
-            _strategy_manager_info,
-            _delegation_manager_info,
-            _rewards_updater_info,
-        ) = instantiate_contract();
-
-        let pause_msg = ExecuteMsg::Pause {};
-        let res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg).unwrap();
-
-        assert_eq!(res.attributes, vec![attr("action", "PAUSED")]);
-
-        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_state, 1);
-    }
-
-    #[test]
-    fn test_unpause() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            _pauser_info,
-            unpauser_info,
-            _strategy_manager_info,
-            _delegation_manager_info,
-            _rewards_updater_info,
-        ) = instantiate_contract();
-
-        let unpause_msg = ExecuteMsg::Unpause {};
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            unpauser_info.clone(),
-            unpause_msg,
-        )
-        .unwrap();
-
-        assert_eq!(res.attributes, vec![attr("action", "UNPAUSED")]);
-
-        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_state, 0);
-    }
-
-    #[test]
-    fn test_set_pauser() {
-        let (
-            mut deps,
-            env,
-            owner_info,
-            _pauser_info,
-            _unpauser_info,
-            _strategy_manager_info,
-            _delegation_manager_info,
-            _rewards_updater_info,
-        ) = instantiate_contract();
-
-        let new_pauser = deps.api.addr_make("new_pauser").to_string();
-
-        let set_pauser_msg = ExecuteMsg::SetPauser {
-            new_pauser: new_pauser.to_string(),
-        };
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            owner_info.clone(),
-            set_pauser_msg,
-        )
-        .unwrap();
-
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "method" && a.value == "set_pauser"));
-
-        let pauser = PAUSER.load(&deps.storage).unwrap();
-        assert_eq!(pauser, Addr::unchecked(new_pauser));
-    }
-
-    #[test]
-    fn test_set_unpauser() {
-        let (
-            mut deps,
-            env,
-            owner_info,
-            _pauser_info,
-            _unpauser_info,
-            _strategy_manager_info,
-            _delegation_manager_info,
-            _rewards_updater_info,
-        ) = instantiate_contract();
-
-        let new_unpauser = deps.api.addr_make("new_unpauser").to_string();
-
-        let set_unpauser_msg = ExecuteMsg::SetUnpauser {
-            new_unpauser: new_unpauser.to_string(),
-        };
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            owner_info.clone(),
-            set_unpauser_msg,
-        )
-        .unwrap();
-
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "method" && a.value == "set_unpauser"));
-
-        let unpauser = UNPAUSER.load(&deps.storage).unwrap();
-        assert_eq!(unpauser, Addr::unchecked(new_unpauser));
     }
 }
