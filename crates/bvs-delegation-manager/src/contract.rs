@@ -931,7 +931,7 @@ fn set_operator_details(
 ) -> Result<Response, ContractError> {
     let current = OPERATOR_DETAILS
         .may_load(deps.storage, &operator)?
-        .unwrap_or_else(|| OperatorDetails {
+        .unwrap_or(OperatorDetails {
             staker_opt_out_window_blocks: 0,
         });
 
