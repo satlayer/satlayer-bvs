@@ -1007,44 +1007,39 @@ mod tests {
         deps.querier.update_wasm({
             let contract_address = contract_address.clone();
             let user_address = Addr::unchecked(user.clone());
-            move |query| {
-                match query {
-                    WasmQuery::Smart {
-                        contract_addr, msg, ..
-                    } => {
-                        if contract_addr == &strategy_manager {
-                            let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
-                            match msg {
-                                StrategyManagerQueryMsg::GetStakerStrategyShares {
-                                    staker,
-                                    strategy,
-                                } => {
-                                    if staker == user_address.to_string()
-                                        && strategy == contract_address.to_string()
-                                    {
-                                        return SystemResult::Ok(ContractResult::Ok(
-                                            to_json_binary(&StakerStrategySharesResponse {
-                                                shares: Uint128::new(1_000),
-                                            })
-                                            .unwrap(),
-                                        ));
-                                    }
-                                }
-                                _ => {
-                                    // Handle other cases if needed
+            move |query| match query {
+                WasmQuery::Smart {
+                    contract_addr, msg, ..
+                } => {
+                    if contract_addr == &strategy_manager {
+                        let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
+                        match msg {
+                            StrategyManagerQueryMsg::GetStakerStrategyShares {
+                                staker,
+                                strategy,
+                            } => {
+                                if staker == user_address.to_string()
+                                    && strategy == contract_address.to_string()
+                                {
+                                    return SystemResult::Ok(ContractResult::Ok(
+                                        to_json_binary(&StakerStrategySharesResponse {
+                                            shares: Uint128::new(1_000),
+                                        })
+                                        .unwrap(),
+                                    ));
                                 }
                             }
                         }
-                        SystemResult::Err(SystemError::InvalidRequest {
-                            error: "not implemented".to_string(),
-                            request: msg.clone(),
-                        })
                     }
-                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                    SystemResult::Err(SystemError::InvalidRequest {
                         error: "not implemented".to_string(),
-                        request: Binary::from(b"other".as_ref()),
-                    }),
+                        request: msg.clone(),
+                    })
                 }
+                _ => SystemResult::Err(SystemError::InvalidRequest {
+                    error: "not implemented".to_string(),
+                    request: Binary::from(b"other".as_ref()),
+                }),
             }
         });
 

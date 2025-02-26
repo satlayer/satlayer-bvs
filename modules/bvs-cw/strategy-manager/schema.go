@@ -272,7 +272,6 @@ type InstantiateMsg struct {
 	InitialStrategyWhitelister string `json:"initial_strategy_whitelister"`
 	Pauser                     string `json:"pauser"`
 	SlashManager               string `json:"slash_manager"`
-	StrategyFactory            string `json:"strategy_factory"`
 	Unpauser                   string `json:"unpauser"`
 }
 

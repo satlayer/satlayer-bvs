@@ -25,15 +25,11 @@ const delegationAddr = "bbn1q7v924jjct6xrc89n05473juncg3snjwuxdh62xs2ua044a7tp8s
 
 const slashManagerAddr = "bbn1ht8js7p6y5jxthze8hy3egfxflh8t9mvkl79w75mg6atu4ssfc0ssk77p4"
 
-const factoryAddr = "bbn18h8ncg9szj3v92cz289qz3ndwqk5zema4cr2t4e7amjaehrae52qyw07y9"
-
 const stakerAddr = "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk"
 const tokenAddr = "bbn1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sp4gequ"
 
-const homeDir = "../.babylon"
 const keyName = "staker1"
 
-const actualStakerAddr = "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk"
 const actualStakerKeyName = "staker2"
 
 const ownerAddr = "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"

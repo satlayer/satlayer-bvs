@@ -90,17 +90,6 @@ using a virtual balance mechanism to mitigate rounding errors and improve precis
 It also includes mechanisms to pause deposits and withdrawals,
 transfer ownership, and emit events related to exchange rates.
 
-### BVS Strategy Factory
-
-The StrategyFactory contract serves as a centralized factory
-for deploying and managing investment strategy contracts within the BVS ecosystem.
-It allows the contract owner to create new strategy contracts for specific tokens,
-manage existing strategies, and enforce policies such as blacklisting tokens and controlling strategy access.
-The contract interacts with a StrategyManager contract to maintain a whitelist of approved strategies
-and to set permissions related to third-party transfers.
-It also includes functionalities for pausing the deployment of new strategies, transferring ownership,
-and updating configuration parameters like the strategy code ID and the strategy manager address.
-
 ### BVS Slash Manager
 
 The SlashManager contract is a critical component in the BVS ecosystem

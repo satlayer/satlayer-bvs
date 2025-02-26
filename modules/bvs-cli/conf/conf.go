@@ -26,8 +26,6 @@ type Contract struct {
 	RewardCoordinator string `json:"RewardCoordinator"`
 	Cw20              string `json:"cw20"`
 	Slash             string `json:"slashManager"`
-	StrategyBaseTVL   string `json:"strategyBaseTVL"`
-	StrategyFactory   string `json:"strategyFactory"`
 }
 
 var content = `
@@ -50,6 +48,4 @@ strategyBase = "bbn14x6qg6aus8jn6je8zq7fhpvaq8uz4c75dfh3zwcf8736ukc076rse9w8jy"
 rewardCoordinator = "bbn1v9gyy4nzegj8z2w63gdkrtathenkqvght3yaa72edkp0rs5aks3sfkyg0t"
 cw20 = "bbn1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sp4gequ"
 slash = "bbn1z52hmh7ht0364lzcs8700sgrnns84sa3wr9c8upd80es5n5x65mq2dedfp"
-strategyBaseTVL = "bbn108l2c6l5aw0pv68mhq764kq9344h4prefft4uufelmweasfstfzsxv0w5p"
-strategyFactory = "bbn1x7v4jf9ezmy9zy7yzjqv4njy0ef3q8np0dey6agj67wznsa90zdslzvyxs"
 `

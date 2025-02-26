@@ -13,7 +13,6 @@ use cosmwasm_std::Uint128;
 pub struct InstantiateMsg {
     pub delegation_manager: String,
     pub slash_manager: String,
-    pub strategy_factory: String,
     pub initial_strategy_whitelister: String,
     pub initial_owner: String,
     pub pauser: String,
