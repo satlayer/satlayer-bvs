@@ -1,14 +1,15 @@
+use bvs_library::testing::TestingContract;
 use bvs_registry::msg::{ExecuteMsg, InstantiateMsg, IsPausedResponse, QueryMsg};
-use bvs_registry::testing;
 use bvs_registry::testing::RegistryContract;
+use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::Event;
 use cosmwasm_std::{to_json_binary, WasmMsg};
 use cw_multi_test::{App, Executor};
 
 fn instantiate(msg: Option<InstantiateMsg>) -> (App, RegistryContract) {
     let mut app = App::default();
-    let code_id = app.store_code(testing::contract());
-    let contract = testing::instantiate(&mut app, code_id, msg);
+    let env = mock_env();
+    let contract = RegistryContract::setup(&mut app, &env, msg);
     (app, contract)
 }
 

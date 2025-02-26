@@ -228,6 +228,7 @@ dependencies = [
  "bech32 0.8.1",
  "bvs-base",
  "bvs-delegation-manager",
+ "bvs-library",
  "bvs-registry",
  "bvs-testing",
  "cosmwasm-crypto",
@@ -246,9 +247,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "bvs-library"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "bech32 0.8.1",
+ "cosmwasm-crypto",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "ripemd",
+ "secp256k1",
+ "serde",
+ "sha2",
+]
+
+[[package]]
 name = "bvs-registry"
 version = "0.1.0"
 dependencies = [
+ "bvs-library",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
@@ -265,6 +282,7 @@ name = "bvs-rewards-coordinator"
 version = "0.1.0"
 dependencies = [
  "base64",
+ "bvs-library",
  "bvs-registry",
  "bvs-strategy-manager",
  "cosmwasm-schema",

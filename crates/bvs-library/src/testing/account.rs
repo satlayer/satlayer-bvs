@@ -1,10 +1,14 @@
-use base64::{engine::general_purpose, Engine as _};
-use bech32::{self, ToBase32, Variant};
+use base64::Engine as _;
+use bech32::{self, ToBase32};
+use sha2::Digest;
+
+use base64::engine::general_purpose;
+use bech32::Variant;
 use cosmwasm_std::Addr;
 use ripemd::Ripemd160;
 use secp256k1::ecdsa::Signature;
 use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
-use sha2::{Digest, Sha256};
+use sha2::Sha256;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Account {
