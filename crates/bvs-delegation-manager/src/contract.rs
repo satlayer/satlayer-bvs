@@ -105,30 +105,10 @@ pub fn execute(
         ExecuteMsg::RegisterAsOperator {
             operator_details,
             metadata_uri,
-        } => {
-            let deprecated_earnings_receiver_addr =
-                Addr::unchecked(&operator_details.deprecated_earnings_receiver);
-
-            let operator_details = OperatorDetails {
-                deprecated_earnings_receiver: deprecated_earnings_receiver_addr,
-                staker_opt_out_window_blocks: operator_details.staker_opt_out_window_blocks,
-            };
-
-            register_as_operator(deps, info, env, operator_details, metadata_uri)
-        }
+        } => register_as_operator(deps, info, env, operator_details, metadata_uri),
         ExecuteMsg::ModifyOperatorDetails {
             new_operator_details,
-        } => {
-            let deprecated_earnings_receiver_addr =
-                Addr::unchecked(&new_operator_details.deprecated_earnings_receiver);
-
-            let operator_details = OperatorDetails {
-                deprecated_earnings_receiver: deprecated_earnings_receiver_addr,
-                staker_opt_out_window_blocks: new_operator_details.staker_opt_out_window_blocks,
-            };
-
-            modify_operator_details(deps, info, operator_details)
-        }
+        } => modify_operator_details(deps, info, new_operator_details),
         ExecuteMsg::UpdateOperatorMetadataUri { metadata_uri } => {
             update_operator_metadata_uri(deps, info, metadata_uri)
         }
@@ -947,34 +927,29 @@ fn set_strategy_withdrawal_delay_blocks_internal(
 fn set_operator_details(
     deps: DepsMut,
     operator: Addr,
-    new_operator_details: OperatorDetails,
+    updated: OperatorDetails,
 ) -> Result<Response, ContractError> {
-    let current_operator_details = OPERATOR_DETAILS
+    let current = OPERATOR_DETAILS
         .may_load(deps.storage, &operator)?
-        .unwrap_or_else(|| OperatorDetails {
+        .unwrap_or(OperatorDetails {
             staker_opt_out_window_blocks: 0,
-            deprecated_earnings_receiver: Addr::unchecked(""),
         });
 
-    if new_operator_details.staker_opt_out_window_blocks > MAX_STAKER_OPT_OUT_WINDOW_BLOCKS {
+    if updated.staker_opt_out_window_blocks > MAX_STAKER_OPT_OUT_WINDOW_BLOCKS {
         return Err(ContractError::CannotBeExceedMaxStakerOptOutWindowBlocks {});
     }
 
-    if new_operator_details.staker_opt_out_window_blocks
-        < current_operator_details.staker_opt_out_window_blocks
-    {
+    if updated.staker_opt_out_window_blocks < current.staker_opt_out_window_blocks {
         return Err(ContractError::CannotBeDecreased {});
     }
 
-    OPERATOR_DETAILS.save(deps.storage, &operator, &new_operator_details)?;
+    OPERATOR_DETAILS.save(deps.storage, &operator, &updated)?;
 
     let event = Event::new("OperatorDetailsSet")
         .add_attribute("operator", operator.to_string())
         .add_attribute(
             "staker_opt_out_window_blocks",
-            new_operator_details
-                .staker_opt_out_window_blocks
-                .to_string(),
+            updated.staker_opt_out_window_blocks.to_string(),
         );
 
     Ok(Response::new().add_event(event))
@@ -1256,7 +1231,6 @@ fn remove_shares_and_queue_withdrawal(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::msg::ExecuteOperatorDetails;
     use crate::utils::ExecuteDelegateParams;
     use bvs_base::roles::{PAUSER, UNPAUSER};
     use cosmwasm_std::testing::{
@@ -1708,7 +1682,6 @@ mod tests {
             .unwrap();
 
         let initial_operator_details = OperatorDetails {
-            deprecated_earnings_receiver: earnings_receiver1,
             staker_opt_out_window_blocks: 100,
         };
 
@@ -1716,8 +1689,7 @@ mod tests {
             .save(deps.as_mut().storage, &operator, &initial_operator_details)
             .unwrap();
 
-        let new_operator_details = ExecuteOperatorDetails {
-            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver2").to_string(),
+        let new_operator_details = OperatorDetails {
             staker_opt_out_window_blocks: 200,
         };
 
@@ -1751,17 +1723,12 @@ mod tests {
         // Verify the updated operator details
         let updated_details = OPERATOR_DETAILS.load(&deps.storage, &operator).unwrap();
         assert_eq!(
-            updated_details.deprecated_earnings_receiver,
-            Addr::unchecked(new_operator_details.deprecated_earnings_receiver)
-        );
-        assert_eq!(
             updated_details.staker_opt_out_window_blocks,
             new_operator_details.staker_opt_out_window_blocks
         );
 
         // Modify operator details with staker_opt_out_window_blocks exceeding max
-        let invalid_operator_details = ExecuteOperatorDetails {
-            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver3").to_string(),
+        let invalid_operator_details = OperatorDetails {
             staker_opt_out_window_blocks: MAX_STAKER_OPT_OUT_WINDOW_BLOCKS + 1,
         };
 
@@ -1783,8 +1750,7 @@ mod tests {
         }
 
         // Modify operator details with staker_opt_out_window_blocks decreasing
-        let decreasing_operator_details = ExecuteOperatorDetails {
-            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver4").to_string(),
+        let decreasing_operator_details = OperatorDetails {
             staker_opt_out_window_blocks: 50,
         };
 
@@ -1808,7 +1774,6 @@ mod tests {
 
         let operator = deps.api.addr_make("operator1");
         let initial_operator_details = OperatorDetails {
-            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver1"),
             staker_opt_out_window_blocks: 100,
         };
         OPERATOR_DETAILS
@@ -1816,7 +1781,6 @@ mod tests {
             .unwrap();
 
         let new_operator_details = OperatorDetails {
-            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver2"),
             staker_opt_out_window_blocks: 200,
         };
 
@@ -1838,7 +1802,6 @@ mod tests {
         );
 
         let invalid_operator_details = OperatorDetails {
-            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver3"),
             staker_opt_out_window_blocks: MAX_STAKER_OPT_OUT_WINDOW_BLOCKS + 1,
         };
 
@@ -1852,7 +1815,6 @@ mod tests {
         }
 
         let decreasing_operator_details = OperatorDetails {
-            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver4"),
             staker_opt_out_window_blocks: 50,
         };
 
@@ -2020,7 +1982,6 @@ mod tests {
 
         let operator = operator.clone();
         let operator_details = OperatorDetails {
-            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
             staker_opt_out_window_blocks: 100,
         };
 
@@ -2080,7 +2041,6 @@ mod tests {
 
         let operator = operator.clone();
         let operator_details = OperatorDetails {
-            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
             staker_opt_out_window_blocks: 100,
         };
 
@@ -2173,8 +2133,7 @@ mod tests {
             }),
         });
 
-        let operator_details = ExecuteOperatorDetails {
-            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver").to_string(),
+        let operator_details = OperatorDetails {
             staker_opt_out_window_blocks: 100,
         };
 
@@ -2219,10 +2178,6 @@ mod tests {
             .load(&deps.storage, &info_operator.sender)
             .unwrap();
         assert_eq!(
-            stored_operator_details.deprecated_earnings_receiver,
-            Addr::unchecked(operator_details.deprecated_earnings_receiver.clone())
-        );
-        assert_eq!(
             stored_operator_details.staker_opt_out_window_blocks,
             operator_details.staker_opt_out_window_blocks
         );
@@ -2254,7 +2209,6 @@ mod tests {
 
         let operator = deps.api.addr_make("operator1");
         let operator_details = OperatorDetails {
-            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
             staker_opt_out_window_blocks: 100,
         };
         OPERATOR_DETAILS
@@ -2634,7 +2588,6 @@ mod tests {
         let shares = vec![Uint128::new(100)];
 
         let operator_details = OperatorDetails {
-            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
             staker_opt_out_window_blocks: 100,
         };
         OPERATOR_DETAILS
@@ -2751,7 +2704,6 @@ mod tests {
         let shares = [Uint128::new(100)];
 
         let operator_details = OperatorDetails {
-            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
             staker_opt_out_window_blocks: 100,
         };
         OPERATOR_DETAILS
@@ -2912,7 +2864,6 @@ mod tests {
         let shares = vec![Uint128::new(100)];
 
         let operator_details = OperatorDetails {
-            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
             staker_opt_out_window_blocks: 100,
         };
         OPERATOR_DETAILS
@@ -3577,7 +3528,6 @@ mod tests {
 
         let operator = deps.api.addr_make("operator1");
         let operator_details = OperatorDetails {
-            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
             staker_opt_out_window_blocks: 100,
         };
 
@@ -3618,7 +3568,6 @@ mod tests {
 
         let operator = deps.api.addr_make("operator1");
         let operator_details = OperatorDetails {
-            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
             staker_opt_out_window_blocks: 100,
         };
 
@@ -3633,10 +3582,6 @@ mod tests {
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let details_response: OperatorDetailsResponse = from_json(res).unwrap();
 
-        assert_eq!(
-            details_response.details.deprecated_earnings_receiver,
-            operator_details.deprecated_earnings_receiver
-        );
         assert_eq!(
             details_response.details.staker_opt_out_window_blocks,
             operator_details.staker_opt_out_window_blocks
@@ -3659,7 +3604,6 @@ mod tests {
 
         let operator = deps.api.addr_make("operator1");
         let operator_details = OperatorDetails {
-            deprecated_earnings_receiver: deps.api.addr_make("earnings_receiver"),
             staker_opt_out_window_blocks: 100,
         };
 

@@ -48,15 +48,13 @@ func (r *DelegationManager) WithGasLimit(gasLimit uint64) *DelegationManager {
 
 func (r *DelegationManager) RegisterAsOperator(
 	ctx context.Context,
-	deprecatedEarningsReceiver,
 	metadataURI string,
 	stakerOptOutWindowBlocks int64,
 ) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		RegisterAsOperator: &delegationmanager.RegisterAsOperator{
-			OperatorDetails: delegationmanager.ExecuteOperatorDetails{
-				DeprecatedEarningsReceiver: deprecatedEarningsReceiver,
-				StakerOptOutWindowBlocks:   stakerOptOutWindowBlocks,
+			OperatorDetails: delegationmanager.NewOperatorDetailsClass{
+				StakerOptOutWindowBlocks: stakerOptOutWindowBlocks,
 			},
 			MetadataURI: metadataURI,
 		},
@@ -72,14 +70,12 @@ func (r *DelegationManager) RegisterAsOperator(
 
 func (r *DelegationManager) ModifyOperatorDetails(
 	ctx context.Context,
-	deprecatedEarningsReceiver string,
 	stakerOptOutWindowBlocks int64,
 ) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		ModifyOperatorDetails: &delegationmanager.ModifyOperatorDetails{
-			NewOperatorDetails: delegationmanager.ExecuteOperatorDetails{
-				DeprecatedEarningsReceiver: deprecatedEarningsReceiver,
-				StakerOptOutWindowBlocks:   stakerOptOutWindowBlocks,
+			NewOperatorDetails: delegationmanager.NewOperatorDetailsClass{
+				StakerOptOutWindowBlocks: stakerOptOutWindowBlocks,
 			},
 		},
 	}

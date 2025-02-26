@@ -106,7 +106,6 @@ func registerOperators() {
 		txResp, err := delegation.RegisterAsOperator(
 			context.Background(),
 			"",
-			"",
 			0,
 		)
 		if err != nil {

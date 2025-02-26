@@ -33,8 +33,7 @@ func GetOperatorDetails(operatorAddress string) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("DeprecatedEarningsReceiver: %s\nStakerOptOutWindowBlocks: %d",
-		resp.Details.DeprecatedEarningsReceiver, resp.Details.StakerOptOutWindowBlocks)
+	fmt.Printf("StakerOptOutWindowBlocks: %d", resp.Details.StakerOptOutWindowBlocks)
 }
 
 func GetStakerOptOutWindowBlocks(operatorAddress string) {

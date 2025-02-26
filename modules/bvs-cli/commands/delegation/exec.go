@@ -26,7 +26,6 @@ func RegOperator(KeyName string) {
 	txResp, err := delegation.RegisterAsOperator(
 		ctx,
 		"",
-		"",
 		0,
 	)
 	if err != nil {
@@ -35,12 +34,11 @@ func RegOperator(KeyName string) {
 	fmt.Printf("Delegation Register operator success. txn: %s\n", txResp.Hash)
 }
 
-func UpdateOperatorDetails(userKeyName, receiver string, stakerOptOutWindowBlocks int64) {
+func UpdateOperatorDetails(userKeyName string, stakerOptOutWindowBlocks int64) {
 	ctx := context.Background()
 	delegation, _ := newService(userKeyName)
 	txResp, err := delegation.ModifyOperatorDetails(
 		ctx,
-		receiver,
 		stakerOptOutWindowBlocks,
 	)
 	if err != nil {
