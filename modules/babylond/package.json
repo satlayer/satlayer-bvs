@@ -11,7 +11,6 @@
     "@satlayer/bvs-rewards-coordinator": "workspace:*",
     "@satlayer/bvs-slash-manager": "workspace:*",
     "@satlayer/bvs-strategy-base": "workspace:*",
-    "@satlayer/bvs-strategy-factory": "workspace:*",
     "@satlayer/bvs-strategy-manager": "workspace:*"
   }
 }

@@ -9,7 +9,6 @@
       <sourceFolder url="file://$MODULE_DIR$/bvs-rewards-coordinator/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-slash-manager/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-strategy-base/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/bvs-strategy-factory/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-strategy-manager/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-strategy-base-tvl-limits/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-test/src" isTestSource="false" />

@@ -11,7 +11,6 @@ import (
 	rewardscoordinator "github.com/satlayer/satlayer-bvs/bvs-cw/rewards-coordinator"
 	slashmanager "github.com/satlayer/satlayer-bvs/bvs-cw/slash-manager"
 	strategybase "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-base"
-	strategyfactory "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-factory"
 	strategymanager "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-manager"
 )
 
@@ -158,21 +157,6 @@ func (d *Deployer) DeployRewardsCoordinator(
 	}
 
 	return deployCrate(d, "bvs-rewards-coordinator", initMsg, "BVS Rewards Coordinator")
-}
-
-func (d *Deployer) DeployStrategyFactory(
-	strategyManager string, strategyCodeId int64,
-) *Contract[strategyfactory.InstantiateMsg] {
-	initMsg := strategyfactory.InstantiateMsg{
-		InitialPausedStatus: 0,
-		InitialOwner:        d.GenerateAddress("strategy-factory:initial_owner").String(),
-		Pauser:              d.GenerateAddress("strategy-factory:pauser").String(),
-		Unpauser:            d.GenerateAddress("strategy-factory:unpauser").String(),
-		StrategyManager:     strategyManager,
-		StrategyCodeID:      strategyCodeId,
-	}
-
-	return deployCrate(d, "bvs-strategy-factory", initMsg, "BVS Strategy Factory")
 }
 
 func (d *Deployer) DeployStrategyBase(
