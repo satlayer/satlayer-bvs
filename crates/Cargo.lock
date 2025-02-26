@@ -204,23 +204,17 @@ dependencies = [
 
 [[package]]
 name = "bvs-delegation-manager"
-version = "2.0.0"
+version = "0.1.0"
 dependencies = [
- "base64",
- "bech32 0.8.1",
  "bvs-base",
  "bvs-registry",
  "bvs-strategy-manager",
- "cosmwasm-crypto",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus",
  "cw2",
- "hex",
- "ripemd",
  "schemars",
- "secp256k1",
  "serde",
  "sha2",
  "thiserror",
@@ -228,7 +222,7 @@ dependencies = [
 
 [[package]]
 name = "bvs-directory"
-version = "2.0.0"
+version = "0.1.0"
 dependencies = [
  "base64",
  "bech32 0.8.1",
@@ -253,7 +247,7 @@ dependencies = [
 
 [[package]]
 name = "bvs-registry"
-version = "2.0.0"
+version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -268,7 +262,7 @@ dependencies = [
 
 [[package]]
 name = "bvs-rewards-coordinator"
-version = "2.0.0"
+version = "0.1.0"
 dependencies = [
  "base64",
  "bvs-base",
@@ -289,7 +283,7 @@ dependencies = [
 
 [[package]]
 name = "bvs-slash-manager"
-version = "2.0.0"
+version = "0.1.0"
 dependencies = [
  "base64",
  "bech32 0.8.1",
@@ -316,7 +310,7 @@ dependencies = [
 
 [[package]]
 name = "bvs-strategy-base"
-version = "2.0.0"
+version = "0.1.0"
 dependencies = [
  "bvs-base",
  "bvs-registry",
@@ -333,7 +327,7 @@ dependencies = [
 
 [[package]]
 name = "bvs-strategy-manager"
-version = "2.0.0"
+version = "0.1.0"
 dependencies = [
  "bvs-base",
  "bvs-registry",

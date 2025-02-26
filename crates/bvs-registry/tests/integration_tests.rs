@@ -1,12 +1,12 @@
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use bvs_registry::msg::InstantiateMsg;
 use cosmwasm_std::{to_json_binary, Addr, WasmMsg};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-struct BvsRegistryContract(pub Addr);
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+struct RegistryContract(pub Addr, pub InstantiateMsg);
 
-impl BvsRegistryContract {
+impl RegistryContract {
     pub fn addr(&self) -> Addr {
         self.0.clone()
     }
@@ -16,35 +16,15 @@ impl BvsRegistryContract {
 mod tests {
     use super::*;
     use bvs_registry::msg::{ExecuteMsg, InstantiateMsg, IsPausedResponse, QueryMsg};
-    use cosmwasm_std::{Empty, Event};
-    use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+    use bvs_registry::testing;
+    use cosmwasm_std::Event;
+    use cw_multi_test::{App, Executor};
 
-    pub fn contract() -> Box<dyn Contract<Empty>> {
-        let contract = ContractWrapper::new(
-            bvs_registry::contract::execute,
-            bvs_registry::contract::instantiate,
-            bvs_registry::contract::query,
-        );
-        Box::new(contract)
-    }
-
-    fn instantiate(msg: Option<InstantiateMsg>) -> (App, BvsRegistryContract) {
+    fn instantiate(msg: Option<InstantiateMsg>) -> (App, RegistryContract) {
         let mut app = App::default();
-        let code_id = app.store_code(contract());
-
-        let sender = app.api().addr_make("sender");
-        let owner = app.api().addr_make("owner");
-        let msg = msg.unwrap_or(InstantiateMsg {
-            owner: owner.to_string(),
-            initial_paused: false,
-        });
-        let registry_contract_addr = app
-            .instantiate_contract(code_id, sender, &msg, &[], "test", None)
-            .unwrap();
-
-        let cw_template_contract = BvsRegistryContract(registry_contract_addr);
-
-        (app, cw_template_contract)
+        let code_id = app.store_code(testing::contract());
+        let (addr, msg) = testing::instantiate(&mut app, code_id, msg);
+        (app, RegistryContract(addr, msg))
     }
 
     #[test]

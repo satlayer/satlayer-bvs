@@ -39,7 +39,6 @@ pub mod api {
     }
 }
 
-/// This is an integration testing module to allow easy testing of the contract in cw_multi_test
 #[cfg(feature = "testing")]
 pub mod testing {
     use cosmwasm_std::{Addr, Empty};
@@ -54,15 +53,21 @@ pub mod testing {
         Box::new(contract)
     }
 
+    impl crate::msg::InstantiateMsg {
+        pub fn default(app: &mut App) -> Self {
+            Self {
+                owner: app.api().addr_make("owner").to_string(),
+                initial_paused: false,
+            }
+        }
+    }
+
     pub fn instantiate(
         app: &mut App,
         code_id: u64,
         msg: Option<crate::msg::InstantiateMsg>,
     ) -> (Addr, crate::msg::InstantiateMsg) {
-        let msg = msg.unwrap_or(crate::msg::InstantiateMsg {
-            owner: app.api().addr_make("registry:owner").to_string(),
-            initial_paused: false,
-        });
+        let msg = msg.unwrap_or(crate::msg::InstantiateMsg::default(app));
 
         let addr = app
             .instantiate_contract(

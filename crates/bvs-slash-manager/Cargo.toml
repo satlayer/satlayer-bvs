@@ -1,17 +1,27 @@
 [package]
 name = "bvs-slash-manager"
-version = "2.0.0"
-edition = "2021"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
 
-exclude = [
-  "contract.wasm",
-  "hash.txt",
-]
+include = ["src"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[package.metadata.optimizer]
+standard-build = false
+builds = [
+    { name = "", default-features = false },
+]
+
 [features]
+default = ["testing"]
 library = []
 testing = ["library", "dep:cw-multi-test"]
 
@@ -33,9 +43,9 @@ base64 = { workspace = true }
 bvs-base = { workspace = true }
 serde_json = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
-bvs-strategy-manager = { workspace = true, features = ["library"] }
-bvs-delegation-manager = { workspace = true, features = ["library"] }
-bvs-registry = { workspace = true, features = ["library"] }
+bvs-registry = { workspace = true }
+bvs-strategy-manager = { workspace = true }
+bvs-delegation-manager = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
