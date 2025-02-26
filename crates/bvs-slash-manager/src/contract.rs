@@ -277,10 +277,9 @@ pub fn execute_slash_request(
 
     only_slasher(deps.as_ref(), &info)?;
 
-    let slash_details = match SLASH_DETAILS.may_load(deps.storage, slash_hash.clone())? {
-        Some(details) => details,
-        None => return Err(ContractError::SlashDetailsNotFound {}),
-    };
+    let mut slash_details = SLASH_DETAILS
+        .may_load(deps.storage, slash_hash.clone())?
+        .ok_or(ContractError::SlashDetailsNotFound {})?;
 
     if !slash_details.status {
         return Err(ContractError::InvalidSlashStatus {});
@@ -309,93 +308,91 @@ pub fn execute_slash_request(
         .querier
         .query_wasm_smart(DELEGATION_MANAGER.load(deps.storage)?, &query_msg)?;
 
-    let number_of_stakers = Uint128::from(stakers_response.stakers_and_shares.len() as u64);
+    if stakers_response.stakers_and_shares.is_empty() {
+        return Err(ContractError::NoStakersUnderOperator {});
+    }
 
-    if number_of_stakers.is_zero() {
+    let mut sum_of_shares = Uint128::zero();
+    for staker_info in &stakers_response.stakers_and_shares {
+        let staker_total_share = staker_info
+            .shares_per_strategy
+            .iter()
+            .fold(Uint128::zero(), |acc, (_, s)| acc + *s);
+        sum_of_shares += staker_total_share;
+    }
+    if sum_of_shares.is_zero() {
         return Err(ContractError::NoStakersUnderOperator {});
     }
 
     let total_slash_share = slash_details.share;
-
-    let slash_share_per_staker = total_slash_share
-        .checked_div(number_of_stakers)
-        .map_err(|_| ContractError::Overflow {})?;
-
-    if slash_share_per_staker.is_zero() {
+    if total_slash_share.is_zero() {
         return Err(ContractError::SlashShareTooSmall {});
     }
 
     let mut messages = vec![];
 
-    for staker_shares in stakers_response.stakers_and_shares.iter() {
-        let mut remaining_slash_amount = slash_share_per_staker;
+    for staker_info in &stakers_response.stakers_and_shares {
+        let staker_total_share = staker_info
+            .shares_per_strategy
+            .iter()
+            .fold(Uint128::zero(), |acc, (_, s)| acc + *s);
 
-        if remaining_slash_amount.is_zero() {
-            continue;
-        }
-
-        for (strategy, shares) in &staker_shares.shares_per_strategy {
-            if remaining_slash_amount.is_zero() {
+        for (strategy_addr, strategy_share) in &staker_info.shares_per_strategy {
+            if staker_total_share.is_zero() {
                 break;
             }
 
-            let slash_amount_in_strategy = remaining_slash_amount.min(*shares);
+            // Formula: slash_in_strat = staker_per_strategy_share * (total_slash_share / sum_of_shares)
+            let slash_in_strat = strategy_share
+                .checked_multiply_ratio(total_slash_share, sum_of_shares)
+                .map_err(|_| ContractError::Overflow {})?;
 
-            if slash_amount_in_strategy.is_zero() {
+            if slash_in_strat.is_zero() {
                 continue;
             }
 
-            let decrease_delegated_msg = DelegationManagerExecuteMsg::DecreaseDelegatedShares {
-                staker: staker_shares.staker.to_string(),
-                strategy: strategy.to_string(),
-                shares: slash_amount_in_strategy,
-            };
+            if slash_in_strat > *strategy_share {
+                return Err(ContractError::InsufficientSharesForStaker {
+                    staker: staker_info.staker.to_string(),
+                });
+            }
 
+            let dec_msg = DelegationManagerExecuteMsg::DecreaseDelegatedShares {
+                staker: staker_info.staker.to_string(),
+                strategy: strategy_addr.to_string(),
+                shares: slash_in_strat,
+            };
             messages.push(SubMsg::new(WasmMsg::Execute {
                 contract_addr: DELEGATION_MANAGER.load(deps.storage)?.to_string(),
-                msg: to_json_binary(&decrease_delegated_msg)?,
+                msg: to_json_binary(&dec_msg)?,
                 funds: vec![],
             }));
 
-            let remove_share_msg = StrategyManagerExecuteMsg::RemoveShares {
-                staker: staker_shares.staker.to_string(),
-                strategy: strategy.to_string(),
-                shares: slash_amount_in_strategy,
+            let remove_msg = StrategyManagerExecuteMsg::RemoveShares {
+                staker: staker_info.staker.to_string(),
+                strategy: strategy_addr.to_string(),
+                shares: slash_in_strat,
             };
-
             messages.push(SubMsg::new(WasmMsg::Execute {
                 contract_addr: STRATEGY_MANAGER.load(deps.storage)?.to_string(),
-                msg: to_json_binary(&remove_share_msg)?,
+                msg: to_json_binary(&remove_msg)?,
                 funds: vec![],
             }));
-
-            remaining_slash_amount = remaining_slash_amount
-                .checked_sub(slash_amount_in_strategy)
-                .map_err(|_| ContractError::Underflow {})?;
-        }
-
-        if !remaining_slash_amount.is_zero() {
-            return Err(ContractError::InsufficientSharesForStaker {
-                staker: staker_shares.staker.to_string(),
-            });
         }
     }
 
-    let mut slash_details = slash_details;
     slash_details.status = false;
     SLASH_DETAILS.save(deps.storage, slash_hash.clone(), &slash_details)?;
 
-    let slash_event = Event::new("slash_executed")
+    let slash_event = Event::new("slash_executed_weighted")
         .add_attribute("action", "execute_slash_request")
-        .add_attribute("slash_hash", slash_hash.clone())
+        .add_attribute("slash_hash", slash_hash)
         .add_attribute("operator", slash_details.operator.to_string())
-        .add_attribute("decreased_share", slash_details.share.to_string());
+        .add_attribute("total_slash_share", slash_details.share.to_string());
 
-    let response = Response::new()
+    Ok(Response::new()
         .add_submessages(messages)
-        .add_event(slash_event);
-
-    Ok(response)
+        .add_event(slash_event))
 }
 
 pub fn cancel_slash_request(
@@ -664,7 +661,7 @@ mod tests {
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
     use cosmwasm_std::{
-        attr, from_json, ContractResult, OwnedDeps, SystemError, SystemResult, WasmQuery,
+        attr, from_json, ContractResult, CosmosMsg, OwnedDeps, SystemError, SystemResult, WasmQuery,
     };
     use ripemd::Ripemd160;
     use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
@@ -861,7 +858,13 @@ mod tests {
             minimal_signature: new_minimal_signature,
         };
 
-        let response = execute(deps.as_mut(), env.clone(), slasher_info, execute_msg).unwrap();
+        let response = execute(
+            deps.as_mut(),
+            env.clone(),
+            slasher_info.clone(),
+            execute_msg,
+        )
+        .unwrap();
 
         assert_eq!(response.events.len(), 1);
         let event = &response.events[0];
@@ -1341,19 +1344,13 @@ mod tests {
 
         let slasher_addr = deps.api.addr_make("slasher");
         let operator_addr = deps.api.addr_make("operator");
-        let slash_validator = vec![
-            deps.api.addr_make("validator1").to_string(),
-            deps.api.addr_make("validator2").to_string(),
-        ];
-        let slash_validator_addr = vec![
-            deps.api.addr_make("validator1"),
-            deps.api.addr_make("validator2"),
-        ];
+        let slash_validator = vec![deps.api.addr_make("validator1").to_string()];
+        let slash_validator_addr = vec![deps.api.addr_make("validator1")];
 
         let slash_details = ExecuteSlashDetails {
             slasher: slasher_addr.to_string(),
             operator: operator_addr.to_string(),
-            share: Uint128::new(10),
+            share: Uint128::new(1_000_000),
             slash_signature: 1,
             slash_validator: slash_validator.clone(),
             reason: "Invalid action".to_string(),
@@ -1365,7 +1362,7 @@ mod tests {
         let expected_slash_details = SlashDetails {
             slasher: slasher_addr.clone(),
             operator: operator_addr.clone(),
-            share: Uint128::new(10),
+            share: Uint128::new(1_000_000),
             slash_signature: 1,
             slash_validator: slash_validator_addr.clone(),
             reason: "Invalid action".to_string(),
@@ -1399,15 +1396,15 @@ mod tests {
                                 StakerShares {
                                     staker: deps.api.addr_make("staker1"),
                                     shares_per_strategy: vec![
-                                        (deps.api.addr_make("strategy1"), Uint128::new(100)),
-                                        (deps.api.addr_make("strategy2"), Uint128::new(200)),
+                                        (deps.api.addr_make("strategy1"), Uint128::new(10_000_000)),
+                                        (deps.api.addr_make("strategy2"), Uint128::new(20_000_000)),
                                     ],
                                 },
                                 StakerShares {
                                     staker: deps.api.addr_make("staker2"),
                                     shares_per_strategy: vec![
-                                        (deps.api.addr_make("strategy1"), Uint128::new(150)),
-                                        (deps.api.addr_make("strategy2"), Uint128::new(250)),
+                                        (deps.api.addr_make("strategy1"), Uint128::new(15_000_000)),
+                                        (deps.api.addr_make("strategy2"), Uint128::new(25_000_000)),
                                     ],
                                 },
                             ],
@@ -1487,7 +1484,7 @@ mod tests {
 
         assert_eq!(execute_res.events.len(), 1);
         let event = &execute_res.events[0];
-        assert_eq!(event.ty, "slash_executed");
+        assert_eq!(event.ty, "slash_executed_weighted");
         assert_eq!(event.attributes.len(), 4);
 
         assert_eq!(event.attributes[0].key, "action");
@@ -1499,8 +1496,8 @@ mod tests {
         assert_eq!(event.attributes[2].key, "operator");
         assert_eq!(event.attributes[2].value, operator_addr.to_string());
 
-        assert_eq!(event.attributes[3].key, "decreased_share");
-        assert_eq!(event.attributes[3].value, "10");
+        assert_eq!(event.attributes[3].key, "total_slash_share");
+        assert_eq!(event.attributes[3].value, 1_000_000.to_string());
 
         let updated_slash_details = SLASH_DETAILS.load(&deps.storage, slash_hash).unwrap();
         assert_eq!(updated_slash_details.status, false);
@@ -1537,5 +1534,352 @@ mod tests {
         assert_eq!(event.attributes[0].value, "set_strategy_manager");
         assert_eq!(event.attributes[1].key, "new_strategy_manager");
         assert_eq!(event.attributes[1].value, new_strategy_manager.clone());
+    }
+
+    #[test]
+    fn test_slash_share_calculation() {
+        let (mut deps, env, _info, delegation_manager, _owner, _pauser, _unpauser) =
+            instantiate_contract();
+
+        let slasher_addr = deps.api.addr_make("slasher");
+        SLASHER
+            .save(&mut deps.storage, slasher_addr.clone(), &true)
+            .unwrap();
+        STRATEGY_MANAGER
+            .save(&mut deps.storage, &deps.api.addr_make("strategy_manager"))
+            .unwrap();
+
+        MINIMAL_SLASH_SIGNATURE.save(&mut deps.storage, &1).unwrap();
+
+        let operator_addr = deps.api.addr_make("operator");
+        let total_slash_amount = Uint128::new(40_000_000); // 40e6
+
+        let validator = deps.api.addr_make("validator");
+
+        VALIDATOR
+            .save(&mut deps.storage, validator.clone(), &true)
+            .unwrap();
+
+        let slash_details = ExecuteSlashDetails {
+            slasher: slasher_addr.to_string(),
+            operator: operator_addr.to_string(),
+            share: total_slash_amount,
+            slash_signature: 1,
+            slash_validator: vec![validator.to_string()],
+            reason: "Test slash".to_string(),
+            start_time: env.block.time.seconds(),
+            end_time: env.block.time.seconds() + 1000,
+            status: true,
+        };
+
+        // Mock delegation manager query response
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg }
+                if *contract_addr == delegation_manager.to_string() =>
+            {
+                let query_msg: DelegationManagerQueryMsg = from_json(msg).unwrap();
+                match query_msg {
+                    DelegationManagerQueryMsg::IsOperator { .. } => {
+                        let operator_response = OperatorResponse { is_operator: true };
+                        SystemResult::Ok(ContractResult::Ok(
+                            to_json_binary(&operator_response).unwrap(),
+                        ))
+                    }
+                    DelegationManagerQueryMsg::GetOperatorStakers { .. } => {
+                        let stakers_response = OperatorStakersResponse {
+                            stakers_and_shares: vec![
+                                StakerShares {
+                                    staker: deps.api.addr_make("staker_a"),
+                                    shares_per_strategy: vec![
+                                        (deps.api.addr_make("strategy1"), Uint128::new(20_000_000)), // 20e6
+                                        (deps.api.addr_make("strategy2"), Uint128::new(15_000_000)), // 15e6
+                                    ],
+                                },
+                                StakerShares {
+                                    staker: deps.api.addr_make("staker_b"),
+                                    shares_per_strategy: vec![
+                                        (deps.api.addr_make("strategy1"), Uint128::new(30_000_000)), // 30e6
+                                        (deps.api.addr_make("strategy2"), Uint128::new(1_000_000)), // 1e6
+                                    ],
+                                },
+                            ],
+                        };
+                        SystemResult::Ok(ContractResult::Ok(
+                            to_json_binary(&stakers_response).unwrap(),
+                        ))
+                    }
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query_msg).unwrap(),
+                    }),
+                }
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        let slasher_info = message_info(&slasher_addr, &[]);
+
+        let submit_msg = ExecuteMsg::SubmitSlashRequest {
+            slash_details: slash_details.clone(),
+            validators_public_keys: vec!["A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()],
+        };
+
+        let submit_res =
+            execute(deps.as_mut(), env.clone(), slasher_info.clone(), submit_msg).unwrap();
+        let slash_hash = submit_res.events[0].attributes[0].value.clone();
+
+        let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (_validator, secret_key, public_key_bytes) =
+            generate_osmosis_public_key_from_private_key(private_key_hex);
+
+        let message_byte = calculate_slash_hash(
+            &slasher_addr,
+            &SlashDetails {
+                slasher: slasher_addr.clone(),
+                operator: operator_addr.clone(),
+                share: total_slash_amount,
+                slash_signature: 1,
+                slash_validator: vec![validator.clone()],
+                reason: "Test slash".to_string(),
+                start_time: env.block.time.seconds(),
+                end_time: env.block.time.seconds() + 1000,
+                status: true,
+            },
+            &env.contract.address,
+            &[public_key_bytes],
+        );
+
+        let secp = Secp256k1::new();
+        let message = Message::from_digest_slice(&message_byte).expect("32 bytes");
+        let signature = secp.sign_ecdsa(&message, &secret_key);
+        let signature_bytes = signature.serialize_compact().to_vec();
+
+        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
+
+        let execute_msg = ExecuteMsg::ExecuteSlashRequest {
+            slash_hash,
+            signatures: vec![signature_base64],
+            validators_public_keys: vec!["A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()],
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), slasher_info, execute_msg).unwrap();
+
+        let mut found_messages = vec![];
+        for submsg in res.messages {
+            match submsg.msg {
+                CosmosMsg::Wasm(WasmMsg::Execute { msg, .. }) => {
+                    let parsed: Result<DelegationManagerExecuteMsg, _> = from_json(&msg);
+                    if let Ok(DelegationManagerExecuteMsg::DecreaseDelegatedShares {
+                        shares, ..
+                    }) = parsed
+                    {
+                        found_messages.push(shares);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        // Calculate expected slash shares
+
+        // Total shares = 20e6 + 15e6 + 30e6 + 1e6 = 66e6
+        // Total slash amount = 40e6
+
+        // Staker A - Strategy 1: 20e6 * (40e6 / 66e6) ≈ 12.121212e6
+        // Staker A - Strategy 2: 15e6 * (40e6 / 66e6) ≈ 9.090909e6
+        // Staker B - Strategy 1: 30e6 * (40e6 / 66e6) ≈ 18.181818e6
+        // Staker B - Strategy 2: 1e6 * (40e6 / 66e6) ≈ 0.606061e6
+
+        // Total shares = 12.121212e6 + 9.090909e6 + 18.181818e6 + 0.606061e6 = 40e6
+
+        let expected_shares = vec![
+            Uint128::new(12_121_212),
+            Uint128::new(9_090_909),
+            Uint128::new(18_181_818),
+            Uint128::new(606_061),
+        ];
+
+        for (i, shares) in found_messages.iter().enumerate() {
+            let diff = shares.u128().abs_diff(expected_shares[i].u128());
+
+            // Allow 1 unit of error due to rounding
+            assert!(
+                diff <= 1,
+                "Share calculation mismatch at index {}: expected {}, got {}",
+                i,
+                expected_shares[i],
+                shares
+            );
+        }
+    }
+
+    #[test]
+    fn test_slash_share_calculation_edge_cases() {
+        let (mut deps, env, _info, delegation_manager, _owner, _pauser, _unpauser) =
+            instantiate_contract();
+
+        let slasher_addr = deps.api.addr_make("slasher");
+        SLASHER
+            .save(&mut deps.storage, slasher_addr.clone(), &true)
+            .unwrap();
+        STRATEGY_MANAGER
+            .save(&mut deps.storage, &deps.api.addr_make("strategy_manager"))
+            .unwrap();
+
+        MINIMAL_SLASH_SIGNATURE.save(&mut deps.storage, &1).unwrap();
+
+        let operator_addr = deps.api.addr_make("operator");
+        let validator = deps.api.addr_make("validator");
+
+        VALIDATOR
+            .save(&mut deps.storage, validator.clone(), &true)
+            .unwrap();
+
+        // test case 1: total_slash_share is 0
+        {
+            let slash_details = ExecuteSlashDetails {
+                slasher: slasher_addr.to_string(),
+                operator: operator_addr.to_string(),
+                share: Uint128::zero(),
+                slash_signature: 1,
+                slash_validator: vec![validator.to_string()],
+                reason: "Test slash".to_string(),
+                start_time: env.block.time.seconds(),
+                end_time: env.block.time.seconds() + 1000,
+                status: true,
+            };
+
+            let slasher_info = message_info(&slasher_addr, &[]);
+            let submit_msg = ExecuteMsg::SubmitSlashRequest {
+                slash_details: slash_details.clone(),
+                validators_public_keys: vec![
+                    "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()
+                ],
+            };
+
+            let err =
+                execute(deps.as_mut(), env.clone(), slasher_info.clone(), submit_msg).unwrap_err();
+            assert_eq!(err, ContractError::InvalidShare {});
+        }
+
+        // test case 2: small shares and total_slash_share > sum_of_shares
+        {
+            deps.querier.update_wasm(move |query| match query {
+                WasmQuery::Smart { contract_addr, msg }
+                    if *contract_addr == delegation_manager.to_string() =>
+                {
+                    let query_msg: DelegationManagerQueryMsg = from_json(msg).unwrap();
+                    match query_msg {
+                        DelegationManagerQueryMsg::IsOperator { .. } => {
+                            let operator_response = OperatorResponse { is_operator: true };
+                            SystemResult::Ok(ContractResult::Ok(
+                                to_json_binary(&operator_response).unwrap(),
+                            ))
+                        }
+                        DelegationManagerQueryMsg::GetOperatorStakers { .. } => {
+                            let stakers_response = OperatorStakersResponse {
+                                stakers_and_shares: vec![
+                                    StakerShares {
+                                        staker: deps.api.addr_make("staker_a"),
+                                        shares_per_strategy: vec![
+                                            (deps.api.addr_make("strategy1"), Uint128::new(1)), // small shares
+                                        ],
+                                    },
+                                    StakerShares {
+                                        staker: deps.api.addr_make("staker_b"),
+                                        shares_per_strategy: vec![
+                                            (deps.api.addr_make("strategy1"), Uint128::zero()), // 0 shares
+                                        ],
+                                    },
+                                ],
+                            };
+                            SystemResult::Ok(ContractResult::Ok(
+                                to_json_binary(&stakers_response).unwrap(),
+                            ))
+                        }
+                        _ => SystemResult::Err(SystemError::InvalidRequest {
+                            error: "Unhandled request".to_string(),
+                            request: to_json_binary(&query_msg).unwrap(),
+                        }),
+                    }
+                }
+                _ => SystemResult::Err(SystemError::InvalidRequest {
+                    error: "Unhandled request".to_string(),
+                    request: to_json_binary(&query).unwrap(),
+                }),
+            });
+
+            let slash_details = ExecuteSlashDetails {
+                slasher: slasher_addr.to_string(),
+                operator: operator_addr.to_string(),
+                share: Uint128::new(10), // total_slash_share > sum_of_shares
+                slash_signature: 1,
+                slash_validator: vec![validator.to_string()],
+                reason: "Test slash".to_string(),
+                start_time: env.block.time.seconds(),
+                end_time: env.block.time.seconds() + 1000,
+                status: true,
+            };
+
+            let slasher_info = message_info(&slasher_addr, &[]);
+            let submit_msg = ExecuteMsg::SubmitSlashRequest {
+                slash_details: slash_details.clone(),
+                validators_public_keys: vec![
+                    "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()
+                ],
+            };
+
+            let submit_res =
+                execute(deps.as_mut(), env.clone(), slasher_info.clone(), submit_msg).unwrap();
+            let slash_hash = submit_res.events[0].attributes[0].value.clone();
+
+            let private_key_hex =
+                "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+            let (_validator, secret_key, public_key_bytes) =
+                generate_osmosis_public_key_from_private_key(private_key_hex);
+
+            let message_byte = calculate_slash_hash(
+                &slasher_addr,
+                &SlashDetails {
+                    slasher: slasher_addr.clone(),
+                    operator: operator_addr.clone(),
+                    share: Uint128::new(10),
+                    slash_signature: 1,
+                    slash_validator: vec![validator.clone()],
+                    reason: "Test slash".to_string(),
+                    start_time: env.block.time.seconds(),
+                    end_time: env.block.time.seconds() + 1000,
+                    status: true,
+                },
+                &env.contract.address,
+                &[public_key_bytes],
+            );
+
+            let secp = Secp256k1::new();
+            let message = Message::from_digest_slice(&message_byte).expect("32 bytes");
+            let signature = secp.sign_ecdsa(&message, &secret_key);
+            let signature_bytes = signature.serialize_compact().to_vec();
+
+            let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
+
+            let execute_msg = ExecuteMsg::ExecuteSlashRequest {
+                slash_hash,
+                signatures: vec![signature_base64],
+                validators_public_keys: vec![
+                    "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()
+                ],
+            };
+
+            let err = execute(deps.as_mut(), env.clone(), slasher_info, execute_msg).unwrap_err();
+            assert_eq!(
+                err,
+                ContractError::InsufficientSharesForStaker {
+                    staker: deps.api.addr_make("staker_a").to_string()
+                }
+            );
+        }
     }
 }
