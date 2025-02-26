@@ -16,15 +16,7 @@ fn instantiate() -> (App, RewardsContract) {
 
     let code_id = app.store_code(testing::contract());
 
-    let delegate_manager = app.api().addr_make("delegation_manager");
-    let strategy_manager = app.api().addr_make("strategy_manager");
-    let init_msg = InstantiateMsg::default(
-        &mut app,
-        &env,
-        &registry.addr,
-        &delegate_manager,
-        &strategy_manager,
-    );
+    let init_msg = InstantiateMsg::default(&mut app, &env, &registry.addr);
 
     let (addr, msg) = testing::instantiate(&mut app, code_id, init_msg);
     (
@@ -41,9 +33,8 @@ fn instantiate() -> (App, RewardsContract) {
 fn set_rewards_updater() {
     let (mut app, contract) = instantiate();
 
-    let new_updater = app.api().addr_make("new_updater");
-    let msg = to_json_binary(&ExecuteMsg::SetRewardsUpdater {
-        new_updater: new_updater.to_string(),
+    let msg = to_json_binary(&ExecuteMsg::SetActivationDelay {
+        new_activation_delay: 100,
     });
     let execute_msg = WasmMsg::Execute {
         contract_addr: contract.addr.to_string(),
@@ -60,7 +51,7 @@ fn set_rewards_updater() {
         Event::new("wasm-SetRewardsUpdater")
             .add_attribute("_contract_address", contract.addr.to_string())
             .add_attribute("method", "set_rewards_updater")
-            .add_attribute("new_updater", new_updater.to_string())
+            .add_attribute("old", "100")
     );
 }
 
@@ -69,9 +60,8 @@ fn set_rewards_updater_but_paused() {
     let (mut app, contract) = instantiate();
     contract.registry.pause(&mut app);
 
-    let new_updater = app.api().addr_make("new_updater");
-    let msg = to_json_binary(&ExecuteMsg::SetRewardsUpdater {
-        new_updater: new_updater.to_string(),
+    let msg = to_json_binary(&ExecuteMsg::SetActivationDelay {
+        new_activation_delay: 100,
     });
     let execute_msg = WasmMsg::Execute {
         contract_addr: contract.addr.to_string(),

@@ -10,17 +10,15 @@ use cosmwasm_std::{Binary, Uint128};
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub initial_owner: String,
-    pub rewards_updater: String,
+    pub owner: String,
+    pub registry: String,
+
     pub calculation_interval_seconds: u64,
     pub max_rewards_duration: u64,
     pub max_retroactive_length: u64,
     pub max_future_length: u64,
     pub genesis_rewards_timestamp: u64,
-    pub delegation_manager: String,
-    pub strategy_manager: String,
     pub activation_delay: u32,
-    pub registry: String,
 }
 
 #[cw_serde]
@@ -49,9 +47,6 @@ pub enum ExecuteMsg {
     SetActivationDelay {
         new_activation_delay: u32,
     },
-    SetRewardsUpdater {
-        new_updater: String,
-    },
     SetRewardsForAllSubmitter {
         submitter: String,
         new_value: bool,
@@ -59,8 +54,15 @@ pub enum ExecuteMsg {
     SetGlobalOperatorCommission {
         new_commission_bips: u16,
     },
-    TransferOwnership {
-        new_owner: String,
+    /// Instantiate creates the contract: gives the contract an address.
+    /// This sets up the contract for routing and access control management.
+    /// It can be called more than once to set new value but only by the owner.
+    /// Contract admin (cosmwasm feature) has omni-ability—can do anything, owner logic is app-level.
+    SetController {
+        owner: String,
+        rewards_updater: String,
+        delegation_manager: String,
+        strategy_manager: String,
     },
 }
 

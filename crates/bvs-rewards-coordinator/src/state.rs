@@ -2,8 +2,6 @@ use crate::msg::DistributionRoot;
 use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
 
-pub const OWNER: Item<Addr> = Item::new("owner");
-pub const REWARDS_UPDATER: Item<Addr> = Item::new("rewards_updater");
 pub const DISTRIBUTION_ROOTS: Map<u64, DistributionRoot> = Map::new("distribution_roots");
 pub const DISTRIBUTION_ROOTS_COUNT: Item<u64> = Item::new("distribution_roots_count");
 pub const CUMULATIVE_CLAIMED: Map<(Addr, String), Uint128> = Map::new("cumulative_claimed");
@@ -20,7 +18,5 @@ pub const MAX_FUTURE_LENGTH: Item<u64> = Item::new("max_future_length");
 pub const GENESIS_REWARDS_TIMESTAMP: Item<u64> = Item::new("genesis_rewards_timestamp");
 pub const CURR_REWARDS_CALCULATION_END_TIMESTAMP: Item<u64> =
     Item::new("curr_rewards_calculation_end_timestamp");
-pub const DELEGATION_MANAGER: Item<Addr> = Item::new("delegation_manager");
-pub const STRATEGY_MANAGER: Item<Addr> = Item::new("strategy_manager");
 pub const GLOBAL_OPERATOR_COMMISSION_BIPS: Item<u16> = Item::new("global_operator_commission_bips");
 pub const CLAIMER_FOR: Map<Addr, Addr> = Map::new("claimer_for");
