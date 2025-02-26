@@ -306,6 +306,8 @@ type SetUnpauser struct {
 type SubmitRoot struct {
 	RewardsCalculationEndTimestamp int64  `json:"rewards_calculation_end_timestamp"`
 	Root                           string `json:"root"`
+	EarnerTreeDepth                uint8  `json:"earner_tree_depth"`
+	TokenTreeDepth                 uint8  `json:"token_tree_depth"`
 }
 
 type TransferOwnership struct {

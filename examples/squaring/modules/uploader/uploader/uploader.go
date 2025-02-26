@@ -256,7 +256,15 @@ func (u *Uploader) calcReward(ctx context.Context, taskId string, operators stri
 	}
 	fmt.Printf("root Hash: %s\n", rootHash)
 
-	if err := u.rpcSubmitHashRoot(rootHash); err != nil {
+	totalTokens := 0
+	for _, earner := range totalEarners {
+		totalTokens += len(earner.Tokens)
+	}
+	tokenTreeDepth := uint8(math.Ceil(math.Log2(float64(totalTokens))))
+	earnerTreeDepth := uint8(math.Ceil(math.Log2(float64(len(totalEarners)))))
+	fmt.Printf("earnerTreeDepth: %d, tokenTreeDepth: %d\n", earnerTreeDepth, tokenTreeDepth)
+
+	if err := u.rpcSubmitHashRoot(rootHash, earnerTreeDepth, tokenTreeDepth); err != nil {
 		fmt.Println("rpc root hash err: ", err)
 		return
 	}

@@ -135,9 +135,9 @@ func (u *Uploader) rpcUnderlyingToken(strategy string) (string, error) {
 // timestamp that is one hour ago from the current time.
 //
 // The method returns an error if the transaction fails.
-func (u *Uploader) rpcSubmitHashRoot(rootHash string) error {
+func (u *Uploader) rpcSubmitHashRoot(rootHash string, earnerTreeDepth, tokenTreeDepth uint8) error {
 	timestamp := time.Now().Unix() - 3600
-	rsp, err := u.rewardsCoordinator.SubmitRoot(context.Background(), rootHash, timestamp)
+	rsp, err := u.rewardsCoordinator.SubmitRoot(context.Background(), rootHash, timestamp, earnerTreeDepth, tokenTreeDepth)
 	if err != nil {
 		fmt.Println("SubmitRootHash err: ", err)
 		return err

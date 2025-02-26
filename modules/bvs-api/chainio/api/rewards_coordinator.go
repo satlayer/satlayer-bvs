@@ -94,11 +94,13 @@ func (r *RewardsCoordinator) ProcessClaim(ctx context.Context, claim rewardscoor
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *RewardsCoordinator) SubmitRoot(ctx context.Context, root string, rewardsCalculationEndTimestamp int64) (*coretypes.ResultTx, error) {
+func (r *RewardsCoordinator) SubmitRoot(ctx context.Context, root string, rewardsCalculationEndTimestamp int64, earnerTreeDepth, tokenTreeDepth uint8) (*coretypes.ResultTx, error) {
 	msg := rewardscoordinator.ExecuteMsg{
 		SubmitRoot: &rewardscoordinator.SubmitRoot{
-			Root:                           root,
 			RewardsCalculationEndTimestamp: rewardsCalculationEndTimestamp,
+			Root:                           root,
+			EarnerTreeDepth:                earnerTreeDepth,
+			TokenTreeDepth:                 tokenTreeDepth,
 		},
 	}
 

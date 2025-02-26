@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -256,11 +257,13 @@ func (suite *rewardsTestSuite) Test_SubmitRoot() {
 
 	earnerLeaf1, tokenRootHash1, _ := suite.calculateEarnerLeaf(rewardsCoordinator, t)
 	t.Logf("earner leaf1:%+v", bytesToString(earnerLeaf1))
-
-	resp, err := rewardsCoordinator.MerkleizeLeaves([]string{
+	earnerLeafArr := []string{
 		base64.StdEncoding.EncodeToString(earnerLeaf),
 		base64.StdEncoding.EncodeToString(earnerLeaf1),
-	})
+	}
+	tokenTreeDepth := uint8(math.Ceil(math.Log2(float64(len(earnerLeafArr) * 2))))
+	earnerTreeDepth := uint8(math.Ceil(math.Log2(float64(len(earnerLeafArr)))))
+	resp, err := rewardsCoordinator.MerkleizeLeaves(earnerLeafArr)
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("resp:%+v, %+v, %+v, %+v", resp, tokenRootHash, leafB, tokenRootHash1)
@@ -273,7 +276,7 @@ func (suite *rewardsTestSuite) Test_SubmitRoot() {
 	t.Logf("root hash:%+v", rootHash)
 
 	timestamp := time.Now().Unix() - 3600
-	res, err := rewardsCoordinator.SubmitRoot(context.Background(), base64.StdEncoding.EncodeToString(rootHash), timestamp)
+	res, err := rewardsCoordinator.SubmitRoot(context.Background(), base64.StdEncoding.EncodeToString(rootHash), timestamp, earnerTreeDepth, tokenTreeDepth)
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, res, "response nil")
 	t.Logf("resp:%+v", res)
