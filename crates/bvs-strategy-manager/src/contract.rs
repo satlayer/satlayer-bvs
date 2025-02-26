@@ -1297,7 +1297,7 @@ mod tests {
     fn test_add_strategies_to_deposit_whitelist() {
         let (
             mut deps,
-            env,
+            _env,
             _owner_info,
             _info_delegation_manager,
             info_whitelister,
@@ -1305,16 +1305,17 @@ mod tests {
             _unpauser_info,
         ) = instantiate_contract();
 
-        let strategies = vec![
-            deps.api.addr_make("strategy1").to_string(),
-            deps.api.addr_make("strategy2").to_string(),
-        ];
+        let strat1 = deps.api.addr_make("strategy1");
+        let strat2 = deps.api.addr_make("strategy2");
 
-        let msg = ExecuteMsg::AddStrategiesToWhitelist {
-            strategies: strategies.clone(),
-        };
+        let strategies = vec![strat1.clone(), strat2.clone()];
 
-        let res = execute(deps.as_mut(), env.clone(), info_whitelister.clone(), msg).unwrap();
+        let res = add_strategies_to_deposit_whitelist(
+            deps.as_mut(),
+            info_whitelister.clone(),
+            strategies.clone(),
+        )
+        .unwrap();
 
         let events = res.events;
 
@@ -1324,7 +1325,7 @@ mod tests {
             assert_eq!(event.ty, "StrategyAddedToDepositWhitelist");
             assert_eq!(event.attributes.len(), 1);
             assert_eq!(event.attributes[0].key, "strategy");
-            assert_eq!(event.attributes[0].value, strategies[i]);
+            assert_eq!(event.attributes[0].value, strategies[i].to_string());
         }
 
         for strategy in &strategies {
@@ -1334,12 +1335,13 @@ mod tests {
             assert!(is_whitelisted);
         }
 
-        let msg = ExecuteMsg::AddStrategiesToWhitelist {
-            strategies: strategies.clone(),
-        };
-
         let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-        let result = execute(deps.as_mut(), env.clone(), info_unauthorized.clone(), msg);
+        let result = add_strategies_to_deposit_whitelist(
+            deps.as_mut(),
+            info_unauthorized.clone(),
+            strategies.clone(),
+        );
+
         assert!(result.is_err());
 
         if let Err(err) = result {
@@ -1354,7 +1356,7 @@ mod tests {
     fn test_remove_strategies_from_deposit_whitelist() {
         let (
             mut deps,
-            env,
+            _env,
             _owner_info,
             _info_delegation_manager,
             info_whitelister,
@@ -1363,20 +1365,23 @@ mod tests {
         ) = instantiate_contract();
 
         let strategies = vec![
-            deps.api.addr_make("strategy1").to_string(),
-            deps.api.addr_make("strategy2").to_string(),
+            deps.api.addr_make("strategy1"),
+            deps.api.addr_make("strategy2"),
         ];
-        let msg = ExecuteMsg::AddStrategiesToWhitelist {
-            strategies: strategies.clone(),
-        };
 
-        let _res = execute(deps.as_mut(), env.clone(), info_whitelister.clone(), msg).unwrap();
+        let _res = add_strategies_to_deposit_whitelist(
+            deps.as_mut(),
+            info_whitelister.clone(),
+            strategies.clone(),
+        )
+        .unwrap();
 
-        let msg = ExecuteMsg::RemoveStrategiesFromWhitelist {
-            strategies: strategies.clone(),
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info_whitelister.clone(), msg).unwrap();
+        let res = remove_strategies_from_deposit_whitelist(
+            deps.as_mut(),
+            info_whitelister.clone(),
+            strategies.clone(),
+        )
+        .unwrap();
 
         let events = res.events;
         assert_eq!(events.len(), 2);
@@ -1389,13 +1394,12 @@ mod tests {
             assert_eq!(event.attributes[0].value, strategy.to_string());
         }
 
-        // Test with an unauthorized user
-        let msg = ExecuteMsg::RemoveStrategiesFromWhitelist {
-            strategies: strategies.clone(),
-        };
-
         let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-        let result = execute(deps.as_mut(), env.clone(), info_unauthorized.clone(), msg);
+        let result = remove_strategies_from_deposit_whitelist(
+            deps.as_mut(),
+            info_unauthorized.clone(),
+            strategies.clone(),
+        );
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -1457,7 +1461,7 @@ mod tests {
     fn test_deposit_into_strategy() {
         let (
             mut deps,
-            env,
+            _env,
             _owner_info,
             info_delegation_manager,
             info_whitelister,
@@ -1465,22 +1469,25 @@ mod tests {
             _unpauser_info,
         ) = instantiate_contract();
 
-        let strategy = deps.api.addr_make("strategy1").to_string();
-        let token = deps.api.addr_make("token").to_string();
+        let strategy = deps.api.addr_make("strategy1");
+        let token = deps.api.addr_make("token");
         let amount = Uint128::new(100);
 
-        let msg = ExecuteMsg::AddStrategiesToWhitelist {
-            strategies: vec![strategy.clone()],
-        };
-
-        let _res = execute(deps.as_mut(), env.clone(), info_whitelister.clone(), msg).unwrap();
+        let _res = add_strategies_to_deposit_whitelist(
+            deps.as_mut(),
+            info_whitelister.clone(),
+            vec![strategy.clone()],
+        )
+        .unwrap();
 
         let strategy_for_closure = strategy.clone();
         let token_for_closure = token.clone();
         let delegation_manager_sender = info_delegation_manager.sender.clone();
 
         deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { contract_addr, msg } if *contract_addr == strategy_for_closure => {
+            WasmQuery::Smart { contract_addr, msg }
+                if *contract_addr == strategy_for_closure.to_string() =>
+            {
                 let strategy_query_msg: StrategyQueryMsg = from_json(msg).unwrap();
                 match strategy_query_msg {
                     StrategyQueryMsg::GetStrategyState {} => {
@@ -1499,7 +1506,9 @@ mod tests {
                     }),
                 }
             }
-            WasmQuery::Smart { contract_addr, msg } if *contract_addr == token_for_closure => {
+            WasmQuery::Smart { contract_addr, msg }
+                if *contract_addr == token_for_closure.to_string() =>
+            {
                 let cw20_query_msg: Cw20QueryMsg = from_json(msg).unwrap();
                 match cw20_query_msg {
                     Cw20QueryMsg::Balance { address: _ } => SystemResult::Ok(ContractResult::Ok(
@@ -1520,17 +1529,13 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::DepositIntoStrategy {
-            strategy: strategy.clone(),
-            token: token.clone(),
-            amount,
-        };
-
-        let res: Response = execute(
+        let res = deposit_into_strategy(
             deps.as_mut(),
-            env.clone(),
             info_delegation_manager.clone(),
-            msg,
+            info_delegation_manager.sender.clone(),
+            strategy.clone(),
+            token.clone(),
+            amount,
         )
         .unwrap();
 
@@ -1538,20 +1543,15 @@ mod tests {
         assert_eq!(res.attributes[0].key, "new_shares");
         assert_eq!(res.attributes[0].value, "100");
 
-        // Test deposit into strategy with non-whitelisted strategy
-        let non_whitelisted_strategy = deps.api.addr_make("non_whitelisted_strategy").to_string();
+        let non_whitelisted_strategy = deps.api.addr_make("non_whitelisted_strategy");
 
-        let msg = ExecuteMsg::DepositIntoStrategy {
-            strategy: non_whitelisted_strategy.clone(),
-            token: token.clone(),
-            amount,
-        };
-
-        let result = execute(
+        let result = deposit_into_strategy(
             deps.as_mut(),
-            env.clone(),
             info_delegation_manager.clone(),
-            msg,
+            info_delegation_manager.sender.clone(),
+            non_whitelisted_strategy.clone(),
+            token.clone(),
+            amount,
         );
         assert!(result.is_err());
         if let Err(err) = result {
@@ -1792,7 +1792,7 @@ mod tests {
     fn test_add_shares() {
         let (
             mut deps,
-            env,
+            _env,
             _owner_info,
             info_delegation_manager,
             _info_whitelister,
@@ -1805,18 +1805,13 @@ mod tests {
         let strategy = deps.api.addr_make("strategy");
         let shares = Uint128::new(100);
 
-        let msg = ExecuteMsg::AddShares {
-            staker: staker.to_string(),
-            token: token.to_string(),
-            strategy: strategy.to_string(),
-            shares,
-        };
-
-        let res = execute(
+        let res = add_shares(
             deps.as_mut(),
-            env.clone(),
             info_delegation_manager.clone(),
-            msg,
+            staker.clone(),
+            token.clone(),
+            strategy.clone(),
+            shares,
         )
         .unwrap();
 
@@ -1846,18 +1841,14 @@ mod tests {
 
         // Test adding more shares to the same strategy
         let additional_shares = Uint128::new(50);
-        let exec_msg = ExecuteMsg::AddShares {
-            staker: staker.to_string(),
-            token: token.to_string(),
-            strategy: strategy.to_string(),
-            shares: additional_shares,
-        };
 
-        let res = execute(
+        let res = add_shares(
             deps.as_mut(),
-            env.clone(),
             info_delegation_manager.clone(),
-            exec_msg,
+            staker.clone(),
+            token.clone(),
+            strategy.clone(),
+            additional_shares,
         )
         .unwrap();
 
@@ -1881,22 +1872,17 @@ mod tests {
         println!("stored_shares after second addition: {}", stored_shares);
         assert_eq!(stored_shares, shares + additional_shares);
 
-        // Test with an unauthorized user
-        let exec_msg = ExecuteMsg::AddShares {
-            staker: staker.to_string(),
-            token: token.to_string(),
-            strategy: strategy.to_string(),
-            shares,
-        };
-
         let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
 
-        let result = execute(
+        let result = add_shares(
             deps.as_mut(),
-            env.clone(),
             info_unauthorized.clone(),
-            exec_msg,
+            staker.clone(),
+            token.clone(),
+            strategy.clone(),
+            shares,
         );
+
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -1905,20 +1891,15 @@ mod tests {
             }
         }
 
-        // Test with zero shares
-        let exec_msg = ExecuteMsg::AddShares {
-            staker: staker.to_string(),
-            token: token.to_string(),
-            strategy: strategy.to_string(),
-            shares: Uint128::zero(),
-        };
-
-        let result = execute(
+        let result = add_shares(
             deps.as_mut(),
-            env.clone(),
             info_delegation_manager.clone(),
-            exec_msg,
+            staker.clone(),
+            token.clone(),
+            strategy.clone(),
+            Uint128::zero(),
         );
+
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -1938,19 +1919,15 @@ mod tests {
 
         let new_strategy = deps.api.addr_make("new_strategy");
 
-        let exec_msg = ExecuteMsg::AddShares {
-            staker: staker.to_string(),
-            token: token.to_string(),
-            strategy: new_strategy.to_string(),
-            shares,
-        };
-
-        let result = execute(
+        let result = add_shares(
             deps.as_mut(),
-            env.clone(),
-            info_delegation_manager,
-            exec_msg,
+            info_delegation_manager.clone(),
+            staker.clone(),
+            token.clone(),
+            new_strategy.clone(),
+            shares,
         );
+
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -1964,7 +1941,7 @@ mod tests {
     fn test_remove_shares() {
         let (
             mut deps,
-            env,
+            _env,
             _owner_info,
             info_delegation_manager,
             _info_whitelister,
@@ -1990,17 +1967,12 @@ mod tests {
             .save(&mut deps.storage, (&staker, &strategy2), &Uint128::new(200))
             .unwrap();
 
-        let msg = ExecuteMsg::RemoveShares {
-            staker: staker.to_string(),
-            strategy: strategy1.to_string(),
-            shares: Uint128::new(50),
-        };
-
-        let res = execute(
+        let res = remove_shares(
             deps.as_mut(),
-            env.clone(),
             info_delegation_manager.clone(),
-            msg,
+            staker.clone(),
+            strategy1.clone(),
+            Uint128::new(50),
         )
         .unwrap();
 
@@ -2023,15 +1995,15 @@ mod tests {
         assert_eq!(stored_shares, Uint128::new(50));
 
         // Test removing shares with an unauthorized user
-        let msg = ExecuteMsg::RemoveShares {
-            staker: staker.to_string(),
-            strategy: strategy2.to_string(),
-            shares: Uint128::new(50),
-        };
-
         let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
 
-        let result = execute(deps.as_mut(), env.clone(), info_unauthorized, msg);
+        let result = remove_shares(
+            deps.as_mut(),
+            info_unauthorized.clone(),
+            staker.clone(),
+            strategy2.clone(),
+            Uint128::new(50),
+        );
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -2041,18 +2013,14 @@ mod tests {
         }
 
         // Test removing more shares than available
-        let msg = ExecuteMsg::RemoveShares {
-            staker: staker.to_string(),
-            strategy: strategy1.to_string(),
-            shares: Uint128::new(60),
-        };
-
-        let result = execute(
+        let result = remove_shares(
             deps.as_mut(),
-            env.clone(),
             info_delegation_manager.clone(),
-            msg,
+            staker.clone(),
+            strategy1.clone(),
+            Uint128::new(60),
         );
+
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -2062,17 +2030,12 @@ mod tests {
         }
 
         // Test removing all shares, which should remove the strategy from the staker's list
-        let msg = ExecuteMsg::RemoveShares {
-            staker: staker.to_string(),
-            strategy: strategy1.to_string(),
-            shares: Uint128::new(50),
-        };
-
-        let res = execute(
+        let res = remove_shares(
             deps.as_mut(),
-            env.clone(),
             info_delegation_manager.clone(),
-            msg,
+            staker.clone(),
+            strategy1.clone(),
+            Uint128::new(50),
         )
         .unwrap();
 
@@ -2362,7 +2325,7 @@ mod tests {
     fn test_set_delegation_manager() {
         let (
             mut deps,
-            env,
+            _env,
             owner_info,
             _info_delegation_manager,
             _info_whitelister,
@@ -2372,23 +2335,25 @@ mod tests {
 
         let new_delegation_manager = deps.api.addr_make("new_delegation_manager");
 
-        let msg = ExecuteMsg::SetDelegationManager {
-            new_delegation_manager: new_delegation_manager.to_string(),
-        };
-
-        execute(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();
+        set_delegation_manager(
+            deps.as_mut(),
+            owner_info.clone(),
+            new_delegation_manager.clone(),
+        )
+        .unwrap();
 
         let state = STRATEGY_MANAGER_STATE.load(&deps.storage).unwrap();
         assert_eq!(state.delegation_manager, new_delegation_manager);
 
         // Test with an unauthorized user
-        let msg = ExecuteMsg::SetDelegationManager {
-            new_delegation_manager: new_delegation_manager.to_string(),
-        };
-
         let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
 
-        let result = execute(deps.as_mut(), env.clone(), info_unauthorized, msg);
+        let result = set_delegation_manager(
+            deps.as_mut(),
+            info_unauthorized,
+            new_delegation_manager.clone(),
+        );
+
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -2402,7 +2367,7 @@ mod tests {
     fn test_set_slash_manager() {
         let (
             mut deps,
-            env,
+            _env,
             owner_info,
             _info_delegation_manager,
             _info_whitelister,
@@ -2412,11 +2377,8 @@ mod tests {
 
         let new_slash_manager = deps.api.addr_make("new_slash_manager");
 
-        let msg = ExecuteMsg::SetSlashManager {
-            new_slash_manager: new_slash_manager.to_string(),
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();
+        let res = set_slash_manager(deps.as_mut(), owner_info.clone(), new_slash_manager.clone())
+            .unwrap();
 
         let events = res.events;
         assert_eq!(events.len(), 1);
@@ -2433,11 +2395,7 @@ mod tests {
 
         let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
 
-        let msg = ExecuteMsg::SetSlashManager {
-            new_slash_manager: new_slash_manager.to_string(),
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info_unauthorized, msg);
+        let res = set_slash_manager(deps.as_mut(), info_unauthorized, new_slash_manager.clone());
 
         assert!(res.is_err());
         if let Err(err) = res {
@@ -2455,7 +2413,7 @@ mod tests {
     fn test_transfer_ownership() {
         let (
             mut deps,
-            env,
+            _env,
             owner_info,
             _info_delegation_manager,
             _info_whitelister,
@@ -2465,10 +2423,7 @@ mod tests {
 
         let new_owner = deps.api.addr_make("new_owner");
 
-        let transfer_msg = ExecuteMsg::TransferOwnership {
-            new_owner: new_owner.to_string(),
-        };
-        let res = execute(deps.as_mut(), env.clone(), owner_info.clone(), transfer_msg);
+        let res = transfer_ownership(deps.as_mut(), owner_info.clone(), new_owner.clone());
         assert!(res.is_ok());
 
         let res = res.unwrap();
@@ -2483,15 +2438,7 @@ mod tests {
 
         let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
 
-        let transfer_msg = ExecuteMsg::TransferOwnership {
-            new_owner: new_owner.to_string(),
-        };
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            info_unauthorized.clone(),
-            transfer_msg,
-        );
+        let res = transfer_ownership(deps.as_mut(), info_unauthorized, new_owner.clone());
 
         assert!(res.is_err());
         if let Err(err) = res {
@@ -2504,14 +2451,10 @@ mod tests {
         let stored_owner = OWNER.load(&deps.storage).unwrap();
         assert_eq!(stored_owner, new_owner);
 
-        let transfer_msg = ExecuteMsg::TransferOwnership {
-            new_owner: new_owner.to_string(),
-        };
-        let res = execute(
+        let res = transfer_ownership(
             deps.as_mut(),
-            env.clone(),
             message_info(&new_owner, &[]),
-            transfer_msg,
+            new_owner.clone(),
         );
         assert!(res.is_ok());
 
@@ -2530,7 +2473,7 @@ mod tests {
     fn test_pause() {
         let (
             mut deps,
-            env,
+            _env,
             _owner_info,
             _info_delegation_manager,
             _info_whitelister,
@@ -2538,8 +2481,7 @@ mod tests {
             _unpauser_info,
         ) = instantiate_contract();
 
-        let pause_msg = ExecuteMsg::Pause {};
-        let res = execute(deps.as_mut(), env.clone(), pauser_info.clone(), pause_msg).unwrap();
+        let res = pause(deps.as_mut(), &pauser_info).unwrap();
 
         assert_eq!(res.attributes, vec![attr("action", "PAUSED")]);
 
@@ -2551,7 +2493,7 @@ mod tests {
     fn test_unpause() {
         let (
             mut deps,
-            env,
+            _env,
             _owner_info,
             _info_delegation_manager,
             _info_whitelister,
@@ -2559,14 +2501,7 @@ mod tests {
             unpauser_info,
         ) = instantiate_contract();
 
-        let unpause_msg = ExecuteMsg::Unpause {};
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            unpauser_info.clone(),
-            unpause_msg,
-        )
-        .unwrap();
+        let res = unpause(deps.as_mut(), &unpauser_info).unwrap();
 
         assert_eq!(res.attributes, vec![attr("action", "UNPAUSED")]);
 
@@ -2578,26 +2513,17 @@ mod tests {
     fn test_set_pauser() {
         let (
             mut deps,
-            env,
-            owner_info,
+            _env,
+            _owner_info,
             _info_delegation_manager,
             _info_whitelister,
             _pauser_info,
             _unpauser_info,
         ) = instantiate_contract();
 
-        let new_pauser = deps.api.addr_make("new_pauser").to_string();
+        let new_pauser = deps.api.addr_make("new_pauser");
 
-        let set_pauser_msg = ExecuteMsg::SetPauser {
-            new_pauser: new_pauser.to_string(),
-        };
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            owner_info.clone(),
-            set_pauser_msg,
-        )
-        .unwrap();
+        let res = set_pauser(deps.as_mut(), new_pauser.clone()).unwrap();
 
         assert!(res
             .attributes
@@ -2612,26 +2538,17 @@ mod tests {
     fn test_set_unpauser() {
         let (
             mut deps,
-            env,
-            owner_info,
+            _env,
+            _owner_info,
             _info_delegation_manager,
             _info_whitelister,
             _pauser_info,
             _unpauser_info,
         ) = instantiate_contract();
 
-        let new_unpauser = deps.api.addr_make("new_unpauser").to_string();
+        let new_unpauser = deps.api.addr_make("new_unpauser");
 
-        let set_unpauser_msg = ExecuteMsg::SetUnpauser {
-            new_unpauser: new_unpauser.to_string(),
-        };
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            owner_info.clone(),
-            set_unpauser_msg,
-        )
-        .unwrap();
+        let res = set_unpauser(deps.as_mut(), new_unpauser.clone()).unwrap();
 
         assert!(res
             .attributes
