@@ -1,6 +1,5 @@
-use crate::msg::InstantiateMsg;
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use bvs_library::testing::TestingContract;
-use bvs_registry::msg::{ExecuteMsg, QueryMsg};
 use cosmwasm_std::{Addr, Empty, Env};
 use cw_multi_test::{App, Contract, ContractWrapper};
 use serde::{Deserialize, Serialize};
@@ -13,12 +12,11 @@ pub struct RewardsContract {
 
 impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for RewardsContract {
     fn wrapper() -> Box<dyn Contract<Empty>> {
-        let contract = ContractWrapper::new(
+        Box::new(ContractWrapper::new(
             crate::contract::execute,
             crate::contract::instantiate,
             crate::contract::query,
-        );
-        Box::new(contract)
+        ))
     }
 
     fn default_init(app: &mut App, env: &Env) -> InstantiateMsg {

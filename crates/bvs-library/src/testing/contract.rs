@@ -1,5 +1,6 @@
 use cosmwasm_std::{to_json_binary, Addr, Empty, Env, WasmMsg};
-use cw_multi_test::{App, Contract, Executor};
+use cw_multi_test::error::AnyResult;
+use cw_multi_test::{App, AppResponse, Contract, Executor};
 
 /// TestingContract is a trait that provides a common interface for setting up testing contracts.
 pub trait TestingContract<IM, EM, QM>
@@ -35,7 +36,7 @@ where
 
     fn addr(&self) -> &Addr;
 
-    fn execute(&self, app: &mut App, sender: &Addr, msg: &EM) {
+    fn execute(&self, app: &mut App, sender: &Addr, msg: &EM) -> AnyResult<AppResponse> {
         let msg_bin = to_json_binary(&msg).expect("cannot serialize ExecuteMsg");
         let execute_msg = WasmMsg::Execute {
             contract_addr: self.addr().to_string(),
@@ -44,7 +45,6 @@ where
         };
 
         app.execute(sender.clone(), execute_msg.into())
-            .expect("Execute failed");
     }
 
     // TODO: fn query
