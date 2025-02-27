@@ -12,14 +12,11 @@ use cosmwasm_std::{Binary, Uint128};
 pub struct InstantiateMsg {
     pub owner: String,
     pub registry: String,
-    pub rewards_updater: String,
     pub calculation_interval_seconds: u64,
     pub max_rewards_duration: u64,
     pub max_retroactive_length: u64,
     pub max_future_length: u64,
     pub genesis_rewards_timestamp: u64,
-    pub delegation_manager: String,
-    pub strategy_manager: String,
     pub activation_delay: u32,
 }
 
@@ -49,9 +46,6 @@ pub enum ExecuteMsg {
     SetActivationDelay {
         new_activation_delay: u32,
     },
-    SetRewardsUpdater {
-        new_updater: String,
-    },
     SetRewardsForAllSubmitter {
         submitter: String,
         new_value: bool,
@@ -67,6 +61,14 @@ pub enum ExecuteMsg {
         /// > 2-step ownership transfer is mostly redundant for CosmWasm contracts with the admin set.
         /// > You can override ownership with using CosmWasm migrate `entry_point`.
         new_owner: String,
+    },
+    /// Instantiate creates the contract: gives the contract an address.
+    /// This sets up the contract for routing and access control management.
+    /// It can be called more than once to set new values but only by the owner.
+    SetRouting {
+        rewards_updater: String,
+        delegation_manager: String,
+        strategy_manager: String,
     },
 }
 

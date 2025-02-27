@@ -21,9 +21,6 @@ pub enum ContractError {
     #[error("RewardsCoordinator.instantiate: invalid calculation interval")]
     InvalidCalculationInterval {},
 
-    #[error("RewardsCoordinator._only_rewards_updater: caller is not the rewardsUpdater")]
-    NotRewardsUpdater {},
-
     #[error("RewardsCoordinator._only_rewards_for_all_submitter: caller is not a valid createRewardsForAllSubmission submitter")]
     ValidCreateRewardsForAllSubmission {},
 

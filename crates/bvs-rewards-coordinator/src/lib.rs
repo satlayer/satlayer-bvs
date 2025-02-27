@@ -2,9 +2,10 @@ pub mod contract;
 pub mod msg;
 pub mod query;
 pub mod state;
-pub mod utils;
 
 mod error;
+mod routing;
+mod utils;
 
 pub use crate::error::ContractError;
 
