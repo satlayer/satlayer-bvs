@@ -344,6 +344,16 @@ pub fn execute_slash_request(
                 msg: to_json_binary(&remove_msg)?,
                 funds: vec![],
             }));
+
+            let withdraw_msg = StrategyExecuteMsg::Withdraw {
+                recipient: env.contract.address.to_string(),
+                amount_shares: slash_details.share,
+            };
+            messages.push(SubMsg::new(WasmMsg::Execute {
+                contract_addr: strategy_addr.to_string(),
+                msg: to_json_binary(&withdraw_msg)?,
+                funds: vec![],
+            }));
         }
     }
 

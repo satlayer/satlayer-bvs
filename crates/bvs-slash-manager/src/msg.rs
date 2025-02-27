@@ -4,7 +4,7 @@ use crate::query::{
 };
 use crate::utils::ExecuteSlashDetails;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-
+use cosmwasm_std::Uint128;
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: String,
@@ -25,6 +25,14 @@ pub enum ExecuteMsg {
     },
     CancelSlashRequest {
         slash_hash: String,
+    },
+    WithdrawSlashedFunds {
+        token: String,
+        recipient: String,
+        amount: Uint128,
+    },
+    SetMaxTimeInFuture {
+        new_value: u64,
     },
     SetMinimalSlashSignature {
         minimal_signature: u64,
