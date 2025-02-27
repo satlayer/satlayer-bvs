@@ -1,6 +1,7 @@
 package bn254
 
 import (
+	"errors"
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254"
@@ -8,10 +9,45 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
+var (
+	ErrInvalidG1Point = errors.New("point is not in G1 group")
+	ErrInvalidG2Point = errors.New("point is not in G2 group")
+)
+
+// IsInG1 checks if point is in G1 (points of order r)
+func IsInG1(p *bn254.G1Affine) bool {
+	// 1. Check if point is on curve
+	if !p.IsOnCurve() {
+		return false
+	}
+
+	// 2. Check if point is in the correct subgroup (has order r)
+	tmp := new(bn254.G1Affine).ScalarMultiplication(p, fr.Modulus())
+	return tmp.IsInfinity()
+}
+
+// IsInG2 checks if point is in G2 (points of order r)
+func IsInG2(p *bn254.G2Affine) bool {
+	// 1. Check if point is on curve
+	if !p.IsOnCurve() {
+		return false
+	}
+
+	// 2. Check if point is in the correct subgroup (has order r)
+	tmp := new(bn254.G2Affine).ScalarMultiplication(p, fr.Modulus())
+	return tmp.IsInfinity()
+}
+
 func VerifySig(sig *bn254.G1Affine, pubkey *bn254.G2Affine, msgBytes [32]byte) (bool, error) {
+	// Validate input points
+	if !IsInG1(sig) {
+		return false, ErrInvalidG1Point
+	}
+	if !IsInG2(pubkey) {
+		return false, ErrInvalidG2Point
+	}
 
 	g2Gen := GetG2Generator()
-
 	msgPoint := MapToCurve(msgBytes)
 
 	var negSig bn254.G1Affine
@@ -22,10 +58,9 @@ func VerifySig(sig *bn254.G1Affine, pubkey *bn254.G2Affine, msgBytes [32]byte) (
 
 	ok, err := bn254.PairingCheck(P[:], Q[:])
 	if err != nil {
-		return false, nil
+		return false, err
 	}
 	return ok, nil
-
 }
 
 // MapToCurve implements the simple hash-and-check (also sometimes try-and-increment) algorithm
@@ -60,8 +95,19 @@ func MapToCurve(digest [32]byte) *bn254.G1Affine {
 }
 
 func CheckG1AndG2DiscreteLogEquality(pointG1 *bn254.G1Affine, pointG2 *bn254.G2Affine) (bool, error) {
+	// Validate input points
+	if !IsInG1(pointG1) {
+		return false, ErrInvalidG1Point
+	}
+	if !IsInG2(pointG2) {
+		return false, ErrInvalidG2Point
+	}
+
 	negGenG1 := new(bn254.G1Affine).Neg(GetG1Generator())
-	return bn254.PairingCheck([]bn254.G1Affine{*pointG1, *negGenG1}, []bn254.G2Affine{*GetG2Generator(), *pointG2})
+	return bn254.PairingCheck(
+		[]bn254.G1Affine{*pointG1, *negGenG1},
+		[]bn254.G2Affine{*GetG2Generator(), *pointG2},
+	)
 }
 
 func GetG1Generator() *bn254.G1Affine {
