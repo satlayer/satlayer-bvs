@@ -10,9 +10,8 @@ RUN apk update && apk add clang && apk add binaryen
 COPY . /code
 
 FROM optimizer AS builder
-ARG CRATE
-RUN /usr/local/bin/optimize.sh ./${CRATE}
+ARG DIRECTORY
+RUN /usr/local/bin/optimize.sh ${DIRECTORY}
 
 FROM scratch
-ARG CRATE
 COPY --from=builder /code/artifacts ./
