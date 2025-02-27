@@ -33,9 +33,6 @@
 //
 //    operatorStatusResponse, err := UnmarshalOperatorStatusResponse(bytes)
 //    bytes, err = operatorStatusResponse.Marshal()
-//
-//    ownerResponse, err := UnmarshalOwnerResponse(bytes)
-//    bytes, err = ownerResponse.Marshal()
 
 package directory
 
@@ -151,16 +148,6 @@ func (r *OperatorStatusResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalOwnerResponse(data []byte) (OwnerResponse, error) {
-	var r OwnerResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *OwnerResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
 type InstantiateMsg struct {
 	DelegationManager string `json:"delegation_manager"`
 	InitialOwner      string `json:"initial_owner"`
@@ -220,7 +207,6 @@ type QueryMsg struct {
 	IsSaltSpent                     *IsSaltSpent                     `json:"is_salt_spent,omitempty"`
 	BvsInfo                         *BvsInfo                         `json:"bvs_info,omitempty"`
 	DelegationManager               *DelegationManager               `json:"delegation_manager,omitempty"`
-	Owner                           *Owner                           `json:"owner,omitempty"`
 	OperatorBvsRegistrationTypeHash *OperatorBvsRegistrationTypeHash `json:"operator_bvs_registration_type_hash,omitempty"`
 	DomainTypeHash                  *DomainTypeHash                  `json:"domain_type_hash,omitempty"`
 	DomainName                      *DomainName                      `json:"domain_name,omitempty"`
@@ -260,9 +246,6 @@ type OperatorStatus struct {
 	Operator string `json:"operator"`
 }
 
-type Owner struct {
-}
-
 type BvsInfoResponse struct {
 	BvsContract string `json:"bvs_contract"`
 	BvsHash     string `json:"bvs_hash"`
@@ -294,10 +277,6 @@ type OperatorBvsRegistrationTypeHashResponse struct {
 
 type OperatorStatusResponse struct {
 	Status OperatorBvsRegistrationStatus `json:"status"`
-}
-
-type OwnerResponse struct {
-	OwnerAddr string `json:"owner_addr"`
 }
 
 type OperatorBvsRegistrationStatus string
