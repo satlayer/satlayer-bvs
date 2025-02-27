@@ -96,26 +96,6 @@ func (suite *strategyBaseTestSuite) Test_QueryStrategyBase() {
 
 	strategyBase := api.NewStrategyBase(chainIO)
 	strategyBase.BindClient(suite.contrAddr)
-
-	/*resp, err := strategyBase.GetShares("osmo1fxqtqvcsglst7pmnd0a9ftytsxt8g75r6cugv7", "osmo1p4ee54wcu54vcxht5spk5dpklr39qjpxxk38rm9p36c48rlgyawstwl3q8")
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)*/
-
-	resp, err := strategyBase.SharesToUnderlyingView(1)
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)
-
-	resp, err = strategyBase.UnderlyingToShareView(1)
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)
-
-	/*resp, err = strategyBase.UnderlyingView("osmo1fxqtqvcsglst7pmnd0a9ftytsxt8g75r6cugv7")
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)*/
 }
 
 func TestStrategyTestSuite(t *testing.T) {

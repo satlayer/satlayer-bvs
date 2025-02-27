@@ -38,46 +38,6 @@ func strategyBaseCmd() *cobra.Command {
 			strategybase.Withdraw(args[0], args[1], amount)
 		},
 	}
-	getSharesCmd := &cobra.Command{
-		Use:   "get-shares <stakerAddress> <strategyAddress>",
-		Short: "To get shares.",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			strategybase.GetShares(args[0], args[1])
-		},
-	}
-	sharesUnderlyingviewCmd := &cobra.Command{
-		Use:   "shares-underlyingview <shareAmount>",
-		Short: "To get shares underlying view.",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			amount, err := strconv.ParseUint(args[0], 10, 64)
-			if err != nil {
-				panic(fmt.Sprintf("amount must be an integer. Error: %s\n", err))
-			}
-			strategybase.SharesUnderlyingView(amount)
-		},
-	}
-	underlyingShareviewCmd := &cobra.Command{
-		Use:   "underlying-shareview <amount>",
-		Short: "To get underlying share view.",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			amount, err := strconv.ParseUint(args[0], 10, 64)
-			if err != nil {
-				panic(fmt.Sprintf("amount must be an integer. Error: %s\n", err))
-			}
-			strategybase.UnderlyingShareView(amount)
-		},
-	}
-	underlyingViewCmd := &cobra.Command{
-		Use:   "underlying-view <userAddress>",
-		Short: "To get underlying view.",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			strategybase.UnderlyingView(args[0])
-		},
-	}
 	underlyingTokenCmd := &cobra.Command{
 		Use:   "underlying-token",
 		Short: "To get underlying token.",
@@ -129,10 +89,6 @@ func strategyBaseCmd() *cobra.Command {
 
 	subCmd.AddCommand(depositCmd)
 	subCmd.AddCommand(withdrawCmd)
-	subCmd.AddCommand(getSharesCmd)
-	subCmd.AddCommand(sharesUnderlyingviewCmd)
-	subCmd.AddCommand(underlyingShareviewCmd)
-	subCmd.AddCommand(underlyingViewCmd)
 	subCmd.AddCommand(underlyingTokenCmd)
 	subCmd.AddCommand(pauseCmd)
 	subCmd.AddCommand(unpauseCmd)
