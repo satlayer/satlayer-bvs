@@ -392,6 +392,6 @@ fn register_bvs_but_paused() {
 
     assert_eq!(
         err.root_cause().to_string(),
-        bvs_directory::ContractError::RegistryError(RegistryError::IsPaused).to_string()
+        bvs_directory::ContractError::Registry(RegistryError::IsPaused).to_string()
     );
 }
