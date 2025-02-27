@@ -19,23 +19,23 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(IsPausedResponse)]
     IsPaused {
-        /// The contract calling this
+        /// The (contract: Addr) calling this
         #[serde(rename = "c")]
         contract: String,
-        /// The ExecuteMsg method to check if it is paused
+        /// The (method: ExecuteMsg) to check if it is paused
         #[serde(rename = "m")]
         method: String,
     },
 
     #[returns(CanExecuteResponse)]
     CanExecute {
-        /// The contract calling this
+        /// The (contract: Addr) calling this
         #[serde(rename = "c")]
         contract: String,
-        /// The sender of the message
+        /// The (sender: Addr) of the message
         #[serde(rename = "s")]
         sender: String,
-        /// The ExecuteMsg method to check if it is paused
+        /// The (method: ExecuteMsg) to check if it is paused
         #[serde(rename = "m")]
         method: String,
     },
@@ -64,5 +64,50 @@ impl CanExecuteResponse {
 
     pub fn can_execute(&self) -> bool {
         self.0 == 1
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CanExecuteResponse, IsPausedResponse};
+
+    #[test]
+    fn test_paused() {
+        let msg = IsPausedResponse::new(true);
+        assert_eq!(msg.is_paused(), true);
+
+        let msg = IsPausedResponse::new(false);
+        assert_eq!(msg.is_paused(), false);
+    }
+
+    /// Test the raw value of the IsPausedResponse
+    /// If != 1, it is not paused
+    #[test]
+    fn test_paused_raw() {
+        let msg = IsPausedResponse(0);
+        assert_eq!(msg.is_paused(), false);
+
+        let msg = IsPausedResponse(1);
+        assert_eq!(msg.is_paused(), true);
+    }
+
+    #[test]
+    fn test_can_execute() {
+        let msg = CanExecuteResponse::new(true);
+        assert_eq!(msg.can_execute(), true);
+
+        let msg = CanExecuteResponse::new(false);
+        assert_eq!(msg.can_execute(), false);
+    }
+
+    /// Test the raw value of the CanExecuteResponse
+    /// If != 1, it can't execute
+    #[test]
+    fn test_can_execute_raw() {
+        let msg = CanExecuteResponse(0);
+        assert_eq!(msg.can_execute(), false);
+
+        let msg = CanExecuteResponse(1);
+        assert_eq!(msg.can_execute(), true);
     }
 }

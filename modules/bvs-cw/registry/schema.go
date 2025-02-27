@@ -10,6 +10,9 @@
 //    queryMsg, err := UnmarshalQueryMsg(bytes)
 //    bytes, err = queryMsg.Marshal()
 //
+//    canExecuteResponse, err := UnmarshalCanExecuteResponse(bytes)
+//    bytes, err = canExecuteResponse.Marshal()
+//
 //    isPausedResponse, err := UnmarshalIsPausedResponse(bytes)
 //    bytes, err = isPausedResponse.Marshal()
 
@@ -47,6 +50,20 @@ func (r *QueryMsg) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
+type CanExecuteResponse int64
+
+func UnmarshalCanExecuteResponse(data []byte) (CanExecuteResponse, error) {
+	var r CanExecuteResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *CanExecuteResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+type IsPausedResponse int64
+
 func UnmarshalIsPausedResponse(data []byte) (IsPausedResponse, error) {
 	var r IsPausedResponse
 	err := json.Unmarshal(data, &r)
@@ -76,16 +93,22 @@ type Unpause struct {
 }
 
 type QueryMsg struct {
-	IsPaused IsPaused `json:"is_paused"`
+	IsPaused   *IsPaused   `json:"is_paused,omitempty"`
+	CanExecute *CanExecute `json:"can_execute,omitempty"`
+}
+
+type CanExecute struct {
+	// The (contract: Addr) calling this
+	C string `json:"c"`
+	// The (method: ExecuteMsg) to check if it is paused
+	M string `json:"m"`
+	// The (sender: Addr) of the message
+	S string `json:"s"`
 }
 
 type IsPaused struct {
-	// The contract of the caller (caller)
-	Contract string `json:"contract"`
-	// The ExecuteMsg method to check if it is paused
-	Method string `json:"method"`
-}
-
-type IsPausedResponse struct {
-	Paused bool `json:"paused"`
+	// The (contract: Addr) calling this
+	C string `json:"c"`
+	// The (method: ExecuteMsg) to check if it is paused
+	M string `json:"m"`
 }
