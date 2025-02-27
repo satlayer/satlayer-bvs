@@ -18,11 +18,13 @@ import (
 
 type Signer struct {
 	ClientCtx client.Context
+	validator MsgValidator
 }
 
 func NewSigner(clientCtx client.Context) *Signer {
 	return &Signer{
 		ClientCtx: clientCtx,
+		validator: &DefaultMsgValidator{},
 	}
 }
 
@@ -41,7 +43,7 @@ func (s *Signer) BuildAndSignTx(gasAdjustment float64, gasPrice sdktypes.DecCoin
 }
 
 func (s *Signer) BuildUnsignedTx(gasAdjustment float64, gasPrice sdktypes.DecCoin, maxGas uint64, memo string, simulate bool, msgs ...sdktypes.Msg) (client.TxBuilder, tx.Factory, error) {
-	msgs, err := s.checkMsg(msgs...)
+	msgs, err := s.CheckMsg(msgs...)
 	if err != nil {
 		return nil, tx.Factory{}, err
 	}
@@ -84,14 +86,10 @@ func (s *Signer) setFactory(gasAdjustment float64, gasPrice sdktypes.DecCoin, ma
 	return txf
 }
 
-func (s *Signer) checkMsg(msgs ...sdktypes.Msg) ([]sdktypes.Msg, error) {
+// CheckMsg validates the given messages
+func (s *Signer) CheckMsg(msgs ...sdktypes.Msg) ([]sdktypes.Msg, error) {
 	for _, msg := range msgs {
-		m, ok := msg.(sdktypes.HasValidateBasic)
-		if !ok {
-			continue
-		}
-
-		if err := m.ValidateBasic(); err != nil {
+		if err := s.validator.ValidateMsg(msg); err != nil {
 			return nil, err
 		}
 	}
@@ -146,4 +144,9 @@ func (s *Signer) SignByKeyName(msgHash []byte, keyName string) (string, error) {
 	signature := ecdsa.SignCompact(secKey, msgHash, false)
 	// remove the recovery bit and convert signature to base64 string
 	return base64.StdEncoding.EncodeToString(signature[1:]), nil
+}
+
+// SetMsgValidator allows setting a custom message validator
+func (s *Signer) SetMsgValidator(v MsgValidator) {
+	s.validator = v
 }

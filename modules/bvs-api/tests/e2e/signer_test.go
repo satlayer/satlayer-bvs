@@ -9,14 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/satlayer/satlayer-bvs/babylond"
-	"github.com/satlayer/satlayer-bvs/babylond/bvs"
-
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/satlayer/satlayer-bvs/babylond"
+	"github.com/satlayer/satlayer-bvs/babylond/bvs"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/signer"
 	"github.com/satlayer/satlayer-bvs/bvs-cw/directory"
@@ -122,6 +121,81 @@ func (suite *signerTestSuite) Test_VerifySignature() {
 	v, err := signer.VerifySignature(pubKey, msgHash, sigStr)
 	assert.NoError(t, err)
 	t.Logf("%+v\n", v)
+}
+
+func (suite *signerTestSuite) Test_CheckMsg() {
+	t := suite.T()
+
+	// Setup test cases
+	tests := []struct {
+		name    string
+		msg     sdktypes.Msg
+		wantErr bool
+	}{
+		{
+			name: "valid execute contract message",
+			msg: &wasmtypes.MsgExecuteContract{
+				Sender:   "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf",
+				Contract: "bbn1v9xnmm4f9nqwrg9gvxc4q5t0wj463jk8u8nkxh",
+				Msg:      []byte(`{"action":"test"}`),
+				Funds:    sdktypes.NewCoins(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid query contract message",
+			msg: &wasmtypes.QuerySmartContractStateRequest{
+				Address: "bbn1v9xnmm4f9nqwrg9gvxc4q5t0wj463jk8u8nkxh",
+				QueryData: []byte(`{
+					"get_config": {}
+				}`),
+			},
+			wantErr: false,
+		},
+		{
+			name:    "nil message",
+			msg:     nil,
+			wantErr: true,
+		},
+		{
+			name: "invalid json in execute message",
+			msg: &wasmtypes.MsgExecuteContract{
+				Sender:   "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf",
+				Contract: "bbn1v9xnmm4f9nqwrg9gvxc4q5t0wj463jk8u8nkxh",
+				Msg:      []byte(`{invalid json`),
+				Funds:    sdktypes.NewCoins(),
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid json in query message",
+			msg: &wasmtypes.QuerySmartContractStateRequest{
+				Address: "bbn1v9xnmm4f9nqwrg9gvxc4q5t0wj463jk8u8nkxh",
+				QueryData: []byte(`{
+					invalid json
+				}`),
+			},
+			wantErr: true,
+		},
+	}
+
+	// Run test cases
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sig := signer.NewSigner(suite.chainIO.GetClientCtx())
+			msgs, err := sig.CheckMsg(tt.msg)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Nil(t, msgs)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, msgs)
+				assert.Equal(t, 1, len(msgs))
+				assert.Equal(t, tt.msg, msgs[0])
+			}
+		})
+	}
 }
 
 func CalculateDigestHash(operatorPublicKey []byte, bvsAddr string, salt []byte, expiry uint64, chainID, contrAddr string) []byte {
