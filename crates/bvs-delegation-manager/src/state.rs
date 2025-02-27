@@ -20,4 +20,3 @@ pub const STRATEGY_WITHDRAWAL_DELAY_BLOCKS: Map<&Addr, u64> =
 pub const MIN_WITHDRAWAL_DELAY_BLOCKS: Item<u64> = Item::new("min_withdrawal_delay_blocks");
 pub const CUMULATIVE_WITHDRAWALS_QUEUED: Map<&Addr, Uint128> =
     Map::new("cumulative_withdrawals_queued");
-pub const OWNER: Item<Addr> = Item::new("owner");

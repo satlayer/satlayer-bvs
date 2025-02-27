@@ -9,7 +9,7 @@ use crate::{
         TotalSharesResponse, UnderlyingToShareResponse, UnderlyingToSharesResponse,
         UnderlyingTokenResponse, UserUnderlyingResponse,
     },
-    state::{StrategyState, OWNER, STRATEGY_STATE},
+    state::{StrategyState, STRATEGY_STATE},
 };
 use cosmwasm_std::{
     to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo,
@@ -23,6 +23,7 @@ use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 
 // TODO: why circular dependency here, remove?
 use bvs_base::strategy::{QueryMsg as StrategyManagerQueryMsg, StakerStrategySharesResponse};
+use bvs_library::ownership;
 
 const CONTRACT_NAME: &str = "BVS Strategy Base";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -43,11 +44,10 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let owner = deps.api.addr_validate(&msg.initial_owner)?;
+    ownership::_set_owner(deps.storage, &owner)?;
 
     let strategy_manager = deps.api.addr_validate(&msg.strategy_manager)?;
     let underlying_token = deps.api.addr_validate(&msg.underlying_token)?;
-
-    OWNER.save(deps.storage, &owner)?;
 
     let state = StrategyState {
         strategy_manager: strategy_manager.clone(),
@@ -106,8 +106,9 @@ pub fn execute(
             set_strategy_manager(deps, info, new_strategy_manager_addr)
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
-            let new_owner_addr = deps.api.addr_validate(&new_owner)?;
-            transfer_ownership(deps, info, new_owner_addr)
+            let new_owner = deps.api.addr_validate(&new_owner)?;
+            ownership::transfer_ownership(deps, &info, &new_owner)
+                .map_err(|e| ContractError::Ownership(e))
         }
         ExecuteMsg::Pause {} => {
             check_pauser(deps.as_ref(), info.clone())?;
@@ -118,12 +119,12 @@ pub fn execute(
             unpause(deps, &info).map_err(ContractError::Std)
         }
         ExecuteMsg::SetPauser { new_pauser } => {
-            only_owner(deps.as_ref(), &info.clone())?;
+            ownership::assert_owner(deps.as_ref(), &info)?;
             let new_pauser_addr = deps.api.addr_validate(&new_pauser)?;
             set_pauser(deps, new_pauser_addr).map_err(ContractError::Std)
         }
         ExecuteMsg::SetUnpauser { new_unpauser } => {
-            only_owner(deps.as_ref(), &info.clone())?;
+            ownership::assert_owner(deps.as_ref(), &info)?;
             let new_unpauser_addr = deps.api.addr_validate(&new_unpauser)?;
             set_unpauser(deps, new_unpauser_addr).map_err(ContractError::Std)
         }
@@ -316,7 +317,7 @@ pub fn set_strategy_manager(
     info: MessageInfo,
     new_strategy_manager: Addr,
 ) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.as_ref(), &info)?;
 
     let mut state = STRATEGY_STATE.load(deps.storage)?;
     state.strategy_manager = new_strategy_manager.clone();
@@ -327,24 +328,6 @@ pub fn set_strategy_manager(
         .add_attribute("new_strategy_manager", new_strategy_manager.to_string());
 
     Ok(Response::new().add_event(event))
-}
-
-pub fn transfer_ownership(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_owner: Addr,
-) -> Result<Response, ContractError> {
-    let current_owner = OWNER.load(deps.storage)?;
-
-    if current_owner != info.sender {
-        return Err(ContractError::Unauthorized {});
-    }
-
-    OWNER.save(deps.storage, &new_owner)?;
-
-    Ok(Response::new()
-        .add_attribute("method", "transfer_ownership")
-        .add_attribute("new_owner", new_owner.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -447,14 +430,6 @@ pub fn query_underlying_to_shares(
 ) -> StdResult<UnderlyingToSharesResponse> {
     let share_to_send = underlying_to_shares(deps, env, amount_underlying)?;
     Ok(UnderlyingToSharesResponse { share_to_send })
-}
-
-fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
-    let owner = OWNER.load(deps.storage)?;
-    if info.sender != owner {
-        return Err(ContractError::Unauthorized {});
-    }
-    Ok(())
 }
 
 fn only_strategy_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {

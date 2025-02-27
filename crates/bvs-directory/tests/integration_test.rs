@@ -10,7 +10,7 @@ use bvs_registry::msg::InstantiateMsg;
 use bvs_registry::testing::RegistryContract;
 use bvs_testing::integration::{mock_contracts::mock_app, mock_env::MockEnvBuilder};
 use cosmwasm_std::testing::mock_env;
-use cosmwasm_std::{Binary, Event, StdError};
+use cosmwasm_std::{Binary, Event};
 
 #[test]
 fn register_bvs_successfully() {

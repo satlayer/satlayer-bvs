@@ -5,13 +5,13 @@ use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
-        DelegationManagerResponse, DepositsResponse, OwnerResponse,
-        StakerStrategyListLengthResponse, StakerStrategyListResponse, StakerStrategySharesResponse,
-        StrategyManagerStateResponse, StrategyWhitelistedResponse, StrategyWhitelisterResponse,
+        DelegationManagerResponse, DepositsResponse, StakerStrategyListLengthResponse,
+        StakerStrategyListResponse, StakerStrategySharesResponse, StrategyManagerStateResponse,
+        StrategyWhitelistedResponse, StrategyWhitelisterResponse,
     },
     state::{
         StrategyManagerState, DEPLOYED_STRATEGIES, IS_BLACKLISTED, MAX_STAKER_STRATEGY_LIST_LENGTH,
-        OWNER, STAKER_STRATEGY_LIST, STAKER_STRATEGY_SHARES, STRATEGY_IS_WHITELISTED_FOR_DEPOSIT,
+        STAKER_STRATEGY_LIST, STAKER_STRATEGY_SHARES, STRATEGY_IS_WHITELISTED_FOR_DEPOSIT,
         STRATEGY_MANAGER_STATE, STRATEGY_WHITELISTER,
     },
 };
@@ -26,6 +26,7 @@ use crate::query::{IsTokenBlacklistedResponse, TokenStrategyResponse};
 use bvs_base::delegation::ExecuteMsg as DelegationManagerExecuteMsg;
 use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
+use bvs_library::ownership;
 use bvs_strategy_base::{
     msg::ExecuteMsg as StrategyExecuteMsg, msg::QueryMsg as StrategyQueryMsg, state::StrategyState,
 };
@@ -47,10 +48,12 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
+    let owner = deps.api.addr_validate(&msg.initial_owner)?;
+    ownership::_set_owner(deps.storage, &owner)?;
+
     let delegation_manager = deps.api.addr_validate(&msg.delegation_manager)?;
     let slash_manager = deps.api.addr_validate(&msg.slash_manager)?;
     let initial_strategy_whitelister = deps.api.addr_validate(&msg.initial_strategy_whitelister)?;
-    let initial_owner = deps.api.addr_validate(&msg.initial_owner)?;
 
     let state = StrategyManagerState {
         delegation_manager: delegation_manager.clone(),
@@ -66,7 +69,6 @@ pub fn instantiate(
     PAUSED_STATE.save(deps.storage, &msg.initial_paused_status)?;
     STRATEGY_MANAGER_STATE.save(deps.storage, &state)?;
     STRATEGY_WHITELISTER.save(deps.storage, &initial_strategy_whitelister)?;
-    OWNER.save(deps.storage, &initial_owner)?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
@@ -188,8 +190,9 @@ pub fn execute(
             set_slash_manager(deps, info, new_slash_manager_addr)
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
-            let new_owner_addr: Addr = Addr::unchecked(new_owner);
-            transfer_ownership(deps, info, new_owner_addr)
+            let new_owner = deps.api.addr_validate(&new_owner)?;
+            ownership::transfer_ownership(deps, &info, &new_owner)
+                .map_err(|e| ContractError::Ownership(e))
         }
         ExecuteMsg::Pause {} => {
             check_pauser(deps.as_ref(), info.clone())?;
@@ -200,12 +203,12 @@ pub fn execute(
             unpause(deps, &info).map_err(ContractError::Std)
         }
         ExecuteMsg::SetPauser { new_pauser } => {
-            only_owner(deps.as_ref(), &info.clone())?;
+            ownership::assert_owner(deps.as_ref(), &info)?;
             let new_pauser_addr = deps.api.addr_validate(&new_pauser)?;
             set_pauser(deps, new_pauser_addr).map_err(ContractError::Std)
         }
         ExecuteMsg::SetUnpauser { new_unpauser } => {
-            only_owner(deps.as_ref(), &info.clone())?;
+            ownership::assert_owner(deps.as_ref(), &info)?;
             let new_unpauser_addr = deps.api.addr_validate(&new_unpauser)?;
             set_unpauser(deps, new_unpauser_addr).map_err(ContractError::Std)
         }
@@ -217,7 +220,7 @@ pub fn set_delegation_manager(
     info: MessageInfo,
     new_delegation_manager: Addr,
 ) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.as_ref(), &info)?;
 
     let mut state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
 
@@ -232,7 +235,7 @@ pub fn set_slash_manager(
     info: MessageInfo,
     new_slash_manager: Addr,
 ) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.as_ref(), &info)?;
 
     let mut state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
 
@@ -309,7 +312,7 @@ pub fn set_strategy_whitelister(
     info: MessageInfo,
     new_strategy_whitelister: Addr,
 ) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.as_ref(), &info)?;
 
     let strategy_whitelister = STRATEGY_WHITELISTER.load(deps.storage)?;
 
@@ -395,24 +398,6 @@ pub fn withdraw_shares_as_tokens(
     Ok(response)
 }
 
-pub fn transfer_ownership(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_owner: Addr,
-) -> Result<Response, ContractError> {
-    let current_owner = OWNER.load(deps.storage)?;
-
-    if current_owner != info.sender {
-        return Err(ContractError::Unauthorized {});
-    }
-
-    OWNER.save(deps.storage, &new_owner)?;
-
-    Ok(Response::new()
-        .add_attribute("method", "transfer_ownership")
-        .add_attribute("new_owner", new_owner.to_string()))
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -451,7 +436,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
             to_json_binary(&query_staker_strategy_list(deps, staker_addr)?)
         }
-        QueryMsg::Owner {} => to_json_binary(&query_owner(deps)?),
         QueryMsg::IsStrategyWhitelisted { strategy } => {
             let strategy_addr = deps.api.addr_validate(&strategy)?;
 
@@ -501,11 +485,6 @@ fn query_staker_strategy_list(deps: Deps, staker: Addr) -> StdResult<StakerStrat
     Ok(StakerStrategyListResponse { strategies })
 }
 
-fn query_owner(deps: Deps) -> StdResult<OwnerResponse> {
-    let owner_addr = OWNER.load(deps.storage)?;
-    Ok(OwnerResponse { owner_addr })
-}
-
 fn query_is_strategy_whitelisted(
     deps: Deps,
     strategy: Addr,
@@ -550,14 +529,6 @@ fn only_strategy_whitelister(deps: Deps, info: &MessageInfo) -> Result<(), Contr
     let whitelister: Addr = STRATEGY_WHITELISTER.load(deps.storage)?;
 
     if info.sender != whitelister {
-        return Err(ContractError::Unauthorized {});
-    }
-    Ok(())
-}
-
-fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
-    let owner = OWNER.load(deps.storage)?;
-    if info.sender != owner {
         return Err(ContractError::Unauthorized {});
     }
     Ok(())
@@ -862,7 +833,7 @@ pub fn add_new_strategy(
     strategy: Addr,
     token: Addr,
 ) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.as_ref(), &info)?;
 
     let is_blacklisted = IS_BLACKLISTED
         .may_load(deps.storage, &token)?
@@ -906,6 +877,7 @@ mod tests {
     use super::*;
     use crate::query::IsTokenBlacklistedResponse;
     use bvs_base::roles::{PAUSER, UNPAUSER};
+    use bvs_library::ownership::OwnershipError;
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
@@ -950,7 +922,7 @@ mod tests {
         assert_eq!(res.attributes[4].key, "owner");
         assert_eq!(res.attributes[4].value, owner.clone());
 
-        let owner = OWNER.load(&deps.storage).unwrap();
+        let owner = ownership::OWNER.load(&deps.storage).unwrap();
         assert_eq!(owner, owner.clone());
 
         let strategy_manager_state = STRATEGY_MANAGER_STATE.load(&deps.storage).unwrap();
@@ -1208,33 +1180,6 @@ mod tests {
     }
 
     #[test]
-    fn test_only_owner() {
-        let (
-            deps,
-            _env,
-            owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-
-        let result = only_owner(deps.as_ref(), &owner_info);
-        assert!(result.is_ok());
-
-        let result = only_owner(deps.as_ref(), &info_unauthorized);
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-    }
-
-    #[test]
     fn test_only_delegation_manager() {
         let (
             deps,
@@ -1448,13 +1393,10 @@ mod tests {
             info_unauthorized.clone(),
             Addr::unchecked("another_whitelister"),
         );
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            ContractError::Ownership(OwnershipError::Unauthorized).to_string()
+        );
     }
 
     #[test]
@@ -2181,25 +2123,6 @@ mod tests {
     }
 
     #[test]
-    fn test_get_owner() {
-        let (
-            deps,
-            env,
-            owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let query_msg = QueryMsg::Owner {};
-        let bin = query(deps.as_ref(), env, query_msg).unwrap();
-        let owner_response: OwnerResponse = from_json(bin).unwrap();
-
-        assert_eq!(owner_response.owner_addr, owner_info.sender);
-    }
-
-    #[test]
     fn test_is_strategy_whitelisted() {
         let (
             mut deps,
@@ -2354,13 +2277,10 @@ mod tests {
             new_delegation_manager.clone(),
         );
 
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            ContractError::Ownership(OwnershipError::Unauthorized).to_string()
+        );
     }
 
     #[test]
@@ -2397,76 +2317,13 @@ mod tests {
 
         let res = set_slash_manager(deps.as_mut(), info_unauthorized, new_slash_manager.clone());
 
-        assert!(res.is_err());
-        if let Err(err) = res {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
+        assert_eq!(
+            res.unwrap_err().to_string(),
+            ContractError::Ownership(OwnershipError::Unauthorized).to_string()
+        );
 
         let state = STRATEGY_MANAGER_STATE.load(&deps.storage).unwrap();
         assert_eq!(state.slash_manager, new_slash_manager);
-    }
-
-    #[test]
-    fn test_transfer_ownership() {
-        let (
-            mut deps,
-            _env,
-            owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let new_owner = deps.api.addr_make("new_owner");
-
-        let res = transfer_ownership(deps.as_mut(), owner_info.clone(), new_owner.clone());
-        assert!(res.is_ok());
-
-        let res = res.unwrap();
-        assert_eq!(res.attributes.len(), 2);
-        assert_eq!(res.attributes[0].key, "method");
-        assert_eq!(res.attributes[0].value, "transfer_ownership");
-        assert_eq!(res.attributes[1].key, "new_owner");
-        assert_eq!(res.attributes[1].value, new_owner.to_string());
-
-        let stored_owner = OWNER.load(&deps.storage).unwrap();
-        assert_eq!(stored_owner, new_owner);
-
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-
-        let res = transfer_ownership(deps.as_mut(), info_unauthorized, new_owner.clone());
-
-        assert!(res.is_err());
-        if let Err(err) = res {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-
-        let stored_owner = OWNER.load(&deps.storage).unwrap();
-        assert_eq!(stored_owner, new_owner);
-
-        let res = transfer_ownership(
-            deps.as_mut(),
-            message_info(&new_owner, &[]),
-            new_owner.clone(),
-        );
-        assert!(res.is_ok());
-
-        let res = res.unwrap();
-        assert_eq!(res.attributes.len(), 2);
-        assert_eq!(res.attributes[0].key, "method");
-        assert_eq!(res.attributes[0].value, "transfer_ownership");
-        assert_eq!(res.attributes[1].key, "new_owner");
-        assert_eq!(res.attributes[1].value, new_owner.to_string());
-
-        let stored_owner = OWNER.load(&deps.storage).unwrap();
-        assert_eq!(stored_owner, new_owner);
     }
 
     #[test]
