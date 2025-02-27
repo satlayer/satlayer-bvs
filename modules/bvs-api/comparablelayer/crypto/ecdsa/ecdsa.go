@@ -87,7 +87,7 @@ func ReadCosmosKey(keyStoreFile string, password string) (*cosmossecp256k1.PrivK
 	}
 
 	if encryptedStruct.PubKey == "" {
-		return nil, fmt.Errorf("invalid key")
+		return nil, fmt.Errorf("invalid key: missing public key")
 	}
 
 	privKeyBytes, err := encrypt.DecryptData(encryptedStruct.Crypto, password)
@@ -95,8 +95,14 @@ func ReadCosmosKey(keyStoreFile string, password string) (*cosmossecp256k1.PrivK
 		return nil, fmt.Errorf("failed to decrypt key: %w", err)
 	}
 
-	privKey := cosmossecp256k1.PrivKey{Key: privKeyBytes}
-	return &privKey, nil
+	privKey := &cosmossecp256k1.PrivKey{Key: privKeyBytes}
+
+	derivedPubKey := privKey.PubKey().String()
+	if derivedPubKey != encryptedStruct.PubKey {
+		return nil, fmt.Errorf("key validation failed: stored public key does not match derived public key")
+	}
+
+	return privKey, nil
 }
 
 // KeyAndCosmosAddressFromHexKey for Cosmos
