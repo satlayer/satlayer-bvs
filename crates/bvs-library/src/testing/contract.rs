@@ -41,7 +41,7 @@ where
     fn set_contract_addr(app: &mut App, label: &str, addr: &Addr) {
         let key = format!("CONTRACT:{}", label);
         let value = String::from_utf8(addr.as_bytes().to_vec()).unwrap();
-        app.storage_mut().set(key.as_bytes(), &value.as_bytes());
+        app.storage_mut().set(key.as_bytes(), value.as_bytes());
     }
 
     /// Get the contract address in the storage for the given label.
@@ -65,8 +65,7 @@ where
     }
 
     fn query<T: DeserializeOwned>(&self, app: &App, msg: &QM) -> StdResult<T> {
-        let msg_bin = to_json_binary(&msg).expect("cannot serialize QueryMsg");
-        app.query_wasm_smart(self.addr(), &msg_bin)
+        app.wrap().query_wasm_smart(self.addr(), &msg)
     }
 
     // TODO: fn migrate
