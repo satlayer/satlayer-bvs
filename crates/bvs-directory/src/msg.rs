@@ -71,9 +71,6 @@ pub enum QueryMsg {
     #[returns(DelegationManagerResponse)]
     DelegationManager {},
 
-    #[returns(OwnerResponse)]
-    Owner {},
-
     #[returns(OperatorBvsRegistrationTypeHashResponse)]
     OperatorBvsRegistrationTypeHash {},
 
@@ -108,11 +105,6 @@ pub struct BvsInfoResponse {
 #[cw_serde]
 pub struct DelegationManagerResponse {
     pub delegation_addr: Addr,
-}
-
-#[cw_serde]
-pub struct OwnerResponse {
-    pub owner_addr: Addr,
 }
 
 #[cw_serde]

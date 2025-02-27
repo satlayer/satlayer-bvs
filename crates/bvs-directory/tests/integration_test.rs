@@ -332,8 +332,8 @@ fn transfer_ownership_successfully() {
         new_owner: anyone.clone().into_string(),
     };
 
-    let bvs_driectory = mock_env.bvs_directory.clone();
-    let response = bvs_driectory
+    let directory = mock_env.bvs_directory.clone();
+    let response = directory
         .execute(
             &mut mock_env,
             owner.clone(),
@@ -345,10 +345,9 @@ fn transfer_ownership_successfully() {
     assert_eq!(response.events.len(), 2);
     assert_eq!(
         response.events[1],
-        Event::new("wasm")
-            .add_attribute("_contract_address", mock_env.bvs_directory.contract_addr)
-            .add_attribute("method", "transfer_ownership")
-            .add_attribute("new_owner", anyone.into_string())
+        Event::new("wasm-TransferOwnership")
+            .add_attribute("old_owner", "owner")
+            .add_attribute("new_owner", anyone.as_str())
     );
 }
 
