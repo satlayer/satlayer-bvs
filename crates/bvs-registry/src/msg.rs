@@ -10,8 +10,19 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
+    /// Pause all contract operations
     Pause {},
+
+    /// Unpause all contract operations
     Unpause {},
+
+    /// Transfer ownership of the contract to a new owner.
+    /// Contract admin (set for all BVS contracts, a cosmwasm feature)
+    /// has the omni-ability to override by migration;
+    /// this logic is app-level.
+    /// > 2-step ownership transfer is mostly redundant for CosmWasm contracts with the admin set.
+    /// > You can override ownership with using CosmWasm migrate `entry_point`.
+    TransferOwnership { new_owner: String },
 }
 
 #[cw_serde]
