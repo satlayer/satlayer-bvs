@@ -1,6 +1,7 @@
-use cosmwasm_std::{to_json_binary, Addr, Empty, Env, Storage, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, Empty, Env, StdResult, Storage, WasmMsg};
 use cw_multi_test::error::AnyResult;
 use cw_multi_test::{App, AppResponse, Contract, Executor};
+use serde::de::DeserializeOwned;
 
 /// TestingContract is a trait that provides a common interface for setting up testing contracts.
 pub trait TestingContract<IM, EM, QM>
@@ -63,6 +64,10 @@ where
         app.execute(sender.clone(), execute_msg.into())
     }
 
-    // TODO: fn query
+    fn query<T: DeserializeOwned>(&self, app: &App, msg: &QM) -> StdResult<T> {
+        let msg_bin = to_json_binary(&msg).expect("cannot serialize QueryMsg");
+        app.query_wasm_smart(self.addr(), &msg_bin)
+    }
+
     // TODO: fn migrate
 }
