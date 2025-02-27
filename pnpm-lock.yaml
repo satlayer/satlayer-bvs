@@ -118,6 +118,9 @@ importers:
       '@examples/squaring-contract':
         specifier: workspace:*
         version: link:../squaring-contract
+      '@modules/babylond':
+        specifier: workspace:*
+        version: link:../../../modules/babylond
       quicktype-core:
         specifier: ^23.0.171
         version: 23.0.171

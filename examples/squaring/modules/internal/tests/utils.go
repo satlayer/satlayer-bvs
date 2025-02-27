@@ -5,13 +5,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
+
 	"github.com/satlayer/satlayer-bvs/babylond/cw20"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/svc"
-	"os"
-	"path/filepath"
-	"runtime"
 
 	"github.com/satlayer/satlayer-bvs/babylond"
 	"github.com/satlayer/satlayer-bvs/babylond/bvs"
@@ -161,7 +162,7 @@ func (suite *TestSuite) DeployBvsContracts() {
 
 	registry := deployer.DeployRegistry(nil)
 
-	directoryContract := deployer.DeployDirectory(tempAddress.String(), registry.Address)
+	directoryContract := deployer.DeployDirectory(registry.Address, tempAddress.String())
 	suite.DirectoryApi = api.NewDirectory(suite.ChainIO, directoryContract.Address)
 
 	strategyManagerContract := deployer.DeployStrategyManager(tempAddress.String(), tempAddress.String(), tempAddress.String())
@@ -180,6 +181,7 @@ func (suite *TestSuite) DeployBvsContracts() {
 	blockTime := status.SyncInfo.LatestBlockTime.Second()
 
 	rewardsCoordinatorContract := deployer.DeployRewardsCoordinator(
+		registry.Address,
 		delegationManagerContract.Address,
 		strategyManagerContract.Address,
 		60,     // 1 minute

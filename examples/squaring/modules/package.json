@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@examples/squaring-contract": "workspace:*",
+    "@modules/babylond": "workspace:*",
     "quicktype-core": "^23.0.171"
   }
 }
