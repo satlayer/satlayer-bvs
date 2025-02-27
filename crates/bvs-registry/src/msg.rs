@@ -54,29 +54,26 @@ impl IsPausedResponse {
     }
 }
 
-#[cw_serde]
-pub enum CanExecuteFlag {
-    CanExecute = 0,
-    IsPaused = 1,
-    Unauthorized = 2,
-}
+pub static FLAG_CAN_EXECUTE: u32 = 0;
+pub static FLAG_PAUSED: u32 = 1;
+pub static FLAG_UNAUTHORIZED: u32 = 2;
 
 #[cw_serde]
-pub struct CanExecuteResponse(pub CanExecuteFlag);
+pub struct CanExecuteResponse(pub u32);
 
 impl CanExecuteResponse {
-    pub fn new(flag: CanExecuteFlag) -> Self {
+    pub fn new(flag: u32) -> Self {
         Self(flag)
     }
 
     pub fn can_execute(&self) -> bool {
-        self.0 == CanExecuteFlag::CanExecute
+        self.0 == FLAG_CAN_EXECUTE
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{CanExecuteFlag, CanExecuteResponse, IsPausedResponse};
+    use super::*;
 
     #[test]
     fn test_paused() {
@@ -100,13 +97,31 @@ mod tests {
 
     #[test]
     fn test_can_execute() {
-        let msg = CanExecuteResponse::new(CanExecuteFlag::CanExecute);
+        let msg = CanExecuteResponse::new(FLAG_CAN_EXECUTE);
         assert_eq!(msg.can_execute(), true);
+        assert_eq!(msg.0, 0);
 
-        let msg = CanExecuteResponse::new(CanExecuteFlag::IsPaused);
+        let msg = CanExecuteResponse::new(FLAG_PAUSED);
         assert_eq!(msg.can_execute(), false);
+        assert_eq!(msg.0, 1);
 
-        let msg = CanExecuteResponse::new(CanExecuteFlag::Unauthorized);
+        let msg = CanExecuteResponse::new(FLAG_UNAUTHORIZED);
         assert_eq!(msg.can_execute(), false);
+        assert_eq!(msg.0, 2);
+    }
+
+    #[test]
+    fn test_can_execute_raw() {
+        let msg = CanExecuteResponse(FLAG_CAN_EXECUTE);
+        assert_eq!(msg.can_execute(), true);
+        assert_eq!(msg.0, 0);
+
+        let msg = CanExecuteResponse(FLAG_PAUSED);
+        assert_eq!(msg.can_execute(), false);
+        assert_eq!(msg.0, 1);
+
+        let msg = CanExecuteResponse(FLAG_UNAUTHORIZED);
+        assert_eq!(msg.can_execute(), false);
+        assert_eq!(msg.0, 2);
     }
 }
