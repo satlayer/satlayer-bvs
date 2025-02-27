@@ -24,9 +24,16 @@ func InitConfig(overrideConfig Config) {
 	if _, err := toml.DecodeFile(envFilePath, &C); err != nil {
 		panic(err)
 	}
-	// override config
 
-	// TODO: add more override and move to a separate function
+	// override config
+	UpdateConfig(overrideConfig)
+
+	// init logger
+	L = logger.NewELKLogger(C.Chain.BvsHash)
+	initStore(&C.Database)
+}
+
+func UpdateConfig(overrideConfig Config) {
 	if overrideConfig.Database.RedisHost != "" {
 		C.Database.RedisHost = overrideConfig.Database.RedisHost
 	}
@@ -36,8 +43,22 @@ func InitConfig(overrideConfig Config) {
 	if overrideConfig.Owner.KeyDir != "" {
 		C.Owner.KeyDir = overrideConfig.Owner.KeyDir
 	}
-
-	// init logger
-	L = logger.NewELKLogger(C.Chain.BvsHash)
-	initStore(&C.Database)
+	if overrideConfig.Owner.Bech32Prefix != "" {
+		C.Owner.Bech32Prefix = overrideConfig.Owner.Bech32Prefix
+	}
+	if overrideConfig.Owner.KeyringBackend != "" {
+		C.Owner.KeyringBackend = overrideConfig.Owner.KeyringBackend
+	}
+	if overrideConfig.Chain.ID != "" {
+		C.Chain.ID = overrideConfig.Chain.ID
+	}
+	if overrideConfig.Chain.RPC != "" {
+		C.Chain.RPC = overrideConfig.Chain.RPC
+	}
+	if overrideConfig.Chain.BvsDirectory != "" {
+		C.Chain.BvsDirectory = overrideConfig.Chain.BvsDirectory
+	}
+	if overrideConfig.Chain.BvsHash != "" {
+		C.Chain.BvsHash = overrideConfig.Chain.BvsHash
+	}
 }

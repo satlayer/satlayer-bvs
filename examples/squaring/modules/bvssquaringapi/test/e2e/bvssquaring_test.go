@@ -16,9 +16,7 @@ type SquaringTestSuit struct {
 }
 
 func (suite *SquaringTestSuit) SetupSuite() {
-	suite.TestSuite.SetupSuite("../../../.babylond", "wallet1")
-
-	suite.Babylond.FundAddressUbbn("bbn1huw8yau3aqdsp9lr2f85v5plfd46tu026wylaj", 1e8)
+	suite.TestSuite.SetupSuite("../../../.babylond", "wallet1", "820d902159777d247dda5922d3e2669477e2a2059a03f7ace61a32981e85848e")
 }
 
 // entrypoint for the test suite

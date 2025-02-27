@@ -14,7 +14,7 @@ type signatureTestSuite struct {
 }
 
 func (suite *signatureTestSuite) SetupSuite() {
-	suite.TestSuite.SetupSuite(keyDir, "operator1")
+	suite.TestSuite.SetupSuite(keyDir, "operator1", "8c6a223a07a0c8aa8c7f66319c89ec92c2aef76c116e7d8ee9e0fffc8c48bf3d")
 }
 
 // entrypoint for the test suite

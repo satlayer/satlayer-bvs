@@ -2,20 +2,20 @@ package tests
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/satlayer/satlayer-bvs/babylond/cw20"
+	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
+	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/svc"
 	"os"
 	"path/filepath"
 	"runtime"
 
 	"github.com/satlayer/satlayer-bvs/babylond"
 	"github.com/satlayer/satlayer-bvs/babylond/bvs"
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
-	"github.com/satlayer/satlayer-bvs/bvs-cw/driver"
-	statebank "github.com/satlayer/satlayer-bvs/bvs-cw/state-bank"
 	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/core"
-	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/svc"
 	squaringcontract "github.com/satlayer/satlayer-bvs/examples/squaring/squaring-contract"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -23,12 +23,24 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/redis"
 )
 
+type ContractsApi struct {
+	DelegationManagerApi  *api.DelegationManager
+	RewardsCoordinatorApi *api.RewardsCoordinator
+	SlashManagerApi       *api.SlashManager
+	StrategyBaseApi       *api.StrategyBase
+	StrategyManagerApi    *api.StrategyManager
+	DirectoryApi          *api.Directory
+}
+
 type TestSuite struct {
 	suite.Suite
 	Ctx      context.Context
 	ChainIO  io.ChainIO
 	Babylond *babylond.BabylonContainer
 	Redis    *RedisContainer
+	ContractsApi
+	cw20Token        *babylond.DeployedWasmContract
+	squaringContract *bvs.Contract[squaringcontract.InstantiateMsg]
 }
 
 // SetupSuite Called by tests consumer.
@@ -41,17 +53,49 @@ type TestSuite struct {
 //	 func (suite *ConsumerTestSuite) SetupSuite() {
 //		 suite.TestSuite.SetupSuite("keyname")
 //	 }
-func (suite *TestSuite) SetupSuite(keyDir string, keyName string) {
+func (suite *TestSuite) SetupSuite(keyDir string, keyName string, privKey string) {
 	t := suite.T()
 	ctx := context.Background()
+
 	suite.Ctx = ctx
 	container := babylond.Run(ctx)
 	suite.ChainIO = container.NewChainIO(keyDir)
+
 	suite.Babylond = container
+
+	suite.Babylond.ImportPrivKey("slash-manager:initial_owner", privKey)
+	suite.Babylond.ImportPrivKey("strategy-manager:initial_owner", privKey)
+	suite.Babylond.ImportPrivKey("delegation-manager:initial_owner", privKey)
+	suite.Babylond.ImportPrivKey("directory:initial_owner", privKey)
+	suite.Babylond.ImportPrivKey("rewards-coordinator:initial_owner", privKey)
+	suite.Babylond.ImportPrivKey("strategy-base:initial_owner", privKey)
+
+	// fund wallets
+	suite.Babylond.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
+	suite.Babylond.FundAddressUbbn("bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x", 1e8)
+	suite.Babylond.FundAddressUbbn("bbn1nrueqkp0wmujyxuqp952j8mnxngm5gek3fsgrj", 1e8) // operator2
+	suite.Babylond.FundAddressUbbn("bbn1huw8yau3aqdsp9lr2f85v5plfd46tu026wylaj", 1e8) // wallet1
 
 	redisContainer := suite.StartRedis()
 	suite.Redis = redisContainer
 	redisUrl := fmt.Sprintf("%s:%s", suite.Redis.Host, suite.Redis.Port)
+
+	// setup keyring
+	chainIO, err := suite.ChainIO.SetupKeyring(keyName, "test")
+	assert.NoError(t, err)
+	suite.ChainIO = chainIO
+
+	// deploy BVS contracts
+	suite.DeployBvsContracts()
+
+	// deploy squaring contract
+	squaringContract := suite.DeploySquaringContract()
+	suite.squaringContract = squaringContract
+
+	// register squaring contract into directory
+	res, err := suite.DirectoryApi.RegisterBvs(ctx, squaringContract.Address)
+	assert.NoError(t, err)
+	assert.NotNil(t, res)
 
 	// init env
 	core.InitConfig(core.Config{
@@ -59,16 +103,19 @@ func (suite *TestSuite) SetupSuite(keyDir string, keyName string) {
 			RedisHost: redisUrl,
 		},
 		Owner: core.Owner{
-			KeyName: keyName,
-			KeyDir:  keyDir,
+			KeyName:        keyName,
+			KeyDir:         keyDir,
+			Bech32Prefix:   "bbn",
+			KeyringBackend: "test",
+		},
+		Chain: core.Chain{
+			ID:           suite.Babylond.ChainId,
+			RPC:          suite.Babylond.RpcUri,
+			BvsDirectory: suite.DirectoryApi.ContractAddr,
+			BvsHash:      hex.EncodeToString(api.Sha256([]byte(squaringContract.Address))),
 		},
 	})
 	svc.InitMonitor()
-
-	// setup keyring
-	chainIO, err := suite.ChainIO.SetupKeyring(core.C.Owner.KeyName, core.C.Owner.KeyringBackend)
-	assert.NoError(t, err)
-	suite.ChainIO = chainIO
 }
 
 func (suite *TestSuite) TearDownSuite() {
@@ -103,22 +150,88 @@ func (suite *TestSuite) StartRedis() *RedisContainer {
 	}
 }
 
-// deployBVSContracts deploys the dependency contracts for the squaring contract (statebank and driver)
-func (suite *TestSuite) deployBVSContracts() (*bvs.Contract[statebank.InstantiateMsg], *bvs.Contract[driver.InstantiateMsg]) {
-
-	deployer := bvs.Deployer{
+func (suite *TestSuite) DeployBvsContracts() {
+	t := suite.T()
+	tempAddress := suite.Babylond.GenerateAddress("temp:temp")
+	deployer := &bvs.Deployer{
 		BabylonContainer: suite.Babylond,
 	}
 
-	stateBankContract := deployer.DeployStateBank()
-	driverContract := deployer.DeployDriver()
+	// use temp address for delegation manager + registry
 
-	return stateBankContract, driverContract
+	registry := deployer.DeployRegistry(nil)
+
+	directoryContract := deployer.DeployDirectory(tempAddress.String(), registry.Address)
+	suite.DirectoryApi = api.NewDirectory(suite.ChainIO, directoryContract.Address)
+
+	strategyManagerContract := deployer.DeployStrategyManager(tempAddress.String(), tempAddress.String(), tempAddress.String())
+	suite.StrategyManagerApi = api.NewStrategyManager(suite.ChainIO)
+	suite.StrategyManagerApi.BindClient(strategyManagerContract.Address)
+
+	delegationManagerContract := deployer.DeployDelegationManager(tempAddress.String(), strategyManagerContract.Address, 100, []string{tempAddress.String()}, []int64{50})
+	suite.DelegationManagerApi = api.NewDelegationManager(suite.ChainIO, delegationManagerContract.Address)
+
+	slashManagerContract := deployer.DeploySlashManager(delegationManagerContract.Address, strategyManagerContract.Address)
+	suite.SlashManagerApi = api.NewSlashManager(suite.ChainIO)
+	suite.SlashManagerApi.BindClient(slashManagerContract.Address)
+
+	status, err := suite.Babylond.ClientCtx.Client.Status(context.Background())
+	suite.Require().NoError(err)
+	blockTime := status.SyncInfo.LatestBlockTime.Second()
+
+	rewardsCoordinatorContract := deployer.DeployRewardsCoordinator(
+		delegationManagerContract.Address,
+		strategyManagerContract.Address,
+		60,     // 1 minute
+		86_400, // 1 day
+		int64(blockTime)/86_400*86_400,
+		10*86_400, // 10 days
+		5*86_400,  // 5 days
+		30*86_400, // 30 days
+		tempAddress.String())
+	suite.RewardsCoordinatorApi = api.NewRewardsCoordinator(suite.ChainIO)
+	suite.RewardsCoordinatorApi.BindClient(rewardsCoordinatorContract.Address)
+
+	// deploy CW20 contract
+	token := cw20.DeployCw20(deployer.BabylonContainer, cw20.InstantiateMsg{
+		Decimals: 18,
+		InitialBalances: []cw20.Cw20Coin{
+			{
+				Address: tempAddress.String(),
+				Amount:  "1000000000",
+			},
+		},
+		Mint: &cw20.MinterResponse{
+			Minter: tempAddress.String(),
+		},
+		Name:   "Test Token",
+		Symbol: "TEST",
+	})
+	suite.cw20Token = token
+
+	strategyBaseContract := deployer.DeployStrategyBase(token.Address, strategyManagerContract.Address)
+	suite.StrategyBaseApi = api.NewStrategyBase(suite.ChainIO)
+	suite.StrategyBaseApi.BindClient(strategyBaseContract.Address)
+
+	// connect contracts together
+
+	tx, err := suite.DirectoryApi.SetDelegationManager(suite.Ctx, delegationManagerContract.Address)
+	assert.NoError(t, err)
+	assert.NotNil(t, tx)
+	tx, err = suite.StrategyManagerApi.SetSlashManager(suite.Ctx, slashManagerContract.Address)
+	assert.NoError(t, err)
+	assert.NotNil(t, tx)
+	tx, err = suite.StrategyManagerApi.SetDelegationManager(suite.Ctx, delegationManagerContract.Address)
+	assert.NoError(t, err)
+	assert.NotNil(t, tx)
+	tx, err = suite.DelegationManagerApi.SetSlashManager(suite.Ctx, slashManagerContract.Address)
+	assert.NoError(t, err)
+	assert.NotNil(t, tx)
+
 }
 
 // DeploySquaringContract deploys the squaring contract
 func (suite *TestSuite) DeploySquaringContract() *bvs.Contract[squaringcontract.InstantiateMsg] {
-	stateBankContract, driverContract := suite.deployBVSContracts()
 	t := suite.T()
 
 	aggregatorAccount, err := suite.ChainIO.GetCurrentAccount()
@@ -134,26 +247,12 @@ func (suite *TestSuite) DeploySquaringContract() *bvs.Contract[squaringcontract.
 
 	initMsg := squaringcontract.InstantiateMsg{
 		Aggregator: aggregatorAddress.String(),
-		BvsDriver:  driverContract.Address,
-		StateBank:  stateBankContract.Address,
 	}
 	initBytes, err := json.Marshal(initMsg)
 	assert.NoError(t, err)
 
 	// deploy and init squaring contract
 	contract, err := suite.Babylond.StoreAndInitWasm(wasmByteCode, initBytes, "squaring contract", "genesis")
-	assert.NoError(t, err)
-
-	// register with statebank
-	stateBank := api.NewStateBank(suite.ChainIO)
-	stateBank.BindClient(stateBankContract.Address)
-	_, err = stateBank.SetRegisteredBVSContract(suite.Ctx, contract.Address)
-	assert.NoError(t, err)
-
-	// register with bvsdriver
-	bvsDriver := api.NewDriver(suite.ChainIO)
-	bvsDriver.BindClient(driverContract.Address)
-	_, err = bvsDriver.SetRegisteredBVSContract(suite.Ctx, contract.Address)
 	assert.NoError(t, err)
 
 	return &bvs.Contract[squaringcontract.InstantiateMsg]{

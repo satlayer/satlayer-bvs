@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,9 +14,6 @@ import (
 	"github.com/satlayer/satlayer-bvs/examples/squaring/internal/tests"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/redis"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/exp/rand"
@@ -43,9 +39,7 @@ type aggregatorTestSuite struct {
 }
 
 func (suite *aggregatorTestSuite) SetupSuite() {
-	suite.TestSuite.SetupSuite(keyDir, "operator2")
-
-	suite.Babylond.FundAddressUbbn("bbn1nrueqkp0wmujyxuqp952j8mnxngm5gek3fsgrj", 1e8)
+	suite.TestSuite.SetupSuite(keyDir, "operator2", "f710ea7ce5b9c5d67347618719094482b26aef9cd79f8bfcfd384e2003df6cbc")
 }
 
 // entrypoint for the test suite
@@ -55,6 +49,7 @@ func TestAggregator(t *testing.T) {
 
 func (suite *aggregatorTestSuite) TestExecuteAggregator() {
 	t := suite.T()
+	ctx := context.Background()
 
 	// get public key
 	pubKey := suite.ChainIO.GetCurrentAccountPubKey()
@@ -62,6 +57,14 @@ func (suite *aggregatorTestSuite) TestExecuteAggregator() {
 	account, err := suite.ChainIO.GetCurrentAccount()
 	assert.NoError(t, err)
 	address := account.GetAddress().String()
+
+	// register operator
+	tx, err := suite.ContractsApi.DelegationManagerApi.RegisterAsOperator(ctx, "testtest", 100)
+	assert.NoError(t, err)
+	assert.NotNil(t, tx)
+	tx, err = suite.ContractsApi.DirectoryApi.RegisterOperator(context.Background(), address, pubKey)
+	assert.NoError(t, err)
+	assert.NotNil(t, tx)
 
 	// get random task id
 	randTaskID := rand.Uint64()
@@ -89,7 +92,7 @@ func (suite *aggregatorTestSuite) TestExecuteAggregator() {
 	res := sendTask(t, payload)
 
 	// check if the response status code is 200
-	assert.Equal(t, http.StatusOK, res.Code)
+	assert.Equal(t, http.StatusOK, res.Code, res.Body.String())
 
 	// assert that 1 task is saved to the queue (REDIS)
 	listLength, err := core.S.RedisConn.LLen(context.Background(), core.PKTaskQueue).Result()
@@ -129,41 +132,4 @@ func sendTask(t *testing.T, tpayload Payload) *httptest.ResponseRecorder {
 	assert.NoError(t, err)
 
 	return w
-}
-
-type RedisContainer struct {
-	Container testcontainers.Container
-	Host      string
-	Port      string
-}
-
-func startRedis() (*RedisContainer, error) {
-	ctx := context.Background()
-
-	rc, err := redis.Run(ctx,
-		"redis:7",
-		redis.WithLogLevel(redis.LogLevelVerbose),
-	)
-
-	if err != nil {
-		log.Printf("failed to start container: %s", err)
-		return nil, err
-	}
-
-	host, err := rc.Host(context.Background())
-	if err != nil {
-		log.Fatalf("failed to get redis container host: %s", err)
-		return nil, err
-	}
-
-	port, err := rc.MappedPort(context.Background(), "6379")
-	if err != nil {
-		log.Fatalf("failed to get redis container port: %s", err)
-		return nil, err
-	}
-	return &RedisContainer{
-		Container: rc,
-		Host:      host,
-		Port:      port.Port(),
-	}, nil
 }

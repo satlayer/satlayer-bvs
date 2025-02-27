@@ -76,8 +76,6 @@ func (r *Int64) Marshal() ([]byte, error) {
 
 type InstantiateMsg struct {
 	Aggregator string `json:"aggregator"`
-	BvsDriver  string `json:"bvs_driver"`
-	StateBank  string `json:"state_bank"`
 }
 
 type ExecuteMsg struct {

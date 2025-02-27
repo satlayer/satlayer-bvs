@@ -9,7 +9,7 @@
   },
   "lint-staged": {
     "*.go": [
-      "goimports -w -l ."
+      "goimports -w"
     ],
     "package.json": [
       "prettier --write"
