@@ -36,7 +36,6 @@ schemars = { workspace = true }
 strum = { version = "0.27", features = ["derive"], optional = true }
 bvs-library = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
-clap = { version = "4.5.31", features = ["derive"] }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
