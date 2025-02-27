@@ -283,9 +283,9 @@ pub fn user_underlying_view(deps: Deps, env: Env, user: Addr) -> StdResult<Uint1
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetShares { staker, strategy } => {
+        QueryMsg::GetShares { staker } => {
             let staker_addr = deps.api.addr_validate(&staker)?;
-            let strategy_addr = Addr::unchecked(strategy);
+            let strategy_addr = env.contract.address.clone();
 
             to_json_binary(&shares(deps, staker_addr, strategy_addr)?)
         }
@@ -865,10 +865,7 @@ mod tests {
             }
         });
 
-        let query_msg = QueryMsg::GetShares {
-            staker: user,
-            strategy: contract_address.to_string(),
-        };
+        let query_msg = QueryMsg::GetShares { staker: user };
         let res: SharesResponse =
             from_json(query(deps.as_ref(), env.clone(), query_msg).unwrap()).unwrap();
 
