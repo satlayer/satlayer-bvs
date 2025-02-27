@@ -34,9 +34,6 @@
 //    isTokenBlacklistedResponse, err := UnmarshalIsTokenBlacklistedResponse(bytes)
 //    bytes, err = isTokenBlacklistedResponse.Marshal()
 //
-//    ownerResponse, err := UnmarshalOwnerResponse(bytes)
-//    bytes, err = ownerResponse.Marshal()
-//
 //    stakerStrategyListLengthResponse, err := UnmarshalStakerStrategyListLengthResponse(bytes)
 //    bytes, err = stakerStrategyListLengthResponse.Marshal()
 //
@@ -157,16 +154,6 @@ func (r *IsTokenBlacklistedResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalOwnerResponse(data []byte) (OwnerResponse, error) {
-	var r OwnerResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *OwnerResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
 func UnmarshalStakerStrategyListLengthResponse(data []byte) (StakerStrategyListLengthResponse, error) {
 	var r StakerStrategyListLengthResponse
 	err := json.Unmarshal(data, &r)
@@ -276,6 +263,10 @@ type SetUnpauser struct {
 }
 
 type TransferOwnership struct {
+	// Transfer ownership of the contract to a new owner. Contract admin (set for all BVS
+	// contracts, a cosmwasm feature) has the omni-ability to override by migration; this logic
+	// is app-level. > 2-step ownership transfer is mostly redundant for CosmWasm contracts with
+	// the admin set. > You can override ownership with using CosmWasm migrate `entry_point`.
 	NewOwner string `json:"new_owner"`
 }
 
@@ -294,7 +285,6 @@ type QueryMsg struct {
 	StakerStrategyListLength *StakerStrategyListLength `json:"staker_strategy_list_length,omitempty"`
 	GetStakerStrategyShares  *GetStakerStrategyShares  `json:"get_staker_strategy_shares,omitempty"`
 	GetStakerStrategyList    *GetStakerStrategyList    `json:"get_staker_strategy_list,omitempty"`
-	Owner                    *Owner                    `json:"owner,omitempty"`
 	IsStrategyWhitelisted    *IsStrategyWhitelisted    `json:"is_strategy_whitelisted,omitempty"`
 	GetStrategyWhitelister   *GetStrategyWhitelister   `json:"get_strategy_whitelister,omitempty"`
 	GetStrategyManagerState  *GetStrategyManagerState  `json:"get_strategy_manager_state,omitempty"`
@@ -331,9 +321,6 @@ type IsStrategyWhitelisted struct {
 
 type IsTokenBlacklisted struct {
 	Token string `json:"token"`
-}
-
-type Owner struct {
 }
 
 type StakerStrategyListLength struct {
@@ -381,10 +368,6 @@ type StrategyWhitelistedResponse struct {
 type IsTokenBlacklistedResponse struct {
 	IsBlacklisted bool   `json:"is_blacklisted"`
 	Token         string `json:"token"`
-}
-
-type OwnerResponse struct {
-	OwnerAddr string `json:"owner_addr"`
 }
 
 type StakerStrategyListLengthResponse struct {
