@@ -9,10 +9,10 @@ use cosmwasm_std::Uint128;
 
 #[cw_serde]
 pub struct InstantiateMsg {
+    pub owner: String,
     pub delegation_manager: String,
     pub slash_manager: String,
     pub initial_strategy_whitelister: String,
-    pub initial_owner: String,
     pub pauser: String,
     pub unpauser: String,
     pub initial_paused_status: u8,

@@ -44,7 +44,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let owner = deps.api.addr_validate(&msg.initial_owner)?;
+    let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::_set_owner(deps.storage, &owner)?;
 
     let delegation_manager = deps.api.addr_validate(&msg.delegation_manager)?;
@@ -653,7 +653,7 @@ mod tests {
         let info = message_info(&initial_owner, &[]);
 
         let msg = InstantiateMsg {
-            initial_owner: initial_owner.to_string(),
+            owner: initial_owner.to_string(),
             delegation_manager: delegation_manager.to_string(),
             strategy_manager: strategy_manager.to_string(),
             pauser: pauser.to_string(),
@@ -689,7 +689,7 @@ mod tests {
         let invalid_info = message_info(&deps.api.addr_make("invalid_creator"), &[]);
 
         let invalid_msg = InstantiateMsg {
-            initial_owner: "invalid_address".to_string(),
+            owner: "invalid_address".to_string(),
             delegation_manager: delegation_manager.to_string(),
             strategy_manager: strategy_manager.to_string(),
             pauser: pauser.to_string(),
@@ -727,7 +727,7 @@ mod tests {
         let info = message_info(&initial_owner, &[]);
 
         let msg = InstantiateMsg {
-            initial_owner: initial_owner.to_string(),
+            owner: initial_owner.to_string(),
             delegation_manager: delegation_manager.to_string(),
             strategy_manager: strategy_manager.to_string(),
             pauser: pauser.to_string(),

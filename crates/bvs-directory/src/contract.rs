@@ -39,7 +39,7 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     bvs_registry::api::set_registry_addr(deps.storage, &deps.api.addr_validate(&msg.registry)?)?;
 
-    let owner = deps.api.addr_validate(&msg.initial_owner)?;
+    let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::_set_owner(deps.storage, &owner)?;
 
     let delegation_manager = deps.api.addr_validate(&msg.delegation_manager)?;
@@ -403,7 +403,7 @@ mod tests {
         let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
 
         let msg = InstantiateMsg {
-            initial_owner: owner.clone(),
+            owner: owner.clone(),
             delegation_manager: delegation_manager.clone(),
             registry: deps.api.addr_make("registry").to_string(),
         };
@@ -443,7 +443,7 @@ mod tests {
         let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
 
         let msg = InstantiateMsg {
-            initial_owner: owner.to_string(),
+            owner: owner.to_string(),
             delegation_manager: delegation_manager.to_string(),
             registry: deps.api.addr_make("registry").to_string(),
         };

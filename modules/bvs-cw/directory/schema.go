@@ -150,7 +150,7 @@ func (r *OperatorStatusResponse) Marshal() ([]byte, error) {
 
 type InstantiateMsg struct {
 	DelegationManager string `json:"delegation_manager"`
-	InitialOwner      string `json:"initial_owner"`
+	Owner             string `json:"owner"`
 	Registry          string `json:"registry"`
 }
 

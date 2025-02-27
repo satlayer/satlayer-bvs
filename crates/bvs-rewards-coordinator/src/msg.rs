@@ -10,7 +10,8 @@ use cosmwasm_std::{Binary, Uint128};
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub initial_owner: String,
+    pub owner: String,
+    pub registry: String,
     pub rewards_updater: String,
     pub calculation_interval_seconds: u64,
     pub max_rewards_duration: u64,
@@ -20,7 +21,6 @@ pub struct InstantiateMsg {
     pub delegation_manager: String,
     pub strategy_manager: String,
     pub activation_delay: u32,
-    pub registry: String,
 }
 
 #[cw_serde]

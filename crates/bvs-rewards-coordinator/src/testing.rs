@@ -27,7 +27,7 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for RewardsContract {
         let rewards_updater = app.api().addr_make("rewards-updater");
         let strategy_manager = app.api().addr_make("strategy-manager");
         InstantiateMsg {
-            initial_owner: owner.to_string(),
+            owner: owner.to_string(),
             registry,
             calculation_interval_seconds: 86_400, // 1 day
             max_rewards_duration: 30 * 86_400,    // 30 days

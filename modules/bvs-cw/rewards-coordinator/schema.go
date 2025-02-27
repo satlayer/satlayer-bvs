@@ -179,10 +179,10 @@ type InstantiateMsg struct {
 	CalculationIntervalSeconds int64  `json:"calculation_interval_seconds"`
 	DelegationManager          string `json:"delegation_manager"`
 	GenesisRewardsTimestamp    int64  `json:"genesis_rewards_timestamp"`
-	InitialOwner               string `json:"initial_owner"`
 	MaxFutureLength            int64  `json:"max_future_length"`
 	MaxRetroactiveLength       int64  `json:"max_retroactive_length"`
 	MaxRewardsDuration         int64  `json:"max_rewards_duration"`
+	Owner                      string `json:"owner"`
 	Registry                   string `json:"registry"`
 	RewardsUpdater             string `json:"rewards_updater"`
 	StrategyManager            string `json:"strategy_manager"`

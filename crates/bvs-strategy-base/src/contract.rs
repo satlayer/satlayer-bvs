@@ -43,7 +43,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let owner = deps.api.addr_validate(&msg.initial_owner)?;
+    let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::_set_owner(deps.storage, &owner)?;
 
     let strategy_manager = deps.api.addr_validate(&msg.strategy_manager)?;
@@ -506,7 +506,7 @@ mod tests {
         let token = deps.api.addr_make("token").to_string();
 
         let msg = InstantiateMsg {
-            initial_owner: owner.clone(),
+            owner: owner.clone(),
             strategy_manager: strategy_manager.clone(),
             underlying_token: token.clone(),
             pauser: pauser.clone(),
@@ -584,7 +584,7 @@ mod tests {
         let token = deps.api.addr_make("token").to_string();
 
         let msg = InstantiateMsg {
-            initial_owner: owner.clone(),
+            owner: owner.clone(),
             strategy_manager: strategy_manager.clone(),
             underlying_token: token.clone(),
             pauser: pauser.clone(),

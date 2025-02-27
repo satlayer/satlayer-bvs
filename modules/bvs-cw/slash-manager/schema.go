@@ -98,8 +98,8 @@ func (r *ValidatorResponse) Marshal() ([]byte, error) {
 
 type InstantiateMsg struct {
 	DelegationManager   string `json:"delegation_manager"`
-	InitialOwner        string `json:"initial_owner"`
 	InitialPausedStatus int64  `json:"initial_paused_status"`
+	Owner               string `json:"owner"`
 	Pauser              string `json:"pauser"`
 	StrategyManager     string `json:"strategy_manager"`
 	Unpauser            string `json:"unpauser"`

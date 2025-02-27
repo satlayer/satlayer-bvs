@@ -7,7 +7,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub initial_owner: String,
+    pub owner: String,
     pub delegation_manager: String,
     pub strategy_manager: String,
     pub pauser: String,

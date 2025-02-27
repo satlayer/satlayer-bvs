@@ -9,7 +9,7 @@ use cosmwasm_std::Uint128;
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub initial_owner: String,
+    pub owner: String,
     pub strategy_manager: String,
     pub underlying_token: String,
     pub pauser: String,

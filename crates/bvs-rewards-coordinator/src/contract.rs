@@ -51,7 +51,7 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     bvs_registry::api::set_registry_addr(deps.storage, &deps.api.addr_validate(&msg.registry)?)?;
 
-    let owner = deps.api.addr_validate(&msg.initial_owner)?;
+    let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::_set_owner(deps.storage, &owner)?;
 
     if msg.genesis_rewards_timestamp % msg.calculation_interval_seconds != 0 {
@@ -1017,7 +1017,7 @@ mod tests {
         let registry = deps.api.addr_make("registry").to_string();
 
         let msg = InstantiateMsg {
-            initial_owner: initial_owner.clone(),
+            owner: initial_owner.clone(),
             calculation_interval_seconds: 86_400, // 1 day
             max_rewards_duration: 30 * 86_400,    // 30 days
             max_retroactive_length: 5 * 86_400,   // 5 days
@@ -1108,7 +1108,7 @@ mod tests {
         let registry = deps.api.addr_make("registry").to_string();
 
         let msg = InstantiateMsg {
-            initial_owner: initial_owner.clone(),
+            owner: initial_owner.clone(),
             calculation_interval_seconds: 86_400, // 1 day
             max_rewards_duration: 30 * 86_400,    // 30 days
             max_retroactive_length: 5 * 86_400,   // 5 days
@@ -2926,7 +2926,7 @@ mod tests {
         message_info(&Addr::unchecked(delegation_manager.clone()), &[]);
 
         let msg = InstantiateMsg {
-            initial_owner: initial_owner.clone(),
+            owner: initial_owner.clone(),
             calculation_interval_seconds: 86_400, // 1 day
             max_rewards_duration: 30 * 86_400,    // 30 days
             max_retroactive_length: 5 * 86_400,   // 5 days

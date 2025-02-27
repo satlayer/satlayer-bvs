@@ -50,7 +50,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let owner = deps.api.addr_validate(&msg.initial_owner)?;
+    let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::_set_owner(deps.storage, &owner)?;
 
     let strategy_manager = deps.api.addr_validate(&msg.strategy_manager)?;
@@ -90,7 +90,7 @@ pub fn instantiate(
             "min_withdrawal_delay_blocks",
             msg.min_withdrawal_delay_blocks.to_string(),
         )
-        .add_attribute("owner", msg.initial_owner.to_string());
+        .add_attribute("owner", msg.owner.to_string());
 
     Ok(response)
 }
@@ -1233,7 +1233,7 @@ mod tests {
             strategy_manager: strategy_manager.clone(),
             slash_manager: slasher.clone(),
             min_withdrawal_delay_blocks: 100,
-            initial_owner: initial_owner.clone(),
+            owner: initial_owner.clone(),
             pauser: pauser.clone(),
             unpauser: unpauser.clone(),
             initial_paused_status: 0,
@@ -1316,7 +1316,7 @@ mod tests {
             strategy_manager: strategy_manager.clone(),
             slash_manager: slasher.clone(),
             min_withdrawal_delay_blocks: 100,
-            initial_owner: owner.clone(),
+            owner: owner.clone(),
             pauser: pauser.clone(),
             unpauser: unpauser.clone(),
             initial_paused_status: 0,

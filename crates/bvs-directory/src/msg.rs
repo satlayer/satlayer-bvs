@@ -4,9 +4,9 @@ use cosmwasm_std::{Addr, Binary};
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub initial_owner: String,
-    pub delegation_manager: String,
+    pub owner: String,
     pub registry: String,
+    pub delegation_manager: String,
 }
 
 #[cw_serde]

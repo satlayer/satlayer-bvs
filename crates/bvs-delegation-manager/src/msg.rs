@@ -10,10 +10,10 @@ use cosmwasm_std::{Addr, Uint128};
 
 #[cw_serde]
 pub struct InstantiateMsg {
+    pub owner: String,
     pub strategy_manager: String,
     pub slash_manager: String,
     pub min_withdrawal_delay_blocks: u64,
-    pub initial_owner: String,
     pub strategies: Vec<String>,
     pub withdrawal_delay_blocks: Vec<u64>,
     pub pauser: String,

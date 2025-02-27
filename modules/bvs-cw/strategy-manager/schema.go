@@ -176,9 +176,9 @@ func (r *TokenStrategyResponse) Marshal() ([]byte, error) {
 
 type InstantiateMsg struct {
 	DelegationManager          string `json:"delegation_manager"`
-	InitialOwner               string `json:"initial_owner"`
 	InitialPausedStatus        int64  `json:"initial_paused_status"`
 	InitialStrategyWhitelister string `json:"initial_strategy_whitelister"`
+	Owner                      string `json:"owner"`
 	Pauser                     string `json:"pauser"`
 	SlashManager               string `json:"slash_manager"`
 	Unpauser                   string `json:"unpauser"`

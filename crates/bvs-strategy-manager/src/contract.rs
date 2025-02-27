@@ -48,7 +48,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let owner = deps.api.addr_validate(&msg.initial_owner)?;
+    let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::_set_owner(deps.storage, &owner)?;
 
     let delegation_manager = deps.api.addr_validate(&msg.delegation_manager)?;
@@ -78,7 +78,7 @@ pub fn instantiate(
             "strategy_whitelister",
             msg.initial_strategy_whitelister.to_string(),
         )
-        .add_attribute("owner", msg.initial_owner.to_string()))
+        .add_attribute("owner", msg.owner.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -899,7 +899,7 @@ mod tests {
         let unpauser = deps.api.addr_make("unpauser").to_string();
 
         let msg = InstantiateMsg {
-            initial_owner: owner.clone(),
+            owner: owner.clone(),
             delegation_manager: delegation_manager.clone(),
             slash_manager: slasher.clone(),
             initial_strategy_whitelister: strategy_whitelister.clone(),
@@ -972,7 +972,7 @@ mod tests {
             message_info(&Addr::unchecked(delegation_manager.clone()), &[]);
 
         let msg = InstantiateMsg {
-            initial_owner: owner.clone(),
+            owner: owner.clone(),
             delegation_manager: delegation_manager.clone(),
             slash_manager: slasher.clone(),
             initial_strategy_whitelister: strategy_whitelister.clone(),
