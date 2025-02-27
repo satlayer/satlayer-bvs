@@ -271,7 +271,7 @@ pub fn transfer_ownership(
     ownership::transfer_ownership(deps, &info, &new_owner)?;
 
     Ok(Response::new().add_event(
-        Event::new("TransferOwnership")
+        Event::new("TransferredOwnership")
             .add_attribute("old_owner", info.sender.as_str())
             .add_attribute("new_owner", new_owner.as_str()),
     ))
@@ -786,7 +786,7 @@ mod tests {
 
         assert_eq!(
             res.events,
-            vec![Event::new("TransferOwnership")
+            vec![Event::new("TransferredOwnership")
                 .add_attribute("old_owner", info.sender.as_str())
                 .add_attribute("new_owner", new_owner.as_str())]
         );
