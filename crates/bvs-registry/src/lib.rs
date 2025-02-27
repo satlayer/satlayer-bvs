@@ -10,7 +10,9 @@ pub mod testing;
 
 #[cfg(feature = "library")]
 pub mod api {
-    use crate::msg::{CanExecuteResponse, QueryMsg};
+    use crate::msg::{
+        CanExecuteResponse, QueryMsg, FLAG_CAN_EXECUTE, FLAG_PAUSED, FLAG_UNAUTHORIZED,
+    };
     use cosmwasm_std::{Addr, Deps, Env, MessageInfo, StdError, StdResult, Storage};
     use cw_storage_plus::Item;
 
@@ -32,9 +34,9 @@ pub mod api {
     impl CanExecuteResponse {
         pub fn assert(&self) -> Result<(), RegistryError> {
             match self.0 {
-                0 => Ok(()),
-                1 => Err(RegistryError::IsPaused),
-                2 => Err(RegistryError::Unauthorized),
+                FLAG_CAN_EXECUTE => Ok(()),
+                FLAG_PAUSED => Err(RegistryError::IsPaused),
+                FLAG_UNAUTHORIZED => Err(RegistryError::Unauthorized),
                 _ => Err(RegistryError::Std(StdError::generic_err(
                     "Unknown flag in CanExecuteResponse",
                 ))),

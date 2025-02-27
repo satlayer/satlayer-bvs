@@ -54,9 +54,9 @@ impl IsPausedResponse {
     }
 }
 
-pub static FLAG_CAN_EXECUTE: u32 = 0;
-pub static FLAG_PAUSED: u32 = 1;
-pub static FLAG_UNAUTHORIZED: u32 = 2;
+pub const FLAG_CAN_EXECUTE: u32 = 0;
+pub const FLAG_PAUSED: u32 = 1;
+pub const FLAG_UNAUTHORIZED: u32 = 2;
 
 #[cw_serde]
 pub struct CanExecuteResponse(pub u32);
