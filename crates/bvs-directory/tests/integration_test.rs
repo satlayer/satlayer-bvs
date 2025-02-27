@@ -346,7 +346,8 @@ fn transfer_ownership_successfully() {
     assert_eq!(
         response.events[1],
         Event::new("wasm-TransferOwnership")
-            .add_attribute("old_owner", "owner")
+            .add_attribute("_contract_address", directory.contract_addr)
+            .add_attribute("old_owner", owner.as_str())
             .add_attribute("new_owner", anyone.as_str())
     );
 }
