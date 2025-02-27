@@ -38,15 +38,6 @@ func GetStakerStrategyShares(staker string, strategy string) {
 	fmt.Printf("%s\n", resp.Data)
 }
 
-func Owner() {
-	s := NewService()
-	resp, err := s.Strategy.Owner()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("%s\n", resp.Data)
-}
-
 func IsStrategyWhitelisted(strategyAddress string) {
 	s := NewService()
 	resp, err := s.Strategy.IsStrategyWhitelisted(strategyAddress)

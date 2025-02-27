@@ -4,7 +4,8 @@
   "scripts": {
     "build": "cargo build",
     "clippy": "cargo clippy -- -D warnings",
-    "format": "cargo fmt --all -- --check"
+    "format": "cargo fmt --all -- --check",
+    "test": "cargo test --all-features"
   },
   "lint-staged": {
     "*.rs": [
