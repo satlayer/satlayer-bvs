@@ -88,7 +88,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 pub mod query {
     use super::*;
-    use crate::msg::{CanExecuteResponse, IsPausedResponse};
+    use crate::msg::{CanExecuteResponse, IsPausedResponse, FLAG_CAN_EXECUTE, FLAG_PAUSED};
     use crate::state::PAUSED;
 
     /// The contract and method are currently not used.
@@ -112,9 +112,9 @@ pub mod query {
     ) -> StdResult<CanExecuteResponse> {
         let is_paused = PAUSED.load(deps.storage)?;
         if is_paused {
-            return Ok(CanExecuteResponse::new(1));
+            return Ok(CanExecuteResponse::new(FLAG_PAUSED));
         }
-        Ok(CanExecuteResponse::new(0))
+        Ok(CanExecuteResponse::new(FLAG_CAN_EXECUTE))
     }
 }
 
