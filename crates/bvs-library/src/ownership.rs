@@ -25,7 +25,7 @@ pub fn transfer_ownership(
 ) -> Result<(), OwnershipError> {
     assert_owner(deps.as_ref(), info)?;
 
-    OWNER.save(deps.storage, &new_owner)?;
+    OWNER.save(deps.storage, new_owner)?;
 
     Ok(())
 }
