@@ -6,6 +6,9 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
+    #[error("{0}")]
+    RegistryError(#[from] bvs_registry::api::RegistryError),
+
     #[error("BVSDirectory.registerOperatorToBVS: operator signature expired")]
     SignatureExpired {},
 

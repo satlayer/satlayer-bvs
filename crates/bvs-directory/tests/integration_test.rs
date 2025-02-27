@@ -5,6 +5,7 @@ use bvs_directory::{
     utils::{calculate_digest_hash, sha256},
 };
 use bvs_library::testing::{Account, TestingContract};
+use bvs_registry::api::RegistryError;
 use bvs_registry::msg::InstantiateMsg;
 use bvs_registry::testing::RegistryContract;
 use bvs_testing::integration::{mock_contracts::mock_app, mock_env::MockEnvBuilder};
@@ -391,6 +392,6 @@ fn register_bvs_but_paused() {
 
     assert_eq!(
         err.root_cause().to_string(),
-        bvs_directory::ContractError::Std(StdError::generic_err("Paused")).to_string()
+        bvs_directory::ContractError::RegistryError(RegistryError::IsPaused).to_string()
     );
 }

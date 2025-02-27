@@ -1,4 +1,5 @@
 use bvs_library::testing::TestingContract;
+use bvs_registry::api::RegistryError;
 use bvs_registry::testing::RegistryContract;
 use bvs_rewards_coordinator::msg::ExecuteMsg;
 use bvs_rewards_coordinator::testing::RewardsContract;
@@ -52,6 +53,6 @@ fn set_rewards_updater_but_paused() {
     let err = rewards.execute(&mut app, &owner, &msg).unwrap_err();
     assert_eq!(
         err.root_cause().to_string(),
-        bvs_rewards_coordinator::ContractError::Std(StdError::generic_err("Paused")).to_string()
+        bvs_rewards_coordinator::ContractError::RegistryError(RegistryError::IsPaused).to_string()
     );
 }
