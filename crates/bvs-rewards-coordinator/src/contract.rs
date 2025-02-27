@@ -93,7 +93,7 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    bvs_registry::api::is_paused(deps.as_ref(), &env, &msg)?;
+    bvs_registry::api::validate_can_execute(deps.as_ref(), &env, &info, &msg)?;
 
     match msg {
         ExecuteMsg::CreateBvsRewardsSubmission {

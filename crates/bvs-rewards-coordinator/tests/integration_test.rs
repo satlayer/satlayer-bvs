@@ -52,6 +52,7 @@ fn set_rewards_updater_but_paused() {
     let err = rewards.execute(&mut app, &owner, &msg).unwrap_err();
     assert_eq!(
         err.root_cause().to_string(),
-        bvs_rewards_coordinator::ContractError::Std(StdError::generic_err("Paused")).to_string()
+        bvs_rewards_coordinator::ContractError::Std(StdError::generic_err("CanExecute: false"))
+            .to_string()
     );
 }

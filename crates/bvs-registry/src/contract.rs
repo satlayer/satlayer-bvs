@@ -78,23 +78,40 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::IsPaused { contract, method } => {
             to_json_binary(&query::is_paused(deps, contract, method)?)
         }
+        QueryMsg::CanExecute {
+            contract,
+            sender,
+            method,
+        } => to_json_binary(&query::can_execute(deps, contract, sender, method)?),
     }
 }
 
 pub mod query {
     use super::*;
-    use crate::msg::IsPausedResponse;
+    use crate::msg::{CanExecuteResponse, IsPausedResponse};
     use crate::state::PAUSED;
 
-    /// The sender (contract) and method are currently not used.
+    /// The contract and method are currently not used.
     /// TODO(future): implement checking of paused status against the sender and method
     pub fn is_paused(
         deps: Deps,
         _contract: String,
         _method: String,
     ) -> StdResult<IsPausedResponse> {
-        let state = PAUSED.load(deps.storage)?;
-        Ok(IsPausedResponse { paused: state })
+        let is_paused = PAUSED.load(deps.storage)?;
+        Ok(IsPausedResponse::new(is_paused))
+    }
+
+    /// The contract, sender and method are currently not used.
+    /// TODO(future): implement checking of paused status against the sender and method
+    pub fn can_execute(
+        deps: Deps,
+        _contract: String,
+        _sender: String,
+        _method: String,
+    ) -> StdResult<CanExecuteResponse> {
+        let is_paused = PAUSED.load(deps.storage)?;
+        Ok(CanExecuteResponse::new(!is_paused))
     }
 }
 
@@ -126,7 +143,7 @@ mod tests {
         )
         .unwrap();
         let value: IsPausedResponse = from_json(&res).unwrap();
-        assert_eq!(false, value.paused);
+        assert_eq!(false, value.is_paused());
     }
 
     #[test]
@@ -141,11 +158,15 @@ mod tests {
         let info = message_info(&owner, &[]);
         execute::pause(deps.as_mut(), info).unwrap();
 
-        let contract = deps.api.addr_make("anyone").to_string();
+        let contract = deps.api.addr_make("contract").to_string();
+        let sender = deps.api.addr_make("sender").to_string();
         let method = "any_method".to_string();
 
-        let response = query::is_paused(deps.as_ref(), contract, method).unwrap();
-        assert_eq!(true, response.paused);
+        let response = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
+        assert_eq!(true, response.is_paused());
+
+        let response = query::can_execute(deps.as_ref(), contract, sender, method).unwrap();
+        assert_eq!(false, response.can_execute());
     }
 
     #[test]
@@ -162,9 +183,16 @@ mod tests {
         execute::pause(deps.as_mut(), info).expect_err("Unauthorized");
 
         let contract = deps.api.addr_make("contract").to_string();
+        let sender = deps.api.addr_make("sender").to_string();
         let method = "any_method".to_string();
-        let response = query::is_paused(deps.as_ref(), contract, method).unwrap();
-        assert_eq!(false, response.paused);
+
+        {
+            let res = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
+            assert_eq!(false, res.is_paused());
+
+            let res = query::can_execute(deps.as_ref(), contract, sender, method).unwrap();
+            assert_eq!(true, res.can_execute());
+        }
     }
 
     #[test]
@@ -180,10 +208,16 @@ mod tests {
         execute::unpause(deps.as_mut(), info).unwrap();
 
         let contract = deps.api.addr_make("anyone").to_string();
+        let sender = deps.api.addr_make("sender").to_string();
         let method = "any_method".to_string();
 
-        let response = query::is_paused(deps.as_ref(), contract, method).unwrap();
-        assert_eq!(false, response.paused);
+        {
+            let res = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
+            assert_eq!(false, res.is_paused());
+
+            let res = query::can_execute(deps.as_ref(), contract, sender, method).unwrap();
+            assert_eq!(true, res.can_execute());
+        }
     }
 
     #[test]
@@ -199,10 +233,17 @@ mod tests {
         let info = message_info(&not_owner, &[]);
         execute::unpause(deps.as_mut(), info).expect_err("Unauthorized");
 
-        let contract = deps.api.addr_make("contract").to_string();
+        let contract = deps.api.addr_make("anyone").to_string();
+        let sender = deps.api.addr_make("sender").to_string();
         let method = "any_method".to_string();
-        let response = query::is_paused(deps.as_ref(), contract, method).unwrap();
-        assert_eq!(true, response.paused);
+
+        {
+            let res = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
+            assert_eq!(true, res.is_paused());
+
+            let res = query::can_execute(deps.as_ref(), contract, sender, method).unwrap();
+            assert_eq!(false, res.can_execute());
+        }
     }
 
     #[test]
@@ -219,12 +260,16 @@ mod tests {
 
         execute::pause(deps.as_mut(), info.clone()).unwrap();
 
-        let response = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
-        assert_eq!(true, response.paused);
+        let res = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
+        assert_eq!(true, res.is_paused());
 
         execute::pause(deps.as_mut(), info).unwrap();
 
-        let response = query::is_paused(deps.as_ref(), contract, method).unwrap();
-        assert_eq!(true, response.paused);
+        let res = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
+        assert_eq!(true, res.is_paused());
+
+        let sender = deps.api.addr_make("sender").to_string();
+        let res = query::can_execute(deps.as_ref(), contract, sender, method).unwrap();
+        assert_eq!(false, res.can_execute());
     }
 }

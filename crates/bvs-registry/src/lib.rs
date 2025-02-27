@@ -10,8 +10,8 @@ pub mod testing;
 
 #[cfg(feature = "library")]
 pub mod api {
-    use crate::msg::{IsPausedResponse, QueryMsg};
-    use cosmwasm_std::{Addr, Deps, Env, StdError, StdResult, Storage};
+    use crate::msg::{CanExecuteResponse, QueryMsg};
+    use cosmwasm_std::{Addr, Deps, Env, MessageInfo, StdError, StdResult, Storage};
     use cw_storage_plus::Item;
 
     pub const REGISTRY: Item<Addr> = Item::new("_registry");
@@ -22,21 +22,24 @@ pub mod api {
         REGISTRY.save(store, addr)
     }
 
-    pub fn is_paused(deps: Deps, env: &Env, msg: &dyn ToString) -> StdResult<()> {
+    pub fn validate_can_execute(
+        deps: Deps,
+        env: &Env,
+        info: &MessageInfo,
+        msg: &dyn ToString,
+    ) -> StdResult<()> {
         let addr = REGISTRY.load(deps.storage)?;
         let method = msg.to_string();
 
-        let response: IsPausedResponse = deps.querier.query_wasm_smart(
-            addr,
-            &QueryMsg::IsPaused {
-                contract: env.contract.address.to_string(),
-                method,
-            },
-        )?;
-
-        if response.paused {
-            return Err(StdError::generic_err("Paused"));
+        let query = QueryMsg::CanExecute {
+            contract: env.contract.address.to_string(),
+            sender: info.sender.to_string(),
+            method,
+        };
+        let response: CanExecuteResponse = deps.querier.query_wasm_smart(addr, &query)?;
+        if response.can_execute() {
+            return Ok(());
         }
-        Ok(())
+        Err(StdError::generic_err("CanExecute: false"))
     }
 }
