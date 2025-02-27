@@ -49,7 +49,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    bvs_registry::api::set_registry(deps.storage, &deps.api.addr_validate(&msg.registry)?)?;
+    bvs_registry::api::instantiate_registry(deps.storage, &deps.api.addr_validate(&msg.registry)?)?;
 
     if msg.genesis_rewards_timestamp % msg.calculation_interval_seconds != 0 {
         return Err(ContractError::InvalidGenesisTimestamp {});
@@ -93,7 +93,7 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    bvs_registry::api::validate_can_execute(deps.as_ref(), &env, &info, &msg)?;
+    bvs_registry::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
 
     match msg {
         ExecuteMsg::CreateBvsRewardsSubmission {
@@ -3146,7 +3146,7 @@ mod tests {
             earner_token_root: general_purpose::STANDARD.encode(token_root),
         };
 
-        let execute_claim = ExecuteRewardsMerkleClaim {
+        let _execute_claim = ExecuteRewardsMerkleClaim {
             root_index: 0,
             earner_index: 0,
             earner_tree_proof: vec![],
