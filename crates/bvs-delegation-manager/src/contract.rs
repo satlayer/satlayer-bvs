@@ -219,8 +219,7 @@ pub fn execute(
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
-            ownership::transfer_ownership(deps, &info, &new_owner)
-                .map_err(|e| ContractError::Ownership(e))
+            ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
         }
         ExecuteMsg::Pause {} => {
             check_pauser(deps.as_ref(), info.clone())?;

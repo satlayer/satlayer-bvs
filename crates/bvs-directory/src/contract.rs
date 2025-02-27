@@ -31,7 +31,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    mut deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
@@ -95,8 +95,7 @@ pub fn execute(
         ExecuteMsg::CancelSalt { salt } => cancel_salt(deps, env, info, salt),
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
-            ownership::transfer_ownership(deps, &info, &new_owner)
-                .map_err(|e| ContractError::Ownership(e))
+            ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
         }
     }
 }
