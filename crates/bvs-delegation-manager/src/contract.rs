@@ -231,12 +231,12 @@ pub fn execute(
             unpause(deps, &info).map_err(ContractError::Std)
         }
         ExecuteMsg::SetPauser { new_pauser } => {
-            ownership::assert_owner(deps.as_ref(), &info.clone())?;
+            ownership::assert_owner(deps.as_ref(), &info)?;
             let new_pauser_addr = deps.api.addr_validate(&new_pauser)?;
             set_pauser(deps, new_pauser_addr).map_err(ContractError::Std)
         }
         ExecuteMsg::SetUnpauser { new_unpauser } => {
-            ownership::assert_owner(deps.as_ref(), &info.clone())?;
+            ownership::assert_owner(deps.as_ref(), &info)?;
             let new_unpauser_addr = deps.api.addr_validate(&new_unpauser)?;
             set_unpauser(deps, new_unpauser_addr).map_err(ContractError::Std)
         }
@@ -248,7 +248,7 @@ pub fn set_slash_manager(
     info: MessageInfo,
     new_slash_manager: Addr,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info.clone())?;
+    ownership::assert_owner(deps.as_ref(), &info)?;
 
     let mut state = DELEGATION_MANAGER_STATE.load(deps.storage)?;
 
@@ -267,7 +267,7 @@ pub fn set_min_withdrawal_delay_blocks(
     info: MessageInfo,
     new_min_withdrawal_delay_blocks: u64,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info.clone())?;
+    ownership::assert_owner(deps.as_ref(), &info)?;
 
     set_min_withdrawal_delay_blocks_internal(deps, new_min_withdrawal_delay_blocks)
 }
@@ -278,7 +278,7 @@ pub fn set_strategy_withdrawal_delay_blocks(
     strategies: Vec<Addr>,
     withdrawal_delay_blocks: Vec<u64>,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info.clone())?;
+    ownership::assert_owner(deps.as_ref(), &info)?;
 
     set_strategy_withdrawal_delay_blocks_internal(deps, strategies, withdrawal_delay_blocks)
 }
