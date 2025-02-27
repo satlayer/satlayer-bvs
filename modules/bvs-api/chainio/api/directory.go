@@ -246,26 +246,6 @@ func (r *Directory) DelegationManager() (*directory.DelegationManagerResponse, e
 	return result, nil
 }
 
-func (r *Directory) Owner() (*directory.OwnerResponse, error) {
-	result := new(directory.OwnerResponse)
-	queryMsg := directory.QueryMsg{
-		Owner: &directory.Owner{},
-	}
-	queryMsgBytes, err := json.Marshal(queryMsg)
-	if err != nil {
-		return nil, err
-	}
-	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
-	resp, err := r.io.QueryContract(queryOptions)
-	if err != nil {
-		return nil, err
-	}
-	if err := json.Unmarshal(resp.Data, result); err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
 func (r *Directory) OperatorBvsRegistrationTypeHash() (*directory.OperatorBvsRegistrationTypeHashResponse, error) {
 	result := new(directory.OperatorBvsRegistrationTypeHashResponse)
 	queryMsg := directory.QueryMsg{

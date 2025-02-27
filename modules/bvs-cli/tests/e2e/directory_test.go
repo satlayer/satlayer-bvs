@@ -42,10 +42,6 @@ func Test_DelegationManager(t *testing.T) {
 	directory.DelegationManager()
 }
 
-func Test_Owner(t *testing.T) {
-	directory.Owner()
-}
-
 func Test_DomainName(t *testing.T) {
 	directory.DomainName()
 }
