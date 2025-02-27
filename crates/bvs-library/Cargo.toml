@@ -29,6 +29,7 @@ ripemd = { workspace = true }
 base64 = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
 serde = { workspace = true }
+lazy_static = "1.5.0"
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }

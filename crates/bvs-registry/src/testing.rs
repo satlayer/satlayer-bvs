@@ -29,7 +29,7 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for RegistryContract 
     fn new(app: &mut App, env: &Env, msg: Option<InstantiateMsg>) -> Self {
         let init = msg.unwrap_or(Self::default_init(app, env));
         let code_id = Self::store_code(app);
-        let addr = Self::instantiate(app, code_id, &init);
+        let addr = Self::instantiate(app, code_id, "registry", &init);
         Self { addr, init }
     }
 

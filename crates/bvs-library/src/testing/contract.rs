@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_json_binary, Addr, Empty, Env, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, Empty, Env, Storage, WasmMsg};
 use cw_multi_test::error::AnyResult;
 use cw_multi_test::{App, AppResponse, Contract, Executor};
 
@@ -19,19 +19,35 @@ where
         app.store_code(Self::wrapper())
     }
 
-    fn instantiate(app: &mut App, code_id: u64, msg: &IM) -> Addr {
+    fn instantiate(app: &mut App, code_id: u64, label: &str, msg: &IM) -> Addr {
+        let admin = app.api().addr_make("admin");
         let addr = app
             .instantiate_contract(
                 code_id,
                 app.api().addr_make("sender"),
                 msg,
                 &[],
-                "BVS Contract Initialize",
-                Some(app.api().addr_make("admin").to_string()),
+                label,
+                Some(admin.to_string()),
             )
             .unwrap();
-
+        Self::set_contract_addr(app, label, &addr);
         addr
+    }
+
+    /// Set the contract address in the storage for the given label.
+    /// Using the storage system for easy orchestration of contract addresses for testing.
+    fn set_contract_addr(app: &mut App, label: &str, addr: &Addr) {
+        let key = format!("CONTRACT:{}", label);
+        let value = String::from_utf8(addr.as_bytes().to_vec()).unwrap();
+        app.storage_mut().set(key.as_bytes(), &value.as_bytes());
+    }
+
+    /// Get the contract address in the storage for the given label.
+    fn get_contract_addr(app: &App, label: &str) -> Addr {
+        let key = format!("CONTRACT:{}", label);
+        let value = app.storage().get(key.as_bytes()).unwrap();
+        Addr::unchecked(String::from_utf8(value).unwrap())
     }
 
     fn addr(&self) -> &Addr;
