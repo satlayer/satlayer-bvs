@@ -1,9 +1,9 @@
 package encrypt
 
 import (
-	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -13,7 +13,6 @@ import (
 
 	"github.com/xdg-go/pbkdf2"
 	"golang.org/x/crypto/scrypt"
-	"golang.org/x/crypto/sha3"
 )
 
 const (
@@ -69,8 +68,11 @@ func DecryptData(cryptoJSON CryptoJSON, auth string) ([]byte, error) {
 		return nil, err
 	}
 
-	calculatedMAC := keccak256(derivedKey[16:32], cipherText)
-	if !bytes.Equal(calculatedMAC, mac) {
+	h := hmac.New(sha256.New, derivedKey[16:32])
+	h.Write(iv)
+	h.Write(cipherText)
+	calculatedMAC := h.Sum(nil)
+	if !hmac.Equal(calculatedMAC, mac) {
 		return nil, ErrDecrypt
 	}
 
@@ -92,6 +94,7 @@ func EncryptData(data, auth []byte, scryptN, scryptP int) (CryptoJSON, error) {
 		return CryptoJSON{}, err
 	}
 	encryptKey := derivedKey[:16]
+	macKey := derivedKey[16:32]
 
 	iv := make([]byte, aes.BlockSize) // 16
 	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
@@ -101,7 +104,11 @@ func EncryptData(data, auth []byte, scryptN, scryptP int) (CryptoJSON, error) {
 	if err != nil {
 		return CryptoJSON{}, err
 	}
-	mac := keccak256(derivedKey[16:32], cipherText)
+
+	h := hmac.New(sha256.New, macKey)
+	h.Write(iv)
+	h.Write(cipherText)
+	mac := h.Sum(nil)
 
 	scryptParamsJSON := make(map[string]interface{}, 5)
 	scryptParamsJSON["n"] = scryptN
@@ -119,14 +126,6 @@ func EncryptData(data, auth []byte, scryptN, scryptP int) (CryptoJSON, error) {
 		MAC:        hex.EncodeToString(mac),
 	}
 	return cryptoStruct, nil
-}
-
-func keccak256(data ...[]byte) []byte {
-	hash := sha3.NewLegacyKeccak256()
-	for _, b := range data {
-		hash.Write(b)
-	}
-	return hash.Sum(nil)
 }
 
 func getKDFKey(cryptoJSON CryptoJSON, auth string) ([]byte, error) {
