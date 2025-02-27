@@ -44,7 +44,9 @@ pub mod api {
 
     pub const REGISTRY: Item<Addr> = Item::new("_registry");
 
-    pub fn instantiate_registry(store: &mut dyn Storage, addr: &Addr) -> StdResult<()> {
+    /// Set the address of the registry contract in storage slot `_registry`.
+    /// `assert_can_execute` will query the registry contract at this address.
+    pub fn set_registry_addr(store: &mut dyn Storage, addr: &Addr) -> StdResult<()> {
         REGISTRY.save(store, addr)
     }
 
