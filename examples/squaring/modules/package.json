@@ -7,11 +7,17 @@
     "build:cli": "go build -o ${PWD}/dist/squaring-task-cli ${PWD}/task/main.go",
     "build:offchain": "go build -o ${PWD}/dist/squaring-offchain ${PWD}/offchain/.",
     "build:uploader": "go build -o ${PWD}/dist/squaring-uploader ${PWD}/uploader/.",
+    "generate:schema": "node generate.mjs",
     "prepare": "go mod tidy",
     "test": "gotestsum"
   },
   "dependencies": {
     "@modules/bvs-api": "workspace:*",
     "@modules/bvs-cli": "workspace:*"
+  },
+  "devDependencies": {
+    "@examples/squaring-contract": "workspace:*",
+    "@modules/babylond": "workspace:*",
+    "quicktype-core": "^23.0.171"
   }
 }

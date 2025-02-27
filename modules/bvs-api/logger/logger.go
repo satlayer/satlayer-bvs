@@ -3,7 +3,6 @@ package logger
 import (
 	"net"
 	"strings"
-	"sync"
 
 	logstash "github.com/bshuster-repo/logrus-logstash-hook"
 	"github.com/sirupsen/logrus"
@@ -11,7 +10,6 @@ import (
 
 var (
 	elkLogger *ELKLogger
-	once      sync.Once
 )
 
 type Logger interface {
@@ -39,7 +37,7 @@ type ELKLogger struct {
 var _ Logger = (*ELKLogger)(nil)
 
 func NewELKLogger(bvsName string) Logger {
-	once.Do(func() {
+	if elkLogger == nil {
 		logger := logrus.New()
 		// todo There are security issues. The official version needs to protect the server address.
 		conn, err := net.Dial("tcp", "3.107.101.202:5044")
@@ -51,7 +49,7 @@ func NewELKLogger(bvsName string) Logger {
 		}))
 		logger.Hooks.Add(hook)
 		elkLogger = &ELKLogger{logger: logger}
-	})
+	}
 
 	return elkLogger
 }

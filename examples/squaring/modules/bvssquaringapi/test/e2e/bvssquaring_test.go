@@ -3,88 +3,74 @@ package e2e
 import (
 	"context"
 	"testing"
-	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
-	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
+	"github.com/satlayer/satlayer-bvs/examples/squaring/internal/tests"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 
 	"github.com/satlayer/satlayer-bvs/examples/squaring/bvssquaringapi"
 )
 
-func testExecuteSquaring(t *testing.T) {
-	contractAddr := "bbn1ynpwwfu05ujdurq6rj4rvgkejzmx2mm7jsyxkke3xhxddlvzwp2ssnqv9h"
-	chainID := "sat-bbn-testnet1"
-	rpcURI := "https://rpc.sat-bbn-testnet1.satlayer.net"
-	homeDir := "../../../.babylond"
-	keyName := "wallet1"
-
-	t.Logf("TestExecuteSquaring")
-	elkLogger := logger.NewMockELKLogger()
-	reg := prometheus.NewRegistry()
-	metricsIndicators := transactionprocess.NewPromIndicators(reg, "bvs_demo")
-	chainIO, err := io.NewChainIO(chainID, rpcURI, homeDir, "bbn", elkLogger, metricsIndicators, types.TxManagerParams{
-		MaxRetries:             3,
-		RetryInterval:          1 * time.Second,
-		ConfirmationTimeout:    60 * time.Second,
-		GasPriceAdjustmentRate: "1.1",
-	})
-	assert.NoError(t, err, "failed to create chain IO")
-	chainIO, err = chainIO.SetupKeyring(keyName, "test")
-	assert.NoError(t, err, "failed to setup keyring")
-
-	bvsSquaring := bvssquaringapi.NewBVSSquaring(chainIO)
-	bvsSquaring.BindClient(contractAddr)
-
-	resp, err := bvsSquaring.CreateNewTask(context.Background(), 10)
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)
-
-	resp, err = bvsSquaring.RespondToTask(context.Background(), 10, 100, "bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x")
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)
+type SquaringTestSuit struct {
+	tests.TestSuite
 }
 
-func testQuerySquaring(t *testing.T) {
-	contractAddr := "bbn1ynpwwfu05ujdurq6rj4rvgkejzmx2mm7jsyxkke3xhxddlvzwp2ssnqv9h"
-	chainID := "sat-bbn-testnet1"
-	rpcURI := "https://rpc.sat-bbn-testnet1.satlayer.net"
-	homeDir := "../../../.babylond"
-	keyName := "wallet1"
+func (suite *SquaringTestSuit) SetupSuite() {
+	suite.TestSuite.SetupSuite("../../../.babylond", "wallet1", "820d902159777d247dda5922d3e2669477e2a2059a03f7ace61a32981e85848e")
+}
 
-	elkLogger := logger.NewMockELKLogger()
-	reg := prometheus.NewRegistry()
-	metricsIndicators := transactionprocess.NewPromIndicators(reg, "bvs_demo")
-	chainIO, err := io.NewChainIO(chainID, rpcURI, homeDir, "bbn", elkLogger, metricsIndicators, types.TxManagerParams{
-		MaxRetries:             3,
-		RetryInterval:          1 * time.Second,
-		ConfirmationTimeout:    60 * time.Second,
-		GasPriceAdjustmentRate: "1.1",
-	})
-	assert.NoError(t, err, "failed to create chain IO")
-	chainIO, err = chainIO.SetupKeyring(keyName, "test")
-	assert.NoError(t, err, "failed to setup keyring")
+// entrypoint for the test suite
+func TestSquaring(t *testing.T) {
+	suite.Run(t, new(SquaringTestSuit))
+}
 
-	bvsSquaring := bvssquaringapi.NewBVSSquaring(chainIO)
-	bvsSquaring.BindClient(contractAddr)
+func (suite *SquaringTestSuit) TestExecuteSquaring() {
+	t := suite.T()
 
-	resp, err := bvsSquaring.GetTaskInput(10)
+	squaringContract := suite.DeploySquaringContract()
+
+	bvsSquaring := bvssquaringapi.NewBVSSquaring(suite.ChainIO)
+	bvsSquaring.BindClient(squaringContract.Address)
+
+	operator := suite.Babylond.GenerateAddress("operator")
+
+	resp, err := bvsSquaring.CreateNewTask(context.Background(), 10)
+	assert.NoError(t, err, "error creating task")
+	assert.NotNil(t, resp, "create task response nil")
+
+	resp, err = bvsSquaring.RespondToTask(context.Background(), 10, 100, operator.String())
+	assert.NoError(t, err, "error responding to task")
+	assert.NotNil(t, resp, "respond task response nil")
+}
+
+func (suite *SquaringTestSuit) TestQuerySquaring() {
+	t := suite.T()
+
+	squaringContract := suite.DeploySquaringContract()
+
+	bvsSquaring := bvssquaringapi.NewBVSSquaring(suite.ChainIO)
+	bvsSquaring.BindClient(squaringContract.Address)
+
+	// create first task
+	resp, err := bvsSquaring.CreateNewTask(suite.Ctx, 10)
+	assert.NoError(t, err, "error creating task")
+	assert.NotNil(t, resp, "create task response nil")
+
+	// query first task
+	res, err := bvsSquaring.GetTaskInput(1)
 	assert.NoError(t, err, "query contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)
+	assert.NotNil(t, res, "response nil")
+	t.Logf("resp:%+v", res)
 
-	resp, err = bvsSquaring.GetTaskResult(10)
+	// query first task result
+	res, err = bvsSquaring.GetTaskResult(1)
 	assert.NoError(t, err, "query contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)
+	assert.NotNil(t, res, "response nil")
+	t.Logf("resp:%+v", res)
 
-	resp, err = bvsSquaring.GetLatestTaskID()
+	// query latest task ID
+	res, err = bvsSquaring.GetLatestTaskID()
 	assert.NoError(t, err, "query contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)
+	assert.NotNil(t, res, "response nil")
+	t.Logf("resp:%+v", res)
 }
