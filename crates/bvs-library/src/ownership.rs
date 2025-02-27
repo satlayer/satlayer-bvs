@@ -20,7 +20,6 @@ pub fn _set_owner(storage: &mut dyn Storage, owner: &Addr) -> Result<(), Ownersh
 
 /// Transfer the ownership of the contract to a new address
 /// Only the current owner can do this
-/// Returns the old owner
 pub fn transfer_ownership(
     deps: DepsMut,
     info: &MessageInfo,
