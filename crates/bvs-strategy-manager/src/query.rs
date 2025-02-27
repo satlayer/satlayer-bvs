@@ -25,11 +25,6 @@ pub struct StakerStrategyListResponse {
 }
 
 #[cw_serde]
-pub struct OwnerResponse {
-    pub owner_addr: Addr,
-}
-
-#[cw_serde]
 pub struct StrategyWhitelistedResponse {
     pub is_whitelisted: bool,
 }

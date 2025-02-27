@@ -7,11 +7,11 @@ use crate::{
         BvsInfoResponse, CalculateDigestHashResponse, DelegationManagerResponse,
         DomainNameResponse, DomainTypeHashResponse, ExecuteMsg, InstantiateMsg,
         IsSaltSpentResponse, OperatorBvsRegistrationTypeHashResponse, OperatorStatusResponse,
-        OwnerResponse, QueryMsg, SignatureWithSaltAndExpiry,
+        QueryMsg, SignatureWithSaltAndExpiry,
     },
     state::{
         BvsInfo, OperatorBvsRegistrationStatus, BVS_INFO, BVS_OPERATOR_STATUS, DELEGATION_MANAGER,
-        OPERATOR_SALT_SPENT, OWNER,
+        OPERATOR_SALT_SPENT,
     },
     utils::{
         calculate_digest_hash, recover, sha256, DigestHashParams, DOMAIN_NAME, DOMAIN_TYPE_HASH,
@@ -24,6 +24,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 
 use bvs_base::delegation::{OperatorResponse, QueryMsg as DelegationManagerQueryMsg};
+use bvs_library::ownership;
 
 const CONTRACT_NAME: &str = "BVS Directory";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -38,10 +39,10 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     bvs_registry::api::set_registry_addr(deps.storage, &deps.api.addr_validate(&msg.registry)?)?;
 
-    let owner = deps.api.addr_validate(&msg.initial_owner)?;
-    let delegation_manager = deps.api.addr_validate(&msg.delegation_manager)?;
+    let owner = deps.api.addr_validate(&msg.owner)?;
+    ownership::_set_owner(deps.storage, &owner)?;
 
-    OWNER.save(deps.storage, &owner)?;
+    let delegation_manager = deps.api.addr_validate(&msg.delegation_manager)?;
     DELEGATION_MANAGER.save(deps.storage, &delegation_manager)?;
 
     Ok(Response::new()
@@ -93,8 +94,8 @@ pub fn execute(
         }
         ExecuteMsg::CancelSalt { salt } => cancel_salt(deps, env, info, salt),
         ExecuteMsg::TransferOwnership { new_owner } => {
-            let new_owner_addr = deps.api.addr_validate(&new_owner)?;
-            transfer_ownership(deps, info, new_owner_addr)
+            let new_owner = deps.api.addr_validate(&new_owner)?;
+            ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
         }
     }
 }
@@ -233,7 +234,8 @@ pub fn set_delegation_manager(
     info: MessageInfo,
     delegation_manager: Addr,
 ) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.as_ref(), &info)?;
+
     DELEGATION_MANAGER.save(deps.storage, &delegation_manager)?;
 
     Ok(Response::new()
@@ -259,24 +261,6 @@ pub fn cancel_salt(
         .add_attribute("method", "cancel_salt")
         .add_attribute("operator", info.sender.to_string())
         .add_attribute("salt", salt.to_base64()))
-}
-
-pub fn transfer_ownership(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_owner: Addr,
-) -> Result<Response, ContractError> {
-    let current_owner = OWNER.load(deps.storage)?;
-
-    if current_owner != info.sender {
-        return Err(ContractError::Unauthorized {});
-    }
-
-    OWNER.save(deps.storage, &new_owner)?;
-
-    Ok(Response::new()
-        .add_attribute("method", "transfer_ownership")
-        .add_attribute("new_owner", new_owner.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -314,7 +298,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&is_spent)
         }
         QueryMsg::DelegationManager {} => to_json_binary(&query_delegation_manager(deps)?),
-        QueryMsg::Owner {} => to_json_binary(&query_owner(deps)?),
         QueryMsg::OperatorBvsRegistrationTypeHash {} => {
             to_json_binary(&query_operator_bvs_registration_type_hash(deps)?)
         }
@@ -366,11 +349,6 @@ fn query_delegation_manager(deps: Deps) -> StdResult<DelegationManagerResponse> 
     Ok(DelegationManagerResponse { delegation_addr })
 }
 
-fn query_owner(deps: Deps) -> StdResult<OwnerResponse> {
-    let owner_addr = OWNER.load(deps.storage)?;
-    Ok(OwnerResponse { owner_addr })
-}
-
 fn query_operator_bvs_registration_type_hash(
     _deps: Deps,
 ) -> StdResult<OperatorBvsRegistrationTypeHashResponse> {
@@ -399,14 +377,6 @@ fn query_bvs_info(deps: Deps, bvs_hash: String) -> StdResult<BvsInfoResponse> {
     })
 }
 
-fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
-    let owner = OWNER.load(deps.storage)?;
-    if info.sender != owner {
-        return Err(ContractError::Unauthorized {});
-    }
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -432,7 +402,7 @@ mod tests {
         let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
 
         let msg = InstantiateMsg {
-            initial_owner: owner.clone(),
+            owner: owner.clone(),
             delegation_manager: delegation_manager.clone(),
             registry: deps.api.addr_make("registry").to_string(),
         };
@@ -445,7 +415,7 @@ mod tests {
         assert_eq!(res.attributes[1].key, "owner");
         assert_eq!(res.attributes[1].value, owner.clone());
 
-        let current_owner = OWNER.load(&deps.storage).unwrap();
+        let current_owner = ownership::OWNER.load(&deps.storage).unwrap();
 
         assert_eq!(current_owner, Addr::unchecked(owner));
 
@@ -472,7 +442,7 @@ mod tests {
         let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
 
         let msg = InstantiateMsg {
-            initial_owner: owner.to_string(),
+            owner: owner.to_string(),
             delegation_manager: delegation_manager.to_string(),
             registry: deps.api.addr_make("registry").to_string(),
         };
@@ -794,30 +764,6 @@ mod tests {
     }
 
     #[test]
-    fn test_transfer_ownership() {
-        let (mut deps, env, info, _delegation_manager) = instantiate_contract();
-
-        let new_owner = deps.api.addr_make("new_owner");
-        let res = transfer_ownership(deps.as_mut(), info.clone(), new_owner.clone());
-
-        if let Err(ref err) = res {
-            println!("Error: {:?}", err);
-        }
-
-        assert!(res.is_ok());
-
-        let res = res.unwrap();
-        assert_eq!(res.attributes.len(), 2);
-        assert_eq!(res.attributes[0].key, "method");
-        assert_eq!(res.attributes[0].value, "transfer_ownership");
-        assert_eq!(res.attributes[1].key, "new_owner");
-        assert_eq!(res.attributes[1].value, new_owner.to_string());
-
-        let current_owner = OWNER.load(&deps.storage).unwrap();
-        assert_eq!(current_owner, new_owner);
-    }
-
-    #[test]
     fn test_query_operator() {
         let (mut deps, env, info, delegation_manager) = instantiate_contract();
 
@@ -1074,18 +1020,6 @@ mod tests {
             response.delegation_addr,
             Addr::unchecked(delegation_manager)
         );
-    }
-
-    #[test]
-    fn test_query_owner() {
-        let (deps, env, info, _delegation_manager) = instantiate_contract();
-
-        let query_msg = QueryMsg::Owner {};
-        let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-
-        let response: OwnerResponse = from_json(query_res).unwrap();
-
-        assert_eq!(response.owner_addr, info.sender);
     }
 
     #[test]

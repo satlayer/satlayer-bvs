@@ -1,7 +1,4 @@
 {
   "name": "@satlayer/bvs-library",
-  "private": false,
-  "scripts": {
-    "test": "cargo test"
-  }
+  "private": false
 }

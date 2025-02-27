@@ -12,7 +12,7 @@ use crate::{
     state::{
         DelegationManagerState, CUMULATIVE_WITHDRAWALS_QUEUED, DELEGATED_TO,
         DELEGATION_MANAGER_STATE, MIN_WITHDRAWAL_DELAY_BLOCKS, OPERATOR_DETAILS, OPERATOR_SHARES,
-        OWNER, PENDING_WITHDRAWALS, STRATEGY_WITHDRAWAL_DELAY_BLOCKS,
+        PENDING_WITHDRAWALS, STRATEGY_WITHDRAWAL_DELAY_BLOCKS,
     },
     utils::{calculate_withdrawal_root, validate_addresses, DelegateParams, Withdrawal},
 };
@@ -24,7 +24,7 @@ use cw2::set_contract_version;
 
 use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
 use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
-
+use bvs_library::ownership;
 use bvs_strategy_manager::{
     msg::ExecuteMsg as StrategyManagerExecuteMsg, msg::QueryMsg as StrategyManagerQueryMsg,
     query::DepositsResponse, query::StakerStrategyListResponse,
@@ -50,9 +50,11 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
+    let owner = deps.api.addr_validate(&msg.owner)?;
+    ownership::_set_owner(deps.storage, &owner)?;
+
     let strategy_manager = deps.api.addr_validate(&msg.strategy_manager)?;
     let slash_manager = deps.api.addr_validate(&msg.slash_manager)?;
-    let initial_owner = deps.api.addr_validate(&msg.initial_owner)?;
 
     let state = DelegationManagerState {
         strategy_manager: strategy_manager.clone(),
@@ -66,7 +68,6 @@ pub fn instantiate(
     set_unpauser(deps.branch(), unpauser)?;
 
     DELEGATION_MANAGER_STATE.save(deps.storage, &state)?;
-    OWNER.save(deps.storage, &initial_owner)?;
     PAUSED_STATE.save(deps.storage, &msg.initial_paused_status)?;
 
     set_min_withdrawal_delay_blocks_internal(deps.branch(), msg.min_withdrawal_delay_blocks)?;
@@ -89,7 +90,7 @@ pub fn instantiate(
             "min_withdrawal_delay_blocks",
             msg.min_withdrawal_delay_blocks.to_string(),
         )
-        .add_attribute("owner", msg.initial_owner.to_string());
+        .add_attribute("owner", msg.owner.to_string());
 
     Ok(response)
 }
@@ -217,8 +218,8 @@ pub fn execute(
             )
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
-            let new_owner_addr: Addr = Addr::unchecked(new_owner);
-            transfer_ownership(deps, info, new_owner_addr)
+            let new_owner = deps.api.addr_validate(&new_owner)?;
+            ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
         }
         ExecuteMsg::Pause {} => {
             check_pauser(deps.as_ref(), info.clone())?;
@@ -229,12 +230,12 @@ pub fn execute(
             unpause(deps, &info).map_err(ContractError::Std)
         }
         ExecuteMsg::SetPauser { new_pauser } => {
-            only_owner(deps.as_ref(), &info.clone())?;
+            ownership::assert_owner(deps.as_ref(), &info)?;
             let new_pauser_addr = deps.api.addr_validate(&new_pauser)?;
             set_pauser(deps, new_pauser_addr).map_err(ContractError::Std)
         }
         ExecuteMsg::SetUnpauser { new_unpauser } => {
-            only_owner(deps.as_ref(), &info.clone())?;
+            ownership::assert_owner(deps.as_ref(), &info)?;
             let new_unpauser_addr = deps.api.addr_validate(&new_unpauser)?;
             set_unpauser(deps, new_unpauser_addr).map_err(ContractError::Std)
         }
@@ -246,7 +247,7 @@ pub fn set_slash_manager(
     info: MessageInfo,
     new_slash_manager: Addr,
 ) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.as_ref(), &info)?;
 
     let mut state = DELEGATION_MANAGER_STATE.load(deps.storage)?;
 
@@ -265,7 +266,7 @@ pub fn set_min_withdrawal_delay_blocks(
     info: MessageInfo,
     new_min_withdrawal_delay_blocks: u64,
 ) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.as_ref(), &info)?;
 
     set_min_withdrawal_delay_blocks_internal(deps, new_min_withdrawal_delay_blocks)
 }
@@ -276,7 +277,7 @@ pub fn set_strategy_withdrawal_delay_blocks(
     strategies: Vec<Addr>,
     withdrawal_delay_blocks: Vec<u64>,
 ) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.as_ref(), &info)?;
 
     set_strategy_withdrawal_delay_blocks_internal(deps, strategies, withdrawal_delay_blocks)
 }
@@ -626,24 +627,6 @@ pub fn complete_queued_withdrawal(
     Ok(response)
 }
 
-pub fn transfer_ownership(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_owner: Addr,
-) -> Result<Response, ContractError> {
-    let current_owner = OWNER.load(deps.storage)?;
-
-    if current_owner != info.sender {
-        return Err(ContractError::Unauthorized {});
-    }
-
-    OWNER.save(deps.storage, &new_owner)?;
-
-    Ok(Response::new()
-        .add_attribute("method", "transfer_ownership")
-        .add_attribute("new_owner", new_owner.to_string()))
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -840,14 +823,6 @@ pub fn query_cumulative_withdrawals_queued(
     Ok(CumulativeWithdrawalsQueuedResponse {
         cumulative_withdrawals,
     })
-}
-
-fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
-    let owner = OWNER.load(deps.storage)?;
-    if info.sender != owner {
-        return Err(ContractError::Unauthorized {});
-    }
-    Ok(())
 }
 
 fn only_strategy_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
@@ -1231,6 +1206,7 @@ fn remove_shares_and_queue_withdrawal(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bvs_library::ownership::OwnershipError;
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
@@ -1256,7 +1232,7 @@ mod tests {
             strategy_manager: strategy_manager.clone(),
             slash_manager: slasher.clone(),
             min_withdrawal_delay_blocks: 100,
-            initial_owner: initial_owner.clone(),
+            owner: initial_owner.clone(),
             pauser: pauser.clone(),
             unpauser: unpauser.clone(),
             initial_paused_status: 0,
@@ -1290,7 +1266,7 @@ mod tests {
 
         assert_eq!(Addr::unchecked(strategy_manager), state.strategy_manager);
 
-        let owner = OWNER.load(&deps.storage).unwrap();
+        let owner = ownership::OWNER.load(&deps.storage).unwrap();
         assert_eq!(owner, Addr::unchecked(initial_owner.clone()));
 
         let min_withdrawal_delay_blocks = MIN_WITHDRAWAL_DELAY_BLOCKS.load(&deps.storage).unwrap();
@@ -1339,7 +1315,7 @@ mod tests {
             strategy_manager: strategy_manager.clone(),
             slash_manager: slasher.clone(),
             min_withdrawal_delay_blocks: 100,
-            initial_owner: owner.clone(),
+            owner: owner.clone(),
             pauser: pauser.clone(),
             unpauser: unpauser.clone(),
             initial_paused_status: 0,
@@ -1357,27 +1333,6 @@ mod tests {
             unpauser_info,
             strategy_manager_info,
         )
-    }
-
-    #[test]
-    fn test_only_owner() {
-        let (deps, _env, owner_info, _pauser_info, _unpauser_info, _strategy_manager_info) =
-            instantiate_contract();
-
-        let result = only_owner(deps.as_ref(), &owner_info);
-        assert!(result.is_ok());
-
-        let non_owner_info = message_info(&Addr::unchecked("not_owner"), &[]);
-
-        let result = only_owner(deps.as_ref(), &non_owner_info);
-        assert!(result.is_err());
-
-        if let Err(err) = result {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
     }
 
     #[test]
@@ -1444,13 +1399,10 @@ mod tests {
 
         let non_owner_info = message_info(&Addr::unchecked("not_owner"), &[]);
         let result = set_min_withdrawal_delay_blocks(deps.as_mut(), non_owner_info, new_min_delay);
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            ContractError::Ownership(OwnershipError::Unauthorized).to_string()
+        );
     }
 
     #[test]
@@ -1545,13 +1497,10 @@ mod tests {
             strategies,
             withdrawal_delay_blocks.clone(),
         );
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            ContractError::Ownership(OwnershipError::Unauthorized).to_string()
+        );
 
         // Test input length mismatch error
         let strategies = vec![deps.api.addr_make("strategy1")];
@@ -3586,25 +3535,6 @@ mod tests {
         let response = result.unwrap();
         assert_eq!(response.withdrawal_delays.len(), 1);
         assert_eq!(response.withdrawal_delays[0], 100);
-    }
-
-    #[test]
-    fn test_transfer_ownership() {
-        let (mut deps, _, owner_info, _, _, _) = instantiate_contract();
-
-        let new_owner = deps.api.addr_make("new_owner");
-        let result = transfer_ownership(deps.as_mut(), owner_info, new_owner.clone());
-        assert!(result.is_ok());
-
-        let response = result.unwrap();
-        assert_eq!(response.attributes.len(), 2);
-        assert_eq!(response.attributes[0].key, "method");
-        assert_eq!(response.attributes[0].value, "transfer_ownership");
-        assert_eq!(response.attributes[1].key, "new_owner");
-        assert_eq!(response.attributes[1].value, new_owner.to_string());
-
-        let owner = OWNER.load(&deps.storage).unwrap();
-        assert_eq!(owner, new_owner);
     }
 
     #[test]

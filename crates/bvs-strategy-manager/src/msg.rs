@@ -1,5 +1,5 @@
 use crate::query::{
-    DelegationManagerResponse, DepositsResponse, IsTokenBlacklistedResponse, OwnerResponse,
+    DelegationManagerResponse, DepositsResponse, IsTokenBlacklistedResponse,
     StakerStrategyListLengthResponse, StakerStrategyListResponse, StakerStrategySharesResponse,
     StrategyManagerStateResponse, StrategyWhitelistedResponse, StrategyWhitelisterResponse,
     TokenStrategyResponse,
@@ -9,10 +9,10 @@ use cosmwasm_std::Uint128;
 
 #[cw_serde]
 pub struct InstantiateMsg {
+    pub owner: String,
     pub delegation_manager: String,
     pub slash_manager: String,
     pub initial_strategy_whitelister: String,
-    pub initial_owner: String,
     pub pauser: String,
     pub unpauser: String,
     pub initial_paused_status: u8,
@@ -65,6 +65,12 @@ pub enum ExecuteMsg {
         new_slash_manager: String,
     },
     TransferOwnership {
+        /// Transfer ownership of the contract to a new owner.
+        /// Contract admin (set for all BVS contracts, a cosmwasm feature)
+        /// has the omni-ability to override by migration;
+        /// this logic is app-level.
+        /// > 2-step ownership transfer is mostly redundant for CosmWasm contracts with the admin set.
+        /// > You can override ownership with using CosmWasm migrate `entry_point`.
         new_owner: String,
     },
     Pause {},
@@ -91,9 +97,6 @@ pub enum QueryMsg {
 
     #[returns(StakerStrategyListResponse)]
     GetStakerStrategyList { staker: String },
-
-    #[returns(OwnerResponse)]
-    Owner {},
 
     #[returns(StrategyWhitelistedResponse)]
     IsStrategyWhitelisted { strategy: String },

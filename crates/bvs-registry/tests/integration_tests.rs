@@ -1,4 +1,4 @@
-use bvs_library::testing::TestingContract;
+use bvs_library::{ownership::OwnershipError, testing::TestingContract};
 use bvs_registry::msg::{
     CanExecuteResponse, ExecuteMsg, InstantiateMsg, IsPausedResponse, QueryMsg,
 };
@@ -155,4 +155,42 @@ fn unauthorized_unpause() {
         let res: CanExecuteResponse = contract.query(&app, &msg).unwrap();
         assert_eq!(res.can_execute(), false);
     }
+}
+
+#[test]
+fn transfer_ownership() {
+    let (mut app, contract) = instantiate(None);
+
+    let new_owner = &app.api().addr_make("new_owner");
+    let msg = ExecuteMsg::TransferOwnership {
+        new_owner: new_owner.to_string(),
+    };
+    let owner = &app.api().addr_make("owner");
+    let res = contract.execute(&mut app, owner, &msg).unwrap();
+
+    assert_eq!(res.events.len(), 2);
+    assert_eq!(
+        res.events[1],
+        Event::new("wasm-TransferredOwnership")
+            .add_attribute("_contract_address", contract.addr)
+            .add_attribute("old_owner", owner.as_str())
+            .add_attribute("new_owner", new_owner.as_str())
+    );
+}
+
+#[test]
+fn transfer_ownership_failed() {
+    let (mut app, contract) = instantiate(None);
+
+    let new_owner = &app.api().addr_make("new_owner");
+    let msg = ExecuteMsg::TransferOwnership {
+        new_owner: new_owner.to_string(),
+    };
+    let not_owner = &app.api().addr_make("not_owner");
+    let err = contract.execute(&mut app, not_owner, &msg).unwrap_err();
+
+    assert_eq!(
+        err.root_cause().to_string(),
+        bvs_registry::ContractError::Ownership(OwnershipError::Unauthorized).to_string()
+    );
 }

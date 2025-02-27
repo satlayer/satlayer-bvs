@@ -268,14 +268,6 @@ func (r *StrategyManager) GetStakerStrategyList(staker string) (*wasmtypes.Query
 	return r.query(msg)
 }
 
-func (r *StrategyManager) Owner() (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := strategymanager.QueryMsg{
-		Owner: &strategymanager.Owner{},
-	}
-
-	return r.query(msg)
-}
-
 func (r *StrategyManager) IsStrategyWhitelisted(strategy string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategymanager.QueryMsg{
 		IsStrategyWhitelisted: &strategymanager.IsStrategyWhitelisted{

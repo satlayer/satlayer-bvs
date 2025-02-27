@@ -66,7 +66,7 @@ func (d *Deployer) DeploySlashManager(
 ) *Contract[slashmanager.InstantiateMsg] {
 	initMsg := slashmanager.InstantiateMsg{
 		InitialPausedStatus: 0,
-		InitialOwner:        d.GenerateAddress("slash-manager:initial_owner").String(),
+		Owner:               d.GenerateAddress("slash-manager:initial_owner").String(),
 		Pauser:              d.GenerateAddress("slash-manager:pauser").String(),
 		Unpauser:            d.GenerateAddress("slash-manager:unpauser").String(),
 		StrategyManager:     strategyManager,
@@ -83,7 +83,7 @@ func (d *Deployer) DeployStrategyManager(
 ) *Contract[strategymanager.InstantiateMsg] {
 	initMsg := strategymanager.InstantiateMsg{
 		InitialPausedStatus:        0,
-		InitialOwner:               d.GenerateAddress("strategy-manager:initial_owner").String(),
+		Owner:                      d.GenerateAddress("strategy-manager:initial_owner").String(),
 		Pauser:                     d.GenerateAddress("strategy-manager:pauser").String(),
 		Unpauser:                   d.GenerateAddress("strategy-manager:unpauser").String(),
 		DelegationManager:          delegationManager,
@@ -103,7 +103,7 @@ func (d *Deployer) DeployDelegationManager(
 ) *Contract[delegationmanager.InstantiateMsg] {
 	initMsg := delegationmanager.InstantiateMsg{
 		InitialPausedStatus:      0,
-		InitialOwner:             d.GenerateAddress("delegation-manager:initial_owner").String(),
+		Owner:                    d.GenerateAddress("delegation-manager:initial_owner").String(),
 		Pauser:                   d.GenerateAddress("delegation-manager:pauser").String(),
 		Unpauser:                 d.GenerateAddress("delegation-manager:unpauser").String(),
 		SlashManager:             slashManager,
@@ -121,7 +121,7 @@ func (d *Deployer) DeployDirectory(
 	delegationManager string,
 ) *Contract[directory.InstantiateMsg] {
 	initMsg := directory.InstantiateMsg{
-		InitialOwner:      d.GenerateAddress("directory:initial_owner").String(),
+		Owner:             d.GenerateAddress("directory:initial_owner").String(),
 		Registry:          registry,
 		DelegationManager: delegationManager,
 	}
@@ -142,7 +142,7 @@ func (d *Deployer) DeployRewardsCoordinator(
 	rewardsUpdater string,
 ) *Contract[rewardscoordinator.InstantiateMsg] {
 	initMsg := rewardscoordinator.InstantiateMsg{
-		InitialOwner:               d.GenerateAddress("rewards-coordinator:initial_owner").String(),
+		Owner:                      d.GenerateAddress("rewards-coordinator:initial_owner").String(),
 		Registry:                   registry,
 		StrategyManager:            strategyManager,
 		DelegationManager:          delegationManager,
@@ -163,7 +163,7 @@ func (d *Deployer) DeployStrategyBase(
 ) *Contract[strategybase.InstantiateMsg] {
 	initMsg := strategybase.InstantiateMsg{
 		InitialPausedStatus: 0,
-		InitialOwner:        d.GenerateAddress("strategy-base:initial_owner").String(),
+		Owner:               d.GenerateAddress("strategy-base:initial_owner").String(),
 		Pauser:              d.GenerateAddress("strategy-base:pauser").String(),
 		Unpauser:            d.GenerateAddress("strategy-base:unpauser").String(),
 		StrategyManager:     strategyManager,

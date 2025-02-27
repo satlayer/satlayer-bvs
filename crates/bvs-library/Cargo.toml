@@ -16,20 +16,20 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["testing"]
-library = []
-testing = ["library", "dep:cw-multi-test"]
+testing = ["dep:cw-multi-test"]
 
 [dependencies]
 cosmwasm-std = { workspace = true }
 cosmwasm-crypto = { workspace = true }
+cw-storage-plus = { workspace = true }
+thiserror = { workspace = true }
 sha2 = { workspace = true }
 secp256k1 = { workspace = true }
 bech32 = { workspace = true }
 ripemd = { workspace = true }
 base64 = { workspace = true }
-cw-multi-test = { workspace = true, optional = true }
 serde = { workspace = true }
-lazy_static = "1.5.0"
+cw-multi-test = { workspace = true, optional = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }

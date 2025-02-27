@@ -1,10 +1,16 @@
 use cosmwasm_std::StdError;
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
+
+    #[error("{0}")]
+    Registry(#[from] bvs_registry::api::RegistryError),
+
+    #[error("{0}")]
+    Ownership(#[from] bvs_library::ownership::OwnershipError),
 
     #[error("StrategyManager: strategy not whitelisted")]
     StrategyNotWhitelisted {},

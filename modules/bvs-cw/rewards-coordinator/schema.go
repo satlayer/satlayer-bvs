@@ -179,10 +179,10 @@ type InstantiateMsg struct {
 	CalculationIntervalSeconds int64  `json:"calculation_interval_seconds"`
 	DelegationManager          string `json:"delegation_manager"`
 	GenesisRewardsTimestamp    int64  `json:"genesis_rewards_timestamp"`
-	InitialOwner               string `json:"initial_owner"`
 	MaxFutureLength            int64  `json:"max_future_length"`
 	MaxRetroactiveLength       int64  `json:"max_retroactive_length"`
 	MaxRewardsDuration         int64  `json:"max_rewards_duration"`
+	Owner                      string `json:"owner"`
 	Registry                   string `json:"registry"`
 	RewardsUpdater             string `json:"rewards_updater"`
 	StrategyManager            string `json:"strategy_manager"`
@@ -279,6 +279,10 @@ type SubmitRoot struct {
 }
 
 type TransferOwnership struct {
+	// Transfer ownership of the contract to a new owner. Contract admin (set for all BVS
+	// contracts, a cosmwasm feature) has the omni-ability to override by migration; this logic
+	// is app-level. > 2-step ownership transfer is mostly redundant for CosmWasm contracts with
+	// the admin set. > You can override ownership with using CosmWasm migrate `entry_point`.
 	NewOwner string `json:"new_owner"`
 }
 

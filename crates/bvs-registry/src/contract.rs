@@ -3,7 +3,8 @@ use cosmwasm_std::entry_point;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{OWNER, PAUSED};
+use crate::state::PAUSED;
+use bvs_library::ownership;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 
@@ -17,11 +18,12 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let owner = deps.api.addr_validate(&msg.owner)?;
-    OWNER.save(deps.storage, &owner)?;
-    PAUSED.save(deps.storage, &msg.initial_paused)?;
-
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    let owner = deps.api.addr_validate(&msg.owner)?;
+    ownership::_set_owner(deps.storage, &owner)?;
+
+    PAUSED.save(deps.storage, &msg.initial_paused)?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
@@ -38,15 +40,19 @@ pub fn execute(
     match msg {
         ExecuteMsg::Pause {} => execute::pause(deps, info),
         ExecuteMsg::Unpause {} => execute::unpause(deps, info),
+        ExecuteMsg::TransferOwnership { new_owner } => {
+            let new_owner = deps.api.addr_validate(&new_owner)?;
+            ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
+        }
     }
 }
 
 pub mod execute {
     use super::*;
-    use crate::state::{OWNER, PAUSED};
+    use crate::state::PAUSED;
 
     pub fn pause(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
-        only_owner(deps.as_ref(), &info)?;
+        ownership::assert_owner(deps.as_ref(), &info)?;
 
         PAUSED.save(deps.storage, &true)?;
         Ok(Response::new()
@@ -55,20 +61,12 @@ pub mod execute {
     }
 
     pub fn unpause(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
-        only_owner(deps.as_ref(), &info)?;
+        ownership::assert_owner(deps.as_ref(), &info)?;
 
         PAUSED.save(deps.storage, &false)?;
         Ok(Response::new()
             .add_attribute("method", "unpause")
             .add_attribute("sender", info.sender))
-    }
-
-    fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
-        let owner = OWNER.load(deps.storage)?;
-        if info.sender != owner {
-            return Err(ContractError::Unauthorized {});
-        }
-        Ok(())
     }
 }
 
@@ -155,7 +153,7 @@ mod tests {
 
         let owner = deps.api.addr_make("owner");
 
-        OWNER.save(&mut deps.storage, &owner).unwrap();
+        ownership::_set_owner(&mut deps.storage, &owner).unwrap();
         PAUSED.save(&mut deps.storage, &false).unwrap();
 
         let info = message_info(&owner, &[]);
@@ -178,7 +176,7 @@ mod tests {
 
         let owner = deps.api.addr_make("owner");
 
-        OWNER.save(&mut deps.storage, &owner).unwrap();
+        ownership::_set_owner(&mut deps.storage, &owner).unwrap();
         PAUSED.save(&mut deps.storage, &false).unwrap();
 
         let not_owner = deps.api.addr_make("not_owner");
@@ -204,7 +202,7 @@ mod tests {
 
         let owner = deps.api.addr_make("owner");
 
-        OWNER.save(&mut deps.storage, &owner).unwrap();
+        ownership::_set_owner(&mut deps.storage, &owner).unwrap();
         PAUSED.save(&mut deps.storage, &true).unwrap();
 
         let info = message_info(&owner, &[]);
@@ -229,7 +227,7 @@ mod tests {
 
         let owner = deps.api.addr_make("owner");
 
-        OWNER.save(&mut deps.storage, &owner).unwrap();
+        ownership::_set_owner(&mut deps.storage, &owner).unwrap();
         PAUSED.save(&mut deps.storage, &true).unwrap();
 
         let not_owner = deps.api.addr_make("not_owner");
@@ -258,7 +256,7 @@ mod tests {
         let contract = deps.api.addr_make("anyone").to_string();
         let method = "any_method".to_string();
 
-        OWNER.save(&mut deps.storage, &owner).unwrap();
+        ownership::_set_owner(&mut deps.storage, &owner).unwrap();
         PAUSED.save(&mut deps.storage, &false).unwrap();
 
         execute::pause(deps.as_mut(), info.clone()).unwrap();

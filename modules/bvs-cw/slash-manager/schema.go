@@ -98,8 +98,8 @@ func (r *ValidatorResponse) Marshal() ([]byte, error) {
 
 type InstantiateMsg struct {
 	DelegationManager   string `json:"delegation_manager"`
-	InitialOwner        string `json:"initial_owner"`
 	InitialPausedStatus int64  `json:"initial_paused_status"`
+	Owner               string `json:"owner"`
 	Pauser              string `json:"pauser"`
 	StrategyManager     string `json:"strategy_manager"`
 	Unpauser            string `json:"unpauser"`
@@ -182,6 +182,10 @@ type SubmitSlashRequestSlashDetails struct {
 }
 
 type TransferOwnership struct {
+	// Transfer ownership of the contract to a new owner. Contract admin (set for all BVS
+	// contracts, a cosmwasm feature) has the omni-ability to override by migration; this logic
+	// is app-level. > 2-step ownership transfer is mostly redundant for CosmWasm contracts with
+	// the admin set. > You can override ownership with using CosmWasm migrate `entry_point`.
 	NewOwner string `json:"new_owner"`
 }
 

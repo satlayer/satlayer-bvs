@@ -10,7 +10,8 @@ use cosmwasm_std::{Binary, Uint128};
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub initial_owner: String,
+    pub owner: String,
+    pub registry: String,
     pub rewards_updater: String,
     pub calculation_interval_seconds: u64,
     pub max_rewards_duration: u64,
@@ -20,7 +21,6 @@ pub struct InstantiateMsg {
     pub delegation_manager: String,
     pub strategy_manager: String,
     pub activation_delay: u32,
-    pub registry: String,
 }
 
 #[cw_serde]
@@ -60,6 +60,12 @@ pub enum ExecuteMsg {
         new_commission_bips: u16,
     },
     TransferOwnership {
+        /// Transfer ownership of the contract to a new owner.
+        /// Contract admin (set for all BVS contracts, a cosmwasm feature)
+        /// has the omni-ability to override by migration;
+        /// this logic is app-level.
+        /// > 2-step ownership transfer is mostly redundant for CosmWasm contracts with the admin set.
+        /// > You can override ownership with using CosmWasm migrate `entry_point`.
         new_owner: String,
     },
 }

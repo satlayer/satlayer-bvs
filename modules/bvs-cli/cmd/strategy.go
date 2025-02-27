@@ -172,14 +172,6 @@ func strategyCmd() *cobra.Command {
 			strategy.GetStakerStrategyList(args[0])
 		},
 	}
-	getOwnerCmd := &cobra.Command{
-		Use:   "get-owner",
-		Short: "To get the owner.",
-		Args:  cobra.NoArgs,
-		Run: func(cmd *cobra.Command, args []string) {
-			strategy.Owner()
-		},
-	}
 	isStrategyWhitelistedCmd := &cobra.Command{
 		Use:   "is-strategy-whitelisted <strategyAddress>",
 		Short: "To check if the strategy is whitelisted.",
@@ -220,7 +212,6 @@ func strategyCmd() *cobra.Command {
 	subCmd.AddCommand(removeStrategyFromWhitelistCmd)
 	subCmd.AddCommand(setStrategyWhitelistCmd)
 	subCmd.AddCommand(getStakerStrategyListCmd)
-	subCmd.AddCommand(getOwnerCmd)
 	subCmd.AddCommand(isStrategyWhitelistedCmd)
 	subCmd.AddCommand(getStrategyWhitelistCmd)
 	subCmd.AddCommand(getStrategyManagerStateCmd)

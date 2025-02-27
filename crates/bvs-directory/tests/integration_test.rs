@@ -10,7 +10,7 @@ use bvs_registry::msg::InstantiateMsg;
 use bvs_registry::testing::RegistryContract;
 use bvs_testing::integration::{mock_contracts::mock_app, mock_env::MockEnvBuilder};
 use cosmwasm_std::testing::mock_env;
-use cosmwasm_std::{Binary, Event, StdError};
+use cosmwasm_std::{Binary, Event};
 
 #[test]
 fn register_bvs_successfully() {
@@ -29,7 +29,7 @@ fn register_bvs_successfully() {
 
     let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
         .deploy_bvs_directory(&BvsDirectoryInstantiateMsg {
-            initial_owner: owner.clone().to_string(),
+            owner: owner.clone().to_string(),
             delegation_manager: empty_addr.to_string(),
             registry: registry.addr.to_string(),
         })
@@ -87,7 +87,7 @@ fn register_operator_failure() {
 
     let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
         .deploy_bvs_directory(&BvsDirectoryInstantiateMsg {
-            initial_owner: owner.clone().to_string(),
+            owner: owner.clone().to_string(),
             delegation_manager: empty_addr.clone().into_string(),
             registry: registry.addr.to_string(),
         })
@@ -95,7 +95,7 @@ fn register_operator_failure() {
             strategy_manager: empty_addr.clone().into_string(),
             slash_manager: empty_addr.clone().into_string(),
             min_withdrawal_delay_blocks: 100,
-            initial_owner: owner.clone().to_string(),
+            owner: owner.clone().to_string(),
             strategies: vec![strategy1.clone(), strategy2.clone()],
             withdrawal_delay_blocks: vec![50, 60],
             pauser: owner.clone().to_string(),
@@ -168,7 +168,7 @@ fn deregister_operator_failure() {
 
     let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
         .deploy_bvs_directory(&BvsDirectoryInstantiateMsg {
-            initial_owner: owner.clone().to_string(),
+            owner: owner.clone().to_string(),
             delegation_manager: empty_addr.to_string(),
             registry: registry.addr.to_string(),
         })
@@ -196,7 +196,7 @@ fn register_update_metadata_uri_successfully() {
 
     let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
         .deploy_bvs_directory(&BvsDirectoryInstantiateMsg {
-            initial_owner: owner.clone().to_string(),
+            owner: owner.clone().to_string(),
             delegation_manager: empty_addr.to_string(),
             registry: registry.addr.to_string(),
         })
@@ -236,7 +236,7 @@ fn set_delegation_manager_successfully() {
 
     let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
         .deploy_bvs_directory(&BvsDirectoryInstantiateMsg {
-            initial_owner: owner.clone().to_string(),
+            owner: owner.clone().to_string(),
             delegation_manager: empty_addr.to_string(),
             registry: registry.addr.to_string(),
         })
@@ -280,7 +280,7 @@ fn cancel_salt_successfully() {
 
     let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
         .deploy_bvs_directory(&BvsDirectoryInstantiateMsg {
-            initial_owner: owner.clone().to_string(),
+            owner: owner.clone().to_string(),
             delegation_manager: empty_addr.to_string(),
             registry: registry.addr.to_string(),
         })
@@ -322,7 +322,7 @@ fn transfer_ownership_successfully() {
 
     let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
         .deploy_bvs_directory(&BvsDirectoryInstantiateMsg {
-            initial_owner: owner.clone().to_string(),
+            owner: owner.clone().to_string(),
             delegation_manager: empty_addr.to_string(),
             registry: registry.addr.to_string(),
         })
@@ -332,8 +332,8 @@ fn transfer_ownership_successfully() {
         new_owner: anyone.clone().into_string(),
     };
 
-    let bvs_driectory = mock_env.bvs_directory.clone();
-    let response = bvs_driectory
+    let directory = mock_env.bvs_directory.clone();
+    let response = directory
         .execute(
             &mut mock_env,
             owner.clone(),
@@ -345,10 +345,10 @@ fn transfer_ownership_successfully() {
     assert_eq!(response.events.len(), 2);
     assert_eq!(
         response.events[1],
-        Event::new("wasm")
-            .add_attribute("_contract_address", mock_env.bvs_directory.contract_addr)
-            .add_attribute("method", "transfer_ownership")
-            .add_attribute("new_owner", anyone.into_string())
+        Event::new("wasm-TransferredOwnership")
+            .add_attribute("_contract_address", directory.contract_addr)
+            .add_attribute("old_owner", owner.as_str())
+            .add_attribute("new_owner", anyone.as_str())
     );
 }
 
@@ -374,7 +374,7 @@ fn register_bvs_but_paused() {
 
     let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
         .deploy_bvs_directory(&bvs_directory::msg::InstantiateMsg {
-            initial_owner: owner.clone().to_string(),
+            owner: owner.clone().to_string(),
             delegation_manager: delegation_manager.into_string(),
             registry: registry.addr.to_string(),
         })

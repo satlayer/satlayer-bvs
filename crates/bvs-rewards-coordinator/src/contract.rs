@@ -15,7 +15,7 @@ use crate::{
         CURR_REWARDS_CALCULATION_END_TIMESTAMP, DELEGATION_MANAGER, DISTRIBUTION_ROOTS,
         DISTRIBUTION_ROOTS_COUNT, GENESIS_REWARDS_TIMESTAMP, GLOBAL_OPERATOR_COMMISSION_BIPS,
         IS_BVS_REWARDS_SUBMISSION_HASH, MAX_FUTURE_LENGTH, MAX_RETROACTIVE_LENGTH,
-        MAX_REWARDS_DURATION, OWNER, REWARDS_FOR_ALL_SUBMITTER, REWARDS_UPDATER, STRATEGY_MANAGER,
+        MAX_REWARDS_DURATION, REWARDS_FOR_ALL_SUBMITTER, REWARDS_UPDATER, STRATEGY_MANAGER,
         SUBMISSION_NONCE,
     },
     utils::{
@@ -24,16 +24,16 @@ use crate::{
         RewardsSubmission, TokenTreeMerkleLeaf,
     },
 };
+use bvs_library::ownership;
+use bvs_strategy_manager::{
+    msg::QueryMsg as StrategyManagerQueryMsg, query::StrategyWhitelistedResponse,
+};
 use cosmwasm_std::{
     to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, HexBinary, MessageInfo,
     QuerierWrapper, QueryRequest, Response, StdError, StdResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::set_contract_version;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
-
-use bvs_strategy_manager::{
-    msg::QueryMsg as StrategyManagerQueryMsg, query::StrategyWhitelistedResponse,
-};
 
 const CONTRACT_NAME: &str = "BVS Rewards Coordinator";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -51,6 +51,9 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     bvs_registry::api::set_registry_addr(deps.storage, &deps.api.addr_validate(&msg.registry)?)?;
 
+    let owner = deps.api.addr_validate(&msg.owner)?;
+    ownership::_set_owner(deps.storage, &owner)?;
+
     if msg.genesis_rewards_timestamp % msg.calculation_interval_seconds != 0 {
         return Err(ContractError::InvalidGenesisTimestamp {});
     }
@@ -59,14 +62,10 @@ pub fn instantiate(
         return Err(ContractError::InvalidCalculationInterval {});
     }
 
-    let initial_owner = deps.api.addr_validate(&msg.initial_owner)?;
-
     let strategy_manager = deps.api.addr_validate(&msg.strategy_manager)?;
     let delegation_manager = deps.api.addr_validate(&msg.delegation_manager)?;
 
     let rewards_updater = deps.api.addr_validate(&msg.rewards_updater)?;
-
-    OWNER.save(deps.storage, &initial_owner)?;
 
     CALCULATION_INTERVAL_SECONDS.save(deps.storage, &msg.calculation_interval_seconds)?;
     MAX_REWARDS_DURATION.save(deps.storage, &msg.max_rewards_duration)?;
@@ -81,7 +80,6 @@ pub fn instantiate(
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("owner", initial_owner.to_string())
         .add_attribute("rewards_updater", msg.rewards_updater.to_string())
         .add_attribute("activation_delay", msg.activation_delay.to_string()))
 }
@@ -157,7 +155,7 @@ pub fn execute(
         } => set_global_operator_commission(deps, info, new_commission_bips),
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
-            transfer_ownership(deps, info, new_owner)
+            ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
         }
     }
 }
@@ -475,7 +473,7 @@ pub fn set_activation_delay(
     info: MessageInfo,
     new_activation_delay: u32,
 ) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.as_ref(), &info)?;
 
     let res = set_activation_delay_internal(deps, new_activation_delay)?;
     Ok(res)
@@ -486,7 +484,7 @@ pub fn set_rewards_updater(
     info: MessageInfo,
     new_updater: Addr,
 ) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.as_ref(), &info)?;
 
     let res = set_rewards_updater_internal(deps, new_updater)?;
     Ok(res)
@@ -498,7 +496,7 @@ pub fn set_rewards_for_all_submitter(
     submitter: Addr,
     new_value: bool,
 ) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.as_ref(), &info)?;
 
     let prev_value = REWARDS_FOR_ALL_SUBMITTER
         .may_load(deps.storage, submitter.clone())?
@@ -517,30 +515,10 @@ pub fn set_global_operator_commission(
     info: MessageInfo,
     new_commission_bips: u16,
 ) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.as_ref(), &info)?;
 
     let res = set_global_operator_commission_internal(deps, new_commission_bips)?;
     Ok(res)
-}
-
-pub fn transfer_ownership(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_owner: Addr,
-) -> Result<Response, ContractError> {
-    let current_owner = OWNER.load(deps.storage)?;
-
-    if current_owner != info.sender {
-        return Err(ContractError::Unauthorized {});
-    }
-
-    OWNER.save(deps.storage, &new_owner)?;
-
-    let event = Event::new("TransferOwnership")
-        .add_attribute("method", "transfer_ownership")
-        .add_attribute("new_owner", new_owner.to_string());
-
-    Ok(Response::new().add_event(event))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -786,14 +764,6 @@ fn only_rewards_for_all_submitter(deps: Deps, info: &MessageInfo) -> Result<(), 
     Ok(())
 }
 
-fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
-    let owner = OWNER.load(deps.storage)?;
-    if info.sender != owner {
-        return Err(ContractError::Unauthorized {});
-    }
-    Ok(())
-}
-
 fn validate_rewards_submission(
     deps: &Deps,
     submission: &RewardsSubmission,
@@ -1020,6 +990,7 @@ mod tests {
         sha256, ExecuteEarnerTreeMerkleLeaf, ExecuteRewardsMerkleClaim, StrategyAndMultiplier,
     };
     use base64::{engine::general_purpose, Engine as _};
+    use bvs_library::ownership::OwnershipError;
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_dependencies_with_balances, mock_env, MockApi,
         MockQuerier, MockStorage,
@@ -1045,7 +1016,7 @@ mod tests {
         let registry = deps.api.addr_make("registry").to_string();
 
         let msg = InstantiateMsg {
-            initial_owner: initial_owner.clone(),
+            owner: initial_owner.clone(),
             calculation_interval_seconds: 86_400, // 1 day
             max_rewards_duration: 30 * 86_400,    // 30 days
             max_retroactive_length: 5 * 86_400,   // 5 days
@@ -1060,17 +1031,15 @@ mod tests {
 
         let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
 
-        assert_eq!(res.attributes.len(), 4);
+        assert_eq!(res.attributes.len(), 3);
         assert_eq!(res.attributes[0].key, "method");
         assert_eq!(res.attributes[0].value, "instantiate");
-        assert_eq!(res.attributes[1].key, "owner");
-        assert_eq!(res.attributes[1].value, initial_owner.to_string());
-        assert_eq!(res.attributes[2].key, "rewards_updater");
-        assert_eq!(res.attributes[2].value, rewards_updater.to_string());
-        assert_eq!(res.attributes[3].key, "activation_delay");
-        assert_eq!(res.attributes[3].value, "60");
+        assert_eq!(res.attributes[1].key, "rewards_updater");
+        assert_eq!(res.attributes[1].value, rewards_updater.to_string());
+        assert_eq!(res.attributes[2].key, "activation_delay");
+        assert_eq!(res.attributes[2].value, "60");
 
-        let stored_owner = OWNER.load(&deps.storage).unwrap();
+        let stored_owner = ownership::OWNER.load(&deps.storage).unwrap();
         assert_eq!(stored_owner, Addr::unchecked(initial_owner));
 
         let stored_calculation_interval = CALCULATION_INTERVAL_SECONDS.load(&deps.storage).unwrap();
@@ -1138,7 +1107,7 @@ mod tests {
         let registry = deps.api.addr_make("registry").to_string();
 
         let msg = InstantiateMsg {
-            initial_owner: initial_owner.clone(),
+            owner: initial_owner.clone(),
             calculation_interval_seconds: 86_400, // 1 day
             max_rewards_duration: 30 * 86_400,    // 30 days
             max_retroactive_length: 5 * 86_400,   // 5 days
@@ -1255,27 +1224,6 @@ mod tests {
             result,
             Err(ContractError::ValidCreateRewardsForAllSubmission {})
         );
-    }
-
-    #[test]
-    fn test_only_owner() {
-        let (
-            deps,
-            _env,
-            owner_info,
-            _pauser_info,
-            _unpauser_info,
-            _strategy_manager_info,
-            _delegation_manager_info,
-            _rewards_updater_info,
-        ) = instantiate_contract();
-
-        let result = only_owner(deps.as_ref(), &owner_info);
-        assert!(result.is_ok());
-
-        let info = message_info(&Addr::unchecked("not_owner"), &[]);
-        let result = only_owner(deps.as_ref(), &info);
-        assert_eq!(result, Err(ContractError::Unauthorized {}));
     }
 
     #[test]
@@ -1602,52 +1550,6 @@ mod tests {
     }
 
     #[test]
-    fn test_transfer_ownership() {
-        let (
-            mut deps,
-            _env,
-            owner_info,
-            _pauser_info,
-            _unpauser_info,
-            _strategy_manager_info,
-            _delegation_manager_info,
-            _rewards_updater_info,
-        ) = instantiate_contract();
-
-        let new_owner = deps.api.addr_make("new_owner");
-
-        let result = transfer_ownership(deps.as_mut(), owner_info, new_owner.clone());
-
-        assert!(result.is_ok());
-
-        let response = result.unwrap();
-        assert_eq!(response.events.len(), 1);
-
-        let event = response.events.first().unwrap();
-        assert_eq!(event.ty, "TransferOwnership");
-        assert_eq!(event.attributes.len(), 2);
-        assert_eq!(event.attributes[0].key, "method");
-        assert_eq!(event.attributes[0].value, "transfer_ownership");
-        assert_eq!(event.attributes[1].key, "new_owner");
-        assert_eq!(event.attributes[1].value, new_owner.to_string());
-
-        let stored_owner = OWNER.load(&deps.storage).unwrap();
-        assert_eq!(stored_owner, new_owner);
-
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized_caller"), &[]);
-
-        let result = transfer_ownership(deps.as_mut(), info_unauthorized, new_owner.clone());
-
-        assert!(result.is_err());
-        if let Err(err) = result {
-            assert_eq!(err, ContractError::Unauthorized {});
-        }
-
-        let stored_owner = OWNER.load(&deps.storage).unwrap();
-        assert_eq!(stored_owner, new_owner);
-    }
-
-    #[test]
     fn test_set_activation_delay_internal() {
         let (
             mut deps,
@@ -1733,10 +1635,10 @@ mod tests {
         let unauthorized_info = message_info(&Addr::unchecked("not_owner"), &[]);
         let result = set_activation_delay(deps.as_mut(), unauthorized_info, new_activation_delay);
 
-        assert!(result.is_err());
-        if let Err(err) = result {
-            assert_eq!(err, ContractError::Unauthorized {});
-        }
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            ContractError::Ownership(OwnershipError::Unauthorized).to_string()
+        );
 
         let stored_activation_delay_after_unauthorized_attempt =
             ACTIVATION_DELAY.load(&deps.storage).unwrap();
@@ -1819,10 +1721,10 @@ mod tests {
             Addr::unchecked("another_updater"),
         );
 
-        assert!(result.is_err());
-        if let Err(err) = result {
-            assert_eq!(err, ContractError::Unauthorized {});
-        }
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            ContractError::Ownership(OwnershipError::Unauthorized).to_string()
+        );
 
         let stored_updater = REWARDS_UPDATER.load(&deps.storage).unwrap();
         assert_eq!(stored_updater, new_updater);
@@ -1881,10 +1783,10 @@ mod tests {
         );
 
         assert!(result.is_err());
-
-        if let Err(err) = result {
-            assert_eq!(err, ContractError::Unauthorized {});
-        }
+        assert_eq!(
+            result,
+            Err(ContractError::Ownership(OwnershipError::Unauthorized))
+        );
 
         let stored_value = REWARDS_FOR_ALL_SUBMITTER
             .load(&deps.storage, submitter)
@@ -1979,11 +1881,10 @@ mod tests {
         let info_not_owner = message_info(&Addr::unchecked("info_not_owner"), &[]);
         let result =
             set_global_operator_commission(deps.as_mut(), info_not_owner, new_commission_bips);
-        assert!(result.is_err());
-
-        if let Err(err) = result {
-            assert_eq!(err, ContractError::Unauthorized {});
-        }
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            ContractError::Ownership(OwnershipError::Unauthorized).to_string()
+        );
     }
 
     #[test]
@@ -3024,7 +2925,7 @@ mod tests {
         message_info(&Addr::unchecked(delegation_manager.clone()), &[]);
 
         let msg = InstantiateMsg {
-            initial_owner: initial_owner.clone(),
+            owner: initial_owner.clone(),
             calculation_interval_seconds: 86_400, // 1 day
             max_rewards_duration: 30 * 86_400,    // 30 days
             max_retroactive_length: 5 * 86_400,   // 5 days

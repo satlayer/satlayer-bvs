@@ -4,9 +4,9 @@ use cosmwasm_std::{Addr, Binary};
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub initial_owner: String,
-    pub delegation_manager: String,
+    pub owner: String,
     pub registry: String,
+    pub delegation_manager: String,
 }
 
 #[cw_serde]
@@ -35,6 +35,12 @@ pub enum ExecuteMsg {
         salt: Binary,
     },
     TransferOwnership {
+        /// Transfer ownership of the contract to a new owner.
+        /// Contract admin (set for all BVS contracts, a cosmwasm feature)
+        /// has the omni-ability to override by migration;
+        /// this logic is app-level.
+        /// > 2-step ownership transfer is mostly redundant for CosmWasm contracts with the admin set.
+        /// > You can override ownership with using CosmWasm migrate `entry_point`.
         new_owner: String,
     },
 }
@@ -71,9 +77,6 @@ pub enum QueryMsg {
     #[returns(DelegationManagerResponse)]
     DelegationManager {},
 
-    #[returns(OwnerResponse)]
-    Owner {},
-
     #[returns(OperatorBvsRegistrationTypeHashResponse)]
     OperatorBvsRegistrationTypeHash {},
 
@@ -108,11 +111,6 @@ pub struct BvsInfoResponse {
 #[cw_serde]
 pub struct DelegationManagerResponse {
     pub delegation_addr: Addr,
-}
-
-#[cw_serde]
-pub struct OwnerResponse {
-    pub owner_addr: Addr,
 }
 
 #[cw_serde]

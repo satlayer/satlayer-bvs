@@ -296,11 +296,6 @@ func (suite *strategyManagerTestSuite) test_QueryStrategyManager() {
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("GetStakerStrategyList resp:%+v", resp)
 
-	resp, err = strategyManager.Owner()
-	assert.NoError(t, err, "Owner")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("Owner resp:%+v", resp)
-
 	resp, err = strategyManager.IsStrategyWhitelisted(strategyAddr)
 	assert.NoError(t, err, "IsStrategyWhitelisted")
 	assert.NotNil(t, resp, "response nil")

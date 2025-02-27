@@ -11,7 +11,6 @@ pub struct StrategyManagerState {
 pub const STRATEGY_MANAGER_STATE: Item<StrategyManagerState> = Item::new("strategy_manager_state");
 pub const STRATEGY_WHITELISTER: Item<Addr> = Item::new("strategy_whitelister");
 pub const STRATEGY_IS_WHITELISTED_FOR_DEPOSIT: Map<&Addr, bool> = Map::new("strategy_whitelist");
-pub const OWNER: Item<Addr> = Item::new("owner");
 
 // DEPLOYED_STRATEGIES and IS_BLACKLISTED are previously handled by factory
 // Putting just Addr in type defs is not very useful

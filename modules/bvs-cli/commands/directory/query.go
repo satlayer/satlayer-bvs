@@ -58,16 +58,6 @@ func DelegationManager() {
 	fmt.Printf("%s\n", result)
 }
 
-func Owner() {
-	s := NewService()
-	resp, err := s.Directory.Owner()
-	if err != nil {
-		fmt.Printf("Get owner error! %+v\n", err)
-		return
-	}
-	fmt.Printf("%s\n", resp.OwnerAddr)
-}
-
 func OperatorBvsRegistrationTypeHash() {
 	s := NewService()
 	resp, err := s.Directory.OperatorBvsRegistrationTypeHash()

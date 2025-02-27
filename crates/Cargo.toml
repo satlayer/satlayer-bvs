@@ -2,7 +2,6 @@
 members = [
     # CosmWasm Library
     "bvs-library",
-
     # CosmWasm Contracts
     "bvs-registry",
     "bvs-strategy-base",
@@ -52,7 +51,7 @@ base64 = "0.22.1"
 cw-utils = "2.0.0"
 
 # CosmWasm Libraries & Contracts
-bvs-library = { path = "./bvs-library", default-features = false, features = ["library"] }
+bvs-library = { path = "./bvs-library", default-features = false }
 bvs-registry = { path = "./bvs-registry", default-features = false, features = ["library"] }
 bvs-delegation-manager = { path = "./bvs-delegation-manager", default-features = false, features = ["library"] }
 bvs-directory = { path = "./bvs-directory", default-features = false, features = ["library"] }

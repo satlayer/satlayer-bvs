@@ -207,6 +207,7 @@ name = "bvs-delegation-manager"
 version = "0.1.0"
 dependencies = [
  "bvs-base",
+ "bvs-library",
  "bvs-registry",
  "bvs-strategy-manager",
  "cosmwasm-schema",
@@ -255,11 +256,12 @@ dependencies = [
  "cosmwasm-crypto",
  "cosmwasm-std",
  "cw-multi-test",
- "lazy_static",
+ "cw-storage-plus",
  "ripemd",
  "secp256k1",
  "serde",
  "sha2",
+ "thiserror",
 ]
 
 [[package]]
@@ -307,6 +309,7 @@ dependencies = [
  "bech32 0.8.1",
  "bvs-base",
  "bvs-delegation-manager",
+ "bvs-library",
  "bvs-registry",
  "bvs-strategy-manager",
  "bvs-testing",
@@ -331,6 +334,7 @@ name = "bvs-strategy-base"
 version = "0.1.0"
 dependencies = [
  "bvs-base",
+ "bvs-library",
  "bvs-registry",
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -348,6 +352,7 @@ name = "bvs-strategy-manager"
 version = "0.1.0"
 dependencies = [
  "bvs-base",
+ "bvs-library",
  "bvs-registry",
  "bvs-strategy-base",
  "cosmwasm-schema",
@@ -897,12 +902,6 @@ dependencies = [
  "elliptic-curve",
  "sha2",
 ]
-
-[[package]]
-name = "lazy_static"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
 name = "libc"

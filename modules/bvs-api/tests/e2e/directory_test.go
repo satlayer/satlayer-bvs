@@ -242,17 +242,6 @@ func (s *DirectoryTestSuite) Test_DelegationManager() {
 
 }
 
-func (s *DirectoryTestSuite) Test_Owner() {
-	t := s.T()
-	keyName := "caller"
-	chainIO, err := s.chainIO.SetupKeyring(keyName, "test")
-	assert.NoError(t, err)
-	txResp, err := api.NewDirectory(chainIO, s.contrAddr).Owner()
-	assert.NoError(t, err, "Owner")
-	assert.NotNil(t, txResp, "response nil")
-	t.Logf("txResp:%+v", txResp)
-}
-
 func (s *DirectoryTestSuite) Test_OperatorBvsRegistrationTypeHash() {
 	t := s.T()
 	keyName := "caller"

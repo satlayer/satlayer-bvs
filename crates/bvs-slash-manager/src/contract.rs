@@ -9,8 +9,8 @@ use crate::{
         ValidatorResponse,
     },
     state::{
-        DELEGATION_MANAGER, MINIMAL_SLASH_SIGNATURE, OWNER, SLASHER, SLASH_DETAILS,
-        STRATEGY_MANAGER, VALIDATOR,
+        DELEGATION_MANAGER, MINIMAL_SLASH_SIGNATURE, SLASHER, SLASH_DETAILS, STRATEGY_MANAGER,
+        VALIDATOR,
     },
     utils::{calculate_slash_hash, recover, validate_addresses, SlashDetails},
 };
@@ -27,6 +27,7 @@ use bvs_delegation_manager::{
     msg::ExecuteMsg as DelegationManagerExecuteMsg, msg::QueryMsg as DelegationManagerQueryMsg,
     query::OperatorResponse, query::OperatorStakersResponse,
 };
+use bvs_library::ownership;
 use bvs_strategy_manager::msg::ExecuteMsg as StrategyManagerExecuteMsg;
 
 const CONTRACT_NAME: &str = "BVS Slash Manager";
@@ -43,11 +44,12 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let owner = deps.api.addr_validate(&msg.initial_owner)?;
+    let owner = deps.api.addr_validate(&msg.owner)?;
+    ownership::_set_owner(deps.storage, &owner)?;
+
     let delegation_manager = deps.api.addr_validate(&msg.delegation_manager)?;
     let strategy_manager = deps.api.addr_validate(&msg.strategy_manager)?;
 
-    OWNER.save(deps.storage, &owner)?;
     DELEGATION_MANAGER.save(deps.storage, &delegation_manager)?;
     STRATEGY_MANAGER.save(deps.storage, &strategy_manager)?;
 
@@ -157,8 +159,8 @@ pub fn execute(
             set_strategy_manager(deps, info, new_strategy_manager_addr)
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
-            let new_owner_addr = deps.api.addr_validate(&new_owner)?;
-            transfer_ownership(deps, info, new_owner_addr)
+            let new_owner = deps.api.addr_validate(&new_owner)?;
+            ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
         }
         ExecuteMsg::Pause {} => {
             check_pauser(deps.as_ref(), info.clone())?;
@@ -169,12 +171,12 @@ pub fn execute(
             unpause(deps, &info).map_err(ContractError::Std)
         }
         ExecuteMsg::SetPauser { new_pauser } => {
-            only_owner(deps.as_ref(), &info.clone())?;
+            ownership::assert_owner(deps.as_ref(), &info)?;
             let new_pauser_addr = deps.api.addr_validate(&new_pauser)?;
             set_pauser(deps, new_pauser_addr).map_err(ContractError::Std)
         }
         ExecuteMsg::SetUnpauser { new_unpauser } => {
-            only_owner(deps.as_ref(), &info.clone())?;
+            ownership::assert_owner(deps.as_ref(), &info)?;
             let new_unpauser_addr = deps.api.addr_validate(&new_unpauser)?;
             set_unpauser(deps, new_unpauser_addr).map_err(ContractError::Std)
         }
@@ -448,7 +450,7 @@ pub fn set_slasher(
     slasher: Addr,
     value: bool,
 ) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.as_ref(), &info)?;
 
     SLASHER.save(deps.storage, slasher.clone(), &value)?;
 
@@ -495,7 +497,7 @@ pub fn set_delegation_manager(
     info: MessageInfo,
     new_delegation_manager: Addr,
 ) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.as_ref(), &info)?;
 
     DELEGATION_MANAGER.save(deps.storage, &new_delegation_manager.clone())?;
 
@@ -512,34 +514,13 @@ pub fn set_strategy_manager(
     info: MessageInfo,
     new_strategy_manager: Addr,
 ) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.as_ref(), &info)?;
 
     STRATEGY_MANAGER.save(deps.storage, &new_strategy_manager)?;
 
     let event = Event::new("strategy_manager_set")
         .add_attribute("method", "set_strategy_manager")
         .add_attribute("new_strategy_manager", new_strategy_manager.to_string())
-        .add_attribute("sender", info.sender.to_string());
-
-    Ok(Response::new().add_event(event))
-}
-
-pub fn transfer_ownership(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_owner: Addr,
-) -> Result<Response, ContractError> {
-    let current_owner = OWNER.load(deps.storage)?;
-
-    if current_owner != info.sender {
-        return Err(ContractError::Unauthorized {});
-    }
-
-    OWNER.save(deps.storage, &new_owner)?;
-
-    let event = Event::new("transfer_ownership")
-        .add_attribute("method", "transfer_ownership")
-        .add_attribute("new_owner", new_owner.to_string())
         .add_attribute("sender", info.sender.to_string());
 
     Ok(Response::new().add_event(event))
@@ -634,14 +615,6 @@ fn query_calculate_slash_hash(
     Ok(CalculateSlashHashResponse { message_bytes })
 }
 
-fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
-    let owner = OWNER.load(deps.storage)?;
-    if info.sender != owner {
-        return Err(ContractError::Unauthorized {});
-    }
-    Ok(())
-}
-
 fn only_slasher(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let is_slasher = SLASHER.load(deps.storage, info.sender.clone())?;
     if !is_slasher {
@@ -679,7 +652,7 @@ mod tests {
         let info = message_info(&initial_owner, &[]);
 
         let msg = InstantiateMsg {
-            initial_owner: initial_owner.to_string(),
+            owner: initial_owner.to_string(),
             delegation_manager: delegation_manager.to_string(),
             strategy_manager: strategy_manager.to_string(),
             pauser: pauser.to_string(),
@@ -698,7 +671,7 @@ mod tests {
             ]
         );
 
-        let owner = OWNER.load(&deps.storage).unwrap();
+        let owner = ownership::OWNER.load(&deps.storage).unwrap();
         assert_eq!(owner, deps.api.addr_make("creator"));
 
         let delegation_manager = DELEGATION_MANAGER.load(&deps.storage).unwrap();
@@ -715,7 +688,7 @@ mod tests {
         let invalid_info = message_info(&deps.api.addr_make("invalid_creator"), &[]);
 
         let invalid_msg = InstantiateMsg {
-            initial_owner: "invalid_address".to_string(),
+            owner: "invalid_address".to_string(),
             delegation_manager: delegation_manager.to_string(),
             strategy_manager: strategy_manager.to_string(),
             pauser: pauser.to_string(),
@@ -753,7 +726,7 @@ mod tests {
         let info = message_info(&initial_owner, &[]);
 
         let msg = InstantiateMsg {
-            initial_owner: initial_owner.to_string(),
+            owner: initial_owner.to_string(),
             delegation_manager: delegation_manager.to_string(),
             strategy_manager: strategy_manager.to_string(),
             pauser: pauser.to_string(),
@@ -917,42 +890,6 @@ mod tests {
             let stored_value = VALIDATOR.load(&deps.storage, validator.clone()).unwrap();
             assert_eq!(stored_value, *value);
         }
-    }
-
-    #[test]
-    fn test_transfer_ownership() {
-        let (mut deps, _env, info, _delegation_manager, initial_owner, _pauser, _unpauser) =
-            instantiate_contract();
-
-        let stored_owner = OWNER.load(&deps.storage).unwrap();
-        assert_eq!(stored_owner, initial_owner);
-
-        let new_owner = deps.api.addr_make("new_owner");
-
-        let response = transfer_ownership(deps.as_mut(), info.clone(), new_owner.clone()).unwrap();
-
-        assert_eq!(response.events.len(), 1);
-        let event = &response.events[0];
-        assert_eq!(event.ty, "transfer_ownership");
-        assert_eq!(event.attributes.len(), 3);
-
-        assert_eq!(event.attributes[0].key, "method");
-        assert_eq!(event.attributes[0].value, "transfer_ownership");
-        assert_eq!(event.attributes[1].key, "new_owner");
-        assert_eq!(event.attributes[1].value, new_owner.to_string());
-
-        let stored_owner = OWNER.load(&deps.storage).unwrap();
-        assert_eq!(stored_owner, new_owner);
-
-        let invalid_user = deps.api.addr_make("invalid_user");
-        let invalid_info = message_info(&invalid_user, &[]);
-
-        let result = transfer_ownership(deps.as_mut(), invalid_info.clone(), new_owner.clone());
-
-        assert!(result.is_err());
-
-        let stored_owner = OWNER.load(&deps.storage).unwrap();
-        assert_eq!(stored_owner, new_owner);
     }
 
     #[test]
