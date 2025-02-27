@@ -226,7 +226,11 @@ pub fn set_delegation_manager(
     state.delegation_manager = new_delegation_manager.clone();
     STRATEGY_MANAGER_STATE.save(deps.storage, &state)?;
 
-    Ok(Response::new())
+    let event = Event::new("DelegationManagerSet")
+        .add_attribute("method", "set_delegation_manager")
+        .add_attribute("new_delegation_manager", new_delegation_manager.to_string());
+
+    Ok(Response::new().add_event(event))
 }
 
 pub fn set_slash_manager(
@@ -2257,12 +2261,20 @@ mod tests {
 
         let new_delegation_manager = deps.api.addr_make("new_delegation_manager");
 
-        set_delegation_manager(
+        let res = set_delegation_manager(
             deps.as_mut(),
             owner_info.clone(),
             new_delegation_manager.clone(),
         )
         .unwrap();
+
+        let events = res.events;
+        assert_eq!(events.len(), 1);
+        let event = &events[0];
+        assert_eq!(event.ty, "DelegationManagerSet");
+        assert_eq!(event.attributes.len(), 2);
+        assert_eq!(event.attributes[0].key, "method");
+        assert_eq!(event.attributes[0].value, "set_delegation_manager");
 
         let state = STRATEGY_MANAGER_STATE.load(&deps.storage).unwrap();
         assert_eq!(state.delegation_manager, new_delegation_manager);
