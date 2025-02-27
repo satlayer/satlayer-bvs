@@ -23,7 +23,7 @@ builds = [
 [features]
 default = ["testing"]
 library = []
-testing = ["library", "dep:cw-multi-test"]
+testing = ["library", "dep:cw-multi-test", "bvs-library/testing"]
 
 [dependencies]
 cosmwasm-std = { workspace = true }
@@ -41,11 +41,13 @@ bech32 = { workspace = true }
 ripemd = { workspace = true }
 base64 = { workspace = true }
 bvs-base = { workspace = true }
-cw-multi-test = { workspace = true, optional = true }
 bvs-registry = { workspace = true }
+cw-multi-test = { workspace = true, optional = true }
+bvs-library = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
 bvs-testing = { workspace = true }
+bvs-library = { workspace = true, features = ["testing"] }
 bvs-registry = { workspace = true, features = ["testing"] }
 bvs-delegation-manager = { workspace = true, features = ["testing"] }

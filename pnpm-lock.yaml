@@ -48,6 +48,8 @@ importers:
 
   crates/bvs-directory: {}
 
+  crates/bvs-library: {}
+
   crates/bvs-registry: {}
 
   crates/bvs-rewards-coordinator: {}

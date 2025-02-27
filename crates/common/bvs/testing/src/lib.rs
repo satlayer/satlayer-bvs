@@ -1,4 +1,3 @@
-pub mod account;
 pub mod integration;
 
 mod bvs_delegation_manager_querier;

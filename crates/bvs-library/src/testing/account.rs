@@ -2,8 +2,7 @@ use base64::{engine::general_purpose, Engine as _};
 use bech32::{self, ToBase32, Variant};
 use cosmwasm_std::Addr;
 use ripemd::Ripemd160;
-use secp256k1::ecdsa::Signature;
-use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
+use secp256k1::{ecdsa::Signature, Message, PublicKey, Secp256k1, SecretKey};
 use sha2::{Digest, Sha256};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -14,7 +13,7 @@ pub struct Account {
 }
 
 impl Account {
-    // create new account
+    /// Create a new account
     pub fn new(s: String) -> Self {
         // Create a new Secp256k1 context
         let secp = Secp256k1::new();

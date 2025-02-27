@@ -23,7 +23,7 @@ builds = [
 [features]
 default = ["testing"]
 library = ["dep:strum"]
-testing = ["library", "dep:cw-multi-test"]
+testing = ["library", "dep:cw-multi-test", "bvs-library/testing"]
 
 [dependencies]
 cosmwasm-std = { workspace = true }
@@ -34,6 +34,7 @@ thiserror = { workspace = true }
 serde = { workspace = true }
 schemars = { workspace = true }
 strum = { version = "0.27", features = ["derive"], optional = true }
+bvs-library = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
 
 [dev-dependencies]
