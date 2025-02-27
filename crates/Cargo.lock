@@ -207,6 +207,7 @@ name = "bvs-delegation-manager"
 version = "0.1.0"
 dependencies = [
  "bvs-base",
+ "bvs-library",
  "bvs-registry",
  "bvs-strategy-manager",
  "cosmwasm-schema",
@@ -308,6 +309,7 @@ dependencies = [
  "bech32 0.8.1",
  "bvs-base",
  "bvs-delegation-manager",
+ "bvs-library",
  "bvs-registry",
  "bvs-strategy-manager",
  "bvs-testing",
@@ -332,6 +334,7 @@ name = "bvs-strategy-base"
 version = "0.1.0"
 dependencies = [
  "bvs-base",
+ "bvs-library",
  "bvs-registry",
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -349,6 +352,7 @@ name = "bvs-strategy-manager"
 version = "0.1.0"
 dependencies = [
  "bvs-base",
+ "bvs-library",
  "bvs-registry",
  "bvs-strategy-base",
  "cosmwasm-schema",

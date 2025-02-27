@@ -36,6 +36,7 @@ serde = { workspace = true }
 schemars = { workspace = true }
 bvs-base = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
+bvs-library = { workspace = true }
 bvs-registry = { workspace = true }
 
 [dev-dependencies]
