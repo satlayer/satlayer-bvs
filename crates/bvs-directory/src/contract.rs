@@ -40,7 +40,7 @@ pub fn instantiate(
     bvs_registry::api::set_registry_addr(deps.storage, &deps.api.addr_validate(&msg.registry)?)?;
 
     let owner = deps.api.addr_validate(&msg.initial_owner)?;
-    ownership::_set_owner(deps.branch(), &owner)?;
+    ownership::_set_owner(deps.storage, &owner)?;
 
     let delegation_manager = deps.api.addr_validate(&msg.delegation_manager)?;
     DELEGATION_MANAGER.save(deps.storage, &delegation_manager)?;
@@ -94,8 +94,9 @@ pub fn execute(
         }
         ExecuteMsg::CancelSalt { salt } => cancel_salt(deps, env, info, salt),
         ExecuteMsg::TransferOwnership { new_owner } => {
-            let new_owner_addr = deps.api.addr_validate(&new_owner)?;
-            transfer_ownership(deps, info, new_owner_addr)
+            let new_owner = deps.api.addr_validate(&new_owner)?;
+            ownership::transfer_ownership(deps, &info, &new_owner)
+                .map_err(|e| ContractError::Ownership(e))
         }
     }
 }
@@ -261,20 +262,6 @@ pub fn cancel_salt(
         .add_attribute("method", "cancel_salt")
         .add_attribute("operator", info.sender.to_string())
         .add_attribute("salt", salt.to_base64()))
-}
-
-pub fn transfer_ownership(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_owner: Addr,
-) -> Result<Response, ContractError> {
-    ownership::transfer_ownership(deps, &info, &new_owner)?;
-
-    Ok(Response::new().add_event(
-        Event::new("TransferredOwnership")
-            .add_attribute("old_owner", info.sender.as_str())
-            .add_attribute("new_owner", new_owner.as_str()),
-    ))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -775,24 +762,6 @@ mod tests {
         assert_eq!(res.attributes[1].value, info.sender.to_string());
         assert_eq!(res.attributes[2].key, "salt");
         assert_eq!(res.attributes[2].value, salt.to_string());
-    }
-
-    #[test]
-    fn test_transfer_ownership() {
-        let (mut deps, env, info, _delegation_manager) = instantiate_contract();
-
-        let new_owner = deps.api.addr_make("new_owner");
-        let res = transfer_ownership(deps.as_mut(), info.clone(), new_owner.clone()).unwrap();
-
-        assert_eq!(
-            res.events,
-            vec![Event::new("TransferredOwnership")
-                .add_attribute("old_owner", info.sender.as_str())
-                .add_attribute("new_owner", new_owner.as_str())]
-        );
-
-        let current_owner = ownership::OWNER.load(&deps.storage).unwrap();
-        assert_eq!(current_owner, new_owner);
     }
 
     #[test]
