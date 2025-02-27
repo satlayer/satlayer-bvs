@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Deps, DepsMut, MessageInfo, StdError};
+use cosmwasm_std::{Addr, Deps, DepsMut, Event, MessageInfo, Response, StdError, Storage};
 use cw_storage_plus::Item;
 
 pub const OWNER: Item<Addr> = Item::new("_owner");
@@ -13,23 +13,31 @@ pub enum OwnershipError {
 }
 
 /// Set the owner of the contract (this is internal, no checks are done)
-pub fn _set_owner(deps: DepsMut, owner: &Addr) -> Result<(), OwnershipError> {
-    OWNER.save(deps.storage, owner)?;
+pub fn _set_owner(storage: &mut dyn Storage, owner: &Addr) -> Result<(), OwnershipError> {
+    OWNER.save(storage, owner)?;
     Ok(())
 }
 
+/// Transfer the ownership of the contract to a new address
+/// Only the current owner can do this
+/// Returns the old owner
 pub fn transfer_ownership(
     deps: DepsMut,
     info: &MessageInfo,
     new_owner: &Addr,
-) -> Result<(), OwnershipError> {
+) -> Result<Response, OwnershipError> {
     assert_owner(deps.as_ref(), info)?;
 
+    let old_owner = OWNER.load(deps.storage)?;
     OWNER.save(deps.storage, new_owner)?;
-
-    Ok(())
+    Ok(Response::new().add_event(
+        Event::new("TransferredOwnership")
+            .add_attribute("old_owner", old_owner.as_str())
+            .add_attribute("new_owner", new_owner.as_str()),
+    ))
 }
 
+/// Asserts that the sender of the message is the owner of the contract
 pub fn assert_owner(deps: Deps, info: &MessageInfo) -> Result<(), OwnershipError> {
     let owner = OWNER.load(deps.storage)?;
     if info.sender != owner {
