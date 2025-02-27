@@ -185,6 +185,7 @@ pub fn register_operator(
         .add_attribute("method", "register_operator")
         .add_attribute("operator", operator.to_string())
         .add_attribute("bvs", info.sender.to_string())
+        .add_attribute("salt_str", salt_str.clone())
         .add_attribute("operator_bvs_registration_status", "REGISTERED");
 
     Ok(Response::new().add_event(event))
@@ -587,15 +588,17 @@ mod tests {
 
         let event = &res.events[0];
         assert_eq!(event.ty, "OperatorBVSRegistrationStatusUpdated");
-        assert_eq!(event.attributes.len(), 4);
+        assert_eq!(event.attributes.len(), 5);
         assert_eq!(event.attributes[0].key, "method");
         assert_eq!(event.attributes[0].value, "register_operator");
         assert_eq!(event.attributes[1].key, "operator");
         assert_eq!(event.attributes[1].value, operator.to_string());
         assert_eq!(event.attributes[2].key, "bvs");
         assert_eq!(event.attributes[2].value, info.sender.to_string());
-        assert_eq!(event.attributes[3].key, "operator_bvs_registration_status");
-        assert_eq!(event.attributes[3].value, "REGISTERED");
+        assert_eq!(event.attributes[3].key, "salt_str");
+        assert_eq!(event.attributes[3].value, salt.to_string());
+        assert_eq!(event.attributes[4].key, "operator_bvs_registration_status");
+        assert_eq!(event.attributes[4].value, "REGISTERED");
 
         let status = BVS_OPERATOR_STATUS
             .load(&deps.storage, (info.sender.clone(), operator.clone()))
@@ -835,15 +838,17 @@ mod tests {
 
         let event = &res.events[0];
         assert_eq!(event.ty, "OperatorBVSRegistrationStatusUpdated");
-        assert_eq!(event.attributes.len(), 4);
+        assert_eq!(event.attributes.len(), 5);
         assert_eq!(event.attributes[0].key, "method");
         assert_eq!(event.attributes[0].value, "register_operator");
         assert_eq!(event.attributes[1].key, "operator");
         assert_eq!(event.attributes[1].value, operator.to_string());
         assert_eq!(event.attributes[2].key, "bvs");
         assert_eq!(event.attributes[2].value, info.sender.to_string());
-        assert_eq!(event.attributes[3].key, "operator_bvs_registration_status");
-        assert_eq!(event.attributes[3].value, "REGISTERED");
+        assert_eq!(event.attributes[3].key, "salt_str");
+        assert_eq!(event.attributes[3].value, salt.to_string());
+        assert_eq!(event.attributes[4].key, "operator_bvs_registration_status");
+        assert_eq!(event.attributes[4].value, "REGISTERED");
 
         let status = BVS_OPERATOR_STATUS
             .load(&deps.storage, (info.sender.clone(), operator.clone()))
