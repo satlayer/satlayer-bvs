@@ -141,7 +141,6 @@ pub fn deposit(
     let mut state = STRATEGY_STATE.load(deps.storage)?;
 
     only_strategy_manager(deps.as_ref(), &info)?;
-    before_deposit(&state, &state.underlying_token)?;
 
     let balance = token_balance(
         &deps.querier,
@@ -436,13 +435,6 @@ fn only_strategy_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractE
 
     if info.sender != state.strategy_manager {
         return Err(ContractError::Unauthorized {});
-    }
-    Ok(())
-}
-
-fn before_deposit(state: &StrategyState, token: &Addr) -> Result<(), ContractError> {
-    if token != state.underlying_token {
-        return Err(ContractError::InvalidToken {});
     }
     Ok(())
 }
@@ -777,25 +769,6 @@ mod tests {
 
         let info_wrong = message_info(&Addr::unchecked("other_manager"), &[]);
         let result_wrong = only_strategy_manager(deps.as_ref(), &info_wrong);
-        assert!(result_wrong.is_err());
-    }
-
-    #[test]
-    fn test_before_deposit() {
-        let (mut _deps, _env, _info, _pauser_info, _unpauser_info, token, strategy_manager) =
-            instantiate_contract();
-
-        let state = StrategyState {
-            strategy_manager: Addr::unchecked(strategy_manager),
-            underlying_token: Addr::unchecked(token.clone()),
-            total_shares: Uint128::zero(),
-        };
-
-        let result = before_deposit(&state, &Addr::unchecked(token));
-        assert!(result.is_ok());
-
-        let wrong_token = Addr::unchecked("wrong_token");
-        let result_wrong = before_deposit(&state, &wrong_token);
         assert!(result_wrong.is_err());
     }
 
