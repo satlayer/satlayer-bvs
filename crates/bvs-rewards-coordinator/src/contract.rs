@@ -32,6 +32,8 @@ use cosmwasm_std::{
     to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, HexBinary, MessageInfo,
     QuerierWrapper, QueryRequest, Response, StdError, StdResult, Uint128, WasmMsg, WasmQuery,
 };
+use std::collections::HashSet;
+
 use cw2::set_contract_version;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
@@ -166,7 +168,7 @@ pub fn create_rewards_submission(
         SUBMISSION_NONCE.save(deps.storage, &info.sender, &(nonce + 1))?;
 
         let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: submission.token.to_string(),
+            contract_addr: token_addr.to_string(),
             msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
                 owner: info.sender.to_string(),
                 recipient: env.contract.address.to_string(),
@@ -184,7 +186,7 @@ pub fn create_rewards_submission(
                 "rewards_submission_hash",
                 rewards_submission_hash.to_string(),
             )
-            .add_attribute("token", submission.token.to_string())
+            .add_attribute("token", token_addr.to_string())
             .add_attribute("amount", submission.amount.to_string());
 
         response = response.add_event(event);
@@ -223,7 +225,7 @@ pub fn create_rewards_for_all_submission(
         SUBMISSION_NONCE.save(deps.storage, &info.sender, &(nonce + 1))?;
 
         let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: submission.token.to_string(),
+            contract_addr: token_addr.to_string(),
             msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
                 owner: info.sender.to_string(),
                 recipient: env.contract.address.to_string(),
@@ -241,7 +243,7 @@ pub fn create_rewards_for_all_submission(
                 "rewards_submission_hash",
                 rewards_submission_hash.to_string(),
             )
-            .add_attribute("token", submission.token.to_string())
+            .add_attribute("token", token_addr.to_string())
             .add_attribute("amount", submission.amount.to_string());
 
         response = response.add_event(event);
@@ -692,17 +694,22 @@ fn validate_rewards_submission(
         return Err(ContractError::StartTimestampTooFarInFuture {});
     }
 
-    let mut current_address = Addr::unchecked("");
+    let mut unique_strategies = HashSet::new();
 
     let strategy_manager = auth::get_strategy_manager(deps.storage)?;
 
     for strategy_multiplier in &submission.strategies_and_multipliers {
-        let strategy = &strategy_multiplier.strategy;
+        let strategy_str = &strategy_multiplier.strategy;
+        let strategy_addr = deps.api.addr_validate(strategy_str)?;
+
+        if !unique_strategies.insert(strategy_addr.clone()) {
+            return Err(ContractError::DuplicateStrategies {});
+        }
 
         let whitelisted_response: StrategyWhitelistedResponse = deps.querier.query_wasm_smart(
             strategy_manager.clone(),
             &StrategyManagerQueryMsg::IsStrategyWhitelisted {
-                strategy: strategy.to_string(),
+                strategy: strategy_str.clone(),
             },
         )?;
 
@@ -711,11 +718,6 @@ fn validate_rewards_submission(
         if !whitelisted {
             return Err(ContractError::InvalidStrategyConsidered {});
         }
-
-        if current_address >= *strategy {
-            return Err(ContractError::StrategiesMuseBeHandleDuplicates {});
-        }
-        current_address = strategy.clone();
     }
 
     Ok(Response::new().add_attribute("action", "validate_rewards_submission"))
@@ -1038,13 +1040,13 @@ mod tests {
 
         let valid_submission = RewardsSubmission {
             strategies_and_multipliers: vec![StrategyAndMultiplier {
-                strategy: deps.api.addr_make("strategy1"),
+                strategy: deps.api.addr_make("strategy1").to_string(),
                 multiplier: 1,
             }],
             amount: Uint128::new(100),
             duration: calc_interval,
             start_timestamp: aligned_start_timestamp,
-            token: deps.api.addr_make("token"),
+            token: deps.api.addr_make("token").to_string(),
         };
 
         let strategy_manager = deps.api.addr_make("strategy_manager");
@@ -1092,7 +1094,7 @@ mod tests {
             amount: Uint128::new(100),
             duration: calc_interval,
             start_timestamp: aligned_start_timestamp,
-            token: Addr::unchecked("token"),
+            token: deps.api.addr_make("token").to_string(),
         };
 
         let result =
@@ -1101,13 +1103,13 @@ mod tests {
 
         let zero_amount_submission = RewardsSubmission {
             strategies_and_multipliers: vec![StrategyAndMultiplier {
-                strategy: Addr::unchecked("strategy1"),
+                strategy: deps.api.addr_make("strategy1").to_string(),
                 multiplier: 1,
             }],
             amount: Uint128::zero(),
             duration: calc_interval,
             start_timestamp: aligned_start_timestamp,
-            token: Addr::unchecked("token"),
+            token: deps.api.addr_make("token").to_string(),
         };
 
         let result =
@@ -1116,13 +1118,13 @@ mod tests {
 
         let exceeds_duration_submission = RewardsSubmission {
             strategies_and_multipliers: vec![StrategyAndMultiplier {
-                strategy: Addr::unchecked("strategy1"),
+                strategy: deps.api.addr_make("strategy1").to_string(),
                 multiplier: 1,
             }],
             amount: Uint128::new(100),
             duration: 30 * calc_interval + 1,
             start_timestamp: aligned_start_timestamp,
-            token: Addr::unchecked("token"),
+            token: deps.api.addr_make("token").to_string(),
         };
 
         let result =
@@ -1158,13 +1160,13 @@ mod tests {
 
         let submission = vec![RewardsSubmission {
             strategies_and_multipliers: vec![StrategyAndMultiplier {
-                strategy: deps.api.addr_make("strategy1"),
+                strategy: deps.api.addr_make("strategy1").to_string(),
                 multiplier: 1,
             }],
             amount: Uint128::new(100),
             duration: calc_interval, // 1 day
             start_timestamp: aligned_start_timestamp,
-            token: deps.api.addr_make("token"),
+            token: deps.api.addr_make("token").to_string(),
         }];
 
         let strategy_manager = deps.api.addr_make("strategy_manager");
@@ -1253,13 +1255,13 @@ mod tests {
 
         let submission = vec![RewardsSubmission {
             strategies_and_multipliers: vec![StrategyAndMultiplier {
-                strategy: deps.api.addr_make("strategy1"),
+                strategy: deps.api.addr_make("strategy1").to_string(),
                 multiplier: 1,
             }],
             amount: Uint128::new(100),
             duration: calc_interval, // 1 day
             start_timestamp: aligned_start_timestamp,
-            token: deps.api.addr_make("token"),
+            token: deps.api.addr_make("token").to_string(),
         }];
 
         let strategy_manager = deps.api.addr_make("strategy_manager");

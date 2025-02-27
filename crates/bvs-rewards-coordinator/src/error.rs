@@ -56,7 +56,7 @@ pub enum ContractError {
     InvalidStrategyConsidered {},
 
     #[error("RewardsCoordinator.validate_rewards_submission: strategies must be in ascending order to handle duplicates")]
-    StrategiesMuseBeHandleDuplicates {},
+    StrategiesMustBeHandleDuplicates {},
 
     #[error("RewardsCoordinator.disable_root: invalid root index")]
     InvalidRootIndex {},
@@ -112,4 +112,7 @@ pub enum ContractError {
 
     #[error("RewardsCoordinator.process_claim: insufficient balance")]
     InsufficientBalance {},
+
+    #[error("RewardsCoordinator.validate_rewards_submission: duplicate strategies")]
+    DuplicateStrategies {},
 }
