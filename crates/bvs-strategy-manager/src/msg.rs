@@ -44,7 +44,6 @@ pub enum ExecuteMsg {
         recipient: String,
         strategy: String,
         shares: Uint128,
-        token: String,
     },
     AddShares {
         staker: String,

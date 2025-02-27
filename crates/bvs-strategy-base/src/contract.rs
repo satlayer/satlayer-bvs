@@ -84,12 +84,10 @@ pub fn execute(
         ExecuteMsg::Deposit { amount } => deposit(deps, env, info, amount),
         ExecuteMsg::Withdraw {
             recipient,
-            token,
             amount_shares,
         } => {
             let recipient_addr = deps.api.addr_validate(&recipient)?;
-            let token_addr = deps.api.addr_validate(&token)?;
-            withdraw(deps, env, info, recipient_addr, token_addr, amount_shares)
+            withdraw(deps, env, info, recipient_addr, amount_shares)
         }
         ExecuteMsg::SetStrategyManager {
             new_strategy_manager,
@@ -149,13 +147,11 @@ pub fn withdraw(
     env: Env,
     info: MessageInfo,
     recipient: Addr,
-    token: Addr,
     amount_shares: Uint128,
 ) -> Result<Response, ContractError> {
     let mut state = STRATEGY_STATE.load(deps.storage)?;
 
     only_strategy_manager(deps.as_ref(), &info)?;
-    before_withdrawal(&state, &token)?;
 
     if amount_shares > state.total_shares {
         return Err(ContractError::InsufficientShares {});
@@ -409,13 +405,6 @@ fn only_strategy_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractE
     Ok(())
 }
 
-fn before_withdrawal(state: &StrategyState, token: &Addr) -> Result<(), ContractError> {
-    if token != state.underlying_token {
-        return Err(ContractError::InvalidToken {});
-    }
-    Ok(())
-}
-
 fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdResult<Uint128> {
     let res: Cw20BalanceResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: token.to_string(),
@@ -656,7 +645,6 @@ mod tests {
             env.clone(),
             message_info(&Addr::unchecked(strategy_manager), &[]),
             Addr::unchecked(recipient.clone()),
-            Addr::unchecked(token.clone()),
             withdraw_amount_shares,
         );
         match res_withdraw {
