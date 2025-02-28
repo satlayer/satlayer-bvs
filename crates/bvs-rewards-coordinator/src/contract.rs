@@ -148,8 +148,13 @@ pub fn create_rewards_submission(
     rewards_submissions: Vec<RewardsSubmission>,
 ) -> Result<Response, ContractError> {
     let mut response = Response::new();
+    let mut used_tokens = HashSet::<String>::new();
 
     for submission in rewards_submissions {
+        if !used_tokens.insert(submission.token.clone()) {
+            return Err(ContractError::DuplicateToken {});
+        }
+
         let nonce = SUBMISSION_NONCE
             .may_load(deps.storage, &info.sender)?
             .unwrap_or_default();
@@ -206,7 +211,13 @@ pub fn create_rewards_for_all_submission(
     only_rewards_for_all_submitter(deps.as_ref(), &info)?;
 
     let mut response = Response::new();
+    let mut used_tokens = HashSet::<String>::new();
+
     for submission in rewards_submissions {
+        if !used_tokens.insert(submission.token.clone()) {
+            return Err(ContractError::DuplicateToken {});
+        }
+
         let nonce = SUBMISSION_NONCE
             .may_load(deps.storage, &info.sender)?
             .unwrap_or_default();
@@ -1233,6 +1244,103 @@ mod tests {
         );
         assert_eq!(event.attributes[4].key, "amount");
         assert_eq!(event.attributes[4].value, "100");
+    }
+
+    #[test]
+    fn test_create_bvs_rewards_submission_with_same_token() {
+        let (
+            mut deps,
+            env,
+            owner_info,
+            _pauser_info,
+            _unpauser_info,
+            _strategy_manager_info,
+            _delegation_manager_info,
+            _rewards_updater_info,
+        ) = instantiate_contract();
+
+        let calc_interval = 86_400; // 1 day
+
+        let block_time = mock_env().block.time.seconds();
+
+        let aligned_start_time = block_time - (block_time % calc_interval);
+        let aligned_start_timestamp = Timestamp::from_seconds(aligned_start_time);
+
+        let submission = vec![
+            RewardsSubmission {
+                strategies_and_multipliers: vec![
+                    StrategyAndMultiplier {
+                        strategy: deps.api.addr_make("strategy1").to_string(),
+                        multiplier: 1,
+                    },
+                    StrategyAndMultiplier {
+                        strategy: deps.api.addr_make("strategy2").to_string(),
+                        multiplier: 1,
+                    },
+                ],
+                amount: Uint128::new(100),
+                duration: calc_interval, // 1 day
+                start_timestamp: aligned_start_timestamp,
+                token: deps.api.addr_make("token").to_string(),
+            },
+            RewardsSubmission {
+                strategies_and_multipliers: vec![StrategyAndMultiplier {
+                    strategy: deps.api.addr_make("strategy1").to_string(),
+                    multiplier: 1,
+                }],
+                amount: Uint128::new(100),
+                duration: calc_interval, // 1 day
+                start_timestamp: aligned_start_timestamp,
+                token: deps.api.addr_make("token").to_string(),
+            },
+        ];
+
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg }
+                if Addr::unchecked(contract_addr) == deps.api.addr_make("strategy_manager") =>
+            {
+                let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
+                match msg {
+                    StrategyManagerQueryMsg::IsStrategyWhitelisted { strategy } => {
+                        let response = if strategy == deps.api.addr_make("strategy1").to_string()
+                            || strategy == deps.api.addr_make("strategy2").to_string()
+                        {
+                            StrategyWhitelistedResponse {
+                                is_whitelisted: true,
+                            }
+                        } else {
+                            StrategyWhitelistedResponse {
+                                is_whitelisted: false,
+                            }
+                        };
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
+                    }
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    }),
+                }
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        let result = create_bvs_rewards_submission(
+            deps.as_mut(),
+            env.clone(),
+            owner_info.clone(),
+            submission,
+        );
+
+        assert!(result.is_err());
+        match result {
+            Err(err) => {
+                assert_eq!(err, ContractError::DuplicateToken {});
+            }
+            _ => panic!("Expected ContractError::DuplicateToken"),
+        }
     }
 
     #[test]
