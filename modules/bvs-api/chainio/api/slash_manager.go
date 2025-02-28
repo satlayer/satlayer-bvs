@@ -101,42 +101,39 @@ func (r *SlashManager) ExecuteSlashRequest(ctx context.Context, slashHash string
 	}
 
 	var sigs []string
+	msgHashResp, err := r.CalculateSlashHash(
+		slasherAccount.GetAddress().String(),
+		slashmanager.CalculateSlashHashSlashDetails{
+			Slasher:        slashDetails.Slasher,
+			Operator:       slashDetails.Operator,
+			Share:          slashDetails.Share,
+			SlashSignature: slashDetails.SlashSignature,
+			SlashValidator: slashDetails.SlashValidator,
+			Reason:         slashDetails.Reason,
+			StartTime:      slashDetails.StartTime,
+			EndTime:        slashDetails.EndTime,
+			Status:         slashDetails.Status,
+		},
+		validatorsPublicKeys,
+	)
+	if err != nil {
+		return nil, err
+	}
 
-	for _, validatorPublicKey := range validatorsPublicKeys {
-		msgHashResp, err := r.CalculateSlashHash(
-			slasherAccount.GetAddress().String(),
-			slashmanager.CalculateSlashHashSlashDetails{
-				Slasher:        slashDetails.Slasher,
-				Operator:       slashDetails.Operator,
-				Share:          slashDetails.Share,
-				SlashSignature: slashDetails.SlashSignature,
-				SlashValidator: slashDetails.SlashValidator,
-				Reason:         slashDetails.Reason,
-				StartTime:      slashDetails.StartTime,
-				EndTime:        slashDetails.EndTime,
-				Status:         slashDetails.Status,
-			},
-			[]cryptotypes.PubKey{validatorPublicKey},
-		)
-		if err != nil {
-			return nil, err
-		}
+	// convert from int64 into byte, see SL-184
+	bytes := make([]byte, len(msgHashResp.MessageBytes))
+	for i, v := range msgHashResp.MessageBytes {
+		bytes[i] = byte(v)
+	}
 
-		// convert from int64 into byte, see SL-184
-		bytes := make([]byte, len(msgHashResp.MessageBytes))
-		for i, v := range msgHashResp.MessageBytes {
-			bytes[i] = byte(v)
-		}
+	var encodedPublicKeys []string
+	for _, pubKey := range validatorsPublicKeys {
 		sig, err := r.io.GetSigner().Sign(bytes)
 		if err != nil {
 			return nil, err
 		}
 
 		sigs = append(sigs, sig)
-	}
-
-	var encodedPublicKeys []string
-	for _, pubKey := range validatorsPublicKeys {
 		encodedPublicKeys = append(encodedPublicKeys, base64.StdEncoding.EncodeToString(pubKey.Bytes()))
 	}
 
