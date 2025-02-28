@@ -18,7 +18,8 @@ use crate::{
     },
 };
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, Deps, DepsMut, Env, Event, MessageInfo, Response, StdResult,
+    to_json_binary, Addr, Binary, ContractInfoResponse, Deps, DepsMut, Env, Event, MessageInfo,
+    QueryRequest, Response, StdResult, WasmQuery,
 };
 use cw2::set_contract_version;
 
@@ -457,10 +458,13 @@ mod tests {
     #[test]
     fn test_register_bvs() {
         let (mut deps, _, _) = instantiate_contract();
-        let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
+
+        let bvs_contract = deps.api.addr_make("bvs_contract");
+        let bvs_contract_str = bvs_contract.to_string();
+
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::ContractInfo { contract_addr } => {
-                if *contract_addr == bvs_contract_addr_str {
+                if *contract_addr == bvs_contract_str {
                     let contract_info: ContractInfoResponse = serde_json::from_value(json!({
                         "code_id": 1,
                         "creator": "creator",
@@ -483,10 +487,9 @@ mod tests {
             }),
         });
 
-        let result = register_bvs(deps.as_mut(), "bvs_contract".to_string()).unwrap();
+        let res = register_bvs(deps.as_mut(), bvs_contract.to_string());
 
-        let bvs_hash = result
-            .events
+        let bvs_hash = res
             .iter()
             .flat_map(|event| event.attributes.iter())
             .find(|attr| attr.key == "bvs_hash")
@@ -497,7 +500,7 @@ mod tests {
         let bvs_info = BVS_INFO.load(&deps.storage, bvs_hash.to_string()).unwrap();
 
         assert_eq!(bvs_info.bvs_hash, bvs_hash);
-        assert_eq!(bvs_info.bvs_contract, bvs_contract_addr.to_string());
+        assert_eq!(bvs_info.bvs_contract, bvs_contract.to_string());
     }
 
     #[test]
@@ -1161,12 +1164,12 @@ mod tests {
     fn test_query_bvs_info() {
         let (mut deps, env, _info) = instantiate_contract();
 
-        let bvs_contract_addr = deps.api.addr_make("bvs_contract");
-        let bvs_contract_addr_str = bvs_contract_addr.to_string();
+        let bvs_contract = deps.api.addr_make("bvs_contract");
+        let bvs_contract_str = bvs_contract.to_string();
 
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::ContractInfo { contract_addr } => {
-                if *contract_addr == bvs_contract_addr_str {
+                if *contract_addr == bvs_contract_str {
                     let contract_info: ContractInfoResponse = serde_json::from_value(json!({
                         "code_id": 1,
                         "creator": "creator",
@@ -1189,7 +1192,7 @@ mod tests {
             }),
         });
 
-        let res = register_bvs(deps.as_mut(), bvs_contract_addr.to_string());
+        let res = register_bvs(deps.as_mut(), bvs_contract.to_string());
 
         let bvs_hash = res
             .iter()
@@ -1206,6 +1209,6 @@ mod tests {
         let bvs_info: BvsInfoResponse = from_json(query_response).unwrap();
 
         assert_eq!(bvs_info.bvs_hash, bvs_hash);
-        assert_eq!(bvs_info.bvs_contract, bvs_contract.clone())
+        assert_eq!(bvs_info.bvs_contract, bvs_contract.to_string());
     }
 }
