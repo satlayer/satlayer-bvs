@@ -21,8 +21,6 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 
-use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
-use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use bvs_delegation_manager::{
     msg::ExecuteMsg as DelegationManagerExecuteMsg, msg::QueryMsg as DelegationManagerQueryMsg,
     query::OperatorResponse, query::OperatorStakersResponse,
@@ -33,16 +31,17 @@ use bvs_strategy_manager::msg::ExecuteMsg as StrategyManagerExecuteMsg;
 const CONTRACT_NAME: &str = "BVS Slash Manager";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const PAUSED_EXECUTE_SLASH_REQUEST: u8 = 0;
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    mut deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    let registry_addr = deps.api.addr_validate(&msg.registry)?;
+    bvs_registry::api::set_registry_addr(deps.storage, &registry_addr)?;
 
     let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::_set_owner(deps.storage, &owner)?;
@@ -52,14 +51,6 @@ pub fn instantiate(
 
     DELEGATION_MANAGER.save(deps.storage, &delegation_manager)?;
     STRATEGY_MANAGER.save(deps.storage, &strategy_manager)?;
-
-    let pauser = deps.api.addr_validate(&msg.pauser)?;
-    let unpauser = deps.api.addr_validate(&msg.unpauser)?;
-
-    set_pauser(deps.branch(), pauser)?;
-    set_unpauser(deps.branch(), unpauser)?;
-
-    PAUSED_STATE.save(deps.storage, &msg.initial_paused_status)?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
@@ -74,6 +65,8 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    bvs_registry::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
+
     match msg {
         ExecuteMsg::SubmitSlashRequest {
             slash_details,
@@ -161,24 +154,6 @@ pub fn execute(
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
             ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
-        }
-        ExecuteMsg::Pause {} => {
-            check_pauser(deps.as_ref(), info.clone())?;
-            pause(deps, &info).map_err(ContractError::Std)
-        }
-        ExecuteMsg::Unpause {} => {
-            check_unpauser(deps.as_ref(), info.clone())?;
-            unpause(deps, &info).map_err(ContractError::Std)
-        }
-        ExecuteMsg::SetPauser { new_pauser } => {
-            ownership::assert_owner(deps.as_ref(), &info)?;
-            let new_pauser_addr = deps.api.addr_validate(&new_pauser)?;
-            set_pauser(deps, new_pauser_addr).map_err(ContractError::Std)
-        }
-        ExecuteMsg::SetUnpauser { new_unpauser } => {
-            ownership::assert_owner(deps.as_ref(), &info)?;
-            let new_unpauser_addr = deps.api.addr_validate(&new_unpauser)?;
-            set_unpauser(deps, new_unpauser_addr).map_err(ContractError::Std)
         }
     }
 }
@@ -275,8 +250,6 @@ pub fn execute_slash_request(
     signatures: Vec<Binary>,
     validators_public_keys: Vec<Binary>,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_EXECUTE_SLASH_REQUEST)?;
-
     only_slasher(deps.as_ref(), &info)?;
 
     let mut slash_details = SLASH_DETAILS
@@ -644,20 +617,17 @@ mod tests {
         let env = mock_env();
 
         let initial_owner = deps.api.addr_make("creator");
+        let registry = deps.api.addr_make("registry");
         let delegation_manager = deps.api.addr_make("delegation_manager");
         let strategy_manager = deps.api.addr_make("strategy_manager");
-        let pauser = deps.api.addr_make("pauser");
-        let unpauser = deps.api.addr_make("unpauser");
 
         let info = message_info(&initial_owner, &[]);
 
         let msg = InstantiateMsg {
             owner: initial_owner.to_string(),
+            registry: registry.to_string(),
             delegation_manager: delegation_manager.to_string(),
             strategy_manager: strategy_manager.to_string(),
-            pauser: pauser.to_string(),
-            unpauser: unpauser.to_string(),
-            initial_paused_status: 0,
         };
 
         let response = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
@@ -677,23 +647,13 @@ mod tests {
         let delegation_manager = DELEGATION_MANAGER.load(&deps.storage).unwrap();
         assert_eq!(delegation_manager, deps.api.addr_make("delegation_manager"));
 
-        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_state, 0);
-
-        let pauser_addr = deps.api.addr_make("pauser");
-        let unpauser_addr = deps.api.addr_make("unpauser");
-        assert!(set_pauser(deps.as_mut(), pauser_addr).is_ok());
-        assert!(set_unpauser(deps.as_mut(), unpauser_addr).is_ok());
-
         let invalid_info = message_info(&deps.api.addr_make("invalid_creator"), &[]);
 
         let invalid_msg = InstantiateMsg {
             owner: "invalid_address".to_string(),
+            registry: registry.to_string(),
             delegation_manager: delegation_manager.to_string(),
             strategy_manager: strategy_manager.to_string(),
-            pauser: pauser.to_string(),
-            unpauser: unpauser.to_string(),
-            initial_paused_status: 0,
         };
 
         let result = instantiate(
@@ -711,46 +671,31 @@ mod tests {
         MessageInfo,
         Addr,
         Addr,
-        Addr,
-        Addr,
     ) {
         let mut deps = mock_dependencies();
         let env = mock_env();
 
         let initial_owner = deps.api.addr_make("creator");
+        let registry = deps.api.addr_make("registry");
         let delegation_manager = deps.api.addr_make("delegation_manager");
         let strategy_manager = deps.api.addr_make("strategy_manager");
-        let pauser = deps.api.addr_make("pauser");
-        let unpauser = deps.api.addr_make("unpauser");
-
         let info = message_info(&initial_owner, &[]);
 
         let msg = InstantiateMsg {
             owner: initial_owner.to_string(),
+            registry: registry.to_string(),
             delegation_manager: delegation_manager.to_string(),
             strategy_manager: strategy_manager.to_string(),
-            pauser: pauser.to_string(),
-            unpauser: unpauser.to_string(),
-            initial_paused_status: 0,
         };
 
         instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-        (
-            deps,
-            env,
-            info,
-            delegation_manager,
-            initial_owner,
-            pauser,
-            unpauser,
-        )
+        (deps, env, info, delegation_manager, initial_owner)
     }
 
     #[test]
     fn test_set_delegation_manager() {
-        let (mut deps, _env, info, _delegation_manager, _owner, _pauser, _unpauser) =
-            instantiate_contract();
+        let (mut deps, _env, info, _delegation_manager, _owner) = instantiate_contract();
 
         let new_delegation_manager = deps.api.addr_make("new_delegation_manager");
 
@@ -780,8 +725,7 @@ mod tests {
 
     #[test]
     fn test_set_slasher() {
-        let (mut deps, _env, info, _delegation_manager, _owner, _pauser, _unpauser) =
-            instantiate_contract();
+        let (mut deps, _env, info, _delegation_manager, _owner) = instantiate_contract();
 
         let new_slasher = deps.api.addr_make("new_slasher");
 
@@ -809,8 +753,7 @@ mod tests {
 
     #[test]
     fn test_set_minimal_slash_signature() {
-        let (mut deps, _env, _info, _delegation_manager, _owner, _pauser, _unpauser) =
-            instantiate_contract();
+        let (mut deps, _env, _info, _delegation_manager, _owner) = instantiate_contract();
 
         let slasher_addr = deps.api.addr_make("slasher");
         SLASHER
@@ -841,8 +784,7 @@ mod tests {
 
     #[test]
     fn test_set_slash_validator() {
-        let (mut deps, env, _info, _delegation_manager, _owner, _pauser, _unpauser) =
-            instantiate_contract();
+        let (mut deps, _, _info, _delegation_manager, _owner) = instantiate_contract();
 
         let slasher_addr = deps.api.addr_make("slasher");
         SLASHER
@@ -894,8 +836,7 @@ mod tests {
 
     #[test]
     fn test_is_validator() {
-        let (mut deps, _env, _info, _delegation_manager, _initial_owner, _pauser, _unpauser) =
-            instantiate_contract();
+        let (mut deps, _env, _info, _delegation_manager, _initial_owner) = instantiate_contract();
 
         let validator_addr = deps.api.addr_make("validator");
 
@@ -916,8 +857,7 @@ mod tests {
 
     #[test]
     fn test_query_calculate_slash_hash() {
-        let (deps, env, _info, _delegation_manager, _initial_owner, _pauser, _unpauser) =
-            instantiate_contract();
+        let (deps, env, _info, _delegation_manager, _initial_owner) = instantiate_contract();
 
         let slasher_addr = deps.api.addr_make("slasher");
         let operator_addr = deps.api.addr_make("operator");
@@ -950,8 +890,7 @@ mod tests {
 
     #[test]
     fn test_get_minimal_slash_signature() {
-        let (mut deps, _env, _info, _delegation_manager, _initial_owner, _pauser, _unpauser) =
-            instantiate_contract();
+        let (mut deps, _env, _info, _delegation_manager, _initial_owner) = instantiate_contract();
 
         let minimal_signature: u64 = 10;
         MINIMAL_SLASH_SIGNATURE
@@ -974,8 +913,7 @@ mod tests {
 
     #[test]
     fn test_submit_slash_request() {
-        let (mut deps, env, _info, delegation_manager, _owner, _pauser, _unpauser) =
-            instantiate_contract();
+        let (mut deps, env, _info, delegation_manager, _owner) = instantiate_contract();
 
         let slasher_addr = deps.api.addr_make("slasher");
         let operator_addr = deps.api.addr_make("operator");
@@ -1104,8 +1042,7 @@ mod tests {
 
     #[test]
     fn test_cancel_slash_request() {
-        let (mut deps, env, _info, delegation_manager, _owner, _pauser, _unpauser) =
-            instantiate_contract();
+        let (mut deps, env, _info, delegation_manager, _owner) = instantiate_contract();
 
         let slasher_addr = deps.api.addr_make("slasher");
         let operator_addr = deps.api.addr_make("operator");
@@ -1218,8 +1155,7 @@ mod tests {
 
     #[test]
     fn test_execute_slash_request() {
-        let (mut deps, env, _info, delegation_manager, _owner, _pauser, _unpauser) =
-            instantiate_contract();
+        let (mut deps, env, _info, delegation_manager, _owner) = instantiate_contract();
 
         STRATEGY_MANAGER
             .save(&mut deps.storage, &deps.api.addr_make("strategy_manager"))
@@ -1380,8 +1316,7 @@ mod tests {
 
     #[test]
     fn test_set_strategy_manager() {
-        let (mut deps, _env, info, _delegation_manager, _owner, _pauser, _unpauser) =
-            instantiate_contract();
+        let (mut deps, _env, info, _delegation_manager, _owner) = instantiate_contract();
 
         let new_strategy_manager = deps.api.addr_make("new_strategy_manager");
 
@@ -1404,8 +1339,7 @@ mod tests {
 
     #[test]
     fn test_slash_share_calculation() {
-        let (mut deps, env, _info, delegation_manager, _owner, _pauser, _unpauser) =
-            instantiate_contract();
+        let (mut deps, env, _info, delegation_manager, _owner) = instantiate_contract();
 
         let slasher_addr = deps.api.addr_make("slasher");
         SLASHER
@@ -1588,8 +1522,7 @@ mod tests {
 
     #[test]
     fn test_slash_share_calculation_edge_cases() {
-        let (mut deps, env, _info, delegation_manager, _owner, _pauser, _unpauser) =
-            instantiate_contract();
+        let (mut deps, env, _info, delegation_manager, _owner) = instantiate_contract();
 
         let slasher_addr = deps.api.addr_make("slasher");
         SLASHER

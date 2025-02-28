@@ -141,26 +141,6 @@ func (suite *strategyManagerTestSuite) Test_Init() {
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)*/
 
-	/*resp, err := strategyManager.SetPauser(context.Background(),stakerAddr)
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)
-
-	resp, err = strategyManager.Pause(context.Background())
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)
-
-	resp, err = strategyManager.SetUnpauser(context.Background(),stakerAddr)
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)
-
-	resp, err = strategyManager.Unpause(context.Background())
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)
-
 	/*resp, err = strategyManager.RemoveShares(context.Background(),stakerAddr, strategyAddr, 10)
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, resp, "response nil")
@@ -231,42 +211,23 @@ func (suite *strategyManagerTestSuite) test_ExecuteStrategyManager() {
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)*/
 
-	/*resp, err := strategyManager.SetPauser(context.Background(),stakerAddr)
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)
+	/*
+		resp, err = strategyManager.RemoveShares(context.Background(),stakerAddr, strategyAddr, 10)
+		assert.NoError(t, err, "execute contract")
+		assert.NotNil(t, resp, "response nil")
+		t.Logf("resp:%+v", resp)
+		/
 
-	resp, err = strategyManager.Pause(context.Background())
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)
+		resp, err = strategyManager.WithdrawSharesAsTokens(context.Background(),stakerAddr, strategyAddr, 10, tokenAddr)
+		assert.NoError(t, err, "execute contract")
+		assert.NotNil(t, resp, "response nil")
+		t.Logf("resp:%+v", resp)
+		/
 
-	resp, err = strategyManager.SetUnpauser(context.Background(),stakerAddr)
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)
-
-	resp, err = strategyManager.Unpause(context.Background())
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)
-
-	resp, err = strategyManager.RemoveShares(context.Background(),stakerAddr, strategyAddr, 10)
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)
-	/
-
-	resp, err = strategyManager.WithdrawSharesAsTokens(context.Background(),stakerAddr, strategyAddr, 10, tokenAddr)
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)
-	/
-
-	resp, err = strategyManager.AddShares(context.Background(),stakerAddr, tokenAddr, strategyAddr, 10)
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)*/
+		resp, err = strategyManager.AddShares(context.Background(),stakerAddr, tokenAddr, strategyAddr, 10)
+		assert.NoError(t, err, "execute contract")
+		assert.NotNil(t, resp, "response nil")
+		t.Logf("resp:%+v", resp)*/
 }
 
 func (suite *strategyManagerTestSuite) test_QueryStrategyManager() {

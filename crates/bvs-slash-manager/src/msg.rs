@@ -8,14 +8,14 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: String,
+    pub registry: String,
+
     pub delegation_manager: String,
     pub strategy_manager: String,
-    pub pauser: String,
-    pub unpauser: String,
-    pub initial_paused_status: u8,
 }
 
 #[cw_serde]
+#[derive(bvs_registry::api::Display)]
 pub enum ExecuteMsg {
     SubmitSlashRequest {
         slash_details: ExecuteSlashDetails,
@@ -49,14 +49,6 @@ pub enum ExecuteMsg {
     TransferOwnership {
         /// See `ownership::transfer_ownership` for more information on this field
         new_owner: String,
-    },
-    Pause {},
-    Unpause {},
-    SetPauser {
-        new_pauser: String,
-    },
-    SetUnpauser {
-        new_unpauser: String,
     },
 }
 

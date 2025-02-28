@@ -53,26 +53,6 @@ func SetMinimalSlashSignature(userKeyName string, minimalSignature int64) {
 	fmt.Printf("Set minimal slash signature success. txn: %s\n", txResp.Hash)
 }
 
-func SetPauser(userKeyName, newPauser string) {
-	ctx := context.Background()
-	slash, _ := newService(userKeyName)
-	txResp, err := slash.SetPauser(ctx, newPauser)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Set pauser success. txn: %s\n", txResp.Hash)
-}
-
-func SetUnpauser(userKeyName, newUnpauser string) {
-	ctx := context.Background()
-	slash, _ := newService(userKeyName)
-	txResp, err := slash.SetUnpauser(ctx, newUnpauser)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Set unpauser success. txn: %s\n", txResp.Hash)
-}
-
 func SetSlasherValidator(userKeyName string, validators []string, values []bool) {
 	ctx := context.Background()
 	slash, _ := newService(userKeyName)
@@ -81,26 +61,6 @@ func SetSlasherValidator(userKeyName string, validators []string, values []bool)
 		panic(err)
 	}
 	fmt.Printf("Set slasher validator success. txn: %s\n", txResp.Hash)
-}
-
-func Pause(userKeyName string) {
-	ctx := context.Background()
-	slash, _ := newService(userKeyName)
-	txResp, err := slash.Pause(ctx)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Pause success. txn: %s\n", txResp.Hash)
-}
-
-func Unpause(userKeyName string) {
-	ctx := context.Background()
-	slash, _ := newService(userKeyName)
-	txResp, err := slash.Unpause(ctx)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Unpause success. txn: %s\n", txResp.Hash)
 }
 
 func TransferOwnership(userKeyName, newOwner string) {
