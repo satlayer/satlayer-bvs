@@ -198,8 +198,6 @@ version = "2.0.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus",
- "thiserror",
 ]
 
 [[package]]
@@ -306,12 +304,10 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "bech32 0.8.1",
- "bvs-base",
  "bvs-delegation-manager",
  "bvs-library",
  "bvs-registry",
  "bvs-strategy-manager",
- "bvs-testing",
  "cosmwasm-crypto",
  "cosmwasm-schema",
  "cosmwasm-std",

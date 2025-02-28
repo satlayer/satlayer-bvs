@@ -40,7 +40,6 @@ secp256k1 = { workspace = true }
 bech32 = { workspace = true }
 ripemd = { workspace = true }
 base64 = { workspace = true }
-bvs-base = { workspace = true }
 serde_json = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
 bvs-library = { workspace = true }
@@ -50,4 +49,3 @@ bvs-delegation-manager = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
-bvs-testing = { workspace = true }
