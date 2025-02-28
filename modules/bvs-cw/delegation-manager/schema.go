@@ -175,14 +175,12 @@ func (r *StakerOptOutWindowBlocksResponse) Marshal() ([]byte, error) {
 }
 
 type InstantiateMsg struct {
-	InitialPausedStatus      int64    `json:"initial_paused_status"`
 	MinWithdrawalDelayBlocks int64    `json:"min_withdrawal_delay_blocks"`
 	Owner                    string   `json:"owner"`
-	Pauser                   string   `json:"pauser"`
+	Registry                 string   `json:"registry"`
 	SlashManager             string   `json:"slash_manager"`
 	Strategies               []string `json:"strategies"`
 	StrategyManager          string   `json:"strategy_manager"`
-	Unpauser                 string   `json:"unpauser"`
 	WithdrawalDelayBlocks    []int64  `json:"withdrawal_delay_blocks"`
 }
 
@@ -201,10 +199,6 @@ type ExecuteMsg struct {
 	SetSlashManager                  *SetSlashManager                  `json:"set_slash_manager,omitempty"`
 	SetStrategyWithdrawalDelayBlocks *SetStrategyWithdrawalDelayBlocks `json:"set_strategy_withdrawal_delay_blocks,omitempty"`
 	TransferOwnership                *TransferOwnership                `json:"transfer_ownership,omitempty"`
-	Pause                            *Pause                            `json:"pause,omitempty"`
-	Unpause                          *Unpause                          `json:"unpause,omitempty"`
-	SetPauser                        *SetPauser                        `json:"set_pauser,omitempty"`
-	SetUnpauser                      *SetUnpauser                      `json:"set_unpauser,omitempty"`
 }
 
 type CompleteQueuedWithdrawal struct {
@@ -260,9 +254,6 @@ type NewOperatorDetailsClass struct {
 	StakerOptOutWindowBlocks int64 `json:"staker_opt_out_window_blocks"`
 }
 
-type Pause struct {
-}
-
 type QueueWithdrawals struct {
 	QueuedWithdrawalParams []QueuedWithdrawalParams `json:"queued_withdrawal_params"`
 }
@@ -282,10 +273,6 @@ type SetMinWithdrawalDelayBlocks struct {
 	NewMinWithdrawalDelayBlocks int64 `json:"new_min_withdrawal_delay_blocks"`
 }
 
-type SetPauser struct {
-	NewPauser string `json:"new_pauser"`
-}
-
 type SetSlashManager struct {
 	NewSlashManager string `json:"new_slash_manager"`
 }
@@ -295,10 +282,6 @@ type SetStrategyWithdrawalDelayBlocks struct {
 	WithdrawalDelayBlocks []int64  `json:"withdrawal_delay_blocks"`
 }
 
-type SetUnpauser struct {
-	NewUnpauser string `json:"new_unpauser"`
-}
-
 type TransferOwnership struct {
 	// See `ownership::transfer_ownership` for more information on this field
 	NewOwner string `json:"new_owner"`
@@ -306,9 +289,6 @@ type TransferOwnership struct {
 
 type Undelegate struct {
 	Staker string `json:"staker"`
-}
-
-type Unpause struct {
 }
 
 type UpdateOperatorMetadataURI struct {

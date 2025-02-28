@@ -206,7 +206,6 @@ dependencies = [
 name = "bvs-delegation-manager"
 version = "0.1.0"
 dependencies = [
- "bvs-base",
  "bvs-library",
  "bvs-registry",
  "bvs-strategy-manager",

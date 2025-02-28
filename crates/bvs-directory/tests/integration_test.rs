@@ -92,15 +92,13 @@ fn register_operator_failure() {
             registry: registry.addr.to_string(),
         })
         .deploy_bvs_delegation_manager(&BvsDelegationManagerInstantiateMsg {
+            owner: owner.clone().to_string(),
+            registry: registry.addr.to_string(),
             strategy_manager: empty_addr.clone().into_string(),
             slash_manager: empty_addr.clone().into_string(),
             min_withdrawal_delay_blocks: 100,
-            owner: owner.clone().to_string(),
             strategies: vec![strategy1.clone(), strategy2.clone()],
             withdrawal_delay_blocks: vec![50, 60],
-            pauser: owner.clone().to_string(),
-            unpauser: owner.clone().to_string(),
-            initial_paused_status: 0,
         })
         .build();
 
