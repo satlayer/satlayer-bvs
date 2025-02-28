@@ -4,7 +4,6 @@ use cw_storage_plus::Item;
 
 #[cw_serde]
 pub struct StrategyState {
-    pub strategy_manager: Addr,
     pub underlying_token: Addr,
     pub total_shares: Uint128,
 }

@@ -1334,7 +1334,6 @@ mod tests {
                 match strategy_query_msg {
                     StrategyQueryMsg::GetStrategyState {} => {
                         let strategy_state = StrategyState {
-                            strategy_manager: delegation_manager_sender.clone(),
                             underlying_token: Addr::unchecked(token_for_closure.clone()),
                             total_shares: Uint128::new(1000),
                         };

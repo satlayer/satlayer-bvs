@@ -11,7 +11,6 @@ use cosmwasm_std::Uint128;
 pub struct InstantiateMsg {
     pub owner: String,
     pub registry: String,
-
     pub strategy_manager: String,
     pub underlying_token: String,
 }
@@ -26,9 +25,6 @@ pub enum ExecuteMsg {
         recipient: String,
         token: String,
         amount_shares: Uint128,
-    },
-    SetStrategyManager {
-        new_strategy_manager: String,
     },
     TransferOwnership {
         /// See `ownership::transfer_ownership` for more information on this field
