@@ -16,9 +16,7 @@ crate-type = ["cdylib", "rlib"]
 
 [package.metadata.optimizer]
 standard-build = false
-builds = [
-    { name = "", default-features = false },
-]
+builds = [{ name = "", default-features = false }]
 
 [features]
 default = ["testing"]
@@ -37,8 +35,10 @@ sha2 = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
 bvs-library = { workspace = true }
 bvs-registry = { workspace = true }
-bvs-strategy-manager = { workspace = true}
+bvs-strategy-manager = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
+bvs-library = { workspace = true, features = ["testing"] }
 bvs-registry = { workspace = true, features = ["testing"] }
+bvs-strategy-manager = { workspace = true, features = ["testing"] }

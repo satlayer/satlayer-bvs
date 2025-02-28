@@ -539,7 +539,7 @@ pub fn complete_queued_withdrawal(
     info: MessageInfo,
     withdrawal: Withdrawal,
     tokens: Vec<Addr>,
-    middleware_times_indexe: u64,
+    middleware_times_index: u64,
     receive_as_tokens: bool,
 ) -> Result<Response, ContractError> {
     let response = complete_queued_withdrawal_internal(
@@ -548,7 +548,7 @@ pub fn complete_queued_withdrawal(
         info.clone(),
         withdrawal.clone(),
         tokens.clone(),
-        middleware_times_indexe,
+        middleware_times_index,
         receive_as_tokens,
     )?;
 
