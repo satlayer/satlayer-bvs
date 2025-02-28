@@ -59,6 +59,8 @@ func (suite *delegationTestSuite) SetupSuite() {
 	suite.tokenAddr = token.Address
 
 	deployer := &bvs.Deployer{BabylonContainer: container}
+	registry := deployer.DeployRegistry(nil)
+
 	tAddr := container.GenerateAddress("test-address").String()
 	tAddr1 := container.GenerateAddress("test-address-1").String()
 	tAddr2 := container.GenerateAddress("test-address-2").String()
@@ -69,6 +71,7 @@ func (suite *delegationTestSuite) SetupSuite() {
 
 	strategyManager := deployer.DeployStrategyManager(tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 	delegationManager := deployer.DeployDelegationManager(
+		registry.Address,
 		tAddr, strategyManager.Address, 100, []string{tAddr}, []int64{50},
 	)
 
@@ -320,45 +323,6 @@ func (suite *delegationTestSuite) Test_DelegateTransferOwnership() {
 	recoverResp, err := recoverDelegation.TransferOwnership(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 	assert.NoError(t, err, "transfer ownership")
 	t.Logf("recoverResp: %v", recoverResp)
-}
-
-func (suite *delegationTestSuite) Test_DelegationPause() {
-	t := suite.T()
-	keyName := "caller"
-	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
-	assert.NoError(t, err)
-
-	txResp, err := api.NewDelegationManager(chainIO, suite.contrAddr).Pause(context.Background())
-	assert.NoError(t, err)
-	assert.NotNil(t, txResp, "response nil")
-	t.Logf("txResp:%+v", txResp)
-
-	recoverResp, err := api.NewDelegationManager(chainIO, suite.contrAddr).Unpause(context.Background())
-	assert.NoError(t, err)
-	assert.NotNil(t, recoverResp, "response nil")
-	t.Logf("txResp:%+v", recoverResp)
-}
-
-func (suite *delegationTestSuite) Test_DelegationSetPauser() {
-	t := suite.T()
-	keyName := "caller"
-	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
-	assert.NoError(t, err)
-	txResp, err := api.NewDelegationManager(chainIO, suite.contrAddr).SetPauser(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
-	assert.NoError(t, err)
-	assert.NotNil(t, txResp, "response nil")
-	t.Logf("txResp:%+v", txResp)
-}
-
-func (suite *delegationTestSuite) Test_DelegationSetUnpauser() {
-	t := suite.T()
-	keyName := "caller"
-	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
-	assert.NoError(t, err)
-	txResp, err := api.NewDelegationManager(chainIO, suite.contrAddr).SetUnpauser(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
-	assert.NoError(t, err)
-	assert.NotNil(t, txResp, "response nil")
-	t.Logf("txResp:%+v", txResp)
 }
 
 func (suite *delegationTestSuite) Test_SetSlashManager() {

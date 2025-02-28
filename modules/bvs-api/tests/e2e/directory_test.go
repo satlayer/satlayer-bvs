@@ -36,6 +36,7 @@ func (s *DirectoryTestSuite) SetupSuite() {
 
 	tAddr := container.GenerateAddress("test-address").String()
 	deployer := &bvs.Deployer{BabylonContainer: container}
+	registry := deployer.DeployRegistry(nil)
 
 	// Setup DelegationManager,
 	// Setup StrategyManager,
@@ -45,6 +46,7 @@ func (s *DirectoryTestSuite) SetupSuite() {
 	strategyManager := deployer.DeployStrategyManager(tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 
 	delegationManager := deployer.DeployDelegationManager(
+		registry.Address,
 		tAddr, strategyManager.Address, 100, []string{tAddr}, []int64{50},
 	)
 
@@ -59,8 +61,6 @@ func (s *DirectoryTestSuite) SetupSuite() {
 	)
 	s.Require().NoError(err, "register as operator")
 	s.Require().NotNil(txResp, "response nil")
-
-	registry := deployer.DeployRegistry(nil)
 
 	s.contrAddr = deployer.DeployDirectory(registry.Address, delegationManager.Address).Address
 	s.delegationContrAddr = delegationManager.Address
