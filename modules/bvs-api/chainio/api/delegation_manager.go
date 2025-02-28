@@ -277,58 +277,6 @@ func (r *DelegationManager) TransferOwnership(ctx context.Context, newOwner stri
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *DelegationManager) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
-	executeMsg := delegationmanager.ExecuteMsg{
-		Pause: &delegationmanager.Pause{},
-	}
-	executeMsgBytes, err := json.Marshal(executeMsg)
-	if err != nil {
-		return nil, err
-	}
-	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "Pause")
-
-	return r.io.SendTransaction(ctx, executeOptions)
-}
-
-func (r *DelegationManager) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
-	executeMsg := delegationmanager.ExecuteMsg{
-		Unpause: &delegationmanager.Unpause{},
-	}
-	executeMsgBytes, err := json.Marshal(executeMsg)
-	if err != nil {
-		return nil, err
-	}
-	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "Unpause")
-
-	return r.io.SendTransaction(ctx, executeOptions)
-}
-
-func (r *DelegationManager) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
-	executeMsg := delegationmanager.ExecuteMsg{
-		SetPauser: &delegationmanager.SetPauser{NewPauser: newPauser},
-	}
-	executeMsgBytes, err := json.Marshal(executeMsg)
-	if err != nil {
-		return nil, err
-	}
-	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "SetPauser")
-
-	return r.io.SendTransaction(ctx, executeOptions)
-}
-
-func (r *DelegationManager) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
-	executeMsg := delegationmanager.ExecuteMsg{
-		SetUnpauser: &delegationmanager.SetUnpauser{NewUnpauser: newUnpauser},
-	}
-	executeMsgBytes, err := json.Marshal(executeMsg)
-	if err != nil {
-		return nil, err
-	}
-	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "SetUnpauser")
-
-	return r.io.SendTransaction(ctx, executeOptions)
-}
-
 func (r *DelegationManager) SetSlashManager(ctx context.Context, newSlashManager string) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		SetSlashManager: &delegationmanager.SetSlashManager{NewSlashManager: newSlashManager},

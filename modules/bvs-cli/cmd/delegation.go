@@ -103,42 +103,6 @@ func delegationCmd() *cobra.Command {
 		},
 	}
 
-	pauseCmd := &cobra.Command{
-		Use:   "pause <userKeyName>",
-		Short: "To pause the contract.",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			delegation.Pause(args[0])
-		},
-	}
-
-	unpauseCmd := &cobra.Command{
-		Use:   "unpause <userKeyName>",
-		Short: "To unpause the contract.",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			delegation.Unpause(args[0])
-		},
-	}
-
-	setPauserCmd := &cobra.Command{
-		Use:   "set-pauser <userKeyName> <pauser>",
-		Short: "To set the pauser.",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			delegation.SetPauser(args[0], args[1])
-		},
-	}
-
-	setUnpauserCmd := &cobra.Command{
-		Use:   "set-unpauser <userKeyName> <unpauser>",
-		Short: "To set the unpauser.",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			delegation.SetUnpauser(args[0], args[1])
-		},
-	}
-
 	isDelegatedCmd := &cobra.Command{
 		Use:   "is-delegated <stakerAddress>",
 		Short: "To check if the operator is delegated.",
@@ -245,10 +209,6 @@ func delegationCmd() *cobra.Command {
 	subCmd.AddCommand(setMinWithdrawDelayBlocksCmd)
 	subCmd.AddCommand(setStrategywithdrawDelayblocksCmd)
 	subCmd.AddCommand(transferOwnerCmd)
-	subCmd.AddCommand(pauseCmd)
-	subCmd.AddCommand(unpauseCmd)
-	subCmd.AddCommand(setPauserCmd)
-	subCmd.AddCommand(setUnpauserCmd)
 	subCmd.AddCommand(getOperatorDetailsCmd)
 	subCmd.AddCommand(getStakerOptoutwindowblocksCmd)
 	subCmd.AddCommand(getOperatorSharesCmd)
