@@ -15,7 +15,7 @@ import (
 
 type RewardsCoordinator struct {
 	io            io.ChainIO
-	contractAddr  string
+	ContractAddr  string
 	gasAdjustment float64
 	gasPrice      sdktypes.DecCoin
 	gasLimit      uint64
@@ -24,7 +24,7 @@ type RewardsCoordinator struct {
 func NewRewardsCoordinator(chainIO io.ChainIO, contractAddr string) *RewardsCoordinator {
 	return &RewardsCoordinator{
 		io:            chainIO,
-		contractAddr:  contractAddr,
+		ContractAddr:  contractAddr,
 		gasAdjustment: 1.2,
 		gasPrice:      sdktypes.NewInt64DecCoin("ubbn", 1),
 		gasLimit:      700000,
@@ -446,7 +446,7 @@ func (r *RewardsCoordinator) CheckClaim(claim rewardscoordinator.CheckClaimClaim
 
 func (r *RewardsCoordinator) newExecuteOptions(executeMsg []byte, memo string) types.ExecuteOptions {
 	return types.ExecuteOptions{
-		ContractAddr:  r.contractAddr,
+		ContractAddr:  r.ContractAddr,
 		ExecuteMsg:    executeMsg,
 		Funds:         "",
 		GasAdjustment: r.gasAdjustment,
@@ -459,7 +459,7 @@ func (r *RewardsCoordinator) newExecuteOptions(executeMsg []byte, memo string) t
 
 func (r *RewardsCoordinator) newQueryOptions(queryMsg []byte) types.QueryOptions {
 	return types.QueryOptions{
-		ContractAddr: r.contractAddr,
+		ContractAddr: r.ContractAddr,
 		QueryMsg:     queryMsg,
 	}
 }

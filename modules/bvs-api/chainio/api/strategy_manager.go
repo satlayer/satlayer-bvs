@@ -18,7 +18,7 @@ import (
 
 type StrategyManager struct {
 	io            io.ChainIO
-	contractAddr  string
+	ContractAddr  string
 	gasAdjustment float64
 	gasPrice      sdktypes.DecCoin
 	gasLimit      uint64
@@ -27,7 +27,7 @@ type StrategyManager struct {
 func NewStrategyManager(chainIO io.ChainIO, contractAddr string) *StrategyManager {
 	return &StrategyManager{
 		io:            chainIO,
-		contractAddr:  contractAddr,
+		ContractAddr:  contractAddr,
 		gasAdjustment: 1.2,
 		gasPrice:      sdktypes.NewInt64DecCoin("ubbn", 1),
 		gasLimit:      700000,
@@ -163,7 +163,7 @@ func (r *StrategyManager) DepositIntoStrategyWithSignature(ctx context.Context, 
 		Nonce:        nonceRes.Nonce,
 		Expiry:       expiry,
 		ChainID:      chainId,
-		ContractAddr: r.contractAddr,
+		ContractAddr: r.ContractAddr,
 	}
 
 	resp, err = r.CalculateDigestHash(params)
@@ -594,7 +594,7 @@ func (r *StrategyManager) DelegationManager() (*wasmtypes.QuerySmartContractStat
 
 func (r *StrategyManager) newExecuteOptions(executeMsg []byte, memo string) types.ExecuteOptions {
 	return types.ExecuteOptions{
-		ContractAddr:  r.contractAddr,
+		ContractAddr:  r.ContractAddr,
 		ExecuteMsg:    executeMsg,
 		Funds:         "",
 		GasAdjustment: r.gasAdjustment,
@@ -607,7 +607,7 @@ func (r *StrategyManager) newExecuteOptions(executeMsg []byte, memo string) type
 
 func (r *StrategyManager) newQueryOptions(queryMsg []byte) types.QueryOptions {
 	return types.QueryOptions{
-		ContractAddr: r.contractAddr,
+		ContractAddr: r.ContractAddr,
 		QueryMsg:     queryMsg,
 	}
 }

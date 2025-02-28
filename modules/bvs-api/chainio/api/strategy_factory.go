@@ -14,7 +14,7 @@ import (
 
 type StrategyFactory struct {
 	io            io.ChainIO
-	contractAddr  string
+	ContractAddr  string
 	gasAdjustment float64
 	gasPrice      sdktypes.DecCoin
 	gasLimit      uint64
@@ -23,7 +23,7 @@ type StrategyFactory struct {
 func NewStrategyFactory(chainIO io.ChainIO, contractAddr string) *StrategyFactory {
 	return &StrategyFactory{
 		io:            chainIO,
-		contractAddr:  contractAddr,
+		ContractAddr:  contractAddr,
 		gasAdjustment: 1.2,
 		gasPrice:      sdktypes.NewInt64DecCoin("ubbn", 1),
 		gasLimit:      2000000,
@@ -286,7 +286,7 @@ func (r *StrategyFactory) IsTokenBlacklisted(token string) (*strategyfactory.Bla
 
 func (r *StrategyFactory) newExecuteOptions(executeMsg []byte, memo string) types.ExecuteOptions {
 	return types.ExecuteOptions{
-		ContractAddr:  r.contractAddr,
+		ContractAddr:  r.ContractAddr,
 		ExecuteMsg:    executeMsg,
 		Funds:         "",
 		GasAdjustment: r.gasAdjustment,
@@ -299,7 +299,7 @@ func (r *StrategyFactory) newExecuteOptions(executeMsg []byte, memo string) type
 
 func (r *StrategyFactory) newQueryOptions(queryMsg []byte) types.QueryOptions {
 	return types.QueryOptions{
-		ContractAddr: r.contractAddr,
+		ContractAddr: r.ContractAddr,
 		QueryMsg:     queryMsg,
 	}
 }
