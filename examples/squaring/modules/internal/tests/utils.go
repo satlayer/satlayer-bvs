@@ -172,7 +172,7 @@ func (suite *TestSuite) DeployBvsContracts() {
 	delegationManagerContract := deployer.DeployDelegationManager(registry.Address, 100, []string{tempAddress.String()}, []int64{50})
 	suite.DelegationManagerApi = api.NewDelegationManager(suite.ChainIO, delegationManagerContract.Address)
 
-	slashManagerContract := deployer.DeploySlashManager(delegationManagerContract.Address, strategyManagerContract.Address)
+	slashManagerContract := deployer.DeploySlashManager(registry.Address, delegationManagerContract.Address, strategyManagerContract.Address)
 	suite.SlashManagerApi = api.NewSlashManager(suite.ChainIO)
 	suite.SlashManagerApi.BindClient(slashManagerContract.Address)
 

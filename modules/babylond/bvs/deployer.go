@@ -59,18 +59,14 @@ func (d *Deployer) DeployRegistry(
 	return deployCrate(d, "bvs-registry", *initMsg, "BVS Registry")
 }
 
-// TODO: Too much initialization. Some can be moved to `ExecuteMsg` instead of `InstantiateMsg`
-
 func (d *Deployer) DeploySlashManager(
-	delegationManager string, strategyManager string,
+	registry, delegationManager, strategyManager string,
 ) *Contract[slashmanager.InstantiateMsg] {
 	initMsg := slashmanager.InstantiateMsg{
-		InitialPausedStatus: 0,
-		Owner:               d.GenerateAddress("slash-manager:initial_owner").String(),
-		Pauser:              d.GenerateAddress("slash-manager:pauser").String(),
-		Unpauser:            d.GenerateAddress("slash-manager:unpauser").String(),
-		StrategyManager:     strategyManager,
-		DelegationManager:   delegationManager,
+		Owner:             d.GenerateAddress("slash-manager:initial_owner").String(),
+		Registry:          registry,
+		StrategyManager:   strategyManager,
+		DelegationManager: delegationManager,
 	}
 
 	return deployCrate(d, "bvs-slash-manager", initMsg, "BVS Slash Manager")

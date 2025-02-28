@@ -36,7 +36,8 @@ func (suite *slashManagerTestSuite) SetupSuite() {
 
 	tAddr := container.GenerateAddress("test-address").String()
 	deployer := &bvs.Deployer{BabylonContainer: container}
-	slashManager := deployer.DeploySlashManager(tAddr, tAddr)
+	registry := deployer.DeployRegistry(nil)
+	slashManager := deployer.DeploySlashManager(registry.Address, tAddr, tAddr)
 	suite.contrAddr = slashManager.Address
 	suite.strategyManagerContrAddr = tAddr
 }
@@ -114,82 +115,6 @@ func (suite *slashManagerTestSuite) Test_SetDelegationManager() {
 	newDelegationManager := "bbn1q7v924jjct6xrc89n05473juncg3snjwuxdh62xs2ua044a7tp8sydugr4"
 	txResp, err := slashApi.SetDelegationManager(context.Background(), newDelegationManager)
 	assert.NoError(t, err, "SetDelegationManager failed")
-	assert.NotNil(t, txResp, "response nil")
-	t.Logf("txResp:%+v", txResp)
-}
-
-func (suite *slashManagerTestSuite) Test_SetPauser() {
-	t := suite.T()
-	keyName := "caller"
-	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
-	assert.NoError(t, err)
-
-	slashApi := api.NewSlashManager(chainIO)
-	slashApi.BindClient(suite.contrAddr)
-	slashApi.WithGasLimit(300000)
-
-	newPauser := "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
-	txResp, err := slashApi.SetPauser(context.Background(), newPauser)
-	assert.NoError(t, err, "SetPauser failed")
-	assert.NotNil(t, txResp, "response nil")
-	t.Logf("txResp:%+v", txResp)
-}
-
-func (suite *slashManagerTestSuite) Test_SetUnpauser() {
-	t := suite.T()
-	keyName := "caller"
-	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
-	assert.NoError(t, err)
-
-	slashApi := api.NewSlashManager(chainIO)
-	slashApi.BindClient(suite.contrAddr)
-	slashApi.WithGasLimit(300000)
-
-	newUnpauser := "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
-	txResp, err := slashApi.SetUnpauser(context.Background(), newUnpauser)
-	assert.NoError(t, err, "SetUnpauser failed")
-	assert.NotNil(t, txResp, "response nil")
-	t.Logf("txResp:%+v", txResp)
-}
-
-func (suite *slashManagerTestSuite) Test_Pause() {
-	t := suite.T()
-	keyName := "caller"
-	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
-	assert.NoError(t, err)
-
-	slashApi := api.NewSlashManager(chainIO)
-	slashApi.BindClient(suite.contrAddr)
-	slashApi.WithGasLimit(300000)
-
-	{ // Setup SetPauser
-		_, err = slashApi.SetPauser(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
-		suite.Require().NoError(err)
-	}
-
-	txResp, err := slashApi.Pause(context.Background())
-	assert.NoError(t, err, "Pause failed")
-	assert.NotNil(t, txResp, "response nil")
-	t.Logf("txResp:%+v", txResp)
-}
-
-func (suite *slashManagerTestSuite) Test_Unpause() {
-	t := suite.T()
-	keyName := "caller"
-	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
-	assert.NoError(t, err)
-
-	slashApi := api.NewSlashManager(chainIO)
-	slashApi.BindClient(suite.contrAddr)
-	slashApi.WithGasLimit(300000)
-
-	{ // Setup SetPauser
-		_, err = slashApi.SetUnpauser(context.Background(), "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
-		suite.Require().NoError(err)
-	}
-
-	txResp, err := slashApi.Unpause(context.Background())
-	assert.NoError(t, err, "Unpause failed")
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
 }
