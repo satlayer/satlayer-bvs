@@ -203,38 +203,6 @@ func (r *SlashManager) SetDelegationManager(ctx context.Context, newDelegationMa
 	return r.execute(ctx, executeMsg)
 }
 
-func (r *SlashManager) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
-	executeMsg := slashmanager.ExecuteMsg{
-		Pause: &slashmanager.Pause{},
-	}
-
-	return r.execute(ctx, executeMsg)
-}
-
-func (r *SlashManager) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
-	executeMsg := slashmanager.ExecuteMsg{
-		Unpause: &slashmanager.Unpause{},
-	}
-
-	return r.execute(ctx, executeMsg)
-}
-
-func (r *SlashManager) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
-	executeMsg := slashmanager.ExecuteMsg{
-		SetPauser: &slashmanager.SetPauser{NewPauser: newPauser},
-	}
-
-	return r.execute(ctx, executeMsg)
-}
-
-func (r *SlashManager) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
-	executeMsg := slashmanager.ExecuteMsg{
-		SetUnpauser: &slashmanager.SetUnpauser{NewUnpauser: newUnpauser},
-	}
-
-	return r.execute(ctx, executeMsg)
-}
-
 func (r *SlashManager) SetStrategyManager(ctx context.Context, newStrategyManager string) (*coretypes.ResultTx, error) {
 	executeMsg := slashmanager.ExecuteMsg{
 		SetStrategyManager: &slashmanager.SetStrategyManager{NewStrategyManager: newStrategyManager},

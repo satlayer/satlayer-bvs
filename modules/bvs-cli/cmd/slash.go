@@ -49,22 +49,6 @@ func slashCmd() *cobra.Command {
 			slash.SetMinimalSlashSignature(args[0], signature)
 		},
 	}
-	setPauserCmd := &cobra.Command{
-		Use:   "set-pauser <userKeyName> <pauser>",
-		Short: "To set the pauser.",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			slash.SetPauser(args[0], args[1])
-		},
-	}
-	setUnpauserCmd := &cobra.Command{
-		Use:   "set-unpauser <userKeyName> <unpauser>",
-		Short: "To set the unpauser.",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			slash.SetUnpauser(args[0], args[1])
-		},
-	}
 	setSlasherValidatorCmd := &cobra.Command{
 		Use:   "set-slasher-validator <userKeyName> <validators> <values>",
 		Short: "To set slasher validators.",
@@ -82,22 +66,6 @@ func slashCmd() *cobra.Command {
 				boolValues = append(boolValues, b)
 			}
 			slash.SetSlasherValidator(args[0], validators, boolValues)
-		},
-	}
-	pauseCmd := &cobra.Command{
-		Use:   "pause <userKeyName>",
-		Short: "To pause the slash.",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			slash.Pause(args[0])
-		},
-	}
-	unpauseCmd := &cobra.Command{
-		Use:   "unpause <userKeyName>",
-		Short: "To unpause the slash.",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			slash.Unpause(args[0])
 		},
 	}
 	transferOwnershipCmd := &cobra.Command{
@@ -191,11 +159,7 @@ func slashCmd() *cobra.Command {
 	subCmd.AddCommand(setSlasherCmd)
 	subCmd.AddCommand(setDelegationManagerCmd)
 	subCmd.AddCommand(setMinimalSlashSignatureCmd)
-	subCmd.AddCommand(setPauserCmd)
-	subCmd.AddCommand(setUnpauserCmd)
 	subCmd.AddCommand(setSlasherValidatorCmd)
-	subCmd.AddCommand(pauseCmd)
-	subCmd.AddCommand(unpauseCmd)
 	subCmd.AddCommand(transferOwnershipCmd)
 	subCmd.AddCommand(submitSlashRequestCmd)
 	subCmd.AddCommand(executeSlashRequestCmd)

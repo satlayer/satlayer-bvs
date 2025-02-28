@@ -97,12 +97,10 @@ func (r *ValidatorResponse) Marshal() ([]byte, error) {
 }
 
 type InstantiateMsg struct {
-	DelegationManager   string `json:"delegation_manager"`
-	InitialPausedStatus int64  `json:"initial_paused_status"`
-	Owner               string `json:"owner"`
-	Pauser              string `json:"pauser"`
-	StrategyManager     string `json:"strategy_manager"`
-	Unpauser            string `json:"unpauser"`
+	DelegationManager string `json:"delegation_manager"`
+	Owner             string `json:"owner"`
+	Registry          string `json:"registry"`
+	StrategyManager   string `json:"strategy_manager"`
 }
 
 type ExecuteMsg struct {
@@ -115,10 +113,6 @@ type ExecuteMsg struct {
 	SetDelegationManager     *SetDelegationManager     `json:"set_delegation_manager,omitempty"`
 	SetStrategyManager       *SetStrategyManager       `json:"set_strategy_manager,omitempty"`
 	TransferOwnership        *TransferOwnership        `json:"transfer_ownership,omitempty"`
-	Pause                    *Pause                    `json:"pause,omitempty"`
-	Unpause                  *Unpause                  `json:"unpause,omitempty"`
-	SetPauser                *SetPauser                `json:"set_pauser,omitempty"`
-	SetUnpauser              *SetUnpauser              `json:"set_unpauser,omitempty"`
 }
 
 type CancelSlashRequest struct {
@@ -131,19 +125,12 @@ type ExecuteSlashRequest struct {
 	ValidatorsPublicKeys []string `json:"validators_public_keys"`
 }
 
-type Pause struct {
-}
-
 type SetDelegationManager struct {
 	NewDelegationManager string `json:"new_delegation_manager"`
 }
 
 type SetMinimalSlashSignature struct {
 	MinimalSignature int64 `json:"minimal_signature"`
-}
-
-type SetPauser struct {
-	NewPauser string `json:"new_pauser"`
 }
 
 type SetSlasher struct {
@@ -158,10 +145,6 @@ type SetSlasherValidator struct {
 
 type SetStrategyManager struct {
 	NewStrategyManager string `json:"new_strategy_manager"`
-}
-
-type SetUnpauser struct {
-	NewUnpauser string `json:"new_unpauser"`
 }
 
 type SubmitSlashRequest struct {
@@ -184,9 +167,6 @@ type SubmitSlashRequestSlashDetails struct {
 type TransferOwnership struct {
 	// See `ownership::transfer_ownership` for more information on this field
 	NewOwner string `json:"new_owner"`
-}
-
-type Unpause struct {
 }
 
 type QueryMsg struct {
