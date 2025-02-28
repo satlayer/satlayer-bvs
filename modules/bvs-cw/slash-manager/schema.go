@@ -97,10 +97,8 @@ func (r *ValidatorResponse) Marshal() ([]byte, error) {
 }
 
 type InstantiateMsg struct {
-	DelegationManager string `json:"delegation_manager"`
-	Owner             string `json:"owner"`
-	Registry          string `json:"registry"`
-	StrategyManager   string `json:"strategy_manager"`
+	Owner    string `json:"owner"`
+	Registry string `json:"registry"`
 }
 
 type ExecuteMsg struct {
@@ -110,9 +108,8 @@ type ExecuteMsg struct {
 	SetMinimalSlashSignature *SetMinimalSlashSignature `json:"set_minimal_slash_signature,omitempty"`
 	SetSlasher               *SetSlasher               `json:"set_slasher,omitempty"`
 	SetSlasherValidator      *SetSlasherValidator      `json:"set_slasher_validator,omitempty"`
-	SetDelegationManager     *SetDelegationManager     `json:"set_delegation_manager,omitempty"`
-	SetStrategyManager       *SetStrategyManager       `json:"set_strategy_manager,omitempty"`
 	TransferOwnership        *TransferOwnership        `json:"transfer_ownership,omitempty"`
+	SetRouting               *SetRouting               `json:"set_routing,omitempty"`
 }
 
 type CancelSlashRequest struct {
@@ -125,12 +122,13 @@ type ExecuteSlashRequest struct {
 	ValidatorsPublicKeys []string `json:"validators_public_keys"`
 }
 
-type SetDelegationManager struct {
-	NewDelegationManager string `json:"new_delegation_manager"`
-}
-
 type SetMinimalSlashSignature struct {
 	MinimalSignature int64 `json:"minimal_signature"`
+}
+
+type SetRouting struct {
+	DelegationManager string `json:"delegation_manager"`
+	StrategyManager   string `json:"strategy_manager"`
 }
 
 type SetSlasher struct {
@@ -141,10 +139,6 @@ type SetSlasher struct {
 type SetSlasherValidator struct {
 	Validators []string `json:"validators"`
 	Values     []bool   `json:"values"`
-}
-
-type SetStrategyManager struct {
-	NewStrategyManager string `json:"new_strategy_manager"`
 }
 
 type SubmitSlashRequest struct {

@@ -193,19 +193,12 @@ func (r *SlashManager) SetSlasherValidator(ctx context.Context, validators []str
 	return r.execute(ctx, executeMsg)
 }
 
-func (r *SlashManager) SetDelegationManager(ctx context.Context, newDelegationManager string) (*coretypes.ResultTx, error) {
+func (r *SlashManager) SetRouting(ctx context.Context, delegationManger, strategyManager string) (*coretypes.ResultTx, error) {
 	executeMsg := slashmanager.ExecuteMsg{
-		SetDelegationManager: &slashmanager.SetDelegationManager{
-			NewDelegationManager: newDelegationManager,
+		SetRouting: &slashmanager.SetRouting{
+			DelegationManager: delegationManger,
+			StrategyManager:   strategyManager,
 		},
-	}
-
-	return r.execute(ctx, executeMsg)
-}
-
-func (r *SlashManager) SetStrategyManager(ctx context.Context, newStrategyManager string) (*coretypes.ResultTx, error) {
-	executeMsg := slashmanager.ExecuteMsg{
-		SetStrategyManager: &slashmanager.SetStrategyManager{NewStrategyManager: newStrategyManager},
 	}
 
 	return r.execute(ctx, executeMsg)

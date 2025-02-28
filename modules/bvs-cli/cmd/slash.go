@@ -28,14 +28,6 @@ func slashCmd() *cobra.Command {
 			slash.SetSlasher(args[0], args[1], value)
 		},
 	}
-	setDelegationManagerCmd := &cobra.Command{
-		Use:   "set-delegation-manager <userKeyName> <delegationManager>",
-		Short: "To set the delegation manager.",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			slash.SetDelegationManager(args[0], args[1])
-		},
-	}
 	setMinimalSlashSignatureCmd := &cobra.Command{
 		Use:   "set-minimal-slash-signature <userKeyName> <minimalSignature>",
 		Short: "To set the minimal slash signature.",
@@ -157,7 +149,6 @@ func slashCmd() *cobra.Command {
 	}
 
 	subCmd.AddCommand(setSlasherCmd)
-	subCmd.AddCommand(setDelegationManagerCmd)
 	subCmd.AddCommand(setMinimalSlashSignatureCmd)
 	subCmd.AddCommand(setSlasherValidatorCmd)
 	subCmd.AddCommand(transferOwnershipCmd)

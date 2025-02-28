@@ -60,13 +60,11 @@ func (d *Deployer) DeployRegistry(
 }
 
 func (d *Deployer) DeploySlashManager(
-	registry, delegationManager, strategyManager string,
+	registry string,
 ) *Contract[slashmanager.InstantiateMsg] {
 	initMsg := slashmanager.InstantiateMsg{
-		Owner:             d.GenerateAddress("slash-manager:initial_owner").String(),
-		Registry:          registry,
-		StrategyManager:   strategyManager,
-		DelegationManager: delegationManager,
+		Owner:    d.GenerateAddress("slash-manager:initial_owner").String(),
+		Registry: registry,
 	}
 
 	return deployCrate(d, "bvs-slash-manager", initMsg, "BVS Slash Manager")

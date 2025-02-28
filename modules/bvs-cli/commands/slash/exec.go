@@ -33,16 +33,6 @@ func SetSlasher(userKeyName string, slasher string, value bool) {
 	fmt.Printf("Set slasher success. txn: %s\n", txResp.Hash)
 }
 
-func SetDelegationManager(userKeyName, newDelegationManager string) {
-	ctx := context.Background()
-	slash, _ := newService(userKeyName)
-	txResp, err := slash.SetDelegationManager(ctx, newDelegationManager)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Set delegation manager success. txn: %s\n", txResp.Hash)
-}
-
 func SetMinimalSlashSignature(userKeyName string, minimalSignature int64) {
 	ctx := context.Background()
 	slash, _ := newService(userKeyName)
