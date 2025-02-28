@@ -39,42 +39,6 @@ func Withdraw(userKeyName, recipient string, amount uint64) {
 	fmt.Printf("Withdraw success. txn: %s\n", resp.Hash)
 }
 
-func Pause(uerKeyName string) {
-	strategyBase, _ := newService(uerKeyName)
-	resp, err := strategyBase.Pause(context.Background())
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Pause success. txn: %s\n", resp.Hash)
-}
-
-func Unpause(userKeyName string) {
-	strategyBase, _ := newService(userKeyName)
-	resp, err := strategyBase.Unpause(context.Background())
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Unpause success. txn: %s\n", resp.Hash)
-}
-
-func SetPauser(userKeyName, pauser string) {
-	strategyBase, _ := newService(userKeyName)
-	resp, err := strategyBase.SetPauser(context.Background(), pauser)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Set pauser success. txn: %s\n", resp.Hash)
-}
-
-func SetUnpauser(userKeyName, unpauser string) {
-	strategyBase, _ := newService(userKeyName)
-	resp, err := strategyBase.SetUnpauser(context.Background(), unpauser)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Set unpauser success. txn: %s\n", resp.Hash)
-}
-
 func TransferOwnership(userKeyName, newOwner string) {
 	strategyBase, _ := newService(userKeyName)
 	resp, err := strategyBase.TransferOwnership(context.Background(), newOwner)

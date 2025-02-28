@@ -48,8 +48,13 @@ func (suite *strategyBaseTestSuite) SetupSuite() {
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
 
 	deployer := &bvs.Deployer{BabylonContainer: container}
+	registry := deployer.DeployRegistry(nil)
 	// TODO: Circular Deps, StrategyManager should be set via ExecuteMsg and not injected in InitMsg
-	strategyBase := deployer.DeployStrategyBase(token.Address, "bbn1mju0w4qagjcgtrgepr796zmg083qurq9sngy0eyxm8wzf78cjt3qzfq7qy")
+	strategyBase := deployer.DeployStrategyBase(
+		registry.Address,
+		token.Address,
+		"bbn1mju0w4qagjcgtrgepr796zmg083qurq9sngy0eyxm8wzf78cjt3qzfq7qy",
+	)
 
 	suite.contrAddr = strategyBase.Address
 	tAddr := container.GenerateAddress("test-address").String()

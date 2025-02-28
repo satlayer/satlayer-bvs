@@ -176,12 +176,10 @@ func (r *TokenStrategyResponse) Marshal() ([]byte, error) {
 
 type InstantiateMsg struct {
 	DelegationManager          string `json:"delegation_manager"`
-	InitialPausedStatus        int64  `json:"initial_paused_status"`
 	InitialStrategyWhitelister string `json:"initial_strategy_whitelister"`
 	Owner                      string `json:"owner"`
-	Pauser                     string `json:"pauser"`
+	Registry                   string `json:"registry"`
 	SlashManager               string `json:"slash_manager"`
-	Unpauser                   string `json:"unpauser"`
 }
 
 type ExecuteMsg struct {
@@ -197,10 +195,6 @@ type ExecuteMsg struct {
 	SetDelegationManager          *SetDelegationManager          `json:"set_delegation_manager,omitempty"`
 	SetSlashManager               *SetSlashManager               `json:"set_slash_manager,omitempty"`
 	TransferOwnership             *TransferOwnership             `json:"transfer_ownership,omitempty"`
-	Pause                         *Pause                         `json:"pause,omitempty"`
-	Unpause                       *Unpause                       `json:"unpause,omitempty"`
-	SetPauser                     *SetPauser                     `json:"set_pauser,omitempty"`
-	SetUnpauser                   *SetUnpauser                   `json:"set_unpauser,omitempty"`
 }
 
 type AddNewStrategy struct {
@@ -229,9 +223,6 @@ type DepositIntoStrategy struct {
 	Token    string `json:"token"`
 }
 
-type Pause struct {
-}
-
 type RemoveShares struct {
 	Shares   string `json:"shares"`
 	Staker   string `json:"staker"`
@@ -246,10 +237,6 @@ type SetDelegationManager struct {
 	NewDelegationManager string `json:"new_delegation_manager"`
 }
 
-type SetPauser struct {
-	NewPauser string `json:"new_pauser"`
-}
-
 type SetSlashManager struct {
 	NewSlashManager string `json:"new_slash_manager"`
 }
@@ -258,16 +245,9 @@ type SetStrategyWhitelister struct {
 	NewStrategyWhitelister string `json:"new_strategy_whitelister"`
 }
 
-type SetUnpauser struct {
-	NewUnpauser string `json:"new_unpauser"`
-}
-
 type TransferOwnership struct {
 	// See `ownership::transfer_ownership` for more information on this field
 	NewOwner string `json:"new_owner"`
-}
-
-type Unpause struct {
 }
 
 type WithdrawSharesAsTokens struct {

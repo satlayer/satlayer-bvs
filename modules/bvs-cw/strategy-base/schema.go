@@ -175,12 +175,10 @@ func (r *UserUnderlyingResponse) Marshal() ([]byte, error) {
 }
 
 type InstantiateMsg struct {
-	InitialPausedStatus int64  `json:"initial_paused_status"`
-	Owner               string `json:"owner"`
-	Pauser              string `json:"pauser"`
-	StrategyManager     string `json:"strategy_manager"`
-	UnderlyingToken     string `json:"underlying_token"`
-	Unpauser            string `json:"unpauser"`
+	Owner           string `json:"owner"`
+	Registry        string `json:"registry"`
+	StrategyManager string `json:"strategy_manager"`
+	UnderlyingToken string `json:"underlying_token"`
 }
 
 type ExecuteMsg struct {
@@ -188,37 +186,19 @@ type ExecuteMsg struct {
 	Withdraw           *Withdraw           `json:"withdraw,omitempty"`
 	SetStrategyManager *SetStrategyManager `json:"set_strategy_manager,omitempty"`
 	TransferOwnership  *TransferOwnership  `json:"transfer_ownership,omitempty"`
-	Pause              *Pause              `json:"pause,omitempty"`
-	Unpause            *Unpause            `json:"unpause,omitempty"`
-	SetPauser          *SetPauser          `json:"set_pauser,omitempty"`
-	SetUnpauser        *SetUnpauser        `json:"set_unpauser,omitempty"`
 }
 
 type Deposit struct {
 	Amount string `json:"amount"`
 }
 
-type Pause struct {
-}
-
-type SetPauser struct {
-	NewPauser string `json:"new_pauser"`
-}
-
 type SetStrategyManager struct {
 	NewStrategyManager string `json:"new_strategy_manager"`
-}
-
-type SetUnpauser struct {
-	NewUnpauser string `json:"new_unpauser"`
 }
 
 type TransferOwnership struct {
 	// See `ownership::transfer_ownership` for more information on this field
 	NewOwner string `json:"new_owner"`
-}
-
-type Unpause struct {
 }
 
 type Withdraw struct {

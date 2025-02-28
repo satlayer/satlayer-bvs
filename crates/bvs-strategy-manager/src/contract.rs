@@ -24,8 +24,6 @@ use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg}
 
 use crate::query::{IsTokenBlacklistedResponse, TokenStrategyResponse};
 use bvs_base::delegation::ExecuteMsg as DelegationManagerExecuteMsg;
-use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
-use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use bvs_library::ownership;
 use bvs_strategy_base::{
     msg::ExecuteMsg as StrategyExecuteMsg, msg::QueryMsg as StrategyQueryMsg, state::StrategyState,
@@ -34,19 +32,20 @@ use bvs_strategy_base::{
 const CONTRACT_NAME: &str = "BVS Strategy Manager";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const PAUSED_DEPOSITS: u8 = 0;
-
 const SHARES_OFFSET: Uint128 = Uint128::new(1000000000000000000);
 const BALANCE_OFFSET: Uint128 = Uint128::new(1000000000000000000);
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    mut deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    let registry = deps.api.addr_validate(&msg.registry)?;
+    bvs_registry::api::set_registry_addr(deps.storage, &registry)?;
 
     let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::_set_owner(deps.storage, &owner)?;
@@ -60,13 +59,6 @@ pub fn instantiate(
         slash_manager: slash_manager.clone(),
     };
 
-    let pauser = deps.api.addr_validate(&msg.pauser)?;
-    let unpauser = deps.api.addr_validate(&msg.unpauser)?;
-
-    set_pauser(deps.branch(), pauser)?;
-    set_unpauser(deps.branch(), unpauser)?;
-
-    PAUSED_STATE.save(deps.storage, &msg.initial_paused_status)?;
     STRATEGY_MANAGER_STATE.save(deps.storage, &state)?;
     STRATEGY_WHITELISTER.save(deps.storage, &initial_strategy_whitelister)?;
 
@@ -88,6 +80,8 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    bvs_registry::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
+
     match msg {
         ExecuteMsg::AddNewStrategy {
             new_strategy,
@@ -192,24 +186,6 @@ pub fn execute(
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
             ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
-        }
-        ExecuteMsg::Pause {} => {
-            check_pauser(deps.as_ref(), info.clone())?;
-            pause(deps, &info).map_err(ContractError::Std)
-        }
-        ExecuteMsg::Unpause {} => {
-            check_unpauser(deps.as_ref(), info.clone())?;
-            unpause(deps, &info).map_err(ContractError::Std)
-        }
-        ExecuteMsg::SetPauser { new_pauser } => {
-            ownership::assert_owner(deps.as_ref(), &info)?;
-            let new_pauser_addr = deps.api.addr_validate(&new_pauser)?;
-            set_pauser(deps, new_pauser_addr).map_err(ContractError::Std)
-        }
-        ExecuteMsg::SetUnpauser { new_unpauser } => {
-            ownership::assert_owner(deps.as_ref(), &info)?;
-            let new_unpauser_addr = deps.api.addr_validate(&new_unpauser)?;
-            set_unpauser(deps, new_unpauser_addr).map_err(ContractError::Std)
         }
     }
 }
@@ -339,7 +315,6 @@ pub fn deposit_into_strategy(
     token: Addr,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_DEPOSITS)?;
     deposit_into_strategy_internal(deps, info, staker, strategy, token, amount)
 }
 
@@ -879,14 +854,11 @@ pub fn add_new_strategy(
 mod tests {
     use super::*;
     use crate::query::IsTokenBlacklistedResponse;
-    use bvs_base::roles::{PAUSER, UNPAUSER};
     use bvs_library::ownership::OwnershipError;
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
-    use cosmwasm_std::{
-        attr, from_json, Addr, ContractResult, OwnedDeps, SystemError, SystemResult,
-    };
+    use cosmwasm_std::{from_json, Addr, ContractResult, OwnedDeps, SystemError, SystemResult};
 
     #[test]
     fn test_instantiate() {
@@ -894,21 +866,19 @@ mod tests {
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
 
-        let owner = deps.api.addr_make("owner").to_string();
+        let owner = deps.api.addr_make("owner");
+        let registry = deps.api.addr_make("registry");
+
         let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
         let slasher = deps.api.addr_make("slasher").to_string();
         let strategy_whitelister = deps.api.addr_make("strategy_whitelister").to_string();
-        let pauser = deps.api.addr_make("pauser").to_string();
-        let unpauser = deps.api.addr_make("unpauser").to_string();
 
         let msg = InstantiateMsg {
-            owner: owner.clone(),
+            owner: owner.to_string(),
+            registry: registry.to_string(),
             delegation_manager: delegation_manager.clone(),
             slash_manager: slasher.clone(),
             initial_strategy_whitelister: strategy_whitelister.clone(),
-            pauser: pauser.clone(),
-            unpauser: unpauser.clone(),
-            initial_paused_status: 0,
         };
 
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -923,7 +893,7 @@ mod tests {
         assert_eq!(res.attributes[3].key, "strategy_whitelister");
         assert_eq!(res.attributes[3].value, strategy_whitelister.clone());
         assert_eq!(res.attributes[4].key, "owner");
-        assert_eq!(res.attributes[4].value, owner.clone());
+        assert_eq!(res.attributes[4].value, owner.as_str());
 
         let owner = ownership::OWNER.load(&deps.storage).unwrap();
         assert_eq!(owner, owner.clone());
@@ -951,37 +921,29 @@ mod tests {
         MessageInfo,
         MessageInfo,
         MessageInfo,
-        MessageInfo,
-        MessageInfo,
     ) {
         let mut deps = mock_dependencies();
         let env = mock_env();
 
-        let owner = deps.api.addr_make("owner").to_string();
-        let owner_info = message_info(&Addr::unchecked(owner.clone()), &[]);
+        let owner = deps.api.addr_make("owner");
+        let registry = deps.api.addr_make("registry");
+        let owner_info = message_info(&owner, &[]);
 
         let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
         let slasher = deps.api.addr_make("slasher").to_string();
         let strategy_whitelister = deps.api.addr_make("strategy_whitelister").to_string();
 
-        let pauser = deps.api.addr_make("pauser").to_string();
-        let unpauser = deps.api.addr_make("unpauser").to_string();
-
-        let pauser_info = message_info(&Addr::unchecked(pauser.clone()), &[]);
-        let unpauser_info = message_info(&Addr::unchecked(unpauser.clone()), &[]);
         let strategy_whitelister_info =
             message_info(&Addr::unchecked(strategy_whitelister.clone()), &[]);
         let delegation_manager_info =
             message_info(&Addr::unchecked(delegation_manager.clone()), &[]);
 
         let msg = InstantiateMsg {
-            owner: owner.clone(),
+            owner: owner.to_string(),
+            registry: registry.to_string(),
             delegation_manager: delegation_manager.clone(),
             slash_manager: slasher.clone(),
             initial_strategy_whitelister: strategy_whitelister.clone(),
-            pauser: pauser.clone(),
-            unpauser: unpauser.clone(),
-            initial_paused_status: 0,
         };
 
         let _res = instantiate(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();
@@ -991,22 +953,13 @@ mod tests {
             owner_info,
             delegation_manager_info,
             strategy_whitelister_info,
-            pauser_info,
-            unpauser_info,
         )
     }
 
     #[test]
     fn test_only_strategy_whitelister() {
-        let (
-            deps,
-            _env,
-            _owner_info,
-            _info_delegation_manager,
-            info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (deps, _env, _owner_info, _info_delegation_manager, info_whitelister) =
+            instantiate_contract();
 
         let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
 
@@ -1025,15 +978,8 @@ mod tests {
 
     #[test]
     fn test_add_new_strategy() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (mut deps, _env, _owner_info, _info_delegation_manager, _info_whitelister) =
+            instantiate_contract();
 
         let strategy = deps.api.addr_make("strategy");
         let token = deps.api.addr_make("token");
@@ -1096,15 +1042,8 @@ mod tests {
 
     #[test]
     fn test_blacklist_token() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (mut deps, _env, _owner_info, _info_delegation_manager, _info_whitelister) =
+            instantiate_contract();
 
         let strategy = deps.api.addr_make("strategy");
         let token = deps.api.addr_make("token");
@@ -1184,15 +1123,8 @@ mod tests {
 
     #[test]
     fn test_only_delegation_manager() {
-        let (
-            deps,
-            _env,
-            _owner_info,
-            info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (deps, _env, _owner_info, info_delegation_manager, _info_whitelister) =
+            instantiate_contract();
 
         let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
 
@@ -1211,15 +1143,8 @@ mod tests {
 
     #[test]
     fn test_only_strategies_whitelisted_for_deposit() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (mut deps, _env, _owner_info, _info_delegation_manager, _info_whitelister) =
+            instantiate_contract();
 
         let strategy = Addr::unchecked("strategy");
         STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
@@ -1243,15 +1168,8 @@ mod tests {
 
     #[test]
     fn test_add_strategies_to_deposit_whitelist() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            _info_delegation_manager,
-            info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (mut deps, _env, _owner_info, _info_delegation_manager, info_whitelister) =
+            instantiate_contract();
 
         let strat1 = deps.api.addr_make("strategy1");
         let strat2 = deps.api.addr_make("strategy2");
@@ -1302,15 +1220,8 @@ mod tests {
 
     #[test]
     fn test_remove_strategies_from_deposit_whitelist() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            _info_delegation_manager,
-            info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (mut deps, _env, _owner_info, _info_delegation_manager, info_whitelister) =
+            instantiate_contract();
 
         let strategies = vec![
             deps.api.addr_make("strategy1"),
@@ -1359,15 +1270,8 @@ mod tests {
 
     #[test]
     fn test_set_strategy_whitelister() {
-        let (
-            mut deps,
-            _env,
-            owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (mut deps, _env, owner_info, _info_delegation_manager, _info_whitelister) =
+            instantiate_contract();
 
         let old_whitelister = STRATEGY_WHITELISTER.load(&deps.storage).unwrap();
         let new_whitelister = Addr::unchecked("new_whitelister");
@@ -1404,15 +1308,8 @@ mod tests {
 
     #[test]
     fn test_deposit_into_strategy() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            info_delegation_manager,
-            info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (mut deps, _env, _owner_info, info_delegation_manager, info_whitelister) =
+            instantiate_contract();
 
         let strategy = deps.api.addr_make("strategy1");
         let token = deps.api.addr_make("token");
@@ -1509,15 +1406,8 @@ mod tests {
 
     #[test]
     fn test_get_deposits() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (mut deps, env, _owner_info, _info_delegation_manager, _info_whitelister) =
+            instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
         let strategy1 = deps.api.addr_make("strategy1");
@@ -1564,15 +1454,8 @@ mod tests {
 
     #[test]
     fn test_staker_strategy_list_length() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (mut deps, env, _owner_info, _info_delegation_manager, _info_whitelister) =
+            instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
         let strategy1 = deps.api.addr_make("strategy1");
@@ -1611,15 +1494,8 @@ mod tests {
 
     #[test]
     fn test_add_shares_internal() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (mut deps, _env, _owner_info, info_delegation_manager, _info_whitelister) =
+            instantiate_contract();
 
         let token = Addr::unchecked("token");
         let staker = Addr::unchecked("staker");
@@ -1735,15 +1611,8 @@ mod tests {
 
     #[test]
     fn test_add_shares() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (mut deps, _env, _owner_info, info_delegation_manager, _info_whitelister) =
+            instantiate_contract();
 
         let token = deps.api.addr_make("token");
         let staker = deps.api.addr_make("staker");
@@ -1884,15 +1753,8 @@ mod tests {
 
     #[test]
     fn test_remove_shares() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (mut deps, _env, _owner_info, info_delegation_manager, _info_whitelister) =
+            instantiate_contract();
 
         let staker = deps.api.addr_make("staker");
         let strategy1 = deps.api.addr_make("strategy1");
@@ -1997,15 +1859,8 @@ mod tests {
 
     #[test]
     fn test_remove_shares_internal() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (mut deps, _env, _owner_info, _info_delegation_manager, _info_whitelister) =
+            instantiate_contract();
 
         let staker = Addr::unchecked("staker1");
         let strategy1 = Addr::unchecked("strategy1");
@@ -2088,15 +1943,8 @@ mod tests {
 
     #[test]
     fn test_get_staker_strategy_list() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (mut deps, env, _owner_info, _info_delegation_manager, _info_whitelister) =
+            instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
 
@@ -2127,15 +1975,8 @@ mod tests {
 
     #[test]
     fn test_is_strategy_whitelisted() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (mut deps, _env, _owner_info, _info_delegation_manager, _info_whitelister) =
+            instantiate_contract();
 
         let strategy = deps.api.addr_make("strategy1");
 
@@ -2155,15 +1996,8 @@ mod tests {
 
     #[test]
     fn test_get_strategy_whitelister() {
-        let (
-            deps,
-            _env,
-            _owner_info,
-            _info_delegation_manager,
-            info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (deps, _env, _owner_info, _info_delegation_manager, info_whitelister) =
+            instantiate_contract();
 
         let response = query_strategy_whitelister(deps.as_ref()).unwrap();
         assert_eq!(response.whitelister, info_whitelister.sender);
@@ -2171,15 +2005,8 @@ mod tests {
 
     #[test]
     fn test_get_strategy_manager_state() {
-        let (
-            deps,
-            _env,
-            _owner_info,
-            info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (deps, _env, _owner_info, info_delegation_manager, _info_whitelister) =
+            instantiate_contract();
 
         let state = query_strategy_manager_state(deps.as_ref()).unwrap();
         assert_eq!(
@@ -2190,15 +2017,8 @@ mod tests {
 
     #[test]
     fn test_get_staker_strategy_shares() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (mut deps, _env, _owner_info, _info_delegation_manager, _info_whitelister) =
+            instantiate_contract();
 
         let staker = Addr::unchecked("staker1");
         let strategy = deps.api.addr_make("strategy");
@@ -2227,15 +2047,8 @@ mod tests {
 
     #[test]
     fn test_get_delegation_manager() {
-        let (
-            deps,
-            env,
-            _owner_info,
-            info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (deps, env, _owner_info, info_delegation_manager, _info_whitelister) =
+            instantiate_contract();
 
         let query_msg = QueryMsg::DelegationManager {};
         let bin = query(deps.as_ref(), env, query_msg).unwrap();
@@ -2249,15 +2062,8 @@ mod tests {
 
     #[test]
     fn test_set_delegation_manager() {
-        let (
-            mut deps,
-            _env,
-            owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (mut deps, _env, owner_info, _info_delegation_manager, _info_whitelister) =
+            instantiate_contract();
 
         let new_delegation_manager = deps.api.addr_make("new_delegation_manager");
 
@@ -2296,15 +2102,8 @@ mod tests {
 
     #[test]
     fn test_set_slash_manager() {
-        let (
-            mut deps,
-            _env,
-            owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
+        let (mut deps, _env, owner_info, _info_delegation_manager, _info_whitelister) =
+            instantiate_contract();
 
         let new_slash_manager = deps.api.addr_make("new_slash_manager");
 
@@ -2335,95 +2134,5 @@ mod tests {
 
         let state = STRATEGY_MANAGER_STATE.load(&deps.storage).unwrap();
         assert_eq!(state.slash_manager, new_slash_manager);
-    }
-
-    #[test]
-    fn test_pause() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let res = pause(deps.as_mut(), &pauser_info).unwrap();
-
-        assert_eq!(res.attributes, vec![attr("action", "PAUSED")]);
-
-        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_state, 1);
-    }
-
-    #[test]
-    fn test_unpause() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            unpauser_info,
-        ) = instantiate_contract();
-
-        let res = unpause(deps.as_mut(), &unpauser_info).unwrap();
-
-        assert_eq!(res.attributes, vec![attr("action", "UNPAUSED")]);
-
-        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_state, 0);
-    }
-
-    #[test]
-    fn test_set_pauser() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let new_pauser = deps.api.addr_make("new_pauser");
-
-        let res = set_pauser(deps.as_mut(), new_pauser.clone()).unwrap();
-
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "method" && a.value == "set_pauser"));
-
-        let pauser = PAUSER.load(&deps.storage).unwrap();
-        assert_eq!(pauser, Addr::unchecked(new_pauser));
-    }
-
-    #[test]
-    fn test_set_unpauser() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            _info_delegation_manager,
-            _info_whitelister,
-            _pauser_info,
-            _unpauser_info,
-        ) = instantiate_contract();
-
-        let new_unpauser = deps.api.addr_make("new_unpauser");
-
-        let res = set_unpauser(deps.as_mut(), new_unpauser.clone()).unwrap();
-
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "method" && a.value == "set_unpauser"));
-
-        let unpauser = UNPAUSER.load(&deps.storage).unwrap();
-        assert_eq!(unpauser, Addr::unchecked(new_unpauser));
     }
 }

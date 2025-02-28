@@ -79,44 +79,6 @@ func DepositStrategy(userKeyName, strategyAddress, tokenAddress string, amount u
 	fmt.Printf("Deposit strategy success. txn: %s\n", txResp.Hash)
 }
 
-func Pause(userKeyName string) {
-	ctx := context.Background()
-	strategy, _ := newService(userKeyName)
-	txResp, err := strategy.Pause(ctx)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Pause success. txn: %s\n", txResp.Hash)
-}
-
-func Unpause(userKeyName string) {
-	ctx := context.Background()
-	strategy, _ := newService(userKeyName)
-	txResp, err := strategy.Unpause(ctx)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Unpause success. txn: %s\n", txResp.Hash)
-}
-func SetPauser(userKeyName, newPauser string) {
-	ctx := context.Background()
-	strategy, _ := newService(userKeyName)
-	txResp, err := strategy.SetPauser(ctx, newPauser)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Set pauser success. txn: %s\n", txResp.Hash)
-}
-func SetUnpauser(userKeyName, newUnpauser string) {
-	ctx := context.Background()
-	strategy, _ := newService(userKeyName)
-	txResp, err := strategy.SetUnpauser(ctx, newUnpauser)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Set unpauser success. txn: %s\n", txResp.Hash)
-}
-
 func RemoveShares(userKeyName, stakerAddress, strategyAddress string, shares uint64) {
 	ctx := context.Background()
 	strategy, _ := newService(userKeyName)

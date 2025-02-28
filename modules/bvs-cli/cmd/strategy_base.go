@@ -86,38 +86,6 @@ func strategyBaseCmd() *cobra.Command {
 			strategybase.UnderlyingToken()
 		},
 	}
-	pauseCmd := &cobra.Command{
-		Use:   "pause <userKeyName>",
-		Short: "To pause.",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			strategybase.Pause(args[0])
-		},
-	}
-	unpauseCmd := &cobra.Command{
-		Use:   "unpause <userKeyName>",
-		Short: "To unpause.",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			strategybase.Unpause(args[0])
-		},
-	}
-	setPauserCmd := &cobra.Command{
-		Use:   "set-pauser <userKeyName> <pauserAddress>",
-		Short: "To set the pauser.",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			strategybase.SetPauser(args[0], args[1])
-		},
-	}
-	setUnpauserCmd := &cobra.Command{
-		Use:   "set-unpauser <userKeyName> <unpauserAddress>",
-		Short: "To set the unpauser.",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			strategybase.SetUnpauser(args[0], args[1])
-		},
-	}
 	transferOwnerCmd := &cobra.Command{
 		Use:   "transfer-owner <userKeyName> <newOwner>",
 		Short: "To transfer the owner.",
@@ -134,10 +102,6 @@ func strategyBaseCmd() *cobra.Command {
 	subCmd.AddCommand(underlyingShareviewCmd)
 	subCmd.AddCommand(underlyingViewCmd)
 	subCmd.AddCommand(underlyingTokenCmd)
-	subCmd.AddCommand(pauseCmd)
-	subCmd.AddCommand(unpauseCmd)
-	subCmd.AddCommand(setPauserCmd)
-	subCmd.AddCommand(setUnpauserCmd)
 	subCmd.AddCommand(transferOwnerCmd)
 
 	return subCmd

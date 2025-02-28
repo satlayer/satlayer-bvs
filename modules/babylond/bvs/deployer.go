@@ -77,15 +77,14 @@ func (d *Deployer) DeploySlashManager(
 }
 
 func (d *Deployer) DeployStrategyManager(
+	registry string,
 	delegationManager string,
 	slashManager string,
 	initialStrategyWhitelister string,
 ) *Contract[strategymanager.InstantiateMsg] {
 	initMsg := strategymanager.InstantiateMsg{
-		InitialPausedStatus:        0,
 		Owner:                      d.GenerateAddress("strategy-manager:initial_owner").String(),
-		Pauser:                     d.GenerateAddress("strategy-manager:pauser").String(),
-		Unpauser:                   d.GenerateAddress("strategy-manager:unpauser").String(),
+		Registry:                   registry,
 		DelegationManager:          delegationManager,
 		SlashManager:               slashManager,
 		InitialStrategyWhitelister: initialStrategyWhitelister,
@@ -148,15 +147,15 @@ func (d *Deployer) DeployRewardsCoordinator(
 }
 
 func (d *Deployer) DeployStrategyBase(
-	underlyingToken string, strategyManager string,
+	registry string,
+	underlyingToken string,
+	strategyManager string,
 ) *Contract[strategybase.InstantiateMsg] {
 	initMsg := strategybase.InstantiateMsg{
-		InitialPausedStatus: 0,
-		Owner:               d.GenerateAddress("strategy-base:initial_owner").String(),
-		Pauser:              d.GenerateAddress("strategy-base:pauser").String(),
-		Unpauser:            d.GenerateAddress("strategy-base:unpauser").String(),
-		StrategyManager:     strategyManager,
-		UnderlyingToken:     underlyingToken,
+		Owner:           d.GenerateAddress("strategy-base:initial_owner").String(),
+		Registry:        registry,
+		StrategyManager: strategyManager,
+		UnderlyingToken: underlyingToken,
 	}
 
 	return deployCrate(d, "bvs-strategy-base", initMsg, "BVS Strategy Base")
