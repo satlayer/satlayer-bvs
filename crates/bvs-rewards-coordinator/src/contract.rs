@@ -2693,19 +2693,14 @@ mod tests {
         let earner_tree_depth = 0u8;
         let token_tree_depth = 2u8;
 
-        let msg = ExecuteMsg::SubmitRoot {
-            root: root_base64.clone(),
-            rewards_calculation_end_timestamp,
-            earner_tree_depth,
-            token_tree_depth,
-        };
-
-        let result = execute(
+        let result = submit_root(
             deps.as_mut(),
             env.clone(),
             rewards_updater_info.clone(),
             root.clone(),
             rewards_calculation_end_timestamp,
+            earner_tree_depth,
+            token_tree_depth,
         );
 
         assert!(result.is_ok());
@@ -2732,19 +2727,14 @@ mod tests {
         );
 
         let past_timestamp = 500;
-        let msg = ExecuteMsg::SubmitRoot {
-            root: root_base64.clone(),
-            rewards_calculation_end_timestamp: past_timestamp,
-            earner_tree_depth,
-            token_tree_depth,
-        };
-
-        let result = execute(
+        let result = submit_root(
             deps.as_mut(),
             env.clone(),
             rewards_updater_info.clone(),
             root.clone(),
             past_timestamp,
+            earner_tree_depth,
+            token_tree_depth,
         );
         assert!(result.is_err());
         if let Err(err) = result {
@@ -2752,19 +2742,14 @@ mod tests {
         }
 
         let future_timestamp = env.block.time.seconds() + 100;
-        let msg = ExecuteMsg::SubmitRoot {
-            root: root_base64.clone(),
-            rewards_calculation_end_timestamp: future_timestamp,
-            earner_tree_depth,
-            token_tree_depth,
-        };
-
-        let result = execute(
+        let result = submit_root(
             deps.as_mut(),
             env.clone(),
             rewards_updater_info.clone(),
             root.clone(),
             future_timestamp,
+            earner_tree_depth,
+            token_tree_depth,
         );
         assert!(result.is_err());
         if let Err(err) = result {
@@ -2781,9 +2766,7 @@ mod tests {
             rewards_calculation_end_timestamp,
             earner_tree_depth,
             token_tree_depth,
-        };
-
-        let result = execute(deps.as_mut(), env.clone(), unauthorized_info, msg);
+        );
         assert!(result.is_err());
         if let Err(err) = result {
             assert_eq!(err, ContractError::Unauthorized {});
