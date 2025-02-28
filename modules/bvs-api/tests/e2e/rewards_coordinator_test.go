@@ -88,7 +88,6 @@ func (suite *rewardsTestSuite) SetupSuite() {
 	rewardsApi := api.NewRewardsCoordinator(chainIO)
 	rewardsApi.BindClient(rewardsCoordinator.Address)
 	res, err := rewardsApi.SetRouting(context.Background(),
-		tAddr,
 		suite.strategyManagerAddr,
 	)
 	suite.NoError(err)
@@ -110,10 +109,7 @@ func (suite *rewardsTestSuite) Test_SetRouting() {
 	rewardsCoordinator := api.NewRewardsCoordinator(chainIO)
 	rewardsCoordinator.BindClient(suite.rewardsCoordinatorAddr)
 
-	res, err := rewardsCoordinator.SetRouting(context.Background(),
-		suite.container.GenerateAddress("delegation-manager").String(),
-		suite.strategyManagerAddr,
-	)
+	res, err := rewardsCoordinator.SetRouting(context.Background(), suite.strategyManagerAddr)
 
 	suite.NoError(err)
 	suite.Equal(uint32(0), res.TxResult.Code)

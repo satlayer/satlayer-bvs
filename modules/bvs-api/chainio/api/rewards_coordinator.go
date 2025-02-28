@@ -169,11 +169,10 @@ func (r *RewardsCoordinator) SetRewardsUpdater(ctx context.Context, addr string)
 	return r.execute(ctx, msg)
 }
 
-func (r *RewardsCoordinator) SetRouting(ctx context.Context, delegationManager, strategyManager string) (*coretypes.ResultTx, error) {
+func (r *RewardsCoordinator) SetRouting(ctx context.Context, strategyManager string) (*coretypes.ResultTx, error) {
 	msg := rewardscoordinator.ExecuteMsg{
 		SetRouting: &rewardscoordinator.SetRouting{
-			DelegationManager: delegationManager,
-			StrategyManager:   strategyManager,
+			StrategyManager: strategyManager,
 		},
 	}
 
