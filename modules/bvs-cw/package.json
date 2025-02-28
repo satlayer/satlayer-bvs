@@ -2,7 +2,7 @@
   "name": "@modules/bvs-cw",
   "private": true,
   "scripts": {
-    "generate:schema": "node generate.mjs",
+    "generate:schema": "node generate.mjs && goimports -w */schema.go",
     "test": "gotestsum"
   },
   "devDependencies": {
