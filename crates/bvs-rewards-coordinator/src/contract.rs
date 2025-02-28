@@ -147,7 +147,7 @@ pub fn execute(
         }
         ExecuteMsg::SetRewardsUpdater { addr } => {
             let addr = deps.api.addr_validate(&addr)?;
-            auth::set_rewards_updater(deps, &info, &addr)
+            auth::set_rewards_updater(deps, info, addr)
         }
         ExecuteMsg::SetRouting {
             delegation_manager,
@@ -156,7 +156,7 @@ pub fn execute(
             let delegation_manager = deps.api.addr_validate(&delegation_manager)?;
             let strategy_manager = deps.api.addr_validate(&strategy_manager)?;
 
-            auth::set_routing(deps, &info, delegation_manager, strategy_manager)
+            auth::set_routing(deps, info, delegation_manager, strategy_manager)
         }
     }
 }

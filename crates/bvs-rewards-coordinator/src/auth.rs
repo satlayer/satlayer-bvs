@@ -13,11 +13,11 @@ pub const REWARDS_UPDATER: Item<Addr> = Item::new("rewards_updater");
 /// It can be called more than once to set new values but only by the owner.
 pub fn set_routing(
     deps: DepsMut,
-    info: &MessageInfo,
+    info: MessageInfo,
     delegation_manager: Addr,
     strategy_manager: Addr,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), info)?;
+    ownership::assert_owner(deps.as_ref(), &info)?;
 
     DELEGATION_MANAGER.save(deps.storage, &delegation_manager)?;
     STRATEGY_MANAGER.save(deps.storage, &strategy_manager)?;
@@ -31,19 +31,21 @@ pub fn set_routing(
 
 pub fn set_rewards_updater(
     deps: DepsMut,
-    info: &MessageInfo,
-    addr: &Addr,
+    info: MessageInfo,
+    new_updater: Addr,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), info)?;
+    ownership::assert_owner(deps.as_ref(), &info)?;
 
-    REWARDS_UPDATER.save(deps.storage, addr)?;
+    REWARDS_UPDATER.save(deps.storage, &new_updater)?;
 
     Ok(Response::new()
-        .add_event(Event::new("SetRewardsUpdater").add_attribute("addr", addr.as_str())))
+        .add_event(Event::new("SetRewardsUpdater").add_attribute("addr", new_updater.as_str())))
 }
 
 pub fn assert_rewards_updater(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
-    let rewards_updater = REWARDS_UPDATER.load(deps.storage)?;
+    let rewards_updater = REWARDS_UPDATER
+        .may_load(deps.storage)?
+        .ok_or(ContractError::Unauthorized {})?;
     if info.sender != rewards_updater {
         return Err(ContractError::Unauthorized {});
     }
@@ -73,7 +75,7 @@ mod tests {
 
         let res = set_routing(
             deps.as_mut(),
-            &owner_info,
+            owner_info,
             new_delegation_manager.clone(),
             new_strategy_manager.clone(),
         )
@@ -107,7 +109,7 @@ mod tests {
 
         let err = set_routing(
             deps.as_mut(),
-            &sender_info,
+            sender_info,
             new_delegation_manager.clone(),
             new_strategy_manager.clone(),
         )
@@ -125,10 +127,11 @@ mod tests {
 
         let owner_addr = &deps.api.addr_make("owner");
         OWNER.save(deps.as_mut().storage, &owner_addr).unwrap();
-        let owner_info = &message_info(owner_addr, &[]);
+        let owner_info = message_info(owner_addr, &[]);
 
-        let new_updater = &deps.api.addr_make("new_updater");
-        let res = auth::set_rewards_updater(deps.as_mut(), owner_info, new_updater).unwrap();
+        let new_updater = deps.api.addr_make("new_updater");
+        let res =
+            auth::set_rewards_updater(deps.as_mut(), owner_info, new_updater.clone()).unwrap();
 
         assert_eq!(
             res,
@@ -154,10 +157,11 @@ mod tests {
         OWNER.save(deps.as_mut().storage, &owner_addr).unwrap();
 
         let sender = &deps.api.addr_make("not_owner");
-        let sender_info = &message_info(sender, &[]);
-        let new_updater = &deps.api.addr_make("new_updater");
+        let sender_info = message_info(sender, &[]);
+        let new_updater = deps.api.addr_make("new_updater");
 
-        let err = auth::set_rewards_updater(deps.as_mut(), sender_info, new_updater).unwrap_err();
+        let err =
+            auth::set_rewards_updater(deps.as_mut(), sender_info, new_updater.clone()).unwrap_err();
 
         assert_eq!(
             err.to_string(),
