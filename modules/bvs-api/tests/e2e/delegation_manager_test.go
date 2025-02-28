@@ -24,7 +24,6 @@ type delegationTestSuite struct {
 	contrAddr       string
 	strategies      []string
 	tokenAddr       string
-	slashManager    string
 	strategyManager string
 	container       *babylond.BabylonContainer
 }
@@ -80,8 +79,6 @@ func (suite *delegationTestSuite) SetupSuite() {
 		tAddr1,
 		tAddr2,
 	}
-	slashManager := deployer.DeploySlashManager(tAddr, tAddr)
-	suite.slashManager = slashManager.Address
 
 	// TODO(fuxingloh):
 	// tAddr, strategyManager.Address,
@@ -89,7 +86,7 @@ func (suite *delegationTestSuite) SetupSuite() {
 	suite.Require().NoError(err, "setup keyring")
 
 	delegationApi := api.NewDelegationManager(chainIO, delegationManager.Address)
-	txResp, err := delegationApi.SetRouting(context.Background(), suite.strategyManager, suite.slashManager)
+	txResp, err := delegationApi.SetRouting(context.Background(), suite.strategyManager)
 	suite.Require().NoError(err)
 	suite.Require().Equal(uint32(0), txResp.TxResult.Code)
 
@@ -339,7 +336,7 @@ func (suite *delegationTestSuite) Test_SetRouting() {
 	assert.NoError(t, err)
 
 	delegationApi := api.NewDelegationManager(chainIO, suite.contrAddr)
-	txResp, err := delegationApi.SetRouting(context.Background(), suite.strategyManager, suite.slashManager)
+	txResp, err := delegationApi.SetRouting(context.Background(), suite.strategyManager)
 	assert.NoError(t, err)
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)

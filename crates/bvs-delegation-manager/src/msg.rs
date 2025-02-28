@@ -71,7 +71,6 @@ pub enum ExecuteMsg {
     },
     SetRouting {
         strategy_manager: String,
-        slash_manager: String,
     },
     TransferOwnership {
         /// See `ownership::transfer_ownership` for more information on this field

@@ -4,7 +4,6 @@ use cosmwasm_std::{Addr, Deps, DepsMut, Event, MessageInfo, Response, Storage};
 use cw_storage_plus::Item;
 
 const STRATEGY_MANAGER: Item<Addr> = Item::new("strategy_manager");
-const SLASH_MANAGER: Item<Addr> = Item::new("slash_manager");
 
 /// Contract Control Plane, it defines how the contract messages get routed.
 /// While instantiate creates the contract: gives the contract an address.
@@ -14,17 +13,13 @@ pub fn set_routing(
     deps: DepsMut,
     info: MessageInfo,
     strategy_manager: Addr,
-    slash_manager: Addr,
 ) -> Result<Response, ContractError> {
     ownership::assert_owner(deps.as_ref(), &info)?;
 
     STRATEGY_MANAGER.save(deps.storage, &strategy_manager)?;
-    SLASH_MANAGER.save(deps.storage, &slash_manager)?;
 
     Ok(Response::new().add_event(
-        Event::new("SetRouting")
-            .add_attribute("strategy_manager", strategy_manager.as_str())
-            .add_attribute("slash_manager", slash_manager.as_str()),
+        Event::new("SetRouting").add_attribute("strategy_manager", strategy_manager.as_str()),
     ))
 }
 
@@ -65,22 +60,14 @@ mod tests {
         let owner_info = message_info(owner_addr, &[]);
 
         let new_strategy_manager = deps.api.addr_make("new_strategy_manager");
-        let new_slash_manager = deps.api.addr_make("new_slash_manager");
 
-        let res = set_routing(
-            deps.as_mut(),
-            owner_info,
-            new_strategy_manager.clone(),
-            new_slash_manager.clone(),
-        )
-        .unwrap();
+        let res = set_routing(deps.as_mut(), owner_info, new_strategy_manager.clone()).unwrap();
 
         assert_eq!(
             res,
             Response::new().add_event(
                 Event::new("SetRouting")
                     .add_attribute("strategy_manager", new_strategy_manager.as_str())
-                    .add_attribute("slash_manager", new_slash_manager.as_str())
             )
         );
     }
@@ -96,18 +83,12 @@ mod tests {
         }
 
         let new_strategy_manager = deps.api.addr_make("new_strategy_manager");
-        let new_slash_manager = deps.api.addr_make("new_slash_manager");
 
         let sender = &deps.api.addr_make("random_sender");
         let sender_info = message_info(sender, &[]);
 
-        let err = set_routing(
-            deps.as_mut(),
-            sender_info,
-            new_strategy_manager.clone(),
-            new_slash_manager.clone(),
-        )
-        .unwrap_err();
+        let err =
+            set_routing(deps.as_mut(), sender_info, new_strategy_manager.clone()).unwrap_err();
 
         assert_eq!(
             err.to_string(),

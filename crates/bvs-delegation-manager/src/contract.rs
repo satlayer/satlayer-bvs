@@ -193,14 +193,10 @@ pub fn execute(
                 withdrawal_delay_blocks,
             )
         }
-        ExecuteMsg::SetRouting {
-            strategy_manager,
-            slash_manager,
-        } => {
+        ExecuteMsg::SetRouting { strategy_manager } => {
             let strategy_manager = deps.api.addr_validate(&strategy_manager)?;
-            let slash_manager = deps.api.addr_validate(&slash_manager)?;
 
-            auth::set_routing(deps, info, strategy_manager, slash_manager)
+            auth::set_routing(deps, info, strategy_manager)
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
@@ -1221,8 +1217,7 @@ mod tests {
 
         let strategy_manager = deps.api.addr_make("strategy_manager");
         let strategy_manager_info = message_info(&strategy_manager, &[]);
-        let slasher = deps.api.addr_make("slasher");
-        set_routing(deps.as_mut(), owner_info.clone(), strategy_manager, slasher).unwrap();
+        set_routing(deps.as_mut(), owner_info.clone(), strategy_manager).unwrap();
 
         (deps, env, owner_info, strategy_manager_info)
     }
