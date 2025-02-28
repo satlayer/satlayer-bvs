@@ -1147,7 +1147,109 @@ mod tests {
     }
 
     #[test]
-    fn test_create_rewards_submission() {
+    fn test_validate_rewards_submission_duplicate_strategies() {
+        let (
+            mut deps,
+            env,
+            _owner_info,
+            _strategy_manager_info,
+            _delegation_manager_info,
+            _rewards_updater_info,
+        ) = instantiate_contract();
+
+        let owner = deps.api.addr_make("initial_owner");
+        let owner_info = message_info(&owner, &[]);
+        let calc_interval = 86_400; // 1 day
+
+        let block_time = mock_env().block.time.seconds();
+
+        let aligned_start_time = block_time - (block_time % calc_interval);
+        let aligned_start_timestamp = Timestamp::from_seconds(aligned_start_time);
+
+        let submission = vec![
+            RewardsSubmission {
+                strategies_and_multipliers: vec![
+                    StrategyAndMultiplier {
+                        strategy: deps.api.addr_make("strategy1").to_string(),
+                        multiplier: 1,
+                    },
+                    StrategyAndMultiplier {
+                        strategy: deps.api.addr_make("strategy1").to_string(),
+                        multiplier: 1,
+                    },
+                ],
+                amount: Uint128::new(100),
+                duration: calc_interval, // 1 day
+                start_timestamp: aligned_start_timestamp,
+                token: deps.api.addr_make("token").to_string(),
+            },
+            RewardsSubmission {
+                strategies_and_multipliers: vec![StrategyAndMultiplier {
+                    strategy: deps.api.addr_make("strategy2").to_string(),
+                    multiplier: 1,
+                }],
+                amount: Uint128::new(100),
+                duration: calc_interval, // 1 day
+                start_timestamp: aligned_start_timestamp,
+                token: deps.api.addr_make("token").to_string(),
+            },
+        ];
+
+        let strategy_manager = deps.api.addr_make("strategy_manager");
+        auth::STRATEGY_MANAGER
+            .save(&mut deps.storage, &strategy_manager)
+            .unwrap();
+
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::Smart { contract_addr, msg }
+                if Addr::unchecked(contract_addr) == &strategy_manager =>
+            {
+                let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
+                match msg {
+                    StrategyManagerQueryMsg::IsStrategyWhitelisted { strategy } => {
+                        let response = if strategy == deps.api.addr_make("strategy1").to_string()
+                            || strategy == deps.api.addr_make("strategy2").to_string()
+                        {
+                            StrategyWhitelistedResponse {
+                                is_whitelisted: true,
+                            }
+                        } else {
+                            StrategyWhitelistedResponse {
+                                is_whitelisted: false,
+                            }
+                        };
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
+                    }
+                    _ => SystemResult::Err(SystemError::InvalidRequest {
+                        error: "Unhandled request".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    }),
+                }
+            }
+            _ => SystemResult::Err(SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
+
+        let result = create_bvs_rewards_submission(
+            deps.as_mut(),
+            env.clone(),
+            owner_info.clone(),
+            submission,
+        );
+
+        assert!(result.is_err());
+        match result {
+            Err(err) => {
+                assert_eq!(err, ContractError::DuplicateStrategies {});
+            }
+            _ => panic!("Expected ContractError::DuplicateStrategies"),
+        }
+    }
+
+    #[test]
+    fn test_create_bvs_rewards_submission() {
         let (
             mut deps,
             env,
@@ -1251,14 +1353,14 @@ mod tests {
         let (
             mut deps,
             env,
-            owner_info,
-            _pauser_info,
-            _unpauser_info,
+            _owner_info,
             _strategy_manager_info,
             _delegation_manager_info,
             _rewards_updater_info,
         ) = instantiate_contract();
 
+        let owner = deps.api.addr_make("initial_owner");
+        let owner_info = message_info(&owner, &[]);
         let calc_interval = 86_400; // 1 day
 
         let block_time = mock_env().block.time.seconds();
@@ -1295,9 +1397,14 @@ mod tests {
             },
         ];
 
+        let strategy_manager = deps.api.addr_make("strategy_manager");
+        auth::STRATEGY_MANAGER
+            .save(&mut deps.storage, &strategy_manager)
+            .unwrap();
+
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart { contract_addr, msg }
-                if Addr::unchecked(contract_addr) == deps.api.addr_make("strategy_manager") =>
+                if Addr::unchecked(contract_addr) == &strategy_manager =>
             {
                 let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
                 match msg {
