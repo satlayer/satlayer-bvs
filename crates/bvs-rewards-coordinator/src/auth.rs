@@ -1,11 +1,11 @@
 use crate::ContractError;
 use bvs_library::ownership;
-use cosmwasm_std::{Addr, Deps, DepsMut, Event, MessageInfo, Response};
+use cosmwasm_std::{Addr, DepsMut, Event, MessageInfo, Response, Storage};
 use cw_storage_plus::Item;
 
-pub const DELEGATION_MANAGER: Item<Addr> = Item::new("delegation_manager");
-pub const STRATEGY_MANAGER: Item<Addr> = Item::new("strategy_manager");
-pub const REWARDS_UPDATER: Item<Addr> = Item::new("rewards_updater");
+const DELEGATION_MANAGER: Item<Addr> = Item::new("delegation_manager");
+const STRATEGY_MANAGER: Item<Addr> = Item::new("strategy_manager");
+const REWARDS_UPDATER: Item<Addr> = Item::new("rewards_updater");
 
 /// Contract Control Plane, it defines how the contract messages get routed.
 /// While instantiate creates the contract: gives the contract an address.
@@ -29,6 +29,12 @@ pub fn set_routing(
     ))
 }
 
+pub fn get_strategy_manager(storage: &dyn Storage) -> Result<Addr, ContractError> {
+    STRATEGY_MANAGER
+        .may_load(storage)?
+        .ok_or(ContractError::Unauthorized {})
+}
+
 pub fn set_rewards_updater(
     deps: DepsMut,
     info: MessageInfo,
@@ -42,9 +48,12 @@ pub fn set_rewards_updater(
         .add_event(Event::new("SetRewardsUpdater").add_attribute("addr", new_updater.as_str())))
 }
 
-pub fn assert_rewards_updater(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
+pub fn assert_rewards_updater(
+    storage: &dyn Storage,
+    info: &MessageInfo,
+) -> Result<(), ContractError> {
     let rewards_updater = REWARDS_UPDATER
-        .may_load(deps.storage)?
+        .may_load(storage)?
         .ok_or(ContractError::Unauthorized {})?;
     if info.sender != rewards_updater {
         return Err(ContractError::Unauthorized {});
@@ -182,7 +191,7 @@ mod tests {
             .unwrap();
 
         let info = message_info(&rewards_updater_addr, &[]);
-        let result = assert_rewards_updater(deps.as_ref(), &info);
+        let result = assert_rewards_updater(&deps.storage, &info);
 
         assert!(result.is_ok());
     }
@@ -198,7 +207,7 @@ mod tests {
 
         let rewards_updater_addr = deps.api.addr_make("not_rewards_updater");
         let info = message_info(&rewards_updater_addr, &[]);
-        let result = assert_rewards_updater(deps.as_ref(), &info);
+        let result = assert_rewards_updater(&deps.storage, &info);
 
         assert_eq!(result, Err(ContractError::Unauthorized {}));
     }
