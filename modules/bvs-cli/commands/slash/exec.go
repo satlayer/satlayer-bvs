@@ -152,19 +152,7 @@ func ExecuteSlashRequest(userKeyNames []string, slashHash string) {
 	s := NewService()
 	ctx := context.Background()
 
-	var validatorsPublicKeys []cryptotypes.PubKey
-
-	for _, keyName := range userKeyNames {
-		newChainIO, err := s.ChainIO.SetupKeyring(keyName, conf.C.Account.KeyringBackend)
-		if err != nil {
-			panic(fmt.Sprintf("Failed to setup keyring for %s: %v", keyName, err))
-		}
-
-		pubKey := newChainIO.GetCurrentAccountPubKey()
-		validatorsPublicKeys = append(validatorsPublicKeys, pubKey)
-	}
-
-	txResp, err := s.Slash.ExecuteSlashRequest(ctx, slashHash, validatorsPublicKeys)
+	txResp, err := s.Slash.ExecuteSlashRequest(ctx, slashHash, userKeyNames)
 	if err != nil {
 		panic(err)
 	}

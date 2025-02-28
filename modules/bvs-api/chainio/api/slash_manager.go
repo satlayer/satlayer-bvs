@@ -87,20 +87,33 @@ func (r *SlashManager) SubmitSlashRequest(ctx context.Context, slashDetails slas
 	return r.execute(ctx, executeMsg)
 }
 
-func (r *SlashManager) ExecuteSlashRequest(ctx context.Context, slashHash string, validatorsPublicKeys []cryptotypes.PubKey) (*coretypes.ResultTx, error) {
+func (r *SlashManager) ExecuteSlashRequest(ctx context.Context, slashHash string, validatorKeyNames []string) (*coretypes.ResultTx, error) {
 	slashDetailsResp, err := r.GetSlashDetails(slashHash)
 	if err != nil {
 		return nil, err
 	}
 
 	slashDetails := slashDetailsResp.SlashDetails
-
 	slasherAccount, err := r.io.GetCurrentAccount()
 	if err != nil {
 		return nil, err
 	}
 
-	var sigs []string
+	// Get all validators' public keys
+	var validatorsPublicKeys []cryptotypes.PubKey
+	for _, keyName := range validatorKeyNames {
+		key, err := r.io.GetClientCtx().Keyring.Key(keyName)
+		if err != nil {
+			return nil, err
+		}
+		pubKey, err := key.GetPubKey()
+		if err != nil {
+			return nil, err
+		}
+		validatorsPublicKeys = append(validatorsPublicKeys, pubKey)
+	}
+
+	// Calculate message hash
 	msgHashResp, err := r.CalculateSlashHash(
 		slasherAccount.GetAddress().String(),
 		slashmanager.CalculateSlashHashSlashDetails{
@@ -126,15 +139,18 @@ func (r *SlashManager) ExecuteSlashRequest(ctx context.Context, slashHash string
 		bytes[i] = byte(v)
 	}
 
+	var sigs []string
 	var encodedPublicKeys []string
-	for _, pubKey := range validatorsPublicKeys {
-		sig, err := r.io.GetSigner().Sign(bytes)
+
+	// Sign with each validator's key
+	for i, keyName := range validatorKeyNames {
+		sig, err := r.io.GetSigner().SignByKeyName(bytes, keyName)
 		if err != nil {
 			return nil, err
 		}
 
 		sigs = append(sigs, sig)
-		encodedPublicKeys = append(encodedPublicKeys, base64.StdEncoding.EncodeToString(pubKey.Bytes()))
+		encodedPublicKeys = append(encodedPublicKeys, base64.StdEncoding.EncodeToString(validatorsPublicKeys[i].Bytes()))
 	}
 
 	executeMsg := slashmanager.ExecuteMsg{
