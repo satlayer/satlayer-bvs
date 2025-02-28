@@ -10,14 +10,14 @@ use cosmwasm_std::Uint128;
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: String,
+    pub registry: String,
+
     pub strategy_manager: String,
     pub underlying_token: String,
-    pub pauser: String,
-    pub unpauser: String,
-    pub initial_paused_status: u8,
 }
 
 #[cw_serde]
+#[derive(bvs_registry::api::Display)]
 pub enum ExecuteMsg {
     Deposit {
         amount: Uint128,
@@ -33,14 +33,6 @@ pub enum ExecuteMsg {
     TransferOwnership {
         /// See `ownership::transfer_ownership` for more information on this field
         new_owner: String,
-    },
-    Pause {},
-    Unpause {},
-    SetPauser {
-        new_pauser: String,
-    },
-    SetUnpauser {
-        new_unpauser: String,
     },
 }
 

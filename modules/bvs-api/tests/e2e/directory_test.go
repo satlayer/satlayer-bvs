@@ -44,7 +44,7 @@ func (s *DirectoryTestSuite) SetupSuite() {
 	// Add Operator to DelegationManager
 	s.container.FundAddressUbbn("bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x", 1e8)
 
-	strategyManager := deployer.DeployStrategyManager(tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+	strategyManager := deployer.DeployStrategyManager(registry.Address, tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 	delegationManager := deployer.DeployDelegationManager(registry.Address, 100, []string{tAddr}, []int64{50})
 
 	s.contrAddr = deployer.DeployDirectory(registry.Address, delegationManager.Address).Address
@@ -65,6 +65,9 @@ func (s *DirectoryTestSuite) SetupSuite() {
 	)
 	s.Require().NoError(err, "register as operator")
 	s.Require().NotNil(txResp, "response nil")
+
+	s.contrAddr = deployer.DeployDirectory(registry.Address, delegationManager.Address).Address
+	s.delegationContrAddr = delegationManager.Address
 }
 
 func (s *DirectoryTestSuite) TearDownSuite() {

@@ -18,9 +18,6 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
-use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
-use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
-
 // TODO: why circular dependency here, remove?
 use bvs_base::strategy::{QueryMsg as StrategyManagerQueryMsg, StakerStrategySharesResponse};
 use bvs_library::ownership;
@@ -28,20 +25,20 @@ use bvs_library::ownership;
 const CONTRACT_NAME: &str = "BVS Strategy Base";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const PAUSED_DEPOSITS: u8 = 0;
-const PAUSED_WITHDRAWALS: u8 = 1;
-
 const SHARES_OFFSET: Uint128 = Uint128::new(1000000000000000000);
 const BALANCE_OFFSET: Uint128 = Uint128::new(1000000000000000000);
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    mut deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    let registry = deps.api.addr_validate(&msg.registry)?;
+    bvs_registry::api::set_registry_addr(deps.storage, &registry)?;
 
     let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::_set_owner(deps.storage, &owner)?;
@@ -55,14 +52,7 @@ pub fn instantiate(
         total_shares: Uint128::zero(),
     };
 
-    let pauser = deps.api.addr_validate(&msg.pauser)?;
-    let unpauser = deps.api.addr_validate(&msg.unpauser)?;
-
-    set_pauser(deps.branch(), pauser)?;
-    set_unpauser(deps.branch(), unpauser)?;
-
     STRATEGY_STATE.save(deps.storage, &state)?;
-    PAUSED_STATE.save(deps.storage, &msg.initial_paused_status)?;
 
     let underlying_token = msg.underlying_token.clone();
 
@@ -88,6 +78,8 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    bvs_registry::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
+
     match msg {
         ExecuteMsg::Deposit { amount } => deposit(deps, env, info, amount),
         ExecuteMsg::Withdraw {
@@ -109,24 +101,6 @@ pub fn execute(
             let new_owner = deps.api.addr_validate(&new_owner)?;
             ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
         }
-        ExecuteMsg::Pause {} => {
-            check_pauser(deps.as_ref(), info.clone())?;
-            pause(deps, &info).map_err(ContractError::Std)
-        }
-        ExecuteMsg::Unpause {} => {
-            check_unpauser(deps.as_ref(), info.clone())?;
-            unpause(deps, &info).map_err(ContractError::Std)
-        }
-        ExecuteMsg::SetPauser { new_pauser } => {
-            ownership::assert_owner(deps.as_ref(), &info)?;
-            let new_pauser_addr = deps.api.addr_validate(&new_pauser)?;
-            set_pauser(deps, new_pauser_addr).map_err(ContractError::Std)
-        }
-        ExecuteMsg::SetUnpauser { new_unpauser } => {
-            ownership::assert_owner(deps.as_ref(), &info)?;
-            let new_unpauser_addr = deps.api.addr_validate(&new_unpauser)?;
-            set_unpauser(deps, new_unpauser_addr).map_err(ContractError::Std)
-        }
     }
 }
 
@@ -136,8 +110,6 @@ pub fn deposit(
     info: MessageInfo,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_DEPOSITS)?;
-
     let mut state = STRATEGY_STATE.load(deps.storage)?;
 
     only_strategy_manager(deps.as_ref(), &info)?;
@@ -180,8 +152,6 @@ pub fn withdraw(
     token: Addr,
     amount_shares: Uint128,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_WITHDRAWALS)?;
-
     let mut state = STRATEGY_STATE.load(deps.storage)?;
 
     only_strategy_manager(deps.as_ref(), &info)?;
@@ -472,12 +442,11 @@ fn emit_exchange_rate(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bvs_base::roles::{PAUSER, UNPAUSER};
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
     use cosmwasm_std::{
-        attr, from_json, Binary, ContractResult, CosmosMsg, OwnedDeps, SystemError, SystemResult,
+        from_json, Binary, ContractResult, CosmosMsg, OwnedDeps, SystemError, SystemResult,
         WasmQuery,
     };
     use cw20::TokenInfoResponse;
@@ -488,21 +457,18 @@ mod tests {
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
 
-        let owner = deps.api.addr_make("owner").to_string();
+        let owner = deps.api.addr_make("owner");
 
-        let pauser = deps.api.addr_make("pauser").to_string();
-        let unpauser = deps.api.addr_make("unpauser").to_string();
+        let registry = deps.api.addr_make("registry");
 
         let strategy_manager = deps.api.addr_make("strategy_manager").to_string();
         let token = deps.api.addr_make("token").to_string();
 
         let msg = InstantiateMsg {
-            owner: owner.clone(),
+            owner: owner.to_string(),
+            registry: registry.to_string(),
             strategy_manager: strategy_manager.clone(),
             underlying_token: token.clone(),
-            pauser: pauser.clone(),
-            unpauser: unpauser.clone(),
-            initial_paused_status: 0,
         };
 
         deps.querier.update_wasm({
@@ -554,33 +520,25 @@ mod tests {
         OwnedDeps<MockStorage, MockApi, MockQuerier>,
         Env,
         MessageInfo,
-        MessageInfo,
-        MessageInfo,
         String,
         String,
     ) {
         let mut deps = mock_dependencies();
         let env = mock_env();
 
-        let owner = deps.api.addr_make("owner").to_string();
-        let owner_info = message_info(&Addr::unchecked(owner.clone()), &[]);
+        let owner = deps.api.addr_make("owner");
+        let owner_info = message_info(&owner, &[]);
 
-        let pauser = deps.api.addr_make("pauser").to_string();
-        let unpauser = deps.api.addr_make("unpauser").to_string();
-
-        let pauser_info = message_info(&Addr::unchecked(pauser.clone()), &[]);
-        let unpauser_info = message_info(&Addr::unchecked(unpauser.clone()), &[]);
+        let registry = deps.api.addr_make("registry");
 
         let strategy_manager = deps.api.addr_make("strategy_manager").to_string();
         let token = deps.api.addr_make("token").to_string();
 
         let msg = InstantiateMsg {
-            owner: owner.clone(),
+            owner: owner.to_string(),
+            registry: registry.to_string(),
             strategy_manager: strategy_manager.clone(),
             underlying_token: token.clone(),
-            pauser: pauser.clone(),
-            unpauser: unpauser.clone(),
-            initial_paused_status: 0,
         };
 
         deps.querier.update_wasm({
@@ -632,21 +590,12 @@ mod tests {
         });
 
         let _res = instantiate(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();
-        (
-            deps,
-            env,
-            owner_info,
-            pauser_info,
-            unpauser_info,
-            token,
-            strategy_manager,
-        )
+        (deps, env, owner_info, token, strategy_manager)
     }
 
     #[test]
     fn test_deposit() {
-        let (mut deps, env, _info, _pauser_info, _unpauser_info, token, strategy_manager) =
-            instantiate_contract();
+        let (mut deps, env, _info, token, strategy_manager) = instantiate_contract();
 
         let amount = Uint128::new(1_000);
 
@@ -684,8 +633,7 @@ mod tests {
 
     #[test]
     fn test_withdraw() {
-        let (mut deps, env, _info, _pauser_info, _unpauser_info, token, strategy_manager) =
-            instantiate_contract();
+        let (mut deps, env, _info, token, strategy_manager) = instantiate_contract();
 
         let deposit_amount = Uint128::new(1_000);
 
@@ -759,8 +707,7 @@ mod tests {
 
     #[test]
     fn test_only_strategy_manager() {
-        let (deps, _env, _info, _pauser_info, _unpauser_info, _token, strategy_manager) =
-            instantiate_contract();
+        let (deps, _env, _info, _token, strategy_manager) = instantiate_contract();
 
         let info_strategy_manager = message_info(&Addr::unchecked(strategy_manager.clone()), &[]);
 
@@ -774,8 +721,7 @@ mod tests {
 
     #[test]
     fn test_before_withdrawal() {
-        let (mut _deps, _env, _info, _pauser_info, _unpauser_info, token, strategy_manager) =
-            instantiate_contract();
+        let (mut _deps, _env, _info, token, strategy_manager) = instantiate_contract();
 
         let state = StrategyState {
             strategy_manager: Addr::unchecked(strategy_manager),
@@ -792,8 +738,7 @@ mod tests {
     }
     #[test]
     fn test_query_explanation() {
-        let (deps, env, _info, _pauser_info, _unpauser_info, _token, _strategy_manager) =
-            instantiate_contract();
+        let (deps, env, _info, _token, _strategy_manager) = instantiate_contract();
 
         let query_msg = QueryMsg::Explanation {};
 
@@ -810,8 +755,7 @@ mod tests {
 
     #[test]
     fn test_shares_to_underlying_view() {
-        let (mut deps, env, _info, _pauser_info, _unpauser_info, token, _strategy_manager) =
-            instantiate_contract();
+        let (mut deps, env, _info, token, _strategy_manager) = instantiate_contract();
 
         let contract_address = env.contract.address.clone();
 
@@ -862,8 +806,7 @@ mod tests {
 
     #[test]
     fn test_underlying_to_share_view() {
-        let (mut deps, env, _info, _pauser_info, _unpauser_info, token, _strategy_manager) =
-            instantiate_contract();
+        let (mut deps, env, _info, token, _strategy_manager) = instantiate_contract();
 
         let contract_address = env.contract.address.clone();
 
@@ -904,8 +847,7 @@ mod tests {
 
     #[test]
     fn test_shares() {
-        let (mut deps, env, _info, _pauser_info, _unpauser_info, token, strategy_manager) =
-            instantiate_contract();
+        let (mut deps, env, _info, token, strategy_manager) = instantiate_contract();
 
         let contract_address = env.contract.address.clone();
         deps.querier.update_wasm({
@@ -1000,8 +942,7 @@ mod tests {
 
     #[test]
     fn test_user_underlying_view() {
-        let (mut deps, env, _info, _pauser_info, _unpauser_info, token, strategy_manager) =
-            instantiate_contract();
+        let (mut deps, env, _info, token, strategy_manager) = instantiate_contract();
 
         let contract_address = env.contract.address.clone();
         let user_addr = deps.api.addr_make("user").to_string();
@@ -1066,8 +1007,7 @@ mod tests {
 
     #[test]
     fn test_query_strategy_manager() {
-        let (deps, env, _info, _pauser_info, _unpauser_info, _token, strategy_manager) =
-            instantiate_contract();
+        let (deps, env, _info, _token, strategy_manager) = instantiate_contract();
 
         let query_msg = QueryMsg::GetStrategyManager {};
         let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
@@ -1081,8 +1021,7 @@ mod tests {
 
     #[test]
     fn test_query_underlying_token() {
-        let (deps, env, _info, _pauser_info, _unpauser_info, token, _strategy_manager) =
-            instantiate_contract();
+        let (deps, env, _info, token, _strategy_manager) = instantiate_contract();
 
         let query_msg = QueryMsg::GetUnderlyingToken {};
 
@@ -1096,8 +1035,7 @@ mod tests {
 
     #[test]
     fn test_query_total_shares() {
-        let (deps, env, _info, _pauser_info, _unpauser_info, _token, _strategy_manager) =
-            instantiate_contract();
+        let (deps, env, _info, _token, _strategy_manager) = instantiate_contract();
 
         let query_msg = QueryMsg::GetTotalShares {};
         let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
@@ -1130,8 +1068,7 @@ mod tests {
 
     #[test]
     fn test_underlying_to_shares() {
-        let (mut deps, env, _info, _pauser_info, _unpauser_info, token, _strategy_manager) =
-            instantiate_contract();
+        let (mut deps, env, _info, token, _strategy_manager) = instantiate_contract();
 
         let contract_address: Addr = env.contract.address.clone();
 
@@ -1178,85 +1115,13 @@ mod tests {
     }
 
     #[test]
-    fn test_pause() {
-        let (mut deps, _env, _info, pauser_info, _unpauser_info, _token, _strategy_manager) =
-            instantiate_contract();
-
-        let res = pause(deps.as_mut(), &pauser_info.clone()).unwrap();
-
-        assert_eq!(res.attributes, vec![attr("action", "PAUSED")]);
-
-        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_state, 1);
-    }
-
-    #[test]
-    fn test_unpause() {
-        let (mut deps, _env, _info, _pauser_info, unpauser_info, _token, _strategy_manager) =
-            instantiate_contract();
-
-        let res = unpause(deps.as_mut(), &unpauser_info.clone()).unwrap();
-
-        assert_eq!(res.attributes, vec![attr("action", "UNPAUSED")]);
-
-        let paused_state = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_state, 0);
-    }
-
-    #[test]
-    fn test_set_pauser() {
-        let (mut deps, _env, _info, _pauser_info, _unpauser_info, _token, _strategy_manager) =
-            instantiate_contract();
-
-        let new_pauser = deps.api.addr_make("new_pauser");
-
-        let res = set_pauser(deps.as_mut(), new_pauser.clone()).unwrap();
-
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "method" && a.value == "set_pauser"));
-
-        let pauser = PAUSER.load(&deps.storage).unwrap();
-        assert_eq!(pauser, Addr::unchecked(new_pauser));
-    }
-
-    #[test]
-    fn test_set_unpauser() {
-        let (mut deps, _env, _info, _pauser_info, _unpauser_info, _token, _strategy_manager) =
-            instantiate_contract();
-
-        let new_unpauser = deps.api.addr_make("new_unpauser");
-
-        let res = set_unpauser(deps.as_mut(), new_unpauser.clone()).unwrap();
-
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "method" && a.value == "set_unpauser"));
-
-        let unpauser = UNPAUSER.load(&deps.storage).unwrap();
-        assert_eq!(unpauser, Addr::unchecked(new_unpauser));
-    }
-
-    #[test]
     fn test_set_strategy_manager() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, _token, _strategy_manager) =
-            instantiate_contract();
+        let (mut deps, env, info, _token, _strategy_manager) = instantiate_contract();
 
-        let new_strategy_manager = deps.api.addr_make("new_strategy_manager").to_string();
+        let new_strategy_manager = deps.api.addr_make("new_strategy_manager");
 
-        let set_strategy_manager_msg = ExecuteMsg::SetStrategyManager {
-            new_strategy_manager: new_strategy_manager.clone(),
-        };
-
-        let res = execute(
-            deps.as_mut(),
-            env.clone(),
-            info.clone(),
-            set_strategy_manager_msg,
-        )
-        .unwrap();
+        let res = set_strategy_manager(deps.as_mut(), info.clone(), new_strategy_manager.clone())
+            .unwrap();
 
         assert!(res.events.iter().any(|e| e.ty == "strategy_manager_set"));
 

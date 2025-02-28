@@ -159,38 +159,6 @@ func (r *StrategyBase) UnderlyingToken() (*wasmtypes.QuerySmartContractStateResp
 	return r.sendQuery(msg)
 }
 
-func (r *StrategyBase) Pause(ctx context.Context) (*coretypes.ResultTx, error) {
-	msg := strategybase.ExecuteMsg{
-		Pause: &strategybase.Pause{},
-	}
-
-	return r.execute(ctx, msg)
-}
-
-func (r *StrategyBase) Unpause(ctx context.Context) (*coretypes.ResultTx, error) {
-	msg := strategybase.ExecuteMsg{
-		Unpause: &strategybase.Unpause{},
-	}
-
-	return r.execute(ctx, msg)
-}
-
-func (r *StrategyBase) SetPauser(ctx context.Context, newPauser string) (*coretypes.ResultTx, error) {
-	msg := strategybase.ExecuteMsg{
-		SetPauser: &strategybase.SetPauser{NewPauser: newPauser},
-	}
-
-	return r.execute(ctx, msg)
-}
-
-func (r *StrategyBase) SetUnpauser(ctx context.Context, newUnpauser string) (*coretypes.ResultTx, error) {
-	msg := strategybase.ExecuteMsg{
-		SetUnpauser: &strategybase.SetUnpauser{NewUnpauser: newUnpauser},
-	}
-
-	return r.execute(ctx, msg)
-}
-
 func (r *StrategyBase) SetStrategyManager(ctx context.Context, newStrategyManager string) (*coretypes.ResultTx, error) {
 	msg := strategybase.ExecuteMsg{
 		SetStrategyManager: &strategybase.SetStrategyManager{NewStrategyManager: newStrategyManager},

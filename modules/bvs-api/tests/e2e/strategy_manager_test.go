@@ -45,10 +45,12 @@ func (suite *strategyManagerTestSuite) SetupSuite() {
 	suite.chainIO = suite.container.NewChainIO("../.babylon")
 
 	deployer := &bvs.Deployer{BabylonContainer: suite.container}
+	registry := deployer.DeployRegistry(nil)
+
 	tAddr := suite.container.GenerateAddress("test-address").String()
 
 	suite.container.ImportPrivKey("strategy-manager:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
-	strategyManager := deployer.DeployStrategyManager(tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+	strategyManager := deployer.DeployStrategyManager(registry.Address, tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 
 	suite.managerAddr = strategyManager.Address
 	suite.container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)

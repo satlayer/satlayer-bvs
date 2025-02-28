@@ -71,38 +71,6 @@ func strategyCmd() *cobra.Command {
 			strategy.DepositStrategy(args[0], args[1], args[2], amount)
 		},
 	}
-	pauseCmd := &cobra.Command{
-		Use:   "pause <userKeyName>",
-		Short: "To pause the strategy.",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			strategy.Pause(args[0])
-		},
-	}
-	unpauseCmd := &cobra.Command{
-		Use:   "unpause <userKeyName>",
-		Short: "To unpause the strategy.",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			strategy.Unpause(args[0])
-		},
-	}
-	setPauserCmd := &cobra.Command{
-		Use:   "set-pauser <userKeyName> <pauser>",
-		Short: "To set the pauser.",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			strategy.SetPauser(args[0], args[1])
-		},
-	}
-	setUnpauserCmd := &cobra.Command{
-		Use:   "set-unpauser <userKeyName> <unpauser>",
-		Short: "To set the unpauser.",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			strategy.SetUnpauser(args[0], args[1])
-		},
-	}
 	removeSharesCmd := &cobra.Command{
 		Use:   "remove-shares <userKeyName> <stakerAddress> <strategyAddress> <shareAmount>",
 		Short: "To remove the shares.",
@@ -216,10 +184,6 @@ func strategyCmd() *cobra.Command {
 	subCmd.AddCommand(getStrategyWhitelistCmd)
 	subCmd.AddCommand(getStrategyManagerStateCmd)
 	subCmd.AddCommand(getDelegationManagerCmd)
-	subCmd.AddCommand(pauseCmd)
-	subCmd.AddCommand(unpauseCmd)
-	subCmd.AddCommand(setUnpauserCmd)
-	subCmd.AddCommand(setPauserCmd)
 	subCmd.AddCommand(addStrategyToWhitelistCmd)
 	subCmd.AddCommand(depositStrategyCmd)
 	subCmd.AddCommand(removeSharesCmd)

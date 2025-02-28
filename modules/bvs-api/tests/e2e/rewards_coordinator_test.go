@@ -47,6 +47,7 @@ func (suite *rewardsTestSuite) SetupSuite() {
 	container.FundAddressUbbn(suite.caller, 1e8)
 	tAddr := container.GenerateAddress("test-address").String()
 	deployer := &bvs.Deployer{BabylonContainer: container}
+	registry := deployer.DeployRegistry(nil)
 
 	token := cw20.DeployCw20(container, cw20.InstantiateMsg{
 		Decimals: 6,
@@ -68,8 +69,7 @@ func (suite *rewardsTestSuite) SetupSuite() {
 	suite.Require().NoError(err)
 	blockTime := status.SyncInfo.LatestBlockTime.Second()
 
-	strategyManager := deployer.DeployStrategyManager(tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
-	registry := deployer.DeployRegistry(nil)
+	strategyManager := deployer.DeployStrategyManager(registry.Address, tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 	rewardsCoordinator := deployer.DeployRewardsCoordinator(
 		registry.Address,
 		// Test Vector taken from: bvs-rewards-coordinator/src/contract.rs
