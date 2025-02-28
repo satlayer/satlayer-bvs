@@ -131,14 +131,10 @@ pub fn execute(
             let addr = deps.api.addr_validate(&addr)?;
             auth::set_rewards_updater(deps, info, addr)
         }
-        ExecuteMsg::SetRouting {
-            delegation_manager,
-            strategy_manager,
-        } => {
-            let delegation_manager = deps.api.addr_validate(&delegation_manager)?;
+        ExecuteMsg::SetRouting { strategy_manager } => {
             let strategy_manager = deps.api.addr_validate(&strategy_manager)?;
 
-            auth::set_routing(deps, info, delegation_manager, strategy_manager)
+            auth::set_routing(deps, info, strategy_manager)
         }
     }
 }
@@ -1135,13 +1131,7 @@ mod tests {
         };
 
         let strategy_manager = deps.api.addr_make("strategy_manager");
-        auth::set_routing(
-            deps.as_mut(),
-            owner_info.clone(),
-            strategy_manager.clone(),
-            strategy_manager.clone(),
-        )
-        .unwrap();
+        auth::set_routing(deps.as_mut(), owner_info.clone(), strategy_manager.clone()).unwrap();
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart { contract_addr, msg }
                 if Addr::unchecked(contract_addr) == deps.api.addr_make("strategy_manager") =>
@@ -1260,16 +1250,9 @@ mod tests {
             token: deps.api.addr_make("token"),
         }];
 
-        let delegation = deps.api.addr_make("delegation");
         let strategy_manager = deps.api.addr_make("strategy_manager");
 
-        auth::set_routing(
-            deps.as_mut(),
-            owner_info.clone(),
-            delegation.clone(),
-            strategy_manager.clone(),
-        )
-        .unwrap();
+        auth::set_routing(deps.as_mut(), owner_info.clone(), strategy_manager.clone()).unwrap();
 
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart { contract_addr, msg }
@@ -1363,13 +1346,7 @@ mod tests {
         }];
 
         let strategy_manager = deps.api.addr_make("strategy_manager");
-        auth::set_routing(
-            deps.as_mut(),
-            owner_info.clone(),
-            strategy_manager.clone(),
-            strategy_manager.clone(),
-        )
-        .unwrap();
+        auth::set_routing(deps.as_mut(), owner_info.clone(), strategy_manager.clone()).unwrap();
 
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart { contract_addr, msg }

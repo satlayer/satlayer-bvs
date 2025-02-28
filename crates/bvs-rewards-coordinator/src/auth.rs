@@ -3,7 +3,6 @@ use bvs_library::ownership;
 use cosmwasm_std::{Addr, DepsMut, Event, MessageInfo, Response, Storage};
 use cw_storage_plus::Item;
 
-const DELEGATION_MANAGER: Item<Addr> = Item::new("delegation_manager");
 const STRATEGY_MANAGER: Item<Addr> = Item::new("strategy_manager");
 const REWARDS_UPDATER: Item<Addr> = Item::new("rewards_updater");
 
@@ -14,19 +13,14 @@ const REWARDS_UPDATER: Item<Addr> = Item::new("rewards_updater");
 pub fn set_routing(
     deps: DepsMut,
     info: MessageInfo,
-    delegation_manager: Addr,
     strategy_manager: Addr,
 ) -> Result<Response, ContractError> {
     ownership::assert_owner(deps.storage, &info)?;
 
-    DELEGATION_MANAGER.save(deps.storage, &delegation_manager)?;
     STRATEGY_MANAGER.save(deps.storage, &strategy_manager)?;
 
-    Ok(Response::new().add_event(
-        Event::new("SetRouting")
-            .add_attribute("delegation_manager", delegation_manager)
-            .add_attribute("strategy_manager", strategy_manager),
-    ))
+    Ok(Response::new()
+        .add_event(Event::new("SetRouting").add_attribute("strategy_manager", strategy_manager)))
 }
 
 pub fn get_strategy_manager(storage: &dyn Storage) -> Result<Addr, ContractError> {
@@ -79,22 +73,14 @@ mod tests {
 
         let owner_info = message_info(owner_addr, &[]);
 
-        let new_delegation_manager = deps.api.addr_make("new_delegation_manager");
         let new_strategy_manager = deps.api.addr_make("new_strategy_manager");
 
-        let res = set_routing(
-            deps.as_mut(),
-            owner_info,
-            new_delegation_manager.clone(),
-            new_strategy_manager.clone(),
-        )
-        .unwrap();
+        let res = set_routing(deps.as_mut(), owner_info, new_strategy_manager.clone()).unwrap();
 
         assert_eq!(
             res,
             Response::new().add_event(
                 Event::new("SetRouting")
-                    .add_attribute("delegation_manager", new_delegation_manager.to_string())
                     .add_attribute("strategy_manager", new_strategy_manager.to_string())
             )
         );
@@ -110,19 +96,13 @@ mod tests {
             ownership::set_owner(deps.as_mut().storage, owner_addr).unwrap();
         }
 
-        let new_delegation_manager = deps.api.addr_make("new_delegation_manager");
         let new_strategy_manager = deps.api.addr_make("new_strategy_manager");
 
         let sender = &deps.api.addr_make("random_sender");
         let sender_info = message_info(sender, &[]);
 
-        let err = set_routing(
-            deps.as_mut(),
-            sender_info,
-            new_delegation_manager.clone(),
-            new_strategy_manager.clone(),
-        )
-        .unwrap_err();
+        let err =
+            set_routing(deps.as_mut(), sender_info, new_strategy_manager.clone()).unwrap_err();
 
         assert_eq!(
             err.to_string(),

@@ -60,10 +60,8 @@ fn set_activation_delay_but_paused() {
 fn set_routing() {
     let (mut app, rewards, registry) = instantiate();
 
-    let delegation_manager = app.api().addr_make("delegation_manager");
     let strategy_manager = app.api().addr_make("strategy_manager");
     let msg = ExecuteMsg::SetRouting {
-        delegation_manager: delegation_manager.to_string(),
         strategy_manager: strategy_manager.to_string(),
     };
 
@@ -75,10 +73,8 @@ fn set_routing() {
 fn set_routing_not_owner() {
     let (mut app, rewards, _registry) = instantiate();
 
-    let delegation_manager = app.api().addr_make("delegation_manager");
     let strategy_manager = app.api().addr_make("strategy_manager");
     let msg = ExecuteMsg::SetRouting {
-        delegation_manager: delegation_manager.to_string(),
         strategy_manager: strategy_manager.to_string(),
     };
 
