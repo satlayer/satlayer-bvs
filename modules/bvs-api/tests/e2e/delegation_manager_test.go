@@ -20,12 +20,13 @@ import (
 
 type delegationTestSuite struct {
 	suite.Suite
-	chainIO      io.ChainIO
-	contrAddr    string
-	strategies   []string
-	tokenAddr    string
-	slashManager string
-	container    *babylond.BabylonContainer
+	chainIO         io.ChainIO
+	contrAddr       string
+	strategies      []string
+	tokenAddr       string
+	slashManager    string
+	strategyManager string
+	container       *babylond.BabylonContainer
 }
 
 func (suite *delegationTestSuite) SetupSuite() {
@@ -70,11 +71,9 @@ func (suite *delegationTestSuite) SetupSuite() {
 	container.ImportPrivKey("delegation-manager:unpauser", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
 
 	strategyManager := deployer.DeployStrategyManager(tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
-	delegationManager := deployer.DeployDelegationManager(
-		registry.Address,
-		tAddr, strategyManager.Address, 100, []string{tAddr}, []int64{50},
-	)
+	delegationManager := deployer.DeployDelegationManager(registry.Address, 100, []string{tAddr}, []int64{50})
 
+	suite.strategyManager = strategyManager.Address
 	suite.contrAddr = delegationManager.Address
 	suite.strategies = []string{
 		// Replace with actual strategy addresses
@@ -84,14 +83,23 @@ func (suite *delegationTestSuite) SetupSuite() {
 	slashManager := deployer.DeploySlashManager(tAddr, tAddr)
 	suite.slashManager = slashManager.Address
 
-	chainIO, err := suite.chainIO.SetupKeyring("operator1", "test")
-	delegationApi := api.NewDelegationManager(chainIO, delegationManager.Address)
+	// TODO(fuxingloh):
+	// tAddr, strategyManager.Address,
+	chainIO, err := suite.chainIO.SetupKeyring("caller", "test")
 	suite.Require().NoError(err, "setup keyring")
 
-	ctx := context.Background()
-	txResp, err := delegationApi.RegisterAsOperator(ctx, "", 0)
+	delegationApi := api.NewDelegationManager(chainIO, delegationManager.Address)
+	txResp, err := delegationApi.SetRouting(context.Background(), suite.strategyManager, suite.slashManager)
+	suite.Require().NoError(err)
+	suite.Require().Equal(uint32(0), txResp.TxResult.Code)
+
+	chainIO, err = suite.chainIO.SetupKeyring("operator1", "test")
+	delegationApi = api.NewDelegationManager(chainIO, delegationManager.Address)
+	suite.Require().NoError(err, "setup keyring")
+	txResp, err = delegationApi.RegisterAsOperator(context.Background(), "", 0)
 	suite.Require().NoError(err, "register as operator")
 	suite.Require().NotNil(txResp, "tx resp is nil")
+
 }
 
 func (suite *delegationTestSuite) TearDownSuite() {
@@ -325,12 +333,13 @@ func (suite *delegationTestSuite) Test_DelegateTransferOwnership() {
 	t.Logf("recoverResp: %v", recoverResp)
 }
 
-func (suite *delegationTestSuite) Test_SetSlashManager() {
+func (suite *delegationTestSuite) Test_SetRouting() {
 	t := suite.T()
-	keyName := "caller"
-	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
+	chainIO, err := suite.chainIO.SetupKeyring("caller", "test")
 	assert.NoError(t, err)
-	txResp, err := api.NewDelegationManager(chainIO, suite.contrAddr).SetSlashManager(context.Background(), suite.slashManager)
+
+	delegationApi := api.NewDelegationManager(chainIO, suite.contrAddr)
+	txResp, err := delegationApi.SetRouting(context.Background(), suite.strategyManager, suite.slashManager)
 	assert.NoError(t, err)
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)

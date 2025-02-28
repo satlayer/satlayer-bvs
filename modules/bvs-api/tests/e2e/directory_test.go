@@ -45,10 +45,7 @@ func (s *DirectoryTestSuite) SetupSuite() {
 
 	strategyManager := deployer.DeployStrategyManager(tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 
-	delegationManager := deployer.DeployDelegationManager(
-		registry.Address,
-		tAddr, strategyManager.Address, 100, []string{tAddr}, []int64{50},
-	)
+	delegationManager := deployer.DeployDelegationManager(registry.Address, 100, []string{tAddr}, []int64{50})
 
 	chainIO, err := s.chainIO.SetupKeyring("operator1", "test")
 	delegationApi := api.NewDelegationManager(chainIO, delegationManager.Address)
@@ -64,6 +61,10 @@ func (s *DirectoryTestSuite) SetupSuite() {
 
 	s.contrAddr = deployer.DeployDirectory(registry.Address, delegationManager.Address).Address
 	s.delegationContrAddr = delegationManager.Address
+
+	txResp, err = delegationApi.SetRouting(context.Background(), strategyManager.Address, tAddr)
+	s.Require().NoError(err)
+	s.Require().Equal(0, txResp.TxResult.Code)
 }
 
 func (s *DirectoryTestSuite) TearDownSuite() {

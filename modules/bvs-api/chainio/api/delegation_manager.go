@@ -277,15 +277,18 @@ func (r *DelegationManager) TransferOwnership(ctx context.Context, newOwner stri
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *DelegationManager) SetSlashManager(ctx context.Context, newSlashManager string) (*coretypes.ResultTx, error) {
+func (r *DelegationManager) SetRouting(ctx context.Context, strategyManager, slashManager string) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
-		SetSlashManager: &delegationmanager.SetSlashManager{NewSlashManager: newSlashManager},
+		SetRouting: &delegationmanager.SetRouting{
+			StrategyManager: strategyManager,
+			SlashManager:    slashManager,
+		},
 	}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		return nil, err
 	}
-	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "SetSlashManager")
+	executeOptions := r.newExecuteOptions(r.ContractAddr, executeMsgBytes, "SetRouting")
 
 	return r.io.SendTransaction(ctx, executeOptions)
 }

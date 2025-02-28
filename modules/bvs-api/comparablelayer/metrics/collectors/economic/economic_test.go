@@ -25,8 +25,7 @@ func TestEconomicCollector(t *testing.T) {
 
 	tAddr := container.GenerateAddress("test-address").String()
 	delegationManager := deployer.DeployDelegationManager(
-		registry.Address,
-		tAddr, tAddr, 100, []string{tAddr}, []int64{50},
+		registry.Address, 100, []string{tAddr}, []int64{50},
 	)
 
 	delegation := api.NewDelegationManager(chainIO, delegationManager.Address)
