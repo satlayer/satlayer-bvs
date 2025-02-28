@@ -37,7 +37,7 @@ func (suite *slashManagerTestSuite) SetupSuite() {
 	tAddr := container.GenerateAddress("test-address").String()
 	deployer := &bvs.Deployer{BabylonContainer: container}
 	registry := deployer.DeployRegistry(nil)
-	slashManager := deployer.DeploySlashManager(registry.Address, tAddr, tAddr)
+	slashManager := deployer.DeploySlashManager(registry.Address)
 	suite.contrAddr = slashManager.Address
 	suite.strategyManagerContrAddr = tAddr
 }
@@ -102,23 +102,6 @@ func (suite *slashManagerTestSuite) Test_SetSlasher() {
 // 	t.Logf("txResp:%+v", txResp)
 // }
 
-func (suite *slashManagerTestSuite) Test_SetDelegationManager() {
-	t := suite.T()
-	keyName := "caller"
-	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
-	assert.NoError(t, err)
-
-	slashApi := api.NewSlashManager(chainIO)
-	slashApi.BindClient(suite.contrAddr)
-	slashApi.WithGasLimit(300000)
-
-	newDelegationManager := "bbn1q7v924jjct6xrc89n05473juncg3snjwuxdh62xs2ua044a7tp8sydugr4"
-	txResp, err := slashApi.SetDelegationManager(context.Background(), newDelegationManager)
-	assert.NoError(t, err, "SetDelegationManager failed")
-	assert.NotNil(t, txResp, "response nil")
-	t.Logf("txResp:%+v", txResp)
-}
-
 func (suite *slashManagerTestSuite) Test_SetSlasherValidator() {
 	t := suite.T()
 	keyName := "caller"
@@ -138,22 +121,6 @@ func (suite *slashManagerTestSuite) Test_SetSlasherValidator() {
 	values := []bool{true}
 	txResp, err := slashApi.SetSlasherValidator(context.Background(), validators, values)
 	assert.NoError(t, err, "SetSlasherValidator failed")
-	assert.NotNil(t, txResp, "response nil")
-	t.Logf("txResp:%+v", txResp)
-}
-
-func (suite *slashManagerTestSuite) Test_SetStrategyManager() {
-	t := suite.T()
-	keyName := "caller"
-	chainIO, err := suite.chainIO.SetupKeyring(keyName, "test")
-	assert.NoError(t, err)
-
-	slashApi := api.NewSlashManager(chainIO)
-	slashApi.BindClient(suite.contrAddr)
-	slashApi.WithGasLimit(300000)
-
-	txResp, err := slashApi.SetStrategyManager(context.Background(), suite.strategyManagerContrAddr)
-	assert.NoError(t, err, "SetStrategyManager failed")
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
 }

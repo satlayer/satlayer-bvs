@@ -9,9 +9,6 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 pub struct InstantiateMsg {
     pub owner: String,
     pub registry: String,
-
-    pub delegation_manager: String,
-    pub strategy_manager: String,
 }
 
 #[cw_serde]
@@ -40,15 +37,13 @@ pub enum ExecuteMsg {
         validators: Vec<String>,
         values: Vec<bool>,
     },
-    SetDelegationManager {
-        new_delegation_manager: String,
-    },
-    SetStrategyManager {
-        new_strategy_manager: String,
-    },
     TransferOwnership {
         /// See `ownership::transfer_ownership` for more information on this field
         new_owner: String,
+    },
+    SetRouting {
+        delegation_manager: String,
+        strategy_manager: String,
     },
 }
 

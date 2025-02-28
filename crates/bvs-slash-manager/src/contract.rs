@@ -2,16 +2,14 @@
 use cosmwasm_std::entry_point;
 
 use crate::{
+    auth,
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
         CalculateSlashHashResponse, MinimalSlashSignatureResponse, SlashDetailsResponse,
         ValidatorResponse,
     },
-    state::{
-        DELEGATION_MANAGER, MINIMAL_SLASH_SIGNATURE, SLASHER, SLASH_DETAILS, STRATEGY_MANAGER,
-        VALIDATOR,
-    },
+    state::{MINIMAL_SLASH_SIGNATURE, SLASHER, SLASH_DETAILS, VALIDATOR},
     utils::{calculate_slash_hash, recover, validate_addresses, SlashDetails},
 };
 
@@ -46,16 +44,9 @@ pub fn instantiate(
     let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::_set_owner(deps.storage, &owner)?;
 
-    let delegation_manager = deps.api.addr_validate(&msg.delegation_manager)?;
-    let strategy_manager = deps.api.addr_validate(&msg.strategy_manager)?;
-
-    DELEGATION_MANAGER.save(deps.storage, &delegation_manager)?;
-    STRATEGY_MANAGER.save(deps.storage, &strategy_manager)?;
-
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("owner", owner.to_string())
-        .add_attribute("delegation_manager", delegation_manager.to_string()))
+        .add_attribute("owner", owner.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -139,21 +130,18 @@ pub fn execute(
             let validators = validate_addresses(deps.api, &validators)?;
             set_slash_validator(deps, info, validators, values)
         }
-        ExecuteMsg::SetDelegationManager {
-            new_delegation_manager,
-        } => {
-            let new_delegation_manager_addr = deps.api.addr_validate(&new_delegation_manager)?;
-            set_delegation_manager(deps, info, new_delegation_manager_addr)
-        }
-        ExecuteMsg::SetStrategyManager {
-            new_strategy_manager,
-        } => {
-            let new_strategy_manager_addr = deps.api.addr_validate(&new_strategy_manager)?;
-            set_strategy_manager(deps, info, new_strategy_manager_addr)
-        }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
             ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
+        }
+        ExecuteMsg::SetRouting {
+            delegation_manager,
+            strategy_manager,
+        } => {
+            let delegation_manager = deps.api.addr_validate(&delegation_manager)?;
+            let strategy_manager = deps.api.addr_validate(&strategy_manager)?;
+
+            auth::set_routing(deps, info, delegation_manager, strategy_manager)
         }
     }
 }
@@ -175,7 +163,7 @@ pub fn submit_slash_request(
         return Err(ContractError::InvalidSlashStatus {});
     }
 
-    let delegation_manager = DELEGATION_MANAGER.load(deps.storage)?;
+    let delegation_manager = auth::get_delegation_manager(deps.storage)?;
 
     let is_operator_response: OperatorResponse = deps.querier.query_wasm_smart(
         delegation_manager.clone(),
@@ -251,6 +239,8 @@ pub fn execute_slash_request(
     validators_public_keys: Vec<Binary>,
 ) -> Result<Response, ContractError> {
     only_slasher(deps.as_ref(), &info)?;
+    let delegation_manager = auth::get_delegation_manager(deps.storage)?;
+    let strategy_manager = auth::get_strategy_manager(deps.storage)?;
 
     let mut slash_details = SLASH_DETAILS
         .may_load(deps.storage, slash_hash.clone())?
@@ -279,9 +269,10 @@ pub fn execute_slash_request(
     let query_msg = DelegationManagerQueryMsg::GetOperatorStakers {
         operator: slash_details.operator.to_string(),
     };
+
     let stakers_response: OperatorStakersResponse = deps
         .querier
-        .query_wasm_smart(DELEGATION_MANAGER.load(deps.storage)?, &query_msg)?;
+        .query_wasm_smart(delegation_manager.to_string(), &query_msg)?;
 
     if stakers_response.stakers_and_shares.is_empty() {
         return Err(ContractError::NoStakersUnderOperator {});
@@ -338,7 +329,7 @@ pub fn execute_slash_request(
                 shares: slash_in_strat,
             };
             messages.push(SubMsg::new(WasmMsg::Execute {
-                contract_addr: DELEGATION_MANAGER.load(deps.storage)?.to_string(),
+                contract_addr: delegation_manager.to_string(),
                 msg: to_json_binary(&dec_msg)?,
                 funds: vec![],
             }));
@@ -349,7 +340,7 @@ pub fn execute_slash_request(
                 shares: slash_in_strat,
             };
             messages.push(SubMsg::new(WasmMsg::Execute {
-                contract_addr: STRATEGY_MANAGER.load(deps.storage)?.to_string(),
+                contract_addr: strategy_manager.to_string(),
                 msg: to_json_binary(&remove_msg)?,
                 funds: vec![],
             }));
@@ -465,40 +456,6 @@ pub fn set_slash_validator(
     Ok(response)
 }
 
-pub fn set_delegation_manager(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_delegation_manager: Addr,
-) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
-
-    DELEGATION_MANAGER.save(deps.storage, &new_delegation_manager.clone())?;
-
-    let event = Event::new("delegation_manager_set")
-        .add_attribute("method", "set_delegation_manager")
-        .add_attribute("new_delegation_manager", new_delegation_manager.to_string())
-        .add_attribute("sender", info.sender.to_string());
-
-    Ok(Response::new().add_event(event))
-}
-
-pub fn set_strategy_manager(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_strategy_manager: Addr,
-) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
-
-    STRATEGY_MANAGER.save(deps.storage, &new_strategy_manager)?;
-
-    let event = Event::new("strategy_manager_set")
-        .add_attribute("method", "set_strategy_manager")
-        .add_attribute("new_strategy_manager", new_strategy_manager.to_string())
-        .add_attribute("sender", info.sender.to_string());
-
-    Ok(Response::new().add_event(event))
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -611,6 +568,7 @@ mod tests {
     use ripemd::Ripemd160;
     use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
     use sha2::{Digest, Sha256};
+
     #[test]
     fn test_instantiate() {
         let mut deps = mock_dependencies();
@@ -618,7 +576,6 @@ mod tests {
 
         let initial_owner = deps.api.addr_make("creator");
         let registry = deps.api.addr_make("registry");
-        let delegation_manager = deps.api.addr_make("delegation_manager");
         let strategy_manager = deps.api.addr_make("strategy_manager");
 
         let info = message_info(&initial_owner, &[]);
@@ -626,8 +583,6 @@ mod tests {
         let msg = InstantiateMsg {
             owner: initial_owner.to_string(),
             registry: registry.to_string(),
-            delegation_manager: delegation_manager.to_string(),
-            strategy_manager: strategy_manager.to_string(),
         };
 
         let response = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
@@ -637,23 +592,17 @@ mod tests {
             vec![
                 attr("method", "instantiate"),
                 attr("owner", info.sender.to_string()),
-                attr("delegation_manager", delegation_manager.to_string()),
             ]
         );
 
         let owner = ownership::OWNER.load(&deps.storage).unwrap();
         assert_eq!(owner, deps.api.addr_make("creator"));
 
-        let delegation_manager = DELEGATION_MANAGER.load(&deps.storage).unwrap();
-        assert_eq!(delegation_manager, deps.api.addr_make("delegation_manager"));
-
         let invalid_info = message_info(&deps.api.addr_make("invalid_creator"), &[]);
 
         let invalid_msg = InstantiateMsg {
             owner: "invalid_address".to_string(),
             registry: registry.to_string(),
-            delegation_manager: delegation_manager.to_string(),
-            strategy_manager: strategy_manager.to_string(),
         };
 
         let result = instantiate(
@@ -669,63 +618,37 @@ mod tests {
         OwnedDeps<MockStorage, MockApi, MockQuerier>,
         Env,
         MessageInfo,
-        Addr,
-        Addr,
     ) {
         let mut deps = mock_dependencies();
         let env = mock_env();
 
         let initial_owner = deps.api.addr_make("creator");
         let registry = deps.api.addr_make("registry");
-        let delegation_manager = deps.api.addr_make("delegation_manager");
-        let strategy_manager = deps.api.addr_make("strategy_manager");
         let info = message_info(&initial_owner, &[]);
 
         let msg = InstantiateMsg {
             owner: initial_owner.to_string(),
             registry: registry.to_string(),
-            delegation_manager: delegation_manager.to_string(),
-            strategy_manager: strategy_manager.to_string(),
         };
 
         instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
-        (deps, env, info, delegation_manager, initial_owner)
-    }
+        let strategy_manager = deps.api.addr_make("strategy_manager");
+        let delegation_manager = deps.api.addr_make("delegation_manager");
+        auth::set_routing(
+            deps.as_mut(),
+            info.clone(),
+            delegation_manager.clone(),
+            strategy_manager.clone(),
+        )
+        .unwrap();
 
-    #[test]
-    fn test_set_delegation_manager() {
-        let (mut deps, _env, info, _delegation_manager, _owner) = instantiate_contract();
-
-        let new_delegation_manager = deps.api.addr_make("new_delegation_manager");
-
-        let response =
-            set_delegation_manager(deps.as_mut(), info.clone(), new_delegation_manager.clone())
-                .unwrap();
-
-        assert_eq!(response.events.len(), 1);
-        let event = &response.events[0];
-
-        assert_eq!(event.ty, "delegation_manager_set");
-
-        assert_eq!(event.attributes.len(), 3);
-
-        assert_eq!(event.attributes[0].key, "method");
-        assert_eq!(event.attributes[0].value, "set_delegation_manager");
-
-        assert_eq!(event.attributes[1].key, "new_delegation_manager");
-        assert_eq!(
-            event.attributes[1].value,
-            new_delegation_manager.to_string()
-        );
-
-        let delegation_manager = DELEGATION_MANAGER.load(&deps.storage).unwrap();
-        assert_eq!(delegation_manager, new_delegation_manager);
+        (deps, env, info)
     }
 
     #[test]
     fn test_set_slasher() {
-        let (mut deps, _env, info, _delegation_manager, _owner) = instantiate_contract();
+        let (mut deps, _env, info) = instantiate_contract();
 
         let new_slasher = deps.api.addr_make("new_slasher");
 
@@ -753,7 +676,7 @@ mod tests {
 
     #[test]
     fn test_set_minimal_slash_signature() {
-        let (mut deps, _env, _info, _delegation_manager, _owner) = instantiate_contract();
+        let (mut deps, _env, _info) = instantiate_contract();
 
         let slasher_addr = deps.api.addr_make("slasher");
         SLASHER
@@ -784,7 +707,7 @@ mod tests {
 
     #[test]
     fn test_set_slash_validator() {
-        let (mut deps, _, _info, _delegation_manager, _owner) = instantiate_contract();
+        let (mut deps, _, _info) = instantiate_contract();
 
         let slasher_addr = deps.api.addr_make("slasher");
         SLASHER
@@ -836,7 +759,7 @@ mod tests {
 
     #[test]
     fn test_is_validator() {
-        let (mut deps, _env, _info, _delegation_manager, _initial_owner) = instantiate_contract();
+        let (mut deps, _env, _info) = instantiate_contract();
 
         let validator_addr = deps.api.addr_make("validator");
 
@@ -857,7 +780,7 @@ mod tests {
 
     #[test]
     fn test_query_calculate_slash_hash() {
-        let (deps, env, _info, _delegation_manager, _initial_owner) = instantiate_contract();
+        let (deps, env, _info) = instantiate_contract();
 
         let slasher_addr = deps.api.addr_make("slasher");
         let operator_addr = deps.api.addr_make("operator");
@@ -890,7 +813,7 @@ mod tests {
 
     #[test]
     fn test_get_minimal_slash_signature() {
-        let (mut deps, _env, _info, _delegation_manager, _initial_owner) = instantiate_contract();
+        let (mut deps, _env, _info) = instantiate_contract();
 
         let minimal_signature: u64 = 10;
         MINIMAL_SLASH_SIGNATURE
@@ -913,7 +836,8 @@ mod tests {
 
     #[test]
     fn test_submit_slash_request() {
-        let (mut deps, env, _info, delegation_manager, _owner) = instantiate_contract();
+        let (mut deps, env, _info) = instantiate_contract();
+        let delegation_manager = deps.api.addr_make("delegation_manager");
 
         let slasher_addr = deps.api.addr_make("slasher");
         let operator_addr = deps.api.addr_make("operator");
@@ -1042,7 +966,8 @@ mod tests {
 
     #[test]
     fn test_cancel_slash_request() {
-        let (mut deps, env, _info, delegation_manager, _owner) = instantiate_contract();
+        let (mut deps, env, _info) = instantiate_contract();
+        let delegation_manager = deps.api.addr_make("delegation_manager");
 
         let slasher_addr = deps.api.addr_make("slasher");
         let operator_addr = deps.api.addr_make("operator");
@@ -1155,11 +1080,8 @@ mod tests {
 
     #[test]
     fn test_execute_slash_request() {
-        let (mut deps, env, _info, delegation_manager, _owner) = instantiate_contract();
-
-        STRATEGY_MANAGER
-            .save(&mut deps.storage, &deps.api.addr_make("strategy_manager"))
-            .unwrap();
+        let (mut deps, env, sender) = instantiate_contract();
+        let delegation_manager = deps.api.addr_make("delegation_manager");
 
         let slasher_addr = deps.api.addr_make("slasher");
         let operator_addr = deps.api.addr_make("operator");
@@ -1315,38 +1237,13 @@ mod tests {
     }
 
     #[test]
-    fn test_set_strategy_manager() {
-        let (mut deps, _env, info, _delegation_manager, _owner) = instantiate_contract();
-
-        let new_strategy_manager = deps.api.addr_make("new_strategy_manager");
-
-        let res = set_strategy_manager(deps.as_mut(), info.clone(), new_strategy_manager.clone())
-            .unwrap();
-
-        let strategy_manager_addr = STRATEGY_MANAGER.load(&deps.storage).unwrap();
-        assert_eq!(
-            strategy_manager_addr,
-            Addr::unchecked(new_strategy_manager.clone())
-        );
-
-        let event = res.events[0].clone();
-        assert_eq!(event.ty, "strategy_manager_set");
-        assert_eq!(event.attributes[0].key, "method");
-        assert_eq!(event.attributes[0].value, "set_strategy_manager");
-        assert_eq!(event.attributes[1].key, "new_strategy_manager");
-        assert_eq!(event.attributes[1].value, new_strategy_manager.to_string());
-    }
-
-    #[test]
     fn test_slash_share_calculation() {
-        let (mut deps, env, _info, delegation_manager, _owner) = instantiate_contract();
+        let (mut deps, env, _) = instantiate_contract();
+        let delegation_manager = deps.api.addr_make("delegation_manager");
 
         let slasher_addr = deps.api.addr_make("slasher");
         SLASHER
             .save(&mut deps.storage, slasher_addr.clone(), &true)
-            .unwrap();
-        STRATEGY_MANAGER
-            .save(&mut deps.storage, &deps.api.addr_make("strategy_manager"))
             .unwrap();
 
         MINIMAL_SLASH_SIGNATURE.save(&mut deps.storage, &1).unwrap();
@@ -1522,14 +1419,12 @@ mod tests {
 
     #[test]
     fn test_slash_share_calculation_edge_cases() {
-        let (mut deps, env, _info, delegation_manager, _owner) = instantiate_contract();
+        let (mut deps, env, _) = instantiate_contract();
+        let delegation_manager = deps.api.addr_make("delegation_manager");
 
         let slasher_addr = deps.api.addr_make("slasher");
         SLASHER
             .save(&mut deps.storage, slasher_addr.clone(), &true)
-            .unwrap();
-        STRATEGY_MANAGER
-            .save(&mut deps.storage, &deps.api.addr_make("strategy_manager"))
             .unwrap();
 
         MINIMAL_SLASH_SIGNATURE.save(&mut deps.storage, &1).unwrap();
