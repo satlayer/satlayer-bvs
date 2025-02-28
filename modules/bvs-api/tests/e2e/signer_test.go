@@ -45,12 +45,11 @@ func (suite *signerTestSuite) SetupSuite() {
 	container.ImportPrivKey("directory:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
 
-	tAddr := container.GenerateAddress("test-address").String()
 	deployer := bvs.Deployer{BabylonContainer: container}
 	registry := deployer.DeployRegistry(nil)
 
 	suite.chaiID = container.ChainId
-	suite.bvsDirContrAddr = deployer.DeployDirectory(registry.Address, tAddr).Address
+	suite.bvsDirContrAddr = deployer.DeployDirectory(registry.Address).Address
 }
 
 func (suite *signerTestSuite) TearDownSuite() {

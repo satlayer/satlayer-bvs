@@ -47,7 +47,7 @@ func (s *DirectoryTestSuite) SetupSuite() {
 	strategyManager := deployer.DeployStrategyManager(registry.Address, tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 	delegationManager := deployer.DeployDelegationManager(registry.Address, 100, []string{tAddr}, []int64{50})
 
-	s.contrAddr = deployer.DeployDirectory(registry.Address, delegationManager.Address).Address
+	s.contrAddr = deployer.DeployDirectory(registry.Address).Address
 	s.delegationContrAddr = delegationManager.Address
 
 	chainIO, err := s.chainIO.SetupKeyring("caller", "test")
@@ -66,8 +66,11 @@ func (s *DirectoryTestSuite) SetupSuite() {
 	s.Require().NoError(err, "register as operator")
 	s.Require().NotNil(txResp, "response nil")
 
-	s.contrAddr = deployer.DeployDirectory(registry.Address, delegationManager.Address).Address
-	s.delegationContrAddr = delegationManager.Address
+	chainIO, err = s.chainIO.SetupKeyring("caller", "test")
+	s.Require().NoError(err)
+	txResp, err = api.NewDirectory(chainIO, s.contrAddr).SetRouting(context.Background(), s.delegationContrAddr)
+	s.Require().NoError(err)
+	s.Require().Equal(uint32(0), txResp.TxResult.Code)
 }
 
 func (s *DirectoryTestSuite) TearDownSuite() {
@@ -174,12 +177,11 @@ func (s *DirectoryTestSuite) Test_TransferOwnership() {
 	t.Logf("recoverResp:%+v", recoverResp)
 }
 
-func (s *DirectoryTestSuite) Test_SetDelegationManager() {
+func (s *DirectoryTestSuite) Test_SetRouting() {
 	t := s.T()
-	keyName := "caller"
-	chainIO, err := s.chainIO.SetupKeyring(keyName, "test")
+	chainIO, err := s.chainIO.SetupKeyring("caller", "test")
 	assert.NoError(t, err)
-	txResp, err := api.NewDirectory(chainIO, s.contrAddr).SetDelegationManager(context.Background(), s.delegationContrAddr)
+	txResp, err := api.NewDirectory(chainIO, s.contrAddr).SetRouting(context.Background(), s.delegationContrAddr)
 	assert.NoError(t, err)
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
@@ -232,18 +234,6 @@ func (s *DirectoryTestSuite) Test_IsSaltSpent() {
 	assert.NoError(t, err, "TestIsSaltSpent")
 	assert.NotNil(t, txResp, "response nil")
 	t.Logf("txResp:%+v", txResp)
-}
-
-func (s *DirectoryTestSuite) Test_DelegationManager() {
-	t := s.T()
-	keyName := "caller"
-	chainIO, err := s.chainIO.SetupKeyring(keyName, "test")
-	assert.NoError(t, err)
-	txResp, err := api.NewDirectory(chainIO, s.contrAddr).DelegationManager()
-	assert.NoError(t, err, "get delegation manager")
-	assert.NotNil(t, txResp, "response nil")
-	t.Logf("txResp:%+v", txResp)
-
 }
 
 func (s *DirectoryTestSuite) Test_OperatorBvsRegistrationTypeHash() {

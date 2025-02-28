@@ -112,12 +112,10 @@ func (d *Deployer) DeployDelegationManager(
 
 func (d *Deployer) DeployDirectory(
 	registry string,
-	delegationManager string,
 ) *Contract[directory.InstantiateMsg] {
 	initMsg := directory.InstantiateMsg{
-		Owner:             d.GenerateAddress("directory:initial_owner").String(),
-		Registry:          registry,
-		DelegationManager: delegationManager,
+		Owner:    d.GenerateAddress("directory:initial_owner").String(),
+		Registry: registry,
 	}
 
 	return deployCrate(d, "bvs-directory", initMsg, "BVS Directory")

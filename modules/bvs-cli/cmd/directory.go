@@ -101,15 +101,6 @@ func directoryCmd() *cobra.Command {
 		},
 	}
 
-	getDelegationManagerCmd := &cobra.Command{
-		Use:   "get-delegation-manager",
-		Short: "To get the delegation manager details from the directory contract.",
-		Args:  cobra.NoArgs,
-		Run: func(cmd *cobra.Command, args []string) {
-			directory.DelegationManager()
-		},
-	}
-
 	getOperatorRegTypeHashCmd := &cobra.Command{
 		Use:   "get-operator-reg-type-hash",
 		Short: "To get the operator registration type hash from the directory contract.",
@@ -155,7 +146,6 @@ func directoryCmd() *cobra.Command {
 	subCmd.AddCommand(getOperatorCmd)
 	subCmd.AddCommand(calcDigesthashCmd)
 	subCmd.AddCommand(isSaltSpentCmd)
-	subCmd.AddCommand(getDelegationManagerCmd)
 	subCmd.AddCommand(getOperatorRegTypeHashCmd)
 	subCmd.AddCommand(getDomainTypeHashCmd)
 	subCmd.AddCommand(getDomainNameCmd)

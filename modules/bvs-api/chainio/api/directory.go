@@ -149,8 +149,12 @@ func (r *Directory) TransferOwnership(ctx context.Context, newOwner string) (*co
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *Directory) SetDelegationManager(ctx context.Context, delegationManager string) (*coretypes.ResultTx, error) {
-	executeMsg := directory.ExecuteMsg{SetDelegationManager: &directory.SetDelegationManager{DelegationManager: delegationManager}}
+func (r *Directory) SetRouting(ctx context.Context, delegationManager string) (*coretypes.ResultTx, error) {
+	executeMsg := directory.ExecuteMsg{
+		SetRouting: &directory.SetRouting{
+			DelegationManager: delegationManager,
+		},
+	}
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		return nil, err
@@ -211,26 +215,6 @@ func (r *Directory) IsSaltSpent(operator, salt string) (*directory.IsSaltSpentRe
 		Operator: operator,
 		Salt:     salt,
 	}}
-	queryMsgBytes, err := json.Marshal(queryMsg)
-	if err != nil {
-		return nil, err
-	}
-	queryOptions := r.newQueryOptions(r.ContractAddr, queryMsgBytes)
-	resp, err := r.io.QueryContract(queryOptions)
-	if err != nil {
-		return nil, err
-	}
-	if err := json.Unmarshal(resp.Data, result); err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-func (r *Directory) DelegationManager() (*directory.DelegationManagerResponse, error) {
-	result := new(directory.DelegationManagerResponse)
-	queryMsg := directory.QueryMsg{
-		DelegationManager: &directory.DelegationManager{},
-	}
 	queryMsgBytes, err := json.Marshal(queryMsg)
 	if err != nil {
 		return nil, err
