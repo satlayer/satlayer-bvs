@@ -24,13 +24,13 @@ pub fn set_routing(
     Ok(Response::new().add_event(
         Event::new("SetRouting")
             .add_attribute("strategy_manager", strategy_manager.as_str())
-            .add_attribute("slash_manager", strategy_manager.as_str()),
+            .add_attribute("slash_manager", slash_manager.as_str()),
     ))
 }
 
 /// Get the Strategy Manager address
 /// If SetRouting has not been called, it will return an Unauthorized error
-pub fn get_strategy_manager(storage: &mut dyn Storage) -> Result<Addr, ContractError> {
+pub fn get_strategy_manager(storage: &dyn Storage) -> Result<Addr, ContractError> {
     STRATEGY_MANAGER
         .may_load(storage)?
         .ok_or(ContractError::Unauthorized {})
@@ -113,6 +113,20 @@ mod tests {
             err.to_string(),
             ContractError::Ownership(OwnershipError::Unauthorized).to_string()
         );
+    }
+
+    #[test]
+    fn test_get_strategy_manager() {
+        let mut deps = mock_dependencies();
+
+        let strategy_manager_addr = deps.api.addr_make("strategy_manager_addr");
+        STRATEGY_MANAGER
+            .save(deps.as_mut().storage, &strategy_manager_addr)
+            .unwrap();
+
+        let result = auth::get_strategy_manager(deps.as_mut().storage).unwrap();
+
+        assert_eq!(result, strategy_manager_addr);
     }
 
     #[test]

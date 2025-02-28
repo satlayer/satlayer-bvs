@@ -94,8 +94,6 @@ fn register_operator_failure() {
         .deploy_bvs_delegation_manager(&BvsDelegationManagerInstantiateMsg {
             owner: owner.clone().to_string(),
             registry: registry.addr.to_string(),
-            strategy_manager: empty_addr.clone().into_string(),
-            slash_manager: empty_addr.clone().into_string(),
             min_withdrawal_delay_blocks: 100,
             strategies: vec![strategy1.clone(), strategy2.clone()],
             withdrawal_delay_blocks: vec![50, 60],
