@@ -2079,7 +2079,7 @@ mod tests {
 
     #[test]
     fn test_decrease_operator_shares_internal() {
-        let (mut deps, _, _unpauser_info, _) = instantiate_contract();
+        let (mut deps, _, _, _) = instantiate_contract();
 
         let operator = deps.api.addr_make("operator1");
         let staker = deps.api.addr_make("staker1");

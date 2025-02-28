@@ -1031,8 +1031,6 @@ mod tests {
         MessageInfo,
         MessageInfo,
         MessageInfo,
-        MessageInfo,
-        MessageInfo,
     ) {
         let mut deps = mock_dependencies();
         let env = mock_env();
@@ -1042,13 +1040,9 @@ mod tests {
 
         let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
         let strategy_manager = deps.api.addr_make("strategy_manager").to_string();
-        let pauser = deps.api.addr_make("pauser").to_string();
-        let unpauser = deps.api.addr_make("unpauser").to_string();
         let rewards_updater = deps.api.addr_make("rewards_updater").to_string();
 
         let owner_info = message_info(&Addr::unchecked(owner.clone()), &[]);
-        let pauser_info = message_info(&Addr::unchecked(pauser.clone()), &[]);
-        let unpauser_info = message_info(&Addr::unchecked(unpauser.clone()), &[]);
         let strategy_manager_info = message_info(&Addr::unchecked(strategy_manager.clone()), &[]);
         let delegation_manager_info =
             message_info(&Addr::unchecked(delegation_manager.clone()), &[]);
@@ -1071,8 +1065,6 @@ mod tests {
             deps,
             env,
             owner_info,
-            pauser_info,
-            unpauser_info,
             strategy_manager_info,
             delegation_manager_info,
             rewards_updater_info,
@@ -1085,8 +1077,6 @@ mod tests {
             mut deps,
             _env,
             _owner_info,
-            _pauser_info,
-            _unpauser_info,
             _strategy_manager_info,
             _delegation_manager_info,
             _rewards_updater_info,
@@ -1127,8 +1117,6 @@ mod tests {
             mut deps,
             _env,
             _owner_info,
-            _pauser_info,
-            _unpauser_info,
             _strategy_manager_info,
             _delegation_manager_info,
             _rewards_updater_info,
@@ -1246,8 +1234,6 @@ mod tests {
             mut deps,
             env,
             _owner_info,
-            _pauser_info,
-            _unpauser_info,
             _strategy_manager_info,
             _delegation_manager_info,
             _rewards_updater_info,
@@ -1350,8 +1336,6 @@ mod tests {
             mut deps,
             env,
             owner_info,
-            _pauser_info,
-            _unpauser_info,
             _strategy_manager_info,
             _delegation_manager_info,
             _rewards_updater_info,
@@ -1465,8 +1449,6 @@ mod tests {
             mut deps,
             _env,
             _owner_info,
-            _pauser_info,
-            _unpauser_info,
             _strategy_manager_info,
             _delegation_manager_info,
             _rewards_updater_info,
@@ -1507,8 +1489,6 @@ mod tests {
             mut deps,
             _env,
             owner_info,
-            _pauser_info,
-            _unpauser_info,
             _strategy_manager_info,
             _delegation_manager_info,
             _rewards_updater_info,
@@ -1564,8 +1544,6 @@ mod tests {
             mut deps,
             _env,
             owner_info,
-            _pauser_info,
-            _unpauser_info,
             _strategy_manager_info,
             _delegation_manager_info,
             _rewards_updater_info,
@@ -1629,8 +1607,6 @@ mod tests {
             mut deps,
             _env,
             _owner_info,
-            _pauser_info,
-            _unpauser_info,
             _strategy_manager_info,
             _delegation_manager_info,
             _rewards_updater_info,
@@ -1671,8 +1647,6 @@ mod tests {
             mut deps,
             _env,
             owner_info,
-            _pauser_info,
-            _unpauser_info,
             _strategy_manager_info,
             _delegation_manager_info,
             _rewards_updater_info,
@@ -1721,8 +1695,6 @@ mod tests {
             deps,
             env,
             _owner_info,
-            _pauser_info,
-            _unpauser_info,
             _strategy_manager_info,
             _delegation_manager_info,
             _rewards_updater_info,
@@ -2610,8 +2582,6 @@ mod tests {
             mut deps,
             env,
             _owner_info,
-            _pauser_info,
-            _unpauser_info,
             _strategy_manager_info,
             _delegation_manager_info,
             rewards_updater_info,
@@ -3009,8 +2979,6 @@ mod tests {
             mut deps,
             env,
             _owner_info,
-            _pauser_info,
-            _unpauser_info,
             _strategy_manager_info,
             _delegation_manager_info,
             _rewards_updater_info,

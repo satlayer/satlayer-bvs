@@ -39,28 +39,10 @@ func Test_GetMinimalSlashSignature(t *testing.T) {
 //	slash.SetMinimalSlashSignature(slashKeyName, minimalSignature)
 //}
 //
-//func Test_Slash_SetPauser(t *testing.T) {
-//	newPauser := "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
-//	slash.SetPauser(slashKeyName, newPauser)
-//}
-//
-//func Test_Slash_SetUnpauser(t *testing.T) {
-//	newUnpauser := "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
-//	slash.SetUnpauser(slashKeyName, newUnpauser)
-//}
-//
 //func Test_Slash_SetSlasherValidator(t *testing.T) {
 //	validators := []string{"bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"}
 //	values := []bool{true}
 //	slash.SetSlasherValidator(slashKeyName, validators, values)
-//}
-//
-//func Test_Slash_Pause(t *testing.T) {
-//	slash.Pause(slashKeyName)
-//}
-//
-//func Test_Slash_Unpause(t *testing.T) {
-//	slash.Unpause(slashKeyName)
 //}
 //
 //func Test_Slash_TransferOwnership(t *testing.T) {
