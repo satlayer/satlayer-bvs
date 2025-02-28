@@ -9,7 +9,7 @@ use crate::{
         ValidatorResponse,
     },
     state::{
-        Config, CONFIG, DELEGATION_MANAGER, MINIMAL_SLASH_SIGNATURE, OWNER, SLASHER, SLASH_DETAILS,
+        Config, CONFIG, DELEGATION_MANAGER, MINIMAL_SLASH_SIGNATURE, SLASHER, SLASH_DETAILS,
         STRATEGY_MANAGER, VALIDATOR, VALIDATOR_PUBKEYS,
     },
     utils::{calculate_slash_hash, recover, validate_addresses, SlashDetails},
@@ -518,7 +518,7 @@ pub fn set_max_time_in_future(
     info: MessageInfo,
     new_value: u64,
 ) -> Result<Response, ContractError> {
-    only_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.as_ref(), &info)?;
 
     if new_value == 0 {
         return Err(ContractError::InvalidMaxTimeInFuture {});
@@ -750,6 +750,7 @@ fn only_slasher(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::ExecuteSlashDetails;
     use base64::{engine::general_purpose, Engine as _};
     use bech32::{self, ToBase32, Variant};
     use bvs_delegation_manager::query::StakerShares;
@@ -781,7 +782,7 @@ mod tests {
             strategy_manager: strategy_manager.to_string(),
             pauser: pauser.to_string(),
             unpauser: unpauser.to_string(),
-            max_time_in_future: 1000000,
+            max_time_in_future: 1_000_000,
             initial_paused_status: 0,
         };
 
@@ -818,7 +819,7 @@ mod tests {
             strategy_manager: strategy_manager.to_string(),
             pauser: pauser.to_string(),
             unpauser: unpauser.to_string(),
-            max_time_in_future: 1000000,
+            max_time_in_future: 1_000_000,
             initial_paused_status: 0,
         };
 
@@ -857,7 +858,7 @@ mod tests {
             strategy_manager: strategy_manager.to_string(),
             pauser: pauser.to_string(),
             unpauser: unpauser.to_string(),
-            max_time_in_future: 1000000,
+            max_time_in_future: 1_000_000,
             initial_paused_status: 0,
         };
 
@@ -1001,9 +1002,9 @@ mod tests {
 
         let response = execute(
             deps.as_mut(),
-            slasher_info,
-            validators.clone(),
-            values.clone(),
+            env.clone(),
+            slasher_info.clone(),
+            execute_msg,
         )
         .unwrap();
 
@@ -1122,17 +1123,17 @@ mod tests {
         let slasher_addr = deps.api.addr_make("slasher");
         let operator_addr = deps.api.addr_make("operator");
         let slash_validator = vec![
-            deps.api.addr_make("validator1"),
-            deps.api.addr_make("validator2"),
+            deps.api.addr_make("validator1").to_string(),
+            deps.api.addr_make("validator2").to_string(),
         ];
         let slash_validator_addr = vec![
             deps.api.addr_make("validator1"),
             deps.api.addr_make("validator2"),
         ];
 
-        let slash_details = SlashDetails {
-            slasher: slasher_addr.clone(),
-            operator: operator_addr.clone(),
+        let slash_details = ExecuteSlashDetails {
+            slasher: slasher_addr.to_string(),
+            operator: operator_addr.to_string(),
             share: Uint128::new(10),
             slash_signature: 2,
             slash_validator: slash_validator.clone(),
@@ -1189,13 +1190,12 @@ mod tests {
                 .unwrap();
         }
 
-        let res = submit_slash_request(
-            deps.as_mut(),
-            slasher_info.clone(),
-            env.clone(),
-            slash_details.clone(),
-            validators_public_keys,
-        );
+        let msg = ExecuteMsg::SubmitSlashRequest {
+            slash_details: slash_details.clone(),
+            validators_public_keys: validators_public_keys.clone(),
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), slasher_info.clone(), msg);
 
         assert!(res.is_ok());
 
@@ -1254,17 +1254,17 @@ mod tests {
         let slasher_addr = deps.api.addr_make("slasher");
         let operator_addr = deps.api.addr_make("operator");
         let slash_validator = vec![
-            deps.api.addr_make("validator1"),
-            deps.api.addr_make("validator2"),
+            deps.api.addr_make("validator1").to_string(),
+            deps.api.addr_make("validator2").to_string(),
         ];
         let slash_validator_addr = vec![
             deps.api.addr_make("validator1"),
             deps.api.addr_make("validator2"),
         ];
 
-        let slash_details = SlashDetails {
-            slasher: slasher_addr.clone(),
-            operator: operator_addr.clone(),
+        let slash_details = ExecuteSlashDetails {
+            slasher: slasher_addr.to_string(),
+            operator: operator_addr.to_string(),
             share: Uint128::new(10),
             slash_signature: 2,
             slash_validator: slash_validator.clone(),
@@ -1309,14 +1309,12 @@ mod tests {
                 .unwrap();
         }
 
-        let res = submit_slash_request(
-            deps.as_mut(),
-            slasher_info.clone(),
-            env.clone(),
-            slash_details.clone(),
-            validators_public_keys,
-        );
+        let msg = ExecuteMsg::SubmitSlashRequest {
+            slash_details: slash_details.clone(),
+            validators_public_keys: validators_public_keys.clone(),
+        };
 
+        let res = execute(deps.as_mut(), env.clone(), slasher_info.clone(), msg);
         assert!(res.is_ok());
 
         let res = res.unwrap();
@@ -1385,9 +1383,9 @@ mod tests {
         let slash_validator = vec![validator1.to_string(), validator2.to_string()];
         let slash_validator_addr = vec![validator1, validator2];
 
-        let slash_details = SlashDetails {
-            slasher: slasher_addr.clone(),
-            operator: operator_addr.clone(),
+        let slash_details = ExecuteSlashDetails {
+            slasher: slasher_addr.to_string(),
+            operator: operator_addr.to_string(),
             share: Uint128::new(1_000_000),
             slash_signature: 2,
             slash_validator: slash_validator.clone(),
@@ -1522,12 +1520,13 @@ mod tests {
         let execute_res = execute(
             deps.as_mut(),
             env.clone(),
-            slasher_info,
-            slash_hash.clone(),
-            vec![Binary::from_base64(&signature_base64).unwrap()],
-            validators_public_keys.clone(),
-        )
-        .unwrap();
+            slasher_info.clone(),
+            execute_msg,
+        );
+
+        assert!(execute_res.is_ok());
+
+        let execute_res = execute_res.unwrap();
 
         assert_eq!(execute_res.events.len(), 1);
         let event = &execute_res.events[0];
@@ -1595,12 +1594,12 @@ mod tests {
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (validator, _, _) = generate_osmosis_public_key_from_private_key(private_key_hex);
 
-        let slash_details = SlashDetails {
-            slasher: slasher_addr.clone(),
-            operator: operator_addr.clone(),
+        let slash_details = ExecuteSlashDetails {
+            slasher: slasher_addr.to_string(),
+            operator: operator_addr.to_string(),
             share: total_slash_amount,
             slash_signature: 1,
-            slash_validator: vec![validator.clone()],
+            slash_validator: vec![validator.to_string()],
             reason: "Test slash".to_string(),
             start_time: env.block.time.seconds(),
             end_time: env.block.time.seconds() + 1000,
@@ -1790,12 +1789,12 @@ mod tests {
 
         // test case 1: total_slash_share is 0
         {
-            let slash_details = SlashDetails {
-                slasher: slasher_addr.clone(),
-                operator: operator_addr.clone(),
+            let slash_details = ExecuteSlashDetails {
+                slasher: slasher_addr.to_string(),
+                operator: operator_addr.to_string(),
                 share: Uint128::zero(),
                 slash_signature: 1,
-                slash_validator: vec![validator.clone()],
+                slash_validator: vec![validator.to_string()],
                 reason: "Test slash".to_string(),
                 start_time: env.block.time.seconds(),
                 end_time: env.block.time.seconds() + 1000,
