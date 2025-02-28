@@ -38,10 +38,6 @@ func Test_IsSaltSpent(t *testing.T) {
 	directory.IsSaltSpent(operatorAddress, salt)
 }
 
-func Test_DelegationManager(t *testing.T) {
-	directory.DelegationManager()
-}
-
 func Test_DomainName(t *testing.T) {
 	directory.DomainName()
 }

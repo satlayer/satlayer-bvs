@@ -162,7 +162,7 @@ func (suite *TestSuite) DeployBvsContracts() {
 
 	registry := deployer.DeployRegistry(nil)
 
-	directoryContract := deployer.DeployDirectory(registry.Address, tempAddress.String())
+	directoryContract := deployer.DeployDirectory(registry.Address)
 	suite.DirectoryApi = api.NewDirectory(suite.ChainIO, directoryContract.Address)
 
 	strategyManagerContract := deployer.DeployStrategyManager(registry.Address, tempAddress.String(), tempAddress.String(), tempAddress.String())
@@ -226,14 +226,15 @@ func (suite *TestSuite) DeployBvsContracts() {
 	suite.NoError(err)
 	suite.Equal(uint32(0), res.TxResult.Code)
 
+	res, err = suite.DirectoryApi.SetRouting(suite.Ctx, delegationManagerContract.Address)
+	suite.NoError(err)
+	suite.Equal(uint32(0), res.TxResult.Code)
+
 	res, err = suite.RewardsCoordinatorApi.SetRewardsUpdater(context.Background(), tempAddress.String())
 	suite.NoError(err)
 	suite.Equal(uint32(0), res.TxResult.Code)
 
-	tx, err := suite.DirectoryApi.SetDelegationManager(suite.Ctx, delegationManagerContract.Address)
-	assert.NoError(t, err)
-	assert.NotNil(t, tx)
-	tx, err = suite.StrategyManagerApi.SetSlashManager(suite.Ctx, slashManagerContract.Address)
+	tx, err := suite.StrategyManagerApi.SetSlashManager(suite.Ctx, slashManagerContract.Address)
 	assert.NoError(t, err)
 	assert.NotNil(t, tx)
 	tx, err = suite.StrategyManagerApi.SetDelegationManager(suite.Ctx, delegationManagerContract.Address)

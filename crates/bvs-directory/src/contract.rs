@@ -2,16 +2,15 @@
 use cosmwasm_std::entry_point;
 
 use crate::{
+    auth,
     error::ContractError,
     msg::{
-        BvsInfoResponse, CalculateDigestHashResponse, DelegationManagerResponse,
-        DomainNameResponse, DomainTypeHashResponse, ExecuteMsg, InstantiateMsg,
-        IsSaltSpentResponse, OperatorBvsRegistrationTypeHashResponse, OperatorStatusResponse,
-        QueryMsg, SignatureWithSaltAndExpiry,
+        BvsInfoResponse, CalculateDigestHashResponse, DomainNameResponse, DomainTypeHashResponse,
+        ExecuteMsg, InstantiateMsg, IsSaltSpentResponse, OperatorBvsRegistrationTypeHashResponse,
+        OperatorStatusResponse, QueryMsg, SignatureWithSaltAndExpiry,
     },
     state::{
-        BvsInfo, OperatorBvsRegistrationStatus, BVS_INFO, BVS_OPERATOR_STATUS, DELEGATION_MANAGER,
-        OPERATOR_SALT_SPENT,
+        BvsInfo, OperatorBvsRegistrationStatus, BVS_INFO, BVS_OPERATOR_STATUS, OPERATOR_SALT_SPENT,
     },
     utils::{
         calculate_digest_hash, recover, sha256, DigestHashParams, DOMAIN_NAME, DOMAIN_TYPE_HASH,
@@ -42,13 +41,9 @@ pub fn instantiate(
     let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::_set_owner(deps.storage, &owner)?;
 
-    let delegation_manager = deps.api.addr_validate(&msg.delegation_manager)?;
-    DELEGATION_MANAGER.save(deps.storage, &delegation_manager)?;
-
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("owner", owner.to_string())
-        .add_attribute("delegation_manager", delegation_manager.to_string()))
+        .add_attribute("owner", owner.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -88,9 +83,9 @@ pub fn execute(
         ExecuteMsg::UpdateBvsMetadataUri { metadata_uri } => {
             update_metadata_uri(info, metadata_uri)
         }
-        ExecuteMsg::SetDelegationManager { delegation_manager } => {
-            let delegation_manager_addr = deps.api.addr_validate(&delegation_manager)?;
-            set_delegation_manager(deps, info, delegation_manager_addr)
+        ExecuteMsg::SetRouting { delegation_manager } => {
+            let delegation_manager = deps.api.addr_validate(&delegation_manager)?;
+            auth::set_routing(deps, info, delegation_manager)
         }
         ExecuteMsg::CancelSalt { salt } => cancel_salt(deps, env, info, salt),
         ExecuteMsg::TransferOwnership { new_owner } => {
@@ -130,7 +125,7 @@ pub fn register_operator(
         return Err(ContractError::SignatureExpired {});
     }
 
-    let delegation_manager = DELEGATION_MANAGER.load(deps.storage)?;
+    let delegation_manager = auth::get_delegation_manager(deps.storage)?;
 
     let is_operator_response: OperatorResponse = deps.querier.query_wasm_smart(
         delegation_manager.clone(),
@@ -230,20 +225,6 @@ pub fn update_metadata_uri(
     Ok(Response::new().add_event(event))
 }
 
-pub fn set_delegation_manager(
-    deps: DepsMut,
-    info: MessageInfo,
-    delegation_manager: Addr,
-) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
-
-    DELEGATION_MANAGER.save(deps.storage, &delegation_manager)?;
-
-    Ok(Response::new()
-        .add_attribute("method", "set_delegation_manager")
-        .add_attribute("delegation_manager", delegation_manager.to_string()))
-}
-
 pub fn cancel_salt(
     deps: DepsMut,
     _env: Env,
@@ -298,7 +279,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let is_spent = query_is_salt_spent(deps, operator_addr, salt)?;
             to_json_binary(&is_spent)
         }
-        QueryMsg::DelegationManager {} => to_json_binary(&query_delegation_manager(deps)?),
         QueryMsg::OperatorBvsRegistrationTypeHash {} => {
             to_json_binary(&query_operator_bvs_registration_type_hash(deps)?)
         }
@@ -345,11 +325,6 @@ fn query_is_salt_spent(deps: Deps, operator: Addr, salt: String) -> StdResult<Is
     Ok(IsSaltSpentResponse { is_salt_spent })
 }
 
-fn query_delegation_manager(deps: Deps) -> StdResult<DelegationManagerResponse> {
-    let delegation_addr = DELEGATION_MANAGER.load(deps.storage)?;
-    Ok(DelegationManagerResponse { delegation_addr })
-}
-
 fn query_operator_bvs_registration_type_hash(
     _deps: Deps,
 ) -> StdResult<OperatorBvsRegistrationTypeHashResponse> {
@@ -381,6 +356,7 @@ fn query_bvs_info(deps: Deps, bvs_hash: String) -> StdResult<BvsInfoResponse> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::auth::set_routing;
     use base64::{engine::general_purpose, Engine as _};
     use bech32::{self, ToBase32, Variant};
     use cosmwasm_std::testing::{
@@ -400,39 +376,28 @@ mod tests {
         let info = message_info(&Addr::unchecked("creator"), &[]);
 
         let owner = deps.api.addr_make("owner").to_string();
-        let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
 
         let msg = InstantiateMsg {
             owner: owner.clone(),
-            delegation_manager: delegation_manager.clone(),
             registry: deps.api.addr_make("registry").to_string(),
         };
 
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        assert_eq!(res.attributes.len(), 3);
+        assert_eq!(res.attributes.len(), 2);
         assert_eq!(res.attributes[0].key, "method");
         assert_eq!(res.attributes[0].value, "instantiate");
         assert_eq!(res.attributes[1].key, "owner");
         assert_eq!(res.attributes[1].value, owner.clone());
 
         let current_owner = ownership::OWNER.load(&deps.storage).unwrap();
-
         assert_eq!(current_owner, Addr::unchecked(owner));
-
-        let current_delegation_manager = DELEGATION_MANAGER.load(&deps.storage).unwrap();
-
-        assert_eq!(
-            current_delegation_manager,
-            Addr::unchecked(delegation_manager)
-        );
     }
 
     fn instantiate_contract() -> (
         OwnedDeps<MockStorage, MockApi, MockQuerier>,
         Env,
         MessageInfo,
-        String,
     ) {
         let mut deps = mock_dependencies();
         let env = mock_env();
@@ -440,22 +405,19 @@ mod tests {
         let owner = deps.api.addr_make("owner").to_string();
         let owner_info = message_info(&Addr::unchecked(owner.clone()), &[]);
 
-        let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
-
         let msg = InstantiateMsg {
             owner: owner.to_string(),
-            delegation_manager: delegation_manager.to_string(),
             registry: deps.api.addr_make("registry").to_string(),
         };
 
         let res = instantiate(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();
-        assert_eq!(res.attributes.len(), 3);
+        assert_eq!(res.attributes.len(), 2);
         assert_eq!(res.attributes[0].key, "method");
         assert_eq!(res.attributes[0].value, "instantiate");
         assert_eq!(res.attributes[1].key, "owner");
         assert_eq!(res.attributes[1].value, owner.to_string());
 
-        (deps, env, owner_info, delegation_manager)
+        (deps, env, owner_info)
     }
 
     fn generate_osmosis_public_key_from_private_key(
@@ -478,8 +440,8 @@ mod tests {
 
     #[test]
     fn test_register_bvs() {
-        let (mut deps, env, info, delegation_manager) = instantiate_contract();
-
+        let (mut deps, _, _) = instantiate_contract();
+        let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart {
                 contract_addr,
@@ -516,7 +478,9 @@ mod tests {
 
     #[test]
     fn test_register_operator() {
-        let (mut deps, env, info, delegation_manager) = instantiate_contract();
+        let (mut deps, env, info) = instantiate_contract();
+        let delegation_manager = deps.api.addr_make("delegation_manager");
+        set_routing(deps.as_mut(), info.clone(), delegation_manager.clone()).unwrap();
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
@@ -548,7 +512,7 @@ mod tests {
             WasmQuery::Smart {
                 contract_addr,
                 msg: _,
-            } if contract_addr == &delegation_manager => {
+            } if contract_addr == &delegation_manager.to_string() => {
                 // Simulate a successful IsOperator response
                 let operator_response = OperatorResponse { is_operator: true };
                 SystemResult::Ok(ContractResult::Ok(
@@ -613,7 +577,9 @@ mod tests {
 
     #[test]
     fn test_deregister_operator() {
-        let (mut deps, env, info, delegation_manager) = instantiate_contract();
+        let (mut deps, env, info) = instantiate_contract();
+        let delegation_manager = deps.api.addr_make("delegation_manager");
+        auth::set_routing(deps.as_mut(), info.clone(), delegation_manager.clone()).unwrap();
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
@@ -644,7 +610,7 @@ mod tests {
             WasmQuery::Smart {
                 contract_addr,
                 msg: _,
-            } if contract_addr == &delegation_manager => {
+            } if contract_addr == &delegation_manager.to_string() => {
                 let operator_response = OperatorResponse { is_operator: true };
                 SystemResult::Ok(ContractResult::Ok(
                     to_json_binary(&operator_response).unwrap(),
@@ -705,7 +671,7 @@ mod tests {
 
     #[test]
     fn test_update_metadata_uri() {
-        let (deps, env, info, _delegation_manager) = instantiate_contract();
+        let (_, _, info) = instantiate_contract();
 
         let metadata_uri = "http://metadata.uri".to_string();
         let res = update_metadata_uri(info.clone(), metadata_uri.clone());
@@ -734,7 +700,7 @@ mod tests {
 
     #[test]
     fn test_cancel_salt() {
-        let (mut deps, env, info, _delegation_manager) = instantiate_contract();
+        let (mut deps, env, info) = instantiate_contract();
 
         let salt = Binary::from(b"salt");
 
@@ -768,7 +734,9 @@ mod tests {
 
     #[test]
     fn test_query_operator() {
-        let (mut deps, env, info, delegation_manager) = instantiate_contract();
+        let (mut deps, env, info) = instantiate_contract();
+        let delegation_manager = deps.api.addr_make("delegation_manager");
+        set_routing(deps.as_mut(), info.clone(), delegation_manager.clone()).unwrap();
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
@@ -799,7 +767,7 @@ mod tests {
             WasmQuery::Smart {
                 contract_addr,
                 msg: _,
-            } if contract_addr == &delegation_manager => {
+            } if contract_addr == &delegation_manager.to_string() => {
                 let operator_response = OperatorResponse { is_operator: true };
                 SystemResult::Ok(ContractResult::Ok(
                     to_json_binary(&operator_response).unwrap(),
@@ -873,7 +841,7 @@ mod tests {
 
     #[test]
     fn test_query_operator_unregistered() {
-        let (deps, env, info, _delegation_manager) = instantiate_contract();
+        let (deps, env, info) = instantiate_contract();
 
         let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
         let (operator, _secret_key, _public_key_bytes) =
@@ -896,7 +864,7 @@ mod tests {
 
     #[test]
     fn test_query_calculate_digest_hash() {
-        let (deps, env, info, _delegation_manager) = instantiate_contract();
+        let (deps, env, info) = instantiate_contract();
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (_operator, _secret_key, public_key_bytes) =
@@ -938,7 +906,9 @@ mod tests {
 
     #[test]
     fn test_query_is_salt_spent() {
-        let (mut deps, env, info, delegation_manager) = instantiate_contract();
+        let (mut deps, env, info) = instantiate_contract();
+        let delegation_manager = deps.api.addr_make("delegation_manager");
+        set_routing(deps.as_mut(), info.clone(), delegation_manager.clone()).unwrap();
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
@@ -969,7 +939,7 @@ mod tests {
             WasmQuery::Smart {
                 contract_addr,
                 msg: _,
-            } if contract_addr == &delegation_manager => {
+            } if contract_addr == &delegation_manager.to_string() => {
                 let operator_response = OperatorResponse { is_operator: true };
                 SystemResult::Ok(ContractResult::Ok(
                     to_json_binary(&operator_response).unwrap(),
@@ -1013,23 +983,8 @@ mod tests {
     }
 
     #[test]
-    fn test_query_delegation_manager() {
-        let (deps, env, _info, delegation_manager) = instantiate_contract();
-
-        let query_msg = QueryMsg::DelegationManager {};
-        let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-
-        let response: DelegationManagerResponse = from_json(query_res).unwrap();
-
-        assert_eq!(
-            response.delegation_addr,
-            Addr::unchecked(delegation_manager)
-        );
-    }
-
-    #[test]
     fn test_query_operator_bvs_registration_type_hash() {
-        let (deps, env, _info, _delegation_manager) = instantiate_contract();
+        let (deps, env, _info) = instantiate_contract();
 
         let query_msg = QueryMsg::OperatorBvsRegistrationTypeHash {};
         let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
@@ -1042,7 +997,7 @@ mod tests {
     }
     #[test]
     fn test_query_domain_type_hash() {
-        let (deps, env, _info, _delegation_manager) = instantiate_contract();
+        let (deps, env, _info) = instantiate_contract();
 
         let query_msg = QueryMsg::DomainTypeHash {};
         let query_res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
@@ -1070,7 +1025,9 @@ mod tests {
 
     #[test]
     fn test_register_operator_to_bvs() {
-        let (mut deps, env, info, delegation_manager) = instantiate_contract();
+        let (mut deps, env, info) = instantiate_contract();
+        let delegation_manager = deps.api.addr_make("delegation_manager");
+        set_routing(deps.as_mut(), info.clone(), delegation_manager.clone()).unwrap();
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
@@ -1101,7 +1058,7 @@ mod tests {
             WasmQuery::Smart {
                 contract_addr,
                 msg: _,
-            } if contract_addr == &delegation_manager => {
+            } if contract_addr == &delegation_manager.to_string() => {
                 let operator_response = OperatorResponse { is_operator: true };
                 SystemResult::Ok(ContractResult::Ok(
                     to_json_binary(&operator_response).unwrap(),
@@ -1178,7 +1135,7 @@ mod tests {
 
     #[test]
     fn test_query_bvs_info() {
-        let (mut deps, env, _info, _delegation_manager) = instantiate_contract();
+        let (mut deps, env, _info) = instantiate_contract();
 
         let bvs_contract = "bvs_contract".to_string();
 
@@ -1197,23 +1154,5 @@ mod tests {
 
         assert_eq!(bvs_info.bvs_hash, bvs_hash);
         assert_eq!(bvs_info.bvs_contract, bvs_contract.clone())
-    }
-
-    #[test]
-    fn test_set_delegation_manager() {
-        let (mut deps, env, info, _delegation_manager) = instantiate_contract();
-
-        let delegation_manager = deps.api.addr_make("delegation_manager");
-
-        let res = set_delegation_manager(deps.as_mut(), info.clone(), delegation_manager.clone())
-            .unwrap();
-
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "method" && a.value == "set_delegation_manager"));
-
-        let delegation_manager_addr = DELEGATION_MANAGER.load(&deps.storage).unwrap();
-        assert_eq!(delegation_manager_addr, delegation_manager);
     }
 }

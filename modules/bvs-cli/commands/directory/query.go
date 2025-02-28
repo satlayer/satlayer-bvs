@@ -47,17 +47,6 @@ func IsSaltSpent(operatorAddress, salt string) {
 	fmt.Printf("%t\n", result)
 }
 
-func DelegationManager() {
-	s := NewService()
-	resp, err := s.Directory.DelegationManager()
-	if err != nil {
-		fmt.Printf("Get delegation manager error! %+v\n", err)
-		return
-	}
-	result := resp.DelegationAddr
-	fmt.Printf("%s\n", result)
-}
-
 func OperatorBvsRegistrationTypeHash() {
 	s := NewService()
 	resp, err := s.Directory.OperatorBvsRegistrationTypeHash()

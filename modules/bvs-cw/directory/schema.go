@@ -16,9 +16,6 @@
 //    calculateDigestHashResponse, err := UnmarshalCalculateDigestHashResponse(bytes)
 //    bytes, err = calculateDigestHashResponse.Marshal()
 //
-//    delegationManagerResponse, err := UnmarshalDelegationManagerResponse(bytes)
-//    bytes, err = delegationManagerResponse.Marshal()
-//
 //    domainNameResponse, err := UnmarshalDomainNameResponse(bytes)
 //    bytes, err = domainNameResponse.Marshal()
 //
@@ -88,16 +85,6 @@ func (r *CalculateDigestHashResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalDelegationManagerResponse(data []byte) (DelegationManagerResponse, error) {
-	var r DelegationManagerResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *DelegationManagerResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
 func UnmarshalDomainNameResponse(data []byte) (DomainNameResponse, error) {
 	var r DomainNameResponse
 	err := json.Unmarshal(data, &r)
@@ -149,9 +136,8 @@ func (r *OperatorStatusResponse) Marshal() ([]byte, error) {
 }
 
 type InstantiateMsg struct {
-	DelegationManager string `json:"delegation_manager"`
-	Owner             string `json:"owner"`
-	Registry          string `json:"registry"`
+	Owner    string `json:"owner"`
+	Registry string `json:"registry"`
 }
 
 type ExecuteMsg struct {
@@ -159,8 +145,8 @@ type ExecuteMsg struct {
 	RegisterOperatorToBvs     *RegisterOperatorToBvs     `json:"register_operator_to_bvs,omitempty"`
 	DeregisterOperatorFromBvs *DeregisterOperatorFromBvs `json:"deregister_operator_from_bvs,omitempty"`
 	UpdateBvsMetadataURI      *UpdateBvsMetadataURI      `json:"update_bvs_metadata_uri,omitempty"`
-	SetDelegationManager      *SetDelegationManager      `json:"set_delegation_manager,omitempty"`
 	CancelSalt                *CancelSalt                `json:"cancel_salt,omitempty"`
+	SetRouting                *SetRouting                `json:"set_routing,omitempty"`
 	TransferOwnership         *TransferOwnership         `json:"transfer_ownership,omitempty"`
 }
 
@@ -189,7 +175,7 @@ type SignatureWithSaltAndExpiry struct {
 	Signature string `json:"signature"`
 }
 
-type SetDelegationManager struct {
+type SetRouting struct {
 	DelegationManager string `json:"delegation_manager"`
 }
 
@@ -207,7 +193,6 @@ type QueryMsg struct {
 	CalculateDigestHash             *CalculateDigestHash             `json:"calculate_digest_hash,omitempty"`
 	IsSaltSpent                     *IsSaltSpent                     `json:"is_salt_spent,omitempty"`
 	BvsInfo                         *BvsInfo                         `json:"bvs_info,omitempty"`
-	DelegationManager               *DelegationManager               `json:"delegation_manager,omitempty"`
 	OperatorBvsRegistrationTypeHash *OperatorBvsRegistrationTypeHash `json:"operator_bvs_registration_type_hash,omitempty"`
 	DomainTypeHash                  *DomainTypeHash                  `json:"domain_type_hash,omitempty"`
 	DomainName                      *DomainName                      `json:"domain_name,omitempty"`
@@ -223,9 +208,6 @@ type CalculateDigestHash struct {
 	Expiry            int64  `json:"expiry"`
 	OperatorPublicKey string `json:"operator_public_key"`
 	Salt              string `json:"salt"`
-}
-
-type DelegationManager struct {
 }
 
 type DomainName struct {
@@ -254,10 +236,6 @@ type BvsInfoResponse struct {
 
 type CalculateDigestHashResponse struct {
 	DigestHash string `json:"digest_hash"`
-}
-
-type DelegationManagerResponse struct {
-	DelegationAddr string `json:"delegation_addr"`
 }
 
 type DomainNameResponse struct {

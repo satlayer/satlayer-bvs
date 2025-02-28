@@ -1,12 +1,11 @@
 use crate::state::OperatorBvsRegistrationStatus;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Binary};
+use cosmwasm_std::Binary;
 
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: String,
     pub registry: String,
-    pub delegation_manager: String,
 }
 
 #[cw_serde]
@@ -28,11 +27,11 @@ pub enum ExecuteMsg {
     UpdateBvsMetadataUri {
         metadata_uri: String,
     },
-    SetDelegationManager {
-        delegation_manager: String,
-    },
     CancelSalt {
         salt: Binary,
+    },
+    SetRouting {
+        delegation_manager: String,
     },
     TransferOwnership {
         /// See `ownership::transfer_ownership` for more information on this field
@@ -69,9 +68,6 @@ pub enum QueryMsg {
     #[returns(BvsInfoResponse)]
     BvsInfo { bvs_hash: String },
 
-    #[returns(DelegationManagerResponse)]
-    DelegationManager {},
-
     #[returns(OperatorBvsRegistrationTypeHashResponse)]
     OperatorBvsRegistrationTypeHash {},
 
@@ -101,11 +97,6 @@ pub struct IsSaltSpentResponse {
 pub struct BvsInfoResponse {
     pub bvs_hash: String,
     pub bvs_contract: String,
-}
-
-#[cw_serde]
-pub struct DelegationManagerResponse {
-    pub delegation_addr: Addr,
 }
 
 #[cw_serde]

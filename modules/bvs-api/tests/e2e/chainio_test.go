@@ -30,9 +30,7 @@ func (suite *ioTestSuite) SetupSuite() {
 
 	deployer := bvs.Deployer{BabylonContainer: container}
 	registry := deployer.DeployRegistry(nil)
-
-	tAddr := container.GenerateAddress("throw-away")
-	suite.directory = deployer.DeployDirectory(registry.Address, tAddr.String())
+	suite.directory = deployer.DeployDirectory(registry.Address)
 }
 
 func (suite *ioTestSuite) TearDownSuite() {
