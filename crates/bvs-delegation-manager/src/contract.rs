@@ -22,8 +22,6 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 
-use bvs_base::pausable::{only_when_not_paused, pause, unpause, PAUSED_STATE};
-use bvs_base::roles::{check_pauser, check_unpauser, set_pauser, set_unpauser};
 use bvs_library::ownership;
 use bvs_strategy_manager::{
     msg::ExecuteMsg as StrategyManagerExecuteMsg, msg::QueryMsg as StrategyManagerQueryMsg,
@@ -33,10 +31,6 @@ use bvs_strategy_manager::{
 
 const CONTRACT_NAME: &str = "BVS Delegation Manager";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-const PAUSED_NEW_DELEGATION: u8 = 0;
-const PAUSED_ENTER_WITHDRAWAL_QUEUE: u8 = 1;
-const PAUSED_EXIT_WITHDRAWAL_QUEUE: u8 = 2;
 
 const MAX_STAKER_OPT_OUT_WINDOW_BLOCKS: u64 = 180 * 24 * 60 * 60 / 12;
 const MAX_WITHDRAWAL_DELAY_BLOCKS: u64 = 216_000;
@@ -50,6 +44,9 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
+    let registry_addr = deps.api.addr_validate(&msg.registry)?;
+    bvs_registry::api::set_registry_addr(deps.storage, &registry_addr)?;
+
     let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::_set_owner(deps.storage, &owner)?;
 
@@ -61,14 +58,7 @@ pub fn instantiate(
         slash_manager: slash_manager.clone(),
     };
 
-    let pauser = deps.api.addr_validate(&msg.pauser)?;
-    let unpauser = deps.api.addr_validate(&msg.unpauser)?;
-
-    set_pauser(deps.branch(), pauser)?;
-    set_unpauser(deps.branch(), unpauser)?;
-
     DELEGATION_MANAGER_STATE.save(deps.storage, &state)?;
-    PAUSED_STATE.save(deps.storage, &msg.initial_paused_status)?;
 
     set_min_withdrawal_delay_blocks_internal(deps.branch(), msg.min_withdrawal_delay_blocks)?;
 
@@ -102,6 +92,8 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    bvs_registry::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
+
     match msg {
         ExecuteMsg::RegisterAsOperator {
             operator_details,
@@ -220,24 +212,6 @@ pub fn execute(
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
             ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
-        }
-        ExecuteMsg::Pause {} => {
-            check_pauser(deps.as_ref(), info.clone())?;
-            pause(deps, &info).map_err(ContractError::Std)
-        }
-        ExecuteMsg::Unpause {} => {
-            check_unpauser(deps.as_ref(), info.clone())?;
-            unpause(deps, &info).map_err(ContractError::Std)
-        }
-        ExecuteMsg::SetPauser { new_pauser } => {
-            ownership::assert_owner(deps.as_ref(), &info)?;
-            let new_pauser_addr = deps.api.addr_validate(&new_pauser)?;
-            set_pauser(deps, new_pauser_addr).map_err(ContractError::Std)
-        }
-        ExecuteMsg::SetUnpauser { new_unpauser } => {
-            ownership::assert_owner(deps.as_ref(), &info)?;
-            let new_unpauser_addr = deps.api.addr_validate(&new_unpauser)?;
-            set_unpauser(deps, new_unpauser_addr).map_err(ContractError::Std)
         }
     }
 }
@@ -386,8 +360,6 @@ pub fn undelegate(
     info: MessageInfo,
     staker: Addr,
 ) -> Result<(Response, Vec<Binary>), ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_ENTER_WITHDRAWAL_QUEUE)?;
-
     let is_delegated_response = query_is_delegated(deps.as_ref(), staker.clone())?;
     if !is_delegated_response.is_delegated {
         return Err(ContractError::StakerNotDelegated {});
@@ -524,8 +496,6 @@ pub fn queue_withdrawals(
     info: MessageInfo,
     queued_withdrawal_params: Vec<QueuedWithdrawalParams>,
 ) -> Result<(Response, Vec<Binary>), ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_ENTER_WITHDRAWAL_QUEUE)?;
-
     let operator = DELEGATED_TO
         .may_load(deps.storage, &info.sender)?
         .unwrap_or_else(|| Addr::unchecked(""));
@@ -581,8 +551,6 @@ pub fn complete_queued_withdrawals(
     middleware_times_indexes: Vec<u64>,
     receive_as_tokens: Vec<bool>,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_EXIT_WITHDRAWAL_QUEUE)?;
-
     let mut response = Response::new();
 
     // Loop through each withdrawal and complete it
@@ -612,8 +580,6 @@ pub fn complete_queued_withdrawal(
     middleware_times_indexe: u64,
     receive_as_tokens: bool,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_EXIT_WITHDRAWAL_QUEUE)?;
-
     let response = complete_queued_withdrawal_internal(
         deps.branch(),
         env.clone(),
@@ -936,8 +902,6 @@ fn delegate(
     _env: Env,
     params: DelegateParams,
 ) -> Result<Response, ContractError> {
-    only_when_not_paused(deps.as_ref(), PAUSED_NEW_DELEGATION)?;
-
     DELEGATED_TO.save(deps.storage, &params.staker, &params.operator)?;
 
     let mut response = Response::new();
@@ -1220,22 +1184,20 @@ mod tests {
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
 
-        let strategy_manager = deps.api.addr_make("strategy_manager").to_string();
+        let owner = deps.api.addr_make("owner");
+        let registry = deps.api.addr_make("registry");
+        let strategy_manager = deps.api.addr_make("strategy_manager");
+
         let slasher = deps.api.addr_make("slasher").to_string();
-        let initial_owner = deps.api.addr_make("initial_owner").to_string();
-        let pauser = deps.api.addr_make("pauser").to_string();
-        let unpauser = deps.api.addr_make("unpauser").to_string();
         let strategy1 = deps.api.addr_make("strategy1").to_string();
         let strategy2 = deps.api.addr_make("strategy2").to_string();
 
         let msg = InstantiateMsg {
-            strategy_manager: strategy_manager.clone(),
+            owner: owner.to_string(),
+            registry: registry.to_string(),
+            strategy_manager: strategy_manager.to_string(),
             slash_manager: slasher.clone(),
             min_withdrawal_delay_blocks: 100,
-            owner: initial_owner.clone(),
-            pauser: pauser.clone(),
-            unpauser: unpauser.clone(),
-            initial_paused_status: 0,
             strategies: vec![strategy1.clone(), strategy2.clone()],
             withdrawal_delay_blocks: vec![50, 60],
         };
@@ -1253,7 +1215,7 @@ mod tests {
             res.attributes[3],
             attr("min_withdrawal_delay_blocks", "100")
         );
-        assert_eq!(res.attributes[4], attr("owner", initial_owner.clone()));
+        assert_eq!(res.attributes[4], attr("owner", owner.as_str()));
 
         let state = DELEGATION_MANAGER_STATE.load(&deps.storage).unwrap();
         assert_eq!(
@@ -1266,8 +1228,8 @@ mod tests {
 
         assert_eq!(Addr::unchecked(strategy_manager), state.strategy_manager);
 
-        let owner = ownership::OWNER.load(&deps.storage).unwrap();
-        assert_eq!(owner, Addr::unchecked(initial_owner.clone()));
+        let loaded_owner = ownership::OWNER.load(&deps.storage).unwrap();
+        assert_eq!(loaded_owner, &owner);
 
         let min_withdrawal_delay_blocks = MIN_WITHDRAWAL_DELAY_BLOCKS.load(&deps.storage).unwrap();
         assert_eq!(min_withdrawal_delay_blocks, 100);
@@ -1281,9 +1243,6 @@ mod tests {
             .load(&deps.storage, &Addr::unchecked(strategy2.clone()))
             .unwrap();
         assert_eq!(withdrawal_delay_blocks2, 60);
-
-        let paused_status = PAUSED_STATE.load(&deps.storage).unwrap();
-        assert_eq!(paused_status, 0);
     }
 
     fn instantiate_contract() -> (
@@ -1291,54 +1250,40 @@ mod tests {
         Env,
         MessageInfo,
         MessageInfo,
-        MessageInfo,
-        MessageInfo,
     ) {
         let mut deps = mock_dependencies();
         let env = mock_env();
 
-        let owner = deps.api.addr_make("owner").to_string();
-        let owner_info = message_info(&Addr::unchecked(owner.clone()), &[]);
+        let owner = deps.api.addr_make("owner");
+        let owner_info = message_info(&owner, &[]);
 
-        let strategy_manager = deps.api.addr_make("strategy_manager").to_string();
+        let registry = deps.api.addr_make("registry");
+
+        let strategy_manager = deps.api.addr_make("strategy_manager");
+        let strategy_manager_info = message_info(&strategy_manager, &[]);
+
         let slasher = deps.api.addr_make("slasher").to_string();
-        let pauser = deps.api.addr_make("pauser").to_string();
-        let unpauser = deps.api.addr_make("unpauser").to_string();
         let strategy1 = deps.api.addr_make("strategy1").to_string();
         let strategy2 = deps.api.addr_make("strategy2").to_string();
 
-        let pauser_info = message_info(&Addr::unchecked(pauser.clone()), &[]);
-        let unpauser_info = message_info(&Addr::unchecked(unpauser.clone()), &[]);
-        let strategy_manager_info = message_info(&Addr::unchecked(strategy_manager.clone()), &[]);
-
         let msg = InstantiateMsg {
-            strategy_manager: strategy_manager.clone(),
+            owner: owner.to_string(),
+            registry: registry.to_string(),
+            strategy_manager: strategy_manager.to_string(),
             slash_manager: slasher.clone(),
             min_withdrawal_delay_blocks: 100,
-            owner: owner.clone(),
-            pauser: pauser.clone(),
-            unpauser: unpauser.clone(),
-            initial_paused_status: 0,
             strategies: vec![strategy1.clone(), strategy2.clone()],
             withdrawal_delay_blocks: vec![50, 60],
         };
 
         instantiate(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();
 
-        (
-            deps,
-            env,
-            owner_info,
-            pauser_info,
-            unpauser_info,
-            strategy_manager_info,
-        )
+        (deps, env, owner_info, strategy_manager_info)
     }
 
     #[test]
     fn test_only_strategy_manager() {
-        let (deps, _env, _owner_info, _pauser_info, _unpauser_info, strategy_manager_info) =
-            instantiate_contract();
+        let (deps, _env, _owner_info, strategy_manager_info) = instantiate_contract();
 
         let result = only_strategy_manager(deps.as_ref(), &strategy_manager_info);
         assert!(result.is_ok());
@@ -1358,7 +1303,7 @@ mod tests {
 
     #[test]
     fn test_set_slash_manager() {
-        let (mut deps, _, owner_info, _, _, _) = instantiate_contract();
+        let (mut deps, _, owner_info, _) = instantiate_contract();
 
         let new_slash_manager = deps.api.addr_make("new_slash_manager");
         let result =
@@ -1380,7 +1325,7 @@ mod tests {
 
     #[test]
     fn test_set_min_withdrawal_delay_blocks() {
-        let (mut deps, _, owner_info, _, _, _) = instantiate_contract();
+        let (mut deps, _, owner_info, _) = instantiate_contract();
 
         let new_min_delay = 150;
         let result = set_min_withdrawal_delay_blocks(deps.as_mut(), owner_info, new_min_delay);
@@ -1407,7 +1352,7 @@ mod tests {
 
     #[test]
     fn test_set_min_withdrawal_delay_blocks_exceeds_max() {
-        let (mut deps, _, owner_info, _, _, _) = instantiate_contract();
+        let (mut deps, _, owner_info, _) = instantiate_contract();
 
         let new_min_delay = MAX_WITHDRAWAL_DELAY_BLOCKS + 1;
         let result = set_min_withdrawal_delay_blocks(deps.as_mut(), owner_info, new_min_delay);
@@ -1423,7 +1368,7 @@ mod tests {
 
     #[test]
     fn test_set_min_withdrawal_delay_blocks_internal() {
-        let (mut deps, _, owner_info, _, _, _) = instantiate_contract();
+        let (mut deps, _, owner_info, _) = instantiate_contract();
 
         let new_min_delay = 150;
         let result =
@@ -1455,7 +1400,7 @@ mod tests {
 
     #[test]
     fn test_set_strategy_withdrawal_delay_blocks() {
-        let (mut deps, _, owner_info, _, _, _) = instantiate_contract();
+        let (mut deps, _, owner_info, _) = instantiate_contract();
 
         // Test set_strategy_withdrawal_delay_blocks
         let strategy1 = deps.api.addr_make("strategy1");
@@ -1538,7 +1483,7 @@ mod tests {
 
     #[test]
     fn test_set_strategy_withdrawal_delay_blocks_internal() {
-        let (mut deps, _, _, _, _, _) = instantiate_contract();
+        let (mut deps, _, _, _) = instantiate_contract();
 
         let strategy1 = deps.api.addr_make("strategy1");
         let strategy2 = deps.api.addr_make("strategy2");
@@ -1604,7 +1549,7 @@ mod tests {
 
     #[test]
     fn test_modify_operator_details() {
-        let (mut deps, _, _, _, _, _) = instantiate_contract();
+        let (mut deps, _, _, _) = instantiate_contract();
 
         let operator = deps.api.addr_make("operator");
         let info_operator = message_info(&Addr::unchecked(operator.clone()), &[]);
@@ -1687,7 +1632,7 @@ mod tests {
 
     #[test]
     fn test_set_operator_details() {
-        let (mut deps, _, _, _, _, _) = instantiate_contract();
+        let (mut deps, _, _, _) = instantiate_contract();
 
         let operator = deps.api.addr_make("operator1");
         let initial_operator_details = OperatorDetails {
@@ -1749,7 +1694,7 @@ mod tests {
 
     #[test]
     fn test_increase_operator_shares_internal() {
-        let (mut deps, _, _, _, _, _) = instantiate_contract();
+        let (mut deps, _, _, _) = instantiate_contract();
 
         let operator = deps.api.addr_make("operator1");
         let staker = deps.api.addr_make("staker1");
@@ -1844,7 +1789,7 @@ mod tests {
 
     #[test]
     fn test_get_delegatable_shares() {
-        let (mut deps, _, _, _, _, _) = instantiate_contract();
+        let (mut deps, _, _, _) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
 
@@ -1890,7 +1835,7 @@ mod tests {
 
     #[test]
     fn test_delegate() {
-        let (mut deps, env, owner_info, _, _, _) = instantiate_contract();
+        let (mut deps, env, owner_info, _) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker");
         let operator = deps.api.addr_make("operator");
@@ -1952,7 +1897,7 @@ mod tests {
 
     #[test]
     fn test_delegate_to() {
-        let (mut deps, env, owner_info, _, _, _) = instantiate_contract();
+        let (mut deps, env, owner_info, _) = instantiate_contract();
 
         let staker: Addr = deps.api.addr_make("staker");
         let operator: Addr = deps.api.addr_make("operator");
@@ -2015,7 +1960,7 @@ mod tests {
 
     #[test]
     fn test_register_as_operator() {
-        let (mut deps, env, _, _, _, _) = instantiate_contract();
+        let (mut deps, env, _, _) = instantiate_contract();
 
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart {
@@ -2103,7 +2048,7 @@ mod tests {
 
     #[test]
     fn test_update_operator_metadata_uri() {
-        let (mut deps, _, _, _, _, _) = instantiate_contract();
+        let (mut deps, _, _, _) = instantiate_contract();
 
         let operator = deps.api.addr_make("operator1");
         let operator_details = OperatorDetails {
@@ -2153,7 +2098,7 @@ mod tests {
 
     #[test]
     fn test_increase_delegated_shares() {
-        let (mut deps, _, _, _, _, strategy_manager_info) = instantiate_contract();
+        let (mut deps, _, _, strategy_manager_info) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
         let operator = deps.api.addr_make("operator1");
@@ -2235,7 +2180,7 @@ mod tests {
 
     #[test]
     fn test_decrease_operator_shares_internal() {
-        let (mut deps, _, _, _, _unpauser_info, _) = instantiate_contract();
+        let (mut deps, _, _unpauser_info, _) = instantiate_contract();
 
         let operator = deps.api.addr_make("operator1");
         let staker = deps.api.addr_make("staker1");
@@ -2321,8 +2266,7 @@ mod tests {
 
     #[test]
     fn test_decrease_delegated_shares() {
-        let (mut deps, _, _owner_info, _pauser_info, _unpauser_info, strategy_manager_info) =
-            instantiate_contract();
+        let (mut deps, _, _owner_info, strategy_manager_info) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
         let operator = deps.api.addr_make("operator1");
@@ -2449,7 +2393,7 @@ mod tests {
 
     #[test]
     fn test_remove_shares_and_queue_withdrawal() {
-        let (mut deps, env, _, _, _, _) = instantiate_contract();
+        let (mut deps, env, _, _) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
         let operator = deps.api.addr_make("operator1");
@@ -2537,7 +2481,7 @@ mod tests {
 
     #[test]
     fn test_calculate_withdrawal_root() {
-        let (deps, _, _, _, _, _) = instantiate_contract();
+        let (deps, _, _, _) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker");
         let delegated_to = deps.api.addr_make("operator");
@@ -2566,7 +2510,7 @@ mod tests {
 
     #[test]
     fn test_undelegate() {
-        let (mut deps, env, _, _, _, _) = instantiate_contract();
+        let (mut deps, env, _, _) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
         let operator = deps.api.addr_make("operator1");
@@ -2724,7 +2668,7 @@ mod tests {
 
     #[test]
     fn test_queue_withdrawals() {
-        let (mut deps, env, _, _, _, _) = instantiate_contract();
+        let (mut deps, env, _, _) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
         let operator = deps.api.addr_make("operator1");
@@ -2855,7 +2799,7 @@ mod tests {
 
     #[test]
     fn test_complete_queued_withdrawal_internal() {
-        let (mut deps, env, _, _, _, _) = instantiate_contract();
+        let (mut deps, env, _, _) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
         let operator = deps.api.addr_make("operator1");
@@ -3050,7 +2994,7 @@ mod tests {
 
     #[test]
     fn test_complete_queued_withdrawal() {
-        let (mut deps, env, _, _, _, _) = instantiate_contract();
+        let (mut deps, env, _, _) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
         let operator = deps.api.addr_make("operator1");
@@ -3246,7 +3190,7 @@ mod tests {
 
     #[test]
     fn test_complete_queued_withdrawals() {
-        let (mut deps, env, _, _, _, _) = instantiate_contract();
+        let (mut deps, env, _, _) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
         let operator = deps.api.addr_make("operator1");
@@ -3348,7 +3292,7 @@ mod tests {
 
     #[test]
     fn test_query_is_delegated() {
-        let (mut deps, _, _, _, _, _) = instantiate_contract();
+        let (mut deps, _, _, _) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
         let operator = deps.api.addr_make("operator1");
@@ -3375,7 +3319,7 @@ mod tests {
 
     #[test]
     fn test_query_is_operator() {
-        let (mut deps, _, _, _, _, _) = instantiate_contract();
+        let (mut deps, _, _, _) = instantiate_contract();
 
         let operator = deps.api.addr_make("operator1");
         DELEGATED_TO
@@ -3399,7 +3343,7 @@ mod tests {
 
     #[test]
     fn test_query_operator_details() {
-        let (mut deps, _, _, _, _, _) = instantiate_contract();
+        let (mut deps, _, _, _) = instantiate_contract();
 
         let operator = deps.api.addr_make("operator1");
         let operator_details = OperatorDetails {
@@ -3427,7 +3371,7 @@ mod tests {
 
     #[test]
     fn test_query_staker_opt_out_window_blocks() {
-        let (mut deps, _, _, _, _, _) = instantiate_contract();
+        let (mut deps, _, _, _) = instantiate_contract();
 
         let operator = deps.api.addr_make("operator1");
         let operator_details = OperatorDetails {
@@ -3450,7 +3394,7 @@ mod tests {
 
     #[test]
     fn test_query_operator_shares() {
-        let (mut deps, _, _, _, _, _) = instantiate_contract();
+        let (mut deps, _, _, _) = instantiate_contract();
 
         let operator = deps.api.addr_make("operator1");
         let strategies = vec![
@@ -3497,7 +3441,7 @@ mod tests {
 
     #[test]
     fn test_query_get_withdrawal_delay() {
-        let (mut deps, _, _, _, _, _) = instantiate_contract();
+        let (mut deps, _, _, _) = instantiate_contract();
 
         let strategies = vec![
             deps.api.addr_make("strategy1"),
@@ -3539,7 +3483,7 @@ mod tests {
 
     #[test]
     fn test_query_operator_stakers() {
-        let (mut deps, _, _, _, _, _) = instantiate_contract();
+        let (mut deps, _, _, _) = instantiate_contract();
 
         let operator = deps.api.addr_make("operator");
         let staker1 = deps.api.addr_make("staker1");
@@ -3631,7 +3575,7 @@ mod tests {
 
     #[test]
     fn test_query_cumulative_withdrawals_queued() {
-        let (mut deps, _, _, _, _, _) = instantiate_contract();
+        let (mut deps, _, _, _) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
         CUMULATIVE_WITHDRAWALS_QUEUED
