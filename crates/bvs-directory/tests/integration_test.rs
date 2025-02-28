@@ -68,6 +68,7 @@ fn register_operator_failure() {
 
     let message_hash = calculate_digest_hash(
         app.block_info().chain_id,
+        &operator.address,
         &Binary::from(operator.public_key.clone().serialize()),
         &owner,
         &salt,

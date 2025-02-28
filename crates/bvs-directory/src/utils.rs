@@ -33,7 +33,7 @@ pub fn calculate_digest_hash(
     contract_addr: &Addr,
 ) -> Vec<u8> {
     let struct_hash_input = [
-        &sha256(OPERATOR_BVS_REGISTRATION_TYPEHASH)[..],
+        &sha256(OPERATOR_BVS_REGISTRATION_TYPE_HASH)[..],
         operator.as_bytes(),
         operator_public_key,
         bvs.as_bytes(),

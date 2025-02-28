@@ -483,7 +483,7 @@ mod tests {
 
     #[test]
     fn test_register_bvs() {
-        let (mut deps, env, info, delegation_manager) = instantiate_contract();
+        let (mut deps, _env, _info, delegation_manager) = instantiate_contract();
 
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart {
@@ -712,7 +712,7 @@ mod tests {
 
     #[test]
     fn test_update_metadata_uri() {
-        let (deps, env, info, _delegation_manager) = instantiate_contract();
+        let (_deps, _env, info, _delegation_manager) = instantiate_contract();
 
         let metadata_uri = "http://metadata.uri".to_string();
         let res = update_metadata_uri(info.clone(), metadata_uri.clone());
@@ -1214,7 +1214,7 @@ mod tests {
 
     #[test]
     fn test_set_delegation_manager() {
-        let (mut deps, env, info, _delegation_manager) = instantiate_contract();
+        let (mut deps, _env, info, _delegation_manager) = instantiate_contract();
 
         let delegation_manager = deps.api.addr_make("delegation_manager");
 
@@ -1232,17 +1232,16 @@ mod tests {
 
     #[test]
     fn test_register_operator_to_bvs_with_anthor_operator() {
-        let (mut deps, env, info, _pauser_info, _unpauser_info, delegation_manager) =
-            instantiate_contract();
+        let (mut deps, env, info, delegation_manager) = instantiate_contract();
 
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
             generate_osmosis_public_key_from_private_key(private_key_hex);
 
-        let expiry = 1722965888;
+        let expiry = 2722875888;
         let salt = Binary::from(b"salt");
         let contract_addr: Addr =
-            Addr::unchecked("osmo1dhpupjecw7ltsckrckd4saraaf2266aq2dratwyjtwz5p7476yxspgc6td");
+            Addr::unchecked("osmo1wsjhxj3nl8kmrudsxlf7c40yw6crv4pcrk0twvvsp9jmyr675wjqc8t6an");
 
         let message_byte = calculate_digest_hash(
             env.clone().block.chain_id,
@@ -1259,15 +1258,15 @@ mod tests {
         let signature = secp.sign_ecdsa(&message, &secret_key);
         let signature_bytes = signature.serialize_compact().to_vec();
 
-        let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
-
         let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
 
+        // Update the mock to return the OperatorResponse struct instead of a boolean
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart {
                 contract_addr,
                 msg: _,
             } if contract_addr == &delegation_manager => {
+                // Simulate a successful IsOperator response
                 let operator_response = OperatorResponse { is_operator: true };
                 SystemResult::Ok(ContractResult::Ok(
                     to_json_binary(&operator_response).unwrap(),
@@ -1279,20 +1278,24 @@ mod tests {
             }),
         });
 
-        let msg = ExecuteMsg::RegisterOperatorToBvs {
-            operator: deps.api.addr_make("other_operator").to_string(),
-            public_key: public_key_hex.to_string(),
-            contract_addr: contract_addr.to_string(),
-            signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
-                signature: signature_base64.to_string(),
-                salt: salt.to_string(),
+        let other_operator = deps.api.addr_make("other_operator");
+
+        let res = register_operator(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            contract_addr.clone(),
+            other_operator.clone(),
+            Binary::from_base64(public_key_hex).unwrap(),
+            SignatureWithSaltAndExpiry {
+                signature: Binary::new(signature_bytes),
+                salt: salt.clone(),
                 expiry,
             },
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg);
+        );
 
         assert!(res.is_err());
+
         match res {
             Err(ContractError::InvalidSignature {}) => {}
             _ => panic!("Expected InvalidSignature error"),
