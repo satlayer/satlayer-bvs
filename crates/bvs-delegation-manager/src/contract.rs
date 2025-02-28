@@ -2,6 +2,7 @@
 use cosmwasm_std::entry_point;
 
 use crate::{
+    auth,
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, OperatorDetails, QueryMsg, QueuedWithdrawalParams},
     query::{
@@ -10,9 +11,8 @@ use crate::{
         StakerOptOutWindowBlocksResponse, StakerShares, WithdrawalDelayResponse,
     },
     state::{
-        DelegationManagerState, CUMULATIVE_WITHDRAWALS_QUEUED, DELEGATED_TO,
-        DELEGATION_MANAGER_STATE, MIN_WITHDRAWAL_DELAY_BLOCKS, OPERATOR_DETAILS, OPERATOR_SHARES,
-        PENDING_WITHDRAWALS, STRATEGY_WITHDRAWAL_DELAY_BLOCKS,
+        CUMULATIVE_WITHDRAWALS_QUEUED, DELEGATED_TO, MIN_WITHDRAWAL_DELAY_BLOCKS, OPERATOR_DETAILS,
+        OPERATOR_SHARES, PENDING_WITHDRAWALS, STRATEGY_WITHDRAWAL_DELAY_BLOCKS,
     },
     utils::{calculate_withdrawal_root, validate_addresses, DelegateParams, Withdrawal},
 };
@@ -50,16 +50,6 @@ pub fn instantiate(
     let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::_set_owner(deps.storage, &owner)?;
 
-    let strategy_manager = deps.api.addr_validate(&msg.strategy_manager)?;
-    let slash_manager = deps.api.addr_validate(&msg.slash_manager)?;
-
-    let state = DelegationManagerState {
-        strategy_manager: strategy_manager.clone(),
-        slash_manager: slash_manager.clone(),
-    };
-
-    DELEGATION_MANAGER_STATE.save(deps.storage, &state)?;
-
     set_min_withdrawal_delay_blocks_internal(deps.branch(), msg.min_withdrawal_delay_blocks)?;
 
     let strategies_addr = validate_addresses(deps.api, &msg.strategies)?;
@@ -74,8 +64,6 @@ pub fn instantiate(
 
     let response = Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("strategy_manager", state.strategy_manager.to_string())
-        .add_attribute("slasher", state.slash_manager.to_string())
         .add_attribute(
             "min_withdrawal_delay_blocks",
             msg.min_withdrawal_delay_blocks.to_string(),
@@ -189,10 +177,6 @@ pub fn execute(
 
             decrease_delegated_shares(deps, info, staker_addr, strategy_addr, shares)
         }
-        ExecuteMsg::SetSlashManager { new_slash_manager } => {
-            let new_slash_manager_addr = deps.api.addr_validate(&new_slash_manager)?;
-            set_slash_manager(deps, info, new_slash_manager_addr)
-        }
         ExecuteMsg::SetMinWithdrawalDelayBlocks {
             new_min_withdrawal_delay_blocks,
         } => set_min_withdrawal_delay_blocks(deps, info, new_min_withdrawal_delay_blocks),
@@ -209,30 +193,16 @@ pub fn execute(
                 withdrawal_delay_blocks,
             )
         }
+        ExecuteMsg::SetRouting { strategy_manager } => {
+            let strategy_manager = deps.api.addr_validate(&strategy_manager)?;
+
+            auth::set_routing(deps, info, strategy_manager)
+        }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
             ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
         }
     }
-}
-
-pub fn set_slash_manager(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_slash_manager: Addr,
-) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
-
-    let mut state = DELEGATION_MANAGER_STATE.load(deps.storage)?;
-
-    state.slash_manager = new_slash_manager.clone();
-    DELEGATION_MANAGER_STATE.save(deps.storage, &state)?;
-
-    let event = Event::new("SlashManagerSet")
-        .add_attribute("method", "set_slash_manager")
-        .add_attribute("new_slash_manager", new_slash_manager.to_string());
-
-    Ok(Response::new().add_event(event))
 }
 
 pub fn set_min_withdrawal_delay_blocks(
@@ -438,8 +408,9 @@ pub fn undelegate(
 }
 
 pub fn get_delegatable_shares(deps: Deps, staker: Addr) -> StdResult<(Vec<Addr>, Vec<Uint128>)> {
-    let state = DELEGATION_MANAGER_STATE.load(deps.storage)?;
-    let strategy_manager = state.strategy_manager;
+    let strategy_manager = auth::get_strategy_manager(deps.storage)
+        // TODO: SL-332
+        .unwrap();
 
     let query = WasmQuery::Smart {
         contract_addr: strategy_manager.to_string(),
@@ -461,7 +432,7 @@ pub fn increase_delegated_shares(
     strategy: Addr,
     shares: Uint128,
 ) -> Result<Response, ContractError> {
-    only_strategy_manager(deps.as_ref(), &info)?;
+    auth::assert_strategy_manager(deps.as_ref(), &info)?;
 
     let is_delegated_response = query_is_delegated(deps.as_ref(), staker.clone())?;
     if is_delegated_response.is_delegated {
@@ -479,7 +450,7 @@ pub fn decrease_delegated_shares(
     strategy: Addr,
     shares: Uint128,
 ) -> Result<Response, ContractError> {
-    only_strategy_manager(deps.as_ref(), &info)?;
+    auth::assert_strategy_manager(deps.as_ref(), &info)?;
 
     let is_delegated_response = query_is_delegated(deps.as_ref(), staker.clone())?;
     if is_delegated_response.is_delegated {
@@ -741,12 +712,15 @@ pub fn query_operator_stakers(deps: Deps, operator: Addr) -> StdResult<OperatorS
         })
         .collect();
 
+    let strategy_manager = auth::get_strategy_manager(deps.storage)
+        // TODO: SL-332
+        .unwrap();
+
     for staker in stakers.iter() {
         let mut shares_per_strategy: Vec<(Addr, Uint128)> = Vec::new();
 
-        let state = DELEGATION_MANAGER_STATE.load(deps.storage)?;
         let strategy_list_response: StakerStrategyListResponse = deps.querier.query_wasm_smart(
-            state.strategy_manager.clone(),
+            strategy_manager.to_string(),
             &StrategyManagerQueryMsg::GetStakerStrategyList {
                 staker: staker.to_string(),
             },
@@ -755,7 +729,7 @@ pub fn query_operator_stakers(deps: Deps, operator: Addr) -> StdResult<OperatorS
 
         for strategy in strategies {
             let shares_response: StakerStrategySharesResponse = deps.querier.query_wasm_smart(
-                state.strategy_manager.clone(),
+                strategy_manager.to_string(),
                 &StrategyManagerQueryMsg::GetStakerStrategyShares {
                     staker: staker.to_string(),
                     strategy: strategy.to_string(),
@@ -789,14 +763,6 @@ pub fn query_cumulative_withdrawals_queued(
     Ok(CumulativeWithdrawalsQueuedResponse {
         cumulative_withdrawals,
     })
-}
-
-fn only_strategy_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
-    let state = DELEGATION_MANAGER_STATE.load(deps.storage)?;
-    if info.sender != state.strategy_manager && info.sender != state.slash_manager {
-        return Err(ContractError::Unauthorized {});
-    }
-    Ok(())
 }
 
 fn set_min_withdrawal_delay_blocks_internal(
@@ -990,8 +956,6 @@ fn complete_queued_withdrawal_internal(
     _middleware_times_index: u64,
     receive_as_tokens: bool,
 ) -> Result<Response, ContractError> {
-    let state = DELEGATION_MANAGER_STATE.load(deps.storage)?;
-
     let withdrawal_root = calculate_withdrawal_root(&withdrawal)?;
 
     if !PENDING_WITHDRAWALS.has(deps.storage, &withdrawal_root) {
@@ -1013,6 +977,7 @@ fn complete_queued_withdrawal_internal(
     PENDING_WITHDRAWALS.remove(deps.storage, &withdrawal_root);
 
     let mut response = Response::new();
+    let strategy_manager = auth::get_strategy_manager(deps.storage)?;
 
     if receive_as_tokens {
         for (i, strategy) in withdrawal.strategies.iter().enumerate() {
@@ -1020,10 +985,6 @@ fn complete_queued_withdrawal_internal(
             if withdrawal.start_block + delay_blocks > env.block.height {
                 return Err(ContractError::StrategyWithdrawalDelayNotPassed {});
             }
-
-            let state: DelegationManagerState = DELEGATION_MANAGER_STATE.load(deps.storage)?;
-
-            let strategy_manager = state.strategy_manager;
 
             let msg = WasmMsg::Execute {
                 contract_addr: strategy_manager.to_string(),
@@ -1055,7 +1016,7 @@ fn complete_queued_withdrawal_internal(
             }
 
             let msg = WasmMsg::Execute {
-                contract_addr: state.strategy_manager.to_string(),
+                contract_addr: strategy_manager.to_string(),
                 msg: to_json_binary(&StrategyManagerExecuteMsg::AddShares {
                     staker: info.sender.to_string(),
                     token: tokens[i].to_string(),
@@ -1106,7 +1067,7 @@ fn remove_shares_and_queue_withdrawal(
         return Err(ContractError::CannotBeEmpty {});
     }
 
-    let state = DELEGATION_MANAGER_STATE.load(deps.storage)?;
+    let strategy_manager = auth::get_strategy_manager(deps.storage)?;
 
     let mut response = Response::new();
 
@@ -1124,7 +1085,7 @@ fn remove_shares_and_queue_withdrawal(
         }
 
         let msg = WasmMsg::Execute {
-            contract_addr: state.strategy_manager.to_string(),
+            contract_addr: strategy_manager.to_string(),
             msg: to_json_binary(&StrategyManagerExecuteMsg::RemoveShares {
                 staker: staker.to_string(),
                 strategy: strategy.to_string(),
@@ -1170,6 +1131,7 @@ fn remove_shares_and_queue_withdrawal(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::auth::set_routing;
     use bvs_library::ownership::OwnershipError;
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
@@ -1188,15 +1150,12 @@ mod tests {
         let registry = deps.api.addr_make("registry");
         let strategy_manager = deps.api.addr_make("strategy_manager");
 
-        let slasher = deps.api.addr_make("slasher").to_string();
         let strategy1 = deps.api.addr_make("strategy1").to_string();
         let strategy2 = deps.api.addr_make("strategy2").to_string();
 
         let msg = InstantiateMsg {
             owner: owner.to_string(),
             registry: registry.to_string(),
-            strategy_manager: strategy_manager.to_string(),
-            slash_manager: slasher.clone(),
             min_withdrawal_delay_blocks: 100,
             strategies: vec![strategy1.clone(), strategy2.clone()],
             withdrawal_delay_blocks: vec![50, 60],
@@ -1204,29 +1163,13 @@ mod tests {
 
         let res = instantiate(deps.as_mut(), env, info, msg.clone()).unwrap();
 
-        assert_eq!(res.attributes.len(), 5);
+        assert_eq!(res.attributes.len(), 3);
         assert_eq!(res.attributes[0], attr("method", "instantiate"));
         assert_eq!(
             res.attributes[1],
-            attr("strategy_manager", strategy_manager.clone())
-        );
-        assert_eq!(res.attributes[2], attr("slasher", slasher.clone()));
-        assert_eq!(
-            res.attributes[3],
             attr("min_withdrawal_delay_blocks", "100")
         );
-        assert_eq!(res.attributes[4], attr("owner", owner.as_str()));
-
-        let state = DELEGATION_MANAGER_STATE.load(&deps.storage).unwrap();
-        assert_eq!(
-            state.strategy_manager,
-            Addr::unchecked(strategy_manager.clone())
-        );
-        assert_eq!(state.slash_manager, Addr::unchecked(slasher));
-
-        let state = DELEGATION_MANAGER_STATE.load(&deps.storage).unwrap();
-
-        assert_eq!(Addr::unchecked(strategy_manager), state.strategy_manager);
+        assert_eq!(res.attributes[2], attr("owner", owner.as_str()));
 
         let loaded_owner = ownership::OWNER.load(&deps.storage).unwrap();
         assert_eq!(loaded_owner, &owner);
@@ -1259,18 +1202,12 @@ mod tests {
 
         let registry = deps.api.addr_make("registry");
 
-        let strategy_manager = deps.api.addr_make("strategy_manager");
-        let strategy_manager_info = message_info(&strategy_manager, &[]);
-
-        let slasher = deps.api.addr_make("slasher").to_string();
         let strategy1 = deps.api.addr_make("strategy1").to_string();
         let strategy2 = deps.api.addr_make("strategy2").to_string();
 
         let msg = InstantiateMsg {
             owner: owner.to_string(),
             registry: registry.to_string(),
-            strategy_manager: strategy_manager.to_string(),
-            slash_manager: slasher.clone(),
             min_withdrawal_delay_blocks: 100,
             strategies: vec![strategy1.clone(), strategy2.clone()],
             withdrawal_delay_blocks: vec![50, 60],
@@ -1278,49 +1215,11 @@ mod tests {
 
         instantiate(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();
 
+        let strategy_manager = deps.api.addr_make("strategy_manager");
+        let strategy_manager_info = message_info(&strategy_manager, &[]);
+        set_routing(deps.as_mut(), owner_info.clone(), strategy_manager).unwrap();
+
         (deps, env, owner_info, strategy_manager_info)
-    }
-
-    #[test]
-    fn test_only_strategy_manager() {
-        let (deps, _env, _owner_info, strategy_manager_info) = instantiate_contract();
-
-        let result = only_strategy_manager(deps.as_ref(), &strategy_manager_info);
-        assert!(result.is_ok());
-
-        let non_strategy_manager_info = message_info(&Addr::unchecked("not_strategy_manager"), &[]);
-
-        let result = only_strategy_manager(deps.as_ref(), &non_strategy_manager_info);
-        assert!(result.is_err());
-
-        if let Err(err) = result {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-    }
-
-    #[test]
-    fn test_set_slash_manager() {
-        let (mut deps, _, owner_info, _) = instantiate_contract();
-
-        let new_slash_manager = deps.api.addr_make("new_slash_manager");
-        let result =
-            set_slash_manager(deps.as_mut(), owner_info.clone(), new_slash_manager.clone());
-        assert!(result.is_ok());
-
-        let response = result.unwrap();
-        assert_eq!(response.events.len(), 1);
-        assert_eq!(
-            response.events[0],
-            Event::new("SlashManagerSet")
-                .add_attribute("method", "set_slash_manager")
-                .add_attribute("new_slash_manager", new_slash_manager.to_string())
-        );
-
-        let state = DELEGATION_MANAGER_STATE.load(&deps.storage).unwrap();
-        assert_eq!(state.slash_manager, Addr::unchecked(new_slash_manager));
     }
 
     #[test]

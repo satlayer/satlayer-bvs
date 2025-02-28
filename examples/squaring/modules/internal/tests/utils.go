@@ -169,9 +169,7 @@ func (suite *TestSuite) DeployBvsContracts() {
 	suite.StrategyManagerApi = api.NewStrategyManager(suite.ChainIO)
 	suite.StrategyManagerApi.BindClient(strategyManagerContract.Address)
 
-	delegationManagerContract := deployer.DeployDelegationManager(
-		registry.Address,
-		tempAddress.String(), strategyManagerContract.Address, 100, []string{tempAddress.String()}, []int64{50})
+	delegationManagerContract := deployer.DeployDelegationManager(registry.Address, 100, []string{tempAddress.String()}, []int64{50})
 	suite.DelegationManagerApi = api.NewDelegationManager(suite.ChainIO, delegationManagerContract.Address)
 
 	slashManagerContract := deployer.DeploySlashManager(delegationManagerContract.Address, strategyManagerContract.Address)
@@ -193,17 +191,6 @@ func (suite *TestSuite) DeployBvsContracts() {
 	)
 	suite.RewardsCoordinatorApi = api.NewRewardsCoordinator(suite.ChainIO)
 	suite.RewardsCoordinatorApi.BindClient(rewardsCoordinatorContract.Address)
-
-	res, err := suite.RewardsCoordinatorApi.SetRouting(context.Background(),
-		delegationManagerContract.Address,
-		strategyManagerContract.Address,
-	)
-	suite.NoError(err)
-	suite.Equal(uint32(0), res.TxResult.Code)
-
-	res, err = suite.RewardsCoordinatorApi.SetRewardsUpdater(context.Background(), tempAddress.String())
-	suite.NoError(err)
-	suite.Equal(uint32(0), res.TxResult.Code)
 
 	// deploy CW20 contract
 	token := cw20.DeployCw20(deployer.BabylonContainer, cw20.InstantiateMsg{
@@ -228,6 +215,21 @@ func (suite *TestSuite) DeployBvsContracts() {
 
 	// connect contracts together
 
+	res, err := suite.RewardsCoordinatorApi.SetRouting(context.Background(),
+		delegationManagerContract.Address,
+		strategyManagerContract.Address,
+	)
+	suite.NoError(err)
+	suite.Equal(uint32(0), res.TxResult.Code)
+
+	res, err = suite.DelegationManagerApi.SetRouting(context.Background(), strategyManagerContract.Address)
+	suite.NoError(err)
+	suite.Equal(uint32(0), res.TxResult.Code)
+
+	res, err = suite.RewardsCoordinatorApi.SetRewardsUpdater(context.Background(), tempAddress.String())
+	suite.NoError(err)
+	suite.Equal(uint32(0), res.TxResult.Code)
+
 	tx, err := suite.DirectoryApi.SetDelegationManager(suite.Ctx, delegationManagerContract.Address)
 	assert.NoError(t, err)
 	assert.NotNil(t, tx)
@@ -235,9 +237,6 @@ func (suite *TestSuite) DeployBvsContracts() {
 	assert.NoError(t, err)
 	assert.NotNil(t, tx)
 	tx, err = suite.StrategyManagerApi.SetDelegationManager(suite.Ctx, delegationManagerContract.Address)
-	assert.NoError(t, err)
-	assert.NotNil(t, tx)
-	tx, err = suite.DelegationManagerApi.SetSlashManager(suite.Ctx, slashManagerContract.Address)
 	assert.NoError(t, err)
 	assert.NotNil(t, tx)
 

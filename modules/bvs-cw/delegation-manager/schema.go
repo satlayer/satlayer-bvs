@@ -178,9 +178,7 @@ type InstantiateMsg struct {
 	MinWithdrawalDelayBlocks int64    `json:"min_withdrawal_delay_blocks"`
 	Owner                    string   `json:"owner"`
 	Registry                 string   `json:"registry"`
-	SlashManager             string   `json:"slash_manager"`
 	Strategies               []string `json:"strategies"`
-	StrategyManager          string   `json:"strategy_manager"`
 	WithdrawalDelayBlocks    []int64  `json:"withdrawal_delay_blocks"`
 }
 
@@ -196,8 +194,8 @@ type ExecuteMsg struct {
 	IncreaseDelegatedShares          *IncreaseDelegatedShares          `json:"increase_delegated_shares,omitempty"`
 	DecreaseDelegatedShares          *DecreaseDelegatedShares          `json:"decrease_delegated_shares,omitempty"`
 	SetMinWithdrawalDelayBlocks      *SetMinWithdrawalDelayBlocks      `json:"set_min_withdrawal_delay_blocks,omitempty"`
-	SetSlashManager                  *SetSlashManager                  `json:"set_slash_manager,omitempty"`
 	SetStrategyWithdrawalDelayBlocks *SetStrategyWithdrawalDelayBlocks `json:"set_strategy_withdrawal_delay_blocks,omitempty"`
+	SetRouting                       *SetRouting                       `json:"set_routing,omitempty"`
 	TransferOwnership                *TransferOwnership                `json:"transfer_ownership,omitempty"`
 }
 
@@ -273,8 +271,8 @@ type SetMinWithdrawalDelayBlocks struct {
 	NewMinWithdrawalDelayBlocks int64 `json:"new_min_withdrawal_delay_blocks"`
 }
 
-type SetSlashManager struct {
-	NewSlashManager string `json:"new_slash_manager"`
+type SetRouting struct {
+	StrategyManager string `json:"strategy_manager"`
 }
 
 type SetStrategyWithdrawalDelayBlocks struct {

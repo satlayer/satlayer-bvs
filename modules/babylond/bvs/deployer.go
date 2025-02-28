@@ -96,8 +96,6 @@ func (d *Deployer) DeployStrategyManager(
 
 func (d *Deployer) DeployDelegationManager(
 	registry string,
-	slashManager string,
-	strategyManager string,
 	minWithdrawalDelayBlocks int64,
 	strategies []string,
 	withdrawalDelayBlocks []int64,
@@ -105,8 +103,6 @@ func (d *Deployer) DeployDelegationManager(
 	initMsg := delegationmanager.InstantiateMsg{
 		Owner:                    d.GenerateAddress("delegation-manager:initial_owner").String(),
 		Registry:                 registry,
-		SlashManager:             slashManager,
-		StrategyManager:          strategyManager,
 		MinWithdrawalDelayBlocks: minWithdrawalDelayBlocks,
 		Strategies:               strategies,
 		WithdrawalDelayBlocks:    withdrawalDelayBlocks,
