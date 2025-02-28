@@ -18,8 +18,12 @@ pub fn _set_owner(storage: &mut dyn Storage, owner: &Addr) -> Result<(), Ownersh
     Ok(())
 }
 
-/// Transfer the ownership of the contract to a new address
-/// Only the current owner can do this
+/// Transfer ownership of the contract to a new owner.
+/// Contract admin (set for all BVS contracts, a cosmwasm feature)
+/// has the omni-ability to override by migration;
+/// this logic is app-level.
+/// > 2-step ownership transfer is mostly redundant for CosmWasm contracts with the admin set.
+/// > You can override ownership with using CosmWasm migrate `entry_point`.
 pub fn transfer_ownership(
     deps: DepsMut,
     info: &MessageInfo,
