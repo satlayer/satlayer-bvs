@@ -13,8 +13,6 @@ pub struct InstantiateMsg {
     pub owner: String,
     pub registry: String,
 
-    pub strategy_manager: String,
-    pub slash_manager: String,
     pub min_withdrawal_delay_blocks: u64,
     pub strategies: Vec<String>,
     pub withdrawal_delay_blocks: Vec<u64>,
@@ -67,12 +65,13 @@ pub enum ExecuteMsg {
     SetMinWithdrawalDelayBlocks {
         new_min_withdrawal_delay_blocks: u64,
     },
-    SetSlashManager {
-        new_slash_manager: String,
-    },
     SetStrategyWithdrawalDelayBlocks {
         strategies: Vec<String>,
         withdrawal_delay_blocks: Vec<u64>,
+    },
+    SetRouting {
+        strategy_manager: String,
+        slash_manager: String,
     },
     TransferOwnership {
         /// See `ownership::transfer_ownership` for more information on this field
