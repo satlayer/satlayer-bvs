@@ -159,14 +159,6 @@ func (r *StrategyBase) UnderlyingToken() (*wasmtypes.QuerySmartContractStateResp
 	return r.sendQuery(msg)
 }
 
-func (r *StrategyBase) SetStrategyManager(ctx context.Context, newStrategyManager string) (*coretypes.ResultTx, error) {
-	msg := strategybase.ExecuteMsg{
-		SetStrategyManager: &strategybase.SetStrategyManager{NewStrategyManager: newStrategyManager},
-	}
-
-	return r.execute(ctx, msg)
-}
-
 func (r *StrategyBase) TransferOwnership(ctx context.Context, newOwner string) (*coretypes.ResultTx, error) {
 	msg := strategybase.ExecuteMsg{
 		TransferOwnership: &strategybase.TransferOwnership{NewOwner: newOwner}}

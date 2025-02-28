@@ -76,10 +76,6 @@ func (suite *strategyBaseTestSuite) Test_ExecuteStrategyBase() {
 	strategyBase := api.NewStrategyBase(chainIO)
 	strategyBase.BindClient(suite.contrAddr)
 
-	resp, err := strategyBase.SetStrategyManager(context.Background(), suite.strategyManager)
-	assert.NoError(t, err)
-	assert.NotNil(t, resp)
-
 	// these functions only invoked by strategy manager contract
 	/*resp, err := strategyBase.Deposit(context.Background(),10)
 	assert.NoError(t, err, "execute contract")
