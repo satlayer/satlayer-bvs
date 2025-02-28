@@ -130,28 +130,22 @@ func (d *Deployer) DeployDirectory(
 
 func (d *Deployer) DeployRewardsCoordinator(
 	registry string,
-	delegationManager string,
-	strategyManager string,
 	activationDelay int64,
 	calculationIntervalSeconds int64,
 	genesisRewardsTimestamp int64,
 	maxFutureLength int64,
 	maxRetroactiveLength int64,
 	maxRewardsDuration int64,
-	rewardsUpdater string,
 ) *Contract[rewardscoordinator.InstantiateMsg] {
 	initMsg := rewardscoordinator.InstantiateMsg{
 		Owner:                      d.GenerateAddress("rewards-coordinator:initial_owner").String(),
 		Registry:                   registry,
-		StrategyManager:            strategyManager,
-		DelegationManager:          delegationManager,
 		ActivationDelay:            activationDelay,
 		CalculationIntervalSeconds: calculationIntervalSeconds,
 		GenesisRewardsTimestamp:    genesisRewardsTimestamp,
 		MaxFutureLength:            maxFutureLength,
 		MaxRetroactiveLength:       maxRetroactiveLength,
 		MaxRewardsDuration:         maxRewardsDuration,
-		RewardsUpdater:             rewardsUpdater,
 	}
 
 	return deployCrate(d, "bvs-rewards-coordinator", initMsg, "BVS Rewards Coordinator")

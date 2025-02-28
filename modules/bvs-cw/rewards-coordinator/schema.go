@@ -177,15 +177,12 @@ func (r *OperatorCommissionBipsResponse) Marshal() ([]byte, error) {
 type InstantiateMsg struct {
 	ActivationDelay            int64  `json:"activation_delay"`
 	CalculationIntervalSeconds int64  `json:"calculation_interval_seconds"`
-	DelegationManager          string `json:"delegation_manager"`
 	GenesisRewardsTimestamp    int64  `json:"genesis_rewards_timestamp"`
 	MaxFutureLength            int64  `json:"max_future_length"`
 	MaxRetroactiveLength       int64  `json:"max_retroactive_length"`
 	MaxRewardsDuration         int64  `json:"max_rewards_duration"`
 	Owner                      string `json:"owner"`
 	Registry                   string `json:"registry"`
-	RewardsUpdater             string `json:"rewards_updater"`
-	StrategyManager            string `json:"strategy_manager"`
 }
 
 type ExecuteMsg struct {
@@ -196,10 +193,11 @@ type ExecuteMsg struct {
 	DisableRoot                   *DisableRoot                   `json:"disable_root,omitempty"`
 	SetClaimerFor                 *SetClaimerFor                 `json:"set_claimer_for,omitempty"`
 	SetActivationDelay            *SetActivationDelay            `json:"set_activation_delay,omitempty"`
-	SetRewardsUpdater             *SetRewardsUpdater             `json:"set_rewards_updater,omitempty"`
 	SetRewardsForAllSubmitter     *SetRewardsForAllSubmitter     `json:"set_rewards_for_all_submitter,omitempty"`
 	SetGlobalOperatorCommission   *SetGlobalOperatorCommission   `json:"set_global_operator_commission,omitempty"`
 	TransferOwnership             *TransferOwnership             `json:"transfer_ownership,omitempty"`
+	SetRewardsUpdater             *SetRewardsUpdater             `json:"set_rewards_updater,omitempty"`
+	SetRouting                    *SetRouting                    `json:"set_routing,omitempty"`
 }
 
 type CreateBvsRewardsSubmission struct {
@@ -270,7 +268,12 @@ type SetRewardsForAllSubmitter struct {
 }
 
 type SetRewardsUpdater struct {
-	NewUpdater string `json:"new_updater"`
+	Addr string `json:"addr"`
+}
+
+type SetRouting struct {
+	DelegationManager string `json:"delegation_manager"`
+	StrategyManager   string `json:"strategy_manager"`
 }
 
 type SubmitRoot struct {

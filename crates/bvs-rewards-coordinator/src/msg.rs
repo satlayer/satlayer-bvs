@@ -12,14 +12,11 @@ use cosmwasm_std::{Binary, Uint128};
 pub struct InstantiateMsg {
     pub owner: String,
     pub registry: String,
-    pub rewards_updater: String,
     pub calculation_interval_seconds: u64,
     pub max_rewards_duration: u64,
     pub max_retroactive_length: u64,
     pub max_future_length: u64,
     pub genesis_rewards_timestamp: u64,
-    pub delegation_manager: String,
-    pub strategy_manager: String,
     pub activation_delay: u32,
 }
 
@@ -49,9 +46,6 @@ pub enum ExecuteMsg {
     SetActivationDelay {
         new_activation_delay: u32,
     },
-    SetRewardsUpdater {
-        new_updater: String,
-    },
     SetRewardsForAllSubmitter {
         submitter: String,
         new_value: bool,
@@ -62,6 +56,13 @@ pub enum ExecuteMsg {
     TransferOwnership {
         /// See `ownership::transfer_ownership` for more information on this field
         new_owner: String,
+    },
+    SetRewardsUpdater {
+        addr: String,
+    },
+    SetRouting {
+        delegation_manager: String,
+        strategy_manager: String,
     },
 }
 

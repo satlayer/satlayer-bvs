@@ -2,6 +2,7 @@
 use cosmwasm_std::entry_point;
 
 use crate::{
+    auth,
     error::ContractError,
     msg::{DistributionRoot, ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
@@ -12,10 +13,9 @@ use crate::{
     },
     state::{
         ACTIVATION_DELAY, CALCULATION_INTERVAL_SECONDS, CLAIMER_FOR, CUMULATIVE_CLAIMED,
-        CURR_REWARDS_CALCULATION_END_TIMESTAMP, DELEGATION_MANAGER, DISTRIBUTION_ROOTS,
-        DISTRIBUTION_ROOTS_COUNT, GENESIS_REWARDS_TIMESTAMP, GLOBAL_OPERATOR_COMMISSION_BIPS,
-        IS_BVS_REWARDS_SUBMISSION_HASH, MAX_FUTURE_LENGTH, MAX_RETROACTIVE_LENGTH,
-        MAX_REWARDS_DURATION, REWARDS_FOR_ALL_SUBMITTER, REWARDS_UPDATER, STRATEGY_MANAGER,
+        CURR_REWARDS_CALCULATION_END_TIMESTAMP, DISTRIBUTION_ROOTS, DISTRIBUTION_ROOTS_COUNT,
+        GENESIS_REWARDS_TIMESTAMP, GLOBAL_OPERATOR_COMMISSION_BIPS, IS_BVS_REWARDS_SUBMISSION_HASH,
+        MAX_FUTURE_LENGTH, MAX_RETROACTIVE_LENGTH, MAX_REWARDS_DURATION, REWARDS_FOR_ALL_SUBMITTER,
         SUBMISSION_NONCE,
     },
     utils::{
@@ -62,25 +62,17 @@ pub fn instantiate(
         return Err(ContractError::InvalidCalculationInterval {});
     }
 
-    let strategy_manager = deps.api.addr_validate(&msg.strategy_manager)?;
-    let delegation_manager = deps.api.addr_validate(&msg.delegation_manager)?;
-
-    let rewards_updater = deps.api.addr_validate(&msg.rewards_updater)?;
-
     CALCULATION_INTERVAL_SECONDS.save(deps.storage, &msg.calculation_interval_seconds)?;
     MAX_REWARDS_DURATION.save(deps.storage, &msg.max_rewards_duration)?;
     MAX_RETROACTIVE_LENGTH.save(deps.storage, &msg.max_retroactive_length)?;
     MAX_FUTURE_LENGTH.save(deps.storage, &msg.max_future_length)?;
     GENESIS_REWARDS_TIMESTAMP.save(deps.storage, &msg.genesis_rewards_timestamp)?;
-    DELEGATION_MANAGER.save(deps.storage, &delegation_manager)?;
-    STRATEGY_MANAGER.save(deps.storage, &strategy_manager)?;
 
-    set_rewards_updater_internal(deps.branch(), rewards_updater.clone())?;
     set_activation_delay_internal(deps.branch(), msg.activation_delay)?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("rewards_updater", msg.rewards_updater.to_string())
+        .add_attribute("owner", owner.to_string())
         .add_attribute("activation_delay", msg.activation_delay.to_string()))
 }
 
@@ -139,10 +131,6 @@ pub fn execute(
         ExecuteMsg::SetActivationDelay {
             new_activation_delay,
         } => set_activation_delay(deps, info, new_activation_delay),
-        ExecuteMsg::SetRewardsUpdater { new_updater } => {
-            let new_updater = deps.api.addr_validate(&new_updater)?;
-            set_rewards_updater(deps, info, new_updater)
-        }
         ExecuteMsg::SetRewardsForAllSubmitter {
             submitter,
             new_value,
@@ -156,6 +144,19 @@ pub fn execute(
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
             ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
+        }
+        ExecuteMsg::SetRewardsUpdater { addr } => {
+            let addr = deps.api.addr_validate(&addr)?;
+            auth::set_rewards_updater(deps, info, addr)
+        }
+        ExecuteMsg::SetRouting {
+            delegation_manager,
+            strategy_manager,
+        } => {
+            let delegation_manager = deps.api.addr_validate(&delegation_manager)?;
+            let strategy_manager = deps.api.addr_validate(&strategy_manager)?;
+
+            auth::set_routing(deps, info, delegation_manager, strategy_manager)
         }
     }
 }
@@ -354,7 +355,7 @@ pub fn submit_root(
     root: Binary,
     rewards_calculation_end_timestamp: u64,
 ) -> Result<Response, ContractError> {
-    only_rewards_updater(deps.as_ref(), &info)?;
+    auth::assert_rewards_updater(deps.as_ref(), &info)?;
 
     let curr_rewards_calculation_end_timestamp = CURR_REWARDS_CALCULATION_END_TIMESTAMP
         .may_load(deps.storage)?
@@ -411,7 +412,7 @@ pub fn disable_root(
     info: MessageInfo,
     root_index: u64,
 ) -> Result<Response, ContractError> {
-    only_rewards_updater(deps.as_ref(), &info)?;
+    auth::assert_rewards_updater(deps.as_ref(), &info)?;
 
     let roots_length = DISTRIBUTION_ROOTS_COUNT.load(deps.storage)?;
     if root_index >= roots_length {
@@ -476,17 +477,6 @@ pub fn set_activation_delay(
     ownership::assert_owner(deps.as_ref(), &info)?;
 
     let res = set_activation_delay_internal(deps, new_activation_delay)?;
-    Ok(res)
-}
-
-pub fn set_rewards_updater(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_updater: Addr,
-) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
-
-    let res = set_rewards_updater_internal(deps, new_updater)?;
     Ok(res)
 }
 
@@ -745,15 +735,6 @@ pub fn query_check_claim(
     Ok(CheckClaimResponse { check_claim })
 }
 
-fn only_rewards_updater(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
-    let rewards_updater = REWARDS_UPDATER.load(deps.storage)?;
-
-    if info.sender != rewards_updater {
-        return Err(ContractError::NotRewardsUpdater {});
-    }
-    Ok(())
-}
-
 fn only_rewards_for_all_submitter(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let is_submitter = REWARDS_FOR_ALL_SUBMITTER
         .may_load(deps.storage, info.sender.clone())?
@@ -808,7 +789,7 @@ fn validate_rewards_submission(
 
     let mut current_address = Addr::unchecked("");
 
-    let strategy_manager = STRATEGY_MANAGER.load(deps.storage)?;
+    let strategy_manager = auth::STRATEGY_MANAGER.load(deps.storage)?;
 
     for strategy_multiplier in &submission.strategies_and_multipliers {
         let strategy = &strategy_multiplier.strategy;
@@ -959,19 +940,6 @@ fn set_global_operator_commission_internal(
     Ok(Response::new().add_event(event))
 }
 
-fn set_rewards_updater_internal(
-    deps: DepsMut,
-    new_updater: Addr,
-) -> Result<Response, ContractError> {
-    REWARDS_UPDATER.save(deps.storage, &new_updater)?;
-
-    let event = Event::new("SetRewardsUpdater")
-        .add_attribute("method", "set_rewards_updater")
-        .add_attribute("new_updater", new_updater.to_string());
-
-    Ok(Response::new().add_event(event))
-}
-
 fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdResult<Uint128> {
     let res: Cw20BalanceResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: token.to_string(),
@@ -1009,22 +977,16 @@ mod tests {
         let env = mock_env();
         let info = message_info(&Addr::unchecked("creator"), &[]);
 
-        let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
-        let strategy_manager = deps.api.addr_make("strategy_manager").to_string();
-        let initial_owner = deps.api.addr_make("initial_owner").to_string();
-        let rewards_updater = deps.api.addr_make("rewards_updater").to_string();
+        let owner = deps.api.addr_make("owner").to_string();
         let registry = deps.api.addr_make("registry").to_string();
 
         let msg = InstantiateMsg {
-            owner: initial_owner.clone(),
+            owner: owner.clone(),
             calculation_interval_seconds: 86_400, // 1 day
             max_rewards_duration: 30 * 86_400,    // 30 days
             max_retroactive_length: 5 * 86_400,   // 5 days
             max_future_length: 10 * 86_400,       // 10 days
             genesis_rewards_timestamp: env.block.time.seconds() / 86_400 * 86_400,
-            delegation_manager: delegation_manager.clone(),
-            strategy_manager: strategy_manager.clone(),
-            rewards_updater: rewards_updater.clone(),
             activation_delay: 60,
             registry,
         };
@@ -1034,13 +996,13 @@ mod tests {
         assert_eq!(res.attributes.len(), 3);
         assert_eq!(res.attributes[0].key, "method");
         assert_eq!(res.attributes[0].value, "instantiate");
-        assert_eq!(res.attributes[1].key, "rewards_updater");
-        assert_eq!(res.attributes[1].value, rewards_updater.to_string());
+        assert_eq!(res.attributes[1].key, "owner");
+        assert_eq!(res.attributes[1].value, owner.to_string());
         assert_eq!(res.attributes[2].key, "activation_delay");
         assert_eq!(res.attributes[2].value, "60");
 
         let stored_owner = ownership::OWNER.load(&deps.storage).unwrap();
-        assert_eq!(stored_owner, Addr::unchecked(initial_owner));
+        assert_eq!(stored_owner, Addr::unchecked(owner));
 
         let stored_calculation_interval = CALCULATION_INTERVAL_SECONDS.load(&deps.storage).unwrap();
         assert_eq!(stored_calculation_interval, 86_400);
@@ -1060,21 +1022,6 @@ mod tests {
             stored_genesis_rewards_timestamp,
             msg.genesis_rewards_timestamp
         );
-
-        let stored_delegation_manager = DELEGATION_MANAGER.load(&deps.storage).unwrap();
-        assert_eq!(
-            stored_delegation_manager,
-            Addr::unchecked(delegation_manager)
-        );
-
-        let stored_strategy_manager = STRATEGY_MANAGER.load(&deps.storage).unwrap();
-        assert_eq!(stored_strategy_manager, Addr::unchecked(strategy_manager));
-
-        let stored_activation_delay = ACTIVATION_DELAY.load(&deps.storage).unwrap();
-        assert_eq!(stored_activation_delay, 60);
-
-        let stored_rewards_updater = REWARDS_UPDATER.load(&deps.storage).unwrap();
-        assert_eq!(stored_rewards_updater, Addr::unchecked(rewards_updater));
     }
 
     fn instantiate_contract() -> (
@@ -1090,32 +1037,30 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
 
-        let initial_owner = deps.api.addr_make("initial_owner").to_string();
+        let owner = deps.api.addr_make("owner").to_string();
+        let registry = deps.api.addr_make("registry").to_string();
+
         let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
         let strategy_manager = deps.api.addr_make("strategy_manager").to_string();
         let pauser = deps.api.addr_make("pauser").to_string();
         let unpauser = deps.api.addr_make("unpauser").to_string();
         let rewards_updater = deps.api.addr_make("rewards_updater").to_string();
 
-        let owner_info = message_info(&Addr::unchecked(initial_owner.clone()), &[]);
+        let owner_info = message_info(&Addr::unchecked(owner.clone()), &[]);
         let pauser_info = message_info(&Addr::unchecked(pauser.clone()), &[]);
         let unpauser_info = message_info(&Addr::unchecked(unpauser.clone()), &[]);
         let strategy_manager_info = message_info(&Addr::unchecked(strategy_manager.clone()), &[]);
         let delegation_manager_info =
             message_info(&Addr::unchecked(delegation_manager.clone()), &[]);
         let rewards_updater_info = message_info(&Addr::unchecked(rewards_updater.clone()), &[]);
-        let registry = deps.api.addr_make("registry").to_string();
 
         let msg = InstantiateMsg {
-            owner: initial_owner.clone(),
+            owner: owner.clone(),
             calculation_interval_seconds: 86_400, // 1 day
             max_rewards_duration: 30 * 86_400,    // 30 days
             max_retroactive_length: 5 * 86_400,   // 5 days
             max_future_length: 10 * 86_400,       // 10 days
             genesis_rewards_timestamp: env.block.time.seconds() / 86_400 * 86_400,
-            delegation_manager: delegation_manager.clone(),
-            strategy_manager: strategy_manager.clone(),
-            rewards_updater: rewards_updater.clone(),
             activation_delay: 60, // 1 minute
             registry,
         };
@@ -1132,56 +1077,6 @@ mod tests {
             delegation_manager_info,
             rewards_updater_info,
         )
-    }
-
-    #[test]
-    fn test_only_rewards_updater_success() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            _pauser_info,
-            _unpauser_info,
-            _strategy_manager_info,
-            _delegation_manager_info,
-            _rewards_updater_info,
-        ) = instantiate_contract();
-
-        let rewards_updater_addr = deps.api.addr_make("rewards_updater");
-
-        REWARDS_UPDATER
-            .save(&mut deps.storage, &(rewards_updater_addr))
-            .unwrap();
-
-        let info = message_info(&Addr::unchecked(rewards_updater_addr), &[]);
-        let result = only_rewards_updater(deps.as_ref(), &info);
-
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_only_rewards_updater_failure() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            _pauser_info,
-            _unpauser_info,
-            _strategy_manager_info,
-            _delegation_manager_info,
-            _rewards_updater_info,
-        ) = instantiate_contract();
-
-        let rewards_updater_addr = deps.api.addr_make("rewards_updater");
-
-        REWARDS_UPDATER
-            .save(&mut deps.storage, &rewards_updater_addr)
-            .unwrap();
-
-        let info = message_info(&Addr::unchecked("not_rewards_updater"), &[]);
-        let result = only_rewards_updater(deps.as_ref(), &info);
-
-        assert_eq!(result, Err(ContractError::NotRewardsUpdater {}));
     }
 
     #[test]
@@ -1257,6 +1152,10 @@ mod tests {
             token: deps.api.addr_make("token"),
         };
 
+        let strategy_manager = deps.api.addr_make("strategy_manager");
+        auth::STRATEGY_MANAGER
+            .save(&mut deps.storage, &strategy_manager)
+            .unwrap();
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart { contract_addr, msg }
                 if Addr::unchecked(contract_addr) == deps.api.addr_make("strategy_manager") =>
@@ -1346,7 +1245,7 @@ mod tests {
         let (
             mut deps,
             env,
-            owner_info,
+            _owner_info,
             _pauser_info,
             _unpauser_info,
             _strategy_manager_info,
@@ -1354,6 +1253,8 @@ mod tests {
             _rewards_updater_info,
         ) = instantiate_contract();
 
+        let owner = deps.api.addr_make("initial_owner");
+        let owner_info = message_info(&owner, &[]);
         let calc_interval = 86_400; // 1 day
 
         let block_time = mock_env().block.time.seconds();
@@ -1372,9 +1273,14 @@ mod tests {
             token: deps.api.addr_make("token"),
         }];
 
+        let strategy_manager = deps.api.addr_make("strategy_manager");
+        auth::STRATEGY_MANAGER
+            .save(&mut deps.storage, &strategy_manager)
+            .unwrap();
+
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart { contract_addr, msg }
-                if Addr::unchecked(contract_addr) == deps.api.addr_make("strategy_manager") =>
+                if Addr::unchecked(contract_addr) == &strategy_manager =>
             {
                 let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
                 match msg {
@@ -1469,9 +1375,13 @@ mod tests {
             token: deps.api.addr_make("token"),
         }];
 
+        let strategy_manager = deps.api.addr_make("strategy_manager");
+        auth::STRATEGY_MANAGER
+            .save(&mut deps.storage, &strategy_manager)
+            .unwrap();
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart { contract_addr, msg }
-                if Addr::unchecked(contract_addr) == deps.api.addr_make("strategy_manager") =>
+                if Addr::unchecked(contract_addr) == &strategy_manager =>
             {
                 let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
                 match msg {
@@ -1646,88 +1556,6 @@ mod tests {
             stored_activation_delay_after_unauthorized_attempt,
             new_activation_delay
         );
-    }
-
-    #[test]
-    fn test_set_rewards_updater_internal() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            _pauser_info,
-            _unpauser_info,
-            _strategy_manager_info,
-            _delegation_manager_info,
-            _rewards_updater_info,
-        ) = instantiate_contract();
-
-        let new_updater = deps.api.addr_make("new_updater");
-
-        let result = set_rewards_updater_internal(deps.as_mut(), new_updater.clone());
-
-        assert!(result.is_ok());
-
-        let response = result.unwrap();
-        assert_eq!(response.events.len(), 1);
-
-        let event = response.events.first().unwrap();
-        assert_eq!(event.ty, "SetRewardsUpdater");
-        assert_eq!(event.attributes.len(), 2);
-        assert_eq!(event.attributes[0].key, "method");
-        assert_eq!(event.attributes[0].value, "set_rewards_updater");
-        assert_eq!(event.attributes[1].key, "new_updater");
-        assert_eq!(event.attributes[1].value, new_updater.to_string());
-
-        let stored_updater = REWARDS_UPDATER.load(&deps.storage).unwrap();
-        assert_eq!(stored_updater, new_updater);
-    }
-
-    #[test]
-    fn test_set_rewards_updater() {
-        let (
-            mut deps,
-            _env,
-            owner_info,
-            _pauser_info,
-            _unpauser_info,
-            _strategy_manager_info,
-            _delegation_manager_info,
-            _rewards_updater_info,
-        ) = instantiate_contract();
-
-        let new_updater = deps.api.addr_make("new_updater");
-        let result = set_rewards_updater(deps.as_mut(), owner_info, new_updater.clone());
-
-        assert!(result.is_ok());
-
-        let response = result.unwrap();
-        assert_eq!(response.events.len(), 1);
-
-        let event = response.events.first().unwrap();
-        assert_eq!(event.ty, "SetRewardsUpdater");
-        assert_eq!(event.attributes.len(), 2);
-        assert_eq!(event.attributes[0].key, "method");
-        assert_eq!(event.attributes[0].value, "set_rewards_updater");
-        assert_eq!(event.attributes[1].key, "new_updater");
-        assert_eq!(event.attributes[1].value, new_updater.to_string());
-
-        let stored_updater = REWARDS_UPDATER.load(&deps.storage).unwrap();
-        assert_eq!(stored_updater, new_updater);
-
-        let unauthorized_info = message_info(&Addr::unchecked("not_owner"), &[]);
-        let result = set_rewards_updater(
-            deps.as_mut(),
-            unauthorized_info,
-            Addr::unchecked("another_updater"),
-        );
-
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            ContractError::Ownership(OwnershipError::Unauthorized).to_string()
-        );
-
-        let stored_updater = REWARDS_UPDATER.load(&deps.storage).unwrap();
-        assert_eq!(stored_updater, new_updater);
     }
 
     #[test]
@@ -2793,6 +2621,9 @@ mod tests {
             .save(&mut deps.storage, &1000)
             .unwrap();
         ACTIVATION_DELAY.save(&mut deps.storage, &60u32).unwrap();
+        auth::REWARDS_UPDATER
+            .save(&mut deps.storage, &rewards_updater_info.sender)
+            .unwrap();
 
         let root = Binary::from(b"valid_root".to_vec());
         let rewards_calculation_end_timestamp = 1100;
@@ -2865,7 +2696,7 @@ mod tests {
         );
         assert!(result.is_err());
         if let Err(err) = result {
-            assert_eq!(err, ContractError::NotRewardsUpdater {});
+            assert_eq!(err, ContractError::Unauthorized {});
         }
     }
 
@@ -2915,27 +2746,20 @@ mod tests {
     fn test_process_claim() {
         let (mut deps, env, _info) = setup_test_environment();
 
-        let initial_owner = deps.api.addr_make("initial_owner").to_string();
-        let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
-        let strategy_manager = deps.api.addr_make("strategy_manager").to_string();
+        let owner = deps.api.addr_make("owner");
         let registry = deps.api.addr_make("registry").to_string();
-        let rewards_updater = deps.api.addr_make("rewards_updater").to_string();
 
-        let owner_info = message_info(&Addr::unchecked(initial_owner.clone()), &[]);
-        message_info(&Addr::unchecked(delegation_manager.clone()), &[]);
+        let owner_info = message_info(&owner, &[]);
 
         let msg = InstantiateMsg {
-            owner: initial_owner.clone(),
+            owner: owner.to_string(),
+            registry,
             calculation_interval_seconds: 86_400, // 1 day
             max_rewards_duration: 30 * 86_400,    // 30 days
             max_retroactive_length: 5 * 86_400,   // 5 days
             max_future_length: 10 * 86_400,       // 10 days
             genesis_rewards_timestamp: env.block.time.seconds() / 86_400 * 86_400,
-            delegation_manager: delegation_manager.clone(),
-            strategy_manager: strategy_manager.clone(),
-            rewards_updater: rewards_updater.clone(),
             activation_delay: 60, // 1 minute
-            registry,
         };
 
         instantiate(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();
@@ -3195,7 +3019,7 @@ mod tests {
         let rewards_updater = deps.api.addr_make("rewards_updater");
         let rewards_updater_info = message_info(&rewards_updater, &[]);
 
-        REWARDS_UPDATER
+        auth::REWARDS_UPDATER
             .save(&mut deps.storage, &deps.api.addr_make("rewards_updater"))
             .unwrap();
 
@@ -3269,7 +3093,7 @@ mod tests {
         let result = disable_root(deps.as_mut(), env, unauthorized_info, 1);
         assert!(result.is_err());
         if let Err(err) = result {
-            assert_eq!(err, ContractError::NotRewardsUpdater {});
+            assert_eq!(err, ContractError::Unauthorized {});
         }
     }
 }

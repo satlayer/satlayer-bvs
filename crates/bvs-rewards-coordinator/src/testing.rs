@@ -23,21 +23,17 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for RewardsContract {
         let owner = app.api().addr_make("owner");
         let registry = Self::get_contract_addr(app, "registry").to_string();
 
-        let delegation_manager = app.api().addr_make("delegation-manager");
-        let rewards_updater = app.api().addr_make("rewards-updater");
-        let strategy_manager = app.api().addr_make("strategy-manager");
+        let one_day = 86_400;
+        let today_rounded_down = env.block.time.seconds() / one_day * one_day;
         InstantiateMsg {
             owner: owner.to_string(),
             registry,
-            calculation_interval_seconds: 86_400, // 1 day
-            max_rewards_duration: 30 * 86_400,    // 30 days
-            max_retroactive_length: 5 * 86_400,   // 5 days
-            max_future_length: 10 * 86_400,       // 10 days
-            genesis_rewards_timestamp: env.block.time.seconds() / 86_400 * 86_400,
+            calculation_interval_seconds: one_day,
+            max_rewards_duration: 30 * one_day,
+            max_retroactive_length: 5 * one_day,
+            max_future_length: 10 * one_day,
+            genesis_rewards_timestamp: today_rounded_down,
             activation_delay: 60,
-            delegation_manager: delegation_manager.to_string(),
-            rewards_updater: rewards_updater.to_string(),
-            strategy_manager: strategy_manager.to_string(),
         }
     }
 

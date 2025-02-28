@@ -159,10 +159,21 @@ func (r *RewardsCoordinator) TransferOwnership(ctx context.Context, newOwner str
 	return r.execute(ctx, msg)
 }
 
-func (r *RewardsCoordinator) SetRewardsUpdater(ctx context.Context, newUpdater string) (*coretypes.ResultTx, error) {
+func (r *RewardsCoordinator) SetRewardsUpdater(ctx context.Context, addr string) (*coretypes.ResultTx, error) {
 	msg := rewardscoordinator.ExecuteMsg{
 		SetRewardsUpdater: &rewardscoordinator.SetRewardsUpdater{
-			NewUpdater: newUpdater,
+			Addr: addr,
+		},
+	}
+
+	return r.execute(ctx, msg)
+}
+
+func (r *RewardsCoordinator) SetRouting(ctx context.Context, delegationManager, strategyManager string) (*coretypes.ResultTx, error) {
+	msg := rewardscoordinator.ExecuteMsg{
+		SetRouting: &rewardscoordinator.SetRouting{
+			DelegationManager: delegationManager,
+			StrategyManager:   strategyManager,
 		},
 	}
 

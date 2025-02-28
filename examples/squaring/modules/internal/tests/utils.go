@@ -184,17 +184,26 @@ func (suite *TestSuite) DeployBvsContracts() {
 
 	rewardsCoordinatorContract := deployer.DeployRewardsCoordinator(
 		registry.Address,
-		delegationManagerContract.Address,
-		strategyManagerContract.Address,
 		60,     // 1 minute
 		86_400, // 1 day
 		int64(blockTime)/86_400*86_400,
 		10*86_400, // 10 days
 		5*86_400,  // 5 days
 		30*86_400, // 30 days
-		tempAddress.String())
+	)
 	suite.RewardsCoordinatorApi = api.NewRewardsCoordinator(suite.ChainIO)
 	suite.RewardsCoordinatorApi.BindClient(rewardsCoordinatorContract.Address)
+
+	res, err := suite.RewardsCoordinatorApi.SetRouting(context.Background(),
+		delegationManagerContract.Address,
+		strategyManagerContract.Address,
+	)
+	suite.NoError(err)
+	suite.Equal(uint32(0), res.TxResult.Code)
+
+	res, err = suite.RewardsCoordinatorApi.SetRewardsUpdater(context.Background(), tempAddress.String())
+	suite.NoError(err)
+	suite.Equal(uint32(0), res.TxResult.Code)
 
 	// deploy CW20 contract
 	token := cw20.DeployCw20(deployer.BabylonContainer, cw20.InstantiateMsg{
