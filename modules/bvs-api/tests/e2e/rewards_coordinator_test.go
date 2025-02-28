@@ -72,8 +72,6 @@ func (suite *rewardsTestSuite) SetupSuite() {
 	registry := deployer.DeployRegistry(nil)
 	rewardsCoordinator := deployer.DeployRewardsCoordinator(
 		registry.Address,
-		tAddr,
-		strategyManager.Address,
 		// Test Vector taken from: bvs-rewards-coordinator/src/contract.rs
 		60,     // 1 minute
 		86_400, // 1 day
@@ -81,14 +79,44 @@ func (suite *rewardsTestSuite) SetupSuite() {
 		10*86_400, // 10 days
 		5*86_400,  // 5 days
 		30*86_400, // 30 days
-		suite.caller,
 	)
 	suite.rewardsCoordinatorAddr = rewardsCoordinator.Address
 	suite.strategyManagerAddr = strategyManager.Address
+
+	chainIO, err := suite.chainIO.SetupKeyring("caller", "test")
+	suite.NoError(err)
+	rewardsApi := api.NewRewardsCoordinator(chainIO)
+	rewardsApi.BindClient(rewardsCoordinator.Address)
+	res, err := rewardsApi.SetRouting(context.Background(),
+		tAddr,
+		suite.strategyManagerAddr,
+	)
+	suite.NoError(err)
+	suite.Equal(uint32(0), res.TxResult.Code)
+
+	res, err = rewardsApi.SetRewardsUpdater(context.Background(), suite.caller)
+	suite.NoError(err)
+	suite.Equal(uint32(0), res.TxResult.Code)
 }
 
 func (suite *rewardsTestSuite) TearDownSuite() {
 	suite.Require().NoError(suite.container.Terminate(context.Background()))
+}
+
+func (suite *rewardsTestSuite) Test_SetRouting() {
+	chainIO, err := suite.chainIO.SetupKeyring("caller", "test")
+	suite.NoError(err)
+
+	rewardsCoordinator := api.NewRewardsCoordinator(chainIO)
+	rewardsCoordinator.BindClient(suite.rewardsCoordinatorAddr)
+
+	res, err := rewardsCoordinator.SetRouting(context.Background(),
+		suite.container.GenerateAddress("delegation-manager").String(),
+		suite.strategyManagerAddr,
+	)
+
+	suite.NoError(err)
+	suite.Equal(uint32(0), res.TxResult.Code)
 }
 
 func (suite *rewardsTestSuite) Test_ExecuteRewardsCoordinator() {
