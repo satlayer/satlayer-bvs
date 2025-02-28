@@ -9,7 +9,7 @@ pub enum OperatorBvsRegistrationStatus {
 }
 
 #[cw_serde]
-pub struct BVSInfo {
+pub struct BvsInfo {
     pub bvs_hash: String,
     pub bvs_contract: String,
 }

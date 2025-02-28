@@ -18,13 +18,13 @@ fn register_bvs_successfully() {
     let env = mock_env();
 
     let owner = app.api().addr_make("owner");
-    let bvs_contract = app.api().addr_make("bvs_contract").to_string();
     let anyone = app.api().addr_make("anyone");
 
-    let hash_result = sha256(bvs_contract.clone().as_bytes());
-    let bvs_hash = hex::encode(hash_result);
-
     let registry = RegistryContract::new(&mut app, &env, None);
+
+    // Use registry contract address as bvs contract address
+    let hash_result = sha256(registry.addr.to_string().as_bytes());
+    let bvs_hash = hex::encode(hash_result);
 
     let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
         .deploy_bvs_directory(&BvsDirectoryInstantiateMsg {
@@ -34,7 +34,7 @@ fn register_bvs_successfully() {
         .build();
 
     let register_bvs_msg = &BvsDirectoryExecuteMsg::RegisterBvs {
-        bvs_contract: bvs_contract.clone(),
+        bvs_contract: registry.addr.to_string(),
     };
 
     let bvs_driectory = mock_env.bvs_directory.clone();

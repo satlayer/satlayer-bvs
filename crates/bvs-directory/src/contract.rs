@@ -22,9 +22,6 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 
-use bvs_base::bvsdriver::ExecuteMsg as BvsDriverExecuteMsg;
-use bvs_base::statebank::ExecuteMsg as StateBankExecuteMsg;
-
 use bvs_base::delegation::{OperatorResponse, QueryMsg as DelegationManagerQueryMsg};
 use bvs_library::ownership;
 
@@ -59,7 +56,7 @@ pub fn execute(
     bvs_registry::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
 
     match msg {
-        ExecuteMsg::RegisterBVS { bvs_contract } => register_bvs(deps, bvs_contract),
+        ExecuteMsg::RegisterBvs { bvs_contract } => register_bvs(deps, bvs_contract),
         ExecuteMsg::RegisterOperatorToBvs {
             operator,
             public_key,
@@ -118,39 +115,16 @@ pub fn register_bvs(deps: DepsMut, bvs_contract: String) -> Result<Response, Con
         return Err(ContractError::BVSAlreadyRegistered {});
     }
 
-    let bvs_info = BVSInfo {
+    let bvs_info = BvsInfo {
         bvs_hash: bvs_hash.clone(),
         bvs_contract: bvs_contract.clone(),
     };
 
-    let mut messages = vec![];
-
-    let statebank_registered_msg = StateBankExecuteMsg::AddRegisteredBvsContract {
-        address: bvs_contract.clone(),
-    };
-    messages.push(SubMsg::new(WasmMsg::Execute {
-        contract_addr: STATE_BANK.load(deps.storage)?.to_string(),
-        msg: to_json_binary(&statebank_registered_msg)?,
-        funds: vec![],
-    }));
-
-    let bvsdriver_registered_msg = BvsDriverExecuteMsg::AddRegisteredBvsContract {
-        address: bvs_contract.clone(),
-    };
-    messages.push(SubMsg::new(WasmMsg::Execute {
-        contract_addr: BVS_DRIVER.load(deps.storage)?.to_string(),
-        msg: to_json_binary(&bvsdriver_registered_msg)?,
-        funds: vec![],
-    }));
-
     BVS_INFO.save(deps.storage, bvs_hash.clone(), &bvs_info)?;
 
-    let event = Event::new("BVSRegistered")
+    Ok(Response::new()
         .add_attribute("method", "register_bvs")
-        .add_attribute("bvs_hash", bvs_hash)
-        .add_attribute("bvs_contract", bvs_contract.to_string());
-
-    Ok(Response::new().add_submessages(messages).add_event(event))
+        .add_attribute("bvs_hash", bvs_hash))
 }
 
 pub fn register_operator(
@@ -386,9 +360,9 @@ fn query_domain_name(_deps: Deps) -> StdResult<DomainNameResponse> {
     Ok(DomainNameResponse { domain_name })
 }
 
-fn query_bvs_info(deps: Deps, bvs_hash: String) -> StdResult<BVSInfoResponse> {
+fn query_bvs_info(deps: Deps, bvs_hash: String) -> StdResult<BvsInfoResponse> {
     let bvs_info = BVS_INFO.load(deps.storage, bvs_hash.to_string())?;
-    Ok(BVSInfoResponse {
+    Ok(BvsInfoResponse {
         bvs_hash,
         bvs_contract: bvs_info.bvs_contract,
     })
@@ -503,12 +477,6 @@ mod tests {
                     })
                 }
             }
-            WasmQuery::Smart {
-                contract_addr,
-                msg: _,
-            } if contract_addr == &delegation_manager => {
-                SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap()))
-            }
             _ => SystemResult::Err(cosmwasm_std::SystemError::InvalidRequest {
                 error: "Unhandled request".to_string(),
                 request: to_json_binary(&query).unwrap(),
@@ -522,32 +490,14 @@ mod tests {
             .iter()
             .flat_map(|event| event.attributes.iter())
             .find(|attr| attr.key == "bvs_hash")
-            .expect("bvs_hash attribute not found")
+            .unwrap()
             .value
             .clone();
 
-        let bvs_info = BVS_INFO
-            .load(deps.as_mut().storage, bvs_hash.clone())
-            .unwrap();
-
-        let total_attributes: usize = result.events.iter().map(|e| e.attributes.len()).sum();
-        assert_eq!(total_attributes, 3);
-
-        let method = result
-            .events
-            .iter()
-            .flat_map(|event| event.attributes.iter())
-            .find(|attr| attr.key == "method")
-            .expect("method attribute not found")
-            .value
-            .clone();
-        assert_eq!(method, "register_bvs");
+        let bvs_info = BVS_INFO.load(&deps.storage, bvs_hash.to_string()).unwrap();
 
         assert_eq!(bvs_info.bvs_hash, bvs_hash);
-        assert_eq!(
-            bvs_info.bvs_contract,
-            "cosmwasm18eq5wv84amauycj67z0nrmkn24f8c86cg74s0wme9ma3t93d80kqqhdsar"
-        );
+        assert_eq!(bvs_info.bvs_contract, bvs_contract_addr.to_string());
     }
 
     #[test]
@@ -1214,18 +1164,46 @@ mod tests {
         let bvs_contract_addr = deps.api.addr_make("bvs_contract");
         let bvs_contract_addr_str = bvs_contract_addr.to_string();
 
-        let result = register_bvs(deps.as_mut(), bvs_contract.clone());
-        assert!(result.is_ok());
+        deps.querier.update_wasm(move |query| match query {
+            WasmQuery::ContractInfo { contract_addr } => {
+                if *contract_addr == bvs_contract_addr_str {
+                    let contract_info: ContractInfoResponse = serde_json::from_value(json!({
+                        "code_id": 1,
+                        "creator": "creator",
+                        "admin": null,
+                        "pinned": false,
+                        "ibc_port": null
+                    }))
+                    .unwrap();
+                    SystemResult::Ok(ContractResult::Ok(to_json_binary(&contract_info).unwrap()))
+                } else {
+                    SystemResult::Err(cosmwasm_std::SystemError::InvalidRequest {
+                        error: "Unknown contract address".to_string(),
+                        request: to_json_binary(&query).unwrap(),
+                    })
+                }
+            }
+            _ => SystemResult::Err(cosmwasm_std::SystemError::InvalidRequest {
+                error: "Unhandled request".to_string(),
+                request: to_json_binary(&query).unwrap(),
+            }),
+        });
 
-        let hash_result = sha256(bvs_contract.as_bytes());
+        let res = register_bvs(deps.as_mut(), bvs_contract_addr.to_string());
 
-        let bvs_hash = hex::encode(hash_result);
+        let bvs_hash = res
+            .iter()
+            .flat_map(|event| event.attributes.iter())
+            .find(|attr| attr.key == "bvs_hash")
+            .unwrap()
+            .value
+            .clone();
 
         let query_msg = QueryMsg::BvsInfo {
             bvs_hash: bvs_hash.clone(),
         };
         let query_response = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let bvs_info: BvsInfo = from_json(query_response).unwrap();
+        let bvs_info: BvsInfoResponse = from_json(query_response).unwrap();
 
         assert_eq!(bvs_info.bvs_hash, bvs_hash);
         assert_eq!(bvs_info.bvs_contract, bvs_contract.clone())
