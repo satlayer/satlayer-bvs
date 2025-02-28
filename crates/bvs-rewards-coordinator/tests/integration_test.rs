@@ -106,8 +106,7 @@ fn set_rewards_updater() {
         res.events[1],
         Event::new("wasm-SetRewardsUpdater")
             .add_attribute("_contract_address", rewards.addr.to_string())
-            .add_attribute("method", "set_rewards_updater")
-            .add_attribute("new_updater", new_updater.to_string())
+            .add_attribute("addr", new_updater.to_string())
     );
 }
 
