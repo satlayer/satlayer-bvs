@@ -2,6 +2,7 @@
 use cosmwasm_std::entry_point;
 
 use crate::{
+    auth,
     error::ContractError,
     msg::{DistributionRoot, ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
@@ -10,7 +11,6 @@ use crate::{
         GetDistributionRootAtIndexResponse, GetDistributionRootsLengthResponse,
         GetRootIndexFromHashResponse, MerkleizeLeavesResponse, OperatorCommissionBipsResponse,
     },
-    routing,
     state::{
         ACTIVATION_DELAY, CALCULATION_INTERVAL_SECONDS, CLAIMER_FOR, CUMULATIVE_CLAIMED,
         CURR_REWARDS_CALCULATION_END_TIMESTAMP, DISTRIBUTION_ROOTS, DISTRIBUTION_ROOTS_COUNT,
@@ -145,22 +145,18 @@ pub fn execute(
             let new_owner = deps.api.addr_validate(&new_owner)?;
             ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
         }
+        ExecuteMsg::SetRewardsUpdater { addr } => {
+            let addr = deps.api.addr_validate(&addr)?;
+            auth::set_rewards_updater(deps, &info, &addr)
+        }
         ExecuteMsg::SetRouting {
-            rewards_updater,
             delegation_manager,
             strategy_manager,
         } => {
-            let rewards_updater = deps.api.addr_validate(&rewards_updater)?;
             let delegation_manager = deps.api.addr_validate(&delegation_manager)?;
             let strategy_manager = deps.api.addr_validate(&strategy_manager)?;
 
-            routing::set_routing(
-                deps,
-                &info,
-                rewards_updater,
-                delegation_manager,
-                strategy_manager,
-            )
+            auth::set_routing(deps, &info, delegation_manager, strategy_manager)
         }
     }
 }
@@ -359,7 +355,7 @@ pub fn submit_root(
     root: Binary,
     rewards_calculation_end_timestamp: u64,
 ) -> Result<Response, ContractError> {
-    routing::assert_rewards_updater(deps.as_ref(), &info)?;
+    auth::assert_rewards_updater(deps.as_ref(), &info)?;
 
     let curr_rewards_calculation_end_timestamp = CURR_REWARDS_CALCULATION_END_TIMESTAMP
         .may_load(deps.storage)?
@@ -416,7 +412,7 @@ pub fn disable_root(
     info: MessageInfo,
     root_index: u64,
 ) -> Result<Response, ContractError> {
-    routing::assert_rewards_updater(deps.as_ref(), &info)?;
+    auth::assert_rewards_updater(deps.as_ref(), &info)?;
 
     let roots_length = DISTRIBUTION_ROOTS_COUNT.load(deps.storage)?;
     if root_index >= roots_length {
@@ -793,7 +789,7 @@ fn validate_rewards_submission(
 
     let mut current_address = Addr::unchecked("");
 
-    let strategy_manager = routing::STRATEGY_MANAGER.load(deps.storage)?;
+    let strategy_manager = auth::STRATEGY_MANAGER.load(deps.storage)?;
 
     for strategy_multiplier in &submission.strategies_and_multipliers {
         let strategy = &strategy_multiplier.strategy;
@@ -958,7 +954,6 @@ fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdR
 mod tests {
     use super::*;
     use crate::msg::DistributionRoot;
-    use crate::routing::set_routing;
     use crate::utils::{
         sha256, ExecuteEarnerTreeMerkleLeaf, ExecuteRewardsMerkleClaim, StrategyAndMultiplier,
     };
@@ -1158,7 +1153,7 @@ mod tests {
         };
 
         let strategy_manager = deps.api.addr_make("strategy_manager");
-        routing::STRATEGY_MANAGER
+        auth::STRATEGY_MANAGER
             .save(&mut deps.storage, &strategy_manager)
             .unwrap();
         deps.querier.update_wasm(move |query| match query {
@@ -1279,7 +1274,7 @@ mod tests {
         }];
 
         let strategy_manager = deps.api.addr_make("strategy_manager");
-        routing::STRATEGY_MANAGER
+        auth::STRATEGY_MANAGER
             .save(&mut deps.storage, &strategy_manager)
             .unwrap();
 
@@ -1381,7 +1376,7 @@ mod tests {
         }];
 
         let strategy_manager = deps.api.addr_make("strategy_manager");
-        routing::STRATEGY_MANAGER
+        auth::STRATEGY_MANAGER
             .save(&mut deps.storage, &strategy_manager)
             .unwrap();
         deps.querier.update_wasm(move |query| match query {
@@ -1462,64 +1457,6 @@ mod tests {
         );
         assert_eq!(event.attributes[4].key, "amount");
         assert_eq!(event.attributes[4].value, "100");
-    }
-
-    #[test]
-    fn test_set_routing() {
-        let (
-            mut deps,
-            _env,
-            owner_info,
-            _pauser_info,
-            _unpauser_info,
-            _strategy_manager_info,
-            _delegation_manager_info,
-            _rewards_updater_info,
-        ) = instantiate_contract();
-
-        let new_owner = deps.api.addr_make("new_owner");
-        let new_rewards_updater = deps.api.addr_make("new_rewards_updater");
-        let new_delegation_manager = deps.api.addr_make("new_delegation_manager");
-        let new_strategy_manager = deps.api.addr_make("new_strategy_manager");
-
-        let result = set_routing(
-            deps.as_mut(),
-            &owner_info,
-            new_rewards_updater.clone(),
-            new_delegation_manager.clone(),
-            new_strategy_manager.clone(),
-        );
-
-        assert!(result.is_ok());
-
-        let response = result.unwrap();
-        assert_eq!(response.events.len(), 1);
-
-        assert_eq!(
-            response.events[0],
-            Event::new("SetRouting")
-                .add_attribute("rewards_updater", new_rewards_updater.to_string())
-                .add_attribute("delegation_manager", new_delegation_manager.to_string())
-                .add_attribute("strategy_manager", new_strategy_manager.to_string())
-        );
-
-        let stored_owner = ownership::OWNER.load(&deps.storage).unwrap();
-        assert_eq!(stored_owner, owner_info.sender);
-
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized_caller"), &[]);
-
-        let result = set_routing(
-            deps.as_mut(),
-            &info_unauthorized,
-            new_rewards_updater.clone(),
-            new_delegation_manager.clone(),
-            new_strategy_manager.clone(),
-        );
-
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            ContractError::Ownership(OwnershipError::Unauthorized).to_string()
-        );
     }
 
     #[test]
@@ -2684,7 +2621,7 @@ mod tests {
             .save(&mut deps.storage, &1000)
             .unwrap();
         ACTIVATION_DELAY.save(&mut deps.storage, &60u32).unwrap();
-        routing::REWARDS_UPDATER
+        auth::REWARDS_UPDATER
             .save(&mut deps.storage, &rewards_updater_info.sender)
             .unwrap();
 
@@ -3082,7 +3019,7 @@ mod tests {
         let rewards_updater = deps.api.addr_make("rewards_updater");
         let rewards_updater_info = message_info(&rewards_updater, &[]);
 
-        routing::REWARDS_UPDATER
+        auth::REWARDS_UPDATER
             .save(&mut deps.storage, &deps.api.addr_make("rewards_updater"))
             .unwrap();
 

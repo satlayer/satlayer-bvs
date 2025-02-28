@@ -3,8 +3,8 @@ pub mod msg;
 pub mod query;
 pub mod state;
 
+mod auth;
 mod error;
-mod routing;
 mod utils;
 
 pub use crate::error::ContractError;

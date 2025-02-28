@@ -62,11 +62,10 @@ pub enum ExecuteMsg {
         /// > You can override ownership with using CosmWasm migrate `entry_point`.
         new_owner: String,
     },
-    /// Instantiate creates the contract: gives the contract an address.
-    /// This sets up the contract for routing and access control management.
-    /// It can be called more than once to set new values but only by the owner.
+    SetRewardsUpdater {
+        addr: String,
+    },
     SetRouting {
-        rewards_updater: String,
         delegation_manager: String,
         strategy_manager: String,
     },
