@@ -2,17 +2,16 @@
 use cosmwasm_std::entry_point;
 
 use crate::{
+    auth,
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
-        DelegationManagerResponse, DepositsResponse, StakerStrategyListLengthResponse,
-        StakerStrategyListResponse, StakerStrategySharesResponse, StrategyManagerStateResponse,
-        StrategyWhitelistedResponse, StrategyWhitelisterResponse,
+        DepositsResponse, StakerStrategyListLengthResponse, StakerStrategyListResponse,
+        StakerStrategySharesResponse, StrategyWhitelistedResponse, StrategyWhitelisterResponse,
     },
     state::{
-        StrategyManagerState, DEPLOYED_STRATEGIES, IS_BLACKLISTED, MAX_STAKER_STRATEGY_LIST_LENGTH,
-        STAKER_STRATEGY_LIST, STAKER_STRATEGY_SHARES, STRATEGY_IS_WHITELISTED_FOR_DEPOSIT,
-        STRATEGY_MANAGER_STATE, STRATEGY_WHITELISTER,
+        DEPLOYED_STRATEGIES, IS_BLACKLISTED, MAX_STAKER_STRATEGY_LIST_LENGTH, STAKER_STRATEGY_LIST,
+        STAKER_STRATEGY_SHARES, STRATEGY_IS_WHITELISTED_FOR_DEPOSIT, STRATEGY_WHITELISTER,
     },
 };
 use cosmwasm_std::{
@@ -50,22 +49,12 @@ pub fn instantiate(
     let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::_set_owner(deps.storage, &owner)?;
 
-    let delegation_manager = deps.api.addr_validate(&msg.delegation_manager)?;
-    let slash_manager = deps.api.addr_validate(&msg.slash_manager)?;
     let initial_strategy_whitelister = deps.api.addr_validate(&msg.initial_strategy_whitelister)?;
 
-    let state = StrategyManagerState {
-        delegation_manager: delegation_manager.clone(),
-        slash_manager: slash_manager.clone(),
-    };
-
-    STRATEGY_MANAGER_STATE.save(deps.storage, &state)?;
     STRATEGY_WHITELISTER.save(deps.storage, &initial_strategy_whitelister)?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("delegation_manager", state.delegation_manager.to_string())
-        .add_attribute("slasher", state.slash_manager.to_string())
         .add_attribute(
             "strategy_whitelister",
             msg.initial_strategy_whitelister.to_string(),
@@ -171,61 +160,20 @@ pub fn execute(
 
             add_shares(deps, info, staker_addr, token_addr, strategy_addr, shares)
         }
-        ExecuteMsg::SetDelegationManager {
-            new_delegation_manager,
-        } => {
-            let new_delegation_manager_addr = deps.api.addr_validate(&new_delegation_manager)?;
-
-            set_delegation_manager(deps, info, new_delegation_manager_addr)
-        }
-        ExecuteMsg::SetSlashManager { new_slash_manager } => {
-            let new_slash_manager_addr = deps.api.addr_validate(&new_slash_manager)?;
-
-            set_slash_manager(deps, info, new_slash_manager_addr)
-        }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
             ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
         }
+        ExecuteMsg::SetRouting {
+            delegation_manager,
+            slash_manager,
+        } => {
+            let delegation_manager = deps.api.addr_validate(&delegation_manager)?;
+            let slash_manager = deps.api.addr_validate(&slash_manager)?;
+
+            auth::set_routing(deps, info, delegation_manager, slash_manager)
+        }
     }
-}
-
-pub fn set_delegation_manager(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_delegation_manager: Addr,
-) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
-
-    let mut state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
-
-    state.delegation_manager = new_delegation_manager.clone();
-    STRATEGY_MANAGER_STATE.save(deps.storage, &state)?;
-
-    let event = Event::new("DelegationManagerSet")
-        .add_attribute("method", "set_delegation_manager")
-        .add_attribute("new_delegation_manager", new_delegation_manager.to_string());
-
-    Ok(Response::new().add_event(event))
-}
-
-pub fn set_slash_manager(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_slash_manager: Addr,
-) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
-
-    let mut state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
-
-    state.slash_manager = new_slash_manager.clone();
-    STRATEGY_MANAGER_STATE.save(deps.storage, &state)?;
-
-    let event = Event::new("SlashManagerSet")
-        .add_attribute("method", "set_slash_manager")
-        .add_attribute("new_slash_manager", new_slash_manager.to_string());
-
-    Ok(Response::new().add_event(event))
 }
 
 pub fn add_strategies_to_deposit_whitelist(
@@ -326,7 +274,7 @@ pub fn add_shares(
     strategy: Addr,
     shares: Uint128,
 ) -> Result<Response, ContractError> {
-    only_delegation_manager(deps.as_ref(), &info)?;
+    auth::assert_delegation_manager(deps.as_ref(), &info)?;
 
     add_shares_internal(deps, staker, token, strategy, shares)
 }
@@ -338,7 +286,7 @@ pub fn remove_shares(
     strategy: Addr,
     shares: Uint128,
 ) -> Result<Response, ContractError> {
-    only_delegation_manager(deps.as_ref(), &info)?;
+    auth::assert_delegation_manager(deps.as_ref(), &info)?;
     let strategy_removed = remove_shares_internal(deps, staker.clone(), strategy.clone(), shares)?;
 
     let response = Response::new()
@@ -359,7 +307,7 @@ pub fn withdraw_shares_as_tokens(
     shares: Uint128,
     token: Addr,
 ) -> Result<Response, ContractError> {
-    only_delegation_manager(deps.as_ref(), &info)?;
+    auth::assert_delegation_manager(deps.as_ref(), &info)?;
 
     let withdraw_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: strategy.to_string(),
@@ -420,10 +368,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&query_is_strategy_whitelisted(deps, strategy_addr)?)
         }
         QueryMsg::GetStrategyWhitelister {} => to_json_binary(&query_strategy_whitelister(deps)?),
-        QueryMsg::GetStrategyManagerState {} => {
-            to_json_binary(&query_strategy_manager_state(deps)?)
-        }
-        QueryMsg::DelegationManager {} => to_json_binary(&query_delegation_manager(deps)?),
     }
 }
 
@@ -478,18 +422,6 @@ fn query_strategy_whitelister(deps: Deps) -> StdResult<StrategyWhitelisterRespon
     Ok(StrategyWhitelisterResponse { whitelister })
 }
 
-fn query_strategy_manager_state(deps: Deps) -> StdResult<StrategyManagerStateResponse> {
-    let state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
-    Ok(StrategyManagerStateResponse { state })
-}
-
-fn query_delegation_manager(deps: Deps) -> StdResult<DelegationManagerResponse> {
-    let state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
-    Ok(DelegationManagerResponse {
-        delegation_manager: state.delegation_manager,
-    })
-}
-
 fn query_get_deposits(deps: Deps, staker: Addr) -> StdResult<DepositsResponse> {
     let (strategies, shares) = get_deposits(deps, staker)?;
     Ok(DepositsResponse { strategies, shares })
@@ -507,14 +439,6 @@ fn only_strategy_whitelister(deps: Deps, info: &MessageInfo) -> Result<(), Contr
     let whitelister: Addr = STRATEGY_WHITELISTER.load(deps.storage)?;
 
     if info.sender != whitelister {
-        return Err(ContractError::Unauthorized {});
-    }
-    Ok(())
-}
-
-fn only_delegation_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
-    let state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
-    if info.sender != state.delegation_manager && info.sender != state.slash_manager {
         return Err(ContractError::Unauthorized {});
     }
     Ok(())
@@ -587,10 +511,9 @@ fn deposit_into_strategy_internal(
         new_shares,
     )?;
 
-    let state = STRATEGY_MANAGER_STATE.load(deps.storage)?;
-
+    let delegation_manager = auth::get_delegation_manager(deps.storage)?;
     let increase_delegated_shares_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: state.delegation_manager.to_string(),
+        contract_addr: delegation_manager.to_string(),
         msg: to_json_binary(&DelegationManagerExecuteMsg::IncreaseDelegatedShares {
             staker: staker.to_string(),
             strategy: strategy.to_string(),
@@ -876,37 +799,21 @@ mod tests {
         let msg = InstantiateMsg {
             owner: owner.to_string(),
             registry: registry.to_string(),
-            delegation_manager: delegation_manager.clone(),
-            slash_manager: slasher.clone(),
             initial_strategy_whitelister: strategy_whitelister.clone(),
         };
 
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        assert_eq!(res.attributes.len(), 5);
+        assert_eq!(res.attributes.len(), 3);
         assert_eq!(res.attributes[0].key, "method");
         assert_eq!(res.attributes[0].value, "instantiate");
-        assert_eq!(res.attributes[1].key, "delegation_manager");
-        assert_eq!(res.attributes[1].value, delegation_manager.clone());
-        assert_eq!(res.attributes[2].key, "slasher");
-        assert_eq!(res.attributes[2].value, slasher.clone());
-        assert_eq!(res.attributes[3].key, "strategy_whitelister");
-        assert_eq!(res.attributes[3].value, strategy_whitelister.clone());
-        assert_eq!(res.attributes[4].key, "owner");
-        assert_eq!(res.attributes[4].value, owner.as_str());
+        assert_eq!(res.attributes[1].key, "strategy_whitelister");
+        assert_eq!(res.attributes[1].value, strategy_whitelister.clone());
+        assert_eq!(res.attributes[2].key, "owner");
+        assert_eq!(res.attributes[2].value, owner.as_str());
 
         let owner = ownership::OWNER.load(&deps.storage).unwrap();
         assert_eq!(owner, owner.clone());
-
-        let strategy_manager_state = STRATEGY_MANAGER_STATE.load(&deps.storage).unwrap();
-        assert_eq!(
-            strategy_manager_state.delegation_manager,
-            Addr::unchecked(delegation_manager.clone())
-        );
-        assert_eq!(
-            strategy_manager_state.slash_manager,
-            Addr::unchecked(slasher.clone())
-        );
 
         let strategy_whitelister = STRATEGY_WHITELISTER.load(&deps.storage).unwrap();
         assert_eq!(
@@ -929,29 +836,33 @@ mod tests {
         let registry = deps.api.addr_make("registry");
         let owner_info = message_info(&owner, &[]);
 
-        let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
-        let slasher = deps.api.addr_make("slasher").to_string();
         let strategy_whitelister = deps.api.addr_make("strategy_whitelister").to_string();
 
         let strategy_whitelister_info =
             message_info(&Addr::unchecked(strategy_whitelister.clone()), &[]);
-        let delegation_manager_info =
-            message_info(&Addr::unchecked(delegation_manager.clone()), &[]);
 
         let msg = InstantiateMsg {
             owner: owner.to_string(),
             registry: registry.to_string(),
-            delegation_manager: delegation_manager.clone(),
-            slash_manager: slasher.clone(),
             initial_strategy_whitelister: strategy_whitelister.clone(),
         };
 
-        let _res = instantiate(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();
+        let delegation_manager = deps.api.addr_make("delegation_manager");
+        let slasher = deps.api.addr_make("slasher");
+        instantiate(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();
+        auth::set_routing(
+            deps.as_mut(),
+            owner_info.clone(),
+            delegation_manager.clone(),
+            slasher,
+        )
+        .unwrap();
+
         (
             deps,
             env,
             owner_info,
-            delegation_manager_info,
+            message_info(&delegation_manager, &[]),
             strategy_whitelister_info,
         )
     }
@@ -1119,26 +1030,6 @@ mod tests {
             from_json(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
 
         assert!(response.is_blacklisted);
-    }
-
-    #[test]
-    fn test_only_delegation_manager() {
-        let (deps, _env, _owner_info, info_delegation_manager, _info_whitelister) =
-            instantiate_contract();
-
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-
-        let result = only_delegation_manager(deps.as_ref(), &info_delegation_manager);
-        assert!(result.is_ok());
-
-        let result = only_delegation_manager(deps.as_ref(), &info_unauthorized);
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
     }
 
     #[test]
@@ -2004,18 +1895,6 @@ mod tests {
     }
 
     #[test]
-    fn test_get_strategy_manager_state() {
-        let (deps, _env, _owner_info, info_delegation_manager, _info_whitelister) =
-            instantiate_contract();
-
-        let state = query_strategy_manager_state(deps.as_ref()).unwrap();
-        assert_eq!(
-            state.state.delegation_manager,
-            info_delegation_manager.sender
-        );
-    }
-
-    #[test]
     fn test_get_staker_strategy_shares() {
         let (mut deps, _env, _owner_info, _info_delegation_manager, _info_whitelister) =
             instantiate_contract();
@@ -2043,96 +1922,5 @@ mod tests {
             query_staker_strategy_shares(deps.as_ref(), staker.clone(), new_strategy.clone())
                 .unwrap();
         assert_eq!(retrieved_shares.shares, Uint128::zero());
-    }
-
-    #[test]
-    fn test_get_delegation_manager() {
-        let (deps, env, _owner_info, info_delegation_manager, _info_whitelister) =
-            instantiate_contract();
-
-        let query_msg = QueryMsg::DelegationManager {};
-        let bin = query(deps.as_ref(), env, query_msg).unwrap();
-        let delegation_manager: DelegationManagerResponse = from_json(bin).unwrap();
-
-        assert_eq!(
-            delegation_manager.delegation_manager,
-            info_delegation_manager.sender
-        );
-    }
-
-    #[test]
-    fn test_set_delegation_manager() {
-        let (mut deps, _env, owner_info, _info_delegation_manager, _info_whitelister) =
-            instantiate_contract();
-
-        let new_delegation_manager = deps.api.addr_make("new_delegation_manager");
-
-        let res = set_delegation_manager(
-            deps.as_mut(),
-            owner_info.clone(),
-            new_delegation_manager.clone(),
-        )
-        .unwrap();
-
-        let events = res.events;
-        assert_eq!(events.len(), 1);
-        let event = &events[0];
-        assert_eq!(event.ty, "DelegationManagerSet");
-        assert_eq!(event.attributes.len(), 2);
-        assert_eq!(event.attributes[0].key, "method");
-        assert_eq!(event.attributes[0].value, "set_delegation_manager");
-
-        let state = STRATEGY_MANAGER_STATE.load(&deps.storage).unwrap();
-        assert_eq!(state.delegation_manager, new_delegation_manager);
-
-        // Test with an unauthorized user
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-
-        let result = set_delegation_manager(
-            deps.as_mut(),
-            info_unauthorized,
-            new_delegation_manager.clone(),
-        );
-
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            ContractError::Ownership(OwnershipError::Unauthorized).to_string()
-        );
-    }
-
-    #[test]
-    fn test_set_slash_manager() {
-        let (mut deps, _env, owner_info, _info_delegation_manager, _info_whitelister) =
-            instantiate_contract();
-
-        let new_slash_manager = deps.api.addr_make("new_slash_manager");
-
-        let res = set_slash_manager(deps.as_mut(), owner_info.clone(), new_slash_manager.clone())
-            .unwrap();
-
-        let events = res.events;
-        assert_eq!(events.len(), 1);
-        let event = &events[0];
-        assert_eq!(event.ty, "SlashManagerSet");
-        assert_eq!(event.attributes.len(), 2);
-        assert_eq!(event.attributes[0].key, "method");
-        assert_eq!(event.attributes[0].value, "set_slash_manager");
-        assert_eq!(event.attributes[1].key, "new_slash_manager");
-        assert_eq!(event.attributes[1].value, new_slash_manager.to_string());
-
-        let state = STRATEGY_MANAGER_STATE.load(&deps.storage).unwrap();
-        assert_eq!(state.slash_manager, new_slash_manager);
-
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-
-        let res = set_slash_manager(deps.as_mut(), info_unauthorized, new_slash_manager.clone());
-
-        assert_eq!(
-            res.unwrap_err().to_string(),
-            ContractError::Ownership(OwnershipError::Unauthorized).to_string()
-        );
-
-        let state = STRATEGY_MANAGER_STATE.load(&deps.storage).unwrap();
-        assert_eq!(state.slash_manager, new_slash_manager);
     }
 }

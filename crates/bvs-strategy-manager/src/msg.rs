@@ -1,8 +1,7 @@
 use crate::query::{
-    DelegationManagerResponse, DepositsResponse, IsTokenBlacklistedResponse,
-    StakerStrategyListLengthResponse, StakerStrategyListResponse, StakerStrategySharesResponse,
-    StrategyManagerStateResponse, StrategyWhitelistedResponse, StrategyWhitelisterResponse,
-    TokenStrategyResponse,
+    DepositsResponse, IsTokenBlacklistedResponse, StakerStrategyListLengthResponse,
+    StakerStrategyListResponse, StakerStrategySharesResponse, StrategyWhitelistedResponse,
+    StrategyWhitelisterResponse, TokenStrategyResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
@@ -11,8 +10,6 @@ use cosmwasm_std::Uint128;
 pub struct InstantiateMsg {
     pub owner: String,
     pub registry: String,
-    pub delegation_manager: String,
-    pub slash_manager: String,
     pub initial_strategy_whitelister: String,
 }
 
@@ -57,15 +54,13 @@ pub enum ExecuteMsg {
         strategy: String,
         shares: Uint128,
     },
-    SetDelegationManager {
-        new_delegation_manager: String,
-    },
-    SetSlashManager {
-        new_slash_manager: String,
-    },
     TransferOwnership {
         /// See `ownership::transfer_ownership` for more information on this field
         new_owner: String,
+    },
+    SetRouting {
+        delegation_manager: String,
+        slash_manager: String,
     },
 }
 
@@ -89,12 +84,6 @@ pub enum QueryMsg {
 
     #[returns(StrategyWhitelisterResponse)]
     GetStrategyWhitelister {},
-
-    #[returns(StrategyManagerStateResponse)]
-    GetStrategyManagerState {},
-
-    #[returns(DelegationManagerResponse)]
-    DelegationManager {},
 
     #[returns(IsTokenBlacklistedResponse)]
     IsTokenBlacklisted { token: String },
