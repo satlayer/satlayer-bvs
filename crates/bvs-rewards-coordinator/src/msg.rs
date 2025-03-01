@@ -23,9 +23,6 @@ pub struct InstantiateMsg {
 #[cw_serde]
 #[derive(bvs_registry::api::Display)]
 pub enum ExecuteMsg {
-    CreateBvsRewardsSubmission {
-        rewards_submissions: Vec<RewardsSubmission>,
-    },
     CreateRewardsForAllSubmission {
         rewards_submissions: Vec<RewardsSubmission>,
     },

@@ -14,9 +14,9 @@ use crate::{
     state::{
         ACTIVATION_DELAY, CALCULATION_INTERVAL_SECONDS, CLAIMER_FOR, CUMULATIVE_CLAIMED,
         CURR_REWARDS_CALCULATION_END_TIMESTAMP, DISTRIBUTION_ROOTS, DISTRIBUTION_ROOTS_COUNT,
-        GENESIS_REWARDS_TIMESTAMP, GLOBAL_OPERATOR_COMMISSION_BIPS, IS_BVS_REWARDS_SUBMISSION_HASH,
-        MAX_FUTURE_LENGTH, MAX_RETROACTIVE_LENGTH, MAX_REWARDS_DURATION, REWARDS_FOR_ALL_SUBMITTER,
-        SUBMISSION_NONCE,
+        GENESIS_REWARDS_TIMESTAMP, GLOBAL_OPERATOR_COMMISSION_BIPS,
+        IS_BVS_REWARDS_SUBMISSION_FOR_ALL_HASH, MAX_FUTURE_LENGTH, MAX_RETROACTIVE_LENGTH,
+        MAX_REWARDS_DURATION, REWARDS_FOR_ALL_SUBMITTER, SUBMISSION_NONCE,
     },
     utils::{
         calculate_earner_leaf_hash, calculate_rewards_submission_hash, calculate_token_leaf_hash,
@@ -86,9 +86,6 @@ pub fn execute(
     bvs_registry::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
 
     match msg {
-        ExecuteMsg::CreateBvsRewardsSubmission {
-            rewards_submissions,
-        } => create_bvs_rewards_submission(deps, env, info, rewards_submissions),
         ExecuteMsg::CreateRewardsForAllSubmission {
             rewards_submissions,
         } => create_rewards_for_all_submission(deps, env, info, rewards_submissions),
@@ -161,60 +158,6 @@ pub fn execute(
     }
 }
 
-pub fn create_bvs_rewards_submission(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    rewards_submissions: Vec<RewardsSubmission>,
-) -> Result<Response, ContractError> {
-    let mut response = Response::new();
-
-    for submission in rewards_submissions {
-        let nonce = SUBMISSION_NONCE
-            .may_load(deps.storage, info.sender.clone())?
-            .unwrap_or_default();
-
-        let rewards_submission_hash =
-            calculate_rewards_submission_hash(&info.sender, nonce, &submission);
-
-        validate_rewards_submission(&deps.as_ref(), &submission, &env)?;
-
-        IS_BVS_REWARDS_SUBMISSION_HASH.save(
-            deps.storage,
-            (info.sender.clone(), rewards_submission_hash.to_vec()),
-            &true,
-        )?;
-
-        SUBMISSION_NONCE.save(deps.storage, info.sender.clone(), &(nonce + 1))?;
-
-        let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: submission.token.to_string(),
-            msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
-                owner: info.sender.to_string(),
-                recipient: env.contract.address.to_string(),
-                amount: submission.amount,
-            })?,
-            funds: vec![],
-        });
-
-        response = response.add_message(transfer_msg);
-
-        let event = Event::new("BVSRewardsSubmissionCreated")
-            .add_attribute("sender", info.sender.to_string())
-            .add_attribute("nonce", nonce.to_string())
-            .add_attribute(
-                "rewards_submission_hash",
-                rewards_submission_hash.to_string(),
-            )
-            .add_attribute("token", submission.token.to_string())
-            .add_attribute("amount", submission.amount.to_string());
-
-        response = response.add_event(event);
-    }
-
-    Ok(response)
-}
-
 pub fn create_rewards_for_all_submission(
     deps: DepsMut,
     env: Env,
@@ -234,7 +177,7 @@ pub fn create_rewards_for_all_submission(
 
         validate_rewards_submission(&deps.as_ref(), &submission, &env)?;
 
-        IS_BVS_REWARDS_SUBMISSION_HASH.save(
+        IS_BVS_REWARDS_SUBMISSION_FOR_ALL_HASH.save(
             deps.storage,
             (info.sender.clone(), rewards_submission_hash.to_vec()),
             &true,
@@ -1226,108 +1169,6 @@ mod tests {
             result,
             Err(ContractError::ExceedsMaxRewardsDuration {})
         ));
-    }
-
-    #[test]
-    fn test_create_bvs_rewards_submission() {
-        let (
-            mut deps,
-            env,
-            _owner_info,
-            _strategy_manager_info,
-            _delegation_manager_info,
-            _rewards_updater_info,
-        ) = instantiate_contract();
-
-        let owner = deps.api.addr_make("initial_owner");
-        let owner_info = message_info(&owner, &[]);
-        let calc_interval = 86_400; // 1 day
-
-        let block_time = mock_env().block.time.seconds();
-
-        let aligned_start_time = block_time - (block_time % calc_interval);
-        let aligned_start_timestamp = Timestamp::from_seconds(aligned_start_time);
-
-        let submission = vec![RewardsSubmission {
-            strategies_and_multipliers: vec![StrategyAndMultiplier {
-                strategy: deps.api.addr_make("strategy1"),
-                multiplier: 1,
-            }],
-            amount: Uint128::new(100),
-            duration: calc_interval, // 1 day
-            start_timestamp: aligned_start_timestamp,
-            token: deps.api.addr_make("token"),
-        }];
-
-        let strategy_manager = deps.api.addr_make("strategy_manager");
-        auth::STRATEGY_MANAGER
-            .save(&mut deps.storage, &strategy_manager)
-            .unwrap();
-
-        deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { contract_addr, msg }
-                if Addr::unchecked(contract_addr) == &strategy_manager =>
-            {
-                let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
-                match msg {
-                    StrategyManagerQueryMsg::IsStrategyWhitelisted { strategy } => {
-                        let response = if strategy == deps.api.addr_make("strategy1").to_string() {
-                            StrategyWhitelistedResponse {
-                                is_whitelisted: true,
-                            }
-                        } else {
-                            StrategyWhitelistedResponse {
-                                is_whitelisted: false,
-                            }
-                        };
-                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
-                    }
-                    _ => SystemResult::Err(SystemError::InvalidRequest {
-                        error: "Unhandled request".to_string(),
-                        request: to_json_binary(&query).unwrap(),
-                    }),
-                }
-            }
-            _ => SystemResult::Err(SystemError::InvalidRequest {
-                error: "Unhandled request".to_string(),
-                request: to_json_binary(&query).unwrap(),
-            }),
-        });
-
-        let result = create_bvs_rewards_submission(
-            deps.as_mut(),
-            env.clone(),
-            owner_info.clone(),
-            submission,
-        );
-
-        assert!(result.is_ok());
-        let response = result.unwrap();
-        assert_eq!(response.messages.len(), 1);
-        assert_eq!(response.events.len(), 1);
-
-        let event = response.events.first().unwrap();
-        assert_eq!(event.ty, "BVSRewardsSubmissionCreated");
-        assert_eq!(event.attributes.len(), 5);
-        assert_eq!(event.attributes[0].key, "sender");
-        assert_eq!(
-            event.attributes[0].value,
-            deps.api.addr_make("initial_owner").to_string()
-        );
-        assert_eq!(event.attributes[1].key, "nonce");
-        assert_eq!(event.attributes[1].value, "0");
-        assert_eq!(event.attributes[2].key, "rewards_submission_hash");
-        assert_eq!(
-            event.attributes[2].value,
-            "FWMKFRHYNewOAaP1Ol9hEq89dlsUbU9m3PehWbAwIi8="
-        );
-        assert_eq!(event.attributes[3].key, "token");
-        assert_eq!(
-            event.attributes[3].value,
-            deps.api.addr_make("token").to_string()
-        );
-        assert_eq!(event.attributes[4].key, "amount");
-        assert_eq!(event.attributes[4].value, "100");
     }
 
     #[test]
