@@ -72,15 +72,11 @@ func (d *Deployer) DeploySlashManager(
 
 func (d *Deployer) DeployStrategyManager(
 	registry string,
-	delegationManager string,
-	slashManager string,
 	initialStrategyWhitelister string,
 ) *Contract[strategymanager.InstantiateMsg] {
 	initMsg := strategymanager.InstantiateMsg{
 		Owner:                      d.GenerateAddress("strategy-manager:initial_owner").String(),
 		Registry:                   registry,
-		DelegationManager:          delegationManager,
-		SlashManager:               slashManager,
 		InitialStrategyWhitelister: initialStrategyWhitelister,
 	}
 

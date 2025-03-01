@@ -31,16 +31,6 @@ func TransferOwner(userKeyName, newOwner string) {
 	fmt.Printf("Transfer ownership success. txn: %s\n", txResp.Hash)
 }
 
-func SetDelegationManager(userKeyName, delegationManager string) {
-	ctx := context.Background()
-	strategy, _ := newService(userKeyName)
-	txResp, err := strategy.SetDelegationManager(ctx, delegationManager)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Set delegation manager success. txn: %s\n", txResp.Hash)
-}
-
 func SetStrategyWhitelist(userKeyName, strategyWhitelist string) {
 	ctx := context.Background()
 	strategy, _ := newService(userKeyName)

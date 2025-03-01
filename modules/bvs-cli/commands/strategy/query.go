@@ -55,21 +55,3 @@ func GetStrategyWhitelist() {
 	}
 	fmt.Printf("%s\n", resp.Data)
 }
-
-func GetStrategyManagerState() {
-	s := NewService()
-	resp, err := s.Strategy.GetStrategyManagerState()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("%s\n", resp.Data)
-}
-
-func DelegationManager() {
-	s := NewService()
-	resp, err := s.Strategy.DelegationManager()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("%s\n", resp.Data)
-}

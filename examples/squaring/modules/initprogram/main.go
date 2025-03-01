@@ -147,15 +147,7 @@ func registerStrategy() {
 	ctx := context.Background()
 	fmt.Println("hello.....")
 
-	// register delegation manager
-	resp, err := strategyManager.SetDelegationManager(ctx, core.C.Contract.DelegationManagerAddr)
-	if err != nil {
-		fmt.Println("Err: setDelegationManager failed: ", err)
-	} else {
-		fmt.Println("SetDelegationManager success:", resp)
-	}
-
-	resp, err = strategyManager.AddStrategiesToWhitelist(ctx, []string{core.C.Contract.StrategyAddr})
+	resp, err := strategyManager.AddStrategiesToWhitelist(ctx, []string{core.C.Contract.StrategyAddr})
 	if err != nil {
 		fmt.Println("Err: addStrategiesToWhitelist failed: ", err)
 	} else {

@@ -152,7 +152,6 @@ func (suite *TestSuite) StartRedis() *RedisContainer {
 }
 
 func (suite *TestSuite) DeployBvsContracts() {
-	t := suite.T()
 	tempAddress := suite.Babylond.GenerateAddress("temp:temp")
 	deployer := &bvs.Deployer{
 		BabylonContainer: suite.Babylond,
@@ -165,7 +164,7 @@ func (suite *TestSuite) DeployBvsContracts() {
 	directoryContract := deployer.DeployDirectory(registry.Address)
 	suite.DirectoryApi = api.NewDirectory(suite.ChainIO, directoryContract.Address)
 
-	strategyManagerContract := deployer.DeployStrategyManager(registry.Address, tempAddress.String(), tempAddress.String(), tempAddress.String())
+	strategyManagerContract := deployer.DeployStrategyManager(registry.Address, tempAddress.String())
 	suite.StrategyManagerApi = api.NewStrategyManager(suite.ChainIO)
 	suite.StrategyManagerApi.BindClient(strategyManagerContract.Address)
 
@@ -238,12 +237,9 @@ func (suite *TestSuite) DeployBvsContracts() {
 	suite.NoError(err)
 	suite.Equal(uint32(0), res.TxResult.Code)
 
-	tx, err := suite.StrategyManagerApi.SetSlashManager(suite.Ctx, slashManagerContract.Address)
-	assert.NoError(t, err)
-	assert.NotNil(t, tx)
-	tx, err = suite.StrategyManagerApi.SetDelegationManager(suite.Ctx, delegationManagerContract.Address)
-	assert.NoError(t, err)
-	assert.NotNil(t, tx)
+	res, err = suite.StrategyManagerApi.SetRouting(context.Background(), delegationManagerContract.Address, slashManagerContract.Address)
+	suite.NoError(err)
+	suite.Equal(uint32(0), res.TxResult.Code)
 
 }
 
