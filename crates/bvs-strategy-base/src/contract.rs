@@ -6,9 +6,9 @@ use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
-        ExplanationResponse, SharesResponse, SharesToUnderlyingResponse, StrategyManagerResponse,
-        TotalSharesResponse, UnderlyingToShareResponse, UnderlyingToSharesResponse,
-        UnderlyingTokenResponse, UserUnderlyingResponse,
+        SharesResponse, SharesToUnderlyingResponse, StrategyManagerResponse, TotalSharesResponse,
+        UnderlyingToShareResponse, UnderlyingToSharesResponse, UnderlyingTokenResponse,
+        UserUnderlyingResponse,
     },
     state::{StrategyState, STRATEGY_STATE},
 };
@@ -302,7 +302,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetStrategyManager {} => to_json_binary(&query_strategy_manager(deps)?),
         QueryMsg::GetUnderlyingToken {} => to_json_binary(&query_underlying_token(deps)?),
         QueryMsg::GetTotalShares {} => to_json_binary(&query_total_shares(deps)?),
-        QueryMsg::Explanation {} => to_json_binary(&query_explanation()?),
         QueryMsg::UnderlyingToShares { amount_underlying } => {
             to_json_binary(&query_underlying_to_shares(deps, env, amount_underlying)?)
         }
@@ -330,14 +329,6 @@ fn query_total_shares(deps: Deps) -> StdResult<TotalSharesResponse> {
     let state = STRATEGY_STATE.load(deps.storage)?;
     Ok(TotalSharesResponse {
         total_shares: state.total_shares,
-    })
-}
-
-fn query_explanation() -> StdResult<ExplanationResponse> {
-    Ok(ExplanationResponse {
-        explanation:
-            "Base Strategy implementation to inherit from for more complex implementations"
-                .to_string(),
     })
 }
 
@@ -695,23 +686,6 @@ mod tests {
         let wrong_token = Addr::unchecked("wrong_token");
         let result_wrong = before_withdrawal(&state, &wrong_token);
         assert!(result_wrong.is_err());
-    }
-
-    #[test]
-    fn test_query_explanation() {
-        let (deps, env, _info, _token, _strategy_manager) = instantiate_contract();
-
-        let query_msg = QueryMsg::Explanation {};
-
-        let res = query(deps.as_ref(), env, query_msg).unwrap();
-
-        let explanation_response: ExplanationResponse = from_json(res).unwrap();
-
-        assert_eq!(
-            explanation_response.explanation,
-            "Base Strategy implementation to inherit from for more complex implementations"
-                .to_string()
-        );
     }
 
     #[test]

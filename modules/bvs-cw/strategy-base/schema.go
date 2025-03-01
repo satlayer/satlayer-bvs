@@ -10,9 +10,6 @@
 //    queryMsg, err := UnmarshalQueryMsg(bytes)
 //    bytes, err = queryMsg.Marshal()
 //
-//    explanationResponse, err := UnmarshalExplanationResponse(bytes)
-//    bytes, err = explanationResponse.Marshal()
-//
 //    sharesResponse, err := UnmarshalSharesResponse(bytes)
 //    bytes, err = sharesResponse.Marshal()
 //
@@ -71,16 +68,6 @@ func UnmarshalQueryMsg(data []byte) (QueryMsg, error) {
 }
 
 func (r *QueryMsg) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalExplanationResponse(data []byte) (ExplanationResponse, error) {
-	var r ExplanationResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *ExplanationResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -210,12 +197,8 @@ type QueryMsg struct {
 	GetStrategyManager     *GetStrategyManager     `json:"get_strategy_manager,omitempty"`
 	GetUnderlyingToken     *GetUnderlyingToken     `json:"get_underlying_token,omitempty"`
 	GetTotalShares         *GetTotalShares         `json:"get_total_shares,omitempty"`
-	Explanation            *Explanation            `json:"explanation,omitempty"`
 	UnderlyingToShares     *UnderlyingToShares     `json:"underlying_to_shares,omitempty"`
 	GetStrategyState       *GetStrategyState       `json:"get_strategy_state,omitempty"`
-}
-
-type Explanation struct {
 }
 
 type GetShares struct {
@@ -249,10 +232,6 @@ type UnderlyingToShares struct {
 
 type UserUnderlyingView struct {
 	User string `json:"user"`
-}
-
-type ExplanationResponse struct {
-	Explanation string `json:"explanation"`
 }
 
 type SharesResponse struct {
