@@ -311,6 +311,8 @@ pub fn withdraw_shares_as_tokens(
         funds: vec![],
     });
 
+    remove_shares_internal(deps, recipient.clone(), strategy.clone(), shares)?;
+
     let response = Response::new().add_message(withdraw_msg);
 
     Ok(response)
@@ -755,7 +757,7 @@ pub fn add_new_strategy(
 
     DEPLOYED_STRATEGIES.save(deps.storage, &token, &strategy)?;
 
-    STRATEGY_IS_WHITELISTED_FOR_DEPOSIT.save(deps.storage, &strategy, &false)?;
+    STRATEGY_IS_WHITELISTED_FOR_DEPOSIT.save(deps.storage, &strategy, &true)?;
 
     let event = Event::new("NewStrategyAdded")
         .add_attribute("method", "add_new_strategy")
