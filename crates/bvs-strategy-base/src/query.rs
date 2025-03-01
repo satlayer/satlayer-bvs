@@ -37,11 +37,6 @@ pub struct TotalSharesResponse {
 }
 
 #[cw_serde]
-pub struct ExplanationResponse {
-    pub explanation: String,
-}
-
-#[cw_serde]
 pub struct UnderlyingToSharesResponse {
     pub share_to_send: Uint128,
 }
