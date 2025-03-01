@@ -2,6 +2,7 @@
 use cosmwasm_std::entry_point;
 
 use crate::{
+    auth,
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
@@ -37,6 +38,9 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
+    let strategy_manager = deps.api.addr_validate(&msg.strategy_manager)?;
+    auth::_set_strategy_manager(deps.storage, &strategy_manager)?;
+
     let registry = deps.api.addr_validate(&msg.registry)?;
     bvs_registry::api::set_registry_addr(deps.storage, &registry)?;
 
@@ -47,7 +51,6 @@ pub fn instantiate(
     let underlying_token = deps.api.addr_validate(&msg.underlying_token)?;
 
     let state = StrategyState {
-        strategy_manager: strategy_manager.clone(),
         underlying_token: underlying_token.clone(),
         total_shares: Uint128::zero(),
     };
@@ -66,7 +69,7 @@ pub fn instantiate(
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("strategy_manager", state.strategy_manager.to_string())
+        .add_attribute("strategy_manager", strategy_manager)
         .add_attribute("underlying_token", state.underlying_token.to_string())
         .add_attribute("underlying_token_decimals", decimals.to_string()))
 }
@@ -91,12 +94,6 @@ pub fn execute(
             let token_addr = deps.api.addr_validate(&token)?;
             withdraw(deps, env, info, recipient_addr, token_addr, amount_shares)
         }
-        ExecuteMsg::SetStrategyManager {
-            new_strategy_manager,
-        } => {
-            let new_strategy_manager_addr = deps.api.addr_validate(&new_strategy_manager)?;
-            set_strategy_manager(deps, info, new_strategy_manager_addr)
-        }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
             ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
@@ -110,9 +107,9 @@ pub fn deposit(
     info: MessageInfo,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    let mut state = STRATEGY_STATE.load(deps.storage)?;
+    auth::assert_strategy_manager(deps.storage, &info)?;
 
-    only_strategy_manager(deps.as_ref(), &info)?;
+    let mut state = STRATEGY_STATE.load(deps.storage)?;
 
     let balance = token_balance(
         &deps.querier,
@@ -152,9 +149,10 @@ pub fn withdraw(
     token: Addr,
     amount_shares: Uint128,
 ) -> Result<Response, ContractError> {
+    auth::assert_strategy_manager(deps.storage, &info)?;
+
     let mut state = STRATEGY_STATE.load(deps.storage)?;
 
-    only_strategy_manager(deps.as_ref(), &info)?;
     before_withdrawal(&state, &token)?;
 
     if amount_shares > state.total_shares {
@@ -210,11 +208,13 @@ pub fn withdraw(
 }
 
 pub fn shares(deps: Deps, user: Addr, strategy: Addr) -> StdResult<SharesResponse> {
-    let state = STRATEGY_STATE.load(deps.storage)?;
+    let strategy_manager = auth::get_strategy_manager(deps.storage)
+        // TODO: SL-332
+        .unwrap();
 
     let response: StakerStrategySharesResponse =
         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-            contract_addr: state.strategy_manager.to_string(),
+            contract_addr: strategy_manager.to_string(),
             msg: to_json_binary(&StrategyManagerQueryMsg::GetStakerStrategyShares {
                 staker: user.to_string(),
                 strategy: strategy.to_string(),
@@ -280,24 +280,6 @@ pub fn user_underlying_view(deps: Deps, env: Env, user: Addr) -> StdResult<Uint1
     Ok(amount_to_send)
 }
 
-pub fn set_strategy_manager(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_strategy_manager: Addr,
-) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
-
-    let mut state = STRATEGY_STATE.load(deps.storage)?;
-    state.strategy_manager = new_strategy_manager.clone();
-    STRATEGY_STATE.save(deps.storage, &state)?;
-
-    let event = Event::new("strategy_manager_set")
-        .add_attribute("method", "set_strategy_manager")
-        .add_attribute("new_strategy_manager", new_strategy_manager.to_string());
-
-    Ok(Response::new().add_event(event))
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -329,9 +311,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 pub fn query_strategy_manager(deps: Deps) -> StdResult<StrategyManagerResponse> {
-    let state = STRATEGY_STATE.load(deps.storage)?;
+    let strategy_manager = auth::get_strategy_manager(deps.storage)
+        // TODO: SL-332
+        .unwrap();
     Ok(StrategyManagerResponse {
-        strategy_manager_addr: state.strategy_manager,
+        strategy_manager_addr: strategy_manager,
     })
 }
 
@@ -398,15 +382,6 @@ pub fn query_underlying_to_shares(
 ) -> StdResult<UnderlyingToSharesResponse> {
     let share_to_send = underlying_to_shares(deps, env, amount_underlying)?;
     Ok(UnderlyingToSharesResponse { share_to_send })
-}
-
-fn only_strategy_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
-    let state = STRATEGY_STATE.load(deps.storage)?;
-
-    if info.sender != state.strategy_manager {
-        return Err(ContractError::Unauthorized {});
-    }
-    Ok(())
 }
 
 fn before_withdrawal(state: &StrategyState, token: &Addr) -> Result<(), ContractError> {
@@ -706,25 +681,10 @@ mod tests {
     }
 
     #[test]
-    fn test_only_strategy_manager() {
-        let (deps, _env, _info, _token, strategy_manager) = instantiate_contract();
-
-        let info_strategy_manager = message_info(&Addr::unchecked(strategy_manager.clone()), &[]);
-
-        let result = only_strategy_manager(deps.as_ref(), &info_strategy_manager.clone());
-        assert!(result.is_ok());
-
-        let info_wrong = message_info(&Addr::unchecked("other_manager"), &[]);
-        let result_wrong = only_strategy_manager(deps.as_ref(), &info_wrong);
-        assert!(result_wrong.is_err());
-    }
-
-    #[test]
     fn test_before_withdrawal() {
-        let (mut _deps, _env, _info, token, strategy_manager) = instantiate_contract();
+        let (_deps, _env, _info, token, _) = instantiate_contract();
 
         let state = StrategyState {
-            strategy_manager: Addr::unchecked(strategy_manager),
             underlying_token: Addr::unchecked(token.clone()),
             total_shares: Uint128::zero(),
         };
@@ -736,6 +696,7 @@ mod tests {
         let result_wrong = before_withdrawal(&state, &wrong_token);
         assert!(result_wrong.is_err());
     }
+
     #[test]
     fn test_query_explanation() {
         let (deps, env, _info, _token, _strategy_manager) = instantiate_contract();
@@ -1112,23 +1073,5 @@ mod tests {
                 panic!("Failed to convert underlying to shares: {:?}", e);
             }
         }
-    }
-
-    #[test]
-    fn test_set_strategy_manager() {
-        let (mut deps, env, info, _token, _strategy_manager) = instantiate_contract();
-
-        let new_strategy_manager = deps.api.addr_make("new_strategy_manager");
-
-        let res = set_strategy_manager(deps.as_mut(), info.clone(), new_strategy_manager.clone())
-            .unwrap();
-
-        assert!(res.events.iter().any(|e| e.ty == "strategy_manager_set"));
-
-        let state = STRATEGY_STATE.load(&deps.storage).unwrap();
-        assert_eq!(
-            state.strategy_manager,
-            Addr::unchecked(new_strategy_manager)
-        );
     }
 }

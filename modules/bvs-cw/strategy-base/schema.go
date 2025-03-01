@@ -182,18 +182,13 @@ type InstantiateMsg struct {
 }
 
 type ExecuteMsg struct {
-	Deposit            *Deposit            `json:"deposit,omitempty"`
-	Withdraw           *Withdraw           `json:"withdraw,omitempty"`
-	SetStrategyManager *SetStrategyManager `json:"set_strategy_manager,omitempty"`
-	TransferOwnership  *TransferOwnership  `json:"transfer_ownership,omitempty"`
+	Deposit           *Deposit           `json:"deposit,omitempty"`
+	Withdraw          *Withdraw          `json:"withdraw,omitempty"`
+	TransferOwnership *TransferOwnership `json:"transfer_ownership,omitempty"`
 }
 
 type Deposit struct {
 	Amount string `json:"amount"`
-}
-
-type SetStrategyManager struct {
-	NewStrategyManager string `json:"new_strategy_manager"`
 }
 
 type TransferOwnership struct {
@@ -269,7 +264,6 @@ type StrategyManagerResponse struct {
 }
 
 type StrategyState struct {
-	StrategyManager string `json:"strategy_manager"`
 	TotalShares     string `json:"total_shares"`
 	UnderlyingToken string `json:"underlying_token"`
 }
