@@ -30,12 +30,12 @@ pub enum ExecuteMsg {
     CancelSalt {
         salt: Binary,
     },
-    SetRouting {
-        delegation_manager: String,
-    },
     TransferOwnership {
         /// See `ownership::transfer_ownership` for more information on this field
         new_owner: String,
+    },
+    SetRouting {
+        delegation_manager: String,
     },
 }
 

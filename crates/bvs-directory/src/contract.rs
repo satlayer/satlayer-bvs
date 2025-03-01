@@ -63,22 +63,22 @@ pub fn execute(
             contract_addr,
             signature_with_salt_and_expiry,
         } => {
-            let operator_addr = Addr::unchecked(operator);
-            let contract_addr = Addr::unchecked(contract_addr);
+            let operator = deps.api.addr_validate(&operator)?;
+            let contract_addr = deps.api.addr_validate(&contract_addr)?;
 
             register_operator(
                 deps,
                 env,
                 info,
                 contract_addr,
-                operator_addr,
+                operator,
                 public_key,
                 signature_with_salt_and_expiry,
             )
         }
         ExecuteMsg::DeregisterOperatorFromBvs { operator } => {
-            let operator_addr = Addr::unchecked(operator);
-            deregister_operator(deps, env, info, operator_addr)
+            let operator = deps.api.addr_validate(&operator)?;
+            deregister_operator(deps, env, info, operator)
         }
         ExecuteMsg::UpdateBvsMetadataUri { metadata_uri } => {
             update_metadata_uri(info, metadata_uri)
@@ -249,9 +249,9 @@ pub fn cancel_salt(
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::OperatorStatus { bvs, operator } => {
-            let bvs_addr = Addr::unchecked(bvs);
-            let operator_addr = Addr::unchecked(operator);
-            to_json_binary(&query_operator_status(deps, bvs_addr, operator_addr)?)
+            let bvs = deps.api.addr_validate(&bvs)?;
+            let operator = deps.api.addr_validate(&operator)?;
+            to_json_binary(&query_operator_status(deps, bvs, operator)?)
         }
         QueryMsg::CalculateDigestHash {
             operator_public_key,
@@ -262,12 +262,12 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         } => {
             let public_key_binary = Binary::from_base64(&operator_public_key)?;
             let salt = Binary::from_base64(&salt)?;
-            let bvs_addr = Addr::unchecked(bvs);
-            let contract_addr = Addr::unchecked(contract_addr);
+            let bvs = deps.api.addr_validate(&bvs)?;
+            let contract_addr = deps.api.addr_validate(&contract_addr)?;
 
             let params = DigestHashParams {
                 operator_public_key: public_key_binary,
-                bvs: bvs_addr,
+                bvs,
                 salt,
                 expiry,
                 contract_addr,
