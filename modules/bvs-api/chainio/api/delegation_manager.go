@@ -277,10 +277,11 @@ func (r *DelegationManager) TransferOwnership(ctx context.Context, newOwner stri
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *DelegationManager) SetRouting(ctx context.Context, strategyManager string) (*coretypes.ResultTx, error) {
+func (r *DelegationManager) SetRouting(ctx context.Context, strategyManager, slashManager string) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		SetRouting: &delegationmanager.SetRouting{
 			StrategyManager: strategyManager,
+			SlashManager:    slashManager,
 		},
 	}
 	executeMsgBytes, err := json.Marshal(executeMsg)

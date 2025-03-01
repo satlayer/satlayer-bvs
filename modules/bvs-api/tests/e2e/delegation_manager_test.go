@@ -84,7 +84,7 @@ func (suite *delegationTestSuite) SetupSuite() {
 	suite.Require().NoError(err, "setup keyring")
 
 	delegationApi := api.NewDelegationManager(chainIO, delegationManager.Address)
-	txResp, err := delegationApi.SetRouting(context.Background(), suite.strategyManager)
+	txResp, err := delegationApi.SetRouting(context.Background(), suite.strategyManager, tAddr)
 	suite.Require().NoError(err)
 	suite.Require().Equal(uint32(0), txResp.TxResult.Code)
 
@@ -329,15 +329,14 @@ func (suite *delegationTestSuite) Test_DelegateTransferOwnership() {
 }
 
 func (suite *delegationTestSuite) Test_SetRouting() {
-	t := suite.T()
 	chainIO, err := suite.chainIO.SetupKeyring("caller", "test")
-	assert.NoError(t, err)
+	suite.NoError(err)
 
+	tAddr := suite.container.GenerateAddress("test-address").String()
 	delegationApi := api.NewDelegationManager(chainIO, suite.contrAddr)
-	txResp, err := delegationApi.SetRouting(context.Background(), suite.strategyManager)
-	assert.NoError(t, err)
-	assert.NotNil(t, txResp, "response nil")
-	t.Logf("txResp:%+v", txResp)
+	txResp, err := delegationApi.SetRouting(context.Background(), suite.strategyManager, tAddr)
+	suite.NoError(err)
+	suite.NotNil(txResp, "response nil")
 }
 
 func (suite *delegationTestSuite) Test_IsDelegated() {

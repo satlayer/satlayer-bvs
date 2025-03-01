@@ -272,6 +272,7 @@ type SetMinWithdrawalDelayBlocks struct {
 }
 
 type SetRouting struct {
+	SlashManager    string `json:"slash_manager"`
 	StrategyManager string `json:"strategy_manager"`
 }
 
