@@ -38,6 +38,8 @@ pub fn get_delegation_manager(storage: &dyn Storage) -> Result<Addr, ContractErr
 
 /// Get the Slash Manager address
 /// If SetRouting has not been called, it will return an Unauthorized error
+/// Currently, not used to be migrated and release in the future for Slash Manager
+#[allow(dead_code)]
 pub fn get_slash_manager(storage: &dyn Storage) -> Result<Addr, ContractError> {
     SLASH_MANAGER
         .may_load(storage)?
@@ -56,6 +58,8 @@ pub fn assert_delegation_manager(deps: Deps, info: &MessageInfo) -> Result<(), C
     Ok(())
 }
 
+/// Currently, not used to be migrated and release in the future for Slash Manager
+#[allow(dead_code)]
 pub fn assert_delegation_or_slash_manager(
     deps: Deps,
     info: &MessageInfo,
