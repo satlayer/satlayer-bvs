@@ -69,7 +69,7 @@ func (suite *rewardsTestSuite) SetupSuite() {
 	suite.Require().NoError(err)
 	blockTime := status.SyncInfo.LatestBlockTime.Second()
 
-	strategyManager := deployer.DeployStrategyManager(registry.Address, tAddr, tAddr, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+	strategyManager := deployer.DeployStrategyManager(registry.Address, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
 	rewardsCoordinator := deployer.DeployRewardsCoordinator(
 		registry.Address,
 		// Test Vector taken from: bvs-rewards-coordinator/src/contract.rs

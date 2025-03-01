@@ -24,14 +24,6 @@ func strategyCmd() *cobra.Command {
 		},
 	}
 
-	setDelegationManagerCmd := &cobra.Command{
-		Use:   "set-delegation-manager <userKeyName> <delegationManager>",
-		Short: "To set the delegation manager.",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			strategy.SetDelegationManager(args[0], args[1])
-		},
-	}
 	setStrategyWhitelistCmd := &cobra.Command{
 		Use:   "set-strategy-whitelist <userKeyName> <strategyWhitelist>",
 		Short: "To set the strategy whitelist.",
@@ -157,33 +149,12 @@ func strategyCmd() *cobra.Command {
 		},
 	}
 
-	getStrategyManagerStateCmd := &cobra.Command{
-		Use:   "get-strategy-manager-state",
-		Short: "To get the strategy manager state.",
-		Args:  cobra.NoArgs,
-		Run: func(cmd *cobra.Command, args []string) {
-			strategy.GetStrategyManagerState()
-		},
-	}
-
-	getDelegationManagerCmd := &cobra.Command{
-		Use:   "get-delegation-manager",
-		Short: "To get the delegation manager.",
-		Args:  cobra.NoArgs,
-		Run: func(cmd *cobra.Command, args []string) {
-			strategy.DelegationManager()
-		},
-	}
-
 	subCmd.AddCommand(transferOwnerCmd)
-	subCmd.AddCommand(setDelegationManagerCmd)
 	subCmd.AddCommand(removeStrategyFromWhitelistCmd)
 	subCmd.AddCommand(setStrategyWhitelistCmd)
 	subCmd.AddCommand(getStakerStrategyListCmd)
 	subCmd.AddCommand(isStrategyWhitelistedCmd)
 	subCmd.AddCommand(getStrategyWhitelistCmd)
-	subCmd.AddCommand(getStrategyManagerStateCmd)
-	subCmd.AddCommand(getDelegationManagerCmd)
 	subCmd.AddCommand(addStrategyToWhitelistCmd)
 	subCmd.AddCommand(depositStrategyCmd)
 	subCmd.AddCommand(removeSharesCmd)

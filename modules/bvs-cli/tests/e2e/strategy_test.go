@@ -22,12 +22,3 @@ func Test_GetStakerStrategyList(t *testing.T) {
 func Test_GetStrategyDetails(t *testing.T) {
 	strategy.IsStrategyWhitelisted("bbn102zy555uul67xct4f29plgt6wq63wacmjp93csxpz8z538jrzcdqmj993a")
 }
-
-func Test_GetStrategyManagerState(t *testing.T) {
-	strategy.GetStrategyManagerState()
-}
-
-// TODO(post-hermetic): break due to rename from GetDelegation
-func test_GetStrategyDelegationManager(t *testing.T) {
-	strategy.DelegationManager()
-}

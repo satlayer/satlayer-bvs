@@ -1,14 +1,6 @@
-use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
 
-#[cw_serde]
-pub struct StrategyManagerState {
-    pub delegation_manager: Addr,
-    pub slash_manager: Addr,
-}
-
-pub const STRATEGY_MANAGER_STATE: Item<StrategyManagerState> = Item::new("strategy_manager_state");
 pub const STRATEGY_WHITELISTER: Item<Addr> = Item::new("strategy_whitelister");
 pub const STRATEGY_IS_WHITELISTED_FOR_DEPOSIT: Map<&Addr, bool> = Map::new("strategy_whitelist");
 

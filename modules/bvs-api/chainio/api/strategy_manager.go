@@ -148,19 +148,12 @@ func (r *StrategyManager) AddShares(ctx context.Context, staker string, token st
 	return r.execute(ctx, msg)
 }
 
-func (r *StrategyManager) SetDelegationManager(ctx context.Context, newDelegationManager string) (*coretypes.ResultTx, error) {
+func (r *StrategyManager) SetRouting(ctx context.Context, delegationManager, slashManager string) (*coretypes.ResultTx, error) {
 	msg := strategymanager.ExecuteMsg{
-		SetDelegationManager: &strategymanager.SetDelegationManager{
-			NewDelegationManager: newDelegationManager,
+		SetRouting: &strategymanager.SetRouting{
+			DelegationManager: delegationManager,
+			SlashManager:      slashManager,
 		},
-	}
-
-	return r.execute(ctx, msg)
-}
-
-func (r *StrategyManager) SetSlashManager(ctx context.Context, newSlashManager string) (*coretypes.ResultTx, error) {
-	msg := strategymanager.ExecuteMsg{
-		SetSlashManager: &strategymanager.SetSlashManager{NewSlashManager: newSlashManager},
 	}
 
 	return r.execute(ctx, msg)
@@ -249,22 +242,6 @@ func (r *StrategyManager) IsStrategyWhitelisted(strategy string) (*wasmtypes.Que
 func (r *StrategyManager) GetStrategyWhitelister() (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategymanager.QueryMsg{
 		GetStrategyWhitelister: &strategymanager.GetStrategyWhitelister{},
-	}
-
-	return r.query(msg)
-}
-
-func (r *StrategyManager) GetStrategyManagerState() (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := strategymanager.QueryMsg{
-		GetStrategyManagerState: &strategymanager.GetStrategyManagerState{},
-	}
-
-	return r.query(msg)
-}
-
-func (r *StrategyManager) DelegationManager() (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := strategymanager.QueryMsg{
-		DelegationManager: &strategymanager.DelegationManager{},
 	}
 
 	return r.query(msg)
