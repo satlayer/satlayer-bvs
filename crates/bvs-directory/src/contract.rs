@@ -66,7 +66,7 @@ pub fn execute(
             let operator = deps.api.addr_validate(&operator)?;
             let contract_addr = deps.api.addr_validate(&contract_addr)?;
 
-            register_operator(
+            register_operator_to_bvs(
                 deps,
                 env,
                 info,
@@ -78,19 +78,19 @@ pub fn execute(
         }
         ExecuteMsg::DeregisterOperatorFromBvs { operator } => {
             let operator = deps.api.addr_validate(&operator)?;
-            deregister_operator(deps, env, info, operator)
+            deregister_operator_from_bvs(deps, env, info, operator)
         }
         ExecuteMsg::UpdateBvsMetadataUri { metadata_uri } => {
-            update_metadata_uri(info, metadata_uri)
-        }
-        ExecuteMsg::SetRouting { delegation_manager } => {
-            let delegation_manager = deps.api.addr_validate(&delegation_manager)?;
-            auth::set_routing(deps, info, delegation_manager)
+            update_bvs_metadata_uri(info, metadata_uri)
         }
         ExecuteMsg::CancelSalt { salt } => cancel_salt(deps, env, info, salt),
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
             ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
+        }
+        ExecuteMsg::SetRouting { delegation_manager } => {
+            let delegation_manager = deps.api.addr_validate(&delegation_manager)?;
+            auth::set_routing(deps, info, delegation_manager)
         }
     }
 }
@@ -112,7 +112,8 @@ pub fn register_bvs(deps: DepsMut, bvs_contract: String) -> Result<Response, Con
         .add_attribute("bvs_hash", bvs_hash))
 }
 
-pub fn register_operator(
+/// Called by the BVS to register an operator to the BVS
+pub fn register_operator_to_bvs(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -186,7 +187,7 @@ pub fn register_operator(
     Ok(Response::new().add_event(event))
 }
 
-pub fn deregister_operator(
+pub fn deregister_operator_from_bvs(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
@@ -213,7 +214,7 @@ pub fn deregister_operator(
     Err(ContractError::OperatorNotRegistered {})
 }
 
-pub fn update_metadata_uri(
+pub fn update_bvs_metadata_uri(
     info: MessageInfo,
     metadata_uri: String,
 ) -> Result<Response, ContractError> {
@@ -525,7 +526,7 @@ mod tests {
             }),
         });
 
-        let res = register_operator(
+        let res = register_operator_to_bvs(
             deps.as_mut(),
             env.clone(),
             info.clone(),
@@ -622,7 +623,7 @@ mod tests {
             }),
         });
 
-        let res = register_operator(
+        let res = register_operator_to_bvs(
             deps.as_mut(),
             env.clone(),
             info.clone(),
@@ -638,7 +639,12 @@ mod tests {
 
         assert!(res.is_ok());
 
-        let res = deregister_operator(deps.as_mut(), env.clone(), info.clone(), operator.clone());
+        let res = deregister_operator_from_bvs(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            operator.clone(),
+        );
 
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
@@ -674,7 +680,7 @@ mod tests {
         let (_, _, info) = instantiate_contract();
 
         let metadata_uri = "http://metadata.uri".to_string();
-        let res = update_metadata_uri(info.clone(), metadata_uri.clone());
+        let res = update_bvs_metadata_uri(info.clone(), metadata_uri.clone());
 
         if let Err(ref err) = res {
             println!("Error: {:?}", err);
@@ -779,7 +785,7 @@ mod tests {
             }),
         });
 
-        let res = register_operator(
+        let res = register_operator_to_bvs(
             deps.as_mut(),
             env.clone(),
             info.clone(),
@@ -951,7 +957,7 @@ mod tests {
             }),
         });
 
-        let res = register_operator(
+        let res = register_operator_to_bvs(
             deps.as_mut(),
             env.clone(),
             info.clone(),
@@ -1070,7 +1076,7 @@ mod tests {
             }),
         });
 
-        let res = register_operator(
+        let res = register_operator_to_bvs(
             deps.as_mut(),
             env.clone(),
             info.clone(),

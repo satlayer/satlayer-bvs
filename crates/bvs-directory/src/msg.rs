@@ -12,7 +12,7 @@ pub struct InstantiateMsg {
 #[derive(bvs_registry::api::Display)]
 pub enum ExecuteMsg {
     RegisterBvs {
-        // TODO(fuxingloh): rename to contract_addr
+        // TODO(fuxingloh): rename to contract
         bvs_contract: String,
     },
     RegisterOperatorToBvs {
