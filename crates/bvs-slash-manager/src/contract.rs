@@ -18,12 +18,14 @@ use cosmwasm_std::{
     SubMsg, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
+use cw20::Cw20ExecuteMsg;
 
 use bvs_delegation_manager::{
     msg::ExecuteMsg as DelegationManagerExecuteMsg, msg::QueryMsg as DelegationManagerQueryMsg,
     query::OperatorResponse, query::OperatorStakersResponse,
 };
 use bvs_library::ownership;
+use bvs_strategy_base::msg::ExecuteMsg as StrategyBaseExecuteMsg;
 use bvs_strategy_manager::msg::ExecuteMsg as StrategyManagerExecuteMsg;
 
 const CONTRACT_NAME: &str = "BVS Slash Manager";
@@ -118,6 +120,16 @@ pub fn execute(
         }
         ExecuteMsg::CancelSlashRequest { slash_hash } => {
             cancel_slash_request(deps, info, slash_hash)
+        }
+        ExecuteMsg::WithdrawSlashedFunds {
+            token,
+            recipient,
+            amount,
+        } => {
+            let token_addr = deps.api.addr_validate(&token)?;
+            let recipient_addr = deps.api.addr_validate(&recipient)?;
+
+            withdraw_slashed_funds(deps, env, info, token_addr, recipient_addr, amount)
         }
         ExecuteMsg::SetMinimalSlashSignature { minimal_signature } => {
             set_minimal_slash_signature(deps, info, minimal_signature)
@@ -345,7 +357,7 @@ pub fn execute_slash_request(
                 funds: vec![],
             }));
 
-            let withdraw_msg = StrategyExecuteMsg::Withdraw {
+            let withdraw_msg = StrategyBaseExecuteMsg::Withdraw {
                 recipient: env.contract.address.to_string(),
                 amount_shares: slash_details.share,
             };
@@ -396,6 +408,44 @@ pub fn cancel_slash_request(
         .add_attribute("slash_details_status", slash_details.status.to_string());
 
     Ok(Response::new().add_event(event))
+}
+
+pub fn withdraw_slashed_funds(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    token: Addr,
+    recipient: Addr,
+    amount: Uint128,
+) -> Result<Response, ContractError> {
+    ownership::assert_owner(deps.as_ref(), &info)?;
+
+    let balance: cw20::BalanceResponse = deps.querier.query_wasm_smart(
+        token.clone(),
+        &cw20::Cw20QueryMsg::Balance {
+            address: env.contract.address.to_string(),
+        },
+    )?;
+
+    if balance.balance < amount {
+        return Err(ContractError::InsufficientFunds {});
+    }
+
+    let transfer_msg = WasmMsg::Execute {
+        contract_addr: token.to_string(),
+        msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
+            recipient: recipient.to_string(),
+            amount,
+        })?,
+        funds: vec![],
+    };
+
+    Ok(Response::new()
+        .add_message(transfer_msg)
+        .add_attribute("action", "withdraw_slashed_funds")
+        .add_attribute("token", token)
+        .add_attribute("amount", amount)
+        .add_attribute("recipient", recipient))
 }
 
 pub fn set_minimal_slash_signature(

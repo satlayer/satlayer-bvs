@@ -31,9 +31,6 @@ pub enum ExecuteMsg {
         recipient: String,
         amount: Uint128,
     },
-    SetMaxTimeInFuture {
-        new_value: u64,
-    },
     SetMinimalSlashSignature {
         minimal_signature: u64,
     },

@@ -59,4 +59,7 @@ pub enum ContractError {
 
     #[error("SlashManager.execute_slash_request: insufficient shares for staker")]
     InsufficientSharesForStaker { staker: String },
+
+    #[error("SlashManager.withdraw_slashed_funds: insufficient funds")]
+    InsufficientFunds {},
 }

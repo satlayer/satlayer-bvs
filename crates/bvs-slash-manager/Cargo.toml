@@ -46,6 +46,9 @@ bvs-library = { workspace = true }
 bvs-registry = { workspace = true }
 bvs-strategy-manager = { workspace = true }
 bvs-delegation-manager = { workspace = true }
+bvs-strategy-base = { workspace = true }
+cw20 = { workspace = true }
+
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
