@@ -81,7 +81,6 @@ mod execute {
     use crate::msg::ServiceMetadata;
     use crate::state::{RegisteredStatus, REGISTRATION_STATUS, SERVICES};
     use crate::{auth, state, ContractError};
-    use bvs_base::delegation;
     use cosmwasm_std::{Addr, DepsMut, Event, MessageInfo, Response};
 
     pub fn service_register(
@@ -140,12 +139,13 @@ mod execute {
         state::require_service_registered(deps.storage, &service)?;
 
         let delegation_manager = auth::get_delegation_manager(deps.storage)?;
-        let is_operator_response: delegation::OperatorResponse = deps.querier.query_wasm_smart(
-            delegation_manager.clone(),
-            &delegation::QueryMsg::IsOperator {
-                operator: info.sender.to_string(),
-            },
-        )?;
+        let is_operator_response: bvs_delegation_manager::query::OperatorResponse =
+            deps.querier.query_wasm_smart(
+                delegation_manager.clone(),
+                &bvs_delegation_manager::msg::QueryMsg::IsOperator {
+                    operator: info.sender.to_string(),
+                },
+            )?;
 
         if !is_operator_response.is_operator {
             return Err(ContractError::OperatorNotFound {
@@ -172,7 +172,7 @@ mod execute {
                 )?;
                 Ok(Response::new().add_event(
                     Event::new("RegistrationStatusUpdated")
-                        .add_attribute("method", "OperatorRegisterService")
+                        .add_attribute("method", "operator_register_service")
                         .add_attribute("operator", info.sender)
                         .add_attribute("service", service)
                         .add_attribute("status", "OperatorRegistered"),
@@ -182,7 +182,7 @@ mod execute {
                 REGISTRATION_STATUS.save(deps.storage, key, &RegisteredStatus::Active)?;
                 Ok(Response::new().add_event(
                     Event::new("RegistrationStatusUpdated")
-                        .add_attribute("method", "OperatorRegisterService")
+                        .add_attribute("method", "operator_register_service")
                         .add_attribute("operator", info.sender)
                         .add_attribute("service", service)
                         .add_attribute("status", "Active"),
@@ -211,7 +211,7 @@ mod execute {
             REGISTRATION_STATUS.save(deps.storage, key, &RegisteredStatus::Inactive)?;
             Ok(Response::new().add_event(
                 Event::new("RegistrationStatusUpdated")
-                    .add_attribute("method", "OperatorDeregisterService")
+                    .add_attribute("method", "operator_deregister_service")
                     .add_attribute("operator", info.sender)
                     .add_attribute("service", service)
                     .add_attribute("status", "Inactive"),
@@ -245,7 +245,7 @@ mod execute {
                 )?;
                 Ok(Response::new().add_event(
                     Event::new("RegistrationStatusUpdated")
-                        .add_attribute("method", "ServiceRegisterOperator")
+                        .add_attribute("method", "service_register_operator")
                         .add_attribute("operator", operator)
                         .add_attribute("service", info.sender)
                         .add_attribute("status", "ServiceRegistered"),
@@ -255,7 +255,7 @@ mod execute {
                 REGISTRATION_STATUS.save(deps.storage, key, &RegisteredStatus::Active)?;
                 Ok(Response::new().add_event(
                     Event::new("RegistrationStatusUpdated")
-                        .add_attribute("method", "ServiceRegisterOperator")
+                        .add_attribute("method", "service_register_operator")
                         .add_attribute("operator", operator)
                         .add_attribute("service", info.sender)
                         .add_attribute("status", "Active"),
@@ -284,7 +284,7 @@ mod execute {
             REGISTRATION_STATUS.save(deps.storage, key, &RegisteredStatus::Inactive)?;
             Ok(Response::new().add_event(
                 Event::new("RegistrationStatusUpdated")
-                    .add_attribute("method", "ServiceDeregisterOperator")
+                    .add_attribute("method", "service_deregister_operator")
                     .add_attribute("operator", operator)
                     .add_attribute("service", info.sender)
                     .add_attribute("status", "Inactive"),
@@ -299,7 +299,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Status { service, operator } => {
             let service = deps.api.addr_validate(&service)?;
             let operator = deps.api.addr_validate(&operator)?;
-            to_json_binary(&query::status(deps, service, operator)?)
+            to_json_binary(&query::status(deps, operator, service)?)
         }
     }
 }
@@ -323,7 +323,6 @@ mod tests {
     use crate::contract::query::status;
     use crate::msg::{InstantiateMsg, ServiceMetadata};
     use crate::state::{RegisteredStatus, REGISTRATION_STATUS, SERVICES};
-    use bvs_base::delegation;
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
@@ -359,7 +358,10 @@ mod tests {
 
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart { .. } => SystemResult::Ok(ContractResult::Ok(
-                to_json_binary(&delegation::OperatorResponse { is_operator: true }).unwrap(),
+                to_json_binary(&bvs_delegation_manager::query::OperatorResponse {
+                    is_operator: true,
+                })
+                .unwrap(),
             )),
             _ => SystemResult::Err(SystemError::InvalidRequest {
                 error: "Unhandled request".to_string(),
@@ -494,7 +496,7 @@ mod tests {
             res,
             Ok(Response::new().add_event(
                 Event::new("RegistrationStatusUpdated")
-                    .add_attribute("method", "OperatorRegisterService")
+                    .add_attribute("method", "operator_register_service")
                     .add_attribute("operator", operator.as_ref())
                     .add_attribute("service", service.as_ref())
                     .add_attribute("status", "OperatorRegistered")
@@ -515,7 +517,7 @@ mod tests {
             res,
             Ok(Response::new().add_event(
                 Event::new("RegistrationStatusUpdated")
-                    .add_attribute("method", "ServiceRegisterOperator")
+                    .add_attribute("method", "service_register_operator")
                     .add_attribute("operator", operator.as_ref())
                     .add_attribute("service", service.as_ref())
                     .add_attribute("status", "Active")
@@ -556,7 +558,7 @@ mod tests {
             res,
             Ok(Response::new().add_event(
                 Event::new("RegistrationStatusUpdated")
-                    .add_attribute("method", "ServiceRegisterOperator")
+                    .add_attribute("method", "service_register_operator")
                     .add_attribute("operator", operator.as_ref())
                     .add_attribute("service", service.as_ref())
                     .add_attribute("status", "ServiceRegistered")
@@ -577,7 +579,7 @@ mod tests {
             res,
             Ok(Response::new().add_event(
                 Event::new("RegistrationStatusUpdated")
-                    .add_attribute("method", "OperatorRegisterService")
+                    .add_attribute("method", "operator_register_service")
                     .add_attribute("operator", operator.as_ref())
                     .add_attribute("service", service.as_ref())
                     .add_attribute("status", "Active")
@@ -711,7 +713,7 @@ mod tests {
             res,
             Ok(Response::new().add_event(
                 Event::new("RegistrationStatusUpdated")
-                    .add_attribute("method", "ServiceDeregisterOperator")
+                    .add_attribute("method", "service_deregister_operator")
                     .add_attribute("operator", operator.as_ref())
                     .add_attribute("service", service.as_ref())
                     .add_attribute("status", "Inactive")
@@ -747,7 +749,7 @@ mod tests {
             res,
             Ok(Response::new().add_event(
                 Event::new("RegistrationStatusUpdated")
-                    .add_attribute("method", "OperatorDeregisterService")
+                    .add_attribute("method", "operator_deregister_service")
                     .add_attribute("operator", operator.as_ref())
                     .add_attribute("service", service.as_ref())
                     .add_attribute("status", "Inactive")

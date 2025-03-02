@@ -24,6 +24,6 @@ pub enum ContractError {
     #[error("Invalid registration status: {msg}")]
     InvalidRegistrationStatus { msg: String },
 
-    #[error("Delegation not found: {msg}")]
+    #[error("Operator not found in delegation {msg}")]
     OperatorNotFound { msg: String },
 }

@@ -50,7 +50,7 @@ pub enum QueryMsg {
 }
 
 #[cw_serde]
-struct StatusResponse(pub RegisteredStatus);
+pub struct StatusResponse(pub RegisteredStatus);
 
 #[cfg(test)]
 mod tests {
