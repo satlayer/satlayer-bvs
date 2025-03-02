@@ -199,7 +199,7 @@ fn register_update_metadata_uri_successfully() {
     assert_eq!(response.events.len(), 2);
     assert_eq!(
         response.events[1],
-        Event::new("wasm-BVSMetadataURIUpdated")
+        Event::new("wasm-MetadataURIUpdated")
             .add_attribute("_contract_address", mock_env.bvs_directory.contract_addr)
             .add_attribute("method", "update_metadata_uri")
             .add_attribute("bvs", anyone.into_string())

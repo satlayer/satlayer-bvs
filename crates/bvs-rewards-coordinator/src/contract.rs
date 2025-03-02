@@ -199,7 +199,7 @@ pub fn create_bvs_rewards_submission(
 
         response = response.add_message(transfer_msg);
 
-        let event = Event::new("BVSRewardsSubmissionCreated")
+        let event = Event::new("RewardsSubmissionCreated")
             .add_attribute("sender", info.sender.to_string())
             .add_attribute("nonce", nonce.to_string())
             .add_attribute(
@@ -1307,7 +1307,7 @@ mod tests {
         assert_eq!(response.events.len(), 1);
 
         let event = response.events.first().unwrap();
-        assert_eq!(event.ty, "BVSRewardsSubmissionCreated");
+        assert_eq!(event.ty, "RewardsSubmissionCreated");
         assert_eq!(event.attributes.len(), 5);
         assert_eq!(event.attributes[0].key, "sender");
         assert_eq!(
