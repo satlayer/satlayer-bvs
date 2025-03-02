@@ -81,24 +81,16 @@ pub fn execute(
             add_new_strategy(deps, env, info, strategy_addr, token_addr)
         }
         ExecuteMsg::BlacklistTokens { tokens } => {
-            let tokens = crate::utils::validate_addresses(deps.api, &tokens)?;
+            let tokens = bvs_library::addr::validate_addrs(deps.api, &tokens)?;
             blacklist_tokens(deps, env, info, tokens)
         }
         ExecuteMsg::AddStrategiesToWhitelist { strategies } => {
-            let strategies: Result<Vec<_>, _> = strategies
-                .iter()
-                .map(|addr| deps.api.addr_validate(addr))
-                .collect();
-
-            add_strategies_to_deposit_whitelist(deps, info, strategies?)
+            let strategies = bvs_library::addr::validate_addrs(deps.api, &strategies)?;
+            add_strategies_to_deposit_whitelist(deps, info, strategies)
         }
         ExecuteMsg::RemoveStrategiesFromWhitelist { strategies } => {
-            let strategies: Result<Vec<_>, _> = strategies
-                .iter()
-                .map(|addr| deps.api.addr_validate(addr))
-                .collect();
-
-            remove_strategies_from_deposit_whitelist(deps, info, strategies?)
+            let strategies = bvs_library::addr::validate_addrs(deps.api, &strategies)?;
+            remove_strategies_from_deposit_whitelist(deps, info, strategies)
         }
         ExecuteMsg::SetStrategyWhitelister {
             new_strategy_whitelister,

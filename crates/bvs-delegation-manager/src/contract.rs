@@ -14,7 +14,7 @@ use crate::{
         CUMULATIVE_WITHDRAWALS_QUEUED, DELEGATED_TO, MIN_WITHDRAWAL_DELAY_BLOCKS, OPERATOR_DETAILS,
         OPERATOR_SHARES, PENDING_WITHDRAWALS, STRATEGY_WITHDRAWAL_DELAY_BLOCKS,
     },
-    utils::{calculate_withdrawal_root, validate_addresses, DelegateParams, Withdrawal},
+    utils::{calculate_withdrawal_root, DelegateParams, Withdrawal},
 };
 use cosmwasm_std::{
     to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo, Response,
@@ -52,7 +52,7 @@ pub fn instantiate(
 
     set_min_withdrawal_delay_blocks_internal(deps.branch(), msg.min_withdrawal_delay_blocks)?;
 
-    let strategies_addr = validate_addresses(deps.api, &msg.strategies)?;
+    let strategies_addr = bvs_library::addr::validate_addrs(deps.api, &msg.strategies)?;
 
     let withdrawal_delay_blocks = msg.withdrawal_delay_blocks.to_vec();
 
@@ -184,7 +184,7 @@ pub fn execute(
             strategies,
             withdrawal_delay_blocks,
         } => {
-            let strategies_addr = validate_addresses(deps.api, &strategies)?;
+            let strategies_addr = bvs_library::addr::validate_addrs(deps.api, &strategies)?;
 
             set_strategy_withdrawal_delay_blocks(
                 deps,
@@ -592,7 +592,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             strategies,
         } => {
             let operator_addr = deps.api.addr_validate(&operator)?;
-            let strategies_addr = validate_addresses(deps.api, &strategies)?;
+            let strategies_addr = bvs_library::addr::validate_addrs(deps.api, &strategies)?;
 
             to_json_binary(&query_operator_shares(
                 deps,
@@ -605,7 +605,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&query_delegatable_shares(deps, staker_addr)?)
         }
         QueryMsg::GetWithdrawalDelay { strategies } => {
-            let strategies_addr = validate_addresses(deps.api, &strategies)?;
+            let strategies_addr = bvs_library::addr::validate_addrs(deps.api, &strategies)?;
             to_json_binary(&query_withdrawal_delay(deps, strategies_addr)?)
         }
         QueryMsg::CalculateWithdrawalRoot { withdrawal } => {

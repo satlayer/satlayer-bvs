@@ -1,6 +1,6 @@
 use cosmwasm_crypto::secp256k1_verify;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Api, StdResult, Uint128};
+use cosmwasm_std::{Addr, StdResult, Uint128};
 use sha2::{Digest, Sha256};
 
 #[cw_serde]
@@ -56,11 +56,4 @@ pub fn recover(digest_hash: &[u8], signature: &[u8], public_key_bytes: &[u8]) ->
         Ok(valid) => Ok(valid),
         Err(_) => Ok(false),
     }
-}
-
-pub fn validate_addresses(api: &dyn Api, validators: &[String]) -> StdResult<Vec<Addr>> {
-    validators
-        .iter()
-        .map(|addr| api.addr_validate(addr))
-        .collect()
 }

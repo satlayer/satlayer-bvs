@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_json_binary, Addr, Api, Binary, StdResult, Uint128};
+use cosmwasm_std::{to_json_binary, Addr, Binary, StdResult, Uint128};
 use sha2::{Digest, Sha256};
 
 #[cw_serde]
@@ -29,11 +29,4 @@ pub fn calculate_withdrawal_root(withdrawal: &Withdrawal) -> StdResult<Binary> {
     let mut hasher = Sha256::new();
     hasher.update(to_json_binary(withdrawal)?.as_slice());
     Ok(Binary::from(hasher.finalize().as_slice()))
-}
-
-pub fn validate_addresses(api: &dyn Api, strategies: &[String]) -> StdResult<Vec<Addr>> {
-    strategies
-        .iter()
-        .map(|addr| api.addr_validate(addr))
-        .collect()
 }
