@@ -193,6 +193,10 @@ pub fn execute(
                 withdrawal_delay_blocks,
             )
         }
+        ExecuteMsg::TransferOwnership { new_owner } => {
+            let new_owner = deps.api.addr_validate(&new_owner)?;
+            ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
+        }
         ExecuteMsg::SetRouting {
             strategy_manager,
             slash_manager,
@@ -201,10 +205,6 @@ pub fn execute(
             let slash_manager = deps.api.addr_validate(&slash_manager)?;
 
             auth::set_routing(deps, info, strategy_manager, slash_manager)
-        }
-        ExecuteMsg::TransferOwnership { new_owner } => {
-            let new_owner = deps.api.addr_validate(&new_owner)?;
-            ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
         }
     }
 }

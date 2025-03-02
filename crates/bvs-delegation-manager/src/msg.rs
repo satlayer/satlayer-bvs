@@ -69,13 +69,13 @@ pub enum ExecuteMsg {
         strategies: Vec<String>,
         withdrawal_delay_blocks: Vec<u64>,
     },
-    SetRouting {
-        strategy_manager: String,
-        slash_manager: String,
-    },
     TransferOwnership {
         /// See `ownership::transfer_ownership` for more information on this field
         new_owner: String,
+    },
+    SetRouting {
+        strategy_manager: String,
+        slash_manager: String,
     },
 }
 
