@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_json_binary, Addr, Api, Binary, StdResult, Uint128};
+use cosmwasm_std::{to_json_binary, Addr, Binary, StdResult, Uint128};
 use sha2::{Digest, Sha256};
 
 #[cw_serde]

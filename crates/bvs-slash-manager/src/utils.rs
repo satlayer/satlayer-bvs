@@ -1,6 +1,6 @@
 use cosmwasm_crypto::secp256k1_verify;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Api, StdResult, Uint128};
+use cosmwasm_std::{Addr, StdResult, Uint128};
 use sha2::{Digest, Sha256};
 
 #[cw_serde]
