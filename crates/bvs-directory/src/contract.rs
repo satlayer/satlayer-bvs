@@ -177,7 +177,7 @@ pub fn register_operator_to_bvs(
     )?;
     OPERATOR_SALT_SPENT.save(deps.storage, (operator.clone(), salt_str.clone()), &true)?;
 
-    let event = Event::new("OperatorBVSRegistrationStatusUpdated")
+    let event = Event::new("OperatorRegistrationStatusUpdated")
         .add_attribute("method", "register_operator")
         .add_attribute("operator", operator.to_string())
         .add_attribute("bvs", info.sender.to_string())
@@ -202,7 +202,7 @@ pub fn deregister_operator_from_bvs(
             &OperatorBvsRegistrationStatus::Unregistered,
         )?;
 
-        let event = Event::new("OperatorBVSRegistrationStatusUpdated")
+        let event = Event::new("OperatorRegistrationStatusUpdated")
             .add_attribute("method", "deregister_operator")
             .add_attribute("operator", operator.to_string())
             .add_attribute("bvs", info.sender.to_string())
@@ -218,7 +218,7 @@ pub fn update_bvs_metadata_uri(
     info: MessageInfo,
     metadata_uri: String,
 ) -> Result<Response, ContractError> {
-    let event = Event::new("BVSMetadataURIUpdated")
+    let event = Event::new("MetadataURIUpdated")
         .add_attribute("method", "update_metadata_uri")
         .add_attribute("bvs", info.sender.to_string())
         .add_attribute("metadata_uri", metadata_uri.clone());
@@ -553,7 +553,7 @@ mod tests {
         assert_eq!(res.events.len(), 1);
 
         let event = &res.events[0];
-        assert_eq!(event.ty, "OperatorBVSRegistrationStatusUpdated");
+        assert_eq!(event.ty, "OperatorRegistrationStatusUpdated");
         assert_eq!(event.attributes.len(), 5);
         assert_eq!(event.attributes[0].key, "method");
         assert_eq!(event.attributes[0].value, "register_operator");
@@ -659,7 +659,7 @@ mod tests {
         assert_eq!(res.events.len(), 1);
 
         let event = &res.events[0];
-        assert_eq!(event.ty, "OperatorBVSRegistrationStatusUpdated");
+        assert_eq!(event.ty, "OperatorRegistrationStatusUpdated");
         assert_eq!(event.attributes.len(), 4);
         assert_eq!(event.attributes[0].key, "method");
         assert_eq!(event.attributes[0].value, "deregister_operator");
@@ -695,7 +695,7 @@ mod tests {
         assert_eq!(res.events.len(), 1);
 
         let event = &res.events[0];
-        assert_eq!(event.ty, "BVSMetadataURIUpdated");
+        assert_eq!(event.ty, "MetadataURIUpdated");
         assert_eq!(event.attributes.len(), 3);
         assert_eq!(event.attributes[0].key, "method");
         assert_eq!(event.attributes[0].value, "update_metadata_uri");
@@ -799,7 +799,7 @@ mod tests {
         assert_eq!(res.events.len(), 1);
 
         let event = &res.events[0];
-        assert_eq!(event.ty, "OperatorBVSRegistrationStatusUpdated");
+        assert_eq!(event.ty, "OperatorRegistrationStatusUpdated");
         assert_eq!(event.attributes.len(), 5);
         assert_eq!(event.attributes[0].key, "method");
         assert_eq!(event.attributes[0].value, "register_operator");

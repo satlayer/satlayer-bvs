@@ -12,7 +12,7 @@ pub enum ContractError {
     #[error("{0}")]
     Ownership(#[from] bvs_library::ownership::OwnershipError),
 
-    #[error("RewardsCoordinator: Unauthorized")]
+    #[error("Unauthorized")]
     Unauthorized {},
 
     #[error("RewardsCoordinator.instantiate: invalid genesis timestamp")]

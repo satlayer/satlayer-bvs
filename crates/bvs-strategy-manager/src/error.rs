@@ -12,11 +12,11 @@ pub enum ContractError {
     #[error("{0}")]
     Ownership(#[from] bvs_library::ownership::OwnershipError),
 
+    #[error("Unauthorized")]
+    Unauthorized {},
+
     #[error("StrategyManager: strategy not whitelisted")]
     StrategyNotWhitelisted {},
-
-    #[error("StrategyManager: unauthorized")]
-    Unauthorized {},
 
     #[error("StrategyManager: invalid shares")]
     InvalidShares {},

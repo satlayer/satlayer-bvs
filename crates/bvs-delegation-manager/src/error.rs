@@ -12,7 +12,7 @@ pub enum ContractError {
     #[error("{0}")]
     Ownership(#[from] bvs_library::ownership::OwnershipError),
 
-    #[error("DelegationManager: Unauthorized")]
+    #[error("Unauthorized")]
     Unauthorized {},
 
     #[error("DelegationManager.set_operator_details: stakerOptOutWindowBlocks cannot be > MAX_STAKER_OPT_OUT_WINDOW_BLOCKS")]

@@ -12,7 +12,7 @@ pub enum ContractError {
     #[error("{0}")]
     Ownership(#[from] bvs_library::ownership::OwnershipError),
 
-    #[error("StrategyBase: unauthorized")]
+    #[error("Unauthorized")]
     Unauthorized {},
 
     #[error("StrategyBase.deposit: new_shares cannot be zero")]

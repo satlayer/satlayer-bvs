@@ -12,24 +12,24 @@ pub enum ContractError {
     #[error("{0}")]
     Ownership(#[from] bvs_library::ownership::OwnershipError),
 
-    #[error("BVSDirectory.registerOperatorToBVS: operator signature expired")]
-    SignatureExpired {},
-
-    #[error("BVSDirectory.registerOperatorToBVS: operator already registered")]
-    OperatorAlreadyRegistered {},
-
-    #[error("BVSDirectory.registerOperatorToBVS: salt already spent")]
-    SaltAlreadySpent {},
-
-    #[error("BVSDirectory.deregisterOperatorFromBVS: operator not registered yet")]
-    OperatorNotRegistered {},
-
-    #[error("BVSDirectory.registerOperatorToBVS: invalid signature")]
-    InvalidSignature {},
-
-    #[error("BVSDirectory.transferOwnership: unauthorized")]
+    #[error("Unauthorized")]
     Unauthorized {},
 
-    #[error("DelegationManager.IsOperator: operator not registered yet from delegation manager")]
+    #[error("operator signature expired")]
+    SignatureExpired {},
+
+    #[error("operator already registered")]
+    OperatorAlreadyRegistered {},
+
+    #[error("salt already spent")]
+    SaltAlreadySpent {},
+
+    #[error("operator not registered yet")]
+    OperatorNotRegistered {},
+
+    #[error("invalid signature")]
+    InvalidSignature {},
+
+    #[error("operator not registered yet from delegation manager")]
     OperatorNotRegisteredFromDelegationManager {},
 }

@@ -12,7 +12,7 @@ pub enum ContractError {
     #[error("{0}")]
     Ownership(#[from] bvs_library::ownership::OwnershipError),
 
-    #[error("SlashManager: unauthorized")]
+    #[error("Unauthorized")]
     Unauthorized {},
 
     #[error("SlashManager.set_slash_validator: invalid input length")]
