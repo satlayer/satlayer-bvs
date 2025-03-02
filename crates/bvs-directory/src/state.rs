@@ -14,7 +14,11 @@ pub struct BvsInfo {
     pub bvs_contract: String,
 }
 
-pub const BVS_OPERATOR_STATUS: Map<(Addr, Addr), OperatorBvsRegistrationStatus> =
+pub const BVS_OPERATOR_STATUS: Map<(&Addr, &Addr), OperatorBvsRegistrationStatus> =
     Map::new("bvs_operator_status");
-pub const OPERATOR_SALT_SPENT: Map<(Addr, String), bool> = Map::new("operator_salt_is_spent");
-pub const BVS_INFO: Map<String, BvsInfo> = Map::new("bvs_info");
+
+// TODO: should be stored as Map<(&Addr, &[u8]), bool>
+pub const OPERATOR_SALT_SPENT: Map<(&Addr, &String), bool> = Map::new("operator_salt_is_spent");
+
+// TODO: should be stored as Map<(&Binary, BvsInfo), bool>
+pub const BVS_INFO: Map<&String, BvsInfo> = Map::new("bvs_info");
