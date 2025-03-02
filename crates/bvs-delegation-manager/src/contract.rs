@@ -4,7 +4,9 @@ use cosmwasm_std::entry_point;
 use crate::{
     auth,
     error::ContractError,
-    msg::{ExecuteMsg, InstantiateMsg, OperatorDetails, QueryMsg, QueuedWithdrawalParams},
+    msg::{
+        ExecuteMsg, InstantiateMsg, OperatorDetails, QueryMsg, QueuedWithdrawalParams, Withdrawal,
+    },
     query::{
         CumulativeWithdrawalsQueuedResponse, DelegatableSharesResponse, DelegatedResponse,
         OperatorDetailsResponse, OperatorResponse, OperatorSharesResponse, OperatorStakersResponse,
@@ -14,7 +16,6 @@ use crate::{
         CUMULATIVE_WITHDRAWALS_QUEUED, DELEGATED_TO, MIN_WITHDRAWAL_DELAY_BLOCKS, OPERATOR_DETAILS,
         OPERATOR_SHARES, PENDING_WITHDRAWALS, STRATEGY_WITHDRAWAL_DELAY_BLOCKS,
     },
-    utils::{calculate_withdrawal_root, DelegateParams, Withdrawal},
 };
 use cosmwasm_std::{
     to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo, Response,
@@ -28,6 +29,7 @@ use bvs_strategy_manager::{
     query::DepositsResponse, query::StakerStrategyListResponse,
     query::StakerStrategySharesResponse,
 };
+use sha2::{Digest, Sha256};
 
 const CONTRACT_NAME: &str = "BVS Delegation Manager";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -93,16 +95,9 @@ pub fn execute(
         ExecuteMsg::UpdateOperatorMetadataUri { metadata_uri } => {
             update_operator_metadata_uri(deps, info, metadata_uri)
         }
-        ExecuteMsg::DelegateTo { params } => {
-            let staker_addr = deps.api.addr_validate(&params.staker)?;
-            let operator_addr = deps.api.addr_validate(&params.operator)?;
-
-            let delegate_params = DelegateParams {
-                staker: staker_addr.clone(),
-                operator: operator_addr.clone(),
-            };
-
-            delegate_to(deps, info, env, delegate_params)
+        ExecuteMsg::DelegateTo { operator } => {
+            let operator = deps.api.addr_validate(&operator)?;
+            delegate_to(deps, info, operator)
         }
         ExecuteMsg::Undelegate { staker } => {
             let staker_addr = deps.api.addr_validate(&staker)?;
@@ -233,7 +228,7 @@ pub fn set_strategy_withdrawal_delay_blocks(
 pub fn register_as_operator(
     mut deps: DepsMut,
     info: MessageInfo,
-    env: Env,
+    _env: Env,
     registering_operator_details: OperatorDetails,
     metadata_uri: String,
 ) -> Result<Response, ContractError> {
@@ -250,12 +245,8 @@ pub fn register_as_operator(
         registering_operator_details,
     )?;
 
-    let params = DelegateParams {
-        staker: info.sender.clone(),
-        operator: info.sender.clone(),
-    };
-
-    delegate(deps, info, env, params)?;
+    // Delegate the operator to themselves
+    delegate(deps, info.sender.clone(), info.sender)?;
 
     let mut response = Response::new();
 
@@ -310,22 +301,21 @@ pub fn update_operator_metadata_uri(
 pub fn delegate_to(
     deps: DepsMut,
     info: MessageInfo,
-    env: Env,
-    params: DelegateParams,
+    operator: Addr,
 ) -> Result<Response, ContractError> {
-    let staker = info.sender.clone();
+    let staker = info.sender;
 
     let is_delegated_response = query_is_delegated(deps.as_ref(), staker.clone())?;
     if is_delegated_response.is_delegated {
         return Err(ContractError::StakerAlreadyDelegated {});
     }
 
-    let operator_response = query_is_operator(deps.as_ref(), params.operator.clone())?;
+    let operator_response = query_is_operator(deps.as_ref(), operator.clone())?;
     if !operator_response.is_operator {
         return Err(ContractError::OperatorNotRegistered {});
     }
 
-    delegate(deps, info, env, params)
+    delegate(deps, staker, operator)
 }
 
 pub fn undelegate(
@@ -344,12 +334,9 @@ pub fn undelegate(
         return Err(ContractError::OperatorCannotBeUndelegated {});
     }
 
-    if staker == Addr::unchecked("0") {
-        return Err(ContractError::CannotBeZero {});
-    }
-
     let operator = DELEGATED_TO.load(deps.storage, &staker)?;
 
+    // Staker can undelegate themselves or the operator can undelegate the staker
     if info.sender != staker && info.sender != operator {
         return Err(ContractError::Unauthorized {});
     }
@@ -866,29 +853,23 @@ fn set_operator_details(
     Ok(Response::new().add_event(event))
 }
 
-fn delegate(
-    mut deps: DepsMut,
-    _info: MessageInfo,
-    _env: Env,
-    params: DelegateParams,
-) -> Result<Response, ContractError> {
-    DELEGATED_TO.save(deps.storage, &params.staker, &params.operator)?;
+fn delegate(mut deps: DepsMut, staker: Addr, operator: Addr) -> Result<Response, ContractError> {
+    DELEGATED_TO.save(deps.storage, &staker, &operator)?;
 
     let mut response = Response::new();
+    response = response.add_event(
+        Event::new("Delegate")
+            .add_attribute("staker", &staker)
+            .add_attribute("operator", &operator),
+    );
 
-    let event = Event::new("Delegate")
-        .add_attribute("method", "delegate")
-        .add_attribute("staker", params.staker.to_string())
-        .add_attribute("operator", params.operator.to_string());
-    response = response.add_event(event);
-
-    let (strategies, shares) = get_delegatable_shares(deps.as_ref(), params.staker.clone())?;
+    let (strategies, shares) = get_delegatable_shares(deps.as_ref(), staker.clone())?;
 
     for (strategy, share) in strategies.iter().zip(shares.iter()) {
         let increase_shares_response = increase_operator_shares(
             deps.branch(),
-            params.operator.clone(),
-            params.staker.clone(),
+            operator.clone(),
+            staker.clone(),
             strategy.clone(),
             *share,
         )?;
@@ -949,6 +930,12 @@ fn decrease_operator_shares(
         .add_attribute("shares", shares.to_string());
 
     Ok(Response::new().add_event(event))
+}
+
+pub fn calculate_withdrawal_root(withdrawal: &Withdrawal) -> StdResult<Binary> {
+    let mut hasher = Sha256::new();
+    hasher.update(to_json_binary(withdrawal)?.as_slice());
+    Ok(Binary::from(hasher.finalize().as_slice()))
 }
 
 fn complete_queued_withdrawal_internal(
@@ -1744,7 +1731,7 @@ mod tests {
 
     #[test]
     fn test_delegate() {
-        let (mut deps, env, owner_info, _) = instantiate_contract();
+        let (mut deps, _, _, _) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker");
         let operator = deps.api.addr_make("operator");
@@ -1757,11 +1744,6 @@ mod tests {
         OPERATOR_DETAILS
             .save(deps.as_mut().storage, &operator, &operator_details)
             .unwrap();
-
-        let delegate_params = DelegateParams {
-            staker: staker.clone(),
-            operator: operator.clone(),
-        };
 
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart {
@@ -1785,28 +1767,21 @@ mod tests {
             }),
         });
 
-        let result = delegate(
-            deps.as_mut(),
-            owner_info.clone(),
-            env.clone(),
-            delegate_params,
-        );
-        assert!(result.is_ok());
+        let response = delegate(deps.as_mut(), staker.clone(), operator.clone()).unwrap();
 
-        let response = result.unwrap();
-        assert_eq!(response.events.len(), 1);
         assert_eq!(
-            response.events[0],
-            Event::new("Delegate")
-                .add_attribute("method", "delegate")
-                .add_attribute("staker", staker.to_string())
-                .add_attribute("operator", operator.to_string())
+            response,
+            Response::new().add_event(
+                Event::new("Delegate")
+                    .add_attribute("staker", staker.to_string())
+                    .add_attribute("operator", operator.to_string())
+            )
         );
     }
 
     #[test]
     fn test_delegate_to() {
-        let (mut deps, env, owner_info, _) = instantiate_contract();
+        let (mut deps, _, _, _) = instantiate_contract();
 
         let staker: Addr = deps.api.addr_make("staker");
         let operator: Addr = deps.api.addr_make("operator");
@@ -1846,21 +1821,15 @@ mod tests {
             }),
         });
 
-        let delegate_params = DelegateParams {
-            staker: staker.clone(),
-            operator: operator.clone(),
-        };
-        let result = delegate_to(deps.as_mut(), owner_info, env, delegate_params.clone());
-        assert!(result.is_ok());
-
-        let response = result.unwrap();
-        assert_eq!(response.events.len(), 1);
+        let staker_info = message_info(&staker, &[]);
+        let response = delegate_to(deps.as_mut(), staker_info, operator.clone()).unwrap();
         assert_eq!(
-            response.events[0],
-            Event::new("Delegate")
-                .add_attribute("method", "delegate")
-                .add_attribute("staker", staker.to_string())
-                .add_attribute("operator", operator.to_string())
+            response,
+            Response::new().add_event(
+                Event::new("Delegate")
+                    .add_attribute("staker", staker.to_string())
+                    .add_attribute("operator", operator.to_string())
+            )
         );
 
         let delegated_to = DELEGATED_TO.load(&deps.storage, &staker).unwrap();

@@ -4,7 +4,6 @@ use crate::query::{
     OperatorSharesResponse, OperatorStakersResponse, StakerOptOutWindowBlocksResponse,
     WithdrawalDelayResponse,
 };
-use crate::utils::{ExecuteDelegateParams, Withdrawal};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint128};
 
@@ -32,7 +31,7 @@ pub enum ExecuteMsg {
         metadata_uri: String,
     },
     DelegateTo {
-        params: ExecuteDelegateParams,
+        operator: String,
     },
     Undelegate {
         staker: String,
@@ -124,6 +123,17 @@ pub struct OperatorDetails {
 #[cw_serde]
 pub struct QueuedWithdrawalParams {
     pub withdrawer: Addr,
+    pub strategies: Vec<Addr>,
+    pub shares: Vec<Uint128>,
+}
+
+#[cw_serde]
+pub struct Withdrawal {
+    pub staker: Addr,
+    pub delegated_to: Addr,
+    pub withdrawer: Addr,
+    pub nonce: Uint128,
+    pub start_block: u64,
     pub strategies: Vec<Addr>,
     pub shares: Vec<Uint128>,
 }
