@@ -186,11 +186,11 @@ func registerStakers() {
 		}
 
 		pubKey := oClient.GetCurrentAccountPubKey()
-		address := sdktypes.AccAddress(pubKey.Address()).String()
+		operator := sdktypes.AccAddress(pubKey.Address()).String()
 
 		txResp, err := delegation.DelegateTo(
 			context.Background(),
-			address,
+			operator,
 		)
 		if err != nil {
 			fmt.Println("Err: ", err)

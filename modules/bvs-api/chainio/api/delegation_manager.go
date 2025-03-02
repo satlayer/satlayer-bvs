@@ -102,15 +102,8 @@ func (r *DelegationManager) UpdateOperatorMetadataURI(ctx context.Context, metad
 }
 
 func (r *DelegationManager) DelegateTo(ctx context.Context, operator string) (*coretypes.ResultTx, error) {
-	stakerAccount, err := r.io.GetCurrentAccount()
-	if err != nil {
-		return nil, err
-	}
 	executeMsg := delegationmanager.ExecuteMsg{DelegateTo: &delegationmanager.DelegateTo{
-		Params: delegationmanager.ExecuteDelegateParams{
-			Staker:   stakerAccount.GetAddress().String(),
-			Operator: operator,
-		},
+		Operator: operator,
 	}}
 
 	executeMsgBytes, err := json.Marshal(executeMsg)

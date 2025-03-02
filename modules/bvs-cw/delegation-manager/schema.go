@@ -195,8 +195,8 @@ type ExecuteMsg struct {
 	DecreaseDelegatedShares          *DecreaseDelegatedShares          `json:"decrease_delegated_shares,omitempty"`
 	SetMinWithdrawalDelayBlocks      *SetMinWithdrawalDelayBlocks      `json:"set_min_withdrawal_delay_blocks,omitempty"`
 	SetStrategyWithdrawalDelayBlocks *SetStrategyWithdrawalDelayBlocks `json:"set_strategy_withdrawal_delay_blocks,omitempty"`
-	SetRouting                       *SetRouting                       `json:"set_routing,omitempty"`
 	TransferOwnership                *TransferOwnership                `json:"transfer_ownership,omitempty"`
+	SetRouting                       *SetRouting                       `json:"set_routing,omitempty"`
 }
 
 type CompleteQueuedWithdrawal struct {
@@ -230,12 +230,7 @@ type DecreaseDelegatedShares struct {
 }
 
 type DelegateTo struct {
-	Params ExecuteDelegateParams `json:"params"`
-}
-
-type ExecuteDelegateParams struct {
 	Operator string `json:"operator"`
-	Staker   string `json:"staker"`
 }
 
 type IncreaseDelegatedShares struct {

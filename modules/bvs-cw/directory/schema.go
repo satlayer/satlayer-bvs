@@ -146,8 +146,8 @@ type ExecuteMsg struct {
 	DeregisterOperatorFromBvs *DeregisterOperatorFromBvs `json:"deregister_operator_from_bvs,omitempty"`
 	UpdateBvsMetadataURI      *UpdateBvsMetadataURI      `json:"update_bvs_metadata_uri,omitempty"`
 	CancelSalt                *CancelSalt                `json:"cancel_salt,omitempty"`
-	SetRouting                *SetRouting                `json:"set_routing,omitempty"`
 	TransferOwnership         *TransferOwnership         `json:"transfer_ownership,omitempty"`
+	SetRouting                *SetRouting                `json:"set_routing,omitempty"`
 }
 
 type CancelSalt struct {
