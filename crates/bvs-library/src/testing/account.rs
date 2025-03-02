@@ -101,7 +101,7 @@ mod tests {
         );
         assert_eq!(
             account.address.to_string(),
-            "bbn1efqyslkz34qurfjajpruzwv5v22c65kq3uugqf"
+            "cosmwasm1efqyslkz34qurfjajpruzwv5v22c65kq5y4r46"
         );
     }
 
