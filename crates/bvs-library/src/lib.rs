@@ -5,3 +5,5 @@ pub mod testing;
 /// - `transfer_ownership` only allows the current owner to transfer ownership to a new owner.
 /// - `assert_owner` checks if the current message sender is the owner.
 pub mod ownership;
+
+pub mod addr;

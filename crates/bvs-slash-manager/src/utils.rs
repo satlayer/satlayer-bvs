@@ -57,10 +57,3 @@ pub fn recover(digest_hash: &[u8], signature: &[u8], public_key_bytes: &[u8]) ->
         Err(_) => Ok(false),
     }
 }
-
-pub fn validate_addresses(api: &dyn Api, validators: &[String]) -> StdResult<Vec<Addr>> {
-    validators
-        .iter()
-        .map(|addr| api.addr_validate(addr))
-        .collect()
-}

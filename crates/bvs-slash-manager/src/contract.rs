@@ -10,7 +10,7 @@ use crate::{
         ValidatorResponse,
     },
     state::{MINIMAL_SLASH_SIGNATURE, SLASHER, SLASH_DETAILS, VALIDATOR},
-    utils::{calculate_slash_hash, recover, validate_addresses, SlashDetails},
+    utils::{calculate_slash_hash, recover, SlashDetails},
 };
 
 use cosmwasm_std::{
@@ -65,7 +65,8 @@ pub fn execute(
         } => {
             let slasher_addr = deps.api.addr_validate(&slash_details.slasher)?;
             let operator_addr = deps.api.addr_validate(&slash_details.operator)?;
-            let slash_validator = validate_addresses(deps.api, &slash_details.slash_validator)?;
+            let slash_validator =
+                bvs_library::addr::validate_addrs(deps.api, &slash_details.slash_validator)?;
 
             let validators_public_keys_binary: Result<Vec<Binary>, ContractError> =
                 validators_public_keys
@@ -127,7 +128,7 @@ pub fn execute(
             set_slasher(deps, info, slasher_addr, value)
         }
         ExecuteMsg::SetSlasherValidator { validators, values } => {
-            let validators = validate_addresses(deps.api, &validators)?;
+            let validators = bvs_library::addr::validate_addrs(deps.api, &validators)?;
             set_slash_validator(deps, info, validators, values)
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
@@ -477,7 +478,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let sender_addr = deps.api.addr_validate(&sender)?;
             let slasher_addr = deps.api.addr_validate(&slash_details.slasher)?;
             let operator_addr = deps.api.addr_validate(&slash_details.operator)?;
-            let slash_validator = validate_addresses(deps.api, &slash_details.slash_validator)?;
+            let slash_validator =
+                bvs_library::addr::validate_addrs(deps.api, &slash_details.slash_validator)?;
 
             let validators_public_keys_binary: Result<Vec<Binary>, ContractError> =
                 validators_public_keys

@@ -30,10 +30,3 @@ pub fn calculate_withdrawal_root(withdrawal: &Withdrawal) -> StdResult<Binary> {
     hasher.update(to_json_binary(withdrawal)?.as_slice());
     Ok(Binary::from(hasher.finalize().as_slice()))
 }
-
-pub fn validate_addresses(api: &dyn Api, strategies: &[String]) -> StdResult<Vec<Addr>> {
-    strategies
-        .iter()
-        .map(|addr| api.addr_validate(addr))
-        .collect()
-}
