@@ -14,7 +14,9 @@ pub struct Account {
 
 impl Account {
     /// Create a new account
-    pub fn new(s: String) -> Self {
+    pub fn new(s: impl Into<String>) -> Self {
+        let s = s.into();
+
         // Create a new Secp256k1 context
         let secp = Secp256k1::new();
 
@@ -37,7 +39,8 @@ impl Account {
         let ripemd160_result = Ripemd160::digest(sha256_result);
 
         // Encode the RIPEMD-160 hash as a Bech32 address
-        let address = bech32::encode("bbn", ripemd160_result.to_base32(), Variant::Bech32).unwrap();
+        let address =
+            bech32::encode("cosmwasm", ripemd160_result.to_base32(), Variant::Bech32).unwrap();
 
         Account {
             secret_key,
@@ -75,6 +78,12 @@ impl Account {
     // Return base64 encoding format of public key
     pub fn public_key_base64(&self) -> String {
         general_purpose::STANDARD.encode(self.public_key.serialize())
+    }
+}
+
+impl Default for Account {
+    fn default() -> Self {
+        Account::new("test".to_string())
     }
 }
 

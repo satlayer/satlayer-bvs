@@ -360,6 +360,7 @@ mod tests {
     use crate::auth::set_routing;
     use base64::{engine::general_purpose, Engine as _};
     use bech32::{self, ToBase32, Variant};
+    use bvs_library::testing;
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
@@ -744,30 +745,24 @@ mod tests {
         let delegation_manager = deps.api.addr_make("delegation_manager");
         set_routing(deps.as_mut(), info.clone(), delegation_manager.clone()).unwrap();
 
-        let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
-        let (operator, secret_key, public_key_bytes) =
-            generate_osmosis_public_key_from_private_key(private_key_hex);
+        let contract_addr: Addr = deps.api.addr_make("contract_addr");
 
         let expiry = 2722875888;
         let salt = Binary::from(b"salt");
-        let contract_addr: Addr =
-            Addr::unchecked("osmo1wsjhxj3nl8kmrudsxlf7c40yw6crv4pcrk0twvvsp9jmyr675wjqc8t6an");
+        let operator = testing::Account::default();
+        let operator_public_key = operator.public_key.serialize();
 
         let message_byte = calculate_digest_hash(
             env.clone().block.chain_id,
-            &Binary::from(public_key_bytes.clone()),
+            &operator_public_key,
             &info.sender,
             &salt,
             expiry,
             &contract_addr,
         );
 
-        let secp = Secp256k1::new();
-        let message = Message::from_digest_slice(&message_byte).expect("32 bytes");
-        let signature = secp.sign_ecdsa(&message, &secret_key);
+        let signature = operator.sign(message_byte);
         let signature_bytes = signature.serialize_compact().to_vec();
-
-        let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
 
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart {
@@ -790,22 +785,15 @@ mod tests {
             env.clone(),
             info.clone(),
             contract_addr.clone(),
-            operator.clone(),
-            Binary::from_base64(public_key_hex).unwrap(),
+            operator.address.clone(),
+            Binary::from_base64(&operator.public_key_base64()).unwrap(),
             SignatureWithSaltAndExpiry {
                 signature: Binary::new(signature_bytes),
                 salt: salt.clone(),
                 expiry,
             },
-        );
-
-        if let Err(ref err) = res {
-            println!("Error: {:?}", err);
-        }
-
-        assert!(res.is_ok());
-
-        let res = res.unwrap();
+        )
+        .unwrap();
 
         assert_eq!(res.attributes.len(), 0);
         assert_eq!(res.events.len(), 1);
@@ -816,7 +804,7 @@ mod tests {
         assert_eq!(event.attributes[0].key, "method");
         assert_eq!(event.attributes[0].value, "register_operator");
         assert_eq!(event.attributes[1].key, "operator");
-        assert_eq!(event.attributes[1].value, operator.to_string());
+        assert_eq!(event.attributes[1].value, operator.address.to_string());
         assert_eq!(event.attributes[2].key, "bvs");
         assert_eq!(event.attributes[2].value, info.sender.to_string());
         assert_eq!(event.attributes[3].key, "salt_str");
@@ -825,18 +813,21 @@ mod tests {
         assert_eq!(event.attributes[4].value, "REGISTERED");
 
         let status = BVS_OPERATOR_STATUS
-            .load(&deps.storage, (info.sender.clone(), operator.clone()))
+            .load(
+                &deps.storage,
+                (info.sender.clone(), operator.address.clone()),
+            )
             .unwrap();
         assert_eq!(status, OperatorBvsRegistrationStatus::Registered);
 
         let is_salt_spent = OPERATOR_SALT_SPENT
-            .load(&deps.storage, (operator.clone(), salt.to_string()))
+            .load(&deps.storage, (operator.address.clone(), salt.to_string()))
             .unwrap();
         assert!(is_salt_spent);
 
         let query_msg = QueryMsg::OperatorStatus {
             bvs: info.sender.to_string(),
-            operator: operator.to_string(),
+            operator: operator.address.to_string(),
         };
         let query_res: OperatorStatusResponse =
             from_json(query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
@@ -848,19 +839,14 @@ mod tests {
     #[test]
     fn test_query_operator_unregistered() {
         let (deps, env, info) = instantiate_contract();
-
-        let private_key_hex = "3556b8af0d03b26190927a3aec5b72d9c1810e97cd6430cefb65734eb9c804aa";
-        let (operator, _secret_key, _public_key_bytes) =
-            generate_osmosis_public_key_from_private_key(private_key_hex);
-        println!("Operator Address: {:?}", operator);
+        let account = testing::Account::new("random_private_key");
 
         let query_msg = QueryMsg::OperatorStatus {
             bvs: info.sender.to_string(),
-            operator: operator.to_string(),
+            operator: account.address.to_string(),
         };
         let query_res: OperatorStatusResponse =
             from_json(query(deps.as_ref(), env, query_msg).unwrap()).unwrap();
-        println!("Query result before registration: {:?}", query_res);
 
         assert_eq!(
             query_res.status,
@@ -871,19 +857,14 @@ mod tests {
     #[test]
     fn test_query_calculate_digest_hash() {
         let (deps, env, info) = instantiate_contract();
-
-        let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
-        let (_operator, _secret_key, public_key_bytes) =
-            generate_osmosis_public_key_from_private_key(private_key_hex);
+        let account = testing::Account::new("random_private_key");
 
         let salt = Binary::from(b"salt");
-        let contract_addr: Addr =
-            Addr::unchecked("osmo1wsjhxj3nl8kmrudsxlf7c40yw6crv4pcrk0twvvsp9jmyr675wjqc8t6an");
-        let public_key_hex = "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD";
+        let contract_addr: Addr = account.address.clone();
         let expiry = 2722875888;
 
         let query_msg = QueryMsg::CalculateDigestHash {
-            operator_public_key: public_key_hex.to_string(),
+            operator_public_key: account.public_key_base64().to_string(),
             bvs: info.sender.to_string(),
             salt: salt.to_string(),
             expiry,
@@ -895,7 +876,7 @@ mod tests {
 
         let expected_digest_hash = calculate_digest_hash(
             env.clone().block.chain_id,
-            &Binary::from(public_key_bytes.clone()),
+            &account.public_key.serialize(),
             &info.sender,
             &salt,
             expiry,
