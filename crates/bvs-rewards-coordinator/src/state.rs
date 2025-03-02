@@ -4,7 +4,7 @@ use cw_storage_plus::{Item, Map};
 
 pub const DISTRIBUTION_ROOTS: Map<u64, DistributionRoot> = Map::new("distribution_roots");
 pub const DISTRIBUTION_ROOTS_COUNT: Item<u64> = Item::new("distribution_roots_count");
-pub const CUMULATIVE_CLAIMED: Map<(&Addr, &String), Uint128> = Map::new("cumulative_claimed");
+pub const CUMULATIVE_CLAIMED: Map<(&Addr, &Addr), Uint128> = Map::new("cumulative_claimed");
 pub const SUBMISSION_NONCE: Map<&Addr, u64> = Map::new("submission_nonce");
 pub const REWARDS_FOR_ALL_SUBMITTER: Map<&Addr, bool> = Map::new("rewards_for_all_submitter");
 pub const ACTIVATION_DELAY: Item<u32> = Item::new("activation_delay");

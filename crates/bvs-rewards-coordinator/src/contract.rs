@@ -171,7 +171,7 @@ pub fn create_bvs_rewards_submission(
 
     for submission in rewards_submissions {
         let nonce = SUBMISSION_NONCE
-            .may_load(deps.storage, info.sender.clone())?
+            .may_load(deps.storage, &info.sender)?
             .unwrap_or_default();
 
         let rewards_submission_hash =
@@ -181,11 +181,11 @@ pub fn create_bvs_rewards_submission(
 
         IS_BVS_REWARDS_SUBMISSION_HASH.save(
             deps.storage,
-            (info.sender.clone(), rewards_submission_hash.to_vec()),
+            (&info.sender, &rewards_submission_hash),
             &true,
         )?;
 
-        SUBMISSION_NONCE.save(deps.storage, info.sender.clone(), &(nonce + 1))?;
+        SUBMISSION_NONCE.save(deps.storage, &info.sender, &(nonce + 1))?;
 
         let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: submission.token.to_string(),
@@ -226,7 +226,7 @@ pub fn create_rewards_for_all_submission(
     let mut response = Response::new();
     for submission in rewards_submissions {
         let nonce = SUBMISSION_NONCE
-            .may_load(deps.storage, info.sender.clone())?
+            .may_load(deps.storage, &info.sender)?
             .unwrap_or_default();
 
         let rewards_submission_hash =
@@ -236,11 +236,11 @@ pub fn create_rewards_for_all_submission(
 
         IS_BVS_REWARDS_SUBMISSION_HASH.save(
             deps.storage,
-            (info.sender.clone(), rewards_submission_hash.to_vec()),
+            (&info.sender, &rewards_submission_hash),
             &true,
         )?;
 
-        SUBMISSION_NONCE.save(deps.storage, info.sender.clone(), &(nonce + 1))?;
+        SUBMISSION_NONCE.save(deps.storage, &info.sender, &(nonce + 1))?;
 
         let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: submission.token.to_string(),
@@ -285,7 +285,7 @@ pub fn process_claim(
 
     let earner = claim.earner_leaf.earner.clone();
     let mut claimer = CLAIMER_FOR
-        .may_load(deps.storage, earner.clone())?
+        .may_load(deps.storage, &earner)?
         .unwrap_or_else(|| earner.clone());
 
     if claimer == Addr::unchecked("") {
@@ -302,7 +302,7 @@ pub fn process_claim(
         let token = &token_leaf.token;
 
         let curr_cumulative_claimed = CUMULATIVE_CLAIMED
-            .may_load(deps.storage, (earner.clone(), token.to_string()))?
+            .may_load(deps.storage, (&earner, token))?
             .unwrap_or_default();
 
         if token_leaf.cumulative_earnings <= curr_cumulative_claimed {
@@ -319,7 +319,7 @@ pub fn process_claim(
 
         CUMULATIVE_CLAIMED.save(
             deps.storage,
-            (earner.clone(), token.to_string()),
+            (&earner, token),
             &token_leaf.cumulative_earnings,
         )?;
 
@@ -446,15 +446,15 @@ pub fn set_claimer_for(
 ) -> Result<Response, ContractError> {
     let earner = info.sender;
     let prev_claimer = CLAIMER_FOR
-        .may_load(deps.storage, earner.clone())?
+        .may_load(deps.storage, &earner)?
         .unwrap_or(Addr::unchecked(""));
 
-    CLAIMER_FOR.save(deps.storage, earner.clone(), &claimer)?;
+    CLAIMER_FOR.save(deps.storage, &earner, &claimer)?;
 
     let event = Event::new("ClaimerForSet")
-        .add_attribute("earner", earner.to_string())
-        .add_attribute("previous_claimer", prev_claimer.to_string())
-        .add_attribute("new_claimer", claimer.to_string());
+        .add_attribute("earner", earner)
+        .add_attribute("previous_claimer", prev_claimer)
+        .add_attribute("new_claimer", claimer);
 
     Ok(Response::new().add_event(event))
 }
@@ -489,13 +489,13 @@ pub fn set_rewards_for_all_submitter(
     ownership::assert_owner(deps.as_ref(), &info)?;
 
     let prev_value = REWARDS_FOR_ALL_SUBMITTER
-        .may_load(deps.storage, submitter.clone())?
+        .may_load(deps.storage, &submitter)?
         .unwrap_or(false);
-    REWARDS_FOR_ALL_SUBMITTER.save(deps.storage, submitter.clone(), &new_value)?;
+    REWARDS_FOR_ALL_SUBMITTER.save(deps.storage, &submitter, &new_value)?;
 
     Ok(Response::new()
         .add_attribute("method", "set_rewards_for_all_submitter")
-        .add_attribute("submitter", submitter.to_string())
+        .add_attribute("submitter", submitter)
         .add_attribute("previous_value", prev_value.to_string())
         .add_attribute("new_value", new_value.to_string()))
 }
@@ -737,7 +737,7 @@ pub fn query_check_claim(
 
 fn only_rewards_for_all_submitter(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let is_submitter = REWARDS_FOR_ALL_SUBMITTER
-        .may_load(deps.storage, info.sender.clone())?
+        .may_load(deps.storage, &info.sender)?
         .unwrap_or(false);
     if !is_submitter {
         return Err(ContractError::ValidCreateRewardsForAllSubmission {});
@@ -1084,7 +1084,7 @@ mod tests {
 
         let valid_submitter = deps.api.addr_make("valid_submitter");
         REWARDS_FOR_ALL_SUBMITTER
-            .save(&mut deps.storage, valid_submitter.clone(), &true)
+            .save(&mut deps.storage, &valid_submitter, &true)
             .unwrap();
 
         let info = message_info(&Addr::unchecked(valid_submitter), &[]);
@@ -1093,7 +1093,7 @@ mod tests {
 
         let invalid_submitter = deps.api.addr_make("invalid_submitter");
         REWARDS_FOR_ALL_SUBMITTER
-            .save(&mut deps.storage, invalid_submitter.clone(), &false)
+            .save(&mut deps.storage, &invalid_submitter, &false)
             .unwrap();
 
         let info = message_info(&Addr::unchecked("invalid_submitter"), &[]);
@@ -1553,7 +1553,7 @@ mod tests {
         let initial_value = false;
 
         REWARDS_FOR_ALL_SUBMITTER
-            .save(&mut deps.storage, submitter.clone(), &initial_value)
+            .save(&mut deps.storage, &submitter, &initial_value)
             .unwrap();
 
         let result =
@@ -1576,7 +1576,7 @@ mod tests {
         assert_eq!(response.attributes[3].value, "true");
 
         let stored_value = REWARDS_FOR_ALL_SUBMITTER
-            .load(&deps.storage, submitter.clone())
+            .load(&deps.storage, &submitter)
             .unwrap();
         assert!(stored_value);
 
@@ -1595,7 +1595,7 @@ mod tests {
         );
 
         let stored_value = REWARDS_FOR_ALL_SUBMITTER
-            .load(&deps.storage, submitter)
+            .load(&deps.storage, &submitter)
             .unwrap();
 
         assert!(stored_value);
@@ -2829,7 +2829,7 @@ mod tests {
         CLAIMER_FOR
             .save(
                 &mut deps.storage,
-                deps.api.addr_make("earner"),
+                &deps.api.addr_make("earner"),
                 &deps.api.addr_make("claimer"),
             )
             .unwrap();
@@ -2937,7 +2937,7 @@ mod tests {
         CUMULATIVE_CLAIMED
             .save(
                 &mut deps.storage,
-                (Addr::unchecked("earner"), "token_a".to_string()),
+                (&Addr::unchecked("earner"), &Addr::unchecked("token-a")),
                 &Uint128::new(100),
             )
             .unwrap();

@@ -184,7 +184,7 @@ pub fn submit_slash_request(
     }
 
     for validator in slash_details.slash_validator.iter() {
-        if !VALIDATOR.load(deps.storage, validator.clone())? {
+        if !VALIDATOR.load(deps.storage, validator)? {
             return Err(ContractError::Unauthorized {});
         }
     }
@@ -208,7 +208,7 @@ pub fn submit_slash_request(
     );
     let slash_hash_hex = hex::encode(slash_hash.clone());
 
-    SLASH_DETAILS.save(deps.storage, slash_hash_hex.clone(), &slash_details)?;
+    SLASH_DETAILS.save(deps.storage, &slash_hash_hex, &slash_details)?;
 
     let mut response = Response::new().add_event(
         Event::new("slash_request_submitted")
@@ -244,7 +244,7 @@ pub fn execute_slash_request(
     let strategy_manager = auth::get_strategy_manager(deps.storage)?;
 
     let mut slash_details = SLASH_DETAILS
-        .may_load(deps.storage, slash_hash.clone())?
+        .may_load(deps.storage, &slash_hash)?
         .ok_or(ContractError::SlashDetailsNotFound {})?;
 
     if !slash_details.status {
@@ -349,7 +349,7 @@ pub fn execute_slash_request(
     }
 
     slash_details.status = false;
-    SLASH_DETAILS.save(deps.storage, slash_hash.clone(), &slash_details)?;
+    SLASH_DETAILS.save(deps.storage, &slash_hash, &slash_details)?;
 
     let slash_event = Event::new("slash_executed_weighted")
         .add_attribute("action", "execute_slash_request")
@@ -369,7 +369,7 @@ pub fn cancel_slash_request(
 ) -> Result<Response, ContractError> {
     only_slasher(deps.as_ref(), &info)?;
 
-    let mut slash_details = match SLASH_DETAILS.may_load(deps.storage, slash_hash.clone())? {
+    let mut slash_details = match SLASH_DETAILS.may_load(deps.storage, &slash_hash)? {
         Some(details) => details,
         None => return Err(ContractError::SlashDetailsNotFound {}),
     };
@@ -379,7 +379,7 @@ pub fn cancel_slash_request(
     }
 
     slash_details.status = false;
-    SLASH_DETAILS.save(deps.storage, slash_hash.clone(), &slash_details)?;
+    SLASH_DETAILS.save(deps.storage, &slash_hash, &slash_details)?;
 
     let event = Event::new("cancel_slash_request")
         .add_attribute("method", "cancel_slash_request")
@@ -417,7 +417,7 @@ pub fn set_slasher(
 ) -> Result<Response, ContractError> {
     ownership::assert_owner(deps.as_ref(), &info)?;
 
-    SLASHER.save(deps.storage, slasher.clone(), &value)?;
+    SLASHER.save(deps.storage, &slasher, &value)?;
 
     let event = Event::new("slasher_set")
         .add_attribute("method", "set_slasher")
@@ -443,7 +443,7 @@ pub fn set_slash_validator(
     let mut response = Response::new();
 
     for (validator, value) in validators.iter().zip(values.iter()) {
-        VALIDATOR.save(deps.storage, validator.clone(), value)?;
+        VALIDATOR.save(deps.storage, validator, value)?;
 
         let event = Event::new("slash_validator_set")
             .add_attribute("method", "set_slash_validator")
@@ -510,13 +510,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 fn query_slash_details(deps: Deps, slash_hash: String) -> StdResult<SlashDetailsResponse> {
-    let slash_details = SLASH_DETAILS.load(deps.storage, slash_hash)?;
+    let slash_details = SLASH_DETAILS.load(deps.storage, &slash_hash)?;
     Ok(SlashDetailsResponse { slash_details })
 }
 
 fn query_is_validator(deps: Deps, validator: Addr) -> StdResult<ValidatorResponse> {
     let is_validator = VALIDATOR
-        .may_load(deps.storage, validator)?
+        .may_load(deps.storage, &validator)?
         .unwrap_or(false);
     Ok(ValidatorResponse { is_validator })
 }
@@ -548,7 +548,7 @@ fn query_calculate_slash_hash(
 }
 
 fn only_slasher(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
-    let is_slasher = SLASHER.load(deps.storage, info.sender.clone())?;
+    let is_slasher = SLASHER.load(deps.storage, &info.sender)?;
     if !is_slasher {
         return Err(ContractError::Unauthorized {});
     }
@@ -672,7 +672,7 @@ mod tests {
         assert_eq!(event.attributes[2].key, "value");
         assert_eq!(event.attributes[2].value, "true");
 
-        let is_slasher = SLASHER.load(&deps.storage, new_slasher.clone()).unwrap();
+        let is_slasher = SLASHER.load(&deps.storage, &new_slasher).unwrap();
         assert_eq!(is_slasher, true);
     }
 
@@ -682,7 +682,7 @@ mod tests {
 
         let slasher_addr = deps.api.addr_make("slasher");
         SLASHER
-            .save(&mut deps.storage, slasher_addr.clone(), &true)
+            .save(&mut deps.storage, &slasher_addr, &true)
             .unwrap();
 
         let slasher_info = message_info(&slasher_addr, &[]);
@@ -713,7 +713,7 @@ mod tests {
 
         let slasher_addr = deps.api.addr_make("slasher");
         SLASHER
-            .save(&mut deps.storage, slasher_addr.clone(), &true)
+            .save(&mut deps.storage, &slasher_addr, &true)
             .unwrap();
 
         let slasher_info = message_info(&slasher_addr, &[]);
@@ -754,7 +754,7 @@ mod tests {
         }
 
         for (validator, value) in validators.iter().zip(values.iter()) {
-            let stored_value = VALIDATOR.load(&deps.storage, validator.clone()).unwrap();
+            let stored_value = VALIDATOR.load(&deps.storage, validator).unwrap();
             assert_eq!(stored_value, *value);
         }
     }
@@ -766,7 +766,7 @@ mod tests {
         let validator_addr = deps.api.addr_make("validator");
 
         VALIDATOR
-            .save(&mut deps.storage, validator_addr.clone(), &true)
+            .save(&mut deps.storage, &validator_addr, &true)
             .unwrap();
 
         let response = query_is_validator(deps.as_ref(), validator_addr.clone()).unwrap();
@@ -898,15 +898,13 @@ mod tests {
         MINIMAL_SLASH_SIGNATURE.save(&mut deps.storage, &1).unwrap();
 
         SLASHER
-            .save(&mut deps.storage, slasher_addr.clone(), &true)
+            .save(&mut deps.storage, &slasher_addr, &true)
             .unwrap();
 
         let slasher_info = message_info(&slasher_addr, &[]);
 
         for validator in slash_validator_addr.iter() {
-            VALIDATOR
-                .save(&mut deps.storage, validator.clone(), &true)
-                .unwrap();
+            VALIDATOR.save(&mut deps.storage, validator, &true).unwrap();
         }
 
         let res = submit_slash_request(
@@ -962,7 +960,7 @@ mod tests {
         }
 
         let slash_hash = event.attributes[0].value.clone();
-        let stored_slash_details = SLASH_DETAILS.load(&deps.storage, slash_hash).unwrap();
+        let stored_slash_details = SLASH_DETAILS.load(&deps.storage, &slash_hash).unwrap();
         assert_eq!(stored_slash_details, expected_slash_details.clone());
     }
 
@@ -1016,15 +1014,13 @@ mod tests {
         MINIMAL_SLASH_SIGNATURE.save(&mut deps.storage, &1).unwrap();
 
         SLASHER
-            .save(&mut deps.storage, slasher_addr.clone(), &true)
+            .save(&mut deps.storage, &slasher_addr, &true)
             .unwrap();
 
         let slasher_info = message_info(&slasher_addr, &[]);
 
         for validator in slash_validator_addr.iter() {
-            VALIDATOR
-                .save(&mut deps.storage, validator.clone(), &true)
-                .unwrap();
+            VALIDATOR.save(&mut deps.storage, validator, &true).unwrap();
         }
 
         let res = submit_slash_request(
@@ -1058,7 +1054,7 @@ mod tests {
         assert_eq!(event.attributes[2].key, "slash_details_status");
         assert_eq!(event.attributes[2].value, "false");
 
-        let updated_slash_details = SLASH_DETAILS.load(&deps.storage, slash_hash).unwrap();
+        let updated_slash_details = SLASH_DETAILS.load(&deps.storage, &slash_hash).unwrap();
         assert_eq!(updated_slash_details.status, false);
     }
 
@@ -1171,15 +1167,13 @@ mod tests {
         MINIMAL_SLASH_SIGNATURE.save(&mut deps.storage, &1).unwrap();
 
         SLASHER
-            .save(&mut deps.storage, slasher_addr.clone(), &true)
+            .save(&mut deps.storage, &slasher_addr, &true)
             .unwrap();
 
         let slasher_info = message_info(&slasher_addr, &[]);
 
         for validator in slash_validator_addr.iter() {
-            VALIDATOR
-                .save(&mut deps.storage, validator.clone(), &true)
-                .unwrap();
+            VALIDATOR.save(&mut deps.storage, validator, &true).unwrap();
         }
 
         let submit_res = submit_slash_request(
@@ -1234,7 +1228,7 @@ mod tests {
         assert_eq!(event.attributes[3].key, "total_slash_share");
         assert_eq!(event.attributes[3].value, 1_000_000.to_string());
 
-        let updated_slash_details = SLASH_DETAILS.load(&deps.storage, slash_hash).unwrap();
+        let updated_slash_details = SLASH_DETAILS.load(&deps.storage, &slash_hash).unwrap();
         assert_eq!(updated_slash_details.status, false);
     }
 
@@ -1245,7 +1239,7 @@ mod tests {
 
         let slasher_addr = deps.api.addr_make("slasher");
         SLASHER
-            .save(&mut deps.storage, slasher_addr.clone(), &true)
+            .save(&mut deps.storage, &slasher_addr, &true)
             .unwrap();
 
         MINIMAL_SLASH_SIGNATURE.save(&mut deps.storage, &1).unwrap();
@@ -1256,7 +1250,7 @@ mod tests {
         let validator = deps.api.addr_make("validator");
 
         VALIDATOR
-            .save(&mut deps.storage, validator.clone(), &true)
+            .save(&mut deps.storage, &validator, &true)
             .unwrap();
 
         let slash_details = SlashDetails {
@@ -1426,7 +1420,7 @@ mod tests {
 
         let slasher_addr = deps.api.addr_make("slasher");
         SLASHER
-            .save(&mut deps.storage, slasher_addr.clone(), &true)
+            .save(&mut deps.storage, &slasher_addr, &true)
             .unwrap();
 
         MINIMAL_SLASH_SIGNATURE.save(&mut deps.storage, &1).unwrap();
@@ -1435,7 +1429,7 @@ mod tests {
         let validator = deps.api.addr_make("validator");
 
         VALIDATOR
-            .save(&mut deps.storage, validator.clone(), &true)
+            .save(&mut deps.storage, &validator, &true)
             .unwrap();
 
         // test case 1: total_slash_share is 0
