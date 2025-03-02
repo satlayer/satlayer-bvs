@@ -52,7 +52,7 @@ func (s *DirectoryTestSuite) SetupSuite() {
 
 	chainIO, err := s.chainIO.SetupKeyring("caller", "test")
 	delegationApi := api.NewDelegationManager(chainIO, delegationManager.Address)
-	txResp, err := delegationApi.SetRouting(context.Background(), strategyManager.Address)
+	txResp, err := delegationApi.SetRouting(context.Background(), strategyManager.Address, tAddr)
 	s.Require().NoError(err)
 	s.Require().Equal(uint32(0), txResp.TxResult.Code)
 

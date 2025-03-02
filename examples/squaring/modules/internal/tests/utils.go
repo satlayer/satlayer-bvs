@@ -221,7 +221,7 @@ func (suite *TestSuite) DeployBvsContracts() {
 	suite.NoError(err)
 	suite.Equal(uint32(0), res.TxResult.Code)
 
-	res, err = suite.DelegationManagerApi.SetRouting(context.Background(), strategyManagerContract.Address)
+	res, err = suite.DelegationManagerApi.SetRouting(context.Background(), strategyManagerContract.Address, slashManagerContract.Address)
 	suite.NoError(err)
 	suite.Equal(uint32(0), res.TxResult.Code)
 
