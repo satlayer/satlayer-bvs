@@ -58,7 +58,7 @@ fn register_operator_failure() {
     let mut app = mock_app();
     let env = mock_env();
 
-    let operator = Account::new("operator".into());
+    let operator = Account::new("operator");
     let expiry = 2722875888;
     let salt = Binary::from(b"salt");
     let contract_addr = app.api().addr_make("contract_addr");
