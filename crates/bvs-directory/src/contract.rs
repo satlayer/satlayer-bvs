@@ -95,6 +95,9 @@ pub fn execute(
     }
 }
 
+/// Registers a BVS contract by storing its information along with a SHA-256 hash of the contract address.
+///
+/// `bvs_contract` - String containing the BVS contract address, which should be a valid address.
 pub fn register_bvs(deps: DepsMut, bvs_contract: String) -> Result<Response, ContractError> {
     let hash_result = sha256(bvs_contract.as_bytes());
 
@@ -112,7 +115,12 @@ pub fn register_bvs(deps: DepsMut, bvs_contract: String) -> Result<Response, Con
         .add_attribute("bvs_hash", bvs_hash))
 }
 
-/// Called by the BVS to register an operator to the BVS
+/// Called by the BVS to register an operator to the BVS.
+///
+/// `contract_addr` - The address of the contract that is registering the operator.
+/// `operator` - The address of the operator to register.
+/// `public_key` - The public key of the operator.
+/// `operator_signature` - The signature, salt, and expiry of the operator's signature.
 pub fn register_operator_to_bvs(
     deps: DepsMut,
     env: Env,
@@ -185,6 +193,9 @@ pub fn register_operator_to_bvs(
     Ok(Response::new().add_event(event))
 }
 
+/// Called by an BVS to deregister an operator from the BVS.
+///
+/// `operator` - The operator to deregister.
 pub fn deregister_operator_from_bvs(
     deps: DepsMut,
     _env: Env,
@@ -211,6 +222,9 @@ pub fn deregister_operator_from_bvs(
     Err(ContractError::OperatorNotRegistered {})
 }
 
+/// Called to update the BVS metadata URI.
+///
+/// `metadata_uri` - The new metadata URI.
 pub fn update_bvs_metadata_uri(
     info: MessageInfo,
     metadata_uri: String,
@@ -223,6 +237,9 @@ pub fn update_bvs_metadata_uri(
     Ok(Response::new().add_event(event))
 }
 
+/// Called by an operator to cancel a salt that has been used to register with an BVS
+///
+/// `salt` - A unique and single use value.
 pub fn cancel_salt(
     deps: DepsMut,
     _env: Env,
@@ -286,6 +303,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
+/// Returns the status of an operator.
+///
+/// `user_addr` - The address of the user who registered the operator.
+/// `operator` - The address of the operator.
 fn query_operator_status(
     deps: Deps,
     user_addr: Addr,
@@ -297,6 +318,9 @@ fn query_operator_status(
     Ok(OperatorStatusResponse { status })
 }
 
+/// Returns to calculate the digest hash for a given digest hash params.
+///
+/// `params` - The digest hash params which contains the operator public key, the bvs address, the salt, the expiry and the contract address.
 fn query_calculate_digest_hash(
     _deps: Deps,
     env: Env,
@@ -315,6 +339,10 @@ fn query_calculate_digest_hash(
     Ok(CalculateDigestHashResponse { digest_hash })
 }
 
+/// Returns true if the salt related to the operator has been spent, false otherwise.
+///
+/// `operator` - The operator whose salt is being queried.
+/// `salt` - The salt being queried.
 fn query_is_salt_spent(deps: Deps, operator: Addr, salt: String) -> StdResult<IsSaltSpentResponse> {
     let is_salt_spent = OPERATOR_SALT_SPENT
         .may_load(deps.storage, (&operator, &salt))?
@@ -323,6 +351,7 @@ fn query_is_salt_spent(deps: Deps, operator: Addr, salt: String) -> StdResult<Is
     Ok(IsSaltSpentResponse { is_salt_spent })
 }
 
+/// Returns the BVS registration type hash.
 fn query_operator_bvs_registration_type_hash(
     _deps: Deps,
 ) -> StdResult<OperatorBvsRegistrationTypeHashResponse> {
@@ -333,16 +362,21 @@ fn query_operator_bvs_registration_type_hash(
     })
 }
 
+/// Returns the domain type hash.
 fn query_domain_type_hash(_deps: Deps) -> StdResult<DomainTypeHashResponse> {
     let domain_type_hash = String::from_utf8_lossy(DOMAIN_TYPE_HASH).to_string();
     Ok(DomainTypeHashResponse { domain_type_hash })
 }
 
+/// Returns the domain name.
 fn query_domain_name(_deps: Deps) -> StdResult<DomainNameResponse> {
     let domain_name = String::from_utf8_lossy(DOMAIN_NAME).to_string();
     Ok(DomainNameResponse { domain_name })
 }
 
+/// Returns the bvs info.
+///
+/// `bvs_hash` - The hash of the bvs info.
 fn query_bvs_info(deps: Deps, bvs_hash: String) -> StdResult<BvsInfoResponse> {
     let bvs_info = BVS_INFO.load(deps.storage, &bvs_hash)?;
     Ok(BvsInfoResponse {
