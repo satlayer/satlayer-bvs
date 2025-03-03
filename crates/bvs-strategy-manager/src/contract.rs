@@ -787,8 +787,6 @@ mod tests {
         let owner = deps.api.addr_make("owner");
         let registry = deps.api.addr_make("registry");
 
-        let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
-        let slasher = deps.api.addr_make("slasher").to_string();
         let strategy_whitelister = deps.api.addr_make("strategy_whitelister").to_string();
 
         let msg = InstantiateMsg {
@@ -1210,7 +1208,6 @@ mod tests {
 
         let strategy_for_closure = strategy.clone();
         let token_for_closure = token.clone();
-        let delegation_manager_sender = info_delegation_manager.sender.clone();
 
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart { contract_addr, msg }
