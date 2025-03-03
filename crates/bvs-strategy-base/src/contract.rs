@@ -84,14 +84,9 @@ pub fn execute(
 
     match msg {
         ExecuteMsg::Deposit { amount } => deposit(deps, env, info, amount),
-        ExecuteMsg::Withdraw {
-            recipient,
-            token,
-            amount_shares,
-        } => {
-            let recipient_addr = deps.api.addr_validate(&recipient)?;
-            let token_addr = deps.api.addr_validate(&token)?;
-            withdraw(deps, env, info, recipient_addr, token_addr, amount_shares)
+        ExecuteMsg::Withdraw { recipient, shares } => {
+            let recipient = deps.api.addr_validate(&recipient)?;
+            withdraw(deps, env, info, recipient, shares)
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
@@ -145,14 +140,13 @@ pub fn withdraw(
     env: Env,
     info: MessageInfo,
     recipient: Addr,
-    token: Addr,
-    amount_shares: Uint128,
+    shares: Uint128,
 ) -> Result<Response, ContractError> {
     auth::assert_strategy_manager(deps.storage, &info)?;
 
     let mut state = STRATEGY_STATE.load(deps.storage)?;
 
-    if amount_shares > state.total_shares {
+    if shares > state.total_shares {
         return Err(ContractError::InsufficientShares {});
     }
 
@@ -164,7 +158,7 @@ pub fn withdraw(
 
     let virtual_total_shares = state.total_shares + SHARES_OFFSET;
     let virtual_token_balance = balance + BALANCE_OFFSET;
-    let amount_to_send = (virtual_token_balance * amount_shares) / virtual_total_shares;
+    let amount_to_send = (virtual_token_balance * shares) / virtual_total_shares;
 
     if amount_to_send.is_zero() {
         return Err(ContractError::ZeroAmountToSend {});
@@ -174,7 +168,7 @@ pub fn withdraw(
         return Err(ContractError::InsufficientBalance {});
     }
 
-    state.total_shares -= amount_shares;
+    state.total_shares -= shares;
     STRATEGY_STATE.save(deps.storage, &state)?;
 
     let exchange_rate_event = emit_exchange_rate(
@@ -614,7 +608,6 @@ mod tests {
             env.clone(),
             message_info(&Addr::unchecked(strategy_manager), &[]),
             Addr::unchecked(recipient.clone()),
-            Addr::unchecked(token.clone()),
             withdraw_amount_shares,
         );
         match res_withdraw {

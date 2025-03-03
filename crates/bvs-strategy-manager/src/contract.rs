@@ -116,20 +116,11 @@ pub fn execute(
             recipient,
             strategy,
             shares,
-            token,
         } => {
             let strategy_addr = deps.api.addr_validate(&strategy)?;
             let recipient_addr = deps.api.addr_validate(&recipient)?;
-            let token_addr = deps.api.addr_validate(&token)?;
 
-            withdraw_shares_as_tokens(
-                deps,
-                info,
-                recipient_addr,
-                strategy_addr,
-                shares,
-                token_addr,
-            )
+            withdraw_shares_as_tokens(deps, info, recipient_addr, strategy_addr, shares)
         }
         ExecuteMsg::RemoveShares {
             staker,
@@ -298,7 +289,6 @@ pub fn withdraw_shares_as_tokens(
     recipient: Addr,
     strategy: Addr,
     shares: Uint128,
-    token: Addr,
 ) -> Result<Response, ContractError> {
     auth::assert_delegation_manager(deps.as_ref(), &info)?;
 
@@ -306,8 +296,7 @@ pub fn withdraw_shares_as_tokens(
         contract_addr: strategy.to_string(),
         msg: to_json_binary(&StrategyExecuteMsg::Withdraw {
             recipient: recipient.to_string(),
-            token: token.to_string(),
-            amount_shares: shares,
+            shares,
         })?,
         funds: vec![],
     });

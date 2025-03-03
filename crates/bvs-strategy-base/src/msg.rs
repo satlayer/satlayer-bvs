@@ -23,8 +23,7 @@ pub enum ExecuteMsg {
     },
     Withdraw {
         recipient: String,
-        token: String,
-        amount_shares: Uint128,
+        shares: Uint128,
     },
     TransferOwnership {
         /// See `ownership::transfer_ownership` for more information on this field
