@@ -133,6 +133,10 @@ mod execute {
         event
     }
 
+    /// Register an operator to a service (info.server = service)
+    /// Service must be registered via ExecuteMsg::ServiceRegister
+    /// If the operator is already registered, the registration status will be set to ACTIVE (1)
+    /// Else the registration status will be set to SERVICE_REGISTERED (3)
     pub fn service_register_operator(
         deps: DepsMut,
         info: MessageInfo,
@@ -178,6 +182,8 @@ mod execute {
         }
     }
 
+    /// Deregister an operator to a service (info.server = service)
+    /// Set the registration status to INACTIVE (0)
     pub fn service_deregister_operator(
         deps: DepsMut,
         info: MessageInfo,
@@ -204,6 +210,10 @@ mod execute {
         }
     }
 
+    /// Register a service to an operator (info.server = operator)
+    /// Operator must be registered on the delegation manager
+    /// If the service is already registered, the registration status will be set to ACTIVE (1)
+    /// Else the registration status will be set to OPERATOR_REGISTERED (2)
     pub fn operator_register_service(
         deps: DepsMut,
         info: MessageInfo,
@@ -264,6 +274,8 @@ mod execute {
         }
     }
 
+    /// Deregister a service to an operator (info.server = operator)
+    /// Set the registration status to INACTIVE (0)
     pub fn operator_deregister_service(
         deps: DepsMut,
         info: MessageInfo,
@@ -307,6 +319,12 @@ mod query {
     use crate::state;
     use cosmwasm_std::{Addr, Deps, StdResult};
 
+    /// Get the registration status of an operator to a service
+    /// Returns:
+    /// - Inactive (0) if not registered
+    /// - Active (1) if registration is active (operator and service are registered to each other)
+    /// - OperatorRegistered (2) if operator is registered to service, pending service registration
+    /// - ServiceRegistered (3) if service is registered to operator, pending operator registration
     pub fn status(deps: Deps, operator: Addr, service: Addr) -> StdResult<StatusResponse> {
         let key = (&operator, &service);
         let status = state::get_registration_status(deps.storage, key)?;
