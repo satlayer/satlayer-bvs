@@ -20,8 +20,8 @@ func main() {
 	core.InitConfig()
 	approverAddress := getApproverAccount()
 	print("approverAddress: ", approverAddress)
-	registerBvsContract()
-	registerOperators()
+	//registerBvsContract()
+	//registerOperators()
 	registerStrategy()
 	registerStakers()
 }
@@ -51,79 +51,79 @@ func getApproverAccount() string {
 	return approverAddress
 }
 
-func registerBvsContract() string {
-	elkLogger := logger.NewELKLogger("bvs_demo")
-	elkLogger.SetLogLevel("info")
-	reg := prometheus.NewRegistry()
-	metricsIndicators := transactionprocess.NewPromIndicators(reg, "bvs_demo")
-	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, elkLogger, metricsIndicators, types.TxManagerParams{
-		MaxRetries:             5,
-		RetryInterval:          3 * time.Second,
-		ConfirmationTimeout:    60 * time.Second,
-		GasPriceAdjustmentRate: "1.1",
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	chainIO, err = chainIO.SetupKeyring(core.C.Account.CallerKeyName, core.C.Account.KeyringBackend)
-	if err != nil {
-		panic(err)
-	}
-
-	txResp, err := api.NewDirectory(chainIO, core.C.Contract.DirectoryAddr).RegisterBvs(context.Background(), core.C.Contract.BVSContractAddr)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("registerBvsContract success, txn: %s\n", txResp.Hash.String())
-	return txResp.Hash.String()
-}
-
-func registerOperators() {
-	elkLogger := logger.NewELKLogger("bvs_demo")
-	elkLogger.SetLogLevel("info")
-	reg := prometheus.NewRegistry()
-	metricsIndicators := transactionprocess.NewPromIndicators(reg, "bvs_demo")
-	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, elkLogger, metricsIndicators, types.TxManagerParams{
-		MaxRetries:             5,
-		RetryInterval:          3 * time.Second,
-		ConfirmationTimeout:    60 * time.Second,
-		GasPriceAdjustmentRate: "1.1",
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	for _, operator := range core.C.Account.OperatorsKeyName {
-		chainIO, err = chainIO.SetupKeyring(operator, core.C.Account.KeyringBackend)
-		if err != nil {
-			panic(err)
-		}
-
-		pubKey := chainIO.GetCurrentAccountPubKey()
-		address := sdktypes.AccAddress(pubKey.Address()).String()
-		delegation := api.NewDelegationManager(chainIO, core.C.Contract.DelegationManagerAddr)
-		txResp, err := delegation.RegisterAsOperator(
-			context.Background(),
-			"",
-			0,
-		)
-		if err != nil {
-			fmt.Println("Ere registerAsOperator to delegation failed: ", err)
-		} else {
-			fmt.Println("registerAsOperator to delegation success:", txResp)
-		}
-		// register operator to bvsDirectory
-		txResp, err = api.NewDirectory(chainIO, core.C.Contract.DirectoryAddr).RegisterOperator(context.Background(), address, pubKey)
-		if err != nil {
-			fmt.Println("Err: registerOperators to bvsDirectory failed: ", err)
-			return
-		}
-		fmt.Println("registerOperators to bvsDirectory success:", txResp)
-		return
-
-	}
-}
+//func registerBvsContract() string {
+//	elkLogger := logger.NewELKLogger("bvs_demo")
+//	elkLogger.SetLogLevel("info")
+//	reg := prometheus.NewRegistry()
+//	metricsIndicators := transactionprocess.NewPromIndicators(reg, "bvs_demo")
+//	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, elkLogger, metricsIndicators, types.TxManagerParams{
+//		MaxRetries:             5,
+//		RetryInterval:          3 * time.Second,
+//		ConfirmationTimeout:    60 * time.Second,
+//		GasPriceAdjustmentRate: "1.1",
+//	})
+//	if err != nil {
+//		panic(err)
+//	}
+//
+//	chainIO, err = chainIO.SetupKeyring(core.C.Account.CallerKeyName, core.C.Account.KeyringBackend)
+//	if err != nil {
+//		panic(err)
+//	}
+//
+//	txResp, err := api.NewDirectory(chainIO, core.C.Contract.DirectoryAddr).RegisterBvs(context.Background(), core.C.Contract.BVSContractAddr)
+//	if err != nil {
+//		panic(err)
+//	}
+//	fmt.Printf("registerBvsContract success, txn: %s\n", txResp.Hash.String())
+//	return txResp.Hash.String()
+//}
+//
+//func registerOperators() {
+//	elkLogger := logger.NewELKLogger("bvs_demo")
+//	elkLogger.SetLogLevel("info")
+//	reg := prometheus.NewRegistry()
+//	metricsIndicators := transactionprocess.NewPromIndicators(reg, "bvs_demo")
+//	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, elkLogger, metricsIndicators, types.TxManagerParams{
+//		MaxRetries:             5,
+//		RetryInterval:          3 * time.Second,
+//		ConfirmationTimeout:    60 * time.Second,
+//		GasPriceAdjustmentRate: "1.1",
+//	})
+//	if err != nil {
+//		panic(err)
+//	}
+//
+//	for _, operator := range core.C.Account.OperatorsKeyName {
+//		chainIO, err = chainIO.SetupKeyring(operator, core.C.Account.KeyringBackend)
+//		if err != nil {
+//			panic(err)
+//		}
+//
+//		pubKey := chainIO.GetCurrentAccountPubKey()
+//		address := sdktypes.AccAddress(pubKey.Address()).String()
+//		delegation := api.NewDelegationManager(chainIO, core.C.Contract.DelegationManagerAddr)
+//		txResp, err := delegation.RegisterAsOperator(
+//			context.Background(),
+//			"",
+//			0,
+//		)
+//		if err != nil {
+//			fmt.Println("Ere registerAsOperator to delegation failed: ", err)
+//		} else {
+//			fmt.Println("registerAsOperator to delegation success:", txResp)
+//		}
+//		// register operator to bvsDirectory
+//		txResp, err = api.NewDirectory(chainIO, core.C.Contract.DirectoryAddr).RegisterOperator(context.Background(), address, pubKey)
+//		if err != nil {
+//			fmt.Println("Err: registerOperators to bvsDirectory failed: ", err)
+//			return
+//		}
+//		fmt.Println("registerOperators to bvsDirectory success:", txResp)
+//		return
+//
+//	}
+//}
 
 func registerStrategy() {
 	fmt.Println("registerStrategy")

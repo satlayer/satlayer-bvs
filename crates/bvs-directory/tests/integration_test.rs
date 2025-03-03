@@ -1,376 +1,392 @@
-use base64::{engine::general_purpose, Engine as _};
-use bvs_delegation_manager::msg::InstantiateMsg as BvsDelegationManagerInstantiateMsg;
-use bvs_directory::{
-    msg::{ExecuteMsg as BvsDirectoryExecuteMsg, InstantiateMsg as BvsDirectoryInstantiateMsg},
-    utils::{calculate_digest_hash, sha256},
-};
-use bvs_library::testing::{Account, TestingContract};
+use bvs_delegation_manager::testing::DelegationContract;
+use bvs_directory::msg::{ExecuteMsg, QueryMsg, ServiceMetadata, StatusResponse};
+use bvs_directory::testing::DirectoryContract;
+use bvs_directory::ContractError;
+use bvs_library::testing::TestingContract;
 use bvs_registry::api::RegistryError;
-use bvs_registry::msg::InstantiateMsg;
 use bvs_registry::testing::RegistryContract;
-use bvs_testing::integration::{mock_contracts::mock_app, mock_env::MockEnvBuilder};
 use cosmwasm_std::testing::mock_env;
-use cosmwasm_std::{Binary, Event};
+use cosmwasm_std::Event;
+use cw_multi_test::App;
 
-#[test]
-fn register_bvs_successfully() {
-    let mut app = mock_app();
+fn instantiate() -> (App, DirectoryContract, DelegationContract, RegistryContract) {
+    let mut app = App::default();
     let env = mock_env();
 
-    let owner = app.api().addr_make("owner");
-    let bvs_contract = app.api().addr_make("bvs_contract").to_string();
-    let anyone = app.api().addr_make("anyone");
-
-    let hash_result = sha256(bvs_contract.clone().as_bytes());
-    let bvs_hash = hex::encode(hash_result);
-
     let registry = RegistryContract::new(&mut app, &env, None);
-
-    let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
-        .deploy_bvs_directory(&BvsDirectoryInstantiateMsg {
-            owner: owner.clone().to_string(),
-            registry: registry.addr.to_string(),
-        })
-        .build();
-
-    let register_bvs_msg = &BvsDirectoryExecuteMsg::RegisterBvs {
-        bvs_contract: bvs_contract.clone(),
-    };
-
-    let bvs_driectory = mock_env.bvs_directory.clone();
-    let response = bvs_driectory
-        .execute(&mut mock_env, anyone, register_bvs_msg, &[])
-        .unwrap();
-
-    assert_eq!(response.events.len(), 2);
-    assert_eq!(
-        response.events[1],
-        Event::new("wasm")
-            .add_attribute("_contract_address", mock_env.bvs_directory.contract_addr)
-            .add_attribute("method", "register_bvs")
-            .add_attribute("bvs_hash", bvs_hash.clone())
-    );
-}
-
-// TODO: need solve contract dependencies: bvs-delegation-manager and bvs-strategy-manager
-#[test]
-fn register_operator_failure() {
-    let mut app = mock_app();
-    let env = mock_env();
-
-    let operator = Account::new("operator");
-    let expiry = 2722875888;
-    let salt = Binary::from(b"salt");
-    let contract_addr = app.api().addr_make("contract_addr");
-    let owner = app.api().addr_make("owner");
-
-    let message_hash = calculate_digest_hash(
-        app.block_info().chain_id,
-        &Binary::from(operator.public_key.clone().serialize()),
-        &owner,
-        &salt,
-        expiry,
-        &contract_addr,
-    );
-    let signature = operator.sign(message_hash);
-    let signature_bytes = signature.serialize_compact().to_vec();
-    let signature_base64 = general_purpose::STANDARD.encode(signature_bytes);
+    let delegation = DelegationContract::new(&mut app, &env, None);
+    let directory = DirectoryContract::new(&mut app, &env, None);
 
     let owner = app.api().addr_make("owner");
-    let strategy1 = app.api().addr_make("strategy1").to_string();
-    let strategy2 = app.api().addr_make("strategy2").to_string();
+    let not_routed = app.api().addr_make("not_routed");
 
-    let registry = RegistryContract::new(&mut app, &env, None);
-
-    let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
-        .deploy_bvs_directory(&BvsDirectoryInstantiateMsg {
-            owner: owner.clone().to_string(),
-            registry: registry.addr.to_string(),
-        })
-        .deploy_bvs_delegation_manager(&BvsDelegationManagerInstantiateMsg {
-            owner: owner.clone().to_string(),
-            registry: registry.addr.to_string(),
-            min_withdrawal_delay_blocks: 100,
-            strategies: vec![strategy1.clone(), strategy2.clone()],
-            withdrawal_delay_blocks: vec![50, 60],
-        })
-        .build();
-
-    let set_delegation_manager_msg = &BvsDirectoryExecuteMsg::SetRouting {
-        delegation_manager: mock_env
-            .bvs_delegation_manager
-            .contract_addr
-            .clone()
-            .into_string(),
-    };
-
-    let bvs_directory = mock_env.bvs_directory.clone();
-    let bvs_delegation_manager_addr = mock_env.bvs_delegation_manager.contract_addr.clone();
-    let response = bvs_directory
-        .clone()
+    directory
         .execute(
-            &mut mock_env,
-            owner.clone(),
-            set_delegation_manager_msg.into(),
-            &[],
+            &mut app,
+            &owner,
+            &ExecuteMsg::SetRouting {
+                delegation_manager: delegation.addr.to_string(),
+            },
         )
         .unwrap();
-    assert_eq!(response.events.len(), 2);
-    assert_eq!(
-        response.events[1],
-        Event::new("wasm-SetRouting")
-            .add_attribute("_contract_address", bvs_directory.contract_addr.as_str())
-            .add_attribute("delegation_manager", bvs_delegation_manager_addr.as_str())
-    );
 
-    let regsiter_operator_to_bvs_msg = &BvsDirectoryExecuteMsg::RegisterOperatorToBvs {
-        operator: operator.address.to_string(),
-        public_key: Binary::from_base64(&operator.public_key_base64()).unwrap(),
-        contract_addr: contract_addr.to_string(),
-        signature_with_salt_and_expiry: bvs_directory::msg::SignatureWithSaltAndExpiry {
-            signature: Binary::from_base64(&signature_base64).unwrap(),
-            salt,
-            expiry,
+    delegation
+        .execute(
+            &mut app,
+            &owner,
+            &bvs_delegation_manager::msg::ExecuteMsg::SetRouting {
+                strategy_manager: not_routed.to_string(),
+                slash_manager: not_routed.to_string(),
+            },
+        )
+        .unwrap();
+
+    (app, directory, delegation, registry)
+}
+
+#[test]
+fn register_service_successfully() {
+    let (mut app, directory, ..) = instantiate();
+
+    let register_msg = &ExecuteMsg::ServiceRegister {
+        metadata: ServiceMetadata {
+            name: Some("Service Name".to_string()),
+            uri: Some("https://service.com".to_string()),
         },
     };
-    let response = bvs_directory.clone().execute(
-        &mut mock_env,
-        owner.clone(),
-        regsiter_operator_to_bvs_msg.into(),
-        &[],
+
+    let service = app.api().addr_make("service/11111");
+    let response = directory
+        .execute(&mut app, &service, &register_msg)
+        .unwrap();
+
+    assert_eq!(
+        response.events,
+        vec![
+            Event::new("execute").add_attribute("_contract_address", directory.addr.as_str()),
+            Event::new("wasm-ServiceRegistered")
+                .add_attribute("_contract_address", directory.addr.as_str())
+                .add_attribute("service", service.as_str()),
+            Event::new("wasm-ServiceMetadataUpdated")
+                .add_attribute("_contract_address", directory.addr.as_str())
+                .add_attribute("service", service.as_str())
+                .add_attribute("metadata.uri", "https://service.com")
+                .add_attribute("metadata.name", "Service Name"),
+        ]
     );
-    assert!(response.is_err())
 }
 
-// TODO: need solve contract dependencies: bvs-delegation-manager and bvs-strategy-manager
 #[test]
-fn deregister_operator_failure() {
-    let mut app = mock_app();
-    let env = mock_env();
-
+fn register_service_but_paused() {
+    let (mut app, directory, _, registry) = instantiate();
     let owner = app.api().addr_make("owner");
+
+    let register_msg = &ExecuteMsg::ServiceRegister {
+        metadata: ServiceMetadata {
+            name: Some("Service Name".to_string()),
+            uri: Some("https://service.com".to_string()),
+        },
+    };
+
+    registry
+        .execute(&mut app, &owner, &bvs_registry::msg::ExecuteMsg::Pause {})
+        .unwrap();
+
+    let err = directory
+        .execute(&mut app, &owner, &register_msg)
+        .unwrap_err();
+
+    assert_eq!(
+        err.root_cause().to_string(),
+        ContractError::Registry(RegistryError::IsPaused).to_string()
+    );
+}
+
+#[test]
+fn register_service_but_already_registered() {
+    let (mut app, directory, ..) = instantiate();
+
+    let register_msg = &ExecuteMsg::ServiceRegister {
+        metadata: ServiceMetadata {
+            name: Some("Service Name".to_string()),
+            uri: Some("https://service.com".to_string()),
+        },
+    };
+
+    let service = app.api().addr_make("service/11111");
+    directory
+        .execute(&mut app, &service, &register_msg)
+        .unwrap();
+
+    let err = directory
+        .execute(&mut app, &service, &register_msg)
+        .unwrap_err();
+
+    assert_eq!(
+        err.root_cause().to_string(),
+        ContractError::ServiceRegistered {}.to_string()
+    );
+}
+
+#[test]
+fn operator_register_service_but_service_not_registered() {
+    let (mut app, directory, _, _) = instantiate();
     let operator = app.api().addr_make("operator");
 
-    let registry = RegistryContract::new(&mut app, &env, None);
-
-    let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
-        .deploy_bvs_directory(&BvsDirectoryInstantiateMsg {
-            owner: owner.clone().to_string(),
-            registry: registry.addr.to_string(),
-        })
-        .build();
-
-    let deregister_operator_msg = &BvsDirectoryExecuteMsg::DeregisterOperatorFromBvs {
-        operator: operator.clone().into_string(),
-    };
-    let directory = mock_env.bvs_directory.clone();
-    let response = directory.execute(&mut mock_env, owner.clone(), deregister_operator_msg, &[]);
-
-    assert!(response.is_err());
-}
-
-#[test]
-fn register_update_metadata_uri_successfully() {
-    let mut app = mock_app();
-    let env = mock_env();
-
-    let owner = app.api().addr_make("owner");
-    let anyone = app.api().addr_make("anyone");
-
-    let registry = RegistryContract::new(&mut app, &env, None);
-
-    let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
-        .deploy_bvs_directory(&BvsDirectoryInstantiateMsg {
-            owner: owner.clone().to_string(),
-            registry: registry.addr.to_string(),
-        })
-        .build();
-
-    let metadata_uri = "https://bvs.com".to_string();
-    let update_metadata_msg = &BvsDirectoryExecuteMsg::UpdateBvsMetadataUri {
-        metadata_uri: metadata_uri.clone(),
+    let register_msg = &ExecuteMsg::OperatorRegisterService {
+        service: app.api().addr_make("service/11111").to_string(),
     };
 
-    let bvs_driectory = mock_env.bvs_directory.clone();
-    let response = bvs_driectory
-        .execute(&mut mock_env, anyone.clone(), update_metadata_msg, &[])
-        .unwrap();
+    let err = directory
+        .execute(&mut app, &operator, &register_msg)
+        .unwrap_err();
 
-    assert_eq!(response.events.len(), 2);
     assert_eq!(
-        response.events[1],
-        Event::new("wasm-MetadataURIUpdated")
-            .add_attribute("_contract_address", mock_env.bvs_directory.contract_addr)
-            .add_attribute("method", "update_metadata_uri")
-            .add_attribute("bvs", anyone.into_string())
-            .add_attribute("metadata_uri", metadata_uri)
+        err.root_cause().to_string(),
+        ContractError::ServiceNotFound {}.to_string()
     );
 }
 
 #[test]
-fn set_delegation_manager_successfully() {
-    let mut app = mock_app();
-    let env = mock_env();
+fn operator_register_service_but_self_not_operator() {
+    let (mut app, directory, _, _) = instantiate();
+    let not_operator = app.api().addr_make("not_operator");
 
-    let owner = app.api().addr_make("owner");
-    let delegation_manager_addr = app.api().addr_make("delegation_manager");
-
-    let registry = RegistryContract::new(&mut app, &env, None);
-
-    let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
-        .deploy_bvs_directory(&BvsDirectoryInstantiateMsg {
-            owner: owner.clone().to_string(),
-            registry: registry.addr.to_string(),
-        })
-        .build();
-
-    let set_delegation_manager_msg = &BvsDirectoryExecuteMsg::SetRouting {
-        delegation_manager: delegation_manager_addr.clone().into_string(),
+    let register_msg = &ExecuteMsg::ServiceRegister {
+        metadata: ServiceMetadata {
+            name: Some("Service Name".to_string()),
+            uri: Some("https://service.com".to_string()),
+        },
     };
 
-    let directory = mock_env.bvs_directory.clone();
-    let response = directory
-        .execute(
-            &mut mock_env,
-            owner.clone(),
-            set_delegation_manager_msg,
-            &[],
-        )
+    let service = app.api().addr_make("service/11111");
+    directory
+        .execute(&mut app, &service, &register_msg)
         .unwrap();
 
-    assert_eq!(response.events.len(), 2);
+    let register_msg = &ExecuteMsg::OperatorRegisterService {
+        service: service.to_string(),
+    };
+
+    let err = directory
+        .execute(&mut app, &not_operator, &register_msg)
+        .unwrap_err();
+
     assert_eq!(
-        response.events[1],
-        Event::new("wasm-SetRouting")
-            .add_attribute(
-                "_contract_address",
-                mock_env.bvs_directory.contract_addr.as_str()
-            )
-            .add_attribute("delegation_manager", delegation_manager_addr.as_str())
+        err.root_cause().to_string(),
+        ContractError::OperatorNotFound {
+            msg: "Operator is not registered on delegation manager.".to_string()
+        }
+        .to_string()
     );
 }
 
 #[test]
-fn cancel_salt_successfully() {
-    let mut app = mock_app();
-    let env = mock_env();
+fn register_lifecycle_operator_first() {
+    let (mut app, directory, delegation, ..) = instantiate();
 
-    let owner = app.api().addr_make("owner");
-    let anyone = app.api().addr_make("anyone");
-    let salt = Binary::from(b"salt");
+    let register_msg = &ExecuteMsg::ServiceRegister {
+        metadata: ServiceMetadata {
+            name: Some("Service Name".to_string()),
+            uri: Some("https://service.com".to_string()),
+        },
+    };
 
-    let registry = RegistryContract::new(&mut app, &env, None);
-
-    let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
-        .deploy_bvs_directory(&BvsDirectoryInstantiateMsg {
-            owner: owner.clone().to_string(),
-            registry: registry.addr.to_string(),
-        })
-        .build();
-
-    let set_delegation_manager_msg = &BvsDirectoryExecuteMsg::CancelSalt { salt: salt.clone() };
-
-    let bvs_driectory = mock_env.bvs_directory.clone();
-    let response = bvs_driectory
-        .execute(
-            &mut mock_env,
-            anyone.clone(),
-            set_delegation_manager_msg,
-            &[],
-        )
+    let service = app.api().addr_make("service/bvs");
+    directory
+        .execute(&mut app, &service, &register_msg)
         .unwrap();
 
-    assert_eq!(response.events.len(), 2);
+    // TODO(fuxingloh): need strategy-manager setup.
+    // let operator = app.api().addr_make("operator");
+    // let register_msg = &bvs_delegation_manager::msg::ExecuteMsg::RegisterAsOperator {
+    //     operator_details: bvs_delegation_manager::msg::OperatorDetails {
+    //         staker_opt_out_window_blocks: 100
+    //     },
+    //     metadata_uri: "operator.com".to_string(),
+    // };
+}
+
+#[test]
+fn register_lifecycle_service_first() {
+    let (mut app, directory, delegation, ..) = instantiate();
+
+    let register_msg = &ExecuteMsg::ServiceRegister {
+        metadata: ServiceMetadata {
+            name: Some("C4 Service".to_string()),
+            uri: Some("https://c4.service.com".to_string()),
+        },
+    };
+
+    let service = app.api().addr_make("service/c4");
+    let operator = app.api().addr_make("operator");
+    directory
+        .execute(&mut app, &service, &register_msg)
+        .unwrap();
+
+    // Register Service
+
+    let register_msg = &ExecuteMsg::ServiceRegisterOperator {
+        operator: operator.to_string(),
+    };
+
+    let res = directory
+        .execute(&mut app, &service, &register_msg)
+        .unwrap();
+
     assert_eq!(
-        response.events[1],
-        Event::new("wasm")
-            .add_attribute("_contract_address", mock_env.bvs_directory.contract_addr)
-            .add_attribute("method", "cancel_salt")
-            .add_attribute("operator", anyone.into_string())
-            .add_attribute("salt", salt.to_base64())
+        res.events,
+        vec![
+            Event::new("execute").add_attribute("_contract_address", directory.addr.as_str()),
+            Event::new("wasm-RegistrationStatusUpdated")
+                .add_attribute("_contract_address", directory.addr.as_str())
+                .add_attribute("method", "service_register_operator")
+                .add_attribute("operator", operator.as_str())
+                .add_attribute("service", service.as_str())
+                .add_attribute("status", "ServiceRegistered"),
+        ]
+    );
+
+    let status: StatusResponse = directory
+        .query(
+            &mut app,
+            &QueryMsg::Status {
+                service: service.to_string(),
+                operator: operator.to_string(),
+            },
+        )
+        .unwrap();
+    assert_eq!(status, StatusResponse(3));
+
+    // TODO(fuxingloh): need strategy-manager setup.
+    // let operator = app.api().addr_make("operator");
+    // let register_msg = &bvs_delegation_manager::msg::ExecuteMsg::RegisterAsOperator {
+    //     operator_details: bvs_delegation_manager::msg::OperatorDetails {
+    //         staker_opt_out_window_blocks: 100
+    //     },
+    //     metadata_uri: "operator.com".to_string(),
+    // };
+}
+
+// TODO: deregister from service
+// TODO: deregister from operator
+// TODO: already deregistered
+// TODO: already active
+// TODO: operator already registered
+// TODO: service already registered
+
+#[test]
+fn update_metadata_successfully() {
+    let (mut app, directory, ..) = instantiate();
+
+    let register_msg = &ExecuteMsg::ServiceRegister {
+        metadata: ServiceMetadata {
+            name: Some("Service Name".to_string()),
+            uri: Some("https://service.com".to_string()),
+        },
+    };
+
+    let service = app.api().addr_make("service/11111");
+    directory
+        .execute(&mut app, &service, &register_msg)
+        .unwrap();
+
+    let update_msg = &ExecuteMsg::ServiceUpdateMetadata(ServiceMetadata {
+        name: Some("New Service Name".to_string()),
+        uri: Some("https://new-service.com".to_string()),
+    });
+
+    let response = directory.execute(&mut app, &service, &update_msg).unwrap();
+
+    assert_eq!(
+        response.events,
+        vec![
+            Event::new("execute").add_attribute("_contract_address", directory.addr.as_str()),
+            Event::new("wasm-ServiceMetadataUpdated")
+                .add_attribute("_contract_address", directory.addr.as_str())
+                .add_attribute("service", service.as_str())
+                .add_attribute("metadata.uri", "https://new-service.com")
+                .add_attribute("metadata.name", "New Service Name"),
+        ]
+    );
+
+    // Don't update the name
+    let update_msg = &ExecuteMsg::ServiceUpdateMetadata(ServiceMetadata {
+        name: None,
+        uri: Some("https://new-new-service.com".to_string()),
+    });
+
+    let response = directory.execute(&mut app, &service, &update_msg).unwrap();
+
+    assert_eq!(
+        response.events,
+        vec![
+            Event::new("execute").add_attribute("_contract_address", directory.addr.as_str()),
+            Event::new("wasm-ServiceMetadataUpdated")
+                .add_attribute("_contract_address", directory.addr.as_str())
+                .add_attribute("service", service.as_str())
+                .add_attribute("metadata.uri", "https://new-new-service.com"),
+        ]
     );
 }
 
 #[test]
 fn transfer_ownership_successfully() {
-    let mut app = mock_app();
-    let env = mock_env();
-
+    let (mut app, directory, _, _) = instantiate();
     let owner = app.api().addr_make("owner");
-    let anyone = app.api().addr_make("anyone");
+    let new_owner = app.api().addr_make("new_owner");
 
-    let registry = RegistryContract::new(&mut app, &env, None);
-
-    let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
-        .deploy_bvs_directory(&BvsDirectoryInstantiateMsg {
-            owner: owner.clone().to_string(),
-            registry: registry.addr.to_string(),
-        })
-        .build();
-
-    let set_delegation_manager_msg = &BvsDirectoryExecuteMsg::TransferOwnership {
-        new_owner: anyone.clone().into_string(),
+    let transfer_msg = &ExecuteMsg::TransferOwnership {
+        new_owner: new_owner.to_string(),
     };
 
-    let directory = mock_env.bvs_directory.clone();
-    let response = directory
-        .execute(
-            &mut mock_env,
-            owner.clone(),
-            set_delegation_manager_msg,
-            &[],
-        )
-        .unwrap();
+    let response = directory.execute(&mut app, &owner, &transfer_msg).unwrap();
 
-    assert_eq!(response.events.len(), 2);
     assert_eq!(
-        response.events[1],
-        Event::new("wasm-TransferredOwnership")
-            .add_attribute("_contract_address", directory.contract_addr)
-            .add_attribute("old_owner", owner.as_str())
-            .add_attribute("new_owner", anyone.as_str())
+        response.events,
+        vec![
+            Event::new("execute").add_attribute("_contract_address", directory.addr.as_str()),
+            Event::new("wasm-TransferredOwnership")
+                .add_attribute("_contract_address", directory.addr.as_str())
+                .add_attribute("old_owner", owner.as_str())
+                .add_attribute("new_owner", new_owner.as_str()),
+        ]
     );
 }
 
 #[test]
-fn register_bvs_but_paused() {
-    let mut app = mock_app();
-    let env = mock_env();
+fn transfer_ownership_but_not_owner() {
+    let (mut app, directory, _, _) = instantiate();
+    let not_owner = app.api().addr_make("not_owner");
 
-    let owner = app.api().addr_make("owner");
-    let delegation_manager = app.api().addr_make("delegation_manager");
-    let bvs_contract = app.api().addr_make("bvs_contract").to_string();
-    let anyone = app.api().addr_make("anyone");
-
-    let registry = RegistryContract::new(
-        &mut app,
-        &env,
-        InstantiateMsg {
-            owner: owner.to_string(),
-            initial_paused: true,
-        }
-        .into(),
-    );
-
-    let mut mock_env = MockEnvBuilder::new(app, None, owner.clone())
-        .deploy_bvs_directory(&bvs_directory::msg::InstantiateMsg {
-            owner: owner.clone().to_string(),
-            registry: registry.addr.to_string(),
-        })
-        .build();
-
-    let register_bvs_msg = &bvs_directory::msg::ExecuteMsg::RegisterBvs {
-        bvs_contract: bvs_contract.clone(),
+    let transfer_msg = &ExecuteMsg::TransferOwnership {
+        new_owner: not_owner.to_string(),
     };
 
-    let directory = mock_env.bvs_directory.clone();
-
     let err = directory
-        .execute(&mut mock_env, anyone, register_bvs_msg, &[])
+        .execute(&mut app, &not_owner, &transfer_msg)
         .unwrap_err();
 
     assert_eq!(
         err.root_cause().to_string(),
-        bvs_directory::ContractError::Registry(RegistryError::IsPaused).to_string()
+        ContractError::Unauthorized {}.to_string()
     );
+}
+
+#[test]
+fn query_status() {
+    let (mut app, directory, _, _) = instantiate();
+
+    let query_msg = &QueryMsg::Status {
+        service: app.api().addr_make("service/44").to_string(),
+        operator: app.api().addr_make("operator/44").to_string(),
+    };
+
+    let status: StatusResponse = directory.query(&mut app, query_msg).unwrap();
+
+    assert_eq!(status, StatusResponse(0));
+
+    let status: StatusResponse = directory.query(&mut app, query_msg).unwrap();
+
+    assert_eq!(status, StatusResponse(0));
 }

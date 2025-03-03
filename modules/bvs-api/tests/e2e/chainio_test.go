@@ -44,9 +44,9 @@ func (suite *ioTestSuite) Test_QueryContract() {
 	assert.NoError(t, err)
 	account, err := chainIO.GetCurrentAccount()
 	assert.NoError(t, err, "get account")
-	queryMsg, err := json.Marshal(directory.QueryMsg{OperatorStatus: &directory.OperatorStatus{
+	queryMsg, err := json.Marshal(directory.QueryMsg{Status: directory.Status{
 		Operator: account.GetAddress().String(),
-		Bvs:      account.GetAddress().String(),
+		Service:  account.GetAddress().String(),
 	}})
 	assert.NoError(t, err, "marshal query msg")
 	QueryOptions := types.QueryOptions{
@@ -64,7 +64,12 @@ func (suite *ioTestSuite) Test_QueryTransaction() {
 	chainIO, err := suite.chainIO.SetupKeyring("caller", "test")
 	assert.NoError(t, err)
 
-	executeMsgBytes, _ := json.Marshal(directory.ExecuteMsg{UpdateBvsMetadataURI: &directory.UpdateBvsMetadataURI{MetadataURI: "example.com"}})
+	uri := "example.com"
+	executeMsgBytes, _ := json.Marshal(directory.ExecuteMsg{ServiceRegister: &directory.ServiceRegister{
+		Metadata: directory.ServiceMetadata{
+			URI: &uri,
+		},
+	}})
 	assert.NoError(t, err, "marshal execute msg")
 	executeOptions := types.ExecuteOptions{
 		ContractAddr:  suite.directory.Address,
@@ -72,7 +77,7 @@ func (suite *ioTestSuite) Test_QueryTransaction() {
 		Funds:         "",
 		GasAdjustment: 1.2,
 		GasPrice:      sdktypes.NewInt64DecCoin("ubbn", 1),
-		Gas:           200000,
+		Gas:           500000,
 		Memo:          "test query transaction tx",
 		Simulate:      true,
 	}

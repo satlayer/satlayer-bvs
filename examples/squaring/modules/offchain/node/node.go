@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/indexer"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
@@ -66,13 +65,9 @@ func NewNode() *Node {
 	pubKey := chainIO.GetCurrentAccountPubKey()
 
 	pubKeyStr := base64.StdEncoding.EncodeToString(pubKey.Bytes())
-	txResp, err := api.NewDirectory(chainIO, core.C.Chain.BVSDirectory).BvsInfo(core.C.Chain.BVSHash)
-	if err != nil {
-		panic(err)
-	}
 
 	return &Node{
-		bvsContract: txResp.BvsContract,
+		bvsContract: core.C.Chain.BVSContract,
 		chainIO:     chainIO,
 		pubKeyStr:   pubKeyStr,
 	}
@@ -221,7 +216,7 @@ func (n *Node) square(input int64) int64 {
 // Returns an error if there is an issue with the sending process.
 func (n *Node) sendAggregator(taskID int64, result int64) (err error) {
 	nowTs := time.Now().Unix()
-	msgPayload := fmt.Sprintf("%s-%d-%d-%d", core.C.Chain.BVSHash, nowTs, taskID, result)
+	msgPayload := fmt.Sprintf("%s-%d-%d-%d", core.C.Chain.BVSContract, nowTs, taskID, result)
 	core.L.Info(fmt.Sprintf("msgPayload: %s\n", msgPayload))
 	signature, err := n.chainIO.GetSigner().Sign([]byte(msgPayload))
 

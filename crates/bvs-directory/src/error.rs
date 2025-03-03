@@ -15,21 +15,15 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
-    #[error("operator signature expired")]
-    SignatureExpired {},
+    #[error("Service already registered")]
+    ServiceRegistered {},
 
-    #[error("operator already registered")]
-    OperatorAlreadyRegistered {},
+    #[error("Service not found")]
+    ServiceNotFound {},
 
-    #[error("salt already spent")]
-    SaltAlreadySpent {},
+    #[error("Invalid registration status: {msg}")]
+    InvalidRegistrationStatus { msg: String },
 
-    #[error("operator not registered yet")]
-    OperatorNotRegistered {},
-
-    #[error("invalid signature")]
-    InvalidSignature {},
-
-    #[error("operator not registered yet from delegation manager")]
-    OperatorNotRegisteredFromDelegationManager {},
+    #[error("Operator not found in delegation {msg}")]
+    OperatorNotFound { msg: String },
 }

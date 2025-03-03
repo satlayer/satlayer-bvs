@@ -10,7 +10,6 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-api/signer"
 
 	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/core"
-	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/svc"
 	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/util"
 	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/util/resp"
 )
@@ -53,7 +52,7 @@ func Aggregator(c *gin.Context) {
 		return
 	}
 
-	msgPayload := fmt.Sprintf("%s-%d-%d-%d", core.C.Chain.BvsHash, payload.Timestamp, payload.TaskID, payload.Result)
+	msgPayload := fmt.Sprintf("%s-%d-%d-%d", core.C.Chain.BvsContract, payload.Timestamp, payload.TaskID, payload.Result)
 	msgBytes := []byte(msgPayload)
 	if isValid, err := signer.VerifySignature(pubKey, msgBytes, payload.Signature); err != nil || !isValid {
 		c.JSON(http.StatusBadRequest, resp.ErrSignature)
@@ -64,11 +63,6 @@ func Aggregator(c *gin.Context) {
 	pkTaskFinished := fmt.Sprintf("%s%d", core.PKTaskFinished, payload.TaskID)
 	if isExist, err := core.S.RedisConn.Exists(c, pkTaskFinished).Result(); err != nil || isExist == 1 {
 		c.JSON(http.StatusBadRequest, resp.ErrFinished)
-		return
-	}
-
-	if ok, err := svc.MonitorInstance.VerifyOperator(address); err != nil || !ok {
-		c.JSON(http.StatusBadRequest, resp.ErrOperator)
 		return
 	}
 

@@ -33,7 +33,7 @@ type Database struct {
 type Chain struct {
 	ID           string `json:"id"`
 	RPC          string `json:"rpc"`
-	BvsHash      string `json:"bvsHash"`
+	BvsContract  string `json:"bvsContract"`
 	BvsDirectory string `json:"bvsDirectory"`
 }
 

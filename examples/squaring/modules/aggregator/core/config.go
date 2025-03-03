@@ -29,7 +29,7 @@ func InitConfig(overrideConfig Config) {
 	UpdateConfig(overrideConfig)
 
 	// init logger
-	L = logger.NewELKLogger(C.Chain.BvsHash)
+	L = logger.NewELKLogger(C.Chain.BvsContract)
 	initStore(&C.Database)
 }
 
@@ -58,7 +58,7 @@ func UpdateConfig(overrideConfig Config) {
 	if overrideConfig.Chain.BvsDirectory != "" {
 		C.Chain.BvsDirectory = overrideConfig.Chain.BvsDirectory
 	}
-	if overrideConfig.Chain.BvsHash != "" {
-		C.Chain.BvsHash = overrideConfig.Chain.BvsHash
+	if overrideConfig.Chain.BvsContract != "" {
+		C.Chain.BvsContract = overrideConfig.Chain.BvsContract
 	}
 }

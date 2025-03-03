@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
 	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
@@ -56,13 +55,8 @@ func NewCaller() *Caller {
 		panic(err)
 	}
 
-	txResp, err := api.NewDirectory(client, core.C.Chain.BVSDirectory).BvsInfo(core.C.Chain.BVSHash)
-
-	if err != nil {
-		panic(err)
-	}
 	return &Caller{
-		bvsContract: txResp.BvsContract,
+		bvsContract: core.C.Chain.BVSContract,
 		chainIO:     client,
 	}
 }

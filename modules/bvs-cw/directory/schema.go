@@ -10,26 +10,8 @@
 //    queryMsg, err := UnmarshalQueryMsg(bytes)
 //    bytes, err = queryMsg.Marshal()
 //
-//    bvsInfoResponse, err := UnmarshalBvsInfoResponse(bytes)
-//    bytes, err = bvsInfoResponse.Marshal()
-//
-//    calculateDigestHashResponse, err := UnmarshalCalculateDigestHashResponse(bytes)
-//    bytes, err = calculateDigestHashResponse.Marshal()
-//
-//    domainNameResponse, err := UnmarshalDomainNameResponse(bytes)
-//    bytes, err = domainNameResponse.Marshal()
-//
-//    domainTypeHashResponse, err := UnmarshalDomainTypeHashResponse(bytes)
-//    bytes, err = domainTypeHashResponse.Marshal()
-//
-//    isSaltSpentResponse, err := UnmarshalIsSaltSpentResponse(bytes)
-//    bytes, err = isSaltSpentResponse.Marshal()
-//
-//    operatorBvsRegistrationTypeHashResponse, err := UnmarshalOperatorBvsRegistrationTypeHashResponse(bytes)
-//    bytes, err = operatorBvsRegistrationTypeHashResponse.Marshal()
-//
-//    operatorStatusResponse, err := UnmarshalOperatorStatusResponse(bytes)
-//    bytes, err = operatorStatusResponse.Marshal()
+//    statusResponse, err := UnmarshalStatusResponse(bytes)
+//    bytes, err = statusResponse.Marshal()
 
 package directory
 
@@ -65,73 +47,15 @@ func (r *QueryMsg) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalBvsInfoResponse(data []byte) (BvsInfoResponse, error) {
-	var r BvsInfoResponse
+type StatusResponse int64
+
+func UnmarshalStatusResponse(data []byte) (StatusResponse, error) {
+	var r StatusResponse
 	err := json.Unmarshal(data, &r)
 	return r, err
 }
 
-func (r *BvsInfoResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalCalculateDigestHashResponse(data []byte) (CalculateDigestHashResponse, error) {
-	var r CalculateDigestHashResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *CalculateDigestHashResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalDomainNameResponse(data []byte) (DomainNameResponse, error) {
-	var r DomainNameResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *DomainNameResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalDomainTypeHashResponse(data []byte) (DomainTypeHashResponse, error) {
-	var r DomainTypeHashResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *DomainTypeHashResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalIsSaltSpentResponse(data []byte) (IsSaltSpentResponse, error) {
-	var r IsSaltSpentResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *IsSaltSpentResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalOperatorBvsRegistrationTypeHashResponse(data []byte) (OperatorBvsRegistrationTypeHashResponse, error) {
-	var r OperatorBvsRegistrationTypeHashResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *OperatorBvsRegistrationTypeHashResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalOperatorStatusResponse(data []byte) (OperatorStatusResponse, error) {
-	var r OperatorStatusResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *OperatorStatusResponse) Marshal() ([]byte, error) {
+func (r *StatusResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -141,38 +65,40 @@ type InstantiateMsg struct {
 }
 
 type ExecuteMsg struct {
-	RegisterBvs               *RegisterBvs               `json:"register_bvs,omitempty"`
-	RegisterOperatorToBvs     *RegisterOperatorToBvs     `json:"register_operator_to_bvs,omitempty"`
-	DeregisterOperatorFromBvs *DeregisterOperatorFromBvs `json:"deregister_operator_from_bvs,omitempty"`
-	UpdateBvsMetadataURI      *UpdateBvsMetadataURI      `json:"update_bvs_metadata_uri,omitempty"`
-	CancelSalt                *CancelSalt                `json:"cancel_salt,omitempty"`
+	ServiceRegister           *ServiceRegister           `json:"service_register,omitempty"`
+	ServiceUpdateMetadata     *ServiceMetadata           `json:"service_update_metadata,omitempty"`
+	ServiceRegisterOperator   *ServiceRegisterOperator   `json:"service_register_operator,omitempty"`
+	OperatorDeregisterService *OperatorDeregisterService `json:"operator_deregister_service,omitempty"`
+	OperatorRegisterService   *OperatorRegisterService   `json:"operator_register_service,omitempty"`
+	ServiceDeregisterOperator *ServiceDeregisterOperator `json:"service_deregister_operator,omitempty"`
 	TransferOwnership         *TransferOwnership         `json:"transfer_ownership,omitempty"`
 	SetRouting                *SetRouting                `json:"set_routing,omitempty"`
 }
 
-type CancelSalt struct {
-	Salt string `json:"salt"`
+type OperatorDeregisterService struct {
+	Service string `json:"service"`
 }
 
-type DeregisterOperatorFromBvs struct {
+type OperatorRegisterService struct {
+	Service string `json:"service"`
+}
+
+type ServiceDeregisterOperator struct {
 	Operator string `json:"operator"`
 }
 
-type RegisterBvs struct {
-	BvsContract string `json:"bvs_contract"`
+type ServiceRegister struct {
+	Metadata ServiceMetadata `json:"metadata"`
 }
 
-type RegisterOperatorToBvs struct {
-	ContractAddr               string                     `json:"contract_addr"`
-	Operator                   string                     `json:"operator"`
-	PublicKey                  string                     `json:"public_key"`
-	SignatureWithSaltAndExpiry SignatureWithSaltAndExpiry `json:"signature_with_salt_and_expiry"`
+// Service metadata is emitted as events and not stored on-chain.
+type ServiceMetadata struct {
+	Name *string `json:"name"`
+	URI  *string `json:"uri"`
 }
 
-type SignatureWithSaltAndExpiry struct {
-	Expiry    int64  `json:"expiry"`
-	Salt      string `json:"salt"`
-	Signature string `json:"signature"`
+type ServiceRegisterOperator struct {
+	Operator string `json:"operator"`
 }
 
 type SetRouting struct {
@@ -184,83 +110,11 @@ type TransferOwnership struct {
 	NewOwner string `json:"new_owner"`
 }
 
-type UpdateBvsMetadataURI struct {
-	MetadataURI string `json:"metadata_uri"`
-}
-
 type QueryMsg struct {
-	OperatorStatus                  *OperatorStatus                  `json:"operator_status,omitempty"`
-	CalculateDigestHash             *CalculateDigestHash             `json:"calculate_digest_hash,omitempty"`
-	IsSaltSpent                     *IsSaltSpent                     `json:"is_salt_spent,omitempty"`
-	BvsInfo                         *BvsInfo                         `json:"bvs_info,omitempty"`
-	OperatorBvsRegistrationTypeHash *OperatorBvsRegistrationTypeHash `json:"operator_bvs_registration_type_hash,omitempty"`
-	DomainTypeHash                  *DomainTypeHash                  `json:"domain_type_hash,omitempty"`
-	DomainName                      *DomainName                      `json:"domain_name,omitempty"`
+	Status Status `json:"status"`
 }
 
-type BvsInfo struct {
-	BvsHash string `json:"bvs_hash"`
-}
-
-type CalculateDigestHash struct {
-	Bvs               string `json:"bvs"`
-	ContractAddr      string `json:"contract_addr"`
-	Expiry            int64  `json:"expiry"`
-	OperatorPublicKey string `json:"operator_public_key"`
-	Salt              string `json:"salt"`
-}
-
-type DomainName struct {
-}
-
-type DomainTypeHash struct {
-}
-
-type IsSaltSpent struct {
+type Status struct {
 	Operator string `json:"operator"`
-	Salt     string `json:"salt"`
+	Service  string `json:"service"`
 }
-
-type OperatorBvsRegistrationTypeHash struct {
-}
-
-type OperatorStatus struct {
-	Bvs      string `json:"bvs"`
-	Operator string `json:"operator"`
-}
-
-type BvsInfoResponse struct {
-	BvsContract string `json:"bvs_contract"`
-	BvsHash     string `json:"bvs_hash"`
-}
-
-type CalculateDigestHashResponse struct {
-	DigestHash string `json:"digest_hash"`
-}
-
-type DomainNameResponse struct {
-	DomainName string `json:"domain_name"`
-}
-
-type DomainTypeHashResponse struct {
-	DomainTypeHash string `json:"domain_type_hash"`
-}
-
-type IsSaltSpentResponse struct {
-	IsSaltSpent bool `json:"is_salt_spent"`
-}
-
-type OperatorBvsRegistrationTypeHashResponse struct {
-	OperatorBvsRegistrationTypeHash string `json:"operator_bvs_registration_type_hash"`
-}
-
-type OperatorStatusResponse struct {
-	Status OperatorBvsRegistrationStatus `json:"status"`
-}
-
-type OperatorBvsRegistrationStatus string
-
-const (
-	Registered   OperatorBvsRegistrationStatus = "registered"
-	Unregistered OperatorBvsRegistrationStatus = "unregistered"
-)
