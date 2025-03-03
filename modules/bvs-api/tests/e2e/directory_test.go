@@ -36,6 +36,7 @@ func (s *DirectoryTestSuite) SetupSuite() {
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
 	container.FundAddressUbbn("bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv", 1e7)
 	container.FundAddressUbbn("bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x", 1e8)
+	container.FundAddressUbbn("bbn1fd9kt5nmzd6jxwecemuad4pyg3hhefd8hxuhnz", 1e8)
 
 	tAddr := container.GenerateAddress("test-address").String()
 	deployer := &bvs.Deployer{BabylonContainer: container}
@@ -78,7 +79,7 @@ func (s *DirectoryTestSuite) TearDownSuite() {
 }
 
 func (s *DirectoryTestSuite) Test_ServiceRegister() {
-	chainIO, err := s.chainIO.SetupKeyring("monitor", "test")
+	chainIO, err := s.chainIO.SetupKeyring("operator3", "test")
 	s.NoError(err)
 	directoryApi := api.NewDirectory(chainIO, s.contrAddr)
 
@@ -104,13 +105,13 @@ func (s *DirectoryTestSuite) Test_RegisterOperatorAndDeregisterOperator() {
 	serviceClient := api.NewDirectory(chainIO, s.contrAddr).WithGasLimit(500000)
 
 	status, _ := serviceClient.QueryStatus(operatorAddr.String(), serviceAddr.String())
-	s.Equal(directory.Inactive, status)
+	s.Equal(directory.StatusResponse(0), *status)
 
 	res, err := serviceClient.ServiceRegister(context.Background(), directory.ServiceMetadata{})
 	s.NoError(err)
 	s.Equal(uint32(0), res.TxResult.Code)
 	status, _ = serviceClient.QueryStatus(operatorAddr.String(), serviceAddr.String())
-	s.Equal(directory.Inactive, status)
+	s.Equal(directory.StatusResponse(0), *status)
 
 	// Register Operator to Service
 	res, err = operatorClient.OperatorRegisterService(context.Background(), serviceAddr.String())
@@ -118,7 +119,7 @@ func (s *DirectoryTestSuite) Test_RegisterOperatorAndDeregisterOperator() {
 	s.Equal(uint32(0), res.TxResult.Code)
 
 	status, _ = serviceClient.QueryStatus(operatorAddr.String(), serviceAddr.String())
-	s.Equal(directory.OperatorRegistered, status)
+	s.Equal(directory.StatusResponse(2), *status)
 
 	// Register Service to Operator
 	res, err = serviceClient.ServiceRegisterOperator(context.Background(), operatorAddr.String())
@@ -126,7 +127,7 @@ func (s *DirectoryTestSuite) Test_RegisterOperatorAndDeregisterOperator() {
 	s.Equal(uint32(0), res.TxResult.Code)
 
 	status, _ = serviceClient.QueryStatus(operatorAddr.String(), serviceAddr.String())
-	s.Equal(directory.Active, status)
+	s.Equal(directory.StatusResponse(1), *status)
 }
 
 func (s *DirectoryTestSuite) Test_UpdateMetadataURI() {
@@ -181,17 +182,13 @@ func (s *DirectoryTestSuite) Test_SetRouting() {
 }
 
 func (s *DirectoryTestSuite) Test_QueryStatus() {
-	t := s.T()
-	keyName := "caller"
-	chainIO, err := s.chainIO.SetupKeyring(keyName, "test")
-	assert.NoError(t, err)
+	chainIO, err := s.chainIO.SetupKeyring("caller", "test")
+	s.Require().NoError(err)
 	directoryApi := api.NewDirectory(chainIO, s.contrAddr)
 
 	status, err := directoryApi.QueryStatus("bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x", "bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x")
-	assert.NoError(t, err, "TestQueryOperator")
-	assert.NotNil(t, status, "response nil")
-
-	s.Equal(directory.Inactive, status)
+	s.NoError(err)
+	s.Equal(directory.StatusResponse(0), *status)
 }
 
 func TestDirectory(t *testing.T) {

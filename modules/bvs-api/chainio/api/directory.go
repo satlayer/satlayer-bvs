@@ -141,7 +141,7 @@ func (r *Directory) SetRouting(ctx context.Context, delegationManager string) (*
 	return r.io.SendTransaction(ctx, executeOptions)
 }
 
-func (r *Directory) QueryStatus(service, operator string) (*directory.StatusResponse, error) {
+func (r *Directory) QueryStatus(operator, service string) (*directory.StatusResponse, error) {
 	queryMsg := directory.QueryMsg{
 		Status: directory.Status{
 			Operator: operator,

@@ -47,6 +47,8 @@ func (r *QueryMsg) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
+type StatusResponse int64
+
 func UnmarshalStatusResponse(data []byte) (StatusResponse, error) {
 	var r StatusResponse
 	err := json.Unmarshal(data, &r)
@@ -116,15 +118,3 @@ type Status struct {
 	Operator string `json:"operator"`
 	Service  string `json:"service"`
 }
-
-// Registered status of the Operator to Service Can be initiated by the Operator or the
-// Service Becomes Active when the Operator and Service both have registered Becomes
-// Inactive when the Operator or Service have unregistered (default state)
-type StatusResponse string
-
-const (
-	Active             StatusResponse = "active"
-	Inactive           StatusResponse = "inactive"
-	OperatorRegistered StatusResponse = "operator_registered"
-	ServiceRegistered  StatusResponse = "service_registered"
-)
