@@ -12,7 +12,7 @@ pub const DISTRIBUTION_ROOTS_COUNT: Item<u64> = Item::new("distribution_roots_co
 /// Stores the total amount claimed for each `(earner, token)` pair
 pub const CUMULATIVE_CLAIMED: Map<(&Addr, &Addr), Uint128> = Map::new("cumulative_claimed");
 
-/// Stores the running count of [`RewardsSubmission`](crate::utils::RewardsSubmission) submitted per `Service`
+/// Stores the running count of [`RewardsSubmission`](crate::merkle::RewardsSubmission) submitted per `Service`
 pub const SUBMISSION_NONCE: Map<&Addr, u64> = Map::new("submission_nonce");
 
 /// Stores the address permissioned to call [`create_rewards_for_all_submission`](crate::contract::create_rewards_for_all_submission)
@@ -28,13 +28,13 @@ pub const IS_BVS_REWARDS_SUBMISSION_HASH: Map<(&Addr, &[u8]), bool> =
 /// Stores the base unit of [`RewardsSubmission::duration`](field@crate::utils::RewardsSubmission::duration) (in seconds)
 pub const CALCULATION_INTERVAL_SECONDS: Item<u64> = Item::new("calculation_interval_seconds");
 
-/// Stores the maximum duration of [`RewardsSubmission`](crate::utils::RewardsSubmission) activation (in base unit)
+/// Stores the maximum duration of [`RewardsSubmission`](crate::merkle::RewardsSubmission) activation (in base unit)
 pub const MAX_REWARDS_DURATION: Item<u64> = Item::new("max_rewards_duration");
 
-/// Stores the maximum retroactive length of [`RewardsSubmission`](crate::utils::RewardsSubmission) activation (in seconds)
+/// Stores the maximum retroactive length of [`RewardsSubmission`](crate::merkle::RewardsSubmission) activation (in seconds)
 pub const MAX_RETROACTIVE_LENGTH: Item<u64> = Item::new("max_retroactive_length");
 
-/// Stores the maximum future length of [`RewardsSubmission`](crate::utils::RewardsSubmission) activation (in seconds)
+/// Stores the maximum future length of [`RewardsSubmission`](crate::merkle::RewardsSubmission) activation (in seconds)
 pub const MAX_FUTURE_LENGTH: Item<u64> = Item::new("max_future_length");
 
 // Stores the timestamp of the genesis rewards (in seconds)

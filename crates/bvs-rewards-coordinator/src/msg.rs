@@ -1,10 +1,10 @@
+use crate::merkle::{ExecuteRewardsMerkleClaim, RewardsSubmission};
 use crate::query::{
     CalculateEarnerLeafHashResponse, CalculateTokenLeafHashResponse, CheckClaimResponse,
     GetCurrentClaimableDistributionRootResponse, GetCurrentDistributionRootResponse,
     GetDistributionRootAtIndexResponse, GetDistributionRootsLengthResponse,
     GetRootIndexFromHashResponse, MerkleizeLeavesResponse, OperatorCommissionBipsResponse,
 };
-use crate::utils::{ExecuteRewardsMerkleClaim, RewardsSubmission};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Uint128};
 

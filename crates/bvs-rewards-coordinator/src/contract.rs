@@ -4,6 +4,11 @@ use cosmwasm_std::entry_point;
 use crate::{
     auth,
     error::ContractError,
+    merkle::{
+        calculate_earner_leaf_hash, calculate_rewards_submission_hash, calculate_token_leaf_hash,
+        merkleize_sha256, verify_inclusion_sha256, EarnerTreeMerkleLeaf, RewardsMerkleClaim,
+        RewardsSubmission, TokenTreeMerkleLeaf,
+    },
     msg::{DistributionRoot, ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
         CalculateEarnerLeafHashResponse, CalculateTokenLeafHashResponse, CheckClaimResponse,
@@ -17,11 +22,6 @@ use crate::{
         GENESIS_REWARDS_TIMESTAMP, GLOBAL_OPERATOR_COMMISSION_BIPS, IS_BVS_REWARDS_SUBMISSION_HASH,
         MAX_FUTURE_LENGTH, MAX_RETROACTIVE_LENGTH, MAX_REWARDS_DURATION, REWARDS_FOR_ALL_SUBMITTER,
         SUBMISSION_NONCE,
-    },
-    utils::{
-        calculate_earner_leaf_hash, calculate_rewards_submission_hash, calculate_token_leaf_hash,
-        merkleize_sha256, verify_inclusion_sha256, EarnerTreeMerkleLeaf, RewardsMerkleClaim,
-        RewardsSubmission, TokenTreeMerkleLeaf,
     },
 };
 use bvs_library::ownership;
@@ -992,10 +992,10 @@ fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdR
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::msg::DistributionRoot;
-    use crate::utils::{
+    use crate::merkle::{
         sha256, ExecuteEarnerTreeMerkleLeaf, ExecuteRewardsMerkleClaim, StrategyAndMultiplier,
     };
+    use crate::msg::DistributionRoot;
     use base64::{engine::general_purpose, Engine as _};
     use bvs_library::ownership::OwnershipError;
     use cosmwasm_std::testing::{
