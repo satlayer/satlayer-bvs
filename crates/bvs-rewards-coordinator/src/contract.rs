@@ -93,28 +93,9 @@ pub fn execute(
             rewards_submissions,
         } => create_rewards_for_all_submission(deps, env, info, rewards_submissions),
         ExecuteMsg::ProcessClaim { claim, recipient } => {
-            let earner = deps.api.addr_validate(&claim.earner_leaf.earner)?;
+            claim.validate(deps.api)?;
             let recipient = deps.api.addr_validate(&recipient)?;
-
-            let earner_token_root_binary =
-                Binary::from_base64(&claim.earner_leaf.earner_token_root)?;
-
-            let earner_tree_merkle_leaf = EarnerTreeMerkleLeaf {
-                earner,
-                earner_token_root: earner_token_root_binary,
-            };
-
-            let params = RewardsMerkleClaim {
-                root_index: claim.root_index,
-                earner_index: claim.earner_index,
-                earner_tree_proof: claim.earner_tree_proof,
-                earner_leaf: earner_tree_merkle_leaf,
-                token_indices: claim.token_indices,
-                token_tree_proofs: claim.token_tree_proofs,
-                token_leaves: claim.token_leaves,
-            };
-
-            process_claim(deps, env, info, params, recipient)
+            process_claim(deps, env, info, claim, recipient)
         }
         ExecuteMsg::SubmitRoot {
             root,
@@ -291,7 +272,7 @@ pub fn process_claim(
     check_claim_internal(env.clone(), &claim, &root)?;
 
     let earner = claim.earner_leaf.earner.clone();
-    let mut claimer = CLAIMER_FOR
+    let claimer = CLAIMER_FOR
         .may_load(deps.storage, &earner)?
         .unwrap_or_else(|| earner.clone());
 
@@ -593,27 +574,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
 
         QueryMsg::CheckClaim { claim } => {
-            let earner = deps.api.addr_validate(&claim.earner_leaf.earner)?;
-
-            let earner_token_root_binary =
-                Binary::from_base64(&claim.earner_leaf.earner_token_root)?;
-
-            let earner_tree_merkle_leaf = EarnerTreeMerkleLeaf {
-                earner,
-                earner_token_root: earner_token_root_binary,
-            };
-
-            let params = RewardsMerkleClaim {
-                root_index: claim.root_index,
-                earner_index: claim.earner_index,
-                earner_tree_proof: claim.earner_tree_proof,
-                earner_leaf: earner_tree_merkle_leaf,
-                token_indices: claim.token_indices,
-                token_tree_proofs: claim.token_tree_proofs,
-                token_leaves: claim.token_leaves,
-            };
-
-            to_json_binary(&query_check_claim(deps, env, params)?)
+            claim.validate(deps.api)?;
+            to_json_binary(&query_check_claim(deps, env, claim)?)
         }
     }
 }
@@ -987,11 +949,8 @@ fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdR
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::merkle::{
-        sha256, ExecuteEarnerTreeMerkleLeaf, ExecuteRewardsMerkleClaim, StrategyAndMultiplier,
-    };
+    use crate::merkle::{sha256, StrategyAndMultiplier};
     use crate::msg::DistributionRoot;
-    use base64::{engine::general_purpose, Engine as _};
     use bvs_library::ownership::OwnershipError;
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_dependencies_with_balances, mock_env, MockApi,
@@ -2869,12 +2828,12 @@ mod tests {
 
         let recipient = deps.api.addr_make("recipient");
 
-        let earner_leaf = ExecuteEarnerTreeMerkleLeaf {
-            earner: deps.api.addr_make("earner").to_string(),
-            earner_token_root: general_purpose::STANDARD.encode(token_root),
+        let earner_leaf = EarnerTreeMerkleLeaf {
+            earner: deps.api.addr_make("earner"),
+            earner_token_root: Binary::from(token_root.clone()),
         };
 
-        let _execute_claim = ExecuteRewardsMerkleClaim {
+        let _execute_claim = RewardsMerkleClaim {
             root_index: 0,
             earner_index: 0,
             earner_tree_proof: vec![],

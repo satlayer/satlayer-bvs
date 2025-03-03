@@ -1,4 +1,4 @@
-use crate::merkle::{ExecuteRewardsMerkleClaim, RewardsSubmission};
+use crate::merkle::{RewardsMerkleClaim, RewardsSubmission};
 use crate::query::{
     CalculateEarnerLeafHashResponse, CalculateTokenLeafHashResponse, CheckClaimResponse,
     GetCurrentClaimableDistributionRootResponse, GetCurrentDistributionRootResponse,
@@ -30,7 +30,7 @@ pub enum ExecuteMsg {
         rewards_submissions: Vec<RewardsSubmission>,
     },
     ProcessClaim {
-        claim: ExecuteRewardsMerkleClaim,
+        claim: RewardsMerkleClaim,
         recipient: String,
     },
     SubmitRoot {
@@ -103,7 +103,7 @@ pub enum QueryMsg {
     MerkleizeLeaves { leaves: Vec<String> },
 
     #[returns(CheckClaimResponse)]
-    CheckClaim { claim: ExecuteRewardsMerkleClaim },
+    CheckClaim { claim: RewardsMerkleClaim },
 }
 
 #[cw_serde]
