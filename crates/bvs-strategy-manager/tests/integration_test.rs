@@ -406,6 +406,7 @@ fn test_deposit_withdraw() {
             owner.clone(),
             addr.clone(),
             &bvs_delegation_manager::msg::ExecuteMsg::SetRouting {
+                slash_manager: slash_manager.to_string(),
                 strategy_manager: manager.addr().to_string(),
             },
             &[],
