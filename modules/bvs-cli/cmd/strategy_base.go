@@ -31,19 +31,15 @@ func strategyBaseCmd() *cobra.Command {
 		Short: "To withdraw.",
 		Args:  cobra.ExactArgs(3),
 		Run: func(cmd *cobra.Command, args []string) {
-			amount, err := strconv.ParseUint(args[2], 10, 64)
-			if err != nil {
-				panic(fmt.Sprintf("amount must be an integer. Error: %s\n", err))
-			}
-			strategybase.Withdraw(args[0], args[1], amount)
+			strategybase.Withdraw(args[0], args[1], args[2])
 		},
 	}
 	getSharesCmd := &cobra.Command{
-		Use:   "get-shares <stakerAddress> <strategyAddress>",
+		Use:   "get-shares <stakerAddress>",
 		Short: "To get shares.",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			strategybase.GetShares(args[0], args[1])
+			strategybase.GetShares(args[0])
 		},
 	}
 	sharesUnderlyingviewCmd := &cobra.Command{

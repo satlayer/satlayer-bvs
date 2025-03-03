@@ -222,7 +222,6 @@ type WithdrawSharesAsTokens struct {
 	Recipient string `json:"recipient"`
 	Shares    string `json:"shares"`
 	Strategy  string `json:"strategy"`
-	Token     string `json:"token"`
 }
 
 type QueryMsg struct {

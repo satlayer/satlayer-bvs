@@ -89,11 +89,11 @@ func (r *StrategyBase) Deposit(ctx context.Context, amount uint64) (*coretypes.R
 	return r.execute(ctx, msg)
 }
 
-func (r *StrategyBase) Withdraw(ctx context.Context, recipient string, amountShares uint64) (*coretypes.ResultTx, error) {
+func (r *StrategyBase) Withdraw(ctx context.Context, recipient string, shares string) (*coretypes.ResultTx, error) {
 	msg := strategybase.ExecuteMsg{
 		Withdraw: &strategybase.Withdraw{
-			Recipient:    recipient,
-			AmountShares: fmt.Sprintf("%d", amountShares),
+			Recipient: recipient,
+			Shares:    shares,
 		},
 	}
 
@@ -111,11 +111,10 @@ func (r *StrategyBase) sendQuery(msg any) (*wasmtypes.QuerySmartContractStateRes
 	return r.io.QueryContract(*r.queryOptions)
 }
 
-func (r *StrategyBase) GetShares(staker string, strategy string) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyBase) GetShares(staker string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategybase.QueryMsg{
 		GetShares: &strategybase.GetShares{
-			Staker:   staker,
-			Strategy: strategy,
+			Staker: staker,
 		},
 	}
 

@@ -980,7 +980,6 @@ fn complete_queued_withdrawal_internal(
                     recipient: info.sender.to_string(),
                     strategy: strategy.to_string(),
                     shares: withdrawal.shares[i],
-                    token: tokens[i].to_string(),
                 })?,
                 funds: vec![],
             };

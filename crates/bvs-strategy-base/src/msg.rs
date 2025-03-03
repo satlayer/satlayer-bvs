@@ -23,8 +23,7 @@ pub enum ExecuteMsg {
     },
     Withdraw {
         recipient: String,
-        token: String,
-        amount_shares: Uint128,
+        shares: Uint128,
     },
     TransferOwnership {
         /// See `ownership::transfer_ownership` for more information on this field
@@ -36,7 +35,7 @@ pub enum ExecuteMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(SharesResponse)]
-    GetShares { staker: String, strategy: String },
+    GetShares { staker: String },
 
     #[returns(SharesToUnderlyingResponse)]
     SharesToUnderlyingView { amount_shares: Uint128 },

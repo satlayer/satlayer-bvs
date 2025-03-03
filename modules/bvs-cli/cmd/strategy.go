@@ -76,15 +76,11 @@ func strategyCmd() *cobra.Command {
 		},
 	}
 	withdrawSharesAsTokensCmd := &cobra.Command{
-		Use:   "withdraw-shares-as-tokens <userKeyName> <recipient> <strategy> <shares> <token>",
+		Use:   "withdraw-shares-as-tokens <userKeyName> <recipient> <strategy> <shares>",
 		Short: "To withdraw the shares as tokens.",
 		Args:  cobra.ExactArgs(4),
 		Run: func(cmd *cobra.Command, args []string) {
-			amount, err := strconv.ParseUint(args[3], 10, 64)
-			if err != nil {
-				fmt.Printf("Error: %v\n", err)
-			}
-			strategy.WithdrawSharesAsTokens(args[0], args[1], args[2], args[4], amount)
+			strategy.WithdrawSharesAsTokens(args[0], args[1], args[2], args[3])
 		},
 	}
 	addSharesCmd := &cobra.Command{

@@ -184,9 +184,8 @@ type TransferOwnership struct {
 }
 
 type Withdraw struct {
-	AmountShares string `json:"amount_shares"`
-	Recipient    string `json:"recipient"`
-	Token        string `json:"token"`
+	Recipient string `json:"recipient"`
+	Shares    string `json:"shares"`
 }
 
 type QueryMsg struct {
@@ -202,8 +201,7 @@ type QueryMsg struct {
 }
 
 type GetShares struct {
-	Staker   string `json:"staker"`
-	Strategy string `json:"strategy"`
+	Staker string `json:"staker"`
 }
 
 type GetStrategyManager struct {

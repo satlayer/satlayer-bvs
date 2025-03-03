@@ -2,9 +2,9 @@ package strategybase
 
 import "fmt"
 
-func GetShares(staker string, strategy string) {
+func GetShares(staker string) {
 	s := NewService()
-	resp, err := s.StrategyBase.GetShares(staker, strategy)
+	resp, err := s.StrategyBase.GetShares(staker)
 	if err != nil {
 		panic(err)
 	}
