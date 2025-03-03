@@ -152,8 +152,6 @@ pub fn withdraw(
 
     let mut state = STRATEGY_STATE.load(deps.storage)?;
 
-    before_withdrawal(&state, &token)?;
-
     if amount_shares > state.total_shares {
         return Err(ContractError::InsufficientShares {});
     }
@@ -374,13 +372,6 @@ pub fn query_underlying_to_shares(
 ) -> StdResult<UnderlyingToSharesResponse> {
     let share_to_send = underlying_to_shares(deps, env, amount_underlying)?;
     Ok(UnderlyingToSharesResponse { share_to_send })
-}
-
-fn before_withdrawal(state: &StrategyState, token: &Addr) -> Result<(), ContractError> {
-    if token != state.underlying_token {
-        return Err(ContractError::InvalidToken {});
-    }
-    Ok(())
 }
 
 fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdResult<Uint128> {
@@ -670,23 +661,6 @@ mod tests {
                 panic!("Withdraw test failed");
             }
         }
-    }
-
-    #[test]
-    fn test_before_withdrawal() {
-        let (_deps, _env, _info, token, _) = instantiate_contract();
-
-        let state = StrategyState {
-            underlying_token: Addr::unchecked(token.clone()),
-            total_shares: Uint128::zero(),
-        };
-
-        let result = before_withdrawal(&state, &Addr::unchecked(token));
-        assert!(result.is_ok());
-
-        let wrong_token = Addr::unchecked("wrong_token");
-        let result_wrong = before_withdrawal(&state, &wrong_token);
-        assert!(result_wrong.is_err());
     }
 
     #[test]
