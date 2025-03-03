@@ -22,8 +22,8 @@ pub const REWARDS_FOR_ALL_SUBMITTER: Map<&Addr, bool> = Map::new("rewards_for_al
 pub const ACTIVATION_DELAY: Item<u32> = Item::new("activation_delay");
 
 /// Stores `(Service, RewardsSubmissionHash)` pairs that have been submitted
-pub const IS_BVS_REWARDS_SUBMISSION_HASH: Map<(&Addr, &[u8]), bool> =
-    Map::new("bvs_rewards_submission_hash");
+pub const IS_REWARDS_SUBMISSION_HASH: Map<(&Addr, &[u8]), bool> =
+    Map::new("rewards_submission_hash");
 
 /// Stores the base unit of [`RewardsSubmission::duration`](field@crate::utils::RewardsSubmission::duration) (in seconds)
 pub const CALCULATION_INTERVAL_SECONDS: Item<u64> = Item::new("calculation_interval_seconds");

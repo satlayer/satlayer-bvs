@@ -23,7 +23,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 #[derive(bvs_registry::api::Display)]
 pub enum ExecuteMsg {
-    CreateBvsRewardsSubmission {
+    CreateRewardsSubmission {
         rewards_submissions: Vec<RewardsSubmission>,
     },
     CreateRewardsForAllSubmission {
@@ -82,7 +82,7 @@ pub enum QueryMsg {
     },
 
     #[returns(OperatorCommissionBipsResponse)]
-    OperatorCommissionBips { operator: String, bvs: String },
+    OperatorCommissionBips { operator: String, service: String },
 
     #[returns(GetDistributionRootsLengthResponse)]
     GetDistributionRootsLength {},

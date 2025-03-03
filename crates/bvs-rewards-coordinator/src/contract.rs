@@ -19,7 +19,7 @@ use crate::{
     state::{
         ACTIVATION_DELAY, CALCULATION_INTERVAL_SECONDS, CLAIMER_FOR, CUMULATIVE_CLAIMED,
         CURR_REWARDS_CALCULATION_END_TIMESTAMP, DISTRIBUTION_ROOTS, DISTRIBUTION_ROOTS_COUNT,
-        GENESIS_REWARDS_TIMESTAMP, GLOBAL_OPERATOR_COMMISSION_BIPS, IS_BVS_REWARDS_SUBMISSION_HASH,
+        GENESIS_REWARDS_TIMESTAMP, GLOBAL_OPERATOR_COMMISSION_BIPS, IS_REWARDS_SUBMISSION_HASH,
         MAX_FUTURE_LENGTH, MAX_RETROACTIVE_LENGTH, MAX_REWARDS_DURATION, REWARDS_FOR_ALL_SUBMITTER,
         SUBMISSION_NONCE,
     },
@@ -86,9 +86,9 @@ pub fn execute(
     bvs_registry::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
 
     match msg {
-        ExecuteMsg::CreateBvsRewardsSubmission {
+        ExecuteMsg::CreateRewardsSubmission {
             rewards_submissions,
-        } => create_bvs_rewards_submission(deps, env, info, rewards_submissions),
+        } => create_rewards_submission(deps, env, info, rewards_submissions),
         ExecuteMsg::CreateRewardsForAllSubmission {
             rewards_submissions,
         } => create_rewards_for_all_submission(deps, env, info, rewards_submissions),
@@ -145,7 +145,7 @@ pub fn execute(
 /// Creates a list of [`RewardsSubmission`] to be split amongst the stakers who are delegated to the eligible operators.
 ///
 /// For each [`RewardsSubmission`], this fn will execute [`Cw20ExecuteMsg::TransferFrom`] to transfer the tokens from the sender to the contract address.
-pub fn create_bvs_rewards_submission(
+pub fn create_rewards_submission(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -163,7 +163,7 @@ pub fn create_bvs_rewards_submission(
 
         validate_rewards_submission(&deps.as_ref(), &submission, &env)?;
 
-        IS_BVS_REWARDS_SUBMISSION_HASH.save(
+        IS_REWARDS_SUBMISSION_HASH.save(
             deps.storage,
             (&info.sender, &rewards_submission_hash),
             &true,
@@ -199,7 +199,7 @@ pub fn create_bvs_rewards_submission(
     Ok(response)
 }
 
-/// Similar to [`create_bvs_rewards_submission`], except ALL stakers are eligible for the rewards instead of those registered to a specific BVS,
+/// Similar to [`create_rewards_submission`], except ALL stakers are eligible for the rewards instead of those registered to a specific BVS,
 /// and it can only be called by [`REWARDS_FOR_ALL_SUBMITTER`] submitter
 pub fn create_rewards_for_all_submission(
     deps: DepsMut,
@@ -220,7 +220,7 @@ pub fn create_rewards_for_all_submission(
 
         validate_rewards_submission(&deps.as_ref(), &submission, &env)?;
 
-        IS_BVS_REWARDS_SUBMISSION_HASH.save(
+        IS_REWARDS_SUBMISSION_HASH.save(
             deps.storage,
             (&info.sender, &rewards_submission_hash),
             &true,
@@ -540,8 +540,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             cumulative_earnings,
         )?),
 
-        QueryMsg::OperatorCommissionBips { operator, bvs } => {
-            to_json_binary(&query_operator_commission_bips(deps, operator, bvs)?)
+        QueryMsg::OperatorCommissionBips { operator, service } => {
+            to_json_binary(&query_operator_commission_bips(deps, operator, service)?)
         }
 
         QueryMsg::GetDistributionRootsLength {} => {
@@ -620,7 +620,7 @@ fn query_calculate_token_leaf_hash(
 fn query_operator_commission_bips(
     deps: Deps,
     _operator: String,
-    _bvs: String,
+    _service: String,
 ) -> StdResult<OperatorCommissionBipsResponse> {
     let commission_bips = GLOBAL_OPERATOR_COMMISSION_BIPS.load(deps.storage)?;
 
@@ -1287,12 +1287,8 @@ mod tests {
             }),
         });
 
-        let result = create_bvs_rewards_submission(
-            deps.as_mut(),
-            env.clone(),
-            owner_info.clone(),
-            submission,
-        );
+        let result =
+            create_rewards_submission(deps.as_mut(), env.clone(), owner_info.clone(), submission);
 
         assert!(result.is_ok());
         let response = result.unwrap();
