@@ -39,7 +39,7 @@ serde = { version = "1.0.197", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.58" }
 cw-multi-test = "=2.0.0"
 
-# CosmWasm utils
+# CosmWasm Utilties
 sha2 = { version = "0.10.8", default-features = false }
 hex = "0.4"
 secp256k1 = "0.29.0"
@@ -63,4 +63,3 @@ bvs-strategy-manager = { path = "./bvs-strategy-manager", default-features = fal
 
 # common cosmwasm crates
 bvs-base = { path = "./common/bvs/base" }
-bvs-testing = { path = "./common/bvs/testing" }
