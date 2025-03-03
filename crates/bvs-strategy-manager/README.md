@@ -70,6 +70,18 @@ This function allows users to deposit tokens into a strategy's address and in tu
 
 After a successful deposit, the user receives strategy shares. A corresponding event is emitted.
 
+```mermaid
+sequenceDiagram
+    Staker ->>+StrategyManager: Exec::Deposit()
+    StrategyManager->>+StrategyContract: get token balance by Query::StrategyState()
+    StrategyContract-->>-StrategyManager: responds
+    StrategyManager->>+StrategyContract: Exec::Deposit() - Mint new shares particular token according to the staked amount
+    StrategyContract -->>- StrategyManager: ExecuteMsg Successful
+    StrategyManager->>+DelegationManager: Exec::IncreaseDelegatedShares()
+    DelegationManager -->>- StrategyManager: ExecuteMsg successful
+    StrategyManager -->+ StrategyManager: Exec::Cw20Transfer staker->StrategyContract balance
+```
+
 ### WithdrawSharesAsTokens
 
 Users can withdraw their strategy shares as tokens using this function. The withdrawal is processed by interacting with the strategy contract.
