@@ -131,6 +131,79 @@ mod execute {
         event
     }
 
+    pub fn service_register_operator(
+        deps: DepsMut,
+        info: MessageInfo,
+        operator: Addr,
+    ) -> Result<Response, ContractError> {
+        state::require_service_registered(deps.storage, &info.sender)?;
+
+        let key = (&operator, &info.sender);
+        let status = REGISTRATION_STATUS
+            .may_load(deps.storage, key)?
+            .unwrap_or(RegisteredStatus::Inactive);
+        match status {
+            RegisteredStatus::Active => Err(ContractError::InvalidRegistrationStatus {
+                msg: "Registration is already active.".to_string(),
+            }),
+            RegisteredStatus::ServiceRegistered => Err(ContractError::InvalidRegistrationStatus {
+                msg: "Service has already registered.".to_string(),
+            }),
+            RegisteredStatus::Inactive => {
+                REGISTRATION_STATUS.save(
+                    deps.storage,
+                    key,
+                    &RegisteredStatus::ServiceRegistered,
+                )?;
+                Ok(Response::new().add_event(
+                    Event::new("RegistrationStatusUpdated")
+                        .add_attribute("method", "service_register_operator")
+                        .add_attribute("operator", operator)
+                        .add_attribute("service", info.sender)
+                        .add_attribute("status", "ServiceRegistered"),
+                ))
+            }
+            RegisteredStatus::OperatorRegistered => {
+                REGISTRATION_STATUS.save(deps.storage, key, &RegisteredStatus::Active)?;
+                Ok(Response::new().add_event(
+                    Event::new("RegistrationStatusUpdated")
+                        .add_attribute("method", "service_register_operator")
+                        .add_attribute("operator", operator)
+                        .add_attribute("service", info.sender)
+                        .add_attribute("status", "Active"),
+                ))
+            }
+        }
+    }
+
+    pub fn service_deregister_operator(
+        deps: DepsMut,
+        info: MessageInfo,
+        operator: Addr,
+    ) -> Result<Response, ContractError> {
+        state::require_service_registered(deps.storage, &info.sender)?;
+
+        let key = (&operator, &info.sender);
+        let status = REGISTRATION_STATUS
+            .may_load(deps.storage, key)?
+            .unwrap_or(RegisteredStatus::Inactive);
+
+        if status == RegisteredStatus::Inactive {
+            Err(ContractError::InvalidRegistrationStatus {
+                msg: "Already deregistered.".to_string(),
+            })
+        } else {
+            REGISTRATION_STATUS.save(deps.storage, key, &RegisteredStatus::Inactive)?;
+            Ok(Response::new().add_event(
+                Event::new("RegistrationStatusUpdated")
+                    .add_attribute("method", "service_deregister_operator")
+                    .add_attribute("operator", operator)
+                    .add_attribute("service", info.sender)
+                    .add_attribute("status", "Inactive"),
+            ))
+        }
+    }
+
     pub fn operator_register_service(
         deps: DepsMut,
         info: MessageInfo,
@@ -214,79 +287,6 @@ mod execute {
                     .add_attribute("method", "operator_deregister_service")
                     .add_attribute("operator", info.sender)
                     .add_attribute("service", service)
-                    .add_attribute("status", "Inactive"),
-            ))
-        }
-    }
-
-    pub fn service_register_operator(
-        deps: DepsMut,
-        info: MessageInfo,
-        operator: Addr,
-    ) -> Result<Response, ContractError> {
-        state::require_service_registered(deps.storage, &info.sender)?;
-
-        let key = (&operator, &info.sender);
-        let status = REGISTRATION_STATUS
-            .may_load(deps.storage, key)?
-            .unwrap_or(RegisteredStatus::Inactive);
-        match status {
-            RegisteredStatus::Active => Err(ContractError::InvalidRegistrationStatus {
-                msg: "Registration is already active.".to_string(),
-            }),
-            RegisteredStatus::ServiceRegistered => Err(ContractError::InvalidRegistrationStatus {
-                msg: "Service has already registered.".to_string(),
-            }),
-            RegisteredStatus::Inactive => {
-                REGISTRATION_STATUS.save(
-                    deps.storage,
-                    key,
-                    &RegisteredStatus::ServiceRegistered,
-                )?;
-                Ok(Response::new().add_event(
-                    Event::new("RegistrationStatusUpdated")
-                        .add_attribute("method", "service_register_operator")
-                        .add_attribute("operator", operator)
-                        .add_attribute("service", info.sender)
-                        .add_attribute("status", "ServiceRegistered"),
-                ))
-            }
-            RegisteredStatus::OperatorRegistered => {
-                REGISTRATION_STATUS.save(deps.storage, key, &RegisteredStatus::Active)?;
-                Ok(Response::new().add_event(
-                    Event::new("RegistrationStatusUpdated")
-                        .add_attribute("method", "service_register_operator")
-                        .add_attribute("operator", operator)
-                        .add_attribute("service", info.sender)
-                        .add_attribute("status", "Active"),
-                ))
-            }
-        }
-    }
-
-    pub fn service_deregister_operator(
-        deps: DepsMut,
-        info: MessageInfo,
-        operator: Addr,
-    ) -> Result<Response, ContractError> {
-        state::require_service_registered(deps.storage, &info.sender)?;
-
-        let key = (&operator, &info.sender);
-        let status = REGISTRATION_STATUS
-            .may_load(deps.storage, key)?
-            .unwrap_or(RegisteredStatus::Inactive);
-
-        if status == RegisteredStatus::Inactive {
-            Err(ContractError::InvalidRegistrationStatus {
-                msg: "Already deregistered.".to_string(),
-            })
-        } else {
-            REGISTRATION_STATUS.save(deps.storage, key, &RegisteredStatus::Inactive)?;
-            Ok(Response::new().add_event(
-                Event::new("RegistrationStatusUpdated")
-                    .add_attribute("method", "service_deregister_operator")
-                    .add_attribute("operator", operator)
-                    .add_attribute("service", info.sender)
                     .add_attribute("status", "Inactive"),
             ))
         }

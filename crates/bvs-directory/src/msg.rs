@@ -14,14 +14,14 @@ pub enum ExecuteMsg {
         metadata: ServiceMetadata,
     },
     ServiceUpdateMetadata(ServiceMetadata),
-    OperatorRegisterService {
-        service: String,
+    ServiceRegisterOperator {
+        operator: String,
     },
     OperatorDeregisterService {
         service: String,
     },
-    ServiceRegisterOperator {
-        operator: String,
+    OperatorRegisterService {
+        service: String,
     },
     ServiceDeregisterOperator {
         operator: String,

@@ -12,10 +12,10 @@ type Operator = Addr;
 /// Becomes Inactive when the Operator or Service have unregistered (default state)
 #[cw_serde]
 pub enum RegisteredStatus {
-    Active,
-    Inactive,
-    OperatorRegistered,
-    ServiceRegistered,
+    Inactive = 0,
+    Active = 1,
+    OperatorRegistered = 2,
+    ServiceRegistered = 3,
 }
 
 /// Default state is Inactive,
