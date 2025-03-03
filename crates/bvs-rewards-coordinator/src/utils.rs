@@ -62,6 +62,7 @@ pub struct EarnerTreeMerkleLeaf {
     pub earner_token_root: Binary,
 }
 
+/// Calculates the hash of an earner leaf
 pub fn calculate_earner_leaf_hash(leaf: &EarnerTreeMerkleLeaf) -> Vec<u8> {
     let mut hasher = Sha256::new();
     hasher.update([EARNER_LEAF_SALT]);
@@ -70,6 +71,7 @@ pub fn calculate_earner_leaf_hash(leaf: &EarnerTreeMerkleLeaf) -> Vec<u8> {
     hasher.finalize().to_vec()
 }
 
+/// Calculates the hash of a token leaf
 pub fn calculate_token_leaf_hash(leaf: &TokenTreeMerkleLeaf) -> Vec<u8> {
     let mut hasher = Sha256::new();
     hasher.update([TOKEN_LEAF_SALT]);
@@ -99,10 +101,13 @@ pub fn merkleize_sha256(mut leaves: Vec<Vec<u8>>) -> Vec<u8> {
     leaves[0].clone()
 }
 
+/// verify_inclusion_sha256 verifies that a `leaf` is included in a Merkle tree given the `proof` and `root`
+/// if the `leaf` is included in the tree, the generated root will match the `root`
 pub fn verify_inclusion_sha256(proof: &[u8], root: &[u8], leaf: &[u8], index: u64) -> bool {
     process_inclusion_proof_sha256(proof, leaf, index) == root
 }
 
+/// process_inclusion_proof_sha256 will regenerate the merkle root from the `leaf` and `proof`
 fn process_inclusion_proof_sha256(proof: &[u8], leaf: &[u8], index: u64) -> Vec<u8> {
     if proof.len() % 32 != 0 {
         panic!("Proof length should be a multiple of 32");

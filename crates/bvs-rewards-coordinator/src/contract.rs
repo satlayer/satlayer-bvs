@@ -161,6 +161,9 @@ pub fn execute(
     }
 }
 
+/// Creates a list of [`RewardsSubmission`] to be split amongst the stakers who are delegated to the eligible operators.
+///
+/// For each [`RewardsSubmission`], this fn will execute [`Cw20ExecuteMsg::TransferFrom`] to transfer the tokens from the sender to the contract address.
 pub fn create_bvs_rewards_submission(
     deps: DepsMut,
     env: Env,
@@ -215,6 +218,8 @@ pub fn create_bvs_rewards_submission(
     Ok(response)
 }
 
+/// Similar to [`create_bvs_rewards_submission`], except ALL stakers are eligible for the rewards instead of those registered to a specific BVS,
+/// and it can only be called by [`REWARDS_FOR_ALL_SUBMITTER`] submitter
 pub fn create_rewards_for_all_submission(
     deps: DepsMut,
     env: Env,
@@ -270,6 +275,8 @@ pub fn create_rewards_for_all_submission(
     Ok(response)
 }
 
+/// Submitted by the claimer along with merkle root, merkle leaf and merkle proof.
+/// It verifies the claim and claimer then transfers the claimed amount to the recipient.
 pub fn process_claim(
     deps: DepsMut,
     env: Env,
@@ -288,6 +295,7 @@ pub fn process_claim(
         .may_load(deps.storage, &earner)?
         .unwrap_or_else(|| earner.clone());
 
+    // TODO: Remove? this is unnecessary bloat from EVM where empty value is always eq to 0 address
     if claimer == Addr::unchecked("") {
         claimer = earner.clone();
     }
@@ -305,24 +313,28 @@ pub fn process_claim(
             .may_load(deps.storage, (&earner, token))?
             .unwrap_or_default();
 
+        // ensure that cumulative earnings is greater than the current cumulative claimed
         if token_leaf.cumulative_earnings <= curr_cumulative_claimed {
             return Err(ContractError::CumulativeEarningsTooLow {});
         }
 
+        // calculate the claim amount
         let claim_amount = token_leaf.cumulative_earnings - curr_cumulative_claimed;
 
+        // ensure that claim amount is lesser than token balance in the contract
         let balance = token_balance(&deps.querier, token, &env.contract.address)?;
-
         if claim_amount > balance {
             return Err(ContractError::InsufficientBalance {});
         }
 
+        // update the cumulative claimed amount
         CUMULATIVE_CLAIMED.save(
             deps.storage,
             (&earner, token),
             &token_leaf.cumulative_earnings,
         )?;
 
+        // transfer the claim amount to the recipient
         let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: token.clone().into(),
             msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
@@ -348,6 +360,9 @@ pub fn process_claim(
     Ok(response)
 }
 
+/// Creates a new distribution root containing the accumulated rewards for each earner and token.
+///
+/// Only callable by the [`auth::REWARDS_UPDATER`]
 pub fn submit_root(
     deps: DepsMut,
     env: Env,
@@ -406,6 +421,9 @@ pub fn submit_root(
     Ok(Response::new().add_event(event))
 }
 
+/// Disables a pending distribution root in case of an error.
+///
+/// Only callable by the [`auth::REWARDS_UPDATER`]
 pub fn disable_root(
     deps: DepsMut,
     env: Env,
@@ -439,6 +457,9 @@ pub fn disable_root(
     Ok(Response::new().add_event(event))
 }
 
+/// Sets the address that can call [`process_claim`] on behalf of an earner (sender).
+///
+/// This fn assumes that the sender is the earner
 pub fn set_claimer_for(
     deps: DepsMut,
     info: MessageInfo,
@@ -451,14 +472,15 @@ pub fn set_claimer_for(
 
     CLAIMER_FOR.save(deps.storage, &earner, &claimer)?;
 
-    let event = Event::new("ClaimerForSet")
-        .add_attribute("earner", earner)
-        .add_attribute("previous_claimer", prev_claimer)
-        .add_attribute("new_claimer", claimer);
+    let event = Event::new("SetClaimerFor")
+        .add_attribute("earner", earner.to_string())
+        .add_attribute("previous_claimer", prev_claimer.to_string())
+        .add_attribute("new_claimer", claimer.to_string());
 
     Ok(Response::new().add_event(event))
 }
 
+/// Checks if a claim is valid and will pass [`process_claim`]
 pub fn check_claim(env: Env, deps: Deps, claim: RewardsMerkleClaim) -> Result<bool, ContractError> {
     let root = DISTRIBUTION_ROOTS
         .may_load(deps.storage, claim.root_index.into())?
@@ -469,6 +491,9 @@ pub fn check_claim(env: Env, deps: Deps, claim: RewardsMerkleClaim) -> Result<bo
     Ok(true)
 }
 
+/// Sets the delay before a new distribution root is activated.
+///
+/// Only callable by the [`ownership::OWNER`]
 pub fn set_activation_delay(
     deps: DepsMut,
     info: MessageInfo,
@@ -480,6 +505,9 @@ pub fn set_activation_delay(
     Ok(res)
 }
 
+/// Sets the address that can call [`create_rewards_for_all_submission`]
+///
+/// Only callable by the [`ownership::OWNER`]
 pub fn set_rewards_for_all_submitter(
     deps: DepsMut,
     info: MessageInfo,
@@ -493,13 +521,17 @@ pub fn set_rewards_for_all_submitter(
         .unwrap_or(false);
     REWARDS_FOR_ALL_SUBMITTER.save(deps.storage, &submitter, &new_value)?;
 
-    Ok(Response::new()
-        .add_attribute("method", "set_rewards_for_all_submitter")
-        .add_attribute("submitter", submitter)
+    let event = Event::new("SetRewardsForAllSubmitter")
+        .add_attribute("submitter", submitter.to_string())
         .add_attribute("previous_value", prev_value.to_string())
-        .add_attribute("new_value", new_value.to_string()))
+        .add_attribute("new_value", new_value.to_string());
+
+    Ok(Response::new().add_event(event))
 }
 
+/// Sets the default operator commission for all operators.
+///
+/// Only callable by the [`ownership::OWNER`]
 pub fn set_global_operator_commission(
     deps: DepsMut,
     info: MessageInfo,
@@ -522,6 +554,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             earner,
             earner_token_root,
         )?),
+
         QueryMsg::CalculateTokenLeafHash {
             token,
             cumulative_earnings,
@@ -735,6 +768,7 @@ pub fn query_check_claim(
     Ok(CheckClaimResponse { check_claim })
 }
 
+// TODO: move to auth.rs
 fn only_rewards_for_all_submitter(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     let is_submitter = REWARDS_FOR_ALL_SUBMITTER
         .may_load(deps.storage, &info.sender)?
@@ -837,6 +871,7 @@ fn check_claim_internal(
         return Err(ContractError::TokenProofsAndLeavesMismatch {});
     }
 
+    // verifies the earner_leaf exists in the distribution root
     verify_earner_claim_proof(
         root.root.clone(),
         claim.earner_index,
@@ -844,6 +879,7 @@ fn check_claim_internal(
         &claim.earner_leaf,
     )?;
 
+    // for each token_leaf, verifies the token_leaf exists in the earner_token_root
     for i in 0..claim.token_indices.len() {
         verify_token_claim_proof(
             claim.earner_leaf.earner_token_root.clone(),
@@ -855,7 +891,9 @@ fn check_claim_internal(
 
     Ok(())
 }
-
+/// verify_token_claim_proof verifies the token_leaf, with token_proof, exists in the earner_token_root.
+///
+/// token_leaf contains the CW20 token and cumulative_earnings
 fn verify_token_claim_proof(
     earner_token_root: Binary,
     token_leaf_index: u32,
@@ -882,6 +920,7 @@ fn verify_token_claim_proof(
     Ok(())
 }
 
+/// verify_earner_claim_proof verifies that the earner leaf exists in the merkle root
 fn verify_earner_claim_proof(
     root: Binary,
     earner_leaf_index: u32,
@@ -914,7 +953,7 @@ fn set_activation_delay_internal(
 ) -> Result<Response, ContractError> {
     let current_activation_delay = ACTIVATION_DELAY.may_load(deps.storage)?.unwrap_or(0);
 
-    let event = Event::new("ActivationDelaySet")
+    let event = Event::new("SetActivationDelay")
         .add_attribute("old_activation_delay", current_activation_delay.to_string())
         .add_attribute("new_activation_delay", new_activation_delay.to_string());
 
@@ -933,7 +972,7 @@ fn set_global_operator_commission_internal(
 
     GLOBAL_OPERATOR_COMMISSION_BIPS.save(deps.storage, &new_commission_bips)?;
 
-    let event = Event::new("GlobalCommissionBipsSet")
+    let event = Event::new("SetGlobalOperatorCommission")
         .add_attribute("old_commission_bips", current_commission_bips.to_string())
         .add_attribute("new_commission_bips", new_commission_bips.to_string());
 
@@ -1469,7 +1508,7 @@ mod tests {
         assert_eq!(response.events.len(), 1);
 
         let event = response.events.first().unwrap();
-        assert_eq!(event.ty, "ActivationDelaySet");
+        assert_eq!(event.ty, "SetActivationDelay");
         assert_eq!(event.attributes.len(), 2);
         assert_eq!(event.attributes[0].key, "old_activation_delay");
         assert_eq!(
@@ -1509,7 +1548,7 @@ mod tests {
         assert_eq!(response.events.len(), 1);
 
         let event = response.events.first().unwrap();
-        assert_eq!(event.ty, "ActivationDelaySet");
+        assert_eq!(event.ty, "SetActivationDelay");
         assert_eq!(event.attributes.len(), 2);
         assert_eq!(event.attributes[0].key, "old_activation_delay");
         assert_eq!(
@@ -1562,18 +1601,17 @@ mod tests {
         assert!(result.is_ok());
 
         let response = result.unwrap();
-        assert_eq!(response.attributes.len(), 4);
-        assert_eq!(response.attributes[0].key, "method");
+
+        assert_eq!(response.events.len(), 1);
+
+        let event = response.events.first().unwrap();
         assert_eq!(
-            response.attributes[0].value,
-            "set_rewards_for_all_submitter"
+            event,
+            Event::new("SetRewardsForAllSubmitter")
+                .add_attribute("submitter", submitter.to_string())
+                .add_attribute("previous_value", initial_value.to_string())
+                .add_attribute("new_value", "true")
         );
-        assert_eq!(response.attributes[1].key, "submitter");
-        assert_eq!(response.attributes[1].value, submitter.to_string());
-        assert_eq!(response.attributes[2].key, "previous_value");
-        assert_eq!(response.attributes[2].value, initial_value.to_string());
-        assert_eq!(response.attributes[3].key, "new_value");
-        assert_eq!(response.attributes[3].value, "true");
 
         let stored_value = REWARDS_FOR_ALL_SUBMITTER
             .load(&deps.storage, &submitter)
@@ -1627,7 +1665,7 @@ mod tests {
         assert_eq!(response.events.len(), 1);
 
         let event = response.events.first().unwrap();
-        assert_eq!(event.ty, "GlobalCommissionBipsSet");
+        assert_eq!(event.ty, "SetGlobalOperatorCommission");
         assert_eq!(event.attributes.len(), 2);
         assert_eq!(event.attributes[0].key, "old_commission_bips");
         assert_eq!(
@@ -1667,7 +1705,7 @@ mod tests {
         assert_eq!(response.events.len(), 1);
 
         let event = response.events.first().unwrap();
-        assert_eq!(event.ty, "GlobalCommissionBipsSet");
+        assert_eq!(event.ty, "SetGlobalOperatorCommission");
         assert_eq!(event.attributes.len(), 2);
         assert_eq!(event.attributes[0].key, "old_commission_bips");
         assert_eq!(
