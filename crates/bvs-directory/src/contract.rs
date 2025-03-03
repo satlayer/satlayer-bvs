@@ -131,7 +131,7 @@ mod execute {
     }
 
     /// Register an operator to a service (info.sender service)
-    /// Service must be registered via ExecuteMsg::ServiceRegister
+    /// Service must be registered via [`super::ExecuteMsg::ServiceRegister`]
     /// If the operator is already registered, the registration status will be set to ACTIVE (1)
     /// Else the registration status will be set to SERVICE_REGISTERED (3)
     pub fn service_register_operator(
