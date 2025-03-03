@@ -22,8 +22,9 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for StrategyBaseContr
 
     fn default_init(app: &mut App, _env: &Env) -> InstantiateMsg {
         let registry = Self::get_contract_addr(app, "registry");
+        let strategy_manager = Self::get_contract_addr(app, "strategy_manager");
         InstantiateMsg {
-            strategy_manager: app.api().addr_make("strategy_manager").to_string(),
+            strategy_manager: strategy_manager.to_string(),
             underlying_token: app.api().addr_make("SAT").to_string(),
             registry: registry.to_string(),
             owner: app.api().addr_make("strategy_owner").to_string(),
