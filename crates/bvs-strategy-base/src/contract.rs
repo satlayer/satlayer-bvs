@@ -205,8 +205,8 @@ pub fn shares(deps: Deps, env: &Env, staker: Addr) -> StdResult<SharesResponse> 
             contract_addr: strategy_manager.to_string(),
             msg: to_json_binary(
                 &crate::msg::strategy_manager::QueryMsg::GetStakerStrategyShares {
-                    staker: user.to_string(),
-                    strategy: strategy.to_string(),
+                    staker: staker.to_string(),
+                    strategy,
                 },
             )?,
         }))?;
