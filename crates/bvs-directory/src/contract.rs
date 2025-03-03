@@ -301,10 +301,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 mod query {
+    use crate::msg::StatusResponse;
     use crate::state;
     use cosmwasm_std::{Addr, Deps, StdResult};
 
-    pub fn status(deps: Deps, operator: Addr, service: Addr) -> StdResult<u8> {
+    pub fn status(deps: Deps, operator: Addr, service: Addr) -> StdResult<StatusResponse> {
         let key = (&operator, &service);
         let status = state::get_registration_status(deps.storage, key)?;
         Ok(status.into())
@@ -315,7 +316,7 @@ mod query {
 mod tests {
     use super::*;
     use crate::contract::query::status;
-    use crate::msg::{InstantiateMsg, ServiceMetadata};
+    use crate::msg::{InstantiateMsg, ServiceMetadata, StatusResponse};
     use crate::state;
     use crate::state::{RegistrationStatus, SERVICES};
     use cosmwasm_std::testing::{
@@ -802,7 +803,7 @@ mod tests {
 
         assert_eq!(
             status(deps.as_ref(), operator.clone(), service.clone()),
-            Ok(0)
+            Ok(StatusResponse(0))
         );
 
         state::set_registration_status(
@@ -814,7 +815,7 @@ mod tests {
 
         assert_eq!(
             status(deps.as_ref(), operator.clone(), service.clone()),
-            Ok(0)
+            Ok(StatusResponse(0))
         );
 
         state::set_registration_status(
@@ -826,7 +827,7 @@ mod tests {
 
         assert_eq!(
             status(deps.as_ref(), operator.clone(), service.clone()),
-            Ok(1)
+            Ok(StatusResponse(1))
         );
 
         state::set_registration_status(
@@ -838,7 +839,7 @@ mod tests {
 
         assert_eq!(
             status(deps.as_ref(), operator.clone(), service.clone()),
-            Ok(2)
+            Ok(StatusResponse(2))
         );
 
         state::set_registration_status(
@@ -850,7 +851,7 @@ mod tests {
 
         assert_eq!(
             status(deps.as_ref(), operator.clone(), service.clone()),
-            Ok(3)
+            Ok(StatusResponse(3))
         );
     }
 }

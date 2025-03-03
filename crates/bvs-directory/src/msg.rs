@@ -1,3 +1,4 @@
+use crate::state::RegistrationStatus;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
 #[cw_serde]
@@ -48,7 +49,14 @@ pub enum QueryMsg {
     Status { service: String, operator: String },
 }
 
-pub type StatusResponse = u8;
+#[cw_serde]
+pub struct StatusResponse(pub u8);
+
+impl Into<StatusResponse> for RegistrationStatus {
+    fn into(self) -> StatusResponse {
+        StatusResponse(self as u8)
+    }
+}
 
 #[cfg(test)]
 mod tests {
