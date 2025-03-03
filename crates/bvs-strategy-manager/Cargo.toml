@@ -23,7 +23,7 @@ builds = [
 [features]
 default = ["testing"]
 library = []
-testing = ["library", "dep:cw-multi-test"]
+testing = ["library", "dep:cw-multi-test", "bvs-library/testing"]
 
 [dependencies]
 cosmwasm-std = { workspace = true }
