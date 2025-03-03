@@ -65,8 +65,10 @@ func (suite *ioTestSuite) Test_QueryTransaction() {
 	assert.NoError(t, err)
 
 	uri := "example.com"
-	executeMsgBytes, _ := json.Marshal(directory.ExecuteMsg{ServiceUpdateMetadata: &directory.ServiceMetadata{
-		URI: &uri,
+	executeMsgBytes, _ := json.Marshal(directory.ExecuteMsg{ServiceRegister: &directory.ServiceRegister{
+		Metadata: directory.ServiceMetadata{
+			URI: &uri,
+		},
 	}})
 	assert.NoError(t, err, "marshal execute msg")
 	executeOptions := types.ExecuteOptions{

@@ -83,6 +83,7 @@ mod execute {
     use crate::{auth, state, ContractError};
     use cosmwasm_std::{Addr, DepsMut, Event, MessageInfo, Response};
 
+    /// Register a service (info.server = service)
     pub fn service_register(
         deps: DepsMut,
         info: MessageInfo,
@@ -105,6 +106,7 @@ mod execute {
             .add_event(new_event_metadata(metadata, &info.sender)))
     }
 
+    /// Update service metadata (info.server = service)
     pub fn service_update_metadata(
         deps: DepsMut,
         info: MessageInfo,
