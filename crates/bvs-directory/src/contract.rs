@@ -80,7 +80,7 @@ mod execute {
     use crate::{auth, state, ContractError};
     use cosmwasm_std::{Addr, DepsMut, Event, MessageInfo, Response};
 
-    /// Register a service (info.server = service)
+    /// Register a service (info.sender service)
     pub fn service_register(
         deps: DepsMut,
         info: MessageInfo,
@@ -103,7 +103,7 @@ mod execute {
             .add_event(new_event_metadata(metadata, &info.sender)))
     }
 
-    /// Update service metadata (info.server = service)
+    /// Update service metadata (info.sender service)
     pub fn service_update_metadata(
         deps: DepsMut,
         info: MessageInfo,
@@ -130,7 +130,7 @@ mod execute {
         event
     }
 
-    /// Register an operator to a service (info.server = service)
+    /// Register an operator to a service (info.sender service)
     /// Service must be registered via ExecuteMsg::ServiceRegister
     /// If the operator is already registered, the registration status will be set to ACTIVE (1)
     /// Else the registration status will be set to SERVICE_REGISTERED (3)
@@ -179,7 +179,7 @@ mod execute {
         }
     }
 
-    /// Deregister an operator to a service (info.server = service)
+    /// Deregister an operator to a service (info.sender service)
     /// Set the registration status to INACTIVE (0)
     pub fn service_deregister_operator(
         deps: DepsMut,
@@ -207,7 +207,7 @@ mod execute {
         }
     }
 
-    /// Register a service to an operator (info.server = operator)
+    /// Register a service to an operator (info.sender operator)
     /// Operator must be registered on the delegation manager
     /// If the service is already registered, the registration status will be set to ACTIVE (1)
     /// Else the registration status will be set to OPERATOR_REGISTERED (2)
@@ -271,7 +271,7 @@ mod execute {
         }
     }
 
-    /// Deregister a service to an operator (info.server = operator)
+    /// Deregister a service to an operator (info.sender operator)
     /// Set the registration status to INACTIVE (0)
     pub fn operator_deregister_service(
         deps: DepsMut,
