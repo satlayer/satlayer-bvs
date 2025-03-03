@@ -314,7 +314,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 mod query {
     use crate::msg::StatusResponse;
     use crate::state;
-    use crate::state::RegistrationStatus;
     use cosmwasm_std::{Addr, Deps, StdResult};
 
     /// Get the registration status of an operator to a service
