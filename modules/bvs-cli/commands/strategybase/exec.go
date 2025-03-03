@@ -30,7 +30,7 @@ func Deposit(userKeyName string, amount uint64) {
 	fmt.Printf("Deposit success. txn: %s\n", resp.Hash)
 }
 
-func Withdraw(userKeyName, recipient string, amount uint64) {
+func Withdraw(userKeyName, recipient string, amount string) {
 	strategyBase, _ := newService(userKeyName)
 	resp, err := strategyBase.Withdraw(context.Background(), recipient, amount)
 	if err != nil {

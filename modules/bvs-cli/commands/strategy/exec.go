@@ -79,10 +79,10 @@ func RemoveShares(userKeyName, stakerAddress, strategyAddress string, shares uin
 	fmt.Printf("Remove shares success. txn: %s\n", txResp.Hash)
 }
 
-func WithdrawSharesAsTokens(userKeyName, recipient, strategyAddress, tokenAddress string, shares uint64) {
+func WithdrawSharesAsTokens(userKeyName, recipient, strategyAddress, shares string) {
 	ctx := context.Background()
 	strategy, _ := newService(userKeyName)
-	txResp, err := strategy.WithdrawSharesAsTokens(ctx, recipient, strategyAddress, shares, tokenAddress)
+	txResp, err := strategy.WithdrawSharesAsTokens(ctx, recipient, strategyAddress, shares)
 	if err != nil {
 		panic(err)
 	}

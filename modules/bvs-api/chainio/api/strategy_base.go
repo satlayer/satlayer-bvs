@@ -89,11 +89,11 @@ func (r *StrategyBase) Deposit(ctx context.Context, amount uint64) (*coretypes.R
 	return r.execute(ctx, msg)
 }
 
-func (r *StrategyBase) Withdraw(ctx context.Context, recipient string, amountShares uint64) (*coretypes.ResultTx, error) {
+func (r *StrategyBase) Withdraw(ctx context.Context, recipient string, shares string) (*coretypes.ResultTx, error) {
 	msg := strategybase.ExecuteMsg{
 		Withdraw: &strategybase.Withdraw{
-			Recipient:    recipient,
-			AmountShares: fmt.Sprintf("%d", amountShares),
+			Recipient: recipient,
+			Shares:    shares,
 		},
 	}
 
