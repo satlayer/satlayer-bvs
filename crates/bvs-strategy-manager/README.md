@@ -170,10 +170,10 @@ Returns a list of all strategies a staker is involved with.
 
 Returns the current contract owner.
 
-### IsStrategyWhitelisted
+### TokenStrategy
 
-Checks if a given strategy is whitelisted for deposits.
+Returns the strategy associated with a token.
 
-### GetStrategyManagerState
+**Parameters:**
+- `token`: Address of the token.
 
-Retrieves the state of the strategy manager, including delegation manager and slash manager information.
