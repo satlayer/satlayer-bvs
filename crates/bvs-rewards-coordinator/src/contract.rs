@@ -295,11 +295,6 @@ pub fn process_claim(
         .may_load(deps.storage, &earner)?
         .unwrap_or_else(|| earner.clone());
 
-    // TODO: Remove? this is unnecessary bloat from EVM where empty value is always eq to 0 address
-    if claimer == Addr::unchecked("") {
-        claimer = earner.clone();
-    }
-
     if info.sender != claimer {
         return Err(ContractError::UnauthorizedClaimer {});
     }
