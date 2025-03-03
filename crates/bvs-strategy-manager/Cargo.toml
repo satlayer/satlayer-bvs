@@ -42,3 +42,4 @@ bvs-strategy-base = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
+bvs-registry = { workspace = true, features = ["testing"] }
