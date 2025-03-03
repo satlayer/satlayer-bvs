@@ -56,21 +56,17 @@ pub fn instantiate(
 
     STRATEGY_STATE.save(deps.storage, &state)?;
 
-    let underlying_token = msg.underlying_token.clone();
-
-    let token_info: cw20::TokenInfoResponse =
-        deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+    // Query the underlying token to ensure the token has TokenInfo entry_point
+    deps.querier
+        .query::<cw20::TokenInfoResponse>(&QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: underlying_token.to_string(),
             msg: to_json_binary(&Cw20QueryMsg::TokenInfo {})?,
         }))?;
 
-    let decimals = token_info.decimals;
-
     Ok(Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("strategy_manager", strategy_manager)
-        .add_attribute("underlying_token", state.underlying_token.to_string())
-        .add_attribute("underlying_token_decimals", decimals.to_string()))
+        .add_attribute("underlying_token", underlying_token))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -457,15 +453,13 @@ mod tests {
 
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        assert_eq!(res.attributes.len(), 4);
+        assert_eq!(res.attributes.len(), 3);
         assert_eq!(res.attributes[0].key, "method");
         assert_eq!(res.attributes[0].value, "instantiate");
         assert_eq!(res.attributes[1].key, "strategy_manager");
         assert_eq!(res.attributes[1].value, strategy_manager);
         assert_eq!(res.attributes[2].key, "underlying_token");
         assert_eq!(res.attributes[2].value, token);
-        assert_eq!(res.attributes[3].key, "underlying_token_decimals");
-        assert_eq!(res.attributes[3].value, "8");
     }
 
     fn instantiate_contract() -> (
