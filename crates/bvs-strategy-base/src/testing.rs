@@ -21,10 +21,11 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for StrategyBaseContr
     }
 
     fn default_init(app: &mut App, _env: &Env) -> InstantiateMsg {
+        let registry = Self::get_contract_addr(app, "registry");
         InstantiateMsg {
             strategy_manager: app.api().addr_make("strategy_manager").to_string(),
             underlying_token: app.api().addr_make("SAT").to_string(),
-            registry: app.api().addr_make("registry").to_string(),
+            registry: registry.to_string(),
             owner: app.api().addr_make("strategy_owner").to_string(),
         }
     }
@@ -32,7 +33,7 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for StrategyBaseContr
     fn new(app: &mut App, env: &Env, msg: Option<InstantiateMsg>) -> Self {
         let init = msg.unwrap_or(Self::default_init(app, env));
         let code_id = Self::store_code(app);
-        let addr = Self::instantiate(app, code_id, "registry", &init);
+        let addr = Self::instantiate(app, code_id, "strategy_base", &init);
         Self { addr, init }
     }
 
@@ -65,11 +66,11 @@ impl
     fn default_init(app: &mut App, _env: &Env) -> cw20_base::msg::InstantiateMsg {
         cw20_base::msg::InstantiateMsg {
             marketing: None,
-            symbol: "LOTR".to_string(),
-            name: "Lord_Of_The_Ring".to_string(),
-            decimals: 6,
+            symbol: "MBTC".to_string(),
+            name: "Mock BTC".to_string(),
+            decimals: 8,
             initial_balances: vec![cw20::Cw20Coin {
-                address: app.api().addr_make("some_dude").to_string(),
+                address: app.api().addr_make("owner").to_string(),
                 amount: cosmwasm_std::Uint128::new(1000000),
             }],
             mint: None,
