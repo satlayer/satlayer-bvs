@@ -77,7 +77,7 @@ func (suite *ioTestSuite) Test_QueryTransaction() {
 		Funds:         "",
 		GasAdjustment: 1.2,
 		GasPrice:      sdktypes.NewInt64DecCoin("ubbn", 1),
-		Gas:           200000,
+		Gas:           500000,
 		Memo:          "test query transaction tx",
 		Simulate:      true,
 	}
