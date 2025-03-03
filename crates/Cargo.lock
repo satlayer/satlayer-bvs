@@ -348,6 +348,7 @@ name = "bvs-strategy-manager"
 version = "0.1.0"
 dependencies = [
  "bvs-base",
+ "bvs-delegation-manager",
  "bvs-library",
  "bvs-registry",
  "bvs-strategy-base",
