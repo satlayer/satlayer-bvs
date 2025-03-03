@@ -20,17 +20,19 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for StrategyManagerCo
     }
 
     fn default_init(app: &mut App, _env: &Env) -> InstantiateMsg {
+        let owner = app.api().addr_make("owner").to_string();
+        let registry = app.api().addr_make("registry").to_string();
         InstantiateMsg {
-            owner: app.api().addr_make("owner").to_string(),
-            registry: app.api().addr_make("registry").to_string(),
-            initial_strategy_whitelister: app.api().addr_make("whitelister").to_string(),
+            owner: owner.clone(),
+            registry: registry.clone(),
+            initial_strategy_whitelister: owner.clone(),
         }
     }
 
     fn new(app: &mut App, env: &Env, msg: Option<InstantiateMsg>) -> Self {
         let init = msg.unwrap_or(Self::default_init(app, env));
         let code_id = Self::store_code(app);
-        let addr = Self::instantiate(app, code_id, "registry", &init);
+        let addr = Self::instantiate(app, code_id, "Strategy Manager Contract", &init);
         Self { addr, init }
     }
 
