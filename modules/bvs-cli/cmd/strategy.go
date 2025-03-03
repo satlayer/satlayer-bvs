@@ -83,18 +83,6 @@ func strategyCmd() *cobra.Command {
 			strategy.WithdrawSharesAsTokens(args[0], args[1], args[2], args[3])
 		},
 	}
-	addSharesCmd := &cobra.Command{
-		Use:   "add-shares <userKeyName> <stakerAddress> <tokenAddress> <strategyAddress> <shareAmount>",
-		Short: "To add the shares.",
-		Args:  cobra.ExactArgs(5),
-		Run: func(cmd *cobra.Command, args []string) {
-			amount, err := strconv.ParseUint(args[4], 10, 64)
-			if err != nil {
-				fmt.Printf("Error: %v\n", err)
-			}
-			strategy.AddShares(args[0], args[1], args[2], args[3], amount)
-		},
-	}
 	getDepositsCmd := &cobra.Command{
 		Use:   "get-deposits <stakerAddress>",
 		Short: "To get the deposits.",
@@ -155,7 +143,6 @@ func strategyCmd() *cobra.Command {
 	subCmd.AddCommand(depositStrategyCmd)
 	subCmd.AddCommand(removeSharesCmd)
 	subCmd.AddCommand(withdrawSharesAsTokensCmd)
-	subCmd.AddCommand(addSharesCmd)
 	subCmd.AddCommand(getDepositsCmd)
 	subCmd.AddCommand(getStakerStrategyListLengthCmd)
 	subCmd.AddCommand(getStakerStrategySharesCmd)

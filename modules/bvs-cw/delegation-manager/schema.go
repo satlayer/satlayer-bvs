@@ -202,7 +202,6 @@ type ExecuteMsg struct {
 type CompleteQueuedWithdrawal struct {
 	MiddlewareTimesIndex int64             `json:"middleware_times_index"`
 	ReceiveAsTokens      bool              `json:"receive_as_tokens"`
-	Tokens               []string          `json:"tokens"`
 	Withdrawal           WithdrawalElement `json:"withdrawal"`
 }
 
@@ -219,7 +218,6 @@ type WithdrawalElement struct {
 type CompleteQueuedWithdrawals struct {
 	MiddlewareTimesIndexes []int64             `json:"middleware_times_indexes"`
 	ReceiveAsTokens        []bool              `json:"receive_as_tokens"`
-	Tokens                 [][]string          `json:"tokens"`
 	Withdrawals            []WithdrawalElement `json:"withdrawals"`
 }
 

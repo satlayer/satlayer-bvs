@@ -88,13 +88,3 @@ func WithdrawSharesAsTokens(userKeyName, recipient, strategyAddress, shares stri
 	}
 	fmt.Printf("Withdraw shares as tokens success. txn: %s\n", txResp.Hash)
 }
-
-func AddShares(userKeyName, stakerAddress, tokenAddress, strategyAddress string, shares uint64) {
-	ctx := context.Background()
-	strategy, _ := newService(userKeyName)
-	txResp, err := strategy.AddShares(ctx, stakerAddress, tokenAddress, strategyAddress, shares)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Add shares success. txn: %s\n", txResp.Hash)
-}

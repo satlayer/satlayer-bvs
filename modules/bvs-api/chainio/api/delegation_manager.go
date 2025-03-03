@@ -147,14 +147,12 @@ func (r *DelegationManager) QueueWithdrawals(ctx context.Context, withdrawalPara
 func (r *DelegationManager) CompleteQueuedWithdrawal(
 	ctx context.Context,
 	withdrawal delegationmanager.WithdrawalElement,
-	tokens []string,
 	middlewareTimesIndex int64,
 	receiveAsTokens bool,
 ) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		CompleteQueuedWithdrawal: &delegationmanager.CompleteQueuedWithdrawal{
 			Withdrawal:           withdrawal,
-			Tokens:               tokens,
 			MiddlewareTimesIndex: middlewareTimesIndex,
 			ReceiveAsTokens:      receiveAsTokens,
 		},
@@ -171,14 +169,12 @@ func (r *DelegationManager) CompleteQueuedWithdrawal(
 func (r *DelegationManager) CompleteQueuedWithdrawals(
 	ctx context.Context,
 	withdrawals []delegationmanager.WithdrawalElement,
-	tokens [][]string,
 	middlewareTimesIndexes []int64,
 	receiveAsTokens []bool,
 ) (*coretypes.ResultTx, error) {
 	executeMsg := delegationmanager.ExecuteMsg{
 		CompleteQueuedWithdrawals: &delegationmanager.CompleteQueuedWithdrawals{
 			Withdrawals:            withdrawals,
-			Tokens:                 tokens,
 			MiddlewareTimesIndexes: middlewareTimesIndexes,
 			ReceiveAsTokens:        receiveAsTokens,
 		},
