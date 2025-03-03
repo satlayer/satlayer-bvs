@@ -1,4 +1,4 @@
-use bvs_delegation_manager::testing::DelegationContract;
+use bvs_delegation_manager::testing::DelegationManagerContract;
 use bvs_directory::msg::{ExecuteMsg, QueryMsg, ServiceMetadata, StatusResponse};
 use bvs_directory::testing::DirectoryContract;
 use bvs_directory::ContractError;
@@ -9,12 +9,17 @@ use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::Event;
 use cw_multi_test::App;
 
-fn instantiate() -> (App, DirectoryContract, DelegationContract, RegistryContract) {
+fn instantiate() -> (
+    App,
+    DirectoryContract,
+    DelegationManagerContract,
+    RegistryContract,
+) {
     let mut app = App::default();
     let env = mock_env();
 
     let registry = RegistryContract::new(&mut app, &env, None);
-    let delegation = DelegationContract::new(&mut app, &env, None);
+    let delegation = DelegationManagerContract::new(&mut app, &env, None);
     let directory = DirectoryContract::new(&mut app, &env, None);
 
     let owner = app.api().addr_make("owner");
