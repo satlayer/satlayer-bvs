@@ -21,8 +21,8 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
-use crate::msg::delegation;
-use crate::msg::delegation::IncreaseDelegatedShares;
+use crate::msg::delegation_manager;
+use crate::msg::delegation_manager::IncreaseDelegatedShares;
 use crate::query::{IsTokenBlacklistedResponse, TokenStrategyResponse};
 use bvs_library::ownership;
 use bvs_strategy_base::{
@@ -507,7 +507,7 @@ fn deposit_into_strategy_internal(
     let delegation_manager = auth::get_delegation_manager(deps.storage)?;
     let increase_delegated_shares_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: delegation_manager.to_string(),
-        msg: to_json_binary(&delegation::ExecuteMsg::IncreaseDelegatedShares(
+        msg: to_json_binary(&delegation_manager::ExecuteMsg::IncreaseDelegatedShares(
             IncreaseDelegatedShares {
                 staker: staker.to_string(),
                 strategy: strategy.to_string(),

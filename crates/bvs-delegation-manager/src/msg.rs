@@ -54,7 +54,7 @@ pub enum ExecuteMsg {
     IncreaseDelegatedShares(
         /// This is called by the strategy manager to increase the delegated shares of a staker
         /// The struct is hence owned by the strategy manager
-        bvs_strategy_manager::msg::delegation::IncreaseDelegatedShares,
+        bvs_strategy_manager::msg::delegation_manager::IncreaseDelegatedShares,
     ),
     DecreaseDelegatedShares {
         staker: String,

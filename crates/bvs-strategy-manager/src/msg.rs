@@ -96,7 +96,7 @@ pub enum QueryMsg {
 /// Since we can't circularly import each other, we put ExecuteMsg,
 /// which is only used by the Strategy Manager here.
 /// Delegation Manager must import this module and implement [IncreaseDelegatedShares]
-pub mod delegation {
+pub mod delegation_manager {
     use cosmwasm_schema::cw_serde;
     use cosmwasm_std::Uint128;
 

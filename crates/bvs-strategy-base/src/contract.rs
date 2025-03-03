@@ -211,13 +211,15 @@ pub fn shares(deps: Deps, user: Addr, strategy: Addr) -> StdResult<SharesRespons
         // TODO: SL-332
         .unwrap();
 
-    let response: crate::msg::manager::StakerStrategySharesResponse =
+    let response: crate::msg::strategy_manager::StakerStrategySharesResponse =
         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: strategy_manager.to_string(),
-            msg: to_json_binary(&crate::msg::manager::QueryMsg::GetStakerStrategyShares {
-                staker: user.to_string(),
-                strategy: strategy.to_string(),
-            })?,
+            msg: to_json_binary(
+                &crate::msg::strategy_manager::QueryMsg::GetStakerStrategyShares {
+                    staker: user.to_string(),
+                    strategy: strategy.to_string(),
+                },
+            )?,
         }))?;
 
     Ok(SharesResponse {
@@ -833,9 +835,9 @@ mod tests {
                     contract_addr, msg, ..
                 } => {
                     if contract_addr == &strategy_manager {
-                        let msg: crate::msg::manager::QueryMsg = from_json(msg).unwrap();
+                        let msg: crate::msg::strategy_manager::QueryMsg = from_json(msg).unwrap();
                         match msg {
-                            crate::msg::manager::QueryMsg::GetStakerStrategyShares {
+                            crate::msg::strategy_manager::QueryMsg::GetStakerStrategyShares {
                                 staker,
                                 strategy,
                             } => {
@@ -844,7 +846,7 @@ mod tests {
                                 {
                                     return SystemResult::Ok(ContractResult::Ok(
                                         to_json_binary(
-                                            &crate::msg::manager::StakerStrategySharesResponse {
+                                            &crate::msg::strategy_manager::StakerStrategySharesResponse {
                                                 shares: Uint128::new(1_000),
                                             },
                                         )
@@ -904,8 +906,8 @@ mod tests {
                             }
                         }
                     } else if contract_addr == &strategy_manager {
-                        let msg: crate::msg::manager::QueryMsg = from_json(msg).unwrap();
-                        if let crate::msg::manager::QueryMsg::GetStakerStrategyShares {
+                        let msg: crate::msg::strategy_manager::QueryMsg = from_json(msg).unwrap();
+                        if let crate::msg::strategy_manager::QueryMsg::GetStakerStrategyShares {
                             staker,
                             strategy,
                         } = msg
@@ -915,7 +917,7 @@ mod tests {
                             {
                                 return SystemResult::Ok(ContractResult::Ok(
                                     to_json_binary(
-                                        &crate::msg::manager::StakerStrategySharesResponse {
+                                        &crate::msg::strategy_manager::StakerStrategySharesResponse {
                                             shares: Uint128::new(1_000),
                                         },
                                     )

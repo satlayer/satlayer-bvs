@@ -66,7 +66,7 @@ pub enum QueryMsg {
 /// Both Strategy Base & Strategy Manager circularly depend on each other.
 /// Since we can't circularly import each other, we put [QueryMsg] which is used by
 /// StrategyManager here as well.
-pub mod manager {
+pub mod strategy_manager {
     use cosmwasm_schema::cw_serde;
     use cosmwasm_std::Uint128;
 
