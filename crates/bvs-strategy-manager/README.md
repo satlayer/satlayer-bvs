@@ -120,26 +120,6 @@ This function allows the delegation manager to remove shares from a staker’s b
 
 If all shares are removed, the strategy is also removed from the staker’s list. An event is emitted upon execution.
 
-### SetDelegationManager
-
-The contract owner can change the delegation manager by calling this function.
-
-**Parameters:**
-
-- `new_delegation_manager`: Address of the new delegation manager.
-
-A `set_delegation_manager` event is emitted upon success.
-
-### SetSlashManager
-
-This function updates the slash manager, who has authority over slashing actions.
-
-**Parameters:**
-
-- `new_slash_manager`: Address of the new slash manager.
-
-Only the contract owner can execute this function. A `set_slash_manager` event is emitted.
-
 ### TransferOwnership
 
 Ownership of the contract can be transferred using this function.
@@ -150,33 +130,13 @@ Ownership of the contract can be transferred using this function.
 
 The function updates the owner field and emits an event.
 
-### Pause
+### SetRouting 
 
-Pauses deposit actions across the contract.
-
-Only the designated pauser has permission to execute this function. Once paused, deposits are disabled until unpaused.
-
-### Unpause
-
-Unpauses deposit actions, allowing users to resume deposits.
-
-Only the designated unpauser has permission to call this function.
-
-### SetPauser
-
-Allows the contract owner to designate a new pauser.
+This function configure the slash manager and delegation manager for the strategy manager.
 
 **Parameters:**
-
-- `new_pauser`: Address of the new pauser.
-
-### SetUnpauser
-
-Allows the contract owner to designate a new unpauser.
-
-**Parameters:**
-
-- `new_unpauser`: Address of the new unpauser.
+- `slash_manager`: Address of the slash manager.
+- `delegation_manager`: Address of the delegation manager.
 
 ---
 
