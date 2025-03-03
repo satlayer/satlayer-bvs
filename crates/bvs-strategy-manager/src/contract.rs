@@ -127,22 +127,20 @@ pub fn execute(
             strategy,
             shares,
         } => {
-            let staker_addr = deps.api.addr_validate(&staker)?;
-            let strategy_addr = deps.api.addr_validate(&strategy)?;
+            let staker = deps.api.addr_validate(&staker)?;
+            let strategy = deps.api.addr_validate(&strategy)?;
 
-            remove_shares(deps, info, staker_addr, strategy_addr, shares)
+            remove_shares(deps, info, staker, strategy, shares)
         }
         ExecuteMsg::AddShares {
             staker,
-            token,
             strategy,
             shares,
         } => {
-            let staker_addr = deps.api.addr_validate(&staker)?;
-            let token_addr = deps.api.addr_validate(&token)?;
-            let strategy_addr = deps.api.addr_validate(&strategy)?;
+            let staker = deps.api.addr_validate(&staker)?;
+            let strategy = deps.api.addr_validate(&strategy)?;
 
-            add_shares(deps, info, staker_addr, token_addr, strategy_addr, shares)
+            add_shares(deps, info, staker, strategy, shares)
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
@@ -254,13 +252,12 @@ pub fn add_shares(
     deps: DepsMut,
     info: MessageInfo,
     staker: Addr,
-    token: Addr,
     strategy: Addr,
     shares: Uint128,
 ) -> Result<Response, ContractError> {
     auth::assert_delegation_manager(deps.as_ref(), &info)?;
 
-    add_shares_internal(deps, staker, token, strategy, shares)
+    add_shares_internal(deps, staker, strategy, shares)
 }
 
 pub fn remove_shares(
@@ -485,13 +482,7 @@ fn deposit_into_strategy_internal(
 
     response = response.add_message(deposit_msg);
 
-    add_shares_internal(
-        deps.branch(),
-        staker.clone(),
-        token.clone(),
-        strategy.clone(),
-        new_shares,
-    )?;
+    add_shares_internal(deps.branch(), staker.clone(), strategy.clone(), new_shares)?;
 
     let delegation_manager = auth::get_delegation_manager(deps.storage)?;
     let increase_delegated_shares_msg = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -514,7 +505,6 @@ fn deposit_into_strategy_internal(
 fn add_shares_internal(
     deps: DepsMut,
     staker: Addr,
-    token: Addr,
     strategy: Addr,
     shares: Uint128,
 ) -> Result<Response, ContractError> {
@@ -543,7 +533,6 @@ fn add_shares_internal(
 
     let event = Event::new("add_shares")
         .add_attribute("staker", staker.to_string())
-        .add_attribute("token", token.to_string())
         .add_attribute("strategy", strategy.to_string())
         .add_attribute("shares", shares.to_string());
 
@@ -1373,28 +1362,20 @@ mod tests {
         let strategy = Addr::unchecked("strategy");
         let shares = Uint128::new(100);
 
-        let res = add_shares_internal(
-            deps.as_mut(),
-            staker.clone(),
-            token.clone(),
-            strategy.clone(),
-            shares,
-        )
-        .unwrap();
+        let res =
+            add_shares_internal(deps.as_mut(), staker.clone(), strategy.clone(), shares).unwrap();
 
         let events = res.events;
         assert_eq!(events.len(), 1);
         let event = &events[0];
         assert_eq!(event.ty, "add_shares");
-        assert_eq!(event.attributes.len(), 4);
+        assert_eq!(event.attributes.len(), 3);
         assert_eq!(event.attributes[0].key, "staker");
         assert_eq!(event.attributes[0].value, staker.to_string());
-        assert_eq!(event.attributes[1].key, "token");
-        assert_eq!(event.attributes[1].value, token.to_string());
-        assert_eq!(event.attributes[2].key, "strategy");
-        assert_eq!(event.attributes[2].value, strategy.to_string());
-        assert_eq!(event.attributes[3].key, "shares");
-        assert_eq!(event.attributes[3].value, shares.to_string());
+        assert_eq!(event.attributes[1].key, "strategy");
+        assert_eq!(event.attributes[1].value, strategy.to_string());
+        assert_eq!(event.attributes[2].key, "shares");
+        assert_eq!(event.attributes[2].value, shares.to_string());
 
         let stored_shares = STAKER_STRATEGY_SHARES
             .load(&deps.storage, (&staker, &strategy))
@@ -1411,7 +1392,6 @@ mod tests {
             deps.as_mut(),
             info_delegation_manager.clone(),
             staker.clone(),
-            token.clone(),
             strategy.clone(),
             additional_shares,
         )
@@ -1421,15 +1401,13 @@ mod tests {
         assert_eq!(events.len(), 1);
         let event = &events[0];
         assert_eq!(event.ty, "add_shares");
-        assert_eq!(event.attributes.len(), 4);
+        assert_eq!(event.attributes.len(), 3);
         assert_eq!(event.attributes[0].key, "staker");
         assert_eq!(event.attributes[0].value, staker.to_string());
-        assert_eq!(event.attributes[1].key, "token");
-        assert_eq!(event.attributes[1].value, token.to_string());
-        assert_eq!(event.attributes[2].key, "strategy");
-        assert_eq!(event.attributes[2].value, strategy.to_string());
-        assert_eq!(event.attributes[3].key, "shares");
-        assert_eq!(event.attributes[3].value, additional_shares.to_string());
+        assert_eq!(event.attributes[1].key, "strategy");
+        assert_eq!(event.attributes[1].value, strategy.to_string());
+        assert_eq!(event.attributes[2].key, "shares");
+        assert_eq!(event.attributes[2].value, additional_shares.to_string());
 
         let stored_shares = STAKER_STRATEGY_SHARES
             .load(&deps.storage, (&staker, &strategy))
@@ -1442,7 +1420,6 @@ mod tests {
             deps.as_mut(),
             info_delegation_manager.clone(),
             staker.clone(),
-            token.clone(),
             strategy.clone(),
             Uint128::zero(),
         );
@@ -1464,13 +1441,8 @@ mod tests {
             .unwrap();
 
         let new_strategy = Addr::unchecked("new_strategy");
-        let result = add_shares_internal(
-            deps.as_mut(),
-            staker.clone(),
-            token.clone(),
-            new_strategy.clone(),
-            shares,
-        );
+        let result =
+            add_shares_internal(deps.as_mut(), staker.clone(), new_strategy.clone(), shares);
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -1494,7 +1466,6 @@ mod tests {
             deps.as_mut(),
             info_delegation_manager.clone(),
             staker.clone(),
-            token.clone(),
             strategy.clone(),
             shares,
         )
@@ -1504,15 +1475,13 @@ mod tests {
         assert_eq!(events.len(), 1);
         let event = &events[0];
         assert_eq!(event.ty, "add_shares");
-        assert_eq!(event.attributes.len(), 4);
+        assert_eq!(event.attributes.len(), 3);
         assert_eq!(event.attributes[0].key, "staker");
         assert_eq!(event.attributes[0].value, staker.to_string());
-        assert_eq!(event.attributes[1].key, "token");
-        assert_eq!(event.attributes[1].value, token.to_string());
-        assert_eq!(event.attributes[2].key, "strategy");
-        assert_eq!(event.attributes[2].value, strategy.to_string());
-        assert_eq!(event.attributes[3].key, "shares");
-        assert_eq!(event.attributes[3].value, shares.to_string());
+        assert_eq!(event.attributes[1].key, "strategy");
+        assert_eq!(event.attributes[1].value, strategy.to_string());
+        assert_eq!(event.attributes[2].key, "shares");
+        assert_eq!(event.attributes[2].value, shares.to_string());
 
         let stored_shares = STAKER_STRATEGY_SHARES
             .load(&deps.storage, (&staker, &strategy))
@@ -1531,7 +1500,6 @@ mod tests {
             deps.as_mut(),
             info_delegation_manager.clone(),
             staker.clone(),
-            token.clone(),
             strategy.clone(),
             additional_shares,
         )
@@ -1541,15 +1509,13 @@ mod tests {
         assert_eq!(events.len(), 1);
         let event = &events[0];
         assert_eq!(event.ty, "add_shares");
-        assert_eq!(event.attributes.len(), 4);
+        assert_eq!(event.attributes.len(), 3);
         assert_eq!(event.attributes[0].key, "staker");
         assert_eq!(event.attributes[0].value, staker.to_string());
-        assert_eq!(event.attributes[1].key, "token");
-        assert_eq!(event.attributes[1].value, token.to_string());
-        assert_eq!(event.attributes[2].key, "strategy");
-        assert_eq!(event.attributes[2].value, strategy.to_string());
-        assert_eq!(event.attributes[3].key, "shares");
-        assert_eq!(event.attributes[3].value, additional_shares.to_string());
+        assert_eq!(event.attributes[1].key, "strategy");
+        assert_eq!(event.attributes[1].value, strategy.to_string());
+        assert_eq!(event.attributes[2].key, "shares");
+        assert_eq!(event.attributes[2].value, additional_shares.to_string());
 
         let stored_shares = STAKER_STRATEGY_SHARES
             .load(&deps.storage, (&staker, &strategy))
@@ -1563,7 +1529,6 @@ mod tests {
             deps.as_mut(),
             info_unauthorized.clone(),
             staker.clone(),
-            token.clone(),
             strategy.clone(),
             shares,
         );
@@ -1580,7 +1545,6 @@ mod tests {
             deps.as_mut(),
             info_delegation_manager.clone(),
             staker.clone(),
-            token.clone(),
             strategy.clone(),
             Uint128::zero(),
         );
@@ -1608,7 +1572,6 @@ mod tests {
             deps.as_mut(),
             info_delegation_manager.clone(),
             staker.clone(),
-            token.clone(),
             new_strategy.clone(),
             shares,
         );

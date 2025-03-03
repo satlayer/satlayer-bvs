@@ -41,13 +41,11 @@ pub enum ExecuteMsg {
     },
     CompleteQueuedWithdrawal {
         withdrawal: Withdrawal,
-        tokens: Vec<Addr>,
         middleware_times_index: u64,
         receive_as_tokens: bool,
     },
     CompleteQueuedWithdrawals {
         withdrawals: Vec<Withdrawal>,
-        tokens: Vec<Vec<Addr>>,
         middleware_times_indexes: Vec<u64>,
         receive_as_tokens: Vec<bool>,
     },
