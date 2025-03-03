@@ -1106,7 +1106,7 @@ mod tests {
         let (
             mut deps,
             _env,
-            _owner_info,
+            owner_info,
             _strategy_manager_info,
             _delegation_manager_info,
             _rewards_updater_info,
@@ -1221,7 +1221,7 @@ mod tests {
         let (
             mut deps,
             env,
-            _owner_info,
+            owner_info,
             _strategy_manager_info,
             _delegation_manager_info,
             _rewards_updater_info,
@@ -2565,7 +2565,7 @@ mod tests {
         let (
             mut deps,
             env,
-            _owner_info,
+            owner_info,
             _strategy_manager_info,
             _delegation_manager_info,
             rewards_updater_info,
@@ -2966,7 +2966,7 @@ mod tests {
         let (
             mut deps,
             env,
-            _owner_info,
+            owner_info,
             _strategy_manager_info,
             _delegation_manager_info,
             _rewards_updater_info,
