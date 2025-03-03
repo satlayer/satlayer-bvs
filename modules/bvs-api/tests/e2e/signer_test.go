@@ -59,9 +59,12 @@ func (suite *signerTestSuite) TearDownSuite() {
 func (suite *signerTestSuite) Test_BuildAndSignTx() {
 	t := suite.T()
 	keyName := "caller"
+
+	uri := "http://leek.test.uri"
 	executeMsg := directory.ExecuteMsg{
-		UpdateBvsMetadataURI: &directory.UpdateBvsMetadataURI{
-			MetadataURI: "http://leek.test.uri",
+		ServiceUpdateMetadata: &directory.ServiceMetadata{
+			Name: nil,
+			URI:  &uri,
 		},
 	}
 	executeMsgBytes, err := json.Marshal(executeMsg)
