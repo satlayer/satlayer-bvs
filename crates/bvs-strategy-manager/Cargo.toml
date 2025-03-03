@@ -32,8 +32,8 @@ cw20 = { workspace = true }
 thiserror = { workspace = true }
 serde = { workspace = true }
 schemars = { workspace = true }
-bvs-base = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
+
 bvs-library = { workspace = true }
 bvs-registry = { workspace = true }
 bvs-strategy-base = { workspace = true }
@@ -41,3 +41,4 @@ bvs-strategy-base = { workspace = true }
 [dev-dependencies]
 cw-multi-test = { workspace = true }
 bvs-registry = { workspace = true, features = ["testing"] }
+bvs-strategy-base = { workspace = true, features = ["testing"] }

@@ -21,19 +21,19 @@ flowchart TD
 
 
 %% Edge connections between nodes
-    subgraph SP[Actor: Service Provider]
+    subgraph SP[Actor: Service]
     BVS
     end
-    subgraph IN["BVS Interface"]
+    subgraph IN["Actor: Operator & Staker"]
     DI --> DM
     end
-    subgraph Strategy Subsystem
-    SM -->|manages| SB
+    subgraph SSS["Actor: Staker"]
+    SM <-->|manage| SB
     end
     SL --> DM
     RC --> SM
     SP --> RC
-    DM --> SM
+    DM <--> SM
     SP --> DI
     SL --> SM
 ```

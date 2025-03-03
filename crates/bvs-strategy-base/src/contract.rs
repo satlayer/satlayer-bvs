@@ -20,7 +20,6 @@ use cw2::set_contract_version;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
 // TODO: why circular dependency here, remove?
-use bvs_base::strategy::{QueryMsg as StrategyManagerQueryMsg, StakerStrategySharesResponse};
 use bvs_library::ownership;
 
 const CONTRACT_NAME: &str = "BVS Strategy Base";
@@ -212,10 +211,10 @@ pub fn shares(deps: Deps, user: Addr, strategy: Addr) -> StdResult<SharesRespons
         // TODO: SL-332
         .unwrap();
 
-    let response: StakerStrategySharesResponse =
+    let response: crate::msg::manager::StakerStrategySharesResponse =
         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: strategy_manager.to_string(),
-            msg: to_json_binary(&StrategyManagerQueryMsg::GetStakerStrategyShares {
+            msg: to_json_binary(&crate::msg::manager::QueryMsg::GetStakerStrategyShares {
                 staker: user.to_string(),
                 strategy: strategy.to_string(),
             })?,
@@ -834,9 +833,9 @@ mod tests {
                     contract_addr, msg, ..
                 } => {
                     if contract_addr == &strategy_manager {
-                        let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
+                        let msg: crate::msg::manager::QueryMsg = from_json(msg).unwrap();
                         match msg {
-                            StrategyManagerQueryMsg::GetStakerStrategyShares {
+                            crate::msg::manager::QueryMsg::GetStakerStrategyShares {
                                 staker,
                                 strategy,
                             } => {
@@ -844,9 +843,11 @@ mod tests {
                                     && strategy == contract_address.to_string()
                                 {
                                     return SystemResult::Ok(ContractResult::Ok(
-                                        to_json_binary(&StakerStrategySharesResponse {
-                                            shares: Uint128::new(1_000),
-                                        })
+                                        to_json_binary(
+                                            &crate::msg::manager::StakerStrategySharesResponse {
+                                                shares: Uint128::new(1_000),
+                                            },
+                                        )
                                         .unwrap(),
                                     ));
                                 }
@@ -903,8 +904,8 @@ mod tests {
                             }
                         }
                     } else if contract_addr == &strategy_manager {
-                        let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
-                        if let StrategyManagerQueryMsg::GetStakerStrategyShares {
+                        let msg: crate::msg::manager::QueryMsg = from_json(msg).unwrap();
+                        if let crate::msg::manager::QueryMsg::GetStakerStrategyShares {
                             staker,
                             strategy,
                         } = msg
@@ -913,9 +914,11 @@ mod tests {
                                 && strategy == contract_address_clone.to_string()
                             {
                                 return SystemResult::Ok(ContractResult::Ok(
-                                    to_json_binary(&StakerStrategySharesResponse {
-                                        shares: Uint128::new(1_000),
-                                    })
+                                    to_json_binary(
+                                        &crate::msg::manager::StakerStrategySharesResponse {
+                                            shares: Uint128::new(1_000),
+                                        },
+                                    )
                                     .unwrap(),
                                 ));
                             }

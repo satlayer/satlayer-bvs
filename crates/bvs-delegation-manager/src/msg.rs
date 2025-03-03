@@ -51,11 +51,11 @@ pub enum ExecuteMsg {
         middleware_times_indexes: Vec<u64>,
         receive_as_tokens: Vec<bool>,
     },
-    IncreaseDelegatedShares {
-        staker: String,
-        strategy: String,
-        shares: Uint128,
-    },
+    IncreaseDelegatedShares(
+        /// This is called by the strategy manager to increase the delegated shares of a staker
+        /// The struct is hence owned by the strategy manager
+        bvs_strategy_manager::msg::delegation::IncreaseDelegatedShares,
+    ),
     DecreaseDelegatedShares {
         staker: String,
         strategy: String,

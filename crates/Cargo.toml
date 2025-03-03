@@ -60,6 +60,3 @@ bvs-rewards-coordinator = { path = "./bvs-rewards-coordinator", default-features
 bvs-slash-manager = { path = "./bvs-slash-manager", default-features = false, features = ["library"] }
 bvs-strategy-base = { path = "./bvs-strategy-base", default-features = false, features = ["library"] }
 bvs-strategy-manager = { path = "./bvs-strategy-manager", default-features = false, features = ["library"] }
-
-# common cosmwasm crates
-bvs-base = { path = "./common/bvs/base" }

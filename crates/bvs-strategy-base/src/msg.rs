@@ -62,3 +62,21 @@ pub enum QueryMsg {
     #[returns(StrategyState)]
     GetStrategyState {},
 }
+
+/// Both Strategy Base & Strategy Manager circularly depend on each other.
+/// Since we can't circularly import each other, we put [QueryMsg] which is used by
+/// StrategyManager here as well.
+pub mod manager {
+    use cosmwasm_schema::cw_serde;
+    use cosmwasm_std::Uint128;
+
+    #[cw_serde]
+    pub enum QueryMsg {
+        GetStakerStrategyShares { staker: String, strategy: String },
+    }
+
+    #[cw_serde]
+    pub struct StakerStrategySharesResponse {
+        pub shares: Uint128,
+    }
+}
