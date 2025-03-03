@@ -52,9 +52,9 @@ pub enum QueryMsg {
 #[cw_serde]
 pub struct StatusResponse(pub u8);
 
-impl Into<StatusResponse> for RegistrationStatus {
-    fn into(self) -> StatusResponse {
-        StatusResponse(self as u8)
+impl From<RegistrationStatus> for StatusResponse {
+    fn from(value: RegistrationStatus) -> Self {
+        StatusResponse(value as u8)
     }
 }
 

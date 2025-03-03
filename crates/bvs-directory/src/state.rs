@@ -27,9 +27,9 @@ impl Default for RegistrationStatus {
     }
 }
 
-impl Into<u8> for RegistrationStatus {
-    fn into(self) -> u8 {
-        self as u8
+impl From<RegistrationStatus> for u8 {
+    fn from(value: RegistrationStatus) -> u8 {
+        value as u8
     }
 }
 
@@ -76,7 +76,7 @@ pub fn get_registration_status(
         .may_load(store, key)?
         .unwrap_or(RegistrationStatus::Inactive.into());
 
-    Ok(status.try_into()?)
+    status.try_into()
 }
 
 pub fn set_registration_status(

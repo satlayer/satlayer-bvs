@@ -43,10 +43,7 @@ pub fn execute(
     bvs_registry::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
 
     match msg {
-        ExecuteMsg::ServiceRegister { metadata } => {
-            let metadata = metadata;
-            execute::service_register(deps, info, metadata)
-        }
+        ExecuteMsg::ServiceRegister { metadata } => execute::service_register(deps, info, metadata),
         ExecuteMsg::ServiceUpdateMetadata(metadata) => {
             execute::service_update_metadata(deps, info, metadata)
         }
