@@ -130,11 +130,12 @@ Ownership of the contract can be transferred using this function.
 
 The function updates the owner field and emits an event.
 
-### SetRouting 
+### SetRouting
 
 This function configure the slash manager and delegation manager for the strategy manager.
 
 **Parameters:**
+
 - `slash_manager`: Address of the slash manager.
 - `delegation_manager`: Address of the delegation manager.
 
@@ -175,5 +176,5 @@ Returns the current contract owner.
 Returns the strategy associated with a token.
 
 **Parameters:**
-- `token`: Address of the token.
 
+- `token`: Address of the token.
