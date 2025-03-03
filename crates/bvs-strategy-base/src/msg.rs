@@ -35,7 +35,7 @@ pub enum ExecuteMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(SharesResponse)]
-    GetShares { staker: String, strategy: String },
+    GetShares { staker: String },
 
     #[returns(SharesToUnderlyingResponse)]
     SharesToUnderlyingView { amount_shares: Uint128 },
