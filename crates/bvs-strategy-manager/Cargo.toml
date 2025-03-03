@@ -23,7 +23,7 @@ builds = [
 [features]
 default = ["testing"]
 library = []
-testing = ["library", "dep:cw-multi-test"]
+testing = ["library", "dep:cw-multi-test", "bvs-library/testing"]
 
 [dependencies]
 cosmwasm-std = { workspace = true }
@@ -36,10 +36,9 @@ serde = { workspace = true }
 schemars = { workspace = true }
 bvs-base = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
-bvs-library = { workspace = true, features = ["testing"] }
+bvs-library = { workspace = true }
 bvs-registry = { workspace = true }
 bvs-strategy-base = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
-bvs-registry = { workspace = true, features = ["testing"] }
