@@ -166,7 +166,7 @@ func (suite *rewardsTestSuite) Test_ExecuteRewardsCoordinator() {
 	assert.NoError(t, err, "execute contract")
 	suite.Equal(uint32(0), res.Code)
 
-	resp, err := rewardsCoordinator.CreateBVSRewardsSubmission(
+	resp, err := rewardsCoordinator.CreateRewardsSubmission(
 		context.Background(),
 		[]rewardscoordinator.RewardsSubmission{{
 			StrategiesAndMultipliers: []rewardscoordinator.StrategyAndMultiplier{{

@@ -186,7 +186,7 @@ type InstantiateMsg struct {
 }
 
 type ExecuteMsg struct {
-	CreateBvsRewardsSubmission    *CreateBvsRewardsSubmission    `json:"create_bvs_rewards_submission,omitempty"`
+	CreateRewardsSubmission       *CreateRewardsSubmission       `json:"create_rewards_submission,omitempty"`
 	CreateRewardsForAllSubmission *CreateRewardsForAllSubmission `json:"create_rewards_for_all_submission,omitempty"`
 	ProcessClaim                  *ProcessClaim                  `json:"process_claim,omitempty"`
 	SubmitRoot                    *SubmitRoot                    `json:"submit_root,omitempty"`
@@ -200,7 +200,7 @@ type ExecuteMsg struct {
 	SetRouting                    *SetRouting                    `json:"set_routing,omitempty"`
 }
 
-type CreateBvsRewardsSubmission struct {
+type CreateRewardsForAllSubmission struct {
 	RewardsSubmissions []RewardsSubmission `json:"rewards_submissions"`
 }
 
@@ -217,7 +217,7 @@ type StrategyAndMultiplier struct {
 	Strategy   string `json:"strategy"`
 }
 
-type CreateRewardsForAllSubmission struct {
+type CreateRewardsSubmission struct {
 	RewardsSubmissions []RewardsSubmission `json:"rewards_submissions"`
 }
 
@@ -231,16 +231,16 @@ type ProcessClaim struct {
 }
 
 type ProcessClaimClaim struct {
-	EarnerIndex     int64                             `json:"earner_index"`
-	EarnerLeaf      PurpleExecuteEarnerTreeMerkleLeaf `json:"earner_leaf"`
-	EarnerTreeProof []int64                           `json:"earner_tree_proof"`
-	RootIndex       int64                             `json:"root_index"`
-	TokenIndices    []int64                           `json:"token_indices"`
-	TokenLeaves     []PurpleTokenTreeMerkleLeaf       `json:"token_leaves"`
-	TokenTreeProofs [][]int64                         `json:"token_tree_proofs"`
+	EarnerIndex     int64                       `json:"earner_index"`
+	EarnerLeaf      PurpleEarnerTreeMerkleLeaf  `json:"earner_leaf"`
+	EarnerTreeProof []int64                     `json:"earner_tree_proof"`
+	RootIndex       int64                       `json:"root_index"`
+	TokenIndices    []int64                     `json:"token_indices"`
+	TokenLeaves     []PurpleTokenTreeMerkleLeaf `json:"token_leaves"`
+	TokenTreeProofs [][]int64                   `json:"token_tree_proofs"`
 }
 
-type PurpleExecuteEarnerTreeMerkleLeaf struct {
+type PurpleEarnerTreeMerkleLeaf struct {
 	Earner          string `json:"earner"`
 	EarnerTokenRoot string `json:"earner_token_root"`
 }
@@ -314,16 +314,16 @@ type CheckClaim struct {
 }
 
 type CheckClaimClaim struct {
-	EarnerIndex     int64                             `json:"earner_index"`
-	EarnerLeaf      FluffyExecuteEarnerTreeMerkleLeaf `json:"earner_leaf"`
-	EarnerTreeProof []int64                           `json:"earner_tree_proof"`
-	RootIndex       int64                             `json:"root_index"`
-	TokenIndices    []int64                           `json:"token_indices"`
-	TokenLeaves     []FluffyTokenTreeMerkleLeaf       `json:"token_leaves"`
-	TokenTreeProofs [][]int64                         `json:"token_tree_proofs"`
+	EarnerIndex     int64                       `json:"earner_index"`
+	EarnerLeaf      FluffyEarnerTreeMerkleLeaf  `json:"earner_leaf"`
+	EarnerTreeProof []int64                     `json:"earner_tree_proof"`
+	RootIndex       int64                       `json:"root_index"`
+	TokenIndices    []int64                     `json:"token_indices"`
+	TokenLeaves     []FluffyTokenTreeMerkleLeaf `json:"token_leaves"`
+	TokenTreeProofs [][]int64                   `json:"token_tree_proofs"`
 }
 
-type FluffyExecuteEarnerTreeMerkleLeaf struct {
+type FluffyEarnerTreeMerkleLeaf struct {
 	Earner          string `json:"earner"`
 	EarnerTokenRoot string `json:"earner_token_root"`
 }
@@ -355,8 +355,8 @@ type MerkleizeLeaves struct {
 }
 
 type OperatorCommissionBips struct {
-	Bvs      string `json:"bvs"`
 	Operator string `json:"operator"`
+	Service  string `json:"service"`
 }
 
 type CalculateEarnerLeafHashResponse struct {
