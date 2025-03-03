@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/satlayer/satlayer-bvs/bvs-cw/directory"
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"github.com/satlayer/satlayer-bvs/bvs-cw/directory"
 
 	"github.com/satlayer/satlayer-bvs/babylond/cw20"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"

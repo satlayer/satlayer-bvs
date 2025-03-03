@@ -14,7 +14,7 @@ type Chain struct {
 	RPC               string `json:"rpc"`
 	InitBlockNum      uint64 `json:"initBlockNum"`
 	RewardCoordinator string `json:"rewardCoordinator"`
-	BVSContract           string `json:"bvsContract"`
+	BVSContract       string `json:"bvsContract"`
 	DelegationManager string `json:"delegationManager"`
 }
 
