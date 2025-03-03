@@ -201,8 +201,7 @@ type QueryMsg struct {
 }
 
 type GetShares struct {
-	Staker   string `json:"staker"`
-	Strategy string `json:"strategy"`
+	Staker string `json:"staker"`
 }
 
 type GetStrategyManager struct {

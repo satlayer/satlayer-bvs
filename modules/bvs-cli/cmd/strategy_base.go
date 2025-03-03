@@ -35,11 +35,11 @@ func strategyBaseCmd() *cobra.Command {
 		},
 	}
 	getSharesCmd := &cobra.Command{
-		Use:   "get-shares <stakerAddress> <strategyAddress>",
+		Use:   "get-shares <stakerAddress>",
 		Short: "To get shares.",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			strategybase.GetShares(args[0], args[1])
+			strategybase.GetShares(args[0])
 		},
 	}
 	sharesUnderlyingviewCmd := &cobra.Command{

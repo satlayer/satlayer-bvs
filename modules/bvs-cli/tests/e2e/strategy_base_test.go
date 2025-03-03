@@ -8,8 +8,7 @@ import (
 
 func Test_GetShares(t *testing.T) {
 	stakerAddress := "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk"
-	strategyAddress := "bbn102zy555uul67xct4f29plgt6wq63wacmjp93csxpz8z538jrzcdqmj993a"
-	strategybase.GetShares(stakerAddress, strategyAddress)
+	strategybase.GetShares(stakerAddress)
 }
 
 func Test_SharesUnderlyingView(t *testing.T) {

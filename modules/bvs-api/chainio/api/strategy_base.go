@@ -111,11 +111,10 @@ func (r *StrategyBase) sendQuery(msg any) (*wasmtypes.QuerySmartContractStateRes
 	return r.io.QueryContract(*r.queryOptions)
 }
 
-func (r *StrategyBase) GetShares(staker string, strategy string) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyBase) GetShares(staker string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategybase.QueryMsg{
 		GetShares: &strategybase.GetShares{
-			Staker:   staker,
-			Strategy: strategy,
+			Staker: staker,
 		},
 	}
 
