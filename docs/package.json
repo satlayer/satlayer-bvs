@@ -19,8 +19,8 @@
   "dependencies": {
     "@tailwindcss/postcss": "^4.0.9",
     "next": "^15.2.0",
-    "nextra": "^4.2.13",
-    "nextra-theme-docs": "^4.2.13",
+    "nextra": "^4.2.14",
+    "nextra-theme-docs": "^4.2.14",
     "postcss": "^8.5.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
