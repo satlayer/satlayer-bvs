@@ -81,7 +81,7 @@ impl
     fn new(app: &mut App, env: &Env, msg: Option<cw20_base::msg::InstantiateMsg>) -> Self {
         let init = msg.unwrap_or(Self::default_init(app, env));
         let code_id = Self::store_code(app);
-        let addr = Self::instantiate(app, code_id, "dummy_cw20_token", &init);
+        let addr = Self::instantiate(app, code_id, "underlying_token", &init);
         Self { addr, init }
     }
 
