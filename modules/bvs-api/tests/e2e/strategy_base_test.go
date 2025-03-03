@@ -49,7 +49,6 @@ func (suite *strategyBaseTestSuite) SetupSuite() {
 
 	deployer := &bvs.Deployer{BabylonContainer: container}
 	registry := deployer.DeployRegistry(nil)
-	// TODO: Circular Deps, StrategyManager should be set via ExecuteMsg and not injected in InitMsg
 	strategyBase := deployer.DeployStrategyBase(
 		registry.Address,
 		token.Address,

@@ -19,7 +19,6 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
-// TODO: why circular dependency here, remove?
 use bvs_library::ownership;
 
 const CONTRACT_NAME: &str = "BVS Strategy Base";

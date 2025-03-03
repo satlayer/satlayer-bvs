@@ -26,7 +26,6 @@ type SlashManager struct {
 }
 
 func NewSlashManager(chainIO io.ChainIO) *SlashManager {
-	// TODO(fuxingloh): unused ContractAddr
 	return &SlashManager{
 		io:            chainIO,
 		gasAdjustment: 1.2,
