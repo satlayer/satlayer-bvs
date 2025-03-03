@@ -9,6 +9,7 @@ use bvs_delegation_manager::{
 };
 use bvs_library::testing::TestingContract;
 use bvs_registry::testing::RegistryContract;
+use bvs_strategy_manager::msg::delegation_manager::IncreaseDelegatedShares;
 use bvs_strategy_manager::{
     msg::ExecuteMsg as StrategyManagerExecuteMsg, testing::StrategyManagerContract,
 };
@@ -778,11 +779,11 @@ fn increase_delegated_shares_successfully() {
         assert!(result.is_ok());
     }
 
-    let msg = ExecuteMsg::IncreaseDelegatedShares {
+    let msg = ExecuteMsg::IncreaseDelegatedShares(IncreaseDelegatedShares {
         staker: staker.to_string(),
         strategy: strategy1.to_string(),
         shares: Uint128::new(20),
-    };
+    });
     let result = delegation_mananger.execute(&mut app, strategy_manager.addr(), &msg);
     assert!(result.is_ok());
 

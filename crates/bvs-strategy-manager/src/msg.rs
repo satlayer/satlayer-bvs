@@ -91,3 +91,24 @@ pub enum QueryMsg {
     #[returns(TokenStrategyResponse)]
     TokenStrategy { token: String },
 }
+
+/// Both Strategy Manager and Delegation Manager are circularly dependent on each other.
+/// Since we can't circularly import each other, we put ExecuteMsg,
+/// which is only used by the Strategy Manager here.
+/// Delegation Manager must import this module and implement [IncreaseDelegatedShares]
+pub mod delegation_manager {
+    use cosmwasm_schema::cw_serde;
+    use cosmwasm_std::Uint128;
+
+    #[cw_serde]
+    pub enum ExecuteMsg {
+        IncreaseDelegatedShares(IncreaseDelegatedShares),
+    }
+
+    #[cw_serde]
+    pub struct IncreaseDelegatedShares {
+        pub staker: String,
+        pub strategy: String,
+        pub shares: Uint128,
+    }
+}

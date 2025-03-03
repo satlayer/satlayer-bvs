@@ -152,15 +152,12 @@ pub fn execute(
             middleware_times_indexes,
             receive_as_tokens,
         ),
-        ExecuteMsg::IncreaseDelegatedShares {
-            staker,
-            strategy,
-            shares,
-        } => {
-            let staker_addr = deps.api.addr_validate(&staker)?;
-            let strategy_addr = deps.api.addr_validate(&strategy)?;
+        ExecuteMsg::IncreaseDelegatedShares(msg) => {
+            let staker = deps.api.addr_validate(&msg.staker)?;
+            let strategy = deps.api.addr_validate(&msg.strategy)?;
+            let shares = msg.shares;
 
-            increase_delegated_shares(deps, info, staker_addr, strategy_addr, shares)
+            increase_delegated_shares(deps, info, staker, strategy, shares)
         }
         ExecuteMsg::DecreaseDelegatedShares {
             staker,

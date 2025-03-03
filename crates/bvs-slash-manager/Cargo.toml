@@ -42,6 +42,7 @@ ripemd = { workspace = true }
 base64 = { workspace = true }
 serde_json = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
+
 bvs-library = { workspace = true }
 bvs-registry = { workspace = true }
 bvs-strategy-manager = { workspace = true }
@@ -49,3 +50,6 @@ bvs-delegation-manager = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
+bvs-strategy-base = { workspace = true, features = ["testing"] }
+bvs-strategy-manager = { workspace = true, features = ["testing"] }
+bvs-delegation-manager = { workspace = true, features = ["testing"] }

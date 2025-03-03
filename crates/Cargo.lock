@@ -193,19 +193,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3e31ea183f6ee62ac8b8a8cf7feddd766317adfb13ff469de57ce033efd6a790"
 
 [[package]]
-name = "bvs-base"
-version = "2.0.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
-]
-
-[[package]]
 name = "bvs-delegation-manager"
 version = "0.1.0"
 dependencies = [
  "bvs-library",
  "bvs-registry",
+ "bvs-strategy-base",
  "bvs-strategy-manager",
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -225,6 +218,8 @@ dependencies = [
  "bvs-delegation-manager",
  "bvs-library",
  "bvs-registry",
+ "bvs-strategy-base",
+ "bvs-strategy-manager",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
@@ -275,6 +270,7 @@ dependencies = [
  "base64",
  "bvs-library",
  "bvs-registry",
+ "bvs-strategy-base",
  "bvs-strategy-manager",
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -298,6 +294,7 @@ dependencies = [
  "bvs-delegation-manager",
  "bvs-library",
  "bvs-registry",
+ "bvs-strategy-base",
  "bvs-strategy-manager",
  "cosmwasm-crypto",
  "cosmwasm-schema",
@@ -319,7 +316,6 @@ dependencies = [
 name = "bvs-strategy-base"
 version = "0.1.0"
 dependencies = [
- "bvs-base",
  "bvs-library",
  "bvs-registry",
  "cosmwasm-schema",
@@ -338,7 +334,6 @@ dependencies = [
 name = "bvs-strategy-manager"
 version = "0.1.0"
 dependencies = [
- "bvs-base",
  "bvs-library",
  "bvs-registry",
  "bvs-strategy-base",
