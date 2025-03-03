@@ -5,22 +5,24 @@
 ## General Flow
 
 1. **Initial Setup**:
-    - `Owner` configures `RewardsUpdater`
+
+   - `Owner` configures `RewardsUpdater`
 
 2. **Rewards Submission**:
-    - `Service` calculates off-chain rewards for each `Strategy`
-    - Sends tokens to contract via `create_bvs_rewards_submission`
+
+   - `Service` calculates off-chain rewards for each `Strategy`
+   - Sends tokens to contract via `create_bvs_rewards_submission`
 
 3. **Rewards Activation**:
-    - `RewardsUpdater` processes `RewardsSubmission` events periodically
-    - Creates a cumulative rewards merkle tree with `(earner, token)` pairs
-    - Submits root via `submit_root`
+
+   - `RewardsUpdater` processes `RewardsSubmission` events periodically
+   - Creates a cumulative rewards merkle tree with `(earner, token)` pairs
+   - Submits root via `submit_root`
 
 4. **Claiming Process**:
-    - (optional) `Earner` designates a `Claimer`
-    - `Claimer` executes `process_claim` with merkle proof after activation delay
-    - Contract transfers rewards to specified `Recipient`
-
+   - (optional) `Earner` designates a `Claimer`
+   - `Claimer` executes `process_claim` with merkle proof after activation delay
+   - Contract transfers rewards to specified `Recipient`
 
 ```mermaid
 flowchart TD
