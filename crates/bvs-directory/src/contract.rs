@@ -302,13 +302,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 mod query {
     use crate::state;
-    use crate::state::RegistrationStatus;
     use cosmwasm_std::{Addr, Deps, StdResult};
 
-    pub fn status(deps: Deps, operator: Addr, service: Addr) -> StdResult<RegistrationStatus> {
+    pub fn status(deps: Deps, operator: Addr, service: Addr) -> StdResult<u8> {
         let key = (&operator, &service);
         let status = state::get_registration_status(deps.storage, key)?;
-        Ok(status)
+        Ok(status.into())
     }
 }
 
@@ -803,19 +802,7 @@ mod tests {
 
         assert_eq!(
             status(deps.as_ref(), operator.clone(), service.clone()),
-            Ok(RegistrationStatus::Inactive)
-        );
-
-        state::set_registration_status(
-            &mut deps.storage,
-            (&operator, &service),
-            RegistrationStatus::Active,
-        )
-        .unwrap();
-
-        assert_eq!(
-            status(deps.as_ref(), operator.clone(), service.clone()),
-            Ok(RegistrationStatus::Active)
+            Ok(0)
         );
 
         state::set_registration_status(
@@ -827,19 +814,19 @@ mod tests {
 
         assert_eq!(
             status(deps.as_ref(), operator.clone(), service.clone()),
-            Ok(RegistrationStatus::Inactive)
+            Ok(0)
         );
 
         state::set_registration_status(
             &mut deps.storage,
             (&operator, &service),
-            RegistrationStatus::ServiceRegistered,
+            RegistrationStatus::Active,
         )
         .unwrap();
 
         assert_eq!(
             status(deps.as_ref(), operator.clone(), service.clone()),
-            Ok(RegistrationStatus::ServiceRegistered)
+            Ok(1)
         );
 
         state::set_registration_status(
@@ -851,7 +838,19 @@ mod tests {
 
         assert_eq!(
             status(deps.as_ref(), operator.clone(), service.clone()),
-            Ok(RegistrationStatus::OperatorRegistered)
+            Ok(2)
+        );
+
+        state::set_registration_status(
+            &mut deps.storage,
+            (&operator, &service),
+            RegistrationStatus::ServiceRegistered,
+        )
+        .unwrap();
+
+        assert_eq!(
+            status(deps.as_ref(), operator.clone(), service.clone()),
+            Ok(3)
         );
     }
 }

@@ -257,10 +257,7 @@ fn register_lifecycle_service_first() {
             },
         )
         .unwrap();
-    assert_eq!(
-        status,
-        StatusResponse(RegistrationStatus::ServiceRegistered)
-    );
+    assert_eq!(status, 3);
 
     // TODO(fuxingloh): need strategy-manager setup.
     // let operator = app.api().addr_make("operator");
@@ -386,11 +383,11 @@ fn query_status() {
         operator: app.api().addr_make("operator/44").to_string(),
     };
 
-    let status: RegistrationStatus = directory.query(&mut app, query_msg).unwrap();
+    let status: StatusResponse = directory.query(&mut app, query_msg).unwrap();
 
-    assert_eq!(status, RegistrationStatus::Inactive);
+    assert_eq!(status, 0);
 
     let status: StatusResponse = directory.query(&mut app, query_msg).unwrap();
 
-    assert_eq!(status, StatusResponse(RegistrationStatus::Inactive));
+    assert_eq!(status, 0);
 }
