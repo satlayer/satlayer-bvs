@@ -65,9 +65,9 @@ type InstantiateMsg struct {
 type ExecuteMsg struct {
 	ServiceRegister           *ServiceRegister           `json:"service_register,omitempty"`
 	ServiceUpdateMetadata     *ServiceMetadata           `json:"service_update_metadata,omitempty"`
-	OperatorRegisterService   *OperatorRegisterService   `json:"operator_register_service,omitempty"`
-	OperatorDeregisterService *OperatorDeregisterService `json:"operator_deregister_service,omitempty"`
 	ServiceRegisterOperator   *ServiceRegisterOperator   `json:"service_register_operator,omitempty"`
+	OperatorDeregisterService *OperatorDeregisterService `json:"operator_deregister_service,omitempty"`
+	OperatorRegisterService   *OperatorRegisterService   `json:"operator_register_service,omitempty"`
 	ServiceDeregisterOperator *ServiceDeregisterOperator `json:"service_deregister_operator,omitempty"`
 	TransferOwnership         *TransferOwnership         `json:"transfer_ownership,omitempty"`
 	SetRouting                *SetRouting                `json:"set_routing,omitempty"`

@@ -11,7 +11,8 @@ type Operator = Addr;
 /// Becomes Active when the Operator and Service both have registered
 /// Becomes Inactive when the Operator or Service have unregistered (default state)
 #[cw_serde]
-pub enum RegisteredStatus {
+#[repr(u8)]
+pub enum RegistrationStatus {
     Inactive = 0,
     Active = 1,
     OperatorRegistered = 2,
@@ -21,9 +22,9 @@ pub enum RegisteredStatus {
 /// Default state is Inactive,
 /// neither Operator nor Service have registered
 /// or one of them has Deregistered
-impl Default for RegisteredStatus {
+impl Default for RegistrationStatus {
     fn default() -> Self {
-        RegisteredStatus::Inactive
+        RegistrationStatus::Inactive
     }
 }
 
@@ -46,7 +47,7 @@ pub fn require_service_registered(
 
 /// Mapping of (operator_service) address.
 /// See `RegisteredStatus` for more of the status
-pub const REGISTRATION_STATUS: Map<(&Operator, &Service), RegisteredStatus> =
+pub const REGISTRATION_STATUS: Map<(&Operator, &Service), RegistrationStatus> =
     Map::new("registration_status");
 
 #[cfg(test)]

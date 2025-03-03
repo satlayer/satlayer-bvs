@@ -79,7 +79,7 @@ pub fn execute(
 
 mod execute {
     use crate::msg::ServiceMetadata;
-    use crate::state::{RegisteredStatus, REGISTRATION_STATUS, SERVICES};
+    use crate::state::{RegistrationStatus, REGISTRATION_STATUS, SERVICES};
     use crate::{auth, state, ContractError};
     use cosmwasm_std::{Addr, DepsMut, Event, MessageInfo, Response};
 
@@ -141,19 +141,21 @@ mod execute {
         let key = (&operator, &info.sender);
         let status = REGISTRATION_STATUS
             .may_load(deps.storage, key)?
-            .unwrap_or(RegisteredStatus::Inactive);
+            .unwrap_or(RegistrationStatus::Inactive);
         match status {
-            RegisteredStatus::Active => Err(ContractError::InvalidRegistrationStatus {
+            RegistrationStatus::Active => Err(ContractError::InvalidRegistrationStatus {
                 msg: "Registration is already active.".to_string(),
             }),
-            RegisteredStatus::ServiceRegistered => Err(ContractError::InvalidRegistrationStatus {
-                msg: "Service has already registered.".to_string(),
-            }),
-            RegisteredStatus::Inactive => {
+            RegistrationStatus::ServiceRegistered => {
+                Err(ContractError::InvalidRegistrationStatus {
+                    msg: "Service has already registered.".to_string(),
+                })
+            }
+            RegistrationStatus::Inactive => {
                 REGISTRATION_STATUS.save(
                     deps.storage,
                     key,
-                    &RegisteredStatus::ServiceRegistered,
+                    &RegistrationStatus::ServiceRegistered,
                 )?;
                 Ok(Response::new().add_event(
                     Event::new("RegistrationStatusUpdated")
@@ -163,8 +165,8 @@ mod execute {
                         .add_attribute("status", "ServiceRegistered"),
                 ))
             }
-            RegisteredStatus::OperatorRegistered => {
-                REGISTRATION_STATUS.save(deps.storage, key, &RegisteredStatus::Active)?;
+            RegistrationStatus::OperatorRegistered => {
+                REGISTRATION_STATUS.save(deps.storage, key, &RegistrationStatus::Active)?;
                 Ok(Response::new().add_event(
                     Event::new("RegistrationStatusUpdated")
                         .add_attribute("method", "service_register_operator")
@@ -186,14 +188,14 @@ mod execute {
         let key = (&operator, &info.sender);
         let status = REGISTRATION_STATUS
             .may_load(deps.storage, key)?
-            .unwrap_or(RegisteredStatus::Inactive);
+            .unwrap_or(RegistrationStatus::Inactive);
 
-        if status == RegisteredStatus::Inactive {
+        if status == RegistrationStatus::Inactive {
             Err(ContractError::InvalidRegistrationStatus {
                 msg: "Already deregistered.".to_string(),
             })
         } else {
-            REGISTRATION_STATUS.save(deps.storage, key, &RegisteredStatus::Inactive)?;
+            REGISTRATION_STATUS.save(deps.storage, key, &RegistrationStatus::Inactive)?;
             Ok(Response::new().add_event(
                 Event::new("RegistrationStatusUpdated")
                     .add_attribute("method", "service_deregister_operator")
@@ -229,19 +231,21 @@ mod execute {
         let key = (&info.sender, &service);
         let status = REGISTRATION_STATUS
             .may_load(deps.storage, key)?
-            .unwrap_or(RegisteredStatus::Inactive);
+            .unwrap_or(RegistrationStatus::Inactive);
         match status {
-            RegisteredStatus::Active => Err(ContractError::InvalidRegistrationStatus {
+            RegistrationStatus::Active => Err(ContractError::InvalidRegistrationStatus {
                 msg: "Registration is already active.".to_string(),
             }),
-            RegisteredStatus::OperatorRegistered => Err(ContractError::InvalidRegistrationStatus {
-                msg: "Operator has already registered.".to_string(),
-            }),
-            RegisteredStatus::Inactive => {
+            RegistrationStatus::OperatorRegistered => {
+                Err(ContractError::InvalidRegistrationStatus {
+                    msg: "Operator has already registered.".to_string(),
+                })
+            }
+            RegistrationStatus::Inactive => {
                 REGISTRATION_STATUS.save(
                     deps.storage,
                     key,
-                    &RegisteredStatus::OperatorRegistered,
+                    &RegistrationStatus::OperatorRegistered,
                 )?;
                 Ok(Response::new().add_event(
                     Event::new("RegistrationStatusUpdated")
@@ -251,8 +255,8 @@ mod execute {
                         .add_attribute("status", "OperatorRegistered"),
                 ))
             }
-            RegisteredStatus::ServiceRegistered => {
-                REGISTRATION_STATUS.save(deps.storage, key, &RegisteredStatus::Active)?;
+            RegistrationStatus::ServiceRegistered => {
+                REGISTRATION_STATUS.save(deps.storage, key, &RegistrationStatus::Active)?;
                 Ok(Response::new().add_event(
                     Event::new("RegistrationStatusUpdated")
                         .add_attribute("method", "operator_register_service")
@@ -274,14 +278,14 @@ mod execute {
         let key = (&info.sender, &service);
         let status = REGISTRATION_STATUS
             .may_load(deps.storage, key)?
-            .unwrap_or(RegisteredStatus::default());
+            .unwrap_or(RegistrationStatus::default());
 
-        if status == RegisteredStatus::Inactive {
+        if status == RegistrationStatus::Inactive {
             Err(ContractError::InvalidRegistrationStatus {
                 msg: "Already deregistered.".to_string(),
             })
         } else {
-            REGISTRATION_STATUS.save(deps.storage, key, &RegisteredStatus::Inactive)?;
+            REGISTRATION_STATUS.save(deps.storage, key, &RegistrationStatus::Inactive)?;
             Ok(Response::new().add_event(
                 Event::new("RegistrationStatusUpdated")
                     .add_attribute("method", "operator_deregister_service")
@@ -305,14 +309,14 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 mod query {
-    use crate::state::{RegisteredStatus, REGISTRATION_STATUS};
+    use crate::state::{RegistrationStatus, REGISTRATION_STATUS};
     use cosmwasm_std::{Addr, Deps, StdResult};
 
-    pub fn status(deps: Deps, operator: Addr, service: Addr) -> StdResult<RegisteredStatus> {
+    pub fn status(deps: Deps, operator: Addr, service: Addr) -> StdResult<RegistrationStatus> {
         let key = (&operator, &service);
         let status = REGISTRATION_STATUS
             .may_load(deps.storage, key)?
-            .unwrap_or(RegisteredStatus::default());
+            .unwrap_or(RegistrationStatus::default());
         Ok(status)
     }
 }
@@ -322,7 +326,7 @@ mod tests {
     use super::*;
     use crate::contract::query::status;
     use crate::msg::{InstantiateMsg, ServiceMetadata};
-    use crate::state::{RegisteredStatus, REGISTRATION_STATUS, SERVICES};
+    use crate::state::{RegistrationStatus, REGISTRATION_STATUS, SERVICES};
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
@@ -506,7 +510,7 @@ mod tests {
         let status = REGISTRATION_STATUS
             .load(&deps.storage, (&operator, &service))
             .unwrap();
-        assert_eq!(status, RegisteredStatus::OperatorRegistered);
+        assert_eq!(status, RegistrationStatus::OperatorRegistered);
 
         let res = execute::service_register_operator(
             deps.as_mut(),
@@ -527,7 +531,7 @@ mod tests {
         let status = REGISTRATION_STATUS
             .load(&deps.storage, (&operator, &service))
             .unwrap();
-        assert_eq!(status, RegisteredStatus::Active);
+        assert_eq!(status, RegistrationStatus::Active);
     }
 
     #[test]
@@ -568,7 +572,7 @@ mod tests {
         let status = REGISTRATION_STATUS
             .load(&deps.storage, (&operator, &service))
             .unwrap();
-        assert_eq!(status, RegisteredStatus::ServiceRegistered);
+        assert_eq!(status, RegistrationStatus::ServiceRegistered);
 
         let res = execute::operator_register_service(
             deps.as_mut(),
@@ -589,7 +593,7 @@ mod tests {
         let status = REGISTRATION_STATUS
             .load(&deps.storage, (&operator, &service))
             .unwrap();
-        assert_eq!(status, RegisteredStatus::Active);
+        assert_eq!(status, RegistrationStatus::Active);
     }
 
     #[test]
@@ -606,7 +610,7 @@ mod tests {
             .save(
                 &mut deps.storage,
                 key,
-                &RegisteredStatus::OperatorRegistered,
+                &RegistrationStatus::OperatorRegistered,
             )
             .unwrap();
 
@@ -634,7 +638,11 @@ mod tests {
         let key = (&operator, &service);
         SERVICES.save(&mut deps.storage, &service, &true).unwrap();
         REGISTRATION_STATUS
-            .save(&mut deps.storage, key, &RegisteredStatus::ServiceRegistered)
+            .save(
+                &mut deps.storage,
+                key,
+                &RegistrationStatus::ServiceRegistered,
+            )
             .unwrap();
 
         let res = execute::service_register_operator(
@@ -662,7 +670,7 @@ mod tests {
         let key = (&operator, &service);
         SERVICES.save(&mut deps.storage, &service, &true).unwrap();
         REGISTRATION_STATUS
-            .save(&mut deps.storage, key, &RegisteredStatus::Active)
+            .save(&mut deps.storage, key, &RegistrationStatus::Active)
             .unwrap();
 
         let res = execute::operator_register_service(
@@ -701,7 +709,7 @@ mod tests {
         let key = (&operator, &service);
         SERVICES.save(&mut deps.storage, &service, &true).unwrap();
         REGISTRATION_STATUS
-            .save(&mut deps.storage, key, &RegisteredStatus::Active)
+            .save(&mut deps.storage, key, &RegistrationStatus::Active)
             .unwrap();
 
         let res = execute::service_deregister_operator(
@@ -723,7 +731,7 @@ mod tests {
         let status = REGISTRATION_STATUS
             .load(&deps.storage, (&operator, &service))
             .unwrap();
-        assert_eq!(status, RegisteredStatus::Inactive);
+        assert_eq!(status, RegistrationStatus::Inactive);
     }
 
     #[test]
@@ -737,7 +745,7 @@ mod tests {
         let key = (&operator, &service);
         SERVICES.save(&mut deps.storage, &service, &true).unwrap();
         REGISTRATION_STATUS
-            .save(&mut deps.storage, key, &RegisteredStatus::Active)
+            .save(&mut deps.storage, key, &RegistrationStatus::Active)
             .unwrap();
 
         let res = execute::operator_deregister_service(
@@ -759,7 +767,7 @@ mod tests {
         let status = REGISTRATION_STATUS
             .load(&deps.storage, (&operator, &service))
             .unwrap();
-        assert_eq!(status, RegisteredStatus::Inactive);
+        assert_eq!(status, RegistrationStatus::Inactive);
     }
 
     #[test]
@@ -774,7 +782,7 @@ mod tests {
         let key = (&operator, &service);
         SERVICES.save(&mut deps.storage, &service, &true).unwrap();
         REGISTRATION_STATUS
-            .save(&mut deps.storage, key, &RegisteredStatus::Inactive)
+            .save(&mut deps.storage, key, &RegistrationStatus::Inactive)
             .unwrap();
 
         let res = execute::operator_deregister_service(
@@ -812,47 +820,51 @@ mod tests {
 
         assert_eq!(
             status(deps.as_ref(), operator.clone(), service.clone()),
-            Ok(RegisteredStatus::Inactive)
+            Ok(RegistrationStatus::Inactive)
         );
 
         REGISTRATION_STATUS
-            .save(&mut deps.storage, key, &RegisteredStatus::Active)
+            .save(&mut deps.storage, key, &RegistrationStatus::Active)
             .unwrap();
 
         assert_eq!(
             status(deps.as_ref(), operator.clone(), service.clone()),
-            Ok(RegisteredStatus::Active)
+            Ok(RegistrationStatus::Active)
         );
 
         REGISTRATION_STATUS
-            .save(&mut deps.storage, key, &RegisteredStatus::Inactive)
+            .save(&mut deps.storage, key, &RegistrationStatus::Inactive)
             .unwrap();
 
         assert_eq!(
             status(deps.as_ref(), operator.clone(), service.clone()),
-            Ok(RegisteredStatus::Inactive)
-        );
-
-        REGISTRATION_STATUS
-            .save(&mut deps.storage, key, &RegisteredStatus::ServiceRegistered)
-            .unwrap();
-
-        assert_eq!(
-            status(deps.as_ref(), operator.clone(), service.clone()),
-            Ok(RegisteredStatus::ServiceRegistered)
+            Ok(RegistrationStatus::Inactive)
         );
 
         REGISTRATION_STATUS
             .save(
                 &mut deps.storage,
                 key,
-                &RegisteredStatus::OperatorRegistered,
+                &RegistrationStatus::ServiceRegistered,
             )
             .unwrap();
 
         assert_eq!(
             status(deps.as_ref(), operator.clone(), service.clone()),
-            Ok(RegisteredStatus::OperatorRegistered)
+            Ok(RegistrationStatus::ServiceRegistered)
+        );
+
+        REGISTRATION_STATUS
+            .save(
+                &mut deps.storage,
+                key,
+                &RegistrationStatus::OperatorRegistered,
+            )
+            .unwrap();
+
+        assert_eq!(
+            status(deps.as_ref(), operator.clone(), service.clone()),
+            Ok(RegistrationStatus::OperatorRegistered)
         );
     }
 }

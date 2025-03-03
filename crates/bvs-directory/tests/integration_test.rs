@@ -1,6 +1,6 @@
 use bvs_delegation_manager::testing::DelegationContract;
 use bvs_directory::msg::{ExecuteMsg, QueryMsg, ServiceMetadata, StatusResponse};
-use bvs_directory::state::RegisteredStatus;
+use bvs_directory::state::RegistrationStatus;
 use bvs_directory::testing::DirectoryContract;
 use bvs_directory::ContractError;
 use bvs_library::testing::TestingContract;
@@ -257,7 +257,10 @@ fn register_lifecycle_service_first() {
             },
         )
         .unwrap();
-    assert_eq!(status, StatusResponse(RegisteredStatus::ServiceRegistered));
+    assert_eq!(
+        status,
+        StatusResponse(RegistrationStatus::ServiceRegistered)
+    );
 
     // TODO(fuxingloh): need strategy-manager setup.
     // let operator = app.api().addr_make("operator");
@@ -383,11 +386,11 @@ fn query_status() {
         operator: app.api().addr_make("operator/44").to_string(),
     };
 
-    let status: RegisteredStatus = directory.query(&mut app, query_msg).unwrap();
+    let status: RegistrationStatus = directory.query(&mut app, query_msg).unwrap();
 
-    assert_eq!(status, RegisteredStatus::Inactive);
+    assert_eq!(status, RegistrationStatus::Inactive);
 
     let status: StatusResponse = directory.query(&mut app, query_msg).unwrap();
 
-    assert_eq!(status, StatusResponse(RegisteredStatus::Inactive));
+    assert_eq!(status, StatusResponse(RegistrationStatus::Inactive));
 }
