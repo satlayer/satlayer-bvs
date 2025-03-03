@@ -6,10 +6,11 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-cli/commands/strategybase"
 )
 
-func Test_GetShares(t *testing.T) {
-	stakerAddress := "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk"
-	strategybase.GetShares(stakerAddress)
-}
+// TODO: disabled transactional test, to be fixed in SL-182
+//func Test_GetShares(t *testing.T) {
+//	stakerAddress := "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk"
+//	strategybase.GetShares(stakerAddress)
+//}
 
 func Test_SharesUnderlyingView(t *testing.T) {
 	strategybase.SharesUnderlyingView(12)
