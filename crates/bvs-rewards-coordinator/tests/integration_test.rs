@@ -30,7 +30,7 @@ fn set_activation_delay() {
     assert_eq!(res.events.len(), 2);
     assert_eq!(
         res.events[1],
-        Event::new("wasm-ActivationDelaySet")
+        Event::new("wasm-SetActivationDelay")
             .add_attribute("_contract_address", rewards.addr.to_string())
             .add_attribute("old_activation_delay", "60")
             .add_attribute("new_activation_delay", "100")
