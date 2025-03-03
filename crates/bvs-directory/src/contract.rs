@@ -80,7 +80,7 @@ mod execute {
     use crate::{auth, state, ContractError};
     use cosmwasm_std::{Addr, DepsMut, Event, MessageInfo, Response};
 
-    /// Register a service (info.sender service)
+    /// Register a service (info.sender is the service)
     pub fn service_register(
         deps: DepsMut,
         info: MessageInfo,
@@ -103,7 +103,7 @@ mod execute {
             .add_event(new_event_metadata(metadata, &info.sender)))
     }
 
-    /// Update service metadata (info.sender service)
+    /// Update service metadata (info.sender is the service)
     pub fn service_update_metadata(
         deps: DepsMut,
         info: MessageInfo,
@@ -130,7 +130,7 @@ mod execute {
         event
     }
 
-    /// Register an operator to a service (info.sender service)
+    /// Register an operator to a service (info.sender is the service)
     /// Service must be registered via [`super::ExecuteMsg::ServiceRegister`]
     /// If the operator is already registered, the registration status will be set to [`RegistrationStatus::Active`] (1)
     /// Else the registration status will be set to [`RegistrationStatus::ServiceRegistered`] (3)
@@ -179,8 +179,8 @@ mod execute {
         }
     }
 
-    /// Deregister an operator to a service (info.sender service)
-    /// Set the registration status to INACTIVE (0)
+    /// Deregister an operator to a service (info.sender is the service)
+    /// Set the registration status to [`RegistrationStatus::Inactive`] (0)
     pub fn service_deregister_operator(
         deps: DepsMut,
         info: MessageInfo,
@@ -207,10 +207,10 @@ mod execute {
         }
     }
 
-    /// Register a service to an operator (info.sender operator)
+    /// Register a service to an operator (info.sender is the operator)
     /// Operator must be registered on the delegation manager
-    /// If the service is already registered, the registration status will be set to ACTIVE (1)
-    /// Else the registration status will be set to OPERATOR_REGISTERED (2)
+    /// If the service is already registered, the registration status will be set to [`RegistrationStatus::Active`] (1)
+    /// Else the registration status will be set to [`RegistrationStatus::OperatorRegistered`] (2)
     pub fn operator_register_service(
         deps: DepsMut,
         info: MessageInfo,
@@ -271,8 +271,8 @@ mod execute {
         }
     }
 
-    /// Deregister a service to an operator (info.sender operator)
-    /// Set the registration status to INACTIVE (0)
+    /// Deregister a service to an operator (info.sender is the Operator)
+    /// Set the registration status to [`RegistrationStatus::Inactive`] (0)
     pub fn operator_deregister_service(
         deps: DepsMut,
         info: MessageInfo,
@@ -314,14 +314,15 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 mod query {
     use crate::msg::StatusResponse;
     use crate::state;
+    use crate::state::RegistrationStatus;
     use cosmwasm_std::{Addr, Deps, StdResult};
 
     /// Get the registration status of an operator to a service
-    /// Returns:
-    /// - Inactive (0) if not registered
-    /// - Active (1) if registration is active (operator and service are registered to each other)
-    /// - OperatorRegistered (2) if operator is registered to service, pending service registration
-    /// - ServiceRegistered (3) if service is registered to operator, pending operator registration
+    /// Returns: [`StdResult<StatusResponse>`]
+    /// - [`RegistrationStatus::Inactive`] (0) if not registered
+    /// - [`RegistrationStatus::Active`] (1) if registration is active (operator and service are registered to each other)
+    /// - [`RegistrationStatus::OperatorRegistered`] (2) if operator is registered to service, pending service registration
+    /// - [`RegistrationStatus::ServiceRegistered`] (3) if service is registered to operator, pending operator registration
     pub fn status(deps: Deps, operator: Addr, service: Addr) -> StdResult<StatusResponse> {
         let key = (&operator, &service);
         let status = state::get_registration_status(deps.storage, key)?;
