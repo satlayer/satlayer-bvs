@@ -32,6 +32,6 @@ func InitConfig() {
 	}
 	fmt.Printf("C: %+v", C)
 	// init logger
-	L = logger.NewELKLogger(C.Chain.BVSHash)
+	L = logger.NewELKLogger(C.Chain.BVSContract)
 	initStore(&C.Database)
 }

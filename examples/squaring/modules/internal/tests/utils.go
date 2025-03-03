@@ -2,9 +2,9 @@ package tests
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/satlayer/satlayer-bvs/bvs-cw/directory"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -94,7 +94,8 @@ func (suite *TestSuite) SetupSuite(keyDir string, keyName string, privKey string
 	suite.squaringContract = squaringContract
 
 	// register squaring contract into directory
-	res, err := suite.DirectoryApi.RegisterBvs(ctx, squaringContract.Address)
+	// squaringContract.Address
+	res, err := suite.DirectoryApi.ServiceRegister(ctx, directory.ServiceMetadata{})
 	assert.NoError(t, err)
 	assert.NotNil(t, res)
 
@@ -113,7 +114,7 @@ func (suite *TestSuite) SetupSuite(keyDir string, keyName string, privKey string
 			ID:           suite.Babylond.ChainId,
 			RPC:          suite.Babylond.RpcUri,
 			BvsDirectory: suite.DirectoryApi.ContractAddr,
-			BvsHash:      hex.EncodeToString(api.Sha256([]byte(squaringContract.Address))),
+			BvsContract:  squaringContract.Address,
 		},
 	})
 	svc.InitMonitor()

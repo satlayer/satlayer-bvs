@@ -46,12 +46,6 @@ func NewUploader() *Uploader {
 	if err != nil {
 		panic(err)
 	}
-
-	txResp, err := api.NewDirectory(client, core.C.Chain.BVSDirectory).BvsInfo(core.C.Chain.BVSHash)
-	if err != nil {
-		panic(err)
-	}
-
 	delegation := api.NewDelegationManager(client, core.C.Chain.DelegationManager)
 
 	rewardsCoordinator := api.NewRewardsCoordinator(client)
@@ -60,7 +54,7 @@ func NewUploader() *Uploader {
 	return &Uploader{
 		chainIO:            client,
 		delegation:         delegation,
-		bvsContract:        txResp.BvsContract,
+		bvsContract:        core.C.Chain.BVSContract,
 		rewardsCoordinator: rewardsCoordinator,
 	}
 }

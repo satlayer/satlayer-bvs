@@ -43,7 +43,7 @@ func NewMonitor() *Monitor {
 	fmt.Printf("homeDir: %s\n", keyDir)
 
 	// init log and chain
-	elkLogger := logger.NewELKLogger(core.C.Chain.BvsHash)
+	elkLogger := logger.NewELKLogger(core.C.Chain.BvsContract)
 	elkLogger.SetLogLevel("info")
 	reg := prometheus.NewRegistry()
 	metricsIndicators := transactionprocess.NewPromIndicators(reg, "bvs_demo")
@@ -63,15 +63,10 @@ func NewMonitor() *Monitor {
 		panic(err)
 	}
 
-	// get bvs contract
-	txResp, err := api.NewDirectory(chainIO, core.C.Chain.BvsDirectory).BvsInfo(core.C.Chain.BvsHash)
-	if err != nil {
-		panic(err)
-	}
 	bvsDirectoryApi := api.NewDirectory(chainIO, core.C.Chain.BvsDirectory)
 
 	return &Monitor{
-		bvsContract:  txResp.BvsContract,
+		bvsContract:  core.C.Chain.BvsContract,
 		directoryApi: bvsDirectoryApi,
 		chainIO:      chainIO,
 	}
@@ -183,26 +178,4 @@ func (m *Monitor) sendTaskResult(taskId uint64, result int64, operators string) 
 	}
 
 	return nil
-}
-
-// VerifyOperator verifies if the given operator is registered or not.
-//
-// It queries the BVS directory API with the operator as both the query operator and the target operator.
-// If the operator is registered, it returns true, nil. Otherwise, it returns false, nil.
-//
-// operator: the operator to verify
-// bool: true if the operator is registered, false otherwise
-// error: an error if the query fails
-func (m *Monitor) VerifyOperator(operator string) (bool, error) {
-	rsp, err := m.directoryApi.QueryOperator(operator, operator)
-	if err != nil {
-		core.L.Error(fmt.Sprintf("Failed to query operator, due to {%s}", err))
-		return false, err
-	}
-	fmt.Printf("txnRsp: %+v\n", rsp)
-	if rsp.Status == "registered" {
-		return true, nil
-	}
-
-	return false, nil
 }

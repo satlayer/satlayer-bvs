@@ -8,7 +8,7 @@ type Config struct {
 type Chain struct {
 	ID           string `json:"id"`
 	RPC          string `json:"rpc"`
-	BVSHash      string `json:"bvsHash"`
+	BVSContract  string `json:"bvsContract"`
 	BVSDirectory string `json:"bvsDirectory"`
 }
 

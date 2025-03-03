@@ -20,5 +20,5 @@ func InitConfig() {
 		panic(err)
 	}
 	fmt.Println("C: ", C)
-	L = logger.NewELKLogger(C.Chain.BVSHash)
+	L = logger.NewELKLogger(C.Chain.BVSContract)
 }

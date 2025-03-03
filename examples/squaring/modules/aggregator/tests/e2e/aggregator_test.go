@@ -62,9 +62,6 @@ func (suite *aggregatorTestSuite) TestExecuteAggregator() {
 	tx, err := suite.ContractsApi.DelegationManagerApi.RegisterAsOperator(ctx, "testtest", 100)
 	assert.NoError(t, err)
 	assert.NotNil(t, tx)
-	tx, err = suite.ContractsApi.DirectoryApi.RegisterOperator(context.Background(), address, pubKey)
-	assert.NoError(t, err)
-	assert.NotNil(t, tx)
 
 	// get random task id
 	randTaskID := rand.Uint64()
@@ -74,7 +71,7 @@ func (suite *aggregatorTestSuite) TestExecuteAggregator() {
 
 	// get message to sign
 	now := time.Now().Unix()
-	msgPayload := fmt.Sprintf("%s-%d-%d-%d", core.C.Chain.BvsHash, now, randTaskID, randResult)
+	msgPayload := fmt.Sprintf("%s-%d-%d-%d", core.C.Chain.BvsContract, now, randTaskID, randResult)
 
 	// sign message
 	signature, err := suite.ChainIO.GetSigner().Sign([]byte(msgPayload))
