@@ -16,6 +16,7 @@ The `RewardsUpdater` submits the root of the rewards merkle tree to the `bvs-rew
 The `Earner` sets the `Claimer` for their rewards, which could be themselves (`Claimer = Earner`) or not.
 
 The `Claimer` calls `process_claim` with the reward root to claim, leaf and merkle proof.
+This can only be done after the root is submitted + `activation_delay`.
 Then `bvs-rewards-coordinator` transfers the rewards to the `Recipient` (passed in `process_claim` param).
 
 ```mermaid
