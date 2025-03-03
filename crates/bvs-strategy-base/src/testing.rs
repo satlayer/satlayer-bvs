@@ -73,7 +73,7 @@ impl
             decimals: 8,
             initial_balances: vec![cw20::Cw20Coin {
                 address: app.api().addr_make("owner").to_string(),
-                amount: cosmwasm_std::Uint128::new(1000e8),
+                amount: cosmwasm_std::Uint128::new(1000000),
             }],
             mint: None,
         }
