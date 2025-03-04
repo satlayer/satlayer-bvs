@@ -38,7 +38,7 @@ pub enum ExecuteMsg {
         values: Vec<bool>,
     },
     TransferOwnership {
-        /// See `ownership::transfer_ownership` for more information on this field
+        /// See [`bvs_library::ownership::transfer_ownership`] for more information on this field
         new_owner: String,
     },
     SetRouting {

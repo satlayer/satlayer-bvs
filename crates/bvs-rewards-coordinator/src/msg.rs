@@ -54,7 +54,7 @@ pub enum ExecuteMsg {
         new_commission_bips: u16,
     },
     TransferOwnership {
-        /// See `ownership::transfer_ownership` for more information on this field
+        /// See [`bvs_library::ownership::transfer_ownership`] for more information on this field
         new_owner: String,
     },
     SetRewardsUpdater {
