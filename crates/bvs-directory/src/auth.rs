@@ -35,7 +35,8 @@ pub fn get_delegation_manager(storage: &dyn Storage) -> Result<Addr, ContractErr
 mod tests {
     use crate::auth::{set_routing, DELEGATION_MANAGER};
     use crate::{auth, ContractError};
-    use bvs_library::ownership::{OwnershipError, OWNER};
+    use bvs_library::ownership;
+    use bvs_library::ownership::OwnershipError;
     use cosmwasm_std::testing::{message_info, mock_dependencies};
     use cosmwasm_std::{Event, Response};
 
@@ -44,7 +45,7 @@ mod tests {
         let mut deps = mock_dependencies();
 
         let owner_addr = &deps.api.addr_make("owner");
-        OWNER.save(deps.as_mut().storage, &owner_addr).unwrap();
+        ownership::set_owner(deps.as_mut().storage, owner_addr).unwrap();
 
         let owner_info = message_info(owner_addr, &[]);
 
@@ -67,7 +68,7 @@ mod tests {
 
         {
             let owner_addr = &deps.api.addr_make("owner");
-            OWNER.save(deps.as_mut().storage, &owner_addr).unwrap();
+            ownership::set_owner(deps.as_mut().storage, owner_addr).unwrap();
         }
 
         let new_delegation_manager = deps.api.addr_make("new_delegation_manager");
@@ -89,7 +90,7 @@ mod tests {
         let mut deps = mock_dependencies();
 
         let owner_addr = &deps.api.addr_make("owner");
-        OWNER.save(deps.as_mut().storage, &owner_addr).unwrap();
+        ownership::set_owner(deps.as_mut().storage, owner_addr).unwrap();
 
         let delegation_manager = deps.api.addr_make("some_delegation_manager");
         DELEGATION_MANAGER
@@ -106,7 +107,7 @@ mod tests {
         let mut deps = mock_dependencies();
 
         let owner_addr = &deps.api.addr_make("owner");
-        OWNER.save(deps.as_mut().storage, &owner_addr).unwrap();
+        ownership::set_owner(deps.as_mut().storage, owner_addr).unwrap();
 
         let err = auth::get_delegation_manager(&deps.storage).unwrap_err();
 

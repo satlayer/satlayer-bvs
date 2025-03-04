@@ -144,7 +144,7 @@ pub fn execute(
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
-            ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
+            ownership::transfer_ownership(deps, info, new_owner).map_err(ContractError::Ownership)
         }
         ExecuteMsg::SetRouting {
             delegation_manager,
@@ -783,7 +783,7 @@ mod tests {
         assert_eq!(res.attributes[2].key, "owner");
         assert_eq!(res.attributes[2].value, owner.as_str());
 
-        let owner = ownership::OWNER.load(&deps.storage).unwrap();
+        let owner = ownership::get_owner(&deps.storage).unwrap();
         assert_eq!(owner, owner.clone());
 
         let strategy_whitelister = STRATEGY_WHITELISTER.load(&deps.storage).unwrap();

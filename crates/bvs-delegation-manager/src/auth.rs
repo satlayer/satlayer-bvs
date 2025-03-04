@@ -78,7 +78,7 @@ mod tests {
     use crate::auth::{set_routing, STRATEGY_MANAGER};
     use crate::{auth, ContractError};
     use auth::assert_strategy_manager;
-    use bvs_library::ownership::{OwnershipError, OWNER};
+    use bvs_library::ownership::{self, OwnershipError};
     use cosmwasm_std::testing::{message_info, mock_dependencies};
     use cosmwasm_std::{Event, Response};
 
@@ -87,7 +87,7 @@ mod tests {
         let mut deps = mock_dependencies();
 
         let owner_addr = &deps.api.addr_make("owner");
-        OWNER.save(deps.as_mut().storage, &owner_addr).unwrap();
+        ownership::set_owner(deps.as_mut().storage, owner_addr).unwrap();
 
         let owner_info = message_info(owner_addr, &[]);
 
@@ -119,7 +119,7 @@ mod tests {
         {
             // Setup Owner
             let owner_addr = &deps.api.addr_make("owner");
-            OWNER.save(deps.as_mut().storage, &owner_addr).unwrap();
+            ownership::set_owner(deps.as_mut().storage, owner_addr).unwrap();
         }
 
         let new_strategy = deps.api.addr_make("strategy_manager/55");

@@ -124,7 +124,7 @@ pub fn execute(
         } => set_global_operator_commission(deps, info, new_commission_bips),
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
-            ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
+            ownership::transfer_ownership(deps, info, new_owner).map_err(ContractError::Ownership)
         }
         ExecuteMsg::SetRewardsUpdater { addr } => {
             let addr = deps.api.addr_validate(&addr)?;
@@ -994,7 +994,7 @@ mod tests {
         assert_eq!(res.attributes[2].key, "activation_delay");
         assert_eq!(res.attributes[2].value, "60");
 
-        let stored_owner = ownership::OWNER.load(&deps.storage).unwrap();
+        let stored_owner = ownership::get_owner(&deps.storage).unwrap();
         assert_eq!(stored_owner, Addr::unchecked(owner));
 
         let stored_calculation_interval = CALCULATION_INTERVAL_SECONDS.load(&deps.storage).unwrap();

@@ -133,7 +133,7 @@ pub fn execute(
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
-            ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
+            ownership::transfer_ownership(deps, info, new_owner).map_err(ContractError::Ownership)
         }
         ExecuteMsg::SetRouting {
             delegation_manager,
@@ -597,7 +597,7 @@ mod tests {
             ]
         );
 
-        let owner = ownership::OWNER.load(&deps.storage).unwrap();
+        let owner = ownership::get_owner(&deps.storage).unwrap();
         assert_eq!(owner, deps.api.addr_make("creator"));
 
         let invalid_info = message_info(&deps.api.addr_make("invalid_creator"), &[]);

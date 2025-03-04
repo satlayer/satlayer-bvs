@@ -183,7 +183,7 @@ pub fn execute(
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
-            ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
+            ownership::transfer_ownership(deps, info, new_owner).map_err(ContractError::Ownership)
         }
         ExecuteMsg::SetRouting {
             strategy_manager,
@@ -1140,7 +1140,7 @@ mod tests {
         );
         assert_eq!(res.attributes[2], attr("owner", owner.as_str()));
 
-        let loaded_owner = ownership::OWNER.load(&deps.storage).unwrap();
+        let loaded_owner = ownership::get_owner(&deps.storage).unwrap();
         assert_eq!(loaded_owner, &owner);
 
         let min_withdrawal_delay_blocks = MIN_WITHDRAWAL_DELAY_BLOCKS.load(&deps.storage).unwrap();
