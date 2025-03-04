@@ -258,7 +258,7 @@ pub fn withdraw_shares_as_tokens(
         contract_addr: strategy.to_string(),
         msg: to_json_binary(&BaseExecuteMsg::Withdraw {
             recipient: recipient.to_string(),
-            shares: shares.clone(),
+            shares,
         })?,
         funds: vec![],
     });
