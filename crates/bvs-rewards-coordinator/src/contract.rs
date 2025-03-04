@@ -1222,7 +1222,7 @@ mod tests {
     }
 
     #[test]
-    fn test_create_bvs_rewards_submission() {
+    fn test_create_rewards_submission() {
         let (
             mut deps,
             env,
