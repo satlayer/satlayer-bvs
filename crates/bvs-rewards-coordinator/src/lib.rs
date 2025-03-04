@@ -5,7 +5,7 @@ pub mod state;
 
 mod auth;
 mod error;
-mod utils;
+mod merkle;
 
 pub use crate::error::ContractError;
 

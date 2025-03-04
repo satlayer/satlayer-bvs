@@ -166,7 +166,7 @@ func (suite *rewardsTestSuite) Test_ExecuteRewardsCoordinator() {
 	assert.NoError(t, err, "execute contract")
 	suite.Equal(uint32(0), res.Code)
 
-	resp, err := rewardsCoordinator.CreateBVSRewardsSubmission(
+	resp, err := rewardsCoordinator.CreateRewardsSubmission(
 		context.Background(),
 		[]rewardscoordinator.RewardsSubmission{{
 			StrategiesAndMultipliers: []rewardscoordinator.StrategyAndMultiplier{{
@@ -332,7 +332,7 @@ func (suite *rewardsTestSuite) test_CheckClaim() {
 	earnerIndex := int64(0)
 	earnerTreeProof := bytesToUints(earnerLeaf1)
 
-	leaf := rewardscoordinator.FluffyExecuteEarnerTreeMerkleLeaf{
+	leaf := rewardscoordinator.FluffyEarnerTreeMerkleLeaf{
 		Earner:          suite.caller,
 		EarnerTokenRoot: base64.StdEncoding.EncodeToString(tokenRootHash),
 	}
@@ -385,7 +385,7 @@ func (suite *rewardsTestSuite) test_ProcessClaim() {
 	earnerIndex := int64(0)
 	earnerTreeProof := bytesToUints(earnerLeaf1)
 
-	leaf := rewardscoordinator.PurpleExecuteEarnerTreeMerkleLeaf{
+	leaf := rewardscoordinator.PurpleEarnerTreeMerkleLeaf{
 		Earner:          suite.caller,
 		EarnerTokenRoot: base64.StdEncoding.EncodeToString(tokenRootHash),
 	}

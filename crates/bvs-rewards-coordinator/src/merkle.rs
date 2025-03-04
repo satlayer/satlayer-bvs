@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Binary, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Api, Binary, StdResult, Timestamp, Uint128};
 use sha2::{Digest, Sha256};
 
 pub const EARNER_LEAF_SALT: u8 = 0;
@@ -32,6 +32,39 @@ pub struct ExecuteStrategyAndMultiplier {
     pub multiplier: u64,
 }
 
+#[cw_serde]
+pub struct TokenTreeMerkleLeaf {
+    pub token: Addr,
+    pub cumulative_earnings: Uint128,
+}
+
+#[cw_serde]
+pub struct EarnerTreeMerkleLeaf {
+    pub earner: Addr,
+    pub earner_token_root: Binary,
+}
+
+#[cw_serde]
+pub struct RewardsMerkleClaim {
+    pub root_index: u32,
+    pub earner_index: u32,
+    pub earner_tree_proof: Vec<u8>,
+    pub earner_leaf: EarnerTreeMerkleLeaf,
+    pub token_indices: Vec<u32>,
+    pub token_tree_proofs: Vec<Vec<u8>>,
+    pub token_leaves: Vec<TokenTreeMerkleLeaf>,
+}
+
+impl RewardsMerkleClaim {
+    pub fn validate(&self, api: &dyn Api) -> StdResult<()> {
+        api.addr_validate(self.earner_leaf.earner.as_str())?;
+        for leaf in self.token_leaves.iter() {
+            api.addr_validate(leaf.token.as_str())?;
+        }
+        Ok(())
+    }
+}
+
 pub fn calculate_rewards_submission_hash(
     sender: &Addr,
     nonce: u64,
@@ -48,18 +81,6 @@ pub fn calculate_rewards_submission_hash(
     hasher.update(submission_bytes);
 
     Binary::new(hasher.finalize().to_vec())
-}
-
-#[cw_serde]
-pub struct TokenTreeMerkleLeaf {
-    pub token: Addr,
-    pub cumulative_earnings: Uint128,
-}
-
-#[cw_serde]
-pub struct EarnerTreeMerkleLeaf {
-    pub earner: Addr,
-    pub earner_token_root: Binary,
 }
 
 /// Calculates the hash of an earner leaf
@@ -129,32 +150,4 @@ fn process_inclusion_proof_sha256(proof: &[u8], leaf: &[u8], index: u64) -> Vec<
     }
 
     computed_hash
-}
-
-#[cw_serde]
-pub struct RewardsMerkleClaim {
-    pub root_index: u32,
-    pub earner_index: u32,
-    pub earner_tree_proof: Vec<u8>,
-    pub earner_leaf: EarnerTreeMerkleLeaf,
-    pub token_indices: Vec<u32>,
-    pub token_tree_proofs: Vec<Vec<u8>>,
-    pub token_leaves: Vec<TokenTreeMerkleLeaf>,
-}
-
-#[cw_serde]
-pub struct ExecuteRewardsMerkleClaim {
-    pub root_index: u32,
-    pub earner_index: u32,
-    pub earner_tree_proof: Vec<u8>,
-    pub earner_leaf: ExecuteEarnerTreeMerkleLeaf,
-    pub token_indices: Vec<u32>,
-    pub token_tree_proofs: Vec<Vec<u8>>,
-    pub token_leaves: Vec<TokenTreeMerkleLeaf>,
-}
-
-#[cw_serde]
-pub struct ExecuteEarnerTreeMerkleLeaf {
-    pub earner: String,
-    pub earner_token_root: String,
 }

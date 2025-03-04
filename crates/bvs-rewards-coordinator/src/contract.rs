@@ -4,6 +4,11 @@ use cosmwasm_std::entry_point;
 use crate::{
     auth,
     error::ContractError,
+    merkle::{
+        calculate_earner_leaf_hash, calculate_rewards_submission_hash, calculate_token_leaf_hash,
+        merkleize_sha256, verify_inclusion_sha256, EarnerTreeMerkleLeaf, RewardsMerkleClaim,
+        RewardsSubmission, TokenTreeMerkleLeaf,
+    },
     msg::{DistributionRoot, ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
         CalculateEarnerLeafHashResponse, CalculateTokenLeafHashResponse, CheckClaimResponse,
@@ -14,14 +19,9 @@ use crate::{
     state::{
         ACTIVATION_DELAY, CALCULATION_INTERVAL_SECONDS, CLAIMER_FOR, CUMULATIVE_CLAIMED,
         CURR_REWARDS_CALCULATION_END_TIMESTAMP, DISTRIBUTION_ROOTS, DISTRIBUTION_ROOTS_COUNT,
-        GENESIS_REWARDS_TIMESTAMP, GLOBAL_OPERATOR_COMMISSION_BIPS, IS_BVS_REWARDS_SUBMISSION_HASH,
+        GENESIS_REWARDS_TIMESTAMP, GLOBAL_OPERATOR_COMMISSION_BIPS, IS_REWARDS_SUBMISSION_HASH,
         MAX_FUTURE_LENGTH, MAX_RETROACTIVE_LENGTH, MAX_REWARDS_DURATION, REWARDS_FOR_ALL_SUBMITTER,
         SUBMISSION_NONCE,
-    },
-    utils::{
-        calculate_earner_leaf_hash, calculate_rewards_submission_hash, calculate_token_leaf_hash,
-        merkleize_sha256, verify_inclusion_sha256, EarnerTreeMerkleLeaf, RewardsMerkleClaim,
-        RewardsSubmission, TokenTreeMerkleLeaf,
     },
 };
 use bvs_library::ownership;
@@ -86,35 +86,16 @@ pub fn execute(
     bvs_registry::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
 
     match msg {
-        ExecuteMsg::CreateBvsRewardsSubmission {
+        ExecuteMsg::CreateRewardsSubmission {
             rewards_submissions,
-        } => create_bvs_rewards_submission(deps, env, info, rewards_submissions),
+        } => create_rewards_submission(deps, env, info, rewards_submissions),
         ExecuteMsg::CreateRewardsForAllSubmission {
             rewards_submissions,
         } => create_rewards_for_all_submission(deps, env, info, rewards_submissions),
         ExecuteMsg::ProcessClaim { claim, recipient } => {
-            let earner = deps.api.addr_validate(&claim.earner_leaf.earner)?;
+            claim.validate(deps.api)?;
             let recipient = deps.api.addr_validate(&recipient)?;
-
-            let earner_token_root_binary =
-                Binary::from_base64(&claim.earner_leaf.earner_token_root)?;
-
-            let earner_tree_merkle_leaf = EarnerTreeMerkleLeaf {
-                earner,
-                earner_token_root: earner_token_root_binary,
-            };
-
-            let params = RewardsMerkleClaim {
-                root_index: claim.root_index,
-                earner_index: claim.earner_index,
-                earner_tree_proof: claim.earner_tree_proof,
-                earner_leaf: earner_tree_merkle_leaf,
-                token_indices: claim.token_indices,
-                token_tree_proofs: claim.token_tree_proofs,
-                token_leaves: claim.token_leaves,
-            };
-
-            process_claim(deps, env, info, params, recipient)
+            process_claim(deps, env, info, claim, recipient)
         }
         ExecuteMsg::SubmitRoot {
             root,
@@ -164,7 +145,7 @@ pub fn execute(
 /// Creates a list of [`RewardsSubmission`] to be split amongst the stakers who are delegated to the eligible operators.
 ///
 /// For each [`RewardsSubmission`], this fn will execute [`Cw20ExecuteMsg::TransferFrom`] to transfer the tokens from the sender to the contract address.
-pub fn create_bvs_rewards_submission(
+pub fn create_rewards_submission(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -182,7 +163,7 @@ pub fn create_bvs_rewards_submission(
 
         validate_rewards_submission(&deps.as_ref(), &submission, &env)?;
 
-        IS_BVS_REWARDS_SUBMISSION_HASH.save(
+        IS_REWARDS_SUBMISSION_HASH.save(
             deps.storage,
             (&info.sender, &rewards_submission_hash),
             &true,
@@ -218,7 +199,7 @@ pub fn create_bvs_rewards_submission(
     Ok(response)
 }
 
-/// Similar to [`create_bvs_rewards_submission`], except ALL stakers are eligible for the rewards instead of those registered to a specific BVS,
+/// Similar to [`create_rewards_submission`], except ALL stakers are eligible for the rewards instead of those registered to a specific BVS,
 /// and it can only be called by [`REWARDS_FOR_ALL_SUBMITTER`] submitter
 pub fn create_rewards_for_all_submission(
     deps: DepsMut,
@@ -239,7 +220,7 @@ pub fn create_rewards_for_all_submission(
 
         validate_rewards_submission(&deps.as_ref(), &submission, &env)?;
 
-        IS_BVS_REWARDS_SUBMISSION_HASH.save(
+        IS_REWARDS_SUBMISSION_HASH.save(
             deps.storage,
             (&info.sender, &rewards_submission_hash),
             &true,
@@ -291,14 +272,9 @@ pub fn process_claim(
     check_claim_internal(env.clone(), &claim, &root)?;
 
     let earner = claim.earner_leaf.earner.clone();
-    let mut claimer = CLAIMER_FOR
+    let claimer = CLAIMER_FOR
         .may_load(deps.storage, &earner)?
         .unwrap_or_else(|| earner.clone());
-
-    // TODO: Remove? this is unnecessary bloat from EVM where empty value is always eq to 0 address
-    if claimer == Addr::unchecked("") {
-        claimer = earner.clone();
-    }
 
     if info.sender != claimer {
         return Err(ContractError::UnauthorizedClaimer {});
@@ -564,8 +540,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             cumulative_earnings,
         )?),
 
-        QueryMsg::OperatorCommissionBips { operator, bvs } => {
-            to_json_binary(&query_operator_commission_bips(deps, operator, bvs)?)
+        QueryMsg::OperatorCommissionBips { operator, service } => {
+            to_json_binary(&query_operator_commission_bips(deps, operator, service)?)
         }
 
         QueryMsg::GetDistributionRootsLength {} => {
@@ -598,27 +574,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
 
         QueryMsg::CheckClaim { claim } => {
-            let earner = deps.api.addr_validate(&claim.earner_leaf.earner)?;
-
-            let earner_token_root_binary =
-                Binary::from_base64(&claim.earner_leaf.earner_token_root)?;
-
-            let earner_tree_merkle_leaf = EarnerTreeMerkleLeaf {
-                earner,
-                earner_token_root: earner_token_root_binary,
-            };
-
-            let params = RewardsMerkleClaim {
-                root_index: claim.root_index,
-                earner_index: claim.earner_index,
-                earner_tree_proof: claim.earner_tree_proof,
-                earner_leaf: earner_tree_merkle_leaf,
-                token_indices: claim.token_indices,
-                token_tree_proofs: claim.token_tree_proofs,
-                token_leaves: claim.token_leaves,
-            };
-
-            to_json_binary(&query_check_claim(deps, env, params)?)
+            claim.validate(deps.api)?;
+            to_json_binary(&query_check_claim(deps, env, claim)?)
         }
     }
 }
@@ -663,7 +620,7 @@ fn query_calculate_token_leaf_hash(
 fn query_operator_commission_bips(
     deps: Deps,
     _operator: String,
-    _bvs: String,
+    _service: String,
 ) -> StdResult<OperatorCommissionBipsResponse> {
     let commission_bips = GLOBAL_OPERATOR_COMMISSION_BIPS.load(deps.storage)?;
 
@@ -992,11 +949,8 @@ fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdR
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::merkle::{sha256, StrategyAndMultiplier};
     use crate::msg::DistributionRoot;
-    use crate::utils::{
-        sha256, ExecuteEarnerTreeMerkleLeaf, ExecuteRewardsMerkleClaim, StrategyAndMultiplier,
-    };
-    use base64::{engine::general_purpose, Engine as _};
     use bvs_library::ownership::OwnershipError;
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_dependencies_with_balances, mock_env, MockApi,
@@ -1268,7 +1222,7 @@ mod tests {
     }
 
     #[test]
-    fn test_create_bvs_rewards_submission() {
+    fn test_create_rewards_submission() {
         let (
             mut deps,
             env,
@@ -1333,12 +1287,8 @@ mod tests {
             }),
         });
 
-        let result = create_bvs_rewards_submission(
-            deps.as_mut(),
-            env.clone(),
-            owner_info.clone(),
-            submission,
-        );
+        let result =
+            create_rewards_submission(deps.as_mut(), env.clone(), owner_info.clone(), submission);
 
         assert!(result.is_ok());
         let response = result.unwrap();
@@ -2874,12 +2824,12 @@ mod tests {
 
         let recipient = deps.api.addr_make("recipient");
 
-        let earner_leaf = ExecuteEarnerTreeMerkleLeaf {
-            earner: deps.api.addr_make("earner").to_string(),
-            earner_token_root: general_purpose::STANDARD.encode(token_root),
+        let earner_leaf = EarnerTreeMerkleLeaf {
+            earner: deps.api.addr_make("earner"),
+            earner_token_root: Binary::from(token_root.clone()),
         };
 
-        let _execute_claim = ExecuteRewardsMerkleClaim {
+        let _execute_claim = RewardsMerkleClaim {
             root_index: 0,
             earner_index: 0,
             earner_tree_proof: vec![],

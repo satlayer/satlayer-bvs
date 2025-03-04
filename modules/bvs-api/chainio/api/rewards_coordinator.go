@@ -67,9 +67,9 @@ func (r *RewardsCoordinator) BindClient(contractAddress string) {
 	r.ContractAddr = contractAddress
 }
 
-func (r *RewardsCoordinator) CreateBVSRewardsSubmission(ctx context.Context, submissions []rewardscoordinator.RewardsSubmission) (*coretypes.ResultTx, error) {
+func (r *RewardsCoordinator) CreateRewardsSubmission(ctx context.Context, submissions []rewardscoordinator.RewardsSubmission) (*coretypes.ResultTx, error) {
 	msg := rewardscoordinator.ExecuteMsg{
-		CreateBvsRewardsSubmission: &rewardscoordinator.CreateBvsRewardsSubmission{
+		CreateRewardsSubmission: &rewardscoordinator.CreateRewardsSubmission{
 			RewardsSubmissions: submissions,
 		},
 	}
@@ -235,11 +235,11 @@ func (r *RewardsCoordinator) CalculateTokenLeafHash(token string, cumulativeEarn
 	return r.query(msg)
 }
 
-func (r *RewardsCoordinator) OperatorCommissionBips(operator string, bvs string) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *RewardsCoordinator) OperatorCommissionBips(operator string, service string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := rewardscoordinator.QueryMsg{
 		OperatorCommissionBips: &rewardscoordinator.OperatorCommissionBips{
 			Operator: operator,
-			Bvs:      bvs,
+			Service:  service,
 		},
 	}
 

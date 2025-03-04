@@ -1,10 +1,10 @@
+use crate::merkle::{RewardsMerkleClaim, RewardsSubmission};
 use crate::query::{
     CalculateEarnerLeafHashResponse, CalculateTokenLeafHashResponse, CheckClaimResponse,
     GetCurrentClaimableDistributionRootResponse, GetCurrentDistributionRootResponse,
     GetDistributionRootAtIndexResponse, GetDistributionRootsLengthResponse,
     GetRootIndexFromHashResponse, MerkleizeLeavesResponse, OperatorCommissionBipsResponse,
 };
-use crate::utils::{ExecuteRewardsMerkleClaim, RewardsSubmission};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Uint128};
 
@@ -23,14 +23,14 @@ pub struct InstantiateMsg {
 #[cw_serde]
 #[derive(bvs_registry::api::Display)]
 pub enum ExecuteMsg {
-    CreateBvsRewardsSubmission {
+    CreateRewardsSubmission {
         rewards_submissions: Vec<RewardsSubmission>,
     },
     CreateRewardsForAllSubmission {
         rewards_submissions: Vec<RewardsSubmission>,
     },
     ProcessClaim {
-        claim: ExecuteRewardsMerkleClaim,
+        claim: RewardsMerkleClaim,
         recipient: String,
     },
     SubmitRoot {
@@ -82,7 +82,7 @@ pub enum QueryMsg {
     },
 
     #[returns(OperatorCommissionBipsResponse)]
-    OperatorCommissionBips { operator: String, bvs: String },
+    OperatorCommissionBips { operator: String, service: String },
 
     #[returns(GetDistributionRootsLengthResponse)]
     GetDistributionRootsLength {},
@@ -103,7 +103,7 @@ pub enum QueryMsg {
     MerkleizeLeaves { leaves: Vec<String> },
 
     #[returns(CheckClaimResponse)]
-    CheckClaim { claim: ExecuteRewardsMerkleClaim },
+    CheckClaim { claim: RewardsMerkleClaim },
 }
 
 #[cw_serde]
