@@ -42,3 +42,5 @@ bvs-strategy-base = { workspace = true }
 cw-multi-test = { workspace = true }
 bvs-registry = { workspace = true, features = ["testing"] }
 bvs-strategy-base = { workspace = true, features = ["testing"] }
+cw20-base = { workspace = true }
+bvs-delegation-manager = { workspace = true, features = ["testing"] }

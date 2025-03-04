@@ -258,10 +258,14 @@ pub fn withdraw_shares_as_tokens(
         contract_addr: strategy.to_string(),
         msg: to_json_binary(&BaseExecuteMsg::Withdraw {
             recipient: recipient.to_string(),
-            shares,
+            shares: shares.clone(),
         })?,
         funds: vec![],
     });
+
+    let new_amount = STAKER_STRATEGY_SHARES.load(deps.storage, (&recipient, &strategy))? - shares;
+
+    STAKER_STRATEGY_SHARES.save(deps.storage, (&recipient, &strategy), &new_amount)?;
 
     let response = Response::new().add_message(withdraw_msg);
 
@@ -700,7 +704,8 @@ pub fn add_new_strategy(
 
     DEPLOYED_STRATEGIES.save(deps.storage, &token, &strategy)?;
 
-    STRATEGY_IS_WHITELISTED_FOR_DEPOSIT.save(deps.storage, &strategy, &false)?;
+    // when new strategy is added it is automatically whitelisted for deposit
+    STRATEGY_IS_WHITELISTED_FOR_DEPOSIT.save(deps.storage, &strategy, &true)?;
 
     let event = Event::new("NewStrategyAdded")
         .add_attribute("method", "add_new_strategy")
