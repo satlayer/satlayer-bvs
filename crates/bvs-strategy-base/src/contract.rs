@@ -4,11 +4,10 @@ use cosmwasm_std::entry_point;
 use crate::{
     auth,
     error::ContractError,
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    query::{
-        SharesResponse, SharesToUnderlyingResponse, StrategyManagerResponse, TotalSharesResponse,
-        UnderlyingResponse, UnderlyingToShareResponse, UnderlyingToSharesResponse,
-        UnderlyingTokenResponse,
+    msg::{
+        ExecuteMsg, InstantiateMsg, QueryMsg, SharesResponse, SharesToUnderlyingResponse,
+        StrategyManagerResponse, TotalSharesResponse, UnderlyingResponse,
+        UnderlyingToSharesResponse, UnderlyingTokenResponse,
     },
     state::{StrategyState, STRATEGY_STATE},
 };
