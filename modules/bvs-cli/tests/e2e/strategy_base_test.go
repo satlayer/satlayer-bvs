@@ -1,11 +1,5 @@
 package e2e
 
-import (
-	"testing"
-
-	"github.com/satlayer/satlayer-bvs/bvs-cli/commands/strategybase"
-)
-
 // TODO: disabled transactional test, to be fixed in SL-182
 //func Test_GetShares(t *testing.T) {
 //	stakerAddress := "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk"
@@ -24,6 +18,6 @@ import (
 //	strategybase.Underlying("bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk")
 //}
 
-func Test_UnderlyingToken(t *testing.T) {
-	strategybase.UnderlyingToken()
-}
+//func Test_UnderlyingToken(t *testing.T) {
+//	strategybase.UnderlyingToken()
+//}

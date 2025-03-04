@@ -153,7 +153,7 @@ func (r *StrategyBase) UnderlyingToShares(amount string) (*wasmtypes.QuerySmartC
 
 func (r *StrategyBase) UnderlyingToken() (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategybase.QueryMsg{
-		GetUnderlyingToken: &strategybase.GetUnderlyingToken{},
+		UnderlyingToken: &strategybase.UnderlyingToken{},
 	}
 	return r.sendQuery(msg)
 }
