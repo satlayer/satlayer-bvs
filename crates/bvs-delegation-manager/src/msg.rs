@@ -67,7 +67,7 @@ pub enum ExecuteMsg {
         withdrawal_delay_blocks: Vec<u64>,
     },
     TransferOwnership {
-        /// See `ownership::transfer_ownership` for more information on this field
+        /// See [`bvs_library::ownership::transfer_ownership`] for more information on this field
         new_owner: String,
     },
     SetRouting {

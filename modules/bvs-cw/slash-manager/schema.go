@@ -159,7 +159,7 @@ type SubmitSlashRequestSlashDetails struct {
 }
 
 type TransferOwnership struct {
-	// See `ownership::transfer_ownership` for more information on this field
+	// See [`bvs_library::ownership::transfer_ownership`] for more information on this field
 	NewOwner string `json:"new_owner"`
 }
 
