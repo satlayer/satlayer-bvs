@@ -33,6 +33,10 @@ pub struct VirtualShares {
 }
 
 impl VirtualShares {
+    /// Load the virtual shares from storage and [token::get_balance]
+    /// A fixed [`OFFSET`] of 1e3 will be added to both total shares and balance
+    /// to mitigate against inflation attack.
+    /// Use [shares_to_amount] and [amount_to_shares] to convert between shares and amount.
     pub fn load(deps: &Deps, env: &Env) -> StdResult<Self> {
         let total_shares = TOTAL_SHARES.load(deps.storage)?;
         let balance = token::get_balance(&deps, env)?;
@@ -44,7 +48,7 @@ impl VirtualShares {
         })
     }
 
-    pub fn new(total_shares: Uint128, balance: Uint128) -> Self {
+    fn new(total_shares: Uint128, balance: Uint128) -> Self {
         Self {
             total_shares,
             balance,
