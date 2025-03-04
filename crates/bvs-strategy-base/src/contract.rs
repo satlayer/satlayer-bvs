@@ -289,6 +289,15 @@ pub fn shares(deps: Deps, env: &Env, staker: Addr) -> StdResult<SharesResponse> 
     })
 }
 
+pub fn underlying(deps: Deps, env: &Env, staker: Addr) -> StdResult<Uint128> {
+    let shares_response = shares(deps, env, staker)?;
+    let user_shares = shares_response.total_shares;
+
+    let amount_to_send = shares_to_underlying(deps, env, user_shares)?;
+
+    Ok(amount_to_send)
+}
+
 pub fn shares_to_underlying(deps: Deps, env: &Env, amount_shares: Uint128) -> StdResult<Uint128> {
     let state = STRATEGY_STATE.load(deps.storage)?;
     let balance = token_balance(
@@ -318,15 +327,6 @@ pub fn underlying_to_shares(deps: Deps, env: &Env, amount: Uint128) -> StdResult
     let share_to_send = (amount * virtual_share_amount) / virtual_prior_token_balance;
 
     Ok(share_to_send)
-}
-
-pub fn underlying(deps: Deps, env: &Env, staker: Addr) -> StdResult<Uint128> {
-    let shares_response = shares(deps, env, staker)?;
-    let user_shares = shares_response.total_shares;
-
-    let amount_to_send = shares_to_underlying(deps, env, user_shares)?;
-
-    Ok(amount_to_send)
 }
 
 pub fn query_strategy_manager(deps: Deps) -> StdResult<StrategyManagerResponse> {
