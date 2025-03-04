@@ -48,7 +48,7 @@ pub fn instantiate(
     bvs_registry::api::set_registry_addr(deps.storage, &registry)?;
 
     let owner = deps.api.addr_validate(&msg.owner)?;
-    ownership::_set_owner(deps.storage, &owner)?;
+    ownership::set_owner(deps.storage, &owner)?;
 
     let initial_strategy_whitelister = deps.api.addr_validate(&msg.initial_strategy_whitelister)?;
 

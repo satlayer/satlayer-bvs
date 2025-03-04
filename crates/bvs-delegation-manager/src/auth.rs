@@ -1,6 +1,8 @@
 use crate::ContractError;
 use bvs_library::ownership;
-use cosmwasm_std::{Addr, Deps, DepsMut, Event, MessageInfo, Response, Storage};
+use cosmwasm_std::{
+    Addr, Deps, DepsMut, Event, MessageInfo, Response, StdError, StdResult, Storage,
+};
 use cw_storage_plus::Item;
 
 const STRATEGY_MANAGER: Item<Addr> = Item::new("strategy_manager");
@@ -29,11 +31,11 @@ pub fn set_routing(
 }
 
 /// Get the Strategy Manager address
-/// If SetRouting has not been called, it will return an Unauthorized error
-pub fn get_strategy_manager(storage: &dyn Storage) -> Result<Addr, ContractError> {
+/// If SetRouting has not been called, it will return an [StdError::NotFound]
+pub fn get_strategy_manager(storage: &dyn Storage) -> StdResult<Addr> {
     STRATEGY_MANAGER
         .may_load(storage)?
-        .ok_or(ContractError::Unauthorized {})
+        .ok_or(StdError::not_found("strategy_manager"))
 }
 
 pub fn assert_strategy_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {

@@ -42,7 +42,7 @@ pub fn instantiate(
     bvs_registry::api::set_registry_addr(deps.storage, &registry_addr)?;
 
     let owner = deps.api.addr_validate(&msg.owner)?;
-    ownership::_set_owner(deps.storage, &owner)?;
+    ownership::set_owner(deps.storage, &owner)?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")

@@ -1,11 +1,11 @@
 use crate::ContractError;
-use cosmwasm_std::{Addr, MessageInfo, Storage};
+use cosmwasm_std::{Addr, MessageInfo, StdError, StdResult, Storage};
 use cw_storage_plus::Item;
 
 const STRATEGY_MANAGER: Item<Addr> = Item::new("strategy_manager");
 
 /// Set the strategy manager
-pub fn _set_strategy_manager(
+pub fn set_strategy_manager(
     storage: &mut dyn Storage,
     strategy_manager: &Addr,
 ) -> Result<(), ContractError> {
@@ -14,10 +14,11 @@ pub fn _set_strategy_manager(
 }
 
 /// Get the Strategy Manager address
-pub fn get_strategy_manager(storage: &dyn Storage) -> Result<Addr, ContractError> {
+/// If [set_strategy_manager] has not been called, it will return an [StdError::NotFound]
+pub fn get_strategy_manager(storage: &dyn Storage) -> StdResult<Addr> {
     STRATEGY_MANAGER
         .may_load(storage)?
-        .ok_or(ContractError::Unauthorized {})
+        .ok_or(StdError::not_found("strategy_manager"))
 }
 
 /// Asserts that the sender is the strategy manager
@@ -36,7 +37,7 @@ pub fn assert_strategy_manager(
 
 #[cfg(test)]
 mod tests {
-    use crate::auth::{_set_strategy_manager, assert_strategy_manager, STRATEGY_MANAGER};
+    use crate::auth::{assert_strategy_manager, set_strategy_manager, STRATEGY_MANAGER};
     use crate::{auth, ContractError};
     use cosmwasm_std::testing::{message_info, mock_dependencies};
 
@@ -44,7 +45,7 @@ mod tests {
     fn test_set_strategy_manager() {
         let mut deps = mock_dependencies();
         let strategy_manager = deps.api.addr_make("strategy_manager/1");
-        _set_strategy_manager(deps.as_mut().storage, &strategy_manager).unwrap();
+        set_strategy_manager(deps.as_mut().storage, &strategy_manager).unwrap();
     }
 
     #[test]

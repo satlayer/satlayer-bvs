@@ -50,7 +50,7 @@ pub fn instantiate(
     bvs_registry::api::set_registry_addr(deps.storage, &registry_addr)?;
 
     let owner = deps.api.addr_validate(&msg.owner)?;
-    ownership::_set_owner(deps.storage, &owner)?;
+    ownership::set_owner(deps.storage, &owner)?;
 
     set_min_withdrawal_delay_blocks_internal(deps.branch(), msg.min_withdrawal_delay_blocks)?;
 
@@ -692,9 +692,7 @@ pub fn query_operator_stakers(deps: Deps, operator: Addr) -> StdResult<OperatorS
         })
         .collect();
 
-    let strategy_manager = auth::get_strategy_manager(deps.storage)
-        // TODO: SL-332
-        .unwrap();
+    let strategy_manager = auth::get_strategy_manager(deps.storage)?;
 
     for staker in stakers.iter() {
         let mut shares_per_strategy: Vec<(Addr, Uint128)> = Vec::new();

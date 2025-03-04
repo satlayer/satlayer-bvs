@@ -21,7 +21,7 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let owner = deps.api.addr_validate(&msg.owner)?;
-    ownership::_set_owner(deps.storage, &owner)?;
+    ownership::set_owner(deps.storage, &owner)?;
 
     PAUSED.save(deps.storage, &msg.initial_paused)?;
 
@@ -153,7 +153,7 @@ mod tests {
 
         let owner = deps.api.addr_make("owner");
 
-        ownership::_set_owner(&mut deps.storage, &owner).unwrap();
+        ownership::set_owner(&mut deps.storage, &owner).unwrap();
         PAUSED.save(&mut deps.storage, &false).unwrap();
 
         let info = message_info(&owner, &[]);
@@ -176,7 +176,7 @@ mod tests {
 
         let owner = deps.api.addr_make("owner");
 
-        ownership::_set_owner(&mut deps.storage, &owner).unwrap();
+        ownership::set_owner(&mut deps.storage, &owner).unwrap();
         PAUSED.save(&mut deps.storage, &false).unwrap();
 
         let not_owner = deps.api.addr_make("not_owner");
@@ -202,7 +202,7 @@ mod tests {
 
         let owner = deps.api.addr_make("owner");
 
-        ownership::_set_owner(&mut deps.storage, &owner).unwrap();
+        ownership::set_owner(&mut deps.storage, &owner).unwrap();
         PAUSED.save(&mut deps.storage, &true).unwrap();
 
         let info = message_info(&owner, &[]);
@@ -227,7 +227,7 @@ mod tests {
 
         let owner = deps.api.addr_make("owner");
 
-        ownership::_set_owner(&mut deps.storage, &owner).unwrap();
+        ownership::set_owner(&mut deps.storage, &owner).unwrap();
         PAUSED.save(&mut deps.storage, &true).unwrap();
 
         let not_owner = deps.api.addr_make("not_owner");
@@ -256,7 +256,7 @@ mod tests {
         let contract = deps.api.addr_make("anyone").to_string();
         let method = "any_method".to_string();
 
-        ownership::_set_owner(&mut deps.storage, &owner).unwrap();
+        ownership::set_owner(&mut deps.storage, &owner).unwrap();
         PAUSED.save(&mut deps.storage, &false).unwrap();
 
         execute::pause(deps.as_mut(), info.clone()).unwrap();

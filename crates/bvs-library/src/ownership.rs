@@ -13,7 +13,7 @@ pub enum OwnershipError {
 }
 
 /// Set the owner of the contract (this is internal, no checks are done)
-pub fn _set_owner(storage: &mut dyn Storage, owner: &Addr) -> Result<(), OwnershipError> {
+pub fn set_owner(storage: &mut dyn Storage, owner: &Addr) -> Result<(), OwnershipError> {
     OWNER.save(storage, owner)?;
     Ok(())
 }

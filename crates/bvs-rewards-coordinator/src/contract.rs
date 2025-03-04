@@ -52,7 +52,7 @@ pub fn instantiate(
     bvs_registry::api::set_registry_addr(deps.storage, &deps.api.addr_validate(&msg.registry)?)?;
 
     let owner = deps.api.addr_validate(&msg.owner)?;
-    ownership::_set_owner(deps.storage, &owner)?;
+    ownership::set_owner(deps.storage, &owner)?;
 
     if msg.genesis_rewards_timestamp % msg.calculation_interval_seconds != 0 {
         return Err(ContractError::InvalidGenesisTimestamp {});
