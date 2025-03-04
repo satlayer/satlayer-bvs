@@ -8,6 +8,8 @@ use cw_storage_plus::Item;
 /// When the vault is empty, the virtual shares and virtual assets enforce the conversion rate 1000/1000.
 const OFFSET: Uint128 = Uint128::new(1e3 as u128);
 
+/// The total shares of the contract held by all stakers.
+/// [`OFFSET`] value is not included in the total shares, only the real shares are counted.
 const TOTAL_SHARES: Item<Uint128> = Item::new("total_shares");
 
 /// Get the total shares of the contract
@@ -17,7 +19,7 @@ pub fn get_total_shares(storage: &dyn Storage) -> StdResult<Uint128> {
 
 /// Set the total shares of the contract
 pub fn set_total_shares(storage: &mut dyn Storage, total_shares: &Uint128) -> StdResult<()> {
-    TOTAL_SHARES.save(storage, &total_shares)
+    TOTAL_SHARES.save(storage, total_shares)
 }
 
 /// Follows the OpenZeppelin's ERC4626 mitigation strategy for inflation attack.
@@ -33,19 +35,14 @@ pub struct VirtualShares {
 }
 
 impl VirtualShares {
-    /// Load the virtual shares from storage and [token::get_balance]
+    /// Load the virtual shares from storage and [token::get_balance] (supports rebasing, by default).
     /// A fixed [`OFFSET`] of 1e3 will be added to both total shares and balance
     /// to mitigate against inflation attack.
     /// Use [shares_to_amount] and [amount_to_shares] to convert between shares and amount.
     pub fn load(deps: &Deps, env: &Env) -> StdResult<Self> {
         let total_shares = TOTAL_SHARES.load(deps.storage)?;
-        let balance = token::get_balance(&deps, env)?;
-        Ok(Self {
-            total_shares,
-            balance,
-            virtual_total_shares: total_shares + OFFSET,
-            virtual_balance: balance + OFFSET,
-        })
+        let balance = token::get_balance(deps, env)?;
+        Ok(Self::new(total_shares, balance))
     }
 
     fn new(total_shares: Uint128, balance: Uint128) -> Self {
@@ -57,10 +54,12 @@ impl VirtualShares {
         }
     }
 
+    /// Shares to underlying assets
     pub fn shares_to_amount(&self, shares: Uint128) -> Uint128 {
         (shares * self.virtual_balance) / self.virtual_total_shares
     }
 
+    /// Underlying assets to shares
     pub fn amount_to_shares(&self, amount: Uint128) -> Uint128 {
         (amount * self.virtual_total_shares) / self.virtual_balance
     }
