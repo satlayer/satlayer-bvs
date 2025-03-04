@@ -94,7 +94,7 @@ pub struct TotalSharesResponse {
 /// StrategyManager here as well.
 pub mod strategy_manager {
     use cosmwasm_schema::cw_serde;
-    use cosmwasm_std::Uint128;
+    use cosmwasm_std::{to_json_binary, Deps, QueryRequest, StdResult, Uint128, WasmQuery};
 
     #[cw_serde]
     pub enum QueryMsg {
@@ -104,5 +104,24 @@ pub mod strategy_manager {
     #[cw_serde]
     pub struct StakerStrategySharesResponse {
         pub shares: Uint128,
+    }
+
+    /// Get the shares of a staker in a strategy
+    /// This information is stored in the Strategy Manager
+    pub fn get_staker_strategy_shares(
+        deps: Deps,
+        strategy_manager: String,
+        strategy: String,
+        staker: String,
+    ) -> StdResult<Uint128> {
+        let msg = QueryMsg::GetStakerStrategyShares { staker, strategy };
+
+        let response: StakerStrategySharesResponse =
+            deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: strategy_manager,
+                msg: to_json_binary(&msg)?,
+            }))?;
+
+        Ok(response.shares)
     }
 }

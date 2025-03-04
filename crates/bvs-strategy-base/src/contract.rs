@@ -271,21 +271,17 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 pub fn shares(deps: Deps, env: &Env, staker: Addr) -> StdResult<SharesResponse> {
     let strategy_manager = auth::get_strategy_manager(deps.storage)?;
-
     let strategy = env.contract.address.to_string();
-    let response: crate::msg::strategy_manager::StakerStrategySharesResponse =
-        deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-            contract_addr: strategy_manager.to_string(),
-            msg: to_json_binary(
-                &crate::msg::strategy_manager::QueryMsg::GetStakerStrategyShares {
-                    staker: staker.to_string(),
-                    strategy,
-                },
-            )?,
-        }))?;
+
+    let shares = crate::msg::strategy_manager::get_staker_strategy_shares(
+        deps,
+        strategy_manager.to_string(),
+        strategy.to_string(),
+        staker.to_string(),
+    )?;
 
     Ok(SharesResponse {
-        total_shares: response.shares,
+        total_shares: shares,
     })
 }
 
