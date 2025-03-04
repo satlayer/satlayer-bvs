@@ -41,7 +41,7 @@ pub enum QueryMsg {
     UserUnderlyingView { user: String },
 
     #[returns(SharesToUnderlyingResponse)]
-    SharesToUnderlyingView { amount_shares: Uint128 },
+    SharesToUnderlying { shares: Uint128 },
 
     #[returns(UnderlyingToSharesResponse)]
     UnderlyingToShares { amount: Uint128 },

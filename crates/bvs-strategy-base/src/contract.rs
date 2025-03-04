@@ -214,11 +214,7 @@ pub fn shares(deps: Deps, env: &Env, staker: Addr) -> StdResult<SharesResponse> 
     })
 }
 
-pub fn shares_to_underlying_view(
-    deps: Deps,
-    env: &Env,
-    amount_shares: Uint128,
-) -> StdResult<Uint128> {
+pub fn shares_to_underlying(deps: Deps, env: &Env, amount_shares: Uint128) -> StdResult<Uint128> {
     let state = STRATEGY_STATE.load(deps.storage)?;
     let balance = token_balance(
         &deps.querier,
@@ -253,7 +249,7 @@ pub fn user_underlying_view(deps: Deps, env: &Env, staker: Addr) -> StdResult<Ui
     let shares_response = shares(deps, env, staker)?;
     let user_shares = shares_response.total_shares;
 
-    let amount_to_send = shares_to_underlying_view(deps, env, user_shares)?;
+    let amount_to_send = shares_to_underlying(deps, env, user_shares)?;
 
     Ok(amount_to_send)
 }
@@ -269,8 +265,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let user_addr = deps.api.addr_validate(&user)?;
             to_json_binary(&query_user_underlying_view(deps, &env, user_addr)?)
         }
-        QueryMsg::SharesToUnderlyingView { amount_shares } => {
-            to_json_binary(&query_shares_to_underlying_view(deps, &env, amount_shares)?)
+        QueryMsg::SharesToUnderlying { shares } => {
+            to_json_binary(&query_shares_to_underlying(deps, &env, shares)?)
         }
         QueryMsg::UnderlyingToShares { amount } => {
             to_json_binary(&query_underlying_to_shares(deps, &env, amount)?)
@@ -308,12 +304,12 @@ pub fn query_strategy_state(deps: Deps) -> StdResult<StrategyState> {
     Ok(state)
 }
 
-pub fn query_shares_to_underlying_view(
+pub fn query_shares_to_underlying(
     deps: Deps,
     env: &Env,
     amount_shares: Uint128,
 ) -> StdResult<SharesToUnderlyingResponse> {
-    let amount_to_send = shares_to_underlying_view(deps, env, amount_shares)?;
+    let amount_to_send = shares_to_underlying(deps, env, amount_shares)?;
 
     Ok(SharesToUnderlyingResponse { amount_to_send })
 }
@@ -661,7 +657,7 @@ mod tests {
         });
 
         let amount_shares = Uint128::new(1_000);
-        let result = shares_to_underlying_view(deps.as_ref(), &env, amount_shares);
+        let result = shares_to_underlying(deps.as_ref(), &env, amount_shares);
 
         match result {
             Ok(amount_to_send) => {
