@@ -2,36 +2,36 @@ package strategybase
 
 import "fmt"
 
-func GetShares(staker string) {
+func Shares(staker string) {
 	s := NewService()
-	resp, err := s.StrategyBase.GetShares(staker)
+	resp, err := s.StrategyBase.Shares(staker)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("%s\n", resp.Data)
 }
 
-func SharesUnderlyingView(shareAmount uint64) {
+func SharesToUnderlying(amount string) {
 	s := NewService()
-	resp, err := s.StrategyBase.SharesToUnderlyingView(shareAmount)
+	resp, err := s.StrategyBase.SharesToUnderlying(amount)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("%s\n", resp.Data)
 }
 
-func UnderlyingShareView(underlyingAmount uint64) {
+func UnderlyingToShares(amount string) {
 	s := NewService()
-	resp, err := s.StrategyBase.UnderlyingToShareView(underlyingAmount)
+	resp, err := s.StrategyBase.UnderlyingToShares(amount)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("%s\n", resp.Data)
 }
 
-func UnderlyingView(user string) {
+func Underlying(staker string) {
 	s := NewService()
-	resp, err := s.StrategyBase.UnderlyingView(user)
+	resp, err := s.StrategyBase.Underlying(staker)
 	if err != nil {
 		panic(err)
 	}

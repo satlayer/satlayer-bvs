@@ -1,11 +1,6 @@
-use crate::query::{
-    SharesResponse, SharesToUnderlyingResponse, StrategyManagerResponse, TotalSharesResponse,
-    UnderlyingToShareResponse, UnderlyingToSharesResponse, UnderlyingTokenResponse,
-    UserUnderlyingResponse,
-};
 use crate::state::StrategyState;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Addr, Uint128};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -35,31 +30,63 @@ pub enum ExecuteMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(SharesResponse)]
-    GetShares { staker: String },
+    Shares { staker: String },
+
+    #[returns(UnderlyingResponse)]
+    Underlying { staker: String },
 
     #[returns(SharesToUnderlyingResponse)]
-    SharesToUnderlyingView { amount_shares: Uint128 },
-
-    #[returns(UnderlyingToShareResponse)]
-    UnderlyingToShareView { amount: Uint128 },
-
-    #[returns(UserUnderlyingResponse)]
-    UserUnderlyingView { user: String },
-
-    #[returns(StrategyManagerResponse)]
-    GetStrategyManager {},
-
-    #[returns(UnderlyingTokenResponse)]
-    GetUnderlyingToken {},
-
-    #[returns(TotalSharesResponse)]
-    GetTotalShares {},
+    SharesToUnderlying { shares: Uint128 },
 
     #[returns(UnderlyingToSharesResponse)]
-    UnderlyingToShares { amount_underlying: Uint128 },
+    UnderlyingToShares { amount: Uint128 },
+
+    #[returns(StrategyManagerResponse)]
+    StrategyManager {},
+
+    #[returns(UnderlyingTokenResponse)]
+    UnderlyingToken {},
+
+    #[returns(TotalSharesResponse)]
+    TotalShares {},
 
     #[returns(StrategyState)]
     GetStrategyState {},
+}
+
+#[cw_serde]
+pub struct SharesResponse {
+    pub total_shares: Uint128,
+}
+
+#[cw_serde]
+pub struct UnderlyingResponse {
+    pub amount_to_send: Uint128,
+}
+
+#[cw_serde]
+pub struct SharesToUnderlyingResponse {
+    pub amount_to_send: Uint128,
+}
+
+#[cw_serde]
+pub struct UnderlyingToSharesResponse {
+    pub share_to_send: Uint128,
+}
+
+#[cw_serde]
+pub struct StrategyManagerResponse {
+    pub strategy_manager_addr: Addr,
+}
+
+#[cw_serde]
+pub struct UnderlyingTokenResponse {
+    pub underlying_token_addr: Addr,
+}
+
+#[cw_serde]
+pub struct TotalSharesResponse {
+    pub total_shares: Uint128,
 }
 
 /// Both Strategy Base & Strategy Manager circularly depend on each other.

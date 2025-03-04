@@ -725,10 +725,10 @@ pub fn add_new_strategy(
     }
 
     // let's check if contract is properly uploaded and initiated on the chain
-    let manager_info: bvs_strategy_base::query::StrategyManagerResponse =
+    let manager_info: bvs_strategy_base::msg::StrategyManagerResponse =
         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: strategy.to_string().clone(),
-            msg: to_json_binary(&bvs_strategy_base::msg::QueryMsg::GetStrategyManager {})?,
+            msg: to_json_binary(&bvs_strategy_base::msg::QueryMsg::StrategyManager {})?,
         }))?;
 
     if manager_info.strategy_manager_addr != env.contract.address {
@@ -874,8 +874,8 @@ mod tests {
             } => {
                 let query_msg: bvs_strategy_base::msg::QueryMsg = from_json(msg).unwrap();
                 match query_msg {
-                    bvs_strategy_base::msg::QueryMsg::GetStrategyManager {} => {
-                        let strategy_state = bvs_strategy_base::query::StrategyManagerResponse {
+                    bvs_strategy_base::msg::QueryMsg::StrategyManager {} => {
+                        let strategy_state = bvs_strategy_base::msg::StrategyManagerResponse {
                             strategy_manager_addr: _env.contract.address.clone(),
                         };
                         SystemResult::Ok(ContractResult::Ok(
@@ -938,8 +938,8 @@ mod tests {
             } => {
                 let query_msg: bvs_strategy_base::msg::QueryMsg = from_json(msg).unwrap();
                 match query_msg {
-                    bvs_strategy_base::msg::QueryMsg::GetStrategyManager {} => {
-                        let strategy_state = bvs_strategy_base::query::StrategyManagerResponse {
+                    bvs_strategy_base::msg::QueryMsg::StrategyManager {} => {
+                        let strategy_state = bvs_strategy_base::msg::StrategyManagerResponse {
                             strategy_manager_addr: _env.contract.address.clone(),
                         };
                         SystemResult::Ok(ContractResult::Ok(

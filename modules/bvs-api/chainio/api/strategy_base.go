@@ -111,9 +111,9 @@ func (r *StrategyBase) sendQuery(msg any) (*wasmtypes.QuerySmartContractStateRes
 	return r.io.QueryContract(*r.queryOptions)
 }
 
-func (r *StrategyBase) GetShares(staker string) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyBase) Shares(staker string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategybase.QueryMsg{
-		GetShares: &strategybase.GetShares{
+		Shares: &strategybase.Shares{
 			Staker: staker,
 		},
 	}
@@ -121,30 +121,30 @@ func (r *StrategyBase) GetShares(staker string) (*wasmtypes.QuerySmartContractSt
 	return r.sendQuery(msg)
 }
 
-func (r *StrategyBase) SharesToUnderlyingView(amountShares uint64) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyBase) Underlying(staker string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategybase.QueryMsg{
-		SharesToUnderlyingView: &strategybase.SharesToUnderlyingView{
-			AmountShares: fmt.Sprintf("%d", amountShares),
+		Underlying: &strategybase.Underlying{
+			Staker: staker,
 		},
 	}
 
 	return r.sendQuery(msg)
 }
 
-func (r *StrategyBase) UnderlyingToShareView(amount uint64) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyBase) SharesToUnderlying(shares string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategybase.QueryMsg{
-		UnderlyingToShareView: &strategybase.UnderlyingToShareView{
-			Amount: fmt.Sprintf("%d", amount),
+		SharesToUnderlying: &strategybase.SharesToUnderlying{
+			Shares: shares,
 		},
 	}
 
 	return r.sendQuery(msg)
 }
 
-func (r *StrategyBase) UnderlyingView(user string) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyBase) UnderlyingToShares(amount string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategybase.QueryMsg{
-		UserUnderlyingView: &strategybase.UserUnderlyingView{
-			User: user,
+		UnderlyingToShares: &strategybase.UnderlyingToShares{
+			Amount: amount,
 		},
 	}
 
@@ -153,7 +153,7 @@ func (r *StrategyBase) UnderlyingView(user string) (*wasmtypes.QuerySmartContrac
 
 func (r *StrategyBase) UnderlyingToken() (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategybase.QueryMsg{
-		GetUnderlyingToken: &strategybase.GetUnderlyingToken{},
+		UnderlyingToken: &strategybase.UnderlyingToken{},
 	}
 	return r.sendQuery(msg)
 }
