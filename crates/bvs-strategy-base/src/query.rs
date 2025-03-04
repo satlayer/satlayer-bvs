@@ -17,7 +17,7 @@ pub struct UnderlyingToShareResponse {
 }
 
 #[cw_serde]
-pub struct UserUnderlyingResponse {
+pub struct UnderlyingResponse {
     pub amount_to_send: Uint128,
 }
 

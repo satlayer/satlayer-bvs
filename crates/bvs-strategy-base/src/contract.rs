@@ -7,8 +7,8 @@ use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
         SharesResponse, SharesToUnderlyingResponse, StrategyManagerResponse, TotalSharesResponse,
-        UnderlyingToShareResponse, UnderlyingToSharesResponse, UnderlyingTokenResponse,
-        UserUnderlyingResponse,
+        UnderlyingResponse, UnderlyingToShareResponse, UnderlyingToSharesResponse,
+        UnderlyingTokenResponse,
     },
     state::{StrategyState, STRATEGY_STATE},
 };
@@ -245,7 +245,7 @@ pub fn underlying_to_shares(deps: Deps, env: &Env, amount: Uint128) -> StdResult
     Ok(share_to_send)
 }
 
-pub fn user_underlying_view(deps: Deps, env: &Env, staker: Addr) -> StdResult<Uint128> {
+pub fn underlying(deps: Deps, env: &Env, staker: Addr) -> StdResult<Uint128> {
     let shares_response = shares(deps, env, staker)?;
     let user_shares = shares_response.total_shares;
 
@@ -257,13 +257,13 @@ pub fn user_underlying_view(deps: Deps, env: &Env, staker: Addr) -> StdResult<Ui
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetShares { staker } => {
+        QueryMsg::Shares { staker } => {
             let staker = deps.api.addr_validate(&staker)?;
             to_json_binary(&shares(deps, &env, staker)?)
         }
-        QueryMsg::UserUnderlyingView { user } => {
-            let user_addr = deps.api.addr_validate(&user)?;
-            to_json_binary(&query_user_underlying_view(deps, &env, user_addr)?)
+        QueryMsg::Underlying { staker } => {
+            let staker = deps.api.addr_validate(&staker)?;
+            to_json_binary(&query_underlying(deps, &env, staker)?)
         }
         QueryMsg::SharesToUnderlying { shares } => {
             to_json_binary(&query_shares_to_underlying(deps, &env, shares)?)
@@ -314,13 +314,9 @@ pub fn query_shares_to_underlying(
     Ok(SharesToUnderlyingResponse { amount_to_send })
 }
 
-pub fn query_user_underlying_view(
-    deps: Deps,
-    env: &Env,
-    user: Addr,
-) -> StdResult<UserUnderlyingResponse> {
-    let amount_to_send = user_underlying_view(deps, env, user)?;
-    Ok(UserUnderlyingResponse { amount_to_send })
+pub fn query_underlying(deps: Deps, env: &Env, user: Addr) -> StdResult<UnderlyingResponse> {
+    let amount_to_send = underlying(deps, env, user)?;
+    Ok(UnderlyingResponse { amount_to_send })
 }
 
 pub fn query_underlying_to_shares(
@@ -756,7 +752,7 @@ mod tests {
             }
         });
 
-        let query_msg = QueryMsg::GetShares { staker: user };
+        let query_msg = QueryMsg::Shares { staker: user };
         let res: SharesResponse =
             from_json(query(deps.as_ref(), env.clone(), query_msg).unwrap()).unwrap();
 
@@ -824,7 +820,7 @@ mod tests {
         });
 
         let underlying_amount =
-            user_underlying_view(deps.as_ref(), &env, Addr::unchecked(user_addr)).unwrap();
+            underlying(deps.as_ref(), &env, Addr::unchecked(user_addr)).unwrap();
 
         let expected_amount = Uint128::new(1000);
         assert_eq!(underlying_amount, expected_amount);
