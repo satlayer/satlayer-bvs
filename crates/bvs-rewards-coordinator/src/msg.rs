@@ -6,7 +6,7 @@ use crate::query::{
     OperatorCommissionBipsResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Binary, HexBinary, Uint128};
+use cosmwasm_std::HexBinary;
 
 #[cw_serde]
 pub struct InstantiateMsg {

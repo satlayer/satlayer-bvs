@@ -6,8 +6,8 @@ use crate::{
     error::ContractError,
     merkle::{
         calculate_earner_leaf_hash, calculate_rewards_submission_hash, calculate_token_leaf_hash,
-        merkleize_sha256, verify_inclusion_sha256, EarnerTreeMerkleLeaf, RewardsMerkleClaim,
-        RewardsSubmission, TokenTreeMerkleLeaf,
+        verify_inclusion_sha256, EarnerTreeMerkleLeaf, RewardsMerkleClaim, RewardsSubmission,
+        TokenTreeMerkleLeaf,
     },
     msg::{DistributionRoot, ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{

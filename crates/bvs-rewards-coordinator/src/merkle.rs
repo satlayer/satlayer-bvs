@@ -154,12 +154,9 @@ fn process_inclusion_proof_sha256(proof: &[u8], leaf: &[u8], index: u64) -> Vec<
 
 pub fn get_merkle_proof() {}
 
+#[cfg(test)]
 mod tests {
-    use crate::merkle::{
-        calculate_earner_leaf_hash, calculate_token_leaf_hash, merkleize_sha256, sha256,
-        verify_inclusion_sha256, EarnerTreeMerkleLeaf, TokenTreeMerkleLeaf,
-    };
-    use cosmwasm_std::{Addr, HexBinary, Uint128};
+    use super::*;
 
     #[test]
     fn test_token_leaf_merkle_tree_construction() {
