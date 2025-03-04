@@ -11,10 +11,10 @@ use crate::{
     },
     msg::{DistributionRoot, ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
-        CalculateEarnerLeafHashResponse, CalculateTokenLeafHashResponse, CheckClaimResponse,
-        GetCurrentClaimableDistributionRootResponse, GetCurrentDistributionRootResponse,
-        GetDistributionRootAtIndexResponse, GetDistributionRootsLengthResponse,
-        GetRootIndexFromHashResponse, MerkleizeLeavesResponse, OperatorCommissionBipsResponse,
+        CheckClaimResponse, GetCurrentClaimableDistributionRootResponse,
+        GetCurrentDistributionRootResponse, GetDistributionRootAtIndexResponse,
+        GetDistributionRootsLengthResponse, GetRootIndexFromHashResponse,
+        OperatorCommissionBipsResponse,
     },
     state::{
         ACTIVATION_DELAY, CALCULATION_INTERVAL_SECONDS, CLAIMER_FOR, CUMULATIVE_CLAIMED,
@@ -100,10 +100,7 @@ pub fn execute(
         ExecuteMsg::SubmitRoot {
             root,
             rewards_calculation_end_timestamp,
-        } => {
-            let root = Binary::from_base64(&root)?;
-            submit_root(deps, env, info, root, rewards_calculation_end_timestamp)
-        }
+        } => submit_root(deps, env, info, root, rewards_calculation_end_timestamp),
         ExecuteMsg::DisableRoot { root_index } => disable_root(deps, env, info, root_index),
         ExecuteMsg::SetClaimerFor { claimer } => {
             let claimer = deps.api.addr_validate(&claimer)?;
@@ -340,7 +337,7 @@ pub fn submit_root(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    root: Binary,
+    root: HexBinary,
     rewards_calculation_end_timestamp: u64,
 ) -> Result<Response, ContractError> {
     auth::assert_rewards_updater(deps.storage, &info)?;
@@ -384,7 +381,7 @@ pub fn submit_root(
 
     let event = Event::new("DistributionRootSubmitted")
         .add_attribute("root_index", root_index.to_string())
-        .add_attribute("root", format!("{:?}", new_root.root))
+        .add_attribute("root", new_root.root.to_hex())
         .add_attribute(
             "rewards_calculation_end_timestamp",
             new_root.rewards_calculation_end_timestamp.to_string(),
@@ -519,24 +516,6 @@ pub fn set_global_operator_commission(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::CalculateEarnerLeafHash {
-            earner,
-            earner_token_root,
-        } => to_json_binary(&query_calculate_earner_leaf_hash(
-            deps,
-            earner,
-            earner_token_root,
-        )?),
-
-        QueryMsg::CalculateTokenLeafHash {
-            token,
-            cumulative_earnings,
-        } => to_json_binary(&query_calculate_token_leaf_hash(
-            deps,
-            token,
-            cumulative_earnings,
-        )?),
-
         QueryMsg::OperatorCommissionBips { operator, service } => {
             to_json_binary(&query_operator_commission_bips(deps, operator, service)?)
         }
@@ -561,57 +540,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&query_root_index_from_hash(deps, root_hash)?)
         }
 
-        QueryMsg::MerkleizeLeaves { leaves } => {
-            let binary_leaves: Vec<Binary> = leaves
-                .iter()
-                .map(|leaf_str| Binary::from_base64(leaf_str))
-                .collect::<Result<Vec<Binary>, _>>()?;
-
-            to_json_binary(&query_merkleize_leaves(binary_leaves)?)
-        }
-
         QueryMsg::CheckClaim { claim } => {
             claim.validate(deps.api)?;
             to_json_binary(&query_check_claim(deps, env, claim)?)
         }
     }
-}
-
-fn query_calculate_earner_leaf_hash(
-    _deps: Deps,
-    earner: String,
-    earner_token_root: String,
-) -> StdResult<CalculateEarnerLeafHashResponse> {
-    let earner_addr: Addr = Addr::unchecked(earner);
-    let earner_token_root_binary = Binary::from_base64(&earner_token_root)?;
-
-    let leaf = EarnerTreeMerkleLeaf {
-        earner: earner_addr,
-        earner_token_root: earner_token_root_binary,
-    };
-
-    let hash = calculate_earner_leaf_hash(&leaf);
-    let hash_binary = Binary::from(hash);
-
-    Ok(CalculateEarnerLeafHashResponse { hash_binary })
-}
-
-fn query_calculate_token_leaf_hash(
-    _deps: Deps,
-    token: String,
-    cumulative_earnings: Uint128,
-) -> StdResult<CalculateTokenLeafHashResponse> {
-    let token_addr: Addr = Addr::unchecked(token);
-
-    let leaf = TokenTreeMerkleLeaf {
-        token: token_addr,
-        cumulative_earnings,
-    };
-
-    let hash = calculate_token_leaf_hash(&leaf);
-    let hash_binary = Binary::from(hash);
-
-    Ok(CalculateTokenLeafHashResponse { hash_binary })
 }
 
 fn query_operator_commission_bips(
@@ -678,16 +611,13 @@ fn query_current_claimable_distribution_root(
 
 fn query_root_index_from_hash(
     deps: Deps,
-    root_hash: String,
+    root_hash: HexBinary,
 ) -> StdResult<GetRootIndexFromHashResponse> {
-    let root_hash_bytes =
-        HexBinary::from_hex(&root_hash).map_err(|_| StdError::generic_err("Invalid hex format"))?;
-
     let length = DISTRIBUTION_ROOTS_COUNT.load(deps.storage)?;
 
     for i in (0..length).rev() {
         if let Some(root) = DISTRIBUTION_ROOTS.may_load(deps.storage, i)? {
-            if root.root.as_slice() == root_hash_bytes.as_slice() {
+            if root.root.as_slice() == root_hash.as_slice() {
                 return Ok(GetRootIndexFromHashResponse {
                     root_index: i as u32,
                 });
@@ -696,19 +626,6 @@ fn query_root_index_from_hash(
     }
 
     Err(StdError::generic_err("Root not found"))
-}
-
-fn query_merkleize_leaves(leaves: Vec<Binary>) -> StdResult<MerkleizeLeavesResponse> {
-    let leaf_hashes: Vec<Vec<u8>> = leaves.iter().map(|leaf| leaf.to_vec()).collect();
-
-    if !leaf_hashes.len().is_power_of_two() {
-        return Err(StdError::generic_err("Invalid number of leaves"));
-    }
-
-    let root_hash = merkleize_sha256(leaf_hashes);
-    let root_hash_binary = Binary::from(root_hash);
-
-    Ok(MerkleizeLeavesResponse { root_hash_binary })
 }
 
 pub fn query_check_claim(
@@ -849,7 +766,7 @@ fn check_claim_internal(
 ///
 /// token_leaf contains the CW20 token and cumulative_earnings
 fn verify_token_claim_proof(
-    earner_token_root: Binary,
+    earner_token_root: HexBinary,
     token_leaf_index: u32,
     token_proof: &[u8],
     token_leaf: &TokenTreeMerkleLeaf,
@@ -876,7 +793,7 @@ fn verify_token_claim_proof(
 
 /// verify_earner_claim_proof verifies that the earner leaf exists in the merkle root
 fn verify_earner_claim_proof(
-    root: Binary,
+    root: HexBinary,
     earner_leaf_index: u32,
     earner_proof: &[u8],
     earner_leaf: &EarnerTreeMerkleLeaf,
@@ -954,8 +871,8 @@ mod tests {
         MockQuerier, MockStorage,
     };
     use cosmwasm_std::{
-        coins, from_json, Addr, Binary, ContractResult, OwnedDeps, SystemError, SystemResult,
-        Timestamp, WasmQuery,
+        coins, from_json, Addr, ContractResult, OwnedDeps, SystemError, SystemResult, Timestamp,
+        WasmQuery,
     };
 
     type OwnedDepsType = OwnedDeps<MockStorage, MockApi, MockQuerier>;
@@ -1674,449 +1591,6 @@ mod tests {
     }
 
     #[test]
-    fn test_calculate_token_leaf_hash() {
-        let (
-            deps,
-            env,
-            _owner_info,
-            _strategy_manager_info,
-            _delegation_manager_info,
-            _rewards_updater_info,
-        ) = instantiate_contract();
-
-        let msg = QueryMsg::CalculateTokenLeafHash {
-            token: deps.api.addr_make("token_a").to_string(),
-            cumulative_earnings: Uint128::new(100),
-        };
-
-        let result = query(deps.as_ref(), env, msg);
-
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_token_leaf_merkle_tree_construction() {
-        let leaf_a = TokenTreeMerkleLeaf {
-            token: Addr::unchecked("token_a"),
-            cumulative_earnings: Uint128::new(100),
-        };
-
-        let leaf_b = TokenTreeMerkleLeaf {
-            token: Addr::unchecked("token_b"),
-            cumulative_earnings: Uint128::new(200),
-        };
-
-        let leaf_c = TokenTreeMerkleLeaf {
-            token: Addr::unchecked("token_c"),
-            cumulative_earnings: Uint128::new(300),
-        };
-
-        let leaf_d = TokenTreeMerkleLeaf {
-            token: Addr::unchecked("token_d"),
-            cumulative_earnings: Uint128::new(400),
-        };
-
-        let hash_a = calculate_token_leaf_hash(&leaf_a);
-        let hash_b = calculate_token_leaf_hash(&leaf_b);
-        let hash_c = calculate_token_leaf_hash(&leaf_c);
-        let hash_d = calculate_token_leaf_hash(&leaf_d);
-
-        let leaves = [
-            Binary::from(hash_a.clone()),
-            Binary::from(hash_b.clone()),
-            Binary::from(hash_c.clone()),
-            Binary::from(hash_d.clone()),
-        ];
-
-        let msg = QueryMsg::MerkleizeLeaves {
-            leaves: leaves.iter().map(|leaf| leaf.to_base64()).collect(),
-        };
-
-        let deps = mock_dependencies();
-        let env = mock_env();
-
-        let res: MerkleizeLeavesResponse =
-            from_json(query(deps.as_ref(), env, msg).unwrap()).unwrap();
-
-        let merkle_root = res.root_hash_binary.to_vec();
-
-        // Expected parent hash & Expected root hash
-        let leaves_ab = vec![hash_a.clone(), hash_b.clone()];
-        let parent_ab = merkleize_sha256(leaves_ab.clone());
-
-        let leaves_cd = vec![hash_c.clone(), hash_d.clone()];
-        let parent_cd = merkleize_sha256(leaves_cd.clone());
-
-        let parent_hash = vec![parent_ab.clone(), parent_cd.clone()];
-        let expected_root_hash = merkleize_sha256(parent_hash.clone());
-
-        assert!(!merkle_root.is_empty(), "Merkle root should not be empty");
-        assert_eq!(merkle_root, expected_root_hash);
-
-        assert_eq!(
-            parent_ab,
-            sha256(&[hash_a.as_slice(), hash_b.as_slice()].concat()),
-            "Parent AB hash is incorrect"
-        );
-        assert_eq!(
-            parent_cd,
-            sha256(&[hash_c.as_slice(), hash_d.as_slice()].concat()),
-            "Parent CD hash is incorrect"
-        );
-
-        println!("Hash A: {:?}", hash_a);
-        println!("Hash B: {:?}", hash_b);
-        println!("Parent AB: {:?}", parent_ab);
-        println!("Hash C: {:?}", hash_c);
-        println!("Hash D: {:?}", hash_d);
-        println!("Parent CD: {:?}", parent_cd);
-        println!("Merkle Root: {:?}", merkle_root);
-    }
-
-    #[test]
-    fn test_earner_leaf_merkle_tree_construction() {
-        let token_leaves_sets = vec![
-            vec![
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_a1"),
-                    cumulative_earnings: Uint128::new(100),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_a2"),
-                    cumulative_earnings: Uint128::new(200),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_a3"),
-                    cumulative_earnings: Uint128::new(300),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_a4"),
-                    cumulative_earnings: Uint128::new(400),
-                },
-            ],
-            vec![
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_b1"),
-                    cumulative_earnings: Uint128::new(500),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_b2"),
-                    cumulative_earnings: Uint128::new(600),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_b3"),
-                    cumulative_earnings: Uint128::new(700),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_b4"),
-                    cumulative_earnings: Uint128::new(800),
-                },
-            ],
-            vec![
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_c1"),
-                    cumulative_earnings: Uint128::new(900),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_c2"),
-                    cumulative_earnings: Uint128::new(1000),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_c3"),
-                    cumulative_earnings: Uint128::new(1100),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_c4"),
-                    cumulative_earnings: Uint128::new(1200),
-                },
-            ],
-            vec![
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_d1"),
-                    cumulative_earnings: Uint128::new(1300),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_d2"),
-                    cumulative_earnings: Uint128::new(1400),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_d3"),
-                    cumulative_earnings: Uint128::new(1500),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_d4"),
-                    cumulative_earnings: Uint128::new(1600),
-                },
-            ],
-        ];
-
-        // Calculate Merkle roots for each set of token leaves
-        let mut merkle_roots = Vec::new();
-
-        for leaves in token_leaves_sets {
-            let mut leaf_hashes = Vec::new();
-            for leaf in leaves {
-                leaf_hashes.push(calculate_token_leaf_hash(&leaf));
-            }
-            let merkle_root = merkleize_sha256(leaf_hashes);
-            merkle_roots.push(merkle_root.clone());
-
-            println!("Merkle Root: {:?}", merkle_root);
-        }
-
-        // Assertions & Print root hash for calculate_earner_leaf_hash
-        for (i, merkle_root) in merkle_roots.iter().enumerate() {
-            assert!(
-                !merkle_root.is_empty(),
-                "Merkle root for tree {} should not be empty",
-                i + 1
-            );
-            println!("Merkle Root for Tree {}: {:?}", i + 1, merkle_root);
-        }
-
-        let tree1_root_hash = [
-            48, 187, 24, 98, 230, 203, 235, 218, 90, 43, 190, 153, 209, 248, 126, 128, 198, 194,
-            113, 131, 32, 46, 106, 102, 115, 45, 214, 230, 122, 67, 222, 244,
-        ];
-        let tree2_root_hash = [
-            31, 173, 229, 179, 199, 27, 21, 153, 215, 61, 227, 184, 156, 136, 11, 226, 144, 224,
-            214, 117, 192, 110, 116, 32, 123, 117, 254, 131, 59, 205, 178, 221,
-        ];
-        let tree3_root_hash = [
-            241, 77, 172, 5, 228, 0, 249, 31, 159, 211, 176, 37, 20, 123, 30, 159, 62, 148, 250,
-            97, 101, 206, 14, 35, 211, 217, 181, 123, 237, 149, 14, 220,
-        ];
-        let tree4_root_hash = [
-            114, 34, 142, 99, 115, 93, 244, 227, 187, 171, 41, 53, 218, 109, 87, 55, 75, 87, 46,
-            220, 50, 151, 15, 77, 78, 255, 183, 253, 198, 47, 244, 132,
-        ];
-
-        let earner1 = EarnerTreeMerkleLeaf {
-            earner: Addr::unchecked("earner1"),
-            earner_token_root: Binary::from(tree1_root_hash.to_vec()),
-        };
-        let earner2 = EarnerTreeMerkleLeaf {
-            earner: Addr::unchecked("earner2"),
-            earner_token_root: Binary::from(tree2_root_hash.to_vec()),
-        };
-        let earner3 = EarnerTreeMerkleLeaf {
-            earner: Addr::unchecked("earner3"),
-            earner_token_root: Binary::from(tree3_root_hash.to_vec()),
-        };
-        let earner4 = EarnerTreeMerkleLeaf {
-            earner: Addr::unchecked("earner4"),
-            earner_token_root: Binary::from(tree4_root_hash.to_vec()),
-        };
-
-        // Calculate earner leaf hashes
-        let earner_leaf_hash1 = calculate_earner_leaf_hash(&earner1);
-        let earner_leaf_hash2 = calculate_earner_leaf_hash(&earner2);
-        let earner_leaf_hash3 = calculate_earner_leaf_hash(&earner3);
-        let earner_leaf_hash4 = calculate_earner_leaf_hash(&earner4);
-
-        let leaves = vec![
-            earner_leaf_hash1.clone(),
-            earner_leaf_hash2.clone(),
-            earner_leaf_hash3.clone(),
-            earner_leaf_hash4.clone(),
-        ];
-        let merkle_root = merkleize_sha256(leaves.clone());
-
-        // Expected parent hash & Expected root hash
-        let leaves_1_2 = vec![earner_leaf_hash1.clone(), earner_leaf_hash2.clone()];
-        let parent_1_2 = merkleize_sha256(leaves_1_2.clone());
-
-        let leaves_3_4 = vec![earner_leaf_hash3.clone(), earner_leaf_hash4.clone()];
-        let parent_3_4 = merkleize_sha256(leaves_3_4.clone());
-
-        let parent_hash = vec![parent_1_2.clone(), parent_3_4.clone()];
-        let expected_root_hash = merkleize_sha256(parent_hash.clone());
-
-        assert!(!merkle_root.is_empty(), "Merkle root should not be empty");
-        assert_eq!(merkle_root, expected_root_hash);
-
-        assert_eq!(
-            parent_1_2,
-            sha256(&[earner_leaf_hash1.as_slice(), earner_leaf_hash2.as_slice()].concat()),
-            "Parent 1 2 hash is incorrect"
-        );
-        assert_eq!(
-            parent_3_4,
-            sha256(&[earner_leaf_hash3.as_slice(), earner_leaf_hash4.as_slice()].concat()),
-            "Parent 3 4 hash is incorrect"
-        );
-
-        println!("earner_leaf_hash1: {:?}", earner_leaf_hash1);
-        println!("earner_leaf_hash2: {:?}", earner_leaf_hash2);
-        println!("parent_1_2: {:?}", parent_1_2);
-        println!("earner_leaf_hash3: {:?}", earner_leaf_hash3);
-        println!("earner_leaf_hash4: {:?}", earner_leaf_hash4);
-        println!("parent_3_4: {:?}", parent_3_4);
-        println!("Merkle Root: {:?}", merkle_root);
-    }
-
-    #[test]
-    fn test_verify_inclusion_proof() {
-        let token_leaves_sets = vec![
-            vec![
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_a1"),
-                    cumulative_earnings: Uint128::new(100),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_a2"),
-                    cumulative_earnings: Uint128::new(200),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_a3"),
-                    cumulative_earnings: Uint128::new(300),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_a4"),
-                    cumulative_earnings: Uint128::new(400),
-                },
-            ],
-            vec![
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_b1"),
-                    cumulative_earnings: Uint128::new(500),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_b2"),
-                    cumulative_earnings: Uint128::new(600),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_b3"),
-                    cumulative_earnings: Uint128::new(700),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_b4"),
-                    cumulative_earnings: Uint128::new(800),
-                },
-            ],
-            vec![
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_c1"),
-                    cumulative_earnings: Uint128::new(900),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_c2"),
-                    cumulative_earnings: Uint128::new(1000),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_c3"),
-                    cumulative_earnings: Uint128::new(1100),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_c4"),
-                    cumulative_earnings: Uint128::new(1200),
-                },
-            ],
-            vec![
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_d1"),
-                    cumulative_earnings: Uint128::new(1300),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_d2"),
-                    cumulative_earnings: Uint128::new(1400),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_d3"),
-                    cumulative_earnings: Uint128::new(1500),
-                },
-                TokenTreeMerkleLeaf {
-                    token: Addr::unchecked("token_d4"),
-                    cumulative_earnings: Uint128::new(1600),
-                },
-            ],
-        ];
-
-        let mut merkle_roots = Vec::new();
-
-        for leaves in &token_leaves_sets {
-            let mut leaf_hashes = Vec::new();
-            for leaf in leaves {
-                leaf_hashes.push(calculate_token_leaf_hash(leaf));
-            }
-            let merkle_root = merkleize_sha256(leaf_hashes.clone());
-            merkle_roots.push(merkle_root.clone());
-
-            println!("Merkle Root: {:?}", merkle_root);
-        }
-
-        let earner1 = EarnerTreeMerkleLeaf {
-            earner: Addr::unchecked("earner1"),
-            earner_token_root: Binary::from(merkle_roots[0].clone()),
-        };
-        let earner2 = EarnerTreeMerkleLeaf {
-            earner: Addr::unchecked("earner2"),
-            earner_token_root: Binary::from(merkle_roots[1].clone()),
-        };
-        let earner3 = EarnerTreeMerkleLeaf {
-            earner: Addr::unchecked("earner3"),
-            earner_token_root: Binary::from(merkle_roots[2].clone()),
-        };
-        let earner4 = EarnerTreeMerkleLeaf {
-            earner: Addr::unchecked("earner4"),
-            earner_token_root: Binary::from(merkle_roots[3].clone()),
-        };
-
-        let earner_leaf_hash1 = calculate_earner_leaf_hash(&earner1);
-        let earner_leaf_hash2 = calculate_earner_leaf_hash(&earner2);
-        let earner_leaf_hash3 = calculate_earner_leaf_hash(&earner3);
-        let earner_leaf_hash4 = calculate_earner_leaf_hash(&earner4);
-
-        let leaves = vec![
-            earner_leaf_hash1.clone(),
-            earner_leaf_hash2.clone(),
-            earner_leaf_hash3.clone(),
-            earner_leaf_hash4.clone(),
-        ];
-        let merkle_root = merkleize_sha256(leaves.clone());
-
-        let leaves_3_4 = vec![earner_leaf_hash3.clone(), earner_leaf_hash4.clone()];
-        let parent_3_4 = merkleize_sha256(leaves_3_4.clone());
-
-        let leaves_1_2 = vec![earner_leaf_hash1.clone(), earner_leaf_hash2.clone()];
-        let parent_1_2 = merkleize_sha256(leaves_1_2.clone());
-
-        // Generate proof for earner1 leaf
-        let proof1 = [earner_leaf_hash2.clone(), parent_3_4.clone()];
-        let proof2 = [earner_leaf_hash1.clone(), parent_3_4.clone()];
-        let proof3 = [earner_leaf_hash4.clone(), parent_1_2.clone()];
-        let proof4 = [earner_leaf_hash3.clone(), parent_1_2.clone()];
-
-        assert!(verify_inclusion_sha256(
-            &proof1.concat(),
-            &merkle_root,
-            &earner_leaf_hash1,
-            0
-        ));
-
-        assert!(verify_inclusion_sha256(
-            &proof2.concat(),
-            &merkle_root,
-            &earner_leaf_hash2,
-            1
-        ));
-
-        assert!(verify_inclusion_sha256(
-            &proof3.concat(),
-            &merkle_root,
-            &earner_leaf_hash3,
-            2
-        ));
-
-        assert!(verify_inclusion_sha256(
-            &proof4.concat(),
-            &merkle_root,
-            &earner_leaf_hash4,
-            3
-        ));
-    }
-
-    #[test]
     fn test_verify_earner_claim_proof() {
         let token_leaves_sets = vec![
             vec![
@@ -2207,19 +1681,19 @@ mod tests {
         // Setup earner leaves
         let earner1 = EarnerTreeMerkleLeaf {
             earner: Addr::unchecked("earner1"),
-            earner_token_root: Binary::from(merkle_roots[0].clone()),
+            earner_token_root: HexBinary::from(merkle_roots[0].clone()),
         };
         let earner2 = EarnerTreeMerkleLeaf {
             earner: Addr::unchecked("earner2"),
-            earner_token_root: Binary::from(merkle_roots[1].clone()),
+            earner_token_root: HexBinary::from(merkle_roots[1].clone()),
         };
         let earner3 = EarnerTreeMerkleLeaf {
             earner: Addr::unchecked("earner3"),
-            earner_token_root: Binary::from(merkle_roots[2].clone()),
+            earner_token_root: HexBinary::from(merkle_roots[2].clone()),
         };
         let earner4 = EarnerTreeMerkleLeaf {
             earner: Addr::unchecked("earner4"),
-            earner_token_root: Binary::from(merkle_roots[3].clone()),
+            earner_token_root: HexBinary::from(merkle_roots[3].clone()),
         };
 
         // Calculate earner leaf hashes
@@ -2256,28 +1730,28 @@ mod tests {
 
         // Verify proofs using _verify_earner_claim_proof function
         assert!(verify_earner_claim_proof(
-            Binary::from(merkle_root.clone()),
+            HexBinary::from(merkle_root.clone()),
             0,
             &proof1.concat(),
             &earner1
         )
         .is_ok());
         assert!(verify_earner_claim_proof(
-            Binary::from(merkle_root.clone()),
+            HexBinary::from(merkle_root.clone()),
             1,
             &proof2.concat(),
             &earner2
         )
         .is_ok());
         assert!(verify_earner_claim_proof(
-            Binary::from(merkle_root.clone()),
+            HexBinary::from(merkle_root.clone()),
             2,
             &proof3.concat(),
             &earner3
         )
         .is_ok());
         assert!(verify_earner_claim_proof(
-            Binary::from(merkle_root.clone()),
+            HexBinary::from(merkle_root.clone()),
             3,
             &proof4.concat(),
             &earner4
@@ -2334,28 +1808,28 @@ mod tests {
 
         // Verify proofs using _verify_token_claim_proof function
         assert!(verify_token_claim_proof(
-            Binary::from(merkle_root.clone()),
+            HexBinary::from(merkle_root.clone()),
             0,
             &proof_a.concat(),
             &leaf_a
         )
         .is_ok());
         assert!(verify_token_claim_proof(
-            Binary::from(merkle_root.clone()),
+            HexBinary::from(merkle_root.clone()),
             1,
             &proof_b.concat(),
             &leaf_b
         )
         .is_ok());
         assert!(verify_token_claim_proof(
-            Binary::from(merkle_root.clone()),
+            HexBinary::from(merkle_root.clone()),
             2,
             &proof_c.concat(),
             &leaf_c
         )
         .is_ok());
         assert!(verify_token_claim_proof(
-            Binary::from(merkle_root.clone()),
+            HexBinary::from(merkle_root.clone()),
             3,
             &proof_d.concat(),
             &leaf_d
@@ -2435,11 +1909,11 @@ mod tests {
 
         let earner1 = EarnerTreeMerkleLeaf {
             earner: Addr::unchecked("earner1"),
-            earner_token_root: Binary::from(root_a_b_c_d.clone()),
+            earner_token_root: HexBinary::from(root_a_b_c_d.clone()),
         };
         let earner2 = EarnerTreeMerkleLeaf {
             earner: Addr::unchecked("earner2"),
-            earner_token_root: Binary::from(root_a1_b1_c1_d1.clone()),
+            earner_token_root: HexBinary::from(root_a1_b1_c1_d1.clone()),
         };
 
         let earner_leaf_hash1 = calculate_earner_leaf_hash(&earner1);
@@ -2452,14 +1926,14 @@ mod tests {
         let proof_b = [hash_b.clone(), parent_c_d.clone()];
 
         assert!(verify_earner_claim_proof(
-            Binary::from(earner_root.clone()),
+            HexBinary::from(earner_root.clone()),
             0,
             &proof_a.concat(),
             &earner1
         )
         .is_ok());
         assert!(verify_token_claim_proof(
-            Binary::from(root_a_b_c_d.clone()),
+            HexBinary::from(root_a_b_c_d.clone()),
             0,
             &proof_b.concat(),
             &leaf_a
@@ -2506,7 +1980,7 @@ mod tests {
 
         let earner_leaf = EarnerTreeMerkleLeaf {
             earner: Addr::unchecked("earner"),
-            earner_token_root: Binary::from(token_root.clone()),
+            earner_token_root: HexBinary::from(token_root.clone()),
         };
 
         let earner_leaf_hash = calculate_earner_leaf_hash(&earner_leaf);
@@ -2515,7 +1989,7 @@ mod tests {
         let earner_root = merkleize_sha256(earner_leaves.clone());
 
         let distribution_root = DistributionRoot {
-            root: Binary::from(earner_root.clone()),
+            root: HexBinary::from(earner_root.clone()),
             rewards_calculation_end_timestamp: 500,
             activated_at: 500,
             disabled: false,
@@ -2583,7 +2057,7 @@ mod tests {
         )
         .unwrap();
 
-        let root = Binary::from(b"valid_root".to_vec());
+        let root = HexBinary::from(b"valid_root".to_vec());
         let rewards_calculation_end_timestamp = 1100;
 
         let result = submit_root(
@@ -2759,7 +2233,7 @@ mod tests {
 
         let earner_leaf = EarnerTreeMerkleLeaf {
             earner: deps.api.addr_make("earner"),
-            earner_token_root: Binary::from(token_root.clone()),
+            earner_token_root: HexBinary::from(token_root.clone()),
         };
 
         let earner_leaf_hash = calculate_earner_leaf_hash(&earner_leaf);
@@ -2768,7 +2242,7 @@ mod tests {
         let earner_root = merkleize_sha256(earner_leaves.clone());
 
         let distribution_root = DistributionRoot {
-            root: Binary::from(earner_root.clone()),
+            root: HexBinary::from(earner_root.clone()),
             rewards_calculation_end_timestamp: 500,
             activated_at: 500,
             disabled: false,
@@ -2826,7 +2300,7 @@ mod tests {
 
         let earner_leaf = EarnerTreeMerkleLeaf {
             earner: deps.api.addr_make("earner"),
-            earner_token_root: Binary::from(token_root.clone()),
+            earner_token_root: HexBinary::from(token_root.clone()),
         };
 
         let _execute_claim = RewardsMerkleClaim {
@@ -2944,7 +2418,7 @@ mod tests {
 
         // Test for disabled root
         let disabled_root = DistributionRoot {
-            root: Binary::from(earner_root.clone()),
+            root: HexBinary::from(earner_root.clone()),
             rewards_calculation_end_timestamp: 500,
             activated_at: env.block.time.seconds() - 100,
             disabled: true,
@@ -2979,7 +2453,7 @@ mod tests {
             .unwrap();
 
         let valid_root = DistributionRoot {
-            root: Binary::from(b"valid_root".to_vec()),
+            root: HexBinary::from(b"valid_root".to_vec()),
             rewards_calculation_end_timestamp: 500,
             activated_at: env.block.time.seconds() + 1000, // Future activation
             disabled: false,
@@ -3016,7 +2490,7 @@ mod tests {
 
         // Prepare an activated root
         let activated_root = DistributionRoot {
-            root: Binary::from(b"activated_root".to_vec()),
+            root: HexBinary::from(b"activated_root".to_vec()),
             rewards_calculation_end_timestamp: 500,
             activated_at: env.block.time.seconds() - 1000, // Past activation
             disabled: false,
