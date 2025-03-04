@@ -308,7 +308,7 @@ pub fn update_operator_metadata_uri(
 
 /// Caller delegates their stake to an operator.
 ///
-/// Caller shouldn't be aleady delegated and the operator should be registered.
+/// Caller shouldn't be already delegated and the operator should be registered.
 pub fn delegate_to(
     deps: DepsMut,
     info: MessageInfo,
@@ -331,8 +331,8 @@ pub fn delegate_to(
 
 /// Undelegates the staker from their operator and queues a withdrawal for all of their shares.
 ///
-/// If withdrawals are queued, return the queued withdrawl root.
-/// If the `staker` is not delegated to an operator, return an error.
+/// If withdrawals are queued, return the queued withdrawal root.  
+/// If the `staker` is not delegated to an operator, return an error.  
 /// If the `staker` is an operator, return an error. Because operators are not allowed to undelegate from themselves.
 pub fn undelegate(
     mut deps: DepsMut,
@@ -557,8 +557,8 @@ pub fn complete_queued_withdrawals(
 
 /// Used to complete the specified `withdrawals`.
 ///
-/// `withdrawals` - Array of Withdrawals to complete.
-/// `middleware_times_indexes` - The index in the operator that the staker who triggered the withdrawal was delegated to's middleware times array.
+/// `withdrawals` - Array of Withdrawals to complete.  
+/// `middleware_times_indexes` - The index in the operator that the staker who triggered the withdrawal was delegated to's middleware times array.  
 /// `receive_as_tokens` - If true, the shares specified in the withdrawal will be withdrawn from the specified strategies themselves.
 /// and sent to the caller, through calls to `withdrawal.strategies[i].withdraw`. If false, then the shares in the specified strategies
 /// will simply be transferred to the caller directly.
@@ -645,7 +645,7 @@ pub fn query_delegatable_shares(deps: Deps, staker: Addr) -> StdResult<Delegatab
     Ok(DelegatableSharesResponse { strategies, shares })
 }
 
-/// /// Query the staker is delegated or not.
+/// Query the staker is delegated or not.
 pub fn query_is_delegated(deps: Deps, staker: Addr) -> StdResult<DelegatedResponse> {
     let is_delegated = DELEGATED_TO
         .may_load(deps.storage, &staker)?
@@ -722,7 +722,7 @@ pub fn query_withdrawal_delay(
     Ok(WithdrawalDelayResponse { withdrawal_delays })
 }
 
-/// Query the a list of stakers in one operator.
+/// Query a list of stakers delegated to the operator.
 pub fn query_operator_stakers(deps: Deps, operator: Addr) -> StdResult<OperatorStakersResponse> {
     let mut stakers_and_shares: Vec<StakerShares> = Vec::new();
 
@@ -966,6 +966,7 @@ fn decrease_operator_shares(
     Ok(Response::new().add_event(event))
 }
 
+/// Calculate withdrawal SHA256 root hash by hashing the withdrawal data.
 pub fn calculate_withdrawal_root(withdrawal: &Withdrawal) -> StdResult<Binary> {
     let mut hasher = Sha256::new();
     hasher.update(to_json_binary(withdrawal)?.as_slice());
