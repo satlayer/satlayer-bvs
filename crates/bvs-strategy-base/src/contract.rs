@@ -85,7 +85,8 @@ pub fn execute(
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
-            ownership::transfer_ownership(deps, info, new_owner).map_err(ContractError::Ownership)
+            ownership::transfer_ownership(deps.storage, info, new_owner)
+                .map_err(ContractError::Ownership)
         }
     }
 }

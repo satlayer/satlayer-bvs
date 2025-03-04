@@ -18,7 +18,7 @@ pub fn set_routing(
     strategy_manager: Addr,
     slash_manager: Addr,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.storage, &info)?;
 
     STRATEGY_MANAGER.save(deps.storage, &strategy_manager)?;
     SLASH_MANAGER.save(deps.storage, &slash_manager)?;

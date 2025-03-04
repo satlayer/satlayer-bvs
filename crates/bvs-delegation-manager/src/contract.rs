@@ -183,7 +183,8 @@ pub fn execute(
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
-            ownership::transfer_ownership(deps, info, new_owner).map_err(ContractError::Ownership)
+            ownership::transfer_ownership(deps.storage, info, new_owner)
+                .map_err(ContractError::Ownership)
         }
         ExecuteMsg::SetRouting {
             strategy_manager,
@@ -202,7 +203,7 @@ pub fn set_min_withdrawal_delay_blocks(
     info: MessageInfo,
     new_min_withdrawal_delay_blocks: u64,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.storage, &info)?;
 
     set_min_withdrawal_delay_blocks_internal(deps, new_min_withdrawal_delay_blocks)
 }
@@ -213,7 +214,7 @@ pub fn set_strategy_withdrawal_delay_blocks(
     strategies: Vec<Addr>,
     withdrawal_delay_blocks: Vec<u64>,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.storage, &info)?;
 
     set_strategy_withdrawal_delay_blocks_internal(deps, strategies, withdrawal_delay_blocks)
 }

@@ -144,7 +144,8 @@ pub fn execute(
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
-            ownership::transfer_ownership(deps, info, new_owner).map_err(ContractError::Ownership)
+            ownership::transfer_ownership(deps.storage, info, new_owner)
+                .map_err(ContractError::Ownership)
         }
         ExecuteMsg::SetRouting {
             delegation_manager,
@@ -221,7 +222,7 @@ pub fn set_strategy_whitelister(
     info: MessageInfo,
     new_strategy_whitelister: Addr,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.storage, &info)?;
 
     let strategy_whitelister = STRATEGY_WHITELISTER.load(deps.storage)?;
 
@@ -707,7 +708,7 @@ pub fn add_new_strategy(
     strategy: Addr,
     token: Addr,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.storage, &info)?;
 
     let is_blacklisted = IS_BLACKLISTED
         .may_load(deps.storage, &token)?

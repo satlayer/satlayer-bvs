@@ -42,7 +42,8 @@ pub fn execute(
         ExecuteMsg::Unpause {} => execute::unpause(deps, info),
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
-            ownership::transfer_ownership(deps, info, new_owner).map_err(ContractError::Ownership)
+            ownership::transfer_ownership(deps.storage, info, new_owner)
+                .map_err(ContractError::Ownership)
         }
     }
 }
@@ -52,7 +53,7 @@ pub mod execute {
     use crate::state::PAUSED;
 
     pub fn pause(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
-        ownership::assert_owner(deps.as_ref(), &info)?;
+        ownership::assert_owner(deps.storage, &info)?;
 
         PAUSED.save(deps.storage, &true)?;
         Ok(Response::new()
@@ -61,7 +62,7 @@ pub mod execute {
     }
 
     pub fn unpause(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
-        ownership::assert_owner(deps.as_ref(), &info)?;
+        ownership::assert_owner(deps.storage, &info)?;
 
         PAUSED.save(deps.storage, &false)?;
         Ok(Response::new()

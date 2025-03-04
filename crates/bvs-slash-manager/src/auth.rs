@@ -16,7 +16,7 @@ pub fn set_routing(
     delegation_manager: Addr,
     strategy_manager: Addr,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.storage, &info)?;
 
     DELEGATION_MANAGER.save(deps.storage, &delegation_manager)?;
     STRATEGY_MANAGER.save(deps.storage, &strategy_manager)?;

@@ -124,7 +124,8 @@ pub fn execute(
         } => set_global_operator_commission(deps, info, new_commission_bips),
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
-            ownership::transfer_ownership(deps, info, new_owner).map_err(ContractError::Ownership)
+            ownership::transfer_ownership(deps.storage, info, new_owner)
+                .map_err(ContractError::Ownership)
         }
         ExecuteMsg::SetRewardsUpdater { addr } => {
             let addr = deps.api.addr_validate(&addr)?;
@@ -475,7 +476,7 @@ pub fn set_activation_delay(
     info: MessageInfo,
     new_activation_delay: u32,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.storage, &info)?;
 
     let res = set_activation_delay_internal(deps, new_activation_delay)?;
     Ok(res)
@@ -490,7 +491,7 @@ pub fn set_rewards_for_all_submitter(
     submitter: Addr,
     new_value: bool,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.storage, &info)?;
 
     let prev_value = REWARDS_FOR_ALL_SUBMITTER
         .may_load(deps.storage, &submitter)?
@@ -513,7 +514,7 @@ pub fn set_global_operator_commission(
     info: MessageInfo,
     new_commission_bips: u16,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.storage, &info)?;
 
     let res = set_global_operator_commission_internal(deps, new_commission_bips)?;
     Ok(res)
