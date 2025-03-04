@@ -12,8 +12,8 @@ use crate::{
     state::{StrategyState, STRATEGY_STATE},
 };
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo,
-    QuerierWrapper, QueryRequest, Response, StdResult, Uint128, WasmMsg, WasmQuery,
+    to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper,
+    QueryRequest, Response, StdResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::set_contract_version;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
@@ -77,10 +77,10 @@ pub fn execute(
     bvs_registry::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
 
     match msg {
-        ExecuteMsg::Deposit { amount } => deposit(deps, env, info, amount),
+        ExecuteMsg::Deposit { amount } => execute::deposit(deps, env, info, amount),
         ExecuteMsg::Withdraw { recipient, shares } => {
             let recipient = deps.api.addr_validate(&recipient)?;
-            withdraw(deps, env, info, recipient, shares)
+            execute::withdraw(deps, env, info, recipient, shares)
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
@@ -90,107 +90,183 @@ pub fn execute(
     }
 }
 
-pub fn deposit(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    amount: Uint128,
-) -> Result<Response, ContractError> {
-    auth::assert_strategy_manager(deps.storage, &info)?;
+pub mod execute {
+    use crate::contract::{token_balance, BALANCE_OFFSET, SHARES_OFFSET};
+    use crate::state::STRATEGY_STATE;
+    use crate::{auth, ContractError};
+    use cosmwasm_std::{
+        to_json_binary, Addr, CosmosMsg, DepsMut, Env, Event, MessageInfo, Response, StdResult,
+        Uint128, WasmMsg,
+    };
+    use cw20::Cw20ExecuteMsg;
 
-    let mut state = STRATEGY_STATE.load(deps.storage)?;
+    pub fn deposit(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        amount: Uint128,
+    ) -> Result<Response, ContractError> {
+        auth::assert_strategy_manager(deps.storage, &info)?;
 
-    let balance = token_balance(
-        &deps.querier,
-        &state.underlying_token,
-        &env.contract.address,
-    )?;
+        let mut state = STRATEGY_STATE.load(deps.storage)?;
 
-    let virtual_share_amount = state.total_shares + SHARES_OFFSET;
-    let virtual_token_balance = balance + BALANCE_OFFSET;
-    let virtual_prior_token_balance = virtual_token_balance - amount;
-    let new_shares = (amount * virtual_share_amount) / virtual_prior_token_balance;
+        let balance = token_balance(
+            &deps.querier,
+            &state.underlying_token,
+            &env.contract.address,
+        )?;
 
-    if new_shares.is_zero() {
-        return Err(ContractError::ZeroNewShares {});
+        let virtual_share_amount = state.total_shares + SHARES_OFFSET;
+        let virtual_token_balance = balance + BALANCE_OFFSET;
+        let virtual_prior_token_balance = virtual_token_balance - amount;
+        let new_shares = (amount * virtual_share_amount) / virtual_prior_token_balance;
+
+        if new_shares.is_zero() {
+            return Err(ContractError::ZeroNewShares {});
+        }
+
+        state.total_shares += new_shares;
+        STRATEGY_STATE.save(deps.storage, &state)?;
+
+        let exchange_rate_event =
+            emit_exchange_rate(virtual_token_balance, state.total_shares + SHARES_OFFSET)?;
+
+        let response = Response::new()
+            .add_attribute("method", "deposit")
+            .add_attribute("new_shares", new_shares.to_string())
+            .add_attribute("total_shares", state.total_shares.to_string())
+            .add_event(exchange_rate_event.events[0].clone());
+
+        Ok(response)
     }
 
-    state.total_shares += new_shares;
-    STRATEGY_STATE.save(deps.storage, &state)?;
+    pub fn withdraw(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        recipient: Addr,
+        shares: Uint128,
+    ) -> Result<Response, ContractError> {
+        auth::assert_strategy_manager(deps.storage, &info)?;
 
-    let exchange_rate_event =
-        emit_exchange_rate(virtual_token_balance, state.total_shares + SHARES_OFFSET)?;
+        let mut state = STRATEGY_STATE.load(deps.storage)?;
 
-    let response = Response::new()
-        .add_attribute("method", "deposit")
-        .add_attribute("new_shares", new_shares.to_string())
-        .add_attribute("total_shares", state.total_shares.to_string())
-        .add_event(exchange_rate_event.events[0].clone());
+        if shares > state.total_shares {
+            return Err(ContractError::InsufficientShares {});
+        }
 
-    Ok(response)
+        let balance = token_balance(
+            &deps.querier,
+            &state.underlying_token,
+            &env.contract.address,
+        )?;
+
+        let virtual_total_shares = state.total_shares + SHARES_OFFSET;
+        let virtual_token_balance = balance + BALANCE_OFFSET;
+        let amount_to_send = (virtual_token_balance * shares) / virtual_total_shares;
+
+        if amount_to_send.is_zero() {
+            return Err(ContractError::ZeroAmountToSend {});
+        }
+
+        if amount_to_send > balance {
+            return Err(ContractError::InsufficientBalance {});
+        }
+
+        state.total_shares -= shares;
+        STRATEGY_STATE.save(deps.storage, &state)?;
+
+        let exchange_rate_event = emit_exchange_rate(
+            virtual_token_balance - amount_to_send,
+            state.total_shares + SHARES_OFFSET,
+        )?;
+
+        let underlying_token = state.underlying_token;
+
+        let transfer_msg = WasmMsg::Execute {
+            contract_addr: underlying_token.to_string(),
+            msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: recipient.to_string(),
+                amount: amount_to_send,
+            })?,
+            funds: vec![],
+        };
+
+        let transfer_cosmos_msg: CosmosMsg = transfer_msg.into();
+
+        let response = Response::new().add_message(transfer_cosmos_msg);
+
+        Ok(response
+            .add_attribute("method", "withdraw")
+            .add_attribute("amount_to_send", amount_to_send.to_string())
+            .add_attribute("total_shares", state.total_shares.to_string())
+            .add_event(exchange_rate_event.events[0].clone()))
+    }
+
+    fn emit_exchange_rate(
+        virtual_token_balance: Uint128,
+        virtual_total_shares: Uint128,
+    ) -> StdResult<Response> {
+        let exchange_rate = virtual_token_balance
+            .checked_mul(Uint128::new(1_000_000))?
+            .checked_div(virtual_total_shares)?;
+
+        let event = Event::new("exchange_rate_emitted")
+            .add_attribute("exchange_rate", exchange_rate.to_string());
+
+        Ok(Response::new().add_event(event))
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use cosmwasm_std::{Event, Uint128};
+
+        #[test]
+        fn test_emit_exchange_rate() {
+            let virtual_token_balance = Uint128::new(1_000_000_000);
+            let virtual_total_shares = Uint128::new(1_000_000);
+
+            let expected_exchange_rate = virtual_token_balance
+                .checked_mul(Uint128::new(1_000_000))
+                .unwrap()
+                .checked_div(virtual_total_shares)
+                .unwrap();
+
+            let res = emit_exchange_rate(virtual_token_balance, virtual_total_shares).unwrap();
+
+            let expected_event = Event::new("exchange_rate_emitted")
+                .add_attribute("exchange_rate", expected_exchange_rate.to_string());
+
+            assert!(res.events.contains(&expected_event));
+
+            println!("{:?}", res);
+        }
+    }
 }
 
-pub fn withdraw(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    recipient: Addr,
-    shares: Uint128,
-) -> Result<Response, ContractError> {
-    auth::assert_strategy_manager(deps.storage, &info)?;
-
-    let mut state = STRATEGY_STATE.load(deps.storage)?;
-
-    if shares > state.total_shares {
-        return Err(ContractError::InsufficientShares {});
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::Shares { staker } => {
+            let staker = deps.api.addr_validate(&staker)?;
+            to_json_binary(&shares(deps, &env, staker)?)
+        }
+        QueryMsg::Underlying { staker } => {
+            let staker = deps.api.addr_validate(&staker)?;
+            to_json_binary(&query_underlying(deps, &env, staker)?)
+        }
+        QueryMsg::SharesToUnderlying { shares } => {
+            to_json_binary(&query_shares_to_underlying(deps, &env, shares)?)
+        }
+        QueryMsg::UnderlyingToShares { amount } => {
+            to_json_binary(&query_underlying_to_shares(deps, &env, amount)?)
+        }
+        QueryMsg::StrategyManager {} => to_json_binary(&query_strategy_manager(deps)?),
+        QueryMsg::UnderlyingToken {} => to_json_binary(&query_underlying_token(deps)?),
+        QueryMsg::TotalShares {} => to_json_binary(&query_total_shares(deps)?),
+        QueryMsg::GetStrategyState {} => to_json_binary(&query_strategy_state(deps)?),
     }
-
-    let balance = token_balance(
-        &deps.querier,
-        &state.underlying_token,
-        &env.contract.address,
-    )?;
-
-    let virtual_total_shares = state.total_shares + SHARES_OFFSET;
-    let virtual_token_balance = balance + BALANCE_OFFSET;
-    let amount_to_send = (virtual_token_balance * shares) / virtual_total_shares;
-
-    if amount_to_send.is_zero() {
-        return Err(ContractError::ZeroAmountToSend {});
-    }
-
-    if amount_to_send > balance {
-        return Err(ContractError::InsufficientBalance {});
-    }
-
-    state.total_shares -= shares;
-    STRATEGY_STATE.save(deps.storage, &state)?;
-
-    let exchange_rate_event = emit_exchange_rate(
-        virtual_token_balance - amount_to_send,
-        state.total_shares + SHARES_OFFSET,
-    )?;
-
-    let underlying_token = state.underlying_token;
-
-    let transfer_msg = WasmMsg::Execute {
-        contract_addr: underlying_token.to_string(),
-        msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
-            recipient: recipient.to_string(),
-            amount: amount_to_send,
-        })?,
-        funds: vec![],
-    };
-
-    let transfer_cosmos_msg: CosmosMsg = transfer_msg.into();
-
-    let response = Response::new().add_message(transfer_cosmos_msg);
-
-    Ok(response
-        .add_attribute("method", "withdraw")
-        .add_attribute("amount_to_send", amount_to_send.to_string())
-        .add_attribute("total_shares", state.total_shares.to_string())
-        .add_event(exchange_rate_event.events[0].clone()))
 }
 
 pub fn shares(deps: Deps, env: &Env, staker: Addr) -> StdResult<SharesResponse> {
@@ -253,30 +329,6 @@ pub fn underlying(deps: Deps, env: &Env, staker: Addr) -> StdResult<Uint128> {
     Ok(amount_to_send)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    match msg {
-        QueryMsg::Shares { staker } => {
-            let staker = deps.api.addr_validate(&staker)?;
-            to_json_binary(&shares(deps, &env, staker)?)
-        }
-        QueryMsg::Underlying { staker } => {
-            let staker = deps.api.addr_validate(&staker)?;
-            to_json_binary(&query_underlying(deps, &env, staker)?)
-        }
-        QueryMsg::SharesToUnderlying { shares } => {
-            to_json_binary(&query_shares_to_underlying(deps, &env, shares)?)
-        }
-        QueryMsg::UnderlyingToShares { amount } => {
-            to_json_binary(&query_underlying_to_shares(deps, &env, amount)?)
-        }
-        QueryMsg::StrategyManager {} => to_json_binary(&query_strategy_manager(deps)?),
-        QueryMsg::UnderlyingToken {} => to_json_binary(&query_underlying_token(deps)?),
-        QueryMsg::TotalShares {} => to_json_binary(&query_total_shares(deps)?),
-        QueryMsg::GetStrategyState {} => to_json_binary(&query_strategy_state(deps)?),
-    }
-}
-
 pub fn query_strategy_manager(deps: Deps) -> StdResult<StrategyManagerResponse> {
     let strategy_manager = auth::get_strategy_manager(deps.storage)?;
     Ok(StrategyManagerResponse {
@@ -336,19 +388,6 @@ fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdR
         })?,
     }))?;
     Ok(res.balance)
-}
-
-fn emit_exchange_rate(
-    virtual_token_balance: Uint128,
-    virtual_total_shares: Uint128,
-) -> StdResult<Response> {
-    let exchange_rate = (virtual_token_balance.checked_mul(Uint128::new(1_000_000))?)
-        .checked_div(virtual_total_shares)?;
-
-    let event = Event::new("exchange_rate_emitted")
-        .add_attribute("exchange_rate", exchange_rate.to_string());
-
-    Ok(Response::new().add_event(event))
 }
 
 #[cfg(test)]
@@ -511,7 +550,7 @@ mod tests {
 
         let info = message_info(&Addr::unchecked(strategy_manager), &[]);
 
-        let res = deposit(deps.as_mut(), env.clone(), info.clone(), amount).unwrap();
+        let res = execute::deposit(deps.as_mut(), env.clone(), info.clone(), amount).unwrap();
 
         assert_eq!(res.attributes.len(), 3);
         assert_eq!(res.attributes[0].key, "method");
@@ -547,7 +586,7 @@ mod tests {
 
         let deposit_amount = Uint128::new(1_000);
 
-        let _ = deposit(
+        execute::deposit(
             deps.as_mut(),
             env.clone(),
             message_info(&Addr::unchecked(strategy_manager.clone()), &[]),
@@ -561,7 +600,7 @@ mod tests {
         let withdraw_amount_shares = Uint128::new(1);
         let recipient = deps.api.addr_make("recipient").to_string();
 
-        let res_withdraw = withdraw(
+        let res_withdraw = execute::withdraw(
             deps.as_mut(),
             env.clone(),
             message_info(&Addr::unchecked(strategy_manager), &[]),
@@ -706,7 +745,7 @@ mod tests {
         let info = message_info(&Addr::unchecked(strategy_manager.clone()), &[]);
         let user = deps.api.addr_make("user").to_string();
 
-        deposit(deps.as_mut(), env.clone(), info.clone(), deposit_amount).unwrap();
+        execute::deposit(deps.as_mut(), env.clone(), info.clone(), deposit_amount).unwrap();
 
         let state = STRATEGY_STATE.load(&deps.storage).unwrap();
         assert!(state.total_shares > Uint128::zero());
@@ -865,28 +904,6 @@ mod tests {
 
         assert_eq!(total_shares_response.total_shares, Uint128::zero());
     }
-
-    #[test]
-    fn test_emit_exchange_rate() {
-        let virtual_token_balance = Uint128::new(1_000_000_000);
-        let virtual_total_shares = Uint128::new(1_000_000);
-
-        let expected_exchange_rate = virtual_token_balance
-            .checked_mul(Uint128::new(1_000_000))
-            .unwrap()
-            .checked_div(virtual_total_shares)
-            .unwrap();
-
-        let res = emit_exchange_rate(virtual_token_balance, virtual_total_shares).unwrap();
-
-        let expected_event = Event::new("exchange_rate_emitted")
-            .add_attribute("exchange_rate", expected_exchange_rate.to_string());
-
-        assert!(res.events.contains(&expected_event));
-
-        println!("{:?}", res);
-    }
-
     #[test]
     fn test_underlying_to_shares() {
         let (mut deps, env, _info, token, _strategy_manager) = instantiate_contract();
