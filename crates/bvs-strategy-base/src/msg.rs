@@ -47,13 +47,13 @@ pub enum QueryMsg {
     UnderlyingToShares { amount: Uint128 },
 
     #[returns(StrategyManagerResponse)]
-    GetStrategyManager {},
+    StrategyManager {},
 
     #[returns(UnderlyingTokenResponse)]
-    GetUnderlyingToken {},
+    UnderlyingToken {},
 
     #[returns(TotalSharesResponse)]
-    GetTotalShares {},
+    TotalShares {},
 
     #[returns(StrategyState)]
     GetStrategyState {},

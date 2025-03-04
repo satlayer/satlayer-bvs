@@ -271,9 +271,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::UnderlyingToShares { amount } => {
             to_json_binary(&query_underlying_to_shares(deps, &env, amount)?)
         }
-        QueryMsg::GetStrategyManager {} => to_json_binary(&query_strategy_manager(deps)?),
-        QueryMsg::GetUnderlyingToken {} => to_json_binary(&query_underlying_token(deps)?),
-        QueryMsg::GetTotalShares {} => to_json_binary(&query_total_shares(deps)?),
+        QueryMsg::StrategyManager {} => to_json_binary(&query_strategy_manager(deps)?),
+        QueryMsg::UnderlyingToken {} => to_json_binary(&query_underlying_token(deps)?),
+        QueryMsg::TotalShares {} => to_json_binary(&query_total_shares(deps)?),
         QueryMsg::GetStrategyState {} => to_json_binary(&query_strategy_state(deps)?),
     }
 }
@@ -300,6 +300,7 @@ fn query_total_shares(deps: Deps) -> StdResult<TotalSharesResponse> {
 }
 
 pub fn query_strategy_state(deps: Deps) -> StdResult<StrategyState> {
+    // TODO(fuxingloh): to deprecate use QueryMsg::StrategyManager or QueryMsg::TotalShares
     let state = STRATEGY_STATE.load(deps.storage)?;
     Ok(state)
 }
@@ -830,7 +831,7 @@ mod tests {
     fn test_query_strategy_manager() {
         let (deps, env, _info, _token, strategy_manager) = instantiate_contract();
 
-        let query_msg = QueryMsg::GetStrategyManager {};
+        let query_msg = QueryMsg::StrategyManager {};
         let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
 
         let strategy_manager_response: StrategyManagerResponse = from_json(res).unwrap();
@@ -844,7 +845,7 @@ mod tests {
     fn test_query_underlying_token() {
         let (deps, env, _info, token, _strategy_manager) = instantiate_contract();
 
-        let query_msg = QueryMsg::GetUnderlyingToken {};
+        let query_msg = QueryMsg::UnderlyingToken {};
 
         let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
         let underlying_token_response: UnderlyingTokenResponse = from_json(res).unwrap();
@@ -858,7 +859,7 @@ mod tests {
     fn test_query_total_shares() {
         let (deps, env, _info, _token, _strategy_manager) = instantiate_contract();
 
-        let query_msg = QueryMsg::GetTotalShares {};
+        let query_msg = QueryMsg::TotalShares {};
         let res = query(deps.as_ref(), env.clone(), query_msg).unwrap();
 
         let total_shares_response: TotalSharesResponse = from_json(res).unwrap();
