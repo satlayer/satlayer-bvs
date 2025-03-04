@@ -198,6 +198,9 @@ pub fn execute(
     }
 }
 
+/// Set the new minimum withdrawal delay blocks which cannot exceed [`MAX_WITHDRAWAL_DELAY_BLOCKS`].
+///
+/// Only contract owner can call this function.
 pub fn set_min_withdrawal_delay_blocks(
     deps: DepsMut,
     info: MessageInfo,
@@ -208,6 +211,9 @@ pub fn set_min_withdrawal_delay_blocks(
     set_min_withdrawal_delay_blocks_internal(deps, new_min_withdrawal_delay_blocks)
 }
 
+/// Set each strategy correspoding to the minimum withdrawal delay blocks which cannot exceed [`MAX_WITHDRAWAL_DELAY_BLOCKS`].
+///
+/// Only contract owner can call this function.
 pub fn set_strategy_withdrawal_delay_blocks(
     deps: DepsMut,
     info: MessageInfo,
@@ -219,6 +225,10 @@ pub fn set_strategy_withdrawal_delay_blocks(
     set_strategy_withdrawal_delay_blocks_internal(deps, strategies, withdrawal_delay_blocks)
 }
 
+/// Registers the info sender as an operator in BVS.
+///
+/// This function will revert if the info sender is already delegated to an operator.
+/// `metadata_uri` is never stored and is only emitted in the `OperatorMetadataURIUpdated` event.
 pub fn register_as_operator(
     mut deps: DepsMut,
     info: MessageInfo,
@@ -256,6 +266,9 @@ pub fn register_as_operator(
     Ok(response)
 }
 
+/// Called by an operator to set new [`OperatorDetails`].
+///
+/// New `staker_opt_out_window_blocks` cannot be decreased and exceed [`MAX_STAKER_OPT_OUT_WINDOW_BLOCKS`].
 pub fn modify_operator_details(
     deps: DepsMut,
     info: MessageInfo,
@@ -271,6 +284,7 @@ pub fn modify_operator_details(
     set_operator_details(deps, operator, new_operator_details)
 }
 
+/// Called by an operator to emit an `OperatorMetadataURIUpdated` event indicating the information has updated.
 pub fn update_operator_metadata_uri(
     deps: DepsMut,
     info: MessageInfo,
@@ -292,6 +306,9 @@ pub fn update_operator_metadata_uri(
     Ok(response)
 }
 
+/// Caller delegates their stake to an operator.
+///
+/// Caller shouldn't be aleady delegated and the operator should be registered.
 pub fn delegate_to(
     deps: DepsMut,
     info: MessageInfo,
@@ -312,6 +329,11 @@ pub fn delegate_to(
     delegate(deps, staker, operator)
 }
 
+/// Undelegates the staker from their operator and queues a withdrawal for all of their shares.
+///
+/// If withdrawals are queued, return the queued withdrawl root.
+/// If the `staker` is not delegated to an operator, return an error.
+/// If the `staker` is an operator, return an error. Because operators are not allowed to undelegate from themselves.
 pub fn undelegate(
     mut deps: DepsMut,
     env: Env,
@@ -392,6 +414,7 @@ pub fn undelegate(
     Ok((response, withdrawal_roots))
 }
 
+/// Return the strategy and share array of a staker.
 pub fn get_delegatable_shares(deps: Deps, staker: Addr) -> StdResult<(Vec<Addr>, Vec<Uint128>)> {
     let strategy_manager = auth::get_strategy_manager(deps.storage)
         // TODO: SL-332
@@ -410,6 +433,7 @@ pub fn get_delegatable_shares(deps: Deps, staker: Addr) -> StdResult<(Vec<Addr>,
     Ok((response.strategies, response.shares))
 }
 
+/// Called by a strategy manager when a staker's deposit share balance in a strategy increases.
 pub fn increase_delegated_shares(
     deps: DepsMut,
     info: MessageInfo,
@@ -428,6 +452,7 @@ pub fn increase_delegated_shares(
     }
 }
 
+/// Called by a strategy manager when a staker's deposit decreases its operator's shares.
 pub fn decrease_delegated_shares(
     deps: DepsMut,
     info: MessageInfo,
@@ -446,6 +471,8 @@ pub fn decrease_delegated_shares(
     }
 }
 
+/// Allows a staker to queue a withdrawal of their deposit shares.
+/// The withdrawal can be completed after the [`MIN_WITHDRAWAL_DELAY_BLOCKS`] via either of the completeQueuedWithdrawal methods.
 pub fn queue_withdrawals(
     mut deps: DepsMut,
     env: Env,
@@ -498,6 +525,9 @@ pub fn queue_withdrawals(
     Ok((response, withdrawal_roots))
 }
 
+/// Used to complete a queued withdrawal.
+///
+/// Array-ified version of `completeQueuedWithdrawal`.
 pub fn complete_queued_withdrawals(
     mut deps: DepsMut,
     env: Env,
@@ -525,6 +555,13 @@ pub fn complete_queued_withdrawals(
     Ok(response)
 }
 
+/// Used to complete the specified `withdrawals`.
+///
+/// `withdrawals` - Array of Withdrawals to complete.
+/// `middleware_times_indexes` - The index in the operator that the staker who triggered the withdrawal was delegated to's middleware times array.
+/// `receive_as_tokens` - If true, the shares specified in the withdrawal will be withdrawn from the specified strategies themselves.
+/// and sent to the caller, through calls to `withdrawal.strategies[i].withdraw`. If false, then the shares in the specified strategies
+/// will simply be transferred to the caller directly.
 pub fn complete_queued_withdrawal(
     mut deps: DepsMut,
     env: Env,
@@ -601,12 +638,14 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
+/// Query the delegatable shares and strategies of an staker.
 pub fn query_delegatable_shares(deps: Deps, staker: Addr) -> StdResult<DelegatableSharesResponse> {
     let (strategies, shares) = get_delegatable_shares(deps, staker)?;
 
     Ok(DelegatableSharesResponse { strategies, shares })
 }
 
+/// /// Query the staker is delegated or not.
 pub fn query_is_delegated(deps: Deps, staker: Addr) -> StdResult<DelegatedResponse> {
     let is_delegated = DELEGATED_TO
         .may_load(deps.storage, &staker)?
@@ -615,6 +654,7 @@ pub fn query_is_delegated(deps: Deps, staker: Addr) -> StdResult<DelegatedRespon
     Ok(DelegatedResponse { is_delegated })
 }
 
+/// Query the operator is registered or not.
 pub fn query_is_operator(deps: Deps, operator: Addr) -> StdResult<OperatorResponse> {
     if operator == Addr::unchecked("") {
         return Ok(OperatorResponse { is_operator: false });
@@ -631,11 +671,13 @@ pub fn query_is_operator(deps: Deps, operator: Addr) -> StdResult<OperatorRespon
     Ok(OperatorResponse { is_operator })
 }
 
+/// Query the operator details.
 pub fn query_operator_details(deps: Deps, operator: Addr) -> StdResult<OperatorDetailsResponse> {
     let details = OPERATOR_DETAILS.load(deps.storage, &operator)?;
     Ok(OperatorDetailsResponse { details })
 }
 
+/// Query the staker opt out window blocks.
 pub fn query_staker_opt_out_window_blocks(
     deps: Deps,
     operator: Addr,
@@ -646,6 +688,7 @@ pub fn query_staker_opt_out_window_blocks(
     })
 }
 
+/// Query the operator and strategy shares.
 pub fn query_operator_shares(
     deps: Deps,
     operator: Addr,
@@ -661,6 +704,7 @@ pub fn query_operator_shares(
     Ok(OperatorSharesResponse { shares })
 }
 
+/// Query the withdrawal delay for a list of strategies.
 pub fn query_withdrawal_delay(
     deps: Deps,
     strategies: Vec<Addr>,
@@ -678,6 +722,7 @@ pub fn query_withdrawal_delay(
     Ok(WithdrawalDelayResponse { withdrawal_delays })
 }
 
+/// Query the a list of stakers in one operator.
 pub fn query_operator_stakers(deps: Deps, operator: Addr) -> StdResult<OperatorStakersResponse> {
     let mut stakers_and_shares: Vec<StakerShares> = Vec::new();
 
@@ -731,6 +776,7 @@ pub fn query_operator_stakers(deps: Deps, operator: Addr) -> StdResult<OperatorS
     Ok(OperatorStakersResponse { stakers_and_shares })
 }
 
+/// Query the cumulative queued withdrawals of one staker.
 pub fn query_cumulative_withdrawals_queued(
     deps: Deps,
     staker: Addr,
