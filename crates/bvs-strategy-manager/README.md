@@ -19,6 +19,20 @@ This function allows the contract owner to add a new staking strategy. A strateg
 
 Only the contract owner has permission to call this function. On successful execution, an event `NewStrategyAdded` is emitted.
 
+```mermaid
+flowchart TD
+    subgraph 1["Flow w/ Add New Strategy"]
+    %% Nodes
+    1.A((Satlayer owner EOA))
+    1.B[(StrategyManager)]
+    1.C[(StrategyContract)]
+    1.A ---> |"(1) Deploy and Instantiate"| 1.C
+    1.A ---> |"(2) Add New Strategy"| 1.B
+    1.B ---> |"(3) Strategy Manager checks contract"| 1.C
+    1.C ---> |"(4) Strategy confirm the manager is configured"| 1.B
+    end
+```
+
 ### BlacklistTokens
 
 This function blacklists specified tokens, preventing them from being deposited into strategies. If a token is already blacklisted, the function returns an error. If a token has an associated strategy, that strategy is also removed from the deposit whitelist.
@@ -70,6 +84,8 @@ This function allows users to deposit tokens into a strategy's address and in tu
 
 After a successful deposit, the user receives strategy shares. A corresponding event is emitted.
 
+Sequence Diagram:
+
 ```mermaid
 sequenceDiagram
     Staker ->>+StrategyManager: Exec::Deposit()
@@ -80,6 +96,27 @@ sequenceDiagram
     StrategyManager->>+DelegationManager: Exec::IncreaseDelegatedShares()
     DelegationManager -->>- StrategyManager: ExecuteMsg successful
     StrategyManager -->+ StrategyManager: Exec::Cw20Transfer staker->StrategyContract balance
+```
+
+Flowchart:
+
+```mermaid
+flowchart TD
+    subgraph 1["Deposit"]
+    %% Nodes
+    1.A((Retail Staker EOA))
+    1.B[(StrategyManager)]
+    1.C[(DelegationManager)]
+    1.D[(CW20)]
+    1.E[(StrategyContract)]
+    1.A ---> |"(1) Pre Approve fund"| 1.D
+    1.A ---> |"(2) Deposit ExecuteMsg"| 1.B
+    1.B ---> |"(3) Deposit ExecuteMsg, this let strategy know to mint new shares for staker"| 1.E
+    1.E ---> |"(4) Resp the Manager how minting of new shares was successful"| 1.B
+    1.B ---> |"(5) IncreaseDelegatedShares ExecuteMsg"| 1.C
+    1.C ---> |"(6) Resp Delegated Shares increased"| 1.B
+    1.B ---> |"(7) Once everything is in place, transfer the staker fund to strategy contract's balance"| 1.D
+    end
 ```
 
 ### WithdrawSharesAsTokens
@@ -95,6 +132,20 @@ Users can withdraw their strategy shares as tokens using this function. The with
 
 Only the delegation manager can call this function. A transaction is executed to process the withdrawal.
 
+```mermaid
+flowchart TD
+    subgraph 1["Withdraw Shares As Token"]
+    %% Nodes
+    1.B[(StrategyManager)]
+    1.C[(DelegationManager)]
+    1.D[(CW20)]
+    1.E[(StrategyContract)]
+    1.C ---> |"(1) WithdrawSharesAsToken ExecuteMsg"| 1.B
+    1.B ---> |"(2) Withdraw ExecuteMsg" | 1.E
+    1.E ---> |"(3) Cw20:Transfer to move fund at staker"| 1.D
+    end
+```
+
 ### AddShares
 
 The delegation manager assigns shares to a staker in a specific strategy. Shares represent the user’s stake in the strategy.
@@ -108,6 +159,16 @@ The delegation manager assigns shares to a staker in a specific strategy. Shares
 
 An `add_shares` event is emitted when the function executes successfully.
 
+```mermaid
+flowchart TD
+    subgraph 1["AddShares"]
+    %% Nodes
+    1.B[(StrategyManager)]
+    1.C[(DelegationManager)]
+    1.C ---> |"(1) Increment shares for the staker"| 1.B
+    end
+```
+
 ### RemoveShares
 
 This function allows the delegation manager to remove shares from a staker’s balance in a given strategy.
@@ -117,6 +178,16 @@ This function allows the delegation manager to remove shares from a staker’s b
 - `staker`: Address of the staker.
 - `strategy`: Address of the strategy.
 - `shares`: The amount of shares to remove.
+
+```mermaid
+flowchart TD
+    subgraph 1["RemoveShares"]
+    %% Nodes
+    1.B[(StrategyManager)]
+    1.C[(DelegationManager)]
+    1.C ---> |"(1) Decrement shares for the staker"| 1.B
+    end
+```
 
 If all shares are removed, the strategy is also removed from the staker’s list. An event is emitted upon execution.
 
