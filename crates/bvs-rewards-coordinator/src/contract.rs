@@ -1229,7 +1229,7 @@ mod tests {
 
         // To retain the same test vector, we use "initial_owner" here
         let owner = deps.api.addr_make("initial_owner");
-        ownership::transfer_ownership(deps.as_mut(), &owner_info, &owner).unwrap();
+        ownership::transfer_ownership(deps.as_mut().storage, owner_info, owner.clone()).unwrap();
 
         let owner_info = message_info(&owner, &[]);
         let calc_interval = 86_400; // 1 day
