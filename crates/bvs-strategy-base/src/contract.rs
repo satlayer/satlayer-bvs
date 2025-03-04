@@ -233,7 +233,7 @@ pub fn shares_to_underlying_view(
     Ok(amount_to_send)
 }
 
-pub fn underlying_to_share_view(deps: Deps, env: &Env, amount: Uint128) -> StdResult<Uint128> {
+pub fn underlying_to_shares(deps: Deps, env: &Env, amount: Uint128) -> StdResult<Uint128> {
     let state: StrategyState = STRATEGY_STATE.load(deps.storage)?;
     let balance = token_balance(
         &deps.querier,
@@ -246,15 +246,6 @@ pub fn underlying_to_share_view(deps: Deps, env: &Env, amount: Uint128) -> StdRe
     let virtual_prior_token_balance = virtual_token_balance - amount;
     let share_to_send = (amount * virtual_share_amount) / virtual_prior_token_balance;
 
-    Ok(share_to_send)
-}
-
-pub fn underlying_to_shares(
-    deps: Deps,
-    env: &Env,
-    amount_underlying: Uint128,
-) -> StdResult<Uint128> {
-    let share_to_send = underlying_to_share_view(deps, env, amount_underlying)?;
     Ok(share_to_send)
 }
 
@@ -281,11 +272,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::SharesToUnderlyingView { amount_shares } => {
             to_json_binary(&query_shares_to_underlying_view(deps, &env, amount_shares)?)
         }
-        QueryMsg::UnderlyingToShareView { amount } => {
-            to_json_binary(&query_underlying_to_view(deps, &env, amount)?)
-        }
-        QueryMsg::UnderlyingToShares { amount_underlying } => {
-            to_json_binary(&query_underlying_to_shares(deps, &env, amount_underlying)?)
+        QueryMsg::UnderlyingToShares { amount } => {
+            to_json_binary(&query_underlying_to_shares(deps, &env, amount)?)
         }
         QueryMsg::GetStrategyManager {} => to_json_binary(&query_strategy_manager(deps)?),
         QueryMsg::GetUnderlyingToken {} => to_json_binary(&query_underlying_token(deps)?),
@@ -330,16 +318,6 @@ pub fn query_shares_to_underlying_view(
     Ok(SharesToUnderlyingResponse { amount_to_send })
 }
 
-pub fn query_underlying_to_view(
-    deps: Deps,
-    env: &Env,
-    amount: Uint128,
-) -> StdResult<UnderlyingToShareResponse> {
-    let share_to_send = underlying_to_share_view(deps, env, amount)?;
-
-    Ok(UnderlyingToShareResponse { share_to_send })
-}
-
 pub fn query_user_underlying_view(
     deps: Deps,
     env: &Env,
@@ -352,9 +330,9 @@ pub fn query_user_underlying_view(
 pub fn query_underlying_to_shares(
     deps: Deps,
     env: &Env,
-    amount_underlying: Uint128,
+    amount: Uint128,
 ) -> StdResult<UnderlyingToSharesResponse> {
-    let share_to_send = underlying_to_shares(deps, env, amount_underlying)?;
+    let share_to_send = underlying_to_shares(deps, env, amount)?;
     Ok(UnderlyingToSharesResponse { share_to_send })
 }
 
@@ -693,47 +671,6 @@ mod tests {
                 panic!("Failed to convert shares to underlying: {:?}", e);
             }
         }
-    }
-
-    #[test]
-    fn test_underlying_to_share_view() {
-        let (mut deps, env, _info, token, _strategy_manager) = instantiate_contract();
-
-        let contract_address = env.contract.address.clone();
-
-        deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart {
-                contract_addr, msg, ..
-            } => {
-                let msg_clone = msg.clone();
-                if contract_addr == &token {
-                    let msg: Cw20QueryMsg = from_json(msg).unwrap();
-                    if let Cw20QueryMsg::Balance { address } = msg {
-                        if address == contract_address.to_string() {
-                            return SystemResult::Ok(ContractResult::Ok(
-                                to_json_binary(&Cw20BalanceResponse {
-                                    balance: Uint128::new(1_000_000),
-                                })
-                                .unwrap(),
-                            ));
-                        }
-                    }
-                }
-                SystemResult::Err(SystemError::InvalidRequest {
-                    error: "not implemented".to_string(),
-                    request: msg_clone,
-                })
-            }
-            _ => SystemResult::Err(SystemError::InvalidRequest {
-                error: "not implemented".to_string(),
-                request: Binary::from(b"other".as_ref()),
-            }),
-        });
-
-        let amount = Uint128::new(1_000);
-        let share_to_send = underlying_to_share_view(deps.as_ref(), &env, amount).unwrap();
-
-        assert_eq!(share_to_send, Uint128::new(999));
     }
 
     #[test]

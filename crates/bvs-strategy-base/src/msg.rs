@@ -43,11 +43,8 @@ pub enum QueryMsg {
     #[returns(SharesToUnderlyingResponse)]
     SharesToUnderlyingView { amount_shares: Uint128 },
 
-    #[returns(UnderlyingToShareResponse)]
-    UnderlyingToShareView { amount: Uint128 },
-
     #[returns(UnderlyingToSharesResponse)]
-    UnderlyingToShares { amount_underlying: Uint128 },
+    UnderlyingToShares { amount: Uint128 },
 
     #[returns(StrategyManagerResponse)]
     GetStrategyManager {},
