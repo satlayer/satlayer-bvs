@@ -42,7 +42,7 @@ pub fn instantiate(
     bvs_registry::api::set_registry_addr(deps.storage, &registry_addr)?;
 
     let owner = deps.api.addr_validate(&msg.owner)?;
-    ownership::_set_owner(deps.storage, &owner)?;
+    ownership::set_owner(deps.storage, &owner)?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
@@ -133,7 +133,8 @@ pub fn execute(
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
-            ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
+            ownership::transfer_ownership(deps.storage, info, new_owner)
+                .map_err(ContractError::Ownership)
         }
         ExecuteMsg::SetRouting {
             delegation_manager,
@@ -415,7 +416,7 @@ pub fn set_slasher(
     slasher: Addr,
     value: bool,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.storage, &info)?;
 
     SLASHER.save(deps.storage, &slasher, &value)?;
 
@@ -597,7 +598,7 @@ mod tests {
             ]
         );
 
-        let owner = ownership::OWNER.load(&deps.storage).unwrap();
+        let owner = ownership::get_owner(&deps.storage).unwrap();
         assert_eq!(owner, deps.api.addr_make("creator"));
 
         let invalid_info = message_info(&deps.api.addr_make("invalid_creator"), &[]);

@@ -37,13 +37,13 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let strategy_manager = deps.api.addr_validate(&msg.strategy_manager)?;
-    auth::_set_strategy_manager(deps.storage, &strategy_manager)?;
+    auth::set_strategy_manager(deps.storage, &strategy_manager)?;
 
     let registry = deps.api.addr_validate(&msg.registry)?;
     bvs_registry::api::set_registry_addr(deps.storage, &registry)?;
 
     let owner = deps.api.addr_validate(&msg.owner)?;
-    ownership::_set_owner(deps.storage, &owner)?;
+    ownership::set_owner(deps.storage, &owner)?;
 
     let strategy_manager = deps.api.addr_validate(&msg.strategy_manager)?;
     let underlying_token = deps.api.addr_validate(&msg.underlying_token)?;
@@ -85,7 +85,8 @@ pub fn execute(
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
-            ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
+            ownership::transfer_ownership(deps.storage, info, new_owner)
+                .map_err(ContractError::Ownership)
         }
     }
 }
@@ -194,9 +195,7 @@ pub fn withdraw(
 }
 
 pub fn shares(deps: Deps, env: &Env, staker: Addr) -> StdResult<SharesResponse> {
-    let strategy_manager = auth::get_strategy_manager(deps.storage)
-        // TODO: SL-332
-        .unwrap();
+    let strategy_manager = auth::get_strategy_manager(deps.storage)?;
 
     let strategy = env.contract.address.to_string();
     let response: crate::msg::strategy_manager::StakerStrategySharesResponse =
@@ -296,9 +295,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 pub fn query_strategy_manager(deps: Deps) -> StdResult<StrategyManagerResponse> {
-    let strategy_manager = auth::get_strategy_manager(deps.storage)
-        // TODO: SL-332
-        .unwrap();
+    let strategy_manager = auth::get_strategy_manager(deps.storage)?;
     Ok(StrategyManagerResponse {
         strategy_manager_addr: strategy_manager,
     })

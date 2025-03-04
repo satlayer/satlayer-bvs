@@ -50,7 +50,7 @@ pub fn instantiate(
     bvs_registry::api::set_registry_addr(deps.storage, &registry_addr)?;
 
     let owner = deps.api.addr_validate(&msg.owner)?;
-    ownership::_set_owner(deps.storage, &owner)?;
+    ownership::set_owner(deps.storage, &owner)?;
 
     set_min_withdrawal_delay_blocks_internal(deps.branch(), msg.min_withdrawal_delay_blocks)?;
 
@@ -183,7 +183,8 @@ pub fn execute(
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
-            ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
+            ownership::transfer_ownership(deps.storage, info, new_owner)
+                .map_err(ContractError::Ownership)
         }
         ExecuteMsg::SetRouting {
             strategy_manager,
@@ -202,7 +203,7 @@ pub fn set_min_withdrawal_delay_blocks(
     info: MessageInfo,
     new_min_withdrawal_delay_blocks: u64,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.storage, &info)?;
 
     set_min_withdrawal_delay_blocks_internal(deps, new_min_withdrawal_delay_blocks)
 }
@@ -213,7 +214,7 @@ pub fn set_strategy_withdrawal_delay_blocks(
     strategies: Vec<Addr>,
     withdrawal_delay_blocks: Vec<u64>,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.storage, &info)?;
 
     set_strategy_withdrawal_delay_blocks_internal(deps, strategies, withdrawal_delay_blocks)
 }
@@ -692,9 +693,7 @@ pub fn query_operator_stakers(deps: Deps, operator: Addr) -> StdResult<OperatorS
         })
         .collect();
 
-    let strategy_manager = auth::get_strategy_manager(deps.storage)
-        // TODO: SL-332
-        .unwrap();
+    let strategy_manager = auth::get_strategy_manager(deps.storage)?;
 
     for staker in stakers.iter() {
         let mut shares_per_strategy: Vec<(Addr, Uint128)> = Vec::new();
@@ -1142,7 +1141,7 @@ mod tests {
         );
         assert_eq!(res.attributes[2], attr("owner", owner.as_str()));
 
-        let loaded_owner = ownership::OWNER.load(&deps.storage).unwrap();
+        let loaded_owner = ownership::get_owner(&deps.storage).unwrap();
         assert_eq!(loaded_owner, &owner);
 
         let min_withdrawal_delay_blocks = MIN_WITHDRAWAL_DELAY_BLOCKS.load(&deps.storage).unwrap();

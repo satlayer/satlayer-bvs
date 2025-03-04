@@ -52,7 +52,7 @@ pub fn instantiate(
     bvs_registry::api::set_registry_addr(deps.storage, &deps.api.addr_validate(&msg.registry)?)?;
 
     let owner = deps.api.addr_validate(&msg.owner)?;
-    ownership::_set_owner(deps.storage, &owner)?;
+    ownership::set_owner(deps.storage, &owner)?;
 
     if msg.genesis_rewards_timestamp % msg.calculation_interval_seconds != 0 {
         return Err(ContractError::InvalidGenesisTimestamp {});
@@ -124,7 +124,8 @@ pub fn execute(
         } => set_global_operator_commission(deps, info, new_commission_bips),
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
-            ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
+            ownership::transfer_ownership(deps.storage, info, new_owner)
+                .map_err(ContractError::Ownership)
         }
         ExecuteMsg::SetRewardsUpdater { addr } => {
             let addr = deps.api.addr_validate(&addr)?;
@@ -475,7 +476,7 @@ pub fn set_activation_delay(
     info: MessageInfo,
     new_activation_delay: u32,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.storage, &info)?;
 
     let res = set_activation_delay_internal(deps, new_activation_delay)?;
     Ok(res)
@@ -490,7 +491,7 @@ pub fn set_rewards_for_all_submitter(
     submitter: Addr,
     new_value: bool,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.storage, &info)?;
 
     let prev_value = REWARDS_FOR_ALL_SUBMITTER
         .may_load(deps.storage, &submitter)?
@@ -513,7 +514,7 @@ pub fn set_global_operator_commission(
     info: MessageInfo,
     new_commission_bips: u16,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.storage, &info)?;
 
     let res = set_global_operator_commission_internal(deps, new_commission_bips)?;
     Ok(res)
@@ -994,7 +995,7 @@ mod tests {
         assert_eq!(res.attributes[2].key, "activation_delay");
         assert_eq!(res.attributes[2].value, "60");
 
-        let stored_owner = ownership::OWNER.load(&deps.storage).unwrap();
+        let stored_owner = ownership::get_owner(&deps.storage).unwrap();
         assert_eq!(stored_owner, Addr::unchecked(owner));
 
         let stored_calculation_interval = CALCULATION_INTERVAL_SECONDS.load(&deps.storage).unwrap();

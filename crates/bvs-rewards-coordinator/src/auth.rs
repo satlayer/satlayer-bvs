@@ -17,7 +17,7 @@ pub fn set_routing(
     delegation_manager: Addr,
     strategy_manager: Addr,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.storage, &info)?;
 
     DELEGATION_MANAGER.save(deps.storage, &delegation_manager)?;
     STRATEGY_MANAGER.save(deps.storage, &strategy_manager)?;
@@ -34,7 +34,7 @@ pub fn set_rewards_updater(
     info: MessageInfo,
     new_updater: Addr,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.storage, &info)?;
 
     REWARDS_UPDATER.save(deps.storage, &new_updater)?;
 
@@ -57,7 +57,7 @@ mod tests {
     use crate::auth::{set_routing, REWARDS_UPDATER};
     use crate::{auth, ContractError};
     use auth::assert_rewards_updater;
-    use bvs_library::ownership::{OwnershipError, OWNER};
+    use bvs_library::ownership::{self, OwnershipError};
     use cosmwasm_std::testing::{message_info, mock_dependencies};
     use cosmwasm_std::{Event, Response};
 
@@ -66,7 +66,7 @@ mod tests {
         let mut deps = mock_dependencies();
 
         let owner_addr = &deps.api.addr_make("owner");
-        OWNER.save(deps.as_mut().storage, &owner_addr).unwrap();
+        ownership::set_owner(deps.as_mut().storage, owner_addr).unwrap();
 
         let owner_info = message_info(owner_addr, &[]);
 
@@ -98,7 +98,7 @@ mod tests {
         {
             // Setup Owner
             let owner_addr = &deps.api.addr_make("owner");
-            OWNER.save(deps.as_mut().storage, &owner_addr).unwrap();
+            ownership::set_owner(deps.as_mut().storage, owner_addr).unwrap();
         }
 
         let new_delegation_manager = deps.api.addr_make("new_delegation_manager");
@@ -126,7 +126,7 @@ mod tests {
         let mut deps = mock_dependencies();
 
         let owner_addr = &deps.api.addr_make("owner");
-        OWNER.save(deps.as_mut().storage, &owner_addr).unwrap();
+        ownership::set_owner(deps.as_mut().storage, owner_addr).unwrap();
         let owner_info = message_info(owner_addr, &[]);
 
         let new_updater = deps.api.addr_make("new_updater");
@@ -154,7 +154,7 @@ mod tests {
             .unwrap();
 
         let owner_addr = &deps.api.addr_make("owner");
-        OWNER.save(deps.as_mut().storage, &owner_addr).unwrap();
+        ownership::set_owner(deps.as_mut().storage, owner_addr).unwrap();
 
         let sender = &deps.api.addr_make("not_owner");
         let sender_info = message_info(sender, &[]);

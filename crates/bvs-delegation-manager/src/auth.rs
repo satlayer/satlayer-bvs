@@ -1,6 +1,8 @@
 use crate::ContractError;
 use bvs_library::ownership;
-use cosmwasm_std::{Addr, Deps, DepsMut, Event, MessageInfo, Response, Storage};
+use cosmwasm_std::{
+    Addr, Deps, DepsMut, Event, MessageInfo, Response, StdError, StdResult, Storage,
+};
 use cw_storage_plus::Item;
 
 const STRATEGY_MANAGER: Item<Addr> = Item::new("strategy_manager");
@@ -16,7 +18,7 @@ pub fn set_routing(
     strategy_manager: Addr,
     slash_manager: Addr,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.storage, &info)?;
 
     STRATEGY_MANAGER.save(deps.storage, &strategy_manager)?;
     SLASH_MANAGER.save(deps.storage, &slash_manager)?;
@@ -29,11 +31,11 @@ pub fn set_routing(
 }
 
 /// Get the Strategy Manager address
-/// If SetRouting has not been called, it will return an Unauthorized error
-pub fn get_strategy_manager(storage: &dyn Storage) -> Result<Addr, ContractError> {
+/// If SetRouting has not been called, it will return an [StdError::NotFound]
+pub fn get_strategy_manager(storage: &dyn Storage) -> StdResult<Addr> {
     STRATEGY_MANAGER
         .may_load(storage)?
-        .ok_or(ContractError::Unauthorized {})
+        .ok_or(StdError::not_found("strategy_manager"))
 }
 
 pub fn assert_strategy_manager(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
@@ -76,7 +78,7 @@ mod tests {
     use crate::auth::{set_routing, STRATEGY_MANAGER};
     use crate::{auth, ContractError};
     use auth::assert_strategy_manager;
-    use bvs_library::ownership::{OwnershipError, OWNER};
+    use bvs_library::ownership::{self, OwnershipError};
     use cosmwasm_std::testing::{message_info, mock_dependencies};
     use cosmwasm_std::{Event, Response};
 
@@ -85,7 +87,7 @@ mod tests {
         let mut deps = mock_dependencies();
 
         let owner_addr = &deps.api.addr_make("owner");
-        OWNER.save(deps.as_mut().storage, &owner_addr).unwrap();
+        ownership::set_owner(deps.as_mut().storage, owner_addr).unwrap();
 
         let owner_info = message_info(owner_addr, &[]);
 
@@ -117,7 +119,7 @@ mod tests {
         {
             // Setup Owner
             let owner_addr = &deps.api.addr_make("owner");
-            OWNER.save(deps.as_mut().storage, &owner_addr).unwrap();
+            ownership::set_owner(deps.as_mut().storage, owner_addr).unwrap();
         }
 
         let new_strategy = deps.api.addr_make("strategy_manager/55");

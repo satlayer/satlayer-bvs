@@ -48,7 +48,7 @@ pub fn instantiate(
     bvs_registry::api::set_registry_addr(deps.storage, &registry)?;
 
     let owner = deps.api.addr_validate(&msg.owner)?;
-    ownership::_set_owner(deps.storage, &owner)?;
+    ownership::set_owner(deps.storage, &owner)?;
 
     let initial_strategy_whitelister = deps.api.addr_validate(&msg.initial_strategy_whitelister)?;
 
@@ -144,7 +144,8 @@ pub fn execute(
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
-            ownership::transfer_ownership(deps, &info, &new_owner).map_err(ContractError::Ownership)
+            ownership::transfer_ownership(deps.storage, info, new_owner)
+                .map_err(ContractError::Ownership)
         }
         ExecuteMsg::SetRouting {
             delegation_manager,
@@ -221,7 +222,7 @@ pub fn set_strategy_whitelister(
     info: MessageInfo,
     new_strategy_whitelister: Addr,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.storage, &info)?;
 
     let strategy_whitelister = STRATEGY_WHITELISTER.load(deps.storage)?;
 
@@ -707,7 +708,7 @@ pub fn add_new_strategy(
     strategy: Addr,
     token: Addr,
 ) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.storage, &info)?;
 
     let is_blacklisted = IS_BLACKLISTED
         .may_load(deps.storage, &token)?
@@ -783,7 +784,7 @@ mod tests {
         assert_eq!(res.attributes[2].key, "owner");
         assert_eq!(res.attributes[2].value, owner.as_str());
 
-        let owner = ownership::OWNER.load(&deps.storage).unwrap();
+        let owner = ownership::get_owner(&deps.storage).unwrap();
         assert_eq!(owner, owner.clone());
 
         let strategy_whitelister = STRATEGY_WHITELISTER.load(&deps.storage).unwrap();
