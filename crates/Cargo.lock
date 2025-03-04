@@ -334,6 +334,7 @@ dependencies = [
 name = "bvs-strategy-manager"
 version = "0.1.0"
 dependencies = [
+ "bvs-delegation-manager",
  "bvs-library",
  "bvs-registry",
  "bvs-strategy-base",
@@ -343,6 +344,7 @@ dependencies = [
  "cw-storage-plus",
  "cw2",
  "cw20",
+ "cw20-base",
  "schemars",
  "serde",
  "thiserror",
