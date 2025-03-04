@@ -10,9 +10,6 @@
 //    queryMsg, err := UnmarshalQueryMsg(bytes)
 //    bytes, err = queryMsg.Marshal()
 //
-//    sharesResponse, err := UnmarshalSharesResponse(bytes)
-//    bytes, err = sharesResponse.Marshal()
-//
 //    strategyManagerResponse, err := UnmarshalStrategyManagerResponse(bytes)
 //    bytes, err = strategyManagerResponse.Marshal()
 //
@@ -25,17 +22,17 @@
 //    underlyingTokenResponse, err := UnmarshalUnderlyingTokenResponse(bytes)
 //    bytes, err = underlyingTokenResponse.Marshal()
 //
+//    sharesResponse, err := UnmarshalSharesResponse(bytes)
+//    bytes, err = sharesResponse.Marshal()
+//
 //    sharesToUnderlyingResponse, err := UnmarshalSharesToUnderlyingResponse(bytes)
 //    bytes, err = sharesToUnderlyingResponse.Marshal()
 //
-//    underlyingToShareResponse, err := UnmarshalUnderlyingToShareResponse(bytes)
-//    bytes, err = underlyingToShareResponse.Marshal()
+//    underlyingResponse, err := UnmarshalUnderlyingResponse(bytes)
+//    bytes, err = underlyingResponse.Marshal()
 //
 //    underlyingToSharesResponse, err := UnmarshalUnderlyingToSharesResponse(bytes)
 //    bytes, err = underlyingToSharesResponse.Marshal()
-//
-//    userUnderlyingResponse, err := UnmarshalUserUnderlyingResponse(bytes)
-//    bytes, err = userUnderlyingResponse.Marshal()
 
 package strategybase
 
@@ -68,16 +65,6 @@ func UnmarshalQueryMsg(data []byte) (QueryMsg, error) {
 }
 
 func (r *QueryMsg) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalSharesResponse(data []byte) (SharesResponse, error) {
-	var r SharesResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *SharesResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -121,6 +108,16 @@ func (r *UnderlyingTokenResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
+func UnmarshalSharesResponse(data []byte) (SharesResponse, error) {
+	var r SharesResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *SharesResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
 func UnmarshalSharesToUnderlyingResponse(data []byte) (SharesToUnderlyingResponse, error) {
 	var r SharesToUnderlyingResponse
 	err := json.Unmarshal(data, &r)
@@ -131,13 +128,13 @@ func (r *SharesToUnderlyingResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalUnderlyingToShareResponse(data []byte) (UnderlyingToShareResponse, error) {
-	var r UnderlyingToShareResponse
+func UnmarshalUnderlyingResponse(data []byte) (UnderlyingResponse, error) {
+	var r UnderlyingResponse
 	err := json.Unmarshal(data, &r)
 	return r, err
 }
 
-func (r *UnderlyingToShareResponse) Marshal() ([]byte, error) {
+func (r *UnderlyingResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -148,16 +145,6 @@ func UnmarshalUnderlyingToSharesResponse(data []byte) (UnderlyingToSharesRespons
 }
 
 func (r *UnderlyingToSharesResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalUserUnderlyingResponse(data []byte) (UserUnderlyingResponse, error) {
-	var r UserUnderlyingResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *UserUnderlyingResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -189,19 +176,14 @@ type Withdraw struct {
 }
 
 type QueryMsg struct {
-	GetShares              *GetShares              `json:"get_shares,omitempty"`
-	SharesToUnderlyingView *SharesToUnderlyingView `json:"shares_to_underlying_view,omitempty"`
-	UnderlyingToShareView  *UnderlyingToShareView  `json:"underlying_to_share_view,omitempty"`
-	UserUnderlyingView     *UserUnderlyingView     `json:"user_underlying_view,omitempty"`
-	GetStrategyManager     *GetStrategyManager     `json:"get_strategy_manager,omitempty"`
-	GetUnderlyingToken     *GetUnderlyingToken     `json:"get_underlying_token,omitempty"`
-	GetTotalShares         *GetTotalShares         `json:"get_total_shares,omitempty"`
-	UnderlyingToShares     *UnderlyingToShares     `json:"underlying_to_shares,omitempty"`
-	GetStrategyState       *GetStrategyState       `json:"get_strategy_state,omitempty"`
-}
-
-type GetShares struct {
-	Staker string `json:"staker"`
+	Shares             *Shares             `json:"shares,omitempty"`
+	Underlying         *Underlying         `json:"underlying,omitempty"`
+	SharesToUnderlying *SharesToUnderlying `json:"shares_to_underlying,omitempty"`
+	UnderlyingToShares *UnderlyingToShares `json:"underlying_to_shares,omitempty"`
+	GetStrategyManager *GetStrategyManager `json:"get_strategy_manager,omitempty"`
+	GetUnderlyingToken *GetUnderlyingToken `json:"get_underlying_token,omitempty"`
+	GetTotalShares     *GetTotalShares     `json:"get_total_shares,omitempty"`
+	GetStrategyState   *GetStrategyState   `json:"get_strategy_state,omitempty"`
 }
 
 type GetStrategyManager struct {
@@ -216,24 +198,20 @@ type GetTotalShares struct {
 type GetUnderlyingToken struct {
 }
 
-type SharesToUnderlyingView struct {
-	AmountShares string `json:"amount_shares"`
+type Shares struct {
+	Staker string `json:"staker"`
 }
 
-type UnderlyingToShareView struct {
-	Amount string `json:"amount"`
+type SharesToUnderlying struct {
+	Shares string `json:"shares"`
+}
+
+type Underlying struct {
+	Staker string `json:"staker"`
 }
 
 type UnderlyingToShares struct {
-	AmountUnderlying string `json:"amount_underlying"`
-}
-
-type UserUnderlyingView struct {
-	User string `json:"user"`
-}
-
-type SharesResponse struct {
-	TotalShares string `json:"total_shares"`
+	Amount string `json:"amount"`
 }
 
 type StrategyManagerResponse struct {
@@ -253,18 +231,18 @@ type UnderlyingTokenResponse struct {
 	UnderlyingTokenAddr string `json:"underlying_token_addr"`
 }
 
+type SharesResponse struct {
+	TotalShares string `json:"total_shares"`
+}
+
 type SharesToUnderlyingResponse struct {
 	AmountToSend string `json:"amount_to_send"`
 }
 
-type UnderlyingToShareResponse struct {
-	ShareToSend string `json:"share_to_send"`
+type UnderlyingResponse struct {
+	AmountToSend string `json:"amount_to_send"`
 }
 
 type UnderlyingToSharesResponse struct {
 	ShareToSend string `json:"share_to_send"`
-}
-
-type UserUnderlyingResponse struct {
-	AmountToSend string `json:"amount_to_send"`
 }
