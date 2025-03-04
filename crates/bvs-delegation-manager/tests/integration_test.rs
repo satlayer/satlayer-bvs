@@ -25,7 +25,7 @@ fn instantiate() -> (App, DelegationManagerContract, StrategyManagerContract) {
 
     let _ = RegistryContract::new(&mut app, &env, None);
     let strategy_manager = StrategyManagerContract::new(&mut app, &env, None);
-    let delegation_mananger = DelegationManagerContract::new(&mut app, &env, None);
+    let delegation_manager = DelegationManagerContract::new(&mut app, &env, None);
     let slash_manager = app.api().addr_make("slash_manager");
 
     let msg = ExecuteMsg::SetRouting {
@@ -33,20 +33,20 @@ fn instantiate() -> (App, DelegationManagerContract, StrategyManagerContract) {
         slash_manager: slash_manager.to_string(),
     };
     let owner = app.api().addr_make("owner");
-    delegation_mananger.execute(&mut app, &owner, &msg).unwrap();
+    delegation_manager.execute(&mut app, &owner, &msg).unwrap();
 
     let msg = StrategyManagerExecuteMsg::SetRouting {
-        delegation_manager: delegation_mananger.addr().to_string(),
+        delegation_manager: delegation_manager.addr().to_string(),
         slash_manager: slash_manager.to_string(),
     };
     strategy_manager.execute(&mut app, &owner, &msg).unwrap();
 
-    (app, delegation_mananger, strategy_manager)
+    (app, delegation_manager, strategy_manager)
 }
 
 #[test]
 fn register_as_operator_successfully() {
-    let (mut app, delegation_mananger, _) = instantiate();
+    let (mut app, delegation_manager, _) = instantiate();
     let operator = app.api().addr_make("operator");
 
     // test register as operator
@@ -59,7 +59,7 @@ fn register_as_operator_successfully() {
         metadata_uri: metadata_uri.to_string(),
     };
 
-    let result = delegation_mananger.execute(&mut app, &operator, &msg);
+    let result = delegation_manager.execute(&mut app, &operator, &msg);
     assert!(result.is_ok());
 
     let response = result.unwrap();
@@ -68,12 +68,12 @@ fn register_as_operator_successfully() {
         response.events,
         vec![
             Event::new("execute")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string()),
+                .add_attribute("_contract_address", delegation_manager.addr.to_string()),
             Event::new("wasm-OperatorRegistered")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string())
+                .add_attribute("_contract_address", delegation_manager.addr.to_string())
                 .add_attribute("operator", operator.to_string()),
             Event::new("wasm-OperatorMetadataURIUpdated")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string())
+                .add_attribute("_contract_address", delegation_manager.addr.to_string())
                 .add_attribute("operator", operator.to_string())
                 .add_attribute("metadata_uri", metadata_uri.to_string())
         ]
@@ -83,7 +83,7 @@ fn register_as_operator_successfully() {
     let msg = QueryMsg::IsOperator {
         operator: operator.to_string(),
     };
-    let result: Result<OperatorResponse, StdError> = delegation_mananger.query(&app, &msg);
+    let result: Result<OperatorResponse, StdError> = delegation_manager.query(&app, &msg);
     assert!(result.is_ok());
     let response = result.unwrap();
     assert!(response.is_operator);
@@ -92,7 +92,7 @@ fn register_as_operator_successfully() {
     let msg = QueryMsg::IsDelegated {
         staker: operator.to_string(),
     };
-    let result: Result<DelegatedResponse, StdError> = delegation_mananger.query(&app, &msg);
+    let result: Result<DelegatedResponse, StdError> = delegation_manager.query(&app, &msg);
     assert!(result.is_ok());
     let response = result.unwrap();
     assert!(response.is_delegated);
@@ -101,7 +101,7 @@ fn register_as_operator_successfully() {
     let msg = QueryMsg::OperatorDetails {
         operator: operator.to_string(),
     };
-    let result: Result<OperatorDetailsResponse, StdError> = delegation_mananger.query(&app, &msg);
+    let result: Result<OperatorDetailsResponse, StdError> = delegation_manager.query(&app, &msg);
     assert!(result.is_ok());
     let response = result.unwrap();
     assert_eq!(response.details.staker_opt_out_window_blocks, 100);
@@ -111,7 +111,7 @@ fn register_as_operator_successfully() {
         operator: operator.to_string(),
     };
     let result: Result<StakerOptOutWindowBlocksResponse, StdError> =
-        delegation_mananger.query(&app, &msg);
+        delegation_manager.query(&app, &msg);
     assert!(result.is_ok());
     let response = result.unwrap();
     assert_eq!(response.staker_opt_out_window_blocks, 100);
@@ -119,7 +119,7 @@ fn register_as_operator_successfully() {
 
 #[test]
 fn modify_operator_details_successfully() {
-    let (mut app, delegation_mananger, _) = instantiate();
+    let (mut app, delegation_manager, _) = instantiate();
     let operator = app.api().addr_make("operator");
 
     // register as operator
@@ -132,7 +132,7 @@ fn modify_operator_details_successfully() {
             operator_details: operator_details.clone(),
             metadata_uri: metadata_uri.to_string(),
         };
-        let result = delegation_mananger.execute(&mut app, &operator, &msg);
+        let result = delegation_manager.execute(&mut app, &operator, &msg);
         assert!(result.is_ok());
     }
 
@@ -142,7 +142,7 @@ fn modify_operator_details_successfully() {
     let msg = ExecuteMsg::ModifyOperatorDetails {
         new_operator_details,
     };
-    let result = delegation_mananger.execute(&mut app, &operator, &msg);
+    let result = delegation_manager.execute(&mut app, &operator, &msg);
     assert!(result.is_ok());
 
     let response = result.unwrap();
@@ -151,9 +151,9 @@ fn modify_operator_details_successfully() {
         response.events,
         vec![
             Event::new("execute")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string()),
+                .add_attribute("_contract_address", delegation_manager.addr.to_string()),
             Event::new("wasm-OperatorDetailsSet")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string())
+                .add_attribute("_contract_address", delegation_manager.addr.to_string())
                 .add_attribute("operator", operator.to_string())
                 .add_attribute("staker_opt_out_window_blocks", "150")
         ]
@@ -162,7 +162,7 @@ fn modify_operator_details_successfully() {
 
 #[test]
 fn update_operator_metadata_uri_successfully() {
-    let (mut app, delegation_mananger, _) = instantiate();
+    let (mut app, delegation_manager, _) = instantiate();
     let operator = app.api().addr_make("operator");
 
     // register as operator
@@ -175,7 +175,7 @@ fn update_operator_metadata_uri_successfully() {
             operator_details: operator_details.clone(),
             metadata_uri: metadata_uri.to_string(),
         };
-        let result = delegation_mananger.execute(&mut app, &operator, &msg);
+        let result = delegation_manager.execute(&mut app, &operator, &msg);
         assert!(result.is_ok());
     }
 
@@ -183,7 +183,7 @@ fn update_operator_metadata_uri_successfully() {
     let msg = ExecuteMsg::UpdateOperatorMetadataUri {
         metadata_uri: new_metadata_uri.to_string(),
     };
-    let result = delegation_mananger.execute(&mut app, &operator, &msg);
+    let result = delegation_manager.execute(&mut app, &operator, &msg);
     assert!(result.is_ok());
 
     let response = result.unwrap();
@@ -192,9 +192,9 @@ fn update_operator_metadata_uri_successfully() {
         response.events,
         vec![
             Event::new("execute")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string()),
+                .add_attribute("_contract_address", delegation_manager.addr.to_string()),
             Event::new("wasm-OperatorMetadataURIUpdated")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string())
+                .add_attribute("_contract_address", delegation_manager.addr.to_string())
                 .add_attribute("operator", operator.to_string())
                 .add_attribute("metadata_uri", new_metadata_uri.to_string())
         ]
@@ -203,7 +203,7 @@ fn update_operator_metadata_uri_successfully() {
 
 #[test]
 fn delegate_to_successfully() {
-    let (mut app, delegation_mananger, _) = instantiate();
+    let (mut app, delegation_manager, _) = instantiate();
     let operator = app.api().addr_make("operator");
 
     // register as operator
@@ -216,7 +216,7 @@ fn delegate_to_successfully() {
             operator_details: operator_details.clone(),
             metadata_uri: metadata_uri.to_string(),
         };
-        let result = delegation_mananger.execute(&mut app, &operator, &msg);
+        let result = delegation_manager.execute(&mut app, &operator, &msg);
         assert!(result.is_ok());
     }
 
@@ -224,7 +224,7 @@ fn delegate_to_successfully() {
     let msg = ExecuteMsg::DelegateTo {
         operator: operator.to_string(),
     };
-    let result = delegation_mananger.execute(&mut app, &staker, &msg);
+    let result = delegation_manager.execute(&mut app, &staker, &msg);
     assert!(result.is_ok());
 
     let response = result.unwrap();
@@ -233,9 +233,9 @@ fn delegate_to_successfully() {
         response.events,
         vec![
             Event::new("execute")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string()),
+                .add_attribute("_contract_address", delegation_manager.addr.to_string()),
             Event::new("wasm-Delegate")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string())
+                .add_attribute("_contract_address", delegation_manager.addr.to_string())
                 .add_attribute("staker", staker.to_string())
                 .add_attribute("operator", operator.to_string())
         ]
@@ -244,7 +244,7 @@ fn delegate_to_successfully() {
 
 #[test]
 fn undelegate_successfully() {
-    let (mut app, delegation_mananger, _) = instantiate();
+    let (mut app, delegation_manager, _) = instantiate();
     let operator = app.api().addr_make("operator");
 
     // register as operator
@@ -257,7 +257,7 @@ fn undelegate_successfully() {
             operator_details: operator_details.clone(),
             metadata_uri: metadata_uri.to_string(),
         };
-        let result = delegation_mananger.execute(&mut app, &operator, &msg);
+        let result = delegation_manager.execute(&mut app, &operator, &msg);
         assert!(result.is_ok());
     }
 
@@ -268,14 +268,14 @@ fn undelegate_successfully() {
         let msg = ExecuteMsg::DelegateTo {
             operator: operator.to_string(),
         };
-        let result = delegation_mananger.execute(&mut app, &staker, &msg);
+        let result = delegation_manager.execute(&mut app, &staker, &msg);
         assert!(result.is_ok());
     }
 
     let msg = ExecuteMsg::Undelegate {
         staker: staker.to_string(),
     };
-    let result = delegation_mananger.execute(&mut app, &staker, &msg);
+    let result = delegation_manager.execute(&mut app, &staker, &msg);
     assert!(result.is_ok());
 
     let response = result.unwrap();
@@ -284,9 +284,9 @@ fn undelegate_successfully() {
         response.events,
         vec![
             Event::new("execute")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string()),
+                .add_attribute("_contract_address", delegation_manager.addr.to_string()),
             Event::new("wasm-StakerUndelegated")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string())
+                .add_attribute("_contract_address", delegation_manager.addr.to_string())
                 .add_attribute("staker", staker.to_string())
                 .add_attribute("operator", operator.to_string())
         ]
@@ -295,7 +295,7 @@ fn undelegate_successfully() {
 
 #[test]
 fn queue_withdrawals_successfully() {
-    let (mut app, delegation_mananger, strategy_manager) = instantiate();
+    let (mut app, delegation_manager, strategy_manager) = instantiate();
     let operator = app.api().addr_make("operator");
 
     // register as operator
@@ -308,7 +308,7 @@ fn queue_withdrawals_successfully() {
             operator_details: operator_details.clone(),
             metadata_uri: metadata_uri.to_string(),
         };
-        let result = delegation_mananger.execute(&mut app, &operator, &msg);
+        let result = delegation_manager.execute(&mut app, &operator, &msg);
         assert!(result.is_ok());
     }
 
@@ -320,12 +320,11 @@ fn queue_withdrawals_successfully() {
         let token = app.api().addr_make("token");
         let msg = StrategyManagerExecuteMsg::AddShares {
             staker: staker.to_string(),
-            token: token.to_string(),
             strategy: strategy1.to_string(),
             shares: Uint128::new(100),
         };
-        let delegation_mananger_addr = delegation_mananger.addr();
-        let result = strategy_manager.execute(&mut app, delegation_mananger_addr, &msg);
+        let delegation_manager_addr = delegation_manager.addr();
+        let result = strategy_manager.execute(&mut app, delegation_manager_addr, &msg);
         assert!(result.is_ok());
 
         let response = result.unwrap();
@@ -340,7 +339,6 @@ fn queue_withdrawals_successfully() {
             Event::new("wasm-add_shares")
                 .add_attribute("_contract_address", strategy_manager.addr.to_string())
                 .add_attribute("staker", staker.to_string())
-                .add_attribute("token", token.to_string())
                 .add_attribute("strategy", strategy1.to_string())
                 .add_attribute("shares", "100")
         );
@@ -351,7 +349,7 @@ fn queue_withdrawals_successfully() {
         let msg = ExecuteMsg::DelegateTo {
             operator: operator.to_string(),
         };
-        let result = delegation_mananger.execute(&mut app, &staker, &msg);
+        let result = delegation_manager.execute(&mut app, &staker, &msg);
         assert!(result.is_ok());
     }
 
@@ -363,7 +361,7 @@ fn queue_withdrawals_successfully() {
     let msg = ExecuteMsg::QueueWithdrawals {
         queued_withdrawal_params,
     };
-    let result = delegation_mananger.execute(&mut app, &staker, &msg);
+    let result = delegation_manager.execute(&mut app, &staker, &msg);
     assert!(result.is_ok());
 
     let response = result.unwrap();
@@ -372,15 +370,15 @@ fn queue_withdrawals_successfully() {
         response.events,
         vec![
             Event::new("execute")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string()),
+                .add_attribute("_contract_address", delegation_manager.addr.to_string()),
             Event::new("wasm")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string())
+                .add_attribute("_contract_address", delegation_manager.addr.to_string())
                 .add_attribute(
                     "withdrawal_roots",
                     "HpXRkQeEEmdEQ0Usi1052SjbIUYxmFlCp7MVT9SLZYI="
                 ),
             Event::new("wasm-WithdrawalQueued")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string())
+                .add_attribute("_contract_address", delegation_manager.addr.to_string())
                 .add_attribute(
                     "withdrawal_root",
                     "HpXRkQeEEmdEQ0Usi1052SjbIUYxmFlCp7MVT9SLZYI="
@@ -406,8 +404,7 @@ fn queue_withdrawals_successfully() {
             operator: operator.to_string(),
             strategies: vec![strategy1.to_string()],
         };
-        let result: Result<OperatorSharesResponse, StdError> =
-            delegation_mananger.query(&app, &msg);
+        let result: Result<OperatorSharesResponse, StdError> = delegation_manager.query(&app, &msg);
         assert!(result.is_ok());
 
         let response = result.unwrap();
@@ -421,7 +418,7 @@ fn queue_withdrawals_successfully() {
             staker: staker.to_string(),
         };
         let result: Result<DelegatableSharesResponse, StdError> =
-            delegation_mananger.query(&app, &msg);
+            delegation_manager.query(&app, &msg);
         assert!(result.is_ok());
 
         let response = result.unwrap();
@@ -437,7 +434,7 @@ fn queue_withdrawals_successfully() {
             operator: operator.to_string(),
         };
         let result: Result<OperatorStakersResponse, StdError> =
-            delegation_mananger.query(&app, &msg);
+            delegation_manager.query(&app, &msg);
         assert!(result.is_ok());
 
         let response = result.unwrap();
@@ -457,7 +454,7 @@ fn queue_withdrawals_successfully() {
             staker: staker.to_string(),
         };
         let result: Result<CumulativeWithdrawalsQueuedResponse, StdError> =
-            delegation_mananger.query(&app, &msg);
+            delegation_manager.query(&app, &msg);
         assert!(result.is_ok());
 
         let response = result.unwrap();
@@ -468,7 +465,7 @@ fn queue_withdrawals_successfully() {
 // TODO: set receive_as_tokens to false needs starting a CW20 contract
 #[test]
 fn complete_queued_withdrawal_successfully() {
-    let (mut app, delegation_mananger, strategy_manager) = instantiate();
+    let (mut app, delegation_manager, strategy_manager) = instantiate();
     let operator = app.api().addr_make("operator");
 
     // register as operator
@@ -481,7 +478,7 @@ fn complete_queued_withdrawal_successfully() {
             operator_details: operator_details.clone(),
             metadata_uri: metadata_uri.to_string(),
         };
-        let result = delegation_mananger.execute(&mut app, &operator, &msg);
+        let result = delegation_manager.execute(&mut app, &operator, &msg);
         assert!(result.is_ok());
     }
 
@@ -493,12 +490,11 @@ fn complete_queued_withdrawal_successfully() {
     {
         let msg = StrategyManagerExecuteMsg::AddShares {
             staker: staker.to_string(),
-            token: token.to_string(),
             strategy: strategy1.to_string(),
             shares: Uint128::new(100),
         };
-        let delegation_mananger_addr = delegation_mananger.addr();
-        let result = strategy_manager.execute(&mut app, delegation_mananger_addr, &msg);
+        let delegation_manager_addr = delegation_manager.addr();
+        let result = strategy_manager.execute(&mut app, delegation_manager_addr, &msg);
         assert!(result.is_ok());
     }
 
@@ -507,7 +503,7 @@ fn complete_queued_withdrawal_successfully() {
         let msg = ExecuteMsg::DelegateTo {
             operator: operator.to_string(),
         };
-        let result = delegation_mananger.execute(&mut app, &staker, &msg);
+        let result = delegation_manager.execute(&mut app, &staker, &msg);
         assert!(result.is_ok());
     }
 
@@ -521,7 +517,7 @@ fn complete_queued_withdrawal_successfully() {
         let msg = ExecuteMsg::QueueWithdrawals {
             queued_withdrawal_params,
         };
-        let result = delegation_mananger.execute(&mut app, &staker, &msg);
+        let result = delegation_manager.execute(&mut app, &staker, &msg);
         assert!(result.is_ok());
     }
 
@@ -543,11 +539,10 @@ fn complete_queued_withdrawal_successfully() {
 
     let msg = ExecuteMsg::CompleteQueuedWithdrawal {
         withdrawal,
-        tokens: vec![token.clone()],
         middleware_times_index: 0,
         receive_as_tokens: false,
     };
-    let result = delegation_mananger.execute(&mut app, &staker, &msg);
+    let result = delegation_manager.execute(&mut app, &staker, &msg);
     assert!(result.is_ok());
 
     let response = result.unwrap();
@@ -556,9 +551,9 @@ fn complete_queued_withdrawal_successfully() {
         response.events,
         vec![
             Event::new("execute")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string()),
+                .add_attribute("_contract_address", delegation_manager.addr.to_string()),
             Event::new("wasm-WithdrawalCompleted")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string())
+                .add_attribute("_contract_address", delegation_manager.addr.to_string())
                 .add_attribute(
                     "withdrawal_root",
                     "HpXRkQeEEmdEQ0Usi1052SjbIUYxmFlCp7MVT9SLZYI="
@@ -568,7 +563,6 @@ fn complete_queued_withdrawal_successfully() {
             Event::new("wasm-add_shares")
                 .add_attribute("_contract_address", strategy_manager.addr.to_string())
                 .add_attribute("staker", staker.to_string())
-                .add_attribute("token", token.to_string())
                 .add_attribute("strategy", strategy1.to_string())
                 .add_attribute("shares", "10")
         ]
@@ -578,7 +572,7 @@ fn complete_queued_withdrawal_successfully() {
 // TODO: set receive_as_tokens to false needs starting a CW20 contract
 #[test]
 fn complete_queued_withdrawals_successfully() {
-    let (mut app, delegation_mananger, strategy_manager) = instantiate();
+    let (mut app, delegation_manager, strategy_manager) = instantiate();
     let operator = app.api().addr_make("operator");
 
     // register as operator
@@ -591,7 +585,7 @@ fn complete_queued_withdrawals_successfully() {
             operator_details: operator_details.clone(),
             metadata_uri: metadata_uri.to_string(),
         };
-        let result = delegation_mananger.execute(&mut app, &operator, &msg);
+        let result = delegation_manager.execute(&mut app, &operator, &msg);
         assert!(result.is_ok());
     }
 
@@ -604,12 +598,11 @@ fn complete_queued_withdrawals_successfully() {
         // staker1
         let msg = StrategyManagerExecuteMsg::AddShares {
             staker: staker1.to_string(),
-            token: token.to_string(),
             strategy: strategy1.to_string(),
             shares: Uint128::new(100),
         };
-        let delegation_mananger_addr = delegation_mananger.addr();
-        let result = strategy_manager.execute(&mut app, delegation_mananger_addr, &msg);
+        let delegation_manager_addr = delegation_manager.addr();
+        let result = strategy_manager.execute(&mut app, delegation_manager_addr, &msg);
         assert!(result.is_ok());
     }
 
@@ -618,7 +611,7 @@ fn complete_queued_withdrawals_successfully() {
         let msg = ExecuteMsg::DelegateTo {
             operator: operator.to_string(),
         };
-        let result = delegation_mananger.execute(&mut app, &staker1, &msg);
+        let result = delegation_manager.execute(&mut app, &staker1, &msg);
         assert!(result.is_ok());
     }
 
@@ -633,7 +626,7 @@ fn complete_queued_withdrawals_successfully() {
         let msg = ExecuteMsg::QueueWithdrawals {
             queued_withdrawal_params,
         };
-        let result = delegation_mananger.execute(&mut app, &staker1, &msg);
+        let result = delegation_manager.execute(&mut app, &staker1, &msg);
         assert!(result.is_ok());
 
         // withdrawal2
@@ -645,7 +638,7 @@ fn complete_queued_withdrawals_successfully() {
         let msg = ExecuteMsg::QueueWithdrawals {
             queued_withdrawal_params,
         };
-        let result = delegation_mananger.execute(&mut app, &staker1, &msg);
+        let result = delegation_manager.execute(&mut app, &staker1, &msg);
         assert!(result.is_ok());
     }
 
@@ -677,11 +670,10 @@ fn complete_queued_withdrawals_successfully() {
 
     let msg = ExecuteMsg::CompleteQueuedWithdrawals {
         withdrawals,
-        tokens: vec![vec![token.clone()], vec![token.clone()]],
         middleware_times_indexes: vec![0, 0],
         receive_as_tokens: vec![false, false],
     };
-    let result = delegation_mananger.execute(&mut app, &staker1, &msg);
+    let result = delegation_manager.execute(&mut app, &staker1, &msg);
     assert!(result.is_ok());
 
     let response = result.unwrap();
@@ -690,15 +682,15 @@ fn complete_queued_withdrawals_successfully() {
         response.events,
         vec![
             Event::new("execute")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string()),
+                .add_attribute("_contract_address", delegation_manager.addr.to_string()),
             Event::new("wasm-WithdrawalCompleted")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string())
+                .add_attribute("_contract_address", delegation_manager.addr.to_string())
                 .add_attribute(
                     "withdrawal_root",
                     "4MXYHwHE/VlSoBd7sxUUdREC/RFMB3e16zavPgyFCH0="
                 ),
             Event::new("wasm-WithdrawalCompleted")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string())
+                .add_attribute("_contract_address", delegation_manager.addr.to_string())
                 .add_attribute(
                     "withdrawal_root",
                     "OCXEKriEdhwNMZSUqWNWN/wUrw4ePB6y4jOQofPpO3E="
@@ -708,7 +700,6 @@ fn complete_queued_withdrawals_successfully() {
             Event::new("wasm-add_shares")
                 .add_attribute("_contract_address", strategy_manager.addr.to_string())
                 .add_attribute("staker", staker1.to_string())
-                .add_attribute("token", token.to_string())
                 .add_attribute("strategy", strategy1.to_string())
                 .add_attribute("shares", "10"),
             Event::new("execute")
@@ -716,7 +707,6 @@ fn complete_queued_withdrawals_successfully() {
             Event::new("wasm-add_shares")
                 .add_attribute("_contract_address", strategy_manager.addr.to_string())
                 .add_attribute("staker", staker1.to_string())
-                .add_attribute("token", token.to_string())
                 .add_attribute("strategy", strategy1.to_string())
                 .add_attribute("shares", "20")
         ]
@@ -725,7 +715,7 @@ fn complete_queued_withdrawals_successfully() {
 
 #[test]
 fn increase_delegated_shares_successfully() {
-    let (mut app, delegation_mananger, strategy_manager) = instantiate();
+    let (mut app, delegation_manager, strategy_manager) = instantiate();
     let operator = app.api().addr_make("operator");
 
     // register as operator
@@ -738,7 +728,7 @@ fn increase_delegated_shares_successfully() {
             operator_details: operator_details.clone(),
             metadata_uri: metadata_uri.to_string(),
         };
-        let result = delegation_mananger.execute(&mut app, &operator, &msg);
+        let result = delegation_manager.execute(&mut app, &operator, &msg);
         assert!(result.is_ok());
     }
 
@@ -750,12 +740,11 @@ fn increase_delegated_shares_successfully() {
         let token = app.api().addr_make("token");
         let msg = StrategyManagerExecuteMsg::AddShares {
             staker: staker.to_string(),
-            token: token.to_string(),
             strategy: strategy1.to_string(),
             shares: Uint128::new(100),
         };
-        let delegation_mananger_addr = delegation_mananger.addr();
-        let result = strategy_manager.execute(&mut app, delegation_mananger_addr, &msg);
+        let delegation_manager_addr = delegation_manager.addr();
+        let result = strategy_manager.execute(&mut app, delegation_manager_addr, &msg);
         assert!(result.is_ok());
     }
 
@@ -764,7 +753,7 @@ fn increase_delegated_shares_successfully() {
         let msg = ExecuteMsg::DelegateTo {
             operator: operator.to_string(),
         };
-        let result = delegation_mananger.execute(&mut app, &staker, &msg);
+        let result = delegation_manager.execute(&mut app, &staker, &msg);
         assert!(result.is_ok());
 
         let queued_withdrawal_params = vec![QueuedWithdrawalParams {
@@ -775,7 +764,7 @@ fn increase_delegated_shares_successfully() {
         let msg = ExecuteMsg::QueueWithdrawals {
             queued_withdrawal_params,
         };
-        let result = delegation_mananger.execute(&mut app, &staker, &msg);
+        let result = delegation_manager.execute(&mut app, &staker, &msg);
         assert!(result.is_ok());
     }
 
@@ -784,7 +773,7 @@ fn increase_delegated_shares_successfully() {
         strategy: strategy1.to_string(),
         shares: Uint128::new(20),
     });
-    let result = delegation_mananger.execute(&mut app, strategy_manager.addr(), &msg);
+    let result = delegation_manager.execute(&mut app, strategy_manager.addr(), &msg);
     assert!(result.is_ok());
 
     let response = result.unwrap();
@@ -793,9 +782,9 @@ fn increase_delegated_shares_successfully() {
         response.events,
         vec![
             Event::new("execute")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string()),
+                .add_attribute("_contract_address", delegation_manager.addr.to_string()),
             Event::new("wasm-OperatorSharesIncreased")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string())
+                .add_attribute("_contract_address", delegation_manager.addr.to_string())
                 .add_attribute("operator", operator.to_string())
                 .add_attribute("staker", staker.to_string())
                 .add_attribute("strategy", strategy1.to_string())
@@ -807,7 +796,7 @@ fn increase_delegated_shares_successfully() {
 
 #[test]
 fn decrease_delegated_shares_successfully() {
-    let (mut app, delegation_mananger, strategy_manager) = instantiate();
+    let (mut app, delegation_manager, strategy_manager) = instantiate();
     let operator = app.api().addr_make("operator");
 
     // register as operator
@@ -820,7 +809,7 @@ fn decrease_delegated_shares_successfully() {
             operator_details: operator_details.clone(),
             metadata_uri: metadata_uri.to_string(),
         };
-        let result = delegation_mananger.execute(&mut app, &operator, &msg);
+        let result = delegation_manager.execute(&mut app, &operator, &msg);
         assert!(result.is_ok());
     }
 
@@ -832,12 +821,11 @@ fn decrease_delegated_shares_successfully() {
         let token = app.api().addr_make("token");
         let msg = StrategyManagerExecuteMsg::AddShares {
             staker: staker.to_string(),
-            token: token.to_string(),
             strategy: strategy1.to_string(),
             shares: Uint128::new(100),
         };
-        let delegation_mananger_addr = delegation_mananger.addr();
-        let result = strategy_manager.execute(&mut app, delegation_mananger_addr, &msg);
+        let delegation_manager_addr = delegation_manager.addr();
+        let result = strategy_manager.execute(&mut app, delegation_manager_addr, &msg);
         assert!(result.is_ok());
     }
 
@@ -846,7 +834,7 @@ fn decrease_delegated_shares_successfully() {
         let msg = ExecuteMsg::DelegateTo {
             operator: operator.to_string(),
         };
-        let result = delegation_mananger.execute(&mut app, &staker, &msg);
+        let result = delegation_manager.execute(&mut app, &staker, &msg);
         assert!(result.is_ok());
 
         let queued_withdrawal_params = vec![QueuedWithdrawalParams {
@@ -857,7 +845,7 @@ fn decrease_delegated_shares_successfully() {
         let msg = ExecuteMsg::QueueWithdrawals {
             queued_withdrawal_params,
         };
-        let result = delegation_mananger.execute(&mut app, &staker, &msg);
+        let result = delegation_manager.execute(&mut app, &staker, &msg);
         assert!(result.is_ok());
     }
 
@@ -866,7 +854,7 @@ fn decrease_delegated_shares_successfully() {
         strategy: strategy1.to_string(),
         shares: Uint128::new(20),
     };
-    let result = delegation_mananger.execute(&mut app, strategy_manager.addr(), &msg);
+    let result = delegation_manager.execute(&mut app, strategy_manager.addr(), &msg);
     assert!(result.is_ok());
 
     let response = result.unwrap();
@@ -875,9 +863,9 @@ fn decrease_delegated_shares_successfully() {
         response.events,
         vec![
             Event::new("execute")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string()),
+                .add_attribute("_contract_address", delegation_manager.addr.to_string()),
             Event::new("wasm-OperatorSharesDecreased")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string())
+                .add_attribute("_contract_address", delegation_manager.addr.to_string())
                 .add_attribute("operator", operator.to_string())
                 .add_attribute("staker", staker.to_string())
                 .add_attribute("strategy", strategy1.to_string())
@@ -888,13 +876,13 @@ fn decrease_delegated_shares_successfully() {
 
 #[test]
 fn set_min_withdrawal_delay_blocks_successfully() {
-    let (mut app, delegation_mananger, _) = instantiate();
+    let (mut app, delegation_manager, _) = instantiate();
     let owner = app.api().addr_make("owner");
 
     let msg = ExecuteMsg::SetMinWithdrawalDelayBlocks {
         new_min_withdrawal_delay_blocks: 120,
     };
-    let result = delegation_mananger.execute(&mut app, &owner, &msg);
+    let result = delegation_manager.execute(&mut app, &owner, &msg);
     assert!(result.is_ok());
 
     let response = result.unwrap();
@@ -903,9 +891,9 @@ fn set_min_withdrawal_delay_blocks_successfully() {
         response.events,
         vec![
             Event::new("execute")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string()),
+                .add_attribute("_contract_address", delegation_manager.addr.to_string()),
             Event::new("wasm-MinWithdrawalDelayBlocksSet")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string())
+                .add_attribute("_contract_address", delegation_manager.addr.to_string())
                 .add_attribute("method", "set_min_withdrawal_delay_blocks")
                 .add_attribute("prev_min_withdrawal_delay_blocks", "5")
                 .add_attribute("new_min_withdrawal_delay_blocks", "120")
@@ -915,7 +903,7 @@ fn set_min_withdrawal_delay_blocks_successfully() {
 
 #[test]
 fn set_strategy_withdrawal_delay_blocks_successfully() {
-    let (mut app, delegation_mananger, _) = instantiate();
+    let (mut app, delegation_manager, _) = instantiate();
     let owner = app.api().addr_make("owner");
 
     let strategy1 = app.api().addr_make("strategy1");
@@ -926,7 +914,7 @@ fn set_strategy_withdrawal_delay_blocks_successfully() {
         strategies: strategies.clone(),
         withdrawal_delay_blocks: vec![10, 20],
     };
-    let result = delegation_mananger.execute(&mut app, &owner, &msg);
+    let result = delegation_manager.execute(&mut app, &owner, &msg);
     assert!(result.is_ok());
 
     let response = result.unwrap();
@@ -935,14 +923,14 @@ fn set_strategy_withdrawal_delay_blocks_successfully() {
         response.events,
         vec![
             Event::new("execute")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string()),
+                .add_attribute("_contract_address", delegation_manager.addr.to_string()),
             Event::new("wasm-StrategyWithdrawalDelayBlocksSet")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string())
+                .add_attribute("_contract_address", delegation_manager.addr.to_string())
                 .add_attribute("strategy", strategy1.to_string())
                 .add_attribute("prev", "50")
                 .add_attribute("new", "10"),
             Event::new("wasm-StrategyWithdrawalDelayBlocksSet")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string())
+                .add_attribute("_contract_address", delegation_manager.addr.to_string())
                 .add_attribute("strategy", strategy2.to_string())
                 .add_attribute("prev", "60")
                 .add_attribute("new", "20")
@@ -951,7 +939,7 @@ fn set_strategy_withdrawal_delay_blocks_successfully() {
 
     // test query withdrawal delay
     let msg = QueryMsg::GetWithdrawalDelay { strategies };
-    let result: Result<WithdrawalDelayResponse, StdError> = delegation_mananger.query(&app, &msg);
+    let result: Result<WithdrawalDelayResponse, StdError> = delegation_manager.query(&app, &msg);
     assert!(result.is_ok());
     let response = result.unwrap();
     assert_eq!(response.withdrawal_delays, vec![10, 20]);
@@ -959,7 +947,7 @@ fn set_strategy_withdrawal_delay_blocks_successfully() {
 
 #[test]
 fn set_routing_successfully() {
-    let (mut app, delegation_mananger, _) = instantiate();
+    let (mut app, delegation_manager, _) = instantiate();
 
     let owner = app.api().addr_make("owner");
     let strategy_manager = app.api().addr_make("strategy_manager");
@@ -969,7 +957,7 @@ fn set_routing_successfully() {
         strategy_manager: strategy_manager.to_string(),
         slash_manager: slash_manager.to_string(),
     };
-    let result = delegation_mananger.execute(&mut app, &owner, &msg);
+    let result = delegation_manager.execute(&mut app, &owner, &msg);
     assert!(result.is_ok());
 
     let response = result.unwrap();
@@ -978,9 +966,9 @@ fn set_routing_successfully() {
         response.events,
         vec![
             Event::new("execute")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string()),
+                .add_attribute("_contract_address", delegation_manager.addr.to_string()),
             Event::new("wasm-SetRouting")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string())
+                .add_attribute("_contract_address", delegation_manager.addr.to_string())
                 .add_attribute("strategy_manager", strategy_manager.to_string())
                 .add_attribute("slash_manager", slash_manager.to_string())
         ]
@@ -989,7 +977,7 @@ fn set_routing_successfully() {
 
 #[test]
 fn transfer_ownership_successfully() {
-    let (mut app, delegation_mananger, _) = instantiate();
+    let (mut app, delegation_manager, _) = instantiate();
 
     let owner = app.api().addr_make("owner");
     let new_owner = app.api().addr_make("new_owner");
@@ -997,7 +985,7 @@ fn transfer_ownership_successfully() {
     let msg = ExecuteMsg::TransferOwnership {
         new_owner: new_owner.to_string(),
     };
-    let result = delegation_mananger.execute(&mut app, &owner, &msg);
+    let result = delegation_manager.execute(&mut app, &owner, &msg);
     assert!(result.is_ok());
 
     let response = result.unwrap();
@@ -1006,9 +994,9 @@ fn transfer_ownership_successfully() {
         response.events,
         vec![
             Event::new("execute")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string()),
+                .add_attribute("_contract_address", delegation_manager.addr.to_string()),
             Event::new("wasm-TransferredOwnership")
-                .add_attribute("_contract_address", delegation_mananger.addr.to_string())
+                .add_attribute("_contract_address", delegation_manager.addr.to_string())
                 .add_attribute("old_owner", owner.to_string())
                 .add_attribute("new_owner", new_owner.to_string())
         ]

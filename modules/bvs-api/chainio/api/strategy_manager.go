@@ -134,11 +134,10 @@ func (r *StrategyManager) WithdrawSharesAsTokens(ctx context.Context, recipient 
 	return r.execute(ctx, msg)
 }
 
-func (r *StrategyManager) AddShares(ctx context.Context, staker string, token string, strategy string, shares uint64) (*coretypes.ResultTx, error) {
+func (r *StrategyManager) AddShares(ctx context.Context, staker string, strategy string, shares uint64) (*coretypes.ResultTx, error) {
 	msg := strategymanager.ExecuteMsg{
 		AddShares: &strategymanager.AddShares{
 			Staker:   staker,
-			Token:    token,
 			Strategy: strategy,
 			Shares:   fmt.Sprintf("%d", shares),
 		},

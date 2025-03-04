@@ -177,7 +177,6 @@ type AddShares struct {
 	Shares   string `json:"shares"`
 	Staker   string `json:"staker"`
 	Strategy string `json:"strategy"`
-	Token    string `json:"token"`
 }
 
 type AddStrategiesToWhitelist struct {

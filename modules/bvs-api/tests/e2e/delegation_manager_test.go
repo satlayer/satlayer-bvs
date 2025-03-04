@@ -205,7 +205,6 @@ func (suite *delegationTestSuite) test_CompleteQueuedWithdrawal() {
 			Strategies:  suite.strategies,
 			Shares:      []string{"41"},
 		},
-		[]string{suite.tokenAddr},
 		0,
 		true,
 	)
@@ -270,12 +269,8 @@ func (suite *delegationTestSuite) test_CompleteQueuedWithdrawals() {
 			Shares:      []string{"20"},
 		},
 	}
-	tokens := [][]string{
-		{suite.tokenAddr},
-		{suite.tokenAddr},
-	}
 
-	txResp, err := delegation.CompleteQueuedWithdrawals(context.Background(), withdrawals, tokens, []int64{0, 0}, []bool{true, true})
+	txResp, err := delegation.CompleteQueuedWithdrawals(context.Background(), withdrawals, []int64{0, 0}, []bool{true, true})
 	assert.NoError(t, err, "complete queued withdrawals")
 	t.Logf("txResp: %v", txResp)
 }

@@ -126,7 +126,6 @@ pub fn execute(
         }
         ExecuteMsg::CompleteQueuedWithdrawal {
             withdrawal,
-            tokens,
             middleware_times_index,
             receive_as_tokens,
         } => complete_queued_withdrawal(
@@ -134,13 +133,11 @@ pub fn execute(
             env,
             info,
             withdrawal,
-            tokens,
             middleware_times_index,
             receive_as_tokens,
         ),
         ExecuteMsg::CompleteQueuedWithdrawals {
             withdrawals,
-            tokens,
             middleware_times_indexes,
             receive_as_tokens,
         } => complete_queued_withdrawals(
@@ -148,7 +145,6 @@ pub fn execute(
             env,
             info,
             withdrawals,
-            tokens,
             middleware_times_indexes,
             receive_as_tokens,
         ),
@@ -506,7 +502,6 @@ pub fn complete_queued_withdrawals(
     env: Env,
     info: MessageInfo,
     withdrawals: Vec<Withdrawal>,
-    tokens: Vec<Vec<Addr>>,
     middleware_times_indexes: Vec<u64>,
     receive_as_tokens: Vec<bool>,
 ) -> Result<Response, ContractError> {
@@ -519,7 +514,6 @@ pub fn complete_queued_withdrawals(
             env.clone(),
             info.clone(),
             withdrawal.clone(),
-            tokens[i].clone(),
             middleware_times_indexes[i],
             receive_as_tokens[i],
         )?;
@@ -535,7 +529,6 @@ pub fn complete_queued_withdrawal(
     env: Env,
     info: MessageInfo,
     withdrawal: Withdrawal,
-    tokens: Vec<Addr>,
     middleware_times_index: u64,
     receive_as_tokens: bool,
 ) -> Result<Response, ContractError> {
@@ -544,7 +537,6 @@ pub fn complete_queued_withdrawal(
         env.clone(),
         info.clone(),
         withdrawal.clone(),
-        tokens.clone(),
         middleware_times_index,
         receive_as_tokens,
     )?;
@@ -940,7 +932,6 @@ fn complete_queued_withdrawal_internal(
     env: Env,
     info: MessageInfo,
     withdrawal: Withdrawal,
-    tokens: Vec<Addr>,
     _middleware_times_index: u64,
     receive_as_tokens: bool,
 ) -> Result<Response, ContractError> {
@@ -956,10 +947,6 @@ fn complete_queued_withdrawal_internal(
 
     if info.sender != withdrawal.withdrawer {
         return Err(ContractError::Unauthorized {});
-    }
-
-    if receive_as_tokens && tokens.len() != withdrawal.strategies.len() {
-        return Err(ContractError::InputLengthMismatch {});
     }
 
     PENDING_WITHDRAWALS.remove(deps.storage, &withdrawal_root);
@@ -990,8 +977,7 @@ fn complete_queued_withdrawal_internal(
                 .add_attribute("staker", withdrawal.staker.to_string())
                 .add_attribute("withdrawer", info.sender.to_string())
                 .add_attribute("strategy", strategy.to_string())
-                .add_attribute("shares", withdrawal.shares[i].to_string())
-                .add_attribute("token", tokens[i].to_string());
+                .add_attribute("shares", withdrawal.shares[i].to_string());
         }
     } else {
         let current_operator = DELEGATED_TO.may_load(deps.storage, &info.sender)?;
@@ -1006,7 +992,6 @@ fn complete_queued_withdrawal_internal(
                 contract_addr: strategy_manager.to_string(),
                 msg: to_json_binary(&StrategyManagerExecuteMsg::AddShares {
                     staker: info.sender.to_string(),
-                    token: tokens[i].to_string(),
                     strategy: withdrawal.strategies[i].to_string(),
                     shares: withdrawal.shares[i],
                 })?,
@@ -2680,7 +2665,6 @@ mod tests {
         let withdrawer = staker.clone();
         let strategy1 = deps.api.addr_make("strategy1");
         let strategy2 = deps.api.addr_make("strategy2");
-        let tokens = vec![deps.api.addr_make("token1"), deps.api.addr_make("token2")];
         let shares = vec![Uint128::new(100), Uint128::new(200)];
         let strategies = vec![strategy1.clone(), strategy2.clone()];
 
@@ -2731,14 +2715,13 @@ mod tests {
             env.clone(),
             info.clone(),
             withdrawal.clone(),
-            tokens.clone(),
             0,
             true,
         );
         assert!(result.is_ok());
 
         let response = result.unwrap();
-        assert_eq!(response.attributes.len(), 12);
+        assert_eq!(response.attributes.len(), 10);
         assert_eq!(response.events.len(), 1);
         assert_eq!(
             response.events[0],
@@ -2762,7 +2745,6 @@ mod tests {
             env.clone(),
             unauthorized_info,
             withdrawal.clone(),
-            tokens.clone(),
             0,
             true,
         );
@@ -2789,7 +2771,6 @@ mod tests {
             env.clone(),
             info.clone(),
             premature_withdrawal.clone(),
-            tokens.clone(),
             0,
             true,
         );
@@ -2797,24 +2778,6 @@ mod tests {
         if let Err(err) = result {
             match err {
                 ContractError::MinWithdrawalDelayNotPassed {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-
-        // Test for input length mismatch error
-        let result = complete_queued_withdrawal_internal(
-            deps.as_mut(),
-            env.clone(),
-            info.clone(),
-            withdrawal.clone(),
-            vec![Addr::unchecked("token1")], // Incorrect length
-            0,
-            true,
-        );
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::InputLengthMismatch {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
@@ -2853,7 +2816,6 @@ mod tests {
             env.clone(),
             info.clone(),
             withdrawal.clone(),
-            tokens.clone(),
             0,
             false,
         );
@@ -2875,7 +2837,6 @@ mod tests {
         let withdrawer = staker.clone();
         let strategy1 = deps.api.addr_make("strategy1");
         let strategy2 = deps.api.addr_make("strategy2");
-        let tokens = vec![deps.api.addr_make("token1"), deps.api.addr_make("token2")];
         let shares = vec![Uint128::new(100), Uint128::new(200)];
         let strategies = vec![strategy1.clone(), strategy2.clone()];
 
@@ -2933,14 +2894,13 @@ mod tests {
             env.clone(),
             info.clone(),
             withdrawal.clone(),
-            tokens.clone(),
             0,
             true,
         );
         assert!(result.is_ok());
 
         let response = result.unwrap();
-        assert_eq!(response.attributes.len(), 12);
+        assert_eq!(response.attributes.len(), 10);
         assert_eq!(response.events.len(), 1);
         assert_eq!(
             response.events[0],
@@ -2964,7 +2924,6 @@ mod tests {
             env.clone(),
             unauthorized_info,
             withdrawal.clone(),
-            tokens.clone(),
             0,
             true,
         );
@@ -2990,7 +2949,6 @@ mod tests {
             env.clone(),
             info.clone(),
             premature_withdrawal.clone(),
-            tokens.clone(),
             0,
             true,
         );
@@ -2998,23 +2956,6 @@ mod tests {
         if let Err(err) = result {
             match err {
                 ContractError::MinWithdrawalDelayNotPassed {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-
-        let result = complete_queued_withdrawal(
-            deps.as_mut(),
-            env.clone(),
-            info.clone(),
-            withdrawal.clone(),
-            vec![Addr::unchecked("token1")],
-            0,
-            true,
-        );
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::InputLengthMismatch {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
@@ -3044,15 +2985,8 @@ mod tests {
             &new_withdrawal_delay_blocks,
         );
 
-        let result = complete_queued_withdrawal(
-            deps.as_mut(),
-            env,
-            info,
-            delayed_withdrawal,
-            tokens,
-            0,
-            false,
-        );
+        let result =
+            complete_queued_withdrawal(deps.as_mut(), env, info, delayed_withdrawal, 0, false);
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
@@ -3071,8 +3005,6 @@ mod tests {
         let withdrawer = staker.clone();
         let strategy1 = deps.api.addr_make("strategy1");
         let strategy2 = deps.api.addr_make("strategy2");
-        let tokens1 = vec![deps.api.addr_make("token1"), deps.api.addr_make("token2")];
-        let tokens2 = vec![deps.api.addr_make("token3"), deps.api.addr_make("token4")];
         let shares1 = vec![Uint128::new(100), Uint128::new(200)];
         let shares2 = vec![Uint128::new(150), Uint128::new(250)];
         let strategies1 = vec![strategy1.clone(), strategy2.clone()];
@@ -3136,7 +3068,6 @@ mod tests {
             env.clone(),
             info.clone(),
             vec![withdrawal1.clone(), withdrawal2.clone()],
-            vec![tokens1.clone(), tokens2.clone()],
             vec![0, 1],
             vec![true, true],
         );
