@@ -272,8 +272,7 @@ type SetRewardsUpdater struct {
 }
 
 type SetRouting struct {
-	DelegationManager string `json:"delegation_manager"`
-	StrategyManager   string `json:"strategy_manager"`
+	StrategyManager string `json:"strategy_manager"`
 }
 
 type SubmitRoot struct {

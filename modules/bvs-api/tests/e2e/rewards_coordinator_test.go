@@ -45,7 +45,6 @@ func (suite *rewardsTestSuite) SetupSuite() {
 	// Fund Caller
 	container.ImportPrivKey("rewards-coordinator:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
 	container.FundAddressUbbn(suite.caller, 1e8)
-	tAddr := container.GenerateAddress("test-address").String()
 	deployer := &bvs.Deployer{BabylonContainer: container}
 	registry := deployer.DeployRegistry(nil)
 
@@ -88,7 +87,6 @@ func (suite *rewardsTestSuite) SetupSuite() {
 	rewardsApi := api.NewRewardsCoordinator(chainIO)
 	rewardsApi.BindClient(rewardsCoordinator.Address)
 	res, err := rewardsApi.SetRouting(context.Background(),
-		tAddr,
 		suite.strategyManagerAddr,
 	)
 	suite.NoError(err)
@@ -110,10 +108,7 @@ func (suite *rewardsTestSuite) Test_SetRouting() {
 	rewardsCoordinator := api.NewRewardsCoordinator(chainIO)
 	rewardsCoordinator.BindClient(suite.rewardsCoordinatorAddr)
 
-	res, err := rewardsCoordinator.SetRouting(context.Background(),
-		suite.container.GenerateAddress("delegation-manager").String(),
-		suite.strategyManagerAddr,
-	)
+	res, err := rewardsCoordinator.SetRouting(context.Background(), suite.strategyManagerAddr)
 
 	suite.NoError(err)
 	suite.Equal(uint32(0), res.TxResult.Code)

@@ -131,14 +131,10 @@ pub fn execute(
             let addr = deps.api.addr_validate(&addr)?;
             auth::set_rewards_updater(deps, info, addr)
         }
-        ExecuteMsg::SetRouting {
-            delegation_manager,
-            strategy_manager,
-        } => {
-            let delegation_manager = deps.api.addr_validate(&delegation_manager)?;
+        ExecuteMsg::SetRouting { strategy_manager } => {
             let strategy_manager = deps.api.addr_validate(&strategy_manager)?;
 
-            auth::set_routing(deps, info, delegation_manager, strategy_manager)
+            auth::set_routing(deps, info, strategy_manager)
         }
     }
 }
@@ -347,7 +343,7 @@ pub fn submit_root(
     root: Binary,
     rewards_calculation_end_timestamp: u64,
 ) -> Result<Response, ContractError> {
-    auth::assert_rewards_updater(deps.as_ref(), &info)?;
+    auth::assert_rewards_updater(deps.storage, &info)?;
 
     let curr_rewards_calculation_end_timestamp = CURR_REWARDS_CALCULATION_END_TIMESTAMP
         .may_load(deps.storage)?
@@ -407,7 +403,7 @@ pub fn disable_root(
     info: MessageInfo,
     root_index: u64,
 ) -> Result<Response, ContractError> {
-    auth::assert_rewards_updater(deps.as_ref(), &info)?;
+    auth::assert_rewards_updater(deps.storage, &info)?;
 
     let roots_length = DISTRIBUTION_ROOTS_COUNT.load(deps.storage)?;
     if root_index >= roots_length {
@@ -781,7 +777,7 @@ fn validate_rewards_submission(
 
     let mut current_address = Addr::unchecked("");
 
-    let strategy_manager = auth::STRATEGY_MANAGER.load(deps.storage)?;
+    let strategy_manager = auth::get_strategy_manager(deps.storage)?;
 
     for strategy_multiplier in &submission.strategies_and_multipliers {
         let strategy = &strategy_multiplier.strategy;
@@ -1110,7 +1106,7 @@ mod tests {
         let (
             mut deps,
             _env,
-            _owner_info,
+            owner_info,
             _strategy_manager_info,
             _delegation_manager_info,
             _rewards_updater_info,
@@ -1135,9 +1131,7 @@ mod tests {
         };
 
         let strategy_manager = deps.api.addr_make("strategy_manager");
-        auth::STRATEGY_MANAGER
-            .save(&mut deps.storage, &strategy_manager)
-            .unwrap();
+        auth::set_routing(deps.as_mut(), owner_info.clone(), strategy_manager.clone()).unwrap();
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart { contract_addr, msg }
                 if Addr::unchecked(contract_addr) == deps.api.addr_make("strategy_manager") =>
@@ -1227,13 +1221,16 @@ mod tests {
         let (
             mut deps,
             env,
-            _owner_info,
+            owner_info,
             _strategy_manager_info,
             _delegation_manager_info,
             _rewards_updater_info,
         ) = instantiate_contract();
 
+        // To retain the same test vector, we use "initial_owner" here
         let owner = deps.api.addr_make("initial_owner");
+        ownership::transfer_ownership(deps.as_mut().storage, owner_info, owner.clone()).unwrap();
+
         let owner_info = message_info(&owner, &[]);
         let calc_interval = 86_400; // 1 day
 
@@ -1254,9 +1251,8 @@ mod tests {
         }];
 
         let strategy_manager = deps.api.addr_make("strategy_manager");
-        auth::STRATEGY_MANAGER
-            .save(&mut deps.storage, &strategy_manager)
-            .unwrap();
+
+        auth::set_routing(deps.as_mut(), owner_info.clone(), strategy_manager.clone()).unwrap();
 
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart { contract_addr, msg }
@@ -1350,9 +1346,8 @@ mod tests {
         }];
 
         let strategy_manager = deps.api.addr_make("strategy_manager");
-        auth::STRATEGY_MANAGER
-            .save(&mut deps.storage, &strategy_manager)
-            .unwrap();
+        auth::set_routing(deps.as_mut(), owner_info.clone(), strategy_manager.clone()).unwrap();
+
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart { contract_addr, msg }
                 if Addr::unchecked(contract_addr) == &strategy_manager =>
@@ -2570,7 +2565,7 @@ mod tests {
         let (
             mut deps,
             env,
-            _owner_info,
+            owner_info,
             _strategy_manager_info,
             _delegation_manager_info,
             rewards_updater_info,
@@ -2580,9 +2575,13 @@ mod tests {
             .save(&mut deps.storage, &1000)
             .unwrap();
         ACTIVATION_DELAY.save(&mut deps.storage, &60u32).unwrap();
-        auth::REWARDS_UPDATER
-            .save(&mut deps.storage, &rewards_updater_info.sender)
-            .unwrap();
+
+        auth::set_rewards_updater(
+            deps.as_mut(),
+            owner_info.clone(),
+            rewards_updater_info.sender.clone(),
+        )
+        .unwrap();
 
         let root = Binary::from(b"valid_root".to_vec());
         let rewards_calculation_end_timestamp = 1100;
@@ -2967,7 +2966,7 @@ mod tests {
         let (
             mut deps,
             env,
-            _owner_info,
+            owner_info,
             _strategy_manager_info,
             _delegation_manager_info,
             _rewards_updater_info,
@@ -2976,8 +2975,7 @@ mod tests {
         let rewards_updater = deps.api.addr_make("rewards_updater");
         let rewards_updater_info = message_info(&rewards_updater, &[]);
 
-        auth::REWARDS_UPDATER
-            .save(&mut deps.storage, &deps.api.addr_make("rewards_updater"))
+        auth::set_rewards_updater(deps.as_mut(), owner_info.clone(), rewards_updater.clone())
             .unwrap();
 
         let valid_root = DistributionRoot {

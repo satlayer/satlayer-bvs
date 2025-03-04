@@ -216,10 +216,7 @@ func (suite *TestSuite) DeployBvsContracts() {
 
 	// connect contracts together
 
-	res, err := suite.RewardsCoordinatorApi.SetRouting(context.Background(),
-		delegationManagerContract.Address,
-		strategyManagerContract.Address,
-	)
+	res, err := suite.RewardsCoordinatorApi.SetRouting(context.Background(), strategyManagerContract.Address)
 	suite.NoError(err)
 	suite.Equal(uint32(0), res.TxResult.Code)
 

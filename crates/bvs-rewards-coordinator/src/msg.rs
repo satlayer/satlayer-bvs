@@ -61,7 +61,6 @@ pub enum ExecuteMsg {
         addr: String,
     },
     SetRouting {
-        delegation_manager: String,
         strategy_manager: String,
     },
 }
