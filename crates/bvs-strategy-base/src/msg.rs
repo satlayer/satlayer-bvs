@@ -37,14 +37,17 @@ pub enum QueryMsg {
     #[returns(SharesResponse)]
     GetShares { staker: String },
 
+    #[returns(UserUnderlyingResponse)]
+    UserUnderlyingView { user: String },
+
     #[returns(SharesToUnderlyingResponse)]
     SharesToUnderlyingView { amount_shares: Uint128 },
 
     #[returns(UnderlyingToShareResponse)]
     UnderlyingToShareView { amount: Uint128 },
 
-    #[returns(UserUnderlyingResponse)]
-    UserUnderlyingView { user: String },
+    #[returns(UnderlyingToSharesResponse)]
+    UnderlyingToShares { amount_underlying: Uint128 },
 
     #[returns(StrategyManagerResponse)]
     GetStrategyManager {},
@@ -54,9 +57,6 @@ pub enum QueryMsg {
 
     #[returns(TotalSharesResponse)]
     GetTotalShares {},
-
-    #[returns(UnderlyingToSharesResponse)]
-    UnderlyingToShares { amount_underlying: Uint128 },
 
     #[returns(StrategyState)]
     GetStrategyState {},

@@ -274,22 +274,22 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let staker = deps.api.addr_validate(&staker)?;
             to_json_binary(&shares(deps, &env, staker)?)
         }
+        QueryMsg::UserUnderlyingView { user } => {
+            let user_addr = deps.api.addr_validate(&user)?;
+            to_json_binary(&query_user_underlying_view(deps, &env, user_addr)?)
+        }
         QueryMsg::SharesToUnderlyingView { amount_shares } => {
             to_json_binary(&query_shares_to_underlying_view(deps, &env, amount_shares)?)
         }
         QueryMsg::UnderlyingToShareView { amount } => {
             to_json_binary(&query_underlying_to_view(deps, &env, amount)?)
         }
-        QueryMsg::UserUnderlyingView { user } => {
-            let user_addr = deps.api.addr_validate(&user)?;
-            to_json_binary(&query_user_underlying_view(deps, &env, user_addr)?)
+        QueryMsg::UnderlyingToShares { amount_underlying } => {
+            to_json_binary(&query_underlying_to_shares(deps, &env, amount_underlying)?)
         }
         QueryMsg::GetStrategyManager {} => to_json_binary(&query_strategy_manager(deps)?),
         QueryMsg::GetUnderlyingToken {} => to_json_binary(&query_underlying_token(deps)?),
         QueryMsg::GetTotalShares {} => to_json_binary(&query_total_shares(deps)?),
-        QueryMsg::UnderlyingToShares { amount_underlying } => {
-            to_json_binary(&query_underlying_to_shares(deps, &env, amount_underlying)?)
-        }
         QueryMsg::GetStrategyState {} => to_json_binary(&query_strategy_state(deps)?),
     }
 }
