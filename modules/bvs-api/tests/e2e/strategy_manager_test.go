@@ -42,16 +42,16 @@ type strategyManagerTestSuite struct {
 
 func (suite *strategyManagerTestSuite) SetupSuite() {
 	suite.container = babylond.Run(context.Background())
+	suite.container.ImportPrivKey("owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
+	suite.container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
+
 	suite.chainIO = suite.container.NewChainIO("../.babylon")
 
 	deployer := &bvs.Deployer{BabylonContainer: suite.container}
 	registry := deployer.DeployRegistry(nil)
-
-	suite.container.ImportPrivKey("owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
 	strategyManager := deployer.DeployStrategyManager(registry.Address)
 
 	suite.managerAddr = strategyManager.Address
-	suite.container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
 
 	minter := suite.container.GenerateAddress("cw20:minter")
 	token := cw20.DeployCw20(suite.container, cw20.InstantiateMsg{

@@ -38,13 +38,14 @@ type rewardsTestSuite struct {
 
 func (suite *rewardsTestSuite) SetupSuite() {
 	container := babylond.Run(context.Background())
+	// Fund Caller
+	container.ImportPrivKey("owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
+	container.FundAddressUbbn(suite.caller, 1e8)
+
 	suite.chainIO = container.NewChainIO("../.babylon")
 	suite.container = container
 	suite.caller = "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
 
-	// Fund Caller
-	container.ImportPrivKey("owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
-	container.FundAddressUbbn(suite.caller, 1e8)
 	deployer := &bvs.Deployer{BabylonContainer: container}
 	registry := deployer.DeployRegistry(nil)
 

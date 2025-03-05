@@ -26,8 +26,6 @@ type DirectoryTestSuite struct {
 
 func (s *DirectoryTestSuite) SetupSuite() {
 	container := babylond.Run(context.Background())
-	s.chainIO = container.NewChainIO("../.babylon")
-	s.container = container
 
 	// Import And Fund Caller
 	container.ImportPrivKey("owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
@@ -36,6 +34,9 @@ func (s *DirectoryTestSuite) SetupSuite() {
 	container.FundAddressUbbn("bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv", 1e7)
 	container.FundAddressUbbn("bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x", 1e8)
 	container.FundAddressUbbn("bbn1fd9kt5nmzd6jxwecemuad4pyg3hhefd8hxuhnz", 1e8)
+
+	s.chainIO = container.NewChainIO("../.babylon")
+	s.container = container
 
 	tAddr := container.GenerateAddress("test-address").String()
 	deployer := &bvs.Deployer{BabylonContainer: container}
