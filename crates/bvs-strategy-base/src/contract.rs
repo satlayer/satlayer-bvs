@@ -37,6 +37,7 @@ pub fn instantiate(
 
     let underlying_token = deps.api.addr_validate(&msg.underlying_token)?;
     token::set_cw20_token(deps.storage, &underlying_token)?;
+
     // Query the underlying token to ensure the token has TokenInfo entry_point
     token::get_token_info(&deps.as_ref())?;
 
@@ -89,7 +90,7 @@ pub mod execute {
     ) -> Result<Response, ContractError> {
         auth::assert_strategy_manager(deps.storage, &info)?;
 
-        let virtual_share = shares::VirtualShares::load(&deps.as_ref(), &env)?;
+        let virtual_share = shares::VirtualVault::load(&deps.as_ref(), &env)?;
         let new_shares = virtual_share.amount_to_shares(amount);
 
         if new_shares.is_zero() {
@@ -126,7 +127,7 @@ pub mod execute {
     ) -> Result<Response, ContractError> {
         auth::assert_strategy_manager(deps.storage, &info)?;
 
-        let virtual_share = shares::VirtualShares::load(&deps.as_ref(), &env)?;
+        let virtual_share = shares::VirtualVault::load(&deps.as_ref(), &env)?;
 
         let mut total_shares = virtual_share.total_shares;
         if shares > total_shares {
@@ -222,27 +223,27 @@ pub mod query {
     }
 
     /// Converts the amount of shares to underlying tokens.
-    /// See [`shares::VirtualShares`] implementation for more details.
+    /// See [`shares::VirtualVault`] implementation for more details.
     /// TODO(fuxingloh): rename `convert_to_assets`
     pub fn shares_to_underlying(
         deps: Deps,
         env: &Env,
         shares: Uint128,
     ) -> StdResult<SharesToUnderlyingResponse> {
-        let vault = shares::VirtualShares::load(&deps, env)?;
+        let vault = shares::VirtualVault::load(&deps, env)?;
         let amount = vault.shares_to_amount(shares);
         Ok(SharesToUnderlyingResponse(amount))
     }
 
     /// Converts the amount of underlying tokens to shares.
-    /// See [`shares::VirtualShares`] implementation for more details.
+    /// See [`shares::VirtualVault`] implementation for more details.
     /// TODO(fuxingloh): rename `convert_to_shares`
     pub fn underlying_to_shares(
         deps: Deps,
         env: &Env,
         amount: Uint128,
     ) -> StdResult<UnderlyingToSharesResponse> {
-        let vault = shares::VirtualShares::load(&deps, env)?;
+        let vault = shares::VirtualVault::load(&deps, env)?;
         let shares = vault.amount_to_shares(amount);
         Ok(UnderlyingToSharesResponse(shares))
     }

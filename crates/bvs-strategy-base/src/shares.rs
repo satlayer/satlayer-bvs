@@ -1,6 +1,7 @@
 use crate::token;
 use cosmwasm_std::{Deps, Env, StdResult, Storage, Uint128};
 use cw_storage_plus::Item;
+use std::ops::Div;
 
 /// The offset is used to mitigate the common 'share inflation' attack vector.
 /// See [https://docs.openzeppelin.com/contracts/4.x/erc4626#inflation-attack]
@@ -27,14 +28,14 @@ pub fn set_total_shares(storage: &mut dyn Storage, total_shares: &Uint128) -> St
 /// A donation of 1e3 and under will be completely captured by the vault—without affecting the user.
 /// A donation greater than 1e3, the attacker will suffer loss greater than the user.
 /// [https://github.com/OpenZeppelin/openzeppelin-contracts/blob/fa995ef1fe66e1447783cb6038470aba23a6343f/contracts/token/ERC20/extensions/ERC4626.sol#L30-L37]
-pub struct VirtualShares {
+pub struct VirtualVault {
     pub total_shares: Uint128,
     pub balance: Uint128,
     virtual_total_shares: Uint128,
     virtual_balance: Uint128,
 }
 
-impl VirtualShares {
+impl VirtualVault {
     /// Load the virtual shares from storage and [token::get_balance] (supports rebasing, by default).
     /// A fixed [`OFFSET`] of 1e3 will be added to both total shares and balance
     /// to mitigate against inflation attack.
@@ -49,8 +50,8 @@ impl VirtualShares {
         Self {
             total_shares,
             balance,
-            virtual_total_shares: total_shares + OFFSET,
-            virtual_balance: balance + OFFSET,
+            virtual_total_shares: total_shares.checked_add(OFFSET).unwrap(),
+            virtual_balance: balance.checked_add(OFFSET).unwrap(),
         }
     }
 
@@ -73,7 +74,7 @@ mod tests {
     fn one_to_one() {
         let balance = Uint128::new(1000);
         let total_shares = Uint128::new(1000);
-        let vault = VirtualShares::new(total_shares, balance);
+        let vault = VirtualVault::new(total_shares, balance);
 
         {
             let amount = vault.shares_to_amount(Uint128::new(1000));
@@ -109,7 +110,7 @@ mod tests {
 
         // Virtual balance: (1000) + 1000 = 2000
         // Virtual shares: (1) + 1000 = 1001
-        let vault = VirtualShares::new(total_shares, balance);
+        let vault = VirtualVault::new(total_shares, balance);
 
         // Attacker 1 share is worth 1 amount (fully captured by the vault)
         let amount = vault.shares_to_amount(Uint128::new(1));
@@ -125,7 +126,7 @@ mod tests {
         let total_shares = Uint128::new(5006);
         // Virtual balance: (11,000) + 1000 = 12,000
         // Virtual shares: (5006) + 1000 = 6006
-        let vault = VirtualShares::new(total_shares, balance);
+        let vault = VirtualVault::new(total_shares, balance);
 
         // Attacker 1 share is worth 1 amount
         let amount = vault.shares_to_amount(Uint128::new(1));
@@ -142,7 +143,7 @@ mod tests {
         // Attacker donates 99,999 moving the balance to 100,000
         let balance = Uint128::new(100_000);
         let total_shares = Uint128::new(1);
-        let vault = VirtualShares::new(total_shares, balance);
+        let vault = VirtualVault::new(total_shares, balance);
 
         // Attacker 1 share is worth amount 100 (captured by the vault)
         let amount = vault.shares_to_amount(Uint128::new(1));
@@ -156,7 +157,7 @@ mod tests {
         // Moves the vault.
         let balance = Uint128::new(110_000);
         let total_shares = Uint128::new(100);
-        let vault = VirtualShares::new(total_shares, balance);
+        let vault = VirtualVault::new(total_shares, balance);
 
         // Attacker 1 share is worth 100 (captured by the vault)
         let amount = vault.shares_to_amount(Uint128::new(1));
@@ -174,7 +175,7 @@ mod tests {
 
         // Virtual balance: (1000) + 1000 = 2000
         // Virtual shares: (1) + 1000 = 1001
-        let vault = VirtualShares::new(total_shares, balance);
+        let vault = VirtualVault::new(total_shares, balance);
 
         // Low amounts
         {
@@ -210,7 +211,7 @@ mod tests {
 
         // Virtual balance: (1000) + 1000 = 2000
         // Virtual shares: (2) + 1000 = 1002
-        let vault = VirtualShares::new(total_shares, balance);
+        let vault = VirtualVault::new(total_shares, balance);
 
         // Low amounts
         {
@@ -253,7 +254,7 @@ mod tests {
 
         // Virtual balance: (100000) + 1000 = 101000
         // Virtual shares: (1) + 1000 = 1001
-        let vault = VirtualShares::new(total_shares, balance);
+        let vault = VirtualVault::new(total_shares, balance);
 
         // With 500 shares, they get 50,449
         // Amount: (500) * 101,000 / 1001 = 50,449.55
@@ -283,7 +284,7 @@ mod tests {
 
         // Virtual balance: (100000) + 1000 = 101000
         // Virtual shares: (1) + 1000 = 1001
-        let vault = VirtualShares::new(total_shares, balance);
+        let vault = VirtualVault::new(total_shares, balance);
 
         // With 1 amount, they get 0 share
         // (1) * 1001 / 101,000 = 0.0099
@@ -315,7 +316,7 @@ mod tests {
 
         // Virtual balance: (1e20) + 1e3 = 1e20
         // Virtual shares: (1) + 1e3 = 1e3
-        let vault = VirtualShares::new(total_shares, balance);
+        let vault = VirtualVault::new(total_shares, balance);
 
         // With 999, they get 0 shares
         // Amount: (999) * (1 + 1e3)/ (1e20 + 1e3) = 9.99999E-15
@@ -339,7 +340,7 @@ mod tests {
             // New vault with +1 share and +1e17 balance
             let new_share = Uint128::new(1) + Uint128::new(1);
             let new_balance = Uint128::new(1e20 as u128) + Uint128::new(1e17 as u128);
-            let vault = VirtualShares::new(new_share, new_balance);
+            let vault = VirtualVault::new(new_share, new_balance);
 
             // That one share is only worth less than 1e17
             let shares = Uint128::new(1);
