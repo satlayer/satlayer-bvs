@@ -158,7 +158,7 @@ pub mod execute {
         Ok(Response::new()
             .add_event(
                 Event::new("Withdraw")
-                    .add_attribute("recipient", amount.to_string())
+                    .add_attribute("recipient", recipient.to_string())
                     .add_attribute("amount", amount.to_string())
                     .add_attribute("shares", shares.to_string())
                     .add_attribute("total_shares", total_shares.to_string()),
@@ -261,7 +261,7 @@ pub mod query {
     /// Returns the underlying token address.
     /// TODO(fuxingloh): rename `asset_info` (similar to Cw20QueryMsg::AssetInfo)
     pub fn underlying_token(deps: Deps) -> StdResult<UnderlyingTokenResponse> {
-        let underlying_token = token::get_c20_token(deps.storage)?;
+        let underlying_token = token::get_cw20_token(deps.storage)?;
         Ok(UnderlyingTokenResponse(underlying_token))
     }
 

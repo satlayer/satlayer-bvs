@@ -13,7 +13,7 @@ pub fn set_cw20_token(storage: &mut dyn Storage, underlying_token: &Addr) -> Std
 }
 
 /// Get the underlying token of the contract from storage
-pub fn get_c20_token(storage: &dyn Storage) -> StdResult<Addr> {
+pub fn get_cw20_token(storage: &dyn Storage) -> StdResult<Addr> {
     CW20_TOKEN.load(storage)
 }
 
