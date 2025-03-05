@@ -10,9 +10,6 @@
 //    queryMsg, err := UnmarshalQueryMsg(bytes)
 //    bytes, err = queryMsg.Marshal()
 //
-//    strategyState, err := UnmarshalStrategyState(bytes)
-//    bytes, err = strategyState.Marshal()
-//
 //    sharesResponse, err := UnmarshalSharesResponse(bytes)
 //    bytes, err = sharesResponse.Marshal()
 //
@@ -68,15 +65,7 @@ func (r *QueryMsg) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalStrategyState(data []byte) (StrategyState, error) {
-	var r StrategyState
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *StrategyState) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
+type SharesResponse string
 
 func UnmarshalSharesResponse(data []byte) (SharesResponse, error) {
 	var r SharesResponse
@@ -88,6 +77,8 @@ func (r *SharesResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
+type SharesToUnderlyingResponse string
+
 func UnmarshalSharesToUnderlyingResponse(data []byte) (SharesToUnderlyingResponse, error) {
 	var r SharesToUnderlyingResponse
 	err := json.Unmarshal(data, &r)
@@ -97,6 +88,8 @@ func UnmarshalSharesToUnderlyingResponse(data []byte) (SharesToUnderlyingRespons
 func (r *SharesToUnderlyingResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
+
+type StrategyManagerResponse string
 
 func UnmarshalStrategyManagerResponse(data []byte) (StrategyManagerResponse, error) {
 	var r StrategyManagerResponse
@@ -108,6 +101,8 @@ func (r *StrategyManagerResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
+type TotalSharesResponse string
+
 func UnmarshalTotalSharesResponse(data []byte) (TotalSharesResponse, error) {
 	var r TotalSharesResponse
 	err := json.Unmarshal(data, &r)
@@ -117,6 +112,8 @@ func UnmarshalTotalSharesResponse(data []byte) (TotalSharesResponse, error) {
 func (r *TotalSharesResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
+
+type UnderlyingResponse string
 
 func UnmarshalUnderlyingResponse(data []byte) (UnderlyingResponse, error) {
 	var r UnderlyingResponse
@@ -128,6 +125,8 @@ func (r *UnderlyingResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
+type UnderlyingToSharesResponse string
+
 func UnmarshalUnderlyingToSharesResponse(data []byte) (UnderlyingToSharesResponse, error) {
 	var r UnderlyingToSharesResponse
 	err := json.Unmarshal(data, &r)
@@ -137,6 +136,8 @@ func UnmarshalUnderlyingToSharesResponse(data []byte) (UnderlyingToSharesRespons
 func (r *UnderlyingToSharesResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
+
+type UnderlyingTokenResponse string
 
 func UnmarshalUnderlyingTokenResponse(data []byte) (UnderlyingTokenResponse, error) {
 	var r UnderlyingTokenResponse
@@ -183,10 +184,6 @@ type QueryMsg struct {
 	StrategyManager    *StrategyManager    `json:"strategy_manager,omitempty"`
 	UnderlyingToken    *UnderlyingToken    `json:"underlying_token,omitempty"`
 	TotalShares        *TotalShares        `json:"total_shares,omitempty"`
-	GetStrategyState   *GetStrategyState   `json:"get_strategy_state,omitempty"`
-}
-
-type GetStrategyState struct {
 }
 
 type Shares struct {
@@ -212,37 +209,4 @@ type UnderlyingToShares struct {
 }
 
 type UnderlyingToken struct {
-}
-
-type StrategyState struct {
-	TotalShares     string `json:"total_shares"`
-	UnderlyingToken string `json:"underlying_token"`
-}
-
-type SharesResponse struct {
-	TotalShares string `json:"total_shares"`
-}
-
-type SharesToUnderlyingResponse struct {
-	AmountToSend string `json:"amount_to_send"`
-}
-
-type StrategyManagerResponse struct {
-	StrategyManagerAddr string `json:"strategy_manager_addr"`
-}
-
-type TotalSharesResponse struct {
-	TotalShares string `json:"total_shares"`
-}
-
-type UnderlyingResponse struct {
-	AmountToSend string `json:"amount_to_send"`
-}
-
-type UnderlyingToSharesResponse struct {
-	ShareToSend string `json:"share_to_send"`
-}
-
-type UnderlyingTokenResponse struct {
-	UnderlyingTokenAddr string `json:"underlying_token_addr"`
 }

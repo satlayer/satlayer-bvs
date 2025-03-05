@@ -21,12 +21,13 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
-use crate::msg::delegation_manager;
-use crate::msg::delegation_manager::IncreaseDelegatedShares;
+use crate::msg::delegation_manager::{self, IncreaseDelegatedShares};
 use crate::query::{IsTokenBlacklistedResponse, TokenStrategyResponse};
 use bvs_library::ownership;
 use bvs_strategy_base::{
-    msg::ExecuteMsg as StrategyExecuteMsg, msg::QueryMsg as StrategyQueryMsg, state::StrategyState,
+    msg::ExecuteMsg as BaseExecuteMsg,
+    msg::QueryMsg as BaseQueryMsg,
+    msg::{StrategyManagerResponse, TotalSharesResponse, UnderlyingTokenResponse},
 };
 
 const CONTRACT_NAME: &str = "BVS Strategy Manager";
@@ -255,7 +256,7 @@ pub fn withdraw_shares_as_tokens(
 
     let withdraw_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: strategy.to_string(),
-        msg: to_json_binary(&StrategyExecuteMsg::Withdraw {
+        msg: to_json_binary(&BaseExecuteMsg::Withdraw {
             recipient: recipient.to_string(),
             shares,
         })?,
@@ -411,23 +412,35 @@ fn deposit_into_strategy_internal(
 
     let mut response = Response::new().add_message(transfer_msg);
 
-    let state: StrategyState = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: strategy.to_string(),
-        msg: to_json_binary(&StrategyQueryMsg::GetStrategyState {})?,
-    }))?;
+    let UnderlyingTokenResponse(token) = deps.querier.query(
+        &WasmQuery::Smart {
+            contract_addr: strategy.to_string(),
+            msg: to_json_binary(&BaseQueryMsg::UnderlyingToken {})?,
+        }
+        .into(),
+    )?;
 
-    let balance = token_balance(&deps.querier, &state.underlying_token, &strategy)?;
-    let new_shares = calculate_new_shares(state.total_shares, balance, amount)?;
+    let TotalSharesResponse(total_shares) = deps.querier.query(
+        &WasmQuery::Smart {
+            contract_addr: strategy.to_string(),
+            msg: to_json_binary(&BaseQueryMsg::TotalShares {})?,
+        }
+        .into(),
+    )?;
+
+    let balance = token_balance(&deps.querier, &token, &strategy)?;
+    let new_shares = calculate_new_shares(total_shares, balance, amount)?;
 
     if new_shares.is_zero() {
         return Err(ContractError::ZeroNewShares {});
     }
 
-    let deposit_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+    let deposit_msg: CosmosMsg = WasmMsg::Execute {
         contract_addr: strategy.to_string(),
-        msg: to_json_binary(&StrategyExecuteMsg::Deposit { amount })?,
+        msg: to_json_binary(&BaseExecuteMsg::Deposit { amount })?,
         funds: vec![],
-    });
+    }
+    .into();
 
     response = response.add_message(deposit_msg);
 
@@ -673,13 +686,15 @@ pub fn add_new_strategy(
     }
 
     // let's check if contract is properly uploaded and initiated on the chain
-    let manager_info: bvs_strategy_base::msg::StrategyManagerResponse =
-        deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+    let StrategyManagerResponse(strategy_manager_addr) = deps.querier.query(
+        &WasmQuery::Smart {
             contract_addr: strategy.to_string().clone(),
-            msg: to_json_binary(&bvs_strategy_base::msg::QueryMsg::StrategyManager {})?,
-        }))?;
+            msg: to_json_binary(&BaseQueryMsg::StrategyManager {})?,
+        }
+        .into(),
+    )?;
 
-    if manager_info.strategy_manager_addr != env.contract.address {
+    if strategy_manager_addr != env.contract.address {
         return Err(ContractError::StrategyNotCompatible {});
     }
 
@@ -700,6 +715,7 @@ mod tests {
     use super::*;
     use crate::query::IsTokenBlacklistedResponse;
     use bvs_library::ownership::OwnershipError;
+    use bvs_strategy_base::msg::QueryMsg::UnderlyingToken;
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
@@ -780,15 +796,11 @@ mod tests {
                 contract_addr: _,
                 msg,
             } => {
-                let query_msg: bvs_strategy_base::msg::QueryMsg = from_json(msg).unwrap();
+                let query_msg: BaseQueryMsg = from_json(msg).unwrap();
                 match query_msg {
-                    bvs_strategy_base::msg::QueryMsg::StrategyManager {} => {
-                        let strategy_state = bvs_strategy_base::msg::StrategyManagerResponse {
-                            strategy_manager_addr: _env.contract.address.clone(),
-                        };
-                        SystemResult::Ok(ContractResult::Ok(
-                            to_json_binary(&strategy_state).unwrap(),
-                        ))
+                    BaseQueryMsg::StrategyManager {} => {
+                        let response = StrategyManagerResponse(_env.contract.address.clone());
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
                     }
                     _ => SystemResult::Err(SystemError::InvalidRequest {
                         error: "Unhandled request".to_string(),
@@ -845,13 +857,9 @@ mod tests {
             } => {
                 let query_msg: bvs_strategy_base::msg::QueryMsg = from_json(msg).unwrap();
                 match query_msg {
-                    bvs_strategy_base::msg::QueryMsg::StrategyManager {} => {
-                        let strategy_state = bvs_strategy_base::msg::StrategyManagerResponse {
-                            strategy_manager_addr: _env.contract.address.clone(),
-                        };
-                        SystemResult::Ok(ContractResult::Ok(
-                            to_json_binary(&strategy_state).unwrap(),
-                        ))
+                    BaseQueryMsg::StrategyManager {} => {
+                        let response = StrategyManagerResponse(_env.contract.address.clone());
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
                     }
                     _ => SystemResult::Err(SystemError::InvalidRequest {
                         error: "Unhandled request".to_string(),
@@ -1047,17 +1055,15 @@ mod tests {
             WasmQuery::Smart { contract_addr, msg }
                 if *contract_addr == strategy_for_closure.to_string() =>
             {
-                let strategy_query_msg: StrategyQueryMsg = from_json(msg).unwrap();
+                let strategy_query_msg: BaseQueryMsg = from_json(msg).unwrap();
                 match strategy_query_msg {
-                    StrategyQueryMsg::GetStrategyState {} => {
-                        let strategy_state = StrategyState {
-                            underlying_token: Addr::unchecked(token_for_closure.clone()),
-                            total_shares: Uint128::new(1000),
-                        };
-                        SystemResult::Ok(ContractResult::Ok(
-                            to_json_binary(&strategy_state).unwrap(),
-                        ))
+                    UnderlyingToken {} => {
+                        let response = UnderlyingTokenResponse(token_for_closure.clone());
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
                     }
+                    BaseQueryMsg::TotalShares {} => SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(&TotalSharesResponse(Uint128::new(1000))).unwrap(),
+                    )),
                     _ => SystemResult::Err(SystemError::InvalidRequest {
                         error: "Unhandled request".to_string(),
                         request: to_json_binary(&query).unwrap(),

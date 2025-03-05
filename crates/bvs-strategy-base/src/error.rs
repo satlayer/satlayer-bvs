@@ -15,18 +15,19 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
-    #[error("StrategyBase.deposit: new_shares cannot be zero")]
-    ZeroNewShares {},
+    #[error("Zero: {msg}")]
+    Zero { msg: String },
 
-    #[error("StrategyBase.withdraw: amount to send cannot be zero")]
-    ZeroAmountToSend {},
+    #[error("Insufficient: {msg}")]
+    Insufficient { msg: String },
+}
 
-    #[error("StrategyBase.withdraw: insufficient shares")]
-    InsufficientShares {},
+impl ContractError {
+    pub fn zero(msg: impl Into<String>) -> Self {
+        ContractError::Zero { msg: msg.into() }
+    }
 
-    #[error("StrategyBase: invalid token")]
-    InvalidToken {},
-
-    #[error("StrategyBase.withdraw: insufficient balance")]
-    InsufficientBalance {},
+    pub fn insufficient(msg: impl Into<String>) -> Self {
+        ContractError::Insufficient { msg: msg.into() }
+    }
 }

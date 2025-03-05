@@ -1,4 +1,3 @@
-use crate::state::StrategyState;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint128};
 
@@ -49,52 +48,37 @@ pub enum QueryMsg {
 
     #[returns(TotalSharesResponse)]
     TotalShares {},
-
-    #[returns(StrategyState)]
-    GetStrategyState {},
 }
 
 #[cw_serde]
-pub struct SharesResponse {
-    pub total_shares: Uint128,
-}
+pub struct SharesResponse(pub Uint128);
 
 #[cw_serde]
-pub struct UnderlyingResponse {
-    pub amount_to_send: Uint128,
-}
+pub struct UnderlyingResponse(pub Uint128);
 
 #[cw_serde]
-pub struct SharesToUnderlyingResponse {
-    pub amount_to_send: Uint128,
-}
+pub struct SharesToUnderlyingResponse(pub Uint128);
 
 #[cw_serde]
-pub struct UnderlyingToSharesResponse {
-    pub share_to_send: Uint128,
-}
+pub struct UnderlyingToSharesResponse(pub Uint128);
 
 #[cw_serde]
-pub struct StrategyManagerResponse {
-    pub strategy_manager_addr: Addr,
-}
+pub struct StrategyManagerResponse(pub Addr);
 
 #[cw_serde]
-pub struct UnderlyingTokenResponse {
-    pub underlying_token_addr: Addr,
-}
+pub struct UnderlyingTokenResponse(pub Addr);
 
 #[cw_serde]
-pub struct TotalSharesResponse {
-    pub total_shares: Uint128,
-}
+pub struct TotalSharesResponse(pub Uint128);
 
 /// Both Strategy Base & Strategy Manager circularly depend on each other.
 /// Since we can't circularly import each other, we put [QueryMsg] which is used by
 /// StrategyManager here as well.
 pub mod strategy_manager {
     use cosmwasm_schema::cw_serde;
-    use cosmwasm_std::Uint128;
+    use cosmwasm_std::{
+        to_json_binary, QuerierWrapper, QueryRequest, StdResult, Uint128, WasmQuery,
+    };
 
     #[cw_serde]
     pub enum QueryMsg {
@@ -104,5 +88,24 @@ pub mod strategy_manager {
     #[cw_serde]
     pub struct StakerStrategySharesResponse {
         pub shares: Uint128,
+    }
+
+    /// Get the shares of a staker in a strategy
+    /// This information is stored in the Strategy Manager
+    pub fn get_staker_strategy_shares(
+        querier: &QuerierWrapper,
+        strategy_manager: String,
+        strategy: String,
+        staker: String,
+    ) -> StdResult<Uint128> {
+        let msg = QueryMsg::GetStakerStrategyShares { staker, strategy };
+
+        let response: StakerStrategySharesResponse =
+            querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: strategy_manager,
+                msg: to_json_binary(&msg)?,
+            }))?;
+
+        Ok(response.shares)
     }
 }
