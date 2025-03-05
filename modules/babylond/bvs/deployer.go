@@ -52,7 +52,7 @@ func (d *Deployer) DeployRegistry(
 	if initMsg == nil {
 		initMsg = &registry.InstantiateMsg{
 			InitialPaused: false,
-			Owner:         d.GenerateAddress("registry:owner").String(),
+			Owner:         d.GenerateAddress("owner").String(),
 		}
 	}
 
@@ -63,7 +63,7 @@ func (d *Deployer) DeploySlashManager(
 	registry string,
 ) *Contract[slashmanager.InstantiateMsg] {
 	initMsg := slashmanager.InstantiateMsg{
-		Owner:    d.GenerateAddress("slash-manager:initial_owner").String(),
+		Owner:    d.GenerateAddress("owner").String(),
 		Registry: registry,
 	}
 
@@ -74,7 +74,7 @@ func (d *Deployer) DeployStrategyManager(
 	registry string,
 ) *Contract[strategymanager.InstantiateMsg] {
 	initMsg := strategymanager.InstantiateMsg{
-		Owner:    d.GenerateAddress("strategy-manager:initial_owner").String(),
+		Owner:    d.GenerateAddress("owner").String(),
 		Registry: registry,
 	}
 
@@ -88,7 +88,7 @@ func (d *Deployer) DeployDelegationManager(
 	withdrawalDelayBlocks []int64,
 ) *Contract[delegationmanager.InstantiateMsg] {
 	initMsg := delegationmanager.InstantiateMsg{
-		Owner:                    d.GenerateAddress("delegation-manager:initial_owner").String(),
+		Owner:                    d.GenerateAddress("owner").String(),
 		Registry:                 registry,
 		MinWithdrawalDelayBlocks: minWithdrawalDelayBlocks,
 		Strategies:               strategies,
@@ -102,7 +102,7 @@ func (d *Deployer) DeployDirectory(
 	registry string,
 ) *Contract[directory.InstantiateMsg] {
 	initMsg := directory.InstantiateMsg{
-		Owner:    d.GenerateAddress("directory:initial_owner").String(),
+		Owner:    d.GenerateAddress("owner").String(),
 		Registry: registry,
 	}
 
@@ -119,7 +119,7 @@ func (d *Deployer) DeployRewardsCoordinator(
 	maxRewardsDuration int64,
 ) *Contract[rewardscoordinator.InstantiateMsg] {
 	initMsg := rewardscoordinator.InstantiateMsg{
-		Owner:                      d.GenerateAddress("rewards-coordinator:initial_owner").String(),
+		Owner:                      d.GenerateAddress("owner").String(),
 		Registry:                   registry,
 		ActivationDelay:            activationDelay,
 		CalculationIntervalSeconds: calculationIntervalSeconds,
@@ -138,7 +138,7 @@ func (d *Deployer) DeployStrategyBase(
 	strategyManager string,
 ) *Contract[strategybase.InstantiateMsg] {
 	initMsg := strategybase.InstantiateMsg{
-		Owner:           d.GenerateAddress("strategy-base:initial_owner").String(),
+		Owner:           d.GenerateAddress("owner").String(),
 		Registry:        registry,
 		StrategyManager: strategyManager,
 		UnderlyingToken: underlyingToken,

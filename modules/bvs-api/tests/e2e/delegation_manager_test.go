@@ -65,7 +65,7 @@ func (suite *delegationTestSuite) SetupSuite() {
 	tAddr1 := container.GenerateAddress("test-address-1").String()
 	tAddr2 := container.GenerateAddress("test-address-2").String()
 
-	container.ImportPrivKey("delegation-manager:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
+	container.ImportPrivKey("owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
 
 	strategyManager := deployer.DeployStrategyManager(registry.Address)
 	delegationManager := deployer.DeployDelegationManager(registry.Address, 100, []string{tAddr}, []int64{50})
