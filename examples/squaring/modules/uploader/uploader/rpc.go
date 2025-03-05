@@ -2,7 +2,6 @@ package uploader
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -73,48 +72,6 @@ func (u *Uploader) rpcSubmission(rewards []Submission) error {
 	}
 	fmt.Println("CreateRewardsForAllSubmission txn hash: ", resp.Hash.String())
 	return err
-}
-
-func (u *Uploader) rpcTokenHash(token *TokenAmount) (string, error) {
-	resp, err := u.rewardsCoordinator.CalculateTokenLeafHash(token.Token, token.RewardAmount)
-	if err != nil {
-		fmt.Println("CalculateTokenLeafHash err: ", err)
-		return "", err
-	}
-	var hashResponse HashResponse
-	if err := json.Unmarshal(resp.Data, &hashResponse); err != nil {
-		fmt.Println("unmarshal err: ", err)
-		return "", err
-	}
-	hashStr := base64.StdEncoding.EncodeToString(hashResponse.HashBinary)
-	return hashStr, err
-}
-
-func (u *Uploader) rpcMerkleizeLeaves(leaves []string) (string, error) {
-	resp, err := u.rewardsCoordinator.MerkleizeLeaves(leaves)
-	if err != nil {
-		fmt.Println("merkleizeLeaves err: ", err)
-		return "", err
-	}
-	var merkleizeLeavesResponse MerkleizeLeavesResponse
-	if err := json.Unmarshal(resp.Data, &merkleizeLeavesResponse); err != nil {
-		fmt.Println("unmarshal err: ", err)
-		return "", err
-	}
-	merkleRoot := base64.StdEncoding.EncodeToString(merkleizeLeavesResponse.RootHashBinary)
-	return merkleRoot, err
-}
-
-func (u *Uploader) rpcEarnerLeafHash(staker, rootHash string) (string, error) {
-	resp, err := u.rewardsCoordinator.CalculateEarnerLeafHash(staker, rootHash)
-	if err != nil {
-		fmt.Println("CalculateEarnerLeafHash err: ", err)
-		return "", err
-	}
-	var earnerLeafHashResponse EarnerLeafHashResponse
-	err = json.Unmarshal(resp.Data, &earnerLeafHashResponse)
-	hashStr := base64.StdEncoding.EncodeToString(earnerLeafHashResponse.RootHashBinary)
-	return hashStr, err
 }
 
 // rpcUnderlyingToken queries the underlying token address for the given strategy

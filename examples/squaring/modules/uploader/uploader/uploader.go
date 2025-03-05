@@ -2,6 +2,8 @@ package uploader
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"math"
 	"strconv"
@@ -266,11 +268,7 @@ func (u *Uploader) merkleTree(earners []Earner) (string, error) {
 	earnerNodes := make([]*MerkleNode, 0)
 	for _, earner := range earners {
 		tokenHash := u.calcTokenLeafs(earner.Tokens)
-		earnerHash, err := u.rpcEarnerLeafHash(earner.Earner, tokenHash)
-		if err != nil {
-			fmt.Println("calc earner hash err: ", err)
-			return "", err
-		}
+		earnerHash := calcEarnerLeafHash(earner.Earner, tokenHash)
 		earnerNodes = append(earnerNodes, &MerkleNode{Hash: earnerHash})
 	}
 
@@ -284,11 +282,7 @@ func (u *Uploader) merkleTree(earners []Earner) (string, error) {
 func (u *Uploader) calcTokenLeafs(tokens []*TokenAmount) string {
 	tokenNodes := make([]*MerkleNode, 0)
 	for _, token := range tokens {
-		hash, err := u.rpcTokenHash(token)
-		if err != nil {
-			fmt.Println("calc token hash err: ", err)
-			continue
-		}
+		hash := calcTokenLeafHash(token.Token, token.RewardAmount)
 		tokenNodes = append(tokenNodes, &MerkleNode{Hash: hash})
 	}
 	fmt.Println("tokenHashs: ", tokenNodes)
@@ -312,7 +306,7 @@ func (u *Uploader) calcMerkleTree(nodes []*MerkleNode) *MerkleNode {
 			left = nodes[i]
 			right = nodes[i+1]
 			leaves := []string{left.Hash, right.Hash}
-			rootHash, err := u.rpcMerkleizeLeaves(leaves)
+			rootHash, err := merkleizeLeaves(leaves)
 			if err != nil {
 				fmt.Println("merkleizeLeaves err: ", err)
 				continue
@@ -329,4 +323,43 @@ func (u *Uploader) calcMerkleTree(nodes []*MerkleNode) *MerkleNode {
 		nodes = newLevel
 	}
 	return nodes[0]
+}
+
+// TODO: move to bvs-api and use a merkle tree library.
+// implementation of copied from crates/bvs-rewards-coordinator/src/merkle.rs
+func calcTokenLeafHash(tokenAddress string, tokenAmount string) string {
+	hasher := sha256.New()
+
+	hasher.Write([]byte{1}) // TOKEN_LEAF_SALT
+	hasher.Write([]byte(tokenAddress))
+	hasher.Write([]byte(tokenAmount))
+
+	// Convert to hex string for consistency with other hash functions
+	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+// TODO: move to bvs-api and use a merkle tree library
+// implementation of copied from crates/bvs-rewards-coordinator/src/merkle.rs
+func calcEarnerLeafHash(earner string, tokenRoot string) string {
+	hasher := sha256.New()
+
+	hasher.Write([]byte{0}) // EARNER_LEAF_SALT
+	hasher.Write([]byte(earner))
+	hasher.Write([]byte(tokenRoot))
+
+	// Convert to hex string for consistency with other hash functions
+	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+// TODO: move to bvs-api and use a merkle tree library
+// implementation of copied from crates/bvs-rewards-coordinator/src/merkle.rs
+// DO NOT use in production - assumes leaves are already hashed, in order and power of 2
+func merkleizeLeaves(leaves []string) (string, error) {
+	hasher := sha256.New()
+
+	for _, leaf := range leaves {
+		hasher.Write([]byte(leaf))
+	}
+
+	return hex.EncodeToString(hasher.Sum(nil)), nil
 }
