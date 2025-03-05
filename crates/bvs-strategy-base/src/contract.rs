@@ -90,14 +90,14 @@ pub mod execute {
     ) -> Result<Response, ContractError> {
         auth::assert_strategy_manager(deps.storage, &info)?;
 
-        let virtual_share = shares::VirtualVault::load(&deps.as_ref(), &env)?;
-        let new_shares = virtual_share.amount_to_shares(amount);
+        let vault = shares::VirtualVault::load(&deps.as_ref(), &env)?;
+        let new_shares = vault.amount_to_shares(amount)?;
 
         if new_shares.is_zero() {
             return Err(ContractError::zero("New shares cannot be zero."));
         }
 
-        let mut total_shares = virtual_share.total_shares;
+        let mut total_shares = vault.total_shares;
         total_shares = total_shares
             .checked_add(new_shares)
             .map_err(StdError::from)?;
@@ -129,21 +129,21 @@ pub mod execute {
     ) -> Result<Response, ContractError> {
         auth::assert_strategy_manager(deps.storage, &info)?;
 
-        let virtual_share = shares::VirtualVault::load(&deps.as_ref(), &env)?;
+        let vault = shares::VirtualVault::load(&deps.as_ref(), &env)?;
 
-        let mut total_shares = virtual_share.total_shares;
+        let mut total_shares = vault.total_shares;
         if shares > total_shares {
             return Err(ContractError::insufficient(
                 "Insufficient shares to withdraw.",
             ));
         }
 
-        let amount = virtual_share.shares_to_amount(shares);
+        let amount = vault.shares_to_amount(shares)?;
         if amount.is_zero() {
             return Err(ContractError::zero("Amount cannot be zero."));
         }
 
-        if amount > virtual_share.balance {
+        if amount > vault.balance {
             return Err(ContractError::insufficient(
                 "Insufficient balance to withdraw.",
             ));
@@ -233,7 +233,7 @@ pub mod query {
         shares: Uint128,
     ) -> StdResult<SharesToUnderlyingResponse> {
         let vault = shares::VirtualVault::load(&deps, env)?;
-        let amount = vault.shares_to_amount(shares);
+        let amount = vault.shares_to_amount(shares)?;
         Ok(SharesToUnderlyingResponse(amount))
     }
 
@@ -246,7 +246,7 @@ pub mod query {
         amount: Uint128,
     ) -> StdResult<UnderlyingToSharesResponse> {
         let vault = shares::VirtualVault::load(&deps, env)?;
-        let shares = vault.amount_to_shares(amount);
+        let shares = vault.amount_to_shares(amount)?;
         Ok(UnderlyingToSharesResponse(shares))
     }
 

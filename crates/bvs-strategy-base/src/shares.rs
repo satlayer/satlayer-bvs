@@ -1,5 +1,5 @@
 use crate::token;
-use cosmwasm_std::{Deps, Env, StdResult, Storage, Uint128};
+use cosmwasm_std::{Deps, Env, StdError, StdResult, Storage, Uint128};
 use cw_storage_plus::Item;
 use std::ops::Div;
 
@@ -56,13 +56,23 @@ impl VirtualVault {
     }
 
     /// Shares to underlying assets
-    pub fn shares_to_amount(&self, shares: Uint128) -> Uint128 {
-        (shares * self.virtual_balance) / self.virtual_total_shares
+    pub fn shares_to_amount(&self, shares: Uint128) -> StdResult<Uint128> {
+        // (shares * self.virtual_balance) / self.virtual_total_shares
+        shares
+            .checked_mul(self.virtual_balance)
+            .map_err(StdError::from)?
+            .checked_div(self.virtual_total_shares)
+            .map_err(StdError::from)
     }
 
     /// Underlying assets to shares
-    pub fn amount_to_shares(&self, amount: Uint128) -> Uint128 {
-        (amount * self.virtual_total_shares) / self.virtual_balance
+    pub fn amount_to_shares(&self, amount: Uint128) -> StdResult<Uint128> {
+        // (amount * self.virtual_total_shares) / self.virtual_balance
+        amount
+            .checked_mul(self.virtual_total_shares)
+            .map_err(StdError::from)?
+            .checked_div(self.virtual_balance)
+            .map_err(StdError::from)
     }
 }
 
@@ -77,26 +87,26 @@ mod tests {
         let vault = VirtualVault::new(total_shares, balance);
 
         {
-            let amount = vault.shares_to_amount(Uint128::new(1000));
+            let amount = vault.shares_to_amount(Uint128::new(1000)).unwrap();
             assert_eq!(amount, Uint128::new(1000));
 
-            let shares = vault.amount_to_shares(Uint128::new(1000));
+            let shares = vault.amount_to_shares(Uint128::new(1000)).unwrap();
             assert_eq!(shares, Uint128::new(1000));
         }
 
         {
-            let amount = vault.shares_to_amount(Uint128::new(100));
+            let amount = vault.shares_to_amount(Uint128::new(100)).unwrap();
             assert_eq!(amount, Uint128::new(100));
 
-            let shares = vault.amount_to_shares(Uint128::new(100));
+            let shares = vault.amount_to_shares(Uint128::new(100)).unwrap();
             assert_eq!(shares, Uint128::new(100));
         }
 
         {
-            let amount = vault.shares_to_amount(Uint128::new(10000));
+            let amount = vault.shares_to_amount(Uint128::new(10000)).unwrap();
             assert_eq!(amount, Uint128::new(10000));
 
-            let shares = vault.amount_to_shares(Uint128::new(10000));
+            let shares = vault.amount_to_shares(Uint128::new(10000)).unwrap();
             assert_eq!(shares, Uint128::new(10000));
         }
     }
@@ -113,12 +123,12 @@ mod tests {
         let vault = VirtualVault::new(total_shares, balance);
 
         // Attacker 1 share is worth 1 amount (fully captured by the vault)
-        let amount = vault.shares_to_amount(Uint128::new(1));
+        let amount = vault.shares_to_amount(Uint128::new(1)).unwrap();
         assert_eq!(amount, Uint128::new(1));
 
         // Normal user deposits 10,000 to get 5,005 shares
         let amount = Uint128::new(10_000);
-        let shares = vault.amount_to_shares(amount);
+        let shares = vault.amount_to_shares(amount).unwrap();
         assert_eq!(shares, Uint128::new(5005));
 
         // Moves the vault.
@@ -129,11 +139,11 @@ mod tests {
         let vault = VirtualVault::new(total_shares, balance);
 
         // Attacker 1 share is worth 1 amount
-        let amount = vault.shares_to_amount(Uint128::new(1));
+        let amount = vault.shares_to_amount(Uint128::new(1)).unwrap();
         assert_eq!(amount, Uint128::new(1));
 
         // User 5005 shares are worth 10,000 amounts
-        let amount = vault.shares_to_amount(Uint128::new(5_005));
+        let amount = vault.shares_to_amount(Uint128::new(5_005)).unwrap();
         assert_eq!(amount, Uint128::new(10000));
     }
 
@@ -146,12 +156,12 @@ mod tests {
         let vault = VirtualVault::new(total_shares, balance);
 
         // Attacker 1 share is worth amount 100 (captured by the vault)
-        let amount = vault.shares_to_amount(Uint128::new(1));
+        let amount = vault.shares_to_amount(Uint128::new(1)).unwrap();
         assert_eq!(amount, Uint128::new(100));
 
         // Normal user deposits 10,000 to get 99 shares
         let amount = Uint128::new(10_000);
-        let shares = vault.amount_to_shares(amount);
+        let shares = vault.amount_to_shares(amount).unwrap();
         assert_eq!(shares, Uint128::new(99));
 
         // Moves the vault.
@@ -160,11 +170,11 @@ mod tests {
         let vault = VirtualVault::new(total_shares, balance);
 
         // Attacker 1 share is worth 100 (captured by the vault)
-        let amount = vault.shares_to_amount(Uint128::new(1));
+        let amount = vault.shares_to_amount(Uint128::new(1)).unwrap();
         assert_eq!(amount, Uint128::new(100));
 
         // User 99 shares are worth 9,900 amounts (captured by the vault)
-        let amount = vault.shares_to_amount(Uint128::new(99));
+        let amount = vault.shares_to_amount(Uint128::new(99)).unwrap();
         assert_eq!(amount, Uint128::new(9990));
     }
 
@@ -180,12 +190,12 @@ mod tests {
         // Low amounts
         {
             let shares = Uint128::new(500);
-            let amount = vault.shares_to_amount(shares);
+            let amount = vault.shares_to_amount(shares).unwrap();
             // Amount: (500) * 2000 / 1001 = 999
             assert_eq!(amount, Uint128::new(999));
 
             let amount = Uint128::new(250);
-            let shares = vault.amount_to_shares(amount);
+            let shares = vault.amount_to_shares(amount).unwrap();
             // Shares: (250) * 1001 / 2000 = 125
             assert_eq!(shares, Uint128::new(125));
         }
@@ -193,12 +203,12 @@ mod tests {
         // High amounts
         {
             let shares = Uint128::new(10_000);
-            let amount = vault.shares_to_amount(shares);
+            let amount = vault.shares_to_amount(shares).unwrap();
             // Amount: (10000) * 2000 / 1001 = 19,980.01
             assert_eq!(amount, Uint128::new(19_980));
 
             let amount = Uint128::new(10_000_000);
-            let shares = vault.amount_to_shares(amount);
+            let shares = vault.amount_to_shares(amount).unwrap();
             // Shares: (10000000) * 1001 / 2000 = 5005000
             assert_eq!(shares, Uint128::new(5005000));
         }
@@ -216,17 +226,17 @@ mod tests {
         // Low amounts
         {
             let shares = Uint128::new(1000);
-            let amount = vault.shares_to_amount(shares);
+            let amount = vault.shares_to_amount(shares).unwrap();
             // Amount: (1000) * 2000 / 1002 = 1996
             assert_eq!(amount, Uint128::new(1996));
 
             let amount = Uint128::new(1);
-            let shares = vault.amount_to_shares(amount);
+            let shares = vault.amount_to_shares(amount).unwrap();
             // Shares: (1) * 1002 / 2000 = 0.501
             assert_eq!(shares, Uint128::new(0));
 
             let amount = Uint128::new(10);
-            let shares = vault.amount_to_shares(amount);
+            let shares = vault.amount_to_shares(amount).unwrap();
             // Shares: (10) * 1002 / 2000 = 5.01
             assert_eq!(shares, Uint128::new(5));
         }
@@ -234,12 +244,12 @@ mod tests {
         // High amounts
         {
             let shares = Uint128::new(100_444);
-            let amount = vault.shares_to_amount(shares);
+            let amount = vault.shares_to_amount(shares).unwrap();
             // Amount: (100,444) * 2000 / 1002 = 200,487.02
             assert_eq!(amount, Uint128::new(200_487));
 
             let amount = Uint128::new(10_000_000);
-            let shares = vault.amount_to_shares(amount);
+            let shares = vault.amount_to_shares(amount).unwrap();
             // Shares: (10000000) * 1002 / 2000 = 5,010,000
             assert_eq!(shares, Uint128::new(5_010_000));
         }
@@ -259,19 +269,19 @@ mod tests {
         // With 500 shares, they get 50,449
         // Amount: (500) * 101,000 / 1001 = 50,449.55
         let shares = Uint128::new(500);
-        let amount = vault.shares_to_amount(shares);
+        let amount = vault.shares_to_amount(shares).unwrap();
         assert_eq!(amount, Uint128::new(50_449));
 
         // With 1 share, they get 100
         // Amount: (1) * 101,000 / 1001 = 100.89
         let shares = Uint128::new(1);
-        let amount = vault.shares_to_amount(shares);
+        let amount = vault.shares_to_amount(shares).unwrap();
         assert_eq!(amount, Uint128::new(100));
 
         // With 10,000 shares, they get 1,000,000
         // Amount: (10,000) * 101,000 / 1001 = 1,008,991.00
         let shares = Uint128::new(10_000);
-        let amount = vault.shares_to_amount(shares);
+        let amount = vault.shares_to_amount(shares).unwrap();
         assert_eq!(amount, Uint128::new(1_008_991));
     }
 
@@ -289,23 +299,23 @@ mod tests {
         // With 1 amount, they get 0 share
         // (1) * 1001 / 101,000 = 0.0099
         let amount = Uint128::new(1);
-        let shares = vault.amount_to_shares(amount);
+        let shares = vault.amount_to_shares(amount).unwrap();
         assert_eq!(shares, Uint128::new(0));
 
         // (100) * 1001 / 101,000 = 0.9910
         let amount = Uint128::new(100);
-        let shares = vault.amount_to_shares(amount);
+        let shares = vault.amount_to_shares(amount).unwrap();
         assert_eq!(shares, Uint128::new(0));
 
         // (200) * 1001 / 101,000 = 1.98
         let amount = Uint128::new(200);
-        let shares = vault.amount_to_shares(amount);
+        let shares = vault.amount_to_shares(amount).unwrap();
         assert_eq!(shares, Uint128::new(1));
 
         // With 1000 amount (will at least get 1 no matter what)
         // (1000) * 1001 / 101,000 = 9.9009
         let amount = Uint128::new(1000);
-        let shares = vault.amount_to_shares(amount);
+        let shares = vault.amount_to_shares(amount).unwrap();
         assert_eq!(shares, Uint128::new(9));
     }
 
@@ -321,17 +331,17 @@ mod tests {
         // With 999, they get 0 shares
         // Amount: (999) * (1 + 1e3)/ (1e20 + 1e3) = 9.99999E-15
         let amount = Uint128::new(999);
-        let shares = vault.amount_to_shares(amount);
+        let shares = vault.amount_to_shares(amount).unwrap();
         assert_eq!(shares, Uint128::new(0));
 
         // Same for 1,000,000
         let amount = Uint128::new(1_000_000);
-        let shares = vault.amount_to_shares(amount);
+        let shares = vault.amount_to_shares(amount).unwrap();
         assert_eq!(shares, Uint128::new(0));
 
         // You will need at least 1e20 / 1e3 = 1e17 amount to get 1 share
         let amount = Uint128::new(1e17 as u128);
-        let shares = vault.amount_to_shares(amount);
+        let shares = vault.amount_to_shares(amount).unwrap();
         assert_eq!(shares, Uint128::new(1));
 
         // But the cost of attack is crazy.
@@ -344,7 +354,7 @@ mod tests {
 
             // That one share is only worth less than 1e17
             let shares = Uint128::new(1);
-            let amount = vault.shares_to_amount(shares);
+            let amount = vault.shares_to_amount(shares).unwrap();
             assert!(amount < Uint128::new(1e17 as u128));
         }
     }
