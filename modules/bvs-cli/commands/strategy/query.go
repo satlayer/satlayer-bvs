@@ -46,12 +46,3 @@ func IsStrategyWhitelisted(strategyAddress string) {
 	}
 	fmt.Printf("%s\n", resp.Data)
 }
-
-func GetStrategyWhitelist() {
-	s := NewService()
-	resp, err := s.Strategy.GetStrategyWhitelister()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("%s\n", resp.Data)
-}

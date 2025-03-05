@@ -45,7 +45,7 @@ func (s *DirectoryTestSuite) SetupSuite() {
 	// Setup DelegationManager,
 	// Setup StrategyManager,
 	// Add Operator to DelegationManager
-	strategyManager := deployer.DeployStrategyManager(registry.Address, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+	strategyManager := deployer.DeployStrategyManager(registry.Address)
 	delegationManager := deployer.DeployDelegationManager(registry.Address, 100, []string{tAddr}, []int64{50})
 
 	s.contrAddr = deployer.DeployDirectory(registry.Address).Address

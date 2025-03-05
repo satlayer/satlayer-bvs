@@ -24,14 +24,6 @@ func strategyCmd() *cobra.Command {
 		},
 	}
 
-	setStrategyWhitelistCmd := &cobra.Command{
-		Use:   "set-strategy-whitelist <userKeyName> <strategyWhitelist>",
-		Short: "To set the strategy whitelist.",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			strategy.SetStrategyWhitelist(args[0], args[1])
-		},
-	}
 	removeStrategyFromWhitelistCmd := &cobra.Command{
 		Use:   "remove-strategy-from-whitelist <userKeyName> <strategyAddress>",
 		Short: "To remove the strategy from whitelist.",
@@ -124,21 +116,11 @@ func strategyCmd() *cobra.Command {
 			strategy.IsStrategyWhitelisted(args[0])
 		},
 	}
-	getStrategyWhitelistCmd := &cobra.Command{
-		Use:   "get-strategy-whitelist",
-		Short: "To get the strategy whitelist.",
-		Args:  cobra.NoArgs,
-		Run: func(cmd *cobra.Command, args []string) {
-			strategy.GetStrategyWhitelist()
-		},
-	}
 
 	subCmd.AddCommand(transferOwnerCmd)
 	subCmd.AddCommand(removeStrategyFromWhitelistCmd)
-	subCmd.AddCommand(setStrategyWhitelistCmd)
 	subCmd.AddCommand(getStakerStrategyListCmd)
 	subCmd.AddCommand(isStrategyWhitelistedCmd)
-	subCmd.AddCommand(getStrategyWhitelistCmd)
 	subCmd.AddCommand(addStrategyToWhitelistCmd)
 	subCmd.AddCommand(depositStrategyCmd)
 	subCmd.AddCommand(removeSharesCmd)

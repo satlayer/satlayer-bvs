@@ -1,7 +1,6 @@
 use cosmwasm_std::{Addr, Uint128};
-use cw_storage_plus::{Item, Map};
+use cw_storage_plus::Map;
 
-pub const STRATEGY_WHITELISTER: Item<Addr> = Item::new("strategy_whitelister");
 pub const STRATEGY_IS_WHITELISTED_FOR_DEPOSIT: Map<&Addr, bool> = Map::new("strategy_whitelist");
 
 // DEPLOYED_STRATEGIES and IS_BLACKLISTED are previously handled by factory

@@ -72,12 +72,10 @@ func (d *Deployer) DeploySlashManager(
 
 func (d *Deployer) DeployStrategyManager(
 	registry string,
-	initialStrategyWhitelister string,
 ) *Contract[strategymanager.InstantiateMsg] {
 	initMsg := strategymanager.InstantiateMsg{
-		Owner:                      d.GenerateAddress("strategy-manager:initial_owner").String(),
-		Registry:                   registry,
-		InitialStrategyWhitelister: initialStrategyWhitelister,
+		Owner:    d.GenerateAddress("strategy-manager:initial_owner").String(),
+		Registry: registry,
 	}
 
 	return deployCrate(d, "bvs-strategy-manager", initMsg, "BVS Strategy Manager")

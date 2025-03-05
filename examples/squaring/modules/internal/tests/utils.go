@@ -166,7 +166,7 @@ func (suite *TestSuite) DeployBvsContracts() {
 	directoryContract := deployer.DeployDirectory(registry.Address)
 	suite.DirectoryApi = api.NewDirectory(suite.ChainIO, directoryContract.Address)
 
-	strategyManagerContract := deployer.DeployStrategyManager(registry.Address, tempAddress.String())
+	strategyManagerContract := deployer.DeployStrategyManager(registry.Address)
 	suite.StrategyManagerApi = api.NewStrategyManager(suite.ChainIO)
 	suite.StrategyManagerApi.BindClient(strategyManagerContract.Address)
 
