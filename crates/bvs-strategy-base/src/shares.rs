@@ -1,13 +1,12 @@
 use crate::token;
 use cosmwasm_std::{Deps, Env, StdError, StdResult, Storage, Uint128};
 use cw_storage_plus::Item;
-use std::ops::Div;
 
 /// The offset is used to mitigate the common 'share inflation' attack vector.
 /// See [https://docs.openzeppelin.com/contracts/4.x/erc4626#inflation-attack]
 /// This 1,000 offset will be used in exchange rate computation to reduce the impact of the attack.
 /// When the vault is empty, the virtual shares and virtual assets enforce the conversion rate 1000/1000.
-const OFFSET: Uint128 = Uint128::new(1e3 as u128);
+const OFFSET: Uint128 = Uint128::new(1000u128);
 
 /// The total shares of the contract held by all stakers.
 /// [`OFFSET`] value is not included in the total shares, only the real shares are counted.
@@ -28,6 +27,7 @@ pub fn set_total_shares(storage: &mut dyn Storage, total_shares: &Uint128) -> St
 /// A donation of 1e3 and under will be completely captured by the vault—without affecting the user.
 /// A donation greater than 1e3, the attacker will suffer loss greater than the user.
 /// [https://github.com/OpenZeppelin/openzeppelin-contracts/blob/fa995ef1fe66e1447783cb6038470aba23a6343f/contracts/token/ERC20/extensions/ERC4626.sol#L30-L37]
+#[derive(Debug)]
 pub struct VirtualVault {
     pub total_shares: Uint128,
     pub balance: Uint128,
@@ -359,6 +359,53 @@ mod tests {
             let shares = Uint128::new(1);
             let amount = vault.shares_to_amount(shares).unwrap();
             assert!(amount < Uint128::new(1e17 as u128));
+        }
+    }
+
+    #[test]
+    fn overflow() {
+        let almost_max = Uint128::new(u128::MAX - 500u128);
+
+        {
+            let error = VirtualVault::new(almost_max, almost_max).unwrap_err();
+            assert_eq!(
+                error.to_string(),
+                "Overflow: Cannot Add with given operands"
+            )
+        }
+
+        {
+            let max_div_1e10 = Uint128::new(u128::MAX / 1e10 as u128);
+            let vault = VirtualVault::new(max_div_1e10, max_div_1e10).unwrap();
+
+            vault.shares_to_amount(Uint128::new(1)).unwrap();
+            vault.amount_to_shares(Uint128::new(1)).unwrap();
+
+            vault.shares_to_amount(Uint128::new(1e9 as u128)).unwrap();
+            vault.amount_to_shares(Uint128::new(1e9 as u128)).unwrap();
+
+            vault
+                .shares_to_amount(Uint128::new((1e10 as u128) - 1))
+                .unwrap();
+            vault
+                .amount_to_shares(Uint128::new((1e10 as u128) - 1))
+                .unwrap();
+
+            let error = vault
+                .shares_to_amount(Uint128::new(1e10 as u128))
+                .unwrap_err();
+            assert_eq!(
+                error.to_string(),
+                "Overflow: Cannot Mul with given operands"
+            );
+
+            let error = vault
+                .amount_to_shares(Uint128::new(1e10 as u128))
+                .unwrap_err();
+            assert_eq!(
+                error.to_string(),
+                "Overflow: Cannot Mul with given operands"
+            );
         }
     }
 }

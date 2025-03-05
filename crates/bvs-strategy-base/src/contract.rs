@@ -523,6 +523,7 @@ mod tests {
     }
 
     // TODO: need more deposit/withdraw tests
+    // TODO: more test with overflow
 
     #[test]
     fn test_query_shares() {
@@ -686,6 +687,70 @@ mod tests {
         let SharesToUnderlyingResponse(amount) =
             query::shares_to_underlying(deps.as_ref(), &env, Uint128::new(4_892_516)).unwrap();
         assert_eq!(amount, Uint128::new(4_999_999));
+    }
+
+    #[test]
+    fn test_convert_overflow() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let strategy_manager = deps.api.addr_make("strategy_manager");
+        let token = deps.api.addr_make("token");
+
+        {
+            auth::set_strategy_manager(&mut deps.storage, &strategy_manager).unwrap();
+            token::set_cw20_token(&mut deps.storage, &token).unwrap();
+            shares::set_total_shares(&mut deps.storage, &Uint128::new(u128::MAX / 1e12 as u128))
+                .unwrap();
+
+            deps.querier.update_wasm(move |query| match query {
+                WasmQuery::Smart { msg, .. } => match from_json::<Cw20QueryMsg>(msg).unwrap() {
+                    Cw20QueryMsg::Balance { .. } => SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(&BalanceResponse {
+                            // Amount is 10% more than Shares.
+                            balance: Uint128::new(
+                                (u128::MAX / 1e12 as u128) + (u128::MAX / 1e13 as u128),
+                            ),
+                        })
+                        .unwrap(),
+                    )),
+                    _ => SystemResult::Err(SystemError::Unknown {}),
+                },
+                _ => SystemResult::Err(SystemError::Unknown {}),
+            });
+        }
+
+        {
+            // You get lesser shares cause the balance is higher (10% less)
+            let UnderlyingToSharesResponse(shares) =
+                query::underlying_to_shares(deps.as_ref(), &env, Uint128::new(1_123_000_000))
+                    .unwrap();
+            assert_eq!(shares, Uint128::new(1_020_909_090));
+
+            // You get a higher amount (10% more)
+            let SharesToUnderlyingResponse(amount) =
+                query::shares_to_underlying(deps.as_ref(), &env, Uint128::new(4_123_000_000))
+                    .unwrap();
+            assert_eq!(amount, Uint128::new(4_535_299_999));
+        }
+
+        {
+            // Overflow
+            let err = query::underlying_to_shares(deps.as_ref(), &env, Uint128::new(1e12 as u128))
+                .unwrap_err();
+            assert_eq!(err.to_string(), "Overflow: Cannot Mul with given operands");
+
+            let err = query::underlying_to_shares(deps.as_ref(), &env, Uint128::new(1e13 as u128))
+                .unwrap_err();
+            assert_eq!(err.to_string(), "Overflow: Cannot Mul with given operands");
+
+            let err = query::shares_to_underlying(deps.as_ref(), &env, Uint128::new(1e12 as u128))
+                .unwrap_err();
+            assert_eq!(err.to_string(), "Overflow: Cannot Mul with given operands");
+
+            let err = query::shares_to_underlying(deps.as_ref(), &env, Uint128::new(1e13 as u128))
+                .unwrap_err();
+            assert_eq!(err.to_string(), "Overflow: Cannot Mul with given operands");
+        }
     }
 
     #[test]
