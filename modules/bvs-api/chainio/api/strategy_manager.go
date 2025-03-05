@@ -88,16 +88,6 @@ func (r *StrategyManager) RemoveStrategiesFromWhitelist(ctx context.Context, str
 	return r.execute(ctx, msg)
 }
 
-func (r *StrategyManager) SetStrategyWhitelister(ctx context.Context, newStrategyWhitelister string) (*coretypes.ResultTx, error) {
-	msg := strategymanager.ExecuteMsg{
-		SetStrategyWhitelister: &strategymanager.SetStrategyWhitelister{
-			NewStrategyWhitelister: newStrategyWhitelister,
-		},
-	}
-
-	return r.execute(ctx, msg)
-}
-
 func (r *StrategyManager) DepositIntoStrategy(ctx context.Context, strategy string, token string, amount uint64) (*coretypes.ResultTx, error) {
 	msg := strategymanager.ExecuteMsg{
 		DepositIntoStrategy: &strategymanager.DepositIntoStrategy{
@@ -232,14 +222,6 @@ func (r *StrategyManager) IsStrategyWhitelisted(strategy string) (*wasmtypes.Que
 		IsStrategyWhitelisted: &strategymanager.IsStrategyWhitelisted{
 			Strategy: strategy,
 		},
-	}
-
-	return r.query(msg)
-}
-
-func (r *StrategyManager) GetStrategyWhitelister() (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := strategymanager.QueryMsg{
-		GetStrategyWhitelister: &strategymanager.GetStrategyWhitelister{},
 	}
 
 	return r.query(msg)

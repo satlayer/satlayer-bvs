@@ -34,6 +34,7 @@ func (suite *delegationTestSuite) SetupSuite() {
 	suite.container = container
 
 	// Fund Callers
+	container.ImportPrivKey("owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
 	container.FundAddressUbbn("bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x", 1e8)
 	container.FundAddressUbbn("bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv", 1e7)
@@ -65,9 +66,7 @@ func (suite *delegationTestSuite) SetupSuite() {
 	tAddr1 := container.GenerateAddress("test-address-1").String()
 	tAddr2 := container.GenerateAddress("test-address-2").String()
 
-	container.ImportPrivKey("delegation-manager:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
-
-	strategyManager := deployer.DeployStrategyManager(registry.Address, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+	strategyManager := deployer.DeployStrategyManager(registry.Address)
 	delegationManager := deployer.DeployDelegationManager(registry.Address, 100, []string{tAddr}, []int64{50})
 
 	suite.strategyManager = strategyManager.Address

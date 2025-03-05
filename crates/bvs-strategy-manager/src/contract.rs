@@ -7,11 +7,11 @@ use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
         DepositsResponse, StakerStrategyListLengthResponse, StakerStrategyListResponse,
-        StakerStrategySharesResponse, StrategyWhitelistedResponse, StrategyWhitelisterResponse,
+        StakerStrategySharesResponse, StrategyWhitelistedResponse,
     },
     state::{
         DEPLOYED_STRATEGIES, IS_BLACKLISTED, MAX_STAKER_STRATEGY_LIST_LENGTH, STAKER_STRATEGY_LIST,
-        STAKER_STRATEGY_SHARES, STRATEGY_IS_WHITELISTED_FOR_DEPOSIT, STRATEGY_WHITELISTER,
+        STAKER_STRATEGY_SHARES, STRATEGY_IS_WHITELISTED_FOR_DEPOSIT,
     },
 };
 use cosmwasm_std::{
@@ -50,17 +50,9 @@ pub fn instantiate(
     let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::set_owner(deps.storage, &owner)?;
 
-    let initial_strategy_whitelister = deps.api.addr_validate(&msg.initial_strategy_whitelister)?;
-
-    STRATEGY_WHITELISTER.save(deps.storage, &initial_strategy_whitelister)?;
-
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute(
-            "strategy_whitelister",
-            msg.initial_strategy_whitelister.to_string(),
-        )
-        .add_attribute("owner", msg.owner.to_string()))
+        .add_attribute("owner", msg.owner))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -92,14 +84,6 @@ pub fn execute(
         ExecuteMsg::RemoveStrategiesFromWhitelist { strategies } => {
             let strategies = bvs_library::addr::validate_addrs(deps.api, &strategies)?;
             remove_strategies_from_deposit_whitelist(deps, info, strategies)
-        }
-        ExecuteMsg::SetStrategyWhitelister {
-            new_strategy_whitelister,
-        } => {
-            let new_strategy_whitelister_addr =
-                deps.api.addr_validate(&new_strategy_whitelister)?;
-
-            set_strategy_whitelister(deps, info, new_strategy_whitelister_addr)
         }
         ExecuteMsg::DepositIntoStrategy {
             strategy,
@@ -164,7 +148,7 @@ pub fn add_strategies_to_deposit_whitelist(
     info: MessageInfo,
     strategies_to_whitelist: Vec<Addr>,
 ) -> Result<Response, ContractError> {
-    only_strategy_whitelister(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.storage, &info)?;
 
     let mut events = vec![];
 
@@ -195,7 +179,7 @@ pub fn remove_strategies_from_deposit_whitelist(
     info: MessageInfo,
     strategies: Vec<Addr>,
 ) -> Result<Response, ContractError> {
-    only_strategy_whitelister(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.storage, &info)?;
 
     let mut events = vec![];
 
@@ -215,27 +199,6 @@ pub fn remove_strategies_from_deposit_whitelist(
     }
 
     Ok(Response::new().add_events(events))
-}
-
-pub fn set_strategy_whitelister(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_strategy_whitelister: Addr,
-) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.storage, &info)?;
-
-    let strategy_whitelister = STRATEGY_WHITELISTER.load(deps.storage)?;
-
-    STRATEGY_WHITELISTER.save(deps.storage, &new_strategy_whitelister)?;
-
-    let event = Event::new("set_strategy_whitelister")
-        .add_attribute("old_strategy_whitelister", strategy_whitelister.to_string())
-        .add_attribute(
-            "new_strategy_whitelister",
-            new_strategy_whitelister.to_string(),
-        );
-
-    Ok(Response::new().add_event(event))
 }
 
 pub fn deposit_into_strategy(
@@ -347,7 +310,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
             to_json_binary(&query_is_strategy_whitelisted(deps, strategy_addr)?)
         }
-        QueryMsg::GetStrategyWhitelister {} => to_json_binary(&query_strategy_whitelister(deps)?),
     }
 }
 
@@ -397,11 +359,6 @@ fn query_is_strategy_whitelisted(
     Ok(StrategyWhitelistedResponse { is_whitelisted })
 }
 
-fn query_strategy_whitelister(deps: Deps) -> StdResult<StrategyWhitelisterResponse> {
-    let whitelister = STRATEGY_WHITELISTER.load(deps.storage)?;
-    Ok(StrategyWhitelisterResponse { whitelister })
-}
-
 fn query_get_deposits(deps: Deps, staker: Addr) -> StdResult<DepositsResponse> {
     let (strategies, shares) = get_deposits(deps, staker)?;
     Ok(DepositsResponse { strategies, shares })
@@ -413,15 +370,6 @@ fn query_staker_strategy_list_length(
 ) -> StdResult<StakerStrategyListLengthResponse> {
     let strategies_len = staker_strategy_list_length(deps, staker)?;
     Ok(StakerStrategyListLengthResponse { strategies_len })
-}
-
-fn only_strategy_whitelister(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
-    let whitelister: Addr = STRATEGY_WHITELISTER.load(deps.storage)?;
-
-    if info.sender != whitelister {
-        return Err(ContractError::Unauthorized {});
-    }
-    Ok(())
 }
 
 fn only_strategies_whitelisted_for_deposit(
@@ -663,7 +611,7 @@ pub fn blacklist_tokens(
     info: MessageInfo,
     tokens: Vec<Addr>,
 ) -> Result<Response, ContractError> {
-    only_strategy_whitelister(deps.as_ref(), &info)?;
+    ownership::assert_owner(deps.storage, &info)?;
 
     let mut strategies_to_remove: Vec<Addr> = Vec::new();
 
@@ -766,38 +714,26 @@ mod tests {
         let owner = deps.api.addr_make("owner");
         let registry = deps.api.addr_make("registry");
 
-        let strategy_whitelister = deps.api.addr_make("strategy_whitelister").to_string();
-
         let msg = InstantiateMsg {
             owner: owner.to_string(),
             registry: registry.to_string(),
-            initial_strategy_whitelister: strategy_whitelister.clone(),
         };
 
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
 
-        assert_eq!(res.attributes.len(), 3);
+        assert_eq!(res.attributes.len(), 2);
         assert_eq!(res.attributes[0].key, "method");
         assert_eq!(res.attributes[0].value, "instantiate");
-        assert_eq!(res.attributes[1].key, "strategy_whitelister");
-        assert_eq!(res.attributes[1].value, strategy_whitelister.clone());
-        assert_eq!(res.attributes[2].key, "owner");
-        assert_eq!(res.attributes[2].value, owner.as_str());
+        assert_eq!(res.attributes[1].key, "owner");
+        assert_eq!(res.attributes[1].value, owner.as_str());
 
         let owner = ownership::get_owner(&deps.storage).unwrap();
         assert_eq!(owner, owner.clone());
-
-        let strategy_whitelister = STRATEGY_WHITELISTER.load(&deps.storage).unwrap();
-        assert_eq!(
-            strategy_whitelister,
-            Addr::unchecked(strategy_whitelister.clone())
-        );
     }
 
     fn instantiate_contract() -> (
         OwnedDeps<MockStorage, MockApi, MockQuerier>,
         Env,
-        MessageInfo,
         MessageInfo,
         MessageInfo,
     ) {
@@ -808,15 +744,9 @@ mod tests {
         let registry = deps.api.addr_make("registry");
         let owner_info = message_info(&owner, &[]);
 
-        let strategy_whitelister = deps.api.addr_make("strategy_whitelister").to_string();
-
-        let strategy_whitelister_info =
-            message_info(&Addr::unchecked(strategy_whitelister.clone()), &[]);
-
         let msg = InstantiateMsg {
             owner: owner.to_string(),
             registry: registry.to_string(),
-            initial_strategy_whitelister: strategy_whitelister.clone(),
         };
 
         let delegation_manager = deps.api.addr_make("delegation_manager");
@@ -835,34 +765,12 @@ mod tests {
             env,
             owner_info,
             message_info(&delegation_manager, &[]),
-            strategy_whitelister_info,
         )
     }
 
     #[test]
-    fn test_only_strategy_whitelister() {
-        let (deps, _env, _owner_info, _info_delegation_manager, info_whitelister) =
-            instantiate_contract();
-
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-
-        let result = only_strategy_whitelister(deps.as_ref(), &info_whitelister);
-        assert!(result.is_ok());
-
-        let result = only_strategy_whitelister(deps.as_ref(), &info_unauthorized);
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-    }
-
-    #[test]
     fn test_add_new_strategy() {
-        let (mut deps, _env, _owner_info, _info_delegation_manager, _info_whitelister) =
-            instantiate_contract();
+        let (mut deps, _env, _owner_info, _info_delegation_manager) = instantiate_contract();
 
         let strategy = deps.api.addr_make("strategy");
         let token = deps.api.addr_make("token");
@@ -925,8 +833,7 @@ mod tests {
 
     #[test]
     fn test_blacklist_token() {
-        let (mut deps, _env, _owner_info, _info_delegation_manager, _info_whitelister) =
-            instantiate_contract();
+        let (mut deps, _env, owner_info, _info_delegation_manager) = instantiate_contract();
 
         let strategy = deps.api.addr_make("strategy");
         let token = deps.api.addr_make("token");
@@ -961,7 +868,7 @@ mod tests {
         let res = add_new_strategy(
             deps.as_mut(),
             mock_env(),
-            _owner_info.clone(),
+            owner_info.clone(),
             strategy.clone(),
             token.clone(),
         );
@@ -986,13 +893,8 @@ mod tests {
 
         assert!(!response.is_blacklisted);
 
-        let _ = blacklist_tokens(
-            deps.as_mut(),
-            mock_env(),
-            _info_whitelister,
-            vec![token.clone()],
-        )
-        .unwrap();
+        let _ =
+            blacklist_tokens(deps.as_mut(), mock_env(), owner_info, vec![token.clone()]).unwrap();
 
         let query_msg = QueryMsg::IsTokenBlacklisted {
             token: token.to_string(),
@@ -1006,8 +908,7 @@ mod tests {
 
     #[test]
     fn test_only_strategies_whitelisted_for_deposit() {
-        let (mut deps, _env, _owner_info, _info_delegation_manager, _info_whitelister) =
-            instantiate_contract();
+        let (mut deps, _env, _owner_info, _info_delegation_manager) = instantiate_contract();
 
         let strategy = Addr::unchecked("strategy");
         STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
@@ -1031,8 +932,7 @@ mod tests {
 
     #[test]
     fn test_add_strategies_to_deposit_whitelist() {
-        let (mut deps, _env, _owner_info, _info_delegation_manager, info_whitelister) =
-            instantiate_contract();
+        let (mut deps, _env, owner_info, _info_delegation_manager) = instantiate_contract();
 
         let strat1 = deps.api.addr_make("strategy1");
         let strat2 = deps.api.addr_make("strategy2");
@@ -1041,7 +941,7 @@ mod tests {
 
         let res = add_strategies_to_deposit_whitelist(
             deps.as_mut(),
-            info_whitelister.clone(),
+            owner_info.clone(),
             strategies.clone(),
         )
         .unwrap();
@@ -1072,19 +972,15 @@ mod tests {
         );
 
         assert!(result.is_err());
-
-        if let Err(err) = result {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
+        assert_eq!(
+            result.unwrap_err(),
+            ContractError::Ownership(OwnershipError::Unauthorized {})
+        );
     }
 
     #[test]
     fn test_remove_strategies_from_deposit_whitelist() {
-        let (mut deps, _env, _owner_info, _info_delegation_manager, info_whitelister) =
-            instantiate_contract();
+        let (mut deps, _env, owner_info, _info_delegation_manager) = instantiate_contract();
 
         let strategies = vec![
             deps.api.addr_make("strategy1"),
@@ -1093,14 +989,14 @@ mod tests {
 
         let _res = add_strategies_to_deposit_whitelist(
             deps.as_mut(),
-            info_whitelister.clone(),
+            owner_info.clone(),
             strategies.clone(),
         )
         .unwrap();
 
         let res = remove_strategies_from_deposit_whitelist(
             deps.as_mut(),
-            info_whitelister.clone(),
+            owner_info.clone(),
             strategies.clone(),
         )
         .unwrap();
@@ -1123,56 +1019,15 @@ mod tests {
             strategies.clone(),
         );
         assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-    }
-
-    #[test]
-    fn test_set_strategy_whitelister() {
-        let (mut deps, _env, owner_info, _info_delegation_manager, _info_whitelister) =
-            instantiate_contract();
-
-        let old_whitelister = STRATEGY_WHITELISTER.load(&deps.storage).unwrap();
-        let new_whitelister = Addr::unchecked("new_whitelister");
-
-        let res =
-            set_strategy_whitelister(deps.as_mut(), owner_info.clone(), new_whitelister.clone())
-                .unwrap();
-
-        let events = res.events;
-        assert_eq!(events.len(), 1);
-        let event = &events[0];
-        assert_eq!(event.ty, "set_strategy_whitelister");
-        assert_eq!(event.attributes.len(), 2);
-        assert_eq!(event.attributes[0].key, "old_strategy_whitelister");
-        assert_eq!(event.attributes[0].value, old_whitelister.to_string());
-        assert_eq!(event.attributes[1].key, "new_strategy_whitelister");
-        assert_eq!(event.attributes[1].value, new_whitelister.to_string());
-
-        let stored_whitelister = STRATEGY_WHITELISTER.load(&deps.storage).unwrap();
-        assert_eq!(stored_whitelister, new_whitelister);
-
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-
-        let result = set_strategy_whitelister(
-            deps.as_mut(),
-            info_unauthorized.clone(),
-            Addr::unchecked("another_whitelister"),
-        );
         assert_eq!(
-            result.unwrap_err().to_string(),
-            ContractError::Ownership(OwnershipError::Unauthorized).to_string()
+            result.unwrap_err(),
+            ContractError::Ownership(OwnershipError::Unauthorized {})
         );
     }
 
     #[test]
     fn test_deposit_into_strategy() {
-        let (mut deps, _env, _owner_info, info_delegation_manager, info_whitelister) =
-            instantiate_contract();
+        let (mut deps, _env, owner_info, info_delegation_manager) = instantiate_contract();
 
         let strategy = deps.api.addr_make("strategy1");
         let token = deps.api.addr_make("token");
@@ -1180,7 +1035,7 @@ mod tests {
 
         let _res = add_strategies_to_deposit_whitelist(
             deps.as_mut(),
-            info_whitelister.clone(),
+            owner_info.clone(),
             vec![strategy.clone()],
         )
         .unwrap();
@@ -1267,8 +1122,7 @@ mod tests {
 
     #[test]
     fn test_get_deposits() {
-        let (mut deps, env, _owner_info, _info_delegation_manager, _info_whitelister) =
-            instantiate_contract();
+        let (mut deps, env, _owner_info, _info_delegation_manager) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
         let strategy1 = deps.api.addr_make("strategy1");
@@ -1315,8 +1169,7 @@ mod tests {
 
     #[test]
     fn test_staker_strategy_list_length() {
-        let (mut deps, env, _owner_info, _info_delegation_manager, _info_whitelister) =
-            instantiate_contract();
+        let (mut deps, env, _owner_info, _info_delegation_manager) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
         let strategy1 = deps.api.addr_make("strategy1");
@@ -1355,10 +1208,8 @@ mod tests {
 
     #[test]
     fn test_add_shares_internal() {
-        let (mut deps, _env, _owner_info, info_delegation_manager, _info_whitelister) =
-            instantiate_contract();
+        let (mut deps, _env, _owner_info, info_delegation_manager) = instantiate_contract();
 
-        let token = Addr::unchecked("token");
         let staker = Addr::unchecked("staker");
         let strategy = Addr::unchecked("strategy");
         let shares = Uint128::new(100);
@@ -1455,10 +1306,8 @@ mod tests {
 
     #[test]
     fn test_add_shares() {
-        let (mut deps, _env, _owner_info, info_delegation_manager, _info_whitelister) =
-            instantiate_contract();
+        let (mut deps, _env, _owner_info, info_delegation_manager) = instantiate_contract();
 
-        let token = deps.api.addr_make("token");
         let staker = deps.api.addr_make("staker");
         let strategy = deps.api.addr_make("strategy");
         let shares = Uint128::new(100);
@@ -1588,8 +1437,7 @@ mod tests {
 
     #[test]
     fn test_remove_shares() {
-        let (mut deps, _env, _owner_info, info_delegation_manager, _info_whitelister) =
-            instantiate_contract();
+        let (mut deps, _env, _owner_info, info_delegation_manager) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker");
         let strategy1 = deps.api.addr_make("strategy1");
@@ -1694,8 +1542,7 @@ mod tests {
 
     #[test]
     fn test_remove_shares_internal() {
-        let (mut deps, _env, _owner_info, _info_delegation_manager, _info_whitelister) =
-            instantiate_contract();
+        let (mut deps, _env, _owner_info, _info_delegation_manager) = instantiate_contract();
 
         let staker = Addr::unchecked("staker1");
         let strategy1 = Addr::unchecked("strategy1");
@@ -1778,8 +1625,7 @@ mod tests {
 
     #[test]
     fn test_get_staker_strategy_list() {
-        let (mut deps, env, _owner_info, _info_delegation_manager, _info_whitelister) =
-            instantiate_contract();
+        let (mut deps, env, _owner_info, _info_delegation_manager) = instantiate_contract();
 
         let staker = deps.api.addr_make("staker1");
 
@@ -1810,8 +1656,7 @@ mod tests {
 
     #[test]
     fn test_is_strategy_whitelisted() {
-        let (mut deps, _env, _owner_info, _info_delegation_manager, _info_whitelister) =
-            instantiate_contract();
+        let (mut deps, _env, _owner_info, _info_delegation_manager) = instantiate_contract();
 
         let strategy = deps.api.addr_make("strategy1");
 
@@ -1830,18 +1675,8 @@ mod tests {
     }
 
     #[test]
-    fn test_get_strategy_whitelister() {
-        let (deps, _env, _owner_info, _info_delegation_manager, info_whitelister) =
-            instantiate_contract();
-
-        let response = query_strategy_whitelister(deps.as_ref()).unwrap();
-        assert_eq!(response.whitelister, info_whitelister.sender);
-    }
-
-    #[test]
     fn test_get_staker_strategy_shares() {
-        let (mut deps, _env, _owner_info, _info_delegation_manager, _info_whitelister) =
-            instantiate_contract();
+        let (mut deps, _env, _owner_info, _info_delegation_manager) = instantiate_contract();
 
         let staker = Addr::unchecked("staker1");
         let strategy = deps.api.addr_make("strategy");

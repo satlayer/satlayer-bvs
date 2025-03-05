@@ -26,17 +26,17 @@ type DirectoryTestSuite struct {
 
 func (s *DirectoryTestSuite) SetupSuite() {
 	container := babylond.Run(context.Background())
-	s.chainIO = container.NewChainIO("../.babylon")
-	s.container = container
 
 	// Import And Fund Caller
-	container.ImportPrivKey("directory:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
-	container.ImportPrivKey("delegation-manager:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
-	container.ImportPrivKey("directory:initial_owner:replaced", "4D895710FBC2F9B50239FEFBD0747CED0A1C10AEBEEAA21044BAF36244888D2B")
+	container.ImportPrivKey("owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
+	container.ImportPrivKey("owner:replaced", "4D895710FBC2F9B50239FEFBD0747CED0A1C10AEBEEAA21044BAF36244888D2B")
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
 	container.FundAddressUbbn("bbn1yh5vdtu8n55f2e4fjea8gh0dw9gkzv7uxt8jrv", 1e7)
 	container.FundAddressUbbn("bbn1rt6v30zxvhtwet040xpdnhz4pqt8p2za7y430x", 1e8)
 	container.FundAddressUbbn("bbn1fd9kt5nmzd6jxwecemuad4pyg3hhefd8hxuhnz", 1e8)
+
+	s.chainIO = container.NewChainIO("../.babylon")
+	s.container = container
 
 	tAddr := container.GenerateAddress("test-address").String()
 	deployer := &bvs.Deployer{BabylonContainer: container}
@@ -45,7 +45,7 @@ func (s *DirectoryTestSuite) SetupSuite() {
 	// Setup DelegationManager,
 	// Setup StrategyManager,
 	// Add Operator to DelegationManager
-	strategyManager := deployer.DeployStrategyManager(registry.Address, "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf")
+	strategyManager := deployer.DeployStrategyManager(registry.Address)
 	delegationManager := deployer.DeployDelegationManager(registry.Address, 100, []string{tAddr}, []int64{50})
 
 	s.contrAddr = deployer.DeployDirectory(registry.Address).Address

@@ -27,12 +27,13 @@ type slashManagerTestSuite struct {
 
 func (suite *slashManagerTestSuite) SetupSuite() {
 	container := babylond.Run(context.Background())
-	suite.container = container
-	suite.chainIO = container.NewChainIO("../.babylon")
 
 	// Import And Fund Caller
-	container.ImportPrivKey("slash-manager:initial_owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
+	container.ImportPrivKey("owner", "E5DBC50CB04311A2A5C3C0E0258D396E962F64C6C2F758458FFB677D7F0C0E94")
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
+
+	suite.container = container
+	suite.chainIO = container.NewChainIO("../.babylon")
 
 	tAddr := container.GenerateAddress("test-address").String()
 	deployer := &bvs.Deployer{BabylonContainer: container}

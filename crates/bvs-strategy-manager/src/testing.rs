@@ -25,7 +25,6 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for StrategyManagerCo
         InstantiateMsg {
             owner: owner.to_string(),
             registry: registry.to_string(),
-            initial_strategy_whitelister: owner.to_string(),
         }
     }
 

@@ -28,11 +28,6 @@ pub struct StrategyWhitelistedResponse {
 }
 
 #[cw_serde]
-pub struct StrategyWhitelisterResponse {
-    pub whitelister: Addr,
-}
-
-#[cw_serde]
 pub struct TokenStrategyResponse {
     pub strategy: Addr,
 }

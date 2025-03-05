@@ -65,12 +65,7 @@ func (suite *TestSuite) SetupSuite(keyDir string, keyName string, privKey string
 
 	suite.Babylond = container
 
-	suite.Babylond.ImportPrivKey("slash-manager:initial_owner", privKey)
-	suite.Babylond.ImportPrivKey("strategy-manager:initial_owner", privKey)
-	suite.Babylond.ImportPrivKey("delegation-manager:initial_owner", privKey)
-	suite.Babylond.ImportPrivKey("directory:initial_owner", privKey)
-	suite.Babylond.ImportPrivKey("rewards-coordinator:initial_owner", privKey)
-	suite.Babylond.ImportPrivKey("strategy-base:initial_owner", privKey)
+	suite.Babylond.ImportPrivKey("owner", privKey)
 
 	// fund wallets
 	suite.Babylond.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
@@ -166,7 +161,7 @@ func (suite *TestSuite) DeployBvsContracts() {
 	directoryContract := deployer.DeployDirectory(registry.Address)
 	suite.DirectoryApi = api.NewDirectory(suite.ChainIO, directoryContract.Address)
 
-	strategyManagerContract := deployer.DeployStrategyManager(registry.Address, tempAddress.String())
+	strategyManagerContract := deployer.DeployStrategyManager(registry.Address)
 	suite.StrategyManagerApi = api.NewStrategyManager(suite.ChainIO)
 	suite.StrategyManagerApi.BindClient(strategyManagerContract.Address)
 
