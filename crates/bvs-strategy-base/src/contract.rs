@@ -75,7 +75,7 @@ pub fn execute(
 
 pub mod execute {
     use crate::{auth, shares, token, ContractError};
-    use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Response, Uint128};
+    use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Response, StdError, Uint128};
 
     /// Deposit tokens into the strategy.
     /// Token with a fees-on-transfer model is not supported and will break the exchange rate.
@@ -98,7 +98,9 @@ pub mod execute {
         }
 
         let mut total_shares = virtual_share.total_shares;
-        total_shares += new_shares;
+        total_shares = total_shares
+            .checked_add(new_shares)
+            .map_err(StdError::from)?;
         shares::set_total_shares(deps.storage, &total_shares)?;
 
         // TODO(fuxingloh): sub_messages
@@ -147,7 +149,7 @@ pub mod execute {
             ));
         }
 
-        total_shares -= shares;
+        total_shares = total_shares.checked_sub(shares).map_err(StdError::from)?;
         shares::set_total_shares(deps.storage, &total_shares)?;
 
         // Setup transfer to recipient
