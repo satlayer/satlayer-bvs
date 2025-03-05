@@ -18,9 +18,9 @@
   "prettier": "@packages/config-prettier",
   "dependencies": {
     "@tailwindcss/postcss": "^4.0.9",
-    "next": "^15.2.0",
-    "nextra": "^4.2.13",
-    "nextra-theme-docs": "^4.2.13",
+    "next": "^15.2.1",
+    "nextra": "^4.2.14",
+    "nextra-theme-docs": "^4.2.14",
     "postcss": "^8.5.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -32,6 +32,6 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.2.0"
+    "eslint-config-next": "15.2.1"
   }
 }
