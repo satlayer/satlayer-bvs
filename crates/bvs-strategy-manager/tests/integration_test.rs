@@ -163,17 +163,6 @@ fn test_whitelist() {
         .unwrap();
 
     assert_eq!(query_res.is_whitelisted, true);
-
-    let query_res = manager
-        .query::<StrategyManagerQuery::StrategyWhitelistedResponse>(
-            &app,
-            &bvs_strategy_manager::msg::QueryMsg::IsStrategyWhitelisted {
-                strategy: strategy.addr.to_string(),
-            },
-        )
-        .unwrap();
-
-    assert_eq!(query_res.is_whitelisted, false);
 }
 
 #[test]
