@@ -41,8 +41,6 @@ pub fn instantiate(
     // Query the underlying token to ensure the token has TokenInfo entry_point
     token::get_token_info(&deps.as_ref())?;
 
-    shares::set_total_shares(deps.storage, &Uint128::zero())?;
-
     Ok(Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("strategy_manager", strategy_manager)
@@ -75,7 +73,7 @@ pub fn execute(
 
 pub mod execute {
     use crate::{auth, shares, token, ContractError};
-    use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Response, StdError, Uint128};
+    use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Response, Uint128};
 
     /// Deposit tokens into the strategy.
     /// Token with a fees-on-transfer model is not supported and will break the exchange rate.
@@ -90,18 +88,14 @@ pub mod execute {
     ) -> Result<Response, ContractError> {
         auth::assert_strategy_manager(deps.storage, &info)?;
 
-        let vault = shares::VirtualVault::load(&deps.as_ref(), &env)?;
+        let mut vault = shares::VirtualVault::load(&deps.as_ref(), &env)?;
         let new_shares = vault.amount_to_shares(amount)?;
 
         if new_shares.is_zero() {
             return Err(ContractError::zero("New shares cannot be zero."));
         }
 
-        let mut total_shares = vault.total_shares;
-        total_shares = total_shares
-            .checked_add(new_shares)
-            .map_err(StdError::from)?;
-        shares::set_total_shares(deps.storage, &total_shares)?;
+        vault.add_total_shares(deps.storage, new_shares.clone())?;
 
         // TODO(fuxingloh): sub_messages
         // let transfer_from_msg = token::new_transfer_from(
@@ -116,7 +110,7 @@ pub mod execute {
                 // TODO(fuxingloh): add owner
                 .add_attribute("amount", amount.to_string())
                 .add_attribute("shares", new_shares.to_string())
-                .add_attribute("total_shares", total_shares.to_string()),
+                .add_attribute("total_shares", vault.total_shares().to_string()),
         ))
     }
 
@@ -129,10 +123,9 @@ pub mod execute {
     ) -> Result<Response, ContractError> {
         auth::assert_strategy_manager(deps.storage, &info)?;
 
-        let vault = shares::VirtualVault::load(&deps.as_ref(), &env)?;
+        let mut vault = shares::VirtualVault::load(&deps.as_ref(), &env)?;
 
-        let mut total_shares = vault.total_shares;
-        if shares > total_shares {
+        if shares > vault.total_shares() {
             return Err(ContractError::insufficient(
                 "Insufficient shares to withdraw.",
             ));
@@ -143,14 +136,13 @@ pub mod execute {
             return Err(ContractError::zero("Amount cannot be zero."));
         }
 
-        if amount > vault.balance {
+        if amount > vault.balance() {
             return Err(ContractError::insufficient(
                 "Insufficient balance to withdraw.",
             ));
         }
 
-        total_shares = total_shares.checked_sub(shares).map_err(StdError::from)?;
-        shares::set_total_shares(deps.storage, &total_shares)?;
+        vault.sub_total_shares(deps.storage, shares)?;
 
         // Setup transfer to recipient
         let transfer_msg = token::new_transfer(deps.storage, &recipient, amount)?;
@@ -161,7 +153,7 @@ pub mod execute {
                     .add_attribute("recipient", recipient.to_string())
                     .add_attribute("amount", amount.to_string())
                     .add_attribute("shares", shares.to_string())
-                    .add_attribute("total_shares", total_shares.to_string()),
+                    .add_attribute("total_shares", vault.total_shares().to_string()),
             )
             .add_message(transfer_msg))
     }
@@ -186,7 +178,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::StrategyManager {} => to_json_binary(&query::strategy_manager(deps)?),
         QueryMsg::UnderlyingToken {} => to_json_binary(&query::underlying_token(deps)?),
-        QueryMsg::TotalShares {} => to_json_binary(&query::total_shares(deps)?),
+        QueryMsg::TotalShares {} => to_json_binary(&query::total_shares(deps, &env)?),
     }
 }
 
@@ -266,9 +258,9 @@ pub mod query {
     }
 
     /// Returns the total shares in the strategy.
-    pub fn total_shares(deps: Deps) -> StdResult<TotalSharesResponse> {
-        let shares = shares::get_total_shares(deps.storage)?;
-        Ok(TotalSharesResponse(shares))
+    pub fn total_shares(deps: Deps, env: &Env) -> StdResult<TotalSharesResponse> {
+        let vault = shares::VirtualVault::load(&deps, env)?;
+        Ok(TotalSharesResponse(vault.total_shares()))
     }
 }
 
@@ -337,7 +329,6 @@ mod tests {
         {
             auth::set_strategy_manager(&mut deps.storage, &strategy_manager).unwrap();
             token::set_cw20_token(&mut deps.storage, &token).unwrap();
-            shares::set_total_shares(&mut deps.storage, &Uint128::zero()).unwrap();
 
             deps.querier.update_wasm(move |query| match query {
                 WasmQuery::Smart { msg, .. } => match from_json::<Cw20QueryMsg>(msg).unwrap() {
@@ -366,8 +357,8 @@ mod tests {
             )
         );
 
-        let total_shares = shares::get_total_shares(&mut deps.storage).unwrap();
-        assert_eq!(total_shares, Uint128::new(10_000));
+        let vault = shares::VirtualVault::load(&deps.as_ref(), &env).unwrap();
+        assert_eq!(vault.total_shares(), Uint128::new(10_000));
     }
 
     #[test]
@@ -381,7 +372,6 @@ mod tests {
         {
             auth::set_strategy_manager(&mut deps.storage, &strategy_manager).unwrap();
             token::set_cw20_token(&mut deps.storage, &token).unwrap();
-            shares::set_total_shares(&mut deps.storage, &Uint128::new(1)).unwrap();
 
             deps.querier.update_wasm(move |query| match query {
                 WasmQuery::Smart { msg, .. } => match from_json::<Cw20QueryMsg>(msg).unwrap() {
@@ -395,6 +385,11 @@ mod tests {
                 },
                 _ => SystemResult::Err(SystemError::Unknown {}),
             });
+
+            let mut vault = shares::VirtualVault::load(&deps.as_ref(), &env).unwrap();
+            vault
+                .add_total_shares(&mut deps.storage, Uint128::new(1))
+                .unwrap();
         }
 
         let amount = Uint128::new(5_912);
@@ -410,8 +405,8 @@ mod tests {
             )
         );
 
-        let total_shares = shares::get_total_shares(&mut deps.storage).unwrap();
-        assert_eq!(total_shares, Uint128::new(59));
+        let vault = shares::VirtualVault::load(&deps.as_ref(), &env).unwrap();
+        assert_eq!(vault.total_shares(), Uint128::new(59));
     }
 
     #[test]
@@ -425,7 +420,6 @@ mod tests {
         {
             auth::set_strategy_manager(&mut deps.storage, &strategy_manager).unwrap();
             token::set_cw20_token(&mut deps.storage, &token).unwrap();
-            shares::set_total_shares(&mut deps.storage, &Uint128::new(100)).unwrap();
 
             deps.querier.update_wasm(move |query| match query {
                 WasmQuery::Smart { msg, .. } => match from_json::<Cw20QueryMsg>(msg).unwrap() {
@@ -439,6 +433,11 @@ mod tests {
                 },
                 _ => SystemResult::Err(SystemError::Unknown {}),
             });
+
+            let mut vault = shares::VirtualVault::load(&deps.as_ref(), &env).unwrap();
+            vault
+                .add_total_shares(&mut deps.storage, Uint128::new(100))
+                .unwrap();
         }
 
         let amount = Uint128::new(9631);
@@ -454,8 +453,8 @@ mod tests {
             )
         );
 
-        let total_shares = shares::get_total_shares(&mut deps.storage).unwrap();
-        assert_eq!(total_shares, Uint128::new(8928));
+        let vault = shares::VirtualVault::load(&deps.as_ref(), &env).unwrap();
+        assert_eq!(vault.total_shares(), Uint128::new(8928));
     }
 
     #[test]
@@ -469,7 +468,6 @@ mod tests {
         {
             auth::set_strategy_manager(&mut deps.storage, &strategy_manager).unwrap();
             token::set_cw20_token(&mut deps.storage, &token).unwrap();
-            shares::set_total_shares(&mut deps.storage, &Uint128::new(10_000)).unwrap();
 
             deps.querier.update_wasm(move |query| match query {
                 WasmQuery::Smart { msg, .. } => match from_json::<Cw20QueryMsg>(msg).unwrap() {
@@ -483,6 +481,11 @@ mod tests {
                 },
                 _ => SystemResult::Err(SystemError::Unknown {}),
             });
+
+            let mut vault = shares::VirtualVault::load(&deps.as_ref(), &env).unwrap();
+            vault
+                .add_total_shares(&mut deps.storage, Uint128::new(10_000))
+                .unwrap();
         }
 
         let amount = Uint128::new(10_000);
@@ -502,7 +505,7 @@ mod tests {
             Response::new()
                 .add_event(
                     Event::new("Withdraw")
-                        .add_attribute("recipient", "10000")
+                        .add_attribute("recipient", recipient.to_string())
                         .add_attribute("amount", "10000")
                         .add_attribute("shares", "10000")
                         .add_attribute("total_shares", "0")
@@ -518,8 +521,8 @@ mod tests {
                 })
         );
 
-        let total_shares = shares::get_total_shares(&mut deps.storage).unwrap();
-        assert_eq!(total_shares, Uint128::new(0));
+        let vault = shares::VirtualVault::load(&deps.as_ref(), &env).unwrap();
+        assert_eq!(vault.total_shares(), Uint128::new(0));
     }
 
     // TODO: need more deposit/withdraw tests
@@ -571,7 +574,6 @@ mod tests {
         {
             auth::set_strategy_manager(&mut deps.storage, &strategy_manager).unwrap();
             token::set_cw20_token(&mut deps.storage, &token).unwrap();
-            shares::set_total_shares(&mut deps.storage, &Uint128::new(10_000)).unwrap();
 
             deps.querier.update_wasm(move |query| match query {
                 WasmQuery::Smart {
@@ -605,6 +607,11 @@ mod tests {
                 }
                 _ => SystemResult::Err(SystemError::Unknown {}),
             });
+
+            let mut vault = shares::VirtualVault::load(&deps.as_ref(), &env).unwrap();
+            vault
+                .add_total_shares(&mut deps.storage, Uint128::new(10_000))
+                .unwrap();
         }
 
         let staker = deps.api.addr_make("staker");
@@ -626,7 +633,6 @@ mod tests {
         {
             auth::set_strategy_manager(&mut deps.storage, &strategy_manager).unwrap();
             token::set_cw20_token(&mut deps.storage, &token).unwrap();
-            shares::set_total_shares(&mut deps.storage, &Uint128::new(10_000)).unwrap();
 
             deps.querier.update_wasm(move |query| match query {
                 WasmQuery::Smart { msg, .. } => match from_json::<Cw20QueryMsg>(msg).unwrap() {
@@ -640,6 +646,11 @@ mod tests {
                 },
                 _ => SystemResult::Err(SystemError::Unknown {}),
             });
+
+            let mut vault = shares::VirtualVault::load(&deps.as_ref(), &env).unwrap();
+            vault
+                .add_total_shares(&mut deps.storage, Uint128::new(10_000))
+                .unwrap();
         }
 
         let SharesToUnderlyingResponse(amount) =
@@ -659,8 +670,6 @@ mod tests {
         {
             auth::set_strategy_manager(&mut deps.storage, &strategy_manager).unwrap();
             token::set_cw20_token(&mut deps.storage, &token).unwrap();
-            shares::set_total_shares(&mut deps.storage, &Uint128::new(782_367_326_939_736))
-                .unwrap();
 
             deps.querier.update_wasm(move |query| match query {
                 WasmQuery::Smart { msg, .. } => match from_json::<Cw20QueryMsg>(msg).unwrap() {
@@ -674,6 +683,11 @@ mod tests {
                 },
                 _ => SystemResult::Err(SystemError::Unknown {}),
             });
+
+            let mut vault = shares::VirtualVault::load(&deps.as_ref(), &env).unwrap();
+            vault
+                .add_total_shares(&mut deps.storage, Uint128::new(782_367_326_939_736))
+                .unwrap();
         }
 
         // (Total Shares + Offset) / (Balance + Offset) * Amount
@@ -699,8 +713,6 @@ mod tests {
         {
             auth::set_strategy_manager(&mut deps.storage, &strategy_manager).unwrap();
             token::set_cw20_token(&mut deps.storage, &token).unwrap();
-            shares::set_total_shares(&mut deps.storage, &Uint128::new(u128::MAX / 1e12 as u128))
-                .unwrap();
 
             deps.querier.update_wasm(move |query| match query {
                 WasmQuery::Smart { msg, .. } => match from_json::<Cw20QueryMsg>(msg).unwrap() {
@@ -717,6 +729,11 @@ mod tests {
                 },
                 _ => SystemResult::Err(SystemError::Unknown {}),
             });
+
+            let mut vault = shares::VirtualVault::load(&deps.as_ref(), &env).unwrap();
+            vault
+                .add_total_shares(&mut deps.storage, Uint128::new(u128::MAX / 1e12 as u128))
+                .unwrap();
         }
 
         {
@@ -778,10 +795,35 @@ mod tests {
     #[test]
     fn test_total_shares() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
+        let strategy_manager = deps.api.addr_make("strategy_manager");
+        let token = deps.api.addr_make("token");
 
-        shares::set_total_shares(&mut deps.storage, &Uint128::new(10_000)).unwrap();
+        {
+            auth::set_strategy_manager(&mut deps.storage, &strategy_manager).unwrap();
+            token::set_cw20_token(&mut deps.storage, &token).unwrap();
 
-        let TotalSharesResponse(shares) = query::total_shares(deps.as_ref()).unwrap();
-        assert_eq!(shares, Uint128::new(10_000));
+            deps.querier.update_wasm(move |query| match query {
+                WasmQuery::Smart { msg, .. } => match from_json::<Cw20QueryMsg>(msg).unwrap() {
+                    Cw20QueryMsg::Balance { .. } => SystemResult::Ok(ContractResult::Ok(
+                        to_json_binary(&BalanceResponse {
+                            // Amount is 10% more than Shares.
+                            balance: Uint128::new(5_855_555),
+                        })
+                        .unwrap(),
+                    )),
+                    _ => SystemResult::Err(SystemError::Unknown {}),
+                },
+                _ => SystemResult::Err(SystemError::Unknown {}),
+            });
+
+            let mut vault = shares::VirtualVault::load(&deps.as_ref(), &env).unwrap();
+            vault
+                .add_total_shares(&mut deps.storage, Uint128::new(5_842_435))
+                .unwrap();
+        }
+
+        let TotalSharesResponse(shares) = query::total_shares(deps.as_ref(), &env).unwrap();
+        assert_eq!(shares, Uint128::new(5_842_435));
     }
 }

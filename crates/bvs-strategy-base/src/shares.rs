@@ -12,16 +12,6 @@ const OFFSET: Uint128 = Uint128::new(1000u128);
 /// [`OFFSET`] value is not included in the total shares, only the real shares are counted.
 const TOTAL_SHARES: Item<Uint128> = Item::new("total_shares");
 
-/// Get the total shares of the contract
-pub fn get_total_shares(storage: &dyn Storage) -> StdResult<Uint128> {
-    TOTAL_SHARES.load(storage)
-}
-
-/// Set the total shares of the contract
-pub fn set_total_shares(storage: &mut dyn Storage, total_shares: &Uint128) -> StdResult<()> {
-    TOTAL_SHARES.save(storage, total_shares)
-}
-
 /// Follows the OpenZeppelin's ERC4626 mitigation strategy for inflation attack.
 /// Using a "virtual" offset to +1e3 to both total shares and balance representing the virtual total shares and virtual balance.
 /// A donation of 1e3 and under will be completely captured by the vault—without affecting the user.
@@ -29,8 +19,8 @@ pub fn set_total_shares(storage: &mut dyn Storage, total_shares: &Uint128) -> St
 /// [https://github.com/OpenZeppelin/openzeppelin-contracts/blob/fa995ef1fe66e1447783cb6038470aba23a6343f/contracts/token/ERC20/extensions/ERC4626.sol#L30-L37]
 #[derive(Debug)]
 pub struct VirtualVault {
-    pub total_shares: Uint128,
-    pub balance: Uint128,
+    total_shares: Uint128,
+    balance: Uint128,
     virtual_total_shares: Uint128,
     virtual_balance: Uint128,
 }
@@ -41,7 +31,9 @@ impl VirtualVault {
     /// to mitigate against inflation attack.
     /// Use [shares_to_amount] and [amount_to_shares] to convert between shares and amount.
     pub fn load(deps: &Deps, env: &Env) -> StdResult<Self> {
-        let total_shares = TOTAL_SHARES.load(deps.storage)?;
+        let total_shares = TOTAL_SHARES
+            .may_load(deps.storage)?
+            .unwrap_or(Uint128::zero());
         let balance = token::get_balance(deps, env)?;
         Self::new(total_shares, balance)
     }
@@ -76,6 +68,50 @@ impl VirtualVault {
             .map_err(StdError::from)?
             .checked_div(self.virtual_balance)
             .map_err(StdError::from)
+    }
+
+    pub fn total_shares(&self) -> Uint128 {
+        self.total_shares
+    }
+
+    pub fn balance(&self) -> Uint128 {
+        self.balance
+    }
+
+    /// Add the new shares to the total shares and refresh the virtual shares and virtual balance.
+    pub fn add_total_shares(
+        &mut self,
+        storage: &mut dyn Storage,
+        shares: Uint128,
+    ) -> StdResult<()> {
+        self.total_shares = self
+            .total_shares
+            .checked_add(shares)
+            .map_err(StdError::from)?;
+        self.virtual_total_shares = self
+            .total_shares
+            .checked_add(OFFSET)
+            .map_err(StdError::from)?;
+        TOTAL_SHARES.save(storage, &self.total_shares)?;
+        Ok(())
+    }
+
+    /// Subtract the shares from the total shares and refresh the virtual shares and virtual balance.
+    pub fn sub_total_shares(
+        &mut self,
+        storage: &mut dyn Storage,
+        shares: Uint128,
+    ) -> StdResult<()> {
+        self.total_shares = self
+            .total_shares
+            .checked_sub(shares)
+            .map_err(StdError::from)?;
+        self.virtual_total_shares = self
+            .total_shares
+            .checked_add(OFFSET)
+            .map_err(StdError::from)?;
+        TOTAL_SHARES.save(storage, &self.total_shares)?;
+        Ok(())
     }
 }
 
