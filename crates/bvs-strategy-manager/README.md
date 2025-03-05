@@ -108,7 +108,7 @@ Flowchart:
 flowchart TD
     subgraph 1["Deposit"]
     %% Nodes
-        1.A((Retail Staker EOA))
+        1.A((Retail Staker or Operator))
         1.B[(StrategyManager)]
         1.C[(DelegationManager)]
         1.D[(CW20)]
@@ -116,10 +116,8 @@ flowchart TD
         1.A --->|" (1) Pre Approve fund "| 1.D
         1.A --->|" (2) Deposit ExecuteMsg "| 1.B
         1.B --->|" (3) Deposit ExecuteMsg, this let strategy know to mint new shares for staker "| 1.E
-        1.E --->|" (4) Resp the Manager how minting of new shares was successful "| 1.B
-        1.B --->|" (5) IncreaseDelegatedShares ExecuteMsg "| 1.C
-        1.C --->|" (6) Resp Delegated Shares increased "| 1.B
-        1.B --->|" (7) Once everything is in place, transfer the staker fund to strategy contract's balance "| 1.D
+        1.B --->|" (4) IncreaseDelegatedShares ExecuteMsg "| 1.C
+        1.B --->|" (5) Once everything is in place, transfer the staker fund to strategy contract's balance "| 1.D
     end
 ```
 
