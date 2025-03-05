@@ -99,7 +99,7 @@ fn test_add_new_strategy() {
 }
 
 #[test]
-fn test_blacklist_whitelist() {
+fn test_whitelist() {
     let mut app = App::default();
     let env = mock_env();
 
@@ -163,27 +163,6 @@ fn test_blacklist_whitelist() {
         .unwrap();
 
     assert_eq!(query_res.is_whitelisted, true);
-
-    let _res = manager
-        .execute(
-            &mut app,
-            &owner,
-            &bvs_strategy_manager::msg::ExecuteMsg::BlacklistTokens {
-                tokens: vec![token.addr().to_string()],
-            },
-        )
-        .unwrap();
-
-    let query_res = manager
-        .query::<StrategyManagerQuery::IsTokenBlacklistedResponse>(
-            &app,
-            &bvs_strategy_manager::msg::QueryMsg::IsTokenBlacklisted {
-                token: token.addr.to_string(),
-            },
-        )
-        .unwrap();
-
-    assert_eq!(query_res.is_blacklisted, true);
 
     let query_res = manager
         .query::<StrategyManagerQuery::StrategyWhitelistedResponse>(
@@ -198,7 +177,7 @@ fn test_blacklist_whitelist() {
 }
 
 #[test]
-fn test_unauthorized_blacklist_whitelist() {
+fn test_unauthorized_whitelist() {
     let mut app = App::default();
     let env = mock_env();
 
@@ -262,28 +241,6 @@ fn test_unauthorized_blacklist_whitelist() {
         .unwrap();
 
     assert_eq!(query_res.is_whitelisted, true);
-
-    let third_party = app.api().addr_make("third_party");
-    let res = manager.execute(
-        &mut app,
-        &third_party,
-        &bvs_strategy_manager::msg::ExecuteMsg::BlacklistTokens {
-            tokens: vec![token.addr().to_string()],
-        },
-    );
-
-    assert!(res.is_err());
-
-    let query_res = manager
-        .query::<StrategyManagerQuery::IsTokenBlacklistedResponse>(
-            &app,
-            &bvs_strategy_manager::msg::QueryMsg::IsTokenBlacklisted {
-                token: token.addr.to_string(),
-            },
-        )
-        .unwrap();
-
-    assert_eq!(query_res.is_blacklisted, false);
 
     let query_res = manager
         .query::<StrategyManagerQuery::StrategyWhitelistedResponse>(

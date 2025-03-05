@@ -36,19 +36,6 @@ flowchart TD
     end
 ```
 
-### BlacklistTokens
-
-This function blacklists specified tokens, preventing them from being deposited into strategies.
-If a token is already blacklisted, the function returns an error.
-If a token has an associated strategy, that strategy is also removed from the deposit whitelist.
-
-**Parameters:**
-
-- `tokens`: A list of token addresses to be blacklisted.
-
-Only the owner can execute this function.
-A `TokenBlacklisted` event is emitted upon success.
-
 ### AddStrategiesToWhitelist
 
 This function allows the owner to approve strategies for deposits.
@@ -219,10 +206,6 @@ Retrieves the number of shares a staker has in a specific strategy.
 ### GetStakerStrategyList
 
 Returns a list of all strategies a staker is involved with.
-
-### Owner
-
-Returns the current contract owner.
 
 ### TokenStrategy
 
