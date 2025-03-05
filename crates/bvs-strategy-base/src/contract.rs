@@ -5,11 +5,9 @@ use crate::{
     auth,
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    shares, token,
+    token,
 };
-use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
-};
+use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 
 use bvs_library::ownership;
@@ -95,7 +93,7 @@ pub mod execute {
             return Err(ContractError::zero("New shares cannot be zero."));
         }
 
-        vault.add_total_shares(deps.storage, new_shares.clone())?;
+        vault.add_total_shares(deps.storage, new_shares)?;
 
         // TODO(fuxingloh): sub_messages
         // let transfer_from_msg = token::new_transfer_from(
@@ -271,8 +269,11 @@ mod tests {
         SharesResponse, SharesToUnderlyingResponse, StrategyManagerResponse, TotalSharesResponse,
         UnderlyingResponse, UnderlyingToSharesResponse, UnderlyingTokenResponse,
     };
+    use crate::shares;
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
-    use cosmwasm_std::{from_json, ContractResult, Event, SystemError, SystemResult, WasmQuery};
+    use cosmwasm_std::{
+        from_json, ContractResult, Event, SystemError, SystemResult, Uint128, WasmQuery,
+    };
     use cw20::{BalanceResponse, Cw20QueryMsg, TokenInfoResponse};
 
     #[test]
