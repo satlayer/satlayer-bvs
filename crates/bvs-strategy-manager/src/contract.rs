@@ -33,8 +33,8 @@ use bvs_strategy_base::{
 const CONTRACT_NAME: &str = "BVS Strategy Manager";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const SHARES_OFFSET: Uint128 = Uint128::new(1000000000000000000);
-const BALANCE_OFFSET: Uint128 = Uint128::new(1000000000000000000);
+const SHARES_OFFSET: Uint128 = Uint128::new(1000u128);
+const BALANCE_OFFSET: Uint128 = Uint128::new(1000u128);
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -1110,7 +1110,8 @@ mod tests {
 
         assert_eq!(res.attributes.len(), 1);
         assert_eq!(res.attributes[0].key, "new_shares");
-        assert_eq!(res.attributes[0].value, "100");
+        assert_eq!(res.attributes[0].value, "105"); // <- check base strategy vault struct for more
+                                                    // info
 
         let non_whitelisted_strategy = deps.api.addr_make("non_whitelisted_strategy");
 

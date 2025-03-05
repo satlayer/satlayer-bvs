@@ -36,7 +36,6 @@ fn test_add_new_strategy() {
     let mut app = App::default();
     let env = mock_env();
 
-    let whitelister = app.api().addr_make("manager_whitelister");
     let owner = app.api().addr_make("mangaer_owner");
     let strategy_owner = app.api().addr_make("strategy_owner");
 
@@ -48,7 +47,6 @@ fn test_add_new_strategy() {
         Some(StrategyManagerInstantiateMsg {
             owner: owner.to_string(),
             registry: registry.addr().to_string(),
-            initial_strategy_whitelister: whitelister.to_string(),
         }),
     );
     let token = bvs_strategy_base::testing::Cw20TokenContract::new(&mut app, &env, None);
@@ -105,7 +103,6 @@ fn test_blacklist_whitelist() {
     let mut app = App::default();
     let env = mock_env();
 
-    let whitelister = app.api().addr_make("manager_whitelister");
     let owner = app.api().addr_make("mangaer_owner");
     let strategy_owner = app.api().addr_make("strategy_owner");
 
@@ -117,7 +114,6 @@ fn test_blacklist_whitelist() {
         Some(StrategyManagerInstantiateMsg {
             owner: owner.to_string(),
             registry: registry.addr().to_string(),
-            initial_strategy_whitelister: whitelister.to_string(),
         }),
     );
     let token = bvs_strategy_base::testing::Cw20TokenContract::new(&mut app, &env, None);
@@ -171,7 +167,7 @@ fn test_blacklist_whitelist() {
     let _res = manager
         .execute(
             &mut app,
-            &whitelister,
+            &owner,
             &bvs_strategy_manager::msg::ExecuteMsg::BlacklistTokens {
                 tokens: vec![token.addr().to_string()],
             },
@@ -206,7 +202,6 @@ fn test_unauthorized_blacklist_whitelist() {
     let mut app = App::default();
     let env = mock_env();
 
-    let whitelister = app.api().addr_make("manager_whitelister");
     let owner = app.api().addr_make("mangaer_owner");
     let strategy_owner = app.api().addr_make("strategy_owner");
 
@@ -218,7 +213,6 @@ fn test_unauthorized_blacklist_whitelist() {
         Some(StrategyManagerInstantiateMsg {
             owner: owner.to_string(),
             registry: registry.addr().to_string(),
-            initial_strategy_whitelister: whitelister.to_string(),
         }),
     );
     let token = bvs_strategy_base::testing::Cw20TokenContract::new(&mut app, &env, None);
@@ -269,9 +263,10 @@ fn test_unauthorized_blacklist_whitelist() {
 
     assert_eq!(query_res.is_whitelisted, true);
 
+    let third_party = app.api().addr_make("third_party");
     let res = manager.execute(
         &mut app,
-        &owner,
+        &third_party,
         &bvs_strategy_manager::msg::ExecuteMsg::BlacklistTokens {
             tokens: vec![token.addr().to_string()],
         },
@@ -307,7 +302,6 @@ fn test_deposit_withdraw() {
     let mut app = App::default();
     let env = mock_env();
 
-    let whitelister = app.api().addr_make("manager_whitelister");
     let owner = app.api().addr_make("mangaer_owner");
     let strategy_owner = app.api().addr_make("strategy_owner");
 
@@ -319,7 +313,6 @@ fn test_deposit_withdraw() {
         Some(StrategyManagerInstantiateMsg {
             owner: owner.to_string(),
             registry: registry.addr().to_string(),
-            initial_strategy_whitelister: whitelister.to_string(),
         }),
     );
     let token = bvs_strategy_base::testing::Cw20TokenContract::new(&mut app, &env, None);
@@ -370,7 +363,6 @@ fn test_deposit_withdraw() {
 
     assert_eq!(query_res.is_whitelisted, true);
 
-    // let delegation_manager = app.api().addr_make("delegation_manager");
     let slash_manager = app.api().addr_make("slash_manager");
 
     // we need to fund this account
@@ -529,7 +521,7 @@ fn test_deposit_withdraw() {
         )
         .unwrap();
 
-    assert_eq!(query_res.total_shares, Uint128::new(5));
+    assert_eq!(query_res.0, Uint128::new(4));
 }
 
 #[test]
@@ -537,7 +529,6 @@ fn test_add_remove_shares() {
     let mut app = App::default();
     let env = mock_env();
 
-    let whitelister = app.api().addr_make("manager_whitelister");
     let owner = app.api().addr_make("mangaer_owner");
     let strategy_owner = app.api().addr_make("strategy_owner");
 
@@ -549,7 +540,6 @@ fn test_add_remove_shares() {
         Some(StrategyManagerInstantiateMsg {
             owner: owner.to_string(),
             registry: registry.addr().to_string(),
-            initial_strategy_whitelister: whitelister.to_string(),
         }),
     );
     let token = bvs_strategy_base::testing::Cw20TokenContract::new(&mut app, &env, None);
@@ -764,7 +754,7 @@ fn test_add_remove_shares() {
         )
         .unwrap();
 
-    assert_eq!(query_res.total_shares, Uint128::new(10));
+    assert_eq!(query_res.0, Uint128::new(9));
 
     // remove shares
     let _res = manager
