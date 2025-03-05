@@ -10,7 +10,7 @@ use crate::{
         StakerStrategySharesResponse, StrategyWhitelistedResponse,
     },
     state::{
-        DEPLOYED_STRATEGIES, IS_BLACKLISTED, MAX_STAKER_STRATEGY_LIST_LENGTH, STAKER_STRATEGY_LIST,
+        DEPLOYED_STRATEGIES, MAX_STAKER_STRATEGY_LIST_LENGTH, STAKER_STRATEGY_LIST,
         STAKER_STRATEGY_SHARES, STRATEGY_IS_WHITELISTED_FOR_DEPOSIT,
     },
 };
@@ -22,7 +22,7 @@ use cw2::set_contract_version;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
 use crate::msg::delegation_manager::{self, IncreaseDelegatedShares};
-use crate::query::{IsTokenBlacklistedResponse, TokenStrategyResponse};
+use crate::query::TokenStrategyResponse;
 use bvs_library::ownership;
 use bvs_strategy_base::{
     msg::ExecuteMsg as BaseExecuteMsg,
@@ -73,10 +73,6 @@ pub fn execute(
             let strategy_addr = deps.api.addr_validate(&new_strategy)?;
             let token_addr = deps.api.addr_validate(&token)?;
             add_new_strategy(deps, env, info, strategy_addr, token_addr)
-        }
-        ExecuteMsg::BlacklistTokens { tokens } => {
-            let tokens = bvs_library::addr::validate_addrs(deps.api, &tokens)?;
-            blacklist_tokens(deps, env, info, tokens)
         }
         ExecuteMsg::AddStrategiesToWhitelist { strategies } => {
             let strategies = bvs_library::addr::validate_addrs(deps.api, &strategies)?;
@@ -275,11 +271,6 @@ pub fn withdraw_shares_as_tokens(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::IsTokenBlacklisted { token } => {
-            let token_addr = deps.api.addr_validate(&token)?;
-
-            to_json_binary(&query_blacklist_status_for_token(deps, token_addr)?)
-        }
         QueryMsg::TokenStrategy { token } => {
             let token_addr = deps.api.addr_validate(&token)?;
 
@@ -321,19 +312,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 fn query_strategy_for_token(deps: Deps, token: Addr) -> StdResult<TokenStrategyResponse> {
     let strategy = DEPLOYED_STRATEGIES.load(deps.storage, &token)?;
     Ok(TokenStrategyResponse { strategy })
-}
-
-fn query_blacklist_status_for_token(
-    deps: Deps,
-    token: Addr,
-) -> StdResult<IsTokenBlacklistedResponse> {
-    let is_blacklisted = IS_BLACKLISTED
-        .may_load(deps.storage, &token)?
-        .unwrap_or(false);
-    Ok(IsTokenBlacklistedResponse {
-        token,
-        is_blacklisted,
-    })
 }
 
 fn query_staker_strategy_shares(
@@ -622,50 +600,6 @@ pub fn staker_strategy_list_length(deps: Deps, staker: Addr) -> StdResult<Uint12
     Ok(Uint128::new(strategies.len() as u128))
 }
 
-pub fn blacklist_tokens(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    tokens: Vec<Addr>,
-) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.storage, &info)?;
-
-    let mut strategies_to_remove: Vec<Addr> = Vec::new();
-
-    let mut events = vec![];
-
-    for token in &tokens {
-        let is_already_blacklisted = IS_BLACKLISTED
-            .may_load(deps.storage, token)?
-            .unwrap_or(false);
-        if is_already_blacklisted {
-            return Err(ContractError::TokenAlreadyBlacklisted {});
-        }
-
-        IS_BLACKLISTED.save(deps.storage, token, &true)?;
-
-        if let Some(deployed_strategy) = DEPLOYED_STRATEGIES.may_load(deps.storage, token)? {
-            if deployed_strategy != Addr::unchecked("") {
-                strategies_to_remove.push(deployed_strategy);
-            }
-        }
-
-        let event = Event::new("TokenBlacklisted")
-            .add_attribute("method", "blacklist_tokens")
-            .add_attribute("token", token.to_string());
-
-        events.push(event);
-    }
-
-    if !strategies_to_remove.is_empty() {
-        remove_strategies_from_deposit_whitelist(deps, info, strategies_to_remove)?;
-    }
-
-    Ok(Response::new()
-        .add_events(events)
-        .add_attribute("method", "blacklist_tokens"))
-}
-
 pub fn add_new_strategy(
     deps: DepsMut,
     env: Env,
@@ -674,13 +608,6 @@ pub fn add_new_strategy(
     token: Addr,
 ) -> Result<Response, ContractError> {
     ownership::assert_owner(deps.storage, &info)?;
-
-    let is_blacklisted = IS_BLACKLISTED
-        .may_load(deps.storage, &token)?
-        .unwrap_or(false);
-    if is_blacklisted {
-        return Err(ContractError::TokenAlreadyBlacklisted {});
-    }
 
     let existing_strategy = DEPLOYED_STRATEGIES
         .may_load(deps.storage, &token)?
@@ -718,7 +645,6 @@ pub fn add_new_strategy(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::query::IsTokenBlacklistedResponse;
     use bvs_library::ownership::OwnershipError;
     use bvs_strategy_base::msg::QueryMsg::UnderlyingToken;
     use cosmwasm_std::testing::{
@@ -837,86 +763,6 @@ mod tests {
             from_json(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
 
         assert_eq!(response.strategy.to_string(), strategy.to_string());
-
-        let query_msg = QueryMsg::IsTokenBlacklisted {
-            token: token.to_string(),
-        };
-
-        let response: IsTokenBlacklistedResponse =
-            from_json(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
-
-        assert!(!response.is_blacklisted);
-    }
-
-    #[test]
-    fn test_blacklist_token() {
-        let (mut deps, _env, owner_info, _info_delegation_manager) = instantiate_contract();
-
-        let strategy = deps.api.addr_make("strategy");
-        let token = deps.api.addr_make("token");
-
-        deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart {
-                contract_addr: _,
-                msg,
-            } => {
-                let query_msg: bvs_strategy_base::msg::QueryMsg = from_json(msg).unwrap();
-                match query_msg {
-                    BaseQueryMsg::StrategyManager {} => {
-                        let response = StrategyManagerResponse(_env.contract.address.clone());
-                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
-                    }
-                    _ => SystemResult::Err(SystemError::InvalidRequest {
-                        error: "Unhandled request".to_string(),
-                        request: to_json_binary(&query).unwrap(),
-                    }),
-                }
-            }
-            _ => SystemResult::Err(SystemError::InvalidRequest {
-                error: "Unhandled request".to_string(),
-                request: to_json_binary(&query).unwrap(),
-            }),
-        });
-
-        let res = add_new_strategy(
-            deps.as_mut(),
-            mock_env(),
-            owner_info.clone(),
-            strategy.clone(),
-            token.clone(),
-        );
-
-        assert_eq!(res.is_ok(), true);
-
-        let query_msg = QueryMsg::TokenStrategy {
-            token: token.to_string(),
-        };
-
-        let response: TokenStrategyResponse =
-            from_json(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
-
-        assert_eq!(response.strategy.to_string(), strategy.to_string());
-
-        let query_msg = QueryMsg::IsTokenBlacklisted {
-            token: token.to_string(),
-        };
-
-        let response: IsTokenBlacklistedResponse =
-            from_json(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
-
-        assert!(!response.is_blacklisted);
-
-        let _ =
-            blacklist_tokens(deps.as_mut(), mock_env(), owner_info, vec![token.clone()]).unwrap();
-
-        let query_msg = QueryMsg::IsTokenBlacklisted {
-            token: token.to_string(),
-        };
-
-        let response: IsTokenBlacklistedResponse =
-            from_json(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
-
-        assert!(response.is_blacklisted);
     }
 
     #[test]

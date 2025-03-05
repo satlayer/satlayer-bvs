@@ -1,7 +1,6 @@
 use crate::query::{
-    DepositsResponse, IsTokenBlacklistedResponse, StakerStrategyListLengthResponse,
-    StakerStrategyListResponse, StakerStrategySharesResponse, StrategyWhitelistedResponse,
-    TokenStrategyResponse,
+    DepositsResponse, StakerStrategyListLengthResponse, StakerStrategyListResponse,
+    StakerStrategySharesResponse, StrategyWhitelistedResponse, TokenStrategyResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
@@ -18,9 +17,6 @@ pub enum ExecuteMsg {
     AddNewStrategy {
         new_strategy: String,
         token: String,
-    },
-    BlacklistTokens {
-        tokens: Vec<String>,
     },
     AddStrategiesToWhitelist {
         strategies: Vec<String>,
@@ -75,9 +71,6 @@ pub enum QueryMsg {
 
     #[returns(StrategyWhitelistedResponse)]
     IsStrategyWhitelisted { strategy: String },
-
-    #[returns(IsTokenBlacklistedResponse)]
-    IsTokenBlacklisted { token: String },
 
     #[returns(TokenStrategyResponse)]
     TokenStrategy { token: String },
