@@ -863,7 +863,7 @@ fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdR
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::merkle::{sha256, StrategyAndMultiplier};
+    use crate::merkle::{merkleize_sha256, sha256, StrategyAndMultiplier};
     use crate::msg::DistributionRoot;
     use bvs_library::ownership::OwnershipError;
     use cosmwasm_std::testing::{
@@ -2079,7 +2079,7 @@ mod tests {
         assert_eq!(event.attributes[0].key, "root_index");
         assert_eq!(event.attributes[0].value, "0");
         assert_eq!(event.attributes[1].key, "root");
-        assert_eq!(event.attributes[1].value, format!("{:?}", root));
+        assert_eq!(event.attributes[1].value, root.to_hex());
         assert_eq!(event.attributes[2].key, "rewards_calculation_end_timestamp");
         assert_eq!(
             event.attributes[2].value,
