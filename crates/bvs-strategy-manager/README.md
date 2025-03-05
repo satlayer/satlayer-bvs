@@ -123,7 +123,7 @@ flowchart TD
 
 ### WithdrawSharesAsTokens
 
-Users can withdraw their strategy shares as tokens using this function. 
+Users can withdraw their strategy shares as tokens using this function.
 The withdrawal is processed by interacting with the strategy contract.
 
 **Parameters:**
@@ -151,7 +151,7 @@ flowchart TD
 
 ### AddShares
 
-The delegation manager assigns shares to a staker in a specific strategy. 
+The delegation manager assigns shares to a staker in a specific strategy.
 Shares represent the user's stake in the strategy.
 
 **Parameters:**
