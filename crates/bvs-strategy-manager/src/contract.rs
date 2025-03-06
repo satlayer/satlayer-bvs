@@ -200,14 +200,81 @@ mod execute {
 }
 
 pub fn deposit_into_strategy(
-    deps: DepsMut,
+    mut deps: DepsMut,
     info: MessageInfo,
     staker: Addr,
     strategy: Addr,
     token: Addr,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    deposit_into_strategy_internal(deps, info, staker, strategy, token, amount)
+    state::assert_strategy_whitelisted(deps.as_ref(), &strategy)?;
+
+    if amount.is_zero() {
+        return Err(ContractError::ZeroAmount {});
+    }
+
+    let transfer_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: token.to_string(),
+        msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
+            owner: info.sender.to_string(),
+            recipient: strategy.to_string(),
+            amount,
+        })?,
+        funds: vec![],
+    });
+
+    let mut response = Response::new().add_message(transfer_msg);
+
+    let UnderlyingTokenResponse(token) = deps.querier.query(
+        &WasmQuery::Smart {
+            contract_addr: strategy.to_string(),
+            msg: to_json_binary(&BaseQueryMsg::UnderlyingToken {})?,
+        }
+        .into(),
+    )?;
+
+    let TotalSharesResponse(total_shares) = deps.querier.query(
+        &WasmQuery::Smart {
+            contract_addr: strategy.to_string(),
+            msg: to_json_binary(&BaseQueryMsg::TotalShares {})?,
+        }
+        .into(),
+    )?;
+
+    let balance = token_balance(&deps.querier, &token, &strategy)?;
+    let new_shares = calculate_new_shares(total_shares, balance, amount)?;
+
+    if new_shares.is_zero() {
+        return Err(ContractError::ZeroNewShares {});
+    }
+
+    let deposit_msg: CosmosMsg = WasmMsg::Execute {
+        contract_addr: strategy.to_string(),
+        msg: to_json_binary(&BaseExecuteMsg::Deposit { amount })?,
+        funds: vec![],
+    }
+    .into();
+
+    response = response.add_message(deposit_msg);
+
+    add_shares_internal(deps.branch(), staker.clone(), strategy.clone(), new_shares)?;
+
+    let delegation_manager = auth::get_delegation_manager(deps.storage)?;
+    let increase_delegated_shares_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: delegation_manager.to_string(),
+        msg: to_json_binary(&delegation_manager::ExecuteMsg::IncreaseDelegatedShares(
+            IncreaseDelegatedShares {
+                staker: staker.to_string(),
+                strategy: strategy.to_string(),
+                shares: new_shares,
+            },
+        ))?,
+        funds: vec![],
+    });
+
+    Ok(response
+        .add_message(increase_delegated_shares_msg)
+        .add_attribute("new_shares", new_shares.to_string()))
 }
 
 pub fn add_shares(
@@ -220,6 +287,43 @@ pub fn add_shares(
     auth::assert_delegation_manager(deps.as_ref(), &info)?;
 
     add_shares_internal(deps, staker, strategy, shares)
+}
+
+fn add_shares_internal(
+    deps: DepsMut,
+    staker: Addr,
+    strategy: Addr,
+    shares: Uint128,
+) -> Result<Response, ContractError> {
+    if shares.is_zero() {
+        return Err(ContractError::InvalidShares {});
+    }
+
+    let mut strategy_list = STAKER_STRATEGY_LIST
+        .may_load(deps.storage, &staker)?
+        .unwrap_or_else(Vec::new);
+
+    let current_shares = STAKER_STRATEGY_SHARES
+        .may_load(deps.storage, (&staker, &strategy))?
+        .unwrap_or_else(Uint128::zero);
+
+    if current_shares.is_zero() {
+        if strategy_list.len() >= MAX_STAKER_STRATEGY_LIST_LENGTH {
+            return Err(ContractError::MaxStrategyListLengthExceeded {});
+        }
+        strategy_list.push(strategy.clone());
+        STAKER_STRATEGY_LIST.save(deps.storage, &staker, &strategy_list)?;
+    }
+
+    let new_shares = current_shares + shares;
+    STAKER_STRATEGY_SHARES.save(deps.storage, (&staker, &strategy), &new_shares)?;
+
+    let event = Event::new("add_shares")
+        .add_attribute("staker", staker.to_string())
+        .add_attribute("strategy", strategy.to_string())
+        .add_attribute("shares", shares.to_string());
+
+    Ok(Response::new().add_event(event))
 }
 
 pub fn remove_shares(
@@ -240,6 +344,57 @@ pub fn remove_shares(
         .add_attribute("strategy_removed", strategy_removed.to_string());
 
     Ok(response)
+}
+
+fn remove_shares_internal(
+    deps: DepsMut,
+    staker: Addr,
+    strategy: Addr,
+    shares: Uint128,
+) -> Result<bool, ContractError> {
+    if shares.is_zero() {
+        return Err(ContractError::InvalidShares {});
+    }
+
+    let mut current_shares = STAKER_STRATEGY_SHARES
+        .may_load(deps.storage, (&staker, &strategy))?
+        .unwrap_or_else(Uint128::zero);
+
+    if shares > current_shares {
+        return Err(ContractError::InvalidShares {});
+    }
+
+    // Subtract the shares
+    current_shares = current_shares
+        .checked_sub(shares)
+        .map_err(|_| ContractError::InvalidShares {})?;
+    STAKER_STRATEGY_SHARES.save(deps.storage, (&staker, &strategy), &current_shares)?;
+
+    // If no existing shares, remove the strategy from the staker's list
+    if current_shares.is_zero() {
+        remove_strategy_from_staker_strategy_list(deps, staker.clone(), strategy.clone())?;
+        return Ok(true);
+    }
+
+    Ok(false)
+}
+
+fn remove_strategy_from_staker_strategy_list(
+    deps: DepsMut,
+    staker: Addr,
+    strategy: Addr,
+) -> Result<(), ContractError> {
+    let mut strategy_list = STAKER_STRATEGY_LIST
+        .may_load(deps.storage, &staker)?
+        .unwrap_or_else(Vec::new);
+
+    if let Some(pos) = strategy_list.iter().position(|x| *x == strategy) {
+        strategy_list.swap_remove(pos);
+        STAKER_STRATEGY_LIST.save(deps.storage, &staker, &strategy_list)?;
+        Ok(())
+    } else {
+        Err(ContractError::StrategyNotFound {})
+    }
 }
 
 pub fn withdraw_shares_as_tokens(
@@ -267,6 +422,48 @@ pub fn withdraw_shares_as_tokens(
     let response = Response::new().add_message(withdraw_msg);
 
     Ok(response)
+}
+
+fn calculate_new_shares(
+    total_shares: Uint128,
+    token_balance: Uint128,
+    deposit_amount: Uint128,
+) -> Result<Uint128, ContractError> {
+    let virtual_share_amount = total_shares
+        .checked_add(SHARES_OFFSET)
+        .map_err(|_| ContractError::Overflow)?;
+
+    let virtual_token_balance = token_balance
+        .checked_add(BALANCE_OFFSET)
+        .map_err(|_| ContractError::Overflow)?;
+
+    let virtual_prior_token_balance = virtual_token_balance
+        .checked_sub(deposit_amount)
+        .map_err(|_| ContractError::Underflow)?;
+
+    let numerator = deposit_amount
+        .checked_mul(virtual_share_amount)
+        .map_err(|_| ContractError::Overflow)?;
+
+    if virtual_prior_token_balance.is_zero() {
+        return Err(ContractError::DivideByZero);
+    }
+
+    let new_shares = numerator
+        .checked_div(virtual_prior_token_balance)
+        .map_err(|_| ContractError::DivideByZero)?;
+
+    Ok(new_shares)
+}
+
+fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdResult<Uint128> {
+    let res: Cw20BalanceResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: token.to_string(),
+        msg: to_json_binary(&Cw20QueryMsg::Balance {
+            address: account.to_string(),
+        })?,
+    }))?;
+    Ok(res.balance)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -350,214 +547,6 @@ fn query_staker_strategy_list_length(
 ) -> StdResult<StakerStrategyListLengthResponse> {
     let strategies_len = staker_strategy_list_length(deps, staker)?;
     Ok(StakerStrategyListLengthResponse { strategies_len })
-}
-
-fn deposit_into_strategy_internal(
-    mut deps: DepsMut,
-    info: MessageInfo,
-    staker: Addr,
-    strategy: Addr,
-    token: Addr,
-    amount: Uint128,
-) -> Result<Response, ContractError> {
-    state::assert_strategy_whitelisted(deps.as_ref(), &strategy)?;
-
-    if amount.is_zero() {
-        return Err(ContractError::ZeroAmount {});
-    }
-
-    let transfer_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: token.to_string(),
-        msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
-            owner: info.sender.to_string(),
-            recipient: strategy.to_string(),
-            amount,
-        })?,
-        funds: vec![],
-    });
-
-    let mut response = Response::new().add_message(transfer_msg);
-
-    let UnderlyingTokenResponse(token) = deps.querier.query(
-        &WasmQuery::Smart {
-            contract_addr: strategy.to_string(),
-            msg: to_json_binary(&BaseQueryMsg::UnderlyingToken {})?,
-        }
-        .into(),
-    )?;
-
-    let TotalSharesResponse(total_shares) = deps.querier.query(
-        &WasmQuery::Smart {
-            contract_addr: strategy.to_string(),
-            msg: to_json_binary(&BaseQueryMsg::TotalShares {})?,
-        }
-        .into(),
-    )?;
-
-    let balance = token_balance(&deps.querier, &token, &strategy)?;
-    let new_shares = calculate_new_shares(total_shares, balance, amount)?;
-
-    if new_shares.is_zero() {
-        return Err(ContractError::ZeroNewShares {});
-    }
-
-    let deposit_msg: CosmosMsg = WasmMsg::Execute {
-        contract_addr: strategy.to_string(),
-        msg: to_json_binary(&BaseExecuteMsg::Deposit { amount })?,
-        funds: vec![],
-    }
-    .into();
-
-    response = response.add_message(deposit_msg);
-
-    add_shares_internal(deps.branch(), staker.clone(), strategy.clone(), new_shares)?;
-
-    let delegation_manager = auth::get_delegation_manager(deps.storage)?;
-    let increase_delegated_shares_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: delegation_manager.to_string(),
-        msg: to_json_binary(&delegation_manager::ExecuteMsg::IncreaseDelegatedShares(
-            IncreaseDelegatedShares {
-                staker: staker.to_string(),
-                strategy: strategy.to_string(),
-                shares: new_shares,
-            },
-        ))?,
-        funds: vec![],
-    });
-
-    Ok(response
-        .add_message(increase_delegated_shares_msg)
-        .add_attribute("new_shares", new_shares.to_string()))
-}
-
-fn add_shares_internal(
-    deps: DepsMut,
-    staker: Addr,
-    strategy: Addr,
-    shares: Uint128,
-) -> Result<Response, ContractError> {
-    if shares.is_zero() {
-        return Err(ContractError::InvalidShares {});
-    }
-
-    let mut strategy_list = STAKER_STRATEGY_LIST
-        .may_load(deps.storage, &staker)?
-        .unwrap_or_else(Vec::new);
-
-    let current_shares = STAKER_STRATEGY_SHARES
-        .may_load(deps.storage, (&staker, &strategy))?
-        .unwrap_or_else(Uint128::zero);
-
-    if current_shares.is_zero() {
-        if strategy_list.len() >= MAX_STAKER_STRATEGY_LIST_LENGTH {
-            return Err(ContractError::MaxStrategyListLengthExceeded {});
-        }
-        strategy_list.push(strategy.clone());
-        STAKER_STRATEGY_LIST.save(deps.storage, &staker, &strategy_list)?;
-    }
-
-    let new_shares = current_shares + shares;
-    STAKER_STRATEGY_SHARES.save(deps.storage, (&staker, &strategy), &new_shares)?;
-
-    let event = Event::new("add_shares")
-        .add_attribute("staker", staker.to_string())
-        .add_attribute("strategy", strategy.to_string())
-        .add_attribute("shares", shares.to_string());
-
-    Ok(Response::new().add_event(event))
-}
-
-fn remove_shares_internal(
-    deps: DepsMut,
-    staker: Addr,
-    strategy: Addr,
-    shares: Uint128,
-) -> Result<bool, ContractError> {
-    if shares.is_zero() {
-        return Err(ContractError::InvalidShares {});
-    }
-
-    let mut current_shares = STAKER_STRATEGY_SHARES
-        .may_load(deps.storage, (&staker, &strategy))?
-        .unwrap_or_else(Uint128::zero);
-
-    if shares > current_shares {
-        return Err(ContractError::InvalidShares {});
-    }
-
-    // Subtract the shares
-    current_shares = current_shares
-        .checked_sub(shares)
-        .map_err(|_| ContractError::InvalidShares {})?;
-    STAKER_STRATEGY_SHARES.save(deps.storage, (&staker, &strategy), &current_shares)?;
-
-    // If no existing shares, remove the strategy from the staker's list
-    if current_shares.is_zero() {
-        remove_strategy_from_staker_strategy_list(deps, staker.clone(), strategy.clone())?;
-        return Ok(true);
-    }
-
-    Ok(false)
-}
-
-fn remove_strategy_from_staker_strategy_list(
-    deps: DepsMut,
-    staker: Addr,
-    strategy: Addr,
-) -> Result<(), ContractError> {
-    let mut strategy_list = STAKER_STRATEGY_LIST
-        .may_load(deps.storage, &staker)?
-        .unwrap_or_else(Vec::new);
-
-    if let Some(pos) = strategy_list.iter().position(|x| *x == strategy) {
-        strategy_list.swap_remove(pos);
-        STAKER_STRATEGY_LIST.save(deps.storage, &staker, &strategy_list)?;
-        Ok(())
-    } else {
-        Err(ContractError::StrategyNotFound {})
-    }
-}
-
-fn calculate_new_shares(
-    total_shares: Uint128,
-    token_balance: Uint128,
-    deposit_amount: Uint128,
-) -> Result<Uint128, ContractError> {
-    let virtual_share_amount = total_shares
-        .checked_add(SHARES_OFFSET)
-        .map_err(|_| ContractError::Overflow)?;
-
-    let virtual_token_balance = token_balance
-        .checked_add(BALANCE_OFFSET)
-        .map_err(|_| ContractError::Overflow)?;
-
-    let virtual_prior_token_balance = virtual_token_balance
-        .checked_sub(deposit_amount)
-        .map_err(|_| ContractError::Underflow)?;
-
-    let numerator = deposit_amount
-        .checked_mul(virtual_share_amount)
-        .map_err(|_| ContractError::Overflow)?;
-
-    if virtual_prior_token_balance.is_zero() {
-        return Err(ContractError::DivideByZero);
-    }
-
-    let new_shares = numerator
-        .checked_div(virtual_prior_token_balance)
-        .map_err(|_| ContractError::DivideByZero)?;
-
-    Ok(new_shares)
-}
-
-fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdResult<Uint128> {
-    let res: Cw20BalanceResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: token.to_string(),
-        msg: to_json_binary(&Cw20QueryMsg::Balance {
-            address: account.to_string(),
-        })?,
-    }))?;
-    Ok(res.balance)
 }
 
 pub fn get_deposits(deps: Deps, staker: Addr) -> StdResult<(Vec<Addr>, Vec<Uint128>)> {
