@@ -15,8 +15,7 @@ include = ["src"]
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["testing"]
-testing = ["dep:cw-multi-test"]
+library = []
 
 [dependencies]
 cosmwasm-std = { workspace = true }
@@ -29,7 +28,6 @@ bech32 = { workspace = true }
 ripemd = { workspace = true }
 base64 = { workspace = true }
 serde = { workspace = true }
-cw-multi-test = { workspace = true, optional = true }
 
-[dev-dependencies]
+[target."cfg(not(target_arch = \"wasm32\"))".dependencies]
 cw-multi-test = { workspace = true }

@@ -14,14 +14,8 @@ include = ["src"]
 [lib]
 crate-type = ["cdylib", "rlib"]
 
-[package.metadata.optimizer]
-standard-build = false
-builds = [{ name = "", default-features = false }]
-
 [features]
-default = ["testing"]
 library = []
-testing = ["library", "dep:cw-multi-test"]
 
 [dependencies]
 cosmwasm-std = { workspace = true }
@@ -32,15 +26,11 @@ thiserror = { workspace = true }
 serde = { workspace = true }
 schemars = { workspace = true }
 sha2 = { workspace = true }
-cw-multi-test = { workspace = true, optional = true }
 
 bvs-library = { workspace = true }
 bvs-registry = { workspace = true }
 bvs-strategy-manager = { workspace = true }
 
-[dev-dependencies]
+[target."cfg(not(target_arch = \"wasm32\"))".dependencies]
 cw-multi-test = { workspace = true }
-bvs-library = { workspace = true, features = ["testing"] }
-bvs-registry = { workspace = true, features = ["testing"] }
-bvs-strategy-base = { workspace = true, features = ["testing"] }
-bvs-strategy-manager = { workspace = true, features = ["testing"] }
+bvs-strategy-base = { workspace = true }

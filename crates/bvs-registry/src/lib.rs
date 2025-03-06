@@ -5,7 +5,6 @@ pub mod state;
 
 pub use crate::error::ContractError;
 
-#[cfg(feature = "testing")]
 pub mod testing;
 
 #[cfg(feature = "library")]

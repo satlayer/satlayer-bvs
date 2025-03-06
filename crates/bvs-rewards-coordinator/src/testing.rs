@@ -1,3 +1,5 @@
+#![cfg(not(target_arch = "wasm32"))]
+
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use bvs_library::testing::TestingContract;
 use cosmwasm_std::{Addr, Empty, Env};
