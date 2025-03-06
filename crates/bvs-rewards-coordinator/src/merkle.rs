@@ -1,5 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Api, Binary, HexBinary, StdResult, Timestamp, Uint128};
+use rs_merkle::{algorithms::Sha256 as MerkleSha256, MerkleTree};
 use sha2::{Digest, Sha256};
 
 pub const EARNER_LEAF_SALT: u8 = 0;
@@ -151,8 +152,6 @@ fn process_inclusion_proof_sha256(proof: &[u8], leaf: &[u8], index: u64) -> Vec<
 
     computed_hash
 }
-
-pub fn get_merkle_proof() {}
 
 #[cfg(test)]
 mod tests {
@@ -542,5 +541,52 @@ mod tests {
             &earner_leaf_hash4,
             3
         ));
+    }
+
+    #[test]
+    #[ignore = "to be fixed"]
+    fn test_same_merkle_root_unordered_leaves() {
+        let leaf_a = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_a"),
+            cumulative_earnings: Uint128::new(100),
+        };
+
+        let leaf_b = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_b"),
+            cumulative_earnings: Uint128::new(200),
+        };
+
+        let leaf_c = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_c"),
+            cumulative_earnings: Uint128::new(300),
+        };
+
+        let leaf_d = TokenTreeMerkleLeaf {
+            token: Addr::unchecked("token_d"),
+            cumulative_earnings: Uint128::new(400),
+        };
+
+        let hash_a = calculate_token_leaf_hash(&leaf_a);
+        let hash_b = calculate_token_leaf_hash(&leaf_b);
+        let hash_c = calculate_token_leaf_hash(&leaf_c);
+        let hash_d = calculate_token_leaf_hash(&leaf_d);
+
+        // calculate root hash
+        let root_hash1 = merkleize_sha256(vec![
+            hash_a.clone(),
+            hash_b.clone(),
+            hash_c.clone(),
+            hash_d.clone(),
+        ]);
+
+        // Unordered leaves
+        let root_hash2 = merkleize_sha256(vec![
+            hash_d.clone(),
+            hash_a.clone(),
+            hash_b.clone(),
+            hash_c.clone(),
+        ]);
+
+        assert_eq!(root_hash1, root_hash2);
     }
 }

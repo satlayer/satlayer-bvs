@@ -1,7 +1,10 @@
-use cosmwasm_std::{to_json_binary, Addr, Empty, Env, StdResult, Storage, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, Empty, Env, StdResult, Storage, Uint128, WasmMsg};
+use cw20::{Cw20Coin, MinterResponse};
+use cw20_base;
 use cw_multi_test::error::AnyResult;
-use cw_multi_test::{App, AppResponse, Contract, Executor};
+use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 
 /// TestingContract is a trait that provides a common interface for setting up testing contracts.
 pub trait TestingContract<IM, EM, QM>
@@ -69,4 +72,54 @@ where
     }
 
     // TODO: fn migrate
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct Cw20TokenContract {
+    pub addr: Addr,
+    pub init: cw20_base::msg::InstantiateMsg,
+}
+
+impl
+    TestingContract<
+        cw20_base::msg::InstantiateMsg,
+        cw20_base::msg::ExecuteMsg,
+        cw20_base::msg::QueryMsg,
+    > for Cw20TokenContract
+{
+    fn wrapper() -> Box<dyn Contract<Empty>> {
+        Box::new(ContractWrapper::new(
+            cw20_base::contract::execute,
+            cw20_base::contract::instantiate,
+            cw20_base::contract::query,
+        ))
+    }
+
+    fn default_init(app: &mut App, _env: &Env) -> cw20_base::msg::InstantiateMsg {
+        cw20_base::msg::InstantiateMsg {
+            symbol: "SATL".to_string(),
+            name: "Satlayer Test Token".to_string(),
+            decimals: 18,
+            initial_balances: vec![Cw20Coin {
+                address: app.api().addr_make("owner").to_string(),
+                amount: Uint128::new(1000000),
+            }],
+            mint: Some(MinterResponse {
+                minter: app.api().addr_make("owner").to_string(),
+                cap: Some(Uint128::new(1_000_000_000_000_000_000_000)), // 1000e18 = 1e21
+            }),
+            marketing: None,
+        }
+    }
+
+    fn new(app: &mut App, env: &Env, msg: Option<cw20_base::msg::InstantiateMsg>) -> Self {
+        let init = msg.unwrap_or(Self::default_init(app, env));
+        let code_id = Self::store_code(app);
+        let addr = Self::instantiate(app, code_id, "underlying_token", &init);
+        Self { addr, init }
+    }
+
+    fn addr(&self) -> &Addr {
+        &self.addr
+    }
 }

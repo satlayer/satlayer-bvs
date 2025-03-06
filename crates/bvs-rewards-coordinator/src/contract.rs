@@ -317,7 +317,7 @@ pub fn process_claim(
         response = response.add_message(transfer_msg);
 
         let event = Event::new("RewardsClaimed")
-            .add_attribute("root", format!("{:?}", root.root))
+            .add_attribute("root", root.root.to_hex())
             .add_attribute("earner", earner.to_string())
             .add_attribute("claimer", claimer.to_string())
             .add_attribute("recipient", recipient.to_string())
