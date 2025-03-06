@@ -147,11 +147,11 @@ func registerStrategy() {
 	ctx := context.Background()
 	fmt.Println("hello.....")
 
-	resp, err := strategyManager.AddStrategiesToWhitelist(ctx, []string{core.C.Contract.StrategyAddr})
+	resp, err := strategyManager.UpdateStrategy(ctx, core.C.Contract.StrategyAddr, true)
 	if err != nil {
 		fmt.Println("Err: addStrategiesToWhitelist failed: ", err)
 	} else {
-		fmt.Println("AddStrategiesToWhitelist success:", resp)
+		fmt.Println("UpdateStrategy success:", resp)
 	}
 }
 

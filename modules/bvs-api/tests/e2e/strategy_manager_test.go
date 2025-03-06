@@ -94,12 +94,7 @@ func (suite *strategyManagerTestSuite) Test_Init() {
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)
 
-	resp, err = strategyManager.RemoveStrategiesFromWhitelist(context.Background(), []string{strategyAddr})
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)
-
-	resp, err = strategyManager.AddStrategiesToWhitelist(context.Background(), []string{strategyAddr})
+	resp, err = strategyManager.UpdateStrategy(context.Background(), strategyAddr, true)
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)
@@ -174,7 +169,7 @@ func (suite *strategyManagerTestSuite) test_ExecuteStrategyManager() {
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)
 
-	resp, err = strategyManager.AddStrategiesToWhitelist(context.Background(),[]string{strategyAddr}, []bool{false})
+	resp, err = strategyManager.UpdateStrategy(context.Background(),[]string{strategyAddr}, []bool{false})
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)

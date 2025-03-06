@@ -7,12 +7,10 @@ use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
         DepositsResponse, StakerStrategyListLengthResponse, StakerStrategyListResponse,
-        StakerStrategySharesResponse, StrategyWhitelistedResponse,
+        StakerStrategySharesResponse,
     },
-    state::{
-        DEPLOYED_STRATEGIES, MAX_STAKER_STRATEGY_LIST_LENGTH, STAKER_STRATEGY_LIST,
-        STAKER_STRATEGY_SHARES, STRATEGY_IS_WHITELISTED_FOR_DEPOSIT,
-    },
+    state,
+    state::{MAX_STAKER_STRATEGY_LIST_LENGTH, STAKER_STRATEGY_LIST, STAKER_STRATEGY_SHARES},
 };
 use cosmwasm_std::{
     to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo,
@@ -22,12 +20,11 @@ use cw2::set_contract_version;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
 use crate::msg::delegation_manager::{self, IncreaseDelegatedShares};
-use crate::query::TokenStrategyResponse;
 use bvs_library::ownership;
 use bvs_strategy_base::{
     msg::ExecuteMsg as BaseExecuteMsg,
     msg::QueryMsg as BaseQueryMsg,
-    msg::{StrategyManagerResponse, TotalSharesResponse, UnderlyingTokenResponse},
+    msg::{TotalSharesResponse, UnderlyingTokenResponse},
 };
 
 const CONTRACT_NAME: &str = "BVS Strategy Manager";
@@ -66,22 +63,6 @@ pub fn execute(
     bvs_registry::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
 
     match msg {
-        ExecuteMsg::AddNewStrategy {
-            new_strategy,
-            token,
-        } => {
-            let strategy_addr = deps.api.addr_validate(&new_strategy)?;
-            let token_addr = deps.api.addr_validate(&token)?;
-            add_new_strategy(deps, env, info, strategy_addr, token_addr)
-        }
-        ExecuteMsg::AddStrategiesToWhitelist { strategies } => {
-            let strategies = bvs_library::addr::validate_addrs(deps.api, &strategies)?;
-            add_strategies_to_deposit_whitelist(deps, info, strategies)
-        }
-        ExecuteMsg::RemoveStrategiesFromWhitelist { strategies } => {
-            let strategies = bvs_library::addr::validate_addrs(deps.api, &strategies)?;
-            remove_strategies_from_deposit_whitelist(deps, info, strategies)
-        }
         ExecuteMsg::DepositIntoStrategy {
             strategy,
             token,
@@ -137,65 +118,85 @@ pub fn execute(
 
             auth::set_routing(deps, info, delegation_manager, slash_manager)
         }
+        ExecuteMsg::AddStrategy {
+            strategy,
+            whitelisted,
+        } => {
+            let strategy = deps.api.addr_validate(&strategy)?;
+            execute::add_strategy(deps, env, info, strategy, whitelisted)
+        }
+        ExecuteMsg::UpdateStrategy {
+            strategy,
+            whitelisted,
+        } => {
+            let strategy = deps.api.addr_validate(&strategy)?;
+            execute::update_strategy(deps, info, strategy, whitelisted)
+        }
     }
 }
 
-pub fn add_strategies_to_deposit_whitelist(
-    deps: DepsMut,
-    info: MessageInfo,
-    strategies_to_whitelist: Vec<Addr>,
-) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.storage, &info)?;
+mod execute {
+    use crate::state::STRATEGY_WHITELISTED;
+    use crate::ContractError;
+    use bvs_library::ownership;
+    use bvs_strategy_base::{msg::QueryMsg as BaseQueryMsg, msg::StrategyManagerResponse};
+    use cosmwasm_std::{
+        to_json_binary, Addr, DepsMut, Env, Event, MessageInfo, Response, WasmQuery,
+    };
 
-    let mut events = vec![];
+    /// Add a new strategy, setting whitelisted=true will allow staker to deposit into the strategy.
+    /// Only the owner can add a new strategy.
+    pub fn add_strategy(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        strategy: Addr,
+        whitelisted: bool,
+    ) -> Result<Response, ContractError> {
+        ownership::assert_owner(deps.storage, &info)?;
 
-    for strategy in &strategies_to_whitelist {
-        let is_whitelisted = STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
-            .may_load(deps.storage, strategy)?
-            .unwrap_or(false);
+        // Check if the contract is properly initiated on the chain
+        let StrategyManagerResponse(strategy_manager) = deps.querier.query(
+            &WasmQuery::Smart {
+                contract_addr: strategy.to_string(),
+                msg: to_json_binary(&BaseQueryMsg::StrategyManager {})?,
+            }
+            .into(),
+        )?;
 
-        if !is_whitelisted {
-            STRATEGY_IS_WHITELISTED_FOR_DEPOSIT.save(deps.storage, strategy, &true)?;
-
-            let event = Event::new("StrategyAddedToDepositWhitelist")
-                .add_attribute("strategy", strategy.to_string());
-            events.push(event);
+        if strategy_manager != env.contract.address {
+            return Err(ContractError::InvalidStrategy {
+                msg: "Strategy manager mismatch".to_string(),
+            });
         }
+
+        STRATEGY_WHITELISTED.save(deps.storage, &strategy, &whitelisted)?;
+
+        Ok(Response::new().add_event(
+            Event::new("StrategyUpdated")
+                .add_attribute("strategy", strategy.to_string())
+                .add_attribute("whitelisted", whitelisted.to_string()),
+        ))
     }
 
-    let mut response = Response::new();
-    for event in events {
-        response = response.add_event(event);
+    /// Update an existing strategy, setting whitelisted=true will allow staker to deposit into the strategy.
+    /// Only the owner can update a strategy.
+    pub fn update_strategy(
+        deps: DepsMut,
+        info: MessageInfo,
+        strategy: Addr,
+        whitelisted: bool,
+    ) -> Result<Response, ContractError> {
+        ownership::assert_owner(deps.storage, &info)?;
+
+        STRATEGY_WHITELISTED.save(deps.storage, &strategy, &whitelisted)?;
+
+        Ok(Response::new().add_event(
+            Event::new("StrategyUpdated")
+                .add_attribute("strategy", strategy.to_string())
+                .add_attribute("whitelisted", whitelisted.to_string()),
+        ))
     }
-
-    Ok(response)
-}
-
-pub fn remove_strategies_from_deposit_whitelist(
-    deps: DepsMut,
-    info: MessageInfo,
-    strategies: Vec<Addr>,
-) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.storage, &info)?;
-
-    let mut events = vec![];
-
-    for strategy in strategies {
-        let is_whitelisted = STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
-            .may_load(deps.storage, &strategy)?
-            .unwrap_or(false);
-
-        if is_whitelisted {
-            STRATEGY_IS_WHITELISTED_FOR_DEPOSIT.save(deps.storage, &strategy, &false)?;
-
-            let event = Event::new("StrategyRemovedFromDepositWhitelist")
-                .add_attribute("strategy", strategy.to_string());
-
-            events.push(event);
-        }
-    }
-
-    Ok(Response::new().add_events(events))
 }
 
 pub fn deposit_into_strategy(
@@ -271,11 +272,6 @@ pub fn withdraw_shares_as_tokens(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::TokenStrategy { token } => {
-            let token_addr = deps.api.addr_validate(&token)?;
-
-            to_json_binary(&query_strategy_for_token(deps, token_addr)?)
-        }
         QueryMsg::GetDeposits { staker } => {
             let staker_addr = deps.api.addr_validate(&staker)?;
 
@@ -301,17 +297,28 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
             to_json_binary(&query_staker_strategy_list(deps, staker_addr)?)
         }
-        QueryMsg::IsStrategyWhitelisted { strategy } => {
-            let strategy_addr = deps.api.addr_validate(&strategy)?;
-
-            to_json_binary(&query_is_strategy_whitelisted(deps, strategy_addr)?)
+        QueryMsg::IsStrategyWhitelisted(strategy) => {
+            let strategy = deps.api.addr_validate(&strategy)?;
+            to_json_binary(&query::is_strategy_whitelisted(deps, strategy)?)
         }
     }
 }
 
-fn query_strategy_for_token(deps: Deps, token: Addr) -> StdResult<TokenStrategyResponse> {
-    let strategy = DEPLOYED_STRATEGIES.load(deps.storage, &token)?;
-    Ok(TokenStrategyResponse { strategy })
+mod query {
+    use crate::msg::IsStrategyWhitelistedResponse;
+    use crate::state::STRATEGY_WHITELISTED;
+    use cosmwasm_std::{Addr, Deps, StdResult};
+
+    /// Is the strategy whitelisted for deposits?
+    pub fn is_strategy_whitelisted(
+        deps: Deps,
+        strategy: Addr,
+    ) -> StdResult<IsStrategyWhitelistedResponse> {
+        let is_enabled = STRATEGY_WHITELISTED
+            .may_load(deps.storage, &strategy)?
+            .unwrap_or(false);
+        Ok(IsStrategyWhitelistedResponse(is_enabled))
+    }
 }
 
 fn query_staker_strategy_shares(
@@ -332,16 +339,6 @@ fn query_staker_strategy_list(deps: Deps, staker: Addr) -> StdResult<StakerStrat
     Ok(StakerStrategyListResponse { strategies })
 }
 
-fn query_is_strategy_whitelisted(
-    deps: Deps,
-    strategy: Addr,
-) -> StdResult<StrategyWhitelistedResponse> {
-    let is_whitelisted = STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
-        .may_load(deps.storage, &strategy)?
-        .unwrap_or(false);
-    Ok(StrategyWhitelistedResponse { is_whitelisted })
-}
-
 fn query_get_deposits(deps: Deps, staker: Addr) -> StdResult<DepositsResponse> {
     let (strategies, shares) = get_deposits(deps, staker)?;
     Ok(DepositsResponse { strategies, shares })
@@ -355,19 +352,6 @@ fn query_staker_strategy_list_length(
     Ok(StakerStrategyListLengthResponse { strategies_len })
 }
 
-fn only_strategies_whitelisted_for_deposit(
-    deps: Deps,
-    strategy: &Addr,
-) -> Result<(), ContractError> {
-    let whitelist = STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
-        .may_load(deps.storage, strategy)?
-        .unwrap_or(false);
-    if !whitelist {
-        return Err(ContractError::StrategyNotWhitelisted {});
-    }
-    Ok(())
-}
-
 fn deposit_into_strategy_internal(
     mut deps: DepsMut,
     info: MessageInfo,
@@ -376,7 +360,7 @@ fn deposit_into_strategy_internal(
     token: Addr,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    only_strategies_whitelisted_for_deposit(deps.as_ref(), &strategy)?;
+    state::assert_strategy_whitelisted(deps.as_ref(), &strategy)?;
 
     if amount.is_zero() {
         return Err(ContractError::ZeroAmount {});
@@ -600,53 +584,156 @@ pub fn staker_strategy_list_length(deps: Deps, staker: Addr) -> StdResult<Uint12
     Ok(Uint128::new(strategies.len() as u128))
 }
 
-pub fn add_new_strategy(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    strategy: Addr,
-    token: Addr,
-) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.storage, &info)?;
+#[cfg(test)]
+mod tests {
+    use crate::contract::{execute, instantiate, query, InstantiateMsg};
+    use crate::msg::IsStrategyWhitelistedResponse;
+    use bvs_library::ownership;
+    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
+    use cosmwasm_std::{
+        from_json, to_json_binary, ContractResult, Event, Response, SystemError, SystemResult,
+        WasmQuery,
+    };
 
-    let existing_strategy = DEPLOYED_STRATEGIES
-        .may_load(deps.storage, &token)?
-        .unwrap_or(Addr::unchecked(""));
-    if existing_strategy != Addr::unchecked("") {
-        return Err(ContractError::StrategyAlreadyExists {});
+    #[test]
+    fn test_instantiate() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        let owner = deps.api.addr_make("owner");
+        let registry = deps.api.addr_make("registry");
+
+        let msg = InstantiateMsg {
+            owner: owner.to_string(),
+            registry: registry.to_string(),
+        };
+
+        let info = message_info(&owner, &[]);
+        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+        assert_eq!(
+            res,
+            Response::new()
+                .add_attribute("method", "instantiate")
+                .add_attribute("owner", owner.as_str())
+        );
     }
 
-    // let's check if contract is properly uploaded and initiated on the chain
-    let StrategyManagerResponse(strategy_manager_addr) = deps.querier.query(
-        &WasmQuery::Smart {
-            contract_addr: strategy.to_string().clone(),
-            msg: to_json_binary(&BaseQueryMsg::StrategyManager {})?,
+    #[test]
+    fn test_add_strategy() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        let owner = &deps.api.addr_make("owner");
+        {
+            ownership::set_owner(deps.as_mut().storage, owner).unwrap();
+            deps.querier.update_wasm(move |query| match query {
+                WasmQuery::Smart { msg, .. } => {
+                    match from_json::<bvs_strategy_base::msg::QueryMsg>(msg).unwrap() {
+                        bvs_strategy_base::msg::QueryMsg::StrategyManager { .. } => {
+                            SystemResult::Ok(ContractResult::Ok(
+                                to_json_binary(&bvs_strategy_base::msg::StrategyManagerResponse(
+                                    env.contract.address.clone(),
+                                ))
+                                .unwrap(),
+                            ))
+                        }
+                        _ => SystemResult::Err(SystemError::Unknown {}),
+                    }
+                }
+                _ => SystemResult::Err(SystemError::Unknown {}),
+            });
         }
-        .into(),
-    )?;
 
-    if strategy_manager_addr != env.contract.address {
-        return Err(ContractError::StrategyNotCompatible {});
+        let strategy = deps.api.addr_make("strategy");
+
+        let info = message_info(&owner, &[]);
+        let env = mock_env();
+        let response = execute::add_strategy(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            strategy.clone(),
+            true,
+        )
+        .unwrap();
+
+        assert_eq!(
+            response,
+            Response::new().add_event(
+                Event::new("StrategyUpdated")
+                    .add_attribute("strategy", strategy.to_string())
+                    .add_attribute("whitelisted", "true"),
+            )
+        );
     }
 
-    DEPLOYED_STRATEGIES.save(deps.storage, &token, &strategy)?;
+    #[test]
+    fn test_update_strategy() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
 
-    // when new strategy is added it is automatically whitelisted for deposit
-    STRATEGY_IS_WHITELISTED_FOR_DEPOSIT.save(deps.storage, &strategy, &true)?;
+        let owner = &deps.api.addr_make("owner");
+        ownership::set_owner(deps.as_mut().storage, owner).unwrap();
 
-    let event = Event::new("NewStrategyAdded")
-        .add_attribute("method", "add_new_strategy")
-        .add_attribute("strategy", strategy.to_string())
-        .add_attribute("token", token.to_string());
+        let strategy = deps.api.addr_make("strategy");
 
-    Ok(Response::new().add_event(event))
+        {
+            let IsStrategyWhitelistedResponse(is_whitelisted) =
+                query::is_strategy_whitelisted(deps.as_ref(), strategy.clone()).unwrap();
+            assert_eq!(is_whitelisted, false);
+        }
+
+        let owner_info = message_info(&owner, &[]);
+
+        {
+            let response =
+                execute::update_strategy(deps.as_mut(), owner_info.clone(), strategy.clone(), true)
+                    .unwrap();
+
+            assert_eq!(
+                response,
+                Response::new().add_event(
+                    Event::new("StrategyUpdated")
+                        .add_attribute("strategy", strategy.to_string())
+                        .add_attribute("whitelisted", "true"),
+                )
+            );
+
+            let IsStrategyWhitelistedResponse(is_whitelisted) =
+                query::is_strategy_whitelisted(deps.as_ref(), strategy.clone()).unwrap();
+            assert_eq!(is_whitelisted, true);
+        }
+
+        {
+            let response = execute::update_strategy(
+                deps.as_mut(),
+                owner_info.clone(),
+                strategy.clone(),
+                false,
+            )
+            .unwrap();
+
+            assert_eq!(
+                response,
+                Response::new().add_event(
+                    Event::new("StrategyUpdated")
+                        .add_attribute("strategy", strategy.to_string())
+                        .add_attribute("whitelisted", "false"),
+                )
+            );
+
+            let IsStrategyWhitelistedResponse(is_whitelisted) =
+                query::is_strategy_whitelisted(deps.as_ref(), strategy.clone()).unwrap();
+            assert_eq!(is_whitelisted, false);
+        }
+    }
 }
 
 #[cfg(test)]
-mod tests {
+mod tests_old {
     use super::*;
-    use bvs_library::ownership::OwnershipError;
     use bvs_strategy_base::msg::QueryMsg::UnderlyingToken;
+    use bvs_strategy_base::msg::StrategyManagerResponse;
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
@@ -720,7 +807,6 @@ mod tests {
         let (mut deps, _env, _owner_info, _info_delegation_manager) = instantiate_contract();
 
         let strategy = deps.api.addr_make("strategy");
-        let token = deps.api.addr_make("token");
 
         deps.querier.update_wasm(move |query| match query {
             WasmQuery::Smart {
@@ -745,159 +831,28 @@ mod tests {
             }),
         });
 
-        let res = add_new_strategy(
+        let res = execute::add_strategy(
             deps.as_mut(),
             mock_env(),
             _owner_info.clone(),
             strategy.clone(),
-            token.clone(),
+            true,
         );
 
         assert_eq!(res.is_ok(), true);
-
-        let query_msg = QueryMsg::TokenStrategy {
-            token: token.to_string(),
-        };
-
-        let response: TokenStrategyResponse =
-            from_json(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
-
-        assert_eq!(response.strategy.to_string(), strategy.to_string());
-    }
-
-    #[test]
-    fn test_only_strategies_whitelisted_for_deposit() {
-        let (mut deps, _env, _owner_info, _info_delegation_manager) = instantiate_contract();
-
-        let strategy = Addr::unchecked("strategy");
-        STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
-            .save(&mut deps.storage, &strategy, &true)
-            .unwrap();
-
-        let result = only_strategies_whitelisted_for_deposit(deps.as_ref(), &strategy);
-        assert!(result.is_ok());
-
-        let non_whitelisted_strategy = Addr::unchecked("non_whitelisted_strategy");
-        let result =
-            only_strategies_whitelisted_for_deposit(deps.as_ref(), &non_whitelisted_strategy);
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::StrategyNotWhitelisted {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-    }
-
-    #[test]
-    fn test_add_strategies_to_deposit_whitelist() {
-        let (mut deps, _env, owner_info, _info_delegation_manager) = instantiate_contract();
-
-        let strat1 = deps.api.addr_make("strategy1");
-        let strat2 = deps.api.addr_make("strategy2");
-
-        let strategies = vec![strat1.clone(), strat2.clone()];
-
-        let res = add_strategies_to_deposit_whitelist(
-            deps.as_mut(),
-            owner_info.clone(),
-            strategies.clone(),
-        )
-        .unwrap();
-
-        let events = res.events;
-
-        assert_eq!(events.len(), strategies.len());
-
-        for (i, event) in events.iter().enumerate() {
-            assert_eq!(event.ty, "StrategyAddedToDepositWhitelist");
-            assert_eq!(event.attributes.len(), 1);
-            assert_eq!(event.attributes[0].key, "strategy");
-            assert_eq!(event.attributes[0].value, strategies[i].to_string());
-        }
-
-        for strategy in &strategies {
-            let is_whitelisted = STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
-                .load(&deps.storage, &Addr::unchecked(strategy.clone()))
-                .unwrap();
-            assert!(is_whitelisted);
-        }
-
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-        let result = add_strategies_to_deposit_whitelist(
-            deps.as_mut(),
-            info_unauthorized.clone(),
-            strategies.clone(),
-        );
-
-        assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            ContractError::Ownership(OwnershipError::Unauthorized {})
-        );
-    }
-
-    #[test]
-    fn test_remove_strategies_from_deposit_whitelist() {
-        let (mut deps, _env, owner_info, _info_delegation_manager) = instantiate_contract();
-
-        let strategies = vec![
-            deps.api.addr_make("strategy1"),
-            deps.api.addr_make("strategy2"),
-        ];
-
-        let _res = add_strategies_to_deposit_whitelist(
-            deps.as_mut(),
-            owner_info.clone(),
-            strategies.clone(),
-        )
-        .unwrap();
-
-        let res = remove_strategies_from_deposit_whitelist(
-            deps.as_mut(),
-            owner_info.clone(),
-            strategies.clone(),
-        )
-        .unwrap();
-
-        let events = res.events;
-        assert_eq!(events.len(), 2);
-
-        for (i, strategy) in strategies.iter().enumerate() {
-            let event = &events[i];
-            assert_eq!(event.ty, "StrategyRemovedFromDepositWhitelist");
-            assert_eq!(event.attributes.len(), 1);
-            assert_eq!(event.attributes[0].key, "strategy");
-            assert_eq!(event.attributes[0].value, strategy.to_string());
-        }
-
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-        let result = remove_strategies_from_deposit_whitelist(
-            deps.as_mut(),
-            info_unauthorized.clone(),
-            strategies.clone(),
-        );
-        assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            ContractError::Ownership(OwnershipError::Unauthorized {})
-        );
     }
 
     #[test]
     fn test_deposit_into_strategy() {
-        let (mut deps, _env, owner_info, info_delegation_manager) = instantiate_contract();
+        let (mut deps, _env, _, info_delegation_manager) = instantiate_contract();
 
         let strategy = deps.api.addr_make("strategy1");
+        state::STRATEGY_WHITELISTED
+            .save(&mut deps.storage, &strategy, &true)
+            .unwrap();
+
         let token = deps.api.addr_make("token");
         let amount = Uint128::new(100);
-
-        let _res = add_strategies_to_deposit_whitelist(
-            deps.as_mut(),
-            owner_info.clone(),
-            vec![strategy.clone()],
-        )
-        .unwrap();
 
         let strategy_for_closure = strategy.clone();
         let token_for_closure = token.clone();
@@ -956,8 +911,7 @@ mod tests {
 
         assert_eq!(res.attributes.len(), 1);
         assert_eq!(res.attributes[0].key, "new_shares");
-        assert_eq!(res.attributes[0].value, "105"); // <- check base strategy vault struct for more
-                                                    // info
+        assert_eq!(res.attributes[0].value, "105");
 
         let non_whitelisted_strategy = deps.api.addr_make("non_whitelisted_strategy");
 
@@ -972,7 +926,7 @@ mod tests {
         assert!(result.is_err());
         if let Err(err) = result {
             match err {
-                ContractError::StrategyNotWhitelisted {} => (),
+                ContractError::NotWhitelisted {} => (),
                 _ => panic!("Unexpected error: {:?}", err),
             }
         }
@@ -1512,25 +1466,25 @@ mod tests {
         assert!(strategy_list_response.strategies.is_empty());
     }
 
-    #[test]
-    fn test_is_strategy_whitelisted() {
-        let (mut deps, _env, _owner_info, _info_delegation_manager) = instantiate_contract();
-
-        let strategy = deps.api.addr_make("strategy1");
-
-        STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
-            .save(&mut deps.storage, &strategy, &true)
-            .unwrap();
-
-        let result = query_is_strategy_whitelisted(deps.as_ref(), strategy.clone()).unwrap();
-        assert!(result.is_whitelisted);
-
-        let non_whitelisted_strategy = deps.api.addr_make("non_whitelisted_strategy");
-
-        let result =
-            query_is_strategy_whitelisted(deps.as_ref(), non_whitelisted_strategy).unwrap();
-        assert!(!result.is_whitelisted);
-    }
+    // #[test]
+    // fn query_is_strategy_whitelisted() {
+    //     let (mut deps, _env, _owner_info, _info_delegation_manager) = instantiate_contract();
+    //
+    //     let strategy = deps.api.addr_make("strategy1");
+    //
+    //     STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
+    //         .save(&mut deps.storage, &strategy, &true)
+    //         .unwrap();
+    //
+    //     let result = query_is_strategy_whitelisted(deps.as_ref(), strategy.clone()).unwrap();
+    //     assert!(result.is_whitelisted);
+    //
+    //     let non_whitelisted_strategy = deps.api.addr_make("non_whitelisted_strategy");
+    //
+    //     let result =
+    //         query_is_strategy_whitelisted(deps.as_ref(), non_whitelisted_strategy).unwrap();
+    //     assert!(!result.is_whitelisted);
+    // }
 
     #[test]
     fn test_get_staker_strategy_shares() {

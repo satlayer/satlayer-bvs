@@ -68,20 +68,11 @@ func (r *StrategyManager) BindClient(contractAddress string) {
 	r.ContractAddr = contractAddress
 }
 
-func (r *StrategyManager) AddStrategiesToWhitelist(ctx context.Context, strategies []string) (*coretypes.ResultTx, error) {
+func (r *StrategyManager) UpdateStrategy(ctx context.Context, strategy string, whitelisted bool) (*coretypes.ResultTx, error) {
 	msg := strategymanager.ExecuteMsg{
-		AddStrategiesToWhitelist: &strategymanager.AddStrategiesToWhitelist{
-			Strategies: strategies,
-		},
-	}
-
-	return r.execute(ctx, msg)
-}
-
-func (r *StrategyManager) RemoveStrategiesFromWhitelist(ctx context.Context, strategies []string) (*coretypes.ResultTx, error) {
-	msg := strategymanager.ExecuteMsg{
-		RemoveStrategiesFromWhitelist: &strategymanager.RemoveStrategiesFromWhitelist{
-			Strategies: strategies,
+		UpdateStrategy: &strategymanager.UpdateStrategy{
+			Strategy:    strategy,
+			Whitelisted: whitelisted,
 		},
 	}
 
@@ -219,9 +210,7 @@ func (r *StrategyManager) GetStakerStrategyList(staker string) (*wasmtypes.Query
 
 func (r *StrategyManager) IsStrategyWhitelisted(strategy string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategymanager.QueryMsg{
-		IsStrategyWhitelisted: &strategymanager.IsStrategyWhitelisted{
-			Strategy: strategy,
-		},
+		IsStrategyWhitelisted: &strategy,
 	}
 
 	return r.query(msg)

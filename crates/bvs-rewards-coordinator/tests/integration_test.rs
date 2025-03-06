@@ -57,15 +57,9 @@ fn instantiate() -> (App, TestContracts) {
     let strategy1 = StrategyBaseContract::new(&mut app, &env, None);
 
     // add strategy1 to strategy_manager
-    let msg = StrategyManagerExecuteMsg::AddNewStrategy {
-        new_strategy: strategy1.addr.to_string(),
-        token: cw20token.addr.to_string(),
-    };
-    strategy_manager.execute(&mut app, &owner, &msg).unwrap();
-
-    // whitelist strategy1
-    let msg = StrategyManagerExecuteMsg::AddStrategiesToWhitelist {
-        strategies: vec![strategy1.addr.to_string()],
+    let msg = StrategyManagerExecuteMsg::AddStrategy {
+        strategy: strategy1.addr.to_string(),
+        whitelisted: true,
     };
     strategy_manager.execute(&mut app, &owner, &msg).unwrap();
 
@@ -482,15 +476,9 @@ fn create_2_rewards_submission_different_tokens() {
     let strategy2 = StrategyBaseContract::new(&mut app, &mock_env, None);
 
     // add strategy2 to strategy_manager
-    let msg = StrategyManagerExecuteMsg::AddNewStrategy {
-        new_strategy: strategy2.addr.to_string(),
-        token: cw20token2.addr.to_string(),
-    };
-    tc.strategy_manager.execute(&mut app, &owner, &msg).unwrap();
-
-    // whitelist strategy2
-    let msg = StrategyManagerExecuteMsg::AddStrategiesToWhitelist {
-        strategies: vec![strategy2.addr.to_string()],
+    let msg = StrategyManagerExecuteMsg::AddStrategy {
+        strategy: strategy2.addr.to_string(),
+        whitelisted: true,
     };
     tc.strategy_manager.execute(&mut app, &owner, &msg).unwrap();
 

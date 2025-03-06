@@ -1,6 +1,6 @@
 use crate::query::{
     DepositsResponse, StakerStrategyListLengthResponse, StakerStrategyListResponse,
-    StakerStrategySharesResponse, StrategyWhitelistedResponse, TokenStrategyResponse,
+    StakerStrategySharesResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
@@ -14,16 +14,6 @@ pub struct InstantiateMsg {
 #[cw_serde]
 #[derive(bvs_registry::api::Display)]
 pub enum ExecuteMsg {
-    AddNewStrategy {
-        new_strategy: String,
-        token: String,
-    },
-    AddStrategiesToWhitelist {
-        strategies: Vec<String>,
-    },
-    RemoveStrategiesFromWhitelist {
-        strategies: Vec<String>,
-    },
     DepositIntoStrategy {
         strategy: String,
         token: String,
@@ -52,6 +42,14 @@ pub enum ExecuteMsg {
         delegation_manager: String,
         slash_manager: String,
     },
+    AddStrategy {
+        strategy: String,
+        whitelisted: bool,
+    },
+    UpdateStrategy {
+        strategy: String,
+        whitelisted: bool,
+    },
 }
 
 #[cw_serde]
@@ -69,12 +67,12 @@ pub enum QueryMsg {
     #[returns(StakerStrategyListResponse)]
     GetStakerStrategyList { staker: String },
 
-    #[returns(StrategyWhitelistedResponse)]
-    IsStrategyWhitelisted { strategy: String },
-
-    #[returns(TokenStrategyResponse)]
-    TokenStrategy { token: String },
+    #[returns(IsStrategyWhitelistedResponse)]
+    IsStrategyWhitelisted(String),
 }
+
+#[cw_serde]
+pub struct IsStrategyWhitelistedResponse(pub bool);
 
 /// Both Strategy Manager and Delegation Manager are circularly dependent on each other.
 /// Since we can't circularly import each other, we put ExecuteMsg,
