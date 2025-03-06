@@ -4,10 +4,7 @@ use cosmwasm_std::entry_point;
 use crate::{
     auth,
     error::ContractError,
-    msg::{
-        DepositsResponse, ExecuteMsg, InstantiateMsg, QueryMsg, StakerStrategyListResponse,
-        StakerStrategySharesResponse,
-    },
+    msg::{DepositsResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
     state,
     state::{STAKER_STRATEGY_LIST, STAKER_STRATEGY_SHARES},
 };
@@ -477,20 +474,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
             to_json_binary(&query_get_deposits(deps, staker_addr)?)
         }
-        QueryMsg::GetStakerStrategyShares { staker, strategy } => {
-            let staker_addr = deps.api.addr_validate(&staker)?;
-            let strategy_addr = deps.api.addr_validate(&strategy)?;
+        QueryMsg::StakerStrategyShares { staker, strategy } => {
+            let staker = deps.api.addr_validate(&staker)?;
+            let strategy = deps.api.addr_validate(&strategy)?;
 
-            to_json_binary(&query_staker_strategy_shares(
-                deps,
-                staker_addr,
-                strategy_addr,
-            )?)
+            to_json_binary(&query::staker_strategy_shares(deps, staker, strategy)?)
         }
-        QueryMsg::GetStakerStrategyList { staker } => {
-            let staker_addr = deps.api.addr_validate(&staker)?;
+        QueryMsg::StakerStrategyList { staker } => {
+            let staker = deps.api.addr_validate(&staker)?;
 
-            to_json_binary(&query_staker_strategy_list(deps, staker_addr)?)
+            to_json_binary(&query::staker_strategy_list(deps, staker)?)
         }
         QueryMsg::IsStrategyWhitelisted(strategy) => {
             let strategy = deps.api.addr_validate(&strategy)?;
@@ -500,9 +493,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 mod query {
-    use crate::msg::IsStrategyWhitelistedResponse;
-    use crate::state::STRATEGY_WHITELISTED;
-    use cosmwasm_std::{Addr, Deps, StdResult};
+    use crate::msg::{
+        IsStrategyWhitelistedResponse, StakerStrategyListResponse, StakerStrategySharesResponse,
+    };
+    use crate::state::{STAKER_STRATEGY_LIST, STAKER_STRATEGY_SHARES, STRATEGY_WHITELISTED};
+    use cosmwasm_std::{Addr, Deps, StdResult, Uint128};
 
     /// Is the strategy whitelisted for deposits?
     pub fn is_strategy_whitelisted(
@@ -514,24 +509,24 @@ mod query {
             .unwrap_or(false);
         Ok(IsStrategyWhitelistedResponse(is_enabled))
     }
-}
 
-fn query_staker_strategy_shares(
-    deps: Deps,
-    staker: Addr,
-    strategy: Addr,
-) -> StdResult<StakerStrategySharesResponse> {
-    let shares = STAKER_STRATEGY_SHARES
-        .may_load(deps.storage, (&staker, &strategy))?
-        .unwrap_or(Uint128::zero());
-    Ok(StakerStrategySharesResponse { shares })
-}
+    pub fn staker_strategy_shares(
+        deps: Deps,
+        staker: Addr,
+        strategy: Addr,
+    ) -> StdResult<StakerStrategySharesResponse> {
+        let shares = STAKER_STRATEGY_SHARES
+            .may_load(deps.storage, (&staker, &strategy))?
+            .unwrap_or(Uint128::zero());
+        Ok(StakerStrategySharesResponse(shares))
+    }
 
-fn query_staker_strategy_list(deps: Deps, staker: Addr) -> StdResult<StakerStrategyListResponse> {
-    let strategies = STAKER_STRATEGY_LIST
-        .may_load(deps.storage, &staker)?
-        .unwrap_or_else(Vec::new);
-    Ok(StakerStrategyListResponse { strategies })
+    pub fn staker_strategy_list(deps: Deps, staker: Addr) -> StdResult<StakerStrategyListResponse> {
+        let strategies = STAKER_STRATEGY_LIST
+            .may_load(deps.storage, &staker)?
+            .unwrap_or_else(Vec::new);
+        Ok(StakerStrategyListResponse(strategies))
+    }
 }
 
 fn query_get_deposits(deps: Deps, staker: Addr) -> StdResult<DepositsResponse> {
@@ -642,7 +637,6 @@ mod tests {
     #[test]
     fn test_update_strategy() {
         let mut deps = mock_dependencies();
-        let env = mock_env();
 
         let owner = &deps.api.addr_make("owner");
         ownership::set_owner(deps.as_mut().storage, owner).unwrap();
@@ -704,8 +698,8 @@ mod tests {
 #[cfg(test)]
 mod tests_old {
     use super::*;
-    use bvs_strategy_base::msg::QueryMsg::UnderlyingToken;
-    use bvs_strategy_base::msg::StrategyManagerResponse;
+    use crate::msg::StakerStrategyListResponse;
+    use bvs_strategy_base::{msg::QueryMsg::UnderlyingToken, msg::StrategyManagerResponse};
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
@@ -1382,21 +1376,21 @@ mod tests_old {
             .save(&mut deps.storage, &staker, &strategies.clone())
             .unwrap();
 
-        let query_msg = QueryMsg::GetStakerStrategyList {
+        let query_msg = QueryMsg::StakerStrategyList {
             staker: staker.to_string(),
         };
         let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
         let strategy_list_response: StakerStrategyListResponse = from_json(bin).unwrap();
-        assert_eq!(strategy_list_response.strategies, strategies);
+        assert_eq!(strategy_list_response.0, strategies);
 
         let new_staker = deps.api.addr_make("new_staker");
 
-        let query_msg = QueryMsg::GetStakerStrategyList {
+        let query_msg = QueryMsg::StakerStrategyList {
             staker: new_staker.to_string(),
         };
         let bin = query(deps.as_ref(), env, query_msg).unwrap();
         let strategy_list_response: StakerStrategyListResponse = from_json(bin).unwrap();
-        assert!(strategy_list_response.strategies.is_empty());
+        assert!(strategy_list_response.0.is_empty());
     }
 
     #[test]
@@ -1412,19 +1406,19 @@ mod tests_old {
             .unwrap();
 
         let retrieved_shares =
-            query_staker_strategy_shares(deps.as_ref(), staker.clone(), strategy.clone()).unwrap();
-        assert_eq!(retrieved_shares.shares, shares);
+            query::staker_strategy_shares(deps.as_ref(), staker.clone(), strategy.clone()).unwrap();
+        assert_eq!(retrieved_shares.0, shares);
 
         let new_staker = Addr::unchecked("new_staker");
         let retrieved_shares =
-            query_staker_strategy_shares(deps.as_ref(), new_staker.clone(), strategy.clone())
+            query::staker_strategy_shares(deps.as_ref(), new_staker.clone(), strategy.clone())
                 .unwrap();
-        assert_eq!(retrieved_shares.shares, Uint128::zero());
+        assert_eq!(retrieved_shares.0, Uint128::zero());
 
         let new_strategy = Addr::unchecked("new_strategy");
         let retrieved_shares =
-            query_staker_strategy_shares(deps.as_ref(), staker.clone(), new_strategy.clone())
+            query::staker_strategy_shares(deps.as_ref(), staker.clone(), new_strategy.clone())
                 .unwrap();
-        assert_eq!(retrieved_shares.shares, Uint128::zero());
+        assert_eq!(retrieved_shares.0, Uint128::zero());
     }
 }

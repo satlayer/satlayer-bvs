@@ -744,23 +744,23 @@ pub fn query_operator_stakers(deps: Deps, operator: Addr) -> StdResult<OperatorS
 
         let strategy_list_response: StakerStrategyListResponse = deps.querier.query_wasm_smart(
             strategy_manager.to_string(),
-            &StrategyManagerQueryMsg::GetStakerStrategyList {
+            &StrategyManagerQueryMsg::StakerStrategyList {
                 staker: staker.to_string(),
             },
         )?;
-        let strategies = strategy_list_response.strategies;
+        let strategies = strategy_list_response.0;
 
         for strategy in strategies {
             let shares_response: StakerStrategySharesResponse = deps.querier.query_wasm_smart(
                 strategy_manager.to_string(),
-                &StrategyManagerQueryMsg::GetStakerStrategyShares {
+                &StrategyManagerQueryMsg::StakerStrategyShares {
                     staker: staker.to_string(),
                     strategy: strategy.to_string(),
                 },
             )?;
 
-            if !shares_response.shares.is_zero() {
-                shares_per_strategy.push((strategy, shares_response.shares));
+            if !shares_response.0.is_zero() {
+                shares_per_strategy.push((strategy, shares_response.0));
             }
         }
 
@@ -3354,33 +3354,30 @@ mod tests {
             {
                 let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
                 match msg {
-                    StrategyManagerQueryMsg::GetStakerStrategyList { staker } => {
+                    StrategyManagerQueryMsg::StakerStrategyList { staker } => {
                         assert_eq!(staker, staker1_clone.to_string());
                         SystemResult::Ok(ContractResult::Ok(
-                            to_json_binary(&StakerStrategyListResponse {
-                                strategies: vec![strategy1_clone.clone(), strategy2_clone.clone()],
-                            })
+                            to_json_binary(&StakerStrategyListResponse(vec![
+                                strategy1_clone.clone(),
+                                strategy2_clone.clone(),
+                            ]))
                             .unwrap(),
                         ))
                     }
-                    StrategyManagerQueryMsg::GetStakerStrategyShares { staker, strategy } => {
+                    StrategyManagerQueryMsg::StakerStrategyShares { staker, strategy } => {
                         if staker == staker1_clone.to_string()
                             && strategy == strategy1_clone.to_string()
                         {
                             SystemResult::Ok(ContractResult::Ok(
-                                to_json_binary(&StakerStrategySharesResponse {
-                                    shares: Uint128::new(100),
-                                })
-                                .unwrap(),
+                                to_json_binary(&StakerStrategySharesResponse(Uint128::new(100)))
+                                    .unwrap(),
                             ))
                         } else if staker == staker1_clone.to_string()
                             && strategy == strategy2_clone.to_string()
                         {
                             SystemResult::Ok(ContractResult::Ok(
-                                to_json_binary(&StakerStrategySharesResponse {
-                                    shares: Uint128::new(200),
-                                })
-                                .unwrap(),
+                                to_json_binary(&StakerStrategySharesResponse(Uint128::new(200)))
+                                    .unwrap(),
                             ))
                         } else {
                             SystemResult::Err(SystemError::InvalidRequest {

@@ -51,14 +51,15 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
+    // TODO(fuxingloh): rename this StakerDeposits { staker: String }
     #[returns(DepositsResponse)]
     GetDeposits { staker: String },
 
     #[returns(StakerStrategySharesResponse)]
-    GetStakerStrategyShares { staker: String, strategy: String },
+    StakerStrategyShares { staker: String, strategy: String },
 
     #[returns(StakerStrategyListResponse)]
-    GetStakerStrategyList { staker: String },
+    StakerStrategyList { staker: String },
 
     #[returns(IsStrategyWhitelistedResponse)]
     IsStrategyWhitelisted(String),
@@ -71,14 +72,10 @@ pub struct DepositsResponse {
 }
 
 #[cw_serde]
-pub struct StakerStrategySharesResponse {
-    pub shares: Uint128,
-}
+pub struct StakerStrategySharesResponse(pub Uint128);
 
 #[cw_serde]
-pub struct StakerStrategyListResponse {
-    pub strategies: Vec<Addr>,
-}
+pub struct StakerStrategyListResponse(pub Vec<Addr>);
 
 #[cw_serde]
 pub struct IsStrategyWhitelistedResponse(pub bool);
