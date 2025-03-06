@@ -21,9 +21,6 @@
 //
 //    isStrategyWhitelistedResponse, err := UnmarshalIsStrategyWhitelistedResponse(bytes)
 //    bytes, err = isStrategyWhitelistedResponse.Marshal()
-//
-//    stakerStrategyListLengthResponse, err := UnmarshalStakerStrategyListLengthResponse(bytes)
-//    bytes, err = stakerStrategyListLengthResponse.Marshal()
 
 package strategymanager
 
@@ -101,16 +98,6 @@ func (r *IsStrategyWhitelistedResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalStakerStrategyListLengthResponse(data []byte) (StakerStrategyListLengthResponse, error) {
-	var r StakerStrategyListLengthResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *StakerStrategyListLengthResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
 type InstantiateMsg struct {
 	Owner    string `json:"owner"`
 	Registry string `json:"registry"`
@@ -172,11 +159,10 @@ type WithdrawSharesAsTokens struct {
 }
 
 type QueryMsg struct {
-	GetDeposits              *GetDeposits              `json:"get_deposits,omitempty"`
-	StakerStrategyListLength *StakerStrategyListLength `json:"staker_strategy_list_length,omitempty"`
-	GetStakerStrategyShares  *GetStakerStrategyShares  `json:"get_staker_strategy_shares,omitempty"`
-	GetStakerStrategyList    *GetStakerStrategyList    `json:"get_staker_strategy_list,omitempty"`
-	IsStrategyWhitelisted    *string                   `json:"is_strategy_whitelisted,omitempty"`
+	GetDeposits             *GetDeposits             `json:"get_deposits,omitempty"`
+	GetStakerStrategyShares *GetStakerStrategyShares `json:"get_staker_strategy_shares,omitempty"`
+	GetStakerStrategyList   *GetStakerStrategyList   `json:"get_staker_strategy_list,omitempty"`
+	IsStrategyWhitelisted   *string                  `json:"is_strategy_whitelisted,omitempty"`
 }
 
 type GetDeposits struct {
@@ -192,10 +178,6 @@ type GetStakerStrategyShares struct {
 	Strategy string `json:"strategy"`
 }
 
-type StakerStrategyListLength struct {
-	Staker string `json:"staker"`
-}
-
 type DepositsResponse struct {
 	Shares     []string `json:"shares"`
 	Strategies []string `json:"strategies"`
@@ -207,8 +189,4 @@ type StakerStrategyListResponse struct {
 
 type StakerStrategySharesResponse struct {
 	Shares string `json:"shares"`
-}
-
-type StakerStrategyListLengthResponse struct {
-	StrategiesLen string `json:"strategies_len"`
 }

@@ -12,10 +12,6 @@ import (
 //	strategy.GetDeposits(stakerAddress)
 //}
 
-func Test_GetStakerStrategyListLength(t *testing.T) {
-	strategy.GetStakerStrategyListLength("bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk")
-}
-
 func Test_GetStakerStrategyList(t *testing.T) {
 	strategy.GetStakerStrategyList("bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk")
 }

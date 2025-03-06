@@ -11,15 +11,6 @@ func GetDeposits(stakerAddress string) {
 	fmt.Printf("%s\n", resp.Data)
 }
 
-func GetStakerStrategyListLength(stakerAddress string) {
-	s := NewService()
-	resp, err := s.Strategy.StakerStrategyListLength(stakerAddress)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("%s\n", resp.Data)
-}
-
 func GetStakerStrategyList(stakerAddress string) {
 	s := NewService()
 	resp, err := s.Strategy.GetStakerStrategyList(stakerAddress)

@@ -76,15 +76,6 @@ func strategyCmd() *cobra.Command {
 			strategy.GetDeposits(args[0])
 		},
 	}
-
-	getStakerStrategyListLengthCmd := &cobra.Command{
-		Use:   "get-staker-strategy-list-length <stakerAddress>",
-		Short: "To get the staker strategy list length.",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			strategy.GetStakerStrategyListLength(args[0])
-		},
-	}
 	getStakerStrategySharesCmd := &cobra.Command{
 		Use:   "get-staker-strategy-shares <stakerAddress> <strategyAddress>",
 		Short: "To get the staker strategy shares.",
@@ -118,7 +109,6 @@ func strategyCmd() *cobra.Command {
 	subCmd.AddCommand(removeSharesCmd)
 	subCmd.AddCommand(withdrawSharesAsTokensCmd)
 	subCmd.AddCommand(getDepositsCmd)
-	subCmd.AddCommand(getStakerStrategyListLengthCmd)
 	subCmd.AddCommand(getStakerStrategySharesCmd)
 
 	return subCmd

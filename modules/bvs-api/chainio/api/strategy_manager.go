@@ -177,16 +177,6 @@ func (r *StrategyManager) GetDeposits(staker string) (*wasmtypes.QuerySmartContr
 	return r.query(msg)
 }
 
-func (r *StrategyManager) StakerStrategyListLength(staker string) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := strategymanager.QueryMsg{
-		StakerStrategyListLength: &strategymanager.StakerStrategyListLength{
-			Staker: staker,
-		},
-	}
-
-	return r.query(msg)
-}
-
 func (r *StrategyManager) GetStakerStrategyShares(staker string, strategy string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategymanager.QueryMsg{
 		GetStakerStrategyShares: &strategymanager.GetStakerStrategyShares{

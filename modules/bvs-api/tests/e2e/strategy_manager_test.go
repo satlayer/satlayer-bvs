@@ -227,11 +227,6 @@ func (suite *strategyManagerTestSuite) test_QueryStrategyManager() {
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("GetDeposits resp:%+v", resp)
 
-	resp, err = strategyManager.StakerStrategyListLength(stakerAddr)
-	assert.NoError(t, err, "StakerStrategyListLength")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("StakerStrategyListLength resp:%+v", resp)
-
 	resp, err = strategyManager.GetStakerStrategyShares(stakerAddr, strategyAddr)
 	assert.NoError(t, err, "GetStakerStrategyShares")
 	assert.NotNil(t, resp, "response nil")
