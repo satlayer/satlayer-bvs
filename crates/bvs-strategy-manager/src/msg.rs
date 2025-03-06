@@ -54,9 +54,6 @@ pub enum QueryMsg {
     #[returns(DepositsResponse)]
     GetDeposits { staker: String },
 
-    #[returns(StakerStrategyListLengthResponse)]
-    StakerStrategyListLength { staker: String },
-
     #[returns(StakerStrategySharesResponse)]
     GetStakerStrategyShares { staker: String, strategy: String },
 
@@ -81,11 +78,6 @@ pub struct StakerStrategySharesResponse {
 #[cw_serde]
 pub struct StakerStrategyListResponse {
     pub strategies: Vec<Addr>,
-}
-
-#[cw_serde]
-pub struct StakerStrategyListLengthResponse {
-    pub strategies_len: Uint128,
 }
 
 #[cw_serde]

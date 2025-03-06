@@ -5,8 +5,8 @@ use crate::{
     auth,
     error::ContractError,
     msg::{
-        DepositsResponse, ExecuteMsg, InstantiateMsg, QueryMsg, StakerStrategyListLengthResponse,
-        StakerStrategyListResponse, StakerStrategySharesResponse,
+        DepositsResponse, ExecuteMsg, InstantiateMsg, QueryMsg, StakerStrategyListResponse,
+        StakerStrategySharesResponse,
     },
     state,
     state::{MAX_STAKER_STRATEGY_LIST_LENGTH, STAKER_STRATEGY_LIST, STAKER_STRATEGY_SHARES},
@@ -473,11 +473,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
             to_json_binary(&query_get_deposits(deps, staker_addr)?)
         }
-        QueryMsg::StakerStrategyListLength { staker } => {
-            let staker_addr = deps.api.addr_validate(&staker)?;
-
-            to_json_binary(&query_staker_strategy_list_length(deps, staker_addr)?)
-        }
         QueryMsg::GetStakerStrategyShares { staker, strategy } => {
             let staker_addr = deps.api.addr_validate(&staker)?;
             let strategy_addr = deps.api.addr_validate(&strategy)?;
@@ -540,14 +535,6 @@ fn query_get_deposits(deps: Deps, staker: Addr) -> StdResult<DepositsResponse> {
     Ok(DepositsResponse { strategies, shares })
 }
 
-fn query_staker_strategy_list_length(
-    deps: Deps,
-    staker: Addr,
-) -> StdResult<StakerStrategyListLengthResponse> {
-    let strategies_len = staker_strategy_list_length(deps, staker)?;
-    Ok(StakerStrategyListLengthResponse { strategies_len })
-}
-
 pub fn get_deposits(deps: Deps, staker: Addr) -> StdResult<(Vec<Addr>, Vec<Uint128>)> {
     let strategies = STAKER_STRATEGY_LIST
         .may_load(deps.storage, &staker)?
@@ -563,13 +550,6 @@ pub fn get_deposits(deps: Deps, staker: Addr) -> StdResult<(Vec<Addr>, Vec<Uint1
     }
 
     Ok((strategies, shares))
-}
-
-pub fn staker_strategy_list_length(deps: Deps, staker: Addr) -> StdResult<Uint128> {
-    let strategies = STAKER_STRATEGY_LIST
-        .may_load(deps.storage, &staker)?
-        .unwrap_or_else(Vec::new);
-    Ok(Uint128::new(strategies.len() as u128))
 }
 
 #[cfg(test)]
@@ -965,45 +945,6 @@ mod tests_old {
 
         assert_eq!(response.strategies.len(), 0);
         assert_eq!(response.shares.len(), 0);
-    }
-
-    #[test]
-    fn test_staker_strategy_list_length() {
-        let (mut deps, env, _owner_info, _info_delegation_manager) = instantiate_contract();
-
-        let staker = deps.api.addr_make("staker1");
-        let strategy1 = deps.api.addr_make("strategy1");
-        let strategy2 = deps.api.addr_make("strategy2");
-
-        STAKER_STRATEGY_LIST
-            .save(
-                &mut deps.storage,
-                &staker,
-                &vec![strategy1.clone(), strategy2.clone()],
-            )
-            .unwrap();
-
-        // Query the strategy list length for the staker
-        let query_msg = QueryMsg::StakerStrategyListLength {
-            staker: staker.to_string(),
-        };
-        let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let response: StakerStrategyListLengthResponse = from_json(bin).unwrap();
-        let length = response.strategies_len;
-
-        assert_eq!(length, Uint128::new(2));
-
-        // Test with a staker that has no strategies
-        let new_staker = deps.api.addr_make("new_staker");
-
-        let query_msg = QueryMsg::StakerStrategyListLength {
-            staker: new_staker.to_string(),
-        };
-        let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let response: StakerStrategyListLengthResponse = from_json(bin).unwrap();
-        let length = response.strategies_len;
-
-        assert_eq!(length, Uint128::new(0));
     }
 
     #[test]
@@ -1453,26 +1394,6 @@ mod tests_old {
         let strategy_list_response: StakerStrategyListResponse = from_json(bin).unwrap();
         assert!(strategy_list_response.strategies.is_empty());
     }
-
-    // #[test]
-    // fn query_is_strategy_whitelisted() {
-    //     let (mut deps, _env, _owner_info, _info_delegation_manager) = instantiate_contract();
-    //
-    //     let strategy = deps.api.addr_make("strategy1");
-    //
-    //     STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
-    //         .save(&mut deps.storage, &strategy, &true)
-    //         .unwrap();
-    //
-    //     let result = query_is_strategy_whitelisted(deps.as_ref(), strategy.clone()).unwrap();
-    //     assert!(result.is_whitelisted);
-    //
-    //     let non_whitelisted_strategy = deps.api.addr_make("non_whitelisted_strategy");
-    //
-    //     let result =
-    //         query_is_strategy_whitelisted(deps.as_ref(), non_whitelisted_strategy).unwrap();
-    //     assert!(!result.is_whitelisted);
-    // }
 
     #[test]
     fn test_get_staker_strategy_shares() {
