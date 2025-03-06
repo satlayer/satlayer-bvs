@@ -167,9 +167,9 @@ func (r *StrategyManager) query(msg any) (*wasmtypes.QuerySmartContractStateResp
 	return r.io.QueryContract(*r.queryOptions)
 }
 
-func (r *StrategyManager) GetDeposits(staker string) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyManager) StakerDepositList(staker string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategymanager.QueryMsg{
-		GetDeposits: &strategymanager.GetDeposits{
+		StakerDepositList: &strategymanager.StakerDepositList{
 			Staker: staker,
 		},
 	}
@@ -177,9 +177,9 @@ func (r *StrategyManager) GetDeposits(staker string) (*wasmtypes.QuerySmartContr
 	return r.query(msg)
 }
 
-func (r *StrategyManager) GetStakerStrategyShares(staker string, strategy string) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyManager) StakerStrategyShares(staker string, strategy string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategymanager.QueryMsg{
-		GetStakerStrategyShares: &strategymanager.GetStakerStrategyShares{
+		StakerStrategyShares: &strategymanager.StakerStrategyShares{
 			Staker:   staker,
 			Strategy: strategy,
 		},
@@ -188,9 +188,9 @@ func (r *StrategyManager) GetStakerStrategyShares(staker string, strategy string
 	return r.query(msg)
 }
 
-func (r *StrategyManager) GetStakerStrategyList(staker string) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (r *StrategyManager) StakerStrategyList(staker string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := strategymanager.QueryMsg{
-		GetStakerStrategyList: &strategymanager.GetStakerStrategyList{
+		StakerStrategyList: &strategymanager.StakerStrategyList{
 			Staker: staker,
 		},
 	}

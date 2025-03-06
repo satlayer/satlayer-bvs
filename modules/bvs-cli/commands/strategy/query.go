@@ -4,7 +4,7 @@ import "fmt"
 
 func GetDeposits(stakerAddress string) {
 	s := NewService()
-	resp, err := s.Strategy.GetDeposits(stakerAddress)
+	resp, err := s.Strategy.StakerDepositList(stakerAddress)
 	if err != nil {
 		panic(err)
 	}
@@ -13,7 +13,7 @@ func GetDeposits(stakerAddress string) {
 
 func GetStakerStrategyList(stakerAddress string) {
 	s := NewService()
-	resp, err := s.Strategy.GetStakerStrategyList(stakerAddress)
+	resp, err := s.Strategy.StakerStrategyList(stakerAddress)
 	if err != nil {
 		panic(err)
 	}
@@ -22,7 +22,7 @@ func GetStakerStrategyList(stakerAddress string) {
 
 func GetStakerStrategyShares(staker string, strategy string) {
 	s := NewService()
-	resp, err := s.Strategy.GetStakerStrategyShares(staker, strategy)
+	resp, err := s.Strategy.StakerStrategyShares(staker, strategy)
 	if err != nil {
 		panic(err)
 	}

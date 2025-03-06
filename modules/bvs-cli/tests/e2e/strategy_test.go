@@ -9,7 +9,7 @@ import (
 // TODO: disabled transactional test, to be fixed in SL-182
 //func Test_GetDeposits(t *testing.T) {
 //	stakerAddress := "bbn1yph32eys4tdzv47dymfmn4el9x3k5rvpgjnphk"
-//	strategy.GetDeposits(stakerAddress)
+//	strategy.StakerDepositList(stakerAddress)
 //}
 
 func Test_GetStakerStrategyList(t *testing.T) {
