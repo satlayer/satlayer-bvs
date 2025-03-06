@@ -10,20 +10,17 @@
 //    queryMsg, err := UnmarshalQueryMsg(bytes)
 //    bytes, err = queryMsg.Marshal()
 //
-//    depositsResponse, err := UnmarshalDepositsResponse(bytes)
-//    bytes, err = depositsResponse.Marshal()
+//    isStrategyWhitelistedResponse, err := UnmarshalIsStrategyWhitelistedResponse(bytes)
+//    bytes, err = isStrategyWhitelistedResponse.Marshal()
+//
+//    stakerDepositListResponse, err := UnmarshalStakerDepositListResponse(bytes)
+//    bytes, err = stakerDepositListResponse.Marshal()
 //
 //    stakerStrategyListResponse, err := UnmarshalStakerStrategyListResponse(bytes)
 //    bytes, err = stakerStrategyListResponse.Marshal()
 //
 //    stakerStrategySharesResponse, err := UnmarshalStakerStrategySharesResponse(bytes)
 //    bytes, err = stakerStrategySharesResponse.Marshal()
-//
-//    isStrategyWhitelistedResponse, err := UnmarshalIsStrategyWhitelistedResponse(bytes)
-//    bytes, err = isStrategyWhitelistedResponse.Marshal()
-//
-//    stakerStrategyListLengthResponse, err := UnmarshalStakerStrategyListLengthResponse(bytes)
-//    bytes, err = stakerStrategyListLengthResponse.Marshal()
 
 package strategymanager
 
@@ -59,36 +56,6 @@ func (r *QueryMsg) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalDepositsResponse(data []byte) (DepositsResponse, error) {
-	var r DepositsResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *DepositsResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalStakerStrategyListResponse(data []byte) (StakerStrategyListResponse, error) {
-	var r StakerStrategyListResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *StakerStrategyListResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalStakerStrategySharesResponse(data []byte) (StakerStrategySharesResponse, error) {
-	var r StakerStrategySharesResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *StakerStrategySharesResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
 type IsStrategyWhitelistedResponse bool
 
 func UnmarshalIsStrategyWhitelistedResponse(data []byte) (IsStrategyWhitelistedResponse, error) {
@@ -101,13 +68,39 @@ func (r *IsStrategyWhitelistedResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalStakerStrategyListLengthResponse(data []byte) (StakerStrategyListLengthResponse, error) {
-	var r StakerStrategyListLengthResponse
+type StakerDepositListResponse []StrategyShare
+
+func UnmarshalStakerDepositListResponse(data []byte) (StakerDepositListResponse, error) {
+	var r StakerDepositListResponse
 	err := json.Unmarshal(data, &r)
 	return r, err
 }
 
-func (r *StakerStrategyListLengthResponse) Marshal() ([]byte, error) {
+func (r *StakerDepositListResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+type StakerStrategyListResponse []string
+
+func UnmarshalStakerStrategyListResponse(data []byte) (StakerStrategyListResponse, error) {
+	var r StakerStrategyListResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *StakerStrategyListResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+type StakerStrategySharesResponse string
+
+func UnmarshalStakerStrategySharesResponse(data []byte) (StakerStrategySharesResponse, error) {
+	var r StakerStrategySharesResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *StakerStrategySharesResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -172,43 +165,26 @@ type WithdrawSharesAsTokens struct {
 }
 
 type QueryMsg struct {
-	GetDeposits              *GetDeposits              `json:"get_deposits,omitempty"`
-	StakerStrategyListLength *StakerStrategyListLength `json:"staker_strategy_list_length,omitempty"`
-	GetStakerStrategyShares  *GetStakerStrategyShares  `json:"get_staker_strategy_shares,omitempty"`
-	GetStakerStrategyList    *GetStakerStrategyList    `json:"get_staker_strategy_list,omitempty"`
-	IsStrategyWhitelisted    *string                   `json:"is_strategy_whitelisted,omitempty"`
+	StakerDepositList     *StakerDepositList    `json:"staker_deposit_list,omitempty"`
+	StakerStrategyShares  *StakerStrategyShares `json:"staker_strategy_shares,omitempty"`
+	StakerStrategyList    *StakerStrategyList   `json:"staker_strategy_list,omitempty"`
+	IsStrategyWhitelisted *string               `json:"is_strategy_whitelisted,omitempty"`
 }
 
-type GetDeposits struct {
+type StakerDepositList struct {
 	Staker string `json:"staker"`
 }
 
-type GetStakerStrategyList struct {
+type StakerStrategyList struct {
 	Staker string `json:"staker"`
 }
 
-type GetStakerStrategyShares struct {
+type StakerStrategyShares struct {
 	Staker   string `json:"staker"`
 	Strategy string `json:"strategy"`
 }
 
-type StakerStrategyListLength struct {
-	Staker string `json:"staker"`
-}
-
-type DepositsResponse struct {
-	Shares     []string `json:"shares"`
-	Strategies []string `json:"strategies"`
-}
-
-type StakerStrategyListResponse struct {
-	Strategies []string `json:"strategies"`
-}
-
-type StakerStrategySharesResponse struct {
-	Shares string `json:"shares"`
-}
-
-type StakerStrategyListLengthResponse struct {
-	StrategiesLen string `json:"strategies_len"`
+type StrategyShare struct {
+	Shares   string `json:"shares"`
+	Strategy string `json:"strategy"`
 }

@@ -1,9 +1,5 @@
-use crate::query::{
-    DepositsResponse, StakerStrategyListLengthResponse, StakerStrategyListResponse,
-    StakerStrategySharesResponse,
-};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Addr, Uint128};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -55,21 +51,33 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(DepositsResponse)]
-    GetDeposits { staker: String },
-
-    #[returns(StakerStrategyListLengthResponse)]
-    StakerStrategyListLength { staker: String },
+    #[returns(StakerDepositListResponse)]
+    StakerDepositList { staker: String },
 
     #[returns(StakerStrategySharesResponse)]
-    GetStakerStrategyShares { staker: String, strategy: String },
+    StakerStrategyShares { staker: String, strategy: String },
 
     #[returns(StakerStrategyListResponse)]
-    GetStakerStrategyList { staker: String },
+    StakerStrategyList { staker: String },
 
     #[returns(IsStrategyWhitelistedResponse)]
     IsStrategyWhitelisted(String),
 }
+
+#[cw_serde]
+pub struct StakerDepositListResponse(pub Vec<StrategyShare>);
+
+#[cw_serde]
+pub struct StrategyShare {
+    pub strategy: Addr,
+    pub shares: Uint128,
+}
+
+#[cw_serde]
+pub struct StakerStrategySharesResponse(pub Uint128);
+
+#[cw_serde]
+pub struct StakerStrategyListResponse(pub Vec<Addr>);
 
 #[cw_serde]
 pub struct IsStrategyWhitelistedResponse(pub bool);

@@ -20,7 +20,6 @@ pub fn assert_strategy_whitelisted(deps: Deps, strategy: &Addr) -> Result<(), Co
 
 pub const STAKER_STRATEGY_SHARES: Map<(&Addr, &Addr), Uint128> = Map::new("staker_strategy_shares");
 pub const STAKER_STRATEGY_LIST: Map<&Addr, Vec<Addr>> = Map::new("staker_strategy_list");
-pub const MAX_STAKER_STRATEGY_LIST_LENGTH: usize = 10;
 
 #[cfg(test)]
 mod tests {
