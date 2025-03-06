@@ -36,7 +36,7 @@ cw-storage-plus = "2.0.0"
 cw2 = "2.0.0"
 schemars = "0.8.22"
 serde = { version = "1.0.197", default-features = false, features = ["derive"] }
-thiserror = { version = "1.0.58" }
+thiserror = { version = "1.0.69" }
 cw-multi-test = "=2.0.0"
 
 # CosmWasm Utilties
