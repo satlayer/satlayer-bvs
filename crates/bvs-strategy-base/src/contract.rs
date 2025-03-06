@@ -42,7 +42,6 @@ pub fn instantiate(
     Ok(Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("strategy_manager", strategy_manager)
-        // TODO(fuxingloh): rename to asset
         .add_attribute("underlying_token", underlying_token))
 }
 
@@ -207,7 +206,6 @@ pub mod query {
     /// Returns the amount of underlying tokens held by the staker.
     /// Information is sourced from the strategy manager,
     /// by converting total shares held by the staker to underlying tokens.
-    /// TODO(fuxingloh): rename `assets`
     pub fn underlying(deps: Deps, env: &Env, staker: Addr) -> StdResult<UnderlyingResponse> {
         let SharesResponse(shares) = shares(deps, env, staker)?;
         let SharesToUnderlyingResponse(amount) = shares_to_underlying(deps, env, shares)?;
@@ -216,7 +214,6 @@ pub mod query {
 
     /// Converts the amount of shares to underlying tokens.
     /// See [`shares::VirtualVault`] implementation for more details.
-    /// TODO(fuxingloh): rename `convert_to_assets`
     pub fn shares_to_underlying(
         deps: Deps,
         env: &Env,
@@ -229,7 +226,6 @@ pub mod query {
 
     /// Converts the amount of underlying tokens to shares.
     /// See [`shares::VirtualVault`] implementation for more details.
-    /// TODO(fuxingloh): rename `convert_to_shares`
     pub fn underlying_to_shares(
         deps: Deps,
         env: &Env,
@@ -246,10 +242,7 @@ pub mod query {
         Ok(StrategyManagerResponse(strategy_manager))
     }
 
-    // TODO(fuxingloh): add `total_assets`
-
     /// Returns the underlying token address.
-    /// TODO(fuxingloh): rename `asset_info` (similar to Cw20QueryMsg::AssetInfo)
     pub fn underlying_token(deps: Deps) -> StdResult<UnderlyingTokenResponse> {
         let underlying_token = token::get_cw20_token(deps.storage)?;
         Ok(UnderlyingTokenResponse(underlying_token))
