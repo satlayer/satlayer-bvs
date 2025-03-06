@@ -17,14 +17,14 @@
   },
   "prettier": "@packages/config-prettier",
   "dependencies": {
-    "@tailwindcss/postcss": "^4.0.9",
+    "@tailwindcss/postcss": "^4.0.10",
     "next": "^15.2.1",
-    "nextra": "^4.2.14",
-    "nextra-theme-docs": "^4.2.14",
+    "nextra": "^4.2.15",
+    "nextra-theme-docs": "^4.2.15",
     "postcss": "^8.5.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwindcss": "^4.0.9"
+    "tailwindcss": "^4.0.10"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
