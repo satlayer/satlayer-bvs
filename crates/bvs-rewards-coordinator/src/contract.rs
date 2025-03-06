@@ -26,7 +26,7 @@ use crate::{
 };
 use bvs_library::ownership;
 use bvs_strategy_manager::{
-    msg::QueryMsg as StrategyManagerQueryMsg, query::StrategyWhitelistedResponse,
+    msg::IsStrategyWhitelistedResponse, msg::QueryMsg as StrategyManagerQueryMsg,
 };
 use cosmwasm_std::{
     to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, HexBinary, MessageInfo,
@@ -699,14 +699,10 @@ fn validate_rewards_submission(
     for strategy_multiplier in &submission.strategies_and_multipliers {
         let strategy = &strategy_multiplier.strategy;
 
-        let whitelisted_response: StrategyWhitelistedResponse = deps.querier.query_wasm_smart(
+        let IsStrategyWhitelistedResponse(whitelisted) = deps.querier.query_wasm_smart(
             strategy_manager.clone(),
-            &StrategyManagerQueryMsg::IsStrategyWhitelisted {
-                strategy: strategy.to_string(),
-            },
+            &StrategyManagerQueryMsg::IsStrategyWhitelisted(strategy.to_string()),
         )?;
-
-        let whitelisted = whitelisted_response.is_whitelisted;
 
         if !whitelisted {
             return Err(ContractError::InvalidStrategyConsidered {});
@@ -866,6 +862,7 @@ mod tests {
     use crate::merkle::{merkleize_sha256, sha256, StrategyAndMultiplier};
     use crate::msg::DistributionRoot;
     use bvs_library::ownership::OwnershipError;
+    use bvs_strategy_manager::msg::IsStrategyWhitelistedResponse;
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_dependencies_with_balances, mock_env, MockApi,
         MockQuerier, MockStorage,
@@ -1055,20 +1052,14 @@ mod tests {
             {
                 let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
                 match msg {
-                    StrategyManagerQueryMsg::IsStrategyWhitelisted { strategy } => {
+                    StrategyManagerQueryMsg::IsStrategyWhitelisted(strategy) => {
                         if strategy == deps.api.addr_make("strategy1").to_string() {
                             SystemResult::Ok(ContractResult::Ok(
-                                to_json_binary(&StrategyWhitelistedResponse {
-                                    is_whitelisted: true,
-                                })
-                                .unwrap(),
+                                to_json_binary(&IsStrategyWhitelistedResponse(true)).unwrap(),
                             ))
                         } else {
                             SystemResult::Ok(ContractResult::Ok(
-                                to_json_binary(&StrategyWhitelistedResponse {
-                                    is_whitelisted: false,
-                                })
-                                .unwrap(),
+                                to_json_binary(&IsStrategyWhitelistedResponse(false)).unwrap(),
                             ))
                         }
                     }
@@ -1177,15 +1168,11 @@ mod tests {
             {
                 let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
                 match msg {
-                    StrategyManagerQueryMsg::IsStrategyWhitelisted { strategy } => {
+                    StrategyManagerQueryMsg::IsStrategyWhitelisted(strategy) => {
                         let response = if strategy == deps.api.addr_make("strategy1").to_string() {
-                            StrategyWhitelistedResponse {
-                                is_whitelisted: true,
-                            }
+                            IsStrategyWhitelistedResponse(true)
                         } else {
-                            StrategyWhitelistedResponse {
-                                is_whitelisted: false,
-                            }
+                            IsStrategyWhitelistedResponse(false)
                         };
                         SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
                     }
@@ -1271,15 +1258,11 @@ mod tests {
             {
                 let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
                 match msg {
-                    StrategyManagerQueryMsg::IsStrategyWhitelisted { strategy } => {
+                    StrategyManagerQueryMsg::IsStrategyWhitelisted(strategy) => {
                         let response = if strategy == deps.api.addr_make("strategy1").to_string() {
-                            StrategyWhitelistedResponse {
-                                is_whitelisted: true,
-                            }
+                            IsStrategyWhitelistedResponse(true)
                         } else {
-                            StrategyWhitelistedResponse {
-                                is_whitelisted: false,
-                            }
+                            IsStrategyWhitelistedResponse(false)
                         };
                         SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
                     }

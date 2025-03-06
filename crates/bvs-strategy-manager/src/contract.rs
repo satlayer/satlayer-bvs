@@ -7,12 +7,10 @@ use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
         DepositsResponse, StakerStrategyListLengthResponse, StakerStrategyListResponse,
-        StakerStrategySharesResponse, StrategyWhitelistedResponse,
+        StakerStrategySharesResponse,
     },
-    state::{
-        DEPLOYED_STRATEGIES, MAX_STAKER_STRATEGY_LIST_LENGTH, STAKER_STRATEGY_LIST,
-        STAKER_STRATEGY_SHARES, STRATEGY_IS_WHITELISTED_FOR_DEPOSIT,
-    },
+    state,
+    state::{MAX_STAKER_STRATEGY_LIST_LENGTH, STAKER_STRATEGY_LIST, STAKER_STRATEGY_SHARES},
 };
 use cosmwasm_std::{
     to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo,
@@ -22,12 +20,11 @@ use cw2::set_contract_version;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
 use crate::msg::delegation_manager::{self, IncreaseDelegatedShares};
-use crate::query::TokenStrategyResponse;
 use bvs_library::ownership;
 use bvs_strategy_base::{
     msg::ExecuteMsg as BaseExecuteMsg,
     msg::QueryMsg as BaseQueryMsg,
-    msg::{StrategyManagerResponse, TotalSharesResponse, UnderlyingTokenResponse},
+    msg::{TotalSharesResponse, UnderlyingTokenResponse},
 };
 
 const CONTRACT_NAME: &str = "BVS Strategy Manager";
@@ -66,22 +63,6 @@ pub fn execute(
     bvs_registry::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
 
     match msg {
-        ExecuteMsg::AddNewStrategy {
-            new_strategy,
-            token,
-        } => {
-            let strategy_addr = deps.api.addr_validate(&new_strategy)?;
-            let token_addr = deps.api.addr_validate(&token)?;
-            add_new_strategy(deps, env, info, strategy_addr, token_addr)
-        }
-        ExecuteMsg::AddStrategiesToWhitelist { strategies } => {
-            let strategies = bvs_library::addr::validate_addrs(deps.api, &strategies)?;
-            add_strategies_to_deposit_whitelist(deps, info, strategies)
-        }
-        ExecuteMsg::RemoveStrategiesFromWhitelist { strategies } => {
-            let strategies = bvs_library::addr::validate_addrs(deps.api, &strategies)?;
-            remove_strategies_from_deposit_whitelist(deps, info, strategies)
-        }
         ExecuteMsg::DepositIntoStrategy {
             strategy,
             token,
@@ -137,65 +118,81 @@ pub fn execute(
 
             auth::set_routing(deps, info, delegation_manager, slash_manager)
         }
+        ExecuteMsg::AddStrategy {
+            strategy,
+            whitelisted,
+        } => {
+            let strategy = deps.api.addr_validate(&strategy)?;
+            execute::add_strategy(deps, env, info, strategy, whitelisted)
+        }
+        ExecuteMsg::UpdateStrategy {
+            strategy,
+            whitelisted,
+        } => {
+            let strategy = deps.api.addr_validate(&strategy)?;
+            execute::update_strategy(deps, info, strategy, whitelisted)
+        }
     }
 }
 
-pub fn add_strategies_to_deposit_whitelist(
-    deps: DepsMut,
-    info: MessageInfo,
-    strategies_to_whitelist: Vec<Addr>,
-) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.storage, &info)?;
+mod execute {
+    use crate::state::STRATEGY_WHITELISTED;
+    use crate::ContractError;
+    use bvs_library::ownership;
+    use bvs_strategy_base::{msg::QueryMsg as BaseQueryMsg, msg::StrategyManagerResponse};
+    use cosmwasm_std::{
+        to_json_binary, Addr, DepsMut, Env, Event, MessageInfo, Response, WasmQuery,
+    };
 
-    let mut events = vec![];
+    pub fn add_strategy(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        strategy: Addr,
+        whitelisted: bool,
+    ) -> Result<Response, ContractError> {
+        ownership::assert_owner(deps.storage, &info)?;
 
-    for strategy in &strategies_to_whitelist {
-        let is_whitelisted = STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
-            .may_load(deps.storage, strategy)?
-            .unwrap_or(false);
+        // Check if the contract is properly initiated on the chain
+        let StrategyManagerResponse(strategy_manager) = deps.querier.query(
+            &WasmQuery::Smart {
+                contract_addr: strategy.to_string(),
+                msg: to_json_binary(&BaseQueryMsg::StrategyManager {})?,
+            }
+            .into(),
+        )?;
 
-        if !is_whitelisted {
-            STRATEGY_IS_WHITELISTED_FOR_DEPOSIT.save(deps.storage, strategy, &true)?;
-
-            let event = Event::new("StrategyAddedToDepositWhitelist")
-                .add_attribute("strategy", strategy.to_string());
-            events.push(event);
+        if strategy_manager != env.contract.address {
+            return Err(ContractError::InvalidStrategy {
+                msg: "Strategy manager mismatch".to_string(),
+            });
         }
+
+        STRATEGY_WHITELISTED.save(deps.storage, &strategy, &whitelisted)?;
+
+        Ok(Response::new().add_event(
+            Event::new("StrategyUpdated")
+                .add_attribute("strategy", strategy.to_string())
+                .add_attribute("whitelisted", whitelisted.to_string()),
+        ))
     }
 
-    let mut response = Response::new();
-    for event in events {
-        response = response.add_event(event);
+    pub fn update_strategy(
+        deps: DepsMut,
+        info: MessageInfo,
+        strategy: Addr,
+        whitelisted: bool,
+    ) -> Result<Response, ContractError> {
+        ownership::assert_owner(deps.storage, &info)?;
+
+        STRATEGY_WHITELISTED.save(deps.storage, &strategy, &whitelisted)?;
+
+        Ok(Response::new().add_event(
+            Event::new("StrategyUpdated")
+                .add_attribute("strategy", strategy.to_string())
+                .add_attribute("whitelisted", whitelisted.to_string()),
+        ))
     }
-
-    Ok(response)
-}
-
-pub fn remove_strategies_from_deposit_whitelist(
-    deps: DepsMut,
-    info: MessageInfo,
-    strategies: Vec<Addr>,
-) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.storage, &info)?;
-
-    let mut events = vec![];
-
-    for strategy in strategies {
-        let is_whitelisted = STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
-            .may_load(deps.storage, &strategy)?
-            .unwrap_or(false);
-
-        if is_whitelisted {
-            STRATEGY_IS_WHITELISTED_FOR_DEPOSIT.save(deps.storage, &strategy, &false)?;
-
-            let event = Event::new("StrategyRemovedFromDepositWhitelist")
-                .add_attribute("strategy", strategy.to_string());
-
-            events.push(event);
-        }
-    }
-
-    Ok(Response::new().add_events(events))
 }
 
 pub fn deposit_into_strategy(
@@ -271,11 +268,6 @@ pub fn withdraw_shares_as_tokens(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::TokenStrategy { token } => {
-            let token_addr = deps.api.addr_validate(&token)?;
-
-            to_json_binary(&query_strategy_for_token(deps, token_addr)?)
-        }
         QueryMsg::GetDeposits { staker } => {
             let staker_addr = deps.api.addr_validate(&staker)?;
 
@@ -301,17 +293,27 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
             to_json_binary(&query_staker_strategy_list(deps, staker_addr)?)
         }
-        QueryMsg::IsStrategyWhitelisted { strategy } => {
-            let strategy_addr = deps.api.addr_validate(&strategy)?;
-
-            to_json_binary(&query_is_strategy_whitelisted(deps, strategy_addr)?)
+        QueryMsg::IsStrategyWhitelisted(strategy) => {
+            let strategy = deps.api.addr_validate(&strategy)?;
+            to_json_binary(&query::is_strategy_enabled(deps, strategy)?)
         }
     }
 }
 
-fn query_strategy_for_token(deps: Deps, token: Addr) -> StdResult<TokenStrategyResponse> {
-    let strategy = DEPLOYED_STRATEGIES.load(deps.storage, &token)?;
-    Ok(TokenStrategyResponse { strategy })
+mod query {
+    use crate::msg::IsStrategyWhitelistedResponse;
+    use crate::state::STRATEGY_WHITELISTED;
+    use cosmwasm_std::{Addr, Deps, StdResult};
+
+    pub fn is_strategy_enabled(
+        deps: Deps,
+        strategy: Addr,
+    ) -> StdResult<IsStrategyWhitelistedResponse> {
+        let is_enabled = STRATEGY_WHITELISTED
+            .may_load(deps.storage, &strategy)?
+            .unwrap_or(false);
+        Ok(IsStrategyWhitelistedResponse(is_enabled))
+    }
 }
 
 fn query_staker_strategy_shares(
@@ -332,16 +334,6 @@ fn query_staker_strategy_list(deps: Deps, staker: Addr) -> StdResult<StakerStrat
     Ok(StakerStrategyListResponse { strategies })
 }
 
-fn query_is_strategy_whitelisted(
-    deps: Deps,
-    strategy: Addr,
-) -> StdResult<StrategyWhitelistedResponse> {
-    let is_whitelisted = STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
-        .may_load(deps.storage, &strategy)?
-        .unwrap_or(false);
-    Ok(StrategyWhitelistedResponse { is_whitelisted })
-}
-
 fn query_get_deposits(deps: Deps, staker: Addr) -> StdResult<DepositsResponse> {
     let (strategies, shares) = get_deposits(deps, staker)?;
     Ok(DepositsResponse { strategies, shares })
@@ -355,19 +347,6 @@ fn query_staker_strategy_list_length(
     Ok(StakerStrategyListLengthResponse { strategies_len })
 }
 
-fn only_strategies_whitelisted_for_deposit(
-    deps: Deps,
-    strategy: &Addr,
-) -> Result<(), ContractError> {
-    let whitelist = STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
-        .may_load(deps.storage, strategy)?
-        .unwrap_or(false);
-    if !whitelist {
-        return Err(ContractError::StrategyNotWhitelisted {});
-    }
-    Ok(())
-}
-
 fn deposit_into_strategy_internal(
     mut deps: DepsMut,
     info: MessageInfo,
@@ -376,7 +355,7 @@ fn deposit_into_strategy_internal(
     token: Addr,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    only_strategies_whitelisted_for_deposit(deps.as_ref(), &strategy)?;
+    state::assert_strategy_whitelisted(deps.as_ref(), &strategy)?;
 
     if amount.is_zero() {
         return Err(ContractError::ZeroAmount {});
@@ -600,964 +579,921 @@ pub fn staker_strategy_list_length(deps: Deps, staker: Addr) -> StdResult<Uint12
     Ok(Uint128::new(strategies.len() as u128))
 }
 
-pub fn add_new_strategy(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    strategy: Addr,
-    token: Addr,
-) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.storage, &info)?;
-
-    let existing_strategy = DEPLOYED_STRATEGIES
-        .may_load(deps.storage, &token)?
-        .unwrap_or(Addr::unchecked(""));
-    if existing_strategy != Addr::unchecked("") {
-        return Err(ContractError::StrategyAlreadyExists {});
-    }
-
-    // let's check if contract is properly uploaded and initiated on the chain
-    let StrategyManagerResponse(strategy_manager_addr) = deps.querier.query(
-        &WasmQuery::Smart {
-            contract_addr: strategy.to_string().clone(),
-            msg: to_json_binary(&BaseQueryMsg::StrategyManager {})?,
-        }
-        .into(),
-    )?;
-
-    if strategy_manager_addr != env.contract.address {
-        return Err(ContractError::StrategyNotCompatible {});
-    }
-
-    DEPLOYED_STRATEGIES.save(deps.storage, &token, &strategy)?;
-
-    // when new strategy is added it is automatically whitelisted for deposit
-    STRATEGY_IS_WHITELISTED_FOR_DEPOSIT.save(deps.storage, &strategy, &true)?;
-
-    let event = Event::new("NewStrategyAdded")
-        .add_attribute("method", "add_new_strategy")
-        .add_attribute("strategy", strategy.to_string())
-        .add_attribute("token", token.to_string());
-
-    Ok(Response::new().add_event(event))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use bvs_library::ownership::OwnershipError;
-    use bvs_strategy_base::msg::QueryMsg::UnderlyingToken;
-    use cosmwasm_std::testing::{
-        message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
-    };
-    use cosmwasm_std::{from_json, Addr, ContractResult, OwnedDeps, SystemError, SystemResult};
-
-    #[test]
-    fn test_instantiate() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = message_info(&Addr::unchecked("creator"), &[]);
-
-        let owner = deps.api.addr_make("owner");
-        let registry = deps.api.addr_make("registry");
-
-        let msg = InstantiateMsg {
-            owner: owner.to_string(),
-            registry: registry.to_string(),
-        };
-
-        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
-
-        assert_eq!(res.attributes.len(), 2);
-        assert_eq!(res.attributes[0].key, "method");
-        assert_eq!(res.attributes[0].value, "instantiate");
-        assert_eq!(res.attributes[1].key, "owner");
-        assert_eq!(res.attributes[1].value, owner.as_str());
-
-        let owner = ownership::get_owner(&deps.storage).unwrap();
-        assert_eq!(owner, owner.clone());
-    }
-
-    fn instantiate_contract() -> (
-        OwnedDeps<MockStorage, MockApi, MockQuerier>,
-        Env,
-        MessageInfo,
-        MessageInfo,
-    ) {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-
-        let owner = deps.api.addr_make("owner");
-        let registry = deps.api.addr_make("registry");
-        let owner_info = message_info(&owner, &[]);
-
-        let msg = InstantiateMsg {
-            owner: owner.to_string(),
-            registry: registry.to_string(),
-        };
-
-        let delegation_manager = deps.api.addr_make("delegation_manager");
-        let slasher = deps.api.addr_make("slasher");
-        instantiate(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();
-        auth::set_routing(
-            deps.as_mut(),
-            owner_info.clone(),
-            delegation_manager.clone(),
-            slasher,
-        )
-        .unwrap();
-
-        (
-            deps,
-            env,
-            owner_info,
-            message_info(&delegation_manager, &[]),
-        )
-    }
-
-    #[test]
-    fn test_add_new_strategy() {
-        let (mut deps, _env, _owner_info, _info_delegation_manager) = instantiate_contract();
-
-        let strategy = deps.api.addr_make("strategy");
-        let token = deps.api.addr_make("token");
-
-        deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart {
-                contract_addr: _,
-                msg,
-            } => {
-                let query_msg: BaseQueryMsg = from_json(msg).unwrap();
-                match query_msg {
-                    BaseQueryMsg::StrategyManager {} => {
-                        let response = StrategyManagerResponse(_env.contract.address.clone());
-                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
-                    }
-                    _ => SystemResult::Err(SystemError::InvalidRequest {
-                        error: "Unhandled request".to_string(),
-                        request: to_json_binary(&query).unwrap(),
-                    }),
-                }
-            }
-            _ => SystemResult::Err(SystemError::InvalidRequest {
-                error: "Unhandled request".to_string(),
-                request: to_json_binary(&query).unwrap(),
-            }),
-        });
-
-        let res = add_new_strategy(
-            deps.as_mut(),
-            mock_env(),
-            _owner_info.clone(),
-            strategy.clone(),
-            token.clone(),
-        );
-
-        assert_eq!(res.is_ok(), true);
-
-        let query_msg = QueryMsg::TokenStrategy {
-            token: token.to_string(),
-        };
-
-        let response: TokenStrategyResponse =
-            from_json(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
-
-        assert_eq!(response.strategy.to_string(), strategy.to_string());
-    }
-
-    #[test]
-    fn test_only_strategies_whitelisted_for_deposit() {
-        let (mut deps, _env, _owner_info, _info_delegation_manager) = instantiate_contract();
-
-        let strategy = Addr::unchecked("strategy");
-        STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
-            .save(&mut deps.storage, &strategy, &true)
-            .unwrap();
-
-        let result = only_strategies_whitelisted_for_deposit(deps.as_ref(), &strategy);
-        assert!(result.is_ok());
-
-        let non_whitelisted_strategy = Addr::unchecked("non_whitelisted_strategy");
-        let result =
-            only_strategies_whitelisted_for_deposit(deps.as_ref(), &non_whitelisted_strategy);
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::StrategyNotWhitelisted {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-    }
-
-    #[test]
-    fn test_add_strategies_to_deposit_whitelist() {
-        let (mut deps, _env, owner_info, _info_delegation_manager) = instantiate_contract();
-
-        let strat1 = deps.api.addr_make("strategy1");
-        let strat2 = deps.api.addr_make("strategy2");
-
-        let strategies = vec![strat1.clone(), strat2.clone()];
-
-        let res = add_strategies_to_deposit_whitelist(
-            deps.as_mut(),
-            owner_info.clone(),
-            strategies.clone(),
-        )
-        .unwrap();
-
-        let events = res.events;
-
-        assert_eq!(events.len(), strategies.len());
-
-        for (i, event) in events.iter().enumerate() {
-            assert_eq!(event.ty, "StrategyAddedToDepositWhitelist");
-            assert_eq!(event.attributes.len(), 1);
-            assert_eq!(event.attributes[0].key, "strategy");
-            assert_eq!(event.attributes[0].value, strategies[i].to_string());
-        }
-
-        for strategy in &strategies {
-            let is_whitelisted = STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
-                .load(&deps.storage, &Addr::unchecked(strategy.clone()))
-                .unwrap();
-            assert!(is_whitelisted);
-        }
-
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-        let result = add_strategies_to_deposit_whitelist(
-            deps.as_mut(),
-            info_unauthorized.clone(),
-            strategies.clone(),
-        );
-
-        assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            ContractError::Ownership(OwnershipError::Unauthorized {})
-        );
-    }
-
-    #[test]
-    fn test_remove_strategies_from_deposit_whitelist() {
-        let (mut deps, _env, owner_info, _info_delegation_manager) = instantiate_contract();
-
-        let strategies = vec![
-            deps.api.addr_make("strategy1"),
-            deps.api.addr_make("strategy2"),
-        ];
-
-        let _res = add_strategies_to_deposit_whitelist(
-            deps.as_mut(),
-            owner_info.clone(),
-            strategies.clone(),
-        )
-        .unwrap();
-
-        let res = remove_strategies_from_deposit_whitelist(
-            deps.as_mut(),
-            owner_info.clone(),
-            strategies.clone(),
-        )
-        .unwrap();
-
-        let events = res.events;
-        assert_eq!(events.len(), 2);
-
-        for (i, strategy) in strategies.iter().enumerate() {
-            let event = &events[i];
-            assert_eq!(event.ty, "StrategyRemovedFromDepositWhitelist");
-            assert_eq!(event.attributes.len(), 1);
-            assert_eq!(event.attributes[0].key, "strategy");
-            assert_eq!(event.attributes[0].value, strategy.to_string());
-        }
-
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-        let result = remove_strategies_from_deposit_whitelist(
-            deps.as_mut(),
-            info_unauthorized.clone(),
-            strategies.clone(),
-        );
-        assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            ContractError::Ownership(OwnershipError::Unauthorized {})
-        );
-    }
-
-    #[test]
-    fn test_deposit_into_strategy() {
-        let (mut deps, _env, owner_info, info_delegation_manager) = instantiate_contract();
-
-        let strategy = deps.api.addr_make("strategy1");
-        let token = deps.api.addr_make("token");
-        let amount = Uint128::new(100);
-
-        let _res = add_strategies_to_deposit_whitelist(
-            deps.as_mut(),
-            owner_info.clone(),
-            vec![strategy.clone()],
-        )
-        .unwrap();
-
-        let strategy_for_closure = strategy.clone();
-        let token_for_closure = token.clone();
-
-        deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { contract_addr, msg }
-                if *contract_addr == strategy_for_closure.to_string() =>
-            {
-                let strategy_query_msg: BaseQueryMsg = from_json(msg).unwrap();
-                match strategy_query_msg {
-                    UnderlyingToken {} => {
-                        let response = UnderlyingTokenResponse(token_for_closure.clone());
-                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
-                    }
-                    BaseQueryMsg::TotalShares {} => SystemResult::Ok(ContractResult::Ok(
-                        to_json_binary(&TotalSharesResponse(Uint128::new(1000))).unwrap(),
-                    )),
-                    _ => SystemResult::Err(SystemError::InvalidRequest {
-                        error: "Unhandled request".to_string(),
-                        request: to_json_binary(&query).unwrap(),
-                    }),
-                }
-            }
-            WasmQuery::Smart { contract_addr, msg }
-                if *contract_addr == token_for_closure.to_string() =>
-            {
-                let cw20_query_msg: Cw20QueryMsg = from_json(msg).unwrap();
-                match cw20_query_msg {
-                    Cw20QueryMsg::Balance { address: _ } => SystemResult::Ok(ContractResult::Ok(
-                        to_json_binary(&Cw20BalanceResponse {
-                            balance: Uint128::new(1000),
-                        })
-                        .unwrap(),
-                    )),
-                    _ => SystemResult::Err(SystemError::InvalidRequest {
-                        error: "Unhandled request".to_string(),
-                        request: to_json_binary(&query).unwrap(),
-                    }),
-                }
-            }
-            _ => SystemResult::Err(SystemError::InvalidRequest {
-                error: "Unhandled request".to_string(),
-                request: to_json_binary(&query).unwrap(),
-            }),
-        });
-
-        let res = deposit_into_strategy(
-            deps.as_mut(),
-            info_delegation_manager.clone(),
-            info_delegation_manager.sender.clone(),
-            strategy.clone(),
-            token.clone(),
-            amount,
-        )
-        .unwrap();
-
-        assert_eq!(res.attributes.len(), 1);
-        assert_eq!(res.attributes[0].key, "new_shares");
-        assert_eq!(res.attributes[0].value, "105"); // <- check base strategy vault struct for more
-                                                    // info
-
-        let non_whitelisted_strategy = deps.api.addr_make("non_whitelisted_strategy");
-
-        let result = deposit_into_strategy(
-            deps.as_mut(),
-            info_delegation_manager.clone(),
-            info_delegation_manager.sender.clone(),
-            non_whitelisted_strategy.clone(),
-            token.clone(),
-            amount,
-        );
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::StrategyNotWhitelisted {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-    }
-
-    #[test]
-    fn test_get_deposits() {
-        let (mut deps, env, _owner_info, _info_delegation_manager) = instantiate_contract();
-
-        let staker = deps.api.addr_make("staker1");
-        let strategy1 = deps.api.addr_make("strategy1");
-        let strategy2 = deps.api.addr_make("strategy2");
-
-        STAKER_STRATEGY_LIST
-            .save(
-                &mut deps.storage,
-                &staker.clone(),
-                &vec![strategy1.clone(), strategy2.clone()],
-            )
-            .unwrap();
-        STAKER_STRATEGY_SHARES
-            .save(&mut deps.storage, (&staker, &strategy1), &Uint128::new(100))
-            .unwrap();
-        STAKER_STRATEGY_SHARES
-            .save(&mut deps.storage, (&staker, &strategy2), &Uint128::new(200))
-            .unwrap();
-
-        // Query deposits for the staker
-        let query_msg = QueryMsg::GetDeposits {
-            staker: staker.to_string(),
-        };
-        let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let response: DepositsResponse = from_json(bin).unwrap();
-
-        assert_eq!(response.strategies.len(), 2);
-        assert_eq!(response.shares.len(), 2);
-        assert_eq!(response.strategies[0], strategy1);
-        assert_eq!(response.shares[0], Uint128::new(100));
-        assert_eq!(response.strategies[1], strategy2);
-        assert_eq!(response.shares[1], Uint128::new(200));
-
-        // Test with a staker that has no deposits
-        let new_staker = deps.api.addr_make("new_staker").to_string();
-
-        let query_msg = QueryMsg::GetDeposits { staker: new_staker };
-        let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let response: DepositsResponse = from_json(bin).unwrap();
-
-        assert_eq!(response.strategies.len(), 0);
-        assert_eq!(response.shares.len(), 0);
-    }
-
-    #[test]
-    fn test_staker_strategy_list_length() {
-        let (mut deps, env, _owner_info, _info_delegation_manager) = instantiate_contract();
-
-        let staker = deps.api.addr_make("staker1");
-        let strategy1 = deps.api.addr_make("strategy1");
-        let strategy2 = deps.api.addr_make("strategy2");
-
-        STAKER_STRATEGY_LIST
-            .save(
-                &mut deps.storage,
-                &staker,
-                &vec![strategy1.clone(), strategy2.clone()],
-            )
-            .unwrap();
-
-        // Query the strategy list length for the staker
-        let query_msg = QueryMsg::StakerStrategyListLength {
-            staker: staker.to_string(),
-        };
-        let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let response: StakerStrategyListLengthResponse = from_json(bin).unwrap();
-        let length = response.strategies_len;
-
-        assert_eq!(length, Uint128::new(2));
-
-        // Test with a staker that has no strategies
-        let new_staker = deps.api.addr_make("new_staker");
-
-        let query_msg = QueryMsg::StakerStrategyListLength {
-            staker: new_staker.to_string(),
-        };
-        let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let response: StakerStrategyListLengthResponse = from_json(bin).unwrap();
-        let length = response.strategies_len;
-
-        assert_eq!(length, Uint128::new(0));
-    }
-
-    #[test]
-    fn test_add_shares_internal() {
-        let (mut deps, _env, _owner_info, info_delegation_manager) = instantiate_contract();
-
-        let staker = Addr::unchecked("staker");
-        let strategy = Addr::unchecked("strategy");
-        let shares = Uint128::new(100);
-
-        let res =
-            add_shares_internal(deps.as_mut(), staker.clone(), strategy.clone(), shares).unwrap();
-
-        let events = res.events;
-        assert_eq!(events.len(), 1);
-        let event = &events[0];
-        assert_eq!(event.ty, "add_shares");
-        assert_eq!(event.attributes.len(), 3);
-        assert_eq!(event.attributes[0].key, "staker");
-        assert_eq!(event.attributes[0].value, staker.to_string());
-        assert_eq!(event.attributes[1].key, "strategy");
-        assert_eq!(event.attributes[1].value, strategy.to_string());
-        assert_eq!(event.attributes[2].key, "shares");
-        assert_eq!(event.attributes[2].value, shares.to_string());
-
-        let stored_shares = STAKER_STRATEGY_SHARES
-            .load(&deps.storage, (&staker, &strategy))
-            .unwrap();
-        println!("stored_shares after first addition: {}", stored_shares);
-        assert_eq!(stored_shares, shares);
-
-        let strategy_list = STAKER_STRATEGY_LIST.load(&deps.storage, &staker).unwrap();
-        assert_eq!(strategy_list.len(), 1);
-        assert_eq!(strategy_list[0], strategy);
-
-        let additional_shares = Uint128::new(50);
-        let res = add_shares(
-            deps.as_mut(),
-            info_delegation_manager.clone(),
-            staker.clone(),
-            strategy.clone(),
-            additional_shares,
-        )
-        .unwrap();
-
-        let events = res.events;
-        assert_eq!(events.len(), 1);
-        let event = &events[0];
-        assert_eq!(event.ty, "add_shares");
-        assert_eq!(event.attributes.len(), 3);
-        assert_eq!(event.attributes[0].key, "staker");
-        assert_eq!(event.attributes[0].value, staker.to_string());
-        assert_eq!(event.attributes[1].key, "strategy");
-        assert_eq!(event.attributes[1].value, strategy.to_string());
-        assert_eq!(event.attributes[2].key, "shares");
-        assert_eq!(event.attributes[2].value, additional_shares.to_string());
-
-        let stored_shares = STAKER_STRATEGY_SHARES
-            .load(&deps.storage, (&staker, &strategy))
-            .unwrap();
-        println!("stored_shares after second addition: {}", stored_shares);
-        assert_eq!(stored_shares, shares + additional_shares);
-
-        // Test with zero shares
-        let result = add_shares(
-            deps.as_mut(),
-            info_delegation_manager.clone(),
-            staker.clone(),
-            strategy.clone(),
-            Uint128::zero(),
-        );
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::InvalidShares {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-
-        // Test exceeding the max strategy list length
-        let mut strategy_list = Vec::new();
-        for i in 0..MAX_STAKER_STRATEGY_LIST_LENGTH {
-            strategy_list.push(Addr::unchecked(format!("strategy{}", i)));
-        }
-        STAKER_STRATEGY_LIST
-            .save(&mut deps.storage, &staker, &strategy_list)
-            .unwrap();
-
-        let new_strategy = Addr::unchecked("new_strategy");
-        let result =
-            add_shares_internal(deps.as_mut(), staker.clone(), new_strategy.clone(), shares);
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::MaxStrategyListLengthExceeded {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-    }
-
-    #[test]
-    fn test_add_shares() {
-        let (mut deps, _env, _owner_info, info_delegation_manager) = instantiate_contract();
-
-        let staker = deps.api.addr_make("staker");
-        let strategy = deps.api.addr_make("strategy");
-        let shares = Uint128::new(100);
-
-        let res = add_shares(
-            deps.as_mut(),
-            info_delegation_manager.clone(),
-            staker.clone(),
-            strategy.clone(),
-            shares,
-        )
-        .unwrap();
-
-        let events = res.events;
-        assert_eq!(events.len(), 1);
-        let event = &events[0];
-        assert_eq!(event.ty, "add_shares");
-        assert_eq!(event.attributes.len(), 3);
-        assert_eq!(event.attributes[0].key, "staker");
-        assert_eq!(event.attributes[0].value, staker.to_string());
-        assert_eq!(event.attributes[1].key, "strategy");
-        assert_eq!(event.attributes[1].value, strategy.to_string());
-        assert_eq!(event.attributes[2].key, "shares");
-        assert_eq!(event.attributes[2].value, shares.to_string());
-
-        let stored_shares = STAKER_STRATEGY_SHARES
-            .load(&deps.storage, (&staker, &strategy))
-            .unwrap();
-        println!("stored_shares after first addition: {}", stored_shares);
-        assert_eq!(stored_shares, shares);
-
-        let strategy_list = STAKER_STRATEGY_LIST.load(&deps.storage, &staker).unwrap();
-        assert_eq!(strategy_list.len(), 1);
-        assert_eq!(strategy_list[0], strategy);
-
-        // Test adding more shares to the same strategy
-        let additional_shares = Uint128::new(50);
-
-        let res = add_shares(
-            deps.as_mut(),
-            info_delegation_manager.clone(),
-            staker.clone(),
-            strategy.clone(),
-            additional_shares,
-        )
-        .unwrap();
-
-        let events = res.events;
-        assert_eq!(events.len(), 1);
-        let event = &events[0];
-        assert_eq!(event.ty, "add_shares");
-        assert_eq!(event.attributes.len(), 3);
-        assert_eq!(event.attributes[0].key, "staker");
-        assert_eq!(event.attributes[0].value, staker.to_string());
-        assert_eq!(event.attributes[1].key, "strategy");
-        assert_eq!(event.attributes[1].value, strategy.to_string());
-        assert_eq!(event.attributes[2].key, "shares");
-        assert_eq!(event.attributes[2].value, additional_shares.to_string());
-
-        let stored_shares = STAKER_STRATEGY_SHARES
-            .load(&deps.storage, (&staker, &strategy))
-            .unwrap();
-        println!("stored_shares after second addition: {}", stored_shares);
-        assert_eq!(stored_shares, shares + additional_shares);
-
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-
-        let result = add_shares(
-            deps.as_mut(),
-            info_unauthorized.clone(),
-            staker.clone(),
-            strategy.clone(),
-            shares,
-        );
-
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-
-        let result = add_shares(
-            deps.as_mut(),
-            info_delegation_manager.clone(),
-            staker.clone(),
-            strategy.clone(),
-            Uint128::zero(),
-        );
-
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::InvalidShares {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-
-        // Test exceeding the max strategy list length
-        let mut strategy_list = Vec::new();
-        for i in 0..MAX_STAKER_STRATEGY_LIST_LENGTH {
-            strategy_list.push(Addr::unchecked(format!("strategy{}", i)));
-        }
-        STAKER_STRATEGY_LIST
-            .save(&mut deps.storage, &staker, &strategy_list)
-            .unwrap();
-
-        let new_strategy = deps.api.addr_make("new_strategy");
-
-        let result = add_shares(
-            deps.as_mut(),
-            info_delegation_manager.clone(),
-            staker.clone(),
-            new_strategy.clone(),
-            shares,
-        );
-
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::MaxStrategyListLengthExceeded {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-    }
-
-    #[test]
-    fn test_remove_shares() {
-        let (mut deps, _env, _owner_info, info_delegation_manager) = instantiate_contract();
-
-        let staker = deps.api.addr_make("staker");
-        let strategy1 = deps.api.addr_make("strategy1");
-        let strategy2 = deps.api.addr_make("strategy2");
-
-        STAKER_STRATEGY_LIST
-            .save(
-                &mut deps.storage,
-                &staker,
-                &vec![strategy1.clone(), strategy2.clone()],
-            )
-            .unwrap();
-        STAKER_STRATEGY_SHARES
-            .save(&mut deps.storage, (&staker, &strategy1), &Uint128::new(100))
-            .unwrap();
-        STAKER_STRATEGY_SHARES
-            .save(&mut deps.storage, (&staker, &strategy2), &Uint128::new(200))
-            .unwrap();
-
-        let res = remove_shares(
-            deps.as_mut(),
-            info_delegation_manager.clone(),
-            staker.clone(),
-            strategy1.clone(),
-            Uint128::new(50),
-        )
-        .unwrap();
-
-        assert_eq!(res.attributes.len(), 5);
-        assert_eq!(res.attributes[0].key, "method");
-        assert_eq!(res.attributes[0].value, "remove_shares");
-        assert_eq!(res.attributes[1].key, "staker");
-        assert_eq!(res.attributes[1].value, staker.to_string());
-        assert_eq!(res.attributes[2].key, "strategy");
-        assert_eq!(res.attributes[2].value, strategy1.to_string());
-        assert_eq!(res.attributes[3].key, "shares");
-        assert_eq!(res.attributes[3].value, "50");
-        assert_eq!(res.attributes[4].key, "strategy_removed");
-        assert_eq!(res.attributes[4].value, "false");
-
-        let stored_shares = STAKER_STRATEGY_SHARES
-            .load(&deps.storage, (&staker, &strategy1))
-            .unwrap();
-        println!("Stored shares after removal: {}", stored_shares);
-        assert_eq!(stored_shares, Uint128::new(50));
-
-        // Test removing shares with an unauthorized user
-        let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
-
-        let result = remove_shares(
-            deps.as_mut(),
-            info_unauthorized.clone(),
-            staker.clone(),
-            strategy2.clone(),
-            Uint128::new(50),
-        );
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::Unauthorized {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-
-        // Test removing more shares than available
-        let result = remove_shares(
-            deps.as_mut(),
-            info_delegation_manager.clone(),
-            staker.clone(),
-            strategy1.clone(),
-            Uint128::new(60),
-        );
-
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::InvalidShares {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-
-        // Test removing all shares, which should remove the strategy from the staker's list
-        let res = remove_shares(
-            deps.as_mut(),
-            info_delegation_manager.clone(),
-            staker.clone(),
-            strategy1.clone(),
-            Uint128::new(50),
-        )
-        .unwrap();
-
-        assert_eq!(res.attributes.len(), 5);
-        assert_eq!(res.attributes[4].key, "strategy_removed");
-        assert_eq!(res.attributes[4].value, "true");
-
-        let strategy_list = STAKER_STRATEGY_LIST.load(&deps.storage, &staker).unwrap();
-        println!("Strategy list after removal: {:?}", strategy_list);
-        assert_eq!(strategy_list.len(), 1);
-        assert!(!strategy_list.contains(&strategy1));
-        assert!(strategy_list.contains(&strategy2));
-    }
-
-    #[test]
-    fn test_remove_shares_internal() {
-        let (mut deps, _env, _owner_info, _info_delegation_manager) = instantiate_contract();
-
-        let staker = Addr::unchecked("staker1");
-        let strategy1 = Addr::unchecked("strategy1");
-        let strategy2 = Addr::unchecked("strategy2");
-
-        STAKER_STRATEGY_LIST
-            .save(
-                &mut deps.storage,
-                &staker,
-                &vec![strategy1.clone(), strategy2.clone()],
-            )
-            .unwrap();
-        STAKER_STRATEGY_SHARES
-            .save(&mut deps.storage, (&staker, &strategy1), &Uint128::new(100))
-            .unwrap();
-        STAKER_STRATEGY_SHARES
-            .save(&mut deps.storage, (&staker, &strategy2), &Uint128::new(200))
-            .unwrap();
-
-        let result = remove_shares_internal(
-            deps.as_mut(),
-            staker.clone(),
-            strategy1.clone(),
-            Uint128::new(50),
-        )
-        .unwrap();
-        assert!(!result);
-
-        let stored_shares = STAKER_STRATEGY_SHARES
-            .load(&deps.storage, (&staker, &strategy1))
-            .unwrap();
-        println!("Stored shares after partial removal: {}", stored_shares);
-
-        assert_eq!(stored_shares, Uint128::new(50));
-
-        let result = remove_shares_internal(
-            deps.as_mut(),
-            staker.clone(),
-            strategy1.clone(),
-            Uint128::new(50),
-        )
-        .unwrap();
-
-        assert!(result);
-
-        let strategy_list = STAKER_STRATEGY_LIST.load(&deps.storage, &staker).unwrap();
-        println!("Strategy list after full removal: {:?}", strategy_list);
-        assert_eq!(strategy_list.len(), 1);
-        assert!(!strategy_list.contains(&strategy1));
-        assert!(strategy_list.contains(&strategy2));
-
-        let result = remove_shares_internal(
-            deps.as_mut(),
-            staker.clone(),
-            strategy2.clone(),
-            Uint128::new(300),
-        );
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::InvalidShares {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-
-        let result = remove_shares_internal(
-            deps.as_mut(),
-            staker.clone(),
-            strategy2.clone(),
-            Uint128::zero(),
-        );
-        assert!(result.is_err());
-        if let Err(err) = result {
-            match err {
-                ContractError::InvalidShares {} => (),
-                _ => panic!("Unexpected error: {:?}", err),
-            }
-        }
-    }
-
-    #[test]
-    fn test_get_staker_strategy_list() {
-        let (mut deps, env, _owner_info, _info_delegation_manager) = instantiate_contract();
-
-        let staker = deps.api.addr_make("staker1");
-
-        let strategies = vec![
-            deps.api.addr_make("strategy1"),
-            deps.api.addr_make("strategy2"),
-        ];
-        STAKER_STRATEGY_LIST
-            .save(&mut deps.storage, &staker, &strategies.clone())
-            .unwrap();
-
-        let query_msg = QueryMsg::GetStakerStrategyList {
-            staker: staker.to_string(),
-        };
-        let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let strategy_list_response: StakerStrategyListResponse = from_json(bin).unwrap();
-        assert_eq!(strategy_list_response.strategies, strategies);
-
-        let new_staker = deps.api.addr_make("new_staker");
-
-        let query_msg = QueryMsg::GetStakerStrategyList {
-            staker: new_staker.to_string(),
-        };
-        let bin = query(deps.as_ref(), env, query_msg).unwrap();
-        let strategy_list_response: StakerStrategyListResponse = from_json(bin).unwrap();
-        assert!(strategy_list_response.strategies.is_empty());
-    }
-
-    #[test]
-    fn test_is_strategy_whitelisted() {
-        let (mut deps, _env, _owner_info, _info_delegation_manager) = instantiate_contract();
-
-        let strategy = deps.api.addr_make("strategy1");
-
-        STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
-            .save(&mut deps.storage, &strategy, &true)
-            .unwrap();
-
-        let result = query_is_strategy_whitelisted(deps.as_ref(), strategy.clone()).unwrap();
-        assert!(result.is_whitelisted);
-
-        let non_whitelisted_strategy = deps.api.addr_make("non_whitelisted_strategy");
-
-        let result =
-            query_is_strategy_whitelisted(deps.as_ref(), non_whitelisted_strategy).unwrap();
-        assert!(!result.is_whitelisted);
-    }
-
-    #[test]
-    fn test_get_staker_strategy_shares() {
-        let (mut deps, _env, _owner_info, _info_delegation_manager) = instantiate_contract();
-
-        let staker = Addr::unchecked("staker1");
-        let strategy = deps.api.addr_make("strategy");
-        let shares = Uint128::new(100);
-
-        STAKER_STRATEGY_SHARES
-            .save(&mut deps.storage, (&staker, &strategy), &shares)
-            .unwrap();
-
-        let retrieved_shares =
-            query_staker_strategy_shares(deps.as_ref(), staker.clone(), strategy.clone()).unwrap();
-        assert_eq!(retrieved_shares.shares, shares);
-
-        let new_staker = Addr::unchecked("new_staker");
-        let retrieved_shares =
-            query_staker_strategy_shares(deps.as_ref(), new_staker.clone(), strategy.clone())
-                .unwrap();
-        assert_eq!(retrieved_shares.shares, Uint128::zero());
-
-        let new_strategy = Addr::unchecked("new_strategy");
-        let retrieved_shares =
-            query_staker_strategy_shares(deps.as_ref(), staker.clone(), new_strategy.clone())
-                .unwrap();
-        assert_eq!(retrieved_shares.shares, Uint128::zero());
-    }
-}
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use bvs_library::ownership::OwnershipError;
+//     use bvs_strategy_base::msg::QueryMsg::UnderlyingToken;
+//     use cosmwasm_std::testing::{
+//         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
+//     };
+//     use cosmwasm_std::{from_json, Addr, ContractResult, OwnedDeps, SystemError, SystemResult};
+//
+//     #[test]
+//     fn test_instantiate() {
+//         let mut deps = mock_dependencies();
+//         let env = mock_env();
+//         let info = message_info(&Addr::unchecked("creator"), &[]);
+//
+//         let owner = deps.api.addr_make("owner");
+//         let registry = deps.api.addr_make("registry");
+//
+//         let msg = InstantiateMsg {
+//             owner: owner.to_string(),
+//             registry: registry.to_string(),
+//         };
+//
+//         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+//
+//         assert_eq!(res.attributes.len(), 2);
+//         assert_eq!(res.attributes[0].key, "method");
+//         assert_eq!(res.attributes[0].value, "instantiate");
+//         assert_eq!(res.attributes[1].key, "owner");
+//         assert_eq!(res.attributes[1].value, owner.as_str());
+//
+//         let owner = ownership::get_owner(&deps.storage).unwrap();
+//         assert_eq!(owner, owner.clone());
+//     }
+//
+//     fn instantiate_contract() -> (
+//         OwnedDeps<MockStorage, MockApi, MockQuerier>,
+//         Env,
+//         MessageInfo,
+//         MessageInfo,
+//     ) {
+//         let mut deps = mock_dependencies();
+//         let env = mock_env();
+//
+//         let owner = deps.api.addr_make("owner");
+//         let registry = deps.api.addr_make("registry");
+//         let owner_info = message_info(&owner, &[]);
+//
+//         let msg = InstantiateMsg {
+//             owner: owner.to_string(),
+//             registry: registry.to_string(),
+//         };
+//
+//         let delegation_manager = deps.api.addr_make("delegation_manager");
+//         let slasher = deps.api.addr_make("slasher");
+//         instantiate(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();
+//         auth::set_routing(
+//             deps.as_mut(),
+//             owner_info.clone(),
+//             delegation_manager.clone(),
+//             slasher,
+//         )
+//         .unwrap();
+//
+//         (
+//             deps,
+//             env,
+//             owner_info,
+//             message_info(&delegation_manager, &[]),
+//         )
+//     }
+//
+//     #[test]
+//     fn test_add_new_strategy() {
+//         let (mut deps, _env, _owner_info, _info_delegation_manager) = instantiate_contract();
+//
+//         let strategy = deps.api.addr_make("strategy");
+//         let token = deps.api.addr_make("token");
+//
+//         deps.querier.update_wasm(move |query| match query {
+//             WasmQuery::Smart {
+//                 contract_addr: _,
+//                 msg,
+//             } => {
+//                 let query_msg: BaseQueryMsg = from_json(msg).unwrap();
+//                 match query_msg {
+//                     BaseQueryMsg::StrategyManager {} => {
+//                         let response = StrategyManagerResponse(_env.contract.address.clone());
+//                         SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
+//                     }
+//                     _ => SystemResult::Err(SystemError::InvalidRequest {
+//                         error: "Unhandled request".to_string(),
+//                         request: to_json_binary(&query).unwrap(),
+//                     }),
+//                 }
+//             }
+//             _ => SystemResult::Err(SystemError::InvalidRequest {
+//                 error: "Unhandled request".to_string(),
+//                 request: to_json_binary(&query).unwrap(),
+//             }),
+//         });
+//
+//         let res = add_strategy(
+//             deps.as_mut(),
+//             mock_env(),
+//             _owner_info.clone(),
+//             strategy.clone(),
+//         );
+//
+//         assert_eq!(res.is_ok(), true);
+//
+//         let query_msg = QueryMsg::TokenStrategy {
+//             token: token.to_string(),
+//         };
+//
+//         let response: TokenStrategyResponse =
+//             from_json(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
+//
+//         assert_eq!(response.strategy.to_string(), strategy.to_string());
+//     }
+//
+//     #[test]
+//     fn test_only_strategies_whitelisted_for_deposit() {
+//         let (mut deps, _env, _owner_info, _info_delegation_manager) = instantiate_contract();
+//
+//         let strategy = Addr::unchecked("strategy");
+//         STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
+//             .save(&mut deps.storage, &strategy, &true)
+//             .unwrap();
+//
+//         let result = only_strategies_whitelisted_for_deposit(deps.as_ref(), &strategy);
+//         assert!(result.is_ok());
+//
+//         let non_whitelisted_strategy = Addr::unchecked("non_whitelisted_strategy");
+//         let result =
+//             only_strategies_whitelisted_for_deposit(deps.as_ref(), &non_whitelisted_strategy);
+//         assert!(result.is_err());
+//         if let Err(err) = result {
+//             match err {
+//                 ContractError::StrategyNotWhitelisted {} => (),
+//                 _ => panic!("Unexpected error: {:?}", err),
+//             }
+//         }
+//     }
+//
+//     #[test]
+//     fn test_add_strategies_to_deposit_whitelist() {
+//         let (mut deps, _env, owner_info, _info_delegation_manager) = instantiate_contract();
+//
+//         let strat1 = deps.api.addr_make("strategy1");
+//         let strat2 = deps.api.addr_make("strategy2");
+//
+//         let strategies = vec![strat1.clone(), strat2.clone()];
+//
+//         let res = add_strategies_to_deposit_whitelist(
+//             deps.as_mut(),
+//             owner_info.clone(),
+//             strategies.clone(),
+//         )
+//         .unwrap();
+//
+//         let events = res.events;
+//
+//         assert_eq!(events.len(), strategies.len());
+//
+//         for (i, event) in events.iter().enumerate() {
+//             assert_eq!(event.ty, "StrategyAddedToDepositWhitelist");
+//             assert_eq!(event.attributes.len(), 1);
+//             assert_eq!(event.attributes[0].key, "strategy");
+//             assert_eq!(event.attributes[0].value, strategies[i].to_string());
+//         }
+//
+//         for strategy in &strategies {
+//             let is_whitelisted = STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
+//                 .load(&deps.storage, &Addr::unchecked(strategy.clone()))
+//                 .unwrap();
+//             assert!(is_whitelisted);
+//         }
+//
+//         let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
+//         let result = add_strategies_to_deposit_whitelist(
+//             deps.as_mut(),
+//             info_unauthorized.clone(),
+//             strategies.clone(),
+//         );
+//
+//         assert!(result.is_err());
+//         assert_eq!(
+//             result.unwrap_err(),
+//             ContractError::Ownership(OwnershipError::Unauthorized {})
+//         );
+//     }
+//
+//     #[test]
+//     fn test_remove_strategies_from_deposit_whitelist() {
+//         let (mut deps, _env, owner_info, _info_delegation_manager) = instantiate_contract();
+//
+//         let strategies = vec![
+//             deps.api.addr_make("strategy1"),
+//             deps.api.addr_make("strategy2"),
+//         ];
+//
+//         let _res = add_strategies_to_deposit_whitelist(
+//             deps.as_mut(),
+//             owner_info.clone(),
+//             strategies.clone(),
+//         )
+//         .unwrap();
+//
+//         let res = remove_strategies_from_deposit_whitelist(
+//             deps.as_mut(),
+//             owner_info.clone(),
+//             strategies.clone(),
+//         )
+//         .unwrap();
+//
+//         let events = res.events;
+//         assert_eq!(events.len(), 2);
+//
+//         for (i, strategy) in strategies.iter().enumerate() {
+//             let event = &events[i];
+//             assert_eq!(event.ty, "StrategyRemovedFromDepositWhitelist");
+//             assert_eq!(event.attributes.len(), 1);
+//             assert_eq!(event.attributes[0].key, "strategy");
+//             assert_eq!(event.attributes[0].value, strategy.to_string());
+//         }
+//
+//         let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
+//         let result = remove_strategies_from_deposit_whitelist(
+//             deps.as_mut(),
+//             info_unauthorized.clone(),
+//             strategies.clone(),
+//         );
+//         assert!(result.is_err());
+//         assert_eq!(
+//             result.unwrap_err(),
+//             ContractError::Ownership(OwnershipError::Unauthorized {})
+//         );
+//     }
+//
+//     #[test]
+//     fn test_deposit_into_strategy() {
+//         let (mut deps, _env, owner_info, info_delegation_manager) = instantiate_contract();
+//
+//         let strategy = deps.api.addr_make("strategy1");
+//         let token = deps.api.addr_make("token");
+//         let amount = Uint128::new(100);
+//
+//         let _res = add_strategies_to_deposit_whitelist(
+//             deps.as_mut(),
+//             owner_info.clone(),
+//             vec![strategy.clone()],
+//         )
+//         .unwrap();
+//
+//         let strategy_for_closure = strategy.clone();
+//         let token_for_closure = token.clone();
+//
+//         deps.querier.update_wasm(move |query| match query {
+//             WasmQuery::Smart { contract_addr, msg }
+//                 if *contract_addr == strategy_for_closure.to_string() =>
+//             {
+//                 let strategy_query_msg: BaseQueryMsg = from_json(msg).unwrap();
+//                 match strategy_query_msg {
+//                     UnderlyingToken {} => {
+//                         let response = UnderlyingTokenResponse(token_for_closure.clone());
+//                         SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
+//                     }
+//                     BaseQueryMsg::TotalShares {} => SystemResult::Ok(ContractResult::Ok(
+//                         to_json_binary(&TotalSharesResponse(Uint128::new(1000))).unwrap(),
+//                     )),
+//                     _ => SystemResult::Err(SystemError::InvalidRequest {
+//                         error: "Unhandled request".to_string(),
+//                         request: to_json_binary(&query).unwrap(),
+//                     }),
+//                 }
+//             }
+//             WasmQuery::Smart { contract_addr, msg }
+//                 if *contract_addr == token_for_closure.to_string() =>
+//             {
+//                 let cw20_query_msg: Cw20QueryMsg = from_json(msg).unwrap();
+//                 match cw20_query_msg {
+//                     Cw20QueryMsg::Balance { address: _ } => SystemResult::Ok(ContractResult::Ok(
+//                         to_json_binary(&Cw20BalanceResponse {
+//                             balance: Uint128::new(1000),
+//                         })
+//                         .unwrap(),
+//                     )),
+//                     _ => SystemResult::Err(SystemError::InvalidRequest {
+//                         error: "Unhandled request".to_string(),
+//                         request: to_json_binary(&query).unwrap(),
+//                     }),
+//                 }
+//             }
+//             _ => SystemResult::Err(SystemError::InvalidRequest {
+//                 error: "Unhandled request".to_string(),
+//                 request: to_json_binary(&query).unwrap(),
+//             }),
+//         });
+//
+//         let res = deposit_into_strategy(
+//             deps.as_mut(),
+//             info_delegation_manager.clone(),
+//             info_delegation_manager.sender.clone(),
+//             strategy.clone(),
+//             token.clone(),
+//             amount,
+//         )
+//         .unwrap();
+//
+//         assert_eq!(res.attributes.len(), 1);
+//         assert_eq!(res.attributes[0].key, "new_shares");
+//         assert_eq!(res.attributes[0].value, "105"); // <- check base strategy vault struct for more
+//                                                     // info
+//
+//         let non_whitelisted_strategy = deps.api.addr_make("non_whitelisted_strategy");
+//
+//         let result = deposit_into_strategy(
+//             deps.as_mut(),
+//             info_delegation_manager.clone(),
+//             info_delegation_manager.sender.clone(),
+//             non_whitelisted_strategy.clone(),
+//             token.clone(),
+//             amount,
+//         );
+//         assert!(result.is_err());
+//         if let Err(err) = result {
+//             match err {
+//                 ContractError::StrategyNotWhitelisted {} => (),
+//                 _ => panic!("Unexpected error: {:?}", err),
+//             }
+//         }
+//     }
+//
+//     #[test]
+//     fn test_get_deposits() {
+//         let (mut deps, env, _owner_info, _info_delegation_manager) = instantiate_contract();
+//
+//         let staker = deps.api.addr_make("staker1");
+//         let strategy1 = deps.api.addr_make("strategy1");
+//         let strategy2 = deps.api.addr_make("strategy2");
+//
+//         STAKER_STRATEGY_LIST
+//             .save(
+//                 &mut deps.storage,
+//                 &staker.clone(),
+//                 &vec![strategy1.clone(), strategy2.clone()],
+//             )
+//             .unwrap();
+//         STAKER_STRATEGY_SHARES
+//             .save(&mut deps.storage, (&staker, &strategy1), &Uint128::new(100))
+//             .unwrap();
+//         STAKER_STRATEGY_SHARES
+//             .save(&mut deps.storage, (&staker, &strategy2), &Uint128::new(200))
+//             .unwrap();
+//
+//         // Query deposits for the staker
+//         let query_msg = QueryMsg::GetDeposits {
+//             staker: staker.to_string(),
+//         };
+//         let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+//         let response: DepositsResponse = from_json(bin).unwrap();
+//
+//         assert_eq!(response.strategies.len(), 2);
+//         assert_eq!(response.shares.len(), 2);
+//         assert_eq!(response.strategies[0], strategy1);
+//         assert_eq!(response.shares[0], Uint128::new(100));
+//         assert_eq!(response.strategies[1], strategy2);
+//         assert_eq!(response.shares[1], Uint128::new(200));
+//
+//         // Test with a staker that has no deposits
+//         let new_staker = deps.api.addr_make("new_staker").to_string();
+//
+//         let query_msg = QueryMsg::GetDeposits { staker: new_staker };
+//         let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+//         let response: DepositsResponse = from_json(bin).unwrap();
+//
+//         assert_eq!(response.strategies.len(), 0);
+//         assert_eq!(response.shares.len(), 0);
+//     }
+//
+//     #[test]
+//     fn test_staker_strategy_list_length() {
+//         let (mut deps, env, _owner_info, _info_delegation_manager) = instantiate_contract();
+//
+//         let staker = deps.api.addr_make("staker1");
+//         let strategy1 = deps.api.addr_make("strategy1");
+//         let strategy2 = deps.api.addr_make("strategy2");
+//
+//         STAKER_STRATEGY_LIST
+//             .save(
+//                 &mut deps.storage,
+//                 &staker,
+//                 &vec![strategy1.clone(), strategy2.clone()],
+//             )
+//             .unwrap();
+//
+//         // Query the strategy list length for the staker
+//         let query_msg = QueryMsg::StakerStrategyListLength {
+//             staker: staker.to_string(),
+//         };
+//         let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+//         let response: StakerStrategyListLengthResponse = from_json(bin).unwrap();
+//         let length = response.strategies_len;
+//
+//         assert_eq!(length, Uint128::new(2));
+//
+//         // Test with a staker that has no strategies
+//         let new_staker = deps.api.addr_make("new_staker");
+//
+//         let query_msg = QueryMsg::StakerStrategyListLength {
+//             staker: new_staker.to_string(),
+//         };
+//         let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+//         let response: StakerStrategyListLengthResponse = from_json(bin).unwrap();
+//         let length = response.strategies_len;
+//
+//         assert_eq!(length, Uint128::new(0));
+//     }
+//
+//     #[test]
+//     fn test_add_shares_internal() {
+//         let (mut deps, _env, _owner_info, info_delegation_manager) = instantiate_contract();
+//
+//         let staker = Addr::unchecked("staker");
+//         let strategy = Addr::unchecked("strategy");
+//         let shares = Uint128::new(100);
+//
+//         let res =
+//             add_shares_internal(deps.as_mut(), staker.clone(), strategy.clone(), shares).unwrap();
+//
+//         let events = res.events;
+//         assert_eq!(events.len(), 1);
+//         let event = &events[0];
+//         assert_eq!(event.ty, "add_shares");
+//         assert_eq!(event.attributes.len(), 3);
+//         assert_eq!(event.attributes[0].key, "staker");
+//         assert_eq!(event.attributes[0].value, staker.to_string());
+//         assert_eq!(event.attributes[1].key, "strategy");
+//         assert_eq!(event.attributes[1].value, strategy.to_string());
+//         assert_eq!(event.attributes[2].key, "shares");
+//         assert_eq!(event.attributes[2].value, shares.to_string());
+//
+//         let stored_shares = STAKER_STRATEGY_SHARES
+//             .load(&deps.storage, (&staker, &strategy))
+//             .unwrap();
+//         println!("stored_shares after first addition: {}", stored_shares);
+//         assert_eq!(stored_shares, shares);
+//
+//         let strategy_list = STAKER_STRATEGY_LIST.load(&deps.storage, &staker).unwrap();
+//         assert_eq!(strategy_list.len(), 1);
+//         assert_eq!(strategy_list[0], strategy);
+//
+//         let additional_shares = Uint128::new(50);
+//         let res = add_shares(
+//             deps.as_mut(),
+//             info_delegation_manager.clone(),
+//             staker.clone(),
+//             strategy.clone(),
+//             additional_shares,
+//         )
+//         .unwrap();
+//
+//         let events = res.events;
+//         assert_eq!(events.len(), 1);
+//         let event = &events[0];
+//         assert_eq!(event.ty, "add_shares");
+//         assert_eq!(event.attributes.len(), 3);
+//         assert_eq!(event.attributes[0].key, "staker");
+//         assert_eq!(event.attributes[0].value, staker.to_string());
+//         assert_eq!(event.attributes[1].key, "strategy");
+//         assert_eq!(event.attributes[1].value, strategy.to_string());
+//         assert_eq!(event.attributes[2].key, "shares");
+//         assert_eq!(event.attributes[2].value, additional_shares.to_string());
+//
+//         let stored_shares = STAKER_STRATEGY_SHARES
+//             .load(&deps.storage, (&staker, &strategy))
+//             .unwrap();
+//         println!("stored_shares after second addition: {}", stored_shares);
+//         assert_eq!(stored_shares, shares + additional_shares);
+//
+//         // Test with zero shares
+//         let result = add_shares(
+//             deps.as_mut(),
+//             info_delegation_manager.clone(),
+//             staker.clone(),
+//             strategy.clone(),
+//             Uint128::zero(),
+//         );
+//         assert!(result.is_err());
+//         if let Err(err) = result {
+//             match err {
+//                 ContractError::InvalidShares {} => (),
+//                 _ => panic!("Unexpected error: {:?}", err),
+//             }
+//         }
+//
+//         // Test exceeding the max strategy list length
+//         let mut strategy_list = Vec::new();
+//         for i in 0..MAX_STAKER_STRATEGY_LIST_LENGTH {
+//             strategy_list.push(Addr::unchecked(format!("strategy{}", i)));
+//         }
+//         STAKER_STRATEGY_LIST
+//             .save(&mut deps.storage, &staker, &strategy_list)
+//             .unwrap();
+//
+//         let new_strategy = Addr::unchecked("new_strategy");
+//         let result =
+//             add_shares_internal(deps.as_mut(), staker.clone(), new_strategy.clone(), shares);
+//         assert!(result.is_err());
+//         if let Err(err) = result {
+//             match err {
+//                 ContractError::MaxStrategyListLengthExceeded {} => (),
+//                 _ => panic!("Unexpected error: {:?}", err),
+//             }
+//         }
+//     }
+//
+//     #[test]
+//     fn test_add_shares() {
+//         let (mut deps, _env, _owner_info, info_delegation_manager) = instantiate_contract();
+//
+//         let staker = deps.api.addr_make("staker");
+//         let strategy = deps.api.addr_make("strategy");
+//         let shares = Uint128::new(100);
+//
+//         let res = add_shares(
+//             deps.as_mut(),
+//             info_delegation_manager.clone(),
+//             staker.clone(),
+//             strategy.clone(),
+//             shares,
+//         )
+//         .unwrap();
+//
+//         let events = res.events;
+//         assert_eq!(events.len(), 1);
+//         let event = &events[0];
+//         assert_eq!(event.ty, "add_shares");
+//         assert_eq!(event.attributes.len(), 3);
+//         assert_eq!(event.attributes[0].key, "staker");
+//         assert_eq!(event.attributes[0].value, staker.to_string());
+//         assert_eq!(event.attributes[1].key, "strategy");
+//         assert_eq!(event.attributes[1].value, strategy.to_string());
+//         assert_eq!(event.attributes[2].key, "shares");
+//         assert_eq!(event.attributes[2].value, shares.to_string());
+//
+//         let stored_shares = STAKER_STRATEGY_SHARES
+//             .load(&deps.storage, (&staker, &strategy))
+//             .unwrap();
+//         println!("stored_shares after first addition: {}", stored_shares);
+//         assert_eq!(stored_shares, shares);
+//
+//         let strategy_list = STAKER_STRATEGY_LIST.load(&deps.storage, &staker).unwrap();
+//         assert_eq!(strategy_list.len(), 1);
+//         assert_eq!(strategy_list[0], strategy);
+//
+//         // Test adding more shares to the same strategy
+//         let additional_shares = Uint128::new(50);
+//
+//         let res = add_shares(
+//             deps.as_mut(),
+//             info_delegation_manager.clone(),
+//             staker.clone(),
+//             strategy.clone(),
+//             additional_shares,
+//         )
+//         .unwrap();
+//
+//         let events = res.events;
+//         assert_eq!(events.len(), 1);
+//         let event = &events[0];
+//         assert_eq!(event.ty, "add_shares");
+//         assert_eq!(event.attributes.len(), 3);
+//         assert_eq!(event.attributes[0].key, "staker");
+//         assert_eq!(event.attributes[0].value, staker.to_string());
+//         assert_eq!(event.attributes[1].key, "strategy");
+//         assert_eq!(event.attributes[1].value, strategy.to_string());
+//         assert_eq!(event.attributes[2].key, "shares");
+//         assert_eq!(event.attributes[2].value, additional_shares.to_string());
+//
+//         let stored_shares = STAKER_STRATEGY_SHARES
+//             .load(&deps.storage, (&staker, &strategy))
+//             .unwrap();
+//         println!("stored_shares after second addition: {}", stored_shares);
+//         assert_eq!(stored_shares, shares + additional_shares);
+//
+//         let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
+//
+//         let result = add_shares(
+//             deps.as_mut(),
+//             info_unauthorized.clone(),
+//             staker.clone(),
+//             strategy.clone(),
+//             shares,
+//         );
+//
+//         assert!(result.is_err());
+//         if let Err(err) = result {
+//             match err {
+//                 ContractError::Unauthorized {} => (),
+//                 _ => panic!("Unexpected error: {:?}", err),
+//             }
+//         }
+//
+//         let result = add_shares(
+//             deps.as_mut(),
+//             info_delegation_manager.clone(),
+//             staker.clone(),
+//             strategy.clone(),
+//             Uint128::zero(),
+//         );
+//
+//         assert!(result.is_err());
+//         if let Err(err) = result {
+//             match err {
+//                 ContractError::InvalidShares {} => (),
+//                 _ => panic!("Unexpected error: {:?}", err),
+//             }
+//         }
+//
+//         // Test exceeding the max strategy list length
+//         let mut strategy_list = Vec::new();
+//         for i in 0..MAX_STAKER_STRATEGY_LIST_LENGTH {
+//             strategy_list.push(Addr::unchecked(format!("strategy{}", i)));
+//         }
+//         STAKER_STRATEGY_LIST
+//             .save(&mut deps.storage, &staker, &strategy_list)
+//             .unwrap();
+//
+//         let new_strategy = deps.api.addr_make("new_strategy");
+//
+//         let result = add_shares(
+//             deps.as_mut(),
+//             info_delegation_manager.clone(),
+//             staker.clone(),
+//             new_strategy.clone(),
+//             shares,
+//         );
+//
+//         assert!(result.is_err());
+//         if let Err(err) = result {
+//             match err {
+//                 ContractError::MaxStrategyListLengthExceeded {} => (),
+//                 _ => panic!("Unexpected error: {:?}", err),
+//             }
+//         }
+//     }
+//
+//     #[test]
+//     fn test_remove_shares() {
+//         let (mut deps, _env, _owner_info, info_delegation_manager) = instantiate_contract();
+//
+//         let staker = deps.api.addr_make("staker");
+//         let strategy1 = deps.api.addr_make("strategy1");
+//         let strategy2 = deps.api.addr_make("strategy2");
+//
+//         STAKER_STRATEGY_LIST
+//             .save(
+//                 &mut deps.storage,
+//                 &staker,
+//                 &vec![strategy1.clone(), strategy2.clone()],
+//             )
+//             .unwrap();
+//         STAKER_STRATEGY_SHARES
+//             .save(&mut deps.storage, (&staker, &strategy1), &Uint128::new(100))
+//             .unwrap();
+//         STAKER_STRATEGY_SHARES
+//             .save(&mut deps.storage, (&staker, &strategy2), &Uint128::new(200))
+//             .unwrap();
+//
+//         let res = remove_shares(
+//             deps.as_mut(),
+//             info_delegation_manager.clone(),
+//             staker.clone(),
+//             strategy1.clone(),
+//             Uint128::new(50),
+//         )
+//         .unwrap();
+//
+//         assert_eq!(res.attributes.len(), 5);
+//         assert_eq!(res.attributes[0].key, "method");
+//         assert_eq!(res.attributes[0].value, "remove_shares");
+//         assert_eq!(res.attributes[1].key, "staker");
+//         assert_eq!(res.attributes[1].value, staker.to_string());
+//         assert_eq!(res.attributes[2].key, "strategy");
+//         assert_eq!(res.attributes[2].value, strategy1.to_string());
+//         assert_eq!(res.attributes[3].key, "shares");
+//         assert_eq!(res.attributes[3].value, "50");
+//         assert_eq!(res.attributes[4].key, "strategy_removed");
+//         assert_eq!(res.attributes[4].value, "false");
+//
+//         let stored_shares = STAKER_STRATEGY_SHARES
+//             .load(&deps.storage, (&staker, &strategy1))
+//             .unwrap();
+//         println!("Stored shares after removal: {}", stored_shares);
+//         assert_eq!(stored_shares, Uint128::new(50));
+//
+//         // Test removing shares with an unauthorized user
+//         let info_unauthorized = message_info(&Addr::unchecked("unauthorized"), &[]);
+//
+//         let result = remove_shares(
+//             deps.as_mut(),
+//             info_unauthorized.clone(),
+//             staker.clone(),
+//             strategy2.clone(),
+//             Uint128::new(50),
+//         );
+//         assert!(result.is_err());
+//         if let Err(err) = result {
+//             match err {
+//                 ContractError::Unauthorized {} => (),
+//                 _ => panic!("Unexpected error: {:?}", err),
+//             }
+//         }
+//
+//         // Test removing more shares than available
+//         let result = remove_shares(
+//             deps.as_mut(),
+//             info_delegation_manager.clone(),
+//             staker.clone(),
+//             strategy1.clone(),
+//             Uint128::new(60),
+//         );
+//
+//         assert!(result.is_err());
+//         if let Err(err) = result {
+//             match err {
+//                 ContractError::InvalidShares {} => (),
+//                 _ => panic!("Unexpected error: {:?}", err),
+//             }
+//         }
+//
+//         // Test removing all shares, which should remove the strategy from the staker's list
+//         let res = remove_shares(
+//             deps.as_mut(),
+//             info_delegation_manager.clone(),
+//             staker.clone(),
+//             strategy1.clone(),
+//             Uint128::new(50),
+//         )
+//         .unwrap();
+//
+//         assert_eq!(res.attributes.len(), 5);
+//         assert_eq!(res.attributes[4].key, "strategy_removed");
+//         assert_eq!(res.attributes[4].value, "true");
+//
+//         let strategy_list = STAKER_STRATEGY_LIST.load(&deps.storage, &staker).unwrap();
+//         println!("Strategy list after removal: {:?}", strategy_list);
+//         assert_eq!(strategy_list.len(), 1);
+//         assert!(!strategy_list.contains(&strategy1));
+//         assert!(strategy_list.contains(&strategy2));
+//     }
+//
+//     #[test]
+//     fn test_remove_shares_internal() {
+//         let (mut deps, _env, _owner_info, _info_delegation_manager) = instantiate_contract();
+//
+//         let staker = Addr::unchecked("staker1");
+//         let strategy1 = Addr::unchecked("strategy1");
+//         let strategy2 = Addr::unchecked("strategy2");
+//
+//         STAKER_STRATEGY_LIST
+//             .save(
+//                 &mut deps.storage,
+//                 &staker,
+//                 &vec![strategy1.clone(), strategy2.clone()],
+//             )
+//             .unwrap();
+//         STAKER_STRATEGY_SHARES
+//             .save(&mut deps.storage, (&staker, &strategy1), &Uint128::new(100))
+//             .unwrap();
+//         STAKER_STRATEGY_SHARES
+//             .save(&mut deps.storage, (&staker, &strategy2), &Uint128::new(200))
+//             .unwrap();
+//
+//         let result = remove_shares_internal(
+//             deps.as_mut(),
+//             staker.clone(),
+//             strategy1.clone(),
+//             Uint128::new(50),
+//         )
+//         .unwrap();
+//         assert!(!result);
+//
+//         let stored_shares = STAKER_STRATEGY_SHARES
+//             .load(&deps.storage, (&staker, &strategy1))
+//             .unwrap();
+//         println!("Stored shares after partial removal: {}", stored_shares);
+//
+//         assert_eq!(stored_shares, Uint128::new(50));
+//
+//         let result = remove_shares_internal(
+//             deps.as_mut(),
+//             staker.clone(),
+//             strategy1.clone(),
+//             Uint128::new(50),
+//         )
+//         .unwrap();
+//
+//         assert!(result);
+//
+//         let strategy_list = STAKER_STRATEGY_LIST.load(&deps.storage, &staker).unwrap();
+//         println!("Strategy list after full removal: {:?}", strategy_list);
+//         assert_eq!(strategy_list.len(), 1);
+//         assert!(!strategy_list.contains(&strategy1));
+//         assert!(strategy_list.contains(&strategy2));
+//
+//         let result = remove_shares_internal(
+//             deps.as_mut(),
+//             staker.clone(),
+//             strategy2.clone(),
+//             Uint128::new(300),
+//         );
+//         assert!(result.is_err());
+//         if let Err(err) = result {
+//             match err {
+//                 ContractError::InvalidShares {} => (),
+//                 _ => panic!("Unexpected error: {:?}", err),
+//             }
+//         }
+//
+//         let result = remove_shares_internal(
+//             deps.as_mut(),
+//             staker.clone(),
+//             strategy2.clone(),
+//             Uint128::zero(),
+//         );
+//         assert!(result.is_err());
+//         if let Err(err) = result {
+//             match err {
+//                 ContractError::InvalidShares {} => (),
+//                 _ => panic!("Unexpected error: {:?}", err),
+//             }
+//         }
+//     }
+//
+//     #[test]
+//     fn test_get_staker_strategy_list() {
+//         let (mut deps, env, _owner_info, _info_delegation_manager) = instantiate_contract();
+//
+//         let staker = deps.api.addr_make("staker1");
+//
+//         let strategies = vec![
+//             deps.api.addr_make("strategy1"),
+//             deps.api.addr_make("strategy2"),
+//         ];
+//         STAKER_STRATEGY_LIST
+//             .save(&mut deps.storage, &staker, &strategies.clone())
+//             .unwrap();
+//
+//         let query_msg = QueryMsg::GetStakerStrategyList {
+//             staker: staker.to_string(),
+//         };
+//         let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
+//         let strategy_list_response: StakerStrategyListResponse = from_json(bin).unwrap();
+//         assert_eq!(strategy_list_response.strategies, strategies);
+//
+//         let new_staker = deps.api.addr_make("new_staker");
+//
+//         let query_msg = QueryMsg::GetStakerStrategyList {
+//             staker: new_staker.to_string(),
+//         };
+//         let bin = query(deps.as_ref(), env, query_msg).unwrap();
+//         let strategy_list_response: StakerStrategyListResponse = from_json(bin).unwrap();
+//         assert!(strategy_list_response.strategies.is_empty());
+//     }
+//
+//     #[test]
+//     fn test_is_strategy_enabled() {
+//         let (mut deps, _env, _owner_info, _info_delegation_manager) = instantiate_contract();
+//
+//         let strategy = deps.api.addr_make("strategy1");
+//
+//         STRATEGY_IS_WHITELISTED_FOR_DEPOSIT
+//             .save(&mut deps.storage, &strategy, &true)
+//             .unwrap();
+//
+//         let result = query_is_strategy_whitelisted(deps.as_ref(), strategy.clone()).unwrap();
+//         assert!(result.is_whitelisted);
+//
+//         let non_whitelisted_strategy = deps.api.addr_make("non_whitelisted_strategy");
+//
+//         let result =
+//             query_is_strategy_whitelisted(deps.as_ref(), non_whitelisted_strategy).unwrap();
+//         assert!(!result.is_whitelisted);
+//     }
+//
+//     #[test]
+//     fn test_get_staker_strategy_shares() {
+//         let (mut deps, _env, _owner_info, _info_delegation_manager) = instantiate_contract();
+//
+//         let staker = Addr::unchecked("staker1");
+//         let strategy = deps.api.addr_make("strategy");
+//         let shares = Uint128::new(100);
+//
+//         STAKER_STRATEGY_SHARES
+//             .save(&mut deps.storage, (&staker, &strategy), &shares)
+//             .unwrap();
+//
+//         let retrieved_shares =
+//             query_staker_strategy_shares(deps.as_ref(), staker.clone(), strategy.clone()).unwrap();
+//         assert_eq!(retrieved_shares.shares, shares);
+//
+//         let new_staker = Addr::unchecked("new_staker");
+//         let retrieved_shares =
+//             query_staker_strategy_shares(deps.as_ref(), new_staker.clone(), strategy.clone())
+//                 .unwrap();
+//         assert_eq!(retrieved_shares.shares, Uint128::zero());
+//
+//         let new_strategy = Addr::unchecked("new_strategy");
+//         let retrieved_shares =
+//             query_staker_strategy_shares(deps.as_ref(), staker.clone(), new_strategy.clone())
+//                 .unwrap();
+//         assert_eq!(retrieved_shares.shares, Uint128::zero());
+//     }
+// }

@@ -21,13 +21,3 @@ pub struct StakerStrategySharesResponse {
 pub struct StakerStrategyListResponse {
     pub strategies: Vec<Addr>,
 }
-
-#[cw_serde]
-pub struct StrategyWhitelistedResponse {
-    pub is_whitelisted: bool,
-}
-
-#[cw_serde]
-pub struct TokenStrategyResponse {
-    pub strategy: Addr,
-}
