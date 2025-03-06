@@ -4,6 +4,8 @@ use cw_storage_plus::Map;
 
 pub const STRATEGY_WHITELISTED: Map<&Addr, bool> = Map::new("strategy_whitelisted");
 
+/// Asserts that the strategy is whitelisted
+/// If the strategy is not whitelisted, it will return [ContractError::NotWhitelisted].
 pub fn assert_strategy_whitelisted(deps: Deps, strategy: &Addr) -> Result<(), ContractError> {
     let whitelisted = STRATEGY_WHITELISTED
         .may_load(deps.storage, strategy)?

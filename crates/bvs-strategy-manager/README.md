@@ -8,20 +8,19 @@ This document details all the **Execute** and **Query** APIs available for inter
 
 The `ExecuteMsg` enum defines actions that modify the contract state.
 
-### AddNewStrategy
+### AddStrategy
 
 This function allows the contract owner to add a new staking strategy.
 A strategy is linked to a specific token and must be properly initialized before being added.
 If a strategy is already registered for a given token, it cannot be added again.
-Once added, the strategy is automatically whitelisted for deposits.
 
 **Parameters:**
 
-- `new_strategy`: The address of the strategy contract that has been deployed and initiated beforehand.
-- `token`: The address of the token to be associated with the strategy.
+- `strategy: Addr`: The address of the strategy contract that has been deployed and initiated beforehand.
+- `whitelisted: boolean`: A flag indicating whether the strategy is approved for deposits.
 
 Only the contract owner has permission to call this function.
-On successful execution, an event `NewStrategyAdded` is emitted.
+On successful execution, an event `StrategyUpdated` is emitted.
 
 ```mermaid
 flowchart TD
@@ -36,28 +35,17 @@ flowchart TD
     end
 ```
 
-### AddStrategiesToWhitelist
+### UpdateStrategy
 
-This function allows the owner to approve strategies for deposits.
-Only whitelisted strategies can receive deposits from users.
-
-**Parameters:**
-
-- `strategies`: A list of strategy contract addresses to be added to the whitelist.
-
-Once a strategy is added, a `StrategyAddedToDepositWhitelist` event is emitted.
-
-### RemoveStrategiesFromWhitelist
-
-This function removes specified strategies from the deposit whitelist.
-Once removed, these strategies will no longer be able to receive deposits from users.
+This function allows the contract owner to update an existing strategy.
 
 **Parameters:**
 
-- `strategies`: A list of strategy contract addresses to be removed from the whitelist.
+- `strategy: Addr`: The address of the strategy contract that has been deployed and initiated beforehand.
+- `whitelisted: boolean`: A flag indicating whether the strategy is approved for deposits.
 
-This function can only be called by the owner.
-A `StrategyRemovedFromDepositWhitelist` event is emitted upon execution.
+Only the contract owner has permission to call this function.
+On successful execution, an event `StrategyUpdated` is emitted.
 
 ### DepositIntoStrategy
 
@@ -206,11 +194,3 @@ Retrieves the number of shares a staker has in a specific strategy.
 ### GetStakerStrategyList
 
 Returns a list of all strategies a staker is involved with.
-
-### TokenStrategy
-
-Returns the strategy associated with a token.
-
-**Parameters:**
-
-- `token`: Address of the token.

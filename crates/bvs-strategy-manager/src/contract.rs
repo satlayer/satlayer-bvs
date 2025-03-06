@@ -144,6 +144,8 @@ mod execute {
         to_json_binary, Addr, DepsMut, Env, Event, MessageInfo, Response, WasmQuery,
     };
 
+    /// Add a new strategy, setting whitelisted=true will allow staker to deposit into the strategy.
+    /// Only the owner can add a new strategy.
     pub fn add_strategy(
         deps: DepsMut,
         env: Env,
@@ -177,6 +179,8 @@ mod execute {
         ))
     }
 
+    /// Update an existing strategy, setting whitelisted=true will allow staker to deposit into the strategy.
+    /// Only the owner can update a strategy.
     pub fn update_strategy(
         deps: DepsMut,
         info: MessageInfo,
@@ -305,6 +309,7 @@ mod query {
     use crate::state::STRATEGY_WHITELISTED;
     use cosmwasm_std::{Addr, Deps, StdResult};
 
+    /// Is the strategy whitelisted for deposits?
     pub fn is_strategy_whitelisted(
         deps: Deps,
         strategy: Addr,
