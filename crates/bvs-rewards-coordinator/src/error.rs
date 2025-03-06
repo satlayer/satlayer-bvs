@@ -115,7 +115,4 @@ pub enum ContractError {
 
     #[error("RewardsCoordinator.validate_rewards_submission: duplicate strategies")]
     DuplicateStrategies {},
-
-    #[error("RewardsCoordinator.create_bvs_rewards_submission: duplicate tokens")]
-    DuplicateToken {},
 }

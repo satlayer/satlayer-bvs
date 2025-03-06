@@ -700,7 +700,7 @@ fn validate_rewards_submission(
     let strategy_manager = auth::get_strategy_manager(deps.storage)?;
 
     for strategy_multiplier in &submission.strategies_and_multipliers {
-        let strategy_str = &strategy_multiplier.strategy;
+        let strategy_str = &strategy_multiplier.strategy.to_string();
         let strategy_addr = deps.api.addr_validate(strategy_str)?;
 
         if !unique_strategies.insert(strategy_addr.clone()) {
@@ -1041,13 +1041,13 @@ mod tests {
 
         let valid_submission = RewardsSubmission {
             strategies_and_multipliers: vec![StrategyAndMultiplier {
-                strategy: deps.api.addr_make("strategy1").to_string(),
+                strategy: deps.api.addr_make("strategy1"),
                 multiplier: 1,
             }],
             amount: Uint128::new(100),
             duration: calc_interval,
             start_timestamp: aligned_start_timestamp,
-            token: deps.api.addr_make("token").to_string(),
+            token: deps.api.addr_make("token"),
         };
 
         let strategy_manager = deps.api.addr_make("strategy_manager");
@@ -1095,7 +1095,7 @@ mod tests {
             amount: Uint128::new(100),
             duration: calc_interval,
             start_timestamp: aligned_start_timestamp,
-            token: deps.api.addr_make("token").to_string(),
+            token: deps.api.addr_make("token"),
         };
 
         let result =
@@ -1104,13 +1104,13 @@ mod tests {
 
         let zero_amount_submission = RewardsSubmission {
             strategies_and_multipliers: vec![StrategyAndMultiplier {
-                strategy: deps.api.addr_make("strategy1").to_string(),
+                strategy: deps.api.addr_make("strategy1"),
                 multiplier: 1,
             }],
             amount: Uint128::zero(),
             duration: calc_interval,
             start_timestamp: aligned_start_timestamp,
-            token: deps.api.addr_make("token").to_string(),
+            token: deps.api.addr_make("token"),
         };
 
         let result =
@@ -1119,13 +1119,13 @@ mod tests {
 
         let exceeds_duration_submission = RewardsSubmission {
             strategies_and_multipliers: vec![StrategyAndMultiplier {
-                strategy: deps.api.addr_make("strategy1").to_string(),
+                strategy: deps.api.addr_make("strategy1"),
                 multiplier: 1,
             }],
             amount: Uint128::new(100),
             duration: 30 * calc_interval + 1,
             start_timestamp: aligned_start_timestamp,
-            token: deps.api.addr_make("token").to_string(),
+            token: deps.api.addr_make("token"),
         };
 
         let result =
@@ -1158,28 +1158,28 @@ mod tests {
             RewardsSubmission {
                 strategies_and_multipliers: vec![
                     StrategyAndMultiplier {
-                        strategy: deps.api.addr_make("strategy1").to_string(),
+                        strategy: deps.api.addr_make("strategy1"),
                         multiplier: 1,
                     },
                     StrategyAndMultiplier {
-                        strategy: deps.api.addr_make("strategy1").to_string(),
+                        strategy: deps.api.addr_make("strategy1"),
                         multiplier: 1,
                     },
                 ],
                 amount: Uint128::new(100),
                 duration: calc_interval, // 1 day
                 start_timestamp: aligned_start_timestamp,
-                token: deps.api.addr_make("token").to_string(),
+                token: deps.api.addr_make("token"),
             },
             RewardsSubmission {
                 strategies_and_multipliers: vec![StrategyAndMultiplier {
-                    strategy: deps.api.addr_make("strategy2").to_string(),
+                    strategy: deps.api.addr_make("strategy2"),
                     multiplier: 1,
                 }],
                 amount: Uint128::new(100),
                 duration: calc_interval, // 1 day
                 start_timestamp: aligned_start_timestamp,
-                token: deps.api.addr_make("token").to_string(),
+                token: deps.api.addr_make("token"),
             },
         ];
 
@@ -1255,13 +1255,13 @@ mod tests {
 
         let submission = vec![RewardsSubmission {
             strategies_and_multipliers: vec![StrategyAndMultiplier {
-                strategy: deps.api.addr_make("strategy1").to_string(),
+                strategy: deps.api.addr_make("strategy1"),
                 multiplier: 1,
             }],
             amount: Uint128::new(100),
             duration: calc_interval, // 1 day
             start_timestamp: aligned_start_timestamp,
-            token: deps.api.addr_make("token").to_string(),
+            token: deps.api.addr_make("token"),
         }];
 
         let strategy_manager = deps.api.addr_make("strategy_manager");
@@ -1350,13 +1350,13 @@ mod tests {
 
         let submission = vec![RewardsSubmission {
             strategies_and_multipliers: vec![StrategyAndMultiplier {
-                strategy: deps.api.addr_make("strategy1").to_string(),
+                strategy: deps.api.addr_make("strategy1"),
                 multiplier: 1,
             }],
             amount: Uint128::new(100),
             duration: calc_interval, // 1 day
             start_timestamp: aligned_start_timestamp,
-            token: deps.api.addr_make("token").to_string(),
+            token: deps.api.addr_make("token"),
         }];
 
         let strategy_manager = deps.api.addr_make("strategy_manager");
