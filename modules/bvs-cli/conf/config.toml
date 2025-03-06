@@ -6,7 +6,7 @@ keyringBackend = "os"
 bech32Prefix = "bbn"
 
 [chain]
-id = "sat-bbn-testnet1" # chain id
+id = "sat-bbn-testnet1"                           # chain id
 rpc = "https://rpc.sat-bbn-testnet1.satlayer.net" # chain rpc url
 
 [contract]

@@ -1,15 +1,15 @@
 [workspace]
 members = [
-    # CosmWasm Library
-    "bvs-library",
-    # CosmWasm Contracts
-    "bvs-registry",
-    "bvs-strategy-base",
-    "bvs-strategy-manager",
-    "bvs-directory",
-    "bvs-delegation-manager",
-    "bvs-rewards-coordinator",
-    "bvs-slash-manager",
+  # CosmWasm Library
+  "bvs-library",
+  # CosmWasm Contracts
+  "bvs-registry",
+  "bvs-strategy-base",
+  "bvs-strategy-manager",
+  "bvs-directory",
+  "bvs-delegation-manager",
+  "bvs-rewards-coordinator",
+  "bvs-slash-manager",
 ]
 
 resolver = "2"
@@ -28,8 +28,8 @@ keywords = ["SatLayer", "Restaking", "BTC", "cosmos", "cosmwasm"]
 # CosmWasm Core
 cosmwasm-schema = "=2.1.0"
 cosmwasm-std = { version = "=2.1.0", features = [
-    # https://github.com/babylonlabs-io/babylon/blob/d065cdd9d7f1219fece38cb678d1233566cf530b/app/keepers/keepers.go#L101
-    "cosmwasm_2_0",
+  # https://github.com/babylonlabs-io/babylon/blob/d065cdd9d7f1219fece38cb678d1233566cf530b/app/keepers/keepers.go#L101
+  "cosmwasm_2_0",
 ] }
 cosmwasm-crypto = "=2.1.0"
 cw-storage-plus = "2.0.0"
