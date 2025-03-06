@@ -31,23 +31,14 @@ func TransferOwner(userKeyName, newOwner string) {
 	fmt.Printf("Transfer ownership success. txn: %s\n", txResp.Hash)
 }
 
-func AddStrategyWhitelist(userKeyName string, strategies []string) {
+func UpdateStrategy(userKeyName string, strategy string, whitelisted bool) {
 	ctx := context.Background()
-	strategy, _ := newService(userKeyName)
-	txResp, err := strategy.AddStrategiesToWhitelist(ctx, strategies)
+	strategyManager, _ := newService(userKeyName)
+	txResp, err := strategyManager.UpdateStrategy(ctx, strategy, whitelisted)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("Add strategy whitelist success. txn: %s\n", txResp.Hash)
-}
-func RemoveStrategyWhitelist(userKeyName string, strategies []string) {
-	ctx := context.Background()
-	strategy, _ := newService(userKeyName)
-	txResp, err := strategy.RemoveStrategiesFromWhitelist(ctx, strategies)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Remove strategy whitelist success. txn: %s\n", txResp.Hash)
 }
 
 func DepositStrategy(userKeyName, strategyAddress, tokenAddress string, amount uint64) {

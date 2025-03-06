@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -24,22 +23,16 @@ func strategyCmd() *cobra.Command {
 		},
 	}
 
-	removeStrategyFromWhitelistCmd := &cobra.Command{
-		Use:   "remove-strategy-from-whitelist <userKeyName> <strategyAddress>",
-		Short: "To remove the strategy from whitelist.",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			strategies := strings.Split(args[1], ",")
-			strategy.RemoveStrategyWhitelist(args[0], strategies)
-		},
-	}
-	addStrategyToWhitelistCmd := &cobra.Command{
-		Use:   "add-strategy-to-whitelist <userKeyName> <strategyAddress>",
+	updateStrategyCmd := &cobra.Command{
+		Use:   "update-strategy <userKeyName> <strategyAddress> <whitelisted>",
 		Short: "To add the strategy to whitelist.",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			strategies := strings.Split(args[1], ",")
-			strategy.AddStrategyWhitelist(args[0], strategies)
+			value, err := strconv.ParseBool(args[2])
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+			}
+			strategy.UpdateStrategy(args[0], args[1], value)
 		},
 	}
 
@@ -118,10 +111,9 @@ func strategyCmd() *cobra.Command {
 	}
 
 	subCmd.AddCommand(transferOwnerCmd)
-	subCmd.AddCommand(removeStrategyFromWhitelistCmd)
 	subCmd.AddCommand(getStakerStrategyListCmd)
 	subCmd.AddCommand(isStrategyWhitelistedCmd)
-	subCmd.AddCommand(addStrategyToWhitelistCmd)
+	subCmd.AddCommand(updateStrategyCmd)
 	subCmd.AddCommand(depositStrategyCmd)
 	subCmd.AddCommand(removeSharesCmd)
 	subCmd.AddCommand(withdrawSharesAsTokensCmd)
