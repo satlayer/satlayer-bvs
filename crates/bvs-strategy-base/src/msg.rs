@@ -13,6 +13,7 @@ pub struct InstantiateMsg {
 #[derive(bvs_registry::api::Display)]
 pub enum ExecuteMsg {
     Deposit {
+        sender: String,
         amount: Uint128,
     },
     Withdraw {
