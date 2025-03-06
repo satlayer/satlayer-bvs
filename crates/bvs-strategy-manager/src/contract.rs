@@ -9,7 +9,7 @@ use crate::{
         StakerStrategySharesResponse,
     },
     state,
-    state::{MAX_STAKER_STRATEGY_LIST_LENGTH, STAKER_STRATEGY_LIST, STAKER_STRATEGY_SHARES},
+    state::{STAKER_STRATEGY_LIST, STAKER_STRATEGY_SHARES},
 };
 use cosmwasm_std::{
     to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo,
@@ -31,6 +31,10 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const SHARES_OFFSET: Uint128 = Uint128::new(1000u128);
 const BALANCE_OFFSET: Uint128 = Uint128::new(1000u128);
+
+/// Maximum length of the strategy list for a staker
+/// This value can be changed in the future
+pub const MAX_STRATEGY_LENGTH: usize = 10;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -307,7 +311,7 @@ fn add_shares_internal(
         .unwrap_or_else(Uint128::zero);
 
     if current_shares.is_zero() {
-        if strategy_list.len() >= MAX_STAKER_STRATEGY_LIST_LENGTH {
+        if strategy_list.len() >= MAX_STRATEGY_LENGTH {
             return Err(ContractError::MaxStrategyListLengthExceeded {});
         }
         strategy_list.push(strategy.clone());
@@ -1026,7 +1030,7 @@ mod tests_old {
 
         // Test exceeding the max strategy list length
         let mut strategy_list = Vec::new();
-        for i in 0..MAX_STAKER_STRATEGY_LIST_LENGTH {
+        for i in 0..MAX_STRATEGY_LENGTH {
             strategy_list.push(Addr::unchecked(format!("strategy{}", i)));
         }
         STAKER_STRATEGY_LIST
@@ -1150,7 +1154,7 @@ mod tests_old {
 
         // Test exceeding the max strategy list length
         let mut strategy_list = Vec::new();
-        for i in 0..MAX_STAKER_STRATEGY_LIST_LENGTH {
+        for i in 0..MAX_STRATEGY_LENGTH {
             strategy_list.push(Addr::unchecked(format!("strategy{}", i)));
         }
         STAKER_STRATEGY_LIST
