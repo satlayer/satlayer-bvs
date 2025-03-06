@@ -82,7 +82,7 @@ fn register_service_successfully() {
 }
 
 #[test]
-fn register_service_but_paused() {
+fn register_service_but_paused_error() {
     let (mut app, directory, _, registry) = instantiate();
     let owner = app.api().addr_make("owner");
 
@@ -108,7 +108,7 @@ fn register_service_but_paused() {
 }
 
 #[test]
-fn register_service_but_already_registered() {
+fn register_service_but_already_registered_error() {
     let (mut app, directory, ..) = instantiate();
 
     let register_msg = &ExecuteMsg::ServiceRegister {
@@ -132,6 +132,170 @@ fn register_service_but_already_registered() {
         ContractError::ServiceRegistered {}.to_string()
     );
 }
+
+#[test]
+fn update_service_metadata_successfully() {
+    let (mut app, directory, ..) = instantiate();
+
+    let service = app.api().addr_make("service/11111");
+
+    // regsiter service
+    {
+        let register_msg = &ExecuteMsg::ServiceRegister {
+            metadata: ServiceMetadata {
+                name: Some("Service Name".to_string()),
+                uri: Some("https://service.com".to_string()),
+            },
+        };
+
+        directory
+            .execute(&mut app, &service, &register_msg)
+            .unwrap();
+    }
+
+    // update name and uri
+    {
+        let update_msg = &ExecuteMsg::ServiceUpdateMetadata(ServiceMetadata {
+            name: Some("New Service Name".to_string()),
+            uri: Some("https://new-service.com".to_string()),
+        });
+
+        let response = directory.execute(&mut app, &service, &update_msg).unwrap();
+
+        assert_eq!(
+            response.events,
+            vec![
+                Event::new("execute").add_attribute("_contract_address", directory.addr.as_str()),
+                Event::new("wasm-ServiceMetadataUpdated")
+                    .add_attribute("_contract_address", directory.addr.as_str())
+                    .add_attribute("service", service.as_str())
+                    .add_attribute("metadata.uri", "https://new-service.com")
+                    .add_attribute("metadata.name", "New Service Name"),
+            ]
+        );
+    }
+
+    // Don't update the name
+    {
+        let update_msg = &ExecuteMsg::ServiceUpdateMetadata(ServiceMetadata {
+            name: None,
+            uri: Some("https://new-new-service.com".to_string()),
+        });
+
+        let response = directory.execute(&mut app, &service, &update_msg).unwrap();
+
+        assert_eq!(
+            response.events,
+            vec![
+                Event::new("execute").add_attribute("_contract_address", directory.addr.as_str()),
+                Event::new("wasm-ServiceMetadataUpdated")
+                    .add_attribute("_contract_address", directory.addr.as_str())
+                    .add_attribute("service", service.as_str())
+                    .add_attribute("metadata.uri", "https://new-new-service.com"),
+            ]
+        );
+    }
+}
+
+#[test]
+fn register_lifecycle_operator_first() {
+    let (mut app, directory, ..) = instantiate();
+
+    let register_msg = &ExecuteMsg::ServiceRegister {
+        metadata: ServiceMetadata {
+            name: Some("Service Name".to_string()),
+            uri: Some("https://service.com".to_string()),
+        },
+    };
+
+    let service = app.api().addr_make("service/bvs");
+    directory
+        .execute(&mut app, &service, &register_msg)
+        .unwrap();
+
+    // TODO(fuxingloh): need strategy-manager setup.
+    // let operator = app.api().addr_make("operator");
+    // let register_msg = &bvs_delegation_manager::msg::ExecuteMsg::RegisterAsOperator {
+    //     operator_details: bvs_delegation_manager::msg::OperatorDetails {
+    //         staker_opt_out_window_blocks: 100
+    //     },
+    //     metadata_uri: "operator.com".to_string(),
+    // };
+}
+
+#[test]
+fn register_lifecycle_service_first() {
+    let (mut app, directory, ..) = instantiate();
+
+    let service = app.api().addr_make("service/c4");
+
+    // register service
+    {
+        let register_msg = &ExecuteMsg::ServiceRegister {
+            metadata: ServiceMetadata {
+                name: Some("C4 Service".to_string()),
+                uri: Some("https://c4.service.com".to_string()),
+            },
+        };
+
+        directory
+            .execute(&mut app, &service, &register_msg)
+            .unwrap();
+    }
+
+    let operator = app.api().addr_make("operator");
+
+    // register operator
+    {
+        let register_msg = &ExecuteMsg::ServiceRegisterOperator {
+            operator: operator.to_string(),
+        };
+
+        let res = directory
+            .execute(&mut app, &service, &register_msg)
+            .unwrap();
+
+        assert_eq!(
+            res.events,
+            vec![
+                Event::new("execute").add_attribute("_contract_address", directory.addr.as_str()),
+                Event::new("wasm-RegistrationStatusUpdated")
+                    .add_attribute("_contract_address", directory.addr.as_str())
+                    .add_attribute("method", "service_register_operator")
+                    .add_attribute("operator", operator.as_str())
+                    .add_attribute("service", service.as_str())
+                    .add_attribute("status", "ServiceRegistered"),
+            ]
+        );
+    }
+
+    let status: StatusResponse = directory
+        .query(
+            &mut app,
+            &QueryMsg::Status {
+                service: service.to_string(),
+                operator: operator.to_string(),
+            },
+        )
+        .unwrap();
+    assert_eq!(status, StatusResponse(3));
+
+    // TODO(fuxingloh): need strategy-manager setup.
+    // let operator = app.api().addr_make("operator");
+    // let register_msg = &bvs_delegation_manager::msg::ExecuteMsg::RegisterAsOperator {
+    //     operator_details: bvs_delegation_manager::msg::OperatorDetails {
+    //         staker_opt_out_window_blocks: 100
+    //     },
+    //     metadata_uri: "operator.com".to_string(),
+    // };
+}
+
+// TODO: deregister from service
+// TODO: deregister from operator
+// TODO: already deregistered
+// TODO: already active
+// TODO: operator already registered
+// TODO: service already registered
 
 #[test]
 fn operator_register_service_but_service_not_registered() {
@@ -183,155 +347,6 @@ fn operator_register_service_but_self_not_operator() {
             msg: "Operator is not registered on delegation manager.".to_string()
         }
         .to_string()
-    );
-}
-
-#[test]
-fn register_lifecycle_operator_first() {
-    let (mut app, directory, delegation, ..) = instantiate();
-
-    let register_msg = &ExecuteMsg::ServiceRegister {
-        metadata: ServiceMetadata {
-            name: Some("Service Name".to_string()),
-            uri: Some("https://service.com".to_string()),
-        },
-    };
-
-    let service = app.api().addr_make("service/bvs");
-    directory
-        .execute(&mut app, &service, &register_msg)
-        .unwrap();
-
-    // TODO(fuxingloh): need strategy-manager setup.
-    // let operator = app.api().addr_make("operator");
-    // let register_msg = &bvs_delegation_manager::msg::ExecuteMsg::RegisterAsOperator {
-    //     operator_details: bvs_delegation_manager::msg::OperatorDetails {
-    //         staker_opt_out_window_blocks: 100
-    //     },
-    //     metadata_uri: "operator.com".to_string(),
-    // };
-}
-
-#[test]
-fn register_lifecycle_service_first() {
-    let (mut app, directory, delegation, ..) = instantiate();
-
-    let register_msg = &ExecuteMsg::ServiceRegister {
-        metadata: ServiceMetadata {
-            name: Some("C4 Service".to_string()),
-            uri: Some("https://c4.service.com".to_string()),
-        },
-    };
-
-    let service = app.api().addr_make("service/c4");
-    let operator = app.api().addr_make("operator");
-    directory
-        .execute(&mut app, &service, &register_msg)
-        .unwrap();
-
-    // Register Service
-
-    let register_msg = &ExecuteMsg::ServiceRegisterOperator {
-        operator: operator.to_string(),
-    };
-
-    let res = directory
-        .execute(&mut app, &service, &register_msg)
-        .unwrap();
-
-    assert_eq!(
-        res.events,
-        vec![
-            Event::new("execute").add_attribute("_contract_address", directory.addr.as_str()),
-            Event::new("wasm-RegistrationStatusUpdated")
-                .add_attribute("_contract_address", directory.addr.as_str())
-                .add_attribute("method", "service_register_operator")
-                .add_attribute("operator", operator.as_str())
-                .add_attribute("service", service.as_str())
-                .add_attribute("status", "ServiceRegistered"),
-        ]
-    );
-
-    let status: StatusResponse = directory
-        .query(
-            &mut app,
-            &QueryMsg::Status {
-                service: service.to_string(),
-                operator: operator.to_string(),
-            },
-        )
-        .unwrap();
-    assert_eq!(status, StatusResponse(3));
-
-    // TODO(fuxingloh): need strategy-manager setup.
-    // let operator = app.api().addr_make("operator");
-    // let register_msg = &bvs_delegation_manager::msg::ExecuteMsg::RegisterAsOperator {
-    //     operator_details: bvs_delegation_manager::msg::OperatorDetails {
-    //         staker_opt_out_window_blocks: 100
-    //     },
-    //     metadata_uri: "operator.com".to_string(),
-    // };
-}
-
-// TODO: deregister from service
-// TODO: deregister from operator
-// TODO: already deregistered
-// TODO: already active
-// TODO: operator already registered
-// TODO: service already registered
-
-#[test]
-fn update_metadata_successfully() {
-    let (mut app, directory, ..) = instantiate();
-
-    let register_msg = &ExecuteMsg::ServiceRegister {
-        metadata: ServiceMetadata {
-            name: Some("Service Name".to_string()),
-            uri: Some("https://service.com".to_string()),
-        },
-    };
-
-    let service = app.api().addr_make("service/11111");
-    directory
-        .execute(&mut app, &service, &register_msg)
-        .unwrap();
-
-    let update_msg = &ExecuteMsg::ServiceUpdateMetadata(ServiceMetadata {
-        name: Some("New Service Name".to_string()),
-        uri: Some("https://new-service.com".to_string()),
-    });
-
-    let response = directory.execute(&mut app, &service, &update_msg).unwrap();
-
-    assert_eq!(
-        response.events,
-        vec![
-            Event::new("execute").add_attribute("_contract_address", directory.addr.as_str()),
-            Event::new("wasm-ServiceMetadataUpdated")
-                .add_attribute("_contract_address", directory.addr.as_str())
-                .add_attribute("service", service.as_str())
-                .add_attribute("metadata.uri", "https://new-service.com")
-                .add_attribute("metadata.name", "New Service Name"),
-        ]
-    );
-
-    // Don't update the name
-    let update_msg = &ExecuteMsg::ServiceUpdateMetadata(ServiceMetadata {
-        name: None,
-        uri: Some("https://new-new-service.com".to_string()),
-    });
-
-    let response = directory.execute(&mut app, &service, &update_msg).unwrap();
-
-    assert_eq!(
-        response.events,
-        vec![
-            Event::new("execute").add_attribute("_contract_address", directory.addr.as_str()),
-            Event::new("wasm-ServiceMetadataUpdated")
-                .add_attribute("_contract_address", directory.addr.as_str())
-                .add_attribute("service", service.as_str())
-                .add_attribute("metadata.uri", "https://new-new-service.com"),
-        ]
     );
 }
 
@@ -388,10 +403,8 @@ fn query_status() {
     };
 
     let status: StatusResponse = directory.query(&mut app, query_msg).unwrap();
-
     assert_eq!(status, StatusResponse(0));
 
     let status: StatusResponse = directory.query(&mut app, query_msg).unwrap();
-
     assert_eq!(status, StatusResponse(0));
 }
