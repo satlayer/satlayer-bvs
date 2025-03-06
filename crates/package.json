@@ -11,6 +11,9 @@
     "*.rs": [
       "rustfmt"
     ],
+    "*.{md,toml}": [
+      "prettier --write"
+    ],
     "package.json": [
       "prettier --write"
     ]
