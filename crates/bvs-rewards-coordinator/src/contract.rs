@@ -2357,10 +2357,7 @@ mod tests {
         assert_eq!(event.ty, "RewardsClaimed");
         assert_eq!(event.attributes.len(), 6);
         assert_eq!(event.attributes[0].key, "root");
-        assert_eq!(
-            event.attributes[0].value,
-            format!("{:?}", distribution_root.root)
-        );
+        assert_eq!(event.attributes[0].value, distribution_root.root.to_hex());
         assert_eq!(event.attributes[1].key, "earner");
         assert_eq!(
             event.attributes[1].value,

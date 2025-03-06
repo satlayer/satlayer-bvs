@@ -1,6 +1,5 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Api, Binary, HexBinary, StdResult, Timestamp, Uint128};
-use rs_merkle::{algorithms::Sha256 as MerkleSha256, MerkleTree};
 use sha2::{Digest, Sha256};
 
 pub const EARNER_LEAF_SALT: u8 = 0;
