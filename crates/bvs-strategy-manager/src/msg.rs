@@ -51,9 +51,8 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    // TODO(fuxingloh): rename this StakerDeposits { staker: String }
-    #[returns(DepositsResponse)]
-    GetDeposits { staker: String },
+    #[returns(StakerDepositListResponse)]
+    StakerDepositList { staker: String },
 
     #[returns(StakerStrategySharesResponse)]
     StakerStrategyShares { staker: String, strategy: String },
@@ -66,9 +65,12 @@ pub enum QueryMsg {
 }
 
 #[cw_serde]
-pub struct DepositsResponse {
-    pub strategies: Vec<Addr>,
-    pub shares: Vec<Uint128>,
+pub struct StakerDepositListResponse(pub Vec<StrategyShare>);
+
+#[cw_serde]
+pub struct StrategyShare {
+    pub strategy: Addr,
+    pub shares: Uint128,
 }
 
 #[cw_serde]

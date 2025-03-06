@@ -25,8 +25,8 @@ use cw2::set_contract_version;
 
 use bvs_library::ownership;
 use bvs_strategy_manager::msg::{
-    DepositsResponse, ExecuteMsg as StrategyManagerExecuteMsg, QueryMsg as StrategyManagerQueryMsg,
-    StakerStrategyListResponse, StakerStrategySharesResponse,
+    ExecuteMsg as StrategyManagerExecuteMsg, QueryMsg as StrategyManagerQueryMsg,
+    StakerDepositListResponse, StakerStrategyListResponse, StakerStrategySharesResponse,
 };
 use sha2::{Digest, Sha256};
 
@@ -421,15 +421,17 @@ pub fn get_delegatable_shares(deps: Deps, staker: Addr) -> StdResult<(Vec<Addr>,
 
     let query = WasmQuery::Smart {
         contract_addr: strategy_manager.to_string(),
-        msg: to_json_binary(&StrategyManagerQueryMsg::GetDeposits {
+        msg: to_json_binary(&StrategyManagerQueryMsg::StakerDepositList {
             staker: staker.to_string(),
         })?,
     }
     .into();
 
-    let response: DepositsResponse = deps.querier.query(&query)?;
-
-    Ok((response.strategies, response.shares))
+    // TODO: for backwards compatibility
+    let StakerDepositListResponse(list) = deps.querier.query(&query)?;
+    let strategies: Vec<Addr> = list.iter().map(|item| item.strategy.clone()).collect();
+    let shares: Vec<Uint128> = list.iter().map(|item| item.shares).collect();
+    Ok((strategies, shares))
 }
 
 /// Called by a strategy manager when a staker's deposit share balance in a strategy increases.
@@ -1150,6 +1152,7 @@ mod tests {
     use super::*;
     use crate::auth::set_routing;
     use bvs_library::ownership::OwnershipError;
+    use bvs_strategy_manager::msg::StrategyShare;
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
@@ -1721,13 +1724,16 @@ mod tests {
                 msg: _,
             } if *contract_addr == deps.api.addr_make("strategy_manager").to_string() => {
                 SystemResult::Ok(ContractResult::Ok(
-                    to_json_binary(&DepositsResponse {
-                        strategies: vec![
-                            deps.api.addr_make("strategy1"),
-                            deps.api.addr_make("strategy2"),
-                        ],
-                        shares: vec![Uint128::new(100), Uint128::new(200)],
-                    })
+                    to_json_binary(&StakerDepositListResponse(vec![
+                        StrategyShare {
+                            strategy: deps.api.addr_make("strategy1"),
+                            shares: Uint128::new(100),
+                        },
+                        StrategyShare {
+                            strategy: deps.api.addr_make("strategy2"),
+                            shares: Uint128::new(200),
+                        },
+                    ]))
                     .unwrap(),
                 ))
             }
@@ -1777,13 +1783,16 @@ mod tests {
                 msg: _,
             } if *contract_addr == deps.api.addr_make("strategy_manager").to_string() => {
                 SystemResult::Ok(ContractResult::Ok(
-                    to_json_binary(&DepositsResponse {
-                        strategies: vec![
-                            deps.api.addr_make("strategy1"),
-                            deps.api.addr_make("strategy2"),
-                        ],
-                        shares: vec![Uint128::new(100), Uint128::new(200)],
-                    })
+                    to_json_binary(&StakerDepositListResponse(vec![
+                        StrategyShare {
+                            strategy: deps.api.addr_make("strategy1"),
+                            shares: Uint128::new(100),
+                        },
+                        StrategyShare {
+                            strategy: deps.api.addr_make("strategy2"),
+                            shares: Uint128::new(200),
+                        },
+                    ]))
                     .unwrap(),
                 ))
             }
@@ -1831,13 +1840,16 @@ mod tests {
                 msg: _,
             } if *contract_addr == deps.api.addr_make("strategy_manager").to_string() => {
                 SystemResult::Ok(ContractResult::Ok(
-                    to_json_binary(&DepositsResponse {
-                        strategies: vec![
-                            deps.api.addr_make("strategy1"),
-                            deps.api.addr_make("strategy2"),
-                        ],
-                        shares: vec![Uint128::new(100), Uint128::new(200)],
-                    })
+                    to_json_binary(&StakerDepositListResponse(vec![
+                        StrategyShare {
+                            strategy: deps.api.addr_make("strategy1"),
+                            shares: Uint128::new(100),
+                        },
+                        StrategyShare {
+                            strategy: deps.api.addr_make("strategy2"),
+                            shares: Uint128::new(200),
+                        },
+                    ]))
                     .unwrap(),
                 ))
             }
@@ -1872,13 +1884,16 @@ mod tests {
                 msg: _,
             } if *contract_addr == deps.api.addr_make("strategy_manager").to_string() => {
                 SystemResult::Ok(ContractResult::Ok(
-                    to_json_binary(&DepositsResponse {
-                        strategies: vec![
-                            deps.api.addr_make("strategy1"),
-                            deps.api.addr_make("strategy2"),
-                        ],
-                        shares: vec![Uint128::new(100), Uint128::new(200)],
-                    })
+                    to_json_binary(&StakerDepositListResponse(vec![
+                        StrategyShare {
+                            strategy: deps.api.addr_make("strategy1"),
+                            shares: Uint128::new(100),
+                        },
+                        StrategyShare {
+                            strategy: deps.api.addr_make("strategy2"),
+                            shares: Uint128::new(200),
+                        },
+                    ]))
                     .unwrap(),
                 ))
             }
@@ -2325,11 +2340,11 @@ mod tests {
                 if *contract_addr == deps.api.addr_make("strategy_manager").to_string() =>
             {
                 let query_msg: Result<StrategyManagerQueryMsg, _> = from_json(msg);
-                if let Ok(StrategyManagerQueryMsg::GetDeposits { staker: _ }) = query_msg {
-                    let simulated_response = DepositsResponse {
-                        strategies: vec![deps.api.addr_make("strategy1")],
-                        shares: vec![Uint128::new(100)],
-                    };
+                if let Ok(StrategyManagerQueryMsg::StakerDepositList { staker: _ }) = query_msg {
+                    let simulated_response = StakerDepositListResponse(vec![StrategyShare {
+                        strategy: deps.api.addr_make("strategy1"),
+                        shares: Uint128::new(100),
+                    }]);
                     SystemResult::Ok(ContractResult::Ok(
                         to_json_binary(&simulated_response).unwrap(),
                     ))
@@ -2445,11 +2460,11 @@ mod tests {
             {
                 let query_msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
                 match query_msg {
-                    StrategyManagerQueryMsg::GetDeposits { staker: _ } => {
-                        let simulated_response = DepositsResponse {
-                            strategies: vec![deps.api.addr_make("strategy1")],
-                            shares: vec![Uint128::new(100)],
-                        };
+                    StrategyManagerQueryMsg::StakerDepositList { staker: _ } => {
+                        let simulated_response = StakerDepositListResponse(vec![StrategyShare {
+                            strategy: deps.api.addr_make("strategy1"),
+                            shares: Uint128::new(100),
+                        }]);
                         SystemResult::Ok(ContractResult::Ok(
                             to_json_binary(&simulated_response).unwrap(),
                         ))
@@ -2603,11 +2618,11 @@ mod tests {
                 if *contract_addr == deps.api.addr_make("strategy_manager").to_string() =>
             {
                 let query_msg: Result<StrategyManagerQueryMsg, _> = from_json(msg);
-                if let Ok(StrategyManagerQueryMsg::GetDeposits { staker: _ }) = query_msg {
-                    let simulated_response = DepositsResponse {
-                        strategies: vec![deps.api.addr_make("strategy1")],
-                        shares: vec![Uint128::new(100)],
-                    };
+                if let Ok(StrategyManagerQueryMsg::StakerDepositList { staker: _ }) = query_msg {
+                    let simulated_response = StakerDepositListResponse(vec![StrategyShare {
+                        strategy: deps.api.addr_make("strategy1"),
+                        shares: Uint128::new(100),
+                    }]);
                     SystemResult::Ok(ContractResult::Ok(
                         to_json_binary(&simulated_response).unwrap(),
                     ))

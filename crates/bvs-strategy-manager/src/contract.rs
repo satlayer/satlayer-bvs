@@ -4,7 +4,7 @@ use cosmwasm_std::entry_point;
 use crate::{
     auth,
     error::ContractError,
-    msg::{DepositsResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state,
     state::{STAKER_STRATEGY_LIST, STAKER_STRATEGY_SHARES},
 };
@@ -469,10 +469,10 @@ fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdR
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetDeposits { staker } => {
-            let staker_addr = deps.api.addr_validate(&staker)?;
+        QueryMsg::StakerDepositList { staker } => {
+            let staker = deps.api.addr_validate(&staker)?;
 
-            to_json_binary(&query_get_deposits(deps, staker_addr)?)
+            to_json_binary(&query::staker_deposit_list(deps, staker)?)
         }
         QueryMsg::StakerStrategyShares { staker, strategy } => {
             let staker = deps.api.addr_validate(&staker)?;
@@ -494,7 +494,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 mod query {
     use crate::msg::{
-        IsStrategyWhitelistedResponse, StakerStrategyListResponse, StakerStrategySharesResponse,
+        IsStrategyWhitelistedResponse, StakerDepositListResponse, StakerStrategyListResponse,
+        StakerStrategySharesResponse, StrategyShare,
     };
     use crate::state::{STAKER_STRATEGY_LIST, STAKER_STRATEGY_SHARES, STRATEGY_WHITELISTED};
     use cosmwasm_std::{Addr, Deps, StdResult, Uint128};
@@ -527,28 +528,24 @@ mod query {
             .unwrap_or_else(Vec::new);
         Ok(StakerStrategyListResponse(strategies))
     }
-}
 
-fn query_get_deposits(deps: Deps, staker: Addr) -> StdResult<DepositsResponse> {
-    let (strategies, shares) = get_deposits(deps, staker)?;
-    Ok(DepositsResponse { strategies, shares })
-}
+    pub fn staker_deposit_list(deps: Deps, staker: Addr) -> StdResult<StakerDepositListResponse> {
+        let strategies = STAKER_STRATEGY_LIST
+            .may_load(deps.storage, &staker)?
+            .unwrap_or_else(Vec::new);
 
-pub fn get_deposits(deps: Deps, staker: Addr) -> StdResult<(Vec<Addr>, Vec<Uint128>)> {
-    let strategies = STAKER_STRATEGY_LIST
-        .may_load(deps.storage, &staker)?
-        .unwrap_or_else(Vec::new);
+        let mut list: Vec<StrategyShare> = Vec::with_capacity(strategies.len());
 
-    let mut shares = Vec::with_capacity(strategies.len());
+        for strategy in strategies {
+            let shares = STAKER_STRATEGY_SHARES
+                .may_load(deps.storage, (&staker, &strategy))?
+                .unwrap_or_else(Uint128::zero);
 
-    for strategy in &strategies {
-        let share = STAKER_STRATEGY_SHARES
-            .may_load(deps.storage, (&staker, strategy))?
-            .unwrap_or_else(Uint128::zero);
-        shares.push(share);
+            list.push(StrategyShare { strategy, shares });
+        }
+
+        Ok(StakerDepositListResponse(list))
     }
-
-    Ok((strategies, shares))
 }
 
 #[cfg(test)]
@@ -698,7 +695,7 @@ mod tests {
 #[cfg(test)]
 mod tests_old {
     use super::*;
-    use crate::msg::StakerStrategyListResponse;
+    use crate::msg::{StakerDepositListResponse, StakerStrategyListResponse, StrategyShare};
     use bvs_strategy_base::{msg::QueryMsg::UnderlyingToken, msg::StrategyManagerResponse};
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
@@ -921,28 +918,34 @@ mod tests_old {
             .unwrap();
 
         // Query deposits for the staker
-        let query_msg = QueryMsg::GetDeposits {
+        let query_msg = QueryMsg::StakerDepositList {
             staker: staker.to_string(),
         };
         let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let response: DepositsResponse = from_json(bin).unwrap();
+        let response: StakerDepositListResponse = from_json(bin).unwrap();
 
-        assert_eq!(response.strategies.len(), 2);
-        assert_eq!(response.shares.len(), 2);
-        assert_eq!(response.strategies[0], strategy1);
-        assert_eq!(response.shares[0], Uint128::new(100));
-        assert_eq!(response.strategies[1], strategy2);
-        assert_eq!(response.shares[1], Uint128::new(200));
+        assert_eq!(
+            response.0,
+            vec![
+                StrategyShare {
+                    strategy: strategy1,
+                    shares: Uint128::new(100)
+                },
+                StrategyShare {
+                    strategy: strategy2,
+                    shares: Uint128::new(200)
+                }
+            ]
+        );
 
         // Test with a staker that has no deposits
         let new_staker = deps.api.addr_make("new_staker").to_string();
 
-        let query_msg = QueryMsg::GetDeposits { staker: new_staker };
+        let query_msg = QueryMsg::StakerDepositList { staker: new_staker };
         let bin = query(deps.as_ref(), env.clone(), query_msg).unwrap();
-        let response: DepositsResponse = from_json(bin).unwrap();
+        let response: StakerDepositListResponse = from_json(bin).unwrap();
 
-        assert_eq!(response.strategies.len(), 0);
-        assert_eq!(response.shares.len(), 0);
+        assert_eq!(response.0.len(), 0);
     }
 
     #[test]
