@@ -3,9 +3,12 @@ use bvs_library::testing::TestingContract;
 use bvs_registry::testing::RegistryContract;
 use bvs_strategy_base::msg::InstantiateMsg as StrategyBaseInstantiateMsg;
 use bvs_strategy_base::testing::{Cw20TokenContract, StrategyBaseContract};
-use bvs_strategy_manager::msg::{ExecuteMsg, IsStrategyWhitelistedResponse, QueryMsg};
-use bvs_strategy_manager::testing::StrategyManagerContract;
-use bvs_strategy_manager::{query as StrategyManagerQuery, ContractError};
+use bvs_strategy_manager::{
+    msg,
+    msg::{ExecuteMsg, IsStrategyWhitelistedResponse, QueryMsg},
+    testing::StrategyManagerContract,
+    ContractError,
+};
 use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::{Event, Uint128};
 use cw_multi_test::App;
@@ -324,7 +327,7 @@ fn test_deposit_withdraw() {
     assert_eq!(res.has_event(&event), true);
 
     let query_res = strategy_manager
-        .query::<StrategyManagerQuery::DepositsResponse>(
+        .query::<msg::DepositsResponse>(
             &app,
             &QueryMsg::GetDeposits {
                 staker: staker.to_string(),
@@ -347,7 +350,7 @@ fn test_deposit_withdraw() {
         .unwrap();
 
     let query_res = strategy_manager
-        .query::<StrategyManagerQuery::DepositsResponse>(
+        .query::<msg::DepositsResponse>(
             &app,
             &QueryMsg::GetDeposits {
                 staker: staker.to_string(),
@@ -419,7 +422,7 @@ fn test_add_remove_shares() {
     assert_eq!(res.has_event(&event), true);
 
     let query_res = strategy_manager
-        .query::<StrategyManagerQuery::DepositsResponse>(
+        .query::<msg::DepositsResponse>(
             &app,
             &QueryMsg::GetDeposits {
                 staker: staker.to_string(),
@@ -447,7 +450,7 @@ fn test_add_remove_shares() {
 
     // let's check the shares
     let query_res = strategy_manager
-        .query::<StrategyManagerQuery::DepositsResponse>(
+        .query::<msg::DepositsResponse>(
             &app,
             &QueryMsg::GetDeposits {
                 staker: staker.to_string(),
@@ -481,7 +484,7 @@ fn test_add_remove_shares() {
 
     // confirm that the shares have been removed
     let query_res = strategy_manager
-        .query::<StrategyManagerQuery::DepositsResponse>(
+        .query::<msg::DepositsResponse>(
             &app,
             &QueryMsg::GetDeposits {
                 staker: staker.to_string(),

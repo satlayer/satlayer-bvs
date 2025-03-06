@@ -24,10 +24,9 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 
 use bvs_library::ownership;
-use bvs_strategy_manager::{
-    msg::ExecuteMsg as StrategyManagerExecuteMsg, msg::QueryMsg as StrategyManagerQueryMsg,
-    query::DepositsResponse, query::StakerStrategyListResponse,
-    query::StakerStrategySharesResponse,
+use bvs_strategy_manager::msg::{
+    DepositsResponse, ExecuteMsg as StrategyManagerExecuteMsg, QueryMsg as StrategyManagerQueryMsg,
+    StakerStrategyListResponse, StakerStrategySharesResponse,
 };
 use sha2::{Digest, Sha256};
 

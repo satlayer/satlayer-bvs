@@ -4,10 +4,9 @@ use cosmwasm_std::entry_point;
 use crate::{
     auth,
     error::ContractError,
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    query::{
-        DepositsResponse, StakerStrategyListLengthResponse, StakerStrategyListResponse,
-        StakerStrategySharesResponse,
+    msg::{
+        DepositsResponse, ExecuteMsg, InstantiateMsg, QueryMsg, StakerStrategyListLengthResponse,
+        StakerStrategyListResponse, StakerStrategySharesResponse,
     },
     state,
     state::{MAX_STAKER_STRATEGY_LIST_LENGTH, STAKER_STRATEGY_LIST, STAKER_STRATEGY_SHARES},
