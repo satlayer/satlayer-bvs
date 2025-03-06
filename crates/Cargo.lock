@@ -267,7 +267,6 @@ dependencies = [
 name = "bvs-rewards-coordinator"
 version = "0.1.0"
 dependencies = [
- "base64",
  "bvs-library",
  "bvs-registry",
  "bvs-strategy-base",

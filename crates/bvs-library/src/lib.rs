@@ -1,4 +1,3 @@
-#[cfg(feature = "testing")]
 pub mod testing;
 
 /// This module contains the implementation of the `ownership` module.

@@ -52,11 +52,11 @@ base64 = "0.22.1"
 cw-utils = "2.0.0"
 
 # CosmWasm Libraries & Contracts
-bvs-library = { path = "./bvs-library", default-features = false }
-bvs-registry = { path = "./bvs-registry", default-features = false, features = ["library"] }
-bvs-delegation-manager = { path = "./bvs-delegation-manager", default-features = false, features = ["library"] }
-bvs-directory = { path = "./bvs-directory", default-features = false, features = ["library"] }
-bvs-rewards-coordinator = { path = "./bvs-rewards-coordinator", default-features = false, features = ["library"] }
-bvs-slash-manager = { path = "./bvs-slash-manager", default-features = false, features = ["library"] }
-bvs-strategy-base = { path = "./bvs-strategy-base", default-features = false, features = ["library"] }
-bvs-strategy-manager = { path = "./bvs-strategy-manager", default-features = false, features = ["library"] }
+bvs-library = { path = "./bvs-library" }
+bvs-registry = { path = "./bvs-registry", features = ["library"] }
+bvs-delegation-manager = { path = "./bvs-delegation-manager", features = ["library"] }
+bvs-directory = { path = "./bvs-directory", features = ["library"] }
+bvs-rewards-coordinator = { path = "./bvs-rewards-coordinator", features = ["library"] }
+bvs-slash-manager = { path = "./bvs-slash-manager", features = ["library"] }
+bvs-strategy-base = { path = "./bvs-strategy-base", features = ["library"] }
+bvs-strategy-manager = { path = "./bvs-strategy-manager", features = ["library"] }
