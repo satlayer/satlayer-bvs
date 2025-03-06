@@ -31,9 +31,3 @@ pub struct StrategyWhitelistedResponse {
 pub struct TokenStrategyResponse {
     pub strategy: Addr,
 }
-
-#[cw_serde]
-pub struct IsTokenBlacklistedResponse {
-    pub token: Addr,
-    pub is_blacklisted: bool,
-}

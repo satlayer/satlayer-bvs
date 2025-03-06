@@ -22,9 +22,6 @@
 //    strategyWhitelistedResponse, err := UnmarshalStrategyWhitelistedResponse(bytes)
 //    bytes, err = strategyWhitelistedResponse.Marshal()
 //
-//    isTokenBlacklistedResponse, err := UnmarshalIsTokenBlacklistedResponse(bytes)
-//    bytes, err = isTokenBlacklistedResponse.Marshal()
-//
 //    stakerStrategyListLengthResponse, err := UnmarshalStakerStrategyListLengthResponse(bytes)
 //    bytes, err = stakerStrategyListLengthResponse.Marshal()
 //
@@ -105,16 +102,6 @@ func (r *StrategyWhitelistedResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalIsTokenBlacklistedResponse(data []byte) (IsTokenBlacklistedResponse, error) {
-	var r IsTokenBlacklistedResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *IsTokenBlacklistedResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
 func UnmarshalStakerStrategyListLengthResponse(data []byte) (StakerStrategyListLengthResponse, error) {
 	var r StakerStrategyListLengthResponse
 	err := json.Unmarshal(data, &r)
@@ -142,7 +129,6 @@ type InstantiateMsg struct {
 
 type ExecuteMsg struct {
 	AddNewStrategy                *AddNewStrategy                `json:"add_new_strategy,omitempty"`
-	BlacklistTokens               *BlacklistTokens               `json:"blacklist_tokens,omitempty"`
 	AddStrategiesToWhitelist      *AddStrategiesToWhitelist      `json:"add_strategies_to_whitelist,omitempty"`
 	RemoveStrategiesFromWhitelist *RemoveStrategiesFromWhitelist `json:"remove_strategies_from_whitelist,omitempty"`
 	DepositIntoStrategy           *DepositIntoStrategy           `json:"deposit_into_strategy,omitempty"`
@@ -166,10 +152,6 @@ type AddShares struct {
 
 type AddStrategiesToWhitelist struct {
 	Strategies []string `json:"strategies"`
-}
-
-type BlacklistTokens struct {
-	Tokens []string `json:"tokens"`
 }
 
 type DepositIntoStrategy struct {
@@ -210,7 +192,6 @@ type QueryMsg struct {
 	GetStakerStrategyShares  *GetStakerStrategyShares  `json:"get_staker_strategy_shares,omitempty"`
 	GetStakerStrategyList    *GetStakerStrategyList    `json:"get_staker_strategy_list,omitempty"`
 	IsStrategyWhitelisted    *IsStrategyWhitelisted    `json:"is_strategy_whitelisted,omitempty"`
-	IsTokenBlacklisted       *IsTokenBlacklisted       `json:"is_token_blacklisted,omitempty"`
 	TokenStrategy            *TokenStrategy            `json:"token_strategy,omitempty"`
 }
 
@@ -229,10 +210,6 @@ type GetStakerStrategyShares struct {
 
 type IsStrategyWhitelisted struct {
 	Strategy string `json:"strategy"`
-}
-
-type IsTokenBlacklisted struct {
-	Token string `json:"token"`
 }
 
 type StakerStrategyListLength struct {
@@ -258,11 +235,6 @@ type StakerStrategySharesResponse struct {
 
 type StrategyWhitelistedResponse struct {
 	IsWhitelisted bool `json:"is_whitelisted"`
-}
-
-type IsTokenBlacklistedResponse struct {
-	IsBlacklisted bool   `json:"is_blacklisted"`
-	Token         string `json:"token"`
 }
 
 type StakerStrategyListLengthResponse struct {

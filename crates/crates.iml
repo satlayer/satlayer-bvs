@@ -15,6 +15,7 @@
       <sourceFolder url="file://$MODULE_DIR$/bvs-slash-manager/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-strategy-base/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-strategy-manager/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-strategy-manager/tests" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludePattern pattern=".turbo" />
       <excludePattern pattern="Cargo.lock" />

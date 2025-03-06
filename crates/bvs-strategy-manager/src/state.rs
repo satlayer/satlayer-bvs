@@ -10,7 +10,6 @@ type TokenContractAddr = Addr;
 type StrategyContractAddr = Addr;
 pub const DEPLOYED_STRATEGIES: Map<&TokenContractAddr, StrategyContractAddr> =
     Map::new("strategies");
-pub const IS_BLACKLISTED: Map<&TokenContractAddr, bool> = Map::new("is_blacklisted");
 
 pub const STAKER_STRATEGY_SHARES: Map<(&Addr, &Addr), Uint128> = Map::new("staker_strategy_shares");
 
