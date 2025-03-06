@@ -10,12 +10,6 @@
 //    queryMsg, err := UnmarshalQueryMsg(bytes)
 //    bytes, err = queryMsg.Marshal()
 //
-//    calculateEarnerLeafHashResponse, err := UnmarshalCalculateEarnerLeafHashResponse(bytes)
-//    bytes, err = calculateEarnerLeafHashResponse.Marshal()
-//
-//    calculateTokenLeafHashResponse, err := UnmarshalCalculateTokenLeafHashResponse(bytes)
-//    bytes, err = calculateTokenLeafHashResponse.Marshal()
-//
 //    checkClaimResponse, err := UnmarshalCheckClaimResponse(bytes)
 //    bytes, err = checkClaimResponse.Marshal()
 //
@@ -33,9 +27,6 @@
 //
 //    getRootIndexFromHashResponse, err := UnmarshalGetRootIndexFromHashResponse(bytes)
 //    bytes, err = getRootIndexFromHashResponse.Marshal()
-//
-//    merkleizeLeavesResponse, err := UnmarshalMerkleizeLeavesResponse(bytes)
-//    bytes, err = merkleizeLeavesResponse.Marshal()
 //
 //    operatorCommissionBipsResponse, err := UnmarshalOperatorCommissionBipsResponse(bytes)
 //    bytes, err = operatorCommissionBipsResponse.Marshal()
@@ -71,26 +62,6 @@ func UnmarshalQueryMsg(data []byte) (QueryMsg, error) {
 }
 
 func (r *QueryMsg) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalCalculateEarnerLeafHashResponse(data []byte) (CalculateEarnerLeafHashResponse, error) {
-	var r CalculateEarnerLeafHashResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *CalculateEarnerLeafHashResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalCalculateTokenLeafHashResponse(data []byte) (CalculateTokenLeafHashResponse, error) {
-	var r CalculateTokenLeafHashResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *CalculateTokenLeafHashResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -154,16 +125,6 @@ func (r *GetRootIndexFromHashResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalMerkleizeLeavesResponse(data []byte) (MerkleizeLeavesResponse, error) {
-	var r MerkleizeLeavesResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *MerkleizeLeavesResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
 func UnmarshalOperatorCommissionBipsResponse(data []byte) (OperatorCommissionBipsResponse, error) {
 	var r OperatorCommissionBipsResponse
 	err := json.Unmarshal(data, &r)
@@ -205,16 +166,22 @@ type CreateRewardsForAllSubmission struct {
 }
 
 type RewardsSubmission struct {
-	Amount                   string                  `json:"amount"`
-	Duration                 int64                   `json:"duration"`
+	// token amount to be transferred to the contract as rewards to be distributed
+	Amount string `json:"amount"`
+	// duration must be multiple of calculation_interval_seconds
+	Duration int64 `json:"duration"`
+	// start_timestamp must be multiple of calculation_interval_seconds
 	StartTimestamp           string                  `json:"start_timestamp"`
 	StrategiesAndMultipliers []StrategyAndMultiplier `json:"strategies_and_multipliers"`
-	Token                    string                  `json:"token"`
+	// token contract address
+	Token string `json:"token"`
 }
 
 type StrategyAndMultiplier struct {
-	Multiplier int64  `json:"multiplier"`
-	Strategy   string `json:"strategy"`
+	// TODO: add desc/usage
+	Multiplier int64 `json:"multiplier"`
+	// strategy contract address
+	Strategy string `json:"strategy"`
 }
 
 type CreateRewardsSubmission struct {
@@ -286,26 +253,13 @@ type TransferOwnership struct {
 }
 
 type QueryMsg struct {
-	CalculateEarnerLeafHash             *CalculateEarnerLeafHash             `json:"calculate_earner_leaf_hash,omitempty"`
-	CalculateTokenLeafHash              *CalculateTokenLeafHash              `json:"calculate_token_leaf_hash,omitempty"`
 	OperatorCommissionBips              *OperatorCommissionBips              `json:"operator_commission_bips,omitempty"`
 	GetDistributionRootsLength          *GetDistributionRootsLength          `json:"get_distribution_roots_length,omitempty"`
 	GetCurrentDistributionRoot          *GetCurrentDistributionRoot          `json:"get_current_distribution_root,omitempty"`
 	GetDistributionRootAtIndex          *GetDistributionRootAtIndex          `json:"get_distribution_root_at_index,omitempty"`
 	GetCurrentClaimableDistributionRoot *GetCurrentClaimableDistributionRoot `json:"get_current_claimable_distribution_root,omitempty"`
 	GetRootIndexFromHash                *GetRootIndexFromHash                `json:"get_root_index_from_hash,omitempty"`
-	MerkleizeLeaves                     *MerkleizeLeaves                     `json:"merkleize_leaves,omitempty"`
 	CheckClaim                          *CheckClaim                          `json:"check_claim,omitempty"`
-}
-
-type CalculateEarnerLeafHash struct {
-	Earner          string `json:"earner"`
-	EarnerTokenRoot string `json:"earner_token_root"`
-}
-
-type CalculateTokenLeafHash struct {
-	CumulativeEarnings string `json:"cumulative_earnings"`
-	Token              string `json:"token"`
 }
 
 type CheckClaim struct {
@@ -349,21 +303,9 @@ type GetRootIndexFromHash struct {
 	RootHash string `json:"root_hash"`
 }
 
-type MerkleizeLeaves struct {
-	Leaves []string `json:"leaves"`
-}
-
 type OperatorCommissionBips struct {
 	Operator string `json:"operator"`
 	Service  string `json:"service"`
-}
-
-type CalculateEarnerLeafHashResponse struct {
-	HashBinary string `json:"hash_binary"`
-}
-
-type CalculateTokenLeafHashResponse struct {
-	HashBinary string `json:"hash_binary"`
 }
 
 type CheckClaimResponse struct {
@@ -409,10 +351,6 @@ type GetDistributionRootsLengthResponse struct {
 
 type GetRootIndexFromHashResponse struct {
 	RootIndex int64 `json:"root_index"`
-}
-
-type MerkleizeLeavesResponse struct {
-	RootHashBinary string `json:"root_hash_binary"`
 }
 
 type OperatorCommissionBipsResponse struct {

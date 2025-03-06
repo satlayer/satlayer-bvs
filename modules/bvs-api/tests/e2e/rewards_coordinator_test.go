@@ -2,9 +2,9 @@ package e2e
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -207,18 +207,6 @@ func (suite *rewardsTestSuite) Test_ExecuteRewardsCoordinator() {
 	t.Logf("resp:%+v", resp)
 }
 
-type HashResponse struct {
-	HashBinary []byte `json:"hash_binary"`
-}
-
-type MerkleizeLeavesResponse struct {
-	RootHashBinary []byte `json:"root_hash_binary"`
-}
-
-type EarnerLeafHashResponse struct {
-	RootHashBinary []byte `json:"hash_binary"`
-}
-
 func (suite *rewardsTestSuite) test_QueryRewardsCoordinator() {
 	t := suite.T()
 	keyName := "wallet1"
@@ -276,29 +264,21 @@ func (suite *rewardsTestSuite) Test_SubmitRoot() {
 	rewardsCoordinator := api.NewRewardsCoordinator(chainIO)
 	rewardsCoordinator.BindClient(suite.rewardsCoordinatorAddr)
 
-	earnerLeaf, tokenRootHash, leafB := suite.calculateEarnerLeaf(rewardsCoordinator, t)
+	earnerLeaf := suite.calculateEarnerLeaf(rewardsCoordinator, t)
 	t.Logf("earner leaf:%+v", bytesToString(earnerLeaf))
 
-	earnerLeaf1, tokenRootHash1, _ := suite.calculateEarnerLeaf(rewardsCoordinator, t)
+	earnerLeaf1 := suite.calculateEarnerLeaf(rewardsCoordinator, t)
 	t.Logf("earner leaf1:%+v", bytesToString(earnerLeaf1))
 
-	resp, err := rewardsCoordinator.MerkleizeLeaves([]string{
-		base64.StdEncoding.EncodeToString(earnerLeaf),
-		base64.StdEncoding.EncodeToString(earnerLeaf1),
+	distributionRoot, err := merkleizeLeaves([]string{
+		hex.EncodeToString(earnerLeaf),
+		hex.EncodeToString(earnerLeaf1),
 	})
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v, %+v, %+v, %+v", resp, tokenRootHash, leafB, tokenRootHash1)
-
-	var rootHashResponse MerkleizeLeavesResponse
-	err = json.Unmarshal(resp.Data, &rootHashResponse)
-	assert.NoError(t, err, "execute contract")
-
-	rootHash := rootHashResponse.RootHashBinary
-	t.Logf("root hash:%+v", rootHash)
+	assert.NoError(t, err, "merkleize leaves error")
+	assert.NotNil(t, distributionRoot, "distributionRoot nil")
 
 	timestamp := time.Now().Unix() - 3600
-	res, err := rewardsCoordinator.SubmitRoot(context.Background(), base64.StdEncoding.EncodeToString(rootHash), timestamp)
+	res, err := rewardsCoordinator.SubmitRoot(context.Background(), distributionRoot, timestamp)
 	assert.NoError(t, err, "execute contract")
 	assert.NotNil(t, res, "response nil")
 	t.Logf("resp:%+v", res)
@@ -428,79 +408,41 @@ func bytesToUints(arr []byte) []int64 {
 
 func calculateParentNode(
 	tokenAddr string,
-	rewardsCoordinator *api.RewardsCoordinator, t *testing.T) ([]byte, []byte, []byte) {
-	resp, err := rewardsCoordinator.CalculateTokenLeafHash(tokenAddr, "30")
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
+	rewardsCoordinator *api.RewardsCoordinator, t *testing.T) []byte {
+	tokenLeafHash1 := calcTokenLeafHash(tokenAddr, "30")
+	assert.NotNil(t, tokenLeafHash1, "tokenLeafHash1 nil")
 	//t.Logf("resp:%+v", resp)
 
-	var hashResponse HashResponse
-	var hashBytes []byte
-	err = json.Unmarshal(resp.Data, &hashResponse)
-	assert.NoError(t, err, "execute contract")
-
-	hashBytes = hashResponse.HashBinary
-	t.Logf("hash:%+v", bytesToString(hashBytes))
-
-	resp, err = rewardsCoordinator.CalculateTokenLeafHash(tokenAddr, "30")
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
+	tokenLeafHash2 := calcTokenLeafHash(tokenAddr, "30")
+	assert.NotNil(t, tokenLeafHash1, "tokenLeafHash2 nil")
 	//t.Logf("resp:%+v", resp)
 
-	var hashBytes1 []byte
-	err = json.Unmarshal(resp.Data, &hashResponse)
-	assert.NoError(t, err, "execute contract")
+	rootHash, err := merkleizeLeaves([]string{tokenLeafHash1, tokenLeafHash2})
+	rootHashBytes, err := hex.DecodeString(rootHash)
+	assert.NoError(t, err, "merkleize leaves error")
+	assert.NotNil(t, rootHashBytes, "response nil")
 
-	hashBytes1 = hashResponse.HashBinary
-	t.Logf("hash2:%+v", bytesToString(hashBytes1))
-
-	leaf := base64.StdEncoding.EncodeToString(hashBytes)
-	leaf1 := base64.StdEncoding.EncodeToString(hashBytes1)
-
-	resp, err = rewardsCoordinator.MerkleizeLeaves([]string{leaf, leaf1})
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-
-	var rootHashResponse MerkleizeLeavesResponse
-	err = json.Unmarshal(resp.Data, &rootHashResponse)
-	assert.NoError(t, err, "execute contract")
-
-	t.Logf("parent node hash:%+v", bytesToString(rootHashResponse.RootHashBinary))
-
-	parentNode := rootHashResponse.RootHashBinary
-	return parentNode, hashBytes, hashBytes1
+	return rootHashBytes
 }
 
-func (suite *rewardsTestSuite) calculateEarnerLeaf(rewardsCoordinator *api.RewardsCoordinator, t *testing.T) ([]byte, []byte, []byte) {
-	parentNode, _, leafB := calculateParentNode(suite.tokenAddr, rewardsCoordinator, t)
-	parentNode1, _, _ := calculateParentNode(suite.tokenAddr, rewardsCoordinator, t)
+func (suite *rewardsTestSuite) calculateEarnerLeaf(rewardsCoordinator *api.RewardsCoordinator, t *testing.T) []byte {
+	parentNode := calculateParentNode(suite.tokenAddr, rewardsCoordinator, t)
+	parentNode1 := calculateParentNode(suite.tokenAddr, rewardsCoordinator, t)
 
-	resp, err := rewardsCoordinator.MerkleizeLeaves([]string{
-		base64.StdEncoding.EncodeToString(parentNode), base64.StdEncoding.EncodeToString(parentNode1)})
+	tokenRootHash, err := merkleizeLeaves([]string{
+		hex.EncodeToString(parentNode), hex.EncodeToString(parentNode1),
+	})
+	tokenRootHashBytes, err := hex.DecodeString(tokenRootHash)
 	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
+	assert.NotNil(t, tokenRootHashBytes, "response nil")
 
-	var rootHashResponse MerkleizeLeavesResponse
-	err = json.Unmarshal(resp.Data, &rootHashResponse)
+	earnerLeafHash := calcEarnerLeafHash(suite.caller, tokenRootHash)
+	earnerLeafHashBytes, err := hex.DecodeString(earnerLeafHash)
 	assert.NoError(t, err, "execute contract")
-
-	rootHash := rootHashResponse.RootHashBinary
-	t.Logf("root hash:%+v", bytesToString(rootHash))
-
-	resp, err = rewardsCoordinator.CalculateEarnerLeafHash(suite.caller, base64.StdEncoding.EncodeToString(rootHash))
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
+	assert.NotNil(t, earnerLeafHashBytes, "response nil")
 	//t.Logf("earner leaf:%+v", resp.Data)
 
-	var earnerLeafHashResponse EarnerLeafHashResponse
-	var earnerLeaf []byte
-
-	err = json.Unmarshal(resp.Data, &earnerLeafHashResponse)
-	assert.NoError(t, err, "execute contract")
-	t.Logf("parsed earner leaf:%+v", bytesToString(earnerLeaf))
-
-	earnerLeaf = earnerLeafHashResponse.RootHashBinary
-	return earnerLeaf, rootHash, leafB
+	return earnerLeafHashBytes
 }
 
 func bytesToString(content []byte) string {
@@ -514,4 +456,43 @@ func bytesToString(content []byte) string {
 
 func TestRewardsTestSuite(t *testing.T) {
 	suite.Run(t, new(rewardsTestSuite))
+}
+
+// TODO: move to bvs-api and use a merkle tree library.
+// implementation of copied from crates/bvs-rewards-coordinator/src/merkle.rs
+func calcTokenLeafHash(tokenAddress string, tokenAmount string) string {
+	hasher := sha256.New()
+
+	hasher.Write([]byte{1}) // TOKEN_LEAF_SALT
+	hasher.Write([]byte(tokenAddress))
+	hasher.Write([]byte(tokenAmount))
+
+	// Convert to hex string for consistency with other hash functions
+	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+// TODO: move to bvs-api and use a merkle tree library
+// implementation of copied from crates/bvs-rewards-coordinator/src/merkle.rs
+func calcEarnerLeafHash(earner string, tokenRoot string) string {
+	hasher := sha256.New()
+
+	hasher.Write([]byte{0}) // EARNER_LEAF_SALT
+	hasher.Write([]byte(earner))
+	hasher.Write([]byte(tokenRoot))
+
+	// Convert to hex string for consistency with other hash functions
+	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+// TODO: move to bvs-api and use a merkle tree library
+// implementation of copied from crates/bvs-rewards-coordinator/src/merkle.rs
+// DO NOT use in production - assumes leaves are already hashed, in order and power of 2
+func merkleizeLeaves(leaves []string) (string, error) {
+	hasher := sha256.New()
+
+	for _, leaf := range leaves {
+		hasher.Write([]byte(leaf))
+	}
+
+	return hex.EncodeToString(hasher.Sum(nil)), nil
 }

@@ -1,16 +1,5 @@
 use crate::msg::DistributionRoot;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::Binary;
-
-#[cw_serde]
-pub struct CalculateEarnerLeafHashResponse {
-    pub hash_binary: Binary,
-}
-
-#[cw_serde]
-pub struct CalculateTokenLeafHashResponse {
-    pub hash_binary: Binary,
-}
 
 #[cw_serde]
 pub struct OperatorCommissionBipsResponse {
@@ -40,11 +29,6 @@ pub struct GetCurrentClaimableDistributionRootResponse {
 #[cw_serde]
 pub struct GetRootIndexFromHashResponse {
     pub root_index: u32,
-}
-
-#[cw_serde]
-pub struct MerkleizeLeavesResponse {
-    pub root_hash_binary: Binary,
 }
 
 #[cw_serde]

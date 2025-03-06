@@ -2,18 +2,18 @@ use bvs_library::testing::TestingContract;
 use bvs_registry::api::RegistryError;
 use bvs_registry::testing::RegistryContract;
 use bvs_rewards_coordinator::msg::ExecuteMsg;
-use bvs_rewards_coordinator::testing::RewardsContract;
+use bvs_rewards_coordinator::testing::RewardsCoordinatorContract;
 use bvs_rewards_coordinator::ContractError;
 use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::{Addr, Event};
 use cw_multi_test::App;
 
-fn instantiate() -> (App, RewardsContract, RegistryContract) {
+fn instantiate() -> (App, RewardsCoordinatorContract, RegistryContract) {
     let mut app = App::default();
     let env = mock_env();
 
     let registry = RegistryContract::new(&mut app, &env, None);
-    let rewards = RewardsContract::new(&mut app, &env, None);
+    let rewards = RewardsCoordinatorContract::new(&mut app, &env, None);
     (app, rewards, registry)
 }
 

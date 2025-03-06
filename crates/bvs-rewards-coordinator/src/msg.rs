@@ -1,12 +1,12 @@
 use crate::merkle::{RewardsMerkleClaim, RewardsSubmission};
 use crate::query::{
-    CalculateEarnerLeafHashResponse, CalculateTokenLeafHashResponse, CheckClaimResponse,
-    GetCurrentClaimableDistributionRootResponse, GetCurrentDistributionRootResponse,
-    GetDistributionRootAtIndexResponse, GetDistributionRootsLengthResponse,
-    GetRootIndexFromHashResponse, MerkleizeLeavesResponse, OperatorCommissionBipsResponse,
+    CheckClaimResponse, GetCurrentClaimableDistributionRootResponse,
+    GetCurrentDistributionRootResponse, GetDistributionRootAtIndexResponse,
+    GetDistributionRootsLengthResponse, GetRootIndexFromHashResponse,
+    OperatorCommissionBipsResponse,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Binary, Uint128};
+use cosmwasm_std::HexBinary;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -34,7 +34,7 @@ pub enum ExecuteMsg {
         recipient: String,
     },
     SubmitRoot {
-        root: String,
+        root: HexBinary,
         rewards_calculation_end_timestamp: u64,
     },
     DisableRoot {
@@ -68,18 +68,6 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(CalculateEarnerLeafHashResponse)]
-    CalculateEarnerLeafHash {
-        earner: String,
-        earner_token_root: String,
-    },
-
-    #[returns(CalculateTokenLeafHashResponse)]
-    CalculateTokenLeafHash {
-        token: String,
-        cumulative_earnings: Uint128,
-    },
-
     #[returns(OperatorCommissionBipsResponse)]
     OperatorCommissionBips { operator: String, service: String },
 
@@ -96,10 +84,7 @@ pub enum QueryMsg {
     GetCurrentClaimableDistributionRoot {},
 
     #[returns(GetRootIndexFromHashResponse)]
-    GetRootIndexFromHash { root_hash: String },
-
-    #[returns(MerkleizeLeavesResponse)]
-    MerkleizeLeaves { leaves: Vec<String> },
+    GetRootIndexFromHash { root_hash: HexBinary },
 
     #[returns(CheckClaimResponse)]
     CheckClaim { claim: RewardsMerkleClaim },
@@ -107,7 +92,7 @@ pub enum QueryMsg {
 
 #[cw_serde]
 pub struct DistributionRoot {
-    pub root: Binary,
+    pub root: HexBinary,
     pub rewards_calculation_end_timestamp: u64,
     pub activated_at: u64,
     pub disabled: bool,

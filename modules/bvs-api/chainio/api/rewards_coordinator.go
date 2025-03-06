@@ -212,28 +212,6 @@ func (r *RewardsCoordinator) query(msg any) (*wasmtypes.QuerySmartContractStateR
 	return r.io.QueryContract(*r.queryOptions)
 }
 
-func (r *RewardsCoordinator) CalculateEarnerLeafHash(earner string, earnerTokenRoot string) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := rewardscoordinator.QueryMsg{
-		CalculateEarnerLeafHash: &rewardscoordinator.CalculateEarnerLeafHash{
-			Earner:          earner,
-			EarnerTokenRoot: earnerTokenRoot,
-		},
-	}
-
-	return r.query(msg)
-}
-
-func (r *RewardsCoordinator) CalculateTokenLeafHash(token string, cumulativeEarnings string) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := rewardscoordinator.QueryMsg{
-		CalculateTokenLeafHash: &rewardscoordinator.CalculateTokenLeafHash{
-			Token:              token,
-			CumulativeEarnings: cumulativeEarnings,
-		},
-	}
-
-	return r.query(msg)
-}
-
 func (r *RewardsCoordinator) OperatorCommissionBips(operator string, service string) (*wasmtypes.QuerySmartContractStateResponse, error) {
 	msg := rewardscoordinator.QueryMsg{
 		OperatorCommissionBips: &rewardscoordinator.OperatorCommissionBips{
@@ -283,16 +261,6 @@ func (r *RewardsCoordinator) GetRootIndexFromHash(rootHash string) (*wasmtypes.Q
 	msg := rewardscoordinator.QueryMsg{
 		GetRootIndexFromHash: &rewardscoordinator.GetRootIndexFromHash{
 			RootHash: rootHash,
-		},
-	}
-
-	return r.query(msg)
-}
-
-func (r *RewardsCoordinator) MerkleizeLeaves(leaves []string) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := rewardscoordinator.QueryMsg{
-		MerkleizeLeaves: &rewardscoordinator.MerkleizeLeaves{
-			Leaves: leaves,
 		},
 	}
 

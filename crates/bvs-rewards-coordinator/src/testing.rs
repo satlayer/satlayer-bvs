@@ -4,13 +4,15 @@ use cosmwasm_std::{Addr, Empty, Env};
 use cw_multi_test::{App, Contract, ContractWrapper};
 use serde::{Deserialize, Serialize};
 
+pub const ONE_DAY: u64 = 86_400;
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct RewardsContract {
+pub struct RewardsCoordinatorContract {
     pub addr: Addr,
     pub init: InstantiateMsg,
 }
 
-impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for RewardsContract {
+impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for RewardsCoordinatorContract {
     fn wrapper() -> Box<dyn Contract<Empty>> {
         Box::new(ContractWrapper::new(
             crate::contract::execute,
@@ -23,15 +25,14 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for RewardsContract {
         let owner = app.api().addr_make("owner");
         let registry = Self::get_contract_addr(app, "registry").to_string();
 
-        let one_day = 86_400;
-        let today_rounded_down = env.block.time.seconds() / one_day * one_day;
+        let today_rounded_down = env.block.time.seconds() / ONE_DAY * ONE_DAY;
         InstantiateMsg {
             owner: owner.to_string(),
             registry,
-            calculation_interval_seconds: one_day,
-            max_rewards_duration: 30 * one_day,
-            max_retroactive_length: 5 * one_day,
-            max_future_length: 10 * one_day,
+            calculation_interval_seconds: ONE_DAY,
+            max_rewards_duration: 30 * ONE_DAY,
+            max_retroactive_length: 5 * ONE_DAY,
+            max_future_length: 10 * ONE_DAY,
             genesis_rewards_timestamp: today_rounded_down,
             activation_delay: 60,
         }
