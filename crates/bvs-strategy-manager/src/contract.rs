@@ -231,12 +231,15 @@ pub fn reply(mut deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contr
     let new_shares = events
         .iter()
         .find_map(|event| {
-            if event.ty == "wasm-Deposit" {
-                event
+            if event.ty == "wasm-Deposit"
+                && event.attributes[0].key == "_contract_address"
+                && event.attributes[0].value == strategy.to_string()
+            {
+                return event
                     .attributes
                     .iter()
                     .find(|attr| attr.key == "new_shares")
-                    .map(|attr| attr.value.parse::<Uint128>().unwrap())
+                    .map(|attr| attr.value.parse::<Uint128>().unwrap());
             } else {
                 None
             }
