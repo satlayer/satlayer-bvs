@@ -14,78 +14,85 @@ use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::{Event, Uint128};
 use cw_multi_test::App;
 
-fn instantiate() -> (
-    App,
-    StrategyManagerContract,
-    DelegationManagerContract,
-    RegistryContract,
-) {
-    let mut app = App::default();
-    let env = mock_env();
-
-    let registry = RegistryContract::new(&mut app, &env, None);
-    let strategy_manager = StrategyManagerContract::new(&mut app, &env, None);
-    let delegation_manager = DelegationManagerContract::new(&mut app, &env, None);
-
-    let owner = app.api().addr_make("owner");
-    let not_routed = app.api().addr_make("not_routed");
-
-    strategy_manager
-        .execute(
-            &mut app,
-            &owner,
-            &ExecuteMsg::SetRouting {
-                delegation_manager: delegation_manager.addr.to_string(),
-                slash_manager: not_routed.to_string(),
-            },
-        )
-        .unwrap();
-
-    delegation_manager
-        .execute(
-            &mut app,
-            &owner,
-            &bvs_delegation_manager::msg::ExecuteMsg::SetRouting {
-                strategy_manager: strategy_manager.addr.to_string(),
-                slash_manager: not_routed.to_string(),
-            },
-        )
-        .unwrap();
-
-    (app, strategy_manager, delegation_manager, registry)
+struct TestContracts {
+    strategy_manager: StrategyManagerContract,
+    delegation_manager: DelegationManagerContract,
+    registry: RegistryContract,
 }
 
-fn instantiate_base(
-    app: &mut App,
-    strategy_manager: &StrategyManagerContract,
-    registry: &RegistryContract,
-) -> (Cw20TokenContract, StrategyBaseContract) {
-    let env = mock_env();
-    let owner = app.api().addr_make("owner");
-    let token = bvs_strategy_base::testing::Cw20TokenContract::new(app, &env, None);
-    let strategy_base = bvs_strategy_base::testing::StrategyBaseContract::new(
-        app,
-        &env,
-        Some(StrategyBaseInstantiateMsg {
-            registry: registry.addr().to_string(),
-            owner: owner.to_string(),
-            strategy_manager: strategy_manager.addr().to_string(),
-            underlying_token: token.addr().to_string(),
-        }),
-    );
+impl TestContracts {
+    fn init(app: &mut App) -> TestContracts {
+        let env = mock_env();
 
-    (token, strategy_base)
+        let registry = RegistryContract::new(app, &env, None);
+        let strategy_manager = StrategyManagerContract::new(app, &env, None);
+        let delegation_manager = DelegationManagerContract::new(app, &env, None);
+
+        let owner = app.api().addr_make("owner");
+        let not_routed = app.api().addr_make("not_routed");
+
+        strategy_manager
+            .execute(
+                app,
+                &owner,
+                &ExecuteMsg::SetRouting {
+                    delegation_manager: delegation_manager.addr.to_string(),
+                    slash_manager: not_routed.to_string(),
+                },
+            )
+            .unwrap();
+
+        delegation_manager
+            .execute(
+                app,
+                &owner,
+                &bvs_delegation_manager::msg::ExecuteMsg::SetRouting {
+                    strategy_manager: strategy_manager.addr.to_string(),
+                    slash_manager: not_routed.to_string(),
+                },
+            )
+            .unwrap();
+
+        Self {
+            strategy_manager,
+            delegation_manager,
+            registry,
+        }
+    }
+
+    fn instantiate_base(&self, app: &mut App) -> (Cw20TokenContract, StrategyBaseContract) {
+        let env = mock_env();
+        let owner = app.api().addr_make("owner");
+        let token = bvs_strategy_base::testing::Cw20TokenContract::new(app, &env, None);
+        let strategy_base = bvs_strategy_base::testing::StrategyBaseContract::new(
+            app,
+            &env,
+            Some(StrategyBaseInstantiateMsg {
+                registry: self.registry.addr().to_string(),
+                owner: owner.to_string(),
+                strategy_manager: self.strategy_manager.addr().to_string(),
+                underlying_token: token.addr().to_string(),
+            }),
+        );
+
+        (token, strategy_base)
+    }
 }
 
 #[test]
 fn test_add_strategy() {
-    let (mut app, strategy_manager, _, registry) = instantiate();
-    let (_, strategy_base) = instantiate_base(&mut app, &strategy_manager, &registry);
+    let app = &mut App::default();
+    let tc = TestContracts::init(app);
+    let (_, strategy_base) = tc.instantiate_base(app);
+
     let owner = app.api().addr_make("owner");
+    let TestContracts {
+        strategy_manager, ..
+    } = &tc;
 
     let res = strategy_manager
         .execute(
-            &mut app,
+            app,
             &owner,
             &ExecuteMsg::AddStrategy {
                 strategy: strategy_base.addr().to_string(),
@@ -117,13 +124,17 @@ fn test_add_strategy() {
 
 #[test]
 fn test_update_strategy() {
-    let (mut app, strategy_manager, _, registry) = instantiate();
+    let app = &mut App::default();
+    let tc = TestContracts::init(app);
+    let (_, strategy_base) = tc.instantiate_base(app);
+    let TestContracts {
+        strategy_manager, ..
+    } = &tc;
     let owner = app.api().addr_make("owner");
 
-    let (_, strategy_base) = instantiate_base(&mut app, &strategy_manager, &registry);
     strategy_manager
         .execute(
-            &mut app,
+            app,
             &owner,
             &ExecuteMsg::AddStrategy {
                 strategy: strategy_base.addr().to_string(),
@@ -139,7 +150,7 @@ fn test_update_strategy() {
 
     let res = strategy_manager
         .execute(
-            &mut app,
+            app,
             &owner,
             &ExecuteMsg::UpdateStrategy {
                 strategy: strategy_base.addr().to_string(),
@@ -165,7 +176,7 @@ fn test_update_strategy() {
 
     let res = strategy_manager
         .execute(
-            &mut app,
+            app,
             &owner,
             &ExecuteMsg::UpdateStrategy {
                 strategy: strategy_base.addr().to_string(),
@@ -193,14 +204,18 @@ fn test_update_strategy() {
 
 #[test]
 fn test_update_strategy_unauthorized() {
-    let (mut app, strategy_manager, _, registry) = instantiate();
+    let app = &mut App::default();
+    let tc = TestContracts::init(app);
+    let TestContracts {
+        strategy_manager, ..
+    } = &tc;
     let owner = app.api().addr_make("owner");
 
     {
-        let (_, strategy_base) = instantiate_base(&mut app, &strategy_manager, &registry);
+        let (_, strategy_base) = tc.instantiate_base(app);
         strategy_manager
             .execute(
-                &mut app,
+                app,
                 &owner,
                 &ExecuteMsg::AddStrategy {
                     strategy: strategy_base.addr().to_string(),
@@ -212,7 +227,7 @@ fn test_update_strategy_unauthorized() {
         let not_owner = app.api().addr_make("not_owner");
         let error = strategy_manager
             .execute(
-                &mut app,
+                app,
                 &not_owner,
                 &ExecuteMsg::UpdateStrategy {
                     strategy: strategy_base.addr().to_string(),
@@ -236,10 +251,10 @@ fn test_update_strategy_unauthorized() {
     }
 
     {
-        let (_, strategy_base) = instantiate_base(&mut app, &strategy_manager, &registry);
+        let (_, strategy_base) = tc.instantiate_base(app);
         strategy_manager
             .execute(
-                &mut app,
+                app,
                 &owner,
                 &ExecuteMsg::AddStrategy {
                     strategy: strategy_base.addr().to_string(),
@@ -251,7 +266,7 @@ fn test_update_strategy_unauthorized() {
         let not_owner = app.api().addr_make("not_owner");
         let error = strategy_manager
             .execute(
-                &mut app,
+                app,
                 &not_owner,
                 &ExecuteMsg::UpdateStrategy {
                     strategy: strategy_base.addr().to_string(),
@@ -277,15 +292,21 @@ fn test_update_strategy_unauthorized() {
 
 #[test]
 fn test_deposit_withdraw() {
-    let (mut app, strategy_manager, delegation_manager, registry) = instantiate();
-    let (token, strategy_base) = instantiate_base(&mut app, &strategy_manager, &registry);
+    let app = &mut App::default();
+    let tc = TestContracts::init(app);
+    let (token, strategy_base) = tc.instantiate_base(app);
     let owner = app.api().addr_make("owner");
     let staker = app.api().addr_make("staker/934");
+    let TestContracts {
+        strategy_manager,
+        delegation_manager,
+        ..
+    } = &tc;
 
     {
         strategy_manager
             .execute(
-                &mut app,
+                app,
                 &owner,
                 &ExecuteMsg::AddStrategy {
                     strategy: strategy_base.addr().to_string(),
@@ -296,7 +317,7 @@ fn test_deposit_withdraw() {
 
         delegation_manager
             .execute(
-                &mut app,
+                app,
                 &staker,
                 &bvs_delegation_manager::msg::ExecuteMsg::RegisterAsOperator {
                     operator_details: bvs_delegation_manager::msg::OperatorDetails {
@@ -308,12 +329,12 @@ fn test_deposit_withdraw() {
             .unwrap();
     }
 
-    token.fund(&mut app, &staker, 1_000_000);
+    token.fund(app, &staker, 1_000_000);
 
-    token.increase_allowance(&mut app, &staker, &strategy_base.addr(), 1000);
+    token.increase_allowance(app, &staker, &strategy_base.addr(), 1000);
     let res = strategy_manager
         .execute(
-            &mut app,
+            app,
             &staker,
             &ExecuteMsg::DepositIntoStrategy {
                 amount: 10u128.into(),
@@ -346,7 +367,7 @@ fn test_deposit_withdraw() {
 
     let _res = strategy_manager
         .execute(
-            &mut app,
+            app,
             &delegation_manager.addr,
             &ExecuteMsg::WithdrawSharesAsTokens {
                 recipient: staker.to_string(),
@@ -385,15 +406,21 @@ fn test_deposit_withdraw() {
 
 #[test]
 fn test_add_remove_shares() {
-    let (mut app, strategy_manager, delegation_manager, registry) = instantiate();
-    let (token, strategy_base) = instantiate_base(&mut app, &strategy_manager, &registry);
+    let app = &mut App::default();
+    let tc = TestContracts::init(app);
+    let (token, strategy_base) = tc.instantiate_base(app);
     let owner = app.api().addr_make("owner");
     let staker = app.api().addr_make("staker/353");
+    let TestContracts {
+        strategy_manager,
+        delegation_manager,
+        ..
+    } = &tc;
 
     {
         strategy_manager
             .execute(
-                &mut app,
+                app,
                 &owner,
                 &ExecuteMsg::AddStrategy {
                     strategy: strategy_base.addr().to_string(),
@@ -404,7 +431,7 @@ fn test_add_remove_shares() {
 
         delegation_manager
             .execute(
-                &mut app,
+                app,
                 &staker,
                 &bvs_delegation_manager::msg::ExecuteMsg::RegisterAsOperator {
                     operator_details: bvs_delegation_manager::msg::OperatorDetails {
@@ -416,12 +443,12 @@ fn test_add_remove_shares() {
             .unwrap();
     }
 
-    token.fund(&mut app, &staker, 1000);
-    token.increase_allowance(&mut app, &staker, &strategy_base.addr(), 1000);
+    token.fund(app, &staker, 1000);
+    token.increase_allowance(app, &staker, &strategy_base.addr(), 1000);
 
     let res = strategy_manager
         .execute(
-            &mut app,
+            app,
             &staker,
             &ExecuteMsg::DepositIntoStrategy {
                 amount: 10u128.into(),
@@ -457,7 +484,7 @@ fn test_add_remove_shares() {
     // Same goes for the remove shares function
     let _res = strategy_manager
         .execute(
-            &mut app,
+            app,
             &delegation_manager.addr,
             &ExecuteMsg::AddShares {
                 staker: staker.to_string(),
@@ -497,7 +524,7 @@ fn test_add_remove_shares() {
     // remove shares
     let _res = strategy_manager
         .execute(
-            &mut app,
+            app,
             &delegation_manager.addr,
             &ExecuteMsg::RemoveShares {
                 staker: staker.to_string(),
