@@ -1,12 +1,4 @@
 {
   "name": "@satlayer/bvs-vault-base",
-  "private": false,
-  "files": [
-    "artifacts",
-    "schema"
-  ],
-  "scripts": {
-    "build:wasm": "cosmwasm-optimizer --root=../",
-    "generate:schema": "cargo run --bin schema"
-  }
+  "private": false
 }
