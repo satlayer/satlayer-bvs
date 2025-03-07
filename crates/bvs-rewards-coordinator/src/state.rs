@@ -15,9 +15,6 @@ pub const CUMULATIVE_CLAIMED: Map<(&Addr, &Addr), Uint128> = Map::new("cumulativ
 /// Stores the running count of [`RewardsSubmission`](crate::merkle::RewardsSubmission) submitted per `Service`
 pub const SUBMISSION_NONCE: Map<&Addr, u64> = Map::new("submission_nonce");
 
-/// Stores the address permissioned to call [`create_rewards_for_all_submission`](crate::contract::create_rewards_for_all_submission)
-pub const REWARDS_FOR_ALL_SUBMITTER: Map<&Addr, bool> = Map::new("rewards_for_all_submitter");
-
 /// Stores the delay from the time of reward submission to the time of activation / claimable time
 pub const ACTIVATION_DELAY: Item<u32> = Item::new("activation_delay");
 

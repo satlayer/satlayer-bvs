@@ -36,7 +36,7 @@ type UnderlyingTokenResponse struct {
 	UnderlyingTokenAddr string `json:"underlying_token_addr"`
 }
 
-// rpcSubmission sends a CreateRewardsForAllSubmission transaction to the rewards coordinator.
+// rpcSubmission sends a CreateRewardsSubmission transaction to the rewards coordinator.
 //
 // Given a list of Submission, this method creates a RewardsSubmission for each submission,
 // and sends a CreateRewardsForAllSubmission transaction to the rewards coordinator with the
@@ -65,12 +65,12 @@ func (u *Uploader) rpcSubmission(rewards []Submission) error {
 		})
 	}
 	fmt.Printf("submissions: %+v\n", submissions)
-	resp, err := u.rewardsCoordinator.CreateRewardsForAllSubmission(context.Background(), submissions)
+	resp, err := u.rewardsCoordinator.CreateRewardsSubmission(context.Background(), submissions)
 	if err != nil {
-		fmt.Println("CreateRewardsForAllSubmission err: ", err)
+		fmt.Println("CreateRewardsSubmission err: ", err)
 		return err
 	}
-	fmt.Println("CreateRewardsForAllSubmission txn hash: ", resp.Hash.String())
+	fmt.Println("CreateRewardsSubmission txn hash: ", resp.Hash.String())
 	return err
 }
 

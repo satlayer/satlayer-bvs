@@ -147,21 +147,19 @@ type InstantiateMsg struct {
 }
 
 type ExecuteMsg struct {
-	CreateRewardsSubmission       *CreateRewardsSubmission       `json:"create_rewards_submission,omitempty"`
-	CreateRewardsForAllSubmission *CreateRewardsForAllSubmission `json:"create_rewards_for_all_submission,omitempty"`
-	ProcessClaim                  *ProcessClaim                  `json:"process_claim,omitempty"`
-	SubmitRoot                    *SubmitRoot                    `json:"submit_root,omitempty"`
-	DisableRoot                   *DisableRoot                   `json:"disable_root,omitempty"`
-	SetClaimerFor                 *SetClaimerFor                 `json:"set_claimer_for,omitempty"`
-	SetActivationDelay            *SetActivationDelay            `json:"set_activation_delay,omitempty"`
-	SetRewardsForAllSubmitter     *SetRewardsForAllSubmitter     `json:"set_rewards_for_all_submitter,omitempty"`
-	SetGlobalOperatorCommission   *SetGlobalOperatorCommission   `json:"set_global_operator_commission,omitempty"`
-	TransferOwnership             *TransferOwnership             `json:"transfer_ownership,omitempty"`
-	SetRewardsUpdater             *SetRewardsUpdater             `json:"set_rewards_updater,omitempty"`
-	SetRouting                    *SetRouting                    `json:"set_routing,omitempty"`
+	CreateRewardsSubmission     *CreateRewardsSubmission     `json:"create_rewards_submission,omitempty"`
+	ProcessClaim                *ProcessClaim                `json:"process_claim,omitempty"`
+	SubmitRoot                  *SubmitRoot                  `json:"submit_root,omitempty"`
+	DisableRoot                 *DisableRoot                 `json:"disable_root,omitempty"`
+	SetClaimerFor               *SetClaimerFor               `json:"set_claimer_for,omitempty"`
+	SetActivationDelay          *SetActivationDelay          `json:"set_activation_delay,omitempty"`
+	SetGlobalOperatorCommission *SetGlobalOperatorCommission `json:"set_global_operator_commission,omitempty"`
+	TransferOwnership           *TransferOwnership           `json:"transfer_ownership,omitempty"`
+	SetRewardsUpdater           *SetRewardsUpdater           `json:"set_rewards_updater,omitempty"`
+	SetRouting                  *SetRouting                  `json:"set_routing,omitempty"`
 }
 
-type CreateRewardsForAllSubmission struct {
+type CreateRewardsSubmission struct {
 	RewardsSubmissions []RewardsSubmission `json:"rewards_submissions"`
 }
 
@@ -182,10 +180,6 @@ type StrategyAndMultiplier struct {
 	Multiplier int64 `json:"multiplier"`
 	// strategy contract address
 	Strategy string `json:"strategy"`
-}
-
-type CreateRewardsSubmission struct {
-	RewardsSubmissions []RewardsSubmission `json:"rewards_submissions"`
 }
 
 type DisableRoot struct {
@@ -227,11 +221,6 @@ type SetClaimerFor struct {
 
 type SetGlobalOperatorCommission struct {
 	NewCommissionBips int64 `json:"new_commission_bips"`
-}
-
-type SetRewardsForAllSubmitter struct {
-	NewValue  bool   `json:"new_value"`
-	Submitter string `json:"submitter"`
 }
 
 type SetRewardsUpdater struct {

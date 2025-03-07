@@ -47,14 +47,6 @@ func rewardCmd() *cobra.Command {
 			reward.SetGlobalOperatorCommission(args[0], newCommissionBips)
 		},
 	}
-	setRewardsUpdaterCmd := &cobra.Command{
-		Use:   "set-rewards-updater <userKeyName> <RewardsUpdaterAddress>",
-		Short: "To set the rewards updater.",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			reward.SetRewardUpdater(args[0], args[1])
-		},
-	}
 	transferOwnerCmd := &cobra.Command{
 		Use:   "transfer-owner <userKeyName> <NewOwnerAddress>",
 		Short: "To transfer the ownership.",
@@ -108,7 +100,6 @@ func rewardCmd() *cobra.Command {
 	subCmd.AddCommand(setClaimerCmd)
 	subCmd.AddCommand(setActivationDelayCmd)
 	subCmd.AddCommand(setGlobalOperatorCommissionCmd)
-	subCmd.AddCommand(setRewardsUpdaterCmd)
 	subCmd.AddCommand(transferOwnerCmd)
 	subCmd.AddCommand(getDistributionRootLengthCmd)
 	subCmd.AddCommand(getCurrentDistributionRootCmd)

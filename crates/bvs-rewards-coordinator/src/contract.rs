@@ -20,8 +20,7 @@ use crate::{
         ACTIVATION_DELAY, CALCULATION_INTERVAL_SECONDS, CLAIMER_FOR, CUMULATIVE_CLAIMED,
         CURR_REWARDS_CALCULATION_END_TIMESTAMP, DISTRIBUTION_ROOTS, DISTRIBUTION_ROOTS_COUNT,
         GENESIS_REWARDS_TIMESTAMP, GLOBAL_OPERATOR_COMMISSION_BIPS, IS_REWARDS_SUBMISSION_HASH,
-        MAX_FUTURE_LENGTH, MAX_RETROACTIVE_LENGTH, MAX_REWARDS_DURATION, REWARDS_FOR_ALL_SUBMITTER,
-        SUBMISSION_NONCE,
+        MAX_FUTURE_LENGTH, MAX_RETROACTIVE_LENGTH, MAX_REWARDS_DURATION, SUBMISSION_NONCE,
     },
 };
 use bvs_library::ownership;
@@ -89,9 +88,6 @@ pub fn execute(
         ExecuteMsg::CreateRewardsSubmission {
             rewards_submissions,
         } => create_rewards_submission(deps, env, info, rewards_submissions),
-        ExecuteMsg::CreateRewardsForAllSubmission {
-            rewards_submissions,
-        } => create_rewards_for_all_submission(deps, env, info, rewards_submissions),
         ExecuteMsg::ProcessClaim { claim, recipient } => {
             claim.validate(deps.api)?;
             let recipient = deps.api.addr_validate(&recipient)?;
@@ -109,13 +105,6 @@ pub fn execute(
         ExecuteMsg::SetActivationDelay {
             new_activation_delay,
         } => set_activation_delay(deps, info, new_activation_delay),
-        ExecuteMsg::SetRewardsForAllSubmitter {
-            submitter,
-            new_value,
-        } => {
-            let submitter = deps.api.addr_validate(&submitter)?;
-            set_rewards_for_all_submitter(deps, info, submitter, new_value)
-        }
         ExecuteMsg::SetGlobalOperatorCommission {
             new_commission_bips,
         } => set_global_operator_commission(deps, info, new_commission_bips),
@@ -178,63 +167,6 @@ pub fn create_rewards_submission(
         response = response.add_message(transfer_msg);
 
         let event = Event::new("RewardsSubmissionCreated")
-            .add_attribute("sender", info.sender.to_string())
-            .add_attribute("nonce", nonce.to_string())
-            .add_attribute(
-                "rewards_submission_hash",
-                rewards_submission_hash.to_string(),
-            )
-            .add_attribute("token", submission.token.to_string())
-            .add_attribute("amount", submission.amount.to_string());
-
-        response = response.add_event(event);
-    }
-
-    Ok(response)
-}
-
-/// Similar to [`create_rewards_submission`], except ALL stakers are eligible for the rewards instead of those registered to a specific BVS,
-/// and it can only be called by [`REWARDS_FOR_ALL_SUBMITTER`] submitter
-pub fn create_rewards_for_all_submission(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    rewards_submissions: Vec<RewardsSubmission>,
-) -> Result<Response, ContractError> {
-    only_rewards_for_all_submitter(deps.as_ref(), &info)?;
-
-    let mut response = Response::new();
-    for submission in rewards_submissions {
-        let nonce = SUBMISSION_NONCE
-            .may_load(deps.storage, &info.sender)?
-            .unwrap_or_default();
-
-        let rewards_submission_hash =
-            calculate_rewards_submission_hash(&info.sender, nonce, &submission);
-
-        validate_rewards_submission(&deps.as_ref(), &submission, &env)?;
-
-        IS_REWARDS_SUBMISSION_HASH.save(
-            deps.storage,
-            (&info.sender, &rewards_submission_hash),
-            &true,
-        )?;
-
-        SUBMISSION_NONCE.save(deps.storage, &info.sender, &(nonce + 1))?;
-
-        let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: submission.token.to_string(),
-            msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
-                owner: info.sender.to_string(),
-                recipient: env.contract.address.to_string(),
-                amount: submission.amount,
-            })?,
-            funds: vec![],
-        });
-
-        response = response.add_message(transfer_msg);
-
-        let event = Event::new("RewardsSubmissionForAllCreated")
             .add_attribute("sender", info.sender.to_string())
             .add_attribute("nonce", nonce.to_string())
             .add_attribute(
@@ -475,30 +407,6 @@ pub fn set_activation_delay(
     Ok(res)
 }
 
-/// Sets the address that can call [`create_rewards_for_all_submission`]
-///
-/// Only callable by the [`ownership::OWNER`]
-pub fn set_rewards_for_all_submitter(
-    deps: DepsMut,
-    info: MessageInfo,
-    submitter: Addr,
-    new_value: bool,
-) -> Result<Response, ContractError> {
-    ownership::assert_owner(deps.storage, &info)?;
-
-    let prev_value = REWARDS_FOR_ALL_SUBMITTER
-        .may_load(deps.storage, &submitter)?
-        .unwrap_or(false);
-    REWARDS_FOR_ALL_SUBMITTER.save(deps.storage, &submitter, &new_value)?;
-
-    let event = Event::new("SetRewardsForAllSubmitter")
-        .add_attribute("submitter", submitter.to_string())
-        .add_attribute("previous_value", prev_value.to_string())
-        .add_attribute("new_value", new_value.to_string());
-
-    Ok(Response::new().add_event(event))
-}
-
 /// Sets the default operator commission for all operators.
 ///
 /// Only callable by the [`ownership::OWNER`]
@@ -637,17 +545,6 @@ pub fn query_check_claim(
         check_claim(env, deps, claim).map_err(|err| StdError::generic_err(format!("{:?}", err)))?;
 
     Ok(CheckClaimResponse { check_claim })
-}
-
-// TODO: move to auth.rs
-fn only_rewards_for_all_submitter(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
-    let is_submitter = REWARDS_FOR_ALL_SUBMITTER
-        .may_load(deps.storage, &info.sender)?
-        .unwrap_or(false);
-    if !is_submitter {
-        return Err(ContractError::ValidCreateRewardsForAllSubmission {});
-    }
-    Ok(())
 }
 
 fn validate_rewards_submission(
@@ -976,46 +873,6 @@ mod tests {
     }
 
     #[test]
-    fn test_only_rewards_for_all_submitter() {
-        let (
-            mut deps,
-            _env,
-            _owner_info,
-            _strategy_manager_info,
-            _delegation_manager_info,
-            _rewards_updater_info,
-        ) = instantiate_contract();
-
-        let valid_submitter = deps.api.addr_make("valid_submitter");
-        REWARDS_FOR_ALL_SUBMITTER
-            .save(&mut deps.storage, &valid_submitter, &true)
-            .unwrap();
-
-        let info = message_info(&Addr::unchecked(valid_submitter), &[]);
-        let result = only_rewards_for_all_submitter(deps.as_ref(), &info);
-        assert!(result.is_ok());
-
-        let invalid_submitter = deps.api.addr_make("invalid_submitter");
-        REWARDS_FOR_ALL_SUBMITTER
-            .save(&mut deps.storage, &invalid_submitter, &false)
-            .unwrap();
-
-        let info = message_info(&Addr::unchecked("invalid_submitter"), &[]);
-        let result = only_rewards_for_all_submitter(deps.as_ref(), &info);
-        assert_eq!(
-            result,
-            Err(ContractError::ValidCreateRewardsForAllSubmission {})
-        );
-
-        let info = message_info(&Addr::unchecked("unset_submitter"), &[]);
-        let result = only_rewards_for_all_submitter(deps.as_ref(), &info);
-        assert_eq!(
-            result,
-            Err(ContractError::ValidCreateRewardsForAllSubmission {})
-        );
-    }
-
-    #[test]
     fn test_validate_rewards_submission() {
         let (
             mut deps,
@@ -1221,114 +1078,6 @@ mod tests {
     }
 
     #[test]
-    fn test_create_rewards_for_all_submission() {
-        let (
-            mut deps,
-            env,
-            owner_info,
-            _strategy_manager_info,
-            _delegation_manager_info,
-            _rewards_updater_info,
-        ) = instantiate_contract();
-
-        let calc_interval = 86_400; // 1 day
-
-        let block_time = mock_env().block.time.seconds();
-
-        let aligned_start_time = block_time - (block_time % calc_interval);
-        let aligned_start_timestamp = Timestamp::from_seconds(aligned_start_time);
-
-        let submission = vec![RewardsSubmission {
-            strategies_and_multipliers: vec![StrategyAndMultiplier {
-                strategy: deps.api.addr_make("strategy1"),
-                multiplier: 1,
-            }],
-            amount: Uint128::new(100),
-            duration: calc_interval, // 1 day
-            start_timestamp: aligned_start_timestamp,
-            token: deps.api.addr_make("token"),
-        }];
-
-        let strategy_manager = deps.api.addr_make("strategy_manager");
-        auth::set_routing(deps.as_mut(), owner_info.clone(), strategy_manager.clone()).unwrap();
-
-        deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { contract_addr, msg }
-                if Addr::unchecked(contract_addr) == &strategy_manager =>
-            {
-                let msg: StrategyManagerQueryMsg = from_json(msg).unwrap();
-                match msg {
-                    StrategyManagerQueryMsg::IsStrategyWhitelisted(strategy) => {
-                        let response = if strategy == deps.api.addr_make("strategy1").to_string() {
-                            IsStrategyWhitelistedResponse(true)
-                        } else {
-                            IsStrategyWhitelistedResponse(false)
-                        };
-                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&response).unwrap()))
-                    }
-                    _ => SystemResult::Err(SystemError::InvalidRequest {
-                        error: "Unhandled request".to_string(),
-                        request: to_json_binary(&query).unwrap(),
-                    }),
-                }
-            }
-            _ => SystemResult::Err(SystemError::InvalidRequest {
-                error: "Unhandled request".to_string(),
-                request: to_json_binary(&query).unwrap(),
-            }),
-        });
-
-        let submitter = deps.api.addr_make("submitter");
-        let _ = set_rewards_for_all_submitter(
-            deps.as_mut(),
-            owner_info.clone(),
-            submitter.clone(),
-            true,
-        );
-
-        let submmiter_info = message_info(&submitter, &[]);
-
-        let result = create_rewards_for_all_submission(
-            deps.as_mut(),
-            env.clone(),
-            submmiter_info.clone(),
-            submission,
-        );
-
-        if let Err(err) = &result {
-            println!("Error: {:?}", err);
-        }
-
-        assert!(result.is_ok());
-        let response = result.unwrap();
-        assert_eq!(response.messages.len(), 1);
-        assert_eq!(response.events.len(), 1);
-
-        let event = response.events.first().unwrap();
-        assert_eq!(event.ty, "RewardsSubmissionForAllCreated");
-        assert_eq!(event.attributes.len(), 5);
-        assert_eq!(event.attributes[0].key, "sender");
-        assert_eq!(
-            event.attributes[0].value,
-            deps.api.addr_make("submitter").to_string()
-        );
-        assert_eq!(event.attributes[1].key, "nonce");
-        assert_eq!(event.attributes[1].value, "0");
-        assert_eq!(event.attributes[2].key, "rewards_submission_hash");
-        assert_eq!(
-            event.attributes[2].value,
-            "6iTJDz8b/ym1GayJcb5UVJB1h+3Pab9z07oOboL8kfU="
-        );
-        assert_eq!(event.attributes[3].key, "token");
-        assert_eq!(
-            event.attributes[3].value,
-            deps.api.addr_make("token").to_string()
-        );
-        assert_eq!(event.attributes[4].key, "amount");
-        assert_eq!(event.attributes[4].value, "100");
-    }
-
-    #[test]
     fn test_set_activation_delay_internal() {
         let (
             mut deps,
@@ -1421,68 +1170,6 @@ mod tests {
             stored_activation_delay_after_unauthorized_attempt,
             new_activation_delay
         );
-    }
-
-    #[test]
-    fn test_set_rewards_for_all_submitter() {
-        let (
-            mut deps,
-            _env,
-            owner_info,
-            _strategy_manager_info,
-            _delegation_manager_info,
-            _rewards_updater_info,
-        ) = instantiate_contract();
-
-        let submitter = deps.api.addr_make("submitter");
-        let initial_value = false;
-
-        REWARDS_FOR_ALL_SUBMITTER
-            .save(&mut deps.storage, &submitter, &initial_value)
-            .unwrap();
-
-        let result =
-            set_rewards_for_all_submitter(deps.as_mut(), owner_info, submitter.clone(), true);
-
-        assert!(result.is_ok());
-
-        let response = result.unwrap();
-
-        assert_eq!(response.events.len(), 1);
-
-        let event = response.events.first().unwrap();
-        assert_eq!(
-            event,
-            Event::new("SetRewardsForAllSubmitter")
-                .add_attribute("submitter", submitter.to_string())
-                .add_attribute("previous_value", initial_value.to_string())
-                .add_attribute("new_value", "true")
-        );
-
-        let stored_value = REWARDS_FOR_ALL_SUBMITTER
-            .load(&deps.storage, &submitter)
-            .unwrap();
-        assert!(stored_value);
-
-        let unauthorized_info = message_info(&Addr::unchecked("not_owner"), &[]);
-        let result = set_rewards_for_all_submitter(
-            deps.as_mut(),
-            unauthorized_info,
-            submitter.clone(),
-            true,
-        );
-
-        assert!(result.is_err());
-        assert_eq!(
-            result,
-            Err(ContractError::Ownership(OwnershipError::Unauthorized))
-        );
-
-        let stored_value = REWARDS_FOR_ALL_SUBMITTER
-            .load(&deps.storage, &submitter)
-            .unwrap();
-
-        assert!(stored_value);
     }
 
     #[test]

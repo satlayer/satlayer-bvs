@@ -179,12 +179,7 @@ func (suite *rewardsTestSuite) Test_ExecuteRewardsCoordinator() {
 	assert.NotNil(t, resp, "response nil")
 	t.Logf("resp:%+v", resp)
 
-	resp, err = rewardsCoordinator.SetRewardsForAllSubmitter(context.Background(), suite.caller, true)
-	assert.NoError(t, err, "execute contract")
-	assert.NotNil(t, resp, "response nil")
-	t.Logf("resp:%+v", resp)
-
-	resp, err = rewardsCoordinator.CreateRewardsForAllSubmission(
+	resp, err = rewardsCoordinator.CreateRewardsSubmission(
 		context.Background(),
 		[]rewardscoordinator.RewardsSubmission{{
 			StrategiesAndMultipliers: []rewardscoordinator.StrategyAndMultiplier{{
