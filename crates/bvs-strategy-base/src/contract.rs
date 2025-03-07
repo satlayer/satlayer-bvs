@@ -55,7 +55,10 @@ pub fn execute(
     bvs_registry::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
 
     match msg {
-        ExecuteMsg::Deposit { amount } => execute::deposit(deps, env, info, amount),
+        ExecuteMsg::Deposit { sender, amount } => {
+            let sender = deps.api.addr_validate(&sender)?;
+            execute::deposit(deps, env, info, sender, amount)
+        }
         ExecuteMsg::Withdraw { recipient, shares } => {
             let recipient = deps.api.addr_validate(&recipient)?;
             execute::withdraw(deps, env, info, recipient, shares)
@@ -81,6 +84,7 @@ pub mod execute {
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
+        sender: Addr,
         amount: Uint128,
     ) -> Result<Response, ContractError> {
         auth::assert_strategy_manager(deps.storage, &info)?;
@@ -94,19 +98,14 @@ pub mod execute {
 
         vault.add_total_shares(deps.storage, new_shares)?;
 
-        // TODO(fuxingloh): sub_messages
-        // let transfer_from_msg = token::new_transfer_from(
-        //     &deps.as_ref(),
-        //     &owner,
-        //     &env.contract.address,
-        //     amount,
-        // )?;
+        let transfer_from_msg =
+            token::new_transfer_from(deps.storage, &sender, &env.contract.address, amount)?;
 
-        Ok(Response::new().add_event(
+        Ok(Response::new().add_message(transfer_from_msg).add_event(
             Event::new("Deposit")
-                // TODO(fuxingloh): add owner
+                .add_attribute("sender", sender.to_string())
                 .add_attribute("amount", amount.to_string())
-                .add_attribute("shares", new_shares.to_string())
+                .add_attribute("new_shares", new_shares.to_string())
                 .add_attribute("total_shares", vault.total_shares().to_string()),
         ))
     }
@@ -265,7 +264,7 @@ mod tests {
     use crate::shares;
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
     use cosmwasm_std::{
-        from_json, ContractResult, Event, SystemError, SystemResult, Uint128, WasmQuery,
+        from_json, ContractResult, Event, SystemError, SystemResult, Uint128, WasmMsg, WasmQuery,
     };
     use cw20::{BalanceResponse, Cw20QueryMsg, TokenInfoResponse};
 
@@ -340,15 +339,35 @@ mod tests {
 
         let amount = Uint128::new(10_000);
         let info = message_info(&strategy_manager, &[]);
-        let response = execute::deposit(deps.as_mut(), env.clone(), info.clone(), amount).unwrap();
+        let sender = deps.api.addr_make("sender");
+        let response = execute::deposit(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            sender.clone(),
+            amount,
+        )
+        .unwrap();
         assert_eq!(
             response,
-            Response::new().add_event(
-                Event::new("Deposit")
-                    .add_attribute("amount", "10000")
-                    .add_attribute("shares", "10000")
-                    .add_attribute("total_shares", "10000")
-            )
+            Response::new()
+                .add_message(WasmMsg::Execute {
+                    contract_addr: token.to_string(),
+                    msg: to_json_binary(&cw20::Cw20ExecuteMsg::TransferFrom {
+                        owner: sender.to_string(),
+                        recipient: env.contract.address.to_string(),
+                        amount: Uint128::new(10000),
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                })
+                .add_event(
+                    Event::new("Deposit")
+                        .add_attribute("sender", sender)
+                        .add_attribute("amount", "10000")
+                        .add_attribute("new_shares", "10000")
+                        .add_attribute("total_shares", "10000")
+                )
         );
 
         let vault = shares::VirtualVault::load(&deps.as_ref(), &env).unwrap();
@@ -388,15 +407,35 @@ mod tests {
 
         let amount = Uint128::new(5_912);
         let info = message_info(&strategy_manager, &[]);
-        let response = execute::deposit(deps.as_mut(), env.clone(), info.clone(), amount).unwrap();
+        let sender = deps.api.addr_make("sender");
+        let response = execute::deposit(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            sender.clone(),
+            amount,
+        )
+        .unwrap();
         assert_eq!(
             response,
-            Response::new().add_event(
-                Event::new("Deposit")
-                    .add_attribute("amount", "5912")
-                    .add_attribute("shares", "58")
-                    .add_attribute("total_shares", "59")
-            )
+            Response::new()
+                .add_message(WasmMsg::Execute {
+                    contract_addr: token.to_string(),
+                    msg: to_json_binary(&cw20::Cw20ExecuteMsg::TransferFrom {
+                        owner: sender.to_string(),
+                        recipient: env.contract.address.to_string(),
+                        amount: Uint128::new(5912),
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                })
+                .add_event(
+                    Event::new("Deposit")
+                        .add_attribute("sender", sender)
+                        .add_attribute("amount", "5912")
+                        .add_attribute("new_shares", "58")
+                        .add_attribute("total_shares", "59")
+                )
         );
 
         let vault = shares::VirtualVault::load(&deps.as_ref(), &env).unwrap();
@@ -436,15 +475,35 @@ mod tests {
 
         let amount = Uint128::new(9631);
         let info = message_info(&strategy_manager, &[]);
-        let response = execute::deposit(deps.as_mut(), env.clone(), info.clone(), amount).unwrap();
+        let sender = deps.api.addr_make("sender");
+        let response = execute::deposit(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            sender.clone(),
+            amount,
+        )
+        .unwrap();
         assert_eq!(
             response,
-            Response::new().add_event(
-                Event::new("Deposit")
-                    .add_attribute("amount", "9631")
-                    .add_attribute("shares", "8828")
-                    .add_attribute("total_shares", "8928")
-            )
+            Response::new()
+                .add_message(WasmMsg::Execute {
+                    contract_addr: token.to_string(),
+                    msg: to_json_binary(&cw20::Cw20ExecuteMsg::TransferFrom {
+                        owner: sender.to_string(),
+                        recipient: env.contract.address.to_string(),
+                        amount: Uint128::new(9631),
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                })
+                .add_event(
+                    Event::new("Deposit")
+                        .add_attribute("sender", sender.clone())
+                        .add_attribute("amount", "9631")
+                        .add_attribute("new_shares", "8828")
+                        .add_attribute("total_shares", "8928")
+                )
         );
 
         let vault = shares::VirtualVault::load(&deps.as_ref(), &env).unwrap();

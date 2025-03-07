@@ -164,6 +164,7 @@ type ExecuteMsg struct {
 
 type Deposit struct {
 	Amount string `json:"amount"`
+	Sender string `json:"sender"`
 }
 
 type TransferOwnership struct {

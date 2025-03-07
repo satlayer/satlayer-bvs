@@ -5,29 +5,19 @@ use crate::{
     auth,
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    state,
     state::{STAKER_STRATEGY_LIST, STAKER_STRATEGY_SHARES},
 };
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo,
-    QuerierWrapper, QueryRequest, Response, StdResult, Uint128, WasmMsg, WasmQuery,
+    to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo, Reply,
+    Response, StdError, StdResult, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
-use crate::msg::delegation_manager::{self, IncreaseDelegatedShares};
 use bvs_library::ownership;
-use bvs_strategy_base::{
-    msg::ExecuteMsg as BaseExecuteMsg,
-    msg::QueryMsg as BaseQueryMsg,
-    msg::{TotalSharesResponse, UnderlyingTokenResponse},
-};
+use bvs_strategy_base::msg::ExecuteMsg as BaseExecuteMsg;
 
 const CONTRACT_NAME: &str = "BVS Strategy Manager";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-const SHARES_OFFSET: Uint128 = Uint128::new(1000u128);
-const BALANCE_OFFSET: Uint128 = Uint128::new(1000u128);
 
 /// Maximum length of the strategy list for a staker
 /// This value can be changed in the future
@@ -68,21 +58,22 @@ pub fn execute(
             token,
             amount,
         } => {
-            let strategy_addr = deps.api.addr_validate(&strategy)?;
-            let token_addr = deps.api.addr_validate(&token)?;
+            let strategy = deps.api.addr_validate(&strategy)?;
+            // TODO(fuxingloh): remove token: Addr
+            let token = deps.api.addr_validate(&token)?;
 
             let staker = info.sender.clone();
-            deposit_into_strategy(deps, info, staker, strategy_addr, token_addr, amount)
+            execute::deposit_into_strategy(deps, info, staker, strategy, token, amount)
         }
         ExecuteMsg::WithdrawSharesAsTokens {
             recipient,
             strategy,
             shares,
         } => {
-            let strategy_addr = deps.api.addr_validate(&strategy)?;
-            let recipient_addr = deps.api.addr_validate(&recipient)?;
+            let recipient = deps.api.addr_validate(&recipient)?;
+            let strategy = deps.api.addr_validate(&strategy)?;
 
-            withdraw_shares_as_tokens(deps, info, recipient_addr, strategy_addr, shares)
+            withdraw_shares_as_tokens(deps, info, recipient, strategy, shares)
         }
         ExecuteMsg::RemoveShares {
             staker,
@@ -137,11 +128,17 @@ pub fn execute(
 
 mod execute {
     use crate::state::STRATEGY_WHITELISTED;
-    use crate::ContractError;
+    use crate::{state, ContractError};
     use bvs_library::ownership;
-    use bvs_strategy_base::{msg::QueryMsg as BaseQueryMsg, msg::StrategyManagerResponse};
+    use bvs_strategy_base::{
+        msg::ExecuteMsg as BaseExecuteMsg, msg::QueryMsg as BaseQueryMsg,
+        msg::StrategyManagerResponse,
+    };
+
+    use crate::contract::reply;
     use cosmwasm_std::{
-        to_json_binary, Addr, DepsMut, Env, Event, MessageInfo, Response, WasmQuery,
+        to_json_binary, Addr, DepsMut, Env, Event, MessageInfo, Response, SubMsg, Uint128, WasmMsg,
+        WasmQuery,
     };
 
     /// Add a new strategy, setting whitelisted=true will allow staker to deposit into the strategy.
@@ -197,84 +194,92 @@ mod execute {
                 .add_attribute("whitelisted", whitelisted.to_string()),
         ))
     }
+
+    pub fn deposit_into_strategy(
+        deps: DepsMut,
+        info: MessageInfo,
+        staker: Addr,
+        strategy: Addr,
+        _token: Addr,
+        amount: Uint128,
+    ) -> Result<Response, ContractError> {
+        state::assert_strategy_whitelisted(deps.as_ref(), &strategy)?;
+
+        let payload = to_json_binary(&(&staker, &strategy))?;
+        let submsg = SubMsg::reply_on_success(
+            WasmMsg::Execute {
+                contract_addr: strategy.to_string(),
+                msg: to_json_binary(&BaseExecuteMsg::Deposit {
+                    sender: info.sender.to_string(),
+                    amount,
+                })?,
+                funds: vec![],
+            },
+            reply::DEPOSIT_MSG_ID,
+        )
+        .with_payload(payload);
+
+        Ok(Response::new().add_submessage(submsg))
+    }
 }
 
-pub fn deposit_into_strategy(
-    mut deps: DepsMut,
-    info: MessageInfo,
-    staker: Addr,
-    strategy: Addr,
-    token: Addr,
-    amount: Uint128,
-) -> Result<Response, ContractError> {
-    state::assert_strategy_whitelisted(deps.as_ref(), &strategy)?;
-
-    if amount.is_zero() {
-        return Err(ContractError::ZeroAmount {});
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
+    match msg.id {
+        reply::DEPOSIT_MSG_ID => reply::on_deposit(deps, env, msg),
+        _ => Err(StdError::generic_err("Invalid submsg id").into()),
     }
+}
 
-    let transfer_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: token.to_string(),
-        msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
-            owner: info.sender.to_string(),
-            recipient: strategy.to_string(),
-            amount,
-        })?,
-        funds: vec![],
-    });
+mod reply {
+    use crate::contract::add_shares_internal;
+    use crate::msg::delegation_manager;
+    use crate::msg::delegation_manager::IncreaseDelegatedShares;
+    use crate::{auth, ContractError};
+    use cosmwasm_std::{
+        from_json, to_json_binary, Addr, CosmosMsg, DepsMut, Env, Reply, Response, Uint128, WasmMsg,
+    };
 
-    let mut response = Response::new().add_message(transfer_msg);
+    /// Submsg id for the deposit into strategy for reply
+    pub const DEPOSIT_MSG_ID: u64 = 100;
 
-    let UnderlyingTokenResponse(token) = deps.querier.query(
-        &WasmQuery::Smart {
-            contract_addr: strategy.to_string(),
-            msg: to_json_binary(&BaseQueryMsg::UnderlyingToken {})?,
-        }
-        .into(),
-    )?;
+    pub fn on_deposit(mut deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+        let (staker, strategy): (Addr, Addr) = from_json(msg.payload)?;
+        let events = msg.result.unwrap().events;
+        let new_shares = events
+            .iter()
+            .find_map(|event| {
+                if event.ty == "wasm-Deposit"
+                    && event.attributes[0].key == "_contract_address"
+                    && event.attributes[0].value == strategy.to_string()
+                {
+                    event
+                        .attributes
+                        .iter()
+                        .find(|attr| attr.key == "new_shares")
+                        .map(|attr| attr.value.parse::<Uint128>().unwrap())
+                } else {
+                    None
+                }
+            })
+            .unwrap();
 
-    let TotalSharesResponse(total_shares) = deps.querier.query(
-        &WasmQuery::Smart {
-            contract_addr: strategy.to_string(),
-            msg: to_json_binary(&BaseQueryMsg::TotalShares {})?,
-        }
-        .into(),
-    )?;
+        add_shares_internal(deps.branch(), staker.clone(), strategy.clone(), new_shares)?;
+        let delegation_manager = auth::get_delegation_manager(deps.storage)?;
+        let increase_delegated_shares_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: delegation_manager.to_string(),
+            msg: to_json_binary(&delegation_manager::ExecuteMsg::IncreaseDelegatedShares(
+                IncreaseDelegatedShares {
+                    staker: staker.to_string(),
+                    strategy: strategy.to_string(),
+                    shares: new_shares,
+                },
+            ))?,
+            funds: vec![],
+        });
 
-    let balance = token_balance(&deps.querier, &token, &strategy)?;
-    let new_shares = calculate_new_shares(total_shares, balance, amount)?;
-
-    if new_shares.is_zero() {
-        return Err(ContractError::ZeroNewShares {});
+        Ok(Response::new().add_message(increase_delegated_shares_msg))
     }
-
-    let deposit_msg: CosmosMsg = WasmMsg::Execute {
-        contract_addr: strategy.to_string(),
-        msg: to_json_binary(&BaseExecuteMsg::Deposit { amount })?,
-        funds: vec![],
-    }
-    .into();
-
-    response = response.add_message(deposit_msg);
-
-    add_shares_internal(deps.branch(), staker.clone(), strategy.clone(), new_shares)?;
-
-    let delegation_manager = auth::get_delegation_manager(deps.storage)?;
-    let increase_delegated_shares_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: delegation_manager.to_string(),
-        msg: to_json_binary(&delegation_manager::ExecuteMsg::IncreaseDelegatedShares(
-            IncreaseDelegatedShares {
-                staker: staker.to_string(),
-                strategy: strategy.to_string(),
-                shares: new_shares,
-            },
-        ))?,
-        funds: vec![],
-    });
-
-    Ok(response
-        .add_message(increase_delegated_shares_msg)
-        .add_attribute("new_shares", new_shares.to_string()))
 }
 
 pub fn add_shares(
@@ -422,48 +427,6 @@ pub fn withdraw_shares_as_tokens(
     let response = Response::new().add_message(withdraw_msg);
 
     Ok(response)
-}
-
-fn calculate_new_shares(
-    total_shares: Uint128,
-    token_balance: Uint128,
-    deposit_amount: Uint128,
-) -> Result<Uint128, ContractError> {
-    let virtual_share_amount = total_shares
-        .checked_add(SHARES_OFFSET)
-        .map_err(|_| ContractError::Overflow)?;
-
-    let virtual_token_balance = token_balance
-        .checked_add(BALANCE_OFFSET)
-        .map_err(|_| ContractError::Overflow)?;
-
-    let virtual_prior_token_balance = virtual_token_balance
-        .checked_sub(deposit_amount)
-        .map_err(|_| ContractError::Underflow)?;
-
-    let numerator = deposit_amount
-        .checked_mul(virtual_share_amount)
-        .map_err(|_| ContractError::Overflow)?;
-
-    if virtual_prior_token_balance.is_zero() {
-        return Err(ContractError::DivideByZero);
-    }
-
-    let new_shares = numerator
-        .checked_div(virtual_prior_token_balance)
-        .map_err(|_| ContractError::DivideByZero)?;
-
-    Ok(new_shares)
-}
-
-fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdResult<Uint128> {
-    let res: Cw20BalanceResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: token.to_string(),
-        msg: to_json_binary(&Cw20QueryMsg::Balance {
-            address: account.to_string(),
-        })?,
-    }))?;
-    Ok(res.balance)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -696,11 +659,19 @@ mod tests {
 mod tests_old {
     use super::*;
     use crate::msg::{StakerDepositListResponse, StakerStrategyListResponse, StrategyShare};
-    use bvs_strategy_base::{msg::QueryMsg::UnderlyingToken, msg::StrategyManagerResponse};
-    use cosmwasm_std::testing::{
-        message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
+    use crate::state;
+    use bvs_strategy_base::{
+        msg::QueryMsg as BaseQueryMsg,
+        msg::QueryMsg::UnderlyingToken,
+        msg::StrategyManagerResponse,
+        msg::{TotalSharesResponse, UnderlyingTokenResponse},
     };
-    use cosmwasm_std::{from_json, Addr, ContractResult, OwnedDeps, SystemError, SystemResult};
+    use cosmwasm_std::{
+        from_json,
+        testing::{message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage},
+        Addr, ContractResult, OwnedDeps, SystemError, SystemResult, WasmQuery,
+    };
+    use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 
     #[test]
     fn test_instantiate() {
@@ -862,7 +833,7 @@ mod tests_old {
             }),
         });
 
-        let res = deposit_into_strategy(
+        let res = execute::deposit_into_strategy(
             deps.as_mut(),
             info_delegation_manager.clone(),
             info_delegation_manager.sender.clone(),
@@ -872,13 +843,9 @@ mod tests_old {
         )
         .unwrap();
 
-        assert_eq!(res.attributes.len(), 1);
-        assert_eq!(res.attributes[0].key, "new_shares");
-        assert_eq!(res.attributes[0].value, "105");
-
         let non_whitelisted_strategy = deps.api.addr_make("non_whitelisted_strategy");
 
-        let result = deposit_into_strategy(
+        let result = execute::deposit_into_strategy(
             deps.as_mut(),
             info_delegation_manager.clone(),
             info_delegation_manager.sender.clone(),

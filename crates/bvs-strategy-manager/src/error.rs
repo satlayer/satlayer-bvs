@@ -29,19 +29,4 @@ pub enum ContractError {
 
     #[error("StrategyManager.remove_strategy_from_staker_strategy_list: strategy not found")]
     StrategyNotFound {},
-
-    #[error("StrategyManager._deposit_into_strategy: zero new shares")]
-    ZeroNewShares {},
-
-    #[error("StrategyManager.calculate_new_shares: Overflow occurred during calculation")]
-    Overflow,
-
-    #[error("StrategyManager.calculate_new_shares: Underflow occurred during calculation")]
-    Underflow,
-
-    #[error("StrategyManager.calculate_new_shares: Division by zero")]
-    DivideByZero,
-
-    #[error("StrategyManager.deposit_into_strategy_internal: Amount cannot be zero")]
-    ZeroAmount,
 }
