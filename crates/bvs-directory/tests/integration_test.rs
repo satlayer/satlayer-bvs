@@ -251,6 +251,134 @@ fn service_register_operator_inactive_to_svc_registered_successfully() {
     );
 }
 
+// operator regsiters servcie and then service registers operator
+#[test]
+fn service_register_operator_operator_registered_successfully() {
+    let (mut app, directory, delegation_manager, ..) = instantiate();
+
+    let service = app.api().addr_make("service/bvs");
+
+    // regsiter service
+    {
+        let register_msg = &ExecuteMsg::ServiceRegister {
+            metadata: ServiceMetadata {
+                name: Some("Service Name".to_string()),
+                uri: Some("https://service.com".to_string()),
+            },
+        };
+
+        directory
+            .execute(&mut app, &service, &register_msg)
+            .unwrap();
+    }
+
+    let operator = app.api().addr_make("operator");
+
+    // register as operator in bvs-delegation-manager
+    {
+        let operator_details = OperatorDetails {
+            staker_opt_out_window_blocks: 100,
+        };
+        let metadata_uri = "https://c4.service.com/metadata";
+        let msg = bvs_delegation_manager::msg::ExecuteMsg::RegisterAsOperator {
+            operator_details: operator_details.clone(),
+            metadata_uri: metadata_uri.to_string(),
+        };
+        delegation_manager
+            .execute(&mut app, &operator, &msg)
+            .unwrap();
+    }
+
+    // operator registers service
+    {
+        let msg = ExecuteMsg::OperatorRegisterService {
+            service: service.to_string(),
+        };
+        directory.execute(&mut app, &operator, &msg).unwrap();
+    }
+
+    // register operator
+    let msg = &ExecuteMsg::ServiceRegisterOperator {
+        operator: operator.to_string(),
+    };
+
+    let res = directory.execute(&mut app, &service, &msg).unwrap();
+    assert_eq!(
+        res.events,
+        vec![
+            Event::new("execute").add_attribute("_contract_address", directory.addr.as_str()),
+            Event::new("wasm-RegistrationStatusUpdated")
+                .add_attribute("_contract_address", directory.addr.as_str())
+                .add_attribute("method", "service_register_operator")
+                .add_attribute("operator", operator.as_str())
+                .add_attribute("service", service.as_str())
+                .add_attribute("status", "Active"),
+        ]
+    );
+}
+
+#[test]
+fn service_register_operator_already_active_error() {
+    let (mut app, directory, delegation_manager, ..) = instantiate();
+
+    let service = app.api().addr_make("service/bvs");
+
+    // regsiter service
+    {
+        let register_msg = &ExecuteMsg::ServiceRegister {
+            metadata: ServiceMetadata {
+                name: Some("Service Name".to_string()),
+                uri: Some("https://service.com".to_string()),
+            },
+        };
+
+        directory
+            .execute(&mut app, &service, &register_msg)
+            .unwrap();
+    }
+
+    let operator = app.api().addr_make("operator");
+
+    // register as operator in bvs-delegation-manager
+    {
+        let operator_details = OperatorDetails {
+            staker_opt_out_window_blocks: 100,
+        };
+        let metadata_uri = "https://c4.service.com/metadata";
+        let msg = bvs_delegation_manager::msg::ExecuteMsg::RegisterAsOperator {
+            operator_details: operator_details.clone(),
+            metadata_uri: metadata_uri.to_string(),
+        };
+        delegation_manager
+            .execute(&mut app, &operator, &msg)
+            .unwrap();
+    }
+
+    // operator registers service
+    {
+        let msg = ExecuteMsg::OperatorRegisterService {
+            service: service.to_string(),
+        };
+        directory.execute(&mut app, &operator, &msg).unwrap();
+    }
+
+    let msg = &ExecuteMsg::ServiceRegisterOperator {
+        operator: operator.to_string(),
+    };
+
+    directory.execute(&mut app, &service, &msg).unwrap();
+
+    // services register operator again
+    let err = directory.execute(&mut app, &service, &msg).unwrap_err();
+    assert_eq!(
+        err.root_cause().to_string(),
+        ContractError::InvalidRegistrationStatus {
+            msg: "Registration is already active.".to_string(),
+        }
+        .to_string()
+    );
+}
+
 // Inactive -> ServiceRegistered -> error
 #[test]
 fn service_register_operator_inactive_to_svc_already_registered_error() {
@@ -391,7 +519,74 @@ fn service_deregister_operator_already_registered_error() {
 }
 
 #[test]
-fn operator_register_service_successfully() {
+fn operator_register_service_inactive_operator_registered_successfully() {
+    let (mut app, directory, delegation_manager, ..) = instantiate();
+
+    let service = app.api().addr_make("service/c4");
+
+    // register service
+    {
+        let register_msg = &ExecuteMsg::ServiceRegister {
+            metadata: ServiceMetadata {
+                name: Some("C4 Service".to_string()),
+                uri: Some("https://c4.service.com".to_string()),
+            },
+        };
+
+        directory
+            .execute(&mut app, &service, &register_msg)
+            .unwrap();
+    }
+
+    let operator = app.api().addr_make("operator");
+
+    // register as operator in bvs-delegation-manager
+    {
+        let operator_details = OperatorDetails {
+            staker_opt_out_window_blocks: 100,
+        };
+        let metadata_uri = "https://c4.service.com/metadata";
+        let msg = bvs_delegation_manager::msg::ExecuteMsg::RegisterAsOperator {
+            operator_details: operator_details.clone(),
+            metadata_uri: metadata_uri.to_string(),
+        };
+        delegation_manager
+            .execute(&mut app, &operator, &msg)
+            .unwrap();
+    }
+
+    let msg = ExecuteMsg::OperatorRegisterService {
+        service: service.to_string(),
+    };
+    let res = directory.execute(&mut app, &operator, &msg).unwrap();
+
+    assert_eq!(
+        res.events,
+        vec![
+            Event::new("execute").add_attribute("_contract_address", directory.addr.as_str()),
+            Event::new("wasm-RegistrationStatusUpdated")
+                .add_attribute("_contract_address", directory.addr.as_str())
+                .add_attribute("method", "operator_register_service")
+                .add_attribute("operator", operator.as_str())
+                .add_attribute("service", service.as_str())
+                .add_attribute("status", "OperatorRegistered"),
+        ]
+    );
+
+    let status: StatusResponse = directory
+        .query(
+            &mut app,
+            &QueryMsg::Status {
+                service: service.to_string(),
+                operator: operator.to_string(),
+            },
+        )
+        .unwrap();
+    assert_eq!(status, StatusResponse(2));
+}
+
+#[test]
+fn operator_register_service_service_registered_successfully() {
     let (mut app, directory, delegation_manager, ..) = instantiate();
 
     let service = app.api().addr_make("service/c4");
@@ -833,9 +1028,6 @@ fn query_status() {
         service: app.api().addr_make("service/44").to_string(),
         operator: app.api().addr_make("operator/44").to_string(),
     };
-
-    let status: StatusResponse = directory.query(&mut app, query_msg).unwrap();
-    assert_eq!(status, StatusResponse(0));
 
     let status: StatusResponse = directory.query(&mut app, query_msg).unwrap();
     assert_eq!(status, StatusResponse(0));
