@@ -7,6 +7,6 @@
   ],
   "scripts": {
     "build:wasm": "cosmwasm-optimizer --root=../",
-    "generate:schema": "cargo run --bin schema --no-default-features"
+    "generate:schema": "cargo run --bin schema"
   }
 }
