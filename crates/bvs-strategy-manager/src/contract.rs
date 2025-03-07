@@ -204,7 +204,7 @@ pub fn deposit_into_strategy(
 ) -> Result<Response, ContractError> {
     state::assert_strategy_whitelisted(deps.as_ref(), &strategy)?;
 
-    let payload = to_json_binary(&vec![&staker, &strategy])?;
+    let payload = to_json_binary(&(&staker, &strategy))?;
     let submsg = SubMsg::reply_on_success(
         WasmMsg::Execute {
             contract_addr: strategy.to_string(),
@@ -226,7 +226,7 @@ pub fn reply(mut deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contr
     if msg.id != DEPOSIT_SUBMSG_ID {
         return Err(StdError::generic_err("Invalid submsg id").into());
     }
-    let [staker, strategy]: [Addr; 2] = from_json(msg.payload)?;
+    let (staker, strategy): (Addr, Addr) = from_json(msg.payload)?;
     let events = msg.result.unwrap().events;
     let new_shares = events
         .iter()
