@@ -90,8 +90,9 @@ pub mod query {
     use crate::msg::{CanExecuteResponse, IsPausedResponse, FLAG_CAN_EXECUTE, FLAG_PAUSED};
     use crate::state::PAUSED;
 
-    /// The contract and method are currently not used.
-    /// TODO(future): implement checking of paused status against the sender and method
+    /// TODO(future): The `_contract` and `_method` are currently not used.
+    ///  To implement checking of paused status against contract and method.
+    ///  Added for future compatibility, not yet utilized—current design pauses all execute.
     pub fn is_paused(
         deps: Deps,
         _contract: String,
@@ -101,8 +102,9 @@ pub mod query {
         Ok(IsPausedResponse::new(is_paused))
     }
 
-    /// The contract, sender and method are currently not used.
-    /// TODO(future): implement checking of paused status against the sender and method
+    /// TODO(future): The `_contract`, `_sender` and `_method` are currently not used.
+    ///  To implement checking of paused status against contract, method and sender.
+    ///  Added for future compatibility, not yet utilized—current design pauses all execute.
     pub fn can_execute(
         deps: Deps,
         _contract: String,

@@ -123,3 +123,33 @@ impl
         &self.addr
     }
 }
+
+impl Cw20TokenContract {
+    /// For testing with pre-approved spending for x address.
+    pub fn increase_allowance(&self, app: &mut App, sender: &Addr, spender: &Addr, amount: u128) {
+        let msg = &cw20_base::msg::ExecuteMsg::IncreaseAllowance {
+            spender: spender.to_string(),
+            amount: Uint128::new(amount),
+            expires: None,
+        };
+        self.execute(app, sender, msg).unwrap();
+    }
+
+    /// Fund a recipient with some tokens
+    pub fn fund(&self, app: &mut App, recipient: &Addr, amount: u128) {
+        let owner = Addr::unchecked(&self.init.initial_balances[0].address);
+        let msg = &cw20_base::msg::ExecuteMsg::Transfer {
+            recipient: recipient.to_string(),
+            amount: Uint128::new(amount),
+        };
+        self.execute(app, &owner, msg).unwrap();
+    }
+
+    pub fn balance(&self, app: &App, address: &Addr) -> u128 {
+        let query = cw20_base::msg::QueryMsg::Balance {
+            address: address.to_string(),
+        };
+        let res: cw20::BalanceResponse = self.query(app, &query).unwrap();
+        res.balance.into()
+    }
+}

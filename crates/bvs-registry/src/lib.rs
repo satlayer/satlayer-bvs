@@ -45,12 +45,14 @@ pub mod api {
 
     pub const REGISTRY: Item<Addr> = Item::new("_registry");
 
-    /// Set the address of the registry contract in storage slot `_registry`.
-    /// `assert_can_execute` will query the registry contract at this address.
+    /// Set the address of the registry contract in the storage slot `_registry`.
+    /// [`assert_can_execute`] will query the registry contract at this address.
     pub fn set_registry_addr(store: &mut dyn Storage, addr: &Addr) -> StdResult<()> {
         REGISTRY.save(store, addr)
     }
 
+    /// Assert that the `ExecuteMsg` can be executed without restrictions.
+    /// Requires [`set_registry_addr`] to be set in the `instantiate()` message.
     pub fn assert_can_execute(
         deps: Deps,
         env: &Env,

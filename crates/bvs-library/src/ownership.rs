@@ -12,7 +12,7 @@ pub enum OwnershipError {
     Unauthorized,
 }
 
-/// Set the owner of the contract (this is internal, no checks are done)
+/// Set the [OWNER] of the contract (this is internal, no checks are done)
 pub fn set_owner(storage: &mut dyn Storage, owner: &Addr) -> Result<(), OwnershipError> {
     OWNER.save(storage, owner)?;
     Ok(())
@@ -29,7 +29,7 @@ pub fn get_owner(storage: &dyn Storage) -> StdResult<Addr> {
 /// has the omni-ability to override by migration;
 /// this logic is app-level.
 /// > 2-step ownership transfer is mostly redundant for CosmWasm contracts with the admin set.
-/// > You can override ownership with using CosmWasm migrate `entry_point`.
+/// > You can override ownership by using CosmWasm migrate `entry_point`.
 pub fn transfer_ownership(
     storage: &mut dyn Storage,
     info: MessageInfo,

@@ -9,4 +9,4 @@ This allows for easy access and editing of the documentation contextual to the s
 
 As some documentation is best co-located with the source code (README.md files),
 —we link them by using symbolic links: `ln -s ../../README.md page.md`—
-to ensure that the documentation is always up-to-date—especially when the code changes.
+to ensure that the documentation is always up to date, especially when the code changes.
