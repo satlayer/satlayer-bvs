@@ -16,6 +16,10 @@
       <sourceFolder url="file://$MODULE_DIR$/bvs-strategy-base/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-strategy-manager/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-strategy-manager/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-vault-router/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-vault-base/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-vault-bank/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-vault-cw20/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludePattern pattern=".turbo" />
       <excludePattern pattern="Cargo.lock" />

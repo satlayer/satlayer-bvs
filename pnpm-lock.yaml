@@ -60,6 +60,14 @@ importers:
 
   crates/bvs-strategy-manager: {}
 
+  crates/bvs-vault-bank: {}
+
+  crates/bvs-vault-base: {}
+
+  crates/bvs-vault-cw20: {}
+
+  crates/bvs-vault-router: {}
+
   docs:
     dependencies:
       '@tailwindcss/postcss':

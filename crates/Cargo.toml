@@ -10,6 +10,12 @@ members = [
   "bvs-delegation-manager",
   "bvs-rewards-coordinator",
   "bvs-slash-manager",
+
+  # BVS CosmWasm
+  "bvs-vault-router",
+  "bvs-vault-base",
+  "bvs-vault-bank",
+  "bvs-vault-cw20",
 ]
 
 resolver = "2"
