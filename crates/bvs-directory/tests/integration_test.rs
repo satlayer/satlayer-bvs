@@ -198,6 +198,53 @@ fn update_service_metadata_successfully() {
 }
 
 #[test]
+fn service_register_operator_successfully() {
+    let (mut app, directory, ..) = instantiate();
+
+    let service = app.api().addr_make("service/bvs");
+
+    // regsiter service
+    {
+        let register_msg = &ExecuteMsg::ServiceRegister {
+            metadata: ServiceMetadata {
+                name: Some("Service Name".to_string()),
+                uri: Some("https://service.com".to_string()),
+            },
+        };
+
+        directory
+            .execute(&mut app, &service, &register_msg)
+            .unwrap();
+    }
+
+    let operator = app.api().addr_make("operator");
+
+    // register operator
+    {
+        let register_msg = &ExecuteMsg::ServiceRegisterOperator {
+            operator: operator.to_string(),
+        };
+
+        let res = directory
+            .execute(&mut app, &service, &register_msg)
+            .unwrap();
+
+        assert_eq!(
+            res.events,
+            vec![
+                Event::new("execute").add_attribute("_contract_address", directory.addr.as_str()),
+                Event::new("wasm-RegistrationStatusUpdated")
+                    .add_attribute("_contract_address", directory.addr.as_str())
+                    .add_attribute("method", "service_register_operator")
+                    .add_attribute("operator", operator.as_str())
+                    .add_attribute("service", service.as_str())
+                    .add_attribute("status", "ServiceRegistered"),
+            ]
+        );
+    }
+}
+
+#[test]
 fn register_lifecycle_operator_first() {
     let (mut app, directory, ..) = instantiate();
 
