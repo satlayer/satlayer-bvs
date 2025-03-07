@@ -77,16 +77,6 @@ func (r *RewardsCoordinator) CreateRewardsSubmission(ctx context.Context, submis
 	return r.execute(ctx, msg)
 }
 
-func (r *RewardsCoordinator) CreateRewardsForAllSubmission(ctx context.Context, submissions []rewardscoordinator.RewardsSubmission) (*coretypes.ResultTx, error) {
-	msg := rewardscoordinator.ExecuteMsg{
-		CreateRewardsForAllSubmission: &rewardscoordinator.CreateRewardsForAllSubmission{
-			RewardsSubmissions: submissions,
-		},
-	}
-
-	return r.execute(ctx, msg)
-}
-
 func (r *RewardsCoordinator) ProcessClaim(ctx context.Context, claim rewardscoordinator.ProcessClaimClaim, recipient string) (*coretypes.ResultTx, error) {
 	msg := rewardscoordinator.ExecuteMsg{
 		ProcessClaim: &rewardscoordinator.ProcessClaim{
@@ -173,17 +163,6 @@ func (r *RewardsCoordinator) SetRouting(ctx context.Context, strategyManager str
 	msg := rewardscoordinator.ExecuteMsg{
 		SetRouting: &rewardscoordinator.SetRouting{
 			StrategyManager: strategyManager,
-		},
-	}
-
-	return r.execute(ctx, msg)
-}
-
-func (r *RewardsCoordinator) SetRewardsForAllSubmitter(ctx context.Context, submitter string, newValue bool) (*coretypes.ResultTx, error) {
-	msg := rewardscoordinator.ExecuteMsg{
-		SetRewardsForAllSubmitter: &rewardscoordinator.SetRewardsForAllSubmitter{
-			Submitter: submitter,
-			NewValue:  newValue,
 		},
 	}
 

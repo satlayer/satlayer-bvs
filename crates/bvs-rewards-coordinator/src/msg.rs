@@ -26,9 +26,6 @@ pub enum ExecuteMsg {
     CreateRewardsSubmission {
         rewards_submissions: Vec<RewardsSubmission>,
     },
-    CreateRewardsForAllSubmission {
-        rewards_submissions: Vec<RewardsSubmission>,
-    },
     ProcessClaim {
         claim: RewardsMerkleClaim,
         recipient: String,
@@ -45,10 +42,6 @@ pub enum ExecuteMsg {
     },
     SetActivationDelay {
         new_activation_delay: u32,
-    },
-    SetRewardsForAllSubmitter {
-        submitter: String,
-        new_value: bool,
     },
     SetGlobalOperatorCommission {
         new_commission_bips: u16,

@@ -51,16 +51,6 @@ func SetGlobalOperatorCommission(userKeyName string, newCommissionBips int64) {
 	fmt.Printf("Set global operator commission success. txn: %s\n", resp.Hash.String())
 }
 
-func SetRewardUpdater(userKeyName, rewardUpdater string) {
-	ctx := context.Background()
-	reward, _ := newService(userKeyName)
-	resp, err := reward.SetRewardsUpdater(ctx, rewardUpdater)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Set reward updater success. txn: %s\n", resp.Hash.String())
-}
-
 func TransferOwner(userKeyName, newOwner string) {
 	ctx := context.Background()
 	reward, _ := newService(userKeyName)
