@@ -253,11 +253,11 @@ mod reply {
                     && event.attributes[0].key == "_contract_address"
                     && event.attributes[0].value == strategy.to_string()
                 {
-                    return event
+                    event
                         .attributes
                         .iter()
                         .find(|attr| attr.key == "new_shares")
-                        .map(|attr| attr.value.parse::<Uint128>().unwrap());
+                        .map(|attr| attr.value.parse::<Uint128>().unwrap())
                 } else {
                     None
                 }
