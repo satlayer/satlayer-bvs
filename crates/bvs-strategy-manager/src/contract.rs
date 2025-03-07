@@ -10,18 +10,13 @@ use crate::{
 };
 use cosmwasm_std::{
     from_json, to_json_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo,
-    Response, StdError, StdResult, SubMsg, Uint128, WasmMsg, WasmQuery,
+    Reply, Response, StdError, StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 
 use crate::msg::delegation_manager::{self, IncreaseDelegatedShares};
 use bvs_library::ownership;
-use bvs_strategy_base::{
-    msg::ExecuteMsg as BaseExecuteMsg,
-    msg::QueryMsg as BaseQueryMsg,
-    msg::{TotalSharesResponse, UnderlyingTokenResponse},
-};
+use bvs_strategy_base::msg::ExecuteMsg as BaseExecuteMsg;
 
 const CONTRACT_NAME: &str = "BVS Strategy Manager";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -200,16 +195,16 @@ mod execute {
 }
 
 pub fn deposit_into_strategy(
-    mut deps: DepsMut,
+    deps: DepsMut,
     info: MessageInfo,
     staker: Addr,
     strategy: Addr,
-    token: Addr,
+    _token: Addr,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     state::assert_strategy_whitelisted(deps.as_ref(), &strategy)?;
 
-    let payload = to_json_binary(&(&staker, &strategy))?;
+    let payload = to_json_binary(&vec![&staker, &strategy])?;
     let submsg = SubMsg::reply_on_success(
         WasmMsg::Execute {
             contract_addr: strategy.to_string(),
@@ -227,16 +222,16 @@ pub fn deposit_into_strategy(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(mut deps: DepsMut, env: Env, msg: cosmwasm_std::Reply) -> StdResult<Response> {
+pub fn reply(mut deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     if msg.id != DEPOSIT_SUBMSG_ID {
-        return Err(StdError::generic_err("Invalid submsg id"));
+        return Err(StdError::generic_err("Invalid submsg id").into());
     }
-    let (staker, strategy): (Addr, Addr) = from_json(msg.payload)?;
+    let [staker, strategy]: [Addr; 2] = from_json(msg.payload)?;
     let events = msg.result.unwrap().events;
     let new_shares = events
         .iter()
         .find_map(|event| {
-            if event.ty == "Deposit" {
+            if event.ty == "wasm-Deposit" {
                 event
                     .attributes
                     .iter()
@@ -248,8 +243,8 @@ pub fn reply(mut deps: DepsMut, env: Env, msg: cosmwasm_std::Reply) -> StdResult
         })
         .unwrap();
 
-    add_shares_internal(deps.branch(), staker.clone(), strategy.clone(), new_shares).unwrap();
-    let delegation_manager = auth::get_delegation_manager(deps.storage).unwrap();
+    add_shares_internal(deps.branch(), staker.clone(), strategy.clone(), new_shares)?;
+    let delegation_manager = auth::get_delegation_manager(deps.storage)?;
     let increase_delegated_shares_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: delegation_manager.to_string(),
         msg: to_json_binary(&delegation_manager::ExecuteMsg::IncreaseDelegatedShares(
@@ -642,11 +637,18 @@ mod tests {
 mod tests_old {
     use super::*;
     use crate::msg::{StakerDepositListResponse, StakerStrategyListResponse, StrategyShare};
-    use bvs_strategy_base::{msg::QueryMsg::UnderlyingToken, msg::StrategyManagerResponse};
-    use cosmwasm_std::testing::{
-        message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
+    use bvs_strategy_base::{
+        msg::QueryMsg as BaseQueryMsg,
+        msg::QueryMsg::UnderlyingToken,
+        msg::StrategyManagerResponse,
+        msg::{TotalSharesResponse, UnderlyingTokenResponse},
     };
-    use cosmwasm_std::{from_json, Addr, ContractResult, OwnedDeps, SystemError, SystemResult};
+    use cosmwasm_std::{
+        from_json,
+        testing::{message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage},
+        Addr, ContractResult, OwnedDeps, SystemError, SystemResult, WasmQuery,
+    };
+    use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 
     #[test]
     fn test_instantiate() {

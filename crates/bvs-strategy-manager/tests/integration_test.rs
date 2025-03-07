@@ -310,7 +310,7 @@ fn test_deposit_withdraw() {
 
     token.fund(&mut app, &staker, 1_000_000);
 
-    token.increase_allowance(&mut app, &staker, &strategy_manager.addr(), 1000);
+    token.increase_allowance(&mut app, &staker, &strategy_base.addr(), 1000);
     let res = strategy_manager
         .execute(
             &mut app,
@@ -417,7 +417,7 @@ fn test_add_remove_shares() {
     }
 
     token.fund(&mut app, &staker, 1000);
-    token.increase_allowance(&mut app, &staker, &strategy_manager.addr(), 1000);
+    token.increase_allowance(&mut app, &staker, &strategy_base.addr(), 1000);
 
     let res = strategy_manager
         .execute(

@@ -14,11 +14,14 @@ pub struct StrategyManagerContract {
 
 impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for StrategyManagerContract {
     fn wrapper() -> Box<dyn Contract<Empty>> {
-        Box::new(ContractWrapper::new(
-            crate::contract::execute,
-            crate::contract::instantiate,
-            crate::contract::query,
-        ))
+        Box::new(
+            ContractWrapper::new(
+                crate::contract::execute,
+                crate::contract::instantiate,
+                crate::contract::query,
+            )
+            .with_reply(crate::contract::reply),
+        )
     }
 
     fn default_init(app: &mut App, _env: &Env) -> InstantiateMsg {
