@@ -154,21 +154,21 @@ func (suite *TestSuite) DeployBvsContracts() {
 		BabylonContainer: suite.Babylond,
 	}
 
-	// use temp address for delegation manager + registry
+	// use temp address for delegation manager + pauser
 
-	registry := deployer.DeployRegistry(nil)
+	pauser := deployer.DeployPauser(nil)
 
-	directoryContract := deployer.DeployDirectory(registry.Address)
+	directoryContract := deployer.DeployDirectory(pauser.Address)
 	suite.DirectoryApi = api.NewDirectory(suite.ChainIO, directoryContract.Address)
 
-	strategyManagerContract := deployer.DeployStrategyManager(registry.Address)
+	strategyManagerContract := deployer.DeployStrategyManager(pauser.Address)
 	suite.StrategyManagerApi = api.NewStrategyManager(suite.ChainIO)
 	suite.StrategyManagerApi.BindClient(strategyManagerContract.Address)
 
-	delegationManagerContract := deployer.DeployDelegationManager(registry.Address, 100, []string{tempAddress.String()}, []int64{50})
+	delegationManagerContract := deployer.DeployDelegationManager(pauser.Address, 100, []string{tempAddress.String()}, []int64{50})
 	suite.DelegationManagerApi = api.NewDelegationManager(suite.ChainIO, delegationManagerContract.Address)
 
-	slashManagerContract := deployer.DeploySlashManager(registry.Address)
+	slashManagerContract := deployer.DeploySlashManager(pauser.Address)
 	suite.SlashManagerApi = api.NewSlashManager(suite.ChainIO)
 	suite.SlashManagerApi.BindClient(slashManagerContract.Address)
 
@@ -177,7 +177,7 @@ func (suite *TestSuite) DeployBvsContracts() {
 	blockTime := status.SyncInfo.LatestBlockTime.Second()
 
 	rewardsCoordinatorContract := deployer.DeployRewardsCoordinator(
-		registry.Address,
+		pauser.Address,
 		60,     // 1 minute
 		86_400, // 1 day
 		int64(blockTime)/86_400*86_400,
@@ -205,7 +205,7 @@ func (suite *TestSuite) DeployBvsContracts() {
 	})
 	suite.cw20Token = token
 
-	strategyBaseContract := deployer.DeployStrategyBase(registry.Address, token.Address, strategyManagerContract.Address)
+	strategyBaseContract := deployer.DeployStrategyBase(pauser.Address, token.Address, strategyManagerContract.Address)
 	suite.StrategyBaseApi = api.NewStrategyBase(suite.ChainIO)
 	suite.StrategyBaseApi.BindClient(strategyBaseContract.Address)
 

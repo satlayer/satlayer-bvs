@@ -3,7 +3,7 @@ use bvs_directory::msg::{ExecuteMsg, QueryMsg, ServiceMetadata, StatusResponse};
 use bvs_directory::testing::DirectoryContract;
 use bvs_directory::ContractError;
 use bvs_library::testing::TestingContract;
-use bvs_pauser::api::RegistryError;
+use bvs_pauser::api::PauserError;
 use bvs_pauser::testing::PauserContract;
 use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::Event;
@@ -103,7 +103,7 @@ fn register_service_but_paused() {
 
     assert_eq!(
         err.root_cause().to_string(),
-        ContractError::Registry(RegistryError::IsPaused).to_string()
+        ContractError::Pauser(PauserError::IsPaused).to_string()
     );
 }
 

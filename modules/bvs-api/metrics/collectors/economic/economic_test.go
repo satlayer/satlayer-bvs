@@ -20,11 +20,11 @@ func TestEconomicCollector(t *testing.T) {
 	logging := logger.NewMockELKLogger()
 
 	deployer := &bvs.Deployer{BabylonContainer: container}
-	registry := deployer.DeployRegistry(nil)
+	pauser := deployer.DeployPauser(nil)
 
 	tAddr := container.GenerateAddress("test-address").String()
 	delegationManager := deployer.DeployDelegationManager(
-		registry.Address, 100, []string{tAddr}, []int64{50},
+		pauser.Address, 100, []string{tAddr}, []int64{50},
 	)
 
 	delegation := api.NewDelegationManager(chainIO, delegationManager.Address)

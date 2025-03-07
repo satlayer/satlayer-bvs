@@ -1,5 +1,5 @@
 use bvs_library::testing::{Cw20TokenContract, TestingContract};
-use bvs_pauser::api::RegistryError;
+use bvs_pauser::api::PauserError;
 use bvs_pauser::testing::PauserContract;
 use bvs_rewards_coordinator::merkle::{
     calculate_earner_leaf_hash, calculate_rewards_submission_hash, calculate_token_leaf_hash,
@@ -1125,7 +1125,7 @@ fn set_activation_delay_but_paused() {
         .unwrap_err();
     assert_eq!(
         err.root_cause().to_string(),
-        ContractError::Registry(RegistryError::IsPaused).to_string()
+        ContractError::Pauser(PauserError::IsPaused).to_string()
     );
 }
 
@@ -1206,6 +1206,6 @@ fn set_rewards_updater_but_paused() {
         .unwrap_err();
     assert_eq!(
         err.root_cause().to_string(),
-        ContractError::Registry(RegistryError::IsPaused).to_string()
+        ContractError::Pauser(PauserError::IsPaused).to_string()
     );
 }

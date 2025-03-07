@@ -1,4 +1,4 @@
-# BVS Registry
+# BVS Pauser
 
 This new contract provides central state information required by other contracts.
 Allowing one centralized contract to manage the operational state of the ecosystem.
@@ -35,13 +35,13 @@ pub enum QueryMsg {
 For downstream contracts,
 you don't have to manually implement query functions to check if a contract is paused or if a sender can execute a method.
 During the instantiation of your contract,
-you can call the `set_pauser` function to set the address of the registry contract.
+you can call the `set_pauser` function to set the address of the pauser contract.
 
 ```rust
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(/*...*/) -> Result<Response, ContractError> {
     let pauser = deps.api.addr_validate(&msg.pauser)?;
-    bvs_pauser::api::set_registry_addr(deps.storage, &registry)?;
+    bvs_pauser::api::set_pauser(deps.storage, &pauser)?;
 }
 ```
 

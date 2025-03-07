@@ -41,12 +41,12 @@ crates/
 For integration tests, downstream crates can implement `TestingContract` for execute/query/init/defaults functionality.
 
 ```rust
-pub struct RegistryContract {
+pub struct PauserContract {
     pub addr: Addr,
     pub init: InstantiateMsg,
 }
 
-impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for RegistryContract {
+impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for PauserContract {
     fn wrapper() -> Box<dyn Contract<Empty>> {
         Box::new(ContractWrapper::new(
             crate::contract::execute,

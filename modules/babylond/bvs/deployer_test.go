@@ -29,12 +29,12 @@ func TestBvs(t *testing.T) {
 }
 
 func (s *BvsTestSuite) Test_DeployRegistry() {
-	contract := s.Deployer.DeployRegistry(nil)
+	contract := s.Deployer.DeployPauser(nil)
 	s.NotEmpty(contract.Address)
 }
 
 func (s *BvsTestSuite) Test_DeployDirectory() {
-	registry := s.Deployer.DeployRegistry(nil)
-	contract := s.Deployer.DeployDirectory(registry.Address)
+	pauser := s.Deployer.DeployPauser(nil)
+	contract := s.Deployer.DeployDirectory(pauser.Address)
 	s.NotEmpty(contract.Address)
 }

@@ -19,7 +19,7 @@ pub mod api {
 
     /// Errors associated with the BVS Pauser.
     #[derive(thiserror::Error, Debug, PartialEq)]
-    pub enum RegistryError {
+    pub enum PauserError {
         #[error("{0}")]
         Std(#[from] StdError),
 
@@ -31,12 +31,12 @@ pub mod api {
     }
 
     impl CanExecuteResponse {
-        pub fn assert(&self) -> Result<(), RegistryError> {
+        pub fn assert(&self) -> Result<(), PauserError> {
             match self.0 {
                 FLAG_CAN_EXECUTE => Ok(()),
-                FLAG_PAUSED => Err(RegistryError::IsPaused),
-                FLAG_UNAUTHORIZED => Err(RegistryError::Unauthorized),
-                _ => Err(RegistryError::Std(StdError::generic_err(
+                FLAG_PAUSED => Err(PauserError::IsPaused),
+                FLAG_UNAUTHORIZED => Err(PauserError::Unauthorized),
+                _ => Err(PauserError::Std(StdError::generic_err(
                     "Unknown flag in CanExecuteResponse",
                 ))),
             }
@@ -58,7 +58,7 @@ pub mod api {
         env: &Env,
         info: &MessageInfo,
         msg: &dyn ToString,
-    ) -> Result<(), RegistryError> {
+    ) -> Result<(), PauserError> {
         let addr = PAUSER.load(deps.storage)?;
         let method = msg.to_string();
 

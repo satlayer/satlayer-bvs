@@ -105,8 +105,8 @@ func (r *StakerStrategySharesResponse) Marshal() ([]byte, error) {
 }
 
 type InstantiateMsg struct {
-	Owner    string `json:"owner"`
-	Registry string `json:"registry"`
+	Owner  string `json:"owner"`
+	Pauser string `json:"pauser"`
 }
 
 type ExecuteMsg struct {

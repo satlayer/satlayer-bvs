@@ -143,7 +143,7 @@ type InstantiateMsg struct {
 	MaxRetroactiveLength       int64  `json:"max_retroactive_length"`
 	MaxRewardsDuration         int64  `json:"max_rewards_duration"`
 	Owner                      string `json:"owner"`
-	Registry                   string `json:"registry"`
+	Pauser                     string `json:"pauser"`
 }
 
 type ExecuteMsg struct {

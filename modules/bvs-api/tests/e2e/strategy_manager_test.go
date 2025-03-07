@@ -48,8 +48,8 @@ func (suite *strategyManagerTestSuite) SetupSuite() {
 	suite.chainIO = suite.container.NewChainIO("../.babylon")
 
 	deployer := &bvs.Deployer{BabylonContainer: suite.container}
-	registry := deployer.DeployRegistry(nil)
-	strategyManager := deployer.DeployStrategyManager(registry.Address)
+	pauser := deployer.DeployPauser(nil)
+	strategyManager := deployer.DeployStrategyManager(pauser.Address)
 
 	suite.managerAddr = strategyManager.Address
 
