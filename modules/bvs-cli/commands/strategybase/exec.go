@@ -21,6 +21,7 @@ func newService(keyName string) (*api.StrategyBase, io.ChainIO) {
 	return strategyBase, chainIO
 }
 
+// Deposit TODO: Deprecated (only called by strategy_manager)
 func Deposit(userKeyName string, amount uint64) {
 	strategyBase, _ := newService(userKeyName)
 	resp, err := strategyBase.Deposit(context.Background(), amount)
@@ -30,6 +31,7 @@ func Deposit(userKeyName string, amount uint64) {
 	fmt.Printf("Deposit success. txn: %s\n", resp.Hash)
 }
 
+// Withdraw TODO: Deprecated (only called by strategy_manager)
 func Withdraw(userKeyName, recipient string, amount string) {
 	strategyBase, _ := newService(userKeyName)
 	resp, err := strategyBase.Withdraw(context.Background(), recipient, amount)
