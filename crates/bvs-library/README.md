@@ -30,7 +30,7 @@ pub trait TestingContract<IM, EM, QM> {
 ```txt
 crates/
 ├── bvs-library/              <-- You are here
-├── bvs-registry/
+├── bvs-pauser/
 │   └── src/
 │       └── testing.rs        <-- put here with `#![cfg(not(target_arch = "wasm32"))]`
 ├── bvs-rewards-coordinator/

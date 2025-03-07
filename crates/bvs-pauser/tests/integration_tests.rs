@@ -1,16 +1,14 @@
 use bvs_library::{ownership::OwnershipError, testing::TestingContract};
-use bvs_registry::msg::{
-    CanExecuteResponse, ExecuteMsg, InstantiateMsg, IsPausedResponse, QueryMsg,
-};
-use bvs_registry::testing::RegistryContract;
+use bvs_pauser::msg::{CanExecuteResponse, ExecuteMsg, InstantiateMsg, IsPausedResponse, QueryMsg};
+use bvs_pauser::testing::PauserContract;
 use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::Event;
 use cw_multi_test::App;
 
-fn instantiate(msg: Option<InstantiateMsg>) -> (App, RegistryContract) {
+fn instantiate(msg: Option<InstantiateMsg>) -> (App, PauserContract) {
     let mut app = App::default();
     let env = mock_env();
-    let contract = RegistryContract::new(&mut app, &env, msg);
+    let contract = PauserContract::new(&mut app, &env, msg);
     (app, contract)
 }
 
@@ -98,7 +96,7 @@ fn unauthorized_pause() {
 
         assert_eq!(
             err.root_cause().to_string(),
-            bvs_registry::ContractError::Unauthorized {}.to_string()
+            bvs_pauser::ContractError::Unauthorized {}.to_string()
         );
     }
 
@@ -134,7 +132,7 @@ fn unauthorized_unpause() {
 
         assert_eq!(
             err.root_cause().to_string(),
-            bvs_registry::ContractError::Unauthorized {}.to_string()
+            bvs_pauser::ContractError::Unauthorized {}.to_string()
         );
     }
 
@@ -191,6 +189,6 @@ fn transfer_ownership_failed() {
 
     assert_eq!(
         err.root_cause().to_string(),
-        bvs_registry::ContractError::Ownership(OwnershipError::Unauthorized).to_string()
+        bvs_pauser::ContractError::Ownership(OwnershipError::Unauthorized).to_string()
     );
 }

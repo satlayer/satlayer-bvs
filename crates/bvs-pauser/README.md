@@ -35,13 +35,13 @@ pub enum QueryMsg {
 For downstream contracts,
 you don't have to manually implement query functions to check if a contract is paused or if a sender can execute a method.
 During the instantiation of your contract,
-you can call the `set_registry_addr` function to set the address of the registry contract.
+you can call the `set_pauser` function to set the address of the registry contract.
 
 ```rust
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(/*...*/) -> Result<Response, ContractError> {
-    let registry = deps.api.addr_validate(&msg.registry)?;
-    bvs_registry::api::set_registry_addr(deps.storage, &registry)?;
+    let pauser = deps.api.addr_validate(&msg.pauser)?;
+    bvs_pauser::api::set_registry_addr(deps.storage, &registry)?;
 }
 ```
 
@@ -51,6 +51,6 @@ you can call the `assert_can_execute` function to check if the sender can execut
 ```rust
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(/*...*/) -> Result<Response, ContractError> {
-    bvs_registry::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
+    bvs_pauser::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
 }
 ```

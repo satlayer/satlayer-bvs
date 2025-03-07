@@ -38,8 +38,8 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let registry_addr = deps.api.addr_validate(&msg.registry)?;
-    bvs_registry::api::set_registry_addr(deps.storage, &registry_addr)?;
+    let pauser = deps.api.addr_validate(&msg.pauser)?;
+    bvs_pauser::api::set_pauser(deps.storage, &pauser)?;
 
     let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::set_owner(deps.storage, &owner)?;
@@ -56,7 +56,7 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    bvs_registry::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
+    bvs_pauser::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
 
     match msg {
         ExecuteMsg::SubmitSlashRequest {
@@ -578,14 +578,14 @@ mod tests {
         let env = mock_env();
 
         let initial_owner = deps.api.addr_make("creator");
-        let registry = deps.api.addr_make("registry");
+        let pauser = deps.api.addr_make("pauser");
         let strategy_manager = deps.api.addr_make("strategy_manager");
 
         let info = message_info(&initial_owner, &[]);
 
         let msg = InstantiateMsg {
             owner: initial_owner.to_string(),
-            registry: registry.to_string(),
+            pauser: pauser.to_string(),
         };
 
         let response = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
@@ -605,7 +605,7 @@ mod tests {
 
         let invalid_msg = InstantiateMsg {
             owner: "invalid_address".to_string(),
-            registry: registry.to_string(),
+            pauser: pauser.to_string(),
         };
 
         let result = instantiate(
@@ -626,12 +626,12 @@ mod tests {
         let env = mock_env();
 
         let initial_owner = deps.api.addr_make("creator");
-        let registry = deps.api.addr_make("registry");
+        let pauser = deps.api.addr_make("pauser");
         let info = message_info(&initial_owner, &[]);
 
         let msg = InstantiateMsg {
             owner: initial_owner.to_string(),
-            registry: registry.to_string(),
+            pauser: pauser.to_string(),
         };
 
         instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();

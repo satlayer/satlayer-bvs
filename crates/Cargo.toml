@@ -1,9 +1,6 @@
 [workspace]
 members = [
-  # CosmWasm Library
-  "bvs-library",
   # CosmWasm Contracts
-  "bvs-registry",
   "bvs-strategy-base",
   "bvs-strategy-manager",
   "bvs-directory",
@@ -11,7 +8,11 @@ members = [
   "bvs-rewards-coordinator",
   "bvs-slash-manager",
 
+  # CosmWasm Library
+  "bvs-library",
+
   # BVS CosmWasm
+  "bvs-pauser",
   "bvs-vault-router",
   "bvs-vault-base",
   "bvs-vault-bank",
@@ -60,7 +61,8 @@ rs_merkle = "=1.4"
 
 # CosmWasm Libraries & Contracts
 bvs-library = { path = "./bvs-library" }
-bvs-registry = { path = "./bvs-registry", features = ["library"] }
+bvs-pauser = { path = "./bvs-pauser", features = ["library"] }
+
 bvs-delegation-manager = { path = "./bvs-delegation-manager", features = ["library"] }
 bvs-directory = { path = "./bvs-directory", features = ["library"] }
 bvs-rewards-coordinator = { path = "./bvs-rewards-coordinator", features = ["library"] }

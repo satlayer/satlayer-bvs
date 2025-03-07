@@ -56,7 +56,7 @@ func (d *Deployer) DeployRegistry(
 		}
 	}
 
-	return deployCrate(d, "bvs-registry", *initMsg, "BVS Registry")
+	return deployCrate(d, "bvs-pauser", *initMsg, "BVS Registry")
 }
 
 func (d *Deployer) DeploySlashManager(

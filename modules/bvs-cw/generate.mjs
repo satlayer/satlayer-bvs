@@ -35,8 +35,8 @@ async function generate(schema) {
   await writeFile(join(name, "schema.go"), lines.join("\n"));
 }
 
-import bvs_registry from "@satlayer/bvs-registry/schema/bvs-registry.json" with { type: "json" };
-await generate(bvs_registry);
+import bvs_pauser from "@satlayer/bvs-pauser/schema/bvs-pauser.json" with { type: "json" };
+await generate(bvs_pauser);
 
 import bvs_strategy_base from "@satlayer/bvs-strategy-base/schema/bvs-strategy-base.json" with { type: "json" };
 import bvs_strategy_manager from "@satlayer/bvs-strategy-manager/schema/bvs-strategy-manager.json" with { type: "json" };

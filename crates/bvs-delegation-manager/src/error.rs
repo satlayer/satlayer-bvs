@@ -7,7 +7,7 @@ pub enum ContractError {
     Std(#[from] StdError),
 
     #[error("{0}")]
-    Registry(#[from] bvs_registry::api::RegistryError),
+    Registry(#[from] bvs_pauser::api::RegistryError),
 
     #[error("{0}")]
     Ownership(#[from] bvs_library::ownership::OwnershipError),

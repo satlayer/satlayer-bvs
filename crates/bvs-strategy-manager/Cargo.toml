@@ -29,7 +29,7 @@ schemars = { workspace = true }
 cw-multi-test = { workspace = true, optional = true }
 
 bvs-library = { workspace = true }
-bvs-registry = { workspace = true }
+bvs-pauser = { workspace = true }
 bvs-strategy-base = { workspace = true }
 
 [target."cfg(not(target_arch = \"wasm32\"))".dependencies]

@@ -23,11 +23,11 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for DirectoryContract
 
     fn default_init(app: &mut App, _: &Env) -> InstantiateMsg {
         let owner = app.api().addr_make("owner");
-        let registry = Self::get_contract_addr(app, "registry").to_string();
+        let pauser = Self::get_contract_addr(app, "pauser").to_string();
 
         InstantiateMsg {
             owner: owner.to_string(),
-            registry,
+            pauser,
         }
     }
 

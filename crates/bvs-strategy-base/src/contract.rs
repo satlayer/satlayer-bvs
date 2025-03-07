@@ -27,8 +27,8 @@ pub fn instantiate(
     let strategy_manager = deps.api.addr_validate(&msg.strategy_manager)?;
     auth::set_strategy_manager(deps.storage, &strategy_manager)?;
 
-    let registry = deps.api.addr_validate(&msg.registry)?;
-    bvs_registry::api::set_registry_addr(deps.storage, &registry)?;
+    let pauser = deps.api.addr_validate(&msg.pauser)?;
+    bvs_pauser::api::set_pauser(deps.storage, &pauser)?;
 
     let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::set_owner(deps.storage, &owner)?;
@@ -52,7 +52,7 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    bvs_registry::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
+    bvs_pauser::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
 
     match msg {
         ExecuteMsg::Deposit { sender, amount } => {
@@ -274,13 +274,13 @@ mod tests {
         let env = mock_env();
 
         let owner = deps.api.addr_make("owner");
-        let registry = deps.api.addr_make("registry");
+        let pauser = deps.api.addr_make("pauser");
         let strategy_manager = deps.api.addr_make("strategy_manager");
         let token = deps.api.addr_make("token");
 
         let msg = InstantiateMsg {
             owner: owner.to_string(),
-            registry: registry.to_string(),
+            pauser: pauser.to_string(),
             strategy_manager: strategy_manager.to_string(),
             underlying_token: token.to_string(),
         };

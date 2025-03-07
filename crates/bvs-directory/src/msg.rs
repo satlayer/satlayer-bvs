@@ -4,11 +4,11 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: String,
-    pub registry: String,
+    pub pauser: String,
 }
 
 #[cw_serde]
-#[derive(bvs_registry::api::Display)]
+#[derive(bvs_pauser::api::Display)]
 pub enum ExecuteMsg {
     ServiceRegister {
         metadata: ServiceMetadata,
