@@ -21,9 +21,6 @@ pub enum ContractError {
     #[error("Invalid strategy: {msg}")]
     InvalidStrategy { msg: String },
 
-    #[error("Zero: {msg}")]
-    Zero { msg: String },
-
     #[error("StrategyManager: invalid shares")]
     InvalidShares {},
 
@@ -32,19 +29,4 @@ pub enum ContractError {
 
     #[error("StrategyManager.remove_strategy_from_staker_strategy_list: strategy not found")]
     StrategyNotFound {},
-
-    #[error("StrategyManager.calculate_new_shares: Overflow occurred during calculation")]
-    Overflow,
-
-    #[error("StrategyManager.calculate_new_shares: Underflow occurred during calculation")]
-    Underflow,
-
-    #[error("StrategyManager.calculate_new_shares: Division by zero")]
-    DivideByZero,
-}
-
-impl ContractError {
-    pub fn zero(msg: impl Into<String>) -> Self {
-        ContractError::Zero { msg: msg.into() }
-    }
 }
