@@ -1,11 +1,10 @@
 use bvs_delegation_manager::testing::DelegationManagerContract;
 use bvs_library::testing::TestingContract;
 use bvs_registry::testing::RegistryContract;
-use bvs_strategy_base::msg::InstantiateMsg as StrategyBaseInstantiateMsg;
+use bvs_strategy_base::msg::{InstantiateMsg as StrategyBaseInstantiateMsg, TotalSharesResponse};
 use bvs_strategy_base::testing::{Cw20TokenContract, StrategyBaseContract};
-use bvs_strategy_manager::msg::StrategyShare;
+use bvs_strategy_manager::msg::{StakerDepositListResponse, StrategyShare};
 use bvs_strategy_manager::{
-    msg,
     msg::{ExecuteMsg, IsStrategyWhitelistedResponse, QueryMsg},
     testing::StrategyManagerContract,
     ContractError,
@@ -330,26 +329,24 @@ fn test_deposit_withdraw() {
     }
 
     token.fund(app, &staker, 1_000_000);
-
     token.increase_allowance(app, &staker, &strategy_base.addr(), 1000);
+    let deposit_msg = ExecuteMsg::DepositIntoStrategy {
+        amount: 10u128.into(),
+        strategy: strategy_base.addr().to_string(),
+        token: token.addr().to_string(),
+    };
+
     let res = strategy_manager
-        .execute(
-            app,
-            &staker,
-            &ExecuteMsg::DepositIntoStrategy {
-                amount: 10u128.into(),
-                strategy: strategy_base.addr().to_string(),
-                token: token.addr().to_string(),
-            },
-        )
+        .execute(app, &staker, &deposit_msg)
         .unwrap();
 
-    let event = Event::new("wasm-OperatorSharesIncreased");
+    assert_eq!(
+        res.has_event(&Event::new("wasm-OperatorSharesIncreased")),
+        true
+    );
 
-    assert_eq!(res.has_event(&event), true);
-
-    let query_res = strategy_manager
-        .query::<msg::StakerDepositListResponse>(
+    let StakerDepositListResponse(shares) = strategy_manager
+        .query(
             &app,
             &QueryMsg::StakerDepositList {
                 staker: staker.to_string(),
@@ -358,7 +355,7 @@ fn test_deposit_withdraw() {
         .unwrap();
 
     assert_eq!(
-        query_res.0,
+        shares,
         vec![StrategyShare {
             strategy: strategy_base.addr().clone(),
             shares: Uint128::new(10),
@@ -377,8 +374,8 @@ fn test_deposit_withdraw() {
         )
         .unwrap();
 
-    let query_res = strategy_manager
-        .query::<msg::StakerDepositListResponse>(
+    let StakerDepositListResponse(shares) = strategy_manager
+        .query::<StakerDepositListResponse>(
             &app,
             &QueryMsg::StakerDepositList {
                 staker: staker.to_string(),
@@ -387,21 +384,21 @@ fn test_deposit_withdraw() {
         .unwrap();
 
     assert_eq!(
-        query_res.0,
+        shares,
         vec![StrategyShare {
             strategy: strategy_base.addr().clone(),
             shares: Uint128::new(5),
         }]
     );
 
-    let query_res = strategy_base
-        .query::<bvs_strategy_base::msg::TotalSharesResponse>(
-            &app,
-            &bvs_strategy_base::msg::QueryMsg::TotalShares {},
-        )
+    let TotalSharesResponse(shares) = strategy_base
+        .query(&app, &bvs_strategy_base::msg::QueryMsg::TotalShares {})
         .unwrap();
 
-    assert_eq!(query_res.0, Uint128::new(4));
+    assert_eq!(shares, Uint128::new(5));
+
+    let balance = token.balance(app, &staker);
+    assert_eq!(balance, 999_995);
 }
 
 #[test]
@@ -451,7 +448,7 @@ fn test_add_remove_shares() {
             app,
             &staker,
             &ExecuteMsg::DepositIntoStrategy {
-                amount: 10u128.into(),
+                amount: 1000u128.into(),
                 strategy: strategy_base.addr().to_string(),
                 token: token.addr().to_string(),
             },
@@ -461,8 +458,8 @@ fn test_add_remove_shares() {
     let event = Event::new("wasm-OperatorSharesIncreased");
     assert_eq!(res.has_event(&event), true);
 
-    let query_res = strategy_manager
-        .query::<msg::StakerDepositListResponse>(
+    let StakerDepositListResponse(strategies) = strategy_manager
+        .query(
             &app,
             &QueryMsg::StakerDepositList {
                 staker: staker.to_string(),
@@ -471,17 +468,15 @@ fn test_add_remove_shares() {
         .unwrap();
 
     assert_eq!(
-        query_res.0,
+        strategies,
         vec![StrategyShare {
             strategy: strategy_base.addr().clone(),
-            shares: Uint128::new(10),
+            shares: Uint128::new(1000),
         }]
     );
 
-    // according to the current implementation, the addshres function will add the shares to the
-    // existing shares but does not add to the total shares of the strategy
-    // I'm not particularly sure whether this is the intended behaviour
-    // Same goes for the remove shares function
+    // Called by Delegation Manager: to manage and add back shares post-withdrawal.
+    // This will cause shares imbalance
     let _res = strategy_manager
         .execute(
             app,
@@ -494,9 +489,8 @@ fn test_add_remove_shares() {
         )
         .unwrap();
 
-    // let's check the shares
-    let query_res = strategy_manager
-        .query::<msg::StakerDepositListResponse>(
+    let StakerDepositListResponse(strategies) = strategy_manager
+        .query(
             &app,
             &QueryMsg::StakerDepositList {
                 staker: staker.to_string(),
@@ -505,38 +499,35 @@ fn test_add_remove_shares() {
         .unwrap();
 
     assert_eq!(
-        query_res.0,
+        strategies,
         vec![StrategyShare {
             strategy: strategy_base.addr().clone(),
-            shares: Uint128::new(35),
+            shares: Uint128::new(1025),
         }]
     );
 
-    let query_res = strategy_base
-        .query::<bvs_strategy_base::msg::TotalSharesResponse>(
-            &app,
-            &bvs_strategy_base::msg::QueryMsg::TotalShares {},
-        )
+    let TotalSharesResponse(total_shares) = strategy_base
+        .query(&app, &bvs_strategy_base::msg::QueryMsg::TotalShares {})
         .unwrap();
 
-    assert_eq!(query_res.0, Uint128::new(9));
+    assert_eq!(total_shares, Uint128::new(1000));
 
-    // remove shares
-    let _res = strategy_manager
+    // Remove some shares. Only delegation_manager can remove shares
+    strategy_manager
         .execute(
             app,
             &delegation_manager.addr,
             &ExecuteMsg::RemoveShares {
                 staker: staker.to_string(),
                 strategy: strategy_base.addr().to_string(),
-                shares: 5u128.into(),
+                shares: 500u128.into(),
             },
         )
         .unwrap();
 
     // confirm that the shares have been removed
-    let query_res = strategy_manager
-        .query::<msg::StakerDepositListResponse>(
+    let StakerDepositListResponse(strategies) = strategy_manager
+        .query(
             &app,
             &QueryMsg::StakerDepositList {
                 staker: staker.to_string(),
@@ -545,10 +536,10 @@ fn test_add_remove_shares() {
         .unwrap();
 
     assert_eq!(
-        query_res.0,
+        strategies,
         vec![StrategyShare {
             strategy: strategy_base.addr().clone(),
-            shares: Uint128::new(30),
+            shares: Uint128::new(525),
         }]
     );
 }
