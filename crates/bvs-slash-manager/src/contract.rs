@@ -549,8 +549,8 @@ fn query_calculate_slash_hash(
 }
 
 fn only_slasher(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
-    let is_slasher = SLASHER.load(deps.storage, &info.sender)?;
-    if !is_slasher {
+    let is_slasher = SLASHER.may_load(deps.storage, &info.sender).unwrap_or(None);
+    if is_slasher != Some(true) {
         return Err(ContractError::Unauthorized {});
     }
     Ok(())
@@ -1412,6 +1412,17 @@ mod tests {
                 shares
             );
         }
+    }
+
+    #[test]
+    fn test_only_slasher_error() {
+        let addr = Addr::unchecked("addr");
+        let unauthorized_info = message_info(&addr, &[]);
+        let (deps, _, _) = instantiate_contract();
+
+        let res = only_slasher(deps.as_ref(), &unauthorized_info);
+
+        assert_eq!(res.unwrap_err(), ContractError::Unauthorized {});
     }
 
     #[test]
