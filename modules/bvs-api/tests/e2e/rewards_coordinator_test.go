@@ -47,7 +47,7 @@ func (suite *rewardsTestSuite) SetupSuite() {
 	suite.caller = "bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf"
 
 	deployer := &bvs.Deployer{BabylonContainer: container}
-	registry := deployer.DeployRegistry(nil)
+	pauser := deployer.DeployPauser(nil)
 
 	token := cw20.DeployCw20(container, cw20.InstantiateMsg{
 		Decimals: 6,
@@ -69,9 +69,9 @@ func (suite *rewardsTestSuite) SetupSuite() {
 	suite.Require().NoError(err)
 	blockTime := status.SyncInfo.LatestBlockTime.Second()
 
-	strategyManager := deployer.DeployStrategyManager(registry.Address)
+	strategyManager := deployer.DeployStrategyManager(pauser.Address)
 	rewardsCoordinator := deployer.DeployRewardsCoordinator(
-		registry.Address,
+		pauser.Address,
 		// Test Vector taken from: bvs-rewards-coordinator/src/contract.rs
 		60,     // 1 minute
 		86_400, // 1 day

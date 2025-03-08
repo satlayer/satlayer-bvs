@@ -22,13 +22,13 @@ pub fn instantiate(
     let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::set_owner(deps.storage, &owner)?;
 
-    let registry = deps.api.addr_validate(&msg.registry)?;
-    bvs_registry::api::set_registry_addr(deps.storage, &registry)?;
+    let pauser = deps.api.addr_validate(&msg.pauser)?;
+    bvs_pauser::api::set_pauser(deps.storage, &pauser)?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("owner", msg.owner)
-        .add_attribute("registry", registry))
+        .add_attribute("pauser", pauser))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

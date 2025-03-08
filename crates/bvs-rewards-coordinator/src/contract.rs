@@ -48,7 +48,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    bvs_registry::api::set_registry_addr(deps.storage, &deps.api.addr_validate(&msg.registry)?)?;
+    bvs_pauser::api::set_pauser(deps.storage, &deps.api.addr_validate(&msg.pauser)?)?;
 
     let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::set_owner(deps.storage, &owner)?;
@@ -82,7 +82,7 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    bvs_registry::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
+    bvs_pauser::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
 
     match msg {
         ExecuteMsg::CreateRewardsSubmission {
@@ -779,7 +779,7 @@ mod tests {
         let info = message_info(&Addr::unchecked("creator"), &[]);
 
         let owner = deps.api.addr_make("owner").to_string();
-        let registry = deps.api.addr_make("registry").to_string();
+        let pauser = deps.api.addr_make("pauser").to_string();
 
         let msg = InstantiateMsg {
             owner: owner.clone(),
@@ -789,7 +789,7 @@ mod tests {
             max_future_length: 10 * 86_400,       // 10 days
             genesis_rewards_timestamp: env.block.time.seconds() / 86_400 * 86_400,
             activation_delay: 60,
-            registry,
+            pauser,
         };
 
         let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
@@ -837,7 +837,7 @@ mod tests {
         let env = mock_env();
 
         let owner = deps.api.addr_make("owner").to_string();
-        let registry = deps.api.addr_make("registry").to_string();
+        let pauser = deps.api.addr_make("pauser").to_string();
 
         let delegation_manager = deps.api.addr_make("delegation_manager").to_string();
         let strategy_manager = deps.api.addr_make("strategy_manager").to_string();
@@ -857,7 +857,7 @@ mod tests {
             max_future_length: 10 * 86_400,       // 10 days
             genesis_rewards_timestamp: env.block.time.seconds() / 86_400 * 86_400,
             activation_delay: 60, // 1 minute
-            registry,
+            pauser,
         };
 
         instantiate(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();
@@ -1849,13 +1849,13 @@ mod tests {
         let (mut deps, env, _info) = setup_test_environment();
 
         let owner = deps.api.addr_make("owner");
-        let registry = deps.api.addr_make("registry").to_string();
+        let pauser = deps.api.addr_make("pauser").to_string();
 
         let owner_info = message_info(&owner, &[]);
 
         let msg = InstantiateMsg {
             owner: owner.to_string(),
-            registry,
+            pauser,
             calculation_interval_seconds: 86_400, // 1 day
             max_rewards_duration: 30 * 86_400,    // 30 days
             max_retroactive_length: 5 * 86_400,   // 5 days

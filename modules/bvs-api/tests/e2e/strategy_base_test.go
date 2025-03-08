@@ -48,9 +48,9 @@ func (suite *strategyBaseTestSuite) SetupSuite() {
 	})
 
 	deployer := &bvs.Deployer{BabylonContainer: container}
-	registry := deployer.DeployRegistry(nil)
+	pauser := deployer.DeployPauser(nil)
 	strategyBase := deployer.DeployStrategyBase(
-		registry.Address,
+		pauser.Address,
 		token.Address,
 		"bbn1mju0w4qagjcgtrgepr796zmg083qurq9sngy0eyxm8wzf78cjt3qzfq7qy",
 	)

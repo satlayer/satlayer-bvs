@@ -3,8 +3,8 @@ use bvs_directory::msg::{ExecuteMsg, QueryMsg, ServiceMetadata, StatusResponse};
 use bvs_directory::testing::DirectoryContract;
 use bvs_directory::ContractError;
 use bvs_library::testing::TestingContract;
-use bvs_registry::api::RegistryError;
-use bvs_registry::testing::RegistryContract;
+use bvs_pauser::api::PauserError;
+use bvs_pauser::testing::PauserContract;
 use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::Event;
 use cw_multi_test::App;
@@ -13,12 +13,12 @@ fn instantiate() -> (
     App,
     DirectoryContract,
     DelegationManagerContract,
-    RegistryContract,
+    PauserContract,
 ) {
     let mut app = App::default();
     let env = mock_env();
 
-    let registry = RegistryContract::new(&mut app, &env, None);
+    let pauser = PauserContract::new(&mut app, &env, None);
     let delegation = DelegationManagerContract::new(&mut app, &env, None);
     let directory = DirectoryContract::new(&mut app, &env, None);
 
@@ -46,7 +46,7 @@ fn instantiate() -> (
         )
         .unwrap();
 
-    (app, directory, delegation, registry)
+    (app, directory, delegation, pauser)
 }
 
 #[test]
@@ -83,7 +83,7 @@ fn register_service_successfully() {
 
 #[test]
 fn register_service_but_paused() {
-    let (mut app, directory, _, registry) = instantiate();
+    let (mut app, directory, _, pauser) = instantiate();
     let owner = app.api().addr_make("owner");
 
     let register_msg = &ExecuteMsg::ServiceRegister {
@@ -93,8 +93,8 @@ fn register_service_but_paused() {
         },
     };
 
-    registry
-        .execute(&mut app, &owner, &bvs_registry::msg::ExecuteMsg::Pause {})
+    pauser
+        .execute(&mut app, &owner, &bvs_pauser::msg::ExecuteMsg::Pause {})
         .unwrap();
 
     let err = directory
@@ -103,7 +103,7 @@ fn register_service_but_paused() {
 
     assert_eq!(
         err.root_cause().to_string(),
-        ContractError::Registry(RegistryError::IsPaused).to_string()
+        ContractError::Pauser(PauserError::IsPaused).to_string()
     );
 }
 

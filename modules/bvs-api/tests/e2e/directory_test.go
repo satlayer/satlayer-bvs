@@ -40,15 +40,15 @@ func (s *DirectoryTestSuite) SetupSuite() {
 
 	tAddr := container.GenerateAddress("test-address").String()
 	deployer := &bvs.Deployer{BabylonContainer: container}
-	registry := deployer.DeployRegistry(nil)
+	pauser := deployer.DeployPauser(nil)
 
 	// Setup DelegationManager,
 	// Setup StrategyManager,
 	// Add Operator to DelegationManager
-	strategyManager := deployer.DeployStrategyManager(registry.Address)
-	delegationManager := deployer.DeployDelegationManager(registry.Address, 100, []string{tAddr}, []int64{50})
+	strategyManager := deployer.DeployStrategyManager(pauser.Address)
+	delegationManager := deployer.DeployDelegationManager(pauser.Address, 100, []string{tAddr}, []int64{50})
 
-	s.contrAddr = deployer.DeployDirectory(registry.Address).Address
+	s.contrAddr = deployer.DeployDirectory(pauser.Address).Address
 	s.delegationContrAddr = delegationManager.Address
 
 	chainIO, err := s.chainIO.SetupKeyring("caller", "test")

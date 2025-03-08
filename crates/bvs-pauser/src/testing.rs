@@ -7,12 +7,12 @@ use cw_multi_test::{App, Contract, ContractWrapper};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct RegistryContract {
+pub struct PauserContract {
     pub addr: Addr,
     pub init: InstantiateMsg,
 }
 
-impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for RegistryContract {
+impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for PauserContract {
     fn wrapper() -> Box<dyn Contract<Empty>> {
         Box::new(ContractWrapper::new(
             crate::contract::execute,
@@ -31,7 +31,7 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for RegistryContract 
     fn new(app: &mut App, env: &Env, msg: Option<InstantiateMsg>) -> Self {
         let init = msg.unwrap_or(Self::default_init(app, env));
         let code_id = Self::store_code(app);
-        let addr = Self::instantiate(app, code_id, "registry", &init);
+        let addr = Self::instantiate(app, code_id, "pauser", &init);
         Self { addr, init }
     }
 

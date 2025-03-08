@@ -60,14 +60,14 @@ func (suite *delegationTestSuite) SetupSuite() {
 	suite.tokenAddr = token.Address
 
 	deployer := &bvs.Deployer{BabylonContainer: container}
-	registry := deployer.DeployRegistry(nil)
+	pauser := deployer.DeployPauser(nil)
 
 	tAddr := container.GenerateAddress("test-address").String()
 	tAddr1 := container.GenerateAddress("test-address-1").String()
 	tAddr2 := container.GenerateAddress("test-address-2").String()
 
-	strategyManager := deployer.DeployStrategyManager(registry.Address)
-	delegationManager := deployer.DeployDelegationManager(registry.Address, 100, []string{tAddr}, []int64{50})
+	strategyManager := deployer.DeployStrategyManager(pauser.Address)
+	delegationManager := deployer.DeployDelegationManager(pauser.Address, 100, []string{tAddr}, []int64{50})
 
 	suite.strategyManager = strategyManager.Address
 	suite.contrAddr = delegationManager.Address

@@ -32,8 +32,8 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let registry = deps.api.addr_validate(&msg.registry)?;
-    bvs_registry::api::set_registry_addr(deps.storage, &registry)?;
+    let pauser = deps.api.addr_validate(&msg.pauser)?;
+    bvs_pauser::api::set_pauser(deps.storage, &pauser)?;
 
     let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::set_owner(deps.storage, &owner)?;
@@ -50,7 +50,7 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    bvs_registry::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
+    bvs_pauser::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
 
     match msg {
         ExecuteMsg::DepositIntoStrategy {
@@ -528,11 +528,11 @@ mod tests {
         let env = mock_env();
 
         let owner = deps.api.addr_make("owner");
-        let registry = deps.api.addr_make("registry");
+        let pauser = deps.api.addr_make("pauser");
 
         let msg = InstantiateMsg {
             owner: owner.to_string(),
-            registry: registry.to_string(),
+            pauser: pauser.to_string(),
         };
 
         let info = message_info(&owner, &[]);
@@ -680,11 +680,11 @@ mod tests_old {
         let info = message_info(&Addr::unchecked("creator"), &[]);
 
         let owner = deps.api.addr_make("owner");
-        let registry = deps.api.addr_make("registry");
+        let pauser = deps.api.addr_make("pauser");
 
         let msg = InstantiateMsg {
             owner: owner.to_string(),
-            registry: registry.to_string(),
+            pauser: pauser.to_string(),
         };
 
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -709,12 +709,12 @@ mod tests_old {
         let env = mock_env();
 
         let owner = deps.api.addr_make("owner");
-        let registry = deps.api.addr_make("registry");
+        let pauser = deps.api.addr_make("pauser");
         let owner_info = message_info(&owner, &[]);
 
         let msg = InstantiateMsg {
             owner: owner.to_string(),
-            registry: registry.to_string(),
+            pauser: pauser.to_string(),
         };
 
         let delegation_manager = deps.api.addr_make("delegation_manager");

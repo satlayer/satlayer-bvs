@@ -22,7 +22,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    bvs_registry::api::set_registry_addr(deps.storage, &deps.api.addr_validate(&msg.registry)?)?;
+    bvs_pauser::api::set_pauser(deps.storage, &deps.api.addr_validate(&msg.pauser)?)?;
 
     let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::set_owner(deps.storage, &owner)?;
@@ -30,7 +30,7 @@ pub fn instantiate(
     Ok(Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("owner", owner)
-        .add_attribute("registry", msg.registry))
+        .add_attribute("pauser", msg.pauser))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -40,7 +40,7 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    bvs_registry::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
+    bvs_pauser::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
 
     match msg {
         ExecuteMsg::ServiceRegister { metadata } => execute::service_register(deps, info, metadata),
@@ -348,7 +348,7 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let owner = deps.api.addr_make("owner");
-        let registry = deps.api.addr_make("registry");
+        let pauser = deps.api.addr_make("pauser");
         let owner_info = message_info(&owner, &[]);
 
         instantiate(
@@ -357,7 +357,7 @@ mod tests {
             owner_info.clone(),
             InstantiateMsg {
                 owner: owner.to_string(),
-                registry: registry.to_string(),
+                pauser: pauser.to_string(),
             },
         )
         .unwrap();

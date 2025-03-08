@@ -17,9 +17,9 @@ pub mod api {
 
     pub use strum::Display;
 
-    /// Errors associated with the BVS registry.
+    /// Errors associated with the BVS Pauser.
     #[derive(thiserror::Error, Debug, PartialEq)]
-    pub enum RegistryError {
+    pub enum PauserError {
         #[error("{0}")]
         Std(#[from] StdError),
 
@@ -31,35 +31,35 @@ pub mod api {
     }
 
     impl CanExecuteResponse {
-        pub fn assert(&self) -> Result<(), RegistryError> {
+        pub fn assert(&self) -> Result<(), PauserError> {
             match self.0 {
                 FLAG_CAN_EXECUTE => Ok(()),
-                FLAG_PAUSED => Err(RegistryError::IsPaused),
-                FLAG_UNAUTHORIZED => Err(RegistryError::Unauthorized),
-                _ => Err(RegistryError::Std(StdError::generic_err(
+                FLAG_PAUSED => Err(PauserError::IsPaused),
+                FLAG_UNAUTHORIZED => Err(PauserError::Unauthorized),
+                _ => Err(PauserError::Std(StdError::generic_err(
                     "Unknown flag in CanExecuteResponse",
                 ))),
             }
         }
     }
 
-    pub const REGISTRY: Item<Addr> = Item::new("_registry");
+    pub const PAUSER: Item<Addr> = Item::new("_pauser");
 
-    /// Set the address of the registry contract in the storage slot `_registry`.
-    /// [`assert_can_execute`] will query the registry contract at this address.
-    pub fn set_registry_addr(store: &mut dyn Storage, addr: &Addr) -> StdResult<()> {
-        REGISTRY.save(store, addr)
+    /// Set the address of the pauser contract in the storage slot `_pauser`.
+    /// [`assert_can_execute`] will query the pauser contract at this address.
+    pub fn set_pauser(store: &mut dyn Storage, addr: &Addr) -> StdResult<()> {
+        PAUSER.save(store, addr)
     }
 
     /// Assert that the `ExecuteMsg` can be executed without restrictions.
-    /// Requires [`set_registry_addr`] to be set in the `instantiate()` message.
+    /// Requires [`set_pauser`] to be set in the `instantiate()` message.
     pub fn assert_can_execute(
         deps: Deps,
         env: &Env,
         info: &MessageInfo,
         msg: &dyn ToString,
-    ) -> Result<(), RegistryError> {
-        let addr = REGISTRY.load(deps.storage)?;
+    ) -> Result<(), PauserError> {
+        let addr = PAUSER.load(deps.storage)?;
         let method = msg.to_string();
 
         let query_msg = QueryMsg::CanExecute {

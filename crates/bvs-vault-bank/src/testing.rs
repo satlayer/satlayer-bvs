@@ -24,7 +24,7 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for VaultBankContract
     fn default_init(app: &mut App, _env: &Env) -> InstantiateMsg {
         InstantiateMsg {
             owner: app.api().addr_make("owner").to_string(),
-            registry: Self::get_contract_addr(app, "registry").to_string(),
+            pauser: Self::get_contract_addr(app, "pauser").to_string(),
         }
     }
 

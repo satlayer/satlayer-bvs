@@ -177,7 +177,7 @@ func (r *StakerOptOutWindowBlocksResponse) Marshal() ([]byte, error) {
 type InstantiateMsg struct {
 	MinWithdrawalDelayBlocks int64    `json:"min_withdrawal_delay_blocks"`
 	Owner                    string   `json:"owner"`
-	Registry                 string   `json:"registry"`
+	Pauser                   string   `json:"pauser"`
 	Strategies               []string `json:"strategies"`
 	WithdrawalDelayBlocks    []int64  `json:"withdrawal_delay_blocks"`
 }

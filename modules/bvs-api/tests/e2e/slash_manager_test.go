@@ -37,8 +37,8 @@ func (suite *slashManagerTestSuite) SetupSuite() {
 
 	tAddr := container.GenerateAddress("test-address").String()
 	deployer := &bvs.Deployer{BabylonContainer: container}
-	registry := deployer.DeployRegistry(nil)
-	slashManager := deployer.DeploySlashManager(registry.Address)
+	pauser := deployer.DeployPauser(nil)
+	slashManager := deployer.DeploySlashManager(pauser.Address)
 	suite.contrAddr = slashManager.Address
 	suite.strategyManagerContrAddr = tAddr
 }

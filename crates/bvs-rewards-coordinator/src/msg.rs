@@ -11,7 +11,7 @@ use cosmwasm_std::HexBinary;
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: String,
-    pub registry: String,
+    pub pauser: String,
     pub calculation_interval_seconds: u64,
     pub max_rewards_duration: u64,
     pub max_retroactive_length: u64,
@@ -21,7 +21,7 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
-#[derive(bvs_registry::api::Display)]
+#[derive(bvs_pauser::api::Display)]
 pub enum ExecuteMsg {
     CreateRewardsSubmission {
         rewards_submissions: Vec<RewardsSubmission>,

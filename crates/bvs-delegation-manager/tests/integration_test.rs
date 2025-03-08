@@ -8,7 +8,7 @@ use bvs_delegation_manager::{
     testing::DelegationManagerContract,
 };
 use bvs_library::testing::TestingContract;
-use bvs_registry::testing::RegistryContract;
+use bvs_pauser::testing::PauserContract;
 use bvs_strategy_manager::msg::delegation_manager::IncreaseDelegatedShares;
 use bvs_strategy_manager::{
     msg::ExecuteMsg as StrategyManagerExecuteMsg, testing::StrategyManagerContract,
@@ -23,7 +23,7 @@ fn instantiate() -> (App, DelegationManagerContract, StrategyManagerContract) {
     let mut app = App::default();
     let env = mock_env();
 
-    let _ = RegistryContract::new(&mut app, &env, None);
+    let _ = PauserContract::new(&mut app, &env, None);
     let strategy_manager = StrategyManagerContract::new(&mut app, &env, None);
     let delegation_manager = DelegationManagerContract::new(&mut app, &env, None);
     let slash_manager = app.api().addr_make("slash_manager");

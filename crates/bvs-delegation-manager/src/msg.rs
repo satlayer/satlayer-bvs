@@ -10,7 +10,7 @@ use cosmwasm_std::{Addr, Uint128};
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: String,
-    pub registry: String,
+    pub pauser: String,
 
     pub min_withdrawal_delay_blocks: u64,
     pub strategies: Vec<String>,
@@ -18,7 +18,7 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
-#[derive(bvs_registry::api::Display)]
+#[derive(bvs_pauser::api::Display)]
 pub enum ExecuteMsg {
     RegisterAsOperator {
         operator_details: OperatorDetails,

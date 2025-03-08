@@ -50,7 +50,7 @@ importers:
 
   crates/bvs-library: {}
 
-  crates/bvs-registry: {}
+  crates/bvs-pauser: {}
 
   crates/bvs-rewards-coordinator: {}
 
@@ -145,9 +145,9 @@ importers:
       '@satlayer/bvs-directory':
         specifier: workspace:*
         version: link:../../crates/bvs-directory
-      '@satlayer/bvs-registry':
+      '@satlayer/bvs-pauser':
         specifier: workspace:*
-        version: link:../../crates/bvs-registry
+        version: link:../../crates/bvs-pauser
       '@satlayer/bvs-rewards-coordinator':
         specifier: workspace:*
         version: link:../../crates/bvs-rewards-coordinator
@@ -173,9 +173,9 @@ importers:
       '@satlayer/bvs-directory':
         specifier: workspace:*
         version: link:../../crates/bvs-directory
-      '@satlayer/bvs-registry':
+      '@satlayer/bvs-pauser':
         specifier: workspace:*
-        version: link:../../crates/bvs-registry
+        version: link:../../crates/bvs-pauser
       '@satlayer/bvs-rewards-coordinator':
         specifier: workspace:*
         version: link:../../crates/bvs-rewards-coordinator

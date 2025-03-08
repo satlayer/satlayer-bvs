@@ -8,8 +8,6 @@
       <sourceFolder url="file://$MODULE_DIR$/bvs-directory/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-directory/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-library/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/bvs-registry/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/bvs-registry/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-rewards-coordinator/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-rewards-coordinator/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-slash-manager/src" isTestSource="false" />
@@ -20,6 +18,8 @@
       <sourceFolder url="file://$MODULE_DIR$/bvs-vault-base/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-vault-bank/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-vault-cw20/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-pauser/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-pauser/tests" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludePattern pattern=".turbo" />
       <excludePattern pattern="Cargo.lock" />

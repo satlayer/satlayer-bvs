@@ -16,7 +16,7 @@
 //    isPausedResponse, err := UnmarshalIsPausedResponse(bytes)
 //    bytes, err = isPausedResponse.Marshal()
 
-package registry
+package pauser
 
 import "encoding/json"
 

@@ -1,5 +1,5 @@
 [package]
-name = "bvs-registry"
+name = "bvs-pauser"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true

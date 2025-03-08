@@ -26,10 +26,10 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for StrategyManagerCo
 
     fn default_init(app: &mut App, _env: &Env) -> InstantiateMsg {
         let owner = app.api().addr_make("owner");
-        let registry = Self::get_contract_addr(app, "registry");
+        let pauser = Self::get_contract_addr(app, "pauser");
         InstantiateMsg {
             owner: owner.to_string(),
-            registry: registry.to_string(),
+            pauser: pauser.to_string(),
         }
     }
 

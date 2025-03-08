@@ -25,11 +25,11 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for DelegationManager
         let owner = app.api().addr_make("owner").to_string();
         let strategy1 = app.api().addr_make("strategy1").to_string();
         let strategy2 = app.api().addr_make("strategy2").to_string();
-        let registry = Self::get_contract_addr(app, "registry").to_string();
+        let pauser = Self::get_contract_addr(app, "pauser").to_string();
 
         InstantiateMsg {
             owner,
-            registry,
+            pauser,
             min_withdrawal_delay_blocks: 5,
             strategies: vec![strategy1, strategy2],
             withdrawal_delay_blocks: vec![50, 60],

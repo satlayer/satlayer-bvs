@@ -25,12 +25,12 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for RewardsCoordinato
 
     fn default_init(app: &mut App, env: &Env) -> InstantiateMsg {
         let owner = app.api().addr_make("owner");
-        let registry = Self::get_contract_addr(app, "registry").to_string();
+        let pauser = Self::get_contract_addr(app, "pauser").to_string();
 
         let today_rounded_down = env.block.time.seconds() / ONE_DAY * ONE_DAY;
         InstantiateMsg {
             owner: owner.to_string(),
-            registry,
+            pauser,
             calculation_interval_seconds: ONE_DAY,
             max_rewards_duration: 30 * ONE_DAY,
             max_retroactive_length: 5 * ONE_DAY,

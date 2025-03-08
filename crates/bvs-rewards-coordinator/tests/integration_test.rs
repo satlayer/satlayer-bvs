@@ -1,6 +1,6 @@
 use bvs_library::testing::{Cw20TokenContract, TestingContract};
-use bvs_registry::api::RegistryError;
-use bvs_registry::testing::RegistryContract;
+use bvs_pauser::api::PauserError;
+use bvs_pauser::testing::PauserContract;
 use bvs_rewards_coordinator::merkle::{
     calculate_earner_leaf_hash, calculate_rewards_submission_hash, calculate_token_leaf_hash,
     merkleize_sha256, EarnerTreeMerkleLeaf, RewardsMerkleClaim, RewardsSubmission,
@@ -21,7 +21,7 @@ use rs_merkle::{algorithms::Sha256 as MerkleSha256, MerkleTree};
 
 struct TestContracts {
     rewards_coordinator: RewardsCoordinatorContract,
-    registry: RegistryContract,
+    pauser: PauserContract,
     cw20token: Cw20TokenContract,
     strategy_manager: StrategyManagerContract,
     strategy1: StrategyBaseContract,
@@ -33,7 +33,7 @@ fn instantiate() -> (App, TestContracts) {
     let owner = app.api().addr_make("owner");
     let rewards_updater = app.api().addr_make("rewards_updater");
 
-    let registry = RegistryContract::new(&mut app, &env, None);
+    let pauser = PauserContract::new(&mut app, &env, None);
     // init rewards_coordinator
     let rewards_coordinator = RewardsCoordinatorContract::new(&mut app, &env, None);
 
@@ -67,7 +67,7 @@ fn instantiate() -> (App, TestContracts) {
         app,
         TestContracts {
             rewards_coordinator,
-            registry,
+            pauser,
             cw20token,
             strategy_manager,
             strategy1,
@@ -1110,10 +1110,10 @@ fn set_activation_delay() {
 #[test]
 fn set_activation_delay_but_paused() {
     let (mut app, tc) = instantiate();
-    let owner = Addr::unchecked(tc.registry.init.owner.clone());
+    let owner = Addr::unchecked(tc.pauser.init.owner.clone());
 
-    tc.registry
-        .execute(&mut app, &owner, &bvs_registry::msg::ExecuteMsg::Pause {})
+    tc.pauser
+        .execute(&mut app, &owner, &bvs_pauser::msg::ExecuteMsg::Pause {})
         .unwrap();
 
     let msg = ExecuteMsg::SetActivationDelay {
@@ -1125,7 +1125,7 @@ fn set_activation_delay_but_paused() {
         .unwrap_err();
     assert_eq!(
         err.root_cause().to_string(),
-        ContractError::Registry(RegistryError::IsPaused).to_string()
+        ContractError::Pauser(PauserError::IsPaused).to_string()
     );
 }
 
@@ -1138,7 +1138,7 @@ fn set_routing() {
         strategy_manager: strategy_manager.to_string(),
     };
 
-    let owner = Addr::unchecked(tc.registry.init.owner.clone());
+    let owner = Addr::unchecked(tc.pauser.init.owner.clone());
     tc.rewards_coordinator
         .execute(&mut app, &owner, &msg)
         .unwrap();
@@ -1192,8 +1192,8 @@ fn set_rewards_updater_but_paused() {
     let (mut app, tc) = instantiate();
     let owner = Addr::unchecked(tc.rewards_coordinator.init.owner.clone());
 
-    tc.registry
-        .execute(&mut app, &owner, &bvs_registry::msg::ExecuteMsg::Pause {})
+    tc.pauser
+        .execute(&mut app, &owner, &bvs_pauser::msg::ExecuteMsg::Pause {})
         .unwrap();
 
     let new_updater = app.api().addr_make("new_updater");
@@ -1206,6 +1206,6 @@ fn set_rewards_updater_but_paused() {
         .unwrap_err();
     assert_eq!(
         err.root_cause().to_string(),
-        ContractError::Registry(RegistryError::IsPaused).to_string()
+        ContractError::Pauser(PauserError::IsPaused).to_string()
     );
 }

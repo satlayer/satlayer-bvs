@@ -47,10 +47,10 @@ func (suite *signerTestSuite) SetupSuite() {
 	suite.container = container
 
 	deployer := bvs.Deployer{BabylonContainer: container}
-	registry := deployer.DeployRegistry(nil)
+	pauser := deployer.DeployPauser(nil)
 
 	suite.chaiID = container.ChainId
-	suite.bvsDirContrAddr = deployer.DeployDirectory(registry.Address).Address
+	suite.bvsDirContrAddr = deployer.DeployDirectory(pauser.Address).Address
 }
 
 func (suite *signerTestSuite) TearDownSuite() {

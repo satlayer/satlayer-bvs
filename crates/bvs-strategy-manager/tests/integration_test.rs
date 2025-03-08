@@ -1,6 +1,6 @@
 use bvs_delegation_manager::testing::DelegationManagerContract;
 use bvs_library::testing::TestingContract;
-use bvs_registry::testing::RegistryContract;
+use bvs_pauser::testing::PauserContract;
 use bvs_strategy_base::msg::{InstantiateMsg as StrategyBaseInstantiateMsg, TotalSharesResponse};
 use bvs_strategy_base::testing::{Cw20TokenContract, StrategyBaseContract};
 use bvs_strategy_manager::msg::{StakerDepositListResponse, StrategyShare};
@@ -16,14 +16,14 @@ use cw_multi_test::App;
 struct TestContracts {
     strategy_manager: StrategyManagerContract,
     delegation_manager: DelegationManagerContract,
-    registry: RegistryContract,
+    pauser: PauserContract,
 }
 
 impl TestContracts {
     fn init(app: &mut App) -> TestContracts {
         let env = mock_env();
 
-        let registry = RegistryContract::new(app, &env, None);
+        let pauser = PauserContract::new(app, &env, None);
         let strategy_manager = StrategyManagerContract::new(app, &env, None);
         let delegation_manager = DelegationManagerContract::new(app, &env, None);
 
@@ -55,7 +55,7 @@ impl TestContracts {
         Self {
             strategy_manager,
             delegation_manager,
-            registry,
+            pauser,
         }
     }
 
@@ -67,7 +67,7 @@ impl TestContracts {
             app,
             &env,
             Some(StrategyBaseInstantiateMsg {
-                registry: self.registry.addr().to_string(),
+                pauser: self.pauser.addr().to_string(),
                 owner: owner.to_string(),
                 strategy_manager: self.strategy_manager.addr().to_string(),
                 underlying_token: token.addr().to_string(),

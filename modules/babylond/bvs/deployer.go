@@ -7,7 +7,7 @@ import (
 
 	delegationmanager "github.com/satlayer/satlayer-bvs/bvs-cw/delegation-manager"
 	"github.com/satlayer/satlayer-bvs/bvs-cw/directory"
-	"github.com/satlayer/satlayer-bvs/bvs-cw/registry"
+	"github.com/satlayer/satlayer-bvs/bvs-cw/pauser"
 	rewardscoordinator "github.com/satlayer/satlayer-bvs/bvs-cw/rewards-coordinator"
 	slashmanager "github.com/satlayer/satlayer-bvs/bvs-cw/slash-manager"
 	strategybase "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-base"
@@ -46,50 +46,50 @@ func deployCrate[T interface{}](deployer *Deployer, crate string, initMsg T, lab
 
 // TODO(fuxingloh): implement Deployer.Deploy()
 
-func (d *Deployer) DeployRegistry(
-	initMsg *registry.InstantiateMsg,
-) *Contract[registry.InstantiateMsg] {
+func (d *Deployer) DeployPauser(
+	initMsg *pauser.InstantiateMsg,
+) *Contract[pauser.InstantiateMsg] {
 	if initMsg == nil {
-		initMsg = &registry.InstantiateMsg{
+		initMsg = &pauser.InstantiateMsg{
 			InitialPaused: false,
 			Owner:         d.GenerateAddress("owner").String(),
 		}
 	}
 
-	return deployCrate(d, "bvs-registry", *initMsg, "BVS Registry")
+	return deployCrate(d, "bvs-pauser", *initMsg, "BVS Pauser")
 }
 
 func (d *Deployer) DeploySlashManager(
-	registry string,
+	pauser string,
 ) *Contract[slashmanager.InstantiateMsg] {
 	initMsg := slashmanager.InstantiateMsg{
-		Owner:    d.GenerateAddress("owner").String(),
-		Registry: registry,
+		Owner:  d.GenerateAddress("owner").String(),
+		Pauser: pauser,
 	}
 
 	return deployCrate(d, "bvs-slash-manager", initMsg, "BVS Slash Manager")
 }
 
 func (d *Deployer) DeployStrategyManager(
-	registry string,
+	pauser string,
 ) *Contract[strategymanager.InstantiateMsg] {
 	initMsg := strategymanager.InstantiateMsg{
-		Owner:    d.GenerateAddress("owner").String(),
-		Registry: registry,
+		Owner:  d.GenerateAddress("owner").String(),
+		Pauser: pauser,
 	}
 
 	return deployCrate(d, "bvs-strategy-manager", initMsg, "BVS Strategy Manager")
 }
 
 func (d *Deployer) DeployDelegationManager(
-	registry string,
+	pauser string,
 	minWithdrawalDelayBlocks int64,
 	strategies []string,
 	withdrawalDelayBlocks []int64,
 ) *Contract[delegationmanager.InstantiateMsg] {
 	initMsg := delegationmanager.InstantiateMsg{
 		Owner:                    d.GenerateAddress("owner").String(),
-		Registry:                 registry,
+		Pauser:                   pauser,
 		MinWithdrawalDelayBlocks: minWithdrawalDelayBlocks,
 		Strategies:               strategies,
 		WithdrawalDelayBlocks:    withdrawalDelayBlocks,
@@ -99,18 +99,18 @@ func (d *Deployer) DeployDelegationManager(
 }
 
 func (d *Deployer) DeployDirectory(
-	registry string,
+	pauser string,
 ) *Contract[directory.InstantiateMsg] {
 	initMsg := directory.InstantiateMsg{
-		Owner:    d.GenerateAddress("owner").String(),
-		Registry: registry,
+		Owner:  d.GenerateAddress("owner").String(),
+		Pauser: pauser,
 	}
 
 	return deployCrate(d, "bvs-directory", initMsg, "BVS Directory")
 }
 
 func (d *Deployer) DeployRewardsCoordinator(
-	registry string,
+	pauser string,
 	activationDelay int64,
 	calculationIntervalSeconds int64,
 	genesisRewardsTimestamp int64,
@@ -120,7 +120,7 @@ func (d *Deployer) DeployRewardsCoordinator(
 ) *Contract[rewardscoordinator.InstantiateMsg] {
 	initMsg := rewardscoordinator.InstantiateMsg{
 		Owner:                      d.GenerateAddress("owner").String(),
-		Registry:                   registry,
+		Pauser:                     pauser,
 		ActivationDelay:            activationDelay,
 		CalculationIntervalSeconds: calculationIntervalSeconds,
 		GenesisRewardsTimestamp:    genesisRewardsTimestamp,
@@ -133,13 +133,13 @@ func (d *Deployer) DeployRewardsCoordinator(
 }
 
 func (d *Deployer) DeployStrategyBase(
-	registry string,
+	pauser string,
 	underlyingToken string,
 	strategyManager string,
 ) *Contract[strategybase.InstantiateMsg] {
 	initMsg := strategybase.InstantiateMsg{
 		Owner:           d.GenerateAddress("owner").String(),
-		Registry:        registry,
+		Pauser:          pauser,
 		StrategyManager: strategyManager,
 		UnderlyingToken: underlyingToken,
 	}

@@ -151,7 +151,7 @@ func (r *UnderlyingTokenResponse) Marshal() ([]byte, error) {
 
 type InstantiateMsg struct {
 	Owner           string `json:"owner"`
-	Registry        string `json:"registry"`
+	Pauser          string `json:"pauser"`
 	StrategyManager string `json:"strategy_manager"`
 	UnderlyingToken string `json:"underlying_token"`
 }

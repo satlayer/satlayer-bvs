@@ -29,8 +29,8 @@ func (suite *ioTestSuite) SetupSuite() {
 	container.FundAddressUbbn("bbn1dcpzdejnywqc4x8j5tyafv7y4pdmj7p9fmredf", 1e8)
 
 	deployer := bvs.Deployer{BabylonContainer: container}
-	registry := deployer.DeployRegistry(nil)
-	suite.directory = deployer.DeployDirectory(registry.Address)
+	pauser := deployer.DeployPauser(nil)
+	suite.directory = deployer.DeployDirectory(pauser.Address)
 }
 
 func (suite *ioTestSuite) TearDownSuite() {

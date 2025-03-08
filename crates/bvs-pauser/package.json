@@ -1,5 +1,5 @@
 {
-  "name": "@satlayer/bvs-registry",
+  "name": "@satlayer/bvs-pauser",
   "private": false,
   "files": [
     "artifacts",
