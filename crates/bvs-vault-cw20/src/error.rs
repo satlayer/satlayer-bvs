@@ -7,5 +7,8 @@ pub enum ContractError {
     Std(#[from] StdError),
 
     #[error("{0}")]
-    Ownership(#[from] bvs_library::ownership::OwnershipError),
+    Vault(#[from] bvs_vault_base::error::VaultError),
+
+    #[error("{0}")]
+    Pauser(#[from] bvs_pauser::api::PauserError),
 }
