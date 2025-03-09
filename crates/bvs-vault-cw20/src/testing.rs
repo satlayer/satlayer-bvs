@@ -23,8 +23,10 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for VaultCw20Contract
 
     fn default_init(app: &mut App, _env: &Env) -> InstantiateMsg {
         InstantiateMsg {
-            owner: app.api().addr_make("owner").to_string(),
             pauser: Self::get_contract_addr(app, "pauser").to_string(),
+            router: Self::get_contract_addr(app, "vault_router").to_string(),
+            operator: app.api().addr_make("operator").to_string(),
+            cw20_contract: Self::get_contract_addr(app, "cw20").to_string(),
         }
     }
 
