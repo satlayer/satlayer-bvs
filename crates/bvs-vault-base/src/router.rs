@@ -182,7 +182,6 @@ mod tests {
         }
 
         let sender = deps.api.addr_make("sender");
-        let info = message_info(&sender, &[]);
         assert_whitelisted(&deps.as_ref(), &env).unwrap();
     }
 
@@ -204,7 +203,6 @@ mod tests {
         }
 
         let sender = deps.api.addr_make("sender");
-        let info = message_info(&sender, &[]);
         let err = assert_whitelisted(&deps.as_ref(), &env).unwrap_err();
         assert_eq!(err.to_string(), VaultError::NotWhitelisted {}.to_string());
     }
@@ -229,7 +227,6 @@ mod tests {
         }
 
         let sender = deps.api.addr_make("sender");
-        let info = message_info(&sender, &[]);
         assert_not_validating(&deps.as_ref()).unwrap();
     }
 
@@ -253,7 +250,6 @@ mod tests {
         }
 
         let sender = deps.api.addr_make("sender");
-        let info = message_info(&sender, &[]);
         let err = assert_not_validating(&deps.as_ref()).unwrap_err();
         assert_eq!(err.to_string(), VaultError::Delegated {}.to_string());
     }

@@ -91,7 +91,7 @@ mod execute {
     mod vault {
         use crate::error::ContractError;
         use cosmwasm_schema::cw_serde;
-        use cosmwasm_std::{Addr, Deps, Env, Response};
+        use cosmwasm_std::{Addr, Deps, Env};
 
         #[cw_serde]
         enum QueryMsg {
