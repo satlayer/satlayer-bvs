@@ -188,6 +188,15 @@ importers:
       '@satlayer/bvs-strategy-manager':
         specifier: workspace:*
         version: link:../../crates/bvs-strategy-manager
+      '@satlayer/bvs-vault-bank':
+        specifier: workspace:*
+        version: link:../../crates/bvs-vault-bank
+      '@satlayer/bvs-vault-cw20':
+        specifier: workspace:*
+        version: link:../../crates/bvs-vault-cw20
+      '@satlayer/bvs-vault-router':
+        specifier: workspace:*
+        version: link:../../crates/bvs-vault-router
       quicktype-core:
         specifier: ^23.0.171
         version: 23.0.171

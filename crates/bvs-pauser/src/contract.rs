@@ -1,14 +1,14 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
-use crate::error::ContractError;
+use crate::error::PauserError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::PAUSED;
 use bvs_library::ownership;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 
-const CONTRACT_NAME: &str = "BVS Pauser";
+const CONTRACT_NAME: &str = concat!("crate:", env!("CARGO_PKG_NAME"));
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -17,7 +17,7 @@ pub fn instantiate(
     _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
-) -> Result<Response, ContractError> {
+) -> Result<Response, PauserError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let owner = deps.api.addr_validate(&msg.owner)?;
@@ -36,23 +36,23 @@ pub fn execute(
     _env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
+) -> Result<Response, PauserError> {
     match msg {
         ExecuteMsg::Pause {} => execute::pause(deps, info),
         ExecuteMsg::Unpause {} => execute::unpause(deps, info),
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
             ownership::transfer_ownership(deps.storage, info, new_owner)
-                .map_err(ContractError::Ownership)
+                .map_err(PauserError::Ownership)
         }
     }
 }
 
-pub mod execute {
+mod execute {
     use super::*;
     use crate::state::PAUSED;
 
-    pub fn pause(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+    pub fn pause(deps: DepsMut, info: MessageInfo) -> Result<Response, PauserError> {
         ownership::assert_owner(deps.storage, &info)?;
 
         PAUSED.save(deps.storage, &true)?;
@@ -61,7 +61,7 @@ pub mod execute {
             .add_attribute("sender", info.sender))
     }
 
-    pub fn unpause(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+    pub fn unpause(deps: DepsMut, info: MessageInfo) -> Result<Response, PauserError> {
         ownership::assert_owner(deps.storage, &info)?;
 
         PAUSED.save(deps.storage, &false)?;
@@ -85,9 +85,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-pub mod query {
+mod query {
     use super::*;
-    use crate::msg::{CanExecuteResponse, IsPausedResponse, FLAG_CAN_EXECUTE, FLAG_PAUSED};
+    use crate::msg::{CanExecuteFlag, CanExecuteResponse, IsPausedResponse};
     use crate::state::PAUSED;
 
     /// TODO(future): The `_contract` and `_method` are currently not used.
@@ -113,16 +113,16 @@ pub mod query {
     ) -> StdResult<CanExecuteResponse> {
         let is_paused = PAUSED.load(deps.storage)?;
         if is_paused {
-            return Ok(CanExecuteResponse::new(FLAG_PAUSED));
+            return Ok(CanExecuteFlag::Paused.into());
         }
-        Ok(CanExecuteResponse::new(FLAG_CAN_EXECUTE))
+        Ok(CanExecuteFlag::CanExecute.into())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::msg::IsPausedResponse;
+    use crate::msg::{CanExecuteFlag, IsPausedResponse};
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
     use cosmwasm_std::{coins, from_json};
 
@@ -167,10 +167,11 @@ mod tests {
         let method = "any_method".to_string();
 
         let response = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
-        assert_eq!(true, response.is_paused());
+        assert_eq!(response.is_paused(), true);
 
         let response = query::can_execute(deps.as_ref(), contract, sender, method).unwrap();
-        assert_eq!(false, response.can_execute());
+        let flag: CanExecuteFlag = response.into();
+        assert_eq!(flag, CanExecuteFlag::Paused);
     }
 
     #[test]
@@ -192,10 +193,11 @@ mod tests {
 
         {
             let res = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
-            assert_eq!(false, res.is_paused());
+            assert_eq!(res.is_paused(), false);
 
             let res = query::can_execute(deps.as_ref(), contract, sender, method).unwrap();
-            assert_eq!(true, res.can_execute());
+            let flag: CanExecuteFlag = res.into();
+            assert_eq!(flag, CanExecuteFlag::CanExecute);
         }
     }
 
@@ -217,10 +219,11 @@ mod tests {
 
         {
             let res = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
-            assert_eq!(false, res.is_paused());
+            assert_eq!(res.is_paused(), false);
 
             let res = query::can_execute(deps.as_ref(), contract, sender, method).unwrap();
-            assert_eq!(true, res.can_execute());
+            let flag: CanExecuteFlag = res.into();
+            assert_eq!(flag, CanExecuteFlag::CanExecute);
         }
     }
 
@@ -243,10 +246,11 @@ mod tests {
 
         {
             let res = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
-            assert_eq!(true, res.is_paused());
+            assert_eq!(res.is_paused(), true);
 
             let res = query::can_execute(deps.as_ref(), contract, sender, method).unwrap();
-            assert_eq!(false, res.can_execute());
+            let flag: CanExecuteFlag = res.into();
+            assert_eq!(flag, CanExecuteFlag::Paused);
         }
     }
 
@@ -265,15 +269,16 @@ mod tests {
         execute::pause(deps.as_mut(), info.clone()).unwrap();
 
         let res = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
-        assert_eq!(true, res.is_paused());
+        assert_eq!(res.is_paused(), true);
 
         execute::pause(deps.as_mut(), info).unwrap();
 
         let res = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
-        assert_eq!(true, res.is_paused());
+        assert_eq!(res.is_paused(), true);
 
         let sender = deps.api.addr_make("sender").to_string();
         let res = query::can_execute(deps.as_ref(), contract, sender, method).unwrap();
-        assert_eq!(false, res.can_execute());
+        let flag: CanExecuteFlag = res.into();
+        assert_eq!(flag, CanExecuteFlag::Paused);
     }
 }

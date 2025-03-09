@@ -1,5 +1,7 @@
 use bvs_library::{ownership::OwnershipError, testing::TestingContract};
-use bvs_pauser::msg::{CanExecuteResponse, ExecuteMsg, InstantiateMsg, IsPausedResponse, QueryMsg};
+use bvs_pauser::msg::{
+    CanExecuteFlag, CanExecuteResponse, ExecuteMsg, InstantiateMsg, IsPausedResponse, QueryMsg,
+};
 use bvs_pauser::testing::PauserContract;
 use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::Event;
@@ -45,7 +47,9 @@ fn pause_unpause() {
             method: "any".to_string(),
         };
         let res: CanExecuteResponse = contract.query(&app, &msg).unwrap();
-        assert_eq!(res.can_execute(), false);
+        assert_eq!(res.0, 1);
+        let flag: CanExecuteFlag = res.into();
+        assert_eq!(flag, CanExecuteFlag::Paused);
     }
 
     {
@@ -78,7 +82,9 @@ fn pause_unpause() {
             method: "any".to_string(),
         };
         let res: CanExecuteResponse = contract.query(&app, &msg).unwrap();
-        assert_eq!(res.can_execute(), true);
+        assert_eq!(res.0, 0);
+        let flag: CanExecuteFlag = res.into();
+        assert_eq!(flag, CanExecuteFlag::CanExecute);
     }
 }
 
@@ -96,7 +102,7 @@ fn unauthorized_pause() {
 
         assert_eq!(
             err.root_cause().to_string(),
-            bvs_pauser::ContractError::Unauthorized {}.to_string()
+            bvs_pauser::PauserError::Unauthorized {}.to_string()
         );
     }
 
@@ -114,7 +120,9 @@ fn unauthorized_pause() {
             method: "any".to_string(),
         };
         let res: CanExecuteResponse = contract.query(&app, &msg).unwrap();
-        assert_eq!(res.can_execute(), true);
+        assert_eq!(res.0, 0);
+        let flag: CanExecuteFlag = res.into();
+        assert_eq!(flag, CanExecuteFlag::CanExecute);
     }
 }
 
@@ -132,7 +140,7 @@ fn unauthorized_unpause() {
 
         assert_eq!(
             err.root_cause().to_string(),
-            bvs_pauser::ContractError::Unauthorized {}.to_string()
+            bvs_pauser::PauserError::Unauthorized {}.to_string()
         );
     }
 
@@ -151,7 +159,9 @@ fn unauthorized_unpause() {
             method: "any".to_string(),
         };
         let res: CanExecuteResponse = contract.query(&app, &msg).unwrap();
-        assert_eq!(res.can_execute(), false);
+        assert_eq!(res.0, 1);
+        let flag: CanExecuteFlag = res.into();
+        assert_eq!(flag, CanExecuteFlag::Paused);
     }
 }
 
@@ -189,6 +199,6 @@ fn transfer_ownership_failed() {
 
     assert_eq!(
         err.root_cause().to_string(),
-        bvs_pauser::ContractError::Ownership(OwnershipError::Unauthorized).to_string()
+        bvs_pauser::PauserError::Ownership(OwnershipError::Unauthorized).to_string()
     );
 }

@@ -63,6 +63,11 @@ rs_merkle = "=1.4"
 bvs-library = { path = "./bvs-library" }
 bvs-pauser = { path = "./bvs-pauser", features = ["library"] }
 
+bvs-vault-router = { path = "./bvs-vault-router", features = ["library"] }
+bvs-vault-base = { path = "./bvs-vault-base", features = ["library"] }
+bvs-vault-bank = { path = "./bvs-vault-bank", features = ["library"] }
+bvs-vault-cw20 = { path = "./bvs-vault-cw20", features = ["library"] }
+
 bvs-delegation-manager = { path = "./bvs-delegation-manager", features = ["library"] }
 bvs-directory = { path = "./bvs-directory", features = ["library"] }
 bvs-rewards-coordinator = { path = "./bvs-rewards-coordinator", features = ["library"] }

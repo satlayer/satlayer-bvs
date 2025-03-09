@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_json_binary, Addr, Empty, Env, StdResult, Storage, Uint128, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, Coin, Empty, Env, StdResult, Storage, Uint128, WasmMsg};
 use cw20::{Cw20Coin, MinterResponse};
 use cw20_base;
 use cw_multi_test::error::AnyResult;
@@ -57,11 +57,21 @@ where
     fn addr(&self) -> &Addr;
 
     fn execute(&self, app: &mut App, sender: &Addr, msg: &EM) -> AnyResult<AppResponse> {
+        self.execute_with_funds(app, sender, msg, vec![])
+    }
+
+    fn execute_with_funds(
+        &self,
+        app: &mut App,
+        sender: &Addr,
+        msg: &EM,
+        funds: Vec<Coin>,
+    ) -> AnyResult<AppResponse> {
         let msg_bin = to_json_binary(&msg).expect("cannot serialize ExecuteMsg");
         let execute_msg = WasmMsg::Execute {
             contract_addr: self.addr().to_string(),
             msg: msg_bin,
-            funds: vec![],
+            funds,
         };
 
         app.execute(sender.clone(), execute_msg.into())
@@ -102,11 +112,11 @@ impl
             decimals: 18,
             initial_balances: vec![Cw20Coin {
                 address: app.api().addr_make("owner").to_string(),
-                amount: Uint128::new(1000000),
+                amount: Uint128::new(1_000_000e18 as u128),
             }],
             mint: Some(MinterResponse {
                 minter: app.api().addr_make("owner").to_string(),
-                cap: Some(Uint128::new(1_000_000_000_000_000_000_000)), // 1000e18 = 1e21
+                cap: Some(Uint128::new(1_000_000_000e18 as u128)), // 1000e18 = 1e21
             }),
             marketing: None,
         }
@@ -116,6 +126,8 @@ impl
         let init = msg.unwrap_or(Self::default_init(app, env));
         let code_id = Self::store_code(app);
         let addr = Self::instantiate(app, code_id, "underlying_token", &init);
+        // TODO(fuxingloh): extra label for ease of testing, to remove `underlying_token`.
+        Self::set_contract_addr(app, "cw20", &addr);
         Self { addr, init }
     }
 

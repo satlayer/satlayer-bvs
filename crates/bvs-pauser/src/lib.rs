@@ -1,17 +1,15 @@
 pub mod contract;
-mod error;
 pub mod msg;
-pub mod state;
-
-pub use crate::error::ContractError;
-
 pub mod testing;
+
+mod error;
+mod state;
+
+pub use crate::error::PauserError;
 
 #[cfg(feature = "library")]
 pub mod api {
-    use crate::msg::{
-        CanExecuteResponse, QueryMsg, FLAG_CAN_EXECUTE, FLAG_PAUSED, FLAG_UNAUTHORIZED,
-    };
+    use crate::msg::{CanExecuteFlag, CanExecuteResponse, QueryMsg};
     use cosmwasm_std::{Addr, Deps, Env, MessageInfo, StdError, StdResult, Storage};
     use cw_storage_plus::Item;
 
@@ -30,25 +28,29 @@ pub mod api {
         Unauthorized,
     }
 
-    impl CanExecuteResponse {
-        pub fn assert(&self) -> Result<(), PauserError> {
-            match self.0 {
-                FLAG_CAN_EXECUTE => Ok(()),
-                FLAG_PAUSED => Err(PauserError::IsPaused),
-                FLAG_UNAUTHORIZED => Err(PauserError::Unauthorized),
-                _ => Err(PauserError::Std(StdError::generic_err(
-                    "Unknown flag in CanExecuteResponse",
-                ))),
+    impl From<CanExecuteResponse> for Result<(), PauserError> {
+        fn from(value: CanExecuteResponse) -> Self {
+            let status: CanExecuteFlag = value.into();
+            match status {
+                CanExecuteFlag::CanExecute => Ok(()),
+                CanExecuteFlag::Paused => Err(PauserError::IsPaused),
+                CanExecuteFlag::Unauthorized => Err(PauserError::Unauthorized),
             }
         }
     }
 
-    pub const PAUSER: Item<Addr> = Item::new("_pauser");
+    const PAUSER: Item<Addr> = Item::new("_pauser");
 
     /// Set the address of the pauser contract in the storage slot `_pauser`.
     /// [`assert_can_execute`] will query the pauser contract at this address.
     pub fn set_pauser(store: &mut dyn Storage, addr: &Addr) -> StdResult<()> {
         PAUSER.save(store, addr)
+    }
+
+    /// Get the address of the pauser contract from the storage slot `_pauser`.
+    /// If [`set_pauser`] has not been called, it will return an [StdError::NotFound].
+    pub fn get_pauser(store: &dyn Storage) -> StdResult<Addr> {
+        PAUSER.may_load(store)?.ok_or(StdError::not_found("pauser"))
     }
 
     /// Assert that the `ExecuteMsg` can be executed without restrictions.
@@ -68,6 +70,6 @@ pub mod api {
             method,
         };
         let response: CanExecuteResponse = deps.querier.query_wasm_smart(addr, &query_msg)?;
-        response.assert()
+        response.into()
     }
 }
