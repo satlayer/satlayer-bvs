@@ -60,20 +60,30 @@ impl IsPausedResponse {
     }
 }
 
-pub const FLAG_CAN_EXECUTE: u32 = 0;
-pub const FLAG_PAUSED: u32 = 1;
-pub const FLAG_UNAUTHORIZED: u32 = 2;
-
 #[cw_serde]
 pub struct CanExecuteResponse(pub u32);
 
-impl CanExecuteResponse {
-    pub fn new(flag: u32) -> Self {
-        Self(flag)
-    }
+#[derive(Debug, PartialEq)]
+pub enum CanExecuteFlag {
+    CanExecute = 0,
+    Paused = 1,
+    Unauthorized = 2,
+}
 
-    pub fn can_execute(&self) -> bool {
-        self.0 == FLAG_CAN_EXECUTE
+impl From<CanExecuteFlag> for CanExecuteResponse {
+    fn from(flag: CanExecuteFlag) -> Self {
+        Self(flag as u32)
+    }
+}
+
+impl From<CanExecuteResponse> for CanExecuteFlag {
+    fn from(value: CanExecuteResponse) -> Self {
+        match value.0 {
+            0 => Self::CanExecute,
+            1 => Self::Paused,
+            2 => Self::Unauthorized,
+            _ => panic!("Unknown flag in CanExecuteResponse"),
+        }
     }
 }
 
@@ -103,31 +113,19 @@ mod tests {
 
     #[test]
     fn test_can_execute() {
-        let msg = CanExecuteResponse::new(FLAG_CAN_EXECUTE);
-        assert_eq!(msg.can_execute(), true);
+        let msg = CanExecuteResponse(0);
         assert_eq!(msg.0, 0);
+        let flag: CanExecuteFlag = msg.into();
+        assert_eq!(flag, CanExecuteFlag::CanExecute);
 
-        let msg = CanExecuteResponse::new(FLAG_PAUSED);
-        assert_eq!(msg.can_execute(), false);
+        let msg = CanExecuteResponse(1);
         assert_eq!(msg.0, 1);
+        let flag: CanExecuteFlag = msg.into();
+        assert_eq!(flag, CanExecuteFlag::Paused);
 
-        let msg = CanExecuteResponse::new(FLAG_UNAUTHORIZED);
-        assert_eq!(msg.can_execute(), false);
+        let msg = CanExecuteResponse(2);
         assert_eq!(msg.0, 2);
-    }
-
-    #[test]
-    fn test_can_execute_raw() {
-        let msg = CanExecuteResponse(FLAG_CAN_EXECUTE);
-        assert_eq!(msg.can_execute(), true);
-        assert_eq!(msg.0, 0);
-
-        let msg = CanExecuteResponse(FLAG_PAUSED);
-        assert_eq!(msg.can_execute(), false);
-        assert_eq!(msg.0, 1);
-
-        let msg = CanExecuteResponse(FLAG_UNAUTHORIZED);
-        assert_eq!(msg.can_execute(), false);
-        assert_eq!(msg.0, 2);
+        let flag: CanExecuteFlag = msg.into();
+        assert_eq!(flag, CanExecuteFlag::Unauthorized);
     }
 }

@@ -415,9 +415,7 @@ pub fn undelegate(
 
 /// Return the strategy and share array of a staker.
 pub fn get_delegatable_shares(deps: Deps, staker: Addr) -> StdResult<(Vec<Addr>, Vec<Uint128>)> {
-    let strategy_manager = auth::get_strategy_manager(deps.storage)
-        // TODO: SL-332
-        .unwrap();
+    let strategy_manager = auth::get_strategy_manager(deps.storage)?;
 
     let query = WasmQuery::Smart {
         contract_addr: strategy_manager.to_string(),

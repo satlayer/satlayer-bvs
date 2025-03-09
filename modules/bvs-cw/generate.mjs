@@ -1,4 +1,4 @@
-import { quicktype, InputData, JSONSchemaInput, FetchingJSONSchemaStore } from "quicktype-core";
+import { FetchingJSONSchemaStore, InputData, JSONSchemaInput, quicktype } from "quicktype-core";
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -35,21 +35,21 @@ async function generate(schema) {
   await writeFile(join(name, "schema.go"), lines.join("\n"));
 }
 
-import bvs_pauser from "@satlayer/bvs-pauser/schema/bvs-pauser.json" with { type: "json" };
-await generate(bvs_pauser);
+const schemas = [
+  "@satlayer/bvs-strategy-base/schema/bvs-strategy-base.json",
+  "@satlayer/bvs-strategy-manager/schema/bvs-strategy-manager.json",
+  "@satlayer/bvs-directory/schema/bvs-directory.json",
+  "@satlayer/bvs-delegation-manager/schema/bvs-delegation-manager.json",
+  "@satlayer/bvs-rewards-coordinator/schema/bvs-rewards-coordinator.json",
+  "@satlayer/bvs-slash-manager/schema/bvs-slash-manager.json",
 
-import bvs_strategy_base from "@satlayer/bvs-strategy-base/schema/bvs-strategy-base.json" with { type: "json" };
-import bvs_strategy_manager from "@satlayer/bvs-strategy-manager/schema/bvs-strategy-manager.json" with { type: "json" };
-await generate(bvs_strategy_base);
-await generate(bvs_strategy_manager);
+  "@satlayer/bvs-pauser/schema/bvs-pauser.json",
+  // "@satlayer/bvs-vault-router/schema/bvs-vault-router.json",
+  // "@satlayer/bvs-vault-cw20/schema/bvs-vault-cw20.json",
+  // "@satlayer/bvs-vault-bank/schema/bvs-vault-bank.json",
+];
 
-import bvs_directory from "@satlayer/bvs-directory/schema/bvs-directory.json" with { type: "json" };
-import bvs_delegation_manager from "@satlayer/bvs-delegation-manager/schema/bvs-delegation-manager.json" with { type: "json" };
-await generate(bvs_directory);
-await generate(bvs_delegation_manager);
-
-import bvs_rewards_coordinator from "@satlayer/bvs-rewards-coordinator/schema/bvs-rewards-coordinator.json" with { type: "json" };
-await generate(bvs_rewards_coordinator);
-
-import bvs_slash_manager from "@satlayer/bvs-slash-manager/schema/bvs-slash-manager.json" with { type: "json" };
-await generate(bvs_slash_manager);
+for (const schema of schemas) {
+  const s = await import(schema, { with: { type: "json" } });
+  await generate(s.default);
+}

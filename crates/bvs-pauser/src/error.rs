@@ -2,7 +2,7 @@ use cosmwasm_std::StdError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum ContractError {
+pub enum PauserError {
     #[error("{0}")]
     Std(#[from] StdError),
 
