@@ -113,6 +113,14 @@ type TransferOwnership struct {
 	NewOwner string `json:"new_owner"`
 }
 
+// QueryMsg IsWhitelisted: returns true if the vault is whitelisted. See
+// [`ExecuteMsg::SetVault`]
+//
+// QueryMsg IsValidating: returns true if the operator is validating services. See BVS
+// Registry for more information.
+//
+// QueryMsg ListVaults: returns a list of vaults. You can provide `limit` and `start_after`
+// to paginate the results. The max `limit` is 100.
 type QueryMsg struct {
 	IsWhitelisted *IsWhitelisted `json:"is_whitelisted,omitempty"`
 	IsValidating  *IsValidating  `json:"is_validating,omitempty"`
@@ -132,6 +140,8 @@ type ListVaults struct {
 	StartAfter *string `json:"start_after"`
 }
 
+// The response to the `ListVaults` query. For pagination, the `start_after` field is the
+// last `vault` from the previous page.
 type Vault struct {
 	Vault       string `json:"vault"`
 	Whitelisted bool   `json:"whitelisted"`
