@@ -61,24 +61,31 @@ impl RecipientAmount {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum VaultQueryMsg {
+    /// QueryMsg Shares: get the shares of a staker.
     #[returns(SharesResponse)]
     Shares { staker: String },
 
+    /// QueryMsg Assets: get the assets of a staker, converted from shares.
     #[returns(AssetsResponse)]
     Assets { staker: String },
 
+    /// QueryMsg ConvertToAssets: convert shares to assets.
     #[returns(ConvertToAssetsResponse)]
     ConvertToAssets { shares: Uint128 },
 
+    /// QueryMsg ConvertToShares: convert assets to shares.
     #[returns(ConvertToSharesResponse)]
     ConvertToShares { assets: Uint128 },
 
+    /// QueryMsg TotalShares: get the total shares in circulation.
     #[returns(TotalSharesResponse)]
     TotalShares {},
 
+    /// QueryMsg TotalAssets: get the total assets under vault.
     #[returns(TotalAssetsResponse)]
     TotalAssets {},
 
+    /// QueryMsg VaultInfo: get the vault information.
     #[returns(VaultInfoResponse)]
     VaultInfo {},
 }
