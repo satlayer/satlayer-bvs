@@ -22,12 +22,19 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
+    /// QueryMsg IsWhitelisted: returns true if the vault is whitelisted.
+    /// See [`ExecuteMsg::SetVault`]
     #[returns(IsWhitelistedResponse)]
     IsWhitelisted { vault: String },
 
+    /// QueryMsg IsValidating: returns true if the operator is validating services.
+    /// See BVS Registry for more information.
     #[returns(IsValidatingResponse)]
     IsValidating { operator: String },
 
+    /// QueryMsg ListVaults: returns a list of vaults.
+    /// You can provide `limit` and `start_after` to paginate the results.
+    /// The max `limit` is 100.
     #[returns(VaultListResponse)]
     ListVaults {
         limit: Option<u32>,
@@ -35,12 +42,20 @@ pub enum QueryMsg {
     },
 }
 
+/// The response to the `IsWhitelisted` query.
+/// Not exported.
+/// This is just a wrapper around `bool`, so that the schema can be generated.
 #[cw_serde]
 struct IsWhitelistedResponse(bool);
 
+/// The response to the `IsValidating` query.
+/// Not exported.
+/// This is just a wrapper around `bool`, so that the schema can be generated.
 #[cw_serde]
 struct IsValidatingResponse(bool);
 
+/// The response to the `ListVaults` query.
+/// For pagination, the `start_after` field is the last `vault` from the previous page.
 #[cw_serde]
 pub struct VaultListResponse(pub Vec<Vault>);
 

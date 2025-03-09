@@ -181,6 +181,19 @@ type RecipientAmount struct {
 	Recipient string `json:"recipient"`
 }
 
+// QueryMsg Shares: get the shares of a staker.
+//
+// QueryMsg Assets: get the assets of a staker, converted from shares.
+//
+// QueryMsg ConvertToAssets: convert shares to assets.
+//
+// QueryMsg ConvertToShares: convert assets to shares.
+//
+// QueryMsg TotalShares: get the total shares in circulation.
+//
+// QueryMsg TotalAssets: get the total assets under vault.
+//
+// QueryMsg VaultInfo: get the vault information.
 type QueryMsg struct {
 	Shares          *Shares          `json:"shares,omitempty"`
 	Assets          *Assets          `json:"assets,omitempty"`
