@@ -8,6 +8,11 @@ on:
   release:
     types: [released]
 
+permissions:
+  id-token: write
+  packages: write
+  contents: read
+
 jobs:
   version:
     name: Version
@@ -47,4 +52,10 @@ jobs:
       - run: pnpm --filter "@satlayer/*" exec npm version ${{ needs.version.outputs.npm }} --git-tag-version=false
 
       - run: pnpm turbo run build:wasm generate:schema --filter "@satlayer/*"
+
+      - run: |
+          echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" >> .npmrc
+          echo "@satlayer:registry=https://npm.pkg.github.com" >> .npmrc
       - run: pnpm publish --access public --tag ${{ needs.version.outputs.npm_tag }} --no-git-checks --filter "@satlayer/*"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
