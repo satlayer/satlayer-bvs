@@ -12,8 +12,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	dcrdsecp256k1 "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
-
-	"github.com/satlayer/satlayer-bvs/bvs-api/utils"
 )
 
 type Signer struct {
@@ -99,16 +97,12 @@ func (s *Signer) checkMsg(msgs ...sdktypes.Msg) ([]sdktypes.Msg, error) {
 }
 
 func (s *Signer) Sign(msgHash []byte) (string, error) {
-	decryptPrivKeyPwd, err := utils.GenerateRandomString(16)
-	if err != nil {
-		return "", err
-	}
-	armor, err := s.ClientCtx.Keyring.ExportPrivKeyArmor(s.ClientCtx.FromName, decryptPrivKeyPwd)
+	armor, err := s.ClientCtx.Keyring.ExportPrivKeyArmor(s.ClientCtx.FromName, "armor")
 	if err != nil {
 		return "", err
 	}
 	// decrypt private key
-	privKey, _, err := crypto.UnarmorDecryptPrivKey(armor, decryptPrivKeyPwd)
+	privKey, _, err := crypto.UnarmorDecryptPrivKey(armor, "armor")
 	if err != nil {
 		return "", err
 	}
@@ -124,16 +118,12 @@ func (s *Signer) Sign(msgHash []byte) (string, error) {
 }
 
 func (s *Signer) SignByKeyName(msgHash []byte, keyName string) (string, error) {
-	decryptPrivKeyPwd, err := utils.GenerateRandomString(16)
-	if err != nil {
-		return "", err
-	}
-	armor, err := s.ClientCtx.Keyring.ExportPrivKeyArmor(keyName, decryptPrivKeyPwd)
+	armor, err := s.ClientCtx.Keyring.ExportPrivKeyArmor(keyName, "armor")
 	if err != nil {
 		return "", err
 	}
 	// decrypt private key
-	privKey, _, err := crypto.UnarmorDecryptPrivKey(armor, decryptPrivKeyPwd)
+	privKey, _, err := crypto.UnarmorDecryptPrivKey(armor, "armor")
 	if err != nil {
 		return "", err
 	}
