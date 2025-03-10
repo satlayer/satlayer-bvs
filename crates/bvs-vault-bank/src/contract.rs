@@ -64,6 +64,11 @@ mod execute {
     use bvs_vault_base::{offset, router, shares};
     use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, StdError};
 
+    /// Deposit assets into the vault through native bank transfer (`info.funds`) and receive shares.
+    ///
+    /// The `msg.amount` must be equal to the amount of native tokens sent in `info.funds`.  
+    /// `info.funds` must only contain one denomination, which is the same as the vault's denom.  
+    /// The `msg.recipient` is the address that'll receive the shares.
     pub fn deposit(
         deps: DepsMut,
         env: Env,
@@ -72,7 +77,7 @@ mod execute {
     ) -> Result<Response, ContractError> {
         router::assert_whitelisted(&deps.as_ref(), &env)?;
         // Determine and compare the assets to be deposited from `info.funds` and `msg.amount`
-        let new_assets = {
+        let amount_deposited = {
             let denom = get_denom(deps.storage)?;
             let amount = cw_utils::must_pay(&info, denom.as_str())?;
             if amount != msg.amount {
@@ -86,11 +91,12 @@ mod execute {
             // Bank balance is after deposit, we need to calculate the balance before deposit
             let after_balance = bank::query_balance(&deps.as_ref(), &env)?;
             let before_balance = after_balance
-                .checked_sub(new_assets)
+                .checked_sub(amount_deposited)
                 .map_err(StdError::from)?;
             let mut vault = offset::VirtualOffset::load(&deps.as_ref(), before_balance)?;
 
-            let new_shares = vault.assets_to_shares(new_assets)?;
+            let new_shares = vault.assets_to_shares(amount_deposited)?;
+            // Add shares to TOTAL_SHARES
             vault.checked_add_shares(deps.storage, new_shares)?;
 
             (vault, new_shares)
@@ -103,12 +109,17 @@ mod execute {
             Event::new("Deposit")
                 .add_attribute("sender", info.sender.to_string())
                 .add_attribute("recipient", msg.recipient)
-                .add_attribute("assets", new_assets.to_string())
+                .add_attribute("assets", amount_deposited.to_string())
                 .add_attribute("shares", new_shares.to_string())
                 .add_attribute("total_shares", vault.total_shares().to_string()),
         ))
     }
 
+    /// Withdraw assets from the vault in exchange for shares.
+    ///
+    /// Calculation of assets to withdraw is done by [`shares_to_assets`](offset::VirtualOffset::shares_to_assets).  
+    /// The `msg.amount` must be equal to the number of shares to withdraw.  
+    /// The `msg.recipient` is the address that'll receive the assets.
     pub fn withdraw(
         deps: DepsMut,
         env: Env,
@@ -116,27 +127,31 @@ mod execute {
         msg: RecipientAmount,
     ) -> Result<Response, ContractError> {
         router::assert_not_validating(&deps.as_ref())?;
-        shares::sub_shares(deps.storage, &info.sender, msg.amount)?;
+        let withdraw_shares = msg.amount;
+
+        // Remove shares from the sender
+        shares::sub_shares(deps.storage, &info.sender, withdraw_shares)?;
 
         let (vault, claim_assets) = {
             let balance = bank::query_balance(&deps.as_ref(), &env)?;
             let mut vault = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
 
-            if msg.amount > vault.total_shares() {
+            if withdraw_shares > vault.total_shares() {
                 return Err(VaultError::insufficient("Insufficient shares to withdraw.").into());
             }
 
-            let assets = vault.shares_to_assets(msg.amount)?;
+            let assets = vault.shares_to_assets(withdraw_shares)?;
             if assets.is_zero() {
                 return Err(VaultError::zero("Withdraw assets cannot be zero.").into());
             }
 
-            vault.checked_sub_shares(deps.storage, msg.amount)?;
+            // Remove shares from TOTAL_SHARES
+            vault.checked_sub_shares(deps.storage, withdraw_shares)?;
 
             (vault, assets)
         };
 
-        // Setup transfer to recipient
+        // Setup asset transfer to recipient
         let send_msg = bank::bank_send(deps.storage, &msg.recipient, claim_assets)?;
 
         Ok(Response::new()
@@ -145,7 +160,7 @@ mod execute {
                     .add_attribute("sender", info.sender.to_string())
                     .add_attribute("recipient", msg.recipient.to_string())
                     .add_attribute("assets", claim_assets.to_string())
-                    .add_attribute("shares", msg.amount.to_string())
+                    .add_attribute("shares", withdraw_shares.to_string())
                     .add_attribute("total_shares", vault.total_shares().to_string()),
             )
             .add_message(send_msg))
@@ -181,21 +196,25 @@ mod query {
     use bvs_vault_base::{offset, shares};
     use cosmwasm_std::{Addr, Deps, Env, StdResult, Uint128};
 
+    /// Get the shares of a staker.
     pub fn shares(deps: Deps, staker: Addr) -> StdResult<Uint128> {
         shares::get_shares(deps.storage, &staker)
     }
 
+    /// Get the assets of a staker, converted from shares held by the staker.
     pub fn assets(deps: Deps, env: Env, staker: Addr) -> StdResult<Uint128> {
         let shares = shares(deps, staker)?;
         convert_to_assets(deps, env, shares)
     }
 
+    /// Given the number of shares, convert to assets based on the current vault exchange rate.
     pub fn convert_to_assets(deps: Deps, env: Env, shares: Uint128) -> StdResult<Uint128> {
         let balance = bank::query_balance(&deps, &env)?;
         let vault = offset::VirtualOffset::load(&deps, balance)?;
         vault.shares_to_assets(shares)
     }
 
+    /// Given assets, get the resulting shares based on the current vault exchange rate.
     pub fn convert_to_shares(deps: Deps, env: Env, assets: Uint128) -> StdResult<Uint128> {
         let balance = bank::query_balance(&deps, &env)?;
         let vault = offset::VirtualOffset::load(&deps, balance)?;
@@ -212,7 +231,7 @@ mod query {
         bank::query_balance(&deps, &env)
     }
 
-    /// Returns the vault information
+    /// Returns the vault information.
     pub fn vault_info(deps: Deps, env: Env) -> StdResult<VaultInfoResponse> {
         let balance = bank::query_balance(&deps, &env)?;
         let vault = offset::VirtualOffset::load(&deps, balance)?;
@@ -241,7 +260,7 @@ mod tests {
     use bvs_vault_base::{offset, router, shares};
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
     use cosmwasm_std::{
-        coins, to_json_binary, BankMsg, Coin, ContractResult, CosmosMsg, Event, Response,
+        coin, coins, to_json_binary, BankMsg, Coin, ContractResult, CosmosMsg, Event, Response,
         SystemError, SystemResult, Uint128, WasmQuery,
     };
 
@@ -326,8 +345,99 @@ mod tests {
             )
         );
 
+        // assert total shares increased
         let total_shares = offset::get_total_shares(&deps.storage).unwrap();
         assert_eq!(total_shares, Uint128::new(10_000));
+
+        // assert sender shares increased
+        let sender_shares = shares::get_shares(&deps.storage, &sender).unwrap();
+        assert_eq!(sender_shares, Uint128::new(10_000));
+    }
+
+    #[test]
+    fn test_deposit_multiple_coins() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        let sender = deps.api.addr_make("sender");
+
+        {
+            // For QueryMsg::IsWhitelisted(vault) = true
+            {
+                let router = deps.api.addr_make("vault_router");
+                router::set_router(&mut deps.storage, &router).unwrap();
+                deps.querier.update_wasm(move |query| match query {
+                    WasmQuery::Smart { .. } => {
+                        return SystemResult::Ok(ContractResult::Ok(
+                            to_json_binary(&true).unwrap(),
+                        ));
+                    }
+                    _ => SystemResult::Err(SystemError::Unknown {}),
+                });
+            }
+
+            bank::set_denom(&mut deps.storage, "stone").unwrap();
+            deps.querier
+                .bank
+                .update_balance(&env.contract.address, coins(10_000, "stone"));
+        }
+
+        let info = message_info(&sender, &[coin(10_000, "stone"), coin(9900, "stone")]);
+        let err = execute::deposit(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            RecipientAmount {
+                recipient: sender.clone(),
+                amount: Uint128::new(10_000),
+            },
+        )
+        .unwrap_err();
+
+        assert_eq!(err.to_string(), "Sent more than one denomination");
+    }
+
+    #[test]
+    fn test_deposit_different_denom() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        let sender = deps.api.addr_make("sender");
+
+        {
+            // For QueryMsg::IsWhitelisted(vault) = true
+            {
+                let router = deps.api.addr_make("vault_router");
+                router::set_router(&mut deps.storage, &router).unwrap();
+                deps.querier.update_wasm(move |query| match query {
+                    WasmQuery::Smart { .. } => {
+                        return SystemResult::Ok(ContractResult::Ok(
+                            to_json_binary(&true).unwrap(),
+                        ));
+                    }
+                    _ => SystemResult::Err(SystemError::Unknown {}),
+                });
+            }
+
+            bank::set_denom(&mut deps.storage, "stone").unwrap();
+            deps.querier
+                .bank
+                .update_balance(&env.contract.address, coins(10_000, "stone"));
+        }
+
+        let info = message_info(&sender, &coins(10_000, "rock"));
+        let err = execute::deposit(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            RecipientAmount {
+                recipient: sender.clone(),
+                amount: Uint128::new(10_000),
+            },
+        )
+        .unwrap_err();
+
+        assert_eq!(err.to_string(), "Must send reserve token 'stone'");
     }
 
     #[test]
@@ -400,7 +510,61 @@ mod tests {
                 }))
         );
 
+        // assert total shares is decreased
         let total_shares = offset::get_total_shares(&deps.storage).unwrap();
         assert_eq!(total_shares, Uint128::zero());
+    }
+
+    #[test]
+    fn test_withdraw_exceeding_balance() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        let sender = deps.api.addr_make("sender");
+
+        {
+            // For QueryMsg::IsValidating(operator) = false
+            {
+                let router = deps.api.addr_make("vault_router");
+                router::set_router(&mut deps.storage, &router).unwrap();
+                let operator = deps.api.addr_make("operator");
+                router::set_operator(&mut deps.storage, &operator).unwrap();
+                deps.querier.update_wasm(move |query| match query {
+                    WasmQuery::Smart { .. } => {
+                        return SystemResult::Ok(ContractResult::Ok(
+                            to_json_binary(&false).unwrap(),
+                        ));
+                    }
+                    _ => SystemResult::Err(SystemError::Unknown {}),
+                });
+            }
+
+            bank::set_denom(&mut deps.storage, "knife").unwrap();
+            let balance = coins(10_000, "knife");
+            deps.querier
+                .bank
+                .update_balance(env.contract.address.clone(), balance);
+
+            let mut vault = offset::VirtualOffset::load(&deps.as_ref(), Uint128::zero()).unwrap();
+            vault
+                .checked_add_shares(&mut deps.storage, Uint128::new(10_000))
+                .unwrap();
+            shares::add_shares(&mut deps.storage, &sender, Uint128::new(10_000)).unwrap();
+        }
+
+        let recipient = deps.api.addr_make("recipient");
+        let sender_info = message_info(&sender, &[]);
+        let err = execute::withdraw(
+            deps.as_mut(),
+            env.clone(),
+            sender_info.clone(),
+            RecipientAmount {
+                recipient: recipient.clone(),
+                amount: Uint128::new(10_001),
+            },
+        )
+        .unwrap_err();
+
+        assert_eq!(err.to_string(), "Overflow: Cannot Sub with given operands");
     }
 }
