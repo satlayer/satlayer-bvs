@@ -6,19 +6,16 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"go.uber.org/zap"
 	rio "io"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
 
-	
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/indexer"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
-	
-
 	"github.com/satlayer/satlayer-bvs/examples/squaring/offchain/core"
 )
 
@@ -43,9 +40,7 @@ var wasmUpdateState sync.Map
 // It initializes a new Cosmos client, retrieves the account, and sets up the BVS contracts and state bank.
 // Returns a pointer to the newly created Node instance.
 func NewNode() *Node {
-	elkLogger := logger.NewELKLogger("bvs_demo")
-	elkLogger.SetLogLevel("info")
-	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Owner.KeyDir, core.C.Owner.Bech32Prefix, elkLogger, types.TxManagerParams{
+	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Owner.KeyDir, core.C.Owner.Bech32Prefix, types.TxManagerParams{
 		MaxRetries:             5,
 		RetryInterval:          3 * time.Second,
 		ConfirmationTimeout:    60 * time.Second,
@@ -215,7 +210,7 @@ func (n *Node) square(input int64) int64 {
 func (n *Node) sendAggregator(taskID int64, result int64) (err error) {
 	nowTs := time.Now().Unix()
 	msgPayload := fmt.Sprintf("%s-%d-%d-%d", core.C.Chain.BVSContract, nowTs, taskID, result)
-	core.L.Info(fmt.Sprintf("msgPayload: %s\n", msgPayload))
+	zap.L().Info(fmt.Sprintf("msgPayload: %s\n", msgPayload))
 	signature, err := n.chainIO.GetSigner().Sign([]byte(msgPayload))
 
 	payload := Payload{

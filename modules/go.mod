@@ -7,12 +7,10 @@ toolchain go1.23.6
 require (
 	cosmossdk.io/math v1.3.0
 	github.com/CosmWasm/wasmd v0.52.0
-	github.com/bshuster-repo/logrus-logstash-hook v1.1.0
 	github.com/cometbft/cometbft v0.38.12
 	github.com/cosmos/cosmos-sdk v0.50.8
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0
 	github.com/docker/go-connections v0.5.0
-	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
@@ -190,6 +188,7 @@ require (
 	github.com/shamaton/msgpack/v2 v2.2.0 // indirect
 	github.com/shirou/gopsutil/v3 v3.23.12 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
+	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect

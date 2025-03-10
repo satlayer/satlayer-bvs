@@ -5,12 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/indexer"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
-	
 
 	"github.com/satlayer/satlayer-bvs/examples/squaring/task/core"
 )
@@ -34,11 +31,7 @@ func RunMonitor() {
 // No parameters.
 // Returns a pointer to the newly created Monitor struct.
 func NewMonitor() *Monitor {
-	// init chain and log
-	elkLogger := logger.NewELKLogger("bvs_demo")
-	elkLogger.SetLogLevel("info")
-
-	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Owner.KeyDir, core.C.Owner.Bech32Prefix, elkLogger, types.TxManagerParams{
+	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Owner.KeyDir, core.C.Owner.Bech32Prefix, types.TxManagerParams{
 		MaxRetries:             3,
 		RetryInterval:          1 * time.Second,
 		ConfirmationTimeout:    60 * time.Second,

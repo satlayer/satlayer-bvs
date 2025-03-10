@@ -10,14 +10,10 @@ import (
 	"strings"
 	"time"
 
-	
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/indexer"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
-	
-
 	"github.com/satlayer/satlayer-bvs/examples/squaring/uploader/core"
 )
 
@@ -29,10 +25,7 @@ type Uploader struct {
 }
 
 func NewUploader() *Uploader {
-	elkLogger := logger.NewELKLogger("bvs_demo")
-	elkLogger.SetLogLevel("info")
-
-	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Owner.KeyDir, core.C.Owner.Bech32Prefix, elkLogger, types.TxManagerParams{
+	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Owner.KeyDir, core.C.Owner.Bech32Prefix, types.TxManagerParams{
 		MaxRetries:             5,
 		RetryInterval:          3 * time.Second,
 		ConfirmationTimeout:    60 * time.Second,

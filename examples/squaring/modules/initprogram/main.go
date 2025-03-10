@@ -9,7 +9,6 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
 	"github.com/satlayer/satlayer-bvs/examples/squaring/initprogram/core"
 )
 
@@ -24,8 +23,7 @@ func main() {
 }
 
 func getApproverAccount() string {
-	elkLogger := logger.NewELKLogger("bvs_demo")
-	approverClient, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, elkLogger, types.TxManagerParams{
+	approverClient, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, types.TxManagerParams{
 		MaxRetries:             5,
 		RetryInterval:          3 * time.Second,
 		ConfirmationTimeout:    60 * time.Second,
@@ -47,9 +45,7 @@ func getApproverAccount() string {
 }
 
 //func registerBvsContract() string {
-//	elkLogger := logger.NewELKLogger("bvs_demo")
-//	elkLogger.SetLogLevel("info")
-//	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, elkLogger, types.TxManagerParams{
+//	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, types.TxManagerParams{
 //		MaxRetries:             5,
 //		RetryInterval:          3 * time.Second,
 //		ConfirmationTimeout:    60 * time.Second,
@@ -73,9 +69,7 @@ func getApproverAccount() string {
 //}
 //
 //func registerOperators() {
-//	elkLogger := logger.NewELKLogger("bvs_demo")
-//	elkLogger.SetLogLevel("info")
-//	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, elkLogger, types.TxManagerParams{
+//	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, types.TxManagerParams{
 //		MaxRetries:             5,
 //		RetryInterval:          3 * time.Second,
 //		ConfirmationTimeout:    60 * time.Second,
@@ -118,9 +112,7 @@ func getApproverAccount() string {
 
 func registerStrategy() {
 	fmt.Println("registerStrategy")
-	elkLogger := logger.NewELKLogger("bvs_demo")
-	elkLogger.SetLogLevel("info")
-	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, elkLogger, types.TxManagerParams{
+	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, types.TxManagerParams{
 		MaxRetries:             5,
 		RetryInterval:          3 * time.Second,
 		ConfirmationTimeout:    60 * time.Second,
@@ -145,10 +137,7 @@ func registerStrategy() {
 }
 
 func registerStakers() {
-	elkLogger := logger.NewELKLogger("bvs_demo")
-	elkLogger.SetLogLevel("info")
-
-	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, elkLogger, types.TxManagerParams{
+	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, types.TxManagerParams{
 		MaxRetries:             5,
 		RetryInterval:          3 * time.Second,
 		ConfirmationTimeout:    60 * time.Second,

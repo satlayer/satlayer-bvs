@@ -163,7 +163,9 @@ importers:
 
   modules/bvs-cli: {}
 
-  modules/bvs-cw:
+  modules/cosmwasm-api: {}
+
+  modules/cosmwasm-schema:
     devDependencies:
       '@satlayer/bvs-delegation-manager':
         specifier: workspace:*
@@ -201,8 +203,6 @@ importers:
       quicktype-core:
         specifier: ^23.0.171
         version: 23.0.171
-
-  modules/cosmwasm-api: {}
 
   packages/config-eslint:
     dependencies:

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"go.uber.org/zap"
+
 	"cosmossdk.io/math"
 	"github.com/CosmWasm/wasmd/x/wasm"
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
@@ -25,7 +27,6 @@ import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
 	"github.com/satlayer/satlayer-bvs/bvs-api/signer"
 )
 
@@ -55,7 +56,6 @@ type chainIO struct {
 	clientCtx client.Context
 	signer    *signer.Signer
 	pubKey    cryptotypes.PubKey
-	logger    logger.Logger
 	params    types.TxManagerParams
 }
 
@@ -104,7 +104,7 @@ func (c chainIO) SendTransaction(ctx context.Context, opts types.ExecuteOptions)
 		if err == nil {
 			break
 		}
-		c.logger.Warn("Failed to send transaction", logger.WithField("attempt", attempt+1), logger.WithField("err", err))
+		zap.L().Warn("Failed to send transaction", zap.Int("attempt", attempt+1), zap.Error(err))
 		if attempt == c.params.MaxRetries-1 {
 			return nil, fmt.Errorf("max retries exceeded: %w", err)
 		}
@@ -175,7 +175,7 @@ func (c chainIO) waitForConfirmation(ctx context.Context, txHash string) (*coret
 		case <-ticker.C:
 			txResp, err := c.QueryTransaction(txHash)
 			if err != nil {
-				c.logger.Debug("Failed to query transaction", logger.WithField("txHash", txHash), logger.WithField("error", err))
+				zap.L().Debug("Failed to query transaction", zap.String("txHash", txHash), zap.Error(err))
 				continue
 			}
 
@@ -259,7 +259,7 @@ func (c chainIO) GetCurrentAccountPubKey() cryptotypes.PubKey {
 	return c.pubKey
 }
 
-func NewChainIO(chainID, rpcURI, homeDir, bech32Prefix string, logger logger.Logger, params types.TxManagerParams) (ChainIO, error) {
+func NewChainIO(chainID, rpcURI, homeDir, bech32Prefix string, params types.TxManagerParams) (ChainIO, error) {
 	// Set address prefixes
 	if err := setAddressPrefixes(bech32Prefix); err != nil {
 		return nil, fmt.Errorf("failed to set address prefixes: %w", err)
@@ -282,7 +282,6 @@ func NewChainIO(chainID, rpcURI, homeDir, bech32Prefix string, logger logger.Log
 	return chainIO{
 		clientCtx: clientCtx,
 		signer:    signer.NewSigner(clientCtx),
-		logger:    logger,
 		params:    params,
 	}, nil
 }

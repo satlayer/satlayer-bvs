@@ -5,12 +5,10 @@ import (
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	apilogger "github.com/satlayer/satlayer-bvs/bvs-api/logger"
 )
 
 func (c *BabylonContainer) NewChainIO(homeDir string) io.ChainIO {
-	logger := apilogger.NewMockELKLogger()
-	chainIo, err := io.NewChainIO(ChainId, c.RpcUri, homeDir, "bbn", logger, types.TxManagerParams{
+	chainIo, err := io.NewChainIO(ChainId, c.RpcUri, homeDir, "bbn", types.TxManagerParams{
 		MaxRetries:             3,
 		RetryInterval:          2 * time.Second,
 		ConfirmationTimeout:    60 * time.Second,

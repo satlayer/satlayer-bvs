@@ -5,11 +5,9 @@ import (
 	"runtime"
 
 	"github.com/BurntSushi/toml"
-	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
 )
 
 var C Config
-var L logger.Logger
 var S Store
 
 func InitConfig(overrideConfig Config) {
@@ -28,8 +26,6 @@ func InitConfig(overrideConfig Config) {
 	// override config
 	UpdateConfig(overrideConfig)
 
-	// init logger
-	L = logger.NewELKLogger(C.Chain.BvsContract)
 	initStore(&C.Database)
 }
 
