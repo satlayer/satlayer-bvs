@@ -3,6 +3,7 @@ package util
 import (
 	"encoding/base64"
 	"fmt"
+
 	"go.uber.org/zap"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
