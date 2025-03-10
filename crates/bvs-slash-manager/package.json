@@ -1,6 +1,6 @@
 {
   "name": "@satlayer/bvs-slash-manager",
-  "private": false,
+  "private": true,
   "files": [
     "artifacts",
     "schema"

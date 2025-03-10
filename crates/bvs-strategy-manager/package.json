@@ -1,6 +1,6 @@
 {
   "name": "@satlayer/bvs-strategy-manager",
-  "private": false,
+  "private": true,
   "files": [
     "artifacts",
     "schema"

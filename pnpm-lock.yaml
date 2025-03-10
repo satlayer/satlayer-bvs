@@ -48,8 +48,6 @@ importers:
 
   crates/bvs-directory: {}
 
-  crates/bvs-library: {}
-
   crates/bvs-pauser: {}
 
   crates/bvs-registry: {}
@@ -63,8 +61,6 @@ importers:
   crates/bvs-strategy-manager: {}
 
   crates/bvs-vault-bank: {}
-
-  crates/bvs-vault-base: {}
 
   crates/bvs-vault-cw20: {}
 
