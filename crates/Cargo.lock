@@ -208,7 +208,7 @@ dependencies = [
  "schemars",
  "serde",
  "sha2",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -227,7 +227,7 @@ dependencies = [
  "cw2",
  "schemars",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -246,7 +246,7 @@ dependencies = [
  "secp256k1",
  "serde",
  "sha2",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -262,7 +262,7 @@ dependencies = [
  "schemars",
  "serde",
  "strum",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -278,7 +278,7 @@ dependencies = [
  "cw2",
  "schemars",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -301,7 +301,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -328,7 +328,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -346,7 +346,7 @@ dependencies = [
  "cw20-base",
  "schemars",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -366,7 +366,7 @@ dependencies = [
  "cw20-base",
  "schemars",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -385,7 +385,7 @@ dependencies = [
  "cw2",
  "schemars",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -402,7 +402,7 @@ dependencies = [
  "cw2",
  "schemars",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -421,7 +421,7 @@ dependencies = [
  "cw20",
  "schemars",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -437,7 +437,7 @@ dependencies = [
  "cw2",
  "schemars",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
