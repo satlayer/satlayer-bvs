@@ -1,6 +1,5 @@
 use crate::state::RegistrationStatus;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, StdError};
 
 #[cw_serde]
 pub struct InstantiateMsg {
