@@ -287,6 +287,12 @@ mod tests {
                     .add_attribute("vault", vault.clone())
                     .add_attribute("whitelisted", "false")
             );
+
+            let vault = VAULTS
+                .may_load(deps.as_ref().storage, &vault)
+                .unwrap()
+                .unwrap();
+            assert_eq!(vault.whitelisted, false);
         }
 
         deps.querier
@@ -338,6 +344,12 @@ mod tests {
                     .add_attribute("vault", vault.clone())
                     .add_attribute("whitelisted", "true")
             );
+
+            let vault = VAULTS
+                .may_load(deps.as_ref().storage, &vault)
+                .unwrap()
+                .unwrap();
+            assert_eq!(vault.whitelisted, true);
         }
 
         // whitelist is true and failed to set: No such contract
