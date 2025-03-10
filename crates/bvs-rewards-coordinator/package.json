@@ -1,6 +1,6 @@
 {
   "name": "@satlayer/bvs-rewards-coordinator",
-  "private": false,
+  "private": true,
   "files": [
     "artifacts",
     "schema"

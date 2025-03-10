@@ -1,5 +1,6 @@
 {
   "name": "@docs/root",
+  "private": true,
   "scripts": {
     "build": "next build",
     "dev": "next",
