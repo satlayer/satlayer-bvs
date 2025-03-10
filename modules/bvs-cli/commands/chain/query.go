@@ -42,6 +42,5 @@ func QueryAccount(account string) {
 		fmt.Printf("Failed. Error msg: %+v", err)
 		return
 	}
-	resp.GetPubKey()
 	fmt.Printf("===AccountInfo===\n1. Address: %s\n2. AccountNumber: %d\n3. Sequence: %d\n", resp.GetAddress(), resp.GetAccountNumber(), resp.GetSequence())
 }

@@ -36,20 +36,15 @@ labels:
     matcher:
       files: "modules/babylond/**"
 
-  - label: a/modules/bvs-api
+  - label: a/modules/cosmwasm-api
     sync: true
     matcher:
-      files: "modules/bvs-api/**"
+      files: "modules/cosmwasm-api/**"
 
-  - label: a/modules/bvs-cli
+  - label: a/modules/cosmwasm-schema
     sync: true
     matcher:
-      files: "modules/bvs-cli/**"
-
-  - label: a/modules/bvs-cw
-    sync: true
-    matcher:
-      files: "modules/bvs-cw/**"
+      files: "modules/cosmwasm-schema/**"
 
 checks:
   - context: "Semantic Pull Request"
