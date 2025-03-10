@@ -52,9 +52,11 @@ pub fn assert_operator_registered(
 }
 
 /// Mapping of (operator_service) address.
-/// See `RegistrationStatus` for more of the status
+/// See `RegistrationStatus` for more of the status.
+/// Use [get_registration_status] and [set_registration_status] to interact with this map.
 const REGISTRATION_STATUS: Map<(&Operator, &Service), u8> = Map::new("registration_status");
 
+/// Get the registration status of the Operator to Service
 pub fn get_registration_status(
     store: &dyn Storage,
     key: (&Operator, &Service),
@@ -66,6 +68,7 @@ pub fn get_registration_status(
     status.try_into()
 }
 
+/// Set the registration status of the Operator to Service
 pub fn set_registration_status(
     store: &mut dyn Storage,
     key: (&Operator, &Service),
@@ -73,4 +76,85 @@ pub fn set_registration_status(
 ) -> StdResult<()> {
     REGISTRATION_STATUS.save(store, key, &status.into())?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cosmwasm_std::testing::mock_dependencies;
+
+    #[test]
+    fn test_assert_service_registered() {
+        let mut deps = mock_dependencies();
+
+        let service = deps.api.addr_make("service");
+
+        let res = assert_service_registered(&deps.storage, &service);
+        assert_eq!(
+            res,
+            Err(ContractError::NotRegistered {
+                kind: "service".to_string()
+            })
+        );
+
+        SERVICES.save(&mut deps.storage, &service, &true).unwrap();
+
+        let res = assert_service_registered(&deps.storage, &service);
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_assert_operator_registered() {
+        let mut deps = mock_dependencies();
+
+        let operator = deps.api.addr_make("operator");
+
+        let res = assert_operator_registered(&deps.storage, &operator);
+        assert_eq!(
+            res,
+            Err(ContractError::NotRegistered {
+                kind: "operator".to_string()
+            })
+        );
+
+        OPERATORS.save(&mut deps.storage, &operator, &true).unwrap();
+
+        let res = assert_operator_registered(&deps.storage, &operator);
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_registration_status() {
+        let mut deps = mock_dependencies();
+
+        let operator = deps.api.addr_make("operator");
+        let service = deps.api.addr_make("service");
+
+        let key = (&operator, &service);
+
+        let status = get_registration_status(&deps.storage, key).unwrap();
+        assert_eq!(status, RegistrationStatus::Inactive);
+
+        set_registration_status(&mut deps.storage, key, RegistrationStatus::Active).unwrap();
+        let status = get_registration_status(&deps.storage, key).unwrap();
+        assert_eq!(status, RegistrationStatus::Active);
+
+        set_registration_status(
+            &mut deps.storage,
+            key,
+            RegistrationStatus::OperatorRegistered,
+        )
+        .unwrap();
+        let status = get_registration_status(&deps.storage, key).unwrap();
+        assert_eq!(status, RegistrationStatus::OperatorRegistered);
+
+        set_registration_status(
+            &mut deps.storage,
+            key,
+            RegistrationStatus::ServiceRegistered,
+        )
+        .unwrap();
+        let status = get_registration_status(&deps.storage, key).unwrap();
+        assert_eq!(status, RegistrationStatus::ServiceRegistered);
+    }
 }

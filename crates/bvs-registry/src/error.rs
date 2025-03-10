@@ -1,7 +1,7 @@
 use cosmwasm_std::StdError;
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
@@ -18,6 +18,6 @@ pub enum ContractError {
 
 impl ContractError {
     pub fn not_registered(kind: impl Into<String>) -> Self {
-        ContractError::NotRegistered { kind }
+        ContractError::NotRegistered { kind: kind.into() }
     }
 }

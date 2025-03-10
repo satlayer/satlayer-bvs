@@ -39,27 +39,19 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     bvs_pauser::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
-
-    match msg {}
+    // TODO: implement execute
+    Ok(Response::new())
 }
 
-mod execute {
-    use crate::error::ContractError;
-    use crate::state;
-    use bvs_library::ownership;
-    use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Response};
-}
+mod execute {}
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    match msg {}
+pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
+    // TODO: implement query
+    to_json_binary(&true)
 }
 
-mod query {
-    use crate::state;
-    use cosmwasm_std::{Addr, Deps, StdResult};
-    use cw_storage_plus::Bound;
-}
+mod query {}
 
 #[cfg(test)]
 mod tests {

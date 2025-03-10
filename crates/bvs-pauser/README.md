@@ -1,6 +1,7 @@
 # BVS Pauser
 
 Allowing one centralized contract to manage the operational state of the ecosystem.
+For emergency pausing of the ecosystem to respond to critical issues.
 
 Two main functions are provided by this contract:
 
