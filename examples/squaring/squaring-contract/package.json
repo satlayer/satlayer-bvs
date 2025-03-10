@@ -1,6 +1,6 @@
 {
   "name": "@examples/squaring-contract",
-  "private": false,
+  "private": true,
   "files": [
     "artifacts",
     "schema"
