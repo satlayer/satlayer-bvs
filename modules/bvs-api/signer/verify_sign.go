@@ -10,7 +10,6 @@ import (
 	"github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
 )
 
-// VerifySignature Function to verify signature
 func VerifySignature(pubKey cryptotypes.PubKey, msgHash []byte, signatureBase64 string) (bool, error) {
 	// Decode base64 encoded signature into bytes
 	signatureBytes, err := base64.StdEncoding.DecodeString(signatureBase64)

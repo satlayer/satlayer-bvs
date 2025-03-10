@@ -7,7 +7,6 @@ import (
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
-	"github.com/satlayer/satlayer-bvs/bvs-api/metrics/consts"
 )
 
 type Collector struct {
@@ -25,22 +24,6 @@ type Collector struct {
 }
 
 var _ prometheus.Collector = (*Collector)(nil)
-
-func NewCollector(bvsName, operatorAddr string, strategies []string, delegation *api.DelegationManager, logger logger.Logger) *Collector {
-	return &Collector{
-		bvsName:      bvsName,
-		operatorAddr: operatorAddr,
-		strategies:   strategies,
-		delegation:   delegation,
-		logger:       logger,
-		delegatedShares: prometheus.NewDesc(
-			consts.SatLayerPromNamespace+"_delegated_shares",
-			"",
-			[]string{"operator_address", "strategy"},
-			prometheus.Labels{},
-		),
-	}
-}
 
 // Describe describes to Prometheus the metrics this collector will collect
 func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
