@@ -75,13 +75,18 @@ mod execute {
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::IsPaused { contract, method } => {
+            let contract = deps.api.addr_validate(&contract)?;
             to_json_binary(&query::is_paused(deps, contract, method)?)
         }
         QueryMsg::CanExecute {
             contract,
             sender,
             method,
-        } => to_json_binary(&query::can_execute(deps, contract, sender, method)?),
+        } => {
+            let contract = deps.api.addr_validate(&contract)?;
+            let sender = deps.api.addr_validate(&sender)?;
+            to_json_binary(&query::can_execute(deps, contract, sender, method)?)
+        }
     }
 }
 
@@ -89,15 +94,12 @@ mod query {
     use super::*;
     use crate::msg::{CanExecuteFlag, CanExecuteResponse, IsPausedResponse};
     use crate::state::PAUSED;
+    use cosmwasm_std::Addr;
 
     /// TODO(future): The `_contract` and `_method` are currently not used.
     ///  To implement checking of paused status against contract and method.
     ///  Added for future compatibility, not yet utilized—current design pauses all execute.
-    pub fn is_paused(
-        deps: Deps,
-        _contract: String,
-        _method: String,
-    ) -> StdResult<IsPausedResponse> {
+    pub fn is_paused(deps: Deps, _contract: Addr, _method: String) -> StdResult<IsPausedResponse> {
         let is_paused = PAUSED.load(deps.storage)?;
         Ok(IsPausedResponse::new(is_paused))
     }
@@ -107,8 +109,8 @@ mod query {
     ///  Added for future compatibility, not yet utilized—current design pauses all execute.
     pub fn can_execute(
         deps: Deps,
-        _contract: String,
-        _sender: String,
+        _contract: Addr,
+        _sender: Addr,
         _method: String,
     ) -> StdResult<CanExecuteResponse> {
         let is_paused = PAUSED.load(deps.storage)?;
@@ -162,8 +164,8 @@ mod tests {
         let info = message_info(&owner, &[]);
         execute::pause(deps.as_mut(), info).unwrap();
 
-        let contract = deps.api.addr_make("contract").to_string();
-        let sender = deps.api.addr_make("sender").to_string();
+        let contract = deps.api.addr_make("contract");
+        let sender = deps.api.addr_make("sender");
         let method = "any_method".to_string();
 
         let response = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
@@ -187,8 +189,8 @@ mod tests {
         let info = message_info(&not_owner, &[]);
         execute::pause(deps.as_mut(), info).expect_err("Unauthorized");
 
-        let contract = deps.api.addr_make("contract").to_string();
-        let sender = deps.api.addr_make("sender").to_string();
+        let contract = deps.api.addr_make("contract");
+        let sender = deps.api.addr_make("sender");
         let method = "any_method".to_string();
 
         {
@@ -213,8 +215,8 @@ mod tests {
         let info = message_info(&owner, &[]);
         execute::unpause(deps.as_mut(), info).unwrap();
 
-        let contract = deps.api.addr_make("anyone").to_string();
-        let sender = deps.api.addr_make("sender").to_string();
+        let contract = deps.api.addr_make("anyone");
+        let sender = deps.api.addr_make("sender");
         let method = "any_method".to_string();
 
         {
@@ -240,8 +242,8 @@ mod tests {
         let info = message_info(&not_owner, &[]);
         execute::unpause(deps.as_mut(), info).expect_err("Unauthorized");
 
-        let contract = deps.api.addr_make("anyone").to_string();
-        let sender = deps.api.addr_make("sender").to_string();
+        let contract = deps.api.addr_make("anyone");
+        let sender = deps.api.addr_make("sender");
         let method = "any_method".to_string();
 
         {
@@ -260,7 +262,7 @@ mod tests {
 
         let owner = deps.api.addr_make("owner");
         let info = message_info(&owner, &[]);
-        let contract = deps.api.addr_make("anyone").to_string();
+        let contract = deps.api.addr_make("anyone");
         let method = "any_method".to_string();
 
         ownership::set_owner(&mut deps.storage, &owner).unwrap();
@@ -276,7 +278,7 @@ mod tests {
         let res = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
         assert_eq!(res.is_paused(), true);
 
-        let sender = deps.api.addr_make("sender").to_string();
+        let sender = deps.api.addr_make("sender");
         let res = query::can_execute(deps.as_ref(), contract, sender, method).unwrap();
         let flag: CanExecuteFlag = res.into();
         assert_eq!(flag, CanExecuteFlag::Paused);
