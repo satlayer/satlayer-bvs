@@ -1,0 +1,10 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "test": {
+      "inputs": ["**.go"],
+      "dependsOn": ["@modules/bvs-cw#generate:schema", "@modules/babylond#build:wasm"]
+    }
+  }
+}
