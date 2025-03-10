@@ -6,18 +6,6 @@ use cw_storage_plus::Map;
 type Service = Addr;
 type Operator = Addr;
 
-/// Registered status of the Operator to Service
-/// Can be initiated by the Operator or the Service
-/// Becomes Active when the Operator and Service both have registered
-/// Becomes Inactive when the Operator or Service have unregistered (default state)
-#[cw_serde]
-pub enum RegistrationStatus {
-    Inactive = 0,
-    Active = 1,
-    OperatorRegistered = 2,
-    ServiceRegistered = 3,
-}
-
 /// Mapping of service address to boolean value
 /// indicating if the service is registered with the registry
 pub const SERVICES: Map<&Service, bool> = Map::new("services");
@@ -49,6 +37,38 @@ pub fn assert_operator_registered(
     }
 
     Ok(())
+}
+
+/// Registered status of the Operator to Service
+/// Can be initiated by the Operator or the Service
+/// Becomes Active when the Operator and Service both have registered
+/// Becomes Inactive when the Operator or Service have unregistered (default state)
+#[cw_serde]
+pub enum RegistrationStatus {
+    Inactive = 0,
+    Active = 1,
+    OperatorRegistered = 2,
+    ServiceRegistered = 3,
+}
+
+impl From<RegistrationStatus> for u8 {
+    fn from(value: RegistrationStatus) -> u8 {
+        value as u8
+    }
+}
+
+impl TryFrom<u8> for RegistrationStatus {
+    type Error = StdError;
+
+    fn try_from(value: u8) -> Result<Self, StdError> {
+        match value {
+            0 => Ok(RegistrationStatus::Inactive),
+            1 => Ok(RegistrationStatus::Active),
+            2 => Ok(RegistrationStatus::OperatorRegistered),
+            3 => Ok(RegistrationStatus::ServiceRegistered),
+            _ => Err(StdError::generic_err("RegistrationStatus out of range")),
+        }
+    }
 }
 
 /// Mapping of (operator_service) address.

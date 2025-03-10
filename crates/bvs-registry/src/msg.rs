@@ -60,26 +60,6 @@ impl From<RegistrationStatus> for RegistrationStatusResponse {
     }
 }
 
-impl From<RegistrationStatus> for u8 {
-    fn from(value: RegistrationStatus) -> u8 {
-        value as u8
-    }
-}
-
-impl TryFrom<u8> for RegistrationStatus {
-    type Error = StdError;
-
-    fn try_from(value: u8) -> Result<Self, StdError> {
-        match value {
-            0 => Ok(RegistrationStatus::Inactive),
-            1 => Ok(RegistrationStatus::Active),
-            2 => Ok(RegistrationStatus::OperatorRegistered),
-            3 => Ok(RegistrationStatus::ServiceRegistered),
-            _ => Err(StdError::generic_err("RegistrationStatus out of range")),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::msg::{ExecuteMsg, Metadata};
