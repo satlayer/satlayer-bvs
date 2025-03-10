@@ -11,23 +11,24 @@ jobs:
     name: Version
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.version.outputs.version }}
-      tag: ${{ steps.version.outputs.tag }}
+      npm: ${{ steps.version.outputs.npm }}
+      npm_tag: ${{ steps.version.outputs.npm_tag }}
+      crate: ${{ steps.version.outputs.crate }}
     steps:
       - id: version
         run: |
           if [ "${{ github.event_name }}" = "release" ]; then
-            # Use the release tag (e.g., v1.2.3) as the version
             VERSION=${{ github.event.release.tag_name }}
-            TAG="latest"
+            echo "::set-output name=crate::{$VERSION#v}"
+            echo "::set-output name=npm::$VERSION"
+            echo "::set-output name=npm_tag::latest"
           else
             # Use calendar versioning for the main branch
-            VERSION=$(date "+%Y.%m.%d-main.${{ github.run_number }}")
-            TAG="main"
+            VERSION=$(date "+%Y.%m.%d.${{ github.run_number }}")
+            echo "::set-output name=crate::0.0.0"
+            echo "::set-output name=npm::$VERSION"
+            echo "::set-output name=npm_tag::main"
           fi
-
-          echo "::set-output name=version::$VERSION"
-          echo "::set-output name=tag::$TAG"
 
   npm_gh:
     name: Release [GitHub Packages]
@@ -38,12 +39,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
 
-      - run: pnpm exec npm version ${{ needs.version.outputs.version }} --git-tag-version=false
       - run: |
-          VERSION="${${{ needs.version.outputs.version }}#v}"
           cargo install cargo-edit
-          cargo set-version ${VERSION} --workspace
+          cargo set-version ${{ needs.version.outputs.crate }} --workspace
         working-directory: crates
+      - run: pnpm exec npm version ${{ needs.version.outputs.npm }} --git-tag-version=false
 
       - run: pnpm turbo run build:wasm generate:schema --filter "@satlayer/*"
-      - run: pnpm publish --access public --tag ${{ needs.version.outputs.tag }} --no-git-checks --filter "@satlayer/*"
+      - run: pnpm publish --access public --tag ${{ needs.version.outputs.npm_tag }} --no-git-checks --filter "@satlayer/*"
