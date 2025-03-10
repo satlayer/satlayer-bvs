@@ -6,7 +6,7 @@ import (
 
 	"github.com/satlayer/satlayer-bvs/babylond"
 	"github.com/satlayer/satlayer-bvs/babylond/bvs"
-	"github.com/satlayer/satlayer-bvs/bvs-cw/pauser"
+	"github.com/satlayer/satlayer-bvs/cosmwasm-schema/pauser"
 	"github.com/stretchr/testify/suite"
 )
 

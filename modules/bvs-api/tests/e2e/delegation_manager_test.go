@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"testing"
 
-	delegationmanager "github.com/satlayer/satlayer-bvs/bvs-cw/delegation-manager"
+	delegationmanager "github.com/satlayer/satlayer-bvs/cosmwasm-schema/delegation-manager"
 
 	"github.com/satlayer/satlayer-bvs/babylond"
 	"github.com/satlayer/satlayer-bvs/babylond/bvs"

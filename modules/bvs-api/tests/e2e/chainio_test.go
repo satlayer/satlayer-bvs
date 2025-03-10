@@ -10,7 +10,7 @@ import (
 	"github.com/satlayer/satlayer-bvs/babylond/bvs"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	"github.com/satlayer/satlayer-bvs/bvs-cw/directory"
+	"github.com/satlayer/satlayer-bvs/cosmwasm-schema/directory"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )

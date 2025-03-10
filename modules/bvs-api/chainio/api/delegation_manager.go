@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	delegationmanager "github.com/satlayer/satlayer-bvs/bvs-cw/delegation-manager"
+	delegationmanager "github.com/satlayer/satlayer-bvs/cosmwasm-schema/delegation-manager"
 
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"

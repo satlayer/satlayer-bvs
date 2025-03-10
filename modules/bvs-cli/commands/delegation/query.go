@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	delegationmanager "github.com/satlayer/satlayer-bvs/bvs-cw/delegation-manager"
+	delegationmanager "github.com/satlayer/satlayer-bvs/cosmwasm-schema/delegation-manager"
 )
 
 func IsDelegated(stakerAddress string) {

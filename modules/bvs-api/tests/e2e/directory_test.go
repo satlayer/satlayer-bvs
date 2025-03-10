@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/satlayer/satlayer-bvs/bvs-cw/directory"
+	"github.com/satlayer/satlayer-bvs/cosmwasm-schema/directory"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 

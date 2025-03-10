@@ -11,7 +11,7 @@ import (
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	strategymanager "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-manager"
+	strategymanager "github.com/satlayer/satlayer-bvs/cosmwasm-schema/strategy-manager"
 )
 
 type StrategyManager struct {

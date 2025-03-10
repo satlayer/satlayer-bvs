@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
-	rewardscoordinator "github.com/satlayer/satlayer-bvs/bvs-cw/rewards-coordinator"
+	rewardscoordinator "github.com/satlayer/satlayer-bvs/cosmwasm-schema/rewards-coordinator"
 )
 
 const calcInterval = 86_400 // 1 day
