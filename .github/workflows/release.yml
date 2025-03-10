@@ -26,7 +26,7 @@ jobs:
             echo "npm_tag=latest" >> $GITHUB_OUTPUT
           else
             # Use calendar versioning for the main branch
-            VERSION=$(date "+%Y.%m.%d.${{ github.run_number }}")
+            VERSION=$(date "+%Y.%m.%d-${{ github.run_number }}")
             echo "crate=${VERSION}" >> $GITHUB_OUTPUT
             echo "npm=${VERSION}" >> $GITHUB_OUTPUT
             echo "npm_tag=main" >> $GITHUB_OUTPUT
