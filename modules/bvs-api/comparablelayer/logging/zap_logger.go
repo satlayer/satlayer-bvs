@@ -24,20 +24,6 @@ type ZapLogger struct {
 
 var _ Logger = (*ZapLogger)(nil)
 
-// NewZapLogger creates a new logger wrapped the zap.Logger
-func NewZapLogger(env LogLevel) (Logger, error) {
-	elkLogger := logger.NewELKLogger(bvsName)
-	if env == Production {
-		elkLogger.SetLogLevel(info)
-	} else if env == Development {
-		elkLogger.SetLogLevel(debug)
-	} else {
-		panic(fmt.Sprintf("Unknown environment. Expected %s or %s. Received %s.", Development, Production, env))
-	}
-
-	return &ZapLogger{logger: elkLogger}, nil
-}
-
 func NewMockZapLogger(env LogLevel) (Logger, error) {
 	elkLogger := logger.NewMockELKLogger()
 	if env == Production {

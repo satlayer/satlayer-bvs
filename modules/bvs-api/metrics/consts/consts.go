@@ -1,6 +1,5 @@
 package consts
 
 const (
-	SatLayerPromNamespace = "satlayer"
-	TransactionProcess    = "transaction_process"
+	TransactionProcess = "transaction_process"
 )
