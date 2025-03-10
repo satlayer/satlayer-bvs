@@ -17,6 +17,9 @@ type Client struct {
 	gasLimit      uint64
 }
 
+// Query queries the smart contract with the given msg, and returns the response.
+// Using the generated types, you can create queries like:
+// `response, err := Query[pauser.IsPausedResponse](ClientCtx, ctx, address, queryMsg)`
 func Query[Response interface{}](
 	clientCtx client.Context, ctx context.Context, addr string, msg interface{},
 ) (Response, error) {
