@@ -2,20 +2,42 @@ package cosmwasmapi
 
 import (
 	"context"
+	"encoding/json"
 
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
+	"github.com/cosmos/cosmos-sdk/client"
+	sdktypes "github.com/cosmos/cosmos-sdk/types"
 )
 
-func Query(ctx context.Context) {
-	queryClient := wasmtypes.NewQueryClient(c.clientCtx)
-	queryMsg := &wasmtypes.QuerySmartContractStateRequest{
-		Address:   opts.ContractAddr,
-		QueryData: opts.QueryMsg,
+type Client struct {
+	clientCtx     client.Context
+	ContractAddr  string
+	gasAdjustment float64
+	gasPrice      sdktypes.DecCoin
+	gasLimit      uint64
+}
+
+func Query[Response interface{}](
+	clientCtx client.Context, ctx context.Context, addr string, msg interface{},
+) (Response, error) {
+	var result Response
+	queryClient := wasmtypes.NewQueryClient(clientCtx)
+
+	queryBytes, err := json.Marshal(msg)
+	if err != nil {
+		return result, err
 	}
 
-	resp, err := queryClient.SmartContractState(ctx, queryMsg)
-	if err != nil {
-		return nil, err
+	queryMsg := &wasmtypes.QuerySmartContractStateRequest{
+		Address:   addr,
+		QueryData: queryBytes,
 	}
-	return resp, nil
+
+	response, err := queryClient.SmartContractState(ctx, queryMsg)
+	if err != nil {
+		return result, err
+	}
+
+	err = json.Unmarshal(response.Data, &result)
+	return result, err
 }
