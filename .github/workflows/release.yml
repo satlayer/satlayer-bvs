@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [released]
+
+permissions:
+  id-token: write
+  packages: write
+  contents: read
+
+jobs:
+  version:
+    name: Version
+    runs-on: ubuntu-latest
+    outputs:
+      npm: ${{ steps.version.outputs.npm }}
+      npm_tag: ${{ steps.version.outputs.npm_tag }}
+      crate: ${{ steps.version.outputs.crate }}
+    steps:
+      - id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            VERSION=${{ github.event.release.tag_name }}
+            echo "crate=${VERSION#v}" >> $GITHUB_OUTPUT
+            echo "npm=${VERSION}" >> $GITHUB_OUTPUT
+            echo "npm_tag=latest" >> $GITHUB_OUTPUT
+          else
+            # Use calendar versioning for the main branch
+            VERSION=$(date "+%Y.%m.%d-${{ github.run_number }}")
+            echo "crate=0.0.0" >> $GITHUB_OUTPUT
+            echo "npm=${VERSION}" >> $GITHUB_OUTPUT
+            echo "npm_tag=main" >> $GITHUB_OUTPUT
+          fi
+
+  npm_gh:
+    name: NPM [GitHub Packages]
+    runs-on: ubuntu-latest
+    needs:
+      - version
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - run: |
+          sed -i "s/version = \"0\.0\.0\"/version = \"${{ needs.version.outputs.crate }}\"/" Cargo.toml
+        working-directory: crates
+      - run: pnpm --filter "@satlayer/*" exec npm version ${{ needs.version.outputs.npm }} --git-tag-version=false
+
+      - run: pnpm turbo run build:wasm generate:schema --filter "@satlayer/*"
+
+      - run: |
+          pnpm config set "@satlayer:registry" "https://npm.pkg.github.com" --location=project
+          pnpm config set "//npm.pkg.github.com/:_authToken" "${NODE_AUTH_TOKEN}" --location=project
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+      - run: pnpm publish --access public --tag ${{ needs.version.outputs.npm_tag }} --no-git-checks --filter "@satlayer/*"
