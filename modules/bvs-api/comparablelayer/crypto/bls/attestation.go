@@ -1,7 +1,6 @@
 package bls
 
 import (
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -9,8 +8,6 @@ import (
 	"path/filepath"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254"
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
-
 	bn254utils "github.com/satlayer/satlayer-bvs/bvs-api/comparablelayer/crypto/bn254"
 	"github.com/satlayer/satlayer-bvs/bvs-api/comparablelayer/crypto/encrypt"
 )
@@ -24,57 +21,6 @@ type encryptedBLSKeyJSON struct {
 type KeyPair struct {
 	PrivKey *PrivateKey
 	PubKey  *PubKey
-}
-
-func NewKeyPair(sk *PrivateKey) *KeyPair {
-	pk := bn254utils.MulByGeneratorG1(sk.PrivKey)
-	return &KeyPair{sk, &PubKey{&G1Point{pk}}}
-}
-
-func NewKeyPairFromString(sk string) (*KeyPair, error) {
-	ele, err := new(fr.Element).SetString(sk)
-	if err != nil {
-		return nil, err
-	}
-	return NewKeyPair(&PrivateKey{PrivKey: ele}), nil
-}
-
-func GenRandomBlsKeys() (*KeyPair, error) {
-	maxVal := new(big.Int)
-	maxVal.SetString(fr.Modulus().String(), 10)
-
-	n, err := rand.Int(rand.Reader, maxVal)
-	if err != nil {
-		return nil, err
-	}
-
-	sk := &PrivateKey{PrivKey: new(fr.Element).SetBigInt(n)}
-	return NewKeyPair(sk), nil
-}
-
-func ReadPrivateKeyFromFile(path string, password string) (*KeyPair, error) {
-	keyStoreContents, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	encryptedBLSStruct := &encryptedBLSKeyJSON{}
-	if err = json.Unmarshal(keyStoreContents, encryptedBLSStruct); err != nil {
-		return nil, err
-	}
-
-	if encryptedBLSStruct.PubKey == "" {
-		return nil, fmt.Errorf("invalid bls key file. pubkey field not found")
-	}
-
-	skBytes, err := encrypt.DecryptData(encryptedBLSStruct.Crypto, password)
-	if err != nil {
-		return nil, err
-	}
-
-	privKey := new(fr.Element).SetBytes(skBytes)
-	keyPair := NewKeyPair(&PrivateKey{PrivKey: privKey})
-	return keyPair, nil
 }
 
 // SaveToFile saves the private key in an encrypted keystore file

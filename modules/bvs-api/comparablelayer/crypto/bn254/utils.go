@@ -8,31 +8,6 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
-func VerifySig(sig *bn254.G1Affine, pubkey *bn254.G2Affine, msgBytes [32]byte) (bool, error) {
-
-	g2Gen := GetG2Generator()
-
-	msgPoint := MapToCurve(msgBytes)
-
-	var negSig bn254.G1Affine
-	negSig.Neg((*bn254.G1Affine)(sig))
-
-	P := [2]bn254.G1Affine{*msgPoint, negSig}
-	Q := [2]bn254.G2Affine{*pubkey, *g2Gen}
-
-	ok, err := bn254.PairingCheck(P[:], Q[:])
-	if err != nil {
-		return false, nil
-	}
-	return ok, nil
-
-}
-
-// MapToCurve implements the simple hash-and-check (also sometimes try-and-increment) algorithm
-// see https://hackmd.io/@benjaminion/bls12-381#Hash-and-check
-// Note that this function needs to be the same as the one used in the contract:
-// https://github.com/Layr-Labs/eigenlayer-middleware/blob/1feb6ae7e12f33ce8eefb361edb69ee26c118b5d/src/libraries/BN254.sol#L292
-// we don't use the newer constant time hash-to-curve algorithms as they are gas-expensive to compute onchain
 func MapToCurve(digest [32]byte) *bn254.G1Affine {
 
 	one := new(big.Int).SetUint64(1)

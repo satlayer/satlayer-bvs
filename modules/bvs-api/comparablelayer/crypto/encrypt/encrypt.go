@@ -31,11 +31,6 @@ const (
 
 var ErrDecrypt = errors.New("could not decrypt key with given password")
 
-type encryptedBLSKeyJSON struct {
-	PubKey string     `json:"pubKey"`
-	Crypto CryptoJSON `json:"crypto"`
-}
-
 type CryptoJSON struct {
 	Cipher     string                 `json:"cipher"`
 	CipherText string                 `json:"ciphertext"`

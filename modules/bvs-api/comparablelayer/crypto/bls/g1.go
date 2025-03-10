@@ -1,8 +1,6 @@
 package bls
 
 import (
-	"math/big"
-
 	"github.com/consensys/gnark-crypto/ecc/bn254"
 
 	bn254utils "github.com/satlayer/satlayer-bvs/bvs-api/comparablelayer/crypto/bn254"
@@ -11,21 +9,6 @@ import (
 // G1Point represents a point on the G1 curve
 type G1Point struct {
 	*bn254.G1Affine
-}
-
-// NewG1Point creates a new G1Point
-func NewG1Point(x, y *big.Int) *G1Point {
-	return &G1Point{
-		&bn254.G1Affine{
-			X: bn254utils.NewFpElement(x),
-			Y: bn254utils.NewFpElement(y),
-		},
-	}
-}
-
-// NewZeroG1Point creates a new zero G1Point
-func NewZeroG1Point() *G1Point {
-	return NewG1Point(big.NewInt(0), big.NewInt(0))
 }
 
 // Add adds another G1 point to this one
