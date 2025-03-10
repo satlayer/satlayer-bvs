@@ -33,7 +33,7 @@ jobs:
           fi
 
   npm_gh:
-    name: Release [GitHub Packages]
+    name: NPM [GitHub Packages]
     runs-on: ubuntu-latest
     needs:
       - version
@@ -42,10 +42,9 @@ jobs:
       - uses: ./.github/actions/setup
 
       - run: |
-          cargo install cargo-edit
-          cargo set-version ${{ needs.version.outputs.crate }} --workspace
+          sed -i "s/version = \"0\.0\.0\" # DO NOT CHANGE THIS LINE/version = \"${{ needs.version.outputs.crate }}\"/" Cargo.toml
         working-directory: crates
-      - run: pnpm exec npm version ${{ needs.version.outputs.npm }} --git-tag-version=false
+      - run: pnpm --filter "@satlayer/*" exec npm version ${{ needs.version.outputs.npm }} --git-tag-version=false
 
       - run: pnpm turbo run build:wasm generate:schema --filter "@satlayer/*"
       - run: pnpm publish --access public --tag ${{ needs.version.outputs.npm_tag }} --no-git-checks --filter "@satlayer/*"
