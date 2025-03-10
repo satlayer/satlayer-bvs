@@ -266,6 +266,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "bvs-registry"
+version = "0.1.0"
+dependencies = [
+ "bvs-library",
+ "bvs-pauser",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus",
+ "cw2",
+ "schemars",
+ "serde",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "bvs-rewards-coordinator"
 version = "0.1.0"
 dependencies = [
