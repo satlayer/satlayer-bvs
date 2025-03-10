@@ -42,7 +42,7 @@ jobs:
       - uses: ./.github/actions/setup
 
       - run: |
-          sed -i "s/version = \"0\.0\.0\" # DO NOT CHANGE THIS LINE/version = \"${{ needs.version.outputs.crate }}\"/" Cargo.toml
+          sed -i "s/version = \"0\.0\.0\"/version = \"${{ needs.version.outputs.crate }}\"/" Cargo.toml
         working-directory: crates
       - run: pnpm --filter "@satlayer/*" exec npm version ${{ needs.version.outputs.npm }} --git-tag-version=false
 
