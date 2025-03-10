@@ -58,4 +58,4 @@ jobs:
           echo "\n@satlayer:registry=https://npm.pkg.github.com" >> .npmrc
       - run: pnpm publish --access public --tag ${{ needs.version.outputs.npm_tag }} --no-git-checks --filter "@satlayer/bvs-pauser"
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ github.token }}
