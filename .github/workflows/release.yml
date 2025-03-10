@@ -21,15 +21,15 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "release" ]; then
             VERSION=${{ github.event.release.tag_name }}
-            echo "::set-output name=crate::{$VERSION#v}"
-            echo "::set-output name=npm::$VERSION"
-            echo "::set-output name=npm_tag::latest"
+            echo "crate=${VERSION#v}" >> $GITHUB_OUTPUT
+            echo "npm=${VERSION}" >> $GITHUB_OUTPUT
+            echo "npm_tag=latest" >> $GITHUB_OUTPUT
           else
             # Use calendar versioning for the main branch
             VERSION=$(date "+%Y.%m.%d.${{ github.run_number }}")
-            echo "::set-output name=crate::0.0.0"
-            echo "::set-output name=npm::$VERSION"
-            echo "::set-output name=npm_tag::main"
+            echo "crate=${VERSION}" >> $GITHUB_OUTPUT
+            echo "npm=${VERSION}" >> $GITHUB_OUTPUT
+            echo "npm_tag=main" >> $GITHUB_OUTPUT
           fi
 
   npm_gh:
