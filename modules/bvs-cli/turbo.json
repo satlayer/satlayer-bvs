@@ -4,12 +4,12 @@
   "tasks": {
     "test": {
       "inputs": ["**.go"],
-      "dependsOn": ["@modules/bvs-cw#generate:schema"]
+      "dependsOn": ["@modules/cosmwasm-schema#generate:schema"]
     },
     "build": {
       "inputs": ["**.go"],
       "outputs": ["dist"],
-      "dependsOn": ["@modules/bvs-cw#generate:schema"]
+      "dependsOn": ["@modules/cosmwasm-schema#generate:schema"]
     }
   }
 }
