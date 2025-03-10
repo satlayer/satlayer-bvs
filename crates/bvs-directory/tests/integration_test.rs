@@ -235,10 +235,10 @@ fn service_register_operator_inactive_to_svc_registered_successfully() {
         operator: operator.to_string(),
     };
 
-    let res = directory.execute(&mut app, &service, &msg).unwrap();
+    let response = directory.execute(&mut app, &service, &msg).unwrap();
 
     assert_eq!(
-        res.events,
+        response.events,
         vec![
             Event::new("execute").add_attribute("_contract_address", directory.addr.as_str()),
             Event::new("wasm-RegistrationStatusUpdated")
@@ -302,9 +302,10 @@ fn service_register_operator_operator_registered_successfully() {
         operator: operator.to_string(),
     };
 
-    let res = directory.execute(&mut app, &service, &msg).unwrap();
+    let response = directory.execute(&mut app, &service, &msg).unwrap();
+
     assert_eq!(
-        res.events,
+        response.events,
         vec![
             Event::new("execute").add_attribute("_contract_address", directory.addr.as_str()),
             Event::new("wasm-RegistrationStatusUpdated")
@@ -455,9 +456,10 @@ fn service_deregister_operator_successfully() {
         operator: operator.to_string(),
     };
 
-    let res = directory.execute(&mut app, &service, &msg).unwrap();
+    let response = directory.execute(&mut app, &service, &msg).unwrap();
+
     assert_eq!(
-        res.events,
+        response.events,
         vec![
             Event::new("execute").add_attribute("_contract_address", directory.addr.as_str()),
             Event::new("wasm-RegistrationStatusUpdated")
@@ -558,10 +560,10 @@ fn operator_register_service_inactive_operator_registered_successfully() {
     let msg = ExecuteMsg::OperatorRegisterService {
         service: service.to_string(),
     };
-    let res = directory.execute(&mut app, &operator, &msg).unwrap();
+    let response = directory.execute(&mut app, &operator, &msg).unwrap();
 
     assert_eq!(
-        res.events,
+        response.events,
         vec![
             Event::new("execute").add_attribute("_contract_address", directory.addr.as_str()),
             Event::new("wasm-RegistrationStatusUpdated")
@@ -633,10 +635,10 @@ fn operator_register_service_service_registered_successfully() {
     let msg = ExecuteMsg::OperatorRegisterService {
         service: service.to_string(),
     };
-    let res = directory.execute(&mut app, &operator, &msg).unwrap();
+    let response = directory.execute(&mut app, &operator, &msg).unwrap();
 
     assert_eq!(
-        res.events,
+        response.events,
         vec![
             Event::new("execute").add_attribute("_contract_address", directory.addr.as_str()),
             Event::new("wasm-RegistrationStatusUpdated")
@@ -863,9 +865,10 @@ fn operator_deregister_service_successfully() {
     let msg = ExecuteMsg::OperatorDeregisterService {
         service: service.to_string(),
     };
-    let res = directory.execute(&mut app, &operator, &msg).unwrap();
+    let response = directory.execute(&mut app, &operator, &msg).unwrap();
+
     assert_eq!(
-        res.events,
+        response.events,
         vec![
             Event::new("execute").add_attribute("_contract_address", directory.addr.as_str()),
             Event::new("wasm-RegistrationStatusUpdated")
