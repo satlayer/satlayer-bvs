@@ -1,7 +1,7 @@
 # BVS Pauser
 
-This new contract provides central state information required by other contracts.
 Allowing one centralized contract to manage the operational state of the ecosystem.
+For emergency pausing of the ecosystem to respond to critical issues.
 
 Two main functions are provided by this contract:
 

@@ -9,6 +9,7 @@
     "@satlayer/bvs-delegation-manager": "workspace:*",
     "@satlayer/bvs-directory": "workspace:*",
     "@satlayer/bvs-pauser": "workspace:*",
+    "@satlayer/bvs-registry": "workspace:*",
     "@satlayer/bvs-rewards-coordinator": "workspace:*",
     "@satlayer/bvs-slash-manager": "workspace:*",
     "@satlayer/bvs-strategy-base": "workspace:*",
