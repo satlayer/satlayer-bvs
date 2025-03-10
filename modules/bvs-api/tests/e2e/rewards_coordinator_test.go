@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	rewardscoordinator "github.com/satlayer/satlayer-bvs/bvs-cw/rewards-coordinator"
+	rewardscoordinator "github.com/satlayer/satlayer-bvs/cosmwasm-schema/rewards-coordinator"
 
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 

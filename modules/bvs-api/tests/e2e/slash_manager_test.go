@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	slashmanager "github.com/satlayer/satlayer-bvs/bvs-cw/slash-manager"
+	slashmanager "github.com/satlayer/satlayer-bvs/cosmwasm-schema/slash-manager"
 
 	"github.com/satlayer/satlayer-bvs/babylond/bvs"
 

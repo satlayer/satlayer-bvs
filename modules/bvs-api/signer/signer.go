@@ -2,18 +2,11 @@ package signer
 
 import (
 	"encoding/base64"
-	"errors"
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/tx"
-	"github.com/cosmos/cosmos-sdk/crypto"
-	sdksecp256k1 "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
-	dcrdsecp256k1 "github.com/decred/dcrd/dcrec/secp256k1/v4"
-	"github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
-
-	"github.com/satlayer/satlayer-bvs/bvs-api/utils"
 )
 
 type Signer struct {
@@ -99,51 +92,19 @@ func (s *Signer) checkMsg(msgs ...sdktypes.Msg) ([]sdktypes.Msg, error) {
 }
 
 func (s *Signer) Sign(msgHash []byte) (string, error) {
-	decryptPrivKeyPwd, err := utils.GenerateRandomString(16)
-	if err != nil {
-		return "", err
-	}
-	armor, err := s.ClientCtx.Keyring.ExportPrivKeyArmor(s.ClientCtx.FromName, decryptPrivKeyPwd)
-	if err != nil {
-		return "", err
-	}
-	// decrypt private key
-	privKey, _, err := crypto.UnarmorDecryptPrivKey(armor, decryptPrivKeyPwd)
-	if err != nil {
-		return "", err
-	}
-	// convert the private key to secp256k1.PrivKey type
-	secp256k1PrivKey, ok := privKey.(*sdksecp256k1.PrivKey)
-	if !ok {
-		return "", errors.New("invalid secp256k1 privkey")
-	}
-	var secKey = dcrdsecp256k1.PrivKeyFromBytes(secp256k1PrivKey.Bytes())
-	signature := ecdsa.SignCompact(secKey, msgHash, false)
-	// remove the recovery bit and convert signature to base64 string
-	return base64.StdEncoding.EncodeToString(signature[1:]), nil
+	signature, _, err := s.ClientCtx.Keyring.Sign(
+		s.ClientCtx.FromName,
+		msgHash,
+		signing.SignMode_SIGN_MODE_DIRECT,
+	)
+	return base64.StdEncoding.EncodeToString(signature), err
 }
 
 func (s *Signer) SignByKeyName(msgHash []byte, keyName string) (string, error) {
-	decryptPrivKeyPwd, err := utils.GenerateRandomString(16)
-	if err != nil {
-		return "", err
-	}
-	armor, err := s.ClientCtx.Keyring.ExportPrivKeyArmor(keyName, decryptPrivKeyPwd)
-	if err != nil {
-		return "", err
-	}
-	// decrypt private key
-	privKey, _, err := crypto.UnarmorDecryptPrivKey(armor, decryptPrivKeyPwd)
-	if err != nil {
-		return "", err
-	}
-	// convert the private key to secp256k1.PrivKey type
-	secp256k1PrivKey, ok := privKey.(*sdksecp256k1.PrivKey)
-	if !ok {
-		return "", errors.New("invalid secp256k1 privkey")
-	}
-	var secKey = dcrdsecp256k1.PrivKeyFromBytes(secp256k1PrivKey.Bytes())
-	signature := ecdsa.SignCompact(secKey, msgHash, false)
-	// remove the recovery bit and convert signature to base64 string
-	return base64.StdEncoding.EncodeToString(signature[1:]), nil
+	signature, _, err := s.ClientCtx.Keyring.Sign(
+		keyName,
+		msgHash,
+		signing.SignMode_SIGN_MODE_DIRECT,
+	)
+	return base64.StdEncoding.EncodeToString(signature), err
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-cli/conf"
 
-	slashmanager "github.com/satlayer/satlayer-bvs/bvs-cw/slash-manager"
+	slashmanager "github.com/satlayer/satlayer-bvs/cosmwasm-schema/slash-manager"
 )
 
 func newService(keyName string) (*api.SlashManager, io.ChainIO) {

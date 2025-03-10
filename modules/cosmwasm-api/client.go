@@ -6,16 +6,7 @@ import (
 
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	"github.com/cosmos/cosmos-sdk/client"
-	sdktypes "github.com/cosmos/cosmos-sdk/types"
 )
-
-type Client struct {
-	clientCtx     client.Context
-	ContractAddr  string
-	gasAdjustment float64
-	gasPrice      sdktypes.DecCoin
-	gasLimit      uint64
-}
 
 // Query queries the smart contract with the given msg, and returns the response.
 // Using the generated types, you can create queries like:

@@ -4,10 +4,10 @@ import (
 	"encoding/base64"
 	"fmt"
 
+	"go.uber.org/zap"
+
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/cosmos-sdk/types"
-
-	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/core"
 )
 
 // PubKeyToAddress converts a base64 encoded public key to a secp256k1 public key and its corresponding Cosmos address.
@@ -17,7 +17,7 @@ import (
 func PubKeyToAddress(pubKey string) (*secp256k1.PubKey, string, error) {
 	pubKeyRawBytes, err := base64.StdEncoding.DecodeString(pubKey)
 	if err != nil {
-		core.L.Error(fmt.Sprintf("failed to decode public key: %v\n", err))
+		zap.L().Error(fmt.Sprintf("failed to decode public key: %v\n", err))
 		return nil, "", err
 	}
 

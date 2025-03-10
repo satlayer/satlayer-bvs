@@ -5,13 +5,13 @@ import (
 
 	"github.com/satlayer/satlayer-bvs/babylond"
 
-	delegationmanager "github.com/satlayer/satlayer-bvs/bvs-cw/delegation-manager"
-	"github.com/satlayer/satlayer-bvs/bvs-cw/directory"
-	"github.com/satlayer/satlayer-bvs/bvs-cw/pauser"
-	rewardscoordinator "github.com/satlayer/satlayer-bvs/bvs-cw/rewards-coordinator"
-	slashmanager "github.com/satlayer/satlayer-bvs/bvs-cw/slash-manager"
-	strategybase "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-base"
-	strategymanager "github.com/satlayer/satlayer-bvs/bvs-cw/strategy-manager"
+	delegationmanager "github.com/satlayer/satlayer-bvs/cosmwasm-schema/delegation-manager"
+	"github.com/satlayer/satlayer-bvs/cosmwasm-schema/directory"
+	"github.com/satlayer/satlayer-bvs/cosmwasm-schema/pauser"
+	rewardscoordinator "github.com/satlayer/satlayer-bvs/cosmwasm-schema/rewards-coordinator"
+	slashmanager "github.com/satlayer/satlayer-bvs/cosmwasm-schema/slash-manager"
+	strategybase "github.com/satlayer/satlayer-bvs/cosmwasm-schema/strategy-base"
+	strategymanager "github.com/satlayer/satlayer-bvs/cosmwasm-schema/strategy-manager"
 )
 
 type Contract[T interface{}] struct {

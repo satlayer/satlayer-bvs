@@ -8,13 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/zap"
+
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
-	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
-
 	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/core"
 	"github.com/satlayer/satlayer-bvs/examples/squaring/bvssquaringapi"
 )
@@ -42,12 +40,7 @@ func NewMonitor() *Monitor {
 	}
 	fmt.Printf("homeDir: %s\n", keyDir)
 
-	// init log and chain
-	elkLogger := logger.NewELKLogger(core.C.Chain.BvsContract)
-	elkLogger.SetLogLevel("info")
-	reg := prometheus.NewRegistry()
-	metricsIndicators := transactionprocess.NewPromIndicators(reg, "bvs_demo")
-	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, keyDir, core.C.Owner.Bech32Prefix, elkLogger, metricsIndicators, types.TxManagerParams{
+	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, keyDir, core.C.Owner.Bech32Prefix, types.TxManagerParams{
 		MaxRetries:             5,
 		RetryInterval:          3 * time.Second,
 		ConfirmationTimeout:    60 * time.Second,
@@ -77,19 +70,19 @@ func NewMonitor() *Monitor {
 // It takes a context.Context object as a parameter.
 // No return values.
 func (m *Monitor) Run(ctx context.Context) {
-	core.L.Info("Start to monitor task queue")
+	zap.L().Info("Start to monitor task queue")
 	for {
 		results, err := core.S.RedisConn.BLPop(context.Background(), 0, core.PKTaskQueue).Result()
 		fmt.Printf("results: %+v\n", results)
 		if err != nil {
-			core.L.Error(fmt.Sprintf("Failed to read task queue, due to {%s}", err))
+			zap.L().Error(fmt.Sprintf("Failed to read task queue, due to {%s}", err))
 			continue
 		}
 		fmt.Printf("result--->: %s\n", results[1])
 
 		task := core.Task{}
 		if err := json.Unmarshal([]byte(results[1]), &task); err != nil {
-			core.L.Error(fmt.Sprintf("Failed to parse task queue, due to {%s}", err))
+			zap.L().Error(fmt.Sprintf("Failed to parse task queue, due to {%s}", err))
 			continue
 		}
 		fmt.Printf("task: %+v\n", task)
@@ -97,12 +90,12 @@ func (m *Monitor) Run(ctx context.Context) {
 		pkTaskResult := fmt.Sprintf("%s%d", core.PKTaskResult, task.TaskID)
 		taskResultStr, err := json.Marshal(task.TaskResult)
 		if err != nil {
-			core.L.Error(fmt.Sprintf("Failed to marshal task result, due to {%s}", err))
+			zap.L().Error(fmt.Sprintf("Failed to marshal task result, due to {%s}", err))
 			return
 		}
 
 		if err := core.S.RedisConn.LPush(ctx, pkTaskResult, taskResultStr).Err(); err != nil {
-			core.L.Error(fmt.Sprintf("Failed to save task result, due to {%s}", err))
+			zap.L().Error(fmt.Sprintf("Failed to save task result, due to {%s}", err))
 			return
 		}
 		m.verifyTask(ctx, task.TaskID)
@@ -123,7 +116,7 @@ func (m *Monitor) verifyTask(ctx context.Context, taskId uint64) {
 	results, err := core.S.RedisConn.LRange(ctx, pkTaskResult, 0, -1).Result()
 	fmt.Printf("verify results: %s\n", results)
 	if err != nil {
-		core.L.Error(fmt.Sprintf("Failed to read task result, due to {%s}", err))
+		zap.L().Error(fmt.Sprintf("Failed to read task result, due to {%s}", err))
 		return
 	}
 
@@ -134,7 +127,7 @@ func (m *Monitor) verifyTask(ctx context.Context, taskId uint64) {
 	for _, result := range results {
 		fmt.Printf("verify result: %s\n", result)
 		if err := json.Unmarshal([]byte(result), &taskResult); err != nil {
-			core.L.Error(fmt.Sprintf("Failed to parse task result, due to {%s}", err))
+			zap.L().Error(fmt.Sprintf("Failed to parse task result, due to {%s}", err))
 			return
 		}
 
@@ -144,13 +137,13 @@ func (m *Monitor) verifyTask(ctx context.Context, taskId uint64) {
 		if resultCntMap[taskResult.Result] >= core.C.App.Threshold {
 			pkTaskFinished := fmt.Sprintf("%s%d", core.PKTaskFinished, taskId)
 			if err := core.S.RedisConn.Set(ctx, pkTaskFinished, taskResult.Result, 0).Err(); err != nil {
-				core.L.Error(fmt.Sprintf("Failed to set task finished, due to {%s}", err))
+				zap.L().Error(fmt.Sprintf("Failed to set task finished, due to {%s}", err))
 				return
 			}
 			operators := strings.Join(resultOperatorMap[taskResult.Result], "&")
-			core.L.Info(fmt.Sprintf("Task {%d} is finished. The result is {%d}. The operators are {%s}", taskId, taskResult.Result, operators))
+			zap.L().Info(fmt.Sprintf("Task {%d} is finished. The result is {%d}. The operators are {%s}", taskId, taskResult.Result, operators))
 			if err := m.sendTaskResult(taskId, taskResult.Result, operators); err != nil {
-				core.L.Error(fmt.Sprintf("Failed to send task result, due to {%s}", err))
+				zap.L().Error(fmt.Sprintf("Failed to send task result, due to {%s}", err))
 			}
 
 			pkTaskOperator := fmt.Sprintf("%s%d", core.PKTaskOperator, taskId)

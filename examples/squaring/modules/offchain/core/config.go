@@ -4,11 +4,9 @@ import (
 	"fmt"
 
 	"github.com/BurntSushi/toml"
-	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
 )
 
 var C Config
-var L logger.Logger
 
 // InitConfig initializes the package by loading configuration from env.toml and setting up the logger.
 //
@@ -20,5 +18,4 @@ func InitConfig() {
 		panic(err)
 	}
 	fmt.Println("C: ", C)
-	L = logger.NewELKLogger(C.Chain.BVSContract)
 }

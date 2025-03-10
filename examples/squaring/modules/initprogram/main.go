@@ -6,13 +6,9 @@ import (
 	"time"
 
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
-	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
-
 	"github.com/satlayer/satlayer-bvs/examples/squaring/initprogram/core"
 )
 
@@ -27,10 +23,7 @@ func main() {
 }
 
 func getApproverAccount() string {
-	elkLogger := logger.NewELKLogger("bvs_demo")
-	reg := prometheus.NewRegistry()
-	metricsIndicators := transactionprocess.NewPromIndicators(reg, "bvs_demo")
-	approverClient, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, elkLogger, metricsIndicators, types.TxManagerParams{
+	approverClient, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, types.TxManagerParams{
 		MaxRetries:             5,
 		RetryInterval:          3 * time.Second,
 		ConfirmationTimeout:    60 * time.Second,
@@ -52,11 +45,7 @@ func getApproverAccount() string {
 }
 
 //func registerBvsContract() string {
-//	elkLogger := logger.NewELKLogger("bvs_demo")
-//	elkLogger.SetLogLevel("info")
-//	reg := prometheus.NewRegistry()
-//	metricsIndicators := transactionprocess.NewPromIndicators(reg, "bvs_demo")
-//	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, elkLogger, metricsIndicators, types.TxManagerParams{
+//	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, types.TxManagerParams{
 //		MaxRetries:             5,
 //		RetryInterval:          3 * time.Second,
 //		ConfirmationTimeout:    60 * time.Second,
@@ -80,11 +69,7 @@ func getApproverAccount() string {
 //}
 //
 //func registerOperators() {
-//	elkLogger := logger.NewELKLogger("bvs_demo")
-//	elkLogger.SetLogLevel("info")
-//	reg := prometheus.NewRegistry()
-//	metricsIndicators := transactionprocess.NewPromIndicators(reg, "bvs_demo")
-//	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, elkLogger, metricsIndicators, types.TxManagerParams{
+//	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, types.TxManagerParams{
 //		MaxRetries:             5,
 //		RetryInterval:          3 * time.Second,
 //		ConfirmationTimeout:    60 * time.Second,
@@ -127,11 +112,7 @@ func getApproverAccount() string {
 
 func registerStrategy() {
 	fmt.Println("registerStrategy")
-	elkLogger := logger.NewELKLogger("bvs_demo")
-	elkLogger.SetLogLevel("info")
-	reg := prometheus.NewRegistry()
-	metricsIndicators := transactionprocess.NewPromIndicators(reg, "bvs_demo")
-	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, elkLogger, metricsIndicators, types.TxManagerParams{
+	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, types.TxManagerParams{
 		MaxRetries:             5,
 		RetryInterval:          3 * time.Second,
 		ConfirmationTimeout:    60 * time.Second,
@@ -156,12 +137,7 @@ func registerStrategy() {
 }
 
 func registerStakers() {
-	elkLogger := logger.NewELKLogger("bvs_demo")
-	elkLogger.SetLogLevel("info")
-
-	reg := prometheus.NewRegistry()
-	metricsIndicators := transactionprocess.NewPromIndicators(reg, "bvs_demo")
-	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, elkLogger, metricsIndicators, types.TxManagerParams{
+	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Account.KeyDir, core.C.Account.Bech32Prefix, types.TxManagerParams{
 		MaxRetries:             5,
 		RetryInterval:          3 * time.Second,
 		ConfirmationTimeout:    60 * time.Second,

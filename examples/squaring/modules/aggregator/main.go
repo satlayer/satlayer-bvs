@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"go.uber.org/zap"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/api"
@@ -34,9 +36,9 @@ func startHTTP() {
 	// setup routes
 	api.SetupRoutes(router)
 	// start server
-	core.L.Info(fmt.Sprintf("Start server at {%s}", core.C.App.Host))
+	zap.L().Info(fmt.Sprintf("Start server at {%s}", core.C.App.Host))
 	if err := router.Run(core.C.App.Host); err != nil {
-		core.L.Error(fmt.Sprintf("Failed to start server due to {%s}", err))
+		zap.L().Error(fmt.Sprintf("Failed to start server due to {%s}", err))
 	}
 }
 

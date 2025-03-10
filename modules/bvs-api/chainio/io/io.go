@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"go.uber.org/zap"
+
 	"cosmossdk.io/math"
 	"github.com/CosmWasm/wasmd/x/wasm"
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
@@ -25,8 +27,6 @@ import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
-	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
 	"github.com/satlayer/satlayer-bvs/bvs-api/signer"
 )
 
@@ -53,12 +53,10 @@ type ChainIO interface {
 
 // ChainIO chain io Facade
 type chainIO struct {
-	clientCtx         client.Context
-	signer            *signer.Signer
-	pubKey            cryptotypes.PubKey
-	logger            logger.Logger
-	metricsIndicators transactionprocess.Indicators
-	params            types.TxManagerParams
+	clientCtx client.Context
+	signer    *signer.Signer
+	pubKey    cryptotypes.PubKey
+	params    types.TxManagerParams
 }
 
 func (c chainIO) SetupKeyring(keyName, keyringBackend string, keyringServiceName ...string) (ChainIO, error) {
@@ -95,10 +93,6 @@ func (c chainIO) SetupKeyring(keyName, keyringBackend string, keyringServiceName
 }
 
 func (c chainIO) SendTransaction(ctx context.Context, opts types.ExecuteOptions) (*coretypes.ResultTx, error) {
-	c.metricsIndicators.IncrementProcessingTxCount()
-	defer c.metricsIndicators.DecrementProcessingTxCount()
-
-	startTime := time.Now()
 	speedups := 0
 	var (
 		txResp *sdktypes.TxResponse
@@ -110,9 +104,8 @@ func (c chainIO) SendTransaction(ctx context.Context, opts types.ExecuteOptions)
 		if err == nil {
 			break
 		}
-		c.logger.Warn("Failed to send transaction", logger.WithField("attempt", attempt+1), logger.WithField("err", err))
+		zap.L().Warn("Failed to send transaction", zap.Int("attempt", attempt+1), zap.Error(err))
 		if attempt == c.params.MaxRetries-1 {
-			c.metricsIndicators.IncrementProcessedTxsTotal("failure")
 			return nil, fmt.Errorf("max retries exceeded: %w", err)
 		}
 		// adjust GasPrice
@@ -122,22 +115,14 @@ func (c chainIO) SendTransaction(ctx context.Context, opts types.ExecuteOptions)
 	}
 
 	if txResp == nil {
-		c.metricsIndicators.IncrementProcessedTxsTotal("failure")
 		return nil, fmt.Errorf("failed to send transaction after %d attempts", c.params.MaxRetries)
 	}
 
-	c.metricsIndicators.ObserveBroadcastLatencyMs(time.Since(startTime).Milliseconds())
-
 	confirmedTxResp, err := c.waitForConfirmation(ctx, txResp.TxHash)
 	if err != nil {
-		c.metricsIndicators.IncrementProcessedTxsTotal("failure")
 		return nil, err
 	}
 
-	c.metricsIndicators.ObserveConfirmationLatencyMs(time.Since(startTime).Milliseconds())
-	c.metricsIndicators.ObserveGasUsedOsmo(uint64(confirmedTxResp.TxResult.GasUsed))
-	c.metricsIndicators.ObserveSpeedups(speedups)
-	c.metricsIndicators.IncrementProcessedTxsTotal("success")
 	return confirmedTxResp, nil
 }
 
@@ -190,7 +175,7 @@ func (c chainIO) waitForConfirmation(ctx context.Context, txHash string) (*coret
 		case <-ticker.C:
 			txResp, err := c.QueryTransaction(txHash)
 			if err != nil {
-				c.logger.Debug("Failed to query transaction", logger.WithField("txHash", txHash), logger.WithField("error", err))
+				zap.L().Debug("Failed to query transaction", zap.String("txHash", txHash), zap.Error(err))
 				continue
 			}
 
@@ -274,8 +259,7 @@ func (c chainIO) GetCurrentAccountPubKey() cryptotypes.PubKey {
 	return c.pubKey
 }
 
-func NewChainIO(chainID, rpcURI, homeDir, bech32Prefix string, logger logger.Logger,
-	metricsIndicators transactionprocess.Indicators, params types.TxManagerParams) (ChainIO, error) {
+func NewChainIO(chainID, rpcURI, homeDir, bech32Prefix string, params types.TxManagerParams) (ChainIO, error) {
 	// Set address prefixes
 	if err := setAddressPrefixes(bech32Prefix); err != nil {
 		return nil, fmt.Errorf("failed to set address prefixes: %w", err)
@@ -296,11 +280,9 @@ func NewChainIO(chainID, rpcURI, homeDir, bech32Prefix string, logger logger.Log
 		clientCtx = clientCtx.WithHomeDir(homeDir).WithKeyringDir(homeDir)
 	}
 	return chainIO{
-		clientCtx:         clientCtx,
-		signer:            signer.NewSigner(clientCtx),
-		logger:            logger,
-		metricsIndicators: metricsIndicators,
-		params:            params,
+		clientCtx: clientCtx,
+		signer:    signer.NewSigner(clientCtx),
+		params:    params,
 	}, nil
 }
 

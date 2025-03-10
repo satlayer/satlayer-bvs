@@ -12,7 +12,7 @@ import (
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	slashmanager "github.com/satlayer/satlayer-bvs/bvs-cw/slash-manager"
+	slashmanager "github.com/satlayer/satlayer-bvs/cosmwasm-schema/slash-manager"
 )
 
 type SlashManager struct {

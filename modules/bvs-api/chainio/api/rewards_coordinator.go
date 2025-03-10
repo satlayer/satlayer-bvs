@@ -10,7 +10,7 @@ import (
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	rewardscoordinator "github.com/satlayer/satlayer-bvs/bvs-cw/rewards-coordinator"
+	rewardscoordinator "github.com/satlayer/satlayer-bvs/cosmwasm-schema/rewards-coordinator"
 )
 
 type RewardsCoordinator struct {
