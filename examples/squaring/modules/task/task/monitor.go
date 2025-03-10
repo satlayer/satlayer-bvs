@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
+	
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/indexer"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
 	"github.com/satlayer/satlayer-bvs/bvs-api/logger"
-	transactionprocess "github.com/satlayer/satlayer-bvs/bvs-api/metrics/indicators/transaction_process"
+	
 
 	"github.com/satlayer/satlayer-bvs/examples/squaring/task/core"
 )
@@ -38,9 +38,7 @@ func NewMonitor() *Monitor {
 	elkLogger := logger.NewELKLogger("bvs_demo")
 	elkLogger.SetLogLevel("info")
 
-	reg := prometheus.NewRegistry()
-	metricsIndicators := transactionprocess.NewPromIndicators(reg, "bvs_demo")
-	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Owner.KeyDir, core.C.Owner.Bech32Prefix, elkLogger, metricsIndicators, types.TxManagerParams{
+	chainIO, err := io.NewChainIO(core.C.Chain.ID, core.C.Chain.RPC, core.C.Owner.KeyDir, core.C.Owner.Bech32Prefix, elkLogger, types.TxManagerParams{
 		MaxRetries:             3,
 		RetryInterval:          1 * time.Second,
 		ConfirmationTimeout:    60 * time.Second,
