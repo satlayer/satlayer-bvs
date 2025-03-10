@@ -11,4 +11,13 @@ pub enum ContractError {
 
     #[error("{0}")]
     Ownership(#[from] bvs_library::ownership::OwnershipError),
+
+    #[error("Not registered: {kind}")]
+    NotRegistered { kind: String },
+}
+
+impl ContractError {
+    pub fn not_registered(kind: impl Into<String>) -> Self {
+        ContractError::NotRegistered { kind }
+    }
 }

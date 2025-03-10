@@ -44,6 +44,7 @@ const schemas = [
   "@satlayer/bvs-slash-manager/schema/bvs-slash-manager.json",
 
   "@satlayer/bvs-pauser/schema/bvs-pauser.json",
+  "@satlayer/bvs-registry/schema/bvs-registry.json",
   "@satlayer/bvs-vault-router/schema/bvs-vault-router.json",
   "@satlayer/bvs-vault-cw20/schema/bvs-vault-cw20.json",
   "@satlayer/bvs-vault-bank/schema/bvs-vault-bank.json",
