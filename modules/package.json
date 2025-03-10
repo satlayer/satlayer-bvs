@@ -11,6 +11,9 @@
     "*.go": [
       "goimports -w"
     ],
+    "*.mjs": [
+      "prettier --write"
+    ],
     "package.json": [
       "prettier --write"
     ]
