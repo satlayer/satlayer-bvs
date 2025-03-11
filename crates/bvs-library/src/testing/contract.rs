@@ -157,6 +157,14 @@ impl Cw20TokenContract {
         self.execute(app, &owner, msg).unwrap();
     }
 
+    pub fn transfer(&self, app: &mut App, sender: &Addr, recipient: &Addr, amount: u128) {
+        let msg = &cw20_base::msg::ExecuteMsg::Transfer {
+            recipient: recipient.to_string(),
+            amount: Uint128::new(amount),
+        };
+        self.execute(app, sender, msg).unwrap();
+    }
+
     pub fn balance(&self, app: &App, address: &Addr) -> u128 {
         let query = cw20_base::msg::QueryMsg::Balance {
             address: address.to_string(),
