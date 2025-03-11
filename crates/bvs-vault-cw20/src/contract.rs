@@ -75,10 +75,10 @@ mod execute {
     use bvs_vault_base::{offset, router, shares};
     use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response};
 
-    /// Deposit assets into the vault and receive shares in return.
-    /// The assets are transferred from the sender to the vault contract.
-    /// The shares are added to the recipient.
-    /// New shares are minted and added to the total shares in the vault.
+    /// This executes a transfer of assets from the sender to the vault contract.
+    /// New shares are minted based on the exchange rate and associated to the receipient
+    /// specified in the msg.
+    /// The total shares in the vault are increased.
     pub fn deposit(
         deps: DepsMut,
         env: Env,
@@ -197,25 +197,25 @@ mod query {
     use bvs_vault_base::{offset, shares};
     use cosmwasm_std::{Addr, Deps, Env, StdResult, Uint128};
 
-    /// Get Shares of the staker in the vault.
+    /// Get shares of the staker
     pub fn shares(deps: Deps, staker: Addr) -> StdResult<Uint128> {
         shares::get_shares(deps.storage, &staker)
     }
 
-    /// Get staked Assets of the staker in the vault equal to the shares.
+    /// Get the assets of a staker, converted from shares held by staker.
     pub fn assets(deps: Deps, env: Env, staker: Addr) -> StdResult<Uint128> {
         let shares = shares(deps, staker)?;
         convert_to_assets(deps, env, shares)
     }
 
-    /// Convert given shares how much assets they are worth.
+    /// Given the number of shares, convert to assets based on the vault exchange rate.
     pub fn convert_to_assets(deps: Deps, env: Env, shares: Uint128) -> StdResult<Uint128> {
         let balance = token::query_balance(&deps, &env)?;
         let vault = offset::VirtualOffset::load(&deps, balance)?;
         vault.shares_to_assets(shares)
     }
 
-    /// Convert given assets how much shares they are worth.
+    /// Given assets, get the resulting shares based on the vault exchange rate.
     pub fn convert_to_shares(deps: Deps, env: Env, assets: Uint128) -> StdResult<Uint128> {
         let balance = token::query_balance(&deps, &env)?;
         let vault = offset::VirtualOffset::load(&deps, balance)?;
@@ -227,7 +227,7 @@ mod query {
         offset::get_total_shares(deps.storage)
     }
 
-    /// Total assets in this vault, the "asset staked" to this vault.
+    /// Total assets in this vault. Including assets through staking and donations.
     pub fn total_assets(deps: Deps, env: Env) -> StdResult<Uint128> {
         token::query_balance(&deps, &env)
     }
