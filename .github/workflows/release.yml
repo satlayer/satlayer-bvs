@@ -53,9 +53,8 @@ jobs:
 
       - run: pnpm turbo run build:wasm generate:schema --filter "@satlayer/*"
 
-      - run: |
-          pnpm config set "@satlayer:registry" "https://npm.pkg.github.com" --location=project
-          pnpm config set "//npm.pkg.github.com/:_authToken" "${NPM_AUTH_TOKEN}" --location=project
-        env:
-          NPM_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+      - run: pnpm config set "//registry.npmjs.org/:_authToken" "\${NPM_PACKAGES_TOKEN}" --location=global
+
       - run: pnpm publish --access public --tag ${{ needs.version.outputs.npm_tag }} --no-git-checks --filter "@satlayer/*"
+        env:
+          NPM_PACKAGES_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
