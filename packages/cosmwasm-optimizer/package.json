@@ -1,5 +1,5 @@
 {
-  "name": "@packages/docker-cosmwasm-optimizer",
+  "name": "@packages/cosmwasm-optimizer",
   "private": true,
   "bin": {
     "cosmwasm-optimizer": "bin.js"
