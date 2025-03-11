@@ -11,6 +11,9 @@ use cw2::set_contract_version;
 const CONTRACT_NAME: &str = concat!("crate:", env!("CARGO_PKG_NAME"));
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+/// Vault is somewhat a wrapper around cw20 tokens or a cw20 manager that allows users to stake their tokens
+/// and receive shares in return. The shares can be used to withdraw the same amount of
+/// tokens that were staked.
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -72,6 +75,10 @@ mod execute {
     use bvs_vault_base::{offset, router, shares};
     use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response};
 
+    /// Deposit assets into the vault and receive shares in return.
+    /// The assets are transferred from the sender to the vault contract.
+    /// The shares are added to the recipient.
+    /// New shares are minted and added to the total shares in the vault.
     pub fn deposit(
         deps: DepsMut,
         env: Env,
@@ -113,6 +120,11 @@ mod execute {
             .add_message(transfer_msg))
     }
 
+    /// Withdraw assets from the vault by burning shares.
+    /// The shares are burned from the sender.
+    /// The assets are transferred to the recipient.
+    /// The total shares in the vault are decreased.
+    /// The recipient receives the assets.
     pub fn withdraw(
         deps: DepsMut,
         env: Env,
@@ -185,21 +197,25 @@ mod query {
     use bvs_vault_base::{offset, shares};
     use cosmwasm_std::{Addr, Deps, Env, StdResult, Uint128};
 
+    /// Get Shares of the staker in the vault.
     pub fn shares(deps: Deps, staker: Addr) -> StdResult<Uint128> {
         shares::get_shares(deps.storage, &staker)
     }
 
+    /// Get staked Assets of the staker in the vault equal to the shares.
     pub fn assets(deps: Deps, env: Env, staker: Addr) -> StdResult<Uint128> {
         let shares = shares(deps, staker)?;
         convert_to_assets(deps, env, shares)
     }
 
+    /// Convert given shares how much assets they are worth.
     pub fn convert_to_assets(deps: Deps, env: Env, shares: Uint128) -> StdResult<Uint128> {
         let balance = token::query_balance(&deps, &env)?;
         let vault = offset::VirtualOffset::load(&deps, balance)?;
         vault.shares_to_assets(shares)
     }
 
+    /// Convert given assets how much shares they are worth.
     pub fn convert_to_shares(deps: Deps, env: Env, assets: Uint128) -> StdResult<Uint128> {
         let balance = token::query_balance(&deps, &env)?;
         let vault = offset::VirtualOffset::load(&deps, balance)?;
