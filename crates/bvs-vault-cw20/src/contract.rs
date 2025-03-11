@@ -72,10 +72,10 @@ mod execute {
     use bvs_vault_base::{offset, router, shares};
     use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response};
 
-    /// This executes a transfer of assets from the sender to the vault contract.
-    /// New shares are minted based on the exchange rate and associated to the receipient
-    /// specified in the msg.
-    /// The total shares in the vault are increased.
+    /// This executes a transfer of assets from the `info.sender` to the vault contract.
+    ///
+    /// New shares are minted, based on the exchange rate, to `msg.recipient`
+    /// The `TOTAL_SHARE` in the vault are increased.
     pub fn deposit(
         deps: DepsMut,
         env: Env,
