@@ -59,6 +59,12 @@ pub struct ServiceMetadata {
 pub enum QueryMsg {
     #[returns(StatusResponse)]
     Status { service: String, operator: String },
+
+    #[returns(OperatorResponse)]
+    IsOperator { operator: String },
+
+    #[returns(OperatorDetailsResponse)]
+    OperatorDetails { operator: String },
 }
 
 #[cw_serde]
@@ -68,6 +74,16 @@ impl From<RegistrationStatus> for StatusResponse {
     fn from(value: RegistrationStatus) -> Self {
         StatusResponse(value as u8)
     }
+}
+
+#[cw_serde]
+pub struct OperatorResponse {
+    pub is_operator: bool,
+}
+
+#[cw_serde]
+pub struct OperatorDetailsResponse {
+    pub details: OperatorDetails,
 }
 
 #[cfg(test)]

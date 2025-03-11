@@ -415,13 +415,22 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let operator = deps.api.addr_validate(&operator)?;
             to_json_binary(&query::status(deps, operator, service)?)
         }
+        QueryMsg::IsOperator { operator } => {
+            let operator_addr = deps.api.addr_validate(&operator)?;
+            to_json_binary(&query::is_operator(deps, operator_addr)?)
+        }
+        QueryMsg::OperatorDetails { operator } => {
+            let operator_addr = deps.api.addr_validate(&operator)?;
+            to_json_binary(&query::operator_details(deps, operator_addr)?)
+        }
     }
 }
 
 mod query {
-    use crate::msg::StatusResponse;
+    use crate::msg::{OperatorDetailsResponse, OperatorResponse, StatusResponse};
     use crate::state;
-    use cosmwasm_std::{Addr, Deps, StdResult};
+    use crate::state::{require_operator_registered, OPERATORS};
+    use cosmwasm_std::{Addr, Deps, StdError, StdResult};
 
     /// Get the registration status of an operator to a service
     /// Returns: [`StdResult<StatusResponse>`]
@@ -433,6 +442,28 @@ mod query {
         let key = (&operator, &service);
         let status = state::get_registration_status(deps.storage, key)?;
         Ok(status.into())
+    }
+
+    /// Query the operator is registered or not.
+    pub fn is_operator(deps: Deps, operator: Addr) -> StdResult<OperatorResponse> {
+        if operator == Addr::unchecked("") {
+            return Ok(OperatorResponse { is_operator: false });
+        }
+
+        let is_operator_registered = require_operator_registered(deps.storage, &operator).is_ok();
+
+        Ok(OperatorResponse {
+            is_operator: is_operator_registered,
+        })
+    }
+
+    /// Query the operator details.
+    pub fn operator_details(deps: Deps, operator: Addr) -> StdResult<OperatorDetailsResponse> {
+        require_operator_registered(deps.storage, &operator)
+            .map_err(|e| StdError::generic_err(e.to_string()))?;
+
+        let details = OPERATORS.load(deps.storage, &operator)?;
+        Ok(OperatorDetailsResponse { details })
     }
 }
 
@@ -446,7 +477,7 @@ mod tests {
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
-    use cosmwasm_std::{Event, OwnedDeps, Response};
+    use cosmwasm_std::{Event, OwnedDeps, Response, StdError};
 
     fn mock_contract() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         let mut deps = mock_dependencies();
@@ -1279,6 +1310,72 @@ mod tests {
         assert_eq!(
             status(deps.as_ref(), operator.clone(), service.clone()),
             Ok(StatusResponse(3))
+        );
+    }
+
+    #[test]
+    fn query_is_operator() {
+        let mut deps = mock_dependencies();
+
+        let operator = deps.api.addr_make("operator");
+
+        // assert is_operator false before operator registration
+        let query_res = query::is_operator(deps.as_ref(), operator.clone()).unwrap();
+        assert_eq!(query_res.is_operator, false);
+
+        let operator_details = OperatorDetails {
+            staker_opt_out_window_blocks: 100,
+        };
+        OPERATORS
+            .save(&mut deps.storage, &operator, &operator_details)
+            .unwrap();
+
+        // assert is_operator true after operator registration
+        let query_res = query::is_operator(deps.as_ref(), operator.clone()).unwrap();
+        assert_eq!(query_res.is_operator, true);
+    }
+
+    #[test]
+    fn query_operator_details() {
+        let mut deps = mock_dependencies();
+
+        let operator = deps.api.addr_make("operator");
+
+        let operator_details = OperatorDetails {
+            staker_opt_out_window_blocks: 100,
+        };
+        OPERATORS
+            .save(&mut deps.storage, &operator, &operator_details)
+            .unwrap();
+
+        // assert operator details
+        let query_res = query::operator_details(deps.as_ref(), operator.clone()).unwrap();
+        assert_eq!(query_res.details, operator_details);
+
+        // update OperatorDetails
+        let new_operator_details = OperatorDetails {
+            staker_opt_out_window_blocks: 200,
+        };
+        OPERATORS
+            .save(&mut deps.storage, &operator, &new_operator_details)
+            .unwrap();
+
+        // assert new operator details
+        let query_res = query::operator_details(deps.as_ref(), operator.clone()).unwrap();
+        assert_eq!(query_res.details, new_operator_details);
+    }
+
+    #[test]
+    fn query_operator_details_before_registration() {
+        let mut deps = mock_dependencies();
+
+        let operator = deps.api.addr_make("operator");
+
+        // assert operator details
+        let query_err = query::operator_details(deps.as_ref(), operator.clone()).unwrap_err();
+        assert_eq!(
+            query_err,
+            StdError::generic_err("Operator is not registered")
         );
     }
 }
