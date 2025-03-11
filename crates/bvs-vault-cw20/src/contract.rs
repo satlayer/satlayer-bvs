@@ -11,9 +11,6 @@ use cw2::set_contract_version;
 const CONTRACT_NAME: &str = concat!("crate:", env!("CARGO_PKG_NAME"));
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// Vault is somewhat a wrapper around cw20 tokens or a cw20 manager that allows users to stake their tokens
-/// and receive shares in return. The shares can be used to withdraw the same amount of
-/// tokens that were staked.
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
