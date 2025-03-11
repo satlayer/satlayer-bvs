@@ -1,20 +1,17 @@
 name-template: "v$RESOLVED_VERSION"
 tag-template: "v$RESOLVED_VERSION"
 categories:
-  - title: "Babylon Contracts (cosmos)"
+  - title: "CosmWasm Contracts"
     labels: ["a/crates"]
 
   - title: "@modules/babylond"
     labels: ["a/modules/babylond"]
 
-  - title: "@modules/bvs-api"
-    labels: ["a/modules/bvs-api"]
+  - title: "@modules/cosmwasm-api"
+    labels: ["a/modules/cosmwasm-api"]
 
-  - title: "@modules/bvs-cli"
-    labels: ["a/modules/bvs-cli"]
-
-  - title: "@modules/bvs-cw"
-    labels: ["a/modules/bvs-cw"]
+  - title: "@modules/cosmwasm-schema"
+    labels: ["a/modules/cosmwasm-schema"]
 
   - title: "@examples"
     collapse-after: 5
