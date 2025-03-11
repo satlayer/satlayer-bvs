@@ -1,7 +1,8 @@
 ---
-title: Babylon Contracts
+title: CosmWasm Contracts
+asIndexPage: true
 ---
 
-# Babylon Contracts (CosmWasm)
+# CosmWasm Contracts (Babylon)
 
 SatLayer BVS is a comprehensive ecosystem on the Babylon network that includes a suite of interconnected contracts.
