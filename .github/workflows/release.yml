@@ -38,6 +38,8 @@ jobs:
   npm_gh:
     name: NPM [GitHub Packages]
     runs-on: ubuntu-latest
+    environment:
+      name: npmjs.com/org/satlayer
     needs:
       - version
     steps:
@@ -53,7 +55,7 @@ jobs:
 
       - run: |
           pnpm config set "@satlayer:registry" "https://npm.pkg.github.com" --location=project
-          pnpm config set "//npm.pkg.github.com/:_authToken" "${NODE_AUTH_TOKEN}" --location=project
+          pnpm config set "//npm.pkg.github.com/:_authToken" "${NPM_AUTH_TOKEN}" --location=project
         env:
-          NODE_AUTH_TOKEN: ${{ github.token }}
+          NPM_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
       - run: pnpm publish --access public --tag ${{ needs.version.outputs.npm_tag }} --no-git-checks --filter "@satlayer/*"
