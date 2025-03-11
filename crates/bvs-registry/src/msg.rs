@@ -8,12 +8,27 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
+pub struct OperatorDetails {
+    pub staker_opt_out_window_blocks: u64,
+}
+
+#[cw_serde]
 #[derive(bvs_pauser::api::Display)]
 pub enum ExecuteMsg {
-    RegisterService {
+    RegisterAsService {
         metadata: ServiceMetadata,
     },
     ServiceUpdateMetadata(ServiceMetadata),
+    RegisterAsOperator {
+        operator_details: OperatorDetails,
+        metadata_uri: String,
+    },
+    UpdateOperatorDetails {
+        new_operator_details: OperatorDetails,
+    },
+    UpdateOperatorMetadataUri {
+        metadata_uri: String,
+    },
     RegisterOperatorToService {
         operator: String,
     },
@@ -29,9 +44,6 @@ pub enum ExecuteMsg {
     TransferOwnership {
         /// See [`bvs_library::ownership::transfer_ownership`] for more information on this field
         new_owner: String,
-    },
-    SetRouting {
-        delegation_manager: String,
     },
 }
 

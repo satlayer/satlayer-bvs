@@ -1,4 +1,5 @@
 use crate::error::ContractError;
+use crate::msg::OperatorDetails;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, StdError, StdResult, Storage};
 use cw_storage_plus::Map;
@@ -20,6 +21,21 @@ pub fn require_service_registered(
     if !registered {
         return Err(ContractError::ServiceNotFound {});
     }
+
+    Ok(())
+}
+
+/// Mapping of operator address to OperatorDetails
+/// indicating if the operator is registered with the registry and the details
+pub const OPERATORS: Map<&Service, OperatorDetails> = Map::new("operators");
+
+pub fn require_operator_registered(
+    store: &dyn Storage,
+    service: &Addr,
+) -> Result<(), ContractError> {
+    OPERATORS
+        .may_load(store, service)?
+        .ok_or(ContractError::OperatorNotFound {})?;
 
     Ok(())
 }
@@ -100,6 +116,29 @@ mod tests {
         SERVICES.save(&mut deps.storage, &service, &true).unwrap();
 
         let res = require_service_registered(&deps.storage, &service);
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_require_operator_registered() {
+        let mut deps = mock_dependencies();
+
+        let operator = deps.api.addr_make("operator");
+
+        // assert that the operator is not registered
+        let res = require_operator_registered(&deps.storage, &operator);
+        assert_eq!(res, Err(ContractError::OperatorNotFound {}));
+
+        // add operator_details to the storage
+        let operator_details = OperatorDetails {
+            staker_opt_out_window_blocks: 100,
+        };
+        OPERATORS
+            .save(&mut deps.storage, &operator, &operator_details)
+            .unwrap();
+
+        // assert that the operator is registered
+        let res = require_operator_registered(&deps.storage, &operator);
         assert!(res.is_ok());
     }
 

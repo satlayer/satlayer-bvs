@@ -15,8 +15,11 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
-    #[error("Service already registered")]
+    #[error("Service has been registered")]
     ServiceRegistered {},
+
+    #[error("Operator has been registered")]
+    OperatorRegistered {},
 
     #[error("Service not found")]
     ServiceNotFound {},
@@ -24,6 +27,12 @@ pub enum ContractError {
     #[error("Invalid registration status: {msg}")]
     InvalidRegistrationStatus { msg: String },
 
-    #[error("Operator not found in delegation {msg}")]
-    OperatorNotFound { msg: String },
+    #[error("Operator is not registered")]
+    OperatorNotFound {},
+
+    #[error("set_operator_details: stakerOptOutWindowBlocks cannot be > MAX_STAKER_OPT_OUT_WINDOW_BLOCKS")]
+    ExceedMaxStakerOptOutWindowBlocks {},
+
+    #[error("set_operator_details: stakerOptOutWindowBlocks cannot be reduced to shorter than current value")]
+    StakerOptOutWindowBlocksCannotBeReduced {},
 }

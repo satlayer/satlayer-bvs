@@ -28,7 +28,6 @@ schemars = { workspace = true }
 
 bvs-library = { workspace = true }
 bvs-pauser = { workspace = true }
-bvs-delegation-manager = { workspace = true }
 
 [target."cfg(not(target_arch = \"wasm32\"))".dependencies]
 cw-multi-test = { workspace = true }

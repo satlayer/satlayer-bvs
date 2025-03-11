@@ -1,7 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
-use crate::auth;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use bvs_library::ownership;
@@ -10,6 +9,8 @@ use cw2::set_contract_version;
 
 const CONTRACT_NAME: &str = concat!("crate:", env!("CARGO_PKG_NAME"));
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+const MAX_STAKER_OPT_OUT_WINDOW_BLOCKS: u64 = 180 * 24 * 60 * 60 / 12; // 15 days
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -42,9 +43,21 @@ pub fn execute(
     bvs_pauser::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
 
     match msg {
-        ExecuteMsg::RegisterService { metadata } => execute::register_service(deps, info, metadata),
+        ExecuteMsg::RegisterAsService { metadata } => {
+            execute::register_as_service(deps, info, metadata)
+        }
         ExecuteMsg::ServiceUpdateMetadata(metadata) => {
             execute::service_update_metadata(deps, info, metadata)
+        }
+        ExecuteMsg::RegisterAsOperator {
+            operator_details,
+            metadata_uri,
+        } => execute::register_as_operator(deps, info, operator_details, metadata_uri),
+        ExecuteMsg::UpdateOperatorDetails {
+            new_operator_details,
+        } => execute::update_operator_details(deps, info, new_operator_details),
+        ExecuteMsg::UpdateOperatorMetadataUri { metadata_uri } => {
+            execute::update_operator_metadata_uri(deps, info, metadata_uri)
         }
         ExecuteMsg::RegisterOperatorToService { operator } => {
             let operator = deps.api.addr_validate(&operator)?;
@@ -67,18 +80,15 @@ pub fn execute(
             ownership::transfer_ownership(deps.storage, info, new_owner)
                 .map_err(ContractError::Ownership)
         }
-        ExecuteMsg::SetRouting { delegation_manager } => {
-            let delegation_manager = deps.api.addr_validate(&delegation_manager)?;
-            auth::set_routing(deps, info, delegation_manager)
-        }
     }
 }
 
 mod execute {
+    use super::*;
     use crate::error::ContractError;
-    use crate::msg::ServiceMetadata;
-    use crate::state::{RegistrationStatus, SERVICES};
-    use crate::{auth, state};
+    use crate::msg::{OperatorDetails, ServiceMetadata};
+    use crate::state;
+    use crate::state::{require_operator_registered, RegistrationStatus, OPERATORS, SERVICES};
     use cosmwasm_std::{Addr, DepsMut, Event, MessageInfo, Response};
 
     /// Event for ServiceMetadataUpdated
@@ -97,8 +107,8 @@ mod execute {
         event
     }
 
-    /// Register a service (info.sender is the service)
-    pub fn register_service(
+    /// Register `info.sender` as a service.
+    pub fn register_as_service(
         deps: DepsMut,
         info: MessageInfo,
         metadata: ServiceMetadata,
@@ -131,6 +141,112 @@ mod execute {
         Ok(Response::new().add_event(new_event_metadata(metadata, &info.sender)))
     }
 
+    fn set_operator_details(
+        deps: DepsMut,
+        operator: Addr,
+        new_operator_details: OperatorDetails,
+    ) -> Result<Event, ContractError> {
+        let current = OPERATORS
+            .may_load(deps.storage, &operator)?
+            .unwrap_or(OperatorDetails {
+                staker_opt_out_window_blocks: 0,
+            });
+
+        if new_operator_details.staker_opt_out_window_blocks > MAX_STAKER_OPT_OUT_WINDOW_BLOCKS {
+            return Err(ContractError::ExceedMaxStakerOptOutWindowBlocks {});
+        }
+
+        if new_operator_details.staker_opt_out_window_blocks < current.staker_opt_out_window_blocks
+        {
+            return Err(ContractError::StakerOptOutWindowBlocksCannotBeReduced {});
+        }
+
+        OPERATORS.save(deps.storage, &operator, &new_operator_details)?;
+
+        let event = Event::new("SetOperatorDetails")
+            .add_attribute("operator", operator.to_string())
+            .add_attribute(
+                "staker_opt_out_window_blocks",
+                new_operator_details
+                    .staker_opt_out_window_blocks
+                    .to_string(),
+            );
+
+        Ok(event)
+    }
+
+    /// Registers the `info.sender` as an operator.
+    ///
+    /// `metadata_uri` is never stored and is only emitted in the `OperatorMetadataURIUpdated` event.
+    pub fn register_as_operator(
+        mut deps: DepsMut,
+        info: MessageInfo,
+        operator_details: OperatorDetails,
+        metadata_uri: String,
+    ) -> Result<Response, ContractError> {
+        let operator = info.sender.clone();
+
+        // error if the operator is already registered
+        let operator_registered = OPERATORS.may_load(deps.storage, &operator)?.is_some();
+        if operator_registered {
+            return Err(ContractError::OperatorRegistered {});
+        }
+
+        // add operator into the state
+        let set_operator_event =
+            set_operator_details(deps.branch(), operator.clone(), operator_details)?;
+
+        let mut response = Response::new();
+
+        let register_event =
+            Event::new("OperatorRegistered").add_attribute("operator", operator.to_string());
+        response = response.add_event(register_event);
+
+        response = response.add_event(set_operator_event);
+
+        let metadata_event = Event::new("OperatorMetadataURIUpdated")
+            .add_attribute("operator", operator.to_string())
+            .add_attribute("metadata_uri", metadata_uri);
+        response = response.add_event(metadata_event);
+
+        Ok(response)
+    }
+
+    /// Called by an operator to set new [`OperatorDetails`].
+    ///
+    /// New `staker_opt_out_window_blocks` cannot be reduced and exceed [`MAX_STAKER_OPT_OUT_WINDOW_BLOCKS`].
+    pub fn update_operator_details(
+        deps: DepsMut,
+        info: MessageInfo,
+        new_operator_details: OperatorDetails,
+    ) -> Result<Response, ContractError> {
+        let operator = info.sender.clone();
+        require_operator_registered(deps.storage, &operator)?;
+
+        let set_operator_details_event =
+            set_operator_details(deps, operator, new_operator_details)?;
+
+        Ok(Response::new().add_event(set_operator_details_event))
+    }
+
+    /// Called by an operator to emit an `OperatorMetadataURIUpdated` event indicating the information has updated.
+    pub fn update_operator_metadata_uri(
+        deps: DepsMut,
+        info: MessageInfo,
+        metadata_uri: String,
+    ) -> Result<Response, ContractError> {
+        let operator = info.sender.clone();
+        require_operator_registered(deps.storage, &operator)?;
+
+        let mut response = Response::new();
+        let metadata_event = Event::new("OperatorMetadataURIUpdated")
+            .add_attribute("operator", operator.to_string())
+            .add_attribute("metadata_uri", metadata_uri);
+        response = response.add_event(metadata_event);
+
+        Ok(response)
+    }
+
     /// Register an operator to a service (info.sender is the service)
     /// Service must be registered via [`super::ExecuteMsg::ServiceRegister`].  
     /// If the operator has registered this service, the registration status will be set to [`RegistrationStatus::Active`] (1)  
@@ -140,9 +256,10 @@ mod execute {
         info: MessageInfo,
         operator: Addr,
     ) -> Result<Response, ContractError> {
-        state::require_service_registered(deps.storage, &info.sender)?;
+        let service = info.sender.clone();
+        state::require_service_registered(deps.storage, &service)?;
 
-        let key = (&operator, &info.sender);
+        let key = (&operator, &service);
         let status = state::get_registration_status(deps.storage, key)?;
         match status {
             RegistrationStatus::Active => Err(ContractError::InvalidRegistrationStatus {
@@ -163,7 +280,7 @@ mod execute {
                     Event::new("RegistrationStatusUpdated")
                         .add_attribute("method", "register_operator_to_service")
                         .add_attribute("operator", operator)
-                        .add_attribute("service", info.sender)
+                        .add_attribute("service", service)
                         .add_attribute("status", "ServiceRegistered"),
                 ))
             }
@@ -173,7 +290,7 @@ mod execute {
                     Event::new("RegistrationStatusUpdated")
                         .add_attribute("method", "register_operator_to_service")
                         .add_attribute("operator", operator)
-                        .add_attribute("service", info.sender)
+                        .add_attribute("service", service)
                         .add_attribute("status", "Active"),
                 ))
             }
@@ -187,7 +304,8 @@ mod execute {
         info: MessageInfo,
         operator: Addr,
     ) -> Result<Response, ContractError> {
-        state::require_service_registered(deps.storage, &info.sender)?;
+        let service = info.sender.clone();
+        state::require_service_registered(deps.storage, &service)?;
 
         let key = (&operator, &info.sender);
         let status = state::get_registration_status(deps.storage, key)?;
@@ -202,7 +320,7 @@ mod execute {
                 Event::new("RegistrationStatusUpdated")
                     .add_attribute("method", "deregister_operator_from_service")
                     .add_attribute("operator", operator)
-                    .add_attribute("service", info.sender)
+                    .add_attribute("service", service)
                     .add_attribute("status", "Inactive"),
             ))
         }
@@ -217,25 +335,11 @@ mod execute {
         info: MessageInfo,
         service: Addr,
     ) -> Result<Response, ContractError> {
+        let operator = info.sender.clone();
         state::require_service_registered(deps.storage, &service)?;
+        state::require_operator_registered(deps.storage, &operator)?;
 
-        let delegation_manager = auth::get_delegation_manager(deps.storage)?;
-        let is_operator_response: bvs_delegation_manager::query::OperatorResponse =
-            deps.querier.query_wasm_smart(
-                delegation_manager.clone(),
-                &bvs_delegation_manager::msg::QueryMsg::IsOperator {
-                    operator: info.sender.to_string(),
-                },
-            )?;
-
-        // Operator must be registered in delegation manager
-        if !is_operator_response.is_operator {
-            return Err(ContractError::OperatorNotFound {
-                msg: "Operator is not registered on delegation manager.".to_string(),
-            });
-        }
-
-        let key = (&info.sender, &service);
+        let key = (&operator, &service);
         let status = state::get_registration_status(deps.storage, key)?;
         match status {
             RegistrationStatus::Active => Err(ContractError::InvalidRegistrationStatus {
@@ -255,7 +359,7 @@ mod execute {
                 Ok(Response::new().add_event(
                     Event::new("RegistrationStatusUpdated")
                         .add_attribute("method", "register_service_to_operator")
-                        .add_attribute("operator", info.sender)
+                        .add_attribute("operator", operator)
                         .add_attribute("service", service)
                         .add_attribute("status", "OperatorRegistered"),
                 ))
@@ -265,7 +369,7 @@ mod execute {
                 Ok(Response::new().add_event(
                     Event::new("RegistrationStatusUpdated")
                         .add_attribute("method", "register_service_to_operator")
-                        .add_attribute("operator", info.sender)
+                        .add_attribute("operator", operator)
                         .add_attribute("service", service)
                         .add_attribute("status", "Active"),
                 ))
@@ -280,9 +384,10 @@ mod execute {
         info: MessageInfo,
         service: Addr,
     ) -> Result<Response, ContractError> {
+        let operator = info.sender.clone();
         state::require_service_registered(deps.storage, &service)?;
 
-        let key = (&info.sender, &service);
+        let key = (&operator, &service);
         let status = state::get_registration_status(deps.storage, key)?;
 
         if status == RegistrationStatus::Inactive {
@@ -294,7 +399,7 @@ mod execute {
             Ok(Response::new().add_event(
                 Event::new("RegistrationStatusUpdated")
                     .add_attribute("method", "deregister_service_from_operator")
-                    .add_attribute("operator", info.sender)
+                    .add_attribute("operator", operator)
                     .add_attribute("service", service)
                     .add_attribute("status", "Inactive"),
             ))
@@ -335,15 +440,13 @@ mod query {
 mod tests {
     use super::*;
     use crate::contract::query::status;
-    use crate::msg::{InstantiateMsg, ServiceMetadata, StatusResponse};
+    use crate::msg::{InstantiateMsg, OperatorDetails, ServiceMetadata, StatusResponse};
     use crate::state;
-    use crate::state::{RegistrationStatus, SERVICES};
+    use crate::state::{RegistrationStatus, OPERATORS, SERVICES};
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
-    use cosmwasm_std::{
-        ContractResult, Event, OwnedDeps, Response, SystemError, SystemResult, WasmQuery,
-    };
+    use cosmwasm_std::{Event, OwnedDeps, Response};
 
     fn mock_contract() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         let mut deps = mock_dependencies();
@@ -363,38 +466,17 @@ mod tests {
         )
         .unwrap();
 
-        let delegation_manager = deps.api.addr_make("delegation_manager");
-        auth::set_routing(
-            deps.as_mut(),
-            owner_info.clone(),
-            delegation_manager.clone(),
-        )
-        .unwrap();
-
-        deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { .. } => SystemResult::Ok(ContractResult::Ok(
-                to_json_binary(&bvs_delegation_manager::query::OperatorResponse {
-                    is_operator: true,
-                })
-                .unwrap(),
-            )),
-            _ => SystemResult::Err(SystemError::InvalidRequest {
-                error: "Unhandled request".to_string(),
-                request: to_json_binary(&query).unwrap(),
-            }),
-        });
-
         deps
     }
 
     #[test]
-    fn test_register_service() {
+    fn test_register_as_service() {
         let mut deps = mock_dependencies();
 
         let service = deps.api.addr_make("service");
         let service_info = message_info(&service, &[]);
 
-        let res = execute::register_service(
+        let res = execute::register_as_service(
             deps.as_mut(),
             service_info,
             ServiceMetadata {
@@ -428,7 +510,7 @@ mod tests {
         let service = deps.api.addr_make("service");
         let service_info = message_info(&service, &[]);
 
-        let res = execute::register_service(
+        let res = execute::register_as_service(
             deps.as_mut(),
             service_info,
             ServiceMetadata {
@@ -484,6 +566,288 @@ mod tests {
     }
 
     #[test]
+    fn test_register_as_operator() {
+        let mut deps = mock_dependencies();
+
+        let operator = deps.api.addr_make("operator");
+        let operator_info = message_info(&operator, &[]);
+
+        let res = execute::register_as_operator(
+            deps.as_mut(),
+            operator_info,
+            OperatorDetails {
+                staker_opt_out_window_blocks: 100,
+            },
+            "uri".to_string(),
+        );
+
+        assert_eq!(
+            res,
+            Ok(Response::new()
+                .add_event(
+                    Event::new("OperatorRegistered").add_attribute("operator", operator.as_ref())
+                )
+                .add_event(
+                    Event::new("SetOperatorDetails")
+                        .add_attribute("operator", operator.as_ref())
+                        .add_attribute("staker_opt_out_window_blocks", 100.to_string())
+                )
+                .add_event(
+                    Event::new("OperatorMetadataURIUpdated")
+                        .add_attribute("operator", operator.as_ref())
+                        .add_attribute("metadata_uri", "uri")
+                ))
+        );
+
+        let operator_registered = OPERATORS.load(&deps.storage, &operator).is_ok();
+        assert!(operator_registered);
+    }
+
+    #[test]
+    fn test_register_as_operator_more_than_once() {
+        let mut deps = mock_dependencies();
+
+        let operator = deps.api.addr_make("operator");
+        let operator_info = message_info(&operator, &[]);
+
+        {
+            // register operator the first time - success
+            execute::register_as_operator(
+                deps.as_mut(),
+                operator_info.clone(),
+                OperatorDetails {
+                    staker_opt_out_window_blocks: 100,
+                },
+                "uri".to_string(),
+            )
+            .expect("register operator failed");
+
+            let operator_registered = OPERATORS.load(&deps.storage, &operator).is_ok();
+            assert!(operator_registered);
+        }
+
+        // register operator the second time - error
+        let err = execute::register_as_operator(
+            deps.as_mut(),
+            operator_info,
+            OperatorDetails {
+                staker_opt_out_window_blocks: 100,
+            },
+            "uri".to_string(),
+        );
+        assert_eq!(err, Err(ContractError::OperatorRegistered {}),);
+    }
+
+    #[test]
+    fn test_update_operator_details() {
+        let mut deps = mock_dependencies();
+
+        let operator = deps.api.addr_make("operator");
+        let operator_info = message_info(&operator, &[]);
+
+        {
+            // register operator the first time
+            execute::register_as_operator(
+                deps.as_mut(),
+                operator_info.clone(),
+                OperatorDetails {
+                    staker_opt_out_window_blocks: 100,
+                },
+                "uri".to_string(),
+            )
+            .expect("register operator failed");
+
+            let operator = OPERATORS.load(&deps.storage, &operator).unwrap();
+            assert_eq!(operator.staker_opt_out_window_blocks, 100);
+        }
+
+        // update operator details
+        let res = execute::update_operator_details(
+            deps.as_mut(),
+            operator_info,
+            OperatorDetails {
+                staker_opt_out_window_blocks: 101,
+            },
+        );
+
+        // assert event
+        assert_eq!(
+            res,
+            Ok(Response::new().add_event(
+                Event::new("SetOperatorDetails")
+                    .add_attribute("operator", operator.as_ref())
+                    .add_attribute("staker_opt_out_window_blocks", 101.to_string())
+            ))
+        );
+
+        // assert operator details is updated
+        let operator = OPERATORS.load(&deps.storage, &operator).unwrap();
+        assert_eq!(operator.staker_opt_out_window_blocks, 101);
+    }
+
+    #[test]
+    fn test_update_operator_details_reduced_error() {
+        let mut deps = mock_dependencies();
+
+        let operator = deps.api.addr_make("operator");
+        let operator_info = message_info(&operator, &[]);
+
+        {
+            // register operator the first time
+            execute::register_as_operator(
+                deps.as_mut(),
+                operator_info.clone(),
+                OperatorDetails {
+                    staker_opt_out_window_blocks: 100,
+                },
+                "uri".to_string(),
+            )
+            .expect("register operator failed");
+
+            let operator = OPERATORS.load(&deps.storage, &operator).unwrap();
+            assert_eq!(operator.staker_opt_out_window_blocks, 100);
+        }
+
+        // update operator details
+        let err = execute::update_operator_details(
+            deps.as_mut(),
+            operator_info,
+            OperatorDetails {
+                staker_opt_out_window_blocks: 100 - 1, // reduce 1
+            },
+        );
+
+        // assert event
+        assert_eq!(
+            err,
+            Err(ContractError::StakerOptOutWindowBlocksCannotBeReduced {})
+        );
+
+        // assert operator details are not updated
+        let operator = OPERATORS.load(&deps.storage, &operator).unwrap();
+        assert_eq!(operator.staker_opt_out_window_blocks, 100);
+    }
+
+    #[test]
+    fn test_register_and_update_operator_details_more_than_max() {
+        let mut deps = mock_dependencies();
+
+        let operator = deps.api.addr_make("operator");
+        let operator_info = message_info(&operator, &[]);
+
+        {
+            // register operator fails due to max + 1
+            let err = execute::register_as_operator(
+                deps.as_mut(),
+                operator_info.clone(),
+                OperatorDetails {
+                    staker_opt_out_window_blocks: MAX_STAKER_OPT_OUT_WINDOW_BLOCKS + 1,
+                },
+                "uri".to_string(),
+            );
+
+            assert_eq!(
+                err,
+                Err(ContractError::ExceedMaxStakerOptOutWindowBlocks {})
+            );
+        }
+        {
+            // register operator success
+            execute::register_as_operator(
+                deps.as_mut(),
+                operator_info.clone(),
+                OperatorDetails {
+                    staker_opt_out_window_blocks: MAX_STAKER_OPT_OUT_WINDOW_BLOCKS,
+                },
+                "uri".to_string(),
+            )
+            .expect("register operator failed");
+
+            let operator = OPERATORS.load(&deps.storage, &operator).unwrap();
+            assert_eq!(
+                operator.staker_opt_out_window_blocks,
+                MAX_STAKER_OPT_OUT_WINDOW_BLOCKS
+            );
+        }
+
+        // update operator details failed due to max + 1
+        let err = execute::update_operator_details(
+            deps.as_mut(),
+            operator_info,
+            OperatorDetails {
+                staker_opt_out_window_blocks: MAX_STAKER_OPT_OUT_WINDOW_BLOCKS + 1,
+            },
+        );
+
+        // assert error
+        assert_eq!(
+            err,
+            Err(ContractError::ExceedMaxStakerOptOutWindowBlocks {})
+        );
+
+        // assert operator details are not updated
+        let operator = OPERATORS.load(&deps.storage, &operator).unwrap();
+        assert_eq!(
+            operator.staker_opt_out_window_blocks,
+            MAX_STAKER_OPT_OUT_WINDOW_BLOCKS
+        );
+    }
+
+    #[test]
+    fn test_update_operator_metadata_uri() {
+        let mut deps = mock_dependencies();
+
+        let operator = deps.api.addr_make("operator");
+        let operator_info = message_info(&operator, &[]);
+
+        {
+            // register operator the first time
+            let res = execute::register_as_operator(
+                deps.as_mut(),
+                operator_info.clone(),
+                OperatorDetails {
+                    staker_opt_out_window_blocks: 100,
+                },
+                "uri".to_string(),
+            );
+
+            // assert OperatorMetadataURIUpdated event
+            assert_eq!(
+                res,
+                Ok(Response::new()
+                    .add_event(
+                        Event::new("OperatorRegistered")
+                            .add_attribute("operator", operator.as_ref())
+                    )
+                    .add_event(
+                        Event::new("SetOperatorDetails")
+                            .add_attribute("operator", operator.as_ref())
+                            .add_attribute("staker_opt_out_window_blocks", 100.to_string())
+                    )
+                    .add_event(
+                        Event::new("OperatorMetadataURIUpdated")
+                            .add_attribute("operator", operator.as_ref())
+                            .add_attribute("metadata_uri", "uri")
+                    ))
+            );
+        }
+
+        // update operator details
+        let res =
+            execute::update_operator_metadata_uri(deps.as_mut(), operator_info, "uri2".to_string());
+
+        // assert event
+        assert_eq!(
+            res,
+            Ok(Response::new().add_event(
+                Event::new("OperatorMetadataURIUpdated")
+                    .add_attribute("operator", operator.as_ref())
+                    .add_attribute("metadata_uri", "uri2") // updated uri
+            ))
+        );
+    }
+
+    #[test]
     fn test_register_lifecycle_operator_then_service() {
         let mut deps = mock_contract();
 
@@ -492,7 +856,8 @@ mod tests {
         let operator_info = message_info(&operator, &[]);
         let service_info = message_info(&service, &[]);
 
-        execute::register_service(
+        // register service + operator
+        execute::register_as_service(
             deps.as_mut(),
             service_info.clone(),
             ServiceMetadata {
@@ -500,7 +865,17 @@ mod tests {
                 name: None,
             },
         )
-        .unwrap();
+        .expect("register service failed");
+
+        execute::register_as_operator(
+            deps.as_mut(),
+            operator_info.clone(),
+            OperatorDetails {
+                staker_opt_out_window_blocks: 100,
+            },
+            "uri".to_string(),
+        )
+        .expect("register operator failed");
 
         let res = execute::register_service_to_operator(
             deps.as_mut(),
@@ -550,7 +925,8 @@ mod tests {
         let operator_info = message_info(&operator, &[]);
         let service_info = message_info(&service, &[]);
 
-        execute::register_service(
+        // register service + operator
+        execute::register_as_service(
             deps.as_mut(),
             service_info.clone(),
             ServiceMetadata {
@@ -558,7 +934,17 @@ mod tests {
                 name: None,
             },
         )
-        .unwrap();
+        .expect("register service failed");
+
+        execute::register_as_operator(
+            deps.as_mut(),
+            operator_info.clone(),
+            OperatorDetails {
+                staker_opt_out_window_blocks: 100,
+            },
+            "uri".to_string(),
+        )
+        .expect("register operator failed");
 
         let res = execute::register_operator_to_service(
             deps.as_mut(),
@@ -607,7 +993,18 @@ mod tests {
         let service = deps.api.addr_make("service/2");
         let operator_info = message_info(&operator, &[]);
 
+        // register service + operator
         SERVICES.save(&mut deps.storage, &service, &true).unwrap();
+        OPERATORS
+            .save(
+                &mut deps.storage,
+                &operator,
+                &OperatorDetails {
+                    staker_opt_out_window_blocks: 100,
+                },
+            )
+            .unwrap();
+
         state::set_registration_status(
             &mut deps.storage,
             (&operator, &service),
@@ -666,7 +1063,18 @@ mod tests {
         let operator_info = message_info(&operator, &[]);
         let service_info = message_info(&service, &[]);
 
+        // register service + operator
         SERVICES.save(&mut deps.storage, &service, &true).unwrap();
+        OPERATORS
+            .save(
+                &mut deps.storage,
+                &operator,
+                &OperatorDetails {
+                    staker_opt_out_window_blocks: 100,
+                },
+            )
+            .unwrap();
+
         state::set_registration_status(
             &mut deps.storage,
             (&operator, &service),
