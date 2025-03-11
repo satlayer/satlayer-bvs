@@ -10,35 +10,34 @@ pub struct InstantiateMsg {
 #[cw_serde]
 #[derive(bvs_pauser::api::Display)]
 pub enum ExecuteMsg {
-    ServiceRegister {
-        metadata: Metadata,
+    RegisterService {
+        metadata: ServiceMetadata,
     },
-    ServiceUpdateMetadata(Metadata),
-    ServiceRegisterOperator {
+    ServiceUpdateMetadata(ServiceMetadata),
+    RegisterOperatorToService {
         operator: String,
     },
-    ServiceDeregisterOperator {
+    DeregisterOperatorFromService {
         operator: String,
     },
-    OperatorRegister {
-        metadata: Metadata,
-    },
-    OperatorUpdateMetadata(Metadata),
-    OperatorDeregisterService {
+    RegisterServiceToOperator {
         service: String,
     },
-    OperatorRegisterService {
+    DeregisterServiceFromOperator {
         service: String,
     },
     TransferOwnership {
         /// See [`bvs_library::ownership::transfer_ownership`] for more information on this field
         new_owner: String,
     },
+    SetRouting {
+        delegation_manager: String,
+    },
 }
 
-/// Metadata is emitted as events and not stored on-chain.
+/// Service metadata is emitted as events and not stored on-chain.
 #[cw_serde]
-pub struct Metadata {
+pub struct ServiceMetadata {
     pub name: Option<String>,
     pub uri: Option<String>,
 }
@@ -46,31 +45,31 @@ pub struct Metadata {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(RegistrationStatusResponse)]
-    RegistrationStatus { service: String, operator: String },
+    #[returns(StatusResponse)]
+    Status { service: String, operator: String },
 }
 
 #[cw_serde]
-pub struct RegistrationStatusResponse(u8);
+pub struct StatusResponse(pub u8);
 
-impl From<RegistrationStatus> for RegistrationStatusResponse {
+impl From<RegistrationStatus> for StatusResponse {
     fn from(value: RegistrationStatus) -> Self {
-        RegistrationStatusResponse(value as u8)
+        StatusResponse(value as u8)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::msg::{ExecuteMsg, Metadata};
+    use crate::msg::{ExecuteMsg, ServiceMetadata};
 
     #[test]
     fn test_method_name() {
-        let msg = ExecuteMsg::ServiceRegisterOperator {
+        let msg = ExecuteMsg::RegisterOperatorToService {
             operator: "operator".to_string(),
         };
-        assert_eq!(msg.to_string(), "ServiceRegisterOperator");
+        assert_eq!(msg.to_string(), "RegisterOperatorToService");
 
-        let msg = ExecuteMsg::ServiceUpdateMetadata(Metadata {
+        let msg = ExecuteMsg::ServiceUpdateMetadata(ServiceMetadata {
             name: Some("name".to_string()),
             uri: Some("uri".to_string()),
         });

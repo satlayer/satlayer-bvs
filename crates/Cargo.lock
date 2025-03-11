@@ -269,6 +269,7 @@ dependencies = [
 name = "bvs-registry"
 version = "0.0.0"
 dependencies = [
+ "bvs-delegation-manager",
  "bvs-library",
  "bvs-pauser",
  "cosmwasm-schema",
