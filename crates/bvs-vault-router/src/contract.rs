@@ -88,26 +88,26 @@ mod execute {
     }
 
     /// Snipped implementation of Vault's API
-    mod vault {
+    pub mod vault {
         use crate::error::ContractError;
         use cosmwasm_schema::cw_serde;
         use cosmwasm_std::{Addr, Deps, Env};
 
         #[cw_serde]
-        enum QueryMsg {
+        pub enum VaultInfoQueryMsg {
             VaultInfo {},
         }
 
         #[cw_serde]
-        struct VaultInfoResponse {
-            router: String,
+        pub struct VaultInfoResponse {
+            pub router: String,
         }
 
         /// Asserts that the vault contains the QueryMsg::VaultInfo and is connected to the router.
         pub fn assert_vault_info(deps: &Deps, env: Env, vault: Addr) -> Result<(), ContractError> {
             let response: VaultInfoResponse = deps
                 .querier
-                .query_wasm_smart(vault.to_string(), &QueryMsg::VaultInfo {})?;
+                .query_wasm_smart(vault.to_string(), &VaultInfoQueryMsg::VaultInfo {})?;
             if response.router == env.contract.address.to_string() {
                 Ok(())
             } else {
@@ -196,6 +196,262 @@ mod query {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use super::{
+        execute::{
+            set_vault,
+            vault::{VaultInfoQueryMsg, VaultInfoResponse},
+        },
+        query::{is_delegated, is_whitelisted, list_vaults},
+    };
+    use crate::msg::InstantiateMsg;
+    use crate::state::{Vault, VAULTS};
+    use cosmwasm_std::testing::{
+        message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
+    };
+    use cosmwasm_std::{
+        from_json, Attribute, ContractResult, Event, OwnedDeps, QuerierResult, SystemError,
+        SystemResult, WasmQuery,
+    };
+
     #[test]
-    fn test() {}
+    fn test_instantiate() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let owner = deps.api.addr_make("owner");
+        let pauser = deps.api.addr_make("pauser");
+        let owner_info = message_info(&owner, &[]);
+
+        let msg = InstantiateMsg {
+            owner: owner.to_string(),
+            pauser: pauser.to_string(),
+        };
+
+        let response = instantiate(deps.as_mut(), env, owner_info, msg).unwrap();
+
+        assert_eq!(
+            response.attributes,
+            vec![
+                Attribute::new("method", "instantiate"),
+                Attribute::new("owner", owner.to_string()),
+                Attribute::new("pauser", pauser.to_string()),
+            ]
+        );
+    }
+
+    fn instantiate_contract() -> (
+        OwnedDeps<MockStorage, MockApi, MockQuerier>,
+        Env,
+        MessageInfo,
+    ) {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let owner = deps.api.addr_make("owner");
+        let pauser = deps.api.addr_make("pauser");
+        let owner_info = message_info(&owner, &[]);
+
+        let msg = InstantiateMsg {
+            owner: owner.to_string(),
+            pauser: pauser.to_string(),
+        };
+
+        instantiate(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();
+
+        (deps, env, owner_info)
+    }
+
+    #[test]
+    fn test_set_vault() {
+        let (mut deps, env, owner_info) = instantiate_contract();
+
+        let vault = deps.api.addr_make("vault");
+        let vault_contract_addr = deps.api.addr_make("cosmos2contract");
+
+        // whitelist is false
+        {
+            let result = set_vault(
+                deps.as_mut(),
+                env.clone(),
+                owner_info.clone(),
+                vault.clone(),
+                false,
+            );
+            assert!(result.is_ok());
+
+            let response = result.unwrap();
+            assert_eq!(response.attributes.len(), 0);
+            assert_eq!(response.events.len(), 1);
+            assert_eq!(
+                response.events[0],
+                Event::new("VaultUpdated")
+                    .add_attribute("vault", vault.clone())
+                    .add_attribute("whitelisted", "false")
+            );
+
+            let vault = VAULTS
+                .may_load(deps.as_ref().storage, &vault)
+                .unwrap()
+                .unwrap();
+            assert_eq!(vault.whitelisted, false);
+        }
+
+        deps.querier
+            .update_wasm(move |req: &WasmQuery| -> QuerierResult {
+                if let WasmQuery::Smart { contract_addr, msg } = req {
+                    if *contract_addr == deps.api.addr_make("vault").to_string() {
+                        let msg: VaultInfoQueryMsg = from_json(msg).unwrap();
+                        match msg {
+                            VaultInfoQueryMsg::VaultInfo {} => {
+                                let response = VaultInfoResponse {
+                                    router: vault_contract_addr.to_string(),
+                                };
+                                SystemResult::Ok(ContractResult::Ok(
+                                    to_json_binary(&response).unwrap(),
+                                ))
+                            }
+                        }
+                    } else {
+                        SystemResult::Err(SystemError::NoSuchContract {
+                            addr: contract_addr.to_string(),
+                        })
+                    }
+                } else {
+                    SystemResult::Err(SystemError::UnsupportedRequest {
+                        kind: "Unsupported query".to_string(),
+                    })
+                }
+            });
+
+        let vault = deps.api.addr_make("vault");
+
+        // whitelist is true and set successfully
+        {
+            let result = set_vault(
+                deps.as_mut(),
+                env.clone(),
+                owner_info.clone(),
+                vault.clone(),
+                true,
+            );
+            assert!(result.is_ok());
+
+            let response = result.unwrap();
+            assert_eq!(response.attributes.len(), 0);
+            assert_eq!(response.events.len(), 1);
+            assert_eq!(
+                response.events[0],
+                Event::new("VaultUpdated")
+                    .add_attribute("vault", vault.clone())
+                    .add_attribute("whitelisted", "true")
+            );
+
+            let vault = VAULTS
+                .may_load(deps.as_ref().storage, &vault)
+                .unwrap()
+                .unwrap();
+            assert_eq!(vault.whitelisted, true);
+        }
+
+        // whitelist is true and failed to set: No such contract
+        let empty_vault = deps.api.addr_make("empty_vault");
+        {
+            let result = set_vault(
+                deps.as_mut(),
+                env.clone(),
+                owner_info.clone(),
+                empty_vault.clone(),
+                true,
+            );
+            assert!(result.is_err());
+
+            let err = result.unwrap_err();
+            assert_eq!(
+                err.to_string(),
+                format!(
+                    "Generic error: Querier system error: No such contract: {}",
+                    empty_vault.to_string()
+                )
+            );
+        }
+
+        // whitelist is true and failed to set: Vault is not connected to the router
+        let new_vault = deps.api.addr_make("new_vault");
+        {
+            deps.querier
+                .update_wasm(move |req: &WasmQuery| -> QuerierResult {
+                    if let WasmQuery::Smart { contract_addr, msg } = req {
+                        if *contract_addr == deps.api.addr_make("vault").to_string() {
+                            let msg: VaultInfoQueryMsg = from_json(msg).unwrap();
+                            match msg {
+                                VaultInfoQueryMsg::VaultInfo {} => {
+                                    let response = VaultInfoResponse {
+                                        router: new_vault.to_string(),
+                                    };
+                                    SystemResult::Ok(ContractResult::Ok(
+                                        to_json_binary(&response).unwrap(),
+                                    ))
+                                }
+                            }
+                        } else {
+                            SystemResult::Err(SystemError::NoSuchContract {
+                                addr: contract_addr.to_string(),
+                            })
+                        }
+                    } else {
+                        SystemResult::Err(SystemError::UnsupportedRequest {
+                            kind: "Unsupported query".to_string(),
+                        })
+                    }
+                });
+
+            let result = set_vault(
+                deps.as_mut(),
+                env.clone(),
+                owner_info.clone(),
+                vault.clone(),
+                true,
+            );
+            assert!(result.is_err());
+
+            let err = result.unwrap_err();
+            assert_eq!(
+                err.to_string(),
+                ContractError::VaultError {
+                    msg: "Vault is not connected to the router".to_string()
+                }
+                .to_string()
+            );
+        }
+    }
+
+    #[test]
+    fn test_query_is_whitelisted() {
+        let mut deps = mock_dependencies();
+
+        let vault = deps.api.addr_make("vault");
+        VAULTS
+            .save(&mut deps.storage, &vault, &Vault { whitelisted: true })
+            .unwrap();
+
+        let response = is_whitelisted(deps.as_ref(), vault).unwrap();
+        assert!(response)
+    }
+
+    #[test]
+    fn test_query_is_delegated() {
+        let deps = mock_dependencies();
+
+        let operator = deps.api.addr_make("operator");
+
+        let response = is_delegated(deps.as_ref(), operator).unwrap();
+        assert!(!response)
+    }
+
+    #[test]
+    fn test_query_list_vaults() {
+        let deps = mock_dependencies();
+
+        let response = list_vaults(deps.as_ref(), 0, None).unwrap();
+        assert_eq!(response.0.len(), 0)
+    }
 }
