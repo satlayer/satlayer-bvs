@@ -11,3 +11,7 @@ dist
 docker.tar
 
 target/
+
+# Runbook
+.babylond
+.ash_history

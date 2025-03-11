@@ -1,0 +1,110 @@
+---
+title: CosmWasm Runbook
+---
+
+import { Steps } from "nextra/components";
+
+# Babylon CosmWasm Runbook
+
+> Ensure all the tools are installed. See `./README.md` for more information.
+> **Run the commands from the root of the project.**
+
+## Building Contracts
+
+To build all the contracts, run the following command.
+You can `--force` to make sure the contracts are built without using the cache.
+We filter to `./crates/*` to build only the production contracts and not the examples.
+
+```shell
+turbo run build:wasm --force --filter="./crates/*"
+```
+
+The contracts will be built and stored in the `artifacts` directory.
+
+```txt
+├── crates/
+│   ├── bvs-pauser/artifacts/bvs_pauser.wasm
+│   ├── bvs-vault-router/artifacts/bvs_vault_router.wasm
+│   ├── bvs-vault-bank/artifacts/bvs_vault_bank.wasm
+│   ├── bvs-vault-cw20/artifacts/bvs_vault_cw20.wasm
+│   └── bvs-*/artifacts/bvs_*.wasm
+└── README.md
+```
+
+## Deploying and Instantiating Contracts
+
+<Steps>
+  ### `.babylond/config/client.toml`
+  Copy the `client.toml` file to the `.babylond/config` directory. (This is for `bbn-test-5`)
+
+```toml filename=".babylond/config/client.toml" copy
+chain-id = "bbn-test-5"
+node = "https://babylon-testnet-rpc.nodes.guru"
+keyring-backend = "os"
+output = "text"
+broadcast-mode = "block"
+```
+
+### Babylond
+
+And start the interactive shell using the `babylond` docker image.
+
+```sh
+docker run --rm -it -v $(pwd):/home/babylon docker.io/babylonlabs/babylond:v1.0.0-rc.6 sh
+```
+
+### Deployer Key
+
+Add a new key for the deployer, if you haven't already.
+You will be prompted to enter a password and save it, you will need this password to sign transactions.
+
+```sh
+babylond keys add deployer
+```
+
+Query the balance, make sure you have enough tokens to deploy the contracts.
+Transfer them if necessary.
+
+```sh
+babylond query bank balances $(babylond keys show deployer -a)
+```
+
+### Store Contract
+
+```shell
+babylond tx wasm store path/to/artifacts/contract.wasm \
+--from=deployer \
+--gas=auto --gas-adjustment=1.3 --gas-prices=0.01ubbn \
+--instantiate-anyof-addresses=$(babylond keys show deployer -a)
+```
+
+The most convenient way to get the `CODE_ID` is to query the list of codes and find the one you just uploaded.
+The `creator:` field should match the address of the deployer.
+
+```shell
+babylond query wasm list-code --reverse --limit=3
+```
+
+Alternatively, query the transaction hash to get the `CODE_ID`.
+
+```shell
+CODE_ID=$(babylond query tx $TX_HASH --output=json \
+| jq -r '.events[] | select(.type == "store_code") | .attributes[] | select(.key == "code_id") | .value')
+echo $CODE_ID
+```
+
+### Instantiate Contract
+
+Using the `CODE_ID` from the previous step, instantiate the contract.
+The `--admin` is the address that will have admin rights over the contract.
+This is set to the deployer in this example, in production we would set this to a multisig/governance contract.
+Followed by the `CODE_ID` and the contract initialization parameters.
+
+```shell
+ADMIN=$(babylond keys show deployer -a)
+CODE_ID=''
+INIT_JSON=''
+babylond tx wasm instantiate --from=deployer --admin=$ADMIN $CODE_ID $INIT_JSON
+```
+
+</Steps>
