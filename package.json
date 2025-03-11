@@ -16,7 +16,7 @@
   "devDependencies": {
     "@packages/config-eslint": "workspace:*",
     "@packages/config-prettier": "workspace:*",
-    "@packages/docker-cosmwasm-optimizer": "workspace:*",
+    "@packages/cosmwasm-optimizer": "workspace:*",
     "@types/node": "^20",
     "eslint": "^9",
     "husky": "^9",

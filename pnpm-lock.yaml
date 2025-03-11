@@ -14,9 +14,9 @@ importers:
       '@packages/config-prettier':
         specifier: workspace:*
         version: link:packages/config-prettier
-      '@packages/docker-cosmwasm-optimizer':
+      '@packages/cosmwasm-optimizer':
         specifier: workspace:*
-        version: link:packages/docker-cosmwasm-optimizer
+        version: link:packages/cosmwasm-optimizer
       '@types/node':
         specifier: ^20
         version: 20.17.17
@@ -243,7 +243,7 @@ importers:
         specifier: ^2.0.2
         version: 2.0.2(prettier@3.5.3)
 
-  packages/docker-cosmwasm-optimizer: {}
+  packages/cosmwasm-optimizer: {}
 
 packages:
 
