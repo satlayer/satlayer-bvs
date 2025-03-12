@@ -29,7 +29,4 @@ pub enum ContractError {
 
     #[error("Operator is not registered")]
     OperatorNotFound {},
-
-    #[error("Operator update error: {msg}")]
-    OperatorUpdate { msg: String },
 }

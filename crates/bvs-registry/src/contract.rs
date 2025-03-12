@@ -49,12 +49,8 @@ pub fn execute(
         ExecuteMsg::UpdateServiceMetadata(metadata) => {
             execute::service_update_metadata(deps, info, metadata)
         }
-        ExecuteMsg::RegisterAsOperator {
-            operator_details,
-            metadata,
-        } => execute::register_as_operator(deps, info, operator_details, metadata),
-        ExecuteMsg::UpdateOperatorDetails(new_operator_details) => {
-            execute::update_operator_details(deps, info, new_operator_details)
+        ExecuteMsg::RegisterAsOperator { metadata } => {
+            execute::register_as_operator(deps, info, metadata)
         }
         ExecuteMsg::UpdateOperatorMetadata(metadata) => {
             execute::update_operator_metadata_uri(deps, info, metadata)
@@ -86,7 +82,7 @@ pub fn execute(
 mod execute {
     use super::*;
     use crate::error::ContractError;
-    use crate::msg::{Metadata, OperatorDetails};
+    use crate::msg::Metadata;
     use crate::state;
     use crate::state::{require_operator_registered, RegistrationStatus, OPERATORS, SERVICES};
     use cosmwasm_std::{Addr, DepsMut, Event, MessageInfo, Response};
@@ -146,53 +142,12 @@ mod execute {
         Ok(Response::new().add_event(metadata_event))
     }
 
-    fn set_operator_details(
-        deps: DepsMut,
-        operator: Addr,
-        new_operator_details: OperatorDetails,
-    ) -> Result<Event, ContractError> {
-        let current = OPERATORS
-            .may_load(deps.storage, &operator)?
-            .unwrap_or(OperatorDetails {
-                staker_opt_out_window_blocks: 0,
-            });
-
-        if new_operator_details.staker_opt_out_window_blocks > MAX_STAKER_OPT_OUT_WINDOW_BLOCKS {
-            return Err(ContractError::OperatorUpdate {
-                msg: "staker_opt_out_window_blocks cannot be more than MAX_STAKER_OPT_OUT_WINDOW_BLOCKS"
-                    .to_string(),
-            });
-        }
-
-        if new_operator_details.staker_opt_out_window_blocks < current.staker_opt_out_window_blocks
-        {
-            return Err(ContractError::OperatorUpdate {
-                msg: "staker_opt_out_window_blocks cannot be reduced to shorter than current value"
-                    .to_string(),
-            });
-        }
-
-        OPERATORS.save(deps.storage, &operator, &new_operator_details)?;
-
-        let event = Event::new("SetOperatorDetails")
-            .add_attribute("operator", operator.to_string())
-            .add_attribute(
-                "staker_opt_out_window_blocks",
-                new_operator_details
-                    .staker_opt_out_window_blocks
-                    .to_string(),
-            );
-
-        Ok(event)
-    }
-
     /// Registers the `info.sender` as an operator.
     ///
     /// `metadata_uri` is never stored and is only emitted in the `OperatorMetadataURIUpdated` event.
     pub fn register_as_operator(
         mut deps: DepsMut,
         info: MessageInfo,
-        operator_details: OperatorDetails,
         metadata: Metadata,
     ) -> Result<Response, ContractError> {
         let operator = info.sender.clone();
@@ -204,8 +159,7 @@ mod execute {
         }
 
         // add operator into the state
-        let set_operator_event =
-            set_operator_details(deps.branch(), operator.clone(), operator_details)?;
+        OPERATORS.save(deps.storage, &operator, &true)?;
 
         let mut response = Response::new();
 
@@ -213,30 +167,11 @@ mod execute {
             Event::new("OperatorRegistered").add_attribute("operator", operator.to_string());
         response = response.add_event(register_event);
 
-        response = response.add_event(set_operator_event);
-
         let metadata_event =
             create_metadata_event(metadata).add_attribute("operator", operator.to_string());
         response = response.add_event(metadata_event);
 
         Ok(response)
-    }
-
-    /// Called by an operator to set new [`OperatorDetails`].
-    ///
-    /// New `staker_opt_out_window_blocks` cannot be reduced and exceed [`MAX_STAKER_OPT_OUT_WINDOW_BLOCKS`].
-    pub fn update_operator_details(
-        deps: DepsMut,
-        info: MessageInfo,
-        new_operator_details: OperatorDetails,
-    ) -> Result<Response, ContractError> {
-        let operator = info.sender.clone();
-        require_operator_registered(deps.storage, &operator)?;
-
-        let set_operator_details_event =
-            set_operator_details(deps, operator, new_operator_details)?;
-
-        Ok(Response::new().add_event(set_operator_details_event))
     }
 
     /// Called by an operator to emit an `OperatorMetadataURIUpdated` event indicating the information has updated.
@@ -433,20 +368,14 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let operator_addr = deps.api.addr_validate(&operator)?;
             to_json_binary(&query::is_operator(deps, operator_addr)?)
         }
-        QueryMsg::OperatorDetails(operator) => {
-            let operator_addr = deps.api.addr_validate(&operator)?;
-            to_json_binary(&query::operator_details(deps, operator_addr)?)
-        }
     }
 }
 
 mod query {
-    use crate::msg::{
-        IsOperatorResponse, IsServiceResponse, OperatorDetailsResponse, StatusResponse,
-    };
+    use crate::msg::{IsOperatorResponse, IsServiceResponse, StatusResponse};
     use crate::state;
-    use crate::state::{require_operator_registered, require_service_registered, OPERATORS};
-    use cosmwasm_std::{Addr, Deps, StdError, StdResult};
+    use crate::state::{require_operator_registered, require_service_registered};
+    use cosmwasm_std::{Addr, Deps, StdResult};
 
     /// Get the registration status of an operator to a service
     /// Returns: [`StdResult<StatusResponse>`]
@@ -462,8 +391,7 @@ mod query {
 
     /// Query if the service is registered or not.
     pub fn is_service(deps: Deps, service: Addr) -> StdResult<IsServiceResponse> {
-        let is_service_registered =
-            require_service_registered(deps.storage, &service).map_or(false, |_| true);
+        let is_service_registered = require_service_registered(deps.storage, &service).is_ok();
 
         Ok(IsServiceResponse(is_service_registered))
     }
@@ -474,15 +402,6 @@ mod query {
 
         Ok(IsOperatorResponse(is_operator_registered))
     }
-
-    /// Query the operator details.
-    pub fn operator_details(deps: Deps, operator: Addr) -> StdResult<OperatorDetailsResponse> {
-        require_operator_registered(deps.storage, &operator)
-            .map_err(|e| StdError::generic_err(e.to_string()))?;
-
-        let details = OPERATORS.load(deps.storage, &operator)?;
-        Ok(OperatorDetailsResponse { details })
-    }
 }
 
 #[cfg(test)]
@@ -490,15 +409,14 @@ mod tests {
     use super::*;
     use crate::contract::query::status;
     use crate::msg::{
-        InstantiateMsg, IsOperatorResponse, IsServiceResponse, Metadata, OperatorDetails,
-        StatusResponse,
+        InstantiateMsg, IsOperatorResponse, IsServiceResponse, Metadata, StatusResponse,
     };
     use crate::state;
     use crate::state::{RegistrationStatus, OPERATORS, SERVICES};
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
-    use cosmwasm_std::{Event, OwnedDeps, Response, StdError};
+    use cosmwasm_std::{Event, OwnedDeps, Response};
 
     fn mock_contract() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         let mut deps = mock_dependencies();
@@ -627,9 +545,6 @@ mod tests {
         let res = execute::register_as_operator(
             deps.as_mut(),
             operator_info,
-            OperatorDetails {
-                staker_opt_out_window_blocks: 100,
-            },
             Metadata {
                 uri: Some("uri".to_string()),
                 name: Some("operator1".to_string()),
@@ -641,11 +556,6 @@ mod tests {
             Ok(Response::new()
                 .add_event(
                     Event::new("OperatorRegistered").add_attribute("operator", operator.clone())
-                )
-                .add_event(
-                    Event::new("SetOperatorDetails")
-                        .add_attribute("operator", operator.clone())
-                        .add_attribute("staker_opt_out_window_blocks", 100.to_string())
                 )
                 .add_event(
                     Event::new("MetadataUpdated")
@@ -671,9 +581,6 @@ mod tests {
             execute::register_as_operator(
                 deps.as_mut(),
                 operator_info.clone(),
-                OperatorDetails {
-                    staker_opt_out_window_blocks: 100,
-                },
                 Metadata {
                     uri: Some("uri".to_string()),
                     name: Some("operator1".to_string()),
@@ -689,191 +596,12 @@ mod tests {
         let err = execute::register_as_operator(
             deps.as_mut(),
             operator_info,
-            OperatorDetails {
-                staker_opt_out_window_blocks: 100,
-            },
             Metadata {
                 uri: Some("uri".to_string()),
                 name: Some("operator1".to_string()),
             },
         );
         assert_eq!(err, Err(ContractError::OperatorRegistered {}),);
-    }
-
-    #[test]
-    fn test_update_operator_details() {
-        let mut deps = mock_dependencies();
-
-        let operator = deps.api.addr_make("operator");
-        let operator_info = message_info(&operator, &[]);
-
-        {
-            // register operator the first time
-            execute::register_as_operator(
-                deps.as_mut(),
-                operator_info.clone(),
-                OperatorDetails {
-                    staker_opt_out_window_blocks: 100,
-                },
-                Metadata {
-                    uri: Some("uri".to_string()),
-                    name: Some("operator1".to_string()),
-                },
-            )
-            .expect("register operator failed");
-
-            let operator = OPERATORS.load(&deps.storage, &operator).unwrap();
-            assert_eq!(operator.staker_opt_out_window_blocks, 100);
-        }
-
-        // update operator details
-        let res = execute::update_operator_details(
-            deps.as_mut(),
-            operator_info,
-            OperatorDetails {
-                staker_opt_out_window_blocks: 101,
-            },
-        );
-
-        // assert event
-        assert_eq!(
-            res,
-            Ok(Response::new().add_event(
-                Event::new("SetOperatorDetails")
-                    .add_attribute("operator", operator.as_ref())
-                    .add_attribute("staker_opt_out_window_blocks", 101.to_string())
-            ))
-        );
-
-        // assert operator details is updated
-        let operator = OPERATORS.load(&deps.storage, &operator).unwrap();
-        assert_eq!(operator.staker_opt_out_window_blocks, 101);
-    }
-
-    #[test]
-    fn test_update_operator_details_reduced_error() {
-        let mut deps = mock_dependencies();
-
-        let operator = deps.api.addr_make("operator");
-        let operator_info = message_info(&operator, &[]);
-
-        {
-            // register operator the first time
-            execute::register_as_operator(
-                deps.as_mut(),
-                operator_info.clone(),
-                OperatorDetails {
-                    staker_opt_out_window_blocks: 100,
-                },
-                Metadata {
-                    uri: Some("uri".to_string()),
-                    name: Some("operator1".to_string()),
-                },
-            )
-            .expect("register operator failed");
-
-            let operator = OPERATORS.load(&deps.storage, &operator).unwrap();
-            assert_eq!(operator.staker_opt_out_window_blocks, 100);
-        }
-
-        // update operator details
-        let err = execute::update_operator_details(
-            deps.as_mut(),
-            operator_info,
-            OperatorDetails {
-                staker_opt_out_window_blocks: 100 - 1, // reduce 1
-            },
-        );
-
-        // assert event
-        assert_eq!(
-            err,
-            Err(ContractError::OperatorUpdate {
-                msg: "staker_opt_out_window_blocks cannot be reduced to shorter than current value"
-                    .to_string()
-            })
-        );
-
-        // assert operator details are not updated
-        let operator = OPERATORS.load(&deps.storage, &operator).unwrap();
-        assert_eq!(operator.staker_opt_out_window_blocks, 100);
-    }
-
-    #[test]
-    fn test_register_and_update_operator_details_more_than_max() {
-        let mut deps = mock_dependencies();
-
-        let operator = deps.api.addr_make("operator");
-        let operator_info = message_info(&operator, &[]);
-
-        {
-            // register operator fails due to max + 1
-            let err = execute::register_as_operator(
-                deps.as_mut(),
-                operator_info.clone(),
-                OperatorDetails {
-                    staker_opt_out_window_blocks: MAX_STAKER_OPT_OUT_WINDOW_BLOCKS + 1,
-                },
-                Metadata {
-                    uri: Some("uri".to_string()),
-                    name: Some("operator1".to_string()),
-                },
-            );
-
-            assert_eq!(
-                err,
-                Err(ContractError::OperatorUpdate {
-                    msg: "staker_opt_out_window_blocks cannot be more than MAX_STAKER_OPT_OUT_WINDOW_BLOCKS"
-                        .to_string()
-                })
-            );
-        }
-        {
-            // register operator success
-            execute::register_as_operator(
-                deps.as_mut(),
-                operator_info.clone(),
-                OperatorDetails {
-                    staker_opt_out_window_blocks: MAX_STAKER_OPT_OUT_WINDOW_BLOCKS,
-                },
-                Metadata {
-                    uri: Some("uri".to_string()),
-                    name: Some("operator1".to_string()),
-                },
-            )
-            .expect("register operator failed");
-
-            let operator = OPERATORS.load(&deps.storage, &operator).unwrap();
-            assert_eq!(
-                operator.staker_opt_out_window_blocks,
-                MAX_STAKER_OPT_OUT_WINDOW_BLOCKS
-            );
-        }
-
-        // update operator details failed due to max + 1
-        let err = execute::update_operator_details(
-            deps.as_mut(),
-            operator_info,
-            OperatorDetails {
-                staker_opt_out_window_blocks: MAX_STAKER_OPT_OUT_WINDOW_BLOCKS + 1,
-            },
-        );
-
-        // assert error
-        assert_eq!(
-            err,
-            Err(ContractError::OperatorUpdate {
-                msg: "staker_opt_out_window_blocks cannot be more than MAX_STAKER_OPT_OUT_WINDOW_BLOCKS"
-                    .to_string()
-            })
-        );
-
-        // assert operator details are not updated
-        let operator = OPERATORS.load(&deps.storage, &operator).unwrap();
-        assert_eq!(
-            operator.staker_opt_out_window_blocks,
-            MAX_STAKER_OPT_OUT_WINDOW_BLOCKS
-        );
     }
 
     #[test]
@@ -888,9 +616,6 @@ mod tests {
             let res = execute::register_as_operator(
                 deps.as_mut(),
                 operator_info.clone(),
-                OperatorDetails {
-                    staker_opt_out_window_blocks: 100,
-                },
                 Metadata {
                     uri: Some("uri".to_string()),
                     name: Some("operator1".to_string()),
@@ -904,11 +629,6 @@ mod tests {
                     .add_event(
                         Event::new("OperatorRegistered")
                             .add_attribute("operator", operator.as_ref())
-                    )
-                    .add_event(
-                        Event::new("SetOperatorDetails")
-                            .add_attribute("operator", operator.as_ref())
-                            .add_attribute("staker_opt_out_window_blocks", 100.to_string())
                     )
                     .add_event(
                         Event::new("MetadataUpdated")
@@ -963,9 +683,6 @@ mod tests {
         execute::register_as_operator(
             deps.as_mut(),
             operator_info.clone(),
-            OperatorDetails {
-                staker_opt_out_window_blocks: 100,
-            },
             Metadata {
                 uri: Some("uri".to_string()),
                 name: Some("operator1".to_string()),
@@ -1035,9 +752,6 @@ mod tests {
         execute::register_as_operator(
             deps.as_mut(),
             operator_info.clone(),
-            OperatorDetails {
-                staker_opt_out_window_blocks: 100,
-            },
             Metadata {
                 uri: Some("uri".to_string()),
                 name: Some("operator1".to_string()),
@@ -1094,15 +808,7 @@ mod tests {
 
         // register service + operator
         SERVICES.save(&mut deps.storage, &service, &true).unwrap();
-        OPERATORS
-            .save(
-                &mut deps.storage,
-                &operator,
-                &OperatorDetails {
-                    staker_opt_out_window_blocks: 100,
-                },
-            )
-            .unwrap();
+        OPERATORS.save(&mut deps.storage, &operator, &true).unwrap();
 
         state::set_registration_status(
             &mut deps.storage,
@@ -1164,15 +870,7 @@ mod tests {
 
         // register service + operator
         SERVICES.save(&mut deps.storage, &service, &true).unwrap();
-        OPERATORS
-            .save(
-                &mut deps.storage,
-                &operator,
-                &OperatorDetails {
-                    staker_opt_out_window_blocks: 100,
-                },
-            )
-            .unwrap();
+        OPERATORS.save(&mut deps.storage, &operator, &true).unwrap();
 
         state::set_registration_status(
             &mut deps.storage,
@@ -1408,59 +1106,10 @@ mod tests {
         let is_operator = query::is_operator(deps.as_ref(), operator.clone()).unwrap();
         assert_eq!(is_operator, IsOperatorResponse(false));
 
-        let operator_details = OperatorDetails {
-            staker_opt_out_window_blocks: 100,
-        };
-        OPERATORS
-            .save(&mut deps.storage, &operator, &operator_details)
-            .unwrap();
+        OPERATORS.save(&mut deps.storage, &operator, &true).unwrap();
 
         // assert is_operator true after operator registration
         let is_operator = query::is_operator(deps.as_ref(), operator.clone()).unwrap();
         assert_eq!(is_operator, IsOperatorResponse(true));
-    }
-
-    #[test]
-    fn query_operator_details() {
-        let mut deps = mock_dependencies();
-
-        let operator = deps.api.addr_make("operator");
-
-        let operator_details = OperatorDetails {
-            staker_opt_out_window_blocks: 100,
-        };
-        OPERATORS
-            .save(&mut deps.storage, &operator, &operator_details)
-            .unwrap();
-
-        // assert operator details
-        let query_res = query::operator_details(deps.as_ref(), operator.clone()).unwrap();
-        assert_eq!(query_res.details, operator_details);
-
-        // update OperatorDetails
-        let new_operator_details = OperatorDetails {
-            staker_opt_out_window_blocks: 200,
-        };
-        OPERATORS
-            .save(&mut deps.storage, &operator, &new_operator_details)
-            .unwrap();
-
-        // assert new operator details
-        let query_res = query::operator_details(deps.as_ref(), operator.clone()).unwrap();
-        assert_eq!(query_res.details, new_operator_details);
-    }
-
-    #[test]
-    fn query_operator_details_before_registration() {
-        let deps = mock_dependencies();
-
-        let operator = deps.api.addr_make("operator");
-
-        // assert operator details
-        let query_err = query::operator_details(deps.as_ref(), operator.clone()).unwrap_err();
-        assert_eq!(
-            query_err,
-            StdError::generic_err("Operator is not registered")
-        );
     }
 }

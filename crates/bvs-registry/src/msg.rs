@@ -8,11 +8,6 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
-pub struct OperatorDetails {
-    pub staker_opt_out_window_blocks: u64,
-}
-
-#[cw_serde]
 #[derive(bvs_pauser::api::Display)]
 pub enum ExecuteMsg {
     RegisterAsService {
@@ -20,10 +15,8 @@ pub enum ExecuteMsg {
     },
     UpdateServiceMetadata(Metadata),
     RegisterAsOperator {
-        operator_details: OperatorDetails,
         metadata: Metadata,
     },
-    UpdateOperatorDetails(OperatorDetails),
     UpdateOperatorMetadata(Metadata),
     RegisterOperatorToService {
         operator: String,
@@ -61,9 +54,6 @@ pub enum QueryMsg {
 
     #[returns(IsOperatorResponse)]
     IsOperator(String),
-
-    #[returns(OperatorDetailsResponse)]
-    OperatorDetails(String),
 }
 
 #[cw_serde]
@@ -80,11 +70,6 @@ pub struct IsServiceResponse(pub bool);
 
 #[cw_serde]
 pub struct IsOperatorResponse(pub bool);
-
-#[cw_serde]
-pub struct OperatorDetailsResponse {
-    pub details: OperatorDetails,
-}
 
 #[cfg(test)]
 mod tests {

@@ -16,9 +16,6 @@
 //    isServiceResponse, err := UnmarshalIsServiceResponse(bytes)
 //    bytes, err = isServiceResponse.Marshal()
 //
-//    operatorDetailsResponse, err := UnmarshalOperatorDetailsResponse(bytes)
-//    bytes, err = operatorDetailsResponse.Marshal()
-//
 //    statusResponse, err := UnmarshalStatusResponse(bytes)
 //    bytes, err = statusResponse.Marshal()
 
@@ -80,16 +77,6 @@ func (r *IsServiceResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func UnmarshalOperatorDetailsResponse(data []byte) (OperatorDetailsResponse, error) {
-	var r OperatorDetailsResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *OperatorDetailsResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
 type StatusResponse int64
 
 func UnmarshalStatusResponse(data []byte) (StatusResponse, error) {
@@ -111,7 +98,6 @@ type ExecuteMsg struct {
 	RegisterAsService             *RegisterAsService             `json:"register_as_service,omitempty"`
 	UpdateServiceMetadata         *Metadata                      `json:"update_service_metadata,omitempty"`
 	RegisterAsOperator            *RegisterAsOperator            `json:"register_as_operator,omitempty"`
-	UpdateOperatorDetails         *UpdateOperatorDetailsClass    `json:"update_operator_details,omitempty"`
 	UpdateOperatorMetadata        *Metadata                      `json:"update_operator_metadata,omitempty"`
 	RegisterOperatorToService     *RegisterOperatorToService     `json:"register_operator_to_service,omitempty"`
 	DeregisterOperatorFromService *DeregisterOperatorFromService `json:"deregister_operator_from_service,omitempty"`
@@ -129,18 +115,13 @@ type DeregisterServiceFromOperator struct {
 }
 
 type RegisterAsOperator struct {
-	Metadata        Metadata                   `json:"metadata"`
-	OperatorDetails UpdateOperatorDetailsClass `json:"operator_details"`
+	Metadata Metadata `json:"metadata"`
 }
 
 // metadata is emitted as events and not stored on-chain.
 type Metadata struct {
 	Name *string `json:"name"`
 	URI  *string `json:"uri"`
-}
-
-type UpdateOperatorDetailsClass struct {
-	StakerOptOutWindowBlocks int64 `json:"staker_opt_out_window_blocks"`
 }
 
 type RegisterAsService struct {
@@ -161,21 +142,12 @@ type TransferOwnership struct {
 }
 
 type QueryMsg struct {
-	Status          *Status `json:"status,omitempty"`
-	IsService       *string `json:"is_service,omitempty"`
-	IsOperator      *string `json:"is_operator,omitempty"`
-	OperatorDetails *string `json:"operator_details,omitempty"`
+	Status     *Status `json:"status,omitempty"`
+	IsService  *string `json:"is_service,omitempty"`
+	IsOperator *string `json:"is_operator,omitempty"`
 }
 
 type Status struct {
 	Operator string `json:"operator"`
 	Service  string `json:"service"`
-}
-
-type OperatorDetailsResponse struct {
-	Details DetailsClass `json:"details"`
-}
-
-type DetailsClass struct {
-	StakerOptOutWindowBlocks int64 `json:"staker_opt_out_window_blocks"`
 }
