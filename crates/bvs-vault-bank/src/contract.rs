@@ -1,3 +1,4 @@
+use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
@@ -251,6 +252,21 @@ mod query {
             version: version.version,
         })
     }
+}
+
+#[cw_serde]
+struct MigrateMsg {}
+
+/// #### 0.4.0
+/// - Rename the ExecuteMsg to be more explicit.
+/// - No storage changes.
+///
+/// #### 0.3.0
+/// Initial deployed version.
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response> {
+    cw2::ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    Ok(Response::default())
 }
 
 #[cfg(test)]
