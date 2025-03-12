@@ -44,13 +44,13 @@ pub fn execute(
     bvs_pauser::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
 
     match msg {
-        ExecuteMsg::Deposit(msg) => {
+        ExecuteMsg::DepositFor(msg) => {
             msg.validate(deps.api)?;
-            execute::deposit(deps, env, info, msg)
+            execute::deposit_for(deps, env, info, msg)
         }
-        ExecuteMsg::Withdraw(msg) => {
+        ExecuteMsg::WithdrawTo(msg) => {
             msg.validate(deps.api)?;
-            execute::withdraw(deps, env, info, msg)
+            execute::withdraw_to(deps, env, info, msg)
         }
     }
 }
@@ -64,12 +64,13 @@ mod execute {
     use bvs_vault_base::{offset, router, shares};
     use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, StdError};
 
-    /// Deposit assets into the vault through native bank transfer (`info.funds`) and receive shares.
+    /// Deposit an asset (`info.funds`) into the vault through native bank transfer and receive shares.
     ///
+    /// Calculation of shares to receive is done by [`assets_to_shares`](offset::VirtualOffset::assets_to_shares).  
     /// The `msg.amount` must be equal to the amount of native tokens sent in `info.funds`.  
-    /// `info.funds` must only contain one denomination, which is the same as the vault's denom.  
+    /// The `info.funds` must only contain one denomination, which is the same as the vault's denom.  
     /// The `msg.recipient` is the address that'll receive the shares.
-    pub fn deposit(
+    pub fn deposit_for(
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
@@ -102,11 +103,11 @@ mod execute {
             (vault, new_shares)
         };
 
-        // Add shares to the recipient
+        // Add shares to msg.recipient
         shares::add_shares(deps.storage, &msg.recipient, new_shares)?;
 
         Ok(Response::new().add_event(
-            Event::new("Deposit")
+            Event::new("DepositFor")
                 .add_attribute("sender", info.sender.to_string())
                 .add_attribute("recipient", msg.recipient)
                 .add_attribute("assets", amount_deposited.to_string())
@@ -119,8 +120,9 @@ mod execute {
     ///
     /// Calculation of assets to withdraw is done by [`shares_to_assets`](offset::VirtualOffset::shares_to_assets).  
     /// The `msg.amount` must be equal to the number of shares to withdraw.  
-    /// The `msg.recipient` is the address that'll receive the assets.
-    pub fn withdraw(
+    /// The shares are deducted from `info.sender`
+    /// vault's balance and resulting assets are sent to `msg.recipient`.
+    pub fn withdraw_to(
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
@@ -129,7 +131,7 @@ mod execute {
         router::assert_not_validating(&deps.as_ref())?;
         let withdraw_shares = msg.amount;
 
-        // Remove shares from the sender
+        // Remove shares from the info.sender
         shares::sub_shares(deps.storage, &info.sender, withdraw_shares)?;
 
         let (vault, claim_assets) = {
@@ -156,7 +158,7 @@ mod execute {
 
         Ok(Response::new()
             .add_event(
-                Event::new("Withdraw")
+                Event::new("WithdrawTo")
                     .add_attribute("sender", info.sender.to_string())
                     .add_attribute("recipient", msg.recipient.to_string())
                     .add_attribute("assets", claim_assets.to_string())
@@ -294,7 +296,7 @@ mod tests {
     }
 
     #[test]
-    fn test_deposit() {
+    fn test_deposit_for() {
         let mut deps = mock_dependencies();
         let env = mock_env();
 
@@ -322,7 +324,7 @@ mod tests {
         }
 
         let info = message_info(&sender, &coins(10000, "stone"));
-        let response = execute::deposit(
+        let response = execute::deposit_for(
             deps.as_mut(),
             env.clone(),
             info.clone(),
@@ -336,7 +338,7 @@ mod tests {
         assert_eq!(
             response,
             Response::new().add_event(
-                Event::new("Deposit")
+                Event::new("DepositFor")
                     .add_attribute("sender", info.sender.to_string())
                     .add_attribute("recipient", info.sender.to_string())
                     .add_attribute("assets", "10000")
@@ -355,7 +357,7 @@ mod tests {
     }
 
     #[test]
-    fn test_deposit_multiple_coins() {
+    fn test_deposit_for_multiple_coins() {
         let mut deps = mock_dependencies();
         let env = mock_env();
 
@@ -383,7 +385,7 @@ mod tests {
         }
 
         let info = message_info(&sender, &[coin(10_000, "stone"), coin(9900, "stone")]);
-        let err = execute::deposit(
+        let err = execute::deposit_for(
             deps.as_mut(),
             env.clone(),
             info.clone(),
@@ -398,7 +400,7 @@ mod tests {
     }
 
     #[test]
-    fn test_deposit_different_denom() {
+    fn test_deposit_for_different_denom() {
         let mut deps = mock_dependencies();
         let env = mock_env();
 
@@ -426,7 +428,7 @@ mod tests {
         }
 
         let info = message_info(&sender, &coins(10_000, "rock"));
-        let err = execute::deposit(
+        let err = execute::deposit_for(
             deps.as_mut(),
             env.clone(),
             info.clone(),
@@ -441,7 +443,7 @@ mod tests {
     }
 
     #[test]
-    fn test_withdraw() {
+    fn test_withdraw_to() {
         let mut deps = mock_dependencies();
         let env = mock_env();
 
@@ -479,7 +481,7 @@ mod tests {
 
         let recipient = deps.api.addr_make("recipient");
         let sender_info = message_info(&sender, &[]);
-        let response = execute::withdraw(
+        let response = execute::withdraw_to(
             deps.as_mut(),
             env.clone(),
             sender_info.clone(),
@@ -494,7 +496,7 @@ mod tests {
             response,
             Response::new()
                 .add_event(
-                    Event::new("Withdraw")
+                    Event::new("WithdrawTo")
                         .add_attribute("sender", sender.to_string())
                         .add_attribute("recipient", recipient.to_string())
                         .add_attribute("assets", "10000")
@@ -516,7 +518,7 @@ mod tests {
     }
 
     #[test]
-    fn test_withdraw_exceeding_balance() {
+    fn test_withdraw_to_exceeding_balance() {
         let mut deps = mock_dependencies();
         let env = mock_env();
 
@@ -554,7 +556,7 @@ mod tests {
 
         let recipient = deps.api.addr_make("recipient");
         let sender_info = message_info(&sender, &[]);
-        let err = execute::withdraw(
+        let err = execute::withdraw_to(
             deps.as_mut(),
             env.clone(),
             sender_info.clone(),

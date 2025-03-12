@@ -12,13 +12,13 @@ pub enum VaultExecuteMsg {
     /// Sender must transfer the assets to the vault contract (this is implementation agnostic).
     /// The vault contract must mint shares to the `recipient`.
     /// Vault must be whitelisted in the `vault-router` to accept deposits.
-    Deposit(RecipientAmount),
+    DepositFor(RecipientAmount),
 
     /// ExecuteMsg Withdraw assets from the vault.
     /// Sender must have enough shares to withdraw the requested amount to the `recipient`.
     /// If the Vault is delegated to an `operator`, withdrawals must be queued.
     /// Operator must not be validating any services for instant withdrawals.
-    Withdraw(RecipientAmount),
+    WithdrawTo(RecipientAmount),
     // /// ExecuteMsg QueueWithdrawal assets from the vault.
     // /// Sender must have enough shares to queue the requested amount to the `recipient`.
     // /// Once the withdrawal is queued,

@@ -53,13 +53,13 @@ pub fn execute(
     bvs_pauser::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
 
     match msg {
-        ExecuteMsg::Deposit(msg) => {
+        ExecuteMsg::DepositFor(msg) => {
             msg.validate(deps.api)?;
-            execute::deposit(deps, env, info, msg)
+            execute::deposit_for(deps, env, info, msg)
         }
-        ExecuteMsg::Withdraw(msg) => {
+        ExecuteMsg::WithdrawTo(msg) => {
             msg.validate(deps.api)?;
-            execute::withdraw(deps, env, info, msg)
+            execute::withdraw_to(deps, env, info, msg)
         }
     }
 }
@@ -74,9 +74,9 @@ mod execute {
 
     /// This executes a transfer of assets from the `info.sender` to the vault contract.
     ///
-    /// New shares are minted, based on the exchange rate, to `msg.recipient`
-    /// The `TOTAL_SHARE` in the vault are increased.
-    pub fn deposit(
+    /// New shares are minted, based on the exchange rate, to `msg.recipient`.  
+    /// The `TOTAL_SHARE` in the vault is increased.
+    pub fn deposit_for(
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
@@ -89,12 +89,13 @@ mod execute {
             let mut virtual_offset = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
 
             let new_shares = virtual_offset.assets_to_shares(assets)?;
+            // Add shares to TOTAL_SHARES
             virtual_offset.checked_add_shares(deps.storage, new_shares)?;
 
             (virtual_offset, new_shares)
         };
 
-        // Transfer CW20 from sender to contract
+        // CW20 Transfer of asset from info.sender to contract
         let transfer_msg = token::execute_transfer_from(
             deps.storage,
             &info.sender,
@@ -102,7 +103,7 @@ mod execute {
             msg.amount,
         )?;
 
-        // Add shares to the recipient
+        // Add shares to msg.recipient
         shares::add_shares(deps.storage, &msg.recipient, new_shares)?;
 
         Ok(Response::new()
@@ -118,17 +119,19 @@ mod execute {
     }
 
     /// Withdraw assets from the vault by burning shares.
-    /// The shares are burned from the sender.
-    /// The assets are transferred to the recipient.
-    /// The total shares in the vault are decreased.
-    /// The recipient receives the assets.
-    pub fn withdraw(
+    ///
+    /// The shares are burned from `info.sender`.  
+    /// The resulting assets are transferred to `msg.recipient`.  
+    /// The `TOTAL_SHARE` in the vault is reduced.  
+    pub fn withdraw_to(
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
         msg: RecipientAmount,
     ) -> Result<Response, ContractError> {
         router::assert_not_validating(&deps.as_ref())?;
+
+        // Remove shares from the info.sender
         shares::sub_shares(deps.storage, &info.sender, msg.amount)?;
 
         let (vault, claim_assets) = {
@@ -144,12 +147,13 @@ mod execute {
                 return Err(VaultError::zero("Withdraw assets cannot be zero.").into());
             }
 
+            // Remove shares from TOTAL_SHARES
             vault.checked_sub_shares(deps.storage, msg.amount)?;
 
             (vault, assets)
         };
 
-        // Setup transfer to recipient
+        // CW20 transfer of asset to msg.recipient
         let transfer_msg = token::execute_new_transfer(deps.storage, &msg.recipient, claim_assets)?;
 
         Ok(Response::new()

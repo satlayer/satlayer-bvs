@@ -61,7 +61,7 @@ fn test_deposit_withdraw() {
         .unwrap();
 
     // Deposit 115_687_654 tokens from staker to Vault
-    let msg = ExecuteMsg::Deposit(RecipientAmount {
+    let msg = ExecuteMsg::DepositFor(RecipientAmount {
         recipient: staker.clone(),
         amount: Uint128::new(115_687_654),
     });
@@ -85,7 +85,7 @@ fn test_deposit_withdraw() {
     }
 
     // Withdraw Partially
-    let msg = ExecuteMsg::Withdraw(RecipientAmount {
+    let msg = ExecuteMsg::WithdrawTo(RecipientAmount {
         amount: Uint128::new(687_654),
         recipient: staker.clone(),
     });
@@ -112,7 +112,7 @@ fn test_deposit_withdraw() {
     }
 
     // Withdraw All
-    let msg = ExecuteMsg::Withdraw(RecipientAmount {
+    let msg = ExecuteMsg::WithdrawTo(RecipientAmount {
         amount: Uint128::new(115_000_000),
         recipient: staker.clone(),
     });
@@ -137,6 +137,128 @@ fn test_deposit_withdraw() {
 }
 
 #[test]
+fn test_deposit_for_and_withdraw_to_other_address() {
+    let (mut app, tc) = TestContracts::init();
+    let app = &mut app;
+    let owner = app.api().addr_make("owner");
+    let staker = app.api().addr_make("staker/934");
+    let random_lucky_dude = app.api().addr_make("random_lucky_dude");
+    let random_lucky_dude2 = app.api().addr_make("random_lucky_dude2");
+    let denom = "denom";
+
+    // Fund the staker with some initial tokens
+    app.send_tokens(owner.clone(), staker.clone(), &coins(1_000_000_000, denom))
+        .unwrap();
+
+    // Deposit 115_687_654 tokens from staker to random_lucky_dude's Vault
+    let msg = ExecuteMsg::DepositFor(RecipientAmount {
+        recipient: random_lucky_dude.clone(), // set recipient to random_lucky_dude
+        amount: Uint128::new(115_687_654),
+    });
+    tc.vault
+        .execute_with_funds(app, &staker, &msg, coins(115_687_654, denom))
+        .unwrap();
+
+    // Assert balances and shares after Deposit
+    {
+        let staker_balance = app.wrap().query_balance(&staker, denom).unwrap();
+        assert_eq!(staker_balance, coin(1_000_000_000 - 115_687_654, denom));
+
+        let contract_balance = app.wrap().query_balance(tc.vault.addr(), denom).unwrap();
+        assert_eq!(contract_balance, coin(115_687_654, denom));
+
+        // assert that staker receives 0 shares
+        let query_shares = QueryMsg::Shares {
+            staker: staker.to_string(),
+        };
+        let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+        assert_eq!(shares, Uint128::new(0));
+
+        // assert that random_lucky_dude receives 115_687_654 shares from staker asset
+        let query_shares = QueryMsg::Shares {
+            staker: random_lucky_dude.to_string(),
+        };
+        let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+        assert_eq!(shares, Uint128::new(115_687_654));
+    }
+
+    // Withdraw Partially to random_lucky_dude2
+    let msg = ExecuteMsg::WithdrawTo(RecipientAmount {
+        amount: Uint128::new(687_654),
+        recipient: random_lucky_dude2.clone(),
+    });
+    tc.vault
+        .execute_with_funds(app, &random_lucky_dude, &msg, vec![])
+        .unwrap();
+
+    // Assert balances and shares after partial Withdraw
+    {
+        // staker balance should remain the same
+        let staker_balance = app.wrap().query_balance(&staker, denom).unwrap();
+        assert_eq!(staker_balance, coin(1_000_000_000 - 115_687_654, denom));
+
+        // contract balance should decrease
+        let contract_balance = app.wrap().query_balance(tc.vault.addr(), denom).unwrap();
+        assert_eq!(contract_balance, coin(115_687_654 - 687_654, denom));
+
+        // assert that random_lucky_dude2 receives 687_654 assets
+        let random_lucky_dude2_balance = app
+            .wrap()
+            .query_balance(&random_lucky_dude2, denom)
+            .unwrap();
+        assert_eq!(random_lucky_dude2_balance, coin(687_654, denom));
+
+        // assert that random_lucky_dude has reduced shares
+        let query_shares = QueryMsg::Shares {
+            staker: random_lucky_dude.to_string(),
+        };
+        let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+        assert_eq!(shares, Uint128::new(115_687_654 - 687_654)); // should equal contract balance
+    }
+
+    // Withdraw All to random_lucky_dude
+    let msg = ExecuteMsg::WithdrawTo(RecipientAmount {
+        amount: Uint128::new(115_000_000),
+        recipient: random_lucky_dude.clone(),
+    });
+    tc.vault
+        .execute_with_funds(app, &random_lucky_dude, &msg, vec![])
+        .unwrap();
+
+    // Assert balances and shares after Withdraw All
+    {
+        // staker balance should remain the same
+        let staker_balance = app.wrap().query_balance(&staker, denom).unwrap();
+        assert_eq!(staker_balance, coin(1_000_000_000 - 115_687_654, denom));
+
+        // contract balance should be empty
+        let contract_balance = app.wrap().query_balance(tc.vault.addr(), denom).unwrap();
+        assert_eq!(contract_balance, coin(0, denom));
+
+        // assert that random_lucky_dude receives 115_000_000 assets
+        let query_shares = QueryMsg::Shares {
+            staker: staker.to_string(),
+        };
+        let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+        assert_eq!(shares, Uint128::new(0));
+
+        // assert that random_lucky_dude has 0 shares
+        let query_shares = QueryMsg::Shares {
+            staker: random_lucky_dude.to_string(),
+        };
+        let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+        assert_eq!(shares, Uint128::new(0));
+
+        // assert that random_lucky_dude2 still has 687_654 assets
+        let random_lucky_dude2_balance = app
+            .wrap()
+            .query_balance(&random_lucky_dude2, denom)
+            .unwrap();
+        assert_eq!(random_lucky_dude2_balance, coin(687_654, denom));
+    }
+}
+
+#[test]
 fn test_deposit_with_non_linear_exchange_rate() {
     let (mut app, tc) = TestContracts::init();
     let app = &mut app;
@@ -149,7 +271,7 @@ fn test_deposit_with_non_linear_exchange_rate() {
         .unwrap();
 
     // Deposit 1_000_000 tokens from staker to Vault
-    let msg = ExecuteMsg::Deposit(RecipientAmount {
+    let msg = ExecuteMsg::DepositFor(RecipientAmount {
         recipient: staker.clone(),
         amount: Uint128::new(1_000_000),
     });
@@ -173,7 +295,7 @@ fn test_deposit_with_non_linear_exchange_rate() {
     .expect("failed to fund vault");
 
     // Second Deposit will now use 2:1 exchange rate
-    let msg = ExecuteMsg::Deposit(RecipientAmount {
+    let msg = ExecuteMsg::DepositFor(RecipientAmount {
         recipient: staker.clone(),
         amount: Uint128::new(1_000_000),
     });
@@ -211,7 +333,7 @@ fn test_withdraw_with_non_linear_exchange_rate() {
         .unwrap();
 
     // Deposit 1_000_000 tokens from staker to Vault
-    let msg = ExecuteMsg::Deposit(RecipientAmount {
+    let msg = ExecuteMsg::DepositFor(RecipientAmount {
         recipient: staker.clone(),
         amount: Uint128::new(1_000_000),
     });
@@ -235,7 +357,7 @@ fn test_withdraw_with_non_linear_exchange_rate() {
     .expect("failed to fund vault");
 
     // Withdraw will now use 2:1 exchange rate
-    let msg = ExecuteMsg::Withdraw(RecipientAmount {
+    let msg = ExecuteMsg::WithdrawTo(RecipientAmount {
         recipient: staker.clone(),
         amount: Uint128::new(1_000_000),
     });
@@ -281,7 +403,7 @@ fn test_withdraw_with_inflated_exchange_rate() {
     .expect("failed to fund vault");
 
     // Deposit 1_000_000 tokens from staker to Vault
-    let msg = ExecuteMsg::Deposit(RecipientAmount {
+    let msg = ExecuteMsg::DepositFor(RecipientAmount {
         recipient: staker.clone(),
         amount: Uint128::new(1_000_000),
     });
@@ -297,7 +419,7 @@ fn test_withdraw_with_inflated_exchange_rate() {
     assert_eq!(shares, Uint128::new(9));
 
     // Withdraw will now use inflated exchange rate
-    let msg = ExecuteMsg::Withdraw(RecipientAmount {
+    let msg = ExecuteMsg::WithdrawTo(RecipientAmount {
         recipient: staker.clone(),
         amount: Uint128::new(9),
     });
@@ -335,7 +457,7 @@ fn test_deposit_not_enough_balance() {
         .unwrap();
 
     // Deposit 1_000_000_001 tokens from staker to Vault
-    let msg = ExecuteMsg::Deposit(RecipientAmount {
+    let msg = ExecuteMsg::DepositFor(RecipientAmount {
         recipient: staker.clone(),
         amount: Uint128::new(1_000_000_001),
     });
@@ -370,7 +492,7 @@ fn test_massive_deposit_and_withdraw() {
         .unwrap();
 
     // Deposit 999_999_999_999 tokens from staker to Vault
-    let msg = ExecuteMsg::Deposit(RecipientAmount {
+    let msg = ExecuteMsg::DepositFor(RecipientAmount {
         recipient: staker.clone(),
         amount: Uint128::new(999_999_999_999),
     });
@@ -379,7 +501,7 @@ fn test_massive_deposit_and_withdraw() {
         .expect("staker deposit failed");
 
     // Deposit 1 token from staker2 to Vault
-    let msg2 = ExecuteMsg::Deposit(RecipientAmount {
+    let msg2 = ExecuteMsg::DepositFor(RecipientAmount {
         recipient: staker2.clone(),
         amount: Uint128::new(1),
     });
@@ -388,7 +510,7 @@ fn test_massive_deposit_and_withdraw() {
         .expect("staker2 deposit failed");
 
     // staker withdraw all
-    let msg = ExecuteMsg::Withdraw(RecipientAmount {
+    let msg = ExecuteMsg::WithdrawTo(RecipientAmount {
         amount: Uint128::new(999_999_999_999),
         recipient: staker.clone(),
     });
