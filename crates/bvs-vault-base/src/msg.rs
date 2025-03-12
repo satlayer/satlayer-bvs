@@ -12,13 +12,13 @@ pub enum VaultExecuteMsg {
     /// Sender must transfer the assets to the vault contract (this is implementation agnostic).
     /// The vault contract must mint shares to the `recipient`.
     /// Vault must be whitelisted in the `vault-router` to accept deposits.
-    Deposit(RecipientAmount),
+    DepositFor(RecipientAmount),
 
     /// ExecuteMsg Withdraw assets from the vault.
     /// Sender must have enough shares to withdraw the requested amount to the `recipient`.
     /// If the Vault is delegated to an `operator`, withdrawals must be queued.
     /// Operator must not be validating any services for instant withdrawals.
-    Withdraw(RecipientAmount),
+    WithdrawTo(RecipientAmount),
     // /// ExecuteMsg QueueWithdrawal assets from the vault.
     // /// Sender must have enough shares to queue the requested amount to the `recipient`.
     // /// Once the withdrawal is queued,
@@ -30,12 +30,12 @@ pub enum VaultExecuteMsg {
     // /// ### Lock Period Extension
     // /// New withdrawals will extend the lock period of any existing withdrawals.
     // /// You can queue the withdrawal to a different `recipient` than the `sender` to avoid this.
-    // QueueWithdrawal(RecipientAmount),
+    // QueueWithdrawalTo(RecipientAmount),
     //
     // /// ExecuteMsg RedeemWithdrawal assets from the vault for withdrawal.
     // /// After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
     // /// can redeem the withdrawal.
-    // RedeemWithdrawal(RecipientAmount),
+    // RedeemWithdrawalTo(RecipientAmount),
 }
 
 /// This struct is used to represent the recipient and amount fields together.
