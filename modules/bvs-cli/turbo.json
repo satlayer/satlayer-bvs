@@ -4,12 +4,12 @@
   "tasks": {
     "test": {
       "inputs": ["**.go"],
-      "dependsOn": ["@modules/cosmwasm-schema#generate:schema"]
+      "dependsOn": ["@modules/cosmwasm-schema#build"]
     },
     "build": {
       "inputs": ["**.go"],
       "outputs": ["dist"],
-      "dependsOn": ["@modules/cosmwasm-schema#generate:schema"]
+      "dependsOn": ["@modules/cosmwasm-schema#build"]
     }
   }
 }

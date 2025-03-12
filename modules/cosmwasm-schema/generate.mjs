@@ -35,22 +35,22 @@ async function generate(schema) {
   await writeFile(join(name, "schema.go"), lines.join("\n"));
 }
 
-const schemas = [
-  "@satlayer/bvs-strategy-base/schema/bvs-strategy-base.json",
-  "@satlayer/bvs-strategy-manager/schema/bvs-strategy-manager.json",
-  "@satlayer/bvs-directory/schema/bvs-directory.json",
-  "@satlayer/bvs-delegation-manager/schema/bvs-delegation-manager.json",
-  "@satlayer/bvs-rewards-coordinator/schema/bvs-rewards-coordinator.json",
-  "@satlayer/bvs-slash-manager/schema/bvs-slash-manager.json",
+const packages = [
+  "@satlayer/bvs-strategy-base",
+  "@satlayer/bvs-strategy-manager",
+  "@satlayer/bvs-directory",
+  "@satlayer/bvs-delegation-manager",
+  "@satlayer/bvs-rewards-coordinator",
+  "@satlayer/bvs-slash-manager",
 
-  "@satlayer/bvs-pauser/schema/bvs-pauser.json",
-  "@satlayer/bvs-registry/schema/bvs-registry.json",
-  "@satlayer/bvs-vault-router/schema/bvs-vault-router.json",
-  "@satlayer/bvs-vault-cw20/schema/bvs-vault-cw20.json",
-  "@satlayer/bvs-vault-bank/schema/bvs-vault-bank.json",
+  "@satlayer/bvs-pauser",
+  "@satlayer/bvs-registry",
+  "@satlayer/bvs-vault-router",
+  "@satlayer/bvs-vault-cw20",
+  "@satlayer/bvs-vault-bank",
 ];
 
-for (const schema of schemas) {
-  const s = await import(schema, { with: { type: "json" } });
+for (const schema of packages) {
+  const s = await import(schema + "/dist/schema.json", { with: { type: "json" } });
   await generate(s.default);
 }

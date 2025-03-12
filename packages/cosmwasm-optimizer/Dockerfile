@@ -10,8 +10,20 @@ RUN apk update && apk add clang && apk add binaryen
 COPY . /code
 
 FROM optimizer AS builder
+RUN mkdir /dist
+
 ARG DIRECTORY
+
+# Build & Optimize
 RUN /usr/local/bin/optimize.sh ${DIRECTORY}
+RUN mv artifacts/*.wasm /dist/contract.wasm
+RUN mv artifacts/checksums.txt /dist/checksums.txt
+
+# Generate schema
+WORKDIR /code/${DIRECTORY}
+RUN cargo run --bin schema
+RUN mv schema/raw/ /dist/schema/
+RUN mv schema/*.json /dist/schema.json
 
 FROM scratch
-COPY --from=builder /code/artifacts ./
+COPY --from=builder /dist/ ./

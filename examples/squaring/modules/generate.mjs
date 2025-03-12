@@ -3,7 +3,7 @@ import { FetchingJSONSchemaStore, InputData, JSONSchemaInput, quicktype } from "
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import squaring_contract from "@examples/squaring-contract/schema/squaring-contract.json" with { type: "json" };
+import squaring_contract from "@examples/squaring-contract/dist/schema.json" with { type: "json" };
 
 /**
  * @param schema {any}

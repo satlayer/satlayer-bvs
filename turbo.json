@@ -5,22 +5,13 @@
     "clean": {
       "cache": false
     },
-    "generate:schema": {
-      "inputs": ["src/**"],
-      "outputs": ["schema/**"]
-    },
     "build": {
       "inputs": ["tsconfig.json", "tsconfig.build.json", "src/**", "**.go"],
       "outputs": ["dist/**"],
       "dependsOn": ["^build"]
     },
-    "build:wasm": {
-      "inputs": ["src/**"],
-      "outputs": ["artifacts/**"],
-      "dependsOn": ["@packages/cosmwasm-optimizer#build"]
-    },
     "test": {
-      "inputs": ["tsconfig.json", "tsconfig.build.json", "src/**"],
+      "inputs": ["tsconfig.json", "tsconfig.build.json", "src/**", "**.go"],
       "dependsOn": ["^build"],
       "env": ["GOTESTSUM_JUNITFILE"]
     },

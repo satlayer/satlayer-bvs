@@ -2,11 +2,9 @@
   "name": "@satlayer/bvs-registry",
   "private": false,
   "files": [
-    "artifacts",
-    "schema"
+    "dist"
   ],
   "scripts": {
-    "build:wasm": "cosmwasm-optimizer --root=../",
-    "generate:schema": "cargo run --bin schema"
+    "build": "cosmwasm-optimizer --root=../"
   }
 }
