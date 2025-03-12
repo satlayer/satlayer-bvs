@@ -10,14 +10,14 @@ RUN apk update && apk add clang && apk add binaryen
 RUN mkdir /dist
 
 COPY . /code
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/code/target \
     cargo fetch
 
 FROM base AS optimizer
 ARG DIRECTORY
 
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/code/target \
     /usr/local/bin/optimize.sh ${DIRECTORY}
 RUN mv artifacts/*.wasm /dist/contract.wasm
@@ -28,7 +28,7 @@ ARG DIRECTORY
 
 WORKDIR /code/${DIRECTORY}
 ENV CARGO_PROFILE_DEV_OPT_LEVEL=0
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/code/target \
     cargo run --bin schema
 RUN mv schema/raw/ /dist/schema/
