@@ -18,14 +18,14 @@
   },
   "prettier": "@packages/config-prettier",
   "dependencies": {
-    "@tailwindcss/postcss": "^4.0.12",
-    "next": "^15.2.1",
+    "@tailwindcss/postcss": "^4.0.13",
+    "next": "^15.2.2",
     "nextra": "^4.2.16",
     "nextra-theme-docs": "^4.2.16",
     "postcss": "^8.5.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwindcss": "^4.0.12"
+    "tailwindcss": "^4.0.13"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -33,6 +33,6 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.2.1"
+    "eslint-config-next": "15.2.2"
   }
 }
