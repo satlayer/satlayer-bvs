@@ -1,10 +1,9 @@
-use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
 use crate::bank;
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 
 const CONTRACT_NAME: &str = concat!("crate:", env!("CARGO_PKG_NAME"));
@@ -253,9 +252,6 @@ mod query {
         })
     }
 }
-
-#[cw_serde]
-struct MigrateMsg {}
 
 /// #### 0.4.0
 /// - Rename the ExecuteMsg to be more explicit.

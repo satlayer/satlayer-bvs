@@ -20,3 +20,6 @@ pub type ExecuteMsg = bvs_vault_base::msg::VaultExecuteMsg;
 
 /// Supports the same [VaultQueryMsg](bvs_vault_base::msg::VaultQueryMsg) as the `bvs-vault-base` contract.
 pub type QueryMsg = bvs_vault_base::msg::VaultQueryMsg;
+
+#[cw_serde]
+pub struct MigrateMsg {}

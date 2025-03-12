@@ -1,9 +1,8 @@
-use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::token;
 use crate::token::get_token_info;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
@@ -257,9 +256,6 @@ mod query {
         })
     }
 }
-
-#[cw_serde]
-struct MigrateMsg {}
 
 /// #### 0.4.0
 /// - Rename the ExecuteMsg to be more explicit.
