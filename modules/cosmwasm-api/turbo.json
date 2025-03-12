@@ -4,7 +4,7 @@
   "tasks": {
     "test": {
       "inputs": ["**.go"],
-      "dependsOn": ["@modules/cosmwasm-schema#generate:schema", "@modules/babylond#build:wasm"]
+      "dependsOn": ["@modules/cosmwasm-schema#build"]
     }
   }
 }

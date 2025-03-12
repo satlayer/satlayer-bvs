@@ -2,14 +2,9 @@
   "$schema": "https://turbo.build/schema.json",
   "extends": ["//"],
   "tasks": {
-    "generate:schema": {
-      "inputs": ["generate.mjs"],
-      "outputs": ["*/schema.go"],
-      "dependsOn": ["^generate:schema"]
-    },
     "test": {
       "inputs": ["**.go"],
-      "dependsOn": ["^generate:schema", "^build:wasm"]
+      "dependsOn": ["^build"]
     }
   }
 }

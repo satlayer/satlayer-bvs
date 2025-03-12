@@ -16,7 +16,7 @@ You can `--force` to make sure the contracts are built without using the cache.
 We filter to `./crates/*` to build only the production contracts and not the examples.
 
 ```shell
-turbo run build:wasm --force --filter="./crates/*"
+turbo run build --force --filter="./crates/*"
 ```
 
 The contracts will be built and stored in the `artifacts` directory.

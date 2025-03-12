@@ -51,7 +51,7 @@ jobs:
         working-directory: crates
       - run: pnpm --filter "@satlayer/*" exec npm version ${{ needs.version.outputs.npm }} --git-tag-version=false
 
-      - run: pnpm turbo run build:wasm generate:schema --filter "@satlayer/*"
+      - run: pnpm turbo run build --filter "@satlayer/*"
 
       - run: pnpm config set "//registry.npmjs.org/:_authToken" "\${NPM_PACKAGES_TOKEN}" --location=global
 

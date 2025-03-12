@@ -14,13 +14,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build_wasm:
-    name: Build [wasm]
+  build:
+    name: Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
 
-      - run: turbo build:wasm
+      - run: turbo run build
         env:
           DOCKER_CACHE_TO: ghcr
