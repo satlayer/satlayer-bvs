@@ -13,6 +13,11 @@ pub struct InstantiateMsg {
     pub cw20_contract: String,
 }
 
+/// Supports the same [VaultExecuteMsg](bvs_vault_base::msg::VaultExecuteMsg) as the `bvs-vault-base` contract.
 pub type ExecuteMsg = bvs_vault_base::msg::VaultExecuteMsg;
 
+/// Supports the same [VaultQueryMsg](bvs_vault_base::msg::VaultQueryMsg) as the `bvs-vault-base` contract.
 pub type QueryMsg = bvs_vault_base::msg::VaultQueryMsg;
+
+#[cw_serde]
+pub struct MigrateMsg {}

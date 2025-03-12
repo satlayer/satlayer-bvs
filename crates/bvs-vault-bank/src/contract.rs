@@ -3,7 +3,7 @@ use cosmwasm_std::entry_point;
 
 use crate::bank;
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 
 const CONTRACT_NAME: &str = concat!("crate:", env!("CARGO_PKG_NAME"));
@@ -251,6 +251,18 @@ mod query {
             version: version.version,
         })
     }
+}
+
+/// #### 0.4.0
+/// - Rename the ExecuteMsg to be more explicit.
+/// - No storage changes.
+///
+/// #### 0.3.0
+/// Initial deployed version.
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response> {
+    cw2::ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    Ok(Response::default())
 }
 
 #[cfg(test)]
