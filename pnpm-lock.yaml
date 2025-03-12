@@ -245,6 +245,30 @@ importers:
 
   packages/cosmwasm-optimizer: {}
 
+  packages/cosmwasm-schema:
+    devDependencies:
+      '@satlayer/bvs-pauser':
+        specifier: workspace:*
+        version: link:../../crates/bvs-pauser
+      '@satlayer/bvs-registry':
+        specifier: workspace:*
+        version: link:../../crates/bvs-registry
+      '@satlayer/bvs-vault-bank':
+        specifier: workspace:*
+        version: link:../../crates/bvs-vault-bank
+      '@satlayer/bvs-vault-cw20':
+        specifier: workspace:*
+        version: link:../../crates/bvs-vault-cw20
+      '@satlayer/bvs-vault-router':
+        specifier: workspace:*
+        version: link:../../crates/bvs-vault-router
+      quicktype-core:
+        specifier: ^23.0.171
+        version: 23.0.171
+      zod:
+        specifier: ^3.24.2
+        version: 3.24.2
+
 packages:
 
   '@alloc/quick-lru@5.2.0':
