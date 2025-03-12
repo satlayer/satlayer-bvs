@@ -30,12 +30,12 @@ pub enum VaultExecuteMsg {
     // /// ### Lock Period Extension
     // /// New withdrawals will extend the lock period of any existing withdrawals.
     // /// You can queue the withdrawal to a different `recipient` than the `sender` to avoid this.
-    // QueueWithdrawal(RecipientAmount),
+    // QueueWithdrawalTo(RecipientAmount),
     //
     // /// ExecuteMsg RedeemWithdrawal assets from the vault for withdrawal.
     // /// After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
     // /// can redeem the withdrawal.
-    // RedeemWithdrawal(RecipientAmount),
+    // RedeemWithdrawalTo(RecipientAmount),
 }
 
 /// This struct is used to represent the recipient and amount fields together.
