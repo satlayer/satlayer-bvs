@@ -19,23 +19,24 @@ pub enum VaultExecuteMsg {
     /// If the Vault is delegated to an `operator`, withdrawals must be queued.
     /// Operator must not be validating any services for instant withdrawals.
     WithdrawTo(RecipientAmount),
-    // /// ExecuteMsg QueueWithdrawal assets from the vault.
-    // /// Sender must have enough shares to queue the requested amount to the `recipient`.
-    // /// Once the withdrawal is queued,
-    // /// the `recipient` can redeem the withdrawal after the lock period.
-    // /// Once the withdrawal is locked,
-    // /// the `sender` cannot cancel the withdrawal.
-    // /// The time-lock is enforced by the vault and cannot be changed retroactively.
-    // ///
-    // /// ### Lock Period Extension
-    // /// New withdrawals will extend the lock period of any existing withdrawals.
-    // /// You can queue the withdrawal to a different `recipient` than the `sender` to avoid this.
-    // QueueWithdrawalTo(RecipientAmount),
-    //
-    // /// ExecuteMsg RedeemWithdrawal assets from the vault for withdrawal.
-    // /// After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
-    // /// can redeem the withdrawal.
-    // RedeemWithdrawalTo(RecipientAmount),
+
+    /// ExecuteMsg QueueWithdrawal assets from the vault.
+    /// Sender must have enough shares to queue the requested amount to the `recipient`.
+    /// Once the withdrawal is queued,
+    /// the `recipient` can redeem the withdrawal after the lock period.
+    /// Once the withdrawal is locked,
+    /// the `sender` cannot cancel the withdrawal.
+    /// The time-lock is enforced by the vault and cannot be changed retroactively.
+    ///
+    /// ### Lock Period Extension
+    /// New withdrawals will extend the lock period of any existing withdrawals.
+    /// You can queue the withdrawal to a different `recipient` than the `sender` to avoid this.
+    QueueWithdrawalTo(RecipientAmount),
+
+    /// ExecuteMsg RedeemWithdrawal assets from the vault for withdrawal.
+    /// After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
+    /// can redeem the withdrawal.
+    RedeemWithdrawalTo(RecipientAmount),
 }
 
 /// This struct is used to represent the recipient and amount fields together.

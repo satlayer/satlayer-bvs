@@ -61,6 +61,14 @@ pub fn execute(
             msg.validate(deps.api)?;
             execute::withdraw_to(deps, env, info, msg)
         }
+        ExecuteMsg::QueueWithdrawalTo(msg) => {
+            msg.validate(deps.api)?;
+            execute::withdraw_to(deps, env, info, msg)
+        }
+        ExecuteMsg::RedeemWithdrawalTo(msg) => {
+            msg.validate(deps.api)?;
+            execute::withdraw_to(deps, env, info, msg)
+        }
     }
 }
 
@@ -84,15 +92,15 @@ mod execute {
     ) -> Result<Response, ContractError> {
         router::assert_whitelisted(&deps.as_ref(), &env)?;
         let assets = msg.amount;
-        let (virtual_offset, new_shares) = {
+        let (vault, new_shares) = {
             let balance = token::query_balance(&deps.as_ref(), &env)?;
-            let mut virtual_offset = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
+            let mut vault = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
 
-            let new_shares = virtual_offset.assets_to_shares(assets)?;
+            let new_shares = vault.assets_to_shares(assets)?;
             // Add shares to TOTAL_SHARES
-            virtual_offset.checked_add_shares(deps.storage, new_shares)?;
+            vault.checked_add_shares(deps.storage, new_shares)?;
 
-            (virtual_offset, new_shares)
+            (vault, new_shares)
         };
 
         // CW20 Transfer of asset from info.sender to contract
@@ -113,7 +121,7 @@ mod execute {
                     .add_attribute("recipient", msg.recipient)
                     .add_attribute("assets", assets.to_string())
                     .add_attribute("shares", new_shares.to_string())
-                    .add_attribute("total_shares", virtual_offset.total_shares().to_string()),
+                    .add_attribute("total_shares", vault.total_shares().to_string()),
             )
             .add_message(transfer_msg))
     }

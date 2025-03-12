@@ -52,6 +52,14 @@ pub fn execute(
             msg.validate(deps.api)?;
             execute::withdraw_to(deps, env, info, msg)
         }
+        ExecuteMsg::QueueWithdrawalTo(msg) => {
+            msg.validate(deps.api)?;
+            execute::withdraw_to(deps, env, info, msg)
+        }
+        ExecuteMsg::RedeemWithdrawalTo(msg) => {
+            msg.validate(deps.api)?;
+            execute::withdraw_to(deps, env, info, msg)
+        }
     }
 }
 
