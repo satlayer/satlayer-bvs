@@ -29,7 +29,7 @@ const command = [
   "docker buildx build",
   "-f",
   path.join(path.dirname(require.main.filename), "Dockerfile"),
-  `--output=./artifacts`,
+  `--output=./dist`,
   // We only need to pass the directory if it is different from the current working directory
   `--build-arg DIRECTORY=${getDirectory()}`,
   rootDir,
