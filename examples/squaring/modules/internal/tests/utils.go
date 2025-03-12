@@ -248,7 +248,7 @@ func (suite *TestSuite) DeploySquaringContract() *bvs.Contract[squaringcontract.
 	// load squaring contract wasm bytecode
 	_, currentFile, _, _ := runtime.Caller(0)
 	baseDir := filepath.Dir(currentFile)
-	targetFile := filepath.Join(baseDir, "../../node_modules/@examples/squaring-contract/artifacts/squaring_contract.wasm")
+	targetFile := filepath.Join(baseDir, "../../node_modules/@examples/squaring-contract/dist/contract.wasm")
 	wasmByteCode, err := os.ReadFile(targetFile)
 	assert.NoError(t, err)
 
