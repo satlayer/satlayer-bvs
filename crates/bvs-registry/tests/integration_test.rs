@@ -1,7 +1,7 @@
 use bvs_library::testing::TestingContract;
 use bvs_pauser::api::PauserError;
 use bvs_pauser::testing::PauserContract;
-use bvs_registry::msg::{ExecuteMsg, QueryMsg, ServiceMetadata, StatusResponse};
+use bvs_registry::msg::{ExecuteMsg, Metadata, QueryMsg, StatusResponse};
 use bvs_registry::testing::RegistryContract;
 use bvs_registry::ContractError;
 use cosmwasm_std::testing::mock_env;
@@ -23,7 +23,7 @@ fn register_service_successfully() {
     let (mut app, registry, ..) = instantiate();
 
     let register_msg = &ExecuteMsg::RegisterAsService {
-        metadata: ServiceMetadata {
+        metadata: Metadata {
             name: Some("Service Name".to_string()),
             uri: Some("https://service.com".to_string()),
         },
@@ -54,7 +54,7 @@ fn register_service_but_paused() {
     let owner = app.api().addr_make("owner");
 
     let register_msg = &ExecuteMsg::RegisterAsService {
-        metadata: ServiceMetadata {
+        metadata: Metadata {
             name: Some("Service Name".to_string()),
             uri: Some("https://service.com".to_string()),
         },
@@ -79,7 +79,7 @@ fn register_service_but_already_registered() {
     let (mut app, registry, ..) = instantiate();
 
     let register_msg = &ExecuteMsg::RegisterAsService {
-        metadata: ServiceMetadata {
+        metadata: Metadata {
             name: Some("Service Name".to_string()),
             uri: Some("https://service.com".to_string()),
         },
@@ -123,7 +123,7 @@ fn operator_register_service_but_self_not_operator() {
     let not_operator = app.api().addr_make("not_operator");
 
     let register_msg = &ExecuteMsg::RegisterAsService {
-        metadata: ServiceMetadata {
+        metadata: Metadata {
             name: Some("Service Name".to_string()),
             uri: Some("https://service.com".to_string()),
         },
@@ -152,7 +152,7 @@ fn register_lifecycle_operator_first() {
 
     // Register as Service
     let register_as_service_msg = &ExecuteMsg::RegisterAsService {
-        metadata: ServiceMetadata {
+        metadata: Metadata {
             name: Some("C4 Service".to_string()),
             uri: Some("https://c4.service.com".to_string()),
         },
@@ -245,7 +245,7 @@ fn register_lifecycle_service_first() {
 
     // Register as Service
     let register_as_service_msg = &ExecuteMsg::RegisterAsService {
-        metadata: ServiceMetadata {
+        metadata: Metadata {
             name: Some("C4 Service".to_string()),
             uri: Some("https://c4.service.com".to_string()),
         },
@@ -344,7 +344,7 @@ fn update_metadata_successfully() {
     let (mut app, registry, ..) = instantiate();
 
     let register_msg = &ExecuteMsg::RegisterAsService {
-        metadata: ServiceMetadata {
+        metadata: Metadata {
             name: Some("Service Name".to_string()),
             uri: Some("https://service.com".to_string()),
         },
@@ -353,7 +353,7 @@ fn update_metadata_successfully() {
     let service = app.api().addr_make("service/11111");
     registry.execute(&mut app, &service, &register_msg).unwrap();
 
-    let update_msg = &ExecuteMsg::ServiceUpdateMetadata(ServiceMetadata {
+    let update_msg = &ExecuteMsg::UpdateServiceMetadata(Metadata {
         name: Some("New Service Name".to_string()),
         uri: Some("https://new-service.com".to_string()),
     });
@@ -373,7 +373,7 @@ fn update_metadata_successfully() {
     );
 
     // Don't update the name
-    let update_msg = &ExecuteMsg::ServiceUpdateMetadata(ServiceMetadata {
+    let update_msg = &ExecuteMsg::UpdateServiceMetadata(Metadata {
         name: None,
         uri: Some("https://new-new-service.com".to_string()),
     });

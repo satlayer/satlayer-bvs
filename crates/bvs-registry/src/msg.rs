@@ -16,19 +16,15 @@ pub struct OperatorDetails {
 #[derive(bvs_pauser::api::Display)]
 pub enum ExecuteMsg {
     RegisterAsService {
-        metadata: ServiceMetadata,
+        metadata: Metadata,
     },
-    ServiceUpdateMetadata(ServiceMetadata),
+    UpdateServiceMetadata(Metadata),
     RegisterAsOperator {
         operator_details: OperatorDetails,
-        metadata_uri: String,
+        metadata: Metadata,
     },
-    UpdateOperatorDetails {
-        new_operator_details: OperatorDetails,
-    },
-    UpdateOperatorMetadataUri {
-        metadata_uri: String,
-    },
+    UpdateOperatorDetails(OperatorDetails),
+    UpdateOperatorMetadata(Metadata),
     RegisterOperatorToService {
         operator: String,
     },
@@ -47,9 +43,9 @@ pub enum ExecuteMsg {
     },
 }
 
-/// Service metadata is emitted as events and not stored on-chain.
+/// metadata is emitted as events and not stored on-chain.
 #[cw_serde]
-pub struct ServiceMetadata {
+pub struct Metadata {
     pub name: Option<String>,
     pub uri: Option<String>,
 }
@@ -60,11 +56,14 @@ pub enum QueryMsg {
     #[returns(StatusResponse)]
     Status { service: String, operator: String },
 
-    #[returns(OperatorResponse)]
-    IsOperator { operator: String },
+    #[returns(IsServiceResponse)]
+    IsService(String),
+
+    #[returns(IsOperatorResponse)]
+    IsOperator(String),
 
     #[returns(OperatorDetailsResponse)]
-    OperatorDetails { operator: String },
+    OperatorDetails(String),
 }
 
 #[cw_serde]
@@ -77,9 +76,10 @@ impl From<RegistrationStatus> for StatusResponse {
 }
 
 #[cw_serde]
-pub struct OperatorResponse {
-    pub is_operator: bool,
-}
+pub struct IsServiceResponse(pub bool);
+
+#[cw_serde]
+pub struct IsOperatorResponse(pub bool);
 
 #[cw_serde]
 pub struct OperatorDetailsResponse {
@@ -88,7 +88,7 @@ pub struct OperatorDetailsResponse {
 
 #[cfg(test)]
 mod tests {
-    use crate::msg::{ExecuteMsg, ServiceMetadata};
+    use crate::msg::{ExecuteMsg, Metadata};
 
     #[test]
     fn test_method_name() {
@@ -97,7 +97,7 @@ mod tests {
         };
         assert_eq!(msg.to_string(), "RegisterOperatorToService");
 
-        let msg = ExecuteMsg::ServiceUpdateMetadata(ServiceMetadata {
+        let msg = ExecuteMsg::UpdateServiceMetadata(Metadata {
             name: Some("name".to_string()),
             uri: Some("uri".to_string()),
         });

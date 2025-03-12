@@ -30,9 +30,6 @@ pub enum ContractError {
     #[error("Operator is not registered")]
     OperatorNotFound {},
 
-    #[error("set_operator_details: stakerOptOutWindowBlocks cannot be > MAX_STAKER_OPT_OUT_WINDOW_BLOCKS")]
-    ExceedMaxStakerOptOutWindowBlocks {},
-
-    #[error("set_operator_details: stakerOptOutWindowBlocks cannot be reduced to shorter than current value")]
-    StakerOptOutWindowBlocksCannotBeReduced {},
+    #[error("Operator update error: {msg}")]
+    OperatorUpdate { msg: String },
 }

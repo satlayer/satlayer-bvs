@@ -27,7 +27,7 @@ pub fn require_service_registered(
 
 /// Mapping of operator address to OperatorDetails
 /// indicating if the operator is registered with the registry and the details
-pub const OPERATORS: Map<&Service, OperatorDetails> = Map::new("operators");
+pub const OPERATORS: Map<&Operator, OperatorDetails> = Map::new("operators");
 
 pub fn require_operator_registered(
     store: &dyn Storage,
