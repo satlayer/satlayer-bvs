@@ -10,8 +10,6 @@ use cw2::set_contract_version;
 const CONTRACT_NAME: &str = concat!("crate:", env!("CARGO_PKG_NAME"));
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const MAX_STAKER_OPT_OUT_WINDOW_BLOCKS: u64 = 180 * 24 * 60 * 60 / 12; // 15 days
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -80,7 +78,6 @@ pub fn execute(
 }
 
 mod execute {
-    use super::*;
     use crate::error::ContractError;
     use crate::msg::Metadata;
     use crate::state;
@@ -146,7 +143,7 @@ mod execute {
     ///
     /// `metadata_uri` is never stored and is only emitted in the `OperatorMetadataURIUpdated` event.
     pub fn register_as_operator(
-        mut deps: DepsMut,
+        deps: DepsMut,
         info: MessageInfo,
         metadata: Metadata,
     ) -> Result<Response, ContractError> {
@@ -462,10 +459,10 @@ mod tests {
                     Event::new("ServiceRegistered").add_attribute("service", service.as_ref())
                 )
                 .add_event(
-                    Event::new("ServiceMetadataUpdated")
-                        .add_attribute("service", service.as_ref())
+                    Event::new("MetadataUpdated")
                         .add_attribute("metadata.uri", "uri")
                         .add_attribute("metadata.name", "name")
+                        .add_attribute("service", service.as_ref())
                 ))
         );
 
@@ -496,9 +493,9 @@ mod tests {
                     Event::new("ServiceRegistered").add_attribute("service", service.as_ref())
                 )
                 .add_event(
-                    Event::new("ServiceMetadataUpdated")
-                        .add_attribute("service", service.as_ref())
+                    Event::new("MetadataUpdated")
                         .add_attribute("metadata.name", "Meta Bridging")
+                        .add_attribute("service", service.as_ref())
                 ))
         );
 
@@ -527,10 +524,10 @@ mod tests {
         assert_eq!(
             res,
             Ok(Response::new().add_event(
-                Event::new("ServiceMetadataUpdated")
-                    .add_attribute("service", service.as_ref())
+                Event::new("MetadataUpdated")
                     .add_attribute("metadata.uri", "new_uri")
                     .add_attribute("metadata.name", "new_name")
+                    .add_attribute("service", service.clone())
             ))
         );
     }

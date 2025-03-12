@@ -86,6 +86,6 @@ mod tests {
             name: Some("name".to_string()),
             uri: Some("uri".to_string()),
         });
-        assert_eq!(msg.to_string(), "ServiceUpdateMetadata")
+        assert_eq!(msg.to_string(), "UpdateServiceMetadata");
     }
 }

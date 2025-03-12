@@ -39,11 +39,11 @@ fn register_service_successfully() {
             Event::new("wasm-ServiceRegistered")
                 .add_attribute("_contract_address", registry.addr.as_str())
                 .add_attribute("service", service.as_str()),
-            Event::new("wasm-ServiceMetadataUpdated")
+            Event::new("wasm-MetadataUpdated")
                 .add_attribute("_contract_address", registry.addr.as_str())
-                .add_attribute("service", service.as_str())
                 .add_attribute("metadata.uri", "https://service.com")
-                .add_attribute("metadata.name", "Service Name"),
+                .add_attribute("metadata.name", "Service Name")
+                .add_attribute("service", service.as_str())
         ]
     );
 }
@@ -164,10 +164,10 @@ fn register_lifecycle_operator_first() {
 
     // Register as Operator
     let register_as_operator_msg = &ExecuteMsg::RegisterAsOperator {
-        operator_details: bvs_registry::msg::OperatorDetails {
-            staker_opt_out_window_blocks: 100,
+        metadata: Metadata {
+            name: Some("operator1".to_string()),
+            uri: Some("https://operator.com".to_string()),
         },
-        metadata_uri: "https://operator.com".to_string(),
     };
     let operator = app.api().addr_make("operator");
     registry
@@ -257,10 +257,10 @@ fn register_lifecycle_service_first() {
 
     // Register as Operator
     let register_as_operator_msg = &ExecuteMsg::RegisterAsOperator {
-        operator_details: bvs_registry::msg::OperatorDetails {
-            staker_opt_out_window_blocks: 100,
+        metadata: Metadata {
+            name: Some("operator1".to_string()),
+            uri: Some("https://operator.com".to_string()),
         },
-        metadata_uri: "https://operator.com".to_string(),
     };
     let operator = app.api().addr_make("operator");
     registry
@@ -364,11 +364,11 @@ fn update_metadata_successfully() {
         response.events,
         vec![
             Event::new("execute").add_attribute("_contract_address", registry.addr.as_str()),
-            Event::new("wasm-ServiceMetadataUpdated")
+            Event::new("wasm-MetadataUpdated")
                 .add_attribute("_contract_address", registry.addr.as_str())
-                .add_attribute("service", service.as_str())
                 .add_attribute("metadata.uri", "https://new-service.com")
-                .add_attribute("metadata.name", "New Service Name"),
+                .add_attribute("metadata.name", "New Service Name")
+                .add_attribute("service", service.as_str()),
         ]
     );
 
@@ -384,10 +384,10 @@ fn update_metadata_successfully() {
         response.events,
         vec![
             Event::new("execute").add_attribute("_contract_address", registry.addr.as_str()),
-            Event::new("wasm-ServiceMetadataUpdated")
+            Event::new("wasm-MetadataUpdated")
                 .add_attribute("_contract_address", registry.addr.as_str())
+                .add_attribute("metadata.uri", "https://new-new-service.com")
                 .add_attribute("service", service.as_str())
-                .add_attribute("metadata.uri", "https://new-new-service.com"),
         ]
     );
 }
