@@ -171,8 +171,8 @@ type InstantiateMsg struct {
 // withdrawals must be queued. Operator must not be validating any services for instant
 // withdrawals.
 type ExecuteMsg struct {
-	Deposit  *RecipientAmount `json:"deposit,omitempty"`
-	Withdraw *RecipientAmount `json:"withdraw,omitempty"`
+	DepositFor *RecipientAmount `json:"deposit_for,omitempty"`
+	WithdrawTo *RecipientAmount `json:"withdraw_to,omitempty"`
 }
 
 // This struct is used to represent the recipient and amount fields together.

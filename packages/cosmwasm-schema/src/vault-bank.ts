@@ -57,8 +57,8 @@ export const VaultInfoResponseSchema = z.object({
 export type VaultInfoResponse = z.infer<typeof VaultInfoResponseSchema>;
 
 export const ExecuteMsgSchema = z.object({
-  deposit: RecipientAmountSchema.optional(),
-  withdraw: RecipientAmountSchema.optional(),
+  deposit_for: RecipientAmountSchema.optional(),
+  withdraw_to: RecipientAmountSchema.optional(),
 });
 export type ExecuteMsg = z.infer<typeof ExecuteMsgSchema>;
 
