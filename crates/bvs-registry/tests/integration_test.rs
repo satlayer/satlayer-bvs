@@ -5,7 +5,7 @@ use bvs_registry::msg::{ExecuteMsg, Metadata, QueryMsg, StatusResponse};
 use bvs_registry::testing::RegistryContract;
 use bvs_registry::ContractError;
 use cosmwasm_std::testing::mock_env;
-use cosmwasm_std::Event;
+use cosmwasm_std::{Event, StdError};
 use cw_multi_test::App;
 
 fn instantiate() -> (App, RegistryContract, PauserContract) {
@@ -113,7 +113,7 @@ fn operator_register_service_but_service_not_registered() {
 
     assert_eq!(
         err.root_cause().to_string(),
-        ContractError::ServiceNotFound {}.to_string()
+        ContractError::Std(StdError::not_found("service")).to_string()
     );
 }
 
@@ -142,7 +142,7 @@ fn operator_register_service_but_self_not_operator() {
 
     assert_eq!(
         err.root_cause().to_string(),
-        ContractError::OperatorNotFound {}.to_string()
+        ContractError::Std(StdError::not_found("operator")).to_string()
     );
 }
 

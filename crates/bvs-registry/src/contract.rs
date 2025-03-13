@@ -51,7 +51,7 @@ pub fn execute(
             execute::register_as_operator(deps, info, metadata)
         }
         ExecuteMsg::UpdateOperatorMetadata(metadata) => {
-            execute::update_operator_metadata_uri(deps, info, metadata)
+            execute::update_operator_metadata(deps, info, metadata)
         }
         ExecuteMsg::RegisterOperatorToService { operator } => {
             let operator = deps.api.addr_validate(&operator)?;
@@ -80,8 +80,10 @@ pub fn execute(
 mod execute {
     use crate::error::ContractError;
     use crate::msg::Metadata;
-    use crate::state;
-    use crate::state::{require_operator_registered, RegistrationStatus, OPERATORS, SERVICES};
+    use crate::state::{
+        get_registration_status, require_operator_registered, require_service_registered,
+        set_registration_status, RegistrationStatus, OPERATORS, SERVICES,
+    };
     use cosmwasm_std::{Addr, DepsMut, Event, MessageInfo, Response};
 
     /// Event for MetadataUpdated
@@ -131,7 +133,7 @@ mod execute {
         info: MessageInfo,
         metadata: Metadata,
     ) -> Result<Response, ContractError> {
-        state::require_service_registered(deps.storage, &info.sender)?;
+        require_service_registered(deps.storage, &info.sender)?;
 
         let metadata_event =
             create_metadata_event(metadata).add_attribute("service", info.sender.clone());
@@ -141,7 +143,7 @@ mod execute {
 
     /// Registers the `info.sender` as an operator.
     ///
-    /// `metadata_uri` is never stored and is only emitted in the `OperatorMetadataURIUpdated` event.
+    /// `Metadata` is never stored and is only emitted in the `MetadataUpdated` event.
     pub fn register_as_operator(
         deps: DepsMut,
         info: MessageInfo,
@@ -150,7 +152,9 @@ mod execute {
         let operator = info.sender.clone();
 
         // error if the operator is already registered
-        let operator_registered = OPERATORS.may_load(deps.storage, &operator)?.is_some();
+        let operator_registered = OPERATORS
+            .may_load(deps.storage, &operator)?
+            .unwrap_or(false);
         if operator_registered {
             return Err(ContractError::OperatorRegistered {});
         }
@@ -171,8 +175,8 @@ mod execute {
         Ok(response)
     }
 
-    /// Called by an operator to emit an `OperatorMetadataURIUpdated` event indicating the information has updated.
-    pub fn update_operator_metadata_uri(
+    /// Called by an operator to emit a `MetadataUpdated` event indicating the information has updated.
+    pub fn update_operator_metadata(
         deps: DepsMut,
         info: MessageInfo,
         metadata: Metadata,
@@ -190,7 +194,7 @@ mod execute {
     }
 
     /// Register an operator to a service (info.sender is the service)
-    /// Service must be registered via [`super::ExecuteMsg::ServiceRegister`].  
+    /// Service must be registered via [`super::ExecuteMsg::RegisterAsService`].  
     /// If the operator has registered this service, the registration status will be set to [`RegistrationStatus::Active`] (1)  
     /// Else the registration status will be set to [`RegistrationStatus::ServiceRegistered`] (3)
     pub fn register_operator_to_service(
@@ -199,10 +203,11 @@ mod execute {
         operator: Addr,
     ) -> Result<Response, ContractError> {
         let service = info.sender.clone();
-        state::require_service_registered(deps.storage, &service)?;
+        require_service_registered(deps.storage, &service)?;
+        require_operator_registered(deps.storage, &operator)?;
 
         let key = (&operator, &service);
-        let status = state::get_registration_status(deps.storage, key)?;
+        let status = get_registration_status(deps.storage, key)?;
         match status {
             RegistrationStatus::Active => Err(ContractError::InvalidRegistrationStatus {
                 msg: "Registration is already active.".to_string(),
@@ -213,11 +218,7 @@ mod execute {
                 })
             }
             RegistrationStatus::Inactive => {
-                state::set_registration_status(
-                    deps.storage,
-                    key,
-                    RegistrationStatus::ServiceRegistered,
-                )?;
+                set_registration_status(deps.storage, key, RegistrationStatus::ServiceRegistered)?;
                 Ok(Response::new().add_event(
                     Event::new("RegistrationStatusUpdated")
                         .add_attribute("method", "register_operator_to_service")
@@ -227,7 +228,7 @@ mod execute {
                 ))
             }
             RegistrationStatus::OperatorRegistered => {
-                state::set_registration_status(deps.storage, key, RegistrationStatus::Active)?;
+                set_registration_status(deps.storage, key, RegistrationStatus::Active)?;
                 Ok(Response::new().add_event(
                     Event::new("RegistrationStatusUpdated")
                         .add_attribute("method", "register_operator_to_service")
@@ -247,17 +248,17 @@ mod execute {
         operator: Addr,
     ) -> Result<Response, ContractError> {
         let service = info.sender.clone();
-        state::require_service_registered(deps.storage, &service)?;
+        require_service_registered(deps.storage, &service)?;
 
-        let key = (&operator, &info.sender);
-        let status = state::get_registration_status(deps.storage, key)?;
+        let key = (&operator, &service);
+        let status = get_registration_status(deps.storage, key)?;
 
         if status == RegistrationStatus::Inactive {
             Err(ContractError::InvalidRegistrationStatus {
                 msg: "Already deregistered.".to_string(),
             })
         } else {
-            state::set_registration_status(deps.storage, key, RegistrationStatus::Inactive)?;
+            set_registration_status(deps.storage, key, RegistrationStatus::Inactive)?;
             Ok(Response::new().add_event(
                 Event::new("RegistrationStatusUpdated")
                     .add_attribute("method", "deregister_operator_from_service")
@@ -269,7 +270,7 @@ mod execute {
     }
 
     /// Register a service to an operator (info.sender is the operator)
-    /// Operator must be registered in the delegation manager
+    /// Operator must be registered with [`ExecuteMsg::RegisterAsOperator`]
     /// If the service has registered this operator, the registration status will be set to [`RegistrationStatus::Active`] (1)
     /// Else the registration status will be set to [`RegistrationStatus::OperatorRegistered`] (2)
     pub fn register_service_to_operator(
@@ -278,11 +279,11 @@ mod execute {
         service: Addr,
     ) -> Result<Response, ContractError> {
         let operator = info.sender.clone();
-        state::require_service_registered(deps.storage, &service)?;
-        state::require_operator_registered(deps.storage, &operator)?;
+        require_service_registered(deps.storage, &service)?;
+        require_operator_registered(deps.storage, &operator)?;
 
         let key = (&operator, &service);
-        let status = state::get_registration_status(deps.storage, key)?;
+        let status = get_registration_status(deps.storage, key)?;
         match status {
             RegistrationStatus::Active => Err(ContractError::InvalidRegistrationStatus {
                 msg: "Registration is already active.".to_string(),
@@ -293,11 +294,7 @@ mod execute {
                 })
             }
             RegistrationStatus::Inactive => {
-                state::set_registration_status(
-                    deps.storage,
-                    key,
-                    RegistrationStatus::OperatorRegistered,
-                )?;
+                set_registration_status(deps.storage, key, RegistrationStatus::OperatorRegistered)?;
                 Ok(Response::new().add_event(
                     Event::new("RegistrationStatusUpdated")
                         .add_attribute("method", "register_service_to_operator")
@@ -307,7 +304,7 @@ mod execute {
                 ))
             }
             RegistrationStatus::ServiceRegistered => {
-                state::set_registration_status(deps.storage, key, RegistrationStatus::Active)?;
+                set_registration_status(deps.storage, key, RegistrationStatus::Active)?;
                 Ok(Response::new().add_event(
                     Event::new("RegistrationStatusUpdated")
                         .add_attribute("method", "register_service_to_operator")
@@ -327,17 +324,16 @@ mod execute {
         service: Addr,
     ) -> Result<Response, ContractError> {
         let operator = info.sender.clone();
-        state::require_service_registered(deps.storage, &service)?;
 
         let key = (&operator, &service);
-        let status = state::get_registration_status(deps.storage, key)?;
+        let status = get_registration_status(deps.storage, key)?;
 
         if status == RegistrationStatus::Inactive {
             Err(ContractError::InvalidRegistrationStatus {
                 msg: "Already deregistered.".to_string(),
             })
         } else {
-            state::set_registration_status(deps.storage, key, RegistrationStatus::Inactive)?;
+            set_registration_status(deps.storage, key, RegistrationStatus::Inactive)?;
             Ok(Response::new().add_event(
                 Event::new("RegistrationStatusUpdated")
                     .add_attribute("method", "deregister_service_from_operator")
@@ -358,12 +354,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&query::status(deps, operator, service)?)
         }
         QueryMsg::IsService(service) => {
-            let service_addr = deps.api.addr_validate(&service)?;
-            to_json_binary(&query::is_service(deps, service_addr)?)
+            let service = deps.api.addr_validate(&service)?;
+            to_json_binary(&query::is_service(deps, service)?)
         }
         QueryMsg::IsOperator(operator) => {
-            let operator_addr = deps.api.addr_validate(&operator)?;
-            to_json_binary(&query::is_operator(deps, operator_addr)?)
+            let operator = deps.api.addr_validate(&operator)?;
+            to_json_binary(&query::is_operator(deps, operator)?)
         }
     }
 }
@@ -637,7 +633,7 @@ mod tests {
         }
 
         // update operator details
-        let res = execute::update_operator_metadata_uri(
+        let res = execute::update_operator_metadata(
             deps.as_mut(),
             operator_info,
             Metadata {
@@ -836,6 +832,8 @@ mod tests {
         let service_info = message_info(&service, &[]);
 
         SERVICES.save(&mut deps.storage, &service, &true).unwrap();
+        OPERATORS.save(&mut deps.storage, &operator, &true).unwrap();
+
         state::set_registration_status(
             &mut deps.storage,
             (&operator, &service),

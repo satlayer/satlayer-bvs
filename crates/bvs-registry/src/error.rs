@@ -21,12 +21,6 @@ pub enum ContractError {
     #[error("Operator has been registered")]
     OperatorRegistered {},
 
-    #[error("Service not found")]
-    ServiceNotFound {},
-
     #[error("Invalid registration status: {msg}")]
     InvalidRegistrationStatus { msg: String },
-
-    #[error("Operator is not registered")]
-    OperatorNotFound {},
 }

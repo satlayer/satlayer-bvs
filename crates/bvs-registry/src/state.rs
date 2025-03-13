@@ -18,7 +18,7 @@ pub fn require_service_registered(
     let registered = SERVICES.may_load(store, service)?.unwrap_or(false);
 
     if !registered {
-        return Err(ContractError::ServiceNotFound {});
+        return Err(ContractError::Std(StdError::not_found("service")));
     }
 
     Ok(())
@@ -35,7 +35,7 @@ pub fn require_operator_registered(
     let registered = OPERATORS.may_load(store, operator)?.unwrap_or(false);
 
     if !registered {
-        return Err(ContractError::OperatorNotFound {});
+        return Err(ContractError::Std(StdError::not_found("operator")));
     }
 
     Ok(())
@@ -112,7 +112,7 @@ mod tests {
         let service = deps.api.addr_make("service");
 
         let res = require_service_registered(&deps.storage, &service);
-        assert_eq!(res, Err(ContractError::ServiceNotFound {}));
+        assert_eq!(res, Err(ContractError::Std(StdError::not_found("service"))));
 
         SERVICES.save(&mut deps.storage, &service, &true).unwrap();
 
@@ -128,7 +128,10 @@ mod tests {
 
         // assert that the operator is not registered
         let res = require_operator_registered(&deps.storage, &operator);
-        assert_eq!(res, Err(ContractError::OperatorNotFound {}));
+        assert_eq!(
+            res,
+            Err(ContractError::Std(StdError::not_found("operator")))
+        );
 
         OPERATORS.save(&mut deps.storage, &operator, &true).unwrap();
 
