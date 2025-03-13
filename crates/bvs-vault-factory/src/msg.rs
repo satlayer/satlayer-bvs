@@ -27,8 +27,9 @@ pub enum ExecuteMsg {
         new_owner: String,
     },
 
-    SetRouter {
+    SetVaults {
         router: String,
+        registry: String,
     },
 }
 

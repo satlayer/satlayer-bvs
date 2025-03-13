@@ -431,6 +431,7 @@ version = "0.0.0"
 dependencies = [
  "bvs-library",
  "bvs-pauser",
+ "bvs-registry",
  "bvs-vault-bank",
  "bvs-vault-base",
  "bvs-vault-cw20",
