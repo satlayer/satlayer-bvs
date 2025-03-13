@@ -19,7 +19,6 @@ pub struct DigestHashParams {
     pub bvs: Addr,
     pub salt: Binary,
     pub expiry: u64,
-    pub contract_addr: Addr,
 }
 
 pub fn calculate_digest_hash(
@@ -28,7 +27,6 @@ pub fn calculate_digest_hash(
     bvs: &Addr,
     salt: &Binary,
     expiry: u64,
-    contract_addr: &Addr,
 ) -> Vec<u8> {
     let struct_hash_input = [
         &sha256(OPERATOR_BVS_REGISTRATION_TYPEHASH)[..],
@@ -45,7 +43,6 @@ pub fn calculate_digest_hash(
             &sha256(DOMAIN_TYPEHASH)[..],
             &sha256(DOMAIN_NAME)[..],
             chain_id.as_bytes(),
-            contract_addr.as_bytes(),
         ]
         .concat(),
     );

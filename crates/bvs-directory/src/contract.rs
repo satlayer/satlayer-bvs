@@ -72,11 +72,9 @@ pub fn execute(
         ExecuteMsg::RegisterOperatorToBvs {
             operator,
             public_key,
-            contract_addr,
             signature_with_salt_and_expiry,
         } => {
-            let operator_addr = Addr::unchecked(operator);
-            let contract_addr = Addr::unchecked(contract_addr);
+            let operator_addr = deps.api.addr_validate(&operator)?;
 
             let public_key_binary = Binary::from_base64(&public_key)?;
             let signature = Binary::from_base64(&signature_with_salt_and_expiry.signature)?;
@@ -92,14 +90,13 @@ pub fn execute(
                 deps,
                 env,
                 info,
-                contract_addr,
                 operator_addr,
                 public_key_binary,
                 signature_with_salt_and_expiry,
             )
         }
         ExecuteMsg::DeregisterOperatorFromBvs { operator } => {
-            let operator_addr = Addr::unchecked(operator);
+            let operator_addr = deps.api.addr_validate(&operator)?;
             deregister_operator(deps, env, info, operator_addr)
         }
         ExecuteMsg::UpdateBvsMetadataUri { metadata_uri } => {
@@ -174,7 +171,6 @@ pub fn register_operator(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    contract_addr: Addr,
     operator: Addr,
     public_key: Binary,
     operator_signature: SignatureWithSaltAndExpiry,
@@ -235,7 +231,6 @@ pub fn register_operator(
         &info.sender,
         &operator_signature.salt,
         operator_signature.expiry,
-        &contract_addr,
     );
 
     if !recover(
@@ -398,8 +393,8 @@ pub fn transfer_ownership(
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetOperatorStatus { bvs, operator } => {
-            let bvs_addr = Addr::unchecked(bvs);
-            let operator_addr = Addr::unchecked(operator);
+            let bvs_addr = deps.api.addr_validate(&bvs)?;
+            let operator_addr = deps.api.addr_validate(&operator)?;
             to_json_binary(&query_operator_status(deps, bvs_addr, operator_addr)?)
         }
         QueryMsg::CalculateDigestHash {
@@ -407,24 +402,21 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             bvs,
             salt,
             expiry,
-            contract_addr,
         } => {
             let public_key_binary = Binary::from_base64(&operator_public_key)?;
             let salt = Binary::from_base64(&salt)?;
-            let bvs_addr = Addr::unchecked(bvs);
-            let contract_addr = Addr::unchecked(contract_addr);
+            let bvs_addr = deps.api.addr_validate(&bvs)?;
 
             let params = DigestHashParams {
                 operator_public_key: public_key_binary,
                 bvs: bvs_addr,
                 salt,
                 expiry,
-                contract_addr,
             };
             to_json_binary(&query_calculate_digest_hash(deps, env, params)?)
         }
         QueryMsg::IsSaltSpent { operator, salt } => {
-            let operator_addr = Addr::unchecked(operator);
+            let operator_addr = deps.api.addr_validate(&operator)?;
             let is_spent = query_is_salt_spent(deps, operator_addr, salt)?;
             to_json_binary(&is_spent)
         }
@@ -477,7 +469,6 @@ fn query_calculate_digest_hash(
         &params.bvs,
         &params.salt,
         params.expiry,
-        &params.contract_addr,
     );
 
     let digest_hash = Binary::new(digest_hash);
@@ -735,7 +726,6 @@ mod tests {
             &info.sender,
             &salt,
             expiry,
-            &contract_addr,
         );
 
         let secp = Secp256k1::new();
@@ -768,7 +758,6 @@ mod tests {
         let msg = ExecuteMsg::RegisterOperatorToBvs {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
-            contract_addr: contract_addr.to_string(),
             signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
                 signature: signature_base64.to_string(),
                 salt: salt.to_string(),
@@ -842,7 +831,6 @@ mod tests {
             &info.sender,
             &salt,
             expiry,
-            &contract_addr,
         );
 
         let secp = Secp256k1::new();
@@ -873,7 +861,6 @@ mod tests {
         let register_msg = ExecuteMsg::RegisterOperatorToBvs {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
-            contract_addr: contract_addr.to_string(),
             signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
                 signature: signature_base64.to_string(),
                 salt: salt.to_string(),
@@ -1050,7 +1037,6 @@ mod tests {
             &info.sender,
             &salt,
             expiry,
-            &contract_addr,
         );
 
         let secp = Secp256k1::new();
@@ -1081,7 +1067,6 @@ mod tests {
         let msg = ExecuteMsg::RegisterOperatorToBvs {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
-            contract_addr: contract_addr.to_string(),
             signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
                 signature: signature_base64.to_string(),
                 salt: salt.to_string(),
@@ -1179,7 +1164,6 @@ mod tests {
             bvs: info.sender.to_string(),
             salt: salt.to_string(),
             expiry,
-            contract_addr: contract_addr.to_string(),
         };
 
         let response: DigestHashResponse =
@@ -1191,7 +1175,6 @@ mod tests {
             &info.sender,
             &salt,
             expiry,
-            &contract_addr,
         );
 
         assert_eq!(
@@ -1232,7 +1215,6 @@ mod tests {
             &info.sender,
             &salt,
             expiry,
-            &contract_addr,
         );
 
         let secp = Secp256k1::new();
@@ -1263,7 +1245,6 @@ mod tests {
         let msg = ExecuteMsg::RegisterOperatorToBvs {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
-            contract_addr: contract_addr.to_string(),
             signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
                 signature: signature_base64.to_string(),
                 salt: salt.to_string(),
@@ -1392,7 +1373,6 @@ mod tests {
             &info.sender,
             &salt,
             expiry,
-            &contract_addr,
         );
 
         let secp = Secp256k1::new();
@@ -1423,7 +1403,6 @@ mod tests {
         let msg = ExecuteMsg::RegisterOperatorToBvs {
             operator: operator.to_string(),
             public_key: public_key_hex.to_string(),
-            contract_addr: contract_addr.to_string(),
             signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry {
                 signature: signature_base64.to_string(),
                 salt: salt.to_string(),
@@ -1463,7 +1442,6 @@ mod tests {
             &info.sender,
             &salt,
             expiry,
-            &contract_addr,
         );
 
         let secp = Secp256k1::new();

@@ -23,7 +23,6 @@ pub enum ExecuteMsg {
     RegisterOperatorToBvs {
         operator: String,
         public_key: String,
-        contract_addr: String,
         signature_with_salt_and_expiry: ExecuteSignatureWithSaltAndExpiry,
     },
     DeregisterOperatorFromBvs {
@@ -68,7 +67,6 @@ pub enum QueryMsg {
         bvs: String,
         salt: String,
         expiry: u64,
-        contract_addr: String,
     },
 
     #[returns(SaltResponse)]
