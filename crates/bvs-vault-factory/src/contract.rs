@@ -8,7 +8,9 @@ use bvs_library::ownership;
 use bvs_pauser;
 use bvs_vault_bank::msg::InstantiateMsg as BankVaultInstantiateMsg;
 use bvs_vault_cw20::msg::InstantiateMsg as Cw20InstantiateMsg;
-use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{
+    to_json_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+};
 
 const CONTRACT_NAME: &str = concat!("crate:", env!("CARGO_PKG_NAME"));
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -28,14 +30,10 @@ pub fn instantiate(
     let pauser = deps.api.addr_validate(&msg.pauser)?;
     bvs_pauser::api::set_pauser(deps.storage, &pauser)?;
 
-    let router = deps.api.addr_validate(&msg.router)?;
-    ROUTER.save(deps.storage, &router)?;
-
     Ok(Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("owner", msg.owner)
-        .add_attribute("pauser", pauser)
-        .add_attribute("router", router))
+        .add_attribute("pauser", pauser))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -55,6 +53,11 @@ pub fn execute(
         ExecuteMsg::DeployBank { denom, code_id } => {
             execute::deploy_vault_bank(deps, env, info, denom, code_id)
         }
+        ExecuteMsg::SetRouter { router } => {
+            deps.api.addr_validate(&router)?;
+            let router = Addr::unchecked(router);
+            execute::set_router(deps, info, router)
+        }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
             ownership::transfer_ownership(deps.storage, info, new_owner)
@@ -70,7 +73,21 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 mod execute {
     use super::*;
-    use cosmwasm_std::Response;
+    use cosmwasm_std::{Addr, Response};
+
+    pub fn set_router(
+        deps: DepsMut,
+        info: MessageInfo,
+        router: Addr,
+    ) -> Result<Response, ContractError> {
+        ownership::assert_owner(deps.storage, &info).map_err(ContractError::Ownership)?;
+
+        ROUTER.save(deps.storage, &router)?;
+
+        Ok(Response::new()
+            .add_attribute("method", "set_router")
+            .add_attribute("router", router))
+    }
 
     pub fn deploy_cw20_contract(
         deps: DepsMut,
@@ -80,6 +97,10 @@ mod execute {
         code_id: u64,
     ) -> Result<Response, ContractError> {
         //TODO: Implement operator authorized only, currently blocked
+
+        if ROUTER.load(deps.storage).is_err() {
+            return Err(ContractError::NotReady {});
+        }
 
         let msg = Cw20InstantiateMsg {
             pauser: bvs_pauser::api::get_pauser(deps.storage)?.to_string(),
@@ -111,6 +132,10 @@ mod execute {
         code_id: u64,
     ) -> Result<Response, ContractError> {
         //TODO: Implement operator authorized only, currently blocked
+
+        if ROUTER.load(deps.storage).is_err() {
+            return Err(ContractError::NotReady {});
+        }
 
         let msg = BankVaultInstantiateMsg {
             pauser: bvs_pauser::api::get_pauser(deps.storage)?.to_string(),

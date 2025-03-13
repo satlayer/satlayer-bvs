@@ -1,14 +1,14 @@
+use bvs_pauser::api::Display;
 use cosmwasm_schema::cw_serde;
 
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: String,
     pub pauser: String,
-    pub router: String,
 }
 
 #[cw_serde]
-#[derive(bvs_pauser::api::Display)]
+#[derive(Display)]
 pub enum ExecuteMsg {
     DeployCw20 {
         code_id: u64,
@@ -26,6 +26,11 @@ pub enum ExecuteMsg {
     TransferOwnership {
         new_owner: String,
     },
+
+    SetRouter {
+        router: String,
+    },
 }
 
+#[cw_serde]
 pub enum QueryMsg {}
