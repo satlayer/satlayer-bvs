@@ -9,11 +9,11 @@ use crate::{
     },
     state::{
         BvsInfo, OperatorBvsRegistrationStatus, BVS_INFO, BVS_OPERATOR_STATUS, DELEGATION_MANAGER,
-        OPERATOR_SALT_SPENT, OWNER,
+        OPERATOR, OPERATOR_PUBKEYS, OPERATOR_SALT_SPENT, OWNER,
     },
     utils::{
-        calculate_digest_hash, recover, sha256, DigestHashParams, DOMAIN_NAME, DOMAIN_TYPEHASH,
-        OPERATOR_BVS_REGISTRATION_TYPEHASH,
+        calculate_digest_hash, recover, sha256, validate_addresses, DigestHashParams, DOMAIN_NAME,
+        DOMAIN_TYPEHASH, OPERATOR_BVS_REGISTRATION_TYPEHASH,
     },
 };
 use cosmwasm_std::{
@@ -109,6 +109,21 @@ pub fn execute(
             let delegation_manager_addr = deps.api.addr_validate(&delegation_manager)?;
             set_delegation_manager(deps, info, delegation_manager_addr)
         }
+        ExecuteMsg::SetOperator {
+            operators,
+            operator_public_keys,
+            values,
+        } => {
+            let operators = validate_addresses(deps.api, &operators)?;
+
+            let pubkeys_binary: Result<Vec<Binary>, ContractError> = operator_public_keys
+                .iter()
+                .map(|val| Binary::from_base64(val).map_err(|_| ContractError::InvalidInput {}))
+                .collect();
+            let pubkeys_binary = pubkeys_binary?;
+
+            set_operator(deps, info, operators, pubkeys_binary, values)
+        }
         ExecuteMsg::CancelSalt { salt } => {
             let salt_binary = Binary::from_base64(&salt)?;
             cancel_salt(deps, env, info, salt_binary)
@@ -197,6 +212,23 @@ pub fn register_operator(
         return Err(ContractError::SaltAlreadySpent {});
     }
 
+    let is_valid = OPERATOR.may_load(deps.storage, operator.clone())?;
+    if is_valid != Some(true) {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let stored_pubkey = OPERATOR_PUBKEYS.may_load(deps.storage, operator.clone())?;
+    let stored_pubkey = match stored_pubkey {
+        Some(pk) => pk,
+        None => {
+            return Err(ContractError::OperatorNotFound {});
+        }
+    };
+
+    if *stored_pubkey != *public_key {
+        return Err(ContractError::PubkeyMismatch {});
+    }
+
     let message_bytes = calculate_digest_hash(
         env.block.chain_id,
         &public_key,
@@ -282,6 +314,46 @@ pub fn set_delegation_manager(
     Ok(Response::new()
         .add_attribute("method", "set_delegation_manager")
         .add_attribute("delegation_manager", delegation_manager.to_string()))
+}
+
+pub fn set_operator(
+    deps: DepsMut,
+    info: MessageInfo,
+    operators: Vec<Addr>,
+    operator_public_keys: Vec<Binary>,
+    values: Vec<bool>,
+) -> Result<Response, ContractError> {
+    only_owner(deps.as_ref(), &info)?;
+
+    if operators.len() != values.len() || operators.len() != operator_public_keys.len() {
+        return Err(ContractError::InvalidInputLength {});
+    }
+
+    let mut response = Response::new();
+
+    for ((operator_addr, &value), pubkey) in operators
+        .iter()
+        .zip(values.iter())
+        .zip(operator_public_keys.iter())
+    {
+        if value {
+            OPERATOR.save(deps.storage, operator_addr.clone(), &true)?;
+            OPERATOR_PUBKEYS.save(deps.storage, operator_addr.clone(), &pubkey.clone())?;
+        } else {
+            OPERATOR.remove(deps.storage, operator_addr.clone());
+            OPERATOR_PUBKEYS.remove(deps.storage, operator_addr.clone());
+        }
+
+        let event = Event::new("operator_set")
+            .add_attribute("method", "set_operator")
+            .add_attribute("operator", operator_addr.to_string())
+            .add_attribute("value", value.to_string())
+            .add_attribute("sender", info.sender.to_string());
+
+        response = response.add_event(event);
+    }
+
+    Ok(response)
 }
 
 pub fn cancel_salt(
@@ -582,7 +654,7 @@ mod tests {
         let sha256_result = Sha256::digest(public_key_bytes);
         let ripemd160_result = Ripemd160::digest(sha256_result);
         let address =
-            bech32::encode("osmo", ripemd160_result.to_base32(), Variant::Bech32).unwrap();
+            bech32::encode("cosmwasm", ripemd160_result.to_base32(), Variant::Bech32).unwrap();
         (
             Addr::unchecked(address),
             secret_key,
@@ -641,6 +713,16 @@ mod tests {
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
             generate_osmosis_public_key_from_private_key(private_key_hex);
+
+        let operator_public_keys = vec!["A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()];
+
+        let execute_msg = ExecuteMsg::SetOperator {
+            operators: vec![operator.to_string()],
+            operator_public_keys,
+            values: vec![true],
+        };
+
+        execute(deps.as_mut(), env.clone(), info.clone(), execute_msg).unwrap();
 
         let expiry = 2722875888;
         let salt = Binary::from(b"salt");
@@ -738,6 +820,16 @@ mod tests {
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
             generate_osmosis_public_key_from_private_key(private_key_hex);
+
+        let operator_public_keys = vec!["A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()];
+
+        let execute_msg = ExecuteMsg::SetOperator {
+            operators: vec![operator.to_string()],
+            operator_public_keys,
+            values: vec![true],
+        };
+
+        execute(deps.as_mut(), env.clone(), info.clone(), execute_msg).unwrap();
 
         let expiry = 2722875888;
         let salt = Binary::from(b"salt");
@@ -937,6 +1029,16 @@ mod tests {
         let (operator, secret_key, public_key_bytes) =
             generate_osmosis_public_key_from_private_key(private_key_hex);
 
+        let operator_public_keys = vec!["A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()];
+
+        let execute_msg = ExecuteMsg::SetOperator {
+            operators: vec![operator.to_string()],
+            operator_public_keys,
+            values: vec![true],
+        };
+
+        execute(deps.as_mut(), env.clone(), info.clone(), execute_msg).unwrap();
+
         let expiry = 2722875888;
         let salt = Binary::from(b"salt");
         let contract_addr: Addr =
@@ -1109,6 +1211,16 @@ mod tests {
         let (operator, secret_key, public_key_bytes) =
             generate_osmosis_public_key_from_private_key(private_key_hex);
 
+        let operator_public_keys = vec!["A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()];
+
+        let execute_msg = ExecuteMsg::SetOperator {
+            operators: vec![operator.to_string()],
+            operator_public_keys,
+            values: vec![true],
+        };
+
+        execute(deps.as_mut(), env.clone(), info.clone(), execute_msg).unwrap();
+
         let expiry = 2722875888;
         let salt = Binary::from(b"salt");
         let contract_addr: Addr =
@@ -1258,6 +1370,16 @@ mod tests {
         let private_key_hex = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
         let (operator, secret_key, public_key_bytes) =
             generate_osmosis_public_key_from_private_key(private_key_hex);
+
+        let operator_public_keys = vec!["A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string()];
+
+        let execute_msg = ExecuteMsg::SetOperator {
+            operators: vec![operator.to_string()],
+            operator_public_keys,
+            values: vec![true],
+        };
+
+        execute(deps.as_mut(), env.clone(), info.clone(), execute_msg).unwrap();
 
         let expiry = 1722965888;
         let salt = Binary::from(b"salt");
@@ -1486,5 +1608,59 @@ mod tests {
 
         let delegation_manager_addr = DELEGATION_MANAGER.load(&deps.storage).unwrap();
         assert_eq!(delegation_manager_addr, Addr::unchecked(delegation_manager));
+    }
+
+    #[test]
+    fn test_set_operator() {
+        let (mut deps, env, info, _pauser_info, _unpauser_info, _delegation_manager) =
+            instantiate_contract();
+
+        let private_key_hex1 = "af8785d6fbb939d228464a94224e986f9b1b058e583b83c16cd265fbb99ff586";
+        let (operator1, _, _) = generate_osmosis_public_key_from_private_key(private_key_hex1);
+
+        let private_key_hex2 = "e5dbc50cb04311a2a5c3c0e0258d396e962f64c6c2f758458ffb677d7f0c0e94";
+        let (operator2, _, _) = generate_osmosis_public_key_from_private_key(private_key_hex2);
+
+        let operators = vec![operator1, operator2];
+        let values = vec![true, true];
+
+        let operator_public_keys = vec![
+            "A0IJwpjN/lGg+JTUFHJT8gF6+G7SOSBuK8CIsuv9hwvD".to_string(),
+            "AggozHu/LCQC7T7WATaTNHOm8XTOTKNzVz+s8SKoZm85".to_string(),
+        ];
+
+        let execute_msg = ExecuteMsg::SetOperator {
+            operators: operators.iter().map(|v| v.to_string()).collect(),
+            operator_public_keys,
+            values: values.clone(),
+        };
+
+        let response = execute(deps.as_mut(), env.clone(), info.clone(), execute_msg).unwrap();
+
+        assert_eq!(response.events.len(), 2);
+
+        for (i, operator) in operators.iter().enumerate() {
+            let event = &response.events[i];
+
+            assert_eq!(event.ty, "operator_set");
+            assert_eq!(event.attributes.len(), 4);
+
+            assert_eq!(event.attributes[0].key, "method");
+            assert_eq!(event.attributes[0].value, "set_operator");
+
+            assert_eq!(event.attributes[1].key, "operator");
+            assert_eq!(event.attributes[1].value, operator.to_string());
+
+            assert_eq!(event.attributes[2].key, "value");
+            assert_eq!(event.attributes[2].value, values[i].to_string());
+
+            assert_eq!(event.attributes[3].key, "sender");
+            assert_eq!(event.attributes[3].value, info.sender.to_string());
+        }
+
+        for (operator, value) in operators.iter().zip(values.iter()) {
+            let stored_value = OPERATOR.load(&deps.storage, operator.clone()).unwrap();
+            assert_eq!(stored_value, *value);
+        }
     }
 }

@@ -35,6 +35,11 @@ pub enum ExecuteMsg {
     SetDelegationManager {
         delegation_manager: String,
     },
+    SetOperator {
+        operators: Vec<String>,
+        operator_public_keys: Vec<String>,
+        values: Vec<bool>,
+    },
     CancelSalt {
         salt: String,
     },

@@ -1,5 +1,5 @@
 use cosmwasm_crypto::secp256k1_verify;
-use cosmwasm_std::{Addr, Binary, StdResult};
+use cosmwasm_std::{Addr, Api, Binary, StdResult};
 use sha2::{Digest, Sha256};
 
 pub const OPERATOR_BVS_REGISTRATION_TYPEHASH: &[u8] =
@@ -60,4 +60,11 @@ pub fn recover(digest_hash: &[u8], signature: &[u8], public_key_bytes: &[u8]) ->
         Ok(valid) => Ok(valid),
         Err(_) => Ok(false),
     }
+}
+
+pub fn validate_addresses(api: &dyn Api, operators: &[String]) -> StdResult<Vec<Addr>> {
+    operators
+        .iter()
+        .map(|addr| api.addr_validate(addr))
+        .collect()
 }

@@ -26,4 +26,16 @@ pub enum ContractError {
 
     #[error("DelegationManager.IsOperator: operator not registered yet from delegation manager")]
     OperatorNotRegisteredFromDelegationManager {},
+
+    #[error("BVSDirectory.setOperator: invalid input length")]
+    InvalidInputLength {},
+
+    #[error("BVSDirectory.setOperator: invalid input")]
+    InvalidInput {},
+
+    #[error("BVSDirectory.registerOperatorToBVS: operator not found")]
+    OperatorNotFound {},
+
+    #[error("BVSDirectory.registerOperatorToBVS: pubkey mismatch")]
+    PubkeyMismatch {},
 }

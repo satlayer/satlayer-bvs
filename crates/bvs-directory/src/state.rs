@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Binary};
 use cw_storage_plus::{Item, Map};
 
 #[cw_serde]
@@ -20,3 +20,5 @@ pub const BVS_OPERATOR_STATUS: Map<(Addr, Addr), OperatorBvsRegistrationStatus> 
 pub const OPERATOR_SALT_SPENT: Map<(Addr, String), bool> = Map::new("operator_salt_is_spent");
 pub const DELEGATION_MANAGER: Item<Addr> = Item::new("delegation_manager");
 pub const BVS_INFO: Map<String, BvsInfo> = Map::new("bvs_info");
+pub const OPERATOR: Map<Addr, bool> = Map::new("operator");
+pub const OPERATOR_PUBKEYS: Map<Addr, Binary> = Map::new("operator_pubkeys");
