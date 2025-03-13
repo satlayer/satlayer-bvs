@@ -12,9 +12,8 @@ use crate::{
         ACTIVATION_DELAY, CALCULATION_INTERVAL_SECONDS, CLAIMER_FOR, CUMULATIVE_CLAIMED,
         CURR_REWARDS_CALCULATION_END_TIMESTAMP, DELEGATION_MANAGER, DISTRIBUTION_ROOTS,
         DISTRIBUTION_ROOTS_COUNT, GENESIS_REWARDS_TIMESTAMP, GLOBAL_OPERATOR_COMMISSION_BIPS,
-        IS_BVS_REWARDS_SUBMISSION_HASH, MAX_FUTURE_LENGTH, MAX_RETROACTIVE_LENGTH,
-        MAX_REWARDS_DURATION, OWNER, REWARDS_FOR_ALL_SUBMITTER, REWARDS_UPDATER, STRATEGY_MANAGER,
-        SUBMISSION_NONCE,
+        MAX_FUTURE_LENGTH, MAX_RETROACTIVE_LENGTH, MAX_REWARDS_DURATION, OWNER,
+        REWARDS_FOR_ALL_SUBMITTER, REWARDS_UPDATER, STRATEGY_MANAGER, SUBMISSION_NONCE,
     },
     utils::{
         calculate_domain_separator, calculate_earner_leaf_hash, calculate_rewards_submission_hash,
@@ -207,12 +206,6 @@ pub fn create_bvs_rewards_submission(
 
         validate_rewards_submission(&deps.as_ref(), &submission, &env)?;
 
-        IS_BVS_REWARDS_SUBMISSION_HASH.save(
-            deps.storage,
-            (info.sender.clone(), rewards_submission_hash.to_vec()),
-            &true,
-        )?;
-
         SUBMISSION_NONCE.save(deps.storage, info.sender.clone(), &(nonce + 1))?;
 
         let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -263,12 +256,6 @@ pub fn create_rewards_for_all_submission(
             calculate_rewards_submission_hash(&info.sender, nonce, &submission);
 
         validate_rewards_submission(&deps.as_ref(), &submission, &env)?;
-
-        IS_BVS_REWARDS_SUBMISSION_HASH.save(
-            deps.storage,
-            (info.sender.clone(), rewards_submission_hash.to_vec()),
-            &true,
-        )?;
 
         SUBMISSION_NONCE.save(deps.storage, info.sender.clone(), &(nonce + 1))?;
 
