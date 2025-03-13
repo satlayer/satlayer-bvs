@@ -5,6 +5,7 @@ go 1.23.0
 toolchain go1.23.6
 
 require (
+	cosmossdk.io/errors v1.0.1
 	cosmossdk.io/math v1.4.0
 	github.com/CosmWasm/wasmd v0.52.0
 	github.com/cometbft/cometbft v0.38.12
@@ -29,7 +30,6 @@ require (
 	cosmossdk.io/collections v0.4.0 // indirect
 	cosmossdk.io/core v0.11.0 // indirect
 	cosmossdk.io/depinject v1.1.0 // indirect
-	cosmossdk.io/errors v1.0.1 // indirect
 	cosmossdk.io/log v1.4.1 // indirect
 	cosmossdk.io/store v1.1.1 // indirect
 	cosmossdk.io/x/evidence v0.1.1 // indirect
