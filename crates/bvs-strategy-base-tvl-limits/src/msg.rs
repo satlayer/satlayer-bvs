@@ -1,7 +1,7 @@
 use crate::query::{
     ExplanationResponse, SharesResponse, SharesToUnderlyingResponse, StrategyManagerResponse,
-    TotalSharesResponse, TvlLimitsResponse, UnderlyingToShareResponse, UnderlyingToSharesResponse,
-    UnderlyingTokenResponse, UserUnderlyingResponse,
+    TotalSharesResponse, TvlLimitsResponse, UnderlyingToSharesResponse, UnderlyingTokenResponse,
+    UserUnderlyingResponse,
 };
 use crate::state::StrategyState;
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -26,7 +26,6 @@ pub enum ExecuteMsg {
     },
     Withdraw {
         recipient: String,
-        token: String,
         amount_shares: Uint128,
     },
     SetStrategyManager {
@@ -53,16 +52,16 @@ pub enum ExecuteMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(SharesResponse)]
-    GetShares { staker: String, strategy: String },
+    GetShares { staker: String },
 
     #[returns(SharesToUnderlyingResponse)]
-    SharesToUnderlyingView { amount_shares: Uint128 },
+    SharesToUnderlying { amount_shares: Uint128 },
 
-    #[returns(UnderlyingToShareResponse)]
-    UnderlyingToShareView { amount: Uint128 },
+    #[returns(UnderlyingToSharesResponse)]
+    UnderlyingToShares { amount: Uint128 },
 
     #[returns(UserUnderlyingResponse)]
-    UserUnderlyingView { user: String },
+    UserUnderlying { user: String },
 
     #[returns(StrategyManagerResponse)]
     GetStrategyManager {},
@@ -75,9 +74,6 @@ pub enum QueryMsg {
 
     #[returns(ExplanationResponse)]
     Explanation {},
-
-    #[returns(UnderlyingToSharesResponse)]
-    UnderlyingToShares { amount_underlying: Uint128 },
 
     #[returns(StrategyState)]
     GetStrategyState {},

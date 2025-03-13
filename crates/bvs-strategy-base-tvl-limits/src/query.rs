@@ -12,11 +12,6 @@ pub struct SharesToUnderlyingResponse {
 }
 
 #[cw_serde]
-pub struct UnderlyingToShareResponse {
-    pub share_to_send: Uint128,
-}
-
-#[cw_serde]
 pub struct UserUnderlyingResponse {
     pub amount_to_send: Uint128,
 }
