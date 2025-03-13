@@ -49,6 +49,9 @@ pub fn execute(
             let vault = deps.api.addr_validate(&vault)?;
             execute::set_vault(deps, env, info, vault, whitelisted)
         }
+        ExecuteMsg::SetWithdrawalLockPeriod {
+            0: withdrawal_lock_period,
+        } => execute::set_withdrawal_lock_period(deps, env, info, withdrawal_lock_period),
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
             ownership::transfer_ownership(deps.storage, info, new_owner)
@@ -58,11 +61,11 @@ pub fn execute(
 }
 
 mod execute {
-    use crate::contract::execute::vault::assert_vault_info;
     use crate::error::ContractError;
     use crate::state;
+    use crate::{contract::execute::vault::assert_vault_info, state::WITHDRAWAL_LOCK_PERIOD};
     use bvs_library::ownership;
-    use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Response};
+    use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Response, Uint64};
 
     /// Set the vault contract in the router and whitelist (true/false) it.
     /// Only the `owner` can call this message.
@@ -88,6 +91,39 @@ mod execute {
             Event::new("VaultUpdated")
                 .add_attribute("vault", vault)
                 .add_attribute("whitelisted", whitelisted.to_string()),
+        ))
+    }
+
+    pub fn set_withdrawal_lock_period(
+        deps: DepsMut,
+        _env: Env,
+        info: MessageInfo,
+        withdrawal_lock_period: Uint64,
+    ) -> Result<Response, ContractError> {
+        ownership::assert_owner(deps.storage, &info)?;
+
+        if withdrawal_lock_period.is_zero() {
+            return Err(ContractError::VaultError {
+                msg: "Cannot set new withdrawal lock peirod to zero".to_string(),
+            });
+        }
+
+        let prev_withdrawal_lock_period = WITHDRAWAL_LOCK_PERIOD
+            .may_load(deps.storage)?
+            .unwrap_or(Uint64::zero());
+
+        WITHDRAWAL_LOCK_PERIOD.save(deps.storage, &withdrawal_lock_period)?;
+
+        Ok(Response::new().add_event(
+            Event::new("SetWithdrawalLockPeriod")
+                .add_attribute(
+                    "prev_withdrawal_lock_period",
+                    prev_withdrawal_lock_period.to_string(),
+                )
+                .add_attribute(
+                    "new_withdrawal_lock_period",
+                    withdrawal_lock_period.to_string(),
+                ),
         ))
     }
 
@@ -141,6 +177,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 .transpose()?;
             to_json_binary(&query::list_vaults(deps, limit, start_after)?)
         }
+        QueryMsg::WithdrawalLockPeriod {} => to_json_binary(&query::withdrawal_lock_period(deps)?),
     }
 }
 
@@ -148,7 +185,7 @@ mod query {
     use crate::msg::{Vault, VaultListResponse};
     use crate::state;
     use bvs_registry::msg::QueryMsg;
-    use cosmwasm_std::{Addr, Deps, StdResult};
+    use cosmwasm_std::{Addr, Deps, StdResult, Uint64};
     use cw_storage_plus::Bound;
 
     /// Returns whether the vault is whitelisted or not.
@@ -199,6 +236,10 @@ mod query {
             })
             .collect::<StdResult<_>>()?;
         Ok(VaultListResponse(vaults))
+    }
+
+    pub fn withdrawal_lock_period(deps: Deps) -> StdResult<Uint64> {
+        state::WITHDRAWAL_LOCK_PERIOD.load(deps.storage)
     }
 }
 

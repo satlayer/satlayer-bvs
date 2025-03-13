@@ -63,11 +63,11 @@ pub fn execute(
         }
         ExecuteMsg::QueueWithdrawalTo(msg) => {
             msg.validate(deps.api)?;
-            execute::withdraw_to(deps, env, info, msg)
+            execute::queue_withdrawal_to(deps, env, info, msg)
         }
         ExecuteMsg::RedeemWithdrawalTo(msg) => {
             msg.validate(deps.api)?;
-            execute::withdraw_to(deps, env, info, msg)
+            execute::redeem_withdrawal_to(deps, env, info, msg)
         }
     }
 }
@@ -77,8 +77,11 @@ mod execute {
     use crate::token;
     use bvs_vault_base::error::VaultError;
     use bvs_vault_base::msg::RecipientAmount;
-    use bvs_vault_base::{offset, router, shares};
-    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response};
+    use bvs_vault_base::{
+        offset, router,
+        shares::{self, QueuedWithdrawalInfo},
+    };
+    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, StdError, Uint64};
 
     /// This executes a transfer of assets from the `info.sender` to the vault contract.
     ///
@@ -91,6 +94,7 @@ mod execute {
         msg: RecipientAmount,
     ) -> Result<Response, ContractError> {
         router::assert_whitelisted(&deps.as_ref(), &env)?;
+
         let assets = msg.amount;
         let (vault, new_shares) = {
             let balance = token::query_balance(&deps.as_ref(), &env)?;
@@ -175,6 +179,93 @@ mod execute {
             )
             .add_message(transfer_msg))
     }
+
+    pub fn queue_withdrawal_to(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        msg: RecipientAmount,
+    ) -> Result<Response, ContractError> {
+        let withdraw_shares = msg.amount;
+
+        // Remove shares from the info.sender
+        shares::sub_shares(deps.storage, &info.sender, withdraw_shares)?;
+
+        let (vault, claim_assets) = {
+            let balance = token::query_balance(&deps.as_ref(), &env)?;
+            let mut vault = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
+
+            if withdraw_shares > vault.total_shares() {
+                return Err(VaultError::insufficient("Insufficient shares to withdraw.").into());
+            }
+
+            let assets = vault.shares_to_assets(withdraw_shares)?;
+            if assets.is_zero() {
+                return Err(VaultError::zero("Withdraw assets cannot be zero.").into());
+            }
+
+            // Remove shares from TOTAL_SHARES
+            vault.checked_sub_shares(deps.storage, withdraw_shares)?;
+
+            (vault, assets)
+        };
+
+        let withdrawal_lock_peirod = router::get_withdrawal_lock_period(&deps.as_ref())?;
+        let current_timestamp = env.block.time.seconds();
+        let new_unlock_timestamp = withdrawal_lock_peirod
+            .checked_add(Uint64::new(current_timestamp))
+            .map_err(StdError::from)?;
+
+        let withdrawal_info = QueuedWithdrawalInfo {
+            queued_shares: claim_assets,
+            unlock_timestamp: new_unlock_timestamp,
+        };
+        shares::update_queued_withdrawal_info(deps.storage, &info.sender, withdrawal_info)?;
+
+        Ok(Response::new().add_event(
+            Event::new("QueueWithdrawalTo")
+                .add_attribute("sender", info.sender.to_string())
+                .add_attribute("recipient", msg.recipient.to_string())
+                .add_attribute("queued_assets", claim_assets.to_string())
+                .add_attribute("new_unlock_timestamp", new_unlock_timestamp.to_string())
+                .add_attribute("shares", withdraw_shares.to_string())
+                .add_attribute("total_shares", vault.total_shares().to_string()),
+        ))
+    }
+
+    /// redeem all queued assets
+    pub fn redeem_withdrawal_to(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        msg: RecipientAmount,
+    ) -> Result<Response, ContractError> {
+        let withdrawal_info = shares::get_queued_withdrawal_info(deps.storage, &msg.recipient)?;
+
+        if withdrawal_info.queued_shares.is_zero() && withdrawal_info.unlock_timestamp.is_zero() {
+            return Err(VaultError::zero("No queued assets").into());
+        }
+
+        if withdrawal_info.unlock_timestamp > Uint64::new(env.block.time.seconds()) {
+            return Err(VaultError::locked("The assets are locked").into());
+        }
+
+        // CW20 transfer of asset to msg.recipient
+        let transfer_msg = token::execute_new_transfer(
+            deps.storage,
+            &msg.recipient,
+            withdrawal_info.queued_shares,
+        )?;
+
+        // Remove staker's info
+        shares::remove_queued_withdrawal_info(deps.storage, &info.sender);
+
+        Ok(Response::new()
+            .add_event(Event::new("RedeemWithdrawalTo"))
+            .add_attribute("sender", info.sender.to_string())
+            .add_attribute("recipient", msg.recipient.to_string())
+            .add_message(transfer_msg))
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -187,6 +278,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Assets { staker } => {
             let staker = deps.api.addr_validate(&staker)?;
             to_json_binary(&query::assets(deps, env, staker)?)
+        }
+        QueryMsg::QueuedWithdrawal { staker } => {
+            let staker = deps.api.addr_validate(&staker)?;
+            to_json_binary(&query::queued_withdrawal(deps, staker)?)
         }
         QueryMsg::ConvertToAssets { shares } => {
             to_json_binary(&query::convert_to_assets(deps, env, shares)?)
@@ -203,7 +298,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 mod query {
     use crate::token;
     use bvs_vault_base::msg::VaultInfoResponse;
-    use bvs_vault_base::{offset, shares};
+    use bvs_vault_base::{
+        offset,
+        shares::{self, QueuedWithdrawalInfo},
+    };
     use cosmwasm_std::{Addr, Deps, Env, StdResult, Uint128};
 
     /// Get shares of the staker
@@ -215,6 +313,11 @@ mod query {
     pub fn assets(deps: Deps, env: Env, staker: Addr) -> StdResult<Uint128> {
         let shares = shares(deps, staker)?;
         convert_to_assets(deps, env, shares)
+    }
+
+    /// Queued withdrawal in this vault.
+    pub fn queued_withdrawal(deps: Deps, staker: Addr) -> StdResult<QueuedWithdrawalInfo> {
+        shares::get_queued_withdrawal_info(deps.storage, &staker)
     }
 
     /// Given the number of shares, convert to assets based on the vault exchange rate.

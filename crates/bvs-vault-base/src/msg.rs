@@ -1,6 +1,6 @@
 use crate::error::VaultError;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Api, Uint128};
+use cosmwasm_std::{Addr, Api, Uint128, Uint64};
 
 /// Vault `ExecuteMsg`, to be implemented by the vault contract.
 /// Callable by any `sender`, redeemable by any `recipient`.
@@ -86,6 +86,10 @@ pub enum VaultQueryMsg {
     #[returns(TotalAssetsResponse)]
     TotalAssets {},
 
+    /// QueryMsg QueuedWithdrawal: get the queued withdrawal and unlock timestamp under vault.
+    #[returns(QueuedWithdrawalResponse)]
+    QueuedWithdrawal { staker: String },
+
     /// QueryMsg VaultInfo: get the vault information.
     #[returns(VaultInfoResponse)]
     VaultInfo {},
@@ -126,6 +130,12 @@ struct TotalSharesResponse(Uint128);
 /// This is just a wrapper around `Uint128`, so that the schema can be generated.
 #[cw_serde]
 struct TotalAssetsResponse(Uint128);
+
+/// The response to the `QueuedWithdrawl` query.
+/// Not exported.
+/// This is just a wrapper around `(Uint128, Uint64)`, so that the schema can be generated.
+#[cw_serde]
+struct QueuedWithdrawalResponse((Uint128, Uint64));
 
 #[cw_serde]
 pub struct VaultInfoResponse {

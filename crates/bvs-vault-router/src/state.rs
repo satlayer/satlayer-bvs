@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, StdError, StdResult, Storage};
+use cosmwasm_std::{Addr, StdError, StdResult, Storage, Uint64};
 use cw_storage_plus::{Item, Map};
 
 /// Mapping of vault's Addr to Vault
@@ -27,3 +27,5 @@ pub fn set_registry(storage: &mut dyn Storage, registry: &Addr) -> StdResult<()>
     REGISTRY.save(storage, registry)?;
     Ok(())
 }
+/// Store the withdrawal lock period in seconds.
+pub const WITHDRAWAL_LOCK_PERIOD: Item<Uint64> = Item::new("withdrawal_lock_period");

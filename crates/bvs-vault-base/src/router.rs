@@ -1,6 +1,6 @@
 use crate::error::VaultError;
 use bvs_vault_router::msg::QueryMsg;
-use cosmwasm_std::{Addr, Deps, Env, MessageInfo, StdError, StdResult, Storage};
+use cosmwasm_std::{Addr, Deps, Env, MessageInfo, StdError, StdResult, Storage, Uint64};
 use cw_storage_plus::Item;
 
 const ROUTER: Item<Addr> = Item::new("router");
@@ -82,6 +82,17 @@ pub fn assert_not_validating(deps: &Deps) -> Result<(), VaultError> {
         return Err(VaultError::Validating {});
     }
     Ok(())
+}
+
+/// Returns the queued withdrawal lock period in seconds.
+pub fn get_withdrawal_lock_period(deps: &Deps) -> Result<Uint64, VaultError> {
+    let router = get_router(deps.storage)?;
+
+    let withdrawal_lock_period: Uint64 = deps
+        .querier
+        .query_wasm_smart(router.to_string(), &QueryMsg::WithdrawalLockPeriod {})?;
+
+    Ok(withdrawal_lock_period)
 }
 
 #[cfg(test)]
