@@ -6,10 +6,15 @@ export const InstantiateMsgSchema = z.object({
 });
 export type InstantiateMsg = z.infer<typeof InstantiateMsgSchema>;
 
-export const OperatorDeregisterServiceSchema = z.object({
+export const DeregisterOperatorFromServiceSchema = z.object({
+  operator: z.string(),
+});
+export type DeregisterOperatorFromService = z.infer<typeof DeregisterOperatorFromServiceSchema>;
+
+export const DeregisterServiceFromOperatorSchema = z.object({
   service: z.string(),
 });
-export type OperatorDeregisterService = z.infer<typeof OperatorDeregisterServiceSchema>;
+export type DeregisterServiceFromOperator = z.infer<typeof DeregisterServiceFromOperatorSchema>;
 
 export const MetadataSchema = z.object({
   name: z.union([z.null(), z.string()]).optional(),
@@ -17,56 +22,53 @@ export const MetadataSchema = z.object({
 });
 export type Metadata = z.infer<typeof MetadataSchema>;
 
-export const OperatorRegisterServiceSchema = z.object({
-  service: z.string(),
-});
-export type OperatorRegisterService = z.infer<typeof OperatorRegisterServiceSchema>;
-
-export const ServiceDeregisterOperatorSchema = z.object({
-  operator: z.string(),
-});
-export type ServiceDeregisterOperator = z.infer<typeof ServiceDeregisterOperatorSchema>;
-
-export const ServiceRegisterSchema = z.object({
+export const RegisterAsServiceSchema = z.object({
   metadata: MetadataSchema,
 });
-export type ServiceRegister = z.infer<typeof ServiceRegisterSchema>;
+export type RegisterAsService = z.infer<typeof RegisterAsServiceSchema>;
 
-export const ServiceRegisterOperatorSchema = z.object({
+export const RegisterOperatorToServiceSchema = z.object({
   operator: z.string(),
 });
-export type ServiceRegisterOperator = z.infer<typeof ServiceRegisterOperatorSchema>;
+export type RegisterOperatorToService = z.infer<typeof RegisterOperatorToServiceSchema>;
+
+export const RegisterServiceToOperatorSchema = z.object({
+  service: z.string(),
+});
+export type RegisterServiceToOperator = z.infer<typeof RegisterServiceToOperatorSchema>;
 
 export const TransferOwnershipSchema = z.object({
   new_owner: z.string(),
 });
 export type TransferOwnership = z.infer<typeof TransferOwnershipSchema>;
 
-export const RegistrationStatusSchema = z.object({
+export const StatusSchema = z.object({
   operator: z.string(),
   service: z.string(),
 });
-export type RegistrationStatus = z.infer<typeof RegistrationStatusSchema>;
+export type Status = z.infer<typeof StatusSchema>;
 
-export const OperatorRegisterSchema = z.object({
+export const RegisterAsOperatorSchema = z.object({
   metadata: MetadataSchema,
 });
-export type OperatorRegister = z.infer<typeof OperatorRegisterSchema>;
+export type RegisterAsOperator = z.infer<typeof RegisterAsOperatorSchema>;
 
 export const QueryMsgSchema = z.object({
-  registration_status: RegistrationStatusSchema,
+  status: StatusSchema.optional(),
+  is_service: z.string().optional(),
+  is_operator: z.string().optional(),
 });
 export type QueryMsg = z.infer<typeof QueryMsgSchema>;
 
 export const ExecuteMsgSchema = z.object({
-  service_register: ServiceRegisterSchema.optional(),
-  service_update_metadata: MetadataSchema.optional(),
-  service_register_operator: ServiceRegisterOperatorSchema.optional(),
-  service_deregister_operator: ServiceDeregisterOperatorSchema.optional(),
-  operator_register: OperatorRegisterSchema.optional(),
-  operator_update_metadata: MetadataSchema.optional(),
-  operator_deregister_service: OperatorDeregisterServiceSchema.optional(),
-  operator_register_service: OperatorRegisterServiceSchema.optional(),
+  register_as_service: RegisterAsServiceSchema.optional(),
+  update_service_metadata: MetadataSchema.optional(),
+  register_as_operator: RegisterAsOperatorSchema.optional(),
+  update_operator_metadata: MetadataSchema.optional(),
+  register_operator_to_service: RegisterOperatorToServiceSchema.optional(),
+  deregister_operator_from_service: DeregisterOperatorFromServiceSchema.optional(),
+  register_service_to_operator: RegisterServiceToOperatorSchema.optional(),
+  deregister_service_from_operator: DeregisterServiceFromOperatorSchema.optional(),
   transfer_ownership: TransferOwnershipSchema.optional(),
 });
 export type ExecuteMsg = z.infer<typeof ExecuteMsgSchema>;
