@@ -1,9 +1,8 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Addr;
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub aggregator: Addr,
+    pub aggregator: String,
 }
 
 #[cw_serde]

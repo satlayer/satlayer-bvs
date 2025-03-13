@@ -1,17 +1,17 @@
 use cosmwasm_std::StdError;
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
-    #[error("BVSSquaring: unauthorized")]
+    #[error("Unauthorized")]
     Unauthorized {},
 
-    #[error("BVSSquaring: task result already submitted")]
+    #[error("Task result already submitted")]
     ResultSubmitted {},
 
-    #[error("BVSSquaring: no value found")]
+    #[error("No value found")]
     NoValueFound {},
 }
