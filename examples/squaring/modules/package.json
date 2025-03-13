@@ -7,7 +7,6 @@
     "build:cli": "go build -o ${PWD}/dist/squaring-task-cli ${PWD}/task/main.go",
     "build:offchain": "go build -o ${PWD}/dist/squaring-offchain ${PWD}/offchain/.",
     "build:schema": "node generate.mjs",
-    "build:uploader": "go build -o ${PWD}/dist/squaring-uploader ${PWD}/uploader/.",
     "prepare": "go mod tidy",
     "test": "gotestsum"
   },

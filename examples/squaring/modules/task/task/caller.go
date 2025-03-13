@@ -6,9 +6,10 @@ import (
 	"math/rand"
 	"time"
 
+	squaringcontract "github.com/satlayer/satlayer-bvs/examples/squaring/squaring-contract"
+
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
-	"github.com/satlayer/satlayer-bvs/examples/squaring/bvssquaringapi"
 	"github.com/satlayer/satlayer-bvs/examples/squaring/task/core"
 )
 
@@ -56,7 +57,7 @@ func NewCaller() *Caller {
 // No parameters.
 // No return.
 func (c *Caller) Run() {
-	bvsSquaring := bvssquaringapi.NewBVSSquaring(c.chainIO)
+	bvsSquaring := squaringcontract.New(c.chainIO)
 	for {
 		bvsSquaring.BindClient(c.bvsContract)
 		randomNumber := rand.Int63n(100)

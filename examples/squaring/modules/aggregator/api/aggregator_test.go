@@ -1,4 +1,4 @@
-package e2e
+package api
 
 import (
 	"bytes"
@@ -18,28 +18,15 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/exp/rand"
 
-	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/api"
 	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/core"
 )
-
-const (
-	keyDir = "../../../.babylond"
-)
-
-type Payload struct {
-	TaskID    uint64 `json:"task_id" binding:"required"`
-	Result    int64  `json:"result" binding:"required"`
-	Timestamp int64  `json:"timestamp" binding:"required"`
-	Signature string `json:"signature" binding:"required"`
-	PubKey    string `json:"pub_key" binding:"required"`
-}
 
 type aggregatorTestSuite struct {
 	tests.TestSuite
 }
 
 func (suite *aggregatorTestSuite) SetupSuite() {
-	suite.TestSuite.SetupSuite(keyDir, "operator2", "f710ea7ce5b9c5d67347618719094482b26aef9cd79f8bfcfd384e2003df6cbc")
+	suite.TestSuite.SetupSuite("../../.babylond", "operator2", "f710ea7ce5b9c5d67347618719094482b26aef9cd79f8bfcfd384e2003df6cbc")
 }
 
 // entrypoint for the test suite
@@ -117,7 +104,7 @@ func (suite *aggregatorTestSuite) TestExecuteAggregator() {
 func sendTask(t *testing.T, tpayload Payload) *httptest.ResponseRecorder {
 	router := gin.Default()
 	// setup routes
-	api.SetupRoutes(router)
+	SetupRoutes(router)
 
 	jsonData, err := json.Marshal(tpayload)
 	assert.NoError(t, err)

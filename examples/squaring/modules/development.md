@@ -9,7 +9,6 @@ Before starting, ensure that you have the following tools installed on your deve
   - Account `caller` to run the task.
   - Account `operator` to run the offchain node
   - Account `aggregator` to run the aggregator node
-  - Account `uploader` to run the reward coordinator node
   - Account `monitor` to run the monitor node
 
 > Note: babylond keyring backend types:
@@ -180,27 +179,7 @@ go build -o offchain-cli .
 ./offchain-cli
 ```
 
-### 4. Run Reward Uploader
-
-- The Reward Uploader calculates and uploads the rewards based on the validated tasks。This step is optional.
-- Modify the `env.toml` file located in the `bvs_offchain` directory under the `[owner]` section to match your local machine
-
-- just run
-
-```bash
-cd uploader
-go run main.go
-```
-
-- build run
-
-```bash
-cd uploader
-go build -o uploader-cli .
-./uploader-cli
-```
-
-### 5. Run TaskCaller
+### 4. Run TaskCaller
 
 The TaskCaller sends new BVS tasks to the system and begins the monitoring process:
 

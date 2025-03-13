@@ -1,4 +1,4 @@
-package bvssquaringapi
+package squaringcontract
 
 import (
 	"context"
@@ -12,26 +12,13 @@ import (
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 )
 
-type GetLatestTaskIDReq struct {
-	GetLatestTaskID struct{} `json:"get_latest_task_id"`
-}
-
-type BVSSquaring interface {
-	BindClient(string)
-	CreateNewTask(context.Context, int64) (*coretypes.ResultTx, error)
-	RespondToTask(ctx context.Context, taskId int64, result int64, operators string) (*coretypes.ResultTx, error)
-	GetTaskInput(int64) (*wasmtypes.QuerySmartContractStateResponse, error)
-	GetTaskResult(int64) (*wasmtypes.QuerySmartContractStateResponse, error)
-	GetLatestTaskID() (*wasmtypes.QuerySmartContractStateResponse, error)
-}
-
-type bvsSquaringImpl struct {
+type BVSSquaring struct {
 	io             io.ChainIO
 	executeOptions *types.ExecuteOptions
 	queryOptions   *types.QueryOptions
 }
 
-func (a *bvsSquaringImpl) BindClient(contractAddress string) {
+func (a *BVSSquaring) BindClient(contractAddress string) {
 	a.executeOptions = &types.ExecuteOptions{
 		ContractAddr:  contractAddress,
 		ExecuteMsg:    []byte{},
@@ -49,9 +36,9 @@ func (a *bvsSquaringImpl) BindClient(contractAddress string) {
 	}
 }
 
-func (a *bvsSquaringImpl) CreateNewTask(ctx context.Context, input int64) (*coretypes.ResultTx, error) {
-	msg := CreateNewTaskReq{
-		CreateNewTask: CreateNewTask{
+func (a *BVSSquaring) CreateNewTask(ctx context.Context, input int64) (*coretypes.ResultTx, error) {
+	msg := ExecuteMsg{
+		CreateNewTask: &CreateNewTask{
 			Input: input,
 		},
 	}
@@ -66,9 +53,9 @@ func (a *bvsSquaringImpl) CreateNewTask(ctx context.Context, input int64) (*core
 	return a.io.SendTransaction(ctx, *a.executeOptions)
 }
 
-func (a *bvsSquaringImpl) RespondToTask(ctx context.Context, taskId int64, result int64, operators string) (*coretypes.ResultTx, error) {
-	msg := RespondToTaskReq{
-		RespondToTask: RespondToTask{
+func (a *BVSSquaring) RespondToTask(ctx context.Context, taskId int64, result int64, operators string) (*coretypes.ResultTx, error) {
+	msg := ExecuteMsg{
+		RespondToTask: &RespondToTask{
 			TaskID:    taskId,
 			Result:    result,
 			Operators: operators,
@@ -85,9 +72,9 @@ func (a *bvsSquaringImpl) RespondToTask(ctx context.Context, taskId int64, resul
 	return a.io.SendTransaction(ctx, *a.executeOptions)
 }
 
-func (a *bvsSquaringImpl) GetTaskInput(taskId int64) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := GetTaskInputReq{
-		GetTaskInput: GetTaskInput{
+func (a *BVSSquaring) GetTaskInput(taskId int64) (*wasmtypes.QuerySmartContractStateResponse, error) {
+	msg := QueryMsg{
+		GetTaskInput: &GetTaskInput{
 			TaskID: taskId,
 		},
 	}
@@ -102,9 +89,9 @@ func (a *bvsSquaringImpl) GetTaskInput(taskId int64) (*wasmtypes.QuerySmartContr
 	return a.io.QueryContract(*a.queryOptions)
 }
 
-func (a *bvsSquaringImpl) GetTaskResult(taskId int64) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := GetTaskResultReq{
-		GetTaskResult: GetTaskResult{
+func (a *BVSSquaring) GetTaskResult(taskId int64) (*wasmtypes.QuerySmartContractStateResponse, error) {
+	msg := QueryMsg{
+		GetTaskResult: &GetTaskResult{
 			TaskID: taskId,
 		},
 	}
@@ -119,9 +106,9 @@ func (a *bvsSquaringImpl) GetTaskResult(taskId int64) (*wasmtypes.QuerySmartCont
 	return a.io.QueryContract(*a.queryOptions)
 }
 
-func (a *bvsSquaringImpl) GetLatestTaskID() (*wasmtypes.QuerySmartContractStateResponse, error) {
-	msg := GetLatestTaskIDReq{
-		GetLatestTaskID: struct{}{},
+func (a *BVSSquaring) GetLatestTaskID() (*wasmtypes.QuerySmartContractStateResponse, error) {
+	msg := QueryMsg{
+		GetLatestTaskID: &GetLatestTaskID{},
 	}
 
 	msgBytes, err := json.Marshal(msg)
@@ -134,8 +121,8 @@ func (a *bvsSquaringImpl) GetLatestTaskID() (*wasmtypes.QuerySmartContractStateR
 	return a.io.QueryContract(*a.queryOptions)
 }
 
-func NewBVSSquaring(chainIO io.ChainIO) BVSSquaring {
-	return &bvsSquaringImpl{
+func New(chainIO io.ChainIO) BVSSquaring {
+	return BVSSquaring{
 		io: chainIO,
 	}
 }
