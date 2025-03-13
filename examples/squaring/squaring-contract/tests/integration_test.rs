@@ -72,7 +72,7 @@ mod tests {
         );
 
         let msg = InstantiateMsg {
-            aggregator: app.api().addr_make(AGGREGATOR),
+            aggregator: app.api().addr_make(AGGREGATOR).to_string(),
         };
         let contract_addr = app
             .instantiate_contract(contract_id, admin, &msg, &[], "BVS Squaring Example", None)
