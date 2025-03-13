@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	squaringcontract "github.com/satlayer/satlayer-bvs/examples/squaring/squaring-contract"
 	"github.com/stretchr/testify/suite"
 )
 
