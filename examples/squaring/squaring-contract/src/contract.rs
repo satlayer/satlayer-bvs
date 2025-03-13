@@ -248,7 +248,7 @@ mod tests {
         };
 
         let aggregator_info = message_info(&aggregator, &[]);
-        let responded = execute::respond_to_task(
+        execute::respond_to_task(
             deps.as_mut(),
             aggregator_info,
             task_id,
