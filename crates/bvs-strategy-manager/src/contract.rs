@@ -144,7 +144,7 @@ pub fn execute(
         } => {
             let strategy_addr = deps.api.addr_validate(&strategy)?;
             let token_addr = deps.api.addr_validate(&token)?;
-            let staker_addr = Addr::unchecked(staker);
+            let staker_addr = deps.api.addr_validate(&staker)?;
 
             let public_key_binary = Binary::from_base64(&public_key)?;
             let signature_binary = Binary::from_base64(&signature)?;
@@ -224,7 +224,7 @@ pub fn execute(
             set_strategy_factory(deps, info, new_strategy_factory_addr)
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
-            let new_owner_addr: Addr = Addr::unchecked(new_owner);
+            let new_owner_addr = deps.api.addr_validate(&new_owner)?;
             transfer_ownership(deps, info, new_owner_addr)
         }
         ExecuteMsg::Pause {} => {
@@ -626,7 +626,7 @@ fn query_calculate_digest_hash(
     let staker_addr = deps.api.addr_validate(&digst_hash_params.staker)?;
     let strategy_addr = deps.api.addr_validate(&digst_hash_params.strategy)?;
     let token_addr = deps.api.addr_validate(&digst_hash_params.token)?;
-    let contract_addr = Addr::unchecked(&digst_hash_params.contract_addr);
+    let contract_addr = deps.api.addr_validate(&digst_hash_params.contract_addr)?;
 
     let public_key_binary = Binary::from_base64(&digst_hash_params.public_key)?;
 
@@ -2229,7 +2229,7 @@ mod tests {
         let sha256_result = Sha256::digest(public_key_bytes);
         let ripemd160_result = Ripemd160::digest(sha256_result);
         let address =
-            bech32::encode("osmo", ripemd160_result.to_base32(), Variant::Bech32).unwrap();
+            bech32::encode("cosmwasm", ripemd160_result.to_base32(), Variant::Bech32).unwrap();
         (
             Addr::unchecked(address),
             secret_key,
