@@ -172,7 +172,7 @@ mod tests {
     use cosmwasm_std::{
         from_json,
         testing::{mock_dependencies, mock_env},
-        Addr, Coin, MessageInfo
+        Addr, Coin, MessageInfo,
     };
 
     fn mock_info(sender: &str, funds: &[Coin]) -> MessageInfo {
