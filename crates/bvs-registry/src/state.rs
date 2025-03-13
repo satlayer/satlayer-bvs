@@ -10,30 +10,32 @@ type Operator = Addr;
 /// indicating if the service is registered with the registry
 pub const SERVICES: Map<&Service, bool> = Map::new("services");
 
-/// Mapping of operator address to boolean value
-/// indicating if the operator is registered with the registry
-pub const OPERATORS: Map<&Service, bool> = Map::new("operators");
-
-/// Assert that the service is registered with the registry
-pub fn assert_service_registered(store: &dyn Storage, service: &Addr) -> Result<(), ContractError> {
+/// Require that the service is registered in the state
+pub fn require_service_registered(
+    store: &dyn Storage,
+    service: &Addr,
+) -> Result<(), ContractError> {
     let registered = SERVICES.may_load(store, service)?.unwrap_or(false);
 
     if !registered {
-        return Err(ContractError::not_registered("service"));
+        return Err(ContractError::Std(StdError::not_found("service")));
     }
 
     Ok(())
 }
 
-/// Assert that the operator is registered with the registry
-pub fn assert_operator_registered(
+/// Mapping of operator address to boolean value
+/// indicating if the operator is registered with the registry
+pub const OPERATORS: Map<&Operator, bool> = Map::new("operators");
+
+pub fn require_operator_registered(
     store: &dyn Storage,
     operator: &Addr,
 ) -> Result<(), ContractError> {
     let registered = OPERATORS.may_load(store, operator)?.unwrap_or(false);
 
     if !registered {
-        return Err(ContractError::not_registered("operator"));
+        return Err(ContractError::Std(StdError::not_found("operator")));
     }
 
     Ok(())
@@ -104,42 +106,37 @@ mod tests {
     use cosmwasm_std::testing::mock_dependencies;
 
     #[test]
-    fn test_assert_service_registered() {
+    fn test_require_service_registered() {
         let mut deps = mock_dependencies();
 
         let service = deps.api.addr_make("service");
 
-        let res = assert_service_registered(&deps.storage, &service);
-        assert_eq!(
-            res,
-            Err(ContractError::NotRegistered {
-                kind: "service".to_string()
-            })
-        );
+        let res = require_service_registered(&deps.storage, &service);
+        assert_eq!(res, Err(ContractError::Std(StdError::not_found("service"))));
 
         SERVICES.save(&mut deps.storage, &service, &true).unwrap();
 
-        let res = assert_service_registered(&deps.storage, &service);
+        let res = require_service_registered(&deps.storage, &service);
         assert!(res.is_ok());
     }
 
     #[test]
-    fn test_assert_operator_registered() {
+    fn test_require_operator_registered() {
         let mut deps = mock_dependencies();
 
         let operator = deps.api.addr_make("operator");
 
-        let res = assert_operator_registered(&deps.storage, &operator);
+        // assert that the operator is not registered
+        let res = require_operator_registered(&deps.storage, &operator);
         assert_eq!(
             res,
-            Err(ContractError::NotRegistered {
-                kind: "operator".to_string()
-            })
+            Err(ContractError::Std(StdError::not_found("operator")))
         );
 
         OPERATORS.save(&mut deps.storage, &operator, &true).unwrap();
 
-        let res = assert_operator_registered(&deps.storage, &operator);
+        // assert that the operator is registered
+        let res = require_operator_registered(&deps.storage, &operator);
         assert!(res.is_ok());
     }
 

@@ -10,24 +10,24 @@ pub struct InstantiateMsg {
 #[cw_serde]
 #[derive(bvs_pauser::api::Display)]
 pub enum ExecuteMsg {
-    ServiceRegister {
+    RegisterAsService {
         metadata: Metadata,
     },
-    ServiceUpdateMetadata(Metadata),
-    ServiceRegisterOperator {
-        operator: String,
-    },
-    ServiceDeregisterOperator {
-        operator: String,
-    },
-    OperatorRegister {
+    UpdateServiceMetadata(Metadata),
+    RegisterAsOperator {
         metadata: Metadata,
     },
-    OperatorUpdateMetadata(Metadata),
-    OperatorDeregisterService {
+    UpdateOperatorMetadata(Metadata),
+    RegisterOperatorToService {
+        operator: String,
+    },
+    DeregisterOperatorFromService {
+        operator: String,
+    },
+    RegisterServiceToOperator {
         service: String,
     },
-    OperatorRegisterService {
+    DeregisterServiceFromOperator {
         service: String,
     },
     TransferOwnership {
@@ -36,7 +36,7 @@ pub enum ExecuteMsg {
     },
 }
 
-/// Metadata is emitted as events and not stored on-chain.
+/// metadata is emitted as events and not stored on-chain.
 #[cw_serde]
 pub struct Metadata {
     pub name: Option<String>,
@@ -46,18 +46,30 @@ pub struct Metadata {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(RegistrationStatusResponse)]
-    RegistrationStatus { service: String, operator: String },
+    #[returns(StatusResponse)]
+    Status { service: String, operator: String },
+
+    #[returns(IsServiceResponse)]
+    IsService(String),
+
+    #[returns(IsOperatorResponse)]
+    IsOperator(String),
 }
 
 #[cw_serde]
-pub struct RegistrationStatusResponse(u8);
+pub struct StatusResponse(pub u8);
 
-impl From<RegistrationStatus> for RegistrationStatusResponse {
+impl From<RegistrationStatus> for StatusResponse {
     fn from(value: RegistrationStatus) -> Self {
-        RegistrationStatusResponse(value as u8)
+        StatusResponse(value as u8)
     }
 }
+
+#[cw_serde]
+pub struct IsServiceResponse(pub bool);
+
+#[cw_serde]
+pub struct IsOperatorResponse(pub bool);
 
 #[cfg(test)]
 mod tests {
@@ -65,15 +77,15 @@ mod tests {
 
     #[test]
     fn test_method_name() {
-        let msg = ExecuteMsg::ServiceRegisterOperator {
+        let msg = ExecuteMsg::RegisterOperatorToService {
             operator: "operator".to_string(),
         };
-        assert_eq!(msg.to_string(), "ServiceRegisterOperator");
+        assert_eq!(msg.to_string(), "RegisterOperatorToService");
 
-        let msg = ExecuteMsg::ServiceUpdateMetadata(Metadata {
+        let msg = ExecuteMsg::UpdateServiceMetadata(Metadata {
             name: Some("name".to_string()),
             uri: Some("uri".to_string()),
         });
-        assert_eq!(msg.to_string(), "ServiceUpdateMetadata")
+        assert_eq!(msg.to_string(), "UpdateServiceMetadata");
     }
 }

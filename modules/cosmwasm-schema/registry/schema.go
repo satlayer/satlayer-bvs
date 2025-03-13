@@ -10,8 +10,14 @@
 //    queryMsg, err := UnmarshalQueryMsg(bytes)
 //    bytes, err = queryMsg.Marshal()
 //
-//    registrationStatusResponse, err := UnmarshalRegistrationStatusResponse(bytes)
-//    bytes, err = registrationStatusResponse.Marshal()
+//    isOperatorResponse, err := UnmarshalIsOperatorResponse(bytes)
+//    bytes, err = isOperatorResponse.Marshal()
+//
+//    isServiceResponse, err := UnmarshalIsServiceResponse(bytes)
+//    bytes, err = isServiceResponse.Marshal()
+//
+//    statusResponse, err := UnmarshalStatusResponse(bytes)
+//    bytes, err = statusResponse.Marshal()
 
 package registry
 
@@ -47,15 +53,39 @@ func (r *QueryMsg) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-type RegistrationStatusResponse int64
+type IsOperatorResponse bool
 
-func UnmarshalRegistrationStatusResponse(data []byte) (RegistrationStatusResponse, error) {
-	var r RegistrationStatusResponse
+func UnmarshalIsOperatorResponse(data []byte) (IsOperatorResponse, error) {
+	var r IsOperatorResponse
 	err := json.Unmarshal(data, &r)
 	return r, err
 }
 
-func (r *RegistrationStatusResponse) Marshal() ([]byte, error) {
+func (r *IsOperatorResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+type IsServiceResponse bool
+
+func UnmarshalIsServiceResponse(data []byte) (IsServiceResponse, error) {
+	var r IsServiceResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *IsServiceResponse) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+type StatusResponse int64
+
+func UnmarshalStatusResponse(data []byte) (StatusResponse, error) {
+	var r StatusResponse
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
+
+func (r *StatusResponse) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -65,45 +95,45 @@ type InstantiateMsg struct {
 }
 
 type ExecuteMsg struct {
-	ServiceRegister           *ServiceRegister           `json:"service_register,omitempty"`
-	ServiceUpdateMetadata     *Metadata                  `json:"service_update_metadata,omitempty"`
-	ServiceRegisterOperator   *ServiceRegisterOperator   `json:"service_register_operator,omitempty"`
-	ServiceDeregisterOperator *ServiceDeregisterOperator `json:"service_deregister_operator,omitempty"`
-	OperatorRegister          *OperatorRegister          `json:"operator_register,omitempty"`
-	OperatorUpdateMetadata    *Metadata                  `json:"operator_update_metadata,omitempty"`
-	OperatorDeregisterService *OperatorDeregisterService `json:"operator_deregister_service,omitempty"`
-	OperatorRegisterService   *OperatorRegisterService   `json:"operator_register_service,omitempty"`
-	TransferOwnership         *TransferOwnership         `json:"transfer_ownership,omitempty"`
+	RegisterAsService             *RegisterAsService             `json:"register_as_service,omitempty"`
+	UpdateServiceMetadata         *Metadata                      `json:"update_service_metadata,omitempty"`
+	RegisterAsOperator            *RegisterAsOperator            `json:"register_as_operator,omitempty"`
+	UpdateOperatorMetadata        *Metadata                      `json:"update_operator_metadata,omitempty"`
+	RegisterOperatorToService     *RegisterOperatorToService     `json:"register_operator_to_service,omitempty"`
+	DeregisterOperatorFromService *DeregisterOperatorFromService `json:"deregister_operator_from_service,omitempty"`
+	RegisterServiceToOperator     *RegisterServiceToOperator     `json:"register_service_to_operator,omitempty"`
+	DeregisterServiceFromOperator *DeregisterServiceFromOperator `json:"deregister_service_from_operator,omitempty"`
+	TransferOwnership             *TransferOwnership             `json:"transfer_ownership,omitempty"`
 }
 
-type OperatorDeregisterService struct {
+type DeregisterOperatorFromService struct {
+	Operator string `json:"operator"`
+}
+
+type DeregisterServiceFromOperator struct {
 	Service string `json:"service"`
 }
 
-type OperatorRegister struct {
+type RegisterAsOperator struct {
 	Metadata Metadata `json:"metadata"`
 }
 
-// Metadata is emitted as events and not stored on-chain.
+// metadata is emitted as events and not stored on-chain.
 type Metadata struct {
 	Name *string `json:"name"`
 	URI  *string `json:"uri"`
 }
 
-type OperatorRegisterService struct {
-	Service string `json:"service"`
-}
-
-type ServiceDeregisterOperator struct {
-	Operator string `json:"operator"`
-}
-
-type ServiceRegister struct {
+type RegisterAsService struct {
 	Metadata Metadata `json:"metadata"`
 }
 
-type ServiceRegisterOperator struct {
+type RegisterOperatorToService struct {
 	Operator string `json:"operator"`
+}
+
+type RegisterServiceToOperator struct {
+	Service string `json:"service"`
 }
 
 type TransferOwnership struct {
@@ -112,10 +142,12 @@ type TransferOwnership struct {
 }
 
 type QueryMsg struct {
-	RegistrationStatus RegistrationStatus `json:"registration_status"`
+	Status     *Status `json:"status,omitempty"`
+	IsService  *string `json:"is_service,omitempty"`
+	IsOperator *string `json:"is_operator,omitempty"`
 }
 
-type RegistrationStatus struct {
+type Status struct {
 	Operator string `json:"operator"`
 	Service  string `json:"service"`
 }

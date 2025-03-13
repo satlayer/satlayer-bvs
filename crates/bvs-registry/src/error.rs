@@ -12,12 +12,15 @@ pub enum ContractError {
     #[error("{0}")]
     Ownership(#[from] bvs_library::ownership::OwnershipError),
 
-    #[error("Not registered: {kind}")]
-    NotRegistered { kind: String },
-}
+    #[error("Unauthorized")]
+    Unauthorized {},
 
-impl ContractError {
-    pub fn not_registered(kind: impl Into<String>) -> Self {
-        ContractError::NotRegistered { kind: kind.into() }
-    }
+    #[error("Service has been registered")]
+    ServiceRegistered {},
+
+    #[error("Operator has been registered")]
+    OperatorRegistered {},
+
+    #[error("Invalid registration status: {msg}")]
+    InvalidRegistrationStatus { msg: String },
 }
