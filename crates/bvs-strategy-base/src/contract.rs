@@ -156,14 +156,10 @@ pub fn deposit(
     state.total_shares += new_shares;
     STRATEGY_STATE.save(deps.storage, &state)?;
 
-    let exchange_rate_event =
-        emit_exchange_rate(virtual_token_balance, state.total_shares + SHARES_OFFSET)?;
-
     let response = Response::new()
         .add_attribute("method", "deposit")
         .add_attribute("new_shares", new_shares.to_string())
-        .add_attribute("total_shares", state.total_shares.to_string())
-        .add_event(exchange_rate_event.events[0].clone());
+        .add_attribute("total_shares", state.total_shares.to_string());
 
     Ok(response)
 }
@@ -208,11 +204,6 @@ pub fn withdraw(
     state.total_shares -= amount_shares;
     STRATEGY_STATE.save(deps.storage, &state)?;
 
-    let exchange_rate_event = emit_exchange_rate(
-        virtual_token_balance - amount_to_send,
-        state.total_shares + SHARES_OFFSET,
-    )?;
-
     let underlying_token = state.underlying_token;
 
     let transfer_msg = WasmMsg::Execute {
@@ -231,8 +222,7 @@ pub fn withdraw(
     Ok(response
         .add_attribute("method", "withdraw")
         .add_attribute("amount_to_send", amount_to_send.to_string())
-        .add_attribute("total_shares", state.total_shares.to_string())
-        .add_event(exchange_rate_event.events[0].clone()))
+        .add_attribute("total_shares", state.total_shares.to_string()))
 }
 
 pub fn shares(deps: Deps, user: Addr, strategy: Addr) -> StdResult<SharesResponse> {
@@ -485,19 +475,6 @@ fn token_balance(querier: &QuerierWrapper, token: &Addr, account: &Addr) -> StdR
     Ok(res.balance)
 }
 
-fn emit_exchange_rate(
-    virtual_token_balance: Uint128,
-    virtual_total_shares: Uint128,
-) -> StdResult<Response> {
-    let exchange_rate = (virtual_token_balance.checked_mul(Uint128::new(1_000_000))?)
-        .checked_div(virtual_total_shares)?;
-
-    let event = Event::new("exchange_rate_emitted")
-        .add_attribute("exchange_rate", exchange_rate.to_string());
-
-    Ok(Response::new().add_event(event))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -509,7 +486,6 @@ mod tests {
         attr, from_json, Binary, ContractResult, CosmosMsg, OwnedDeps, SystemError, SystemResult,
         WasmQuery,
     };
-    use cw2::get_contract_version;
     use cw20::TokenInfoResponse;
 
     #[test]
@@ -1161,27 +1137,6 @@ mod tests {
         let total_shares_response: TotalSharesResponse = from_json(res).unwrap();
 
         assert_eq!(total_shares_response.total_shares, Uint128::zero());
-    }
-
-    #[test]
-    fn test_emit_exchange_rate() {
-        let virtual_token_balance = Uint128::new(1_000_000_000);
-        let virtual_total_shares = Uint128::new(1_000_000);
-
-        let expected_exchange_rate = virtual_token_balance
-            .checked_mul(Uint128::new(1_000_000))
-            .unwrap()
-            .checked_div(virtual_total_shares)
-            .unwrap();
-
-        let res = emit_exchange_rate(virtual_token_balance, virtual_total_shares).unwrap();
-
-        let expected_event = Event::new("exchange_rate_emitted")
-            .add_attribute("exchange_rate", expected_exchange_rate.to_string());
-
-        assert!(res.events.contains(&expected_event));
-
-        println!("{:?}", res);
     }
 
     #[test]
