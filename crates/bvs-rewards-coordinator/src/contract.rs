@@ -167,8 +167,10 @@ pub fn create_rewards_submission(
 
         SUBMISSION_NONCE.save(deps.storage, &info.sender, &(nonce + 1))?;
 
+        let token_addr = deps.api.addr_validate(&submission.token.to_string())?;
+
         let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: submission.token.to_string(),
+            contract_addr: token_addr.to_string(),
             msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
                 owner: info.sender.to_string(),
                 recipient: env.contract.address.to_string(),
@@ -225,8 +227,10 @@ pub fn create_rewards_for_all_submission(
 
         SUBMISSION_NONCE.save(deps.storage, &info.sender, &(nonce + 1))?;
 
+        let token_addr = deps.api.addr_validate(&submission.token.to_string())?;
+
         let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: submission.token.to_string(),
+            contract_addr: token_addr.to_string(),
             msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
                 owner: info.sender.to_string(),
                 recipient: env.contract.address.to_string(),
