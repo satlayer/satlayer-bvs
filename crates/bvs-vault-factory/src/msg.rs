@@ -1,10 +1,14 @@
 use bvs_pauser::api::Display;
-use cosmwasm_schema::cw_serde;
+use cosmwasm_schema::{cw_serde, QueryResponses};
+
+use crate::state::CodeIdLabel;
 
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: String,
     pub pauser: String,
+    pub registry: String,
+    pub router: String,
 }
 
 #[cw_serde]
@@ -31,7 +35,25 @@ pub enum ExecuteMsg {
         router: String,
         registry: String,
     },
+
+    AddCodeId {
+        code_id: u64,
+        label: CodeIdLabel,
+    },
+
+    RemoveCodeId {
+        code_id: u64,
+    },
 }
 
 #[cw_serde]
-pub enum QueryMsg {}
+#[derive(QueryResponses)]
+pub enum QueryMsg {
+    #[returns(AllowedCodeIdsResponse)]
+    GetAllowedCodeIds {},
+}
+
+#[cw_serde]
+pub struct AllowedCodeIdsResponse {
+    pub code_ids: Vec<(u64, CodeIdLabel)>,
+}

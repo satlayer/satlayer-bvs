@@ -29,7 +29,6 @@ cw-utils = { workspace = true }
 
 bvs-library = { workspace = true }
 bvs-pauser = { workspace = true }
-bvs-vault-base = { workspace = true }
 bvs-vault-router = { workspace = true }
 bvs-vault-bank = { workspace = true }
 bvs-vault-cw20 = { workspace = true }
