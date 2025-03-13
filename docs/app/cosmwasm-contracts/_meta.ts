@@ -1,9 +1,5 @@
 import type { MetaRecord } from "nextra";
 
-const meta: MetaRecord = {
-  runbook: {
-    display: "hidden",
-  },
-};
+const meta: MetaRecord = {};
 
 export default meta;
