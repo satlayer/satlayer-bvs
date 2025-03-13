@@ -15,9 +15,12 @@ pub enum ContractError {
     #[error("Vault error: {msg}")]
     VaultError { msg: String },
 
-    #[error("Factory not ready: router not set")]
-    NotReady {},
+    #[error("bvs_vault_factory: Invalid Address format")]
+    InvalidAddress {},
 
-    #[error("Unauthorized")]
+    #[error("bvs_vault_factory: Unauthorized")]
     Unauthorized {},
+
+    #[error("bvs_vault_factory: Code Id Not Allowed")]
+    InvalidCodeId {},
 }

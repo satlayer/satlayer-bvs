@@ -432,7 +432,6 @@ dependencies = [
  "bvs-pauser",
  "bvs-registry",
  "bvs-vault-bank",
- "bvs-vault-base",
  "bvs-vault-cw20",
  "bvs-vault-router",
  "cosmwasm-schema",
