@@ -8,13 +8,14 @@ import (
 	"strings"
 	"time"
 
+	squaringcontract "github.com/satlayer/satlayer-bvs/examples/squaring/squaring-contract"
+
 	"go.uber.org/zap"
 
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/api"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/io"
 	"github.com/satlayer/satlayer-bvs/bvs-api/chainio/types"
 	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/core"
-	"github.com/satlayer/satlayer-bvs/examples/squaring/bvssquaringapi"
 )
 
 var MonitorInstance Monitor
@@ -163,7 +164,7 @@ func (m *Monitor) verifyTask(ctx context.Context, taskId uint64) {
 func (m *Monitor) sendTaskResult(taskId uint64, result int64, operators string) error {
 	fmt.Println("sendTaskResult", taskId, result, operators)
 
-	bvsSquaring := bvssquaringapi.NewBVSSquaring(m.chainIO)
+	bvsSquaring := squaringcontract.New(m.chainIO)
 	bvsSquaring.BindClient(m.bvsContract)
 	_, err := bvsSquaring.RespondToTask(context.Background(), int64(taskId), result, operators)
 	if err != nil {

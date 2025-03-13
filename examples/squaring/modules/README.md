@@ -2,18 +2,26 @@
 
 ## Overview
 
-The **SatLayer Squaring BVS Demo** is a comprehensive demonstration project designed to showcase the integration and operation of the SatLayer API with the Squaring BVS (Actively Validated Services). The project demonstrates how various components within the SatLayer ecosystem interact to provide a robust solution for managing decentralized services. The demo is structured into multiple directories, each dedicated to a specific function, allowing for modular development, testing, and deployment. This readme will guide you through the setup, building, and running of the demo, ensuring that you can easily replicate the environment on your local machine.
+The **SatLayer Squaring BVS Demo** is a comprehensive demonstration project designed to showcase the
+integration and operation of the SatLayer API with the Squaring BVS (Actively Validated Services).
+The project demonstrates
+how various components within the SatLayer ecosystem interact
+to provide a robust solution for managing decentralized services.
+The demo is structured into multiple directories, each dedicated to a specific function,
+allowing for modular development, testing, and deployment.
+This readme will guide you through the setup, building, and running of the demo,
+ensuring that you can easily replicate the environment on your local machine.
 
 ## Project Structure
 
-The demo is divided into several components, each responsible for a specific aspect of the Squaring BVS process. Below is a high-level architecture and the relevant components:
+The demo is divided into several components, each responsible for a specific aspect of the Squaring BVS process.
+Below is a high-level architecture and the relevant components:
 
 The BVS Program consists of the following key components:
 
 - **Task**: Sends BVS tasks and monitors their results. (caller & monitor)
 - **Offchain Node**: Executes BVS logic off-chain, performing the necessary computations.
 - **Aggregator**: Collects and pushes task results for further processing.
-- **Reward**: Reward the stakers with rewards based on the aggregated results.
 
 ## Run test
 

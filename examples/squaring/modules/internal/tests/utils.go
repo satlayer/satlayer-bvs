@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"runtime"
 
+	squaringcontract "github.com/satlayer/satlayer-bvs/examples/squaring/squaring-contract"
+
 	"github.com/satlayer/satlayer-bvs/cosmwasm-schema/directory"
 
 	"github.com/satlayer/satlayer-bvs/babylond/cw20"
@@ -18,7 +20,6 @@ import (
 	"github.com/satlayer/satlayer-bvs/babylond"
 	"github.com/satlayer/satlayer-bvs/babylond/bvs"
 	"github.com/satlayer/satlayer-bvs/examples/squaring/aggregator/core"
-	squaringcontract "github.com/satlayer/satlayer-bvs/examples/squaring/squaring-contract"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
