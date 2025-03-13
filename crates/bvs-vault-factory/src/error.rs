@@ -14,4 +14,10 @@ pub enum ContractError {
 
     #[error("Vault error: {msg}")]
     VaultError { msg: String },
+
+    #[error("Factory not ready: router not set")]
+    NotReady {},
+
+    #[error("Unauthorized")]
+    Unauthorized {},
 }
