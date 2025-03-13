@@ -3,8 +3,8 @@ use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
         ExplanationResponse, SharesResponse, SharesToUnderlyingResponse, StrategyManagerResponse,
-        TotalSharesResponse, UnderlyingToShareResponse, UnderlyingToSharesResponse,
-        UnderlyingTokenResponse, UserUnderlyingResponse,
+        TotalSharesResponse, UnderlyingToSharesResponse, UnderlyingTokenResponse,
+        UserUnderlyingResponse,
     },
     state::{StrategyState, OWNER, STRATEGY_STATE},
 };
@@ -252,11 +252,11 @@ pub fn shares(deps: Deps, user: Addr, strategy: Addr) -> StdResult<SharesRespons
     })
 }
 
-pub fn shares_to_underlying_view(
+pub fn shares_to_underlying(
     deps: Deps,
     env: Env,
     amount_shares: Uint128,
-) -> StdResult<Uint128> {
+) -> StdResult<SharesToUnderlyingResponse> {
     let state = STRATEGY_STATE.load(deps.storage)?;
     let balance = token_balance(
         &deps.querier,
@@ -268,10 +268,14 @@ pub fn shares_to_underlying_view(
     let virtual_token_balance = balance + BALANCE_OFFSET;
     let amount_to_send = (virtual_token_balance * amount_shares) / virtual_total_shares;
 
-    Ok(amount_to_send)
+    Ok(SharesToUnderlyingResponse { amount_to_send })
 }
 
-pub fn underlying_to_share_view(deps: Deps, env: Env, amount: Uint128) -> StdResult<Uint128> {
+pub fn underlying_to_shares(
+    deps: Deps,
+    env: Env,
+    amount: Uint128,
+) -> StdResult<UnderlyingToSharesResponse> {
     let state: StrategyState = STRATEGY_STATE.load(deps.storage)?;
     let balance = token_balance(
         &deps.querier,
@@ -284,26 +288,18 @@ pub fn underlying_to_share_view(deps: Deps, env: Env, amount: Uint128) -> StdRes
     let virtual_prior_token_balance = virtual_token_balance - amount;
     let share_to_send = (amount * virtual_share_amount) / virtual_prior_token_balance;
 
-    Ok(share_to_send)
+    Ok(UnderlyingToSharesResponse { share_to_send })
 }
 
-pub fn underlying_to_shares(
-    deps: Deps,
-    env: Env,
-    amount_underlying: Uint128,
-) -> StdResult<Uint128> {
-    let share_to_send = underlying_to_share_view(deps, env, amount_underlying)?;
-    Ok(share_to_send)
-}
-
-pub fn user_underlying_view(deps: Deps, env: Env, user: Addr) -> StdResult<Uint128> {
+pub fn user_underlying(deps: Deps, env: Env, user: Addr) -> StdResult<UserUnderlyingResponse> {
     let strategy = env.contract.address.clone();
     let shares_response = shares(deps, user, strategy.clone())?;
     let user_shares = shares_response.total_shares;
 
-    let amount_to_send = shares_to_underlying_view(deps, env, user_shares)?;
+    let shares_to_underlying_response = shares_to_underlying(deps, env, user_shares)?;
+    let amount_to_send = shares_to_underlying_response.amount_to_send;
 
-    Ok(amount_to_send)
+    Ok(UserUnderlyingResponse { amount_to_send })
 }
 
 pub fn set_strategy_manager(
@@ -351,23 +347,20 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
             to_json_binary(&shares(deps, staker_addr, strategy_addr)?)
         }
-        QueryMsg::SharesToUnderlyingView { amount_shares } => {
-            to_json_binary(&query_shares_to_underlying_view(deps, env, amount_shares)?)
+        QueryMsg::SharesToUnderlying { amount_shares } => {
+            to_json_binary(&shares_to_underlying(deps, env, amount_shares)?)
         }
-        QueryMsg::UnderlyingToShareView { amount } => {
-            to_json_binary(&query_underlying_to_view(deps, env, amount)?)
+        QueryMsg::UnderlyingToShares { amount } => {
+            to_json_binary(&underlying_to_shares(deps, env, amount)?)
         }
-        QueryMsg::UserUnderlyingView { user } => {
+        QueryMsg::UserUnderlying { user } => {
             let user_addr = deps.api.addr_validate(&user)?;
-            to_json_binary(&query_user_underlying_view(deps, env, user_addr)?)
+            to_json_binary(&user_underlying(deps, env, user_addr)?)
         }
         QueryMsg::GetStrategyManager {} => to_json_binary(&query_strategy_manager(deps)?),
         QueryMsg::GetUnderlyingToken {} => to_json_binary(&query_underlying_token(deps)?),
         QueryMsg::GetTotalShares {} => to_json_binary(&query_total_shares(deps)?),
         QueryMsg::Explanation {} => to_json_binary(&query_explanation()?),
-        QueryMsg::UnderlyingToShares { amount_underlying } => {
-            to_json_binary(&query_underlying_to_shares(deps, env, amount_underlying)?)
-        }
         QueryMsg::GetStrategyState {} => to_json_binary(&query_strategy_state(deps)?),
     }
 }
@@ -404,44 +397,6 @@ fn query_explanation() -> StdResult<ExplanationResponse> {
 pub fn query_strategy_state(deps: Deps) -> StdResult<StrategyState> {
     let state = STRATEGY_STATE.load(deps.storage)?;
     Ok(state)
-}
-
-pub fn query_shares_to_underlying_view(
-    deps: Deps,
-    env: Env,
-    amount_shares: Uint128,
-) -> StdResult<SharesToUnderlyingResponse> {
-    let amount_to_send = shares_to_underlying_view(deps, env, amount_shares)?;
-
-    Ok(SharesToUnderlyingResponse { amount_to_send })
-}
-
-pub fn query_underlying_to_view(
-    deps: Deps,
-    env: Env,
-    amount: Uint128,
-) -> StdResult<UnderlyingToShareResponse> {
-    let share_to_send = underlying_to_share_view(deps, env, amount)?;
-
-    Ok(UnderlyingToShareResponse { share_to_send })
-}
-
-pub fn query_user_underlying_view(
-    deps: Deps,
-    env: Env,
-    user: Addr,
-) -> StdResult<UserUnderlyingResponse> {
-    let amount_to_send = user_underlying_view(deps, env, user)?;
-    Ok(UserUnderlyingResponse { amount_to_send })
-}
-
-pub fn query_underlying_to_shares(
-    deps: Deps,
-    env: Env,
-    amount_underlying: Uint128,
-) -> StdResult<UnderlyingToSharesResponse> {
-    let share_to_send = underlying_to_shares(deps, env, amount_underlying)?;
-    Ok(UnderlyingToSharesResponse { share_to_send })
 }
 
 fn only_owner(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
@@ -509,7 +464,6 @@ mod tests {
         attr, from_json, Binary, ContractResult, CosmosMsg, OwnedDeps, SystemError, SystemResult,
         WasmQuery,
     };
-    use cw2::get_contract_version;
     use cw20::TokenInfoResponse;
 
     #[test]
@@ -857,7 +811,7 @@ mod tests {
     }
 
     #[test]
-    fn test_shares_to_underlying_view() {
+    fn test_shares_to_underlying() {
         let (mut deps, env, _info, _pauser_info, _unpauser_info, token, _strategy_manager) =
             instantiate_contract();
 
@@ -896,11 +850,11 @@ mod tests {
         });
 
         let amount_shares = Uint128::new(1_000);
-        let result = shares_to_underlying_view(deps.as_ref(), env.clone(), amount_shares);
+        let result = shares_to_underlying(deps.as_ref(), env.clone(), amount_shares);
 
         match result {
-            Ok(amount_to_send) => {
-                assert_eq!(amount_to_send, Uint128::new(1000));
+            Ok(response) => {
+                assert_eq!(response.amount_to_send, Uint128::new(1000));
             }
             Err(e) => {
                 panic!("Failed to convert shares to underlying: {:?}", e);
@@ -909,7 +863,7 @@ mod tests {
     }
 
     #[test]
-    fn test_underlying_to_share_view() {
+    fn test_underlying_to_shares() {
         let (mut deps, env, _info, _pauser_info, _unpauser_info, token, _strategy_manager) =
             instantiate_contract();
 
@@ -945,9 +899,9 @@ mod tests {
         });
 
         let amount = Uint128::new(1_000);
-        let share_to_send = underlying_to_share_view(deps.as_ref(), env.clone(), amount).unwrap();
+        let response = underlying_to_shares(deps.as_ref(), env.clone(), amount).unwrap();
 
-        assert_eq!(share_to_send, Uint128::new(999));
+        assert_eq!(response.share_to_send, Uint128::new(999));
     }
 
     #[test]
@@ -1055,7 +1009,7 @@ mod tests {
     }
 
     #[test]
-    fn test_user_underlying_view() {
+    fn test_user_underlying() {
         let (mut deps, env, _info, _pauser_info, _unpauser_info, token, strategy_manager) =
             instantiate_contract();
 
@@ -1113,11 +1067,11 @@ mod tests {
             }
         });
 
-        let underlying_amount =
-            user_underlying_view(deps.as_ref(), env.clone(), Addr::unchecked(user_addr)).unwrap();
+        let response =
+            user_underlying(deps.as_ref(), env.clone(), Addr::unchecked(user_addr)).unwrap();
 
         let expected_amount = Uint128::new(1000);
-        assert_eq!(underlying_amount, expected_amount);
+        assert_eq!(response.amount_to_send, expected_amount);
     }
 
     #[test]
@@ -1182,55 +1136,6 @@ mod tests {
         assert!(res.events.contains(&expected_event));
 
         println!("{:?}", res);
-    }
-
-    #[test]
-    fn test_underlying_to_shares() {
-        let (mut deps, env, _info, _pauser_info, _unpauser_info, token, _strategy_manager) =
-            instantiate_contract();
-
-        let contract_address: Addr = env.contract.address.clone();
-
-        deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart {
-                contract_addr, msg, ..
-            } => {
-                let msg_clone = msg.clone();
-                if contract_addr == &token {
-                    let msg: Cw20QueryMsg = from_json(msg).unwrap();
-                    if let Cw20QueryMsg::Balance { address } = msg {
-                        if address == contract_address.to_string() {
-                            return SystemResult::Ok(ContractResult::Ok(
-                                to_json_binary(&Cw20BalanceResponse {
-                                    balance: Uint128::new(1_000_000),
-                                })
-                                .unwrap(),
-                            ));
-                        }
-                    }
-                }
-                SystemResult::Err(SystemError::InvalidRequest {
-                    error: "not implemented".to_string(),
-                    request: msg_clone,
-                })
-            }
-            _ => SystemResult::Err(SystemError::InvalidRequest {
-                error: "not implemented".to_string(),
-                request: Binary::from(b"other".as_ref()),
-            }),
-        });
-
-        let amount_underlying = Uint128::new(1_000);
-        let result = underlying_to_shares(deps.as_ref(), env.clone(), amount_underlying);
-
-        match result {
-            Ok(share_to_send) => {
-                assert_eq!(share_to_send, Uint128::new(999));
-            }
-            Err(e) => {
-                panic!("Failed to convert underlying to shares: {:?}", e);
-            }
-        }
     }
 
     #[test]
