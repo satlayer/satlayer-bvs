@@ -9,9 +9,11 @@ pnpm-lock.yaml
 *.rs
 *.lock
 .github/pull_request_template.md
+crates/debug/
 crates/target/
 crates/*/artifacts/
 crates/*/schema/
+examples/*/*/debug/
 examples/*/*/target/
 examples/*/*/artifacts/
 examples/*/*/schema/
