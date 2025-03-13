@@ -6,6 +6,7 @@ use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::ROUTER;
 use bvs_library::ownership;
 use bvs_pauser;
+use bvs_registry;
 use bvs_vault_bank::msg::InstantiateMsg as BankVaultInstantiateMsg;
 use bvs_vault_cw20::msg::InstantiateMsg as Cw20InstantiateMsg;
 use cosmwasm_std::{
@@ -53,10 +54,12 @@ pub fn execute(
         ExecuteMsg::DeployBank { denom, code_id } => {
             execute::deploy_vault_bank(deps, env, info, denom, code_id)
         }
-        ExecuteMsg::SetRouter { router } => {
+        ExecuteMsg::SetVaults { router, registry } => {
             deps.api.addr_validate(&router)?;
+            deps.api.addr_validate(&registry)?;
             let router = Addr::unchecked(router);
-            execute::set_router(deps, info, router)
+            let registry = Addr::unchecked(registry);
+            execute::set_vaults(deps, info, router, registry)
         }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
@@ -67,22 +70,26 @@ pub fn execute(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {}
 }
 
 mod execute {
-    use super::*;
-    use cosmwasm_std::{Addr, Response};
+    use crate::state::REGISTRY;
 
-    pub fn set_router(
+    use super::*;
+    use cosmwasm_std::{Addr, QueryRequest, Response, WasmQuery};
+
+    pub fn set_vaults(
         deps: DepsMut,
         info: MessageInfo,
         router: Addr,
+        registry: Addr,
     ) -> Result<Response, ContractError> {
         ownership::assert_owner(deps.storage, &info).map_err(ContractError::Ownership)?;
 
         ROUTER.save(deps.storage, &router)?;
+        REGISTRY.save(deps.storage, &registry)?;
 
         Ok(Response::new()
             .add_attribute("method", "set_router")
@@ -96,10 +103,22 @@ mod execute {
         cw20: String,
         code_id: u64,
     ) -> Result<Response, ContractError> {
-        //TODO: Implement operator authorized only, currently blocked
-
-        if ROUTER.load(deps.storage).is_err() {
+        if ROUTER.load(deps.storage).is_err() || REGISTRY.load(deps.storage).is_err() {
             return Err(ContractError::NotReady {});
+        }
+
+        let msg = bvs_registry::msg::QueryMsg::IsOperator(info.sender.to_string());
+
+        let query = WasmQuery::Smart {
+            contract_addr: REGISTRY.load(deps.storage)?.to_string(),
+            msg: to_json_binary(&msg)?,
+        };
+
+        let is_operator: bvs_registry::msg::IsOperatorResponse =
+            deps.querier.query(&QueryRequest::Wasm(query))?;
+
+        if !is_operator.0 {
+            return Err(ContractError::Unauthorized {});
         }
 
         let msg = Cw20InstantiateMsg {
@@ -131,10 +150,22 @@ mod execute {
         denom: String,
         code_id: u64,
     ) -> Result<Response, ContractError> {
-        //TODO: Implement operator authorized only, currently blocked
-
-        if ROUTER.load(deps.storage).is_err() {
+        if ROUTER.load(deps.storage).is_err() || REGISTRY.load(deps.storage).is_err() {
             return Err(ContractError::NotReady {});
+        }
+
+        let msg = bvs_registry::msg::QueryMsg::IsOperator(info.sender.to_string());
+
+        let query = WasmQuery::Smart {
+            contract_addr: REGISTRY.load(deps.storage)?.to_string(),
+            msg: to_json_binary(&msg)?,
+        };
+
+        let is_operator: bvs_registry::msg::IsOperatorResponse =
+            deps.querier.query(&QueryRequest::Wasm(query))?;
+
+        if !is_operator.0 {
+            return Err(ContractError::Unauthorized {});
         }
 
         let msg = BankVaultInstantiateMsg {
