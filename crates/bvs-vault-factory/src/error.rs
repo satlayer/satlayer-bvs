@@ -15,12 +15,12 @@ pub enum ContractError {
     #[error("Vault error: {msg}")]
     VaultError { msg: String },
 
-    #[error("bvs_vault_factory: Invalid Address format")]
-    InvalidAddress {},
-
     #[error("bvs_vault_factory: Unauthorized")]
     Unauthorized {},
 
     #[error("bvs_vault_factory: Code Id Not Allowed")]
     InvalidCodeId {},
+
+    #[error("bvs_vault_factory: Code Id Not Found")]
+    CodeIdNotFound {},
 }
