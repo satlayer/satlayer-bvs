@@ -34,7 +34,7 @@ impl KeyDeserialize for VaultType {
     }
 }
 
-impl<'a> PrimaryKey<'a> for VaultType {
+impl PrimaryKey<'_> for VaultType {
     type Prefix = ();
     type SubPrefix = ();
     type Suffix = Self;
