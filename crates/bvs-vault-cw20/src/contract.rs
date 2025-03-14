@@ -186,50 +186,39 @@ mod execute {
         info: MessageInfo,
         msg: RecipientAmount,
     ) -> Result<Response, ContractError> {
-        let withdraw_shares = msg.amount;
-
-        // Remove shares from the info.sender
-        shares::sub_shares(deps.storage, &info.sender, withdraw_shares)?;
-
-        let (vault, claim_assets) = {
-            let balance = token::query_balance(&deps.as_ref(), &env)?;
-            let mut vault = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
-
-            if withdraw_shares > vault.total_shares() {
-                return Err(VaultError::insufficient("Insufficient shares to withdraw.").into());
-            }
-
-            let assets = vault.shares_to_assets(withdraw_shares)?;
-            if assets.is_zero() {
-                return Err(VaultError::zero("Withdraw assets cannot be zero.").into());
-            }
-
-            // Remove shares from TOTAL_SHARES
-            vault.checked_sub_shares(deps.storage, withdraw_shares)?;
-
-            (vault, assets)
-        };
-
         let withdrawal_lock_peirod = router::get_withdrawal_lock_period(&deps.as_ref())?;
         let current_timestamp = env.block.time.seconds();
         let new_unlock_timestamp = withdrawal_lock_peirod
             .checked_add(Uint64::new(current_timestamp))
             .map_err(StdError::from)?;
 
-        let withdrawal_info = QueuedWithdrawalInfo {
-            queued_shares: claim_assets,
+        let new_queued_withdrawal_info = QueuedWithdrawalInfo {
+            queued_shares: msg.amount,
             unlock_timestamp: new_unlock_timestamp,
         };
-        shares::update_queued_withdrawal_info(deps.storage, &info.sender, withdrawal_info)?;
+
+        let old_withdrawal_info = shares::update_queued_withdrawal_info(
+            deps.storage,
+            &info.sender,
+            new_queued_withdrawal_info,
+        )?;
+
+        let total_queued_shares = old_withdrawal_info
+            .queued_shares
+            .checked_add(msg.amount)
+            .map_err(StdError::from)?;
 
         Ok(Response::new().add_event(
             Event::new("QueueWithdrawalTo")
                 .add_attribute("sender", info.sender.to_string())
                 .add_attribute("recipient", msg.recipient.to_string())
-                .add_attribute("queued_assets", claim_assets.to_string())
+                .add_attribute("queued_shares", msg.amount.to_string())
                 .add_attribute("new_unlock_timestamp", new_unlock_timestamp.to_string())
-                .add_attribute("shares", withdraw_shares.to_string())
-                .add_attribute("total_shares", vault.total_shares().to_string()),
+                .add_attribute("total_queued_shares", total_queued_shares.to_string())
+                .add_attribute(
+                    "old_unlock_timestamp",
+                    old_withdrawal_info.unlock_timestamp.to_string(),
+                ),
         ))
     }
 
@@ -241,21 +230,42 @@ mod execute {
         msg: RecipientAmount,
     ) -> Result<Response, ContractError> {
         let withdrawal_info = shares::get_queued_withdrawal_info(deps.storage, &msg.recipient)?;
+        let queued_shares = withdrawal_info.queued_shares;
+        let unlock_timestamp = withdrawal_info.unlock_timestamp;
 
-        if withdrawal_info.queued_shares.is_zero() && withdrawal_info.unlock_timestamp.is_zero() {
+        if queued_shares.is_zero() && unlock_timestamp.is_zero() {
             return Err(VaultError::zero("No queued assets").into());
         }
 
-        if withdrawal_info.unlock_timestamp > Uint64::new(env.block.time.seconds()) {
+        if unlock_timestamp > Uint64::new(env.block.time.seconds()) {
             return Err(VaultError::locked("The assets are locked").into());
         }
 
+        // Remove shares from the info.sender
+        shares::sub_shares(deps.storage, &info.sender, queued_shares)?;
+
+        let (vault, claimed_assets) = {
+            let balance = token::query_balance(&deps.as_ref(), &env)?;
+            let mut vault = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
+
+            if queued_shares > vault.total_shares() {
+                return Err(VaultError::insufficient("Insufficient shares to withdraw.").into());
+            }
+
+            let assets = vault.shares_to_assets(queued_shares)?;
+            if assets.is_zero() {
+                return Err(VaultError::zero("Withdraw assets cannot be zero.").into());
+            }
+
+            // Remove shares from TOTAL_SHARES
+            vault.checked_sub_shares(deps.storage, queued_shares)?;
+
+            (vault, assets)
+        };
+
         // CW20 transfer of asset to msg.recipient
-        let transfer_msg = token::execute_new_transfer(
-            deps.storage,
-            &msg.recipient,
-            withdrawal_info.queued_shares,
-        )?;
+        let transfer_msg =
+            token::execute_new_transfer(deps.storage, &msg.recipient, claimed_assets)?;
 
         // Remove staker's info
         shares::remove_queued_withdrawal_info(deps.storage, &info.sender);
@@ -264,6 +274,9 @@ mod execute {
             .add_event(Event::new("RedeemWithdrawalTo"))
             .add_attribute("sender", info.sender.to_string())
             .add_attribute("recipient", msg.recipient.to_string())
+            .add_attribute("claimed_assets", claimed_assets.to_string())
+            .add_attribute("queued_shares", queued_shares.to_string())
+            .add_attribute("total_shares", vault.total_shares().to_string())
             .add_message(transfer_msg))
     }
 }
