@@ -7,6 +7,8 @@ import (
 	"errors"
 	"time"
 
+	sdkmath "cosmossdk.io/math"
+
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 
 	sdkerrors "cosmossdk.io/errors"
@@ -79,7 +81,7 @@ func Execute(
 		if attempt > maxRetries {
 			return result, errors.New("maximum number of retries reached")
 		}
-		// wait for 1 second before retrying
+		// wait for 0.5 second before retrying
 		time.Sleep(500 * time.Millisecond)
 	}
 }
@@ -88,6 +90,10 @@ func BroadcastTx(
 	clientCtx client.Context, ctx context.Context, sender string, opts ExecuteOptions,
 ) (sdktypes.TxResponse, error) {
 	var result sdktypes.TxResponse
+
+	// TODO: move const to config
+	const denom = "ubbn"
+
 	amount, err := sdktypes.ParseCoinsNormalized(opts.Funds)
 	if err != nil {
 		return result, err
@@ -107,16 +113,16 @@ func BroadcastTx(
 		WithAccountRetriever(clientCtx.AccountRetriever).
 		WithFromName(clientCtx.FromName).
 		WithSignMode(signing.SignMode_SIGN_MODE_DIRECT).
-		WithSimulateAndExecute(true).
-		WithGasAdjustment(1.3).
-		WithGasPrices("1ubbn")
+		WithSimulateAndExecute(opts.Simulate).
+		WithGasAdjustment(opts.GasAdjustment).
+		WithGasPrices(opts.GasPrice.String()).
+		WithGas(opts.Gas)
 
 	txf, err = txf.Prepare(clientCtx)
 	if err != nil {
 		return result, err
 	}
 
-	// TODO: check if this is necessary or not
 	// whether to simulate gas calculations
 	if txf.SimulateAndExecute() {
 		_, adjusted, err := tx.CalculateGas(clientCtx, txf, contractMsg)
@@ -134,15 +140,20 @@ func BroadcastTx(
 		return result, err
 	}
 	txBuilder := clientCtx.TxConfig.NewTxBuilder()
-	txBuilder.SetFeeAmount(sdktypes.NormalizeCoins(sdktypes.NewDecCoins(opts.GasPrice)))
+
+	// Calculate the fee based on the gas and gas price (fee = Gas * GasPrice)
+	gasInt := sdkmath.NewIntFromUint64(txf.Gas())
+	fee := txf.GasPrices().AmountOf(denom).MulInt(gasInt).RoundInt()
+	txBuilder.SetFeeAmount(sdktypes.NewCoins(sdktypes.NewCoin(denom, fee)))
+	txBuilder.SetGasLimit(txf.Gas())
 	txBuilder.SetFeePayer(senderAccAddress)
-	txBuilder.SetGasLimit(opts.Gas)
+
 	err = txBuilder.SetMsgs(contractMsg)
 	if err != nil {
 		return result, err
 	}
 
-	// SIGN TX
+	// Sign Tx
 	keyName, err := clientCtx.Keyring.KeyByAddress(senderAccAddress)
 	if err != nil {
 		return result, err
@@ -166,9 +177,9 @@ func BroadcastTx(
 		return result, err
 	}
 
-	// code must be 0 for transaction to be valid (validated by consensus)
+	// Code must be 0 for transaction to be valid (validated by consensus)
 	if res.Code != 0 {
-		// cast the error from tx response to registered errors
+		// Cast the error from tx response to registered errors
 		err = sdkerrors.ABCIError(res.Codespace, res.Code, res.RawLog)
 		return result, err
 	}

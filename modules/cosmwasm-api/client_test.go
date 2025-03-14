@@ -2,11 +2,11 @@ package cosmwasmapi
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"testing"
 
-	"cosmossdk.io/math"
+	sdkmath "cosmossdk.io/math"
+
 	abci "github.com/cometbft/cometbft/abci/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/satlayer/satlayer-bvs/babylond"
@@ -63,7 +63,7 @@ func (s *ClientTestSuite) TestQuery() {
 func (s *ClientTestSuite) TestExecute() {
 	contract := s.container.GenerateAddress("contract")
 	owner := s.container.GenerateAddress("owner")
-	_ = s.container.FundAddressUbbn(owner.String(), 10000)
+	_ = s.container.FundAddressUbbn(owner.String(), 1000)
 
 	executeMsg := pauser.ExecuteMsg{
 		Pause: &pauser.Pause{},
@@ -72,14 +72,16 @@ func (s *ClientTestSuite) TestExecute() {
 	executeMsgBytes, err := executeMsg.Marshal()
 	s.Require().NoError(err)
 
+	gasPrice, err := sdkmath.LegacyNewDecFromStr("0.002") // min amount
+	s.Require().NoError(err)
 	executeOptions := ExecuteOptions{
 		ContractAddr:  s.pauser.Address,
 		ExecuteMsg:    executeMsgBytes,
 		Funds:         "",
-		GasAdjustment: 0,
-		GasPrice:      sdktypes.NewDecCoin("ubbn", math.NewInt(10_000)),
-		Gas:           1_000_000,
-		Simulate:      false,
+		GasAdjustment: 1.3,
+		GasPrice:      sdktypes.NewDecCoinFromDec("ubbn", gasPrice),
+		Gas:           200_000,
+		Simulate:      true,
 	}
 
 	response, err := Execute(
@@ -88,8 +90,6 @@ func (s *ClientTestSuite) TestExecute() {
 		owner.String(),
 		executeOptions,
 	)
-
-	fmt.Printf("response %+v", response)
 
 	s.Require().NoError(err)
 
