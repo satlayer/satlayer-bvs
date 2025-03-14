@@ -18,9 +18,6 @@ pub enum ContractError {
     #[error("bvs_vault_factory: Unauthorized")]
     Unauthorized {},
 
-    #[error("bvs_vault_factory: Code Id Not Allowed")]
-    InvalidCodeId {},
-
     #[error("bvs_vault_factory: Code Id Not Found")]
     CodeIdNotFound {},
 }

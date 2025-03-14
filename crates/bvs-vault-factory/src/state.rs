@@ -29,7 +29,7 @@ impl KeyDeserialize for VaultType {
         match std::str::from_utf8(&trimmed) {
             Ok("Cw20Vault") => Ok(VaultType::Cw20Vault),
             Ok("BankVault") => Ok(VaultType::BankVault),
-            _ => Err(cosmwasm_std::StdError::generic_err("Invalid key")),
+            _ => Err(cosmwasm_std::StdError::generic_err("Invalid VaultType")),
         }
     }
 }
