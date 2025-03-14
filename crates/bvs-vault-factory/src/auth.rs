@@ -14,8 +14,8 @@ pub fn assert_operator(deps: Deps, info: &MessageInfo) -> Result<(), ContractErr
         deps.querier.query(&QueryRequest::Wasm(query))?;
 
     if !is_operator.0 {
-        return Err(crate::error::ContractError::Unauthorized {});
+        Err(crate::error::ContractError::Unauthorized {})
     } else {
-        return Ok(());
+        Ok(())
     }
 }

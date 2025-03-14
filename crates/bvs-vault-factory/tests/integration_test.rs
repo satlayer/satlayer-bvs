@@ -88,7 +88,7 @@ fn test_cw20_vault_deployment() {
 
     let res = factory.execute(&mut app, &operator, &msg);
 
-    assert_eq!(res.is_ok(), true);
+    assert!(res.is_ok());
 }
 
 #[test]
@@ -130,7 +130,7 @@ fn test_bank_vault_deployment() {
 
     let res = factory.execute(&mut app, &operator, &msg);
 
-    assert_eq!(res.is_ok(), true);
+    assert!(res.is_ok());
 }
 
 #[test]

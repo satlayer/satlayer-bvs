@@ -200,7 +200,6 @@ mod query {
     pub fn get_available_code_ids(deps: Deps) -> StdResult<VaultCodeIdsResponse> {
         let code_ids: Vec<(VaultType, u64)> = CODE_IDS
             .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
-            .map(|item| Ok(item?))
             .collect::<StdResult<Vec<(VaultType, u64)>>>()?;
         Ok(VaultCodeIdsResponse { code_ids })
     }
