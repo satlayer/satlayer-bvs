@@ -8,9 +8,7 @@ use bvs_library::ownership;
 use bvs_pauser;
 use bvs_vault_bank::msg::InstantiateMsg as BankVaultInstantiateMsg;
 use bvs_vault_cw20::msg::InstantiateMsg as Cw20InstantiateMsg;
-use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Env, Event, MessageInfo, Response, StdResult,
-};
+use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 
 const CONTRACT_NAME: &str = concat!("crate:", env!("CARGO_PKG_NAME"));
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -24,47 +22,23 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let owner = match deps.api.addr_validate(&msg.owner) {
-        Ok(owner) => owner,
-        Err(_) => {
-            return Err(ContractError::InvalidAddress {});
-        }
-    };
-
+    let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::set_owner(deps.storage, &owner)?;
 
-    let pauser = match deps.api.addr_validate(&msg.pauser) {
-        Ok(pauser) => pauser,
-        Err(_) => {
-            return Err(ContractError::InvalidAddress {});
-        }
-    };
-
+    let pauser = deps.api.addr_validate(&msg.pauser)?;
     bvs_pauser::api::set_pauser(deps.storage, &pauser)?;
 
-    let router = match deps.api.addr_validate(&msg.router) {
-        Ok(router) => router,
-        Err(_) => {
-            return Err(ContractError::InvalidAddress {});
-        }
-    };
-    let registry = match deps.api.addr_validate(&msg.registry) {
-        Ok(registry) => registry,
-        Err(_) => {
-            return Err(ContractError::InvalidAddress {});
-        }
-    };
+    let router = deps.api.addr_validate(&msg.router)?;
+    let registry = deps.api.addr_validate(&msg.registry)?;
 
     ROUTER.save(deps.storage, &router)?;
     REGISTRY.save(deps.storage, &registry)?;
 
-    let event = Event::new("instantiate")
+    Ok(Response::new()
+        .add_attribute("method", "instantiate")
         .add_attribute("owner", owner.to_string())
         .add_attribute("pauser", pauser.to_string())
-        .add_attribute("router", router.to_string())
-        .add_attribute("registry", registry.to_string());
-
-    Ok(Response::new().add_event(event))
+        .add_attribute("router", router.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -77,22 +51,15 @@ pub fn execute(
     bvs_pauser::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
 
     match msg {
-        ExecuteMsg::DeployCw20 { cw20, code_id } => {
+        ExecuteMsg::DeployCw20 { cw20 } => {
             let cw20_token = deps.api.addr_validate(&cw20)?;
-            execute::deploy_cw20_vault(deps, env, info, cw20_token, code_id)
+            execute::deploy_cw20_vault(deps, env, info, cw20_token)
         }
-        ExecuteMsg::DeployBank { denom, code_id } => {
-            execute::deploy_bank_vault(deps, env, info, denom, code_id)
+        ExecuteMsg::DeployBank { denom } => execute::deploy_bank_vault(deps, env, info, denom),
+        ExecuteMsg::SetCodeId { code_id, label } => {
+            execute::set_code_id(deps, info, code_id, label)
         }
-        ExecuteMsg::SetVaults { router, registry } => {
-            let router = deps.api.addr_validate(&router)?;
-            let registry = deps.api.addr_validate(&registry)?;
-            execute::set_vaults(deps, info, router, registry)
-        }
-        ExecuteMsg::AddCodeId { code_id, label } => {
-            execute::add_code_id(deps, info, code_id, label)
-        }
-        ExecuteMsg::RemoveCodeId { code_id } => execute::remove_code_id(deps, info, code_id),
+        ExecuteMsg::RemoveCodeId { label } => execute::remove_code_id(deps, info, label),
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
             ownership::transfer_ownership(deps.storage, info, new_owner)
@@ -104,7 +71,7 @@ pub fn execute(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetAllowedCodeIds {} => to_json_binary(&query::get_available_code_ids(_deps)?),
+        QueryMsg::GetVaultCodeIds {} => to_json_binary(&query::get_available_code_ids(_deps)?),
     }
 }
 
@@ -112,43 +79,28 @@ mod execute {
     use super::*;
     use crate::{
         auth,
-        state::{CodeIdLabel, CODE_IDS, REGISTRY},
+        state::{VaultType, CODE_IDS},
     };
     use cosmwasm_std::{Addr, Event, Response};
-
-    pub fn set_vaults(
-        deps: DepsMut,
-        info: MessageInfo,
-        router: Addr,
-        registry: Addr,
-    ) -> Result<Response, ContractError> {
-        ownership::assert_owner(deps.storage, &info).map_err(ContractError::Ownership)?;
-
-        ROUTER.save(deps.storage, &router)?;
-        REGISTRY.save(deps.storage, &registry)?;
-
-        Ok(Response::new().add_event(
-            Event::new("set_vaults")
-                .add_attribute("router", router.to_string())
-                .add_attribute("registry", registry.to_string()),
-        ))
-    }
 
     pub fn deploy_cw20_vault(
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
         cw20: Addr,
-        code_id: u64,
     ) -> Result<Response, ContractError> {
         auth::assert_operator(deps.as_ref(), &info)?;
-        auth::assert_code_id(deps.as_ref(), code_id)?;
 
         let msg = Cw20InstantiateMsg {
             pauser: bvs_pauser::api::get_pauser(deps.storage)?.to_string(),
             router: ROUTER.load(deps.storage)?.to_string(),
             operator: info.sender.clone().to_string(),
             cw20_contract: cw20.to_string(),
+        };
+
+        let code_id = match CODE_IDS.load(deps.storage, VaultType::Cw20Vault) {
+            Ok(code_id) => code_id,
+            Err(_) => return Err(ContractError::CodeIdNotFound {}),
         };
 
         let instantiate_msg = cosmwasm_std::WasmMsg::Instantiate {
@@ -173,16 +125,19 @@ mod execute {
         env: Env,
         info: MessageInfo,
         denom: String,
-        code_id: u64,
     ) -> Result<Response, ContractError> {
         auth::assert_operator(deps.as_ref(), &info)?;
-        auth::assert_code_id(deps.as_ref(), code_id)?;
 
         let msg = BankVaultInstantiateMsg {
             pauser: bvs_pauser::api::get_pauser(deps.storage)?.to_string(),
             router: ROUTER.load(deps.storage)?.to_string(),
             operator: info.sender.clone().to_string(),
             denom: denom.clone(),
+        };
+
+        let code_id = match CODE_IDS.load(deps.storage, VaultType::BankVault) {
+            Ok(code_id) => code_id,
+            Err(_) => return Err(ContractError::CodeIdNotFound {}),
         };
 
         let instantiate_msg = cosmwasm_std::WasmMsg::Instantiate {
@@ -202,15 +157,15 @@ mod execute {
             .add_event(event))
     }
 
-    pub fn add_code_id(
+    pub fn set_code_id(
         deps: DepsMut,
         info: MessageInfo,
         code_id: u64,
-        label: CodeIdLabel,
+        label: VaultType,
     ) -> Result<Response, ContractError> {
         ownership::assert_owner(deps.storage, &info).map_err(ContractError::Ownership)?;
 
-        CODE_IDS.save(deps.storage, code_id, &label)?;
+        CODE_IDS.save(deps.storage, label, &code_id)?;
 
         let event = Event::new("add_code_id").add_attribute("code_id", code_id.to_string());
 
@@ -220,11 +175,12 @@ mod execute {
     pub fn remove_code_id(
         deps: DepsMut,
         info: MessageInfo,
-        code_id: u64,
+        label: VaultType,
     ) -> Result<Response, ContractError> {
         ownership::assert_owner(deps.storage, &info).map_err(ContractError::Ownership)?;
 
-        CODE_IDS.remove(deps.storage, code_id);
+        let code_id = CODE_IDS.load(deps.storage, label.clone())?;
+        CODE_IDS.remove(deps.storage, label);
 
         let event = Event::new("remove_code_id").add_attribute("code_id", code_id.to_string());
 
@@ -234,18 +190,18 @@ mod execute {
 
 mod query {
     use crate::{
-        msg::AllowedCodeIdsResponse,
-        state::{CodeIdLabel, CODE_IDS},
+        msg::VaultCodeIdsResponse,
+        state::{VaultType, CODE_IDS},
     };
 
     use super::*;
     use cosmwasm_std::Deps;
 
-    pub fn get_available_code_ids(deps: Deps) -> StdResult<AllowedCodeIdsResponse> {
-        let code_ids: Vec<(u64, CodeIdLabel)> = CODE_IDS
+    pub fn get_available_code_ids(deps: Deps) -> StdResult<VaultCodeIdsResponse> {
+        let code_ids: Vec<(VaultType, u64)> = CODE_IDS
             .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
             .map(|item| Ok(item?))
-            .collect::<StdResult<Vec<(u64, CodeIdLabel)>>>()?;
-        Ok(AllowedCodeIdsResponse { code_ids })
+            .collect::<StdResult<Vec<(VaultType, u64)>>>()?;
+        Ok(VaultCodeIdsResponse { code_ids })
     }
 }

@@ -1,7 +1,7 @@
 use bvs_pauser::api::Display;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
-use crate::state::CodeIdLabel;
+use crate::state::VaultType;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -15,12 +15,10 @@ pub struct InstantiateMsg {
 #[derive(Display)]
 pub enum ExecuteMsg {
     DeployCw20 {
-        code_id: u64,
         cw20: String,
     },
 
     DeployBank {
-        code_id: u64,
         denom: String,
     },
 
@@ -31,29 +29,24 @@ pub enum ExecuteMsg {
         new_owner: String,
     },
 
-    SetVaults {
-        router: String,
-        registry: String,
-    },
-
-    AddCodeId {
+    SetCodeId {
         code_id: u64,
-        label: CodeIdLabel,
+        label: VaultType,
     },
 
     RemoveCodeId {
-        code_id: u64,
+        label: VaultType,
     },
 }
 
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(AllowedCodeIdsResponse)]
-    GetAllowedCodeIds {},
+    #[returns(VaultCodeIdsResponse)]
+    GetVaultCodeIds {},
 }
 
 #[cw_serde]
-pub struct AllowedCodeIdsResponse {
-    pub code_ids: Vec<(u64, CodeIdLabel)>,
+pub struct VaultCodeIdsResponse {
+    pub code_ids: Vec<(VaultType, u64)>,
 }
