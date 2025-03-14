@@ -2,6 +2,7 @@ package cosmwasmapi
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"testing"
 
@@ -88,6 +89,8 @@ func (s *ClientTestSuite) TestExecute() {
 		executeOptions,
 	)
 
+	fmt.Printf("response %+v", response)
+
 	s.Require().NoError(err)
 
 	expectedEvent := sdktypes.Event{
@@ -125,4 +128,21 @@ func (s *ClientTestSuite) TestExecute() {
 	)
 	s.Require().NoError(err)
 	s.Equal(pauser.IsPausedResponse(1), isPausedResponse)
+}
+
+func (s *ClientTestSuite) TestGetTx() {
+	receiver := s.container.GenerateAddress("receiver")
+
+	// create a TX by sending some ubbn to the receiver
+	tx := s.container.FundAddressUbbn(receiver.String(), 10000)
+
+	txHash := tx.Hash.String()
+	txRes, err := GetTx(
+		s.container.ClientCtx,
+		context.Background(),
+		txHash,
+	)
+
+	s.Require().NoError(err)
+	s.Equal(txHash, txRes.Hash.String())
 }

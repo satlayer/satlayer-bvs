@@ -2,11 +2,15 @@ package cosmwasmapi
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"time"
+
+	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 
 	sdkerrors "cosmossdk.io/errors"
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
-	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
@@ -53,8 +57,37 @@ type ExecuteOptions struct {
 
 func Execute(
 	clientCtx client.Context, ctx context.Context, sender string, opts ExecuteOptions,
-) (coretypes.ResultBroadcastTxCommit, error) {
-	var result coretypes.ResultBroadcastTxCommit
+) (coretypes.ResultTx, error) {
+	var result coretypes.ResultTx
+
+	// build + broadcast tx
+	res, err := BroadcastTx(clientCtx, ctx, sender, opts)
+	if err != nil {
+		return result, err
+	}
+
+	// poll for tx
+	txHash := res.TxHash
+	attempt := 1
+	maxRetries := 10
+	for {
+		txRes, err := GetTx(clientCtx, ctx, txHash)
+		if err == nil && txRes.TxResult.Code == 0 {
+			return txRes, nil
+		}
+		attempt++
+		if attempt > maxRetries {
+			return result, errors.New("maximum number of retries reached")
+		}
+		// wait for 1 second before retrying
+		time.Sleep(500 * time.Millisecond)
+	}
+}
+
+func BroadcastTx(
+	clientCtx client.Context, ctx context.Context, sender string, opts ExecuteOptions,
+) (sdktypes.TxResponse, error) {
+	var result sdktypes.TxResponse
 	amount, err := sdktypes.ParseCoinsNormalized(opts.Funds)
 	if err != nil {
 		return result, err
@@ -127,33 +160,39 @@ func Execute(
 		return result, err
 	}
 
-	// BROADCAST TX
+	// Broadcast TX
+	res, err := clientCtx.BroadcastTx(txBytes)
+	if err != nil {
+		return result, err
+	}
+
+	// code must be 0 for transaction to be valid (validated by consensus)
+	if res.Code != 0 {
+		// cast the error from tx response to registered errors
+		err = sdkerrors.ABCIError(res.Codespace, res.Code, res.RawLog)
+		return result, err
+	}
+
+	return *res, nil
+}
+
+func GetTx(
+	clientCtx client.Context, ctx context.Context, txHash string,
+) (coretypes.ResultTx, error) {
+	var result coretypes.ResultTx
+	txHashBytes, err := hex.DecodeString(txHash)
+	if err != nil {
+		return result, err
+	}
+
 	node, err := clientCtx.GetNode()
 	if err != nil {
-		panic(err)
+		return result, err
 	}
-	res, err := node.BroadcastTxCommit(context.Background(), txBytes)
+	res, err := node.Tx(ctx, txHashBytes, true)
 	if err != nil {
-		panic(err)
-	}
-
-	// code must be 0 for successful transaction
-	if res.CheckTx.IsErr() {
-		// cast the error from tx response to registered errors
-		err = sdkerrors.ABCIError(res.CheckTx.Codespace, res.CheckTx.Code, res.CheckTx.Log)
 		return result, err
 	}
 
-	// code must be 0 for successful transaction
-	if res.TxResult.IsErr() {
-		// cast the error from tx response to registered errors
-		err = sdkerrors.ABCIError(res.TxResult.Codespace, res.TxResult.Code, res.TxResult.Log)
-		return result, err
-	}
-
-	resBytes, err := json.Marshal(res)
-
-	err = json.Unmarshal(resBytes, &result)
-
-	return result, nil
+	return *res, nil
 }
