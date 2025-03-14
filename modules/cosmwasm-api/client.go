@@ -57,6 +57,8 @@ type ExecuteOptions struct {
 	Simulate      bool             // Simulate: Whether to simulate the transaction to estimate gas usage and set Gas accordingly
 }
 
+// Execute broadcasts a transaction to call a smart contract and waits for the transaction to be included in a block.
+// It's a wrapper around the `BroadcastTx` and `GetTx` functions.
 func Execute(
 	clientCtx client.Context, ctx context.Context, sender string, opts ExecuteOptions,
 ) (coretypes.ResultTx, error) {
@@ -86,6 +88,10 @@ func Execute(
 	}
 }
 
+// BroadcastTx broadcasts a transaction to call a smart contract and returns the transaction response.
+// BroadcastTx response does not wait for transaction to be committed in a block.
+// It only waits for the transaction to be accepted by the mempool and passes the CheckTx phase.
+// There is no guarantee that the transaction will be included in a block.
 func BroadcastTx(
 	clientCtx client.Context, ctx context.Context, sender string, opts ExecuteOptions,
 ) (sdktypes.TxResponse, error) {
@@ -187,6 +193,7 @@ func BroadcastTx(
 	return *res, nil
 }
 
+// GetTx retrieves a transaction by its hash.
 func GetTx(
 	clientCtx client.Context, ctx context.Context, txHash string,
 ) (coretypes.ResultTx, error) {
