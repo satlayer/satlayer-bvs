@@ -77,6 +77,7 @@ func strategyCmd() *cobra.Command {
 			value, err := strconv.ParseBool(args[2])
 			if err != nil {
 				fmt.Printf("Error: %v\n", err)
+				return
 			}
 
 			strategy.SetThirdTransferForbidden(args[0], args[1], value)
@@ -90,6 +91,7 @@ func strategyCmd() *cobra.Command {
 			amount, err := strconv.ParseUint(args[3], 10, 64)
 			if err != nil {
 				fmt.Printf("Error: %v\n", err)
+				return
 			}
 			strategy.DepositStrategy(args[0], args[1], args[2], amount)
 		},
@@ -134,6 +136,7 @@ func strategyCmd() *cobra.Command {
 			amount, err := strconv.ParseUint(args[3], 10, 64)
 			if err != nil {
 				fmt.Printf("Error: %v\n", err)
+				return
 			}
 			strategy.RemoveShares(args[0], args[1], args[2], amount)
 		},
@@ -146,6 +149,7 @@ func strategyCmd() *cobra.Command {
 			amount, err := strconv.ParseUint(args[3], 10, 64)
 			if err != nil {
 				fmt.Printf("Error: %v\n", err)
+				return
 			}
 			strategy.WithdrawSharesAsTokens(args[0], args[1], args[2], args[4], amount)
 		},
@@ -158,6 +162,7 @@ func strategyCmd() *cobra.Command {
 			amount, err := strconv.ParseUint(args[4], 10, 64)
 			if err != nil {
 				fmt.Printf("Error: %v\n", err)
+				return
 			}
 			strategy.AddShares(args[0], args[1], args[2], args[3], amount)
 		},

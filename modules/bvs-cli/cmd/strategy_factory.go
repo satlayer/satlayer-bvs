@@ -99,7 +99,11 @@ func strategyFactoryCmd() *cobra.Command {
 		Short: "To set the third party transfers forbidden.",
 		Args:  cobra.ExactArgs(3),
 		Run: func(cmd *cobra.Command, args []string) {
-			forbidden, _ := strconv.ParseBool(args[2])
+			forbidden, err := strconv.ParseBool(args[2])
+			if err != nil {
+				fmt.Println("Error: Unable to convert input to bool")
+				return
+			}
 			strategyfactory.SetThirdPartyTransfersForbidden(args[0], args[1], forbidden)
 		},
 	}

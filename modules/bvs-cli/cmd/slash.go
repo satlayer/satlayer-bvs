@@ -115,10 +115,26 @@ func slashCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			keyNames := strings.Split(args[0], ",")
 			slashValidators := strings.Split(args[5], ",")
-			slashSignature, _ := strconv.ParseInt(args[4], 10, 64)
-			startTime, _ := strconv.ParseInt(args[7], 10, 64)
-			endTime, _ := strconv.ParseInt(args[8], 10, 64)
-			status, _ := strconv.ParseBool(args[9])
+			slashSignature, err := strconv.ParseInt(args[4], 10, 64)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return
+			}
+			startTime, err := strconv.ParseInt(args[7], 10, 64)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return
+			}
+			endTime, err := strconv.ParseInt(args[8], 10, 64)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return
+			}
+			status, err := strconv.ParseBool(args[9])
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return
+			}
 			slash.SubmitSlashRequest(keyNames, args[1], args[2], args[3], slashSignature, slashValidators, args[6], startTime, endTime, status)
 		},
 	}
@@ -177,12 +193,28 @@ func slashCmd() *cobra.Command {
 			slasher := args[2]
 			operator := args[3]
 			share := args[4]
-			slashSignature, _ := strconv.ParseInt(args[5], 10, 64)
+			slashSignature, err := strconv.ParseInt(args[5], 10, 64)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return
+			}
 			slashValidators := strings.Split(args[6], ",")
 			reason := args[7]
-			startTime, _ := strconv.ParseInt(args[8], 10, 64)
-			endTime, _ := strconv.ParseInt(args[9], 10, 64)
-			status, _ := strconv.ParseBool(args[10])
+			startTime, err := strconv.ParseInt(args[8], 10, 64)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return
+			}
+			endTime, err := strconv.ParseInt(args[9], 10, 64)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return
+			}
+			status, err := strconv.ParseBool(args[10])
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				return
+			}
 
 			slash.CalculateSlashHash(keyNames, sender, slasher, operator, share, slashSignature, slashValidators, reason, startTime, endTime, status)
 		},

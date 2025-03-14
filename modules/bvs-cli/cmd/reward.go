@@ -30,7 +30,8 @@ func rewardCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			activationDelay, err := strconv.ParseInt(args[1], 10, 64)
 			if err != nil {
-				fmt.Printf("Cmd Args: %s\n", args)
+				fmt.Printf("Cmd Args activationDelay: %s\n ParseInt error: %s", args, err)
+				return
 			}
 			reward.SetActivationDelay(args[0], activationDelay)
 		},
@@ -42,7 +43,8 @@ func rewardCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			newCommissionBips, err := strconv.ParseInt(args[1], 10, 64)
 			if err != nil {
-				fmt.Printf("Cmd Args: %s\n", args)
+				fmt.Printf("Cmd Args newCommissionBips: %s\n. Parsenit error: %s", args, err)
+				return
 			}
 			reward.SetGlobalOperatorCommission(args[0], newCommissionBips)
 		},
