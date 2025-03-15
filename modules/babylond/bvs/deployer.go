@@ -8,7 +8,6 @@ import (
 	delegationmanager "github.com/satlayer/satlayer-bvs/cosmwasm-schema/delegation-manager"
 	"github.com/satlayer/satlayer-bvs/cosmwasm-schema/directory"
 	"github.com/satlayer/satlayer-bvs/cosmwasm-schema/pauser"
-	rewardscoordinator "github.com/satlayer/satlayer-bvs/cosmwasm-schema/rewards-coordinator"
 	slashmanager "github.com/satlayer/satlayer-bvs/cosmwasm-schema/slash-manager"
 	strategybase "github.com/satlayer/satlayer-bvs/cosmwasm-schema/strategy-base"
 	strategymanager "github.com/satlayer/satlayer-bvs/cosmwasm-schema/strategy-manager"
@@ -107,29 +106,6 @@ func (d *Deployer) DeployDirectory(
 	}
 
 	return deployCrate(d, "bvs-directory", initMsg, "BVS Directory")
-}
-
-func (d *Deployer) DeployRewardsCoordinator(
-	pauser string,
-	activationDelay int64,
-	calculationIntervalSeconds int64,
-	genesisRewardsTimestamp int64,
-	maxFutureLength int64,
-	maxRetroactiveLength int64,
-	maxRewardsDuration int64,
-) *Contract[rewardscoordinator.InstantiateMsg] {
-	initMsg := rewardscoordinator.InstantiateMsg{
-		Owner:                      d.GenerateAddress("owner").String(),
-		Pauser:                     pauser,
-		ActivationDelay:            activationDelay,
-		CalculationIntervalSeconds: calculationIntervalSeconds,
-		GenesisRewardsTimestamp:    genesisRewardsTimestamp,
-		MaxFutureLength:            maxFutureLength,
-		MaxRetroactiveLength:       maxRetroactiveLength,
-		MaxRewardsDuration:         maxRewardsDuration,
-	}
-
-	return deployCrate(d, "bvs-rewards-coordinator", initMsg, "BVS Rewards Coordinator")
 }
 
 func (d *Deployer) DeployStrategyBase(
