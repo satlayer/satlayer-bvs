@@ -33,7 +33,7 @@ crates/
 ├── bvs-pauser/
 │   └── src/
 │       └── testing.rs        <-- put here with `#![cfg(not(target_arch = "wasm32"))]`
-├── bvs-rewards-coordinator/
+├── bvs-vault-router/
 │   └── src/
 │       └── testing.rs        <-- put here with `#![cfg(not(target_arch = "wasm32"))]`
 ```

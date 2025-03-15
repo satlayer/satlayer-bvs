@@ -5,7 +5,6 @@ members = [
   "bvs-strategy-manager",
   "bvs-directory",
   "bvs-delegation-manager",
-  "bvs-rewards-coordinator",
   "bvs-slash-manager",
   # BVS CosmWasm Library
   "bvs-library",
@@ -65,7 +64,6 @@ bvs-vault-cw20 = { path = "./bvs-vault-cw20", features = ["library"] }
 
 bvs-delegation-manager = { path = "./bvs-delegation-manager", features = ["library"] }
 bvs-directory = { path = "./bvs-directory", features = ["library"] }
-bvs-rewards-coordinator = { path = "./bvs-rewards-coordinator", features = ["library"] }
 bvs-slash-manager = { path = "./bvs-slash-manager", features = ["library"] }
 bvs-strategy-base = { path = "./bvs-strategy-base", features = ["library"] }
 bvs-strategy-manager = { path = "./bvs-strategy-manager", features = ["library"] }

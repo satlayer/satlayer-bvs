@@ -282,29 +282,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bvs-rewards-coordinator"
-version = "0.0.0"
-dependencies = [
- "bvs-library",
- "bvs-pauser",
- "bvs-strategy-base",
- "bvs-strategy-manager",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "cw20-base",
- "rs_merkle",
- "schemars",
- "serde",
- "serde_json",
- "sha2",
- "thiserror 1.0.69",
-]
-
-[[package]]
 name = "bvs-slash-manager"
 version = "0.0.0"
 dependencies = [
@@ -1193,15 +1170,6 @@ dependencies = [
  "byteorder",
  "rmp",
  "serde",
-]
-
-[[package]]
-name = "rs_merkle"
-version = "1.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b241d2e59b74ef9e98d94c78c47623d04c8392abaf82014dfd372a16041128f"
-dependencies = [
- "sha2",
 ]
 
 [[package]]

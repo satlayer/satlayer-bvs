@@ -40,7 +40,6 @@ const packages = [
   "@satlayer/bvs-strategy-manager",
   "@satlayer/bvs-directory",
   "@satlayer/bvs-delegation-manager",
-  "@satlayer/bvs-rewards-coordinator",
   "@satlayer/bvs-slash-manager",
 
   "@satlayer/bvs-pauser",

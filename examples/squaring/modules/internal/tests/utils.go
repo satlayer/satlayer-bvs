@@ -27,12 +27,11 @@ import (
 )
 
 type ContractsApi struct {
-	DelegationManagerApi  *api.DelegationManager
-	RewardsCoordinatorApi *api.RewardsCoordinator
-	SlashManagerApi       *api.SlashManager
-	StrategyBaseApi       *api.StrategyBase
-	StrategyManagerApi    *api.StrategyManager
-	DirectoryApi          *api.Directory
+	DelegationManagerApi *api.DelegationManager
+	SlashManagerApi      *api.SlashManager
+	StrategyBaseApi      *api.StrategyBase
+	StrategyManagerApi   *api.StrategyManager
+	DirectoryApi         *api.Directory
 }
 
 type TestSuite struct {
@@ -173,22 +172,6 @@ func (suite *TestSuite) DeployBvsContracts() {
 	suite.SlashManagerApi = api.NewSlashManager(suite.ChainIO)
 	suite.SlashManagerApi.BindClient(slashManagerContract.Address)
 
-	status, err := suite.Babylond.ClientCtx.Client.Status(context.Background())
-	suite.Require().NoError(err)
-	blockTime := status.SyncInfo.LatestBlockTime.Second()
-
-	rewardsCoordinatorContract := deployer.DeployRewardsCoordinator(
-		pauser.Address,
-		60,     // 1 minute
-		86_400, // 1 day
-		int64(blockTime)/86_400*86_400,
-		10*86_400, // 10 days
-		5*86_400,  // 5 days
-		30*86_400, // 30 days
-	)
-	suite.RewardsCoordinatorApi = api.NewRewardsCoordinator(suite.ChainIO)
-	suite.RewardsCoordinatorApi.BindClient(rewardsCoordinatorContract.Address)
-
 	// deploy CW20 contract
 	token := cw20.DeployCw20(deployer.BabylonContainer, cw20.InstantiateMsg{
 		Decimals: 18,
@@ -212,11 +195,7 @@ func (suite *TestSuite) DeployBvsContracts() {
 
 	// connect contracts together
 
-	res, err := suite.RewardsCoordinatorApi.SetRouting(context.Background(), strategyManagerContract.Address)
-	suite.NoError(err)
-	suite.Equal(uint32(0), res.TxResult.Code)
-
-	res, err = suite.DelegationManagerApi.SetRouting(context.Background(), strategyManagerContract.Address, slashManagerContract.Address)
+	res, err := suite.DelegationManagerApi.SetRouting(context.Background(), strategyManagerContract.Address, slashManagerContract.Address)
 	suite.NoError(err)
 	suite.Equal(uint32(0), res.TxResult.Code)
 
@@ -225,10 +204,6 @@ func (suite *TestSuite) DeployBvsContracts() {
 	suite.Equal(uint32(0), res.TxResult.Code)
 
 	res, err = suite.SlashManagerApi.SetRouting(context.Background(), delegationManagerContract.Address, strategyManagerContract.Address)
-	suite.NoError(err)
-	suite.Equal(uint32(0), res.TxResult.Code)
-
-	res, err = suite.RewardsCoordinatorApi.SetRewardsUpdater(context.Background(), tempAddress.String())
 	suite.NoError(err)
 	suite.Equal(uint32(0), res.TxResult.Code)
 
