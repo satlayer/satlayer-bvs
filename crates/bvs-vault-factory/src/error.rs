@@ -15,9 +15,9 @@ pub enum ContractError {
     #[error("Vault error: {msg}")]
     VaultError { msg: String },
 
-    #[error("bvs_vault_factory: Unauthorized")]
+    #[error("Unauthorized")]
     Unauthorized {},
 
-    #[error("bvs_vault_factory: Code Id Not Found")]
+    #[error("Code Id Not Found")]
     CodeIdNotFound {},
 }
