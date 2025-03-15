@@ -17,7 +17,6 @@ func Cmd() *cobra.Command {
 	delegation := delegationCmd()
 	strategy := strategyCmd()
 	strategyBase := strategyBaseCmd()
-	reward := rewardCmd()
 	chain := chainCmd()
 	slash := slashCmd()
 
@@ -26,7 +25,6 @@ func Cmd() *cobra.Command {
 	rootCmd.AddCommand(delegation)
 	rootCmd.AddCommand(strategy)
 	rootCmd.AddCommand(strategyBase)
-	rootCmd.AddCommand(reward)
 	rootCmd.AddCommand(chain)
 	rootCmd.AddCommand(slash)
 
