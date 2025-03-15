@@ -84,13 +84,31 @@ pub fn assert_not_validating(deps: &Deps) -> Result<(), VaultError> {
     Ok(())
 }
 
+/// Asserts that the vault is delegated to any services.
+/// Used to prevent unauthorized withdrawals, delegated vaults withdrawal must be queued.
+pub fn assert_validating(deps: &Deps) -> Result<(), VaultError> {
+    let router = get_router(deps.storage)?;
+    let operator = get_operator(deps.storage)?;
+
+    let is_delegated: bool = deps.querier.query_wasm_smart(
+        router.to_string(),
+        &QueryMsg::IsValidating {
+            operator: operator.to_string(),
+        },
+    )?;
+    if !is_delegated {
+        return Err(VaultError::Delegated {});
+    }
+    Ok(())
+}
+
 /// Returns the queued withdrawal lock period in seconds.
 pub fn get_withdrawal_lock_period(deps: &Deps) -> Result<Uint64, VaultError> {
     let router = get_router(deps.storage)?;
 
     let withdrawal_lock_period: Uint64 = deps
         .querier
-        .query_wasm_smart(router.to_string(), &QueryMsg::WithdrawalLockPeriod {})?;
+        .query_wasm_smart(router.to_string(), &QueryMsg::GetWithdrawalLockPeriod {})?;
 
     Ok(withdrawal_lock_period)
 }

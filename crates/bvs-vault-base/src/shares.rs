@@ -141,4 +141,51 @@ mod tests {
         let shares = get_shares(&store, &staker).unwrap();
         assert_eq!(shares, Uint128::new(11_111));
     }
+
+    #[test]
+    fn set_and_get_queued_withdrawal_info() {
+        let mut store = MockStorage::new();
+        let staker = Addr::unchecked("staker");
+
+        let queued_withdrawal_info1 = QueuedWithdrawalInfo {
+            queued_shares: Uint128::new(123),
+            unlock_timestamp: Uint64::new(100),
+        };
+
+        let result =
+            update_queued_withdrawal_info(&mut store, &staker, queued_withdrawal_info1.clone())
+                .unwrap();
+        assert_eq!(result.queued_shares, queued_withdrawal_info1.queued_shares);
+        assert_eq!(
+            result.unlock_timestamp,
+            queued_withdrawal_info1.unlock_timestamp
+        );
+
+        let queued_withdrawal_info2 = QueuedWithdrawalInfo {
+            queued_shares: Uint128::new(456),
+            unlock_timestamp: Uint64::new(120),
+        };
+
+        let result =
+            update_queued_withdrawal_info(&mut store, &staker, queued_withdrawal_info2.clone())
+                .unwrap();
+        assert_eq!(result.queued_shares, Uint128::new(579));
+        assert_eq!(
+            result.unlock_timestamp,
+            queued_withdrawal_info2.unlock_timestamp
+        );
+
+        let result = get_queued_withdrawal_info(&mut store, &staker).unwrap();
+        assert_eq!(result.queued_shares, Uint128::new(579));
+        assert_eq!(
+            result.unlock_timestamp,
+            queued_withdrawal_info2.unlock_timestamp
+        );
+
+        remove_queued_withdrawal_info(&mut store, &staker);
+
+        let result = get_queued_withdrawal_info(&mut store, &staker).unwrap();
+        assert_eq!(result.queued_shares, Uint128::zero());
+        assert_eq!(result.unlock_timestamp, Uint64::zero());
+    }
 }

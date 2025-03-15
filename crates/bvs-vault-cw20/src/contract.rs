@@ -186,6 +186,8 @@ mod execute {
         info: MessageInfo,
         msg: RecipientAmount,
     ) -> Result<Response, ContractError> {
+        router::assert_validating(&deps.as_ref())?;
+
         let withdrawal_lock_peirod = router::get_withdrawal_lock_period(&deps.as_ref())?;
         let current_timestamp = env.block.time.seconds();
         let new_unlock_timestamp = withdrawal_lock_peirod
@@ -197,16 +199,11 @@ mod execute {
             unlock_timestamp: new_unlock_timestamp,
         };
 
-        let old_withdrawal_info = shares::update_queued_withdrawal_info(
+        let result = shares::update_queued_withdrawal_info(
             deps.storage,
             &info.sender,
             new_queued_withdrawal_info,
         )?;
-
-        let total_queued_shares = old_withdrawal_info
-            .queued_shares
-            .checked_add(msg.amount)
-            .map_err(StdError::from)?;
 
         Ok(Response::new().add_event(
             Event::new("QueueWithdrawalTo")
@@ -214,11 +211,7 @@ mod execute {
                 .add_attribute("recipient", msg.recipient.to_string())
                 .add_attribute("queued_shares", msg.amount.to_string())
                 .add_attribute("new_unlock_timestamp", new_unlock_timestamp.to_string())
-                .add_attribute("total_queued_shares", total_queued_shares.to_string())
-                .add_attribute(
-                    "old_unlock_timestamp",
-                    old_withdrawal_info.unlock_timestamp.to_string(),
-                ),
+                .add_attribute("total_queued_shares", result.queued_shares.to_string()),
         ))
     }
 
@@ -229,6 +222,8 @@ mod execute {
         info: MessageInfo,
         msg: RecipientAmount,
     ) -> Result<Response, ContractError> {
+        router::assert_validating(&deps.as_ref())?;
+
         let withdrawal_info = shares::get_queued_withdrawal_info(deps.storage, &msg.recipient)?;
         let queued_shares = withdrawal_info.queued_shares;
         let unlock_timestamp = withdrawal_info.unlock_timestamp;
@@ -271,12 +266,14 @@ mod execute {
         shares::remove_queued_withdrawal_info(deps.storage, &info.sender);
 
         Ok(Response::new()
-            .add_event(Event::new("RedeemWithdrawalTo"))
-            .add_attribute("sender", info.sender.to_string())
-            .add_attribute("recipient", msg.recipient.to_string())
-            .add_attribute("claimed_assets", claimed_assets.to_string())
-            .add_attribute("queued_shares", queued_shares.to_string())
-            .add_attribute("total_shares", vault.total_shares().to_string())
+            .add_event(
+                Event::new("RedeemWithdrawalTo")
+                    .add_attribute("sender", info.sender.to_string())
+                    .add_attribute("recipient", msg.recipient.to_string())
+                    .add_attribute("sub_shares", queued_shares.to_string())
+                    .add_attribute("claimed_assets", claimed_assets.to_string())
+                    .add_attribute("total_shares", vault.total_shares().to_string()),
+            )
             .add_message(transfer_msg))
     }
 }
@@ -292,10 +289,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let staker = deps.api.addr_validate(&staker)?;
             to_json_binary(&query::assets(deps, env, staker)?)
         }
-        QueryMsg::QueuedWithdrawal { staker } => {
-            let staker = deps.api.addr_validate(&staker)?;
-            to_json_binary(&query::queued_withdrawal(deps, staker)?)
-        }
         QueryMsg::ConvertToAssets { shares } => {
             to_json_binary(&query::convert_to_assets(deps, env, shares)?)
         }
@@ -304,6 +297,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::TotalShares {} => to_json_binary(&query::total_shares(deps, env)?),
         QueryMsg::TotalAssets {} => to_json_binary(&query::total_assets(deps, env)?),
+        QueryMsg::QueuedWithdrawal { staker } => {
+            let staker = deps.api.addr_validate(&staker)?;
+            to_json_binary(&query::queued_withdrawal(deps, staker)?)
+        }
         QueryMsg::VaultInfo {} => to_json_binary(&query::vault_info(deps, env)?),
     }
 }
@@ -328,11 +325,6 @@ mod query {
         convert_to_assets(deps, env, shares)
     }
 
-    /// Queued withdrawal in this vault.
-    pub fn queued_withdrawal(deps: Deps, staker: Addr) -> StdResult<QueuedWithdrawalInfo> {
-        shares::get_queued_withdrawal_info(deps.storage, &staker)
-    }
-
     /// Given the number of shares, convert to assets based on the vault exchange rate.
     pub fn convert_to_assets(deps: Deps, env: Env, shares: Uint128) -> StdResult<Uint128> {
         let balance = token::query_balance(&deps, &env)?;
@@ -355,6 +347,11 @@ mod query {
     /// Total assets in this vault. Including assets through staking and donations.
     pub fn total_assets(deps: Deps, env: Env) -> StdResult<Uint128> {
         token::query_balance(&deps, &env)
+    }
+
+    /// Get the queued withdrawal info in this vault.
+    pub fn queued_withdrawal(deps: Deps, staker: Addr) -> StdResult<QueuedWithdrawalInfo> {
+        shares::get_queued_withdrawal_info(deps.storage, &staker)
     }
 
     /// Returns the vault information

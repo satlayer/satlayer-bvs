@@ -177,7 +177,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 .transpose()?;
             to_json_binary(&query::list_vaults(deps, limit, start_after)?)
         }
-        QueryMsg::WithdrawalLockPeriod {} => to_json_binary(&query::withdrawal_lock_period(deps)?),
+        QueryMsg::GetWithdrawalLockPeriod {} => {
+            to_json_binary(&query::get_withdrawal_lock_period(deps)?)
+        }
     }
 }
 
@@ -238,7 +240,7 @@ mod query {
         Ok(VaultListResponse(vaults))
     }
 
-    pub fn withdrawal_lock_period(deps: Deps) -> StdResult<Uint64> {
+    pub fn get_withdrawal_lock_period(deps: Deps) -> StdResult<Uint64> {
         state::WITHDRAWAL_LOCK_PERIOD.load(deps.storage)
     }
 }
@@ -248,10 +250,10 @@ mod tests {
     use super::*;
     use super::{
         execute::{
-            set_vault,
+            set_vault, set_withdrawal_lock_period,
             vault::{VaultInfoQueryMsg, VaultInfoResponse},
         },
-        query::{is_validating, is_whitelisted, list_vaults},
+        query::{get_withdrawal_lock_period, is_delegated, is_whitelisted, list_vaults},
     };
     use crate::msg::InstantiateMsg;
     use crate::state::{Vault, REGISTRY, VAULTS};
@@ -261,7 +263,7 @@ mod tests {
     };
     use cosmwasm_std::{
         from_json, Attribute, ContractResult, Event, OwnedDeps, QuerierResult, SystemError,
-        SystemResult, WasmQuery,
+        SystemResult, Uint64, WasmQuery,
     };
 
     #[test]
@@ -475,6 +477,81 @@ mod tests {
                 }
                 .to_string()
             );
+        }
+    }
+
+    #[test]
+    fn test_set_and_get_withdrawal_lock_period() {
+        let (mut deps, env, owner_info) = instantiate_contract();
+
+        let withdrawal_lock_period = Uint64::new(120);
+
+        // set withdrawal lock period successfully
+        {
+            let result = set_withdrawal_lock_period(
+                deps.as_mut(),
+                env.clone(),
+                owner_info.clone(),
+                withdrawal_lock_period,
+            );
+            assert!(result.is_ok());
+
+            let response = result.unwrap();
+            assert_eq!(response.events.len(), 1);
+            assert_eq!(
+                response.events[0],
+                Event::new("SetWithdrawalLockPeriod")
+                    .add_attribute("prev_withdrawal_lock_period", Uint64::zero())
+                    .add_attribute(
+                        "new_withdrawal_lock_period",
+                        withdrawal_lock_period.to_string()
+                    )
+            );
+        }
+
+        let withdrawal_lock_period1 = Uint64::new(150);
+
+        // update withdrawal lock period successfully
+        {
+            let result = set_withdrawal_lock_period(
+                deps.as_mut(),
+                env.clone(),
+                owner_info,
+                withdrawal_lock_period1,
+            );
+            assert!(result.is_ok());
+
+            let response = result.unwrap();
+            assert_eq!(response.events.len(), 1);
+            assert_eq!(
+                response.events[0],
+                Event::new("SetWithdrawalLockPeriod")
+                    .add_attribute(
+                        "prev_withdrawal_lock_period",
+                        withdrawal_lock_period.to_string()
+                    )
+                    .add_attribute(
+                        "new_withdrawal_lock_period",
+                        withdrawal_lock_period1.to_string()
+                    )
+            );
+        }
+
+        // query withdrawal lock period
+        {
+            let result = get_withdrawal_lock_period(deps.as_ref()).unwrap();
+            assert_eq!(result, withdrawal_lock_period1);
+        }
+
+        // wrong permission to update withdrawal lock period successfully
+        {
+            let user_info = MessageInfo {
+                sender: deps.api.addr_make("user"),
+                funds: vec![],
+            };
+            let result =
+                set_withdrawal_lock_period(deps.as_mut(), env, user_info, withdrawal_lock_period1);
+            assert!(result.is_err());
         }
     }
 

@@ -1,6 +1,7 @@
 use crate::error::VaultError;
+use crate::shares::QueuedWithdrawalInfo;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Api, Uint128, Uint64};
+use cosmwasm_std::{Addr, Api, Uint128};
 
 /// Vault `ExecuteMsg`, to be implemented by the vault contract.
 /// Callable by any `sender`, redeemable by any `recipient`.
@@ -131,11 +132,11 @@ struct TotalSharesResponse(Uint128);
 #[cw_serde]
 struct TotalAssetsResponse(Uint128);
 
-/// The response to the `QueuedWithdrawl` query.
-/// Not exported.
-/// This is just a wrapper around `(Uint128, Uint64)`, so that the schema can be generated.
+/// The response to the `QueuedWithdrawal` query.
+///  Not exported.
+/// This is just a wrapper around `QueuedWithdrawalInfo`, so that the schema can be generated.
 #[cw_serde]
-struct QueuedWithdrawalResponse((Uint128, Uint64));
+struct QueuedWithdrawalResponse(QueuedWithdrawalInfo);
 
 #[cw_serde]
 pub struct VaultInfoResponse {
