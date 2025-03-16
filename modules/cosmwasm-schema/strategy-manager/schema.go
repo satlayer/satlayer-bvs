@@ -1,108 +1,15 @@
-// This file was generated from JSON Schema using quicktype, do not modify it directly.
-// To parse and unparse this JSON data, add this code to your project and do:
-//
-//    instantiateMsg, err := UnmarshalInstantiateMsg(bytes)
-//    bytes, err = instantiateMsg.Marshal()
-//
-//    executeMsg, err := UnmarshalExecuteMsg(bytes)
-//    bytes, err = executeMsg.Marshal()
-//
-//    queryMsg, err := UnmarshalQueryMsg(bytes)
-//    bytes, err = queryMsg.Marshal()
-//
-//    isStrategyWhitelistedResponse, err := UnmarshalIsStrategyWhitelistedResponse(bytes)
-//    bytes, err = isStrategyWhitelistedResponse.Marshal()
-//
-//    stakerDepositListResponse, err := UnmarshalStakerDepositListResponse(bytes)
-//    bytes, err = stakerDepositListResponse.Marshal()
-//
-//    stakerStrategyListResponse, err := UnmarshalStakerStrategyListResponse(bytes)
-//    bytes, err = stakerStrategyListResponse.Marshal()
-//
-//    stakerStrategySharesResponse, err := UnmarshalStakerStrategySharesResponse(bytes)
-//    bytes, err = stakerStrategySharesResponse.Marshal()
+// This file was automatically generated from strategy-manager/schema.json.
+// DO NOT MODIFY IT BY HAND.
 
 package strategymanager
 
-import "encoding/json"
-
-func UnmarshalInstantiateMsg(data []byte) (InstantiateMsg, error) {
-	var r InstantiateMsg
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *InstantiateMsg) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalExecuteMsg(data []byte) (ExecuteMsg, error) {
-	var r ExecuteMsg
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *ExecuteMsg) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalQueryMsg(data []byte) (QueryMsg, error) {
-	var r QueryMsg
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *QueryMsg) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
 type IsStrategyWhitelistedResponse bool
-
-func UnmarshalIsStrategyWhitelistedResponse(data []byte) (IsStrategyWhitelistedResponse, error) {
-	var r IsStrategyWhitelistedResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *IsStrategyWhitelistedResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
 
 type StakerDepositListResponse []StrategyShare
 
-func UnmarshalStakerDepositListResponse(data []byte) (StakerDepositListResponse, error) {
-	var r StakerDepositListResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *StakerDepositListResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
 type StakerStrategyListResponse []string
 
-func UnmarshalStakerStrategyListResponse(data []byte) (StakerStrategyListResponse, error) {
-	var r StakerStrategyListResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *StakerStrategyListResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
 type StakerStrategySharesResponse string
-
-func UnmarshalStakerStrategySharesResponse(data []byte) (StakerStrategySharesResponse, error) {
-	var r StakerStrategySharesResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *StakerStrategySharesResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
 
 type InstantiateMsg struct {
 	Owner  string `json:"owner"`

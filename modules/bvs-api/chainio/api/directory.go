@@ -148,7 +148,7 @@ func (r *Directory) QueryStatus(operator, service string) (*directory.StatusResp
 			Service:  service,
 		},
 	}
-	queryMsgBytes, err := queryMsg.Marshal()
+	queryMsgBytes, err := json.Marshal(queryMsg)
 	if err != nil {
 		return nil, err
 	}
@@ -159,8 +159,9 @@ func (r *Directory) QueryStatus(operator, service string) (*directory.StatusResp
 		return nil, err
 	}
 
-	status, err := directory.UnmarshalStatusResponse(resp.Data)
-	return &status, err
+	var res directory.StatusResponse
+	err = json.Unmarshal(resp.Data, &res)
+	return &res, err
 }
 
 func (r *Directory) newExecuteOptions(contractAddr string, executeMsg []byte, memo string) types.ExecuteOptions {

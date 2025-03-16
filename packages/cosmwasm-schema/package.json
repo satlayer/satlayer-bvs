@@ -2,11 +2,10 @@
   "name": "@satlayer/cosmwasm-schema",
   "private": false,
   "files": [
-    "dist"
+    "*.d.ts"
   ],
   "scripts": {
-    "build": "tsc",
-    "generate": "node generate.mjs && prettier --write src"
+    "build": "node generate.mjs && prettier --write *.d.ts"
   },
   "devDependencies": {
     "@satlayer/bvs-pauser": "workspace:*",
@@ -14,10 +13,6 @@
     "@satlayer/bvs-vault-bank": "workspace:*",
     "@satlayer/bvs-vault-cw20": "workspace:*",
     "@satlayer/bvs-vault-router": "workspace:*",
-    "quicktype-core": "^23.0.171",
-    "zod": "^3.24.2"
-  },
-  "peerDependencies": {
-    "zod": ">=3.0.0"
+    "json-schema-to-typescript": "^15.0.4"
   }
 }

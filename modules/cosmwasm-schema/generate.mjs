@@ -27,12 +27,19 @@ async function generate(schema) {
     inputData,
     lang: "go",
     rendererOptions: {
-      package: name.replaceAll("-", ""),
+      "just-types": true,
     },
   });
 
+  const content = [
+    `// This file was automatically generated from ${name}/schema.json.`,
+    "// DO NOT MODIFY IT BY HAND.",
+    "",
+    "package " + name.replaceAll("-", ""),
+    ...lines,
+  ];
   await mkdir(name, { recursive: true });
-  await writeFile(join(name, "schema.go"), lines.join("\n"));
+  await writeFile(join(name, "schema.go"), content.join("\n"));
 }
 
 const packages = [
