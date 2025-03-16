@@ -185,8 +185,6 @@ mod execute {
         info: MessageInfo,
         msg: RecipientAmount,
     ) -> Result<Response, ContractError> {
-        router::assert_validating(&deps.as_ref())?;
-
         let withdrawal_lock_period = router::get_withdrawal_lock_period(&deps.as_ref())?;
         let current_timestamp = env.block.time.seconds();
         let unlock_timestamp = withdrawal_lock_period
@@ -221,18 +219,16 @@ mod execute {
         info: MessageInfo,
         msg: RecipientAmount,
     ) -> Result<Response, ContractError> {
-        router::assert_validating(&deps.as_ref())?;
-
         let withdrawal_info = shares::get_queued_withdrawal_info(deps.storage, &msg.recipient)?;
         let queued_shares = withdrawal_info.queued_shares;
         let unlock_timestamp = withdrawal_info.unlock_timestamp;
 
         if queued_shares.is_zero() && unlock_timestamp.is_zero() {
-            return Err(VaultError::zero("No queued assets").into());
+            return Err(VaultError::zero("No queued shares").into());
         }
 
         if unlock_timestamp > Uint64::new(env.block.time.seconds()) {
-            return Err(VaultError::locked("The assets are locked").into());
+            return Err(VaultError::locked("The shares are locked").into());
         }
 
         // Remove shares from the info.sender
@@ -906,6 +902,7 @@ mod tests {
                     Event::new("RedeemWithdrawalTo")
                         .add_attribute("sender", sender.to_string())
                         .add_attribute("recipient", recipient.to_string())
+                        .add_attribute("sub_shares", "10000")
                         .add_attribute("claimed_assets", "10000")
                         .add_attribute("total_shares", "90000")
                 )

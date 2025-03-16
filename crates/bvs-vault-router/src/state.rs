@@ -29,3 +29,7 @@ pub fn set_registry(storage: &mut dyn Storage, registry: &Addr) -> StdResult<()>
 }
 /// Store the withdrawal lock period in seconds.
 pub const WITHDRAWAL_LOCK_PERIOD: Item<Uint64> = Item::new("withdrawal_lock_period");
+
+/// This is used when the withdrawal lock period is not set.
+/// The default value is 7 days.
+pub const DEFAULT_WITHDRAWAL_LCOK_PERIOD: Uint64 = Uint64::new(604800);
