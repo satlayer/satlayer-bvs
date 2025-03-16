@@ -3,13 +3,8 @@
   "extends": ["//"],
   "tasks": {
     "build": {
-      "inputs": ["src", "tsconfig.json"],
-      "outputs": ["dist"],
-      "dependsOn": ["generate"]
-    },
-    "generate": {
       "inputs": ["generate.mjs"],
-      "outputs": ["src"],
+      "outputs": ["*.d.ts"],
       "dependsOn": ["^build"]
     }
   }
