@@ -1,151 +1,19 @@
-// This file was generated from JSON Schema using quicktype, do not modify it directly.
-// To parse and unparse this JSON data, add this code to your project and do:
-//
-//    instantiateMsg, err := UnmarshalInstantiateMsg(bytes)
-//    bytes, err = instantiateMsg.Marshal()
-//
-//    executeMsg, err := UnmarshalExecuteMsg(bytes)
-//    bytes, err = executeMsg.Marshal()
-//
-//    queryMsg, err := UnmarshalQueryMsg(bytes)
-//    bytes, err = queryMsg.Marshal()
-//
-//    assetsResponse, err := UnmarshalAssetsResponse(bytes)
-//    bytes, err = assetsResponse.Marshal()
-//
-//    convertToAssetsResponse, err := UnmarshalConvertToAssetsResponse(bytes)
-//    bytes, err = convertToAssetsResponse.Marshal()
-//
-//    convertToSharesResponse, err := UnmarshalConvertToSharesResponse(bytes)
-//    bytes, err = convertToSharesResponse.Marshal()
-//
-//    sharesResponse, err := UnmarshalSharesResponse(bytes)
-//    bytes, err = sharesResponse.Marshal()
-//
-//    totalAssetsResponse, err := UnmarshalTotalAssetsResponse(bytes)
-//    bytes, err = totalAssetsResponse.Marshal()
-//
-//    totalSharesResponse, err := UnmarshalTotalSharesResponse(bytes)
-//    bytes, err = totalSharesResponse.Marshal()
-//
-//    vaultInfoResponse, err := UnmarshalVaultInfoResponse(bytes)
-//    bytes, err = vaultInfoResponse.Marshal()
+// This file was automatically generated from vault-cw20/schema.json.
+// DO NOT MODIFY IT BY HAND.
 
 package vaultcw20
 
-import "encoding/json"
-
-func UnmarshalInstantiateMsg(data []byte) (InstantiateMsg, error) {
-	var r InstantiateMsg
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *InstantiateMsg) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalExecuteMsg(data []byte) (ExecuteMsg, error) {
-	var r ExecuteMsg
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *ExecuteMsg) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalQueryMsg(data []byte) (QueryMsg, error) {
-	var r QueryMsg
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *QueryMsg) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
 type AssetsResponse string
-
-func UnmarshalAssetsResponse(data []byte) (AssetsResponse, error) {
-	var r AssetsResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *AssetsResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
 
 type ConvertToAssetsResponse string
 
-func UnmarshalConvertToAssetsResponse(data []byte) (ConvertToAssetsResponse, error) {
-	var r ConvertToAssetsResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *ConvertToAssetsResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
 type ConvertToSharesResponse string
-
-func UnmarshalConvertToSharesResponse(data []byte) (ConvertToSharesResponse, error) {
-	var r ConvertToSharesResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *ConvertToSharesResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
 
 type SharesResponse string
 
-func UnmarshalSharesResponse(data []byte) (SharesResponse, error) {
-	var r SharesResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *SharesResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
 type TotalAssetsResponse string
 
-func UnmarshalTotalAssetsResponse(data []byte) (TotalAssetsResponse, error) {
-	var r TotalAssetsResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *TotalAssetsResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
 type TotalSharesResponse string
-
-func UnmarshalTotalSharesResponse(data []byte) (TotalSharesResponse, error) {
-	var r TotalSharesResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *TotalSharesResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalVaultInfoResponse(data []byte) (VaultInfoResponse, error) {
-	var r VaultInfoResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *VaultInfoResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
 
 type InstantiateMsg struct {
 	// The address of the CW20 contract, underlying asset of the vault.
