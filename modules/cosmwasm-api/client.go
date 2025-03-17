@@ -51,8 +51,8 @@ func Query[Response interface{}](
 // It's a wrapper around the `BroadcastTx` and `WaitForTx` functions.
 func Execute(
 	clientCtx client.Context, ctx context.Context, sender string, opts BroadcastOptions,
-) (coretypes.ResultTx, error) {
-	var result coretypes.ResultTx
+) (*coretypes.ResultTx, error) {
+	var result *coretypes.ResultTx
 
 	// build + broadcast tx
 	res, err := BroadcastTx(clientCtx, ctx, sender, opts)
@@ -75,8 +75,8 @@ func Execute(
 // There is no guarantee that the transaction will be included in a block.
 func BroadcastTx(
 	clientCtx client.Context, ctx context.Context, sender string, opts BroadcastOptions,
-) (sdktypes.TxResponse, error) {
-	var result sdktypes.TxResponse
+) (*sdktypes.TxResponse, error) {
+	var result *sdktypes.TxResponse
 
 	// TODO: move const to config
 	const denom = "ubbn"
@@ -167,14 +167,14 @@ func BroadcastTx(
 		return result, err
 	}
 
-	return *res, nil
+	return res, nil
 }
 
 // GetTx retrieves a transaction by its hash.
 func GetTx(
 	clientCtx client.Context, ctx context.Context, txHash string,
-) (coretypes.ResultTx, error) {
-	var result coretypes.ResultTx
+) (*coretypes.ResultTx, error) {
+	var result *coretypes.ResultTx
 	txHashBytes, err := hex.DecodeString(txHash)
 	if err != nil {
 		return result, err
@@ -189,14 +189,14 @@ func GetTx(
 		return result, err
 	}
 
-	return *res, nil
+	return res, nil
 }
 
 // WaitForTx query a transaction and retry until it's included in a block.
 func WaitForTx(
 	clientCtx client.Context, ctx context.Context, txHash string,
-) (coretypes.ResultTx, error) {
-	var result coretypes.ResultTx
+) (*coretypes.ResultTx, error) {
+	var result *coretypes.ResultTx
 	// poll for tx
 	attempt := 1
 	maxRetries := 10
