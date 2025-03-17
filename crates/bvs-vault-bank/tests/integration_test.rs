@@ -9,7 +9,7 @@ use bvs_vault_base::msg::{RecipientAmount, VaultInfoResponse};
 use bvs_vault_base::shares::QueuedWithdrawalInfo;
 use bvs_vault_router::{msg::ExecuteMsg as RouterExecuteMsg, testing::VaultRouterContract};
 use cosmwasm_std::testing::mock_env;
-use cosmwasm_std::{coin, coins, Addr, Event, Uint128, Uint64};
+use cosmwasm_std::{coin, coins, Addr, Event, Timestamp, Uint128, Uint64};
 use cw_multi_test::{App, Executor};
 
 struct TestContracts {
@@ -674,7 +674,14 @@ fn test_queue_withdrawal_to_successfully() {
                 .add_attribute("sender", staker.to_string())
                 .add_attribute("recipient", staker.to_string())
                 .add_attribute("queued_shares", "10000")
-                .add_attribute("new_unlock_timestamp", "1571797519")
+                .add_attribute(
+                    "new_unlock_timestamp",
+                    app.block_info()
+                        .time
+                        .plus_seconds(100)
+                        .seconds()
+                        .to_string()
+                )
                 .add_attribute("total_queued_shares", "10000")
         ]
     );
@@ -683,8 +690,12 @@ fn test_queue_withdrawal_to_successfully() {
         staker: staker.to_string(),
     };
     let response: QueuedWithdrawalInfo = tc.vault.query(&app, &msg).unwrap();
+
     assert_eq!(response.queued_shares, Uint128::new(10000));
-    assert_eq!(response.unlock_timestamp, Uint64::new(1571797519));
+    assert_eq!(
+        response.unlock_timestamp,
+        Timestamp::from_seconds(1571797519)
+    );
 }
 
 #[test]
@@ -758,8 +769,9 @@ fn test_redeem_withdrawal_to_successfully() {
         staker: staker.to_string(),
     };
     let response: QueuedWithdrawalInfo = tc.vault.query(&app, &msg).unwrap();
+
     assert_eq!(response.queued_shares, Uint128::new(0));
-    assert_eq!(response.unlock_timestamp, Uint64::new(0));
+    assert_eq!(response.unlock_timestamp, Timestamp::from_seconds(0));
 }
 
 #[test]

@@ -71,7 +71,7 @@ mod execute {
     use bvs_vault_base::msg::RecipientAmount;
     use bvs_vault_base::shares::QueuedWithdrawalInfo;
     use bvs_vault_base::{offset, router, shares};
-    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, StdError, Uint64};
+    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, StdError, Timestamp};
 
     /// Deposit an asset (`info.funds`) into the vault through native bank transfer and receive shares.
     ///
@@ -185,11 +185,11 @@ mod execute {
         info: MessageInfo,
         msg: RecipientAmount,
     ) -> Result<Response, ContractError> {
-        let withdrawal_lock_period = router::get_withdrawal_lock_period(&deps.as_ref())?;
+        let withdrawal_lock_period: u64 =
+            router::get_withdrawal_lock_period(&deps.as_ref())?.into();
         let current_timestamp = env.block.time.seconds();
-        let unlock_timestamp = withdrawal_lock_period
-            .checked_add(Uint64::new(current_timestamp))
-            .map_err(StdError::from)?;
+        let unlock_timestamp =
+            Timestamp::from_seconds(withdrawal_lock_period).plus_seconds(current_timestamp);
 
         let queued_withdrawal_info = QueuedWithdrawalInfo {
             queued_shares: msg.amount,
@@ -207,12 +207,17 @@ mod execute {
                 .add_attribute("sender", info.sender.to_string())
                 .add_attribute("recipient", msg.recipient.to_string())
                 .add_attribute("queued_shares", msg.amount.to_string())
-                .add_attribute("new_unlock_timestamp", unlock_timestamp.to_string())
+                .add_attribute(
+                    "new_unlock_timestamp",
+                    unlock_timestamp.seconds().to_string(),
+                )
                 .add_attribute("total_queued_shares", result.queued_shares.to_string()),
         ))
     }
 
     /// redeem all queued assets
+    ///
+    /// The amount in `RecipientAmount` is not used that will redeem all queued shares.
     pub fn redeem_withdrawal_to(
         deps: DepsMut,
         env: Env,
@@ -223,11 +228,11 @@ mod execute {
         let queued_shares = withdrawal_info.queued_shares;
         let unlock_timestamp = withdrawal_info.unlock_timestamp;
 
-        if queued_shares.is_zero() && unlock_timestamp.is_zero() {
+        if queued_shares.is_zero() && unlock_timestamp.seconds() == 0 {
             return Err(VaultError::zero("No queued shares").into());
         }
 
-        if unlock_timestamp > Uint64::new(env.block.time.seconds()) {
+        if unlock_timestamp.seconds() > env.block.time.seconds() {
             return Err(VaultError::locked("The shares are locked").into());
         }
 
@@ -393,7 +398,7 @@ mod tests {
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
     use cosmwasm_std::{
         coin, coins, from_json, to_json_binary, BankMsg, Coin, ContractResult, CosmosMsg, Event,
-        Response, SystemError, SystemResult, Uint128, Uint64, WasmQuery,
+        Response, SystemError, SystemResult, Timestamp, Uint128, Uint64, WasmQuery,
     };
 
     #[test]
@@ -734,9 +739,12 @@ mod tests {
         }
 
         let recipient = deps.api.addr_make("recipient");
-        let new_unlock_timestamp = Uint64::new(env.block.time.seconds())
-            .checked_add(withdrawal_lock_period)
-            .unwrap();
+        let new_unlock_timestamp = Timestamp::from_seconds(
+            env.block
+                .time
+                .plus_seconds(withdrawal_lock_period.into())
+                .seconds(),
+        );
 
         // queue withdrawal to for the first time
         {
@@ -759,7 +767,10 @@ mod tests {
                         .add_attribute("sender", sender.to_string())
                         .add_attribute("recipient", recipient.to_string())
                         .add_attribute("queued_shares", "10000")
-                        .add_attribute("new_unlock_timestamp", new_unlock_timestamp.to_string())
+                        .add_attribute(
+                            "new_unlock_timestamp",
+                            new_unlock_timestamp.seconds().to_string()
+                        )
                         .add_attribute("total_queued_shares", "10000")
                 )
             );
@@ -787,7 +798,10 @@ mod tests {
                         .add_attribute("sender", sender.to_string())
                         .add_attribute("recipient", recipient.to_string())
                         .add_attribute("queued_shares", "12000")
-                        .add_attribute("new_unlock_timestamp", new_unlock_timestamp.to_string())
+                        .add_attribute(
+                            "new_unlock_timestamp",
+                            new_unlock_timestamp.seconds().to_string()
+                        )
                         .add_attribute("total_queued_shares", "22000")
                 )
             );

@@ -104,7 +104,7 @@ mod execute {
 
         if withdrawal_lock_period.is_zero() {
             return Err(ContractError::VaultError {
-                msg: "Cannot set new withdrawal lock peirod to zero".to_string(),
+                msg: "Cannot set new withdrawal lock period to zero".to_string(),
             });
         }
 
@@ -185,7 +185,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 mod query {
     use crate::msg::{Vault, VaultListResponse};
-    use crate::state::{self, DEFAULT_WITHDRAWAL_LCOK_PERIOD};
+    use crate::state::{self, DEFAULT_WITHDRAWAL_LOCK_PERIOD};
     use bvs_registry::msg::QueryMsg;
     use cosmwasm_std::{Addr, Deps, StdResult, Uint64};
     use cw_storage_plus::Bound;
@@ -243,7 +243,7 @@ mod query {
     pub fn get_withdrawal_lock_period(deps: Deps) -> StdResult<Uint64> {
         let value = state::WITHDRAWAL_LOCK_PERIOD
             .may_load(deps.storage)?
-            .unwrap_or(DEFAULT_WITHDRAWAL_LCOK_PERIOD);
+            .unwrap_or(DEFAULT_WITHDRAWAL_LOCK_PERIOD);
 
         Ok(value)
     }
@@ -257,10 +257,10 @@ mod tests {
             set_vault, set_withdrawal_lock_period,
             vault::{VaultInfoQueryMsg, VaultInfoResponse},
         },
-        query::{get_withdrawal_lock_period, is_delegated, is_whitelisted, list_vaults},
+        query::{get_withdrawal_lock_period, is_whitelisted, list_vaults},
     };
     use crate::msg::InstantiateMsg;
-    use crate::state::{Vault, DEFAULT_WITHDRAWAL_LCOK_PERIOD, REGISTRY, VAULTS};
+    use crate::state::{Vault, DEFAULT_WITHDRAWAL_LOCK_PERIOD, REGISTRY, VAULTS};
     use bvs_registry::msg::{IsOperatorActiveResponse, QueryMsg as RegistryQueryMsg};
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
@@ -624,6 +624,6 @@ mod tests {
         let deps = mock_dependencies();
 
         let response = get_withdrawal_lock_period(deps.as_ref()).unwrap();
-        assert_eq!(response, DEFAULT_WITHDRAWAL_LCOK_PERIOD);
+        assert_eq!(response, DEFAULT_WITHDRAWAL_LOCK_PERIOD);
     }
 }

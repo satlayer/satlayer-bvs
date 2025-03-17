@@ -9,7 +9,7 @@ use bvs_vault_cw20::msg::{ExecuteMsg, QueryMsg};
 use bvs_vault_cw20::testing::VaultCw20Contract;
 use bvs_vault_router::{msg::ExecuteMsg as RouterExecuteMsg, testing::VaultRouterContract};
 use cosmwasm_std::testing::mock_env;
-use cosmwasm_std::{Addr, Event, Uint128, Uint64};
+use cosmwasm_std::{Addr, Event, Timestamp, Uint128, Uint64};
 use cw_multi_test::App;
 
 struct TestContracts {
@@ -584,8 +584,12 @@ fn test_queue_withdrawal_to_successfully() {
         staker: staker.to_string(),
     };
     let response: QueuedWithdrawalInfo = vault.query(&app, &msg).unwrap();
+
     assert_eq!(response.queued_shares, Uint128::new(10000));
-    assert_eq!(response.unlock_timestamp, Uint64::new(1571797519));
+    assert_eq!(
+        response.unlock_timestamp,
+        Timestamp::from_seconds(1571797519)
+    );
 }
 
 #[test]
@@ -660,8 +664,9 @@ fn test_redeem_withdrawal_to_successfully() {
         staker: staker.to_string(),
     };
     let response: QueuedWithdrawalInfo = vault.query(&app, &msg).unwrap();
+
     assert_eq!(response.queued_shares, Uint128::new(0));
-    assert_eq!(response.unlock_timestamp, Uint64::new(0));
+    assert_eq!(response.unlock_timestamp, Timestamp::from_seconds(0));
 }
 
 #[test]

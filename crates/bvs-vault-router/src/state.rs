@@ -32,4 +32,4 @@ pub const WITHDRAWAL_LOCK_PERIOD: Item<Uint64> = Item::new("withdrawal_lock_peri
 
 /// This is used when the withdrawal lock period is not set.
 /// The default value is 7 days.
-pub const DEFAULT_WITHDRAWAL_LCOK_PERIOD: Uint64 = Uint64::new(604800);
+pub const DEFAULT_WITHDRAWAL_LOCK_PERIOD: Uint64 = Uint64::new(604800);

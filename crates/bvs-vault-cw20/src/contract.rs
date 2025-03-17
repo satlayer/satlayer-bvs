@@ -81,7 +81,7 @@ mod execute {
         offset, router,
         shares::{self, QueuedWithdrawalInfo},
     };
-    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, StdError, Uint64};
+    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, Timestamp};
 
     /// This executes a transfer of assets from the `info.sender` to the vault contract.
     ///
@@ -186,15 +186,15 @@ mod execute {
         info: MessageInfo,
         msg: RecipientAmount,
     ) -> Result<Response, ContractError> {
-        let withdrawal_lock_peirod = router::get_withdrawal_lock_period(&deps.as_ref())?;
+        let withdrawal_lock_period: u64 =
+            router::get_withdrawal_lock_period(&deps.as_ref())?.into();
         let current_timestamp = env.block.time.seconds();
-        let new_unlock_timestamp = withdrawal_lock_peirod
-            .checked_add(Uint64::new(current_timestamp))
-            .map_err(StdError::from)?;
+        let unlock_timestamp =
+            Timestamp::from_seconds(withdrawal_lock_period).plus_seconds(current_timestamp);
 
         let new_queued_withdrawal_info = QueuedWithdrawalInfo {
             queued_shares: msg.amount,
-            unlock_timestamp: new_unlock_timestamp,
+            unlock_timestamp,
         };
 
         let result = shares::update_queued_withdrawal_info(
@@ -208,12 +208,17 @@ mod execute {
                 .add_attribute("sender", info.sender.to_string())
                 .add_attribute("recipient", msg.recipient.to_string())
                 .add_attribute("queued_shares", msg.amount.to_string())
-                .add_attribute("new_unlock_timestamp", new_unlock_timestamp.to_string())
+                .add_attribute(
+                    "new_unlock_timestamp",
+                    unlock_timestamp.seconds().to_string(),
+                )
                 .add_attribute("total_queued_shares", result.queued_shares.to_string()),
         ))
     }
 
     /// redeem all queued assets
+    ///
+    /// The amount in `RecipientAmount` is not used that will redeem all queued shares.
     pub fn redeem_withdrawal_to(
         deps: DepsMut,
         env: Env,
@@ -224,11 +229,11 @@ mod execute {
         let queued_shares = withdrawal_info.queued_shares;
         let unlock_timestamp = withdrawal_info.unlock_timestamp;
 
-        if queued_shares.is_zero() && unlock_timestamp.is_zero() {
+        if queued_shares.is_zero() && unlock_timestamp.seconds() == 0 {
             return Err(VaultError::zero("No queued shares").into());
         }
 
-        if unlock_timestamp > Uint64::new(env.block.time.seconds()) {
+        if unlock_timestamp.seconds() > env.block.time.seconds() {
             return Err(VaultError::locked("The shares are locked").into());
         }
 

@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, StdError, StdResult, Storage, Uint128, Uint64};
+use cosmwasm_std::{Addr, StdError, StdResult, Storage, Timestamp, Uint128};
 use cw_storage_plus::Map;
 
 /// Mapping of staker to their shares in the vault
@@ -11,7 +11,7 @@ const QUEUED_WITHDRAWAL: Map<&Addr, QueuedWithdrawalInfo> = Map::new("queued_wit
 #[cw_serde]
 pub struct QueuedWithdrawalInfo {
     pub queued_shares: Uint128,
-    pub unlock_timestamp: Uint64,
+    pub unlock_timestamp: Timestamp,
 }
 
 /// Unchecked add, you can add zero shares—accounting module won't check this.
@@ -88,7 +88,7 @@ pub fn get_queued_withdrawal_info(
     QUEUED_WITHDRAWAL.may_load(storage, recipient).map(|res| {
         res.unwrap_or(QueuedWithdrawalInfo {
             queued_shares: Uint128::zero(),
-            unlock_timestamp: Uint64::zero(),
+            unlock_timestamp: Timestamp::from_seconds(0),
         })
     })
 }
@@ -149,7 +149,7 @@ mod tests {
 
         let queued_withdrawal_info1 = QueuedWithdrawalInfo {
             queued_shares: Uint128::new(123),
-            unlock_timestamp: Uint64::new(100),
+            unlock_timestamp: Timestamp::from_seconds(0),
         };
 
         let result =
@@ -163,7 +163,7 @@ mod tests {
 
         let queued_withdrawal_info2 = QueuedWithdrawalInfo {
             queued_shares: Uint128::new(456),
-            unlock_timestamp: Uint64::new(120),
+            unlock_timestamp: Timestamp::from_seconds(0),
         };
 
         let result =
@@ -186,6 +186,6 @@ mod tests {
 
         let result = get_queued_withdrawal_info(&mut store, &staker).unwrap();
         assert_eq!(result.queued_shares, Uint128::zero());
-        assert_eq!(result.unlock_timestamp, Uint64::zero());
+        assert_eq!(result.unlock_timestamp, Timestamp::from_seconds(0));
     }
 }

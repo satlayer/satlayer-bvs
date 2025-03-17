@@ -34,9 +34,10 @@ pub enum VaultExecuteMsg {
     /// You can queue the withdrawal to a different `recipient` than the `sender` to avoid this.
     QueueWithdrawalTo(RecipientAmount),
 
-    /// ExecuteMsg RedeemWithdrawal assets from the vault for withdrawal.
+    /// ExecuteMsg RedeemWithdrawal all queued shares into assets from the vault for withdrawal.
     /// After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
     /// can redeem the withdrawal.
+    /// The amount in `RecipientAmount` is not used that will redeem all queued shares.
     RedeemWithdrawalTo(RecipientAmount),
 }
 
