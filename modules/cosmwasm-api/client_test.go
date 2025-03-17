@@ -2,11 +2,8 @@ package cosmwasmapi
 
 import (
 	"context"
-	"encoding/json"
 	"strconv"
 	"testing"
-
-	sdkmath "cosmossdk.io/math"
 
 	abci "github.com/cometbft/cometbft/abci/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
@@ -70,20 +67,10 @@ func (s *ClientTestSuite) TestExecute() {
 		Pause: &pauser.Pause{},
 	}
 
-	executeMsgBytes, err := json.Marshal(executeMsg)
-	s.Require().NoError(err)
-
-	gasPrice, err := sdkmath.LegacyNewDecFromStr("0.002") // min amount
-	s.Require().NoError(err)
-	executeOptions := BroadcastOptions{
-		ContractAddr:  s.pauser.Address,
-		ExecuteMsg:    executeMsgBytes,
-		Funds:         "",
-		GasAdjustment: 1.3,
-		GasPrice:      sdktypes.NewDecCoinFromDec("ubbn", gasPrice),
-		Gas:           200_000,
-		Simulate:      true,
-	}
+	executeOptions := NewBroadcastOptions(
+		s.pauser.Address,
+		executeMsg,
+	).WithGasPrice("0.002ubbn")
 
 	response, err := Execute(
 		s.container.ClientCtx,

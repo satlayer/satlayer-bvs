@@ -47,18 +47,8 @@ func Query[Response interface{}](
 	return result, err
 }
 
-type BroadcastOptions struct {
-	ContractAddr  string           // ContractAddr: Address of the smart contract
-	ExecuteMsg    []byte           // ExecuteMsg: Message to be executed, represented as a struct
-	Funds         string           // Funds: Amount of funds to send to the contract, represented as a string
-	GasAdjustment float64          // GasAdjustment: Gas adjustment factor for adjusting the estimated gas amount
-	GasPrice      sdktypes.DecCoin // GasPrice: Gas price, represented as a string (e.g., "0.025uatom")
-	Gas           uint64           // Gas: Amount of gas reserved for transaction execution
-	Simulate      bool             // Simulate: Whether to simulate the transaction to estimate gas usage and set Gas accordingly
-}
-
 // Execute broadcasts a transaction to call a smart contract and waits for the transaction to be included in a block.
-// It's a wrapper around the `BroadcastTx` and `GetTx` functions.
+// It's a wrapper around the `BroadcastTx` and `WaitForTx` functions.
 func Execute(
 	clientCtx client.Context, ctx context.Context, sender string, opts BroadcastOptions,
 ) (coretypes.ResultTx, error) {
@@ -91,15 +81,11 @@ func BroadcastTx(
 	// TODO: move const to config
 	const denom = "ubbn"
 
-	amount, err := sdktypes.ParseCoinsNormalized(opts.Funds)
-	if err != nil {
-		return result, err
-	}
 	contractMsg := &wasmtypes.MsgExecuteContract{
 		Sender:   sender,
 		Contract: opts.ContractAddr,
 		Msg:      opts.ExecuteMsg,
-		Funds:    amount,
+		Funds:    opts.Funds,
 	}
 
 	// BUILD TXs
@@ -115,7 +101,7 @@ func BroadcastTx(
 		WithGasPrices(opts.GasPrice.String()).
 		WithGas(opts.Gas)
 
-	txf, err = txf.Prepare(clientCtx)
+	txf, err := txf.Prepare(clientCtx)
 	if err != nil {
 		return result, err
 	}
