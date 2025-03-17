@@ -117,7 +117,7 @@ jobs:
 
       - run: turbo run test --filter=${{ matrix.package }}
 
-      - uses: dorny/test-reporter@v1
+      - uses: dorny/test-reporter@v2
         if: ${{ (success() || failure()) && startsWith(matrix.package, '@modules/') && !github.event.pull_request.head.repo.fork }}
         with:
           name: Test [report] (${{matrix.package}})
