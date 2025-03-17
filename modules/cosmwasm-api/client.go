@@ -47,7 +47,7 @@ func Query[Response interface{}](
 	return result, err
 }
 
-type ExecuteOptions struct {
+type BroadcastOptions struct {
 	ContractAddr  string           // ContractAddr: Address of the smart contract
 	ExecuteMsg    []byte           // ExecuteMsg: Message to be executed, represented as a struct
 	Funds         string           // Funds: Amount of funds to send to the contract, represented as a string
@@ -60,7 +60,7 @@ type ExecuteOptions struct {
 // Execute broadcasts a transaction to call a smart contract and waits for the transaction to be included in a block.
 // It's a wrapper around the `BroadcastTx` and `GetTx` functions.
 func Execute(
-	clientCtx client.Context, ctx context.Context, sender string, opts ExecuteOptions,
+	clientCtx client.Context, ctx context.Context, sender string, opts BroadcastOptions,
 ) (coretypes.ResultTx, error) {
 	var result coretypes.ResultTx
 
@@ -71,21 +71,12 @@ func Execute(
 	}
 
 	// poll for tx
-	txHash := res.TxHash
-	attempt := 1
-	maxRetries := 10
-	for {
-		txRes, err := GetTx(clientCtx, ctx, txHash)
-		if err == nil && txRes.TxResult.Code == 0 {
-			return txRes, nil
-		}
-		attempt++
-		if attempt > maxRetries {
-			return result, errors.New("maximum number of retries reached")
-		}
-		// wait for 0.5 second before retrying
-		time.Sleep(500 * time.Millisecond)
+	txRes, err := WaitForTx(clientCtx, ctx, res.TxHash)
+	if err != nil {
+		return result, err
 	}
+
+	return txRes, err
 }
 
 // BroadcastTx broadcasts a transaction to call a smart contract and returns the transaction response.
@@ -93,7 +84,7 @@ func Execute(
 // It only waits for the transaction to be accepted by the mempool and passes the CheckTx phase.
 // There is no guarantee that the transaction will be included in a block.
 func BroadcastTx(
-	clientCtx client.Context, ctx context.Context, sender string, opts ExecuteOptions,
+	clientCtx client.Context, ctx context.Context, sender string, opts BroadcastOptions,
 ) (sdktypes.TxResponse, error) {
 	var result sdktypes.TxResponse
 
@@ -213,4 +204,26 @@ func GetTx(
 	}
 
 	return *res, nil
+}
+
+// WaitForTx query a transaction and retry until it's included in a block.
+func WaitForTx(
+	clientCtx client.Context, ctx context.Context, txHash string,
+) (coretypes.ResultTx, error) {
+	var result coretypes.ResultTx
+	// poll for tx
+	attempt := 1
+	maxRetries := 10
+	for {
+		txRes, err := GetTx(clientCtx, ctx, txHash)
+		if err == nil && txRes.TxResult.Code == 0 {
+			return txRes, nil
+		}
+		attempt++
+		if attempt > maxRetries {
+			return result, errors.New("maximum number of retries reached")
+		}
+		// wait for 0.5 second before retrying
+		time.Sleep(500 * time.Millisecond)
+	}
 }
