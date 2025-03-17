@@ -31,11 +31,7 @@ pub enum ExecuteMsg {
 
     SetCodeId {
         code_id: u64,
-        label: VaultType,
-    },
-
-    RemoveCodeId {
-        label: VaultType,
+        vault_type: VaultType,
     },
 }
 
@@ -43,10 +39,10 @@ pub enum ExecuteMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(VaultCodeIdsResponse)]
-    GetVaultCodeIds {},
+    VaultCodeIds {},
 }
 
 #[cw_serde]
 pub struct VaultCodeIdsResponse {
-    pub code_ids: Vec<(VaultType, u64)>,
+    pub code_ids: std::collections::BTreeMap<String, u64>,
 }

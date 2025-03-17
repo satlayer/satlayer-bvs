@@ -15,6 +15,7 @@ pub const REGISTRY: Item<Addr> = Item::new("registry");
 pub const CODE_IDS: Map<VaultType, u64> = Map::new("code_ids");
 
 #[cw_serde]
+#[derive(PartialOrd, Eq, Ord)]
 pub enum VaultType {
     Cw20Vault,
     BankVault,
