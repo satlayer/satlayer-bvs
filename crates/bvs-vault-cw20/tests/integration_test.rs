@@ -474,7 +474,7 @@ fn test_vault_info() {
                 tc.cw20.addr.to_string()
             )
             .to_string(),
-            contract: "crate:bvs-vault-cw20".to_string(),
+            contract: "crates.io:bvs-vault-cw20".to_string(),
             version: env!("CARGO_PKG_VERSION").to_string(),
         }
     );
