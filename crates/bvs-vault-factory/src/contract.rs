@@ -56,10 +56,10 @@ pub fn execute(
             execute::deploy_cw20_vault(deps, env, info, cw20_token)
         }
         ExecuteMsg::DeployBank { denom } => execute::deploy_bank_vault(deps, env, info, denom),
-        ExecuteMsg::SetCodeId { code_id, label } => {
-            execute::set_code_id(deps, info, code_id, label)
-        }
-        ExecuteMsg::RemoveCodeId { label } => execute::remove_code_id(deps, info, label),
+        ExecuteMsg::SetCodeId {
+            code_id,
+            vault_type,
+        } => execute::set_code_id(deps, info, code_id, vault_type),
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
             ownership::transfer_ownership(deps.storage, info, new_owner)
@@ -71,7 +71,7 @@ pub fn execute(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetVaultCodeIds {} => to_json_binary(&query::get_available_code_ids(_deps)?),
+        QueryMsg::VaultCodeIds {} => to_json_binary(&query::get_available_code_ids(_deps)?),
     }
 }
 
@@ -171,36 +171,25 @@ mod execute {
 
         Ok(Response::new().add_event(event))
     }
-
-    pub fn remove_code_id(
-        deps: DepsMut,
-        info: MessageInfo,
-        label: VaultType,
-    ) -> Result<Response, ContractError> {
-        ownership::assert_owner(deps.storage, &info).map_err(ContractError::Ownership)?;
-
-        let code_id = CODE_IDS.load(deps.storage, label.clone())?;
-        CODE_IDS.remove(deps.storage, label);
-
-        let event = Event::new("remove_code_id").add_attribute("code_id", code_id.to_string());
-
-        Ok(Response::new().add_event(event))
-    }
 }
 
 mod query {
-    use crate::{
-        msg::VaultCodeIdsResponse,
-        state::{VaultType, CODE_IDS},
-    };
+    use std::collections::BTreeMap;
+
+    use crate::{msg::VaultCodeIdsResponse, state::CODE_IDS};
 
     use super::*;
     use cosmwasm_std::Deps;
 
     pub fn get_available_code_ids(deps: Deps) -> StdResult<VaultCodeIdsResponse> {
-        let code_ids: Vec<(VaultType, u64)> = CODE_IDS
+        let code_ids: BTreeMap<String, u64> = CODE_IDS
             .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
-            .collect::<StdResult<Vec<(VaultType, u64)>>>()?;
+            .map(|item| {
+                let (vault_type, code_id) = item?;
+                Ok((vault_type.to_string(), code_id))
+            })
+            .collect::<StdResult<_>>()?;
+
         Ok(VaultCodeIdsResponse { code_ids })
     }
 }

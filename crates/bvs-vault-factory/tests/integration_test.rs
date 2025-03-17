@@ -77,7 +77,7 @@ fn test_cw20_vault_deployment() {
 
     let msg = bvs_vault_factory::msg::ExecuteMsg::SetCodeId {
         code_id: cw20_vault_code_id,
-        label: VaultType::Cw20Vault,
+        vault_type: VaultType::Cw20Vault,
     };
 
     factory.execute(&mut app, &owner, &msg).unwrap();
@@ -119,7 +119,7 @@ fn test_bank_vault_deployment() {
 
     let msg = bvs_vault_factory::msg::ExecuteMsg::SetCodeId {
         code_id: bank_vault_code_id,
-        label: VaultType::BankVault,
+        vault_type: VaultType::BankVault,
     };
 
     factory.execute(&mut app, &owner, &msg).unwrap();
@@ -176,7 +176,7 @@ fn test_unauthorized_code_id_whitelist() {
 
     let msg = bvs_vault_factory::msg::ExecuteMsg::SetCodeId {
         code_id: bank_vault_code_id,
-        label: VaultType::BankVault,
+        vault_type: VaultType::BankVault,
     };
 
     let res = factory.execute(&mut app, &random, &msg).unwrap_err();
@@ -187,14 +187,14 @@ fn test_unauthorized_code_id_whitelist() {
     ));
 
     let query_res: bvs_vault_factory::msg::VaultCodeIdsResponse = factory
-        .query(&app, &bvs_vault_factory::msg::QueryMsg::GetVaultCodeIds {})
+        .query(&app, &bvs_vault_factory::msg::QueryMsg::VaultCodeIds {})
         .unwrap();
 
     assert_eq!(query_res.code_ids.len(), 0);
 }
 
 #[test]
-fn test_add_remove_code_id() {
+fn test_set_code_id() {
     let (mut app, contracts) = TestContracts::init();
 
     let factory = contracts.vault_factory;
@@ -206,32 +206,18 @@ fn test_add_remove_code_id() {
 
     let msg = bvs_vault_factory::msg::ExecuteMsg::SetCodeId {
         code_id: bank_vault_code_id,
-        label: VaultType::BankVault,
+        vault_type: VaultType::BankVault,
     };
 
     let _res = factory.execute(&mut app, &owner, &msg).unwrap();
 
     let query_res: bvs_vault_factory::msg::VaultCodeIdsResponse = factory
-        .query(&app, &bvs_vault_factory::msg::QueryMsg::GetVaultCodeIds {})
+        .query(&app, &bvs_vault_factory::msg::QueryMsg::VaultCodeIds {})
         .unwrap();
 
     assert_eq!(query_res.code_ids.len(), 1);
-    assert_eq!(query_res.code_ids[0].1, bank_vault_code_id);
-    assert_eq!(query_res.code_ids[0].0, VaultType::BankVault);
-
-    let _res = factory
-        .execute(
-            &mut app,
-            &owner,
-            &bvs_vault_factory::msg::ExecuteMsg::RemoveCodeId {
-                label: VaultType::BankVault,
-            },
-        )
-        .unwrap();
-
-    let query_res: bvs_vault_factory::msg::VaultCodeIdsResponse = factory
-        .query(&app, &bvs_vault_factory::msg::QueryMsg::GetVaultCodeIds {})
-        .unwrap();
-
-    assert_eq!(query_res.code_ids.len(), 0);
+    assert_eq!(
+        query_res.code_ids[&VaultType::BankVault.to_string()],
+        bank_vault_code_id
+    );
 }
