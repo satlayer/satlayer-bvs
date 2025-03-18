@@ -146,7 +146,7 @@ mod execute {
             code_id,
             msg: to_json_binary(&msg)?,
             funds: vec![],
-            label: format!("{} Vault Bank", denom),
+            label: format!("BVS Bank Vault: {}", denom),
         };
 
         let event = Event::new("deploy_vault_bank")
