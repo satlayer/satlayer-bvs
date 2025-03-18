@@ -24,6 +24,8 @@
       <sourceFolder url="file://$MODULE_DIR$/bvs-vault-cw20/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-registry/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-vault-router/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-vault-factory/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-vault-factory/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-registry/tests" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludePattern pattern=".turbo" />
