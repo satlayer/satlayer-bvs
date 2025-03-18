@@ -3,7 +3,8 @@ use bvs_pauser::testing::PauserContract;
 use bvs_registry::testing::RegistryContract;
 use bvs_vault_bank::testing::VaultBankContract;
 use bvs_vault_cw20::testing::VaultCw20Contract;
-use bvs_vault_factory::{state::VaultType, testing::VaultFactoryContract};
+use bvs_vault_factory::msg::VaultType;
+use bvs_vault_factory::testing::VaultFactoryContract;
 use bvs_vault_router::testing::VaultRouterContract;
 use cosmwasm_std::{testing::mock_env, Empty};
 use cw_multi_test::{App, Contract};
@@ -77,7 +78,7 @@ fn test_cw20_vault_deployment() {
 
     let msg = bvs_vault_factory::msg::ExecuteMsg::SetCodeId {
         code_id: cw20_vault_code_id,
-        vault_type: VaultType::Cw20Vault,
+        vault_type: VaultType::Cw20,
     };
 
     factory.execute(&mut app, &owner, &msg).unwrap();
@@ -119,7 +120,7 @@ fn test_bank_vault_deployment() {
 
     let msg = bvs_vault_factory::msg::ExecuteMsg::SetCodeId {
         code_id: bank_vault_code_id,
-        vault_type: VaultType::BankVault,
+        vault_type: VaultType::Bank,
     };
 
     factory.execute(&mut app, &owner, &msg).unwrap();
@@ -148,7 +149,7 @@ fn test_unauthorized_deployment() {
 
     assert_eq!(
         res.root_cause().to_string(),
-        bvs_vault_factory::error::ContractError::Unauthorized {}.to_string()
+        bvs_vault_factory::ContractError::Unauthorized {}.to_string()
     );
 
     let msg = bvs_vault_factory::msg::ExecuteMsg::DeployCw20 {
@@ -159,7 +160,7 @@ fn test_unauthorized_deployment() {
 
     assert_eq!(
         res.root_cause().to_string(),
-        bvs_vault_factory::error::ContractError::Unauthorized {}.to_string()
+        bvs_vault_factory::ContractError::Unauthorized {}.to_string()
     );
 }
 
@@ -176,21 +177,28 @@ fn test_unauthorized_code_id_whitelist() {
 
     let msg = bvs_vault_factory::msg::ExecuteMsg::SetCodeId {
         code_id: bank_vault_code_id,
-        vault_type: VaultType::BankVault,
+        vault_type: VaultType::Bank,
     };
 
     let res = factory.execute(&mut app, &random, &msg).unwrap_err();
 
     assert!(matches!(
-        res.downcast_ref::<bvs_vault_factory::error::ContractError>(),
-        Some(bvs_vault_factory::error::ContractError::Ownership(..))
+        res.downcast_ref::<bvs_vault_factory::ContractError>(),
+        Some(bvs_vault_factory::ContractError::Ownership(..))
     ));
 
-    let query_res: bvs_vault_factory::msg::VaultCodeIdsResponse = factory
-        .query(&app, &bvs_vault_factory::msg::QueryMsg::VaultCodeIds {})
-        .unwrap();
-
-    assert_eq!(query_res.code_ids.len(), 0);
+    let err = factory
+        .query::<u64>(
+            &app,
+            &bvs_vault_factory::msg::QueryMsg::CodeId {
+                vault_type: VaultType::Bank,
+            },
+        )
+        .unwrap_err();
+    assert_eq!(
+        err.to_string(),
+        "Generic error: Querier contract error: Code id not found"
+    );
 }
 
 #[test]
@@ -206,19 +214,19 @@ fn test_set_code_id() {
 
     let msg = bvs_vault_factory::msg::ExecuteMsg::SetCodeId {
         code_id: bank_vault_code_id,
-        vault_type: VaultType::BankVault,
+        vault_type: VaultType::Bank,
     };
 
     let _res = factory.execute(&mut app, &owner, &msg).unwrap();
 
-    let query_res: bvs_vault_factory::msg::VaultCodeIdsResponse = factory
-        .query(&app, &bvs_vault_factory::msg::QueryMsg::VaultCodeIds {})
+    let code_id: u64 = factory
+        .query(
+            &app,
+            &bvs_vault_factory::msg::QueryMsg::CodeId {
+                vault_type: VaultType::Bank,
+            },
+        )
         .unwrap();
 
-    assert_eq!(query_res.code_ids.len(), 1);
-    assert_eq!(
-        query_res.code_ids[&VaultType::BankVault.to_string()],
-        bank_vault_code_id
-    );
-    assert_eq!(query_res.code_ids["BankVault"], bank_vault_code_id);
+    assert_eq!(code_id, bank_vault_code_id);
 }

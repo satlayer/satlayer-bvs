@@ -8,7 +8,7 @@ use bvs_library::ownership;
 use bvs_pauser;
 use bvs_vault_bank::msg::InstantiateMsg as BankVaultInstantiateMsg;
 use bvs_vault_cw20::msg::InstantiateMsg as Cw20InstantiateMsg;
-use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response};
 
 const CONTRACT_NAME: &str = concat!("crates.io:", env!("CARGO_PKG_NAME"));
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -52,8 +52,8 @@ pub fn execute(
 
     match msg {
         ExecuteMsg::DeployCw20 { cw20 } => {
-            let cw20_token = deps.api.addr_validate(&cw20)?;
-            execute::deploy_cw20_vault(deps, env, info, cw20_token)
+            let cw20 = deps.api.addr_validate(&cw20)?;
+            execute::deploy_cw20_vault(deps, env, info, cw20)
         }
         ExecuteMsg::DeployBank { denom } => execute::deploy_bank_vault(deps, env, info, denom),
         ExecuteMsg::SetCodeId {
@@ -69,18 +69,17 @@ pub fn execute(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::VaultCodeIds {} => to_json_binary(&query::get_available_code_ids(_deps)?),
+        QueryMsg::CodeId { vault_type } => Ok(to_json_binary(&query::code_id(deps, vault_type)?)?),
     }
 }
 
 mod execute {
     use super::*;
-    use crate::{
-        auth,
-        state::{VaultType, CODE_IDS},
-    };
+    use crate::msg::VaultType;
+    use crate::state::get_code_id;
+    use crate::{auth, state};
     use cosmwasm_std::{Addr, Event, Response};
 
     pub fn deploy_cw20_vault(
@@ -91,17 +90,15 @@ mod execute {
     ) -> Result<Response, ContractError> {
         auth::assert_operator(deps.as_ref(), &info)?;
 
+        let operator = info.sender;
         let msg = Cw20InstantiateMsg {
             pauser: bvs_pauser::api::get_pauser(deps.storage)?.to_string(),
             router: ROUTER.load(deps.storage)?.to_string(),
-            operator: info.sender.clone().to_string(),
+            operator: operator.to_string(),
             cw20_contract: cw20.to_string(),
         };
 
-        let code_id = match CODE_IDS.load(deps.storage, &VaultType::Cw20Vault) {
-            Ok(code_id) => code_id,
-            Err(_) => return Err(ContractError::CodeIdNotFound {}),
-        };
+        let code_id = get_code_id(deps.storage, &VaultType::Cw20)?;
 
         let instantiate_msg = cosmwasm_std::WasmMsg::Instantiate {
             admin: Some(env.contract.address.to_string()),
@@ -117,7 +114,7 @@ mod execute {
                 Event::new("DeployVault")
                     .add_attribute("type", "cw20")
                     .add_attribute("cw20", cw20.to_string())
-                    .add_attribute("operator", info.sender.to_string()),
+                    .add_attribute("operator", operator.to_string()),
             ))
     }
 
@@ -129,17 +126,15 @@ mod execute {
     ) -> Result<Response, ContractError> {
         auth::assert_operator(deps.as_ref(), &info)?;
 
+        let operator = info.sender;
         let msg = BankVaultInstantiateMsg {
             pauser: bvs_pauser::api::get_pauser(deps.storage)?.to_string(),
             router: ROUTER.load(deps.storage)?.to_string(),
-            operator: info.sender.clone().to_string(),
+            operator: operator.to_string(),
             denom: denom.clone(),
         };
 
-        let code_id = match CODE_IDS.load(deps.storage, &VaultType::BankVault) {
-            Ok(code_id) => code_id,
-            Err(_) => return Err(ContractError::CodeIdNotFound {}),
-        };
+        let code_id = get_code_id(deps.storage, &VaultType::Bank)?;
 
         let instantiate_msg = cosmwasm_std::WasmMsg::Instantiate {
             admin: Some(env.contract.address.to_string()),
@@ -149,50 +144,41 @@ mod execute {
             label: format!("BVS Bank Vault: {}", denom),
         };
 
-        let event = Event::new("DeployVault")
-            .add_attribute("denom", denom)
-            .add_attribute("operator", info.sender.to_string());
-
         Ok(Response::new()
             .add_submessage(cosmwasm_std::SubMsg::new(instantiate_msg))
-            .add_event(event))
+            .add_event(
+                Event::new("DeployVault")
+                    .add_attribute("type", "bank")
+                    .add_attribute("denom", denom)
+                    .add_attribute("operator", operator.to_string()),
+            ))
     }
 
     pub fn set_code_id(
         deps: DepsMut,
         info: MessageInfo,
         code_id: u64,
-        label: VaultType,
+        vault_type: VaultType,
     ) -> Result<Response, ContractError> {
-        ownership::assert_owner(deps.storage, &info).map_err(ContractError::Ownership)?;
+        ownership::assert_owner(deps.storage, &info)?;
 
-        CODE_IDS.save(deps.storage, &label, &code_id)?;
+        state::set_code_id(deps.storage, &vault_type, &code_id)?;
 
-        let event = Event::new("setCodeId")
-            .add_attribute("code_id", code_id.to_string())
-            .add_attribute("type", label.to_string());
-
-        Ok(Response::new().add_event(event))
+        Ok(Response::new().add_event(
+            Event::new("SetCodeId")
+                .add_attribute("code_id", code_id.to_string())
+                .add_attribute("vault_type", vault_type.to_string()),
+        ))
     }
 }
 
 mod query {
-    use std::collections::BTreeMap;
-
-    use crate::{msg::VaultCodeIdsResponse, state::CODE_IDS};
-
     use super::*;
+    use crate::msg::VaultType;
+    use crate::state;
     use cosmwasm_std::Deps;
 
-    pub fn get_available_code_ids(deps: Deps) -> StdResult<VaultCodeIdsResponse> {
-        let code_ids: BTreeMap<String, u64> = CODE_IDS
-            .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
-            .map(|item| {
-                let (vault_type, code_id) = item?;
-                Ok((vault_type.to_string(), code_id))
-            })
-            .collect::<StdResult<_>>()?;
-
-        Ok(VaultCodeIdsResponse { code_ids })
+    pub fn code_id(deps: Deps, vault_type: VaultType) -> Result<u64, ContractError> {
+        state::get_code_id(deps.storage, &vault_type)
     }
 }

@@ -1,8 +1,6 @@
 use bvs_pauser::api::Display;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
-use crate::state::VaultType;
-
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: String,
@@ -36,13 +34,21 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
-#[derive(QueryResponses)]
-pub enum QueryMsg {
-    #[returns(VaultCodeIdsResponse)]
-    VaultCodeIds {},
+#[derive(Display)]
+pub enum VaultType {
+    Bank,
+    Cw20,
 }
 
 #[cw_serde]
-pub struct VaultCodeIdsResponse {
-    pub code_ids: std::collections::BTreeMap<String, u64>,
+#[derive(QueryResponses)]
+pub enum QueryMsg {
+    #[returns(CodeIdResponse)]
+    CodeId { vault_type: VaultType },
 }
+
+/// The response to the `CodeId` query.
+/// Not exported.
+/// This is just a wrapper around `u64`, so that the schema can be generated.
+#[cw_serde]
+struct CodeIdResponse(u64);

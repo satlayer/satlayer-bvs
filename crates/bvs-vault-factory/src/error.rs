@@ -18,6 +18,6 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
-    #[error("Code Id Not Found")]
+    #[error("Code id not found")]
     CodeIdNotFound {},
 }
