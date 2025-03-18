@@ -220,4 +220,5 @@ fn test_set_code_id() {
         query_res.code_ids[&VaultType::BankVault.to_string()],
         bank_vault_code_id
     );
+    assert_eq!(query_res.code_ids["BankVault"], bank_vault_code_id);
 }

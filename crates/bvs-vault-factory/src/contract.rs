@@ -98,7 +98,7 @@ mod execute {
             cw20_contract: cw20.to_string(),
         };
 
-        let code_id = match CODE_IDS.load(deps.storage, VaultType::Cw20Vault) {
+        let code_id = match CODE_IDS.load(deps.storage, &VaultType::Cw20Vault) {
             Ok(code_id) => code_id,
             Err(_) => return Err(ContractError::CodeIdNotFound {}),
         };
@@ -136,7 +136,7 @@ mod execute {
             denom: denom.clone(),
         };
 
-        let code_id = match CODE_IDS.load(deps.storage, VaultType::BankVault) {
+        let code_id = match CODE_IDS.load(deps.storage, &VaultType::BankVault) {
             Ok(code_id) => code_id,
             Err(_) => return Err(ContractError::CodeIdNotFound {}),
         };
@@ -149,7 +149,7 @@ mod execute {
             label: format!("BVS Bank Vault: {}", denom),
         };
 
-        let event = Event::new("deploy_vault_bank")
+        let event = Event::new("DeployVault")
             .add_attribute("denom", denom)
             .add_attribute("operator", info.sender.to_string());
 
@@ -166,9 +166,11 @@ mod execute {
     ) -> Result<Response, ContractError> {
         ownership::assert_owner(deps.storage, &info).map_err(ContractError::Ownership)?;
 
-        CODE_IDS.save(deps.storage, label, &code_id)?;
+        CODE_IDS.save(deps.storage, &label, &code_id)?;
 
-        let event = Event::new("add_code_id").add_attribute("code_id", code_id.to_string());
+        let event = Event::new("setCodeId")
+            .add_attribute("code_id", code_id.to_string())
+            .add_attribute("type", label.to_string());
 
         Ok(Response::new().add_event(event))
     }

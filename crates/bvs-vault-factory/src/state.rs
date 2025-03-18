@@ -12,7 +12,7 @@ pub const REGISTRY: Item<Addr> = Item::new("registry");
 /// When operator trigger a deployment of contract, factory contract need to know the code_id of the
 /// contract.
 /// Which code_id is allowed in the system is determined by the factory contract
-pub const CODE_IDS: Map<VaultType, u64> = Map::new("code_ids");
+pub const CODE_IDS: Map<&VaultType, u64> = Map::new("code_ids");
 
 #[cw_serde]
 #[derive(PartialOrd, Eq, Ord)]
@@ -21,15 +21,15 @@ pub enum VaultType {
     BankVault,
 }
 
-impl KeyDeserialize for VaultType {
+impl KeyDeserialize for &VaultType {
     type Output = Self;
     const KEY_ELEMS: u16 = 1;
 
     fn from_vec(value: Vec<u8>) -> cosmwasm_std::StdResult<Self::Output> {
         let trimmed: Vec<u8> = value.into_iter().take_while(|&b| b != 0).collect();
         match std::str::from_utf8(&trimmed) {
-            Ok("Cw20Vault") => Ok(VaultType::Cw20Vault),
-            Ok("BankVault") => Ok(VaultType::BankVault),
+            Ok("Cw20Vault") => Ok(&VaultType::Cw20Vault),
+            Ok("BankVault") => Ok(&VaultType::BankVault),
             _ => Err(cosmwasm_std::StdError::generic_err("Invalid VaultType")),
         }
     }
@@ -38,8 +38,8 @@ impl KeyDeserialize for VaultType {
 impl PrimaryKey<'_> for VaultType {
     type Prefix = ();
     type SubPrefix = ();
-    type Suffix = Self;
-    type SuperSuffix = Self;
+    type Suffix = ();
+    type SuperSuffix = ();
 
     fn key(&self) -> Vec<Key> {
         let s = self.to_string();
