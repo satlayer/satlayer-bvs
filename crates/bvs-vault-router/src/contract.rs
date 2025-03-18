@@ -3,6 +3,7 @@ use cosmwasm_std::entry_point;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::state::set_registry;
 use bvs_library::ownership;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
@@ -21,6 +22,9 @@ pub fn instantiate(
 
     let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::set_owner(deps.storage, &owner)?;
+
+    let registry = deps.api.addr_validate(&msg.registry)?;
+    set_registry(deps.storage, &registry)?;
 
     let pauser = deps.api.addr_validate(&msg.pauser)?;
     bvs_pauser::api::set_pauser(deps.storage, &pauser)?;
@@ -128,7 +132,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::IsValidating { operator } => {
             let operator = deps.api.addr_validate(&operator)?;
-            to_json_binary(&query::is_delegated(deps, operator)?)
+            to_json_binary(&query::is_validating(deps, operator)?)
         }
         QueryMsg::ListVaults { limit, start_after } => {
             let limit = limit.map_or(100, |v| v.min(100));
@@ -143,6 +147,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 mod query {
     use crate::msg::{Vault, VaultListResponse};
     use crate::state;
+    use bvs_registry::msg::QueryMsg;
     use cosmwasm_std::{Addr, Deps, StdResult};
     use cw_storage_plus::Bound;
 
@@ -158,11 +163,19 @@ mod query {
     /// Returns whether the operator is delegated or not.
     /// Called by vaults to check if they are delegated.
     /// Delegated vaults must queue withdrawals.
-    pub fn is_delegated(_deps: Deps, _operator: Addr) -> StdResult<bool> {
+    pub fn is_validating(deps: Deps, operator: Addr) -> StdResult<bool> {
         // Currently, all vaults are not delegated.
         // To be implemented in M3, by connecting to the ` bvs_registry ` contract.
         // The `bvs_registry` contract will store Operator and Vault relationships.
-        Ok(false)
+        let registry = state::get_registry(deps.storage)?;
+        let is_operator_active: bool = deps.querier.query_wasm_smart(
+            registry.to_string(),
+            &QueryMsg::IsOperatorActive {
+                0: operator.to_string(),
+            },
+        )?;
+
+        Ok(is_operator_active)
     }
 
     /// List all vaults in the router.
@@ -202,10 +215,11 @@ mod tests {
             set_vault,
             vault::{VaultInfoQueryMsg, VaultInfoResponse},
         },
-        query::{is_delegated, is_whitelisted, list_vaults},
+        query::{is_validating, is_whitelisted, list_vaults},
     };
     use crate::msg::InstantiateMsg;
-    use crate::state::{Vault, VAULTS};
+    use crate::state::{Vault, REGISTRY, VAULTS};
+    use bvs_registry::msg::{IsOperatorActiveResponse, QueryMsg as RegistryQueryMsg};
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
@@ -219,11 +233,13 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let owner = deps.api.addr_make("owner");
+        let registry = deps.api.addr_make("registry");
         let pauser = deps.api.addr_make("pauser");
         let owner_info = message_info(&owner, &[]);
 
         let msg = InstantiateMsg {
             owner: owner.to_string(),
+            registry: registry.to_string(),
             pauser: pauser.to_string(),
         };
 
@@ -247,11 +263,13 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let owner = deps.api.addr_make("owner");
+        let registry = deps.api.addr_make("registry");
         let pauser = deps.api.addr_make("pauser");
         let owner_info = message_info(&owner, &[]);
 
         let msg = InstantiateMsg {
             owner: owner.to_string(),
+            registry: registry.to_string(),
             pauser: pauser.to_string(),
         };
 
@@ -439,11 +457,40 @@ mod tests {
 
     #[test]
     fn test_query_is_delegated() {
-        let deps = mock_dependencies();
+        let mut deps = mock_dependencies();
 
         let operator = deps.api.addr_make("operator");
+        let registry = deps.api.addr_make("registry");
 
-        let response = is_delegated(deps.as_ref(), operator).unwrap();
+        REGISTRY.save(&mut deps.storage, &registry).unwrap();
+
+        deps.querier
+            .update_wasm(move |req: &WasmQuery| -> QuerierResult {
+                if let WasmQuery::Smart { contract_addr, msg } = req {
+                    if *contract_addr == deps.api.addr_make("registry").to_string() {
+                        let msg: RegistryQueryMsg = from_json(msg).unwrap();
+                        match msg {
+                            RegistryQueryMsg::IsOperatorActive(operator) => {
+                                let response = IsOperatorActiveResponse(false);
+                                SystemResult::Ok(ContractResult::Ok(
+                                    to_json_binary(&response).unwrap(),
+                                ))
+                            }
+                            _ => SystemResult::Err(SystemError::Unknown {}),
+                        }
+                    } else {
+                        SystemResult::Err(SystemError::NoSuchContract {
+                            addr: contract_addr.to_string(),
+                        })
+                    }
+                } else {
+                    SystemResult::Err(SystemError::UnsupportedRequest {
+                        kind: "Unsupported query".to_string(),
+                    })
+                }
+            });
+
+        let response = is_validating(deps.as_ref(), operator).unwrap();
         assert!(!response)
     }
 

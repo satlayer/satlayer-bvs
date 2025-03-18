@@ -3,6 +3,7 @@ use bvs_library::{
     testing::{Cw20TokenContract, TestingContract},
 };
 use bvs_pauser::testing::PauserContract;
+use bvs_registry::testing::RegistryContract;
 use bvs_vault_bank::testing::VaultBankContract;
 use bvs_vault_cw20::testing::VaultCw20Contract;
 use bvs_vault_router::{
@@ -25,6 +26,7 @@ impl TestContracts {
         let env = mock_env();
 
         let _ = PauserContract::new(&mut app, &env, None);
+        let _ = RegistryContract::new(&mut app, &env, None);
         let vault_router = VaultRouterContract::new(&mut app, &env, None);
         let bank_vault = VaultBankContract::new(&mut app, &env, None);
         let _ = Cw20TokenContract::new(&mut app, &env, None);

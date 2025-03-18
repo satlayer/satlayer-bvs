@@ -66,8 +66,8 @@ pub fn assert_whitelisted(deps: &Deps, env: &Env) -> Result<(), VaultError> {
     Ok(())
 }
 
-/// Asserts that the vault is not delegated to any services.
-/// Used to prevent unauthorized withdrawals, delegated vaults withdrawal must be queued.
+/// Asserts that the vault is not actively validating any services.
+/// Used to prevent unauthorized withdrawals, actively validating vaults withdrawal must be queued.
 pub fn assert_not_validating(deps: &Deps) -> Result<(), VaultError> {
     let router = get_router(deps.storage)?;
     let operator = get_operator(deps.storage)?;

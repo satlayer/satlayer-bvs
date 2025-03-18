@@ -10,8 +10,9 @@ type IsWhitelistedResponse bool
 type VaultListResponse []Vault
 
 type InstantiateMsg struct {
-	Owner  string `json:"owner"`
-	Pauser string `json:"pauser"`
+	Owner    string `json:"owner"`
+	Pauser   string `json:"pauser"`
+	Registry string `json:"registry"`
 }
 
 // ExecuteMsg SetVault the vault contract in the router and whitelist (true/false) it. Only

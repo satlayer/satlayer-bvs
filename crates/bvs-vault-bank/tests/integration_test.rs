@@ -1,5 +1,6 @@
 use bvs_library::testing::TestingContract;
 use bvs_pauser::testing::PauserContract;
+use bvs_registry::testing::RegistryContract;
 use bvs_vault_bank::msg::{ExecuteMsg, QueryMsg};
 use bvs_vault_bank::testing::VaultBankContract;
 use bvs_vault_base::msg::{RecipientAmount, VaultInfoResponse};
@@ -10,6 +11,7 @@ use cw_multi_test::{App, Executor};
 
 struct TestContracts {
     pauser: PauserContract,
+    registry: RegistryContract,
     router: VaultRouterContract,
     vault: VaultBankContract,
 }
@@ -26,6 +28,7 @@ impl TestContracts {
         let env = mock_env();
 
         let pauser = PauserContract::new(&mut app, &env, None);
+        let registry = RegistryContract::new(&mut app, &env, None);
         let router = VaultRouterContract::new(&mut app, &env, None);
         let vault = VaultBankContract::new(&mut app, &env, None);
 
@@ -41,6 +44,7 @@ impl TestContracts {
             app,
             Self {
                 pauser,
+                registry,
                 router,
                 vault,
             },

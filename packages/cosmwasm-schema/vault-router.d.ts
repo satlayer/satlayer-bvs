@@ -22,6 +22,7 @@ type IsWhitelistedResponse = boolean;
 export interface InstantiateMsg {
   owner: string;
   pauser: string;
+  registry: string;
 }
 
 /**

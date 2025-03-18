@@ -80,6 +80,7 @@ pub fn execute(
 mod execute {
     use crate::error::ContractError;
     use crate::msg::Metadata;
+    use crate::state;
     use crate::state::{
         get_registration_status, require_operator_registered, require_service_registered,
         set_registration_status, RegistrationStatus, OPERATORS, SERVICES,
@@ -229,6 +230,9 @@ mod execute {
             }
             RegistrationStatus::OperatorRegistered => {
                 set_registration_status(deps.storage, key, RegistrationStatus::Active)?;
+                // increase operator status count
+                state::increase_operator_active_registration_count(deps.storage, &operator)?;
+
                 Ok(Response::new().add_event(
                     Event::new("RegistrationStatusUpdated")
                         .add_attribute("method", "register_operator_to_service")
@@ -259,6 +263,9 @@ mod execute {
             })
         } else {
             set_registration_status(deps.storage, key, RegistrationStatus::Inactive)?;
+            // decrease operator status count
+            state::decrease_operator_active_registration_count(deps.storage, &operator)?;
+
             Ok(Response::new().add_event(
                 Event::new("RegistrationStatusUpdated")
                     .add_attribute("method", "deregister_operator_from_service")
@@ -305,6 +312,9 @@ mod execute {
             }
             RegistrationStatus::ServiceRegistered => {
                 set_registration_status(deps.storage, key, RegistrationStatus::Active)?;
+                // increase operator status count
+                state::increase_operator_active_registration_count(deps.storage, &operator)?;
+
                 Ok(Response::new().add_event(
                     Event::new("RegistrationStatusUpdated")
                         .add_attribute("method", "register_service_to_operator")
@@ -334,6 +344,9 @@ mod execute {
             })
         } else {
             set_registration_status(deps.storage, key, RegistrationStatus::Inactive)?;
+            // decrease operator status count
+            state::decrease_operator_active_registration_count(deps.storage, &operator)?;
+
             Ok(Response::new().add_event(
                 Event::new("RegistrationStatusUpdated")
                     .add_attribute("method", "deregister_service_from_operator")
@@ -361,11 +374,17 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let operator = deps.api.addr_validate(&operator)?;
             to_json_binary(&query::is_operator(deps, operator)?)
         }
+        QueryMsg::IsOperatorActive(operator) => {
+            let operator = deps.api.addr_validate(&operator)?;
+            to_json_binary(&query::is_operator_active(deps, operator)?)
+        }
     }
 }
 
 mod query {
-    use crate::msg::{IsOperatorResponse, IsServiceResponse, StatusResponse};
+    use crate::msg::{
+        IsOperatorActiveResponse, IsOperatorResponse, IsServiceResponse, StatusResponse,
+    };
     use crate::state;
     use crate::state::{require_operator_registered, require_service_registered};
     use cosmwasm_std::{Addr, Deps, StdResult};
@@ -395,14 +414,23 @@ mod query {
 
         Ok(IsOperatorResponse(is_operator_registered))
     }
+
+    /// Query if the operator is actively registered to any service
+    pub fn is_operator_active(deps: Deps, operator: Addr) -> StdResult<IsOperatorActiveResponse> {
+        let is_operator_active = state::is_operator_active(deps.storage, &operator)?;
+
+        Ok(IsOperatorActiveResponse(is_operator_active))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::contract::execute::{register_operator_to_service, register_service_to_operator};
     use crate::contract::query::status;
     use crate::msg::{
-        InstantiateMsg, IsOperatorResponse, IsServiceResponse, Metadata, StatusResponse,
+        InstantiateMsg, IsOperatorActiveResponse, IsOperatorResponse, IsServiceResponse, Metadata,
+        StatusResponse,
     };
     use crate::state;
     use crate::state::{RegistrationStatus, OPERATORS, SERVICES};
@@ -914,6 +942,8 @@ mod tests {
             RegistrationStatus::Active,
         )
         .unwrap();
+        state::increase_operator_active_registration_count(&mut deps.storage, &operator)
+            .expect("failed to increase operator active registration count");
 
         let res = execute::deregister_operator_from_service(
             deps.as_mut(),
@@ -950,6 +980,8 @@ mod tests {
             RegistrationStatus::Active,
         )
         .unwrap();
+        state::increase_operator_active_registration_count(&mut deps.storage, &operator)
+            .expect("failed to increase operator active registration count");
 
         let res = execute::deregister_service_from_operator(
             deps.as_mut(),
@@ -1106,5 +1138,40 @@ mod tests {
         // assert is_operator true after operator registration
         let is_operator = query::is_operator(deps.as_ref(), operator.clone()).unwrap();
         assert_eq!(is_operator, IsOperatorResponse(true));
+    }
+
+    #[test]
+    fn query_is_operator_active() {
+        let mut deps = mock_dependencies();
+
+        let operator = deps.api.addr_make("operator");
+        let service = deps.api.addr_make("service");
+
+        // assert is_operator_active false before operator registration active
+        let is_operator_active =
+            query::is_operator_active(deps.as_ref(), operator.clone()).unwrap();
+        assert_eq!(is_operator_active, IsOperatorActiveResponse(false));
+
+        // register operator + service
+        OPERATORS.save(&mut deps.storage, &operator, &true).unwrap();
+        SERVICES.save(&mut deps.storage, &service, &true).unwrap();
+
+        // register operator to service => ServiceRegistered
+        register_operator_to_service(deps.as_mut(), message_info(&service, &[]), operator.clone())
+            .expect("register operator to service failed");
+
+        // assert is_operator_active false - status is only ServiceRegistered
+        let is_operator_active =
+            query::is_operator_active(deps.as_ref(), operator.clone()).unwrap();
+        assert_eq!(is_operator_active, IsOperatorActiveResponse(false));
+
+        // register service to operator => Active
+        register_service_to_operator(deps.as_mut(), message_info(&operator, &[]), service.clone())
+            .expect("register service to operator failed");
+
+        // assert is_operator_active true - status is now Active
+        let is_operator_active =
+            query::is_operator_active(deps.as_ref(), operator.clone()).unwrap();
+        assert_eq!(is_operator_active, IsOperatorActiveResponse(true));
     }
 }

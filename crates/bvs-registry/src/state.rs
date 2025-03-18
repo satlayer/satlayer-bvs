@@ -1,6 +1,9 @@
 use crate::error::ContractError;
+use crate::ContractError::Std;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, StdError, StdResult, Storage};
+use cosmwasm_std::{
+    Addr, OverflowError, OverflowOperation, StdError, StdResult, Storage, Uint128, Uint64,
+};
 use cw_storage_plus::Map;
 
 type Service = Addr;
@@ -100,10 +103,73 @@ pub fn set_registration_status(
     Ok(())
 }
 
+pub const OPERATOR_ACTIVE_REGISTRATION_COUNT: Map<&Operator, u64> =
+    Map::new("operator_active_registration_count");
+
+/// Check if the operator is actively registered to any service
+pub fn is_operator_active(store: &dyn Storage, operator: &Operator) -> StdResult<bool> {
+    let active_count = OPERATOR_ACTIVE_REGISTRATION_COUNT
+        .may_load(store, operator)?
+        .unwrap_or(0);
+
+    Ok(active_count > 0)
+}
+
+/// Increase the operator active registration count by 1
+pub fn increase_operator_active_registration_count(
+    store: &mut dyn Storage,
+    operator: &Operator,
+) -> StdResult<u64> {
+    OPERATOR_ACTIVE_REGISTRATION_COUNT.update(store, operator, |count| {
+        let new_count = count.unwrap_or(0).checked_add(1);
+        new_count.ok_or_else(|| {
+            StdError::generic_err("Increase operator active registration count failed")
+        })
+    })
+}
+
+/// Decrease the operator active registration count by 1
+pub fn decrease_operator_active_registration_count(
+    store: &mut dyn Storage,
+    operator: &Operator,
+) -> StdResult<u64> {
+    OPERATOR_ACTIVE_REGISTRATION_COUNT.update(store, operator, |count| {
+        let new_count = count.unwrap_or(0).checked_sub(1);
+        new_count.ok_or_else(|| {
+            StdError::generic_err("Decrease operator active registration count failed")
+        })
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use cosmwasm_std::testing::mock_dependencies;
+
+    #[test]
+    fn test_is_operator_active() {
+        let mut deps = mock_dependencies();
+
+        let operator = deps.api.addr_make("operator");
+        let operator2 = deps.api.addr_make("operator2");
+
+        // assert that the operator is not active
+        let res = is_operator_active(&deps.storage, &operator).unwrap();
+        assert_eq!(res, false);
+
+        // set the operator active count to 1
+        OPERATOR_ACTIVE_REGISTRATION_COUNT
+            .save(&mut deps.storage, &operator, &1)
+            .expect("OPERATOR_ACTIVE_REGISTRATION_COUNT save failed");
+
+        // assert that the operator is active
+        let res = is_operator_active(&deps.storage, &operator).unwrap();
+        assert_eq!(res, true);
+
+        // assert that the operator2 is not active
+        let res = is_operator_active(&deps.storage, &operator2).unwrap();
+        assert_eq!(res, false);
+    }
 
     #[test]
     fn test_require_service_registered() {

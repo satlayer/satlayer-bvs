@@ -1,5 +1,6 @@
 use bvs_library::testing::{Cw20TokenContract, TestingContract};
 use bvs_pauser::testing::PauserContract;
+use bvs_registry::testing::RegistryContract;
 use bvs_vault_base::msg::{RecipientAmount, VaultInfoResponse};
 use bvs_vault_cw20::msg::{ExecuteMsg, QueryMsg};
 use bvs_vault_cw20::testing::VaultCw20Contract;
@@ -10,6 +11,7 @@ use cw_multi_test::App;
 
 struct TestContracts {
     pauser: PauserContract,
+    registry: RegistryContract,
     router: VaultRouterContract,
     cw20: Cw20TokenContract,
     vault: VaultCw20Contract,
@@ -20,6 +22,7 @@ impl TestContracts {
         let env = mock_env();
 
         let pauser = PauserContract::new(app, &env, None);
+        let registry = RegistryContract::new(app, &env, None);
         let router = VaultRouterContract::new(app, &env, None);
         let cw20 = Cw20TokenContract::new(app, &env, None);
         let vault = VaultCw20Contract::new(app, &env, None);
@@ -34,6 +37,7 @@ impl TestContracts {
 
         Self {
             pauser,
+            registry,
             router,
             vault,
             cw20,
@@ -47,6 +51,7 @@ fn test_not_whitelisted() {
     let env = mock_env();
 
     let _ = PauserContract::new(app, &env, None);
+    let _ = RegistryContract::new(app, &env, None);
     let _ = VaultRouterContract::new(app, &env, None);
     let cw20 = Cw20TokenContract::new(app, &env, None);
     let vault = VaultCw20Contract::new(app, &env, None);
