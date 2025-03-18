@@ -114,7 +114,8 @@ mod execute {
         Ok(Response::new()
             .add_submessage(cosmwasm_std::SubMsg::new(instantiate_msg))
             .add_event(
-                Event::new("deploy_vault_cw20")
+                Event::new("DeployVault")
+                    .add_attribute("type", "cw20")
                     .add_attribute("cw20", cw20.to_string())
                     .add_attribute("operator", info.sender.to_string()),
             ))
