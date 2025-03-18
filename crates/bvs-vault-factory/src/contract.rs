@@ -108,7 +108,7 @@ mod execute {
             code_id,
             msg: to_json_binary(&msg)?,
             funds: vec![],
-            label: format!("{} Vault CW20", cw20),
+            label: format!("BVS CW20 Vault: {}", cw20),
         };
 
         Ok(Response::new()
