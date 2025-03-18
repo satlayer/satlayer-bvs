@@ -10,11 +10,11 @@ pub fn assert_operator(deps: Deps, info: &MessageInfo) -> Result<(), ContractErr
         msg: to_json_binary(&msg)?,
     };
 
-    let is_operator: bvs_registry::msg::IsOperatorResponse =
+    let bvs_registry::msg::IsOperatorResponse(is_operator) =
         deps.querier.query(&QueryRequest::Wasm(query))?;
 
-    if !is_operator.0 {
-        Err(crate::error::ContractError::Unauthorized {})
+    if !is_operator {
+        Err(ContractError::Unauthorized {})
     } else {
         Ok(())
     }
