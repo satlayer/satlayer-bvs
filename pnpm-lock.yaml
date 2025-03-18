@@ -64,6 +64,8 @@ importers:
 
   crates/bvs-vault-cw20: {}
 
+  crates/bvs-vault-factory: {}
+
   crates/bvs-vault-router: {}
 
   docs:
