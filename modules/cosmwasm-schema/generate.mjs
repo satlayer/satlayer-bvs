@@ -54,6 +54,7 @@ const packages = [
   "@satlayer/bvs-vault-router",
   "@satlayer/bvs-vault-cw20",
   "@satlayer/bvs-vault-bank",
+  "@satlayer/bvs-vault-factory",
 ];
 
 for (const schema of packages) {
