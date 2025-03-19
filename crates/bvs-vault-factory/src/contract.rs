@@ -182,3 +182,34 @@ mod query {
         state::get_code_id(deps.storage, &vault_type)
     }
 }
+
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_set_code_id() {
+        let mut deps = cosmwasm_std::testing::mock_dependencies();
+        let owner = deps.api.addr_make("owner");
+
+        ownership::set_owner(deps.as_mut().storage, &owner).unwrap();
+
+        let info = cosmwasm_std::testing::message_info(&owner, &[]);
+        let code_id = 123;
+        let vault_type = crate::msg::VaultType::Cw20;
+
+        let res = execute::set_code_id(deps.as_mut(), info, code_id, vault_type.clone()).unwrap();
+        assert_eq!(0, res.messages.len());
+        assert_eq!(1, res.events.len());
+
+        let event = &res.events[0];
+        assert_eq!(event.ty.as_str(), "SetCodeId");
+        assert_eq!(event.attributes.len(), 2);
+        assert_eq!(event.attributes[0].key.as_str(), "code_id");
+        assert_eq!(event.attributes[0].value.as_str(), "123");
+        assert_eq!(event.attributes[1].key.as_str(), "vault_type");
+        assert_eq!(event.attributes[1].value.as_str(), "Cw20");
+
+        let code_id = query::code_id(deps.as_ref(), vault_type).unwrap();
+        assert_eq!(123, code_id);
+    }
+}
