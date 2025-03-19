@@ -14,6 +14,15 @@ pub struct QueuedWithdrawalInfo {
     pub unlock_timestamp: Timestamp,
 }
 
+impl Default for QueuedWithdrawalInfo {
+    fn default() -> Self {
+        Self {
+            queued_shares: Uint128::zero(),
+            unlock_timestamp: Timestamp::from_seconds(0),
+        }
+    }
+}
+
 /// Unchecked add, you can add zero shares—accounting module won't check this.
 /// Adding zero shares is as good as not running this function.
 pub fn add_shares(
@@ -85,12 +94,9 @@ pub fn get_queued_withdrawal_info(
     storage: &dyn Storage,
     recipient: &Addr,
 ) -> StdResult<QueuedWithdrawalInfo> {
-    QUEUED_WITHDRAWAL.may_load(storage, recipient).map(|res| {
-        res.unwrap_or(QueuedWithdrawalInfo {
-            queued_shares: Uint128::zero(),
-            unlock_timestamp: Timestamp::from_seconds(0),
-        })
-    })
+    QUEUED_WITHDRAWAL
+        .may_load(storage, recipient)
+        .map(|res| res.unwrap_or_default())
 }
 
 #[cfg(test)]
@@ -146,6 +152,10 @@ mod tests {
     fn set_and_get_queued_withdrawal_info() {
         let mut store = MockStorage::new();
         let staker = Addr::unchecked("staker");
+
+        let result = get_queued_withdrawal_info(&mut store, &staker).unwrap();
+        assert_eq!(result.queued_shares, Uint128::zero());
+        assert_eq!(result.unlock_timestamp, Timestamp::from_seconds(0));
 
         let queued_withdrawal_info1 = QueuedWithdrawalInfo {
             queued_shares: Uint128::new(123),

@@ -62,15 +62,13 @@ impl RecipientAmount {
 
 /// This struct is used to represent a recipient for RedeemWithdrawalTo.
 #[cw_serde]
-pub struct Recipient {
-    pub recipient: Addr,
-}
+pub struct Recipient(pub Addr);
 
 impl Recipient {
     /// Validate the recipient: [`Addr`] field.
     /// The recipient must be a valid [`Addr`].
     pub fn validate(&self, api: &dyn Api) -> Result<(), VaultError> {
-        api.addr_validate(self.recipient.as_str())?;
+        api.addr_validate(self.0.as_str())?;
         Ok(())
     }
 }

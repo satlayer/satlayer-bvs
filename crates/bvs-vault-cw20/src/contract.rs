@@ -180,7 +180,9 @@ mod execute {
             .add_message(transfer_msg))
     }
 
-    /// Queue shares to withdraw later
+    /// Queue shares to withdraw later.
+    /// The shares are burned from `info.sender` and wait lock period to redeem withdrawal.
+    /// /// It doesn't remove the `total_shares` and only removes the user shares, so the exchange rate is not affected.
     pub fn queue_withdrawal_to(
         deps: DepsMut,
         env: Env,
@@ -221,6 +223,7 @@ mod execute {
     }
 
     /// Redeem all queued shares to assets for `msg.recipient`.
+    /// The `info.sender` must be equal to the `msg.recipient` in [`queue_withdrawal_to`].
     pub fn redeem_withdrawal_to(
         deps: DepsMut,
         env: Env,
@@ -231,7 +234,7 @@ mod execute {
         let queued_shares = withdrawal_info.queued_shares;
         let unlock_timestamp = withdrawal_info.unlock_timestamp;
 
-        if queued_shares.is_zero() && unlock_timestamp.seconds() == 0 {
+        if queued_shares.is_zero() || unlock_timestamp.seconds() == 0 {
             return Err(VaultError::zero("No queued shares").into());
         }
 
@@ -259,8 +262,7 @@ mod execute {
         };
 
         // CW20 transfer of asset to msg.recipient
-        let transfer_msg =
-            token::execute_new_transfer(deps.storage, &msg.recipient, claimed_assets)?;
+        let transfer_msg = token::execute_new_transfer(deps.storage, &msg.0, claimed_assets)?;
 
         // Remove staker's info
         shares::remove_queued_withdrawal_info(deps.storage, &info.sender);
@@ -269,7 +271,7 @@ mod execute {
             .add_event(
                 Event::new("RedeemWithdrawalTo")
                     .add_attribute("sender", info.sender.to_string())
-                    .add_attribute("recipient", msg.recipient.to_string())
+                    .add_attribute("recipient", msg.0.to_string())
                     .add_attribute("sub_shares", queued_shares.to_string())
                     .add_attribute("claimed_assets", claimed_assets.to_string())
                     .add_attribute("total_shares", vault.total_shares().to_string()),

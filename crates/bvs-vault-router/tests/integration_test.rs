@@ -173,7 +173,10 @@ fn set_withdrawal_lock_period() {
                     .add_attribute("_contract_address", tc.vault_router.addr.as_str()),
                 Event::new("wasm-SetWithdrawalLockPeriod")
                     .add_attribute("_contract_address", tc.vault_router.addr.as_str())
-                    .add_attribute("prev_withdrawal_lock_period", 0.to_string())
+                    .add_attribute(
+                        "prev_withdrawal_lock_period",
+                        Uint64::new(604800).to_string()
+                    )
                     .add_attribute(
                         "new_withdrawal_lock_period",
                         withdrawal_lock_period1.to_string()

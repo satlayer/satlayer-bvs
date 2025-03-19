@@ -62,7 +62,7 @@ pub fn execute(
 
 mod execute {
     use crate::error::ContractError;
-    use crate::state;
+    use crate::state::{self, DEFAULT_WITHDRAWAL_LOCK_PERIOD};
     use crate::{contract::execute::vault::assert_vault_info, state::WITHDRAWAL_LOCK_PERIOD};
     use bvs_library::ownership;
     use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Response, Uint64};
@@ -110,7 +110,7 @@ mod execute {
 
         let prev_withdrawal_lock_period = WITHDRAWAL_LOCK_PERIOD
             .may_load(deps.storage)?
-            .unwrap_or(Uint64::zero());
+            .unwrap_or(DEFAULT_WITHDRAWAL_LOCK_PERIOD);
 
         WITHDRAWAL_LOCK_PERIOD.save(deps.storage, &withdrawal_lock_period)?;
 
@@ -257,10 +257,10 @@ mod tests {
             set_vault, set_withdrawal_lock_period,
             vault::{VaultInfoQueryMsg, VaultInfoResponse},
         },
-        query::{get_withdrawal_lock_period, is_whitelisted, list_vaults},
+        query::{get_withdrawal_lock_period, is_validating, is_whitelisted, list_vaults},
     };
     use crate::msg::InstantiateMsg;
-    use crate::state::{Vault, DEFAULT_WITHDRAWAL_LOCK_PERIOD, REGISTRY, VAULTS};
+    use crate::state::{Vault, REGISTRY, VAULTS};
     use bvs_registry::msg::{IsOperatorActiveResponse, QueryMsg as RegistryQueryMsg};
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
@@ -505,7 +505,10 @@ mod tests {
             assert_eq!(
                 response.events[0],
                 Event::new("SetWithdrawalLockPeriod")
-                    .add_attribute("prev_withdrawal_lock_period", Uint64::zero())
+                    .add_attribute(
+                        "prev_withdrawal_lock_period",
+                        Uint64::new(604800).to_string()
+                    )
                     .add_attribute(
                         "new_withdrawal_lock_period",
                         withdrawal_lock_period.to_string()
@@ -624,6 +627,6 @@ mod tests {
         let deps = mock_dependencies();
 
         let response = get_withdrawal_lock_period(deps.as_ref()).unwrap();
-        assert_eq!(response, DEFAULT_WITHDRAWAL_LOCK_PERIOD);
+        assert_eq!(response, Uint64::new(604800));
     }
 }

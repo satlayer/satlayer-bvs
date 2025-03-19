@@ -179,7 +179,9 @@ mod execute {
             .add_message(send_msg))
     }
 
-    /// Queue shares to withdraw later
+    /// Queue shares to withdraw later.
+    /// The shares are burned from `info.sender` and wait lock period to redeem withdrawal.
+    /// It doesn't remove the `total_shares` and only removes the user shares, so the exchange rate is not affected.
     pub fn queue_withdrawal_to(
         deps: DepsMut,
         env: Env,
@@ -220,6 +222,7 @@ mod execute {
     }
 
     /// Redeem all queued shares to assets for `msg.recipient`.
+    /// The `info.sender` must be equal to the `msg.recipient` in [`queue_withdrawal_to`].
     pub fn redeem_withdrawal_to(
         deps: DepsMut,
         env: Env,
@@ -230,7 +233,7 @@ mod execute {
         let queued_shares = withdrawal_info.queued_shares;
         let unlock_timestamp = withdrawal_info.unlock_timestamp;
 
-        if queued_shares.is_zero() && unlock_timestamp.seconds() == 0 {
+        if queued_shares.is_zero() || unlock_timestamp.seconds() == 0 {
             return Err(VaultError::zero("No queued shares").into());
         }
 
@@ -258,7 +261,7 @@ mod execute {
         };
 
         // Setup asset transfer to recipient
-        let send_msg = bank::bank_send(deps.storage, &msg.recipient, claimed_assets)?;
+        let send_msg = bank::bank_send(deps.storage, &msg.0, claimed_assets)?;
 
         // Remove staker's info
         shares::remove_queued_withdrawal_info(deps.storage, &info.sender);
@@ -267,7 +270,7 @@ mod execute {
             .add_event(
                 Event::new("RedeemWithdrawalTo")
                     .add_attribute("sender", info.sender.to_string())
-                    .add_attribute("recipient", msg.recipient.to_string())
+                    .add_attribute("recipient", msg.0.to_string())
                     .add_attribute("sub_shares", queued_shares.to_string())
                     .add_attribute("claimed_assets", claimed_assets.to_string())
                     .add_attribute("total_shares", vault.total_shares().to_string()),
@@ -830,12 +833,100 @@ mod tests {
             );
         }
 
-        // query queued withdrawl
+        // query queued withdrawal
         {
             let result = queued_withdrawal(deps.as_ref(), recipient).unwrap();
             assert_eq!(result.queued_shares, Uint128::new(22000));
             assert_eq!(result.unlock_timestamp, new_unlock_timestamp);
         }
+    }
+
+    #[test]
+    fn test_queue_withdrawal_to_not_affect_exchange_rate() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        let sender = deps.api.addr_make("sender");
+        let withdrawal_lock_period = Uint64::new(100);
+
+        {
+            let router = deps.api.addr_make("vault_router");
+            router::set_router(&mut deps.storage, &router).unwrap();
+            let operator = deps.api.addr_make("operator");
+            router::set_operator(&mut deps.storage, &operator).unwrap();
+            deps.querier.update_wasm(move |query| match query {
+                WasmQuery::Smart {
+                    contract_addr: _,
+                    msg,
+                } => {
+                    let msg: VaultRouterMsg = from_json(msg).unwrap();
+                    match msg {
+                        VaultRouterMsg::IsWhitelisted { vault: _ } => {
+                            SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap()))
+                        }
+                        VaultRouterMsg::IsValidating { operator: _ } => {
+                            SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap()))
+                        }
+                        VaultRouterMsg::WithdrawalLockPeriod {} => SystemResult::Ok(
+                            ContractResult::Ok(to_json_binary(&withdrawal_lock_period).unwrap()),
+                        ),
+                        _ => panic!("unexpected query"),
+                    }
+                }
+                _ => SystemResult::Err(SystemError::Unknown {}),
+            });
+
+            bank::set_denom(&mut deps.storage, "denom").unwrap();
+            deps.querier
+                .bank
+                .update_balance(&env.contract.address, coins(100_000, "denom"));
+        }
+
+        let amount_deposited = Uint128::new(100_000);
+        // deposit to add shares
+        {
+            let info = message_info(&sender, &coins(100_000, "denom"));
+            execute::deposit_for(
+                deps.as_mut(),
+                env.clone(),
+                info.clone(),
+                RecipientAmount {
+                    recipient: sender.clone(),
+                    amount: amount_deposited,
+                },
+            )
+            .unwrap();
+        }
+
+        let after_balance = bank::query_balance(&deps.as_ref(), &env).unwrap();
+        let before_balance = after_balance.checked_sub(amount_deposited).unwrap();
+        let vault = offset::VirtualOffset::load(&deps.as_ref(), before_balance).unwrap();
+
+        let before_queue_shares = vault.assets_to_shares(Uint128::new(1200)).unwrap();
+        let before_queue_assets = vault.shares_to_assets(Uint128::new(1200)).unwrap();
+
+        let recipient = deps.api.addr_make("recipient");
+
+        // QueueWithdrawalTo
+        {
+            let sender_info = message_info(&sender, &[]);
+            execute::queue_withdrawal_to(
+                deps.as_mut(),
+                env.clone(),
+                sender_info.clone(),
+                RecipientAmount {
+                    recipient: recipient.clone(),
+                    amount: Uint128::new(10_000),
+                },
+            )
+            .unwrap();
+        }
+
+        let after_queue_shares = vault.assets_to_shares(Uint128::new(1200)).unwrap();
+        let after_queue_assets = vault.shares_to_assets(Uint128::new(1200)).unwrap();
+
+        assert_eq!(before_queue_shares, after_queue_shares);
+        assert_eq!(before_queue_assets, after_queue_assets);
     }
 
     #[test]
@@ -920,7 +1011,7 @@ mod tests {
             new_env,
             sender_info.clone(),
             Recipient {
-                recipient: recipient.clone(),
+                0: recipient.clone(),
             },
         )
         .unwrap();
