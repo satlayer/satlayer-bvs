@@ -118,14 +118,14 @@ func (s *ClientTestSuite) TestExecute() {
 	s.Equal(pauser.IsPausedResponse(1), isPausedResponse)
 }
 
-func (s *ClientTestSuite) TestGetTx() {
+func (s *ClientTestSuite) TestWaitForTx() {
 	receiver := s.container.GenerateAddress("receiver")
 
 	// create a TX by sending some ubbn to the receiver
 	tx := s.container.FundAddressUbbn(receiver.String(), 10000)
 
 	txHash := tx.Hash.String()
-	txRes, err := GetTx(
+	txRes, err := WaitForTx(
 		s.container.ClientCtx,
 		context.Background(),
 		txHash,
