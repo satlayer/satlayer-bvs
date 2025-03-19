@@ -8,8 +8,8 @@ pub const REGISTRY: Item<Addr> = Item::new("registry");
 
 /// Contains the code_ids of the contracts that are allowed to be deployed by the factory.
 /// > Permissioned by owner address of factory contract.
-/// When an operator triggers a deployment of a contract,
-/// the factory contract needs to know the code_id of the contract.
+/// > When an operator triggers a deployment of a contract,
+/// > the factory contract needs to know the code_id of the contract.
 const CODE_IDS: Map<&u8, u64> = Map::new("code_ids");
 
 pub fn get_code_id(store: &dyn Storage, vault_type: &VaultType) -> Result<u64, ContractError> {
