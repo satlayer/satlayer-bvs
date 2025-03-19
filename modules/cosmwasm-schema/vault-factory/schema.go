@@ -1,61 +1,9 @@
-// This file was generated from JSON Schema using quicktype, do not modify it directly.
-// To parse and unparse this JSON data, add this code to your project and do:
-//
-//    instantiateMsg, err := UnmarshalInstantiateMsg(bytes)
-//    bytes, err = instantiateMsg.Marshal()
-//
-//    executeMsg, err := UnmarshalExecuteMsg(bytes)
-//    bytes, err = executeMsg.Marshal()
-//
-//    queryMsg, err := UnmarshalQueryMsg(bytes)
-//    bytes, err = queryMsg.Marshal()
-//
-//    vaultCodeIDSResponse, err := UnmarshalVaultCodeIDSResponse(bytes)
-//    bytes, err = vaultCodeIDSResponse.Marshal()
+// This file was automatically generated from vault-factory/schema.json.
+// DO NOT MODIFY IT BY HAND.
 
 package vaultfactory
 
-import "encoding/json"
-
-func UnmarshalInstantiateMsg(data []byte) (InstantiateMsg, error) {
-	var r InstantiateMsg
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *InstantiateMsg) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalExecuteMsg(data []byte) (ExecuteMsg, error) {
-	var r ExecuteMsg
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *ExecuteMsg) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalQueryMsg(data []byte) (QueryMsg, error) {
-	var r QueryMsg
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *QueryMsg) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-func UnmarshalVaultCodeIDSResponse(data []byte) (VaultCodeIDSResponse, error) {
-	var r VaultCodeIDSResponse
-	err := json.Unmarshal(data, &r)
-	return r, err
-}
-
-func (r *VaultCodeIDSResponse) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
+type CodeIDResponse int64
 
 type InstantiateMsg struct {
 	Owner    string `json:"owner"`
@@ -91,22 +39,16 @@ type TransferOwnership struct {
 }
 
 type QueryMsg struct {
-	VaultCodeIDS VaultCodeIDS `json:"vault_code_ids"`
+	CodeID CodeID `json:"code_id"`
 }
 
-type VaultCodeIDS struct {
-}
-
-type VaultCodeIDSResponse struct {
-	CodeIDS CodeIDS `json:"code_ids"`
-}
-
-type CodeIDS struct {
+type CodeID struct {
+	VaultType VaultType `json:"vault_type"`
 }
 
 type VaultType string
 
 const (
-	BankVault VaultType = "bank_vault"
-	Cw20Vault VaultType = "cw20_vault"
+	Bank VaultType = "bank"
+	Cw20 VaultType = "cw20"
 )
