@@ -210,7 +210,7 @@ fn set_withdrawal_lock_period() {
     }
 
     // query the withdrawal lock period
-    let msg = QueryMsg::GetWithdrawalLockPeriod {};
+    let msg = QueryMsg::WithdrawalLockPeriod {};
     let result: Uint64 = tc.vault_router.query(&mut app, &msg).unwrap();
     assert_eq!(result, withdrawal_lock_period2);
 }

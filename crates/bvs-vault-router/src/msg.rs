@@ -47,8 +47,8 @@ pub enum QueryMsg {
     },
 
     /// QueryMsg WithdrawalLockPeriod: returns the withdrawal lock period.
-    #[returns(GetWithdrawalLockPeriodResponse)]
-    GetWithdrawalLockPeriod {},
+    #[returns(WithdrawalLockPeriodResponse)]
+    WithdrawalLockPeriod {},
 }
 
 /// The response to the `IsWhitelisted` query.
@@ -74,8 +74,8 @@ pub struct Vault {
     pub whitelisted: bool,
 }
 
-/// The response to the `GetWithdrawalLockPeriod` query.
+/// The response to the `WithdrawalLockPeriod` query.
 /// Not exported.
 /// This is just a wrapper around `Uint64`, so that the schema can be generated.
 #[cw_serde]
-struct GetWithdrawalLockPeriodResponse(Uint64);
+struct WithdrawalLockPeriodResponse(Uint64);

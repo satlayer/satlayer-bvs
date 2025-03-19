@@ -76,7 +76,7 @@ mod execute {
     use crate::error::ContractError;
     use crate::token;
     use bvs_vault_base::error::VaultError;
-    use bvs_vault_base::msg::RecipientAmount;
+    use bvs_vault_base::msg::{Recipient, RecipientAmount};
     use bvs_vault_base::{
         offset, router,
         shares::{self, QueuedWithdrawalInfo},
@@ -180,12 +180,16 @@ mod execute {
             .add_message(transfer_msg))
     }
 
+    /// Queue shares to withdraw later
     pub fn queue_withdrawal_to(
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
         msg: RecipientAmount,
     ) -> Result<Response, ContractError> {
+        // Remove shares from the info.sender
+        shares::sub_shares(deps.storage, &info.sender, msg.amount)?;
+
         let withdrawal_lock_period: u64 =
             router::get_withdrawal_lock_period(&deps.as_ref())?.into();
         let current_timestamp = env.block.time.seconds();
@@ -199,7 +203,7 @@ mod execute {
 
         let result = shares::update_queued_withdrawal_info(
             deps.storage,
-            &info.sender,
+            &msg.recipient,
             new_queued_withdrawal_info,
         )?;
 
@@ -216,16 +220,14 @@ mod execute {
         ))
     }
 
-    /// redeem all queued assets
-    ///
-    /// The amount in `RecipientAmount` is not used that will redeem all queued shares.
+    /// Redeem all queued shares to assets for `msg.recipient`.
     pub fn redeem_withdrawal_to(
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        msg: RecipientAmount,
+        msg: Recipient,
     ) -> Result<Response, ContractError> {
-        let withdrawal_info = shares::get_queued_withdrawal_info(deps.storage, &msg.recipient)?;
+        let withdrawal_info = shares::get_queued_withdrawal_info(deps.storage, &info.sender)?;
         let queued_shares = withdrawal_info.queued_shares;
         let unlock_timestamp = withdrawal_info.unlock_timestamp;
 
@@ -236,9 +238,6 @@ mod execute {
         if unlock_timestamp.seconds() > env.block.time.seconds() {
             return Err(VaultError::locked("The shares are locked").into());
         }
-
-        // Remove shares from the info.sender
-        shares::sub_shares(deps.storage, &info.sender, queued_shares)?;
 
         let (vault, claimed_assets) = {
             let balance = token::query_balance(&deps.as_ref(), &env)?;

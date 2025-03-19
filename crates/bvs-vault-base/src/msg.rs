@@ -37,8 +37,7 @@ pub enum VaultExecuteMsg {
     /// ExecuteMsg RedeemWithdrawal all queued shares into assets from the vault for withdrawal.
     /// After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
     /// can redeem the withdrawal.
-    /// The amount in `RecipientAmount` is not used that will redeem all queued shares.
-    RedeemWithdrawalTo(RecipientAmount),
+    RedeemWithdrawalTo(Recipient),
 }
 
 /// This struct is used to represent the recipient and amount fields together.
@@ -56,6 +55,21 @@ impl RecipientAmount {
             return Err(VaultError::zero("Amount cannot be zero."));
         }
 
+        api.addr_validate(self.recipient.as_str())?;
+        Ok(())
+    }
+}
+
+/// This struct is used to represent a recipient for RedeemWithdrawalTo.
+#[cw_serde]
+pub struct Recipient {
+    pub recipient: Addr,
+}
+
+impl Recipient {
+    /// Validate the recipient: [`Addr`] field.
+    /// The recipient must be a valid [`Addr`].
+    pub fn validate(&self, api: &dyn Api) -> Result<(), VaultError> {
         api.addr_validate(self.recipient.as_str())?;
         Ok(())
     }

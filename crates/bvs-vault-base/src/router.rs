@@ -90,7 +90,7 @@ pub fn get_withdrawal_lock_period(deps: &Deps) -> Result<Uint64, VaultError> {
 
     let withdrawal_lock_period: Uint64 = deps
         .querier
-        .query_wasm_smart(router.to_string(), &QueryMsg::GetWithdrawalLockPeriod {})?;
+        .query_wasm_smart(router.to_string(), &QueryMsg::WithdrawalLockPeriod {})?;
 
     Ok(withdrawal_lock_period)
 }

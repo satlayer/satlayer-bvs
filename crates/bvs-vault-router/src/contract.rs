@@ -177,7 +177,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 .transpose()?;
             to_json_binary(&query::list_vaults(deps, limit, start_after)?)
         }
-        QueryMsg::GetWithdrawalLockPeriod {} => {
+        QueryMsg::WithdrawalLockPeriod {} => {
             to_json_binary(&query::get_withdrawal_lock_period(deps)?)
         }
     }

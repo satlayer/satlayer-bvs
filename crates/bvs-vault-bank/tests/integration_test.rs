@@ -5,7 +5,7 @@ use bvs_registry::testing::RegistryContract;
 use bvs_vault_bank::msg::{ExecuteMsg, QueryMsg};
 use bvs_vault_bank::testing::VaultBankContract;
 use bvs_vault_base::error::VaultError;
-use bvs_vault_base::msg::{RecipientAmount, VaultInfoResponse};
+use bvs_vault_base::msg::{Recipient, RecipientAmount, VaultInfoResponse};
 use bvs_vault_base::shares::QueuedWithdrawalInfo;
 use bvs_vault_router::{msg::ExecuteMsg as RouterExecuteMsg, testing::VaultRouterContract};
 use cosmwasm_std::testing::mock_env;
@@ -653,6 +653,22 @@ fn test_queue_withdrawal_to_successfully() {
     let app = &mut app;
     let owner = app.api().addr_make("owner");
     let staker = app.api().addr_make("staker");
+    let denom = "denom";
+
+    // Fund the staker with some initial tokens
+    {
+        app.send_tokens(owner.clone(), staker.clone(), &coins(1_000_000_000, denom))
+            .unwrap();
+
+        // Deposit 115_687_654 tokens from staker to staker's Vault
+        let msg = ExecuteMsg::DepositFor(RecipientAmount {
+            recipient: staker.clone(), // set recipient to staker
+            amount: Uint128::new(115_687_654),
+        });
+        tc.vault
+            .execute_with_funds(app, &staker, &msg, coins(115_687_654, denom))
+            .unwrap();
+    }
 
     let msg = RouterExecuteMsg::SetWithdrawalLockPeriod(Uint64::new(100));
     tc.router.execute(app, &owner, &msg).unwrap();
@@ -737,9 +753,8 @@ fn test_redeem_withdrawal_to_successfully() {
         tc.vault.execute(app, &staker, &msg).unwrap();
     }
 
-    let msg = ExecuteMsg::RedeemWithdrawalTo(RecipientAmount {
+    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient {
         recipient: staker.clone(),
-        amount: Uint128::new(10000),
     });
 
     app.update_block(|block| {
@@ -780,9 +795,8 @@ fn test_redeem_withdrawal_to_no_queued_shares_error() {
     let app = &mut app;
     let staker = app.api().addr_make("staker");
 
-    let msg = ExecuteMsg::RedeemWithdrawalTo(RecipientAmount {
+    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient {
         recipient: staker.clone(),
-        amount: Uint128::new(10000),
     });
 
     let err = tc.vault.execute(app, &staker, &msg).unwrap_err();
@@ -796,11 +810,27 @@ fn test_redeem_withdrawal_to_no_queued_shares_error() {
 }
 
 #[test]
-fn test_redeem_withdrawal_to_locker_shares_error() {
+fn test_redeem_withdrawal_to_locked_shares_error() {
     let (mut app, tc) = TestContracts::init();
     let app = &mut app;
     let owner = app.api().addr_make("owner");
     let staker = app.api().addr_make("staker");
+    let denom = "denom";
+
+    // Fund the staker with some initial tokens
+    {
+        app.send_tokens(owner.clone(), staker.clone(), &coins(1_000_000_000, denom))
+            .unwrap();
+
+        // Deposit 115_687_654 tokens from staker to staker's Vault
+        let msg = ExecuteMsg::DepositFor(RecipientAmount {
+            recipient: staker.clone(), // set recipient to staker
+            amount: Uint128::new(115_687_654),
+        });
+        tc.vault
+            .execute_with_funds(app, &staker, &msg, coins(115_687_654, denom))
+            .unwrap();
+    }
 
     // queue withdrawl to
     {
@@ -814,9 +844,8 @@ fn test_redeem_withdrawal_to_locker_shares_error() {
         tc.vault.execute(app, &staker, &msg).unwrap();
     }
 
-    let msg = ExecuteMsg::RedeemWithdrawalTo(RecipientAmount {
+    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient {
         recipient: staker.clone(),
-        amount: Uint128::new(10000),
     });
 
     let err = tc.vault.execute(app, &staker, &msg).unwrap_err();

@@ -2,7 +2,7 @@ use bvs_library::testing::{Cw20TokenContract, TestingContract};
 use bvs_pauser::testing::PauserContract;
 use bvs_registry::msg::Metadata;
 use bvs_registry::testing::RegistryContract;
-use bvs_vault_base::msg::{RecipientAmount, VaultInfoResponse};
+use bvs_vault_base::msg::{Recipient, RecipientAmount, VaultInfoResponse};
 use bvs_vault_base::shares::QueuedWithdrawalInfo;
 use bvs_vault_base::VaultError;
 use bvs_vault_cw20::msg::{ExecuteMsg, QueryMsg};
@@ -550,10 +550,27 @@ fn test_deposit_for_and_withdraw_to_other_address() {
 #[test]
 fn test_queue_withdrawal_to_successfully() {
     let app = &mut App::default();
-    let TestContracts { router, vault, .. } = TestContracts::init(app);
+    let TestContracts {
+        router,
+        vault,
+        cw20,
+        ..
+    } = TestContracts::init(app);
 
     let owner = app.api().addr_make("owner");
     let staker = app.api().addr_make("staker");
+    let token_amount = Uint128::new(999_999_999_999);
+
+    // Fund tokens
+    {
+        let msg = ExecuteMsg::DepositFor(RecipientAmount {
+            recipient: staker.clone(),
+            amount: token_amount,
+        });
+        cw20.increase_allowance(app, &staker, &vault.addr(), 100e15 as u128);
+        cw20.fund(app, &staker, 100e15 as u128);
+        vault.execute(app, &staker, &msg).unwrap();
+    }
 
     let msg = RouterExecuteMsg::SetWithdrawalLockPeriod(Uint64::new(100));
     router.execute(app, &owner, &msg).unwrap();
@@ -629,9 +646,8 @@ fn test_redeem_withdrawal_to_successfully() {
         vault.execute(app, &staker, &msg).unwrap();
     }
 
-    let msg = ExecuteMsg::RedeemWithdrawalTo(RecipientAmount {
+    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient {
         recipient: staker.clone(),
-        amount: Uint128::new(10000),
     });
 
     app.update_block(|block| {
@@ -676,9 +692,8 @@ fn test_redeem_withdrawal_to_no_queued_shares_error() {
 
     let staker = app.api().addr_make("staker");
 
-    let msg = ExecuteMsg::RedeemWithdrawalTo(RecipientAmount {
+    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient {
         recipient: staker.clone(),
-        amount: Uint128::new(10000),
     });
 
     let err = vault.execute(app, &staker, &msg).unwrap_err();
@@ -692,12 +707,29 @@ fn test_redeem_withdrawal_to_no_queued_shares_error() {
 }
 
 #[test]
-fn test_redeem_withdrawal_to_locker_shares_error() {
+fn test_redeem_withdrawal_to_locked_shares_error() {
     let app = &mut App::default();
-    let TestContracts { router, vault, .. } = TestContracts::init(app);
+    let TestContracts {
+        router,
+        vault,
+        cw20,
+        ..
+    } = TestContracts::init(app);
 
     let owner = app.api().addr_make("owner");
     let staker = app.api().addr_make("staker");
+    let token_amount = Uint128::new(999_999_999_999);
+
+    // Fund tokens
+    {
+        let msg = ExecuteMsg::DepositFor(RecipientAmount {
+            recipient: staker.clone(),
+            amount: token_amount,
+        });
+        cw20.increase_allowance(app, &staker, &vault.addr(), 100e15 as u128);
+        cw20.fund(app, &staker, 100e15 as u128);
+        vault.execute(app, &staker, &msg).unwrap();
+    }
 
     // queue withdrawl to
     {
@@ -711,9 +743,8 @@ fn test_redeem_withdrawal_to_locker_shares_error() {
         vault.execute(app, &staker, &msg).unwrap();
     }
 
-    let msg = ExecuteMsg::RedeemWithdrawalTo(RecipientAmount {
+    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient {
         recipient: staker.clone(),
-        amount: Uint128::new(10000),
     });
 
     let err = vault.execute(app, &staker, &msg).unwrap_err();

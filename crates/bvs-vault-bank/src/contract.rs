@@ -68,7 +68,7 @@ mod execute {
     use crate::bank::get_denom;
     use crate::error::ContractError;
     use bvs_vault_base::error::VaultError;
-    use bvs_vault_base::msg::RecipientAmount;
+    use bvs_vault_base::msg::{Recipient, RecipientAmount};
     use bvs_vault_base::shares::QueuedWithdrawalInfo;
     use bvs_vault_base::{offset, router, shares};
     use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, StdError, Timestamp};
@@ -179,12 +179,16 @@ mod execute {
             .add_message(send_msg))
     }
 
+    /// Queue shares to withdraw later
     pub fn queue_withdrawal_to(
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
         msg: RecipientAmount,
     ) -> Result<Response, ContractError> {
+        // Remove shares from the info.sender
+        shares::sub_shares(deps.storage, &info.sender, msg.amount)?;
+
         let withdrawal_lock_period: u64 =
             router::get_withdrawal_lock_period(&deps.as_ref())?.into();
         let current_timestamp = env.block.time.seconds();
@@ -215,16 +219,14 @@ mod execute {
         ))
     }
 
-    /// redeem all queued assets
-    ///
-    /// The amount in `RecipientAmount` is not used that will redeem all queued shares.
+    /// Redeem all queued shares to assets for `msg.recipient`.
     pub fn redeem_withdrawal_to(
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        msg: RecipientAmount,
+        msg: Recipient,
     ) -> Result<Response, ContractError> {
-        let withdrawal_info = shares::get_queued_withdrawal_info(deps.storage, &msg.recipient)?;
+        let withdrawal_info = shares::get_queued_withdrawal_info(deps.storage, &info.sender)?;
         let queued_shares = withdrawal_info.queued_shares;
         let unlock_timestamp = withdrawal_info.unlock_timestamp;
 
@@ -235,9 +237,6 @@ mod execute {
         if unlock_timestamp.seconds() > env.block.time.seconds() {
             return Err(VaultError::locked("The shares are locked").into());
         }
-
-        // Remove shares from the info.sender
-        shares::sub_shares(deps.storage, &info.sender, queued_shares)?;
 
         let (vault, claimed_assets) = {
             let balance = bank::query_balance(&deps.as_ref(), &env)?;
@@ -262,7 +261,7 @@ mod execute {
         let send_msg = bank::bank_send(deps.storage, &msg.recipient, claimed_assets)?;
 
         // Remove staker's info
-        shares::remove_queued_withdrawal_info(deps.storage, &msg.recipient);
+        shares::remove_queued_withdrawal_info(deps.storage, &info.sender);
 
         Ok(Response::new()
             .add_event(
@@ -392,7 +391,7 @@ mod tests {
     use crate::bank;
     use crate::contract::{execute, instantiate};
     use crate::msg::InstantiateMsg;
-    use bvs_vault_base::msg::RecipientAmount;
+    use bvs_vault_base::msg::{Recipient, RecipientAmount};
     use bvs_vault_base::{offset, router, shares};
     use bvs_vault_router::msg::QueryMsg as VaultRouterMsg;
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
@@ -718,6 +717,7 @@ mod tests {
             router::set_router(&mut deps.storage, &router).unwrap();
             let operator = deps.api.addr_make("operator");
             router::set_operator(&mut deps.storage, &operator).unwrap();
+
             deps.querier.update_wasm(move |query| match query {
                 WasmQuery::Smart {
                     contract_addr: _,
@@ -725,10 +725,13 @@ mod tests {
                 } => {
                     let msg: VaultRouterMsg = from_json(msg).unwrap();
                     match msg {
-                        VaultRouterMsg::IsValidating { operator: _ } => {
+                        VaultRouterMsg::IsWhitelisted { vault: _ } => {
                             SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap()))
                         }
-                        VaultRouterMsg::GetWithdrawalLockPeriod {} => SystemResult::Ok(
+                        VaultRouterMsg::IsValidating { operator: _ } => {
+                            SystemResult::Ok(ContractResult::Ok(to_json_binary(&false).unwrap()))
+                        }
+                        VaultRouterMsg::WithdrawalLockPeriod {} => SystemResult::Ok(
                             ContractResult::Ok(to_json_binary(&withdrawal_lock_period).unwrap()),
                         ),
                         _ => panic!("unexpected query"),
@@ -736,6 +739,26 @@ mod tests {
                 }
                 _ => SystemResult::Err(SystemError::Unknown {}),
             });
+
+            bank::set_denom(&mut deps.storage, "denom").unwrap();
+            deps.querier
+                .bank
+                .update_balance(&env.contract.address, coins(100_000, "denom"));
+        }
+
+        // deposit to add shares
+        {
+            let info = message_info(&sender, &coins(100_000, "denom"));
+            execute::deposit_for(
+                deps.as_mut(),
+                env.clone(),
+                info.clone(),
+                RecipientAmount {
+                    recipient: sender.clone(),
+                    amount: Uint128::new(100_000),
+                },
+            )
+            .unwrap();
         }
 
         let recipient = deps.api.addr_make("recipient");
@@ -835,10 +858,13 @@ mod tests {
                 } => {
                     let msg: VaultRouterMsg = from_json(msg).unwrap();
                     match msg {
+                        VaultRouterMsg::IsWhitelisted { vault: _ } => {
+                            SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap()))
+                        }
                         VaultRouterMsg::IsValidating { operator: _ } => {
                             SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap()))
                         }
-                        VaultRouterMsg::GetWithdrawalLockPeriod {} => SystemResult::Ok(
+                        VaultRouterMsg::WithdrawalLockPeriod {} => SystemResult::Ok(
                             ContractResult::Ok(to_json_binary(&withdrawal_lock_period).unwrap()),
                         ),
                         _ => panic!("unexpected query"),
@@ -846,17 +872,34 @@ mod tests {
                 }
                 _ => SystemResult::Err(SystemError::Unknown {}),
             });
+
+            bank::set_denom(&mut deps.storage, "denom").unwrap();
+            deps.querier
+                .bank
+                .update_balance(&env.contract.address, coins(100_000, "denom"));
+        }
+
+        // deposit to add shares
+        {
+            let info = message_info(&sender, &coins(100_000, "denom"));
+            execute::deposit_for(
+                deps.as_mut(),
+                env.clone(),
+                info.clone(),
+                RecipientAmount {
+                    recipient: sender.clone(),
+                    amount: Uint128::new(100_000),
+                },
+            )
+            .unwrap();
         }
 
         let recipient = deps.api.addr_make("recipient");
-        let new_unlock_timestamp = Uint64::new(env.block.time.seconds())
-            .checked_add(withdrawal_lock_period)
-            .unwrap();
 
-        // queue withdrawal to for the first time
+        // QueueWithdrawalTo for the first time
         {
             let sender_info = message_info(&sender, &[]);
-            let response = execute::queue_withdrawal_to(
+            execute::queue_withdrawal_to(
                 deps.as_mut(),
                 env.clone(),
                 sender_info.clone(),
@@ -866,45 +909,18 @@ mod tests {
                 },
             )
             .unwrap();
-
-            assert_eq!(
-                response,
-                Response::new().add_event(
-                    Event::new("QueueWithdrawalTo")
-                        .add_attribute("sender", sender.to_string())
-                        .add_attribute("recipient", recipient.to_string())
-                        .add_attribute("queued_shares", "10000")
-                        .add_attribute("new_unlock_timestamp", new_unlock_timestamp.to_string())
-                        .add_attribute("total_queued_shares", "10000")
-                )
-            );
-        }
-
-        {
-            bank::set_denom(&mut deps.storage, "knife").unwrap();
-            let balance = coins(100_000, "knife");
-            deps.querier
-                .bank
-                .update_balance(env.contract.address.clone(), balance);
-
-            let mut vault = offset::VirtualOffset::load(&deps.as_ref(), Uint128::zero()).unwrap();
-            vault
-                .checked_add_shares(&mut deps.storage, Uint128::new(100_000))
-                .unwrap();
-            shares::add_shares(&mut deps.storage, &sender, Uint128::new(10_000)).unwrap();
         }
 
         let mut new_env = env.clone();
         new_env.block.time = new_env.block.time.plus_seconds(120);
 
-        let sender_info = message_info(&sender, &[]);
+        let sender_info = message_info(&recipient, &[]);
         let response = execute::redeem_withdrawal_to(
             deps.as_mut(),
             new_env,
             sender_info.clone(),
-            RecipientAmount {
+            Recipient {
                 recipient: recipient.clone(),
-                amount: Uint128::new(10_000),
             },
         )
         .unwrap();
@@ -914,7 +930,7 @@ mod tests {
             Response::new()
                 .add_event(
                     Event::new("RedeemWithdrawalTo")
-                        .add_attribute("sender", sender.to_string())
+                        .add_attribute("sender", recipient.to_string())
                         .add_attribute("recipient", recipient.to_string())
                         .add_attribute("sub_shares", "10000")
                         .add_attribute("claimed_assets", "10000")
@@ -923,7 +939,7 @@ mod tests {
                 .add_message(CosmosMsg::Bank(BankMsg::Send {
                     to_address: recipient.to_string(),
                     amount: vec![Coin {
-                        denom: "knife".to_string(),
+                        denom: "denom".to_string(),
                         amount: Uint128::new(10_000)
                     }],
                 }))
