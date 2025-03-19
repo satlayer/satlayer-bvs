@@ -170,9 +170,7 @@ mod query {
         let registry = state::get_registry(deps.storage)?;
         let is_operator_active: bool = deps.querier.query_wasm_smart(
             registry.to_string(),
-            &QueryMsg::IsOperatorActive {
-                0: operator.to_string(),
-            },
+            &QueryMsg::IsOperatorActive(operator.to_string()),
         )?;
 
         Ok(is_operator_active)
