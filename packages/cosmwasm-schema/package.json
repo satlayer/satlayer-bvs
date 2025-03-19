@@ -13,6 +13,6 @@
     "@satlayer/bvs-vault-bank": "workspace:*",
     "@satlayer/bvs-vault-cw20": "workspace:*",
     "@satlayer/bvs-vault-router": "workspace:*",
-    "json-schema-to-typescript": "^15.0.4"
+    "quicktype-core": "^23.0.171"
   }
 }
