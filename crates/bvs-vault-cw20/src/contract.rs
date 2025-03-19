@@ -104,7 +104,7 @@ mod execute {
         )?;
 
         // Add shares to msg.recipient
-        shares::add_shares(deps.storage, &msg.recipient, new_shares)?;
+        shares::add_shares(deps.storage, &env, &msg.recipient, new_shares)?;
 
         Ok(Response::new()
             .add_event(
@@ -132,7 +132,7 @@ mod execute {
         router::assert_not_validating(&deps.as_ref())?;
 
         // Remove shares from the info.sender
-        shares::sub_shares(deps.storage, &info.sender, msg.amount)?;
+        shares::sub_shares(deps.storage, &env, &info.sender, msg.amount)?;
 
         let (vault, claim_assets) = {
             let balance = token::query_balance(&deps.as_ref(), &env)?;
