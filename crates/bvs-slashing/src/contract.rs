@@ -61,6 +61,8 @@ mod execute {
     /// enter a voting period for the slash request
     /// Not clear who will vote,
     /// vote will closed when the peirod is over
+    /// In symbiotic they have a whole subsystem that verifies an offense
+    /// Not necessarily validators but a group of operator who can vote
     pub fn slash_vote() {
         todo!();
     }
