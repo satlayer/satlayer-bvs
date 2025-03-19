@@ -1,9 +1,6 @@
 use crate::error::ContractError;
-use crate::ContractError::Std;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{
-    Addr, OverflowError, OverflowOperation, StdError, StdResult, Storage, Uint128, Uint64,
-};
+use cosmwasm_std::{Addr, StdError, StdResult, Storage};
 use cw_storage_plus::Map;
 
 type Service = Addr;
