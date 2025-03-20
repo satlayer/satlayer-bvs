@@ -164,9 +164,6 @@ mod query {
     /// Called by vaults to check if they are delegated.
     /// Delegated vaults must queue withdrawals.
     pub fn is_validating(deps: Deps, operator: Addr) -> StdResult<bool> {
-        // Currently, all vaults are not delegated.
-        // To be implemented in M3, by connecting to the ` bvs_registry ` contract.
-        // The `bvs_registry` contract will store Operator and Vault relationships.
         let registry = state::get_registry(deps.storage)?;
         let is_operator_active: bool = deps.querier.query_wasm_smart(
             registry.to_string(),

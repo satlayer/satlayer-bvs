@@ -79,7 +79,7 @@ pub fn assert_not_validating(deps: &Deps) -> Result<(), VaultError> {
         },
     )?;
     if is_delegated {
-        return Err(VaultError::Delegated {});
+        return Err(VaultError::Validating {});
     }
     Ok(())
 }
@@ -247,6 +247,6 @@ mod tests {
         }
 
         let err = assert_not_validating(&deps.as_ref()).unwrap_err();
-        assert_eq!(err.to_string(), VaultError::Delegated {}.to_string());
+        assert_eq!(err.to_string(), VaultError::Validating {}.to_string());
     }
 }

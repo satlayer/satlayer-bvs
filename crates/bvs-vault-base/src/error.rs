@@ -12,8 +12,8 @@ pub enum VaultError {
     #[error("Vault is not whitelisted")]
     NotWhitelisted {},
 
-    #[error("Vault is delegated")]
-    Delegated {},
+    #[error("Vault is validating, withdrawal must be queued")]
+    Validating {},
 
     #[error("Insufficient: {msg}")]
     Insufficient { msg: String },

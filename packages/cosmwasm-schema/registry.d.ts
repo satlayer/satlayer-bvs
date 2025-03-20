@@ -3,6 +3,8 @@
 
 type IsOperatorResponse = boolean;
 
+type IsOperatorActiveResponse = boolean;
+
 type IsServiceResponse = boolean;
 
 type StatusResponse = number;
@@ -67,6 +69,7 @@ export interface QueryMsg {
   status?: Status;
   is_service?: string;
   is_operator?: string;
+  is_operator_active?: string;
 }
 
 export interface Status {

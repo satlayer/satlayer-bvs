@@ -1,5 +1,6 @@
 use bvs_library::testing::TestingContract;
 use bvs_pauser::testing::PauserContract;
+use bvs_registry::msg::Metadata;
 use bvs_registry::testing::RegistryContract;
 use bvs_vault_bank::msg::{ExecuteMsg, QueryMsg};
 use bvs_vault_bank::testing::VaultBankContract;
@@ -473,6 +474,97 @@ fn test_deposit_not_enough_balance() {
     assert_eq!(
         err.root_cause().to_string(),
         "Cannot Sub with given operands"
+    );
+}
+
+#[test]
+fn test_withdraw_error_when_operator_is_validating() {
+    let (mut app, tc) = TestContracts::init();
+    let app = &mut app;
+    let owner = app.api().addr_make("owner");
+    let staker = app.api().addr_make("staker/934");
+    let operator = app.api().addr_make("operator");
+    let service = app.api().addr_make("service");
+    let denom = "denom";
+
+    // Fund the staker with some initial tokens
+    app.send_tokens(owner.clone(), staker.clone(), &coins(1_000_000_000, denom))
+        .unwrap();
+
+    // Deposit tokens from staker to Vault
+    let msg = ExecuteMsg::DepositFor(RecipientAmount {
+        recipient: staker.clone(),
+        amount: Uint128::new(1_000_000_000),
+    });
+    tc.vault
+        .execute_with_funds(app, &staker, &msg, coins(1_000_000_000, denom))
+        .expect("staker deposit failed");
+
+    {
+        // register operator + service
+        tc.registry
+            .execute(
+                app,
+                &operator,
+                &bvs_registry::msg::ExecuteMsg::RegisterAsOperator {
+                    metadata: Metadata {
+                        name: Some("operator".to_string()),
+                        uri: Some("https://example.com".to_string()),
+                    },
+                },
+            )
+            .unwrap();
+
+        tc.registry
+            .execute(
+                app,
+                &service,
+                &bvs_registry::msg::ExecuteMsg::RegisterAsService {
+                    metadata: Metadata {
+                        name: Some("service".to_string()),
+                        uri: Some("https://example.com".to_string()),
+                    },
+                },
+            )
+            .unwrap();
+
+        // register operator to service
+        tc.registry
+            .execute(
+                app,
+                &service,
+                &bvs_registry::msg::ExecuteMsg::RegisterOperatorToService {
+                    operator: operator.to_string(),
+                },
+            )
+            .unwrap();
+
+        // register service to operator
+        tc.registry
+            .execute(
+                app,
+                &operator,
+                &bvs_registry::msg::ExecuteMsg::RegisterServiceToOperator {
+                    service: service.to_string(),
+                },
+            )
+            .unwrap();
+    }
+
+    // withdraw
+    let msg = ExecuteMsg::WithdrawTo(RecipientAmount {
+        recipient: staker.clone(),
+        amount: Uint128::new(1_000_000_000),
+    });
+    let err = tc
+        .vault
+        .execute_with_funds(app, &staker, &msg, vec![])
+        .unwrap_err();
+
+    // assert error using withdrawTo because vault is validating
+    assert_eq!(
+        err.root_cause().to_string(),
+        "Vault is validating, withdrawal must be queued"
     );
 }
 
