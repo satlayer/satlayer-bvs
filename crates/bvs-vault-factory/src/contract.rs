@@ -184,6 +184,7 @@ mod query {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use bvs_library::ownership;
     use cosmwasm_std::Event;
