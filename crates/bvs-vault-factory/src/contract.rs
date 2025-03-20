@@ -38,7 +38,8 @@ pub fn instantiate(
         .add_attribute("method", "instantiate")
         .add_attribute("owner", owner.to_string())
         .add_attribute("pauser", pauser.to_string())
-        .add_attribute("router", router.to_string()))
+        .add_attribute("router", router.to_string())
+        .add_attribute("registry", registry.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -184,7 +185,10 @@ mod query {
 }
 
 mod tests {
-    use super::*;
+    use bvs_library::ownership;
+    use cosmwasm_std::Event;
+
+    use crate::contract::{execute, query};
 
     #[test]
     fn test_set_code_id() {
@@ -202,12 +206,11 @@ mod tests {
         assert_eq!(1, res.events.len());
 
         let event = &res.events[0];
-        assert_eq!(event.ty.as_str(), "SetCodeId");
-        assert_eq!(event.attributes.len(), 2);
-        assert_eq!(event.attributes[0].key.as_str(), "code_id");
-        assert_eq!(event.attributes[0].value.as_str(), "123");
-        assert_eq!(event.attributes[1].key.as_str(), "vault_type");
-        assert_eq!(event.attributes[1].value.as_str(), "Cw20");
+        let expected_event = Event::new("SetCodeId")
+            .add_attribute("code_id", code_id.to_string())
+            .add_attribute("vault_type", vault_type.to_string());
+
+        assert_eq!(expected_event, *event);
 
         let code_id = query::code_id(deps.as_ref(), vault_type).unwrap();
         assert_eq!(123, code_id);

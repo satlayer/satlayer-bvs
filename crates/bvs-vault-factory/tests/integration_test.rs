@@ -15,6 +15,8 @@ struct TestContracts {
     registry: RegistryContract,
     bank_wrapper: Box<dyn Contract<Empty>>,
     cw20_vault_wrapper: Box<dyn Contract<Empty>>,
+    pauser: PauserContract,
+    router: VaultRouterContract,
 }
 
 impl TestContracts {
@@ -46,6 +48,8 @@ impl TestContracts {
                 vault_factory,
                 bank_wrapper,
                 cw20_vault_wrapper,
+                pauser,
+                router: vault_router,
             },
         )
     }
@@ -87,9 +91,32 @@ fn test_cw20_vault_deployment() {
         cw20: cw20_token.addr().to_string(),
     };
 
-    let res = factory.execute(&mut app, &operator, &msg);
+    let res = factory.execute(&mut app, &operator, &msg).unwrap();
 
-    assert!(res.is_ok());
+    let event = res.events.iter().find(|e| e.ty == "instantiate");
+
+    assert!(event.is_some());
+
+    let vault_addr = event
+        .unwrap()
+        .attributes
+        .iter()
+        .find_map(|attr| {
+            if attr.key == "_contract_address" {
+                Some(attr.value.clone())
+            } else {
+                None
+            }
+        })
+        .unwrap();
+
+    let query_res: bvs_vault_base::msg::VaultInfoResponse = app
+        .wrap()
+        .query_wasm_smart(&vault_addr, &bvs_vault_cw20::msg::QueryMsg::VaultInfo {})
+        .unwrap();
+
+    assert_eq!(query_res.router, contracts.router.addr());
+    assert_eq!(query_res.pauser, contracts.pauser.addr());
 }
 
 #[test]
@@ -129,9 +156,32 @@ fn test_bank_vault_deployment() {
         denom: "SATL".to_string(),
     };
 
-    let res = factory.execute(&mut app, &operator, &msg);
+    let res = factory.execute(&mut app, &operator, &msg).unwrap();
 
-    assert!(res.is_ok());
+    let event = res.events.iter().find(|e| e.ty == "instantiate");
+
+    assert!(event.is_some());
+
+    let vault_addr = event
+        .unwrap()
+        .attributes
+        .iter()
+        .find_map(|attr| {
+            if attr.key == "_contract_address" {
+                Some(attr.value.clone())
+            } else {
+                None
+            }
+        })
+        .unwrap();
+
+    let query_res: bvs_vault_base::msg::VaultInfoResponse = app
+        .wrap()
+        .query_wasm_smart(&vault_addr, &bvs_vault_cw20::msg::QueryMsg::VaultInfo {})
+        .unwrap();
+
+    assert_eq!(query_res.router, contracts.router.addr());
+    assert_eq!(query_res.pauser, contracts.pauser.addr());
 }
 
 #[test]
