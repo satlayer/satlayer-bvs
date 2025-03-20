@@ -53,9 +53,9 @@ mod tests {
     use cosmwasm_std::testing::MockStorage;
 
     #[test]
-    fn code_id() {
-        let code_id: u8 = (&VaultType::Bank).into();
-        assert_eq!(code_id, 1);
+    fn into_u8_value() {
+        let value: u8 = (&VaultType::Bank).into();
+        assert_eq!(value, 1);
 
         let code_id: u8 = (&VaultType::Cw20).into();
         assert_eq!(code_id, 2);
