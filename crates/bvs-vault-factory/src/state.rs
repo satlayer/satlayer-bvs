@@ -62,7 +62,7 @@ mod tests {
     }
 
     #[test]
-    fn set_get_test() {
+    fn set_get_test_code_id() {
         let mut store = MockStorage::new();
         let vault_type = VaultType::Bank;
         let code_id = 1234;
