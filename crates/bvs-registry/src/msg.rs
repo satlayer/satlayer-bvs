@@ -54,6 +54,9 @@ pub enum QueryMsg {
 
     #[returns(IsOperatorResponse)]
     IsOperator(String),
+
+    #[returns(IsOperatorActiveResponse)]
+    IsOperatorActive(String),
 }
 
 #[cw_serde]
@@ -70,6 +73,9 @@ pub struct IsServiceResponse(pub bool);
 
 #[cw_serde]
 pub struct IsOperatorResponse(pub bool);
+
+#[cw_serde]
+pub struct IsOperatorActiveResponse(pub bool);
 
 #[cfg(test)]
 mod tests {

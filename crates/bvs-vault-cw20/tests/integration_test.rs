@@ -1,5 +1,7 @@
 use bvs_library::testing::{Cw20TokenContract, TestingContract};
 use bvs_pauser::testing::PauserContract;
+use bvs_registry::msg::Metadata;
+use bvs_registry::testing::RegistryContract;
 use bvs_vault_base::msg::{RecipientAmount, VaultInfoResponse};
 use bvs_vault_cw20::msg::{ExecuteMsg, QueryMsg};
 use bvs_vault_cw20::testing::VaultCw20Contract;
@@ -10,6 +12,7 @@ use cw_multi_test::App;
 
 struct TestContracts {
     pauser: PauserContract,
+    registry: RegistryContract,
     router: VaultRouterContract,
     cw20: Cw20TokenContract,
     vault: VaultCw20Contract,
@@ -20,6 +23,7 @@ impl TestContracts {
         let env = mock_env();
 
         let pauser = PauserContract::new(app, &env, None);
+        let registry = RegistryContract::new(app, &env, None);
         let router = VaultRouterContract::new(app, &env, None);
         let cw20 = Cw20TokenContract::new(app, &env, None);
         let vault = VaultCw20Contract::new(app, &env, None);
@@ -34,6 +38,7 @@ impl TestContracts {
 
         Self {
             pauser,
+            registry,
             router,
             vault,
             cw20,
@@ -47,6 +52,7 @@ fn test_not_whitelisted() {
     let env = mock_env();
 
     let _ = PauserContract::new(app, &env, None);
+    let _ = RegistryContract::new(app, &env, None);
     let _ = VaultRouterContract::new(app, &env, None);
     let cw20 = Cw20TokenContract::new(app, &env, None);
     let vault = VaultCw20Contract::new(app, &env, None);
@@ -109,6 +115,91 @@ fn test_withdraw_overflow() {
     assert_eq!(
         err.root_cause().to_string(),
         "Overflow: Cannot Sub with given operands"
+    );
+}
+
+#[test]
+fn test_withdraw_error_when_operator_is_validating() {
+    let app = &mut App::default();
+    let TestContracts {
+        vault,
+        cw20,
+        registry,
+        ..
+    } = TestContracts::init(app);
+    let operator = app.api().addr_make("operator");
+    let service = app.api().addr_make("service");
+
+    {
+        // register operator + service
+        registry
+            .execute(
+                app,
+                &operator,
+                &bvs_registry::msg::ExecuteMsg::RegisterAsOperator {
+                    metadata: Metadata {
+                        name: Some("operator".to_string()),
+                        uri: Some("https://example.com".to_string()),
+                    },
+                },
+            )
+            .unwrap();
+
+        registry
+            .execute(
+                app,
+                &service,
+                &bvs_registry::msg::ExecuteMsg::RegisterAsService {
+                    metadata: Metadata {
+                        name: Some("service".to_string()),
+                        uri: Some("https://example.com".to_string()),
+                    },
+                },
+            )
+            .unwrap();
+
+        // register operator to service
+        registry
+            .execute(
+                app,
+                &service,
+                &bvs_registry::msg::ExecuteMsg::RegisterOperatorToService {
+                    operator: operator.to_string(),
+                },
+            )
+            .unwrap();
+
+        // register service to operator
+        registry
+            .execute(
+                app,
+                &operator,
+                &bvs_registry::msg::ExecuteMsg::RegisterServiceToOperator {
+                    service: service.to_string(),
+                },
+            )
+            .unwrap();
+    }
+
+    let staker = app.api().addr_make("staker");
+    let msg = ExecuteMsg::DepositFor(RecipientAmount {
+        recipient: staker.clone(),
+        amount: Uint128::new(100e15 as u128),
+    });
+    cw20.increase_allowance(app, &staker, &vault.addr(), 100e15 as u128);
+    cw20.fund(app, &staker, 100e15 as u128);
+    vault.execute(app, &staker, &msg).unwrap();
+
+    let msg = ExecuteMsg::WithdrawTo(RecipientAmount {
+        recipient: staker.clone(),
+        amount: Uint128::new(200e15 as u128),
+    });
+
+    let err = vault.execute(app, &staker, &msg).unwrap_err();
+
+    assert_eq!(
+        err.root_cause().to_string(),
+        "Vault is validating, withdrawal must be queued"
     );
 }
 

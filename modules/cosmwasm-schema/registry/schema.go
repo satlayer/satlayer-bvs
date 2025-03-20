@@ -5,6 +5,8 @@ package registry
 
 type IsOperatorResponse bool
 
+type IsOperatorActiveResponse bool
+
 type IsServiceResponse bool
 
 type StatusResponse int64
@@ -62,9 +64,10 @@ type TransferOwnership struct {
 }
 
 type QueryMsg struct {
-	Status     *Status `json:"status,omitempty"`
-	IsService  *string `json:"is_service,omitempty"`
-	IsOperator *string `json:"is_operator,omitempty"`
+	Status           *Status `json:"status,omitempty"`
+	IsService        *string `json:"is_service,omitempty"`
+	IsOperator       *string `json:"is_operator,omitempty"`
+	IsOperatorActive *string `json:"is_operator_active,omitempty"`
 }
 
 type Status struct {
