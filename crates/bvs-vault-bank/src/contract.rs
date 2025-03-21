@@ -104,7 +104,7 @@ mod execute {
         };
 
         // Add shares to msg.recipient
-        shares::add_shares(deps.storage, &msg.recipient, new_shares)?;
+        shares::add_shares(deps.storage, &env, &msg.recipient, new_shares)?;
 
         Ok(Response::new().add_event(
             Event::new("DepositFor")
@@ -132,7 +132,7 @@ mod execute {
         let withdraw_shares = msg.amount;
 
         // Remove shares from the info.sender
-        shares::sub_shares(deps.storage, &info.sender, withdraw_shares)?;
+        shares::sub_shares(deps.storage, &env, &info.sender, withdraw_shares)?;
 
         let (vault, claim_assets) = {
             let balance = bank::query_balance(&deps.as_ref(), &env)?;
@@ -488,7 +488,7 @@ mod tests {
             vault
                 .checked_add_shares(&mut deps.storage, Uint128::new(10_000))
                 .unwrap();
-            shares::add_shares(&mut deps.storage, &sender, Uint128::new(10_000)).unwrap();
+            shares::add_shares(&mut deps.storage, &env, &sender, Uint128::new(10_000)).unwrap();
         }
 
         let recipient = deps.api.addr_make("recipient");
@@ -563,7 +563,7 @@ mod tests {
             vault
                 .checked_add_shares(&mut deps.storage, Uint128::new(10_000))
                 .unwrap();
-            shares::add_shares(&mut deps.storage, &sender, Uint128::new(10_000)).unwrap();
+            shares::add_shares(&mut deps.storage, &env, &sender, Uint128::new(10_000)).unwrap();
         }
 
         let recipient = deps.api.addr_make("recipient");
