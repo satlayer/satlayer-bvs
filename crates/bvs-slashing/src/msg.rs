@@ -13,16 +13,16 @@ pub struct InstantiateMsg {
     pub registry: String,
     pub pauser: String,
     pub owner: String,
-    pub slasher: String,
 }
 
 #[cw_serde]
 pub enum ExecuteMsg {
     SlashRequest {
-        // to be implemented
-        // accused: String,
-        // start: u64,
-        // end: u64,
+        vault: String,
+        share_amount: u64,
+        accused: String,
+        start: u64,
+        end: u64,
     },
     SlashVote {
         // to be implemented
@@ -33,5 +33,8 @@ pub enum ExecuteMsg {
     SlashExecute {
         // to be implemented
         // slash_hash: string,
+    },
+    AddSlasher {
+        slasher: String,
     },
 }

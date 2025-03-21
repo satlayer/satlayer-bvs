@@ -3,8 +3,8 @@ use cosmwasm_std::entry_point;
 
 use crate::{
     error::ContractError,
-    msg::InstantiateMsg,
-    state::{REGISTRY, ROUTER, SLASHER},
+    msg::{self, ExecuteMsg, InstantiateMsg},
+    state::{REGISTRY, ROUTER, SLASHERS},
 };
 use bvs_library::ownership;
 use bvs_pauser;
@@ -35,35 +35,70 @@ pub fn instantiate(
     let router = deps.api.addr_validate(&msg.router)?;
     ROUTER.save(deps.storage, &router)?;
 
-    let slasher = deps.api.addr_validate(&msg.slasher)?;
-    SLASHER.save(deps.storage, &slasher)?;
-
     Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    _deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
-    _msg: (),
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    Ok(Response::default())
+    match msg {
+        ExecuteMsg::SlashRequest {
+            accused,
+            start,
+            end,
+            vault,
+            share_amount,
+        } => {
+            let accused = deps.api.addr_validate(&accused)?;
+            let vault = deps.api.addr_validate(&vault)?;
+            execute::slash_request(deps, env, info, vault, share_amount, start, end, accused)
+        }
+        ExecuteMsg::SlashVote {} => {
+            // execute::slash_vote();
+            Ok(Response::default())
+        }
+        ExecuteMsg::SlashExecute {} => {
+            // execute::slash_execute();
+            Ok(Response::default())
+        }
+        ExecuteMsg::AddSlasher { slasher } => {
+            let slasher = deps.api.addr_validate(&slasher)?;
+            execute::add_slasher(deps, info, slasher)
+        }
+    }
 }
 
 mod execute {
+    use cosmwasm_std::Addr;
+
+    use crate::auth;
+
+    use super::*;
 
     /// request a slash by the middleware event watchers
-    pub fn slash_request() {
+    pub fn slash_request(
+        deps: DepsMut,
+        _env: Env,
+        info: MessageInfo,
+        vault: Addr,
+        amount: u64,
+        start: u64,
+        end: u64,
+        accused: Addr,
+    ) -> Result<Response, ContractError> {
+        auth::assert_operator(deps.as_ref(), &info)?;
         todo!();
     }
 
     /// enter a voting period for the slash request
-    /// Not clear who will vote,
     /// vote will closed when the peirod is over
     /// In symbiotic they have a whole subsystem that verifies an offense
     /// Not necessarily validators but a group of operator who can vote
-    pub fn slash_vote() {
+    pub fn slash_vote() -> Result<Response, ContractError> {
         todo!();
     }
 
@@ -72,7 +107,20 @@ mod execute {
     /// Mostly like execute msg to the underlying vault
     /// cw20 or bank vault atm
     /// to burn the shares.
-    pub fn slash_execute() {
+    pub fn slash_execute(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+        auth::assert_router(deps.as_ref(), &info)?;
         todo!();
+    }
+
+    pub fn add_slasher(
+        deps: DepsMut,
+        info: MessageInfo,
+        slasher: Addr,
+    ) -> Result<Response, ContractError> {
+        auth::assert_operator(deps.as_ref(), &info)?;
+
+        SLASHERS.save(deps.storage, &slasher, &info.sender)?;
+
+        Ok(Response::default())
     }
 }
