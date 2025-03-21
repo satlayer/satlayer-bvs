@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Api, Uint128};
+use cosmwasm_std::{Addr, Uint128};
 
 /// Slash `ExecuteMsg`, to be implemented by the Slash strategy specific contract.
 #[cw_serde]

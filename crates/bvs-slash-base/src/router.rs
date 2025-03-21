@@ -1,6 +1,5 @@
 use crate::error::SlasherError;
-use bvs_vault_router::msg::QueryMsg;
-use cosmwasm_std::{Addr, Deps, Env, MessageInfo, StdError, StdResult, Storage};
+use cosmwasm_std::{Addr, MessageInfo, StdError, StdResult, Storage};
 use cw_storage_plus::Item;
 
 const ROUTER: Item<Addr> = Item::new("router");
@@ -63,8 +62,7 @@ mod tests {
         router,
         router::{assert_router, set_router, ROUTER},
     };
-    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
-    use cosmwasm_std::{to_json_binary, ContractResult, SystemError, SystemResult, WasmQuery};
+    use cosmwasm_std::testing::{message_info, mock_dependencies};
 
     #[test]
     fn test_set_router() {
