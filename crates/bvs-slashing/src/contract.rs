@@ -94,10 +94,8 @@ mod execute {
         todo!();
     }
 
-    /// enter a voting period for the slash request
-    /// vote will closed when the peirod is over
-    /// In symbiotic they have a whole subsystem that verifies an offense
-    /// Not necessarily validators but a group of operator who can vote
+    /// is this even needed? here?
+    /// Shouldn't whether to slash or not be decided by the downstream slashing strategies?
     pub fn slash_vote() -> Result<Response, ContractError> {
         todo!();
     }
