@@ -338,6 +338,7 @@ dependencies = [
  "bech32 0.8.1",
  "bvs-library",
  "bvs-pauser",
+ "bvs-registry",
  "bvs-vault-base",
  "cosmwasm-crypto",
  "cosmwasm-schema",
