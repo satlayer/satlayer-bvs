@@ -57,8 +57,8 @@ mod tests {
         let value: u8 = (&VaultType::Bank).into();
         assert_eq!(value, 1);
 
-        let code_id: u8 = (&VaultType::Cw20).into();
-        assert_eq!(code_id, 2);
+        let value: u8 = (&VaultType::Cw20).into();
+        assert_eq!(value, 2);
     }
 
     #[test]
