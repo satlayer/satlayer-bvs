@@ -49,6 +49,9 @@ pub fn execute(
             let vault = deps.api.addr_validate(&vault)?;
             execute::set_vault(deps, env, info, vault, whitelisted)
         }
+        ExecuteMsg::SetWithdrawalLockPeriod {
+            0: withdrawal_lock_period,
+        } => execute::set_withdrawal_lock_period(deps, env, info, withdrawal_lock_period),
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
             ownership::transfer_ownership(deps.storage, info, new_owner)
@@ -58,11 +61,11 @@ pub fn execute(
 }
 
 mod execute {
-    use crate::contract::execute::vault::assert_vault_info;
     use crate::error::ContractError;
-    use crate::state;
+    use crate::state::{self, DEFAULT_WITHDRAWAL_LOCK_PERIOD};
+    use crate::{contract::execute::vault::assert_vault_info, state::WITHDRAWAL_LOCK_PERIOD};
     use bvs_library::ownership;
-    use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Response};
+    use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Response, Uint64};
 
     /// Set the vault contract in the router and whitelist (true/false) it.
     /// Only the `owner` can call this message.
@@ -88,6 +91,39 @@ mod execute {
             Event::new("VaultUpdated")
                 .add_attribute("vault", vault)
                 .add_attribute("whitelisted", whitelisted.to_string()),
+        ))
+    }
+
+    pub fn set_withdrawal_lock_period(
+        deps: DepsMut,
+        _env: Env,
+        info: MessageInfo,
+        withdrawal_lock_period: Uint64,
+    ) -> Result<Response, ContractError> {
+        ownership::assert_owner(deps.storage, &info)?;
+
+        if withdrawal_lock_period.is_zero() {
+            return Err(ContractError::VaultError {
+                msg: "Cannot set new withdrawal lock period to zero".to_string(),
+            });
+        }
+
+        let prev_withdrawal_lock_period = WITHDRAWAL_LOCK_PERIOD
+            .may_load(deps.storage)?
+            .unwrap_or(DEFAULT_WITHDRAWAL_LOCK_PERIOD);
+
+        WITHDRAWAL_LOCK_PERIOD.save(deps.storage, &withdrawal_lock_period)?;
+
+        Ok(Response::new().add_event(
+            Event::new("SetWithdrawalLockPeriod")
+                .add_attribute(
+                    "prev_withdrawal_lock_period",
+                    prev_withdrawal_lock_period.to_string(),
+                )
+                .add_attribute(
+                    "new_withdrawal_lock_period",
+                    withdrawal_lock_period.to_string(),
+                ),
         ))
     }
 
@@ -141,14 +177,17 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 .transpose()?;
             to_json_binary(&query::list_vaults(deps, limit, start_after)?)
         }
+        QueryMsg::WithdrawalLockPeriod {} => {
+            to_json_binary(&query::get_withdrawal_lock_period(deps)?)
+        }
     }
 }
 
 mod query {
     use crate::msg::{Vault, VaultListResponse};
-    use crate::state;
+    use crate::state::{self, DEFAULT_WITHDRAWAL_LOCK_PERIOD};
     use bvs_registry::msg::QueryMsg;
-    use cosmwasm_std::{Addr, Deps, StdResult};
+    use cosmwasm_std::{Addr, Deps, StdResult, Uint64};
     use cw_storage_plus::Bound;
 
     /// Returns whether the vault is whitelisted or not.
@@ -200,6 +239,14 @@ mod query {
             .collect::<StdResult<_>>()?;
         Ok(VaultListResponse(vaults))
     }
+
+    pub fn get_withdrawal_lock_period(deps: Deps) -> StdResult<Uint64> {
+        let value = state::WITHDRAWAL_LOCK_PERIOD
+            .may_load(deps.storage)?
+            .unwrap_or(DEFAULT_WITHDRAWAL_LOCK_PERIOD);
+
+        Ok(value)
+    }
 }
 
 #[cfg(test)]
@@ -207,10 +254,10 @@ mod tests {
     use super::*;
     use super::{
         execute::{
-            set_vault,
+            set_vault, set_withdrawal_lock_period,
             vault::{VaultInfoQueryMsg, VaultInfoResponse},
         },
-        query::{is_validating, is_whitelisted, list_vaults},
+        query::{get_withdrawal_lock_period, is_validating, is_whitelisted, list_vaults},
     };
     use crate::msg::InstantiateMsg;
     use crate::state::{Vault, REGISTRY, VAULTS};
@@ -220,7 +267,7 @@ mod tests {
     };
     use cosmwasm_std::{
         from_json, Attribute, ContractResult, Event, OwnedDeps, QuerierResult, SystemError,
-        SystemResult, WasmQuery,
+        SystemResult, Uint64, WasmQuery,
     };
 
     #[test]
@@ -438,6 +485,84 @@ mod tests {
     }
 
     #[test]
+    fn test_set_and_get_withdrawal_lock_period() {
+        let (mut deps, env, owner_info) = instantiate_contract();
+
+        let withdrawal_lock_period = Uint64::new(120);
+
+        // set withdrawal lock period successfully
+        {
+            let result = set_withdrawal_lock_period(
+                deps.as_mut(),
+                env.clone(),
+                owner_info.clone(),
+                withdrawal_lock_period,
+            );
+            assert!(result.is_ok());
+
+            let response = result.unwrap();
+            assert_eq!(response.events.len(), 1);
+            assert_eq!(
+                response.events[0],
+                Event::new("SetWithdrawalLockPeriod")
+                    .add_attribute(
+                        "prev_withdrawal_lock_period",
+                        Uint64::new(604800).to_string()
+                    )
+                    .add_attribute(
+                        "new_withdrawal_lock_period",
+                        withdrawal_lock_period.to_string()
+                    )
+            );
+        }
+
+        let withdrawal_lock_period1 = Uint64::new(150);
+
+        // update withdrawal lock period successfully
+        {
+            let result = set_withdrawal_lock_period(
+                deps.as_mut(),
+                env.clone(),
+                owner_info,
+                withdrawal_lock_period1,
+            );
+            assert!(result.is_ok());
+
+            let response = result.unwrap();
+            assert_eq!(response.events.len(), 1);
+            assert_eq!(
+                response.events[0],
+                Event::new("SetWithdrawalLockPeriod")
+                    .add_attribute(
+                        "prev_withdrawal_lock_period",
+                        withdrawal_lock_period.to_string()
+                    )
+                    .add_attribute(
+                        "new_withdrawal_lock_period",
+                        withdrawal_lock_period1.to_string()
+                    )
+            );
+        }
+
+        // query withdrawal lock period
+        {
+            let result = get_withdrawal_lock_period(deps.as_ref()).unwrap();
+            assert_eq!(result, withdrawal_lock_period1);
+        }
+
+        // wrong permission to update withdrawal lock period successfully
+        {
+            let user_info = MessageInfo {
+                sender: deps.api.addr_make("user"),
+                funds: vec![],
+            };
+            let result =
+                set_withdrawal_lock_period(deps.as_mut(), env, user_info, withdrawal_lock_period1);
+            assert!(result.is_err());
+        }
+    }
+
+    #[test]
     fn test_query_is_whitelisted() {
         let mut deps = mock_dependencies();
 
@@ -495,5 +620,13 @@ mod tests {
 
         let response = list_vaults(deps.as_ref(), 0, None).unwrap();
         assert_eq!(response.0.len(), 0)
+    }
+
+    #[test]
+    fn test_get_withdrawal_lock_period() {
+        let deps = mock_dependencies();
+
+        let response = get_withdrawal_lock_period(deps.as_ref()).unwrap();
+        assert_eq!(response, Uint64::new(604800));
     }
 }

@@ -11,7 +11,7 @@ use bvs_vault_router::{
     testing::VaultRouterContract,
     ContractError,
 };
-use cosmwasm_std::{testing::mock_env, Event};
+use cosmwasm_std::{testing::mock_env, Event, Uint64};
 use cw_multi_test::App;
 
 struct TestContracts {
@@ -151,6 +151,71 @@ fn set_vault_whitelist_true_cw20_vault_successfully() {
     };
     let is_whitelisted: bool = tc.vault_router.query(&mut app, &msg).unwrap();
     assert_eq!(is_whitelisted, true);
+}
+
+#[test]
+fn set_withdrawal_lock_period() {
+    let (mut app, tc) = TestContracts::init();
+    let owner = app.api().addr_make("owner");
+
+    let withdrawal_lock_period1 = Uint64::new(120);
+
+    // set withdrawal lock period for the first time
+    {
+        let msg = &ExecuteMsg::SetWithdrawalLockPeriod(withdrawal_lock_period1);
+
+        let response = tc.vault_router.execute(&mut app, &owner, &msg).unwrap();
+
+        assert_eq!(
+            response.events,
+            vec![
+                Event::new("execute")
+                    .add_attribute("_contract_address", tc.vault_router.addr.as_str()),
+                Event::new("wasm-SetWithdrawalLockPeriod")
+                    .add_attribute("_contract_address", tc.vault_router.addr.as_str())
+                    .add_attribute(
+                        "prev_withdrawal_lock_period",
+                        Uint64::new(604800).to_string()
+                    )
+                    .add_attribute(
+                        "new_withdrawal_lock_period",
+                        withdrawal_lock_period1.to_string()
+                    ),
+            ]
+        );
+    }
+
+    let withdrawal_lock_period2 = Uint64::new(150);
+
+    // update withdrawal lock period
+    {
+        let msg = &ExecuteMsg::SetWithdrawalLockPeriod(withdrawal_lock_period2);
+
+        let response = tc.vault_router.execute(&mut app, &owner, &msg).unwrap();
+
+        assert_eq!(
+            response.events,
+            vec![
+                Event::new("execute")
+                    .add_attribute("_contract_address", tc.vault_router.addr.as_str()),
+                Event::new("wasm-SetWithdrawalLockPeriod")
+                    .add_attribute("_contract_address", tc.vault_router.addr.as_str())
+                    .add_attribute(
+                        "prev_withdrawal_lock_period",
+                        withdrawal_lock_period1.to_string()
+                    )
+                    .add_attribute(
+                        "new_withdrawal_lock_period",
+                        withdrawal_lock_period2.to_string()
+                    ),
+            ]
+        );
+    }
+
+    // query the withdrawal lock period
+    let msg = QueryMsg::WithdrawalLockPeriod {};
+    let result: Uint64 = tc.vault_router.query(&mut app, &msg).unwrap();
+    assert_eq!(result, withdrawal_lock_period2);
 }
 
 #[test]

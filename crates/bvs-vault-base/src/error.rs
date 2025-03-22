@@ -20,6 +20,9 @@ pub enum VaultError {
 
     #[error("Zero: {msg}")]
     Zero { msg: String },
+
+    #[error("Locked: {msg}")]
+    Locked { msg: String },
 }
 
 impl VaultError {
@@ -33,5 +36,9 @@ impl VaultError {
 
     pub fn zero(msg: impl Into<String>) -> Self {
         VaultError::Zero { msg: msg.into() }
+    }
+
+    pub fn locked(msg: impl Into<String>) -> Self {
+        VaultError::Locked { msg: msg.into() }
     }
 }

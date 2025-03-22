@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Uint64};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -14,6 +14,10 @@ pub enum ExecuteMsg {
     /// ExecuteMsg SetVault the vault contract in the router and whitelist (true/false) it.
     /// Only the `owner` can call this message.
     SetVault { vault: String, whitelisted: bool },
+
+    /// ExecuteMsg SetWithdrawalLockPeriod the lock period for withdrawal.
+    /// Only the `owner` can call this message.
+    SetWithdrawalLockPeriod(Uint64),
 
     /// ExecuteMsg TransferOwnership
     /// See [`bvs_library::ownership::transfer_ownership`] for more information on this field
@@ -41,6 +45,10 @@ pub enum QueryMsg {
         limit: Option<u32>,
         start_after: Option<String>,
     },
+
+    /// QueryMsg WithdrawalLockPeriod: returns the withdrawal lock period.
+    #[returns(WithdrawalLockPeriodResponse)]
+    WithdrawalLockPeriod {},
 }
 
 /// The response to the `IsWhitelisted` query.
@@ -65,3 +73,9 @@ pub struct Vault {
     pub vault: Addr,
     pub whitelisted: bool,
 }
+
+/// The response to the `WithdrawalLockPeriod` query.
+/// Not exported.
+/// This is just a wrapper around `Uint64`, so that the schema can be generated.
+#[cw_serde]
+struct WithdrawalLockPeriodResponse(Uint64);

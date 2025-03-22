@@ -1,4 +1,5 @@
 use crate::error::VaultError;
+use crate::shares::QueuedWithdrawalInfo;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Api, Uint128};
 
@@ -19,23 +20,24 @@ pub enum VaultExecuteMsg {
     /// If the Vault is delegated to an `operator`, withdrawals must be queued.
     /// Operator must not be validating any services for instant withdrawals.
     WithdrawTo(RecipientAmount),
-    // /// ExecuteMsg QueueWithdrawal assets from the vault.
-    // /// Sender must have enough shares to queue the requested amount to the `recipient`.
-    // /// Once the withdrawal is queued,
-    // /// the `recipient` can redeem the withdrawal after the lock period.
-    // /// Once the withdrawal is locked,
-    // /// the `sender` cannot cancel the withdrawal.
-    // /// The time-lock is enforced by the vault and cannot be changed retroactively.
-    // ///
-    // /// ### Lock Period Extension
-    // /// New withdrawals will extend the lock period of any existing withdrawals.
-    // /// You can queue the withdrawal to a different `recipient` than the `sender` to avoid this.
-    // QueueWithdrawalTo(RecipientAmount),
-    //
-    // /// ExecuteMsg RedeemWithdrawal assets from the vault for withdrawal.
-    // /// After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
-    // /// can redeem the withdrawal.
-    // RedeemWithdrawalTo(RecipientAmount),
+
+    /// ExecuteMsg QueueWithdrawal assets from the vault.
+    /// Sender must have enough shares to queue the requested amount to the `recipient`.
+    /// Once the withdrawal is queued,
+    /// the `recipient` can redeem the withdrawal after the lock period.
+    /// Once the withdrawal is locked,
+    /// the `sender` cannot cancel the withdrawal.
+    /// The time-lock is enforced by the vault and cannot be changed retroactively.
+    ///
+    /// ### Lock Period Extension
+    /// New withdrawals will extend the lock period of any existing withdrawals.
+    /// You can queue the withdrawal to a different `recipient` than the `sender` to avoid this.
+    QueueWithdrawalTo(RecipientAmount),
+
+    /// ExecuteMsg RedeemWithdrawal all queued shares into assets from the vault for withdrawal.
+    /// After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
+    /// can redeem the withdrawal.
+    RedeemWithdrawalTo(Recipient),
 }
 
 /// This struct is used to represent the recipient and amount fields together.
@@ -54,6 +56,19 @@ impl RecipientAmount {
         }
 
         api.addr_validate(self.recipient.as_str())?;
+        Ok(())
+    }
+}
+
+/// This struct is used to represent a recipient for RedeemWithdrawalTo.
+#[cw_serde]
+pub struct Recipient(pub Addr);
+
+impl Recipient {
+    /// Validate the recipient: [`Addr`] field.
+    /// The recipient must be a valid [`Addr`].
+    pub fn validate(&self, api: &dyn Api) -> Result<(), VaultError> {
+        api.addr_validate(self.0.as_str())?;
         Ok(())
     }
 }
@@ -84,6 +99,10 @@ pub enum VaultQueryMsg {
     /// QueryMsg TotalAssets: get the total assets under vault.
     #[returns(TotalAssetsResponse)]
     TotalAssets {},
+
+    /// QueryMsg QueuedWithdrawal: get the queued withdrawal and unlock timestamp under vault.
+    #[returns(QueuedWithdrawalResponse)]
+    QueuedWithdrawal { staker: String },
 
     /// QueryMsg VaultInfo: get the vault information.
     #[returns(VaultInfoResponse)]
@@ -125,6 +144,12 @@ struct TotalSharesResponse(Uint128);
 /// This is just a wrapper around `Uint128`, so that the schema can be generated.
 #[cw_serde]
 struct TotalAssetsResponse(Uint128);
+
+/// The response to the `QueuedWithdrawal` query.
+///  Not exported.
+/// This is just a wrapper around `QueuedWithdrawalInfo`, so that the schema can be generated.
+#[cw_serde]
+struct QueuedWithdrawalResponse(QueuedWithdrawalInfo);
 
 #[cw_serde]
 pub struct VaultInfoResponse {

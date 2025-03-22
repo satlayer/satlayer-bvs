@@ -61,6 +61,14 @@ pub fn execute(
             msg.validate(deps.api)?;
             execute::withdraw_to(deps, env, info, msg)
         }
+        ExecuteMsg::QueueWithdrawalTo(msg) => {
+            msg.validate(deps.api)?;
+            execute::queue_withdrawal_to(deps, env, info, msg)
+        }
+        ExecuteMsg::RedeemWithdrawalTo(msg) => {
+            msg.validate(deps.api)?;
+            execute::redeem_withdrawal_to(deps, env, info, msg)
+        }
     }
 }
 
@@ -68,9 +76,12 @@ mod execute {
     use crate::error::ContractError;
     use crate::token;
     use bvs_vault_base::error::VaultError;
-    use bvs_vault_base::msg::RecipientAmount;
-    use bvs_vault_base::{offset, router, shares};
-    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response};
+    use bvs_vault_base::msg::{Recipient, RecipientAmount};
+    use bvs_vault_base::{
+        offset, router,
+        shares::{self, QueuedWithdrawalInfo},
+    };
+    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, Timestamp};
 
     /// This executes a transfer of assets from the `info.sender` to the vault contract.
     ///
@@ -83,16 +94,17 @@ mod execute {
         msg: RecipientAmount,
     ) -> Result<Response, ContractError> {
         router::assert_whitelisted(&deps.as_ref(), &env)?;
+
         let assets = msg.amount;
-        let (virtual_offset, new_shares) = {
+        let (vault, new_shares) = {
             let balance = token::query_balance(&deps.as_ref(), &env)?;
-            let mut virtual_offset = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
+            let mut vault = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
 
-            let new_shares = virtual_offset.assets_to_shares(assets)?;
+            let new_shares = vault.assets_to_shares(assets)?;
             // Add shares to TOTAL_SHARES
-            virtual_offset.checked_add_shares(deps.storage, new_shares)?;
+            vault.checked_add_shares(deps.storage, new_shares)?;
 
-            (virtual_offset, new_shares)
+            (vault, new_shares)
         };
 
         // CW20 Transfer of asset from info.sender to contract
@@ -113,7 +125,7 @@ mod execute {
                     .add_attribute("recipient", msg.recipient)
                     .add_attribute("assets", assets.to_string())
                     .add_attribute("shares", new_shares.to_string())
-                    .add_attribute("total_shares", virtual_offset.total_shares().to_string()),
+                    .add_attribute("total_shares", vault.total_shares().to_string()),
             )
             .add_message(transfer_msg))
     }
@@ -167,6 +179,105 @@ mod execute {
             )
             .add_message(transfer_msg))
     }
+
+    /// Queue shares to withdraw later.
+    /// The shares are burned from `info.sender` and wait lock period to redeem withdrawal.
+    /// /// It doesn't remove the `total_shares` and only removes the user shares, so the exchange rate is not affected.
+    pub fn queue_withdrawal_to(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        msg: RecipientAmount,
+    ) -> Result<Response, ContractError> {
+        // Remove shares from the info.sender
+        shares::sub_shares(deps.storage, &info.sender, msg.amount)?;
+
+        let withdrawal_lock_period: u64 =
+            router::get_withdrawal_lock_period(&deps.as_ref())?.into();
+        let current_timestamp = env.block.time.seconds();
+        let unlock_timestamp =
+            Timestamp::from_seconds(withdrawal_lock_period).plus_seconds(current_timestamp);
+
+        let new_queued_withdrawal_info = QueuedWithdrawalInfo {
+            queued_shares: msg.amount,
+            unlock_timestamp,
+        };
+
+        let result = shares::update_queued_withdrawal_info(
+            deps.storage,
+            &msg.recipient,
+            new_queued_withdrawal_info,
+        )?;
+
+        Ok(Response::new().add_event(
+            Event::new("QueueWithdrawalTo")
+                .add_attribute("sender", info.sender.to_string())
+                .add_attribute("recipient", msg.recipient.to_string())
+                .add_attribute("queued_shares", msg.amount.to_string())
+                .add_attribute(
+                    "new_unlock_timestamp",
+                    unlock_timestamp.seconds().to_string(),
+                )
+                .add_attribute("total_queued_shares", result.queued_shares.to_string()),
+        ))
+    }
+
+    /// Redeem all queued shares to assets for `msg.recipient`.
+    /// The `info.sender` must be equal to the `msg.recipient` in [`queue_withdrawal_to`].
+    pub fn redeem_withdrawal_to(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        msg: Recipient,
+    ) -> Result<Response, ContractError> {
+        let withdrawal_info = shares::get_queued_withdrawal_info(deps.storage, &info.sender)?;
+        let queued_shares = withdrawal_info.queued_shares;
+        let unlock_timestamp = withdrawal_info.unlock_timestamp;
+
+        if queued_shares.is_zero() || unlock_timestamp.seconds() == 0 {
+            return Err(VaultError::zero("No queued shares").into());
+        }
+
+        if unlock_timestamp.seconds() > env.block.time.seconds() {
+            return Err(VaultError::locked("The shares are locked").into());
+        }
+
+        let (vault, claimed_assets) = {
+            let balance = token::query_balance(&deps.as_ref(), &env)?;
+            let mut vault = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
+
+            if queued_shares > vault.total_shares() {
+                return Err(VaultError::insufficient("Insufficient shares to withdraw.").into());
+            }
+
+            let assets = vault.shares_to_assets(queued_shares)?;
+            if assets.is_zero() {
+                return Err(VaultError::zero("Withdraw assets cannot be zero.").into());
+            }
+
+            // Remove shares from TOTAL_SHARES
+            vault.checked_sub_shares(deps.storage, queued_shares)?;
+
+            (vault, assets)
+        };
+
+        // CW20 transfer of asset to msg.recipient
+        let transfer_msg = token::execute_new_transfer(deps.storage, &msg.0, claimed_assets)?;
+
+        // Remove staker's info
+        shares::remove_queued_withdrawal_info(deps.storage, &info.sender);
+
+        Ok(Response::new()
+            .add_event(
+                Event::new("RedeemWithdrawalTo")
+                    .add_attribute("sender", info.sender.to_string())
+                    .add_attribute("recipient", msg.0.to_string())
+                    .add_attribute("sub_shares", queued_shares.to_string())
+                    .add_attribute("claimed_assets", claimed_assets.to_string())
+                    .add_attribute("total_shares", vault.total_shares().to_string()),
+            )
+            .add_message(transfer_msg))
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -188,6 +299,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::TotalShares {} => to_json_binary(&query::total_shares(deps, env)?),
         QueryMsg::TotalAssets {} => to_json_binary(&query::total_assets(deps, env)?),
+        QueryMsg::QueuedWithdrawal { staker } => {
+            let staker = deps.api.addr_validate(&staker)?;
+            to_json_binary(&query::queued_withdrawal(deps, staker)?)
+        }
         QueryMsg::VaultInfo {} => to_json_binary(&query::vault_info(deps, env)?),
     }
 }
@@ -195,7 +310,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 mod query {
     use crate::token;
     use bvs_vault_base::msg::VaultInfoResponse;
-    use bvs_vault_base::{offset, shares};
+    use bvs_vault_base::{
+        offset,
+        shares::{self, QueuedWithdrawalInfo},
+    };
     use cosmwasm_std::{Addr, Deps, Env, StdResult, Uint128};
 
     /// Get shares of the staker
@@ -231,6 +349,11 @@ mod query {
     /// Total assets in this vault. Including assets through staking and donations.
     pub fn total_assets(deps: Deps, env: Env) -> StdResult<Uint128> {
         token::query_balance(&deps, &env)
+    }
+
+    /// Get the queued withdrawal info in this vault.
+    pub fn queued_withdrawal(deps: Deps, staker: Addr) -> StdResult<QueuedWithdrawalInfo> {
+        shares::get_queued_withdrawal_info(deps.storage, &staker)
     }
 
     /// Returns the vault information
