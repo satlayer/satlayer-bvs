@@ -4,17 +4,22 @@ use cosmwasm_std::{Addr, Uint128};
 /// Slash `ExecuteMsg`, to be implemented by the Slash strategy specific contract.
 #[cw_serde]
 #[derive(bvs_pauser::api::Display)]
-pub enum SlasherExecuteMsg {
+pub enum SlasherExecuteMsg<Offense, Evidence, SlashDetail> {
     /// SubmitOffense: submit an offense to the slash strategy contract.
     /// offender: the address of the operator.
-    /// offense: the offense committed.
-    SubmitSlash { offender: String, offense: String },
+    /// offense: the offense committed. (Opaque to the slasher contract)
+    /// evidence: the evidence of the offense. (Opaque to the slasher contract)
+    SubmitSlash {
+        offender: String,
+        offense: Offense,
+        evidence: Evidence,
+    },
 
     /// ExecuteSlash: trigger the slash on slash strategy contract to execute the slash.
     /// Exacatly how the slash is executed is up to the slash strategy contract.
     /// How the slash entries will be hash is also up to the slash strategy contract.
-    /// slash_hash: the hash of the slash.
-    ExecuteSlash { slash_hash: String },
+    /// slash_detail: the hash of the slash.
+    ExecuteSlash { slash_detail: SlashDetail },
 }
 
 #[cw_serde]
