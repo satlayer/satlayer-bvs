@@ -30,6 +30,12 @@ pub fn get_owner(storage: &dyn Storage) -> StdResult<Addr> {
 /// this logic is app-level.
 /// > 2-step ownership transfer is mostly redundant for CosmWasm contracts with the admin set.
 /// > You can override ownership by using CosmWasm migrate `entry_point`.
+///
+/// ### CONTRACT ADMIN != CONTRACT OWNER
+/// Contract Admin is a feature of `wasmd`,
+/// you cannot set or query this value this in the contract nor can you change it in the contract.
+/// It is set during instantiation of the contract by the deployer and NOT visible to the contract.
+/// See https://github.com/CosmWasm/cosmwasm/issues/926#issuecomment-851259818
 pub fn transfer_ownership(
     storage: &mut dyn Storage,
     info: MessageInfo,
