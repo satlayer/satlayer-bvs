@@ -33,9 +33,9 @@ pub fn get_owner(storage: &dyn Storage) -> StdResult<Addr> {
 ///
 /// ### CONTRACT ADMIN != CONTRACT OWNER
 /// Contract Admin is a feature of `wasmd`,
-/// you cannot set or query this value in the contract, nor can you change it in the contract.
-/// It is set during the instantiation of the contract by the deployer
-/// and is NOT visible to the contract.
+/// you cannot set this value in the contract, nor can you change it in the contract.
+/// It is set during the instantiation of the contract by the creator.
+/// See https://github.com/CosmWasm/cosmwasm/blob/dc70bf3554f63308f681098819854773355b60cb/packages/std/src/query/wasm.rs#L57
 /// See https://github.com/CosmWasm/cosmwasm/issues/926#issuecomment-851259818
 pub fn transfer_ownership(
     storage: &mut dyn Storage,
