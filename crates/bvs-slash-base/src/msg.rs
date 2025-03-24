@@ -24,7 +24,7 @@ pub enum SlasherExecuteMsg<Offense, Evidence, SlashDetail> {
 
 #[cw_serde]
 #[derive(QueryResponses)]
-pub enum SlashQueryMsg {
+pub enum SlasherQueryMsg {
     /// QueryMsg VaultInfo: get the vault information.
     #[returns(SlasherInfoResponse)]
     SlasherInfo {},
@@ -50,3 +50,4 @@ pub struct SlasherInfoResponse {
     /// The version of the vault contract, see [`cw2::set_contract_version`] for more information.
     pub version: String,
 }
+
