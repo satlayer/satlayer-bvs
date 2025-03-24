@@ -9,17 +9,25 @@ pub enum SlasherExecuteMsg<Offense, Evidence, SlashDetail> {
     /// offender: the address of the operator.
     /// offense: the offense committed. (Opaque to the slasher contract)
     /// evidence: the evidence of the offense. (Opaque to the slasher contract)
-    SubmitSlash {
-        offender: String,
-        offense: Offense,
-        evidence: Evidence,
-    },
+    SubmitSlash(SubmitSlash<Offense, Evidence>),
 
     /// ExecuteSlash: trigger the slash on slash strategy contract to execute the slash.
     /// Exacatly how the slash is executed is up to the slash strategy contract.
     /// How the slash entries will be hash is also up to the slash strategy contract.
     /// slash_detail: the hash of the slash.
-    ExecuteSlash { slash_detail: SlashDetail },
+    ExecuteSlash(ExecuteSlash<SlashDetail>),
+}
+
+#[cw_serde]
+pub struct SubmitSlash<Offense, Evidence> {
+    pub offender: String,
+    pub offense: Offense,
+    pub evidence: Evidence,
+}
+
+#[cw_serde]
+pub struct ExecuteSlash<SlashDetail> {
+    pub slash_detail: SlashDetail,
 }
 
 #[cw_serde]
