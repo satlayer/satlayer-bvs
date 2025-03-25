@@ -3,7 +3,6 @@ use cosmwasm_std::entry_point;
 
 use crate::error::PauserError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::PAUSED;
 use bvs_library::ownership;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
@@ -23,8 +22,6 @@ pub fn instantiate(
     let owner = deps.api.addr_validate(&msg.owner)?;
     ownership::set_owner(deps.storage, &owner)?;
 
-    PAUSED.save(deps.storage, &msg.initial_paused)?;
-
     Ok(Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("owner", msg.owner))
@@ -33,13 +30,19 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, PauserError> {
     match msg {
-        ExecuteMsg::Pause {} => execute::pause(deps, info),
-        ExecuteMsg::Unpause {} => execute::unpause(deps, info),
+        ExecuteMsg::Pause { method, contract } => {
+            let contract = deps.api.addr_validate(&contract)?;
+            execute::pause(deps, env, info, contract, method)
+        }
+        ExecuteMsg::Unpause { method, contract } => {
+            let contract = deps.api.addr_validate(&contract)?;
+            execute::unpause(deps, info, contract, method)
+        }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
             ownership::transfer_ownership(deps.storage, info, new_owner)
@@ -49,22 +52,51 @@ pub fn execute(
 }
 
 mod execute {
+    use cosmwasm_std::Addr;
+
     use super::*;
     use crate::state::PAUSED;
 
-    pub fn pause(deps: DepsMut, info: MessageInfo) -> Result<Response, PauserError> {
+    pub fn pause(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        contract: Addr,
+        method: String,
+    ) -> Result<Response, PauserError> {
         ownership::assert_owner(deps.storage, &info)?;
 
-        PAUSED.save(deps.storage, &true)?;
+        // Check if the contract is already paused
+        // Only mutate the state if it is not already paused
+        match PAUSED.load(deps.storage, (&contract, &method)) {
+            Ok(_) => {}
+            Err(_) => {
+                PAUSED.save(deps.storage, (&contract, &method), &env.block.height)?;
+            }
+        };
+
         Ok(Response::new()
             .add_attribute("method", "pause")
             .add_attribute("sender", info.sender))
     }
 
-    pub fn unpause(deps: DepsMut, info: MessageInfo) -> Result<Response, PauserError> {
+    pub fn unpause(
+        deps: DepsMut,
+        info: MessageInfo,
+        contract: Addr,
+        method: String,
+    ) -> Result<Response, PauserError> {
         ownership::assert_owner(deps.storage, &info)?;
 
-        PAUSED.save(deps.storage, &false)?;
+        // Check if the contract is already paused
+        // Only mutate the state if it is not already paused
+        match PAUSED.load(deps.storage, (&contract, &method)) {
+            Ok(_) => {
+                PAUSED.remove(deps.storage, (&contract, &method));
+            }
+            Err(_) => {}
+        }
+
         Ok(Response::new()
             .add_attribute("method", "unpause")
             .add_attribute("sender", info.sender))
@@ -99,8 +131,11 @@ mod query {
     /// TODO(future): The `_contract` and `_method` are currently not used.
     ///  To implement checking of paused status against contract and method.
     ///  Added for future compatibility, not yet utilized—current design pauses all execute.
-    pub fn is_paused(deps: Deps, _contract: Addr, _method: String) -> StdResult<IsPausedResponse> {
-        let is_paused = PAUSED.load(deps.storage)?;
+    pub fn is_paused(deps: Deps, contract: Addr, method: String) -> StdResult<IsPausedResponse> {
+        let is_paused = match PAUSED.load(deps.storage, (&contract, &method)) {
+            Ok(_) => true,
+            Err(_) => false,
+        };
         Ok(IsPausedResponse::new(is_paused))
     }
 
@@ -109,11 +144,15 @@ mod query {
     ///  Added for future compatibility, not yet utilized—current design pauses all execute.
     pub fn can_execute(
         deps: Deps,
-        _contract: Addr,
+        contract: Addr,
         _sender: Addr,
-        _method: String,
+        method: String,
     ) -> StdResult<CanExecuteResponse> {
-        let is_paused = PAUSED.load(deps.storage)?;
+        let is_paused = match PAUSED.load(deps.storage, (&contract, &method)) {
+            Ok(_) => true,
+            Err(_) => false,
+        };
+
         if is_paused {
             return Ok(CanExecuteFlag::Paused.into());
         }
@@ -125,6 +164,7 @@ mod query {
 mod tests {
     use super::*;
     use crate::msg::{CanExecuteFlag, IsPausedResponse};
+    use crate::state::PAUSED;
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
     use cosmwasm_std::{coins, from_json};
 
@@ -135,7 +175,6 @@ mod tests {
         let info = message_info(&deps.api.addr_make("sender"), &coins(1000, "rat"));
         let msg = InstantiateMsg {
             owner: deps.api.addr_make("owner").to_string(),
-            initial_paused: false,
         };
         instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -155,18 +194,18 @@ mod tests {
     #[test]
     fn pause() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
 
         let owner = deps.api.addr_make("owner");
 
         ownership::set_owner(&mut deps.storage, &owner).unwrap();
-        PAUSED.save(&mut deps.storage, &false).unwrap();
 
         let info = message_info(&owner, &[]);
-        execute::pause(deps.as_mut(), info).unwrap();
-
         let contract = deps.api.addr_make("contract");
         let sender = deps.api.addr_make("sender");
         let method = "any_method".to_string();
+
+        execute::pause(deps.as_mut(), env, info, contract.clone(), method.clone()).unwrap();
 
         let response = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
         assert!(response.is_paused());
@@ -179,19 +218,19 @@ mod tests {
     #[test]
     fn pause_unauthorized() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
 
         let owner = deps.api.addr_make("owner");
 
         ownership::set_owner(&mut deps.storage, &owner).unwrap();
-        PAUSED.save(&mut deps.storage, &false).unwrap();
 
         let not_owner = deps.api.addr_make("not_owner");
         let info = message_info(&not_owner, &[]);
-        execute::pause(deps.as_mut(), info).expect_err("Unauthorized");
-
         let contract = deps.api.addr_make("contract");
         let sender = deps.api.addr_make("sender");
         let method = "any_method".to_string();
+        execute::pause(deps.as_mut(), env, info, contract.clone(), method.clone())
+            .expect_err("Unauthorized");
 
         {
             let res = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
@@ -206,18 +245,21 @@ mod tests {
     #[test]
     fn unpause() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
 
         let owner = deps.api.addr_make("owner");
-
-        ownership::set_owner(&mut deps.storage, &owner).unwrap();
-        PAUSED.save(&mut deps.storage, &true).unwrap();
-
-        let info = message_info(&owner, &[]);
-        execute::unpause(deps.as_mut(), info).unwrap();
 
         let contract = deps.api.addr_make("anyone");
         let sender = deps.api.addr_make("sender");
         let method = "any_method".to_string();
+
+        ownership::set_owner(&mut deps.storage, &owner).unwrap();
+        PAUSED
+            .save(&mut deps.storage, (&contract, &method), &env.block.height)
+            .unwrap();
+
+        let info = message_info(&owner, &[]);
+        execute::unpause(deps.as_mut(), info, contract.clone(), method.clone()).unwrap();
 
         {
             let res = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
@@ -232,19 +274,23 @@ mod tests {
     #[test]
     fn unpause_unauthorized() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
 
         let owner = deps.api.addr_make("owner");
-
-        ownership::set_owner(&mut deps.storage, &owner).unwrap();
-        PAUSED.save(&mut deps.storage, &true).unwrap();
-
-        let not_owner = deps.api.addr_make("not_owner");
-        let info = message_info(&not_owner, &[]);
-        execute::unpause(deps.as_mut(), info).expect_err("Unauthorized");
 
         let contract = deps.api.addr_make("anyone");
         let sender = deps.api.addr_make("sender");
         let method = "any_method".to_string();
+
+        ownership::set_owner(&mut deps.storage, &owner).unwrap();
+        PAUSED
+            .save(&mut deps.storage, (&contract, &method), &env.block.height)
+            .unwrap();
+
+        let not_owner = deps.api.addr_make("not_owner");
+        let info = message_info(&not_owner, &[]);
+        execute::unpause(deps.as_mut(), info, contract.clone(), method.clone())
+            .expect_err("Unauthorized");
 
         {
             let res = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
@@ -259,6 +305,7 @@ mod tests {
     #[test]
     fn pause_pause() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
 
         let owner = deps.api.addr_make("owner");
         let info = message_info(&owner, &[]);
@@ -266,14 +313,20 @@ mod tests {
         let method = "any_method".to_string();
 
         ownership::set_owner(&mut deps.storage, &owner).unwrap();
-        PAUSED.save(&mut deps.storage, &false).unwrap();
 
-        execute::pause(deps.as_mut(), info.clone()).unwrap();
+        execute::pause(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            contract.clone(),
+            method.clone(),
+        )
+        .unwrap();
 
         let res = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
         assert!(res.is_paused());
 
-        execute::pause(deps.as_mut(), info).unwrap();
+        execute::pause(deps.as_mut(), env, info, contract.clone(), method.clone()).unwrap();
 
         let res = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
         assert!(res.is_paused());
