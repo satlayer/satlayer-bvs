@@ -380,6 +380,9 @@ mod query {
     }
 }
 
+/// This can only be called by the contract ADMIN, enforced by `wasmd` separate from cosmwasm.
+/// See https://github.com/CosmWasm/cosmwasm/issues/926#issuecomment-851259818
+///
 /// #### 0.4.0
 /// - Rename the ExecuteMsg to be more explicit.
 /// - No storage changes.
