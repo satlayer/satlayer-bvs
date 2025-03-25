@@ -1,0 +1,8 @@
+{
+  "name": "@examples/rewards",
+  "private": true,
+  "scripts": {
+    "build": "go build -C src -o ./dist/bvs-rewards .",
+    "test": "gotestsum -- ./... -p 6"
+  }
+}
