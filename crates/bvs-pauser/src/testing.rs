@@ -24,7 +24,6 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for PauserContract {
     fn default_init(app: &mut App, _env: &Env) -> InstantiateMsg {
         InstantiateMsg {
             owner: app.api().addr_make("owner").to_string(),
-            initial_paused: false,
         }
     }
 
