@@ -90,11 +90,8 @@ mod execute {
 
         // Check if the contract is already paused
         // Only mutate the state if it is not already paused
-        match PAUSED.load(deps.storage, (&contract, &method)) {
-            Ok(_) => {
-                PAUSED.remove(deps.storage, (&contract, &method));
-            }
-            Err(_) => {}
+        if PAUSED.load(deps.storage, (&contract, &method)).is_ok() {
+            PAUSED.remove(deps.storage, (&contract, &method));
         }
 
         Ok(Response::new()
@@ -132,10 +129,7 @@ mod query {
     ///  To implement checking of paused status against contract and method.
     ///  Added for future compatibility, not yet utilized—current design pauses all execute.
     pub fn is_paused(deps: Deps, contract: Addr, method: String) -> StdResult<IsPausedResponse> {
-        let is_paused = match PAUSED.load(deps.storage, (&contract, &method)) {
-            Ok(_) => true,
-            Err(_) => false,
-        };
+        let is_paused = PAUSED.load(deps.storage, (&contract, &method)).is_ok();
         Ok(IsPausedResponse::new(is_paused))
     }
 
@@ -148,10 +142,7 @@ mod query {
         _sender: Addr,
         method: String,
     ) -> StdResult<CanExecuteResponse> {
-        let is_paused = match PAUSED.load(deps.storage, (&contract, &method)) {
-            Ok(_) => true,
-            Err(_) => false,
-        };
+        let is_paused = PAUSED.load(deps.storage, (&contract, &method)).is_ok();
 
         if is_paused {
             return Ok(CanExecuteFlag::Paused.into());

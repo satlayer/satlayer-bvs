@@ -26,7 +26,7 @@ fn pause_unpause() {
             contract: downstream_contract.to_string(),
             method: method.to_string(),
         };
-        let res = contract.execute(&mut app, &owner, &msg).unwrap();
+        let res = contract.execute(&mut app, &owner, msg).unwrap();
 
         assert_eq!(res.events.len(), 2);
         assert_eq!(
@@ -63,7 +63,7 @@ fn pause_unpause() {
             contract: app.api().addr_make("downstream_contract").to_string(),
             method: "any".to_string(),
         };
-        let res = contract.execute(&mut app, &owner, &msg).unwrap();
+        let res = contract.execute(&mut app, &owner, msg).unwrap();
 
         assert_eq!(res.events.len(), 2);
 
@@ -169,7 +169,7 @@ fn unauthorized_unpause() {
         };
         let res: IsPausedResponse = contract.query(&app, &msg).unwrap();
 
-        assert_eq!(res.is_paused(), false);
+        assert!(!res.is_paused());
 
         let msg = QueryMsg::CanExecute {
             contract: downstream_contract.to_string(),
