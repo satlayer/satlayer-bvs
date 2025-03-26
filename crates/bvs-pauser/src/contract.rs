@@ -66,14 +66,11 @@ mod execute {
     ) -> Result<Response, PauserError> {
         ownership::assert_owner(deps.storage, &info)?;
 
-        // Check if the contract is already paused
+        // Check if the contract's func is already paused
         // Only mutate the state if it is not already paused
-        match PAUSED.load(deps.storage, (&contract, &method)) {
-            Ok(_) => {}
-            Err(_) => {
-                PAUSED.save(deps.storage, (&contract, &method), &env.block.height)?;
-            }
-        };
+        if PAUSED.load(deps.storage, (&contract, &method)).is_err() {
+            PAUSED.save(deps.storage, (&contract, &method), &env.block.height)?;
+        }
 
         Ok(Response::new()
             .add_attribute("method", "pause")
