@@ -12,25 +12,25 @@ pub struct InstantiateMsg {
 #[cw_serde]
 #[derive(Display)]
 pub enum ExecuteMsg {
-    DeployCw20 {
-        cw20: String,
-    },
+    /// ExecuteMsg DeployCw20
+    /// Deploy a CW20 vault contract, the operator will be the sender of this message.
+    /// The `cw20` is the address of the CW20 contract.
+    DeployCw20 { cw20: String },
 
-    DeployBank {
-        denom: String,
-    },
+    /// ExecuteMsg DeployBank
+    /// Deploy a Bank vault contract, the operator will be the sender of this message.
+    /// The `denom` is the denomination of the native token, e.g. "ubbn" for Babylon native token.
+    DeployBank { denom: String },
 
     /// ExecuteMsg TransferOwnership
     /// See [`bvs_library::ownership::transfer_ownership`] for more information on this field
     /// Only the `owner` can call this message.
-    TransferOwnership {
-        new_owner: String,
-    },
+    TransferOwnership { new_owner: String },
 
-    SetCodeId {
-        code_id: u64,
-        vault_type: VaultType,
-    },
+    /// ExecuteMsg SetCodeId
+    /// Set the code id for a vault type, allowing the factory to deploy vaults of that type.
+    /// Only the `owner` can call this message.
+    SetCodeId { code_id: u64, vault_type: VaultType },
 }
 
 #[cw_serde]
