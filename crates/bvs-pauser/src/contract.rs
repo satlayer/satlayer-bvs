@@ -85,8 +85,8 @@ mod execute {
     ) -> Result<Response, PauserError> {
         ownership::assert_owner(deps.storage, &info)?;
 
-        // Check if the contract is already paused
-        // Only mutate the state if it is not already paused
+        // Check if the contract is already unpaused
+        // Only mutate the state if it is not already unpaused
         if PAUSED.load(deps.storage, (&contract, &method)).is_ok() {
             PAUSED.remove(deps.storage, (&contract, &method));
         }
