@@ -210,6 +210,7 @@ fn test_multi_deposit_withdraw_non_linear_exchange_rates() {
 
     let stake_amounts = 20;
     let staker_total = 10;
+    const OFFSET: u128 = 1u128;
 
     for i in 0..staker_total {
         let staker = app.api().addr_make(&format!("staker/{}", i));
@@ -262,20 +263,24 @@ fn test_multi_deposit_withdraw_non_linear_exchange_rates() {
     let balance = cw20.balance(app, &vault.addr());
     assert_eq!(balance, stake_amounts * staker_total + donation_amount);
 
-    let total_shares = total_shares.u128();
-    let virtual_total_asset = balance + 1e3 as u128;
-    let virtual_total_shares = total_shares + 1e3 as u128;
-
-    // should be 2:1 with current test configuration
-    let new_exchange_rate = virtual_total_asset as f64 / virtual_total_shares as f64;
-
-    let staker_asset_profit = (new_exchange_rate * stake_amounts as f64) - stake_amounts as f64;
+    fn get_staker_asset_profit(app: &App, vault: &VaultCw20Contract, shares: Uint128) -> Uint128 {
+        vault
+            .query(app, &QueryMsg::ConvertToAssets { shares })
+            .unwrap()
+    }
 
     let total_balance_before = balance;
+    let mut total_asset_withdrawn: Uint128 = Uint128::new(0);
 
     for i in 0..staker_total {
         let staker = app.api().addr_make(&format!("staker/{}", i));
         {
+            let staker_asset_profit =
+                get_staker_asset_profit(app, &vault, Uint128::new(stake_amounts));
+            total_asset_withdrawn = total_asset_withdrawn
+                .checked_add(staker_asset_profit)
+                .unwrap();
+
             let msg = ExecuteMsg::WithdrawTo(RecipientAmount {
                 amount: Uint128::new(stake_amounts),
                 recipient: staker.clone(),
@@ -283,8 +288,16 @@ fn test_multi_deposit_withdraw_non_linear_exchange_rates() {
             vault.execute(app, &staker, &msg).unwrap();
 
             {
+                // get staker balance after withdrawal
                 let staker_balance = cw20.balance(app, &staker);
-                assert_eq!(staker_balance as f64, 100e15 + staker_asset_profit);
+                assert_eq!(
+                    Uint128::from(staker_balance),
+                    Uint128::new(100e15 as u128)
+                        .checked_sub(Uint128::from(stake_amounts))
+                        .unwrap()
+                        .checked_add(staker_asset_profit)
+                        .unwrap()
+                );
 
                 let query_shares = QueryMsg::Shares {
                     staker: staker.to_string(),
@@ -295,16 +308,11 @@ fn test_multi_deposit_withdraw_non_linear_exchange_rates() {
         }
     }
 
-    let total_asset_withdrawn = staker_total as f64 * stake_amounts as f64 * new_exchange_rate;
-
     let total_shares: Uint128 = vault.query(&app, &QueryMsg::TotalShares {}).unwrap();
     assert_eq!(total_shares, Uint128::new(0));
 
     let balance = cw20.balance(app, &vault.addr());
-    assert_eq!(
-        balance as f64,
-        total_balance_before as f64 - total_asset_withdrawn
-    );
+    assert_eq!(balance, total_balance_before - total_asset_withdrawn.u128());
 }
 
 #[test]
