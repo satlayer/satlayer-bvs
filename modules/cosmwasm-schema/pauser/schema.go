@@ -8,12 +8,11 @@ type CanExecuteResponse int64
 type IsPausedResponse int64
 
 type InstantiateMsg struct {
-	// Initial pause state
-	InitialPaused bool `json:"initial_paused"`
 	// Owner of this contract, who can pause and unpause
 	Owner string `json:"owner"`
 }
 
+// Callable by the owner of the pauser contract
 type ExecuteMsg struct {
 	Pause             *Pause             `json:"pause,omitempty"`
 	Unpause           *Unpause           `json:"unpause,omitempty"`
@@ -21,6 +20,10 @@ type ExecuteMsg struct {
 }
 
 type Pause struct {
+	// address of the contract to be paused
+	Contract string `json:"contract"`
+	// method of a particular contract to be paused
+	Method string `json:"method"`
 }
 
 type TransferOwnership struct {
@@ -29,6 +32,10 @@ type TransferOwnership struct {
 }
 
 type Unpause struct {
+	// address of the contract to be unpaused
+	Contract string `json:"contract"`
+	// method of a particular contract to be unpaused
+	Method string `json:"method"`
 }
 
 type QueryMsg struct {
