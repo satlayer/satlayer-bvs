@@ -44,7 +44,7 @@ pub fn transfer_ownership(
 ) -> Result<Response, OwnershipError> {
     assert_owner(storage, &info)?;
 
-    let old_owner = OWNER.load(storage)?;
+    let old_owner = info.sender;
     OWNER.save(storage, &new_owner)?;
     Ok(Response::new().add_event(
         Event::new("TransferredOwnership")
