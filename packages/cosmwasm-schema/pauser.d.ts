@@ -7,22 +7,30 @@ type IsPausedResponse = number;
 
 export interface InstantiateMsg {
   /**
-   * Initial pause state
-   */
-  initial_paused: boolean;
-  /**
    * Owner of this contract, who can pause and unpause
    */
   owner: string;
 }
 
+/**
+ * Callable by the owner of the pauser contract
+ */
 export interface ExecuteMsg {
   pause?: Pause;
   unpause?: Unpause;
   transfer_ownership?: TransferOwnership;
 }
 
-export interface Pause {}
+export interface Pause {
+  /**
+   * address of the contract to be paused
+   */
+  contract: string;
+  /**
+   * method of a particular contract to be paused
+   */
+  method: string;
+}
 
 export interface TransferOwnership {
   /**
@@ -31,7 +39,16 @@ export interface TransferOwnership {
   new_owner: string;
 }
 
-export interface Unpause {}
+export interface Unpause {
+  /**
+   * address of the contract to be unpaused
+   */
+  contract: string;
+  /**
+   * method of a particular contract to be unpaused
+   */
+  method: string;
+}
 
 export interface QueryMsg {
   is_paused?: IsPaused;
