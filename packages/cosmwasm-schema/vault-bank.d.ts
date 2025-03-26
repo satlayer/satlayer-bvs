@@ -33,6 +33,8 @@
  * mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`
  * instance.
  *
+ * This struct is used to represent a recipient for RedeemWithdrawalTo.
+ *
  * The response to the `Assets` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
  *
@@ -41,6 +43,31 @@
  *
  * The response to the `ConvertToShares` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
+ *
+ * A point in time in nanosecond precision.
+ *
+ * This type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.
+ *
+ * ## Examples
+ *
+ * ``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202);
+ * assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1);
+ * assert_eq!(ts.subsec_nanos(), 202);
+ *
+ * let ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202);
+ * assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```
+ *
+ * A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the
+ * full u64 range can be used for clients that convert JSON numbers to floats, like
+ * JavaScript and jq.
+ *
+ * # Examples
+ *
+ * Use `from` to create instances of this and `u64` to get the value out:
+ *
+ * ``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);
+ *
+ * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
  *
  * The response to the `Shares` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
@@ -95,6 +122,8 @@ type AssetsResponse = string;
  * mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`
  * instance.
  *
+ * This struct is used to represent a recipient for RedeemWithdrawalTo.
+ *
  * The response to the `Assets` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
  *
@@ -103,6 +132,31 @@ type AssetsResponse = string;
  *
  * The response to the `ConvertToShares` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
+ *
+ * A point in time in nanosecond precision.
+ *
+ * This type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.
+ *
+ * ## Examples
+ *
+ * ``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202);
+ * assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1);
+ * assert_eq!(ts.subsec_nanos(), 202);
+ *
+ * let ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202);
+ * assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```
+ *
+ * A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the
+ * full u64 range can be used for clients that convert JSON numbers to floats, like
+ * JavaScript and jq.
+ *
+ * # Examples
+ *
+ * Use `from` to create instances of this and `u64` to get the value out:
+ *
+ * ``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);
+ *
+ * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
  *
  * The response to the `Shares` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
@@ -157,6 +211,8 @@ type ConvertToAssetsResponse = string;
  * mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`
  * instance.
  *
+ * This struct is used to represent a recipient for RedeemWithdrawalTo.
+ *
  * The response to the `Assets` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
  *
@@ -165,6 +221,31 @@ type ConvertToAssetsResponse = string;
  *
  * The response to the `ConvertToShares` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
+ *
+ * A point in time in nanosecond precision.
+ *
+ * This type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.
+ *
+ * ## Examples
+ *
+ * ``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202);
+ * assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1);
+ * assert_eq!(ts.subsec_nanos(), 202);
+ *
+ * let ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202);
+ * assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```
+ *
+ * A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the
+ * full u64 range can be used for clients that convert JSON numbers to floats, like
+ * JavaScript and jq.
+ *
+ * # Examples
+ *
+ * Use `from` to create instances of this and `u64` to get the value out:
+ *
+ * ``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);
+ *
+ * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
  *
  * The response to the `Shares` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
@@ -219,6 +300,8 @@ type ConvertToSharesResponse = string;
  * mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`
  * instance.
  *
+ * This struct is used to represent a recipient for RedeemWithdrawalTo.
+ *
  * The response to the `Assets` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
  *
@@ -227,6 +310,31 @@ type ConvertToSharesResponse = string;
  *
  * The response to the `ConvertToShares` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
+ *
+ * A point in time in nanosecond precision.
+ *
+ * This type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.
+ *
+ * ## Examples
+ *
+ * ``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202);
+ * assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1);
+ * assert_eq!(ts.subsec_nanos(), 202);
+ *
+ * let ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202);
+ * assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```
+ *
+ * A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the
+ * full u64 range can be used for clients that convert JSON numbers to floats, like
+ * JavaScript and jq.
+ *
+ * # Examples
+ *
+ * Use `from` to create instances of this and `u64` to get the value out:
+ *
+ * ``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);
+ *
+ * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
  *
  * The response to the `Shares` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
@@ -281,6 +389,8 @@ type SharesResponse = string;
  * mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`
  * instance.
  *
+ * This struct is used to represent a recipient for RedeemWithdrawalTo.
+ *
  * The response to the `Assets` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
  *
@@ -289,6 +399,31 @@ type SharesResponse = string;
  *
  * The response to the `ConvertToShares` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
+ *
+ * A point in time in nanosecond precision.
+ *
+ * This type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.
+ *
+ * ## Examples
+ *
+ * ``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202);
+ * assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1);
+ * assert_eq!(ts.subsec_nanos(), 202);
+ *
+ * let ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202);
+ * assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```
+ *
+ * A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the
+ * full u64 range can be used for clients that convert JSON numbers to floats, like
+ * JavaScript and jq.
+ *
+ * # Examples
+ *
+ * Use `from` to create instances of this and `u64` to get the value out:
+ *
+ * ``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);
+ *
+ * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
  *
  * The response to the `Shares` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
@@ -343,6 +478,8 @@ type TotalAssetsResponse = string;
  * mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`
  * instance.
  *
+ * This struct is used to represent a recipient for RedeemWithdrawalTo.
+ *
  * The response to the `Assets` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
  *
@@ -351,6 +488,31 @@ type TotalAssetsResponse = string;
  *
  * The response to the `ConvertToShares` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
+ *
+ * A point in time in nanosecond precision.
+ *
+ * This type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.
+ *
+ * ## Examples
+ *
+ * ``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202);
+ * assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1);
+ * assert_eq!(ts.subsec_nanos(), 202);
+ *
+ * let ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202);
+ * assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```
+ *
+ * A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the
+ * full u64 range can be used for clients that convert JSON numbers to floats, like
+ * JavaScript and jq.
+ *
+ * # Examples
+ *
+ * Use `from` to create instances of this and `u64` to get the value out:
+ *
+ * ``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);
+ *
+ * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
  *
  * The response to the `Shares` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
@@ -405,10 +567,26 @@ export interface InstantiateMsg {
  * requested amount to the `recipient`. If the Vault is delegated to an `operator`,
  * withdrawals must be queued. Operator must not be validating any services for instant
  * withdrawals.
+ *
+ * ExecuteMsg QueueWithdrawal assets from the vault. Sender must have enough shares to queue
+ * the requested amount to the `recipient`. Once the withdrawal is queued, the `recipient`
+ * can redeem the withdrawal after the lock period. Once the withdrawal is locked, the
+ * `sender` cannot cancel the withdrawal. The time-lock is enforced by the vault and cannot
+ * be changed retroactively.
+ *
+ * ### Lock Period Extension New withdrawals will extend the lock period of any existing
+ * withdrawals. You can queue the withdrawal to a different `recipient` than the `sender` to
+ * avoid this.
+ *
+ * ExecuteMsg RedeemWithdrawal all queued shares into assets from the vault for withdrawal.
+ * After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
+ * can redeem the withdrawal.
  */
 export interface ExecuteMsg {
   deposit_for?: RecipientAmount;
   withdraw_to?: RecipientAmount;
+  queue_withdrawal_to?: RecipientAmount;
+  redeem_withdrawal_to?: string;
 }
 
 /**
@@ -432,6 +610,8 @@ export interface RecipientAmount {
  *
  * QueryMsg TotalAssets: get the total assets under vault.
  *
+ * QueryMsg QueuedWithdrawal: get the queued withdrawal and unlock timestamp under vault.
+ *
  * QueryMsg VaultInfo: get the vault information.
  */
 export interface QueryMsg {
@@ -441,6 +621,7 @@ export interface QueryMsg {
   convert_to_shares?: ConvertToShares;
   total_shares?: TotalShares;
   total_assets?: TotalAssets;
+  queued_withdrawal?: QueuedWithdrawal;
   vault_info?: VaultInfo;
 }
 
@@ -456,6 +637,10 @@ export interface ConvertToShares {
   assets: string;
 }
 
+export interface QueuedWithdrawal {
+  staker: string;
+}
+
 export interface Shares {
   staker: string;
 }
@@ -465,6 +650,15 @@ export interface TotalAssets {}
 export interface TotalShares {}
 
 export interface VaultInfo {}
+
+/**
+ * The response to the `QueuedWithdrawal` query. Not exported. This is just a wrapper around
+ * `QueuedWithdrawalInfo`, so that the schema can be generated.
+ */
+export interface QueuedWithdrawalResponse {
+  queued_shares: string;
+  unlock_timestamp: string;
+}
 
 export interface VaultInfoResponse {
   /**

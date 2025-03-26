@@ -38,9 +38,25 @@ type InstantiateMsg struct {
 // requested amount to the `recipient`. If the Vault is delegated to an `operator`,
 // withdrawals must be queued. Operator must not be validating any services for instant
 // withdrawals.
+//
+// ExecuteMsg QueueWithdrawal assets from the vault. Sender must have enough shares to queue
+// the requested amount to the `recipient`. Once the withdrawal is queued, the `recipient`
+// can redeem the withdrawal after the lock period. Once the withdrawal is locked, the
+// `sender` cannot cancel the withdrawal. The time-lock is enforced by the vault and cannot
+// be changed retroactively.
+//
+// ### Lock Period Extension New withdrawals will extend the lock period of any existing
+// withdrawals. You can queue the withdrawal to a different `recipient` than the `sender` to
+// avoid this.
+//
+// ExecuteMsg RedeemWithdrawal all queued shares into assets from the vault for withdrawal.
+// After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
+// can redeem the withdrawal.
 type ExecuteMsg struct {
-	DepositFor *RecipientAmount `json:"deposit_for,omitempty"`
-	WithdrawTo *RecipientAmount `json:"withdraw_to,omitempty"`
+	DepositFor         *RecipientAmount `json:"deposit_for,omitempty"`
+	WithdrawTo         *RecipientAmount `json:"withdraw_to,omitempty"`
+	QueueWithdrawalTo  *RecipientAmount `json:"queue_withdrawal_to,omitempty"`
+	RedeemWithdrawalTo *string          `json:"redeem_withdrawal_to,omitempty"`
 }
 
 // This struct is used to represent the recipient and amount fields together.
@@ -61,15 +77,18 @@ type RecipientAmount struct {
 //
 // QueryMsg TotalAssets: get the total assets under vault.
 //
+// QueryMsg QueuedWithdrawal: get the queued withdrawal and unlock timestamp under vault.
+//
 // QueryMsg VaultInfo: get the vault information.
 type QueryMsg struct {
-	Shares          *Shares          `json:"shares,omitempty"`
-	Assets          *Assets          `json:"assets,omitempty"`
-	ConvertToAssets *ConvertToAssets `json:"convert_to_assets,omitempty"`
-	ConvertToShares *ConvertToShares `json:"convert_to_shares,omitempty"`
-	TotalShares     *TotalShares     `json:"total_shares,omitempty"`
-	TotalAssets     *TotalAssets     `json:"total_assets,omitempty"`
-	VaultInfo       *VaultInfo       `json:"vault_info,omitempty"`
+	Shares           *Shares           `json:"shares,omitempty"`
+	Assets           *Assets           `json:"assets,omitempty"`
+	ConvertToAssets  *ConvertToAssets  `json:"convert_to_assets,omitempty"`
+	ConvertToShares  *ConvertToShares  `json:"convert_to_shares,omitempty"`
+	TotalShares      *TotalShares      `json:"total_shares,omitempty"`
+	TotalAssets      *TotalAssets      `json:"total_assets,omitempty"`
+	QueuedWithdrawal *QueuedWithdrawal `json:"queued_withdrawal,omitempty"`
+	VaultInfo        *VaultInfo        `json:"vault_info,omitempty"`
 }
 
 type Assets struct {
@@ -84,6 +103,10 @@ type ConvertToShares struct {
 	Assets string `json:"assets"`
 }
 
+type QueuedWithdrawal struct {
+	Staker string `json:"staker"`
+}
+
 type Shares struct {
 	Staker string `json:"staker"`
 }
@@ -95,6 +118,13 @@ type TotalShares struct {
 }
 
 type VaultInfo struct {
+}
+
+// The response to the `QueuedWithdrawal` query. Not exported. This is just a wrapper around
+// `QueuedWithdrawalInfo`, so that the schema can be generated.
+type QueuedWithdrawalResponse struct {
+	QueuedShares    string `json:"queued_shares"`
+	UnlockTimestamp string `json:"unlock_timestamp"`
 }
 
 type VaultInfoResponse struct {
