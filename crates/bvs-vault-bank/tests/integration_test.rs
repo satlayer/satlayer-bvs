@@ -323,7 +323,7 @@ fn test_deposit_with_non_linear_exchange_rate() {
             staker: staker.to_string(),
         };
         let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
-        assert_eq!(shares, Uint128::new(1_000_000 + 500_249)); // 500_249 is the new share based on 2:1 exchange rate
+        assert_eq!(shares, Uint128::new(1_000_000 + 500_000)); // 500_000 is the new share based on 2:1 exchange rate
     }
 }
 
@@ -375,10 +375,10 @@ fn test_withdraw_with_non_linear_exchange_rate() {
     // Assert balances and shares after Deposit
     {
         let staker_balance = app.wrap().query_balance(&staker, denom).unwrap();
-        assert_eq!(staker_balance, coin(999_000_000 + 1_999_000, denom)); // 1_999_000 is the new asset based on 2:1 exchange rate, extra 999_000.
+        assert_eq!(staker_balance, coin(999_000_000 + 1_999_999, denom)); // 1_999_999 is the new asset based on 2:1 exchange rate, extra 999_999.
 
         let contract_balance = app.wrap().query_balance(tc.vault.addr(), denom).unwrap();
-        assert_eq!(contract_balance, coin(1_000, denom));
+        assert_eq!(contract_balance, coin(1, denom));
 
         // assert staker share should be 0
         let query_shares = QueryMsg::Shares {
@@ -409,13 +409,13 @@ fn test_withdraw_with_inflated_exchange_rate() {
     )
     .expect("failed to fund vault");
 
-    // Deposit 1_000_000 tokens from staker to Vault
+    // Deposit 100_000_001 tokens from staker to Vault
     let msg = ExecuteMsg::DepositFor(RecipientAmount {
         recipient: staker.clone(),
-        amount: Uint128::new(1_000_000),
+        amount: Uint128::new(100_000_001),
     });
     tc.vault
-        .execute_with_funds(app, &staker, &msg, coins(1_000_000, denom))
+        .execute_with_funds(app, &staker, &msg, coins(100_000_001, denom))
         .expect("staker deposit failed");
 
     // assert staker share
@@ -423,12 +423,12 @@ fn test_withdraw_with_inflated_exchange_rate() {
         staker: staker.to_string(),
     };
     let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
-    assert_eq!(shares, Uint128::new(9));
+    assert_eq!(shares, Uint128::new(1));
 
     // Withdraw will now use inflated exchange rate
     let msg = ExecuteMsg::WithdrawTo(RecipientAmount {
         recipient: staker.clone(),
-        amount: Uint128::new(9),
+        amount: Uint128::new(1),
     });
     tc.vault
         .execute_with_funds(app, &staker, &msg, vec![])
@@ -437,10 +437,10 @@ fn test_withdraw_with_inflated_exchange_rate() {
     // Assert balances and shares after Deposit
     {
         let staker_balance = app.wrap().query_balance(&staker, denom).unwrap();
-        assert_eq!(staker_balance, coin(999_900_900, denom)); // staker loses 99_100 assets from the inflated exchange rate
+        assert_eq!(staker_balance, coin(1_000_000_000, denom)); // staker gets back initial asset
 
         let contract_balance = app.wrap().query_balance(tc.vault.addr(), denom).unwrap();
-        assert_eq!(contract_balance, coin(100_099_100, denom)); // contract gains 99_100 extra assets
+        assert_eq!(contract_balance, coin(100_000_000, denom)); // contract back to donation balance
 
         // assert staker share should be 0
         let query_shares = QueryMsg::Shares {
