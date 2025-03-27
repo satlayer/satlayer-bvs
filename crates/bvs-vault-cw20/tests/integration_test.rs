@@ -210,7 +210,6 @@ fn test_multi_deposit_withdraw_non_linear_exchange_rates() {
 
     let stake_amounts = 20;
     let staker_total = 10;
-    const OFFSET: u128 = 1u128;
 
     for i in 0..staker_total {
         let staker = app.api().addr_make(&format!("staker/{}", i));

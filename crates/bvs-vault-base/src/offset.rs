@@ -4,9 +4,9 @@ use cw_storage_plus::Item;
 
 /// The offset is used to mitigate the common 'share inflation' attack vector.
 /// See [https://docs.openzeppelin.com/contracts/4.x/erc4626#inflation-attack]
-/// This 1,000 offset will be used in exchange rate computation to reduce the impact of the attack.
-/// When the vault is empty, the virtual shares and virtual assets enforce the conversion rate 1000/1000.
-const OFFSET: Uint128 = Uint128::new(1 as u128);
+/// This 1 offset will be used in exchange rate computation to reduce the impact of the attack.
+/// When the vault is empty, the virtual shares and virtual assets enforce the conversion rate 1/1.
+const OFFSET: Uint128 = Uint128::new(1);
 
 /// The total shares of the contract held by all stakers.
 /// [`OFFSET`] value is not included in the total shares, only the real shares are counted.
@@ -20,9 +20,9 @@ pub fn get_total_shares(storage: &dyn Storage) -> StdResult<Uint128> {
 }
 
 /// Follows the OpenZeppelin's ERC4626 mitigation strategy for inflation attack.
-/// Using a "virtual" offset to +1e0 to both total shares and assets representing the virtual total shares and virtual total assets.
-/// A donation of 1e0 and under will be completely captured by the vault—without affecting the user.
-/// A donation greater than 1e0, the attacker will suffer loss greater than the user.
+/// Using a "virtual" offset to +1 to both total shares and assets representing the virtual total shares and virtual total assets.
+/// A donation of 1 and under will be completely captured by the vault—without affecting the user.
+/// A donation greater than 1, the attacker will suffer loss greater than the user.
 /// [https://github.com/OpenZeppelin/openzeppelin-contracts/blob/fa995ef1fe66e1447783cb6038470aba23a6343f/contracts/token/ERC20/extensions/ERC4626.sol#L30-L37]
 ///
 /// [VirtualOffset] is only used to account for the total shares and total assets.
@@ -37,7 +37,7 @@ pub struct VirtualOffset {
 
 impl VirtualOffset {
     /// Load the virtual total shares from storage (supports rebasing, by default).
-    /// A fixed [`OFFSET`] of 1e0 will be added to both total shares and total assets
+    /// A fixed [`OFFSET`] of 1 will be added to both total shares and total assets
     /// to mitigate against inflation attack.
     /// Use [shares_to_assets] and [assets_to_shares] to convert between shares and assets.
     pub fn load(deps: &Deps, total_assets: Uint128) -> StdResult<Self> {
@@ -172,7 +172,7 @@ mod tests {
     }
 
     #[test]
-    fn inflation_attack_over_1e0() {
+    fn inflation_attack_over_1() {
         // Attacker deposits 1 to get 1 share
         // Attacker donates 99,999 moving the balance to 100,000
         let attacker_donation = Uint128::new(99_999);
@@ -389,8 +389,8 @@ mod tests {
         let balance = Uint128::new(1e20 as u128);
         let total_shares = Uint128::new(1);
 
-        // Virtual balance: (1e20) + 1e0 = 1e20
-        // Virtual shares: (1) + 1e0 = 2
+        // Virtual balance: (1e20) + 1 = 1e20
+        // Virtual shares: (1) + 1 = 2
         let vault = VirtualOffset::new(total_shares, balance).unwrap();
 
         // With 999, they get 0 shares
@@ -404,7 +404,7 @@ mod tests {
         let shares = vault.assets_to_shares(amount).unwrap();
         assert_eq!(shares, Uint128::new(0));
 
-        // You will need at least 1e20 / 1e0 = 1e20 amount to get 1 share
+        // You will need at least 1e20 / 1 = 1e20 amount to get 1 share
         let amount = Uint128::new(1e20 as u128);
         let shares = vault.assets_to_shares(amount).unwrap();
         assert_eq!(shares, Uint128::new(1));
