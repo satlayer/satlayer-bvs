@@ -20,7 +20,11 @@ pub enum SlasherExecuteMsg<Offense, Evidence, SlashDetail> {
 
 #[cw_serde]
 pub struct SubmitSlash<Offense, Evidence> {
+    /// The operator who is being accused of misbehaviour
     pub offender: String,
+
+    /// A generic type for downstream slashing strategy contract should define
+    /// allowing them to have custom slashing strategy
     pub offense: Offense,
     pub evidence: Evidence,
 }

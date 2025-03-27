@@ -3,7 +3,6 @@ use cosmwasm_std::{Addr, MessageInfo, StdError, StdResult, Storage};
 use cw_storage_plus::Item;
 
 const ROUTER: Item<Addr> = Item::new("router");
-const VAULT: Item<Addr> = Item::new("vault");
 
 /// Set the `vault-router` address, called once during `initialization`.
 /// The `router` is the address where the vault calls
@@ -29,28 +28,6 @@ pub fn assert_router(storage: &dyn Storage, info: &MessageInfo) -> Result<(), Sl
         .ok_or(SlasherError::unauthorized("no router set"))?;
     if info.sender != router {
         return Err(SlasherError::unauthorized("not router"));
-    }
-    Ok(())
-}
-
-/// Set the `vault` address, called once during `initialization`.
-pub fn set_vault(storage: &mut dyn Storage, vault: &Addr) -> StdResult<()> {
-    VAULT.save(storage, vault)?;
-    Ok(())
-}
-
-/// Get the `vault` address
-pub fn get_vault(storage: &dyn Storage) -> StdResult<Addr> {
-    VAULT.may_load(storage)?.ok_or(StdError::not_found("vault"))
-}
-
-/// Asserts that the sender is the `vault`
-pub fn assert_vault(storage: &dyn Storage, info: &MessageInfo) -> Result<(), SlasherError> {
-    let vault = VAULT
-        .may_load(storage)?
-        .ok_or(SlasherError::unauthorized("no vault set"))?;
-    if info.sender != vault {
-        return Err(SlasherError::unauthorized("not vault"));
     }
     Ok(())
 }

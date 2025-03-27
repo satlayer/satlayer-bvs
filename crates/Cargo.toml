@@ -14,6 +14,7 @@ members = [
   "bvs-vault-cw20",
   "bvs-vault-factory",
   "bvs-slash-base",
+  "bvs-slash-election",
 ]
 
 resolver = "2"
