@@ -4,8 +4,9 @@ use cw_storage_plus::Map;
 /// Mapping of staker to their shares in the vault
 const SHARES: Map<&Addr, Uint128> = Map::new("shares");
 
-/// Unchecked add, you can add zero shares—accounting module won't check this.
-/// Adding zero shares is as good as not running this function.
+/// Add shares to a staker, returns the updated shares
+///
+/// This function doesn't check if `new_shares` is zero
 pub fn add_shares(
     storage: &mut dyn Storage,
     recipient: &Addr,
@@ -19,8 +20,9 @@ pub fn add_shares(
     })
 }
 
-/// Unchecked sub, you can remove zero shares—accounting module won't check this.
-/// Removing zero shares is as good as not running this function.
+/// Subtract shares from a staker, returns the updated shares
+///
+/// This function doesn't check if `shares` is zero
 pub fn sub_shares(
     storage: &mut dyn Storage,
     recipient: &Addr,
