@@ -138,10 +138,6 @@ mod execute {
             let balance = token::query_balance(&deps.as_ref(), &env)?;
             let mut vault = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
 
-            if msg.amount > vault.total_shares() {
-                return Err(VaultError::insufficient("Insufficient shares to withdraw.").into());
-            }
-
             let assets = vault.shares_to_assets(msg.amount)?;
             if assets.is_zero() {
                 return Err(VaultError::zero("Withdraw assets cannot be zero.").into());
