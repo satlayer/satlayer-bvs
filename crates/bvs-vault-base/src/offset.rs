@@ -3,9 +3,14 @@ use cosmwasm_std::{Deps, StdError, StdResult, Storage, Uint128};
 use cw_storage_plus::Item;
 
 /// The offset is used to mitigate the common 'share inflation' attack vector.
-/// See [https://docs.openzeppelin.com/contracts/4.x/erc4626#inflation-attack]
+///
+/// See [https://docs.openzeppelin.com/contracts/5.x/erc4626#inflation-attack]
+///
 /// This 1 offset will be used in exchange rate computation to reduce the impact of the attack.
 /// When the vault is empty, the virtual shares and virtual assets enforce the conversion rate 1/1.
+///
+/// Share inflation attack will not be as prevalent because of async withdrawal,
+/// hence offset of 1 will be enough to mitigate the attack.
 const OFFSET: Uint128 = Uint128::new(1);
 
 /// The total shares of the contract held by all stakers.
