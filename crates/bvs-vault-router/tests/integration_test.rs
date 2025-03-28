@@ -47,10 +47,10 @@ impl TestContracts {
 fn set_vault_whitelist_false_successfully() {
     let (mut app, tc) = TestContracts::init();
     let owner = app.api().addr_make("owner");
-    let vault = app.api().addr_make("vault");
+    let bank_vault = tc.bank_vault.addr();
 
     let msg = &ExecuteMsg::SetVault {
-        vault: vault.to_string(),
+        vault: bank_vault.to_string(),
         whitelisted: false,
     };
 
@@ -62,14 +62,14 @@ fn set_vault_whitelist_false_successfully() {
             Event::new("execute").add_attribute("_contract_address", tc.vault_router.addr.as_str()),
             Event::new("wasm-VaultUpdated")
                 .add_attribute("_contract_address", tc.vault_router.addr.as_str())
-                .add_attribute("vault", vault.to_string())
+                .add_attribute("vault", bank_vault.to_string())
                 .add_attribute("whitelisted", "false"),
         ]
     );
 
     // query is whitelisted
     let msg = QueryMsg::IsWhitelisted {
-        vault: vault.to_string(),
+        vault: bank_vault.to_string(),
     };
     let is_whitelisted: bool = tc.vault_router.query(&mut app, &msg).unwrap();
     assert_eq!(is_whitelisted, false);

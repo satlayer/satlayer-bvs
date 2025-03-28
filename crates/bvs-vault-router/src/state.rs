@@ -33,3 +33,6 @@ pub const WITHDRAWAL_LOCK_PERIOD: Item<Uint64> = Item::new("withdrawal_lock_peri
 /// This is used when the withdrawal lock period is not set.
 /// The default value is 7 days.
 pub const DEFAULT_WITHDRAWAL_LOCK_PERIOD: Uint64 = Uint64::new(604800);
+
+/// Operator to its managed vaults
+pub const DELEGATED_SERVICES: Map<(&Addr, &Addr), bool> = Map::new("delegated_services");
