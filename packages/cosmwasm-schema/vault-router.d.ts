@@ -100,6 +100,7 @@ export interface QueryMsg {
   is_whitelisted?: IsWhitelisted;
   is_validating?: IsValidating;
   list_vaults?: ListVaults;
+  list_vaults_by_operator?: ListVaultsByOperator;
   withdrawal_lock_period?: WithdrawalLockPeriod;
 }
 
@@ -113,6 +114,12 @@ export interface IsWhitelisted {
 
 export interface ListVaults {
   limit?: number | null;
+  start_after?: null | string;
+}
+
+export interface ListVaultsByOperator {
+  limit?: number | null;
+  operator: string;
   start_after?: null | string;
 }
 

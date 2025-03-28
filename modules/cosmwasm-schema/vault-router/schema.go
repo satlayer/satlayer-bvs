@@ -54,6 +54,7 @@ type QueryMsg struct {
 	IsWhitelisted        *IsWhitelisted        `json:"is_whitelisted,omitempty"`
 	IsValidating         *IsValidating         `json:"is_validating,omitempty"`
 	ListVaults           *ListVaults           `json:"list_vaults,omitempty"`
+	ListVaultsByOperator *ListVaultsByOperator `json:"list_vaults_by_operator,omitempty"`
 	WithdrawalLockPeriod *WithdrawalLockPeriod `json:"withdrawal_lock_period,omitempty"`
 }
 
@@ -67,6 +68,12 @@ type IsWhitelisted struct {
 
 type ListVaults struct {
 	Limit      *int64  `json:"limit"`
+	StartAfter *string `json:"start_after"`
+}
+
+type ListVaultsByOperator struct {
+	Limit      *int64  `json:"limit"`
+	Operator   string  `json:"operator"`
 	StartAfter *string `json:"start_after"`
 }
 
