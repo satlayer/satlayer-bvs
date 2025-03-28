@@ -46,6 +46,13 @@ pub enum QueryMsg {
         start_after: Option<String>,
     },
 
+    #[returns(VaultListResponse)]
+    ListVaultsByOperator {
+        operator: String,
+        limit: Option<u32>,
+        start_after: Option<String>,
+    },
+
     /// QueryMsg WithdrawalLockPeriod: returns the withdrawal lock period.
     #[returns(WithdrawalLockPeriodResponse)]
     WithdrawalLockPeriod {},
