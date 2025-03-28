@@ -365,7 +365,7 @@ mod tests {
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
     use cosmwasm_std::{
-        from_json, Addr, Attribute, ContractResult, Event, OwnedDeps, QuerierResult, SystemError,
+        from_json, Attribute, ContractResult, Event, OwnedDeps, QuerierResult, SystemError,
         SystemResult, Uint128, Uint64, WasmQuery,
     };
 
