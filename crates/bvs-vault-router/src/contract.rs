@@ -784,6 +784,37 @@ mod tests {
         for i in 0..10 {
             assert_eq!(response.0[i].vault, vaults[i]);
         }
+
+        // let's test pagination sync this time
+        {
+            let mut response1 =
+                query::list_vaults_by_operator(deps.as_ref(), operator.clone(), 5, None).unwrap();
+            assert_eq!(response1.0.len(), 5);
+
+            let next_start_after = response1.0[4].vault.clone();
+
+            let response2 = query::list_vaults_by_operator(
+                deps.as_ref(),
+                operator.clone(),
+                5,
+                Some(next_start_after),
+            )
+            .unwrap();
+
+            assert_eq!(response2.0.len(), 5);
+
+            let mut total_vaults = response1
+                .0
+                .iter()
+                .chain(response2.0.iter())
+                .collect::<Vec<_>>();
+
+            total_vaults.sort_by(|a, b| a.vault.cmp(&b.vault));
+
+            for i in 0..10 {
+                assert_eq!(total_vaults[i].vault, vaults[i]);
+            }
+        }
     }
 
     #[test]
