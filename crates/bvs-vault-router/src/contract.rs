@@ -208,7 +208,7 @@ pub mod vault {
         {
             Ok(response) => Ok(response),
             Err(_) => Err(ContractError::VaultError {
-                msg: format!("No such contract: {}", vault.to_string()).to_string(),
+                msg: format!("No such contract: {}", vault).to_string(),
             }),
         }
     }
@@ -487,7 +487,7 @@ mod tests {
                 .may_load(deps.as_ref().storage, &vault_contract_addr)
                 .unwrap()
                 .unwrap();
-            assert_eq!(vault.whitelisted, false);
+            assert!(!vault.whitelisted);
 
             let delegated_service = DELEGATED_SERVICES
                 .may_load(
@@ -497,7 +497,7 @@ mod tests {
                 .unwrap()
                 .unwrap();
 
-            assert_eq!(delegated_service, false);
+            assert!(!delegated_service);
         }
 
         let vault = deps.api.addr_make("vault");
@@ -528,7 +528,7 @@ mod tests {
                 .may_load(deps.as_ref().storage, &vault)
                 .unwrap()
                 .unwrap();
-            assert_eq!(vault.whitelisted, true);
+            assert!(vault.whitelisted);
         }
 
         // whitelist is true and failed to set: No such contract
@@ -546,7 +546,7 @@ mod tests {
             let err = result.unwrap_err();
             assert_eq!(
                 err.to_string(),
-                format!("Vault error: No such contract: {}", empty_vault.to_string())
+                format!("Vault error: No such contract: {}", empty_vault)
             );
         }
 
