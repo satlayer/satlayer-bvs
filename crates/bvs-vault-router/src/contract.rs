@@ -338,10 +338,10 @@ mod query {
         let vaults = items
             .take(limit as usize)
             .map(|item| {
-                let (k, v) = item?;
+                let (vault_address, whitelist_flag) = item?;
                 Ok(Vault {
-                    vault: k,
-                    whitelisted: v,
+                    vault: vault_address,
+                    whitelisted: whitelist_flag,
                 })
             })
             .collect::<StdResult<_>>()?;
@@ -365,7 +365,7 @@ mod tests {
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
     use cosmwasm_std::{
-        from_json, Attribute, ContractResult, Event, OwnedDeps, QuerierResult, SystemError,
+        from_json, Addr, Attribute, ContractResult, Event, OwnedDeps, QuerierResult, SystemError,
         SystemResult, Uint128, Uint64, WasmQuery,
     };
 
@@ -751,9 +751,11 @@ mod tests {
         let mut deps = mock_dependencies();
 
         let operator = deps.api.addr_make("operator");
+        let mut vaults = Vec::new();
 
         for i in 0..10 {
             let vault = deps.api.addr_make(&format!("vault{}", i));
+            vaults.push(vault.clone());
             VAULTS
                 .save(&mut deps.storage, &vault, &Vault { whitelisted: true })
                 .unwrap();
@@ -766,8 +768,22 @@ mod tests {
             query::list_vaults_by_operator(deps.as_ref(), operator.clone(), 100, None).unwrap();
         assert_eq!(response.0.len(), 10);
 
-        let response = query::list_vaults_by_operator(deps.as_ref(), operator, 5, None).unwrap();
+        let response =
+            query::list_vaults_by_operator(deps.as_ref(), operator.clone(), 5, None).unwrap();
         assert_eq!(response.0.len(), 5);
+
+        let mut response =
+            query::list_vaults_by_operator(deps.as_ref(), operator.clone(), 10, None).unwrap();
+        assert_eq!(response.0.len(), 10);
+
+        // check if those address came back the same
+        // let's sort them first for easier comparison
+        vaults.sort();
+        response.0.sort_by(|a, b| a.vault.cmp(&b.vault));
+
+        for i in 0..10 {
+            assert_eq!(response.0[i].vault, vaults[i]);
+        }
     }
 
     #[test]
