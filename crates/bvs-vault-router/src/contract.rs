@@ -787,7 +787,7 @@ mod tests {
 
         // let's test pagination sync this time
         {
-            let mut response1 =
+            let response1 =
                 query::list_vaults_by_operator(deps.as_ref(), operator.clone(), 5, None).unwrap();
             assert_eq!(response1.0.len(), 5);
 
