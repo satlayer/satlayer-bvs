@@ -336,7 +336,7 @@ mod query {
         );
 
         let vaults = items
-            .take(limit.try_into().unwrap())
+            .take(limit as usize)
             .map(|item| {
                 let (k, v) = item?;
                 Ok(Vault {
