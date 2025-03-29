@@ -1,8 +1,0 @@
-{
-  "name": "@modules/bvs-cli",
-  "private": true,
-  "scripts": {
-    "build": "go build -o ./dist/bvs-cli .",
-    "test": "export SATLAYER_CONFIG=${PWD}/tests/config.toml && gotestsum -- ./... -p 6"
-  }
-}

@@ -120,9 +120,6 @@ importers:
       '@modules/bvs-api':
         specifier: workspace:*
         version: link:../../../modules/bvs-api
-      '@modules/bvs-cli':
-        specifier: workspace:*
-        version: link:../../../modules/bvs-cli
     devDependencies:
       '@examples/squaring-contract':
         specifier: workspace:*
@@ -160,8 +157,6 @@ importers:
         version: link:../../crates/bvs-strategy-manager
 
   modules/bvs-api: {}
-
-  modules/bvs-cli: {}
 
   modules/cosmwasm-api: {}
 
