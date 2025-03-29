@@ -165,6 +165,8 @@ importers:
 
   modules/cosmwasm-api: {}
 
+  modules/cosmwasm-cli: {}
+
   modules/cosmwasm-schema:
     devDependencies:
       '@satlayer/bvs-delegation-manager':

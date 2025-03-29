@@ -1,0 +1,3 @@
+# To facilate testing, we use dynamically generated keyring files and privatekey files.
+# You don't want to check in any of these files. You can safely delete them.
+*
