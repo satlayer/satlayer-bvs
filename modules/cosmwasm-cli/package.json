@@ -2,6 +2,7 @@
   "name": "@modules/cosmwasm-cli",
   "private": true,
   "scripts": {
-    "build": "go build -o ./dist/cosmwasm-cli ."
+    "build": "go build -o ./dist/cosmwasm-cli .",
+    "test": "gotestsum -- ./... -p 6"
   }
 }
