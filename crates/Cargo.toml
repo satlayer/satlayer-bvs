@@ -11,6 +11,8 @@ members = [
   "bvs-vault-bank",
   "bvs-vault-cw20",
   "bvs-vault-factory",
+  # BVS Optional Components
+  "bvs-rewards",
 ]
 
 resolver = "2"
@@ -40,7 +42,7 @@ schemars = "0.8.22"
 serde = { version = "1.0.219", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.58" }
 sha2 = { version = "0.10.8", default-features = false }
-
+rs_merkle = { version = "1.5.0", default-features = false }
 # CW Standards & Utility
 cw2 = "2.0.0"
 cw20 = "2.0.0"
@@ -57,3 +59,5 @@ bvs-vault-base = { path = "./bvs-vault-base", features = ["library"] }
 bvs-vault-bank = { path = "./bvs-vault-bank", features = ["library"] }
 bvs-vault-cw20 = { path = "./bvs-vault-cw20", features = ["library"] }
 bvs-vault-factory = { path = "./bvs-vault-factory", features = ["library"] }
+
+bvs-rewards = { path = "./bvs-rewards", features = ["library"] }
