@@ -16,23 +16,29 @@ type BroadcastOptions struct {
 	Simulate      bool             // Simulate: Whether to simulate the transaction to estimate gas usage and set Gas accordingly
 }
 
-func NewBroadcastOptions(
-	contractAddr string, executeMsg any) BroadcastOptions {
+func DefaultBroadcastOptions() BroadcastOptions {
+	return BroadcastOptions{
+		Funds:         sdktypes.Coins{},
+		GasAdjustment: 1.2,
+		GasPrice:      sdktypes.NewInt64DecCoin("ubbn", 2000),
+		Gas:           200_000,
+		Simulate:      true,
+	}
+}
 
+func (opts BroadcastOptions) WithContractAddr(contractAddr string) BroadcastOptions {
+	opts.ContractAddr = contractAddr
+	return opts
+}
+
+func (opts BroadcastOptions) WithExecuteMsg(executeMsg any) BroadcastOptions {
 	executeMsgBytes, err := json.Marshal(executeMsg)
 	if err != nil {
 		panic(err)
 	}
 
-	return BroadcastOptions{
-		ContractAddr: contractAddr,
-		ExecuteMsg:   executeMsgBytes,
-	}.
-		WithFunds("").
-		WithGasAdjustment(1.2).
-		WithGasPrice("0.002ubbn").
-		WithGas(200_000).
-		WithSimulate(true)
+	opts.ExecuteMsg = executeMsgBytes
+	return opts
 }
 
 func (opts BroadcastOptions) WithFunds(funds string) BroadcastOptions {

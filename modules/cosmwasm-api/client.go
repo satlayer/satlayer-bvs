@@ -7,6 +7,12 @@ import (
 	"errors"
 	"time"
 
+	"github.com/cosmos/cosmos-sdk/client/flags"
+	"github.com/cosmos/cosmos-sdk/codec"
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+
 	sdkmath "cosmossdk.io/math"
 
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
@@ -18,6 +24,33 @@ import (
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 )
+
+func NewClientCtx(rpcUri, chainId string) client.Context {
+	config := sdktypes.GetConfig()
+	config.SetBech32PrefixForAccount("bbn", "bbnpub")
+
+	rpcClient, err := client.NewClientFromNode(rpcUri)
+	if err != nil {
+		panic(err)
+	}
+
+	interfaceRegistry := codectypes.NewInterfaceRegistry()
+	authtypes.RegisterInterfaces(interfaceRegistry)
+	wasmtypes.RegisterInterfaces(interfaceRegistry)
+
+	protoCodec := codec.NewProtoCodec(interfaceRegistry)
+	txConfig := authtx.NewTxConfig(protoCodec, authtx.DefaultSignModes)
+
+	return client.Context{}.
+		WithChainID(chainId).
+		WithClient(rpcClient).
+		WithOutputFormat("json").
+		WithInterfaceRegistry(interfaceRegistry).
+		WithTxConfig(txConfig).
+		WithCodec(protoCodec).
+		WithAccountRetriever(authtypes.AccountRetriever{}).
+		WithBroadcastMode(flags.BroadcastSync)
+}
 
 // Query queries the smart contract with the given msg, and returns the response.
 // Using the generated types, you can create queries like:
