@@ -1,3 +1,4 @@
+use cosmwasm_schema::{cw_serde, QueryResponses};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
@@ -19,12 +20,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 
-use bvs_delegation_manager::{
-    msg::ExecuteMsg as DelegationManagerExecuteMsg, msg::QueryMsg as DelegationManagerQueryMsg,
-    query::OperatorResponse, query::OperatorStakersResponse,
-};
 use bvs_library::ownership;
-use bvs_strategy_manager::msg::ExecuteMsg as StrategyManagerExecuteMsg;
 
 const CONTRACT_NAME: &str = "BVS Slash Manager";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -556,12 +552,52 @@ fn only_slasher(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     Ok(())
 }
 
+#[cw_serde]
+pub enum StrategyManagerExecuteMsg {
+    RemoveShares {
+        staker: String,
+        strategy: String,
+        shares: Uint128,
+    },
+}
+
+#[cw_serde]
+pub enum DelegationManagerExecuteMsg {
+    DecreaseDelegatedShares {
+        staker: String,
+        strategy: String,
+        shares: Uint128,
+    },
+}
+
+#[cw_serde]
+pub enum DelegationManagerQueryMsg {
+    IsOperator { operator: String },
+
+    GetOperatorStakers { operator: String },
+}
+
+#[cw_serde]
+pub struct OperatorResponse {
+    pub is_operator: bool,
+}
+
+#[cw_serde]
+pub struct OperatorStakersResponse {
+    pub stakers_and_shares: Vec<StakerShares>,
+}
+
+#[cw_serde]
+pub struct StakerShares {
+    pub staker: Addr,
+    pub shares_per_strategy: Vec<(Addr, Uint128)>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use base64::{engine::general_purpose, Engine as _};
     use bech32::{self, ToBase32, Variant};
-    use bvs_delegation_manager::query::StakerShares;
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };

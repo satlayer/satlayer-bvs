@@ -5,12 +5,7 @@ import (
 
 	"github.com/satlayer/satlayer-bvs/babylond"
 
-	delegationmanager "github.com/satlayer/satlayer-bvs/cosmwasm-schema/delegation-manager"
-	"github.com/satlayer/satlayer-bvs/cosmwasm-schema/directory"
 	"github.com/satlayer/satlayer-bvs/cosmwasm-schema/pauser"
-	slashmanager "github.com/satlayer/satlayer-bvs/cosmwasm-schema/slash-manager"
-	strategybase "github.com/satlayer/satlayer-bvs/cosmwasm-schema/strategy-base"
-	strategymanager "github.com/satlayer/satlayer-bvs/cosmwasm-schema/strategy-manager"
 )
 
 type Contract[T interface{}] struct {
@@ -43,7 +38,7 @@ func deployCrate[T interface{}](deployer *Deployer, crate string, initMsg T, lab
 	}
 }
 
-// TODO(fuxingloh): implement Deployer.Deploy()
+// TODO(fuxingloh): implement Deployer.DeployAll()
 
 func (d *Deployer) DeployPauser(
 	initMsg *pauser.InstantiateMsg,
@@ -56,69 +51,4 @@ func (d *Deployer) DeployPauser(
 	}
 
 	return deployCrate(d, "bvs-pauser", *initMsg, "BVS Pauser")
-}
-
-func (d *Deployer) DeploySlashManager(
-	pauser string,
-) *Contract[slashmanager.InstantiateMsg] {
-	initMsg := slashmanager.InstantiateMsg{
-		Owner:  d.GenerateAddress("owner").String(),
-		Pauser: pauser,
-	}
-
-	return deployCrate(d, "bvs-slash-manager", initMsg, "BVS Slash Manager")
-}
-
-func (d *Deployer) DeployStrategyManager(
-	pauser string,
-) *Contract[strategymanager.InstantiateMsg] {
-	initMsg := strategymanager.InstantiateMsg{
-		Owner:  d.GenerateAddress("owner").String(),
-		Pauser: pauser,
-	}
-
-	return deployCrate(d, "bvs-strategy-manager", initMsg, "BVS Strategy Manager")
-}
-
-func (d *Deployer) DeployDelegationManager(
-	pauser string,
-	minWithdrawalDelayBlocks int64,
-	strategies []string,
-	withdrawalDelayBlocks []int64,
-) *Contract[delegationmanager.InstantiateMsg] {
-	initMsg := delegationmanager.InstantiateMsg{
-		Owner:                    d.GenerateAddress("owner").String(),
-		Pauser:                   pauser,
-		MinWithdrawalDelayBlocks: minWithdrawalDelayBlocks,
-		Strategies:               strategies,
-		WithdrawalDelayBlocks:    withdrawalDelayBlocks,
-	}
-
-	return deployCrate(d, "bvs-delegation-manager", initMsg, "BVS Delegation Manager")
-}
-
-func (d *Deployer) DeployDirectory(
-	pauser string,
-) *Contract[directory.InstantiateMsg] {
-	initMsg := directory.InstantiateMsg{
-		Owner:  d.GenerateAddress("owner").String(),
-		Pauser: pauser,
-	}
-
-	return deployCrate(d, "bvs-directory", initMsg, "BVS Directory")
-}
-
-func (d *Deployer) DeployStrategyBase(
-	pauser string,
-	underlyingToken string,
-	strategyManager string,
-) *Contract[strategybase.InstantiateMsg] {
-	initMsg := strategybase.InstantiateMsg{
-		Owner:           d.GenerateAddress("owner").String(),
-		Pauser:          pauser,
-		StrategyManager: strategyManager,
-		UnderlyingToken: underlyingToken,
-	}
-
-	return deployCrate(d, "bvs-strategy-base", initMsg, "BVS Strategy Base")
 }
