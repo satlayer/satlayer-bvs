@@ -1,7 +1,0 @@
-{
-  "name": "@modules/bvs-api",
-  "private": true,
-  "scripts": {
-    "test": "gotestsum -- ./... -p 6"
-  }
-}
