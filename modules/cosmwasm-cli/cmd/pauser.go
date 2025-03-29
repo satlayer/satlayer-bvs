@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/satlayer/satlayer-bvs/cosmwasm-cli/sdk"
+	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/cosmos/cosmos-sdk/client"
 	cosmwasmapi "github.com/satlayer/satlayer-bvs/cosmwasm-api"
+	"github.com/satlayer/satlayer-bvs/cosmwasm-cli/sdk"
 	"github.com/satlayer/satlayer-bvs/cosmwasm-schema/pauser"
-	"github.com/spf13/cobra"
 )
 
 func PauserCommand(clientCtx client.Context, broadcastOptions cosmwasmapi.BroadcastOptions) *cobra.Command {

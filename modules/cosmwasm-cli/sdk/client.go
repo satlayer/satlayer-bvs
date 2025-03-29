@@ -3,8 +3,9 @@ package sdk
 import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	cosmwasmapi "github.com/satlayer/satlayer-bvs/cosmwasm-api"
 	"github.com/spf13/viper"
+
+	cosmwasmapi "github.com/satlayer/satlayer-bvs/cosmwasm-api"
 )
 
 func NewClientCtx() client.Context {
