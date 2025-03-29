@@ -21,10 +21,9 @@ type ClientTestSuite struct {
 
 func (s *ClientTestSuite) SetupSuite() {
 	s.container = babylond.Run(context.Background())
-	s.container.ClientCtx = s.container.ClientCtx.WithFromAddress(s.container.GenerateAddress("owner")).WithFromName("owner").WithFrom("owner")
 }
 
-// deploy contract has to be done before each test
+// Deploy contract has to be done before each test
 // prevents unit tests data from interfering with each other
 func (s *ClientTestSuite) SetupTest() {
 	deployer := &bvs.Deployer{BabylonContainer: s.container}
@@ -48,8 +47,10 @@ func (s *ClientTestSuite) TestQuery() {
 		},
 	}
 
+	clientCtx := NewClientCtx(s.container.RpcUri, s.container.ChainId)
+
 	response, err := Query[pauser.IsPausedResponse](
-		s.container.ClientCtx,
+		clientCtx,
 		context.Background(),
 		s.pauser.Address,
 		queryMsg,
@@ -63,17 +64,23 @@ func (s *ClientTestSuite) TestExecute() {
 	owner := s.container.GenerateAddress("owner")
 	_ = s.container.FundAddressUbbn(owner.String(), 1000)
 
+	clientKeyring := s.container.ClientCtx.Keyring
+	clientCtx := NewClientCtx(s.container.RpcUri, s.container.ChainId).
+		WithKeyring(clientKeyring).
+		WithFromAddress(owner).
+		WithFromName("owner")
+
 	executeMsg := pauser.ExecuteMsg{
 		Pause: &pauser.Pause{},
 	}
 
-	executeOptions := NewBroadcastOptions(
-		s.pauser.Address,
-		executeMsg,
-	).WithGasPrice("0.002ubbn")
+	executeOptions := DefaultBroadcastOptions().
+		WithContractAddr(s.pauser.Address).
+		WithExecuteMsg(executeMsg).
+		WithGasPrice("0.002ubbn")
 
 	response, err := Execute(
-		s.container.ClientCtx,
+		clientCtx,
 		context.Background(),
 		owner.String(),
 		executeOptions,
@@ -109,7 +116,7 @@ func (s *ClientTestSuite) TestExecute() {
 		},
 	}
 	isPausedResponse, err := Query[pauser.IsPausedResponse](
-		s.container.ClientCtx,
+		clientCtx,
 		context.Background(),
 		s.pauser.Address,
 		queryMsg,
@@ -119,6 +126,8 @@ func (s *ClientTestSuite) TestExecute() {
 }
 
 func (s *ClientTestSuite) TestWaitForTx() {
+	clientCtx := NewClientCtx(s.container.RpcUri, s.container.ChainId)
+
 	receiver := s.container.GenerateAddress("receiver")
 
 	// create a TX by sending some ubbn to the receiver
@@ -126,7 +135,7 @@ func (s *ClientTestSuite) TestWaitForTx() {
 
 	txHash := tx.Hash.String()
 	txRes, err := WaitForTx(
-		s.container.ClientCtx,
+		clientCtx,
 		context.Background(),
 		txHash,
 	)
