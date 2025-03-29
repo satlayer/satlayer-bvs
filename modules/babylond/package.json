@@ -5,6 +5,7 @@
     "test": "gotestsum"
   },
   "devDependencies": {
-    "@satlayer/bvs-pauser": "workspace:*"
+    "@satlayer/bvs-pauser": "workspace:*",
+    "@satlayer/bvs-registry": "workspace:*"
   }
 }

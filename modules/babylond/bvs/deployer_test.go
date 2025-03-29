@@ -17,7 +17,7 @@ type BvsTestSuite struct {
 
 func (s *BvsTestSuite) SetupSuite() {
 	s.Container = babylond.Run(context.Background())
-	s.Deployer = &Deployer{s.Container}
+	s.Deployer = NewDeployer(s.Container)
 }
 
 func (s *BvsTestSuite) TearDownSuite() {
@@ -28,13 +28,13 @@ func TestBvs(t *testing.T) {
 	suite.Run(t, new(BvsTestSuite))
 }
 
-func (s *BvsTestSuite) Test_DeployRegistry() {
+func (s *BvsTestSuite) Test_DeployPauser() {
 	contract := s.Deployer.DeployPauser(nil)
 	s.NotEmpty(contract.Address)
 }
 
-func (s *BvsTestSuite) Test_DeployDirectory() {
-	pauser := s.Deployer.DeployPauser(nil)
-	contract := s.Deployer.DeployDirectory(pauser.Address)
+func (s *BvsTestSuite) Test_DeployRegistry() {
+	s.Deployer.DeployPauser(nil)
+	contract := s.Deployer.DeployRegistry(nil)
 	s.NotEmpty(contract.Address)
 }

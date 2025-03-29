@@ -26,7 +26,7 @@ func (s *ClientTestSuite) SetupSuite() {
 // Deploy contract has to be done before each test
 // prevents unit tests data from interfering with each other
 func (s *ClientTestSuite) SetupTest() {
-	deployer := &bvs.Deployer{BabylonContainer: s.container}
+	deployer := bvs.NewDeployer(s.container)
 	s.pauser = deployer.DeployPauser(nil)
 }
 

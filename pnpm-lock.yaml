@@ -44,19 +44,11 @@ importers:
 
   crates: {}
 
-  crates/bvs-delegation-manager: {}
-
-  crates/bvs-directory: {}
-
   crates/bvs-pauser: {}
 
   crates/bvs-registry: {}
 
   crates/bvs-slash-manager: {}
-
-  crates/bvs-strategy-base: {}
-
-  crates/bvs-strategy-manager: {}
 
   crates/bvs-vault-bank: {}
 
@@ -137,24 +129,12 @@ importers:
 
   modules/babylond:
     devDependencies:
-      '@satlayer/bvs-delegation-manager':
-        specifier: workspace:*
-        version: link:../../crates/bvs-delegation-manager
-      '@satlayer/bvs-directory':
-        specifier: workspace:*
-        version: link:../../crates/bvs-directory
       '@satlayer/bvs-pauser':
         specifier: workspace:*
         version: link:../../crates/bvs-pauser
-      '@satlayer/bvs-slash-manager':
+      '@satlayer/bvs-registry':
         specifier: workspace:*
-        version: link:../../crates/bvs-slash-manager
-      '@satlayer/bvs-strategy-base':
-        specifier: workspace:*
-        version: link:../../crates/bvs-strategy-base
-      '@satlayer/bvs-strategy-manager':
-        specifier: workspace:*
-        version: link:../../crates/bvs-strategy-manager
+        version: link:../../crates/bvs-registry
 
   modules/cosmwasm-api: {}
 
@@ -162,27 +142,12 @@ importers:
 
   modules/cosmwasm-schema:
     devDependencies:
-      '@satlayer/bvs-delegation-manager':
-        specifier: workspace:*
-        version: link:../../crates/bvs-delegation-manager
-      '@satlayer/bvs-directory':
-        specifier: workspace:*
-        version: link:../../crates/bvs-directory
       '@satlayer/bvs-pauser':
         specifier: workspace:*
         version: link:../../crates/bvs-pauser
       '@satlayer/bvs-registry':
         specifier: workspace:*
         version: link:../../crates/bvs-registry
-      '@satlayer/bvs-slash-manager':
-        specifier: workspace:*
-        version: link:../../crates/bvs-slash-manager
-      '@satlayer/bvs-strategy-base':
-        specifier: workspace:*
-        version: link:../../crates/bvs-strategy-base
-      '@satlayer/bvs-strategy-manager':
-        specifier: workspace:*
-        version: link:../../crates/bvs-strategy-manager
       '@satlayer/bvs-vault-bank':
         specifier: workspace:*
         version: link:../../crates/bvs-vault-bank

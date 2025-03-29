@@ -6,6 +6,7 @@ import (
 	"github.com/satlayer/satlayer-bvs/babylond"
 
 	"github.com/satlayer/satlayer-bvs/cosmwasm-schema/pauser"
+	"github.com/satlayer/satlayer-bvs/cosmwasm-schema/registry"
 )
 
 type Contract[T interface{}] struct {
@@ -15,6 +16,14 @@ type Contract[T interface{}] struct {
 
 type Deployer struct {
 	*babylond.BabylonContainer
+	Contracts map[string]string
+}
+
+func NewDeployer(container *babylond.BabylonContainer) *Deployer {
+	return &Deployer{
+		BabylonContainer: container,
+		Contracts:        make(map[string]string),
+	}
 }
 
 func deployCrate[T interface{}](deployer *Deployer, crate string, initMsg T, label string) *Contract[T] {
@@ -32,6 +41,7 @@ func deployCrate[T interface{}](deployer *Deployer, crate string, initMsg T, lab
 	if err != nil {
 		panic(err)
 	}
+	deployer.Contracts[crate] = contract.Address
 	return &Contract[T]{
 		DeployedWasmContract: *contract,
 		InstantiateMsg:       initMsg,
@@ -51,4 +61,17 @@ func (d *Deployer) DeployPauser(
 	}
 
 	return deployCrate(d, "bvs-pauser", *initMsg, "BVS Pauser")
+}
+
+func (d *Deployer) DeployRegistry(
+	initMsg *registry.InstantiateMsg,
+) *Contract[registry.InstantiateMsg] {
+	if initMsg == nil {
+		initMsg = &registry.InstantiateMsg{
+			Owner:  d.GenerateAddress("owner").String(),
+			Pauser: d.Contracts["bvs-pauser"],
+		}
+	}
+
+	return deployCrate(d, "bvs-registry", *initMsg, "BVS Registry")
 }
