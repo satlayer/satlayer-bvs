@@ -117,9 +117,9 @@ importers:
 
   examples/squaring/modules:
     dependencies:
-      '@modules/bvs-api':
+      '@modules/cosmwasm-api':
         specifier: workspace:*
-        version: link:../../../modules/bvs-api
+        version: link:../../../modules/cosmwasm-api
     devDependencies:
       '@examples/squaring-contract':
         specifier: workspace:*
@@ -155,8 +155,6 @@ importers:
       '@satlayer/bvs-strategy-manager':
         specifier: workspace:*
         version: link:../../crates/bvs-strategy-manager
-
-  modules/bvs-api: {}
 
   modules/cosmwasm-api: {}
 
