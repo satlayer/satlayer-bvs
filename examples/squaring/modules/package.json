@@ -11,8 +11,7 @@
     "test": "gotestsum"
   },
   "dependencies": {
-    "@modules/bvs-api": "workspace:*",
-    "@modules/bvs-cli": "workspace:*"
+    "@modules/bvs-api": "workspace:*"
   },
   "devDependencies": {
     "@examples/squaring-contract": "workspace:*",
