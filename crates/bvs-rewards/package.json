@@ -1,10 +1,10 @@
 {
   "name": "@satlayer/bvs-rewards",
-  "private": true,
+  "private": false,
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "cosmwasm-optimizer"
+    "build": "cosmwasm-optimizer --root=../"
   }
 }
