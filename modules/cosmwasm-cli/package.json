@@ -1,0 +1,7 @@
+{
+  "name": "@modules/cosmwasm-cli",
+  "private": true,
+  "scripts": {
+    "build": "go build -o ./dist/cosmwasm-cli ."
+  }
+}
