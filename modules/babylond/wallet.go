@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/hex"
 
+	"github.com/cosmos/cosmos-sdk/crypto"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+
 	"cosmossdk.io/math"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/client/tx"
@@ -96,6 +99,28 @@ func (c *BabylonContainer) ImportPrivKey(uid string, hex string) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func (c *BabylonContainer) ExportPrivKeyHex(uid string) (string, string) {
+	armor, err := c.ClientCtx.Keyring.ExportPrivKeyArmor(uid, "")
+	if err != nil {
+		panic(err)
+	}
+
+	privKey, algo, err := crypto.UnarmorDecryptPrivKey(armor, "")
+	if err != nil {
+		panic(err)
+	}
+
+	return hex.EncodeToString(privKey.Bytes()), algo
+}
+
+func (c *BabylonContainer) NewKeyring(appName, backend, rootDir string) keyring.Keyring {
+	kr, err := keyring.New(appName, backend, rootDir, nil, c.ClientCtx.Codec)
+	if err != nil {
+		panic(err)
+	}
+	return kr
 }
 
 // TODO: ImportPubKey? In general, we need a better way to setup keychain for testing.

@@ -82,8 +82,7 @@ func pauserExecute() *cobra.Command {
 				Pause: &pauser.Pause{},
 			}
 
-			clientCtx := sdk.NewClientCtx()
-			clientCtx = sdk.WithKeyring(clientCtx)
+			clientCtx := sdk.WithKeyring(sdk.NewClientCtx())
 
 			opts := sdk.DefaultBroadcastOptions().
 				WithContractAddr(cmd.Flag("contract").Value.String()).

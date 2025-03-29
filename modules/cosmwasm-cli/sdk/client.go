@@ -15,6 +15,8 @@ func NewClientCtx() client.Context {
 	)
 }
 
+// WithKeyring sets up the keyring for the client context.
+// This will essentially attach a signer to the client context.
 func WithKeyring(ctx client.Context) client.Context {
 	keyringBackend := viper.GetString("keyring-backend")
 
@@ -24,8 +26,18 @@ func WithKeyring(ctx client.Context) client.Context {
 	}
 
 	from := viper.GetString("from")
-	ctx.WithKeyring(kr).WithFromName(from)
-	return ctx
+
+	key, err := kr.Key(from)
+	if err != nil {
+		panic(err)
+	}
+
+	addr, err := key.GetAddress()
+	if err != nil {
+		panic(err)
+	}
+
+	return ctx.WithKeyring(kr).WithFromName(from).WithFromAddress(addr).WithFrom(from)
 }
 
 func DefaultBroadcastOptions() cosmwasmapi.BroadcastOptions {
