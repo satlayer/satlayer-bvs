@@ -7,9 +7,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/testcontainers/testcontainers-go/wait"
-	"google.golang.org/grpc"
-
 	"github.com/CosmWasm/wasmd/x/wasm"
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	"github.com/cosmos/cosmos-sdk/client"
@@ -27,7 +24,7 @@ import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
-	"google.golang.org/grpc/credentials/insecure"
+	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 const (
@@ -60,7 +57,7 @@ func getHost(ctx context.Context, container testcontainers.Container, port nat.P
 	return fmt.Sprintf("%s:%s", host, port.Port())
 }
 
-func newClientCtx(rpcUri, grpcUri string) client.Context {
+func newClientCtx(rpcUri string) client.Context {
 	config := sdk.GetConfig()
 	config.SetBech32PrefixForAccount("bbn", "bbnpub")
 
@@ -88,16 +85,9 @@ func newClientCtx(rpcUri, grpcUri string) client.Context {
 		panic(err)
 	}
 
-	dialOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	grpcClient, err := grpc.NewClient(grpcUri, dialOptions...)
-	if err != nil {
-		panic(err)
-	}
-
 	return client.Context{}.
 		WithChainID(ChainId).
 		WithClient(rpcClient).
-		WithGRPCClient(grpcClient).
 		WithKeyring(memoryKeyring).
 		WithOutputFormat("json").
 		WithInterfaceRegistry(interfaceRegistry).
@@ -201,7 +191,7 @@ func Run(ctx context.Context) *BabylonContainer {
 	ApiUri := fmt.Sprintf("http://%s", getHost(ctx, container, apiPort))
 	RpcUri := fmt.Sprintf("http://%s", getHost(ctx, container, rpcPort))
 	GrpcUri := fmt.Sprintf("%s", getHost(ctx, container, grpcPort))
-	ClientCtx := newClientCtx(RpcUri, GrpcUri)
+	ClientCtx := newClientCtx(RpcUri)
 	TxFactory := newTxFactory(ClientCtx)
 
 	return &BabylonContainer{
