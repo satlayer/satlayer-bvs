@@ -21,7 +21,7 @@ type PauserTestSuite struct {
 func (s *PauserTestSuite) SetupSuite() {
 	s.container = babylond.Run(context.Background())
 
-	deployer := &bvs.Deployer{BabylonContainer: s.container}
+	deployer := bvs.NewDeployer(s.container)
 	s.pauser = deployer.DeployPauser(nil)
 }
 

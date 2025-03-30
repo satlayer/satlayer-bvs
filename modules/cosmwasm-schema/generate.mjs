@@ -43,12 +43,6 @@ async function generate(schema) {
 }
 
 const packages = [
-  "@satlayer/bvs-strategy-base",
-  "@satlayer/bvs-strategy-manager",
-  "@satlayer/bvs-directory",
-  "@satlayer/bvs-delegation-manager",
-  "@satlayer/bvs-slash-manager",
-
   "@satlayer/bvs-pauser",
   "@satlayer/bvs-registry",
   "@satlayer/bvs-vault-router",

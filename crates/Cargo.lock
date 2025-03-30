@@ -215,44 +215,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3e31ea183f6ee62ac8b8a8cf7feddd766317adfb13ff469de57ce033efd6a790"
 
 [[package]]
-name = "bvs-delegation-manager"
-version = "0.0.0"
-dependencies = [
- "bvs-library",
- "bvs-pauser",
- "bvs-strategy-base",
- "bvs-strategy-manager",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "schemars",
- "serde",
- "sha2",
- "thiserror 1.0.69",
-]
-
-[[package]]
-name = "bvs-directory"
-version = "0.0.0"
-dependencies = [
- "bvs-delegation-manager",
- "bvs-library",
- "bvs-pauser",
- "bvs-strategy-base",
- "bvs-strategy-manager",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "schemars",
- "serde",
- "thiserror 1.0.69",
-]
-
-[[package]]
 name = "bvs-library"
 version = "0.0.0"
 dependencies = [
@@ -309,15 +271,11 @@ version = "0.0.0"
 dependencies = [
  "base64",
  "bech32 0.8.1",
- "bvs-delegation-manager",
  "bvs-library",
  "bvs-pauser",
- "bvs-strategy-base",
- "bvs-strategy-manager",
  "cosmwasm-crypto",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-multi-test",
  "cw-storage-plus",
  "cw2",
  "hex",
@@ -327,44 +285,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "thiserror 1.0.69",
-]
-
-[[package]]
-name = "bvs-strategy-base"
-version = "0.0.0"
-dependencies = [
- "bvs-library",
- "bvs-pauser",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "cw20-base",
- "schemars",
- "serde",
- "thiserror 1.0.69",
-]
-
-[[package]]
-name = "bvs-strategy-manager"
-version = "0.0.0"
-dependencies = [
- "bvs-delegation-manager",
- "bvs-library",
- "bvs-pauser",
- "bvs-strategy-base",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "cw20",
- "cw20-base",
- "schemars",
- "serde",
  "thiserror 1.0.69",
 ]
 
