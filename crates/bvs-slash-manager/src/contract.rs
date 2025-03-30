@@ -1,4 +1,3 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
@@ -14,6 +13,7 @@ use crate::{
     utils::{calculate_slash_hash, recover, SlashDetails},
 };
 
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     to_json_binary, Addr, Binary, Deps, DepsMut, Env, Event, MessageInfo, Response, StdResult,
     SubMsg, Uint128, WasmMsg,
