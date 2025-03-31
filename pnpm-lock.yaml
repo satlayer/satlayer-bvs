@@ -200,8 +200,8 @@ importers:
         specifier: ^0.6.11
         version: 0.6.11(prettier@3.5.3)
       prettier-plugin-toml:
-        specifier: ^2.0.2
-        version: 2.0.2(prettier@3.5.3)
+        specifier: ^2.0.3
+        version: 2.0.3(prettier@3.5.3)
 
   packages/cosmwasm-optimizer: {}
 
@@ -3339,8 +3339,8 @@ packages:
       prettier-plugin-svelte:
         optional: true
 
-  prettier-plugin-toml@2.0.2:
-    resolution: {integrity: sha512-tUIIhyfdVX5DMsLGKX/2qaEwi3W48OkUSR7XC91PRI5jFzhexmaYWkrSP1Xh/eWUcEc0TVMQenM3lB09xLQstQ==}
+  prettier-plugin-toml@2.0.3:
+    resolution: {integrity: sha512-2KSzvgWiyF+uaGvX6wK+UENNjhvuSh+HlJym9tY+OyIk3L+yjlDUd0wHP1ZHNC+u8su4UZj2QVjJhq5sZ16zrQ==}
     engines: {node: '>=16.0.0'}
     peerDependencies:
       prettier: ^3.0.3
@@ -7798,7 +7798,7 @@ snapshots:
     dependencies:
       prettier: 3.5.3
 
-  prettier-plugin-toml@2.0.2(prettier@3.5.3):
+  prettier-plugin-toml@2.0.3(prettier@3.5.3):
     dependencies:
       '@taplo/lib': 0.4.0-alpha.2
       prettier: 3.5.3
