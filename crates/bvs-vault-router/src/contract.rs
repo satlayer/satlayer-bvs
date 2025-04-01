@@ -371,7 +371,7 @@ mod tests {
     };
     use cosmwasm_std::{
         from_json, Attribute, ContractResult, Event, OwnedDeps, QuerierResult, SystemError,
-        SystemResult, Uint128, Uint64, WasmQuery,
+        SystemResult, Uint64, WasmQuery,
     };
 
     #[test]
@@ -487,15 +487,13 @@ mod tests {
                 .unwrap();
             assert!(!vault.whitelisted);
 
-            let exist = MAPPED_VAULTS
+            MAPPED_VAULTS
                 .may_load(
                     deps.as_ref().storage,
                     (&operator_addr, &vault_contract_addr),
                 )
                 .unwrap()
                 .unwrap();
-
-            assert_eq!(exist, ());
         }
 
         let vault = deps.api.addr_make("vault");
