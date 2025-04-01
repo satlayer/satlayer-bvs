@@ -79,7 +79,7 @@ mod migration {
             let operator = deps.api.addr_validate(&operator)?;
             let vault = deps.api.addr_validate(&vault)?;
 
-            crate::state::MAPPED_VAULTS.save(deps.storage, (&operator, &vault), &())?;
+            crate::state::OPERATOR_VAULTS.save(deps.storage, (&operator, &vault), &())?;
         }
 
         Ok(Response::default())
@@ -119,7 +119,7 @@ mod execute {
 
         state::VAULTS.save(deps.storage, &vault, &state::Vault { whitelisted })?;
 
-        state::MAPPED_VAULTS.save(deps.storage, (&vault_info.operator, &vault), &())?;
+        state::OPERATOR_VAULTS.save(deps.storage, (&vault_info.operator, &vault), &())?;
 
         Ok(Response::new().add_event(
             Event::new("VaultUpdated")
@@ -166,7 +166,7 @@ mod execute {
 pub mod vault {
     use crate::error::ContractError;
     use cosmwasm_schema::cw_serde;
-    use cosmwasm_std::{Addr, Deps, Env};
+    use cosmwasm_std::{Addr, Deps};
 
     #[cw_serde]
     pub enum VaultInfoQueryMsg {
@@ -183,24 +183,6 @@ pub mod vault {
 
         /// The `operator` that this vault is delegated to
         pub operator: Addr,
-    }
-
-    /// Asserts that the vault contains the QueryMsg::VaultInfo and is connected to the router.
-    pub fn assert_vault_info(
-        deps: &Deps,
-        env: Env,
-        vault: Addr,
-    ) -> Result<VaultInfoResponse, ContractError> {
-        let response: VaultInfoResponse = deps
-            .querier
-            .query_wasm_smart(vault.to_string(), &VaultInfoQueryMsg::VaultInfo {})?;
-        if response.router == env.contract.address {
-            Ok(response)
-        } else {
-            Err(ContractError::VaultError {
-                msg: "Vault is not connected to the router".to_string(),
-            })
-        }
     }
 
     pub fn get_vault_info(deps: Deps, vault: &Addr) -> Result<VaultInfoResponse, ContractError> {
@@ -327,7 +309,7 @@ mod query {
         limit: u32,
         start_after: Option<Addr>,
     ) -> StdResult<VaultListResponse> {
-        let items = state::MAPPED_VAULTS.prefix(&operator);
+        let items = state::OPERATOR_VAULTS.prefix(&operator);
 
         let range_max = start_after.as_ref().map(Bound::exclusive);
         let items = items.range(
@@ -364,7 +346,7 @@ mod tests {
         query::{get_withdrawal_lock_period, is_validating, is_whitelisted, list_vaults},
     };
     use crate::msg::InstantiateMsg;
-    use crate::state::{Vault, MAPPED_VAULTS, REGISTRY, VAULTS};
+    use crate::state::{Vault, OPERATOR_VAULTS, REGISTRY, VAULTS};
     use bvs_registry::msg::{IsOperatorActiveResponse, QueryMsg as RegistryQueryMsg};
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
@@ -487,7 +469,7 @@ mod tests {
                 .unwrap();
             assert!(!vault.whitelisted);
 
-            MAPPED_VAULTS
+            OPERATOR_VAULTS
                 .may_load(
                     deps.as_ref().storage,
                     (&operator_addr, &vault_contract_addr),
@@ -748,7 +730,7 @@ mod tests {
             VAULTS
                 .save(&mut deps.storage, &vault, &Vault { whitelisted: true })
                 .unwrap();
-            MAPPED_VAULTS
+            OPERATOR_VAULTS
                 .save(&mut deps.storage, (&operator, &vault), &())
                 .unwrap();
         }
