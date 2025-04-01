@@ -17,6 +17,15 @@ type TotalSharesResponse string
 
 type InstantiateMsg struct {
 	// The address of the CW20 contract, underlying asset of the vault.
+	//
+	// ### CW20 Variant Warning
+	//
+	// Underlying assets that are not strictly CW20 compliant may cause unexpected behavior in
+	// token balances. For example, any token with a fee-on-transfer mechanism is not
+	// supported.
+	//
+	// Therefore, we do not support non-standard CW20 tokens. Vault deployed with such tokens
+	// will be blacklisted in the vault-router.
 	Cw20Contract string `json:"cw20_contract"`
 	// The address of the `operator`. Each vault is delegated to an `operator`.
 	Operator string `json:"operator"`

@@ -538,6 +538,15 @@ type TotalSharesResponse = string;
 export interface InstantiateMsg {
   /**
    * The address of the CW20 contract, underlying asset of the vault.
+   *
+   * ### CW20 Variant Warning
+   *
+   * Underlying assets that are not strictly CW20 compliant may cause unexpected behavior in
+   * token balances. For example, any token with a fee-on-transfer mechanism is not
+   * supported.
+   *
+   * Therefore, we do not support non-standard CW20 tokens. Vault deployed with such tokens
+   * will be blacklisted in the vault-router.
    */
   cw20_contract: string;
   /**
