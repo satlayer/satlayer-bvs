@@ -6,7 +6,7 @@ toolchain go1.24.1
 
 require (
 	cosmossdk.io/errors v1.0.2
-	cosmossdk.io/math v1.5.1
+	cosmossdk.io/math v1.5.2
 	github.com/CosmWasm/wasmd v0.52.0
 	github.com/cometbft/cometbft v0.38.12
 	github.com/cosmos/cosmos-sdk v0.50.13
