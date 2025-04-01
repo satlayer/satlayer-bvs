@@ -87,6 +87,13 @@ mod execute {
     ///
     /// New shares are minted, based on the exchange rate, to `msg.recipient`.  
     /// The `TOTAL_SHARE` in the vault is increased.
+    ///
+    /// ### CW20 Variant Warning
+    /// Underlying assets that are not strictly CW20 compliant may cause unexpected behavior in token balances.
+    /// For example, any token with a fee-on-transfer mechanism is not supported.
+    ///
+    /// Therefore, we do not support token non-standard CW20 tokens.
+    /// Vault deployed with such tokens will be blacklisted in the vault-router.
     pub fn deposit_for(
         deps: DepsMut,
         env: Env,
