@@ -9,6 +9,16 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
+pub enum MigrateMsg {
+    MapVaults {
+        /// The operator to vault mapping
+        /// .0 is the operator and .1 is the vault
+        /// In json format it looks like: [["operator1", "vault1"], ["operator2", "vault2"]]
+        map: Vec<(String, String)>,
+    },
+}
+
+#[cw_serde]
 #[derive(bvs_pauser::api::Display)]
 pub enum ExecuteMsg {
     /// ExecuteMsg SetVault the vault contract in the router and whitelist (true/false) it.
