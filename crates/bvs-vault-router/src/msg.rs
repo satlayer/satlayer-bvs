@@ -56,6 +56,9 @@ pub enum QueryMsg {
         start_after: Option<String>,
     },
 
+    /// QueryMsg ListVaultsByOperator: returns a list of vaults managed by given operator.
+    /// You can provide `limit` and `start_after` to paginate the results.
+    /// The max `limit` is 100.
     #[returns(VaultListResponse)]
     ListVaultsByOperator {
         operator: String,
