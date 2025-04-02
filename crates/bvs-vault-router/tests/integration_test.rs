@@ -89,6 +89,15 @@ fn set_vault_whitelist_false_successfully() {
     };
     let response: VaultListResponse = tc.vault_router.query(&mut app, &msg).unwrap();
     assert_eq!(response.0.len(), 1);
+
+    let msg = QueryMsg::ListVaultsByOperator {
+        operator: operator.to_string(),
+        start_after: None,
+        limit: None,
+    };
+
+    let response: VaultListResponse = tc.vault_router.query(&mut app, &msg).unwrap();
+    assert_eq!(response.0.len(), 1);
 }
 
 #[test]
@@ -120,6 +129,17 @@ fn set_vault_whitelist_true_bank_vault_successfully() {
     };
     let is_whitelisted: bool = tc.vault_router.query(&mut app, &msg).unwrap();
     assert!(is_whitelisted);
+
+    let operator = app.api().addr_make("operator");
+
+    let msg = QueryMsg::ListVaultsByOperator {
+        operator: operator.to_string(),
+        start_after: None,
+        limit: None,
+    };
+
+    let response: VaultListResponse = tc.vault_router.query(&mut app, &msg).unwrap();
+    assert_eq!(response.0.len(), 1);
 }
 
 #[test]
@@ -151,6 +171,18 @@ fn set_vault_whitelist_true_cw20_vault_successfully() {
     };
     let is_whitelisted: bool = tc.vault_router.query(&mut app, &msg).unwrap();
     assert!(is_whitelisted);
+
+    let operator = app.api().addr_make("operator");
+
+    let msg = QueryMsg::ListVaultsByOperator {
+        operator: operator.to_string(),
+        start_after: None,
+        limit: None,
+    };
+
+    let response: VaultListResponse = tc.vault_router.query(&mut app, &msg).unwrap();
+
+    assert_eq!(response.0.len(), 1);
 }
 
 #[test]
