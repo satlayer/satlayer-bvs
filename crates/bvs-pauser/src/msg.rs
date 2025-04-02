@@ -28,11 +28,11 @@ pub enum ExecuteMsg {
 
     /// Callable by the owner of the pauser contract
     /// Pauses Globally
-    PauseGlobal(),
+    PauseGlobal {},
 
     /// Callable by the owner of the pauser contract
     /// Unpauses Globally
-    UnpauseGlobal(),
+    UnpauseGlobal {},
 
     TransferOwnership {
         /// See [`bvs_library::ownership::transfer_ownership`] for more information on this field
