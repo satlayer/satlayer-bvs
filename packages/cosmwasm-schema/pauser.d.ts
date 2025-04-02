@@ -7,6 +7,10 @@ type IsPausedResponse = number;
 
 export interface InstantiateMsg {
   /**
+   * The initial paused state of satlayer contracts
+   */
+  initial_paused: boolean;
+  /**
    * Owner of this contract, who can pause and unpause
    */
   owner: string;
@@ -14,10 +18,16 @@ export interface InstantiateMsg {
 
 /**
  * Callable by the owner of the pauser contract
+ *
+ * Callable by the owner of the pauser contract Pauses Globally
+ *
+ * Callable by the owner of the pauser contract Unpauses Globally
  */
 export interface ExecuteMsg {
   pause?: Pause;
   unpause?: Unpause;
+  pause_global?: PauseGlobal;
+  unpause_global?: UnpauseGlobal;
   transfer_ownership?: TransferOwnership;
 }
 
@@ -31,6 +41,8 @@ export interface Pause {
    */
   method: string;
 }
+
+export interface PauseGlobal {}
 
 export interface TransferOwnership {
   /**
@@ -49,6 +61,8 @@ export interface Unpause {
    */
   method: string;
 }
+
+export interface UnpauseGlobal {}
 
 export interface QueryMsg {
   is_paused?: IsPaused;

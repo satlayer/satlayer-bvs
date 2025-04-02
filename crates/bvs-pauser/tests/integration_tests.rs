@@ -101,7 +101,7 @@ fn pause_unpause() {
         let downstream_contract = app.api().addr_make("downstream_contract");
         let method = "any";
 
-        let msg = ExecuteMsg::PauseGlobal();
+        let msg = ExecuteMsg::PauseGlobal {};
         let res = contract.execute(&mut app, &owner, &msg).unwrap();
 
         assert_eq!(res.events.len(), 2);
@@ -122,7 +122,7 @@ fn pause_unpause() {
         let downstream_contract = app.api().addr_make("downstream_contract");
         let method = "any";
 
-        let msg = ExecuteMsg::UnpauseGlobal();
+        let msg = ExecuteMsg::UnpauseGlobal {};
         let res = contract.execute(&mut app, &owner, &msg).unwrap();
 
         assert_eq!(res.events.len(), 2);
@@ -182,7 +182,7 @@ fn unauthorized_pause() {
     }
 
     {
-        let msg = ExecuteMsg::PauseGlobal();
+        let msg = ExecuteMsg::PauseGlobal {};
         let err = contract.execute(&mut app, &sender, &msg).unwrap_err();
 
         assert_eq!(
