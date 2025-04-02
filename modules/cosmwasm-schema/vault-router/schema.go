@@ -49,6 +49,9 @@ type TransferOwnership struct {
 // QueryMsg ListVaults: returns a list of vaults. You can provide `limit` and `start_after`
 // to paginate the results. The max `limit` is 100.
 //
+// QueryMsg ListVaultsByOperator: returns a list of vaults managed by given operator. You
+// can provide `limit` and `start_after` to paginate the results. The max `limit` is 100.
+//
 // QueryMsg WithdrawalLockPeriod: returns the withdrawal lock period.
 type QueryMsg struct {
 	IsWhitelisted        *IsWhitelisted        `json:"is_whitelisted,omitempty"`
