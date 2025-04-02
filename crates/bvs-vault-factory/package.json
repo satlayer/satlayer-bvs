@@ -1,6 +1,6 @@
 {
   "name": "@satlayer/bvs-vault-factory",
-  "private": true,
+  "private": false,
   "files": [
     "dist"
   ],
