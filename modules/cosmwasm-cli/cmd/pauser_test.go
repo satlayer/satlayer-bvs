@@ -57,8 +57,10 @@ func (s *PauserTestSuite) Test_Pause() {
 	kr := s.container.NewKeyring("satlayer", "test", "")
 	s.Require().NoError(kr.ImportPrivKeyHex(from, privKey, algoStr))
 
+	randomContractAddr := s.container.GenerateAddress("randomContractAddr")
+
 	rootCmd.SetArgs([]string{
-		"pauser", "execute", "pause",
+		"pauser", "execute", "pause", randomContractAddr.String(), "SomeMethod",
 		"--keyring-backend=test",
 		"--from=" + from,
 		"--contract=" + s.pauser.Address,
