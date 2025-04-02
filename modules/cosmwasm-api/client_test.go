@@ -71,7 +71,10 @@ func (s *ClientTestSuite) TestExecute() {
 		WithFromName("owner")
 
 	executeMsg := pauser.ExecuteMsg{
-		Pause: &pauser.Pause{},
+		Pause: &pauser.Pause{
+			Contract: contract.String(),
+			Method:   "Deposit",
+		},
 	}
 
 	executeOptions := DefaultBroadcastOptions().

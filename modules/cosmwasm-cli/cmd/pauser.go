@@ -76,10 +76,13 @@ func pauserExecute() *cobra.Command {
 	command.AddCommand(&cobra.Command{
 		Use:   "pause",
 		Short: "To pause all contracts in the ecosystem.",
-		Args:  cobra.ExactArgs(0),
+		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			executeMsg := pauser.ExecuteMsg{
-				Pause: &pauser.Pause{},
+				Pause: &pauser.Pause{
+					Contract: args[0],
+					Method:   args[1],
+				},
 			}
 
 			clientCtx := sdk.WithKeyring(sdk.NewClientCtx())
