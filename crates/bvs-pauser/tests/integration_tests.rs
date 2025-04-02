@@ -94,12 +94,55 @@ fn pause_unpause() {
         let flag: CanExecuteFlag = res.into();
         assert_eq!(flag, CanExecuteFlag::CanExecute);
     }
+
+    // globally pause
+    {
+        let owner = app.api().addr_make("owner");
+        let downstream_contract = app.api().addr_make("downstream_contract");
+        let method = "any";
+
+        let msg = ExecuteMsg::PauseGlobal();
+        let res = contract.execute(&mut app, &owner, &msg).unwrap();
+
+        assert_eq!(res.events.len(), 2);
+
+        let msg = QueryMsg::IsPaused {
+            contract: downstream_contract.to_string(),
+            method: method.to_string(),
+        };
+
+        let res: IsPausedResponse = contract.query(&app, &msg).unwrap();
+
+        assert!(res.is_paused());
+    }
+
+    // globally unpause
+    {
+        let owner = app.api().addr_make("owner");
+        let downstream_contract = app.api().addr_make("downstream_contract");
+        let method = "any";
+
+        let msg = ExecuteMsg::UnpauseGlobal();
+        let res = contract.execute(&mut app, &owner, &msg).unwrap();
+
+        assert_eq!(res.events.len(), 2);
+
+        let msg = QueryMsg::IsPaused {
+            contract: downstream_contract.to_string(),
+            method: method.to_string(),
+        };
+
+        let res: IsPausedResponse = contract.query(&app, &msg).unwrap();
+
+        assert!(!res.is_paused());
+    }
 }
 
 #[test]
 fn unauthorized_pause() {
     let (mut app, contract) = instantiate(Some(InstantiateMsg {
         owner: App::default().api().addr_make("owner").to_string(),
+        initial_paused: false,
     }));
 
     let downstream_contract = app.api().addr_make("downstream_contract");
@@ -137,11 +180,22 @@ fn unauthorized_pause() {
         let flag: CanExecuteFlag = res.into();
         assert_eq!(flag, CanExecuteFlag::CanExecute);
     }
+
+    {
+        let msg = ExecuteMsg::PauseGlobal();
+        let err = contract.execute(&mut app, &sender, &msg).unwrap_err();
+
+        assert_eq!(
+            err.root_cause().to_string(),
+            bvs_pauser::PauserError::Unauthorized {}.to_string()
+        );
+    }
 }
 
 #[test]
 fn unauthorized_unpause() {
     let (mut app, contract) = instantiate(Some(InstantiateMsg {
+        initial_paused: false,
         owner: App::default().api().addr_make("owner").to_string(),
     }));
 
