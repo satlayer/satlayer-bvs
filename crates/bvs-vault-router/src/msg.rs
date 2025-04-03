@@ -10,12 +10,8 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum MigrateMsg {
-    MapVaults {
-        /// The operator to vault mapping
-        /// .0 is the operator and .1 is the vault
-        /// In json format it looks like: [["operator1", "vault1"], ["operator2", "vault2"]]
-        map: Vec<(String, String)>,
-    },
+    /// This is a type of payload that trigger the migration of OPERATOR_VAULTS state.
+    MapVaults {},
 }
 
 #[cw_serde]
