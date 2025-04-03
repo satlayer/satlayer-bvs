@@ -13,6 +13,7 @@ members = [
   "bvs-vault-bank",
   "bvs-vault-cw20",
   "bvs-vault-factory",
+  "bvs-slash-base",
 ]
 
 resolver = "2"
@@ -59,3 +60,10 @@ bvs-vault-base = { path = "./bvs-vault-base", features = ["library"] }
 bvs-vault-bank = { path = "./bvs-vault-bank", features = ["library"] }
 bvs-vault-cw20 = { path = "./bvs-vault-cw20", features = ["library"] }
 bvs-vault-factory = { path = "./bvs-vault-factory", features = ["library"] }
+bvs-slash-base = { path = "./bvs-slash-base", features = ["library"] }
+
+bvs-delegation-manager = { path = "./bvs-delegation-manager", features = ["library"] }
+bvs-directory = { path = "./bvs-directory", features = ["library"] }
+bvs-slash-manager = { path = "./bvs-slash-manager", features = ["library"] }
+bvs-strategy-base = { path = "./bvs-strategy-base", features = ["library"] }
+bvs-strategy-manager = { path = "./bvs-strategy-manager", features = ["library"] }

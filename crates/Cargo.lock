@@ -266,6 +266,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "bvs-slash-base"
+version = "0.0.0"
+dependencies = [
+ "bvs-library",
+ "bvs-pauser",
+ "bvs-vault-router",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus",
+ "cw2",
+ "schemars",
+ "serde",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "bvs-slash-manager"
 version = "0.0.0"
 dependencies = [
