@@ -64,22 +64,24 @@ pub fn execute(
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     cw2::ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     match msg {
-        MigrateMsg::MapVaults { map } => migration::map_vaults(deps, map),
+        MigrateMsg::MapVaults {} => migration::map_vaults(deps),
     }
 }
 
 mod migration {
+    use crate::state::{OPERATOR_VAULTS, VAULTS};
+
     use super::*;
 
-    pub fn map_vaults(
-        deps: DepsMut,
-        map: Vec<(String, String)>,
-    ) -> Result<Response, ContractError> {
-        for (operator, vault) in map {
-            let operator = deps.api.addr_validate(&operator)?;
-            let vault = deps.api.addr_validate(&vault)?;
+    pub fn map_vaults(deps: DepsMut) -> Result<Response, ContractError> {
+        let vaults = VAULTS
+            .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+            .collect::<StdResult<Vec<_>>>()?;
 
-            crate::state::OPERATOR_VAULTS.save(deps.storage, (&operator, &vault), &())?;
+        for (vault, _) in vaults {
+            let vault_info = vault::get_vault_info(deps.as_ref(), &vault)?;
+
+            OPERATOR_VAULTS.save(deps.storage, (&vault_info.operator, &vault), &())?;
         }
 
         Ok(Response::default())
@@ -529,7 +531,7 @@ mod tests {
         }
 
         // whitelist is true and failed to set: Vault is not connected to the router
-        let new_vault = deps.api.addr_make("new_vault");
+        let _new_vault = deps.api.addr_make("new_vault");
         {
             deps.querier
                 .update_wasm(move |req: &WasmQuery| -> QuerierResult {
@@ -685,7 +687,7 @@ mod tests {
                     if *contract_addr == deps.api.addr_make("registry").to_string() {
                         let msg: RegistryQueryMsg = from_json(msg).unwrap();
                         match msg {
-                            RegistryQueryMsg::IsOperatorActive(operator) => {
+                            RegistryQueryMsg::IsOperatorActive(_operator) => {
                                 let response = IsOperatorActiveResponse(false);
                                 SystemResult::Ok(ContractResult::Ok(
                                     to_json_binary(&response).unwrap(),
