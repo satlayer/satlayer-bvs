@@ -4,15 +4,35 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 pub struct InstantiateMsg {
     /// Owner of this contract, who can pause and unpause
     pub owner: String,
-    /// Initial pause state
+    /// The initial paused state of satlayer contracts
     pub initial_paused: bool,
 }
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    Pause {},
+    /// Callable by the owner of the pauser contract
+    Pause {
+        /// address of the contract to be paused
+        contract: String,
+        /// method of a particular contract to be paused
+        method: String,
+    },
 
-    Unpause {},
+    /// Callable by the owner of the pauser contract
+    Unpause {
+        /// address of the contract to be unpaused
+        contract: String,
+        /// method of a particular contract to be unpaused
+        method: String,
+    },
+
+    /// Callable by the owner of the pauser contract
+    /// Pauses Globally
+    PauseGlobal {},
+
+    /// Callable by the owner of the pauser contract
+    /// Unpauses Globally
+    UnpauseGlobal {},
 
     TransferOwnership {
         /// See [`bvs_library::ownership::transfer_ownership`] for more information on this field
@@ -94,10 +114,10 @@ mod tests {
     #[test]
     fn test_paused() {
         let msg = IsPausedResponse::new(true);
-        assert_eq!(msg.is_paused(), true);
+        assert!(msg.is_paused());
 
         let msg = IsPausedResponse::new(false);
-        assert_eq!(msg.is_paused(), false);
+        assert!(!msg.is_paused());
     }
 
     /// Test the raw value of the IsPausedResponse
@@ -105,10 +125,10 @@ mod tests {
     #[test]
     fn test_paused_raw() {
         let msg = IsPausedResponse(0);
-        assert_eq!(msg.is_paused(), false);
+        assert!(!msg.is_paused());
 
         let msg = IsPausedResponse(1);
-        assert_eq!(msg.is_paused(), true);
+        assert!(msg.is_paused());
     }
 
     #[test]
