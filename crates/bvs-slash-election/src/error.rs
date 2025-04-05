@@ -18,4 +18,7 @@ pub enum ContractError {
 
     #[error("Unauthorized")]
     Unauthorized {},
+
+    #[error("Voting period expired")]
+    VotingPeriodExpired {},
 }

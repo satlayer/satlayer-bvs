@@ -7,7 +7,7 @@ use crate::state::Offense;
 
 pub struct SlashDetails {
     pub offender: String,
-    pub offense: Offense,
+    pub offense: String,
     pub start_height: u64,
 }
 
@@ -16,12 +16,12 @@ pub type SubmitSlashMsg = SubmitSlash<Offense, Option<String>>;
 pub type ExecuteSlashMsg = ExecuteSlash<SlashDetails>;
 
 pub struct VoteSlashMsg {
-    slash: SlashDetails,
-    approve: bool,
+    pub slash: SlashDetails,
+    pub approve: bool,
 }
 pub struct SetPunishmentMsg {
-    slash: SlashDetails,
-    approve: bool,
+    pub slash: SlashDetails,
+    pub approve: bool,
 }
 
 pub enum ExecuteMsg {

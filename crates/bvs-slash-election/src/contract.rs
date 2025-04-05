@@ -4,7 +4,7 @@ use cosmwasm_std::entry_point;
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, ExecuteSlashMsg, InstantiateMsg, QueryMsg},
-    state::{REGISTRY, THRESHOLD},
+    state::{Offense, REGISTRY, THRESHOLD},
 };
 use bvs_library::ownership;
 use cosmwasm_std::{Deps, DepsMut, Env, MessageInfo, Response};
@@ -27,7 +27,7 @@ pub fn instantiate(
 
     ownership::set_owner(deps.storage, &owner)?;
 
-    bvs_pauser::api::set_pauser(deps.storage, &pauser);
+    let _ = bvs_pauser::api::set_pauser(deps.storage, &pauser);
 
     THRESHOLD.save(deps.storage, &msg.threshold)?;
 
@@ -44,8 +44,24 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::SubmitSlash(msg) => execute::submit_slash(deps, env, info, msg),
-        ExecuteMsg::VoteSlash(msg) => execute::vote_slash(deps, env, info, msg),
+        ExecuteMsg::SubmitSlash(msg) => {
+            let offender = deps.api.addr_validate(&msg.offender)?;
+            execute::submit_slash(deps, env, info, offender, msg.offense)
+        }
+        ExecuteMsg::VoteSlash(msg) => {
+            let offender = deps.api.addr_validate(&msg.slash.offender)?;
+            let offense = Offense::try_from(msg.slash.offense.as_str())?;
+            let start_height = msg.slash.start_height;
+            execute::vote_slash(
+                deps,
+                env,
+                info,
+                offender,
+                offense,
+                start_height,
+                msg.approve,
+            )
+        }
         ExecuteMsg::ExecuteSlash(msg) => execute::execute_slash(deps, env, info, msg),
         ExecuteMsg::SetPunishment(msg) => execute::set_punishment(deps, env, info, msg),
         ExecuteMsg::SetThreshold(threshold) => execute::set_threshold(deps, env, info, threshold),
@@ -64,24 +80,56 @@ pub fn query(
 
 mod execute {
 
+    use cosmwasm_std::Addr;
+
     use super::*;
-    use crate::msg::{SetPunishmentMsg, SubmitSlashMsg, VoteSlashMsg};
+    use crate::{
+        auth,
+        msg::{SetPunishmentMsg, SlashDetails, VoteSlashMsg},
+        state::{Offense, SLASHES},
+    };
 
     pub fn submit_slash(
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        msg: SubmitSlashMsg,
+        offender: Addr,
+        offense: Offense,
     ) -> Result<Response, ContractError> {
+        auth::assert_operator(deps.as_ref(), &info)?;
+
+        SLASHES.save(
+            deps.storage,
+            (&offender.clone(), &offense.as_str(), env.block.height),
+            &0u64,
+        )?;
+
+        Ok(Response::new()
+            .add_attribute("action", "submit_slash")
+            .add_attribute("accuser", info.sender)
+            .add_attribute("offender", offender)
+            .add_attribute("offense", offense.as_str())
+            .add_attribute("block_height", env.block.height.to_string()))
     }
 
     pub fn vote_slash(
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        msg: VoteSlashMsg,
+        offender: Addr,
+        offense: Offense,
+        start_height: u64,
+        approve: bool,
     ) -> Result<Response, ContractError> {
-        Ok(Response::default())
+        auth::assert_operator(deps.as_ref(), &info)?;
+        auth::assert_voting_period(env, start_height)?;
+
+        let slash = SLASHES.load(
+            deps.storage,
+            (&offender.clone(), &offense.as_str(), start_height),
+        )?;
+
+        todo!("Check if the operator already voted");
     }
 
     pub fn execute_slash(
