@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::set_registry;
 use bvs_library::ownership;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
@@ -60,12 +60,42 @@ pub fn execute(
     }
 }
 
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+    cw2::ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    match msg {
+        MigrateMsg::MapVaults {} => migration::map_vaults(deps),
+    }
+}
+
+mod migration {
+    use crate::state::{OPERATOR_VAULTS, VAULTS};
+
+    use super::*;
+
+    pub fn map_vaults(deps: DepsMut) -> Result<Response, ContractError> {
+        let vaults = VAULTS
+            .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+            .collect::<StdResult<Vec<_>>>()?;
+
+        for (vault, _) in vaults {
+            let vault_info = vault::get_vault_info(deps.as_ref(), &vault)?;
+
+            OPERATOR_VAULTS.save(deps.storage, (&vault_info.operator, &vault), &())?;
+        }
+
+        Ok(Response::default())
+    }
+}
+
 mod execute {
     use crate::error::ContractError;
+    use crate::state::WITHDRAWAL_LOCK_PERIOD;
     use crate::state::{self, DEFAULT_WITHDRAWAL_LOCK_PERIOD};
-    use crate::{contract::execute::vault::assert_vault_info, state::WITHDRAWAL_LOCK_PERIOD};
     use bvs_library::ownership;
     use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Response, Uint64};
+
+    use super::*;
 
     /// Set the vault contract in the router and whitelist (true/false) it.
     /// Only the `owner` can call this message.
@@ -73,19 +103,25 @@ mod execute {
     /// See [`query::is_whitelisted`] for more information.
     pub fn set_vault(
         deps: DepsMut,
-        _env: Env,
+        env: Env,
         info: MessageInfo,
         vault: Addr,
         whitelisted: bool,
     ) -> Result<Response, ContractError> {
         ownership::assert_owner(deps.storage, &info)?;
 
-        // For whitelisted vault, we assert that the vault is connected to the router.
-        if whitelisted {
-            assert_vault_info(&deps.as_ref(), _env, vault.clone())?;
+        let vault_info = vault::get_vault_info(deps.as_ref(), &vault)?;
+
+        // vault's not connected
+        if whitelisted && vault_info.router != env.contract.address {
+            return Err(ContractError::VaultError {
+                msg: "Vault is not connected to the router".to_string(),
+            });
         }
 
         state::VAULTS.save(deps.storage, &vault, &state::Vault { whitelisted })?;
+
+        state::OPERATOR_VAULTS.save(deps.storage, (&vault_info.operator, &vault), &())?;
 
         Ok(Response::new().add_event(
             Event::new("VaultUpdated")
@@ -126,39 +162,43 @@ mod execute {
                 ),
         ))
     }
+}
 
-    /// Snipped implementation of Vault's API
-    pub mod vault {
-        use crate::error::ContractError;
-        use cosmwasm_schema::cw_serde;
-        use cosmwasm_std::{Addr, Deps, Env};
+/// Snipped implementation of Vault's API
+pub mod vault {
+    use crate::error::ContractError;
+    use cosmwasm_schema::cw_serde;
+    use cosmwasm_std::{Addr, Deps};
 
-        #[cw_serde]
-        pub enum VaultInfoQueryMsg {
-            VaultInfo {},
-        }
+    #[cw_serde]
+    pub enum VaultInfoQueryMsg {
+        VaultInfo {},
+    }
 
-        #[cw_serde]
-        pub struct VaultInfoResponse {
-            pub router: String,
-        }
+    /// This is a snippet of the struct to avoid circular dependencies.
+    /// This should be kept in sync with the original struct.
+    /// See [`VaultInfoResponse`] for more information.
+    #[cw_serde]
+    pub struct VaultInfoResponse {
+        /// The `vault-router` contract address
+        pub router: Addr,
 
-        /// Asserts that the vault contains the QueryMsg::VaultInfo and is connected to the router.
-        pub fn assert_vault_info(deps: &Deps, env: Env, vault: Addr) -> Result<(), ContractError> {
-            let response: VaultInfoResponse = deps
-                .querier
-                .query_wasm_smart(vault.to_string(), &VaultInfoQueryMsg::VaultInfo {})?;
-            if response.router == env.contract.address.to_string() {
-                Ok(())
-            } else {
-                Err(ContractError::VaultError {
-                    msg: "Vault is not connected to the router".to_string(),
-                })
-            }
+        /// The `operator` that this vault is delegated to
+        pub operator: Addr,
+    }
+
+    pub fn get_vault_info(deps: Deps, vault: &Addr) -> Result<VaultInfoResponse, ContractError> {
+        match deps
+            .querier
+            .query_wasm_smart(vault.to_string(), &VaultInfoQueryMsg::VaultInfo {})
+        {
+            Ok(response) => Ok(response),
+            Err(_) => Err(ContractError::VaultError {
+                msg: format!("No such contract: {}", vault).to_string(),
+            }),
         }
     }
 }
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -176,6 +216,23 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 .map(|s| deps.api.addr_validate(&s))
                 .transpose()?;
             to_json_binary(&query::list_vaults(deps, limit, start_after)?)
+        }
+        QueryMsg::ListVaultsByOperator {
+            operator,
+            limit,
+            start_after,
+        } => {
+            let limit = limit.map_or(100, |v| v.min(100));
+            let start_after = start_after
+                .map(|s| deps.api.addr_validate(&s))
+                .transpose()?;
+            let operator = deps.api.addr_validate(&operator)?;
+            to_json_binary(&query::list_vaults_by_operator(
+                deps,
+                operator,
+                limit,
+                start_after,
+            )?)
         }
         QueryMsg::WithdrawalLockPeriod {} => {
             to_json_binary(&query::get_withdrawal_lock_period(deps)?)
@@ -247,20 +304,51 @@ mod query {
 
         Ok(value)
     }
+
+    pub fn list_vaults_by_operator(
+        deps: Deps,
+        operator: Addr,
+        limit: u32,
+        start_after: Option<Addr>,
+    ) -> StdResult<VaultListResponse> {
+        let items = state::OPERATOR_VAULTS.prefix(&operator);
+
+        let range_max = start_after.as_ref().map(Bound::exclusive);
+        let items = items.range(
+            deps.storage,
+            None,
+            range_max,
+            cosmwasm_std::Order::Descending,
+        );
+
+        let vaults = items
+            .take(limit as usize)
+            .map(|item| {
+                let (vault_address, _) = item?;
+                let whitelisted = state::VAULTS
+                    .load(deps.storage, &vault_address)?
+                    .whitelisted;
+                Ok(Vault {
+                    vault: vault_address,
+                    whitelisted,
+                })
+            })
+            .collect::<StdResult<_>>()?;
+
+        Ok(VaultListResponse(vaults))
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::vault::{VaultInfoQueryMsg, VaultInfoResponse};
     use super::*;
     use super::{
-        execute::{
-            set_vault, set_withdrawal_lock_period,
-            vault::{VaultInfoQueryMsg, VaultInfoResponse},
-        },
+        execute::{set_vault, set_withdrawal_lock_period},
         query::{get_withdrawal_lock_period, is_validating, is_whitelisted, list_vaults},
     };
     use crate::msg::InstantiateMsg;
-    use crate::state::{Vault, REGISTRY, VAULTS};
+    use crate::state::{Vault, OPERATOR_VAULTS, REGISTRY, VAULTS};
     use bvs_registry::msg::{IsOperatorActiveResponse, QueryMsg as RegistryQueryMsg};
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
@@ -324,37 +412,7 @@ mod tests {
     fn test_set_vault() {
         let (mut deps, env, owner_info) = instantiate_contract();
 
-        let vault = deps.api.addr_make("vault");
-        let vault_contract_addr = deps.api.addr_make("cosmos2contract");
-
-        // whitelist is false
-        {
-            let result = set_vault(
-                deps.as_mut(),
-                env.clone(),
-                owner_info.clone(),
-                vault.clone(),
-                false,
-            );
-            assert!(result.is_ok());
-
-            let response = result.unwrap();
-            assert_eq!(response.attributes.len(), 0);
-            assert_eq!(response.events.len(), 1);
-            assert_eq!(
-                response.events[0],
-                Event::new("VaultUpdated")
-                    .add_attribute("vault", vault.clone())
-                    .add_attribute("whitelisted", "false")
-            );
-
-            let vault = VAULTS
-                .may_load(deps.as_ref().storage, &vault)
-                .unwrap()
-                .unwrap();
-            assert_eq!(vault.whitelisted, false);
-        }
-
+        let moved_env = env.clone();
         deps.querier
             .update_wasm(move |req: &WasmQuery| -> QuerierResult {
                 if let WasmQuery::Smart { contract_addr, msg } = req {
@@ -363,7 +421,8 @@ mod tests {
                         match msg {
                             VaultInfoQueryMsg::VaultInfo {} => {
                                 let response = VaultInfoResponse {
-                                    router: vault_contract_addr.to_string(),
+                                    router: moved_env.contract.address.clone(),
+                                    operator: deps.api.addr_make("operator"),
                                 };
                                 SystemResult::Ok(ContractResult::Ok(
                                     to_json_binary(&response).unwrap(),
@@ -382,7 +441,47 @@ mod tests {
                 }
             });
 
+        let vault_contract_addr = deps.api.addr_make("vault");
+        let operator_addr = deps.api.addr_make("operator");
+
+        // whitelist is false
+        {
+            let result = set_vault(
+                deps.as_mut(),
+                env.clone(),
+                owner_info.clone(),
+                vault_contract_addr.clone(),
+                false,
+            );
+            assert!(result.is_ok());
+
+            let response = result.unwrap();
+            assert_eq!(response.attributes.len(), 0);
+            assert_eq!(response.events.len(), 1);
+            assert_eq!(
+                response.events[0],
+                Event::new("VaultUpdated")
+                    .add_attribute("vault", vault_contract_addr.clone())
+                    .add_attribute("whitelisted", "false")
+            );
+
+            let vault = VAULTS
+                .may_load(deps.as_ref().storage, &vault_contract_addr)
+                .unwrap()
+                .unwrap();
+            assert!(!vault.whitelisted);
+
+            OPERATOR_VAULTS
+                .may_load(
+                    deps.as_ref().storage,
+                    (&operator_addr, &vault_contract_addr),
+                )
+                .unwrap()
+                .unwrap();
+        }
+
         let vault = deps.api.addr_make("vault");
+        let operator_addr = deps.api.addr_make("operator");
 
         // whitelist is true and set successfully
         {
@@ -409,7 +508,7 @@ mod tests {
                 .may_load(deps.as_ref().storage, &vault)
                 .unwrap()
                 .unwrap();
-            assert_eq!(vault.whitelisted, true);
+            assert!(vault.whitelisted);
         }
 
         // whitelist is true and failed to set: No such contract
@@ -427,15 +526,12 @@ mod tests {
             let err = result.unwrap_err();
             assert_eq!(
                 err.to_string(),
-                format!(
-                    "Generic error: Querier system error: No such contract: {}",
-                    empty_vault.to_string()
-                )
+                format!("Vault error: No such contract: {}", empty_vault)
             );
         }
 
         // whitelist is true and failed to set: Vault is not connected to the router
-        let new_vault = deps.api.addr_make("new_vault");
+        let _new_vault = deps.api.addr_make("new_vault");
         {
             deps.querier
                 .update_wasm(move |req: &WasmQuery| -> QuerierResult {
@@ -445,7 +541,8 @@ mod tests {
                             match msg {
                                 VaultInfoQueryMsg::VaultInfo {} => {
                                     let response = VaultInfoResponse {
-                                        router: new_vault.to_string(),
+                                        router: vault_contract_addr.clone(),
+                                        operator: operator_addr.clone(),
                                     };
                                     SystemResult::Ok(ContractResult::Ok(
                                         to_json_binary(&response).unwrap(),
@@ -590,7 +687,7 @@ mod tests {
                     if *contract_addr == deps.api.addr_make("registry").to_string() {
                         let msg: RegistryQueryMsg = from_json(msg).unwrap();
                         match msg {
-                            RegistryQueryMsg::IsOperatorActive(operator) => {
+                            RegistryQueryMsg::IsOperatorActive(_operator) => {
                                 let response = IsOperatorActiveResponse(false);
                                 SystemResult::Ok(ContractResult::Ok(
                                     to_json_binary(&response).unwrap(),
@@ -620,6 +717,77 @@ mod tests {
 
         let response = list_vaults(deps.as_ref(), 0, None).unwrap();
         assert_eq!(response.0.len(), 0)
+    }
+
+    #[test]
+    fn test_query_list_vaults_by_operator() {
+        let mut deps = mock_dependencies();
+
+        let operator = deps.api.addr_make("operator");
+        let mut vaults = Vec::new();
+
+        for i in 0..10 {
+            let vault = deps.api.addr_make(&format!("vault{}", i));
+            vaults.push(vault.clone());
+            VAULTS
+                .save(&mut deps.storage, &vault, &Vault { whitelisted: true })
+                .unwrap();
+            OPERATOR_VAULTS
+                .save(&mut deps.storage, (&operator, &vault), &())
+                .unwrap();
+        }
+
+        let response =
+            query::list_vaults_by_operator(deps.as_ref(), operator.clone(), 100, None).unwrap();
+        assert_eq!(response.0.len(), 10);
+
+        let response =
+            query::list_vaults_by_operator(deps.as_ref(), operator.clone(), 5, None).unwrap();
+        assert_eq!(response.0.len(), 5);
+
+        let mut response =
+            query::list_vaults_by_operator(deps.as_ref(), operator.clone(), 10, None).unwrap();
+        assert_eq!(response.0.len(), 10);
+
+        // check if those address came back the same
+        // let's sort them first for easier comparison
+        vaults.sort();
+        response.0.sort_by(|a, b| a.vault.cmp(&b.vault));
+
+        for i in 0..10 {
+            assert_eq!(response.0[i].vault, vaults[i]);
+        }
+
+        // let's test pagination sync this time
+        {
+            let response1 =
+                query::list_vaults_by_operator(deps.as_ref(), operator.clone(), 5, None).unwrap();
+            assert_eq!(response1.0.len(), 5);
+
+            let next_start_after = response1.0[4].vault.clone();
+
+            let response2 = query::list_vaults_by_operator(
+                deps.as_ref(),
+                operator.clone(),
+                5,
+                Some(next_start_after),
+            )
+            .unwrap();
+
+            assert_eq!(response2.0.len(), 5);
+
+            let mut total_vaults = response1
+                .0
+                .iter()
+                .chain(response2.0.iter())
+                .collect::<Vec<_>>();
+
+            total_vaults.sort_by(|a, b| a.vault.cmp(&b.vault));
+
+            for i in 0..10 {
+                assert_eq!(total_vaults[i].vault, vaults[i]);
+            }
+        }
     }
 
     #[test]
