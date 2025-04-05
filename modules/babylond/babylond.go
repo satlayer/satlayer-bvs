@@ -160,7 +160,7 @@ func Run(ctx context.Context) *BabylonContainer {
 
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
-			Image: "babylonlabs/babylond:v1.0.0",
+			Image: "babylonlabs/babylond:v1.0.1",
 			Entrypoint: []string{
 				"sh",
 				"-c",
