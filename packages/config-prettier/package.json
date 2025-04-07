@@ -5,6 +5,6 @@
   "dependencies": {
     "prettier-plugin-packagejson": "^2.5.10",
     "prettier-plugin-tailwindcss": "^0.6.11",
-    "prettier-plugin-toml": "^2.0.3"
+    "prettier-plugin-toml": "^2.0.4"
   }
 }
