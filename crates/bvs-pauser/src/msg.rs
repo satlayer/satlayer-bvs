@@ -27,7 +27,7 @@ pub enum ExecuteMsg {
     },
 
     /// Callable by the owner of the pauser contract
-    /// Pauses Globally
+    /// Pauses Globally: Pause all contracts and methods.
     PauseGlobal {},
 
     /// Callable by the owner of the pauser contract
