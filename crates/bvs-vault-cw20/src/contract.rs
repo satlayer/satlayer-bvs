@@ -69,19 +69,26 @@ pub fn execute(
             msg.validate(deps.api)?;
             execute::redeem_withdrawal_to(deps, env, info, msg)
         }
+        ExecuteMsg::SetSlashable(flag) => execute::set_slashability(deps, info, env, flag),
+        ExecuteMsg::TransferAssetCustody(msg) => {
+            execute::transfer_asset_custody(deps, env, info, msg)
+        }
     }
 }
 
 mod execute {
+    use std::error::Error;
+
     use crate::error::ContractError;
     use crate::token;
     use bvs_vault_base::error::VaultError;
-    use bvs_vault_base::msg::{Recipient, RecipientAmount};
+    use bvs_vault_base::msg::{JailDetail, Recipient, RecipientAmount};
+    use bvs_vault_base::router::assert_router;
     use bvs_vault_base::{
         offset, router,
         shares::{self, QueuedWithdrawalInfo},
     };
-    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, Timestamp};
+    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, StdError, Timestamp, Uint128};
 
     /// This executes a transfer of assets from the `info.sender` to the vault contract.
     ///
@@ -277,6 +284,64 @@ mod execute {
                     .add_attribute("total_shares", vault.total_shares().to_string()),
             )
             .add_message(transfer_msg))
+    }
+
+    pub fn set_slashability(
+        deps: DepsMut,
+        info: MessageInfo,
+        env: Env,
+        flag: bool,
+    ) -> Result<Response, ContractError> {
+        assert_router(deps.storage, &info)?;
+
+        bvs_vault_base::slashing::set_slashable(deps.storage, flag)?;
+
+        let event = Event::new("set_slashable")
+            .add_attribute("action", "set_slashable")
+            .add_attribute("sender", info.sender)
+            .add_attribute("vault", env.contract.address)
+            .add_attribute("slashable", flag.to_string());
+
+        Ok(Response::new().add_event(event))
+    }
+
+    /// In the event of slashing verdict by the slashing contract,
+    /// this function move custody of all or a portion of asset hold by this vault
+    /// to the jail address.
+    /// Jail can be the slashing contract itself or
+    /// a dedicated contract that will handle what to do with slashed asset.
+    pub fn transfer_asset_custody(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        msg: JailDetail,
+    ) -> Result<Response, ContractError> {
+        bvs_vault_base::slashing::assert_slashable(deps.as_ref().storage)?;
+
+        let new_custodian = msg.jail_address;
+
+        let percentage = Uint128::from(msg.percentage);
+
+        let vault_balance = token::query_balance(&deps.as_ref(), &env)?;
+
+        let percentage_to_balance = vault_balance
+            .checked_mul(percentage)
+            .map_err(StdError::overflow)?
+            .checked_div(Uint128::from(100u128))
+            .map_err(StdError::divide_by_zero)?;
+
+        let transfer_msg =
+            token::execute_new_transfer(deps.storage, &new_custodian, percentage_to_balance)?;
+
+        assert_router(deps.storage, &info)?;
+
+        let event = Event::new("TransferAssetCustody")
+            .add_attribute("sender", info.sender)
+            .add_attribute("vault", env.contract.address)
+            .add_attribute("jail_address", new_custodian)
+            .add_attribute("percentage", percentage.to_string());
+
+        Ok(Response::new().add_event(event).add_message(transfer_msg))
     }
 }
 

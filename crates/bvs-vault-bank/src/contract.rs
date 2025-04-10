@@ -60,6 +60,11 @@ pub fn execute(
             msg.validate(deps.api)?;
             execute::redeem_withdrawal_to(deps, env, info, msg)
         }
+        ExecuteMsg::TransferAssetCustody(msg) => {
+            msg.validate(deps.api)?;
+            execute::transfer_asset_custody(deps, env, info, msg)
+        }
+        ExecuteMsg::SetSlashable(flag) => execute::set_slashability(deps, info, env, flag),
     }
 }
 
@@ -68,10 +73,11 @@ mod execute {
     use crate::bank::get_denom;
     use crate::error::ContractError;
     use bvs_vault_base::error::VaultError;
-    use bvs_vault_base::msg::{Recipient, RecipientAmount};
+    use bvs_vault_base::msg::{JailDetail, Recipient, RecipientAmount};
+    use bvs_vault_base::router::assert_router;
     use bvs_vault_base::shares::QueuedWithdrawalInfo;
     use bvs_vault_base::{offset, router, shares};
-    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, StdError, Timestamp};
+    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, StdError, Timestamp, Uint128};
 
     /// Deposit an asset (`info.funds`) into the vault through native bank transfer and receive shares.
     ///
@@ -269,6 +275,63 @@ mod execute {
             )
             .add_message(send_msg))
     }
+
+    /// In the event of slashing verdict by the slashing contract,
+    /// this function move custody of all or a portion of asset hold by this vault
+    /// to the jail address.
+    /// Jail can be the slashing contract itself or
+    /// a dedicated contract that will handle what to do with slashed asset.
+    pub fn transfer_asset_custody(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        msg: JailDetail,
+    ) -> Result<Response, ContractError> {
+        bvs_vault_base::slashing::assert_slashable(deps.as_ref().storage)?;
+
+        assert_router(deps.storage, &info)?;
+
+        let new_custodian = msg.jail_address;
+
+        let percentage = Uint128::from(msg.percentage);
+
+        let vault_balance = bank::query_balance(&deps.as_ref(), &env)?;
+
+        let percentage_to_balance = vault_balance
+            .checked_mul(percentage)
+            .map_err(StdError::overflow)?
+            .checked_div(Uint128::from(100u128))
+            .map_err(StdError::divide_by_zero)?;
+
+        let send_msg = bank::bank_send(deps.storage, &new_custodian, percentage_to_balance)?;
+
+        let event = Event::new("TransferAssetCustody")
+            .add_attribute("sender", info.sender)
+            .add_attribute("vault", env.contract.address)
+            .add_attribute("jail_address", new_custodian)
+            .add_attribute("percentage", percentage.to_string());
+
+        Ok(Response::new().add_event(event).add_message(send_msg))
+    }
+
+    pub fn set_slashability(
+        deps: DepsMut,
+        info: MessageInfo,
+        env: Env,
+        flag: bool,
+    ) -> Result<Response, ContractError> {
+        assert_router(deps.storage, &info)?;
+
+        bvs_vault_base::slashing::set_slashable(deps.storage, flag)?;
+
+        let event = Event::new("set_slashable")
+            .add_attribute("action", "set_slashable")
+            .add_attribute("sender", info.sender)
+            .add_attribute("vault", env.contract.address)
+            .add_attribute("slashable", flag.to_string());
+
+        Ok(Response::new().add_event(event))
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -353,13 +416,15 @@ mod query {
         let vault = offset::VirtualOffset::load(&deps, balance)?;
         let denom = bank::get_denom(deps.storage)?;
         let version = cw2::get_contract_version(deps.storage)?;
+        let slashable = bvs_vault_base::slashing::get_slashable(deps.storage)?;
+
         Ok(VaultInfoResponse {
             total_shares: vault.total_shares(),
             total_assets: vault.total_assets(),
             router: bvs_vault_base::router::get_router(deps.storage)?,
             pauser: bvs_pauser::api::get_pauser(deps.storage)?,
             operator: bvs_vault_base::router::get_operator(deps.storage)?,
-            slashing: false,
+            slashing: slashable,
             asset_id: format!("cosmos:{}/bank:{}", env.block.chain_id, denom.as_str()),
             contract: version.contract,
             version: version.version,
@@ -429,6 +494,67 @@ mod tests {
 
     #[test]
     fn test_deposit_for() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        let sender = deps.api.addr_make("sender");
+
+        {
+            // For QueryMsg::IsWhitelisted(vault) = true
+            {
+                let router = deps.api.addr_make("vault_router");
+                router::set_router(&mut deps.storage, &router).unwrap();
+                deps.querier.update_wasm(move |query| match query {
+                    WasmQuery::Smart { .. } => {
+                        return SystemResult::Ok(ContractResult::Ok(
+                            to_json_binary(&true).unwrap(),
+                        ));
+                    }
+                    _ => SystemResult::Err(SystemError::Unknown {}),
+                });
+            }
+
+            bank::set_denom(&mut deps.storage, "stone").unwrap();
+            deps.querier
+                .bank
+                .update_balance(&env.contract.address, coins(10_000, "stone"));
+        }
+
+        let info = message_info(&sender, &coins(10000, "stone"));
+        let response = execute::deposit_for(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            RecipientAmount {
+                recipient: sender.clone(),
+                amount: Uint128::new(10_000),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(
+            response,
+            Response::new().add_event(
+                Event::new("DepositFor")
+                    .add_attribute("sender", info.sender.to_string())
+                    .add_attribute("recipient", info.sender.to_string())
+                    .add_attribute("assets", "10000")
+                    .add_attribute("shares", "10000")
+                    .add_attribute("total_shares", "10000"),
+            )
+        );
+
+        // assert total shares increased
+        let total_shares = offset::get_total_shares(&deps.storage).unwrap();
+        assert_eq!(total_shares, Uint128::new(10_000));
+
+        // assert sender shares increased
+        let sender_shares = shares::get_shares(&deps.storage, &sender).unwrap();
+        assert_eq!(sender_shares, Uint128::new(10_000));
+    }
+
+    #[test]
+    fn test_transfer_custody() {
         let mut deps = mock_dependencies();
         let env = mock_env();
 
