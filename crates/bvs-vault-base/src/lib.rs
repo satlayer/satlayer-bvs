@@ -12,4 +12,8 @@ pub mod offset;
 /// Accounting module for vaults that tracks staker shares.
 pub mod shares;
 
+/// Contains slashability flag and assertion functions.
+/// Does not contain slashing logic.
+pub mod slashing;
+
 pub use crate::error::VaultError;

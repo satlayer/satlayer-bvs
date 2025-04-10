@@ -38,6 +38,56 @@ pub enum VaultExecuteMsg {
     /// After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
     /// can redeem the withdrawal.
     RedeemWithdrawalTo(Recipient),
+
+    /// ExecuteMsg TransferCustody release the right to be custodian of all or a portion of asset.
+    /// In the event of an operator has been convicted of a crime, slash verdict has reached,
+    /// The asset will be slashed.
+    /// Asset being slashed will be sent to the jail address.
+    /// The operator no longer has access to the slashed assets.
+    /// The slashed assets will then be decided to be burned or allocated for further utility by
+    /// the jail contract.
+    /// The handling of the slashed asset should not concern the vault contract.
+    TransferAssetCustody(JailDetail),
+
+    /// ExecuteMsg Pause the vault contract.
+    SetSlashable(bool),
+}
+
+#[cw_serde]
+pub struct JailDetail {
+    /// The percentage of asset to be seized.
+    pub percentage: u64,
+
+    /// The address that will receive the slashed asset.
+    /// The address is recommended to be a contract that will handle what to do with slashed asset.
+    /// The jail contract address will either simply burn
+    /// or allocate for further utility is up to the third party project.
+    pub jail_address: Addr,
+}
+
+impl JailDetail {
+    /// Validate the percentage and jail address.
+    /// The percentage must be between 0 and 100.
+    /// The jail address must be a valid [`Addr`].
+    pub fn validate(&self, api: &dyn Api) -> Result<(), VaultError> {
+        if self.percentage > 100 {
+            return Err(VaultError::unauthorized(
+                "Percentage must be between 0 and 100.",
+            ));
+        }
+
+        if self.percentage == 0 {
+            return Err(VaultError::zero("Percentage must be greater than 0."));
+        }
+
+        api.addr_validate(self.jail_address.as_str())?;
+
+        // logical to also check if the precentage is not under 0.
+        // But since precentage type is u64, it is not possible to be negative.
+        // will fail at parsing.
+
+        Ok(())
+    }
 }
 
 /// This struct is used to represent the recipient and amount fields together.
