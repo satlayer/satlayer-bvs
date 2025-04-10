@@ -2,16 +2,13 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint64};
 
 #[cw_serde]
+pub struct MigrateMsg {}
+
+#[cw_serde]
 pub struct InstantiateMsg {
     pub owner: String,
     pub registry: String,
     pub pauser: String,
-}
-
-#[cw_serde]
-pub enum MigrateMsg {
-    /// This is a type of payload that trigger the migration of OPERATOR_VAULTS state.
-    MapVaults {},
 }
 
 #[cw_serde]

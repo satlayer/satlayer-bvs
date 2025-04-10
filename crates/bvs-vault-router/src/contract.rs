@@ -61,10 +61,15 @@ pub fn execute(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
-    cw2::ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    match msg {
-        MigrateMsg::MapVaults {} => migration::map_vaults(deps),
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    let old_v = cw2::ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    match old_v.major == 1 {
+        true => migration::map_vaults(deps),
+        false => {
+            // no-op
+            Ok(Response::default())
+        }
     }
 }
 
@@ -78,7 +83,7 @@ mod migration {
             .keys(deps.storage, None, None, cosmwasm_std::Order::Ascending)
             .collect::<StdResult<Vec<_>>>()?;
 
-        for (vault, _) in vaults {
+        for vault in vaults {
             let vault_info = vault::get_vault_info(deps.as_ref(), &vault)?;
 
             OPERATOR_VAULTS.save(deps.storage, (&vault_info.operator, &vault), &())?;
