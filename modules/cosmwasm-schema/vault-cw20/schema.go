@@ -61,17 +61,37 @@ type InstantiateMsg struct {
 // ExecuteMsg RedeemWithdrawal all queued shares into assets from the vault for withdrawal.
 // After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
 // can redeem the withdrawal.
+//
+// ExecuteMsg TransferCustody release the right to be custodian of all or a portion of
+// asset. In the event of an operator has been convicted of a crime, slash verdict has
+// reached, The asset will be slashed. Asset being slashed will be sent to the jail address.
+// The operator no longer has access to the slashed assets. The slashed assets will then be
+// decided to be burned or allocated for further utility by the jail contract. The handling
+// of the slashed asset should not concern the vault contract.
+//
+// ExecuteMsg Pause the vault contract.
 type ExecuteMsg struct {
-	DepositFor         *RecipientAmount `json:"deposit_for,omitempty"`
-	WithdrawTo         *RecipientAmount `json:"withdraw_to,omitempty"`
-	QueueWithdrawalTo  *RecipientAmount `json:"queue_withdrawal_to,omitempty"`
-	RedeemWithdrawalTo *string          `json:"redeem_withdrawal_to,omitempty"`
+	DepositFor           *RecipientAmount `json:"deposit_for,omitempty"`
+	WithdrawTo           *RecipientAmount `json:"withdraw_to,omitempty"`
+	QueueWithdrawalTo    *RecipientAmount `json:"queue_withdrawal_to,omitempty"`
+	RedeemWithdrawalTo   *string          `json:"redeem_withdrawal_to,omitempty"`
+	TransferAssetCustody *JailDetail      `json:"transfer_asset_custody,omitempty"`
+	SetSlashable         *bool            `json:"set_slashable,omitempty"`
 }
 
 // This struct is used to represent the recipient and amount fields together.
 type RecipientAmount struct {
 	Amount    string `json:"amount"`
 	Recipient string `json:"recipient"`
+}
+
+type JailDetail struct {
+	// The address that will receive the slashed asset. The address is recommended to be a
+	// contract that will handle what to do with slashed asset. The jail contract address will
+	// either simply burn or allocate for further utility is up to the third party project.
+	JailAddress string `json:"jail_address"`
+	// The percentage of asset to be seized.
+	Percentage int64 `json:"percentage"`
 }
 
 // QueryMsg Shares: get the shares of a staker.

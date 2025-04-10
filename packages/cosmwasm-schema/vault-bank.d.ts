@@ -35,6 +35,10 @@
  *
  * This struct is used to represent a recipient for RedeemWithdrawalTo.
  *
+ * The address that will receive the slashed asset. The address is recommended to be a
+ * contract that will handle what to do with slashed asset. The jail contract address will
+ * either simply burn or allocate for further utility is up to the third party project.
+ *
  * The response to the `Assets` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
  *
@@ -123,6 +127,10 @@ type AssetsResponse = string;
  * instance.
  *
  * This struct is used to represent a recipient for RedeemWithdrawalTo.
+ *
+ * The address that will receive the slashed asset. The address is recommended to be a
+ * contract that will handle what to do with slashed asset. The jail contract address will
+ * either simply burn or allocate for further utility is up to the third party project.
  *
  * The response to the `Assets` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
@@ -213,6 +221,10 @@ type ConvertToAssetsResponse = string;
  *
  * This struct is used to represent a recipient for RedeemWithdrawalTo.
  *
+ * The address that will receive the slashed asset. The address is recommended to be a
+ * contract that will handle what to do with slashed asset. The jail contract address will
+ * either simply burn or allocate for further utility is up to the third party project.
+ *
  * The response to the `Assets` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
  *
@@ -301,6 +313,10 @@ type ConvertToSharesResponse = string;
  * instance.
  *
  * This struct is used to represent a recipient for RedeemWithdrawalTo.
+ *
+ * The address that will receive the slashed asset. The address is recommended to be a
+ * contract that will handle what to do with slashed asset. The jail contract address will
+ * either simply burn or allocate for further utility is up to the third party project.
  *
  * The response to the `Assets` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
@@ -391,6 +407,10 @@ type SharesResponse = string;
  *
  * This struct is used to represent a recipient for RedeemWithdrawalTo.
  *
+ * The address that will receive the slashed asset. The address is recommended to be a
+ * contract that will handle what to do with slashed asset. The jail contract address will
+ * either simply burn or allocate for further utility is up to the third party project.
+ *
  * The response to the `Assets` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
  *
@@ -479,6 +499,10 @@ type TotalAssetsResponse = string;
  * instance.
  *
  * This struct is used to represent a recipient for RedeemWithdrawalTo.
+ *
+ * The address that will receive the slashed asset. The address is recommended to be a
+ * contract that will handle what to do with slashed asset. The jail contract address will
+ * either simply burn or allocate for further utility is up to the third party project.
  *
  * The response to the `Assets` query. Not exported. This is just a wrapper around
  * `Uint128`, so that the schema can be generated.
@@ -581,12 +605,23 @@ export interface InstantiateMsg {
  * ExecuteMsg RedeemWithdrawal all queued shares into assets from the vault for withdrawal.
  * After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
  * can redeem the withdrawal.
+ *
+ * ExecuteMsg TransferCustody release the right to be custodian of all or a portion of
+ * asset. In the event of an operator has been convicted of a crime, slash verdict has
+ * reached, The asset will be slashed. Asset being slashed will be sent to the jail address.
+ * The operator no longer has access to the slashed assets. The slashed assets will then be
+ * decided to be burned or allocated for further utility by the jail contract. The handling
+ * of the slashed asset should not concern the vault contract.
+ *
+ * ExecuteMsg Pause the vault contract.
  */
 export interface ExecuteMsg {
   deposit_for?: RecipientAmount;
   withdraw_to?: RecipientAmount;
   queue_withdrawal_to?: RecipientAmount;
   redeem_withdrawal_to?: string;
+  transfer_asset_custody?: JailDetail;
+  set_slashable?: boolean;
 }
 
 /**
@@ -595,6 +630,19 @@ export interface ExecuteMsg {
 export interface RecipientAmount {
   amount: string;
   recipient: string;
+}
+
+export interface JailDetail {
+  /**
+   * The address that will receive the slashed asset. The address is recommended to be a
+   * contract that will handle what to do with slashed asset. The jail contract address will
+   * either simply burn or allocate for further utility is up to the third party project.
+   */
+  jail_address: string;
+  /**
+   * The percentage of asset to be seized.
+   */
+  percentage: number;
 }
 
 /**
