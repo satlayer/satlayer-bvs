@@ -788,6 +788,78 @@ mod tests {
                 assert_eq!(total_vaults[i].vault, vaults[i]);
             }
         }
+
+        // let's have another operator with its own vaults
+        let operator2 = deps.api.addr_make("operator2");
+
+        let mut vaults2 = Vec::new();
+
+        for i in 0..10 {
+            let vault = deps.api.addr_make(&format!("vault2{}", i));
+            vaults2.push(vault.clone());
+            VAULTS
+                .save(&mut deps.storage, &vault, &Vault { whitelisted: true })
+                .unwrap();
+            OPERATOR_VAULTS
+                .save(&mut deps.storage, (&operator2, &vault), &())
+                .unwrap();
+        }
+
+        let mut response =
+            query::list_vaults_by_operator(deps.as_ref(), operator2.clone(), 100, None).unwrap();
+
+        assert_eq!(response.0.len(), 10);
+
+        // check if those address came back the same
+        // let's sort them first for easier comparison
+        vaults2.sort();
+        response.0.sort_by(|a, b| a.vault.cmp(&b.vault));
+
+        for i in 0..10 {
+            assert_eq!(response.0[i].vault, vaults2[i]);
+        }
+
+        // let's test pagination sync for operator2's vaults as well
+        {
+            let response1 =
+                query::list_vaults_by_operator(deps.as_ref(), operator2.clone(), 5, None).unwrap();
+            assert_eq!(response1.0.len(), 5);
+
+            let next_start_after = response1.0[4].vault.clone();
+
+            let response2 = query::list_vaults_by_operator(
+                deps.as_ref(),
+                operator2.clone(),
+                5,
+                Some(next_start_after),
+            )
+            .unwrap();
+
+            assert_eq!(response2.0.len(), 5);
+
+            let mut total_vaults = response1
+                .0
+                .iter()
+                .chain(response2.0.iter())
+                .collect::<Vec<_>>();
+
+            total_vaults.sort_by(|a, b| a.vault.cmp(&b.vault));
+
+            for i in 0..10 {
+                assert_eq!(total_vaults[i].vault, vaults2[i]);
+            }
+        }
+
+        // we should have a total of 20 vaults
+        let response = query::list_vaults(deps.as_ref(), 100, None).unwrap();
+        assert_eq!(response.0.len(), 20);
+
+        let non_operator = deps.api.addr_make("non_operator");
+
+        let response =
+            query::list_vaults_by_operator(deps.as_ref(), non_operator.clone(), 100, None).unwrap();
+
+        assert_eq!(response.0.len(), 0);
     }
 
     #[test]
