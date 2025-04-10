@@ -868,20 +868,38 @@ mod tests {
     #[test]
     fn test_map_vault_migration() {
         let mut deps = mock_dependencies();
-        let vault_contract_addr = deps.api.addr_make("vault");
-        let operator_addr = deps.api.addr_make("operator");
 
-        let moved_operator_addr = operator_addr.clone();
-        deps.querier
-            .update_wasm(move |req: &WasmQuery| -> QuerierResult {
-                if let WasmQuery::Smart { contract_addr, msg } = req {
-                    if *contract_addr == deps.api.addr_make("vault").to_string() {
+        let operator1 = deps.api.addr_make("operator");
+        let vault1 = deps.api.addr_make("vault1");
+
+        let operator2 = deps.api.addr_make("operator2");
+        let vault2 = deps.api.addr_make("vault2");
+
+        {
+            let moved_operator1 = operator1.clone();
+            let moved_vault1 = vault1.to_string();
+
+            let moved_operator2 = operator2.clone();
+            let moved_vault2 = vault2.to_string();
+            deps.querier
+                .update_wasm(move |req: &WasmQuery| -> QuerierResult {
+                    if let WasmQuery::Smart { contract_addr, msg } = req {
                         let msg: VaultInfoQueryMsg = from_json(msg).unwrap();
+                        let contract_addr = contract_addr.to_string();
+                        let operator_addr = {
+                            if contract_addr == moved_vault1 {
+                                moved_operator1.clone()
+                            } else if contract_addr == moved_vault2 {
+                                moved_operator2.clone()
+                            } else {
+                                panic!("Unknown contract address")
+                            }
+                        };
                         match msg {
                             VaultInfoQueryMsg::VaultInfo {} => {
                                 let response = VaultInfoResponse {
-                                    router: vault_contract_addr.clone(),
-                                    operator: moved_operator_addr.clone(),
+                                    router: deps.api.addr_make("router"),
+                                    operator: operator_addr,
                                 };
                                 SystemResult::Ok(ContractResult::Ok(
                                     to_json_binary(&response).unwrap(),
@@ -889,29 +907,37 @@ mod tests {
                             }
                         }
                     } else {
-                        SystemResult::Err(SystemError::NoSuchContract {
-                            addr: contract_addr.to_string(),
+                        SystemResult::Err(SystemError::UnsupportedRequest {
+                            kind: "Unsupported query".to_string(),
                         })
                     }
-                } else {
-                    SystemResult::Err(SystemError::UnsupportedRequest {
-                        kind: "Unsupported query".to_string(),
-                    })
-                }
-            });
+                });
 
-        let vault = deps.api.addr_make("vault");
-        VAULTS
-            .save(&mut deps.storage, &vault, &Vault { whitelisted: true })
-            .unwrap();
+            // operator1's vault
+            VAULTS
+                .save(&mut deps.storage, &vault1, &Vault { whitelisted: true })
+                .unwrap();
 
+            // operator2's vault
+            VAULTS
+                .save(&mut deps.storage, &vault2, &Vault { whitelisted: true })
+                .unwrap();
+        }
+
+        // let's run the migration
         migration::map_vaults(deps.as_mut()).unwrap();
 
         let response =
-            query::list_vaults_by_operator(deps.as_ref(), operator_addr.clone(), 100, None)
-                .unwrap();
+            query::list_vaults_by_operator(deps.as_ref(), operator1.clone(), 100, None).unwrap();
 
         assert_eq!(response.0.len(), 1);
+        assert_eq!(response.0[0].vault, vault1);
+
+        let response =
+            query::list_vaults_by_operator(deps.as_ref(), operator2.clone(), 100, None).unwrap();
+
+        assert_eq!(response.0.len(), 1);
+        assert_eq!(response.0[0].vault, vault2);
     }
 
     #[test]
