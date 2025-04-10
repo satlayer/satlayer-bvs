@@ -75,7 +75,7 @@ mod migration {
 
     pub fn map_vaults(deps: DepsMut) -> Result<Response, ContractError> {
         let vaults = VAULTS
-            .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+            .keys(deps.storage, None, None, cosmwasm_std::Order::Ascending)
             .collect::<StdResult<Vec<_>>>()?;
 
         for (vault, _) in vaults {
