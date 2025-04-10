@@ -97,7 +97,10 @@ fn set_vault_whitelist_false_successfully() {
     };
 
     let response: VaultListResponse = tc.vault_router.query(&mut app, &msg).unwrap();
-    assert_eq!(response.0.len(), 1);
+
+    let vault_list = response.0;
+
+    assert_eq!(vault_list[0].vault, bank_vault);
 }
 
 #[test]
@@ -139,7 +142,10 @@ fn set_vault_whitelist_true_bank_vault_successfully() {
     };
 
     let response: VaultListResponse = tc.vault_router.query(&mut app, &msg).unwrap();
-    assert_eq!(response.0.len(), 1);
+
+    let vault_list = response.0;
+
+    assert_eq!(vault_list[0].vault, tc.bank_vault.addr());
 }
 
 #[test]
@@ -182,7 +188,9 @@ fn set_vault_whitelist_true_cw20_vault_successfully() {
 
     let response: VaultListResponse = tc.vault_router.query(&mut app, &msg).unwrap();
 
-    assert_eq!(response.0.len(), 1);
+    let vault_list = response.0;
+
+    assert_eq!(vault_list[0].vault, tc.cw20_vault.addr());
 }
 
 #[test]
