@@ -34,5 +34,5 @@ pub const WITHDRAWAL_LOCK_PERIOD: Item<Uint64> = Item::new("withdrawal_lock_peri
 /// The default value is 7 days.
 pub const DEFAULT_WITHDRAWAL_LOCK_PERIOD: Uint64 = Uint64::new(604800);
 
-/// Operator to its managed vaults
+/// Operator to its managed vaults. Key = (OperatorAddr, VaultAddr)
 pub const OPERATOR_VAULTS: Map<(&Addr, &Addr), ()> = Map::new("operator_vaults");
