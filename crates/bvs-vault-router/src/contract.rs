@@ -868,6 +868,55 @@ mod tests {
     }
 
     #[test]
+    fn test_map_vault_migration() {
+        let mut deps = mock_dependencies();
+        let vault_contract_addr = deps.api.addr_make("vault");
+        let operator_addr = deps.api.addr_make("operator");
+
+        let moved_operator_addr = operator_addr.clone();
+        deps.querier
+            .update_wasm(move |req: &WasmQuery| -> QuerierResult {
+                if let WasmQuery::Smart { contract_addr, msg } = req {
+                    if *contract_addr == deps.api.addr_make("vault").to_string() {
+                        let msg: VaultInfoQueryMsg = from_json(msg).unwrap();
+                        match msg {
+                            VaultInfoQueryMsg::VaultInfo {} => {
+                                let response = VaultInfoResponse {
+                                    router: vault_contract_addr.clone(),
+                                    operator: moved_operator_addr.clone(),
+                                };
+                                SystemResult::Ok(ContractResult::Ok(
+                                    to_json_binary(&response).unwrap(),
+                                ))
+                            }
+                        }
+                    } else {
+                        SystemResult::Err(SystemError::NoSuchContract {
+                            addr: contract_addr.to_string(),
+                        })
+                    }
+                } else {
+                    SystemResult::Err(SystemError::UnsupportedRequest {
+                        kind: "Unsupported query".to_string(),
+                    })
+                }
+            });
+
+        let vault = deps.api.addr_make("vault");
+        VAULTS
+            .save(&mut deps.storage, &vault, &Vault { whitelisted: true })
+            .unwrap();
+
+        migration::map_vaults(deps.as_mut()).unwrap();
+
+        let response =
+            query::list_vaults_by_operator(deps.as_ref(), operator_addr.clone(), 100, None)
+                .unwrap();
+
+        assert_eq!(response.0.len(), 1);
+    }
+
+    #[test]
     fn test_get_withdrawal_lock_period() {
         let deps = mock_dependencies();
 
