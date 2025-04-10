@@ -5,7 +5,7 @@ use bvs_registry::testing::RegistryContract;
 use bvs_vault_bank::msg::{ExecuteMsg, QueryMsg};
 use bvs_vault_bank::testing::VaultBankContract;
 use bvs_vault_base::error::VaultError;
-use bvs_vault_base::msg::{Recipient, RecipientAmount, VaultInfoResponse};
+use bvs_vault_base::msg::{JailDetail, Recipient, RecipientAmount, VaultInfoResponse};
 use bvs_vault_base::shares::QueuedWithdrawalInfo;
 use bvs_vault_router::{msg::ExecuteMsg as RouterExecuteMsg, testing::VaultRouterContract};
 use cosmwasm_std::testing::mock_env;
@@ -1007,6 +1007,195 @@ fn test_queue_redeem_withdrawal_with_different_recipient() {
         );
     }
 }
+
+fn test_transfer_asset_custody(test_percent: u64) {
+    let (mut app, tc) = TestContracts::init();
+    let app = &mut app;
+    let owner = app.api().addr_make("owner");
+    let denom = "denom";
+    let original_deposit_amount: u128 = 100_000_000;
+
+    let stakers = vec![
+        app.api().addr_make("staker/1"),
+        app.api().addr_make("staker/2"),
+        app.api().addr_make("staker/3"),
+    ];
+
+    // Fund tokens
+    {
+        for staker in stakers.iter() {
+            app.send_tokens(
+                owner.clone(),
+                staker.clone(),
+                &coins(original_deposit_amount, denom),
+            )
+            .unwrap();
+        }
+    }
+
+    // Deposit some tokens from staker to Vault
+    {
+        for staker in stakers.iter() {
+            let msg = ExecuteMsg::DepositFor(RecipientAmount {
+                recipient: staker.clone(),
+                amount: Uint128::new(original_deposit_amount),
+            });
+            tc.vault
+                .execute_with_funds(app, &staker, &msg, coins(original_deposit_amount, denom))
+                .expect("staker deposit failed");
+        }
+    }
+
+    // let's check staker shares and assets
+    let mut shares_before_slashed = std::collections::HashMap::new();
+    {
+        for staker in stakers.iter() {
+            let query_shares = QueryMsg::Shares {
+                staker: staker.to_string(),
+            };
+            let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+
+            // at this point shares to asset is 1:1
+            assert_eq!(shares, Uint128::new(original_deposit_amount));
+            shares_before_slashed.insert(staker.clone(), shares);
+
+            let query_assets = QueryMsg::Assets {
+                staker: staker.to_string(),
+            };
+
+            let assets: Uint128 = tc.vault.query(&app, &query_assets).unwrap();
+            assert_eq!(assets, Uint128::new(original_deposit_amount));
+        }
+    }
+
+    // let's enable slashing
+    {
+        let msg = ExecuteMsg::SetSlashable(true);
+        tc.vault.execute(app, &tc.router.addr(), &msg).unwrap();
+    }
+
+    // transfer asset custody
+    {
+        let vault_balance_preslash = app.wrap().query_balance(tc.vault.addr(), denom).unwrap();
+        let jail_address = app.api().addr_make("jail");
+        let msg = ExecuteMsg::TransferAssetCustody(JailDetail {
+            jail_address: jail_address.clone(),
+            percentage: test_percent,
+        });
+        tc.vault.execute(app, &tc.router.addr(), &msg).unwrap();
+
+        // 20% of vault balance should be transferred to jail
+        let expected_balance = vault_balance_preslash
+            .amount
+            .checked_mul(Uint128::new(test_percent.into()))
+            .unwrap()
+            .checked_div(Uint128::new(100))
+            .unwrap();
+
+        let jail_balance = app.wrap().query_balance(&jail_address, denom).unwrap();
+        assert_eq!(jail_balance.amount, expected_balance);
+
+        // all the staker's assets should be reduced by 20% and shares should be the same.
+        for staker in stakers.iter() {
+            let query_assets = QueryMsg::Assets {
+                staker: staker.to_string(),
+            };
+            let assets: Uint128 = tc.vault.query(&app, &query_assets).unwrap();
+            assert_eq!(
+                assets,
+                Uint128::new(original_deposit_amount)
+                    .checked_mul(Uint128::new((100 - test_percent).into()))
+                    .unwrap()
+                    .checked_div(Uint128::new(100))
+                    .unwrap()
+            );
+
+            let query_shares = QueryMsg::Shares {
+                staker: staker.to_string(),
+            };
+
+            // shares should stay the same just that the assets are reduced per shares
+            let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+            assert_eq!(shares, shares_before_slashed.get(staker).unwrap());
+        }
+
+        // let's check the vault balance
+        // it should be reduced by 20% of the total balance
+        let vault_balance_post_slash = app.wrap().query_balance(tc.vault.addr(), denom).unwrap();
+        assert_eq!(
+            vault_balance_post_slash.amount,
+            vault_balance_preslash
+                .amount
+                .checked_mul(Uint128::new((100 - test_percent).into()))
+                .unwrap()
+                .checked_div(Uint128::new(100))
+                .unwrap()
+        );
+    }
+}
+
+#[test]
+fn test_transfer_asset_custody_every_percent() {
+    // go through all the percent from 1 to 100 of slashing threshold
+    // execept 0 percent - not allowed
+    for i in 1..100 {
+        test_transfer_asset_custody(i);
+    }
+}
+
+#[test]
+fn test_transfer_asset_custody_zero_percent() {
+    let (mut app, tc) = TestContracts::init();
+    let app = &mut app;
+    let owner = app.api().addr_make("owner");
+    let denom = "denom";
+    let original_deposit_amount: u128 = 100_000_000;
+
+    let staker = app.api().addr_make("staker/1");
+
+    // Fund tokens
+    {
+        app.send_tokens(
+            owner.clone(),
+            staker.clone(),
+            &coins(original_deposit_amount, denom),
+        )
+        .unwrap();
+    }
+
+    // Deposit some tokens from staker to Vault
+    {
+        let msg = ExecuteMsg::DepositFor(RecipientAmount {
+            recipient: staker.clone(),
+            amount: Uint128::new(original_deposit_amount),
+        });
+        tc.vault
+            .execute_with_funds(app, &staker, &msg, coins(original_deposit_amount, denom))
+            .expect("staker deposit failed");
+    }
+
+    // let's enable slashing
+    {
+        let msg = ExecuteMsg::SetSlashable(true);
+        tc.vault.execute(app, &tc.router.addr(), &msg).unwrap();
+    }
+
+    {
+        // transfer asset custody
+        let msg = ExecuteMsg::TransferAssetCustody(JailDetail {
+            jail_address: app.api().addr_make("jail"),
+            percentage: 0,
+        });
+        let res = tc.vault.execute(app, &tc.router.addr(), &msg);
+
+        // zero percent slashing is the same as not slashing at all
+        // so it should zero percent slashing is not allowed.
+        // should fail.
+        assert!(res.is_err());
+    }
+}
+
+// all the staker's assets should be the same and shares should be the same
 
 #[test]
 fn test_vault_info() {
