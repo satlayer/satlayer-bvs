@@ -564,6 +564,43 @@ fn test_transfer_asset_custody_every_percent() {
 }
 
 #[test]
+fn test_negative_transfer_asset_custody() {
+    let app = &mut App::default();
+    let TestContracts { vault, router, .. } = TestContracts::init(app);
+
+    let jail_address = app.api().addr_make("jail_address");
+
+    {
+        let msg = ExecuteMsg::TransferAssetCustody(JailDetail {
+            jail_address: jail_address.clone(),
+            percentage: 0,
+        });
+
+        let res = vault.execute(app, router.addr(), &msg);
+
+        // slashing disabled should not allow.
+        assert!(res.is_err());
+    }
+
+    // enable slashing
+    {
+        let msg = ExecuteMsg::SetSlashable(true);
+        vault.execute(app, router.addr(), &msg).unwrap();
+    }
+
+    {
+        // slash is enabled but 0 percent slashing is not slashing at all.
+        // so not allowed.
+        let msg = ExecuteMsg::TransferAssetCustody(JailDetail {
+            jail_address: jail_address.clone(),
+            percentage: 0,
+        });
+        let res = vault.execute(app, router.addr(), &msg);
+        assert!(res.is_err());
+    }
+}
+
+#[test]
 fn test_deposit_for_and_withdraw_to_other_address() {
     let app = &mut App::default();
     let TestContracts { vault, cw20, .. } = TestContracts::init(app);

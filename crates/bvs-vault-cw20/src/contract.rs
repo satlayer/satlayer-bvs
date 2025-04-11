@@ -71,6 +71,7 @@ pub fn execute(
         }
         ExecuteMsg::SetSlashable(flag) => execute::set_slashability(deps, info, env, flag),
         ExecuteMsg::TransferAssetCustody(msg) => {
+            msg.validate(deps.api)?;
             execute::transfer_asset_custody(deps, env, info, msg)
         }
     }
@@ -426,13 +427,14 @@ mod query {
         let vault = offset::VirtualOffset::load(&deps, balance)?;
         let cw20_contract = token::get_cw20_contract(deps.storage)?;
         let version = cw2::get_contract_version(deps.storage)?;
+        let slashable = bvs_vault_base::slashing::get_slashable(deps.storage)?;
         Ok(VaultInfoResponse {
             total_shares: vault.total_shares(),
             total_assets: vault.total_assets(),
             router: bvs_vault_base::router::get_router(deps.storage)?,
             pauser: bvs_pauser::api::get_pauser(deps.storage)?,
             operator: bvs_vault_base::router::get_operator(deps.storage)?,
-            slashing: false,
+            slashing: slashable,
             asset_id: format!(
                 "cosmos:{}/cw20:{}",
                 env.block.chain_id,
