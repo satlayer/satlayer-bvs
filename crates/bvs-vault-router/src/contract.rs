@@ -66,7 +66,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
         cw2::ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     match old_version.major {
-        1 => migration::map_vaults(deps),
+        1 => migration::migrate_vaults_to_index_operator(deps),
         _ => Ok(Response::default()),
     }
 }
@@ -76,7 +76,7 @@ mod migration {
 
     use super::*;
 
-    pub fn map_vaults(deps: DepsMut) -> Result<Response, ContractError> {
+    pub fn migrate_vaults_to_index_operator(deps: DepsMut) -> Result<Response, ContractError> {
         let vaults = VAULTS
             .keys(deps.storage, None, None, cosmwasm_std::Order::Ascending)
             .collect::<StdResult<Vec<_>>>()?;
@@ -925,7 +925,7 @@ mod tests {
         }
 
         // let's run the migration
-        migration::map_vaults(deps.as_mut()).unwrap();
+        migration::migrate_vaults_to_index_operator(deps.as_mut()).unwrap();
 
         let response =
             query::list_vaults_by_operator(deps.as_ref(), operator1.clone(), 100, None).unwrap();
