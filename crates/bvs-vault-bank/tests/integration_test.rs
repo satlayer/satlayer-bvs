@@ -1124,7 +1124,7 @@ fn test_transfer_asset_custody(slash_percent: u64) {
 
             // what this above two assert mean is
             // the shares are not reduced but the assets are reduced due to vault wise slashing
-            // asset to share in this case is not out of peg with 1:1 ratio
+            // asset to share in this case is out of peg with 1:1 ratio
             // Share are now inflationary
             // And that is intended.
         }
