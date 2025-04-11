@@ -518,35 +518,38 @@ fn test_transfer_asset_custody(slash_percent: u64) {
 
         let expected_vault_balance_post_slash = vault_balance_preslash - expected_jail_balance;
 
+        // the total vault balance should get slashed by slash_percent%
         assert_eq!(jail_balance, expected_jail_balance);
         assert_eq!(vault_balance_post_slash, expected_vault_balance_post_slash);
 
         // all the stakers should have same shares but reduced asset
         for i in 0..staker_total {
             let staker = app.api().addr_make(&format!("staker/{}", i));
-            let query_shares = QueryMsg::Shares {
+            let get_shares_msg = QueryMsg::Shares {
                 staker: staker.to_string(),
             };
 
             // shares of the staker stays the same
-            let shares: Uint128 = vault.query(&app, &query_shares).unwrap();
+            let shares: Uint128 = vault.query(&app, &get_shares_msg).unwrap();
             assert_eq!(shares, Uint128::new(original_stake_amount));
 
-            // they should have reduced asset now
-            let asset_post_slash: Uint128 = vault
-                .query(app, &QueryMsg::ConvertToAssets { shares })
-                .unwrap();
+            let get_assets_msg = QueryMsg::Assets {
+                staker: staker.to_string(),
+            };
+            let assets: Uint128 = vault.query(&app, &get_assets_msg).unwrap();
 
-            // reduce the asset by the slash percent
-            let expected_asset_post_slash = Uint128::from(original_stake_amount)
+            // assets of the staker is reduced by the slash_percent
+            let expected_assets_for_stake_post_slash = Uint128::from(original_stake_amount)
                 .checked_sub(
                     Uint128::from(original_stake_amount)
                         .checked_mul(Uint128::from(slash_percent))
                         .unwrap()
-                        .checked_div(Uint128::from(100))
+                        .checked_div(Uint128::new(100))
                         .unwrap(),
                 )
                 .unwrap();
+
+            assert_eq!(assets, expected_assets_for_stake_post_slash);
         }
     }
 }
