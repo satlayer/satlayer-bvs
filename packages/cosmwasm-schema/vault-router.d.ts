@@ -94,12 +94,16 @@ export interface TransferOwnership {
  * QueryMsg ListVaults: returns a list of vaults. You can provide `limit` and `start_after`
  * to paginate the results. The max `limit` is 100.
  *
+ * QueryMsg ListVaultsByOperator: returns a list of vaults managed by given operator. You
+ * can provide `limit` and `start_after` to paginate the results. The max `limit` is 100.
+ *
  * QueryMsg WithdrawalLockPeriod: returns the withdrawal lock period.
  */
 export interface QueryMsg {
   is_whitelisted?: IsWhitelisted;
   is_validating?: IsValidating;
   list_vaults?: ListVaults;
+  list_vaults_by_operator?: ListVaultsByOperator;
   withdrawal_lock_period?: WithdrawalLockPeriod;
 }
 
@@ -113,6 +117,12 @@ export interface IsWhitelisted {
 
 export interface ListVaults {
   limit?: number | null;
+  start_after?: null | string;
+}
+
+export interface ListVaultsByOperator {
+  limit?: number | null;
+  operator: string;
   start_after?: null | string;
 }
 

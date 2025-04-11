@@ -9,6 +9,12 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
+pub enum MigrateMsg {
+    /// This is a type of payload that trigger the migration of OPERATOR_VAULTS state.
+    MapVaults {},
+}
+
+#[cw_serde]
 #[derive(bvs_pauser::api::Display)]
 pub enum ExecuteMsg {
     /// ExecuteMsg SetVault the vault contract in the router and whitelist (true/false) it.
@@ -42,6 +48,16 @@ pub enum QueryMsg {
     /// The max `limit` is 100.
     #[returns(VaultListResponse)]
     ListVaults {
+        limit: Option<u32>,
+        start_after: Option<String>,
+    },
+
+    /// QueryMsg ListVaultsByOperator: returns a list of vaults managed by given operator.
+    /// You can provide `limit` and `start_after` to paginate the results.
+    /// The max `limit` is 100.
+    #[returns(VaultListResponse)]
+    ListVaultsByOperator {
+        operator: String,
         limit: Option<u32>,
         start_after: Option<String>,
     },
