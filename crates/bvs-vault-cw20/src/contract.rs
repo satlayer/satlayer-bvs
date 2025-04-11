@@ -77,7 +77,6 @@ pub fn execute(
 }
 
 mod execute {
-    use std::error::Error;
 
     use crate::error::ContractError;
     use crate::token;

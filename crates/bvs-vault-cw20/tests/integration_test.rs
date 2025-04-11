@@ -473,7 +473,7 @@ fn test_transfer_asset_custody(slash_percent: u64) {
             recipient: staker.clone(),
             amount: Uint128::new(original_stake_amount),
         });
-        cw20.increase_allowance(app, &staker, &vault.addr(), 100e15 as u128);
+        cw20.increase_allowance(app, &staker, vault.addr(), 100e15 as u128);
         cw20.fund(app, &staker, 100e15 as u128);
         vault.execute(app, &staker, &msg).unwrap();
 
@@ -481,16 +481,16 @@ fn test_transfer_asset_custody(slash_percent: u64) {
             let staker_balance = cw20.balance(app, &staker);
             assert_eq!(staker_balance, (100e15 as u128) - (original_stake_amount));
 
-            let contract_balance = cw20.balance(app, &vault.addr());
+            let contract_balance = cw20.balance(app, vault.addr());
             assert_eq!(contract_balance, original_stake_amount * (i + 1));
 
             let query_shares = QueryMsg::Shares {
                 staker: staker.to_string(),
             };
-            let shares: Uint128 = vault.query(&app, &query_shares).unwrap();
+            let shares: Uint128 = vault.query(app, &query_shares).unwrap();
             assert_eq!(shares, Uint128::new(original_stake_amount));
 
-            let total_shares: Uint128 = vault.query(&app, &QueryMsg::TotalShares {}).unwrap();
+            let total_shares: Uint128 = vault.query(app, &QueryMsg::TotalShares {}).unwrap();
             assert_eq!(total_shares, Uint128::new(original_stake_amount * (i + 1)));
         }
     }
@@ -502,7 +502,7 @@ fn test_transfer_asset_custody(slash_percent: u64) {
     }
 
     let jail_address = app.api().addr_make("jail_address");
-    let vault_balance_preslash = cw20.balance(app, &vault.addr());
+    let vault_balance_preslash = cw20.balance(app, vault.addr());
     {
         let msg = ExecuteMsg::TransferAssetCustody(JailDetail {
             jail_address: jail_address.clone(),
@@ -510,7 +510,7 @@ fn test_transfer_asset_custody(slash_percent: u64) {
         });
         vault.execute(app, router.addr(), &msg).unwrap();
 
-        let vault_balance_post_slash = cw20.balance(app, &vault.addr());
+        let vault_balance_post_slash = cw20.balance(app, vault.addr());
 
         let jail_balance = cw20.balance(app, &jail_address);
 
@@ -530,13 +530,13 @@ fn test_transfer_asset_custody(slash_percent: u64) {
             };
 
             // shares of the staker stays the same
-            let shares: Uint128 = vault.query(&app, &get_shares_msg).unwrap();
+            let shares: Uint128 = vault.query(app, &get_shares_msg).unwrap();
             assert_eq!(shares, Uint128::new(original_stake_amount));
 
             let get_assets_msg = QueryMsg::Assets {
                 staker: staker.to_string(),
             };
-            let assets: Uint128 = vault.query(&app, &get_assets_msg).unwrap();
+            let assets: Uint128 = vault.query(app, &get_assets_msg).unwrap();
 
             // assets of the staker is reduced by the slash_percent
             let expected_assets_for_stake_post_slash = Uint128::from(original_stake_amount)
