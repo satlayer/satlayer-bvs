@@ -1154,7 +1154,7 @@ fn test_transfer_asset_custody_every_percent() {
 }
 
 #[test]
-fn test_transfer_asset_custody_zero_percent() {
+fn test_negative_transfer_asset_custody() {
     let (mut app, tc) = TestContracts::init();
     let app = &mut app;
     let owner = app.api().addr_make("owner");
@@ -1184,6 +1184,18 @@ fn test_transfer_asset_custody_zero_percent() {
             .expect("staker deposit failed");
     }
 
+    {
+        // transfer asset custody
+        let msg = ExecuteMsg::TransferAssetCustody(JailDetail {
+            jail_address: app.api().addr_make("jail"),
+            percentage: 0,
+        });
+        let res = tc.vault.execute(app, tc.router.addr(), &msg);
+
+        // slashing is not enabled yet , so should fail
+        assert!(res.is_err());
+    }
+
     // let's enable slashing
     {
         let msg = ExecuteMsg::SetSlashable(true);
@@ -1201,6 +1213,20 @@ fn test_transfer_asset_custody_zero_percent() {
         // zero percent slashing is the same as not slashing at all
         // so it should zero percent slashing is not allowed.
         // should fail.
+        assert!(res.is_err());
+    }
+
+    {
+        // transfer asset custody
+        let msg = ExecuteMsg::TransferAssetCustody(JailDetail {
+            jail_address: app.api().addr_make("jail"),
+            percentage: 1,
+        });
+
+        let res = tc.vault.execute(app, tc.vault.addr(), &msg);
+
+        // called by not router
+        // so should fail
         assert!(res.is_err());
     }
 }
