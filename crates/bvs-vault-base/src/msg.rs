@@ -82,8 +82,8 @@ impl JailDetail {
 
         api.addr_validate(self.jail_address.as_str())?;
 
-        // logical to also check if the precentage is not under 0.
-        // But since precentage type is u64, it is not possible to be negative.
+        // logical to also check if the percentage is not under 0.
+        // But since percentage type is u64, it is not possible to be negative.
         // will fail at parsing.
 
         Ok(())
