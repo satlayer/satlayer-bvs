@@ -1008,14 +1008,14 @@ fn test_queue_redeem_withdrawal_with_different_recipient() {
     }
 }
 
-fn test_transfer_asset_custody(test_percent: u64) {
+fn test_transfer_asset_custody(slash_percent: u64) {
     let (mut app, tc) = TestContracts::init();
     let app = &mut app;
     let owner = app.api().addr_make("owner");
     let denom = "denom";
     let original_deposit_amount: u128 = 100_000_000;
 
-    let stakers = vec![
+    let stakers = [
         app.api().addr_make("staker/1"),
         app.api().addr_make("staker/2"),
         app.api().addr_make("staker/3"),
@@ -1041,7 +1041,7 @@ fn test_transfer_asset_custody(test_percent: u64) {
                 amount: Uint128::new(original_deposit_amount),
             });
             tc.vault
-                .execute_with_funds(app, &staker, &msg, coins(original_deposit_amount, denom))
+                .execute_with_funds(app, staker, &msg, coins(original_deposit_amount, denom))
                 .expect("staker deposit failed");
         }
     }
@@ -1053,7 +1053,7 @@ fn test_transfer_asset_custody(test_percent: u64) {
             let query_shares = QueryMsg::Shares {
                 staker: staker.to_string(),
             };
-            let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+            let shares: Uint128 = tc.vault.query(app, &query_shares).unwrap();
 
             // at this point shares to asset is 1:1
             assert_eq!(shares, Uint128::new(original_deposit_amount));
@@ -1063,7 +1063,7 @@ fn test_transfer_asset_custody(test_percent: u64) {
                 staker: staker.to_string(),
             };
 
-            let assets: Uint128 = tc.vault.query(&app, &query_assets).unwrap();
+            let assets: Uint128 = tc.vault.query(app, &query_assets).unwrap();
             assert_eq!(assets, Uint128::new(original_deposit_amount));
         }
     }
@@ -1071,7 +1071,7 @@ fn test_transfer_asset_custody(test_percent: u64) {
     // let's enable slashing
     {
         let msg = ExecuteMsg::SetSlashable(true);
-        tc.vault.execute(app, &tc.router.addr(), &msg).unwrap();
+        tc.vault.execute(app, tc.router.addr(), &msg).unwrap();
     }
 
     // transfer asset custody
@@ -1080,14 +1080,14 @@ fn test_transfer_asset_custody(test_percent: u64) {
         let jail_address = app.api().addr_make("jail");
         let msg = ExecuteMsg::TransferAssetCustody(JailDetail {
             jail_address: jail_address.clone(),
-            percentage: test_percent,
+            percentage: slash_percent,
         });
-        tc.vault.execute(app, &tc.router.addr(), &msg).unwrap();
+        tc.vault.execute(app, tc.router.addr(), &msg).unwrap();
 
-        // 20% of vault balance should be transferred to jail
+        // x% of vault balance should be transferred to jail
         let expected_balance = vault_balance_preslash
             .amount
-            .checked_mul(Uint128::new(test_percent.into()))
+            .checked_mul(Uint128::new(slash_percent.into()))
             .unwrap()
             .checked_div(Uint128::new(100))
             .unwrap();
@@ -1095,16 +1095,20 @@ fn test_transfer_asset_custody(test_percent: u64) {
         let jail_balance = app.wrap().query_balance(&jail_address, denom).unwrap();
         assert_eq!(jail_balance.amount, expected_balance);
 
-        // all the staker's assets should be reduced by 20% and shares should be the same.
+        // all the staker's assets should be reduced by x% but shares should be the same.
+        // Because the relativity of how much each staker should get stays the same.
+        // Everyone asset are indiscriminately slashed by x%
         for staker in stakers.iter() {
             let query_assets = QueryMsg::Assets {
                 staker: staker.to_string(),
             };
-            let assets: Uint128 = tc.vault.query(&app, &query_assets).unwrap();
+            let assets: Uint128 = tc.vault.query(app, &query_assets).unwrap();
+
+            // assets should be reduced by x%
             assert_eq!(
                 assets,
                 Uint128::new(original_deposit_amount)
-                    .checked_mul(Uint128::new((100 - test_percent).into()))
+                    .checked_mul(Uint128::new((100 - slash_percent).into()))
                     .unwrap()
                     .checked_div(Uint128::new(100))
                     .unwrap()
@@ -1115,18 +1119,24 @@ fn test_transfer_asset_custody(test_percent: u64) {
             };
 
             // shares should stay the same just that the assets are reduced per shares
-            let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+            let shares: Uint128 = tc.vault.query(app, &query_shares).unwrap();
             assert_eq!(shares, shares_before_slashed.get(staker).unwrap());
+
+            // what this above two assert mean is
+            // the shares are not reduced but the assets are reduced due to vault wise slashing
+            // asset to share in this case is not out of peg with 1:1 ratio
+            // Share are now inflationary
+            // And that is intended.
         }
 
         // let's check the vault balance
-        // it should be reduced by 20% of the total balance
+        // it should be reduced by x% of the total balance preslash
         let vault_balance_post_slash = app.wrap().query_balance(tc.vault.addr(), denom).unwrap();
         assert_eq!(
             vault_balance_post_slash.amount,
             vault_balance_preslash
                 .amount
-                .checked_mul(Uint128::new((100 - test_percent).into()))
+                .checked_mul(Uint128::new((100 - slash_percent).into()))
                 .unwrap()
                 .checked_div(Uint128::new(100))
                 .unwrap()
@@ -1177,7 +1187,7 @@ fn test_transfer_asset_custody_zero_percent() {
     // let's enable slashing
     {
         let msg = ExecuteMsg::SetSlashable(true);
-        tc.vault.execute(app, &tc.router.addr(), &msg).unwrap();
+        tc.vault.execute(app, tc.router.addr(), &msg).unwrap();
     }
 
     {
@@ -1186,7 +1196,7 @@ fn test_transfer_asset_custody_zero_percent() {
             jail_address: app.api().addr_make("jail"),
             percentage: 0,
         });
-        let res = tc.vault.execute(app, &tc.router.addr(), &msg);
+        let res = tc.vault.execute(app, tc.router.addr(), &msg);
 
         // zero percent slashing is the same as not slashing at all
         // so it should zero percent slashing is not allowed.

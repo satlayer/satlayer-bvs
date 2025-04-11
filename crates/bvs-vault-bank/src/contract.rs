@@ -565,9 +565,7 @@ mod tests {
                 router::set_router(&mut deps.storage, &router).unwrap();
                 deps.querier.update_wasm(move |query| match query {
                     WasmQuery::Smart { .. } => {
-                        return SystemResult::Ok(ContractResult::Ok(
-                            to_json_binary(&true).unwrap(),
-                        ));
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap()))
                     }
                     _ => SystemResult::Err(SystemError::Unknown {}),
                 });
