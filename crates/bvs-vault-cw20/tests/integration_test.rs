@@ -2,7 +2,7 @@ use bvs_library::testing::{Cw20TokenContract, TestingContract};
 use bvs_pauser::testing::PauserContract;
 use bvs_registry::msg::Metadata;
 use bvs_registry::testing::RegistryContract;
-use bvs_vault_base::msg::{Recipient, RecipientAmount, VaultInfoResponse};
+use bvs_vault_base::msg::{JailDetail, Recipient, RecipientAmount, VaultInfoResponse};
 use bvs_vault_base::shares::QueuedWithdrawalInfo;
 use bvs_vault_base::VaultError;
 use bvs_vault_cw20::msg::{ExecuteMsg, QueryMsg};
@@ -452,6 +452,111 @@ fn test_deposit_withdraw() {
         };
         let shares: Uint128 = vault.query(app, &query_shares).unwrap();
         assert_eq!(shares, Uint128::new(0));
+    }
+}
+
+fn test_transfer_asset_custody(slash_percent: u64) {
+    let app = &mut App::default();
+    let TestContracts {
+        vault,
+        cw20,
+        router,
+        ..
+    } = TestContracts::init(app);
+
+    let original_stake_amount = 200;
+    let staker_total = 10;
+
+    for i in 0..staker_total {
+        let staker = app.api().addr_make(&format!("staker/{}", i));
+        let msg = ExecuteMsg::DepositFor(RecipientAmount {
+            recipient: staker.clone(),
+            amount: Uint128::new(original_stake_amount),
+        });
+        cw20.increase_allowance(app, &staker, &vault.addr(), 100e15 as u128);
+        cw20.fund(app, &staker, 100e15 as u128);
+        vault.execute(app, &staker, &msg).unwrap();
+
+        {
+            let staker_balance = cw20.balance(app, &staker);
+            assert_eq!(staker_balance, (100e15 as u128) - (original_stake_amount));
+
+            let contract_balance = cw20.balance(app, &vault.addr());
+            assert_eq!(contract_balance, original_stake_amount * (i + 1));
+
+            let query_shares = QueryMsg::Shares {
+                staker: staker.to_string(),
+            };
+            let shares: Uint128 = vault.query(&app, &query_shares).unwrap();
+            assert_eq!(shares, Uint128::new(original_stake_amount));
+
+            let total_shares: Uint128 = vault.query(&app, &QueryMsg::TotalShares {}).unwrap();
+            assert_eq!(total_shares, Uint128::new(original_stake_amount * (i + 1)));
+        }
+    }
+
+    // enable slashing
+    {
+        let msg = ExecuteMsg::SetSlashable(true);
+        vault.execute(app, router.addr(), &msg).unwrap();
+    }
+
+    let jail_address = app.api().addr_make("jail_address");
+    let vault_balance_preslash = cw20.balance(app, &vault.addr());
+    {
+        let msg = ExecuteMsg::TransferAssetCustody(JailDetail {
+            jail_address: jail_address.clone(),
+            percentage: slash_percent,
+        });
+        vault.execute(app, router.addr(), &msg).unwrap();
+
+        let vault_balance_post_slash = cw20.balance(app, &vault.addr());
+
+        let jail_balance = cw20.balance(app, &jail_address);
+
+        let expected_jail_balance = vault_balance_preslash * (slash_percent as u128) / 100;
+
+        let expected_vault_balance_post_slash = vault_balance_preslash - expected_jail_balance;
+
+        assert_eq!(jail_balance, expected_jail_balance);
+        assert_eq!(vault_balance_post_slash, expected_vault_balance_post_slash);
+
+        // all the stakers should have same shares but reduced asset
+        for i in 0..staker_total {
+            let staker = app.api().addr_make(&format!("staker/{}", i));
+            let query_shares = QueryMsg::Shares {
+                staker: staker.to_string(),
+            };
+
+            // shares of the staker stays the same
+            let shares: Uint128 = vault.query(&app, &query_shares).unwrap();
+            assert_eq!(shares, Uint128::new(original_stake_amount));
+
+            // they should have reduced asset now
+            let asset_post_slash: Uint128 = vault
+                .query(app, &QueryMsg::ConvertToAssets { shares })
+                .unwrap();
+
+            // reduce the asset by the slash percent
+            let expected_asset_post_slash = Uint128::from(original_stake_amount)
+                .checked_sub(
+                    Uint128::from(original_stake_amount)
+                        .checked_mul(Uint128::from(slash_percent))
+                        .unwrap()
+                        .checked_div(Uint128::from(100))
+                        .unwrap(),
+                )
+                .unwrap();
+        }
+    }
+}
+
+#[test]
+fn test_transfer_asset_custody_every_percent() {
+    // test slash precent from 1 to 100
+    // except 0% slashing, which is not allowed.
+    for i in 1..100 {
+        test_transfer_asset_custody(i);
     }
 }
 
