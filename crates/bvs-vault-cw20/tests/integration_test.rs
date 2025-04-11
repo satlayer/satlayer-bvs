@@ -64,7 +64,7 @@ fn test_not_whitelisted() {
         recipient: staker.clone(),
         amount: Uint128::new(20),
     });
-    cw20.increase_allowance(app, &staker, &vault.addr(), 100e15 as u128);
+    cw20.increase_allowance(app, &staker, vault.addr(), 100e15 as u128);
     cw20.fund(app, &staker, 100e15 as u128);
 
     let err = vault.execute(app, &staker, &msg).unwrap_err();
@@ -82,7 +82,7 @@ fn test_not_enough_balance_deposit() {
         recipient: staker.clone(),
         amount: Uint128::new(100e15 as u128),
     });
-    cw20.increase_allowance(app, &staker, &vault.addr(), 100e15 as u128);
+    cw20.increase_allowance(app, &staker, vault.addr(), 100e15 as u128);
     cw20.fund(app, &staker, 50e15 as u128);
 
     let err = vault.execute(app, &staker, &msg).unwrap_err();
@@ -103,7 +103,7 @@ fn test_withdraw_overflow() {
         recipient: staker.clone(),
         amount: Uint128::new(100e15 as u128),
     });
-    cw20.increase_allowance(app, &staker, &vault.addr(), 100e15 as u128);
+    cw20.increase_allowance(app, &staker, vault.addr(), 100e15 as u128);
     cw20.fund(app, &staker, 100e15 as u128);
     vault.execute(app, &staker, &msg).unwrap();
 
@@ -188,7 +188,7 @@ fn test_withdraw_error_when_operator_is_validating() {
         recipient: staker.clone(),
         amount: Uint128::new(100e15 as u128),
     });
-    cw20.increase_allowance(app, &staker, &vault.addr(), 100e15 as u128);
+    cw20.increase_allowance(app, &staker, vault.addr(), 100e15 as u128);
     cw20.fund(app, &staker, 100e15 as u128);
     vault.execute(app, &staker, &msg).unwrap();
 
@@ -219,7 +219,7 @@ fn test_multi_deposit_withdraw_non_linear_exchange_rates() {
             recipient: staker.clone(),
             amount: Uint128::new(stake_amounts),
         });
-        cw20.increase_allowance(app, &staker, &vault.addr(), 100e15 as u128);
+        cw20.increase_allowance(app, &staker, vault.addr(), 100e15 as u128);
         cw20.fund(app, &staker, 100e15 as u128);
         vault.execute(app, &staker, &msg).unwrap();
 
@@ -227,26 +227,26 @@ fn test_multi_deposit_withdraw_non_linear_exchange_rates() {
             let staker_balance = cw20.balance(app, &staker);
             assert_eq!(staker_balance, (100e15 as u128) - (stake_amounts));
 
-            let contract_balance = cw20.balance(app, &vault.addr());
+            let contract_balance = cw20.balance(app, vault.addr());
             assert_eq!(contract_balance, stake_amounts * (i + 1));
 
             let query_shares = QueryMsg::Shares {
                 staker: staker.to_string(),
             };
-            let shares: Uint128 = vault.query(&app, &query_shares).unwrap();
+            let shares: Uint128 = vault.query(app, &query_shares).unwrap();
             assert_eq!(shares, Uint128::new(stake_amounts));
 
-            let total_shares: Uint128 = vault.query(&app, &QueryMsg::TotalShares {}).unwrap();
+            let total_shares: Uint128 = vault.query(app, &QueryMsg::TotalShares {}).unwrap();
             assert_eq!(total_shares, Uint128::new(stake_amounts * (i + 1)));
         }
     }
 
     // the donation should skew exchange rate to the staker's favor.
     let attacker = app.api().addr_make("attacker");
-    let donation_amount = 1200 as u128;
-    cw20.increase_allowance(app, &attacker, &vault.addr(), 100e15 as u128);
+    let donation_amount = 1200_u128;
+    cw20.increase_allowance(app, &attacker, vault.addr(), 100e15 as u128);
     cw20.fund(app, &attacker, 100e15 as u128);
-    cw20.transfer(app, &attacker, &vault.addr(), donation_amount);
+    cw20.transfer(app, &attacker, vault.addr(), donation_amount);
     let shares: Uint128 = vault
         .query(
             app,
@@ -261,7 +261,7 @@ fn test_multi_deposit_withdraw_non_linear_exchange_rates() {
     let total_shares: Uint128 = vault.query(app, &QueryMsg::TotalShares {}).unwrap();
     assert_eq!(total_shares, Uint128::new(stake_amounts * staker_total));
 
-    let balance = cw20.balance(app, &vault.addr());
+    let balance = cw20.balance(app, vault.addr());
     assert_eq!(balance, stake_amounts * staker_total + donation_amount);
 
     fn get_staker_asset_profit(app: &App, vault: &VaultCw20Contract, shares: Uint128) -> Uint128 {
@@ -303,16 +303,16 @@ fn test_multi_deposit_withdraw_non_linear_exchange_rates() {
                 let query_shares = QueryMsg::Shares {
                     staker: staker.to_string(),
                 };
-                let shares: Uint128 = vault.query(&app, &query_shares).unwrap();
+                let shares: Uint128 = vault.query(app, &query_shares).unwrap();
                 assert_eq!(shares, Uint128::new(0));
             }
         }
     }
 
-    let total_shares: Uint128 = vault.query(&app, &QueryMsg::TotalShares {}).unwrap();
+    let total_shares: Uint128 = vault.query(app, &QueryMsg::TotalShares {}).unwrap();
     assert_eq!(total_shares, Uint128::new(0));
 
-    let balance = cw20.balance(app, &vault.addr());
+    let balance = cw20.balance(app, vault.addr());
     assert_eq!(balance, total_balance_before - total_asset_withdrawn.u128());
 }
 
@@ -330,7 +330,7 @@ fn test_multi_deposit_withdraw() {
             recipient: staker.clone(),
             amount: Uint128::new(stake_amounts),
         });
-        cw20.increase_allowance(app, &staker, &vault.addr(), 100e15 as u128);
+        cw20.increase_allowance(app, &staker, vault.addr(), 100e15 as u128);
         cw20.fund(app, &staker, 100e15 as u128);
         vault.execute(app, &staker, &msg).unwrap();
 
@@ -338,16 +338,16 @@ fn test_multi_deposit_withdraw() {
             let staker_balance = cw20.balance(app, &staker);
             assert_eq!(staker_balance, (100e15 as u128) - (stake_amounts));
 
-            let contract_balance = cw20.balance(app, &vault.addr());
+            let contract_balance = cw20.balance(app, vault.addr());
             assert_eq!(contract_balance, stake_amounts * (i + 1));
 
             let query_shares = QueryMsg::Shares {
                 staker: staker.to_string(),
             };
-            let shares: Uint128 = vault.query(&app, &query_shares).unwrap();
+            let shares: Uint128 = vault.query(app, &query_shares).unwrap();
             assert_eq!(shares, Uint128::new(stake_amounts));
 
-            let total_shares: Uint128 = vault.query(&app, &QueryMsg::TotalShares {}).unwrap();
+            let total_shares: Uint128 = vault.query(app, &QueryMsg::TotalShares {}).unwrap();
             assert_eq!(total_shares, Uint128::new(stake_amounts * (i + 1)));
         }
     }
@@ -365,7 +365,7 @@ fn test_multi_deposit_withdraw() {
                 let staker_balance = cw20.balance(app, &staker);
                 assert_eq!(staker_balance, 100e15 as u128);
 
-                let contract_balance = cw20.balance(app, &vault.addr());
+                let contract_balance = cw20.balance(app, vault.addr());
                 assert_eq!(
                     contract_balance,
                     (stake_amounts * staker_total) - stake_amounts * (i + 1)
@@ -374,13 +374,13 @@ fn test_multi_deposit_withdraw() {
                 let query_shares = QueryMsg::Shares {
                     staker: staker.to_string(),
                 };
-                let shares: Uint128 = vault.query(&app, &query_shares).unwrap();
+                let shares: Uint128 = vault.query(app, &query_shares).unwrap();
                 assert_eq!(shares, Uint128::new(0));
             }
         }
     }
 
-    let total_shares: Uint128 = vault.query(&app, &QueryMsg::TotalShares {}).unwrap();
+    let total_shares: Uint128 = vault.query(app, &QueryMsg::TotalShares {}).unwrap();
     assert_eq!(total_shares, Uint128::new(0));
 }
 
@@ -394,7 +394,7 @@ fn test_deposit_withdraw() {
         recipient: staker.clone(),
         amount: Uint128::new(80_189_462_987_009_847),
     });
-    cw20.increase_allowance(app, &staker, &vault.addr(), 100e15 as u128);
+    cw20.increase_allowance(app, &staker, vault.addr(), 100e15 as u128);
     cw20.fund(app, &staker, 100e15 as u128);
     vault.execute(app, &staker, &msg).unwrap();
 
@@ -402,13 +402,13 @@ fn test_deposit_withdraw() {
         let staker_balance = cw20.balance(app, &staker);
         assert_eq!(staker_balance, 19_810_537_012_990_153);
 
-        let contract_balance = cw20.balance(app, &vault.addr());
+        let contract_balance = cw20.balance(app, vault.addr());
         assert_eq!(contract_balance, 80_189_462_987_009_847);
 
         let query_shares = QueryMsg::Shares {
             staker: staker.to_string(),
         };
-        let shares: Uint128 = vault.query(&app, &query_shares).unwrap();
+        let shares: Uint128 = vault.query(app, &query_shares).unwrap();
         assert_eq!(shares, Uint128::new(80_189_462_987_009_847));
     }
 
@@ -423,13 +423,13 @@ fn test_deposit_withdraw() {
         let staker_balance = cw20.balance(app, &staker);
         assert_eq!(staker_balance, 59_810_537_012_990_153);
 
-        let contract_balance = cw20.balance(app, &vault.addr());
+        let contract_balance = cw20.balance(app, vault.addr());
         assert_eq!(contract_balance, 40_189_462_987_009_847);
 
         let query_shares = QueryMsg::Shares {
             staker: staker.to_string(),
         };
-        let shares: Uint128 = vault.query(&app, &query_shares).unwrap();
+        let shares: Uint128 = vault.query(app, &query_shares).unwrap();
         assert_eq!(shares, Uint128::new(40_189_462_987_009_847));
     }
 
@@ -444,13 +444,13 @@ fn test_deposit_withdraw() {
         let staker_balance = cw20.balance(app, &staker);
         assert_eq!(staker_balance, 100e15 as u128);
 
-        let contract_balance = cw20.balance(app, &vault.addr());
+        let contract_balance = cw20.balance(app, vault.addr());
         assert_eq!(contract_balance, 0);
 
         let query_shares = QueryMsg::Shares {
             staker: staker.to_string(),
         };
-        let shares: Uint128 = vault.query(&app, &query_shares).unwrap();
+        let shares: Uint128 = vault.query(app, &query_shares).unwrap();
         assert_eq!(shares, Uint128::new(0));
     }
 }
@@ -468,7 +468,7 @@ fn test_deposit_for_and_withdraw_to_other_address() {
         recipient: random_lucky_dude.clone(), // recipient is not staker
         amount: deposit_amount,
     });
-    cw20.increase_allowance(app, &staker, &vault.addr(), 100e15 as u128);
+    cw20.increase_allowance(app, &staker, vault.addr(), 100e15 as u128);
     cw20.fund(app, &staker, 100e15 as u128);
     vault.execute(app, &staker, &msg).unwrap();
 
@@ -478,21 +478,21 @@ fn test_deposit_for_and_withdraw_to_other_address() {
         assert_eq!(staker_balance, (100e15 as u128) - deposit_amount.u128()); // final balance 19_810_537_012_990_153
 
         // assert contract balance is increased by the deposit_amount
-        let contract_balance = cw20.balance(app, &vault.addr());
+        let contract_balance = cw20.balance(app, vault.addr());
         assert_eq!(contract_balance, deposit_amount.u128());
 
         // assert that the staker's share is 0
         let query_shares = QueryMsg::Shares {
             staker: staker.to_string(),
         };
-        let shares: Uint128 = vault.query(&app, &query_shares).unwrap();
+        let shares: Uint128 = vault.query(app, &query_shares).unwrap();
         assert_eq!(shares, Uint128::new(0));
 
         // assert that the random_lucky_dude's share is increased
         let query_shares = QueryMsg::Shares {
             staker: random_lucky_dude.to_string(),
         };
-        let shares: Uint128 = vault.query(&app, &query_shares).unwrap();
+        let shares: Uint128 = vault.query(app, &query_shares).unwrap();
         assert_eq!(shares, Uint128::new(80_189_462_987_009_847));
     }
 
@@ -510,14 +510,14 @@ fn test_deposit_for_and_withdraw_to_other_address() {
         assert_eq!(staker_balance, (100e15 as u128) - deposit_amount.u128());
 
         // assert that the contract's balance is reduced
-        let contract_balance = cw20.balance(app, &vault.addr());
+        let contract_balance = cw20.balance(app, vault.addr());
         assert_eq!(contract_balance, deposit_amount.u128() - 40e15 as u128); // final balance 40_189_462_987_009_847
 
         // assert that random_lucky_dude is reduced
         let query_shares = QueryMsg::Shares {
             staker: random_lucky_dude.to_string(),
         };
-        let shares: Uint128 = vault.query(&app, &query_shares).unwrap();
+        let shares: Uint128 = vault.query(app, &query_shares).unwrap();
         assert_eq!(shares, Uint128::new(40_189_462_987_009_847));
 
         // assert that random_lucky_dude2 balance is increased
@@ -538,14 +538,14 @@ fn test_deposit_for_and_withdraw_to_other_address() {
         assert_eq!(staker_balance, (100e15 as u128) - deposit_amount.u128());
 
         // assert that the contract's balance is 0
-        let contract_balance = cw20.balance(app, &vault.addr());
+        let contract_balance = cw20.balance(app, vault.addr());
         assert_eq!(contract_balance, 0);
 
         // assert that random_lucky_dude's shares is 0
         let query_shares = QueryMsg::Shares {
             staker: random_lucky_dude.to_string(),
         };
-        let shares: Uint128 = vault.query(&app, &query_shares).unwrap();
+        let shares: Uint128 = vault.query(app, &query_shares).unwrap();
         assert_eq!(shares, Uint128::new(0));
 
         // assert that random_lucky_dude's balance is increased
@@ -574,7 +574,7 @@ fn test_queue_withdrawal_to_successfully() {
             recipient: staker.clone(),
             amount: token_amount,
         });
-        cw20.increase_allowance(app, &staker, &vault.addr(), 100e15 as u128);
+        cw20.increase_allowance(app, &staker, vault.addr(), 100e15 as u128);
         cw20.fund(app, &staker, 100e15 as u128);
         vault.execute(app, &staker, &msg).unwrap();
     }
@@ -607,7 +607,7 @@ fn test_queue_withdrawal_to_successfully() {
     let msg = QueryMsg::QueuedWithdrawal {
         staker: staker.to_string(),
     };
-    let response: QueuedWithdrawalInfo = vault.query(&app, &msg).unwrap();
+    let response: QueuedWithdrawalInfo = vault.query(app, &msg).unwrap();
 
     assert_eq!(response.queued_shares, Uint128::new(10000));
     assert_eq!(
@@ -636,7 +636,7 @@ fn test_redeem_withdrawal_to_successfully() {
             recipient: staker.clone(),
             amount: token_amount,
         });
-        cw20.increase_allowance(app, &staker, &vault.addr(), 100e15 as u128);
+        cw20.increase_allowance(app, &staker, vault.addr(), 100e15 as u128);
         cw20.fund(app, &staker, 100e15 as u128);
         vault.execute(app, &staker, &msg).unwrap();
     }
@@ -653,7 +653,7 @@ fn test_redeem_withdrawal_to_successfully() {
         vault.execute(app, &staker, &msg).unwrap();
     }
 
-    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient { 0: staker.clone() });
+    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(staker.clone()));
 
     app.update_block(|block| {
         block.time = block.time.plus_seconds(115);
@@ -684,7 +684,7 @@ fn test_redeem_withdrawal_to_successfully() {
     let msg = QueryMsg::QueuedWithdrawal {
         staker: staker.to_string(),
     };
-    let response: QueuedWithdrawalInfo = vault.query(&app, &msg).unwrap();
+    let response: QueuedWithdrawalInfo = vault.query(app, &msg).unwrap();
 
     assert_eq!(response.queued_shares, Uint128::new(0));
     assert_eq!(response.unlock_timestamp, Timestamp::from_seconds(0));
@@ -697,7 +697,7 @@ fn test_redeem_withdrawal_to_no_queued_shares_error() {
 
     let staker = app.api().addr_make("staker");
 
-    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient { 0: staker.clone() });
+    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(staker.clone()));
 
     let err = vault.execute(app, &staker, &msg).unwrap_err();
     assert_eq!(
@@ -729,7 +729,7 @@ fn test_redeem_withdrawal_to_locked_shares_error() {
             recipient: staker.clone(),
             amount: token_amount,
         });
-        cw20.increase_allowance(app, &staker, &vault.addr(), 100e15 as u128);
+        cw20.increase_allowance(app, &staker, vault.addr(), 100e15 as u128);
         cw20.fund(app, &staker, 100e15 as u128);
         vault.execute(app, &staker, &msg).unwrap();
     }
@@ -749,7 +749,7 @@ fn test_redeem_withdrawal_to_locked_shares_error() {
         vault.execute(app, &staker, &msg).unwrap();
     }
 
-    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient { 0: staker.clone() });
+    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(staker.clone()));
 
     let err = vault.execute(app, &staker, &msg).unwrap_err();
     assert_eq!(
@@ -781,7 +781,7 @@ fn test_redeem_withdrawal_future_time_to_locked_shares_error() {
             recipient: staker.clone(),
             amount: token_amount,
         });
-        cw20.increase_allowance(app, &staker, &vault.addr(), 100e15 as u128);
+        cw20.increase_allowance(app, &staker, vault.addr(), 100e15 as u128);
         cw20.fund(app, &staker, 100e15 as u128);
         vault.execute(app, &staker, &msg).unwrap();
     }
@@ -814,7 +814,7 @@ fn test_redeem_withdrawal_future_time_to_locked_shares_error() {
         vault.execute(app, &staker, &msg).unwrap();
     }
 
-    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient { 0: staker.clone() });
+    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(staker.clone()));
 
     let err = vault.execute(app, &staker, &msg).unwrap_err();
     assert_eq!(
@@ -846,7 +846,7 @@ fn test_queue_redeem_withdrawal_with_different_recipient() {
             recipient: staker.clone(),
             amount: token_amount,
         });
-        cw20.increase_allowance(app, &staker, &vault.addr(), 100e15 as u128);
+        cw20.increase_allowance(app, &staker, vault.addr(), 100e15 as u128);
         cw20.fund(app, &staker, token_amount.into());
         vault.execute(app, &staker, &msg).unwrap();
     }
@@ -865,7 +865,7 @@ fn test_queue_redeem_withdrawal_with_different_recipient() {
         });
         vault.execute(app, &staker, &msg).unwrap();
 
-        let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient { 0: staker.clone() });
+        let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(staker.clone()));
 
         app.update_block(|block| {
             block.time = block.time.plus_seconds(115);
@@ -886,9 +886,7 @@ fn test_queue_redeem_withdrawal_with_different_recipient() {
         });
         vault.execute(app, &staker, &msg).unwrap();
 
-        let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient {
-            0: new_staker.clone(),
-        });
+        let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(new_staker.clone()));
 
         app.update_block(|block| {
             block.time = block.time.plus_seconds(115);
@@ -907,9 +905,7 @@ fn test_queue_redeem_withdrawal_with_different_recipient() {
         });
         vault.execute(app, &staker, &msg).unwrap();
 
-        let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient {
-            0: new_staker.clone(),
-        });
+        let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(new_staker.clone()));
 
         app.update_block(|block| {
             block.time = block.time.plus_seconds(115);
@@ -940,11 +936,7 @@ fn test_vault_info() {
             pauser: tc.pauser.addr,
             operator: app.api().addr_make("operator"),
             slashing: false,
-            asset_id: format!(
-                "cosmos:cosmos-testnet-14002/cw20:{}",
-                tc.cw20.addr.to_string()
-            )
-            .to_string(),
+            asset_id: format!("cosmos:cosmos-testnet-14002/cw20:{}", tc.cw20.addr).to_string(),
             contract: "crates.io:bvs-vault-cw20".to_string(),
             version: env!("CARGO_PKG_VERSION").to_string(),
         }

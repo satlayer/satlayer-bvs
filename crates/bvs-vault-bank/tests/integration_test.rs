@@ -87,7 +87,7 @@ fn test_deposit_withdraw() {
         let query_shares = QueryMsg::Shares {
             staker: staker.to_string(),
         };
-        let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+        let shares: Uint128 = tc.vault.query(app, &query_shares).unwrap();
         assert_eq!(shares, Uint128::new(115_687_654));
     }
 
@@ -114,7 +114,7 @@ fn test_deposit_withdraw() {
         let query_shares = QueryMsg::Shares {
             staker: staker.to_string(),
         };
-        let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+        let shares: Uint128 = tc.vault.query(app, &query_shares).unwrap();
         assert_eq!(shares, Uint128::new(115_000_000));
     }
 
@@ -138,7 +138,7 @@ fn test_deposit_withdraw() {
         let query_shares = QueryMsg::Shares {
             staker: staker.to_string(),
         };
-        let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+        let shares: Uint128 = tc.vault.query(app, &query_shares).unwrap();
         assert_eq!(shares, Uint128::new(0));
     }
 }
@@ -178,14 +178,14 @@ fn test_deposit_for_and_withdraw_to_other_address() {
         let query_shares = QueryMsg::Shares {
             staker: staker.to_string(),
         };
-        let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+        let shares: Uint128 = tc.vault.query(app, &query_shares).unwrap();
         assert_eq!(shares, Uint128::new(0));
 
         // assert that random_lucky_dude receives 115_687_654 shares from staker asset
         let query_shares = QueryMsg::Shares {
             staker: random_lucky_dude.to_string(),
         };
-        let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+        let shares: Uint128 = tc.vault.query(app, &query_shares).unwrap();
         assert_eq!(shares, Uint128::new(115_687_654));
     }
 
@@ -219,7 +219,7 @@ fn test_deposit_for_and_withdraw_to_other_address() {
         let query_shares = QueryMsg::Shares {
             staker: random_lucky_dude.to_string(),
         };
-        let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+        let shares: Uint128 = tc.vault.query(app, &query_shares).unwrap();
         assert_eq!(shares, Uint128::new(115_687_654 - 687_654)); // should equal contract balance
     }
 
@@ -246,14 +246,14 @@ fn test_deposit_for_and_withdraw_to_other_address() {
         let query_shares = QueryMsg::Shares {
             staker: staker.to_string(),
         };
-        let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+        let shares: Uint128 = tc.vault.query(app, &query_shares).unwrap();
         assert_eq!(shares, Uint128::new(0));
 
         // assert that random_lucky_dude has 0 shares
         let query_shares = QueryMsg::Shares {
             staker: random_lucky_dude.to_string(),
         };
-        let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+        let shares: Uint128 = tc.vault.query(app, &query_shares).unwrap();
         assert_eq!(shares, Uint128::new(0));
 
         // assert that random_lucky_dude2 still has 687_654 assets
@@ -290,7 +290,7 @@ fn test_deposit_with_non_linear_exchange_rate() {
     let query_shares = QueryMsg::Shares {
         staker: staker.to_string(),
     };
-    let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+    let shares: Uint128 = tc.vault.query(app, &query_shares).unwrap();
     assert_eq!(shares, Uint128::new(1_000_000));
 
     // fund contract with extra assets, so now its 2:1 instead of 1:1
@@ -322,7 +322,7 @@ fn test_deposit_with_non_linear_exchange_rate() {
         let query_shares = QueryMsg::Shares {
             staker: staker.to_string(),
         };
-        let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+        let shares: Uint128 = tc.vault.query(app, &query_shares).unwrap();
         assert_eq!(shares, Uint128::new(1_000_000 + 500_000)); // 500_000 is the new share based on 2:1 exchange rate
     }
 }
@@ -352,7 +352,7 @@ fn test_withdraw_with_non_linear_exchange_rate() {
     let query_shares = QueryMsg::Shares {
         staker: staker.to_string(),
     };
-    let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+    let shares: Uint128 = tc.vault.query(app, &query_shares).unwrap();
     assert_eq!(shares, Uint128::new(1_000_000));
 
     // fund contract with extra assets, so now its 2:1 instead of 1:1
@@ -384,7 +384,7 @@ fn test_withdraw_with_non_linear_exchange_rate() {
         let query_shares = QueryMsg::Shares {
             staker: staker.to_string(),
         };
-        let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+        let shares: Uint128 = tc.vault.query(app, &query_shares).unwrap();
         assert_eq!(shares, Uint128::new(0));
     }
 }
@@ -422,7 +422,7 @@ fn test_withdraw_with_inflated_exchange_rate() {
     let query_shares = QueryMsg::Shares {
         staker: staker.to_string(),
     };
-    let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+    let shares: Uint128 = tc.vault.query(app, &query_shares).unwrap();
     assert_eq!(shares, Uint128::new(1));
 
     // Withdraw will now use inflated exchange rate
@@ -446,7 +446,7 @@ fn test_withdraw_with_inflated_exchange_rate() {
         let query_shares = QueryMsg::Shares {
             staker: staker.to_string(),
         };
-        let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+        let shares: Uint128 = tc.vault.query(app, &query_shares).unwrap();
         assert_eq!(shares, Uint128::new(0));
     }
 }
@@ -630,19 +630,19 @@ fn test_massive_deposit_and_withdraw() {
         let query_shares = QueryMsg::Shares {
             staker: staker.to_string(),
         };
-        let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+        let shares: Uint128 = tc.vault.query(app, &query_shares).unwrap();
         assert_eq!(shares, Uint128::new(0));
 
         // staker2 share should be 1
         let query_shares = QueryMsg::Shares {
             staker: staker2.to_string(),
         };
-        let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+        let shares: Uint128 = tc.vault.query(app, &query_shares).unwrap();
         assert_eq!(shares, Uint128::new(1));
 
         // total share should be 1
         let query_shares = QueryMsg::TotalShares {};
-        let shares: Uint128 = tc.vault.query(&app, &query_shares).unwrap();
+        let shares: Uint128 = tc.vault.query(app, &query_shares).unwrap();
         assert_eq!(shares, Uint128::new(1));
     }
 }
@@ -705,7 +705,7 @@ fn test_queue_withdrawal_to_successfully() {
     let msg = QueryMsg::QueuedWithdrawal {
         staker: staker.to_string(),
     };
-    let response: QueuedWithdrawalInfo = tc.vault.query(&app, &msg).unwrap();
+    let response: QueuedWithdrawalInfo = tc.vault.query(app, &msg).unwrap();
 
     assert_eq!(response.queued_shares, Uint128::new(10000));
     assert_eq!(
@@ -753,7 +753,7 @@ fn test_redeem_withdrawal_to_successfully() {
         tc.vault.execute(app, &staker, &msg).unwrap();
     }
 
-    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient { 0: staker.clone() });
+    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(staker.clone()));
 
     app.update_block(|block| {
         block.time = block.time.plus_seconds(115);
@@ -781,7 +781,7 @@ fn test_redeem_withdrawal_to_successfully() {
     let msg = QueryMsg::QueuedWithdrawal {
         staker: staker.to_string(),
     };
-    let response: QueuedWithdrawalInfo = tc.vault.query(&app, &msg).unwrap();
+    let response: QueuedWithdrawalInfo = tc.vault.query(app, &msg).unwrap();
 
     assert_eq!(response.queued_shares, Uint128::new(0));
     assert_eq!(response.unlock_timestamp, Timestamp::from_seconds(0));
@@ -793,7 +793,7 @@ fn test_redeem_withdrawal_to_no_queued_shares_error() {
     let app = &mut app;
     let staker = app.api().addr_make("staker");
 
-    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient { 0: staker.clone() });
+    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(staker.clone()));
 
     let err = tc.vault.execute(app, &staker, &msg).unwrap_err();
     assert_eq!(
@@ -840,7 +840,7 @@ fn test_redeem_withdrawal_to_locked_shares_error() {
         tc.vault.execute(app, &staker, &msg).unwrap();
     }
 
-    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient { 0: staker.clone() });
+    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(staker.clone()));
 
     let err = tc.vault.execute(app, &staker, &msg).unwrap_err();
     assert_eq!(
@@ -900,7 +900,7 @@ fn test_redeem_withdrawal_to_future_time_locked_shares_error() {
         tc.vault.execute(app, &staker, &msg).unwrap();
     }
 
-    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient { 0: staker.clone() });
+    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(staker.clone()));
 
     let err = tc.vault.execute(app, &staker, &msg).unwrap_err();
     assert_eq!(
@@ -952,7 +952,7 @@ fn test_queue_redeem_withdrawal_with_different_recipient() {
         });
         tc.vault.execute(app, &staker, &msg).unwrap();
 
-        let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient { 0: staker.clone() });
+        let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(staker.clone()));
 
         app.update_block(|block| {
             block.time = block.time.plus_seconds(115);
@@ -973,9 +973,7 @@ fn test_queue_redeem_withdrawal_with_different_recipient() {
         });
         tc.vault.execute(app, &staker, &msg).unwrap();
 
-        let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient {
-            0: new_staker.clone(),
-        });
+        let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(new_staker.clone()));
 
         app.update_block(|block| {
             block.time = block.time.plus_seconds(115);
@@ -994,9 +992,7 @@ fn test_queue_redeem_withdrawal_with_different_recipient() {
         });
         tc.vault.execute(app, &staker, &msg).unwrap();
 
-        let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient {
-            0: new_staker.clone(),
-        });
+        let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(new_staker.clone()));
 
         app.update_block(|block| {
             block.time = block.time.plus_seconds(115);

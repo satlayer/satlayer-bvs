@@ -441,9 +441,7 @@ mod tests {
                 router::set_router(&mut deps.storage, &router).unwrap();
                 deps.querier.update_wasm(move |query| match query {
                     WasmQuery::Smart { .. } => {
-                        return SystemResult::Ok(ContractResult::Ok(
-                            to_json_binary(&true).unwrap(),
-                        ));
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap()))
                     }
                     _ => SystemResult::Err(SystemError::Unknown {}),
                 });
@@ -502,9 +500,7 @@ mod tests {
                 router::set_router(&mut deps.storage, &router).unwrap();
                 deps.querier.update_wasm(move |query| match query {
                     WasmQuery::Smart { .. } => {
-                        return SystemResult::Ok(ContractResult::Ok(
-                            to_json_binary(&true).unwrap(),
-                        ));
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap()))
                     }
                     _ => SystemResult::Err(SystemError::Unknown {}),
                 });
@@ -545,9 +541,7 @@ mod tests {
                 router::set_router(&mut deps.storage, &router).unwrap();
                 deps.querier.update_wasm(move |query| match query {
                     WasmQuery::Smart { .. } => {
-                        return SystemResult::Ok(ContractResult::Ok(
-                            to_json_binary(&true).unwrap(),
-                        ));
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&true).unwrap()))
                     }
                     _ => SystemResult::Err(SystemError::Unknown {}),
                 });
@@ -590,9 +584,7 @@ mod tests {
                 router::set_operator(&mut deps.storage, &operator).unwrap();
                 deps.querier.update_wasm(move |query| match query {
                     WasmQuery::Smart { .. } => {
-                        return SystemResult::Ok(ContractResult::Ok(
-                            to_json_binary(&false).unwrap(),
-                        ));
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&false).unwrap()))
                     }
                     _ => SystemResult::Err(SystemError::Unknown {}),
                 });
@@ -665,9 +657,7 @@ mod tests {
                 router::set_operator(&mut deps.storage, &operator).unwrap();
                 deps.querier.update_wasm(move |query| match query {
                     WasmQuery::Smart { .. } => {
-                        return SystemResult::Ok(ContractResult::Ok(
-                            to_json_binary(&false).unwrap(),
-                        ));
+                        SystemResult::Ok(ContractResult::Ok(to_json_binary(&false).unwrap()))
                     }
                     _ => SystemResult::Err(SystemError::Unknown {}),
                 });
@@ -1005,9 +995,7 @@ mod tests {
             deps.as_mut(),
             new_env,
             sender_info.clone(),
-            Recipient {
-                0: recipient.clone(),
-            },
+            Recipient(recipient.clone()),
         )
         .unwrap();
 
