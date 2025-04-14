@@ -53,7 +53,7 @@ pub fn execute(
             amount,
             recipient,
         } => match reward_type {
-            RewardsType::CW20 => execute::claim_rewards_bank(
+            RewardsType::CW20 => execute::claim_rewards_cw20(
                 deps,
                 info,
                 service,
@@ -62,9 +62,15 @@ pub fn execute(
                 claim_rewards_proof,
                 recipient,
             ),
-            RewardsType::Bank => {
-                todo!()
-            }
+            RewardsType::Bank => execute::claim_rewards_bank(
+                deps,
+                info,
+                service,
+                token,
+                amount,
+                claim_rewards_proof,
+                recipient,
+            ),
         },
     }
 }
@@ -385,10 +391,10 @@ mod query {
 
 #[cfg(test)]
 mod tests {
-    use crate::contract::execute::distribute_rewards_bank;
+    use crate::contract::execute::{distribute_rewards_bank, distribute_rewards_cw20};
     use crate::msg::RewardDistribution;
     use crate::state::{BALANCES, DISTRIBUTION_ROOTS};
-    use cosmwasm_std::testing::{message_info, mock_dependencies};
+    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
     use cosmwasm_std::{coins, Event, HexBinary, Uint128};
 
     #[test]
@@ -434,6 +440,54 @@ mod tests {
         // assert DISTRIBUTION_ROOTS state is updated
         let root = DISTRIBUTION_ROOTS
             .load(&deps.storage, (&service, &bank_token.to_string()))
+            .unwrap();
+        assert_eq!(root, HexBinary::from_hex(merkle_root).unwrap());
+    }
+
+    #[test]
+    fn test_distribute_rewards_cw20() {
+        let mut deps = mock_dependencies();
+        let info = message_info(&deps.api.addr_make("service"), &[]);
+        let env = mock_env();
+        let service = deps.api.addr_make("service");
+        let cw20 = deps.api.addr_make("cw20");
+
+        let merkle_root = "3902889975800375703a50bbe0d7a5c297977cb44348bf991cca43594fc644ef";
+
+        let reward_distribution = RewardDistribution {
+            token: cw20.to_string(),
+            amount: Uint128::new(10_000),
+        };
+
+        let res = distribute_rewards_cw20(
+            deps.as_mut(),
+            info,
+            env,
+            HexBinary::from_hex(merkle_root).unwrap(),
+            reward_distribution,
+        )
+        .unwrap();
+
+        // assert events are correct
+        assert_eq!(res.events.len(), 1);
+        assert_eq!(
+            res.events[0],
+            Event::new("DistributeRewards")
+                .add_attribute("service", service.clone())
+                .add_attribute("token", cw20.to_string())
+                .add_attribute("amount", "10000")
+                .add_attribute("root", merkle_root)
+        );
+
+        // assert BALANCES state is updated
+        let balance = BALANCES
+            .load(&deps.storage, (&service, &cw20.to_string()))
+            .unwrap();
+        assert_eq!(balance, Uint128::new(10_000));
+
+        // assert DISTRIBUTION_ROOTS state is updated
+        let root = DISTRIBUTION_ROOTS
+            .load(&deps.storage, (&service, &cw20.to_string()))
             .unwrap();
         assert_eq!(root, HexBinary::from_hex(merkle_root).unwrap());
     }
