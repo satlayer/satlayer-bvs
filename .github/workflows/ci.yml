@@ -53,7 +53,7 @@ jobs:
         with:
           fail-if-changed: true
           files: |
-            crates/*/**.rs
+            crates/**/*.rs
 
       - if: failure()
         env:
