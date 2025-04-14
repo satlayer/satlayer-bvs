@@ -149,7 +149,7 @@ mod tests {
         )
         .unwrap();
         let value: IsPausedResponse = from_json(&res).unwrap();
-        assert_eq!(false, value.is_paused());
+        assert!(!value.is_paused());
     }
 
     #[test]
@@ -169,7 +169,7 @@ mod tests {
         let method = "any_method".to_string();
 
         let response = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
-        assert_eq!(response.is_paused(), true);
+        assert!(response.is_paused());
 
         let response = query::can_execute(deps.as_ref(), contract, sender, method).unwrap();
         let flag: CanExecuteFlag = response.into();
@@ -195,7 +195,7 @@ mod tests {
 
         {
             let res = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
-            assert_eq!(res.is_paused(), false);
+            assert!(!res.is_paused());
 
             let res = query::can_execute(deps.as_ref(), contract, sender, method).unwrap();
             let flag: CanExecuteFlag = res.into();
@@ -221,7 +221,7 @@ mod tests {
 
         {
             let res = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
-            assert_eq!(res.is_paused(), false);
+            assert!(!res.is_paused());
 
             let res = query::can_execute(deps.as_ref(), contract, sender, method).unwrap();
             let flag: CanExecuteFlag = res.into();
@@ -248,7 +248,7 @@ mod tests {
 
         {
             let res = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
-            assert_eq!(res.is_paused(), true);
+            assert!(res.is_paused());
 
             let res = query::can_execute(deps.as_ref(), contract, sender, method).unwrap();
             let flag: CanExecuteFlag = res.into();
@@ -271,12 +271,12 @@ mod tests {
         execute::pause(deps.as_mut(), info.clone()).unwrap();
 
         let res = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
-        assert_eq!(res.is_paused(), true);
+        assert!(res.is_paused());
 
         execute::pause(deps.as_mut(), info).unwrap();
 
         let res = query::is_paused(deps.as_ref(), contract.clone(), method.clone()).unwrap();
-        assert_eq!(res.is_paused(), true);
+        assert!(res.is_paused());
 
         let sender = deps.api.addr_make("sender");
         let res = query::can_execute(deps.as_ref(), contract, sender, method).unwrap();

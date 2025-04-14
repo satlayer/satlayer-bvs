@@ -41,8 +41,25 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
 
-      - run: cargo clippy -- -D warnings
+      - run: cargo clippy --fix
         working-directory: ./crates
+
+      - run: cargo clippy -- -Dwarnings
+        working-directory: ./crates
+
+      - name: Drift Detection
+        uses: tj-actions/verify-changed-files@a1c6acee9df209257a246f2cc6ae8cb6581c1edf # v20
+        id: drifted-files
+        with:
+          fail-if-changed: true
+          files: |
+            crates/**/*.rs
+
+      - if: failure()
+        env:
+          CHANGED_FILES: ${{ steps.drifted-files.outputs.changed_files }}
+        run: |
+          echo "Changed files: $CHANGED_FILES"
 
   lint_eslint:
     name: Lint [eslint]

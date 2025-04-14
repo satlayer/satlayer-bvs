@@ -94,10 +94,10 @@ mod tests {
     #[test]
     fn test_paused() {
         let msg = IsPausedResponse::new(true);
-        assert_eq!(msg.is_paused(), true);
+        assert!(msg.is_paused());
 
         let msg = IsPausedResponse::new(false);
-        assert_eq!(msg.is_paused(), false);
+        assert!(!msg.is_paused());
     }
 
     /// Test the raw value of the IsPausedResponse
@@ -105,10 +105,10 @@ mod tests {
     #[test]
     fn test_paused_raw() {
         let msg = IsPausedResponse(0);
-        assert_eq!(msg.is_paused(), false);
+        assert!(!msg.is_paused());
 
         let msg = IsPausedResponse(1);
-        assert_eq!(msg.is_paused(), true);
+        assert!(msg.is_paused());
     }
 
     #[test]
