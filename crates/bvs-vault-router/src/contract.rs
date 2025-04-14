@@ -485,18 +485,17 @@ mod tests {
             );
 
             let vault = VAULTS
-                .may_load(deps.as_ref().storage, &vault_contract_addr)
-                .unwrap()
+                .load(deps.as_ref().storage, &vault_contract_addr)
                 .unwrap();
             assert!(!vault.whitelisted);
 
-            OPERATOR_VAULTS
-                .may_load(
+            let is_none = OPERATOR_VAULTS
+                .load(
                     deps.as_ref().storage,
                     (&operator_addr, &vault_contract_addr),
                 )
-                .unwrap()
-                .unwrap();
+                .is_none();
+            assert!(is_none);
         }
 
         let vault = deps.api.addr_make("vault");
@@ -523,11 +522,15 @@ mod tests {
                     .add_attribute("whitelisted", "true")
             );
 
-            let vault = VAULTS
-                .may_load(deps.as_ref().storage, &vault)
-                .unwrap()
-                .unwrap();
+            let vault = VAULTS.load(deps.as_ref().storage, &vault).unwrap();
             assert!(vault.whitelisted);
+
+            OPERATOR_VAULTS
+                .load(
+                    deps.as_ref().storage,
+                    (&operator_addr, &vault_contract_addr),
+                )
+                .unwrap();
         }
 
         // whitelist is true and failed to set: No such contract
