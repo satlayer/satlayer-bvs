@@ -55,7 +55,7 @@ jobs:
           files: |
             crates/*/**.rs
 
-      - if: steps.drifted-files.outputs.files_changed == 'true'
+      - if: always() && steps.drifted-files.outputs.files_changed == 'true'
         env:
           CHANGED_FILES: ${{ steps.drifted-files.outputs.changed_files }}
         run: |
