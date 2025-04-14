@@ -77,6 +77,7 @@ pub fn execute(
 
 mod execute {
     use crate::error::RewardsError;
+    use crate::merkle::{verify_merkle_proof, Leaf};
     use crate::msg::{ClaimRewardsProof, RewardDistribution};
     use crate::state::{BALANCES, CLAIMED_REWARDS, DISTRIBUTION_ROOTS};
     use cosmwasm_std::{
@@ -215,11 +216,23 @@ mod execute {
             )));
         };
 
-        // TODO: verify merkle proof
-        let merkle_proof = true;
+        let leaf = Leaf {
+            earner: earner.to_string(),
+            amount,
+        };
+
+        let merkle_proof: bool = verify_merkle_proof(
+            claim_rewards_proof.root,
+            claim_rewards_proof.proof,
+            leaf,
+            claim_rewards_proof.leaf_index,
+            claim_rewards_proof.total_leaves_count,
+        )?;
 
         if !merkle_proof {
-            return Err(RewardsError::InvalidProof {});
+            return Err(RewardsError::InvalidProof {
+                msg: "Invalid Merkle proof".to_string(),
+            });
         };
 
         // check if rewards to claim is less than rewards already claimed
@@ -302,11 +315,23 @@ mod execute {
             )));
         };
 
-        // TODO: verify merkle proof
-        let merkle_proof: bool = true;
+        let leaf = Leaf {
+            earner: earner.to_string(),
+            amount,
+        };
+
+        let merkle_proof: bool = verify_merkle_proof(
+            claim_rewards_proof.root,
+            claim_rewards_proof.proof,
+            leaf,
+            claim_rewards_proof.leaf_index,
+            claim_rewards_proof.total_leaves_count,
+        )?;
 
         if !merkle_proof {
-            return Err(RewardsError::InvalidProof {});
+            return Err(RewardsError::InvalidProof {
+                msg: "Invalid Merkle proof".to_string(),
+            });
         };
 
         // check if rewards to claim is less than rewards already claimed
@@ -377,7 +402,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 mod query {
     use crate::state::DISTRIBUTION_ROOTS;
-    use cosmwasm_std::{Addr, Deps, HexBinary, StdResult};
+    use cosmwasm_std::{Addr, Deps, StdResult};
 
     /// Query the distribution root for a given service and token
     ///
@@ -385,7 +410,7 @@ mod query {
     pub fn distribution_root(deps: Deps, service: Addr, token: String) -> StdResult<String> {
         DISTRIBUTION_ROOTS
             .may_load(deps.storage, (&service, &token))
-            .map(|shares| shares.unwrap_or(HexBinary::default()).to_string())
+            .map(|shares| shares.unwrap_or_default().to_string())
     }
 }
 
