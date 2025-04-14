@@ -47,14 +47,14 @@ impl TestContracts {
 fn set_vault_whitelist_false_successfully() {
     let (mut app, tc) = TestContracts::init();
     let owner = app.api().addr_make("owner");
-    let vault = app.api().addr_make("vault");
+    let bank_vault = tc.bank_vault.addr();
 
     let msg = &ExecuteMsg::SetVault {
-        vault: vault.to_string(),
+        vault: bank_vault.to_string(),
         whitelisted: false,
     };
 
-    let response = tc.vault_router.execute(&mut app, &owner, &msg).unwrap();
+    let response = tc.vault_router.execute(&mut app, &owner, msg).unwrap();
 
     assert_eq!(
         response.events,
@@ -62,17 +62,17 @@ fn set_vault_whitelist_false_successfully() {
             Event::new("execute").add_attribute("_contract_address", tc.vault_router.addr.as_str()),
             Event::new("wasm-VaultUpdated")
                 .add_attribute("_contract_address", tc.vault_router.addr.as_str())
-                .add_attribute("vault", vault.to_string())
+                .add_attribute("vault", bank_vault.to_string())
                 .add_attribute("whitelisted", "false"),
         ]
     );
 
     // query is whitelisted
     let msg = QueryMsg::IsWhitelisted {
-        vault: vault.to_string(),
+        vault: bank_vault.to_string(),
     };
     let is_whitelisted: bool = tc.vault_router.query(&mut app, &msg).unwrap();
-    assert_eq!(is_whitelisted, false);
+    assert!(!is_whitelisted);
 
     // query is delegated
     let operator = app.api().addr_make("operator");
@@ -80,13 +80,22 @@ fn set_vault_whitelist_false_successfully() {
         operator: operator.to_string(),
     };
     let is_validating: bool = tc.vault_router.query(&mut app, &msg).unwrap();
-    assert_eq!(is_validating, false);
+    assert!(!is_validating);
 
     // list vaults
     let msg = QueryMsg::ListVaults {
         start_after: None,
         limit: None,
     };
+    let response: VaultListResponse = tc.vault_router.query(&mut app, &msg).unwrap();
+    assert_eq!(response.0.len(), 1);
+
+    let msg = QueryMsg::ListVaultsByOperator {
+        operator: operator.to_string(),
+        start_after: None,
+        limit: None,
+    };
+
     let response: VaultListResponse = tc.vault_router.query(&mut app, &msg).unwrap();
     assert_eq!(response.0.len(), 1);
 }
@@ -101,7 +110,7 @@ fn set_vault_whitelist_true_bank_vault_successfully() {
         whitelisted: true,
     };
 
-    let response = tc.vault_router.execute(&mut app, &owner, &msg).unwrap();
+    let response = tc.vault_router.execute(&mut app, &owner, msg).unwrap();
 
     assert_eq!(
         response.events,
@@ -119,7 +128,18 @@ fn set_vault_whitelist_true_bank_vault_successfully() {
         vault: tc.bank_vault.addr().to_string(),
     };
     let is_whitelisted: bool = tc.vault_router.query(&mut app, &msg).unwrap();
-    assert_eq!(is_whitelisted, true);
+    assert!(is_whitelisted);
+
+    let operator = app.api().addr_make("operator");
+
+    let msg = QueryMsg::ListVaultsByOperator {
+        operator: operator.to_string(),
+        start_after: None,
+        limit: None,
+    };
+
+    let response: VaultListResponse = tc.vault_router.query(&mut app, &msg).unwrap();
+    assert_eq!(response.0.len(), 1);
 }
 
 #[test]
@@ -132,7 +152,7 @@ fn set_vault_whitelist_true_cw20_vault_successfully() {
         whitelisted: true,
     };
 
-    let response = tc.vault_router.execute(&mut app, &owner, &msg).unwrap();
+    let response = tc.vault_router.execute(&mut app, &owner, msg).unwrap();
 
     assert_eq!(
         response.events,
@@ -150,7 +170,19 @@ fn set_vault_whitelist_true_cw20_vault_successfully() {
         vault: tc.cw20_vault.addr().to_string(),
     };
     let is_whitelisted: bool = tc.vault_router.query(&mut app, &msg).unwrap();
-    assert_eq!(is_whitelisted, true);
+    assert!(is_whitelisted);
+
+    let operator = app.api().addr_make("operator");
+
+    let msg = QueryMsg::ListVaultsByOperator {
+        operator: operator.to_string(),
+        start_after: None,
+        limit: None,
+    };
+
+    let response: VaultListResponse = tc.vault_router.query(&mut app, &msg).unwrap();
+
+    assert_eq!(response.0.len(), 1);
 }
 
 #[test]
@@ -164,7 +196,7 @@ fn set_withdrawal_lock_period() {
     {
         let msg = &ExecuteMsg::SetWithdrawalLockPeriod(withdrawal_lock_period1);
 
-        let response = tc.vault_router.execute(&mut app, &owner, &msg).unwrap();
+        let response = tc.vault_router.execute(&mut app, &owner, msg).unwrap();
 
         assert_eq!(
             response.events,
@@ -191,7 +223,7 @@ fn set_withdrawal_lock_period() {
     {
         let msg = &ExecuteMsg::SetWithdrawalLockPeriod(withdrawal_lock_period2);
 
-        let response = tc.vault_router.execute(&mut app, &owner, &msg).unwrap();
+        let response = tc.vault_router.execute(&mut app, &owner, msg).unwrap();
 
         assert_eq!(
             response.events,
@@ -230,7 +262,7 @@ fn transfer_ownership_successfully() {
 
     let response = tc
         .vault_router
-        .execute(&mut app, &owner, &transfer_msg)
+        .execute(&mut app, &owner, transfer_msg)
         .unwrap();
 
     assert_eq!(
@@ -256,14 +288,11 @@ fn transfer_ownership_but_not_owner() {
 
     let err = tc
         .vault_router
-        .execute(&mut app, &not_owner, &transfer_msg)
+        .execute(&mut app, &not_owner, transfer_msg)
         .unwrap_err();
 
     assert_eq!(
         err.root_cause().to_string(),
-        ContractError::Ownership {
-            0: OwnershipError::Unauthorized
-        }
-        .to_string()
+        ContractError::Ownership(OwnershipError::Unauthorized).to_string()
     );
 }
