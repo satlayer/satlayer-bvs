@@ -6,6 +6,7 @@ use bvs_pauser::testing::PauserContract;
 use bvs_registry::testing::RegistryContract;
 use bvs_vault_bank::testing::VaultBankContract;
 use bvs_vault_cw20::testing::VaultCw20Contract;
+use bvs_vault_router::msg::Vault;
 use bvs_vault_router::{
     msg::{ExecuteMsg, QueryMsg, VaultListResponse},
     testing::VaultRouterContract,
@@ -47,10 +48,10 @@ impl TestContracts {
 fn set_vault_whitelist_false_successfully() {
     let (mut app, tc) = TestContracts::init();
     let owner = app.api().addr_make("owner");
-    let bank_vault = tc.bank_vault.addr();
+    let vault = app.api().addr_make("vault");
 
     let msg = &ExecuteMsg::SetVault {
-        vault: bank_vault.to_string(),
+        vault: vault.to_string(),
         whitelisted: false,
     };
 
@@ -62,17 +63,17 @@ fn set_vault_whitelist_false_successfully() {
             Event::new("execute").add_attribute("_contract_address", tc.vault_router.addr.as_str()),
             Event::new("wasm-VaultUpdated")
                 .add_attribute("_contract_address", tc.vault_router.addr.as_str())
-                .add_attribute("vault", bank_vault.to_string())
+                .add_attribute("vault", vault.to_string())
                 .add_attribute("whitelisted", "false"),
         ]
     );
 
     // query is whitelisted
     let msg = QueryMsg::IsWhitelisted {
-        vault: bank_vault.to_string(),
+        vault: vault.to_string(),
     };
     let is_whitelisted: bool = tc.vault_router.query(&mut app, &msg).unwrap();
-    assert!(!is_whitelisted);
+    assert_eq!(is_whitelisted, false);
 
     // query is delegated
     let operator = app.api().addr_make("operator");
@@ -80,15 +81,21 @@ fn set_vault_whitelist_false_successfully() {
         operator: operator.to_string(),
     };
     let is_validating: bool = tc.vault_router.query(&mut app, &msg).unwrap();
-    assert!(!is_validating);
+    assert_eq!(is_validating, false);
 
     // list vaults
     let msg = QueryMsg::ListVaults {
         start_after: None,
         limit: None,
     };
-    let response: VaultListResponse = tc.vault_router.query(&mut app, &msg).unwrap();
-    assert_eq!(response.0.len(), 1);
+    let VaultListResponse(vaults) = tc.vault_router.query(&mut app, &msg).unwrap();
+    assert_eq!(
+        vaults,
+        vec![Vault {
+            vault,
+            whitelisted: false,
+        }]
+    );
 
     let msg = QueryMsg::ListVaultsByOperator {
         operator: operator.to_string(),
@@ -96,11 +103,8 @@ fn set_vault_whitelist_false_successfully() {
         limit: None,
     };
 
-    let response: VaultListResponse = tc.vault_router.query(&mut app, &msg).unwrap();
-
-    let vault_list = response.0;
-
-    assert_eq!(vault_list[0].vault, bank_vault);
+    let VaultListResponse(vaults) = tc.vault_router.query(&mut app, &msg).unwrap();
+    assert_eq!(vaults.len(), 0);
 }
 
 #[test]
@@ -131,7 +135,7 @@ fn set_vault_whitelist_true_bank_vault_successfully() {
         vault: tc.bank_vault.addr().to_string(),
     };
     let is_whitelisted: bool = tc.vault_router.query(&mut app, &msg).unwrap();
-    assert!(is_whitelisted);
+    assert_eq!(is_whitelisted, true);
 
     let operator = app.api().addr_make("operator");
 
@@ -141,11 +145,8 @@ fn set_vault_whitelist_true_bank_vault_successfully() {
         limit: None,
     };
 
-    let response: VaultListResponse = tc.vault_router.query(&mut app, &msg).unwrap();
-
-    let vault_list = response.0;
-
-    assert_eq!(vault_list[0].vault, tc.bank_vault.addr());
+    let VaultListResponse(vaults) = tc.vault_router.query(&mut app, &msg).unwrap();
+    assert_eq!(vaults[0].vault, tc.bank_vault.addr());
 }
 
 #[test]
@@ -176,7 +177,7 @@ fn set_vault_whitelist_true_cw20_vault_successfully() {
         vault: tc.cw20_vault.addr().to_string(),
     };
     let is_whitelisted: bool = tc.vault_router.query(&mut app, &msg).unwrap();
-    assert!(is_whitelisted);
+    assert_eq!(is_whitelisted, true);
 
     let operator = app.api().addr_make("operator");
 
@@ -186,11 +187,8 @@ fn set_vault_whitelist_true_cw20_vault_successfully() {
         limit: None,
     };
 
-    let response: VaultListResponse = tc.vault_router.query(&mut app, &msg).unwrap();
-
-    let vault_list = response.0;
-
-    assert_eq!(vault_list[0].vault, tc.cw20_vault.addr());
+    let VaultListResponse(vaults) = tc.vault_router.query(&mut app, &msg).unwrap();
+    assert_eq!(vaults[0].vault, tc.cw20_vault.addr());
 }
 
 #[test]
