@@ -130,7 +130,7 @@ mod execute {
         if whitelisted {
             let vault_info = vault::get_vault_info(deps.as_ref(), &vault)?;
 
-            // The vault's not connected
+            // The vault is not connected to this router.
             if vault_info.router != env.contract.address {
                 return Err(ContractError::VaultError {
                     msg: "Vault is not connected to the router".to_string(),
