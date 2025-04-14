@@ -6,6 +6,7 @@ use bvs_pauser::testing::PauserContract;
 use bvs_registry::testing::RegistryContract;
 use bvs_vault_bank::testing::VaultBankContract;
 use bvs_vault_cw20::testing::VaultCw20Contract;
+use bvs_vault_router::msg::Vault;
 use bvs_vault_router::{
     msg::{ExecuteMsg, QueryMsg, VaultListResponse},
     testing::VaultRouterContract,
@@ -54,7 +55,7 @@ fn set_vault_whitelist_false_successfully() {
         whitelisted: false,
     };
 
-    let response = tc.vault_router.execute(&mut app, &owner, &msg).unwrap();
+    let response = tc.vault_router.execute(&mut app, &owner, msg).unwrap();
 
     assert_eq!(
         response.events,
@@ -87,8 +88,23 @@ fn set_vault_whitelist_false_successfully() {
         start_after: None,
         limit: None,
     };
-    let response: VaultListResponse = tc.vault_router.query(&mut app, &msg).unwrap();
-    assert_eq!(response.0.len(), 1);
+    let VaultListResponse(vaults) = tc.vault_router.query(&mut app, &msg).unwrap();
+    assert_eq!(
+        vaults,
+        vec![Vault {
+            vault,
+            whitelisted: false,
+        }]
+    );
+
+    let msg = QueryMsg::ListVaultsByOperator {
+        operator: operator.to_string(),
+        start_after: None,
+        limit: None,
+    };
+
+    let VaultListResponse(vaults) = tc.vault_router.query(&mut app, &msg).unwrap();
+    assert_eq!(vaults.len(), 0);
 }
 
 #[test]
@@ -101,7 +117,7 @@ fn set_vault_whitelist_true_bank_vault_successfully() {
         whitelisted: true,
     };
 
-    let response = tc.vault_router.execute(&mut app, &owner, &msg).unwrap();
+    let response = tc.vault_router.execute(&mut app, &owner, msg).unwrap();
 
     assert_eq!(
         response.events,
@@ -120,6 +136,17 @@ fn set_vault_whitelist_true_bank_vault_successfully() {
     };
     let is_whitelisted: bool = tc.vault_router.query(&mut app, &msg).unwrap();
     assert_eq!(is_whitelisted, true);
+
+    let operator = app.api().addr_make("operator");
+
+    let msg = QueryMsg::ListVaultsByOperator {
+        operator: operator.to_string(),
+        start_after: None,
+        limit: None,
+    };
+
+    let VaultListResponse(vaults) = tc.vault_router.query(&mut app, &msg).unwrap();
+    assert_eq!(vaults[0].vault, tc.bank_vault.addr());
 }
 
 #[test]
@@ -132,7 +159,7 @@ fn set_vault_whitelist_true_cw20_vault_successfully() {
         whitelisted: true,
     };
 
-    let response = tc.vault_router.execute(&mut app, &owner, &msg).unwrap();
+    let response = tc.vault_router.execute(&mut app, &owner, msg).unwrap();
 
     assert_eq!(
         response.events,
@@ -151,6 +178,17 @@ fn set_vault_whitelist_true_cw20_vault_successfully() {
     };
     let is_whitelisted: bool = tc.vault_router.query(&mut app, &msg).unwrap();
     assert_eq!(is_whitelisted, true);
+
+    let operator = app.api().addr_make("operator");
+
+    let msg = QueryMsg::ListVaultsByOperator {
+        operator: operator.to_string(),
+        start_after: None,
+        limit: None,
+    };
+
+    let VaultListResponse(vaults) = tc.vault_router.query(&mut app, &msg).unwrap();
+    assert_eq!(vaults[0].vault, tc.cw20_vault.addr());
 }
 
 #[test]
@@ -164,7 +202,7 @@ fn set_withdrawal_lock_period() {
     {
         let msg = &ExecuteMsg::SetWithdrawalLockPeriod(withdrawal_lock_period1);
 
-        let response = tc.vault_router.execute(&mut app, &owner, &msg).unwrap();
+        let response = tc.vault_router.execute(&mut app, &owner, msg).unwrap();
 
         assert_eq!(
             response.events,
@@ -191,7 +229,7 @@ fn set_withdrawal_lock_period() {
     {
         let msg = &ExecuteMsg::SetWithdrawalLockPeriod(withdrawal_lock_period2);
 
-        let response = tc.vault_router.execute(&mut app, &owner, &msg).unwrap();
+        let response = tc.vault_router.execute(&mut app, &owner, msg).unwrap();
 
         assert_eq!(
             response.events,
@@ -230,7 +268,7 @@ fn transfer_ownership_successfully() {
 
     let response = tc
         .vault_router
-        .execute(&mut app, &owner, &transfer_msg)
+        .execute(&mut app, &owner, transfer_msg)
         .unwrap();
 
     assert_eq!(
@@ -256,14 +294,11 @@ fn transfer_ownership_but_not_owner() {
 
     let err = tc
         .vault_router
-        .execute(&mut app, &not_owner, &transfer_msg)
+        .execute(&mut app, &not_owner, transfer_msg)
         .unwrap_err();
 
     assert_eq!(
         err.root_cause().to_string(),
-        ContractError::Ownership {
-            0: OwnershipError::Unauthorized
-        }
-        .to_string()
+        ContractError::Ownership(OwnershipError::Unauthorized).to_string()
     );
 }

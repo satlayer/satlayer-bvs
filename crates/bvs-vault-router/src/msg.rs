@@ -2,6 +2,9 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint64};
 
 #[cw_serde]
+pub struct MigrateMsg {}
+
+#[cw_serde]
 pub struct InstantiateMsg {
     pub owner: String,
     pub registry: String,
@@ -42,6 +45,16 @@ pub enum QueryMsg {
     /// The max `limit` is 100.
     #[returns(VaultListResponse)]
     ListVaults {
+        limit: Option<u32>,
+        start_after: Option<String>,
+    },
+
+    /// QueryMsg ListVaultsByOperator: returns a list of vaults managed by given operator.
+    /// You can provide `limit` and `start_after` to paginate the results.
+    /// The max `limit` is 100.
+    #[returns(VaultListResponse)]
+    ListVaultsByOperator {
+        operator: String,
         limit: Option<u32>,
         start_after: Option<String>,
     },
