@@ -60,23 +60,29 @@ pub fn execute(
     }
 }
 
+/// This can only be called by the contract ADMIN, enforced by `wasmd` separate from cosmwasm.
+/// See https://github.com/CosmWasm/cosmwasm/issues/926#issuecomment-851259818
+///
+/// #### 1.0.0 to 2.0.0
+/// New `OPERATOR_VAULTS: Map<(&Addr, &Addr), ()>` is created to allow vaults to be queried by
+/// operator. The existing `VAULTS` iterated over and added to `OPERATOR_VAULTS`.
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     let old_version =
         cw2::ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     match old_version.major {
-        1 => migration::migrate_vaults_to_index_operator(deps),
+        1 => migrate::vaults_to_index_operator(deps),
         _ => Ok(Response::default()),
     }
 }
 
-mod migration {
+mod migrate {
     use crate::state::{OPERATOR_VAULTS, VAULTS};
 
     use super::*;
 
-    pub fn migrate_vaults_to_index_operator(deps: DepsMut) -> Result<Response, ContractError> {
+    pub fn vaults_to_index_operator(deps: DepsMut) -> Result<Response, ContractError> {
         let vaults = VAULTS
             .keys(deps.storage, None, None, cosmwasm_std::Order::Ascending)
             .collect::<StdResult<Vec<_>>>()?;
@@ -113,18 +119,28 @@ mod execute {
     ) -> Result<Response, ContractError> {
         ownership::assert_owner(deps.storage, &info)?;
 
-        let vault_info = vault::get_vault_info(deps.as_ref(), &vault)?;
+        // Only for whitelisted vault:
+        // - we assert that the vault is connected to the router.
+        // - we save the operator to vault mapping
+        //   if a vault is never whitelisted, it won't be added to the operator mapping.
+        // Otherwise for non-whitelisted, the `state::VAULTS` will only be updated.
+        // This is to allow the vault to be effectively removed
+        // by setting `whitelisted: false` without checks from the router in
+        // case the vault is malformed or broken.
+        if whitelisted {
+            let vault_info = vault::get_vault_info(deps.as_ref(), &vault)?;
 
-        // vault's not connected
-        if vault_info.router != env.contract.address {
-            return Err(ContractError::VaultError {
-                msg: "Vault is not connected to the router".to_string(),
-            });
+            // The vault is not connected to this router.
+            if vault_info.router != env.contract.address {
+                return Err(ContractError::VaultError {
+                    msg: "Vault is not connected to the router".to_string(),
+                });
+            }
+
+            state::OPERATOR_VAULTS.save(deps.storage, (&vault_info.operator, &vault), &())?;
         }
 
         state::VAULTS.save(deps.storage, &vault, &state::Vault { whitelisted })?;
-
-        state::OPERATOR_VAULTS.save(deps.storage, (&vault_info.operator, &vault), &())?;
 
         Ok(Response::new().add_event(
             Event::new("VaultUpdated")
@@ -469,18 +485,18 @@ mod tests {
             );
 
             let vault = VAULTS
-                .may_load(deps.as_ref().storage, &vault_contract_addr)
-                .unwrap()
+                .load(deps.as_ref().storage, &vault_contract_addr)
                 .unwrap();
             assert!(!vault.whitelisted);
 
-            OPERATOR_VAULTS
+            let is_none = OPERATOR_VAULTS
                 .may_load(
                     deps.as_ref().storage,
                     (&operator_addr, &vault_contract_addr),
                 )
                 .unwrap()
-                .unwrap();
+                .is_none();
+            assert!(is_none);
         }
 
         let vault = deps.api.addr_make("vault");
@@ -507,11 +523,15 @@ mod tests {
                     .add_attribute("whitelisted", "true")
             );
 
-            let vault = VAULTS
-                .may_load(deps.as_ref().storage, &vault)
-                .unwrap()
-                .unwrap();
+            let vault = VAULTS.load(deps.as_ref().storage, &vault).unwrap();
             assert!(vault.whitelisted);
+
+            OPERATOR_VAULTS
+                .load(
+                    deps.as_ref().storage,
+                    (&operator_addr, &vault_contract_addr),
+                )
+                .unwrap();
         }
 
         // whitelist is true and failed to set: No such contract
@@ -925,7 +945,7 @@ mod tests {
         }
 
         // let's run the migration
-        migration::migrate_vaults_to_index_operator(deps.as_mut()).unwrap();
+        migrate::vaults_to_index_operator(deps.as_mut()).unwrap();
 
         let response =
             query::list_vaults_by_operator(deps.as_ref(), operator1.clone(), 100, None).unwrap();
