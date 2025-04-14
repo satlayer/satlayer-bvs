@@ -7,7 +7,7 @@ type Token = String;
 type Root = HexBinary;
 
 /// Stores the latest distribution roots for each (service, token) pair
-pub const DISTRIBUTION_ROOTS: Map<(&Service, &Token), HexBinary> = Map::new("distribution_roots");
+pub const DISTRIBUTION_ROOTS: Map<(&Service, &Token), Root> = Map::new("distribution_roots");
 
 /// Stores the live balances of each (service, token) pair
 pub const BALANCES: Map<(&Service, &Token), Uint128> = Map::new("balances");
