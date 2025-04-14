@@ -58,9 +58,9 @@ pub struct ClaimRewardsProof {
     /// proof is the Merkle proof of the user leaf in the Merkle tree
     pub proof: Vec<HexBinary>,
     /// leaf_index is the index of the user leaf in the Merkle tree
-    pub leaf_index: u32,
+    pub leaf_index: Uint128,
     /// total_leaves_count is the total number of leaves in the Merkle tree
-    pub total_leaves_count: u32,
+    pub total_leaves_count: Uint128,
 }
 
 #[cfg(test)]

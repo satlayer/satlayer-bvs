@@ -13,8 +13,8 @@ pub enum RewardsError {
     #[error("Funds sent do not match the funds received")]
     FundsMismatch {},
 
-    #[error("Merkle proof verification failed")]
-    InvalidProof {},
+    #[error("Merkle proof verification failed: {msg}")]
+    InvalidProof { msg: String },
 
     #[error("Insufficient balance")]
     InsufficientBalance {},
