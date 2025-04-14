@@ -490,10 +490,11 @@ mod tests {
             assert!(!vault.whitelisted);
 
             let is_none = OPERATOR_VAULTS
-                .load(
+                .may_load(
                     deps.as_ref().storage,
                     (&operator_addr, &vault_contract_addr),
                 )
+                .unwrap()
                 .is_none();
             assert!(is_none);
         }
