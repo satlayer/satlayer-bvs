@@ -152,7 +152,7 @@ mod tests {
 
         // assert that the operator is not active
         let res = is_operator_active(&deps.storage, &operator).unwrap();
-        assert_eq!(res, false);
+        assert!(!res);
 
         // set the operator active count to 1
         OPERATOR_ACTIVE_REGISTRATION_COUNT
@@ -161,11 +161,11 @@ mod tests {
 
         // assert that the operator is active
         let res = is_operator_active(&deps.storage, &operator).unwrap();
-        assert_eq!(res, true);
+        assert!(res);
 
         // assert that the operator2 is not active
         let res = is_operator_active(&deps.storage, &operator2).unwrap();
-        assert_eq!(res, false);
+        assert!(!res);
     }
 
     #[test]

@@ -710,7 +710,7 @@ mod tests {
         assert_eq!(event.attributes[2].value, "true");
 
         let is_slasher = SLASHER.load(&deps.storage, &new_slasher).unwrap();
-        assert_eq!(is_slasher, true);
+        assert!(is_slasher);
     }
 
     #[test]
@@ -808,13 +808,13 @@ mod tests {
 
         let response = query_is_validator(deps.as_ref(), validator_addr.clone()).unwrap();
 
-        assert_eq!(response.is_validator, true);
+        assert!(response.is_validator);
 
         let non_existent_validator = deps.api.addr_make("non_existent_validator");
         let response: ValidatorResponse =
             query_is_validator(deps.as_ref(), non_existent_validator.clone()).unwrap();
 
-        assert_eq!(response.is_validator, false);
+        assert!(!response.is_validator);
     }
 
     #[test]
@@ -962,7 +962,7 @@ mod tests {
         assert_eq!(event.attributes.len(), 7);
 
         assert_eq!(event.attributes[0].key, "slash_hash");
-        assert!(event.attributes[0].value.len() > 0);
+        assert!(!event.attributes[0].value.is_empty());
 
         assert_eq!(event.attributes[1].key, "sender");
         assert_eq!(event.attributes[1].value, slasher_addr.to_string());
@@ -1012,7 +1012,7 @@ mod tests {
             deps.api.addr_make("validator1"),
             deps.api.addr_make("validator2"),
         ];
-        let slash_validator_addr = vec![
+        let slash_validator_addr = [
             deps.api.addr_make("validator1"),
             deps.api.addr_make("validator2"),
         ];
@@ -1092,7 +1092,7 @@ mod tests {
         assert_eq!(event.attributes[2].value, "false");
 
         let updated_slash_details = SLASH_DETAILS.load(&deps.storage, &slash_hash).unwrap();
-        assert_eq!(updated_slash_details.status, false);
+        assert!(!updated_slash_details.status);
     }
 
     fn generate_osmosis_public_key_from_private_key(
@@ -1266,7 +1266,7 @@ mod tests {
         assert_eq!(event.attributes[3].value, 1_000_000.to_string());
 
         let updated_slash_details = SLASH_DETAILS.load(&deps.storage, &slash_hash).unwrap();
-        assert_eq!(updated_slash_details.status, false);
+        assert!(!updated_slash_details.status);
     }
 
     #[test]
@@ -1403,17 +1403,13 @@ mod tests {
 
         let mut found_messages = vec![];
         for submsg in res.messages {
-            match submsg.msg {
-                CosmosMsg::Wasm(WasmMsg::Execute { msg, .. }) => {
-                    let parsed: Result<DelegationManagerExecuteMsg, _> = from_json(&msg);
-                    if let Ok(DelegationManagerExecuteMsg::DecreaseDelegatedShares {
-                        shares, ..
-                    }) = parsed
-                    {
-                        found_messages.push(shares);
-                    }
+            if let CosmosMsg::Wasm(WasmMsg::Execute { msg, .. }) = submsg.msg {
+                let parsed: Result<DelegationManagerExecuteMsg, _> = from_json(&msg);
+                if let Ok(DelegationManagerExecuteMsg::DecreaseDelegatedShares { shares, .. }) =
+                    parsed
+                {
+                    found_messages.push(shares);
                 }
-                _ => {}
             }
         }
 
@@ -1429,7 +1425,7 @@ mod tests {
 
         // Total shares = 12.121212e6 + 9.090909e6 + 18.181818e6 + 0.606061e6 = 40e6
 
-        let expected_shares = vec![
+        let expected_shares = [
             Uint128::new(12_121_212),
             Uint128::new(9_090_909),
             Uint128::new(18_181_818),

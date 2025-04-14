@@ -21,7 +21,7 @@ fn pause_unpause() {
     {
         let owner = app.api().addr_make("owner");
         let msg = &ExecuteMsg::Pause {};
-        let res = contract.execute(&mut app, &owner, &msg).unwrap();
+        let res = contract.execute(&mut app, &owner, msg).unwrap();
 
         assert_eq!(res.events.len(), 2);
         assert_eq!(
@@ -39,7 +39,7 @@ fn pause_unpause() {
             method: "any".to_string(),
         };
         let res: IsPausedResponse = contract.query(&app, &msg).unwrap();
-        assert_eq!(res.is_paused(), true);
+        assert!(res.is_paused());
 
         let msg = QueryMsg::CanExecute {
             contract: app.api().addr_make("caller").to_string(),
@@ -55,7 +55,7 @@ fn pause_unpause() {
     {
         let owner = app.api().addr_make("owner");
         let msg = &ExecuteMsg::Unpause {};
-        let res = contract.execute(&mut app, &owner, &msg).unwrap();
+        let res = contract.execute(&mut app, &owner, msg).unwrap();
 
         assert_eq!(res.events.len(), 2);
 
@@ -74,7 +74,7 @@ fn pause_unpause() {
             method: "any".to_string(),
         };
         let res: IsPausedResponse = contract.query(&app, &msg).unwrap();
-        assert_eq!(res.is_paused(), false);
+        assert!(!res.is_paused());
 
         let msg = QueryMsg::CanExecute {
             contract: app.api().addr_make("caller").to_string(),
@@ -112,7 +112,7 @@ fn unauthorized_pause() {
             method: "any".to_string(),
         };
         let res: IsPausedResponse = contract.query(&app, &msg).unwrap();
-        assert_eq!(res.is_paused(), false);
+        assert!(!res.is_paused());
 
         let msg = QueryMsg::CanExecute {
             contract: app.api().addr_make("caller").to_string(),
@@ -151,7 +151,7 @@ fn unauthorized_unpause() {
         };
         let res: IsPausedResponse = contract.query(&app, &msg).unwrap();
 
-        assert_eq!(res.is_paused(), true);
+        assert!(res.is_paused());
 
         let msg = QueryMsg::CanExecute {
             contract: app.api().addr_make("caller").to_string(),

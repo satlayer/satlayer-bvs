@@ -73,7 +73,7 @@ fn set_vault_whitelist_false_successfully() {
         vault: vault.to_string(),
     };
     let is_whitelisted: bool = tc.vault_router.query(&mut app, &msg).unwrap();
-    assert_eq!(is_whitelisted, false);
+    assert!(!is_whitelisted);
 
     // query is delegated
     let operator = app.api().addr_make("operator");
@@ -81,7 +81,7 @@ fn set_vault_whitelist_false_successfully() {
         operator: operator.to_string(),
     };
     let is_validating: bool = tc.vault_router.query(&mut app, &msg).unwrap();
-    assert_eq!(is_validating, false);
+    assert!(!is_validating);
 
     // list vaults
     let msg = QueryMsg::ListVaults {
@@ -135,7 +135,7 @@ fn set_vault_whitelist_true_bank_vault_successfully() {
         vault: tc.bank_vault.addr().to_string(),
     };
     let is_whitelisted: bool = tc.vault_router.query(&mut app, &msg).unwrap();
-    assert_eq!(is_whitelisted, true);
+    assert!(is_whitelisted);
 
     let operator = app.api().addr_make("operator");
 
@@ -177,7 +177,7 @@ fn set_vault_whitelist_true_cw20_vault_successfully() {
         vault: tc.cw20_vault.addr().to_string(),
     };
     let is_whitelisted: bool = tc.vault_router.query(&mut app, &msg).unwrap();
-    assert_eq!(is_whitelisted, true);
+    assert!(is_whitelisted);
 
     let operator = app.api().addr_make("operator");
 

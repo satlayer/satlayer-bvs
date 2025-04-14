@@ -120,6 +120,6 @@ mod tests {
             &account.public_key.serialize(),
         )
         .unwrap();
-        assert_eq!(verify_res, true);
+        assert!(verify_res);
     }
 }

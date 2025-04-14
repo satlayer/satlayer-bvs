@@ -30,7 +30,7 @@ fn register_service_successfully() {
     };
 
     let service = app.api().addr_make("service/11111");
-    let response = registry.execute(&mut app, &service, &register_msg).unwrap();
+    let response = registry.execute(&mut app, &service, register_msg).unwrap();
 
     assert_eq!(
         response.events,
@@ -65,7 +65,7 @@ fn register_service_but_paused() {
         .unwrap();
 
     let err = registry
-        .execute(&mut app, &owner, &register_msg)
+        .execute(&mut app, &owner, register_msg)
         .unwrap_err();
 
     assert_eq!(
@@ -86,10 +86,10 @@ fn register_service_but_already_registered() {
     };
 
     let service = app.api().addr_make("service/11111");
-    registry.execute(&mut app, &service, &register_msg).unwrap();
+    registry.execute(&mut app, &service, register_msg).unwrap();
 
     let err = registry
-        .execute(&mut app, &service, &register_msg)
+        .execute(&mut app, &service, register_msg)
         .unwrap_err();
 
     assert_eq!(
@@ -108,7 +108,7 @@ fn operator_register_service_but_service_not_registered() {
     };
 
     let err = registry
-        .execute(&mut app, &operator, &register_msg)
+        .execute(&mut app, &operator, register_msg)
         .unwrap_err();
 
     assert_eq!(
@@ -130,14 +130,14 @@ fn operator_register_service_but_self_not_operator() {
     };
 
     let service = app.api().addr_make("service/11111");
-    registry.execute(&mut app, &service, &register_msg).unwrap();
+    registry.execute(&mut app, &service, register_msg).unwrap();
 
     let register_msg = &ExecuteMsg::RegisterServiceToOperator {
         service: service.to_string(),
     };
 
     let err = registry
-        .execute(&mut app, &not_operator, &register_msg)
+        .execute(&mut app, &not_operator, register_msg)
         .unwrap_err();
 
     assert_eq!(
@@ -159,7 +159,7 @@ fn register_lifecycle_operator_first() {
     };
     let service = app.api().addr_make("service/bvs");
     registry
-        .execute(&mut app, &service, &register_as_service_msg)
+        .execute(&mut app, &service, register_as_service_msg)
         .unwrap();
 
     // Register as Operator
@@ -171,16 +171,14 @@ fn register_lifecycle_operator_first() {
     };
     let operator = app.api().addr_make("operator");
     registry
-        .execute(&mut app, &operator, &register_as_operator_msg)
+        .execute(&mut app, &operator, register_as_operator_msg)
         .unwrap();
 
     // Register Service to Operator
     let register_msg = &ExecuteMsg::RegisterServiceToOperator {
         service: service.to_string(),
     };
-    let res = registry
-        .execute(&mut app, &operator, &register_msg)
-        .unwrap();
+    let res = registry.execute(&mut app, &operator, register_msg).unwrap();
     assert_eq!(
         res.events,
         vec![
@@ -211,7 +209,7 @@ fn register_lifecycle_operator_first() {
         operator: operator.to_string(),
     };
 
-    let res = registry.execute(&mut app, &service, &register_msg).unwrap();
+    let res = registry.execute(&mut app, &service, register_msg).unwrap();
 
     assert_eq!(
         res.events,
@@ -252,7 +250,7 @@ fn register_lifecycle_service_first() {
     };
     let service = app.api().addr_make("service/c4");
     registry
-        .execute(&mut app, &service, &register_as_service_msg)
+        .execute(&mut app, &service, register_as_service_msg)
         .unwrap();
 
     // Register as Operator
@@ -264,7 +262,7 @@ fn register_lifecycle_service_first() {
     };
     let operator = app.api().addr_make("operator");
     registry
-        .execute(&mut app, &operator, &register_as_operator_msg)
+        .execute(&mut app, &operator, register_as_operator_msg)
         .unwrap();
 
     // Register Operator to Service
@@ -272,7 +270,7 @@ fn register_lifecycle_service_first() {
         operator: operator.to_string(),
     };
 
-    let res = registry.execute(&mut app, &service, &register_msg).unwrap();
+    let res = registry.execute(&mut app, &service, register_msg).unwrap();
 
     assert_eq!(
         res.events,
@@ -303,9 +301,7 @@ fn register_lifecycle_service_first() {
     let register_msg = &ExecuteMsg::RegisterServiceToOperator {
         service: service.to_string(),
     };
-    let res = registry
-        .execute(&mut app, &operator, &register_msg)
-        .unwrap();
+    let res = registry.execute(&mut app, &operator, register_msg).unwrap();
     assert_eq!(
         res.events,
         vec![
@@ -351,14 +347,14 @@ fn update_metadata_successfully() {
     };
 
     let service = app.api().addr_make("service/11111");
-    registry.execute(&mut app, &service, &register_msg).unwrap();
+    registry.execute(&mut app, &service, register_msg).unwrap();
 
     let update_msg = &ExecuteMsg::UpdateServiceMetadata(Metadata {
         name: Some("New Service Name".to_string()),
         uri: Some("https://new-service.com".to_string()),
     });
 
-    let response = registry.execute(&mut app, &service, &update_msg).unwrap();
+    let response = registry.execute(&mut app, &service, update_msg).unwrap();
 
     assert_eq!(
         response.events,
@@ -378,7 +374,7 @@ fn update_metadata_successfully() {
         uri: Some("https://new-new-service.com".to_string()),
     });
 
-    let response = registry.execute(&mut app, &service, &update_msg).unwrap();
+    let response = registry.execute(&mut app, &service, update_msg).unwrap();
 
     assert_eq!(
         response.events,
@@ -402,7 +398,7 @@ fn transfer_ownership_successfully() {
         new_owner: new_owner.to_string(),
     };
 
-    let response = registry.execute(&mut app, &owner, &transfer_msg).unwrap();
+    let response = registry.execute(&mut app, &owner, transfer_msg).unwrap();
 
     assert_eq!(
         response.events,
@@ -426,7 +422,7 @@ fn transfer_ownership_but_not_owner() {
     };
 
     let err = registry
-        .execute(&mut app, &not_owner, &transfer_msg)
+        .execute(&mut app, &not_owner, transfer_msg)
         .unwrap_err();
 
     assert_eq!(
