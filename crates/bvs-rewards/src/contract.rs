@@ -83,14 +83,15 @@ mod execute {
     use cosmwasm_schema::cw_serde;
     use cosmwasm_std::{
         to_json_binary, Addr, BankMsg, Coin, DepsMut, Env, Event, HexBinary, MessageInfo, Response,
-        Uint128,
+        StdError, Uint128,
     };
+    use std::ops::{Add, Sub};
     use std::str::FromStr;
 
     #[cw_serde]
-    struct ClaimRewardsInternalResponse {
-        event: Event,
-        amount_to_claim: Uint128,
+    pub struct ClaimRewardsInternalResponse {
+        pub event: Event,
+        pub amount_to_claim: Uint128,
     }
 
     pub fn distribute_rewards_bank(
@@ -285,7 +286,7 @@ mod execute {
             .add_event(claim_rewards_res.event))
     }
 
-    fn claim_rewards_internal(
+    pub fn claim_rewards_internal(
         deps: DepsMut,
         service: Addr,
         earner: Addr,
@@ -296,9 +297,7 @@ mod execute {
     ) -> Result<ClaimRewardsInternalResponse, RewardsError> {
         // check root is not empty
         if claim_rewards_proof.root == HexBinary::default() {
-            return Err(RewardsError::Std(cosmwasm_std::StdError::generic_err(
-                "Empty root",
-            )));
+            return Err(RewardsError::Std(StdError::generic_err("Empty root")));
         };
 
         // assert that total rewards must be more than rewards already claimed
@@ -340,28 +339,19 @@ mod execute {
             });
         };
 
-        // reduce balance
-        BALANCES.update(
+        // reduce balance, no need checked_sub as amount_to_claim > balance
+        BALANCES.save(
             deps.storage,
             (&service, &token.to_string()),
-            |balance| -> Result<_, RewardsError> {
-                Ok(balance
-                    .unwrap_or_default()
-                    .checked_sub(amount_to_claim)
-                    .unwrap())
-            },
+            &balance.sub(amount_to_claim),
         )?;
 
-        // increment claimed rewards
-        CLAIMED_REWARDS.update(
+        // increment claimed rewards,
+        // no need checked_add as amount_to_claim + claimed_rewards = amount which is Uin128
+        CLAIMED_REWARDS.save(
             deps.storage,
             (&service, &token.to_string(), &earner),
-            |claimed| -> Result<_, RewardsError> {
-                Ok(claimed
-                    .unwrap_or_default()
-                    .checked_add(amount_to_claim)
-                    .unwrap())
-            },
+            &claimed_rewards.add(amount_to_claim),
         )?;
 
         let event = Event::new("ClaimRewards")
