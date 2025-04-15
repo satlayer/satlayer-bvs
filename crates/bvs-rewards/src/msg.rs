@@ -14,7 +14,6 @@ pub enum ExecuteMsg {
         reward_distribution: RewardDistribution,
         reward_type: RewardsType,
     },
-
     ClaimRewards {
         claim_rewards_proof: ClaimRewardsProof,
         reward_type: RewardsType,
@@ -24,6 +23,10 @@ pub enum ExecuteMsg {
         /// amount refers to the total amount of rewards accrued to the user
         amount: Uint128,
         recipient: String,
+    },
+    TransferOwnership {
+        /// See [`bvs_library::ownership::transfer_ownership`] for more information on this field
+        new_owner: String,
     },
 }
 
