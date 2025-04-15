@@ -10,6 +10,9 @@ pub enum RewardsError {
     #[error("Payment error: {0}")]
     Payment(#[from] PaymentError),
 
+    #[error("{0}")]
+    Ownership(#[from] bvs_library::ownership::OwnershipError),
+
     #[error("Funds sent do not match the funds received")]
     FundsMismatch {},
 

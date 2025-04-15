@@ -3,6 +3,7 @@ use cosmwasm_std::entry_point;
 
 use crate::error::RewardsError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, RewardsType};
+use bvs_library::ownership;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 
@@ -19,6 +20,7 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let owner = deps.api.addr_validate(&msg.owner)?;
+    ownership::set_owner(deps.storage, &owner)?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
@@ -72,6 +74,11 @@ pub fn execute(
                 recipient,
             ),
         },
+        ExecuteMsg::TransferOwnership { new_owner } => {
+            let new_owner = deps.api.addr_validate(&new_owner)?;
+            ownership::transfer_ownership(deps.storage, info, new_owner)
+                .map_err(RewardsError::Ownership)
+        }
     }
 }
 
