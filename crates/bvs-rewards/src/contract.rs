@@ -80,10 +80,18 @@ mod execute {
     use crate::merkle::{verify_merkle_proof, Leaf};
     use crate::msg::{ClaimRewardsProof, RewardDistribution};
     use crate::state::{BALANCES, CLAIMED_REWARDS, DISTRIBUTION_ROOTS};
+    use cosmwasm_schema::cw_serde;
     use cosmwasm_std::{
-        to_json_binary, BankMsg, Coin, DepsMut, Env, Event, HexBinary, MessageInfo, Response,
+        to_json_binary, Addr, BankMsg, Coin, DepsMut, Env, Event, HexBinary, MessageInfo, Response,
         Uint128,
     };
+    use std::str::FromStr;
+
+    #[cw_serde]
+    struct ClaimRewardsInternalResponse {
+        event: Event,
+        amount_to_claim: Uint128,
+    }
 
     pub fn distribute_rewards_bank(
         deps: DepsMut,
@@ -209,65 +217,14 @@ mod execute {
 
         let recipient = deps.api.addr_validate(&recipient)?;
 
-        // check root is not empty
-        if claim_rewards_proof.root == HexBinary::default() {
-            return Err(RewardsError::Std(cosmwasm_std::StdError::generic_err(
-                "Empty root",
-            )));
-        };
-
-        let leaf = Leaf {
-            earner: earner.to_string(),
+        let claim_rewards_res = claim_rewards_internal(
+            deps,
+            service,
+            earner,
+            token.to_string(),
             amount,
-        };
-
-        let merkle_proof: bool = verify_merkle_proof(
-            claim_rewards_proof.root,
-            claim_rewards_proof.proof,
-            leaf,
-            claim_rewards_proof.leaf_index,
-            claim_rewards_proof.total_leaves_count,
-        )?;
-
-        if !merkle_proof {
-            return Err(RewardsError::InvalidProof {
-                msg: "Invalid Merkle proof".to_string(),
-            });
-        };
-
-        // check if rewards to claim is less than rewards already claimed
-        let claimed_rewards = CLAIMED_REWARDS
-            .may_load(deps.storage, (&service, &token, &earner))?
-            .unwrap_or_default();
-        if amount < claimed_rewards {
-            return Err(RewardsError::AlreadyClaimed {});
-        }
-
-        // check if balance is enough
-        let balance = BALANCES
-            .load(deps.storage, (&service, &token))
-            .unwrap_or_default();
-
-        if balance < amount {
-            return Err(RewardsError::InsufficientBalance {});
-        }
-
-        // reduce balance
-        BALANCES.update(
-            deps.storage,
-            (&service, &token),
-            |balance| -> Result<_, RewardsError> {
-                Ok(balance.unwrap_or_default().checked_sub(amount).unwrap())
-            },
-        )?;
-
-        // increment claimed rewards
-        CLAIMED_REWARDS.update(
-            deps.storage,
-            (&service, &token, &earner),
-            |claimed| -> Result<_, RewardsError> {
-                Ok(claimed.unwrap_or_default().checked_add(amount).unwrap())
-            },
+            claim_rewards_proof,
+            recipient.clone(),
         )?;
 
         // transfer the rewards to the earner
@@ -275,18 +232,13 @@ mod execute {
             to_address: recipient.to_string(),
             amount: vec![Coin {
                 denom: token.to_string(),
-                amount,
+                amount: claim_rewards_res.amount_to_claim,
             }],
         };
 
-        Ok(Response::new().add_message(transfer_msg).add_event(
-            Event::new("ClaimRewards")
-                .add_attribute("service", service)
-                .add_attribute("earner", earner)
-                .add_attribute("recipient", recipient)
-                .add_attribute("amount", amount.to_string())
-                .add_attribute("token", token.to_string()),
-        ))
+        Ok(Response::new()
+            .add_message(transfer_msg)
+            .add_event(claim_rewards_res.event))
     }
 
     pub fn claim_rewards_cw20(
@@ -308,12 +260,66 @@ mod execute {
 
         let recipient = deps.api.addr_validate(&recipient)?;
 
+        let claim_rewards_res = claim_rewards_internal(
+            deps,
+            service,
+            earner,
+            token.to_string(),
+            amount,
+            claim_rewards_proof,
+            recipient.clone(),
+        )?;
+
+        // transfer the rewards to the earner
+        let transfer_msg = cosmwasm_std::WasmMsg::Execute {
+            contract_addr: token.to_string(),
+            msg: to_json_binary(&cw20::Cw20ExecuteMsg::Transfer {
+                recipient: recipient.to_string(),
+                amount: claim_rewards_res.amount_to_claim,
+            })?,
+            funds: vec![],
+        };
+
+        Ok(Response::new()
+            .add_message(transfer_msg)
+            .add_event(claim_rewards_res.event))
+    }
+
+    fn claim_rewards_internal(
+        deps: DepsMut,
+        service: Addr,
+        earner: Addr,
+        token: String,
+        amount: Uint128,
+        claim_rewards_proof: ClaimRewardsProof,
+        recipient: Addr,
+    ) -> Result<ClaimRewardsInternalResponse, RewardsError> {
         // check root is not empty
         if claim_rewards_proof.root == HexBinary::default() {
             return Err(RewardsError::Std(cosmwasm_std::StdError::generic_err(
                 "Empty root",
             )));
         };
+
+        // assert that total rewards must be more than rewards already claimed
+        let claimed_rewards = CLAIMED_REWARDS
+            .may_load(deps.storage, (&service, &token.to_string(), &earner))?
+            .unwrap_or_default();
+        if claimed_rewards >= amount {
+            return Err(RewardsError::AlreadyClaimed {});
+        }
+
+        // no need checked_sub as amount > claimed_rewards
+        let amount_to_claim = amount - claimed_rewards;
+
+        // check if balance is enough
+        let balance = BALANCES
+            .load(deps.storage, (&service, &token.to_string()))
+            .unwrap_or_default();
+
+        if amount_to_claim > balance {
+            return Err(RewardsError::InsufficientBalance {});
+        }
 
         let leaf = Leaf {
             earner: earner.to_string(),
@@ -334,29 +340,15 @@ mod execute {
             });
         };
 
-        // check if rewards to claim is less than rewards already claimed
-        let claimed_rewards = CLAIMED_REWARDS
-            .may_load(deps.storage, (&service, &token.to_string(), &earner))?
-            .unwrap_or_default();
-        if amount < claimed_rewards {
-            return Err(RewardsError::AlreadyClaimed {});
-        }
-
-        // check if balance is enough
-        let balance = BALANCES
-            .load(deps.storage, (&service, &token.to_string()))
-            .unwrap_or_default();
-
-        if balance < amount {
-            return Err(RewardsError::InsufficientBalance {});
-        }
-
         // reduce balance
         BALANCES.update(
             deps.storage,
             (&service, &token.to_string()),
             |balance| -> Result<_, RewardsError> {
-                Ok(balance.unwrap_or_default().checked_sub(amount).unwrap())
+                Ok(balance
+                    .unwrap_or_default()
+                    .checked_sub(amount_to_claim)
+                    .unwrap())
             },
         )?;
 
@@ -365,28 +357,25 @@ mod execute {
             deps.storage,
             (&service, &token.to_string(), &earner),
             |claimed| -> Result<_, RewardsError> {
-                Ok(claimed.unwrap_or_default().checked_add(amount).unwrap())
+                Ok(claimed
+                    .unwrap_or_default()
+                    .checked_add(amount_to_claim)
+                    .unwrap())
             },
         )?;
 
-        // transfer the rewards to the earner
-        let transfer_msg = cosmwasm_std::WasmMsg::Execute {
-            contract_addr: token.to_string(),
-            msg: to_json_binary(&cw20::Cw20ExecuteMsg::Transfer {
-                recipient: recipient.to_string(),
-                amount,
-            })?,
-            funds: vec![],
-        };
+        let event = Event::new("ClaimRewards")
+            .add_attribute("service", service)
+            .add_attribute("earner", earner)
+            .add_attribute("recipient", recipient)
+            .add_attribute("total_claimed_amount", amount.to_string())
+            .add_attribute("amount", amount_to_claim.to_string())
+            .add_attribute("token", token.to_string());
 
-        Ok(Response::new().add_message(transfer_msg).add_event(
-            Event::new("ClaimRewards")
-                .add_attribute("service", service)
-                .add_attribute("earner", earner)
-                .add_attribute("recipient", recipient)
-                .add_attribute("amount", amount.to_string())
-                .add_attribute("token", token.to_string()),
-        ))
+        Ok(ClaimRewardsInternalResponse {
+            event,
+            amount_to_claim,
+        })
     }
 }
 

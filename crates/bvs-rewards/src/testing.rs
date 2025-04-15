@@ -1,9 +1,12 @@
 #![cfg(not(target_arch = "wasm32"))]
 
+use crate::error::RewardsError;
+use crate::merkle::{leaf_hash, Leaf, Sha3_256Algorithm};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use bvs_library::testing::TestingContract;
-use cosmwasm_std::{Addr, Empty, Env};
+use cosmwasm_std::{Addr, Empty, Env, HexBinary, Uint128};
 use cw_multi_test::{App, Contract, ContractWrapper};
+use rs_merkle::MerkleTree;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -37,4 +40,35 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for RewardsContract {
     fn addr(&self) -> &Addr {
         &self.addr
     }
+}
+
+pub fn generate_merkle_tree(leaves: &Vec<Leaf>) -> MerkleTree<Sha3_256Algorithm> {
+    MerkleTree::<Sha3_256Algorithm>::from_leaves(
+        leaves
+            .iter()
+            .map(|leaf| leaf_hash(leaf.earner.clone(), leaf.amount.clone()))
+            .collect::<Vec<_>>()
+            .as_slice(),
+    )
+}
+
+pub fn generate_merkle_proof(
+    tree: &MerkleTree<Sha3_256Algorithm>,
+    leaf_index: Uint128,
+) -> Result<Vec<HexBinary>, RewardsError> {
+    // convert leaf index into usize
+    let leaf_index: usize =
+        leaf_index
+            .u128()
+            .try_into()
+            .map_err(|_| RewardsError::InvalidProof {
+                msg: "Leaf index is too large".to_string(),
+            })?;
+
+    let proof = tree.proof(&[leaf_index]);
+    Ok(proof
+        .proof_hashes()
+        .iter()
+        .map(|hash| HexBinary::from(hash.to_vec()))
+        .collect())
 }

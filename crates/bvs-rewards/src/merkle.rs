@@ -73,39 +73,8 @@ pub fn verify_merkle_proof(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::testing::{generate_merkle_proof, generate_merkle_tree};
     use cosmwasm_std::HexBinary;
-    use rs_merkle::MerkleTree;
-
-    fn generate_merkle_tree(leaves: &Vec<Leaf>) -> MerkleTree<Sha3_256Algorithm> {
-        MerkleTree::<Sha3_256Algorithm>::from_leaves(
-            leaves
-                .iter()
-                .map(|leaf| leaf_hash(leaf.earner.clone(), leaf.amount.clone()))
-                .collect::<Vec<_>>()
-                .as_slice(),
-        )
-    }
-
-    fn generate_merkle_proof(
-        tree: &MerkleTree<Sha3_256Algorithm>,
-        leaf_index: Uint128,
-    ) -> Result<Vec<HexBinary>, RewardsError> {
-        // convert leaf index into usize
-        let leaf_index: usize =
-            leaf_index
-                .u128()
-                .try_into()
-                .map_err(|_| RewardsError::InvalidProof {
-                    msg: "Leaf index is too large".to_string(),
-                })?;
-
-        let proof = tree.proof(&[leaf_index]);
-        Ok(proof
-            .proof_hashes()
-            .iter()
-            .map(|hash| HexBinary::from(hash.to_vec()))
-            .collect())
-    }
 
     #[test]
     fn test_leaf_hash() {
