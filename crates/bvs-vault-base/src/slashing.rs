@@ -12,17 +12,9 @@ pub fn set_slashable(store: &mut dyn Storage, slashable: bool) -> Result<(), Vau
 }
 
 pub fn get_slashable(store: &dyn Storage) -> StdResult<bool> {
-    match SLASHABLE.may_load(store)? {
-        // The vault is slashable
-        Some(true) => Ok(true),
+    let slashable = SLASHABLE.may_load(store)?.unwrap_or(false);
 
-        // The vault is not slashable
-        Some(false) => Ok(false),
-
-        // For some reason the vault do not have slashability flag set.
-        // Then effectively it is not slashable.
-        None => Ok(false),
-    }
+    Ok(slashable)
 }
 
 pub fn assert_slashable(store: &dyn Storage) -> Result<(), VaultError> {
