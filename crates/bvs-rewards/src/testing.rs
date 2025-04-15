@@ -42,11 +42,11 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for RewardsContract {
     }
 }
 
-pub fn generate_merkle_tree(leaves: &Vec<Leaf>) -> MerkleTree<Sha3_256Algorithm> {
+pub fn generate_merkle_tree(leaves: &[Leaf]) -> MerkleTree<Sha3_256Algorithm> {
     MerkleTree::<Sha3_256Algorithm>::from_leaves(
         leaves
             .iter()
-            .map(|leaf| leaf_hash(leaf.earner.clone(), leaf.amount.clone()))
+            .map(|leaf| leaf_hash(&leaf.earner, &leaf.amount))
             .collect::<Vec<_>>()
             .as_slice(),
     )

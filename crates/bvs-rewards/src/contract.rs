@@ -93,7 +93,6 @@ mod execute {
         StdError, Uint128,
     };
     use std::ops::{Add, Sub};
-    use std::str::FromStr;
 
     #[cw_serde]
     pub struct ClaimRewardsInternalResponse {
