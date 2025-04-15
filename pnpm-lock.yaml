@@ -48,6 +48,8 @@ importers:
 
   crates/bvs-registry: {}
 
+  crates/bvs-rewards: {}
+
   crates/bvs-slash-manager: {}
 
   crates/bvs-vault-bank: {}
@@ -107,8 +109,6 @@ importers:
         specifier: ^1.3.0
         version: 1.3.0
 
-  examples/rewards/bvs-rewards: {}
-
   examples/squaring/modules:
     dependencies:
       '@modules/cosmwasm-api':
@@ -150,6 +150,9 @@ importers:
       '@satlayer/bvs-registry':
         specifier: workspace:*
         version: link:../../crates/bvs-registry
+      '@satlayer/bvs-rewards':
+        specifier: workspace:*
+        version: link:../../crates/bvs-rewards
       '@satlayer/bvs-vault-bank':
         specifier: workspace:*
         version: link:../../crates/bvs-vault-bank
@@ -215,6 +218,9 @@ importers:
       '@satlayer/bvs-registry':
         specifier: workspace:*
         version: link:../../crates/bvs-registry
+      '@satlayer/bvs-rewards':
+        specifier: workspace:*
+        version: link:../../crates/bvs-rewards
       '@satlayer/bvs-vault-bank':
         specifier: workspace:*
         version: link:../../crates/bvs-vault-bank
