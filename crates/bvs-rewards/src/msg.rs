@@ -35,10 +35,24 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(DistributionRootResponse)]
     DistributionRoot { service: String, token: String },
+    #[returns(BalanceResponse)]
+    Balance { service: String, token: String },
+    #[returns(ClaimRewardsResponse)]
+    ClaimedRewards {
+        service: String,
+        token: String,
+        earner: String,
+    },
 }
 
 #[cw_serde]
 pub struct DistributionRootResponse(pub String);
+
+#[cw_serde]
+pub struct BalanceResponse(pub Uint128);
+
+#[cw_serde]
+pub struct ClaimRewardsResponse(pub Uint128);
 
 #[cw_serde]
 pub enum RewardsType {
