@@ -382,12 +382,25 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let service = deps.api.addr_validate(&service)?;
             to_json_binary(&query::distribution_root(deps, service, token)?)
         }
+        QueryMsg::Balance { service, token } => {
+            let service = deps.api.addr_validate(&service)?;
+            to_json_binary(&query::balance(deps, service, token)?)
+        }
+        QueryMsg::ClaimedRewards {
+            service,
+            token,
+            earner,
+        } => {
+            let service = deps.api.addr_validate(&service)?;
+            let earner = deps.api.addr_validate(&earner)?;
+            to_json_binary(&query::claimed_rewards(deps, service, token, earner)?)
+        }
     }
 }
 
 mod query {
-    use crate::state::DISTRIBUTION_ROOTS;
-    use cosmwasm_std::{Addr, Deps, StdResult};
+    use crate::state::{BALANCES, CLAIMED_REWARDS, DISTRIBUTION_ROOTS};
+    use cosmwasm_std::{Addr, Deps, StdResult, Uint128};
 
     /// Query the distribution root for a given service and token
     ///
@@ -396,6 +409,24 @@ mod query {
         DISTRIBUTION_ROOTS
             .may_load(deps.storage, (&service, &token))
             .map(|shares| shares.unwrap_or_default().to_string())
+    }
+
+    pub fn balance(deps: Deps, service: Addr, token: String) -> StdResult<Uint128> {
+        BALANCES
+            .may_load(deps.storage, (&service, &token))
+            .map(|balance| balance.unwrap_or_default())
+    }
+
+    /// Query the claimed rewards for a given service, token and earner
+    pub fn claimed_rewards(
+        deps: Deps,
+        service: Addr,
+        token: String,
+        earner: Addr,
+    ) -> StdResult<Uint128> {
+        CLAIMED_REWARDS
+            .may_load(deps.storage, (&service, &token, &earner))
+            .map(|rewards| rewards.unwrap_or_default())
     }
 }
 
