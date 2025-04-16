@@ -3,6 +3,10 @@
 
 package rewards
 
+type BalanceResponse string
+
+type ClaimRewardsResponse string
+
 type DistributionRootResponse string
 
 type InstantiateMsg struct {
@@ -13,6 +17,7 @@ type InstantiateMsg struct {
 type ExecuteMsg struct {
 	DistributeRewards *DistributeRewards `json:"distribute_rewards,omitempty"`
 	ClaimRewards      *ClaimRewards      `json:"claim_rewards,omitempty"`
+	TransferOwnership *TransferOwnership `json:"transfer_ownership,omitempty"`
 }
 
 type ClaimRewards struct {
@@ -28,13 +33,13 @@ type ClaimRewards struct {
 
 type ClaimRewardsProof struct {
 	// leaf_index is the index of the user leaf in the Merkle tree
-	LeafIndex string `json:"leaf_index"`
+	LeafIndex int64 `json:"leaf_index"`
 	// proof is the Merkle proof of the user leaf in the Merkle tree
 	Proof []string `json:"proof"`
 	// root refers to the Merkle root of the Merkle tree
 	Root string `json:"root"`
 	// total_leaves_count is the total number of leaves in the Merkle tree
-	TotalLeavesCount string `json:"total_leaves_count"`
+	TotalLeavesCount int64 `json:"total_leaves_count"`
 }
 
 type DistributeRewards struct {
@@ -50,8 +55,26 @@ type RewardDistribution struct {
 	Token string `json:"token"`
 }
 
+type TransferOwnership struct {
+	// See [`bvs_library::ownership::transfer_ownership`] for more information on this field
+	NewOwner string `json:"new_owner"`
+}
+
 type QueryMsg struct {
-	DistributionRoot DistributionRoot `json:"distribution_root"`
+	DistributionRoot *DistributionRoot `json:"distribution_root,omitempty"`
+	Balance          *Balance          `json:"balance,omitempty"`
+	ClaimedRewards   *ClaimedRewards   `json:"claimed_rewards,omitempty"`
+}
+
+type Balance struct {
+	Service string `json:"service"`
+	Token   string `json:"token"`
+}
+
+type ClaimedRewards struct {
+	Earner  string `json:"earner"`
+	Service string `json:"service"`
+	Token   string `json:"token"`
 }
 
 type DistributionRoot struct {
@@ -63,5 +86,5 @@ type RewardsType string
 
 const (
 	Bank RewardsType = "bank"
-	CW20 RewardsType = "c_w20"
+	Cw20 RewardsType = "cw20"
 )

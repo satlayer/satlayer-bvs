@@ -29,10 +29,68 @@
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
  * amount refers to the total amount of rewards accrued to the user
+ */
+type BalanceResponse = string;
+
+/**
+ * This is a wrapper around Vec<u8> to add hex de/serialization with serde. It also adds
+ * some helper methods to help encode inline.
  *
- * leaf_index is the index of the user leaf in the Merkle tree
+ * This is similar to `cosmwasm_std::Binary` but uses hex. See also
+ * <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.
  *
- * total_leaves_count is the total number of leaves in the Merkle tree
+ * root refers to the Merkle root of the Merkle tree
+ *
+ * amount refers to the additional rewards to be transferred to the contract and
+ * distributed
+ *
+ * A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that
+ * the full u128 range can be used for clients that convert JSON numbers to floats, like
+ * JavaScript and jq.
+ *
+ * # Examples
+ *
+ * Use `from` to create instances of this and `u128` to get the value out:
+ *
+ * ``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(),
+ * 123);
+ *
+ * let b = Uint128::from(42u64); assert_eq!(b.u128(), 42);
+ *
+ * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
+ *
+ * amount refers to the total amount of rewards accrued to the user
+ */
+type ClaimRewardsResponse = string;
+
+/**
+ * This is a wrapper around Vec<u8> to add hex de/serialization with serde. It also adds
+ * some helper methods to help encode inline.
+ *
+ * This is similar to `cosmwasm_std::Binary` but uses hex. See also
+ * <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.
+ *
+ * root refers to the Merkle root of the Merkle tree
+ *
+ * amount refers to the additional rewards to be transferred to the contract and
+ * distributed
+ *
+ * A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that
+ * the full u128 range can be used for clients that convert JSON numbers to floats, like
+ * JavaScript and jq.
+ *
+ * # Examples
+ *
+ * Use `from` to create instances of this and `u128` to get the value out:
+ *
+ * ``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(),
+ * 123);
+ *
+ * let b = Uint128::from(42u64); assert_eq!(b.u128(), 42);
+ *
+ * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
+ *
+ * amount refers to the total amount of rewards accrued to the user
  */
 type DistributionRootResponse = string;
 
@@ -46,6 +104,7 @@ export interface InstantiateMsg {
 export interface ExecuteMsg {
   distribute_rewards?: DistributeRewards;
   claim_rewards?: ClaimRewards;
+  transfer_ownership?: TransferOwnership;
 }
 
 export interface ClaimRewards {
@@ -67,7 +126,7 @@ export interface ClaimRewardsProof {
   /**
    * leaf_index is the index of the user leaf in the Merkle tree
    */
-  leaf_index: string;
+  leaf_index: number;
   /**
    * proof is the Merkle proof of the user leaf in the Merkle tree
    */
@@ -79,12 +138,12 @@ export interface ClaimRewardsProof {
   /**
    * total_leaves_count is the total number of leaves in the Merkle tree
    */
-  total_leaves_count: string;
+  total_leaves_count: number;
 }
 
 export enum RewardsType {
   Bank = "bank",
-  CW20 = "c_w20",
+  Cw20 = "cw20",
 }
 
 export interface DistributeRewards {
@@ -104,8 +163,28 @@ export interface RewardDistribution {
   token: string;
 }
 
+export interface TransferOwnership {
+  /**
+   * See [`bvs_library::ownership::transfer_ownership`] for more information on this field
+   */
+  new_owner: string;
+}
+
 export interface QueryMsg {
-  distribution_root: DistributionRoot;
+  distribution_root?: DistributionRoot;
+  balance?: Balance;
+  claimed_rewards?: ClaimedRewards;
+}
+
+export interface Balance {
+  service: string;
+  token: string;
+}
+
+export interface ClaimedRewards {
+  earner: string;
+  service: string;
+  token: string;
 }
 
 export interface DistributionRoot {

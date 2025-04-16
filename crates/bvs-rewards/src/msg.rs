@@ -56,7 +56,7 @@ pub struct ClaimRewardsResponse(pub Uint128);
 
 #[cw_serde]
 pub enum RewardsType {
-    CW20,
+    Cw20,
     Bank,
 }
 
@@ -75,9 +75,9 @@ pub struct ClaimRewardsProof {
     /// proof is the Merkle proof of the user leaf in the Merkle tree
     pub proof: Vec<HexBinary>,
     /// leaf_index is the index of the user leaf in the Merkle tree
-    pub leaf_index: Uint128,
+    pub leaf_index: u32,
     /// total_leaves_count is the total number of leaves in the Merkle tree
-    pub total_leaves_count: Uint128,
+    pub total_leaves_count: u32,
 }
 
 #[cfg(test)]
