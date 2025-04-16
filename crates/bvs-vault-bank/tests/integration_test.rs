@@ -5,7 +5,7 @@ use bvs_registry::testing::RegistryContract;
 use bvs_vault_bank::msg::{ExecuteMsg, QueryMsg};
 use bvs_vault_bank::testing::VaultBankContract;
 use bvs_vault_base::error::VaultError;
-use bvs_vault_base::msg::{JailDetail, Recipient, RecipientAmount, VaultInfoResponse};
+use bvs_vault_base::msg::{JailDetail, LockAmount, Recipient, RecipientAmount, VaultInfoResponse};
 use bvs_vault_base::shares::QueuedWithdrawalInfo;
 use bvs_vault_router::{msg::ExecuteMsg as RouterExecuteMsg, testing::VaultRouterContract};
 use cosmwasm_std::testing::mock_env;
@@ -1227,6 +1227,73 @@ fn test_negative_transfer_asset_custody() {
 
         // called by not router
         // so should fail
+        assert!(res.is_err());
+    }
+}
+
+#[test]
+fn test_system_lock_asset() {
+    let (mut app, tc) = TestContracts::init();
+    let app = &mut app;
+    let owner = app.api().addr_make("owner");
+    let denom = "denom";
+    let original_deposit_amount: u128 = 100_000_000;
+
+    let staker = app.api().addr_make("staker/1");
+
+    // Fund tokens
+    {
+        app.send_tokens(
+            owner.clone(),
+            staker.clone(),
+            &coins(original_deposit_amount, denom),
+        )
+        .unwrap();
+    }
+
+    // Deposit some tokens from staker to Vault
+    {
+        let msg = ExecuteMsg::DepositFor(RecipientAmount {
+            recipient: staker.clone(),
+            amount: Uint128::new(original_deposit_amount),
+        });
+        tc.vault
+            .execute_with_funds(app, &staker, &msg, coins(original_deposit_amount, denom))
+            .expect("staker deposit failed");
+    }
+
+    // let's enable slashing
+    {
+        let msg = ExecuteMsg::SetSlashable(true);
+        tc.vault.execute(app, tc.router.addr(), &msg).unwrap();
+    }
+
+    // positive test
+    {
+        let msg = ExecuteMsg::SystemLockAsset(LockAmount(Uint128::new(100)));
+        let res = tc.vault.execute(app, tc.router.addr(), &msg);
+
+        // system lock asset should be success
+        assert!(res.is_ok());
+
+        // check router balance
+        let router_balance = app.wrap().query_balance(tc.router.addr(), denom).unwrap();
+        assert_eq!(router_balance.amount, Uint128::new(100));
+
+        // check vault balance should be reduced by 100
+        let vault_balance = app.wrap().query_balance(tc.vault.addr(), denom).unwrap();
+        assert_eq!(
+            vault_balance.amount,
+            Uint128::new(original_deposit_amount - 100)
+        );
+    }
+
+    // negative test
+    {
+        let msg = ExecuteMsg::SystemLockAsset(LockAmount(Uint128::new(100)));
+        let res = tc.vault.execute(app, &staker.clone(), &msg);
+
+        // system lock asset should be failed
         assert!(res.is_err());
     }
 }

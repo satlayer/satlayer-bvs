@@ -64,6 +64,10 @@ pub fn execute(
             msg.validate(deps.api)?;
             execute::transfer_asset_custody(deps, env, info, msg)
         }
+        ExecuteMsg::SystemLockAsset(msg) => {
+            msg.validate(deps.api)?;
+            execute::system_lock_asset(deps, env, info, msg)
+        }
         ExecuteMsg::SetSlashable(flag) => execute::set_slashability(deps, info, env, flag),
     }
 }
@@ -73,7 +77,7 @@ mod execute {
     use crate::bank::get_denom;
     use crate::error::ContractError;
     use bvs_vault_base::error::VaultError;
-    use bvs_vault_base::msg::{JailDetail, Recipient, RecipientAmount};
+    use bvs_vault_base::msg::{JailDetail, LockAmount, Recipient, RecipientAmount};
     use bvs_vault_base::router::assert_router;
     use bvs_vault_base::shares::QueuedWithdrawalInfo;
     use bvs_vault_base::{offset, router, shares};
@@ -310,6 +314,31 @@ mod execute {
             .add_attribute("vault", env.contract.address)
             .add_attribute("jail_address", new_custodian)
             .add_attribute("percentage", percentage.to_string());
+
+        Ok(Response::new().add_event(event).add_message(send_msg))
+    }
+
+    /// This function differs from the `TransferAssetCustody` message in that
+    /// absolute size of asset is transferred
+    /// The receipient is the router instead of the jail address.
+    pub fn system_lock_asset(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        amount: LockAmount,
+    ) -> Result<Response, ContractError> {
+        bvs_vault_base::slashing::assert_slashable(deps.as_ref().storage)?;
+
+        assert_router(deps.storage, &info)?;
+
+        let router = router::get_router(deps.storage)?;
+
+        let send_msg = bank::bank_send(deps.storage, &router, amount.0)?;
+
+        let event = Event::new("SystemLockAsset")
+            .add_attribute("sender", info.sender)
+            .add_attribute("vault", env.contract.address)
+            .add_attribute("amount", amount.0.to_string());
 
         Ok(Response::new().add_event(event).add_message(send_msg))
     }
