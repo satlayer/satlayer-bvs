@@ -49,8 +49,33 @@ pub enum VaultExecuteMsg {
     /// The handling of the slashed asset should not concern the vault contract.
     TransferAssetCustody(JailDetail),
 
+    /// ExecuteMsg SystemLockAsset size the asset by absolute amount.
+    /// This message differs from the `TransferAssetCustody` message in that
+    /// the asset is sized by absolute amount.
+    /// The asset is moved to the router contract, instead of supplied arbitrary contract.
+    /// The asset amount is determined by the router base on strategy.
+    /// Callable by the router contract only.
+    SystemLockAsset(LockAmount),
+
     /// ExecuteMsg Pause the vault contract.
     SetSlashable(bool),
+}
+
+#[cw_serde]
+pub struct LockAmount(pub Uint128);
+
+impl LockAmount {
+    /// Validate the amount: [`Uint128`] field.
+    /// The amount must be greater than zero.
+    pub fn validate(&self, _api: &dyn Api) -> Result<(), VaultError> {
+        if self.0.is_zero() {
+            return Err(VaultError::zero("Amount cannot be zero."));
+        }
+        if self.0 < Uint128::zero() {
+            return Err(VaultError::unauthorized("Amount cannot be negative."));
+        }
+        Ok(())
+    }
 }
 
 #[cw_serde]
