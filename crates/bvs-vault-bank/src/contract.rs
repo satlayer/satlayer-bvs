@@ -331,6 +331,12 @@ mod execute {
 
         assert_router(deps.storage, &info)?;
 
+        let vault_balance = bank::query_balance(&deps.as_ref(), &env)?;
+
+        if vault_balance < amount.0 {
+            return Err(VaultError::insufficient("Vault balance is less than amount").into());
+        }
+
         let router = router::get_router(deps.storage)?;
 
         let send_msg = bank::bank_send(deps.storage, &router, amount.0)?;
