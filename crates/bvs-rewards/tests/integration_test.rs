@@ -557,7 +557,7 @@ fn test_claim_rewards_after_multiple_distribution() {
         assert_eq!(contract_balance, 15_000u128); // 10_000 + 5_000
     }
 
-    // CLAIM flow - 1 (fail due to using wrong amount from DISTRIBUTE flow 1)
+    // CLAIM flow - 1 (fail due to using wrong amount)
     {
         let earner = app.api().addr_make("earner9");
         let leaf = Leaf {
@@ -826,6 +826,154 @@ fn test_claim_rewards_after_multiple_distribution() {
         // assert contract balance is reduced
         let contract_balance: u128 = cw20.balance(&app, &rewards_contract.addr);
         assert_eq!(contract_balance, 28_000u128); // 15_000 - 1_500 + 15_000 - 500
+
+        // assert recipient balance is increased
+        let recipient_balance: u128 = cw20.balance(&app, &recipient);
+        assert_eq!(recipient_balance, 2_000u128); // 1_500 + 500
+    }
+
+    // CLAIM flow - 5 (success, earner8 using previous root - distribute flow 2)
+    {
+        let earner = app.api().addr_make("earner8");
+        let leaf = Leaf {
+            earner: earner.to_string(),
+            amount: Uint128::new(1_500), // 15_000 / 10 = 1_500
+        };
+        let recipient = earner.clone();
+
+        let leaf_index = 7u32;
+        let total_leaves_count = 10u32;
+
+        let merkle_tree = prep_merkle_tree_equalised(&app, 10, Uint128::new(15_000)); // 10_000 + 5_000
+        let merkle_root = HexBinary::from(merkle_tree.root().unwrap());
+
+        let proof = generate_merkle_proof(&merkle_tree, leaf_index).unwrap();
+
+        let claim_res = rewards_contract
+            .execute(
+                &mut app,
+                &earner,
+                &ClaimRewards {
+                    claim_rewards_proof: ClaimRewardsProof {
+                        root: merkle_root.clone(),
+                        proof,
+                        leaf_index,
+                        total_leaves_count,
+                    },
+                    reward_type: RewardsType::Cw20,
+                    service: service.to_string(),
+                    token: cw20.addr.to_string(),
+                    amount: leaf.amount,
+                    recipient: recipient.to_string(),
+                },
+            )
+            .unwrap();
+
+        // assert events are correct
+        assert_eq!(claim_res.events.len(), 4);
+
+        // assert ClaimRewards event
+        assert_eq!(
+            claim_res.events[1],
+            Event::new("wasm-ClaimRewards")
+                .add_attribute("_contract_address", rewards_contract.addr.clone())
+                .add_attribute("service", service.to_string())
+                .add_attribute("earner", earner.to_string())
+                .add_attribute("recipient", recipient.to_string())
+                .add_attribute("total_claimed_amount", leaf.amount.to_string())
+                .add_attribute("amount", leaf.amount.to_string())
+                .add_attribute("token", cw20.addr.to_string())
+        );
+
+        // assert transfer event
+        assert_eq!(
+            claim_res.events[3],
+            Event::new("wasm")
+                .add_attribute("_contract_address", cw20.addr.clone())
+                .add_attribute("action", "transfer")
+                .add_attribute("from", rewards_contract.addr.clone())
+                .add_attribute("to", recipient.to_string())
+                .add_attribute("amount", leaf.amount.to_string())
+        );
+
+        // assert contract balance is reduced
+        let contract_balance: u128 = cw20.balance(&app, &rewards_contract.addr);
+        assert_eq!(contract_balance, 26_500u128); // 28_000 - 1_500
+
+        // assert recipient balance is increased
+        let recipient_balance: u128 = cw20.balance(&app, &recipient);
+        assert_eq!(recipient_balance, 1_500u128); // 1_500
+    }
+
+    // CLAIM flow - 6 (success, earner8 using recent root)
+    {
+        let earner = app.api().addr_make("earner8");
+        let leaf = Leaf {
+            earner: earner.to_string(),
+            amount: Uint128::new(2_000), // 30_000 / 15 = 2_000
+        };
+        let recipient = earner.clone();
+
+        let leaf_index = 7u32;
+        let total_leaves_count = 15u32;
+
+        let merkle_tree = prep_merkle_tree_equalised(&app, 15, Uint128::new(30_000)); // 10_000 + 5_000 + 15_000
+        let merkle_root = HexBinary::from(merkle_tree.root().unwrap());
+
+        let proof = generate_merkle_proof(&merkle_tree, leaf_index).unwrap();
+
+        let claim_res = rewards_contract
+            .execute(
+                &mut app,
+                &earner,
+                &ClaimRewards {
+                    claim_rewards_proof: ClaimRewardsProof {
+                        root: merkle_root.clone(),
+                        proof,
+                        leaf_index,
+                        total_leaves_count,
+                    },
+                    reward_type: RewardsType::Cw20,
+                    service: service.to_string(),
+                    token: cw20.addr.to_string(),
+                    amount: leaf.amount,
+                    recipient: recipient.to_string(),
+                },
+            )
+            .unwrap();
+
+        // assert events are correct
+        assert_eq!(claim_res.events.len(), 4);
+
+        let amount_to_claim = leaf.amount - Uint128::new(1_500); // 2_000 - 1_500
+
+        // assert ClaimRewards event
+        assert_eq!(
+            claim_res.events[1],
+            Event::new("wasm-ClaimRewards")
+                .add_attribute("_contract_address", rewards_contract.addr.clone())
+                .add_attribute("service", service.to_string())
+                .add_attribute("earner", earner.to_string())
+                .add_attribute("recipient", recipient.to_string())
+                .add_attribute("total_claimed_amount", leaf.amount.to_string())
+                .add_attribute("amount", amount_to_claim.to_string())
+                .add_attribute("token", cw20.addr.to_string())
+        );
+
+        // assert transfer event
+        assert_eq!(
+            claim_res.events[3],
+            Event::new("wasm")
+                .add_attribute("_contract_address", cw20.addr.clone())
+                .add_attribute("action", "transfer")
+                .add_attribute("from", rewards_contract.addr.clone())
+                .add_attribute("to", recipient.to_string())
+                .add_attribute("amount", amount_to_claim.to_string())
+        );
+
+        // assert contract balance is reduced
+        let contract_balance: u128 = cw20.balance(&app, &rewards_contract.addr);
+        assert_eq!(contract_balance, 26_000u128); // 26_500 - 500
 
         // assert recipient balance is increased
         let recipient_balance: u128 = cw20.balance(&app, &recipient);

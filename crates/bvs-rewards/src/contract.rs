@@ -86,7 +86,8 @@ mod execute {
     use crate::error::RewardsError;
     use crate::merkle::{verify_merkle_proof, Leaf};
     use crate::msg::{ClaimRewardsProof, RewardDistribution};
-    use crate::state::{BALANCES, CLAIMED_REWARDS, DISTRIBUTION_ROOTS};
+    use crate::state::helper::{root_exists, save_distribution_root};
+    use crate::state::{BALANCES, CLAIMED_REWARDS};
     use cosmwasm_schema::cw_serde;
     use cosmwasm_std::{
         to_json_binary, Addr, BankMsg, Coin, DepsMut, Env, Event, HexBinary, MessageInfo, Response,
@@ -129,9 +130,10 @@ mod execute {
         )?;
 
         // update distribution roots
-        DISTRIBUTION_ROOTS.save(
+        save_distribution_root(
             deps.storage,
-            (&service, &reward_distribution.token),
+            &service,
+            &reward_distribution.token,
             &merkle_root,
         )?;
 
@@ -199,7 +201,7 @@ mod execute {
         };
 
         // update distribution roots
-        DISTRIBUTION_ROOTS.save(deps.storage, (&service, &token.to_string()), &merkle_root)?;
+        save_distribution_root(deps.storage, &service, &token.to_string(), &merkle_root)?;
 
         // add transfer message as submsg
         response = if let Some(transfer_msg) = transfer_msg {
@@ -317,12 +319,9 @@ mod execute {
         };
 
         // check if root is latest
-        let root = DISTRIBUTION_ROOTS
-            .may_load(deps.storage, (&service, &token))?
-            .unwrap_or_default();
-        if claim_rewards_proof.root != root {
+        if !root_exists(deps.storage, &service, &token, &claim_rewards_proof.root) {
             return Err(RewardsError::Std(StdError::generic_err(
-                "Root is not latest",
+                "Root does not exist",
             )));
         };
 
@@ -421,13 +420,19 @@ mod query {
     use crate::state::{BALANCES, CLAIMED_REWARDS, DISTRIBUTION_ROOTS};
     use cosmwasm_std::{Addr, Deps, HexBinary, StdResult, Uint128};
 
-    /// Query the distribution root for a given service and token
+    /// Query the latest distribution root for a given service and token
     ///
     /// returns HexBinary::default() if no root is found
     pub fn distribution_root(deps: Deps, service: Addr, token: String) -> StdResult<HexBinary> {
         DISTRIBUTION_ROOTS
             .may_load(deps.storage, (&service, &token))
-            .map(|shares| shares.unwrap_or_default())
+            .map(|roots| {
+                if let Some((_, root)) = roots {
+                    root
+                } else {
+                    HexBinary::default()
+                }
+            })
     }
 
     pub fn balance(deps: Deps, service: Addr, token: String) -> StdResult<Uint128> {
@@ -498,10 +503,16 @@ mod tests {
         assert_eq!(balance, Uint128::new(10_000));
 
         // assert DISTRIBUTION_ROOTS state is updated
-        let root = DISTRIBUTION_ROOTS
+        let roots = DISTRIBUTION_ROOTS
             .load(&deps.storage, (&service, &bank_token.to_string()))
             .unwrap();
-        assert_eq!(root, HexBinary::from_hex(merkle_root).unwrap());
+        assert_eq!(
+            roots,
+            (
+                HexBinary::default(),
+                HexBinary::from_hex(merkle_root).unwrap()
+            )
+        );
     }
 
     #[test]
@@ -549,6 +560,12 @@ mod tests {
         let root = DISTRIBUTION_ROOTS
             .load(&deps.storage, (&service, &cw20.to_string()))
             .unwrap();
-        assert_eq!(root, HexBinary::from_hex(merkle_root).unwrap());
+        assert_eq!(
+            root,
+            (
+                HexBinary::default(),
+                HexBinary::from_hex(merkle_root).unwrap()
+            )
+        );
     }
 }
