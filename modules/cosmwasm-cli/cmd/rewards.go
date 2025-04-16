@@ -71,129 +71,135 @@ func (t *RewardsMerkleTree) UnmarshalJSON(data []byte) error {
 }
 
 // --------------------------------- rewards create Command ---------------------------------
-var rewardsCreateCmd = &cobra.Command{
-	Use:   "create",
-	Short: "Create a new Merkle tree rewards from distribution file",
-	Run: func(cmd *cobra.Command, args []string) {
-		// load distribution file from config
-		distributionFilePath, err := loadDistributionFilePath(cmd)
-		if err != nil {
-			fmt.Println("Error getting distribution file path:", err)
-			return
-		}
+func RewardsCreateCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "create",
+		Short: "Create a new Merkle tree rewards from distribution file",
+		Run: func(cmd *cobra.Command, args []string) {
+			// load distribution file from config
+			distributionFilePath, err := loadDistributionFilePath(cmd)
+			if err != nil {
+				fmt.Println("Error getting distribution file path:", err)
+				return
+			}
 
-		// Add logic to create a new Merkle tree
-		dist, err := readMerkleInput(distributionFilePath)
-		if err != nil {
-			fmt.Println("Error reading distribution file:", err)
-			return
-		}
+			// Add logic to create a new Merkle tree
+			dist, err := readMerkleInput(distributionFilePath)
+			if err != nil {
+				fmt.Println("Error reading distribution file:", err)
+				return
+			}
 
-		// Create the Merkle tree from the distribution data
-		rewardsMerkleTree, err := createMerkleTreeFromDistribution(dist)
-		if err != nil {
-			fmt.Println("Error creating Merkle tree:", err)
-			return
-		}
+			// Create the Merkle tree from the distribution data
+			rewardsMerkleTree, err := createMerkleTreeFromDistribution(dist)
+			if err != nil {
+				fmt.Println("Error creating Merkle tree:", err)
+				return
+			}
 
-		// convert the tree to JSON bytes
-		bytes, err := rewardsMerkleTree.MarshalJSON()
-		if err != nil {
-			fmt.Println("Error marshaling tree to JSON:", err)
-			return
-		}
+			// convert the tree to JSON bytes
+			bytes, err := rewardsMerkleTree.MarshalJSON()
+			if err != nil {
+				fmt.Println("Error marshaling tree to JSON:", err)
+				return
+			}
 
-		// Save the tree in json format
-		merkleTreeFilePath, err := loadMerkleFilePath(cmd)
-		if err != nil {
-			fmt.Println("Error getting merkle file path:", err)
-			return
-		}
-		err = os.WriteFile(merkleTreeFilePath, bytes, 0644)
-		if err != nil {
-			fmt.Println("Error writing tree to file:", err)
-			return
-		}
+			// Save the tree in json format
+			merkleTreeFilePath, err := loadMerkleFilePath(cmd)
+			if err != nil {
+				fmt.Println("Error getting merkle file path:", err)
+				return
+			}
+			err = os.WriteFile(merkleTreeFilePath, bytes, 0644)
+			if err != nil {
+				fmt.Println("Error writing tree to file:", err)
+				return
+			}
 
-		// print merkle root
-		fmt.Println("Merkle root:", rewardsMerkleTree.Tree.String())
-		fmt.Println("Merkle tree saved to:", merkleTreeFilePath)
-	},
+			// print merkle root
+			fmt.Println("Merkle root:", rewardsMerkleTree.Tree.String())
+			fmt.Println("Merkle tree saved to:", merkleTreeFilePath)
+		},
+	}
 }
 
 // --------------------------------- rewards load Command ---------------------------------
-var rewardsLoadCmd = &cobra.Command{
-	Use:   "load",
-	Short: "Load a Merkle tree from a file",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Loading a Merkle tree from file...")
-		// Add logic to load a Merkle tree from a file
-		merkleFilePath, err := loadMerkleFilePath(cmd)
-		if err != nil {
-			fmt.Println("Error getting file path:", err)
-			return
-		}
-		rewardsTree, err := loadMerkleTreeFromFile(merkleFilePath)
+func RewardsLoadCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "load",
+		Short: "Load a Merkle tree from a file",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("Loading a Merkle tree from file...")
+			// Add logic to load a Merkle tree from a file
+			merkleFilePath, err := loadMerkleFilePath(cmd)
+			if err != nil {
+				fmt.Println("Error getting file path:", err)
+				return
+			}
+			rewardsTree, err := loadMerkleTreeFromFile(merkleFilePath)
 
-		// print merkle root
-		fmt.Println("Merkle root:", rewardsTree.Tree.String())
-	},
+			// print merkle root
+			fmt.Println("Merkle root:", rewardsTree.Tree.String())
+		},
+	}
 }
 
 // --------------------------------- rewards proof Command ---------------------------------
-var rewardsProofCmd = &cobra.Command{
-	Use:   "proof",
-	Short: "Generate a Merkle proof for a given earner and rewards",
-	Args: func(cmd *cobra.Command, args []string) error {
-		if len(args) != 2 {
-			return fmt.Errorf("requires 2 arguments: merkle proof <earner> <reward>")
-		}
-		// TODO: validate earner and reward
-		return nil
-	},
-	Run: func(cmd *cobra.Command, args []string) {
-		merkleFilePath, err := loadMerkleFilePath(cmd)
-		if err != nil {
-			fmt.Println("Error getting merkle file path:", err)
-			return
-		}
+func RewardsProofCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "proof",
+		Short: "Generate a Merkle proof for a given earner and rewards",
+		Args: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 2 {
+				return fmt.Errorf("requires 2 arguments: merkle proof <earner> <reward>")
+			}
+			// TODO: validate earner and reward
+			return nil
+		},
+		Run: func(cmd *cobra.Command, args []string) {
+			merkleFilePath, err := loadMerkleFilePath(cmd)
+			if err != nil {
+				fmt.Println("Error getting merkle file path:", err)
+				return
+			}
 
-		rewardsTree, err := loadMerkleTreeFromFile(merkleFilePath)
-		if err != nil {
-			fmt.Println("Error loading Merkle tree:", err)
-			return
-		}
+			rewardsTree, err := loadMerkleTreeFromFile(merkleFilePath)
+			if err != nil {
+				fmt.Println("Error loading Merkle tree:", err)
+				return
+			}
 
-		// Generate the proof for the given earner and reward
-		earner := args[0]
-		reward := args[1]
-		leaf := leafHash(earner, reward)
+			// Generate the proof for the given earner and reward
+			earner := args[0]
+			reward := args[1]
+			leaf := leafHash(earner, reward)
 
-		proof, err := rewardsTree.Tree.GenerateProof(leaf, 0)
-		if err != nil {
-			fmt.Println("Error generating proof:", err)
-			return
-		}
+			proof, err := rewardsTree.Tree.GenerateProof(leaf, 0)
+			if err != nil {
+				fmt.Println("Error generating proof:", err)
+				return
+			}
 
-		merkleProofRes := MerkleProofRes{
-			ClaimRewardProof: ClaimRewardProof{
-				Root:             rewardsTree.Tree.String(),
-				Proof:            proof.Hashes,
-				LeafIndex:        proof.Index,
-				TotalLeavesCount: uint64(len(rewardsTree.Tree.Data)),
-			},
-			Token:  rewardsTree.Token,
-			Amount: reward,
-		}
+			merkleProofRes := MerkleProofRes{
+				ClaimRewardProof: ClaimRewardProof{
+					Root:             rewardsTree.Tree.String(),
+					Proof:            proof.Hashes,
+					LeafIndex:        proof.Index,
+					TotalLeavesCount: uint64(len(rewardsTree.Tree.Data)),
+				},
+				Token:  rewardsTree.Token,
+				Amount: reward,
+			}
 
-		merkleProofResJSON, err := json.MarshalIndent(merkleProofRes, "", "  ")
-		if err != nil {
-			fmt.Println("Error marshaling proof to JSON:", err)
-			return
-		}
+			merkleProofResJSON, err := json.MarshalIndent(merkleProofRes, "", "  ")
+			if err != nil {
+				fmt.Println("Error marshaling proof to JSON:", err)
+				return
+			}
 
-		fmt.Println(string(merkleProofResJSON))
-	},
+			fmt.Println(string(merkleProofResJSON))
+		},
+	}
 }
 
 // Distribution represents the top-level JSON structure of distribution.json
@@ -349,6 +355,10 @@ func RewardsCommand() *cobra.Command {
 		Use:   "rewards",
 		Short: "Rewards related commands",
 	}
+
+	rewardsCreateCmd := RewardsCreateCmd()
+	rewardsLoadCmd := RewardsLoadCmd()
+	rewardsProofCmd := RewardsProofCmd()
 
 	command.AddCommand(rewardsCreateCmd) // add "rewards create -f <data-root-path> -s <service> --chain-id <chain-id>" command
 	command.AddCommand(rewardsLoadCmd)   // add "rewards load -f <data-root-path> -s <service> --chain-id <chain-id>" command
