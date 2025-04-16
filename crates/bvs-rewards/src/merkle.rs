@@ -26,35 +26,34 @@ pub struct Leaf {
     pub amount: Uint128,
 }
 
-pub fn leaf_hash(earner: &String, amount: &Uint128) -> [u8; 32] {
-    let leaf = format!("{}{}", earner, amount);
-    Sha3_256Algorithm::hash(leaf.as_bytes())
+impl Leaf {
+    pub fn leaf_hash(&self) -> [u8; 32] {
+        let leaf = format!("{}{}", self.earner, self.amount);
+        Sha3_256Algorithm::hash(leaf.as_bytes())
+    }
 }
 
 pub fn verify_merkle_proof(
-    root: HexBinary,
+    root: &HexBinary,
     proof: Vec<HexBinary>,
     leaf: Leaf,
-    leaf_index: Uint128,
-    total_leaves_count: Uint128,
+    leaf_index: u32,
+    total_leaves_count: u32,
 ) -> Result<bool, RewardsError> {
-    let leaf_hash = leaf_hash(&leaf.earner, &leaf.amount);
+    let leaf_hash = leaf.leaf_hash();
 
     let proof_bytes: Vec<[u8; 32]> = proof.iter().map(|s| s.to_array().unwrap()).collect();
 
     // convert leaf index into usize
-    let leaf_index: usize =
-        leaf_index
-            .u128()
-            .try_into()
-            .map_err(|_| RewardsError::InvalidProof {
-                msg: "Leaf index is too large".to_string(),
-            })?;
+    let leaf_index: usize = leaf_index
+        .try_into()
+        .map_err(|_| RewardsError::InvalidProof {
+            msg: "Leaf index is too large".to_string(),
+        })?;
 
     // convert total leaves count into usize
     let total_leaves_count: usize =
         total_leaves_count
-            .u128()
             .try_into()
             .map_err(|_| RewardsError::InvalidProof {
                 msg: "Total leaves count is too large".to_string(),
@@ -97,16 +96,16 @@ mod tests {
             earner: "earner1".to_string(),
             amount: Uint128::new(100),
         };
-        let leaf_index = Uint128::new(0);
+        let leaf_index = 0u32;
 
-        let total_leaves_count = Uint128::new(1);
+        let total_leaves_count = 1u32;
 
         let tree = generate_merkle_tree(&vec![leaf.clone()]);
         let root = HexBinary::from(tree.root().unwrap());
 
         let proof = generate_merkle_proof(&tree, leaf_index).expect("Failed to generate proof");
 
-        let res = verify_merkle_proof(root, proof, leaf, leaf_index, total_leaves_count);
+        let res = verify_merkle_proof(&root, proof, leaf, leaf_index, total_leaves_count);
         assert_eq!(res.unwrap(), true);
     }
 
@@ -143,17 +142,81 @@ mod tests {
             },
         ];
 
-        let total_leaves_count = Uint128::new(leaves.len() as u128);
+        let total_leaves_count = leaves.len() as u32;
 
         let tree = generate_merkle_tree(&leaves);
         let root = HexBinary::from(tree.root().unwrap());
 
-        let leaf_index = Uint128::new(6);
-        let leaf_to_proof = leaves[leaf_index.u128() as usize].clone();
-        let proof = generate_merkle_proof(&tree, leaf_index).expect("Failed to generate proof");
+        {
+            // Verify Success
+            let leaf_index = 6u32;
+            let leaf_to_proof = leaves[leaf_index as usize].clone();
+            let proof = generate_merkle_proof(&tree, leaf_index).expect("Failed to generate proof");
 
-        let res = verify_merkle_proof(root, proof, leaf_to_proof, leaf_index, total_leaves_count);
-        assert_eq!(res.unwrap(), true);
+            let res =
+                verify_merkle_proof(&root, proof, leaf_to_proof, leaf_index, total_leaves_count);
+            assert_eq!(res.unwrap(), true);
+        }
+        {
+            // Verify Failure - different amount
+            let leaf_index = 6u32;
+            let proof = generate_merkle_proof(&tree, leaf_index).expect("Failed to generate proof");
+
+            let fake_leaf = Leaf {
+                earner: "earner7".to_string(),
+                amount: Uint128::new(999),
+            };
+
+            let res = verify_merkle_proof(&root, proof, fake_leaf, leaf_index, total_leaves_count);
+            assert_eq!(res.unwrap(), false);
+        }
+        {
+            // Verify Failure - different earner
+            let leaf_index = 6u32;
+            let proof = generate_merkle_proof(&tree, leaf_index).expect("Failed to generate proof");
+
+            let fake_leaf = Leaf {
+                earner: "earner8".to_string(),
+                amount: Uint128::new(1000),
+            };
+
+            let res = verify_merkle_proof(&root, proof, fake_leaf, leaf_index, total_leaves_count);
+            assert_eq!(res.unwrap(), false);
+        }
+        {
+            // Verify Failure - different leaf index
+            let leaf_index = 6u32;
+            let leaf_to_proof = leaves[leaf_index as usize].clone();
+            let proof = generate_merkle_proof(&tree, leaf_index).expect("Failed to generate proof");
+
+            let fake_leaf_index = 5u32;
+
+            let res = verify_merkle_proof(
+                &root,
+                proof,
+                leaf_to_proof,
+                fake_leaf_index,
+                total_leaves_count,
+            );
+            assert_eq!(res.unwrap(), false);
+        }
+        {
+            // Verify Failure - different total leaves count
+            let leaf_index = 6u32;
+            let leaf_to_proof = leaves[leaf_index as usize].clone();
+            let proof = generate_merkle_proof(&tree, leaf_index).expect("Failed to generate proof");
+
+            let fake_total_leaf_count = 8u32;
+
+            let res = verify_merkle_proof(
+                &root,
+                proof,
+                leaf_to_proof,
+                leaf_index,
+                fake_total_leaf_count,
+            );
+            assert_eq!(res.unwrap(), false);
+        }
     }
 
     #[test]
@@ -162,9 +225,9 @@ mod tests {
             earner: "earner1".to_string(),
             amount: Uint128::new(100),
         };
-        let leaf_index = Uint128::new(0);
+        let leaf_index = 0u32;
 
-        let total_leaves_count = Uint128::new(1);
+        let total_leaves_count = 1u32;
 
         let tree = generate_merkle_tree(&vec![leaf.clone()]);
         let root = HexBinary::from(tree.root().unwrap());
@@ -176,30 +239,7 @@ mod tests {
             amount: Uint128::new(200),
         };
 
-        let res = verify_merkle_proof(root, proof, fake_leaf, leaf_index, total_leaves_count);
+        let res = verify_merkle_proof(&root, proof, fake_leaf, leaf_index, total_leaves_count);
         assert_eq!(res.unwrap(), false);
-    }
-
-    #[test]
-    fn test_total_leaves_count_too_large() {
-        let leaf = Leaf {
-            earner: "earner1".to_string(),
-            amount: Uint128::new(100),
-        };
-        let leaf_index = Uint128::new(0);
-
-        let total_leaves_count = Uint128::new(u64::MAX as u128 + 1);
-
-        let tree = generate_merkle_tree(&vec![leaf.clone()]);
-        let root = HexBinary::from(tree.root().unwrap());
-
-        let proof = generate_merkle_proof(&tree, leaf_index).expect("Failed to generate proof");
-
-        let err =
-            verify_merkle_proof(root, proof, leaf, leaf_index, total_leaves_count).unwrap_err();
-        assert_eq!(
-            err.to_string(),
-            "Merkle proof verification failed: Total leaves count is too large"
-        );
     }
 }

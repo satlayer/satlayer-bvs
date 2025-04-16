@@ -40,7 +40,7 @@ pub fn execute(
             reward_distribution,
             reward_type,
         } => match reward_type {
-            RewardsType::CW20 => {
+            RewardsType::Cw20 => {
                 execute::distribute_rewards_cw20(deps, info, env, merkle_root, reward_distribution)
             }
             RewardsType::Bank => {
@@ -55,7 +55,7 @@ pub fn execute(
             amount,
             recipient,
         } => match reward_type {
-            RewardsType::CW20 => execute::claim_rewards_cw20(
+            RewardsType::Cw20 => execute::claim_rewards_cw20(
                 deps,
                 info,
                 service,
@@ -92,7 +92,7 @@ mod execute {
         to_json_binary, Addr, BankMsg, Coin, DepsMut, Env, Event, HexBinary, MessageInfo, Response,
         StdError, Uint128,
     };
-    use std::ops::{Add, Sub};
+    use std::ops::Sub;
 
     #[cw_serde]
     pub struct ClaimRewardsInternalResponse {
@@ -109,7 +109,7 @@ mod execute {
         // only service (info.sender) can distribute rewards
         let service = info.sender.clone();
 
-        // check that if bank token is transferred to the contract and same as the one in the distribution
+        // check that if bank token is transferred to the contract and same as the one in the msg
         let info_funds_amount = cw_utils::may_pay(&info, &reward_distribution.token)?;
         if info_funds_amount != reward_distribution.amount {
             return Err(RewardsError::FundsMismatch {});
@@ -158,6 +158,7 @@ mod execute {
         // validate cw20 token address
         let token = deps.api.addr_validate(&reward_distribution.token)?;
 
+        // if the amount is more than zero, transfer the rewards to the contract
         let transfer_msg = if reward_distribution.amount > Uint128::zero() {
             // transfer the rewards to the contract
             let transfer_msg = cosmwasm_std::WasmMsg::Execute {
@@ -219,7 +220,7 @@ mod execute {
         // validate service address
         let service = deps.api.addr_validate(&service)?;
 
-        // assume earner is the sender
+        // earner is the sender
         let earner = info.sender.clone();
 
         let recipient = deps.api.addr_validate(&recipient)?;
@@ -262,7 +263,7 @@ mod execute {
         // validate token
         let token = deps.api.addr_validate(&token)?;
 
-        // assume earner is the sender
+        // earner is the sender
         let earner = info.sender.clone();
 
         let recipient = deps.api.addr_validate(&recipient)?;
@@ -302,8 +303,18 @@ mod execute {
         recipient: Addr,
     ) -> Result<ClaimRewardsInternalResponse, RewardsError> {
         // check root is not empty
-        if claim_rewards_proof.root == HexBinary::default() {
+        if claim_rewards_proof.root.is_empty() {
             return Err(RewardsError::Std(StdError::generic_err("Empty root")));
+        };
+
+        // check if root is latest
+        let root = DISTRIBUTION_ROOTS
+            .may_load(deps.storage, (&service, &token))?
+            .unwrap_or_default();
+        if claim_rewards_proof.root != root {
+            return Err(RewardsError::Std(StdError::generic_err(
+                "Root is not latest",
+            )));
         };
 
         // assert that total rewards must be more than rewards already claimed
@@ -332,7 +343,7 @@ mod execute {
         };
 
         let merkle_proof: bool = verify_merkle_proof(
-            claim_rewards_proof.root,
+            &claim_rewards_proof.root,
             claim_rewards_proof.proof,
             leaf,
             claim_rewards_proof.leaf_index,
@@ -352,12 +363,11 @@ mod execute {
             &balance.sub(amount_to_claim),
         )?;
 
-        // increment claimed rewards,
-        // no need checked_add as amount_to_claim + claimed_rewards = amount which is Uin128
+        // save amount as claimed rewards
         CLAIMED_REWARDS.save(
             deps.storage,
             (&service, &token.to_string(), &earner),
-            &claimed_rewards.add(amount_to_claim),
+            &amount,
         )?;
 
         let event = Event::new("ClaimRewards")
@@ -400,15 +410,15 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 mod query {
     use crate::state::{BALANCES, CLAIMED_REWARDS, DISTRIBUTION_ROOTS};
-    use cosmwasm_std::{Addr, Deps, StdResult, Uint128};
+    use cosmwasm_std::{Addr, Deps, HexBinary, StdResult, Uint128};
 
     /// Query the distribution root for a given service and token
     ///
     /// returns HexBinary::default() if no root is found
-    pub fn distribution_root(deps: Deps, service: Addr, token: String) -> StdResult<String> {
+    pub fn distribution_root(deps: Deps, service: Addr, token: String) -> StdResult<HexBinary> {
         DISTRIBUTION_ROOTS
             .may_load(deps.storage, (&service, &token))
-            .map(|shares| shares.unwrap_or_default().to_string())
+            .map(|shares| shares.unwrap_or_default())
     }
 
     pub fn balance(deps: Deps, service: Addr, token: String) -> StdResult<Uint128> {

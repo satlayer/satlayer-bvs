@@ -252,8 +252,8 @@ fn test_distribute_and_claim_rewards_bank() {
             earner: earner.to_string(),
             amount: Uint128::new(1_000),
         };
-        let leaf_index = Uint128::new(1);
-        let total_leaves_count = Uint128::new(10);
+        let leaf_index = 1u32;
+        let total_leaves_count = 10u32;
         let proof = generate_merkle_proof(&merkle_tree, leaf_index).unwrap();
         let recipient = earner.to_string();
         let claim = rewards_contract
@@ -356,7 +356,7 @@ fn test_distribute_and_claim_rewards_cw20() {
                 &DistributeRewards {
                     merkle_root: merkle_root.clone(),
                     reward_distribution: reward_distribution.clone(),
-                    reward_type: RewardsType::CW20,
+                    reward_type: RewardsType::Cw20,
                 },
             )
             .unwrap();
@@ -403,8 +403,8 @@ fn test_distribute_and_claim_rewards_cw20() {
         };
         let recipient = earner.clone();
 
-        let leaf_index = Uint128::new(8);
-        let total_leaves_count = Uint128::new(10);
+        let leaf_index = 8u32;
+        let total_leaves_count = 10u32;
 
         let proof = generate_merkle_proof(&merkle_tree, leaf_index).unwrap();
 
@@ -419,7 +419,7 @@ fn test_distribute_and_claim_rewards_cw20() {
                         leaf_index,
                         total_leaves_count,
                     },
-                    reward_type: RewardsType::CW20,
+                    reward_type: RewardsType::Cw20,
                     service: service.to_string(),
                     token: cw20.addr.to_string(),
                     amount: leaf.amount,
@@ -500,7 +500,7 @@ fn test_claim_rewards_after_multiple_distribution() {
                 &DistributeRewards {
                     merkle_root: merkle_root.clone(),
                     reward_distribution: reward_distribution.clone(),
-                    reward_type: RewardsType::CW20,
+                    reward_type: RewardsType::Cw20,
                 },
             )
             .unwrap();
@@ -543,7 +543,7 @@ fn test_claim_rewards_after_multiple_distribution() {
                 &DistributeRewards {
                     merkle_root: merkle_root.clone(),
                     reward_distribution: reward_distribution.clone(),
-                    reward_type: RewardsType::CW20,
+                    reward_type: RewardsType::Cw20,
                 },
             )
             .unwrap();
@@ -566,8 +566,8 @@ fn test_claim_rewards_after_multiple_distribution() {
         };
         let recipient = earner.clone();
 
-        let leaf_index = Uint128::new(8);
-        let total_leaves_count = Uint128::new(10);
+        let leaf_index = 8u32;
+        let total_leaves_count = 10u32;
 
         let merkle_tree = prep_merkle_tree_equalised(&app, 10, Uint128::new(15_000)); // 10_000 + 5_000
         let merkle_root = HexBinary::from(merkle_tree.root().unwrap());
@@ -585,7 +585,7 @@ fn test_claim_rewards_after_multiple_distribution() {
                         leaf_index,
                         total_leaves_count,
                     },
-                    reward_type: RewardsType::CW20,
+                    reward_type: RewardsType::Cw20,
                     service: service.to_string(),
                     token: cw20.addr.to_string(),
                     amount: leaf.amount,
@@ -610,8 +610,8 @@ fn test_claim_rewards_after_multiple_distribution() {
         };
         let recipient = earner.clone();
 
-        let leaf_index = Uint128::new(8);
-        let total_leaves_count = Uint128::new(10);
+        let leaf_index = 8u32;
+        let total_leaves_count = 10u32;
 
         let merkle_tree = prep_merkle_tree_equalised(&app, 10, Uint128::new(15_000)); // 10_000 + 5_000
         let merkle_root = HexBinary::from(merkle_tree.root().unwrap());
@@ -629,7 +629,7 @@ fn test_claim_rewards_after_multiple_distribution() {
                         leaf_index,
                         total_leaves_count,
                     },
-                    reward_type: RewardsType::CW20,
+                    reward_type: RewardsType::Cw20,
                     service: service.to_string(),
                     token: cw20.addr.to_string(),
                     amount: leaf.amount,
@@ -683,8 +683,8 @@ fn test_claim_rewards_after_multiple_distribution() {
         };
         let recipient = earner.clone();
 
-        let leaf_index = Uint128::new(8);
-        let total_leaves_count = Uint128::new(10);
+        let leaf_index = 8u32;
+        let total_leaves_count = 10u32;
 
         let merkle_tree = prep_merkle_tree_equalised(&app, 10, Uint128::new(15_000)); // 10_000 + 5_000
         let merkle_root = HexBinary::from(merkle_tree.root().unwrap());
@@ -702,7 +702,7 @@ fn test_claim_rewards_after_multiple_distribution() {
                         leaf_index,
                         total_leaves_count,
                     },
-                    reward_type: RewardsType::CW20,
+                    reward_type: RewardsType::Cw20,
                     service: service.to_string(),
                     token: cw20.addr.to_string(),
                     amount: leaf.amount,
@@ -743,7 +743,7 @@ fn test_claim_rewards_after_multiple_distribution() {
                 &DistributeRewards {
                     merkle_root: merkle_root.clone(),
                     reward_distribution: reward_distribution.clone(),
-                    reward_type: RewardsType::CW20,
+                    reward_type: RewardsType::Cw20,
                 },
             )
             .unwrap();
@@ -766,8 +766,8 @@ fn test_claim_rewards_after_multiple_distribution() {
         };
         let recipient = earner.clone();
 
-        let leaf_index = Uint128::new(8);
-        let total_leaves_count = Uint128::new(15);
+        let leaf_index = 8u32;
+        let total_leaves_count = 15u32;
 
         let merkle_tree = prep_merkle_tree_equalised(&app, 15, Uint128::new(30_000)); // 10_000 + 5_000 + 15_000
         let merkle_root = HexBinary::from(merkle_tree.root().unwrap());
@@ -785,7 +785,7 @@ fn test_claim_rewards_after_multiple_distribution() {
                         leaf_index,
                         total_leaves_count,
                     },
-                    reward_type: RewardsType::CW20,
+                    reward_type: RewardsType::Cw20,
                     service: service.to_string(),
                     token: cw20.addr.to_string(),
                     amount: leaf.amount,
