@@ -36,14 +36,9 @@ pub fn assert_slashable(store: &dyn Storage) -> Result<(), VaultError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::router::set_router;
 
     use super::*;
-    use cosmwasm_std::{
-        testing::{mock_dependencies, mock_env, MockStorage},
-        MessageInfo,
-    };
-    use cw_multi_test::App;
+    use cosmwasm_std::testing::MockStorage;
 
     #[test]
     fn test_assert_slashable() {
