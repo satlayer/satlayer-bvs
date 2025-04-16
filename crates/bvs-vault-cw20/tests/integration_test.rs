@@ -2,7 +2,7 @@ use bvs_library::testing::{Cw20TokenContract, TestingContract};
 use bvs_pauser::testing::PauserContract;
 use bvs_registry::msg::Metadata;
 use bvs_registry::testing::RegistryContract;
-use bvs_vault_base::msg::{JailDetail, Recipient, RecipientAmount, VaultInfoResponse};
+use bvs_vault_base::msg::{JailDetail, LockAmount, Recipient, RecipientAmount, VaultInfoResponse};
 use bvs_vault_base::shares::QueuedWithdrawalInfo;
 use bvs_vault_base::VaultError;
 use bvs_vault_cw20::msg::{ExecuteMsg, QueryMsg};
@@ -596,6 +596,66 @@ fn test_negative_transfer_asset_custody() {
             percentage: 0,
         });
         let res = vault.execute(app, router.addr(), &msg);
+        assert!(res.is_err());
+    }
+}
+
+#[test]
+fn test_system_lock_asset() {
+    let app = &mut App::default();
+    let TestContracts {
+        vault,
+        cw20,
+        router,
+        ..
+    } = TestContracts::init(app);
+
+    let original_stake_amount = 200;
+
+    let staker = app.api().addr_make("staker/1");
+
+    // funding setup
+    {
+        let msg = ExecuteMsg::DepositFor(RecipientAmount {
+            recipient: staker.clone(),
+            amount: Uint128::new(original_stake_amount),
+        });
+        cw20.increase_allowance(app, &staker, vault.addr(), 100e15 as u128);
+        cw20.fund(app, &staker, 100e15 as u128);
+        vault.execute(app, &staker, &msg).unwrap();
+    }
+
+    // enable slashing
+    {
+        let msg = ExecuteMsg::SetSlashable(true);
+        vault.execute(app, router.addr(), &msg).unwrap();
+    }
+
+    // positive test
+    {
+        let msg = ExecuteMsg::SystemLockAsset(LockAmount(Uint128::new(100)));
+
+        vault.execute(app, router.addr(), &msg).unwrap();
+
+        let vault_balance = cw20.balance(app, vault.addr());
+        let router_balance = cw20.balance(app, router.addr());
+
+        // router balance should increased by 100
+        assert_eq!(router_balance, 100);
+
+        // vault balance should be reduced by 100
+        assert_eq!(vault_balance, original_stake_amount - 100);
+    }
+
+    // negative test
+    {
+        let msg = ExecuteMsg::SystemLockAsset(LockAmount(Uint128::new(1000)));
+
+        let res = vault.execute(app, router.addr(), &msg);
+        assert!(res.is_err());
+
+        // non-callable address
+        let res = vault.execute(app, &staker, &msg);
         assert!(res.is_err());
     }
 }

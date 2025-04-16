@@ -74,6 +74,10 @@ pub fn execute(
             msg.validate(deps.api)?;
             execute::transfer_asset_custody(deps, env, info, msg)
         }
+        ExecuteMsg::SystemLockAsset(msg) => {
+            msg.validate(deps.api)?;
+            execute::system_lock_asset(deps, env, info, msg)
+        }
     }
 }
 
@@ -82,7 +86,7 @@ mod execute {
     use crate::error::ContractError;
     use crate::token;
     use bvs_vault_base::error::VaultError;
-    use bvs_vault_base::msg::{JailDetail, Recipient, RecipientAmount};
+    use bvs_vault_base::msg::{JailDetail, LockAmount, Recipient, RecipientAmount};
     use bvs_vault_base::router::assert_router;
     use bvs_vault_base::{
         offset, router,
@@ -340,6 +344,37 @@ mod execute {
             .add_attribute("vault", env.contract.address)
             .add_attribute("jail_address", new_custodian)
             .add_attribute("percentage", percentage.to_string());
+
+        Ok(Response::new().add_event(event).add_message(transfer_msg))
+    }
+
+    /// This function differs from the `TransferAssetCustody` message in that
+    /// absolute size of asset is transferred
+    /// The receipient is the router instead of the jail address.
+    pub fn system_lock_asset(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        msg: LockAmount,
+    ) -> Result<Response, ContractError> {
+        bvs_vault_base::slashing::assert_slashable(deps.as_ref().storage)?;
+
+        assert_router(deps.storage, &info)?;
+
+        let router = bvs_vault_base::router::get_router(deps.storage)?;
+
+        let vault_balance = token::query_balance(&deps.as_ref(), &env)?;
+
+        if vault_balance < msg.0 {
+            return Err(VaultError::insufficient("Vault balance is less amount").into());
+        }
+
+        let transfer_msg = token::execute_new_transfer(deps.storage, &router, msg.0)?;
+
+        let event = Event::new("SystemLockAsset")
+            .add_attribute("sender", info.sender)
+            .add_attribute("vault", env.contract.address)
+            .add_attribute("amount", msg.0.to_string());
 
         Ok(Response::new().add_event(event).add_message(transfer_msg))
     }
