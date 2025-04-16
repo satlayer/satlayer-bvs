@@ -109,7 +109,8 @@ mod execute {
         // only service (info.sender) can distribute rewards
         let service = info.sender.clone();
 
-        // check that if bank token is transferred to the contract and same as the one in the msg
+        // check that if bank token is transferred to the contract and same as the one in the msg.
+        // zero amount is allowed for the contract to be able to update the root.
         let info_funds_amount = cw_utils::may_pay(&info, &reward_distribution.token)?;
         if info_funds_amount != reward_distribution.amount {
             return Err(RewardsError::FundsMismatch {});
@@ -143,6 +144,13 @@ mod execute {
         ))
     }
 
+    /// Distribute rewards to a given service and token.
+    ///
+    /// ### CW20 Variant Warning
+    ///
+    /// Rewards that are not strictly CW20 compliant may cause unexpected behavior in token balances.
+    /// For example, any token with a fee-on-transfer mechanism is not supported.
+    /// Therefore, non-standard CW20 tokens are not supported.
     pub fn distribute_rewards_cw20(
         deps: DepsMut,
         info: MessageInfo,
@@ -158,7 +166,8 @@ mod execute {
         // validate cw20 token address
         let token = deps.api.addr_validate(&reward_distribution.token)?;
 
-        // if the amount is more than zero, transfer the rewards to the contract
+        // if the amount is more than zero, transfer the rewards to the contract.
+        // zero amount is allowed for the contract to be able to update the root.
         let transfer_msg = if reward_distribution.amount > Uint128::zero() {
             // transfer the rewards to the contract
             let transfer_msg = cosmwasm_std::WasmMsg::Execute {
