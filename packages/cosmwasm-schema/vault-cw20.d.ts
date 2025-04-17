@@ -17,6 +17,8 @@
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
+ * This struct represent is amount of assets.
+ *
  * A human readable address.
  *
  * In Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no
@@ -105,6 +107,8 @@ type AssetsResponse = string;
  * let b = Uint128::from(42u64); assert_eq!(b.u128(), 42);
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
+ *
+ * This struct represent is amount of assets.
  *
  * A human readable address.
  *
@@ -195,6 +199,8 @@ type ConvertToAssetsResponse = string;
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
+ * This struct represent is amount of assets.
+ *
  * A human readable address.
  *
  * In Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no
@@ -283,6 +289,8 @@ type ConvertToSharesResponse = string;
  * let b = Uint128::from(42u64); assert_eq!(b.u128(), 42);
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
+ *
+ * This struct represent is amount of assets.
  *
  * A human readable address.
  *
@@ -373,6 +381,8 @@ type SharesResponse = string;
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
+ * This struct represent is amount of assets.
+ *
  * A human readable address.
  *
  * In Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no
@@ -461,6 +471,8 @@ type TotalAssetsResponse = string;
  * let b = Uint128::from(42u64); assert_eq!(b.u128(), 42);
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
+ *
+ * This struct represent is amount of assets.
  *
  * A human readable address.
  *
@@ -590,12 +602,18 @@ export interface InstantiateMsg {
  * ExecuteMsg RedeemWithdrawal all queued shares into assets from the vault for withdrawal.
  * After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
  * can redeem the withdrawal.
+ *
+ * ExecuteMsg SystemLockAssets moved assets from the vault to the `router` contract.
+ * Intended as part of slashing mechanism. Takes absolute `amount` of assets to be moved.
+ * The executeMsg only plays specific role in the slashing process. bvs-router contract is
+ * satlayer protocol contract Thus, named `SystemLockAssets`.
  */
 export interface ExecuteMsg {
   deposit_for?: RecipientAmount;
   withdraw_to?: RecipientAmount;
   queue_withdrawal_to?: RecipientAmount;
   redeem_withdrawal_to?: string;
+  system_lock_assets?: string;
 }
 
 /**

@@ -61,11 +61,17 @@ type InstantiateMsg struct {
 // ExecuteMsg RedeemWithdrawal all queued shares into assets from the vault for withdrawal.
 // After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
 // can redeem the withdrawal.
+//
+// ExecuteMsg SystemLockAssets moved assets from the vault to the `router` contract.
+// Intended as part of slashing mechanism. Takes absolute `amount` of assets to be moved.
+// The executeMsg only plays specific role in the slashing process. bvs-router contract is
+// satlayer protocol contract Thus, named `SystemLockAssets`.
 type ExecuteMsg struct {
 	DepositFor         *RecipientAmount `json:"deposit_for,omitempty"`
 	WithdrawTo         *RecipientAmount `json:"withdraw_to,omitempty"`
 	QueueWithdrawalTo  *RecipientAmount `json:"queue_withdrawal_to,omitempty"`
 	RedeemWithdrawalTo *string          `json:"redeem_withdrawal_to,omitempty"`
+	SystemLockAssets   *string          `json:"system_lock_assets,omitempty"`
 }
 
 // This struct is used to represent the recipient and amount fields together.
