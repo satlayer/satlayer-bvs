@@ -49,7 +49,7 @@ pub enum VaultExecuteMsg {
 }
 
 #[cw_serde]
-/// This struct represent is amount of assets.
+/// This struct represents amount of assets.
 pub struct Amount(pub Uint128);
 
 impl Amount {
