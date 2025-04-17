@@ -64,8 +64,8 @@ type InstantiateMsg struct {
 //
 // ExecuteMsg SystemLockAssets moved assets from the vault to the `router` contract.
 // Intended as part of slashing mechanism. Takes absolute `amount` of assets to be moved.
-// The executeMsg only plays specific role in the slashing process. bvs-router contract is
-// satlayer protocol contract Thus, named `SystemLockAssets`.
+// The `SystemLockAssets` execute message plays a specific role in the slashing process.
+// The `bvs-router` contract is part of the Satlayer protocol, hence the name `SystemLockAssets`.
 type ExecuteMsg struct {
 	DepositFor         *RecipientAmount `json:"deposit_for,omitempty"`
 	WithdrawTo         *RecipientAmount `json:"withdraw_to,omitempty"`
