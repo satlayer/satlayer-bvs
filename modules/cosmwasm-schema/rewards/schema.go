@@ -49,9 +49,15 @@ type DistributeRewards struct {
 }
 
 type RewardDistribution struct {
-	// amount refers to the additional rewards to be transferred to the contract and distributed
+	// amount refers to the rewards to be transferred to the contract and distributed
 	Amount string `json:"amount"`
 	// token refers to the address of the token contract (CW20) or denom string (Bank)
+	//
+	// ### CW20 Variant Warning
+	//
+	// Rewards that are not strictly CW20 compliant may cause unexpected behavior in token
+	// balances. For example, any token with a fee-on-transfer mechanism is not supported.
+	// Therefore, non-standard CW20 tokens are not supported.
 	Token string `json:"token"`
 }
 
