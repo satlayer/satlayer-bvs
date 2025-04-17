@@ -945,7 +945,7 @@ fn test_vault_info() {
 
 #[test]
 fn test_system_lock_assets() {
-    let mut app = &mut App::default();
+    let app = &mut App::default();
     let TestContracts {
         pauser,
         registry,
@@ -970,9 +970,9 @@ fn test_system_lock_assets() {
                 recipient: staker.clone(),
                 amount: Uint128::new(original_deposit_amount),
             });
-            cw20.increase_allowance(app, &staker, vault.addr(), original_deposit_amount as u128);
-            cw20.fund(app, &staker, original_deposit_amount as u128);
-            vault.execute(app, &staker, &msg).unwrap();
+            cw20.increase_allowance(app, staker, vault.addr(), original_deposit_amount);
+            cw20.fund(app, staker, original_deposit_amount);
+            vault.execute(app, staker, &msg).unwrap();
         }
     }
 
