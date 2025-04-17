@@ -1059,7 +1059,7 @@ fn test_system_lock_assets() {
                 amount: Uint128::new(original_deposit_amount),
             });
             tc.vault
-                .execute_with_funds(app, &staker, &msg, coins(original_deposit_amount, denom))
+                .execute_with_funds(app, staker, &msg, coins(original_deposit_amount, denom))
                 .unwrap();
         }
     }
@@ -1082,7 +1082,7 @@ fn test_system_lock_assets() {
             vault_balance_pre_slash.checked_sub(slash_amount).unwrap();
 
         let msg = ExecuteMsg::SystemLockAssets(Amount(slash_amount));
-        tc.vault.execute(app, &tc.router.addr(), &msg).unwrap();
+        tc.vault.execute(app, tc.router.addr(), &msg).unwrap();
 
         let vault_balance = app.wrap().query_balance(tc.vault.addr(), denom).unwrap();
         let router_balance = app.wrap().query_balance(tc.router.addr(), denom).unwrap();
@@ -1133,12 +1133,12 @@ fn test_system_lock_assets() {
 
         // larger than vault balance
         let msg = ExecuteMsg::SystemLockAssets(Amount(Uint128::new(original_deposit_amount * 3)));
-        let resp = tc.vault.execute(app, &tc.router.addr(), &msg);
+        let resp = tc.vault.execute(app, tc.router.addr(), &msg);
         assert!(resp.is_err());
 
         // zero amount
         let msg = ExecuteMsg::SystemLockAssets(Amount(Uint128::new(0)));
-        let resp = tc.vault.execute(app, &tc.router.addr(), &msg);
+        let resp = tc.vault.execute(app, tc.router.addr(), &msg);
         assert!(resp.is_err());
     }
 }
