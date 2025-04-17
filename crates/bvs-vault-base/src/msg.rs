@@ -38,6 +38,32 @@ pub enum VaultExecuteMsg {
     /// After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
     /// can redeem the withdrawal.
     RedeemWithdrawalTo(Recipient),
+
+    /// ExecuteMsg SystemLockAssets moved assets from the vault to the `router` contract.
+    /// Intended as part of slashing mechanism.
+    /// Takes absolute `amount` of assets to be moved.
+    /// The executeMsg only plays specific role in the slashing process.
+    /// bvs-router contract is satlayer protocol contract
+    /// Thus, named `SystemLockAssets`.
+    SystemLockAssets(Amount),
+}
+
+#[cw_serde]
+/// This struct represent is amount of assets.
+pub struct Amount(pub Uint128);
+
+impl Amount {
+    /// Validate the amount: [`Uint128`] field.
+    /// The amount must be greater than zero.
+    pub fn validate(&self, _api: &dyn Api) -> Result<(), VaultError> {
+        if self.0.is_zero() {
+            return Err(VaultError::zero("Amount cannot be zero."));
+        }
+        if self.0 < Uint128::zero() {
+            return Err(VaultError::unauthorized("Amount cannot be negative."));
+        }
+        Ok(())
+    }
 }
 
 /// This struct is used to represent the recipient and amount fields together.
