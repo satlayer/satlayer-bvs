@@ -59,9 +59,7 @@ impl Amount {
         if self.0.is_zero() {
             return Err(VaultError::zero("Amount cannot be zero."));
         }
-        if self.0 < Uint128::zero() {
-            return Err(VaultError::unauthorized("Amount cannot be negative."));
-        }
+// Removed unnecessary check for negative values.
         Ok(())
     }
 }
