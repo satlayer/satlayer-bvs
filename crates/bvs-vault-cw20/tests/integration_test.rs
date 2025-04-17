@@ -2,7 +2,7 @@ use bvs_library::testing::{Cw20TokenContract, TestingContract};
 use bvs_pauser::testing::PauserContract;
 use bvs_registry::msg::Metadata;
 use bvs_registry::testing::RegistryContract;
-use bvs_vault_base::msg::{Recipient, RecipientAmount, VaultInfoResponse};
+use bvs_vault_base::msg::{Amount, Recipient, RecipientAmount, VaultInfoResponse};
 use bvs_vault_base::shares::QueuedWithdrawalInfo;
 use bvs_vault_base::VaultError;
 use bvs_vault_cw20::msg::{ExecuteMsg, QueryMsg};
@@ -941,4 +941,109 @@ fn test_vault_info() {
             version: env!("CARGO_PKG_VERSION").to_string(),
         }
     );
+}
+
+#[test]
+fn test_system_lock_assets() {
+    let mut app = &mut App::default();
+    let TestContracts {
+        pauser,
+        registry,
+        router,
+        cw20,
+        vault,
+    } = TestContracts::init(app);
+    let owner = app.api().addr_make("owner");
+    let denom = "denom";
+    let original_deposit_amount: u128 = 100_000_000;
+
+    let stakers = [
+        app.api().addr_make("staker/1"),
+        app.api().addr_make("staker/2"),
+        app.api().addr_make("staker/3"),
+    ];
+
+    // setup/fund/stake tokens
+    {
+        for staker in stakers.iter() {
+            let msg = ExecuteMsg::DepositFor(RecipientAmount {
+                recipient: staker.clone(),
+                amount: Uint128::new(original_deposit_amount),
+            });
+            cw20.increase_allowance(app, &staker, vault.addr(), original_deposit_amount as u128);
+            cw20.fund(app, &staker, original_deposit_amount as u128);
+            vault.execute(app, &staker, &msg).unwrap();
+        }
+    }
+
+    let vault_balance_pre_slash = cw20.balance(app, vault.addr());
+
+    // positive test
+    {
+        let slash_amount = Uint128::from(vault_balance_pre_slash / 2);
+
+        // don't really need to create dedicated var for this
+        // but for readability
+        let expected_vault_balance_post_slash = Uint128::from(vault_balance_pre_slash)
+            .checked_sub(slash_amount)
+            .unwrap();
+
+        let msg = ExecuteMsg::SystemLockAssets(Amount(slash_amount));
+        vault.execute(app, router.addr(), &msg).unwrap();
+
+        let vault_balance = cw20.balance(app, vault.addr());
+        let router_balance = cw20.balance(app, router.addr());
+
+        // assert that the vault balance is halved
+        assert_eq!(vault_balance, expected_vault_balance_post_slash.into());
+
+        // assert that router get the slashed amount
+        assert_eq!(router_balance, slash_amount.into());
+    }
+
+    // non linear ratio sanity checks
+    {
+        // before the slash shares to assets are mostly linear 1:1
+        // Since we are slashing 50% of the assets
+        // without effecting the shares
+        // the shares to assets ratio should be 2:1 now
+        // This is intended.
+        // The propotion of how much each staker get (shares) stays the same
+
+        for staker in stakers.iter() {
+            let query_shares = QueryMsg::Shares {
+                staker: staker.to_string(),
+            };
+            let shares: Uint128 = vault.query(app, &query_shares).unwrap();
+
+            // shares stays the same
+            assert_eq!(shares, Uint128::new(original_deposit_amount));
+
+            let query_assets = QueryMsg::Assets {
+                staker: staker.to_string(),
+            };
+            let assets: Uint128 = vault.query(app, &query_assets).unwrap();
+
+            // assets should be halved
+            assert_eq!(assets, Uint128::new(original_deposit_amount / 2));
+        }
+    }
+
+    //negative test
+    {
+        // non-callable address
+        let msg = ExecuteMsg::SystemLockAssets(Amount(Uint128::new(original_deposit_amount)));
+        let resp = vault.execute(app, &stakers[0], &msg);
+        assert!(resp.is_err());
+
+        // larger than vault balance
+        let msg = ExecuteMsg::SystemLockAssets(Amount(Uint128::new(original_deposit_amount * 3)));
+        let resp = vault.execute(app, router.addr(), &msg);
+        assert!(resp.is_err());
+
+        // zero amount
+        let msg = ExecuteMsg::SystemLockAssets(Amount(Uint128::new(0)));
+        let resp = vault.execute(app, router.addr(), &msg);
+        assert!(resp.is_err());
+    }
 }

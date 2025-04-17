@@ -69,6 +69,10 @@ pub fn execute(
             msg.validate(deps.api)?;
             execute::redeem_withdrawal_to(deps, env, info, msg)
         }
+        ExecuteMsg::SystemLockAssets(msg) => {
+            msg.validate(deps.api)?;
+            execute::system_lock_asset(deps, env, info, msg)
+        }
     }
 }
 
@@ -76,7 +80,7 @@ mod execute {
     use crate::error::ContractError;
     use crate::token;
     use bvs_vault_base::error::VaultError;
-    use bvs_vault_base::msg::{Recipient, RecipientAmount};
+    use bvs_vault_base::msg::{Amount, Recipient, RecipientAmount};
     use bvs_vault_base::{
         offset, router,
         shares::{self, QueuedWithdrawalInfo},
@@ -277,6 +281,38 @@ mod execute {
                     .add_attribute("total_shares", vault.total_shares().to_string()),
             )
             .add_message(transfer_msg))
+    }
+
+    /// transfer the assets to the router as part of slashing flow.
+    /// The idea is in the event of slashing router will maintain custody of the assets.
+    /// Whether slashed collateral is burned, further utilized or returned to the user is up to the
+    /// downstream slashing logics router will be working with.
+    pub fn system_lock_asset(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        amount: Amount,
+    ) -> Result<Response, ContractError> {
+        router::assert_router(deps.as_ref().storage, &info)?;
+
+        // if the code get passed above assert_router, it means the sender is the router
+        // No need to load from storage.
+        let router = info.sender;
+
+        let vault_balance = token::query_balance(&deps.as_ref(), &env)?;
+
+        if vault_balance < amount.0 {
+            return Err(VaultError::insufficient("Not enough assets").into());
+        }
+
+        let transfer_msg = token::execute_new_transfer(deps.storage, &router, amount.0)?;
+
+        let event = Event::new("SystemLockAssets")
+            .add_attribute("sender", router.to_string())
+            .add_attribute("router", router.to_string())
+            .add_attribute("amount", amount.0.to_string());
+
+        Ok(Response::new().add_event(event).add_message(transfer_msg))
     }
 }
 
