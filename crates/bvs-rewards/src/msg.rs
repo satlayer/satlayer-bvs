@@ -70,7 +70,7 @@ pub struct RewardDistribution {
     /// For example, any token with a fee-on-transfer mechanism is not supported.
     /// Therefore, non-standard CW20 tokens are not supported.
     pub token: String,
-    /// amount refers to the additional rewards to be transferred to the contract and distributed
+    /// amount refers to the rewards to be transferred to the contract and distributed
     pub amount: Uint128,
 }
 
@@ -85,6 +85,3 @@ pub struct ClaimRewardsProof {
     /// total_leaves_count is the total number of leaves in the Merkle tree
     pub total_leaves_count: u32,
 }
-
-#[cfg(test)]
-mod tests {}
