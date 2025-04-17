@@ -5,7 +5,7 @@ use bvs_registry::testing::RegistryContract;
 use bvs_vault_bank::msg::{ExecuteMsg, QueryMsg};
 use bvs_vault_bank::testing::VaultBankContract;
 use bvs_vault_base::error::VaultError;
-use bvs_vault_base::msg::{Recipient, RecipientAmount, VaultInfoResponse};
+use bvs_vault_base::msg::{Amount, Recipient, RecipientAmount, VaultInfoResponse};
 use bvs_vault_base::shares::QueuedWithdrawalInfo;
 use bvs_vault_router::{msg::ExecuteMsg as RouterExecuteMsg, testing::VaultRouterContract};
 use cosmwasm_std::testing::mock_env;
@@ -1028,4 +1028,117 @@ fn test_vault_info() {
             version: env!("CARGO_PKG_VERSION").to_string(),
         }
     );
+}
+
+#[test]
+fn test_system_lock_assets() {
+    let (mut app, tc) = TestContracts::init();
+    let app = &mut app;
+    let owner = app.api().addr_make("owner");
+    let denom = "denom";
+    let original_deposit_amount: u128 = 100_000_000;
+
+    let stakers = [
+        app.api().addr_make("staker/1"),
+        app.api().addr_make("staker/2"),
+        app.api().addr_make("staker/3"),
+    ];
+
+    // setup/fund/stake tokens
+    {
+        for staker in stakers.iter() {
+            app.send_tokens(
+                owner.clone(),
+                staker.clone(),
+                &coins(original_deposit_amount, denom),
+            )
+            .unwrap();
+
+            let msg = ExecuteMsg::DepositFor(RecipientAmount {
+                recipient: staker.clone(), // set recipient to staker
+                amount: Uint128::new(original_deposit_amount),
+            });
+            tc.vault
+                .execute_with_funds(app, &staker, &msg, coins(original_deposit_amount, denom))
+                .unwrap();
+        }
+    }
+
+    let vault_balance_pre_slash = app
+        .wrap()
+        .query_balance(tc.vault.addr(), denom)
+        .unwrap()
+        .amount;
+
+    // positive test
+    {
+        let slash_amount = vault_balance_pre_slash
+            .checked_div(Uint128::new(2))
+            .unwrap();
+
+        // don't really need to create dedicated var for this
+        // but for readability
+        let expected_vault_balance_post_slash =
+            vault_balance_pre_slash.checked_sub(slash_amount).unwrap();
+
+        let msg = ExecuteMsg::SystemLockAssets(Amount(slash_amount));
+        tc.vault.execute(app, &tc.router.addr(), &msg).unwrap();
+
+        let vault_balance = app.wrap().query_balance(tc.vault.addr(), denom).unwrap();
+        let router_balance = app.wrap().query_balance(tc.router.addr(), denom).unwrap();
+
+        // assert that the vault balance is halved
+        assert_eq!(
+            vault_balance,
+            coin(expected_vault_balance_post_slash.into(), denom)
+        );
+
+        assert_eq!(router_balance, coin(slash_amount.into(), denom));
+    }
+
+    // non linear ratio sanity checks
+    {
+        // before the slash shares to assets are mostly linear 1:1
+        // Since we are slashing 50% of the assets
+        // without effecting the shares
+        // the shares to assets ratio should be 2:1 now
+        // This is intended.
+        // The propotion of how much each staker get (shares) stays the same
+
+        for staker in stakers.iter() {
+            let query_shares = QueryMsg::Shares {
+                staker: staker.to_string(),
+            };
+            let shares: Uint128 = tc.vault.query(app, &query_shares).unwrap();
+
+            // shares stays the same
+            assert_eq!(shares, Uint128::new(original_deposit_amount));
+
+            let query_assets = QueryMsg::Assets {
+                staker: staker.to_string(),
+            };
+            let assets: Uint128 = tc.vault.query(app, &query_assets).unwrap();
+
+            // assets should be halved
+            assert_eq!(assets, Uint128::new(original_deposit_amount / 2));
+        }
+    }
+
+    //negative test
+    {
+        // non-callable address
+        let msg = ExecuteMsg::SystemLockAssets(Amount(Uint128::new(original_deposit_amount)));
+        let resp = tc.vault.execute(app, &stakers[0], &msg);
+        assert!(resp.is_err());
+
+        // larger than vault balance
+        let msg = ExecuteMsg::SystemLockAssets(Amount(Uint128::new(original_deposit_amount * 3)));
+        let resp = tc.vault.execute(app, &tc.router.addr(), &msg);
+        assert!(resp.is_err());
+
+        // zero amount
+        let msg = ExecuteMsg::SystemLockAssets(Amount(Uint128::new(0)));
+        let resp = tc.vault.execute(app, &tc.router.addr(), &msg);
+        assert!(resp.is_err());
+    }
 }
