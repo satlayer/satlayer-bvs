@@ -111,7 +111,7 @@ mod execute {
         let service = info.sender.clone();
 
         // check that if bank token is transferred to the contract and same as the one in the msg.
-        // zero amount is allowed for the contract to be able to update the root.
+        // zero amount is allowed for the contract to be able to replace the root without any balances update.
         let info_funds_amount = cw_utils::may_pay(&info, &reward_distribution.token)?;
         if info_funds_amount != reward_distribution.amount {
             return Err(RewardsError::FundsMismatch {});
@@ -169,7 +169,7 @@ mod execute {
         let token = deps.api.addr_validate(&reward_distribution.token)?;
 
         // if the amount is more than zero, transfer the rewards to the contract.
-        // zero amount is allowed for the contract to be able to update the root.
+        // zero amount is allowed for the contract to be able to replace the root without any balances update.
         let transfer_msg = if reward_distribution.amount > Uint128::zero() {
             // transfer the rewards to the contract
             let transfer_msg = cosmwasm_std::WasmMsg::Execute {

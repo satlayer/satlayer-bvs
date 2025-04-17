@@ -46,7 +46,7 @@ pub fn generate_merkle_tree(leaves: &[Leaf]) -> MerkleTree<Sha3_256Algorithm> {
     MerkleTree::<Sha3_256Algorithm>::from_leaves(
         leaves
             .iter()
-            .map(|leaf| leaf.leaf_hash())
+            .map(|leaf| leaf.hash())
             .collect::<Vec<_>>()
             .as_slice(),
     )

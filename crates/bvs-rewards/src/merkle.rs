@@ -27,7 +27,7 @@ pub struct Leaf {
 }
 
 impl Leaf {
-    pub fn leaf_hash(&self) -> [u8; 32] {
+    pub fn hash(&self) -> [u8; 32] {
         let leaf = format!("{}{}", self.earner, self.amount);
         Sha3_256Algorithm::hash(leaf.as_bytes())
     }
@@ -40,7 +40,7 @@ pub fn verify_merkle_proof(
     leaf_index: u32,
     total_leaves_count: u32,
 ) -> Result<bool, RewardsError> {
-    let leaf_hash = leaf.leaf_hash();
+    let leaf_hash = leaf.hash();
 
     let proof_bytes: Vec<[u8; 32]> = proof.iter().map(|s| s.to_array().unwrap()).collect();
 
