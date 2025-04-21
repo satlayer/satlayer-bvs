@@ -31,6 +31,7 @@ pub struct InstantiateMsg {
     pub receipt_cw20_instantiate_base: cw20_base::msg::InstantiateMsg,
 }
 
+#[cw_serde]
 pub enum ExecuteMsg {
     /// Supports the same [Cw20ExecuteMsg](cw20_base::msg::ExecuteMsg) as the `cw20-base` contract.
     /// Cw20 compliant messages are passed to the `cw20-base` contract.
