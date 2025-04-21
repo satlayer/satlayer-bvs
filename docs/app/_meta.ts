@@ -1,9 +1,13 @@
 import type { MetaRecord } from "nextra";
 
 const meta: MetaRecord = {
-  "babylon-contracts": {},
+  "getting-started": {},
+  examples: {
+    title: "BVS Examples",
+  },
+  architecture: {},
+  contracts: {},
   "audited-by": {},
-  examples: {},
 };
 
 export default meta;
