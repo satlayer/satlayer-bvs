@@ -451,7 +451,6 @@ fn query_status() {
 }
 
 #[test]
-#[ignore]
 fn migrate_to_v2() {
     let (mut app, registry, ..) = instantiate();
 
@@ -528,7 +527,7 @@ fn migrate_to_v2() {
         let deregister_msg = &ExecuteMsg::DeregisterServiceFromOperator {
             service: service.to_string(),
         };
-        let res = registry
+        registry
             .execute(&mut app, &operator, deregister_msg)
             .unwrap();
 
@@ -544,6 +543,21 @@ fn migrate_to_v2() {
             .unwrap();
         assert_eq!(status, StatusResponse(0));
 
+        // check if state is changed at height + 1
+        let block_info = app.block_info();
+        let status_at_height: StatusResponse = registry
+            .query(
+                &mut app,
+                &QueryMsg::StatusAtHeight {
+                    service: service.to_string(),
+                    operator: operator.to_string(),
+                    height: block_info.height + 1,
+                },
+            )
+            .unwrap();
+        assert_eq!(status_at_height, StatusResponse(0));
+
+        // check old state at height - 10 -> should be active
         let block_info = app.block_info();
         let status_at_height: StatusResponse = registry
             .query(
