@@ -56,18 +56,14 @@ pub fn execute(
     match msg {
         ExecuteMsg::Base(base_msg) => execute_base(deps, env, info, base_msg).map_err(Into::into),
         ExecuteMsg::Extended(extended_msg) => {
-            // Handle the extended message here
-            // For example, you can call a function to handle it
-            // handle_extended_msg(deps, env, info, extended_msg)
-            todo!()
+            vault_execute::execute_extended(deps, env, info, extended_msg)
         }
     }
 }
 
-mod extended_execute {
+mod vault_execute {
     use crate::error::ContractError;
-    use crate::msg::ExecuteMsg;
-    use crate::token;
+    use crate::token as PrimaryStakingToken;
     use bvs_vault_base::error::VaultError;
     use bvs_vault_base::msg::{Recipient, RecipientAmount, VaultExecuteMsg};
     use bvs_vault_base::{
@@ -75,8 +71,12 @@ mod extended_execute {
         shares::{self, QueuedWithdrawalInfo},
     };
     use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, Timestamp};
+    use cw20_base::contract::execute_burn as receipt_token_burn;
+    use cw20_base::contract::execute_mint as receipt_token_mint;
+    use cw20_base::contract::query_balance as query_receipt_token_balance;
+    use cw20_base::state::TOKEN_INFO as RECEIPT_TOKEN_INFO;
 
-    pub fn handle_extended_msg(
+    pub fn execute_extended(
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
@@ -103,7 +103,7 @@ mod extended_execute {
     /// Therefore, we do not support non-standard CW20 tokens.
     /// Vault deployed with such tokens will be blacklisted in the vault-router.
     pub fn deposit_for(
-        deps: DepsMut,
+        mut deps: DepsMut,
         env: Env,
         info: MessageInfo,
         msg: RecipientAmount,
@@ -111,27 +111,62 @@ mod extended_execute {
         router::assert_whitelisted(&deps.as_ref(), &env)?;
 
         let assets = msg.amount;
-        let (vault, new_shares) = {
-            let balance = token::query_balance(&deps.as_ref(), &env)?;
+        let (vault, new_receipt_tokens) = {
+            let balance = PrimaryStakingToken::query_balance(&deps.as_ref(), &env)?;
             let mut vault = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
 
-            let new_shares = vault.assets_to_shares(assets)?;
+            let new_receipt_tokens = vault.assets_to_shares(assets)?;
             // Add shares to TOTAL_SHARES
-            vault.checked_add_shares(deps.storage, new_shares)?;
+            vault.checked_add_shares(deps.storage, new_receipt_tokens)?;
 
-            (vault, new_shares)
+            (vault, new_receipt_tokens)
         };
 
         // CW20 Transfer of asset from info.sender to contract
-        let transfer_msg = token::execute_transfer_from(
+        let transfer_msg = PrimaryStakingToken::execute_transfer_from(
             deps.storage,
             &info.sender,
             &env.contract.address,
             msg.amount,
         )?;
 
-        // Add shares to msg.recipient
-        shares::add_shares(deps.storage, &msg.recipient, new_shares)?;
+        // critical section
+        // Issue receipt token to msg.recipient
+        {
+            // mint new receipt token to staker
+            // At this point in code can directly manipulate the BALANCES and TOTAL SUPPLY STATE of the contract
+            // But let's use the production ready function from cw20-base crate
+            // as much as possible.
+            // Since it has undergone extensive testing, and being looked at by many eyes.
+            // When this constract is instantiated
+            // Requires the contract address to be the minter of the receipt token itself.
+            // (Self minting authority)
+            let msg_info = MessageInfo {
+                sender: env.contract.address.clone(),
+                funds: vec![],
+            };
+            receipt_token_mint(
+                deps.branch(),
+                env,
+                msg_info,
+                msg.recipient.to_string(),
+                new_receipt_tokens,
+            )?;
+
+            // TOTAL_SHARE and TOTAL_SUPPLY should be the same
+            let total_receipt_token_supply = RECEIPT_TOKEN_INFO
+                .may_load(deps.storage)?
+                .unwrap()
+                .total_supply;
+
+            if total_receipt_token_supply != vault.total_shares() {
+                // Ideally, this should never happen
+                return Err(VaultError::zero(
+                    "Total shares tracked in account and total supply circulating mismatch",
+                )
+                .into());
+            }
+        }
 
         Ok(Response::new()
             .add_event(
@@ -139,7 +174,7 @@ mod extended_execute {
                     .add_attribute("sender", info.sender.to_string())
                     .add_attribute("recipient", msg.recipient)
                     .add_attribute("assets", assets.to_string())
-                    .add_attribute("shares", new_shares.to_string())
+                    .add_attribute("shares", new_receipt_tokens.to_string())
                     .add_attribute("total_shares", vault.total_shares().to_string()),
             )
             .add_message(transfer_msg))
@@ -158,33 +193,39 @@ mod extended_execute {
     ) -> Result<Response, ContractError> {
         router::assert_not_validating(&deps.as_ref())?;
 
-        // Remove shares from the info.sender
-        shares::sub_shares(deps.storage, &info.sender, msg.amount)?;
+        let receipt_tokens = msg.amount;
 
-        let (vault, claim_assets) = {
-            let balance = token::query_balance(&deps.as_ref(), &env)?;
+        let (vault, claim_staking_tokens) = {
+            let balance = PrimaryStakingToken::query_balance(&deps.as_ref(), &env)?;
             let mut vault = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
 
-            let assets = vault.shares_to_assets(msg.amount)?;
-            if assets.is_zero() {
+            let primary_staking_tokens = vault.shares_to_assets(receipt_tokens)?;
+            if primary_staking_tokens.is_zero() {
                 return Err(VaultError::zero("Withdraw assets cannot be zero.").into());
             }
 
             // Remove shares from TOTAL_SHARES
-            vault.checked_sub_shares(deps.storage, msg.amount)?;
+            vault.checked_sub_shares(deps.storage, receipt_tokens)?;
 
-            (vault, assets)
+            (vault, primary_staking_tokens)
         };
 
-        // CW20 transfer of asset to msg.recipient
-        let transfer_msg = token::execute_new_transfer(deps.storage, &msg.recipient, claim_assets)?;
+        // CW20 transfer of staking asset to msg.recipient
+        let transfer_msg = PrimaryStakingToken::execute_new_transfer(
+            deps.storage,
+            &msg.recipient,
+            claim_staking_tokens,
+        )?;
+
+        // Burn the receipt token from the staker
+        receipt_token_burn(deps, env.clone(), info.clone(), receipt_tokens)?;
 
         Ok(Response::new()
             .add_event(
                 Event::new("Withdraw")
                     .add_attribute("sender", info.sender.to_string())
                     .add_attribute("recipient", msg.recipient.to_string())
-                    .add_attribute("assets", claim_assets.to_string())
+                    .add_attribute("assets", claim_staking_tokens.to_string())
                     .add_attribute("shares", msg.amount.to_string())
                     .add_attribute("total_shares", vault.total_shares().to_string()),
             )
@@ -200,8 +241,17 @@ mod extended_execute {
         info: MessageInfo,
         msg: RecipientAmount,
     ) -> Result<Response, ContractError> {
-        // Remove shares from the info.sender
-        shares::sub_shares(deps.storage, &info.sender, msg.amount)?;
+        // make sure staker has enough receipt tokens
+        // to cover the withdrawal
+        // this execute func does not carry out actual withdrawal yet
+        // but good to check in advance
+        {
+            let staker_receipt_tokens_balance =
+                query_receipt_token_balance(deps.as_ref(), msg.recipient.to_string())?;
+            if staker_receipt_tokens_balance.balance < msg.amount {
+                return Err(VaultError::insufficient("Not enough receipt tokens").into());
+            }
+        }
 
         let withdrawal_lock_period: u64 =
             router::get_withdrawal_lock_period(&deps.as_ref())?.into();
@@ -254,7 +304,7 @@ mod extended_execute {
         }
 
         let (vault, claimed_assets) = {
-            let balance = token::query_balance(&deps.as_ref(), &env)?;
+            let balance = PrimaryStakingToken::query_balance(&deps.as_ref(), &env)?;
             let mut vault = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
 
             let assets = vault.shares_to_assets(queued_shares)?;
@@ -269,10 +319,27 @@ mod extended_execute {
         };
 
         // CW20 transfer of asset to msg.recipient
-        let transfer_msg = token::execute_new_transfer(deps.storage, &msg.0, claimed_assets)?;
+        let transfer_msg =
+            PrimaryStakingToken::execute_new_transfer(deps.storage, &msg.0, claimed_assets)?;
 
         // Remove staker's info
         shares::remove_queued_withdrawal_info(deps.storage, &info.sender);
+
+        // make sure staker has enough receipt tokens
+        // to cover the withdrawal
+        // this execute func does not carry out actual withdrawal yet
+        // but good to check in advance
+        {
+            let staker_receipt_tokens_balance =
+                query_receipt_token_balance(deps.as_ref(), info.sender.to_string())?;
+
+            if staker_receipt_tokens_balance.balance < staker_receipt_tokens_balance.balance {
+                return Err(VaultError::insufficient("Not enough receipt tokens").into());
+            }
+
+            // Burn the receipt token from the staker
+            receipt_token_burn(deps, env.clone(), info.clone(), queued_shares)?;
+        }
 
         Ok(Response::new()
             .add_event(
@@ -291,11 +358,213 @@ mod extended_execute {
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<cosmwasm_std::Binary> {
     match msg {
         QueryMsg::Base(base_msg) => base_query(deps, env, base_msg),
+        QueryMsg::Extended(extended_msg) => vault_query::extended_query(deps, env, extended_msg),
+    }
+}
 
-        QueryMsg::Extended(extended_msg) => {
-            // Dispatch extended vault queries
-            // handle_extended_query(deps, env, extended_msg)
-            todo!()
+mod vault_query {
+    use crate::token;
+    use bvs_vault_base::msg::{VaultInfoResponse, VaultQueryMsg};
+    use bvs_vault_base::{
+        offset,
+        shares::{self, QueuedWithdrawalInfo},
+    };
+    use cosmwasm_std::{to_json_binary, Addr, Deps, Env, StdResult, Uint128};
+
+    pub fn extended_query(
+        deps: Deps,
+        env: Env,
+        msg: VaultQueryMsg,
+    ) -> StdResult<cosmwasm_std::Binary> {
+        match msg {
+            VaultQueryMsg::Shares { staker } => {
+                let staker = deps.api.addr_validate(&staker)?;
+                to_json_binary(&shares(deps, staker)?)
+            }
+            VaultQueryMsg::Assets { staker } => {
+                let staker = deps.api.addr_validate(&staker)?;
+                to_json_binary(&assets(deps, env, staker)?)
+            }
+            VaultQueryMsg::ConvertToAssets { shares } => {
+                to_json_binary(&convert_to_assets(deps, env, shares)?)
+            }
+            VaultQueryMsg::ConvertToShares { assets } => {
+                to_json_binary(&convert_to_shares(deps, env, assets)?)
+            }
+            VaultQueryMsg::TotalShares {} => to_json_binary(&total_shares(deps, env)?),
+            VaultQueryMsg::TotalAssets {} => to_json_binary(&total_assets(deps, env)?),
+            VaultQueryMsg::QueuedWithdrawal { staker } => {
+                let staker = deps.api.addr_validate(&staker)?;
+                to_json_binary(&queued_withdrawal(deps, staker)?)
+            }
+            VaultQueryMsg::VaultInfo {} => to_json_binary(&vault_info(deps, env)?),
         }
+    }
+
+    /// Get shares of the staker
+    pub fn shares(deps: Deps, staker: Addr) -> StdResult<Uint128> {
+        shares::get_shares(deps.storage, &staker)
+    }
+
+    /// Get the assets of a staker, converted from shares held by staker.
+    pub fn assets(deps: Deps, env: Env, staker: Addr) -> StdResult<Uint128> {
+        let shares = shares(deps, staker)?;
+        convert_to_assets(deps, env, shares)
+    }
+
+    /// Given the number of shares, convert to assets based on the vault exchange rate.
+    pub fn convert_to_assets(deps: Deps, env: Env, shares: Uint128) -> StdResult<Uint128> {
+        let balance = token::query_balance(&deps, &env)?;
+        let vault = offset::VirtualOffset::load(&deps, balance)?;
+        vault.shares_to_assets(shares)
+    }
+
+    /// Given assets, get the resulting shares based on the vault exchange rate.
+    pub fn convert_to_shares(deps: Deps, env: Env, assets: Uint128) -> StdResult<Uint128> {
+        let balance = token::query_balance(&deps, &env)?;
+        let vault = offset::VirtualOffset::load(&deps, balance)?;
+        vault.assets_to_shares(assets)
+    }
+
+    /// Total issued shares in this vault.
+    pub fn total_shares(deps: Deps, _env: Env) -> StdResult<Uint128> {
+        offset::get_total_shares(deps.storage)
+    }
+
+    /// Total assets in this vault. Including assets through staking and donations.
+    pub fn total_assets(deps: Deps, env: Env) -> StdResult<Uint128> {
+        token::query_balance(&deps, &env)
+    }
+
+    /// Get the queued withdrawal info in this vault.
+    pub fn queued_withdrawal(deps: Deps, staker: Addr) -> StdResult<QueuedWithdrawalInfo> {
+        shares::get_queued_withdrawal_info(deps.storage, &staker)
+    }
+
+    /// Returns the vault information
+    pub fn vault_info(deps: Deps, env: Env) -> StdResult<VaultInfoResponse> {
+        let balance = token::query_balance(&deps, &env)?;
+        let vault = offset::VirtualOffset::load(&deps, balance)?;
+        let cw20_contract = token::get_cw20_contract(deps.storage)?;
+        let version = cw2::get_contract_version(deps.storage)?;
+        Ok(VaultInfoResponse {
+            total_shares: vault.total_shares(),
+            total_assets: vault.total_assets(),
+            router: bvs_vault_base::router::get_router(deps.storage)?,
+            pauser: bvs_pauser::api::get_pauser(deps.storage)?,
+            operator: bvs_vault_base::router::get_operator(deps.storage)?,
+            slashing: false,
+            asset_id: format!(
+                "cosmos:{}/cw20:{}",
+                env.block.chain_id,
+                cw20_contract.as_str()
+            ),
+            contract: version.contract,
+            version: version.version,
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use bvs_vault_base::shares::{
+        add_shares, get_queued_withdrawal_info, get_shares, remove_queued_withdrawal_info,
+        sub_shares, update_queued_withdrawal_info, QueuedWithdrawalInfo,
+    };
+    use cosmwasm_std::testing::MockStorage;
+    use cosmwasm_std::{Addr, Timestamp, Uint128};
+
+    #[test]
+    fn get_zero_shares() {
+        let store = MockStorage::new();
+        let staker = Addr::unchecked("staker");
+        let shares = get_shares(&store, &staker).unwrap();
+        assert_eq!(shares, Uint128::zero());
+    }
+
+    #[test]
+    fn add_and_get_shares() {
+        let mut store = MockStorage::new();
+        let staker = Addr::unchecked("staker");
+        let shares = get_shares(&store, &staker).unwrap();
+        assert_eq!(shares, Uint128::zero());
+
+        let new_shares = Uint128::new(12345);
+        add_shares(&mut store, &staker, new_shares).unwrap();
+        let shares = get_shares(&store, &staker).unwrap();
+        assert_eq!(shares, new_shares);
+
+        add_shares(&mut store, &staker, new_shares).unwrap();
+        let shares = get_shares(&store, &staker).unwrap();
+        assert_eq!(shares, Uint128::new(24690));
+    }
+
+    #[test]
+    fn add_and_sub_shares() {
+        let mut store = MockStorage::new();
+        let staker = Addr::unchecked("staker");
+        let shares = get_shares(&store, &staker).unwrap();
+        assert_eq!(shares, Uint128::zero());
+
+        let new_shares = Uint128::new(12345);
+        add_shares(&mut store, &staker, new_shares).unwrap();
+        let shares = get_shares(&store, &staker).unwrap();
+        assert_eq!(shares, new_shares);
+
+        let remove_shares = Uint128::new(1234);
+        sub_shares(&mut store, &staker, remove_shares).unwrap();
+        let shares = get_shares(&store, &staker).unwrap();
+        assert_eq!(shares, Uint128::new(11_111));
+    }
+
+    #[test]
+    fn set_and_get_queued_withdrawal_info() {
+        let mut store = MockStorage::new();
+        let staker = Addr::unchecked("staker");
+
+        let result = get_queued_withdrawal_info(&mut store, &staker).unwrap();
+        assert_eq!(result.queued_shares, Uint128::zero());
+        assert_eq!(result.unlock_timestamp, Timestamp::from_seconds(0));
+
+        let queued_withdrawal_info1 = QueuedWithdrawalInfo {
+            queued_shares: Uint128::new(123),
+            unlock_timestamp: Timestamp::from_seconds(0),
+        };
+
+        let result =
+            update_queued_withdrawal_info(&mut store, &staker, queued_withdrawal_info1.clone())
+                .unwrap();
+        assert_eq!(result.queued_shares, queued_withdrawal_info1.queued_shares);
+        assert_eq!(
+            result.unlock_timestamp,
+            queued_withdrawal_info1.unlock_timestamp
+        );
+
+        let queued_withdrawal_info2 = QueuedWithdrawalInfo {
+            queued_shares: Uint128::new(456),
+            unlock_timestamp: Timestamp::from_seconds(0),
+        };
+
+        let result =
+            update_queued_withdrawal_info(&mut store, &staker, queued_withdrawal_info2.clone())
+                .unwrap();
+        assert_eq!(result.queued_shares, Uint128::new(579));
+        assert_eq!(
+            result.unlock_timestamp,
+            queued_withdrawal_info2.unlock_timestamp
+        );
+
+        let result = get_queued_withdrawal_info(&mut store, &staker).unwrap();
+        assert_eq!(result.queued_shares, Uint128::new(579));
+        assert_eq!(
+            result.unlock_timestamp,
+            queued_withdrawal_info2.unlock_timestamp
+        );
+
+        remove_queued_withdrawal_info(&mut store, &staker);
+
+        let result = get_queued_withdrawal_info(&mut store, &staker).unwrap();
+        assert_eq!(result.queued_shares, Uint128::zero());
+        assert_eq!(result.unlock_timestamp, Timestamp::from_seconds(0));
     }
 }

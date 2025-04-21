@@ -1,3 +1,5 @@
+use bvs_vault_base::msg::VaultExecuteMsg;
+use bvs_vault_base::msg::VaultQueryMsg;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_schema::QueryResponses;
 use cw20_base::msg::ExecuteMsg as Cw20ExecuteMsg;
@@ -23,19 +25,20 @@ pub struct InstantiateMsg {
     /// Vault deployed with such tokens will be blacklisted in the vault-router.
     pub staking_cw20_contract: String,
 
+    /// The vault itself is a CW20 token, which will serve as receipt cw20 token.
+    /// With extended functionality to be a vault.
+    /// This field is the cw20 compliant `InstantiateMsg` for the receipt cw20 token.
     pub receipt_cw20_instantiate_base: cw20_base::msg::InstantiateMsg,
 }
 
-/// Supports the same [VaultExecuteMsg](bvs_vault_base::msg::VaultExecuteMsg) as the `bvs-vault-base` contract.
-type ExtendedExecuteMsg = bvs_vault_base::msg::VaultExecuteMsg;
-
 pub enum ExecuteMsg {
+    /// Supports the same [Cw20ExecuteMsg](cw20_base::msg::ExecuteMsg) as the `cw20-base` contract.
+    /// Cw20 compliant messages are passed to the `cw20-base` contract.
     Base(Cw20ExecuteMsg),
-    Extended(ExtendedExecuteMsg),
-}
 
-/// Supports the same [VaultQueryMsg](bvs_vault_base::msg::VaultQueryMsg) as the `bvs-vault-base` contract.
-type ExtendedQueryMsg = bvs_vault_base::msg::VaultQueryMsg;
+    /// Supports the same [VaultExecuteMsg](bvs_vault_base::msg::VaultExecuteMsg) as the `bvs-vault-base` contract.
+    Extended(VaultExecuteMsg),
+}
 
 #[cw_serde]
 #[derive(QueryResponses)]
@@ -43,8 +46,10 @@ pub enum QueryMsg {
     #[returns(cosmwasm_std::Binary)]
     Base(Cw20QueryMsg),
 
+    /// Supports the same [VaultQueryMsg](bvs_vault_base::msg::VaultQueryMsg) as the `bvs-vault-base` contract.
     #[returns(cosmwasm_std::Binary)]
-    Extended(ExtendedQueryMsg),
+    Extended(VaultQueryMsg),
 }
+
 #[cw_serde]
 pub struct MigrateMsg {}
