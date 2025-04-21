@@ -54,6 +54,8 @@ importers:
 
   crates/bvs-vault-cw20: {}
 
+  crates/bvs-vault-cw20-tokenized: {}
+
   crates/bvs-vault-factory: {}
 
   crates/bvs-vault-router: {}
@@ -157,6 +159,9 @@ importers:
       '@satlayer/bvs-vault-cw20':
         specifier: workspace:*
         version: link:../../crates/bvs-vault-cw20
+      '@satlayer/bvs-vault-cw20-tokenized':
+        specifier: workspace:*
+        version: link:../../crates/bvs-vault-cw20-tokenized
       '@satlayer/bvs-vault-factory':
         specifier: workspace:*
         version: link:../../crates/bvs-vault-factory
@@ -225,6 +230,9 @@ importers:
       '@satlayer/bvs-vault-cw20':
         specifier: workspace:*
         version: link:../../crates/bvs-vault-cw20
+      '@satlayer/bvs-vault-cw20-tokenized':
+        specifier: workspace:*
+        version: link:../../crates/bvs-vault-cw20-tokenized
       '@satlayer/bvs-vault-factory':
         specifier: workspace:*
         version: link:../../crates/bvs-vault-factory
