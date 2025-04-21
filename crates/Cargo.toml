@@ -59,6 +59,7 @@ bvs-vault-router = { path = "./bvs-vault-router", features = ["library"] }
 bvs-vault-base = { path = "./bvs-vault-base", features = ["library"] }
 bvs-vault-bank = { path = "./bvs-vault-bank", features = ["library"] }
 bvs-vault-cw20 = { path = "./bvs-vault-cw20", features = ["library"] }
+bvs-vault-cw20-tokenized = { path = "./bvs-vault-cw20-tokenized", features = ["library"] }
 bvs-vault-factory = { path = "./bvs-vault-factory", features = ["library"] }
 
 bvs-rewards = { path = "./bvs-rewards", features = ["library"] }
