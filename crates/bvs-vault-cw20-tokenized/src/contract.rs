@@ -1,7 +1,7 @@
 use cosmwasm_std::{entry_point, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 use cw20_base::contract::instantiate as base_instantiate;
-use cw20_base::contract::{execute as execute_base, query as base_query};
+use cw20_base::contract::query as base_query;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -54,13 +54,150 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Base(base_msg) => execute_base(deps, env, info, base_msg).map_err(Into::into),
+        ExecuteMsg::Base(base_msg) => {
+            receipt_cw20_execute::execute_base(deps, env, info, base_msg).map_err(Into::into)
+        }
         ExecuteMsg::Extended(extended_msg) => {
             vault_execute::execute_extended(deps, env, info, extended_msg)
         }
     }
 }
 
+/// cw20 compliant messages are passed to the `cw20-base` contract.
+/// Except for the `Burn` and `BurnFrom` messages.
+mod receipt_cw20_execute {
+    use cosmwasm_std::{Addr, StdResult, Uint128};
+    use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
+    use cw20_base::msg::ExecuteMsg as Cw20ExecuteMsg;
+
+    use cw20_base::contract::execute_send;
+    use cw20_base::contract::execute_transfer;
+    use cw20_base::contract::execute_update_minter;
+
+    use cw20_base::allowances::execute_decrease_allowance;
+    use cw20_base::allowances::execute_increase_allowance;
+    use cw20_base::allowances::execute_send_from;
+    use cw20_base::allowances::execute_transfer_from;
+
+    use cw20_base::contract::execute_update_marketing;
+    use cw20_base::contract::execute_upload_logo;
+    use cw20_base::state::{BALANCES as RECEIPT_TOKEN_BALANCES, TOKEN_INFO as RECEIPT_TOKEN_INFO};
+
+    /// This mint function is almost identical to the base cw20 contract's mint function
+    /// down to the variables and logic.
+    /// Except that it does not require the caller to be the minter.
+    /// This allow self minting authority.
+    pub fn mint(
+        deps: DepsMut,
+        _env: Env,
+        _info: MessageInfo,
+        recipient: Addr,
+        amount: Uint128,
+    ) -> Result<Response, cw20_base::ContractError> {
+        let mut config = RECEIPT_TOKEN_INFO
+            .may_load(deps.storage)?
+            .ok_or(cw20_base::ContractError::Unauthorized {})?;
+
+        // update supply and enforce cap
+        config.total_supply += amount;
+        if let Some(limit) = config.get_cap() {
+            if config.total_supply > limit {
+                return Err(cw20_base::ContractError::CannotExceedCap {});
+            }
+        }
+        RECEIPT_TOKEN_INFO.save(deps.storage, &config)?;
+
+        // add amount to recipient balance
+        let rcpt_addr = recipient;
+        RECEIPT_TOKEN_BALANCES.update(
+            deps.storage,
+            &rcpt_addr,
+            |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
+        )?;
+
+        let res = Response::new()
+            .add_attribute("action", "mint")
+            .add_attribute("to", rcpt_addr)
+            .add_attribute("amount", amount);
+        Ok(res)
+    }
+
+    pub fn execute_base(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        msg: Cw20ExecuteMsg,
+    ) -> Result<Response, cw20_base::ContractError> {
+        match msg {
+            cw20_base::msg::ExecuteMsg::Transfer { recipient, amount } => {
+                execute_transfer(deps, env, info, recipient, amount)
+            }
+            cw20_base::msg::ExecuteMsg::Send {
+                contract,
+                amount,
+                msg,
+            } => execute_send(deps, env, info, contract, amount, msg),
+            cw20_base::msg::ExecuteMsg::Mint { .. } => {
+                // not allowed
+                // for the same reason burning is not allowed
+                Err(cw20_base::ContractError::Unauthorized {})
+            }
+            cw20_base::msg::ExecuteMsg::UpdateMinter { new_minter } => {
+                execute_update_minter(deps, env, info, new_minter)
+            }
+            cw20_base::msg::ExecuteMsg::IncreaseAllowance {
+                spender,
+                amount,
+                expires,
+            } => execute_increase_allowance(deps, env, info, spender, amount, expires),
+            cw20_base::msg::ExecuteMsg::DecreaseAllowance {
+                spender,
+                amount,
+                expires,
+            } => execute_decrease_allowance(deps, env, info, spender, amount, expires),
+            cw20_base::msg::ExecuteMsg::TransferFrom {
+                owner,
+                recipient,
+                amount,
+            } => {
+                execute_transfer_from(deps, env, info, owner, recipient, amount).map_err(Into::into)
+            }
+            cw20_base::msg::ExecuteMsg::SendFrom {
+                owner,
+                contract,
+                amount,
+                msg,
+            } => {
+                execute_send_from(deps, env, info, owner, contract, amount, msg).map_err(Into::into)
+            }
+            cw20_base::msg::ExecuteMsg::Burn { .. } => {
+                // not allowed
+                // can complicate and upset/desync of
+                // the VirtualOffset's total shares vs
+                // total supply of the receipt token
+                // the only time burning should happen
+                // only at successful unstaking
+                Err(cw20_base::ContractError::Unauthorized {})
+            }
+            cw20_base::msg::ExecuteMsg::BurnFrom { .. } => {
+                // not allowed
+                Err(cw20_base::ContractError::Unauthorized {})
+            }
+            cw20_base::msg::ExecuteMsg::UpdateMarketing {
+                project,
+                description,
+                marketing,
+            } => execute_update_marketing(deps, env, info, project, description, marketing)
+                .map_err(Into::into),
+            cw20_base::msg::ExecuteMsg::UploadLogo(logo) => {
+                execute_upload_logo(deps, env, info, logo).map_err(Into::into)
+            }
+        }
+    }
+}
+
+/// Addtional vault logics built on top of the base cw20 contract via extended execute msg set.
+/// The extended execute msg set is practically `bvs-vault-base` crate's execute msg set.
 mod vault_execute {
     use crate::error::ContractError;
     use crate::token as PrimaryStakingToken;
@@ -72,7 +209,6 @@ mod vault_execute {
     };
     use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, Timestamp};
     use cw20_base::contract::execute_burn as receipt_token_burn;
-    use cw20_base::contract::execute_mint as receipt_token_mint;
     use cw20_base::contract::query_balance as query_receipt_token_balance;
     use cw20_base::state::TOKEN_INFO as RECEIPT_TOKEN_INFO;
 
@@ -134,22 +270,11 @@ mod vault_execute {
         // Issue receipt token to msg.recipient
         {
             // mint new receipt token to staker
-            // At this point in code can directly manipulate the BALANCES and TOTAL SUPPLY STATE of the contract
-            // But let's use the production ready function from cw20-base crate
-            // as much as possible.
-            // Since it has undergone extensive testing, and being looked at by many eyes.
-            // When this constract is instantiated
-            // Requires the contract address to be the minter of the receipt token itself.
-            // (Self minting authority)
-            let msg_info = MessageInfo {
-                sender: env.contract.address.clone(),
-                funds: vec![],
-            };
-            receipt_token_mint(
+            super::receipt_cw20_execute::mint(
                 deps.branch(),
                 env,
-                msg_info,
-                msg.recipient.to_string(),
+                info.clone(),
+                msg.recipient.clone(),
                 new_receipt_tokens,
             )?;
 
@@ -180,10 +305,9 @@ mod vault_execute {
             .add_message(transfer_msg))
     }
 
-    /// Withdraw assets from the vault by burning shares.
-    ///
-    /// The shares are burned from `info.sender`.  
-    /// The resulting assets are transferred to `msg.recipient`.  
+    /// Withdraw assets from the vault by burning receipt token.
+    /// Also total shares are reduced from the VirtualOffset module to keep accounting math synced.
+    /// The resulting staked assets are now unstaked and transferred to `msg.recipient`.  
     /// The `TOTAL_SHARE` in the vault is reduced.  
     pub fn withdraw_to(
         deps: DepsMut,
@@ -234,7 +358,7 @@ mod vault_execute {
 
     /// Queue shares to withdraw later.
     /// The shares are burned from `info.sender` and wait lock period to redeem withdrawal.
-    /// /// It doesn't remove the `total_shares` and only removes the user shares, so the exchange rate is not affected.
+    /// It doesn't remove the `total_shares` and only removes the user shares, so the exchange rate is not affected.
     pub fn queue_withdrawal_to(
         deps: DepsMut,
         env: Env,
@@ -243,8 +367,8 @@ mod vault_execute {
     ) -> Result<Response, ContractError> {
         // make sure staker has enough receipt tokens
         // to cover the withdrawal
-        // this execute func does not carry out actual withdrawal yet
-        // but good to check in advance
+        // this execute func does not carry out actual withdrawal
+        // and burn of receipt token
         {
             let staker_receipt_tokens_balance =
                 query_receipt_token_balance(deps.as_ref(), msg.recipient.to_string())?;
@@ -325,21 +449,10 @@ mod vault_execute {
         // Remove staker's info
         shares::remove_queued_withdrawal_info(deps.storage, &info.sender);
 
-        // make sure staker has enough receipt tokens
-        // to cover the withdrawal
-        // this execute func does not carry out actual withdrawal yet
-        // but good to check in advance
-        {
-            let staker_receipt_tokens_balance =
-                query_receipt_token_balance(deps.as_ref(), info.sender.to_string())?;
-
-            if staker_receipt_tokens_balance.balance < staker_receipt_tokens_balance.balance {
-                return Err(VaultError::insufficient("Not enough receipt tokens").into());
-            }
-
-            // Burn the receipt token from the staker
-            receipt_token_burn(deps, env.clone(), info.clone(), queued_shares)?;
-        }
+        // Burn the receipt token from the staker
+        // This func internally checked sub so not having enough receipt token
+        // will lock the stakes forever
+        receipt_token_burn(deps, env.clone(), info.clone(), queued_shares)?;
 
         Ok(Response::new()
             .add_event(
