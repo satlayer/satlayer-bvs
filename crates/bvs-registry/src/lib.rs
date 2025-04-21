@@ -7,3 +7,4 @@ mod error;
 mod state;
 
 pub use crate::error::ContractError;
+pub use crate::state::RegistrationStatus;

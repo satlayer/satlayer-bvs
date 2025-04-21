@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, StdError, StdResult, Storage};
-use cw_storage_plus::Map;
+use cw_storage_plus::{Map, SnapshotMap, Strategy};
 
 type Service = Addr;
 type Operator = Addr;
@@ -76,7 +76,12 @@ impl TryFrom<u8> for RegistrationStatus {
 /// Mapping of (operator_service) address.
 /// See `RegistrationStatus` for more of the status.
 /// Use [get_registration_status] and [set_registration_status] to interact with this map.
-const REGISTRATION_STATUS: Map<(&Operator, &Service), u8> = Map::new("registration_status");
+pub(crate) const REGISTRATION_STATUS: SnapshotMap<(&Operator, &Service), u8> = SnapshotMap::new(
+    "registration_status",
+    "registration_status_checkpoint",
+    "registration_status_changelog",
+    Strategy::EveryBlock,
+);
 
 /// Get the registration status of the Operator to Service
 pub fn get_registration_status(
@@ -90,16 +95,32 @@ pub fn get_registration_status(
     status.try_into()
 }
 
-/// Set the registration status of the Operator to Service
+/// Get the registration status of the Operator to Service at a specific block height
+pub fn get_registration_status_at_height(
+    store: &dyn Storage,
+    key: (&Operator, &Service),
+    block_height: u64,
+) -> StdResult<RegistrationStatus> {
+    let status = REGISTRATION_STATUS
+        .may_load_at_height(store, key, block_height)?
+        .unwrap_or(RegistrationStatus::Inactive.into());
+
+    status.try_into()
+}
+
+/// Set the registration status of the Operator to Service at a specific block height
 pub fn set_registration_status(
     store: &mut dyn Storage,
     key: (&Operator, &Service),
     status: RegistrationStatus,
+    block_height: u64,
 ) -> StdResult<()> {
-    REGISTRATION_STATUS.save(store, key, &status.into())?;
+    REGISTRATION_STATUS.save(store, key, &status.into(), block_height)?;
     Ok(())
 }
 
+/// Stores the active registration count of the operator to services.
+/// This is used to check if the operator is actively registered to any service (> 0)
 pub const OPERATOR_ACTIVE_REGISTRATION_COUNT: Map<&Operator, u64> =
     Map::new("operator_active_registration_count");
 
@@ -141,7 +162,7 @@ pub fn decrease_operator_active_registration_count(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::mock_dependencies;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env};
 
     #[test]
     fn test_is_operator_active() {
@@ -206,6 +227,7 @@ mod tests {
     #[test]
     fn test_registration_status() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
 
         let operator = deps.api.addr_make("operator");
         let service = deps.api.addr_make("service");
@@ -215,7 +237,13 @@ mod tests {
         let status = get_registration_status(&deps.storage, key).unwrap();
         assert_eq!(status, RegistrationStatus::Inactive);
 
-        set_registration_status(&mut deps.storage, key, RegistrationStatus::Active).unwrap();
+        set_registration_status(
+            &mut deps.storage,
+            key,
+            RegistrationStatus::Active,
+            env.block.height,
+        )
+        .unwrap();
         let status = get_registration_status(&deps.storage, key).unwrap();
         assert_eq!(status, RegistrationStatus::Active);
 
@@ -223,6 +251,7 @@ mod tests {
             &mut deps.storage,
             key,
             RegistrationStatus::OperatorRegistered,
+            env.block.height,
         )
         .unwrap();
         let status = get_registration_status(&deps.storage, key).unwrap();
@@ -232,6 +261,7 @@ mod tests {
             &mut deps.storage,
             key,
             RegistrationStatus::ServiceRegistered,
+            env.block.height,
         )
         .unwrap();
         let status = get_registration_status(&deps.storage, key).unwrap();

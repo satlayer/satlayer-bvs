@@ -49,6 +49,13 @@ pub enum QueryMsg {
     #[returns(StatusResponse)]
     Status { service: String, operator: String },
 
+    #[returns(StatusResponse)]
+    StatusAtHeight {
+        service: String,
+        operator: String,
+        height: u64,
+    },
+
     #[returns(IsServiceResponse)]
     IsService(String),
 
@@ -76,6 +83,9 @@ pub struct IsOperatorResponse(pub bool);
 
 #[cw_serde]
 pub struct IsOperatorActiveResponse(pub bool);
+
+#[cw_serde]
+pub struct MigrateMsg {}
 
 #[cfg(test)]
 mod tests {

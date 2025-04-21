@@ -3,10 +3,11 @@ use bvs_pauser::api::PauserError;
 use bvs_pauser::testing::PauserContract;
 use bvs_registry::msg::{ExecuteMsg, Metadata, QueryMsg, StatusResponse};
 use bvs_registry::testing::RegistryContract;
-use bvs_registry::ContractError;
+use bvs_registry::{ContractError, RegistrationStatus};
 use cosmwasm_std::testing::mock_env;
-use cosmwasm_std::{Event, StdError};
+use cosmwasm_std::{Addr, Event, StdError};
 use cw_multi_test::App;
+use cw_storage_plus::Map;
 
 fn instantiate() -> (App, RegistryContract, PauserContract) {
     let mut app = App::default();
@@ -447,4 +448,113 @@ fn query_status() {
     let status: StatusResponse = registry.query(&mut app, query_msg).unwrap();
 
     assert_eq!(status, StatusResponse(0));
+}
+
+#[test]
+#[ignore]
+fn migrate_to_v2() {
+    let (mut app, registry, ..) = instantiate();
+
+    let service = app.api().addr_make("service/1");
+    let operator = app.api().addr_make("operator/1");
+
+    // populate initial contract state with data
+    let old_registration_status: Map<(&Addr, &Addr), u8> = Map::new("registration_status");
+
+    let operator_active_registration_count: Map<&Addr, u8> =
+        Map::new("operator_active_registration_count");
+
+    {
+        // save some data into old contract state with same 'registration_status' namespace
+        let mut contract_storage = app.contract_storage_mut(&registry.addr);
+        old_registration_status
+            .save(
+                &mut *contract_storage,
+                (&operator, &service),
+                &(RegistrationStatus::Active as u8),
+            )
+            .unwrap();
+
+        operator_active_registration_count
+            .save(&mut *contract_storage, &operator, &1u8)
+            .unwrap();
+
+        // assert that state is populated
+        let res = old_registration_status
+            .load(&*contract_storage, (&operator, &service))
+            .unwrap();
+
+        assert_eq!(res, RegistrationStatus::Active as u8);
+    }
+
+    let migrate_msg = &bvs_registry::msg::MigrateMsg {};
+    let admin = app.api().addr_make("admin");
+
+    let res = registry.migrate(&mut app, &admin, migrate_msg).unwrap();
+
+    // print res events
+    for event in res.events {
+        println!("{:?}", event);
+    }
+
+    // check if state is migrated
+    let status: StatusResponse = registry
+        .query(
+            &mut app,
+            &QueryMsg::Status {
+                service: service.to_string(),
+                operator: operator.to_string(),
+            },
+        )
+        .unwrap();
+    assert_eq!(status, StatusResponse(1));
+
+    let block_info = app.block_info();
+    let status_at_height: StatusResponse = registry
+        .query(
+            &mut app,
+            &QueryMsg::StatusAtHeight {
+                service: service.to_string(),
+                operator: operator.to_string(),
+                height: block_info.height - 1,
+            },
+        )
+        .unwrap();
+    assert_eq!(status_at_height, StatusResponse(1));
+
+    // test other interaction with state after migrate
+    {
+        // deregister
+        let deregister_msg = &ExecuteMsg::DeregisterServiceFromOperator {
+            service: service.to_string(),
+        };
+        let res = registry
+            .execute(&mut app, &operator, deregister_msg)
+            .unwrap();
+
+        // check if state is changed
+        let status: StatusResponse = registry
+            .query(
+                &mut app,
+                &QueryMsg::Status {
+                    service: service.to_string(),
+                    operator: operator.to_string(),
+                },
+            )
+            .unwrap();
+        assert_eq!(status, StatusResponse(0));
+
+        let block_info = app.block_info();
+        let status_at_height: StatusResponse = registry
+            .query(
+                &mut app,
+                &QueryMsg::StatusAtHeight {
+                    service: service.to_string(),
+                    operator: operator.to_string(),
+                    height: block_info.height - 10,
+                },
+            )
+            .unwrap();
+        assert_eq!(status_at_height, StatusResponse(1));
+    }
 }
