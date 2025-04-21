@@ -165,7 +165,8 @@ export interface MinterResponse {
 
 /**
  * Supports the same [Cw20ExecuteMsg](cw20_base::msg::ExecuteMsg) as the `cw20-base`
- * contract. Cw20 compliant messages are passed to the `cw20-base` contract.
+ * contract. Cw20 compliant messages are passed to the `cw20-base` contract. EXCEPT for the
+ * `Burn` and `BurnFrom` messages.
  *
  * Supports the same [VaultExecuteMsg](bvs_vault_base::msg::VaultExecuteMsg) as the
  * `bvs-vault-base` contract.
