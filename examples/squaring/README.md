@@ -1,4 +1,4 @@
-# BVS Squaring
+# Squaring
 
 Offchain computation for squaring a number.
 
