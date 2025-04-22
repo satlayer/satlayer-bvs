@@ -10,15 +10,17 @@ import (
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/database"
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/modules"
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/types/config"
+	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/utils"
 )
 
 func main() {
 	// Set up the config
 	initCfg := initcmd.NewConfig().WithConfigCreator(config.Creator)
 
+	cdc := utils.GetCodec()
 	parseCfg := parsetypes.NewConfig().
-		WithRegistrar(modules.NewModulesRegistrar()).
-		WithDBBuilder(database.Builder)
+		WithDBBuilder(database.Builder).
+		WithRegistrar(modules.NewModulesRegistrar(cdc))
 
 	cfg := junocmd.NewConfig("indexer").
 		WithInitConfig(initCfg).

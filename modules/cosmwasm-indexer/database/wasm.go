@@ -60,7 +60,8 @@ VALUES `
 		args = append(args, code.Sender, code.WasmByteCode, cfgValue, code.CodeID, code.Height)
 	}
 
-	stmt = stmt[:len(stmt)-1] // Remove trailing ","
+	// Remove trailing ","
+	stmt = stmt[:len(stmt)-1]
 
 	stmt += `
 	ON CONFLICT (code_id) DO UPDATE 
@@ -116,7 +117,8 @@ VALUES `
 		)
 	}
 
-	stmt = stmt[:len(stmt)-1] // Remove trailing ","
+	// Remove trailing ","
+	stmt = stmt[:len(stmt)-1]
 	stmt += `
 	ON CONFLICT (contract_address) DO UPDATE 
 		SET sender = excluded.sender,
@@ -178,7 +180,7 @@ INSERT INTO wasm_execute_contract
 (sender, contract_address, raw_contract_message, funds, data, executed_at, height, hash, message_type) 
 VALUES `
 
-	var args []interface{}
+	var args []any
 	for i, executeContract := range executeContracts {
 		ii := i * paramNumber
 		stmt += fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d),",
@@ -188,7 +190,8 @@ VALUES `
 			pq.Array(dbtypes.NewDBCoins(executeContract.Funds)), executeContract.Data, executeContract.ExecutedAt, executeContract.Height, executeContract.Hash, executeContract.MessageType)
 	}
 
-	stmt = stmt[:len(stmt)-1] // Remove trailing ","
+	// Remove trailing ","
+	stmt = stmt[:len(stmt)-1]
 
 	stmt += ` ON CONFLICT DO NOTHING`
 
@@ -214,28 +217,15 @@ func (db *DB) SaveWasmExecuteContractEvents(executeContract types.WasmExecuteCon
 	ON CONFLICT (contract_address, event_type) DO UPDATE
 	SET (last_seen_height, last_seen_hash) = (EXCLUDED.last_seen_height, EXCLUDED.last_seen_hash);
 	`
-	// If the logs are present, we are using pre-0.50
-	// Log parsing is still needed because events don't have a msg_index SDK <0.50
-	// and ignoring that will index a lot of unwanted values and bloat DB
-	if len(tx.Logs) > 0 {
-		for _, txLog := range tx.Logs {
-			for _, event := range txLog.Events {
 
+	// Parse event if Cosmos SDK version is higher than 0.50
+	// No need to keep compatible with old SDK version which event data is in tx.Logs
+	for _, event := range tx.Events {
+		for _, attr := range event.Attributes {
+			if attr.Key == "msg_index" {
 				_, err := db.SQL.Exec(stmt, executeContract.ContractAddress, event.Type, executeContract.Height, tx.TxHash)
 				if err != nil {
 					return fmt.Errorf("error while saving wasm execute contracts: %s", err)
-				}
-			}
-		}
-	} else {
-		// We fall back to events for the newer version of SDK and look for events with msg_index set
-		for _, event := range tx.Events {
-			for _, attr := range event.Attributes {
-				if attr.Key == "msg_index" {
-					_, err := db.SQL.Exec(stmt, executeContract.ContractAddress, event.Type, executeContract.Height, tx.TxHash)
-					if err != nil {
-						return fmt.Errorf("error while saving wasm execute contracts: %s", err)
-					}
 				}
 			}
 		}

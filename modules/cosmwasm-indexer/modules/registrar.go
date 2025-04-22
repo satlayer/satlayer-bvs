@@ -1,42 +1,36 @@
 package modules
 
 import (
-	"fmt"
-
+	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/forbole/juno/v6/modules/registrar"
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/database"
+	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/modules/types"
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/modules/wasm"
 
-	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	junomod "github.com/forbole/juno/v6/modules"
-	junoremote "github.com/forbole/juno/v6/node/remote"
 )
 
 // ModulesRegistrar represents the modules.Registrar that allows to register all custom modules
 type ModulesRegistrar struct {
+	cdc codec.Codec
 }
 
 // NewModulesRegistrar allows to build a new ModulesRegistrar instance
-func NewModulesRegistrar() *ModulesRegistrar {
-	return &ModulesRegistrar{}
+func NewModulesRegistrar(cdc codec.Codec) *ModulesRegistrar {
+	return &ModulesRegistrar{cdc: cdc}
 }
 
 // BuildModules implements modules.Registrar
 func (r *ModulesRegistrar) BuildModules(ctx registrar.Context) junomod.Modules {
-	remoteCfg, ok := ctx.JunoConfig.Node.Details.(*junoremote.Details)
-	if !ok {
-		panic(fmt.Errorf("invalid remote grpc config"))
-	}
-
-	grpcConnection, err := junoremote.CreateGrpcConnection(remoteCfg.GRPC)
+	sources, err := types.BuildSources(ctx.JunoConfig.Node, r.cdc)
 	if err != nil {
 		panic(err)
 	}
 
-	client := wasmtypes.NewQueryClient(grpcConnection)
-	wasmDB := database.Cast(ctx.Database)
+	db := database.Cast(ctx.Database)
+	wasmModule := wasm.NewModule(ctx.JunoConfig, sources.WasmSource, r.cdc, db)
 
 	return []junomod.Module{
-		wasm.NewModule(wasmDB, client),
+		wasmModule,
 	}
 }

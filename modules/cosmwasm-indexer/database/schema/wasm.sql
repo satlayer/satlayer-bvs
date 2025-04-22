@@ -4,6 +4,12 @@ CREATE TYPE ACCESS_CONFIG AS
     address     TEXT
 );
 
+CREATE TYPE COIN AS
+(
+    denom  TEXT,
+    amount TEXT
+);
+
 CREATE TABLE wasm_params
 (
     one_row_id                      BOOLEAN         NOT NULL DEFAULT TRUE PRIMARY KEY,
@@ -11,7 +17,6 @@ CREATE TABLE wasm_params
     instantiate_default_permission  INT             NOT NULL,
     height                          BIGINT          NOT NULL
 );
-
 
 CREATE TABLE wasm_code
 (
