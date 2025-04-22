@@ -186,17 +186,13 @@ mod receipt_cw20_execute {
                 owner,
                 recipient,
                 amount,
-            } => {
-                execute_transfer_from(deps, env, info, owner, recipient, amount).map_err(Into::into)
-            }
+            } => execute_transfer_from(deps, env, info, owner, recipient, amount),
             CombinedExecuteMsg::SendFrom {
                 owner,
                 contract,
                 amount,
                 msg,
-            } => {
-                execute_send_from(deps, env, info, owner, contract, amount, msg).map_err(Into::into)
-            }
+            } => execute_send_from(deps, env, info, owner, contract, amount, msg),
             CombinedExecuteMsg::Burn { .. } => {
                 // not allowed
                 // can complicate and upset/desync of
@@ -214,11 +210,8 @@ mod receipt_cw20_execute {
                 project,
                 description,
                 marketing,
-            } => execute_update_marketing(deps, env, info, project, description, marketing)
-                .map_err(Into::into),
-            CombinedExecuteMsg::UploadLogo(logo) => {
-                execute_upload_logo(deps, env, info, logo).map_err(Into::into)
-            }
+            } => execute_update_marketing(deps, env, info, project, description, marketing),
+            CombinedExecuteMsg::UploadLogo(logo) => execute_upload_logo(deps, env, info, logo),
             // this should never happen
             // because entry point already exhausted extended execute msg set
             _ => unreachable!(),

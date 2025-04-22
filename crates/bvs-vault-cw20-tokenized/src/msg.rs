@@ -272,9 +272,9 @@ pub enum QueryMsg {
     VaultInfo {},
 }
 
-impl Into<cw20_base::msg::QueryMsg> for QueryMsg {
-    fn into(self) -> cw20_base::msg::QueryMsg {
-        match self {
+impl From<QueryMsg> for cw20_base::msg::QueryMsg {
+    fn from(val: QueryMsg) -> Self {
+        match val {
             QueryMsg::Balance { address } => cw20_base::msg::QueryMsg::Balance { address },
             QueryMsg::TokenInfo {} => cw20_base::msg::QueryMsg::TokenInfo {},
             QueryMsg::Minter {} => cw20_base::msg::QueryMsg::Minter {},
