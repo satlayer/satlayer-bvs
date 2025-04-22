@@ -3,7 +3,17 @@
 
 package vaultcw20tokenized
 
-type Binary string
+type AssetsResponse string
+
+type ConvertToAssetsResponse string
+
+type ConvertToSharesResponse string
+
+type SharesResponse string
+
+type TotalAssetsResponse string
+
+type TotalSharesResponse string
 
 type InstantiateMsg struct {
 	// The address of the `operator`. Each vault is delegated to an `operator`.
@@ -36,7 +46,7 @@ type ReceiptCw20InstantiateBaseClass struct {
 	Decimals        int64                     `json:"decimals"`
 	InitialBalances []Cw20Coin                `json:"initial_balances"`
 	Marketing       *InstantiateMarketingInfo `json:"marketing"`
-	Mint            *MinterResponse           `json:"mint"`
+	Mint            *MinterResponseClass      `json:"mint"`
 	Name            string                    `json:"name"`
 	Symbol          string                    `json:"symbol"`
 }
@@ -75,22 +85,11 @@ type LogoEmbeddedLogo struct {
 	PNG *string `json:"png,omitempty"`
 }
 
-type MinterResponse struct {
+type MinterResponseClass struct {
 	// cap is a hard cap on total supply that can be achieved by minting. Note that this refers
 	// to total_supply. If None, there is unlimited cap.
 	Cap    *string `json:"cap"`
 	Minter string  `json:"minter"`
-}
-
-// Supports the same [Cw20ExecuteMsg](cw20_base::msg::ExecuteMsg) as the `cw20-base`
-// contract. Cw20 compliant messages are passed to the `cw20-base` contract. EXCEPT for the
-// `Burn` and `BurnFrom` messages.
-//
-// Supports the same [VaultExecuteMsg](bvs_vault_base::msg::VaultExecuteMsg) as the
-// `bvs-vault-base` contract.
-type ExecuteMsg struct {
-	Base     *Cw20ExecuteMsg  `json:"base,omitempty"`
-	Extended *VaultExecuteMsg `json:"extended,omitempty"`
 }
 
 // Transfer is a base message to move tokens to another account without triggering actions
@@ -128,19 +127,46 @@ type ExecuteMsg struct {
 //
 // If set as the "marketing" role on the contract, upload a new URL, SVG, or PNG for the
 // token
-type Cw20ExecuteMsg struct {
-	Transfer          *Transfer          `json:"transfer,omitempty"`
-	Burn              *Burn              `json:"burn,omitempty"`
-	Send              *Send              `json:"send,omitempty"`
-	IncreaseAllowance *IncreaseAllowance `json:"increase_allowance,omitempty"`
-	DecreaseAllowance *DecreaseAllowance `json:"decrease_allowance,omitempty"`
-	TransferFrom      *TransferFrom      `json:"transfer_from,omitempty"`
-	SendFrom          *SendFrom          `json:"send_from,omitempty"`
-	BurnFrom          *BurnFrom          `json:"burn_from,omitempty"`
-	Mint              *Mint              `json:"mint,omitempty"`
-	UpdateMinter      *UpdateMinter      `json:"update_minter,omitempty"`
-	UpdateMarketing   *UpdateMarketing   `json:"update_marketing,omitempty"`
-	UploadLogo        *Logo              `json:"upload_logo,omitempty"`
+//
+// ExecuteMsg Deposit assets into the vault. Sender must transfer the assets to the vault
+// contract (this is implementation agnostic). The vault contract must mint shares to the
+// `recipient`. Vault must be whitelisted in the `vault-router` to accept deposits.
+//
+// ExecuteMsg Withdraw assets from the vault. Sender must have enough shares to withdraw the
+// requested amount to the `recipient`. If the Vault is delegated to an `operator`,
+// withdrawals must be queued. Operator must not be validating any services for instant
+// withdrawals.
+//
+// ExecuteMsg QueueWithdrawal assets from the vault. Sender must have enough shares to queue
+// the requested amount to the `recipient`. Once the withdrawal is queued, the `recipient`
+// can redeem the withdrawal after the lock period. Once the withdrawal is locked, the
+// `sender` cannot cancel the withdrawal. The time-lock is enforced by the vault and cannot
+// be changed retroactively.
+//
+// ### Lock Period Extension New withdrawals will extend the lock period of any existing
+// withdrawals. You can queue the withdrawal to a different `recipient` than the `sender` to
+// avoid this.
+//
+// ExecuteMsg RedeemWithdrawal all queued shares into assets from the vault for withdrawal.
+// After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
+// can redeem the withdrawal.
+type ExecuteMsg struct {
+	Transfer           *Transfer          `json:"transfer,omitempty"`
+	Burn               *Burn              `json:"burn,omitempty"`
+	Send               *Send              `json:"send,omitempty"`
+	IncreaseAllowance  *IncreaseAllowance `json:"increase_allowance,omitempty"`
+	DecreaseAllowance  *DecreaseAllowance `json:"decrease_allowance,omitempty"`
+	TransferFrom       *TransferFrom      `json:"transfer_from,omitempty"`
+	SendFrom           *SendFrom          `json:"send_from,omitempty"`
+	BurnFrom           *BurnFrom          `json:"burn_from,omitempty"`
+	Mint               *Mint              `json:"mint,omitempty"`
+	UpdateMinter       *UpdateMinter      `json:"update_minter,omitempty"`
+	UpdateMarketing    *UpdateMarketing   `json:"update_marketing,omitempty"`
+	UploadLogo         *Logo              `json:"upload_logo,omitempty"`
+	DepositFor         *RecipientAmount   `json:"deposit_for,omitempty"`
+	WithdrawTo         *RecipientAmount   `json:"withdraw_to,omitempty"`
+	QueueWithdrawalTo  *RecipientAmount   `json:"queue_withdrawal_to,omitempty"`
+	RedeemWithdrawalTo *string            `json:"redeem_withdrawal_to,omitempty"`
 }
 
 type Burn struct {
@@ -164,12 +190,18 @@ type DecreaseAllowance struct {
 //
 // Never will never expire. Used to express the empty variant
 type Expiration struct {
-	AtHeight *int64  `json:"at_height,omitempty"`
-	AtTime   *string `json:"at_time,omitempty"`
-	Never    *Never  `json:"never,omitempty"`
+	AtHeight *int64        `json:"at_height,omitempty"`
+	AtTime   *string       `json:"at_time,omitempty"`
+	Never    *ExpiresNever `json:"never,omitempty"`
 }
 
-type Never struct {
+type ExpiresNever struct {
+}
+
+// This struct is used to represent the recipient and amount fields together.
+type RecipientAmount struct {
+	Amount    string `json:"amount"`
+	Recipient string `json:"recipient"`
 }
 
 type IncreaseAllowance struct {
@@ -244,52 +276,6 @@ type LogoEmbeddedLogoClass struct {
 	PNG *string `json:"png,omitempty"`
 }
 
-// Vault `ExecuteMsg`, to be implemented by the vault contract. Callable by any `sender`,
-// redeemable by any `recipient`. The `sender` can be the same as the `recipient` in some
-// cases.
-//
-// ExecuteMsg Deposit assets into the vault. Sender must transfer the assets to the vault
-// contract (this is implementation agnostic). The vault contract must mint shares to the
-// `recipient`. Vault must be whitelisted in the `vault-router` to accept deposits.
-//
-// ExecuteMsg Withdraw assets from the vault. Sender must have enough shares to withdraw the
-// requested amount to the `recipient`. If the Vault is delegated to an `operator`,
-// withdrawals must be queued. Operator must not be validating any services for instant
-// withdrawals.
-//
-// ExecuteMsg QueueWithdrawal assets from the vault. Sender must have enough shares to queue
-// the requested amount to the `recipient`. Once the withdrawal is queued, the `recipient`
-// can redeem the withdrawal after the lock period. Once the withdrawal is locked, the
-// `sender` cannot cancel the withdrawal. The time-lock is enforced by the vault and cannot
-// be changed retroactively.
-//
-// ### Lock Period Extension New withdrawals will extend the lock period of any existing
-// withdrawals. You can queue the withdrawal to a different `recipient` than the `sender` to
-// avoid this.
-//
-// ExecuteMsg RedeemWithdrawal all queued shares into assets from the vault for withdrawal.
-// After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
-// can redeem the withdrawal.
-type VaultExecuteMsg struct {
-	DepositFor         *RecipientAmount `json:"deposit_for,omitempty"`
-	WithdrawTo         *RecipientAmount `json:"withdraw_to,omitempty"`
-	QueueWithdrawalTo  *RecipientAmount `json:"queue_withdrawal_to,omitempty"`
-	RedeemWithdrawalTo *string          `json:"redeem_withdrawal_to,omitempty"`
-}
-
-// This struct is used to represent the recipient and amount fields together.
-type RecipientAmount struct {
-	Amount    string `json:"amount"`
-	Recipient string `json:"recipient"`
-}
-
-// Supports the same [VaultQueryMsg](bvs_vault_base::msg::VaultQueryMsg) as the
-// `bvs-vault-base` contract.
-type QueryMsg struct {
-	Base     *QueryMsgClass `json:"base,omitempty"`
-	Extended *VaultQueryMsg `json:"extended,omitempty"`
-}
-
 // Returns the current balance of the given address, 0 if unset.
 //
 // Returns metadata on the contract - name, decimals, supply, etc.
@@ -314,7 +300,25 @@ type QueryMsg struct {
 //
 // Only with "marketing" extension Downloads the embedded logo data (if stored on chain).
 // Errors if no logo data is stored for this contract.
-type QueryMsgClass struct {
+//
+// QueryMsg Shares: get the shares of a staker. Shares in this tokenized vault are CW20
+// receipt tokens. The interface is kept the same as the original vault. to avoid breaking
+// and minimize changes in vault consumer/frontend code.
+//
+// QueryMsg Assets: get the assets of a staker, converted from shares.
+//
+// QueryMsg ConvertToAssets: convert shares to assets.
+//
+// QueryMsg ConvertToShares: convert assets to shares.
+//
+// QueryMsg TotalShares: get the total shares in circulation.
+//
+// QueryMsg TotalAssets: get the total assets under vault.
+//
+// QueryMsg QueuedWithdrawal: get the queued withdrawal and unlock timestamp under vault.
+//
+// QueryMsg VaultInfo: get the vault information.
+type QueryMsg struct {
 	Balance              *Balance              `json:"balance,omitempty"`
 	TokenInfo            *TokenInfo            `json:"token_info,omitempty"`
 	Minter               *Minter               `json:"minter,omitempty"`
@@ -324,6 +328,14 @@ type QueryMsgClass struct {
 	AllAccounts          *AllAccounts          `json:"all_accounts,omitempty"`
 	MarketingInfo        *MarketingInfo        `json:"marketing_info,omitempty"`
 	DownloadLogo         *DownloadLogo         `json:"download_logo,omitempty"`
+	Shares               *Shares               `json:"shares,omitempty"`
+	Assets               *Assets               `json:"assets,omitempty"`
+	ConvertToAssets      *ConvertToAssets      `json:"convert_to_assets,omitempty"`
+	ConvertToShares      *ConvertToShares      `json:"convert_to_shares,omitempty"`
+	TotalShares          *TotalShares          `json:"total_shares,omitempty"`
+	TotalAssets          *TotalAssets          `json:"total_assets,omitempty"`
+	QueuedWithdrawal     *QueuedWithdrawal     `json:"queued_withdrawal,omitempty"`
+	VaultInfo            *VaultInfo            `json:"vault_info,omitempty"`
 }
 
 type AllAccounts struct {
@@ -348,8 +360,20 @@ type Allowance struct {
 	Spender string `json:"spender"`
 }
 
+type Assets struct {
+	Staker string `json:"staker"`
+}
+
 type Balance struct {
 	Address string `json:"address"`
+}
+
+type ConvertToAssets struct {
+	Shares string `json:"shares"`
+}
+
+type ConvertToShares struct {
+	Assets string `json:"assets"`
 }
 
 type DownloadLogo struct {
@@ -361,53 +385,15 @@ type MarketingInfo struct {
 type Minter struct {
 }
 
-type TokenInfo struct {
-}
-
-// QueryMsg Shares: get the shares of a staker.
-//
-// QueryMsg Assets: get the assets of a staker, converted from shares.
-//
-// QueryMsg ConvertToAssets: convert shares to assets.
-//
-// QueryMsg ConvertToShares: convert assets to shares.
-//
-// QueryMsg TotalShares: get the total shares in circulation.
-//
-// QueryMsg TotalAssets: get the total assets under vault.
-//
-// QueryMsg QueuedWithdrawal: get the queued withdrawal and unlock timestamp under vault.
-//
-// QueryMsg VaultInfo: get the vault information.
-type VaultQueryMsg struct {
-	Shares           *Shares           `json:"shares,omitempty"`
-	Assets           *Assets           `json:"assets,omitempty"`
-	ConvertToAssets  *ConvertToAssets  `json:"convert_to_assets,omitempty"`
-	ConvertToShares  *ConvertToShares  `json:"convert_to_shares,omitempty"`
-	TotalShares      *TotalShares      `json:"total_shares,omitempty"`
-	TotalAssets      *TotalAssets      `json:"total_assets,omitempty"`
-	QueuedWithdrawal *QueuedWithdrawal `json:"queued_withdrawal,omitempty"`
-	VaultInfo        *VaultInfo        `json:"vault_info,omitempty"`
-}
-
-type Assets struct {
-	Staker string `json:"staker"`
-}
-
-type ConvertToAssets struct {
-	Shares string `json:"shares"`
-}
-
-type ConvertToShares struct {
-	Assets string `json:"assets"`
-}
-
 type QueuedWithdrawal struct {
 	Staker string `json:"staker"`
 }
 
 type Shares struct {
 	Staker string `json:"staker"`
+}
+
+type TokenInfo struct {
 }
 
 type TotalAssets struct {
@@ -417,4 +403,169 @@ type TotalShares struct {
 }
 
 type VaultInfo struct {
+}
+
+type AllAccountsResponse struct {
+	Accounts []string `json:"accounts"`
+}
+
+type AllAllowancesResponse struct {
+	Allowances []AllowanceInfo `json:"allowances"`
+}
+
+type AllowanceInfo struct {
+	Allowance string           `json:"allowance"`
+	Expires   PurpleExpiration `json:"expires"`
+	Spender   string           `json:"spender"`
+}
+
+// Expiration represents a point in time when some event happens. It can compare with a
+// BlockInfo and will return is_expired() == true once the condition is hit (and for every
+// block in the future)
+//
+// AtHeight will expire when `env.block.height` >= height
+//
+// AtTime will expire when `env.block.time` >= time
+//
+// Never will never expire. Used to express the empty variant
+type PurpleExpiration struct {
+	AtHeight *int64       `json:"at_height,omitempty"`
+	AtTime   *string      `json:"at_time,omitempty"`
+	Never    *PurpleNever `json:"never,omitempty"`
+}
+
+type PurpleNever struct {
+}
+
+type AllSpenderAllowancesResponse struct {
+	Allowances []SpenderAllowanceInfo `json:"allowances"`
+}
+
+type SpenderAllowanceInfo struct {
+	Allowance string           `json:"allowance"`
+	Expires   FluffyExpiration `json:"expires"`
+	Owner     string           `json:"owner"`
+}
+
+// Expiration represents a point in time when some event happens. It can compare with a
+// BlockInfo and will return is_expired() == true once the condition is hit (and for every
+// block in the future)
+//
+// AtHeight will expire when `env.block.height` >= height
+//
+// AtTime will expire when `env.block.time` >= time
+//
+// Never will never expire. Used to express the empty variant
+type FluffyExpiration struct {
+	AtHeight *int64       `json:"at_height,omitempty"`
+	AtTime   *string      `json:"at_time,omitempty"`
+	Never    *FluffyNever `json:"never,omitempty"`
+}
+
+type FluffyNever struct {
+}
+
+type AllowanceResponse struct {
+	Allowance string                      `json:"allowance"`
+	Expires   AllowanceResponseExpiration `json:"expires"`
+}
+
+// Expiration represents a point in time when some event happens. It can compare with a
+// BlockInfo and will return is_expired() == true once the condition is hit (and for every
+// block in the future)
+//
+// AtHeight will expire when `env.block.height` >= height
+//
+// AtTime will expire when `env.block.time` >= time
+//
+// Never will never expire. Used to express the empty variant
+type AllowanceResponseExpiration struct {
+	AtHeight *int64          `json:"at_height,omitempty"`
+	AtTime   *string         `json:"at_time,omitempty"`
+	Never    *TentacledNever `json:"never,omitempty"`
+}
+
+type TentacledNever struct {
+}
+
+type BalanceResponse struct {
+	Balance string `json:"balance"`
+}
+
+// When we download an embedded logo, we get this response type. We expect a SPA to be able
+// to accept this info and display it.
+type DownloadLogoResponse struct {
+	Data     string `json:"data"`
+	MIMEType string `json:"mime_type"`
+}
+
+type MarketingInfoResponse struct {
+	// A longer description of the token and it's utility. Designed for tooltips or such
+	Description *string `json:"description"`
+	// A link to the logo, or a comment there is an on-chain logo stored
+	Logo *LogoUnion `json:"logo"`
+	// The address (if any) who can update this data structure
+	Marketing *string `json:"marketing"`
+	// A URL pointing to the project behind this token.
+	Project *string `json:"project"`
+}
+
+// A reference to an externally hosted logo. Must be a valid HTTP or HTTPS URL.
+type LogoLogoClass struct {
+	URL string `json:"url"`
+}
+
+type MinterResponse struct {
+	// cap is a hard cap on total supply that can be achieved by minting. Note that this refers
+	// to total_supply. If None, there is unlimited cap.
+	Cap    *string `json:"cap"`
+	Minter string  `json:"minter"`
+}
+
+// The response to the `QueuedWithdrawal` query. Not exported. This is just a wrapper around
+// `QueuedWithdrawalInfo`, so that the schema can be generated.
+type QueuedWithdrawalResponse struct {
+	QueuedShares    string `json:"queued_shares"`
+	UnlockTimestamp string `json:"unlock_timestamp"`
+}
+
+type TokenInfoResponse struct {
+	Decimals    int64  `json:"decimals"`
+	Name        string `json:"name"`
+	Symbol      string `json:"symbol"`
+	TotalSupply string `json:"total_supply"`
+}
+
+type VaultInfoResponse struct {
+	// Asset identifier, using the CAIP-19 format.
+	AssetID string `json:"asset_id"`
+	// The name of the vault contract, see [`cw2::set_contract_version`] for more information.
+	Contract string `json:"contract"`
+	// The `operator` that this vault is delegated to
+	Operator string `json:"operator"`
+	// The `pauser` contract address
+	Pauser string `json:"pauser"`
+	// The `vault-router` contract address
+	Router string `json:"router"`
+	// Whether the vault has enabled slashing
+	Slashing bool `json:"slashing"`
+	// The total assets under management
+	TotalAssets string `json:"total_assets"`
+	// The total shares in circulation
+	TotalShares string `json:"total_shares"`
+	// The version of the vault contract, see [`cw2::set_contract_version`] for more information.
+	Version string `json:"version"`
+}
+
+// There is an embedded logo on the chain, make another call to download it.
+type LogoEnum string
+
+const (
+	Embedded LogoEnum = "embedded"
+)
+
+// A link to the logo, or a comment there is an on-chain logo stored
+type LogoUnion struct {
+	Enum          *LogoEnum
+	LogoLogoClass *LogoLogoClass
 }
