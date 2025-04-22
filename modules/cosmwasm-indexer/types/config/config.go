@@ -26,55 +26,6 @@ func Creator(_ *cobra.Command) initcmd.WritableConfig {
 	return NewConfig(junoconfig.DefaultConfig(), DefaultContractsConfig())
 }
 
-// var (
-// 	// Cfg represents the configuration to be used during the execution
-// 	Cfg Config
-// )
-
-// // Config defines all necessary juno configuration parameters.
-// type Config struct {
-// 	bytes []byte
-//
-// 	Contracts ContractsConfig        `yaml:"contracts"`
-// 	Chain     junoconfig.ChainConfig `yaml:"chain"`
-// 	Node      nodeconfig.Config      `yaml:"node"`
-// 	Parser    parserconfig.Config    `yaml:"parsing"`
-// 	Database  databaseconfig.Config  `yaml:"database"`
-// 	Logging   loggingconfig.Config   `yaml:"logging"`
-// }
-//
-// // NewConfig builds a new Config instance
-// func NewConfig(
-// 	nodeCfg nodeconfig.Config, contractCfg ContractsConfig,
-// 	chainCfg junoconfig.ChainConfig, dbConfig databaseconfig.Config,
-// 	parserConfig parserconfig.Config, loggingConfig loggingconfig.Config,
-// ) Config {
-// 	return Config{
-// 		Node:      nodeCfg,
-// 		Contracts: contractCfg,
-// 		Chain:     chainCfg,
-// 		Database:  dbConfig,
-// 		Parser:    parserConfig,
-// 		Logging:   loggingConfig,
-// 	}
-// }
-//
-// func DefaultConfig() Config {
-// 	cfg := NewConfig(
-// 		nodeconfig.DefaultConfig(), DefaultContractsConfig(),
-// 		junoconfig.DefaultChainConfig(), databaseconfig.DefaultDatabaseConfig(),
-// 		parserconfig.DefaultParsingConfig(), loggingconfig.DefaultLoggingConfig(),
-// 	)
-//
-// 	bz, err := yaml.Marshal(cfg)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-//
-// 	cfg.bytes = bz
-// 	return cfg
-// }
-
 func (c Config) GetBytes() ([]byte, error) {
 	return yaml.Marshal(&c)
 }
