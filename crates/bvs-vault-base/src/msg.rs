@@ -113,43 +113,43 @@ pub enum VaultQueryMsg {
 /// Not exported.
 /// This is just a wrapper around `Uint128`, so that the schema can be generated.
 #[cw_serde]
-struct SharesResponse(Uint128);
+pub struct SharesResponse(Uint128);
 
 /// The response to the `Assets` query.
 /// Not exported.
 /// This is just a wrapper around `Uint128`, so that the schema can be generated.
 #[cw_serde]
-struct AssetsResponse(Uint128);
+pub struct AssetsResponse(Uint128);
 
 /// The response to the `ConvertToAssets` query.
 /// Not exported.
 /// This is just a wrapper around `Uint128`, so that the schema can be generated.
 #[cw_serde]
-struct ConvertToAssetsResponse(Uint128);
+pub struct ConvertToAssetsResponse(Uint128);
 
 /// The response to the `ConvertToShares` query.
 /// Not exported.
 /// This is just a wrapper around `Uint128`, so that the schema can be generated.
 #[cw_serde]
-struct ConvertToSharesResponse(Uint128);
+pub struct ConvertToSharesResponse(Uint128);
 
 /// The response to the `TotalShares` query.
 /// Not exported.
 /// This is just a wrapper around `Uint128`, so that the schema can be generated.
 #[cw_serde]
-struct TotalSharesResponse(Uint128);
+pub struct TotalSharesResponse(Uint128);
 
 /// The response to the `TotalAssets` query.
 /// Not exported.
 /// This is just a wrapper around `Uint128`, so that the schema can be generated.
 #[cw_serde]
-struct TotalAssetsResponse(Uint128);
+pub struct TotalAssetsResponse(Uint128);
 
 /// The response to the `QueuedWithdrawal` query.
 ///  Not exported.
 /// This is just a wrapper around `QueuedWithdrawalInfo`, so that the schema can be generated.
 #[cw_serde]
-struct QueuedWithdrawalResponse(QueuedWithdrawalInfo);
+pub struct QueuedWithdrawalResponse(QueuedWithdrawalInfo);
 
 #[cw_serde]
 pub struct VaultInfoResponse {

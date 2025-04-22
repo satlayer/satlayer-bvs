@@ -212,8 +212,8 @@ pub mod vault {
             .query_wasm_smart(vault.to_string(), &VaultInfoQueryMsg::VaultInfo {})
         {
             Ok(response) => Ok(response),
-            Err(_) => Err(ContractError::VaultError {
-                msg: format!("No such contract: {}", vault).to_string(),
+            Err(e) => Err(ContractError::VaultError {
+                msg: format!("No such contract: {} {}", vault, e).to_string(),
             }),
         }
     }

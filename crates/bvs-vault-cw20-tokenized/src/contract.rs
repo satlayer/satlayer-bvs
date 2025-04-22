@@ -1,23 +1,22 @@
+use cosmwasm_std::to_json_binary;
 use cosmwasm_std::{entry_point, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 use cw20_base::contract::instantiate as base_instantiate;
-use cw20_base::contract::query as base_query;
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg as CombinedExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::token as PrimaryStakingToken;
 
 const CONTRACT_NAME: &str = concat!("crates.io:", env!("CARGO_PKG_NAME"));
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     let pauser = deps.api.addr_validate(&msg.pauser)?;
     bvs_pauser::api::set_pauser(deps.storage, &pauser)?;
 
@@ -33,7 +32,14 @@ pub fn instantiate(
     // to query the token info to ensure that the contract is properly set up
     PrimaryStakingToken::get_token_info(&deps.as_ref())?;
 
-    let mut response = base_instantiate(deps, env, info, msg.receipt_cw20_instantiate_base)?;
+    let mut response =
+        base_instantiate(deps.branch(), env, info, msg.receipt_cw20_instantiate_base)?;
+
+    // important to set the set_contract_version after the base contract instantiation
+    // because base_cw20_instantiate set the contract name and version with
+    // its own hardcoded values
+    // Setting again after it overwrites the base contract name and version
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     // merge the base response with the custom response
     response = response
@@ -46,19 +52,38 @@ pub fn instantiate(
     Ok(response)
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: ExecuteMsg,
+    msg: CombinedExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Base(base_msg) => {
-            receipt_cw20_execute::execute_base(deps, env, info, base_msg).map_err(Into::into)
+        CombinedExecuteMsg::WithdrawTo(msg) => {
+            // This is the only execute msg that is not passed to the base contract
+            // because it is a custom logic for this vault contract
+            vault_execute::withdraw_to(deps, env, info, msg)
         }
-        ExecuteMsg::Extended(extended_msg) => {
-            vault_execute::execute_extended(deps, env, info, extended_msg)
+        CombinedExecuteMsg::DepositFor(msg) => {
+            // This is the only execute msg that is not passed to the base contract
+            // because it is a custom logic for this vault contract
+            vault_execute::deposit_for(deps, env, info, msg)
+        }
+        CombinedExecuteMsg::QueueWithdrawalTo(msg) => {
+            // This is the only execute msg that is not passed to the base contract
+            // because it is a custom logic for this vault contract
+            vault_execute::queue_withdrawal_to(deps, env, info, msg)
+        }
+        CombinedExecuteMsg::RedeemWithdrawalTo(msg) => {
+            // This is the only execute msg that is not passed to the base contract
+            // because it is a custom logic for this vault contract
+            vault_execute::redeem_withdrawal_to(deps, env, info, msg)
+        }
+        _ => {
+            // cw20 compliant messages are passed to the `cw20-base` contract.
+            // Except for the `Burn` and `BurnFrom` messages.
+            receipt_cw20_execute::execute_base(deps, env, info, msg).map_err(Into::into)
         }
     }
 }
@@ -68,7 +93,6 @@ pub fn execute(
 mod receipt_cw20_execute {
     use cosmwasm_std::{Addr, StdResult, Uint128};
     use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
-    use cw20_base::msg::ExecuteMsg as Cw20ExecuteMsg;
 
     use cw20_base::contract::execute_send;
     use cw20_base::contract::execute_transfer;
@@ -82,6 +106,8 @@ mod receipt_cw20_execute {
     use cw20_base::contract::execute_update_marketing;
     use cw20_base::contract::execute_upload_logo;
     use cw20_base::state::{BALANCES as RECEIPT_TOKEN_BALANCES, TOKEN_INFO as RECEIPT_TOKEN_INFO};
+
+    use crate::msg::ExecuteMsg as CombinedExecuteMsg;
 
     /// This mint function is almost identical to the base cw20 contract's mint function
     /// down to the variables and logic.
@@ -126,43 +152,43 @@ mod receipt_cw20_execute {
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        msg: Cw20ExecuteMsg,
+        msg: CombinedExecuteMsg,
     ) -> Result<Response, cw20_base::ContractError> {
         match msg {
-            cw20_base::msg::ExecuteMsg::Transfer { recipient, amount } => {
+            CombinedExecuteMsg::Transfer { recipient, amount } => {
                 execute_transfer(deps, env, info, recipient, amount)
             }
-            cw20_base::msg::ExecuteMsg::Send {
+            CombinedExecuteMsg::Send {
                 contract,
                 amount,
                 msg,
             } => execute_send(deps, env, info, contract, amount, msg),
-            cw20_base::msg::ExecuteMsg::Mint { .. } => {
+            CombinedExecuteMsg::Mint { .. } => {
                 // not allowed
                 // for the same reason burning is not allowed
                 Err(cw20_base::ContractError::Unauthorized {})
             }
-            cw20_base::msg::ExecuteMsg::UpdateMinter { new_minter } => {
+            CombinedExecuteMsg::UpdateMinter { new_minter } => {
                 execute_update_minter(deps, env, info, new_minter)
             }
-            cw20_base::msg::ExecuteMsg::IncreaseAllowance {
+            CombinedExecuteMsg::IncreaseAllowance {
                 spender,
                 amount,
                 expires,
             } => execute_increase_allowance(deps, env, info, spender, amount, expires),
-            cw20_base::msg::ExecuteMsg::DecreaseAllowance {
+            CombinedExecuteMsg::DecreaseAllowance {
                 spender,
                 amount,
                 expires,
             } => execute_decrease_allowance(deps, env, info, spender, amount, expires),
-            cw20_base::msg::ExecuteMsg::TransferFrom {
+            CombinedExecuteMsg::TransferFrom {
                 owner,
                 recipient,
                 amount,
             } => {
                 execute_transfer_from(deps, env, info, owner, recipient, amount).map_err(Into::into)
             }
-            cw20_base::msg::ExecuteMsg::SendFrom {
+            CombinedExecuteMsg::SendFrom {
                 owner,
                 contract,
                 amount,
@@ -170,7 +196,7 @@ mod receipt_cw20_execute {
             } => {
                 execute_send_from(deps, env, info, owner, contract, amount, msg).map_err(Into::into)
             }
-            cw20_base::msg::ExecuteMsg::Burn { .. } => {
+            CombinedExecuteMsg::Burn { .. } => {
                 // not allowed
                 // can complicate and upset/desync of
                 // the VirtualOffset's total shares vs
@@ -179,19 +205,22 @@ mod receipt_cw20_execute {
                 // only at successful unstaking
                 Err(cw20_base::ContractError::Unauthorized {})
             }
-            cw20_base::msg::ExecuteMsg::BurnFrom { .. } => {
+            CombinedExecuteMsg::BurnFrom { .. } => {
                 // not allowed
                 Err(cw20_base::ContractError::Unauthorized {})
             }
-            cw20_base::msg::ExecuteMsg::UpdateMarketing {
+            CombinedExecuteMsg::UpdateMarketing {
                 project,
                 description,
                 marketing,
             } => execute_update_marketing(deps, env, info, project, description, marketing)
                 .map_err(Into::into),
-            cw20_base::msg::ExecuteMsg::UploadLogo(logo) => {
+            CombinedExecuteMsg::UploadLogo(logo) => {
                 execute_upload_logo(deps, env, info, logo).map_err(Into::into)
             }
+            // this should never happen
+            // because entry point already exhausted extended execute msg set
+            _ => unreachable!(),
         }
     }
 }
@@ -202,7 +231,7 @@ mod vault_execute {
     use crate::error::ContractError;
     use crate::token as PrimaryStakingToken;
     use bvs_vault_base::error::VaultError;
-    use bvs_vault_base::msg::{Recipient, RecipientAmount, VaultExecuteMsg};
+    use bvs_vault_base::msg::{Recipient, RecipientAmount};
     use bvs_vault_base::{
         offset, router,
         shares::{self, QueuedWithdrawalInfo},
@@ -210,21 +239,6 @@ mod vault_execute {
     use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, Timestamp};
     use cw20_base::contract::execute_burn as receipt_token_burn;
     use cw20_base::contract::query_balance as query_receipt_token_balance;
-    use cw20_base::state::TOKEN_INFO as RECEIPT_TOKEN_INFO;
-
-    pub fn execute_extended(
-        deps: DepsMut,
-        env: Env,
-        info: MessageInfo,
-        msg: VaultExecuteMsg,
-    ) -> Result<Response, ContractError> {
-        match msg {
-            VaultExecuteMsg::DepositFor(msg) => deposit_for(deps, env, info, msg),
-            VaultExecuteMsg::WithdrawTo(msg) => withdraw_to(deps, env, info, msg),
-            VaultExecuteMsg::QueueWithdrawalTo(msg) => queue_withdrawal_to(deps, env, info, msg),
-            VaultExecuteMsg::RedeemWithdrawalTo(msg) => redeem_withdrawal_to(deps, env, info, msg),
-        }
-    }
 
     /// This executes a transfer of assets from the `info.sender` to the vault contract.
     ///
@@ -279,10 +293,8 @@ mod vault_execute {
             )?;
 
             // TOTAL_SHARE and TOTAL_SUPPLY should be the same
-            let total_receipt_token_supply = RECEIPT_TOKEN_INFO
-                .may_load(deps.storage)?
-                .unwrap()
-                .total_supply;
+            let total_receipt_token_supply =
+                cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
 
             if total_receipt_token_supply != vault.total_shares() {
                 // Ideally, this should never happen
@@ -310,7 +322,7 @@ mod vault_execute {
     /// The resulting staked assets are now unstaked and transferred to `msg.recipient`.  
     /// The `TOTAL_SHARE` in the vault is reduced.  
     pub fn withdraw_to(
-        deps: DepsMut,
+        mut deps: DepsMut,
         env: Env,
         info: MessageInfo,
         msg: RecipientAmount,
@@ -342,7 +354,19 @@ mod vault_execute {
         )?;
 
         // Burn the receipt token from the staker
-        receipt_token_burn(deps, env.clone(), info.clone(), receipt_tokens)?;
+        receipt_token_burn(deps.branch(), env.clone(), info.clone(), receipt_tokens)?;
+
+        let total_shares_from_offset = offset::get_total_shares(deps.storage).unwrap_or_default();
+        let total_supply_of_receipt_token =
+            cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
+
+        if total_shares_from_offset != total_supply_of_receipt_token {
+            // Ideally, this should never happen
+            return Err(VaultError::unauthorized(
+                "Total shares tracked in account and total supply circulating mismatch",
+            )
+            .into());
+        }
 
         Ok(Response::new()
             .add_event(
@@ -410,7 +434,7 @@ mod vault_execute {
     /// Redeem all queued shares to assets for `msg.recipient`.
     /// The `info.sender` must be equal to the `msg.recipient` in [`queue_withdrawal_to`].
     pub fn redeem_withdrawal_to(
-        deps: DepsMut,
+        mut deps: DepsMut,
         env: Env,
         info: MessageInfo,
         msg: Recipient,
@@ -452,7 +476,18 @@ mod vault_execute {
         // Burn the receipt token from the staker
         // This func internally checked sub so not having enough receipt token
         // will lock the stakes forever
-        receipt_token_burn(deps, env.clone(), info.clone(), queued_shares)?;
+        receipt_token_burn(deps.branch(), env.clone(), info.clone(), queued_shares)?;
+
+        let total_shares_from_offset = offset::get_total_shares(deps.storage).unwrap_or_default();
+        let total_supply_of_receipt_token =
+            cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
+        if total_shares_from_offset != total_supply_of_receipt_token {
+            // Ideally, this should never happen
+            return Err(VaultError::unauthorized(
+                "Total shares tracked in account and total supply circulating mismatch",
+            )
+            .into());
+        }
 
         Ok(Response::new()
             .add_event(
@@ -470,83 +505,92 @@ mod vault_execute {
 #[entry_point]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<cosmwasm_std::Binary> {
     match msg {
-        QueryMsg::Base(base_msg) => base_query(deps, env, base_msg),
-        QueryMsg::Extended(extended_msg) => vault_query::extended_query(deps, env, extended_msg),
+        QueryMsg::Shares { staker } => to_json_binary(&vault_query::balance_of(deps, staker)?),
+        QueryMsg::Assets { staker } => {
+            let staker = deps.api.addr_validate(&staker)?;
+            to_json_binary(&vault_query::assets(deps, env, staker)?)
+        }
+        QueryMsg::ConvertToAssets { shares } => {
+            to_json_binary(&vault_query::convert_to_staking_token(deps, env, shares)?)
+        }
+        QueryMsg::ConvertToShares { assets } => {
+            to_json_binary(&vault_query::convert_to_receipt_token(deps, env, assets)?)
+        }
+        QueryMsg::TotalShares {} => {
+            to_json_binary(&vault_query::total_receipt_token_supply(deps, env)?)
+        }
+        QueryMsg::TotalAssets {} => to_json_binary(&vault_query::total_assets(deps, env)?),
+        QueryMsg::QueuedWithdrawal { staker } => {
+            let staker = deps.api.addr_validate(&staker)?;
+            to_json_binary(&vault_query::queued_withdrawal(deps, staker)?)
+        }
+        QueryMsg::VaultInfo {} => to_json_binary(&vault_query::vault_info(deps, env)?),
+        _ => {
+            // cw20 compliant messages are passed to the `cw20-base` contract.
+            // Except for the `Burn` and `BurnFrom` messages.
+            cw20_base::contract::query(deps, env, msg.into())
+        }
     }
 }
 
 mod vault_query {
-    use crate::token;
-    use bvs_vault_base::msg::{VaultInfoResponse, VaultQueryMsg};
+    use crate::token as StakingToken;
+    use bvs_vault_base::msg::VaultInfoResponse;
     use bvs_vault_base::{
         offset,
         shares::{self, QueuedWithdrawalInfo},
     };
-    use cosmwasm_std::{to_json_binary, Addr, Deps, Env, StdResult, Uint128};
-
-    pub fn extended_query(
-        deps: Deps,
-        env: Env,
-        msg: VaultQueryMsg,
-    ) -> StdResult<cosmwasm_std::Binary> {
-        match msg {
-            VaultQueryMsg::Shares { staker } => {
-                let staker = deps.api.addr_validate(&staker)?;
-                to_json_binary(&shares(deps, staker)?)
-            }
-            VaultQueryMsg::Assets { staker } => {
-                let staker = deps.api.addr_validate(&staker)?;
-                to_json_binary(&assets(deps, env, staker)?)
-            }
-            VaultQueryMsg::ConvertToAssets { shares } => {
-                to_json_binary(&convert_to_assets(deps, env, shares)?)
-            }
-            VaultQueryMsg::ConvertToShares { assets } => {
-                to_json_binary(&convert_to_shares(deps, env, assets)?)
-            }
-            VaultQueryMsg::TotalShares {} => to_json_binary(&total_shares(deps, env)?),
-            VaultQueryMsg::TotalAssets {} => to_json_binary(&total_assets(deps, env)?),
-            VaultQueryMsg::QueuedWithdrawal { staker } => {
-                let staker = deps.api.addr_validate(&staker)?;
-                to_json_binary(&queued_withdrawal(deps, staker)?)
-            }
-            VaultQueryMsg::VaultInfo {} => to_json_binary(&vault_info(deps, env)?),
-        }
-    }
+    use cosmwasm_std::{Addr, Deps, Env, StdResult, Uint128};
+    use cw20_base::contract::query_balance;
 
     /// Get shares of the staker
-    pub fn shares(deps: Deps, staker: Addr) -> StdResult<Uint128> {
-        shares::get_shares(deps.storage, &staker)
+    /// Since this vault is tokenized, shares are practically the receipt token.
+    /// Such that quering shares is equivalent to querying the receipt token balance of a
+    /// particular staker/address.
+    /// But we will support this query to keep the API consistent with the non-tokenized vault.
+    /// Hopefully that helps with contract consumer/frontend to minimize code changes.
+    pub fn balance_of(deps: Deps, staker: String) -> StdResult<Uint128> {
+        // this func come from the cw20_base crate
+        // validate the staker address
+        let balance = query_balance(deps, staker)?;
+
+        StdResult::Ok(balance.balance)
     }
 
-    /// Get the assets of a staker, converted from shares held by staker.
+    /// Get the assets of a staker, converted from receipt_tokens held by staker.
     pub fn assets(deps: Deps, env: Env, staker: Addr) -> StdResult<Uint128> {
-        let shares = shares(deps, staker)?;
-        convert_to_assets(deps, env, shares)
+        let balance = query_balance(deps, staker.to_string())?;
+        convert_to_staking_token(deps, env, balance.balance)
     }
 
     /// Given the number of shares, convert to assets based on the vault exchange rate.
-    pub fn convert_to_assets(deps: Deps, env: Env, shares: Uint128) -> StdResult<Uint128> {
-        let balance = token::query_balance(&deps, &env)?;
+    pub fn convert_to_staking_token(
+        deps: Deps,
+        env: Env,
+        receipt_tokens: Uint128,
+    ) -> StdResult<Uint128> {
+        let balance = StakingToken::query_balance(&deps, &env)?;
         let vault = offset::VirtualOffset::load(&deps, balance)?;
-        vault.shares_to_assets(shares)
+        vault.shares_to_assets(receipt_tokens)
     }
 
     /// Given assets, get the resulting shares based on the vault exchange rate.
-    pub fn convert_to_shares(deps: Deps, env: Env, assets: Uint128) -> StdResult<Uint128> {
-        let balance = token::query_balance(&deps, &env)?;
+    /// Shares in this tokenized vault the receipt token.
+    /// Keeping the msg name the same as the non-tokenized vault for consistency.
+    pub fn convert_to_receipt_token(deps: Deps, env: Env, assets: Uint128) -> StdResult<Uint128> {
+        let balance = StakingToken::query_balance(&deps, &env)?;
         let vault = offset::VirtualOffset::load(&deps, balance)?;
         vault.assets_to_shares(assets)
     }
 
     /// Total issued shares in this vault.
-    pub fn total_shares(deps: Deps, _env: Env) -> StdResult<Uint128> {
+    pub fn total_receipt_token_supply(deps: Deps, _env: Env) -> StdResult<Uint128> {
         offset::get_total_shares(deps.storage)
     }
 
     /// Total assets in this vault. Including assets through staking and donations.
     pub fn total_assets(deps: Deps, env: Env) -> StdResult<Uint128> {
-        token::query_balance(&deps, &env)
+        StakingToken::query_balance(&deps, &env)
     }
 
     /// Get the queued withdrawal info in this vault.
@@ -556,9 +600,9 @@ mod vault_query {
 
     /// Returns the vault information
     pub fn vault_info(deps: Deps, env: Env) -> StdResult<VaultInfoResponse> {
-        let balance = token::query_balance(&deps, &env)?;
+        let balance = StakingToken::query_balance(&deps, &env)?;
         let vault = offset::VirtualOffset::load(&deps, balance)?;
-        let cw20_contract = token::get_cw20_contract(deps.storage)?;
+        let cw20_contract = StakingToken::get_cw20_contract(deps.storage)?;
         let version = cw2::get_contract_version(deps.storage)?;
         Ok(VaultInfoResponse {
             total_shares: vault.total_shares(),
