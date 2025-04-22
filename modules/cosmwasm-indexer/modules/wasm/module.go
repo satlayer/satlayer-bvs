@@ -1,10 +1,14 @@
 package wasm
 
 import (
-	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/database"
+	"log/slog"
 
-	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
+	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/forbole/juno/v6/modules"
+	"github.com/forbole/juno/v6/types/config"
+
+	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/database"
+	wasmsource "github.com/satlayer/satlayer-bvs/cosmwasm-indexer/modules/wasm/source"
 )
 
 var (
@@ -12,17 +16,33 @@ var (
 	_ modules.MessageModule = &Module{}
 )
 
-// Module represents the x/wasm module handler
+// Module represent x/wasm module
 type Module struct {
+	cfg    Config
+	cdc    codec.Codec
 	db     *database.DB
-	client wasmtypes.QueryClient
+	source wasmsource.Source
 }
 
-// NewModule allows to build a new Module instance
-func NewModule(db *database.DB, client wasmtypes.QueryClient) *Module {
+// NewModule returns a new Module instance
+func NewModule(cfg config.Config, source wasmsource.Source, cdc codec.Codec, db *database.DB) *Module {
+	bz, err := cfg.GetBytes()
+	if err != nil {
+		slog.Error("failed to get config bytes", "error", err)
+		panic(err)
+	}
+
+	wasmCfg, err := ParseConfig(bz)
+	if err != nil {
+		slog.Error("failed to parse config from bytes", "error", err)
+		panic(err)
+	}
+
 	return &Module{
+		cfg:    wasmCfg,
+		cdc:    cdc,
 		db:     db,
-		client: client,
+		source: source,
 	}
 }
 

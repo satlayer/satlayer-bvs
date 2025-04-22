@@ -14,7 +14,7 @@ type DBAccessConfig struct {
 	Address    []string `db:"address"`
 }
 
-// NewDBAccessConfig builds a DbAccessConfig starting from an CosmWasm type AccessConfig
+// NewDBAccessConfig builds DBAccessConfig starting from CosmWasm type AccessConfig
 func NewDBAccessConfig(accessCfg *wasmtypes.AccessConfig) DBAccessConfig {
 	return DBAccessConfig{
 		Permission: int(accessCfg.Permission),
@@ -36,8 +36,6 @@ func (cfg *DBAccessConfig) Equal(b *DBAccessConfig) bool {
 	return cfg.Permission == b.Permission
 }
 
-// ===================== Params =====================
-
 // WasmParams represents the CosmWasm code in x/wasm module
 type WasmParams struct {
 	CodeUploadAccess             *DBAccessConfig `db:"code_upload_access"`
@@ -55,8 +53,6 @@ func NewWasmParams(
 		Height:                       height,
 	}
 }
-
-// ===================== Code =====================
 
 // WasmCodeRow represents a single row inside the "wasm_code" table
 type WasmCodeRow struct {
@@ -92,8 +88,6 @@ func (a WasmCodeRow) Equals(b WasmCodeRow) bool {
 		a.CodeID == b.CodeID &&
 		a.Height == b.Height
 }
-
-// ===================== Contract =====================
 
 // WasmContractRow represents a single row inside the "wasm_contract" table
 type WasmContractRow struct {
@@ -143,24 +137,6 @@ func NewWasmContractRow(
 	}
 }
 
-// Equals return true if one WasmContractRow representing the same row as the original one
-func (a WasmContractRow) Equals(b WasmContractRow) bool {
-	return a.Sender == b.Sender &&
-		a.Creator == b.Creator &&
-		a.Admin == b.Admin &&
-		a.CodeID == b.CodeID &&
-		a.Label == b.Label &&
-		a.RawContractMessage == b.RawContractMessage &&
-		a.Funds.Equal(b.Funds) &&
-		a.ContractAddress == b.ContractAddress &&
-		a.Data == b.Data &&
-		a.InstantiatedAt == b.InstantiatedAt &&
-		a.ContractInfoExtension == b.ContractInfoExtension &&
-		a.Height == b.Height
-}
-
-// ===================== Execute Contract =====================
-
 // WasmExecuteContractRow represents a single row inside the "wasm_execute_contract" table
 type WasmExecuteContractRow struct {
 	Sender             string    `db:"sender"`
@@ -196,20 +172,6 @@ func NewWasmExecuteContractRow(
 	}
 }
 
-// Equals return true if one WasmExecuteContractRow representing the same row as the original one
-func (a WasmExecuteContractRow) Equals(b WasmExecuteContractRow) bool {
-	return a.Sender == b.Sender &&
-		a.ContractAddress == b.ContractAddress &&
-		a.RawContractMessage == b.RawContractMessage &&
-		a.Funds.Equal(b.Funds) &&
-		a.Data == b.Data &&
-		a.ExecutedAt == b.ExecutedAt &&
-		a.Height == b.Height &&
-		a.Hash == b.Hash
-}
-
-// ===================== Execute Contract Event =====================
-
 // WasmExecuteContractRow represents a single row inside the "wasm_execute_contract" table
 type WasmExecuteContractEventRow struct {
 	Sender          string    `db:"sender"`
@@ -240,15 +202,4 @@ func NewWasmExecuteContractEventRow(
 		Height:          height,
 		Hash:            hash,
 	}
-}
-
-// Equals return true if one WasmExecuteContractEventRow representing the same row as the original one
-func (a WasmExecuteContractEventRow) Equals(b WasmExecuteContractEventRow) bool {
-	return a.Sender == b.Sender &&
-		a.ContractAddress == b.ContractAddress &&
-		a.EventType == b.EventType &&
-		a.Attributes == b.Attributes &&
-		a.ExecutedAt == b.ExecutedAt &&
-		a.Height == b.Height &&
-		a.Hash == b.Hash
 }
