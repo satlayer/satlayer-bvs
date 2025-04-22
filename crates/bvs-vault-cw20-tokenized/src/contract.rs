@@ -676,7 +676,7 @@ mod tests {
         let mut store = MockStorage::new();
         let staker = Addr::unchecked("staker");
 
-        let result = get_queued_withdrawal_info(&mut store, &staker).unwrap();
+        let result = get_queued_withdrawal_info(&store, &staker).unwrap();
         assert_eq!(result.queued_shares, Uint128::zero());
         assert_eq!(result.unlock_timestamp, Timestamp::from_seconds(0));
 
