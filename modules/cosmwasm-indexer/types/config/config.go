@@ -5,46 +5,29 @@ import (
 	junoconfig "github.com/forbole/juno/v6/types/config"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
+
+	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/modules/wasm"
 )
 
 // Config defines all necessary juno configuration parameters.
 type Config struct {
-	JunoConfig      junoconfig.Config `yaml:"-,inline"`
-	ContractsConfig ContractsConfig   `yaml:"contracts"`
+	JunoConfig junoconfig.Config `yaml:"-,inline"`
+	WasmConfig wasm.Config       `yaml:"wasm"`
 }
 
 // NewConfig returns a new Config instance
-func NewConfig(junoCfg junoconfig.Config, contractCfg ContractsConfig) Config {
+func NewConfig(junoCfg junoconfig.Config, wasmCfg wasm.Config) Config {
 	return Config{
-		JunoConfig:      junoCfg,
-		ContractsConfig: contractCfg,
+		JunoConfig: junoCfg,
+		WasmConfig: wasmCfg,
 	}
 }
 
 // Creator represents a configuration creator
 func Creator(_ *cobra.Command) initcmd.WritableConfig {
-	return NewConfig(junoconfig.DefaultConfig(), DefaultContractsConfig())
+	return NewConfig(junoconfig.DefaultConfig(), wasm.DefaultConfig())
 }
 
 func (c Config) GetBytes() ([]byte, error) {
 	return yaml.Marshal(&c)
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-// ContractsConfig specify contract addresses that want to listen
-// key is contract name, value is contract address
-type ContractsConfig map[string]string
-
-func NewContractsConfig(contracts map[string]string) ContractsConfig {
-	return contracts
-}
-
-func DefaultContractsConfig() ContractsConfig {
-	contracts := map[string]string{
-		"lst_token:":       "bbn1mh76nwv9q9qtl2ls9xudyfervq04w700juvs3s",
-		"lst_staking_hub:": "bbn18x2se5n5nqrcx7f50wdn3aced4nuwl74cck8cv",
-	}
-
-	return NewContractsConfig(contracts)
 }
