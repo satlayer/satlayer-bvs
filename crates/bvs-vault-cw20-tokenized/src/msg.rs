@@ -75,6 +75,8 @@ pub enum ExecuteMsg {
     /// If set as the "marketing" role on the contract, upload a new URL, SVG, or PNG for the token
     UploadLogo(Logo),
 
+    //--------- EXTENDED EXECUTE MSG--------------------------------------------------
+    //
     /// ExecuteMsg Deposit assets into the vault.
     /// Sender must transfer the assets to the vault contract (this is implementation agnostic).
     /// The vault contract must mint shares to the `recipient`.
@@ -236,6 +238,8 @@ pub enum QueryMsg {
     #[returns(cw20::DownloadLogoResponse)]
     DownloadLogo {},
 
+    //--------- EXTENDED QUERY MSG--------------------------------------------------
+    //
     /// QueryMsg Shares: get the shares of a staker.
     /// Shares in this tokenized vault are CW20 receipt tokens.
     /// The interface is kept the same as the original vault.

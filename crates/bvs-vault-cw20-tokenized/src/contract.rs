@@ -89,7 +89,9 @@ pub fn execute(
 }
 
 /// cw20 compliant messages are passed to the `cw20-base` contract.
-/// Except for the `Burn` and `BurnFrom` messages.
+/// Except for the `Mint`, `Burn` and `BurnFrom` messages.
+/// The only time receipt token total supply should be changed is through staking and unstaking
+/// More precisely, only through - deposit_for and withdraw_to and redeem_withdrawal_to
 mod receipt_cw20_execute {
     use cosmwasm_std::{Addr, StdError, StdResult, Uint128};
     use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
@@ -554,13 +556,13 @@ mod vault_query {
         StdResult::Ok(balance.balance)
     }
 
-    /// Get the assets of a staker, converted from receipt_tokens held by staker.
+    /// Get the staking token of a staker, converted from receipt_tokens held by staker.
     pub fn assets(deps: Deps, env: Env, staker: Addr) -> StdResult<Uint128> {
         let balance = query_balance(deps, staker.to_string())?;
         convert_to_staking_token(deps, env, balance.balance)
     }
 
-    /// Given the number of shares, convert to assets based on the vault exchange rate.
+    /// Given the number of receipt_token, convert to staking token based on the vault exchange rate.
     pub fn convert_to_staking_token(
         deps: Deps,
         env: Env,
@@ -580,12 +582,14 @@ mod vault_query {
         vault.assets_to_shares(assets)
     }
 
-    /// Total issued shares in this vault.
+    /// Total issued receipt tokens.
+    /// AKA total shares in the vault.
+    /// AKA Total cirulating supply of the receipt token.
     pub fn total_receipt_token_supply(deps: Deps, _env: Env) -> StdResult<Uint128> {
         offset::get_total_shares(deps.storage)
     }
 
-    /// Total assets in this vault. Including assets through staking and donations.
+    /// Total Staking Tokens in this vault. Including assets through staking and donations.
     pub fn total_assets(deps: Deps, env: Env) -> StdResult<Uint128> {
         StakingToken::query_balance(&deps, &env)
     }
