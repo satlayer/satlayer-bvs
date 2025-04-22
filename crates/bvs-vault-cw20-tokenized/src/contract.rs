@@ -36,10 +36,9 @@ pub fn instantiate(
         base_instantiate(deps.branch(), env, info, msg.receipt_cw20_instantiate_base)?;
 
     // important to set the set_contract_version after the base contract instantiation
-    // because base_cw20_instantiate set the contract name and version with
+    // because base_instantiate set the contract name and version with
     // its own hardcoded values
-    // Setting again so this vault overwrites the name and version
-    // set by the base contract in base instantiate
+    // Setting again so this vault overwrites it
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     // merge the base response with the custom response
@@ -92,7 +91,7 @@ pub fn execute(
 /// cw20 compliant messages are passed to the `cw20-base` contract.
 /// Except for the `Burn` and `BurnFrom` messages.
 mod receipt_cw20_execute {
-    use cosmwasm_std::{Addr, StdResult, Uint128};
+    use cosmwasm_std::{Addr, StdError, StdResult, Uint128};
     use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 
     use cw20_base::contract::execute_send;
@@ -113,7 +112,6 @@ mod receipt_cw20_execute {
     /// This mint function is almost identical to the base cw20 contract's mint function
     /// down to the variables and logic.
     /// Except that it does not require the caller to be the minter.
-    /// This allow self minting authority.
     pub fn mint(
         deps: DepsMut,
         _env: Env,
@@ -212,9 +210,14 @@ mod receipt_cw20_execute {
                 marketing,
             } => execute_update_marketing(deps, env, info, project, description, marketing),
             CombinedExecuteMsg::UploadLogo(logo) => execute_upload_logo(deps, env, info, logo),
-            // this should never happen
-            // because entry point already exhausted extended execute msg set
-            _ => unreachable!(),
+            _ => {
+                // Extended execute msg set are exhausted in entry point already
+                // Base cw20 execute msg are also exhausted in other match arm
+                // So this mean sombody is trying to call a non-supported message
+                Err(cw20_base::ContractError::Std(StdError::generic_err(
+                    "This message is not supported",
+                )))
+            }
         }
     }
 }
