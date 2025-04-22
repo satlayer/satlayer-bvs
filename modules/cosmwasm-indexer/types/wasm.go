@@ -10,6 +10,17 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
+// CosmWasm message type
+const (
+	MsgStoreCode            = "/cosmwasm.wasm.v1.MsgStoreCode"
+	MsgInstantiateContract  = "/cosmwasm.wasm.v1.MsgInstantiateContract"
+	MsgInstantiateContract2 = "/cosmwasm.wasm.v1.MsgInstantiateContract2"
+	MsgExecuteContract      = "/cosmwasm.wasm.v1.MsgExecuteContract"
+	MsgMigrateContract      = "/cosmwasm.wasm.v1.MsgMigrateContract"
+	MsgUpdateAdmin          = "/cosmwasm.wasm.v1.MsgUpdateAdmin"
+	MsgClearAdmin           = "/cosmwasm.wasm.v1.MsgClearAdmin"
+)
+
 // WasmParams represents the CosmWasm code in x/wasm module
 type WasmParams struct {
 	CodeUploadAccess             *wasmtypes.AccessConfig
