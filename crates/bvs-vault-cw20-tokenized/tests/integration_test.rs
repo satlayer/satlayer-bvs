@@ -9,7 +9,8 @@ use bvs_vault_cw20_tokenized::msg::{ExecuteMsg, QueryMsg};
 use bvs_vault_cw20_tokenized::testing::VaultCw20TokenizedContract;
 use bvs_vault_router::{msg::ExecuteMsg as RouterExecuteMsg, testing::VaultRouterContract};
 use cosmwasm_std::testing::mock_env;
-use cosmwasm_std::{Addr, Event, Timestamp, Uint128, Uint64};
+use cosmwasm_std::{Addr, ContractInfoResponse, Event, Timestamp, Uint128, Uint64};
+use cw2::ContractVersion;
 use cw_multi_test::App;
 
 struct TestContracts {
@@ -1301,4 +1302,30 @@ fn test_cw20_semi_compliance() {
         // staker, spender that has allowance and random guy that has balance
         assert_eq!(accounts.accounts.len(), 3);
     }
+}
+
+#[test]
+fn test_proper_contract_name_and_version() {
+    // we need to test this to make sure
+    // that cw20 base instantiation doesn't interfere with
+    // the contract name and version
+    // check the instantiate entry point in this vault for more details
+    let app = &mut App::default();
+    let TestContracts { vault, .. } = TestContracts::init(app);
+
+    let raw = app
+        .wrap()
+        .query_wasm_raw(vault.addr(), b"contract_info".to_vec())
+        .expect("failed to query contract_info");
+
+    let binary = &cosmwasm_std::Binary::from(raw.unwrap());
+
+    let contract_info: ContractVersion =
+        cosmwasm_std::from_json(&binary).expect("invalid contract_info format");
+
+    assert_eq!(
+        contract_info.contract,
+        concat!("crates.io:", env!("CARGO_PKG_NAME"))
+    );
+    assert_eq!(contract_info.version, env!("CARGO_PKG_VERSION"));
 }

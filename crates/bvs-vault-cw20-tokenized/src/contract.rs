@@ -38,7 +38,8 @@ pub fn instantiate(
     // important to set the set_contract_version after the base contract instantiation
     // because base_cw20_instantiate set the contract name and version with
     // its own hardcoded values
-    // Setting again after it overwrites the base contract name and version
+    // Setting again so this vault overwrites the name and version
+    // set by the base contract in base instantiate
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     // merge the base response with the custom response
