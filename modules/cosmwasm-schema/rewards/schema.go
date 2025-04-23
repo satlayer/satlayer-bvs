@@ -10,8 +10,6 @@ type ClaimRewardsResponse string
 type DistributionRootResponse string
 
 type InstantiateMsg struct {
-	// Owner of this contract
-	Owner string `json:"owner"`
 }
 
 type ExecuteMsg struct {

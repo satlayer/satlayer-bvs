@@ -91,12 +91,7 @@ type ClaimRewardsResponse = string;
  */
 type DistributionRootResponse = string;
 
-export interface InstantiateMsg {
-  /**
-   * Owner of this contract
-   */
-  owner: string;
-}
+export interface InstantiateMsg {}
 
 export interface ExecuteMsg {
   distribute_rewards?: DistributeRewards;

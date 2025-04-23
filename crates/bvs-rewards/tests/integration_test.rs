@@ -493,7 +493,7 @@ fn test_claim_rewards_after_multiple_distribution() {
         );
 
         // send 10_000 cw20 token
-        let res = rewards_contract
+        rewards_contract
             .execute(
                 &mut app,
                 &service,
