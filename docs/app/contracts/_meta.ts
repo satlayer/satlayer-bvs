@@ -5,6 +5,8 @@ const meta: MetaRecord = {
   "vault-factory": {},
   "vault-bank": {},
   "vault-cw20": {},
+  "vault-base": {},
+  rewards: {},
   registry: {},
   pauser: {},
   library: {},

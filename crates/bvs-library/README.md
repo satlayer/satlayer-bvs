@@ -19,7 +19,7 @@ Won't be included in the `*.wasm` artifact.
 It provides utils for common functions or traits for easy testing—allowing for testing code to be **colocated at
 the cosmwasm** crates, as they should—for integration testing productivity sake.
 
-```rust
+```rust filename="testing.rs"
 pub trait TestingContract<IM, EM, QM> {
     fn wrapper() -> Box<dyn Contract<Empty>>;
     fn default_init(app: &mut App, env: &Env) -> IM;
@@ -40,7 +40,7 @@ crates/
 
 For integration tests, downstream crates can implement `TestingContract` for execute/query/init/defaults functionality.
 
-```rust
+```rust filename="bvs-pauser/src/testing.rs"
 pub struct PauserContract {
     pub addr: Addr,
     pub init: InstantiateMsg,
