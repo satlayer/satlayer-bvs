@@ -48,6 +48,8 @@ importers:
 
   crates/bvs-registry: {}
 
+  crates/bvs-rewards: {}
+
   crates/bvs-vault-bank: {}
 
   crates/bvs-vault-cw20: {}
@@ -146,6 +148,9 @@ importers:
       '@satlayer/bvs-registry':
         specifier: workspace:*
         version: link:../../crates/bvs-registry
+      '@satlayer/bvs-rewards':
+        specifier: workspace:*
+        version: link:../../crates/bvs-rewards
       '@satlayer/bvs-vault-bank':
         specifier: workspace:*
         version: link:../../crates/bvs-vault-bank
@@ -211,6 +216,9 @@ importers:
       '@satlayer/bvs-registry':
         specifier: workspace:*
         version: link:../../crates/bvs-registry
+      '@satlayer/bvs-rewards':
+        specifier: workspace:*
+        version: link:../../crates/bvs-rewards
       '@satlayer/bvs-vault-bank':
         specifier: workspace:*
         version: link:../../crates/bvs-vault-bank

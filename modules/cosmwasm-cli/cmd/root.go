@@ -23,5 +23,6 @@ func RootCmd() *cobra.Command {
 	_ = viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
 
 	rootCmd.AddCommand(PauserCommand())
+	rootCmd.AddCommand(RewardsCommand())
 	return rootCmd
 }
