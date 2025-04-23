@@ -7,11 +7,12 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
 /// TestingContract is a trait that provides a common interface for setting up testing contracts.
-pub trait TestingContract<IM, EM, QM>
+pub trait TestingContract<IM, EM, QM, MM = Empty>
 where
     IM: serde::Serialize,
     EM: serde::Serialize,
     QM: serde::Serialize,
+    MM: serde::Serialize,
 {
     fn wrapper() -> Box<dyn Contract<Empty>>;
 
@@ -81,7 +82,17 @@ where
         app.wrap().query_wasm_smart(self.addr(), &msg)
     }
 
-    // TODO: fn migrate
+    fn migrate(&self, app: &mut App, sender: &Addr, msg: &MM) -> AnyResult<AppResponse> {
+        let msg_bin = to_json_binary(&msg).expect("cannot serialize MigrateMsg");
+        let code_id = Self::store_code(app);
+        let migrate_msg = WasmMsg::Migrate {
+            contract_addr: self.addr().to_string(),
+            new_code_id: code_id,
+            msg: msg_bin,
+        };
+
+        app.execute(sender.clone(), migrate_msg.into())
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

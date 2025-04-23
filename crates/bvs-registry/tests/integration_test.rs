@@ -3,10 +3,11 @@ use bvs_pauser::api::PauserError;
 use bvs_pauser::testing::PauserContract;
 use bvs_registry::msg::{ExecuteMsg, Metadata, QueryMsg, StatusResponse};
 use bvs_registry::testing::RegistryContract;
-use bvs_registry::ContractError;
+use bvs_registry::{ContractError, RegistrationStatus};
 use cosmwasm_std::testing::mock_env;
-use cosmwasm_std::{Event, StdError};
+use cosmwasm_std::{Addr, Event, StdError};
 use cw_multi_test::App;
+use cw_storage_plus::Map;
 
 fn instantiate() -> (App, RegistryContract, PauserContract) {
     let mut app = App::default();
@@ -199,6 +200,7 @@ fn register_lifecycle_operator_first() {
             &QueryMsg::Status {
                 service: service.to_string(),
                 operator: operator.to_string(),
+                height: None,
             },
         )
         .unwrap();
@@ -231,6 +233,7 @@ fn register_lifecycle_operator_first() {
             &QueryMsg::Status {
                 service: service.to_string(),
                 operator: operator.to_string(),
+                height: None,
             },
         )
         .unwrap();
@@ -292,6 +295,7 @@ fn register_lifecycle_service_first() {
             &QueryMsg::Status {
                 service: service.to_string(),
                 operator: operator.to_string(),
+                height: None,
             },
         )
         .unwrap();
@@ -322,6 +326,7 @@ fn register_lifecycle_service_first() {
             &QueryMsg::Status {
                 service: service.to_string(),
                 operator: operator.to_string(),
+                height: None,
             },
         )
         .unwrap();
@@ -432,12 +437,251 @@ fn transfer_ownership_but_not_owner() {
 }
 
 #[test]
+fn register_deregister_lifecycle() {
+    let (mut app, registry, ..) = instantiate();
+
+    let service = app.api().addr_make("service/1");
+    let service2 = app.api().addr_make("service/2");
+    let operator = app.api().addr_make("operator/1");
+    let operator2 = app.api().addr_make("operator/2");
+
+    // register service + service2 + operator + operator2
+    {
+        registry
+            .execute(
+                &mut app,
+                &service,
+                &ExecuteMsg::RegisterAsService {
+                    metadata: Metadata {
+                        name: Some(service.to_string()),
+                        uri: Some("https://service.com".to_string()),
+                    },
+                },
+            )
+            .unwrap();
+        registry
+            .execute(
+                &mut app,
+                &service2,
+                &ExecuteMsg::RegisterAsService {
+                    metadata: Metadata {
+                        name: Some(service2.to_string()),
+                        uri: Some("https://service2.com".to_string()),
+                    },
+                },
+            )
+            .unwrap();
+
+        registry
+            .execute(
+                &mut app,
+                &operator,
+                &ExecuteMsg::RegisterAsOperator {
+                    metadata: Metadata {
+                        name: Some(operator.to_string()),
+                        uri: Some("https://operator.com".to_string()),
+                    },
+                },
+            )
+            .unwrap();
+        registry
+            .execute(
+                &mut app,
+                &operator2,
+                &ExecuteMsg::RegisterAsOperator {
+                    metadata: Metadata {
+                        name: Some(operator2.to_string()),
+                        uri: Some("https://operator.com".to_string()),
+                    },
+                },
+            )
+            .unwrap();
+    }
+
+    // register service and service2 to operator and operator2
+    {
+        for curr_service in [service.clone(), service2.clone()].iter() {
+            registry
+                .execute(
+                    &mut app,
+                    &operator,
+                    &ExecuteMsg::RegisterServiceToOperator {
+                        service: curr_service.to_string(),
+                    },
+                )
+                .unwrap();
+            registry
+                .execute(
+                    &mut app,
+                    &operator2,
+                    &ExecuteMsg::RegisterServiceToOperator {
+                        service: curr_service.to_string(),
+                    },
+                )
+                .unwrap();
+
+            registry
+                .execute(
+                    &mut app,
+                    curr_service,
+                    &ExecuteMsg::RegisterOperatorToService {
+                        operator: operator.to_string(),
+                    },
+                )
+                .unwrap();
+            registry
+                .execute(
+                    &mut app,
+                    curr_service,
+                    &ExecuteMsg::RegisterOperatorToService {
+                        operator: operator2.to_string(),
+                    },
+                )
+                .unwrap();
+        }
+    }
+
+    // check if all services are registered to operator and operator2
+    {
+        for curr_service in [service.clone(), service2.clone()].iter() {
+            let status: StatusResponse = registry
+                .query(
+                    &app,
+                    &QueryMsg::Status {
+                        service: curr_service.to_string(),
+                        operator: operator.to_string(),
+                        height: None,
+                    },
+                )
+                .unwrap();
+            assert_eq!(status, StatusResponse(1));
+
+            let status: StatusResponse = registry
+                .query(
+                    &app,
+                    &QueryMsg::Status {
+                        service: curr_service.to_string(),
+                        operator: operator2.to_string(),
+                        height: None,
+                    },
+                )
+                .unwrap();
+            assert_eq!(status, StatusResponse(1));
+        }
+    }
+
+    // move the chain
+    app.update_block(|block| {
+        block.height += 10;
+    });
+
+    // check if all services are registered to operator and operator2 at current height - 5
+    {
+        for curr_service in [service.clone(), service2.clone()].iter() {
+            let status: StatusResponse = registry
+                .query(
+                    &app,
+                    &QueryMsg::Status {
+                        service: curr_service.to_string(),
+                        operator: operator.to_string(),
+                        height: Some(app.block_info().height - 5),
+                    },
+                )
+                .unwrap();
+            assert_eq!(status, StatusResponse(1));
+
+            let status: StatusResponse = registry
+                .query(
+                    &app,
+                    &QueryMsg::Status {
+                        service: curr_service.to_string(),
+                        operator: operator2.to_string(),
+                        height: Some(app.block_info().height - 5),
+                    },
+                )
+                .unwrap();
+            assert_eq!(status, StatusResponse(1));
+        }
+    }
+
+    // deregister operator <-> service
+    registry
+        .execute(
+            &mut app,
+            &operator,
+            &ExecuteMsg::DeregisterServiceFromOperator {
+                service: service.to_string(),
+            },
+        )
+        .unwrap();
+
+    // check current status of operator <-> service and operator <-> service2
+    {
+        let status: StatusResponse = registry
+            .query(
+                &app,
+                &QueryMsg::Status {
+                    service: service.to_string(),
+                    operator: operator.to_string(),
+                    height: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(status, StatusResponse(0)); // inactive
+
+        let status: StatusResponse = registry
+            .query(
+                &app,
+                &QueryMsg::Status {
+                    service: service2.to_string(),
+                    operator: operator.to_string(),
+                    height: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(status, StatusResponse(1));
+    }
+
+    // move the chain
+    app.update_block(|block| {
+        block.height += 10;
+    });
+
+    // check if service is deregistered from operator at current height - 5
+    let status: StatusResponse = registry
+        .query(
+            &app,
+            &QueryMsg::Status {
+                service: service.to_string(),
+                operator: operator.to_string(),
+                height: Some(app.block_info().height - 5),
+            },
+        )
+        .unwrap();
+    assert_eq!(status, StatusResponse(0)); // inactive
+
+    // check if service2 is still registered to operator at current height - 5
+    let status: StatusResponse = registry
+        .query(
+            &app,
+            &QueryMsg::Status {
+                service: service2.to_string(),
+                operator: operator.to_string(),
+                height: Some(app.block_info().height - 5),
+            },
+        )
+        .unwrap();
+    assert_eq!(status, StatusResponse(1)); // active
+}
+
+#[test]
 fn query_status() {
     let (mut app, registry, _) = instantiate();
 
     let query_msg = &QueryMsg::Status {
         service: app.api().addr_make("service/44").to_string(),
         operator: app.api().addr_make("operator/44").to_string(),
+        height: None,
     };
 
     let status: StatusResponse = registry.query(&mut app, query_msg).unwrap();
@@ -447,4 +691,124 @@ fn query_status() {
     let status: StatusResponse = registry.query(&mut app, query_msg).unwrap();
 
     assert_eq!(status, StatusResponse(0));
+}
+
+#[test]
+fn migrate_to_v2() {
+    let (mut app, registry, ..) = instantiate();
+
+    let service = app.api().addr_make("service/1");
+    let operator = app.api().addr_make("operator/1");
+
+    // populate initial contract state with data
+    let old_registration_status: Map<(&Addr, &Addr), u8> = Map::new("registration_status");
+
+    let operator_active_registration_count: Map<&Addr, u8> =
+        Map::new("operator_active_registration_count");
+
+    {
+        // save some data into old contract state with same 'registration_status' namespace
+        let mut contract_storage = app.contract_storage_mut(&registry.addr);
+        old_registration_status
+            .save(
+                &mut *contract_storage,
+                (&operator, &service),
+                &(RegistrationStatus::Active as u8),
+            )
+            .unwrap();
+
+        operator_active_registration_count
+            .save(&mut *contract_storage, &operator, &1u8)
+            .unwrap();
+
+        // assert that state is populated
+        let res = old_registration_status
+            .load(&*contract_storage, (&operator, &service))
+            .unwrap();
+
+        assert_eq!(res, RegistrationStatus::Active as u8);
+    }
+
+    let migrate_msg = &bvs_registry::msg::MigrateMsg {};
+    let admin = app.api().addr_make("admin");
+
+    registry.migrate(&mut app, &admin, migrate_msg).unwrap();
+
+    // check if state is migrated
+    let status: StatusResponse = registry
+        .query(
+            &mut app,
+            &QueryMsg::Status {
+                service: service.to_string(),
+                operator: operator.to_string(),
+                height: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(status, StatusResponse(1));
+
+    let block_info = app.block_info();
+    let status_at_height: StatusResponse = registry
+        .query(
+            &mut app,
+            &QueryMsg::Status {
+                service: service.to_string(),
+                operator: operator.to_string(),
+                height: Some(block_info.height - 1),
+            },
+        )
+        .unwrap();
+    assert_eq!(status_at_height, StatusResponse(1));
+
+    // test other interaction with state after migrate
+    {
+        // deregister
+        let deregister_msg = &ExecuteMsg::DeregisterServiceFromOperator {
+            service: service.to_string(),
+        };
+        registry
+            .execute(&mut app, &operator, deregister_msg)
+            .unwrap();
+
+        // check if state is changed
+        let status: StatusResponse = registry
+            .query(
+                &mut app,
+                &QueryMsg::Status {
+                    service: service.to_string(),
+                    operator: operator.to_string(),
+                    height: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(status, StatusResponse(0));
+
+        // check if state is changed at height + 1
+        let block_info = app.block_info();
+        let status_at_height: StatusResponse = registry
+            .query(
+                &mut app,
+                &QueryMsg::Status {
+                    service: service.to_string(),
+                    operator: operator.to_string(),
+                    height: Some(block_info.height + 1),
+                },
+            )
+            .unwrap();
+        assert_eq!(status_at_height, StatusResponse(0));
+
+        // check old state at height - 10 -> should be active
+        let block_info = app.block_info();
+        let status_at_height: StatusResponse = registry
+            .query(
+                &mut app,
+                &QueryMsg::Status {
+                    service: service.to_string(),
+                    operator: operator.to_string(),
+                    height: Some(block_info.height - 10),
+                },
+            )
+            .unwrap();
+        assert_eq!(status_at_height, StatusResponse(1));
+    }
 }

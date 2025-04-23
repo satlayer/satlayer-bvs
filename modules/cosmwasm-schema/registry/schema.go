@@ -71,6 +71,7 @@ type QueryMsg struct {
 }
 
 type Status struct {
+	Height   *int64 `json:"height"`
 	Operator string `json:"operator"`
 	Service  string `json:"service"`
 }

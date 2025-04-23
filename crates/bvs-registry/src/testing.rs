@@ -1,6 +1,6 @@
 #![cfg(not(target_arch = "wasm32"))]
 
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use bvs_library::testing::TestingContract;
 use cosmwasm_std::{Addr, Empty, Env};
 use cw_multi_test::{App, Contract, ContractWrapper};
@@ -12,13 +12,16 @@ pub struct RegistryContract {
     pub init: InstantiateMsg,
 }
 
-impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for RegistryContract {
+impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg, MigrateMsg> for RegistryContract {
     fn wrapper() -> Box<dyn Contract<Empty>> {
-        Box::new(ContractWrapper::new(
-            crate::contract::execute,
-            crate::contract::instantiate,
-            crate::contract::query,
-        ))
+        Box::new(
+            ContractWrapper::new(
+                crate::contract::execute,
+                crate::contract::instantiate,
+                crate::contract::query,
+            )
+            .with_migrate(crate::contract::migrate),
+        )
     }
 
     fn default_init(app: &mut App, _env: &Env) -> InstantiateMsg {

@@ -47,7 +47,11 @@ pub struct Metadata {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(StatusResponse)]
-    Status { service: String, operator: String },
+    Status {
+        service: String,
+        operator: String,
+        height: Option<u64>,
+    },
 
     #[returns(IsServiceResponse)]
     IsService(String),
@@ -76,6 +80,9 @@ pub struct IsOperatorResponse(pub bool);
 
 #[cw_serde]
 pub struct IsOperatorActiveResponse(pub bool);
+
+#[cw_serde]
+pub struct MigrateMsg {}
 
 #[cfg(test)]
 mod tests {

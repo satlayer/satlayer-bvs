@@ -73,6 +73,7 @@ export interface QueryMsg {
 }
 
 export interface Status {
+  height?: number | null;
   operator: string;
   service: string;
 }
