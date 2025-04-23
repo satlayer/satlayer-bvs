@@ -519,7 +519,7 @@ fn register_deregister_lifecycle() {
             registry
                 .execute(
                     &mut app,
-                    &curr_service,
+                    curr_service,
                     &ExecuteMsg::RegisterOperatorToService {
                         operator: operator.to_string(),
                     },
@@ -528,7 +528,7 @@ fn register_deregister_lifecycle() {
             registry
                 .execute(
                     &mut app,
-                    &curr_service,
+                    curr_service,
                     &ExecuteMsg::RegisterOperatorToService {
                         operator: operator2.to_string(),
                     },
