@@ -6,7 +6,6 @@ FROM cosmwasm/optimizer-arm64:0.16.0 AS arm64
 
 # Select the correct build stage
 FROM ${TARGETARCH:-amd64} AS base
-RUN apk update && apk add clang && apk add binaryen
 RUN mkdir /dist
 
 COPY . /code
