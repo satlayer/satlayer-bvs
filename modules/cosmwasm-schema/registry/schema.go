@@ -64,13 +64,20 @@ type TransferOwnership struct {
 }
 
 type QueryMsg struct {
-	Status           *Status `json:"status,omitempty"`
-	IsService        *string `json:"is_service,omitempty"`
-	IsOperator       *string `json:"is_operator,omitempty"`
-	IsOperatorActive *string `json:"is_operator_active,omitempty"`
+	Status           *Status         `json:"status,omitempty"`
+	StatusAtHeight   *StatusAtHeight `json:"status_at_height,omitempty"`
+	IsService        *string         `json:"is_service,omitempty"`
+	IsOperator       *string         `json:"is_operator,omitempty"`
+	IsOperatorActive *string         `json:"is_operator_active,omitempty"`
 }
 
 type Status struct {
+	Operator string `json:"operator"`
+	Service  string `json:"service"`
+}
+
+type StatusAtHeight struct {
+	Height   int64  `json:"height"`
 	Operator string `json:"operator"`
 	Service  string `json:"service"`
 }
