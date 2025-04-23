@@ -7,7 +7,10 @@ type Token = String;
 type Root = HexBinary;
 type PrevRoot = HexBinary;
 
-/// Stores the 2 latest distribution roots for each (service, token) pair
+/// Stores the 2 latest distribution roots for each (service, token) pair.
+///
+/// PrevRoot is stored so that concurrent claiming of rewards and distribution of rewards won't cause the claim
+/// on a previous root to be invalidated (bad ux).
 pub const DISTRIBUTION_ROOTS: Map<(&Service, &Token), (PrevRoot, Root)> =
     Map::new("distribution_roots");
 

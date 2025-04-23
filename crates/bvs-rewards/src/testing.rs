@@ -24,10 +24,8 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for RewardsContract {
         ))
     }
 
-    fn default_init(app: &mut App, _env: &Env) -> InstantiateMsg {
-        InstantiateMsg {
-            owner: app.api().addr_make("owner").to_string(),
-        }
+    fn default_init(_app: &mut App, _env: &Env) -> InstantiateMsg {
+        InstantiateMsg {}
     }
 
     fn new(app: &mut App, env: &Env, msg: Option<InstantiateMsg>) -> Self {

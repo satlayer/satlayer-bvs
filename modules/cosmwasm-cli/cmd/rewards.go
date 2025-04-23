@@ -70,11 +70,10 @@ func (t *RewardsMerkleTree) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// --------------------------------- rewards create Command ---------------------------------
 func RewardsCreateCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "create",
-		Short: "Create a new Merkle tree rewards from distribution file",
+		Short: "Create a new Merkle tree rewards from distribution file and save it to a file",
 		Run: func(cmd *cobra.Command, args []string) {
 			// load distribution file from config
 			distributionFilePath, err := loadDistributionFilePath(cmd)
@@ -123,7 +122,6 @@ func RewardsCreateCmd() *cobra.Command {
 	}
 }
 
-// --------------------------------- rewards load Command ---------------------------------
 func RewardsLoadCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "load",
@@ -144,7 +142,6 @@ func RewardsLoadCmd() *cobra.Command {
 	}
 }
 
-// --------------------------------- rewards proof Command ---------------------------------
 func RewardsProofCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "proof",

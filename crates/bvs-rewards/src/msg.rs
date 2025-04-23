@@ -2,10 +2,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{HexBinary, Uint128};
 
 #[cw_serde]
-pub struct InstantiateMsg {
-    /// Owner of this contract
-    pub owner: String,
-}
+pub struct InstantiateMsg {}
 
 #[cw_serde]
 pub enum ExecuteMsg {
