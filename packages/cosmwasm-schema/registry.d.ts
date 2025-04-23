@@ -67,19 +67,13 @@ export interface TransferOwnership {
 
 export interface QueryMsg {
   status?: Status;
-  status_at_height?: StatusAtHeight;
   is_service?: string;
   is_operator?: string;
   is_operator_active?: string;
 }
 
 export interface Status {
-  operator: string;
-  service: string;
-}
-
-export interface StatusAtHeight {
-  height: number;
+  height?: number | null;
   operator: string;
   service: string;
 }
