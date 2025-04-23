@@ -433,6 +433,240 @@ fn transfer_ownership_but_not_owner() {
 }
 
 #[test]
+fn register_deregister_lifecycle() {
+    let (mut app, registry, ..) = instantiate();
+
+    let service = app.api().addr_make("service/1");
+    let service2 = app.api().addr_make("service/2");
+    let operator = app.api().addr_make("operator/1");
+    let operator2 = app.api().addr_make("operator/2");
+
+    // register service + service2 + operator + operator2
+    {
+        registry
+            .execute(
+                &mut app,
+                &service,
+                &ExecuteMsg::RegisterAsService {
+                    metadata: Metadata {
+                        name: Some(service.to_string()),
+                        uri: Some("https://service.com".to_string()),
+                    },
+                },
+            )
+            .unwrap();
+        registry
+            .execute(
+                &mut app,
+                &service2,
+                &ExecuteMsg::RegisterAsService {
+                    metadata: Metadata {
+                        name: Some(service2.to_string()),
+                        uri: Some("https://service2.com".to_string()),
+                    },
+                },
+            )
+            .unwrap();
+
+        registry
+            .execute(
+                &mut app,
+                &operator,
+                &ExecuteMsg::RegisterAsOperator {
+                    metadata: Metadata {
+                        name: Some(operator.to_string()),
+                        uri: Some("https://operator.com".to_string()),
+                    },
+                },
+            )
+            .unwrap();
+        registry
+            .execute(
+                &mut app,
+                &operator2,
+                &ExecuteMsg::RegisterAsOperator {
+                    metadata: Metadata {
+                        name: Some(operator2.to_string()),
+                        uri: Some("https://operator.com".to_string()),
+                    },
+                },
+            )
+            .unwrap();
+    }
+
+    // register service and service2 to operator and operator2
+    {
+        for curr_service in [service.clone(), service2.clone()].iter() {
+            registry
+                .execute(
+                    &mut app,
+                    &operator,
+                    &ExecuteMsg::RegisterServiceToOperator {
+                        service: curr_service.to_string(),
+                    },
+                )
+                .unwrap();
+            registry
+                .execute(
+                    &mut app,
+                    &operator2,
+                    &ExecuteMsg::RegisterServiceToOperator {
+                        service: curr_service.to_string(),
+                    },
+                )
+                .unwrap();
+
+            registry
+                .execute(
+                    &mut app,
+                    &curr_service,
+                    &ExecuteMsg::RegisterOperatorToService {
+                        operator: operator.to_string(),
+                    },
+                )
+                .unwrap();
+            registry
+                .execute(
+                    &mut app,
+                    &curr_service,
+                    &ExecuteMsg::RegisterOperatorToService {
+                        operator: operator2.to_string(),
+                    },
+                )
+                .unwrap();
+        }
+    }
+
+    // check if all services are registered to operator and operator2
+    {
+        for curr_service in [service.clone(), service2.clone()].iter() {
+            let status: StatusResponse = registry
+                .query(
+                    &app,
+                    &QueryMsg::Status {
+                        service: curr_service.to_string(),
+                        operator: operator.to_string(),
+                    },
+                )
+                .unwrap();
+            assert_eq!(status, StatusResponse(1));
+
+            let status: StatusResponse = registry
+                .query(
+                    &app,
+                    &QueryMsg::Status {
+                        service: curr_service.to_string(),
+                        operator: operator2.to_string(),
+                    },
+                )
+                .unwrap();
+            assert_eq!(status, StatusResponse(1));
+        }
+    }
+
+    // move the chain
+    app.update_block(|block| {
+        block.height += 10;
+    });
+
+    // check if all services are registered to operator and operator2 at current height - 5
+    {
+        for curr_service in [service.clone(), service2.clone()].iter() {
+            let status: StatusResponse = registry
+                .query(
+                    &app,
+                    &QueryMsg::StatusAtHeight {
+                        service: curr_service.to_string(),
+                        operator: operator.to_string(),
+                        height: app.block_info().height - 5,
+                    },
+                )
+                .unwrap();
+            assert_eq!(status, StatusResponse(1));
+
+            let status: StatusResponse = registry
+                .query(
+                    &app,
+                    &QueryMsg::StatusAtHeight {
+                        service: curr_service.to_string(),
+                        operator: operator2.to_string(),
+                        height: app.block_info().height - 5,
+                    },
+                )
+                .unwrap();
+            assert_eq!(status, StatusResponse(1));
+        }
+    }
+
+    // deregister operator <-> service
+    registry
+        .execute(
+            &mut app,
+            &operator,
+            &ExecuteMsg::DeregisterServiceFromOperator {
+                service: service.to_string(),
+            },
+        )
+        .unwrap();
+
+    // check current status of operator <-> service and operator <-> service2
+    {
+        let status: StatusResponse = registry
+            .query(
+                &app,
+                &QueryMsg::Status {
+                    service: service.to_string(),
+                    operator: operator.to_string(),
+                },
+            )
+            .unwrap();
+        assert_eq!(status, StatusResponse(0)); // inactive
+
+        let status: StatusResponse = registry
+            .query(
+                &app,
+                &QueryMsg::Status {
+                    service: service2.to_string(),
+                    operator: operator.to_string(),
+                },
+            )
+            .unwrap();
+        assert_eq!(status, StatusResponse(1));
+    }
+
+    // move the chain
+    app.update_block(|block| {
+        block.height += 10;
+    });
+
+    // check if service is deregistered from operator at current height - 5
+    let status: StatusResponse = registry
+        .query(
+            &app,
+            &QueryMsg::StatusAtHeight {
+                service: service.to_string(),
+                operator: operator.to_string(),
+                height: app.block_info().height - 5,
+            },
+        )
+        .unwrap();
+    assert_eq!(status, StatusResponse(0)); // inactive
+
+    // check if service2 is still registered to operator at current height - 5
+    let status: StatusResponse = registry
+        .query(
+            &app,
+            &QueryMsg::StatusAtHeight {
+                service: service2.to_string(),
+                operator: operator.to_string(),
+                height: app.block_info().height - 5,
+            },
+        )
+        .unwrap();
+    assert_eq!(status, StatusResponse(1)); // active
+}
+
+#[test]
 fn query_status() {
     let (mut app, registry, _) = instantiate();
 
@@ -489,12 +723,7 @@ fn migrate_to_v2() {
     let migrate_msg = &bvs_registry::msg::MigrateMsg {};
     let admin = app.api().addr_make("admin");
 
-    let res = registry.migrate(&mut app, &admin, migrate_msg).unwrap();
-
-    // print res events
-    for event in res.events {
-        println!("{:?}", event);
-    }
+    registry.migrate(&mut app, &admin, migrate_msg).unwrap();
 
     // check if state is migrated
     let status: StatusResponse = registry
