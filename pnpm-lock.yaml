@@ -48,8 +48,6 @@ importers:
 
   crates/bvs-registry: {}
 
-  crates/bvs-slash-manager: {}
-
   crates/bvs-vault-bank: {}
 
   crates/bvs-vault-cw20: {}

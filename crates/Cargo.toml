@@ -1,7 +1,5 @@
 [workspace]
 members = [
-  # CosmWasm Contracts
-  "bvs-slash-manager",
   # BVS CosmWasm Library
   "bvs-library",
   # BVS CosmWasm Core Components
