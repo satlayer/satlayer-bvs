@@ -200,6 +200,7 @@ fn register_lifecycle_operator_first() {
             &QueryMsg::Status {
                 service: service.to_string(),
                 operator: operator.to_string(),
+                height: None,
             },
         )
         .unwrap();
@@ -232,6 +233,7 @@ fn register_lifecycle_operator_first() {
             &QueryMsg::Status {
                 service: service.to_string(),
                 operator: operator.to_string(),
+                height: None,
             },
         )
         .unwrap();
@@ -293,6 +295,7 @@ fn register_lifecycle_service_first() {
             &QueryMsg::Status {
                 service: service.to_string(),
                 operator: operator.to_string(),
+                height: None,
             },
         )
         .unwrap();
@@ -323,6 +326,7 @@ fn register_lifecycle_service_first() {
             &QueryMsg::Status {
                 service: service.to_string(),
                 operator: operator.to_string(),
+                height: None,
             },
         )
         .unwrap();
@@ -546,6 +550,7 @@ fn register_deregister_lifecycle() {
                     &QueryMsg::Status {
                         service: curr_service.to_string(),
                         operator: operator.to_string(),
+                        height: None,
                     },
                 )
                 .unwrap();
@@ -557,6 +562,7 @@ fn register_deregister_lifecycle() {
                     &QueryMsg::Status {
                         service: curr_service.to_string(),
                         operator: operator2.to_string(),
+                        height: None,
                     },
                 )
                 .unwrap();
@@ -575,10 +581,10 @@ fn register_deregister_lifecycle() {
             let status: StatusResponse = registry
                 .query(
                     &app,
-                    &QueryMsg::StatusAtHeight {
+                    &QueryMsg::Status {
                         service: curr_service.to_string(),
                         operator: operator.to_string(),
-                        height: app.block_info().height - 5,
+                        height: Some(app.block_info().height - 5),
                     },
                 )
                 .unwrap();
@@ -587,10 +593,10 @@ fn register_deregister_lifecycle() {
             let status: StatusResponse = registry
                 .query(
                     &app,
-                    &QueryMsg::StatusAtHeight {
+                    &QueryMsg::Status {
                         service: curr_service.to_string(),
                         operator: operator2.to_string(),
-                        height: app.block_info().height - 5,
+                        height: Some(app.block_info().height - 5),
                     },
                 )
                 .unwrap();
@@ -617,6 +623,7 @@ fn register_deregister_lifecycle() {
                 &QueryMsg::Status {
                     service: service.to_string(),
                     operator: operator.to_string(),
+                    height: None,
                 },
             )
             .unwrap();
@@ -628,6 +635,7 @@ fn register_deregister_lifecycle() {
                 &QueryMsg::Status {
                     service: service2.to_string(),
                     operator: operator.to_string(),
+                    height: None,
                 },
             )
             .unwrap();
@@ -643,10 +651,10 @@ fn register_deregister_lifecycle() {
     let status: StatusResponse = registry
         .query(
             &app,
-            &QueryMsg::StatusAtHeight {
+            &QueryMsg::Status {
                 service: service.to_string(),
                 operator: operator.to_string(),
-                height: app.block_info().height - 5,
+                height: Some(app.block_info().height - 5),
             },
         )
         .unwrap();
@@ -656,10 +664,10 @@ fn register_deregister_lifecycle() {
     let status: StatusResponse = registry
         .query(
             &app,
-            &QueryMsg::StatusAtHeight {
+            &QueryMsg::Status {
                 service: service2.to_string(),
                 operator: operator.to_string(),
-                height: app.block_info().height - 5,
+                height: Some(app.block_info().height - 5),
             },
         )
         .unwrap();
@@ -673,6 +681,7 @@ fn query_status() {
     let query_msg = &QueryMsg::Status {
         service: app.api().addr_make("service/44").to_string(),
         operator: app.api().addr_make("operator/44").to_string(),
+        height: None,
     };
 
     let status: StatusResponse = registry.query(&mut app, query_msg).unwrap();
@@ -732,6 +741,7 @@ fn migrate_to_v2() {
             &QueryMsg::Status {
                 service: service.to_string(),
                 operator: operator.to_string(),
+                height: None,
             },
         )
         .unwrap();
@@ -741,10 +751,10 @@ fn migrate_to_v2() {
     let status_at_height: StatusResponse = registry
         .query(
             &mut app,
-            &QueryMsg::StatusAtHeight {
+            &QueryMsg::Status {
                 service: service.to_string(),
                 operator: operator.to_string(),
-                height: block_info.height - 1,
+                height: Some(block_info.height - 1),
             },
         )
         .unwrap();
@@ -767,6 +777,7 @@ fn migrate_to_v2() {
                 &QueryMsg::Status {
                     service: service.to_string(),
                     operator: operator.to_string(),
+                    height: None,
                 },
             )
             .unwrap();
@@ -777,10 +788,10 @@ fn migrate_to_v2() {
         let status_at_height: StatusResponse = registry
             .query(
                 &mut app,
-                &QueryMsg::StatusAtHeight {
+                &QueryMsg::Status {
                     service: service.to_string(),
                     operator: operator.to_string(),
-                    height: block_info.height + 1,
+                    height: Some(block_info.height + 1),
                 },
             )
             .unwrap();
@@ -791,10 +802,10 @@ fn migrate_to_v2() {
         let status_at_height: StatusResponse = registry
             .query(
                 &mut app,
-                &QueryMsg::StatusAtHeight {
+                &QueryMsg::Status {
                     service: service.to_string(),
                     operator: operator.to_string(),
-                    height: block_info.height - 10,
+                    height: Some(block_info.height - 10),
                 },
             )
             .unwrap();

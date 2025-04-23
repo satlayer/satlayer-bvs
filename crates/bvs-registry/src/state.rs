@@ -96,6 +96,11 @@ pub fn get_registration_status(
 }
 
 /// Get the registration status of the Operator to Service at a specific block height
+///
+/// #### Warning
+/// This function will return previous state.
+/// if height is equal to the height of the save operation.
+/// New state will only be available at height + 1
 pub fn get_registration_status_at_height(
     store: &dyn Storage,
     key: (&Operator, &Service),
@@ -108,7 +113,12 @@ pub fn get_registration_status_at_height(
     status.try_into()
 }
 
-/// Set the registration status of the Operator to Service at a specific block height
+/// Set the registration status of the Operator to Service at a specific block height.
+///
+/// #### Warning
+/// This function will only save the state at the end of the block.
+/// So the new state will only be available at height + 1.
+/// This is so that, re-ordering of txs won't cause the state to be inconsistent.
 pub fn set_registration_status(
     store: &mut dyn Storage,
     key: (&Operator, &Service),

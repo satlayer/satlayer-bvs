@@ -400,19 +400,14 @@ mod execute {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Status { service, operator } => {
-            let service = deps.api.addr_validate(&service)?;
-            let operator = deps.api.addr_validate(&operator)?;
-            to_json_binary(&query::status(deps, operator, service)?)
-        }
-        QueryMsg::StatusAtHeight {
+        QueryMsg::Status {
             service,
             operator,
             height,
         } => {
             let service = deps.api.addr_validate(&service)?;
             let operator = deps.api.addr_validate(&operator)?;
-            to_json_binary(&query::status_at_height(deps, operator, service, height)?)
+            to_json_binary(&query::status(deps, operator, service, height)?)
         }
         QueryMsg::IsService(service) => {
             let service = deps.api.addr_validate(&service)?;
@@ -437,33 +432,24 @@ mod query {
     use crate::state::{require_operator_registered, require_service_registered};
     use cosmwasm_std::{Addr, Deps, StdResult};
 
-    /// Get the registration status of an operator to a service
+    /// Get the registration status of an operator to a service at a given height.
+    /// If height is `None`, it will return the current registration status.  
     /// Returns: [`StdResult<StatusResponse>`]
     /// - [`RegistrationStatus::Inactive`] (0) if not registered
     /// - [`RegistrationStatus::Active`] (1) if registration is active (operator and service are registered to each other)
     /// - [`RegistrationStatus::OperatorRegistered`] (2) if operator is registered to service, pending service registration
     /// - [`RegistrationStatus::ServiceRegistered`] (3) if service is registered to operator, pending operator registration
-    pub fn status(deps: Deps, operator: Addr, service: Addr) -> StdResult<StatusResponse> {
-        let key = (&operator, &service);
-        let status = state::get_registration_status(deps.storage, key)?;
-        Ok(status.into())
-    }
-
-    /// Get the registration status of an operator to a service at a specific block height
-    /// returns: [`StdResult<StatusResponse>`]
-    ///
-    /// #### Warning
-    /// This function will return old data
-    /// if height is equal to the height of the save operation.
-    /// New data will only be available at height + 1
-    pub fn status_at_height(
+    pub fn status(
         deps: Deps,
         operator: Addr,
         service: Addr,
-        height: u64,
+        height: Option<u64>,
     ) -> StdResult<StatusResponse> {
         let key = (&operator, &service);
-        let status = state::get_registration_status_at_height(deps.storage, key, height)?;
+        let status = match height {
+            Some(height) => state::get_registration_status_at_height(deps.storage, key, height)?,
+            None => state::get_registration_status(deps.storage, key)?,
+        };
         Ok(status.into())
     }
 
@@ -493,8 +479,13 @@ mod query {
 /// See https://github.com/CosmWasm/cosmwasm/issues/926#issuecomment-851259818
 ///
 /// #### 2.0.0
-/// Migrate REGISTRATION_STATUS state from Map to SnapshotMap.
-/// Storage mapping is not needed because SnapshotMap uses a map with the same namespace.
+/// Migrate REGISTRATION_STATUS state from Map to SnapshotMap.  
+/// Storage mapping is not needed because SnapshotMap uses a map with the same namespace.  
+/// This migration will also mean
+/// that the current state of REGISTRATION_STATUS will be the default state
+/// when querying for state from earlier block height.  
+/// For instance, migration happens at block 200 and Operator1 and Service1 is in Active status.
+/// When queried at height 1, the status of Operator1 and Service1 will be Active.
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(
     deps: DepsMut,
@@ -509,7 +500,7 @@ pub fn migrate(
 mod tests {
     use super::*;
     use crate::contract::execute::{register_operator_to_service, register_service_to_operator};
-    use crate::contract::query::{status, status_at_height};
+    use crate::contract::query::status;
     use crate::msg::{
         InstantiateMsg, IsOperatorActiveResponse, IsOperatorResponse, IsServiceResponse, Metadata,
         StatusResponse,
@@ -1162,7 +1153,7 @@ mod tests {
         let service = deps.api.addr_make("service");
 
         assert_eq!(
-            status(deps.as_ref(), operator.clone(), service.clone()),
+            status(deps.as_ref(), operator.clone(), service.clone(), None),
             Ok(StatusResponse(0))
         );
 
@@ -1175,7 +1166,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            status(deps.as_ref(), operator.clone(), service.clone()),
+            status(deps.as_ref(), operator.clone(), service.clone(), None),
             Ok(StatusResponse(0))
         );
 
@@ -1188,7 +1179,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            status(deps.as_ref(), operator.clone(), service.clone()),
+            status(deps.as_ref(), operator.clone(), service.clone(), None),
             Ok(StatusResponse(1))
         );
 
@@ -1201,7 +1192,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            status(deps.as_ref(), operator.clone(), service.clone()),
+            status(deps.as_ref(), operator.clone(), service.clone(), None),
             Ok(StatusResponse(2))
         );
 
@@ -1214,7 +1205,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            status(deps.as_ref(), operator.clone(), service.clone()),
+            status(deps.as_ref(), operator.clone(), service.clone(), None),
             Ok(StatusResponse(3))
         );
     }
@@ -1228,11 +1219,11 @@ mod tests {
         let service = deps.api.addr_make("service");
 
         assert_eq!(
-            status_at_height(
+            status(
                 deps.as_ref(),
                 operator.clone(),
                 service.clone(),
-                env.block.height
+                Some(env.block.height)
             ),
             Ok(RegistrationStatus::Inactive.into())
         );
@@ -1246,11 +1237,11 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            status_at_height(
+            status(
                 deps.as_ref(),
                 operator.clone(),
                 service.clone(),
-                env.block.height
+                Some(env.block.height)
             ),
             Ok(RegistrationStatus::Inactive.into())
         );
@@ -1265,22 +1256,22 @@ mod tests {
 
         // Assert that the status is inactive at the current height
         assert_eq!(
-            status_at_height(
+            status(
                 deps.as_ref(),
                 operator.clone(),
                 service.clone(),
-                env.block.height
+                Some(env.block.height)
             ),
             Ok(RegistrationStatus::Inactive.into())
         );
 
         // Assert that the status is active at the next height
         assert_eq!(
-            status_at_height(
+            status(
                 deps.as_ref(),
                 operator.clone(),
                 service.clone(),
-                env.block.height + 1
+                Some(env.block.height + 1)
             ),
             Ok(RegistrationStatus::Active.into())
         );
@@ -1296,21 +1287,21 @@ mod tests {
 
         // Assert that the status is active at height + 10
         assert_eq!(
-            status_at_height(
+            status(
                 deps.as_ref(),
                 operator.clone(),
                 service.clone(),
-                env.block.height + 10
+                Some(env.block.height + 10)
             ),
             Ok(RegistrationStatus::Active.into())
         );
         // Assert that the status is inactive at height + 11
         assert_eq!(
-            status_at_height(
+            status(
                 deps.as_ref(),
                 operator.clone(),
                 service.clone(),
-                env.block.height + 11
+                Some(env.block.height + 11)
             ),
             Ok(RegistrationStatus::Inactive.into())
         );

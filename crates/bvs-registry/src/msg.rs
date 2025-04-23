@@ -47,13 +47,10 @@ pub struct Metadata {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(StatusResponse)]
-    Status { service: String, operator: String },
-
-    #[returns(StatusResponse)]
-    StatusAtHeight {
+    Status {
         service: String,
         operator: String,
-        height: u64,
+        height: Option<u64>,
     },
 
     #[returns(IsServiceResponse)]
