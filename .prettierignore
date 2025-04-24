@@ -18,5 +18,5 @@ examples/*/*/target/
 examples/*/*/artifacts/
 examples/*/*/schema/
 docs/public/_pagefind/
-docs/app/**.md
-docs/app/**.mdx
+docs/app/**/*.md
+docs/app/**/*.mdx

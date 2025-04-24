@@ -1,5 +1,127 @@
+import { Callout } from "nextra/components";
+
 # Vaults
 
-## CW20 Vault
+<Callout type="info">This is technical documentation for BVS operators and technical users.</Callout>
 
-## Bank Vault
+Vaults are a core component of the BVS (Bitcoin Validation Service) architecture,
+designed to securely manage assets while enabling operators to provide validation services.
+Vaults serve as the primary interface for users to deposit assets, receive shares, and withdraw assets when needed.
+
+## Philosophy & Concepts
+
+The vault system is designed with several key principles in mind:
+
+### Symmetry of Interfaces
+
+All vaults implement a common interface defined in the `bvs-vault-base` contract.
+This symmetry ensures that regardless of the underlying asset type, vaults behave consistently and predictably.
+The common interface includes deposit functionality where users can deposit assets and receive shares,
+withdrawal functionality allowing users to withdraw assets by redeeming shares,
+queued withdrawals when an operator is validating, and redemption after a lock period for queued withdrawals.
+
+This symmetry simplifies integration with other components
+and provides a consistent user experience across different asset types.
+
+### Vault Factory
+
+The vault factory is responsible for deploying different types of vaults.
+This component maintains code IDs for different vault types
+and ensures that vaults are created with the correct parameters.
+The factory provides standardization by ensuring all vaults are created with consistent parameters and configurations.
+Additionally, it enables upgradability as the factory can be updated to deploy new versions of vaults.
+The system enhances security by ensuring that only authorized operators can create vaults.
+
+### Vault Router
+
+The vault router plays a critical role in coordinating vaults across the system.
+It handles whitelist management, ensuring that only whitelisted vaults can accept deposits,
+which adds a layer of security for users.
+The router tracks operator status, maintaining information about which operators are actively validating.
+It coordinates withdrawals by managing withdrawal lock periods, ensuring orderly exits from the system.
+
+### Asset-Specific Vaults
+
+Each vault is designed to handle a specific asset type.
+This separation provides several advantages.
+Each vault can implement specialized logic for its asset type,
+ensuring optimal handling of the asset's unique characteristics.
+The isolation ensures that issues with one asset don't affect other assets, enhancing system stability.
+Exchange rate integrity is maintained as each vault manages its own exchange rate between shares and assets.
+
+### Operator-Specific Vaults
+
+Each operator has their own set of vaults for each asset type.
+This design decision is crucial for isolation to facilitate independent accounting—operators do not share vaults.
+The approach provides slashing isolation, ensuring that if an operator is slashed, only their vaults are affected,
+protecting other operators and their users.
+Operators can customize their vaults based on their specific needs and strategies.
+This design also enhances accountability
+by providing clear attribution of responsibility for each vault's performance and security.
+
+### Relationship to Slashing
+
+Vaults are closely tied to the slashing mechanism.
+When a service needs to slash an operator, it does so through the vault router,
+which coordinates the slashing across all operators' vaults.
+It ensures that the slashing is proportional across all assets, maintaining fairness in the penalty system.
+The architecture guarantees that the slashing affects only the operator's vaults, not other operators,
+preserving the integrity of the system.
+
+## Vault Types
+
+<Callout type="default">
+  All vaults are designed to be upgradeable. They also implement queued withdrawals with time locks to ensure system
+  stability during active validation periods.
+</Callout>
+
+### CW20
+
+CW20 vaults are designed for CW20 tokens in the CosmWasm ecosystem.
+They allow users to deposit CW20 tokens and receive shares in return.
+These vaults use CW20 token transfers to move assets between users and the vault.
+The vaults handle CW20 token deposits and withdrawals,
+maintaining a robust conversion mechanism between shares and assets.
+Shares are not tokenized,
+meaning they are **not tradable tokens** but rather represent a claim on the underlying assets.
+
+> For security and predictability, these vaults only support standard CW20 tokens,
+> excluding non-standard tokens with fee-on-transfer mechanisms.
+
+### Bank
+
+Bank vaults are designed for native tokens (`denom`) in the ecosystem.
+They allow users to deposit native tokens and receive shares in return.
+These vaults use bank transfers to move assets between users and the vault.
+They efficiently handle native token deposits and withdrawals through the Cosmos bank module.
+Like their CW20 counterparts, they maintain a precise conversion mechanism between shares and assets,
+ensuring fair value representation.
+Shares are not tokenized,
+meaning they are **not tradable tokens** but rather represent a claim on the underlying assets.
+
+### CW20 Tokenized
+
+CW20 Tokenized vaults allow operators to issue Liquid Re-staking Tokens (LRTs) directly for CW20 tokens,
+bringing significant benefits to enhancing liquidity and capital efficiency.
+Users receive tradable LRTs representing their staked assets,
+allowing them to participate in DeFi activities while still earning staking rewards.
+
+This creates a more capital-efficient system where value can flow freely throughout the ecosystem.
+Additionally, the tokenized approach simplifies the user experience
+by providing a familiar token interface that can be easily integrated with other protocols and applications.
+
+> For security and predictability, these vaults only support standard CW20 tokens,
+> excluding non-standard tokens with fee-on-transfer mechanisms.
+
+### Bank Tokenized
+
+Bank Tokenized vaults extend the benefits of tokenization to native tokens in the Cosmos ecosystem.
+These vaults would enable operators to issue Liquid Re-staking Tokens
+(LRTs) directly for native tokens like ATOM or other IBC-enabled assets.
+Users receive tradable LRTs representing their staked assets,
+allowing them to participate in DeFi activities while still earning staking rewards.
+
+Similar to CW20 Tokenized vaults,
+this creates a more capital-efficient system where value can flow freely throughout the ecosystem.
+Additionally, the tokenized approach simplifies the user experience
+by providing a familiar token interface that can be easily integrated with other protocols and applications.
