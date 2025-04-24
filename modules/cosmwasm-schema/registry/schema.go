@@ -7,6 +7,8 @@ type IsOperatorResponse bool
 
 type IsOperatorActiveResponse bool
 
+type IsOperatorOptedInToSlashingResponse bool
+
 type IsServiceResponse bool
 
 type StatusResponse int64
@@ -25,6 +27,9 @@ type ExecuteMsg struct {
 	DeregisterOperatorFromService *DeregisterOperatorFromService `json:"deregister_operator_from_service,omitempty"`
 	RegisterServiceToOperator     *RegisterServiceToOperator     `json:"register_service_to_operator,omitempty"`
 	DeregisterServiceFromOperator *DeregisterServiceFromOperator `json:"deregister_service_from_operator,omitempty"`
+	EnableSlashing                *EnableSlashing                `json:"enable_slashing,omitempty"`
+	DisableSlashing               *DisableSlashing               `json:"disable_slashing,omitempty"`
+	OperatorOptInToSlashing       *OperatorOptInToSlashing       `json:"operator_opt_in_to_slashing,omitempty"`
 	TransferOwnership             *TransferOwnership             `json:"transfer_ownership,omitempty"`
 }
 
@@ -33,6 +38,31 @@ type DeregisterOperatorFromService struct {
 }
 
 type DeregisterServiceFromOperator struct {
+	Service string `json:"service"`
+}
+
+type DisableSlashing struct {
+}
+
+type EnableSlashing struct {
+	Registry RegistryClass `json:"registry"`
+}
+
+type RegistryClass struct {
+	// The address to which the slashed funds will be sent after the slashing is finalized.
+	// None, indicates that the slashed funds will be burned.
+	Destination *string `json:"destination"`
+	// The maximum percentage of the operator's total stake that can be slashed. The value is
+	// represented in bips (basis points), where 100 bips = 1%. And the value must be between 0
+	// and 10_000 (inclusive).
+	MaxSlashingPercentage int64 `json:"max_slashing_percentage"`
+	// The minimum amount of time (in seconds) that the slashing can be delayed before it is
+	// executed and finalized. It is recommended to set this value to a maximum of withdrawal
+	// delay or less.
+	ResolutionWindow int64 `json:"resolution_window"`
+}
+
+type OperatorOptInToSlashing struct {
 	Service string `json:"service"`
 }
 
@@ -64,14 +94,41 @@ type TransferOwnership struct {
 }
 
 type QueryMsg struct {
-	Status           *Status `json:"status,omitempty"`
-	IsService        *string `json:"is_service,omitempty"`
-	IsOperator       *string `json:"is_operator,omitempty"`
-	IsOperatorActive *string `json:"is_operator_active,omitempty"`
+	Status                      *Status                      `json:"status,omitempty"`
+	IsService                   *string                      `json:"is_service,omitempty"`
+	IsOperator                  *string                      `json:"is_operator,omitempty"`
+	IsOperatorActive            *string                      `json:"is_operator_active,omitempty"`
+	SlashingRegistry            *SlashingRegistryClass       `json:"slashing_registry,omitempty"`
+	IsOperatorOptedInToSlashing *IsOperatorOptedInToSlashing `json:"is_operator_opted_in_to_slashing,omitempty"`
+}
+
+type IsOperatorOptedInToSlashing struct {
+	Height   *int64 `json:"height"`
+	Operator string `json:"operator"`
+	Service  string `json:"service"`
+}
+
+type SlashingRegistryClass struct {
+	Height  *int64 `json:"height"`
+	Service string `json:"service"`
 }
 
 type Status struct {
 	Height   *int64 `json:"height"`
 	Operator string `json:"operator"`
 	Service  string `json:"service"`
+}
+
+type SlashingRegistry struct {
+	// The address to which the slashed funds will be sent after the slashing is finalized.
+	// None, indicates that the slashed funds will be burned.
+	Destination *string `json:"destination"`
+	// The maximum percentage of the operator's total stake that can be slashed. The value is
+	// represented in bips (basis points), where 100 bips = 1%. And the value must be between 0
+	// and 10_000 (inclusive).
+	MaxSlashingPercentage int64 `json:"max_slashing_percentage"`
+	// The minimum amount of time (in seconds) that the slashing can be delayed before it is
+	// executed and finalized. It is recommended to set this value to a maximum of withdrawal
+	// delay or less.
+	ResolutionWindow int64 `json:"resolution_window"`
 }

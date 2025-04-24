@@ -5,6 +5,8 @@ type IsOperatorResponse = boolean;
 
 type IsOperatorActiveResponse = boolean;
 
+type IsOperatorOptedInToSlashingResponse = boolean;
+
 type IsServiceResponse = boolean;
 
 type StatusResponse = number;
@@ -23,6 +25,9 @@ export interface ExecuteMsg {
   deregister_operator_from_service?: DeregisterOperatorFromService;
   register_service_to_operator?: RegisterServiceToOperator;
   deregister_service_from_operator?: DeregisterServiceFromOperator;
+  enable_slashing?: EnableSlashing;
+  disable_slashing?: DisableSlashing;
+  operator_opt_in_to_slashing?: OperatorOptInToSlashing;
   transfer_ownership?: TransferOwnership;
 }
 
@@ -31,6 +36,36 @@ export interface DeregisterOperatorFromService {
 }
 
 export interface DeregisterServiceFromOperator {
+  service: string;
+}
+
+export interface DisableSlashing {}
+
+export interface EnableSlashing {
+  registry: SlashingRegistry;
+}
+
+export interface SlashingRegistry {
+  /**
+   * The address to which the slashed funds will be sent after the slashing is finalized.
+   * None, indicates that the slashed funds will be burned.
+   */
+  destination?: null | string;
+  /**
+   * The maximum percentage of the operator's total stake that can be slashed. The value is
+   * represented in bips (basis points), where 100 bips = 1%. And the value must be between 0
+   * and 10_000 (inclusive).
+   */
+  max_slashing_percentage: number;
+  /**
+   * The minimum amount of time (in seconds) that the slashing can be delayed before it is
+   * executed and finalized. It is recommended to set this value to a maximum of withdrawal
+   * delay or less.
+   */
+  resolution_window: number;
+}
+
+export interface OperatorOptInToSlashing {
   service: string;
 }
 
@@ -70,10 +105,43 @@ export interface QueryMsg {
   is_service?: string;
   is_operator?: string;
   is_operator_active?: string;
+  slashing_registry?: SlashingRegistryClass;
+  is_operator_opted_in_to_slashing?: IsOperatorOptedInToSlashing;
+}
+
+export interface IsOperatorOptedInToSlashing {
+  height?: number | null;
+  operator: string;
+  service: string;
+}
+
+export interface SlashingRegistryClass {
+  height?: number | null;
+  service: string;
 }
 
 export interface Status {
   height?: number | null;
   operator: string;
   service: string;
+}
+
+export interface SlashingRegistryResponse {
+  /**
+   * The address to which the slashed funds will be sent after the slashing is finalized.
+   * None, indicates that the slashed funds will be burned.
+   */
+  destination?: null | string;
+  /**
+   * The maximum percentage of the operator's total stake that can be slashed. The value is
+   * represented in bips (basis points), where 100 bips = 1%. And the value must be between 0
+   * and 10_000 (inclusive).
+   */
+  max_slashing_percentage: number;
+  /**
+   * The minimum amount of time (in seconds) that the slashing can be delayed before it is
+   * executed and finalized. It is recommended to set this value to a maximum of withdrawal
+   * delay or less.
+   */
+  resolution_window: number;
 }
