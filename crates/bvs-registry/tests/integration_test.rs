@@ -1,9 +1,11 @@
 use bvs_library::testing::TestingContract;
 use bvs_pauser::api::PauserError;
 use bvs_pauser::testing::PauserContract;
-use bvs_registry::msg::{ExecuteMsg, Metadata, QueryMsg, StatusResponse};
+use bvs_registry::msg::{
+    ExecuteMsg, IsOperatorOptedInToSlashingResponse, Metadata, QueryMsg, StatusResponse,
+};
 use bvs_registry::testing::RegistryContract;
-use bvs_registry::{ContractError, RegistrationStatus};
+use bvs_registry::{ContractError, RegistrationStatus, SlashingParameters};
 use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::{Addr, Event, StdError};
 use cw_multi_test::App;
@@ -672,6 +674,437 @@ fn register_deregister_lifecycle() {
         )
         .unwrap();
     assert_eq!(status, StatusResponse(1)); // active
+}
+
+#[test]
+fn enable_slashing_lifecycle() {
+    let (mut app, registry, ..) = instantiate();
+
+    let service = app.api().addr_make("service/1");
+    let operator = app.api().addr_make("operator/1");
+    let operator2 = app.api().addr_make("operator/2");
+    let burn_address = app.api().addr_make("burn_address");
+
+    // register service + operators
+    {
+        registry
+            .execute(
+                &mut app,
+                &service,
+                &ExecuteMsg::RegisterAsService {
+                    metadata: Metadata {
+                        name: Some(service.to_string()),
+                        uri: Some("https://service.com".to_string()),
+                    },
+                },
+            )
+            .unwrap();
+        registry
+            .execute(
+                &mut app,
+                &operator,
+                &ExecuteMsg::RegisterAsOperator {
+                    metadata: Metadata {
+                        name: Some(operator.to_string()),
+                        uri: Some("https://operator.com".to_string()),
+                    },
+                },
+            )
+            .unwrap();
+        registry
+            .execute(
+                &mut app,
+                &operator2,
+                &ExecuteMsg::RegisterAsOperator {
+                    metadata: Metadata {
+                        name: Some(operator2.to_string()),
+                        uri: Some("https://operator2.com".to_string()),
+                    },
+                },
+            )
+            .unwrap();
+    }
+
+    // register service to operator and operator to service
+    {
+        registry
+            .execute(
+                &mut app,
+                &operator,
+                &ExecuteMsg::RegisterServiceToOperator {
+                    service: service.to_string(),
+                },
+            )
+            .unwrap();
+        registry
+            .execute(
+                &mut app,
+                &service,
+                &ExecuteMsg::RegisterOperatorToService {
+                    operator: operator.to_string(),
+                },
+            )
+            .unwrap();
+    }
+
+    // NEGATIVE - operator opts in to slashing, before it is enabled
+    {
+        let opt_in_msg = &ExecuteMsg::OperatorOptInToSlashing {
+            service: service.to_string(),
+        };
+        let err = registry
+            .execute(&mut app, &operator, opt_in_msg)
+            .unwrap_err();
+
+        assert_eq!(
+            err.root_cause().to_string(),
+            ContractError::InvalidSlashingOptIn {
+                msg: "Service has not enabled slashing.".to_string()
+            }
+            .to_string()
+        );
+    }
+
+    // service enable slashing
+    {
+        let slashing_parameters = SlashingParameters {
+            destination: Some(burn_address.clone()),
+            max_slashing_percentage: 5000, // 50%
+            resolution_window: 1000,
+        };
+        let enable_slashing_msg = &ExecuteMsg::EnableSlashing {
+            slashing_parameters: slashing_parameters.clone(),
+        };
+        let res = registry
+            .execute(&mut app, &service, enable_slashing_msg)
+            .unwrap();
+
+        // assert events
+        assert_eq!(
+            res.events,
+            vec![
+                Event::new("execute").add_attribute("_contract_address", registry.addr.as_str()),
+                Event::new("wasm-SlashingParametersEnabled")
+                    .add_attribute("_contract_address", registry.addr.as_str())
+                    .add_attribute("service", service.as_str())
+                    .add_attribute("destination", burn_address.to_string())
+                    .add_attribute("max_slashing_percentage", "5000")
+                    .add_attribute("resolution_window", "1000"),
+            ]
+        );
+
+        // assert query
+        let slashing_parameters_res: SlashingParameters = registry
+            .query(
+                &mut app,
+                &QueryMsg::SlashingParameters {
+                    service: service.to_string(),
+                    height: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(slashing_parameters_res, slashing_parameters);
+    }
+
+    // NEGATIVE - operator opts-in to slashing in the same block as slash enabled
+    {
+        let opt_in_msg = &ExecuteMsg::OperatorOptInToSlashing {
+            service: service.to_string(),
+        };
+        let err = registry
+            .execute(&mut app, &operator, opt_in_msg)
+            .unwrap_err();
+
+        // assert events
+        assert_eq!(
+            err.root_cause().to_string(),
+            ContractError::InvalidSlashingOptIn {
+                msg: "Service has not enabled slashing.".to_string()
+            }
+            .to_string()
+        );
+    }
+
+    // move blockchain
+    app.update_block(|block| {
+        block.height += 1;
+    });
+
+    // operator opts-in to slashing
+    {
+        let opt_in_msg = &ExecuteMsg::OperatorOptInToSlashing {
+            service: service.to_string(),
+        };
+        let res = registry.execute(&mut app, &operator, opt_in_msg).unwrap();
+
+        // assert events
+        assert_eq!(
+            res.events,
+            vec![
+                Event::new("execute").add_attribute("_contract_address", registry.addr.as_str()),
+                Event::new("wasm-OperatorOptedInToSlashing")
+                    .add_attribute("_contract_address", registry.addr.as_str())
+                    .add_attribute("operator", operator.as_str())
+                    .add_attribute("service", service.as_str())
+            ]
+        );
+        // assert query
+        let is_operator_opted_in: IsOperatorOptedInToSlashingResponse = registry
+            .query(
+                &mut app,
+                &QueryMsg::IsOperatorOptedInToSlashing {
+                    service: service.to_string(),
+                    operator: operator.to_string(),
+                    height: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            is_operator_opted_in,
+            IsOperatorOptedInToSlashingResponse(true)
+        );
+    }
+
+    // NEGATIVE - operator2 opts in to service's slashing before Active registration
+    {
+        let opt_in_msg = &ExecuteMsg::OperatorOptInToSlashing {
+            service: service.to_string(),
+        };
+        let err = registry
+            .execute(&mut app, &operator2, opt_in_msg)
+            .unwrap_err();
+
+        // assert events
+        assert_eq!(
+            err.root_cause().to_string(),
+            ContractError::InvalidRegistrationStatus {
+                msg: "Operator and service must have active registration.".to_string()
+            }
+            .to_string()
+        );
+    }
+
+    // operator2 register service to operator => operator2 will be auto opt-in to slashing
+    {
+        registry
+            .execute(
+                &mut app,
+                &operator2,
+                &ExecuteMsg::RegisterServiceToOperator {
+                    service: service.to_string(),
+                },
+            )
+            .unwrap();
+        registry
+            .execute(
+                &mut app,
+                &service,
+                &ExecuteMsg::RegisterOperatorToService {
+                    operator: operator2.to_string(),
+                },
+            )
+            .unwrap();
+
+        // assert query
+        let is_operator_opted_in: IsOperatorOptedInToSlashingResponse = registry
+            .query(
+                &mut app,
+                &QueryMsg::IsOperatorOptedInToSlashing {
+                    service: service.to_string(),
+                    operator: operator2.to_string(),
+                    height: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            is_operator_opted_in,
+            IsOperatorOptedInToSlashingResponse(true)
+        );
+    }
+
+    // move blockchain
+    app.update_block(|block| {
+        block.height += 1;
+    });
+
+    // service updates slashing parameters
+    {
+        let slashing_parameters = SlashingParameters {
+            destination: Some(burn_address.clone()),
+            max_slashing_percentage: 9000, // 90%
+            resolution_window: 1000,
+        };
+        let enable_slashing_msg = &ExecuteMsg::EnableSlashing {
+            slashing_parameters: slashing_parameters.clone(),
+        };
+        registry
+            .execute(&mut app, &service, enable_slashing_msg)
+            .unwrap();
+
+        // assert query
+        let slashing_parameters_res: SlashingParameters = registry
+            .query(
+                &mut app,
+                &QueryMsg::SlashingParameters {
+                    service: service.to_string(),
+                    height: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(slashing_parameters_res, slashing_parameters);
+
+        // assert previous slashing param is available if prev block height
+        let prev_block_height = app.block_info().height - 1;
+        let prev_slashing_parameters_res: SlashingParameters = registry
+            .query(
+                &mut app,
+                &QueryMsg::SlashingParameters {
+                    service: service.to_string(),
+                    height: Some(prev_block_height),
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            prev_slashing_parameters_res,
+            SlashingParameters {
+                destination: Some(burn_address.clone()),
+                max_slashing_percentage: 5000, // 50%
+                resolution_window: 1000,
+            }
+        );
+    }
+
+    // assert that operator and operator2 is not opted into new slashing parameters
+    {
+        let is_operator_opted_in: IsOperatorOptedInToSlashingResponse = registry
+            .query(
+                &mut app,
+                &QueryMsg::IsOperatorOptedInToSlashing {
+                    service: service.to_string(),
+                    operator: operator.to_string(),
+                    height: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            is_operator_opted_in,
+            IsOperatorOptedInToSlashingResponse(false)
+        );
+        let is_operator2_opted_in: IsOperatorOptedInToSlashingResponse = registry
+            .query(
+                &mut app,
+                &QueryMsg::IsOperatorOptedInToSlashing {
+                    service: service.to_string(),
+                    operator: operator2.to_string(),
+                    height: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            is_operator2_opted_in,
+            IsOperatorOptedInToSlashingResponse(false)
+        );
+    }
+
+    // move blockchain
+    app.update_block(|block| {
+        block.height += 1;
+    });
+
+    // operator2 opts into new slashing param
+    {
+        let opt_in_msg = &ExecuteMsg::OperatorOptInToSlashing {
+            service: service.to_string(),
+        };
+        let res = registry.execute(&mut app, &operator2, opt_in_msg).unwrap();
+
+        // assert events
+        assert_eq!(
+            res.events,
+            vec![
+                Event::new("execute").add_attribute("_contract_address", registry.addr.as_str()),
+                Event::new("wasm-OperatorOptedInToSlashing")
+                    .add_attribute("_contract_address", registry.addr.as_str())
+                    .add_attribute("operator", operator2.as_str())
+                    .add_attribute("service", service.as_str())
+            ]
+        );
+        // assert query
+        let is_operator2_opted_in: IsOperatorOptedInToSlashingResponse = registry
+            .query(
+                &mut app,
+                &QueryMsg::IsOperatorOptedInToSlashing {
+                    service: service.to_string(),
+                    operator: operator2.to_string(),
+                    height: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            is_operator2_opted_in,
+            IsOperatorOptedInToSlashingResponse(true)
+        );
+    }
+
+    // move blockchain
+    app.update_block(|block| {
+        block.height += 1;
+    });
+
+    // operator2 deregister from service
+    {
+        let deregister_msg = &ExecuteMsg::DeregisterServiceFromOperator {
+            service: service.to_string(),
+        };
+        registry
+            .execute(&mut app, &operator2, deregister_msg)
+            .unwrap();
+
+        // assert query
+        let operator2_status_res: StatusResponse = registry
+            .query(
+                &mut app,
+                &QueryMsg::Status {
+                    service: service.to_string(),
+                    operator: operator2.to_string(),
+                    height: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            operator2_status_res,
+            StatusResponse(0) // Inactive
+        );
+    }
+
+    // move blockchain
+    app.update_block(|block| {
+        block.height += 1;
+    });
+
+    // operator2 registers to service
+    {
+        let register_msg = &ExecuteMsg::RegisterOperatorToService {
+            operator: operator2.to_string(),
+        };
+        registry.execute(&mut app, &service, register_msg).unwrap();
+
+        // assert operator2 is opted-in to slashing
+        let is_operator2_opted_in: IsOperatorOptedInToSlashingResponse = registry
+            .query(
+                &mut app,
+                &QueryMsg::IsOperatorOptedInToSlashing {
+                    service: service.to_string(),
+                    operator: operator2.to_string(),
+                    height: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            is_operator2_opted_in,
+            IsOperatorOptedInToSlashingResponse(true)
+        );
+    }
 }
 
 #[test]
