@@ -517,7 +517,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let service = deps.api.addr_validate(&service)?;
             let operator = deps.api.addr_validate(&operator)?;
             to_json_binary(&query::is_operator_opted_in_to_slashing(
-                deps, operator, service, height,
+                deps, service, operator, height,
             )?)
         }
     }
@@ -592,12 +592,12 @@ mod query {
     /// Query if the operator is opted in to slashing
     pub fn is_operator_opted_in_to_slashing(
         deps: Deps,
-        operator: Addr,
         service: Addr,
+        operator: Addr,
         height: Option<u64>,
     ) -> StdResult<IsOperatorOptedInToSlashingResponse> {
         let is_opted_in =
-            state::is_operator_opted_in_to_slashing(deps.storage, &operator, &service, height)?;
+            state::is_operator_opted_in_to_slashing(deps.storage, &service, &operator, height)?;
         Ok(IsOperatorOptedInToSlashingResponse(is_opted_in))
     }
 }
@@ -631,8 +631,8 @@ mod tests {
     };
     use crate::contract::query::status;
     use crate::msg::{
-        InstantiateMsg, IsOperatorActiveResponse, IsOperatorResponse, IsServiceResponse, Metadata,
-        StatusResponse,
+        InstantiateMsg, IsOperatorActiveResponse, IsOperatorOptedInToSlashingResponse,
+        IsOperatorResponse, IsServiceResponse, Metadata, SlashingRegistryResponse, StatusResponse,
     };
     use crate::state;
     use crate::state::{
@@ -1845,5 +1845,195 @@ mod tests {
         let is_operator_active =
             query::is_operator_active(deps.as_ref(), operator.clone()).unwrap();
         assert_eq!(is_operator_active, IsOperatorActiveResponse(true));
+    }
+
+    #[test]
+    fn query_slashing_registry() {
+        let mut deps = mock_dependencies();
+        let mut env = mock_env();
+
+        let service = deps.api.addr_make("service");
+        let destination = deps.api.addr_make("destination");
+        let service_info = message_info(&service, &[]);
+
+        // register service
+        execute::register_as_service(
+            deps.as_mut(),
+            service_info.clone(),
+            Metadata {
+                uri: None,
+                name: None,
+            },
+        )
+        .expect("register service failed");
+
+        // enable slashing
+        execute::enable_slashing(
+            deps.as_mut(),
+            env.clone(),
+            service_info.clone(),
+            SlashingRegistry {
+                destination: Some(destination.clone()),
+                max_slashing_percentage: 1000,
+                resolution_window: 1000,
+            },
+        )
+        .expect("enable slashing failed");
+
+        // query slashing registry
+        let SlashingRegistryResponse(slashing_registry) =
+            query::get_slashing_registry(deps.as_ref(), service.clone(), None).unwrap();
+        assert_eq!(
+            slashing_registry,
+            Some(SlashingRegistry {
+                destination: Some(destination.clone()),
+                max_slashing_percentage: 1000,
+                resolution_window: 1000,
+            })
+        );
+
+        // move blockchain
+        env.block.height += 1;
+
+        // update slashing condition
+        execute::enable_slashing(
+            deps.as_mut(),
+            env.clone(),
+            service_info.clone(),
+            SlashingRegistry {
+                destination: None,
+                max_slashing_percentage: 5000,
+                resolution_window: 999,
+            },
+        )
+        .expect("update slashing failed");
+
+        // move blockchain
+        env.block.height += 1;
+
+        // query updated slashing registry
+        let SlashingRegistryResponse(slashing_registry) =
+            query::get_slashing_registry(deps.as_ref(), service.clone(), None).unwrap();
+        assert_eq!(
+            slashing_registry,
+            Some(SlashingRegistry {
+                destination: None,
+                max_slashing_percentage: 5000,
+                resolution_window: 999,
+            })
+        );
+
+        // query previous slashing registry
+        let SlashingRegistryResponse(slashing_registry) = query::get_slashing_registry(
+            deps.as_ref(),
+            service.clone(),
+            Some(env.block.height - 1),
+        )
+        .unwrap();
+        assert_eq!(
+            slashing_registry,
+            Some(SlashingRegistry {
+                destination: Some(destination.clone()),
+                max_slashing_percentage: 1000,
+                resolution_window: 1000,
+            })
+        );
+
+        // move blockchain
+        env.block.height += 1;
+
+        // disable slashing
+        execute::disable_slashing(deps.as_mut(), env.clone(), service_info.clone())
+            .expect("disable slashing failed");
+
+        // query slashing registry
+        let SlashingRegistryResponse(slashing_registry) =
+            query::get_slashing_registry(deps.as_ref(), service.clone(), None).unwrap();
+        assert_eq!(slashing_registry, None);
+
+        // query previous slashing registry
+        let SlashingRegistryResponse(slashing_registry) = query::get_slashing_registry(
+            deps.as_ref(),
+            service.clone(),
+            Some(env.block.height - 1),
+        )
+        .unwrap();
+        assert_eq!(
+            slashing_registry,
+            Some(SlashingRegistry {
+                destination: None,
+                max_slashing_percentage: 5000,
+                resolution_window: 999,
+            })
+        );
+    }
+
+    #[test]
+    fn query_is_operator_opted_in_to_slashing() {
+        let mut deps = mock_dependencies();
+        let mut env = mock_env();
+
+        let operator = deps.api.addr_make("operator");
+        let operator2 = deps.api.addr_make("operator2");
+        let service = deps.api.addr_make("service");
+
+        // assert is_operator_opted_in_to_slashing false before operator registration
+        let is_operator_opted_in = query::is_operator_opted_in_to_slashing(
+            deps.as_ref(),
+            service.clone(),
+            operator.clone(),
+            None,
+        )
+        .unwrap();
+        assert_eq!(
+            is_operator_opted_in,
+            IsOperatorOptedInToSlashingResponse(false)
+        );
+
+        // move blockchain
+        env.block.height += 1;
+
+        // operator opt-in to slashing
+        state::opt_in_to_slashing(&mut deps.storage, &env, &service, &operator)
+            .expect("operator opt-in to slashing failed");
+
+        // assert is_operator_opted_in_to_slashing true - status is now Active
+        let is_operator_opted_in = query::is_operator_opted_in_to_slashing(
+            deps.as_ref(),
+            service.clone(),
+            operator.clone(),
+            None,
+        )
+        .unwrap();
+        assert_eq!(
+            is_operator_opted_in,
+            IsOperatorOptedInToSlashingResponse(true)
+        );
+
+        // assert that operator2 is not opted in
+        let is_operator2_opted_in = query::is_operator_opted_in_to_slashing(
+            deps.as_ref(),
+            service.clone(),
+            operator2.clone(),
+            None,
+        )
+        .unwrap();
+        assert_eq!(
+            is_operator2_opted_in,
+            IsOperatorOptedInToSlashingResponse(false)
+        );
+
+        // assert is_operator_opted_in_to_slashing false at height - 1
+        let is_operator_opted_in = query::is_operator_opted_in_to_slashing(
+            deps.as_ref(),
+            service.clone(),
+            operator.clone(),
+            Some(env.block.height - 1),
+        )
+        .unwrap();
+        assert_eq!(
+            is_operator_opted_in,
+            IsOperatorOptedInToSlashingResponse(false)
+        );
     }
 }
