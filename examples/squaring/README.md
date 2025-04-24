@@ -1,4 +1,4 @@
-# Squaring
+# Computational Squaring
 
 Offchain computation for squaring a number.
 

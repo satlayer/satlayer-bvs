@@ -1,0 +1,59 @@
+# BVS Vault Base
+
+> [!NOTE]
+>
+> This is not a CosmWasm contract, but a Rust crate (library) that provides the foundation for vault contracts in the ecosystem.
+
+The BVS Vault Base is a utility crate that provides the foundational components for all vault contracts in the SatLayer ecosystem. It implements common functionality that is shared across different vault types, ensuring consistency and security in vault implementations.
+
+This crate follows the ERC-4626 tokenized vault standard principles, providing a standardized interface and security mechanisms for yield-bearing vaults. It handles critical aspects such as share accounting, router integration, and protection against common attack vectors.
+
+- **Standardized Interfaces**: Defines consistent message interfaces for all vault contracts
+- **Share Accounting**: Provides non-tokenized accounting for tracking staker shares
+- **Inflation Attack Protection**: Implements OpenZeppelin's ERC-4626 mitigation strategy
+- **Router Integration**: Facilitates interaction with the BVS Vault Router
+- **Withdrawal Queue Management**: Supports queued withdrawals with time locks
+- **Error Handling**: Standardized error types for vault operations
+
+## Modules
+
+### `bvs_vault_base::msg`
+
+This module defines the standard message interfaces that all vault contracts must implement. It ensures consistency across different vault implementations.
+
+- `VaultExecuteMsg` - Standard execute messages (deposit, withdraw, queue withdrawal)
+- `VaultQueryMsg` - Standard query messages (shares, assets, conversion rates)
+- Helper structs for message parameters and responses
+
+### `bvs_vault_base::router`
+
+This module handles the interaction between vault contracts and the BVS Vault Router. It provides functionality for authorization, whitelisting checks, and validation status verification.
+
+- Router and operator address management
+- Authorization checks for router operations
+- Whitelisting verification
+- Validation status checks
+- Withdrawal lock period retrieval
+
+### `bvs_vault_base::offset`
+
+This module provides a virtual offset utility for vault contracts to guard against inflation attacks. It follows OpenZeppelin's ERC-4626 mitigation strategy by adding a small virtual offset to both total shares and total assets, making inflation attacks less effective.
+
+- `VirtualOffset` struct for managing virtual shares and assets
+- Conversion functions between shares and assets
+- Protection mechanisms against share inflation attacks
+
+### `bvs_vault_base::shares`
+
+This module provides accounting functions to track staker shares in vault contracts. It manages the relationship between depositors and their shares, as well as queued withdrawals.
+
+- Share management (adding, subtracting, querying)
+- Queued withdrawal tracking
+- Withdrawal time lock management
+
+### `bvs_vault_base::error`
+
+This module defines standardized error types for vault operations, ensuring consistent error handling across all vault contracts.
+
+- `VaultError` enum with various error types
+- Helper methods for creating specific errors
