@@ -1019,48 +1019,6 @@ fn test_vault_info() {
 }
 
 #[test]
-fn test_voluntary_burn() {
-    let app = &mut App::default();
-    let TestContracts { vault, cw20, .. } = TestContracts::init(app);
-
-    let staker = app.api().addr_make("staker/4545");
-    let msg = ExecuteMsg::DepositFor(RecipientAmount {
-        recipient: staker.clone(),
-        amount: Uint128::new(80_189_462_987_009_847),
-    });
-    cw20.increase_allowance(app, &staker, vault.addr(), 100e15 as u128);
-    cw20.fund(app, &staker, 100e15 as u128);
-    vault.execute(app, &staker, &msg).unwrap();
-
-    {
-        let staker_balance = cw20.balance(app, &staker);
-        assert_eq!(staker_balance, 19_810_537_012_990_153);
-
-        let contract_balance = cw20.balance(app, vault.addr());
-        assert_eq!(contract_balance, 80_189_462_987_009_847);
-
-        let query_shares = QueryMsg::Shares {
-            staker: staker.to_string(),
-        };
-        let shares: Uint128 = vault.query(app, &query_shares).unwrap();
-        assert_eq!(shares, Uint128::new(80_189_462_987_009_847));
-    }
-
-    // Voluntary burn can disrupt the accounting
-    // and deflate the receipt token values
-    {
-        let msg = cw20_base::msg::ExecuteMsg::Burn {
-            amount: Uint128::new(40_189_462_987_009_847),
-        };
-        let err = vault.execute(app, &staker, &msg.into()).unwrap_err();
-
-        // no one should be able to burn or mint at will voluntarily or otherwise
-        // The only place burning and minting should be done is unstake and stake
-        assert_eq!(err.root_cause().to_string(), "Unauthorized");
-    }
-}
-
-#[test]
 fn test_cw20_semi_compliance() {
     // tokenized vault is only semi compliance
     // Because we don't allow burning and minting at all except when stake/unstake
@@ -1164,66 +1122,17 @@ fn test_cw20_semi_compliance() {
         assert_eq!(balance.balance, Uint128::new(25));
     }
 
-    // can we UpdateMarketing like normal cw20 token would?
-    {
-        let msg = cw20_base::msg::ExecuteMsg::UpdateMarketing {
-            project: Some("project".to_string()),
-            description: Some("description".to_string()),
-            marketing: Some(app.api().addr_make("marketing_person").to_string()),
-        };
-
-        // caller for update marketing is the marketing person
-        // as default instantiated in testing helpers
-        let res = vault.execute(
-            app,
-            &app.api().addr_make("marketing_person"),
-            &msg.clone().into(),
-        );
-        assert!(res.is_ok());
-
-        let query = cw20_base::msg::QueryMsg::MarketingInfo {};
-        let marketing: cw20::MarketingInfoResponse = vault
-            .query::<cw20::MarketingInfoResponse>(app, &query.into())
-            .unwrap();
-        assert_eq!(marketing.project, Some("project".to_string()));
-
-        assert_eq!(marketing.description, Some("description".to_string()));
-
-        assert_eq!(
-            marketing.marketing,
-            Some(app.api().addr_make("marketing_person"))
-        );
-
-        // non marketing person should not be able to update marketing
-        // just like how normal cw20 token work
-        let res = vault.execute(app, &staker, &msg.into());
-        assert!(res.is_err());
-    }
-
-    // can we upload logo like normal cw20 token would?
-    {
-        let msg = cw20_base::msg::ExecuteMsg::UploadLogo(cw20::Logo::Url("logo".to_string()));
-
-        // caller for update marketing is the marketing person
-        // as default instantiated in testing helpers
-        let res = vault.execute(app, &app.api().addr_make("marketing_person"), &msg.into());
-        assert!(res.is_ok());
-
-        let query = cw20_base::msg::QueryMsg::MarketingInfo {};
-        let logo: cw20::MarketingInfoResponse = vault
-            .query::<cw20::MarketingInfoResponse>(app, &query.into())
-            .unwrap();
-        assert_eq!(logo.logo, Some(cw20::LogoInfo::Url("logo".to_string())));
-    }
-
     // query TokenInfo like normal cw20 token would
     {
         let query = cw20_base::msg::QueryMsg::TokenInfo {};
         let token_info: cw20::TokenInfoResponse = vault
             .query::<cw20::TokenInfoResponse>(app, &query.into())
             .unwrap();
-        assert_eq!(token_info.name, "RECEIPT_TOKEN".to_string());
-        assert_eq!(token_info.symbol, "RCEPT".to_string());
+        assert_eq!(
+            token_info.name,
+            "Satlayer Test Token Staking Receipt".to_string()
+        );
+        assert_eq!(token_info.symbol, "stSATL".to_string());
         assert_eq!(token_info.decimals, 18);
 
         // remember a staker staked 200 tokens in ealier tests?

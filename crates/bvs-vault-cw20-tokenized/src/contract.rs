@@ -2,6 +2,7 @@ use cosmwasm_std::to_json_binary;
 use cosmwasm_std::{entry_point, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 use cw20_base::contract::instantiate as base_instantiate;
+use cw20_base::msg::InstantiateMsg as ReceiptCw20InstantiateMsg;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg as CombinedExecuteMsg, InstantiateMsg, QueryMsg};
@@ -25,15 +26,23 @@ pub fn instantiate(
     let operator = deps.api.addr_validate(&msg.operator)?;
     bvs_vault_base::router::set_operator(deps.storage, &operator)?;
 
-    let cw20_contract = deps.api.addr_validate(&msg.staking_cw20_contract)?;
+    let cw20_contract = deps.api.addr_validate(&msg.cw20_contract)?;
     PrimaryStakingToken::instantiate(deps.storage, &cw20_contract)?;
 
     // Assert that the contract is able
     // to query the token info to ensure that the contract is properly set up
-    PrimaryStakingToken::get_token_info(&deps.as_ref())?;
+    let staking_token_info = PrimaryStakingToken::get_token_info(&deps.as_ref())?;
 
-    let mut response =
-        base_instantiate(deps.branch(), env, info, msg.receipt_cw20_instantiate_base)?;
+    let receipt_token_instantiate = ReceiptCw20InstantiateMsg {
+        name: format!("{} Staking Receipt", staking_token_info.name),
+        symbol: format!("st{}", staking_token_info.symbol),
+        decimals: staking_token_info.decimals,
+        initial_balances: vec![],
+        mint: None,
+        marketing: None,
+    };
+
+    let mut response = base_instantiate(deps.branch(), env, info, receipt_token_instantiate)?;
 
     // important to set the set_contract_version after the base contract instantiation
     // because base_instantiate set the contract name and version with
@@ -98,15 +107,12 @@ mod receipt_cw20_execute {
 
     use cw20_base::contract::execute_send;
     use cw20_base::contract::execute_transfer;
-    use cw20_base::contract::execute_update_minter;
 
     use cw20_base::allowances::execute_decrease_allowance;
     use cw20_base::allowances::execute_increase_allowance;
     use cw20_base::allowances::execute_send_from;
     use cw20_base::allowances::execute_transfer_from;
 
-    use cw20_base::contract::execute_update_marketing;
-    use cw20_base::contract::execute_upload_logo;
     use cw20_base::state::{BALANCES as RECEIPT_TOKEN_BALANCES, TOKEN_INFO as RECEIPT_TOKEN_INFO};
 
     use crate::msg::ExecuteMsg as CombinedExecuteMsg;
@@ -164,14 +170,6 @@ mod receipt_cw20_execute {
                 amount,
                 msg,
             } => execute_send(deps, env, info, contract, amount, msg),
-            CombinedExecuteMsg::Mint { .. } => {
-                // not allowed
-                // for the same reason burning is not allowed
-                Err(cw20_base::ContractError::Unauthorized {})
-            }
-            CombinedExecuteMsg::UpdateMinter { new_minter } => {
-                execute_update_minter(deps, env, info, new_minter)
-            }
             CombinedExecuteMsg::IncreaseAllowance {
                 spender,
                 amount,
@@ -193,25 +191,6 @@ mod receipt_cw20_execute {
                 amount,
                 msg,
             } => execute_send_from(deps, env, info, owner, contract, amount, msg),
-            CombinedExecuteMsg::Burn { .. } => {
-                // not allowed
-                // can complicate and upset/desync of
-                // the VirtualOffset's total shares vs
-                // total supply of the receipt token
-                // the only time burning should happen
-                // only at successful unstaking
-                Err(cw20_base::ContractError::Unauthorized {})
-            }
-            CombinedExecuteMsg::BurnFrom { .. } => {
-                // not allowed
-                Err(cw20_base::ContractError::Unauthorized {})
-            }
-            CombinedExecuteMsg::UpdateMarketing {
-                project,
-                description,
-                marketing,
-            } => execute_update_marketing(deps, env, info, project, description, marketing),
-            CombinedExecuteMsg::UploadLogo(logo) => execute_upload_logo(deps, env, info, logo),
             _ => {
                 // Extended execute msg set are exhausted in entry point already
                 // Base cw20 execute msg are also exhausted in other match arm

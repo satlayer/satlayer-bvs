@@ -23,25 +23,11 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for VaultCw20Tokenize
     }
 
     fn default_init(app: &mut App, _env: &Env) -> InstantiateMsg {
-        let cw20_instantiate_base = cw20_base::msg::InstantiateMsg {
-            name: "RECEIPT_TOKEN".to_string(),
-            symbol: "RCEPT".to_string(),
-            decimals: 18,
-            initial_balances: vec![],
-            mint: None,
-            marketing: Some(cw20_base::msg::InstantiateMarketingInfo {
-                project: Some("XYZ".to_string()),
-                description: Some("XYZ staking receipt token".to_string()),
-                marketing: Some(app.api().addr_make("marketing_person").to_string()),
-                logo: None,
-            }),
-        };
         InstantiateMsg {
             pauser: Self::get_contract_addr(app, "pauser").to_string(),
             router: Self::get_contract_addr(app, "vault_router").to_string(),
             operator: app.api().addr_make("operator").to_string(),
-            staking_cw20_contract: Self::get_contract_addr(app, "cw20").to_string(),
-            receipt_cw20_instantiate_base: cw20_instantiate_base,
+            cw20_contract: Self::get_contract_addr(app, "cw20").to_string(),
         }
     }
 

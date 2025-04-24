@@ -12,8 +12,6 @@ use cw20::{Expiration, Logo};
 pub enum ExecuteMsg {
     /// Transfer is a base message to move tokens to another account without triggering actions
     Transfer { recipient: String, amount: Uint128 },
-    /// Burn is a base message to destroy tokens forever
-    Burn { amount: Uint128 },
     /// Send is a base message to transfer tokens to a contract and trigger an action
     /// on the receiving contract.
     Send {
@@ -52,31 +50,7 @@ pub enum ExecuteMsg {
         amount: Uint128,
         msg: Binary,
     },
-    /// Only with "approval" extension. Destroys tokens forever
-    BurnFrom { owner: String, amount: Uint128 },
-    /// Only with the "mintable" extension. If authorized, creates amount new tokens
-    /// and adds to the recipient balance.
-    Mint { recipient: String, amount: Uint128 },
-    /// Only with the "mintable" extension. The current minter may set
-    /// a new minter. Setting the minter to None will remove the
-    /// token's minter forever.
-    UpdateMinter { new_minter: Option<String> },
-    /// Only with the "marketing" extension. If authorized, updates marketing metadata.
-    /// Setting None/null for any of these will leave it unchanged.
-    /// Setting Some("") will clear this field on the contract storage
-    UpdateMarketing {
-        /// A URL pointing to the project behind this token.
-        project: Option<String>,
-        /// A longer description of the token and it's utility. Designed for tooltips or such
-        description: Option<String>,
-        /// The address (if any) who can update this data structure
-        marketing: Option<String>,
-    },
-    /// If set as the "marketing" role on the contract, upload a new URL, SVG, or PNG for the token
-    UploadLogo(Logo),
 
-    //--------- EXTENDED EXECUTE MSG--------------------------------------------------
-    //
     /// ExecuteMsg Deposit assets into the vault.
     /// Sender must transfer the assets to the vault contract (this is implementation agnostic).
     /// The vault contract must mint shares to the `recipient`.
@@ -109,14 +83,12 @@ pub enum ExecuteMsg {
 }
 
 impl From<cw20_base::msg::ExecuteMsg> for ExecuteMsg {
-    // Theoretically, this will never failed
-    // as this vault plan to compliant with cw20 specs in terms of interface.
+    // Burn, BurnFrom, Mint, UpdateMinter, and MarketingInfo are not supported.
     fn from(msg: cw20_base::msg::ExecuteMsg) -> Self {
         match msg {
             cw20_base::msg::ExecuteMsg::Transfer { recipient, amount } => {
                 ExecuteMsg::Transfer { recipient, amount }
             }
-            cw20_base::msg::ExecuteMsg::Burn { amount } => ExecuteMsg::Burn { amount },
             cw20_base::msg::ExecuteMsg::Send {
                 contract,
                 amount,
@@ -164,25 +136,7 @@ impl From<cw20_base::msg::ExecuteMsg> for ExecuteMsg {
                 amount,
                 msg,
             },
-            cw20_base::msg::ExecuteMsg::BurnFrom { owner, amount } => {
-                ExecuteMsg::BurnFrom { owner, amount }
-            }
-            cw20_base::msg::ExecuteMsg::Mint { recipient, amount } => {
-                ExecuteMsg::Mint { recipient, amount }
-            }
-            cw20_base::msg::ExecuteMsg::UpdateMinter { new_minter } => {
-                ExecuteMsg::UpdateMinter { new_minter }
-            }
-            cw20_base::msg::ExecuteMsg::UpdateMarketing {
-                project,
-                description,
-                marketing,
-            } => ExecuteMsg::UpdateMarketing {
-                project,
-                description,
-                marketing,
-            },
-            cw20_base::msg::ExecuteMsg::UploadLogo(logo) => ExecuteMsg::UploadLogo(logo),
+            _ => panic!("Not supported"),
         }
     }
 }
@@ -227,19 +181,7 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    /// Only with "marketing" extension
-    /// Returns more metadata on the contract to display in the client:
-    /// - description, logo, project url, etc.
-    #[returns(cw20::MarketingInfoResponse)]
-    MarketingInfo {},
-    /// Only with "marketing" extension
-    /// Downloads the embedded logo data (if stored on chain). Errors if no logo data is stored for this
-    /// contract.
-    #[returns(cw20::DownloadLogoResponse)]
-    DownloadLogo {},
 
-    //--------- EXTENDED QUERY MSG--------------------------------------------------
-    //
     /// QueryMsg Shares: get the shares of a staker.
     /// Shares in this tokenized vault are CW20 receipt tokens.
     /// The interface is kept the same as the original vault.
@@ -306,9 +248,6 @@ impl From<QueryMsg> for cw20_base::msg::QueryMsg {
             QueryMsg::AllAccounts { start_after, limit } => {
                 cw20_base::msg::QueryMsg::AllAccounts { start_after, limit }
             }
-            QueryMsg::MarketingInfo {} => cw20_base::msg::QueryMsg::MarketingInfo {},
-            QueryMsg::DownloadLogo {} => cw20_base::msg::QueryMsg::DownloadLogo {},
-
             _ => panic!("This QueryMsg cannot be converted into cw20_base::msg::QueryMsg"),
         }
     }
@@ -344,8 +283,7 @@ impl From<cw20_base::msg::QueryMsg> for QueryMsg {
             cw20_base::msg::QueryMsg::AllAccounts { start_after, limit } => {
                 QueryMsg::AllAccounts { start_after, limit }
             }
-            cw20_base::msg::QueryMsg::MarketingInfo {} => QueryMsg::MarketingInfo {},
-            cw20_base::msg::QueryMsg::DownloadLogo {} => QueryMsg::DownloadLogo {},
+            _ => panic!("This cw20_base::msg::QueryMsg cannot be converted into QueryMsg"),
         }
     }
 }
@@ -368,12 +306,7 @@ pub struct InstantiateMsg {
     ///
     /// Therefore, we do not support non-standard CW20 tokens.
     /// Vault deployed with such tokens will be blacklisted in the vault-router.
-    pub staking_cw20_contract: String,
-
-    /// The vault itself is a CW20 token, which will serve as receipt cw20 token.
-    /// With extended functionality to be a vault.
-    /// This field is the cw20 compliant `InstantiateMsg` for the receipt cw20 token.
-    pub receipt_cw20_instantiate_base: cw20_base::msg::InstantiateMsg,
+    pub cw20_contract: String,
 }
 
 #[cw_serde]
