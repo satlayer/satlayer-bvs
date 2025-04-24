@@ -45,10 +45,10 @@ type DisableSlashing struct {
 }
 
 type EnableSlashing struct {
-	Registry RegistryClass `json:"registry"`
+	SlashingParameters EnableSlashingSlashingParameters `json:"slashing_parameters"`
 }
 
-type RegistryClass struct {
+type EnableSlashingSlashingParameters struct {
 	// The address to which the slashed funds will be sent after the slashing is finalized.
 	// None, indicates that the slashed funds will be burned.
 	Destination *string `json:"destination"`
@@ -57,8 +57,9 @@ type RegistryClass struct {
 	// and 10_000 (inclusive).
 	MaxSlashingPercentage int64 `json:"max_slashing_percentage"`
 	// The minimum amount of time (in seconds) that the slashing can be delayed before it is
-	// executed and finalized. It is recommended to set this value to a maximum of withdrawal
-	// delay or less.
+	// executed and finalized. Setting this value to a duration less than the queued withdrawal
+	// delay is recommended. To prevent restaker's early withdrawal of their assets from the
+	// vault due to the impending slash, defeating the purpose of shared security.
 	ResolutionWindow int64 `json:"resolution_window"`
 }
 
@@ -98,7 +99,7 @@ type QueryMsg struct {
 	IsService                   *string                      `json:"is_service,omitempty"`
 	IsOperator                  *string                      `json:"is_operator,omitempty"`
 	IsOperatorActive            *string                      `json:"is_operator_active,omitempty"`
-	SlashingRegistry            *SlashingRegistryClass       `json:"slashing_registry,omitempty"`
+	SlashingParameters          *QueryMsgSlashingParameters  `json:"slashing_parameters,omitempty"`
 	IsOperatorOptedInToSlashing *IsOperatorOptedInToSlashing `json:"is_operator_opted_in_to_slashing,omitempty"`
 }
 
@@ -108,7 +109,7 @@ type IsOperatorOptedInToSlashing struct {
 	Service  string `json:"service"`
 }
 
-type SlashingRegistryClass struct {
+type QueryMsgSlashingParameters struct {
 	Height  *int64 `json:"height"`
 	Service string `json:"service"`
 }
@@ -119,7 +120,7 @@ type Status struct {
 	Service  string `json:"service"`
 }
 
-type SlashingRegistry struct {
+type SlashingParameters struct {
 	// The address to which the slashed funds will be sent after the slashing is finalized.
 	// None, indicates that the slashed funds will be burned.
 	Destination *string `json:"destination"`
@@ -128,7 +129,8 @@ type SlashingRegistry struct {
 	// and 10_000 (inclusive).
 	MaxSlashingPercentage int64 `json:"max_slashing_percentage"`
 	// The minimum amount of time (in seconds) that the slashing can be delayed before it is
-	// executed and finalized. It is recommended to set this value to a maximum of withdrawal
-	// delay or less.
+	// executed and finalized. Setting this value to a duration less than the queued withdrawal
+	// delay is recommended. To prevent restaker's early withdrawal of their assets from the
+	// vault due to the impending slash, defeating the purpose of shared security.
 	ResolutionWindow int64 `json:"resolution_window"`
 }

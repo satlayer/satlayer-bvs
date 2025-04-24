@@ -1,4 +1,4 @@
-use crate::state::{RegistrationStatus, SlashingRegistry};
+use crate::state::{RegistrationStatus, SlashingParameters};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
 #[cw_serde]
@@ -31,7 +31,7 @@ pub enum ExecuteMsg {
         service: String,
     },
     EnableSlashing {
-        registry: SlashingRegistry,
+        slashing_parameters: SlashingParameters,
     },
     DisableSlashing {},
     OperatorOptInToSlashing {
@@ -69,8 +69,8 @@ pub enum QueryMsg {
     #[returns(IsOperatorActiveResponse)]
     IsOperatorActive(String),
 
-    #[returns(SlashingRegistryResponse)]
-    SlashingRegistry {
+    #[returns(SlashingParametersResponse)]
+    SlashingParameters {
         service: String,
         height: Option<u64>,
     },
@@ -102,7 +102,7 @@ pub struct IsOperatorResponse(pub bool);
 pub struct IsOperatorActiveResponse(pub bool);
 
 #[cw_serde]
-pub struct SlashingRegistryResponse(pub Option<SlashingRegistry>);
+pub struct SlashingParametersResponse(pub Option<SlashingParameters>);
 
 #[cw_serde]
 pub struct IsOperatorOptedInToSlashingResponse(pub bool);

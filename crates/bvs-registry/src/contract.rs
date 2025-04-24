@@ -69,9 +69,9 @@ pub fn execute(
             let service = deps.api.addr_validate(&service)?;
             execute::deregister_service_from_operator(deps, info, env, service)
         }
-        ExecuteMsg::EnableSlashing { registry } => {
-            execute::enable_slashing(deps, env, info, registry)
-        }
+        ExecuteMsg::EnableSlashing {
+            slashing_parameters,
+        } => execute::enable_slashing(deps, env, info, slashing_parameters),
         ExecuteMsg::DisableSlashing {} => execute::disable_slashing(deps, env, info),
         ExecuteMsg::OperatorOptInToSlashing { service } => {
             let service = deps.api.addr_validate(&service)?;
@@ -92,7 +92,7 @@ mod execute {
     use crate::state::{
         get_registration_status, is_slashing_enabled, require_active_registration_status,
         require_operator_registered, require_service_registered, set_registration_status,
-        RegistrationStatus, SlashingRegistry, OPERATORS, SERVICES,
+        RegistrationStatus, SlashingParameters, OPERATORS, SERVICES,
     };
     use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Response};
 
@@ -373,20 +373,20 @@ mod execute {
         }
     }
 
-    /// Enable slashing for a service by registering slashing condition into the registry.
+    /// Enable slashing for a service by registering slashing parameters into the registry.
     ///
     /// When slashing is enabled, active operators are able to opt in the next block.
     /// New Operator <-> Service registration will automatically opt in the operator to slashing.
-    /// To update the slashing condition, the service must call this function again.
-    /// When the slashing condition is updated,
+    /// To update the slashing parameters, the service must call this function again.
+    /// When the slashing parameters are updated,
     /// all active operators
-    /// that are already registered to the service will have their opt-in status reset for the new slashing condition
+    /// that are already registered to the service will have their opt-in status reset for the new slashing parameters
     /// and have to manually opt in again.
     pub fn enable_slashing(
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        registry: SlashingRegistry,
+        slashing_parameters: SlashingParameters,
     ) -> Result<Response, ContractError> {
         // service is the sender
         let service = info.sender;
@@ -395,34 +395,37 @@ mod execute {
         require_service_registered(deps.storage, &service)?;
 
         // clear opt-in mapping
-        state::reset_slashing_registry_opt_in(deps.storage, &env, &service)?;
+        state::reset_slashing_opt_in(deps.storage, &env, &service)?;
 
-        // update slashing registry
-        state::enable_slashing(deps.storage, deps.api, &env, &service, &registry)?;
+        // update slashing parameters
+        state::enable_slashing(deps.storage, deps.api, &env, &service, &slashing_parameters)?;
 
         Ok(Response::new().add_event(
-            Event::new("SlashingRegistryEnabled")
+            Event::new("SlashingParametersEnabled")
                 .add_attribute("service", service)
                 .add_attribute(
                     "destination",
-                    registry
+                    slashing_parameters
                         .destination
                         .map(|x| x.to_string())
                         .unwrap_or_default(),
                 )
                 .add_attribute(
                     "max_slashing_percentage",
-                    registry.max_slashing_percentage.to_string(),
+                    slashing_parameters.max_slashing_percentage.to_string(),
                 )
-                .add_attribute("resolution_window", registry.resolution_window.to_string()),
+                .add_attribute(
+                    "resolution_window",
+                    slashing_parameters.resolution_window.to_string(),
+                ),
         ))
     }
 
-    /// Disable slashing for a service by removing slashing condition from the registry.
+    /// Disable slashing for a service by removing slashing parameters from the registry.
     ///
     /// When slashing is disabled,
     /// all operators
-    /// that are opted in to the slashing condition will be removed from the slashing registry.
+    /// that are opted in to the slashing parameters will be removed from the slashing opt in.
     /// All active operators will remain actively registered to the service.
     pub fn disable_slashing(
         deps: DepsMut,
@@ -436,16 +439,16 @@ mod execute {
         require_service_registered(deps.storage, &service)?;
 
         // clear opt-in mapping
-        state::reset_slashing_registry_opt_in(deps.storage, &env, &service)?;
+        state::reset_slashing_opt_in(deps.storage, &env, &service)?;
 
-        // remove slashing registry
+        // remove slashing parameters
         state::disable_slashing(deps.storage, &env, &service)?;
 
         Ok(Response::new()
-            .add_event(Event::new("SlashingRegistryDisabled").add_attribute("service", service)))
+            .add_event(Event::new("SlashingParametersDisabled").add_attribute("service", service)))
     }
 
-    /// Operator opts in to the service's current slashing condition.
+    /// Operator opts in to the service's current slashing parameters.
     ///
     /// When slashing is enabled, active operators can opt in to slashing.  
     /// Newly registered operators, after slashing is enabled, will automatically opt in to slashing
@@ -505,9 +508,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let operator = deps.api.addr_validate(&operator)?;
             to_json_binary(&query::is_operator_active(deps, operator)?)
         }
-        QueryMsg::SlashingRegistry { service, height } => {
+        QueryMsg::SlashingParameters { service, height } => {
             let service = deps.api.addr_validate(&service)?;
-            to_json_binary(&query::get_slashing_registry(deps, service, height)?)
+            to_json_binary(&query::get_slashing_parameters(deps, service, height)?)
         }
         QueryMsg::IsOperatorOptedInToSlashing {
             service,
@@ -526,11 +529,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 mod query {
     use crate::msg::{
         IsOperatorActiveResponse, IsOperatorOptedInToSlashingResponse, IsOperatorResponse,
-        IsServiceResponse, SlashingRegistryResponse, StatusResponse,
+        IsServiceResponse, SlashingParametersResponse, StatusResponse,
     };
     use crate::state;
     use crate::state::{
-        require_operator_registered, require_service_registered, SLASHING_REGISTRY,
+        require_operator_registered, require_service_registered, SLASHING_PARAMETERS,
     };
     use cosmwasm_std::{Addr, Deps, StdResult};
 
@@ -577,16 +580,18 @@ mod query {
     }
 
     /// Query the slashing registry for a service
-    pub fn get_slashing_registry(
+    pub fn get_slashing_parameters(
         deps: Deps,
         service: Addr,
         height: Option<u64>,
-    ) -> StdResult<SlashingRegistryResponse> {
-        let slashing_registry = match height {
-            Some(height) => SLASHING_REGISTRY.may_load_at_height(deps.storage, &service, height)?,
-            None => SLASHING_REGISTRY.may_load(deps.storage, &service)?,
+    ) -> StdResult<SlashingParametersResponse> {
+        let slashing_parameters = match height {
+            Some(height) => {
+                SLASHING_PARAMETERS.may_load_at_height(deps.storage, &service, height)?
+            }
+            None => SLASHING_PARAMETERS.may_load(deps.storage, &service)?,
         };
-        Ok(SlashingRegistryResponse(slashing_registry))
+        Ok(SlashingParametersResponse(slashing_parameters))
     }
 
     /// Query if the operator is opted in to slashing
@@ -632,13 +637,14 @@ mod tests {
     use crate::contract::query::status;
     use crate::msg::{
         InstantiateMsg, IsOperatorActiveResponse, IsOperatorOptedInToSlashingResponse,
-        IsOperatorResponse, IsServiceResponse, Metadata, SlashingRegistryResponse, StatusResponse,
+        IsOperatorResponse, IsServiceResponse, Metadata, SlashingParametersResponse,
+        StatusResponse,
     };
     use crate::state;
     use crate::state::{
         increase_operator_active_registration_count, set_registration_status, RegistrationStatus,
-        SlashingRegistry, OPERATORS, REGISTRATION_STATUS, SERVICES, SLASHING_REGISTRY,
-        SLASHING_REGISTRY_OPT_IN,
+        SlashingParameters, OPERATORS, REGISTRATION_STATUS, SERVICES, SLASHING_OPT_IN,
+        SLASHING_PARAMETERS,
     };
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
@@ -1311,20 +1317,20 @@ mod tests {
             deps.as_mut(),
             env,
             service_info.clone(),
-            SlashingRegistry {
+            SlashingParameters {
                 destination: Some(destination.clone()),
                 max_slashing_percentage: 10,
                 resolution_window: 1000,
             },
         );
 
-        // assert SLASHING_REGISTRY state is updated
-        let slashing_registry = SLASHING_REGISTRY
+        // assert SLASHING_PARAMETERS state is updated
+        let slashing_parameters = SLASHING_PARAMETERS
             .load(&deps.storage, &service)
-            .expect("failed to load slashing registry");
+            .expect("failed to load slashing parameters");
         assert_eq!(
-            slashing_registry,
-            SlashingRegistry {
+            slashing_parameters,
+            SlashingParameters {
                 destination: Some(destination.clone()),
                 max_slashing_percentage: 10,
                 resolution_window: 1000,
@@ -1334,7 +1340,7 @@ mod tests {
         assert_eq!(
             res,
             Ok(Response::new().add_event(
-                Event::new("SlashingRegistryEnabled")
+                Event::new("SlashingParametersEnabled")
                     .add_attribute("service", service.as_ref())
                     .add_attribute("destination", destination.to_string())
                     .add_attribute("max_slashing_percentage", "10")
@@ -1368,7 +1374,7 @@ mod tests {
             deps.as_mut(),
             env.clone(),
             service_info.clone(),
-            SlashingRegistry {
+            SlashingParameters {
                 destination: Some(destination.clone()),
                 max_slashing_percentage: 1000,
                 resolution_window: 1000,
@@ -1379,14 +1385,14 @@ mod tests {
         // operators opt-in to slashing
         for i in 0..3 {
             let operator = deps.api.addr_make(format!("operator{}", i).as_str());
-            SLASHING_REGISTRY_OPT_IN
+            SLASHING_OPT_IN
                 .save(
                     &mut deps.storage,
                     (&service, &operator),
                     &true,
                     env.block.height,
                 )
-                .expect("failed to save slashing registry opt-in");
+                .expect("failed to save slashing opt-in");
         }
 
         // re-enable slashing
@@ -1394,7 +1400,7 @@ mod tests {
             deps.as_mut(),
             env.clone(),
             service_info.clone(),
-            SlashingRegistry {
+            SlashingParameters {
                 destination: Some(destination.clone()),
                 max_slashing_percentage: 9999,
                 resolution_window: 2000,
@@ -1402,13 +1408,13 @@ mod tests {
         )
         .unwrap();
 
-        // assert that SLASHING_REGISTRY state is updated
-        let slashing_registry = SLASHING_REGISTRY
+        // assert that SLASHING_PARAMETERS state is updated
+        let slashing_parameters = SLASHING_PARAMETERS
             .load(&deps.storage, &service)
-            .expect("failed to load slashing registry");
+            .expect("failed to load slashing parameters");
         assert_eq!(
-            slashing_registry,
-            SlashingRegistry {
+            slashing_parameters,
+            SlashingParameters {
                 destination: Some(destination.clone()),
                 max_slashing_percentage: 9999,
                 resolution_window: 2000,
@@ -1418,7 +1424,7 @@ mod tests {
         // assert that the opt-in mapping is cleared
         for i in 0..3 {
             let operator = deps.api.addr_make(format!("operator{}", i).as_str());
-            let opt_in = SLASHING_REGISTRY_OPT_IN
+            let opt_in = SLASHING_OPT_IN
                 .may_load(&deps.storage, (&service, &operator))
                 .unwrap();
             assert!(opt_in.is_none());
@@ -1439,7 +1445,7 @@ mod tests {
             deps.as_mut(),
             env,
             service_info.clone(),
-            SlashingRegistry {
+            SlashingParameters {
                 destination: Some(destination.clone()),
                 max_slashing_percentage: 10,
                 resolution_window: 1000,
@@ -1526,7 +1532,7 @@ mod tests {
             deps.as_mut(),
             env.clone(),
             message_info(&service, &[]),
-            SlashingRegistry {
+            SlashingParameters {
                 destination: Some(operator.clone()),
                 max_slashing_percentage: 1000,
                 resolution_window: 1000,
@@ -1556,13 +1562,13 @@ mod tests {
         );
 
         // assert state is updated for operator opting in to service slashing
-        let opted_in = SLASHING_REGISTRY_OPT_IN
+        let opted_in = SLASHING_OPT_IN
             .may_load(&deps.storage, (&service, &operator))
             .unwrap();
         assert_eq!(opted_in, Some(true));
 
         // assert state is not updated for operator2
-        let opted_in = SLASHING_REGISTRY_OPT_IN
+        let opted_in = SLASHING_OPT_IN
             .may_load(&deps.storage, (&service, &operator2))
             .unwrap();
         assert_eq!(opted_in, None);
@@ -1590,7 +1596,7 @@ mod tests {
             deps.as_mut(),
             env.clone(),
             message_info(&service, &[]),
-            SlashingRegistry {
+            SlashingParameters {
                 destination: Some(operator.clone()),
                 max_slashing_percentage: 5000,
                 resolution_window: 1000,
@@ -1599,7 +1605,7 @@ mod tests {
         .expect("enable slashing failed");
 
         // assert that the opt-in mapping is cleared
-        let opted_in = SLASHING_REGISTRY_OPT_IN
+        let opted_in = SLASHING_OPT_IN
             .may_load(&deps.storage, (&service, &operator))
             .unwrap();
         assert_eq!(opted_in, None);
@@ -1612,7 +1618,7 @@ mod tests {
             service.clone(),
         )
         .expect("operator2 opt-in to slashing failed");
-        let opted_in = SLASHING_REGISTRY_OPT_IN
+        let opted_in = SLASHING_OPT_IN
             .may_load(&deps.storage, (&service, &operator2))
             .unwrap();
         assert_eq!(opted_in, Some(true));
@@ -1848,7 +1854,7 @@ mod tests {
     }
 
     #[test]
-    fn query_slashing_registry() {
+    fn query_slashing_parameters() {
         let mut deps = mock_dependencies();
         let mut env = mock_env();
 
@@ -1872,7 +1878,7 @@ mod tests {
             deps.as_mut(),
             env.clone(),
             service_info.clone(),
-            SlashingRegistry {
+            SlashingParameters {
                 destination: Some(destination.clone()),
                 max_slashing_percentage: 1000,
                 resolution_window: 1000,
@@ -1880,12 +1886,12 @@ mod tests {
         )
         .expect("enable slashing failed");
 
-        // query slashing registry
-        let SlashingRegistryResponse(slashing_registry) =
-            query::get_slashing_registry(deps.as_ref(), service.clone(), None).unwrap();
+        // query slashing parameters
+        let SlashingParametersResponse(slashing_parameters) =
+            query::get_slashing_parameters(deps.as_ref(), service.clone(), None).unwrap();
         assert_eq!(
-            slashing_registry,
-            Some(SlashingRegistry {
+            slashing_parameters,
+            Some(SlashingParameters {
                 destination: Some(destination.clone()),
                 max_slashing_percentage: 1000,
                 resolution_window: 1000,
@@ -1895,12 +1901,12 @@ mod tests {
         // move blockchain
         env.block.height += 1;
 
-        // update slashing condition
+        // update slashing parameters
         execute::enable_slashing(
             deps.as_mut(),
             env.clone(),
             service_info.clone(),
-            SlashingRegistry {
+            SlashingParameters {
                 destination: None,
                 max_slashing_percentage: 5000,
                 resolution_window: 999,
@@ -1911,28 +1917,28 @@ mod tests {
         // move blockchain
         env.block.height += 1;
 
-        // query updated slashing registry
-        let SlashingRegistryResponse(slashing_registry) =
-            query::get_slashing_registry(deps.as_ref(), service.clone(), None).unwrap();
+        // query updated slashing parameters
+        let SlashingParametersResponse(slashing_parameters) =
+            query::get_slashing_parameters(deps.as_ref(), service.clone(), None).unwrap();
         assert_eq!(
-            slashing_registry,
-            Some(SlashingRegistry {
+            slashing_parameters,
+            Some(SlashingParameters {
                 destination: None,
                 max_slashing_percentage: 5000,
                 resolution_window: 999,
             })
         );
 
-        // query previous slashing registry
-        let SlashingRegistryResponse(slashing_registry) = query::get_slashing_registry(
+        // query previous slashing parameters
+        let SlashingParametersResponse(slashing_parameters) = query::get_slashing_parameters(
             deps.as_ref(),
             service.clone(),
             Some(env.block.height - 1),
         )
         .unwrap();
         assert_eq!(
-            slashing_registry,
-            Some(SlashingRegistry {
+            slashing_parameters,
+            Some(SlashingParameters {
                 destination: Some(destination.clone()),
                 max_slashing_percentage: 1000,
                 resolution_window: 1000,
@@ -1946,21 +1952,21 @@ mod tests {
         execute::disable_slashing(deps.as_mut(), env.clone(), service_info.clone())
             .expect("disable slashing failed");
 
-        // query slashing registry
-        let SlashingRegistryResponse(slashing_registry) =
-            query::get_slashing_registry(deps.as_ref(), service.clone(), None).unwrap();
-        assert_eq!(slashing_registry, None);
+        // query slashing parameters
+        let SlashingParametersResponse(slashing_parameters) =
+            query::get_slashing_parameters(deps.as_ref(), service.clone(), None).unwrap();
+        assert_eq!(slashing_parameters, None);
 
-        // query previous slashing registry
-        let SlashingRegistryResponse(slashing_registry) = query::get_slashing_registry(
+        // query previous slashing parameters
+        let SlashingParametersResponse(slashing_parameters) = query::get_slashing_parameters(
             deps.as_ref(),
             service.clone(),
             Some(env.block.height - 1),
         )
         .unwrap();
         assert_eq!(
-            slashing_registry,
-            Some(SlashingRegistry {
+            slashing_parameters,
+            Some(SlashingParameters {
                 destination: None,
                 max_slashing_percentage: 5000,
                 resolution_window: 999,

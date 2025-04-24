@@ -24,8 +24,8 @@ pub enum ContractError {
     #[error("Invalid registration status: {msg}")]
     InvalidRegistrationStatus { msg: String },
 
-    #[error("Invalid slashing registry: {msg}")]
-    InvalidSlashingRegistry { msg: String },
+    #[error("Invalid slashing parameters: {msg}")]
+    InvalidSlashingParameters { msg: String },
 
     #[error("Invalid slashing opt-in: {msg}")]
     InvalidSlashingOptIn { msg: String },

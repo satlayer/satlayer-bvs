@@ -42,10 +42,10 @@ export interface DeregisterServiceFromOperator {
 export interface DisableSlashing {}
 
 export interface EnableSlashing {
-  registry: SlashingRegistry;
+  slashing_parameters: SlashingParameters;
 }
 
-export interface SlashingRegistry {
+export interface SlashingParameters {
   /**
    * The address to which the slashed funds will be sent after the slashing is finalized.
    * None, indicates that the slashed funds will be burned.
@@ -59,8 +59,9 @@ export interface SlashingRegistry {
   max_slashing_percentage: number;
   /**
    * The minimum amount of time (in seconds) that the slashing can be delayed before it is
-   * executed and finalized. It is recommended to set this value to a maximum of withdrawal
-   * delay or less.
+   * executed and finalized. Setting this value to a duration less than the queued withdrawal
+   * delay is recommended. To prevent restaker's early withdrawal of their assets from the
+   * vault due to the impending slash, defeating the purpose of shared security.
    */
   resolution_window: number;
 }
@@ -105,7 +106,7 @@ export interface QueryMsg {
   is_service?: string;
   is_operator?: string;
   is_operator_active?: string;
-  slashing_registry?: SlashingRegistryClass;
+  slashing_parameters?: QueryMsgSlashingParameters;
   is_operator_opted_in_to_slashing?: IsOperatorOptedInToSlashing;
 }
 
@@ -115,7 +116,7 @@ export interface IsOperatorOptedInToSlashing {
   service: string;
 }
 
-export interface SlashingRegistryClass {
+export interface QueryMsgSlashingParameters {
   height?: number | null;
   service: string;
 }
@@ -126,7 +127,7 @@ export interface Status {
   service: string;
 }
 
-export interface SlashingRegistryResponse {
+export interface SlashingParametersResponse {
   /**
    * The address to which the slashed funds will be sent after the slashing is finalized.
    * None, indicates that the slashed funds will be burned.
@@ -140,8 +141,9 @@ export interface SlashingRegistryResponse {
   max_slashing_percentage: number;
   /**
    * The minimum amount of time (in seconds) that the slashing can be delayed before it is
-   * executed and finalized. It is recommended to set this value to a maximum of withdrawal
-   * delay or less.
+   * executed and finalized. Setting this value to a duration less than the queued withdrawal
+   * delay is recommended. To prevent restaker's early withdrawal of their assets from the
+   * vault due to the impending slash, defeating the purpose of shared security.
    */
   resolution_window: number;
 }
