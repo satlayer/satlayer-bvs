@@ -373,14 +373,14 @@ mod execute {
         }
     }
 
-    /// Enable slashing for a service (info.sender is the service)
+    /// Enable slashing for a service by registering slashing condition into the registry.
     ///
-    /// When slashing is enabled, Active operators are able to opt in the next block.  
-    /// New Operator <-> Service registration will also automatically opt-in the operator to slashing.  
-    /// To update the slashing conditions, the service must call this function again.  
-    /// When slashing condition is updated,
+    /// When slashing is enabled, active operators are able to opt in the next block.
+    /// New Operator <-> Service registration will automatically opt in the operator to slashing.
+    /// To update the slashing condition, the service must call this function again.
+    /// When the slashing condition is updated,
     /// all active operators
-    /// that are already registered to the service will have their opt-in status reset for the new slashing conditions
+    /// that are already registered to the service will have their opt-in status reset for the new slashing condition
     /// and have to manually opt in again.
     pub fn enable_slashing(
         deps: DepsMut,
@@ -418,11 +418,11 @@ mod execute {
         ))
     }
 
-    /// Disable slashing for a service (info.sender is the service)
+    /// Disable slashing for a service by removing slashing condition from the registry.
     ///
     /// When slashing is disabled,
     /// all operators
-    /// that are opted in to slashing will be removed from the slashing registry.  
+    /// that are opted in to the slashing condition will be removed from the slashing registry.
     /// All active operators will remain actively registered to the service.
     pub fn disable_slashing(
         deps: DepsMut,
@@ -445,11 +445,11 @@ mod execute {
             .add_event(Event::new("SlashingRegistryDisabled").add_attribute("service", service)))
     }
 
-    /// Operator opts in to the service's current slashing condition (info.sender is the operator)
+    /// Operator opts in to the service's current slashing condition.
     ///
     /// When slashing is enabled, active operators can opt in to slashing.  
     /// Newly registered operators, after slashing is enabled, will automatically opt in to slashing
-    /// and need to not call this function.
+    /// and don't need to call this function.
     pub fn operator_opt_in_to_slashing(
         deps: DepsMut,
         env: Env,

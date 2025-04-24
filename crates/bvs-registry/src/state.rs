@@ -114,7 +114,7 @@ pub fn get_registration_status_at_height(
     status.try_into()
 }
 
-/// Set the registration status of the Operator to Service at a current block height
+/// Set the registration status of the Operator to Service at current block height
 ///
 /// #### Warning
 /// This function will only save the state at the end of the block.
