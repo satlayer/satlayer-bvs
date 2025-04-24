@@ -16,16 +16,6 @@ type TotalAssetsResponse string
 type TotalSharesResponse string
 
 type InstantiateMsg struct {
-	// The address of the `operator`. Each vault is delegated to an `operator`.
-	Operator string `json:"operator"`
-	// The address of the `pauser` contract.
-	Pauser string `json:"pauser"`
-	// The vault itself is a CW20 token, which will serve as receipt cw20 token. With extended
-	// functionality to be a vault. This field is the cw20 compliant `InstantiateMsg` for the
-	// receipt cw20 token.
-	ReceiptCw20InstantiateBase ReceiptCw20InstantiateBaseClass `json:"receipt_cw20_instantiate_base"`
-	// The address of the `router` contract.
-	Router string `json:"router"`
 	// The address of the CW20 contract, underlying asset of the vault.
 	//
 	// ### CW20 Variant Warning
@@ -36,65 +26,16 @@ type InstantiateMsg struct {
 	//
 	// Therefore, we do not support non-standard CW20 tokens. Vault deployed with such tokens
 	// will be blacklisted in the vault-router.
-	StakingCw20Contract string `json:"staking_cw20_contract"`
-}
-
-// The vault itself is a CW20 token, which will serve as receipt cw20 token. With extended
-// functionality to be a vault. This field is the cw20 compliant `InstantiateMsg` for the
-// receipt cw20 token.
-type ReceiptCw20InstantiateBaseClass struct {
-	Decimals        int64                     `json:"decimals"`
-	InitialBalances []Cw20Coin                `json:"initial_balances"`
-	Marketing       *InstantiateMarketingInfo `json:"marketing"`
-	Mint            *MinterResponseClass      `json:"mint"`
-	Name            string                    `json:"name"`
-	Symbol          string                    `json:"symbol"`
-}
-
-type Cw20Coin struct {
-	Address string `json:"address"`
-	Amount  string `json:"amount"`
-}
-
-type InstantiateMarketingInfo struct {
-	Description *string    `json:"description"`
-	Logo        *LogoClass `json:"logo"`
-	Marketing   *string    `json:"marketing"`
-	Project     *string    `json:"project"`
-}
-
-// A reference to an externally hosted logo. Must be a valid HTTP or HTTPS URL.
-//
-// Logo content stored on the blockchain. Enforce maximum size of 5KB on all variants
-type LogoClass struct {
-	URL      *string           `json:"url,omitempty"`
-	Embedded *LogoEmbeddedLogo `json:"embedded,omitempty"`
-}
-
-// This is used to store the logo on the blockchain in an accepted format. Enforce maximum
-// size of 5KB on all variants.
-//
-// Store the Logo as an SVG file. The content must conform to the spec at
-// https://en.wikipedia.org/wiki/Scalable_Vector_Graphics (The contract should do some
-// light-weight sanity-check validation)
-//
-// Store the Logo as a PNG file. This will likely only support up to 64x64 or so within the
-// 5KB limit.
-type LogoEmbeddedLogo struct {
-	SVG *string `json:"svg,omitempty"`
-	PNG *string `json:"png,omitempty"`
-}
-
-type MinterResponseClass struct {
-	// cap is a hard cap on total supply that can be achieved by minting. Note that this refers
-	// to total_supply. If None, there is unlimited cap.
-	Cap    *string `json:"cap"`
-	Minter string  `json:"minter"`
+	Cw20Contract string `json:"cw20_contract"`
+	// The address of the `operator`. Each vault is delegated to an `operator`.
+	Operator string `json:"operator"`
+	// The address of the `pauser` contract.
+	Pauser string `json:"pauser"`
+	// The address of the `router` contract.
+	Router string `json:"router"`
 }
 
 // Transfer is a base message to move tokens to another account without triggering actions
-//
-// # Burn is a base message to destroy tokens forever
 //
 // Send is a base message to transfer tokens to a contract and trigger an action on the
 // receiving contract.
@@ -112,21 +53,6 @@ type MinterResponseClass struct {
 //
 // Only with "approval" extension. Sends amount tokens from owner -> contract if
 // `env.sender` has sufficient pre-approval.
-//
-// Only with "approval" extension. Destroys tokens forever
-//
-// Only with the "mintable" extension. If authorized, creates amount new tokens and adds to
-// the recipient balance.
-//
-// Only with the "mintable" extension. The current minter may set a new minter. Setting the
-// minter to None will remove the token's minter forever.
-//
-// Only with the "marketing" extension. If authorized, updates marketing metadata. Setting
-// None/null for any of these will leave it unchanged. Setting Some("") will clear this
-// field on the contract storage
-//
-// If set as the "marketing" role on the contract, upload a new URL, SVG, or PNG for the
-// token
 //
 // ExecuteMsg Deposit assets into the vault. Sender must transfer the assets to the vault
 // contract (this is implementation agnostic). The vault contract must mint shares to the
@@ -152,30 +78,15 @@ type MinterResponseClass struct {
 // can redeem the withdrawal.
 type ExecuteMsg struct {
 	Transfer           *Transfer          `json:"transfer,omitempty"`
-	Burn               *Burn              `json:"burn,omitempty"`
 	Send               *Send              `json:"send,omitempty"`
 	IncreaseAllowance  *IncreaseAllowance `json:"increase_allowance,omitempty"`
 	DecreaseAllowance  *DecreaseAllowance `json:"decrease_allowance,omitempty"`
 	TransferFrom       *TransferFrom      `json:"transfer_from,omitempty"`
 	SendFrom           *SendFrom          `json:"send_from,omitempty"`
-	BurnFrom           *BurnFrom          `json:"burn_from,omitempty"`
-	Mint               *Mint              `json:"mint,omitempty"`
-	UpdateMinter       *UpdateMinter      `json:"update_minter,omitempty"`
-	UpdateMarketing    *UpdateMarketing   `json:"update_marketing,omitempty"`
-	UploadLogo         *Logo              `json:"upload_logo,omitempty"`
 	DepositFor         *RecipientAmount   `json:"deposit_for,omitempty"`
 	WithdrawTo         *RecipientAmount   `json:"withdraw_to,omitempty"`
 	QueueWithdrawalTo  *RecipientAmount   `json:"queue_withdrawal_to,omitempty"`
 	RedeemWithdrawalTo *string            `json:"redeem_withdrawal_to,omitempty"`
-}
-
-type Burn struct {
-	Amount string `json:"amount"`
-}
-
-type BurnFrom struct {
-	Amount string `json:"amount"`
-	Owner  string `json:"owner"`
 }
 
 type DecreaseAllowance struct {
@@ -210,11 +121,6 @@ type IncreaseAllowance struct {
 	Spender string      `json:"spender"`
 }
 
-type Mint struct {
-	Amount    string `json:"amount"`
-	Recipient string `json:"recipient"`
-}
-
 type Send struct {
 	Amount   string `json:"amount"`
 	Contract string `json:"contract"`
@@ -239,43 +145,6 @@ type TransferFrom struct {
 	Recipient string `json:"recipient"`
 }
 
-type UpdateMarketing struct {
-	// A longer description of the token and it's utility. Designed for tooltips or such
-	Description *string `json:"description"`
-	// The address (if any) who can update this data structure
-	Marketing *string `json:"marketing"`
-	// A URL pointing to the project behind this token.
-	Project *string `json:"project"`
-}
-
-type UpdateMinter struct {
-	NewMinter *string `json:"new_minter"`
-}
-
-// This is used for uploading logo data, or setting it in InstantiateData
-//
-// A reference to an externally hosted logo. Must be a valid HTTP or HTTPS URL.
-//
-// Logo content stored on the blockchain. Enforce maximum size of 5KB on all variants
-type Logo struct {
-	URL      *string                `json:"url,omitempty"`
-	Embedded *LogoEmbeddedLogoClass `json:"embedded,omitempty"`
-}
-
-// This is used to store the logo on the blockchain in an accepted format. Enforce maximum
-// size of 5KB on all variants.
-//
-// Store the Logo as an SVG file. The content must conform to the spec at
-// https://en.wikipedia.org/wiki/Scalable_Vector_Graphics (The contract should do some
-// light-weight sanity-check validation)
-//
-// Store the Logo as a PNG file. This will likely only support up to 64x64 or so within the
-// 5KB limit.
-type LogoEmbeddedLogoClass struct {
-	SVG *string `json:"svg,omitempty"`
-	PNG *string `json:"png,omitempty"`
-}
-
 // Returns the current balance of the given address, 0 if unset.
 //
 // Returns metadata on the contract - name, decimals, supply, etc.
@@ -294,12 +163,6 @@ type LogoEmbeddedLogoClass struct {
 //
 // Only with "enumerable" extension Returns all accounts that have balances. Supports
 // pagination.
-//
-// Only with "marketing" extension Returns more metadata on the contract to display in the
-// client: - description, logo, project url, etc.
-//
-// Only with "marketing" extension Downloads the embedded logo data (if stored on chain).
-// Errors if no logo data is stored for this contract.
 //
 // QueryMsg Shares: get the shares of a staker. Shares in this tokenized vault are CW20
 // receipt tokens. The interface is kept the same as the original vault. to avoid breaking
@@ -326,8 +189,6 @@ type QueryMsg struct {
 	AllAllowances        *AllAllowances        `json:"all_allowances,omitempty"`
 	AllSpenderAllowances *AllSpenderAllowances `json:"all_spender_allowances,omitempty"`
 	AllAccounts          *AllAccounts          `json:"all_accounts,omitempty"`
-	MarketingInfo        *MarketingInfo        `json:"marketing_info,omitempty"`
-	DownloadLogo         *DownloadLogo         `json:"download_logo,omitempty"`
 	Shares               *Shares               `json:"shares,omitempty"`
 	Assets               *Assets               `json:"assets,omitempty"`
 	ConvertToAssets      *ConvertToAssets      `json:"convert_to_assets,omitempty"`
@@ -374,12 +235,6 @@ type ConvertToAssets struct {
 
 type ConvertToShares struct {
 	Assets string `json:"assets"`
-}
-
-type DownloadLogo struct {
-}
-
-type MarketingInfo struct {
 }
 
 type Minter struct {
@@ -492,29 +347,6 @@ type BalanceResponse struct {
 	Balance string `json:"balance"`
 }
 
-// When we download an embedded logo, we get this response type. We expect a SPA to be able
-// to accept this info and display it.
-type DownloadLogoResponse struct {
-	Data     string `json:"data"`
-	MIMEType string `json:"mime_type"`
-}
-
-type MarketingInfoResponse struct {
-	// A longer description of the token and it's utility. Designed for tooltips or such
-	Description *string `json:"description"`
-	// A link to the logo, or a comment there is an on-chain logo stored
-	Logo *LogoUnion `json:"logo"`
-	// The address (if any) who can update this data structure
-	Marketing *string `json:"marketing"`
-	// A URL pointing to the project behind this token.
-	Project *string `json:"project"`
-}
-
-// A reference to an externally hosted logo. Must be a valid HTTP or HTTPS URL.
-type LogoLogoClass struct {
-	URL string `json:"url"`
-}
-
 type MinterResponse struct {
 	// cap is a hard cap on total supply that can be achieved by minting. Note that this refers
 	// to total_supply. If None, there is unlimited cap.
@@ -522,7 +354,7 @@ type MinterResponse struct {
 	Minter string  `json:"minter"`
 }
 
-// The response to the `QueuedWithdrawal` query. Not exported. This is just a wrapper around
+// The response to the `QueuedWithdrawal` query. This is just a wrapper around
 // `QueuedWithdrawalInfo`, so that the schema can be generated.
 type QueuedWithdrawalResponse struct {
 	QueuedShares    string `json:"queued_shares"`
@@ -555,17 +387,4 @@ type VaultInfoResponse struct {
 	TotalShares string `json:"total_shares"`
 	// The version of the vault contract, see [`cw2::set_contract_version`] for more information.
 	Version string `json:"version"`
-}
-
-// There is an embedded logo on the chain, make another call to download it.
-type LogoEnum string
-
-const (
-	Embedded LogoEnum = "embedded"
-)
-
-// A link to the logo, or a comment there is an on-chain logo stored
-type LogoUnion struct {
-	Enum          *LogoEnum
-	LogoLogoClass *LogoLogoClass
 }

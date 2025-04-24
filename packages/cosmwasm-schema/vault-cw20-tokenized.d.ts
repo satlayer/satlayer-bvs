@@ -66,23 +66,23 @@
  *
  * This struct is used to represent a recipient for RedeemWithdrawalTo.
  *
- * The response to the `Assets` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
+ * schema can be generated.
  *
- * The response to the `ConvertToAssets` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `ConvertToAssets` query. This is just a wrapper around `Uint128`, so
+ * that the schema can be generated.
  *
- * The response to the `ConvertToShares` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `ConvertToShares` query. This is just a wrapper around `Uint128`, so
+ * that the schema can be generated.
  *
- * The response to the `Shares` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `Shares` query. This is just a wrapper around `Uint128`, so that the
+ * schema can be generated.
  *
- * The response to the `TotalAssets` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `TotalAssets` query. This is just a wrapper around `Uint128`, so that
+ * the schema can be generated.
  *
- * The response to the `TotalShares` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `TotalShares` query. This is just a wrapper around `Uint128`, so that
+ * the schema can be generated.
  *
  * The `operator` that this vault is delegated to
  *
@@ -161,23 +161,23 @@ type AssetsResponse = string;
  *
  * This struct is used to represent a recipient for RedeemWithdrawalTo.
  *
- * The response to the `Assets` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
+ * schema can be generated.
  *
- * The response to the `ConvertToAssets` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `ConvertToAssets` query. This is just a wrapper around `Uint128`, so
+ * that the schema can be generated.
  *
- * The response to the `ConvertToShares` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `ConvertToShares` query. This is just a wrapper around `Uint128`, so
+ * that the schema can be generated.
  *
- * The response to the `Shares` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `Shares` query. This is just a wrapper around `Uint128`, so that the
+ * schema can be generated.
  *
- * The response to the `TotalAssets` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `TotalAssets` query. This is just a wrapper around `Uint128`, so that
+ * the schema can be generated.
  *
- * The response to the `TotalShares` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `TotalShares` query. This is just a wrapper around `Uint128`, so that
+ * the schema can be generated.
  *
  * The `operator` that this vault is delegated to
  *
@@ -256,23 +256,23 @@ type ConvertToAssetsResponse = string;
  *
  * This struct is used to represent a recipient for RedeemWithdrawalTo.
  *
- * The response to the `Assets` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
+ * schema can be generated.
  *
- * The response to the `ConvertToAssets` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `ConvertToAssets` query. This is just a wrapper around `Uint128`, so
+ * that the schema can be generated.
  *
- * The response to the `ConvertToShares` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `ConvertToShares` query. This is just a wrapper around `Uint128`, so
+ * that the schema can be generated.
  *
- * The response to the `Shares` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `Shares` query. This is just a wrapper around `Uint128`, so that the
+ * schema can be generated.
  *
- * The response to the `TotalAssets` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `TotalAssets` query. This is just a wrapper around `Uint128`, so that
+ * the schema can be generated.
  *
- * The response to the `TotalShares` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `TotalShares` query. This is just a wrapper around `Uint128`, so that
+ * the schema can be generated.
  *
  * The `operator` that this vault is delegated to
  *
@@ -351,23 +351,23 @@ type ConvertToSharesResponse = string;
  *
  * This struct is used to represent a recipient for RedeemWithdrawalTo.
  *
- * The response to the `Assets` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
+ * schema can be generated.
  *
- * The response to the `ConvertToAssets` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `ConvertToAssets` query. This is just a wrapper around `Uint128`, so
+ * that the schema can be generated.
  *
- * The response to the `ConvertToShares` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `ConvertToShares` query. This is just a wrapper around `Uint128`, so
+ * that the schema can be generated.
  *
- * The response to the `Shares` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `Shares` query. This is just a wrapper around `Uint128`, so that the
+ * schema can be generated.
  *
- * The response to the `TotalAssets` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `TotalAssets` query. This is just a wrapper around `Uint128`, so that
+ * the schema can be generated.
  *
- * The response to the `TotalShares` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `TotalShares` query. This is just a wrapper around `Uint128`, so that
+ * the schema can be generated.
  *
  * The `operator` that this vault is delegated to
  *
@@ -446,23 +446,23 @@ type SharesResponse = string;
  *
  * This struct is used to represent a recipient for RedeemWithdrawalTo.
  *
- * The response to the `Assets` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
+ * schema can be generated.
  *
- * The response to the `ConvertToAssets` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `ConvertToAssets` query. This is just a wrapper around `Uint128`, so
+ * that the schema can be generated.
  *
- * The response to the `ConvertToShares` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `ConvertToShares` query. This is just a wrapper around `Uint128`, so
+ * that the schema can be generated.
  *
- * The response to the `Shares` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `Shares` query. This is just a wrapper around `Uint128`, so that the
+ * schema can be generated.
  *
- * The response to the `TotalAssets` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `TotalAssets` query. This is just a wrapper around `Uint128`, so that
+ * the schema can be generated.
  *
- * The response to the `TotalShares` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `TotalShares` query. This is just a wrapper around `Uint128`, so that
+ * the schema can be generated.
  *
  * The `operator` that this vault is delegated to
  *
@@ -541,23 +541,23 @@ type TotalAssetsResponse = string;
  *
  * This struct is used to represent a recipient for RedeemWithdrawalTo.
  *
- * The response to the `Assets` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
+ * schema can be generated.
  *
- * The response to the `ConvertToAssets` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `ConvertToAssets` query. This is just a wrapper around `Uint128`, so
+ * that the schema can be generated.
  *
- * The response to the `ConvertToShares` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `ConvertToShares` query. This is just a wrapper around `Uint128`, so
+ * that the schema can be generated.
  *
- * The response to the `Shares` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `Shares` query. This is just a wrapper around `Uint128`, so that the
+ * schema can be generated.
  *
- * The response to the `TotalAssets` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `TotalAssets` query. This is just a wrapper around `Uint128`, so that
+ * the schema can be generated.
  *
- * The response to the `TotalShares` query. Not exported. This is just a wrapper around
- * `Uint128`, so that the schema can be generated.
+ * The response to the `TotalShares` query. This is just a wrapper around `Uint128`, so that
+ * the schema can be generated.
  *
  * The `operator` that this vault is delegated to
  *
@@ -573,24 +573,6 @@ type TotalSharesResponse = string;
 
 export interface InstantiateMsg {
   /**
-   * The address of the `operator`. Each vault is delegated to an `operator`.
-   */
-  operator: string;
-  /**
-   * The address of the `pauser` contract.
-   */
-  pauser: string;
-  /**
-   * The vault itself is a CW20 token, which will serve as receipt cw20 token. With extended
-   * functionality to be a vault. This field is the cw20 compliant `InstantiateMsg` for the
-   * receipt cw20 token.
-   */
-  receipt_cw20_instantiate_base: ReceiptCw20InstantiateBaseClass;
-  /**
-   * The address of the `router` contract.
-   */
-  router: string;
-  /**
    * The address of the CW20 contract, underlying asset of the vault.
    *
    * ### CW20 Variant Warning
@@ -602,74 +584,23 @@ export interface InstantiateMsg {
    * Therefore, we do not support non-standard CW20 tokens. Vault deployed with such tokens
    * will be blacklisted in the vault-router.
    */
-  staking_cw20_contract: string;
-}
-
-/**
- * The vault itself is a CW20 token, which will serve as receipt cw20 token. With extended
- * functionality to be a vault. This field is the cw20 compliant `InstantiateMsg` for the
- * receipt cw20 token.
- */
-export interface ReceiptCw20InstantiateBaseClass {
-  decimals: number;
-  initial_balances: Cw20Coin[];
-  marketing?: InstantiateMarketingInfo | null;
-  mint?: MinterResponseClass | null;
-  name: string;
-  symbol: string;
-}
-
-export interface Cw20Coin {
-  address: string;
-  amount: string;
-}
-
-export interface InstantiateMarketingInfo {
-  description?: null | string;
-  logo?: LogoClass | null;
-  marketing?: null | string;
-  project?: null | string;
-}
-
-/**
- * A reference to an externally hosted logo. Must be a valid HTTP or HTTPS URL.
- *
- * Logo content stored on the blockchain. Enforce maximum size of 5KB on all variants
- */
-export interface LogoClass {
-  url?: string;
-  embedded?: LogoEmbeddedLogo;
-}
-
-/**
- * This is used to store the logo on the blockchain in an accepted format. Enforce maximum
- * size of 5KB on all variants.
- *
- * Store the Logo as an SVG file. The content must conform to the spec at
- * https://en.wikipedia.org/wiki/Scalable_Vector_Graphics (The contract should do some
- * light-weight sanity-check validation)
- *
- * Store the Logo as a PNG file. This will likely only support up to 64x64 or so within the
- * 5KB limit.
- */
-export interface LogoEmbeddedLogo {
-  svg?: string;
-  png?: string;
-}
-
-export interface MinterResponseClass {
+  cw20_contract: string;
   /**
-   * cap is a hard cap on total supply that can be achieved by minting. Note that this refers
-   * to total_supply. If None, there is unlimited cap.
+   * The address of the `operator`. Each vault is delegated to an `operator`.
    */
-  cap?: null | string;
-  minter: string;
+  operator: string;
+  /**
+   * The address of the `pauser` contract.
+   */
+  pauser: string;
+  /**
+   * The address of the `router` contract.
+   */
+  router: string;
 }
 
 /**
  * Transfer is a base message to move tokens to another account without triggering actions
- *
- * Burn is a base message to destroy tokens forever
  *
  * Send is a base message to transfer tokens to a contract and trigger an action on the
  * receiving contract.
@@ -687,21 +618,6 @@ export interface MinterResponseClass {
  *
  * Only with "approval" extension. Sends amount tokens from owner -> contract if
  * `env.sender` has sufficient pre-approval.
- *
- * Only with "approval" extension. Destroys tokens forever
- *
- * Only with the "mintable" extension. If authorized, creates amount new tokens and adds to
- * the recipient balance.
- *
- * Only with the "mintable" extension. The current minter may set a new minter. Setting the
- * minter to None will remove the token's minter forever.
- *
- * Only with the "marketing" extension. If authorized, updates marketing metadata. Setting
- * None/null for any of these will leave it unchanged. Setting Some("") will clear this
- * field on the contract storage
- *
- * If set as the "marketing" role on the contract, upload a new URL, SVG, or PNG for the
- * token
  *
  * ExecuteMsg Deposit assets into the vault. Sender must transfer the assets to the vault
  * contract (this is implementation agnostic). The vault contract must mint shares to the
@@ -728,30 +644,15 @@ export interface MinterResponseClass {
  */
 export interface ExecuteMsg {
   transfer?: Transfer;
-  burn?: Burn;
   send?: Send;
   increase_allowance?: IncreaseAllowance;
   decrease_allowance?: DecreaseAllowance;
   transfer_from?: TransferFrom;
   send_from?: SendFrom;
-  burn_from?: BurnFrom;
-  mint?: Mint;
-  update_minter?: UpdateMinter;
-  update_marketing?: UpdateMarketing;
-  upload_logo?: Logo;
   deposit_for?: RecipientAmount;
   withdraw_to?: RecipientAmount;
   queue_withdrawal_to?: RecipientAmount;
   redeem_withdrawal_to?: string;
-}
-
-export interface Burn {
-  amount: string;
-}
-
-export interface BurnFrom {
-  amount: string;
-  owner: string;
 }
 
 export interface DecreaseAllowance {
@@ -789,11 +690,6 @@ export interface IncreaseAllowance {
   spender: string;
 }
 
-export interface Mint {
-  amount: string;
-  recipient: string;
-}
-
 export interface Send {
   amount: string;
   contract: string;
@@ -818,53 +714,6 @@ export interface TransferFrom {
   recipient: string;
 }
 
-export interface UpdateMarketing {
-  /**
-   * A longer description of the token and it's utility. Designed for tooltips or such
-   */
-  description?: null | string;
-  /**
-   * The address (if any) who can update this data structure
-   */
-  marketing?: null | string;
-  /**
-   * A URL pointing to the project behind this token.
-   */
-  project?: null | string;
-}
-
-export interface UpdateMinter {
-  new_minter?: null | string;
-}
-
-/**
- * This is used for uploading logo data, or setting it in InstantiateData
- *
- * A reference to an externally hosted logo. Must be a valid HTTP or HTTPS URL.
- *
- * Logo content stored on the blockchain. Enforce maximum size of 5KB on all variants
- */
-export interface Logo {
-  url?: string;
-  embedded?: LogoEmbeddedLogoClass;
-}
-
-/**
- * This is used to store the logo on the blockchain in an accepted format. Enforce maximum
- * size of 5KB on all variants.
- *
- * Store the Logo as an SVG file. The content must conform to the spec at
- * https://en.wikipedia.org/wiki/Scalable_Vector_Graphics (The contract should do some
- * light-weight sanity-check validation)
- *
- * Store the Logo as a PNG file. This will likely only support up to 64x64 or so within the
- * 5KB limit.
- */
-export interface LogoEmbeddedLogoClass {
-  svg?: string;
-  png?: string;
-}
-
 /**
  * Returns the current balance of the given address, 0 if unset.
  *
@@ -884,12 +733,6 @@ export interface LogoEmbeddedLogoClass {
  *
  * Only with "enumerable" extension Returns all accounts that have balances. Supports
  * pagination.
- *
- * Only with "marketing" extension Returns more metadata on the contract to display in the
- * client: - description, logo, project url, etc.
- *
- * Only with "marketing" extension Downloads the embedded logo data (if stored on chain).
- * Errors if no logo data is stored for this contract.
  *
  * QueryMsg Shares: get the shares of a staker. Shares in this tokenized vault are CW20
  * receipt tokens. The interface is kept the same as the original vault. to avoid breaking
@@ -917,8 +760,6 @@ export interface QueryMsg {
   all_allowances?: AllAllowances;
   all_spender_allowances?: AllSpenderAllowances;
   all_accounts?: AllAccounts;
-  marketing_info?: MarketingInfo;
-  download_logo?: DownloadLogo;
   shares?: Shares;
   assets?: Assets;
   convert_to_assets?: ConvertToAssets;
@@ -966,10 +807,6 @@ export interface ConvertToAssets {
 export interface ConvertToShares {
   assets: string;
 }
-
-export interface DownloadLogo {}
-
-export interface MarketingInfo {}
 
 export interface Minter {}
 
@@ -1079,48 +916,6 @@ export interface BalanceResponse {
   balance: string;
 }
 
-/**
- * When we download an embedded logo, we get this response type. We expect a SPA to be able
- * to accept this info and display it.
- */
-export interface DownloadLogoResponse {
-  data: string;
-  mime_type: string;
-}
-
-export interface MarketingInfoResponse {
-  /**
-   * A longer description of the token and it's utility. Designed for tooltips or such
-   */
-  description?: null | string;
-  /**
-   * A link to the logo, or a comment there is an on-chain logo stored
-   */
-  logo?: LogoLogoClass | LogoEnum | null;
-  /**
-   * The address (if any) who can update this data structure
-   */
-  marketing?: null | string;
-  /**
-   * A URL pointing to the project behind this token.
-   */
-  project?: null | string;
-}
-
-/**
- * A reference to an externally hosted logo. Must be a valid HTTP or HTTPS URL.
- */
-export interface LogoLogoClass {
-  url: string;
-}
-
-/**
- * There is an embedded logo on the chain, make another call to download it.
- */
-export enum LogoEnum {
-  Embedded = "embedded",
-}
-
 export interface MinterResponse {
   /**
    * cap is a hard cap on total supply that can be achieved by minting. Note that this refers
@@ -1131,7 +926,7 @@ export interface MinterResponse {
 }
 
 /**
- * The response to the `QueuedWithdrawal` query. Not exported. This is just a wrapper around
+ * The response to the `QueuedWithdrawal` query. This is just a wrapper around
  * `QueuedWithdrawalInfo`, so that the schema can be generated.
  */
 export interface QueuedWithdrawalResponse {
