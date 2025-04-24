@@ -69,6 +69,14 @@ pub fn execute(
             let service = deps.api.addr_validate(&service)?;
             execute::deregister_service_from_operator(deps, info, env, service)
         }
+        ExecuteMsg::EnableSlashing { registry } => {
+            execute::enable_slashing(deps, env, info, registry)
+        }
+        ExecuteMsg::DisableSlashing {} => execute::disable_slashing(deps, env, info),
+        ExecuteMsg::OperatorOptInToSlashing { service } => {
+            let service = deps.api.addr_validate(&service)?;
+            execute::operator_opt_in_to_slashing(deps, env, info, service)
+        }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
             ownership::transfer_ownership(deps.storage, info, new_owner)
@@ -82,8 +90,9 @@ mod execute {
     use crate::msg::Metadata;
     use crate::state;
     use crate::state::{
-        get_registration_status, require_operator_registered, require_service_registered,
-        set_registration_status, RegistrationStatus, OPERATORS, SERVICES,
+        get_registration_status, is_slashing_enabled, require_active_registration_status,
+        require_operator_registered, require_service_registered, set_registration_status,
+        RegistrationStatus, SlashingRegistry, OPERATORS, SERVICES,
     };
     use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Response};
 
@@ -210,7 +219,6 @@ mod execute {
 
         let key = (&operator, &service);
         let status = get_registration_status(deps.storage, key)?;
-        let current_height = env.block.height;
         match status {
             RegistrationStatus::Active => Err(ContractError::InvalidRegistrationStatus {
                 msg: "Registration is already active.".to_string(),
@@ -223,9 +231,9 @@ mod execute {
             RegistrationStatus::Inactive => {
                 set_registration_status(
                     deps.storage,
+                    &env,
                     key,
                     RegistrationStatus::ServiceRegistered,
-                    current_height,
                 )?;
                 Ok(Response::new().add_event(
                     Event::new("RegistrationStatusUpdated")
@@ -236,14 +244,7 @@ mod execute {
                 ))
             }
             RegistrationStatus::OperatorRegistered => {
-                set_registration_status(
-                    deps.storage,
-                    key,
-                    RegistrationStatus::Active,
-                    current_height,
-                )?;
-                // increase operator status count
-                state::increase_operator_active_registration_count(deps.storage, &operator)?;
+                set_registration_status(deps.storage, &env, key, RegistrationStatus::Active)?;
 
                 Ok(Response::new().add_event(
                     Event::new("RegistrationStatusUpdated")
@@ -269,21 +270,13 @@ mod execute {
 
         let key = (&operator, &service);
         let status = get_registration_status(deps.storage, key)?;
-        let current_height = env.block.height;
 
         if status == RegistrationStatus::Inactive {
             Err(ContractError::InvalidRegistrationStatus {
                 msg: "Already deregistered.".to_string(),
             })
         } else {
-            set_registration_status(
-                deps.storage,
-                key,
-                RegistrationStatus::Inactive,
-                current_height,
-            )?;
-            // decrease operator status count
-            state::decrease_operator_active_registration_count(deps.storage, &operator)?;
+            set_registration_status(deps.storage, &env, key, RegistrationStatus::Inactive)?;
 
             Ok(Response::new().add_event(
                 Event::new("RegistrationStatusUpdated")
@@ -311,7 +304,6 @@ mod execute {
 
         let key = (&operator, &service);
         let status = get_registration_status(deps.storage, key)?;
-        let current_height = env.block.height;
 
         match status {
             RegistrationStatus::Active => Err(ContractError::InvalidRegistrationStatus {
@@ -325,9 +317,9 @@ mod execute {
             RegistrationStatus::Inactive => {
                 set_registration_status(
                     deps.storage,
+                    &env,
                     key,
                     RegistrationStatus::OperatorRegistered,
-                    current_height,
                 )?;
                 Ok(Response::new().add_event(
                     Event::new("RegistrationStatusUpdated")
@@ -338,14 +330,7 @@ mod execute {
                 ))
             }
             RegistrationStatus::ServiceRegistered => {
-                set_registration_status(
-                    deps.storage,
-                    key,
-                    RegistrationStatus::Active,
-                    current_height,
-                )?;
-                // increase operator status count
-                state::increase_operator_active_registration_count(deps.storage, &operator)?;
+                set_registration_status(deps.storage, &env, key, RegistrationStatus::Active)?;
 
                 Ok(Response::new().add_event(
                     Event::new("RegistrationStatusUpdated")
@@ -370,21 +355,13 @@ mod execute {
 
         let key = (&operator, &service);
         let status = get_registration_status(deps.storage, key)?;
-        let current_height = env.block.height;
 
         if status == RegistrationStatus::Inactive {
             Err(ContractError::InvalidRegistrationStatus {
                 msg: "Already deregistered.".to_string(),
             })
         } else {
-            set_registration_status(
-                deps.storage,
-                key,
-                RegistrationStatus::Inactive,
-                current_height,
-            )?;
-            // decrease operator status count
-            state::decrease_operator_active_registration_count(deps.storage, &operator)?;
+            set_registration_status(deps.storage, &env, key, RegistrationStatus::Inactive)?;
 
             Ok(Response::new().add_event(
                 Event::new("RegistrationStatusUpdated")
@@ -394,6 +371,113 @@ mod execute {
                     .add_attribute("status", "Inactive"),
             ))
         }
+    }
+
+    /// Enable slashing for a service (info.sender is the service)
+    ///
+    /// When slashing is enabled, Active operators are able to opt in the next block.  
+    /// New Operator <-> Service registration will also automatically opt-in the operator to slashing.  
+    /// To update the slashing conditions, the service must call this function again.  
+    /// When slashing condition is updated,
+    /// all active operators
+    /// that are already registered to the service will have their opt-in status reset for the new slashing conditions
+    /// and have to manually opt in again.
+    pub fn enable_slashing(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        registry: SlashingRegistry,
+    ) -> Result<Response, ContractError> {
+        // service is the sender
+        let service = info.sender;
+
+        // service must be registered
+        require_service_registered(deps.storage, &service)?;
+
+        // clear opt-in mapping
+        state::reset_slashing_registry_opt_in(deps.storage, &env, &service)?;
+
+        // update slashing registry
+        state::enable_slashing(deps.storage, deps.api, &env, &service, &registry)?;
+
+        Ok(Response::new().add_event(
+            Event::new("SlashingRegistryEnabled")
+                .add_attribute("service", service)
+                .add_attribute(
+                    "destination",
+                    registry
+                        .destination
+                        .map(|x| x.to_string())
+                        .unwrap_or_default(),
+                )
+                .add_attribute(
+                    "max_slashing_percentage",
+                    registry.max_slashing_percentage.to_string(),
+                )
+                .add_attribute("resolution_window", registry.resolution_window.to_string()),
+        ))
+    }
+
+    /// Disable slashing for a service (info.sender is the service)
+    ///
+    /// When slashing is disabled,
+    /// all operators
+    /// that are opted in to slashing will be removed from the slashing registry.  
+    /// All active operators will remain actively registered to the service.
+    pub fn disable_slashing(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+    ) -> Result<Response, ContractError> {
+        // service is the sender
+        let service = info.sender;
+
+        // service must be registered
+        require_service_registered(deps.storage, &service)?;
+
+        // clear opt-in mapping
+        state::reset_slashing_registry_opt_in(deps.storage, &env, &service)?;
+
+        // remove slashing registry
+        state::disable_slashing(deps.storage, &env, &service)?;
+
+        Ok(Response::new()
+            .add_event(Event::new("SlashingRegistryDisabled").add_attribute("service", service)))
+    }
+
+    /// Operator opts in to the service's current slashing condition (info.sender is the operator)
+    ///
+    /// When slashing is enabled, active operators can opt in to slashing.  
+    /// Newly registered operators, after slashing is enabled, will automatically opt in to slashing
+    /// and need to not call this function.
+    pub fn operator_opt_in_to_slashing(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        service: Addr,
+    ) -> Result<Response, ContractError> {
+        // operator is the sender
+        let operator = info.sender;
+
+        // operator and service must have Active (1) registration status
+        let key = (&operator, &service);
+        require_active_registration_status(deps.storage, key)?;
+
+        // check if the slashing is enabled for the service
+        if !is_slashing_enabled(deps.storage, &service, Some(env.block.height))? {
+            return Err(ContractError::InvalidSlashingOptIn {
+                msg: "Service has not enabled slashing.".to_string(),
+            });
+        }
+
+        // opt-in to slashing
+        state::opt_in_to_slashing(deps.storage, &env, &service, &operator)?;
+
+        Ok(Response::new().add_event(
+            Event::new("OperatorOptedInToSlashing")
+                .add_attribute("operator", operator)
+                .add_attribute("service", service),
+        ))
     }
 }
 
@@ -421,15 +505,33 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let operator = deps.api.addr_validate(&operator)?;
             to_json_binary(&query::is_operator_active(deps, operator)?)
         }
+        QueryMsg::SlashingRegistry { service, height } => {
+            let service = deps.api.addr_validate(&service)?;
+            to_json_binary(&query::get_slashing_registry(deps, service, height)?)
+        }
+        QueryMsg::IsOperatorOptedInToSlashing {
+            service,
+            operator,
+            height,
+        } => {
+            let service = deps.api.addr_validate(&service)?;
+            let operator = deps.api.addr_validate(&operator)?;
+            to_json_binary(&query::is_operator_opted_in_to_slashing(
+                deps, operator, service, height,
+            )?)
+        }
     }
 }
 
 mod query {
     use crate::msg::{
-        IsOperatorActiveResponse, IsOperatorResponse, IsServiceResponse, StatusResponse,
+        IsOperatorActiveResponse, IsOperatorOptedInToSlashingResponse, IsOperatorResponse,
+        IsServiceResponse, SlashingRegistryResponse, StatusResponse,
     };
     use crate::state;
-    use crate::state::{require_operator_registered, require_service_registered};
+    use crate::state::{
+        require_operator_registered, require_service_registered, SLASHING_REGISTRY,
+    };
     use cosmwasm_std::{Addr, Deps, StdResult};
 
     /// Get the registration status of an operator to a service at a given height.
@@ -473,6 +575,31 @@ mod query {
 
         Ok(IsOperatorActiveResponse(is_operator_active))
     }
+
+    /// Query the slashing registry for a service
+    pub fn get_slashing_registry(
+        deps: Deps,
+        service: Addr,
+        height: Option<u64>,
+    ) -> StdResult<SlashingRegistryResponse> {
+        let slashing_registry = match height {
+            Some(height) => SLASHING_REGISTRY.may_load_at_height(deps.storage, &service, height)?,
+            None => SLASHING_REGISTRY.may_load(deps.storage, &service)?,
+        };
+        Ok(SlashingRegistryResponse(slashing_registry))
+    }
+
+    /// Query if the operator is opted in to slashing
+    pub fn is_operator_opted_in_to_slashing(
+        deps: Deps,
+        operator: Addr,
+        service: Addr,
+        height: Option<u64>,
+    ) -> StdResult<IsOperatorOptedInToSlashingResponse> {
+        let is_opted_in =
+            state::is_operator_opted_in_to_slashing(deps.storage, &operator, &service, height)?;
+        Ok(IsOperatorOptedInToSlashingResponse(is_opted_in))
+    }
 }
 
 /// This can only be called by the contract ADMIN, enforced by `wasmd` separate from cosmwasm.
@@ -499,18 +626,24 @@ pub fn migrate(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::contract::execute::{register_operator_to_service, register_service_to_operator};
+    use crate::contract::execute::{
+        enable_slashing, register_operator_to_service, register_service_to_operator,
+    };
     use crate::contract::query::status;
     use crate::msg::{
         InstantiateMsg, IsOperatorActiveResponse, IsOperatorResponse, IsServiceResponse, Metadata,
         StatusResponse,
     };
     use crate::state;
-    use crate::state::{RegistrationStatus, OPERATORS, SERVICES};
+    use crate::state::{
+        increase_operator_active_registration_count, set_registration_status, RegistrationStatus,
+        SlashingRegistry, OPERATORS, REGISTRATION_STATUS, SERVICES, SLASHING_REGISTRY,
+        SLASHING_REGISTRY_OPT_IN,
+    };
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
-    use cosmwasm_std::{Event, OwnedDeps, Response};
+    use cosmwasm_std::{Event, OwnedDeps, Response, StdError};
 
     fn mock_contract() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
         let mut deps = mock_dependencies();
@@ -913,9 +1046,9 @@ mod tests {
 
         state::set_registration_status(
             &mut deps.storage,
+            &env,
             (&operator, &service),
             RegistrationStatus::OperatorRegistered,
-            env.block.height,
         )
         .unwrap();
 
@@ -947,9 +1080,9 @@ mod tests {
 
         state::set_registration_status(
             &mut deps.storage,
+            &env,
             (&operator, &service),
             RegistrationStatus::ServiceRegistered,
-            env.block.height,
         )
         .unwrap();
 
@@ -983,9 +1116,9 @@ mod tests {
 
         state::set_registration_status(
             &mut deps.storage,
+            &env,
             (&operator, &service),
             RegistrationStatus::Active,
-            env.block.height,
         )
         .unwrap();
 
@@ -1028,9 +1161,9 @@ mod tests {
         SERVICES.save(&mut deps.storage, &service, &true).unwrap();
         state::set_registration_status(
             &mut deps.storage,
+            &env,
             (&operator, &service),
             RegistrationStatus::Active,
-            env.block.height,
         )
         .unwrap();
         state::increase_operator_active_registration_count(&mut deps.storage, &operator)
@@ -1069,9 +1202,9 @@ mod tests {
         SERVICES.save(&mut deps.storage, &service, &true).unwrap();
         state::set_registration_status(
             &mut deps.storage,
+            &env,
             (&operator, &service),
             RegistrationStatus::Active,
-            env.block.height,
         )
         .unwrap();
         state::increase_operator_active_registration_count(&mut deps.storage, &operator)
@@ -1111,11 +1244,20 @@ mod tests {
         SERVICES.save(&mut deps.storage, &service, &true).unwrap();
         state::set_registration_status(
             &mut deps.storage,
+            &env,
             (&operator, &service),
-            RegistrationStatus::Inactive,
-            env.block.height,
+            RegistrationStatus::Active,
         )
         .unwrap();
+
+        // deregister for the first time - success
+        execute::deregister_service_from_operator(
+            deps.as_mut(),
+            operator_info.clone(),
+            env.clone(),
+            service.clone(),
+        )
+        .expect("failed to deregister service from operator");
 
         let res = execute::deregister_service_from_operator(
             deps.as_mut(),
@@ -1145,6 +1287,338 @@ mod tests {
     }
 
     #[test]
+    fn test_enable_slashing() {
+        let mut deps = mock_contract();
+        let env = mock_env();
+
+        let service = deps.api.addr_make("service");
+        let destination = deps.api.addr_make("destination");
+        let service_info = message_info(&service, &[]);
+
+        // register service
+        execute::register_as_service(
+            deps.as_mut(),
+            service_info.clone(),
+            Metadata {
+                uri: None,
+                name: None,
+            },
+        )
+        .expect("register service failed");
+
+        // enable slashing
+        let res = execute::enable_slashing(
+            deps.as_mut(),
+            env,
+            service_info.clone(),
+            SlashingRegistry {
+                destination: Some(destination.clone()),
+                max_slashing_percentage: 10,
+                resolution_window: 1000,
+            },
+        );
+
+        // assert SLASHING_REGISTRY state is updated
+        let slashing_registry = SLASHING_REGISTRY
+            .load(&deps.storage, &service)
+            .expect("failed to load slashing registry");
+        assert_eq!(
+            slashing_registry,
+            SlashingRegistry {
+                destination: Some(destination.clone()),
+                max_slashing_percentage: 10,
+                resolution_window: 1000,
+            }
+        );
+
+        assert_eq!(
+            res,
+            Ok(Response::new().add_event(
+                Event::new("SlashingRegistryEnabled")
+                    .add_attribute("service", service.as_ref())
+                    .add_attribute("destination", destination.to_string())
+                    .add_attribute("max_slashing_percentage", "10")
+                    .add_attribute("resolution_window", "1000")
+            ))
+        );
+    }
+
+    #[test]
+    fn test_re_enable_slashing() {
+        let mut deps = mock_contract();
+        let env = mock_env();
+
+        let service = deps.api.addr_make("service");
+        let destination = deps.api.addr_make("destination");
+        let service_info = message_info(&service, &[]);
+
+        // register service
+        execute::register_as_service(
+            deps.as_mut(),
+            service_info.clone(),
+            Metadata {
+                uri: None,
+                name: None,
+            },
+        )
+        .expect("register service failed");
+
+        // enable slashing for the first time
+        execute::enable_slashing(
+            deps.as_mut(),
+            env.clone(),
+            service_info.clone(),
+            SlashingRegistry {
+                destination: Some(destination.clone()),
+                max_slashing_percentage: 1000,
+                resolution_window: 1000,
+            },
+        )
+        .expect("enable slashing failed");
+
+        // operators opt-in to slashing
+        for i in 0..3 {
+            let operator = deps.api.addr_make(format!("operator{}", i).as_str());
+            SLASHING_REGISTRY_OPT_IN
+                .save(
+                    &mut deps.storage,
+                    (&service, &operator),
+                    &true,
+                    env.block.height,
+                )
+                .expect("failed to save slashing registry opt-in");
+        }
+
+        // re-enable slashing
+        execute::enable_slashing(
+            deps.as_mut(),
+            env.clone(),
+            service_info.clone(),
+            SlashingRegistry {
+                destination: Some(destination.clone()),
+                max_slashing_percentage: 9999,
+                resolution_window: 2000,
+            },
+        )
+        .unwrap();
+
+        // assert that SLASHING_REGISTRY state is updated
+        let slashing_registry = SLASHING_REGISTRY
+            .load(&deps.storage, &service)
+            .expect("failed to load slashing registry");
+        assert_eq!(
+            slashing_registry,
+            SlashingRegistry {
+                destination: Some(destination.clone()),
+                max_slashing_percentage: 9999,
+                resolution_window: 2000,
+            }
+        );
+
+        // assert that the opt-in mapping is cleared
+        for i in 0..3 {
+            let operator = deps.api.addr_make(format!("operator{}", i).as_str());
+            let opt_in = SLASHING_REGISTRY_OPT_IN
+                .may_load(&deps.storage, (&service, &operator))
+                .unwrap();
+            assert!(opt_in.is_none());
+        }
+    }
+
+    #[test]
+    fn test_enable_slashing_error_not_registered() {
+        let mut deps = mock_contract();
+        let env = mock_env();
+
+        let service = deps.api.addr_make("service");
+        let destination = deps.api.addr_make("destination");
+        let service_info = message_info(&service, &[]);
+
+        // enable slashing
+        let res = execute::enable_slashing(
+            deps.as_mut(),
+            env,
+            service_info.clone(),
+            SlashingRegistry {
+                destination: Some(destination.clone()),
+                max_slashing_percentage: 10,
+                resolution_window: 1000,
+            },
+        );
+
+        assert_eq!(res, Err(ContractError::Std(StdError::not_found("service"))));
+    }
+
+    #[test]
+    fn test_operator_opt_in_to_slashing() {
+        let mut deps = mock_contract();
+        let mut env = mock_env();
+
+        let operator = deps.api.addr_make("operator");
+        let operator2 = deps.api.addr_make("operator2");
+        let operator3 = deps.api.addr_make("operator3");
+        let service = deps.api.addr_make("service");
+        let operator_info = message_info(&operator, &[]);
+
+        // NEGATIVE test - operator <-> service does not have active registration
+        {
+            let err = execute::operator_opt_in_to_slashing(
+                deps.as_mut(),
+                env.clone(),
+                operator_info.clone(),
+                service.clone(),
+            )
+            .unwrap_err();
+            assert_eq!(
+                err,
+                ContractError::InvalidRegistrationStatus {
+                    msg: "Operator and service must have active registration.".to_string()
+                }
+            );
+        }
+
+        // update state and register operator & operator2 + service
+        {
+            OPERATORS.save(&mut deps.storage, &operator, &true).unwrap();
+            OPERATORS
+                .save(&mut deps.storage, &operator2, &true)
+                .unwrap();
+            SERVICES.save(&mut deps.storage, &service, &true).unwrap();
+            set_registration_status(
+                &mut deps.storage,
+                &env,
+                (&operator, &service),
+                RegistrationStatus::Active,
+            )
+            .expect("failed to set registration status");
+            set_registration_status(
+                &mut deps.storage,
+                &env,
+                (&operator2, &service),
+                RegistrationStatus::Active,
+            )
+            .expect("failed to set registration status");
+            increase_operator_active_registration_count(&mut deps.storage, &operator)
+                .expect("failed to increase operator active registration count");
+            increase_operator_active_registration_count(&mut deps.storage, &operator)
+                .expect("failed to increase operator active registration count");
+        }
+
+        // NEGATIVE test - slashing not enabled
+        {
+            let err = execute::operator_opt_in_to_slashing(
+                deps.as_mut(),
+                env.clone(),
+                operator_info.clone(),
+                service.clone(),
+            )
+            .unwrap_err();
+            assert_eq!(
+                err,
+                ContractError::InvalidSlashingOptIn {
+                    msg: "Service has not enabled slashing.".to_string()
+                }
+            );
+        }
+
+        // service enable slashing
+        enable_slashing(
+            deps.as_mut(),
+            env.clone(),
+            message_info(&service, &[]),
+            SlashingRegistry {
+                destination: Some(operator.clone()),
+                max_slashing_percentage: 1000,
+                resolution_window: 1000,
+            },
+        )
+        .expect("enable slashing failed");
+
+        // move blockchain
+        env.block.height += 1;
+
+        // operator opt-in to slashing
+        let res = execute::operator_opt_in_to_slashing(
+            deps.as_mut(),
+            env.clone(),
+            operator_info.clone(),
+            service.clone(),
+        );
+
+        // assert events
+        assert_eq!(
+            res,
+            Ok(Response::new().add_event(
+                Event::new("OperatorOptedInToSlashing")
+                    .add_attribute("operator", operator.as_ref())
+                    .add_attribute("service", service.as_ref())
+            ))
+        );
+
+        // assert state is updated for operator opting in to service slashing
+        let opted_in = SLASHING_REGISTRY_OPT_IN
+            .may_load(&deps.storage, (&service, &operator))
+            .unwrap();
+        assert_eq!(opted_in, Some(true));
+
+        // assert state is not updated for operator2
+        let opted_in = SLASHING_REGISTRY_OPT_IN
+            .may_load(&deps.storage, (&service, &operator2))
+            .unwrap();
+        assert_eq!(opted_in, None);
+
+        // NEGATIVE test -
+        // operator3 opt-in to service slashing fail as registration status isn't active
+        {
+            let err = execute::operator_opt_in_to_slashing(
+                deps.as_mut(),
+                env.clone(),
+                message_info(&operator3, &[]),
+                service.clone(),
+            )
+            .unwrap_err();
+            assert_eq!(
+                err,
+                ContractError::InvalidRegistrationStatus {
+                    msg: "Operator and service must have active registration.".to_string()
+                }
+            );
+        }
+
+        // service re-enable slashing
+        enable_slashing(
+            deps.as_mut(),
+            env.clone(),
+            message_info(&service, &[]),
+            SlashingRegistry {
+                destination: Some(operator.clone()),
+                max_slashing_percentage: 5000,
+                resolution_window: 1000,
+            },
+        )
+        .expect("enable slashing failed");
+
+        // assert that the opt-in mapping is cleared
+        let opted_in = SLASHING_REGISTRY_OPT_IN
+            .may_load(&deps.storage, (&service, &operator))
+            .unwrap();
+        assert_eq!(opted_in, None);
+
+        // assert that operator2 can opt-in to slashing
+        execute::operator_opt_in_to_slashing(
+            deps.as_mut(),
+            env.clone(),
+            message_info(&operator2, &[]),
+            service.clone(),
+        )
+        .expect("operator2 opt-in to slashing failed");
+        let opted_in = SLASHING_REGISTRY_OPT_IN
+            .may_load(&deps.storage, (&service, &operator2))
+            .unwrap();
+        assert_eq!(opted_in, Some(true));
+    }
+
+    #[test]
     fn query_status() {
         let mut deps = mock_dependencies();
         let env = mock_env();
@@ -1157,13 +1631,14 @@ mod tests {
             Ok(StatusResponse(0))
         );
 
-        state::set_registration_status(
-            &mut deps.storage,
-            (&operator, &service),
-            RegistrationStatus::Inactive,
-            env.block.height,
-        )
-        .unwrap();
+        REGISTRATION_STATUS
+            .save(
+                &mut deps.storage,
+                (&operator, &service),
+                &RegistrationStatus::Inactive.into(),
+                env.block.height,
+            )
+            .expect("failed to save registration status");
 
         assert_eq!(
             status(deps.as_ref(), operator.clone(), service.clone(), None),
@@ -1172,9 +1647,9 @@ mod tests {
 
         state::set_registration_status(
             &mut deps.storage,
+            &env,
             (&operator, &service),
             RegistrationStatus::Active,
-            env.block.height,
         )
         .unwrap();
 
@@ -1185,9 +1660,9 @@ mod tests {
 
         state::set_registration_status(
             &mut deps.storage,
+            &env,
             (&operator, &service),
             RegistrationStatus::OperatorRegistered,
-            env.block.height,
         )
         .unwrap();
 
@@ -1198,9 +1673,9 @@ mod tests {
 
         state::set_registration_status(
             &mut deps.storage,
+            &env,
             (&operator, &service),
             RegistrationStatus::ServiceRegistered,
-            env.block.height,
         )
         .unwrap();
 
@@ -1213,7 +1688,7 @@ mod tests {
     #[test]
     fn query_status_at_height() {
         let mut deps = mock_dependencies();
-        let env = mock_env();
+        let mut env = mock_env();
 
         let operator = deps.api.addr_make("operator");
         let service = deps.api.addr_make("service");
@@ -1230,27 +1705,9 @@ mod tests {
 
         state::set_registration_status(
             &mut deps.storage,
-            (&operator, &service),
-            RegistrationStatus::Inactive,
-            env.block.height,
-        )
-        .unwrap();
-
-        assert_eq!(
-            status(
-                deps.as_ref(),
-                operator.clone(),
-                service.clone(),
-                Some(env.block.height)
-            ),
-            Ok(RegistrationStatus::Inactive.into())
-        );
-
-        state::set_registration_status(
-            &mut deps.storage,
+            &env,
             (&operator, &service),
             RegistrationStatus::Active,
-            env.block.height,
         )
         .unwrap();
 
@@ -1276,32 +1733,35 @@ mod tests {
             Ok(RegistrationStatus::Active.into())
         );
 
-        // save status at height + 10
+        // advance block by 10
+        env.block.height += 10;
+
+        // save status at current height
         state::set_registration_status(
             &mut deps.storage,
+            &env,
             (&operator, &service),
             RegistrationStatus::Inactive,
-            env.block.height + 10,
         )
         .unwrap();
 
-        // Assert that the status is active at height + 10
+        // Assert that the status is active at current height
         assert_eq!(
             status(
                 deps.as_ref(),
                 operator.clone(),
                 service.clone(),
-                Some(env.block.height + 10)
+                Some(env.block.height)
             ),
             Ok(RegistrationStatus::Active.into())
         );
-        // Assert that the status is inactive at height + 11
+        // Assert that the status is inactive at height + 1
         assert_eq!(
             status(
                 deps.as_ref(),
                 operator.clone(),
                 service.clone(),
-                Some(env.block.height + 11)
+                Some(env.block.height + 1)
             ),
             Ok(RegistrationStatus::Inactive.into())
         );

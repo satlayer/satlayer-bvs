@@ -1,4 +1,4 @@
-use crate::state::RegistrationStatus;
+use crate::state::{RegistrationStatus, SlashingRegistry};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
 #[cw_serde]
@@ -28,6 +28,13 @@ pub enum ExecuteMsg {
         service: String,
     },
     DeregisterServiceFromOperator {
+        service: String,
+    },
+    EnableSlashing {
+        registry: SlashingRegistry,
+    },
+    DisableSlashing {},
+    OperatorOptInToSlashing {
         service: String,
     },
     TransferOwnership {
@@ -61,6 +68,19 @@ pub enum QueryMsg {
 
     #[returns(IsOperatorActiveResponse)]
     IsOperatorActive(String),
+
+    #[returns(SlashingRegistryResponse)]
+    SlashingRegistry {
+        service: String,
+        height: Option<u64>,
+    },
+
+    #[returns(IsOperatorOptedInToSlashingResponse)]
+    IsOperatorOptedInToSlashing {
+        service: String,
+        operator: String,
+        height: Option<u64>,
+    },
 }
 
 #[cw_serde]
@@ -80,6 +100,12 @@ pub struct IsOperatorResponse(pub bool);
 
 #[cw_serde]
 pub struct IsOperatorActiveResponse(pub bool);
+
+#[cw_serde]
+pub struct SlashingRegistryResponse(pub Option<SlashingRegistry>);
+
+#[cw_serde]
+pub struct IsOperatorOptedInToSlashingResponse(pub bool);
 
 #[cw_serde]
 pub struct MigrateMsg {}

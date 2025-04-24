@@ -1,6 +1,7 @@
 use crate::error::ContractError;
+use bvs_library::time::{DAYS, MINUTES};
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, StdError, StdResult, Storage};
+use cosmwasm_std::{Addr, Api, Env, Order, StdError, StdResult, Storage};
 use cw_storage_plus::{Map, SnapshotMap, Strategy};
 
 type Service = Addr;
@@ -99,7 +100,7 @@ pub fn get_registration_status(
 ///
 /// #### Warning
 /// This function will return previous state.
-/// if height is equal to the height of the save operation.
+/// If height is equal to the height of the save operation.
 /// New state will only be available at height + 1
 pub fn get_registration_status_at_height(
     store: &dyn Storage,
@@ -113,20 +114,47 @@ pub fn get_registration_status_at_height(
     status.try_into()
 }
 
-/// Set the registration status of the Operator to Service at a specific block height.
+/// Set the registration status of the Operator to Service at a current block height
 ///
 /// #### Warning
 /// This function will only save the state at the end of the block.
 /// So the new state will only be available at height + 1.
-/// This is so that, re-ordering of txs won't cause the state to be inconsistent.
+/// This is so that re-ordering of txs won't cause the state to be inconsistent.
 pub fn set_registration_status(
     store: &mut dyn Storage,
+    env: &Env,
     key: (&Operator, &Service),
     status: RegistrationStatus,
-    block_height: u64,
 ) -> StdResult<()> {
-    REGISTRATION_STATUS.save(store, key, &status.into(), block_height)?;
+    let (operator, service) = key;
+    match status {
+        RegistrationStatus::Active => {
+            increase_operator_active_registration_count(store, operator)?;
+            // if service has enabled slashing, opt-in operator to slashing
+            if is_slashing_enabled(store, service, Some(env.block.height))? {
+                opt_in_to_slashing(store, env, service, operator)?;
+            }
+        }
+        RegistrationStatus::Inactive => {
+            decrease_operator_active_registration_count(store, operator)?;
+        }
+        _ => {}
+    }
+
+    REGISTRATION_STATUS.save(store, key, &status.into(), env.block.height)?;
     Ok(())
+}
+
+pub fn require_active_registration_status(
+    store: &dyn Storage,
+    key: (&Operator, &Service),
+) -> Result<(), ContractError> {
+    match get_registration_status(store, key)? {
+        RegistrationStatus::Active => Ok(()),
+        _ => Err(ContractError::InvalidRegistrationStatus {
+            msg: "Operator and service must have active registration.".to_string(),
+        }),
+    }
 }
 
 /// Stores the active registration count of the operator to services.
@@ -167,6 +195,161 @@ pub fn decrease_operator_active_registration_count(
             StdError::generic_err("Decrease operator active registration count failed")
         })
     })
+}
+
+#[cw_serde]
+pub struct SlashingRegistry {
+    /// The address to which the slashed funds will be sent after the slashing is finalized.  
+    /// None, indicates that the slashed funds will be burned.
+    pub destination: Option<Addr>,
+    /// The maximum percentage of the operator's total stake that can be slashed.  
+    /// The value is represented in bips (basis points), where 100 bips = 1%.  
+    /// And the value must be between 0 and 10_000 (inclusive).
+    pub max_slashing_percentage: u16,
+    /// The minimum amount of time (in seconds)
+    /// that the slashing can be delayed before it is executed and finalized.  
+    /// It is recommended to set this value to a maximum of withdrawal delay or less.
+    pub resolution_window: u64,
+}
+
+impl SlashingRegistry {
+    pub fn validate(&self, api: &dyn Api) -> Result<(), ContractError> {
+        if let Some(destination) = &self.destination {
+            api.addr_validate(destination.as_str()).map_err(|_| {
+                ContractError::InvalidSlashingRegistry {
+                    msg: "destination address is invalid".to_string(),
+                }
+            })?;
+        }
+        if self.max_slashing_percentage > 10_000 {
+            return Err(ContractError::InvalidSlashingRegistry {
+                msg: "max_slashing_percentage is over 10_000 bips (100%)".to_string(),
+            });
+        }
+        if self.resolution_window < 15 * MINUTES {
+            return Err(ContractError::InvalidSlashingRegistry {
+                msg: "resolution_window is too short".to_string(),
+            });
+        }
+        if self.resolution_window > 4 * DAYS {
+            return Err(ContractError::InvalidSlashingRegistry {
+                msg: "resolution_window is too long".to_string(),
+            });
+        }
+        Ok(())
+    }
+}
+
+/// Mapping of service to the latest slashing registry.
+///
+/// The presence of the Service key in the map indicates that slashing is enabled for that service.
+pub(crate) const SLASHING_REGISTRY: SnapshotMap<&Service, SlashingRegistry> = SnapshotMap::new(
+    "slashing_registry",
+    "slashing_registry_checkpoint",
+    "slashing_registry_changelog",
+    Strategy::EveryBlock,
+);
+
+/// Returns whether slashing is enabled for the given service at the given height.
+pub fn is_slashing_enabled(
+    store: &dyn Storage,
+    service: &Service,
+    height: Option<u64>,
+) -> StdResult<bool> {
+    let is_enabled = match height {
+        Some(h) => SLASHING_REGISTRY
+            .may_load_at_height(store, service, h)?
+            .is_some(),
+        None => SLASHING_REGISTRY.may_load(store, service)?.is_some(),
+    };
+    Ok(is_enabled)
+}
+
+/// Enable slashing for the given service at current block height
+pub fn enable_slashing(
+    store: &mut dyn Storage,
+    api: &dyn Api,
+    env: &Env,
+    service: &Service,
+    slashing_registry: &SlashingRegistry,
+) -> Result<(), ContractError> {
+    // Validate the slashing registry
+    slashing_registry.validate(api)?;
+
+    // Save the slashing registry to the store
+    SLASHING_REGISTRY.save(store, service, slashing_registry, env.block.height)?;
+    Ok(())
+}
+
+/// Disable slashing for the given service at current block height
+pub fn disable_slashing(store: &mut dyn Storage, env: &Env, service: &Service) -> StdResult<()> {
+    SLASHING_REGISTRY.remove(store, service, env.block.height)?;
+    Ok(())
+}
+
+/// Stores the slashing registry opt-in status for (service, operator) pair.
+///
+/// If value is `true`, operator has opted in to slashing condition for that service at the given height.
+/// If key isn't found, it means the operator hasn't opted in to slashing condition for that service.
+/// The `false` value is not used.
+pub(crate) const SLASHING_REGISTRY_OPT_IN: SnapshotMap<(&Service, &Operator), bool> =
+    SnapshotMap::new(
+        "slashing_registry_opt_in",
+        "slashing_registry_opt_in_checkpoint",
+        "slashing_registry_opt_in_changelog",
+        Strategy::EveryBlock,
+    );
+
+/// Opt-in operator to the current service slashing condition at current height
+pub fn opt_in_to_slashing(
+    store: &mut dyn Storage,
+    env: &Env,
+    service: &Service,
+    operator: &Operator,
+) -> StdResult<()> {
+    SLASHING_REGISTRY_OPT_IN.save(store, (service, operator), &true, env.block.height)?;
+    Ok(())
+}
+
+/// Check if the operator has opted in to slashing for the given service at the given height.
+pub fn is_operator_opted_in_to_slashing(
+    store: &dyn Storage,
+    service: &Service,
+    operator: &Operator,
+    height: Option<u64>,
+) -> StdResult<bool> {
+    let is_opted_in = match height {
+        Some(h) => SLASHING_REGISTRY_OPT_IN
+            .may_load_at_height(store, (service, operator), h)?
+            .is_some(),
+        None => SLASHING_REGISTRY_OPT_IN
+            .may_load(store, (service, operator))?
+            .is_some(),
+    };
+    Ok(is_opted_in)
+}
+
+/// Clears the slashing registry opt-in status for the given service at current block height.
+/// This happens only when a new slashing condition is set/updated.
+pub fn reset_slashing_registry_opt_in(
+    store: &mut dyn Storage,
+    env: &Env,
+    service: &Service,
+) -> Result<(), ContractError> {
+    let operator_keys = SLASHING_REGISTRY_OPT_IN
+        .prefix(service)
+        .range(store, None, None, Order::Ascending)
+        .map(|item| {
+            let (operator, _) = item?;
+            Ok(operator)
+        })
+        .collect::<Vec<StdResult<Operator>>>();
+
+    for operator in operator_keys {
+        let key = (service, &operator?);
+        SLASHING_REGISTRY_OPT_IN.remove(store, key, env.block.height)?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -247,21 +430,15 @@ mod tests {
         let status = get_registration_status(&deps.storage, key).unwrap();
         assert_eq!(status, RegistrationStatus::Inactive);
 
-        set_registration_status(
-            &mut deps.storage,
-            key,
-            RegistrationStatus::Active,
-            env.block.height,
-        )
-        .unwrap();
+        set_registration_status(&mut deps.storage, &env, key, RegistrationStatus::Active).unwrap();
         let status = get_registration_status(&deps.storage, key).unwrap();
         assert_eq!(status, RegistrationStatus::Active);
 
         set_registration_status(
             &mut deps.storage,
+            &env,
             key,
             RegistrationStatus::OperatorRegistered,
-            env.block.height,
         )
         .unwrap();
         let status = get_registration_status(&deps.storage, key).unwrap();
@@ -269,12 +446,228 @@ mod tests {
 
         set_registration_status(
             &mut deps.storage,
+            &env,
             key,
             RegistrationStatus::ServiceRegistered,
-            env.block.height,
         )
         .unwrap();
         let status = get_registration_status(&deps.storage, key).unwrap();
         assert_eq!(status, RegistrationStatus::ServiceRegistered);
+    }
+
+    #[test]
+    fn test_slashing_registry_validate() {
+        let deps = mock_dependencies();
+
+        // NEGATIVE tests
+        {
+            // Invalid destination address
+            let valid_slashing_registry = SlashingRegistry {
+                destination: Some(Addr::unchecked("invalid_address")),
+                max_slashing_percentage: 100,
+                resolution_window: 60 * MINUTES,
+            };
+
+            assert_eq!(
+                valid_slashing_registry.validate(&deps.api).unwrap_err(),
+                ContractError::InvalidSlashingRegistry {
+                    msg: "destination address is invalid".to_string()
+                }
+            );
+        }
+        {
+            // max_slashing_percentage too high
+            let valid_slashing_registry = SlashingRegistry {
+                destination: Some(deps.api.addr_make("destination")),
+                max_slashing_percentage: 10_001,
+                resolution_window: 60 * MINUTES,
+            };
+
+            assert_eq!(
+                valid_slashing_registry.validate(&deps.api).unwrap_err(),
+                ContractError::InvalidSlashingRegistry {
+                    msg: "max_slashing_percentage is over 10_000 bips (100%)".to_string()
+                }
+            );
+        }
+        {
+            // resolution_window too short
+            let valid_slashing_registry = SlashingRegistry {
+                destination: Some(deps.api.addr_make("destination")),
+                max_slashing_percentage: 10_000,
+                resolution_window: 15 * MINUTES - 1,
+            };
+
+            assert_eq!(
+                valid_slashing_registry.validate(&deps.api).unwrap_err(),
+                ContractError::InvalidSlashingRegistry {
+                    msg: "resolution_window is too short".to_string()
+                }
+            );
+        }
+        {
+            // resolution_window too long
+            let valid_slashing_registry = SlashingRegistry {
+                destination: None,
+                max_slashing_percentage: 0,
+                resolution_window: 4 * DAYS + 1,
+            };
+
+            assert_eq!(
+                valid_slashing_registry.validate(&deps.api).unwrap_err(),
+                ContractError::InvalidSlashingRegistry {
+                    msg: "resolution_window is too long".to_string()
+                }
+            );
+        }
+
+        // POSITIVE tests
+        {
+            // Valid slashing registry
+            let valid_slashing_registry = SlashingRegistry {
+                destination: Some(deps.api.addr_make("destination")),
+                max_slashing_percentage: 10_000,
+                resolution_window: 4 * DAYS,
+            };
+
+            assert!(valid_slashing_registry.validate(&deps.api).is_ok());
+        }
+        {
+            // Valid slashing registry with None destination
+            let valid_slashing_registry = SlashingRegistry {
+                destination: None,
+                max_slashing_percentage: 0,
+                resolution_window: 15 * MINUTES,
+            };
+
+            assert!(valid_slashing_registry.validate(&deps.api).is_ok());
+        }
+    }
+
+    #[test]
+    fn test_is_operator_opted_in_to_slashing() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        let service = deps.api.addr_make("service");
+        let operator = deps.api.addr_make("operator");
+
+        // assert that the operator is not opted in
+        let res =
+            is_operator_opted_in_to_slashing(&deps.storage, &service, &operator, None).unwrap();
+        assert!(!res);
+
+        SLASHING_REGISTRY_OPT_IN
+            .save(
+                &mut deps.storage,
+                (&service, &operator),
+                &true,
+                env.block.height,
+            )
+            .unwrap();
+
+        // assert that the operator is opted in
+        let res =
+            is_operator_opted_in_to_slashing(&deps.storage, &service, &operator, None).unwrap();
+        assert!(res);
+    }
+
+    #[test]
+    fn test_reset_slashing_registry_opt_in() {
+        let mut deps = mock_dependencies();
+        let mut env = mock_env();
+
+        let service = deps.api.addr_make("service");
+        let service2 = deps.api.addr_make("service2");
+        let operator = deps.api.addr_make("operator");
+        let operator2 = deps.api.addr_make("operator2");
+
+        // set the slashing registry opt-in status
+        {
+            SLASHING_REGISTRY_OPT_IN
+                .save(
+                    &mut deps.storage,
+                    (&service, &operator),
+                    &true,
+                    env.block.height,
+                )
+                .unwrap();
+            SLASHING_REGISTRY_OPT_IN
+                .save(
+                    &mut deps.storage,
+                    (&service, &operator2),
+                    &true,
+                    env.block.height,
+                )
+                .unwrap();
+            SLASHING_REGISTRY_OPT_IN
+                .save(
+                    &mut deps.storage,
+                    (&service2, &operator),
+                    &true,
+                    env.block.height,
+                )
+                .unwrap();
+            SLASHING_REGISTRY_OPT_IN
+                .save(
+                    &mut deps.storage,
+                    (&service2, &operator2),
+                    &true,
+                    env.block.height,
+                )
+                .unwrap();
+        }
+
+        // move the block height forward
+        env.block.height += 10;
+
+        // assert that the operator and operator2 are opted in to service
+        let res =
+            is_operator_opted_in_to_slashing(&deps.storage, &service, &operator, None).unwrap();
+        assert!(res);
+        let res =
+            is_operator_opted_in_to_slashing(&deps.storage, &service, &operator2, None).unwrap();
+        assert!(res);
+
+        // reset the slashing registry opt-in status for service
+        reset_slashing_registry_opt_in(&mut deps.storage, &env, &service).unwrap();
+
+        // move the block height forward
+        env.block.height += 10;
+
+        // assert that the operator and operator2 are not opted in to service
+        let res =
+            is_operator_opted_in_to_slashing(&deps.storage, &service, &operator, None).unwrap();
+        assert!(!res);
+        let res =
+            is_operator_opted_in_to_slashing(&deps.storage, &service, &operator2, None).unwrap();
+        assert!(!res);
+
+        // assert that operator and operator2 are still opted in to service2
+        let res =
+            is_operator_opted_in_to_slashing(&deps.storage, &service2, &operator, None).unwrap();
+        assert!(res);
+        let res =
+            is_operator_opted_in_to_slashing(&deps.storage, &service2, &operator2, None).unwrap();
+        assert!(res);
+
+        // assert that the operator and operator2 are opted in to service at the previous height
+        let res = is_operator_opted_in_to_slashing(
+            &deps.storage,
+            &service,
+            &operator,
+            Some(env.block.height - 10),
+        )
+        .unwrap();
+        assert!(res);
+
+        let res = is_operator_opted_in_to_slashing(
+            &deps.storage,
+            &service,
+            &operator2,
+            Some(env.block.height - 10),
+        )
+        .unwrap();
+        assert!(res);
     }
 }
