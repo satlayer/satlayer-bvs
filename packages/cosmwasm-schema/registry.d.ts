@@ -56,7 +56,7 @@ export interface SlashingParameters {
    * represented in bips (basis points), where 100 bips = 1%. And the value must be between 0
    * and 10_000 (inclusive).
    */
-  max_slashing_percentage: number;
+  max_slashing_bips: number;
   /**
    * The minimum amount of time (in seconds) that the slashing can be delayed before it is
    * executed and finalized. Setting this value to a duration less than the queued withdrawal
@@ -138,7 +138,7 @@ export interface SlashingParametersResponse {
    * represented in bips (basis points), where 100 bips = 1%. And the value must be between 0
    * and 10_000 (inclusive).
    */
-  max_slashing_percentage: number;
+  max_slashing_bips: number;
   /**
    * The minimum amount of time (in seconds) that the slashing can be delayed before it is
    * executed and finalized. Setting this value to a duration less than the queued withdrawal

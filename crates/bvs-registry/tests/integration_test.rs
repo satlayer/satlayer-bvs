@@ -769,7 +769,7 @@ fn enable_slashing_lifecycle() {
     {
         let slashing_parameters = SlashingParameters {
             destination: Some(burn_address.clone()),
-            max_slashing_percentage: 5000, // 50%
+            max_slashing_bips: 5000, // 50%
             resolution_window: 1000,
         };
         let enable_slashing_msg = &ExecuteMsg::EnableSlashing {
@@ -788,7 +788,7 @@ fn enable_slashing_lifecycle() {
                     .add_attribute("_contract_address", registry.addr.as_str())
                     .add_attribute("service", service.as_str())
                     .add_attribute("destination", burn_address.to_string())
-                    .add_attribute("max_slashing_percentage", "5000")
+                    .add_attribute("max_slashing_bips", "5000")
                     .add_attribute("resolution_window", "1000"),
             ]
         );
@@ -931,7 +931,7 @@ fn enable_slashing_lifecycle() {
     {
         let slashing_parameters = SlashingParameters {
             destination: Some(burn_address.clone()),
-            max_slashing_percentage: 9000, // 90%
+            max_slashing_bips: 9000, // 90%
             resolution_window: 1000,
         };
         let enable_slashing_msg = &ExecuteMsg::EnableSlashing {
@@ -968,7 +968,7 @@ fn enable_slashing_lifecycle() {
             prev_slashing_parameters_res,
             SlashingParameters {
                 destination: Some(burn_address.clone()),
-                max_slashing_percentage: 5000, // 50%
+                max_slashing_bips: 5000, // 50%
                 resolution_window: 1000,
             }
         );

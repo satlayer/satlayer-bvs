@@ -411,8 +411,8 @@ mod execute {
                         .unwrap_or_default(),
                 )
                 .add_attribute(
-                    "max_slashing_percentage",
-                    slashing_parameters.max_slashing_percentage.to_string(),
+                    "max_slashing_bips",
+                    slashing_parameters.max_slashing_bips.to_string(),
                 )
                 .add_attribute(
                     "resolution_window",
@@ -1319,7 +1319,7 @@ mod tests {
             service_info.clone(),
             SlashingParameters {
                 destination: Some(destination.clone()),
-                max_slashing_percentage: 10,
+                max_slashing_bips: 10,
                 resolution_window: 1000,
             },
         );
@@ -1332,7 +1332,7 @@ mod tests {
             slashing_parameters,
             SlashingParameters {
                 destination: Some(destination.clone()),
-                max_slashing_percentage: 10,
+                max_slashing_bips: 10,
                 resolution_window: 1000,
             }
         );
@@ -1343,7 +1343,7 @@ mod tests {
                 Event::new("SlashingParametersEnabled")
                     .add_attribute("service", service.as_ref())
                     .add_attribute("destination", destination.to_string())
-                    .add_attribute("max_slashing_percentage", "10")
+                    .add_attribute("max_slashing_bips", "10")
                     .add_attribute("resolution_window", "1000")
             ))
         );
@@ -1376,7 +1376,7 @@ mod tests {
             service_info.clone(),
             SlashingParameters {
                 destination: Some(destination.clone()),
-                max_slashing_percentage: 1000,
+                max_slashing_bips: 1000,
                 resolution_window: 1000,
             },
         )
@@ -1402,7 +1402,7 @@ mod tests {
             service_info.clone(),
             SlashingParameters {
                 destination: Some(destination.clone()),
-                max_slashing_percentage: 9999,
+                max_slashing_bips: 9999,
                 resolution_window: 2000,
             },
         )
@@ -1416,7 +1416,7 @@ mod tests {
             slashing_parameters,
             SlashingParameters {
                 destination: Some(destination.clone()),
-                max_slashing_percentage: 9999,
+                max_slashing_bips: 9999,
                 resolution_window: 2000,
             }
         );
@@ -1447,7 +1447,7 @@ mod tests {
             service_info.clone(),
             SlashingParameters {
                 destination: Some(destination.clone()),
-                max_slashing_percentage: 10,
+                max_slashing_bips: 10,
                 resolution_window: 1000,
             },
         );
@@ -1534,7 +1534,7 @@ mod tests {
             message_info(&service, &[]),
             SlashingParameters {
                 destination: Some(operator.clone()),
-                max_slashing_percentage: 1000,
+                max_slashing_bips: 1000,
                 resolution_window: 1000,
             },
         )
@@ -1598,7 +1598,7 @@ mod tests {
             message_info(&service, &[]),
             SlashingParameters {
                 destination: Some(operator.clone()),
-                max_slashing_percentage: 5000,
+                max_slashing_bips: 5000,
                 resolution_window: 1000,
             },
         )
@@ -1880,7 +1880,7 @@ mod tests {
             service_info.clone(),
             SlashingParameters {
                 destination: Some(destination.clone()),
-                max_slashing_percentage: 1000,
+                max_slashing_bips: 1000,
                 resolution_window: 1000,
             },
         )
@@ -1893,7 +1893,7 @@ mod tests {
             slashing_parameters,
             Some(SlashingParameters {
                 destination: Some(destination.clone()),
-                max_slashing_percentage: 1000,
+                max_slashing_bips: 1000,
                 resolution_window: 1000,
             })
         );
@@ -1908,7 +1908,7 @@ mod tests {
             service_info.clone(),
             SlashingParameters {
                 destination: None,
-                max_slashing_percentage: 5000,
+                max_slashing_bips: 5000,
                 resolution_window: 999,
             },
         )
@@ -1924,7 +1924,7 @@ mod tests {
             slashing_parameters,
             Some(SlashingParameters {
                 destination: None,
-                max_slashing_percentage: 5000,
+                max_slashing_bips: 5000,
                 resolution_window: 999,
             })
         );
@@ -1940,7 +1940,7 @@ mod tests {
             slashing_parameters,
             Some(SlashingParameters {
                 destination: Some(destination.clone()),
-                max_slashing_percentage: 1000,
+                max_slashing_bips: 1000,
                 resolution_window: 1000,
             })
         );
@@ -1968,7 +1968,7 @@ mod tests {
             slashing_parameters,
             Some(SlashingParameters {
                 destination: None,
-                max_slashing_percentage: 5000,
+                max_slashing_bips: 5000,
                 resolution_window: 999,
             })
         );

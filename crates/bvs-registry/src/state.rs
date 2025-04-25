@@ -205,7 +205,7 @@ pub struct SlashingParameters {
     /// The maximum percentage of the operator's total stake that can be slashed.  
     /// The value is represented in bips (basis points), where 100 bips = 1%.  
     /// And the value must be between 0 and 10_000 (inclusive).
-    pub max_slashing_percentage: u16,
+    pub max_slashing_bips: u16,
     /// The minimum amount of time (in seconds)
     /// that the slashing can be delayed before it is executed and finalized.  
     /// Setting this value to a duration less than the queued withdrawal delay is recommended.
@@ -223,19 +223,9 @@ impl SlashingParameters {
                 }
             })?;
         }
-        if self.max_slashing_percentage > 10_000 {
+        if self.max_slashing_bips > 10_000 {
             return Err(ContractError::InvalidSlashingParameters {
                 msg: "max_slashing_percentage is over 10_000 bips (100%)".to_string(),
-            });
-        }
-        if self.resolution_window < 15 * MINUTES {
-            return Err(ContractError::InvalidSlashingParameters {
-                msg: "resolution_window is too short".to_string(),
-            });
-        }
-        if self.resolution_window > 4 * DAYS {
-            return Err(ContractError::InvalidSlashingParameters {
-                msg: "resolution_window is too long".to_string(),
             });
         }
         Ok(())
@@ -465,7 +455,7 @@ mod tests {
             // Invalid destination address
             let valid_slashing_parameters = SlashingParameters {
                 destination: Some(Addr::unchecked("invalid_address")),
-                max_slashing_percentage: 100,
+                max_slashing_bips: 100,
                 resolution_window: 60 * MINUTES,
             };
 
@@ -480,7 +470,7 @@ mod tests {
             // max_slashing_percentage too high
             let valid_slashing_parameters = SlashingParameters {
                 destination: Some(deps.api.addr_make("destination")),
-                max_slashing_percentage: 10_001,
+                max_slashing_bips: 10_001,
                 resolution_window: 60 * MINUTES,
             };
 
@@ -491,44 +481,14 @@ mod tests {
                 }
             );
         }
-        {
-            // resolution_window too short
-            let valid_slashing_parameters = SlashingParameters {
-                destination: Some(deps.api.addr_make("destination")),
-                max_slashing_percentage: 10_000,
-                resolution_window: 15 * MINUTES - 1,
-            };
-
-            assert_eq!(
-                valid_slashing_parameters.validate(&deps.api).unwrap_err(),
-                ContractError::InvalidSlashingParameters {
-                    msg: "resolution_window is too short".to_string()
-                }
-            );
-        }
-        {
-            // resolution_window too long
-            let valid_slashing_parameters = SlashingParameters {
-                destination: None,
-                max_slashing_percentage: 0,
-                resolution_window: 4 * DAYS + 1,
-            };
-
-            assert_eq!(
-                valid_slashing_parameters.validate(&deps.api).unwrap_err(),
-                ContractError::InvalidSlashingParameters {
-                    msg: "resolution_window is too long".to_string()
-                }
-            );
-        }
 
         // POSITIVE tests
         {
             // Valid slashing parameters
             let valid_slashing_parameters = SlashingParameters {
                 destination: Some(deps.api.addr_make("destination")),
-                max_slashing_percentage: 10_000,
-                resolution_window: 4 * DAYS,
+                max_slashing_bips: 10_000,
+                resolution_window: 7 * DAYS,
             };
 
             assert!(valid_slashing_parameters.validate(&deps.api).is_ok());
@@ -537,8 +497,8 @@ mod tests {
             // Valid slashing parameters with None destination
             let valid_slashing_parameters = SlashingParameters {
                 destination: None,
-                max_slashing_percentage: 0,
-                resolution_window: 15 * MINUTES,
+                max_slashing_bips: 0,
+                resolution_window: 0,
             };
 
             assert!(valid_slashing_parameters.validate(&deps.api).is_ok());

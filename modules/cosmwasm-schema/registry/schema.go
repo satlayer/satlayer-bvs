@@ -55,7 +55,7 @@ type EnableSlashingSlashingParameters struct {
 	// The maximum percentage of the operator's total stake that can be slashed. The value is
 	// represented in bips (basis points), where 100 bips = 1%. And the value must be between 0
 	// and 10_000 (inclusive).
-	MaxSlashingPercentage int64 `json:"max_slashing_percentage"`
+	MaxSlashingBips int64 `json:"max_slashing_bips"`
 	// The minimum amount of time (in seconds) that the slashing can be delayed before it is
 	// executed and finalized. Setting this value to a duration less than the queued withdrawal
 	// delay is recommended. To prevent restaker's early withdrawal of their assets from the
@@ -127,7 +127,7 @@ type SlashingParameters struct {
 	// The maximum percentage of the operator's total stake that can be slashed. The value is
 	// represented in bips (basis points), where 100 bips = 1%. And the value must be between 0
 	// and 10_000 (inclusive).
-	MaxSlashingPercentage int64 `json:"max_slashing_percentage"`
+	MaxSlashingBips int64 `json:"max_slashing_bips"`
 	// The minimum amount of time (in seconds) that the slashing can be delayed before it is
 	// executed and finalized. Setting this value to a duration less than the queued withdrawal
 	// delay is recommended. To prevent restaker's early withdrawal of their assets from the
