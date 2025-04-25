@@ -1,13 +1,15 @@
 package modules
 
 import (
+	"log/slog"
+
 	"github.com/cosmos/cosmos-sdk/codec"
+	junomod "github.com/forbole/juno/v6/modules"
 	"github.com/forbole/juno/v6/modules/registrar"
+
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/database"
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/modules/types"
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/modules/wasm"
-
-	junomod "github.com/forbole/juno/v6/modules"
 )
 
 // ModulesRegistrar represents the modules.Registrar that allows to register all custom modules
@@ -24,6 +26,7 @@ func NewModulesRegistrar(cdc codec.Codec) *ModulesRegistrar {
 func (r *ModulesRegistrar) BuildModules(ctx registrar.Context) junomod.Modules {
 	sources, err := types.BuildSources(ctx.JunoConfig.Node, r.cdc)
 	if err != nil {
+		slog.Error("Failed to build sources", "error", err)
 		panic(err)
 	}
 
