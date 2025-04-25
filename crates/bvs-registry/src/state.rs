@@ -1,5 +1,4 @@
 use crate::error::ContractError;
-use bvs_library::time::{DAYS, MINUTES};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Api, Env, Order, StdError, StdResult, Storage};
 use cw_storage_plus::{Map, SnapshotMap, Strategy};
@@ -346,6 +345,7 @@ pub fn reset_slashing_opt_in(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bvs_library::time::{DAYS, MINUTES};
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
 
     #[test]
