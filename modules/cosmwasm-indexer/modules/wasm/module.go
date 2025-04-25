@@ -1,7 +1,9 @@
 package wasm
 
 import (
+	"fmt"
 	"log/slog"
+	"slices"
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/forbole/juno/v6/modules"
@@ -18,7 +20,7 @@ var (
 
 // Module represent x/wasm module
 type Module struct {
-	cfg    Config
+	cfg    *Config
 	cdc    codec.Codec
 	db     *database.DB
 	source wasmsource.Source
@@ -28,16 +30,26 @@ type Module struct {
 func NewModule(cfg config.Config, source wasmsource.Source, cdc codec.Codec, db *database.DB) *Module {
 	bz, err := cfg.GetBytes()
 	if err != nil {
-		slog.Error("failed to get config bytes", "error", err)
+		slog.Error("Failed to get config bytes", "error", err)
 		panic(err)
 	}
 
+	fmt.Println("Using wasm")
+	fmt.Println("Config bytes:", string(bz))
 	wasmCfg, err := ParseConfig(bz)
 	if err != nil {
-		slog.Error("failed to parse config from bytes", "error", err)
+		slog.Error("Failed to parse config from bytes", "error", err)
 		panic(err)
 	}
 
+	if wasmCfg == nil {
+		panic("The config of wasm module shouldn't be nil")
+	}
+
+	// sort codeID in config
+	slices.Sort(wasmCfg.codeID)
+
+	fmt.Println("aaaa: ", wasmCfg)
 	return &Module{
 		cfg:    wasmCfg,
 		cdc:    cdc,

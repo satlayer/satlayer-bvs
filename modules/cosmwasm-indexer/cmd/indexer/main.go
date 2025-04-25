@@ -1,11 +1,10 @@
 package main
 
 import (
-	"log"
-
 	junocmd "github.com/forbole/juno/v6/cmd"
 	initcmd "github.com/forbole/juno/v6/cmd/init"
 	parsetypes "github.com/forbole/juno/v6/cmd/parse/types"
+	startcmd "github.com/forbole/juno/v6/cmd/start"
 
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/database"
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/modules"
@@ -27,9 +26,16 @@ func main() {
 		WithParseConfig(parseCfg)
 
 	// Run the commands and panic on any error
-	executor := junocmd.BuildDefaultExecutor(cfg)
+	rootCmd := junocmd.RootCmd(cfg.GetName())
+	rootCmd.AddCommand(
+		junocmd.VersionCmd(),
+		initcmd.NewInitCmd(cfg.GetInitConfig()),
+		startcmd.NewStartCmd(cfg.GetParseConfig()),
+	)
+
+	executor := junocmd.PrepareRootCmd(cfg.GetName(), rootCmd)
 	err := executor.Execute()
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 }
