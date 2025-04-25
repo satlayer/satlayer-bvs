@@ -54,6 +54,7 @@ func getBasicManagers() module.BasicManager {
 func UnpackMessage[T proto.Message](cdc codec.Codec, bz []byte, ptr T) T {
 	var cdcAny codectypes.Any
 	cdc.MustUnmarshalJSON(bz, &cdcAny)
+
 	var cosmosMsg sdk.Msg
 	if err := cdc.UnpackAny(&cdcAny, &cosmosMsg); err != nil {
 		panic(err)

@@ -8,7 +8,7 @@ import (
 	"github.com/forbole/juno/v6/node/remote"
 )
 
-// Source implements wasmsource.Source using a remote node
+// Source implements source.Source by using remote node
 type Source struct {
 	*remote.Source
 	wasmClient wasmtypes.QueryClient
@@ -22,7 +22,7 @@ func NewSource(source *remote.Source, wasmClient wasmtypes.QueryClient) *Source 
 	}
 }
 
-// GetContractInfo implements wasmsource.Source
+// GetContractInfo implements source.Source
 func (s Source) GetContractInfo(height int64, contractAddr string) (*wasmtypes.QueryContractInfoResponse, error) {
 	res, err := s.wasmClient.ContractInfo(
 		remote.GetHeightRequestContext(s.Ctx, height),
@@ -31,13 +31,13 @@ func (s Source) GetContractInfo(height int64, contractAddr string) (*wasmtypes.Q
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("error while getting contract info: %s", err)
+		return nil, fmt.Errorf("failed to get contract info: %s", err)
 	}
 
 	return res, nil
 }
 
-// GetContractStates implements wasmsource.Source
+// GetContractStates implements source.Source
 func (s Source) GetContractStates(height int64, contractAddr string) ([]wasmtypes.Model, error) {
 	var models []wasmtypes.Model
 	var nextKey []byte
@@ -54,7 +54,7 @@ func (s Source) GetContractStates(height int64, contractAddr string) ([]wasmtype
 			},
 		)
 		if err != nil {
-			return nil, fmt.Errorf("error while getting contract state: %s", err)
+			return nil, fmt.Errorf("failed to get contract state: %s", err)
 		}
 
 		nextKey = res.Pagination.NextKey

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"reflect"
+	"slices"
 	"strconv"
 	"time"
 
@@ -29,6 +30,7 @@ var msgFilter = map[string]bool{
 
 // HandleMsg implements modules.MessageModule
 func (m *Module) HandleMsg(index int, msg junotypes.Message, tx *junotypes.Transaction) error {
+	fmt.Println("HandleMsg")
 	if _, ok := msgFilter[msg.GetType()]; !ok {
 		return nil
 	}
@@ -55,11 +57,10 @@ func (m *Module) HandleMsg(index int, msg junotypes.Message, tx *junotypes.Trans
 
 	case types.MsgUpdateAdmin:
 		cosmosMsg := utils.UnpackMessage(m.cdc, msg.GetBytes(), &wasmtypes.MsgUpdateAdmin{})
-		return m.HandleMsgUpdateAdmin(cosmosMsg)
-
+		return m.HandleMsgUpdateAdmin(tx, cosmosMsg)
 	case types.MsgClearAdmin:
 		cosmosMsg := utils.UnpackMessage(m.cdc, msg.GetBytes(), &wasmtypes.MsgClearAdmin{})
-		return m.HandleMsgClearAdmin(cosmosMsg)
+		return m.HandleMsgClearAdmin(tx, cosmosMsg)
 
 	default:
 		return fmt.Errorf("unknown msg type: %s", msg.GetType())
@@ -81,14 +82,21 @@ func (m *Module) HandleMsgStoreCode(index int, tx *junotypes.Transaction, msg *w
 	codeIDKey, err := tx.FindAttributeByKey(event, wasmtypes.AttributeKeyCodeID)
 	if err != nil {
 		slog.Error("Failed to search for AttributeKeyCodeID", "error", err)
-		return fmt.Errorf("failed to search for AttributeKeyCodeID: %s", err)
+		return err
 	}
 
 	codeID, err := strconv.ParseUint(codeIDKey, 10, 64)
 	if err != nil {
-		slog.Error("Failed to parse code id to int64", "error", err)
-		return fmt.Errorf("failed to parse code id to int64: %s", err)
+		slog.Error("Failed to parse code id to uint64", "error", err)
+		return err
 	}
+
+	if _, found := slices.BinarySearch(m.cfg.codeID, codeID); !found {
+		slog.Debug("Not found specified code id in MsgStoreCode")
+		return nil
+	}
+
+	slog.Debug("Handle MsgStoreCode", "tx hash", tx.TxHash, "code id", codeID, "index", index)
 
 	return m.db.SaveWasmCode(
 		types.NewWasmCode(
@@ -100,6 +108,11 @@ func (m *Module) HandleMsgStoreCode(index int, tx *junotypes.Transaction, msg *w
 // HandleMsgInstantiateContract allows to properly handle a MsgInstantiateContract
 // Instantiate Contract Event instantiates an executable contract with the code previously stored with Store Code Event
 func (m *Module) HandleMsgInstantiateContract(index int, tx *junotypes.Transaction, msg *wasmtypes.MsgInstantiateContract) error {
+	if _, found := slices.BinarySearch(m.cfg.codeID, msg.CodeID); !found {
+		slog.Debug("Not found specified code id in HandleMsgInstantiateContract")
+		return nil
+	}
+
 	// Get instantiate contract event
 	event, success := eventutils.FindEventByType(sdktypes.StringifyEvents(tx.Events), wasmtypes.EventTypeInstantiate)
 
@@ -112,8 +125,18 @@ func (m *Module) HandleMsgInstantiateContract(index int, tx *junotypes.Transacti
 	contractAddress, err := tx.FindAttributeByKey(event, wasmtypes.AttributeKeyContractAddr)
 	if err != nil {
 		slog.Error("Failed to search for AttributeKeyContractAddr", "error", err)
-		return fmt.Errorf("failed to search for AttributeKeyContractAddr: %s", err)
+		return err
 	}
+
+	// Only record the specified contract addresses in config
+	labelName, ok := m.cfg.contracts[contractAddress]
+	if !ok {
+		slog.Debug("Not found specified contractAddress in HandleMsgInstantiateContract")
+		return nil
+	}
+
+	slog.Debug("Handle MsgMigrateContract", "tx hash", tx.TxHash, "contract address", contractAddress,
+		"contract label name", labelName, "index", index)
 
 	// Get result data
 	resultData, err := tx.FindAttributeByKey(event, wasmtypes.AttributeKeyResultDataHex)
@@ -124,7 +147,7 @@ func (m *Module) HandleMsgInstantiateContract(index int, tx *junotypes.Transacti
 	resultDataBz, err := base64.StdEncoding.DecodeString(resultData)
 	if err != nil {
 		slog.Error("Failed to decode result data", "error", err)
-		return fmt.Errorf("failed to decode result data: %s", err)
+		return err
 	}
 
 	// Get the contract info
@@ -132,13 +155,13 @@ func (m *Module) HandleMsgInstantiateContract(index int, tx *junotypes.Transacti
 	if err != nil {
 		slog.Error("Failed to get contract info", "block height", tx.Height,
 			"contract address", contractAddress, "error", err)
-		return fmt.Errorf("failed to get proposal: %s", err)
+		return err
 	}
 
 	timestamp, err := time.Parse(time.RFC3339, tx.Timestamp)
 	if err != nil {
 		slog.Error("Failed to parse time", "error", err)
-		return fmt.Errorf("failed to parse time: %s", err)
+		return err
 	}
 
 	// Get contract info extension
@@ -148,7 +171,7 @@ func (m *Module) HandleMsgInstantiateContract(index int, tx *junotypes.Transacti
 		err = m.cdc.UnpackAny(contractInfo.Extension, &extentionI)
 		if err != nil {
 			slog.Error("Failed to get contract info extension", "error", err)
-			return fmt.Errorf("failed to get contract info extension: %s", err)
+			return err
 		}
 		contractInfoExt = extentionI.String()
 	}
@@ -158,7 +181,7 @@ func (m *Module) HandleMsgInstantiateContract(index int, tx *junotypes.Transacti
 	if err != nil {
 		slog.Error("Failed to get contract states", "block height", tx.Height,
 			"contract address", contractAddress, "error", err)
-		return fmt.Errorf("failed to get contract states: %s", err)
+		return err
 	}
 
 	contract := types.NewWasmContract(
@@ -174,13 +197,21 @@ func (m *Module) HandleMsgInstantiateContract(index int, tx *junotypes.Transacti
 // HandleMsgExecuteContract allows to properly handle a MsgExecuteContract
 // Execute Event executes an instantiated contract
 func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, msg *wasmtypes.MsgExecuteContract) error {
-	slog.Debug("Handle MsgExecuteContract", "tx hash", tx.TxHash)
+	// Only record the specified contract addresses in config
+	labelName, ok := m.cfg.contracts[msg.Contract]
+	if !ok {
+		slog.Debug("Not found specified contractAddress in HandleMsgExecuteContract")
+		return nil
+	}
+
+	slog.Debug("Handle MsgExecuteContract", "tx hash", tx.TxHash, "contract address", msg.Contract,
+		"contract label name", labelName, "index", index)
 
 	// Parse the ExecuteContract message body
 	msgJSON, err := oj.ParseString(string(msg.Msg))
 	if err != nil {
 		slog.Error("Failed to parse message JSON", "error", err)
-		return fmt.Errorf("failed to parse message JSON: %s", err)
+		return err
 	}
 
 	// Use reflection to get the message name by pulling the 1st field name from the JSON struct
@@ -218,22 +249,92 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 	// Get result data
 	resultData, err := tx.FindAttributeByKey(event, wasmtypes.AttributeKeyResultDataHex)
 	if err != nil {
+		slog.Error("Failed to search for AttributeKeyResultDataHex", "error", err)
 		resultData = ""
 	}
 	resultDataBz, err := base64.StdEncoding.DecodeString(resultData)
 	if err != nil {
 		slog.Error("Failed to decode result data", "error", err)
-		return fmt.Errorf("failed to decode result data: %s", err)
+		return err
 	}
 
 	timestamp, err := time.Parse(time.RFC3339, tx.Timestamp)
 	if err != nil {
 		slog.Error("Failed to parse time", "error", err)
-		return fmt.Errorf("failed to parse time: %s", err)
+		return err
 	}
 
 	contractExists, _ := m.db.GetWasmContractExists(msg.Contract)
-	slog.Info("Print contract info", "contractExists", contractExists)
+	if !contractExists {
+		contractAddress := msg.Contract
+		slog.Debug("Contract doesn't exist in db", "contract address", msg.Contract)
+
+		// default values
+		contractInfoCreator := "unknown"
+		contractInfoAdmin := "unknown"
+		contractInfoCodeID := uint64(0)
+		contractInfoLabel := ""
+
+		// Check if there is a record of the contract, otherwise look it up
+		contractInfo, err := m.source.GetContractInfo(int64(tx.Height), contractAddress)
+		if err != nil {
+			slog.Error("Failed to get contract info", "error", err, "contract address", msg.Contract,
+				"block height", tx.Height)
+		} else {
+			contractInfoCreator = contractInfo.Creator
+			contractInfoAdmin = contractInfo.Admin
+			contractInfoCodeID = contractInfo.CodeID
+			contractInfoLabel = contractInfo.Label
+		}
+
+		createdBlockHeight := int64(0)
+		if contractInfo != nil && contractInfo.Created != nil {
+			createdBlockHeight = int64(contractInfo.Created.BlockHeight)
+		}
+
+		emptyBytes := make([]byte, 0)
+		var initPermission wasmtypes.AccessConfig
+		newCode := types.NewWasmCode(
+			contractInfoCreator, emptyBytes, &initPermission, contractInfoCodeID, createdBlockHeight,
+		)
+
+		err = m.db.SaveWasmCode(newCode)
+		if err != nil {
+			slog.Error("Failed to save contract code into db", "error", err)
+			return fmt.Errorf("error while saving contract code: %s", err)
+		}
+
+		// Get contract info extension
+		contractInfoExt := ""
+		if contractInfo != nil && contractInfo.Extension != nil {
+			var extentionI wasmtypes.ContractInfoExtension
+			err = m.cdc.UnpackAny(contractInfo.Extension, &extentionI)
+			if err != nil {
+				return fmt.Errorf("error while getting contract info extension: %s", err)
+			}
+			contractInfoExt = extentionI.String()
+		}
+
+		// Set to default values, that will hopefully be overwritten during the next migration of this contract
+		emptyRawMessage := []byte("{}")
+		emptyFunds := sdktypes.Coins{sdktypes.Coin{}}
+
+		var contractStates []wasmtypes.Model
+
+		contract := types.NewWasmContract(
+			msg.Sender, contractInfoAdmin, contractInfoCodeID, contractInfoLabel,
+			emptyRawMessage, emptyFunds,
+			contractAddress, string(resultDataBz), timestamp,
+			contractInfoCreator, contractInfoExt, contractStates, createdBlockHeight,
+		)
+
+		err = m.db.SaveWasmContracts(
+			[]types.WasmContract{contract},
+		)
+		if err != nil {
+			return fmt.Errorf("error while saving contract info: %s", err)
+		}
+	}
 
 	execute := types.NewWasmExecuteContract(
 		msg.Sender, msg.Contract, msg.Msg, msg.Funds,
@@ -256,6 +357,16 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 // HandleMsgMigrateContract allows to properly handle a MsgMigrateContract
 // Migrate Contract Event upgrade the contract by updating code ID generated from new Store Code Event
 func (m *Module) HandleMsgMigrateContract(index int, tx *junotypes.Transaction, msg *wasmtypes.MsgMigrateContract) error {
+	// Only record the specified contract addresses in config
+	labelName, ok := m.cfg.contracts[msg.Contract]
+	if !ok {
+		slog.Debug("Not found specified contractAddress in HandleMsgMigrateContract")
+		return nil
+	}
+
+	slog.Debug("Handle MsgMigrateContract", "tx hash", tx.TxHash, "contract address", msg.Contract,
+		"contract label name", labelName, "index", index, "new code id", msg.CodeID)
+
 	// Get Migrate Contract event
 	event, success := eventutils.FindEventByType(sdktypes.StringifyEvents(tx.Events), wasmtypes.EventTypeMigrate)
 
@@ -272,7 +383,7 @@ func (m *Module) HandleMsgMigrateContract(index int, tx *junotypes.Transaction, 
 	resultDataBz, err := base64.StdEncoding.DecodeString(resultData)
 	if err != nil {
 		slog.Error("Failed to decode result data", "error", err)
-		return fmt.Errorf("failed to decode result data: %s", err)
+		return err
 	}
 
 	return m.db.UpdateContractWithMsgMigrateContract(msg.Sender, msg.Contract, msg.CodeID, msg.Msg, string(resultDataBz))
@@ -280,12 +391,32 @@ func (m *Module) HandleMsgMigrateContract(index int, tx *junotypes.Transaction, 
 
 // HandleMsgUpdateAdmin allows to properly handle a MsgUpdateAdmin
 // Update Admin Event updates the contract admin who can migrate the wasm contract
-func (m *Module) HandleMsgUpdateAdmin(msg *wasmtypes.MsgUpdateAdmin) error {
+func (m *Module) HandleMsgUpdateAdmin(tx *junotypes.Transaction, msg *wasmtypes.MsgUpdateAdmin) error {
+	// Only record the specified contract addresses in config
+	labelName, ok := m.cfg.contracts[msg.Contract]
+	if !ok {
+		slog.Debug("Not found specified contractAddress in HandleMsgUpdateAdmin")
+		return nil
+	}
+
+	slog.Debug("Handle MsgUpdateAdmin", "tx hash", tx.TxHash, "contract address", msg.Contract,
+		"contract label name", labelName)
+
 	return m.db.UpdateContractAdmin(msg.Sender, msg.Contract, msg.NewAdmin)
 }
 
 // HandleMsgClearAdmin allows to properly handle a MsgClearAdmin
 // Clear Admin Event clears the admin which make the contract no longer migratable
-func (m *Module) HandleMsgClearAdmin(msg *wasmtypes.MsgClearAdmin) error {
+func (m *Module) HandleMsgClearAdmin(tx *junotypes.Transaction, msg *wasmtypes.MsgClearAdmin) error {
+	// Only record the specified contract addresses in config
+	labelName, ok := m.cfg.contracts[msg.Contract]
+	if !ok {
+		slog.Debug("Not found specified contractAddress in HandleMsgClearAdmin")
+		return nil
+	}
+
+	slog.Debug("Handle MsgClearAdmin", "tx hash", tx.TxHash, "contract address", msg.Contract,
+		"contract label name", labelName)
+
 	return m.db.UpdateContractAdmin(msg.Sender, msg.Contract, "")
 }
