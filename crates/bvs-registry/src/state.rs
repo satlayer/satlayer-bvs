@@ -47,9 +47,22 @@ pub fn require_operator_registered(
 /// Becomes Inactive when the Operator or Service have unregistered (default state)
 #[cw_serde]
 pub enum RegistrationStatus {
+    /// Default state when neither the Operator nor the Service has registered,
+    /// or when either the Operator or Service has unregistered
     Inactive = 0,
+
+    /// State when both the Operator and Service have registered with each other,
+    /// indicating a fully established relationship
     Active = 1,
+
+    /// State when only the Operator has registered but the Service hasn't yet registered,
+    /// indicating a pending registration from the Service side
+    /// This is Operator-initiated registration, waiting for Service to finalize
     OperatorRegistered = 2,
+
+    /// State when only the Service has registered but the Operator hasn't yet registered,
+    /// indicating a pending registration from the Operator side
+    /// This is Service-initiated registration, waiting for Operator to finalize
     ServiceRegistered = 3,
 }
 

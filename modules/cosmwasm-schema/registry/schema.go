@@ -94,6 +94,20 @@ type TransferOwnership struct {
 	NewOwner string `json:"new_owner"`
 }
 
+// QueryMsg Status: Returns the registration status of an operator to a service The response
+// is a StatusResponse that contains a u8 value that maps to a RegistrationStatus:
+//
+// - 0: Inactive: Default state when neither the Operator nor the Service has registered, or
+// when either has unregistered
+//
+// - 1: Active: State when both the Operator and Service have registered with each other,
+// indicating a fully established relationship
+//
+// - 2: OperatorRegistered: State when only the Operator has registered but the Service
+// hasn't yet, indicating a pending registration from the Service side
+//
+// - 3: ServiceRegistered: State when only the Service has registered but the Operator
+// hasn't yet, indicating a pending registration from the Operator side
 type QueryMsg struct {
 	Status                      *Status                      `json:"status,omitempty"`
 	IsService                   *string                      `json:"is_service,omitempty"`
