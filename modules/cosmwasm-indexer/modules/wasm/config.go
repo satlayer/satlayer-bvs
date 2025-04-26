@@ -7,15 +7,15 @@ import (
 // Config specify contract addresses that want to listen.
 // key is contract address, value is contract label name.
 type Config struct {
-	contracts map[string]string `yaml:"contracts"`
-	codeID    []uint64          `yaml:"code_id"`
+	Contracts map[string]string `yaml:"contracts"`
+	CodeID    []uint64          `yaml:"code_id"`
 }
 
 // NewConfig returns wasm module config instance.
 func NewConfig(contracts map[string]string, codeID []uint64) Config {
 	return Config{
-		contracts: contracts,
-		codeID:    codeID,
+		Contracts: contracts,
+		CodeID:    codeID,
 	}
 }
 
@@ -31,7 +31,7 @@ func DefaultConfig() Config {
 // ParseConfig parses wasm config from yaml config file
 func ParseConfig(bz []byte) (*Config, error) {
 	type T struct {
-		Config *Config `yaml:"wasms"`
+		Config *Config `yaml:"wasm"`
 	}
 
 	var cfg T
