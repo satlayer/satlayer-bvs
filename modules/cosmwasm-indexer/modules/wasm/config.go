@@ -1,14 +1,37 @@
 package wasm
 
 import (
+	"fmt"
+
 	"gopkg.in/yaml.v3"
 )
+
+type FlowSlice []uint64
 
 // Config specify contract addresses that want to listen.
 // key is contract address, value is contract label name.
 type Config struct {
 	Contracts map[string]string `yaml:"contracts"`
-	CodeID    []uint64          `yaml:"code_id"`
+	CodeID    FlowSlice         `yaml:"code_id"`
+}
+
+func (f FlowSlice) MarshalYAML() (any, error) {
+	return &yaml.Node{
+		Kind: yaml.SequenceNode,
+		Tag:  "!!seq",
+		Content: func() []*yaml.Node {
+			nodes := make([]*yaml.Node, len(f))
+			for i, v := range f {
+				nodes[i] = &yaml.Node{
+					Kind:  yaml.ScalarNode,
+					Tag:   "!!int",
+					Value: fmt.Sprintf("%d", v),
+				}
+			}
+			return nodes
+		}(),
+		Style: yaml.FlowStyle,
+	}, nil
 }
 
 // NewConfig returns wasm module config instance.
