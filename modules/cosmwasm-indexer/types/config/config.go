@@ -12,7 +12,7 @@ import (
 // Config defines all necessary juno configuration parameters.
 type Config struct {
 	JunoConfig junoconfig.Config `yaml:"-,inline"`
-	WasmConfig wasm.Config       `yaml:"wasms"`
+	WasmConfig wasm.Config       `yaml:"wasm"`
 }
 
 // NewConfig returns a new Config instance
