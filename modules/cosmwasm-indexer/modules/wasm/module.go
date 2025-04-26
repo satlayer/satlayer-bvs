@@ -1,7 +1,7 @@
 package wasm
 
 import (
-	"fmt"
+	"log"
 	"log/slog"
 	"slices"
 
@@ -32,27 +32,20 @@ func NewModule(cfg config.Config, source wasmsource.Source, cdc codec.Codec, db 
 	bz, err := cfg.GetBytes()
 	if err != nil {
 		slog.Error("Failed to get config bytes", "error", err)
-		panic(err)
+		log.Fatal(err)
 	}
 
 	wasmCfg, err := ParseConfig(bz)
 	if err != nil {
 		slog.Error("Failed to parse config from bytes", "error", err)
-		panic(err)
+		log.Fatal(err)
 	}
 
-	if wasmCfg == nil {
-		panic("The config of wasm module shouldn't be nil")
-	}
-
-	for addr := range wasmCfg.Contracts {
-		if ok := utils.IsValidContractAddr(addr, cfg.Chain.Bech32Prefix); !ok {
-			panic(fmt.Sprintf("invalid contract address: %s", addr))
-		}
-	}
-
+	validateWASMConfig(wasmCfg, cfg.Chain.Bech32Prefix)
 	// sort codeID in config
-	slices.Sort(wasmCfg.CodeID)
+	slices.Sort(wasmCfg.CodeIDs)
+
+	slog.Info("Run wasm module", "wasm config", wasmCfg)
 
 	return &Module{
 		cfg:    wasmCfg,
@@ -65,4 +58,20 @@ func NewModule(cfg config.Config, source wasmsource.Source, cdc codec.Codec, db 
 // Name implements modules.Module
 func (m *Module) Name() string {
 	return "wasm"
+}
+
+func validateWASMConfig(wasmCfg *Config, bech32prefix string) {
+	if wasmCfg == nil {
+		log.Fatal("The config of wasm module shouldn't be nil")
+	}
+
+	if len(wasmCfg.CodeIDs) == 0 && len(wasmCfg.Contracts) == 0 {
+		log.Fatal("Both Contracts and CodeID shouldn't be empty")
+	}
+
+	for addr := range wasmCfg.Contracts {
+		if ok := utils.IsValidContractAddr(addr, bech32prefix); !ok {
+			log.Fatalf("Invalid contract address: %s", addr)
+		}
+	}
 }
