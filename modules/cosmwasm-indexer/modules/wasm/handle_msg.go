@@ -91,7 +91,7 @@ func (m *Module) HandleMsgStoreCode(index int, tx *junotypes.Transaction, msg *w
 		return err
 	}
 
-	if _, found := slices.BinarySearch(m.cfg.codeID, codeID); !found {
+	if _, found := slices.BinarySearch(m.cfg.CodeID, codeID); !found {
 		slog.Debug("Not found specified code id in MsgStoreCode")
 		return nil
 	}
@@ -108,7 +108,7 @@ func (m *Module) HandleMsgStoreCode(index int, tx *junotypes.Transaction, msg *w
 // HandleMsgInstantiateContract allows to properly handle a MsgInstantiateContract
 // Instantiate Contract Event instantiates an executable contract with the code previously stored with Store Code Event
 func (m *Module) HandleMsgInstantiateContract(index int, tx *junotypes.Transaction, msg *wasmtypes.MsgInstantiateContract) error {
-	if _, found := slices.BinarySearch(m.cfg.codeID, msg.CodeID); !found {
+	if _, found := slices.BinarySearch(m.cfg.CodeID, msg.CodeID); !found {
 		slog.Debug("Not found specified code id in HandleMsgInstantiateContract")
 		return nil
 	}
@@ -129,7 +129,7 @@ func (m *Module) HandleMsgInstantiateContract(index int, tx *junotypes.Transacti
 	}
 
 	// Only record the specified contract addresses in config
-	labelName, ok := m.cfg.contracts[contractAddress]
+	labelName, ok := m.cfg.Contracts[contractAddress]
 	if !ok {
 		slog.Debug("Not found specified contractAddress in HandleMsgInstantiateContract")
 		return nil
@@ -198,7 +198,7 @@ func (m *Module) HandleMsgInstantiateContract(index int, tx *junotypes.Transacti
 // Execute Event executes an instantiated contract
 func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, msg *wasmtypes.MsgExecuteContract) error {
 	// Only record the specified contract addresses in config
-	labelName, ok := m.cfg.contracts[msg.Contract]
+	labelName, ok := m.cfg.Contracts[msg.Contract]
 	if !ok {
 		slog.Debug("Not found specified contractAddress in HandleMsgExecuteContract")
 		return nil
@@ -358,7 +358,7 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 // Migrate Contract Event upgrade the contract by updating code ID generated from new Store Code Event
 func (m *Module) HandleMsgMigrateContract(index int, tx *junotypes.Transaction, msg *wasmtypes.MsgMigrateContract) error {
 	// Only record the specified contract addresses in config
-	labelName, ok := m.cfg.contracts[msg.Contract]
+	labelName, ok := m.cfg.Contracts[msg.Contract]
 	if !ok {
 		slog.Debug("Not found specified contractAddress in HandleMsgMigrateContract")
 		return nil
@@ -393,7 +393,7 @@ func (m *Module) HandleMsgMigrateContract(index int, tx *junotypes.Transaction, 
 // Update Admin Event updates the contract admin who can migrate the wasm contract
 func (m *Module) HandleMsgUpdateAdmin(tx *junotypes.Transaction, msg *wasmtypes.MsgUpdateAdmin) error {
 	// Only record the specified contract addresses in config
-	labelName, ok := m.cfg.contracts[msg.Contract]
+	labelName, ok := m.cfg.Contracts[msg.Contract]
 	if !ok {
 		slog.Debug("Not found specified contractAddress in HandleMsgUpdateAdmin")
 		return nil
@@ -409,7 +409,7 @@ func (m *Module) HandleMsgUpdateAdmin(tx *junotypes.Transaction, msg *wasmtypes.
 // Clear Admin Event clears the admin which make the contract no longer migratable
 func (m *Module) HandleMsgClearAdmin(tx *junotypes.Transaction, msg *wasmtypes.MsgClearAdmin) error {
 	// Only record the specified contract addresses in config
-	labelName, ok := m.cfg.contracts[msg.Contract]
+	labelName, ok := m.cfg.Contracts[msg.Contract]
 	if !ok {
 		slog.Debug("Not found specified contractAddress in HandleMsgClearAdmin")
 		return nil

@@ -35,7 +35,6 @@ func NewModule(cfg config.Config, source wasmsource.Source, cdc codec.Codec, db 
 	}
 
 	fmt.Println("Using wasm")
-	fmt.Println("Config bytes:", string(bz))
 	wasmCfg, err := ParseConfig(bz)
 	if err != nil {
 		slog.Error("Failed to parse config from bytes", "error", err)
@@ -47,7 +46,7 @@ func NewModule(cfg config.Config, source wasmsource.Source, cdc codec.Codec, db 
 	}
 
 	// sort codeID in config
-	slices.Sort(wasmCfg.codeID)
+	slices.Sort(wasmCfg.CodeID)
 
 	fmt.Println("aaaa: ", wasmCfg)
 	return &Module{

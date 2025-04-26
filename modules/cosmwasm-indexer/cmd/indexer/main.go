@@ -7,6 +7,7 @@ import (
 	startcmd "github.com/forbole/juno/v6/cmd/start"
 
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/database"
+	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/logging"
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/modules"
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/types/config"
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/utils"
@@ -19,7 +20,8 @@ func main() {
 	cdc := utils.GetCodec()
 	parseCfg := parsetypes.NewConfig().
 		WithDBBuilder(database.Builder).
-		WithRegistrar(modules.NewModulesRegistrar(cdc))
+		WithRegistrar(modules.NewModulesRegistrar(cdc)).
+		WithLogger(logging.NewSlogLogger())
 
 	cfg := junocmd.NewConfig("indexer").
 		WithInitConfig(initCfg).
