@@ -8,6 +8,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/forbole/juno/v6/modules"
 	"github.com/forbole/juno/v6/types/config"
+	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/utils"
 
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/database"
 	wasmsource "github.com/satlayer/satlayer-bvs/cosmwasm-indexer/modules/wasm/source"
@@ -34,7 +35,6 @@ func NewModule(cfg config.Config, source wasmsource.Source, cdc codec.Codec, db 
 		panic(err)
 	}
 
-	fmt.Println("Using wasm")
 	wasmCfg, err := ParseConfig(bz)
 	if err != nil {
 		slog.Error("Failed to parse config from bytes", "error", err)
@@ -45,10 +45,15 @@ func NewModule(cfg config.Config, source wasmsource.Source, cdc codec.Codec, db 
 		panic("The config of wasm module shouldn't be nil")
 	}
 
+	for addr := range wasmCfg.Contracts {
+		if ok := utils.IsValidContractAddr(addr, cfg.Chain.Bech32Prefix); !ok {
+			panic(fmt.Sprintf("invalid contract address: %s", addr))
+		}
+	}
+
 	// sort codeID in config
 	slices.Sort(wasmCfg.CodeID)
 
-	fmt.Println("aaaa: ", wasmCfg)
 	return &Module{
 		cfg:    wasmCfg,
 		cdc:    cdc,
