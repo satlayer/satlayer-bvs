@@ -6,32 +6,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type FlowSlice []uint64
-
 // Config specify contract addresses that want to listen.
-// key is contract address, value is contract label name.
+// The key of Contracts is contract address, value is contract label name.
+// CodeID is used to fill the specified code id.
 type Config struct {
 	Contracts map[string]string `yaml:"contracts"`
-	CodeID    FlowSlice         `yaml:"code_id"`
-}
-
-func (f FlowSlice) MarshalYAML() (any, error) {
-	return &yaml.Node{
-		Kind: yaml.SequenceNode,
-		Tag:  "!!seq",
-		Content: func() []*yaml.Node {
-			nodes := make([]*yaml.Node, len(f))
-			for i, v := range f {
-				nodes[i] = &yaml.Node{
-					Kind:  yaml.ScalarNode,
-					Tag:   "!!int",
-					Value: fmt.Sprintf("%d", v),
-				}
-			}
-			return nodes
-		}(),
-		Style: yaml.FlowStyle,
-	}, nil
+	CodeID    CodeIDSlice       `yaml:"code_id"`
 }
 
 // NewConfig returns wasm module config instance.
@@ -45,9 +25,9 @@ func NewConfig(contracts map[string]string, codeID []uint64) Config {
 // DefaultConfig returns the default wasm module config.
 func DefaultConfig() Config {
 	contracts := map[string]string{
-		"ccc": "cw20",
+		"contract_address": "contract_label",
 	}
-	codeID := []uint64{1, 2, 3}
+	codeID := []uint64{0}
 	return NewConfig(contracts, codeID)
 }
 
@@ -60,4 +40,26 @@ func ParseConfig(bz []byte) (*Config, error) {
 	var cfg T
 	err := yaml.Unmarshal(bz, &cfg)
 	return cfg.Config, err
+}
+
+// CodeIDSlice is alias for uint64 slice
+type CodeIDSlice []uint64
+
+func (c CodeIDSlice) MarshalYAML() (any, error) {
+	return &yaml.Node{
+		Kind: yaml.SequenceNode,
+		Tag:  "!!seq",
+		Content: func() []*yaml.Node {
+			nodes := make([]*yaml.Node, len(c))
+			for i, v := range c {
+				nodes[i] = &yaml.Node{
+					Kind:  yaml.ScalarNode,
+					Tag:   "!!int",
+					Value: fmt.Sprintf("%d", v),
+				}
+			}
+			return nodes
+		}(),
+		Style: yaml.FlowStyle,
+	}, nil
 }
