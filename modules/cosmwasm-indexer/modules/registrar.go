@@ -1,6 +1,7 @@
 package modules
 
 import (
+	"log"
 	"log/slog"
 
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -27,7 +28,7 @@ func (r *ModulesRegistrar) BuildModules(ctx registrar.Context) junomod.Modules {
 	sources, err := types.BuildSources(ctx.JunoConfig.Node, r.cdc)
 	if err != nil {
 		slog.Error("Failed to build sources", "error", err)
-		panic(err)
+		log.Fatal(err)
 	}
 
 	db := database.Cast(ctx.Database)
