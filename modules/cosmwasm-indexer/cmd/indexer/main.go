@@ -18,6 +18,7 @@ func main() {
 	initCfg := initcmd.NewConfig().WithConfigCreator(config.Creator)
 
 	cdc := utils.GetCodec()
+
 	parseCfg := parsetypes.NewConfig().
 		WithDBBuilder(database.Builder).
 		WithRegistrar(modules.NewModulesRegistrar(cdc)).

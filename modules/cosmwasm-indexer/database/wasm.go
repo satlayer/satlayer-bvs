@@ -28,7 +28,7 @@ WHERE wasm_params.height <= excluded.height
 		cfgValue, params.InstantiateDefaultPermission, params.Height,
 	)
 	if err != nil {
-		return fmt.Errorf("error while saving wasm params: %s", err)
+		return fmt.Errorf("failed to save wasm params: %s", err)
 	}
 
 	return nil
@@ -73,7 +73,7 @@ VALUES `
 
 	_, err := db.SQL.Exec(stmt, args...)
 	if err != nil {
-		return fmt.Errorf("error while saving wasm code: %s", err)
+		return fmt.Errorf("failed to save wasm byte code: %s", err)
 	}
 
 	return nil
@@ -84,14 +84,14 @@ func (db *DB) SaveWasmContracts(contracts []types.WasmContract) error {
 	paramsNumber := 13
 	slices := dbutils.SplitWasmContracts(contracts, paramsNumber)
 
-	for _, contracts := range slices {
+	for _, contracts = range slices {
 		if len(contracts) == 0 {
 			continue
 		}
 
 		err := db.saveWasmContracts(paramsNumber, contracts)
 		if err != nil {
-			return fmt.Errorf("error while storing contracts: %s", err)
+			return fmt.Errorf("failed to store contracts: %s", err)
 		}
 	}
 
@@ -137,7 +137,7 @@ VALUES `
 
 	_, err := db.SQL.Exec(stmt, args...)
 	if err != nil {
-		return fmt.Errorf("error while saving wasm contracts: %s", err)
+		return fmt.Errorf("failed to save wasm contracts: %s", err)
 	}
 
 	return nil
@@ -146,7 +146,7 @@ VALUES `
 // GetWasmContractExists returns all the wasm contracts matching an address that are currently stored inside the database.
 func (db *DB) GetWasmContractExists(contractAddress string) (bool, error) {
 	var count int
-	err := db.SQL.Select(&count, `SELECT count(contract_address) FROM wasm_contract WHERE contract_address = '`+contractAddress+`'`)
+	err := db.SQL.Get(&count, `SELECT count(contract_address) FROM wasm_contract WHERE contract_address = $1`, contractAddress)
 	return count > 0, err
 }
 
@@ -167,7 +167,7 @@ func (db *DB) SaveWasmExecuteContracts(executeContracts []types.WasmExecuteContr
 
 		err := db.saveWasmExecuteContracts(paramsNumber, executeContracts)
 		if err != nil {
-			return fmt.Errorf("error while storing contracts: %s", err)
+			return fmt.Errorf("failed to store contracts: %s", err)
 		}
 	}
 
@@ -197,7 +197,7 @@ VALUES `
 
 	_, err := db.SQL.Exec(stmt, args...)
 	if err != nil {
-		return fmt.Errorf("error while saving wasm execute contracts: %s", err)
+		return fmt.Errorf("failed to save wasm execute contracts: %s", err)
 	}
 
 	return nil
@@ -225,7 +225,7 @@ func (db *DB) SaveWasmExecuteContractEvents(executeContract types.WasmExecuteCon
 			if attr.Key == "msg_index" {
 				_, err := db.SQL.Exec(stmt, executeContract.ContractAddress, event.Type, executeContract.Height, tx.TxHash)
 				if err != nil {
-					return fmt.Errorf("error while saving wasm execute contracts: %s", err)
+					return fmt.Errorf("failed to save wasm execute contracts: %s", err)
 				}
 			}
 		}
@@ -246,7 +246,7 @@ WHERE contract_address = $5 `
 		contractAddress,
 	)
 	if err != nil {
-		return fmt.Errorf("error while updating wasm contract from contract migration: %s", err)
+		return fmt.Errorf("failed to update wasm contract from contract migration: %s", err)
 	}
 	return nil
 }
@@ -257,7 +257,7 @@ sender = $1, admin = $2 WHERE contract_address = $2 `
 
 	_, err := db.SQL.Exec(stmt, sender, newAdmin, contractAddress)
 	if err != nil {
-		return fmt.Errorf("error while updating wsm contract admin: %s", err)
+		return fmt.Errorf("failed to update wasm contract admin: %s", err)
 	}
 	return nil
 }
