@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://build.satlayer.xyz"),
   title: {
     default: "SatLayer Bitcoin Validated Service",
-    template: "%s - SatLayer",
+    template: "%s · SatLayer Documentation",
   },
 };
 const banner = (

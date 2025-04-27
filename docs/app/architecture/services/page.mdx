@@ -1,0 +1,135 @@
+import {Callout} from "nextra/components";
+
+# Services
+
+Together with [Operators](/architecture/operators), Services form the backbone of the SatLayer ecosystem.
+Services represent blockchain applications or protocols that require "operations," validation, and security.
+They are the entities that define the operational requirements, reward structures, and slashing conditions
+for the ecosystem's validators and infrastructure providers.
+
+In the SatLayer ecosystem, a Service can be any decentralized application that needs reliable,
+trustworthy computation and validation. Services establish the rules and parameters for their operations,
+while relying on Operators to execute these operations securely and efficiently.
+
+Typically, Services play a crucial role in the ecosystem by:
+- Defining what needs to be validated and how it should be validated
+- Establishing consequences for improper validation or malicious behavior
+- Setting operational requirements and standards
+- Creating economic incentives for proper operation
+
+They require infrastructure support because building and maintaining a robust, secure validation network
+is complex, resource-intensive, and often outside the core expertise of the service developers.
+Therefore, Operators become essential partners who provide the specialized infrastructure,
+security expertise, and operational capabilities that Services need to function effectively.
+
+<Callout type="info">
+  **Services without operations?**<br/>
+  It's important to note that a Service can exist without a need for operations in the traditional sense.
+  Not all services require complex logic or binaries to be run by Operators.
+  Some services might only need verification of data, provision of liquidity,
+  or other forms of support that don't involve running infrastructure.
+  The relationship between Services and Operators is flexible and can be tailored to the specific needs of each Service.
+</Callout>
+
+Services have significant responsibilities toward the Operators they engage with:
+
+- **Provide economic incentives**: Services cannot expect Operators to run their service without incentive—proper
+economic incentives must be established to make it worthwhile for Operators to dedicate their resources and expertise.
+- **Offer clear documentation**: Services cannot expect Operators to understand all the nuances of their
+specific application or protocol without proper guidance.
+- **Establish straightforward integration processes**: Making it easy for Operators to integrate with the service
+reduces friction and improves operational efficiency.
+- **Maintain ongoing support**: Responsive support channels help Operators resolve issues quickly and effectively.
+- **Provide clear technical specifications**: Detailed specifications help Operators understand exactly what
+is required to run the service properly.
+- **Create fair economic models**: Aligning the interests of both parties through well-designed economic models
+helps ensure a sustainable relationship.
+
+By fulfilling these responsibilities, Services help create a sustainable ecosystem
+where both they and their Operators can thrive.
+
+## Registration Lifecycle
+
+The relationship between Services and Operators is bidirectional and requires mutual agreement.
+This design ensures that both parties explicitly consent to work together,
+enhancing security and reliability in the ecosystem.
+
+- Services and Operators independently register themselves in the BVS Registry
+- Services register Operators they want to run their validation logic
+- Operators register Services they are willing to validate
+- When both parties have registered each other, the relationship becomes "Active"
+- If either party decides to end the relationship, they can unregister, changing the status to "Inactive"
+- Operators may deregister if they deem the service is not worth their time—for example,
+if there is too much slashing or insufficient rewards
+
+Behind the scenes,
+the registration process often involves direct communication between the Operator team and the Service team.
+They typically connect and mutually agree on the registration process,
+discussing technical requirements, reward structures, and operational expectations.
+While this communication is not necessarily a formal process nor required by the protocol,
+it is expected and beneficial for both parties.
+
+This collaborative approach is important because Services must make it worthwhile for Operators to run their service.
+Without attractive incentives and reasonable requirements, Services may struggle to attract high-quality Operators.
+Similarly,
+Operators benefit
+from understanding the Service's expectations and technical requirements before committing their resources.
+This mutual understanding helps establish a strong foundation for a successful working relationship.
+
+## Economic Incentives
+
+Economic incentives are the driving force behind the Service-Operator relationship in the SatLayer ecosystem.
+These incentives create a symbiotic relationship where both parties benefit from their cooperation:
+
+**Benefits for Services**:
+- Gain the security and infrastructure needed to operate effectively
+- Access to economic validation to prevent malicious behavior (i.e., long-range attacks)
+- Reduced need to build and maintain their own validation infrastructure
+- Protection against malicious behavior through economic security mechanisms
+
+**Benefits for Operators**:
+- Receive rewards for providing reliable and secure validation services
+- Opportunity to diversify their operational portfolio across multiple Services
+- Clear performance metrics and expectations
+
+The economic model is designed to align the interests of Services with the Operators that support them.
+By providing appropriate rewards for successful operations and implementing penalties for failures or malicious behavior,
+Services can create strong incentives for high-quality service provision.
+
+### Providing Incentives
+
+Services implement reward structures to incentivize Operators for their work.
+These reward mechanisms are designed to ensure fair compensation while promoting high-quality service.
+
+**Key aspects of the rewards system**:
+
+- **Flexible distribution**: The SatLayer ecosystem implements a flexible and efficient rewards distribution system
+that allows Services to incentivize Operators based on their performance and contribution.
+- **Customizable criteria**: Services calculate rewards for each Earner (Operators and Stakers) based on
+their own criteria and discretion.
+- **Efficient distribution**: Rewards are distributed through the ecosystem's rewards contract,
+ensuring transparency and reliability.
+- **Alignment of interests**: Properly designed reward structures help align the interests of Services and Operators,
+creating a sustainable ecosystem where both parties benefit from successful validation.
+- **Competitive advantage**: Services that provide competitive and fair rewards are more likely to attract
+high-quality Operators, enhancing the security and reliability of their operations.
+
+### Programmable Slashing
+
+To ensure honest behavior and maintain the integrity of the ecosystem,
+Services can implement slashing mechanisms that penalize Operators for malicious behavior or performance failures.
+This programmable slashing capability is a powerful tool for Services to enforce their requirements
+and protect themselves from potential harm.
+
+**Key aspects of the slashing mechanism**:
+
+- **Customizable parameters**: The slashing parameters, including the maximum percentage that can be slashed
+and the resolution window duration, are defined by the Service
+- **Explicit acceptance**: Parameters must be explicitly accepted by the Operator, ensuring they are
+fully aware of the potential penalties before establishing a relationship
+- **System guardrails**: The system includes guardrails to prevent malicious or disproportionate slashing,
+helping maintain trust in the ecosystem
+
+These mechanisms help maintain trust in the ecosystem while still providing Services
+with the tools they need to enforce proper behavior from their Operators.
+See [Programmable Slashing](/architecture/slashing) for more indepth information on the slashing mechanism.
