@@ -988,7 +988,7 @@ fn test_system_lock_assets() {
             .checked_sub(slash_amount)
             .unwrap();
 
-        let msg = ExecuteMsg::SystemLockAssets(Amount(slash_amount));
+        let msg = ExecuteMsg::SlashLocked(Amount(slash_amount));
         vault.execute(app, router.addr(), &msg).unwrap();
 
         let vault_balance = cw20.balance(app, vault.addr());
@@ -1032,17 +1032,17 @@ fn test_system_lock_assets() {
     //negative test
     {
         // non-callable address
-        let msg = ExecuteMsg::SystemLockAssets(Amount(Uint128::new(original_deposit_amount)));
+        let msg = ExecuteMsg::SlashLocked(Amount(Uint128::new(original_deposit_amount)));
         let resp = vault.execute(app, &stakers[0], &msg);
         assert!(resp.is_err());
 
         // larger than vault balance
-        let msg = ExecuteMsg::SystemLockAssets(Amount(Uint128::new(original_deposit_amount * 3)));
+        let msg = ExecuteMsg::SlashLocked(Amount(Uint128::new(original_deposit_amount * 3)));
         let resp = vault.execute(app, router.addr(), &msg);
         assert!(resp.is_err());
 
         // zero amount
-        let msg = ExecuteMsg::SystemLockAssets(Amount(Uint128::new(0)));
+        let msg = ExecuteMsg::SlashLocked(Amount(Uint128::new(0)));
         let resp = vault.execute(app, router.addr(), &msg);
         assert!(resp.is_err());
     }

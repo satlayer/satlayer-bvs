@@ -60,7 +60,7 @@ pub fn execute(
             msg.validate(deps.api)?;
             execute::redeem_withdrawal_to(deps, env, info, msg)
         }
-        ExecuteMsg::SystemLockAssets(msg) => {
+        ExecuteMsg::SlashLocked(msg) => {
             msg.validate(deps.api)?;
             execute::system_lock_asset(deps, env, info, msg)
         }
@@ -276,7 +276,7 @@ mod execute {
 
     /// Moves the assets from the vault to the `vault-router` contract.
     /// Part of the [https://build.satlayer.xyz/architecture/slashing](Programmable Slashing) lifecycle.
-    /// This function can only be called by `vault-router`, and takes an absolute `amount` of assets to be moved. 
+    /// This function can only be called by `vault-router`, and takes an absolute `amount` of assets to be moved.
     /// The amount is calculated and enforced by the router.
     pub fn system_lock_asset(
         deps: DepsMut,
