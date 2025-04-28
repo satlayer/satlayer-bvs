@@ -60,6 +60,10 @@ pub fn execute(
             msg.validate(deps.api)?;
             execute::redeem_withdrawal_to(deps, env, info, msg)
         }
+        ExecuteMsg::SlashLocked(msg) => {
+            msg.validate(deps.api)?;
+            execute::slash_locked(deps, env, info, msg)
+        }
     }
 }
 
@@ -68,7 +72,7 @@ mod execute {
     use crate::bank::get_denom;
     use crate::error::ContractError;
     use bvs_vault_base::error::VaultError;
-    use bvs_vault_base::msg::{Recipient, RecipientAmount};
+    use bvs_vault_base::msg::{Amount, Recipient, RecipientAmount};
     use bvs_vault_base::shares::QueuedWithdrawalInfo;
     use bvs_vault_base::{offset, router, shares};
     use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, StdError, Timestamp};
@@ -268,6 +272,38 @@ mod execute {
                     .add_attribute("total_shares", vault.total_shares().to_string()),
             )
             .add_message(send_msg))
+    }
+
+    /// Moves the assets from the vault to the `vault-router` contract.
+    /// Part of the [https://build.satlayer.xyz/architecture/slashing](Programmable Slashing) lifecycle.
+    /// This function can only be called by `vault-router`, and takes an absolute `amount` of assets to be moved.
+    /// The amount is calculated and enforced by the router.
+    pub fn slash_locked(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        amount: Amount,
+    ) -> Result<Response, ContractError> {
+        router::assert_router(deps.as_ref().storage, &info)?;
+
+        // if the code get passed above assert_router, it means the sender is the router
+        // No need to load from storage.
+        let router = info.sender;
+
+        let vault_balance = bank::query_balance(&deps.as_ref(), &env)?;
+
+        if amount.0 > vault_balance {
+            return Err(VaultError::insufficient("Not enough balance").into());
+        }
+
+        let transfer_msg = bank::bank_send(deps.storage, &router, amount.0)?;
+
+        let event = Event::new("SlashLocked")
+            .add_attribute("sender", router.to_string())
+            .add_attribute("amount", amount.0.to_string())
+            .add_attribute("denom", bank::get_denom(deps.storage)?);
+
+        Ok(Response::new().add_event(event).add_message(transfer_msg))
     }
 }
 
