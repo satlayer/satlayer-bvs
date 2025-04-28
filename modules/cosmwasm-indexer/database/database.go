@@ -2,6 +2,7 @@ package database
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/forbole/juno/v6/database"
 	"github.com/forbole/juno/v6/database/postgresql"
@@ -19,12 +20,12 @@ type DB struct {
 func Cast(database database.Database) *DB {
 	db, ok := (database).(*DB)
 	if !ok {
-		panic(fmt.Errorf("cannot cast the given db into an instance"))
+		log.Fatal("cannot cast the given db into an instance")
 	}
 	return db
 }
 
-// Builder allows to create a new Db instance implementing the database.Builder type
+// Builder allows to create a new DB instance implementing the database.Builder type
 func Builder(ctx *database.Context) (database.Database, error) {
 	db, err := postgresql.Builder(ctx)
 	if err != nil {

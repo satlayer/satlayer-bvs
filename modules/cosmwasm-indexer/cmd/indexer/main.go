@@ -36,6 +36,7 @@ func main() {
 		startcmd.NewStartCmd(cfg.GetParseConfig()),
 	)
 
+	// TODO: program shouldn't panic
 	executor := junocmd.PrepareRootCmd(cfg.GetName(), rootCmd)
 	err := executor.Execute()
 	if err != nil {
