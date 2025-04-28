@@ -2,16 +2,16 @@ import { Layout, Navbar } from "nextra-theme-docs";
 import { Banner, Head } from "nextra/components";
 import { getPageMap } from "nextra/page-map";
 import "nextra-theme-docs/style.css";
-import { ReactNode } from "react";
-import { Metadata } from "next";
-import { SatLayerIcon } from "./Icon";
 import "./globals.css";
+import { SatLayerWordmark } from "./Icon";
+import type { ReactNode } from "react";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://build.satlayer.xyz"),
   title: {
-    default: "SatLayer Bitcoin Validated Service",
-    template: "%s · SatLayer Documentation",
+    default: "SatLayer Docs",
+    template: "%s | SatLayer Docs",
   },
 };
 const banner = (
@@ -23,8 +23,7 @@ const navbar = (
   <Navbar
     logo={
       <div className="flex items-center space-x-2">
-        <SatLayerIcon width="24px" height="24px" />
-        <b>SatLayer</b>
+        <SatLayerWordmark className="x:text-slate-900 x:dark:text-slate-100 h-6 w-full" />
       </div>
     }
   />
