@@ -6,4 +6,5 @@ pub mod testing;
 pub mod ownership;
 
 pub mod addr;
+pub mod storage;
 pub mod time;

@@ -1,7 +1,8 @@
 use crate::error::ContractError;
+use bvs_library::storage::EVERY_SECOND;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Api, Env, Order, StdError, StdResult, Storage};
-use cw_storage_plus::{Map, SnapshotMap, Strategy};
+use cw_storage_plus::{Map, SnapshotMap};
 
 type Service = Addr;
 type Operator = Addr;
@@ -93,7 +94,7 @@ pub(crate) const REGISTRATION_STATUS: SnapshotMap<(&Operator, &Service), u8> = S
     "registration_status",
     "registration_status_checkpoint",
     "registration_status_changelog",
-    Strategy::EveryBlock,
+    EVERY_SECOND,
 );
 
 /// Get the registration status of the Operator to Service
@@ -108,29 +109,29 @@ pub fn get_registration_status(
     status.try_into()
 }
 
-/// Get the registration status of the Operator to Service at a specific block height
+/// Get the registration status of the Operator to Service at a specific timestamp
 ///
 /// #### Warning
 /// This function will return previous state.
-/// If height is equal to the height of the save operation.
-/// New state will only be available at height + 1
-pub fn get_registration_status_at_height(
+/// If timestamp is equal to the timestamp of the save operation.
+/// New state will only be available at timestamp + 1
+pub fn get_registration_status_at_timestamp(
     store: &dyn Storage,
     key: (&Operator, &Service),
-    block_height: u64,
+    timestamp: u64,
 ) -> StdResult<RegistrationStatus> {
     let status = REGISTRATION_STATUS
-        .may_load_at_height(store, key, block_height)?
+        .may_load_at_height(store, key, timestamp)?
         .unwrap_or(RegistrationStatus::Inactive.into());
 
     status.try_into()
 }
 
-/// Set the registration status of the Operator to Service at current block height
+/// Set the registration status of the Operator to Service at current timestamp
 ///
 /// #### Warning
 /// This function will only save the state at the end of the block.
-/// So the new state will only be available at height + 1.
+/// So the new state will only be available at timestamp + 1.
 /// This is so that re-ordering of txs won't cause the state to be inconsistent.
 pub fn set_registration_status(
     store: &mut dyn Storage,
@@ -143,7 +144,7 @@ pub fn set_registration_status(
         RegistrationStatus::Active => {
             increase_operator_active_registration_count(store, operator)?;
             // if service has enabled slashing, opt-in operator to slashing
-            if is_slashing_enabled(store, service, Some(env.block.height))? {
+            if is_slashing_enabled(store, service, Some(env.block.time.seconds()))? {
                 opt_in_to_slashing(store, env, service, operator)?;
             }
         }
@@ -153,7 +154,7 @@ pub fn set_registration_status(
         _ => {}
     }
 
-    REGISTRATION_STATUS.save(store, key, &status.into(), env.block.height)?;
+    REGISTRATION_STATUS.save(store, key, &status.into(), env.block.time.seconds())?;
     Ok(())
 }
 
@@ -251,25 +252,25 @@ pub(crate) const SLASHING_PARAMETERS: SnapshotMap<&Service, SlashingParameters> 
     "slashing_parameters",
     "slashing_parameters_checkpoint",
     "slashing_parameters_changelog",
-    Strategy::EveryBlock,
+    EVERY_SECOND,
 );
 
-/// Returns whether slashing is enabled for the given service at the given height.
+/// Returns whether slashing is enabled for the given service at the given timestamp.
 pub fn is_slashing_enabled(
     store: &dyn Storage,
     service: &Service,
-    height: Option<u64>,
+    timestamp: Option<u64>,
 ) -> StdResult<bool> {
-    let is_enabled = match height {
-        Some(h) => SLASHING_PARAMETERS
-            .may_load_at_height(store, service, h)?
+    let is_enabled = match timestamp {
+        Some(t) => SLASHING_PARAMETERS
+            .may_load_at_height(store, service, t)?
             .is_some(),
         None => SLASHING_PARAMETERS.may_load(store, service)?.is_some(),
     };
     Ok(is_enabled)
 }
 
-/// Enable slashing for the given service at current block height
+/// Enable slashing for the given service at current timestamp
 pub fn enable_slashing(
     store: &mut dyn Storage,
     api: &dyn Api,
@@ -281,49 +282,55 @@ pub fn enable_slashing(
     slashing_parameters.validate(api)?;
 
     // Save the slashing parameters to the store
-    SLASHING_PARAMETERS.save(store, service, slashing_parameters, env.block.height)?;
+    SLASHING_PARAMETERS.save(
+        store,
+        service,
+        slashing_parameters,
+        env.block.time.seconds(),
+    )?;
     Ok(())
 }
 
-/// Disable slashing for the given service at current block height
+/// Disable slashing for the given service at current timestamp
 pub fn disable_slashing(store: &mut dyn Storage, env: &Env, service: &Service) -> StdResult<()> {
-    SLASHING_PARAMETERS.remove(store, service, env.block.height)?;
+    SLASHING_PARAMETERS.remove(store, service, env.block.time.seconds())?;
     Ok(())
 }
 
 /// Stores the slashing parameters opt-in status for (service, operator) pair.
 ///
-/// If value is `true`, operator has opted in to slashing parameters for that service at the given height.
+/// If value is `true`,
+/// operator has opted in to slashing parameters for that service at the given timestamp.
 /// If key isn't found, it means the operator hasn't opted in to slashing parameters for that service.
 /// The `false` value is not used.
 pub(crate) const SLASHING_OPT_IN: SnapshotMap<(&Service, &Operator), bool> = SnapshotMap::new(
     "slashing_opt_in",
     "slashing_opt_in_checkpoint",
     "slashing_opt_in_changelog",
-    Strategy::EveryBlock,
+    EVERY_SECOND,
 );
 
-/// Opt-in operator to the current service slashing parameters at current height
+/// Opt-in operator to the current service slashing parameters at current timestamp
 pub fn opt_in_to_slashing(
     store: &mut dyn Storage,
     env: &Env,
     service: &Service,
     operator: &Operator,
 ) -> StdResult<()> {
-    SLASHING_OPT_IN.save(store, (service, operator), &true, env.block.height)?;
+    SLASHING_OPT_IN.save(store, (service, operator), &true, env.block.time.seconds())?;
     Ok(())
 }
 
-/// Check if the operator has opted in to slashing for the given service at the given height.
+/// Check if the operator has opted in to slashing for the given service at the given timestamp.
 pub fn is_operator_opted_in_to_slashing(
     store: &dyn Storage,
     service: &Service,
     operator: &Operator,
-    height: Option<u64>,
+    timestamp: Option<u64>,
 ) -> StdResult<bool> {
-    let is_opted_in = match height {
-        Some(h) => SLASHING_OPT_IN
-            .may_load_at_height(store, (service, operator), h)?
+    let is_opted_in = match timestamp {
+        Some(t) => SLASHING_OPT_IN
+            .may_load_at_height(store, (service, operator), t)?
             .is_some(),
         None => SLASHING_OPT_IN
             .may_load(store, (service, operator))?
@@ -332,7 +339,7 @@ pub fn is_operator_opted_in_to_slashing(
     Ok(is_opted_in)
 }
 
-/// Clears the slashing parameters opt-in status for the given service at current block height.
+/// Clears the slashing parameters opt-in status for the given service at current timestamp.
 /// This happens only when a new slashing condition is set/updated.
 pub fn reset_slashing_opt_in(
     store: &mut dyn Storage,
@@ -350,7 +357,7 @@ pub fn reset_slashing_opt_in(
 
     for operator in operator_keys {
         let key = (service, &operator?);
-        SLASHING_OPT_IN.remove(store, key, env.block.height)?;
+        SLASHING_OPT_IN.remove(store, key, env.block.time.seconds())?;
     }
     Ok(())
 }
@@ -536,7 +543,7 @@ mod tests {
                 &mut deps.storage,
                 (&service, &operator),
                 &true,
-                env.block.height,
+                env.block.time.seconds(),
             )
             .unwrap();
 
@@ -563,7 +570,7 @@ mod tests {
                     &mut deps.storage,
                     (&service, &operator),
                     &true,
-                    env.block.height,
+                    env.block.time.seconds(),
                 )
                 .unwrap();
             SLASHING_OPT_IN
@@ -571,7 +578,7 @@ mod tests {
                     &mut deps.storage,
                     (&service, &operator2),
                     &true,
-                    env.block.height,
+                    env.block.time.seconds(),
                 )
                 .unwrap();
             SLASHING_OPT_IN
@@ -579,7 +586,7 @@ mod tests {
                     &mut deps.storage,
                     (&service2, &operator),
                     &true,
-                    env.block.height,
+                    env.block.time.seconds(),
                 )
                 .unwrap();
             SLASHING_OPT_IN
@@ -587,13 +594,13 @@ mod tests {
                     &mut deps.storage,
                     (&service2, &operator2),
                     &true,
-                    env.block.height,
+                    env.block.time.seconds(),
                 )
                 .unwrap();
         }
 
-        // move the block height forward
-        env.block.height += 10;
+        // move the block time forward
+        env.block.time = env.block.time.plus_seconds(10);
 
         // assert that the operator and operator2 are opted in to service
         let res =
@@ -606,8 +613,8 @@ mod tests {
         // reset the slashing parameters opt-in status for service
         reset_slashing_opt_in(&mut deps.storage, &env, &service).unwrap();
 
-        // move the block height forward
-        env.block.height += 10;
+        // move the block time forward
+        env.block.time = env.block.time.plus_seconds(10);
 
         // assert that the operator and operator2 are not opted in to service
         let res =
@@ -625,12 +632,12 @@ mod tests {
             is_operator_opted_in_to_slashing(&deps.storage, &service2, &operator2, None).unwrap();
         assert!(res);
 
-        // assert that the operator and operator2 are opted in to service at the previous height
+        // assert that the operator and operator2 are opted in to service at the previous timestamp
         let res = is_operator_opted_in_to_slashing(
             &deps.storage,
             &service,
             &operator,
-            Some(env.block.height - 10),
+            Some(env.block.time.minus_seconds(10).seconds()),
         )
         .unwrap();
         assert!(res);
@@ -639,7 +646,7 @@ mod tests {
             &deps.storage,
             &service,
             &operator2,
-            Some(env.block.height - 10),
+            Some(env.block.time.minus_seconds(10).seconds()),
         )
         .unwrap();
         assert!(res);
