@@ -9,9 +9,9 @@ use bvs_vault_cw20_tokenized::msg::{ExecuteMsg, QueryMsg};
 use bvs_vault_cw20_tokenized::testing::VaultCw20TokenizedContract;
 use bvs_vault_router::{msg::ExecuteMsg as RouterExecuteMsg, testing::VaultRouterContract};
 use cosmwasm_std::testing::mock_env;
-use cosmwasm_std::{Addr, Event, Timestamp, Uint128, Uint64};
+use cosmwasm_std::{to_json_binary, Addr, Event, Timestamp, Uint128, Uint64, WasmMsg};
 use cw2::ContractVersion;
-use cw_multi_test::App;
+use cw_multi_test::{App, Executor};
 
 struct TestContracts {
     pauser: PauserContract,
@@ -61,14 +61,14 @@ fn test_not_whitelisted() {
     let vault = VaultCw20TokenizedContract::new(app, &env, None);
 
     let staker = app.api().addr_make("staker");
-    let msg = ExecuteMsg::DepositFor(RecipientAmount {
+    let msg_bin = ExecuteMsg::DepositFor(RecipientAmount {
         recipient: staker.clone(),
         amount: Uint128::new(20),
     });
     cw20.increase_allowance(app, &staker, vault.addr(), 100e15 as u128);
     cw20.fund(app, &staker, 100e15 as u128);
 
-    let err = vault.execute(app, &staker, &msg).unwrap_err();
+    let err = vault.execute(app, &staker, &msg_bin).unwrap_err();
 
     assert_eq!(err.root_cause().to_string(), "Vault is not whitelisted");
 }
@@ -248,8 +248,9 @@ fn test_multi_deposit_withdraw_non_linear_exchange_rates() {
             let msg = cw20_base::msg::QueryMsg::Balance {
                 address: staker.to_string(),
             };
-            let balance = vault
-                .query::<cw20::BalanceResponse>(app, &msg.into())
+            let balance = app
+                .wrap()
+                .query_wasm_smart::<cw20::BalanceResponse>(vault.addr(), &msg)
                 .unwrap()
                 .balance;
             assert_eq!(balance, Uint128::new(stake_amounts));
@@ -259,8 +260,9 @@ fn test_multi_deposit_withdraw_non_linear_exchange_rates() {
             assert_eq!(total_shares, Uint128::new(stake_amounts * (i + 1)));
 
             let msg = cw20_base::msg::QueryMsg::TokenInfo {};
-            let total_circulating_receipt_token_supply: Uint128 = vault
-                .query::<cw20::TokenInfoResponse>(app, &msg.into())
+            let total_circulating_receipt_token_supply: Uint128 = app
+                .wrap()
+                .query_wasm_smart::<cw20::TokenInfoResponse>(vault.addr(), &msg)
                 .unwrap()
                 .total_supply;
 
@@ -284,8 +286,9 @@ fn test_multi_deposit_withdraw_non_linear_exchange_rates() {
         let msg = cw20_base::msg::QueryMsg::Balance {
             address: attacker.to_string(),
         };
-        let balance = vault
-            .query::<cw20::BalanceResponse>(app, &msg.into())
+        let balance = app
+            .wrap()
+            .query_wasm_smart::<cw20::BalanceResponse>(vault.addr(), &msg)
             .unwrap()
             .balance;
         assert_eq!(balance, Uint128::new(0));
@@ -298,8 +301,9 @@ fn test_multi_deposit_withdraw_non_linear_exchange_rates() {
         assert_eq!(total_shares, Uint128::new(stake_amounts * staker_total));
 
         let msg = cw20_base::msg::QueryMsg::TokenInfo {};
-        let total_circulating_receipt_token_supply: Uint128 = vault
-            .query::<cw20::TokenInfoResponse>(app, &msg.into())
+        let total_circulating_receipt_token_supply: Uint128 = app
+            .wrap()
+            .query_wasm_smart::<cw20::TokenInfoResponse>(vault.addr(), &msg)
             .unwrap()
             .total_supply;
         assert_eq!(
@@ -364,8 +368,9 @@ fn test_multi_deposit_withdraw_non_linear_exchange_rates() {
     assert_eq!(total_shares, Uint128::new(0));
 
     let msg = cw20_base::msg::QueryMsg::TokenInfo {};
-    let total_circulating_receipt_token_supply: Uint128 = vault
-        .query::<cw20::TokenInfoResponse>(app, &msg.into())
+    let total_circulating_receipt_token_supply: Uint128 = app
+        .wrap()
+        .query_wasm_smart::<cw20::TokenInfoResponse>(vault.addr(), &msg)
         .unwrap()
         .total_supply;
     assert_eq!(total_circulating_receipt_token_supply, Uint128::new(0));
@@ -409,10 +414,13 @@ fn test_multi_deposit_withdraw() {
             assert_eq!(total_shares, Uint128::new(stake_amounts * (i + 1)));
 
             let msg = cw20_base::msg::QueryMsg::TokenInfo {};
-            let total_circulating_receipt_token_supply: Uint128 = vault
-                .query::<cw20::TokenInfoResponse>(app, &msg.into())
+
+            let total_circulating_receipt_token_supply: Uint128 = app
+                .wrap()
+                .query_wasm_smart::<cw20::TokenInfoResponse>(vault.addr(), &msg)
                 .unwrap()
                 .total_supply;
+
             assert_eq!(
                 total_circulating_receipt_token_supply,
                 Uint128::new(stake_amounts * (i + 1))
@@ -452,8 +460,9 @@ fn test_multi_deposit_withdraw() {
     assert_eq!(total_shares, Uint128::new(0));
 
     let msg = cw20_base::msg::QueryMsg::TokenInfo {};
-    let total_circulating_receipt_token_supply: Uint128 = vault
-        .query::<cw20::TokenInfoResponse>(app, &msg.into())
+    let total_circulating_receipt_token_supply: Uint128 = app
+        .wrap()
+        .query_wasm_smart::<cw20::TokenInfoResponse>(vault.addr(), &msg)
         .unwrap()
         .total_supply;
     assert_eq!(total_circulating_receipt_token_supply, Uint128::new(0));
@@ -1043,81 +1052,112 @@ fn test_cw20_semi_compliance() {
 
     // can we increase allowance like normal cw20 token would?
     {
-        let msg = cw20_base::msg::ExecuteMsg::IncreaseAllowance {
+        let inner_msg = cw20_base::msg::ExecuteMsg::IncreaseAllowance {
             spender: app.api().addr_make("spender").to_string(),
             amount: Uint128::new(100),
             expires: None,
         };
-        let res = vault.execute(app, &staker, &msg.into());
+
+        let msg = WasmMsg::Execute {
+            contract_addr: vault.addr().to_string(),
+            msg: to_json_binary(&inner_msg).unwrap(),
+            funds: vec![],
+        };
+
+        let res = app.execute(staker.clone(), cosmwasm_std::CosmosMsg::Wasm(msg));
+
         assert!(res.is_ok());
 
         let query = cw20_base::msg::QueryMsg::Allowance {
             owner: staker.to_string(),
             spender: app.api().addr_make("spender").to_string(),
         };
-        let allowance: cw20::AllowanceResponse = vault
-            .query::<cw20::AllowanceResponse>(app, &query.into())
+        let allowance: cw20::AllowanceResponse = app
+            .wrap()
+            .query_wasm_smart::<cw20::AllowanceResponse>(vault.addr(), &query)
             .unwrap();
         assert_eq!(allowance.allowance, Uint128::new(100));
     }
 
     // can we decrease allowance like normal cw20 token would?
     {
-        let msg = cw20_base::msg::ExecuteMsg::DecreaseAllowance {
+        let inner_msg = cw20_base::msg::ExecuteMsg::DecreaseAllowance {
             spender: app.api().addr_make("spender").to_string(),
             amount: Uint128::new(50),
             expires: None,
         };
-        let res = vault.execute(app, &staker, &msg.into());
+        let msg = WasmMsg::Execute {
+            contract_addr: vault.addr().to_string(),
+            msg: to_json_binary(&inner_msg).unwrap(),
+            funds: vec![],
+        };
+        let res = app.execute(staker.clone(), cosmwasm_std::CosmosMsg::Wasm(msg));
+        // let res = vault.execute(app, &staker, &inner_msg.into());
         assert!(res.is_ok());
 
         let query = cw20_base::msg::QueryMsg::Allowance {
             owner: staker.to_string(),
             spender: app.api().addr_make("spender").to_string(),
         };
-        let allowance: cw20::AllowanceResponse = vault
-            .query::<cw20::AllowanceResponse>(app, &query.into())
+        let allowance: cw20::AllowanceResponse = app
+            .wrap()
+            .query_wasm_smart::<cw20::AllowanceResponse>(vault.addr(), &query)
             .unwrap();
         assert_eq!(allowance.allowance, Uint128::new(50));
     }
 
     // can we transfer like normal cw20 token would?
     {
-        let msg = cw20_base::msg::ExecuteMsg::Transfer {
+        let inner_msg = cw20_base::msg::ExecuteMsg::Transfer {
             recipient: app.api().addr_make("recipient").to_string(),
             amount: Uint128::new(50),
         };
-        let res = vault.execute(app, &staker, &msg.into());
+        let msg = WasmMsg::Execute {
+            contract_addr: vault.addr().to_string(),
+            msg: to_json_binary(&inner_msg).unwrap(),
+            funds: vec![],
+        };
+        let res = app.execute(staker.clone(), cosmwasm_std::CosmosMsg::Wasm(msg));
         assert!(res.is_ok());
 
         let query = cw20_base::msg::QueryMsg::Balance {
             address: app.api().addr_make("recipient").to_string(),
         };
-        let balance: cw20::BalanceResponse = vault
-            .query::<cw20::BalanceResponse>(app, &query.into())
+        let balance: cw20::BalanceResponse = app
+            .wrap()
+            .query_wasm_smart::<cw20::BalanceResponse>(vault.addr(), &query)
             .unwrap();
         assert_eq!(balance.balance, Uint128::new(50));
     }
 
     // can we transfer_from like normal cw20 token would?
     {
-        let msg = cw20_base::msg::ExecuteMsg::TransferFrom {
+        let inner_msg = cw20_base::msg::ExecuteMsg::TransferFrom {
             owner: staker.to_string(),
             recipient: app.api().addr_make("random").to_string(),
             amount: Uint128::new(25),
+        };
+        let msg = WasmMsg::Execute {
+            contract_addr: vault.addr().to_string(),
+            msg: to_json_binary(&inner_msg).unwrap(),
+            funds: vec![],
         };
 
         // spender is the caller because we are using transfer_from
         // remember spender has been given allowance of 100 and then reduced to 50
         // in the earlier tests
-        let res = vault.execute(app, &app.api().addr_make("spender"), &msg.into());
+        let res = app.execute(
+            app.api().addr_make("spender"),
+            cosmwasm_std::CosmosMsg::Wasm(msg),
+        );
         assert!(res.is_ok());
 
         let query = cw20_base::msg::QueryMsg::Balance {
             address: app.api().addr_make("random").to_string(),
         };
-        let balance: cw20::BalanceResponse = vault
-            .query::<cw20::BalanceResponse>(app, &query.into())
+        let balance: cw20::BalanceResponse = app
+            .wrap()
+            .query_wasm_smart::<cw20::BalanceResponse>(vault.addr(), &query)
             .unwrap();
         assert_eq!(balance.balance, Uint128::new(25));
     }
@@ -1125,8 +1165,9 @@ fn test_cw20_semi_compliance() {
     // query TokenInfo like normal cw20 token would
     {
         let query = cw20_base::msg::QueryMsg::TokenInfo {};
-        let token_info: cw20::TokenInfoResponse = vault
-            .query::<cw20::TokenInfoResponse>(app, &query.into())
+        let token_info: cw20::TokenInfoResponse = app
+            .wrap()
+            .query_wasm_smart::<cw20::TokenInfoResponse>(vault.addr(), &query)
             .unwrap();
         assert_eq!(
             token_info.name,
@@ -1144,8 +1185,9 @@ fn test_cw20_semi_compliance() {
         let query = cw20_base::msg::QueryMsg::Balance {
             address: staker.to_string(),
         };
-        let balance: cw20::BalanceResponse = vault
-            .query::<cw20::BalanceResponse>(app, &query.into())
+        let balance: cw20::BalanceResponse = app
+            .wrap()
+            .query_wasm_smart::<cw20::BalanceResponse>(vault.addr(), &query)
             .unwrap();
 
         // he staked 200 tokens
@@ -1159,8 +1201,9 @@ fn test_cw20_semi_compliance() {
             owner: staker.to_string(),
             spender: app.api().addr_make("spender").to_string(),
         };
-        let allowance: cw20::AllowanceResponse = vault
-            .query::<cw20::AllowanceResponse>(app, &query.into())
+        let allowance: cw20::AllowanceResponse = app
+            .wrap()
+            .query_wasm_smart::<cw20::AllowanceResponse>(vault.addr(), &query)
             .unwrap();
         assert_eq!(allowance.allowance, Uint128::new(25));
     }
@@ -1172,8 +1215,9 @@ fn test_cw20_semi_compliance() {
             start_after: None,
             limit: None,
         };
-        let allowances: cw20::AllAllowancesResponse = vault
-            .query::<cw20::AllAllowancesResponse>(app, &query.into())
+        let allowances: cw20::AllAllowancesResponse = app
+            .wrap()
+            .query_wasm_smart::<cw20::AllAllowancesResponse>(vault.addr(), &query)
             .unwrap();
         assert_eq!(allowances.allowances.len(), 1);
         assert_eq!(
@@ -1190,8 +1234,9 @@ fn test_cw20_semi_compliance() {
             start_after: None,
             limit: None,
         };
-        let allowances: cw20::AllSpenderAllowancesResponse = vault
-            .query::<cw20::AllSpenderAllowancesResponse>(app, &query.into())
+        let allowances: cw20::AllSpenderAllowancesResponse = app
+            .wrap()
+            .query_wasm_smart::<cw20::AllSpenderAllowancesResponse>(vault.addr(), &query)
             .unwrap();
         assert_eq!(allowances.allowances.len(), 1);
         assert_eq!(allowances.allowances[0].owner, staker.to_string());
@@ -1204,8 +1249,9 @@ fn test_cw20_semi_compliance() {
             start_after: None,
             limit: None,
         };
-        let accounts: cw20::AllAccountsResponse = vault
-            .query::<cw20::AllAccountsResponse>(app, &query.into())
+        let accounts: cw20::AllAccountsResponse = app
+            .wrap()
+            .query_wasm_smart::<cw20::AllAccountsResponse>(vault.addr(), &query)
             .unwrap();
         // we have 3 account
         // staker, spender that has allowance and random guy that has balance

@@ -46,29 +46,26 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for VaultCw20Tokenize
 impl VaultCw20TokenizedContract {
     /// For testing with pre-approved spending for x address.
     pub fn increase_allowance(&self, app: &mut App, sender: &Addr, spender: &Addr, amount: u128) {
-        let msg = &cw20_base::msg::ExecuteMsg::IncreaseAllowance {
+        let msg = &ExecuteMsg::IncreaseAllowance {
             spender: spender.to_string(),
             amount: Uint128::new(amount),
             expires: None,
-        }
-        .into();
+        };
         self.execute(app, sender, msg).unwrap();
     }
 
     pub fn transfer(&self, app: &mut App, sender: &Addr, recipient: &Addr, amount: u128) {
-        let msg = &cw20_base::msg::ExecuteMsg::Transfer {
+        let msg = &ExecuteMsg::Transfer {
             recipient: recipient.to_string(),
             amount: Uint128::new(amount),
-        }
-        .into();
+        };
         self.execute(app, sender, msg).unwrap();
     }
 
     pub fn balance(&self, app: &App, address: &Addr) -> u128 {
-        let query = cw20_base::msg::QueryMsg::Balance {
+        let query = &QueryMsg::Balance {
             address: address.to_string(),
-        }
-        .into();
+        };
         let res: cw20::BalanceResponse = self.query(app, &query).unwrap();
         res.balance.into()
     }

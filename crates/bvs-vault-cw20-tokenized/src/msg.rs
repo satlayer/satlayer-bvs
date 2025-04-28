@@ -84,65 +84,6 @@ pub enum ExecuteMsg {
     RedeemWithdrawalTo(Recipient),
 }
 
-impl From<cw20_base::msg::ExecuteMsg> for ExecuteMsg {
-    // Burn, BurnFrom, Mint, UpdateMinter, and MarketingInfo are not supported.
-    fn from(msg: cw20_base::msg::ExecuteMsg) -> Self {
-        match msg {
-            cw20_base::msg::ExecuteMsg::Transfer { recipient, amount } => {
-                ExecuteMsg::Transfer { recipient, amount }
-            }
-            cw20_base::msg::ExecuteMsg::Send {
-                contract,
-                amount,
-                msg,
-            } => ExecuteMsg::Send {
-                contract,
-                amount,
-                msg,
-            },
-            cw20_base::msg::ExecuteMsg::IncreaseAllowance {
-                spender,
-                amount,
-                expires,
-            } => ExecuteMsg::IncreaseAllowance {
-                spender,
-                amount,
-                expires,
-            },
-            cw20_base::msg::ExecuteMsg::DecreaseAllowance {
-                spender,
-                amount,
-                expires,
-            } => ExecuteMsg::DecreaseAllowance {
-                spender,
-                amount,
-                expires,
-            },
-            cw20_base::msg::ExecuteMsg::TransferFrom {
-                owner,
-                recipient,
-                amount,
-            } => ExecuteMsg::TransferFrom {
-                owner,
-                recipient,
-                amount,
-            },
-            cw20_base::msg::ExecuteMsg::SendFrom {
-                owner,
-                contract,
-                amount,
-                msg,
-            } => ExecuteMsg::SendFrom {
-                owner,
-                contract,
-                amount,
-                msg,
-            },
-            _ => panic!("Not supported"),
-        }
-    }
-}
-
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
@@ -251,41 +192,6 @@ impl From<QueryMsg> for cw20_base::msg::QueryMsg {
                 cw20_base::msg::QueryMsg::AllAccounts { start_after, limit }
             }
             _ => panic!("This QueryMsg cannot be converted into cw20_base::msg::QueryMsg"),
-        }
-    }
-}
-
-impl From<cw20_base::msg::QueryMsg> for QueryMsg {
-    fn from(msg: cw20_base::msg::QueryMsg) -> Self {
-        match msg {
-            cw20_base::msg::QueryMsg::Balance { address } => QueryMsg::Balance { address },
-            cw20_base::msg::QueryMsg::TokenInfo {} => QueryMsg::TokenInfo {},
-            cw20_base::msg::QueryMsg::Minter {} => QueryMsg::Minter {},
-            cw20_base::msg::QueryMsg::Allowance { owner, spender } => {
-                QueryMsg::Allowance { owner, spender }
-            }
-            cw20_base::msg::QueryMsg::AllAllowances {
-                owner,
-                start_after,
-                limit,
-            } => QueryMsg::AllAllowances {
-                owner,
-                start_after,
-                limit,
-            },
-            cw20_base::msg::QueryMsg::AllSpenderAllowances {
-                spender,
-                start_after,
-                limit,
-            } => QueryMsg::AllSpenderAllowances {
-                spender,
-                start_after,
-                limit,
-            },
-            cw20_base::msg::QueryMsg::AllAccounts { start_after, limit } => {
-                QueryMsg::AllAccounts { start_after, limit }
-            }
-            _ => panic!("This cw20_base::msg::QueryMsg cannot be converted into QueryMsg"),
         }
     }
 }
