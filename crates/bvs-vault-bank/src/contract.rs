@@ -108,7 +108,7 @@ mod execute {
             let before_balance = after_balance
                 .checked_sub(amount_deposited)
                 .map_err(StdError::from)?;
-            let mut vault = offset::VirtualOffset::load(&deps.as_ref(), before_balance)?;
+            let mut vault = offset::TotalShares::load(&deps.as_ref(), before_balance)?;
 
             let new_shares = vault.assets_to_shares(amount_deposited)?;
             // Add shares to TOTAL_SHARES
@@ -151,7 +151,7 @@ mod execute {
 
         let (vault, claim_assets) = {
             let balance = bank::query_balance(&deps.as_ref(), &env)?;
-            let mut vault = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
+            let mut vault = offset::TotalShares::load(&deps.as_ref(), balance)?;
 
             let assets = vault.shares_to_assets(withdraw_shares)?;
             if assets.is_zero() {
@@ -243,7 +243,7 @@ mod execute {
 
         let (vault, claimed_assets) = {
             let balance = bank::query_balance(&deps.as_ref(), &env)?;
-            let mut vault = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
+            let mut vault = offset::TotalShares::load(&deps.as_ref(), balance)?;
 
             let assets = vault.shares_to_assets(queued_shares)?;
             if assets.is_zero() {
@@ -357,14 +357,14 @@ mod query {
     /// Given the number of shares, convert to assets based on the current vault exchange rate.
     pub fn convert_to_assets(deps: Deps, env: Env, shares: Uint128) -> StdResult<Uint128> {
         let balance = bank::query_balance(&deps, &env)?;
-        let vault = offset::VirtualOffset::load(&deps, balance)?;
+        let vault = offset::TotalShares::load(&deps, balance)?;
         vault.shares_to_assets(shares)
     }
 
     /// Given assets, get the resulting shares based on the current vault exchange rate.
     pub fn convert_to_shares(deps: Deps, env: Env, assets: Uint128) -> StdResult<Uint128> {
         let balance = bank::query_balance(&deps, &env)?;
-        let vault = offset::VirtualOffset::load(&deps, balance)?;
+        let vault = offset::TotalShares::load(&deps, balance)?;
         vault.assets_to_shares(assets)
     }
 
@@ -386,7 +386,7 @@ mod query {
     /// Returns the vault information.
     pub fn vault_info(deps: Deps, env: Env) -> StdResult<VaultInfoResponse> {
         let balance = bank::query_balance(&deps, &env)?;
-        let vault = offset::VirtualOffset::load(&deps, balance)?;
+        let vault = offset::TotalShares::load(&deps, balance)?;
         let denom = bank::get_denom(deps.storage)?;
         let version = cw2::get_contract_version(deps.storage)?;
         Ok(VaultInfoResponse {
@@ -632,7 +632,7 @@ mod tests {
                 .bank
                 .update_balance(env.contract.address.clone(), balance);
 
-            let mut vault = offset::VirtualOffset::load(&deps.as_ref(), Uint128::zero()).unwrap();
+            let mut vault = offset::TotalShares::load(&deps.as_ref(), Uint128::zero()).unwrap();
             vault
                 .checked_add_shares(&mut deps.storage, Uint128::new(10_000))
                 .unwrap();
@@ -705,7 +705,7 @@ mod tests {
                 .bank
                 .update_balance(env.contract.address.clone(), balance);
 
-            let mut vault = offset::VirtualOffset::load(&deps.as_ref(), Uint128::zero()).unwrap();
+            let mut vault = offset::TotalShares::load(&deps.as_ref(), Uint128::zero()).unwrap();
             vault
                 .checked_add_shares(&mut deps.storage, Uint128::new(10_000))
                 .unwrap();
@@ -921,7 +921,7 @@ mod tests {
 
         let after_balance = bank::query_balance(&deps.as_ref(), &env).unwrap();
         let before_balance = after_balance.checked_sub(amount_deposited).unwrap();
-        let vault = offset::VirtualOffset::load(&deps.as_ref(), before_balance).unwrap();
+        let vault = offset::TotalShares::load(&deps.as_ref(), before_balance).unwrap();
 
         let before_queue_shares = vault.assets_to_shares(Uint128::new(1200)).unwrap();
         let before_queue_assets = vault.shares_to_assets(Uint128::new(1200)).unwrap();
