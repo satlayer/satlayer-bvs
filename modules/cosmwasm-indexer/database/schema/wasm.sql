@@ -28,37 +28,40 @@ CREATE TABLE wasm_code
 );
 CREATE INDEX wasm_code_height_index ON wasm_code (height);
 
-CREATE TABLE wasm_contract
+CREATE TABLE wasm_instantiate_contract
 (
-    sender                  TEXT            NULL,
-    creator                 TEXT            NOT NULL REFERENCES account (address),
-    admin                   TEXT            NULL,
-    code_id                 BIGINT          NOT NULL REFERENCES wasm_code (code_id),
-    label                   TEXT            NULL,
-    raw_contract_message    JSONB           NOT NULL DEFAULT '{}'::JSONB,
-    funds                   COIN[]          NOT NULL DEFAULT '{}',
-    contract_address        TEXT            NOT NULL UNIQUE,
-    data                    TEXT            NULL,
-    instantiated_at         TIMESTAMP       NOT NULL,
-    contract_info_extension TEXT            NULL,
-    contract_states         JSONB           NOT NULL DEFAULT '{}'::JSONB,
-    height                  BIGINT          NOT NULL
+    sender                          TEXT            NULL,
+    creator                         TEXT            NOT NULL,
+    admin                           TEXT            NULL,
+    code_id                         BIGINT          NOT NULL REFERENCES wasm_code (code_id),
+    label                           TEXT            NULL,
+    instantiate_contract_message    JSONB           NOT NULL DEFAULT '{}'::JSONB,
+    contract_address                TEXT            NOT NULL UNIQUE,
+    wasm_event                      JSONB           NOT NULL DEFAULT '{}'::JSONB,
+    custom_wasm_event               JSONB           NOT NULL DEFAULT '{}'::JSONB,
+    contract_info_extension         TEXT            NULL,
+    contract_states                 JSONB           NOT NULL DEFAULT '{}'::JSONB,
+    funds                           COIN[]          NOT NULL DEFAULT '{}',
+    instantiated_at                 TIMESTAMP       NOT NULL,
+    height                          BIGINT          NOT NULL,
+    tx_hash                         TEXT            NOT NULL,
 );
-CREATE INDEX wasm_contract_height_index ON wasm_contract (height);
-CREATE INDEX wasm_contract_creator_index ON wasm_contract (creator);
-CREATE INDEX wasm_contract_label_index ON wasm_contract (label);
+CREATE INDEX wasm_instantiate_contract_height_index ON wasm_instantiate_contract (height);
+CREATE INDEX wasm_instantiate_contract_creator_index ON wasm_instantiate_contract (creator);
+CREATE INDEX wasm_instantiate_contract_label_index ON wasm_instantiate_contract (label);
 
 CREATE TABLE wasm_execute_contract
 (
-    sender                  TEXT            NOT NULL,
-    contract_address        TEXT            NOT NULL REFERENCES wasm_contract (contract_address),
-    raw_contract_message    JSONB           NOT NULL DEFAULT '{}'::JSONB,
-    funds                   COIN[]          NOT NULL DEFAULT '{}',
-    message_type            TEXT            NULL,
-    data                    TEXT            NULL,
-    executed_at             TIMESTAMP       NOT NULL,
-    height                  BIGINT          NOT NULL,
-    hash                    TEXT            NOT NULL
+    sender                      TEXT            NOT NULL,
+    contract_address            TEXT            NOT NULL REFERENCES wasm_contract (contract_address),
+    execute_contract_message    JSONB           NOT NULL DEFAULT '{}'::JSONB,
+    message_type                TEXT            NULL,
+    wasm_event                  JSONB           NOT NULL DEFAULT '{}'::JSONB,
+    custom_wasm_event           JSONB           NOT NULL DEFAULT '{}'::JSONB,
+    funds                       COIN[]          NOT NULL DEFAULT '{}',
+    executed_at                 TIMESTAMP       NOT NULL,
+    height                      BIGINT          NOT NULL,
+    tx_hash                     TEXT            NOT NULL
 );
 CREATE INDEX execute_contract_height_index ON wasm_execute_contract (height);
 CREATE INDEX execute_contract_executed_at_index ON wasm_execute_contract (executed_at);
@@ -77,3 +80,18 @@ CREATE TABLE wasm_execute_contract_event_types
     UNIQUE (contract_address, event_type)
 );
 CREATE INDEX wasm_execute_contract_event_types_index ON wasm_execute_contract_event_types (contract_address, event_type);
+
+CREATE TABLE wasm_migrate_contract
+(
+    sender                      TEXT            NULL,
+    code_id                     BIGINT          NOT NULL REFERENCES wasm_code (code_id),
+    contract_address            TEXT            NOT NULL UNIQUE,
+    migrate_contract_message    JSONB           NOT NULL DEFAULT '{}'::JSONB,
+    wasm_event                  JSONB           NOT NULL DEFAULT '{}'::JSONB,
+    custom_wasm_event           JSONB           NOT NULL DEFAULT '{}'::JSONB,
+    migrated_at                 TIMESTAMP       NOT NULL,
+    height                      BIGINT          NOT NULL,
+    tx_hash                     TEXT            NOT NULL
+);
+CREATE INDEX wasm_migrate_contract_code_id_index ON wasm_migrate_contract (code_id);
+CREATE INDEX wasm_migrate_contract_contract_address_index ON wasm_migrate_contract (contract_address);
