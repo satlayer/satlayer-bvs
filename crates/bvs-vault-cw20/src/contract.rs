@@ -110,7 +110,7 @@ mod execute {
         let assets = msg.amount;
         let (vault, new_shares) = {
             let balance = token::query_balance(&deps.as_ref(), &env)?;
-            let mut vault = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
+            let mut vault = offset::TotalShares::load(&deps.as_ref(), balance)?;
 
             let new_shares = vault.assets_to_shares(assets)?;
             // Add shares to TOTAL_SHARES
@@ -160,7 +160,7 @@ mod execute {
 
         let (vault, claim_assets) = {
             let balance = token::query_balance(&deps.as_ref(), &env)?;
-            let mut vault = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
+            let mut vault = offset::TotalShares::load(&deps.as_ref(), balance)?;
 
             let assets = vault.shares_to_assets(msg.amount)?;
             if assets.is_zero() {
@@ -252,7 +252,7 @@ mod execute {
 
         let (vault, claimed_assets) = {
             let balance = token::query_balance(&deps.as_ref(), &env)?;
-            let mut vault = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
+            let mut vault = offset::TotalShares::load(&deps.as_ref(), balance)?;
 
             let assets = vault.shares_to_assets(queued_shares)?;
             if assets.is_zero() {
@@ -366,14 +366,14 @@ mod query {
     /// Given the number of shares, convert to assets based on the vault exchange rate.
     pub fn convert_to_assets(deps: Deps, env: Env, shares: Uint128) -> StdResult<Uint128> {
         let balance = token::query_balance(&deps, &env)?;
-        let vault = offset::VirtualOffset::load(&deps, balance)?;
+        let vault = offset::TotalShares::load(&deps, balance)?;
         vault.shares_to_assets(shares)
     }
 
     /// Given assets, get the resulting shares based on the vault exchange rate.
     pub fn convert_to_shares(deps: Deps, env: Env, assets: Uint128) -> StdResult<Uint128> {
         let balance = token::query_balance(&deps, &env)?;
-        let vault = offset::VirtualOffset::load(&deps, balance)?;
+        let vault = offset::TotalShares::load(&deps, balance)?;
         vault.assets_to_shares(assets)
     }
 
@@ -395,7 +395,7 @@ mod query {
     /// Returns the vault information
     pub fn vault_info(deps: Deps, env: Env) -> StdResult<VaultInfoResponse> {
         let balance = token::query_balance(&deps, &env)?;
-        let vault = offset::VirtualOffset::load(&deps, balance)?;
+        let vault = offset::TotalShares::load(&deps, balance)?;
         let cw20_contract = token::get_cw20_contract(deps.storage)?;
         let version = cw2::get_contract_version(deps.storage)?;
         Ok(VaultInfoResponse {
