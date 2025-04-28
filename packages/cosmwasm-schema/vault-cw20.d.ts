@@ -17,7 +17,7 @@
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
- * This struct represent is amount of assets.
+ * This struct represents amount of assets.
  *
  * A human readable address.
  *
@@ -108,7 +108,7 @@ type AssetsResponse = string;
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
- * This struct represent is amount of assets.
+ * This struct represents amount of assets.
  *
  * A human readable address.
  *
@@ -199,7 +199,7 @@ type ConvertToAssetsResponse = string;
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
- * This struct represent is amount of assets.
+ * This struct represents amount of assets.
  *
  * A human readable address.
  *
@@ -290,7 +290,7 @@ type ConvertToSharesResponse = string;
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
- * This struct represent is amount of assets.
+ * This struct represents amount of assets.
  *
  * A human readable address.
  *
@@ -381,7 +381,7 @@ type SharesResponse = string;
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
- * This struct represent is amount of assets.
+ * This struct represents amount of assets.
  *
  * A human readable address.
  *
@@ -472,7 +472,7 @@ type TotalAssetsResponse = string;
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
- * This struct represent is amount of assets.
+ * This struct represents amount of assets.
  *
  * A human readable address.
  *
@@ -603,17 +603,19 @@ export interface InstantiateMsg {
  * After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
  * can redeem the withdrawal.
  *
- * ExecuteMsg SystemLockAssets moved assets from the vault to the `router` contract.
- * Intended as part of slashing mechanism. Takes absolute `amount` of assets to be moved.
- * The executeMsg only plays specific role in the slashing process. bvs-router contract is
- * satlayer protocol contract Thus, named `SystemLockAssets`.
+ * ExecuteMsg SlashLock moves the assets from the vault to the `vault-router` contract for
+ * custody. Part of the [https://build.satlayer.xyz/architecture/slashing](Programmable
+ * Slashing) lifecycle. This function can only be called by `vault-router`, and takes an
+ * absolute `amount` of assets to be moved. The amount is calculated and enforced by the
+ * router. Further utility of the assets, post-locked, is implemented and enforced on the
+ * router level.
  */
 export interface ExecuteMsg {
   deposit_for?: RecipientAmount;
   withdraw_to?: RecipientAmount;
   queue_withdrawal_to?: RecipientAmount;
   redeem_withdrawal_to?: string;
-  system_lock_assets?: string;
+  slash_locked?: string;
 }
 
 /**
