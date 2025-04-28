@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"cosmossdk.io/math"
-	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdktypes "github.com/cosmos/cosmos-sdk/types"
 )
 
 // DBCoin represents the information stored inside the database about a single coin
@@ -16,7 +16,7 @@ type DBCoin struct {
 }
 
 // NewDBCoin builds a DbCoin starting from an SDK Coin
-func NewDBCoin(coin sdk.Coin) DBCoin {
+func NewDBCoin(coin sdktypes.Coin) DBCoin {
 	return DBCoin{
 		Denom:  coin.Denom,
 		Amount: coin.Amount.String(),
@@ -49,16 +49,16 @@ func (coin *DBCoin) Scan(src interface{}) error {
 }
 
 // ToCoin converts this DbCoin to sdk.Coin
-func (coin *DBCoin) ToCoin() sdk.Coin {
+func (coin *DBCoin) ToCoin() sdktypes.Coin {
 	amount, _ := math.NewIntFromString(coin.Amount)
-	return sdk.NewCoin(coin.Denom, amount)
+	return sdktypes.NewCoin(coin.Denom, amount)
 }
 
 // DBCoins represents an array of coins
 type DBCoins []*DBCoin
 
 // NewDBCoins build a new DBCoins object starting from an array of coins
-func NewDBCoins(coins sdk.Coins) DBCoins {
+func NewDBCoins(coins sdktypes.Coins) DBCoins {
 	dbCoins := make([]*DBCoin, 0)
 	for _, coin := range coins {
 		dbCoins = append(dbCoins, &DBCoin{Amount: coin.Amount.String(), Denom: coin.Denom})
@@ -110,8 +110,8 @@ func (coins *DBCoins) Scan(src interface{}) error {
 }
 
 // ToCoins converts this DbCoins to sdk.Coins
-func (coins *DBCoins) ToCoins() sdk.Coins {
-	sdkCoins := make([]sdk.Coin, len(*coins))
+func (coins *DBCoins) ToCoins() sdktypes.Coins {
+	sdkCoins := make([]sdktypes.Coin, len(*coins))
 	for index, val := range *coins {
 		sdkCoins[index] = val.ToCoin()
 	}

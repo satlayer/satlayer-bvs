@@ -1,7 +1,6 @@
 package wasm
 
 import (
-	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"reflect"
@@ -227,12 +226,14 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 	}
 
 	txEvents := sdktypes.StringifyEvents(tx.Events)
-	wasmAttr, success := eventutils.FindEventByType(txEvents, wasmtypes.WasmModuleEventType)
-	if !success {
-		slog.Error("Failed to search for wasm attribute in event", "error", err)
-		return err
-	}
-	slog.Info("wasm attribute", "wasm detail", wasmAttr, slog.Any("all events", txEvents))
+	slog.Info("wasm attribute", slog.Any("all events", txEvents))
+
+	// wasmAttr, success := eventutils.FindEventByType(txEvents, wasmtypes.WasmModuleEventType)
+	// if !success {
+	// 	slog.Error("Failed to search for wasm attribute in event", "error", err)
+	// 	return err
+	// }
+	// slog.Info("wasm attribute", "wasm detail", wasmAttr)
 
 	timestamp, err := time.Parse(time.RFC3339, tx.Timestamp)
 	if err != nil {
@@ -344,26 +345,15 @@ func (m *Module) HandleMsgMigrateContract(index int, tx *junotypes.Transaction, 
 	slog.Debug("Handle MsgMigrateContract", "tx hash", tx.TxHash, "contract address", msg.Contract,
 		"contract label name", labelName, "index", index, "new code id", msg.CodeID)
 
-	// Get Migrate Contract event
-	event, success := eventutils.FindEventByType(sdktypes.StringifyEvents(tx.Events), wasmtypes.EventTypeMigrate)
+	// // Get Migrate Contract event
+	// event, success := eventutils.FindEventByType(sdktypes.StringifyEvents(tx.Events), wasmtypes.EventTypeMigrate)
+	//
+	// if !success {
+	// 	slog.Error("Failed to search for EventTypeMigrate", "tx hash", tx.TxHash)
+	// 	return fmt.Errorf("failed to search for EventTypeMigrate in %s", tx.TxHash)
+	// }
 
-	if !success {
-		slog.Error("Failed to search for EventTypeMigrate", "tx hash", tx.TxHash)
-		return fmt.Errorf("failed to search for EventTypeMigrate in %s", tx.TxHash)
-	}
-
-	// Get result data
-	resultData, err := tx.FindAttributeByKey(event, wasmtypes.AttributeKeyResultDataHex)
-	if err != nil {
-		resultData = ""
-	}
-	resultDataBz, err := base64.StdEncoding.DecodeString(resultData)
-	if err != nil {
-		slog.Error("Failed to decode result data", "error", err)
-		return err
-	}
-
-	return m.db.UpdateContractWithMsgMigrateContract(msg.Sender, msg.Contract, msg.CodeID, msg.Msg, string(resultDataBz))
+	return m.db.UpdateContractWithMsgMigrateContract(msg.Sender, msg.Contract, msg.CodeID, msg.Msg, string("TODO"))
 }
 
 // HandleMsgUpdateAdmin allows to properly handle a MsgUpdateAdmin

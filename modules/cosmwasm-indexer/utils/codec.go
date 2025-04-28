@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"log"
 	"sync"
 
 	"github.com/CosmWasm/wasmd/x/wasm"
@@ -57,7 +58,7 @@ func UnpackMessage[T proto.Message](cdc codec.Codec, bz []byte, ptr T) T {
 
 	var cosmosMsg sdk.Msg
 	if err := cdc.UnpackAny(&cdcAny, &cosmosMsg); err != nil {
-		panic(err)
+		log.Fatalf("failed to unpack cosmos msg: %s", err)
 	}
 	return cosmosMsg.(T)
 }
