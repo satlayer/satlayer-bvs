@@ -66,7 +66,7 @@ impl VaultCw20TokenizedContract {
         let query = &QueryMsg::Balance {
             address: address.to_string(),
         };
-        let res: cw20::BalanceResponse = self.query(app, &query).unwrap();
+        let res: cw20::BalanceResponse = self.query(app, query).unwrap();
         res.balance.into()
     }
 }
