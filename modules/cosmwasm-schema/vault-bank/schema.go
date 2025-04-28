@@ -53,7 +53,7 @@ type InstantiateMsg struct {
 // After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
 // can redeem the withdrawal.
 //
-// ExecuteMsg SlashLock moves the assets from the vault to the `vault-router` contract for
+// ExecuteMsg SlashLocked moves the assets from the vault to the `vault-router` contract for
 // custody. Part of the [https://build.satlayer.xyz/architecture/slashing](Programmable
 // Slashing) lifecycle. This function can only be called by `vault-router`, and takes an
 // absolute `amount` of assets to be moved. The amount is calculated and enforced by the

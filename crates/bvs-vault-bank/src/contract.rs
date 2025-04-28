@@ -62,7 +62,7 @@ pub fn execute(
         }
         ExecuteMsg::SlashLocked(msg) => {
             msg.validate(deps.api)?;
-            execute::slash_lock(deps, env, info, msg)
+            execute::slash_locked(deps, env, info, msg)
         }
     }
 }
@@ -278,7 +278,7 @@ mod execute {
     /// Part of the [https://build.satlayer.xyz/architecture/slashing](Programmable Slashing) lifecycle.
     /// This function can only be called by `vault-router`, and takes an absolute `amount` of assets to be moved.
     /// The amount is calculated and enforced by the router.
-    pub fn slash_lock(
+    pub fn slash_locked(
         deps: DepsMut,
         env: Env,
         info: MessageInfo,

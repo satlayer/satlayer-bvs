@@ -287,7 +287,7 @@ mod execute {
     /// Part of the [https://build.satlayer.xyz/architecture/slashing](Programmable Slashing) lifecycle.
     /// This function can only be called by `vault-router`, and takes an absolute `amount` of assets to be moved.
     /// The amount is calculated and enforced by the router.
-    pub fn slash_lock(
+    pub fn slash_locked(
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
@@ -301,8 +301,8 @@ mod execute {
 
         let vault_balance = token::query_balance(&deps.as_ref(), &env)?;
 
-        if vault_balance < amount.0 {
-            return Err(VaultError::insufficient("Not enough assets").into());
+        if amount.0 > vault_balance {
+            return Err(VaultError::insufficient("Not enough balance").into());
         }
 
         let transfer_msg = token::execute_new_transfer(deps.storage, &router, amount.0)?;

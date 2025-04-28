@@ -39,7 +39,7 @@ pub enum VaultExecuteMsg {
     /// can redeem the withdrawal.
     RedeemWithdrawalTo(Recipient),
 
-    /// ExecuteMsg SlashLock moves the assets from the vault to the `vault-router` contract for custody.
+    /// ExecuteMsg SlashLocked moves the assets from the vault to the `vault-router` contract for custody.
     /// Part of the [https://build.satlayer.xyz/architecture/slashing](Programmable Slashing) lifecycle.
     /// This function can only be called by `vault-router`, and takes an absolute `amount` of assets to be moved.
     /// The amount is calculated and enforced by the router.
