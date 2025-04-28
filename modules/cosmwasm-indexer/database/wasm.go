@@ -45,7 +45,7 @@ func (db *DB) SaveWasmCodes(wasmCodes []types.WasmCode) error {
 INSERT INTO wasm_code(sender, byte_code, instantiate_permission, code_id, height) 
 VALUES `
 
-	var args []interface{}
+	var args []any
 	for i, code := range wasmCodes {
 		ii := i * 5
 
@@ -105,7 +105,7 @@ INSERT INTO wasm_contract
 data, instantiated_at, contract_info_extension, contract_states, height) 
 VALUES `
 
-	var args []interface{}
+	var args []any
 	for i, contract := range wasmContracts {
 		ii := i * paramsNumber
 		stmt += fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d),",
