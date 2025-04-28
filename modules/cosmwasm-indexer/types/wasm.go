@@ -21,89 +21,94 @@ const (
 	MsgClearAdmin           = "/cosmwasm.wasm.v1.MsgClearAdmin"
 )
 
-// WasmParams represents the CosmWasm code in x/wasm module
-type WasmParams struct {
+// WASMParams represents the CosmWasm code in x/wasm module
+type WASMParams struct {
 	CodeUploadAccess             *wasmtypes.AccessConfig
 	InstantiateDefaultPermission int32
 	Height                       int64
 }
 
-// NewWasmParams allows to build a new x/wasm params instance
-func NewWasmParams(
+// NewWASMParams allows to build a new x/wasm params instance
+func NewWASMParams(
 	codeUploadAccess *wasmtypes.AccessConfig, instantiateDefaultPermission int32, height int64,
-) WasmParams {
-	return WasmParams{
+) WASMParams {
+	return WASMParams{
 		CodeUploadAccess:             codeUploadAccess,
 		InstantiateDefaultPermission: instantiateDefaultPermission,
 		Height:                       height,
 	}
 }
 
-// WasmCode represents the CosmWasm code in x/wasm module
-type WasmCode struct {
+// WASMCode represents the CosmWasm code in x/wasm module
+type WASMCode struct {
 	Sender                string
-	WasmByteCode          []byte
+	WASMByteCode          []byte
 	InstantiatePermission *wasmtypes.AccessConfig
 	CodeID                uint64
 	Height                int64
 }
 
-// NewWasmCode allows to build a new x/wasm code instance
-func NewWasmCode(
+// NewWASMCode allows to build a new x/wasm code instance
+func NewWASMCode(
 	sender string, wasmByteCode []byte, initPermission *wasmtypes.AccessConfig, codeID uint64, height int64,
-) WasmCode {
-	return WasmCode{
+) WASMCode {
+	return WASMCode{
 		Sender:                sender,
-		WasmByteCode:          wasmByteCode,
+		WASMByteCode:          wasmByteCode,
 		InstantiatePermission: initPermission,
 		CodeID:                codeID,
 		Height:                height,
 	}
 }
 
-// WasmContract represents the CosmWasm contract in x/wasm module
-type WasmContract struct {
-	Sender                string
-	Admin                 string
-	CodeID                uint64
-	Label                 string
-	RawContractMsg        wasmtypes.RawContractMessage
-	Funds                 sdk.Coins
-	ContractAddress       string
-	Data                  string
-	InstantiatedAt        time.Time
-	Creator               string
-	ContractInfoExtension string
-	ContractStates        []byte
-	Height                int64
+// WASMInstantiateContract represents the CosmWasm instantiate contract in x/wasm module
+type WASMInstantiateContract struct {
+	Sender                 string
+	Creator                string
+	Admin                  string
+	CodeID                 uint64
+	Label                  string
+	InstantiateContractMsg wasmtypes.RawContractMessage
+	ContractAddress        string
+	WASMEvent              []byte
+	CustomWASMEvent        []byte
+	ContractInfoExtension  string
+	ContractStates         []byte
+	Funds                  sdk.Coins
+	InstantiatedAt         time.Time
+	Height                 int64
+	TxHash                 string
 }
 
-// NewWasmCode allows to build a new x/wasm contract instance
-func NewWasmContract(
-	sender string, admin string, codeID uint64, label string, rawMsg wasmtypes.RawContractMessage, funds sdk.Coins, contractAddress string, data string,
-	instantiatedAt time.Time, creator string, contractInfoExtension string, states []wasmtypes.Model, height int64,
-) WasmContract {
-	rawContractMsg, _ := rawMsg.MarshalJSON()
+// NewInstantiateWASMContract allows to build a new x/wasm contract instance.
+func NewInstantiateWASMContract(
+	sender string, creator string, admin string, codeID uint64, label string, rawMsg wasmtypes.RawContractMessage,
+	contractAddress string, wasmEvent []byte, customWASMEvent []byte, contractInfoExtension string, states []wasmtypes.Model,
+	funds sdk.Coins, instantiatedAt time.Time, height int64, txHash string,
+) WASMInstantiateContract {
+	instantiateContractMsg, _ := rawMsg.MarshalJSON()
 	contractStateInfo := ConvertContractStates(states)
 
-	return WasmContract{
-		Sender:                sender,
-		Admin:                 admin,
-		CodeID:                codeID,
-		Label:                 label,
-		RawContractMsg:        rawContractMsg,
-		Funds:                 funds,
-		ContractAddress:       contractAddress,
-		Data:                  data,
-		InstantiatedAt:        instantiatedAt,
-		Creator:               creator,
-		ContractInfoExtension: contractInfoExtension,
-		ContractStates:        contractStateInfo,
-		Height:                height,
+	return WASMInstantiateContract{
+		Sender:                 sender,
+		Creator:                creator,
+		Admin:                  admin,
+		CodeID:                 codeID,
+		Label:                  label,
+		InstantiateContractMsg: instantiateContractMsg,
+		ContractAddress:        contractAddress,
+		WASMEvent:              wasmEvent,
+		CustomWASMEvent:        customWASMEvent,
+		ContractInfoExtension:  contractInfoExtension,
+		ContractStates:         contractStateInfo,
+		Funds:                  funds,
+		InstantiatedAt:         instantiatedAt,
+		Height:                 height,
+		TxHash:                 txHash,
 	}
 }
 
-// ConvertContractStates removes unaccepted hex characters for postgreSQL from the state key
+// ConvertContractStates removes unaccepted hex characters for PostgreSQL from the state key
 func ConvertContractStates(states []wasmtypes.Model) []byte {
 	jsonStates := make(map[string]interface{})
 
@@ -133,17 +138,18 @@ func ConvertContractStates(states []wasmtypes.Model) []byte {
 	return jsonStatesBz
 }
 
-// WasmExecuteContract represents the CosmWasm execute contract in x/wasm module
-type WasmExecuteContract struct {
-	Sender          string
-	ContractAddress string
-	RawContractMsg  []byte
-	Funds           sdk.Coins
-	Data            string
-	ExecutedAt      time.Time
-	Height          int64
-	Hash            string
-	MessageType     string
+// WASMExecuteContract represents the CosmWasm execute contract in x/wasm module
+type WASMExecuteContract struct {
+	Sender             string
+	ContractAddress    string
+	ExecuteContractMsg []byte
+	MessageType        string
+	WASMEvent          []byte
+	CustomWASMEvent    []byte
+	Funds              sdk.Coins
+	ExecutedAt         time.Time
+	Height             int64
+	TxHash             string
 }
 
 // GetWasmExecuteContractMessageType gets the name of the contract execution message type. It will create a comma
@@ -173,24 +179,58 @@ func GetWasmExecuteContractMessageType(rawContractMsg []byte) string {
 	return messageType
 }
 
-// NewWasmExecuteContract allows to build a new x/wasm execute contract instance
-func NewWasmExecuteContract(
-	sender string, contractAddress string, rawMsg wasmtypes.RawContractMessage,
-	funds sdk.Coins, data string, executedAt time.Time, height int64, hash string,
-) WasmExecuteContract {
-	rawContractMsg, _ := rawMsg.MarshalJSON()
+// NewWASMExecuteContract allows to build a new x/wasm execute contract instance
+func NewWASMExecuteContract(
+	sender string, contractAddress string, rawMsg wasmtypes.RawContractMessage, wasmEvent []byte, customWASMEvent []byte,
+	funds sdk.Coins, executedAt time.Time, height int64, txHash string,
+) WASMExecuteContract {
+	executeContractMsg, _ := rawMsg.MarshalJSON()
 
 	messageType := GetWasmExecuteContractMessageType(rawMsg)
 
-	return WasmExecuteContract{
-		Sender:          sender,
-		ContractAddress: contractAddress,
-		RawContractMsg:  rawContractMsg,
-		Funds:           funds,
-		Data:            data,
-		ExecutedAt:      executedAt,
-		Height:          height,
-		Hash:            hash,
-		MessageType:     messageType,
+	return WASMExecuteContract{
+		Sender:             sender,
+		ContractAddress:    contractAddress,
+		ExecuteContractMsg: executeContractMsg,
+		MessageType:        messageType,
+		WASMEvent:          wasmEvent,
+		CustomWASMEvent:    customWASMEvent,
+		Funds:              funds,
+		ExecutedAt:         executedAt,
+		Height:             height,
+		TxHash:             txHash,
+	}
+}
+
+// WASMMigrateContract represents the CosmWasm migrate contract in x/wasm module.
+type WASMMigrateContract struct {
+	Sender             string
+	CodeID             uint64
+	ContractAddress    string
+	MigrateContractMsg wasmtypes.RawContractMessage
+	WASMEvent          []byte
+	CustomWASMEvent    []byte
+	MigratedAt         time.Time
+	Height             int64
+	TxHash             string
+}
+
+// NewWasmMigrateContract allows to migrate one contract to a new contract instance.
+func NewWASMMigrateContract(
+	sender string, codeID uint64, contractAddress string, rawMsg wasmtypes.RawContractMessage, wasmEvent []byte,
+	customWASMEvent []byte, migratedAt time.Time, height int64, txHash string,
+) WASMMigrateContract {
+	rawContractMsg, _ := rawMsg.MarshalJSON()
+
+	return WASMMigrateContract{
+		Sender:             sender,
+		CodeID:             codeID,
+		ContractAddress:    contractAddress,
+		MigrateContractMsg: rawContractMsg,
+		WASMEvent:          wasmEvent,
+		CustomWASMEvent:    customWASMEvent,
+		MigratedAt:         migratedAt,
+		Height:             height,
+		TxHash:             txHash,
 	}
 }
