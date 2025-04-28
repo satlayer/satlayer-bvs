@@ -3,7 +3,7 @@ title: Core Contracts
 asIndexPage: true
 ---
 
-# SatLayer Contracts
+# Core Contracts
 
 The SatLayer ecosystem consists of several specialized contracts
 that work together to provide a complete staking and validation solution.
