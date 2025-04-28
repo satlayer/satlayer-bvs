@@ -1050,7 +1050,7 @@ fn test_cw20_semi_compliance() {
     staking_cw20.fund(app, &staker, 100e15 as u128);
     vault.execute(app, &staker, &msg).unwrap();
 
-    // can we increase allowance like normal cw20 token would?
+    // We can increase allowance like normal cw20 token.
     {
         let inner_msg = cw20_base::msg::ExecuteMsg::IncreaseAllowance {
             spender: app.api().addr_make("spender").to_string(),
@@ -1079,7 +1079,7 @@ fn test_cw20_semi_compliance() {
         assert_eq!(allowance.allowance, Uint128::new(100));
     }
 
-    // can we decrease allowance like normal cw20 token would?
+    // We can decrease allowance like normal cw20 token would
     {
         let inner_msg = cw20_base::msg::ExecuteMsg::DecreaseAllowance {
             spender: app.api().addr_make("spender").to_string(),
@@ -1106,7 +1106,7 @@ fn test_cw20_semi_compliance() {
         assert_eq!(allowance.allowance, Uint128::new(50));
     }
 
-    // can we transfer like normal cw20 token would?
+    // We can transfer like normal cw20 token would
     {
         let inner_msg = cw20_base::msg::ExecuteMsg::Transfer {
             recipient: app.api().addr_make("recipient").to_string(),
@@ -1130,7 +1130,7 @@ fn test_cw20_semi_compliance() {
         assert_eq!(balance.balance, Uint128::new(50));
     }
 
-    // can we transfer_from like normal cw20 token would?
+    // We can transfer_from like normal cw20 token would
     {
         let inner_msg = cw20_base::msg::ExecuteMsg::TransferFrom {
             owner: staker.to_string(),
@@ -1162,7 +1162,7 @@ fn test_cw20_semi_compliance() {
         assert_eq!(balance.balance, Uint128::new(25));
     }
 
-    // query TokenInfo like normal cw20 token would
+    // We can query the token info like normal cw20 token
     {
         let query = cw20_base::msg::QueryMsg::TokenInfo {};
         let token_info: cw20::TokenInfoResponse = app
@@ -1180,7 +1180,7 @@ fn test_cw20_semi_compliance() {
         assert_eq!(token_info.total_supply, Uint128::new(200));
     }
 
-    // query Balance like normal cw20 token would
+    // We can query the balance like normal cw20 token
     {
         let query = cw20_base::msg::QueryMsg::Balance {
             address: staker.to_string(),
@@ -1195,7 +1195,7 @@ fn test_cw20_semi_compliance() {
         assert_eq!(balance.balance, Uint128::new(125));
     }
 
-    // query Allowance like normal cw20 token would
+    // We can query the allowance like normal cw20 token
     {
         let query = cw20_base::msg::QueryMsg::Allowance {
             owner: staker.to_string(),
@@ -1208,7 +1208,7 @@ fn test_cw20_semi_compliance() {
         assert_eq!(allowance.allowance, Uint128::new(25));
     }
 
-    // query AllAllowances like normal cw20 token would
+    // We can query AllAllowance like normal cw20 token
     {
         let query = cw20_base::msg::QueryMsg::AllAllowances {
             owner: staker.to_string(),
@@ -1227,7 +1227,7 @@ fn test_cw20_semi_compliance() {
         assert_eq!(allowances.allowances[0].allowance, Uint128::new(25));
     }
 
-    // query AllSpenderAllowances like normal cw20 token would
+    // We can query AllSpenderAllowances like normal cw20 token
     {
         let query = cw20_base::msg::QueryMsg::AllSpenderAllowances {
             spender: app.api().addr_make("spender").to_string(),
@@ -1243,7 +1243,7 @@ fn test_cw20_semi_compliance() {
         assert_eq!(allowances.allowances[0].allowance, Uint128::new(25));
     }
 
-    // query AllAccounts like normal cw20 token would
+    // We can query AllAccounts like normal cw20 token
     {
         let query = cw20_base::msg::QueryMsg::AllAccounts {
             start_after: None,
