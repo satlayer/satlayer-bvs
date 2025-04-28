@@ -8,9 +8,9 @@ const (
 	maxPostgreSQLParams = 65535
 )
 
-func SplitWasmContracts(contracts []types.WasmContract, paramsNumber int) [][]types.WasmContract {
+func SplitWasmContracts(contracts []types.WASMInstantiateContract, paramsNumber int) [][]types.WASMInstantiateContract {
 	maxBalancesPerSlice := maxPostgreSQLParams / paramsNumber
-	slices := make([][]types.WasmContract, len(contracts)/maxBalancesPerSlice+1)
+	slices := make([][]types.WASMInstantiateContract, len(contracts)/maxBalancesPerSlice+1)
 
 	sliceIndex := 0
 	for index, contract := range contracts {
@@ -24,9 +24,9 @@ func SplitWasmContracts(contracts []types.WasmContract, paramsNumber int) [][]ty
 	return slices
 }
 
-func SplitWasmExecuteContracts(executeContracts []types.WasmExecuteContract, paramsNumber int) [][]types.WasmExecuteContract {
+func SplitWasmExecuteContracts(executeContracts []types.WASMExecuteContract, paramsNumber int) [][]types.WASMExecuteContract {
 	maxBalancesPerSlice := maxPostgreSQLParams / paramsNumber
-	slices := make([][]types.WasmExecuteContract, len(executeContracts)/maxBalancesPerSlice+1)
+	slices := make([][]types.WASMExecuteContract, len(executeContracts)/maxBalancesPerSlice+1)
 
 	sliceIndex := 0
 	for index, executeContract := range executeContracts {

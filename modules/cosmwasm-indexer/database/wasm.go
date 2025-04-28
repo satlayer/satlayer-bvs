@@ -11,8 +11,8 @@ import (
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/types"
 )
 
-// SaveWasmParams allows to store the wasm params
-func (db *DB) SaveWasmParams(params types.WasmParams) error {
+// SaveWASMParams allows to store the WASM params for genesis file state.
+func (db *DB) SaveWASMParams(params types.WASMParams) error {
 	stmt := `
 INSERT INTO wasm_params(code_upload_access, instantiate_default_permission, height) 
 VALUES ($1, $2, $3) 
@@ -34,13 +34,13 @@ WHERE wasm_params.height <= excluded.height
 	return nil
 }
 
-// SaveWasmCode allows to store a single wasm code
-func (db *DB) SaveWasmCode(wasmCode types.WasmCode) error {
-	return db.SaveWasmCodes([]types.WasmCode{wasmCode})
+// SaveWASMCode allows to store a single WASM code
+func (db *DB) SaveWASMCode(wasmCode types.WASMCode) error {
+	return db.SaveWASMCodes([]types.WASMCode{wasmCode})
 }
 
-// SaveWasmCodes allows to store the wasm code slice
-func (db *DB) SaveWasmCodes(wasmCodes []types.WasmCode) error {
+// SaveWASMCodes allows to store the wasm code slice
+func (db *DB) SaveWASMCodes(wasmCodes []types.WASMCode) error {
 	stmt := `
 INSERT INTO wasm_code(sender, byte_code, instantiate_permission, code_id, height) 
 VALUES `
@@ -57,7 +57,7 @@ VALUES `
 		cfgValue, _ := accessConfig.Value()
 
 		stmt += fmt.Sprintf("($%d, $%d, $%d, $%d, $%d),", ii+1, ii+2, ii+3, ii+4, ii+5)
-		args = append(args, code.Sender, code.WasmByteCode, cfgValue, code.CodeID, code.Height)
+		args = append(args, code.Sender, code.WASMByteCode, cfgValue, code.CodeID, code.Height)
 	}
 
 	// Remove trailing ","
@@ -73,14 +73,14 @@ VALUES `
 
 	_, err := db.SQL.Exec(stmt, args...)
 	if err != nil {
-		return fmt.Errorf("failed to save wasm byte code: %s", err)
+		return fmt.Errorf("failed to save WASM byte code: %s", err)
 	}
 
 	return nil
 }
 
-// SaveWasmContracts allows to store the wasm contract slice
-func (db *DB) SaveWasmContracts(contracts []types.WasmContract) error {
+// SaveWASMInstantiateContracts allows to store the WASM instantiate contract slice.
+func (db *DB) SaveWASMInstantiateContracts(contracts []types.WASMInstantiateContract) error {
 	paramsNumber := 13
 	slices := dbutils.SplitWasmContracts(contracts, paramsNumber)
 
@@ -89,74 +89,76 @@ func (db *DB) SaveWasmContracts(contracts []types.WasmContract) error {
 			continue
 		}
 
-		err := db.saveWasmContracts(paramsNumber, contracts)
+		err := db.saveWASMInstantiateContracts(paramsNumber, contracts)
 		if err != nil {
-			return fmt.Errorf("failed to store contracts: %s", err)
+			return fmt.Errorf("failed to store WASM contracts: %s", err)
 		}
 	}
 
 	return nil
 }
 
-func (db *DB) saveWasmContracts(paramsNumber int, wasmContracts []types.WasmContract) error {
+func (db *DB) saveWASMInstantiateContracts(paramsNumber int, wasmContracts []types.WASMInstantiateContract) error {
 	stmt := `
 INSERT INTO wasm_contract 
-(sender, creator, admin, code_id, label, raw_contract_message, funds, contract_address, 
-data, instantiated_at, contract_info_extension, contract_states, height) 
+(sender, creator, admin, code_id, label, instantiate_contract_message, funds, contract_address, instantiated_at, 
+contract_info_extension, contract_states, wasm_event, custom_wasm_event, height, instantiate_tx_hash) 
 VALUES `
 
+	// only add new one, shouldn't be repeated
 	var args []any
 	for i, contract := range wasmContracts {
 		ii := i * paramsNumber
-		stmt += fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d),",
-			ii+1, ii+2, ii+3, ii+4, ii+5, ii+6, ii+7, ii+8, ii+9, ii+10, ii+11, ii+12, ii+13)
+		stmt += fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d),",
+			ii+1, ii+2, ii+3, ii+4, ii+5, ii+6, ii+7, ii+8, ii+9, ii+10, ii+11, ii+12, ii+13, ii+14, ii+15)
 		args = append(args,
-			contract.Sender, contract.Creator, contract.Admin, contract.CodeID, contract.Label, string(contract.RawContractMsg),
-			pq.Array(dbtypes.NewDBCoins(contract.Funds)), contract.ContractAddress, contract.Data,
-			contract.InstantiatedAt, contract.ContractInfoExtension, string(contract.ContractStates), contract.Height,
+			contract.Sender, contract.Creator, contract.Admin, contract.CodeID, contract.Label, string(contract.InstantiateContractMsg),
+			pq.Array(dbtypes.NewDBCoins(contract.Funds)), contract.ContractAddress, contract.InstantiatedAt, contract.ContractInfoExtension,
+			string(contract.ContractStates), string(contract.WASMEvent), string(contract.CustomWASMEvent), contract.Height, contract.TxHash,
 		)
 	}
 
 	// Remove trailing ","
 	stmt = stmt[:len(stmt)-1]
-	stmt += `
-	ON CONFLICT (contract_address) DO UPDATE 
-		SET sender = excluded.sender,
-			creator = excluded.creator,
-			admin = excluded.admin,
-			code_id = excluded.code_id,
-			label = excluded.label,
-			raw_contract_message = excluded.raw_contract_message,
-			funds = excluded.funds,
-			data = excluded.data,
-			instantiated_at = excluded.instantiated_at,
-			contract_info_extension = excluded.contract_info_extension,
-			contract_states = excluded.contract_states,
-			height = excluded.height
-	WHERE wasm_contract.height <= excluded.height`
+	// stmt += `
+	// ON CONFLICT (contract_address) DO UPDATE
+	// 	SET sender = excluded.sender,
+	// 		creator = excluded.creator,
+	// 		admin = excluded.admin,
+	// 		code_id = excluded.code_id,
+	// 		label = excluded.label,
+	// 		instantiate_contract_message = excluded.instantiate_contract_message,
+	// 		funds = excluded.funds,
+	// 		instantiated_at = excluded.instantiated_at,
+	// 		contract_info_extension = excluded.contract_info_extension,
+	// 		contract_states = excluded.contract_states,
+	//     	wasm_event = excluded.wasm_event,
+	//     	custom_wasm_event = excluded.custom_wasm_event,
+	// 		height = excluded.height
+	// WHERE wasm_contract.height <= excluded.height`
 
 	_, err := db.SQL.Exec(stmt, args...)
 	if err != nil {
-		return fmt.Errorf("failed to save wasm contracts: %s", err)
+		return fmt.Errorf("failed to save WASM contracts: %s", err)
 	}
 
 	return nil
 }
 
-// GetWasmContractExists returns all the wasm contracts matching an address that are currently stored inside the database.
-func (db *DB) GetWasmContractExists(contractAddress string) (bool, error) {
+// GetWASMContractExists checks whether the specified WASM contract is currently stored inside the database.
+func (db *DB) GetWASMContractExists(contractAddress string) (bool, error) {
 	var count int
-	err := db.SQL.Get(&count, `SELECT count(contract_address) FROM wasm_contract WHERE contract_address = $1`, contractAddress)
+	err := db.SQL.Get(&count, `SELECT count(contract_address) FROM wasm_instantiate_contract WHERE contract_address = $1`, contractAddress)
 	return count > 0, err
 }
 
-// SaveWasmExecuteContract allows to store the wasm contract
-func (db *DB) SaveWasmExecuteContract(wasmExecuteContract types.WasmExecuteContract) error {
-	return db.SaveWasmExecuteContracts([]types.WasmExecuteContract{wasmExecuteContract})
+// SaveWASMExecuteContract allows to store one WASM execute contract.
+func (db *DB) SaveWASMExecuteContract(wasmExecuteContract types.WASMExecuteContract) error {
+	return db.SaveWASMExecuteContracts([]types.WASMExecuteContract{wasmExecuteContract})
 }
 
-// SaveWasmContracts allows to store the wasm contract slice
-func (db *DB) SaveWasmExecuteContracts(executeContracts []types.WasmExecuteContract) error {
+// SaveWasmContracts allows to store WASM contract slice.
+func (db *DB) SaveWASMExecuteContracts(executeContracts []types.WASMExecuteContract) error {
 	paramsNumber := 8
 	slices := dbutils.SplitWasmExecuteContracts(executeContracts, paramsNumber)
 
@@ -165,16 +167,16 @@ func (db *DB) SaveWasmExecuteContracts(executeContracts []types.WasmExecuteContr
 			continue
 		}
 
-		err := db.saveWasmExecuteContracts(paramsNumber, executeContracts)
+		err := db.saveWASMExecuteContracts(paramsNumber, executeContracts)
 		if err != nil {
-			return fmt.Errorf("failed to store contracts: %s", err)
+			return fmt.Errorf("failed to store WASM contracts: %s", err)
 		}
 	}
 
 	return nil
 }
 
-func (db *DB) saveWasmExecuteContracts(paramNumber int, executeContracts []types.WasmExecuteContract) error {
+func (db *DB) saveWASMExecuteContracts(paramNumber int, executeContracts []types.WASMExecuteContract) error {
 	stmt := `
 INSERT INTO wasm_execute_contract 
 (sender, contract_address, raw_contract_message, funds, data, executed_at, height, hash, message_type) 
@@ -183,11 +185,12 @@ VALUES `
 	var args []any
 	for i, executeContract := range executeContracts {
 		ii := i * paramNumber
-		stmt += fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d),",
-			ii+1, ii+2, ii+3, ii+4, ii+5, ii+6, ii+7, ii+8, ii+9)
+		stmt += fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d),",
+			ii+1, ii+2, ii+3, ii+4, ii+5, ii+6, ii+7, ii+8, ii+9, ii+10)
 		args = append(args,
-			executeContract.Sender, executeContract.ContractAddress, string(executeContract.RawContractMsg),
-			pq.Array(dbtypes.NewDBCoins(executeContract.Funds)), executeContract.Data, executeContract.ExecutedAt, executeContract.Height, executeContract.Hash, executeContract.MessageType)
+			executeContract.Sender, executeContract.ContractAddress, string(executeContract.ExecuteContractMsg),
+			pq.Array(dbtypes.NewDBCoins(executeContract.Funds)), executeContract.MessageType, executeContract.WASMEvent,
+			executeContract.CustomWASMEvent, executeContract.ExecutedAt, executeContract.Height, executeContract.TxHash)
 	}
 
 	// Remove trailing ","
@@ -197,14 +200,14 @@ VALUES `
 
 	_, err := db.SQL.Exec(stmt, args...)
 	if err != nil {
-		return fmt.Errorf("failed to save wasm execute contracts: %s", err)
+		return fmt.Errorf("failed to save WASM execute contracts: %s", err)
 	}
 
 	return nil
 }
 
-// SaveWasmExecuteContractEvents allows to store the wasm contract events
-func (db *DB) SaveWasmExecuteContractEvents(executeContract types.WasmExecuteContract, tx *junotypes.Transaction) error {
+// SaveWASMExecuteContractEvents allows to store the WASM contract events.
+func (db *DB) SaveWASMExecuteContractEvents(executeContract types.WASMExecuteContract, tx *junotypes.Transaction) error {
 	stmt := `
 	INSERT INTO wasm_execute_contract_event_types
 	(contract_address,
@@ -225,7 +228,7 @@ func (db *DB) SaveWasmExecuteContractEvents(executeContract types.WasmExecuteCon
 			if attr.Key == "msg_index" {
 				_, err := db.SQL.Exec(stmt, executeContract.ContractAddress, event.Type, executeContract.Height, tx.TxHash)
 				if err != nil {
-					return fmt.Errorf("failed to save wasm execute contracts: %s", err)
+					return fmt.Errorf("failed to save WASM execute contracts: %s", err)
 				}
 			}
 		}
@@ -234,30 +237,30 @@ func (db *DB) SaveWasmExecuteContractEvents(executeContract types.WasmExecuteCon
 	return nil
 }
 
-func (db *DB) UpdateContractWithMsgMigrateContract(
-	sender string, contractAddress string, codeID uint64, rawContractMsg []byte, data string,
-) error {
-	stmt := `UPDATE wasm_contract SET 
-sender = $1, code_id = $2, raw_contract_message = $3, data = $4 
-WHERE contract_address = $5 `
+func (db *DB) SaveWASMMigrateContracts(migrateContract types.WASMMigrateContract) error {
+	stmt := `
+INSERT INTO wasm_migrate_contract 
+(sender, code_id, label, migrate_contract_message, contract_address, migrated_at, 
+wasm_event, custom_wasm_event, height, migrate_tx_hash) 
+VALUES `
 
 	_, err := db.SQL.Exec(stmt,
-		sender, codeID, string(rawContractMsg), data,
-		contractAddress,
+		migrateContract.Sender, migrateContract.CodeID, migrateContract.ContractAddress, migrateContract.MigrateContractMsg,
+		migrateContract.WASMEvent, migrateContract.CustomWASMEvent, migrateContract.MigratedAt, migrateContract.Height, migrateContract.TxHash,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to update wasm contract from contract migration: %s", err)
+		return fmt.Errorf("failed to save WASM contract from contract migration: %s", err)
 	}
 	return nil
 }
 
 func (db *DB) UpdateContractAdmin(sender string, contractAddress string, newAdmin string) error {
-	stmt := `UPDATE wasm_contract SET 
+	stmt := `UPDATE wasm_instantiate_contract SET 
 sender = $1, admin = $2 WHERE contract_address = $2 `
 
 	_, err := db.SQL.Exec(stmt, sender, newAdmin, contractAddress)
 	if err != nil {
-		return fmt.Errorf("failed to update wasm contract admin: %s", err)
+		return fmt.Errorf("failed to update WASM contract admin: %s", err)
 	}
 	return nil
 }
