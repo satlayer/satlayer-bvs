@@ -71,7 +71,7 @@ pub fn execute(
         }
         ExecuteMsg::SlashLocked(msg) => {
             msg.validate(deps.api)?;
-            execute::slash_lock(deps, env, info, msg)
+            execute::slash_locked(deps, env, info, msg)
         }
     }
 }
