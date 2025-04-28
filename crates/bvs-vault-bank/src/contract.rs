@@ -274,10 +274,10 @@ mod execute {
             .add_message(send_msg))
     }
 
-    /// transfer the assets to the router as part of slashing flow.
-    /// The idea is in the event of slashing router will maintain custody of the assets.
-    /// Whether slashed collateral is burned, further utilized or returned to the user is up to the
-    /// downstream slashing logics router will be working with.
+    /// Moves the assets from the vault to the `vault-router` contract.
+    /// Part of the [https://build.satlayer.xyz/architecture/slashing](Programmable Slashing) lifecycle.
+    /// This function can only be called by `vault-router`, and takes an absolute `amount` of assets to be moved. 
+    /// The amount is calculated and enforced by the router.
     pub fn system_lock_asset(
         deps: DepsMut,
         env: Env,
