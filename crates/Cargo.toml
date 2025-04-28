@@ -10,9 +10,10 @@ members = [
   "bvs-vault-base",
   "bvs-vault-bank",
   "bvs-vault-cw20",
-  "bvs-vault-factory",
-  "bvs-rewards",
   "bvs-vault-cw20-tokenized",
+  "bvs-vault-factory",
+  # BVS Optional Components
+  "bvs-rewards",
 ]
 
 resolver = "2"
