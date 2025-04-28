@@ -46,6 +46,9 @@ export default async function RootLayout({
       <body>
         <Layout
           banner={banner}
+          sidebar={{
+            defaultMenuCollapseLevel: 2,
+          }}
           navbar={navbar}
           pageMap={await getPageMap()}
           docsRepositoryBase="https://github.com/satlayer/satlayer-bvs/tree/main/docs"

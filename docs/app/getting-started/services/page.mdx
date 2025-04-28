@@ -2,10 +2,12 @@ import {Callout} from "nextra/components";
 
 # Services
 
-Together with [Operators](/architecture/operators), Services form the backbone of the SatLayer ecosystem.
+Together with [Operators](/getting-started/operators), Services form the backbone of the SatLayer ecosystem.
 Services represent blockchain applications or protocols that require "operations," validation, and security.
 They are the entities that define the operational requirements, reward structures, and slashing conditions
 for the ecosystem's validators and infrastructure providers.
+
+> Services, Networks, and Bitcoin Validated Services (BVS) refer to the same concept in SatLayer.
 
 In the SatLayer ecosystem, a Service can be any decentralized application that needs reliable,
 trustworthy computation and validation. Services establish the rules and parameters for their operations,
@@ -24,10 +26,11 @@ security expertise, and operational capabilities that Services need to function 
 
 <Callout type="info">
   **Services without operations?**<br/>
-  It's important to note that a Service can exist without a need for operations in the traditional sense.
+  Service can exist without a need for operations in the traditional sense.
   Not all services require complex logic or binaries to be run by Operators.
   Some services might only need verification of data, provision of liquidity,
   or other forms of support that don't involve running infrastructure.
+
   The relationship between Services and Operators is flexible and can be tailored to the specific needs of each Service.
 </Callout>
 
@@ -132,4 +135,4 @@ helping maintain trust in the ecosystem
 
 These mechanisms help maintain trust in the ecosystem while still providing Services
 with the tools they need to enforce proper behavior from their Operators.
-See [Programmable Slashing](/architecture/slashing) for more indepth information on the slashing mechanism.
+See [Programmable Slashing](/getting-started/slashing) for more indepth information on the slashing mechanism.
