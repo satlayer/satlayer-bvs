@@ -1,11 +1,26 @@
 package utils
 
-import sdk "github.com/cosmos/cosmos-sdk/types"
+import (
+	"strings"
+
+	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+)
 
 // FindEventByType returns the event with the given type
 func FindEventByType(events sdk.StringEvents, eventType string) (sdk.StringEvent, bool) {
 	for _, event := range events {
 		if event.Type == eventType {
+			return event, true
+		}
+	}
+	return sdk.StringEvent{}, false
+}
+
+// FindCustomWASMEvent returns the event with the custom WASM type
+func FindCustomWASMEvent(events sdk.StringEvents) (sdk.StringEvent, bool) {
+	for _, event := range events {
+		if strings.Contains(event.Type, wasmtypes.CustomContractEventPrefix) {
 			return event, true
 		}
 	}
