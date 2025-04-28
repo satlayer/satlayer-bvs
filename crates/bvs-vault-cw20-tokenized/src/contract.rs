@@ -34,8 +34,8 @@ pub fn instantiate(
     let staking_token_info = PrimaryStakingToken::get_token_info(&deps.as_ref())?;
 
     let receipt_token_instantiate = ReceiptCw20InstantiateMsg {
-        name: format!("{} Staking Receipt", staking_token_info.name),
-        symbol: format!("st{}", staking_token_info.symbol),
+        name: format!("Satlayer {}", staking_token_info.name),
+        symbol: format!("sat{}", staking_token_info.symbol),
         decimals: staking_token_info.decimals,
         initial_balances: vec![],
         mint: None,
