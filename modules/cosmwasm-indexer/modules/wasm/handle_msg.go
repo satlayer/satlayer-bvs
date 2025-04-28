@@ -13,7 +13,6 @@ import (
 	junotypes "github.com/forbole/juno/v6/types"
 	"github.com/ohler55/ojg/oj"
 
-	eventutils "github.com/satlayer/satlayer-bvs/cosmwasm-indexer/database/utils"
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/types"
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/utils"
 )
@@ -70,7 +69,7 @@ func (m *Module) HandleMsg(index int, msg junotypes.Message, tx *junotypes.Trans
 // The Store Code Event is to upload the contract code on the chain, where a Code ID is returned
 func (m *Module) HandleMsgStoreCode(index int, tx *junotypes.Transaction, msg *wasmtypes.MsgStoreCode) error {
 	// Get store code event
-	event, success := eventutils.FindEventByType(sdktypes.StringifyEvents(tx.Events), wasmtypes.EventTypeStoreCode)
+	event, success := utils.FindEventByType(sdktypes.StringifyEvents(tx.Events), wasmtypes.EventTypeStoreCode)
 
 	if !success {
 		slog.Error("Failed to search for EventTypeStoreCode", "tx hash", tx.TxHash)
@@ -113,7 +112,7 @@ func (m *Module) HandleMsgInstantiateContract(index int, tx *junotypes.Transacti
 	}
 
 	// Get instantiate contract event
-	event, success := eventutils.FindEventByType(sdktypes.StringifyEvents(tx.Events), wasmtypes.EventTypeInstantiate)
+	event, success := utils.FindEventByType(sdktypes.StringifyEvents(tx.Events), wasmtypes.EventTypeInstantiate)
 
 	if !success {
 		slog.Error("Failed to search for instantiate attribute in events", "tx hash", tx.TxHash)
@@ -211,13 +210,8 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 		slog.Warn("Unable to parse message name from JSON", "tx hash", tx.TxHash, "json message", string(msg.Msg))
 	}
 
-	// Skip some message types
-	if messageName == "write_k_v" {
-		slog.Debug("Skipping contract message", "tx hash", tx.TxHash, "message name", messageName)
-		return nil
-	}
 	slog.Debug("Processing contract message", "block height", tx.Height, "tx hash", tx.TxHash, "index", index,
-		"message name", messageName)
+		"message name", messageName, "Msg", string(msg.Msg))
 
 	// Check if events slice is not empty and index is within range
 	if index >= len(tx.Events) {
@@ -228,12 +222,12 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 	txEvents := sdktypes.StringifyEvents(tx.Events)
 	slog.Info("wasm attribute", slog.Any("all events", txEvents))
 
-	// wasmAttr, success := eventutils.FindEventByType(txEvents, wasmtypes.WasmModuleEventType)
-	// if !success {
-	// 	slog.Error("Failed to search for wasm attribute in event", "error", err)
-	// 	return err
-	// }
-	// slog.Info("wasm attribute", "wasm detail", wasmAttr)
+	wasmAttr, success := utils.FindEventByType(txEvents, wasmtypes.WasmModuleEventType)
+	if !success {
+		slog.Error("Failed to search for wasm attribute in event", "error", err)
+		return err
+	}
+	slog.Info("wasm attribute", "wasm detail", wasmAttr)
 
 	timestamp, err := time.Parse(time.RFC3339, tx.Timestamp)
 	if err != nil {
@@ -346,7 +340,7 @@ func (m *Module) HandleMsgMigrateContract(index int, tx *junotypes.Transaction, 
 		"contract label name", labelName, "index", index, "new code id", msg.CodeID)
 
 	// // Get Migrate Contract event
-	// event, success := eventutils.FindEventByType(sdktypes.StringifyEvents(tx.Events), wasmtypes.EventTypeMigrate)
+	// event, success := utils.FindEventByType(sdktypes.StringifyEvents(tx.Events), wasmtypes.EventTypeMigrate)
 	//
 	// if !success {
 	// 	slog.Error("Failed to search for EventTypeMigrate", "tx hash", tx.TxHash)
