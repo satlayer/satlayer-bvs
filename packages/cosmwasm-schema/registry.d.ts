@@ -127,20 +127,20 @@ export interface QueryMsg {
 }
 
 export interface IsOperatorOptedInToSlashing {
-  height?: number | null;
   operator: string;
   service: string;
+  timestamp?: number | null;
 }
 
 export interface QueryMsgSlashingParameters {
-  height?: number | null;
   service: string;
+  timestamp?: number | null;
 }
 
 export interface Status {
-  height?: number | null;
   operator: string;
   service: string;
+  timestamp?: number | null;
 }
 
 export interface SlashingParametersResponse {

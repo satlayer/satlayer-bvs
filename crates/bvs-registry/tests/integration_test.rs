@@ -202,7 +202,7 @@ fn register_lifecycle_operator_first() {
             &QueryMsg::Status {
                 service: service.to_string(),
                 operator: operator.to_string(),
-                height: None,
+                timestamp: None,
             },
         )
         .unwrap();
@@ -235,7 +235,7 @@ fn register_lifecycle_operator_first() {
             &QueryMsg::Status {
                 service: service.to_string(),
                 operator: operator.to_string(),
-                height: None,
+                timestamp: None,
             },
         )
         .unwrap();
@@ -297,7 +297,7 @@ fn register_lifecycle_service_first() {
             &QueryMsg::Status {
                 service: service.to_string(),
                 operator: operator.to_string(),
-                height: None,
+                timestamp: None,
             },
         )
         .unwrap();
@@ -328,7 +328,7 @@ fn register_lifecycle_service_first() {
             &QueryMsg::Status {
                 service: service.to_string(),
                 operator: operator.to_string(),
-                height: None,
+                timestamp: None,
             },
         )
         .unwrap();
@@ -552,7 +552,7 @@ fn register_deregister_lifecycle() {
                     &QueryMsg::Status {
                         service: curr_service.to_string(),
                         operator: operator.to_string(),
-                        height: None,
+                        timestamp: None,
                     },
                 )
                 .unwrap();
@@ -564,7 +564,7 @@ fn register_deregister_lifecycle() {
                     &QueryMsg::Status {
                         service: curr_service.to_string(),
                         operator: operator2.to_string(),
-                        height: None,
+                        timestamp: None,
                     },
                 )
                 .unwrap();
@@ -575,9 +575,10 @@ fn register_deregister_lifecycle() {
     // move the chain
     app.update_block(|block| {
         block.height += 10;
+        block.time = block.time.plus_seconds(10);
     });
 
-    // check if all services are registered to operator and operator2 at current height - 5
+    // check if all services are registered to operator and operator2 at current timestamp - 5
     {
         for curr_service in [service.clone(), service2.clone()].iter() {
             let status: StatusResponse = registry
@@ -586,7 +587,7 @@ fn register_deregister_lifecycle() {
                     &QueryMsg::Status {
                         service: curr_service.to_string(),
                         operator: operator.to_string(),
-                        height: Some(app.block_info().height - 5),
+                        timestamp: Some(app.block_info().time.minus_seconds(5).seconds()),
                     },
                 )
                 .unwrap();
@@ -598,7 +599,7 @@ fn register_deregister_lifecycle() {
                     &QueryMsg::Status {
                         service: curr_service.to_string(),
                         operator: operator2.to_string(),
-                        height: Some(app.block_info().height - 5),
+                        timestamp: Some(app.block_info().time.minus_seconds(5).seconds()),
                     },
                 )
                 .unwrap();
@@ -625,7 +626,7 @@ fn register_deregister_lifecycle() {
                 &QueryMsg::Status {
                     service: service.to_string(),
                     operator: operator.to_string(),
-                    height: None,
+                    timestamp: None,
                 },
             )
             .unwrap();
@@ -637,7 +638,7 @@ fn register_deregister_lifecycle() {
                 &QueryMsg::Status {
                     service: service2.to_string(),
                     operator: operator.to_string(),
-                    height: None,
+                    timestamp: None,
                 },
             )
             .unwrap();
@@ -647,29 +648,30 @@ fn register_deregister_lifecycle() {
     // move the chain
     app.update_block(|block| {
         block.height += 10;
+        block.time = block.time.plus_seconds(10);
     });
 
-    // check if service is deregistered from operator at current height - 5
+    // check if service is deregistered from operator at current timestamp - 5
     let status: StatusResponse = registry
         .query(
             &app,
             &QueryMsg::Status {
                 service: service.to_string(),
                 operator: operator.to_string(),
-                height: Some(app.block_info().height - 5),
+                timestamp: Some(app.block_info().time.minus_seconds(5).seconds()),
             },
         )
         .unwrap();
     assert_eq!(status, StatusResponse(0)); // inactive
 
-    // check if service2 is still registered to operator at current height - 5
+    // check if service2 is still registered to operator at current timestamp - 5
     let status: StatusResponse = registry
         .query(
             &app,
             &QueryMsg::Status {
                 service: service2.to_string(),
                 operator: operator.to_string(),
-                height: Some(app.block_info().height - 5),
+                timestamp: Some(app.block_info().time.minus_seconds(5).seconds()),
             },
         )
         .unwrap();
@@ -799,7 +801,7 @@ fn enable_slashing_lifecycle() {
                 &mut app,
                 &QueryMsg::SlashingParameters {
                     service: service.to_string(),
-                    height: None,
+                    timestamp: None,
                 },
             )
             .unwrap();
@@ -828,6 +830,7 @@ fn enable_slashing_lifecycle() {
     // move blockchain
     app.update_block(|block| {
         block.height += 1;
+        block.time = block.time.plus_seconds(10);
     });
 
     // operator opts-in to slashing
@@ -855,7 +858,7 @@ fn enable_slashing_lifecycle() {
                 &QueryMsg::IsOperatorOptedInToSlashing {
                     service: service.to_string(),
                     operator: operator.to_string(),
-                    height: None,
+                    timestamp: None,
                 },
             )
             .unwrap();
@@ -912,7 +915,7 @@ fn enable_slashing_lifecycle() {
                 &QueryMsg::IsOperatorOptedInToSlashing {
                     service: service.to_string(),
                     operator: operator2.to_string(),
-                    height: None,
+                    timestamp: None,
                 },
             )
             .unwrap();
@@ -925,6 +928,7 @@ fn enable_slashing_lifecycle() {
     // move blockchain
     app.update_block(|block| {
         block.height += 1;
+        block.time = block.time.plus_seconds(10);
     });
 
     // service updates slashing parameters
@@ -947,20 +951,20 @@ fn enable_slashing_lifecycle() {
                 &mut app,
                 &QueryMsg::SlashingParameters {
                     service: service.to_string(),
-                    height: None,
+                    timestamp: None,
                 },
             )
             .unwrap();
         assert_eq!(slashing_parameters_res, slashing_parameters);
 
-        // assert previous slashing param is available if prev block height
-        let prev_block_height = app.block_info().height - 1;
+        // assert previous slashing param is available if prev block timestamp
+        let prev_timestamp = app.block_info().time.minus_seconds(1).seconds();
         let prev_slashing_parameters_res: SlashingParameters = registry
             .query(
                 &mut app,
                 &QueryMsg::SlashingParameters {
                     service: service.to_string(),
-                    height: Some(prev_block_height),
+                    timestamp: Some(prev_timestamp),
                 },
             )
             .unwrap();
@@ -982,7 +986,7 @@ fn enable_slashing_lifecycle() {
                 &QueryMsg::IsOperatorOptedInToSlashing {
                     service: service.to_string(),
                     operator: operator.to_string(),
-                    height: None,
+                    timestamp: None,
                 },
             )
             .unwrap();
@@ -996,7 +1000,7 @@ fn enable_slashing_lifecycle() {
                 &QueryMsg::IsOperatorOptedInToSlashing {
                     service: service.to_string(),
                     operator: operator2.to_string(),
-                    height: None,
+                    timestamp: None,
                 },
             )
             .unwrap();
@@ -1009,6 +1013,7 @@ fn enable_slashing_lifecycle() {
     // move blockchain
     app.update_block(|block| {
         block.height += 1;
+        block.time = block.time.plus_seconds(10);
     });
 
     // operator2 opts into new slashing param
@@ -1036,7 +1041,7 @@ fn enable_slashing_lifecycle() {
                 &QueryMsg::IsOperatorOptedInToSlashing {
                     service: service.to_string(),
                     operator: operator2.to_string(),
-                    height: None,
+                    timestamp: None,
                 },
             )
             .unwrap();
@@ -1049,6 +1054,7 @@ fn enable_slashing_lifecycle() {
     // move blockchain
     app.update_block(|block| {
         block.height += 1;
+        block.time = block.time.plus_seconds(10);
     });
 
     // operator2 deregister from service
@@ -1067,7 +1073,7 @@ fn enable_slashing_lifecycle() {
                 &QueryMsg::Status {
                     service: service.to_string(),
                     operator: operator2.to_string(),
-                    height: None,
+                    timestamp: None,
                 },
             )
             .unwrap();
@@ -1080,6 +1086,7 @@ fn enable_slashing_lifecycle() {
     // move blockchain
     app.update_block(|block| {
         block.height += 1;
+        block.time = block.time.plus_seconds(10);
     });
 
     // operator2 registers to service
@@ -1096,7 +1103,7 @@ fn enable_slashing_lifecycle() {
                 &QueryMsg::IsOperatorOptedInToSlashing {
                     service: service.to_string(),
                     operator: operator2.to_string(),
-                    height: None,
+                    timestamp: None,
                 },
             )
             .unwrap();
@@ -1114,7 +1121,7 @@ fn query_status() {
     let query_msg = &QueryMsg::Status {
         service: app.api().addr_make("service/44").to_string(),
         operator: app.api().addr_make("operator/44").to_string(),
-        height: None,
+        timestamp: None,
     };
 
     let status: StatusResponse = registry.query(&mut app, query_msg).unwrap();
@@ -1174,24 +1181,24 @@ fn migrate_to_v2() {
             &QueryMsg::Status {
                 service: service.to_string(),
                 operator: operator.to_string(),
-                height: None,
+                timestamp: None,
             },
         )
         .unwrap();
     assert_eq!(status, StatusResponse(1));
 
     let block_info = app.block_info();
-    let status_at_height: StatusResponse = registry
+    let status_at_timestamp: StatusResponse = registry
         .query(
             &mut app,
             &QueryMsg::Status {
                 service: service.to_string(),
                 operator: operator.to_string(),
-                height: Some(block_info.height - 1),
+                timestamp: Some(block_info.time.minus_seconds(1).seconds()),
             },
         )
         .unwrap();
-    assert_eq!(status_at_height, StatusResponse(1));
+    assert_eq!(status_at_timestamp, StatusResponse(1));
 
     // test other interaction with state after migrate
     {
@@ -1210,38 +1217,38 @@ fn migrate_to_v2() {
                 &QueryMsg::Status {
                     service: service.to_string(),
                     operator: operator.to_string(),
-                    height: None,
+                    timestamp: None,
                 },
             )
             .unwrap();
         assert_eq!(status, StatusResponse(0));
 
-        // check if state is changed at height + 1
+        // check if state is changed at timestamp + 1
         let block_info = app.block_info();
-        let status_at_height: StatusResponse = registry
+        let status_at_timestamp: StatusResponse = registry
             .query(
                 &mut app,
                 &QueryMsg::Status {
                     service: service.to_string(),
                     operator: operator.to_string(),
-                    height: Some(block_info.height + 1),
+                    timestamp: Some(block_info.time.plus_seconds(1).seconds()),
                 },
             )
             .unwrap();
-        assert_eq!(status_at_height, StatusResponse(0));
+        assert_eq!(status_at_timestamp, StatusResponse(0));
 
-        // check old state at height - 10 -> should be active
+        // check old state at timestamp - 10 -> should be active
         let block_info = app.block_info();
-        let status_at_height: StatusResponse = registry
+        let status_at_timestamp: StatusResponse = registry
             .query(
                 &mut app,
                 &QueryMsg::Status {
                     service: service.to_string(),
                     operator: operator.to_string(),
-                    height: Some(block_info.height - 10),
+                    timestamp: Some(block_info.time.minus_seconds(10).seconds()),
                 },
             )
             .unwrap();
-        assert_eq!(status_at_height, StatusResponse(1));
+        assert_eq!(status_at_timestamp, StatusResponse(1));
     }
 }

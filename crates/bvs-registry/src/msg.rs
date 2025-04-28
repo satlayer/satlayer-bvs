@@ -76,7 +76,7 @@ pub enum QueryMsg {
     Status {
         service: String,
         operator: String,
-        height: Option<u64>,
+        timestamp: Option<u64>,
     },
 
     #[returns(IsServiceResponse)]
@@ -91,14 +91,14 @@ pub enum QueryMsg {
     #[returns(SlashingParametersResponse)]
     SlashingParameters {
         service: String,
-        height: Option<u64>,
+        timestamp: Option<u64>,
     },
 
     #[returns(IsOperatorOptedInToSlashingResponse)]
     IsOperatorOptedInToSlashing {
         service: String,
         operator: String,
-        height: Option<u64>,
+        timestamp: Option<u64>,
     },
 }
 

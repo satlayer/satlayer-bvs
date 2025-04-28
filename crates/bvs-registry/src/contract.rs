@@ -467,7 +467,7 @@ mod execute {
         require_active_registration_status(deps.storage, key)?;
 
         // check if the slashing is enabled for the service
-        if !is_slashing_enabled(deps.storage, &service, Some(env.block.height))? {
+        if !is_slashing_enabled(deps.storage, &service, Some(env.block.time.seconds()))? {
             return Err(ContractError::InvalidSlashingOptIn {
                 msg: "Service has not enabled slashing.".to_string(),
             });
@@ -490,11 +490,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Status {
             service,
             operator,
-            height,
+            timestamp,
         } => {
             let service = deps.api.addr_validate(&service)?;
             let operator = deps.api.addr_validate(&operator)?;
-            to_json_binary(&query::status(deps, operator, service, height)?)
+            to_json_binary(&query::status(deps, operator, service, timestamp)?)
         }
         QueryMsg::IsService(service) => {
             let service = deps.api.addr_validate(&service)?;
@@ -508,19 +508,19 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let operator = deps.api.addr_validate(&operator)?;
             to_json_binary(&query::is_operator_active(deps, operator)?)
         }
-        QueryMsg::SlashingParameters { service, height } => {
+        QueryMsg::SlashingParameters { service, timestamp } => {
             let service = deps.api.addr_validate(&service)?;
-            to_json_binary(&query::get_slashing_parameters(deps, service, height)?)
+            to_json_binary(&query::get_slashing_parameters(deps, service, timestamp)?)
         }
         QueryMsg::IsOperatorOptedInToSlashing {
             service,
             operator,
-            height,
+            timestamp,
         } => {
             let service = deps.api.addr_validate(&service)?;
             let operator = deps.api.addr_validate(&operator)?;
             to_json_binary(&query::is_operator_opted_in_to_slashing(
-                deps, service, operator, height,
+                deps, service, operator, timestamp,
             )?)
         }
     }
@@ -537,8 +537,8 @@ mod query {
     };
     use cosmwasm_std::{Addr, Deps, StdResult};
 
-    /// Get the registration status of an operator to a service at a given height.
-    /// If height is `None`, it will return the current registration status.  
+    /// Get the registration status of an operator to a service at a given timestamp.
+    /// If timestamp is `None`, it will return the current registration status.  
     /// Returns: [`StdResult<StatusResponse>`]
     /// - [`RegistrationStatus::Inactive`] (0) if not registered
     /// - [`RegistrationStatus::Active`] (1) if registration is active (operator and service are registered to each other)
@@ -548,11 +548,11 @@ mod query {
         deps: Deps,
         operator: Addr,
         service: Addr,
-        height: Option<u64>,
+        timestamp: Option<u64>,
     ) -> StdResult<StatusResponse> {
         let key = (&operator, &service);
-        let status = match height {
-            Some(height) => state::get_registration_status_at_height(deps.storage, key, height)?,
+        let status = match timestamp {
+            Some(t) => state::get_registration_status_at_timestamp(deps.storage, key, t)?,
             None => state::get_registration_status(deps.storage, key)?,
         };
         Ok(status.into())
@@ -583,12 +583,10 @@ mod query {
     pub fn get_slashing_parameters(
         deps: Deps,
         service: Addr,
-        height: Option<u64>,
+        timestamp: Option<u64>,
     ) -> StdResult<SlashingParametersResponse> {
-        let slashing_parameters = match height {
-            Some(height) => {
-                SLASHING_PARAMETERS.may_load_at_height(deps.storage, &service, height)?
-            }
+        let slashing_parameters = match timestamp {
+            Some(t) => SLASHING_PARAMETERS.may_load_at_height(deps.storage, &service, t)?,
             None => SLASHING_PARAMETERS.may_load(deps.storage, &service)?,
         };
         Ok(SlashingParametersResponse(slashing_parameters))
@@ -599,10 +597,10 @@ mod query {
         deps: Deps,
         service: Addr,
         operator: Addr,
-        height: Option<u64>,
+        timestamp: Option<u64>,
     ) -> StdResult<IsOperatorOptedInToSlashingResponse> {
         let is_opted_in =
-            state::is_operator_opted_in_to_slashing(deps.storage, &service, &operator, height)?;
+            state::is_operator_opted_in_to_slashing(deps.storage, &service, &operator, timestamp)?;
         Ok(IsOperatorOptedInToSlashingResponse(is_opted_in))
     }
 }
@@ -615,9 +613,9 @@ mod query {
 /// Storage mapping is not needed because SnapshotMap uses a map with the same namespace.  
 /// This migration will also mean
 /// that the current state of REGISTRATION_STATUS will be the default state
-/// when querying for state from earlier block height.  
+/// when querying for state from earlier timestamp.  
 /// For instance, migration happens at block 200 and Operator1 and Service1 is in Active status.
-/// When queried at height 1, the status of Operator1 and Service1 will be Active.
+/// When queried at genesis, the status of Operator1 and Service1 will be Active.
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(
     deps: DepsMut,
@@ -1390,7 +1388,7 @@ mod tests {
                     &mut deps.storage,
                     (&service, &operator),
                     &true,
-                    env.block.height,
+                    env.block.time.seconds(),
                 )
                 .expect("failed to save slashing opt-in");
         }
@@ -1541,7 +1539,7 @@ mod tests {
         .expect("enable slashing failed");
 
         // move blockchain
-        env.block.height += 1;
+        env.block.time = env.block.time.plus_seconds(1);
 
         // operator opt-in to slashing
         let res = execute::operator_opt_in_to_slashing(
@@ -1642,7 +1640,7 @@ mod tests {
                 &mut deps.storage,
                 (&operator, &service),
                 &RegistrationStatus::Inactive.into(),
-                env.block.height,
+                env.block.time.seconds(),
             )
             .expect("failed to save registration status");
 
@@ -1692,7 +1690,7 @@ mod tests {
     }
 
     #[test]
-    fn query_status_at_height() {
+    fn query_status_at_timestamp() {
         let mut deps = mock_dependencies();
         let mut env = mock_env();
 
@@ -1704,7 +1702,7 @@ mod tests {
                 deps.as_ref(),
                 operator.clone(),
                 service.clone(),
-                Some(env.block.height)
+                Some(env.block.time.seconds())
             ),
             Ok(RegistrationStatus::Inactive.into())
         );
@@ -1717,32 +1715,32 @@ mod tests {
         )
         .unwrap();
 
-        // Assert that the status is inactive at the current height
+        // Assert that the status is inactive at the current timestamp
         assert_eq!(
             status(
                 deps.as_ref(),
                 operator.clone(),
                 service.clone(),
-                Some(env.block.height)
+                Some(env.block.time.seconds())
             ),
             Ok(RegistrationStatus::Inactive.into())
         );
 
-        // Assert that the status is active at the next height
+        // Assert that the status is active at the next timestamp
         assert_eq!(
             status(
                 deps.as_ref(),
                 operator.clone(),
                 service.clone(),
-                Some(env.block.height + 1)
+                Some(env.block.time.plus_seconds(1).seconds())
             ),
             Ok(RegistrationStatus::Active.into())
         );
 
-        // advance block by 10
-        env.block.height += 10;
+        // advance block by 10 seconds
+        env.block.time = env.block.time.plus_seconds(10);
 
-        // save status at current height
+        // save status at current timestamp
         state::set_registration_status(
             &mut deps.storage,
             &env,
@@ -1751,23 +1749,23 @@ mod tests {
         )
         .unwrap();
 
-        // Assert that the status is active at current height
+        // Assert that the status is active at current timestamp
         assert_eq!(
             status(
                 deps.as_ref(),
                 operator.clone(),
                 service.clone(),
-                Some(env.block.height)
+                Some(env.block.time.seconds())
             ),
             Ok(RegistrationStatus::Active.into())
         );
-        // Assert that the status is inactive at height + 1
+        // Assert that the status is inactive at timestamp + 1
         assert_eq!(
             status(
                 deps.as_ref(),
                 operator.clone(),
                 service.clone(),
-                Some(env.block.height + 1)
+                Some(env.block.time.plus_seconds(1).seconds())
             ),
             Ok(RegistrationStatus::Inactive.into())
         );
@@ -1899,7 +1897,7 @@ mod tests {
         );
 
         // move blockchain
-        env.block.height += 1;
+        env.block.time = env.block.time.plus_seconds(1);
 
         // update slashing parameters
         execute::enable_slashing(
@@ -1915,7 +1913,7 @@ mod tests {
         .expect("update slashing failed");
 
         // move blockchain
-        env.block.height += 1;
+        env.block.time = env.block.time.plus_seconds(1);
 
         // query updated slashing parameters
         let SlashingParametersResponse(slashing_parameters) =
@@ -1933,7 +1931,7 @@ mod tests {
         let SlashingParametersResponse(slashing_parameters) = query::get_slashing_parameters(
             deps.as_ref(),
             service.clone(),
-            Some(env.block.height - 1),
+            Some(env.block.time.minus_seconds(1).seconds()),
         )
         .unwrap();
         assert_eq!(
@@ -1946,7 +1944,7 @@ mod tests {
         );
 
         // move blockchain
-        env.block.height += 1;
+        env.block.time = env.block.time.plus_seconds(1);
 
         // disable slashing
         execute::disable_slashing(deps.as_mut(), env.clone(), service_info.clone())
@@ -1961,7 +1959,7 @@ mod tests {
         let SlashingParametersResponse(slashing_parameters) = query::get_slashing_parameters(
             deps.as_ref(),
             service.clone(),
-            Some(env.block.height - 1),
+            Some(env.block.time.minus_seconds(1).seconds()),
         )
         .unwrap();
         assert_eq!(
@@ -1997,7 +1995,7 @@ mod tests {
         );
 
         // move blockchain
-        env.block.height += 1;
+        env.block.time = env.block.time.plus_seconds(1);
 
         // operator opt-in to slashing
         state::opt_in_to_slashing(&mut deps.storage, &env, &service, &operator)
@@ -2029,12 +2027,12 @@ mod tests {
             IsOperatorOptedInToSlashingResponse(false)
         );
 
-        // assert is_operator_opted_in_to_slashing false at height - 1
+        // assert is_operator_opted_in_to_slashing false at timestamp - 1
         let is_operator_opted_in = query::is_operator_opted_in_to_slashing(
             deps.as_ref(),
             service.clone(),
             operator.clone(),
-            Some(env.block.height - 1),
+            Some(env.block.time.minus_seconds(1).seconds()),
         )
         .unwrap();
         assert_eq!(

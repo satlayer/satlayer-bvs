@@ -118,20 +118,20 @@ type QueryMsg struct {
 }
 
 type IsOperatorOptedInToSlashing struct {
-	Height   *int64 `json:"height"`
-	Operator string `json:"operator"`
-	Service  string `json:"service"`
+	Operator  string `json:"operator"`
+	Service   string `json:"service"`
+	Timestamp *int64 `json:"timestamp"`
 }
 
 type QueryMsgSlashingParameters struct {
-	Height  *int64 `json:"height"`
-	Service string `json:"service"`
+	Service   string `json:"service"`
+	Timestamp *int64 `json:"timestamp"`
 }
 
 type Status struct {
-	Height   *int64 `json:"height"`
-	Operator string `json:"operator"`
-	Service  string `json:"service"`
+	Operator  string `json:"operator"`
+	Service   string `json:"service"`
+	Timestamp *int64 `json:"timestamp"`
 }
 
 type SlashingParameters struct {
