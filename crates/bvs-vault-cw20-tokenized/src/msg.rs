@@ -1,3 +1,4 @@
+use bvs_pauser::api::Display;
 use bvs_vault_base::msg::{
     AssetsResponse, ConvertToAssetsResponse, ConvertToSharesResponse, QueuedWithdrawalResponse,
     Recipient, RecipientAmount, SharesResponse, TotalAssetsResponse, TotalSharesResponse,
@@ -9,6 +10,7 @@ use cosmwasm_std::{Binary, Uint128};
 use cw20::Expiration;
 
 #[cw_serde]
+#[derive(Display)]
 pub enum ExecuteMsg {
     /// Transfer is a base message to move tokens to another account without triggering actions
     Transfer { recipient: String, amount: Uint128 },

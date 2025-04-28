@@ -3,4 +3,3 @@ pub mod msg;
 pub mod testing;
 
 mod error;
-mod token;

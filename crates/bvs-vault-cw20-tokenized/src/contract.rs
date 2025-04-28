@@ -6,7 +6,7 @@ use cw20_base::msg::InstantiateMsg as ReceiptCw20InstantiateMsg;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg as CombinedExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::token as PrimaryStakingToken;
+use bvs_vault_cw20::token as PrimaryStakingToken;
 
 const CONTRACT_NAME: &str = concat!("crates.io:", env!("CARGO_PKG_NAME"));
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -68,6 +68,7 @@ pub fn execute(
     info: MessageInfo,
     msg: CombinedExecuteMsg,
 ) -> Result<Response, ContractError> {
+    bvs_pauser::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
     match msg {
         CombinedExecuteMsg::WithdrawTo(msg) => {
             // This is the only execute msg that is not passed to the base contract
@@ -120,7 +121,7 @@ mod receipt_cw20_execute {
     /// This mint function is almost identical to the base cw20 contract's mint function
     /// down to the variables and logic.
     /// Except that it does not require the caller to be the minter.
-    pub fn mint(
+    pub fn mint_internal(
         deps: DepsMut,
         _env: Env,
         _info: MessageInfo,
@@ -194,7 +195,7 @@ mod receipt_cw20_execute {
             _ => {
                 // Extended execute msg set are exhausted in entry point already
                 // Base cw20 execute msg are also exhausted in other match arm
-                // So this mean sombody is trying to call a non-supported message
+                // So this means sombody is trying to call a non-supported message
                 Err(cw20_base::ContractError::Std(StdError::generic_err(
                     "This message is not supported",
                 )))
@@ -207,13 +208,13 @@ mod receipt_cw20_execute {
 /// The extended execute msg set is practically `bvs-vault-base` crate's execute msg set.
 mod vault_execute {
     use crate::error::ContractError;
-    use crate::token as PrimaryStakingToken;
     use bvs_vault_base::error::VaultError;
     use bvs_vault_base::msg::{Recipient, RecipientAmount};
     use bvs_vault_base::{
         offset, router,
         shares::{self, QueuedWithdrawalInfo},
     };
+    use bvs_vault_cw20::token as PrimaryStakingToken;
     use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, Timestamp};
     use cw20_base::contract::execute_burn as receipt_token_burn;
     use cw20_base::contract::query_balance as query_receipt_token_balance;
@@ -262,7 +263,7 @@ mod vault_execute {
         // Issue receipt token to msg.recipient
         {
             // mint new receipt token to staker
-            super::receipt_cw20_execute::mint(
+            super::receipt_cw20_execute::mint_internal(
                 deps.branch(),
                 env,
                 info.clone(),
@@ -512,12 +513,12 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<cosmwasm_std::Bin
 }
 
 mod vault_query {
-    use crate::token as StakingToken;
     use bvs_vault_base::msg::VaultInfoResponse;
     use bvs_vault_base::{
         offset,
         shares::{self, QueuedWithdrawalInfo},
     };
+    use bvs_vault_cw20::token as StakingToken;
     use cosmwasm_std::{Addr, Deps, Env, StdResult, Uint128};
     use cw20_base::contract::query_balance;
 
