@@ -1,8 +1,8 @@
+import "./globals.css";
+
 import { Layout, Navbar } from "nextra-theme-docs";
 import { Banner, Head } from "nextra/components";
 import { getPageMap } from "nextra/page-map";
-import "nextra-theme-docs/style.css";
-import "./globals.css";
 import { SatLayerWordmark } from "./Icon";
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
