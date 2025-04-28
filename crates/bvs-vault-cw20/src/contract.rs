@@ -71,7 +71,7 @@ pub fn execute(
         }
         ExecuteMsg::SlashLocked(msg) => {
             msg.validate(deps.api)?;
-            execute::system_lock_asset(deps, env, info, msg)
+            execute::slash_lock(deps, env, info, msg)
         }
     }
 }
@@ -287,7 +287,7 @@ mod execute {
     /// Part of the [https://build.satlayer.xyz/architecture/slashing](Programmable Slashing) lifecycle.
     /// This function can only be called by `vault-router`, and takes an absolute `amount` of assets to be moved.
     /// The amount is calculated and enforced by the router.
-    pub fn system_lock_asset(
+    pub fn slash_lock(
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
@@ -307,10 +307,10 @@ mod execute {
 
         let transfer_msg = token::execute_new_transfer(deps.storage, &router, amount.0)?;
 
-        let event = Event::new("SystemLockAssets")
+        let event = Event::new("SlashLocked")
             .add_attribute("sender", router.to_string())
-            .add_attribute("router", router.to_string())
-            .add_attribute("amount", amount.0.to_string());
+            .add_attribute("amount", amount.0.to_string())
+            .add_attribute("token", token::get_cw20_contract(deps.storage)?.to_string());
 
         Ok(Response::new().add_event(event).add_message(transfer_msg))
     }
