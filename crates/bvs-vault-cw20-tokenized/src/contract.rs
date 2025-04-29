@@ -6,7 +6,7 @@ use cw20_base::msg::InstantiateMsg as ReceiptCw20InstantiateMsg;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg as CombinedExecuteMsg, InstantiateMsg, QueryMsg};
-use bvs_vault_cw20::token as PrimaryStakingToken;
+use bvs_vault_cw20::token as UnderlyingToken;
 
 const CONTRACT_NAME: &str = concat!("crates.io:", env!("CARGO_PKG_NAME"));
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -27,11 +27,11 @@ pub fn instantiate(
     bvs_vault_base::router::set_operator(deps.storage, &operator)?;
 
     let cw20_contract = deps.api.addr_validate(&msg.cw20_contract)?;
-    PrimaryStakingToken::instantiate(deps.storage, &cw20_contract)?;
+    UnderlyingToken::instantiate(deps.storage, &cw20_contract)?;
 
     // Assert that the contract is able
     // to query the token info to ensure that the contract is properly set up
-    let staking_token_info = PrimaryStakingToken::get_token_info(&deps.as_ref())?;
+    let staking_token_info = UnderlyingToken::get_token_info(&deps.as_ref())?;
 
     let receipt_token_instantiate = ReceiptCw20InstantiateMsg {
         name: format!("Satlayer {}", staking_token_info.name),
@@ -214,7 +214,7 @@ mod vault_execute {
         offset, router,
         shares::{self, QueuedWithdrawalInfo},
     };
-    use bvs_vault_cw20::token as PrimaryStakingToken;
+    use bvs_vault_cw20::token as UnderlyingToken;
     use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, Timestamp};
     use cw20_base::contract::execute_burn as receipt_token_burn;
     use cw20_base::contract::query_balance as query_receipt_token_balance;
@@ -241,7 +241,7 @@ mod vault_execute {
 
         let assets = msg.amount;
         let (vault, new_receipt_tokens) = {
-            let staking_token_balance = PrimaryStakingToken::query_balance(&deps.as_ref(), &env)?;
+            let staking_token_balance = UnderlyingToken::query_balance(&deps.as_ref(), &env)?;
             let receipt_token_supply =
                 cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
             let vault = offset::VirtualOffset::new(receipt_token_supply, staking_token_balance)?;
@@ -252,7 +252,7 @@ mod vault_execute {
         };
 
         // CW20 Transfer of asset from info.sender to contract
-        let transfer_msg = PrimaryStakingToken::execute_transfer_from(
+        let transfer_msg = UnderlyingToken::execute_transfer_from(
             deps.storage,
             &info.sender,
             &env.contract.address,
@@ -299,7 +299,7 @@ mod vault_execute {
         let receipt_tokens = msg.amount;
 
         let (vault, claim_staking_tokens) = {
-            let staking_token_balance = PrimaryStakingToken::query_balance(&deps.as_ref(), &env)?;
+            let staking_token_balance = UnderlyingToken::query_balance(&deps.as_ref(), &env)?;
             let receipt_token_supply =
                 cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
             let vault = offset::VirtualOffset::new(receipt_token_supply, staking_token_balance)?;
@@ -313,7 +313,7 @@ mod vault_execute {
         };
 
         // CW20 transfer of staking asset to msg.recipient
-        let transfer_msg = PrimaryStakingToken::execute_new_transfer(
+        let transfer_msg = UnderlyingToken::execute_new_transfer(
             deps.storage,
             &msg.recipient,
             claim_staking_tokens,
@@ -406,7 +406,7 @@ mod vault_execute {
         }
 
         let claimed_assets = {
-            let staking_token_balance = PrimaryStakingToken::query_balance(&deps.as_ref(), &env)?;
+            let staking_token_balance = UnderlyingToken::query_balance(&deps.as_ref(), &env)?;
             let receipt_token_supply =
                 cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
             let vault = offset::VirtualOffset::new(receipt_token_supply, staking_token_balance)?;
@@ -421,7 +421,7 @@ mod vault_execute {
 
         // CW20 transfer of asset to msg.recipient
         let transfer_msg =
-            PrimaryStakingToken::execute_new_transfer(deps.storage, &msg.0, claimed_assets)?;
+            UnderlyingToken::execute_new_transfer(deps.storage, &msg.0, claimed_assets)?;
 
         // Remove staker's info
         shares::remove_queued_withdrawal_info(deps.storage, &info.sender);
