@@ -29,7 +29,4 @@ pub enum ContractError {
 
     #[error("Invalid slashing opt-in: {msg}")]
     InvalidSlashingOptIn { msg: String },
-
-    #[error("Invalid slashing request: {msg}")]
-    InvalidSlashingRequest { msg: String },
 }

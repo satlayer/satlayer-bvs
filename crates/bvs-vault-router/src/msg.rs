@@ -1,3 +1,4 @@
+use crate::state::SlashingRequestData;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint64};
 
@@ -25,6 +26,11 @@ pub enum ExecuteMsg {
     /// ExecuteMsg TransferOwnership
     /// See [`bvs_library::ownership::transfer_ownership`] for more information on this field
     TransferOwnership { new_owner: String },
+
+    SlashingRequest {
+        operator: String,
+        data: SlashingRequestData,
+    },
 }
 
 #[cw_serde]

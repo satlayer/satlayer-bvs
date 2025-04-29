@@ -1,4 +1,4 @@
-use crate::state::{RegistrationStatus, SlashingParameters, SlashingRequestData};
+use crate::state::{RegistrationStatus, SlashingParameters};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
 #[cw_serde]
@@ -36,10 +36,6 @@ pub enum ExecuteMsg {
     DisableSlashing {},
     OperatorOptInToSlashing {
         service: String,
-    },
-    SlashingRequest {
-        operator: String,
-        data: SlashingRequestData,
     },
     TransferOwnership {
         /// See [`bvs_library::ownership::transfer_ownership`] for more information on this field

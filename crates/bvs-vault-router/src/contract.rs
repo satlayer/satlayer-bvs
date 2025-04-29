@@ -57,6 +57,10 @@ pub fn execute(
             ownership::transfer_ownership(deps.storage, info, new_owner)
                 .map_err(ContractError::Ownership)
         }
+        ExecuteMsg::SlashingRequest { operator, data } => {
+            let operator = deps.api.addr_validate(&operator)?;
+            execute::slashing_request(deps, env, info, operator, data)
+        }
     }
 }
 
@@ -98,13 +102,18 @@ mod migrate {
 }
 
 mod execute {
-    use crate::error::ContractError;
-    use crate::state::WITHDRAWAL_LOCK_PERIOD;
-    use crate::state::{self, DEFAULT_WITHDRAWAL_LOCK_PERIOD};
-    use bvs_library::ownership;
-    use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Response, Uint64};
-
     use super::*;
+    use crate::error::ContractError;
+    use crate::state::{self, DEFAULT_WITHDRAWAL_LOCK_PERIOD};
+    use crate::state::{SlashingRequest, SlashingRequestData, WITHDRAWAL_LOCK_PERIOD};
+    use crate::ContractError::InvalidSlashingRequest;
+    use bvs_library::ownership;
+    use bvs_library::time::DAYS;
+    use bvs_registry::msg::{
+        IsOperatorOptedInToSlashingResponse, SlashingParametersResponse, StatusResponse,
+    };
+    use bvs_registry::RegistrationStatus;
+    use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Response, Uint64};
 
     /// Set the vault contract in the router and whitelist (true/false) it.
     /// Only the `owner` can call this message.
@@ -179,6 +188,131 @@ mod execute {
                     "new_withdrawal_lock_period",
                     withdrawal_lock_period.to_string(),
                 ),
+        ))
+    }
+
+    pub fn slashing_request(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        operator: Addr,
+        data: SlashingRequestData,
+    ) -> Result<Response, ContractError> {
+        // service is the sender
+        let service = info.sender;
+
+        let registry = state::get_registry(deps.storage)?;
+
+        const MAX_SLASHABLE_DELAY: u64 = 7 * DAYS; // TODO: move to const
+
+        const MAX_STRING_BYTES: usize = 400; // TODO: move to const
+
+        // require active status between operator and service
+        let StatusResponse(operator_service_status) = deps.querier.query_wasm_smart(
+            registry.to_string(),
+            &bvs_registry::msg::QueryMsg::Status {
+                service: service.to_string(),
+                operator: operator.to_string(),
+                timestamp: Some(data.timestamp.seconds()),
+            },
+        )?;
+        if operator_service_status != u8::from(RegistrationStatus::Active) {
+            return Err(InvalidSlashingRequest {
+                msg: "Service and Operator are not active at timestamp.".to_string(),
+            });
+        }
+
+        // ensure timestamp of slash must not be more than MAX_SLASHABLE_DELAY before and not in the future
+        if data.timestamp < env.block.time.minus_seconds(MAX_SLASHABLE_DELAY)
+            || data.timestamp > env.block.time
+        {
+            return Err(InvalidSlashingRequest {
+                msg: "Slash timestamp is outside of the allowable slash period.".to_string(),
+            });
+        }
+
+        // get slashing params of the service at the given timestamp, also checks if slashing is enabled
+        let SlashingParametersResponse(slashing_parameters) = deps.querier.query_wasm_smart(
+            registry.clone(),
+            &bvs_registry::msg::QueryMsg::SlashingParameters {
+                service: service.to_string(),
+                timestamp: Some(data.timestamp.seconds()),
+            },
+        )?;
+        let slashing_parameters = match slashing_parameters {
+            Some(x) => x,
+            None => {
+                return Err(InvalidSlashingRequest {
+                    msg: "Service has not enabled slashing at timestamp.".to_string(),
+                })
+            }
+        };
+
+        // ensure bips must not exceed max_slashing_bips set by service
+        if data.bips > slashing_parameters.max_slashing_bips {
+            return Err(InvalidSlashingRequest {
+                msg: "Slashing bips is over max_slashing_bips set.".to_string(),
+            });
+        }
+
+        // TODO: check if needed, need to add a lower bound?
+        // ensure that metadata.reason does not exceed X bytes
+        if data.metadata.reason.len() > MAX_STRING_BYTES {
+            return Err(InvalidSlashingRequest {
+                msg: "Reason string is too long.".to_string(),
+            });
+        }
+
+        // ensure that operator has opted in to slashing at the given timestamp.
+        let IsOperatorOptedInToSlashingResponse(is_operated_opted_in) =
+            deps.querier.query_wasm_smart(
+                registry,
+                &bvs_registry::msg::QueryMsg::IsOperatorOptedInToSlashing {
+                    service: service.to_string(),
+                    operator: operator.to_string(),
+                    timestamp: Some(data.timestamp.seconds()),
+                },
+            )?;
+
+        if !is_operated_opted_in {
+            return Err(InvalidSlashingRequest {
+                msg: "Operator has not opted-in to slashing at timestamp.".to_string(),
+            });
+        }
+
+        // get current active slashing request for (service, operator) pair
+        let active_slashing_requests =
+            state::get_active_slashing_requests(deps.storage, &service, &operator)?;
+
+        // if active slashing request exists and
+        // if request_expiry > now (in the future) => request hasn't expired,
+        // so the service has to manually cancel active request (throw Err)
+        if let Some(active_slashing_requests) = active_slashing_requests {
+            if active_slashing_requests.request_expiry > env.block.time {
+                return Err(InvalidSlashingRequest {
+                    msg: "Service has current active slashing request for the operator."
+                        .to_string(),
+                });
+            }
+        }
+
+        // else, it will be overriden by current slash request
+        // TODO: this `resolution_window` is using the `slashing_parameters` from the offending timestamp.
+        let new_request_expiry = env
+            .block
+            .time
+            .plus_seconds(slashing_parameters.resolution_window * 2);
+        let new_request = SlashingRequest::new(data.clone(), env.block.time, new_request_expiry);
+
+        // save slash data
+        let slashing_id = state::save_slashing_request(deps.storage, &service, &new_request)?;
+
+        Ok(Response::new().add_event(
+            Event::new("SlashingRequest")
+                .add_attribute("service", service)
+                .add_attribute("operator", operator)
+                .add_attribute("slashing_id", slashing_id.to_string())
+                .add_attribute("reason", data.metadata.reason),
         ))
     }
 }

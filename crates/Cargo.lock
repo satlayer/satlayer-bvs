@@ -262,7 +262,6 @@ dependencies = [
  "cw2",
  "schemars",
  "serde",
- "sha3",
  "thiserror 1.0.69",
 ]
 
@@ -379,6 +378,7 @@ dependencies = [
  "cw2",
  "schemars",
  "serde",
+ "sha3",
  "thiserror 1.0.69",
 ]
 
