@@ -29,9 +29,6 @@ pub fn get_total_shares(storage: &dyn Storage) -> StdResult<Uint128> {
 /// A donation of 1 and under will be completely captured by the vault—without affecting the user.
 /// A donation greater than 1, the attacker will suffer loss greater than the user.
 /// [https://github.com/OpenZeppelin/openzeppelin-contracts/blob/fa995ef1fe66e1447783cb6038470aba23a6343f/contracts/token/ERC20/extensions/ERC4626.sol#L30-L37]
-///
-/// [VirtualOffset] is only used to account for the total shares and total assets.
-/// Individual staker shares are stored here to allow for different staking strategies (e.g., Tokenized Vault).
 #[derive(Debug)]
 pub struct VirtualOffset {
     total_shares: Uint128,
@@ -41,16 +38,8 @@ pub struct VirtualOffset {
 }
 
 impl VirtualOffset {
-    /// Load the virtual total shares from storage (supports rebasing, by default).
-    /// A fixed [`OFFSET`] of 1 will be added to both total shares and total assets
-    /// to mitigate against inflation attack.
-    /// Use [shares_to_assets] and [assets_to_shares] to convert between shares and assets.
-    pub fn load(deps: &Deps, total_assets: Uint128) -> StdResult<Self> {
-        let total_shares = get_total_shares(deps.storage)?;
-        Self::new(total_shares, total_assets)
-    }
-
-    fn new(total_shares: Uint128, total_assets: Uint128) -> StdResult<Self> {
+    /// Create a new [VirtualOffset] with the given total shares and total assets.
+    pub fn new(total_shares: Uint128, total_assets: Uint128) -> StdResult<Self> {
         let virtual_total_shares = total_shares.checked_add(OFFSET).map_err(StdError::from)?;
         let virtual_total_assets = total_assets.checked_add(OFFSET).map_err(StdError::from)?;
 
@@ -91,6 +80,47 @@ impl VirtualOffset {
     pub fn total_assets(&self) -> Uint128 {
         self.total_assets
     }
+}
+
+/// This struct wraps the [VirtualOffset] struct with [TOTAL_SHARES] storage features
+/// `checked_add_shares` and `checked_sub_shares` implemented.
+/// Other methods are mapped to the underlying [VirtualOffset] instance.
+///
+/// [TotalShares] is only used to account for the total shares (and total assets).
+/// Individual staker shares are stored here to allow for different staking strategies (e.g., Tokenized Vault).
+#[derive(Debug)]
+pub struct TotalShares(VirtualOffset);
+
+impl TotalShares {
+    /// Load the virtual total shares from storage (supports rebasing, by default).
+    /// A fixed [`OFFSET`] of 1 will be added to both total shares and total assets
+    /// to mitigate against inflation attack.
+    /// Use [shares_to_assets] and [assets_to_shares] to convert between shares and assets.
+    pub fn load(deps: &Deps, total_assets: Uint128) -> StdResult<Self> {
+        let total_shares = get_total_shares(deps.storage)?;
+        let offset = VirtualOffset::new(total_shares, total_assets)?;
+        Ok(Self(offset))
+    }
+
+    /// Shares to underlying assets
+    pub fn shares_to_assets(&self, shares: Uint128) -> StdResult<Uint128> {
+        self.0.shares_to_assets(shares)
+    }
+
+    /// Underlying assets to shares
+    pub fn assets_to_shares(&self, assets: Uint128) -> StdResult<Uint128> {
+        self.0.assets_to_shares(assets)
+    }
+
+    /// Get the total shares in circulation
+    pub fn total_shares(&self) -> Uint128 {
+        self.0.total_shares
+    }
+
+    /// Get the total assets under management
+    pub fn total_assets(&self) -> Uint128 {
+        self.0.total_assets
+    }
 
     /// Add the new shares to the total shares and refresh the virtual shares and virtual assets.
     /// This method is checked:
@@ -106,15 +136,17 @@ impl VirtualOffset {
             return Err(VaultError::zero("Add shares cannot be zero."));
         }
 
-        self.total_shares = self
+        self.0.total_shares = self
+            .0
             .total_shares
             .checked_add(shares)
             .map_err(StdError::from)?;
-        self.virtual_total_shares = self
+        self.0.virtual_total_shares = self
+            .0
             .total_shares
             .checked_add(OFFSET)
             .map_err(StdError::from)?;
-        TOTAL_SHARES.save(storage, &self.total_shares)?;
+        TOTAL_SHARES.save(storage, &self.0.total_shares)?;
         Ok(())
     }
 
@@ -128,15 +160,17 @@ impl VirtualOffset {
             return Err(VaultError::zero("Sub shares cannot be zero."));
         }
 
-        self.total_shares = self
+        self.0.total_shares = self
+            .0
             .total_shares
             .checked_sub(shares)
             .map_err(StdError::from)?;
-        self.virtual_total_shares = self
+        self.0.virtual_total_shares = self
+            .0
             .total_shares
             .checked_add(OFFSET)
             .map_err(StdError::from)?;
-        TOTAL_SHARES.save(storage, &self.total_shares)?;
+        TOTAL_SHARES.save(storage, &self.0.total_shares)?;
         Ok(())
     }
 }

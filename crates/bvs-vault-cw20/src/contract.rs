@@ -69,6 +69,10 @@ pub fn execute(
             msg.validate(deps.api)?;
             execute::redeem_withdrawal_to(deps, env, info, msg)
         }
+        ExecuteMsg::SlashLocked(msg) => {
+            msg.validate(deps.api)?;
+            execute::slash_locked(deps, env, info, msg)
+        }
     }
 }
 
@@ -76,7 +80,7 @@ mod execute {
     use crate::error::ContractError;
     use crate::token;
     use bvs_vault_base::error::VaultError;
-    use bvs_vault_base::msg::{Recipient, RecipientAmount};
+    use bvs_vault_base::msg::{Amount, Recipient, RecipientAmount};
     use bvs_vault_base::{
         offset, router,
         shares::{self, QueuedWithdrawalInfo},
@@ -106,7 +110,7 @@ mod execute {
         let assets = msg.amount;
         let (vault, new_shares) = {
             let balance = token::query_balance(&deps.as_ref(), &env)?;
-            let mut vault = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
+            let mut vault = offset::TotalShares::load(&deps.as_ref(), balance)?;
 
             let new_shares = vault.assets_to_shares(assets)?;
             // Add shares to TOTAL_SHARES
@@ -156,7 +160,7 @@ mod execute {
 
         let (vault, claim_assets) = {
             let balance = token::query_balance(&deps.as_ref(), &env)?;
-            let mut vault = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
+            let mut vault = offset::TotalShares::load(&deps.as_ref(), balance)?;
 
             let assets = vault.shares_to_assets(msg.amount)?;
             if assets.is_zero() {
@@ -248,7 +252,7 @@ mod execute {
 
         let (vault, claimed_assets) = {
             let balance = token::query_balance(&deps.as_ref(), &env)?;
-            let mut vault = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
+            let mut vault = offset::TotalShares::load(&deps.as_ref(), balance)?;
 
             let assets = vault.shares_to_assets(queued_shares)?;
             if assets.is_zero() {
@@ -277,6 +281,38 @@ mod execute {
                     .add_attribute("total_shares", vault.total_shares().to_string()),
             )
             .add_message(transfer_msg))
+    }
+
+    /// Moves the assets from the vault to the `vault-router` contract.
+    /// Part of the [https://build.satlayer.xyz/architecture/slashing](Programmable Slashing) lifecycle.
+    /// This function can only be called by `vault-router`, and takes an absolute `amount` of assets to be moved.
+    /// The amount is calculated and enforced by the router.
+    pub fn slash_locked(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        amount: Amount,
+    ) -> Result<Response, ContractError> {
+        router::assert_router(deps.as_ref().storage, &info)?;
+
+        // if the code get passed above assert_router, it means the sender is the router
+        // No need to load from storage.
+        let router = info.sender;
+
+        let vault_balance = token::query_balance(&deps.as_ref(), &env)?;
+
+        if amount.0 > vault_balance {
+            return Err(VaultError::insufficient("Not enough balance").into());
+        }
+
+        let transfer_msg = token::execute_new_transfer(deps.storage, &router, amount.0)?;
+
+        let event = Event::new("SlashLocked")
+            .add_attribute("sender", router.to_string())
+            .add_attribute("amount", amount.0.to_string())
+            .add_attribute("token", token::get_cw20_contract(deps.storage)?.to_string());
+
+        Ok(Response::new().add_event(event).add_message(transfer_msg))
     }
 }
 
@@ -330,14 +366,14 @@ mod query {
     /// Given the number of shares, convert to assets based on the vault exchange rate.
     pub fn convert_to_assets(deps: Deps, env: Env, shares: Uint128) -> StdResult<Uint128> {
         let balance = token::query_balance(&deps, &env)?;
-        let vault = offset::VirtualOffset::load(&deps, balance)?;
+        let vault = offset::TotalShares::load(&deps, balance)?;
         vault.shares_to_assets(shares)
     }
 
     /// Given assets, get the resulting shares based on the vault exchange rate.
     pub fn convert_to_shares(deps: Deps, env: Env, assets: Uint128) -> StdResult<Uint128> {
         let balance = token::query_balance(&deps, &env)?;
-        let vault = offset::VirtualOffset::load(&deps, balance)?;
+        let vault = offset::TotalShares::load(&deps, balance)?;
         vault.assets_to_shares(assets)
     }
 
@@ -359,7 +395,7 @@ mod query {
     /// Returns the vault information
     pub fn vault_info(deps: Deps, env: Env) -> StdResult<VaultInfoResponse> {
         let balance = token::query_balance(&deps, &env)?;
-        let vault = offset::VirtualOffset::load(&deps, balance)?;
+        let vault = offset::TotalShares::load(&deps, balance)?;
         let cw20_contract = token::get_cw20_contract(deps.storage)?;
         let version = cw2::get_contract_version(deps.storage)?;
         Ok(VaultInfoResponse {

@@ -52,11 +52,19 @@ type InstantiateMsg struct {
 // ExecuteMsg RedeemWithdrawal all queued shares into assets from the vault for withdrawal.
 // After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
 // can redeem the withdrawal.
+//
+// ExecuteMsg SlashLocked moves the assets from the vault to the `vault-router` contract for
+// custody. Part of the [https://build.satlayer.xyz/architecture/slashing](Programmable
+// Slashing) lifecycle. This function can only be called by `vault-router`, and takes an
+// absolute `amount` of assets to be moved. The amount is calculated and enforced by the
+// router. Further utility of the assets, post-locked, is implemented and enforced on the
+// router level.
 type ExecuteMsg struct {
 	DepositFor         *RecipientAmount `json:"deposit_for,omitempty"`
 	WithdrawTo         *RecipientAmount `json:"withdraw_to,omitempty"`
 	QueueWithdrawalTo  *RecipientAmount `json:"queue_withdrawal_to,omitempty"`
 	RedeemWithdrawalTo *string          `json:"redeem_withdrawal_to,omitempty"`
+	SlashLocked        *string          `json:"slash_locked,omitempty"`
 }
 
 // This struct is used to represent the recipient and amount fields together.

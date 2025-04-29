@@ -38,6 +38,28 @@ pub enum VaultExecuteMsg {
     /// After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
     /// can redeem the withdrawal.
     RedeemWithdrawalTo(Recipient),
+
+    /// ExecuteMsg SlashLocked moves the assets from the vault to the `vault-router` contract for custody.
+    /// Part of the [https://build.satlayer.xyz/architecture/slashing](Programmable Slashing) lifecycle.
+    /// This function can only be called by `vault-router`, and takes an absolute `amount` of assets to be moved.
+    /// The amount is calculated and enforced by the router.
+    /// Further utility of the assets, post-locked, is implemented and enforced on the router level.
+    SlashLocked(Amount),
+}
+
+#[cw_serde]
+/// This struct represents amount of assets.
+pub struct Amount(pub Uint128);
+
+impl Amount {
+    /// Validate the amount: [`Uint128`] field.
+    /// The amount must be greater than zero.
+    pub fn validate(&self, _api: &dyn Api) -> Result<(), VaultError> {
+        if self.0.is_zero() {
+            return Err(VaultError::zero("Amount cannot be zero."));
+        }
+        Ok(())
+    }
 }
 
 /// This struct is used to represent the recipient and amount fields together.

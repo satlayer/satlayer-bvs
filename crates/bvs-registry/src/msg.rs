@@ -1,4 +1,4 @@
-use crate::state::RegistrationStatus;
+use crate::state::{RegistrationStatus, SlashingParameters};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
 #[cw_serde]
@@ -30,6 +30,13 @@ pub enum ExecuteMsg {
     DeregisterServiceFromOperator {
         service: String,
     },
+    EnableSlashing {
+        slashing_parameters: SlashingParameters,
+    },
+    DisableSlashing {},
+    OperatorOptInToSlashing {
+        service: String,
+    },
     TransferOwnership {
         /// See [`bvs_library::ownership::transfer_ownership`] for more information on this field
         new_owner: String,
@@ -46,11 +53,30 @@ pub struct Metadata {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
+    /// QueryMsg Status: Returns the registration status of an operator to a service
+    /// The response is a StatusResponse
+    /// that contains a u8 value that maps to a RegistrationStatus:
+    ///
+    /// - 0: Inactive:
+    /// Default state when neither the Operator nor the Service has registered,
+    /// or when either has unregistered
+    ///
+    /// - 1: Active:
+    /// State when both the Operator and Service have registered with each other,
+    /// indicating a fully established relationship
+    ///
+    /// - 2: OperatorRegistered:
+    /// State when only the Operator has registered but the Service hasn't yet,
+    /// indicating a pending registration from the Service side
+    ///
+    /// - 3: ServiceRegistered:
+    /// State when only the Service has registered but the Operator hasn't yet,
+    /// indicating a pending registration from the Operator side
     #[returns(StatusResponse)]
     Status {
         service: String,
         operator: String,
-        height: Option<u64>,
+        timestamp: Option<u64>,
     },
 
     #[returns(IsServiceResponse)]
@@ -61,6 +87,19 @@ pub enum QueryMsg {
 
     #[returns(IsOperatorActiveResponse)]
     IsOperatorActive(String),
+
+    #[returns(SlashingParametersResponse)]
+    SlashingParameters {
+        service: String,
+        timestamp: Option<u64>,
+    },
+
+    #[returns(IsOperatorOptedInToSlashingResponse)]
+    IsOperatorOptedInToSlashing {
+        service: String,
+        operator: String,
+        timestamp: Option<u64>,
+    },
 }
 
 #[cw_serde]
@@ -80,6 +119,12 @@ pub struct IsOperatorResponse(pub bool);
 
 #[cw_serde]
 pub struct IsOperatorActiveResponse(pub bool);
+
+#[cw_serde]
+pub struct SlashingParametersResponse(pub Option<SlashingParameters>);
+
+#[cw_serde]
+pub struct IsOperatorOptedInToSlashingResponse(pub bool);
 
 #[cw_serde]
 pub struct MigrateMsg {}

@@ -37,7 +37,7 @@ cosmwasm-std = { version = "2.2.2", features = [
   "cosmwasm_2_0",
 ] }
 cosmwasm-crypto = "2.2.2"
-cw-multi-test = { version = "2.3.3", features = ["cosmwasm_2_0"] }
+cw-multi-test = { version = "2.4.0", features = ["cosmwasm_2_0"] }
 cw-storage-plus = "2.0.0"
 schemars = "0.8.22"
 serde = { version = "1.0.219", default-features = false, features = ["derive"] }
