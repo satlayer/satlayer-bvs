@@ -1,14 +1,11 @@
 use crate::error::ContractError;
 use bvs_library::storage::EVERY_SECOND;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{
-    Addr, Api, Deps, Env, HexBinary, Order, StdError, StdResult, Storage, Timestamp,
-};
-use cw_storage_plus::{Endian, Key, Map, PrimaryKey, SnapshotMap};
+use cosmwasm_std::{Addr, Api, Env, HexBinary, Order, StdError, StdResult, Storage, Timestamp};
+use cw_storage_plus::{Key, Map, PrimaryKey, SnapshotMap};
 use sha3::Digest;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
-use std::time::Duration;
 
 type Service = Addr;
 type Operator = Addr;
