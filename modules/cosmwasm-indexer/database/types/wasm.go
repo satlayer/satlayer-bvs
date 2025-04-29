@@ -43,8 +43,8 @@ type WasmParams struct {
 	Height                       int64           `db:"height"`
 }
 
-// NewWasmParams allows to build a new x/wasm params instance
-func NewWasmParams(
+// NewWASMParams allows to build a new x/wasm params instance
+func NewWASMParams(
 	codeUploadAccess *DBAccessConfig, instantiateDefaultPermission int32, height int64,
 ) WasmParams {
 	return WasmParams{
@@ -54,26 +54,26 @@ func NewWasmParams(
 	}
 }
 
-// WasmCodeRow represents a single row inside the "wasm_code" table
-type WasmCodeRow struct {
+// WASMCodeRow represents a single row inside the "wasm_code" table
+type WASMCodeRow struct {
 	Sender                string          `db:"sender"`
-	WasmByteCode          string          `db:"wasm_byte_code"`
+	WASMByteCode          string          `db:"wasm_byte_code"`
 	InstantiatePermission *DBAccessConfig `db:"instantiate_permission"`
 	CodeID                int64           `db:"code_id"`
 	Height                int64           `db:"height"`
 }
 
-// NewWasmCodeRow allows to easily create a new NewWasmCodeRow
-func NewWasmCodeRow(
+// NewWASMCodeRow allows to easily create a new NewWASMCodeRow
+func NewWASMCodeRow(
 	sender string,
 	wasmByteCode string,
 	instantiatePermission *DBAccessConfig,
 	codeID int64,
 	height int64,
-) WasmCodeRow {
-	return WasmCodeRow{
+) WASMCodeRow {
+	return WASMCodeRow{
 		Sender:                sender,
-		WasmByteCode:          wasmByteCode,
+		WASMByteCode:          wasmByteCode,
 		InstantiatePermission: instantiatePermission,
 		CodeID:                codeID,
 		Height:                height,
@@ -81,16 +81,16 @@ func NewWasmCodeRow(
 }
 
 // Equals return true if one WasmCodeRow representing the same row as the original one
-func (a WasmCodeRow) Equals(b WasmCodeRow) bool {
+func (a WASMCodeRow) Equals(b WASMCodeRow) bool {
 	return a.Sender == b.Sender &&
-		a.WasmByteCode == b.WasmByteCode &&
+		a.WASMByteCode == b.WASMByteCode &&
 		a.InstantiatePermission.Equal(b.InstantiatePermission) &&
 		a.CodeID == b.CodeID &&
 		a.Height == b.Height
 }
 
-// WasmContractRow represents a single row inside the "wasm_contract" table
-type WasmContractRow struct {
+// WASMInstantiateContractRow represents a single row inside the "wasm_instantiate_contract" table
+type WASMInstantiateContractRow struct {
 	Sender                string    `db:"sender"`
 	Creator               string    `db:"creator"`
 	Admin                 string    `db:"admin"`
@@ -106,8 +106,8 @@ type WasmContractRow struct {
 	Height                int64     `db:"height"`
 }
 
-// NewWasmContractRow allows to easily create a new WasmContractRow
-func NewWasmContractRow(
+// NewWASMInstantiateContractRow allows to easily create a new WasmContractRow
+func NewWASMInstantiateContractRow(
 	sender string,
 	admin string,
 	codeID int64,
@@ -120,8 +120,8 @@ func NewWasmContractRow(
 	creator string,
 	contractInfoExtension string,
 	height int64,
-) WasmContractRow {
-	return WasmContractRow{
+) WASMInstantiateContractRow {
+	return WASMInstantiateContractRow{
 		Sender:                sender,
 		Admin:                 admin,
 		CodeID:                codeID,
@@ -137,8 +137,8 @@ func NewWasmContractRow(
 	}
 }
 
-// WasmExecuteContractRow represents a single row inside the "wasm_execute_contract" table
-type WasmExecuteContractRow struct {
+// WASMExecuteContractRow represents a single row inside the "wasm_execute_contract" table
+type WASMExecuteContractRow struct {
 	Sender             string    `db:"sender"`
 	ContractAddress    string    `db:"contract_address"`
 	RawContractMessage string    `db:"raw_contract_message"`
@@ -149,8 +149,8 @@ type WasmExecuteContractRow struct {
 	Hash               string    `db:"hash"`
 }
 
-// NewWasmExecuteContractRow allows to easily create a new WasmExecuteContractRow
-func NewWasmExecuteContractRow(
+// NewWASMExecuteContractRow allows to easily create a new WASMExecuteContractRow
+func NewWASMExecuteContractRow(
 	sender string,
 	contractAddress string,
 	rawContractMessage string,
@@ -159,8 +159,8 @@ func NewWasmExecuteContractRow(
 	executedAt time.Time,
 	height int64,
 	hash string,
-) WasmExecuteContractRow {
-	return WasmExecuteContractRow{
+) WASMExecuteContractRow {
+	return WASMExecuteContractRow{
 		Sender:             sender,
 		RawContractMessage: rawContractMessage,
 		Funds:              funds,
@@ -172,8 +172,8 @@ func NewWasmExecuteContractRow(
 	}
 }
 
-// WasmExecuteContractRow represents a single row inside the "wasm_execute_contract" table
-type WasmExecuteContractEventRow struct {
+// WASMExecuteContractEventRow represents a single row inside the "wasm_execute_contract" table
+type WASMExecuteContractEventRow struct {
 	Sender          string    `db:"sender"`
 	ContractAddress string    `db:"contract_address"`
 	EventType       string    `db:"event_type"`
@@ -183,8 +183,8 @@ type WasmExecuteContractEventRow struct {
 	Hash            string    `db:"hash"`
 }
 
-// NewWasmExecuteContractEventRow allows to easily create a new WasmExecuteContractEventRow
-func NewWasmExecuteContractEventRow(
+// NewWASMExecuteContractEventRow allows to easily create a new WasmExecuteContractEventRow
+func NewWASMExecuteContractEventRow(
 	sender string,
 	contractAddress string,
 	eventType string,
@@ -192,8 +192,8 @@ func NewWasmExecuteContractEventRow(
 	executedAt time.Time,
 	height int64,
 	hash string,
-) WasmExecuteContractEventRow {
-	return WasmExecuteContractEventRow{
+) WASMExecuteContractEventRow {
+	return WASMExecuteContractEventRow{
 		Sender:          sender,
 		ContractAddress: contractAddress,
 		EventType:       eventType,
