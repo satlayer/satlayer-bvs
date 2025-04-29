@@ -1,6 +1,6 @@
-use crate::state::SlashingRequestData;
+use bvs_library::addr::Operator;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Uint64};
+use cosmwasm_std::{Addr, Timestamp, Uint64};
 
 #[cw_serde]
 pub struct MigrateMsg {}
@@ -17,7 +17,10 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     /// ExecuteMsg SetVault the vault contract in the router and whitelist (true/false) it.
     /// Only the `owner` can call this message.
-    SetVault { vault: String, whitelisted: bool },
+    SetVault {
+        vault: String,
+        whitelisted: bool,
+    },
 
     /// ExecuteMsg SetWithdrawalLockPeriod the lock period for withdrawal.
     /// Only the `owner` can call this message.
@@ -25,12 +28,32 @@ pub enum ExecuteMsg {
 
     /// ExecuteMsg TransferOwnership
     /// See [`bvs_library::ownership::transfer_ownership`] for more information on this field
-    TransferOwnership { new_owner: String },
-
-    SlashingRequest {
-        operator: String,
-        data: SlashingRequestData,
+    TransferOwnership {
+        new_owner: String,
     },
+
+    SlashingRequest(SlashingRequestPayload),
+}
+
+#[cw_serde]
+pub struct SlashingRequestPayload {
+    /// The operator address to slash.
+    /// (service, operator) must have active registration at the timestamp.
+    pub operator: Operator,
+    /// The percentage of tokens to slash in basis points (1/100th of a percent).
+    /// Max bips to slash is set by the service slashing parameters at the timestamp and the operator
+    /// must have opted in.
+    pub bips: u16,
+    /// The timestamp at which the slashing condition occurred.
+    pub timestamp: Timestamp,
+    /// Additional contextual information about the slashing request.
+    pub metadata: SlashingMetadata,
+}
+
+#[cw_serde]
+pub struct SlashingMetadata {
+    /// The reason for the slashing request. Must contain human-readable string.
+    pub reason: String,
 }
 
 #[cw_serde]

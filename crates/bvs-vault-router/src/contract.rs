@@ -57,10 +57,7 @@ pub fn execute(
             ownership::transfer_ownership(deps.storage, info, new_owner)
                 .map_err(ContractError::Ownership)
         }
-        ExecuteMsg::SlashingRequest { operator, data } => {
-            let operator = deps.api.addr_validate(&operator)?;
-            execute::slashing_request(deps, env, info, operator, data)
-        }
+        ExecuteMsg::SlashingRequest(payload) => execute::slashing_request(deps, env, info, payload),
     }
 }
 
@@ -104,8 +101,9 @@ mod migrate {
 mod execute {
     use super::*;
     use crate::error::ContractError;
+    use crate::msg::SlashingRequestPayload;
     use crate::state::{self, DEFAULT_WITHDRAWAL_LOCK_PERIOD};
-    use crate::state::{SlashingRequest, SlashingRequestData, WITHDRAWAL_LOCK_PERIOD};
+    use crate::state::{SlashingRequest, WITHDRAWAL_LOCK_PERIOD};
     use crate::ContractError::InvalidSlashingRequest;
     use bvs_library::ownership;
     use bvs_library::time::DAYS;
@@ -195,17 +193,35 @@ mod execute {
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        operator: Addr,
-        data: SlashingRequestData,
+        data: SlashingRequestPayload,
     ) -> Result<Response, ContractError> {
         // service is the sender
         let service = info.sender;
+
+        let operator = deps.api.addr_validate(data.operator.as_str())?;
 
         let registry = state::get_registry(deps.storage)?;
 
         const MAX_SLASHABLE_DELAY: u64 = 7 * DAYS; // TODO: move to const
 
         const MAX_STRING_BYTES: usize = 400; // TODO: move to const
+
+        // TODO: check if needed, need to add a lower bound?
+        // ensure that metadata.reason does not exceed X bytes
+        if data.metadata.reason.len() > MAX_STRING_BYTES {
+            return Err(InvalidSlashingRequest {
+                msg: "Reason string is too long.".to_string(),
+            });
+        }
+
+        // ensure timestamp of slash must not be more than MAX_SLASHABLE_DELAY before and not in the future
+        if data.timestamp < env.block.time.minus_seconds(MAX_SLASHABLE_DELAY)
+            || data.timestamp > env.block.time
+        {
+            return Err(InvalidSlashingRequest {
+                msg: "Slash timestamp is outside of the allowable slash period.".to_string(),
+            });
+        }
 
         // require active status between operator and service
         let StatusResponse(operator_service_status) = deps.querier.query_wasm_smart(
@@ -219,15 +235,6 @@ mod execute {
         if operator_service_status != u8::from(RegistrationStatus::Active) {
             return Err(InvalidSlashingRequest {
                 msg: "Service and Operator are not active at timestamp.".to_string(),
-            });
-        }
-
-        // ensure timestamp of slash must not be more than MAX_SLASHABLE_DELAY before and not in the future
-        if data.timestamp < env.block.time.minus_seconds(MAX_SLASHABLE_DELAY)
-            || data.timestamp > env.block.time
-        {
-            return Err(InvalidSlashingRequest {
-                msg: "Slash timestamp is outside of the allowable slash period.".to_string(),
             });
         }
 
@@ -252,14 +259,6 @@ mod execute {
         if data.bips > slashing_parameters.max_slashing_bips {
             return Err(InvalidSlashingRequest {
                 msg: "Slashing bips is over max_slashing_bips set.".to_string(),
-            });
-        }
-
-        // TODO: check if needed, need to add a lower bound?
-        // ensure that metadata.reason does not exceed X bytes
-        if data.metadata.reason.len() > MAX_STRING_BYTES {
-            return Err(InvalidSlashingRequest {
-                msg: "Reason string is too long.".to_string(),
             });
         }
 
