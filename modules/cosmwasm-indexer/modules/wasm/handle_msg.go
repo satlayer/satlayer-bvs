@@ -18,15 +18,19 @@ import (
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/utils"
 )
 
-var msgFilter = map[string]bool{
-	types.MsgStoreCode:            true,
-	types.MsgInstantiateContract:  true,
-	types.MsgInstantiateContract2: true,
-	types.MsgExecuteContract:      true,
-	types.MsgMigrateContract:      true,
-	types.MsgUpdateAdmin:          true,
-	types.MsgClearAdmin:           true,
-}
+var (
+	emptyJSONString = []byte("{}")
+
+	msgFilter = map[string]bool{
+		types.MsgStoreCode:            true,
+		types.MsgInstantiateContract:  true,
+		types.MsgInstantiateContract2: true,
+		types.MsgExecuteContract:      true,
+		types.MsgMigrateContract:      true,
+		types.MsgUpdateAdmin:          true,
+		types.MsgClearAdmin:           true,
+	}
+)
 
 // HandleMsg implements modules.MessageModule
 func (m *Module) HandleMsg(index int, msg junotypes.Message, tx *junotypes.Transaction) error {
@@ -140,31 +144,33 @@ func (m *Module) HandleMsgInstantiateContract(index int, tx *junotypes.Transacti
 		"contract label name", labelName, "index", index, "Msg", string(msg.Msg))
 
 	wasmEvent, success := utils.FindEventByType(txEvents, wasmtypes.WasmModuleEventType)
+	var wasmByte []byte
 	if !success {
 		slog.Warn("Not found WASM event in instantiate events")
+	} else {
+		if wasmByte, err = json.Marshal(wasmEvent); err != nil {
+			slog.Error("Failed to marshal WASM event into byte", "error", err)
+		}
 	}
-
-	wasmByte, err := wasmEvent.Marshal()
-	if err != nil {
-		slog.Error("Failed to marshal WASM event into byte", "error", err)
+	if len(wasmByte) == 0 {
+		wasmByte = emptyJSONString
 	}
 
 	customWASMEvent, success := utils.FindCustomWASMEvent(txEvents)
+	var customWASMByte []byte
 	if !success {
 		slog.Warn("Not found custom WASM event in instantiate events")
+	} else {
+		if customWASMByte, err = json.Marshal(customWASMEvent); err != nil {
+			slog.Error("Failed to marshal custom WASM event", "error", err)
+		}
 	}
-
-	customWASMByte, err := customWASMEvent.Marshal()
-	if err != nil {
-		slog.Error("Failed to marshal custom WASM event into byte", "error", err)
+	if len(customWASMByte) == 0 {
+		customWASMByte = emptyJSONString
 	}
 
 	slog.Info("Instantiate WASM attribute", slog.Any("all events", txEvents), slog.Any("wasmEvent", wasmEvent),
 		slog.Any("customWASMEvent", customWASMEvent))
-	slog.Info("String wasm and custom wasm event", "wasmEvent", wasmEvent.String(),
-		"customWASMEvent", customWASMEvent.String())
-	slog.Info("Convert wasm and custom wasm event byte to string", "wasmEvent", string(wasmByte),
-		"customWasmEvent", string(customWASMByte))
 
 	// Get the contract info
 	contractInfo, err := m.source.GetContractInfo(int64(tx.Height), contractAddress)
@@ -229,6 +235,13 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 		return err
 	}
 	slog.Info("Print std msg json", slog.Any("msgJSON1", msgJSON1))
+	messageName1 := ""
+	v1 := reflect.ValueOf(msgJSON1)
+	if v1.Len() == 1 && len(v1.MapKeys()) == 1 {
+		messageName1 = v1.MapKeys()[0].String()
+	} else {
+		slog.Warn("Unable to parse message name from std JSON", "tx hash", tx.TxHash, "json message", string(msg.Msg))
+	}
 
 	// Parse the ExecuteContract message body
 	msgJSON, err := oj.ParseString(string(msg.Msg))
@@ -247,7 +260,7 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 	}
 
 	slog.Debug("Processing contract message", "block height", tx.Height, "tx hash", tx.TxHash, "index", index,
-		"message name", messageName, "Msg", string(msg.Msg))
+		"message name", messageName, "Msg", string(msg.Msg), "messageName1", messageName1)
 
 	// Check if events slice is not empty and index is within range
 	if index >= len(tx.Events) {
@@ -258,31 +271,35 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 	txEvents := sdktypes.StringifyEvents(tx.Events)
 
 	wasmEvent, success := utils.FindEventByType(txEvents, wasmtypes.WasmModuleEventType)
+	var wasmByte []byte
 	if !success {
 		slog.Warn("Not found WASM event in instantiate events")
+	} else {
+		if wasmByte, err = json.Marshal(wasmEvent); err != nil {
+			slog.Error("Failed to marshal WASM event into byte", "error", err)
+		}
 	}
-
-	wasmByte, err := wasmEvent.Marshal()
-	if err != nil {
-		slog.Error("Failed to marshal WASM event into byte", "error", err)
+	if len(wasmByte) == 0 {
+		wasmByte = emptyJSONString
 	}
 
 	customWASMEvent, success := utils.FindCustomWASMEvent(txEvents)
+	var customWASMByte []byte
 	if !success {
 		slog.Warn("Not found custom WASM event in instantiate events")
+	} else {
+		if customWASMByte, err = json.Marshal(customWASMEvent); err != nil {
+			slog.Error("Failed to marshal custom WASM event", "error", err)
+		}
 	}
-
-	customWASMByte, err := customWASMEvent.Marshal()
-	if err != nil {
-		slog.Error("Failed to marshal custom WASM event into byte", "error", err)
+	if len(customWASMByte) == 0 {
+		customWASMByte = emptyJSONString
 	}
 
 	slog.Info("Execute WASM attribute", slog.Any("all events", txEvents), slog.Any("wasmEvent", wasmEvent),
 		slog.Any("customWASMEvent", customWASMEvent))
 	slog.Info("String WASM and custom WASM event", "wasmEvent", wasmEvent.String(),
 		"customWASMEvent", customWASMEvent.String())
-	slog.Info("Convert WASM and custom WASM event byte to string", "wasmEvent", string(wasmByte),
-		"customWasmEvent", string(customWASMByte))
 
 	timestamp, err := time.Parse(time.RFC3339, tx.Timestamp)
 	if err != nil {
@@ -340,15 +357,12 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 			contractInfoExt = extension.String()
 		}
 
-		// Set to default values, that will hopefully be overwritten during the next migration of this contract
-		emptyRawMessage := []byte("{}")
 		emptyFunds := sdktypes.Coins{sdktypes.Coin{}}
-
 		var contractStates []wasmtypes.Model
 
 		contract := types.NewInstantiateWASMContract(
-			msg.Sender, contractInfo.Creator, contractInfoAdmin, contractInfoCodeID, contractInfoLabel, emptyRawMessage,
-			contractAddress, wasmByte, customWASMByte, contractInfoExt, contractStates, emptyFunds,
+			msg.Sender, contractInfo.Creator, contractInfoAdmin, contractInfoCodeID, contractInfoLabel, emptyJSONString,
+			contractAddress, emptyJSONString, emptyJSONString, contractInfoExt, contractStates, emptyFunds,
 			timestamp, int64(tx.Height), tx.TxHash,
 		)
 
@@ -399,31 +413,33 @@ func (m *Module) HandleMsgMigrateContract(index int, tx *junotypes.Transaction, 
 
 	txEvents := sdktypes.StringifyEvents(tx.Events)
 	wasmEvent, success := utils.FindEventByType(txEvents, wasmtypes.WasmModuleEventType)
+	var wasmByte []byte
 	if !success {
 		slog.Warn("Not found WASM event in instantiate events")
+	} else {
+		if wasmByte, err = json.Marshal(wasmEvent); err != nil {
+			slog.Error("Failed to marshal WASM event into byte", "error", err)
+		}
 	}
-
-	wasmByte, err := wasmEvent.Marshal()
-	if err != nil {
-		slog.Error("Failed to marshal WASM event into byte", "error", err)
+	if len(wasmByte) == 0 {
+		wasmByte = emptyJSONString
 	}
 
 	customWASMEvent, success := utils.FindCustomWASMEvent(txEvents)
+	var customWASMByte []byte
 	if !success {
 		slog.Warn("Not found custom WASM event in instantiate events")
+	} else {
+		if customWASMByte, err = json.Marshal(customWASMEvent); err != nil {
+			slog.Error("Failed to marshal custom WASM event", "error", err)
+		}
 	}
-
-	customWASMByte, err := customWASMEvent.Marshal()
-	if err != nil {
-		slog.Error("Failed to marshal custom WASM event into byte", "error", err)
+	if len(customWASMByte) == 0 {
+		customWASMByte = emptyJSONString
 	}
 
 	slog.Info("wasm attribute", slog.Any("all events", txEvents), slog.Any("wasmEvent", wasmEvent),
 		slog.Any("customWASMEvent", customWASMEvent))
-	slog.Info("String WASM and custom WASM event", "wasmEvent", wasmEvent.String(),
-		"customWASMEvent", customWASMEvent.String())
-	slog.Info("Convert WASM and custom WASM event byte to string", "wasmEvent", string(wasmByte),
-		"customWasmEvent", string(customWASMByte))
 
 	migrate := types.NewWASMMigrateContract(msg.Sender, msg.CodeID, msg.Contract, msg.Msg, wasmByte, customWASMByte,
 		timestamp, int64(tx.Height), tx.TxHash)
