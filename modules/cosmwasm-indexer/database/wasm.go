@@ -82,7 +82,7 @@ VALUES `
 // SaveWASMInstantiateContracts allows to store the WASM instantiate contract slice.
 func (db *DB) SaveWASMInstantiateContracts(contracts []types.WASMInstantiateContract) error {
 	paramsNumber := 13
-	slices := dbutils.SplitWasmContracts(contracts, paramsNumber)
+	slices := dbutils.SplitWASMInstantiateContracts(contracts, paramsNumber)
 
 	for _, contracts = range slices {
 		if len(contracts) == 0 {
@@ -100,7 +100,7 @@ func (db *DB) SaveWASMInstantiateContracts(contracts []types.WASMInstantiateCont
 
 func (db *DB) saveWASMInstantiateContracts(paramsNumber int, wasmContracts []types.WASMInstantiateContract) error {
 	stmt := `
-INSERT INTO wasm_contract 
+INSERT INTO wasm_instantiate_contract 
 (sender, creator, admin, code_id, label, instantiate_contract_message, funds, contract_address, instantiated_at, 
 contract_info_extension, contract_states, wasm_event, custom_wasm_event, height, instantiate_tx_hash) 
 VALUES `
@@ -120,22 +120,7 @@ VALUES `
 
 	// Remove trailing ","
 	stmt = stmt[:len(stmt)-1]
-	// stmt += `
-	// ON CONFLICT (contract_address) DO UPDATE
-	// 	SET sender = excluded.sender,
-	// 		creator = excluded.creator,
-	// 		admin = excluded.admin,
-	// 		code_id = excluded.code_id,
-	// 		label = excluded.label,
-	// 		instantiate_contract_message = excluded.instantiate_contract_message,
-	// 		funds = excluded.funds,
-	// 		instantiated_at = excluded.instantiated_at,
-	// 		contract_info_extension = excluded.contract_info_extension,
-	// 		contract_states = excluded.contract_states,
-	//     	wasm_event = excluded.wasm_event,
-	//     	custom_wasm_event = excluded.custom_wasm_event,
-	// 		height = excluded.height
-	// WHERE wasm_contract.height <= excluded.height`
+	stmt += ` ON CONFLICT (contract_address) DO NOTHING`
 
 	_, err := db.SQL.Exec(stmt, args...)
 	if err != nil {
@@ -160,7 +145,7 @@ func (db *DB) SaveWASMExecuteContract(wasmExecuteContract types.WASMExecuteContr
 // SaveWasmContracts allows to store WASM contract slice.
 func (db *DB) SaveWASMExecuteContracts(executeContracts []types.WASMExecuteContract) error {
 	paramsNumber := 8
-	slices := dbutils.SplitWasmExecuteContracts(executeContracts, paramsNumber)
+	slices := dbutils.SplitWASMExecuteContracts(executeContracts, paramsNumber)
 
 	for _, contracts := range slices {
 		if len(contracts) == 0 {
@@ -210,12 +195,7 @@ VALUES `
 func (db *DB) SaveWASMExecuteContractEvents(executeContract types.WASMExecuteContract, tx *junotypes.Transaction) error {
 	stmt := `
 	INSERT INTO wasm_execute_contract_event_types
-	(contract_address,
-	event_type,
-	first_seen_height,
-	first_seen_hash,
-	last_seen_height,
-	last_seen_hash)
+	(contract_address, event_type, first_seen_height, first_seen_hash, last_seen_height, last_seen_hash)
 	VALUES ($1, $2, $3, $4, $3, $4)
 	ON CONFLICT (contract_address, event_type) DO UPDATE
 	SET (last_seen_height, last_seen_hash) = (EXCLUDED.last_seen_height, EXCLUDED.last_seen_hash);
@@ -240,9 +220,10 @@ func (db *DB) SaveWASMExecuteContractEvents(executeContract types.WASMExecuteCon
 func (db *DB) SaveWASMMigrateContracts(migrateContract types.WASMMigrateContract) error {
 	stmt := `
 INSERT INTO wasm_migrate_contract 
-(sender, code_id, label, migrate_contract_message, contract_address, migrated_at, 
-wasm_event, custom_wasm_event, height, migrate_tx_hash) 
-VALUES `
+(sender, code_id, contract_address, migrate_contract_message, 
+wasm_event, custom_wasm_event, migrated_at, height, tx_hash) 
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+ON CONFLICT (contract_address, code_id) DO NOTHING`
 
 	_, err := db.SQL.Exec(stmt,
 		migrateContract.Sender, migrateContract.CodeID, migrateContract.ContractAddress, migrateContract.MigrateContractMsg,
