@@ -279,6 +279,9 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 			slog.Error("Failed to marshal WASM event into byte", "error", err)
 		}
 	}
+	if len(wasmByte) == 0 {
+		wasmByte = emptyJSONString
+	}
 
 	customWASMEvent, success := utils.FindCustomWASMEvent(txEvents)
 	var customWASMByte []byte
@@ -288,6 +291,9 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 		if customWASMByte, err = json.Marshal(wasmEvent); err != nil {
 			slog.Error("Failed to marshal custom WASM event", "error", err)
 		}
+	}
+	if len(customWASMByte) == 0 {
+		customWASMByte = emptyJSONString
 	}
 
 	slog.Info("Execute WASM attribute", slog.Any("all events", txEvents), slog.Any("wasmEvent", wasmEvent),
