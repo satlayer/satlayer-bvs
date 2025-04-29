@@ -17,6 +17,8 @@
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
+ * This struct represents amount of assets.
+ *
  * Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also
  * adds some helper methods to help encode inline.
  *
@@ -111,6 +113,8 @@ type AssetsResponse = string;
  * let b = Uint128::from(42u64); assert_eq!(b.u128(), 42);
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
+ *
+ * This struct represents amount of assets.
  *
  * Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also
  * adds some helper methods to help encode inline.
@@ -207,6 +211,8 @@ type ConvertToAssetsResponse = string;
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
+ * This struct represents amount of assets.
+ *
  * Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also
  * adds some helper methods to help encode inline.
  *
@@ -301,6 +307,8 @@ type ConvertToSharesResponse = string;
  * let b = Uint128::from(42u64); assert_eq!(b.u128(), 42);
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
+ *
+ * This struct represents amount of assets.
  *
  * Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also
  * adds some helper methods to help encode inline.
@@ -397,6 +405,8 @@ type SharesResponse = string;
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
+ * This struct represents amount of assets.
+ *
  * Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also
  * adds some helper methods to help encode inline.
  *
@@ -491,6 +501,8 @@ type TotalAssetsResponse = string;
  * let b = Uint128::from(42u64); assert_eq!(b.u128(), 42);
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
+ *
+ * This struct represents amount of assets.
  *
  * Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also
  * adds some helper methods to help encode inline.
@@ -641,6 +653,13 @@ export interface InstantiateMsg {
  * ExecuteMsg RedeemWithdrawal all queued shares into assets from the vault for withdrawal.
  * After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
  * can redeem the withdrawal.
+ *
+ * ExecuteMsg SlashLocked moves the assets from the vault to the `vault-router` contract for
+ * custody. Part of the [https://build.satlayer.xyz/architecture/slashing](Programmable
+ * Slashing) lifecycle. This function can only be called by `vault-router`, and takes an
+ * absolute `amount` of assets to be moved. The amount is calculated and enforced by the
+ * router. Further utility of the assets, post-locked, is implemented and enforced on the
+ * router level.
  */
 export interface ExecuteMsg {
   transfer?: Transfer;
@@ -653,6 +672,7 @@ export interface ExecuteMsg {
   withdraw_to?: RecipientAmount;
   queue_withdrawal_to?: RecipientAmount;
   redeem_withdrawal_to?: string;
+  slash_locked?: string;
 }
 
 export interface DecreaseAllowance {
