@@ -140,15 +140,15 @@ func ConvertContractStates(states []wasmtypes.Model) []byte {
 
 // WASMExecuteContract represents the CosmWasm execute contract in x/wasm module
 type WASMExecuteContract struct {
-	Sender             string
-	ContractAddress    string
-	ExecuteContractMsg []byte
-	MessageType        string
-	WASMEvent          []byte
-	CustomWASMEvent    []byte
-	ExecutedAt         time.Time
-	Height             int64
-	TxHash             string
+	Sender                 string
+	ContractAddress        string
+	ExecuteContractMessage []byte
+	MessageType            string
+	WASMEvent              []byte
+	CustomWASMEvent        []byte
+	ExecutedAt             time.Time
+	Height                 int64
+	TxHash                 string
 }
 
 // GetWasmExecuteContractMessageType gets the name of the contract execution message type. It will create a comma
@@ -183,20 +183,20 @@ func NewWASMExecuteContract(
 	sender string, contractAddress string, rawMsg wasmtypes.RawContractMessage, wasmEvent []byte, customWASMEvent []byte,
 	executedAt time.Time, height int64, txHash string,
 ) WASMExecuteContract {
-	executeContractMsg, _ := rawMsg.MarshalJSON()
+	executeContractMessage, _ := rawMsg.MarshalJSON()
 
 	messageType := GetWasmExecuteContractMessageType(rawMsg)
 
 	return WASMExecuteContract{
-		Sender:             sender,
-		ContractAddress:    contractAddress,
-		ExecuteContractMsg: executeContractMsg,
-		MessageType:        messageType,
-		WASMEvent:          wasmEvent,
-		CustomWASMEvent:    customWASMEvent,
-		ExecutedAt:         executedAt,
-		Height:             height,
-		TxHash:             txHash,
+		Sender:                 sender,
+		ContractAddress:        contractAddress,
+		ExecuteContractMessage: executeContractMessage,
+		MessageType:            messageType,
+		WASMEvent:              wasmEvent,
+		CustomWASMEvent:        customWASMEvent,
+		ExecutedAt:             executedAt,
+		Height:                 height,
+		TxHash:                 txHash,
 	}
 }
 

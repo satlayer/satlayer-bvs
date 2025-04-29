@@ -28,9 +28,9 @@ import (
 )
 
 const (
-	apiPort  = "1317"
+	apiPort  = "1317/tcp"
 	grpcPort = "9090"
-	rpcPort  = "26657"
+	rpcPort  = "26657/tcp"
 	ChainId  = "sat-bbn-localnet"
 )
 
@@ -42,6 +42,10 @@ type BabylonContainer struct {
 	GrpcUri   string
 	ClientCtx client.Context
 	TxFactory tx.Factory
+
+	SubnetAPIURI  string // subnet uri is used for bridge mode communication
+	SubnetRPCURI  string
+	SubnetGRPCURI string
 }
 
 func getHost(ctx context.Context, container testcontainers.Container, port nat.Port) string {
@@ -51,6 +55,14 @@ func getHost(ctx context.Context, container testcontainers.Container, port nat.P
 		panic(err)
 	}
 	port, err = container.MappedPort(ctx, port)
+	if err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("%s:%s", host, port.Port())
+}
+
+func getContainerIP(ctx context.Context, container testcontainers.Container, port nat.Port) string {
+	host, err := container.ContainerIP(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -194,6 +206,10 @@ func Run(ctx context.Context) *BabylonContainer {
 	ClientCtx := newClientCtx(RpcUri)
 	TxFactory := newTxFactory(ClientCtx)
 
+	subnetAPIURI := fmt.Sprintf("http://%s", getContainerIP(ctx, container, apiPort))
+	subnetRPCURI := fmt.Sprintf("http://%s", getContainerIP(ctx, container, rpcPort))
+	subnetGRPCURI := fmt.Sprintf("%s", getContainerIP(ctx, container, grpcPort))
+
 	return &BabylonContainer{
 		container,
 		ChainId,
@@ -202,5 +218,8 @@ func Run(ctx context.Context) *BabylonContainer {
 		GrpcUri,
 		ClientCtx,
 		TxFactory,
+		subnetAPIURI,
+		subnetRPCURI,
+		subnetGRPCURI,
 	}
 }
