@@ -144,7 +144,7 @@ func (db *DB) SaveWASMExecuteContract(wasmExecuteContract types.WASMExecuteContr
 
 // SaveWasmContracts allows to store WASM contract slice.
 func (db *DB) SaveWASMExecuteContracts(executeContracts []types.WASMExecuteContract) error {
-	paramsNumber := 8
+	paramsNumber := 9
 	slices := dbutils.SplitWASMExecuteContracts(executeContracts, paramsNumber)
 
 	for _, contracts := range slices {
@@ -152,7 +152,7 @@ func (db *DB) SaveWASMExecuteContracts(executeContracts []types.WASMExecuteContr
 			continue
 		}
 
-		err := db.saveWASMExecuteContracts(paramsNumber, executeContracts)
+		err := db.saveWASMExecuteContracts(paramsNumber, contracts)
 		if err != nil {
 			return fmt.Errorf("failed to store WASM contracts: %s", err)
 		}
@@ -170,18 +170,17 @@ VALUES `
 	var args []any
 	for i, executeContract := range executeContracts {
 		ii := i * paramNumber
-		stmt += fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d),",
+		stmt += fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d),",
 			ii+1, ii+2, ii+3, ii+4, ii+5, ii+6, ii+7, ii+8, ii+9)
-		args = append(args,
-			executeContract.Sender, executeContract.ContractAddress, string(executeContract.ExecuteContractMsg),
-			executeContract.MessageType, executeContract.WASMEvent, executeContract.CustomWASMEvent,
+		args = append(args, executeContract.Sender, executeContract.ContractAddress, string(executeContract.ExecuteContractMessage),
+			executeContract.MessageType, string(executeContract.WASMEvent), string(executeContract.CustomWASMEvent),
 			executeContract.ExecutedAt, executeContract.Height, executeContract.TxHash)
 	}
 
 	// Remove trailing ","
 	stmt = stmt[:len(stmt)-1]
 
-	stmt += ` ON CONFLICT DO NOTHING`
+	stmt += ` ON CONFLICT (height, tx_hash) DO NOTHING`
 
 	_, err := db.SQL.Exec(stmt, args...)
 	if err != nil {
@@ -208,7 +207,7 @@ func (db *DB) SaveWASMExecuteContractEvents(executeContract types.WASMExecuteCon
 			if attr.Key == "msg_index" {
 				_, err := db.SQL.Exec(stmt, executeContract.ContractAddress, event.Type, executeContract.Height, tx.TxHash)
 				if err != nil {
-					return fmt.Errorf("failed to save WASM execute contracts: %s", err)
+					return fmt.Errorf("failed to save WASM execute contracts events: %s", err)
 				}
 			}
 		}
