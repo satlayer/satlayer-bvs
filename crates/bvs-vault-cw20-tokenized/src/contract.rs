@@ -338,22 +338,22 @@ mod vault_execute {
     /// The shares are burned from `info.sender` and wait lock period to redeem withdrawal.
     /// It doesn't remove the `total_shares` and only removes the user shares, so the exchange rate is not affected.
     pub fn queue_withdrawal_to(
-        deps: DepsMut,
+        mut deps: DepsMut,
         env: Env,
         info: MessageInfo,
         msg: RecipientAmount,
     ) -> Result<Response, ContractError> {
-        // make sure staker has enough receipt tokens
-        // to cover the withdrawal
-        // this execute func does not carry out actual withdrawal
-        // and burn of receipt token
-        {
-            let staker_receipt_tokens_balance =
-                query_receipt_token_balance(deps.as_ref(), msg.recipient.to_string())?;
-            if staker_receipt_tokens_balance.balance < msg.amount {
-                return Err(VaultError::insufficient("Not enough receipt tokens").into());
-            }
-        }
+        // ill-liquidate the receipt token from the staker
+        // by moving the asset into this vault balance.
+        // We can't burn until the actual unstake (redeem withdrawal) occurs.
+        // due to total supply mutation can impact the exchange rate to change prematurely.
+        cw20_base::contract::execute_transfer(
+            deps.branch(),
+            env.clone(),
+            info.clone(),
+            env.contract.address.to_string(),
+            msg.amount.clone(),
+        )?;
 
         let withdrawal_lock_period: u64 =
             router::get_withdrawal_lock_period(&deps.as_ref())?.into();
@@ -423,16 +423,21 @@ mod vault_execute {
         let transfer_msg =
             UnderlyingToken::execute_new_transfer(deps.storage, &msg.0, claimed_assets)?;
 
-        // Remove staker's info
-        shares::remove_queued_withdrawal_info(deps.storage, &info.sender);
-
-        // Burn the receipt token from the staker
-        // This func internally checked sub so not having enough receipt token
-        // will lock the stakes forever
-        receipt_token_burn(deps.branch(), env.clone(), info.clone(), queued_shares)?;
+        // When staker queued the withdrawal
+        // The receipt token is ill-liquidated from the staker
+        // by moving the asset into this vault balance.
+        // So the vault should burn from its own balance for the same amount.
+        let msg_info = MessageInfo {
+            sender: env.contract.address.clone(),
+            funds: info.funds.clone(),
+        };
+        receipt_token_burn(deps.branch(), env.clone(), msg_info, queued_shares)?;
 
         let receipt_token_supply =
             cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
+
+        // Remove staker's info
+        shares::remove_queued_withdrawal_info(deps.storage, &info.sender);
 
         Ok(Response::new()
             .add_event(
