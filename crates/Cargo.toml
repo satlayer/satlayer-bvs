@@ -9,6 +9,7 @@ members = [
   "bvs-vault-router",
   "bvs-vault-base",
   "bvs-vault-bank",
+  "bvs-vault-bank-tokenized",
   "bvs-vault-cw20",
   "bvs-vault-cw20-tokenized",
   "bvs-vault-factory",
