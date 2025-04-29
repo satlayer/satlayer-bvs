@@ -101,8 +101,8 @@ func (db *DB) SaveWASMInstantiateContracts(contracts []types.WASMInstantiateCont
 func (db *DB) saveWASMInstantiateContracts(paramsNumber int, wasmContracts []types.WASMInstantiateContract) error {
 	stmt := `
 INSERT INTO wasm_instantiate_contract 
-(sender, creator, admin, code_id, label, instantiate_contract_message, funds, contract_address, instantiated_at, 
-contract_info_extension, contract_states, wasm_event, custom_wasm_event, height, instantiate_tx_hash) 
+(sender, creator, admin, code_id, label, instantiate_contract_message, contract_address, wasm_event, custom_wasm_event, 
+contract_info_extension, contract_states, funds, instantiated_at, height, tx_hash) 
 VALUES `
 
 	// only add new one, shouldn't be repeated
@@ -113,8 +113,8 @@ VALUES `
 			ii+1, ii+2, ii+3, ii+4, ii+5, ii+6, ii+7, ii+8, ii+9, ii+10, ii+11, ii+12, ii+13, ii+14, ii+15)
 		args = append(args,
 			contract.Sender, contract.Creator, contract.Admin, contract.CodeID, contract.Label, string(contract.InstantiateContractMsg),
-			pq.Array(dbtypes.NewDBCoins(contract.Funds)), contract.ContractAddress, contract.InstantiatedAt, contract.ContractInfoExtension,
-			string(contract.ContractStates), string(contract.WASMEvent), string(contract.CustomWASMEvent), contract.Height, contract.TxHash,
+			contract.ContractAddress, string(contract.WASMEvent), string(contract.CustomWASMEvent), contract.ContractInfoExtension,
+			string(contract.ContractStates), pq.Array(dbtypes.NewDBCoins(contract.Funds)), contract.InstantiatedAt, contract.Height, contract.TxHash,
 		)
 	}
 
@@ -164,7 +164,7 @@ func (db *DB) SaveWASMExecuteContracts(executeContracts []types.WASMExecuteContr
 func (db *DB) saveWASMExecuteContracts(paramNumber int, executeContracts []types.WASMExecuteContract) error {
 	stmt := `
 INSERT INTO wasm_execute_contract 
-(sender, contract_address, raw_contract_message, funds, data, executed_at, height, hash, message_type) 
+(sender, contract_address, execute_contract_message, message_type, wasm_event, custom_wasm_event, funds, executed_at, height, tx_hash) 
 VALUES `
 
 	var args []any
@@ -174,8 +174,8 @@ VALUES `
 			ii+1, ii+2, ii+3, ii+4, ii+5, ii+6, ii+7, ii+8, ii+9, ii+10)
 		args = append(args,
 			executeContract.Sender, executeContract.ContractAddress, string(executeContract.ExecuteContractMsg),
-			pq.Array(dbtypes.NewDBCoins(executeContract.Funds)), executeContract.MessageType, executeContract.WASMEvent,
-			executeContract.CustomWASMEvent, executeContract.ExecutedAt, executeContract.Height, executeContract.TxHash)
+			executeContract.MessageType, executeContract.WASMEvent, executeContract.CustomWASMEvent,
+			pq.Array(dbtypes.NewDBCoins(executeContract.Funds)), executeContract.ExecutedAt, executeContract.Height, executeContract.TxHash)
 	}
 
 	// Remove trailing ","
@@ -220,10 +220,8 @@ func (db *DB) SaveWASMExecuteContractEvents(executeContract types.WASMExecuteCon
 func (db *DB) SaveWASMMigrateContracts(migrateContract types.WASMMigrateContract) error {
 	stmt := `
 INSERT INTO wasm_migrate_contract 
-(sender, code_id, contract_address, migrate_contract_message, 
-wasm_event, custom_wasm_event, migrated_at, height, tx_hash) 
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-ON CONFLICT (contract_address, code_id) DO NOTHING`
+(sender, code_id, contract_address, migrate_contract_message, wasm_event, custom_wasm_event, migrated_at, height, tx_hash) 
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (contract_address, code_id) DO NOTHING`
 
 	_, err := db.SQL.Exec(stmt,
 		migrateContract.Sender, migrateContract.CodeID, migrateContract.ContractAddress, migrateContract.MigrateContractMsg,
@@ -236,8 +234,7 @@ ON CONFLICT (contract_address, code_id) DO NOTHING`
 }
 
 func (db *DB) UpdateContractAdmin(sender string, contractAddress string, newAdmin string) error {
-	stmt := `UPDATE wasm_instantiate_contract SET 
-sender = $1, admin = $2 WHERE contract_address = $2 `
+	stmt := `UPDATE wasm_instantiate_contract SET sender = $1, admin = $2 WHERE contract_address = $2 `
 
 	_, err := db.SQL.Exec(stmt, sender, newAdmin, contractAddress)
 	if err != nil {
