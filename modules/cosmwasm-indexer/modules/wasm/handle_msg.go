@@ -161,7 +161,7 @@ func (m *Module) HandleMsgInstantiateContract(index int, tx *junotypes.Transacti
 	if !success {
 		slog.Warn("Not found custom WASM event in instantiate events")
 	} else {
-		if customWASMByte, err = json.Marshal(wasmEvent); err != nil {
+		if customWASMByte, err = json.Marshal(customWASMEvent); err != nil {
 			slog.Error("Failed to marshal custom WASM event", "error", err)
 		}
 	}
@@ -288,7 +288,7 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 	if !success {
 		slog.Warn("Not found custom WASM event in instantiate events")
 	} else {
-		if customWASMByte, err = json.Marshal(wasmEvent); err != nil {
+		if customWASMByte, err = json.Marshal(customWASMEvent); err != nil {
 			slog.Error("Failed to marshal custom WASM event", "error", err)
 		}
 	}
@@ -430,7 +430,7 @@ func (m *Module) HandleMsgMigrateContract(index int, tx *junotypes.Transaction, 
 	if !success {
 		slog.Warn("Not found custom WASM event in instantiate events")
 	} else {
-		if customWASMByte, err = json.Marshal(wasmEvent); err != nil {
+		if customWASMByte, err = json.Marshal(customWASMEvent); err != nil {
 			slog.Error("Failed to marshal custom WASM event", "error", err)
 		}
 	}
