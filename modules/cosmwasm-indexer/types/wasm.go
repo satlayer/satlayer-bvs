@@ -146,7 +146,6 @@ type WASMExecuteContract struct {
 	MessageType        string
 	WASMEvent          []byte
 	CustomWASMEvent    []byte
-	Funds              sdk.Coins
 	ExecutedAt         time.Time
 	Height             int64
 	TxHash             string
@@ -182,7 +181,7 @@ func GetWasmExecuteContractMessageType(rawContractMsg []byte) string {
 // NewWASMExecuteContract allows to build a new x/wasm execute contract instance
 func NewWASMExecuteContract(
 	sender string, contractAddress string, rawMsg wasmtypes.RawContractMessage, wasmEvent []byte, customWASMEvent []byte,
-	funds sdk.Coins, executedAt time.Time, height int64, txHash string,
+	executedAt time.Time, height int64, txHash string,
 ) WASMExecuteContract {
 	executeContractMsg, _ := rawMsg.MarshalJSON()
 
@@ -195,7 +194,6 @@ func NewWASMExecuteContract(
 		MessageType:        messageType,
 		WASMEvent:          wasmEvent,
 		CustomWASMEvent:    customWASMEvent,
-		Funds:              funds,
 		ExecutedAt:         executedAt,
 		Height:             height,
 		TxHash:             txHash,

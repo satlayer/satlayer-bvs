@@ -139,36 +139,39 @@ func NewWASMInstantiateContractRow(
 
 // WASMExecuteContractRow represents a single row inside the "wasm_execute_contract" table
 type WASMExecuteContractRow struct {
-	Sender             string    `db:"sender"`
-	ContractAddress    string    `db:"contract_address"`
-	RawContractMessage string    `db:"raw_contract_message"`
-	Funds              *DBCoins  `db:"funds"`
-	Data               string    `db:"data"`
-	ExecutedAt         time.Time `db:"executed_at"`
-	Height             int64     `db:"height"`
-	Hash               string    `db:"hash"`
+	Sender                 string `db:"sender"`
+	ContractAddress        string `db:"contract_address"`
+	ExecuteContractMessage string `db:"execute_contract_message"`
+	MessageType            string
+	WASMEvent              []byte    `db:"wasm_event"`
+	CustomWASMEvent        []byte    `db:"custom_wasm_event"`
+	ExecutedAt             time.Time `db:"executed_at"`
+	Height                 int64     `db:"height"`
+	TxHash                 string    `db:"tx_hash"`
 }
 
 // NewWASMExecuteContractRow allows to easily create a new WASMExecuteContractRow
 func NewWASMExecuteContractRow(
 	sender string,
 	contractAddress string,
-	rawContractMessage string,
-	funds *DBCoins,
-	data string,
+	executeContractMessage string,
+	messageType string,
+	wasmEvent []byte,
+	customWASMEvent []byte,
 	executedAt time.Time,
 	height int64,
-	hash string,
+	txHash string,
 ) WASMExecuteContractRow {
 	return WASMExecuteContractRow{
-		Sender:             sender,
-		RawContractMessage: rawContractMessage,
-		Funds:              funds,
-		ContractAddress:    contractAddress,
-		Data:               data,
-		ExecutedAt:         executedAt,
-		Height:             height,
-		Hash:               hash,
+		Sender:                 sender,
+		ContractAddress:        contractAddress,
+		ExecuteContractMessage: executeContractMessage,
+		MessageType:            messageType,
+		WASMEvent:              wasmEvent,
+		CustomWASMEvent:        customWASMEvent,
+		ExecutedAt:             executedAt,
+		Height:                 height,
+		TxHash:                 txHash,
 	}
 }
 
