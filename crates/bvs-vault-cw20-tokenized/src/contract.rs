@@ -141,17 +141,15 @@ mod receipt_cw20_execute {
         }
         RECEIPT_TOKEN_INFO.save(deps.storage, &config)?;
 
-        // add amount to recipient balance
-        let rcpt_addr = recipient;
         RECEIPT_TOKEN_BALANCES.update(
             deps.storage,
-            &rcpt_addr,
+            &recipient,
             |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
         )?;
 
         let res = Response::new()
             .add_attribute("action", "mint")
-            .add_attribute("to", rcpt_addr)
+            .add_attribute("to", recipient)
             .add_attribute("amount", amount);
         Ok(res)
     }
@@ -217,7 +215,6 @@ mod vault_execute {
     use bvs_vault_cw20::token as UnderlyingToken;
     use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, Timestamp};
     use cw20_base::contract::execute_burn as receipt_token_burn;
-    use cw20_base::contract::query_balance as query_receipt_token_balance;
 
     /// This executes a transfer of assets from the `info.sender` to the vault contract.
     ///
