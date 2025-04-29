@@ -349,7 +349,7 @@ mod vault_execute {
             env.clone(),
             info.clone(),
             env.contract.address.to_string(),
-            msg.amount.clone(),
+            msg.amount,
         )?;
 
         let withdrawal_lock_period: u64 =
