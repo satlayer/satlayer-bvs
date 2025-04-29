@@ -164,18 +164,18 @@ func (db *DB) SaveWASMExecuteContracts(executeContracts []types.WASMExecuteContr
 func (db *DB) saveWASMExecuteContracts(paramNumber int, executeContracts []types.WASMExecuteContract) error {
 	stmt := `
 INSERT INTO wasm_execute_contract 
-(sender, contract_address, execute_contract_message, message_type, wasm_event, custom_wasm_event, funds, executed_at, height, tx_hash) 
+(sender, contract_address, execute_contract_message, message_type, wasm_event, custom_wasm_event, executed_at, height, tx_hash) 
 VALUES `
 
 	var args []any
 	for i, executeContract := range executeContracts {
 		ii := i * paramNumber
 		stmt += fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d),",
-			ii+1, ii+2, ii+3, ii+4, ii+5, ii+6, ii+7, ii+8, ii+9, ii+10)
+			ii+1, ii+2, ii+3, ii+4, ii+5, ii+6, ii+7, ii+8, ii+9)
 		args = append(args,
 			executeContract.Sender, executeContract.ContractAddress, string(executeContract.ExecuteContractMsg),
 			executeContract.MessageType, executeContract.WASMEvent, executeContract.CustomWASMEvent,
-			pq.Array(dbtypes.NewDBCoins(executeContract.Funds)), executeContract.ExecutedAt, executeContract.Height, executeContract.TxHash)
+			executeContract.ExecutedAt, executeContract.Height, executeContract.TxHash)
 	}
 
 	// Remove trailing ","
