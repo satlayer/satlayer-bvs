@@ -241,12 +241,12 @@ mod vault_execute {
 
         let assets = msg.amount;
         let (vault, new_receipt_tokens) = {
-            let balance = PrimaryStakingToken::query_balance(&deps.as_ref(), &env)?;
-            let mut vault = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
+            let staking_token_balance = PrimaryStakingToken::query_balance(&deps.as_ref(), &env)?;
+            let receipt_token_supply =
+                cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
+            let vault = offset::VirtualOffset::new(receipt_token_supply, staking_token_balance)?;
 
             let new_receipt_tokens = vault.assets_to_shares(assets)?;
-            // Add shares to TOTAL_SHARES
-            vault.checked_add_shares(deps.storage, new_receipt_tokens)?;
 
             (vault, new_receipt_tokens)
         };
@@ -270,18 +270,6 @@ mod vault_execute {
                 msg.recipient.clone(),
                 new_receipt_tokens,
             )?;
-
-            // TOTAL_SHARE and TOTAL_SUPPLY should be the same
-            let total_receipt_token_supply =
-                cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
-
-            if total_receipt_token_supply != vault.total_shares() {
-                // Ideally, this should never happen
-                return Err(VaultError::zero(
-                    "Total shares tracked in account and total supply circulating mismatch",
-                )
-                .into());
-            }
         }
 
         Ok(Response::new()
@@ -311,16 +299,15 @@ mod vault_execute {
         let receipt_tokens = msg.amount;
 
         let (vault, claim_staking_tokens) = {
-            let balance = PrimaryStakingToken::query_balance(&deps.as_ref(), &env)?;
-            let mut vault = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
+            let staking_token_balance = PrimaryStakingToken::query_balance(&deps.as_ref(), &env)?;
+            let receipt_token_supply =
+                cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
+            let vault = offset::VirtualOffset::new(receipt_token_supply, staking_token_balance)?;
 
             let primary_staking_tokens = vault.shares_to_assets(receipt_tokens)?;
             if primary_staking_tokens.is_zero() {
                 return Err(VaultError::zero("Withdraw assets cannot be zero.").into());
             }
-
-            // Remove shares from TOTAL_SHARES
-            vault.checked_sub_shares(deps.storage, receipt_tokens)?;
 
             (vault, primary_staking_tokens)
         };
@@ -334,18 +321,6 @@ mod vault_execute {
 
         // Burn the receipt token from the staker
         receipt_token_burn(deps.branch(), env.clone(), info.clone(), receipt_tokens)?;
-
-        let total_shares_from_offset = offset::get_total_shares(deps.storage).unwrap_or_default();
-        let total_supply_of_receipt_token =
-            cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
-
-        if total_shares_from_offset != total_supply_of_receipt_token {
-            // Ideally, this should never happen
-            return Err(VaultError::unauthorized(
-                "Total shares tracked in account and total supply circulating mismatch",
-            )
-            .into());
-        }
 
         Ok(Response::new()
             .add_event(
@@ -430,19 +405,18 @@ mod vault_execute {
             return Err(VaultError::locked("The shares are locked").into());
         }
 
-        let (vault, claimed_assets) = {
-            let balance = PrimaryStakingToken::query_balance(&deps.as_ref(), &env)?;
-            let mut vault = offset::VirtualOffset::load(&deps.as_ref(), balance)?;
+        let claimed_assets = {
+            let staking_token_balance = PrimaryStakingToken::query_balance(&deps.as_ref(), &env)?;
+            let receipt_token_supply =
+                cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
+            let vault = offset::VirtualOffset::new(receipt_token_supply, staking_token_balance)?;
 
             let assets = vault.shares_to_assets(queued_shares)?;
             if assets.is_zero() {
                 return Err(VaultError::zero("Withdraw assets cannot be zero.").into());
             }
 
-            // Remove shares from TOTAL_SHARES
-            vault.checked_sub_shares(deps.storage, queued_shares)?;
-
-            (vault, assets)
+            assets
         };
 
         // CW20 transfer of asset to msg.recipient
@@ -457,16 +431,8 @@ mod vault_execute {
         // will lock the stakes forever
         receipt_token_burn(deps.branch(), env.clone(), info.clone(), queued_shares)?;
 
-        let total_shares_from_offset = offset::get_total_shares(deps.storage).unwrap_or_default();
-        let total_supply_of_receipt_token =
+        let receipt_token_supply =
             cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
-        if total_shares_from_offset != total_supply_of_receipt_token {
-            // Ideally, this should never happen
-            return Err(VaultError::unauthorized(
-                "Total shares tracked in account and total supply circulating mismatch",
-            )
-            .into());
-        }
 
         Ok(Response::new()
             .add_event(
@@ -475,7 +441,7 @@ mod vault_execute {
                     .add_attribute("recipient", msg.0.to_string())
                     .add_attribute("sub_shares", queued_shares.to_string())
                     .add_attribute("claimed_assets", claimed_assets.to_string())
-                    .add_attribute("total_shares", vault.total_shares().to_string()),
+                    .add_attribute("total_shares", receipt_token_supply.to_string()),
             )
             .add_message(transfer_msg))
     }
@@ -548,8 +514,9 @@ mod vault_query {
         env: Env,
         receipt_tokens: Uint128,
     ) -> StdResult<Uint128> {
-        let balance = StakingToken::query_balance(&deps, &env)?;
-        let vault = offset::VirtualOffset::load(&deps, balance)?;
+        let staking_token_balance = StakingToken::query_balance(&deps, &env)?;
+        let receipt_token_supply = cw20_base::contract::query_token_info(deps)?.total_supply;
+        let vault = offset::VirtualOffset::new(receipt_token_supply, staking_token_balance)?;
         vault.shares_to_assets(receipt_tokens)
     }
 
@@ -557,8 +524,9 @@ mod vault_query {
     /// Shares in this tokenized vault the receipt token.
     /// Keeping the msg name the same as the non-tokenized vault for consistency.
     pub fn convert_to_receipt_token(deps: Deps, env: Env, assets: Uint128) -> StdResult<Uint128> {
-        let balance = StakingToken::query_balance(&deps, &env)?;
-        let vault = offset::VirtualOffset::load(&deps, balance)?;
+        let staking_token_balance = StakingToken::query_balance(&deps, &env)?;
+        let receipt_token_supply = cw20_base::contract::query_token_info(deps)?.total_supply;
+        let vault = offset::VirtualOffset::new(receipt_token_supply, staking_token_balance)?;
         vault.assets_to_shares(assets)
     }
 
@@ -566,7 +534,8 @@ mod vault_query {
     /// AKA total shares in the vault.
     /// AKA Total cirulating supply of the receipt token.
     pub fn total_receipt_token_supply(deps: Deps, _env: Env) -> StdResult<Uint128> {
-        offset::get_total_shares(deps.storage)
+        let receipt_token_supply = cw20_base::contract::query_token_info(deps)?.total_supply;
+        StdResult::Ok(receipt_token_supply)
     }
 
     /// Total Staking Tokens in this vault. Including assets through staking and donations.
@@ -582,7 +551,8 @@ mod vault_query {
     /// Returns the vault information
     pub fn vault_info(deps: Deps, env: Env) -> StdResult<VaultInfoResponse> {
         let balance = StakingToken::query_balance(&deps, &env)?;
-        let vault = offset::VirtualOffset::load(&deps, balance)?;
+        let receipt_token_supply = cw20_base::contract::query_token_info(deps)?.total_supply;
+        let vault = offset::VirtualOffset::new(receipt_token_supply, balance)?;
         let cw20_contract = StakingToken::get_cw20_contract(deps.storage)?;
         let version = cw2::get_contract_version(deps.storage)?;
         Ok(VaultInfoResponse {
