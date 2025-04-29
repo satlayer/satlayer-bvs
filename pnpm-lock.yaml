@@ -120,8 +120,8 @@ importers:
         specifier: workspace:*
         version: link:../../../modules/babylond
       quicktype-core:
-        specifier: ^23.0.175
-        version: 23.0.175
+        specifier: ^23.1.0
+        version: 23.1.0
 
   examples/squaring/squaring-contract: {}
 
@@ -164,8 +164,8 @@ importers:
         specifier: workspace:*
         version: link:../../crates/bvs-vault-router
       quicktype-core:
-        specifier: ^23.0.175
-        version: 23.0.175
+        specifier: ^23.1.0
+        version: 23.1.0
 
   packages/config-eslint:
     dependencies:
@@ -232,8 +232,8 @@ importers:
         specifier: workspace:*
         version: link:../../crates/bvs-vault-router
       quicktype-core:
-        specifier: ^23.0.175
-        version: 23.0.175
+        specifier: ^23.1.0
+        version: 23.1.0
 
 packages:
 
@@ -3439,8 +3439,8 @@ packages:
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
 
-  quicktype-core@23.0.175:
-    resolution: {integrity: sha512-I8ZjUh5fcz8w+YaIyTjIRWrRQmO+A6LZiZYfrDWtzcWJTMYFyzwyPPR4bHTON3dqTqJVJCbopO65h5hUSAa6UA==}
+  quicktype-core@23.1.0:
+    resolution: {integrity: sha512-ZcIL85T5fvDHbkM6fhxYoJlPEeX3QCBmw3S2pDsn01pSZeoWetgsZ8jNml5iHMf4tjmxp/s6KshZD43kC4Jo2A==}
 
   react-compiler-runtime@0.0.0-experimental-22c6e49-20241219:
     resolution: {integrity: sha512-bOAGaRL1ldfIIpbDsl+uV025Ta6RS6/cOjvvh8r2Vo7KtqB+RSvihVYRsWQz7ECKNPWdq5MClS845acwAwieDw==}
@@ -7931,7 +7931,7 @@ snapshots:
 
   queue-microtask@1.2.3: {}
 
-  quicktype-core@23.0.175:
+  quicktype-core@23.1.0:
     dependencies:
       '@glideapps/ts-necessities': 2.2.3
       browser-or-node: 3.0.0
