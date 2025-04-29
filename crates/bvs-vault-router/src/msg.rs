@@ -1,4 +1,4 @@
-use bvs_library::addr::Operator;
+use crate::state::{SlashingRequest, SlashingRequestId};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Timestamp, Uint64};
 
@@ -39,7 +39,7 @@ pub enum ExecuteMsg {
 pub struct SlashingRequestPayload {
     /// The operator address to slash.
     /// (service, operator) must have active registration at the timestamp.
-    pub operator: Operator,
+    pub operator: String,
     /// The percentage of tokens to slash in basis points (1/100th of a percent).
     /// Max bips to slash is set by the service slashing parameters at the timestamp and the operator
     /// must have opted in.
@@ -91,6 +91,12 @@ pub enum QueryMsg {
     /// QueryMsg WithdrawalLockPeriod: returns the withdrawal lock period.
     #[returns(WithdrawalLockPeriodResponse)]
     WithdrawalLockPeriod {},
+
+    #[returns(SlashingRequestIdResponse)]
+    SlashingRequestId { service: String, operator: String },
+
+    #[returns(SlashingRequestResponse)]
+    SlashingRequest(SlashingRequestId),
 }
 
 /// The response to the `IsWhitelisted` query.
@@ -121,3 +127,9 @@ pub struct Vault {
 /// This is just a wrapper around `Uint64`, so that the schema can be generated.
 #[cw_serde]
 struct WithdrawalLockPeriodResponse(Uint64);
+
+#[cw_serde]
+pub struct SlashingRequestIdResponse(pub Option<SlashingRequestId>);
+
+#[cw_serde]
+pub struct SlashingRequestResponse(pub Option<SlashingRequest>);

@@ -67,17 +67,17 @@ impl SlashingRequest {
     }
 }
 
-/// SlashingId stores the id in 256 bit (32 bytes)
+/// SlashingRequestId stores the id in 256 bit (32 bytes)
 #[cw_serde]
-pub struct SlashingId(pub HexBinary);
+pub struct SlashingRequestId(pub HexBinary);
 
-impl fmt::Display for SlashingId {
+impl fmt::Display for SlashingRequestId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0.to_hex())
     }
 }
 
-impl Deref for SlashingId {
+impl Deref for SlashingRequestId {
     type Target = HexBinary;
 
     fn deref(&self) -> &Self::Target {
@@ -85,25 +85,25 @@ impl Deref for SlashingId {
     }
 }
 
-impl DerefMut for SlashingId {
+impl DerefMut for SlashingRequestId {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl From<HexBinary> for SlashingId {
+impl From<HexBinary> for SlashingRequestId {
     fn from(bytes: HexBinary) -> Self {
         Self(bytes)
     }
 }
 
-impl From<[u8; 32]> for SlashingId {
+impl From<[u8; 32]> for SlashingRequestId {
     fn from(bytes: [u8; 32]) -> Self {
         Self(HexBinary::from(bytes))
     }
 }
 
-impl<'a> PrimaryKey<'a> for SlashingId {
+impl<'a> PrimaryKey<'a> for SlashingRequestId {
     type Prefix = ();
     type SubPrefix = ();
     type Suffix = Self;
@@ -115,7 +115,7 @@ impl<'a> PrimaryKey<'a> for SlashingId {
     }
 }
 
-impl KeyDeserialize for SlashingId {
+impl KeyDeserialize for SlashingRequestId {
     type Output = Self;
 
     const KEY_ELEMS: u16 = 1;
@@ -123,13 +123,17 @@ impl KeyDeserialize for SlashingId {
     #[inline(always)]
     fn from_vec(value: Vec<u8>) -> StdResult<Self::Output> {
         // Convert the Vec<u8> to HexBinary, then wrap it in SlashingId
-        Ok(SlashingId(HexBinary::from(value)))
+        Ok(SlashingRequestId(HexBinary::from(value)))
     }
 }
 
-pub(crate) const SLASHING_ID: Map<(&Service, &Operator), SlashingId> = Map::new("slashing_id");
+pub(crate) const SLASHING_REQUEST_IDS: Map<(&Service, &Operator), SlashingRequestId> =
+    Map::new("slashing_request_ids");
 
-pub(crate) fn hash_slashing_id(service: &Service, data: &SlashingRequest) -> StdResult<SlashingId> {
+pub(crate) fn hash_slashing_request_id(
+    service: &Service,
+    data: &SlashingRequest,
+) -> StdResult<SlashingRequestId> {
     let mut hasher = sha3::Sha3_256::new();
     hasher.update(service.as_bytes());
     hasher.update(to_json_vec(data)?);
@@ -137,7 +141,7 @@ pub(crate) fn hash_slashing_id(service: &Service, data: &SlashingRequest) -> Std
     Ok(<[u8; 32]>::from(hasher.finalize()).into())
 }
 
-pub(crate) const SLASHING_REQUESTS: Map<SlashingId, SlashingRequest> =
+pub(crate) const SLASHING_REQUESTS: Map<SlashingRequestId, SlashingRequest> =
     Map::new("slashing_requests");
 
 pub fn get_active_slashing_requests(
@@ -146,7 +150,7 @@ pub fn get_active_slashing_requests(
     operator: &Operator,
 ) -> StdResult<Option<SlashingRequest>> {
     // get active slashing_id
-    let active_slashing_id = match SLASHING_ID.may_load(store, (service, operator))? {
+    let active_slashing_id = match SLASHING_REQUEST_IDS.may_load(store, (service, operator))? {
         Some(id) => id,
         None => return Ok(None),
     };
@@ -161,13 +165,14 @@ pub fn get_active_slashing_requests(
 pub fn save_slashing_request(
     store: &mut dyn Storage,
     service: &Service,
+    operator: &Operator,
     data: &SlashingRequest,
-) -> StdResult<SlashingId> {
+) -> StdResult<SlashingRequestId> {
     // generate slashing_id
-    let slashing_id = hash_slashing_id(service, data)?;
+    let slashing_id = hash_slashing_request_id(service, data)?;
 
     // save slashing id
-    SLASHING_ID.save(store, (service, &data.request.operator), &slashing_id)?;
+    SLASHING_REQUEST_IDS.save(store, (service, operator), &slashing_id)?;
 
     // save slashing request
     SLASHING_REQUESTS.save(store, slashing_id.clone(), data)?;
@@ -188,7 +193,7 @@ mod test {
         let service = deps.api.addr_make("service");
         let operator = deps.api.addr_make("operator");
         let data = SlashingRequestPayload {
-            operator: operator.clone(),
+            operator: operator.to_string(),
             bips: 100,
             timestamp: env.block.time,
             metadata: SlashingMetadata {
@@ -201,9 +206,13 @@ mod test {
             env.block.time.plus_seconds(100),
         );
 
-        let res = save_slashing_request(&mut deps.storage, &service, &slashing_request).unwrap();
+        let res = save_slashing_request(&mut deps.storage, &service, &operator, &slashing_request)
+            .unwrap();
 
-        assert_eq!(res, hash_slashing_id(&service, &slashing_request).unwrap());
+        assert_eq!(
+            res,
+            hash_slashing_request_id(&service, &slashing_request).unwrap()
+        );
         assert_eq!(
             res.to_string(),
             "dff7a6f403eff632636533660ab53ab35e7ae0fe2e5dacb160aa7d876a412f09",
@@ -211,7 +220,7 @@ mod test {
         );
 
         // assert that SLASHING_ID state is updated
-        let slashing_id_res = SLASHING_ID
+        let slashing_id_res = SLASHING_REQUEST_IDS
             .may_load(&deps.storage, (&service, &operator))
             .unwrap();
         assert_eq!(Some(res.clone()), slashing_id_res);
