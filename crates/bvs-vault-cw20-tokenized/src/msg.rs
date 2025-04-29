@@ -1,8 +1,8 @@
 use bvs_pauser::api::Display;
 use bvs_vault_base::msg::{
-    AssetsResponse, ConvertToAssetsResponse, ConvertToSharesResponse, QueuedWithdrawalResponse,
-    Recipient, RecipientAmount, SharesResponse, TotalAssetsResponse, TotalSharesResponse,
-    VaultInfoResponse,
+    Amount, AssetsResponse, ConvertToAssetsResponse, ConvertToSharesResponse,
+    QueuedWithdrawalResponse, Recipient, RecipientAmount, SharesResponse, TotalAssetsResponse,
+    TotalSharesResponse, VaultInfoResponse,
 };
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -82,6 +82,13 @@ pub enum ExecuteMsg {
     /// After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
     /// can redeem the withdrawal.
     RedeemWithdrawalTo(Recipient),
+
+    /// ExecuteMsg SlashLocked moves the assets from the vault to the `vault-router` contract for custody.
+    /// Part of the [https://build.satlayer.xyz/architecture/slashing](Programmable Slashing) lifecycle.
+    /// This function can only be called by `vault-router`, and takes an absolute `amount` of assets to be moved.
+    /// The amount is calculated and enforced by the router.
+    /// Further utility of the assets, post-locked, is implemented and enforced on the router level.
+    SlashLocked(Amount),
 }
 
 #[cw_serde]
