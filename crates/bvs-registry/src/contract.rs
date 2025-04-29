@@ -77,6 +77,10 @@ pub fn execute(
             let service = deps.api.addr_validate(&service)?;
             execute::operator_opt_in_to_slashing(deps, env, info, service)
         }
+        ExecuteMsg::SlashingRequest { operator, data } => {
+            let operator = deps.api.addr_validate(&operator)?;
+            execute::slashing_request(deps, env, info, operator, data)
+        }
         ExecuteMsg::TransferOwnership { new_owner } => {
             let new_owner = deps.api.addr_validate(&new_owner)?;
             ownership::transfer_ownership(deps.storage, info, new_owner)
@@ -86,14 +90,17 @@ pub fn execute(
 }
 
 mod execute {
+    use crate::contract::query::get_slashing_parameters;
     use crate::error::ContractError;
-    use crate::msg::Metadata;
+    use crate::msg::{Metadata, SlashingParametersResponse};
     use crate::state;
     use crate::state::{
         get_registration_status, is_slashing_enabled, require_active_registration_status,
         require_operator_registered, require_service_registered, set_registration_status,
-        RegistrationStatus, SlashingParameters, OPERATORS, SERVICES,
+        RegistrationStatus, SlashingParameters, SlashingRequest, SlashingRequestData, OPERATORS,
+        SERVICES,
     };
+    use bvs_library::time::DAYS;
     use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Response};
 
     /// Event for MetadataUpdated
@@ -480,6 +487,112 @@ mod execute {
             Event::new("OperatorOptedInToSlashing")
                 .add_attribute("operator", operator)
                 .add_attribute("service", service),
+        ))
+    }
+
+    pub fn slashing_request(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        operator: Addr,
+        data: SlashingRequestData,
+    ) -> Result<Response, ContractError> {
+        // service is the sender
+        let service = info.sender;
+
+        const MAX_SLASHABLE_DELAY: u64 = 7 * DAYS; // TODO: move to const
+
+        const MAX_STRING_BYTES: usize = 400; // TODO: move to const
+
+        // require active status between opeartor and service
+        let key = (&operator, &service);
+        require_active_registration_status(deps.storage, key)?;
+
+        // ensure timestamp of slash must not be more than MAX_SLASHABLE_DELAY before and not in the future
+        if data.timestamp < env.block.time.minus_seconds(MAX_SLASHABLE_DELAY)
+            || data.timestamp > env.block.time
+        {
+            return Err(ContractError::InvalidSlashingRequest {
+                msg: "Slash timestamp is outside of the allowable slash period.".to_string(),
+            });
+        }
+
+        // get slashing params of the service at the given timestamp, also checks if slashing is enabled
+        let SlashingParametersResponse(slashing_parameters) = get_slashing_parameters(
+            deps.as_ref(),
+            service.clone(),
+            Some(data.timestamp.seconds()),
+        )?;
+        let slashing_parameters = match slashing_parameters {
+            Some(x) => x,
+            None => {
+                return Err(ContractError::InvalidSlashingParameters {
+                    msg: "Service has not enabled slashing at timestamp.".to_string(),
+                })
+            }
+        };
+
+        // ensure bips must not exceed max_slashing_bips set by service
+        if data.bips > slashing_parameters.max_slashing_bips {
+            return Err(ContractError::InvalidSlashingRequest {
+                msg: "Slashing bips is over max_slashing_bips set.".to_string(),
+            });
+        }
+
+        // TODO: check if needed, need to add a lower bound?
+        // ensure that metadata.reason does not exceed X bytes
+        if data.metadata.reason.len() > MAX_STRING_BYTES {
+            return Err(ContractError::InvalidSlashingRequest {
+                msg: "Reason string is too long.".to_string(),
+            });
+        }
+
+        // ensure that operator has opted in to slashing at the given timestamp.
+        let is_operated_opted_in = state::is_operator_opted_in_to_slashing(
+            deps.storage,
+            &service,
+            &operator,
+            Some(data.timestamp.seconds()),
+        )?;
+        if !is_operated_opted_in {
+            return Err(ContractError::InvalidSlashingRequest {
+                msg: "Operator has not opted-in to slashing at timestamp.".to_string(),
+            });
+        }
+
+        // get current active slashing request for (service, operator) pair
+        let active_slashing_requests =
+            state::get_active_slashing_requests(deps.storage, &service, &operator)?;
+
+        // if active slashing request exists and
+        // if request_expiry > now (in the future) => request hasn't expired,
+        // so the service has to manually cancel active request (throw Err)
+        if let Some(active_slashing_requests) = active_slashing_requests {
+            if active_slashing_requests.request_expiry > env.block.time {
+                return Err(ContractError::InvalidSlashingRequest {
+                    msg: "Service has current active slashing request for the operator."
+                        .to_string(),
+                });
+            }
+        }
+
+        // else, it will be overriden by current slash request
+        // TODO: this `resolution_window` is using the `slashing_parameters` from the offending timestamp.
+        let new_request_expiry = env
+            .block
+            .time
+            .plus_seconds(slashing_parameters.resolution_window * 2);
+        let new_request = SlashingRequest::new(data.clone(), env.block.time, new_request_expiry);
+
+        // save slash data
+        let slashing_id = state::save_slashing_request(deps.storage, &service, &new_request)?;
+
+        Ok(Response::new().add_event(
+            Event::new("SlashingRequest")
+                .add_attribute("service", service)
+                .add_attribute("operator", operator)
+                .add_attribute("slashing_id", slashing_id.to_string())
+                .add_attribute("reason", data.metadata.reason),
         ))
     }
 }
