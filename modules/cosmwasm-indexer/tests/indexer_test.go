@@ -1,7 +1,9 @@
 package tests
 
 import (
+	"bytes"
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,8 +17,11 @@ import (
 	noderemote "github.com/forbole/juno/v6/node/remote"
 	parserconfig "github.com/forbole/juno/v6/parser/config"
 	junoconfig "github.com/forbole/juno/v6/types/config"
+	"github.com/jmoiron/sqlx"
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/types/config"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"gopkg.in/yaml.v3"
 
 	"github.com/satlayer/satlayer-bvs/babylond"
@@ -24,7 +29,6 @@ import (
 	api "github.com/satlayer/satlayer-bvs/cosmwasm-api"
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/modules/wasm"
 	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 type CosmWasmIndexerTestSuite struct {
@@ -32,9 +36,232 @@ type CosmWasmIndexerTestSuite struct {
 	babylonContainer *babylond.BabylonContainer
 	dbContainer      *PostgreSQLContainer
 	indexerContainer testcontainers.Container
-	contract         *babylond.DeployedWasmContract
-	userA            types.AccAddress
-	userB            types.AccAddress
+
+	contract *babylond.DeployedWasmContract
+	userA    types.AccAddress
+	userB    types.AccAddress
+}
+
+func (c *CosmWasmIndexerTestSuite) RunIndexer(ctx context.Context) error {
+	projectRoot, err := filepath.Abs("../..")
+	if err != nil {
+		return fmt.Errorf("failed to generate config: %w", err)
+	}
+
+	if err = c.generateYAMLConfig(); err != nil {
+		return fmt.Errorf("failed to generate config: %w", err)
+	}
+
+	req := testcontainers.ContainerRequest{
+		Image: "golang:1.24.2-alpine3.20",
+		Env: map[string]string{
+			"GOPATH":      "/go",
+			"GOCACHE":     "/go/cache",
+			"GO111MODULE": "on",
+		},
+		Mounts: testcontainers.ContainerMounts{
+			testcontainers.ContainerMount{
+				Source: testcontainers.GenericBindMountSource{
+					HostPath: projectRoot,
+				},
+				Target: "/app",
+			},
+		},
+		Cmd: []string{
+			"sh", "-c",
+			"cd /app/cosmwasm-indexer && " +
+				"go build -v -o indexer ./cmd/indexer && " +
+				"echo 'Build completed' && " +
+				"./indexer start --home /app/cosmwasm-indexer/tests/testdata",
+		},
+		WaitingFor: wait.ForAll(
+			wait.ForLog("Build completed").WithStartupTimeout(200*time.Second),
+			wait.ForExec([]string{"pgrep", "indexer"}).
+				WithStartupTimeout(10*time.Second).
+				WithPollInterval(2*time.Second),
+		),
+	}
+
+	indexerContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to start running indexer container: %w", err)
+	}
+
+	c.indexerContainer = indexerContainer
+	return nil
+}
+
+func (c *CosmWasmIndexerTestSuite) RunIndexer1(ctx context.Context) error {
+	projectRoot, err := filepath.Abs("..")
+	if err != nil {
+		return fmt.Errorf("failed to generate config: %w", err)
+	}
+
+	if err = c.generateYAMLConfig(); err != nil {
+		return fmt.Errorf("failed to generate config: %w", err)
+	}
+
+	files := make([]testcontainers.ContainerFile, 0)
+	files = append(files, testcontainers.ContainerFile{
+		HostFilePath:      fmt.Sprintf("%s/indexer", projectRoot),
+		ContainerFilePath: "/app/indexer",
+		FileMode:          0o755,
+	})
+	files = append(files, testcontainers.ContainerFile{
+		HostFilePath:      fmt.Sprintf("%s/config.yaml", projectRoot),
+		ContainerFilePath: "/app/data/config.yaml",
+		FileMode:          0o755,
+	})
+
+	runReq := testcontainers.ContainerRequest{
+		Image: "ubuntu:22.04",
+		Files: files,
+		Cmd: []string{
+			"sh", "-c",
+			"apt-get update && " +
+				"apt-get install -y wget && " +
+				"cd /app/ && " +
+				"WASMVM_VERSION=$(grep github.com/CosmWasm/wasmvm go.mod | cut -d' ' -f2) && " +
+				"wget https://github.com/CosmWasm/wasmvm/releases/download/v2.2.1/libwasmvm.$(uname -m).so -O /lib/libwasmvm.$(uname -m).so && " +
+				"wget https://github.com/CosmWasm/wasmvm/releases/download/v2.2.1/checksums.txt -O /tmp/checksums.txt && " +
+				"sha256sum /lib/libwasmvm.$(uname -m).so | grep $(cat /tmp/checksums.txt | grep libwasmvm.$(uname -m) | cut -d ' ' -f 1) && " +
+				"./indexer start --home /app/data/ 2>&1 | tee /app/indexer.log",
+		},
+		WaitingFor: wait.ForExec([]string{"pgrep", "indexer"}).
+			WithStartupTimeout(10 * time.Second).
+			WithPollInterval(2 * time.Second),
+	}
+
+	indexerContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: runReq,
+		Started:          true,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to start running indexer container: %w", err)
+	}
+
+	logs, err := indexerContainer.Logs(ctx)
+	if err != nil {
+		fmt.Printf("Failed to get container logs: %v\n", err)
+	} else {
+		fmt.Println("Container logs:")
+		buf := new(bytes.Buffer)
+		_, err = buf.ReadFrom(logs)
+		if err != nil {
+			fmt.Printf("Failed to read container logs: %v\n", err)
+		} else {
+			fmt.Println(buf.String())
+		}
+	}
+
+	c.indexerContainer = indexerContainer
+	return nil
+}
+
+// Container running order: Babylon chain -> PostgreSQL -> Indexer
+func (c *CosmWasmIndexerTestSuite) SetupSuite() {
+	ctx := context.Background()
+
+	c.babylonContainer = babylond.Run(ctx)
+	c.dbContainer = Run(ctx)
+
+	c.Cw20Contract()
+
+	if err := c.RunIndexer(ctx); err != nil {
+		panic(err)
+	}
+}
+
+func (c *CosmWasmIndexerTestSuite) TearDownSuite() {
+	ctx := context.Background()
+
+	if c.indexerContainer != nil {
+		c.Require().NoError(c.indexerContainer.Terminate(ctx))
+	}
+
+	if c.babylonContainer != nil {
+		c.Require().NoError(c.babylonContainer.Terminate(ctx))
+	}
+
+	if c.dbContainer != nil {
+		c.Require().NoError(c.dbContainer.Terminate(ctx))
+	}
+}
+
+func (c *CosmWasmIndexerTestSuite) Cw20Contract() {
+	c.userA = c.babylonContainer.GenerateAddress("userA")
+	initMsg := cw20.InstantiateMsg{
+		Decimals: 6,
+		InitialBalances: []cw20.Cw20Coin{
+			{
+				Address: c.userA.String(),
+				Amount:  "1000000000",
+			},
+		},
+		Mint: &cw20.MinterResponse{
+			Minter: c.userA.String(),
+		},
+		Name:   "Test Token",
+		Symbol: "TEST",
+	}
+
+	contract := cw20.DeployCw20(c.babylonContainer, initMsg)
+	c.NotEmpty(contract.Address)
+
+	c.contract = contract
+
+	c.executeMint()
+}
+
+func (c *CosmWasmIndexerTestSuite) executeMint() {
+	_ = c.babylonContainer.FundAddressUbbn(c.userA.String(), 1000)
+	clientCtx := api.NewClientCtx(c.babylonContainer.RpcUri, c.babylonContainer.ChainId).
+		WithKeyring(c.babylonContainer.ClientCtx.Keyring).
+		WithFromAddress(c.userA).
+		WithFromName("userA")
+
+	c.userB = c.babylonContainer.GenerateAddress("userB")
+	executeMsg := cw20.ExecuteMsg{Mint: &cw20.Mint{
+		Amount:    "100",
+		Recipient: c.userB.String(),
+	}}
+
+	executeOptions := api.DefaultBroadcastOptions().
+		WithContractAddr(c.contract.Address).
+		WithExecuteMsg(executeMsg).
+		WithGasPrice("0.002ubbn")
+
+	_, err := api.Execute(
+		clientCtx,
+		context.Background(),
+		c.userA.String(),
+		executeOptions,
+	)
+
+	c.Require().NoError(err)
+}
+
+func TestCosmWasmIndexer(t *testing.T) {
+	suite.Run(t, new(CosmWasmIndexerTestSuite))
+}
+
+func (c *CosmWasmIndexerTestSuite) TestRun() {
+	time.Sleep(5 * time.Second)
+
+	db, err := sql.Open("postgres", c.dbContainer.URL)
+	require.NoError(c.T(), err)
+	defer db.Close()
+
+	sqlxDB := sqlx.NewDb(db, "postgresql")
+	defer sqlxDB.Close()
+
+	var count int
+	err = sqlxDB.Get(&count, `SELECT count(*) FROM wasm_execute_contract`)
+	require.NoError(c.T(), err)
+	require.Equal(c.T(), count, 1)
 }
 
 func (c *CosmWasmIndexerTestSuite) generateYAMLConfig() error {
@@ -48,14 +275,14 @@ func (c *CosmWasmIndexerTestSuite) generateYAMLConfig() error {
 			Details: &noderemote.Details{
 				RPC: &noderemote.RPCConfig{
 					ClientName:     "babylon",
-					Address:        c.babylonContainer.RpcUri,
+					Address:        c.babylonContainer.SubnetRPCURI,
 					MaxConnections: 10,
 				},
 				GRPC: &noderemote.GRPCConfig{
-					Address:  c.babylonContainer.GrpcUri,
+					Address:  c.babylonContainer.SubnetGRPCURI,
 					Insecure: true,
 				},
-				API: &noderemote.APIConfig{Address: c.babylonContainer.ApiUri},
+				API: &noderemote.APIConfig{Address: c.babylonContainer.SubnetAPIURI},
 			},
 		},
 		Parser: parserconfig.DefaultParsingConfig(),
@@ -88,142 +315,15 @@ func (c *CosmWasmIndexerTestSuite) generateYAMLConfig() error {
 		return fmt.Errorf("failed to marshal config to YAML: %w", err)
 	}
 
-	configPath := filepath.Join("./testdata", "config.yaml")
+	currentPath, err := filepath.Abs(".")
+	if err != nil {
+		return fmt.Errorf("failed to get current root path: %w", err)
+	}
+	configPath := filepath.Join(currentPath, "testdata/config.yaml")
+
 	if err = os.WriteFile(configPath, yamlData, 0644); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
 	return nil
-}
-
-func (c *CosmWasmIndexerTestSuite) RunIndexer() error {
-	ctx := context.Background()
-
-	if err := c.generateYAMLConfig(); err != nil {
-		return fmt.Errorf("failed to generate config: %w", err)
-	}
-
-	req := testcontainers.ContainerRequest{
-		Image: "golang:1.24.2-alpine3.20",
-		Env: map[string]string{
-			"GOPATH":  "/go",
-			"GOCACHE": "/go/cache",
-		},
-		Mounts: testcontainers.ContainerMounts{
-			testcontainers.ContainerMount{
-				Source: testcontainers.GenericBindMountSource{
-					HostPath: ".",
-				},
-				Target: "/app",
-			},
-		},
-		Cmd: []string{
-			"sh", "-c",
-			"cd /app && go build -o indexer ./cmd/indexer && ./indexer start --home ./testdata/",
-		},
-		ExposedPorts: []string{"8080/tcp"},
-		WaitingFor: wait.ForLog("Starting indexer").
-			WithStartupTimeout(30 * time.Second),
-	}
-
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to start container: %w", err)
-	}
-
-	host, err := container.Host(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get container host: %w", err)
-	}
-
-	port, err := container.MappedPort(ctx, "8080")
-	if err != nil {
-		return fmt.Errorf("failed to get container port: %w", err)
-	}
-
-	url := fmt.Sprintf("http://%s:%s", host, port.Port())
-	fmt.Println("Indexer url: ", url)
-
-	// if err := wait.ForHTTP("/health").
-	// 	WithStartupTimeout(30*time.Second).
-	// 	WaitUntilReady(ctx, container); err != nil {
-	// 	return fmt.Errorf("failed to wait for service: %w", err)
-	// }
-
-	c.indexerContainer = container
-
-	return nil
-}
-
-func (c *CosmWasmIndexerTestSuite) SetupSuite() {
-	c.babylonContainer = babylond.Run(context.Background())
-	c.dbContainer = Run(context.Background())
-	c.DeployCw20Token()
-}
-
-func (c *CosmWasmIndexerTestSuite) TearDownSuite() {
-	ctx := context.Background()
-	if c.indexerContainer != nil {
-		c.Require().NoError(c.indexerContainer.Terminate(ctx))
-	}
-	c.Require().NoError(c.babylonContainer.Terminate(ctx))
-	c.Require().NoError(c.dbContainer.Terminate(ctx))
-}
-
-func (c *CosmWasmIndexerTestSuite) DeployCw20Token() {
-	c.userA = c.babylonContainer.GenerateAddress("userA")
-	initMsg := cw20.InstantiateMsg{
-		Decimals: 6,
-		InitialBalances: []cw20.Cw20Coin{
-			{
-				Address: c.userA.String(),
-				Amount:  "1000000000",
-			},
-		},
-		Mint: &cw20.MinterResponse{
-			Minter: c.userA.String(),
-		},
-		Name:   "Test Token",
-		Symbol: "TEST",
-	}
-
-	contract := cw20.DeployCw20(c.babylonContainer, initMsg)
-	c.NotEmpty(contract.Address)
-
-	c.contract = contract
-}
-
-func (c *CosmWasmIndexerTestSuite) ExecuteMint() {
-	clientCtx := api.NewClientCtx(c.babylonContainer.RpcUri, c.babylonContainer.ChainId).
-		WithKeyring(c.babylonContainer.ClientCtx.Keyring).
-		WithFromAddress(c.userA).
-		WithFromName("userA")
-
-	c.userB = c.babylonContainer.GenerateAddress("userB")
-	executeMsg := cw20.ExecuteMsg{Mint: &cw20.Mint{
-		Amount:    "100",
-		Recipient: c.userB.String(),
-	}}
-
-	executeOptions := api.DefaultBroadcastOptions().
-		WithContractAddr(c.contract.Address).
-		WithExecuteMsg(executeMsg).
-		WithGasPrice("0.002ubbn")
-
-	response, err := api.Execute(
-		clientCtx,
-		context.Background(),
-		c.userA.String(),
-		executeOptions,
-	)
-	fmt.Println("Mint method response: ", response)
-
-	c.Require().NoError(err)
-}
-
-func TestCosmWasmIndexer(t *testing.T) {
-	suite.Run(t, new(CosmWasmIndexerTestSuite))
 }
