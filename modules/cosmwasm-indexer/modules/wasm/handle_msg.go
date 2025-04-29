@@ -139,17 +139,32 @@ func (m *Module) HandleMsgInstantiateContract(index int, tx *junotypes.Transacti
 	slog.Debug("Handle MsgMigrateContract", "tx hash", tx.TxHash, "contract address", contractAddress,
 		"contract label name", labelName, "index", index, "Msg", string(msg.Msg))
 
-	wasmAttr, success := utils.FindEventByType(txEvents, wasmtypes.WasmModuleEventType)
+	wasmEvent, success := utils.FindEventByType(txEvents, wasmtypes.WasmModuleEventType)
 	if !success {
-		slog.Warn("Not found WASM attribute in instantiate events")
+		slog.Warn("Not found WASM event in instantiate events")
 	}
 
-	customWasmAttr, success := utils.FindCustomWASMEvent(txEvents)
-	if !success {
-		slog.Warn("Not found custom WASM attribute in instantiate events")
+	wasmByte, err := wasmEvent.Marshal()
+	if err != nil {
+		slog.Error("Failed to marshal WASM event into byte", "error", err)
 	}
 
-	slog.Info("wasm attribute", slog.Any("all events", txEvents), "wasmAttr", wasmAttr, "customWasmAttr", customWasmAttr)
+	customWASMEvent, success := utils.FindCustomWASMEvent(txEvents)
+	if !success {
+		slog.Warn("Not found custom WASM event in instantiate events")
+	}
+
+	customWASMByte, err := customWASMEvent.Marshal()
+	if err != nil {
+		slog.Error("Failed to marshal custom WASM event into byte", "error", err)
+	}
+
+	slog.Info("Instantiate WASM attribute", slog.Any("all events", txEvents), slog.Any("wasmEvent", wasmEvent),
+		slog.Any("customWASMEvent", customWASMEvent))
+	slog.Info("String wasm and custom wasm event", "wasmEvent", wasmEvent.String(),
+		"customWASMEvent", customWASMEvent.String())
+	slog.Info("Convert wasm and custom wasm event byte to string", "wasmEvent", string(wasmByte),
+		"customWasmEvent", string(customWASMByte))
 
 	// Get the contract info
 	contractInfo, err := m.source.GetContractInfo(int64(tx.Height), contractAddress)
@@ -187,8 +202,8 @@ func (m *Module) HandleMsgInstantiateContract(index int, tx *junotypes.Transacti
 	slog.Info("Print contract states", slog.Any("contractStates", contractStates))
 
 	contract := types.NewInstantiateWASMContract(
-		msg.Sender, contractInfo.Creator, msg.Admin, msg.CodeID, msg.Label, msg.Msg, contractAddress, wasmAttr.String(),
-		customWasmAttr.String(), contractInfoExt, contractStates, msg.Funds, timestamp, int64(tx.Height), tx.TxHash,
+		msg.Sender, contractInfo.Creator, msg.Admin, msg.CodeID, msg.Label, msg.Msg, contractAddress, wasmByte,
+		customWASMByte, contractInfoExt, contractStates, msg.Funds, timestamp, int64(tx.Height), tx.TxHash,
 	)
 	return m.db.SaveWASMInstantiateContracts(
 		[]types.WASMInstantiateContract{contract},
@@ -242,17 +257,32 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 
 	txEvents := sdktypes.StringifyEvents(tx.Events)
 
-	wasmAttr, success := utils.FindEventByType(txEvents, wasmtypes.WasmModuleEventType)
+	wasmEvent, success := utils.FindEventByType(txEvents, wasmtypes.WasmModuleEventType)
 	if !success {
-		slog.Warn("Not found WASM attribute in execute events")
+		slog.Warn("Not found WASM event in instantiate events")
 	}
 
-	customWasmAttr, success := utils.FindCustomWASMEvent(txEvents)
-	if !success {
-		slog.Warn("Not found custom WASM attribute in execute events")
+	wasmByte, err := wasmEvent.Marshal()
+	if err != nil {
+		slog.Error("Failed to marshal WASM event into byte", "error", err)
 	}
 
-	slog.Info("wasm attribute", slog.Any("all events", txEvents), "wasmAttr", wasmAttr, "customWasmAttr", customWasmAttr)
+	customWASMEvent, success := utils.FindCustomWASMEvent(txEvents)
+	if !success {
+		slog.Warn("Not found custom WASM event in instantiate events")
+	}
+
+	customWASMByte, err := customWASMEvent.Marshal()
+	if err != nil {
+		slog.Error("Failed to marshal custom WASM event into byte", "error", err)
+	}
+
+	slog.Info("Execute WASM attribute", slog.Any("all events", txEvents), slog.Any("wasmEvent", wasmEvent),
+		slog.Any("customWASMEvent", customWASMEvent))
+	slog.Info("String WASM and custom WASM event", "wasmEvent", wasmEvent.String(),
+		"customWASMEvent", customWASMEvent.String())
+	slog.Info("Convert WASM and custom WASM event byte to string", "wasmEvent", string(wasmByte),
+		"customWasmEvent", string(customWASMByte))
 
 	timestamp, err := time.Parse(time.RFC3339, tx.Timestamp)
 	if err != nil {
@@ -318,7 +348,7 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 
 		contract := types.NewInstantiateWASMContract(
 			msg.Sender, contractInfo.Creator, contractInfoAdmin, contractInfoCodeID, contractInfoLabel, emptyRawMessage,
-			contractAddress, wasmAttr.String(), customWasmAttr.String(), contractInfoExt, contractStates, emptyFunds,
+			contractAddress, wasmByte, customWASMByte, contractInfoExt, contractStates, emptyFunds,
 			timestamp, int64(tx.Height), tx.TxHash,
 		)
 
@@ -331,18 +361,18 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 	}
 
 	execute := types.NewWASMExecuteContract(
-		msg.Sender, msg.Contract, msg.Msg, wasmAttr, customWasmAttr, msg.Funds,
+		msg.Sender, msg.Contract, msg.Msg, wasmByte, customWASMByte, msg.Funds,
 		timestamp, int64(tx.Height), tx.TxHash,
 	)
 
 	// save a record of the raw contract execution details
 	if err = m.db.SaveWASMExecuteContract(execute); err != nil {
-		slog.Error("Failed to save WasmExecuteContract", "error", err)
+		slog.Error("Failed to save WASMExecuteContract", "error", err)
 	}
 
 	// save a row for each event in the contract execution
 	if err = m.db.SaveWASMExecuteContractEvents(execute, tx); err != nil {
-		slog.Error("Failed to save events for WasmExecuteContract", "error", err)
+		slog.Error("Failed to save events for WASMExecuteContract", "error", err)
 	}
 
 	return nil
@@ -368,19 +398,34 @@ func (m *Module) HandleMsgMigrateContract(index int, tx *junotypes.Transaction, 
 	}
 
 	txEvents := sdktypes.StringifyEvents(tx.Events)
-	wasmAttr, success := utils.FindEventByType(txEvents, wasmtypes.WasmModuleEventType)
+	wasmEvent, success := utils.FindEventByType(txEvents, wasmtypes.WasmModuleEventType)
 	if !success {
-		slog.Warn("Not found WASM attribute in migrate events")
+		slog.Warn("Not found WASM event in instantiate events")
 	}
 
-	customWasmAttr, success := utils.FindCustomWASMEvent(txEvents)
-	if !success {
-		slog.Warn("Not found custom WASM attribute in migrate events")
+	wasmByte, err := wasmEvent.Marshal()
+	if err != nil {
+		slog.Error("Failed to marshal WASM event into byte", "error", err)
 	}
 
-	slog.Info("wasm attribute", slog.Any("all events", txEvents), "wasmAttr", wasmAttr, "customWasmAttr", customWasmAttr)
+	customWASMEvent, success := utils.FindCustomWASMEvent(txEvents)
+	if !success {
+		slog.Warn("Not found custom WASM event in instantiate events")
+	}
 
-	migrate := types.NewWASMMigrateContract(msg.Sender, msg.CodeID, msg.Contract, msg.Msg, wasmAttr, customWasmAttr,
+	customWASMByte, err := customWASMEvent.Marshal()
+	if err != nil {
+		slog.Error("Failed to marshal custom WASM event into byte", "error", err)
+	}
+
+	slog.Info("wasm attribute", slog.Any("all events", txEvents), slog.Any("wasmEvent", wasmEvent),
+		slog.Any("customWASMEvent", customWASMEvent))
+	slog.Info("String WASM and custom WASM event", "wasmEvent", wasmEvent.String(),
+		"customWASMEvent", customWASMEvent.String())
+	slog.Info("Convert WASM and custom WASM event byte to string", "wasmEvent", string(wasmByte),
+		"customWasmEvent", string(customWASMByte))
+
+	migrate := types.NewWASMMigrateContract(msg.Sender, msg.CodeID, msg.Contract, msg.Msg, wasmByte, customWASMByte,
 		timestamp, int64(tx.Height), tx.TxHash)
 	return m.db.SaveWASMMigrateContracts(migrate)
 }
