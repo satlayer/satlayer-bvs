@@ -554,12 +554,11 @@ mod vault_query {
     pub fn vault_info(deps: Deps, env: Env) -> StdResult<VaultInfoResponse> {
         let balance = StakingToken::query_balance(&deps, &env)?;
         let receipt_token_supply = cw20_base::contract::query_token_info(deps)?.total_supply;
-        let vault = offset::VirtualOffset::new(receipt_token_supply, balance)?;
         let cw20_contract = StakingToken::get_cw20_contract(deps.storage)?;
         let version = cw2::get_contract_version(deps.storage)?;
         Ok(VaultInfoResponse {
-            total_shares: vault.total_shares(),
-            total_assets: vault.total_assets(),
+            total_shares: receipt_token_supply,
+            total_assets: balance,
             router: bvs_vault_base::router::get_router(deps.storage)?,
             pauser: bvs_pauser::api::get_pauser(deps.storage)?,
             operator: bvs_vault_base::router::get_operator(deps.storage)?,
