@@ -18,15 +18,19 @@ import (
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/utils"
 )
 
-var msgFilter = map[string]bool{
-	types.MsgStoreCode:            true,
-	types.MsgInstantiateContract:  true,
-	types.MsgInstantiateContract2: true,
-	types.MsgExecuteContract:      true,
-	types.MsgMigrateContract:      true,
-	types.MsgUpdateAdmin:          true,
-	types.MsgClearAdmin:           true,
-}
+var (
+	emptyJSONString = []byte("{}")
+
+	msgFilter = map[string]bool{
+		types.MsgStoreCode:            true,
+		types.MsgInstantiateContract:  true,
+		types.MsgInstantiateContract2: true,
+		types.MsgExecuteContract:      true,
+		types.MsgMigrateContract:      true,
+		types.MsgUpdateAdmin:          true,
+		types.MsgClearAdmin:           true,
+	}
+)
 
 // HandleMsg implements modules.MessageModule
 func (m *Module) HandleMsg(index int, msg junotypes.Message, tx *junotypes.Transaction) error {
@@ -148,6 +152,9 @@ func (m *Module) HandleMsgInstantiateContract(index int, tx *junotypes.Transacti
 			slog.Error("Failed to marshal WASM event into byte", "error", err)
 		}
 	}
+	if len(wasmByte) == 0 {
+		wasmByte = emptyJSONString
+	}
 
 	customWASMEvent, success := utils.FindCustomWASMEvent(txEvents)
 	var customWASMByte []byte
@@ -157,6 +164,9 @@ func (m *Module) HandleMsgInstantiateContract(index int, tx *junotypes.Transacti
 		if customWASMByte, err = json.Marshal(wasmEvent); err != nil {
 			slog.Error("Failed to marshal custom WASM event", "error", err)
 		}
+	}
+	if len(customWASMByte) == 0 {
+		customWASMByte = emptyJSONString
 	}
 
 	slog.Info("Instantiate WASM attribute", slog.Any("all events", txEvents), slog.Any("wasmEvent", wasmEvent),
@@ -341,15 +351,12 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 			contractInfoExt = extension.String()
 		}
 
-		// Set to default values, that will hopefully be overwritten during the next migration of this contract
-		emptyRawMessage := []byte("{}")
 		emptyFunds := sdktypes.Coins{sdktypes.Coin{}}
-
 		var contractStates []wasmtypes.Model
 
 		contract := types.NewInstantiateWASMContract(
-			msg.Sender, contractInfo.Creator, contractInfoAdmin, contractInfoCodeID, contractInfoLabel, emptyRawMessage,
-			contractAddress, []byte{}, []byte{}, contractInfoExt, contractStates, emptyFunds,
+			msg.Sender, contractInfo.Creator, contractInfoAdmin, contractInfoCodeID, contractInfoLabel, emptyJSONString,
+			contractAddress, emptyJSONString, emptyJSONString, contractInfoExt, contractStates, emptyFunds,
 			timestamp, int64(tx.Height), tx.TxHash,
 		)
 
@@ -408,6 +415,9 @@ func (m *Module) HandleMsgMigrateContract(index int, tx *junotypes.Transaction, 
 			slog.Error("Failed to marshal WASM event into byte", "error", err)
 		}
 	}
+	if len(wasmByte) == 0 {
+		wasmByte = emptyJSONString
+	}
 
 	customWASMEvent, success := utils.FindCustomWASMEvent(txEvents)
 	var customWASMByte []byte
@@ -417,6 +427,9 @@ func (m *Module) HandleMsgMigrateContract(index int, tx *junotypes.Transaction, 
 		if customWASMByte, err = json.Marshal(wasmEvent); err != nil {
 			slog.Error("Failed to marshal custom WASM event", "error", err)
 		}
+	}
+	if len(customWASMByte) == 0 {
+		customWASMByte = emptyJSONString
 	}
 
 	slog.Info("wasm attribute", slog.Any("all events", txEvents), slog.Any("wasmEvent", wasmEvent),
