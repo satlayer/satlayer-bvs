@@ -14,6 +14,7 @@ use cw20::Expiration;
 pub enum ExecuteMsg {
     /// ExecuteMsg Transfer is a base message to move tokens to another account without triggering actions
     Transfer { recipient: String, amount: Uint128 },
+
     /// ExecuteMsg Send is a base message to transfer tokens to a contract and trigger an action
     /// on the receiving contract.
     Send {
@@ -21,6 +22,7 @@ pub enum ExecuteMsg {
         amount: Uint128,
         msg: Binary,
     },
+
     /// ExecuteMsg IncreaseAllowance allows spender to access an additional amount tokens
     /// from the owner's (env.sender) account. If expires is Some(), overwrites current allowance
     /// expiration with this one.
@@ -29,6 +31,7 @@ pub enum ExecuteMsg {
         amount: Uint128,
         expires: Option<Expiration>,
     },
+
     /// ExecuteMsg DecreaseAllowance Lowers the spender's access of tokens
     /// from the owner's (env.sender) account by amount. If expires is Some(), overwrites current
     /// allowance expiration with this one.
@@ -37,6 +40,7 @@ pub enum ExecuteMsg {
         amount: Uint128,
         expires: Option<Expiration>,
     },
+
     /// ExecuteMsg TransferFrom tansfers amount tokens from owner -> recipient
     /// if `env.sender` has sufficient pre-approval.
     TransferFrom {
@@ -44,6 +48,7 @@ pub enum ExecuteMsg {
         recipient: String,
         amount: Uint128,
     },
+
     /// ExecuteMsg SendFrom Sends amount tokens from owner -> contract
     /// if `env.sender` has sufficient pre-approval.
     SendFrom {
@@ -94,21 +99,27 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
+    /// QueryMsg Balance: get the balance of a given address.
     /// Returns the current balance of the given address, 0 if unset.
     #[returns(cw20::BalanceResponse)]
     Balance { address: String },
+
+    /// QueryMsg TokenInfo: get the token info of the contract.
     /// Returns metadata on the contract - name, decimals, supply, etc.
     #[returns(cw20::TokenInfoResponse)]
     TokenInfo {},
-    /// Only with "mintable" extension.
+
+    /// QueryMsg Minter: get the minter of the contract.
     /// Returns who can mint and the hard cap on maximum tokens after minting.
     #[returns(cw20::MinterResponse)]
     Minter {},
-    /// Only with "allowance" extension.
+
+    /// QueryMsg Allowance: get the allowance of a given address.
     /// Returns how much spender can use from owner account, 0 if unset.
     #[returns(cw20::AllowanceResponse)]
     Allowance { owner: String, spender: String },
-    /// Only with "enumerable" extension (and "allowances")
+
+    /// QueryMsg AllAllowances: get all allowances of a given address.
     /// Returns all allowances this owner has approved. Supports pagination.
     #[returns(cw20::AllAllowancesResponse)]
     AllAllowances {
@@ -116,7 +127,8 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    /// Only with "enumerable" extension (and "allowances")
+
+    /// QueryMsg AllSpenderAllowances: get all allowances of a given address.
     /// Returns all allowances this spender has been granted. Supports pagination.
     #[returns(cw20::AllSpenderAllowancesResponse)]
     AllSpenderAllowances {
@@ -124,7 +136,8 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    /// Only with "enumerable" extension
+
+    /// QueryMsg AllAccounts: get all accounts of the contract.
     /// Returns all accounts that have balances. Supports pagination.
     #[returns(cw20::AllAccountsResponse)]
     AllAccounts {
