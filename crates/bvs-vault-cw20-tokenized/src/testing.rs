@@ -6,7 +6,7 @@ use cosmwasm_std::{Addr, Empty, Env, Uint128};
 use cw_multi_test::{App, Contract, ContractWrapper};
 use serde::{Deserialize, Serialize};
 
-///  This is a testing wrapper around the VaultCw20Contract
+///  This is a testing wrapper around the VaultCw20TokenizedContract
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct VaultCw20TokenizedContract {
     pub addr: Addr,
