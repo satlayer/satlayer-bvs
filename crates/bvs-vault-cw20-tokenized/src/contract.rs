@@ -197,7 +197,7 @@ mod receipt_cw20_execute {
             _ => {
                 // Extended execute msg set are exhausted in entry point already
                 // Base cw20 execute msg are also exhausted in other match arm
-                // So this means sombody is trying to call a non-supported message
+                // So this means someone is trying to call a non-supported message
                 Err(cw20_base::ContractError::Std(StdError::generic_err(
                     "This message is not supported",
                 )))
