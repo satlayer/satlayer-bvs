@@ -512,7 +512,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<cosmwasm_std::Bin
         _ => {
             // cw20 compliant messages are passed to the `cw20-base` contract.
             // Except for the `Burn` and `BurnFrom` messages.
-            cw20_base::contract::query(deps, env, msg.into())
+            cw20_base::contract::query(deps, env, msg.try_into().unwrap())
         }
     }
 }

@@ -168,37 +168,39 @@ pub enum QueryMsg {
     VaultInfo {},
 }
 
-impl From<QueryMsg> for cw20_base::msg::QueryMsg {
-    fn from(val: QueryMsg) -> Self {
+impl TryFrom<QueryMsg> for cw20_base::msg::QueryMsg {
+    type Error = String;
+
+    fn try_from(val: QueryMsg) -> Result<Self, Self::Error> {
         match val {
-            QueryMsg::Balance { address } => cw20_base::msg::QueryMsg::Balance { address },
-            QueryMsg::TokenInfo {} => cw20_base::msg::QueryMsg::TokenInfo {},
-            QueryMsg::Minter {} => cw20_base::msg::QueryMsg::Minter {},
+            QueryMsg::Balance { address } => Ok(cw20_base::msg::QueryMsg::Balance { address }),
+            QueryMsg::TokenInfo {} => Ok(cw20_base::msg::QueryMsg::TokenInfo {}),
+            QueryMsg::Minter {} => Ok(cw20_base::msg::QueryMsg::Minter {}),
             QueryMsg::Allowance { owner, spender } => {
-                cw20_base::msg::QueryMsg::Allowance { owner, spender }
+                Ok(cw20_base::msg::QueryMsg::Allowance { owner, spender })
             }
             QueryMsg::AllAllowances {
                 owner,
                 start_after,
                 limit,
-            } => cw20_base::msg::QueryMsg::AllAllowances {
+            } => Ok(cw20_base::msg::QueryMsg::AllAllowances {
                 owner,
                 start_after,
                 limit,
-            },
+            }),
             QueryMsg::AllSpenderAllowances {
                 spender,
                 start_after,
                 limit,
-            } => cw20_base::msg::QueryMsg::AllSpenderAllowances {
+            } => Ok(cw20_base::msg::QueryMsg::AllSpenderAllowances {
                 spender,
                 start_after,
                 limit,
-            },
+            }),
             QueryMsg::AllAccounts { start_after, limit } => {
-                cw20_base::msg::QueryMsg::AllAccounts { start_after, limit }
+                Ok(cw20_base::msg::QueryMsg::AllAccounts { start_after, limit })
             }
-            _ => panic!("This QueryMsg cannot be converted into cw20_base::msg::QueryMsg"),
+            _ => Err("This QueryMsg cannot be converted into cw20_base::msg::QueryMsg".to_string()),
         }
     }
 }
