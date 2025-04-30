@@ -140,7 +140,7 @@ mod receipt_cw20_execute {
             .may_load(deps.storage)?
             .ok_or(cw20_base::ContractError::Unauthorized {})?;
 
-        // update supply and enforce cap
+        // update supply
         config.total_supply += amount;
 
         RECEIPT_TOKEN_INFO.save(deps.storage, &config)?;
