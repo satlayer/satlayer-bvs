@@ -341,7 +341,7 @@ mod vault_execute {
             .add_message(transfer_msg))
     }
 
-    /// Queue shares to withdraw later.
+    /// Queue receipt tokens to withdraw later.
     /// The shares are burned from `info.sender` and wait lock period to redeem withdrawal.
     /// It doesn't remove the `total_supply` and only removes the user shares, so the exchange rate is not affected.
     pub fn queue_withdrawal_to(
