@@ -334,8 +334,8 @@ mod vault_execute {
     }
 
     /// Queue receipt tokens to withdraw later.
-    /// The receipt tokens are burned from `info.sender` and wait for the lock period to redeem.
-    /// It doesn't remove the `total_supply` and only removes the user shares, so the exchange rate is not affected.
+    /// The receipt tokens are ill-liquidated and wait lock period to redeem withdrawal.
+    /// It doesn't impact `total_supply` and only take away the staker's receipt tokens, so the exchange rate is not affected.
     pub fn queue_withdrawal_to(
         mut deps: DepsMut,
         env: Env,
@@ -527,7 +527,7 @@ mod vault_query {
     use cosmwasm_std::{Addr, Deps, Env, StdResult, Uint128};
     use cw20_base::contract::query_balance;
 
-    /// Get shares of the staker
+    /// Get receipt token balance of the staker
     /// Since this vault is tokenized, shares are practically the receipt token.
     /// Such that quering shares is equivalent to querying the receipt token balance of a
     /// particular staker/address.
@@ -559,7 +559,7 @@ mod vault_query {
         vault.shares_to_assets(receipt_tokens)
     }
 
-    /// Given assets, get the resulting shares based on the vault exchange rate.
+    /// Given assets, get the resulting receipt tokens based on the vault exchange rate.
     /// Shares in this tokenized vault the receipt token.
     /// Keeping the msg name the same as the non-tokenized vault for consistency.
     pub fn convert_to_receipt_token(deps: Deps, env: Env, assets: Uint128) -> StdResult<Uint128> {
