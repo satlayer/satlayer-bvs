@@ -12,16 +12,16 @@ use cw20::Expiration;
 #[cw_serde]
 #[derive(Display)]
 pub enum ExecuteMsg {
-    /// Transfer is a base message to move tokens to another account without triggering actions
+    /// ExecuteMsg Transfer is a base message to move tokens to another account without triggering actions
     Transfer { recipient: String, amount: Uint128 },
-    /// Send is a base message to transfer tokens to a contract and trigger an action
+    /// ExecuteMsg Send is a base message to transfer tokens to a contract and trigger an action
     /// on the receiving contract.
     Send {
         contract: String,
         amount: Uint128,
         msg: Binary,
     },
-    /// Only with "approval" extension. Allows spender to access an additional amount tokens
+    /// ExecuteMsg IncreaseAllowance allows spender to access an additional amount tokens
     /// from the owner's (env.sender) account. If expires is Some(), overwrites current allowance
     /// expiration with this one.
     IncreaseAllowance {
@@ -29,7 +29,7 @@ pub enum ExecuteMsg {
         amount: Uint128,
         expires: Option<Expiration>,
     },
-    /// Only with "approval" extension. Lowers the spender's access of tokens
+    /// ExecuteMsg DecreaseAllowance Lowers the spender's access of tokens
     /// from the owner's (env.sender) account by amount. If expires is Some(), overwrites current
     /// allowance expiration with this one.
     DecreaseAllowance {
@@ -37,14 +37,14 @@ pub enum ExecuteMsg {
         amount: Uint128,
         expires: Option<Expiration>,
     },
-    /// Only with "approval" extension. Transfers amount tokens from owner -> recipient
+    /// ExecuteMsg TransferFrom tansfers amount tokens from owner -> recipient
     /// if `env.sender` has sufficient pre-approval.
     TransferFrom {
         owner: String,
         recipient: String,
         amount: Uint128,
     },
-    /// Only with "approval" extension. Sends amount tokens from owner -> contract
+    /// ExecuteMsg SendFrom Sends amount tokens from owner -> contract
     /// if `env.sender` has sufficient pre-approval.
     SendFrom {
         owner: String,
