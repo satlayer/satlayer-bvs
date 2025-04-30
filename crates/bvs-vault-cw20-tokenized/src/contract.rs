@@ -212,7 +212,7 @@ mod receipt_cw20_execute {
     }
 }
 
-/// Addtional vault logics built on top of the base cw20 contract via extended execute msg set.
+/// Additional vault logics are built on top of the base CW20 contract via an extended execute msg set.
 /// The extended execute msg set is practically `bvs-vault-base` crate's execute msg set.
 mod vault_execute {
     use crate::error::ContractError;
