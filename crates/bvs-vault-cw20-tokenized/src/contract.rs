@@ -343,7 +343,7 @@ mod vault_execute {
 
     /// Queue shares to withdraw later.
     /// The shares are burned from `info.sender` and wait lock period to redeem withdrawal.
-    /// It doesn't remove the `total_shares` and only removes the user shares, so the exchange rate is not affected.
+    /// It doesn't remove the `total_supply` and only removes the user shares, so the exchange rate is not affected.
     pub fn queue_withdrawal_to(
         mut deps: DepsMut,
         env: Env,
