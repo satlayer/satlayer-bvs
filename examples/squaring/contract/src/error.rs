@@ -9,9 +9,9 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
-    #[error("Task result already submitted")]
-    ResultSubmitted {},
+    #[error("Request has already been responded to")]
+    Responded {},
 
-    #[error("No value found")]
-    NoValueFound {},
+    #[error("Response not found")]
+    ResponseNotFound {},
 }

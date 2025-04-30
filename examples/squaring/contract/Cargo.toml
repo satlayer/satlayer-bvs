@@ -16,9 +16,9 @@ cosmwasm-schema = "2.2.2"
 cosmwasm-std = { version = "2.2.2", features = ["cosmwasm_2_0"] }
 cw-storage-plus = "2.0.0"
 cw2 = "2.0.0"
-schemars = "0.8.21"
-serde = { version = "1.0.217", default-features = false, features = ["derive"] }
+schemars = "0.8.22"
+serde = { version = "1.0.218", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.69" }
 
 [dev-dependencies]
-cw-multi-test = { version = "2.3.2", features = ["cosmwasm_2_0"] }
+cw-multi-test = { version = "2.4.0", features = ["cosmwasm_2_0"] }

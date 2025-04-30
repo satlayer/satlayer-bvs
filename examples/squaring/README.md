@@ -1,6 +1,10 @@
 # Computational Squaring
 
-Offchain computation for squaring a number.
+> [!NOTE]
+>
+> 🚧 This documentation is under construction.
+
+Off-chain computation with on-chain verification for squaring a number.
 
 ## Getting Started
 
@@ -8,6 +12,6 @@ Offchain computation for squaring a number.
 
 ```txt
 squaring/
-├── squaring-contract/     <- CosmWasm contract
+├── contract/     <- CosmWasm contract
 └── README.md
 ```
