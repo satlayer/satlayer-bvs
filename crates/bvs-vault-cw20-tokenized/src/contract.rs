@@ -242,10 +242,10 @@ mod vault_execute {
 
         let assets = msg.amount;
         let (vault, new_receipt_tokens) = {
-            let staking_token_balance = UnderlyingToken::query_balance(&deps.as_ref(), &env)?;
+            let underlying_token_balance = UnderlyingToken::query_balance(&deps.as_ref(), &env)?;
             let receipt_token_supply =
                 cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
-            let vault = offset::VirtualOffset::new(receipt_token_supply, staking_token_balance)?;
+            let vault = offset::VirtualOffset::new(receipt_token_supply, underlying_token_balance)?;
 
             let new_receipt_tokens = vault.assets_to_shares(assets)?;
 
@@ -298,10 +298,10 @@ mod vault_execute {
         let receipt_tokens = msg.amount;
 
         let (vault, claim_staking_tokens) = {
-            let staking_token_balance = UnderlyingToken::query_balance(&deps.as_ref(), &env)?;
+            let underlying_token_balance = UnderlyingToken::query_balance(&deps.as_ref(), &env)?;
             let receipt_token_supply =
                 cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
-            let vault = offset::VirtualOffset::new(receipt_token_supply, staking_token_balance)?;
+            let vault = offset::VirtualOffset::new(receipt_token_supply, underlying_token_balance)?;
 
             let primary_staking_tokens = vault.shares_to_assets(receipt_tokens)?;
             if primary_staking_tokens.is_zero() {
@@ -405,10 +405,10 @@ mod vault_execute {
         }
 
         let claimed_assets = {
-            let staking_token_balance = UnderlyingToken::query_balance(&deps.as_ref(), &env)?;
+            let underlying_token_balance = UnderlyingToken::query_balance(&deps.as_ref(), &env)?;
             let receipt_token_supply =
                 cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
-            let vault = offset::VirtualOffset::new(receipt_token_supply, staking_token_balance)?;
+            let vault = offset::VirtualOffset::new(receipt_token_supply, underlying_token_balance)?;
 
             let assets = vault.shares_to_assets(queued_shares)?;
             if assets.is_zero() {
@@ -553,9 +553,9 @@ mod vault_query {
         env: Env,
         receipt_tokens: Uint128,
     ) -> StdResult<Uint128> {
-        let staking_token_balance = StakingToken::query_balance(&deps, &env)?;
+        let underlying_token_balance = StakingToken::query_balance(&deps, &env)?;
         let receipt_token_supply = cw20_base::contract::query_token_info(deps)?.total_supply;
-        let vault = offset::VirtualOffset::new(receipt_token_supply, staking_token_balance)?;
+        let vault = offset::VirtualOffset::new(receipt_token_supply, underlying_token_balance)?;
         vault.shares_to_assets(receipt_tokens)
     }
 
@@ -563,9 +563,9 @@ mod vault_query {
     /// Shares in this tokenized vault the receipt token.
     /// Keeping the msg name the same as the non-tokenized vault for consistency.
     pub fn convert_to_receipt_token(deps: Deps, env: Env, assets: Uint128) -> StdResult<Uint128> {
-        let staking_token_balance = StakingToken::query_balance(&deps, &env)?;
+        let underlying_token_balance = StakingToken::query_balance(&deps, &env)?;
         let receipt_token_supply = cw20_base::contract::query_token_info(deps)?.total_supply;
-        let vault = offset::VirtualOffset::new(receipt_token_supply, staking_token_balance)?;
+        let vault = offset::VirtualOffset::new(receipt_token_supply, underlying_token_balance)?;
         vault.assets_to_shares(assets)
     }
 
