@@ -10,7 +10,6 @@ const meta: MetaRecord = {
   registry: {},
   pauser: {},
   library: {},
-  runbook: {},
 };
 
 export default meta;
