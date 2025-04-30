@@ -133,8 +133,6 @@ mod receipt_cw20_execute {
     /// Except that it does not require the caller to be the minter.
     pub fn mint_internal(
         deps: DepsMut,
-        _env: Env,
-        _info: MessageInfo,
         recipient: Addr,
         amount: Uint128,
     ) -> Result<Response, cw20_base::ContractError> {
@@ -144,11 +142,7 @@ mod receipt_cw20_execute {
 
         // update supply and enforce cap
         config.total_supply += amount;
-        if let Some(limit) = config.get_cap() {
-            if config.total_supply > limit {
-                return Err(cw20_base::ContractError::CannotExceedCap {});
-            }
-        }
+
         RECEIPT_TOKEN_INFO.save(deps.storage, &config)?;
 
         RECEIPT_TOKEN_BALANCES.update(
@@ -272,8 +266,6 @@ mod vault_execute {
             // mint new receipt token to staker
             super::receipt_cw20_execute::mint_internal(
                 deps.branch(),
-                env,
-                info.clone(),
                 msg.recipient.clone(),
                 new_receipt_tokens,
             )?;
@@ -436,7 +428,7 @@ mod vault_execute {
         // So the vault should burn from its own balance for the same amount.
         let msg_info = MessageInfo {
             sender: env.contract.address.clone(),
-            funds: info.funds.clone(),
+            funds: vec![],
         };
         receipt_token_burn(deps.branch(), env.clone(), msg_info, queued_shares)?;
 
