@@ -1,0 +1,26 @@
+---
+sidebarTitle: Upgrading
+---
+
+# Upgrading CosmWasm Contracts
+
+To upgrade a contract, you need to upload the new code and then execute the upgrade message.
+The upgrade process is similar to the initial deployment, but it requires the contract address and the new code ID.
+You must also have the contract's admin address set (`--admin="..."`) to upgrade the contract.
+
+> Contract admin is a contract management feature of `wasmd`,
+> among many things, it allows the contract to be upgraded later.
+> You cannot set this value in the contract, nor can you change it in the contract.
+> It is set during the instantiation of the contract by the creator.
+> See [std/src/query/wasm.rs#L57](https://github.com/CosmWasm/cosmwasm/blob/dc70bf3554f63308f681098819854773355b60cb/packages/std/src/query/wasm.rs#L57)
+> and [cosmwasm/issues/926](https://github.com/CosmWasm/cosmwasm/issues/926#issuecomment-851259818) for more details.
+
+Follow the [same steps as the initial deployment](/developers/cosmwasm/deploying#store-contract) to upload the new code.
+
+```sh
+CONTRACT_ADDRESS=''
+CODE_ID=''
+MIGRATE_JSON='{}'
+babylond tx wasm instantiate --from=deployer $CONTRACT_ADDRESS $CODE_ID $MIGRATE_JSON \
+  --gas=auto --gas-adjustment=1.3 --gas-prices=0.005ubbn
+```

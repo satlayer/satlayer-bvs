@@ -1,7 +1,8 @@
 import type { MetaRecord } from "nextra";
 
 const meta: MetaRecord = {
-  developing: {},
+  overview: {},
+  cosmwasm: {},
   examples: {},
 };
 

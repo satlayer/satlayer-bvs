@@ -1,0 +1,61 @@
+import { Cards } from 'nextra/components'
+import { AcademicCapIcon, SparklesIcon } from '@heroicons/react/24/outline';
+
+# Installation
+
+To start writing CosmWasm (cw) smart contracts, you will need Rust installed on your machine.
+You can install it by following the instructions on the official Rust website. `https://www.rust-lang.org/tools/install`
+
+CosmWasm uses idiomatic Rust compiled to WebAssembly (`wasm32-unknown-unknown`),
+you will need the Wasm rust compiler backend installed to build Wasm binaries.
+To install it, run:
+
+```sh
+rustup target add wasm32-unknown-unknown
+```
+
+## CosmWasm Template
+
+If you are looking to quickly bootstrap a blank CosmWasm contract,
+the Official [CosmWasm/cw-template](https://github.com/CosmWasm/cw-template)
+is the place to start.
+
+To get started, install [cargo-generate](https://github.com/ashleygwilliams/cargo-generate) and cargo-run-script.
+
+```sh
+cargo install cargo-generate --features vendored-openssl
+cargo install cargo-run-script
+```
+
+Now, use it to create your new contract.
+Go to the folder in which you want to place it and run:
+
+```sh
+cargo generate --git https://github.com/CosmWasm/cw-template.git --name PROJECT_NAME
+```
+
+Head over to [CosmWasm/cw-template/README.md](https://github.com/CosmWasm/cw-template/blob/main/README.md#creating-a-new-repo-from-template)
+for the rest of the instructions.
+
+## Next Steps
+
+<Cards num={2}>
+  <Cards.Card
+    icon={<AcademicCapIcon/>}
+    title="Project Structure"
+    href="/developers/cosmwasm/project-structure"
+    arrow>
+    <div className="x:p-4 x:grow x:bg-white x:dark:bg-black x:leading-7">
+      <>Familiarize yourself with the CosmWasm project structure.</>
+    </div>
+  </Cards.Card>
+  <Cards.Card
+    icon={<SparklesIcon/>}
+    title="Integrating with SatLayer"
+    href="/developers/cosmwasm/integrating"
+    arrow>
+    <div className="x:p-4 x:grow x:bg-white x:dark:bg-black x:leading-7">
+      <>Already understand how to write CosmWasm contracts? Learn how to integrate with SatLayer.</>
+    </div>
+  </Cards.Card>
+</Cards>
