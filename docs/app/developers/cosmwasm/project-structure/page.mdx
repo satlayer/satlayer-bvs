@@ -44,7 +44,7 @@ we follow the same structure in [CosmWasm/cw-template](https://github.com/CosmWa
 for building CosmWasm contracts.
 Although you don't have to follow this structure,
 it is highly recommended to do so to make it easier for everyone (e.i, auditors) to understand the project.
-The three main files that you should be aware of are:
+The main files that you should be aware of are:
 - `contract.rs`: This is the main entry point for the contract.
 It contains the logic for handling the messages, mutating the state, and responding to queries.
 - `msg.rs`: This file contains the `interfaces`, the message structure for interacting with the contract.
@@ -165,7 +165,7 @@ mod tests {
         let code_id = app.store_code(contract());
 
         let init_msg = InstantiateMsg {
-            aggregator: app.api().addr_make(AGGREGATOR).to_string(),
+            aggregator: app.api().addr_make("aggregator").to_string(),
         };
         let contract_admin = app.api().addr_make("admin");
         let contract_addr = app
