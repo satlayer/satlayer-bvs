@@ -228,7 +228,7 @@ mod vault_execute {
 
     /// This executes a transfer of assets from the `info.sender` to the vault contract.
     ///
-    /// New shares are minted, based on the exchange rate, to `msg.recipient`.  
+    /// New receipt token are minted, based on the exchange rate, to `msg.recipient`.  
     /// The `TOTAL_SHARE` in the vault is increased.
     ///
     /// ### CW20 Variant Warning
