@@ -56,7 +56,7 @@ pub fn instantiate(
         .add_attribute("pauser", pauser)
         .add_attribute("router", router)
         .add_attribute("operator", operator)
-        .add_attribute("staking_cw20_contract", cw20_contract);
+        .add_attribute("cw20_contract", cw20_contract);
 
     Ok(response)
 }
