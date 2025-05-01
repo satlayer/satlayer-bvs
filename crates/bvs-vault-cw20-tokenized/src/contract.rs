@@ -313,7 +313,7 @@ mod vault_execute {
 
         Ok(Response::new()
             .add_event(
-                Event::new("Withdraw")
+                Event::new("WithdrawTo")
                     .add_attribute("sender", info.sender.to_string())
                     .add_attribute("recipient", msg.recipient.to_string())
                     .add_attribute("assets", claim_staking_tokens.to_string())
