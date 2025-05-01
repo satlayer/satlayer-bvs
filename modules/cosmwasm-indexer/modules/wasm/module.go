@@ -11,7 +11,6 @@ import (
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/utils"
 
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/database"
-	wasmsource "github.com/satlayer/satlayer-bvs/cosmwasm-indexer/modules/wasm/source"
 )
 
 var (
@@ -21,14 +20,13 @@ var (
 
 // Module represent x/wasm module
 type Module struct {
-	cfg    *Config
-	cdc    codec.Codec
-	db     *database.DB
-	source wasmsource.Source
+	cfg *Config
+	cdc codec.Codec
+	db  *database.DB
 }
 
 // NewModule returns a new Module instance
-func NewModule(cfg config.Config, source wasmsource.Source, cdc codec.Codec, db *database.DB) *Module {
+func NewModule(cfg config.Config, cdc codec.Codec, db *database.DB) *Module {
 	bz, err := cfg.GetBytes()
 	if err != nil {
 		slog.Error("Failed to get config bytes", "error", err)
@@ -48,10 +46,9 @@ func NewModule(cfg config.Config, source wasmsource.Source, cdc codec.Codec, db 
 	slog.Info("Run wasm module", "wasm config", wasmCfg)
 
 	return &Module{
-		cfg:    wasmCfg,
-		cdc:    cdc,
-		db:     db,
-		source: source,
+		cfg: wasmCfg,
+		cdc: cdc,
+		db:  db,
 	}
 }
 
