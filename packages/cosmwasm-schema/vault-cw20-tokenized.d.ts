@@ -742,9 +742,6 @@ export interface TransferFrom {
  * QueryMsg TokenInfo: get the token info of the contract. Returns metadata on the contract
  * - name, decimals, supply, etc.
  *
- * QueryMsg Minter: get the minter of the contract. Returns who can mint and the hard cap on
- * maximum tokens after minting.
- *
  * QueryMsg Allowance: get the allowance of a given address. Returns how much spender can
  * use from owner account, 0 if unset.
  *
@@ -778,7 +775,6 @@ export interface TransferFrom {
 export interface QueryMsg {
   balance?: Balance;
   token_info?: TokenInfo;
-  minter?: Minter;
   allowance?: Allowance;
   all_allowances?: AllAllowances;
   all_spender_allowances?: AllSpenderAllowances;
@@ -830,8 +826,6 @@ export interface ConvertToAssets {
 export interface ConvertToShares {
   assets: string;
 }
-
-export interface Minter {}
 
 export interface QueuedWithdrawal {
   staker: string;
@@ -937,15 +931,6 @@ export interface TentacledNever {}
 
 export interface BalanceResponse {
   balance: string;
-}
-
-export interface MinterResponse {
-  /**
-   * cap is a hard cap on total supply that can be achieved by minting. Note that this refers
-   * to total_supply. If None, there is unlimited cap.
-   */
-  cap?: null | string;
-  minter: string;
 }
 
 /**

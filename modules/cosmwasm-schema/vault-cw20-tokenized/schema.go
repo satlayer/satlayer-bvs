@@ -160,9 +160,6 @@ type TransferFrom struct {
 // QueryMsg TokenInfo: get the token info of the contract. Returns metadata on the contract
 // - name, decimals, supply, etc.
 //
-// QueryMsg Minter: get the minter of the contract. Returns who can mint and the hard cap on
-// maximum tokens after minting.
-//
 // QueryMsg Allowance: get the allowance of a given address. Returns how much spender can
 // use from owner account, 0 if unset.
 //
@@ -195,7 +192,6 @@ type TransferFrom struct {
 type QueryMsg struct {
 	Balance              *Balance              `json:"balance,omitempty"`
 	TokenInfo            *TokenInfo            `json:"token_info,omitempty"`
-	Minter               *Minter               `json:"minter,omitempty"`
 	Allowance            *Allowance            `json:"allowance,omitempty"`
 	AllAllowances        *AllAllowances        `json:"all_allowances,omitempty"`
 	AllSpenderAllowances *AllSpenderAllowances `json:"all_spender_allowances,omitempty"`
@@ -246,9 +242,6 @@ type ConvertToAssets struct {
 
 type ConvertToShares struct {
 	Assets string `json:"assets"`
-}
-
-type Minter struct {
 }
 
 type QueuedWithdrawal struct {
@@ -356,13 +349,6 @@ type TentacledNever struct {
 
 type BalanceResponse struct {
 	Balance string `json:"balance"`
-}
-
-type MinterResponse struct {
-	// cap is a hard cap on total supply that can be achieved by minting. Note that this refers
-	// to total_supply. If None, there is unlimited cap.
-	Cap    *string `json:"cap"`
-	Minter string  `json:"minter"`
 }
 
 // The response to the `QueuedWithdrawal` query. This is just a wrapper around
