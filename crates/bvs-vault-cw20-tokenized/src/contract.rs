@@ -71,32 +71,22 @@ pub fn execute(
     bvs_pauser::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
     match msg {
         CombinedExecuteMsg::WithdrawTo(msg) => {
-            // This is the only execute msg that is not passed to the base contract
-            // because it is a custom logic for this vault contract
             msg.validate(deps.api)?;
             vault_execute::withdraw_to(deps, env, info, msg)
         }
         CombinedExecuteMsg::DepositFor(msg) => {
-            // This is the only execute msg that is not passed to the base contract
-            // because it is a custom logic for this vault contract
             msg.validate(deps.api)?;
             vault_execute::deposit_for(deps, env, info, msg)
         }
         CombinedExecuteMsg::QueueWithdrawalTo(msg) => {
-            // This is the only execute msg that is not passed to the base contract
-            // because it is a custom logic for this vault contract
             msg.validate(deps.api)?;
             vault_execute::queue_withdrawal_to(deps, env, info, msg)
         }
         CombinedExecuteMsg::RedeemWithdrawalTo(msg) => {
-            // This is the only execute msg that is not passed to the base contract
-            // because it is a custom logic for this vault contract
             msg.validate(deps.api)?;
             vault_execute::redeem_withdrawal_to(deps, env, info, msg)
         }
         CombinedExecuteMsg::SlashLocked(msg) => {
-            // This is the only execute msg that is not passed to the base contract
-            // because it is a custom logic for this vault contract
             msg.validate(deps.api)?;
             vault_execute::slash_locked(deps, env, info, msg)
         }
