@@ -206,7 +206,7 @@ mod receipt_cw20_execute {
     }
 }
 
-/// Additional vault logics are built on top of the base CW20 contract via an extended execute msg set.
+/// Additional vault logic are built on top of the base CW20 contract via an extended execute msg set.
 /// The extended execute msg set is practically `bvs-vault-base` crate's execute msg set.
 mod vault_execute {
     use crate::error::ContractError;
@@ -344,7 +344,7 @@ mod vault_execute {
     ) -> Result<Response, ContractError> {
         // ill-liquidate the receipt token from the staker
         // by moving the asset into this vault balance.
-        // We can't burn until the actual unstake (redeem withdrawal) occurs.
+        // We can't burn until the actual unstaking (redeem withdrawal) occurs.
         // due to total supply mutation can impact the exchange rate to change prematurely.
         cw20_base::contract::execute_transfer(
             deps.branch(),
@@ -529,7 +529,7 @@ mod vault_query {
 
     /// Get receipt token balance of the staker
     /// Since this vault is tokenized, shares are practically the receipt token.
-    /// Such that quering shares is equivalent to querying the receipt token balance of a
+    /// Such that querying shares is equivalent to querying the receipt token balance of a
     /// particular staker/address.
     /// But we will support this query to keep the API consistent with the non-tokenized vault.
     /// Hopefully that helps with contract consumer/frontend to minimize code changes.
@@ -541,7 +541,7 @@ mod vault_query {
         StdResult::Ok(balance.balance)
     }
 
-    /// Get the staking token of a staker, converted from receipt_tokens held by staker.
+    /// Get the staking token of staker, converted from receipt_tokens held by staker.
     pub fn assets(deps: Deps, env: Env, staker: Addr) -> StdResult<Uint128> {
         let balance = query_balance(deps, staker.to_string())?;
         convert_to_staking_token(deps, env, balance.balance)
@@ -571,7 +571,7 @@ mod vault_query {
 
     /// Total issued receipt tokens.
     /// AKA total shares in the vault.
-    /// AKA Total cirulating supply of the receipt token.
+    /// AKA Total circulating supply of the receipt token.
     pub fn total_receipt_token_supply(deps: Deps, _env: Env) -> StdResult<Uint128> {
         let receipt_token_supply = cw20_base::contract::query_token_info(deps)?.total_supply;
         StdResult::Ok(receipt_token_supply)
