@@ -5,6 +5,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "cosmwasm-optimizer --root=../"
+    "build": "cosmwasm-optimizer --root=../",
+    "cargo:publish": "cargo publish"
   }
 }

@@ -1,0 +1,6 @@
+{
+  "name": "@satlayer/bvs-library",
+  "scripts": {
+    "cargo:publish": "cargo publish"
+  }
+}
