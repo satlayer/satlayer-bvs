@@ -612,24 +612,25 @@ export interface InstantiateMsg {
 }
 
 /**
- * Transfer is a base message to move tokens to another account without triggering actions
+ * ExecuteMsg Transfer is a base message to move tokens to another account without
+ * triggering actions
  *
- * Send is a base message to transfer tokens to a contract and trigger an action on the
- * receiving contract.
+ * ExecuteMsg Send is a base message to transfer tokens to a contract and trigger an action
+ * on the receiving contract.
  *
- * Only with "approval" extension. Allows spender to access an additional amount tokens from
+ * ExecuteMsg IncreaseAllowance allows spender to access an additional amount tokens from
  * the owner's (env.sender) account. If expires is Some(), overwrites current allowance
  * expiration with this one.
  *
- * Only with "approval" extension. Lowers the spender's access of tokens from the owner's
+ * ExecuteMsg DecreaseAllowance Lowers the spender's access of tokens from the owner's
  * (env.sender) account by amount. If expires is Some(), overwrites current allowance
  * expiration with this one.
  *
- * Only with "approval" extension. Transfers amount tokens from owner -> recipient if
- * `env.sender` has sufficient pre-approval.
+ * ExecuteMsg TransferFrom tansfers amount tokens from owner -> recipient if `env.sender`
+ * has sufficient pre-approval.
  *
- * Only with "approval" extension. Sends amount tokens from owner -> contract if
- * `env.sender` has sufficient pre-approval.
+ * ExecuteMsg SendFrom Sends amount tokens from owner -> contract if `env.sender` has
+ * sufficient pre-approval.
  *
  * ExecuteMsg Deposit assets into the vault. Sender must transfer the assets to the vault
  * contract (this is implementation agnostic). The vault contract must mint shares to the
@@ -735,24 +736,26 @@ export interface TransferFrom {
 }
 
 /**
- * Returns the current balance of the given address, 0 if unset.
+ * QueryMsg Balance: get the balance of a given address. Returns the current balance of the
+ * given address, 0 if unset.
  *
- * Returns metadata on the contract - name, decimals, supply, etc.
+ * QueryMsg TokenInfo: get the token info of the contract. Returns metadata on the contract
+ * - name, decimals, supply, etc.
  *
- * Only with "mintable" extension. Returns who can mint and the hard cap on maximum tokens
- * after minting.
+ * QueryMsg Minter: get the minter of the contract. Returns who can mint and the hard cap on
+ * maximum tokens after minting.
  *
- * Only with "allowance" extension. Returns how much spender can use from owner account, 0
- * if unset.
+ * QueryMsg Allowance: get the allowance of a given address. Returns how much spender can
+ * use from owner account, 0 if unset.
  *
- * Only with "enumerable" extension (and "allowances") Returns all allowances this owner has
- * approved. Supports pagination.
+ * QueryMsg AllAllowances: get all allowances of a given address. Returns all allowances
+ * this owner has approved. Supports pagination.
  *
- * Only with "enumerable" extension (and "allowances") Returns all allowances this spender
- * has been granted. Supports pagination.
+ * QueryMsg AllSpenderAllowances: get all allowances of a given address. Returns all
+ * allowances this spender has been granted. Supports pagination.
  *
- * Only with "enumerable" extension Returns all accounts that have balances. Supports
- * pagination.
+ * QueryMsg AllAccounts: get all accounts of the contract. Returns all accounts that have
+ * balances. Supports pagination.
  *
  * QueryMsg Shares: get the shares of a staker. Shares in this tokenized vault are CW20
  * receipt tokens. The interface is kept the same as the original vault. to avoid breaking
