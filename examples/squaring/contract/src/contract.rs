@@ -41,6 +41,7 @@ pub fn execute(
 }
 
 pub mod execute {
+    use crate::contract::expensive_computation;
     use crate::state::REQUESTS;
     use crate::ContractError;
     use cosmwasm_std::{Addr, DepsMut, MessageInfo, Response};
@@ -82,8 +83,42 @@ pub mod execute {
         input: i64,
         operator: Addr,
     ) -> Result<Response, ContractError> {
-        Ok(Response::new())
+        let prev_output = {
+            if let Some(prev_output) = REQUESTS.may_load(deps.storage, (input, &operator))? {
+                prev_output
+            } else {
+                return Err(ContractError::ResponseNotFound {});
+            }
+        };
+
+        // To prove, we re-compute the result on-chain to verify the result.
+        let new_output = expensive_computation(input);
+        if prev_output == new_output {
+            return Err(ContractError::InvalidProve {});
+        }
+
+        // Save the new output to the storage
+        REQUESTS.save(deps.storage, (input, &operator), &new_output)?;
+
+        // TODO(fuxingloh): slashing_request
+
+        Ok(Response::new()
+            .add_attribute("method", "Prove")
+            .add_attribute("operator", operator.to_string())
+            .add_attribute("input", input.to_string())
+            .add_attribute("prev_output", prev_output.to_string())
+            .add_attribute("new_output", new_output.to_string()))
     }
+}
+
+/// This function is an example of an expensive computation with
+/// off-chain computing and on-chain objectively verifiable slashing.
+/// You want to perform this off-chain to reduce gas costs.
+/// When a malicious operator tries to cheat,
+/// the on-chain verification can objectively verify the result by recomputing it on-chain.
+pub fn expensive_computation(input: i64) -> i64 {
+    // In this example, we don't check for overflow.
+    input * input
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

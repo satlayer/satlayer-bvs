@@ -14,4 +14,7 @@ pub enum ContractError {
 
     #[error("Response not found")]
     ResponseNotFound {},
+
+    #[error("Invalid prove, the output is correct")]
+    InvalidProve {},
 }
