@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	emptyJSONString = []byte("{}")
+	emptyJSONBytes = []byte("{}")
 
 	msgFilter = map[string]bool{
 		types.MsgStoreCode:            false,
@@ -89,22 +89,22 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 	txEvents := sdktypes.StringifyEvents(tx.Events)
 
 	wasmEvent, found := utils.FindEventByType(txEvents, wasmtypes.WasmModuleEventType)
-	wasmByteEvent := emptyJSONString
+	wasmByteEvent := emptyJSONBytes
 	if found {
 		if wasmByteEvent, err = json.Marshal(wasmEvent); err != nil {
 			slog.Error("Failed to marshal WASM event into byte", "error", err)
-			wasmByteEvent = emptyJSONString
+			wasmByteEvent = emptyJSONBytes
 		}
 	} else {
 		slog.Warn("Not found WASM event in execute events")
 	}
 
 	customWASMEvent, found := utils.FindCustomWASMEvent(txEvents)
-	customWASMByteEvent := emptyJSONString
+	customWASMByteEvent := emptyJSONBytes
 	if found {
 		if customWASMByteEvent, err = json.Marshal(customWASMEvent); err != nil {
 			slog.Error("Failed to marshal WASM event into byte", "error", err)
-			customWASMByteEvent = emptyJSONString
+			customWASMByteEvent = emptyJSONBytes
 		}
 	} else {
 		slog.Warn("Not found custom WASM event in execute events")
@@ -122,7 +122,6 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 	execute := types.NewWASMExecuteContract(msg.Sender, msg.Contract, msg.Msg, wasmByteEvent, customWASMByteEvent,
 		timestamp, int64(tx.Height), tx.TxHash)
 
-	// save a record of the raw contract execution details
 	if err = m.db.SaveWASMExecuteContract(execute); err != nil {
 		slog.Error("Failed to save WASMExecuteContract", "error", err)
 	}

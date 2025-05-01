@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
@@ -88,73 +87,6 @@ func (c *CosmWasmIndexerTestSuite) RunIndexer(ctx context.Context) error {
 	})
 	if err != nil {
 		return fmt.Errorf("failed to start running indexer container: %w", err)
-	}
-
-	c.indexerContainer = indexerContainer
-	return nil
-}
-
-func (c *CosmWasmIndexerTestSuite) RunIndexer1(ctx context.Context) error {
-	projectRoot, err := filepath.Abs("..")
-	if err != nil {
-		return fmt.Errorf("failed to generate config: %w", err)
-	}
-
-	if err = c.generateYAMLConfig(); err != nil {
-		return fmt.Errorf("failed to generate config: %w", err)
-	}
-
-	files := make([]testcontainers.ContainerFile, 0)
-	files = append(files, testcontainers.ContainerFile{
-		HostFilePath:      fmt.Sprintf("%s/indexer", projectRoot),
-		ContainerFilePath: "/app/indexer",
-		FileMode:          0o755,
-	})
-	files = append(files, testcontainers.ContainerFile{
-		HostFilePath:      fmt.Sprintf("%s/config.yaml", projectRoot),
-		ContainerFilePath: "/app/data/config.yaml",
-		FileMode:          0o755,
-	})
-
-	runReq := testcontainers.ContainerRequest{
-		Image: "ubuntu:22.04",
-		Files: files,
-		Cmd: []string{
-			"sh", "-c",
-			"apt-get update && " +
-				"apt-get install -y wget && " +
-				"cd /app/ && " +
-				"WASMVM_VERSION=$(grep github.com/CosmWasm/wasmvm go.mod | cut -d' ' -f2) && " +
-				"wget https://github.com/CosmWasm/wasmvm/releases/download/v2.2.1/libwasmvm.$(uname -m).so -O /lib/libwasmvm.$(uname -m).so && " +
-				"wget https://github.com/CosmWasm/wasmvm/releases/download/v2.2.1/checksums.txt -O /tmp/checksums.txt && " +
-				"sha256sum /lib/libwasmvm.$(uname -m).so | grep $(cat /tmp/checksums.txt | grep libwasmvm.$(uname -m) | cut -d ' ' -f 1) && " +
-				"./indexer start --home /app/data/ 2>&1 | tee /app/indexer.log",
-		},
-		WaitingFor: wait.ForExec([]string{"pgrep", "indexer"}).
-			WithStartupTimeout(10 * time.Second).
-			WithPollInterval(2 * time.Second),
-	}
-
-	indexerContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: runReq,
-		Started:          true,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to start running indexer container: %w", err)
-	}
-
-	logs, err := indexerContainer.Logs(ctx)
-	if err != nil {
-		fmt.Printf("Failed to get container logs: %v\n", err)
-	} else {
-		fmt.Println("Container logs:")
-		buf := new(bytes.Buffer)
-		_, err = buf.ReadFrom(logs)
-		if err != nil {
-			fmt.Printf("Failed to read container logs: %v\n", err)
-		} else {
-			fmt.Println(buf.String())
-		}
 	}
 
 	c.indexerContainer = indexerContainer
