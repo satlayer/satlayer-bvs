@@ -109,11 +109,6 @@ pub enum QueryMsg {
     #[returns(cw20::TokenInfoResponse)]
     TokenInfo {},
 
-    /// QueryMsg Minter: get the minter of the contract.
-    /// Returns who can mint and the hard cap on maximum tokens after minting.
-    #[returns(cw20::MinterResponse)]
-    Minter {},
-
     /// QueryMsg Allowance: get the allowance of a given address.
     /// Returns how much spender can use from owner account, 0 if unset.
     #[returns(cw20::AllowanceResponse)]
@@ -188,7 +183,6 @@ impl TryFrom<QueryMsg> for cw20_base::msg::QueryMsg {
         match val {
             QueryMsg::Balance { address } => Ok(cw20_base::msg::QueryMsg::Balance { address }),
             QueryMsg::TokenInfo {} => Ok(cw20_base::msg::QueryMsg::TokenInfo {}),
-            QueryMsg::Minter {} => Ok(cw20_base::msg::QueryMsg::Minter {}),
             QueryMsg::Allowance { owner, spender } => {
                 Ok(cw20_base::msg::QueryMsg::Allowance { owner, spender })
             }
