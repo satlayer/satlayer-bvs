@@ -231,6 +231,7 @@ mod vault_execute {
         router::assert_whitelisted(&deps.as_ref(), &env)?;
 
         let assets = msg.amount;
+
         let (vault, new_receipt_tokens) = {
             let underlying_token_balance = UnderlyingToken::query_balance(&deps.as_ref(), &env)?;
             let receipt_token_supply =
@@ -247,7 +248,7 @@ mod vault_execute {
             deps.storage,
             &info.sender,
             &env.contract.address,
-            msg.amount,
+            assets,
         )?;
 
         // critical section
