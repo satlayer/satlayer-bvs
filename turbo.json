@@ -20,7 +20,8 @@
       "outputLogs": "errors-only"
     },
     "cargo:publish": {
-      "cache": false
+      "cache": false,
+      "dependsOn": ["^cargo:publish"]
     }
   }
 }
