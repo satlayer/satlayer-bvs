@@ -5,14 +5,12 @@ use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::set_registry;
 use bvs_library::ownership;
-use bvs_library::time::DAYS;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 
 const CONTRACT_NAME: &str = concat!("crates.io:", env!("CARGO_PKG_NAME"));
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const MAX_SLASHABLE_DELAY: u64 = 7 * DAYS;
 const MAX_STRING_BYTES: usize = 250;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -104,6 +102,7 @@ mod migrate {
 
 mod execute {
     use super::*;
+    use crate::contract::query::get_withdrawal_lock_period;
     use crate::error::ContractError;
     use crate::msg::{RequestSlashingPayload, RequestSlashingResponse};
     use crate::state::{self, DEFAULT_WITHDRAWAL_LOCK_PERIOD};
@@ -213,8 +212,10 @@ mod execute {
             });
         }
 
+        // max_slashable_delay is equal to the withdrawal lock period (7 days default)
+        let max_slashable_delay = get_withdrawal_lock_period(deps.as_ref())?;
         // ensure the timestamp of slash must not be more than MAX_SLASHABLE_DELAY before and not in the future
-        if data.timestamp < env.block.time.minus_seconds(MAX_SLASHABLE_DELAY)
+        if data.timestamp < env.block.time.minus_seconds(max_slashable_delay.u64())
             || data.timestamp > env.block.time
         {
             return Err(InvalidSlashingRequest {
@@ -304,7 +305,11 @@ mod execute {
             .block
             .time
             .plus_seconds(slashing_parameters.resolution_window * 2);
-        let new_request = SlashingRequest::new(data.clone(), env.block.time, new_request_expiry);
+        let new_request = SlashingRequest {
+            request: data.clone(),
+            request_time: env.block.time,
+            request_expiry: new_request_expiry,
+        };
 
         // save slash data
         let slashing_request_id =
@@ -1190,8 +1195,8 @@ mod tests {
             HexBinary::from_hex("dff7a6f403eff632636533660ab53ab35e7ae0fe2e5dacb160aa7d876a412f09")
                 .unwrap(),
         );
-        let slash_request = SlashingRequest::new(
-            RequestSlashingPayload {
+        let slash_request = SlashingRequest {
+            request: RequestSlashingPayload {
                 operator: operator.to_string(),
                 bips: 100,
                 timestamp: env.block.time,
@@ -1199,9 +1204,9 @@ mod tests {
                     reason: "test".to_string(),
                 },
             },
-            env.block.time,
-            env.block.time.plus_seconds(100),
-        );
+            request_time: env.block.time,
+            request_expiry: env.block.time.plus_seconds(100),
+        };
 
         // query request_id before its saved => None
         let SlashingRequestResponse(res) =

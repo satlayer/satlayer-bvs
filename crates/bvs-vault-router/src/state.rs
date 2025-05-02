@@ -53,23 +53,25 @@ pub struct SlashingRequest {
     pub request_expiry: Timestamp,
 }
 
-impl SlashingRequest {
-    pub fn new(
-        data: RequestSlashingPayload,
-        request_time: Timestamp,
-        request_expiry: Timestamp,
-    ) -> Self {
-        Self {
-            request: data,
-            request_time,
-            request_expiry,
-        }
-    }
-}
-
 /// SlashingRequestId stores the id in hexbinary. It's a 32-byte hash of the slashing request
 #[cw_serde]
 pub struct SlashingRequestId(pub HexBinary);
+
+impl SlashingRequestId {
+    /// Returns the hex string representation of the slashing request id
+    pub fn to_hex(&self) -> String {
+        self.0.to_hex()
+    }
+
+    /// Generate a slashing request id from the service and slashing request data
+    pub fn new(service: &Service, data: &SlashingRequest) -> StdResult<Self> {
+        let mut hasher = sha3::Sha3_256::new();
+        hasher.update(service.as_bytes());
+        hasher.update(to_json_vec(data)?);
+
+        Ok(<[u8; 32]>::from(hasher.finalize()).into())
+    }
+}
 
 impl fmt::Display for SlashingRequestId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -125,20 +127,16 @@ impl KeyDeserialize for SlashingRequestId {
     }
 }
 
+/// Stores the active slashing request id for a given service and operator.
+///
+/// Once slash is canceled or finalized, the slashing request id is removed from this map.
 pub(crate) const SLASHING_REQUEST_IDS: Map<(&Service, &Operator), SlashingRequestId> =
     Map::new("slashing_request_ids");
 
-pub(crate) fn hash_slashing_request_id(
-    service: &Service,
-    data: &SlashingRequest,
-) -> StdResult<SlashingRequestId> {
-    let mut hasher = sha3::Sha3_256::new();
-    hasher.update(service.as_bytes());
-    hasher.update(to_json_vec(data)?);
-
-    Ok(<[u8; 32]>::from(hasher.finalize()).into())
-}
-
+/// Stores the slashing request data for a given slashing request id.
+///
+/// Slashing request won't be removed,
+/// hence this map might store active and inactive slashing requests.
 pub(crate) const SLASHING_REQUESTS: Map<SlashingRequestId, SlashingRequest> =
     Map::new("slashing_requests");
 
@@ -152,6 +150,7 @@ pub fn get_active_slashing_requests(
         Some(id) => id,
         None => return Ok(None),
     };
+
     // get active slashing from slashing_id
     let active_slashing_request = SLASHING_REQUESTS.may_load(store, active_slashing_id)?;
     match active_slashing_request {
@@ -167,7 +166,7 @@ pub fn save_slashing_request(
     data: &SlashingRequest,
 ) -> StdResult<SlashingRequestId> {
     // generate slashing_id
-    let slashing_id = hash_slashing_request_id(service, data)?;
+    let slashing_id = SlashingRequestId::new(service, data)?;
 
     // save slashing id
     SLASHING_REQUEST_IDS.save(store, (service, operator), &slashing_id)?;
@@ -198,18 +197,18 @@ mod test {
                 reason: "test".to_string(),
             },
         };
-        let slashing_request = SlashingRequest::new(
-            data.clone(),
-            env.block.time,
-            env.block.time.plus_seconds(100),
-        );
+        let slashing_request = SlashingRequest {
+            request: data.clone(),
+            request_time: env.block.time,
+            request_expiry: env.block.time.plus_seconds(100),
+        };
 
         let res = save_slashing_request(&mut deps.storage, &service, &operator, &slashing_request)
             .unwrap();
 
         assert_eq!(
             res,
-            hash_slashing_request_id(&service, &slashing_request).unwrap()
+            SlashingRequestId::new(&service, &slashing_request).unwrap()
         );
         assert_eq!(
             res.to_string(),
