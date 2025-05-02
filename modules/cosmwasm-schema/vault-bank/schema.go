@@ -146,8 +146,6 @@ type VaultInfoResponse struct {
 	Pauser string `json:"pauser"`
 	// The `vault-router` contract address
 	Router string `json:"router"`
-	// Whether the vault has enabled slashing
-	Slashing bool `json:"slashing"`
 	// The total assets under management
 	TotalAssets string `json:"total_assets"`
 	// The total shares in circulation
