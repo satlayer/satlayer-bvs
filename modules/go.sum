@@ -250,6 +250,7 @@ cosmossdk.io/x/feegrant v0.1.1 h1:EKFWOeo/pup0yF0svDisWWKAA9Zags6Zd0P3nRvVvw8=
 cosmossdk.io/x/feegrant v0.1.1/go.mod h1:2GjVVxX6G2fta8LWj7pC/ytHjryA6MHAJroBWHFNiEQ=
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 cosmossdk.io/x/nft v0.1.1 h1:pslAVS8P5NkW080+LWOamInjDcq+v2GSCo+BjN9sxZ8=
 cosmossdk.io/x/nft v0.1.1/go.mod h1:Kac6F6y2gsKvoxU+fy8uvxRTi4BIhLOor2zgCNQwVgY=
 cosmossdk.io/x/tx v0.14.0 h1:hB3O25kIcyDW/7kMTLMaO8Ripj3yqs5imceVd6c/heA=
@@ -261,6 +262,8 @@ cosmossdk.io/x/upgrade v0.1.3/go.mod h1:jOdQhnaY5B8CDUoUbed23/Lre0Dk+r6BMQE40iKl
 cosmossdk.io/x/nft v0.1.1 h1:pslAVS8P5NkW080+LWOamInjDcq+v2GSCo+BjN9sxZ8=
 cosmossdk.io/x/nft v0.1.1/go.mod h1:Kac6F6y2gsKvoxU+fy8uvxRTi4BIhLOor2zgCNQwVgY=
 >>>>>>> 51a61862 (fix: clean codes)
+=======
+>>>>>>> 669753c0 (chore: update go.mod)
 cosmossdk.io/x/tx v0.13.7 h1:8WSk6B/OHJLYjiZeMKhq7DK7lHDMyK0UfDbBMxVmeOI=
 cosmossdk.io/x/tx v0.13.7/go.mod h1:V6DImnwJMTq5qFjeGWpXNiT/fjgE4HtmclRmTqRVM3w=
 cosmossdk.io/x/upgrade v0.1.4 h1:/BWJim24QHoXde8Bc64/2BSEB6W4eTydq0X/2f8+g38=
@@ -281,8 +284,8 @@ github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 h1:L/gRVlceqvL25
 github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161/go.mod h1:xomTg63KZ2rFqZQzSB4Vz2SUXa1BpHTVz9L5PTmPC4E=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
-github.com/CosmWasm/wasmd v0.52.0 h1:VRylqes1AMXqIgz/jUH9EzhjBZKsRXrrjCTAni0ILRM=
-github.com/CosmWasm/wasmd v0.52.0/go.mod h1:hyy1wt7c589Cs4kOK2cYdtphzCd2Xo20q/t7tfby7oI=
+github.com/CosmWasm/wasmd v0.54.0 h1:/txsBehV1xnAi46H1xwuuY6D4NySujBy+wa5+ryItS8=
+github.com/CosmWasm/wasmd v0.54.0/go.mod h1:8Zu/rj6RHbJ8Gx0WdqsGeHvgnEQb0rqchpqhgMxASRU=
 github.com/CosmWasm/wasmvm/v2 v2.2.1 h1:cmOnM+TDfUl2VRugeo1eJBw4U/Lw0WLviuQHKSo9DVQ=
 github.com/CosmWasm/wasmvm/v2 v2.2.1/go.mod h1:bMhLQL4Yp9CzJi9A83aR7VO9wockOsSlZbT4ztOl6bg=
 github.com/DataDog/datadog-go v3.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
@@ -315,8 +318,8 @@ github.com/Shopify/sarama v1.19.0/go.mod h1:FVkBWblsNy7DGZRfXLU0O9RCGt5g3g3yEuWX
 github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=
 github.com/VividCortex/gohistogram v1.0.0 h1:6+hBz+qvs0JOrrNhhmR7lFxo5sINxBCGXrdtl/UvroE=
 github.com/VividCortex/gohistogram v1.0.0/go.mod h1:Pf5mBqqDxYaXu3hDrrU+w6nw50o/4+TcAqDqk/vUH7g=
-github.com/adlio/schema v1.3.3 h1:oBJn8I02PyTB466pZO1UZEn1TV5XLlifBSyMrmHl/1I=
-github.com/adlio/schema v1.3.3/go.mod h1:1EsRssiv9/Ce2CMzq5DoL7RiMshhuigQxrR4DMV9fHg=
+github.com/adlio/schema v1.3.6 h1:k1/zc2jNfeiZBA5aFTRy37jlBIuCkXCm0XmvpzCKI9I=
+github.com/adlio/schema v1.3.6/go.mod h1:qkxwLgPBd1FgLRHYVCmQT/rrBr3JH38J9LjmVzWNudg=
 github.com/afex/hystrix-go v0.0.0-20180502004556-fa1af6a1f4f5/go.mod h1:SkGFH1ia65gfNATL8TAiHDNxPzPdmEL5uirI2Uyuz6c=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
@@ -360,6 +363,7 @@ github.com/btcsuite/btcd/btcutil v1.1.6 h1:zFL2+c3Lb9gEgqKNzowKUPQNb8jV7v5Oaodi/
 github.com/btcsuite/btcd/btcutil v1.1.6/go.mod h1:9dFymx8HpuLqBnsPELrImQeTQfKBQqzqGbbV3jK55aE=
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 github.com/bufbuild/protocompile v0.14.1 h1:iA73zAf/fyljNjQKwYzUHD6AD4R8KMasmwa/FBatYVw=
 github.com/bufbuild/protocompile v0.14.1/go.mod h1:ppVdAIhbr2H8asPk6k4pY7t9zB1OU5DoEw9xY/FUi1c=
 github.com/bytedance/sonic v1.13.2 h1:8/H1FempDZqC4VqjptGo14QQlJx8VdZJegxs6wwfqpQ=
@@ -372,6 +376,8 @@ github.com/bytedance/sonic/loader v0.2.4/go.mod h1:N8A3vUdtUebEY2/VQC0MyhYeKUFos
 github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1 h1:q0rUy8C/TYNBQS1+CGKw68tLOFYSNEs0TFnxxnS9+4U=
 github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1/go.mod h1:7SFka0XMvUgj3hfZtydOrQY2mwhPclbT2snogU7SQQc=
 >>>>>>> 51a61862 (fix: clean codes)
+=======
+>>>>>>> 669753c0 (chore: update go.mod)
 github.com/bufbuild/protocompile v0.6.0 h1:Uu7WiSQ6Yj9DbkdnOe7U4mNKp58y9WDMKDn28/ZlunY=
 github.com/bufbuild/protocompile v0.6.0/go.mod h1:YNP35qEYoYGme7QMtz5SBCoN4kL4g12jTtjuzRNdjpE=
 github.com/bytedance/sonic v1.12.3 h1:W2MGa7RCU1QTeYRTPE3+88mVC0yXmsRQRChiyVocVjU=
@@ -439,6 +445,7 @@ github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06/go.mod h1:
 github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd/go.mod h1:sE/e/2PUdi/liOCUjSTXgM1o87ZssimdTWN964YiIeI=
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 github.com/cometbft/cometbft v0.38.17 h1:FkrQNbAjiFqXydeAO81FUzriL4Bz0abYxN/eOHrQGOk=
 github.com/cometbft/cometbft v0.38.17/go.mod h1:5l0SkgeLRXi6bBfQuevXjKqML1jjfJJlvI1Ulp02/o4=
 =======
@@ -449,6 +456,10 @@ github.com/cometbft/cometbft v0.38.15/go.mod h1:+wh6ap6xctVG+JOHwbl8pPKZ0GeqdPYq
 github.com/cometbft/cometbft v0.38.12 h1:OWsLZN2KcSSFe8bet9xCn07VwhBnavPea3VyPnNq1bg=
 github.com/cometbft/cometbft v0.38.12/go.mod h1:GPHp3/pehPqgX1930HmK1BpBLZPxB75v/dZg8Viwy+o=
 >>>>>>> 51a61862 (fix: clean codes)
+=======
+github.com/cometbft/cometbft v0.38.15 h1:5veFd8k1uXM27PBg9sMO3hAfRJ3vbh4OmmLf6cVrqXg=
+github.com/cometbft/cometbft v0.38.15/go.mod h1:+wh6ap6xctVG+JOHwbl8pPKZ0GeqdPYqISu7F4b43cQ=
+>>>>>>> 669753c0 (chore: update go.mod)
 github.com/cometbft/cometbft-db v0.14.1 h1:SxoamPghqICBAIcGpleHbmoPqy+crij/++eZz3DlerQ=
 github.com/cometbft/cometbft-db v0.14.1/go.mod h1:KHP1YghilyGV/xjD5DP3+2hyigWx0WTp9X+0Gnx0RxQ=
 github.com/containerd/continuity v0.4.2 h1:v3y/4Yz5jwnvqPKJJ+7Wf93fyWoCB3F5EclWG023MDM=
@@ -478,12 +489,10 @@ github.com/cosmos/gogoproto v1.7.0 h1:79USr0oyXAbxg3rspGh/m4SWNyoz/GLaAh0QlCe2fr
 github.com/cosmos/gogoproto v1.7.0/go.mod h1:yWChEv5IUEYURQasfyBW5ffkMHR/90hiHgbNgrtp4j0=
 github.com/cosmos/iavl v1.2.4 h1:IHUrG8dkyueKEY72y92jajrizbkZKPZbMmG14QzsEkw=
 github.com/cosmos/iavl v1.2.4/go.mod h1:GiM43q0pB+uG53mLxLDzimxM9l/5N9UuSY3/D0huuVw=
-github.com/cosmos/ibc-go/modules/apps/callbacks v0.2.1-0.20231113120333-342c00b0f8bd h1:Lx+/5dZ/nN6qPXP2Ofog6u1fmlkCFA1ElcOconnofEM=
-github.com/cosmos/ibc-go/modules/apps/callbacks v0.2.1-0.20231113120333-342c00b0f8bd/go.mod h1:JWfpWVKJKiKtd53/KbRoKfxWl8FsT2GPcNezTOk0o5Q=
-github.com/cosmos/ibc-go/modules/capability v1.0.0 h1:r/l++byFtn7jHYa09zlAdSeevo8ci1mVZNO9+V0xsLE=
-github.com/cosmos/ibc-go/modules/capability v1.0.0/go.mod h1:D81ZxzjZAe0ZO5ambnvn1qedsFQ8lOwtqicG6liLBco=
-github.com/cosmos/ibc-go/v8 v8.3.2 h1:8X1oHHKt2Bh9hcExWS89rntLaCKZp2EjFTUSxKlPhGI=
-github.com/cosmos/ibc-go/v8 v8.3.2/go.mod h1:WVVIsG39jGrF9Cjggjci6LzySyWGloz194sjTxiGNIE=
+github.com/cosmos/ibc-go/modules/capability v1.0.1 h1:ibwhrpJ3SftEEZRxCRkH0fQZ9svjthrX2+oXdZvzgGI=
+github.com/cosmos/ibc-go/modules/capability v1.0.1/go.mod h1:rquyOV262nGJplkumH+/LeYs04P3eV8oB7ZM4Ygqk4E=
+github.com/cosmos/ibc-go/v8 v8.4.0 h1:K2PfX0AZ+1XKZytHGEMuSjQXG/MZshPb83RSTQt2+cE=
+github.com/cosmos/ibc-go/v8 v8.4.0/go.mod h1:zh6x1osR0hNvEcFrC/lhGD08sMfQmr9wHVvZ/mRWMCs=
 github.com/cosmos/ics23/go v0.11.0 h1:jk5skjT0TqX5e5QJbEnwXIS2yI2vnmLOgpQPeM5RtnU=
 github.com/cosmos/ics23/go v0.11.0/go.mod h1:A8OjxPE67hHST4Icw94hOxxFEJMBG031xIGF/JHNIY0=
 github.com/cosmos/ledger-cosmos-go v0.14.0 h1:WfCHricT3rPbkPSVKRH+L4fQGKYHuGOK9Edpel8TYpE=
@@ -1073,8 +1082,8 @@ github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.1.1 h1:y0fUlFfIZhPF1W537XOLg0/fcx6zcHCJwooC2xJA040=
 github.com/opencontainers/image-spec v1.1.1/go.mod h1:qpqAh3Dmcf36wStyyWU+kCeDgrGnAve2nCC8+7h8Q0M=
-github.com/opencontainers/runc v1.1.3 h1:vIXrkId+0/J2Ymu2m7VjGvbSlAId9XNRPhn2p4b+d8w=
-github.com/opencontainers/runc v1.1.3/go.mod h1:1J5XiS+vdZ3wCyZybsuxXZWGrgSr8fFJHLXuG2PsnNg=
+github.com/opencontainers/runc v1.1.12 h1:BOIssBaW1La0/qbNZHXOOa71dZfZEQOzW7dqQf3phss=
+github.com/opencontainers/runc v1.1.12/go.mod h1:S+lQwSfncpBha7XTy/5lBwWgm5+y5Ma/O44Ekby9FK8=
 github.com/opentracing-contrib/go-observer v0.0.0-20170622124052-a52f23424492/go.mod h1:Ngi6UdF0k5OKD5t5wlmGhe/EDKPoUM3BXZSSfIuJbis=
 github.com/opentracing/basictracer-go v1.0.0/go.mod h1:QfBfYuafItcjQuMwinw9GhYKwFXS9KnPs5lxoYwgW74=
 github.com/opentracing/opentracing-go v1.0.2/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFStlNbqXla1AfSYxPUl2o=
