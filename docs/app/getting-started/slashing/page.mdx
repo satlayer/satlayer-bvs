@@ -8,7 +8,7 @@ This is technical documentation for BVS developers and operators. The terms BVS 
 
 
 ```txt
-                                           SlashParameters(service)                               
+                                           SlashingParameters(service)
         RegisterAsService ┌────────┐       Status(operator,service)                              
           ┌──────────────►│Registry│◄────────────────┐                               
           │               └────────┘                 │
@@ -17,11 +17,11 @@ This is technical documentation for BVS developers and operators. The terms BVS 
           │                                          │                               
           │                                          │               ┌──────────┐    
           │                                          │           ┌───┤OP Vault 1│    
-          │         ┌──1.Slash Initialize─┐          │           │   └──────────┘    
-    ┌───────────┐   │                     │    ┌─────┴──────┐    │   ┌──────────┐    
-    │BVS/Service│───┼──2.Slash Locked─────┼───►│Vault Router│◄───┼───┤OP Vault 2│    
-    └───────────┘   │                     │    └────────────┘    │   └──────────┘    
-                    └──3.Slash Finalize───┘                      │   ┌──────────┐    
+          │         ┌──1.Request Slashing ─┐         │           │   └──────────┘
+    ┌───────────┐   │                      │   ┌─────┴──────┐    │   ┌──────────┐
+    │BVS/Service│───┼──2.Locked Slashing───┼──►│Vault Router│◄───┼───┤OP Vault 2│
+    └───────────┘   │                      │   └────────────┘    │   └──────────┘
+                    └──3.Finalize Slashing─┘                     │   ┌──────────┐
                                                                  └───┤OP Vault 3│    
                                                                      └──────────┘   
 ```
@@ -35,8 +35,8 @@ starting from the preparation phase to the finalization phase.
 Each phase is time-delayed to ensure that the slashing process is executed with fair notice,
 allowing the operator to respond.
 
-Funds are only moved during the `slash_locked` phase, from the operator vaults to the jail.
-The restakers (and stakers) are unaffected until the slashing process reaches the `slash_locked` phase.
+Funds are only moved during the `locked_slashing` phase, from the operator vaults to the jail.
+The restakers (and stakers) are unaffected until the slashing process reaches the `locked_slashing` phase.
 Guardrails are in place to prevent malicious slashing before the finalization phase.
 
 ## Enable Slashing
@@ -53,9 +53,11 @@ The slashing window will automatically close after `resolution_window * 2` has e
 ```json
 {
   "enable_slashing": {
-    "destination": "bbn...",
-    "max_slashing_bips": 0.5,
-    "resolution_window": 86400
+    "parameters": {
+      "destination": "bbn...",
+      "max_slashing_bips": 0.5,
+      "resolution_window": 86400
+    }
   }
 }
 ```
@@ -100,15 +102,136 @@ An operator and service pair can only be slashed once every 48 hours.
 flowchart LR
     A(["BVS/Service"])
     B["Vault Router"]
-    A --> |Slash Initialize| B
-    A --> |Slash Locked| B
-    A --> |Slash Finalize| B
-    B --> |Slash| V1["Operator Vault 1"]
-    B --> |Slash| V2["Operator Vault 2"]
-    B --> |Slash| V3["Operator Vault 3"]
+    A --> |Request Slashing| B
+    A --> |Locked Slashing| B
+    A --> |Finalize Slashing| B
+    B --> |Slash Locked| V1["Operator Vault 1"]
+    B --> |Slash Locked| V2["Operator Vault 2"]
+    B --> |Slash Locked| V3["Operator Vault 3"]
 ```
 
----
-<Callout>
-  Check back soon! Documentation is a work in progress.
-</Callout>
+### Request Slashing 
+
+The first step in the slashing lifecycle prepares the process
+by gathering necessary information and setting up the conditions for slashing.
+The service fires off a `request_slashing` message to the Vault Router to initiate the slashing process. 
+
+* Slash can be requested for events 7 days before the current time of the transaction. 
+A service should slash at the earliest opportunity,
+as unnecessary latency will increase the opportunity for vault restakers to move assets to prevent dilution.
+* Only a proportion of the vaults will be slashed based on provided `bips`.
+* A `reason` is required to explain why the slashing is being executed; 
+this must be a human-readable string and informative to understand why an operator is being slashed. 
+* A slash identifier (calculated hash of the service address and message payload) will be returned; 
+this is used for the next steps in the slashing lifecycle. 
+
+Behind the scenes,
+executing `request_slashing` on the Vault Router will check the registration status of the operator to service at the timestamp and the registered slashing parameters
+that the operator has opted into.
+Suppose the operator has opted into a set of slash parameters previously without opting into the new set of parameters.
+In that case, the service can only slash with the previous set of parameters.
+
+```json
+{ 
+  "request_slashing": {
+    "operator": "bbn...",
+    "bips": 50,
+    "timestamp": 1555555555,
+    "metadata": {
+      "reason": "Service is not up."
+    }
+  }
+}
+```
+
+### Cancel Slashing (resolved)
+
+After the `request_slashing` message is sent, the operator has a `resolution_window` (in seconds) to respond.
+The service sets this window and can be any value greater than zero.
+**A value greater than the withdrawal delay is not recommended**.
+If promptly responded to and resolved, the service can cancel the slashing process.
+
+The service (slash initiator) should cancel the slashing process if the operator has resolved the issue.
+The definition of "resolved" is up to the service to define.
+For objectively verifiable faults,
+e.g., double-signing or computationally verifiable, it's up to the service to define whether it can be canceled or not.
+For time-based faults, e.g., uptime SLA, the service should define a time window for the operator to resolve the issue.
+
+Programmable slashing is ultimately a flexible mechanism for shared security.
+Services and operators should work harmoniously to ensure the best possible outcome for all parties involved.
+Egregiously slashing the operator is not the goal of this mechanism,
+and operators can choose to deregister from the service if they feel the service is not acting in good faith.
+
+A service cannot start a new slashing process until the current one is canceled or executed
+(for more information, see Slashing Lifecycle to understand the entity relationship between operators and services).
+Unexecuted slashing will automatically be canceled after the `resolution_window * 2` expires.
+
+```json
+{
+  "cancel_slashing": {
+    "id": 1
+  }
+}
+```
+
+### Locked Slashing
+
+After the `request_slashing` message is sent, the operator has a `resolution_window` (in seconds) to respond.
+If the operator does not respond or fails to resolve the issue within the `resolution_window`,
+the service will execute the slash and move the funds from the operator vaults to the locked state. 
+
+After executing the slash by moving and locking up the assets in the Vault Router,
+the Vault Router will rebase all affected vaults to reflect the new exchange rate.
+New deposits will mint a higher share ratio and will not be affected by the slashing.
+
+```json
+{ 
+  "locked_slashing": {
+    "id": 1
+  }
+}
+```
+
+### Finalize Slashing
+
+Post-execution, the slashing process must be finalized to move the funds from the locked state to the final destination,
+which is determined by the service through the `slashing_parameters` in the Registry contract.
+The finalization phase represents the conclusive step in the slashing lifecycle,
+where the locked funds are permanently transferred to the designated recipient address.
+
+```json
+{ 
+  "finalize_slashing": {
+    "id": 1
+  }
+}
+```
+
+A slash can only be finalized
+after it has passed the guardrail checks
+implemented through a governance mechanism in Phase 2. This critical safeguard ensures
+that slashing actions are legitimate,
+proportional,
+and aligned with the ecosystem's best interests.
+
+**Guardrails: Securing the Slashing Lifecycle in Phase 2**
+
+The Guardrails system is a security mechanism that governs the Slashing Lifecycle
+and protects the ecosystem from potential exploitation.
+This system will evolve from a trusted model to a fully trustless and decentralized security framework in later phases.
+
+The slashing process is currently (Phase 2)
+secured through a trusted governance voting mechanism involving the contract administrators,
+technical operators, and services.
+This committee reviews slashing actions before finalization, verifying their legitimacy,
+assessing proportionality, and preventing potential ecosystem harm.
+
+When a slashing action reaches finalization,
+the committee evaluates it and can block actions deemed unjustified or disproportionate.
+The system will gradually transition toward a more decentralized model with expanded participation,
+objective verification criteria, transparent governance processes, and aligned economic incentives.
+
+This evolution reduces centralization risks, enhances security through distributed responsibilities,
+increases legitimacy through transparent governance, and creates a scalable framework for ecosystem growth.
+Implementing these guardrails balances immediate security needs with long-term decentralization goals,
+creating a robust foundation for sustainable ecosystem growth.
