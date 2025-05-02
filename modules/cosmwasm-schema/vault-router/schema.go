@@ -26,7 +26,8 @@ type InstantiateMsg struct {
 // ExecuteMsg TransferOwnership See [`bvs_library::ownership::transfer_ownership`] for more
 // information on this field
 //
-// Initiates a slashing request against an active operator of the service (info.sender).
+// ExecuteMsg RequestSlashing initiates a slashing request against an active operator of the
+// service (info.sender).
 //
 // This ExecuteMsg allows a registered service to request a slash of an operator's staked
 // tokens as a penalty for violations or non-compliance. The slashing request must meet
