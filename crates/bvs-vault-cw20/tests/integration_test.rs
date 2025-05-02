@@ -947,14 +947,11 @@ fn test_vault_info() {
 fn test_system_lock_assets() {
     let app = &mut App::default();
     let TestContracts {
-        pauser,
-        registry,
         router,
         cw20,
         vault,
+        ..
     } = TestContracts::init(app);
-    let owner = app.api().addr_make("owner");
-    let denom = "denom";
     let original_deposit_amount: u128 = 100_000_000;
 
     let stakers = [

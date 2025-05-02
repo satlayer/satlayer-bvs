@@ -6,10 +6,6 @@
   ],
   "scripts": {
     "build": "cosmwasm-optimizer --root=../",
-    "cargo:publish": "cargo publish"
-  },
-  "dependencies": {
-    "@satlayer/bvs-library": "workspace:*",
-    "@satlayer/bvs-pauser": "workspace:*"
+    "cargo:publish": "cargo publish --no-verify"
   }
 }
