@@ -44,8 +44,6 @@ importers:
 
   crates: {}
 
-  crates/bvs-library: {}
-
   crates/bvs-pauser: {}
 
   crates/bvs-registry: {}
