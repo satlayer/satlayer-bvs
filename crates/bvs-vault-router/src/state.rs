@@ -103,7 +103,7 @@ impl From<[u8; 32]> for SlashingRequestId {
     }
 }
 
-impl<'a> PrimaryKey<'a> for SlashingRequestId {
+impl PrimaryKey<'_> for SlashingRequestId {
     type Prefix = ();
     type SubPrefix = ();
     type Suffix = Self;
