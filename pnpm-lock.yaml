@@ -44,9 +44,22 @@ importers:
 
   crates: {}
 
-  crates/bvs-pauser: {}
+  crates/bvs-library: {}
 
-  crates/bvs-registry: {}
+  crates/bvs-pauser:
+    dependencies:
+      '@satlayer/bvs-library':
+        specifier: workspace:*
+        version: link:../bvs-library
+
+  crates/bvs-registry:
+    dependencies:
+      '@satlayer/bvs-library':
+        specifier: workspace:*
+        version: link:../bvs-library
+      '@satlayer/bvs-pauser':
+        specifier: workspace:*
+        version: link:../bvs-pauser
 
   crates/bvs-rewards: {}
 
@@ -56,7 +69,17 @@ importers:
 
   crates/bvs-vault-factory: {}
 
-  crates/bvs-vault-router: {}
+  crates/bvs-vault-router:
+    dependencies:
+      '@satlayer/bvs-library':
+        specifier: workspace:*
+        version: link:../bvs-library
+      '@satlayer/bvs-pauser':
+        specifier: workspace:*
+        version: link:../bvs-pauser
+      '@satlayer/bvs-registry':
+        specifier: workspace:*
+        version: link:../bvs-registry
 
   docs:
     dependencies:

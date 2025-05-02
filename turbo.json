@@ -18,6 +18,10 @@
     "eslint": {
       "cache": false,
       "outputLogs": "errors-only"
+    },
+    "cargo:publish": {
+      "cache": false,
+      "dependsOn": ["^cargo:publish"]
     }
   }
 }
