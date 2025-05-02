@@ -11,6 +11,7 @@ use bvs_vault_router::{msg::ExecuteMsg as RouterExecuteMsg, testing::VaultRouter
 use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::{to_json_binary, Addr, Event, Timestamp, Uint128, Uint64, WasmMsg};
 use cw2::ContractVersion;
+use cw20::BalanceResponse;
 use cw_multi_test::{App, Executor};
 
 struct TestContracts {
@@ -1275,10 +1276,7 @@ fn test_proper_contract_name_and_version() {
     let contract_info: ContractVersion =
         cosmwasm_std::from_json(binary).expect("invalid contract_info format");
 
-    assert_eq!(
-        contract_info.contract,
-        concat!("crates.io:", env!("CARGO_PKG_NAME"))
-    );
+    assert_eq!(contract_info.contract, "crates.io:bvs-vault-cw20-tokenized",);
     assert_eq!(contract_info.version, env!("CARGO_PKG_VERSION"));
 }
 
@@ -1286,14 +1284,11 @@ fn test_proper_contract_name_and_version() {
 fn test_system_lock_assets() {
     let app = &mut App::default();
     let TestContracts {
-        pauser,
-        registry,
         router,
         cw20,
         vault,
+        ..
     } = TestContracts::init(app);
-    let owner = app.api().addr_make("owner");
-    let denom = "denom";
     let original_deposit_amount: u128 = 100_000_000;
 
     let stakers = [
@@ -1384,5 +1379,246 @@ fn test_system_lock_assets() {
         let msg = ExecuteMsg::SlashLocked(Amount(Uint128::new(0)));
         let resp = vault.execute(app, router.addr(), &msg);
         assert!(resp.is_err());
+    }
+}
+
+#[test]
+fn test_deposit_transfer_then_withdraw_to() {
+    let app = &mut App::default();
+    let TestContracts { vault, cw20, .. } = TestContracts::init(app);
+
+    let staker = app.api().addr_make("staker/1");
+    let beneficiary = app.api().addr_make("beneficiary/1");
+    let initial_deposit_amount: u128 = 80_189_462_987_009_847;
+
+    let msg = ExecuteMsg::DepositFor(RecipientAmount {
+        recipient: staker.clone(),
+        amount: Uint128::new(initial_deposit_amount),
+    });
+    cw20.increase_allowance(app, &staker, vault.addr(), 100e15 as u128);
+    cw20.fund(app, &staker, 100e15 as u128);
+    vault.execute(app, &staker, &msg).unwrap();
+
+    {
+        let staker_balance = cw20.balance(app, &staker);
+        assert_eq!(staker_balance, 19_810_537_012_990_153);
+
+        let contract_balance = cw20.balance(app, vault.addr());
+        assert_eq!(contract_balance, initial_deposit_amount);
+
+        let query_shares = QueryMsg::Shares {
+            staker: staker.to_string(),
+        };
+        let shares: Uint128 = vault.query(app, &query_shares).unwrap();
+        assert_eq!(shares, Uint128::new(initial_deposit_amount));
+    }
+
+    // Transfer to beneficiary
+    {
+        let msg = ExecuteMsg::Transfer {
+            recipient: beneficiary.to_string(),
+            amount: Uint128::new(1000),
+        };
+        vault.execute(app, &staker, &msg).unwrap();
+
+        let msg = QueryMsg::Balance {
+            address: beneficiary.to_string(),
+        };
+
+        let resp: BalanceResponse = vault.query(app, &msg).unwrap();
+
+        assert_eq!(resp.balance, Uint128::new(1000));
+
+        let resp: BalanceResponse = vault
+            .query(
+                app,
+                &QueryMsg::Balance {
+                    address: staker.to_string(),
+                },
+            )
+            .unwrap();
+
+        assert_eq!(resp.balance, Uint128::new(initial_deposit_amount - 1000));
+    }
+
+    // Fully Withdraw
+    {
+        let msg = ExecuteMsg::WithdrawTo(RecipientAmount {
+            amount: Uint128::new(initial_deposit_amount - 1000),
+            recipient: staker.clone(),
+        });
+        vault.execute(app, &staker, &msg).unwrap();
+
+        let staker_balance = cw20.balance(app, &staker);
+
+        assert_eq!(
+            staker_balance,
+            19_810_537_012_990_153 + initial_deposit_amount - 1000
+        );
+
+        let msg = ExecuteMsg::WithdrawTo(RecipientAmount {
+            amount: Uint128::new(1000),
+            recipient: beneficiary.clone(),
+        });
+        vault.execute(app, &beneficiary, &msg).unwrap();
+
+        let beneficiary_balance = cw20.balance(app, &beneficiary);
+
+        assert_eq!(beneficiary_balance, 1000);
+
+        let contract_balance = cw20.balance(app, vault.addr());
+
+        assert_eq!(contract_balance, 0);
+    }
+
+    // should have 0 receipt token left
+    {
+        let msg = QueryMsg::Balance {
+            address: beneficiary.to_string(),
+        };
+
+        let resp: BalanceResponse = vault.query(app, &msg).unwrap();
+
+        assert_eq!(resp.balance.is_zero(), true);
+
+        let resp: BalanceResponse = vault
+            .query(
+                app,
+                &QueryMsg::Balance {
+                    address: staker.to_string(),
+                },
+            )
+            .unwrap();
+
+        assert_eq!(resp.balance.is_zero(), true);
+    }
+}
+
+#[test]
+fn test_deposit_transfer_then_queue_redeem_withdraw() {
+    let app = &mut App::default();
+    let TestContracts { vault, cw20, .. } = TestContracts::init(app);
+
+    let staker = app.api().addr_make("staker/1");
+    let beneficiary = app.api().addr_make("beneficiary/1");
+    let initial_deposit_amount: u128 = 80_189_462_987_009_847;
+
+    let msg = ExecuteMsg::DepositFor(RecipientAmount {
+        recipient: staker.clone(),
+        amount: Uint128::new(initial_deposit_amount),
+    });
+    cw20.increase_allowance(app, &staker, vault.addr(), 100e15 as u128);
+    cw20.fund(app, &staker, 100e15 as u128);
+    vault.execute(app, &staker, &msg).unwrap();
+
+    {
+        let staker_balance = cw20.balance(app, &staker);
+        assert_eq!(staker_balance, 19_810_537_012_990_153);
+
+        let contract_balance = cw20.balance(app, vault.addr());
+        assert_eq!(contract_balance, initial_deposit_amount);
+
+        let query_shares = QueryMsg::Shares {
+            staker: staker.to_string(),
+        };
+        let shares: Uint128 = vault.query(app, &query_shares).unwrap();
+        assert_eq!(shares, Uint128::new(initial_deposit_amount));
+    }
+
+    // Transfer to beneficiary
+    {
+        let msg = ExecuteMsg::Transfer {
+            recipient: beneficiary.to_string(),
+            amount: Uint128::new(1000),
+        };
+        vault.execute(app, &staker, &msg).unwrap();
+
+        let msg = QueryMsg::Balance {
+            address: beneficiary.to_string(),
+        };
+
+        let resp: BalanceResponse = vault.query(app, &msg).unwrap();
+
+        assert_eq!(resp.balance, Uint128::new(1000));
+
+        let resp: BalanceResponse = vault
+            .query(
+                app,
+                &QueryMsg::Balance {
+                    address: staker.to_string(),
+                },
+            )
+            .unwrap();
+
+        assert_eq!(resp.balance, Uint128::new(initial_deposit_amount - 1000));
+    }
+
+    // Fully Withdraw
+    {
+        let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
+            amount: Uint128::new(initial_deposit_amount - 1000),
+            recipient: staker.clone(),
+        });
+        vault.execute(app, &staker, &msg).unwrap();
+
+        let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
+            amount: Uint128::new(1000),
+            recipient: beneficiary.clone(),
+        });
+        vault.execute(app, &beneficiary, &msg).unwrap();
+    }
+
+    // time travel
+    {
+        app.update_block(|block| {
+            // default lock period is 7 days
+            block.time = block.time.plus_seconds(604800);
+        });
+    }
+
+    // redeem withdrawal to
+    {
+        let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(staker.clone()));
+        vault.execute(app, &staker, &msg).unwrap();
+
+        let staker_balance = cw20.balance(app, &staker);
+
+        assert_eq!(
+            staker_balance,
+            19_810_537_012_990_153 + initial_deposit_amount - 1000
+        );
+
+        let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(beneficiary.clone()));
+        vault.execute(app, &beneficiary, &msg).unwrap();
+
+        let beneficiary_balance = cw20.balance(app, &beneficiary);
+
+        assert_eq!(beneficiary_balance, 1000);
+
+        let contract_balance = cw20.balance(app, vault.addr());
+
+        assert_eq!(contract_balance, 0);
+    }
+
+    // should have 0 receipt token left
+    {
+        let msg = QueryMsg::Balance {
+            address: beneficiary.to_string(),
+        };
+
+        let resp: BalanceResponse = vault.query(app, &msg).unwrap();
+
+        assert_eq!(resp.balance.is_zero(), true);
+
+        let resp: BalanceResponse = vault
+            .query(
+                app,
+                &QueryMsg::Balance {
+                    address: staker.to_string(),
+                },
+            )
+            .unwrap();
+
+        assert_eq!(resp.balance.is_zero(), true);
     }
 }

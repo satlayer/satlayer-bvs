@@ -31,12 +31,12 @@ pub fn instantiate(
 
     // Assert that the contract is able
     // to query the token info to ensure that the contract is properly set up
-    let staking_token_info = UnderlyingToken::get_token_info(&deps.as_ref())?;
+    let underlying_token_info = UnderlyingToken::get_token_info(&deps.as_ref())?;
 
     let receipt_token_instantiate = ReceiptCw20InstantiateMsg {
-        name: format!("SatLayer {}", staking_token_info.name),
-        symbol: format!("sat{}", staking_token_info.symbol),
-        decimals: staking_token_info.decimals,
+        name: format!("SatLayer {}", underlying_token_info.name),
+        symbol: format!("sat{}", underlying_token_info.symbol),
+        decimals: underlying_token_info.decimals,
         initial_balances: vec![],
         mint: None,
         marketing: None,
@@ -285,28 +285,28 @@ mod vault_execute {
 
         let receipt_tokens = msg.amount;
 
-        let claim_staking_tokens = {
+        let claim_underlying_token = {
             let underlying_token_balance = UnderlyingToken::query_balance(&deps.as_ref(), &env)?;
             let receipt_token_supply =
                 cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
             let vault = offset::VirtualOffset::new(receipt_token_supply, underlying_token_balance)?;
 
-            let primary_staking_tokens = vault.shares_to_assets(receipt_tokens)?;
-            if primary_staking_tokens.is_zero() {
+            let underlying_token = vault.shares_to_assets(receipt_tokens)?;
+            if underlying_token.is_zero() {
                 return Err(VaultError::zero("Withdraw assets cannot be zero.").into());
             }
 
-            primary_staking_tokens
+            underlying_token
         };
 
         // CW20 transfer of staking asset to msg.recipient
         let transfer_msg = UnderlyingToken::execute_new_transfer(
             deps.storage,
             &msg.recipient,
-            claim_staking_tokens,
+            claim_underlying_token,
         )?;
 
-        // Burn the receipt token from the staker
+        // Burn the receipt token from the sender
         receipt_token_burn(deps.branch(), env.clone(), info.clone(), receipt_tokens)?;
         let total_supply = cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
 
@@ -315,7 +315,7 @@ mod vault_execute {
                 Event::new("WithdrawTo")
                     .add_attribute("sender", info.sender.to_string())
                     .add_attribute("recipient", msg.recipient.to_string())
-                    .add_attribute("assets", claim_staking_tokens.to_string())
+                    .add_attribute("assets", claim_underlying_token.to_string())
                     .add_attribute("shares", msg.amount.to_string())
                     .add_attribute("total_shares", total_supply.to_string()),
             )
@@ -483,9 +483,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<cosmwasm_std::Bin
             let staker = deps.api.addr_validate(&staker)?;
             to_json_binary(&vault_query::assets(deps, env, staker)?)
         }
-        QueryMsg::ConvertToAssets { shares } => {
-            to_json_binary(&vault_query::convert_to_staking_token(deps, env, shares)?)
-        }
+        QueryMsg::ConvertToAssets { shares } => to_json_binary(
+            &vault_query::convert_to_underlying_token(deps, env, shares)?,
+        ),
         QueryMsg::ConvertToShares { assets } => {
             to_json_binary(&vault_query::convert_to_receipt_token(deps, env, assets)?)
         }
@@ -512,7 +512,7 @@ mod vault_query {
         offset,
         shares::{self, QueuedWithdrawalInfo},
     };
-    use bvs_vault_cw20::token as StakingToken;
+    use bvs_vault_cw20::token as UnderlyingToken;
     use cosmwasm_std::{Addr, Deps, Env, StdResult, Uint128};
     use cw20_base::contract::query_balance;
 
@@ -533,16 +533,16 @@ mod vault_query {
     /// Get the staking token of staker, converted from receipt_tokens held by staker.
     pub fn assets(deps: Deps, env: Env, staker: Addr) -> StdResult<Uint128> {
         let balance = query_balance(deps, staker.to_string())?;
-        convert_to_staking_token(deps, env, balance.balance)
+        convert_to_underlying_token(deps, env, balance.balance)
     }
 
     /// Given the number of receipt_token, convert to staking token based on the vault exchange rate.
-    pub fn convert_to_staking_token(
+    pub fn convert_to_underlying_token(
         deps: Deps,
         env: Env,
         receipt_tokens: Uint128,
     ) -> StdResult<Uint128> {
-        let underlying_token_balance = StakingToken::query_balance(&deps, &env)?;
+        let underlying_token_balance = UnderlyingToken::query_balance(&deps, &env)?;
         let receipt_token_supply = cw20_base::contract::query_token_info(deps)?.total_supply;
         let vault = offset::VirtualOffset::new(receipt_token_supply, underlying_token_balance)?;
         vault.shares_to_assets(receipt_tokens)
@@ -552,7 +552,7 @@ mod vault_query {
     /// Shares in this tokenized vault the receipt token.
     /// Keeping the msg name the same as the non-tokenized vault for consistency.
     pub fn convert_to_receipt_token(deps: Deps, env: Env, assets: Uint128) -> StdResult<Uint128> {
-        let underlying_token_balance = StakingToken::query_balance(&deps, &env)?;
+        let underlying_token_balance = UnderlyingToken::query_balance(&deps, &env)?;
         let receipt_token_supply = cw20_base::contract::query_token_info(deps)?.total_supply;
         let vault = offset::VirtualOffset::new(receipt_token_supply, underlying_token_balance)?;
         vault.assets_to_shares(assets)
@@ -568,7 +568,7 @@ mod vault_query {
 
     /// Total Staking Tokens in this vault. Including assets through staking and donations.
     pub fn total_assets(deps: Deps, env: Env) -> StdResult<Uint128> {
-        StakingToken::query_balance(&deps, &env)
+        UnderlyingToken::query_balance(&deps, &env)
     }
 
     /// Get the queued withdrawal info in this vault.
@@ -578,9 +578,9 @@ mod vault_query {
 
     /// Returns the vault information
     pub fn vault_info(deps: Deps, env: Env) -> StdResult<VaultInfoResponse> {
-        let balance = StakingToken::query_balance(&deps, &env)?;
+        let balance = UnderlyingToken::query_balance(&deps, &env)?;
         let receipt_token_supply = cw20_base::contract::query_token_info(deps)?.total_supply;
-        let cw20_contract = StakingToken::get_cw20_contract(deps.storage)?;
+        let cw20_contract = UnderlyingToken::get_cw20_contract(deps.storage)?;
         let version = cw2::get_contract_version(deps.storage)?;
         Ok(VaultInfoResponse {
             total_shares: receipt_token_supply,
@@ -603,54 +603,11 @@ mod vault_query {
 #[cfg(test)]
 mod tests {
     use bvs_vault_base::shares::{
-        add_shares, get_queued_withdrawal_info, get_shares, remove_queued_withdrawal_info,
-        sub_shares, update_queued_withdrawal_info, QueuedWithdrawalInfo,
+        get_queued_withdrawal_info, remove_queued_withdrawal_info, update_queued_withdrawal_info,
+        QueuedWithdrawalInfo,
     };
     use cosmwasm_std::testing::MockStorage;
     use cosmwasm_std::{Addr, Timestamp, Uint128};
-
-    #[test]
-    fn get_zero_shares() {
-        let store = MockStorage::new();
-        let staker = Addr::unchecked("staker");
-        let shares = get_shares(&store, &staker).unwrap();
-        assert_eq!(shares, Uint128::zero());
-    }
-
-    #[test]
-    fn add_and_get_shares() {
-        let mut store = MockStorage::new();
-        let staker = Addr::unchecked("staker");
-        let shares = get_shares(&store, &staker).unwrap();
-        assert_eq!(shares, Uint128::zero());
-
-        let new_shares = Uint128::new(12345);
-        add_shares(&mut store, &staker, new_shares).unwrap();
-        let shares = get_shares(&store, &staker).unwrap();
-        assert_eq!(shares, new_shares);
-
-        add_shares(&mut store, &staker, new_shares).unwrap();
-        let shares = get_shares(&store, &staker).unwrap();
-        assert_eq!(shares, Uint128::new(24690));
-    }
-
-    #[test]
-    fn add_and_sub_shares() {
-        let mut store = MockStorage::new();
-        let staker = Addr::unchecked("staker");
-        let shares = get_shares(&store, &staker).unwrap();
-        assert_eq!(shares, Uint128::zero());
-
-        let new_shares = Uint128::new(12345);
-        add_shares(&mut store, &staker, new_shares).unwrap();
-        let shares = get_shares(&store, &staker).unwrap();
-        assert_eq!(shares, new_shares);
-
-        let remove_shares = Uint128::new(1234);
-        sub_shares(&mut store, &staker, remove_shares).unwrap();
-        let shares = get_shares(&store, &staker).unwrap();
-        assert_eq!(shares, Uint128::new(11_111));
-    }
 
     #[test]
     fn set_and_get_queued_withdrawal_info() {
