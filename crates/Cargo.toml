@@ -64,5 +64,4 @@ bvs-vault-cw20 = { path = "./bvs-vault-cw20", features = ["library"], version = 
 bvs-vault-cw20-tokenized = { path = "./bvs-vault-cw20-tokenized", features = ["library"], version = "0.0.0" }
 bvs-vault-factory = { path = "./bvs-vault-factory", features = ["library"], version = "0.0.0" }
 
-
 bvs-rewards = { path = "./bvs-rewards", features = ["library"], version = "0.0.0" }
