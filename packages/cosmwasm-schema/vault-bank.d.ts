@@ -37,14 +37,14 @@
  *
  * This struct is used to represent a recipient for RedeemWithdrawalTo.
  *
- * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
- * schema can be generated.
+ * The response to the `Assets` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `ConvertToAssets` query. This is just a wrapper around `Uint128`, so
- * that the schema can be generated.
+ * The response to the `ConvertToAssets` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `ConvertToShares` query. This is just a wrapper around `Uint128`, so
- * that the schema can be generated.
+ * The response to the `ConvertToShares` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
  * A point in time in nanosecond precision.
  *
@@ -71,14 +71,14 @@
  *
  * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
  *
- * The response to the `Shares` query. This is just a wrapper around `Uint128`, so that the
- * schema can be generated.
+ * The response to the `Shares` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `TotalAssets` query. This is just a wrapper around `Uint128`, so that
- * the schema can be generated.
+ * The response to the `TotalAssets` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `TotalShares` query. This is just a wrapper around `Uint128`, so that
- * the schema can be generated.
+ * The response to the `TotalShares` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
  * The `operator` that this vault is delegated to
  *
@@ -128,14 +128,14 @@ type AssetsResponse = string;
  *
  * This struct is used to represent a recipient for RedeemWithdrawalTo.
  *
- * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
- * schema can be generated.
+ * The response to the `Assets` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `ConvertToAssets` query. This is just a wrapper around `Uint128`, so
- * that the schema can be generated.
+ * The response to the `ConvertToAssets` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `ConvertToShares` query. This is just a wrapper around `Uint128`, so
- * that the schema can be generated.
+ * The response to the `ConvertToShares` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
  * A point in time in nanosecond precision.
  *
@@ -162,14 +162,14 @@ type AssetsResponse = string;
  *
  * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
  *
- * The response to the `Shares` query. This is just a wrapper around `Uint128`, so that the
- * schema can be generated.
+ * The response to the `Shares` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `TotalAssets` query. This is just a wrapper around `Uint128`, so that
- * the schema can be generated.
+ * The response to the `TotalAssets` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `TotalShares` query. This is just a wrapper around `Uint128`, so that
- * the schema can be generated.
+ * The response to the `TotalShares` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
  * The `operator` that this vault is delegated to
  *
@@ -219,14 +219,14 @@ type ConvertToAssetsResponse = string;
  *
  * This struct is used to represent a recipient for RedeemWithdrawalTo.
  *
- * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
- * schema can be generated.
+ * The response to the `Assets` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `ConvertToAssets` query. This is just a wrapper around `Uint128`, so
- * that the schema can be generated.
+ * The response to the `ConvertToAssets` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `ConvertToShares` query. This is just a wrapper around `Uint128`, so
- * that the schema can be generated.
+ * The response to the `ConvertToShares` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
  * A point in time in nanosecond precision.
  *
@@ -253,14 +253,14 @@ type ConvertToAssetsResponse = string;
  *
  * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
  *
- * The response to the `Shares` query. This is just a wrapper around `Uint128`, so that the
- * schema can be generated.
+ * The response to the `Shares` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `TotalAssets` query. This is just a wrapper around `Uint128`, so that
- * the schema can be generated.
+ * The response to the `TotalAssets` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `TotalShares` query. This is just a wrapper around `Uint128`, so that
- * the schema can be generated.
+ * The response to the `TotalShares` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
  * The `operator` that this vault is delegated to
  *
@@ -310,14 +310,14 @@ type ConvertToSharesResponse = string;
  *
  * This struct is used to represent a recipient for RedeemWithdrawalTo.
  *
- * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
- * schema can be generated.
+ * The response to the `Assets` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `ConvertToAssets` query. This is just a wrapper around `Uint128`, so
- * that the schema can be generated.
+ * The response to the `ConvertToAssets` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `ConvertToShares` query. This is just a wrapper around `Uint128`, so
- * that the schema can be generated.
+ * The response to the `ConvertToShares` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
  * A point in time in nanosecond precision.
  *
@@ -344,14 +344,14 @@ type ConvertToSharesResponse = string;
  *
  * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
  *
- * The response to the `Shares` query. This is just a wrapper around `Uint128`, so that the
- * schema can be generated.
+ * The response to the `Shares` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `TotalAssets` query. This is just a wrapper around `Uint128`, so that
- * the schema can be generated.
+ * The response to the `TotalAssets` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `TotalShares` query. This is just a wrapper around `Uint128`, so that
- * the schema can be generated.
+ * The response to the `TotalShares` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
  * The `operator` that this vault is delegated to
  *
@@ -401,14 +401,14 @@ type SharesResponse = string;
  *
  * This struct is used to represent a recipient for RedeemWithdrawalTo.
  *
- * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
- * schema can be generated.
+ * The response to the `Assets` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `ConvertToAssets` query. This is just a wrapper around `Uint128`, so
- * that the schema can be generated.
+ * The response to the `ConvertToAssets` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `ConvertToShares` query. This is just a wrapper around `Uint128`, so
- * that the schema can be generated.
+ * The response to the `ConvertToShares` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
  * A point in time in nanosecond precision.
  *
@@ -435,14 +435,14 @@ type SharesResponse = string;
  *
  * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
  *
- * The response to the `Shares` query. This is just a wrapper around `Uint128`, so that the
- * schema can be generated.
+ * The response to the `Shares` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `TotalAssets` query. This is just a wrapper around `Uint128`, so that
- * the schema can be generated.
+ * The response to the `TotalAssets` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `TotalShares` query. This is just a wrapper around `Uint128`, so that
- * the schema can be generated.
+ * The response to the `TotalShares` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
  * The `operator` that this vault is delegated to
  *
@@ -492,14 +492,14 @@ type TotalAssetsResponse = string;
  *
  * This struct is used to represent a recipient for RedeemWithdrawalTo.
  *
- * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
- * schema can be generated.
+ * The response to the `Assets` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `ConvertToAssets` query. This is just a wrapper around `Uint128`, so
- * that the schema can be generated.
+ * The response to the `ConvertToAssets` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `ConvertToShares` query. This is just a wrapper around `Uint128`, so
- * that the schema can be generated.
+ * The response to the `ConvertToShares` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
  * A point in time in nanosecond precision.
  *
@@ -526,14 +526,14 @@ type TotalAssetsResponse = string;
  *
  * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
  *
- * The response to the `Shares` query. This is just a wrapper around `Uint128`, so that the
- * schema can be generated.
+ * The response to the `Shares` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `TotalAssets` query. This is just a wrapper around `Uint128`, so that
- * the schema can be generated.
+ * The response to the `TotalAssets` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
- * The response to the `TotalShares` query. This is just a wrapper around `Uint128`, so that
- * the schema can be generated.
+ * The response to the `TotalShares` query. Not exported. This is just a wrapper around
+ * `Uint128`, so that the schema can be generated.
  *
  * The `operator` that this vault is delegated to
  *
@@ -672,7 +672,7 @@ export interface TotalShares {}
 export interface VaultInfo {}
 
 /**
- * The response to the `QueuedWithdrawal` query. This is just a wrapper around
+ * The response to the `QueuedWithdrawal` query. Not exported. This is just a wrapper around
  * `QueuedWithdrawalInfo`, so that the schema can be generated.
  */
 export interface QueuedWithdrawalResponse {

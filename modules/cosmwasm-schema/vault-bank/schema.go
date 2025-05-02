@@ -128,7 +128,7 @@ type TotalShares struct {
 type VaultInfo struct {
 }
 
-// The response to the `QueuedWithdrawal` query. This is just a wrapper around
+// The response to the `QueuedWithdrawal` query. Not exported. This is just a wrapper around
 // `QueuedWithdrawalInfo`, so that the schema can be generated.
 type QueuedWithdrawalResponse struct {
 	QueuedShares    string `json:"queued_shares"`
