@@ -238,9 +238,7 @@ mod vault_execute {
                 cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
             let vault = offset::VirtualOffset::new(receipt_token_supply, underlying_token_balance)?;
 
-            let new_receipt_tokens = vault.assets_to_shares(assets)?;
-
-            new_receipt_tokens
+            vault.assets_to_shares(assets)?
         };
 
         // CW20 Transfer of asset from info.sender to contract
