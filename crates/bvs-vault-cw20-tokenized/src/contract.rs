@@ -276,7 +276,6 @@ mod vault_execute {
 
     /// Withdraw assets from the vault by burning receipt token.
     /// The resulting staked assets are now unstaked and transferred to `msg.recipient`.  
-    /// The `TOTAL_SHARE` (aka `TOTAL_SUPPLY`) in the vault is reduced.  
     pub fn withdraw_to(
         mut deps: DepsMut,
         env: Env,
