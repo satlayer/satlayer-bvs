@@ -860,7 +860,7 @@ fn request_slashing_lifecycle() {
                     .add_attribute("operator", operator.to_string())
                     .add_attribute(
                         "slashing_request_id",
-                        "651c06351917b2ee5ad02cdb828f468b2c3c87f5c1596deec58d865a7410d393"
+                        "9aa7b17bee050669270c877297f6cda0980cd49b1aff2216d034d4803280a495"
                     )
                     .add_attribute("reason", "test2"),
             ]
