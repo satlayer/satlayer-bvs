@@ -67,7 +67,9 @@ pub struct RequestSlashingPayload {
 
 #[cw_serde]
 pub struct SlashingMetadata {
-    /// The reason for the slashing request. Must contain human-readable string.
+    /// The reason for the slashing request.
+    /// Must contain human-readable string.
+    /// Max length of 250 characters, empty string is allowed but not recommended.
     pub reason: String,
 }
 
