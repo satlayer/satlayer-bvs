@@ -11,7 +11,7 @@ import (
 // CodeIDs is used to fill the specified code id.
 type Config struct {
 	Contracts map[string]string `yaml:"contracts"`
-	CodeIDs   Uint64Slice       `yaml:"code_ids"`
+	CodeIDs   Uint64Slice       `yaml:"code_ids,omitempty"`
 }
 
 // NewConfig returns wasm module config instance.

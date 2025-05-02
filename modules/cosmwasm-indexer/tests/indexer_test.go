@@ -17,9 +17,9 @@ import (
 	parserconfig "github.com/forbole/juno/v6/parser/config"
 	junoconfig "github.com/forbole/juno/v6/types/config"
 	"github.com/jmoiron/sqlx"
-	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/types/config"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"gopkg.in/yaml.v3"
 
@@ -27,7 +27,7 @@ import (
 	"github.com/satlayer/satlayer-bvs/babylond/cw20"
 	api "github.com/satlayer/satlayer-bvs/cosmwasm-api"
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/modules/wasm"
-	"github.com/testcontainers/testcontainers-go"
+	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/types/config"
 )
 
 type CosmWasmIndexerTestSuite struct {
@@ -180,7 +180,7 @@ func TestCosmWasmIndexer(t *testing.T) {
 	suite.Run(t, new(CosmWasmIndexerTestSuite))
 }
 
-func (c *CosmWasmIndexerTestSuite) TestRun() {
+func (c *CosmWasmIndexerTestSuite) TestIndexer() {
 	time.Sleep(5 * time.Second)
 
 	db, err := sql.Open("postgres", c.dbContainer.URL)
@@ -251,8 +251,8 @@ func (c *CosmWasmIndexerTestSuite) generateYAMLConfig() error {
 	if err != nil {
 		return fmt.Errorf("failed to get current root path: %w", err)
 	}
-	configPath := filepath.Join(currentPath, "testdata/config.yaml")
 
+	configPath := filepath.Join(currentPath, "testdata/config.yaml")
 	if err = os.WriteFile(configPath, yamlData, 0644); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
