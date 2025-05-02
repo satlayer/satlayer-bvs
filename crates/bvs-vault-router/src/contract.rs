@@ -13,7 +13,7 @@ const CONTRACT_NAME: &str = concat!("crates.io:", env!("CARGO_PKG_NAME"));
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const MAX_SLASHABLE_DELAY: u64 = 7 * DAYS;
-const MAX_STRING_BYTES: usize = 400;
+const MAX_STRING_BYTES: usize = 250;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -61,7 +61,7 @@ pub fn execute(
             ownership::transfer_ownership(deps.storage, info, new_owner)
                 .map_err(ContractError::Ownership)
         }
-        ExecuteMsg::SlashingRequest(payload) => execute::slashing_request(deps, env, info, payload),
+        ExecuteMsg::RequestSlashing(payload) => execute::request_slashing(deps, env, info, payload),
     }
 }
 
@@ -105,7 +105,7 @@ mod migrate {
 mod execute {
     use super::*;
     use crate::error::ContractError;
-    use crate::msg::SlashingRequestPayload;
+    use crate::msg::{RequestSlashingPayload, RequestSlashingResponse};
     use crate::state::{self, DEFAULT_WITHDRAWAL_LOCK_PERIOD};
     use crate::state::{SlashingRequest, WITHDRAWAL_LOCK_PERIOD};
     use crate::ContractError::InvalidSlashingRequest;
@@ -193,11 +193,11 @@ mod execute {
         ))
     }
 
-    pub fn slashing_request(
+    pub fn request_slashing(
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        data: SlashingRequestPayload,
+        data: RequestSlashingPayload,
     ) -> Result<Response, ContractError> {
         // service is the sender
         let service = info.sender;
@@ -206,22 +206,14 @@ mod execute {
 
         let registry = state::get_registry(deps.storage)?;
 
-        // TODO: check if needed, need to add a lower bound?
-        // ensure that metadata.reason is not empty
-        if data.metadata.reason.is_empty() {
-            return Err(InvalidSlashingRequest {
-                msg: "Reason is empty.".to_string(),
-            });
-        }
-
-        // ensure that metadata.reason does not exceed X bytes
+        // ensure that metadata.reason does not exceed MAX_STRING_BYTES bytes
         if data.metadata.reason.len() > MAX_STRING_BYTES {
             return Err(InvalidSlashingRequest {
                 msg: "Reason is too long.".to_string(),
             });
         }
 
-        // ensure timestamp of slash must not be more than MAX_SLASHABLE_DELAY before and not in the future
+        // ensure the timestamp of slash must not be more than MAX_SLASHABLE_DELAY before and not in the future
         if data.timestamp < env.block.time.minus_seconds(MAX_SLASHABLE_DELAY)
             || data.timestamp > env.block.time
         {
@@ -315,16 +307,18 @@ mod execute {
         let new_request = SlashingRequest::new(data.clone(), env.block.time, new_request_expiry);
 
         // save slash data
-        let slashing_id =
+        let slashing_request_id =
             state::save_slashing_request(deps.storage, &service, &operator, &new_request)?;
 
-        Ok(Response::new().add_event(
-            Event::new("SlashingRequest")
-                .add_attribute("service", service)
-                .add_attribute("operator", operator)
-                .add_attribute("slashing_id", slashing_id.to_string())
-                .add_attribute("reason", data.metadata.reason),
-        ))
+        Ok(Response::new()
+            .set_data(RequestSlashingResponse(slashing_request_id.clone()))
+            .add_event(
+                Event::new("SlashingRequest")
+                    .add_attribute("service", service)
+                    .add_attribute("operator", operator)
+                    .add_attribute("slashing_request_id", slashing_request_id.to_string())
+                    .add_attribute("reason", data.metadata.reason),
+            ))
     }
 }
 
@@ -540,8 +534,8 @@ mod tests {
         execute::{set_vault, set_withdrawal_lock_period},
         query::{get_withdrawal_lock_period, is_validating, is_whitelisted, list_vaults},
     };
+    use crate::msg::RequestSlashingPayload;
     use crate::msg::SlashingMetadata;
-    use crate::msg::SlashingRequestPayload;
     use crate::msg::{InstantiateMsg, SlashingRequestIdResponse, SlashingRequestResponse};
     use crate::state::{SlashingRequest, SLASHING_REQUESTS};
     use crate::state::{
@@ -1197,7 +1191,7 @@ mod tests {
                 .unwrap(),
         );
         let slash_request = SlashingRequest::new(
-            SlashingRequestPayload {
+            RequestSlashingPayload {
                 operator: operator.to_string(),
                 bips: 100,
                 timestamp: env.block.time,

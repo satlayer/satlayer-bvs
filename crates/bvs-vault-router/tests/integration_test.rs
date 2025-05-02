@@ -3,22 +3,28 @@ use bvs_library::{
     testing::{Cw20TokenContract, TestingContract},
 };
 use bvs_pauser::testing::PauserContract;
+use bvs_registry::msg::Metadata;
 use bvs_registry::testing::RegistryContract;
+use bvs_registry::SlashingParameters;
 use bvs_vault_bank::testing::VaultBankContract;
 use bvs_vault_cw20::testing::VaultCw20Contract;
-use bvs_vault_router::msg::Vault;
+use bvs_vault_router::msg::{
+    RequestSlashingPayload, SlashingMetadata, SlashingRequestIdResponse, SlashingRequestResponse,
+    Vault,
+};
 use bvs_vault_router::{
     msg::{ExecuteMsg, QueryMsg, VaultListResponse},
     testing::VaultRouterContract,
     ContractError,
 };
-use cosmwasm_std::{testing::mock_env, Event, Uint64};
+use cosmwasm_std::{from_json, testing::mock_env, Binary, Event, HexBinary, Uint64};
 use cw_multi_test::App;
 
 struct TestContracts {
     vault_router: VaultRouterContract,
     bank_vault: VaultBankContract,
     cw20_vault: VaultCw20Contract,
+    registry: RegistryContract,
 }
 
 impl TestContracts {
@@ -27,7 +33,7 @@ impl TestContracts {
         let env = mock_env();
 
         let _ = PauserContract::new(&mut app, &env, None);
-        let _ = RegistryContract::new(&mut app, &env, None);
+        let registry = RegistryContract::new(&mut app, &env, None);
         let vault_router = VaultRouterContract::new(&mut app, &env, None);
         let bank_vault = VaultBankContract::new(&mut app, &env, None);
         let _ = Cw20TokenContract::new(&mut app, &env, None);
@@ -39,6 +45,7 @@ impl TestContracts {
                 vault_router,
                 bank_vault,
                 cw20_vault,
+                registry,
             },
         )
     }
@@ -300,5 +307,163 @@ fn transfer_ownership_but_not_owner() {
     assert_eq!(
         err.root_cause().to_string(),
         ContractError::Ownership(OwnershipError::Unauthorized).to_string()
+    );
+}
+
+#[test]
+fn slashing_request_successful() {
+    let (mut app, tc) = TestContracts::init();
+
+    let operator = app.api().addr_make("operator");
+    let service = app.api().addr_make("service");
+
+    // register operator + service
+    {
+        tc.registry
+            .execute(
+                &mut app,
+                &operator,
+                &bvs_registry::msg::ExecuteMsg::RegisterAsOperator {
+                    metadata: Metadata {
+                        name: Some("operator".to_string()),
+                        uri: None,
+                    },
+                },
+            )
+            .expect("failed to register operator");
+
+        tc.registry
+            .execute(
+                &mut app,
+                &service,
+                &bvs_registry::msg::ExecuteMsg::RegisterAsService {
+                    metadata: Metadata {
+                        name: Some("service".to_string()),
+                        uri: None,
+                    },
+                },
+            )
+            .expect("failed to register service");
+    }
+
+    // service enable slashing
+    {
+        let msg = &bvs_registry::msg::ExecuteMsg::EnableSlashing {
+            slashing_parameters: SlashingParameters {
+                destination: Some(service.clone()),
+                max_slashing_bips: 5000,
+                resolution_window: 100,
+            },
+        };
+        tc.registry
+            .execute(&mut app, &service, msg)
+            .expect("failed to enable slashing");
+    }
+
+    app.update_block(|block| {
+        block.height += 1;
+        block.time = block.time.plus_seconds(10);
+    });
+
+    // register operator to service for active status
+    {
+        let msg = &bvs_registry::msg::ExecuteMsg::RegisterOperatorToService {
+            operator: operator.to_string(),
+        };
+        tc.registry
+            .execute(&mut app, &service, msg)
+            .expect("failed to register operator to service");
+
+        let msg = &bvs_registry::msg::ExecuteMsg::RegisterServiceToOperator {
+            service: service.to_string(),
+        };
+        tc.registry
+            .execute(&mut app, &operator, msg)
+            .expect("failed to register service to operator");
+    }
+
+    app.update_block(|block| {
+        block.height += 1;
+        block.time = block.time.plus_seconds(10);
+    });
+
+    // service request slashing
+    let slashing_request_payload = RequestSlashingPayload {
+        operator: operator.to_string(),
+        bips: 100,
+        timestamp: app.block_info().time,
+        metadata: SlashingMetadata {
+            reason: "test".to_string(),
+        },
+    };
+
+    let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
+    let response = tc.vault_router.execute(&mut app, &service, msg).unwrap();
+    assert_eq!(
+        response.events,
+        vec![
+            Event::new("execute").add_attribute("_contract_address", tc.vault_router.addr.as_str()),
+            Event::new("wasm-SlashingRequest")
+                .add_attribute("_contract_address", tc.vault_router.addr.as_str())
+                .add_attribute("service", service.to_string())
+                .add_attribute("operator", operator.to_string())
+                .add_attribute(
+                    "slashing_request_id",
+                    "cdb763a239cb5c8d627c5cc85c65aac291680aced9d081ba7595c6d5138fc4fb"
+                )
+                .add_attribute("reason", "test"),
+        ]
+    );
+
+    // Needed due to bug in cw-multi-test https://github.com/CosmWasm/cw-multi-test/issues/257
+    use bvs_vault_router::state::SlashingRequest;
+    use prost::Message;
+
+    #[derive(Clone, PartialEq, Message)]
+    struct ExecuteResponse {
+        #[prost(bytes, tag = "1")]
+        pub data: Vec<u8>,
+    }
+
+    // TODO: fix assert response.data eq to slashing_id
+    let slashing_id_bin: Binary = response.data.unwrap();
+    let slashing_id_bin2 = ExecuteResponse::decode(slashing_id_bin.clone().as_slice()).unwrap();
+    let slashing_id = from_json::<Option<SlashingRequestIdResponse>>(slashing_id_bin2.data);
+    let SlashingRequestIdResponse(res) = slashing_id.unwrap().unwrap();
+    assert_eq!(
+        res,
+        Some(
+            HexBinary::from_hex("cdb763a239cb5c8d627c5cc85c65aac291680aced9d081ba7595c6d5138fc4fb")
+                .unwrap()
+                .into()
+        )
+    );
+
+    // query slashing request id
+    let msg = QueryMsg::SlashingRequestId {
+        service: service.to_string(),
+        operator: operator.to_string(),
+    };
+    let slashing_request_id: SlashingRequestIdResponse =
+        tc.vault_router.query(&mut app, &msg).unwrap();
+    assert_eq!(
+        slashing_request_id,
+        SlashingRequestIdResponse(Some(
+            HexBinary::from_hex("cdb763a239cb5c8d627c5cc85c65aac291680aced9d081ba7595c6d5138fc4fb")
+                .unwrap()
+                .into()
+        ))
+    );
+
+    // query slashing request
+    let msg = QueryMsg::SlashingRequest(slashing_request_id.0.unwrap());
+    let SlashingRequestResponse(slashing_request) = tc.vault_router.query(&mut app, &msg).unwrap();
+    assert_eq!(
+        slashing_request.unwrap(),
+        SlashingRequest {
+            request: slashing_request_payload,
+            request_time: app.block_info().time,
+            request_expiry: app.block_info().time.plus_seconds(200)
+        }
     );
 }

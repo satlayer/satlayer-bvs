@@ -1,6 +1,6 @@
 use crate::state::{SlashingRequest, SlashingRequestId};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Timestamp, Uint64};
+use cosmwasm_std::{from_json, to_json_binary, Addr, Binary, Timestamp, Uint64};
 
 #[cw_serde]
 pub struct MigrateMsg {}
@@ -32,11 +32,26 @@ pub enum ExecuteMsg {
         new_owner: String,
     },
 
-    SlashingRequest(SlashingRequestPayload),
+    RequestSlashing(RequestSlashingPayload),
 }
 
 #[cw_serde]
-pub struct SlashingRequestPayload {
+pub struct RequestSlashingResponse(pub SlashingRequestId);
+
+impl From<RequestSlashingResponse> for Binary {
+    fn from(response: RequestSlashingResponse) -> Self {
+        to_json_binary(&response).unwrap()
+    }
+}
+
+impl From<Binary> for RequestSlashingResponse {
+    fn from(binary: Binary) -> Self {
+        from_json(&binary).unwrap()
+    }
+}
+
+#[cw_serde]
+pub struct RequestSlashingPayload {
     /// The operator address to slash.
     /// (service, operator) must have active registration at the timestamp.
     pub operator: String,

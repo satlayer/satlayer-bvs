@@ -1,4 +1,4 @@
-use crate::msg::SlashingRequestPayload;
+use crate::msg::RequestSlashingPayload;
 use bvs_library::addr::{Operator, Service};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{to_json_vec, Addr, HexBinary, StdError, StdResult, Storage, Timestamp, Uint64};
@@ -45,7 +45,7 @@ pub const OPERATOR_VAULTS: Map<(&Addr, &Addr), ()> = Map::new("operator_vaults")
 #[cw_serde]
 pub struct SlashingRequest {
     /// The core slashing request data including operator, bips, and metadata.
-    pub request: SlashingRequestPayload,
+    pub request: RequestSlashingPayload,
     /// The timestamp when the request was submitted.
     pub request_time: Timestamp,
     /// The timestamp after which the request is no longer valid.
@@ -55,7 +55,7 @@ pub struct SlashingRequest {
 
 impl SlashingRequest {
     pub fn new(
-        data: SlashingRequestPayload,
+        data: RequestSlashingPayload,
         request_time: Timestamp,
         request_expiry: Timestamp,
     ) -> Self {
@@ -192,7 +192,7 @@ mod test {
         let env = mock_env();
         let service = deps.api.addr_make("service");
         let operator = deps.api.addr_make("operator");
-        let data = SlashingRequestPayload {
+        let data = RequestSlashingPayload {
             operator: operator.to_string(),
             bips: 100,
             timestamp: env.block.time,
