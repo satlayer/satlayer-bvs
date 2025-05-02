@@ -71,7 +71,7 @@ jobs:
       - run: pnpm --filter "@satlayer/*" exec npm version ${{ needs.version.outputs.npm }} --git-tag-version=false
 
       - uses: taiki-e/install-action@cargo-hack
-      - run: cargo hack publish --workspace --dry-run --no-dev-deps --allow-dirty --no-private
+      - run: cargo hack publish --workspace --dry-run --no-dev-deps --allow-dirty --ignore-private
         working-directory: crates
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
