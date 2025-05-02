@@ -1455,12 +1455,8 @@ fn test_deposit_transfer_then_withdraw_to() {
 
         let staker_balance = cw20.balance(app, &staker);
 
-        assert_eq!(
-            staker_balance,
-            80_189_462_987_009_847 + 19_810_537_012_990_153 - 1000 // initial_deposit_amount +
-                                                                   // staker_unstaked_capital
-                                                                   // - donation_amount
-        );
+        // initial_deposit_amount + unstaked_capital - donation_amount
+        assert_eq!(staker_balance, 99_999_999_999_999_000);
 
         let msg = ExecuteMsg::WithdrawTo(RecipientAmount {
             amount: Uint128::new(donation_amount),
@@ -1606,12 +1602,8 @@ fn test_deposit_transfer_then_queue_redeem_withdraw() {
 
         let staker_balance = cw20.balance(app, &staker);
 
-        assert_eq!(
-            staker_balance,
-            80_189_462_987_009_847 + 19_810_537_012_990_153 - 1000 // initial_deposit_amount +
-                                                                   // staker_unstaked_capital
-                                                                   // - donation_amount
-        );
+        // initial_deposit_amount + unstaked_capital - donation_amount
+        assert_eq!(staker_balance, 99_999_999_999_999_000);
 
         let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(beneficiary.clone()));
         vault.execute(app, &beneficiary, &msg).unwrap();
