@@ -1,11 +1,9 @@
 use crate::error::ContractError;
+use bvs_library::addr::{Operator, Service};
 use bvs_library::storage::EVERY_SECOND;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Api, Env, Order, StdError, StdResult, Storage};
 use cw_storage_plus::{Map, SnapshotMap};
-
-type Service = Addr;
-type Operator = Addr;
 
 /// Mapping of service address to boolean value
 /// indicating if the service is registered with the registry

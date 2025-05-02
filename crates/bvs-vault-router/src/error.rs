@@ -14,4 +14,7 @@ pub enum ContractError {
 
     #[error("Vault error: {msg}")]
     VaultError { msg: String },
+
+    #[error("Invalid slashing request: {msg}")]
+    InvalidSlashingRequest { msg: String },
 }

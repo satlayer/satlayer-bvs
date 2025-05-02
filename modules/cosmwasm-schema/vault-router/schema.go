@@ -25,10 +25,52 @@ type InstantiateMsg struct {
 //
 // ExecuteMsg TransferOwnership See [`bvs_library::ownership::transfer_ownership`] for more
 // information on this field
+//
+// ExecuteMsg RequestSlashing initiates a slashing request against an active operator of the
+// service (info.sender).
+//
+// This ExecuteMsg allows a registered service to request a slash of an operator's staked
+// tokens as a penalty for violations or non-compliance. The slashing request must meet
+// several criteria:
+//
+// - The service must be actively registered with the operator at the specified timestamp -
+// The slashing amount (in bips) must not exceed the max_slashing_bips set by the service -
+// The operator must have opted in to slashing at the specified timestamp - The timestamp
+// must be within the allowable slashing window (not too old or in the future) - The service
+// must not have another active slashing request against the same operator - The reason
+// provided in metadata must not exceed the maximum allowed length
+//
+// When successful, this creates a slashing request with an expiry time based on the
+// resolution_window parameter and returns a unique slashing request ID.
+//
+// #### Returns On success, returns events with a data field set as
+// [`RequestSlashingResponse`] containing the generated slashing request ID.
 type ExecuteMsg struct {
-	SetVault                *SetVault          `json:"set_vault,omitempty"`
-	SetWithdrawalLockPeriod *string            `json:"set_withdrawal_lock_period,omitempty"`
-	TransferOwnership       *TransferOwnership `json:"transfer_ownership,omitempty"`
+	SetVault                *SetVault             `json:"set_vault,omitempty"`
+	SetWithdrawalLockPeriod *string               `json:"set_withdrawal_lock_period,omitempty"`
+	TransferOwnership       *TransferOwnership    `json:"transfer_ownership,omitempty"`
+	RequestSlashing         *RequestSlashingClass `json:"request_slashing,omitempty"`
+}
+
+type RequestSlashingClass struct {
+	// The percentage of tokens to slash in basis points (1/100th of a percent). Max bips to
+	// slash is set by the service slashing parameters at the timestamp and the operator must
+	// have opted in.
+	Bips int64 `json:"bips"`
+	// Additional contextual information about the slashing request.
+	Metadata RequestSlashingMetadata `json:"metadata"`
+	// The operator address to slash. (service, operator) must have active registration at the
+	// timestamp.
+	Operator string `json:"operator"`
+	// The timestamp at which the slashing condition occurred.
+	Timestamp string `json:"timestamp"`
+}
+
+// Additional contextual information about the slashing request.
+type RequestSlashingMetadata struct {
+	// The reason for the slashing request. Must contain human-readable string. Max length of
+	// 250 characters, empty string is allowed but not recommended.
+	Reason string `json:"reason"`
 }
 
 type SetVault struct {
@@ -59,6 +101,8 @@ type QueryMsg struct {
 	ListVaults           *ListVaults           `json:"list_vaults,omitempty"`
 	ListVaultsByOperator *ListVaultsByOperator `json:"list_vaults_by_operator,omitempty"`
 	WithdrawalLockPeriod *WithdrawalLockPeriod `json:"withdrawal_lock_period,omitempty"`
+	SlashingRequestID    *SlashingRequestID    `json:"slashing_request_id,omitempty"`
+	SlashingRequest      *string               `json:"slashing_request,omitempty"`
 }
 
 type IsValidating struct {
@@ -80,6 +124,11 @@ type ListVaultsByOperator struct {
 	StartAfter *string `json:"start_after"`
 }
 
+type SlashingRequestID struct {
+	Operator string `json:"operator"`
+	Service  string `json:"service"`
+}
+
 type WithdrawalLockPeriod struct {
 }
 
@@ -88,4 +137,36 @@ type WithdrawalLockPeriod struct {
 type Vault struct {
 	Vault       string `json:"vault"`
 	Whitelisted bool   `json:"whitelisted"`
+}
+
+type SlashingRequest struct {
+	// The core slashing request data including operator, bips, timestamp, and metadata.
+	Request RequestClass `json:"request"`
+	// The timestamp after which the request is no longer valid. This will be `request_time` +
+	// `resolution_window` * 2 (as per current slashing parameters)
+	RequestExpiry string `json:"request_expiry"`
+	// The timestamp when the request was submitted.
+	RequestTime string `json:"request_time"`
+}
+
+// The core slashing request data including operator, bips, timestamp, and metadata.
+type RequestClass struct {
+	// The percentage of tokens to slash in basis points (1/100th of a percent). Max bips to
+	// slash is set by the service slashing parameters at the timestamp and the operator must
+	// have opted in.
+	Bips int64 `json:"bips"`
+	// Additional contextual information about the slashing request.
+	Metadata RequestMetadata `json:"metadata"`
+	// The operator address to slash. (service, operator) must have active registration at the
+	// timestamp.
+	Operator string `json:"operator"`
+	// The timestamp at which the slashing condition occurred.
+	Timestamp string `json:"timestamp"`
+}
+
+// Additional contextual information about the slashing request.
+type RequestMetadata struct {
+	// The reason for the slashing request. Must contain human-readable string. Max length of
+	// 250 characters, empty string is allowed but not recommended.
+	Reason string `json:"reason"`
 }

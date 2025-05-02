@@ -11,6 +11,8 @@ use cw2::set_contract_version;
 const CONTRACT_NAME: &str = concat!("crates.io:", env!("CARGO_PKG_NAME"));
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+const MAX_STRING_BYTES: usize = 250;
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -57,6 +59,7 @@ pub fn execute(
             ownership::transfer_ownership(deps.storage, info, new_owner)
                 .map_err(ContractError::Ownership)
         }
+        ExecuteMsg::RequestSlashing(payload) => execute::request_slashing(deps, env, info, payload),
     }
 }
 
@@ -98,13 +101,20 @@ mod migrate {
 }
 
 mod execute {
-    use crate::error::ContractError;
-    use crate::state::WITHDRAWAL_LOCK_PERIOD;
-    use crate::state::{self, DEFAULT_WITHDRAWAL_LOCK_PERIOD};
-    use bvs_library::ownership;
-    use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Response, Uint64};
-
     use super::*;
+    use crate::contract::query::get_withdrawal_lock_period;
+    use crate::error::ContractError;
+    use crate::msg::{RequestSlashingPayload, RequestSlashingResponse};
+    use crate::state::{self, DEFAULT_WITHDRAWAL_LOCK_PERIOD};
+    use crate::state::{SlashingRequest, WITHDRAWAL_LOCK_PERIOD};
+    use crate::ContractError::InvalidSlashingRequest;
+    use bvs_library::addr::Operator;
+    use bvs_library::ownership;
+    use bvs_registry::msg::{
+        IsOperatorOptedInToSlashingResponse, SlashingParametersResponse, StatusResponse,
+    };
+    use bvs_registry::RegistrationStatus;
+    use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Response, Uint64};
 
     /// Set the vault contract in the router and whitelist (true/false) it.
     /// Only the `owner` can call this message.
@@ -181,6 +191,140 @@ mod execute {
                 ),
         ))
     }
+
+    pub fn request_slashing(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        data: RequestSlashingPayload,
+    ) -> Result<Response, ContractError> {
+        // service is the sender
+        let service = info.sender;
+
+        let operator: Operator = deps.api.addr_validate(data.operator.as_str())?;
+
+        let registry = state::get_registry(deps.storage)?;
+
+        // ensure that metadata.reason does not exceed MAX_STRING_BYTES bytes
+        if data.metadata.reason.len() > MAX_STRING_BYTES {
+            return Err(InvalidSlashingRequest {
+                msg: "Reason is too long.".to_string(),
+            });
+        }
+
+        // max_slashable_delay is equal to the withdrawal lock period (7 days default)
+        let max_slashable_delay = get_withdrawal_lock_period(deps.as_ref())?;
+        // ensure the timestamp of slash must not be more than MAX_SLASHABLE_DELAY before and not in the future
+        if data.timestamp < env.block.time.minus_seconds(max_slashable_delay.u64())
+            || data.timestamp > env.block.time
+        {
+            return Err(InvalidSlashingRequest {
+                msg: "Slash timestamp is outside of the allowable slash period.".to_string(),
+            });
+        }
+
+        // require active status between operator and service
+        let StatusResponse(operator_service_status) = deps.querier.query_wasm_smart(
+            registry.to_string(),
+            &bvs_registry::msg::QueryMsg::Status {
+                service: service.to_string(),
+                operator: operator.to_string(),
+                timestamp: Some(data.timestamp.seconds()),
+            },
+        )?;
+        if operator_service_status != u8::from(RegistrationStatus::Active) {
+            return Err(InvalidSlashingRequest {
+                msg: "Service and Operator are not active at timestamp.".to_string(),
+            });
+        }
+
+        // get slashing params of the service at the given timestamp, also checks if slashing is enabled
+        let SlashingParametersResponse(slashing_parameters) = deps.querier.query_wasm_smart(
+            registry.clone(),
+            &bvs_registry::msg::QueryMsg::SlashingParameters {
+                service: service.to_string(),
+                timestamp: Some(data.timestamp.seconds()),
+            },
+        )?;
+        let slashing_parameters = match slashing_parameters {
+            Some(x) => x,
+            None => {
+                return Err(InvalidSlashingRequest {
+                    msg: "Service has not enabled slashing at timestamp.".to_string(),
+                })
+            }
+        };
+
+        // ensure bips must not exceed max_slashing_bips set by service
+        if data.bips > slashing_parameters.max_slashing_bips {
+            return Err(InvalidSlashingRequest {
+                msg: "Slashing bips is over max_slashing_bips set.".to_string(),
+            });
+        }
+
+        // ensure that the operator has opted in to slashing at the given timestamp.
+        let IsOperatorOptedInToSlashingResponse(is_operator_opted_in) =
+            deps.querier.query_wasm_smart(
+                registry,
+                &bvs_registry::msg::QueryMsg::IsOperatorOptedInToSlashing {
+                    service: service.to_string(),
+                    operator: operator.to_string(),
+                    timestamp: Some(data.timestamp.seconds()),
+                },
+            )?;
+
+        if !is_operator_opted_in {
+            return Err(InvalidSlashingRequest {
+                msg: "Operator has not opted-in to slashing at timestamp.".to_string(),
+            });
+        }
+
+        // get current active slashing request for (service, operator) pair
+        let active_slashing_requests =
+            state::get_active_slashing_requests(deps.storage, &service, &operator)?;
+
+        // if active slashing request exists and
+        // if request_expiry > now (in the future) => request hasn't expired,
+        // so the service has to manually cancel active request (throw Err)
+        if let Some(active_slashing_requests) = active_slashing_requests {
+            if active_slashing_requests.request_expiry > env.block.time {
+                return Err(InvalidSlashingRequest {
+                    msg: "Service has current active slashing request for the operator."
+                        .to_string(),
+                });
+            }
+        }
+
+        // else, it will be overriden by the current slash request
+
+        // New_request_expiry will be using `resolution_window`
+        // value from the timestamp's slashing_parameters,
+        // instead of the most recent slashing param.
+        // This ensures that both parties agree upon all parameters used.
+        let new_request_expiry = env
+            .block
+            .time
+            .plus_seconds(slashing_parameters.resolution_window * 2);
+        let new_request = SlashingRequest {
+            request: data.clone(),
+            request_time: env.block.time,
+            request_expiry: new_request_expiry,
+        };
+
+        // save slash data
+        let slashing_request_id =
+            state::save_slashing_request(deps.storage, &service, &operator, &new_request)?;
+
+        Ok(Response::new()
+            .set_data(RequestSlashingResponse(slashing_request_id.clone()))
+            .add_event(
+                Event::new("RequestSlashing")
+                    .add_attribute("service", service)
+                    .add_attribute("operator", operator)
+                    .add_attribute("slashing_request_id", slashing_request_id.to_string())
+                    .add_attribute("reason", data.metadata.reason),
+            ))
+    }
 }
 
 /// Snipped implementation of Vault's API
@@ -256,12 +400,23 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::WithdrawalLockPeriod {} => {
             to_json_binary(&query::get_withdrawal_lock_period(deps)?)
         }
+        QueryMsg::SlashingRequestId { service, operator } => {
+            let service = deps.api.addr_validate(&service)?;
+            let operator = deps.api.addr_validate(&operator)?;
+            to_json_binary(&query::slashing_request_id(deps, service, operator)?)
+        }
+        QueryMsg::SlashingRequest(id) => to_json_binary(&query::slashing_request(deps, id)?),
     }
 }
 
 mod query {
-    use crate::msg::{Vault, VaultListResponse};
-    use crate::state::{self, DEFAULT_WITHDRAWAL_LOCK_PERIOD};
+    use crate::msg::{
+        SlashingRequestIdResponse, SlashingRequestResponse, Vault, VaultListResponse,
+    };
+    use crate::state::{
+        self, SlashingRequestId, DEFAULT_WITHDRAWAL_LOCK_PERIOD, SLASHING_REQUESTS,
+        SLASHING_REQUEST_IDS,
+    };
     use bvs_registry::msg::QueryMsg;
     use cosmwasm_std::{Addr, Deps, StdResult, Uint64};
     use cw_storage_plus::Bound;
@@ -356,6 +511,24 @@ mod query {
 
         Ok(VaultListResponse(vaults))
     }
+
+    pub fn slashing_request_id(
+        deps: Deps,
+        service: Addr,
+        operator: Addr,
+    ) -> StdResult<SlashingRequestIdResponse> {
+        let active_slashing_request_id =
+            SLASHING_REQUEST_IDS.may_load(deps.storage, (&service, &operator))?;
+        Ok(SlashingRequestIdResponse(active_slashing_request_id))
+    }
+
+    pub fn slashing_request(
+        deps: Deps,
+        id: impl Into<SlashingRequestId>,
+    ) -> StdResult<SlashingRequestResponse> {
+        let active_slashing_request = SLASHING_REQUESTS.may_load(deps.storage, id.into())?;
+        Ok(SlashingRequestResponse(active_slashing_request))
+    }
 }
 
 #[cfg(test)]
@@ -366,15 +539,20 @@ mod tests {
         execute::{set_vault, set_withdrawal_lock_period},
         query::{get_withdrawal_lock_period, is_validating, is_whitelisted, list_vaults},
     };
-    use crate::msg::InstantiateMsg;
-    use crate::state::{Vault, OPERATOR_VAULTS, REGISTRY, VAULTS};
+    use crate::msg::RequestSlashingPayload;
+    use crate::msg::SlashingMetadata;
+    use crate::msg::{InstantiateMsg, SlashingRequestIdResponse, SlashingRequestResponse};
+    use crate::state::{SlashingRequest, SLASHING_REQUESTS};
+    use crate::state::{
+        SlashingRequestId, Vault, OPERATOR_VAULTS, REGISTRY, SLASHING_REQUEST_IDS, VAULTS,
+    };
     use bvs_registry::msg::{IsOperatorActiveResponse, QueryMsg as RegistryQueryMsg};
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
     use cosmwasm_std::{
-        from_json, Attribute, ContractResult, Event, OwnedDeps, QuerierResult, SystemError,
-        SystemResult, Uint64, WasmQuery,
+        from_json, Attribute, ContractResult, Event, HexBinary, OwnedDeps, QuerierResult,
+        SystemError, SystemResult, Uint64, WasmQuery,
     };
 
     #[test]
@@ -966,5 +1144,92 @@ mod tests {
 
         let response = get_withdrawal_lock_period(deps.as_ref()).unwrap();
         assert_eq!(response, Uint64::new(604800));
+    }
+
+    #[test]
+    fn test_query_slashing_request_id() {
+        let mut deps = mock_dependencies();
+        let operator = deps.api.addr_make("operator");
+        let service = deps.api.addr_make("service");
+        let request_id = SlashingRequestId(
+            HexBinary::from_hex("dff7a6f403eff632636533660ab53ab35e7ae0fe2e5dacb160aa7d876a412f09")
+                .unwrap(),
+        );
+
+        // query slashing request id before its saved => None
+        let SlashingRequestIdResponse(res) =
+            query::slashing_request_id(deps.as_ref(), service.clone(), operator.clone()).unwrap();
+        assert_eq!(res, None);
+
+        // save to state
+        let key = (&service, &operator);
+        SLASHING_REQUEST_IDS
+            .save(&mut deps.storage, key, &request_id)
+            .expect("save slashing request id failed");
+
+        // assert slash request id exists
+        let SlashingRequestIdResponse(res) =
+            query::slashing_request_id(deps.as_ref(), service.clone(), operator.clone()).unwrap();
+        assert_eq!(res, Some(request_id));
+
+        // assert that slash request id for a different operator is None
+        let operator2 = deps.api.addr_make("operator2");
+        let SlashingRequestIdResponse(res) =
+            query::slashing_request_id(deps.as_ref(), service.clone(), operator2).unwrap();
+        assert_eq!(res, None);
+
+        // assert that slash request id for a different service is None
+        let service2 = deps.api.addr_make("service2");
+        let SlashingRequestIdResponse(res) =
+            query::slashing_request_id(deps.as_ref(), service2, operator).unwrap();
+        assert_eq!(res, None);
+    }
+
+    #[test]
+    fn test_query_slashing_request() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        let operator = deps.api.addr_make("operator");
+        let request_id = SlashingRequestId(
+            HexBinary::from_hex("dff7a6f403eff632636533660ab53ab35e7ae0fe2e5dacb160aa7d876a412f09")
+                .unwrap(),
+        );
+        let slash_request = SlashingRequest {
+            request: RequestSlashingPayload {
+                operator: operator.to_string(),
+                bips: 100,
+                timestamp: env.block.time,
+                metadata: SlashingMetadata {
+                    reason: "test".to_string(),
+                },
+            },
+            request_time: env.block.time,
+            request_expiry: env.block.time.plus_seconds(100),
+        };
+
+        // query request_id before its saved => None
+        let SlashingRequestResponse(res) =
+            query::slashing_request(deps.as_ref(), request_id.clone()).unwrap();
+        assert_eq!(res, None);
+
+        // save request_id
+        SLASHING_REQUESTS
+            .save(&mut deps.storage, request_id.clone(), &slash_request)
+            .expect("save slashing request failed");
+
+        // assert request_id is saved
+        let SlashingRequestResponse(res) =
+            query::slashing_request(deps.as_ref(), request_id.clone()).unwrap();
+        assert_eq!(res, Some(slash_request));
+
+        // assert that another request_id is not saved
+        let random_request_id = SlashingRequestId(
+            HexBinary::from_hex("0ff7a6f403eff632636533660ab53ab35e7ae0fe2e5dacb160aa7d876a412f09")
+                .unwrap(),
+        );
+        let SlashingRequestResponse(res) =
+            query::slashing_request(deps.as_ref(), random_request_id).unwrap();
+        assert_eq!(res, None);
     }
 }

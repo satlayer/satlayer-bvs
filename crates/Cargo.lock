@@ -376,8 +376,10 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus",
  "cw2",
+ "prost",
  "schemars",
  "serde",
+ "sha3",
  "thiserror 1.0.69",
 ]
 
