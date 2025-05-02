@@ -232,7 +232,7 @@ mod vault_execute {
 
         let assets = msg.amount;
 
-        let (vault, new_receipt_tokens) = {
+        let new_receipt_tokens = {
             let underlying_token_balance = UnderlyingToken::query_balance(&deps.as_ref(), &env)?;
             let receipt_token_supply =
                 cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
@@ -240,7 +240,7 @@ mod vault_execute {
 
             let new_receipt_tokens = vault.assets_to_shares(assets)?;
 
-            (vault, new_receipt_tokens)
+            new_receipt_tokens
         };
 
         // CW20 Transfer of asset from info.sender to contract
@@ -262,6 +262,8 @@ mod vault_execute {
             )?;
         }
 
+        let total_supply = cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
+
         Ok(Response::new()
             .add_event(
                 Event::new("DepositFor")
@@ -269,7 +271,7 @@ mod vault_execute {
                     .add_attribute("recipient", msg.recipient)
                     .add_attribute("assets", assets.to_string())
                     .add_attribute("shares", new_receipt_tokens.to_string())
-                    .add_attribute("total_shares", vault.total_shares().to_string()),
+                    .add_attribute("total_shares", total_supply.to_string()),
             )
             .add_message(transfer_msg))
     }
@@ -286,7 +288,7 @@ mod vault_execute {
 
         let receipt_tokens = msg.amount;
 
-        let (vault, claim_staking_tokens) = {
+        let claim_staking_tokens = {
             let underlying_token_balance = UnderlyingToken::query_balance(&deps.as_ref(), &env)?;
             let receipt_token_supply =
                 cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
@@ -297,7 +299,7 @@ mod vault_execute {
                 return Err(VaultError::zero("Withdraw assets cannot be zero.").into());
             }
 
-            (vault, primary_staking_tokens)
+            primary_staking_tokens
         };
 
         // CW20 transfer of staking asset to msg.recipient
@@ -309,6 +311,7 @@ mod vault_execute {
 
         // Burn the receipt token from the staker
         receipt_token_burn(deps.branch(), env.clone(), info.clone(), receipt_tokens)?;
+        let total_supply = cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
 
         Ok(Response::new()
             .add_event(
@@ -317,7 +320,7 @@ mod vault_execute {
                     .add_attribute("recipient", msg.recipient.to_string())
                     .add_attribute("assets", claim_staking_tokens.to_string())
                     .add_attribute("shares", msg.amount.to_string())
-                    .add_attribute("total_shares", vault.total_shares().to_string()),
+                    .add_attribute("total_shares", total_supply.to_string()),
             )
             .add_message(transfer_msg))
     }
