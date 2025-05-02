@@ -8,9 +8,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/forbole/juno/v6/modules"
 	"github.com/forbole/juno/v6/types/config"
-	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/utils"
 
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/database"
+	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/utils"
 )
 
 var (
@@ -40,8 +40,11 @@ func NewModule(cfg config.Config, cdc codec.Codec, db *database.DB) *Module {
 	}
 
 	validateWASMConfig(wasmCfg, cfg.Chain.Bech32Prefix)
-	// sort codeID in config
-	slices.Sort(wasmCfg.CodeIDs)
+
+	if len(wasmCfg.CodeIDs) != 0 {
+		// sort codeIDs in config, if they're present
+		slices.Sort(wasmCfg.CodeIDs)
+	}
 
 	slog.Info("Run wasm module", "wasm config", wasmCfg)
 
@@ -62,8 +65,8 @@ func validateWASMConfig(wasmCfg *Config, bech32prefix string) {
 		log.Fatal("The config of wasm module shouldn't be nil")
 	}
 
-	if len(wasmCfg.CodeIDs) == 0 && len(wasmCfg.Contracts) == 0 {
-		log.Fatal("Both Contracts and CodeID shouldn't be empty")
+	if len(wasmCfg.Contracts) == 0 {
+		log.Fatal("Contracts shouldn't be empty")
 	}
 
 	for addr := range wasmCfg.Contracts {

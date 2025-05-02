@@ -3,7 +3,7 @@ package database
 import (
 	"fmt"
 
-	dbutils "github.com/satlayer/satlayer-bvs/cosmwasm-indexer/database/utils"
+	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/database/utils"
 	"github.com/satlayer/satlayer-bvs/cosmwasm-indexer/types"
 )
 
@@ -15,7 +15,7 @@ func (db *DB) SaveWASMExecuteContract(wasmExecuteContract types.WASMExecuteContr
 // SaveWasmContracts allows to store WASM contract slice.
 func (db *DB) SaveWASMExecuteContracts(executeContracts []types.WASMExecuteContract) error {
 	paramsNumber := 9
-	slices := dbutils.SplitWASMExecuteContracts(executeContracts, paramsNumber)
+	slices := utils.SplitWASMExecuteContracts(executeContracts, paramsNumber)
 
 	for _, contracts := range slices {
 		if len(contracts) == 0 {
