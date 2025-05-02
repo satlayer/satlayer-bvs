@@ -17,10 +17,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     /// ExecuteMsg SetVault the vault contract in the router and whitelist (true/false) it.
     /// Only the `owner` can call this message.
-    SetVault {
-        vault: String,
-        whitelisted: bool,
-    },
+    SetVault { vault: String, whitelisted: bool },
 
     /// ExecuteMsg SetWithdrawalLockPeriod the lock period for withdrawal.
     /// Only the `owner` can call this message.
@@ -28,10 +25,25 @@ pub enum ExecuteMsg {
 
     /// ExecuteMsg TransferOwnership
     /// See [`bvs_library::ownership::transfer_ownership`] for more information on this field
-    TransferOwnership {
-        new_owner: String,
-    },
+    TransferOwnership { new_owner: String },
 
+    /// Initiates a slashing request against an active operator of the service (info.sender).
+    ///
+    /// This ExecuteMsg allows a registered service to request a slash of an operator's staked tokens
+    /// as a penalty for violations or non-compliance. The slashing request must meet several criteria:
+    ///
+    /// - The service must be actively registered with the operator at the specified timestamp
+    /// - The slashing amount (in bips) must not exceed the max_slashing_bips set by the service
+    /// - The operator must have opted in to slashing at the specified timestamp
+    /// - The timestamp must be within the allowable slashing window (not too old or in the future)
+    /// - The service must not have another active slashing request against the same operator
+    /// - The reason provided in metadata must not exceed the maximum allowed length
+    ///
+    /// When successful, this creates a slashing request with an expiry time based on the
+    /// resolution_window parameter and returns a unique slashing request ID.
+    ///
+    /// #### Returns
+    /// On success, returns events with a data field set as [`RequestSlashingResponse`] containing the generated slashing request ID.
     RequestSlashing(RequestSlashingPayload),
 }
 

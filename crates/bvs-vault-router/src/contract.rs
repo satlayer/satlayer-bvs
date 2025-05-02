@@ -263,7 +263,7 @@ mod execute {
         }
 
         // ensure that the operator has opted in to slashing at the given timestamp.
-        let IsOperatorOptedInToSlashingResponse(is_operated_opted_in) =
+        let IsOperatorOptedInToSlashingResponse(is_operator_opted_in) =
             deps.querier.query_wasm_smart(
                 registry,
                 &bvs_registry::msg::QueryMsg::IsOperatorOptedInToSlashing {
@@ -273,7 +273,7 @@ mod execute {
                 },
             )?;
 
-        if !is_operated_opted_in {
+        if !is_operator_opted_in {
             return Err(InvalidSlashingRequest {
                 msg: "Operator has not opted-in to slashing at timestamp.".to_string(),
             });
