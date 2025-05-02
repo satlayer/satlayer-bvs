@@ -47,7 +47,8 @@ type IsWhitelistedResponse = boolean;
  * let ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202);
  * assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```
  *
- * SlashingRequestId stores the id in 256 bit (32 bytes)
+ * SlashingRequestId stores the id in hexbinary. It's a 32-byte hash of the slashing
+ * request
  *
  * This is a wrapper around Vec<u8> to add hex de/serialization with serde. It also adds
  * some helper methods to help encode inline.
@@ -131,7 +132,8 @@ export interface RequestSlashingClass {
  */
 export interface RequestSlashingMetadata {
   /**
-   * The reason for the slashing request. Must contain human-readable string.
+   * The reason for the slashing request. Must contain human-readable string. Max length of
+   * 250 characters, empty string is allowed but not recommended.
    */
   reason: string;
 }
@@ -207,7 +209,7 @@ export interface VaultListResponse {
 
 export interface SlashingRequestResponse {
   /**
-   * The core slashing request data including operator, bips, and metadata.
+   * The core slashing request data including operator, bips, timestamp, and metadata.
    */
   request: RequestClass;
   /**
@@ -222,7 +224,7 @@ export interface SlashingRequestResponse {
 }
 
 /**
- * The core slashing request data including operator, bips, and metadata.
+ * The core slashing request data including operator, bips, timestamp, and metadata.
  */
 export interface RequestClass {
   /**
@@ -251,7 +253,8 @@ export interface RequestClass {
  */
 export interface RequestMetadata {
   /**
-   * The reason for the slashing request. Must contain human-readable string.
+   * The reason for the slashing request. Must contain human-readable string. Max length of
+   * 250 characters, empty string is allowed but not recommended.
    */
   reason: string;
 }

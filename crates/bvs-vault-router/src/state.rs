@@ -44,7 +44,7 @@ pub const OPERATOR_VAULTS: Map<(&Addr, &Addr), ()> = Map::new("operator_vaults")
 
 #[cw_serde]
 pub struct SlashingRequest {
-    /// The core slashing request data including operator, bips, and metadata.
+    /// The core slashing request data including operator, bips, timestamp, and metadata.
     pub request: RequestSlashingPayload,
     /// The timestamp when the request was submitted.
     pub request_time: Timestamp,
@@ -67,7 +67,7 @@ impl SlashingRequest {
     }
 }
 
-/// SlashingRequestId stores the id in 256 bit (32 bytes)
+/// SlashingRequestId stores the id in hexbinary. It's a 32-byte hash of the slashing request
 #[cw_serde]
 pub struct SlashingRequestId(pub HexBinary);
 
@@ -110,7 +110,6 @@ impl PrimaryKey<'_> for SlashingRequestId {
     type SuperSuffix = Self;
 
     fn key(&self) -> Vec<Key> {
-        // Use the HexBinary inside SlashingId to generate the key
         vec![Key::Ref(self.0.as_slice())]
     }
 }
@@ -122,7 +121,6 @@ impl KeyDeserialize for SlashingRequestId {
 
     #[inline(always)]
     fn from_vec(value: Vec<u8>) -> StdResult<Self::Output> {
-        // Convert the Vec<u8> to HexBinary, then wrap it in SlashingId
         Ok(SlashingRequestId(HexBinary::from(value)))
     }
 }

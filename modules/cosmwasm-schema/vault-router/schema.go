@@ -48,7 +48,8 @@ type RequestSlashingClass struct {
 
 // Additional contextual information about the slashing request.
 type RequestSlashingMetadata struct {
-	// The reason for the slashing request. Must contain human-readable string.
+	// The reason for the slashing request. Must contain human-readable string. Max length of
+	// 250 characters, empty string is allowed but not recommended.
 	Reason string `json:"reason"`
 }
 
@@ -119,7 +120,7 @@ type Vault struct {
 }
 
 type SlashingRequest struct {
-	// The core slashing request data including operator, bips, and metadata.
+	// The core slashing request data including operator, bips, timestamp, and metadata.
 	Request RequestClass `json:"request"`
 	// The timestamp after which the request is no longer valid. This will be `request_time` +
 	// `resolution_window` * 2 (as per current slashing parameters)
@@ -128,7 +129,7 @@ type SlashingRequest struct {
 	RequestTime string `json:"request_time"`
 }
 
-// The core slashing request data including operator, bips, and metadata.
+// The core slashing request data including operator, bips, timestamp, and metadata.
 type RequestClass struct {
 	// The percentage of tokens to slash in basis points (1/100th of a percent). Max bips to
 	// slash is set by the service slashing parameters at the timestamp and the operator must
@@ -145,6 +146,7 @@ type RequestClass struct {
 
 // Additional contextual information about the slashing request.
 type RequestMetadata struct {
-	// The reason for the slashing request. Must contain human-readable string.
+	// The reason for the slashing request. Must contain human-readable string. Max length of
+	// 250 characters, empty string is allowed but not recommended.
 	Reason string `json:"reason"`
 }
