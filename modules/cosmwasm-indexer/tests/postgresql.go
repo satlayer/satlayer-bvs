@@ -50,7 +50,7 @@ func Run(ctx context.Context) *PostgreSQLContainer {
 		panic(fmt.Errorf("failed to start PostgreSQL container: %s", err))
 	}
 
-	uri := fmt.Sprintf("%s", getHost(ctx, container, dbPort))
+	uri := getHost(ctx, container, dbPort)
 	return &PostgreSQLContainer{
 		Container: container,
 		URL: fmt.Sprintf("postgresql://%s:%s@%s/%s?sslmode=disable&search_path=public",
