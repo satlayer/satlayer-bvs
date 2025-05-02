@@ -935,7 +935,6 @@ fn test_vault_info() {
             router: tc.router.addr,
             pauser: tc.pauser.addr,
             operator: app.api().addr_make("operator"),
-            slashing: false,
             asset_id: format!("cosmos:cosmos-testnet-14002/cw20:{}", tc.cw20.addr).to_string(),
             contract: "crates.io:bvs-vault-cw20".to_string(),
             version: env!("CARGO_PKG_VERSION").to_string(),

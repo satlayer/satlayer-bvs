@@ -971,10 +971,6 @@ export interface VaultInfoResponse {
    */
   router: string;
   /**
-   * Whether the vault has enabled slashing
-   */
-  slashing: boolean;
-  /**
    * The total assets under management
    */
   total_assets: string;

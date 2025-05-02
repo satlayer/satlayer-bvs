@@ -395,7 +395,6 @@ mod query {
             router: bvs_vault_base::router::get_router(deps.storage)?,
             pauser: bvs_pauser::api::get_pauser(deps.storage)?,
             operator: bvs_vault_base::router::get_operator(deps.storage)?,
-            slashing: false,
             asset_id: format!("cosmos:{}/bank:{}", env.block.chain_id, denom.as_str()),
             contract: version.contract,
             version: version.version,

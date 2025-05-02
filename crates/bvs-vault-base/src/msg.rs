@@ -183,9 +183,6 @@ pub struct VaultInfoResponse {
     /// The `operator` that this vault is delegated to
     pub operator: Addr,
 
-    /// Whether the vault has enabled slashing
-    pub slashing: bool,
-
     /// Asset identifier, using the CAIP-19 format.
     pub asset_id: String,
 
