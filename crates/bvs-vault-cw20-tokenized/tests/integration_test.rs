@@ -1568,6 +1568,17 @@ fn test_deposit_transfer_then_queue_redeem_withdraw() {
         vault.execute(app, &beneficiary, &msg).unwrap();
     }
 
+    // premature redeem withdrawal to
+    {
+        let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(staker.clone()));
+        let res = vault.execute(app, &staker, &msg);
+        assert!(res.is_err());
+
+        let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(beneficiary.clone()));
+        let res = vault.execute(app, &beneficiary, &msg);
+        assert!(res.is_err());
+    }
+
     // time travel
     {
         app.update_block(|block| {
