@@ -11,6 +11,6 @@
   "devDependencies": {
     "@examples/squaring-contract": "workspace:*",
     "@modules/babylond": "workspace:*",
-    "quicktype-core": "^23.1.2"
+    "quicktype-core": "^23.1.3"
   }
 }

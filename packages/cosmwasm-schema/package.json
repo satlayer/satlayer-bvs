@@ -15,6 +15,6 @@
     "@satlayer/bvs-vault-cw20": "workspace:*",
     "@satlayer/bvs-vault-factory": "workspace:*",
     "@satlayer/bvs-vault-router": "workspace:*",
-    "quicktype-core": "^23.1.2"
+    "quicktype-core": "^23.1.3"
   }
 }
