@@ -1035,7 +1035,7 @@ fn test_cw20_semi_compliance() {
     let app = &mut App::default();
     let TestContracts {
         vault,
-        cw20: staking_cw20,
+        cw20: underlying_cw20,
         ..
     } = TestContracts::init(app);
 
@@ -1047,8 +1047,8 @@ fn test_cw20_semi_compliance() {
         recipient: staker.clone(),
         amount: Uint128::new(200),
     });
-    staking_cw20.increase_allowance(app, &staker, vault.addr(), 100e15 as u128);
-    staking_cw20.fund(app, &staker, 100e15 as u128);
+    underlying_cw20.increase_allowance(app, &staker, vault.addr(), 100e15 as u128);
+    underlying_cw20.fund(app, &staker, 100e15 as u128);
     vault.execute(app, &staker, &msg).unwrap();
 
     // We can increase allowance like normal cw20 token.
