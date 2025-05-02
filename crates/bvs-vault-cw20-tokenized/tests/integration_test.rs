@@ -1479,7 +1479,7 @@ fn test_deposit_transfer_then_withdraw_to() {
 
         let resp: BalanceResponse = vault.query(app, &msg).unwrap();
 
-        assert_eq!(resp.balance.is_zero(), true);
+        assert!(resp.balance.is_zero());
 
         let resp: BalanceResponse = vault
             .query(
@@ -1490,7 +1490,7 @@ fn test_deposit_transfer_then_withdraw_to() {
             )
             .unwrap();
 
-        assert_eq!(resp.balance.is_zero(), true);
+        assert!(resp.balance.is_zero());
     }
 }
 
@@ -1619,7 +1619,7 @@ fn test_deposit_transfer_then_queue_redeem_withdraw() {
 
         let resp: BalanceResponse = vault.query(app, &msg).unwrap();
 
-        assert_eq!(resp.balance.is_zero(), true);
+        assert!(resp.balance.is_zero());
 
         let resp: BalanceResponse = vault
             .query(
@@ -1630,6 +1630,6 @@ fn test_deposit_transfer_then_queue_redeem_withdraw() {
             )
             .unwrap();
 
-        assert_eq!(resp.balance.is_zero(), true);
+        assert!(resp.balance.is_zero());
     }
 }
