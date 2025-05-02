@@ -1568,7 +1568,7 @@ fn test_deposit_transfer_then_queue_redeem_withdraw() {
         vault.execute(app, &beneficiary, &msg).unwrap();
     }
 
-    // premature redeem withdrawal to
+    // fail premature redeem withdrawal to
     {
         let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(staker.clone()));
         let res = vault.execute(app, &staker, &msg);
