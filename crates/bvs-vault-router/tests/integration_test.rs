@@ -1,3 +1,4 @@
+use bvs_library::time::DAYS;
 use bvs_library::{
     ownership::OwnershipError,
     testing::{Cw20TokenContract, TestingContract},
@@ -311,7 +312,7 @@ fn transfer_ownership_but_not_owner() {
 }
 
 #[test]
-fn slashing_request_successful() {
+fn request_slashing_successful() {
     let (mut app, tc) = TestContracts::init();
 
     let operator = app.api().addr_make("operator");
@@ -403,7 +404,7 @@ fn slashing_request_successful() {
         response.events,
         vec![
             Event::new("execute").add_attribute("_contract_address", tc.vault_router.addr.as_str()),
-            Event::new("wasm-SlashingRequest")
+            Event::new("wasm-RequestSlashing")
                 .add_attribute("_contract_address", tc.vault_router.addr.as_str())
                 .add_attribute("service", service.to_string())
                 .add_attribute("operator", operator.to_string())
@@ -466,4 +467,403 @@ fn slashing_request_successful() {
             request_expiry: app.block_info().time.plus_seconds(200)
         }
     );
+}
+
+/// This test is
+/// to check all negative cases for slashing request and finally a success case in the end.
+/// To find a simpler success case, look at the `request_slashing_successful` test.
+#[test]
+fn request_slashing_lifecycle() {
+    let (mut app, tc) = TestContracts::init();
+
+    let operator = app.api().addr_make("operator");
+    let service = app.api().addr_make("service");
+
+    // register operator + service
+    {
+        tc.registry
+            .execute(
+                &mut app,
+                &operator,
+                &bvs_registry::msg::ExecuteMsg::RegisterAsOperator {
+                    metadata: Metadata {
+                        name: Some("operator".to_string()),
+                        uri: None,
+                    },
+                },
+            )
+            .expect("failed to register operator");
+
+        tc.registry
+            .execute(
+                &mut app,
+                &service,
+                &bvs_registry::msg::ExecuteMsg::RegisterAsService {
+                    metadata: Metadata {
+                        name: Some("service".to_string()),
+                        uri: None,
+                    },
+                },
+            )
+            .expect("failed to register service");
+    }
+
+    app.update_block(|block| {
+        block.height += 1;
+        block.time = block.time.plus_seconds(10);
+    });
+
+    // service request slashing with reason string over limit
+    {
+        let slashing_request_payload = RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 100,
+            timestamp: app.block_info().time,
+            metadata: SlashingMetadata {
+                reason: "this is a reason to slash the operator that is too long to be allowed in the \
+                metadata of this test, and we need to make it even longer to reach exactly 251 bytes total. \
+                The purpose of this test is to verify that the system properly rejects long text. ".to_string(),
+            },
+        };
+
+        let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
+        let err = tc
+            .vault_router
+            .execute(&mut app, &service, msg)
+            .unwrap_err();
+        assert_eq!(
+            err.root_cause().to_string(),
+            ContractError::InvalidSlashingRequest {
+                msg: "Reason is too long.".to_string()
+            }
+            .to_string()
+        )
+    }
+
+    // service request slashing with date too far in the past (over max_slashable_delay)
+    {
+        let slashing_request_payload = RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 100,
+            timestamp: app
+                .block_info()
+                .time
+                .minus_seconds(7 * DAYS) // default is 7 days
+                .minus_seconds(1),
+            metadata: SlashingMetadata {
+                reason: "test".to_string(),
+            },
+        };
+
+        let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
+        let err = tc
+            .vault_router
+            .execute(&mut app, &service, msg)
+            .unwrap_err();
+        assert_eq!(
+            err.root_cause().to_string(),
+            ContractError::InvalidSlashingRequest {
+                msg: "Slash timestamp is outside of the allowable slash period.".to_string()
+            }
+            .to_string()
+        )
+    }
+
+    // service request slashing with date in the future
+    {
+        let slashing_request_payload = RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 100,
+            timestamp: app.block_info().time.plus_seconds(1),
+            metadata: SlashingMetadata {
+                reason: "test".to_string(),
+            },
+        };
+
+        let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
+        let err = tc
+            .vault_router
+            .execute(&mut app, &service, msg)
+            .unwrap_err();
+        assert_eq!(
+            err.root_cause().to_string(),
+            ContractError::InvalidSlashingRequest {
+                msg: "Slash timestamp is outside of the allowable slash period.".to_string()
+            }
+            .to_string()
+        )
+    }
+
+    // service request slashing when operator and service not in ACTIVE status
+    {
+        // register Service to Operator for OperatorRegistered status
+        let msg = &bvs_registry::msg::ExecuteMsg::RegisterServiceToOperator {
+            service: service.to_string(),
+        };
+        tc.registry
+            .execute(&mut app, &operator, msg)
+            .expect("failed to register service to operator");
+
+        app.update_block(|block| {
+            block.height += 1;
+            block.time = block.time.plus_seconds(10);
+        });
+
+        // service request slashing
+        let slashing_request_payload = RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 9999,
+            timestamp: app.block_info().time,
+            metadata: SlashingMetadata {
+                reason: "test".to_string(),
+            },
+        };
+
+        let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
+        let err = tc
+            .vault_router
+            .execute(&mut app, &service, msg)
+            .unwrap_err();
+        assert_eq!(
+            err.root_cause().to_string(),
+            ContractError::InvalidSlashingRequest {
+                msg: "Service and Operator are not active at timestamp.".to_string()
+            }
+            .to_string()
+        )
+    }
+
+    // update registration status to ACTIVE
+    {
+        // register operator to service for ACTIVE status
+        let msg = &bvs_registry::msg::ExecuteMsg::RegisterOperatorToService {
+            operator: operator.to_string(),
+        };
+        tc.registry
+            .execute(&mut app, &service, msg)
+            .expect("failed to register operator to service");
+    }
+
+    app.update_block(|block| {
+        block.height += 1;
+        block.time = block.time.plus_seconds(10);
+    });
+
+    // service request slashing before enabling slashing
+    {
+        let slashing_request_payload = RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 100,
+            timestamp: app.block_info().time,
+            metadata: SlashingMetadata {
+                reason: "test".to_string(),
+            },
+        };
+
+        let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
+        let err = tc
+            .vault_router
+            .execute(&mut app, &service, msg)
+            .unwrap_err();
+        assert_eq!(
+            err.root_cause().to_string(),
+            ContractError::InvalidSlashingRequest {
+                msg: "Service has not enabled slashing at timestamp.".to_string()
+            }
+            .to_string()
+        )
+    }
+
+    // service enable slashing
+    {
+        let msg = &bvs_registry::msg::ExecuteMsg::EnableSlashing {
+            slashing_parameters: SlashingParameters {
+                destination: Some(service.clone()),
+                max_slashing_bips: 5000,
+                resolution_window: 100,
+            },
+        };
+        tc.registry
+            .execute(&mut app, &service, msg)
+            .expect("failed to enable slashing");
+    }
+
+    app.update_block(|block| {
+        block.height += 1;
+        block.time = block.time.plus_seconds(10);
+    });
+
+    // service request slashing with bips over max_slashing_bips
+    {
+        let slashing_request_payload = RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 9999,
+            timestamp: app.block_info().time,
+            metadata: SlashingMetadata {
+                reason: "test".to_string(),
+            },
+        };
+
+        let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
+        let err = tc
+            .vault_router
+            .execute(&mut app, &service, msg)
+            .unwrap_err();
+        assert_eq!(
+            err.root_cause().to_string(),
+            ContractError::InvalidSlashingRequest {
+                msg: "Slashing bips is over max_slashing_bips set.".to_string()
+            }
+            .to_string()
+        )
+    }
+
+    // service request slashing before operator opt-in to slashing
+    {
+        let slashing_request_payload = RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 100,
+            timestamp: app.block_info().time,
+            metadata: SlashingMetadata {
+                reason: "test".to_string(),
+            },
+        };
+
+        let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
+        let err = tc
+            .vault_router
+            .execute(&mut app, &service, msg)
+            .unwrap_err();
+        assert_eq!(
+            err.root_cause().to_string(),
+            ContractError::InvalidSlashingRequest {
+                msg: "Operator has not opted-in to slashing at timestamp.".to_string()
+            }
+            .to_string()
+        )
+    }
+
+    // operator opt-in to slashing
+    {
+        let msg = &bvs_registry::msg::ExecuteMsg::OperatorOptInToSlashing {
+            service: service.to_string(),
+        };
+        tc.registry
+            .execute(&mut app, &operator, msg)
+            .expect("failed to opt-in to slashing");
+    }
+
+    app.update_block(|block| {
+        block.height += 1;
+        block.time = block.time.plus_seconds(10);
+    });
+
+    // service request slashing for older timestamp before operator opted-in
+    {
+        let slashing_request_payload = RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 100,
+            timestamp: app.block_info().time.minus_seconds(10),
+            metadata: SlashingMetadata {
+                reason: "test".to_string(),
+            },
+        };
+
+        let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
+        let err = tc
+            .vault_router
+            .execute(&mut app, &service, msg)
+            .unwrap_err();
+        assert_eq!(
+            err.root_cause().to_string(),
+            ContractError::InvalidSlashingRequest {
+                msg: "Operator has not opted-in to slashing at timestamp.".to_string()
+            }
+            .to_string()
+        )
+    }
+
+    // service successfully request slashing
+    {
+        let slashing_request_payload = RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 100,
+            timestamp: app.block_info().time,
+            metadata: SlashingMetadata {
+                reason: "test".to_string(),
+            },
+        };
+
+        let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
+        tc.vault_router
+            .execute(&mut app, &service, msg)
+            .expect("failed to request slashing");
+    }
+
+    app.update_block(|block| {
+        block.height += 1;
+        block.time = block.time.plus_seconds(10);
+    });
+
+    // service request a second slashing to the same operator while there is an active request
+    {
+        let slashing_request_payload = RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 100,
+            timestamp: app.block_info().time,
+            metadata: SlashingMetadata {
+                reason: "test".to_string(),
+            },
+        };
+
+        let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
+        let err = tc
+            .vault_router
+            .execute(&mut app, &service, msg)
+            .unwrap_err();
+        assert_eq!(
+            err.root_cause().to_string(),
+            ContractError::InvalidSlashingRequest {
+                msg: "Service has current active slashing request for the operator.".to_string()
+            }
+            .to_string()
+        )
+    }
+
+    // move blockchain after slashing request expiry
+    app.update_block(|block| {
+        block.height += 20;
+        block.time = block.time.plus_seconds(200); // resolution_window * 2
+    });
+
+    // service successfully request slashing after slashing request expiry
+    {
+        let slashing_request_payload = RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 100,
+            timestamp: app.block_info().time,
+            metadata: SlashingMetadata {
+                reason: "test2".to_string(),
+            },
+        };
+
+        let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
+        let response = tc.vault_router.execute(&mut app, &service, msg).unwrap();
+        assert_eq!(
+            response.events,
+            vec![
+                Event::new("execute")
+                    .add_attribute("_contract_address", tc.vault_router.addr.as_str()),
+                Event::new("wasm-RequestSlashing")
+                    .add_attribute("_contract_address", tc.vault_router.addr.as_str())
+                    .add_attribute("service", service.to_string())
+                    .add_attribute("operator", operator.to_string())
+                    .add_attribute(
+                        "slashing_request_id",
+                        "651c06351917b2ee5ad02cdb828f468b2c3c87f5c1596deec58d865a7410d393"
+                    )
+                    .add_attribute("reason", "test2"),
+            ]
+        );
+    }
 }

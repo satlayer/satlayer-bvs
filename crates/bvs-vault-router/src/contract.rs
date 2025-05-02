@@ -318,7 +318,7 @@ mod execute {
         Ok(Response::new()
             .set_data(RequestSlashingResponse(slashing_request_id.clone()))
             .add_event(
-                Event::new("SlashingRequest")
+                Event::new("RequestSlashing")
                     .add_attribute("service", service)
                     .add_attribute("operator", operator)
                     .add_attribute("slashing_request_id", slashing_request_id.to_string())
