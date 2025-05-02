@@ -18,6 +18,11 @@
     "eslint": {
       "cache": false,
       "outputLogs": "errors-only"
+    },
+    "cargo:publish": {
+      "cache": false,
+      "env": ["CARGO_REGISTRY_TOKEN"],
+      "dependsOn": ["^cargo:publish"]
     }
   }
 }

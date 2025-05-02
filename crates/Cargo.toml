@@ -23,10 +23,11 @@ resolver = "2"
 version = "0.0.0"
 authors = ["SatLayer"]
 edition = "2021"
-license = "BSL-1.1"
+license = "BUSL-1.1"
 repository = "https://github.com/satlayer/satlayer-bvs.git"
 homepage = "https://satlayer.xyz/"
 documentation = "https://github.com/satlayer/satlayer-bvs.git"
+description = "SatLayer Bitcoin Validated Service"
 keywords = ["SatLayer", "Restaking", "BTC", "cosmos", "cosmwasm"]
 
 [workspace.dependencies]
@@ -52,15 +53,16 @@ cw20-base = "2.0.0"
 cw-utils = "2.0.0"
 
 # CosmWasm Libraries & Contracts
-bvs-library = { path = "./bvs-library" }
-bvs-pauser = { path = "./bvs-pauser", features = ["library"] }
-bvs-registry = { path = "./bvs-registry", features = ["library"] }
+bvs-library = { path = "./bvs-library", version = "0.0.0" }
+bvs-pauser = { path = "./bvs-pauser", features = ["library"], version = "0.0.0" }
+bvs-registry = { path = "./bvs-registry", features = ["library"], version = "0.0.0" }
 
-bvs-vault-router = { path = "./bvs-vault-router", features = ["library"] }
-bvs-vault-base = { path = "./bvs-vault-base", features = ["library"] }
-bvs-vault-bank = { path = "./bvs-vault-bank", features = ["library"] }
-bvs-vault-cw20 = { path = "./bvs-vault-cw20", features = ["library"] }
-bvs-vault-cw20-tokenized = { path = "./bvs-vault-cw20-tokenized", features = ["library"] }
-bvs-vault-factory = { path = "./bvs-vault-factory", features = ["library"] }
+bvs-vault-router = { path = "./bvs-vault-router", features = ["library"], version = "0.0.0" }
+bvs-vault-base = { path = "./bvs-vault-base", features = ["library"], version = "0.0.0" }
+bvs-vault-bank = { path = "./bvs-vault-bank", features = ["library"], version = "0.0.0" }
+bvs-vault-cw20 = { path = "./bvs-vault-cw20", features = ["library"], version = "0.0.0" }
+bvs-vault-cw20-tokenized = { path = "./bvs-vault-cw20-tokenized", features = ["library"], version = "0.0.0" }
+bvs-vault-factory = { path = "./bvs-vault-factory", features = ["library"], version = "0.0.0" }
 
-bvs-rewards = { path = "./bvs-rewards", features = ["library"] }
+
+bvs-rewards = { path = "./bvs-rewards", features = ["library"], version = "0.0.0" }

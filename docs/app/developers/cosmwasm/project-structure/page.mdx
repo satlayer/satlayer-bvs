@@ -1,0 +1,187 @@
+---
+sidebarTitle: Project Structure
+---
+
+import { FileTree } from 'nextra/components'
+
+# CosmWasm Project Structure
+
+This is a high-level overview of a CosmWasm contract to get you started with integrating with the SatLayer ecosystem.
+CosmWasm uses idiomatic Rust compiled to WebAssembly (Wasm) `target_arch = "wasm32"`.
+It assumes you are familiar with basic Rust and the Cosmos SDK as you will be using it to write smart contracts.
+
+There are only about 5 files that you will need to juggle around with,
+and only **`contract.rs`** contains the actual logic of the contract.
+You will probably be able to learn it alongside when writing your first smart contract,
+but I strongly recommend reading these two books if you want to get a deeper understanding.
+- https://book.cosmwasm.com/
+- https://www.rust-lang.org/learn
+
+## Project Structure
+
+<FileTree>
+  <FileTree.Folder name="project" defaultOpen>
+    <FileTree.Folder name="src" defaultOpen>
+      <FileTree.Folder name="bin" defaultOpen>
+        <FileTree.File name="schema.rs" />
+      </FileTree.Folder>
+      <FileTree.File name="lib.rs" />
+      <FileTree.File name="contract.rs" active />
+      <FileTree.File name="error.rs" />
+      <FileTree.File name="msg.rs" />
+      <FileTree.File name="state.rs" />
+    </FileTree.Folder>
+    <FileTree.Folder name="tests" defaultOpen>
+      <FileTree.File name="integration_test.rs" />
+    </FileTree.Folder>
+    <FileTree.File name="Cargo.lock" />
+    <FileTree.File name="Cargo.toml" />
+  </FileTree.Folder>
+</FileTree>
+
+Above is the typical structure of a CosmWasm project;
+we follow the same structure in [CosmWasm/cw-template](https://github.com/CosmWasm/cw-template) the quickstart template
+for building CosmWasm contracts.
+Although you don't have to follow this structure,
+it is highly recommended to do so to make it easier for everyone (e.i, auditors) to understand the project.
+The main files that you should be aware of are:
+- `contract.rs`: This is the main entry point for the contract.
+It contains the logic for handling the messages, mutating the state, and responding to queries.
+- `msg.rs`: This file contains the `interfaces`, the message structure for interacting with the contract.
+- `state.rs`: This file contains the state, the data that are stored in the contract.
+
+### `msg.rs`
+
+This file contains the messages that are sent to and from the contract.
+You should start from this file to define the messages that you want to support.
+The `ExecuteMsg` and `QueryMsg` are defined as enums, and each message should have its own variant.
+
+It is important to note that the messages are serialized to JSON before being sent to the contract.
+This is done by using the `#[cw_serde]`,
+an attribute macro that annotates types with things they need to be properly (de)serialized for use in CosmWasm contract messages and/or responses,
+and also for schema generation.
+
+```rust filename="msg.rs"
+#[cw_serde]
+pub struct InstantiateMsg {
+    pub aggregator: String,
+}
+
+#[cw_serde]
+pub struct MigrateMsg {
+    pub aggregator: Option<String>,
+}
+
+#[cw_serde]
+pub enum ExecuteMsg {
+    Request {
+        input: i64,
+    },
+    Respond {
+        input: i64,
+        output: i64,
+    },
+}
+
+#[cw_serde]
+pub enum QueryMsg {
+    GetRequest {
+        input: i64,
+    },
+    GetResponse {
+        input: i64,
+    },
+}
+```
+
+Example of a request message:
+
+```json filename="ExecuteMsg::Request { input: 3 }"
+{
+   "request": {
+      "input": 3
+   }
+}
+```
+
+
+### `state.rs`
+
+This file contains the state of the contract, data that are stored in the contract.
+They are usually brief and only contain a few lines of code defining what's stored in the contract.
+
+- `Item<T>` store a single value of type `T` with a given namespace.
+- `Map<K, T>` store a map of type `T` with a given key of type `K` in a given namespace.
+
+```rust filename="state.rs"
+pub const AGGREGATOR: Item<Addr> = Item::new("aggregator");
+pub const REQUEST_RESPONSE: Map<&i64, i64> = Map::new("request_response");
+```
+
+### `contract.rs`
+
+The main `entry_point` and business logic of the contract.
+It contains the logic for handling the messages, mutating the state, and responding to queries.
+
+```rust filename="contract.rs"
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateMsg) -> Result<Response, ContractError> {
+    // Instantiate the contract
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> Result<Response, ContractError> {
+    match msg {
+        // Match and handle each execute message accordingly
+    }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+    match msg {
+        // Match and handle each query message accordingly
+    }
+}
+```
+
+### `integration_test.rs`
+
+A simple example of how you can test your contract using `cw-multi-test`.
+
+```rust filename="integration_test.rs"
+#[cfg(test)]
+mod tests {
+    pub fn contract() -> Box<dyn Contract<Empty>> {
+        Box::new(ContractWrapper::new(
+            contract::execute,
+            contract::instantiate,
+            contract::query,
+        ))
+    }
+
+    #[test]
+    fn test_request() {
+        let mut app = App::default();
+        let code_id = app.store_code(contract());
+
+        let init_msg = InstantiateMsg {
+            aggregator: app.api().addr_make("aggregator").to_string(),
+        };
+        let contract_admin = app.api().addr_make("admin");
+        let contract_addr = app
+            .instantiate_contract(code_id, contract_admin, &init_msg, &[], "Example", None)
+            .unwrap();
+
+        let msg = ExecuteMsg::Request { input: 3 };
+        let msg_bin = to_json_binary(&msg).unwrap();
+        let execute_msg = WasmMsg::Execute {
+            contract_addr: self.addr().to_string(),
+            msg: msg_bin,
+            funds,
+        };
+
+        let sender = app.api().addr_make("sender");
+        app.execute(sender, execute_msg.into()).unwrap();
+    }
+}
+```

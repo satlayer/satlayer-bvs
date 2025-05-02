@@ -47,7 +47,7 @@ export default async function RootLayout({
         <Layout
           banner={banner}
           sidebar={{
-            defaultMenuCollapseLevel: 2,
+            defaultMenuCollapseLevel: 1,
           }}
           navbar={navbar}
           pageMap={await getPageMap()}
