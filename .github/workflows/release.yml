@@ -30,7 +30,7 @@ jobs:
           else
             # Use calendar versioning for the main branch
             VERSION=$(date "+%Y.%m.%d-${{ github.run_number }}")
-            echo "crate=0.0.0" >> $GITHUB_OUTPUT
+            echo "crate=0.0.0-main+${VERSION}" >> $GITHUB_OUTPUT
             echo "npm=${VERSION}" >> $GITHUB_OUTPUT
             echo "npm_tag=main" >> $GITHUB_OUTPUT
           fi
