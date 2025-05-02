@@ -19,7 +19,7 @@ resolver = "2"
 
 [workspace.package]
 # Version is managed by `.github/workflows/release.yml`
-version = "0.0.0-main.155"
+version = "0.0.0"
 authors = ["SatLayer"]
 edition = "2021"
 license = "BUSL-1.1"
@@ -52,14 +52,14 @@ cw20-base = "2.0.0"
 cw-utils = "2.0.0"
 
 # CosmWasm Libraries & Contracts
-bvs-library = { path = "./bvs-library", version = "0.0.0-main+2025.05.02-154" }
-bvs-pauser = { path = "./bvs-pauser", features = ["library"], version = "0.0.0-main+2025.05.02-154" }
-bvs-registry = { path = "./bvs-registry", features = ["library"], version = "0.0.0-main+2025.05.02-154" }
+bvs-library = { path = "./bvs-library", version = "0.0.0" }
+bvs-pauser = { path = "./bvs-pauser", features = ["library"], version = "0.0.0" }
+bvs-registry = { path = "./bvs-registry", features = ["library"], version = "0.0.0" }
 
-bvs-vault-router = { path = "./bvs-vault-router", features = ["library"], version = "0.0.0-main.155" }
-bvs-vault-base = { path = "./bvs-vault-base", features = ["library"], version = "0.0.0-main.155" }
-bvs-vault-bank = { path = "./bvs-vault-bank", features = ["library"], version = "0.0.0-main.155" }
-bvs-vault-cw20 = { path = "./bvs-vault-cw20", features = ["library"], version = "0.0.0-main.155" }
-bvs-vault-factory = { path = "./bvs-vault-factory", features = ["library"], version = "0.0.0-main.155" }
+bvs-vault-router = { path = "./bvs-vault-router", features = ["library"], version = "0.0.0" }
+bvs-vault-base = { path = "./bvs-vault-base", features = ["library"], version = "0.0.0" }
+bvs-vault-bank = { path = "./bvs-vault-bank", features = ["library"], version = "0.0.0" }
+bvs-vault-cw20 = { path = "./bvs-vault-cw20", features = ["library"], version = "0.0.0" }
+bvs-vault-factory = { path = "./bvs-vault-factory", features = ["library"], version = "0.0.0" }
 
-bvs-rewards = { path = "./bvs-rewards", features = ["library"], version = "0.0.0-main.155" }
+bvs-rewards = { path = "./bvs-rewards", features = ["library"], version = "0.0.0" }
