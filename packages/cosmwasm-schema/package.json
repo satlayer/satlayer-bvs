@@ -1,6 +1,7 @@
 {
   "name": "@satlayer/cosmwasm-schema",
   "private": false,
+  "license": "MIT",
   "files": [
     "*.d.ts"
   ],
