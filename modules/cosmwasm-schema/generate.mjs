@@ -47,6 +47,7 @@ const packages = [
   "@satlayer/bvs-registry",
   "@satlayer/bvs-vault-router",
   "@satlayer/bvs-vault-cw20",
+  "@satlayer/bvs-vault-cw20-tokenized",
   "@satlayer/bvs-vault-bank",
   "@satlayer/bvs-vault-factory",
   "@satlayer/bvs-rewards",

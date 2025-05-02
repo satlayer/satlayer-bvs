@@ -1,4 +1,4 @@
-// This file was automatically generated from vault-cw20/schema.json.
+// This file was automatically generated from vault-cw20-tokenized/schema.json.
 // DO NOT MODIFY IT BY HAND.
 
 /**
@@ -18,6 +18,37 @@
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
  * This struct represents amount of assets.
+ *
+ * Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also
+ * adds some helper methods to help encode inline.
+ *
+ * This is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See
+ * also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.
+ *
+ * A point in time in nanosecond precision.
+ *
+ * This type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.
+ *
+ * ## Examples
+ *
+ * ``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202);
+ * assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1);
+ * assert_eq!(ts.subsec_nanos(), 202);
+ *
+ * let ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202);
+ * assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```
+ *
+ * A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the
+ * full u64 range can be used for clients that convert JSON numbers to floats, like
+ * JavaScript and jq.
+ *
+ * # Examples
+ *
+ * Use `from` to create instances of this and `u64` to get the value out:
+ *
+ * ``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);
+ *
+ * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
  *
  * A human readable address.
  *
@@ -45,31 +76,6 @@
  *
  * The response to the `ConvertToShares` query. This is just a wrapper around `Uint128`, so
  * that the schema can be generated.
- *
- * A point in time in nanosecond precision.
- *
- * This type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.
- *
- * ## Examples
- *
- * ``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202);
- * assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1);
- * assert_eq!(ts.subsec_nanos(), 202);
- *
- * let ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202);
- * assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```
- *
- * A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the
- * full u64 range can be used for clients that convert JSON numbers to floats, like
- * JavaScript and jq.
- *
- * # Examples
- *
- * Use `from` to create instances of this and `u64` to get the value out:
- *
- * ``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);
- *
- * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
  *
  * The response to the `Shares` query. This is just a wrapper around `Uint128`, so that the
  * schema can be generated.
@@ -110,6 +116,37 @@ type AssetsResponse = string;
  *
  * This struct represents amount of assets.
  *
+ * Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also
+ * adds some helper methods to help encode inline.
+ *
+ * This is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See
+ * also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.
+ *
+ * A point in time in nanosecond precision.
+ *
+ * This type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.
+ *
+ * ## Examples
+ *
+ * ``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202);
+ * assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1);
+ * assert_eq!(ts.subsec_nanos(), 202);
+ *
+ * let ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202);
+ * assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```
+ *
+ * A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the
+ * full u64 range can be used for clients that convert JSON numbers to floats, like
+ * JavaScript and jq.
+ *
+ * # Examples
+ *
+ * Use `from` to create instances of this and `u64` to get the value out:
+ *
+ * ``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);
+ *
+ * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
+ *
  * A human readable address.
  *
  * In Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no
@@ -136,31 +173,6 @@ type AssetsResponse = string;
  *
  * The response to the `ConvertToShares` query. This is just a wrapper around `Uint128`, so
  * that the schema can be generated.
- *
- * A point in time in nanosecond precision.
- *
- * This type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.
- *
- * ## Examples
- *
- * ``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202);
- * assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1);
- * assert_eq!(ts.subsec_nanos(), 202);
- *
- * let ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202);
- * assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```
- *
- * A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the
- * full u64 range can be used for clients that convert JSON numbers to floats, like
- * JavaScript and jq.
- *
- * # Examples
- *
- * Use `from` to create instances of this and `u64` to get the value out:
- *
- * ``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);
- *
- * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
  *
  * The response to the `Shares` query. This is just a wrapper around `Uint128`, so that the
  * schema can be generated.
@@ -201,6 +213,37 @@ type ConvertToAssetsResponse = string;
  *
  * This struct represents amount of assets.
  *
+ * Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also
+ * adds some helper methods to help encode inline.
+ *
+ * This is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See
+ * also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.
+ *
+ * A point in time in nanosecond precision.
+ *
+ * This type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.
+ *
+ * ## Examples
+ *
+ * ``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202);
+ * assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1);
+ * assert_eq!(ts.subsec_nanos(), 202);
+ *
+ * let ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202);
+ * assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```
+ *
+ * A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the
+ * full u64 range can be used for clients that convert JSON numbers to floats, like
+ * JavaScript and jq.
+ *
+ * # Examples
+ *
+ * Use `from` to create instances of this and `u64` to get the value out:
+ *
+ * ``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);
+ *
+ * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
+ *
  * A human readable address.
  *
  * In Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no
@@ -227,31 +270,6 @@ type ConvertToAssetsResponse = string;
  *
  * The response to the `ConvertToShares` query. This is just a wrapper around `Uint128`, so
  * that the schema can be generated.
- *
- * A point in time in nanosecond precision.
- *
- * This type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.
- *
- * ## Examples
- *
- * ``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202);
- * assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1);
- * assert_eq!(ts.subsec_nanos(), 202);
- *
- * let ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202);
- * assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```
- *
- * A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the
- * full u64 range can be used for clients that convert JSON numbers to floats, like
- * JavaScript and jq.
- *
- * # Examples
- *
- * Use `from` to create instances of this and `u64` to get the value out:
- *
- * ``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);
- *
- * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
  *
  * The response to the `Shares` query. This is just a wrapper around `Uint128`, so that the
  * schema can be generated.
@@ -292,6 +310,37 @@ type ConvertToSharesResponse = string;
  *
  * This struct represents amount of assets.
  *
+ * Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also
+ * adds some helper methods to help encode inline.
+ *
+ * This is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See
+ * also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.
+ *
+ * A point in time in nanosecond precision.
+ *
+ * This type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.
+ *
+ * ## Examples
+ *
+ * ``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202);
+ * assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1);
+ * assert_eq!(ts.subsec_nanos(), 202);
+ *
+ * let ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202);
+ * assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```
+ *
+ * A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the
+ * full u64 range can be used for clients that convert JSON numbers to floats, like
+ * JavaScript and jq.
+ *
+ * # Examples
+ *
+ * Use `from` to create instances of this and `u64` to get the value out:
+ *
+ * ``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);
+ *
+ * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
+ *
  * A human readable address.
  *
  * In Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no
@@ -318,31 +367,6 @@ type ConvertToSharesResponse = string;
  *
  * The response to the `ConvertToShares` query. This is just a wrapper around `Uint128`, so
  * that the schema can be generated.
- *
- * A point in time in nanosecond precision.
- *
- * This type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.
- *
- * ## Examples
- *
- * ``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202);
- * assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1);
- * assert_eq!(ts.subsec_nanos(), 202);
- *
- * let ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202);
- * assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```
- *
- * A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the
- * full u64 range can be used for clients that convert JSON numbers to floats, like
- * JavaScript and jq.
- *
- * # Examples
- *
- * Use `from` to create instances of this and `u64` to get the value out:
- *
- * ``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);
- *
- * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
  *
  * The response to the `Shares` query. This is just a wrapper around `Uint128`, so that the
  * schema can be generated.
@@ -383,6 +407,37 @@ type SharesResponse = string;
  *
  * This struct represents amount of assets.
  *
+ * Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also
+ * adds some helper methods to help encode inline.
+ *
+ * This is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See
+ * also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.
+ *
+ * A point in time in nanosecond precision.
+ *
+ * This type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.
+ *
+ * ## Examples
+ *
+ * ``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202);
+ * assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1);
+ * assert_eq!(ts.subsec_nanos(), 202);
+ *
+ * let ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202);
+ * assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```
+ *
+ * A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the
+ * full u64 range can be used for clients that convert JSON numbers to floats, like
+ * JavaScript and jq.
+ *
+ * # Examples
+ *
+ * Use `from` to create instances of this and `u64` to get the value out:
+ *
+ * ``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);
+ *
+ * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
+ *
  * A human readable address.
  *
  * In Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no
@@ -409,31 +464,6 @@ type SharesResponse = string;
  *
  * The response to the `ConvertToShares` query. This is just a wrapper around `Uint128`, so
  * that the schema can be generated.
- *
- * A point in time in nanosecond precision.
- *
- * This type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.
- *
- * ## Examples
- *
- * ``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202);
- * assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1);
- * assert_eq!(ts.subsec_nanos(), 202);
- *
- * let ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202);
- * assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```
- *
- * A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the
- * full u64 range can be used for clients that convert JSON numbers to floats, like
- * JavaScript and jq.
- *
- * # Examples
- *
- * Use `from` to create instances of this and `u64` to get the value out:
- *
- * ``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);
- *
- * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
  *
  * The response to the `Shares` query. This is just a wrapper around `Uint128`, so that the
  * schema can be generated.
@@ -474,6 +504,37 @@ type TotalAssetsResponse = string;
  *
  * This struct represents amount of assets.
  *
+ * Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also
+ * adds some helper methods to help encode inline.
+ *
+ * This is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See
+ * also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.
+ *
+ * A point in time in nanosecond precision.
+ *
+ * This type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.
+ *
+ * ## Examples
+ *
+ * ``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202);
+ * assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1);
+ * assert_eq!(ts.subsec_nanos(), 202);
+ *
+ * let ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202);
+ * assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```
+ *
+ * A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the
+ * full u64 range can be used for clients that convert JSON numbers to floats, like
+ * JavaScript and jq.
+ *
+ * # Examples
+ *
+ * Use `from` to create instances of this and `u64` to get the value out:
+ *
+ * ``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);
+ *
+ * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
+ *
  * A human readable address.
  *
  * In Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no
@@ -500,31 +561,6 @@ type TotalAssetsResponse = string;
  *
  * The response to the `ConvertToShares` query. This is just a wrapper around `Uint128`, so
  * that the schema can be generated.
- *
- * A point in time in nanosecond precision.
- *
- * This type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.
- *
- * ## Examples
- *
- * ``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202);
- * assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1);
- * assert_eq!(ts.subsec_nanos(), 202);
- *
- * let ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202);
- * assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```
- *
- * A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the
- * full u64 range can be used for clients that convert JSON numbers to floats, like
- * JavaScript and jq.
- *
- * # Examples
- *
- * Use `from` to create instances of this and `u64` to get the value out:
- *
- * ``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);
- *
- * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
  *
  * The response to the `Shares` query. This is just a wrapper around `Uint128`, so that the
  * schema can be generated.
@@ -576,9 +612,25 @@ export interface InstantiateMsg {
 }
 
 /**
- * Vault `ExecuteMsg`, to be implemented by the vault contract. Callable by any `sender`,
- * redeemable by any `recipient`. The `sender` can be the same as the `recipient` in some
- * cases.
+ * ExecuteMsg Transfer is a base message to move tokens to another account without
+ * triggering actions
+ *
+ * ExecuteMsg Send is a base message to transfer tokens to a contract and trigger an action
+ * on the receiving contract.
+ *
+ * ExecuteMsg IncreaseAllowance allows spender to access an additional amount tokens from
+ * the owner's (env.sender) account. If expires is Some(), overwrites current allowance
+ * expiration with this one.
+ *
+ * ExecuteMsg DecreaseAllowance Lowers the spender's access of tokens from the owner's
+ * (env.sender) account by amount. If expires is Some(), overwrites current allowance
+ * expiration with this one.
+ *
+ * ExecuteMsg TransferFrom tansfers amount tokens from owner -> recipient if `env.sender`
+ * has sufficient pre-approval.
+ *
+ * ExecuteMsg SendFrom Sends amount tokens from owner -> contract if `env.sender` has
+ * sufficient pre-approval.
  *
  * ExecuteMsg Deposit assets into the vault. Sender must transfer the assets to the vault
  * contract (this is implementation agnostic). The vault contract must mint shares to the
@@ -611,12 +663,39 @@ export interface InstantiateMsg {
  * router level.
  */
 export interface ExecuteMsg {
+  transfer?: Transfer;
+  send?: Send;
+  increase_allowance?: IncreaseAllowance;
+  decrease_allowance?: DecreaseAllowance;
+  transfer_from?: TransferFrom;
+  send_from?: SendFrom;
   deposit_for?: RecipientAmount;
   withdraw_to?: RecipientAmount;
   queue_withdrawal_to?: RecipientAmount;
   redeem_withdrawal_to?: string;
   slash_locked?: string;
 }
+
+export interface DecreaseAllowance {
+  amount: string;
+  expires?: Expiration | null;
+  spender: string;
+}
+
+/**
+ * AtHeight will expire when `env.block.height` >= height
+ *
+ * AtTime will expire when `env.block.time` >= time
+ *
+ * Never will never expire. Used to express the empty variant
+ */
+export interface Expiration {
+  at_height?: number;
+  at_time?: string;
+  never?: ExpiresNever;
+}
+
+export interface ExpiresNever {}
 
 /**
  * This struct is used to represent the recipient and amount fields together.
@@ -626,8 +705,58 @@ export interface RecipientAmount {
   recipient: string;
 }
 
+export interface IncreaseAllowance {
+  amount: string;
+  expires?: Expiration | null;
+  spender: string;
+}
+
+export interface Send {
+  amount: string;
+  contract: string;
+  msg: string;
+}
+
+export interface SendFrom {
+  amount: string;
+  contract: string;
+  msg: string;
+  owner: string;
+}
+
+export interface Transfer {
+  amount: string;
+  recipient: string;
+}
+
+export interface TransferFrom {
+  amount: string;
+  owner: string;
+  recipient: string;
+}
+
 /**
- * QueryMsg Shares: get the shares of a staker.
+ * QueryMsg Balance: get the balance of a given address. Returns the current balance of the
+ * given address, 0 if unset.
+ *
+ * QueryMsg TokenInfo: get the token info of the contract. Returns metadata on the contract
+ * - name, decimals, supply, etc.
+ *
+ * QueryMsg Allowance: get the allowance of a given address. Returns how much spender can
+ * use from owner account, 0 if unset.
+ *
+ * QueryMsg AllAllowances: get all allowances of a given address. Returns all allowances
+ * this owner has approved. Supports pagination.
+ *
+ * QueryMsg AllSpenderAllowances: get all allowances of a given address. Returns all
+ * allowances this spender has been granted. Supports pagination.
+ *
+ * QueryMsg AllAccounts: get all accounts of the contract. Returns all accounts that have
+ * balances. Supports pagination.
+ *
+ * QueryMsg Shares: get the shares of a staker. Shares in this tokenized vault are CW20
+ * receipt tokens. The interface is kept the same as the original vault. to avoid breaking
+ * and minimize changes in vault consumer/frontend code.
  *
  * QueryMsg Assets: get the assets of a staker, converted from shares.
  *
@@ -644,6 +773,12 @@ export interface RecipientAmount {
  * QueryMsg VaultInfo: get the vault information.
  */
 export interface QueryMsg {
+  balance?: Balance;
+  token_info?: TokenInfo;
+  allowance?: Allowance;
+  all_allowances?: AllAllowances;
+  all_spender_allowances?: AllSpenderAllowances;
+  all_accounts?: AllAccounts;
   shares?: Shares;
   assets?: Assets;
   convert_to_assets?: ConvertToAssets;
@@ -654,8 +789,34 @@ export interface QueryMsg {
   vault_info?: VaultInfo;
 }
 
+export interface AllAccounts {
+  limit?: number | null;
+  start_after?: null | string;
+}
+
+export interface AllAllowances {
+  limit?: number | null;
+  owner: string;
+  start_after?: null | string;
+}
+
+export interface AllSpenderAllowances {
+  limit?: number | null;
+  spender: string;
+  start_after?: null | string;
+}
+
+export interface Allowance {
+  owner: string;
+  spender: string;
+}
+
 export interface Assets {
   staker: string;
+}
+
+export interface Balance {
+  address: string;
 }
 
 export interface ConvertToAssets {
@@ -674,11 +835,103 @@ export interface Shares {
   staker: string;
 }
 
+export interface TokenInfo {}
+
 export interface TotalAssets {}
 
 export interface TotalShares {}
 
 export interface VaultInfo {}
+
+export interface AllAccountsResponse {
+  accounts: string[];
+}
+
+export interface AllAllowancesResponse {
+  allowances: AllowanceInfo[];
+}
+
+export interface AllowanceInfo {
+  allowance: string;
+  expires: PurpleExpiration;
+  spender: string;
+}
+
+/**
+ * Expiration represents a point in time when some event happens. It can compare with a
+ * BlockInfo and will return is_expired() == true once the condition is hit (and for every
+ * block in the future)
+ *
+ * AtHeight will expire when `env.block.height` >= height
+ *
+ * AtTime will expire when `env.block.time` >= time
+ *
+ * Never will never expire. Used to express the empty variant
+ */
+export interface PurpleExpiration {
+  at_height?: number;
+  at_time?: string;
+  never?: PurpleNever;
+}
+
+export interface PurpleNever {}
+
+export interface AllSpenderAllowancesResponse {
+  allowances: SpenderAllowanceInfo[];
+}
+
+export interface SpenderAllowanceInfo {
+  allowance: string;
+  expires: FluffyExpiration;
+  owner: string;
+}
+
+/**
+ * Expiration represents a point in time when some event happens. It can compare with a
+ * BlockInfo and will return is_expired() == true once the condition is hit (and for every
+ * block in the future)
+ *
+ * AtHeight will expire when `env.block.height` >= height
+ *
+ * AtTime will expire when `env.block.time` >= time
+ *
+ * Never will never expire. Used to express the empty variant
+ */
+export interface FluffyExpiration {
+  at_height?: number;
+  at_time?: string;
+  never?: FluffyNever;
+}
+
+export interface FluffyNever {}
+
+export interface AllowanceResponse {
+  allowance: string;
+  expires: AllowanceResponseExpiration;
+}
+
+/**
+ * Expiration represents a point in time when some event happens. It can compare with a
+ * BlockInfo and will return is_expired() == true once the condition is hit (and for every
+ * block in the future)
+ *
+ * AtHeight will expire when `env.block.height` >= height
+ *
+ * AtTime will expire when `env.block.time` >= time
+ *
+ * Never will never expire. Used to express the empty variant
+ */
+export interface AllowanceResponseExpiration {
+  at_height?: number;
+  at_time?: string;
+  never?: TentacledNever;
+}
+
+export interface TentacledNever {}
+
+export interface BalanceResponse {
+  balance: string;
+}
 
 /**
  * The response to the `QueuedWithdrawal` query. This is just a wrapper around
@@ -687,6 +940,13 @@ export interface VaultInfo {}
 export interface QueuedWithdrawalResponse {
   queued_shares: string;
   unlock_timestamp: string;
+}
+
+export interface TokenInfoResponse {
+  decimals: number;
+  name: string;
+  symbol: string;
+  total_supply: string;
 }
 
 export interface VaultInfoResponse {

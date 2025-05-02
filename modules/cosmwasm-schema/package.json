@@ -10,6 +10,7 @@
     "@satlayer/bvs-rewards": "workspace:*",
     "@satlayer/bvs-vault-bank": "workspace:*",
     "@satlayer/bvs-vault-cw20": "workspace:*",
+    "@satlayer/bvs-vault-cw20-tokenized": "workspace:*",
     "@satlayer/bvs-vault-factory": "workspace:*",
     "@satlayer/bvs-vault-router": "workspace:*",
     "quicktype-core": "^23.1.3"
