@@ -15,12 +15,34 @@ pub struct MigrateMsg {}
 #[cw_serde]
 pub enum ExecuteMsg {
     /// ExecuteMsg Request for a new `input` to be computed.
-    Request { input: i64 },
+    Request {
+        input: i64,
+    },
     /// ExecuteMsg Respond to a `Request` with the computed `output`.
-    Respond { input: i64, output: i64 },
+    Respond {
+        input: i64,
+        output: i64,
+    },
     /// ExecuteMsg Prove by computing the square of the `input` on-chain to correct the `output`.
     /// The operator that responded to the request with the wrong output will be slashed.
-    Prove { input: i64, operator: String },
+    SlashingProve {
+        input: i64,
+        operator: String,
+    },
+
+    // TODO(fuxingloh): implement these examples
+    SlashingCancel {
+        operator: String,
+    },
+    SlashingLock {
+        operator: String,
+    },
+    SlashingFinalize {
+        operator: String,
+    },
+    RegisterOperator {
+        operator: String,
+    },
 }
 
 /// Query messages for the contract.

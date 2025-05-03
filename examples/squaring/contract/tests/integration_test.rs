@@ -22,9 +22,8 @@ impl SquaringContract {
 #[cfg(test)]
 mod tests {
     use super::SquaringContract;
-    use cosmwasm_std::testing::MockApi;
-    use cosmwasm_std::{Addr, Coin, Empty, Uint128};
-    use cw_multi_test::{App, AppBuilder, Contract, ContractWrapper, Executor};
+    use cosmwasm_std::Empty;
+    use cw_multi_test::{App, Contract, ContractWrapper, Executor};
     use squaring_contract::msg::InstantiateMsg;
 
     pub fn contract() -> Box<dyn Contract<Empty>> {
@@ -36,63 +35,59 @@ mod tests {
         Box::new(contract)
     }
 
-    const ADMIN: &str = "ADMIN";
-    const AGGREGATOR: &str = "AGGREGATOR";
-
-    const NATIVE_DENOM: &str = "tBABY";
-
-    fn mock_app() -> App {
-        AppBuilder::new().build(|router, _, storage| {
-            router
-                .bank
-                .init_balance(
-                    storage,
-                    &MockApi::default().addr_make(ADMIN),
-                    vec![Coin {
-                        denom: NATIVE_DENOM.to_string(),
-                        amount: Uint128::new(100),
-                    }],
-                )
-                .unwrap();
-        })
-    }
-
     fn instantiate() -> (App, SquaringContract) {
-        let mut app = mock_app();
+        let mut app = App::default();
 
-        let contract_id = app.store_code(contract());
-
-        let admin = app.api().addr_make(ADMIN);
-        assert_eq!(
-            app.wrap()
-                .query_balance(&admin, NATIVE_DENOM)
-                .unwrap()
-                .amount,
-            Uint128::new(100)
-        );
-
-        let msg = InstantiateMsg {
-            aggregator: app.api().addr_make(AGGREGATOR).to_string(),
-        };
+        let code_id = app.store_code(contract());
+        let admin = app.api().addr_make("admin");
+        let msg = InstantiateMsg {};
         let contract_addr = app
-            .instantiate_contract(contract_id, admin, &msg, &[], "BVS Squaring Example", None)
+            .instantiate_contract(code_id, admin, &msg, &[], "Squaring Example", None)
             .unwrap();
-
         let contract = SquaringContract(contract_addr);
         (app, contract)
     }
 
     mod tasks {
         use super::*;
-        use squaring_contract::msg::ExecuteMsg;
+        use squaring_contract::msg::{ExecuteMsg, QueryMsg};
 
         #[test]
-        fn create_new_task() {
+        fn request() {
             let (mut app, contract) = instantiate();
 
-            let msg = ExecuteMsg::CreateNewTask { input: 3 };
+            let msg = ExecuteMsg::Request { input: 3 };
             let cosmos_msg = contract.call(msg).unwrap();
-            app.execute(Addr::unchecked("anyone"), cosmos_msg).unwrap();
+            let sender = app.api().addr_make("anyone");
+            app.execute(sender, cosmos_msg).unwrap();
+        }
+
+        #[test]
+        fn request_respond() {
+            let (mut app, contract) = instantiate();
+
+            let msg = ExecuteMsg::Request { input: 2 };
+            let cosmos_msg = contract.call(msg).unwrap();
+            let sender = app.api().addr_make("anyone");
+            app.execute(sender, cosmos_msg).unwrap();
+
+            let msg = ExecuteMsg::Respond {
+                input: 2,
+                output: 4,
+            };
+            let cosmos_msg = contract.call(msg).unwrap();
+            let operator = app.api().addr_make("operator");
+            app.execute(operator.clone(), cosmos_msg).unwrap();
+
+            let query_msg = QueryMsg::GetResponse {
+                input: 2,
+                operator: operator.to_string(),
+            };
+            let res: i64 = app
+                .wrap()
+                .query_wasm_smart(contract.addr(), &query_msg)
+                .unwrap();
+            assert_eq!(res, 4);
         }
     }
 }

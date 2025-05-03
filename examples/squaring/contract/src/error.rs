@@ -12,6 +12,9 @@ pub enum ContractError {
     #[error("Request has already been responded to")]
     Responded {},
 
+    #[error("Request not found")]
+    RequestNotFound {},
+
     #[error("Response not found")]
     ResponseNotFound {},
 
