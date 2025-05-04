@@ -2,10 +2,174 @@
 sidebarTitle: Developer Overview
 ---
 
+import { Tabs, Cards } from 'nextra/components'
+import {
+  CubeIcon, WindowIcon
+} from '@heroicons/react/24/outline';
+
 # Developer Overview
 
-> [!NOTE]
-> <br/>
-> <>🚧 Documentation is work in progress!</>
+SatLayer supports two types of services:
+
+- [**CosmWasm Contract**](/developers/cosmwasm):
+Service with deployed on-chain logic,
+objectively verifiable and irrefutable by the network,
+driven primarily by the contract code.
+- [**Program-agnostic**](/developers/program-agnostic):
+Service with a program-agnostic and/or chain-agnostic logic
+that can be verified by the network,
+but not necessarily on-chain.
+This allows a wider range of services that can utilize shared security.
 
 ## Lifecycle of a Bitcoin Validated Service (BVS)
+
+Regardless of the type of service,
+the lifecycle of a Bitcoin Validated Service (BVS) is the same.
+BVS developers integrate with the SatLayer ecosystem through [Core Contracts](/contracts),
+either directly as EOA or governed through a set (or singular) smart contract.
+
+The two core contracts utilized by BVS for the entire BVS lifecycle
+are [Registry](/contracts/registry) and [Vault Router](/contracts/vault-router).
+
+### BVS Registry
+
+The [BVS Registry](/contracts/registry) is a central record-keeping contract for all Operators and Services within the SatLayer ecosystem.
+It serves as a directory where Operators and Services can register themselves and establish mutual relationships.
+For on-chain services, the Operator can be queried and asserted to determine if it is validating a Service.
+
+Example for registering a BVS service:
+
+<Tabs items={['CosmWasm Contract', 'Program-agnostic']} storageKey="ServiceType">
+  [//]: # (//@formatter:off)
+  <Tabs.Tab>
+    <>We execute service registration during `pub fn instantiate`, but they can be executed at any time in the contract lifecycle, e.g. during `pub fn migrate` or `pub fn execute`.</>
+
+    ```rust filename="contract.rs"
+    #[cfg_attr(not(feature = "library"), entry_point)]
+    pub fn instantiate(
+        deps: DepsMut,
+       _env: Env,
+       _info: MessageInfo,
+       msg: InstantiateMsg,
+    ) -> Result<Response, PauserError> {
+        let register: CosmosMsg = cosmwasm_std::WasmMsg::Execute {
+            // The BVS Registry contract address for mainnet.
+            contract_addr: "bbn1qtvnjezrv3fnqvuq869595zq6e2jk0zfhupg52aua0d6ht2a4jjsprqeae".to_string(),
+            msg: to_json_binary(&bvs_registry::msg::ExecuteMsg::RegisterAsService {
+                // Metadata of the service
+                metadata: bvs_registry::msg::Metadata {
+                    name: Some("Squaring".to_string()),
+                    uri: Some("https://the-squaring-company.com".to_string()),
+                },
+            })?,
+            funds: vec![],
+        }
+        .into();
+
+        Ok(Response::new()
+            .add_message(register))
+    }
+    ```
+
+  </Tabs.Tab>
+  <Tabs.Tab>
+    <>In this example, we use the [cosmos/cosmjs JavaScript SDK](https://github.com/cosmos/cosmjs) to register a service but program-agnostic services can be implemented in any language.</>
+
+    ```js filename="init.js"
+    const executeMsg = {
+      register_as_service: {
+        metadata: {
+          name: "Squaring",
+          uri: "https://the-squaring-company.com",
+        },
+      },
+    };
+    const serviceAddress = "bbn...";
+    const registryContract = "bbn1qtvnjezrv3fnqvuq869595zq6e2jk0zfhupg52aua0d6ht2a4jjsprqeae";
+    const tx = await client.execute(serviceAddress, registryContract, executeMsg, "auto");
+    ```
+  </Tabs.Tab>
+  [//]: # (//@formatter:on)
+</Tabs>
+
+### BVS Vault Router
+
+The [BVS Vault Router]((/contracts/vault-router)) is a central contract
+that manages the interaction between vaults and other contracts in the SatLayer ecosystem.
+As a BVS,
+the Vault Router coordinates the programmable slashing of vaults,
+serving as the execution layer for the slashing logic.
+
+Example for initializing a slash:
+
+<Tabs items={['CosmWasm Contract', 'Program-agnostic']} storageKey="ServiceType">
+  [//]: # (//@formatter:off)
+  <Tabs.Tab>
+    <>The `CosmosMsg` for slashing requests to the BVS Vault Router contract, this can be called during `pub fn execute`.</>
+
+    ```rust filename="contract.rs"
+    let request_slashing = bvs_vault_router::msg::ExecuteMsg::RequestSlashing(
+        bvs_vault_router::msg::RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 1,
+            timestamp: env.block.time,
+            metadata: bvs_vault_router::msg::SlashingMetadata {
+                reason: "Invalid Prove".to_string(),
+            },
+        },
+    );
+    let slashing_msg: CosmosMsg = cosmwasm_std::WasmMsg::Execute {
+        contract_addr: "bbn1m2f0ctm657e22p843lgm9pnwlqtnuf3jgln7uyqrw6sy7nd5pc5qaasfud"
+            .to_string(),
+        msg: to_json_binary(&request_slashing)?,
+        funds: vec![],
+    }
+    .into();
+    ```
+
+  </Tabs.Tab>
+  <Tabs.Tab>
+    <>In this example, we use the [cosmos/cosmjs JavaScript SDK](https://github.com/cosmos/cosmjs) but program-agnostic services can be implemented in any language.</>
+
+    ```js filename="init.js"
+    const executeMsg = {
+      slashing_request: {
+        metadata: {
+          name: "Squaring",
+          uri: "https://the-squaring-company.com",
+        },
+      },
+    };
+    const serviceAddress = "bbn...";
+    const registryContract = "bbn1qtvnjezrv3fnqvuq869595zq6e2jk0zfhupg52aua0d6ht2a4jjsprqeae";
+    const tx = await client.execute(serviceAddress, registryContract, executeMsg, "auto");
+    ```
+  </Tabs.Tab>
+  [//]: # (//@formatter:on)
+</Tabs>
+
+## Next steps
+
+Depending on the type of service you want to build,
+the next steps are different.
+
+<Cards num={2}>
+  <Cards.Card
+    title="CosmWasm Contract"
+    href="/developers/cosmwasm"
+    icon={<CubeIcon/>}
+    arrow>
+    <div className="x:p-4 x:grow x:bg-white x:dark:bg-black x:leading-7">
+      <>Service with deployed on-chain logic, driven primarily by the contract code.</>
+    </div>
+  </Cards.Card>
+  <Cards.Card
+    title="Program-agnostic"
+    href="/developers/program-agnostic"
+    icon={<WindowIcon/>}
+    arrow>
+    <div className="x:p-4 x:grow x:bg-white x:dark:bg-black x:leading-7">
+      <>Service with a program-agnostic and/or chain-agnostic logic.</>
+    </div>
+  </Cards.Card>
+</Cards>
