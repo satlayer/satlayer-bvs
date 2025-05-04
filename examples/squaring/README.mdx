@@ -4,6 +4,10 @@ sidebarTitle: Computational Squaring
 
 # Computational Squaring Example
 
+> [!NOTE]
+> <br/>
+> <>🚧 Documentation is work in progress!</>
+
 Off-chain computation with on-chain verification for squaring a number.
 Here, we implement a simple squaring function (`n ^ 2`) for demonstration purposes—in a real-world scenario,
 you would implement a more complex function.
@@ -20,11 +24,12 @@ Lifecycle Overview:
 
 ## Getting started
 
-Prerequisites:
+Prerequisites for this example:
 
 1. Rust and Cargo: https://www.rust-lang.org/tools/install
 2. Basic understanding of [CosmWasm Contract](/developers/cosmwasm)
-3. Docker to run off-chain node: https://docs.docker.com/get-docker/
+3. Node.js for development of the off-chain service: https://nodejs.org/en/download/
+4. Docker to run off-chain node: https://docs.docker.com/get-docker/
 
 Project structure:
 
@@ -40,7 +45,7 @@ squaring/
 
 Clone and copy contents of `./examples/squaring` to your local machine.
 
-```shell
+```sh filename="run.sh"
 docker compose up
 ```
 

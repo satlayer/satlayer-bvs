@@ -1,9 +1,6 @@
 {
   "name": "@examples/squaring-contract",
   "private": true,
-  "files": [
-    "dist"
-  ],
   "scripts": {
     "build": "cosmwasm-optimizer",
     "test": "cargo test"
