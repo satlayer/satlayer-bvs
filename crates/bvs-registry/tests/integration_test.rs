@@ -335,13 +335,6 @@ fn register_lifecycle_service_first() {
     assert_eq!(status, StatusResponse(1));
 }
 
-// TODO: deregister from service
-// TODO: deregister from operator
-// TODO: already deregistered
-// TODO: already active
-// TODO: operator already registered
-// TODO: service already registered
-
 #[test]
 fn update_metadata_successfully() {
     let (mut app, registry, ..) = instantiate();
