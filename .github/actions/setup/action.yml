@@ -10,7 +10,7 @@ runs:
       with:
         workspaces: |
           crates -> crates/target
-          examples/squaring/squaring-contract -> examples/squaring/squaring-contract/target
+          examples/squaring/contract -> examples/squaring/contract/target
 
     # Go
     - uses: actions/setup-go@v5
