@@ -212,7 +212,25 @@ mod tests {
         let sender_info = message_info(&sender, &[]);
         let init_msg = InstantiateMsg {};
         let res = instantiate(deps.as_mut(), env, sender_info, init_msg).unwrap();
-        assert_eq!(res, Response::new().add_attribute("method", "instantiate"));
+        assert_eq!(
+            res,
+            Response::new()
+                .add_message(cosmwasm_std::WasmMsg::Execute {
+                    // The BVS Registry contract address
+                    contract_addr: "bbn1qtvnjezrv3fnqvuq869595zq6e2jk0zfhupg52aua0d6ht2a4jjsprqeae"
+                        .to_string(),
+                    msg: to_json_binary(&bvs_registry::msg::ExecuteMsg::RegisterAsService {
+                        // Metadata of the service
+                        metadata: bvs_registry::msg::Metadata {
+                            name: Some("The Squaring Company".to_string()),
+                            uri: Some("https://the-squaring-company.com".to_string()),
+                        },
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                })
+                .add_attribute("method", "instantiate")
+        );
     }
 
     #[test]
