@@ -71,7 +71,22 @@ jobs:
       - run: pnpm --filter "@satlayer/*" exec npm version ${{ needs.version.outputs.npm }} --git-tag-version=false
 
       - uses: taiki-e/install-action@cargo-hack
-      - run: cargo hack publish --workspace --no-dev-deps --allow-dirty --ignore-private
+      - run: |
+          members=(
+            "bvs-library"
+            "bvs-pauser"
+            "bvs-registry"
+            "bvs-vault-router"
+            "bvs-vault-base"
+            "bvs-vault-bank"
+            "bvs-vault-cw20"
+            "bvs-vault-cw20-tokenized"
+            "bvs-vault-factory"
+            "bvs-rewards"
+          )
+          for member in "${members[@]}"; do
+              cargo hack publish --p ${member} --no-dev-deps --allow-dirty
+          done
         working-directory: crates
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
