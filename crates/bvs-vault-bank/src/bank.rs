@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    Addr, BalanceResponse, BankMsg, BankQuery, Coin, Deps, Env, QueryRequest, StdResult, Storage,
-    Uint128,
+    Addr, BalanceResponse, BankMsg, BankQuery, Coin, DenomMetadataResponse, Deps, Env,
+    QueryRequest, StdResult, Storage, Uint128,
 };
 use cw_storage_plus::Item;
 
@@ -39,6 +39,15 @@ pub fn bank_send(
         amount: vec![Coin { denom, amount }],
     };
     Ok(msg.into())
+}
+
+pub fn query_metadata(deps: &Deps) -> StdResult<DenomMetadataResponse> {
+    let denom = DENOM.load(deps.storage)?;
+
+    let query = BankQuery::DenomMetadata { denom };
+    let res: DenomMetadataResponse = deps.querier.query(&QueryRequest::Bank(query))?;
+
+    Ok(res)
 }
 
 #[cfg(test)]
