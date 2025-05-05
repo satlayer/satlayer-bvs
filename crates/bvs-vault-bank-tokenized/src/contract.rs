@@ -31,7 +31,7 @@ pub fn instantiate(
     let receipt_token_instantiate = ReceiptCw20InstantiateMsg {
         name: format!("SatLayer {}", msg.denom),
         symbol: format!("sat{}", msg.denom),
-        decimals: 18,
+        decimals: 6,
         initial_balances: vec![],
         mint: None,
         marketing: None,
