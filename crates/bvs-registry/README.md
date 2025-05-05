@@ -41,6 +41,12 @@ such as queuing funds withdrawal from the Vault when delegated.
 - `IsOperator`: Check if an address is registered as an Operator
 - `IsOperatorActive`: Check if an Operator has active Service registrations
 
+### Slashing Management
+
+- `EnableSlashing`: Enable slashing for a Service with specified parameters
+- `DisableSlashing`: Disable slashing for a Service
+- `OperatorOptInToSlashing`: Operator opts into service slashing
+
 ## Registration Process
 
 An Operator/Service can register a Service/Operator to run and vice versa. However, both the Operator and Service must register to each other to establish an active relationship.
