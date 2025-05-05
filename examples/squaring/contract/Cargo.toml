@@ -20,11 +20,9 @@ schemars = "0.8.22"
 serde = { version = "1.0.218", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.69" }
 
-# SatLayer BVS dependencies
-bvs-library = { version = "0.0.0-main.162" }
-bvs-pauser = { version = "0.0.0-main.162" }
-bvs-registry = { version = "0.0.0-main.162" }
-bvs-vault-router = { version = "0.0.0-main.162" }
+bvs-registry = { version = "0.0.0-main.170", path = "../../../crates/bvs-registry" }
+bvs-vault-router = { version = "0.0.0-main.170", path = "../../../crates/bvs-vault-router" }
 
 [dev-dependencies]
 cw-multi-test = { version = "2.4.0", features = ["cosmwasm_2_0"] }
+bvs-multi-test = { version = "0.0.0-main.170", path = "../../../crates/bvs-multi-test" }

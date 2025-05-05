@@ -1,12 +1,6 @@
----
-sidebarTitle: Computational Squaring
----
-
 # Computational Squaring Example
 
-> [!NOTE]
->
-> <br />
+> [!NOTE]<br />
 > <>🚧 Documentation is work in progress!</>
 
 Off-chain computation with on-chain verification for squaring a number.
@@ -20,7 +14,7 @@ Lifecycle Overview:
 
 - Requests are sent to the contract without the need for heavy on-chain computation.
 - The off-chain service,
-  ran by the operators, computes the square of a given number and submits the result to the contract.
+ran by the operators, computes the square of a given number and submits the result to the contract.
 - Slashing is triggered if the operator submits an incorrect result.
 
 ## Getting started
@@ -51,3 +45,12 @@ docker compose up
 ```
 
 ## Project overview
+
+### Building the contract
+
+```shell
+docker run --rm -v "$(pwd)":/code \
+  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
+  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+  cosmwasm/optimizer:0.16.0
+```
