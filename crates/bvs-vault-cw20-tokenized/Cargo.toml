@@ -8,6 +8,7 @@ repository.workspace = true
 homepage.workspace = true
 documentation.workspace = true
 keywords.workspace = true
+description.workspace = true
 
 include = ["src"]
 
@@ -20,7 +21,6 @@ library = []
 [dependencies]
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
-cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
 cw20-base = { workspace = true }
 thiserror = { workspace = true }
