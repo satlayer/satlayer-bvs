@@ -1,5 +1,4 @@
 use cosmwasm_std::StdError;
-use cw_utils;
 use thiserror::Error;
 
 #[derive(Error, Debug)]

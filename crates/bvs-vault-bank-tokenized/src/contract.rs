@@ -246,9 +246,7 @@ mod vault_execute {
                 cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
             let vault = offset::VirtualOffset::new(total_receipt_token_supply, before_balance)?;
 
-            let new_shares = vault.assets_to_shares(amount_deposited)?;
-
-            new_shares
+            vault.assets_to_shares(amount_deposited)?
         };
 
         // critical section

@@ -1349,7 +1349,7 @@ fn test_system_lock_assets() {
     {
         let slash_amount = vault_balance_pre_slash
             .amount
-            .checked_div(Uint128::from(2 as u128))
+            .checked_div(Uint128::from(2_u128))
             .unwrap();
 
         // don't really need to create dedicated var for this
@@ -1396,7 +1396,7 @@ fn test_system_lock_assets() {
             let assets: Uint128 = vault.query(&mut app, &query_assets).unwrap();
 
             // assets should be halved
-            assert_eq!(assets, Uint128::from(50_000_000 as u128));
+            assert_eq!(assets, Uint128::from(50_000_000_u128));
         }
     }
 
