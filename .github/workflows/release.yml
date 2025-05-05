@@ -85,7 +85,7 @@ jobs:
             "bvs-rewards"
           )
           for member in "${members[@]}"; do
-              cargo hack publish --p ${member} --no-dev-deps --allow-dirty
+              cargo hack publish -p ${member} --no-dev-deps --allow-dirty
           done
         working-directory: crates
         env:
