@@ -80,9 +80,8 @@ jobs:
             "bvs-vault-base"
             "bvs-vault-bank"
             "bvs-vault-cw20"
-            "bvs-vault-cw20-tokenized"
-            "bvs-vault-factory"
             "bvs-rewards"
+            "bvs-multi-test"
           )
           for member in "${members[@]}"; do
               cargo hack publish -p ${member} --no-dev-deps --allow-dirty
