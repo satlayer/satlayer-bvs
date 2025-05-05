@@ -7,7 +7,7 @@ use cw_storage_plus::{Map, SnapshotMap};
 
 /// Mapping of service address to boolean value
 /// indicating if the service is registered with the registry
-pub const SERVICES: Map<&Service, bool> = Map::new("services");
+pub(crate) const SERVICES: Map<&Service, bool> = Map::new("services");
 
 /// Require that the service is registered in the state
 pub fn require_service_registered(
@@ -25,7 +25,7 @@ pub fn require_service_registered(
 
 /// Mapping of operator address to boolean value
 /// indicating if the operator is registered with the registry
-pub const OPERATORS: Map<&Operator, bool> = Map::new("operators");
+pub(crate) const OPERATORS: Map<&Operator, bool> = Map::new("operators");
 
 pub fn require_operator_registered(
     store: &dyn Storage,
@@ -170,7 +170,7 @@ pub fn require_active_registration_status(
 
 /// Stores the active registration count of the operator to services.
 /// This is used to check if the operator is actively registered to any service (> 0)
-pub const OPERATOR_ACTIVE_REGISTRATION_COUNT: Map<&Operator, u64> =
+pub(crate) const OPERATOR_ACTIVE_REGISTRATION_COUNT: Map<&Operator, u64> =
     Map::new("operator_active_registration_count");
 
 /// Check if the operator is actively registered to any service
