@@ -29,6 +29,8 @@ The contracts are built primarily in Rust, using the CosmWasm framework.
   Specialized vault to support CW20 tokens.
 - **BVS Vault CW20 Tokenized**:
   Specialized vault to support CW20 tokens with tokenization of liquid shares.
+- **BVS Vault Bank Tokenized**:
+  Specialized vault to support Bank module with tokenization of liquid shares.
 - **BVS Vault Factory**:
   Enables operators to deploy new vault contracts with proper configuration.
 - **BVS Vault Base**:
