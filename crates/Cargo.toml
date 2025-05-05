@@ -14,6 +14,8 @@ members = [
   "bvs-vault-factory",
   # BVS Optional Components
   "bvs-rewards",
+  # BVS CosmWasm Test Components
+  "bvs-multi-test",
 ]
 
 resolver = "2"

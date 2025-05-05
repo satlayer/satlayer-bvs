@@ -234,6 +234,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "bvs-multi-test"
+version = "0.0.0"
+dependencies = [
+ "bvs-library",
+ "bvs-pauser",
+ "bvs-registry",
+ "bvs-vault-router",
+ "cosmwasm-std",
+ "cw-multi-test",
+]
+
+[[package]]
 name = "bvs-pauser"
 version = "0.0.0"
 dependencies = [

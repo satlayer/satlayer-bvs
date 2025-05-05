@@ -1,0 +1,28 @@
+[package]
+name = "bvs-multi-test"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+description.workspace = true
+
+include = ["src"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+library = []
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cw-multi-test = { workspace = true }
+
+bvs-library = { workspace = true }
+bvs-pauser = { workspace = true }
+bvs-registry = { workspace = true }
+bvs-vault-router = { workspace = true }
