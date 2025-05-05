@@ -132,7 +132,7 @@ mod execute {
 
         Ok(Response::new()
             .add_event(
-                Event::new("Deposit")
+                Event::new("DepositFor")
                     .add_attribute("sender", info.sender.to_string())
                     .add_attribute("recipient", msg.recipient)
                     .add_attribute("assets", assets.to_string())
@@ -178,7 +178,7 @@ mod execute {
 
         Ok(Response::new()
             .add_event(
-                Event::new("Withdraw")
+                Event::new("WithdrawTo")
                     .add_attribute("sender", info.sender.to_string())
                     .add_attribute("recipient", msg.recipient.to_string())
                     .add_attribute("assets", claim_assets.to_string())
