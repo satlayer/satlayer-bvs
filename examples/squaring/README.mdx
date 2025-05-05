@@ -1,13 +1,4 @@
----
-sidebarTitle: Computational Squaring
----
-
 # Computational Squaring Example
-
-> [!NOTE]
->
-> <br />
-> <>🚧 Documentation is work in progress!</>
 
 Off-chain computation with on-chain verification for squaring a number.
 Here, we implement a simple squaring function (`n ^ 2`) for demonstration purposes—in a real-world scenario,
@@ -51,3 +42,12 @@ docker compose up
 ```
 
 ## Project overview
+
+### Building the contract
+
+```shell
+docker run --rm -v "$(pwd)":/code \
+  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
+  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+  cosmwasm/optimizer:0.16.0
+```

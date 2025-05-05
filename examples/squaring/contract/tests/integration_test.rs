@@ -1,7 +1,4 @@
-use bvs_library::testing::TestingContract;
-use bvs_pauser::testing::PauserContract;
-use bvs_registry::testing::RegistryContract;
-use bvs_vault_router::testing::VaultRouterContract;
+use bvs_multi_test::BvsMultiTest;
 use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::{to_json_binary, Addr, WasmMsg};
 use cw_multi_test::{App, ContractWrapper, Executor};
@@ -10,10 +7,7 @@ use squaring_contract::msg::InstantiateMsg;
 fn instantiate() -> (App, Addr) {
     let mut app = App::default();
     let env = mock_env();
-
-    PauserContract::new(&mut app, &env, None);
-    let registry = RegistryContract::new(&mut app, &env, None);
-    let vault_router = VaultRouterContract::new(&mut app, &env, None);
+    let bvs = BvsMultiTest::new(&mut app, &env);
 
     let code_id = app.store_code(Box::new(ContractWrapper::new(
         squaring_contract::contract::execute,
@@ -22,9 +16,10 @@ fn instantiate() -> (App, Addr) {
     )));
     let admin = app.api().addr_make("admin");
     let msg = InstantiateMsg {
-        registry: registry.addr.to_string(),
-        router: vault_router.addr.to_string(),
+        registry: bvs.registry.addr.to_string(),
+        router: bvs.vault_router.addr.to_string(),
     };
+
     let contract_addr = app
         .instantiate_contract(code_id, admin, &msg, &[], "Squaring", None)
         .unwrap();

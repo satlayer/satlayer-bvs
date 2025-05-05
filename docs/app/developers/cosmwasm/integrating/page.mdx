@@ -1,13 +1,274 @@
-# Integrating with SatLayer
+import { Callout } from 'nextra/components';
 
-> [!NOTE]
-> <br/>
-> <>🚧 Documentation is work in progress!</>
+# Integrating with SatLayer
 
 Before you integrate with SatLayer,
 the [CosmWasm Contract](/developers/cosmwasm)
-and [What is a service?](/getting-started/services)
+and [what is a service](/getting-started/services)
 documentation is a recommended read.
+Foundational knowledge of CosmWasm is required to understand the integration process.
+Head over to the [Program-agnostic](/developers/program-agnostic) section
+if you are looking for a non-CosmWasm Contract integration.
 
+---
 
+To get started, you should install `bvs-registry` and `bvs-vault-router`.
+These two packages provide the msg interfaces and types for the BVS Registry and Vault Router contracts.
 
+The `bvs-multi-test` package is a `cw-multi-test`-compatible wrapper
+that provides a convenient way to bootstrap all the necessary contracts for testing services in the BVS ecosystem.
+
+```bash filename="Installing" copy
+cargo add bvs-registry
+cargo add bvs-vault-router
+cargo add --dev bvs-multi-test
+```
+
+## Registry
+
+The [BVS Registry](/contracts/registry) is a central record-keeping contract for all Operators and Services within the SatLayer ecosystem.
+It serves as a directory where Operators and Services can register themselves and establish mutual relationships.
+
+### Register as Service
+
+Register an address as a Service with optional metadata.
+Services are entities that Operators can run.
+
+```rust filename="contract.rs" copy
+fn message() {
+    let register_as_service = bvs_registry::msg::ExecuteMsg::RegisterAsService {
+        metadata: bvs_registry::msg::Metadata {
+            name: Some("My Service".to_string()),
+            uri: Some("https://example.com".to_string()),
+        },
+    };
+    let register_msg: CosmosMsg = cosmwasm_std::WasmMsg::Execute {
+        contract_addr: REGISTRY_CONTRACT_ADDR,
+        msg: to_json_binary(&register_as_service)?,
+        funds: vec![],
+    }
+    .into();
+}
+```
+
+### Register Operator to Service
+
+Service registers an Operator to run it.
+This establishes a relationship between the Service and the Operator.
+For a fully active relationship, both the Service and Operator must register with each other.
+When both parties have registered, the relationship status becomes "Active" in the Registry.
+
+If the Service has enabled slashing,
+the Operator will automatically opt in to the slashing parameters during registration.
+This method is essential for creating the network of trusted Operators that can run a Service.
+
+```rust filename="contract.rs" copy
+fn message(operator: Addr) {
+    let register_operator = bvs_registry::msg::ExecuteMsg::RegisterOperatorToService {
+        operator: operator.into(),
+    };
+    let registry_contract_addr = "bbn1m2f0ctm657e22p843lgm9pnwlqtnuf3jgln7uyqrw6sy7nd5pc5qaasfud";
+    let register_msg: CosmosMsg = cosmwasm_std::WasmMsg::Execute {
+        contract_addr: REGISTRY_CONTRACT_ADDR,
+        msg: to_json_binary(&register_operator)?,
+        funds: vec![],
+    }
+    .into();
+}
+```
+
+### Update Service Metadata
+
+Update a Service's metadata (name, URI) to reflect changes in the Service's branding.
+
+```rust filename="contract.rs" copy
+fn message() {
+    let update_metadata = bvs_registry::msg::ExecuteMsg::UpdateServiceMetadata(
+        bvs_registry::msg::Metadata {
+            name: Some("Updated Service Name".to_string()),
+            uri: Some("https://updated-example.com".to_string()),
+        },
+    );
+    let update_msg: CosmosMsg = cosmwasm_std::WasmMsg::Execute {
+        contract_addr: REGISTRY_CONTRACT_ADDR,
+        msg: to_json_binary(&update_metadata)?,
+        funds: vec![],
+    }
+    .into();
+}
+```
+
+### Deregister Operator from Service
+
+Service removes an Operator from its list of registered operators.
+This is effectively ending the relationship between the Service and the Operator.
+
+```rust filename="contract.rs" copy
+fn message(operator: Addr) {
+    let deregister_operator = bvs_registry::msg::ExecuteMsg::DeregisterOperatorFromService {
+        operator: operator.into(),
+    };
+    let deregister_msg: CosmosMsg = cosmwasm_std::WasmMsg::Execute {
+        contract_addr: REGISTRY_CONTRACT_ADDR,
+        msg: to_json_binary(&deregister_operator)?,
+        funds: vec![],
+    }
+    .into();
+}
+```
+
+### Enable Slashing
+
+This method enables programmable slashing for a Service,
+establishing the rules for penalizing Operators who violate service agreements.
+
+The slashing parameters define the destination address for slashed funds,
+the maximum percentage of tokens that can be slashed (in basis points, where 10000 = 100%),
+and the resolution window (in seconds) during which an Operator can resolve issues before slashing is executed.
+
+When a Service enables or updates slashing parameters, Operators must explicitly opt in to the new parameters,
+providing a safeguard against malicious changes.
+This mechanism is crucial for maintaining security and accountability in the SatLayer ecosystem.
+
+```rust filename="contract.rs" copy
+fn message() {
+    let enable_slashing = bvs_registry::msg::ExecuteMsg::EnableSlashing {
+        slashing_parameters: bvs_registry::state::SlashingParameters {
+            destination: "bbn1destination".to_string(),
+            max_slashing_bips: 5000, // 50%
+            resolution_window: 86400, // 24 hours in seconds
+        },
+    };
+    let enable_msg: CosmosMsg = cosmwasm_std::WasmMsg::Execute {
+        contract_addr: REGISTRY_CONTRACT_ADDR,
+        msg: to_json_binary(&enable_slashing)?,
+        funds: vec![],
+    }
+    .into();
+}
+```
+
+### Disable Slashing
+
+Disable slashing for a Service.
+
+```rust filename="contract.rs" copy
+fn message() {
+    let disable_slashing = bvs_registry::msg::ExecuteMsg::DisableSlashing {};
+    let disable_msg: CosmosMsg = cosmwasm_std::WasmMsg::Execute {
+        contract_addr: REGISTRY_CONTRACT_ADDR,
+        msg: to_json_binary(&disable_slashing)?,
+        funds: vec![],
+    }
+    .into();
+}
+```
+
+## Vault Router
+
+The [BVS Vault Router](/contracts/vault-router) is a central contract
+that manages the interaction between vaults and other contracts in the SatLayer ecosystem.
+As a BVS,
+the Vault Router coordinates the programmable slashing of vaults,
+serving as the execution layer for the slashing logic.
+
+<Callout type="info">
+  See [Programmable Slashing](/getting-started/slashing) for more information on how slashing works.
+</Callout>
+
+### Request Slashing
+
+Start the slashing process for an operator.
+The Service must be actively registered with the Operator at the specified timestamp,
+and the Operator must have opted in to slashing.
+The slashing amount (in basis points) cannot exceed the maximum set in the slashing parameters.
+The timestamp must be within the allowable slashing window (not too old or in the future),
+and the Service must not have another active slashing request against the same Operator.
+When successful,
+this creates a slashing request with an expiry time based on the resolution window parameter
+and returns a unique slashing request ID.
+
+```rust filename="contract.rs" copy
+fn message(operator: Addr, env: &Env) {
+    let request_slashing = bvs_vault_router::msg::ExecuteMsg::RequestSlashing(
+        bvs_vault_router::msg::RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 1,
+            timestamp: env.block.time,
+            metadata: bvs_vault_router::msg::SlashingMetadata {
+                reason: "Reason".to_string(),
+            },
+        },
+    );
+    let slashing_msg: CosmosMsg = cosmwasm_std::WasmMsg::Execute {
+        contract_addr: ROUTER_CONTRACT_ADDR,
+        msg: to_json_binary(&request_slashing)?,
+        funds: vec![],
+    }
+    .into();
+}
+```
+
+### Cancel Slashing
+
+Cancel an in-progress slashing request if the operator has resolved the issue.
+Typically, when the Operator has resolved the issue that prompted the slashing.
+
+After the request slashing message is sent,
+the Operator has a resolution window (in seconds, as defined in the slashing parameters) to respond.
+If the issue is promptly addressed and resolved,
+the Service should cancel the slashing process using this method.
+The definition of "resolved" is up to the Service to define.
+
+```rust filename="contract.rs" copy
+fn message(slashing_id: String) {
+    let cancel_slashing = bvs_vault_router::msg::ExecuteMsg::CancelSlashing {
+        id: slashing_id,
+    };
+    let cancel_msg: CosmosMsg = cosmwasm_std::WasmMsg::Execute {
+        contract_addr: ROUTER_CONTRACT_ADDR,
+        msg: to_json_binary(&cancel_slashing)?,
+        funds: vec![],
+    }
+    .into();
+}
+```
+
+### Lock Slashing
+
+After the request slashing message is sent, if the Operator does not respond or fails to resolve the issue,
+the Service can execute this method to lock the specified proportion of the Operator's staked tokens.
+After executing the slash, the Vault Router will rebase all affected vaults to reflect the new exchange rate,
+ensuring that new deposits will mint a higher share ratio and will not be affected by the slashing.
+
+```rust filename="contract.rs" copy
+fn message(slashing_id: String) {
+    let lock_slashing = bvs_vault_router::msg::ExecuteMsg::LockSlashing {
+        id: slashing_id,
+    };
+    let lock_msg: CosmosMsg = cosmwasm_std::WasmMsg::Execute {
+        contract_addr: ROUTER_CONTRACT_ADDR,
+        msg: to_json_binary(&lock_slashing)?,
+        funds: vec![],
+    }
+    .into();
+}
+```
+
+### Finalize Slashing
+
+Move funds from the locked state to the final destination specified in the slashing parameters.
+
+```rust filename="contract.rs" copy
+fn message(slashing_id: String) {
+    let finalize_slashing = bvs_vault_router::msg::ExecuteMsg::FinalizeSlashing {
+        id: slashing_id,
+    };
+    let finalize_msg: CosmosMsg = cosmwasm_std::WasmMsg::Execute {
+        contract_addr: ROUTER_CONTRACT_ADDR,
+        msg: to_json_binary(&finalize_slashing)?,
+        funds: vec![],
+    }
+    .into();
+}
+```

@@ -1,5 +1,9 @@
 import type { MetaRecord } from "nextra";
 
-const meta: MetaRecord = {};
+const meta: MetaRecord = {
+  squaring: {
+    title: "Computational Squaring",
+  },
+};
 
 export default meta;
