@@ -23,9 +23,9 @@ impl BvsMultiTest {
     /// Creates a new instance of [BvsMultiTest] with the given [App] and [Env].
     /// It initializes the [PauserContract], [RegistryContract], and [VaultRouterContract].
     pub fn new(app: &mut App, env: &Env) -> Self {
-        let pauser = PauserContract::new(app, &env, None);
-        let registry = RegistryContract::new(app, &env, None);
-        let vault_router = VaultRouterContract::new(app, &env, None);
+        let pauser = PauserContract::new(app, env, None);
+        let registry = RegistryContract::new(app, env, None);
+        let vault_router = VaultRouterContract::new(app, env, None);
 
         Self {
             pauser,
@@ -49,7 +49,7 @@ impl BvsMultiTest {
             denom: denom.into(),
         };
 
-        let bank_contract = VaultBankContract::new(app, &env, Some(init_msg));
+        let bank_contract = VaultBankContract::new(app, env, Some(init_msg));
         let set_vault = &bvs_vault_router::msg::ExecuteMsg::SetVault {
             vault: bank_contract.addr.to_string(),
             whitelisted: true,
@@ -74,7 +74,7 @@ impl BvsMultiTest {
             cw20_contract: cw20_contract.to_string(),
         };
 
-        let bank_contract = VaultCw20Contract::new(app, &env, Some(init_msg));
+        let bank_contract = VaultCw20Contract::new(app, env, Some(init_msg));
         let set_vault = &bvs_vault_router::msg::ExecuteMsg::SetVault {
             vault: bank_contract.addr.to_string(),
             whitelisted: true,
@@ -105,7 +105,7 @@ impl BvsMultiTest {
             marketing: None,
         };
 
-        Cw20TokenContract::new(app, &env, Some(init_msg))
+        Cw20TokenContract::new(app, env, Some(init_msg))
     }
 }
 
