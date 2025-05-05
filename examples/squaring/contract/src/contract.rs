@@ -6,7 +6,8 @@ use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
 };
 
-use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response};
+use crate::state::{Config, CONFIG};
+use cosmwasm_std::{to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response};
 
 const CONTRACT_NAME: &str = "crates.io:bvs-squaring";
 const CONTRACT_VERSION: &str = "0.0.0";
@@ -16,20 +17,44 @@ pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    // TODO(fuxingloh): register contract
-    // TODO(fuxingloh): set slashing parameters
+    let config = Config {
+        router: deps.api.addr_validate(&msg.router)?,
+        registry: deps.api.addr_validate(&msg.registry)?,
+    };
+    CONFIG.save(deps.storage, &config)?;
 
-    Ok(Response::new().add_attribute("method", "instantiate"))
+    // Register this contract as a Service in BVS Registry
+    let register: CosmosMsg = cosmwasm_std::WasmMsg::Execute {
+        contract_addr: msg.registry,
+        msg: to_json_binary(&bvs_registry::msg::ExecuteMsg::RegisterAsService {
+            // Metadata of the service
+            metadata: bvs_registry::msg::Metadata {
+                name: Some("The Squaring Company".to_string()),
+                uri: Some("https://the-squaring-company.com".to_string()),
+            },
+        })?,
+        funds: vec![],
+    }
+    .into();
+
+    Ok(Response::new()
+        // Fire-off the register message here
+        .add_message(register)
+        .add_attribute("method", "instantiate")
+        .add_attribute("registry", config.registry)
+        .add_attribute("router", config.router))
 }
+
+// TODO(fuxingloh): set slashing parameters in migrate
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
@@ -38,7 +63,7 @@ pub fn execute(
         ExecuteMsg::Respond { input, output } => execute::respond(deps, info, input, output),
         ExecuteMsg::SlashingProve { input, operator } => {
             let operator = deps.api.addr_validate(&operator)?;
-            execute::prove(deps, info, input, operator)
+            execute::slashing_prove(deps, env, info, input, operator)
         }
         ExecuteMsg::SlashingCancel { .. } => Ok(Response::new()),
         ExecuteMsg::SlashingLock { .. } => Ok(Response::new()),
@@ -51,7 +76,7 @@ pub mod execute {
     use crate::contract::expensive_computation;
     use crate::state::{REQUESTS, RESPONSES};
     use crate::ContractError;
-    use cosmwasm_std::{Addr, DepsMut, MessageInfo, Response};
+    use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, DepsMut, Env, MessageInfo, Response};
 
     pub fn request(
         deps: DepsMut,
@@ -90,8 +115,9 @@ pub mod execute {
             .add_attribute("output", output.to_string()))
     }
 
-    pub fn prove(
+    pub fn slashing_prove(
         deps: DepsMut,
+        env: Env,
         _info: MessageInfo,
         input: i64,
         operator: Addr,
@@ -113,9 +139,26 @@ pub mod execute {
         // Save the new output to the storage
         RESPONSES.save(deps.storage, (input, &operator), &new_output)?;
 
-        // TODO(fuxingloh): slashing_request
+        let request_slashing = bvs_vault_router::msg::ExecuteMsg::RequestSlashing(
+            bvs_vault_router::msg::RequestSlashingPayload {
+                operator: operator.to_string(),
+                bips: 1,
+                timestamp: env.block.time,
+                metadata: bvs_vault_router::msg::SlashingMetadata {
+                    reason: "Invalid Prove".to_string(),
+                },
+            },
+        );
+        let slashing_msg: CosmosMsg = cosmwasm_std::WasmMsg::Execute {
+            contract_addr: "bbn1m2f0ctm657e22p843lgm9pnwlqtnuf3jgln7uyqrw6sy7nd5pc5qaasfud"
+                .to_string(),
+            msg: to_json_binary(&request_slashing)?,
+            funds: vec![],
+        }
+        .into();
 
         Ok(Response::new()
+            .add_message(slashing_msg)
             .add_attribute("method", "Prove")
             .add_attribute("operator", operator.to_string())
             .add_attribute("input", input.to_string())
@@ -175,9 +218,32 @@ mod tests {
 
         let sender = deps.api.addr_make("sender");
         let sender_info = message_info(&sender, &[]);
-        let init_msg = InstantiateMsg {};
+
+        let router = deps.api.addr_make("router");
+        let registry = deps.api.addr_make("registry");
+        let init_msg = InstantiateMsg {
+            router: router.to_string(),
+            registry: registry.to_string(),
+        };
         let res = instantiate(deps.as_mut(), env, sender_info, init_msg).unwrap();
-        assert_eq!(res, Response::new().add_attribute("method", "instantiate"));
+        assert_eq!(
+            res,
+            Response::new()
+                .add_message(cosmwasm_std::WasmMsg::Execute {
+                    contract_addr: registry.to_string(),
+                    msg: to_json_binary(&bvs_registry::msg::ExecuteMsg::RegisterAsService {
+                        metadata: bvs_registry::msg::Metadata {
+                            name: Some("The Squaring Company".to_string()),
+                            uri: Some("https://the-squaring-company.com".to_string()),
+                        },
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                })
+                .add_attribute("method", "instantiate")
+                .add_attribute("registry", registry.to_string())
+                .add_attribute("router", router.to_string())
+        );
     }
 
     #[test]

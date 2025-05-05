@@ -1,0 +1,8 @@
+{
+  "name": "@examples/squaring-service",
+  "private": true,
+  "files": [
+    "dist"
+  ],
+  "scripts": {}
+}
