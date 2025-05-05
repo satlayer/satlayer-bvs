@@ -2,7 +2,10 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 
 /// Instantiate message for the contract.
 #[cw_serde]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    pub registry: String,
+    pub router: String,
+}
 
 /// Migration message for the contract.
 /// > This is used when the contract is migrated to a new version.

@@ -1241,6 +1241,8 @@ dependencies = [
 name = "squaring-contract"
 version = "0.0.0"
 dependencies = [
+ "bvs-library",
+ "bvs-pauser",
  "bvs-registry",
  "bvs-vault-router",
  "cosmwasm-schema",

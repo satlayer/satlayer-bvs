@@ -53,7 +53,6 @@ Example for registering a BVS service:
        msg: InstantiateMsg,
     ) -> Result<Response, PauserError> {
         let register: CosmosMsg = cosmwasm_std::WasmMsg::Execute {
-            // The BVS Registry contract address for mainnet.
             contract_addr: "bbn1qtvnjezrv3fnqvuq869595zq6e2jk0zfhupg52aua0d6ht2a4jjsprqeae".to_string(),
             msg: to_json_binary(&bvs_registry::msg::ExecuteMsg::RegisterAsService {
                 // Metadata of the service

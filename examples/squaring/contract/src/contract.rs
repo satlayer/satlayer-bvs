@@ -6,6 +6,7 @@ use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
 };
 
+use crate::state::{Config, CONFIG};
 use cosmwasm_std::{to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response};
 
 const CONTRACT_NAME: &str = "crates.io:bvs-squaring";
@@ -16,14 +17,19 @@ pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    // Registry BVS Contract as a Service
+    let config = Config {
+        router: deps.api.addr_validate(&msg.router)?,
+        registry: deps.api.addr_validate(&msg.registry)?,
+    };
+    CONFIG.save(deps.storage, &config)?;
+
+    // Register this contract as a Service in BVS Registry
     let register: CosmosMsg = cosmwasm_std::WasmMsg::Execute {
-        // The BVS Registry contract address
-        contract_addr: "bbn1qtvnjezrv3fnqvuq869595zq6e2jk0zfhupg52aua0d6ht2a4jjsprqeae".to_string(),
+        contract_addr: msg.registry,
         msg: to_json_binary(&bvs_registry::msg::ExecuteMsg::RegisterAsService {
             // Metadata of the service
             metadata: bvs_registry::msg::Metadata {
@@ -38,7 +44,9 @@ pub fn instantiate(
     Ok(Response::new()
         // Fire-off the register message here
         .add_message(register)
-        .add_attribute("method", "instantiate"))
+        .add_attribute("method", "instantiate")
+        .add_attribute("registry", config.registry)
+        .add_attribute("router", config.router))
 }
 
 // TODO(fuxingloh): set slashing parameters in migrate
@@ -210,17 +218,20 @@ mod tests {
 
         let sender = deps.api.addr_make("sender");
         let sender_info = message_info(&sender, &[]);
-        let init_msg = InstantiateMsg {};
+
+        let router = deps.api.addr_make("router");
+        let registry = deps.api.addr_make("registry");
+        let init_msg = InstantiateMsg {
+            router: router.to_string(),
+            registry: registry.to_string(),
+        };
         let res = instantiate(deps.as_mut(), env, sender_info, init_msg).unwrap();
         assert_eq!(
             res,
             Response::new()
                 .add_message(cosmwasm_std::WasmMsg::Execute {
-                    // The BVS Registry contract address
-                    contract_addr: "bbn1qtvnjezrv3fnqvuq869595zq6e2jk0zfhupg52aua0d6ht2a4jjsprqeae"
-                        .to_string(),
+                    contract_addr: registry.to_string(),
                     msg: to_json_binary(&bvs_registry::msg::ExecuteMsg::RegisterAsService {
-                        // Metadata of the service
                         metadata: bvs_registry::msg::Metadata {
                             name: Some("The Squaring Company".to_string()),
                             uri: Some("https://the-squaring-company.com".to_string()),
@@ -230,6 +241,8 @@ mod tests {
                     funds: vec![],
                 })
                 .add_attribute("method", "instantiate")
+                .add_attribute("registry", registry.to_string())
+                .add_attribute("router", router.to_string())
         );
     }
 
