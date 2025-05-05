@@ -9,7 +9,10 @@ use bvs_vault_base::msg::{Amount, Recipient, RecipientAmount, VaultInfoResponse}
 use bvs_vault_base::shares::QueuedWithdrawalInfo;
 use bvs_vault_router::{msg::ExecuteMsg as RouterExecuteMsg, testing::VaultRouterContract};
 use cosmwasm_std::testing::mock_env;
-use cosmwasm_std::{coin, coins, to_json_binary, Addr, Event, Timestamp, Uint128, Uint64, WasmMsg};
+use cosmwasm_std::{
+    coin, coins, to_json_binary, Addr, DenomMetadata, DenomUnit, Event, Timestamp, Uint128, Uint64,
+    WasmMsg,
+};
 use cw2::ContractVersion;
 use cw20::BalanceResponse;
 use cw_multi_test::{App, Executor};
@@ -23,8 +26,34 @@ struct TestContracts {
 
 impl TestContracts {
     fn init() -> (App, TestContracts) {
+        let denom_meta = DenomMetadata {
+            description: "Test Token".to_string(),
+            denom_units: vec![
+                DenomUnit {
+                    denom: "denom".to_string(),
+                    exponent: 0,
+                    aliases: vec![],
+                },
+                DenomUnit {
+                    denom: "mdenom".to_string(),
+                    exponent: 6,
+                    aliases: vec!["microdenom".to_string()],
+                },
+            ],
+            base: "mdenom".to_string(),
+            display: "denom".to_string(),
+            name: "Test Token".to_string(),
+            symbol: "TEST".to_string(),
+            uri: "".to_string(),
+            uri_hash: "".to_string(),
+        };
+
         let mut app = App::new(|router, api, storage| {
             let owner = api.addr_make("owner");
+            router
+                .bank
+                .set_denom_metadata(storage, "denom".to_string(), denom_meta)
+                .unwrap();
             router
                 .bank
                 .init_balance(storage, &owner, coins(Uint128::MAX.u128(), "denom"))
@@ -1193,9 +1222,9 @@ fn test_cw20_semi_compliance() {
             .wrap()
             .query_wasm_smart::<cw20::TokenInfoResponse>(vault.addr(), &query)
             .unwrap();
-        assert_eq!(token_info.name, "SatLayer denom".to_string());
-        assert_eq!(token_info.symbol, "satdenom".to_string());
-        assert_eq!(token_info.decimals, 18);
+        assert_eq!(token_info.name, "SatLayer Test Token".to_string());
+        assert_eq!(token_info.symbol, "satTEST".to_string());
+        assert_eq!(token_info.decimals, 6);
 
         // remember a staker staked 200 tokens in ealier tests?
         assert_eq!(token_info.total_supply, Uint128::new(200));

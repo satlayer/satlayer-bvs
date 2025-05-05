@@ -28,10 +28,29 @@ pub fn instantiate(
 
     UnderlyingToken::set_denom(deps.storage, &msg.denom)?;
 
+    let denom_info = UnderlyingToken::query_metadata(&deps.as_ref())?;
+
+    let decimals = denom_info
+        .metadata
+        .denom_units
+        .iter()
+        .find(|u| u.denom == denom_info.metadata.base)
+        .map(|u| u.exponent) // exponent = number of decimal places
+        // fall back to the largest exponent (display unit) if the exact match is missing
+        .or_else(|| {
+            denom_info
+                .metadata
+                .denom_units
+                .iter()
+                .map(|u| u.exponent)
+                .max()
+        })
+        .unwrap_or(0) as u8;
+
     let receipt_token_instantiate = ReceiptCw20InstantiateMsg {
-        name: format!("SatLayer {}", msg.denom),
-        symbol: format!("sat{}", msg.denom),
-        decimals: 6,
+        name: format!("SatLayer {}", denom_info.metadata.description),
+        symbol: format!("sat{}", denom_info.metadata.symbol),
+        decimals,
         initial_balances: vec![],
         mint: None,
         marketing: None,
