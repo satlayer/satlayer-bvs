@@ -3,8 +3,8 @@ use crate::ContractError;
 use cosmwasm_std::{Addr, StdError, StdResult, Storage};
 use cw_storage_plus::{Item, Map};
 
-pub const ROUTER: Item<Addr> = Item::new("router");
-pub const REGISTRY: Item<Addr> = Item::new("registry");
+pub(crate) const ROUTER: Item<Addr> = Item::new("router");
+pub(crate) const REGISTRY: Item<Addr> = Item::new("registry");
 
 /// Contains the code_ids of the contracts that are allowed to be deployed by the factory.
 /// > Permissioned by owner address of factory contract.
@@ -12,13 +12,16 @@ pub const REGISTRY: Item<Addr> = Item::new("registry");
 /// > the factory contract needs to know the code_id of the contract.
 const CODE_IDS: Map<&u8, u64> = Map::new("code_ids");
 
-pub fn get_code_id(store: &dyn Storage, vault_type: &VaultType) -> Result<u64, ContractError> {
+pub(crate) fn get_code_id(
+    store: &dyn Storage,
+    vault_type: &VaultType,
+) -> Result<u64, ContractError> {
     CODE_IDS
         .load(store, &vault_type.into())
         .map_err(|_| ContractError::CodeIdNotFound {})
 }
 
-pub fn set_code_id(
+pub(crate) fn set_code_id(
     store: &mut dyn Storage,
     vault_type: &VaultType,
     code_id: &u64,
