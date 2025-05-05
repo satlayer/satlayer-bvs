@@ -20,9 +20,9 @@ schemars = "0.8.22"
 serde = { version = "1.0.218", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.69" }
 
-bvs-registry = { version = "0.0.0-main.170", path = "../../../crates/bvs-registry" }
-bvs-vault-router = { version = "0.0.0-main.170", path = "../../../crates/bvs-vault-router" }
+bvs-registry = { version = "0.0.0-main.170" }
+bvs-vault-router = { version = "0.0.0-main.170" }
 
 [dev-dependencies]
 cw-multi-test = { version = "2.4.0", features = ["cosmwasm_2_0"] }
-bvs-multi-test = { version = "0.0.0-main.170", path = "../../../crates/bvs-multi-test" }
+bvs-multi-test = { version = "0.0.0-main.170" }
