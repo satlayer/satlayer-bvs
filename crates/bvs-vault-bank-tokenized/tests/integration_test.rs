@@ -1456,7 +1456,6 @@ fn test_deposit_transfer_then_withdraw_to() {
     let staker = app.api().addr_make("staker/1");
     let beneficiary = app.api().addr_make("beneficiary/1");
     let initial_deposit_amount: u128 = 30_000_000;
-    let donation_amount = 1000;
     let owner = app.api().addr_make("owner");
 
     app.send_tokens(owner.clone(), staker.clone(), &coins(100_000_000, "denom"))
@@ -1494,7 +1493,7 @@ fn test_deposit_transfer_then_withdraw_to() {
     {
         let msg = ExecuteMsg::Transfer {
             recipient: beneficiary.to_string(),
-            amount: Uint128::new(donation_amount),
+            amount: Uint128::new(1000),
         };
         vault.execute(&mut app, &staker, &msg).unwrap();
 
@@ -1517,35 +1516,35 @@ fn test_deposit_transfer_then_withdraw_to() {
 
         assert_eq!(
             resp.balance,
-            Uint128::new(29999000) // initial_deposit_amount - donation_amount
+            Uint128::new(29999000) // initial_deposit_amount - 1000
         );
     }
 
     // Fully Withdraw
     {
         let msg = ExecuteMsg::WithdrawTo(RecipientAmount {
-            amount: Uint128::new(initial_deposit_amount - donation_amount),
+            amount: Uint128::new(initial_deposit_amount - 1000),
             recipient: staker.clone(),
         });
         vault.execute(&mut app, &staker, &msg).unwrap();
 
         let staker_balance = app.wrap().query_balance(&staker, "denom").unwrap();
 
-        // initial_deposit_amount - donation_amount + unstaked_capital
+        // initial_deposit_amount - 1000 + unstaked_capital
         assert_eq!(
             staker_balance,
             coin(30_000_000 - 1000 + 70_000_000, "denom")
         );
 
         let msg = ExecuteMsg::WithdrawTo(RecipientAmount {
-            amount: Uint128::new(donation_amount),
+            amount: Uint128::new(1000),
             recipient: beneficiary.clone(),
         });
         vault.execute(&mut app, &beneficiary, &msg).unwrap();
 
         let beneficiary_balance = app.wrap().query_balance(&beneficiary, "denom").unwrap();
 
-        assert_eq!(beneficiary_balance, coin(donation_amount, "denom"));
+        assert_eq!(beneficiary_balance, coin(1000, "denom"));
 
         let contract_balance = app.wrap().query_balance(vault.addr(), "denom").unwrap();
 
@@ -1583,7 +1582,6 @@ fn test_deposit_transfer_then_queue_redeem_withdraw() {
     let staker = app.api().addr_make("staker/1");
     let beneficiary = app.api().addr_make("beneficiary/1");
     let initial_deposit_amount: u128 = 30_000_000;
-    let donation_amount = 1000;
 
     let owner = app.api().addr_make("owner");
 
@@ -1621,7 +1619,7 @@ fn test_deposit_transfer_then_queue_redeem_withdraw() {
     {
         let msg = ExecuteMsg::Transfer {
             recipient: beneficiary.to_string(),
-            amount: Uint128::new(donation_amount),
+            amount: Uint128::new(1000),
         };
         vault.execute(&mut app, &staker, &msg).unwrap();
 
@@ -1631,7 +1629,7 @@ fn test_deposit_transfer_then_queue_redeem_withdraw() {
 
         let resp: BalanceResponse = vault.query(&mut app, &msg).unwrap();
 
-        assert_eq!(resp.balance, Uint128::new(1000)); // donation_amount
+        assert_eq!(resp.balance, Uint128::new(1000));
 
         let resp: BalanceResponse = vault
             .query(
@@ -1646,20 +1644,20 @@ fn test_deposit_transfer_then_queue_redeem_withdraw() {
         // so his receipt token balance should be reduced
         assert_eq!(
             resp.balance,
-            Uint128::new(29999000) // initial_deposit_amount - donation_amount
+            Uint128::new(29999000) // initial_deposit_amount - 1000
         );
     }
 
     // Fully Withdraw
     {
         let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
-            amount: Uint128::new(initial_deposit_amount - donation_amount),
+            amount: Uint128::new(initial_deposit_amount - 1000),
             recipient: staker.clone(),
         });
         vault.execute(&mut app, &staker, &msg).unwrap();
 
         let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
-            amount: Uint128::new(donation_amount),
+            amount: Uint128::new(1000),
             recipient: beneficiary.clone(),
         });
         vault.execute(&mut app, &beneficiary, &msg).unwrap();
@@ -1691,7 +1689,7 @@ fn test_deposit_transfer_then_queue_redeem_withdraw() {
 
         let staker_balance = app.wrap().query_balance(&staker, "denom").unwrap();
 
-        // initial_deposit_amount + unstaked_capital - donation_amount
+        // initial_deposit_amount + unstaked_capital - 1000
         assert_eq!(
             staker_balance,
             coin(30_000_000 + 70_000_000 - 1000, "denom")
@@ -1702,7 +1700,7 @@ fn test_deposit_transfer_then_queue_redeem_withdraw() {
 
         let beneficiary_balance = app.wrap().query_balance(&beneficiary, "denom").unwrap();
 
-        assert_eq!(beneficiary_balance, coin(1000, "denom")); // donation_amount
+        assert_eq!(beneficiary_balance, coin(1000, "denom")); // 1000
 
         let contract_balance = app.wrap().query_balance(vault.addr(), "denom").unwrap();
 
