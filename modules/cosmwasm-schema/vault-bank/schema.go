@@ -30,28 +30,28 @@ type InstantiateMsg struct {
 // redeemable by any `recipient`. The `sender` can be the same as the `recipient` in some
 // cases.
 //
-// ExecuteMsg Deposit assets into the vault. Sender must transfer the assets to the vault
+// ExecuteMsg DepositFor assets into the vault. Sender must transfer the assets to the vault
 // contract (this is implementation agnostic). The vault contract must mint shares to the
 // `recipient`. Vault must be whitelisted in the `vault-router` to accept deposits.
 //
-// ExecuteMsg Withdraw assets from the vault. Sender must have enough shares to withdraw the
-// requested amount to the `recipient`. If the Vault is delegated to an `operator`,
+// ExecuteMsg WithdrawTo assets from the vault. Sender must have enough shares to withdraw
+// the requested amount to the `recipient`. If the Vault is delegated to an `operator`,
 // withdrawals must be queued. Operator must not be validating any services for instant
 // withdrawals.
 //
-// ExecuteMsg QueueWithdrawal assets from the vault. Sender must have enough shares to queue
-// the requested amount to the `recipient`. Once the withdrawal is queued, the `recipient`
-// can redeem the withdrawal after the lock period. Once the withdrawal is locked, the
-// `sender` cannot cancel the withdrawal. The time-lock is enforced by the vault and cannot
-// be changed retroactively.
+// ExecuteMsg QueueWithdrawalTo assets from the vault. Sender must have enough shares to
+// queue the requested amount to the `recipient`. Once the withdrawal is queued, the
+// `recipient` can redeem the withdrawal after the lock period. Once the withdrawal is
+// locked, the `sender` cannot cancel the withdrawal. The time-lock is enforced by the vault
+// and cannot be changed retroactively.
 //
 // ### Lock Period Extension New withdrawals will extend the lock period of any existing
 // withdrawals. You can queue the withdrawal to a different `recipient` than the `sender` to
 // avoid this.
 //
-// ExecuteMsg RedeemWithdrawal all queued shares into assets from the vault for withdrawal.
-// After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
-// can redeem the withdrawal.
+// ExecuteMsg RedeemWithdrawalTo all queued shares into assets from the vault for
+// withdrawal. After the lock period, the `sender` (must be the `recipient` of the original
+// withdrawal) can redeem the withdrawal.
 //
 // ExecuteMsg SlashLocked moves the assets from the vault to the `vault-router` contract for
 // custody. Part of the [https://build.satlayer.xyz/getting-started/slashing](Programmable
