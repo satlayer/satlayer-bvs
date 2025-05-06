@@ -5,6 +5,7 @@ const meta: MetaRecord = {
   "vault-router": {},
   "vault-factory": {},
   "vault-bank": {},
+  "vault-bank-tokenized": {},
   "vault-cw20": {},
   "vault-cw20-tokenized": {},
   "vault-base": {},
