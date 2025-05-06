@@ -450,7 +450,7 @@ mod vault_execute {
     ) -> Result<Response, ContractError> {
         router::assert_router(deps.as_ref().storage, &info)?;
 
-        // if the code get passed above assert_router, it means the sender is the router
+        // If the code above (`assert_router`) succeeds, it means the sender is the router
         // No need to load from storage.
         let router = info.sender;
 
@@ -499,7 +499,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<cosmwasm_std::Bin
         QueryMsg::VaultInfo {} => to_json_binary(&vault_query::vault_info(deps, env)?),
         _ => {
             // cw20 compliant messages are passed to the `cw20-base` contract.
-            // Except for the `Burn` and `BurnFrom` messages.
             cw20_base::contract::query(deps, env, msg.try_into().unwrap())
         }
     }
