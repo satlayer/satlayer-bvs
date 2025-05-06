@@ -1,0 +1,118 @@
+---
+sidebarTitle: Using Go
+---
+
+import {Cards} from 'nextra/components';
+import {CubeIcon} from "@heroicons/react/24/outline";
+
+# Integrate using Go
+
+The recommended way to integrate a service with Go is to use the official
+[Cosmos SDK](github.com/cosmos/cosmos-sdk).
+
+```bash filename="cosmos/comos-sdk" copy
+go get github.com/cosmos/cosmos-sdk
+```
+
+To get started, you should install the `cosmwasm-schema` module.
+It contains Go types generated from the CosmWasm contract schemas.
+These types allow you to interact with SatLayer contracts in a type-safe manner.
+
+```bash filename="satlayer/satlayer-bvs/modules/cosmwasm-schema" copy
+go get github.com/satlayer/satlayer-bvs/modules/cosmwasm-schema
+```
+
+We also provide a `cosmwasm-api` module that contains the client context and helper `Query` and `Execute` functions.
+This module is a thin wrapper around the Cosmos SDK and provides a convenient way to interact with CosmWasm contracts.
+You don't need to use this module if you prefer to use the Cosmos SDK directly.
+
+```bash filename="satlayer/satlayer-bvs/modules/cosmwasm-api" copy
+go get github.com/satlayer/satlayer-bvs/modules/cosmwasm-api
+```
+
+## Interacting with contracts
+
+For convenience, we provide a `NewClientCtx` function that sets up a client context
+with a given RPC endpoint and chain ID.
+
+```go filename="client.go" copy
+import (
+	cosmwasmapi "github.com/satlayer/satlayer-bvs/cosmwasm-api"
+);
+
+RpcEndpoint := "https://babylon-rpc.polkachu.com"
+ChainID := "bbn-1"
+clientCtx := cosmwasmapi.NewClientCtx(RpcEndpoint, ChainID)
+```
+
+To perform a query, you can use the `Query` function provided by the `cosmwasm-api` package.
+
+```go filename="query.go" copy
+import (
+	cosmwasmapi "github.com/satlayer/satlayer-bvs/cosmwasm-api";
+	"github.com/satlayer/satlayer-bvs/cosmwasm-schema/registry"
+)
+
+func PerformQuery() {
+	queryMsg := registry.QueryMsg{
+		Status: &registry.Status{
+			Operator: "bbnoperator",
+			Service:  "bbnservice",
+		},
+	}
+
+	clientCtx := cosmwasmapi.NewClientCtx("https://babylon-rpc.polkachu.com", "bbn-1")
+
+	response, err := cosmwasmapi.Query[registry.StatusResponse](
+		clientCtx,
+		context.Background(),
+		"bbn...",
+		queryMsg,
+	)
+}
+```
+
+To perform a execute transaction, you can use the `Execute` function provided by the `cosmwasm-api` package.
+
+```go filename="execute.go" copy
+import (
+	cosmwasmapi "github.com/satlayer/satlayer-bvs/cosmwasm-api";
+	"github.com/satlayer/satlayer-bvs/cosmwasm-schema/registry"
+)
+
+func PerformExecute() {
+	clientCtx := cosmwasmapi.NewClientCtx("https://babylon-rpc.polkachu.com", "bbn-1").
+		WithKeyring(clientKeyring).
+		WithFromAddress(executorAddr).
+		WithFromName("executor")
+
+	executeMsg := registry.ExecuteMsg{
+		RegisterOperatorToService: &registry.RegisterOperatorToService{
+			Operator: "bbnoperator",
+		},
+	}
+
+	executeOptions := cosmwasmapi.DefaultBroadcastOptions().
+		WithContractAddr(s.pauser.Address).
+		WithExecuteMsg(executeMsg).
+		WithGasPrice("0.002ubbn")
+
+	response, err := cosmwasmapi.Execute(
+		clientCtx,
+		context.Background(),
+		owner.String(),
+		executeOptions,
+	)
+}
+```
+
+For more detailed information on the full lifecycle of a BVS:
+
+<Cards num={1}>
+  <Cards.Card
+    title="Integrating with SatLayer (CosmWasm Contract)"
+    href="/developers/cosmwasm"
+    icon={<CubeIcon/>}
+    arrow>
+  </Cards.Card>
+</Cards>

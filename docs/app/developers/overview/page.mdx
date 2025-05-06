@@ -130,13 +130,15 @@ Example for initializing a slash:
   <Tabs.Tab>
     <>In this example, we use the [cosmos/cosmjs JavaScript SDK](https://github.com/cosmos/cosmjs) but program-agnostic services can be implemented in any language.</>
 
-    ```js filename="init.js"
+    ```js filename="slashing.js"
     const executeMsg = {
       slashing_request: {
+        operator: "bbnoperator",
+        bips: 1,
+        timestamp: 1234567890,
         metadata: {
-          name: "Squaring",
-          uri: "https://the-squaring-company.com",
-        },
+          reason: "Reason for slashing",
+        }
       },
     };
     const serviceAddress = "bbn...";

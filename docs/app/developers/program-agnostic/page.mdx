@@ -1,5 +1,48 @@
+---
+asIndexPage: true
+---
+
+import { Cards, Callout } from 'nextra/components'
+
 # Program-agnostic
 
-> [!NOTE]
-> <br/>
-> <>🚧 Documentation is work in progress!</>
+Program-agnostic services are programs that can be verified by the network, but not necessarily on-chain.
+This makes the SatLayer network agnostic to the underlying implementation of the program.
+This type of service is useful for applications that require a high level of flexibility and can be implemented in various programming languages.
+
+<Callout type="info">
+  Services that require deployed on-chain logic or objectively verifiable logic
+  should be implemented as a [CosmWasm Contract](/developers/cosmwasm).
+</Callout>
+
+This allows a wider range of services that can utilize shared security.
+Program-agnostic applications can be created
+by calling contracts directly without needing to deploy your own smart contracts.
+This approach offers flexibility and simplicity for many use cases.
+
+### Key Concepts
+
+- **Direct Contract Interaction**:
+Programs can be created by directly calling existing contracts on the network,
+eliminating the need to deploy custom contracts for many use cases.
+The program-agnostic implementation and lifecycle largely follows the same
+pattern as the [CosmWasm Contract](/developers/cosmwasm/integrating) implementation.
+- **Address Flexibility**:
+The `Addr` type in the system doesn't have to represent a smart contract - it can also be an EOA (Externally Owned Account).
+This means you can interact with both contract addresses and regular wallet addresses using the same mechanisms.
+- **Simplified Development**:
+By leveraging existing contract infrastructure,
+you can build applications with less complexity and lower deployment costs.
+
+## Language guides
+
+Program-agnostic services can be written in any programming language or framework,
+as a microservice, monolith, or serverless function.
+It is essentially agnostic to the environment in which it runs.
+
+JavaScript/TypeScript and Go are the most common languages used to write program-agnostic services.
+
+<Cards num={3}>
+  <Cards.Card title="Using JavaScript" href="/developers/program-agnostic/javascript" />
+  <Cards.Card title="Using Go" href="/developers/program-agnostic/go" />
+</Cards>
