@@ -585,6 +585,10 @@ type TotalSharesResponse = string;
 
 export interface InstantiateMsg {
   /**
+   * The decimals of the receipt token. Must be the same as the denom's decimals.
+   */
+  decimals: number;
+  /**
    * The denom supported by this vault.
    */
   denom: string;

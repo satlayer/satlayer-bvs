@@ -223,8 +223,8 @@ pub struct InstantiateMsg {
     pub operator: String,
     /// The denom supported by this vault.
     pub denom: String,
-    /// decimals of the token.
-    /// Must be the same as the denom.
+    /// The decimals of the receipt token.
+    /// Must be the same as the denom's decimals.
     pub decimals: u8,
 }
 

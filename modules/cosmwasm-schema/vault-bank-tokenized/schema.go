@@ -16,6 +16,8 @@ type TotalAssetsResponse string
 type TotalSharesResponse string
 
 type InstantiateMsg struct {
+	// The decimals of the receipt token. Must be the same as the denom's decimals.
+	Decimals int64 `json:"decimals"`
 	// The denom supported by this vault.
 	Denom string `json:"denom"`
 	// The address of the `operator`. Each vault is delegated to an `operator`.
