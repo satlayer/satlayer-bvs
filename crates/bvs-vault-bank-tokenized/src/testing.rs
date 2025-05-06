@@ -27,6 +27,7 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for VaultBankTokenize
             router: Self::get_contract_addr(app, "vault_router").to_string(),
             operator: app.api().addr_make("operator").to_string(),
             denom: "denom".to_string(),
+            decimals: 18,
         }
     }
 

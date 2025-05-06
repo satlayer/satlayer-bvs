@@ -223,6 +223,9 @@ pub struct InstantiateMsg {
     pub operator: String,
     /// The denom supported by this vault.
     pub denom: String,
+    /// decimals of the token.
+    /// Must be the same as the denom.
+    pub decimals: u8,
 }
 
 #[cw_serde]

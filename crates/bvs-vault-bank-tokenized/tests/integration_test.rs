@@ -1224,7 +1224,7 @@ fn test_cw20_semi_compliance() {
             .unwrap();
         assert_eq!(token_info.name, "SatLayer Test Token".to_string());
         assert_eq!(token_info.symbol, "satTEST".to_string());
-        assert_eq!(token_info.decimals, 6);
+        assert_eq!(token_info.decimals, 18);
 
         // remember a staker staked 200 tokens in ealier tests?
         assert_eq!(token_info.total_supply, Uint128::new(200));
