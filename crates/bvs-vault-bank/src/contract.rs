@@ -784,12 +784,13 @@ mod tests {
         }
 
         let recipient = deps.api.addr_make("recipient");
-        let new_unlock_timestamp = Timestamp::from_seconds(
-            env.block
-                .time
-                .plus_seconds(withdrawal_lock_period.into())
-                .seconds(),
-        );
+        let new_unlock_timestamp = env.block.time.plus_seconds(withdrawal_lock_period.into());
+        // let new_unlock_timestamp = Timestamp::from_seconds(
+        //     env.block
+        //         .time
+        //         .plus_seconds(withdrawal_lock_period.into())
+        //         .seconds(),
+        // );
 
         // queue withdrawal to for the first time
         {
