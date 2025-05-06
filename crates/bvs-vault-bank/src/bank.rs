@@ -55,10 +55,7 @@ mod tests {
     use crate::bank;
     use crate::bank::set_denom;
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
-    use cosmwasm_std::{
-        coins, Coin, CosmosMsg, DenomMetadata, DenomUnit, DepsMut, OwnedDeps, Uint128,
-    };
-    use cw_multi_test::App;
+    use cosmwasm_std::{coins, Coin, CosmosMsg, DenomMetadata, DenomUnit, Uint128};
 
     #[test]
     fn test_get_denom() {
