@@ -37,15 +37,23 @@ The contracts are built primarily in Rust, using the CosmWasm framework.
   Provides foundational components for all vault contracts,
   including share accounting (implementing the ERC-4626 standard), router integration, and security mechanisms.
 
-### Contract Relationships
+## Contract Addresses
 
-The SatLayer BVS contracts form an interconnected ecosystem:
+Individual vaults contract addresses are not listed here, as they are deployed by the operators themselves.
 
-1. **Registry-Router Relationship**:
-   The Vault Router queries the Registry to determine if operators are validating services.
-2. **Router-Vault Relationship**:
-   Vaults check with the Router to determine if they're whitelisted and if operators are validating.
-3. **Factory-Vault Relationship**:
-   The Factory deploys new vaults with proper configuration.
-4. **Pauser Integration**:
-   Critical contracts integrate with the Pauser for emergency functionality.
+### Mainnet `bbn-1`
+
+| Contract Name    | Address                                                          |
+| :--------------- | :--------------------------------------------------------------- |
+| BVS Pauser       | `bbn1mygmlglvg9w45n3s6m6d4txneantmupy0sa0vy63angpvj0qp7usr8wxgg` |
+| BVS Registry     | `bbn1qtvnjezrv3fnqvuq869595zq6e2jk0zfhupg52aua0d6ht2a4jjsprqeae` |
+| BVS Vault Router | `bbn1m2f0ctm657e22p843lgm9pnwlqtnuf3jgln7uyqrw6sy7nd5pc5qaasfud` |
+
+### Testnet `bbn-test-5`
+
+| Contract Name     | Address                                                          |
+| :---------------- | :--------------------------------------------------------------- |
+| BVS Pauser        | `bbn1e743905t9twc3cggaw7kxhcutls2lnlccg94gyv3c837x65ffglqmx3yg3` |
+| BVS Registry      | `bbn1a9tleevqygn862ll2la49g637fjttfzzlttdrmmua35fadpuvnksuyud7a` |
+| BVS Vault Router  | `bbn1tztx8vkgw24rm5f6ny52qyt6kpg7gyfd5nggvfgjjfj8n7ggkx7qfhvdum` |
+| BVS Vault Factory | `bbn1tnpg0hs099tpmaavzjzx02kvf7lcqhwmkrp0spg30aejmfydxnkqfzwdyx` |
