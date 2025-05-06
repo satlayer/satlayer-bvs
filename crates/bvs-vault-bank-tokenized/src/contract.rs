@@ -488,7 +488,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<cosmwasm_std::Bin
         QueryMsg::VaultInfo {} => to_json_binary(&vault_query::vault_info(deps, env)?),
         _ => {
             // cw20 compliant messages are passed to the `cw20-base` contract.
-            // Except for the `Burn` and `BurnFrom` messages.
             cw20_base::contract::query(deps, env, msg.try_into().unwrap())
         }
     }
