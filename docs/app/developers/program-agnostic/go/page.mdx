@@ -1,0 +1,65 @@
+---
+sidebarTitle: Using Go
+---
+
+import {Cards} from 'nextra/components';
+import {CubeIcon} from "@heroicons/react/24/outline";
+
+# Integrate using Go
+
+The recommended way to integrate a service with Go is to use the official
+[Cosmos SDK](github.com/cosmos/cosmos-sdk).
+
+```bash filename="cosmos/comos-sdk" copy
+go get github.com/cosmos/cosmos-sdk
+```
+
+To get started, you should install the `cosmwasm-schema` module.
+It contains Go types generated from the CosmWasm contract schemas.
+These types allow you to interact with SatLayer contracts in a type-safe manner.
+
+```bash filename="satlayer/satlayer-bvs/modules" copy
+go get github.com/satlayer/satlayer-bvs/modules/cosmwasm-schema
+go get github.com/satlayer/satlayer-bvs/modules/cosmwasm-api
+```
+
+## Interacting with contracts
+
+Setting up a signing client with the endpoint and gas price.
+
+```go filename="client.go" copy
+// Import necessary packages
+// - github.com/cosmos/cosmos-sdk/client
+// - github.com/cosmos/cosmos-sdk/crypto/keyring
+// - github.com/cosmos/cosmos-sdk/types
+// - github.com/cosmos/cosmos-sdk/types/tx/signing
+
+// Setup client function
+func setupClient() error {
+    // Set up the keyring
+    kr, err := keyring.New("satlayer", keyring.BackendTest, "~/.satlayer", nil)
+    if err != nil {
+        return err
+    }
+
+    // Create a client context
+    clientCtx := client.Context{}.
+        WithKeyring(kr).
+        WithChainID("babylon-testnet").
+        WithNodeURI("https://babylon-rpc.polkachu.com").
+        WithBroadcastMode("sync")
+
+    return nil
+}
+```
+
+For more detailed information on the full lifecycle of a BVS:
+
+<Cards num={1}>
+  <Cards.Card
+    title="Integrating with SatLayer (CosmWasm Contract)"
+    href="/developers/cosmwasm"
+    icon={<CubeIcon/>}
+    arrow>
+  </Cards.Card>
+</Cards>
