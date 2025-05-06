@@ -193,9 +193,8 @@ mod execute {
 
         let withdrawal_lock_period: u64 =
             router::get_withdrawal_lock_period(&deps.as_ref())?.into();
-        let current_timestamp = env.block.time.seconds();
-        let unlock_timestamp =
-            Timestamp::from_seconds(withdrawal_lock_period).plus_seconds(current_timestamp);
+        let current_timestamp = env.block.time;
+        let unlock_timestamp = current_timestamp.plus_seconds(withdrawal_lock_period);
 
         let queued_withdrawal_info = QueuedWithdrawalInfo {
             queued_shares: msg.amount,
