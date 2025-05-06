@@ -5,9 +5,6 @@
     "*.rs": [
       "rustfmt"
     ],
-    "*.go": [
-      "goimports -w"
-    ],
     "*.{md,toml,js,mjs,ts,cjs}": [
       "prettier --write"
     ],
