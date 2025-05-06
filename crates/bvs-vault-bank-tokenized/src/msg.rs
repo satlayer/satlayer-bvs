@@ -58,19 +58,19 @@ pub enum ExecuteMsg {
         msg: Binary,
     },
 
-    /// ExecuteMsg Deposit assets into the vault.
+    /// ExecuteMsg DepositFor assets into the vault.
     /// Sender must transfer the assets to the vault contract (this is implementation agnostic).
     /// The vault contract must mint shares to the `recipient`.
     /// Vault must be whitelisted in the `vault-router` to accept deposits.
     DepositFor(RecipientAmount),
 
-    /// ExecuteMsg Withdraw assets from the vault.
+    /// ExecuteMsg WithdrawTo assets from the vault.
     /// Sender must have enough shares to withdraw the requested amount to the `recipient`.
     /// If the Vault is delegated to an `operator`, withdrawals must be queued.
     /// Operator must not be validating any services for instant withdrawals.
     WithdrawTo(RecipientAmount),
 
-    /// ExecuteMsg QueueWithdrawal assets from the vault.
+    /// ExecuteMsg QueueWithdrawalTo assets from the vault.
     /// Sender must have enough shares to queue the requested amount to the `recipient`.
     /// Once the withdrawal is queued,
     /// the `recipient` can redeem the withdrawal after the lock period.
@@ -83,7 +83,7 @@ pub enum ExecuteMsg {
     /// You can queue the withdrawal to a different `recipient` than the `sender` to avoid this.
     QueueWithdrawalTo(RecipientAmount),
 
-    /// ExecuteMsg RedeemWithdrawal all queued shares into assets from the vault for withdrawal.
+    /// ExecuteMsg RedeemWithdrawalTo all queued shares into assets from the vault for withdrawal.
     /// After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
     /// can redeem the withdrawal.
     RedeemWithdrawalTo(Recipient),
