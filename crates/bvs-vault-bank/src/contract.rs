@@ -75,7 +75,7 @@ mod execute {
     use bvs_vault_base::msg::{Amount, Recipient, RecipientAmount};
     use bvs_vault_base::shares::QueuedWithdrawalInfo;
     use bvs_vault_base::{offset, router, shares};
-    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, StdError, Timestamp};
+    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, StdError};
 
     /// Deposit an asset (`info.funds`) into the vault through native bank transfer and receive shares.
     ///
@@ -193,9 +193,8 @@ mod execute {
 
         let withdrawal_lock_period: u64 =
             router::get_withdrawal_lock_period(&deps.as_ref())?.into();
-        let current_timestamp = env.block.time.seconds();
-        let unlock_timestamp =
-            Timestamp::from_seconds(withdrawal_lock_period).plus_seconds(current_timestamp);
+        let current_timestamp = env.block.time;
+        let unlock_timestamp = current_timestamp.plus_seconds(withdrawal_lock_period);
 
         let queued_withdrawal_info = QueuedWithdrawalInfo {
             queued_shares: msg.amount,
@@ -430,7 +429,7 @@ mod tests {
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
     use cosmwasm_std::{
         coin, coins, from_json, to_json_binary, BankMsg, Coin, ContractResult, CosmosMsg, Event,
-        Response, SystemError, SystemResult, Timestamp, Uint128, Uint64, WasmQuery,
+        Response, SystemError, SystemResult, Uint128, Uint64, WasmQuery,
     };
 
     #[test]
@@ -785,12 +784,7 @@ mod tests {
         }
 
         let recipient = deps.api.addr_make("recipient");
-        let new_unlock_timestamp = Timestamp::from_seconds(
-            env.block
-                .time
-                .plus_seconds(withdrawal_lock_period.into())
-                .seconds(),
-        );
+        let new_unlock_timestamp = env.block.time.plus_seconds(withdrawal_lock_period.into());
 
         // queue withdrawal to for the first time
         {
