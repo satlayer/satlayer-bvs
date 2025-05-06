@@ -1389,7 +1389,6 @@ fn test_deposit_transfer_then_withdraw_to() {
     let staker = app.api().addr_make("staker/1");
     let beneficiary = app.api().addr_make("beneficiary/1");
     let initial_deposit_amount: u128 = 80_189_462_987_009_847;
-    let donation_amount = 1000;
 
     let msg = ExecuteMsg::DepositFor(RecipientAmount {
         recipient: staker.clone(),
@@ -1417,7 +1416,7 @@ fn test_deposit_transfer_then_withdraw_to() {
     {
         let msg = ExecuteMsg::Transfer {
             recipient: beneficiary.to_string(),
-            amount: Uint128::new(donation_amount),
+            amount: Uint128::new(1000),
         };
         vault.execute(app, &staker, &msg).unwrap();
 
@@ -1447,7 +1446,7 @@ fn test_deposit_transfer_then_withdraw_to() {
     // Fully Withdraw
     {
         let msg = ExecuteMsg::WithdrawTo(RecipientAmount {
-            amount: Uint128::new(initial_deposit_amount - donation_amount),
+            amount: Uint128::new(initial_deposit_amount - 1000),
             recipient: staker.clone(),
         });
         vault.execute(app, &staker, &msg).unwrap();
@@ -1458,14 +1457,14 @@ fn test_deposit_transfer_then_withdraw_to() {
         assert_eq!(staker_balance, 99_999_999_999_999_000);
 
         let msg = ExecuteMsg::WithdrawTo(RecipientAmount {
-            amount: Uint128::new(donation_amount),
+            amount: Uint128::new(1000),
             recipient: beneficiary.clone(),
         });
         vault.execute(app, &beneficiary, &msg).unwrap();
 
         let beneficiary_balance = cw20.balance(app, &beneficiary);
 
-        assert_eq!(beneficiary_balance, donation_amount);
+        assert_eq!(beneficiary_balance, 1000);
 
         let contract_balance = cw20.balance(app, vault.addr());
 
@@ -1503,7 +1502,6 @@ fn test_deposit_transfer_then_queue_redeem_withdraw() {
     let staker = app.api().addr_make("staker/1");
     let beneficiary = app.api().addr_make("beneficiary/1");
     let initial_deposit_amount: u128 = 80_189_462_987_009_847;
-    let donation_amount = 1000;
 
     let msg = ExecuteMsg::DepositFor(RecipientAmount {
         recipient: staker.clone(),
@@ -1531,7 +1529,7 @@ fn test_deposit_transfer_then_queue_redeem_withdraw() {
     {
         let msg = ExecuteMsg::Transfer {
             recipient: beneficiary.to_string(),
-            amount: Uint128::new(donation_amount),
+            amount: Uint128::new(1000),
         };
         vault.execute(app, &staker, &msg).unwrap();
 
@@ -1563,13 +1561,13 @@ fn test_deposit_transfer_then_queue_redeem_withdraw() {
     // Fully Withdraw
     {
         let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
-            amount: Uint128::new(initial_deposit_amount - donation_amount),
+            amount: Uint128::new(initial_deposit_amount - 1000),
             recipient: staker.clone(),
         });
         vault.execute(app, &staker, &msg).unwrap();
 
         let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
-            amount: Uint128::new(donation_amount),
+            amount: Uint128::new(1000),
             recipient: beneficiary.clone(),
         });
         vault.execute(app, &beneficiary, &msg).unwrap();
