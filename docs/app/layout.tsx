@@ -1,7 +1,7 @@
 import "./globals.css";
 
 import { Layout, Navbar } from "nextra-theme-docs";
-import { Banner, Head } from "nextra/components";
+import { Head } from "nextra/components";
 import { getPageMap } from "nextra/page-map";
 import { SatLayerWordmark } from "./Icon";
 import type { ReactNode } from "react";
@@ -14,11 +14,7 @@ export const metadata: Metadata = {
     template: "%s | SatLayer Docs",
   },
 };
-const banner = (
-  <Banner storageKey="wip" dismissible={false}>
-    🚧 Work in progress! This site is under construction.
-  </Banner>
-);
+
 const navbar = (
   <Navbar
     logo={
@@ -45,7 +41,6 @@ export default async function RootLayout({
       <Head></Head>
       <body>
         <Layout
-          banner={banner}
           sidebar={{
             defaultMenuCollapseLevel: 1,
           }}
