@@ -207,17 +207,9 @@ mod vault_execute {
     use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, StdError, Timestamp};
     use cw20_base::contract::execute_burn as receipt_token_burn;
 
-    /// This executes a transfer of assets from the `info.sender` to the vault contract.
+    /// This executes a bank transfer of assets from the `info.sender` to the vault contract.
     ///
     /// New receipt token are minted, based on the exchange rate, to `msg.recipient`.  
-    ///
-    /// ### CW20 Variant Warning
-    ///
-    /// Underlying assets that are not strictly CW20 compliant may cause unexpected behavior in token balances.
-    /// For example, any token with a fee-on-transfer mechanism is not supported.
-    ///
-    /// Therefore, we do not support non-standard CW20 tokens.
-    /// Vault deployed with such tokens will be blacklisted in the vault-router.
     pub fn deposit_for(
         mut deps: DepsMut,
         env: Env,
@@ -299,7 +291,7 @@ mod vault_execute {
             underlying_token
         };
 
-        // CW20 transfer of staking asset to msg.recipient
+        // bank transfer of staking asset to msg.recipient
         let transfer_msg =
             UnderlyingToken::bank_send(deps.storage, &msg.recipient, claim_underlying_token)?;
 
