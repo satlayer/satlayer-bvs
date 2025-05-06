@@ -455,7 +455,7 @@ mod vault_execute {
             .add_attribute("sender", router.to_string())
             .add_attribute("amount", amount.0.to_string())
             .add_attribute(
-                "token",
+                "denom",
                 UnderlyingToken::get_denom(deps.storage)?.to_string(),
             );
 
