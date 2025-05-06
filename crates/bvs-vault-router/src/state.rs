@@ -2,7 +2,7 @@ use crate::msg::RequestSlashingPayload;
 use bvs_library::addr::{Operator, Service};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{to_json_vec, Addr, HexBinary, StdError, StdResult, Storage, Timestamp, Uint64};
-use cw_storage_plus::{Item, Key, KeyDeserialize, Map, PrimaryKey};
+use cw_storage_plus::{Item, Key, KeyDeserialize, Map, Prefixer, PrimaryKey};
 use sha3::Digest;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
@@ -106,6 +106,15 @@ impl SlashingRequestId {
 
         Ok(<[u8; 32]>::from(hasher.finalize()).into())
     }
+
+    /// Returns the hex string representation of the slashing request id
+    pub fn from_hex(hex: &str) -> StdResult<Self> {
+        let bytes = HexBinary::from_hex(hex)?;
+        if bytes.len() != 32 {
+            return Err(StdError::generic_err("Invalid hex length"));
+        }
+        Ok(SlashingRequestId(bytes))
+    }
 }
 
 impl fmt::Display for SlashingRequestId {
@@ -147,6 +156,12 @@ impl PrimaryKey<'_> for SlashingRequestId {
     type SuperSuffix = Self;
 
     fn key(&self) -> Vec<Key> {
+        vec![Key::Ref(self.0.as_slice())]
+    }
+}
+
+impl Prefixer<'_> for SlashingRequestId {
+    fn prefix(&self) -> Vec<Key> {
         vec![Key::Ref(self.0.as_slice())]
     }
 }
