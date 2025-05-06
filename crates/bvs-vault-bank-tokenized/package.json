@@ -1,0 +1,10 @@
+{
+  "name": "@satlayer/bvs-vault-bank-tokenized",
+  "private": false,
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "cosmwasm-optimizer --root=../"
+  }
+}

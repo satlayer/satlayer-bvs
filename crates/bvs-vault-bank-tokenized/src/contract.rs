@@ -6,7 +6,7 @@ use cw20_base::msg::InstantiateMsg as ReceiptCw20InstantiateMsg;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg as CombinedExecuteMsg, InstantiateMsg, QueryMsg};
-use bvs_vault_cw20::token as UnderlyingToken;
+use bvs_vault_bank::bank as UnderlyingToken;
 
 const CONTRACT_NAME: &str = concat!("crates.io:", env!("CARGO_PKG_NAME"));
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -26,17 +26,14 @@ pub fn instantiate(
     let operator = deps.api.addr_validate(&msg.operator)?;
     bvs_vault_base::router::set_operator(deps.storage, &operator)?;
 
-    let cw20_contract = deps.api.addr_validate(&msg.cw20_contract)?;
-    UnderlyingToken::instantiate(deps.storage, &cw20_contract)?;
+    UnderlyingToken::set_denom(deps.storage, &msg.denom)?;
 
-    // Assert that the contract is able
-    // to query the token info to ensure that the contract is properly set up
-    let underlying_token_info = UnderlyingToken::get_token_info(&deps.as_ref())?;
+    let denom_info = UnderlyingToken::query_metadata(&deps.as_ref())?;
 
     let receipt_token_instantiate = ReceiptCw20InstantiateMsg {
-        name: format!("SatLayer {}", underlying_token_info.name),
-        symbol: format!("sat{}", underlying_token_info.symbol),
-        decimals: underlying_token_info.decimals,
+        name: format!("SatLayer {}", denom_info.metadata.description),
+        symbol: format!("sat{}", denom_info.metadata.symbol),
+        decimals: msg.decimals,
         initial_balances: vec![],
         mint: None,
         marketing: None,
@@ -56,7 +53,7 @@ pub fn instantiate(
         .add_attribute("pauser", pauser)
         .add_attribute("router", router)
         .add_attribute("operator", operator)
-        .add_attribute("cw20_contract", cw20_contract);
+        .add_attribute("denom", msg.denom);
 
     Ok(response)
 }
@@ -200,27 +197,19 @@ mod receipt_cw20_execute {
 /// The extended execute msg set is practically `bvs-vault-base` crate's execute msg set.
 mod vault_execute {
     use crate::error::ContractError;
+    use bvs_vault_bank::bank as UnderlyingToken;
     use bvs_vault_base::error::VaultError;
     use bvs_vault_base::msg::{Recipient, RecipientAmount};
     use bvs_vault_base::{
         offset, router,
         shares::{self, QueuedWithdrawalInfo},
     };
-    use bvs_vault_cw20::token as UnderlyingToken;
-    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response};
+    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, StdError};
     use cw20_base::contract::execute_burn as receipt_token_burn;
 
-    /// This executes a transfer of assets from the `info.sender` to the vault contract.
+    /// This executes a bank transfer of assets from the `info.sender` to the vault contract.
     ///
     /// New receipt token are minted, based on the exchange rate, to `msg.recipient`.  
-    ///
-    /// ### CW20 Variant Warning
-    ///
-    /// Underlying assets that are not strictly CW20 compliant may cause unexpected behavior in token balances.
-    /// For example, any token with a fee-on-transfer mechanism is not supported.
-    ///
-    /// Therefore, we do not support non-standard CW20 tokens.
-    /// Vault deployed with such tokens will be blacklisted in the vault-router.
     pub fn deposit_for(
         mut deps: DepsMut,
         env: Env,
@@ -229,48 +218,51 @@ mod vault_execute {
     ) -> Result<Response, ContractError> {
         router::assert_whitelisted(&deps.as_ref(), &env)?;
 
-        let assets = msg.amount;
-
-        let new_receipt_tokens = {
-            let underlying_token_balance = UnderlyingToken::query_balance(&deps.as_ref(), &env)?;
-            let receipt_token_supply =
-                cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
-            let vault = offset::VirtualOffset::new(receipt_token_supply, underlying_token_balance)?;
-
-            vault.assets_to_shares(assets)?
+        // Determine and compare the assets to be deposited from `info.funds` and `msg.amount`
+        let amount_deposited = {
+            let denom = UnderlyingToken::get_denom(deps.storage)?;
+            let amount = cw_utils::must_pay(&info, denom.as_str())?;
+            if amount != msg.amount {
+                return Err(
+                    VaultError::insufficient("payable amount does not match msg.amount").into(),
+                );
+            }
+            amount
         };
 
-        // CW20 Transfer of asset from info.sender to contract
-        let transfer_msg = UnderlyingToken::execute_transfer_from(
-            deps.storage,
-            &info.sender,
-            &env.contract.address,
-            assets,
-        )?;
+        let new_receipt_tokens_to_be_mint = {
+            // Bank balance is after deposit, we need to calculate the balance before deposit
+            let after_balance = UnderlyingToken::query_balance(&deps.as_ref(), &env)?;
+            let before_balance = after_balance
+                .checked_sub(amount_deposited)
+                .map_err(StdError::from)?;
+            let total_receipt_token_supply =
+                cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
+            let vault = offset::VirtualOffset::new(total_receipt_token_supply, before_balance)?;
+
+            vault.assets_to_shares(amount_deposited)?
+        };
 
         // critical section
         // Issue receipt token to msg.recipient
-        {
-            // mint new receipt token to staker
-            super::receipt_cw20_execute::mint_internal(
-                deps.branch(),
-                msg.recipient.clone(),
-                new_receipt_tokens,
-            )?;
-        }
+        // mint new receipt token to staker
+        super::receipt_cw20_execute::mint_internal(
+            deps.branch(),
+            msg.recipient.clone(),
+            new_receipt_tokens_to_be_mint,
+        )?;
 
-        let total_supply = cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
+        let total_receipt_token_supply =
+            cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
 
-        Ok(Response::new()
-            .add_event(
-                Event::new("DepositFor")
-                    .add_attribute("sender", info.sender.to_string())
-                    .add_attribute("recipient", msg.recipient)
-                    .add_attribute("assets", assets.to_string())
-                    .add_attribute("shares", new_receipt_tokens.to_string())
-                    .add_attribute("total_shares", total_supply.to_string()),
-            )
-            .add_message(transfer_msg))
+        Ok(Response::new().add_event(
+            Event::new("DepositFor")
+                .add_attribute("sender", info.sender.to_string())
+                .add_attribute("recipient", msg.recipient)
+                .add_attribute("assets", amount_deposited.to_string())
+                .add_attribute("shares", new_receipt_tokens_to_be_mint.to_string())
+                .add_attribute("total_shares", total_receipt_token_supply.to_string()),
+        ))
     }
 
     /// Withdraw assets from the vault by burning receipt token.
@@ -299,15 +291,13 @@ mod vault_execute {
             underlying_token
         };
 
-        // CW20 transfer of staking asset to msg.recipient
-        let transfer_msg = UnderlyingToken::execute_new_transfer(
-            deps.storage,
-            &msg.recipient,
-            claim_underlying_token,
-        )?;
+        // bank transfer of staking asset to msg.recipient
+        let transfer_msg =
+            UnderlyingToken::bank_send(deps.storage, &msg.recipient, claim_underlying_token)?;
 
         // Burn the receipt token from the sender
         receipt_token_burn(deps.branch(), env.clone(), info.clone(), receipt_tokens)?;
+
         let total_supply = cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
 
         Ok(Response::new()
@@ -406,9 +396,8 @@ mod vault_execute {
             assets
         };
 
-        // CW20 transfer of asset to msg.recipient
-        let transfer_msg =
-            UnderlyingToken::execute_new_transfer(deps.storage, &msg.0, claimed_assets)?;
+        // bank transfer of asset to msg.recipient
+        let transfer_msg = UnderlyingToken::bank_send(deps.storage, &msg.0, claimed_assets)?;
 
         // When staker queued the withdrawal
         // The receipt token is ill-liquidated from the staker
@@ -460,14 +449,14 @@ mod vault_execute {
             return Err(VaultError::insufficient("Not enough balance").into());
         }
 
-        let transfer_msg = UnderlyingToken::execute_new_transfer(deps.storage, &router, amount.0)?;
+        let transfer_msg = UnderlyingToken::bank_send(deps.storage, &router, amount.0)?;
 
         let event = Event::new("SlashLocked")
             .add_attribute("sender", router.to_string())
             .add_attribute("amount", amount.0.to_string())
             .add_attribute(
-                "token",
-                UnderlyingToken::get_cw20_contract(deps.storage)?.to_string(),
+                "denom",
+                UnderlyingToken::get_denom(deps.storage)?.to_string(),
             );
 
         Ok(Response::new().add_event(event).add_message(transfer_msg))
@@ -505,12 +494,12 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<cosmwasm_std::Bin
 }
 
 mod vault_query {
+    use bvs_vault_bank::bank as UnderlyingToken;
     use bvs_vault_base::msg::VaultInfoResponse;
     use bvs_vault_base::{
         offset,
         shares::{self, QueuedWithdrawalInfo},
     };
-    use bvs_vault_cw20::token as UnderlyingToken;
     use cosmwasm_std::{Addr, Deps, Env, StdResult, Uint128};
     use cw20_base::contract::query_balance;
 
@@ -578,7 +567,7 @@ mod vault_query {
     pub fn vault_info(deps: Deps, env: Env) -> StdResult<VaultInfoResponse> {
         let balance = UnderlyingToken::query_balance(&deps, &env)?;
         let receipt_token_supply = cw20_base::contract::query_token_info(deps)?.total_supply;
-        let cw20_contract = UnderlyingToken::get_cw20_contract(deps.storage)?;
+        let underlying_token = UnderlyingToken::get_denom(deps.storage)?;
         let version = cw2::get_contract_version(deps.storage)?;
         Ok(VaultInfoResponse {
             total_shares: receipt_token_supply,
@@ -587,9 +576,9 @@ mod vault_query {
             pauser: bvs_pauser::api::get_pauser(deps.storage)?,
             operator: bvs_vault_base::router::get_operator(deps.storage)?,
             asset_id: format!(
-                "cosmos:{}/cw20:{}",
+                "cosmos:{}/bank:{}",
                 env.block.chain_id,
-                cw20_contract.as_str()
+                underlying_token.as_str()
             ),
             contract: version.contract,
             version: version.version,

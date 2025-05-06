@@ -9,6 +9,7 @@
     "@satlayer/bvs-registry": "workspace:*",
     "@satlayer/bvs-rewards": "workspace:*",
     "@satlayer/bvs-vault-bank": "workspace:*",
+    "@satlayer/bvs-vault-bank-tokenized": "workspace:*",
     "@satlayer/bvs-vault-cw20": "workspace:*",
     "@satlayer/bvs-vault-cw20-tokenized": "workspace:*",
     "@satlayer/bvs-vault-factory": "workspace:*",

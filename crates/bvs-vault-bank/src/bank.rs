@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    Addr, BalanceResponse, BankMsg, BankQuery, Coin, Deps, Env, QueryRequest, StdResult, Storage,
-    Uint128,
+    Addr, BalanceResponse, BankMsg, BankQuery, Coin, DenomMetadataResponse, Deps, Env,
+    QueryRequest, StdResult, Storage, Uint128,
 };
 use cw_storage_plus::Item;
 
@@ -41,12 +41,22 @@ pub fn bank_send(
     Ok(msg.into())
 }
 
+/// Query the metadata of the bank denom, using [BankQuery::DenomMetadata]
+pub fn query_metadata(deps: &Deps) -> StdResult<DenomMetadataResponse> {
+    let denom = DENOM.load(deps.storage)?;
+
+    let query = BankQuery::DenomMetadata { denom };
+    let res: DenomMetadataResponse = deps.querier.query(&QueryRequest::Bank(query))?;
+
+    Ok(res)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::bank;
     use crate::bank::set_denom;
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
-    use cosmwasm_std::{coins, Coin, CosmosMsg, Uint128};
+    use cosmwasm_std::{coins, Coin, CosmosMsg, DenomMetadata, DenomUnit, Uint128};
 
     #[test]
     fn test_get_denom() {
@@ -139,5 +149,31 @@ mod tests {
                 }]
             })
         )
+    }
+
+    #[test]
+    fn test_query_metadata() {
+        let denom_meta = DenomMetadata {
+            description: "Test Token".to_string(),
+            denom_units: vec![DenomUnit {
+                // base unit
+                denom: "denom".to_string(),
+                exponent: 0,
+                aliases: vec![],
+            }],
+            base: "denom".to_string(), // <- MUST equal the queried denom
+            display: "denom".to_string(),
+            name: "Test Token".to_string(),
+            symbol: "TEST".to_string(),
+            uri: "".to_string(),
+            uri_hash: "".to_string(),
+        };
+        let mut deps = mock_dependencies();
+
+        bank::set_denom(&mut deps.storage, "denom").unwrap();
+        deps.querier.bank.set_denom_metadata(&[denom_meta.clone()]);
+        let metadata = bank::query_metadata(&deps.as_ref()).unwrap();
+
+        assert_eq!(metadata.metadata, denom_meta);
     }
 }
