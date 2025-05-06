@@ -41,6 +41,7 @@ pub fn bank_send(
     Ok(msg.into())
 }
 
+/// Query the metadata of the bank denom, using [BankQuery::DenomMetadata]
 pub fn query_metadata(deps: &Deps) -> StdResult<DenomMetadataResponse> {
     let denom = DENOM.load(deps.storage)?;
 
