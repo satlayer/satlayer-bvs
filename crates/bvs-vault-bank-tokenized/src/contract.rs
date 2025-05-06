@@ -439,7 +439,7 @@ mod vault_execute {
     ) -> Result<Response, ContractError> {
         router::assert_router(deps.as_ref().storage, &info)?;
 
-        // if the code get passed above assert_router, it means the sender is the router
+        // If the code above (`assert_router`) succeeds, it means the sender is the router
         // No need to load from storage.
         let router = info.sender;
 
