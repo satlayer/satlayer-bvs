@@ -519,7 +519,7 @@ mod vault_query {
     /// Such that querying shares is equivalent to querying the receipt token balance of a
     /// particular staker/address.
     /// But we will support this query to keep the API consistent with the non-tokenized vault.
-    /// Hopefully that helps with contract consumer/frontend to minimize code changes.
+    /// This helps with the contract consumer/frontend to minimize code changes.
     pub fn balance_of(deps: Deps, staker: String) -> StdResult<Uint128> {
         // this func come from the cw20_base crate
         // validate the staker address
