@@ -758,7 +758,7 @@ fn test_queue_withdrawal_to_successfully() {
     assert_eq!(response.queued_shares, Uint128::new(10000));
     assert_eq!(
         response.unlock_timestamp,
-        Timestamp::from_seconds(1571797519)
+        Timestamp::from_nanos(1571797519879305533)
     );
 }
 

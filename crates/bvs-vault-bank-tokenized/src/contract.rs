@@ -204,7 +204,7 @@ mod vault_execute {
         offset, router,
         shares::{self, QueuedWithdrawalInfo},
     };
-    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, StdError, Timestamp};
+    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, StdError};
     use cw20_base::contract::execute_burn as receipt_token_burn;
 
     /// This executes a bank transfer of assets from the `info.sender` to the vault contract.
@@ -335,9 +335,8 @@ mod vault_execute {
 
         let withdrawal_lock_period: u64 =
             router::get_withdrawal_lock_period(&deps.as_ref())?.into();
-        let current_timestamp = env.block.time.seconds();
-        let unlock_timestamp =
-            Timestamp::from_seconds(withdrawal_lock_period).plus_seconds(current_timestamp);
+        let current_timestamp = env.block.time;
+        let unlock_timestamp = current_timestamp.plus_seconds(withdrawal_lock_period);
 
         let new_queued_withdrawal_info = QueuedWithdrawalInfo {
             queued_shares: msg.amount,
