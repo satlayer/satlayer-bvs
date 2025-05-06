@@ -85,7 +85,7 @@ mod execute {
         offset, router,
         shares::{self, QueuedWithdrawalInfo},
     };
-    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, Timestamp};
+    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response};
 
     /// This executes a transfer of assets from the `info.sender` to the vault contract.
     ///

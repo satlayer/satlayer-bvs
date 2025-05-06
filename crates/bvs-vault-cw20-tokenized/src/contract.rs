@@ -207,7 +207,7 @@ mod vault_execute {
         shares::{self, QueuedWithdrawalInfo},
     };
     use bvs_vault_cw20::token as UnderlyingToken;
-    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, Timestamp};
+    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response};
     use cw20_base::contract::execute_burn as receipt_token_burn;
 
     /// This executes a transfer of assets from the `info.sender` to the vault contract.
