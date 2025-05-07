@@ -9,7 +9,7 @@ const packages = ["darwin-arm64", "darwin-x64", "linux-arm64", "linux-x64", "win
 
 for (const pkg of packages) {
   try {
-    const binary = require.resolve(pkg + "/satlayer");
+    const binary = require.resolve(`@satlayer/cli-${pkg}/satlayer`);
     if (existsSync(binary)) {
       symlinkSync(binary, join(__dirname, "satlayer"));
       process.exit(0);
