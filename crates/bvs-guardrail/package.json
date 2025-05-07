@@ -1,0 +1,10 @@
+{
+  "name": "@satlayer/bvs-guardrail",
+  "private": false,
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "cosmwasm-optimizer --root=../"
+  }
+}

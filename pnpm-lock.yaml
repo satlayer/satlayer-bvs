@@ -44,6 +44,8 @@ importers:
 
   crates: {}
 
+  crates/bvs-guardrail: {}
+
   crates/bvs-pauser: {}
 
   crates/bvs-registry: {}
@@ -139,6 +141,9 @@ importers:
 
   modules/cosmwasm-schema:
     devDependencies:
+      '@satlayer/bvs-guardrail':
+        specifier: workspace:*
+        version: link:../../crates/bvs-guardrail
       '@satlayer/bvs-pauser':
         specifier: workspace:*
         version: link:../../crates/bvs-pauser
@@ -219,6 +224,9 @@ importers:
 
   packages/cosmwasm-schema:
     devDependencies:
+      '@satlayer/bvs-guardrail':
+        specifier: workspace:*
+        version: link:../../crates/bvs-guardrail
       '@satlayer/bvs-pauser':
         specifier: workspace:*
         version: link:../../crates/bvs-pauser

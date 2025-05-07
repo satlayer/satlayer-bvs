@@ -35,7 +35,7 @@ pub fn instantiate(
     let members = members; // let go of mutability
 
     let mut total = Uint64::zero();
-    for member in members.into_iter() {
+    for member in members.clone().into_iter() {
         let member_weight = Uint64::from(member.weight);
         total = total.checked_add(member_weight)?;
         let member_addr = deps.api.addr_validate(&member.addr)?;
@@ -51,7 +51,10 @@ pub fn instantiate(
     // TODO: need to add voters, threshold, total_weight to events ??
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("owner", owner))
+        .add_attribute("owner", owner)
+        .add_attribute("threshold", format!("{:?}", cfg.threshold))
+        .add_attribute("total_weight", total.to_string())
+        .add_attribute("members", members.len().to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -552,6 +555,7 @@ mod tests {
     use cw2::{get_contract_version, ContractVersion};
     use cw3::{Proposal, Status, Vote, Votes};
     use cw4::Member;
+    use cw_utils::Threshold::AbsolutePercentage;
     use cw_utils::{Expiration, Threshold};
 
     /// create a 2-of-4 multisig voter
@@ -643,7 +647,24 @@ mod tests {
         }
 
         // Setup
-        setup(deps.as_mut(), env, info).unwrap();
+        let res = setup(deps.as_mut(), env, info).unwrap();
+        assert_eq!(
+            res,
+            Response::new()
+                .add_attribute("method", "instantiate")
+                .add_attribute("owner", owner.clone())
+                .add_attribute(
+                    "threshold",
+                    format!(
+                        "{:?}",
+                        AbsolutePercentage {
+                            percentage: Decimal::percent(50)
+                        }
+                    )
+                )
+                .add_attribute("total_weight", "4")
+                .add_attribute("members", "5")
+        );
 
         // Verify
         assert_eq!(
