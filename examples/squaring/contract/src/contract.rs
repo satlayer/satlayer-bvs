@@ -98,6 +98,7 @@ pub mod execute {
     use bvs_registry::msg::StatusResponse;
     use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, DepsMut, Env, MessageInfo, Response};
 
+    /// Request for a squaring computation.
     pub fn request(
         deps: DepsMut,
         _env: Env,
@@ -112,6 +113,7 @@ pub mod execute {
             .add_attribute("input", input.to_string()))
     }
 
+    /// Operator responds with the output of the squaring computation.
     pub fn respond(
         deps: DepsMut,
         env: Env,
@@ -150,6 +152,8 @@ pub mod execute {
             .add_attribute("output", output.to_string()))
     }
 
+    /// Compute the result of the squaring computation on-chain to prove the operator has responded
+    /// wrongly. Optimism-like slashing.
     pub fn compute(
         deps: DepsMut,
         env: Env,
@@ -202,6 +206,9 @@ pub mod execute {
             .add_attribute("new_output", new_output.to_string()))
     }
 
+    /// Cancel the slashing request,
+    /// this could be due to the operator temporary fault that is not malicious
+    /// and has been resolved.
     pub fn slashing_cancel(
         deps: DepsMut,
         _env: Env,
@@ -220,6 +227,7 @@ pub mod execute {
             .add_attribute("operator", operator.to_string()))
     }
 
+    /// Advance the slashing request to the next stage.
     pub fn slashing_lock(
         _deps: DepsMut,
         _env: Env,
@@ -232,6 +240,7 @@ pub mod execute {
             .add_attribute("operator", operator.to_string()))
     }
 
+    /// Finalize the slashing request.
     pub fn slashing_finalize(
         _deps: DepsMut,
         _env: Env,
@@ -244,6 +253,7 @@ pub mod execute {
             .add_attribute("operator", operator.to_string()))
     }
 
+    /// Register an operator to the service.
     pub fn register_operator(
         deps: DepsMut,
         _env: Env,
@@ -270,6 +280,7 @@ pub mod execute {
             .add_attribute("operator", operator.to_string()))
     }
 
+    /// Deregister an operator from the service.
     pub fn deregister_operator(
         deps: DepsMut,
         _env: Env,
@@ -298,6 +309,7 @@ pub mod execute {
             .add_attribute("operator", operator.to_string()))
     }
 
+    /// Enable slashing for the service with the given parameters.
     pub fn enable_slashing(
         deps: DepsMut,
         env: Env,
@@ -326,6 +338,7 @@ pub mod execute {
             .add_attribute("method", "EnableSlashing"))
     }
 
+    /// Disable slashing for the service.
     pub fn disable_slashing(
         deps: DepsMut,
         _env: Env,
@@ -359,6 +372,10 @@ pub fn expensive_computation(input: i64) -> i64 {
     input * input
 }
 
+/// Allow the contract to be reply-ed when the slashing request is created.
+/// This is to allow concurrent slashing requests to be handled.
+/// For example,
+/// you can't have multiple slashing requests for the same operator at the same time.
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(_deps: DepsMut, _env: Env, _msg: cosmwasm_std::Reply) -> StdResult<Response> {
     // Not handled. To allow slashing to fail gracefully, e.g. slashing is occupied and in-progress.
