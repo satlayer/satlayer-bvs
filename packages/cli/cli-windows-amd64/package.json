@@ -1,0 +1,19 @@
+{
+  "name": "@satlayer/cli-windows-amd64",
+  "private": false,
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "mkdir -p dist && cp node_modules/@modules/cosmwasm-cli/dist/windows-amd64 dist/satlayer"
+  },
+  "devDependencies": {
+    "@modules/cosmwasm-cli": "workspace:*"
+  },
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ]
+}

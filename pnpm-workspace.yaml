@@ -6,3 +6,4 @@ packages:
   - "modules"
   - "modules/*"
   - "packages/*"
+  - "packages/cli/*"
