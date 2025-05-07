@@ -18,7 +18,7 @@ for (const name of packages) {
 
   writeFileSync(join(dir, "package.json"), JSON.stringify(packageJson, null, 2));
 
-  const binary = require.resolve("@modules/cosmwasm-cli/dist/" + name);
+  const binary = join("node_modules/@modules/cosmwasm-cli/dist", name);
   const target = join(dir, "satlayer");
   cpSync(binary, target);
 }
