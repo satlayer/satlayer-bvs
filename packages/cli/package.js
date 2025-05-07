@@ -24,14 +24,20 @@ for (const name of packages) {
 }
 
 // Modify the package.json of the main package
-const packageJson = JSON.parse(readFileSync("package.json").toString("utf-8"));
-packageJson.scripts = {
-  postinstall: "node postinstall.js",
+const packageJson = {
+  name: "@satlayer/cli",
+  private: false,
+  bin: {
+    satlayer: "satlayer",
+  },
+  files: ["postinstall.js"],
+  scripts: {
+    postinstall: "node postinstall.js",
+  },
+  optionalDependencies: packages.reduce((acc, name) => {
+    acc[`@satlayer/cli-${name}`] = `workspace:*`;
+    return acc;
+  }, {}),
 };
-delete packageJson.devDependencies;
 
-packageJson.optionalDependencies = packages.reduce((acc, name) => {
-  acc[`@satlayer/cli-${name}`] = `workspace:*`;
-  return acc;
-}, {});
 writeFileSync("package.json", JSON.stringify(packageJson, null, 2));

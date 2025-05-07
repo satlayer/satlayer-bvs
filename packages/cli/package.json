@@ -1,6 +1,6 @@
 {
   "name": "@satlayer/cli",
-  "private": false,
+  "private": true,
   "bin": {
     "satlayer": "satlayer"
   },
