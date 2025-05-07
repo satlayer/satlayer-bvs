@@ -1,5 +1,5 @@
 use bvs_library::ownership::OwnershipError;
-use cosmwasm_std::StdError;
+use cosmwasm_std::{OverflowError, StdError};
 use cw_utils::ThresholdError;
 use thiserror::Error;
 
@@ -13,6 +13,12 @@ pub enum ContractError {
 
     #[error("{0}")]
     Threshold(#[from] ThresholdError),
+
+    #[error("{0}")]
+    Cw4Group(#[from] cw4_group::ContractError),
+
+    #[error("{0}")]
+    Overflow(#[from] OverflowError),
 
     #[error("Required weight cannot be zero")]
     ZeroWeight {},
@@ -49,4 +55,7 @@ pub enum ContractError {
 
     #[error("Proposal already exists")]
     ProposalAlreadyExists,
+
+    #[error("Proposal does not exist")]
+    ProposalNotFound {},
 }
