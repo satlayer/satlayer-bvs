@@ -42,6 +42,7 @@ async function generate(schema) {
 const packages = [
   "@satlayer/bvs-pauser",
   "@satlayer/bvs-registry",
+  "@satlayer/bvs-guardrail",
   "@satlayer/bvs-vault-router",
   "@satlayer/bvs-vault-cw20",
   "@satlayer/bvs-vault-cw20-tokenized",
