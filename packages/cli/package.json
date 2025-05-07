@@ -4,15 +4,14 @@
   "bin": {
     "satlayer": "satlayer"
   },
+  "files": [
+    "postinstall.js"
+  ],
   "scripts": {
-    "postinstall": "node postinstall.js"
+    "postinstall": "node postinstall.js",
+    "package": "node package.js"
   },
-  "optionalDependencies": {
-    "@satlayer/cli-darwin-adm64": "workspace:*",
-    "@satlayer/cli-darwin-arm64": "workspace:*",
-    "@satlayer/cli-linux-amd64": "workspace:*",
-    "@satlayer/cli-linux-arm64": "workspace:*",
-    "@satlayer/cli-windows-amd64": "workspace:*",
-    "@satlayer/cli-windows-arm64": "workspace:*"
+  "devDependencies": {
+    "@modules/cosmwasm-cli": "workspace:*"
   }
 }

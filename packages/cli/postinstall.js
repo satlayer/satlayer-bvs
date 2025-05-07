@@ -1,5 +1,5 @@
 const { join } = require("node:path");
-const { mkdirSync, existsSync, readFileSync } = require("node:fs");
+const { existsSync, readFileSync } = require("node:fs");
 
 if (existsSync(join(__dirname, "satlayer"))) {
   process.exit(0);
