@@ -36,7 +36,7 @@ const command = [
 ];
 
 if (process.env.DOCKER_CACHE_FROM) {
-  const registry = process.env.DOCKER_CACHE_TO;
+  const registry = process.env.DOCKER_CACHE_FROM;
   command.push("--cache-from", `type=registry,ref=${registry}:${name}`);
 }
 
