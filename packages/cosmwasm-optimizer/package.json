@@ -1,7 +1,12 @@
 {
-  "name": "@packages/cosmwasm-optimizer",
-  "private": true,
+  "name": "@satlayer/cosmwasm-optimizer",
+  "private": false,
+  "license": "MIT",
   "bin": {
     "cosmwasm-optimizer": "bin.js"
-  }
+  },
+  "files": [
+    "bin.js",
+    "Dockerfile"
+  ]
 }
