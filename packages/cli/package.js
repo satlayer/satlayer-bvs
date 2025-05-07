@@ -28,6 +28,7 @@ for (const name of packages) {
 // Modify the package.json of the main package
 const packageJson = {
   name: "@satlayer/cli",
+  version,
   private: false,
   bin: {
     satlayer: "satlayer",
