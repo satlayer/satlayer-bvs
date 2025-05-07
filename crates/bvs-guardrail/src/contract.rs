@@ -170,7 +170,7 @@ mod execute {
             .ok_or(ContractError::ProposalNotFound {})?;
 
         // ensure proposal exists and can be voted on
-        let mut prop = PROPOSALS.load(deps.storage, proposal_id.clone())?;
+        let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
         // Allow voting on Passed and Rejected proposals too,
         if ![Status::Open, Status::Passed, Status::Rejected].contains(&prop.status) {
             return Err(ContractError::NotOpen {});
@@ -185,22 +185,18 @@ mod execute {
             .ok_or(ContractError::Unauthorized {})?;
 
         // cast vote if no vote previously cast
-        BALLOTS.update(
-            deps.storage,
-            (proposal_id.clone(), &info.sender),
-            |bal| match bal {
-                Some(_) => Err(ContractError::AlreadyVoted {}),
-                None => Ok(Ballot {
-                    weight: vote_power,
-                    vote,
-                }),
-            },
-        )?;
+        BALLOTS.update(deps.storage, (proposal_id, &info.sender), |bal| match bal {
+            Some(_) => Err(ContractError::AlreadyVoted {}),
+            None => Ok(Ballot {
+                weight: vote_power,
+                vote,
+            }),
+        })?;
 
         // update vote tally
         prop.votes.add_vote(vote, vote_power);
         prop.update_status(&env.block);
-        PROPOSALS.save(deps.storage, proposal_id.clone(), &prop)?;
+        PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
         Ok(Response::new().add_event(
             Event::new("vote")
@@ -225,7 +221,7 @@ mod execute {
             .may_load(deps.storage, slash_request_id.clone())?
             .ok_or(ContractError::ProposalNotFound {})?;
 
-        let mut prop = PROPOSALS.load(deps.storage, proposal_id.clone())?;
+        let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
         if [Status::Executed, Status::Rejected, Status::Passed].contains(&prop.status) {
             return Err(ContractError::WrongCloseStatus {});
         }
@@ -239,7 +235,7 @@ mod execute {
 
         // set it to rejected
         prop.status = Status::Rejected;
-        PROPOSALS.save(deps.storage, proposal_id.clone(), &prop)?;
+        PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
         Ok(Response::new().add_event(
             Event::new("close")
@@ -372,7 +368,7 @@ mod query {
     }
 
     pub fn proposal(deps: Deps, env: Env, id: ProposalId) -> StdResult<ProposalResponse> {
-        let prop = PROPOSALS.load(deps.storage, id.clone())?;
+        let prop = PROPOSALS.load(deps.storage, id)?;
         let status = prop.current_status(&env.block);
         let threshold = prop.threshold.to_response(prop.total_weight);
         Ok(ProposalResponse {
@@ -399,7 +395,7 @@ mod query {
                 "No proposal found for slashing request id: {:?}",
                 slashing_request_id
             )))?;
-        proposal(deps, env, proposal_id).into()
+        proposal(deps, env, proposal_id)
     }
 
     // settings for pagination
@@ -463,7 +459,7 @@ mod query {
 
     pub fn vote(deps: Deps, proposal_id: ProposalId, voter: String) -> StdResult<VoteResponse> {
         let voter = deps.api.addr_validate(&voter)?;
-        let ballot = BALLOTS.may_load(deps.storage, (proposal_id.clone(), &voter))?;
+        let ballot = BALLOTS.may_load(deps.storage, (proposal_id, &voter))?;
         let vote = ballot.map(|b| VoteInfo {
             proposal_id,
             voter: voter.into(),
@@ -497,12 +493,12 @@ mod query {
         let start = start_after.map(|s| Bound::ExclusiveRaw(s.into()));
 
         let votes = BALLOTS
-            .prefix(proposal_id.clone())
+            .prefix(proposal_id)
             .range(deps.storage, start, None, Order::Ascending)
             .take(limit)
             .map(|item| {
                 item.map(|(addr, ballot)| VoteInfo {
-                    proposal_id: proposal_id.clone(),
+                    proposal_id,
                     voter: addr.into(),
                     vote: ballot.vote,
                     weight: ballot.weight,
@@ -1411,14 +1407,61 @@ mod tests {
         members.sort();
 
         let mut expected_members = vec![
+            (owner.clone(), 0),
+            (voter2.clone(), 1),
+            (voter3.clone(), 1),
+            (voter4.clone(), 1),
+            (voter5.clone(), 1),
+        ];
+        expected_members.sort();
+
+        assert_eq!(members, expected_members);
+
+        // add voter5 weight to 2 and add new voter6
+        let update_msg = ExecuteMsg::UpdateMembers {
+            remove: vec![],
+            add: vec![
+                Member {
+                    addr: voter5.to_string(),
+                    weight: 2, // update weight
+                },
+                Member {
+                    addr: voter6.to_string(),
+                    weight: 1,
+                },
+            ],
+        };
+        // execute update successfully
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), update_msg.clone());
+        assert_eq!(
+            res,
+            Ok(Response::new().add_event(
+                Event::new("update_members")
+                    .add_attribute("added", "2")
+                    .add_attribute("removed", "0")
+                    .add_attribute("total_weight", "6")
+            ))
+        );
+
+        // assert total weight is updated
+        let total = TOTAL.load(deps.as_ref().storage).unwrap();
+        assert_eq!(total, 6);
+
+        // assert the updated members are saved
+        let mut members = MEMBERS
+            .range(deps.as_ref().storage, None, None, Order::Ascending)
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        members.sort();
+        let mut expected_members = vec![
             (owner, 0),
             (voter2, 1),
             (voter3, 1),
             (voter4, 1),
-            (voter5, 1),
+            (voter5.clone(), 2),
+            (voter6.clone(), 1),
         ];
         expected_members.sort();
-
-        assert_eq!(members, expected_members)
+        assert_eq!(members, expected_members);
     }
 }
