@@ -35,12 +35,14 @@ const command = [
   rootDir,
 ];
 
-if (process.env.CI) {
-  command.push("--cache-from", `type=registry,ref=ghcr.io/satlayer/cosmwasm-optimizer-cache:${name}`);
+if (process.env.DOCKER_CACHE_FROM) {
+  const registry = process.env.DOCKER_CACHE_TO;
+  command.push("--cache-from", `type=registry,ref=${registry}:${name}`);
+}
 
-  if (process.env.DOCKER_CACHE_TO === "ghcr") {
-    command.push("--cache-to", `type=registry,ref=ghcr.io/satlayer/cosmwasm-optimizer-cache:${name},mode=max`);
-  }
+if (process.env.DOCKER_CACHE_TO) {
+  const registry = process.env.DOCKER_CACHE_TO;
+  command.push("--cache-to", `type=registry,ref=${registry}:${name},mode=max`);
 }
 
 execSync(command.join(" "), { stdio: "inherit" });

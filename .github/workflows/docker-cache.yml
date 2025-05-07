@@ -23,4 +23,5 @@ jobs:
 
       - run: turbo run build
         env:
-          DOCKER_CACHE_TO: ghcr
+          DOCKER_CACHE_FROM: ghcr.io/satlayer/cosmwasm-optimizer-cache
+          DOCKER_CACHE_TO: ghcr.io/satlayer/cosmwasm-optimizer-cache

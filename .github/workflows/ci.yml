@@ -96,6 +96,8 @@ jobs:
       - uses: ./.github/actions/setup
 
       - run: turbo run build
+        env:
+          DOCKER_CACHE_FROM: ghcr.io/satlayer/cosmwasm-optimizer-cache
 
       - name: Drift Detection
         uses: tj-actions/verify-changed-files@a1c6acee9df209257a246f2cc6ae8cb6581c1edf # v20
