@@ -1,17 +1,17 @@
 const { join } = require("node:path");
-const { existsSync, readFileSync } = require("node:fs");
+const { existsSync, symlinkSync } = require("node:fs");
 
 if (existsSync(join(__dirname, "satlayer"))) {
   process.exit(0);
 }
 
-const bins = Object.keys(JSON.parse(readFileSync("package.json")).optionalDependencies);
+const packages = ["darwin-arm64", "darwin-x64", "linux-arm64", "linux-x64", "win32-arm64", "win32-x64"];
 
-for (const pkg of bins) {
+for (const pkg of packages) {
   try {
-    const binary = require.resolve(pkg + "/dist/satlayer");
+    const binary = require.resolve(pkg + "/satlayer");
     if (existsSync(binary)) {
-      require("fs").symlinkSync(binary, join(__dirname, "satlayer"));
+      symlinkSync(binary, join(__dirname, "satlayer"));
       process.exit(0);
     }
   } catch {}
