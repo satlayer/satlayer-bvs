@@ -45,12 +45,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
 
-      - run: sed -i "s/version = \"0\.0\.0\"/version = \"${{ needs.version.outputs.crate }}\"/" crates/Cargo.toml
-      - run: pnpm --filter "@satlayer/*" exec npm version ${{ needs.version.outputs.npm }} --git-tag-version=false
-
-      - run: pnpm turbo run build --filter "@satlayer/*"
+      - run: pnpm turbo run build prepare --filter "@satlayer/*"
         env:
           DOCKER_CACHE_FROM: ghcr.io/satlayer/cosmwasm-optimizer-cache
+
+      - run: sed -i "s/version = \"0\.0\.0\"/version = \"${{ needs.version.outputs.crate }}\"/" crates/Cargo.toml
+      - run: pnpm --filter "@satlayer/*" exec npm version ${{ needs.version.outputs.npm }} --git-tag-version=false
 
       - run: pnpm config set "//registry.npmjs.org/:_authToken" "\${NPM_PACKAGES_TOKEN}" --location=global
 

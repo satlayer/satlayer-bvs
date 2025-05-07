@@ -1,12 +1,6 @@
 {
   "name": "@satlayer/cli",
   "private": true,
-  "bin": {
-    "satlayer": "satlayer"
-  },
-  "files": [
-    "postinstall.js"
-  ],
   "scripts": {
     "package": "node package.js"
   },
