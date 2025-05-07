@@ -47,6 +47,11 @@ fn instantiate() -> (App, BvsMultiTest, Addr) {
             .into(),
         )
         .unwrap();
+
+        app.update_block(|block| {
+            block.height += 1;
+            block.time = block.time.plus_seconds(10);
+        });
     }
 
     // Set up the operator, service to operator relationship
@@ -161,7 +166,7 @@ fn request_respond() {
 /// Request and respond with fault
 #[test]
 fn slashing_lifecycle() {
-    let (mut app, _, contract_addr) = instantiate();
+    let (mut app, bvs, contract_addr) = instantiate();
 
     let operator = app.api().addr_make("operator");
 
@@ -206,5 +211,36 @@ fn slashing_lifecycle() {
         app.execute(sender, cosmos_msg.into()).unwrap();
     }
 
-    // TODO(fuxingloh): next lifecycle of slashing
+    // Query vault-router to see if the slashing is in progress
+    {
+        let query = bvs_vault_router::msg::QueryMsg::SlashingRequestId {
+            service: contract_addr.to_string(),
+            operator: operator.to_string(),
+        };
+        let bvs_vault_router::msg::SlashingRequestIdResponse(some) =
+            bvs.vault_router.query(&app, &query).unwrap();
+        let slashing_id = some.unwrap();
+
+        let query = bvs_vault_router::msg::QueryMsg::SlashingRequest(slashing_id);
+        let bvs_vault_router::msg::SlashingRequestResponse(some) =
+            bvs.vault_router.query(&app, &query).unwrap();
+        assert_eq!(
+            some.unwrap(),
+            bvs_vault_router::state::SlashingRequest {
+                request: bvs_vault_router::msg::RequestSlashingPayload {
+                    operator: operator.to_string(),
+                    bips: 1,
+                    timestamp: app.block_info().time,
+                    metadata: bvs_vault_router::msg::SlashingMetadata {
+                        reason: "Invalid Prove".to_string(),
+                    },
+                },
+                request_time: app.block_info().time,
+                request_expiry: app.block_info().time.plus_seconds(120),
+            },
+        )
+    }
+
+    // TODO(fuxingloh): slashing lifecycle: locked
+    // TODO(fuxingloh): slashing lifecycle: finalize
 }
