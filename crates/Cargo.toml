@@ -57,6 +57,8 @@ cw20 = "2.0.0"
 cw20-base = "2.0.0"
 cw-utils = "2.0.0"
 cw3 = "2.0.0"
+cw4 = "2.0.0"
+cw4-group = "2.0.0"
 
 # CosmWasm Libraries & Contracts
 bvs-library = { path = "./bvs-library", version = "0.0.0" }
