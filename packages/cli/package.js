@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const packages = ["darwin-arm64", "darwin-x64", "linux-arm64", "linux-x64", "win32-arm64", "win32-x64"];
@@ -22,3 +22,16 @@ for (const name of packages) {
   const target = join(dir, "satlayer");
   cpSync(binary, target);
 }
+
+// Modify the package.json of the main package
+const packageJson = JSON.parse(readFileSync(join(__dirname, "package.json")).toString("utf-8"));
+packageJson.scripts = {
+  ...packageJson.scripts,
+  postinstall: "node postinstall.js",
+};
+
+packageJson.optionalDependencies = packages.reduce((acc, name) => {
+  acc[`@satlayer/cli-${name}`] = `workspace:*`;
+  return acc;
+});
+writeFileSync(join(__dirname, "package.json"), JSON.stringify(packageJson, null, 2));

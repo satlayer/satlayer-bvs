@@ -8,7 +8,6 @@
     "postinstall.js"
   ],
   "scripts": {
-    "postinstall": "node postinstall.js",
     "package": "node package.js"
   },
   "devDependencies": {
