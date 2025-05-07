@@ -38,7 +38,7 @@ const packageJson = {
     postinstall: "node postinstall.js",
   },
   optionalDependencies: packages.reduce((acc, name) => {
-    acc[`@satlayer/cli-${name}`] = `workspace:*`;
+    acc[`@satlayer/cli-${name}`] = version;
     return acc;
   }, {}),
 };
