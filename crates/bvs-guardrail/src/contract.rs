@@ -913,9 +913,7 @@ mod tests {
         let proposal_id = SLASHING_REQUEST_TO_PROPOSAL
             .load(deps.as_ref().storage, slash_request_id.clone())
             .unwrap();
-        let prop = PROPOSALS
-            .load(deps.as_ref().storage, proposal_id.clone())
-            .unwrap();
+        let prop = PROPOSALS.load(deps.as_ref().storage, proposal_id).unwrap();
         assert_eq!(prop.current_status(&env.block), Status::Open);
 
         // execute vote Abstain for voter3
@@ -946,9 +944,7 @@ mod tests {
         }
 
         // check that the proposal status is still open
-        let prop = PROPOSALS
-            .load(deps.as_ref().storage, proposal_id.clone())
-            .unwrap();
+        let prop = PROPOSALS.load(deps.as_ref().storage, proposal_id).unwrap();
         assert_eq!(prop.current_status(&env.block), Status::Open);
 
         // execute vote Yes for voter4 to pass the proposal (>50%)
@@ -979,9 +975,7 @@ mod tests {
         }
 
         // check that the proposal status is passed
-        let prop = PROPOSALS
-            .load(deps.as_ref().storage, proposal_id.clone())
-            .unwrap();
+        let prop = PROPOSALS.load(deps.as_ref().storage, proposal_id).unwrap();
         assert_eq!(prop.current_status(&env.block), Status::Passed);
     }
 
@@ -1077,9 +1071,7 @@ mod tests {
         let proposal_id = SLASHING_REQUEST_TO_PROPOSAL
             .load(deps.as_ref().storage, slash_request_id.clone())
             .unwrap();
-        let prop = PROPOSALS
-            .load(deps.as_ref().storage, proposal_id.clone())
-            .unwrap();
+        let prop = PROPOSALS.load(deps.as_ref().storage, proposal_id).unwrap();
         assert_eq!(prop.current_status(&env.block), Status::Rejected);
 
         // voter can still vote on a rejected proposal as long as it is not expired
@@ -1213,9 +1205,7 @@ mod tests {
         let proposal_id = SLASHING_REQUEST_TO_PROPOSAL
             .load(deps.as_ref().storage, slash_request_id.clone())
             .unwrap();
-        let prop = PROPOSALS
-            .load(deps.as_ref().storage, proposal_id.clone())
-            .unwrap();
+        let prop = PROPOSALS.load(deps.as_ref().storage, proposal_id).unwrap();
         assert_eq!(prop.status, Status::Rejected);
     }
 
@@ -1295,9 +1285,7 @@ mod tests {
         let proposal_id = SLASHING_REQUEST_TO_PROPOSAL
             .load(deps.as_ref().storage, slash_request_id.clone())
             .unwrap();
-        let prop = PROPOSALS
-            .load(deps.as_ref().storage, proposal_id.clone())
-            .unwrap();
+        let prop = PROPOSALS.load(deps.as_ref().storage, proposal_id).unwrap();
         assert_eq!(prop.current_status(&env.block), Status::Passed);
 
         // move the env time to expire the proposal
@@ -1316,9 +1304,7 @@ mod tests {
         assert_eq!(err, ContractError::WrongCloseStatus {});
 
         // check that the proposal status is still passed
-        let prop = PROPOSALS
-            .load(deps.as_ref().storage, proposal_id.clone())
-            .unwrap();
+        let prop = PROPOSALS.load(deps.as_ref().storage, proposal_id).unwrap();
         assert_eq!(prop.status, Status::Passed);
     }
 
