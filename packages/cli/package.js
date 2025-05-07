@@ -28,6 +28,7 @@ const packageJson = JSON.parse(readFileSync("package.json").toString("utf-8"));
 packageJson.scripts = {
   postinstall: "node postinstall.js",
 };
+delete packageJson.devDependencies;
 
 packageJson.optionalDependencies = packages.reduce((acc, name) => {
   acc[`@satlayer/cli-${name}`] = `workspace:*`;
