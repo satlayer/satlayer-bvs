@@ -1,10 +1,9 @@
 use crate::state::ProposalId;
 use bvs_vault_router::state::SlashingRequestId;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, CosmosMsg, Empty};
-use cw3::{DepositInfo, Status, Vote};
+use cw3::Vote;
 use cw4::Member;
-use cw_utils::{Expiration, Threshold, ThresholdResponse};
+use cw_utils::{Expiration, Threshold};
 
 #[cw_serde]
 pub struct InstantiateMsg {

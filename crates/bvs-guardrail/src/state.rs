@@ -1,14 +1,12 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, StdError, StdResult, Storage};
+use cosmwasm_std::{Addr, StdResult, Storage};
 
-use bvs_library::storage::EVERY_SECOND;
 use bvs_vault_router::state::SlashingRequestId;
 use cw3::{Ballot, Proposal};
 use cw4::{
     MEMBERS_CHANGELOG, MEMBERS_CHECKPOINTS, MEMBERS_KEY, TOTAL_KEY, TOTAL_KEY_CHANGELOG,
     TOTAL_KEY_CHECKPOINTS,
 };
-use cw4_group::ContractError;
 use cw_storage_plus::{Item, Map, SnapshotItem, SnapshotMap, Strategy};
 use cw_utils::Threshold;
 
