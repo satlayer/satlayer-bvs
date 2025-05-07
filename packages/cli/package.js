@@ -1,6 +1,7 @@
-import { cpSync, mkdirSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+const version = JSON.parse(readFileSync("package.json", "utf8")).version;
 const packages = ["darwin-arm64", "darwin-x64", "linux-arm64", "linux-x64", "win32-arm64", "win32-x64"];
 
 for (const name of packages) {
@@ -10,6 +11,7 @@ for (const name of packages) {
   mkdirSync(dir);
   const packageJson = {
     name: `@satlayer/cli-${name}`,
+    version,
     private: false,
     files: ["satlayer"],
     os: [os],
