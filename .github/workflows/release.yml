@@ -45,7 +45,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
 
-      - run: pnpm turbo run build prepare --filter "@satlayer/*"
+      - run: pnpm turbo run build package --filter "@satlayer/*"
         env:
           DOCKER_CACHE_FROM: ghcr.io/satlayer/cosmwasm-optimizer-cache
 
