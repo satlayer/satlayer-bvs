@@ -14,7 +14,7 @@ importers:
       '@packages/config-prettier':
         specifier: workspace:*
         version: link:packages/config-prettier
-      '@packages/cosmwasm-optimizer':
+      '@satlayer/cosmwasm-optimizer':
         specifier: workspace:*
         version: link:packages/cosmwasm-optimizer
       '@types/node':
@@ -114,7 +114,11 @@ importers:
         specifier: ^1.3.0
         version: 1.3.0
 
-  examples/squaring/contract: {}
+  examples/squaring/contract:
+    devDependencies:
+      '@satlayer/cosmwasm-optimizer':
+        specifier: workspace:*
+        version: link:../../../packages/cosmwasm-optimizer
 
   examples/squaring/service: {}
 
