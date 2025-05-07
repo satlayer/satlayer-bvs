@@ -1,61 +1,57 @@
 use bvs_multi_test::{BvsMultiTest, TestingContract};
 use bvs_registry::msg::Metadata;
 use cosmwasm_std::testing::mock_env;
-use cosmwasm_std::{to_json_binary, Addr, WasmMsg};
-use cw_multi_test::{App, ContractWrapper, Executor};
+use cosmwasm_std::{to_json_binary, Addr, Empty, WasmMsg};
+use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use squaring_contract::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
-fn instantiate() -> (App, BvsMultiTest, Addr) {
-    let mut app = App::default();
-    let env = mock_env();
-    let bvs = BvsMultiTest::new(&mut app, &env);
-
+fn contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         squaring_contract::contract::execute,
         squaring_contract::contract::instantiate,
         squaring_contract::contract::query,
     )
     .with_reply(squaring_contract::contract::reply);
+    Box::new(contract)
+}
 
-    let code_id = app.store_code(Box::new(contract));
+fn instantiate() -> (App, BvsMultiTest, Addr) {
+    let mut app = App::default();
+    let env = mock_env();
+    let bvs = BvsMultiTest::new(&mut app, &env);
 
     let admin = app.api().addr_make("admin");
     let owner = app.api().addr_make("owner");
+
     let msg = InstantiateMsg {
         registry: bvs.registry.addr.to_string(),
         router: bvs.vault_router.addr.to_string(),
         owner: owner.to_string(),
     };
 
+    let code_id = app.store_code(contract());
     let contract_addr = app
         .instantiate_contract(code_id, admin, &msg, &[], "Squaring", None)
         .unwrap();
-    (app, bvs, contract_addr)
-}
 
-#[test]
-fn request() {
-    let (mut app, _, contract_addr) = instantiate();
-
-    let request = ExecuteMsg::Request { input: 3 };
-    let cosmos_msg = WasmMsg::Execute {
-        contract_addr: contract_addr.to_string(),
-        msg: to_json_binary(&request).unwrap(),
-        funds: vec![],
-    };
-    let sender = app.api().addr_make("anyone");
-    app.execute(sender, cosmos_msg.into()).unwrap();
-}
-
-/// Request and respond without fault
-#[test]
-fn request_respond() {
-    let (mut app, bvs, contract_addr) = instantiate();
-
-    let operator = app.api().addr_make("operator");
+    // Enable slashing
+    {
+        let owner = app.api().addr_make("owner");
+        app.execute(
+            owner,
+            WasmMsg::Execute {
+                contract_addr: contract_addr.to_string(),
+                msg: to_json_binary(&ExecuteMsg::EnableSlashing {}).unwrap(),
+                funds: vec![],
+            }
+            .into(),
+        )
+        .unwrap();
+    }
 
     // Set up the operator, service to operator relationship
     {
+        let operator = app.api().addr_make("operator");
         bvs.registry
             .execute(
                 &mut app,
@@ -100,6 +96,30 @@ fn request_respond() {
             block.time = block.time.plus_seconds(10);
         });
     }
+
+    (app, bvs, contract_addr)
+}
+
+#[test]
+fn request() {
+    let (mut app, _, contract_addr) = instantiate();
+
+    let request = ExecuteMsg::Request { input: 3 };
+    let cosmos_msg = WasmMsg::Execute {
+        contract_addr: contract_addr.to_string(),
+        msg: to_json_binary(&request).unwrap(),
+        funds: vec![],
+    };
+    let sender = app.api().addr_make("anyone");
+    app.execute(sender, cosmos_msg.into()).unwrap();
+}
+
+/// Request and respond without fault
+#[test]
+fn request_respond() {
+    let (mut app, _, contract_addr) = instantiate();
+
+    let operator = app.api().addr_make("operator");
 
     // Make the request
     {
@@ -141,56 +161,9 @@ fn request_respond() {
 /// Request and respond with fault
 #[test]
 fn slashing_lifecycle() {
-    let (mut app, bvs, contract_addr) = instantiate();
+    let (mut app, _, contract_addr) = instantiate();
 
     let operator = app.api().addr_make("operator");
-
-    // Set up the operator, service to operator relationship
-    {
-        bvs.registry
-            .execute(
-                &mut app,
-                &operator,
-                &bvs_registry::msg::ExecuteMsg::RegisterAsOperator {
-                    metadata: Metadata {
-                        name: None,
-                        uri: None,
-                    },
-                },
-            )
-            .unwrap();
-
-        bvs.registry
-            .execute(
-                &mut app,
-                &operator,
-                &bvs_registry::msg::ExecuteMsg::RegisterServiceToOperator {
-                    service: contract_addr.to_string(),
-                },
-            )
-            .unwrap();
-
-        let owner = app.api().addr_make("owner");
-        app.execute(
-            owner,
-            WasmMsg::Execute {
-                contract_addr: contract_addr.to_string(),
-                msg: to_json_binary(&ExecuteMsg::RegisterOperator {
-                    operator: operator.to_string(),
-                })
-                .unwrap(),
-                funds: vec![],
-            }
-            .into(),
-        )
-        .unwrap();
-
-        // Forward the block time as the operator and service is registration is checkpoint-ed
-        app.update_block(|block| {
-            block.height += 1;
-            block.time = block.time.plus_seconds(10);
-        });
-    }
 
     // Make the request
     {

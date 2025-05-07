@@ -179,7 +179,7 @@ pub mod execute {
         let request_slashing = bvs_vault_router::msg::ExecuteMsg::RequestSlashing(
             bvs_vault_router::msg::RequestSlashingPayload {
                 operator: operator.to_string(),
-                // We slash 0.01% of the operator's vault.
+                // Slash 0.01% of the operator's vault.
                 bips: 1,
                 timestamp: env.block.time,
                 metadata: bvs_vault_router::msg::SlashingMetadata {
