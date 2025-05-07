@@ -15,6 +15,7 @@ pub(crate) const RESPONSES: Map<(i64, &Addr), i64> = Map::new("responses");
 pub(crate) struct Config {
     pub(crate) registry: Addr,
     pub(crate) router: Addr,
+    pub(crate) owner: Addr,
 }
 
 /// Config of the contract.
