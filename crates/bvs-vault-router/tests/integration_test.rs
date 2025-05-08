@@ -882,7 +882,7 @@ fn request_slashing_lifecycle() {
 }
 
 #[test]
-fn teste_slash_locking() {
+fn test_slash_locking() {
     let (mut app, tc) = TestContracts::init();
 
     let operator = app.api().addr_make("operator");
