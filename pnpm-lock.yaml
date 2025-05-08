@@ -132,6 +132,9 @@ importers:
         specifier: ^0.33.1
         version: 0.33.1
     devDependencies:
+      '@examples/squaring-contract':
+        specifier: workspace:*
+        version: link:../contract
       '@satlayer/testcontainers':
         specifier: workspace:*
         version: link:../../../packages/testcontainers
