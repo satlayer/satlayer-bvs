@@ -468,10 +468,10 @@ fn request_slashing_successful() {
     );
 
     // query slashing request
-    let msg = QueryMsg::SlashingRequest(slashing_request_id.clone().0.unwrap());
+    let msg = QueryMsg::SlashingRequest(slashing_request_id.0.unwrap());
     let SlashingRequestResponse(slashing_request) = tc.vault_router.query(&mut app, &msg).unwrap();
     assert_eq!(
-        slashing_request.clone().unwrap(),
+        slashing_request.unwrap(),
         SlashingRequest {
             request: slashing_request_payload,
             request_time: app.block_info().time,
