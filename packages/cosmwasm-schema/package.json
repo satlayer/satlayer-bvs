@@ -1,6 +1,9 @@
 {
   "name": "@satlayer/cosmwasm-schema",
   "private": false,
+  "repository": {
+    "url": "git+https://github.com/satlayer/satlayer-bvs"
+  },
   "license": "MIT",
   "files": [
     "*.d.ts"
