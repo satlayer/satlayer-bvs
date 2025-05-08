@@ -396,7 +396,7 @@ mod execute {
         // expired or has not given enough time to refute
         if cond_expired || cond_not_aged {
             return Err(ContractError::InvalidSlashingRequest {
-                msg: "Current period does not satisfy -> Resolution Window < Slash Lock Period < Expired".to_string(),
+                msg: "Current period does not satisfy: Resolution Window < Slash Lock Period < Expired".to_string(),
             });
         }
 
