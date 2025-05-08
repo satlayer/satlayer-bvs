@@ -11,14 +11,15 @@
     "dist"
   ],
   "scripts": {
+    "build": "tsc",
     "eslint": "eslint",
     "test": "vitest run"
   },
   "lint-staged": {
-    "*": [
+    "!(*.{js,jsx,ts,tsx})": [
       "prettier --write --ignore-unknown"
     ],
-    "*.{ts,tsx}": [
+    "*.{js,jsx,ts,tsx}": [
       "eslint --fix",
       "prettier --write"
     ]
