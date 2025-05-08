@@ -13,6 +13,9 @@ for (const name of packages) {
     name: `@satlayer/cli-${name}`,
     version,
     private: false,
+    bin: {
+      satlayer: "satlayer",
+    },
     files: ["satlayer"],
     os: [os],
     cpu: [cpu],

@@ -28,3 +28,17 @@ satlayer --help
   }
 }
 ```
+
+### Development
+
+This `@satlayer/cli` package is the front to the actual CLI,
+which is written in Go and compiled to a binary for each platform.
+The Go code is located in the `modules/coswasm-cli` directory,
+`package.js` prepares the binaries for each platform and architecture and
+uses `optionalDependencies` to install the correct binary for the current platform.
+
+You can build the CLI for all platforms and architectures by running:
+
+```shell
+turbo run build package
+```
