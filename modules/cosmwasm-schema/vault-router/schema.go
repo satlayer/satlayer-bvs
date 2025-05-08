@@ -48,7 +48,9 @@ type InstantiateMsg struct {
 // #### Returns On success, returns events with a data field set as
 // [`RequestSlashingResponse`] containing the generated slashing request ID.
 //
-// ExecuteMsg SlashLocked
+// ExecuteMsg SlashLocked initiates the movement of slashed collateral from vaults to the
+// router which will later then be finalized and handle according to the service slashing
+// rules.
 type ExecuteMsg struct {
 	SetVault                *SetVault             `json:"set_vault,omitempty"`
 	SetWithdrawalLockPeriod *string               `json:"set_withdrawal_lock_period,omitempty"`
