@@ -256,4 +256,66 @@ mod test {
         let slashing_request_res = SLASHING_REQUESTS.may_load(&deps.storage, res).unwrap();
         assert_eq!(Some(slashing_request), slashing_request_res);
     }
+
+    #[test]
+    fn test_prune_slashing_request() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let service = deps.api.addr_make("service");
+        let operator = deps.api.addr_make("operator");
+        let data = RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 100,
+            timestamp: env.block.time,
+            metadata: SlashingMetadata {
+                reason: "test".to_string(),
+            },
+        };
+        let slashing_request = SlashingRequest {
+            request: data.clone(),
+            request_time: env.block.time,
+            request_expiry: env.block.time.plus_seconds(100),
+        };
+
+        let res = save_slashing_request(&mut deps.storage, &service, &operator, &slashing_request)
+            .unwrap();
+
+        assert_eq!(
+            res,
+            SlashingRequestId::new(&service, &slashing_request).unwrap()
+        );
+        assert_eq!(
+            res.to_string(),
+            "dff7a6f403eff632636533660ab53ab35e7ae0fe2e5dacb160aa7d876a412f09",
+            "incorrect hash, hash function may have changed or hash data has changed"
+        );
+
+        // assert that SLASHING_ID state is updated
+        let slashing_id_res = SLASHING_REQUEST_IDS
+            .may_load(&deps.storage, (&service, &operator))
+            .unwrap();
+        assert_eq!(Some(res.clone()), slashing_id_res);
+
+        // assert that SLASHING_REQUESTS state is updated
+        let slashing_request_res = SLASHING_REQUESTS
+            .may_load(&deps.storage, res.clone())
+            .unwrap();
+        assert_eq!(Some(slashing_request), slashing_request_res);
+
+        // prune slashing request
+        prune_slashing_request(&mut deps.storage, &res, &service, &operator).unwrap();
+
+        // assert that SLASHING_ID state is removed
+        let slashing_id_res = SLASHING_REQUEST_IDS
+            .may_load(&deps.storage, (&service, &operator))
+            .unwrap();
+        assert_eq!(slashing_id_res, None);
+        // assert that SLASHING_REQUESTS state is removed
+        let slashing_request_res = SLASHING_REQUESTS.may_load(&deps.storage, res).unwrap();
+        assert_eq!(slashing_request_res, None);
+
+        let slashing_request =
+            get_active_slashing_requests(&deps.storage, &service, &operator).unwrap();
+        assert_eq!(slashing_request, None);
+    }
 }
