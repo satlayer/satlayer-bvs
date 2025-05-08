@@ -379,7 +379,7 @@ mod execute {
             },
         )?;
 
-        // Prevent the any active service from locking slash of slash request that it doesn't belong to
+        // Prevent any active service from locking slash of slash request that it doesn't belong to
         if operator_service_status != u8::from(RegistrationStatus::Active) {
             return Err(InvalidSlashingRequest {
                 msg: "Service and Operator are not active at timestamp.".to_string(),

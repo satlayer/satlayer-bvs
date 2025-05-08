@@ -260,8 +260,8 @@ pub(crate) fn prune_slashing_request(
 
 /// Stores the slashed collaterals locked into the router
 /// Mapped slash request id and vault address to the absolute amount of that vault
-/// The total asset each vault hold may varies such that even if slash bips is the same
-/// the absolute number to be slashed translated from bips is varies vault by vault for the same
+/// The total asset each vault hold may vary such that even if slash bips is the same
+/// the absolute number to be slashed translated from bip is varying vault by vault for the same
 /// slash request entry.
 pub(crate) const SLASH_LOCKED: Map<(SlashingRequestId, &Addr), Uint128> = Map::new("slash_locked");
 
