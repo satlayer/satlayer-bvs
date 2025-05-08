@@ -336,17 +336,13 @@ mod execute {
         info: MessageInfo,
         id: state::SlashingRequestId,
     ) -> Result<Response, ContractError> {
-        // This function has the luxury of skipping some of the checks
-        // already done in the request_slashing function.
-        // Including checks such as operator is actively validating, slash_parameter exist at the time of slashing etc.
-
         let registry = state::get_registry(deps.storage)?;
 
         let slash_req = state::SLASHING_REQUESTS.may_load(deps.storage, id.clone())?;
 
         if slash_req.is_none() {
             return Err(ContractError::InvalidSlashingRequest {
-                msg: "Slashing Entry With Given Id Not Found".to_string(),
+                msg: "Slashing entry with given id does not exist".to_string(),
             });
         }
 
@@ -369,24 +365,41 @@ mod execute {
             }
         };
 
+        let accused_operator = deps
+            .api
+            .addr_validate(slash_req.request.operator.as_str())?;
+
+        // Require active status between operator and service
+        let StatusResponse(operator_service_status) = deps.querier.query_wasm_smart(
+            registry.to_string(),
+            &bvs_registry::msg::QueryMsg::Status {
+                service: info.sender.to_string(),
+                operator: accused_operator.to_string(),
+                timestamp: Some(slash_req.request.timestamp.seconds()),
+            },
+        )?;
+
+        // Prevent the any active service from locking slash of slash request that it doesn't belong to
+        if operator_service_status != u8::from(RegistrationStatus::Active) {
+            return Err(InvalidSlashingRequest {
+                msg: "Service and Operator are not active at timestamp.".to_string(),
+            });
+        }
+
         let now = env.block.time;
 
         // check if now is before the expiry time but is passed the resolution window
         // to let the operator refute the slashing request
-        if now < slash_req.request_expiry
-            && now
-                > slash_req
+        if now > slash_req.request_expiry
+            || now
+                < slash_req
                     .request_time
                     .plus_seconds(slashing_parameters.resolution_window)
         {
             return Err(ContractError::InvalidSlashingRequest {
-                msg: "Slashing request is not expired yet.".to_string(),
+                msg: "Current period does not satisfy -> Resolution Window < Slash Lock Period < Expired".to_string(),
             });
         }
-
-        let accused_operator = deps
-            .api
-            .addr_validate(slash_req.request.operator.as_str())?;
 
         let vaults_managed = state::OPERATOR_VAULTS
             .prefix(&accused_operator)
@@ -422,7 +435,10 @@ mod execute {
             };
 
             messages.push(exec_msg);
-            SLASH_LOCKED.save(deps.storage, (id.clone(), &vault), &slash_absolute);
+            let _ = SLASH_LOCKED.save(deps.storage, (id.clone(), &vault), &slash_absolute);
+
+            // prune the slash request to prevent replays
+            state::prune_slashing_request(deps.storage, &id, &info.sender, &accused_operator)?;
         }
 
         let response = Response::new().add_event(

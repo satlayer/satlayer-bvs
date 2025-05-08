@@ -1058,6 +1058,12 @@ fn teste_slash_locking() {
         tc.vault_router.query(&mut app, &msg).unwrap();
 
     {
+        // pass the resolution window
+        app.update_block(|block| {
+            block.height += 10;
+            block.time = block.time.plus_seconds(100);
+        });
+
         let msg = ExecuteMsg::SlashLocked(slashing_request_id.clone().0.unwrap());
         tc.vault_router.execute(&mut app, &service, &msg).unwrap();
 
@@ -1259,14 +1265,53 @@ fn test_slash_locking_negative() {
         service: service.to_string(),
         operator: operator.to_string(),
     };
-    let slashing_request_id: SlashingRequestIdResponse =
+    let slashing_request_id1: SlashingRequestIdResponse =
         tc.vault_router.query(&mut app, &msg).unwrap();
+
+    {
+        // the slash hasn't aged for resolution_window yet
+        // so it should fail
+        let msg = ExecuteMsg::SlashLocked(slashing_request_id1.clone().0.unwrap());
+        let res = tc
+            .vault_router
+            .execute(&mut app, &service, &msg)
+            .unwrap_err();
+        assert_eq!(
+            res.root_cause().to_string(),
+            ContractError::InvalidSlashingRequest {
+                msg: "Current period does not satisfy -> Resolution Window < Slash Lock Period < Expired".to_string(),
+            }
+            .to_string()
+        );
+    }
+
+    {
+        // Unauthorized slash locker
+        let rogue_service = app.api().addr_make("rogue_service");
+        let msg = ExecuteMsg::SlashLocked(slashing_request_id1.clone().0.unwrap());
+        let res = tc
+            .vault_router
+            .execute(&mut app, &rogue_service, &msg)
+            .unwrap_err();
+        assert_eq!(
+            res.root_cause().to_string(),
+            ContractError::InvalidSlashingRequest {
+                msg: "Service has not enabled slashing at timestamp.".to_string(),
+            }
+            .to_string()
+        );
+    }
 
     // cw20 vault has zero asset
     // slash lock should skip over that vault and only slash bank
     // The whole slashing should not fail just because a vault is zero.
     {
-        let msg = ExecuteMsg::SlashLocked(slashing_request_id.clone().0.unwrap());
+        app.update_block(|block| {
+            block.height += 10;
+            block.time = block.time.plus_seconds(100);
+        });
+
+        let msg = ExecuteMsg::SlashLocked(slashing_request_id1.clone().0.unwrap());
         tc.vault_router.execute(&mut app, &service, &msg).unwrap();
 
         let bank_vault_info = tc
@@ -1300,5 +1345,60 @@ fn test_slash_locking_negative() {
 
         // due to the decimal
         assert_eq!(router_cw20_balance, 0_u128);
+    }
+
+    // slash replay should fail
+    {
+        let msg = ExecuteMsg::SlashLocked(slashing_request_id1.clone().0.unwrap());
+        let res = tc
+            .vault_router
+            .execute(&mut app, &service, &msg)
+            .unwrap_err();
+        assert_eq!(
+            res.root_cause().to_string(),
+            ContractError::InvalidSlashingRequest {
+                msg: "Slashing entry with given id does not exist".to_string(),
+            }
+            .to_string()
+        );
+    }
+
+    // expired slash should fail
+    {
+        let slashing_request_payload = RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 100,
+            timestamp: app.block_info().time,
+            metadata: SlashingMetadata {
+                reason: "test".to_string(),
+            },
+        };
+
+        let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
+        tc.vault_router.execute(&mut app, &service, msg).unwrap();
+
+        let msg = QueryMsg::SlashingRequestId {
+            service: service.to_string(),
+            operator: operator.to_string(),
+        };
+        let slashing_request_id2: SlashingRequestIdResponse =
+            tc.vault_router.query(&mut app, &msg).unwrap();
+
+        app.update_block(|block| {
+            block.height += 50;
+            block.time = block.time.plus_seconds(500);
+        });
+        let msg = ExecuteMsg::SlashLocked(slashing_request_id2.0.unwrap());
+        let res = tc
+            .vault_router
+            .execute(&mut app, &service, &msg)
+            .unwrap_err();
+        assert_eq!(
+            res.root_cause().to_string(),
+            ContractError::InvalidSlashingRequest {
+                msg: "Current period does not satisfy -> Resolution Window < Slash Lock Period < Expired".to_string(),
+            }
+            .to_string()
+        );
     }
 }

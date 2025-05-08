@@ -244,6 +244,20 @@ pub(crate) fn save_slashing_request(
     Ok(slashing_id)
 }
 
+pub(crate) fn prune_slashing_request(
+    store: &mut dyn Storage,
+    id: &SlashingRequestId,
+    service: &Service,
+    operator: &Operator,
+) -> StdResult<()> {
+    // remove slashing request
+    SLASHING_REQUESTS.remove(store, id.clone());
+    // remove slashing id
+    SLASHING_REQUEST_IDS.remove(store, (service, operator));
+
+    Ok(())
+}
+
 /// Stores the slashed collaterals locked into the router
 /// Mapped slash request id and vault address to the absolute amount of that vault
 /// The total asset each vault hold may varies such that even if slash bips is the same
