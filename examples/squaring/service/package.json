@@ -4,8 +4,18 @@
   "files": [
     "dist"
   ],
-  "scripts": {},
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@cosmjs/cosmwasm-stargate": "^0.33.1",
+    "@cosmjs/proto-signing": "^0.33.1",
+    "@cosmjs/stargate": "^0.33.1"
+  },
   "devDependencies": {
-    "@satlayer/testcontainers": "workspace:*"
+    "@satlayer/testcontainers": "workspace:*",
+    "@types/node": "^20",
+    "typescript": "latest",
+    "vitest": "^3.1.3"
   }
 }
