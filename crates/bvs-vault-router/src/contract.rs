@@ -105,9 +105,7 @@ mod execute {
     use super::*;
     use crate::contract::query::get_withdrawal_lock_period;
     use crate::error::ContractError;
-    use crate::msg::{
-        CancelResolvedSlashingPayload, RequestSlashingPayload, RequestSlashingResponse,
-    };
+    use crate::msg::{CancelSlashingPayload, RequestSlashingPayload, RequestSlashingResponse};
     use crate::state::{self, SlashingRequestId, DEFAULT_WITHDRAWAL_LOCK_PERIOD};
     use crate::state::{SlashingRequest, WITHDRAWAL_LOCK_PERIOD};
     use crate::ContractError::InvalidSlashingRequest;
@@ -334,7 +332,7 @@ mod execute {
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        payload: CancelResolvedSlashingPayload,
+        payload: CancelSlashingPayload,
     ) -> Result<Response, ContractError> {
         // service is the sender
         let service = info.sender;

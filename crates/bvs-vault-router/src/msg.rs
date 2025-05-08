@@ -53,7 +53,7 @@ pub enum ExecuteMsg {
     ///
     /// The service must be actively registered with the operator at the specified timestamp
     /// and the operator must have opted in to slashing at the specified timestamp.
-    CancelSlashing(CancelResolvedSlashingPayload),
+    CancelSlashing(CancelSlashingPayload),
 }
 
 #[cw_serde]
@@ -95,7 +95,7 @@ pub struct SlashingMetadata {
 }
 
 #[cw_serde]
-pub struct CancelResolvedSlashingPayload {
+pub struct CancelSlashingPayload {
     /// The operator address to slash.
     /// (service, operator) must have active registration at the timestamp.
     pub operator: String,
