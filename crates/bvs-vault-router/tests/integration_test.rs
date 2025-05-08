@@ -1276,7 +1276,7 @@ fn test_slash_locking_negative() {
         assert_eq!(
             res.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Current period does not satisfy -> Resolution Window < Slash Lock Period < Expired".to_string(),
+                msg: "Current period does not satisfy: Resolution Window < Slash Lock Period < Expired".to_string(),
             }
             .to_string()
         );
@@ -1393,7 +1393,7 @@ fn test_slash_locking_negative() {
         assert_eq!(
             res.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Current period does not satisfy -> Resolution Window < Slash Lock Period < Expired".to_string(),
+                msg: "Current period does not satisfy: Resolution Window < Slash Lock Period < Expired".to_string(),
             }
             .to_string()
         );
