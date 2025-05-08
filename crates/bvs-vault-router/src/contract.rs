@@ -481,12 +481,12 @@ pub mod vault {
     }
 
     #[cw_serde]
+    /// See [`bvs_vault_base::msg`] for more information.
     pub enum ExecuteMsg {
         SlashLocked(Amount),
     }
 
     #[cw_serde]
-    /// This struct represents amount of assets.
     pub struct Amount(pub Uint128);
 
     pub fn get_vault_info(deps: Deps, vault: &Addr) -> Result<VaultInfoResponse, ContractError> {
