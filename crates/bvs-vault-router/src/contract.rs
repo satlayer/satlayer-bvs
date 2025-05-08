@@ -387,15 +387,14 @@ mod execute {
         }
 
         let now = env.block.time;
+        let cond_expired = now > slash_req.request_expiry;
+        let cond_not_aged = now
+            < slash_req
+                .request_time
+                .plus_seconds(slashing_parameters.resolution_window);
 
-        // check if now is before the expiry time but is passed the resolution window
-        // to let the operator refute the slashing request
-        if now > slash_req.request_expiry
-            || now
-                < slash_req
-                    .request_time
-                    .plus_seconds(slashing_parameters.resolution_window)
-        {
+        // expired or has not given enough time to refute
+        if cond_expired || cond_not_aged {
             return Err(ContractError::InvalidSlashingRequest {
                 msg: "Current period does not satisfy -> Resolution Window < Slash Lock Period < Expired".to_string(),
             });
