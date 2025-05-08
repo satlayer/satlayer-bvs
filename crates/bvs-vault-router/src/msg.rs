@@ -45,6 +45,15 @@ pub enum ExecuteMsg {
     /// #### Returns
     /// On success, returns events with a data field set as [`RequestSlashingResponse`] containing the generated slashing request ID.
     RequestSlashing(RequestSlashingPayload),
+
+    /// ExecuteMsg CancelSlashing cancels a resolved slashing request.
+    ///
+    /// The service (slash initiator) should cancel the slashing process if the operator
+    /// has resolved the issue. The definition of “resolved” is up to the service to define.
+    ///
+    /// The service must be actively registered with the operator at the specified timestamp
+    /// and the operator must have opted in to slashing at the specified timestamp.
+    CancelSlashing(CancelResolvedSlashingPayload),
 }
 
 #[cw_serde]
@@ -83,6 +92,15 @@ pub struct SlashingMetadata {
     /// Must contain human-readable string.
     /// Max length of 250 characters, empty string is allowed but not recommended.
     pub reason: String,
+}
+
+#[cw_serde]
+pub struct CancelResolvedSlashingPayload {
+    /// The operator address to slash.
+    /// (service, operator) must have active registration at the timestamp.
+    pub operator: String,
+    /// The slashing request id to cancel.
+    pub slashing_request_id: String,
 }
 
 #[cw_serde]
