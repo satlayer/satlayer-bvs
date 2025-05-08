@@ -10,7 +10,7 @@ You can install the SatLayer CLI globally using npm.
 This will allow you to use the `satlayer` command from anywhere in your terminal.
 
 ```bash
-npm install -g @satlayer/cli
+npm install @satlayer/cli --global
 
 satlayer --help
 ```

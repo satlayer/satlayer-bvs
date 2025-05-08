@@ -31,12 +31,9 @@ const packageJson = {
   version,
   private: false,
   bin: {
-    satlayer: "satlayer",
+    satlayer: "satlayer.js",
   },
-  files: ["postinstall.js"],
-  scripts: {
-    postinstall: "node postinstall.js",
-  },
+  files: ["satlayer.js"],
   optionalDependencies: packages.reduce((acc, name) => {
     acc[`@satlayer/cli-${name}`] = version;
     return acc;
