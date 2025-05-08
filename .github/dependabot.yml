@@ -42,6 +42,10 @@ updates:
           - "react*"
           - "@types/react*"
 
+      cosmjs:
+        patterns:
+          - "@cosmjs/*"
+
   - package-ecosystem: cargo
     directory: "/crates"
     schedule:

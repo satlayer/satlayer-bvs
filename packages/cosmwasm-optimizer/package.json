@@ -1,6 +1,9 @@
 {
   "name": "@satlayer/cosmwasm-optimizer",
   "private": false,
+  "repository": {
+    "url": "git+https://github.com/satlayer/satlayer-bvs"
+  },
   "license": "MIT",
   "bin": {
     "cosmwasm-optimizer": "bin.js"

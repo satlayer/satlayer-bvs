@@ -4,5 +4,8 @@
   "files": [
     "dist"
   ],
-  "scripts": {}
+  "scripts": {},
+  "devDependencies": {
+    "@satlayer/testcontainers": "workspace:*"
+  }
 }

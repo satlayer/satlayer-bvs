@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
+    "eslint": "turbo run eslint -- --fix",
     "format": "prettier --write .",
     "prepare": "husky",
     "test": "turbo run test"
