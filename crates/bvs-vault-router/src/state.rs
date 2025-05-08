@@ -247,6 +247,27 @@ pub(crate) fn save_slashing_request(
     Ok(slashing_id)
 }
 
+pub(crate) fn update_slashing_request_status(
+    store: &mut dyn Storage,
+    slashing_request_id: SlashingRequestId,
+    status: SlashingRequestStatus,
+) -> StdResult<SlashingRequest> {
+    SLASHING_REQUESTS.update(store, slashing_request_id.clone(), |slashing_request| {
+        let mut slashing_request =
+            slashing_request.ok_or_else(|| StdError::not_found("Slashing request id not found"))?;
+        slashing_request.status = status.into();
+        Ok(slashing_request)
+    })
+}
+
+pub(crate) fn remove_slashing_request_id(
+    store: &mut dyn Storage,
+    service: &Service,
+    operator: &Operator,
+) {
+    SLASHING_REQUEST_IDS.remove(store, (service, operator));
+}
+
 /// Stores the slashed collaterals locked into the router
 /// Mapped slash request id and vault address to the absolute amount of that vault
 /// The total asset each vault hold may vary such that even if slash bips is the same
@@ -321,5 +342,47 @@ mod test {
         // Test inequality
         assert_ne!(SlashingRequestStatus::Pending, 1u8);
         assert_ne!(0u8, SlashingRequestStatus::Locked);
+    }
+
+    #[test]
+    fn test_remove_slashing_request_id() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let service = deps.api.addr_make("service");
+        let operator = deps.api.addr_make("operator");
+        let data = RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 100,
+            timestamp: env.block.time,
+            metadata: SlashingMetadata {
+                reason: "test".to_string(),
+            },
+        };
+        let slashing_request = SlashingRequest {
+            request: data.clone(),
+            request_time: env.block.time,
+            request_expiry: env.block.time.plus_seconds(100),
+            status: SlashingRequestStatus::Pending.into(),
+            service: service.clone(),
+        };
+
+        save_slashing_request(&mut deps.storage, &service, &operator, &slashing_request).unwrap();
+
+        let slashing_request_id = SLASHING_REQUEST_IDS
+            .may_load(&deps.storage, (&service, &operator))
+            .unwrap()
+            .unwrap();
+
+        let response = update_slashing_request_status(
+            &mut deps.storage,
+            slashing_request_id,
+            SlashingRequestStatus::Canceled,
+        )
+        .unwrap();
+        assert_eq!(response.status, SlashingRequestStatus::Canceled);
+
+        remove_slashing_request_id(&mut deps.storage, &service, &operator);
+
+        assert!(SLASHING_REQUEST_IDS.is_empty(&deps.storage));
     }
 }

@@ -140,6 +140,10 @@ export interface InstantiateMsg {
  *
  * ExecuteMsg LockSlashing initiates the movement of slashed collateral from vaults to the
  * router which will later be finalized and handle according to the service slashing rules.
+ * ExecuteMsg CancelSlashing cancels a resolved slashing request.
+ *
+ * The service (slash initiator) should cancel the slashing process if the operator has
+ * resolved the issue. The definition of “resolved” is up to the service to define.
  */
 export interface ExecuteMsg {
   set_vault?: SetVault;
@@ -147,6 +151,7 @@ export interface ExecuteMsg {
   transfer_ownership?: TransferOwnership;
   request_slashing?: RequestSlashingClass;
   lock_slashing?: string;
+  cancel_slashing?: string;
 }
 
 export interface RequestSlashingClass {
