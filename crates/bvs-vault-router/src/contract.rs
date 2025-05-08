@@ -342,7 +342,7 @@ mod execute {
 
         let registry = state::get_registry(deps.storage)?;
 
-        let slash_req = state::SLASHING_REQUESTS.may_load(deps.storage, id.clone().into())?;
+        let slash_req = state::SLASHING_REQUESTS.may_load(deps.storage, id.clone())?;
 
         if slash_req.is_none() {
             return Err(ContractError::InvalidSlashingRequest {

@@ -941,11 +941,11 @@ fn teste_slash_locking() {
         let staker = app.api().addr_make("staker");
         let msg = bvs_vault_cw20::msg::ExecuteMsg::DepositFor(RecipientAmount {
             recipient: staker.clone(),
-            amount: Uint128::new(300 as u128),
+            amount: Uint128::new(300_u128),
         });
         tc.cw20
-            .increase_allowance(&mut app, &staker, tc.cw20_vault.addr(), 300 as u128);
-        tc.cw20.fund(&mut app, &staker, 300 as u128);
+            .increase_allowance(&mut app, &staker, tc.cw20_vault.addr(), 300_u128);
+        tc.cw20.fund(&mut app, &staker, 300_u128);
         tc.cw20_vault.execute(&mut app, &staker, &msg).unwrap();
 
         // Fund the staker with some initial tokens
