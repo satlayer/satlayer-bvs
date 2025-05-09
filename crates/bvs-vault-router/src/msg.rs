@@ -1,6 +1,6 @@
 use crate::state::{SlashingRequest, SlashingRequestId};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{from_json, to_json_binary, Addr, Binary, Timestamp, Uint64};
+use cosmwasm_std::{from_json, to_json_binary, Addr, Binary, Timestamp, Uint128, Uint64};
 
 #[cw_serde]
 pub struct MigrateMsg {}
@@ -45,6 +45,11 @@ pub enum ExecuteMsg {
     /// #### Returns
     /// On success, returns events with a data field set as [`RequestSlashingResponse`] containing the generated slashing request ID.
     RequestSlashing(RequestSlashingPayload),
+
+    /// ExecuteMsg SlashLocked initiates the movement of slashed collateral from vaults to the
+    /// router which will later then be finalized and handle according to the service slashing
+    /// rules.
+    LockSlashing(SlashingRequestId),
 }
 
 #[cw_serde]
@@ -126,6 +131,11 @@ pub enum QueryMsg {
 
     #[returns(SlashingRequestResponse)]
     SlashingRequest(SlashingRequestId),
+
+    #[returns(SlashLockedResponse)]
+    SlashLocked {
+        slashing_request_id: SlashingRequestId,
+    },
 }
 
 /// The response to the `IsWhitelisted` query.
@@ -162,3 +172,12 @@ pub struct SlashingRequestIdResponse(pub Option<SlashingRequestId>);
 
 #[cw_serde]
 pub struct SlashingRequestResponse(pub Option<SlashingRequest>);
+
+#[cw_serde]
+pub struct SlashLockedResponse(pub Vec<SlashLockedResponseItem>);
+
+#[cw_serde]
+pub struct SlashLockedResponseItem {
+    pub vault: Addr,
+    pub amount: Uint128,
+}
