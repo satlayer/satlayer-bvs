@@ -49,7 +49,7 @@ pub enum ExecuteMsg {
     /// ExecuteMsg SlashLocked initiates the movement of slashed collateral from vaults to the
     /// router which will later then be finalized and handle according to the service slashing
     /// rules.
-    SlashLocked(SlashingRequestId),
+    LockSlashing(SlashingRequestId),
 }
 
 #[cw_serde]
@@ -135,8 +135,6 @@ pub enum QueryMsg {
     #[returns(SlashLockedResponse)]
     SlashLocked {
         slashing_request_id: SlashingRequestId,
-        limit: Option<u32>,
-        start_after: Option<String>,
     },
 }
 
