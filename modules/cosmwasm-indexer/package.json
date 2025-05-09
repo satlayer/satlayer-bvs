@@ -1,0 +1,7 @@
+{
+  "name": "@modules/cosmwasm-indexer",
+  "private": true,
+  "scripts": {
+    "test": "gotestsum -- ./... -p 6"
+  }
+}
