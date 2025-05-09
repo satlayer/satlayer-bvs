@@ -1,6 +1,8 @@
 # BVS Rewards
 
-The BVS Rewards contract manages the distribution and claiming of rewards in the SatLayer ecosystem. It enables Services to distribute rewards to Operators and Stakers (collectively called Earners) based on their contributions to the network.
+The BVS Rewards contract manages the distribution and claiming of rewards in the SatLayer ecosystem.
+It enables Services to distribute rewards to Operators and Stakers
+(collectively called Earners) based on their contributions to the network.
 
 ## Contract Functions
 
@@ -26,7 +28,8 @@ The BVS Rewards contract manages the distribution and claiming of rewards in the
 
 ## Rewards Workflow
 
-Refer to the [Rewards](/getting-started/rewards) section for a detailed overview of how rewards are distributed, and claimed in the SatLayer ecosystem.
+Refer to the [Rewards](/getting-started/rewards) section for a detailed overview of how rewards are distributed,
+and claimed in the SatLayer ecosystem.
 
 ## Important Notes
 
