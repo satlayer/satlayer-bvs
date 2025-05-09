@@ -117,12 +117,33 @@ export interface InstantiateMsg {
  *
  * #### Returns On success, returns events with a data field set as
  * [`RequestSlashingResponse`] containing the generated slashing request ID.
+ *
+ * ExecuteMsg CancelSlashing cancels a resolved slashing request.
+ *
+ * The service (slash initiator) should cancel the slashing process if the operator has
+ * resolved the issue. The definition of “resolved” is up to the service to define.
+ *
+ * The service must be actively registered with the operator at the specified timestamp and
+ * the operator must have opted in to slashing at the specified timestamp.
  */
 export interface ExecuteMsg {
   set_vault?: SetVault;
   set_withdrawal_lock_period?: string;
   transfer_ownership?: TransferOwnership;
   request_slashing?: RequestSlashingClass;
+  cancel_slashing?: CancelSlashingPayload;
+}
+
+export interface CancelSlashingPayload {
+  /**
+   * The operator address to slash. (service, operator) must have active registration at the
+   * timestamp.
+   */
+  operator: string;
+  /**
+   * The slashing request id to cancel.
+   */
+  slashing_request_id: string;
 }
 
 export interface RequestSlashingClass {

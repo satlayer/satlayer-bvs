@@ -45,11 +45,28 @@ type InstantiateMsg struct {
 //
 // #### Returns On success, returns events with a data field set as
 // [`RequestSlashingResponse`] containing the generated slashing request ID.
+//
+// ExecuteMsg CancelSlashing cancels a resolved slashing request.
+//
+// The service (slash initiator) should cancel the slashing process if the operator has
+// resolved the issue. The definition of “resolved” is up to the service to define.
+//
+// The service must be actively registered with the operator at the specified timestamp and
+// the operator must have opted in to slashing at the specified timestamp.
 type ExecuteMsg struct {
-	SetVault                *SetVault             `json:"set_vault,omitempty"`
-	SetWithdrawalLockPeriod *string               `json:"set_withdrawal_lock_period,omitempty"`
-	TransferOwnership       *TransferOwnership    `json:"transfer_ownership,omitempty"`
-	RequestSlashing         *RequestSlashingClass `json:"request_slashing,omitempty"`
+	SetVault                *SetVault              `json:"set_vault,omitempty"`
+	SetWithdrawalLockPeriod *string                `json:"set_withdrawal_lock_period,omitempty"`
+	TransferOwnership       *TransferOwnership     `json:"transfer_ownership,omitempty"`
+	RequestSlashing         *RequestSlashingClass  `json:"request_slashing,omitempty"`
+	CancelSlashing          *CancelSlashingPayload `json:"cancel_slashing,omitempty"`
+}
+
+type CancelSlashingPayload struct {
+	// The operator address to slash. (service, operator) must have active registration at the
+	// timestamp.
+	Operator string `json:"operator"`
+	// The slashing request id to cancel.
+	SlashingRequestID string `json:"slashing_request_id"`
 }
 
 type RequestSlashingClass struct {
