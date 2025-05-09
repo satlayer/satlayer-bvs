@@ -50,9 +50,6 @@ pub enum ExecuteMsg {
     ///
     /// The service (slash initiator) should cancel the slashing process if the operator
     /// has resolved the issue. The definition of “resolved” is up to the service to define.
-    ///
-    /// The service must be actively registered with the operator at the specified timestamp
-    /// and the operator must have opted in to slashing at the specified timestamp.
     CancelSlashing(CancelSlashingPayload),
 }
 
