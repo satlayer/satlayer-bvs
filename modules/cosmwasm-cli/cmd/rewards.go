@@ -13,8 +13,6 @@ import (
 )
 
 var filePath string
-var service string
-var token string
 
 // MerkleProofRes is partly based on `bvs-rewards::ExecuteMsg:ClaimRewards`
 type MerkleProofRes struct {
