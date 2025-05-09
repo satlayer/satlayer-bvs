@@ -3,9 +3,9 @@
  * These messages allow modifying the state of the contract and emits event.
  */
 export interface ExecuteMsg {
-  request: Request;
-  respond: Respond;
-  compute: Compute;
+  request?: Request;
+  respond?: Respond;
+  compute?: Compute;
 }
 
 /**
