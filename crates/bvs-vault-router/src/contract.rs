@@ -60,6 +60,7 @@ pub fn execute(
                 .map_err(ContractError::Ownership)
         }
         ExecuteMsg::RequestSlashing(payload) => execute::request_slashing(deps, env, info, payload),
+        ExecuteMsg::CancelSlashing(payload) => execute::cancel_slashing(deps, env, info, payload),
     }
 }
 
@@ -104,8 +105,8 @@ mod execute {
     use super::*;
     use crate::contract::query::get_withdrawal_lock_period;
     use crate::error::ContractError;
-    use crate::msg::{RequestSlashingPayload, RequestSlashingResponse};
-    use crate::state::{self, DEFAULT_WITHDRAWAL_LOCK_PERIOD};
+    use crate::msg::{CancelSlashingPayload, RequestSlashingPayload, RequestSlashingResponse};
+    use crate::state::{self, SlashingRequestId, DEFAULT_WITHDRAWAL_LOCK_PERIOD};
     use crate::state::{SlashingRequest, WITHDRAWAL_LOCK_PERIOD};
     use crate::ContractError::InvalidSlashingRequest;
     use bvs_library::addr::Operator;
@@ -324,6 +325,81 @@ mod execute {
                     .add_attribute("slashing_request_id", slashing_request_id.to_string())
                     .add_attribute("reason", data.metadata.reason),
             ))
+    }
+
+    /// Cancel a resolved slashing request that an operator has already resolved the issue.
+    pub fn cancel_slashing(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        payload: CancelSlashingPayload,
+    ) -> Result<Response, ContractError> {
+        // service is the sender
+        let service = info.sender;
+        let operator: Operator = deps.api.addr_validate(&payload.operator)?;
+
+        let active_slashing_requests =
+            state::get_active_slashing_requests(deps.storage, &service, &operator)?;
+
+        if active_slashing_requests.is_none() {
+            return Err(ContractError::InvalidSlashingRequest {
+                msg: "No active slashing request found to cancel slash.".to_string(),
+            });
+        }
+
+        let registry = state::get_registry(deps.storage)?;
+
+        // get slashing params of the service at the current timestamp, also checks if slashing is enabled
+        let SlashingParametersResponse(slashing_parameters) = deps.querier.query_wasm_smart(
+            registry.clone(),
+            &bvs_registry::msg::QueryMsg::SlashingParameters {
+                service: service.to_string(),
+                timestamp: Some(env.block.time.seconds()),
+            },
+        )?;
+        let slashing_parameters = match slashing_parameters {
+            Some(x) => x,
+            None => {
+                return Err(InvalidSlashingRequest {
+                    msg: "Service has not enabled slashing at timestamp.".to_string(),
+                })
+            }
+        };
+
+        if let Some(active_slashing_requests) = active_slashing_requests {
+            let stored_slashing_request_id =
+                SlashingRequestId::new(&service, &active_slashing_requests)?;
+
+            // TODO: service should call this method within resolution_window*2 or limited time?
+            let respond_time = active_slashing_requests
+                .request_time
+                .plus_seconds(slashing_parameters.resolution_window * 2);
+            if respond_time <= env.block.time {
+                return Err(ContractError::InvalidSlashingRequest {
+                    msg: "Cannot cancel non-promptly responded slash request.".to_string(),
+                });
+            }
+
+            if stored_slashing_request_id.to_string() == payload.slashing_request_id {
+                state::remove_slashing_request_id(deps.storage, &service, &operator);
+            } else {
+                return Err(ContractError::InvalidSlashingRequest {
+                    msg: "Invalid slashing request id.".to_string(),
+                });
+            }
+        }
+
+        Ok(Response::new().add_event(
+            Event::new("CancelResolvedSlashing")
+                .add_attribute("service", service)
+                .add_attribute("operator", operator)
+                .add_attribute(
+                    "canceled_slash_request_id",
+                    payload.slashing_request_id.to_string(),
+                )
+                .add_attribute("cancel_timestamp", env.block.time.seconds().to_string())
+                .add_attribute("block_height", env.block.height.to_string()),
+        ))
     }
 }
 

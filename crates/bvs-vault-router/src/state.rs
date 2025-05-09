@@ -178,6 +178,14 @@ pub(crate) fn save_slashing_request(
     Ok(slashing_id)
 }
 
+pub(crate) fn remove_slashing_request_id(
+    store: &mut dyn Storage,
+    service: &Service,
+    operator: &Operator,
+) {
+    SLASHING_REQUEST_IDS.remove(store, (service, operator));
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -226,5 +234,32 @@ mod test {
         // assert that SLASHING_REQUESTS state is updated
         let slashing_request_res = SLASHING_REQUESTS.may_load(&deps.storage, res).unwrap();
         assert_eq!(Some(slashing_request), slashing_request_res);
+    }
+
+    #[test]
+    fn test_remove_slashing_request_id() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let service = deps.api.addr_make("service");
+        let operator = deps.api.addr_make("operator");
+        let data = RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 100,
+            timestamp: env.block.time,
+            metadata: SlashingMetadata {
+                reason: "test".to_string(),
+            },
+        };
+        let slashing_request = SlashingRequest {
+            request: data.clone(),
+            request_time: env.block.time,
+            request_expiry: env.block.time.plus_seconds(100),
+        };
+
+        save_slashing_request(&mut deps.storage, &service, &operator, &slashing_request).unwrap();
+
+        remove_slashing_request_id(&mut deps.storage, &service, &operator);
+
+        assert!(SLASHING_REQUEST_IDS.is_empty(&deps.storage));
     }
 }
