@@ -1,7 +1,7 @@
-import { CosmWasmClient, Event, SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
-import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
+import { Event, SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { ExecuteMsg } from "./contract";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
+import { setTimeout } from "node:timers/promises";
 
 function compute(input: number): number {
   return input * input;
@@ -17,14 +17,45 @@ export class Node {
   ) {}
 
   public async start() {
-    const status: {} = JSON.parse(await readFile("progress.json", "utf-8"));
+    let progress: { height: number };
 
-    let height = await this.client.getHeight();
+    try {
+      progress = JSON.parse(await readFile("progress.json", "utf-8"));
+    } catch (error) {
+      // File doesn't exist or can't be read, start from scratch
+      console.log("No progress.json found, starting from scratch");
+      progress = { height: 0 };
+    }
 
-    while (this.running) {}
+    while (this.running) {
+      const currentHeight = await this.client.getHeight();
+
+      if (progress.height < currentHeight) {
+        // Process all blocks from height to currentHeight
+        for (let h = progress.height; h < currentHeight && this.running; h++) {
+          const events = await this.getRequests(this.contract, h);
+
+          for (const event of events) {
+            // Find the input attribute
+            const inputAttr = event.attributes.find((attr) => attr.key === "input");
+            if (inputAttr) {
+              const input = parseInt(inputAttr.value);
+              await this.respond(input);
+            }
+          }
+
+          // Update progress after processing each height
+          progress.height = h + 1;
+          await writeFile("progress.json", JSON.stringify(progress), "utf-8");
+        }
+      } else {
+        // No new blocks, sleep for 1 second
+        await setTimeout(1000);
+      }
+    }
   }
 
-  private async getRequestEvents(contract: string, height: number): Promise<Event[]> {
+  private async getRequests(contract: string, height: number): Promise<Event[]> {
     const events: Event[] = [];
     for (const tx of await this.client.searchTx(`tx.height=${height}`)) {
       for (const event of tx.events) {
