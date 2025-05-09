@@ -4,6 +4,7 @@ const meta: MetaRecord = {
   vaults: {},
   services: {},
   operators: {},
+  rewards: {},
 };
 
 export default meta;
