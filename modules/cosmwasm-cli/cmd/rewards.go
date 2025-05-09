@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/wealdtech/go-merkletree/v2"
 	"github.com/wealdtech/go-merkletree/v2/sha3"
 )
 
-var dataRootPath string
-var service string
+var filePath string
 
 // MerkleProofRes is partly based on `bvs-rewards::ExecuteMsg:ClaimRewards`
 type MerkleProofRes struct {
@@ -228,40 +228,34 @@ func leafHash(earner string, reward string) []byte {
 // loadDistributionFilePath forms the distribution file path from the command line flags
 func loadDistributionFilePath(cmd *cobra.Command) (string, error) {
 	// Get the data root path from the command line flags
-	rootPath, err := cmd.PersistentFlags().GetString("data-root-path")
-	if err != nil {
-		return "", err
-	}
-	chain, err := cmd.Flags().GetString("chain-id")
-	if err != nil {
-		return "", err
-	}
-	service, err := cmd.PersistentFlags().GetString("service")
+	filePath, err := cmd.PersistentFlags().GetString("file-path")
 	if err != nil {
 		return "", err
 	}
 
-	distributionFilePath := filepath.Join(rootPath, chain, service, "distribution.json")
-	return distributionFilePath, nil
+	// Check if file exists
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return "", fmt.Errorf("distribution file does not exist at path: %s", filePath)
+	}
+
+	// Verify file is a json file
+	if !strings.HasSuffix(filePath, ".json") {
+		return "", fmt.Errorf("distribution file must be a JSON file. found: %s", filePath)
+	}
+
+	return filePath, nil
 }
 
 // loadMerkleFilePath forms the Merkle file path from the command line flags
 func loadMerkleFilePath(cmd *cobra.Command) (string, error) {
 	// Get the data root path from the command line flags
-	rootPath, err := cmd.PersistentFlags().GetString("data-root-path")
-	if err != nil {
-		return "", err
-	}
-	chain, err := cmd.Flags().GetString("chain-id")
-	if err != nil {
-		return "", err
-	}
-	service, err := cmd.PersistentFlags().GetString("service")
+	filePath, err := cmd.PersistentFlags().GetString("file-path")
 	if err != nil {
 		return "", err
 	}
 
-	merkleFilePath := filepath.Join(rootPath, chain, service, "merkle.json")
+	fileDir := filepath.Dir(filePath)
+	merkleFilePath := filepath.Join(fileDir, "merkle.json")
 	return merkleFilePath, nil
 }
 
@@ -357,44 +351,29 @@ func RewardsCommand() *cobra.Command {
 	rewardsLoadCmd := RewardsLoadCmd()
 	rewardsProofCmd := RewardsProofCmd()
 
-	command.AddCommand(rewardsCreateCmd) // add "rewards create -f <data-root-path> -s <service> --chain-id <chain-id>" command
-	command.AddCommand(rewardsLoadCmd)   // add "rewards load -f <data-root-path> -s <service> --chain-id <chain-id>" command
-	command.AddCommand(rewardsProofCmd)  // add "rewards proof <earner> <reward> -f <data-root-path> -s <service> --chain-id <chain-id>" command
+	command.AddCommand(rewardsCreateCmd) // add "rewards create -f <file-path>" command
+	command.AddCommand(rewardsLoadCmd)   // add "rewards load -f <file-path>" command
+	command.AddCommand(rewardsProofCmd)  // add "rewards proof <earner> <reward> -f <file-path>" command
 
 	// merkle create
-	rewardsCreateCmd.PersistentFlags().StringVarP(&dataRootPath, "data-root-path", "f", "./data", "Path to the root data file to retrieve distribution data and save the merkle tree")
-	rewardsCreateCmd.PersistentFlags().StringVarP(&service, "service", "s", "service", "Service address")
-	err := rewardsCreateCmd.MarkPersistentFlagRequired("data-root-path")
+	rewardsCreateCmd.PersistentFlags().StringVarP(&filePath, "file-path", "f", "./data", "Path to the distribution json file, where /<chain-id>/<service>/<token>/distribution.json will be assumed")
+	err := rewardsCreateCmd.MarkPersistentFlagRequired("file-path")
 	if err != nil {
-		fmt.Println("Error marking data-root-path flag as required:", err)
-	}
-	err = rewardsCreateCmd.MarkPersistentFlagRequired("service")
-	if err != nil {
-		fmt.Println("Error marking service flag as required:", err)
+		fmt.Println("Error marking file-path flag as required:", err)
 	}
 
 	// merkle load
-	rewardsLoadCmd.PersistentFlags().StringVarP(&dataRootPath, "data-root-path", "f", "./data", "Path to the root data file to retrieve distribution data and save the merkle tree")
-	rewardsLoadCmd.PersistentFlags().StringVarP(&service, "service", "s", "service", "Service address")
-	err = rewardsLoadCmd.MarkPersistentFlagRequired("data-root-path")
+	rewardsLoadCmd.PersistentFlags().StringVarP(&filePath, "file-path", "f", "./data", "Path to the distribution json file, where /<chain-id>/<service>/<token>/distribution.json will be assumed")
+	err = rewardsLoadCmd.MarkPersistentFlagRequired("file-path")
 	if err != nil {
 		fmt.Println("Error marking flag as required:", err)
-	}
-	err = rewardsLoadCmd.MarkPersistentFlagRequired("service")
-	if err != nil {
-		fmt.Println("Error marking service flag as required:", err)
 	}
 
 	// merkle proof
-	rewardsProofCmd.PersistentFlags().StringVarP(&dataRootPath, "data-root-path", "f", "./data", "Path to the root data file to retrieve distribution data and save the merkle tree")
-	rewardsProofCmd.PersistentFlags().StringVarP(&service, "service", "s", "service", "Service address")
-	err = rewardsProofCmd.MarkPersistentFlagRequired("data-root-path")
+	rewardsProofCmd.PersistentFlags().StringVarP(&filePath, "file-path", "f", "./data", "Path to the distribution json file, where /<chain-id>/<service>/<token>/distribution.json will be assumed")
+	err = rewardsProofCmd.MarkPersistentFlagRequired("file-path")
 	if err != nil {
 		fmt.Println("Error marking flag as required:", err)
-	}
-	err = rewardsProofCmd.MarkPersistentFlagRequired("service")
-	if err != nil {
-		fmt.Println("Error marking service flag as required:", err)
 	}
 
 	return command
