@@ -370,10 +370,10 @@ mod execute {
             let stored_slashing_request_id =
                 SlashingRequestId::new(&service, &active_slashing_requests)?;
 
-            // TODO: service should call this method within resolution_window or limited time?
+            // TODO: service should call this method within resolution_window*2 or limited time?
             let respond_time = active_slashing_requests
                 .request_time
-                .plus_seconds(slashing_parameters.resolution_window);
+                .plus_seconds(slashing_parameters.resolution_window * 2);
             if respond_time <= env.block.time {
                 return Err(ContractError::InvalidSlashingRequest {
                     msg: "Cannot cancel non-promptly responded slash request.".to_string(),
