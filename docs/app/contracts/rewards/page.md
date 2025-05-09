@@ -1,0 +1,1 @@
+../../../../crates/bvs-rewards/README.md
