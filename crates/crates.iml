@@ -31,9 +31,11 @@
       <sourceFolder url="file://$MODULE_DIR$/bvs-registry/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-rewards/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-rewards/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-guardrail/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-multi-test/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-vault-bank-tokenized/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bvs-vault-bank-tokenized/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/bvs-guardrail/tests" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludePattern pattern=".turbo" />
       <excludePattern pattern="Cargo.lock" />

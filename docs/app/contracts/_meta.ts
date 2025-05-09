@@ -11,6 +11,7 @@ const meta: MetaRecord = {
   "vault-base": {},
   rewards: {},
   registry: {},
+  guardrail: {},
   pauser: {},
   library: {},
 };
