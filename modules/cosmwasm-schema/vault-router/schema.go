@@ -56,7 +56,7 @@ type ExecuteMsg struct {
 	SetWithdrawalLockPeriod *string               `json:"set_withdrawal_lock_period,omitempty"`
 	TransferOwnership       *TransferOwnership    `json:"transfer_ownership,omitempty"`
 	RequestSlashing         *RequestSlashingClass `json:"request_slashing,omitempty"`
-	SlashLocked             *string               `json:"slash_locked,omitempty"`
+	LockSlashing            *string               `json:"lock_slashing,omitempty"`
 }
 
 type RequestSlashingClass struct {
@@ -133,9 +133,7 @@ type ListVaultsByOperator struct {
 }
 
 type SlashLocked struct {
-	Limit             *int64  `json:"limit"`
-	SlashingRequestID string  `json:"slashing_request_id"`
-	StartAfter        *string `json:"start_after"`
+	SlashingRequestID string `json:"slashing_request_id"`
 }
 
 type SlashingRequestID struct {
