@@ -60,7 +60,7 @@ pub fn execute(
                 .map_err(ContractError::Ownership)
         }
         ExecuteMsg::RequestSlashing(payload) => execute::request_slashing(deps, env, info, payload),
-        ExecuteMsg::SlashLocked(id) => execute::slash_locking(deps, env, info, id),
+        ExecuteMsg::LockSlashing(id) => execute::lock_slashing(deps, env, info, id),
     }
 }
 
@@ -330,7 +330,7 @@ mod execute {
             ))
     }
 
-    pub fn slash_locking(
+    pub fn lock_slashing(
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
@@ -338,15 +338,26 @@ mod execute {
     ) -> Result<Response, ContractError> {
         let registry = state::get_registry(deps.storage)?;
 
-        let slash_req = state::SLASHING_REQUESTS.may_load(deps.storage, id.clone())?;
+        let slash_req = match state::SLASHING_REQUESTS.may_load(deps.storage, id.clone())? {
+            Some(slash_req) => slash_req,
+            None => {
+                return Err(ContractError::InvalidSlashingRequest {
+                    msg: "Id does not exist".to_string(),
+                })
+            }
+        };
 
-        if slash_req.is_none() {
-            return Err(ContractError::InvalidSlashingRequest {
-                msg: "Slashing entry with given id does not exist".to_string(),
-            });
+        match state::SLASH_LOCKED
+            .prefix(id.clone())
+            .is_empty(deps.storage)
+        {
+            true => {}
+            false => {
+                return Err(ContractError::InvalidSlashingRequest {
+                    msg: "Collateral already locked for this id".to_string(),
+                })
+            }
         }
-
-        let slash_req = slash_req.unwrap();
 
         let SlashingParametersResponse(slashing_parameters) = deps.querier.query_wasm_smart(
             registry.clone(),
@@ -393,12 +404,17 @@ mod execute {
                 .request_time
                 .plus_seconds(slashing_parameters.resolution_window);
 
-        // expired or has not given enough time to refute
-        if cond_expired || cond_not_aged {
+        if cond_expired {
             return Err(ContractError::InvalidSlashingRequest {
-                msg: "Current period does not satisfy: Resolution Window < Slash Lock Period < Expired".to_string(),
+                msg: "Slash id is expired".to_string(),
             });
-        }
+        };
+
+        if cond_not_aged {
+            return Err(ContractError::InvalidSlashingRequest {
+                msg: "Resolution window for this id has not passed".to_string(),
+            });
+        };
 
         let vaults_managed = state::OPERATOR_VAULTS
             .prefix(&accused_operator)
@@ -412,15 +428,17 @@ mod execute {
             let total_assets = vault_info.total_assets;
             let bips = Uint128::from(slash_req.request.bips as u128);
 
-            let slash_percent = bips.checked_div(Uint128::from(100_u128)).map_err(|_| {
-                ContractError::InvalidSlashingRequest {
-                    msg: "Slash bips is not valid.".to_string(),
-                }
-            })?;
+            let slash_percent = bips.checked_div(Uint128::from(100_u128)).unwrap();
+
+            // multiply_ratio is always floored.
             let slash_absolute =
                 total_assets.multiply_ratio(slash_percent, Uint128::from(100_u128));
 
-            // Can't slash lock a zero asset vault
+            SLASH_LOCKED.save(deps.storage, (id.clone(), &vault), &slash_absolute)?;
+
+            // Can't slash lock a zero asset vault the vault will reject.
+            // But we still need to populate the `SLASH_LOCKED` map to indicate
+            // slash locking for given id is already done.
             if slash_absolute.is_zero() {
                 continue;
             };
@@ -434,10 +452,6 @@ mod execute {
             };
 
             messages.push(exec_msg);
-            let _ = SLASH_LOCKED.save(deps.storage, (id.clone(), &vault), &slash_absolute);
-
-            // prune the slash request to prevent replays
-            state::prune_slashing_request(deps.storage, &id, &info.sender, &accused_operator)?;
         }
 
         let response = Response::new().add_event(
@@ -547,20 +561,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::SlashingRequest(id) => to_json_binary(&query::slashing_request(deps, id)?),
         QueryMsg::SlashLocked {
             slashing_request_id,
-            limit,
-            start_after,
-        } => {
-            let limit = limit.map_or(100, |v| v.min(100));
-            let start_after = start_after
-                .map(|s| deps.api.addr_validate(&s))
-                .transpose()?;
-            to_json_binary(&query::slash_locked(
-                deps,
-                slashing_request_id,
-                limit,
-                start_after,
-            )?)
-        }
+        } => to_json_binary(&query::slash_locked(deps, slashing_request_id)?),
     }
 }
 
@@ -686,34 +687,18 @@ mod query {
         Ok(SlashingRequestResponse(slashing_request))
     }
 
-    pub fn slash_locked(
-        deps: Deps,
-        id: SlashingRequestId,
-        limit: u32,
-        start_after: Option<Addr>,
-    ) -> StdResult<SlashLockedResponse> {
-        let items = state::SLASH_LOCKED.prefix(id);
+    pub fn slash_locked(deps: Deps, id: SlashingRequestId) -> StdResult<SlashLockedResponse> {
+        let locked = state::SLASH_LOCKED
+            .prefix(id.clone())
+            .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+            .collect::<StdResult<Vec<_>>>()?;
 
-        let range_max = start_after.as_ref().map(Bound::exclusive);
-        let items = items.range(
-            deps.storage,
-            None,
-            range_max,
-            cosmwasm_std::Order::Descending,
-        );
-
-        let entries = items
-            .take(limit as usize)
-            .map(|item| {
-                let (vault, absolute_slashed_locked) = item?;
-                Ok(SlashLockedResponseItem {
-                    vault,
-                    amount: absolute_slashed_locked,
-                })
-            })
-            .collect::<StdResult<_>>()?;
-
-        Ok(SlashLockedResponse(entries))
+        Ok(SlashLockedResponse(
+            locked
+                .into_iter()
+                .map(|(vault, amount)| Ok(SlashLockedResponseItem { vault, amount }))
+                .collect::<StdResult<Vec<_>>>()?,
+        ))
     }
 }
 
@@ -1428,7 +1413,6 @@ mod tests {
     #[test]
     fn test_query_slash_locked() {
         let mut deps = mock_dependencies();
-        let env = mock_env();
 
         let request_id1 = SlashingRequestId(
             HexBinary::from_hex("dff7a6f403eff632636533660ab53ab35e7ae0fe2e5dacb160aa7d876a412f09")
@@ -1463,11 +1447,11 @@ mod tests {
                 .expect("save slashing request failed");
         }
 
-        let res = query::slash_locked(deps.as_ref(), request_id1.clone(), 10, None).unwrap();
+        let res = query::slash_locked(deps.as_ref(), request_id1.clone()).unwrap();
 
         assert_eq!(res.0.len(), 10);
 
-        let res = query::slash_locked(deps.as_ref(), request_id2.clone(), 10, None).unwrap();
+        let res = query::slash_locked(deps.as_ref(), request_id2.clone()).unwrap();
 
         assert_eq!(res.0.len(), 10);
     }
