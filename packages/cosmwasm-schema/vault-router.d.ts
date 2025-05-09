@@ -142,7 +142,7 @@ export interface ExecuteMsg {
   set_withdrawal_lock_period?: string;
   transfer_ownership?: TransferOwnership;
   request_slashing?: RequestSlashingClass;
-  slash_locked?: string;
+  lock_slashing?: string;
 }
 
 export interface RequestSlashingClass {
@@ -233,9 +233,7 @@ export interface ListVaultsByOperator {
 }
 
 export interface SlashLocked {
-  limit?: number | null;
   slashing_request_id: string;
-  start_after?: null | string;
 }
 
 export interface SlashingRequestID {
