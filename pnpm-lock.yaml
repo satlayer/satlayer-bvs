@@ -132,6 +132,9 @@ importers:
         specifier: ^0.33.1
         version: 0.33.1
     devDependencies:
+      '@examples/squaring-contract':
+        specifier: workspace:*
+        version: link:../contract
       '@satlayer/testcontainers':
         specifier: workspace:*
         version: link:../../../packages/testcontainers
@@ -280,6 +283,9 @@ importers:
         version: 10.25.0
     devDependencies:
       '@cosmjs/cosmwasm-stargate':
+        specifier: ^0.33.1
+        version: 0.33.1
+      '@cosmjs/crypto':
         specifier: ^0.33.1
         version: 0.33.1
       '@cosmjs/proto-signing':

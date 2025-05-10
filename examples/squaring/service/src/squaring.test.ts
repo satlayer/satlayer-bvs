@@ -1,8 +1,9 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { SatLayerContainer, StartedSatLayerContainer } from "@satlayer/testcontainers";
-import { CosmWasmClient } from "@cosmjs/cosmwasm-stargate";
+import { CosmWasmClient, SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
+import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
 
-describe("Squaring", { timeout: 60_000 }, () => {
+describe("Squaring Node", { timeout: 120_000 }, () => {
   let container: StartedSatLayerContainer;
 
   beforeAll(async () => {
@@ -14,9 +15,15 @@ describe("Squaring", { timeout: 60_000 }, () => {
   });
 
   test("should connect with height", async () => {
-    const rpcUrl = container.getHostRpcUrl();
-    const client = await CosmWasmClient.connect(rpcUrl);
+    const client = await CosmWasmClient.connect(container.getHostRpcUrl());
     const height = await client.getHeight();
     expect(height).toStrictEqual(expect.any(Number));
+  });
+
+  test("should start node and square", async () => {
+    const wallet = await DirectSecp256k1HdWallet.generate(12, { prefix: "stake" });
+    const [operator] = await wallet.getAccounts();
+    const client = await SigningCosmWasmClient.connectWithSigner(container.getHostRpcUrl(), wallet);
+    // TODO(fuxingloh):
   });
 });
