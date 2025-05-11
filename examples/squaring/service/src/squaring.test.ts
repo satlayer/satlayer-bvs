@@ -2,12 +2,12 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { SatLayerContainer, StartedSatLayerContainer } from "@satlayer/testcontainers";
 import { CosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 
-describe("Squaring", { timeout: 60_000 }, () => {
+describe("Squaring", () => {
   let container: StartedSatLayerContainer;
 
   beforeAll(async () => {
     container = await new SatLayerContainer().start();
-  });
+  }, 60_000);
 
   afterAll(async () => {
     await container.stop();
