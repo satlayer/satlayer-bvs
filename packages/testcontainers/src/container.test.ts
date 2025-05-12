@@ -2,9 +2,10 @@ import { CosmWasmClient, SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate
 import { stringToPath } from "@cosmjs/crypto";
 import { coins, DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
 import { GasPrice } from "@cosmjs/stargate";
+import { QueryMsg as RouterQueryMsg } from "@satlayer/cosmwasm-schema/vault-router";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
-import { SatLayerContainer, StartedSatLayerContainer } from "./satlayer";
+import { SatLayerContainer, StartedSatLayerContainer } from "./container";
 
 describe("SatLayerContainer", () => {
   let container: StartedSatLayerContainer;
@@ -65,3 +66,28 @@ describe("SatLayerContainer", () => {
     });
   }, 30_000);
 });
+
+test("should bootstrap contracts", async () => {
+  const started = await new SatLayerContainer().start();
+  const contracts = await started.bootstrap();
+
+  const client = await CosmWasmClient.connect(started.getHostRpcUrl());
+  const queryMsg: RouterQueryMsg = {
+    list_vaults: {},
+  };
+
+  const vaults: any = await client.queryContractSmart(contracts.router, queryMsg);
+
+  expect(vaults).toEqual(
+    expect.arrayContaining([
+      {
+        vault: contracts.vaults.bank,
+        whitelisted: true,
+      },
+      {
+        vault: contracts.vaults.cw20,
+        whitelisted: true,
+      },
+    ]),
+  );
+}, 180_000);
