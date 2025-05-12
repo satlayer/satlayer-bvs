@@ -3,12 +3,12 @@
   "private": true,
   "scripts": {
     "build": "pnpm run \"/^build:.*/\"",
-    "build:darwin-arm64": "GOOS=darwin GOARCH=arm64 go build -o dist/darwin-arm64 .",
-    "build:darwin-x64": "GOOS=darwin GOARCH=amd64 go build -o dist/darwin-x64 .",
-    "build:linux-arm64": "GOOS=linux GOARCH=arm64 go build -o dist/linux-arm64 .",
-    "build:linux-x64": "GOOS=linux GOARCH=amd64 go build -o dist/linux-x64 .",
-    "build:win32-arm64": "GOOS=windows GOARCH=arm64 go build -o dist/win32-arm64 .",
-    "build:win32-x64": "GOOS=windows GOARCH=amd64 go build -o dist/win32-x64 .",
+    "build:darwin-arm64": "CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o dist/darwin-arm64 .",
+    "build:darwin-x64": "CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o dist/darwin-x64 .",
+    "build:linux-arm64": "CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o dist/linux-arm64 .",
+    "build:linux-x64": "CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o dist/linux-x64 .",
+    "build:win32-arm64": "CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -o dist/win32-arm64 .",
+    "build:win32-x64": "CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o dist/win32-x64 .",
     "test": "gotestsum -- ./... -p 6"
   }
 }
