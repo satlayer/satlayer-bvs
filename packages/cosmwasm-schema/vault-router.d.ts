@@ -135,9 +135,8 @@ export interface InstantiateMsg {
  * #### Returns On success, returns events with a data field set as
  * [`RequestSlashingResponse`] containing the generated slashing request ID.
  *
- * ExecuteMsg SlashLocked initiates the movement of slashed collateral from vaults to the
- * router which will later then be finalized and handle according to the service slashing
- * rules.
+ * ExecuteMsg LockSlashing initiates the movement of slashed collateral from vaults to the
+ * router which will later be finalized and handle according to the service slashing rules.
  */
 export interface ExecuteMsg {
   set_vault?: SetVault;
@@ -212,7 +211,7 @@ export interface QueryMsg {
   withdrawal_lock_period?: WithdrawalLockPeriod;
   slashing_request_id?: SlashingRequestID;
   slashing_request?: string;
-  slash_locked?: SlashLocked;
+  slashing_locked?: SlashingLocked;
 }
 
 export interface IsValidating {
@@ -234,7 +233,7 @@ export interface ListVaultsByOperator {
   start_after?: null | string;
 }
 
-export interface SlashLocked {
+export interface SlashingLocked {
   slashing_request_id: string;
 }
 
@@ -254,7 +253,7 @@ export interface VaultListResponse {
   whitelisted: boolean;
 }
 
-export interface SlashLockedResponse {
+export interface SlashingLockedResponse {
   amount: string;
   vault: string;
 }

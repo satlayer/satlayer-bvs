@@ -9,7 +9,7 @@ type IsWhitelistedResponse bool
 
 type VaultListResponse []Vault
 
-type SlashLockedResponse []SlashLockedResponseItem
+type SlashingLockedResponse []SlashingLockedResponseItem
 
 type WithdrawalLockPeriodResponse string
 
@@ -48,9 +48,8 @@ type InstantiateMsg struct {
 // #### Returns On success, returns events with a data field set as
 // [`RequestSlashingResponse`] containing the generated slashing request ID.
 //
-// ExecuteMsg SlashLocked initiates the movement of slashed collateral from vaults to the
-// router which will later then be finalized and handle according to the service slashing
-// rules.
+// ExecuteMsg LockSlashing initiates the movement of slashed collateral from vaults to the
+// router which will later be finalized and handle according to the service slashing rules.
 type ExecuteMsg struct {
 	SetVault                *SetVault             `json:"set_vault,omitempty"`
 	SetWithdrawalLockPeriod *string               `json:"set_withdrawal_lock_period,omitempty"`
@@ -110,7 +109,7 @@ type QueryMsg struct {
 	WithdrawalLockPeriod *WithdrawalLockPeriod `json:"withdrawal_lock_period,omitempty"`
 	SlashingRequestID    *SlashingRequestID    `json:"slashing_request_id,omitempty"`
 	SlashingRequest      *string               `json:"slashing_request,omitempty"`
-	SlashLocked          *SlashLocked          `json:"slash_locked,omitempty"`
+	SlashingLocked       *SlashingLocked       `json:"slashing_locked,omitempty"`
 }
 
 type IsValidating struct {
@@ -132,7 +131,7 @@ type ListVaultsByOperator struct {
 	StartAfter *string `json:"start_after"`
 }
 
-type SlashLocked struct {
+type SlashingLocked struct {
 	SlashingRequestID string `json:"slashing_request_id"`
 }
 
@@ -151,7 +150,7 @@ type Vault struct {
 	Whitelisted bool   `json:"whitelisted"`
 }
 
-type SlashLockedResponseItem struct {
+type SlashingLockedResponseItem struct {
 	Amount string `json:"amount"`
 	Vault  string `json:"vault"`
 }
