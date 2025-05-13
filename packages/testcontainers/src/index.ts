@@ -1,1 +1,1 @@
-export { SatLayerContainer, StartedSatLayerContainer } from "./satlayer";
+export { SatLayerContainer, StartedSatLayerContainer } from "./container";
