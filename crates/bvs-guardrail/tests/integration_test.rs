@@ -258,7 +258,7 @@ fn propose_and_vote_expired() {
         .execute(&mut app, &owner, &proposal_msg)
         .unwrap();
 
-    // Voter1 votes "yes"
+    // Voter1 votes "no"
     let vote_msg = ExecuteMsg::Vote {
         slashing_request_id: slashing_request_id.clone(),
         vote: Vote::No,
