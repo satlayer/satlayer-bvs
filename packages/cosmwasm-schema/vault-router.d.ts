@@ -241,6 +241,10 @@ export interface SlashingRequestResponse {
    * The timestamp when the request was submitted.
    */
   request_time: string;
+  /**
+   * The status of the slashing request.
+   */
+  status: number;
 }
 
 /**

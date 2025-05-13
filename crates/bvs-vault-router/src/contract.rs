@@ -105,7 +105,7 @@ mod execute {
     use crate::contract::query::get_withdrawal_lock_period;
     use crate::error::ContractError;
     use crate::msg::{RequestSlashingPayload, RequestSlashingResponse};
-    use crate::state::{self, DEFAULT_WITHDRAWAL_LOCK_PERIOD};
+    use crate::state::{self, SlashingRequestStatus, DEFAULT_WITHDRAWAL_LOCK_PERIOD};
     use crate::state::{SlashingRequest, WITHDRAWAL_LOCK_PERIOD};
     use crate::ContractError::InvalidSlashingRequest;
     use bvs_library::addr::Operator;
@@ -279,17 +279,17 @@ mod execute {
             });
         }
 
-        // get current active slashing request for (service, operator) pair
-        let active_slashing_requests =
-            state::get_active_slashing_requests(deps.storage, &service, &operator)?;
+        // get current pending slashing request for (service, operator) pair
+        let pending_slashing_requests =
+            state::get_pending_slashing_request(deps.storage, &service, &operator)?;
 
-        // if active slashing request exists and
+        // if pending slashing request exists and
         // if request_expiry > now (in the future) => request hasn't expired,
-        // so the service has to manually cancel active request (throw Err)
-        if let Some(active_slashing_requests) = active_slashing_requests {
-            if active_slashing_requests.request_expiry > env.block.time {
+        // so the service has to manually cancel slashing request (throw Err)
+        if let Some(pending_slashing_requests) = pending_slashing_requests {
+            if pending_slashing_requests.request_expiry > env.block.time {
                 return Err(InvalidSlashingRequest {
-                    msg: "Service has current active slashing request for the operator."
+                    msg: "Service has current pending slashing request for the operator."
                         .to_string(),
                 });
             }
@@ -309,6 +309,7 @@ mod execute {
             request: data.clone(),
             request_time: env.block.time,
             request_expiry: new_request_expiry,
+            status: SlashingRequestStatus::Pending.into(),
         };
 
         // save slash data
@@ -517,17 +518,17 @@ mod query {
         service: Addr,
         operator: Addr,
     ) -> StdResult<SlashingRequestIdResponse> {
-        let active_slashing_request_id =
+        let pending_slashing_request_id =
             SLASHING_REQUEST_IDS.may_load(deps.storage, (&service, &operator))?;
-        Ok(SlashingRequestIdResponse(active_slashing_request_id))
+        Ok(SlashingRequestIdResponse(pending_slashing_request_id))
     }
 
     pub fn slashing_request(
         deps: Deps,
         id: impl Into<SlashingRequestId>,
     ) -> StdResult<SlashingRequestResponse> {
-        let active_slashing_request = SLASHING_REQUESTS.may_load(deps.storage, id.into())?;
-        Ok(SlashingRequestResponse(active_slashing_request))
+        let slashing_request = SLASHING_REQUESTS.may_load(deps.storage, id.into())?;
+        Ok(SlashingRequestResponse(slashing_request))
     }
 }
 
@@ -542,7 +543,7 @@ mod tests {
     use crate::msg::RequestSlashingPayload;
     use crate::msg::SlashingMetadata;
     use crate::msg::{InstantiateMsg, SlashingRequestIdResponse, SlashingRequestResponse};
-    use crate::state::{SlashingRequest, SLASHING_REQUESTS};
+    use crate::state::{SlashingRequest, SlashingRequestStatus, SLASHING_REQUESTS};
     use crate::state::{
         SlashingRequestId, Vault, OPERATOR_VAULTS, REGISTRY, SLASHING_REQUEST_IDS, VAULTS,
     };
@@ -1206,6 +1207,7 @@ mod tests {
             },
             request_time: env.block.time,
             request_expiry: env.block.time.plus_seconds(100),
+            status: SlashingRequestStatus::Pending.into(),
         };
 
         // query request_id before its saved => None

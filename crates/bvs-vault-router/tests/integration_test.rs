@@ -13,6 +13,7 @@ use bvs_vault_router::msg::{
     RequestSlashingPayload, SlashingMetadata, SlashingRequestIdResponse, SlashingRequestResponse,
     Vault,
 };
+use bvs_vault_router::state::SlashingRequestStatus;
 use bvs_vault_router::{
     msg::{ExecuteMsg, QueryMsg, VaultListResponse},
     testing::VaultRouterContract,
@@ -410,7 +411,7 @@ fn request_slashing_successful() {
                 .add_attribute("operator", operator.to_string())
                 .add_attribute(
                     "slashing_request_id",
-                    "cdb763a239cb5c8d627c5cc85c65aac291680aced9d081ba7595c6d5138fc4fb"
+                    "256599b4308c914c2a1a0c0300ac82b68e932edc0be46339b54293e804add30e"
                 )
                 .add_attribute("reason", "test"),
         ]
@@ -434,7 +435,7 @@ fn request_slashing_successful() {
     assert_eq!(
         res,
         Some(
-            HexBinary::from_hex("cdb763a239cb5c8d627c5cc85c65aac291680aced9d081ba7595c6d5138fc4fb")
+            HexBinary::from_hex("256599b4308c914c2a1a0c0300ac82b68e932edc0be46339b54293e804add30e")
                 .unwrap()
                 .into()
         )
@@ -450,7 +451,7 @@ fn request_slashing_successful() {
     assert_eq!(
         slashing_request_id,
         SlashingRequestIdResponse(Some(
-            HexBinary::from_hex("cdb763a239cb5c8d627c5cc85c65aac291680aced9d081ba7595c6d5138fc4fb")
+            HexBinary::from_hex("256599b4308c914c2a1a0c0300ac82b68e932edc0be46339b54293e804add30e")
                 .unwrap()
                 .into()
         ))
@@ -464,7 +465,8 @@ fn request_slashing_successful() {
         SlashingRequest {
             request: slashing_request_payload,
             request_time: app.block_info().time,
-            request_expiry: app.block_info().time.plus_seconds(200)
+            request_expiry: app.block_info().time.plus_seconds(200),
+            status: SlashingRequestStatus::Pending.into(),
         }
     );
 }
@@ -805,7 +807,7 @@ fn request_slashing_lifecycle() {
         block.time = block.time.plus_seconds(10);
     });
 
-    // service request a second slashing to the same operator while there is an active request
+    // service request a second slashing to the same operator while there is an pending request
     {
         let slashing_request_payload = RequestSlashingPayload {
             operator: operator.to_string(),
@@ -824,7 +826,7 @@ fn request_slashing_lifecycle() {
         assert_eq!(
             err.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Service has current active slashing request for the operator.".to_string()
+                msg: "Service has current pending slashing request for the operator.".to_string()
             }
             .to_string()
         )
@@ -860,7 +862,7 @@ fn request_slashing_lifecycle() {
                     .add_attribute("operator", operator.to_string())
                     .add_attribute(
                         "slashing_request_id",
-                        "9aa7b17bee050669270c877297f6cda0980cd49b1aff2216d034d4803280a495"
+                        "99a3e8248790f5ac720fc24837887f507ef7cabf7880f654e7fc345bc60e5d4e"
                     )
                     .add_attribute("reason", "test2"),
             ]
