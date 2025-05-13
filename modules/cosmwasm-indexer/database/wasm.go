@@ -24,7 +24,7 @@ func (db *DB) SaveWASMExecuteContracts(executeContracts []types.WASMExecuteContr
 
 		err := db.saveWASMExecuteContracts(paramsNumber, contracts)
 		if err != nil {
-			return fmt.Errorf("failed to store WASM contracts: %s", err)
+			return fmt.Errorf("failed to store WASM execute contracts: %s", err)
 		}
 	}
 
@@ -54,7 +54,7 @@ VALUES `
 
 	_, err := db.SQL.Exec(stmt, args...)
 	if err != nil {
-		return fmt.Errorf("failed to save WASM execute contracts: %s", err)
+		return err
 	}
 
 	return nil
