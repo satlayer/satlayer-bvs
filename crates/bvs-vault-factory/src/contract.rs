@@ -58,8 +58,9 @@ pub fn execute(
             let cw20 = deps.api.addr_validate(&cw20)?;
             execute::deploy_cw20_vault(deps, env, info, cw20)
         }
-        ExecuteMsg::DeployCw20Tokenized { symbol, name } => {
-            execute::deploy_cw20_tokenized_vault(deps, env, info, symbol, name)
+        ExecuteMsg::DeployCw20Tokenized { symbol, name, cw20 } => {
+            let cw20 = deps.api.addr_validate(&cw20)?;
+            execute::deploy_cw20_tokenized_vault(deps, env, info, symbol, name, cw20)
         }
         ExecuteMsg::DeployBank { denom } => execute::deploy_bank_vault(deps, env, info, denom),
         ExecuteMsg::DeployBankTokenized {
@@ -172,6 +173,7 @@ mod execute {
         info: MessageInfo,
         symbol: String,
         name: String,
+        cw20: Addr,
     ) -> Result<Response, ContractError> {
         auth::assert_operator(deps.as_ref(), &info)?;
 
@@ -188,6 +190,7 @@ mod execute {
             operator: operator.to_string(),
             symbol: symbol.clone(),
             name: name.clone(),
+            cw20_contract: cw20.to_string(),
         };
 
         let code_id = get_code_id(deps.storage, &VaultType::Cw20Tokenized)?;

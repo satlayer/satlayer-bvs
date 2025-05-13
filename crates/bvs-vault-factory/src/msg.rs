@@ -22,7 +22,11 @@ pub enum ExecuteMsg {
     /// The `symbol` is the symbol for the receipt token.
     /// Must start with sat and conform the Bank symbol rules.
     /// The `name` is the cw20 compliant name for the receipt token.
-    DeployCw20Tokenized { symbol: String, name: String },
+    DeployCw20Tokenized {
+        symbol: String,
+        name: String,
+        cw20: String,
+    },
 
     /// ExecuteMsg DeployBank
     /// Deploy a Bank vault contract, the operator will be the sender of this message.
