@@ -200,7 +200,7 @@ mod execute {
             code_id,
             msg: to_json_binary(&msg)?,
             funds: vec![],
-            label: format!("BVS CW20 Tokenized Vault"),
+            label: "BVS CW20 Tokenized Vault".to_string(),
         };
 
         Ok(Response::new()
