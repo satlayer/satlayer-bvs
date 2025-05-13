@@ -66,6 +66,12 @@ mod tests {
 
         let value: u8 = (&VaultType::Cw20).into();
         assert_eq!(value, 2);
+
+        let value: u8 = (&VaultType::BankTokenized).into();
+        assert_eq!(value, 3);
+
+        let value: u8 = (&VaultType::Cw20Tokenized).into();
+        assert_eq!(value, 4);
     }
 
     #[test]
@@ -82,6 +88,18 @@ mod tests {
         assert!(res.is_err());
 
         let res = get_code_id(&store, &VaultType::Bank).unwrap();
+        assert_eq!(res, code_id);
+
+        let res = get_code_id(&store, &VaultType::BankTokenized);
+        assert!(res.is_err());
+        set_code_id(&mut store, &VaultType::BankTokenized, &code_id).unwrap();
+        let res = get_code_id(&store, &VaultType::BankTokenized).unwrap();
+        assert_eq!(res, code_id);
+
+        let res = get_code_id(&store, &VaultType::Cw20Tokenized);
+        assert!(res.is_err());
+        set_code_id(&mut store, &VaultType::Cw20Tokenized, &code_id).unwrap();
+        let res = get_code_id(&store, &VaultType::Cw20Tokenized).unwrap();
         assert_eq!(res, code_id);
     }
 }
