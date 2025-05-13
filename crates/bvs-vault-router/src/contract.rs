@@ -383,20 +383,13 @@ mod execute {
             .api
             .addr_validate(slash_req.request.operator.as_str())?;
 
-        // Require active status between operator and service
-        let StatusResponse(operator_service_status) = deps.querier.query_wasm_smart(
-            registry.to_string(),
-            &bvs_registry::msg::QueryMsg::Status {
-                service: info.sender.to_string(),
-                operator: accused_operator.to_string(),
-                timestamp: Some(slash_req.request.timestamp.seconds()),
-            },
-        )?;
+        let true_id = state::SLASHING_REQUEST_IDS
+            .may_load(deps.storage, (&info.sender, &accused_operator))?;
 
-        // Prevent any active service from locking slash of slash request that it doesn't belong to
-        if operator_service_status != u8::from(RegistrationStatus::Active) {
-            return Err(InvalidSlashingRequest {
-                msg: "Service and Operator are not active at timestamp.".to_string(),
+        // Check if the id is the same as the one in the request
+        if true_id != Some(id.clone()) {
+            return Err(ContractError::InvalidSlashingRequest {
+                msg: "Service does not requested this slashing event".to_string(),
             });
         }
 
@@ -404,7 +397,7 @@ mod execute {
 
         if now > slash_req.request_expiry {
             return Err(ContractError::InvalidSlashingRequest {
-                msg: "Slash id is expired".to_string(),
+                msg: "Slash is expired".to_string(),
             });
         };
 
@@ -414,7 +407,7 @@ mod execute {
                 .plus_seconds(slashing_parameters.resolution_window)
         {
             return Err(ContractError::InvalidSlashingRequest {
-                msg: "Resolution window for this id has not passed".to_string(),
+                msg: "Resolution window for this slashing has not passed".to_string(),
             });
         };
 

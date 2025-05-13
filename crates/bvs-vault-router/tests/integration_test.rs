@@ -1340,7 +1340,7 @@ fn test_slash_locking_negative() {
         assert_eq!(
             res.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Resolution window for this id has not passed".to_string(),
+                msg: "Resolution window for this slashing has not passed".to_string(),
             }
             .to_string()
         );
@@ -1462,7 +1462,7 @@ fn test_slash_locking_negative() {
         assert_eq!(
             res.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Slash id is expired".to_string(),
+                msg: "Slash is expired".to_string(),
             }
             .to_string()
         );
