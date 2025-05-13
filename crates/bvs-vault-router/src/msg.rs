@@ -132,8 +132,8 @@ pub enum QueryMsg {
     #[returns(SlashingRequestResponse)]
     SlashingRequest(SlashingRequestId),
 
-    #[returns(SlashLockedResponse)]
-    SlashLocked {
+    #[returns(SlashingLockedResponse)]
+    SlashingLocked {
         slashing_request_id: SlashingRequestId,
     },
 }
@@ -174,10 +174,10 @@ pub struct SlashingRequestIdResponse(pub Option<SlashingRequestId>);
 pub struct SlashingRequestResponse(pub Option<SlashingRequest>);
 
 #[cw_serde]
-pub struct SlashLockedResponse(pub Vec<SlashLockedResponseItem>);
+pub struct SlashingLockedResponse(pub Vec<SlashingLockedResponseItem>);
 
 #[cw_serde]
-pub struct SlashLockedResponseItem {
+pub struct SlashingLockedResponseItem {
     pub vault: Addr,
     pub amount: Uint128,
 }

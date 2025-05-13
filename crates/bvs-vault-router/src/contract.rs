@@ -106,8 +106,8 @@ mod execute {
     use crate::contract::query::get_withdrawal_lock_period;
     use crate::error::ContractError;
     use crate::msg::{RequestSlashingPayload, RequestSlashingResponse};
-    use crate::state::{self, SlashingRequestStatus, DEFAULT_WITHDRAWAL_LOCK_PERIOD};
     use crate::state::SLASH_LOCKED;
+    use crate::state::{self, SlashingRequestStatus, DEFAULT_WITHDRAWAL_LOCK_PERIOD};
     use crate::state::{SlashingRequest, WITHDRAWAL_LOCK_PERIOD};
     use crate::ContractError::InvalidSlashingRequest;
     use bvs_library::addr::Operator;
@@ -234,6 +234,9 @@ mod execute {
                 timestamp: Some(data.timestamp.seconds()),
             },
         )?;
+
+        // this check validate the service calling the locking is the same as the one that
+        // requested the slashing
         if operator_service_status != u8::from(RegistrationStatus::Active) {
             return Err(InvalidSlashingRequest {
                 msg: "Service and Operator are not active at timestamp.".to_string(),
@@ -398,19 +401,18 @@ mod execute {
         }
 
         let now = env.block.time;
-        let cond_expired = now > slash_req.request_expiry;
-        let cond_not_aged = now
-            < slash_req
-                .request_time
-                .plus_seconds(slashing_parameters.resolution_window);
 
-        if cond_expired {
+        if now > slash_req.request_expiry {
             return Err(ContractError::InvalidSlashingRequest {
                 msg: "Slash id is expired".to_string(),
             });
         };
 
-        if cond_not_aged {
+        if now
+            < slash_req
+                .request_time
+                .plus_seconds(slashing_parameters.resolution_window)
+        {
             return Err(ContractError::InvalidSlashingRequest {
                 msg: "Resolution window for this id has not passed".to_string(),
             });
@@ -454,16 +456,27 @@ mod execute {
             messages.push(exec_msg);
         }
 
-        let response = Response::new().add_event(
-            Event::new("SlashLocked")
-                .add_attribute("service", info.sender)
-                .add_attribute("operator", accused_operator)
-                .add_attribute("slashing_request_id", id.to_string())
-                .add_attribute("bips", slash_req.request.bips.to_string())
-                .add_attribute("affected_vaults", messages.len().to_string()),
-        );
+        state::SLASHING_REQUESTS.save(
+            deps.storage,
+            id.clone(),
+            &SlashingRequest {
+                request: slash_req.request.clone(),
+                request_time: slash_req.request_time,
+                request_expiry: slash_req.request_expiry,
+                status: SlashingRequestStatus::Locked.into(),
+            },
+        )?;
 
-        Ok(response.add_messages(messages))
+        Ok(Response::new()
+            .add_event(
+                Event::new("LockSlashing")
+                    .add_attribute("service", info.sender)
+                    .add_attribute("operator", accused_operator)
+                    .add_attribute("slashing_request_id", id.to_string())
+                    .add_attribute("bips", slash_req.request.bips.to_string())
+                    .add_attribute("affected_vaults", messages.len().to_string()),
+            )
+            .add_messages(messages))
     }
 }
 
@@ -559,7 +572,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&query::slashing_request_id(deps, service, operator)?)
         }
         QueryMsg::SlashingRequest(id) => to_json_binary(&query::slashing_request(deps, id)?),
-        QueryMsg::SlashLocked {
+        QueryMsg::SlashingLocked {
             slashing_request_id,
         } => to_json_binary(&query::slash_locked(deps, slashing_request_id)?),
     }
@@ -567,7 +580,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 mod query {
     use crate::msg::{
-        SlashLockedResponse, SlashLockedResponseItem, SlashingRequestIdResponse,
+        SlashingLockedResponse, SlashingLockedResponseItem, SlashingRequestIdResponse,
         SlashingRequestResponse, Vault, VaultListResponse,
     };
     use crate::state::{
@@ -687,16 +700,16 @@ mod query {
         Ok(SlashingRequestResponse(slashing_request))
     }
 
-    pub fn slash_locked(deps: Deps, id: SlashingRequestId) -> StdResult<SlashLockedResponse> {
+    pub fn slash_locked(deps: Deps, id: SlashingRequestId) -> StdResult<SlashingLockedResponse> {
         let locked = state::SLASH_LOCKED
             .prefix(id.clone())
             .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
             .collect::<StdResult<Vec<_>>>()?;
 
-        Ok(SlashLockedResponse(
+        Ok(SlashingLockedResponse(
             locked
                 .into_iter()
-                .map(|(vault, amount)| Ok(SlashLockedResponseItem { vault, amount }))
+                .map(|(vault, amount)| Ok(SlashingLockedResponseItem { vault, amount }))
                 .collect::<StdResult<Vec<_>>>()?,
         ))
     }
@@ -713,7 +726,7 @@ mod tests {
     use crate::msg::RequestSlashingPayload;
     use crate::msg::SlashingMetadata;
     use crate::msg::{InstantiateMsg, SlashingRequestIdResponse, SlashingRequestResponse};
-    use crate::state::{SlashingRequest, SlashingRequestStatus, SLASHING_REQUESTS};
+    use crate::state::{self, SlashingRequest, SlashingRequestStatus, SLASHING_REQUESTS};
     use crate::state::{
         SlashingRequestId, Vault, OPERATOR_VAULTS, REGISTRY, SLASHING_REQUEST_IDS, VAULTS,
     };

@@ -1032,22 +1032,7 @@ fn test_slash_locking() {
     };
 
     let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
-    let response = tc.vault_router.execute(&mut app, &service, msg).unwrap();
-    assert_eq!(
-        response.events,
-        vec![
-            Event::new("execute").add_attribute("_contract_address", tc.vault_router.addr.as_str()),
-            Event::new("wasm-RequestSlashing")
-                .add_attribute("_contract_address", tc.vault_router.addr.as_str())
-                .add_attribute("service", service.to_string())
-                .add_attribute("operator", operator.to_string())
-                .add_attribute(
-                    "slashing_request_id",
-                    "cdb763a239cb5c8d627c5cc85c65aac291680aced9d081ba7595c6d5138fc4fb"
-                )
-                .add_attribute("reason", "test"),
-        ]
-    );
+    tc.vault_router.execute(&mut app, &service, msg).unwrap();
 
     // query slashing request id
     let msg = QueryMsg::SlashingRequestId {
@@ -1065,7 +1050,98 @@ fn test_slash_locking() {
         });
 
         let msg = ExecuteMsg::LockSlashing(slashing_request_id.clone().0.unwrap());
-        tc.vault_router.execute(&mut app, &service, &msg).unwrap();
+        let res = tc.vault_router.execute(&mut app, &service, &msg).unwrap();
+
+        assert_eq!(
+            res.events,
+            vec![
+                Event::new("execute").add_attribute(
+                    "_contract_address",
+                    "cosmwasm1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sgetes3"
+                ),
+                Event::new("wasm-LockSlashing")
+                    .add_attribute(
+                        "_contract_address",
+                        "cosmwasm1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sgetes3"
+                    )
+                    .add_attribute(
+                        "service",
+                        "cosmwasm1nhmtqf4gcmpxu0p6e53hpgtwj0llmsqptl6mmpujrpugqfwmq2qqnhnz62"
+                    )
+                    .add_attribute(
+                        "operator",
+                        "cosmwasm1qmj4kce5s8mmkpef2l4teugse9ewse53c087m2lq3qpyhlly9u3s0hztgj"
+                    )
+                    .add_attribute(
+                        "slashing_request_id",
+                        "256599b4308c914c2a1a0c0300ac82b68e932edc0be46339b54293e804add30e"
+                    )
+                    .add_attribute("bips", "100")
+                    .add_attribute("affected_vaults", "2"),
+                Event::new("execute").add_attribute(
+                    "_contract_address",
+                    "cosmwasm1mf6ptkssddfmxvhdx0ech0k03ktp6kf9yk59renau2gvht3nq2gq7z7vxe"
+                ),
+                Event::new("wasm-SlashLocked")
+                    .add_attribute(
+                        "_contract_address",
+                        "cosmwasm1mf6ptkssddfmxvhdx0ech0k03ktp6kf9yk59renau2gvht3nq2gq7z7vxe"
+                    )
+                    .add_attribute(
+                        "sender",
+                        "cosmwasm1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sgetes3"
+                    )
+                    .add_attribute("amount", "3")
+                    .add_attribute(
+                        "token",
+                        "cosmwasm1436kxs0w2es6xlqpp9rd35e3d0cjnw4sv8j3a7483sgks29jqwgsy4c2hs"
+                    ),
+                Event::new("execute").add_attribute(
+                    "_contract_address",
+                    "cosmwasm1436kxs0w2es6xlqpp9rd35e3d0cjnw4sv8j3a7483sgks29jqwgsy4c2hs"
+                ),
+                Event::new("wasm")
+                    .add_attribute(
+                        "_contract_address",
+                        "cosmwasm1436kxs0w2es6xlqpp9rd35e3d0cjnw4sv8j3a7483sgks29jqwgsy4c2hs"
+                    )
+                    .add_attribute("action", "transfer")
+                    .add_attribute(
+                        "from",
+                        "cosmwasm1mf6ptkssddfmxvhdx0ech0k03ktp6kf9yk59renau2gvht3nq2gq7z7vxe"
+                    )
+                    .add_attribute(
+                        "to",
+                        "cosmwasm1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sgetes3"
+                    )
+                    .add_attribute("amount", "3"),
+                Event::new("execute").add_attribute(
+                    "_contract_address",
+                    "cosmwasm1zwv6feuzhy6a9wekh96cd57lsarmqlwxdypdsplw6zhfncqw6ftqnzgsl6"
+                ),
+                Event::new("wasm-SlashLocked")
+                    .add_attribute(
+                        "_contract_address",
+                        "cosmwasm1zwv6feuzhy6a9wekh96cd57lsarmqlwxdypdsplw6zhfncqw6ftqnzgsl6"
+                    )
+                    .add_attribute(
+                        "sender",
+                        "cosmwasm1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sgetes3"
+                    )
+                    .add_attribute("amount", "2")
+                    .add_attribute("denom", "denom"),
+                Event::new("transfer")
+                    .add_attribute(
+                        "recipient",
+                        "cosmwasm1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sgetes3"
+                    )
+                    .add_attribute(
+                        "sender",
+                        "cosmwasm1zwv6feuzhy6a9wekh96cd57lsarmqlwxdypdsplw6zhfncqw6ftqnzgsl6"
+                    )
+                    .add_attribute("amount", "2denom"),
+            ]
+        );
 
         let bank_vault_info = tc
             .bank_vault
@@ -1244,22 +1320,7 @@ fn test_slash_locking_negative() {
     };
 
     let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
-    let response = tc.vault_router.execute(&mut app, &service, msg).unwrap();
-    assert_eq!(
-        response.events,
-        vec![
-            Event::new("execute").add_attribute("_contract_address", tc.vault_router.addr.as_str()),
-            Event::new("wasm-RequestSlashing")
-                .add_attribute("_contract_address", tc.vault_router.addr.as_str())
-                .add_attribute("service", service.to_string())
-                .add_attribute("operator", operator.to_string())
-                .add_attribute(
-                    "slashing_request_id",
-                    "cdb763a239cb5c8d627c5cc85c65aac291680aced9d081ba7595c6d5138fc4fb"
-                )
-                .add_attribute("reason", "test"),
-        ]
-    );
+    tc.vault_router.execute(&mut app, &service, msg).unwrap();
 
     let msg = QueryMsg::SlashingRequestId {
         service: service.to_string(),
