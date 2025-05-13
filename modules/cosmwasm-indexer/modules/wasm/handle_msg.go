@@ -91,8 +91,8 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 	wasmEvent, found := utils.FindEventByType(txEvents, wasmtypes.WasmModuleEventType)
 	wasmByteEvent := emptyJSONBytes
 	if found {
-		if wasmByteEvent, err = json.Marshal(wasmEvent); err != nil {
-			slog.Error("Failed to marshal WASM event into byte", "error", err)
+		if wasmByteEvent, err = utils.ExtractStringEvent(wasmEvent); err != nil {
+			slog.Error("Failed to extract WASM event", "error", err)
 			wasmByteEvent = emptyJSONBytes
 		}
 	} else {
@@ -102,8 +102,8 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 	customWASMEvent, found := utils.FindCustomWASMEvent(txEvents)
 	customWASMByteEvent := emptyJSONBytes
 	if found {
-		if customWASMByteEvent, err = json.Marshal(customWASMEvent); err != nil {
-			slog.Error("Failed to marshal WASM event into byte", "error", err)
+		if customWASMByteEvent, err = utils.ExtractStringEvent(customWASMEvent); err != nil {
+			slog.Error("Failed to extract custom WASM event", "error", err)
 			customWASMByteEvent = emptyJSONBytes
 		}
 	} else {
