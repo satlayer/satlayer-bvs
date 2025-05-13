@@ -34,6 +34,8 @@ impl From<&VaultType> for u8 {
         match value {
             VaultType::Bank => 1,
             VaultType::Cw20 => 2,
+            VaultType::BankTokenized => 3,
+            VaultType::Cw20Tokenized => 4,
         }
     }
 }
@@ -45,6 +47,8 @@ impl TryFrom<u8> for VaultType {
         match value {
             1 => Ok(VaultType::Bank),
             2 => Ok(VaultType::Cw20),
+            3 => Ok(VaultType::BankTokenized),
+            4 => Ok(VaultType::Cw20Tokenized),
             _ => Err(StdError::generic_err("VaultType out of range")),
         }
     }

@@ -14,7 +14,9 @@ struct TestContracts {
     cw20_token: Cw20TokenContract,
     registry: RegistryContract,
     bank_wrapper: Box<dyn Contract<Empty>>,
+    bank_tokenized_wrapper: Box<dyn Contract<Empty>>,
     cw20_vault_wrapper: Box<dyn Contract<Empty>>,
+    cw20_tokenized_wrapper: Box<dyn Contract<Empty>>,
     pauser: PauserContract,
     router: VaultRouterContract,
 }
@@ -39,6 +41,10 @@ impl TestContracts {
 
         let bank_wrapper = VaultBankContract::wrapper();
         let cw20_vault_wrapper = VaultCw20Contract::wrapper();
+        let bank_tokenized_wrapper =
+            bvs_vault_bank_tokenized::testing::VaultBankTokenizedContract::wrapper();
+        let cw20_tokenized_wrapper =
+            bvs_vault_cw20_tokenized::testing::VaultCw20TokenizedContract::wrapper();
 
         (
             app,
@@ -47,7 +53,9 @@ impl TestContracts {
                 cw20_token: cw20,
                 vault_factory,
                 bank_wrapper,
+                bank_tokenized_wrapper,
                 cw20_vault_wrapper,
+                cw20_tokenized_wrapper,
                 pauser,
                 router: vault_router,
             },
@@ -178,6 +186,76 @@ fn test_bank_vault_deployment() {
     let query_res: bvs_vault_base::msg::VaultInfoResponse = app
         .wrap()
         .query_wasm_smart(&vault_addr, &bvs_vault_cw20::msg::QueryMsg::VaultInfo {})
+        .unwrap();
+
+    assert_eq!(query_res.router, contracts.router.addr());
+    assert_eq!(query_res.pauser, contracts.pauser.addr());
+}
+
+#[test]
+fn test_bank_tokenized_vault_deployment() {
+    let (mut app, contracts) = TestContracts::init();
+
+    let operator = app.api().addr_make("operator");
+    let factory = contracts.vault_factory;
+    let bank_vault = contracts.bank_tokenized_wrapper;
+
+    // register an operator
+    {
+        let msg = bvs_registry::msg::ExecuteMsg::RegisterAsOperator {
+            metadata: bvs_registry::msg::Metadata {
+                name: Some("operator".to_string()),
+                uri: Some("https://example.com".to_string()),
+            },
+        };
+        contracts
+            .registry
+            .execute(&mut app, &operator, &msg)
+            .unwrap();
+    }
+
+    let bank_vault_code_id = app.store_code(bank_vault);
+
+    let owner = app.api().addr_make("owner");
+
+    let msg = bvs_vault_factory::msg::ExecuteMsg::SetCodeId {
+        code_id: bank_vault_code_id,
+        vault_type: VaultType::BankTokenized,
+    };
+
+    factory.execute(&mut app, &owner, &msg).unwrap();
+
+    let msg = bvs_vault_factory::msg::ExecuteMsg::DeployBankTokenized {
+        denom: "SATL".to_string(),
+        decimals: 6,
+        symbol: "satl".to_string(),
+    };
+
+    let res = factory.execute(&mut app, &operator, &msg).unwrap();
+
+    let event = res.events.iter().find(|e| e.ty == "instantiate");
+
+    assert!(event.is_some());
+
+    let vault_addr = event
+        .unwrap()
+        .attributes
+        .iter()
+        .find_map(|attr| {
+            if attr.key == "_contract_address" {
+                Some(attr.value.clone())
+            } else {
+                None
+            }
+        })
+        .unwrap();
+
+    let query_res: bvs_vault_base::msg::VaultInfoResponse = app
+        .wrap()
+        .query_wasm_smart(
+            &vault_addr,
+            &bvs_vault_cw20_tokenized::msg::QueryMsg::VaultInfo {},
+        )
         .unwrap();
 
     assert_eq!(query_res.router, contracts.router.addr());
