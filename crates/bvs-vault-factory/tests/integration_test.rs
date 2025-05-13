@@ -276,6 +276,51 @@ fn test_bank_tokenized_vault_deployment() {
 }
 
 #[test]
+fn test_negative_bank_tokenized_vault_deployment() {
+    let (mut app, contracts) = TestContracts::init();
+
+    let operator = app.api().addr_make("operator");
+    let factory = contracts.vault_factory;
+    let bank_vault = contracts.bank_tokenized_wrapper;
+
+    // register an operator
+    {
+        let msg = bvs_registry::msg::ExecuteMsg::RegisterAsOperator {
+            metadata: bvs_registry::msg::Metadata {
+                name: Some("operator".to_string()),
+                uri: Some("https://example.com".to_string()),
+            },
+        };
+        contracts
+            .registry
+            .execute(&mut app, &operator, &msg)
+            .unwrap();
+    }
+
+    let bank_vault_code_id = app.store_code(bank_vault);
+
+    let owner = app.api().addr_make("owner");
+
+    let msg = bvs_vault_factory::msg::ExecuteMsg::SetCodeId {
+        code_id: bank_vault_code_id,
+        vault_type: VaultType::BankTokenized,
+    };
+
+    factory.execute(&mut app, &owner, &msg).unwrap();
+
+    let msg = bvs_vault_factory::msg::ExecuteMsg::DeployBankTokenized {
+        denom: "SATL".to_string(),
+        decimals: 6,
+        symbol: "notSatPrefixed".to_string(),
+        name: "Satlayer test receipt token".to_string(),
+    };
+
+    let res = factory.execute(&mut app, &operator, &msg);
+
+    assert!(res.is_err());
+}
+
+#[test]
 fn test_cw20_tokenized_vault_deployment() {
     let (mut app, contracts) = TestContracts::init();
 
@@ -354,6 +399,49 @@ fn test_cw20_tokenized_vault_deployment() {
     assert_eq!(query_res.decimals, 18);
     assert_eq!(query_res.symbol, "satl");
     assert_eq!(query_res.name, "Satlayer test receipt token");
+}
+
+#[test]
+fn test_negative_cw20_tokenized_vault_deployment() {
+    let (mut app, contracts) = TestContracts::init();
+
+    let operator = app.api().addr_make("operator");
+    let factory = contracts.vault_factory;
+    let cw20_vault = contracts.cw20_tokenized_wrapper;
+
+    // register an operator
+    {
+        let msg = bvs_registry::msg::ExecuteMsg::RegisterAsOperator {
+            metadata: bvs_registry::msg::Metadata {
+                name: Some("operator".to_string()),
+                uri: Some("https://example.com".to_string()),
+            },
+        };
+        contracts
+            .registry
+            .execute(&mut app, &operator, &msg)
+            .unwrap();
+    }
+
+    let cw20_vault_code_id = app.store_code(cw20_vault);
+
+    let owner = app.api().addr_make("owner");
+
+    let msg = bvs_vault_factory::msg::ExecuteMsg::SetCodeId {
+        code_id: cw20_vault_code_id,
+        vault_type: VaultType::Cw20Tokenized,
+    };
+
+    factory.execute(&mut app, &owner, &msg).unwrap();
+
+    let msg = bvs_vault_factory::msg::ExecuteMsg::DeployCw20Tokenized {
+        symbol: "notSatPrefixed".to_string(),
+        name: "Satlayer test receipt token".to_string(),
+        cw20: contracts.cw20_token.addr().to_string(),
+    };
+
+    let res = factory.execute(&mut app, &operator, &msg);
+    assert!(res.is_err());
 }
 
 #[test]
