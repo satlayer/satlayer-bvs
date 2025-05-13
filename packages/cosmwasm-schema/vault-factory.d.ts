@@ -18,9 +18,20 @@ export interface InstantiateMsg {
  * ExecuteMsg DeployCw20 Deploy a CW20 vault contract, the operator will be the sender of
  * this message. The `cw20` is the address of the CW20 contract.
  *
+ * ExecuteMsg DeployCw20Tokenized Deploy a Bank vault contract, the operator will be the
+ * sender of this message. The `symbol` is the symbol for the receipt token. Must start with
+ * sat and conform the Bank symbol rules. The `name` is the cw20 compliant name for the
+ * receipt token.
+ *
  * ExecuteMsg DeployBank Deploy a Bank vault contract, the operator will be the sender of
  * this message. The `denom` is the denomination of the native token, e.g. "ubbn" for
  * Babylon native token.
+ *
+ * ExecuteMsg DeployBankTokenized Deploy a Bank vault contract, the operator will be the
+ * sender of this message. The `denom` is the denomination of the native token, e.g. "ubbn"
+ * for Babylon native token. The `decimals` is the number of decimals for the receipt token
+ * The `symbol` is the symbol for the receipt token. Must start with sat and conform the
+ * Bank symbol rules. The `name` is the cw20 compliant name for the receipt token.
  *
  * ExecuteMsg TransferOwnership See [`bvs_library::ownership::transfer_ownership`] for more
  * information on this field Only the `owner` can call this message.
@@ -30,7 +41,9 @@ export interface InstantiateMsg {
  */
 export interface ExecuteMsg {
   deploy_cw20?: DeployCw20;
+  deploy_cw20_tokenized?: DeployCw20Tokenized;
   deploy_bank?: DeployBank;
+  deploy_bank_tokenized?: DeployBankTokenized;
   transfer_ownership?: TransferOwnership;
   set_code_id?: SetCodeID;
 }
@@ -39,8 +52,21 @@ export interface DeployBank {
   denom: string;
 }
 
+export interface DeployBankTokenized {
+  decimals: number;
+  denom: string;
+  name: string;
+  symbol: string;
+}
+
 export interface DeployCw20 {
   cw20: string;
+}
+
+export interface DeployCw20Tokenized {
+  cw20: string;
+  name: string;
+  symbol: string;
 }
 
 export interface SetCodeID {
@@ -50,7 +76,9 @@ export interface SetCodeID {
 
 export enum VaultType {
   Bank = "bank",
+  BankTokenized = "bank_tokenized",
   Cw20 = "cw20",
+  Cw20Tokenized = "cw20_tokenized",
 }
 
 export interface TransferOwnership {
