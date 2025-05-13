@@ -3,7 +3,7 @@
   "private": true,
   "main": "index.cjs",
   "dependencies": {
-    "prettier-plugin-packagejson": "^2.5.11",
+    "prettier-plugin-packagejson": "^2.5.12",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "prettier-plugin-toml": "^2.0.5"
   }
