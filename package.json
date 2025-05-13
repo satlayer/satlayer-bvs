@@ -21,7 +21,7 @@
     "@types/node": "^20",
     "eslint": "^9",
     "husky": "^9",
-    "lint-staged": "^15",
+    "lint-staged": "^16",
     "prettier": "^3",
     "turbo": "^2.5.3",
     "typescript": "5.8.3",
