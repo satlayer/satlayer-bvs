@@ -28,11 +28,9 @@ pub fn instantiate(
 
     UnderlyingToken::set_denom(deps.storage, &msg.denom)?;
 
-    let denom_info = UnderlyingToken::query_metadata(&deps.as_ref())?;
-
     let receipt_token_instantiate = ReceiptCw20InstantiateMsg {
-        name: format!("SatLayer {}", denom_info.metadata.description),
-        symbol: format!("sat{}", denom_info.metadata.symbol),
+        name: msg.name,
+        symbol: msg.symbol,
         decimals: msg.decimals,
         initial_balances: vec![],
         mint: None,
