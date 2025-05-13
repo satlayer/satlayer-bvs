@@ -1169,8 +1169,8 @@ fn test_cw20_semi_compliance() {
             .wrap()
             .query_wasm_smart::<cw20::TokenInfoResponse>(vault.addr(), &query)
             .unwrap();
-        assert_eq!(token_info.name, "SatLayer Satlayer Test Token".to_string());
-        assert_eq!(token_info.symbol, "satSATL".to_string());
+        assert_eq!(token_info.name, "Test Receipt Token".to_string());
+        assert_eq!(token_info.symbol, "satTEST".to_string());
         assert_eq!(token_info.decimals, 18);
 
         // remember a staker staked 200 tokens in ealier tests?
