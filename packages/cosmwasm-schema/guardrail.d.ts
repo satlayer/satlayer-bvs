@@ -66,13 +66,13 @@ export interface ExecuteMsg {
 }
 
 export interface Close {
-  slash_request_id: string;
+  slashing_request_id: string;
 }
 
 export interface Propose {
   expiration: ProposeExpiration;
   reason: string;
-  slash_request_id: string;
+  slashing_request_id: string;
 }
 
 /**
@@ -109,7 +109,7 @@ export interface AddElement {
 }
 
 export interface ExecuteMsgVote {
-  slash_request_id: string;
+  slashing_request_id: string;
   vote: Vote;
 }
 
@@ -135,7 +135,6 @@ export interface QueryMsg {
   proposal?: Proposal;
   proposal_by_slashing_request_id?: ProposalBySlashingRequestID;
   list_proposals?: ListProposals;
-  reverse_proposals?: ReverseProposals;
   vote?: QueryMsgVote;
   vote_by_slashing_request_id?: VoteBySlashingRequestID;
   list_votes?: ListVotes;
@@ -165,11 +164,6 @@ export interface Proposal {
 
 export interface ProposalBySlashingRequestID {
   slashing_request_id: string;
-}
-
-export interface ReverseProposals {
-  limit?: number | null;
-  start_before?: number | null;
 }
 
 export interface ThresholdClass {

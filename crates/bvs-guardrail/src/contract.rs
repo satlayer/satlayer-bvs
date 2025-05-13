@@ -48,7 +48,6 @@ pub fn instantiate(
     }
     TOTAL.save(deps.storage, &total.u64(), env.block.height)?;
 
-    // TODO: need to add voters, threshold, total_weight to events ??
     Ok(Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("owner", owner)
@@ -66,15 +65,17 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Propose {
-            slash_request_id,
+            slashing_request_id,
             reason,
             expiration,
-        } => execute::propose(deps, env, info, slash_request_id, reason, expiration),
+        } => execute::propose(deps, env, info, slashing_request_id, reason, expiration),
         ExecuteMsg::Vote {
-            slash_request_id,
+            slashing_request_id,
             vote,
-        } => execute::vote(deps, env, info, slash_request_id, vote),
-        ExecuteMsg::Close { slash_request_id } => execute::close(deps, env, info, slash_request_id),
+        } => execute::vote(deps, env, info, slashing_request_id, vote),
+        ExecuteMsg::Close {
+            slashing_request_id,
+        } => execute::close(deps, env, info, slashing_request_id),
         ExecuteMsg::UpdateMembers { remove, add } => {
             execute::update_members(deps, env, info, remove, add)
         }
@@ -90,14 +91,14 @@ mod execute {
     use bvs_vault_router::state::SlashingRequestId;
     use cosmwasm_std::Event;
     use cw3::{Ballot, Proposal, Status, Vote, Votes};
-    use cw4::{Member, MemberDiff};
+    use cw4::Member;
     use cw_utils::Expiration;
 
     pub fn propose(
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        slash_request_id: SlashingRequestId,
+        slashing_request_id: SlashingRequestId,
         reason: String,
         expiration: Expiration,
     ) -> Result<Response, ContractError> {
@@ -109,11 +110,13 @@ mod execute {
         let cfg = CONFIG.load(deps.storage)?;
 
         let total_weight = TOTAL.may_load(deps.storage)?.unwrap_or_default();
-        // TODO: do we need to throw err when total_weight is 0 (means no voter) ?
+        if total_weight == 0 {
+            return Err(ContractError::NoVoters {});
+        }
 
         // create a proposal
         let mut prop = Proposal {
-            title: format!("Proposal To Finalize Slash {}", slash_request_id),
+            title: format!("Proposal To Finalize Slash {}", slashing_request_id),
             description: reason,
             start_height: env.block.height,
             expires: expiration,
@@ -138,21 +141,20 @@ mod execute {
         BALLOTS.save(deps.storage, (proposal_id, &info.sender), &ballot)?;
 
         // save mapping of slashing request id to proposal id only if it doesn't exist
-        SLASHING_REQUEST_TO_PROPOSAL.update(
-            deps.storage,
-            slash_request_id.clone(),
-            |id| match id {
+        SLASHING_REQUEST_TO_PROPOSAL.update(deps.storage, slashing_request_id.clone(), |id| {
+            match id {
                 Some(_) => Err(ContractError::ProposalAlreadyExists {}),
                 None => Ok(proposal_id),
-            },
-        )?;
+            }
+        })?;
 
-        // TODO: these events are different from cw3 specs to be more inlined with our other contracts
+        // events emitted are not conforming to CW3 specs,
+        // it is designed to be more inlined with bvs core contracts.
         Ok(Response::new().add_event(
             Event::new("propose")
                 .add_attribute("sender", info.sender)
                 .add_attribute("proposal_id", proposal_id.to_string())
-                .add_attribute("slash_request_id", slash_request_id.to_string())
+                .add_attribute("slashing_request_id", slashing_request_id.to_string())
                 .add_attribute("status", format!("{:?}", prop.status)),
         ))
     }
@@ -161,12 +163,12 @@ mod execute {
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        slash_request_id: SlashingRequestId,
-        vote: Vote, // TODO: check if we want to remove abstain and veto votes
+        slashing_request_id: SlashingRequestId,
+        vote: Vote,
     ) -> Result<Response, ContractError> {
         // get proposal id
         let proposal_id = SLASHING_REQUEST_TO_PROPOSAL
-            .may_load(deps.storage, slash_request_id.clone())?
+            .may_load(deps.storage, slashing_request_id.clone())?
             .ok_or(ContractError::ProposalNotFound {})?;
 
         // ensure proposal exists and can be voted on
@@ -202,23 +204,24 @@ mod execute {
             Event::new("vote")
                 .add_attribute("sender", info.sender)
                 .add_attribute("proposal_id", proposal_id.to_string())
-                .add_attribute("slash_request_id", slash_request_id.to_string())
+                .add_attribute("slashing_request_id", slashing_request_id.to_string())
                 .add_attribute("status", format!("{:?}", prop.status))
                 .add_attribute("vote", format!("{:?}", vote)),
         ))
     }
 
+    /// Close a proposal that has past expiration.
+    ///
+    /// This function can be called by anyone to close a proposal that has expired.
     pub fn close(
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        slash_request_id: SlashingRequestId,
+        slashing_request_id: SlashingRequestId,
     ) -> Result<Response, ContractError> {
-        // anyone can trigger this
-
         // get proposal id
         let proposal_id = SLASHING_REQUEST_TO_PROPOSAL
-            .may_load(deps.storage, slash_request_id.clone())?
+            .may_load(deps.storage, slashing_request_id.clone())?
             .ok_or(ContractError::ProposalNotFound {})?;
 
         let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
@@ -241,7 +244,7 @@ mod execute {
             Event::new("close")
                 .add_attribute("sender", info.sender)
                 .add_attribute("proposal_id", proposal_id.to_string())
-                .add_attribute("slash_request_id", slash_request_id.to_string()),
+                .add_attribute("slashing_request_id", slashing_request_id.to_string()),
         ))
     }
 
@@ -259,7 +262,6 @@ mod execute {
         let to_add = to_add; // let go of mutability
 
         let mut total = Uint64::from(TOTAL.load(deps.storage)?);
-        let mut diffs: Vec<MemberDiff> = vec![];
 
         // add all new members and update total
         for add in to_add.clone().into_iter() {
@@ -271,7 +273,6 @@ mod execute {
                 |old| -> StdResult<_> {
                     total = total.checked_sub(Uint64::from(old.unwrap_or_default()))?;
                     total = total.checked_add(Uint64::from(add.weight))?;
-                    diffs.push(MemberDiff::new(add.addr, old, Some(add.weight)));
                     Ok(add.weight)
                 },
             )?;
@@ -283,7 +284,6 @@ mod execute {
             let old = MEMBERS.may_load(deps.storage, &remove_addr)?;
             // Only process this if they were actually in the list before
             if let Some(weight) = old {
-                diffs.push(MemberDiff::new(remove, Some(weight), None));
                 total = total.checked_sub(Uint64::from(weight))?;
                 MEMBERS.remove(deps.storage, &remove_addr, env.block.height)?;
             }
@@ -317,10 +317,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::ListProposals { start_after, limit } => {
             to_json_binary(&query::list_proposals(deps, env, start_after, limit)?)
         }
-        QueryMsg::ReverseProposals {
-            start_before,
-            limit,
-        } => to_json_binary(&query::reverse_proposals(deps, env, start_before, limit)?),
         QueryMsg::Vote { proposal_id, voter } => {
             to_json_binary(&query::vote(deps, proposal_id, voter)?)
         }
@@ -438,23 +434,6 @@ mod query {
                 threshold,
             }
         })
-    }
-
-    pub fn reverse_proposals(
-        deps: Deps,
-        env: Env,
-        start_before: Option<u64>,
-        limit: Option<u32>,
-    ) -> StdResult<ProposalListResponse> {
-        let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-        let end = start_before.map(Bound::exclusive);
-        let props: StdResult<Vec<_>> = PROPOSALS
-            .range(deps.storage, None, end, Order::Descending)
-            .take(limit)
-            .map(|p| map_proposal(&env.block, p))
-            .collect();
-
-        Ok(ProposalListResponse { proposals: props? })
     }
 
     pub fn vote(deps: Deps, proposal_id: ProposalId, voter: String) -> StdResult<VoteResponse> {
@@ -710,13 +689,13 @@ mod tests {
         let info = message_info(&owner, &[]);
         setup(deps.as_mut(), env.clone(), info.clone()).unwrap();
 
-        let slash_request_id = SlashingRequestId::from_hex(
+        let slashing_request_id = SlashingRequestId::from_hex(
             "cdb763a239cb5c8d627c5cc85c65aac291680aced9d081ba7595c6d5138fc4fb",
         )
         .unwrap();
         let expiration = Expiration::AtTime(env.block.time.plus_seconds(100));
         let execute_msg = ExecuteMsg::Propose {
-            slash_request_id: slash_request_id.clone(),
+            slashing_request_id: slashing_request_id.clone(),
             reason: "test".to_string(),
             expiration,
         };
@@ -743,14 +722,14 @@ mod tests {
                 Event::new("propose")
                     .add_attribute("sender", info.clone().sender)
                     .add_attribute("proposal_id", 1.to_string())
-                    .add_attribute("slash_request_id", slash_request_id.to_string())
+                    .add_attribute("slashing_request_id", slashing_request_id.to_string())
                     .add_attribute("status", format!("{:?}", Status::Open))
             ))
         );
 
         // assert the proposal is saved
         let proposal_id = SLASHING_REQUEST_TO_PROPOSAL
-            .load(deps.as_ref().storage, slash_request_id.clone())
+            .load(deps.as_ref().storage, slashing_request_id.clone())
             .unwrap();
         assert_eq!(proposal_id, 1);
         let prop = PROPOSALS.load(deps.as_ref().storage, proposal_id).unwrap();
@@ -802,13 +781,13 @@ mod tests {
         env.block.time = env.block.time.plus_seconds(10);
 
         // execute proposal
-        let slash_request_id = SlashingRequestId::from_hex(
+        let slashing_request_id = SlashingRequestId::from_hex(
             "cdb763a239cb5c8d627c5cc85c65aac291680aced9d081ba7595c6d5138fc4fb",
         )
         .unwrap();
         let expiration = Expiration::AtTime(env.block.time.plus_seconds(100));
         let execute_msg = ExecuteMsg::Propose {
-            slash_request_id: slash_request_id.clone(),
+            slashing_request_id: slashing_request_id.clone(),
             reason: "test".to_string(),
             expiration,
         };
@@ -829,7 +808,7 @@ mod tests {
                 env.clone(),
                 info,
                 ExecuteMsg::Vote {
-                    slash_request_id: slash_request_id.clone(),
+                    slashing_request_id: slashing_request_id.clone(),
                     vote: Vote::Yes,
                 },
             )
@@ -844,7 +823,7 @@ mod tests {
                 env.clone(),
                 voter1_info.clone(),
                 ExecuteMsg::Vote {
-                    slash_request_id: SlashingRequestId::from_hex(
+                    slashing_request_id: SlashingRequestId::from_hex(
                         "0ff7a6f403eff632636533660ab53ab35e7ae0fe2e5dacb160aa7d876a412f09",
                     )
                     .unwrap(),
@@ -862,7 +841,7 @@ mod tests {
                 env.clone(),
                 info.clone(),
                 ExecuteMsg::Vote {
-                    slash_request_id: slash_request_id.clone(),
+                    slashing_request_id: slashing_request_id.clone(),
                     vote: Vote::Yes,
                 },
             )
@@ -876,7 +855,7 @@ mod tests {
             env.clone(),
             voter1_info.clone(),
             ExecuteMsg::Vote {
-                slash_request_id: slash_request_id.clone(),
+                slashing_request_id: slashing_request_id.clone(),
                 vote: Vote::Yes,
             },
         );
@@ -887,7 +866,7 @@ mod tests {
                 Event::new("vote")
                     .add_attribute("sender", voter1.to_string())
                     .add_attribute("proposal_id", 1.to_string())
-                    .add_attribute("slash_request_id", slash_request_id.to_string())
+                    .add_attribute("slashing_request_id", slashing_request_id.to_string())
                     .add_attribute("status", format!("{:?}", Status::Open))
                     .add_attribute("vote", format!("{:?}", Vote::Yes))
             ))
@@ -902,7 +881,7 @@ mod tests {
                 env.clone(),
                 voter2_info.clone(),
                 ExecuteMsg::Vote {
-                    slash_request_id: slash_request_id.clone(),
+                    slashing_request_id: slashing_request_id.clone(),
                     vote: Vote::No,
                 },
             )
@@ -911,7 +890,7 @@ mod tests {
 
         // check that the proposal status is still open
         let proposal_id = SLASHING_REQUEST_TO_PROPOSAL
-            .load(deps.as_ref().storage, slash_request_id.clone())
+            .load(deps.as_ref().storage, slashing_request_id.clone())
             .unwrap();
         let prop = PROPOSALS.load(deps.as_ref().storage, proposal_id).unwrap();
         assert_eq!(prop.current_status(&env.block), Status::Open);
@@ -925,7 +904,7 @@ mod tests {
                 env.clone(),
                 voter3_info.clone(),
                 ExecuteMsg::Vote {
-                    slash_request_id: slash_request_id.clone(),
+                    slashing_request_id: slashing_request_id.clone(),
                     vote: Vote::Abstain,
                 },
             );
@@ -936,7 +915,7 @@ mod tests {
                     Event::new("vote")
                         .add_attribute("sender", voter3.to_string())
                         .add_attribute("proposal_id", proposal_id.to_string())
-                        .add_attribute("slash_request_id", slash_request_id.to_string())
+                        .add_attribute("slashing_request_id", slashing_request_id.to_string())
                         .add_attribute("status", format!("{:?}", Status::Open))
                         .add_attribute("vote", format!("{:?}", Vote::Abstain))
                 ))
@@ -956,7 +935,7 @@ mod tests {
                 env.clone(),
                 voter4_info.clone(),
                 ExecuteMsg::Vote {
-                    slash_request_id: slash_request_id.clone(),
+                    slashing_request_id: slashing_request_id.clone(),
                     vote: Vote::Yes,
                 },
             );
@@ -967,7 +946,7 @@ mod tests {
                     Event::new("vote")
                         .add_attribute("sender", voter4.to_string())
                         .add_attribute("proposal_id", proposal_id.to_string())
-                        .add_attribute("slash_request_id", slash_request_id.to_string())
+                        .add_attribute("slashing_request_id", slashing_request_id.to_string())
                         .add_attribute("status", format!("{:?}", Status::Passed))
                         .add_attribute("vote", format!("{:?}", Vote::Yes))
                 ))
@@ -993,13 +972,14 @@ mod tests {
         env.block.time = env.block.time.plus_seconds(10);
 
         // execute proposal
-        let slash_request_id = SlashingRequestId::from_hex(
+        let slashing_request_id = SlashingRequestId::from_hex(
             "cdb763a239cb5c8d627c5cc85c65aac291680aced9d081ba7595c6d5138fc4fb",
         )
         .unwrap();
+
         let expiration = Expiration::AtTime(env.block.time.plus_seconds(100));
         let execute_msg = ExecuteMsg::Propose {
-            slash_request_id: slash_request_id.clone(),
+            slashing_request_id: slashing_request_id.clone(),
             reason: "test".to_string(),
             expiration,
         };
@@ -1012,7 +992,7 @@ mod tests {
         .unwrap();
 
         let proposal_id = SLASHING_REQUEST_TO_PROPOSAL
-            .load(deps.as_ref().storage, slash_request_id.clone())
+            .load(deps.as_ref().storage, slashing_request_id.clone())
             .unwrap();
 
         // execute vote No for voter1
@@ -1023,7 +1003,7 @@ mod tests {
             env.clone(),
             voter1_info.clone(),
             ExecuteMsg::Vote {
-                slash_request_id: slash_request_id.clone(),
+                slashing_request_id: slashing_request_id.clone(),
                 vote: Vote::No,
             },
         )
@@ -1037,7 +1017,7 @@ mod tests {
             env.clone(),
             voter2_info.clone(),
             ExecuteMsg::Vote {
-                slash_request_id: slash_request_id.clone(),
+                slashing_request_id: slashing_request_id.clone(),
                 vote: Vote::No,
             },
         )
@@ -1051,7 +1031,7 @@ mod tests {
             env.clone(),
             voter3_info.clone(),
             ExecuteMsg::Vote {
-                slash_request_id: slash_request_id.clone(),
+                slashing_request_id: slashing_request_id.clone(),
                 vote: Vote::No,
             },
         );
@@ -1061,7 +1041,7 @@ mod tests {
                 Event::new("vote")
                     .add_attribute("sender", voter3.to_string())
                     .add_attribute("proposal_id", proposal_id.to_string())
-                    .add_attribute("slash_request_id", slash_request_id.to_string())
+                    .add_attribute("slashing_request_id", slashing_request_id.to_string())
                     .add_attribute("status", format!("{:?}", Status::Rejected))
                     .add_attribute("vote", format!("{:?}", Vote::No))
             ))
@@ -1069,7 +1049,7 @@ mod tests {
 
         // assert that the proposal status is rejected
         let proposal_id = SLASHING_REQUEST_TO_PROPOSAL
-            .load(deps.as_ref().storage, slash_request_id.clone())
+            .load(deps.as_ref().storage, slashing_request_id.clone())
             .unwrap();
         let prop = PROPOSALS.load(deps.as_ref().storage, proposal_id).unwrap();
         assert_eq!(prop.current_status(&env.block), Status::Rejected);
@@ -1084,7 +1064,7 @@ mod tests {
                 env.clone(),
                 voter4_info.clone(),
                 ExecuteMsg::Vote {
-                    slash_request_id: slash_request_id.clone(),
+                    slashing_request_id: slashing_request_id.clone(),
                     vote: Vote::Yes,
                 },
             );
@@ -1094,7 +1074,7 @@ mod tests {
                     Event::new("vote")
                         .add_attribute("sender", voter4.to_string())
                         .add_attribute("proposal_id", proposal_id.to_string())
-                        .add_attribute("slash_request_id", slash_request_id.to_string())
+                        .add_attribute("slashing_request_id", slashing_request_id.to_string())
                         .add_attribute("status", format!("{:?}", Status::Rejected))
                         .add_attribute("vote", format!("{:?}", Vote::Yes))
                 ))
@@ -1116,13 +1096,13 @@ mod tests {
         env.block.time = env.block.time.plus_seconds(10);
 
         // execute proposal
-        let slash_request_id = SlashingRequestId::from_hex(
+        let slashing_request_id = SlashingRequestId::from_hex(
             "cdb763a239cb5c8d627c5cc85c65aac291680aced9d081ba7595c6d5138fc4fb",
         )
         .unwrap();
         let expiration = Expiration::AtTime(env.block.time.plus_seconds(100));
         let execute_msg = ExecuteMsg::Propose {
-            slash_request_id: slash_request_id.clone(),
+            slashing_request_id: slashing_request_id.clone(),
             reason: "test".to_string(),
             expiration,
         };
@@ -1135,7 +1115,7 @@ mod tests {
         .unwrap();
 
         let proposal_id = SLASHING_REQUEST_TO_PROPOSAL
-            .load(deps.as_ref().storage, slash_request_id.clone())
+            .load(deps.as_ref().storage, slashing_request_id.clone())
             .unwrap();
 
         // execute vote Yes successfully for voter1
@@ -1146,7 +1126,7 @@ mod tests {
             env.clone(),
             voter1_info.clone(),
             ExecuteMsg::Vote {
-                slash_request_id: slash_request_id.clone(),
+                slashing_request_id: slashing_request_id.clone(),
                 vote: Vote::Yes,
             },
         );
@@ -1156,7 +1136,7 @@ mod tests {
                 Event::new("vote")
                     .add_attribute("sender", voter1.to_string())
                     .add_attribute("proposal_id", proposal_id.to_string())
-                    .add_attribute("slash_request_id", slash_request_id.to_string())
+                    .add_attribute("slashing_request_id", slashing_request_id.to_string())
                     .add_attribute("status", format!("{:?}", Status::Open))
                     .add_attribute("vote", format!("{:?}", Vote::Yes))
             ))
@@ -1174,7 +1154,7 @@ mod tests {
                 env.clone(),
                 voter2_info,
                 ExecuteMsg::Vote {
-                    slash_request_id: slash_request_id.clone(),
+                    slashing_request_id: slashing_request_id.clone(),
                     vote: Vote::Yes,
                 },
             )
@@ -1188,7 +1168,7 @@ mod tests {
             env.clone(),
             info.clone(),
             ExecuteMsg::Close {
-                slash_request_id: slash_request_id.clone(),
+                slashing_request_id: slashing_request_id.clone(),
             },
         );
         assert_eq!(
@@ -1197,13 +1177,13 @@ mod tests {
                 Event::new("close")
                     .add_attribute("sender", info.sender)
                     .add_attribute("proposal_id", proposal_id.to_string())
-                    .add_attribute("slash_request_id", slash_request_id.to_string())
+                    .add_attribute("slashing_request_id", slashing_request_id.to_string())
             ))
         );
 
         // check that the proposal status is rejected
         let proposal_id = SLASHING_REQUEST_TO_PROPOSAL
-            .load(deps.as_ref().storage, slash_request_id.clone())
+            .load(deps.as_ref().storage, slashing_request_id.clone())
             .unwrap();
         let prop = PROPOSALS.load(deps.as_ref().storage, proposal_id).unwrap();
         assert_eq!(prop.status, Status::Rejected);
@@ -1223,13 +1203,13 @@ mod tests {
         env.block.time = env.block.time.plus_seconds(10);
 
         // execute proposal
-        let slash_request_id = SlashingRequestId::from_hex(
+        let slashing_request_id = SlashingRequestId::from_hex(
             "cdb763a239cb5c8d627c5cc85c65aac291680aced9d081ba7595c6d5138fc4fb",
         )
         .unwrap();
         let expiration = Expiration::AtTime(env.block.time.plus_seconds(100));
         let execute_msg = ExecuteMsg::Propose {
-            slash_request_id: slash_request_id.clone(),
+            slashing_request_id: slashing_request_id.clone(),
             reason: "test".to_string(),
             expiration,
         };
@@ -1249,7 +1229,7 @@ mod tests {
             env.clone(),
             voter1_info.clone(),
             ExecuteMsg::Vote {
-                slash_request_id: slash_request_id.clone(),
+                slashing_request_id: slashing_request_id.clone(),
                 vote: Vote::Yes,
             },
         )
@@ -1262,7 +1242,7 @@ mod tests {
             env.clone(),
             voter2_info.clone(),
             ExecuteMsg::Vote {
-                slash_request_id: slash_request_id.clone(),
+                slashing_request_id: slashing_request_id.clone(),
                 vote: Vote::Yes,
             },
         )
@@ -1275,7 +1255,7 @@ mod tests {
             env.clone(),
             voter3_info.clone(),
             ExecuteMsg::Vote {
-                slash_request_id: slash_request_id.clone(),
+                slashing_request_id: slashing_request_id.clone(),
                 vote: Vote::Yes,
             },
         )
@@ -1283,7 +1263,7 @@ mod tests {
 
         // check that the proposal status is passed
         let proposal_id = SLASHING_REQUEST_TO_PROPOSAL
-            .load(deps.as_ref().storage, slash_request_id.clone())
+            .load(deps.as_ref().storage, slashing_request_id.clone())
             .unwrap();
         let prop = PROPOSALS.load(deps.as_ref().storage, proposal_id).unwrap();
         assert_eq!(prop.current_status(&env.block), Status::Passed);
@@ -1297,7 +1277,7 @@ mod tests {
             env.clone(),
             info.clone(),
             ExecuteMsg::Close {
-                slash_request_id: slash_request_id.clone(),
+                slashing_request_id: slashing_request_id.clone(),
             },
         )
         .unwrap_err();

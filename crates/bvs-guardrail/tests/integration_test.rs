@@ -81,7 +81,7 @@ fn propose_and_vote_successfully() {
 
     // Create a proposal
     let proposal_msg = ExecuteMsg::Propose {
-        slash_request_id: slashing_request_id.clone(),
+        slashing_request_id: slashing_request_id.clone(),
         reason: "test slashing".to_string(),
         expiration: Expiration::AtTime(app.block_info().time.plus_seconds(1000)),
     };
@@ -103,7 +103,7 @@ fn propose_and_vote_successfully() {
 
     // Voter1 votes "yes"
     let vote_msg = ExecuteMsg::Vote {
-        slash_request_id: slashing_request_id.clone(),
+        slashing_request_id: slashing_request_id.clone(),
         vote: Vote::Yes,
     };
     let res = tc.guardrail.execute(&mut app, &voter1, &vote_msg).unwrap();
@@ -120,14 +120,14 @@ fn propose_and_vote_successfully() {
 
     // Voter2 votes "no"
     let vote_msg = ExecuteMsg::Vote {
-        slash_request_id: slashing_request_id.clone(),
+        slashing_request_id: slashing_request_id.clone(),
         vote: Vote::No,
     };
     tc.guardrail.execute(&mut app, &voter2, &vote_msg).unwrap();
 
     // Voter3 abstains
     let vote_msg = ExecuteMsg::Vote {
-        slash_request_id: slashing_request_id.clone(),
+        slashing_request_id: slashing_request_id.clone(),
         vote: Vote::Abstain,
     };
     tc.guardrail.execute(&mut app, &voter3, &vote_msg).unwrap();
@@ -141,7 +141,7 @@ fn propose_and_vote_successfully() {
 
     // Voter4 votes "yes" to pass the proposal
     let vote_msg = ExecuteMsg::Vote {
-        slash_request_id: slashing_request_id.clone(),
+        slashing_request_id: slashing_request_id.clone(),
         vote: Vote::Yes,
     };
     tc.guardrail.execute(&mut app, &voter4, &vote_msg).unwrap();
@@ -177,7 +177,7 @@ fn propose_and_vote_rejected() {
 
     // Create a proposal
     let proposal_msg = ExecuteMsg::Propose {
-        slash_request_id: slashing_request_id.clone(),
+        slashing_request_id: slashing_request_id.clone(),
         reason: "test slashing".to_string(),
         expiration: Expiration::AtTime(app.block_info().time.plus_seconds(1000)),
     };
@@ -187,21 +187,21 @@ fn propose_and_vote_rejected() {
 
     // Voter1 votes "no"
     let vote_msg = ExecuteMsg::Vote {
-        slash_request_id: slashing_request_id.clone(),
+        slashing_request_id: slashing_request_id.clone(),
         vote: Vote::No,
     };
     let res = tc.guardrail.execute(&mut app, &voter1, &vote_msg).unwrap();
 
     // Voter2 votes "no"
     let vote_msg = ExecuteMsg::Vote {
-        slash_request_id: slashing_request_id.clone(),
+        slashing_request_id: slashing_request_id.clone(),
         vote: Vote::No,
     };
     tc.guardrail.execute(&mut app, &voter2, &vote_msg).unwrap();
 
     // Voter3 votes "yes"
     let vote_msg = ExecuteMsg::Vote {
-        slash_request_id: slashing_request_id.clone(),
+        slashing_request_id: slashing_request_id.clone(),
         vote: Vote::Yes,
     };
     tc.guardrail.execute(&mut app, &voter3, &vote_msg).unwrap();
@@ -215,7 +215,7 @@ fn propose_and_vote_rejected() {
 
     // Voter4 votes "no" to reject the proposal
     let vote_msg = ExecuteMsg::Vote {
-        slash_request_id: slashing_request_id.clone(),
+        slashing_request_id: slashing_request_id.clone(),
         vote: Vote::No,
     };
     tc.guardrail.execute(&mut app, &voter4, &vote_msg).unwrap();
@@ -250,7 +250,7 @@ fn propose_and_vote_expired() {
 
     // Create a proposal
     let proposal_msg = ExecuteMsg::Propose {
-        slash_request_id: slashing_request_id.clone(),
+        slashing_request_id: slashing_request_id.clone(),
         reason: "test slashing".to_string(),
         expiration: Expiration::AtTime(app.block_info().time.plus_seconds(1000)),
     };
@@ -260,14 +260,14 @@ fn propose_and_vote_expired() {
 
     // Voter1 votes "yes"
     let vote_msg = ExecuteMsg::Vote {
-        slash_request_id: slashing_request_id.clone(),
+        slashing_request_id: slashing_request_id.clone(),
         vote: Vote::No,
     };
     let res = tc.guardrail.execute(&mut app, &voter1, &vote_msg).unwrap();
 
     // Voter2 votes "no"
     let vote_msg = ExecuteMsg::Vote {
-        slash_request_id: slashing_request_id.clone(),
+        slashing_request_id: slashing_request_id.clone(),
         vote: Vote::No,
     };
     tc.guardrail.execute(&mut app, &voter2, &vote_msg).unwrap();
@@ -280,7 +280,7 @@ fn propose_and_vote_expired() {
 
     // Voter3 votes "yes" - error due to expiry
     let vote_msg = ExecuteMsg::Vote {
-        slash_request_id: slashing_request_id.clone(),
+        slashing_request_id: slashing_request_id.clone(),
         vote: Vote::Yes,
     };
     let err = tc
@@ -302,7 +302,7 @@ fn propose_and_vote_expired() {
     // we can call the "close" execute msg to move the status in the store to Rejected.
     // the actual status in the store is still Open, but we can close it to Rejected.
     let close_msg = ExecuteMsg::Close {
-        slash_request_id: slashing_request_id.clone(),
+        slashing_request_id: slashing_request_id.clone(),
     };
     tc.guardrail.execute(&mut app, &owner, &close_msg).unwrap();
 

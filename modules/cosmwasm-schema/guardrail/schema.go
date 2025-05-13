@@ -62,13 +62,13 @@ type ExecuteMsg struct {
 }
 
 type Close struct {
-	SlashRequestID string `json:"slash_request_id"`
+	SlashingRequestID string `json:"slashing_request_id"`
 }
 
 type Propose struct {
-	Expiration     ProposeExpiration `json:"expiration"`
-	Reason         string            `json:"reason"`
-	SlashRequestID string            `json:"slash_request_id"`
+	Expiration        ProposeExpiration `json:"expiration"`
+	Reason            string            `json:"reason"`
+	SlashingRequestID string            `json:"slashing_request_id"`
 }
 
 // Expiration represents a point in time when some event happens. It can compare with a
@@ -102,8 +102,8 @@ type AddElement struct {
 }
 
 type ExecuteMsgVote struct {
-	SlashRequestID string `json:"slash_request_id"`
-	Vote           Vote   `json:"vote"`
+	SlashingRequestID string `json:"slashing_request_id"`
+	Vote              Vote   `json:"vote"`
 }
 
 type QueryMsg struct {
@@ -111,7 +111,6 @@ type QueryMsg struct {
 	Proposal                    *Proposal                    `json:"proposal,omitempty"`
 	ProposalBySlashingRequestID *ProposalBySlashingRequestID `json:"proposal_by_slashing_request_id,omitempty"`
 	ListProposals               *ListProposals               `json:"list_proposals,omitempty"`
-	ReverseProposals            *ReverseProposals            `json:"reverse_proposals,omitempty"`
 	Vote                        *QueryMsgVote                `json:"vote,omitempty"`
 	VoteBySlashingRequestID     *VoteBySlashingRequestID     `json:"vote_by_slashing_request_id,omitempty"`
 	ListVotes                   *ListVotes                   `json:"list_votes,omitempty"`
@@ -141,11 +140,6 @@ type Proposal struct {
 
 type ProposalBySlashingRequestID struct {
 	SlashingRequestID string `json:"slashing_request_id"`
-}
-
-type ReverseProposals struct {
-	Limit       *int64 `json:"limit"`
-	StartBefore *int64 `json:"start_before"`
 }
 
 type ThresholdClass struct {

@@ -15,16 +15,16 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     Propose {
-        slash_request_id: SlashingRequestId,
+        slashing_request_id: SlashingRequestId,
         reason: String,
         expiration: Expiration,
     },
     Vote {
-        slash_request_id: SlashingRequestId,
+        slashing_request_id: SlashingRequestId,
         vote: Vote,
     },
     Close {
-        slash_request_id: SlashingRequestId,
+        slashing_request_id: SlashingRequestId,
     },
     /// apply a diff to the existing members.
     /// remove is applied after add, so if an address is in both, it is removed
@@ -48,11 +48,6 @@ pub enum QueryMsg {
     #[returns(cw3::ProposalListResponse)]
     ListProposals {
         start_after: Option<u64>,
-        limit: Option<u32>,
-    },
-    #[returns(cw3::ProposalListResponse)]
-    ReverseProposals {
-        start_before: Option<u64>,
         limit: Option<u32>,
     },
     #[returns(cw3::VoteResponse)]

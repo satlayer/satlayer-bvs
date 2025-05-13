@@ -2,7 +2,7 @@ use crate::msg::RequestSlashingPayload;
 use bvs_library::addr::{Operator, Service};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{to_json_vec, Addr, HexBinary, StdError, StdResult, Storage, Timestamp, Uint64};
-use cw_storage_plus::{Item, Key, KeyDeserialize, Map, Prefixer, PrimaryKey};
+use cw_storage_plus::{Item, Key, KeyDeserialize, Map, PrimaryKey};
 use sha3::Digest;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
@@ -156,12 +156,6 @@ impl PrimaryKey<'_> for SlashingRequestId {
     type SuperSuffix = Self;
 
     fn key(&self) -> Vec<Key> {
-        vec![Key::Ref(self.0.as_slice())]
-    }
-}
-
-impl Prefixer<'_> for SlashingRequestId {
-    fn prefix(&self) -> Vec<Key> {
         vec![Key::Ref(self.0.as_slice())]
     }
 }
