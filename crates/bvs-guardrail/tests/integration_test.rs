@@ -97,7 +97,7 @@ fn propose_and_vote_successfully() {
             .add_attribute("_contract_address", tc.guardrail.addr.clone())
             .add_attribute("sender", owner)
             .add_attribute("proposal_id", "1")
-            .add_attribute("slash_request_id", slashing_request_id.to_string())
+            .add_attribute("slashing_request_id", slashing_request_id.to_string())
             .add_attribute("status", format!("{:?}", Status::Open))
     );
 
@@ -113,7 +113,7 @@ fn propose_and_vote_successfully() {
             .add_attribute("_contract_address", tc.guardrail.addr.clone())
             .add_attribute("sender", voter1)
             .add_attribute("proposal_id", "1")
-            .add_attribute("slash_request_id", slashing_request_id.to_string())
+            .add_attribute("slashing_request_id", slashing_request_id.to_string())
             .add_attribute("status", format!("{:?}", Status::Open))
             .add_attribute("vote", format!("{:?}", Vote::Yes))
     );
