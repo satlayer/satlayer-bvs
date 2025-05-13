@@ -147,6 +147,8 @@ type SlashingRequest struct {
 	RequestExpiry string `json:"request_expiry"`
 	// The timestamp when the request was submitted.
 	RequestTime string `json:"request_time"`
+	// The status of the slashing request.
+	Status int64 `json:"status"`
 }
 
 // The core slashing request data including operator, bips, timestamp, and metadata.

@@ -52,6 +52,40 @@ pub struct SlashingRequest {
     /// The timestamp after which the request is no longer valid.
     /// This will be `request_time` + `resolution_window` * 2 (as per current slashing parameters)
     pub request_expiry: Timestamp,
+    /// The status of the slashing request.
+    pub status: u8,
+}
+
+#[cw_serde]
+pub enum SlashingRequestStatus {
+    /// The slashing request is pending and has not been processed yet.
+    Pending = 0,
+    /// The slashing request has been executed and funds are locked.
+    Locked = 1,
+    /// The slashing request has been finalized.
+    Finalized = 2,
+    /// The slashing request has been canceled.
+    Canceled = 3,
+}
+
+impl From<SlashingRequestStatus> for u8 {
+    fn from(value: SlashingRequestStatus) -> u8 {
+        value as u8
+    }
+}
+
+impl TryFrom<u8> for SlashingRequestStatus {
+    type Error = StdError;
+
+    fn try_from(value: u8) -> Result<Self, StdError> {
+        match value {
+            0 => Ok(SlashingRequestStatus::Pending),
+            1 => Ok(SlashingRequestStatus::Locked),
+            2 => Ok(SlashingRequestStatus::Finalized),
+            3 => Ok(SlashingRequestStatus::Canceled),
+            _ => Err(StdError::generic_err("SlashingRequestStatus out of range")),
+        }
+    }
 }
 
 /// SlashingRequestId stores the id in hexbinary. It's a 32-byte hash of the slashing request
@@ -128,33 +162,34 @@ impl KeyDeserialize for SlashingRequestId {
     }
 }
 
-/// Stores the active slashing request id for a given service and operator.
+/// Stores the pending slashing request id for a given service and operator.
 ///
-/// Once slash is canceled or finalized, the slashing request id is removed from this map.
+/// Once the slashing request is canceled or finalized,
+/// the slashing request id is removed from this map.
 pub(crate) const SLASHING_REQUEST_IDS: Map<(&Service, &Operator), SlashingRequestId> =
     Map::new("slashing_request_ids");
 
 /// Stores the slashing request data for a given slashing request id.
 ///
 /// Slashing request won't be removed,
-/// hence this map might store active and inactive slashing requests.
+/// hence this map will store all slashing requests.
 pub(crate) const SLASHING_REQUESTS: Map<SlashingRequestId, SlashingRequest> =
     Map::new("slashing_requests");
 
-pub(crate) fn get_active_slashing_requests(
+pub(crate) fn get_pending_slashing_request(
     store: &dyn Storage,
     service: &Service,
     operator: &Operator,
 ) -> StdResult<Option<SlashingRequest>> {
-    // get active slashing_id
-    let active_slashing_id = match SLASHING_REQUEST_IDS.may_load(store, (service, operator))? {
+    // get pending slashing_id
+    let pending_slashing_id = match SLASHING_REQUEST_IDS.may_load(store, (service, operator))? {
         Some(id) => id,
         None => return Ok(None),
     };
 
-    // get active slashing from slashing_id
-    let active_slashing_request = SLASHING_REQUESTS.may_load(store, active_slashing_id)?;
-    match active_slashing_request {
+    // get pending slashing from slashing_id
+    let pending_slashing_request = SLASHING_REQUESTS.may_load(store, pending_slashing_id)?;
+    match pending_slashing_request {
         Some(request) => Ok(Some(request)),
         None => Ok(None),
     }
@@ -202,6 +237,7 @@ mod test {
             request: data.clone(),
             request_time: env.block.time,
             request_expiry: env.block.time.plus_seconds(100),
+            status: SlashingRequestStatus::Pending.into(),
         };
 
         let res = save_slashing_request(&mut deps.storage, &service, &operator, &slashing_request)
@@ -213,7 +249,7 @@ mod test {
         );
         assert_eq!(
             res.to_string(),
-            "dff7a6f403eff632636533660ab53ab35e7ae0fe2e5dacb160aa7d876a412f09",
+            "e7e79034fb74d14b7ed2488d64c2e2a1d45388b0660cc8ab91a3d6f21804d361",
             "incorrect hash, hash function may have changed or hash data has changed"
         );
 
