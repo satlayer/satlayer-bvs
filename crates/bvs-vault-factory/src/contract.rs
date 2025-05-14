@@ -208,6 +208,7 @@ mod execute {
             .add_event(
                 Event::new("DeployVault")
                     .add_attribute("type", "cw20_tokenized")
+                    .add_attribute("cw20", cw20.to_string())
                     .add_attribute("symbol", symbol)
                     .add_attribute("name", name)
                     .add_attribute("operator", operator.to_string()),
