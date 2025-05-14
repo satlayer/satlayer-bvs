@@ -310,6 +310,7 @@ mod execute {
             request_time: env.block.time,
             request_expiry: new_request_expiry,
             status: SlashingRequestStatus::Pending.into(),
+            service: service.clone(),
         };
 
         // save slash data
@@ -1192,6 +1193,7 @@ mod tests {
         let env = mock_env();
 
         let operator = deps.api.addr_make("operator");
+        let service = deps.api.addr_make("service");
         let request_id = SlashingRequestId(
             HexBinary::from_hex("dff7a6f403eff632636533660ab53ab35e7ae0fe2e5dacb160aa7d876a412f09")
                 .unwrap(),
@@ -1208,6 +1210,7 @@ mod tests {
             request_time: env.block.time,
             request_expiry: env.block.time.plus_seconds(100),
             status: SlashingRequestStatus::Pending.into(),
+            service,
         };
 
         // query request_id before its saved => None
