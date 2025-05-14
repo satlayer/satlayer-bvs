@@ -1418,7 +1418,7 @@ fn test_slash_locking_negative() {
         assert_eq!(
             res.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Collateral already locked for this id".to_string(),
+                msg: "Slashing request is already locked".to_string(),
             }
             .to_string()
         );

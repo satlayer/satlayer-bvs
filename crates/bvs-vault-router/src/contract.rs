@@ -350,22 +350,23 @@ mod execute {
             }
         };
 
-        match state::SLASH_LOCKED
-            .prefix(id.clone())
-            .is_empty(deps.storage)
-        {
-            true => {}
-            false => {
+        match SlashingRequestStatus::try_from(slash_req.status).unwrap() {
+            SlashingRequestStatus::Pending => {}
+            SlashingRequestStatus::Locked => {
                 return Err(ContractError::InvalidSlashingRequest {
-                    msg: "Collateral already locked for this id".to_string(),
+                    msg: "Slashing request is already locked".to_string(),
                 })
             }
-        }
-
-        if slash_req.status != u8::from(SlashingRequestStatus::Pending) {
-            return Err(ContractError::InvalidSlashingRequest {
-                msg: "Slashing request is not pending".to_string(),
-            });
+            SlashingRequestStatus::Canceled => {
+                return Err(ContractError::InvalidSlashingRequest {
+                    msg: "Slashing request is cancelled".to_string(),
+                })
+            }
+            SlashingRequestStatus::Finalized => {
+                return Err(ContractError::InvalidSlashingRequest {
+                    msg: "Slashing has finalized".to_string(),
+                })
+            }
         }
 
         let SlashingParametersResponse(slashing_parameters) = deps.querier.query_wasm_smart(
