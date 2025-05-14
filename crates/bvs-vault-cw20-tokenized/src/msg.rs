@@ -234,7 +234,6 @@ pub struct InstantiateMsg {
     /// name of the receipt token.
     pub name: String,
     /// symbol of the receipt token.
-    /// Must start with `sat`.
     pub symbol: String,
 }
 
