@@ -362,7 +362,7 @@ mod execute {
             }
         }
 
-        if slash_req.status != SlashingRequestStatus::Pending as u8 {
+        if slash_req.status != u8::from(SlashingRequestStatus::Pending) {
             return Err(ContractError::InvalidSlashingRequest {
                 msg: "Slashing request is not pending".to_string(),
             });
@@ -428,10 +428,10 @@ mod execute {
         for vault in vaults_managed {
             let vault_info = vault::get_vault_info(deps.as_ref(), &vault)?;
             let total_assets = vault_info.total_assets;
-            let bips = Uint128::from(slash_req.request.bips as u128);
 
             // Due to the nature of the integer division involved, the result is always floored.
-            let slash_absolute = total_assets.multiply_ratio(bips, Uint128::from(10000_u128));
+            let slash_absolute =
+                total_assets.multiply_ratio(slash_req.request.bips, Uint128::from(10000_u128));
 
             SLASH_LOCKED.save(deps.storage, (id.clone(), &vault), &slash_absolute)?;
 
