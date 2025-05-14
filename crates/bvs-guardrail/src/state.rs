@@ -17,6 +17,8 @@ pub type VotingPower = u64;
 #[cw_serde]
 pub struct Config {
     pub threshold: Threshold,
+    /// the default expiration in seconds for proposals and cannot be changed after contract instantiation.
+    pub default_expiration: u64,
 }
 
 /// Stores the configuration of the contract.

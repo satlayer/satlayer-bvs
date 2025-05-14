@@ -3,13 +3,14 @@ use bvs_vault_router::state::SlashingRequestId;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw3::Vote;
 use cw4::Member;
-use cw_utils::{Expiration, Threshold};
+use cw_utils::Threshold;
 
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: String,
     pub members: Vec<Member>,
     pub threshold: Threshold,
+    pub default_expiration: u64,
 }
 
 #[cw_serde]
@@ -17,7 +18,6 @@ pub enum ExecuteMsg {
     Propose {
         slashing_request_id: SlashingRequestId,
         reason: String,
-        expiration: Expiration,
     },
     Vote {
         slashing_request_id: SlashingRequestId,

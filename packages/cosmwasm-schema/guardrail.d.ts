@@ -2,6 +2,7 @@
 // DO NOT MODIFY IT BY HAND.
 
 export interface InstantiateMsg {
+  default_expiration: number;
   members: MemberElement[];
   owner: string;
   threshold: Threshold;
@@ -70,29 +71,9 @@ export interface Close {
 }
 
 export interface Propose {
-  expiration: ProposeExpiration;
   reason: string;
   slashing_request_id: string;
 }
-
-/**
- * Expiration represents a point in time when some event happens. It can compare with a
- * BlockInfo and will return is_expired() == true once the condition is hit (and for every
- * block in the future)
- *
- * AtHeight will expire when `env.block.height` >= height
- *
- * AtTime will expire when `env.block.time` >= time
- *
- * Never will never expire. Used to express the empty variant
- */
-export interface ProposeExpiration {
-  at_height?: number;
-  at_time?: string;
-  never?: PurpleNever;
-}
-
-export interface PurpleNever {}
 
 export interface UpdateMembers {
   add: AddElement[];
@@ -251,10 +232,10 @@ export interface PurpleDenom {
 export interface ProposalExpiration {
   at_height?: number;
   at_time?: string;
-  never?: FluffyNever;
+  never?: PurpleNever;
 }
 
-export interface FluffyNever {}
+export interface PurpleNever {}
 
 /**
  * `CosmosMsg::Any` is the replaces the "stargate message" – a message wrapped in a
@@ -634,10 +615,10 @@ export interface FluffyDenom {
 export interface ProposalResponseForEmptyExpiration {
   at_height?: number;
   at_time?: string;
-  never?: TentacledNever;
+  never?: FluffyNever;
 }
 
-export interface TentacledNever {}
+export interface FluffyNever {}
 
 /**
  * `CosmosMsg::Any` is the replaces the "stargate message" – a message wrapped in a

@@ -27,6 +27,7 @@ pub fn instantiate(
 
     let cfg = Config {
         threshold: msg.threshold,
+        default_expiration: msg.default_expiration,
     };
     CONFIG.save(deps.storage, &cfg)?;
 
@@ -67,8 +68,7 @@ pub fn execute(
         ExecuteMsg::Propose {
             slashing_request_id,
             reason,
-            expiration,
-        } => execute::propose(deps, env, info, slashing_request_id, reason, expiration),
+        } => execute::propose(deps, env, info, slashing_request_id, reason),
         ExecuteMsg::Vote {
             slashing_request_id,
             vote,
@@ -100,7 +100,6 @@ mod execute {
         info: MessageInfo,
         slashing_request_id: SlashingRequestId,
         reason: String,
-        expiration: Expiration,
     ) -> Result<Response, ContractError> {
         // only members of the multisig can create a proposal
         let vote_power = MEMBERS
@@ -119,7 +118,7 @@ mod execute {
             title: format!("Proposal To Finalize Slash {}", slashing_request_id),
             description: reason,
             start_height: env.block.height,
-            expires: expiration,
+            expires: Expiration::AtTime(env.block.time.plus_seconds(cfg.default_expiration)),
             msgs: vec![], // no msg to execute
             status: Status::Open,
             votes: Votes::yes(vote_power), // proposer will vote yes automatically
@@ -533,6 +532,8 @@ mod tests {
     use cw_utils::Threshold::AbsolutePercentage;
     use cw_utils::{Expiration, Threshold};
 
+    const DEFAULT_EXPIRATION: u64 = 100;
+
     /// create a 2-of-4 multisig voter
     fn setup(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, ContractError> {
         let api_deps = mock_dependencies();
@@ -571,6 +572,7 @@ mod tests {
             threshold: Threshold::AbsolutePercentage {
                 percentage: Decimal::percent(50), // 50% to pass
             },
+            default_expiration: DEFAULT_EXPIRATION,
         };
         instantiate(deps, env, info, instantiate_msg)
     }
@@ -605,6 +607,7 @@ mod tests {
                 threshold: Threshold::AbsolutePercentage {
                     percentage: Decimal::percent(50),
                 },
+                default_expiration: DEFAULT_EXPIRATION,
             };
             let err = instantiate(
                 deps.as_mut(),
@@ -658,6 +661,7 @@ mod tests {
                 threshold: Threshold::AbsolutePercentage {
                     percentage: Decimal::percent(50)
                 },
+                default_expiration: DEFAULT_EXPIRATION,
             }
         );
 
@@ -693,11 +697,10 @@ mod tests {
             "cdb763a239cb5c8d627c5cc85c65aac291680aced9d081ba7595c6d5138fc4fb",
         )
         .unwrap();
-        let expiration = Expiration::AtTime(env.block.time.plus_seconds(100));
+        let expiration = Expiration::AtTime(env.block.time.plus_seconds(DEFAULT_EXPIRATION));
         let execute_msg = ExecuteMsg::Propose {
             slashing_request_id: slashing_request_id.clone(),
             reason: "test".to_string(),
-            expiration,
         };
 
         // Negative - not a member
@@ -785,11 +788,10 @@ mod tests {
             "cdb763a239cb5c8d627c5cc85c65aac291680aced9d081ba7595c6d5138fc4fb",
         )
         .unwrap();
-        let expiration = Expiration::AtTime(env.block.time.plus_seconds(100));
+        let expiration = Expiration::AtTime(env.block.time.plus_seconds(DEFAULT_EXPIRATION));
         let execute_msg = ExecuteMsg::Propose {
             slashing_request_id: slashing_request_id.clone(),
             reason: "test".to_string(),
-            expiration,
         };
         execute(
             deps.as_mut(),
@@ -977,11 +979,10 @@ mod tests {
         )
         .unwrap();
 
-        let expiration = Expiration::AtTime(env.block.time.plus_seconds(100));
+        let expiration = Expiration::AtTime(env.block.time.plus_seconds(DEFAULT_EXPIRATION));
         let execute_msg = ExecuteMsg::Propose {
             slashing_request_id: slashing_request_id.clone(),
             reason: "test".to_string(),
-            expiration,
         };
         execute(
             deps.as_mut(),
@@ -1100,11 +1101,10 @@ mod tests {
             "cdb763a239cb5c8d627c5cc85c65aac291680aced9d081ba7595c6d5138fc4fb",
         )
         .unwrap();
-        let expiration = Expiration::AtTime(env.block.time.plus_seconds(100));
+        let expiration = Expiration::AtTime(env.block.time.plus_seconds(DEFAULT_EXPIRATION));
         let execute_msg = ExecuteMsg::Propose {
             slashing_request_id: slashing_request_id.clone(),
             reason: "test".to_string(),
-            expiration,
         };
         execute(
             deps.as_mut(),
@@ -1207,11 +1207,10 @@ mod tests {
             "cdb763a239cb5c8d627c5cc85c65aac291680aced9d081ba7595c6d5138fc4fb",
         )
         .unwrap();
-        let expiration = Expiration::AtTime(env.block.time.plus_seconds(100));
+        let expiration = Expiration::AtTime(env.block.time.plus_seconds(DEFAULT_EXPIRATION));
         let execute_msg = ExecuteMsg::Propose {
             slashing_request_id: slashing_request_id.clone(),
             reason: "test".to_string(),
-            expiration,
         };
         execute(
             deps.as_mut(),

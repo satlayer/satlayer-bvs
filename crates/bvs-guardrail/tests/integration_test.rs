@@ -7,7 +7,7 @@ use cosmwasm_std::{Decimal, Event};
 use cw3::{ProposalResponse, Status, Vote};
 use cw4::Member;
 use cw_multi_test::App;
-use cw_utils::{Expiration, Threshold};
+use cw_utils::Threshold;
 
 struct TestContracts {
     guardrail: GuardrailContract,
@@ -51,6 +51,7 @@ fn instantiate() -> (App, TestContracts) {
         threshold: Threshold::AbsolutePercentage {
             percentage: Decimal::percent(50),
         },
+        default_expiration: 100,
     };
 
     let guardrail = GuardrailContract::new(&mut app, &env, instantiate_msg.into());
@@ -83,7 +84,6 @@ fn propose_and_vote_successfully() {
     let proposal_msg = ExecuteMsg::Propose {
         slashing_request_id: slashing_request_id.clone(),
         reason: "test slashing".to_string(),
-        expiration: Expiration::AtTime(app.block_info().time.plus_seconds(1000)),
     };
 
     let res = tc
@@ -179,7 +179,6 @@ fn propose_and_vote_rejected() {
     let proposal_msg = ExecuteMsg::Propose {
         slashing_request_id: slashing_request_id.clone(),
         reason: "test slashing".to_string(),
-        expiration: Expiration::AtTime(app.block_info().time.plus_seconds(1000)),
     };
     tc.guardrail
         .execute(&mut app, &owner, &proposal_msg)
@@ -252,7 +251,6 @@ fn propose_and_vote_expired() {
     let proposal_msg = ExecuteMsg::Propose {
         slashing_request_id: slashing_request_id.clone(),
         reason: "test slashing".to_string(),
-        expiration: Expiration::AtTime(app.block_info().time.plus_seconds(1000)),
     };
     tc.guardrail
         .execute(&mut app, &owner, &proposal_msg)

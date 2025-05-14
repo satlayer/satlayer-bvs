@@ -29,6 +29,7 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg, Empty> for GuardrailC
             threshold: Threshold::AbsolutePercentage {
                 percentage: Decimal::percent(50),
             },
+            default_expiration: 100,
         }
     }
 

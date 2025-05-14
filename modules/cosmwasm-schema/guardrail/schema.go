@@ -4,9 +4,10 @@
 package guardrail
 
 type InstantiateMsg struct {
-	Members   []MemberElement `json:"members"`
-	Owner     string          `json:"owner"`
-	Threshold Threshold       `json:"threshold"`
+	DefaultExpiration int64           `json:"default_expiration"`
+	Members           []MemberElement `json:"members"`
+	Owner             string          `json:"owner"`
+	Threshold         Threshold       `json:"threshold"`
 }
 
 // A group member has a weight associated with them. This may all be equal, or may have
@@ -66,27 +67,8 @@ type Close struct {
 }
 
 type Propose struct {
-	Expiration        ProposeExpiration `json:"expiration"`
-	Reason            string            `json:"reason"`
-	SlashingRequestID string            `json:"slashing_request_id"`
-}
-
-// Expiration represents a point in time when some event happens. It can compare with a
-// BlockInfo and will return is_expired() == true once the condition is hit (and for every
-// block in the future)
-//
-// AtHeight will expire when `env.block.height` >= height
-//
-// AtTime will expire when `env.block.time` >= time
-//
-// Never will never expire. Used to express the empty variant
-type ProposeExpiration struct {
-	AtHeight *int64       `json:"at_height,omitempty"`
-	AtTime   *string      `json:"at_time,omitempty"`
-	Never    *PurpleNever `json:"never,omitempty"`
-}
-
-type PurpleNever struct {
+	Reason            string `json:"reason"`
+	SlashingRequestID string `json:"slashing_request_id"`
 }
 
 type UpdateMembers struct {
@@ -211,10 +193,10 @@ type PurpleDenom struct {
 type ProposalExpiration struct {
 	AtHeight *int64       `json:"at_height,omitempty"`
 	AtTime   *string      `json:"at_time,omitempty"`
-	Never    *FluffyNever `json:"never,omitempty"`
+	Never    *PurpleNever `json:"never,omitempty"`
 }
 
-type FluffyNever struct {
+type PurpleNever struct {
 }
 
 // `CosmosMsg::Any` is the replaces the "stargate message" – a message wrapped in a
@@ -531,12 +513,12 @@ type FluffyDenom struct {
 //
 // Never will never expire. Used to express the empty variant
 type ProposalResponseForEmptyExpiration struct {
-	AtHeight *int64          `json:"at_height,omitempty"`
-	AtTime   *string         `json:"at_time,omitempty"`
-	Never    *TentacledNever `json:"never,omitempty"`
+	AtHeight *int64       `json:"at_height,omitempty"`
+	AtTime   *string      `json:"at_time,omitempty"`
+	Never    *FluffyNever `json:"never,omitempty"`
 }
 
-type TentacledNever struct {
+type FluffyNever struct {
 }
 
 // `CosmosMsg::Any` is the replaces the "stargate message" – a message wrapped in a
