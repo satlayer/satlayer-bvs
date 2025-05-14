@@ -609,7 +609,7 @@ export interface InstantiateMsg {
    */
   router: string;
   /**
-   * The symbol for the receipt token. Must prefixed with `sat`.
+   * The symbol for the receipt token.
    */
   symbol: string;
 }

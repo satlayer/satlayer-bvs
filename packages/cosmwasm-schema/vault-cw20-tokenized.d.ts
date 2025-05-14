@@ -614,7 +614,7 @@ export interface InstantiateMsg {
    */
   router: string;
   /**
-   * symbol of the receipt token. Must start with `sat`.
+   * symbol of the receipt token.
    */
   symbol: string;
 }

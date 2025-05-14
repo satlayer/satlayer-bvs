@@ -28,7 +28,7 @@ type InstantiateMsg struct {
 	Pauser string `json:"pauser"`
 	// The address of the `router` contract.
 	Router string `json:"router"`
-	// The symbol for the receipt token. Must prefixed with `sat`.
+	// The symbol for the receipt token.
 	Symbol string `json:"symbol"`
 }
 
