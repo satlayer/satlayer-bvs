@@ -255,7 +255,7 @@ fn test_bank_tokenized_vault_deployment() {
         .wrap()
         .query_wasm_smart(
             &vault_addr,
-            &bvs_vault_cw20_tokenized::msg::QueryMsg::VaultInfo {},
+            &bvs_vault_bank_tokenized::msg::QueryMsg::VaultInfo {},
         )
         .unwrap();
 
