@@ -362,6 +362,12 @@ mod execute {
             }
         }
 
+        if slash_req.status != SlashingRequestStatus::Pending as u8 {
+            return Err(ContractError::InvalidSlashingRequest {
+                msg: "Slashing request is not pending".to_string(),
+            });
+        }
+
         let SlashingParametersResponse(slashing_parameters) = deps.querier.query_wasm_smart(
             registry.clone(),
             &bvs_registry::msg::QueryMsg::SlashingParameters {
@@ -388,8 +394,9 @@ mod execute {
 
         // Check if the id is the same as the one in the request
         if true_id != Some(id.clone()) {
-            return Err(ContractError::InvalidSlashingRequest {
-                msg: "Service does not requested this slashing event".to_string(),
+            return Err(ContractError::Unauthorized {
+                msg: "Slash locking is restricted to the service that initiated the request."
+                    .to_string(),
             });
         }
 
@@ -397,7 +404,7 @@ mod execute {
 
         if now > slash_req.request_expiry {
             return Err(ContractError::InvalidSlashingRequest {
-                msg: "Slash is expired".to_string(),
+                msg: "Slashing has expired".to_string(),
             });
         };
 
@@ -423,11 +430,8 @@ mod execute {
             let total_assets = vault_info.total_assets;
             let bips = Uint128::from(slash_req.request.bips as u128);
 
-            let slash_percent = bips.checked_div(Uint128::from(100_u128)).unwrap();
-
-            // multiply_ratio is always floored.
-            let slash_absolute =
-                total_assets.multiply_ratio(slash_percent, Uint128::from(100_u128));
+            // Due to the nature of the integer division involved, the result is always floored.
+            let slash_absolute = total_assets.multiply_ratio(bips, Uint128::from(10000_u128));
 
             SLASH_LOCKED.save(deps.storage, (id.clone(), &vault), &slash_absolute)?;
 

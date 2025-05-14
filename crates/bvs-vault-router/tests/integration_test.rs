@@ -1462,7 +1462,7 @@ fn test_slash_locking_negative() {
         assert_eq!(
             res.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Slash is expired".to_string(),
+                msg: "Slashing has expired".to_string(),
             }
             .to_string()
         );
