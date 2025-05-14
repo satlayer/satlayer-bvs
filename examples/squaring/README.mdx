@@ -61,6 +61,7 @@ Squaring is `n^2`, where n is the input number.
 While this example is simple, this principles can be applied to more complex computations.
 
 The general workflow is as follows:
+
 1. Users submit computation requests to the contract
 2. Operators (running the off-chain service) detect these requests
 3. Operators perform the computation off-chain
@@ -70,6 +71,7 @@ The general workflow is as follows:
 ### On-chain Contract (CosmWasm)
 
 Located in the `contract/` directory, this Rust-based smart contract:
+
 - Accepts computation requests from users
 - Verifies responses from operators to prove fault
 - Manages operator registration and slashing mechanisms
@@ -78,6 +80,7 @@ Located in the `contract/` directory, this Rust-based smart contract:
 ### Off-chain Service (TypeScript)
 
 Located in the `service/` directory, this Node.js service:
+
 - Continuously monitors the blockchain for new computation requests
 - Performs the actual computation (squaring numbers) off-chain
 - Submits results back to the on-chain contract
