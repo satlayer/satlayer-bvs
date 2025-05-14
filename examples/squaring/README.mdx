@@ -36,14 +36,15 @@ squaring/
 ### How to run
 
 Clone and copy contents of `./examples/squaring` to your local machine.
+Install and `npm run test` to set up the environment.
 
 ```sh filename="run.sh"
-docker compose up
+npm run test
 ```
 
-### Build the contract
+### How to build the contract
 
-```shell
+```sh filename="build.sh"
 docker run --rm -v "$(pwd)":/code \
   --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
@@ -51,3 +52,36 @@ docker run --rm -v "$(pwd)":/code \
 ```
 
 ## Project overview
+
+This project demonstrates a Bitcoin Validated System (BVS) using a simple squaring function as an example.
+It consists of two main components the on-chain contract and the off-chain service.
+
+We use squaring as a simple example to demonstrate the concept of off-chain computation with on-chain verification.
+Squaring is `n^2`, where n is the input number.
+While this example is simple and not meant for production,
+it illustrates the principles of off-chain computation and on-chain verification.
+
+The general request respond lifecycle is as follows:
+
+1. Users submit computation requests to the contract
+2. Operators (running the off-chain service) detect these requests
+3. Operators perform the computation off-chain
+4. Operators submit the results back to the contract
+5. The contract verifies the results and slashes operators who submit incorrect answers
+
+### On-chain Contract (CosmWasm)
+
+Located in the `contract/` directory, this Rust-based smart contract:
+
+- Accepts computation requests from users
+- Verifies responses from operators to prove fault
+- Manages operator registration and slashing mechanisms
+- Provides query endpoints for retrieving computation results
+
+### Off-chain Service (TypeScript)
+
+Located in the `service/` directory, this Node.js service:
+
+- Continuously monitors the blockchain for new computation requests
+- Performs the actual computation (squaring numbers) off-chain
+- Submits results back to the on-chain contract
