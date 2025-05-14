@@ -2,7 +2,7 @@ import { join } from "node:path";
 
 import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { Slip10RawIndex } from "@cosmjs/crypto";
-import { DirectSecp256k1HdWallet, parseCoins } from "@cosmjs/proto-signing";
+import { DirectSecp256k1HdWallet, OfflineSigner, parseCoins } from "@cosmjs/proto-signing";
 import { DeliverTxResponse, GasPrice } from "@cosmjs/stargate";
 import { AbstractStartedContainer, GenericContainer, StartedTestContainer, Wait } from "testcontainers";
 
@@ -55,8 +55,32 @@ export class StartedCosmWasmContainer extends AbstractStartedContainer {
     return `tcp://${host}:${port}/`;
   }
 
-  async fund(address: string, coins: string): Promise<DeliverTxResponse> {
-    const [account] = await this.wallet.getAccounts();
-    return this.client.sendTokens(account.address, address, parseCoins(coins), "auto");
+  async fund(coins: string, ...addresses: string[]): Promise<DeliverTxResponse> {
+    const [from] = await this.wallet.getAccounts();
+    return this.client.signAndBroadcast(
+      from.address,
+      addresses.map((address: string) => {
+        return {
+          typeUrl: "/cosmos.bank.v1beta1.MsgSend",
+          value: {
+            fromAddress: from.address,
+            toAddress: address,
+            amount: parseCoins(coins),
+          },
+        };
+      }),
+      "auto",
+    );
+  }
+
+  /**
+   * Creates a new signer configured to use this container as the RPC endpoint.
+   * @param wallet
+   */
+  async newSigner(wallet: OfflineSigner) {
+    return await SigningCosmWasmClient.connectWithSigner(this.getRpcEndpoint(), wallet, {
+      gasPrice: GasPrice.fromString("0.002000ustake"),
+      broadcastPollIntervalMs: 200,
+    });
   }
 }
