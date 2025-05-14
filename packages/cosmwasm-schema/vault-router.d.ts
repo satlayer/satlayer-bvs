@@ -77,6 +77,8 @@ type IsWhitelistedResponse = boolean;
  *
  * The timestamp when the request was submitted.
  *
+ * The service that initiated the slashing request.
+ *
  * The response to the `WithdrawalLockPeriod` query. Not exported. This is just a wrapper
  * around `Uint64`, so that the schema can be generated.
  */
@@ -241,6 +243,10 @@ export interface SlashingRequestResponse {
    * The timestamp when the request was submitted.
    */
   request_time: string;
+  /**
+   * The service that initiated the slashing request.
+   */
+  service: string;
   /**
    * The status of the slashing request.
    */

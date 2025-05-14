@@ -54,9 +54,12 @@ pub struct SlashingRequest {
     pub request_expiry: Timestamp,
     /// The status of the slashing request.
     pub status: u8,
+    /// The service that initiated the slashing request.
+    pub service: Service,
 }
 
 #[cw_serde]
+#[derive(Copy)]
 pub enum SlashingRequestStatus {
     /// The slashing request is pending and has not been processed yet.
     Pending = 0,
@@ -88,6 +91,18 @@ impl TryFrom<u8> for SlashingRequestStatus {
     }
 }
 
+impl PartialEq<u8> for SlashingRequestStatus {
+    fn eq(&self, other: &u8) -> bool {
+        *other == u8::from(*self)
+    }
+}
+
+impl PartialEq<SlashingRequestStatus> for u8 {
+    fn eq(&self, other: &SlashingRequestStatus) -> bool {
+        *self == u8::from(*other)
+    }
+}
+
 /// SlashingRequestId stores the id in hexbinary. It's a 32-byte hash of the slashing request
 #[cw_serde]
 pub struct SlashingRequestId(pub HexBinary);
@@ -99,9 +114,8 @@ impl SlashingRequestId {
     }
 
     /// Generate a slashing request id from the service and slashing request data
-    pub fn new(service: &Service, data: &SlashingRequest) -> StdResult<Self> {
+    pub fn new(data: &SlashingRequest) -> StdResult<Self> {
         let mut hasher = sha3::Sha3_256::new();
-        hasher.update(service.as_bytes());
         hasher.update(to_json_vec(data)?);
 
         Ok(<[u8; 32]>::from(hasher.finalize()).into())
@@ -211,7 +225,7 @@ pub(crate) fn save_slashing_request(
     data: &SlashingRequest,
 ) -> StdResult<SlashingRequestId> {
     // generate slashing_id
-    let slashing_id = SlashingRequestId::new(service, data)?;
+    let slashing_id = SlashingRequestId::new(data)?;
 
     // save slashing id
     SLASHING_REQUEST_IDS.save(store, (service, operator), &slashing_id)?;
@@ -247,18 +261,16 @@ mod test {
             request_time: env.block.time,
             request_expiry: env.block.time.plus_seconds(100),
             status: SlashingRequestStatus::Pending.into(),
+            service: service.clone(),
         };
 
         let res = save_slashing_request(&mut deps.storage, &service, &operator, &slashing_request)
             .unwrap();
 
-        assert_eq!(
-            res,
-            SlashingRequestId::new(&service, &slashing_request).unwrap()
-        );
+        assert_eq!(res, SlashingRequestId::new(&slashing_request).unwrap());
         assert_eq!(
             res.to_string(),
-            "e7e79034fb74d14b7ed2488d64c2e2a1d45388b0660cc8ab91a3d6f21804d361",
+            "ddb66359df6bed80877ad98e3564485f598ec45f1a5ac38624af0ccbe73c1987",
             "incorrect hash, hash function may have changed or hash data has changed"
         );
 
@@ -271,5 +283,24 @@ mod test {
         // assert that SLASHING_REQUESTS state is updated
         let slashing_request_res = SLASHING_REQUESTS.may_load(&deps.storage, res).unwrap();
         assert_eq!(Some(slashing_request), slashing_request_res);
+    }
+
+    #[test]
+    fn test_slashing_request_status_partial_eq() {
+        // Test SlashingRequestStatus == u8
+        assert_eq!(SlashingRequestStatus::Pending, 0u8);
+        assert_eq!(SlashingRequestStatus::Locked, 1u8);
+        assert_eq!(SlashingRequestStatus::Finalized, 2u8);
+        assert_eq!(SlashingRequestStatus::Canceled, 3u8);
+
+        // Test u8 == SlashingRequestStatus
+        assert_eq!(0u8, SlashingRequestStatus::Pending);
+        assert_eq!(1u8, SlashingRequestStatus::Locked);
+        assert_eq!(2u8, SlashingRequestStatus::Finalized);
+        assert_eq!(3u8, SlashingRequestStatus::Canceled);
+
+        // Test inequality
+        assert_ne!(SlashingRequestStatus::Pending, 1u8);
+        assert_ne!(0u8, SlashingRequestStatus::Locked);
     }
 }

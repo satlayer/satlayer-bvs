@@ -147,6 +147,8 @@ type SlashingRequest struct {
 	RequestExpiry string `json:"request_expiry"`
 	// The timestamp when the request was submitted.
 	RequestTime string `json:"request_time"`
+	// The service that initiated the slashing request.
+	Service string `json:"service"`
 	// The status of the slashing request.
 	Status int64 `json:"status"`
 }
