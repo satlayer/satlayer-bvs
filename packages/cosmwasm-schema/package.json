@@ -12,6 +12,7 @@
     "build": "node generate.mjs && prettier --write *.d.ts"
   },
   "devDependencies": {
+    "@satlayer/bvs-guardrail": "workspace:*",
     "@satlayer/bvs-pauser": "workspace:*",
     "@satlayer/bvs-registry": "workspace:*",
     "@satlayer/bvs-rewards": "workspace:*",

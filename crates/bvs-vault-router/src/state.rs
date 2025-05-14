@@ -106,6 +106,15 @@ impl SlashingRequestId {
 
         Ok(<[u8; 32]>::from(hasher.finalize()).into())
     }
+
+    /// Create a SlashingRequestId from its hex string representation
+    pub fn from_hex(hex: &str) -> StdResult<Self> {
+        let bytes = HexBinary::from_hex(hex)?;
+        if bytes.len() != 32 {
+            return Err(StdError::generic_err("Invalid hex length"));
+        }
+        Ok(SlashingRequestId(bytes))
+    }
 }
 
 impl fmt::Display for SlashingRequestId {

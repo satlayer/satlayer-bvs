@@ -5,6 +5,7 @@
     "build": "node generate.mjs && goimports -w */schema.go"
   },
   "devDependencies": {
+    "@satlayer/bvs-guardrail": "workspace:*",
     "@satlayer/bvs-pauser": "workspace:*",
     "@satlayer/bvs-registry": "workspace:*",
     "@satlayer/bvs-rewards": "workspace:*",
