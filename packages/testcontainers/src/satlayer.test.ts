@@ -17,12 +17,12 @@ afterEach(async () => {
 });
 
 test("should bootstrap contracts", async () => {
-  const client = contracts.client;
   const queryMsg: RouterQueryMsg = {
     list_vaults: {},
   };
 
-  const vaults = await client.queryContractSmart(contracts.state.router.address, queryMsg);
+  const client = contracts.client;
+  const vaults = await client.queryContractSmart(contracts.data.router.address, queryMsg);
   expect(vaults).toEqual([]);
 }, 30_000);
 
@@ -45,12 +45,11 @@ test("should bootstrap contracts and deploy vaults", async () => {
   });
   const vault3 = await contracts.initVaultCw20(operator.address, cw20_address);
 
-  const client = contracts.client;
   const queryMsg: RouterQueryMsg = {
     list_vaults: {},
   };
 
-  const vaults = await client.queryContractSmart(contracts.state.router.address, queryMsg);
+  const vaults = await contracts.router.query(queryMsg);
   expect(vaults).toEqual(
     expect.arrayContaining([
       {

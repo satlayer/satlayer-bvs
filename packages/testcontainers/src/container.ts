@@ -2,8 +2,8 @@ import { join } from "node:path";
 
 import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { Slip10RawIndex } from "@cosmjs/crypto";
-import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
-import { GasPrice } from "@cosmjs/stargate";
+import { DirectSecp256k1HdWallet, parseCoins } from "@cosmjs/proto-signing";
+import { DeliverTxResponse, GasPrice } from "@cosmjs/stargate";
 import { AbstractStartedContainer, GenericContainer, StartedTestContainer, Wait } from "testcontainers";
 
 export class CosmWasmContainer extends GenericContainer {
@@ -53,5 +53,10 @@ export class StartedCosmWasmContainer extends AbstractStartedContainer {
     const host = this.startedTestContainer.getHost();
     const port = this.startedTestContainer.getMappedPort(26657);
     return `tcp://${host}:${port}/`;
+  }
+
+  async fund(address: string, coins: string): Promise<DeliverTxResponse> {
+    const [account] = await this.wallet.getAccounts();
+    return this.client.sendTokens(account.address, address, parseCoins(coins), "auto");
   }
 }
