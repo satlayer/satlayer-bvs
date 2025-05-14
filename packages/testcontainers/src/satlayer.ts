@@ -159,8 +159,8 @@ export class Registry {
     public readonly address: string,
   ) {}
 
-  async execute(sender: string, executeMsg: RegistryExecuteMsg) {
-    await this.started.client.execute(sender, this.address, executeMsg, "auto");
+  async execute(client: SigningCosmWasmClient, sender: string, executeMsg: RegistryExecuteMsg) {
+    return client.execute(sender, this.address, executeMsg, "auto");
   }
 
   async query(queryMsg: RegistryQueryMsg): Promise<any> {
@@ -174,8 +174,8 @@ export class Router {
     public readonly address: string,
   ) {}
 
-  async execute(sender: string, executeMsg: RouterExecuteMsg) {
-    await this.started.client.execute(sender, this.address, executeMsg, "auto");
+  async execute(client: SigningCosmWasmClient, sender: string, executeMsg: RouterExecuteMsg) {
+    return client.execute(sender, this.address, executeMsg, "auto");
   }
 
   async query(queryMsg: RouterQueryMsg): Promise<any> {

@@ -37,12 +37,12 @@ beforeAll(async () => {
   const instantiated = await deployContract(owner.address);
 
   // Register the operator and the service to the operator
-  await contracts.registry.execute(operator.address, {
+  await contracts.registry.execute(client, operator.address, {
     register_as_operator: {
       metadata: {},
     },
   });
-  await contracts.registry.execute(operator.address, {
+  await contracts.registry.execute(client, operator.address, {
     register_service_to_operator: {
       service: instantiated.contractAddress,
     },
