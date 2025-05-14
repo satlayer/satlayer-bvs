@@ -12,6 +12,7 @@ export interface ExecuteMsg {
   request?: Request;
   respond?: Respond;
   compute?: Compute;
+  register_operator?: RegisterOperator;
 }
 
 /**
@@ -38,6 +39,13 @@ export interface Respond {
  */
 export interface Compute {
   input: number;
+  operator: string;
+}
+
+/**
+ * Register the operator that will be used to compute the square of the input.
+ */
+export interface RegisterOperator {
   operator: string;
 }
 
