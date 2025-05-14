@@ -227,7 +227,6 @@ pub struct InstantiateMsg {
     /// Must be the same as the denom's decimals.
     pub decimals: u8,
     /// The symbol for the receipt token.
-    /// Must prefixed with `sat`.
     pub symbol: String,
     /// The name of the receipt token.
     pub name: String,
