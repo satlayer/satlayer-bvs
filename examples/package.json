@@ -5,7 +5,7 @@
     "*.rs": [
       "rustfmt"
     ],
-    "*.{md,toml,js,mjs,ts,cjs}": [
+    "*.{md,mdx,toml,js,mjs,ts,cjs}": [
       "prettier --write"
     ],
     "package.json": [
