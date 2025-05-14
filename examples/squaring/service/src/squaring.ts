@@ -4,10 +4,17 @@ import { readFile, writeFile } from "node:fs/promises";
 import { setTimeout } from "node:timers/promises";
 import { ExecuteResult } from "@cosmjs/cosmwasm-stargate/build/signingcosmwasmclient";
 
+/**
+ * This function is an example of an expensive computation.
+ * You want to perform this off-chain to reduce on-chain costs.
+ */
 function compute(input: number): number {
   return input * input;
 }
 
+/**
+ * A long-running process that listens for Requests and Responds to them.
+ */
 export class SquaringNode {
   private running: boolean = true;
 
@@ -48,6 +55,9 @@ export class SquaringNode {
     }
   }
 
+  /**
+   * Find all Request events for a given contract at a given block height.
+   */
   private async getRequests(contract: string, height: number): Promise<Event[]> {
     const events: Event[] = [];
     for (const tx of await this.client.searchTx(`tx.height=${height}`)) {
@@ -64,6 +74,9 @@ export class SquaringNode {
     return events;
   }
 
+  /**
+   * Respond to a request with the result of the computation.
+   */
   private async respond(input: number): Promise<void> {
     const output = compute(input);
 
@@ -74,8 +87,7 @@ export class SquaringNode {
       },
     };
 
-    const executed = await this.client.execute(this.operator, this.contract, msg, "auto");
-    console.log(executed);
+    await this.client.execute(this.operator, this.contract, msg, "auto");
   }
 
   public async stop() {
@@ -87,9 +99,11 @@ export class ServiceNode {
   constructor(
     private readonly client: SigningCosmWasmClient,
     private readonly contract: string,
-    private readonly operator: string,
   ) {}
 
+  /**
+   * Request a computation to be performed by the service node.
+   */
   public async request(sender: string, input: number): Promise<ExecuteResult> {
     const msg: ExecuteMsg = {
       request: {
@@ -100,11 +114,14 @@ export class ServiceNode {
     return this.client.execute(sender, this.contract, msg, "auto");
   }
 
-  public async getResponse(input: number): Promise<GetResponseResponse> {
+  /**
+   * Get the response for a given input uploaded by an operator.
+   */
+  public async getResponse(input: number, operator: string): Promise<GetResponseResponse> {
     const msg: QueryMsg = {
       get_response: {
         input,
-        operator: this.operator,
+        operator,
       },
     };
     return await this.client.queryContractSmart(this.contract, msg);

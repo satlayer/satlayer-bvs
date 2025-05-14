@@ -12,8 +12,8 @@ let contracts: SatLayerContracts;
 let wallet: DirectSecp256k1HdWallet;
 let client: SigningCosmWasmClient;
 
+let squaringContractAddress: string;
 let squaringNode: SquaringNode;
-let serviceNode: ServiceNode;
 
 beforeAll(async () => {
   // Set up CosmWasmContainer with SatLayerContracts bootstrapped
@@ -35,6 +35,7 @@ beforeAll(async () => {
 
   // Deploy Squaring Contract
   const instantiated = await deployContract(owner.address);
+  squaringContractAddress = instantiated.contractAddress;
 
   // Register the operator and the service to the operator
   await contracts.registry.execute(client, operator.address, {
@@ -56,7 +57,6 @@ beforeAll(async () => {
 
   // Create the Squaring and Service nodes
   squaringNode = new SquaringNode(client, instantiated.contractAddress, operator.address);
-  serviceNode = new ServiceNode(client, instantiated.contractAddress, operator.address);
 
   // Start the squaring node without awaiting = this is async.
   void squaringNode.start(0);
@@ -79,14 +79,15 @@ async function deployContract(owner: string) {
 }
 
 test("should compute off-chain and get response on-chain", async () => {
-  const anyone = await wallet.getAccounts().then((accounts) => accounts[2].address);
+  const [, operator, anyone] = await wallet.getAccounts();
 
+  const service = new ServiceNode(client, squaringContractAddress);
   // Request the squaring node to compute the square of 99
-  await serviceNode.request(anyone, 99);
+  await service.request(anyone.address, 99);
 
   // Wait for the squaring node to compute the square and store the result on-chain
   await vi.waitFor(async () => {
-    const response = await serviceNode.getResponse(99);
+    const response = await service.getResponse(99, operator.address);
     expect(response).toEqual(9801);
   }, 10_000);
 }, 15_000);

@@ -36,14 +36,15 @@ squaring/
 ### How to run
 
 Clone and copy contents of `./examples/squaring` to your local machine.
+Install and `npm run test` to set up the environment.
 
 ```sh filename="run.sh"
-docker compose up
+npm run test
 ```
 
-### Build the contract
+### How to build the contract
 
-```shell
+```sh filename="build.sh"
 docker run --rm -v "$(pwd)":/code \
   --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
