@@ -1,11 +1,13 @@
 import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
+import { ExecuteMsg as RegistryExecuteMsg, QueryMsg as RegistryQueryMsg } from "@satlayer/cosmwasm-schema/registry";
+import { ExecuteMsg as RouterExecuteMsg, QueryMsg as RouterQueryMsg } from "@satlayer/cosmwasm-schema/vault-router";
 
 import { instantiateBvs, uploadBvs } from "./bvs";
 import { StartedCosmWasmContainer } from "./container";
 import { Cw20InitMsg, instantiateCw20, uploadCw20 } from "./cw20";
 
-type State = {
+type Data = {
   cw20: { codeId: number };
   pauser: { codeId: number; address: string };
   registry: { codeId: number; address: string };
@@ -17,7 +19,10 @@ type State = {
 export class SatLayerContracts {
   private constructor(
     public readonly started: StartedCosmWasmContainer,
-    public readonly state: State,
+    public readonly data: Data,
+    public readonly pauser = new Pauser(started, data.pauser.address),
+    public readonly registry = new Registry(started, data.registry.address),
+    public readonly router = new Router(started, data.router.address),
   ) {}
 
   get client(): SigningCosmWasmClient {
@@ -86,23 +91,23 @@ export class SatLayerContracts {
 
   async initCw20(initMsg: Cw20InitMsg): Promise<string> {
     const sender = (await this.wallet.getAccounts())[0].address;
-    const result = await instantiateCw20(this.client, sender, this.state.cw20.codeId, initMsg);
+    const result = await instantiateCw20(this.client, sender, this.data.cw20.codeId, initMsg);
     return result.contractAddress;
   }
 
   async initVaultCw20(operator: string, cw20_contract: string): Promise<string> {
     const sender = (await this.wallet.getAccounts())[0].address;
-    const codeId = this.state.vaultCw20.codeId;
+    const codeId = this.data.vaultCw20.codeId;
     const vaultCw20 = await instantiateBvs(this.client, sender, "@satlayer/bvs-vault-cw20", codeId, {
       operator: operator,
       cw20_contract: cw20_contract,
-      pauser: this.state.pauser.address,
-      router: this.state.router.address,
+      pauser: this.data.pauser.address,
+      router: this.data.router.address,
     });
 
     await this.client.execute(
       sender,
-      this.state.router.address,
+      this.data.router.address,
       {
         set_vault: {
           vault: vaultCw20.contractAddress,
@@ -117,17 +122,17 @@ export class SatLayerContracts {
 
   async initVaultBank(operator: string, denom: string): Promise<string> {
     const sender = (await this.wallet.getAccounts())[0].address;
-    const codeId = this.state.vaultBank.codeId;
+    const codeId = this.data.vaultBank.codeId;
     const vaultBank = await instantiateBvs(this.client, sender, "@satlayer/bvs-vault-bank", codeId, {
       operator: operator,
       denom: denom,
-      pauser: this.state.pauser.address,
-      router: this.state.router.address,
+      pauser: this.data.pauser.address,
+      router: this.data.router.address,
     });
 
     await this.client.execute(
       sender,
-      this.state.router.address,
+      this.data.router.address,
       {
         set_vault: {
           vault: vaultBank.contractAddress,
@@ -138,5 +143,42 @@ export class SatLayerContracts {
     );
 
     return vaultBank.contractAddress;
+  }
+}
+
+export class Pauser {
+  constructor(
+    public readonly started: StartedCosmWasmContainer,
+    public readonly address: string,
+  ) {}
+}
+
+export class Registry {
+  constructor(
+    public readonly started: StartedCosmWasmContainer,
+    public readonly address: string,
+  ) {}
+
+  async execute(sender: string, executeMsg: RegistryExecuteMsg) {
+    await this.started.client.execute(sender, this.address, executeMsg, "auto");
+  }
+
+  async query(queryMsg: RegistryQueryMsg): Promise<any> {
+    return await this.started.client.queryContractSmart(this.address, queryMsg);
+  }
+}
+
+export class Router {
+  constructor(
+    public readonly started: StartedCosmWasmContainer,
+    public readonly address: string,
+  ) {}
+
+  async execute(sender: string, executeMsg: RouterExecuteMsg) {
+    await this.started.client.execute(sender, this.address, executeMsg, "auto");
+  }
+
+  async query(queryMsg: RouterQueryMsg): Promise<any> {
+    return await this.started.client.queryContractSmart(this.address, queryMsg);
   }
 }
