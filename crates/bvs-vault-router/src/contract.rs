@@ -302,18 +302,25 @@ mod execute {
 
         // else, it will be overriden by the current slash request
 
-        // New_request_expiry will be using `resolution_window`
+        let request_resolution = env
+            .block
+            .time
+            .plus_seconds(slashing_parameters.resolution_window);
+
+        // request_expiry will be using `resolution_window`
         // value from the timestamp's slashing_parameters,
         // instead of the most recent slashing param.
         // This ensures that both parties agree upon all parameters used.
-        let new_request_expiry = env
+        let request_expiry = env
             .block
             .time
             .plus_seconds(slashing_parameters.resolution_window * 2);
+
         let new_request = SlashingRequest {
             request: data.clone(),
             request_time: env.block.time,
-            request_expiry: new_request_expiry,
+            request_resolution,
+            request_expiry,
             status: SlashingRequestStatus::Pending.into(),
             service: service.clone(),
         };
@@ -339,8 +346,6 @@ mod execute {
         info: MessageInfo,
         id: state::SlashingRequestId,
     ) -> Result<Response, ContractError> {
-        let registry = state::get_registry(deps.storage)?;
-
         let slash_req = match state::SLASHING_REQUESTS.may_load(deps.storage, id.clone())? {
             Some(slash_req) => slash_req,
             None => {
@@ -350,7 +355,7 @@ mod execute {
             }
         };
 
-        match SlashingRequestStatus::try_from(slash_req.status).unwrap() {
+        match SlashingRequestStatus::try_from(slash_req.status)? {
             SlashingRequestStatus::Pending => {}
             SlashingRequestStatus::Locked => {
                 return Err(ContractError::InvalidSlashingRequest {
@@ -368,23 +373,6 @@ mod execute {
                 })
             }
         }
-
-        let SlashingParametersResponse(slashing_parameters) = deps.querier.query_wasm_smart(
-            registry.clone(),
-            &bvs_registry::msg::QueryMsg::SlashingParameters {
-                service: info.sender.to_string(),
-                timestamp: Some(slash_req.request.timestamp.seconds()),
-            },
-        )?;
-
-        let slashing_parameters = match slashing_parameters {
-            Some(p) => p,
-            None => {
-                return Err(InvalidSlashingRequest {
-                    msg: "Service has not enabled slashing at timestamp.".to_string(),
-                })
-            }
-        };
 
         let accused_operator = deps
             .api
@@ -406,13 +394,9 @@ mod execute {
             });
         };
 
-        if now
-            < slash_req
-                .request_time
-                .plus_seconds(slashing_parameters.resolution_window)
-        {
+        if now < slash_req.request_resolution {
             return Err(ContractError::InvalidSlashingRequest {
-                msg: "Resolution window for this slashing has not passed".to_string(),
+                msg: "Slashing cannot be locked until resolution time has elapsed".to_string(),
             });
         };
 
@@ -458,6 +442,7 @@ mod execute {
                 service: slash_req.service,
                 request: slash_req.request.clone(),
                 request_time: slash_req.request_time,
+                request_resolution: slash_req.request_resolution,
                 request_expiry: slash_req.request_expiry,
                 status: SlashingRequestStatus::Locked.into(),
             },
@@ -1389,6 +1374,7 @@ mod tests {
                 },
             },
             request_time: env.block.time,
+            request_resolution: env.block.time.plus_seconds(50),
             request_expiry: env.block.time.plus_seconds(100),
             status: SlashingRequestStatus::Pending.into(),
             service,

@@ -51,6 +51,9 @@ pub struct SlashingRequest {
     pub request: RequestSlashingPayload,
     /// The timestamp when the request was submitted.
     pub request_time: Timestamp,
+    /// The timestamp when the request resolution window will end and becomes eligible for locking.
+    /// This will be `request_time` + `resolution_window`
+    pub request_resolution: Timestamp,
     /// The timestamp after which the request is no longer valid.
     /// This will be `request_time` + `resolution_window` * 2 (as per current slashing parameters)
     pub request_expiry: Timestamp,
@@ -274,6 +277,7 @@ mod test {
         let slashing_request = SlashingRequest {
             request: data.clone(),
             request_time: env.block.time,
+            request_resolution: env.block.time.plus_seconds(50),
             request_expiry: env.block.time.plus_seconds(100),
             status: SlashingRequestStatus::Pending.into(),
             service: service.clone(),
@@ -285,7 +289,7 @@ mod test {
         assert_eq!(res, SlashingRequestId::new(&slashing_request).unwrap());
         assert_eq!(
             res.to_string(),
-            "ddb66359df6bed80877ad98e3564485f598ec45f1a5ac38624af0ccbe73c1987",
+            "4a8ac4cd4fb81675fcdf97b5c25dc6240545016bab314c93cb97461b292fe098",
             "incorrect hash, hash function may have changed or hash data has changed"
         );
 

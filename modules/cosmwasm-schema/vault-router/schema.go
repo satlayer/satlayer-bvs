@@ -161,6 +161,9 @@ type SlashingRequest struct {
 	// The timestamp after which the request is no longer valid. This will be `request_time` +
 	// `resolution_window` * 2 (as per current slashing parameters)
 	RequestExpiry string `json:"request_expiry"`
+	// The timestamp when the request resolution window will end and becomes eligible for
+	// locking. This will be `request_time` + `resolution_window`
+	RequestResolution string `json:"request_resolution"`
 	// The timestamp when the request was submitted.
 	RequestTime string `json:"request_time"`
 	// The service that initiated the slashing request.
