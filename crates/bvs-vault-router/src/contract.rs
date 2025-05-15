@@ -390,11 +390,8 @@ mod execute {
             .api
             .addr_validate(slash_req.request.operator.as_str())?;
 
-        let true_id = state::SLASHING_REQUEST_IDS
-            .may_load(deps.storage, (&info.sender, &accused_operator))?;
-
         // Check if the id is the same as the one in the request
-        if true_id != Some(id.clone()) {
+        if info.sender != slash_req.service {
             return Err(ContractError::Unauthorized {
                 msg: "Slash locking is restricted to the service that initiated the request."
                     .to_string(),
@@ -458,6 +455,7 @@ mod execute {
             deps.storage,
             id.clone(),
             &SlashingRequest {
+                service: slash_req.service,
                 request: slash_req.request.clone(),
                 request_time: slash_req.request_time,
                 request_expiry: slash_req.request_expiry,

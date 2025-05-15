@@ -1074,7 +1074,7 @@ fn test_slash_locking() {
                     )
                     .add_attribute(
                         "slashing_request_id",
-                        "256599b4308c914c2a1a0c0300ac82b68e932edc0be46339b54293e804add30e"
+                        "e99316f1087d1365c4e1c4a2d82de63c4029cd51cd7b6a1bccd42bfbad9d310d"
                     )
                     .add_attribute("bips", "100")
                     .add_attribute("affected_vaults", "2"),
