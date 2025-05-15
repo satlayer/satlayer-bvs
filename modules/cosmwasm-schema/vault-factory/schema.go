@@ -15,20 +15,20 @@ type InstantiateMsg struct {
 // ExecuteMsg DeployCw20 Deploy a CW20 vault contract, the operator will be the sender of
 // this message. The `cw20` is the address of the CW20 contract.
 //
-// ExecuteMsg DeployCw20Tokenized Deploy a Bank vault contract, the operator will be the
-// sender of this message. The `symbol` is the symbol for the receipt token. Must start with
-// sat and conform the Bank symbol rules. The `name` is the cw20 compliant name for the
-// receipt token.
+// ExecuteMsg DeployCw20Tokenized Deploy a Cw20 tokenized vault contract, the operator will
+// be the sender of this message. The `symbol` is the symbol for the receipt token. Must
+// start with sat and conform the Bank symbol rules. The `name` is the cw20 compliant name
+// for the receipt token.
 //
 // ExecuteMsg DeployBank Deploy a Bank vault contract, the operator will be the sender of
 // this message. The `denom` is the denomination of the native token, e.g. "ubbn" for
 // Babylon native token.
 //
-// ExecuteMsg DeployBankTokenized Deploy a Bank vault contract, the operator will be the
-// sender of this message. The `denom` is the denomination of the native token, e.g. "ubbn"
-// for Babylon native token. The `decimals` is the number of decimals for the receipt token
-// The `symbol` is the symbol for the receipt token. Must start with sat and conform the
-// Bank symbol rules. The `name` is the cw20 compliant name for the receipt token.
+// ExecuteMsg DeployBankTokenized Deploy a Bank tokenized vault contract, the operator will
+// be the sender of this message. The `denom` is the denomination of the native token, e.g.
+// "ubbn" for Babylon native token. The `decimals` is the number of decimals for the receipt
+// token The `symbol` is the symbol for the receipt token. Must start with sat and conform
+// the Bank symbol rules. The `name` is the cw20 compliant name for the receipt token.
 //
 // ExecuteMsg TransferOwnership See [`bvs_library::ownership::transfer_ownership`] for more
 // information on this field Only the `owner` can call this message.
