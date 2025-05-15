@@ -421,7 +421,7 @@ fn request_slashing_successful() {
                 .add_attribute("operator", operator.to_string())
                 .add_attribute(
                     "slashing_request_id",
-                    "e99316f1087d1365c4e1c4a2d82de63c4029cd51cd7b6a1bccd42bfbad9d310d"
+                    "cffcb7e810be616e5582beb8bdb8a545502733d683515410d97d262dcba1855c"
                 )
                 .add_attribute("reason", "test"),
         ]
@@ -445,7 +445,7 @@ fn request_slashing_successful() {
     assert_eq!(
         res,
         Some(
-            HexBinary::from_hex("e99316f1087d1365c4e1c4a2d82de63c4029cd51cd7b6a1bccd42bfbad9d310d")
+            HexBinary::from_hex("cffcb7e810be616e5582beb8bdb8a545502733d683515410d97d262dcba1855c")
                 .unwrap()
                 .into()
         )
@@ -461,7 +461,7 @@ fn request_slashing_successful() {
     assert_eq!(
         slashing_request_id,
         SlashingRequestIdResponse(Some(
-            HexBinary::from_hex("e99316f1087d1365c4e1c4a2d82de63c4029cd51cd7b6a1bccd42bfbad9d310d")
+            HexBinary::from_hex("cffcb7e810be616e5582beb8bdb8a545502733d683515410d97d262dcba1855c")
                 .unwrap()
                 .into()
         ))
@@ -475,6 +475,7 @@ fn request_slashing_successful() {
         SlashingRequest {
             request: slashing_request_payload,
             request_time: app.block_info().time,
+            request_resolution: app.block_info().time.plus_seconds(100),
             request_expiry: app.block_info().time.plus_seconds(200),
             status: SlashingRequestStatus::Pending.into(),
             service,
@@ -873,7 +874,7 @@ fn request_slashing_lifecycle() {
                     .add_attribute("operator", operator.to_string())
                     .add_attribute(
                         "slashing_request_id",
-                        "9e2a9d4382cc5e9f3aaf99215def962ce58595ed93107a3ea052ce75b6a2249c"
+                        "d049decfedeb7ea90c0d4bbe6f068ddbe20729a5a13e81478cf517cc0f86bf3c"
                     )
                     .add_attribute("reason", "test2"),
             ]
@@ -1074,7 +1075,7 @@ fn test_slash_locking() {
                     )
                     .add_attribute(
                         "slashing_request_id",
-                        "e99316f1087d1365c4e1c4a2d82de63c4029cd51cd7b6a1bccd42bfbad9d310d"
+                        "cffcb7e810be616e5582beb8bdb8a545502733d683515410d97d262dcba1855c"
                     )
                     .add_attribute("bips", "100")
                     .add_attribute("affected_vaults", "2"),
@@ -1340,7 +1341,7 @@ fn test_slash_locking_negative() {
         assert_eq!(
             res.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Resolution window for this slashing has not passed".to_string(),
+                msg: "Slashing cannot be locked until resolution time has elapsed".to_string(),
             }
             .to_string()
         );
@@ -1356,8 +1357,9 @@ fn test_slash_locking_negative() {
             .unwrap_err();
         assert_eq!(
             res.root_cause().to_string(),
-            ContractError::InvalidSlashingRequest {
-                msg: "Service has not enabled slashing at timestamp.".to_string(),
+            ContractError::Unauthorized {
+                msg: "Slash locking is restricted to the service that initiated the request."
+                    .to_string(),
             }
             .to_string()
         );
