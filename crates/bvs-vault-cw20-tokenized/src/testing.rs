@@ -28,6 +28,8 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for VaultCw20Tokenize
             router: Self::get_contract_addr(app, "vault_router").to_string(),
             operator: app.api().addr_make("operator").to_string(),
             cw20_contract: Self::get_contract_addr(app, "cw20").to_string(),
+            name: "Test Receipt Token".to_string(),
+            symbol: "satTEST".to_string(),
         }
     }
 

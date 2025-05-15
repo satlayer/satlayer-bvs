@@ -593,6 +593,10 @@ export interface InstantiateMsg {
    */
   denom: string;
   /**
+   * The name of the receipt token.
+   */
+  name: string;
+  /**
    * The address of the `operator`. Each vault is delegated to an `operator`.
    */
   operator: string;
@@ -604,6 +608,10 @@ export interface InstantiateMsg {
    * The address of the `router` contract.
    */
   router: string;
+  /**
+   * The symbol for the receipt token.
+   */
+  symbol: string;
 }
 
 /**

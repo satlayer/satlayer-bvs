@@ -69,6 +69,7 @@ bvs-guardrail = { path = "./bvs-guardrail", features = ["library"], version = "0
 bvs-vault-router = { path = "./bvs-vault-router", features = ["library"], version = "0.0.0" }
 bvs-vault-base = { path = "./bvs-vault-base", features = ["library"], version = "0.0.0" }
 bvs-vault-bank = { path = "./bvs-vault-bank", features = ["library"], version = "0.0.0" }
+bvs-vault-bank-tokenized = { path = "./bvs-vault-bank-tokenized", features = ["library"], version = "0.0.0" }
 bvs-vault-cw20 = { path = "./bvs-vault-cw20", features = ["library"], version = "0.0.0" }
 bvs-vault-cw20-tokenized = { path = "./bvs-vault-cw20-tokenized", features = ["library"], version = "0.0.0" }
 bvs-vault-factory = { path = "./bvs-vault-factory", features = ["library"], version = "0.0.0" }

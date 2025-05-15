@@ -231,6 +231,10 @@ pub struct InstantiateMsg {
     /// Therefore, we do not support non-standard CW20 tokens.
     /// Vault deployed with such tokens will be blacklisted in the vault-router.
     pub cw20_contract: String,
+    /// name of the receipt token.
+    pub name: String,
+    /// symbol of the receipt token.
+    pub symbol: String,
 }
 
 #[cw_serde]

@@ -28,6 +28,8 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for VaultBankTokenize
             operator: app.api().addr_make("operator").to_string(),
             denom: "denom".to_string(),
             decimals: 18,
+            name: "Test Receipt Token".to_string(),
+            symbol: "satTEST".to_string(),
         }
     }
 

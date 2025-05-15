@@ -20,12 +20,16 @@ type InstantiateMsg struct {
 	Decimals int64 `json:"decimals"`
 	// The denom supported by this vault.
 	Denom string `json:"denom"`
+	// The name of the receipt token.
+	Name string `json:"name"`
 	// The address of the `operator`. Each vault is delegated to an `operator`.
 	Operator string `json:"operator"`
 	// The address of the `pauser` contract.
 	Pauser string `json:"pauser"`
 	// The address of the `router` contract.
 	Router string `json:"router"`
+	// The symbol for the receipt token.
+	Symbol string `json:"symbol"`
 }
 
 // ExecuteMsg Transfer is a base message to move tokens to another account without

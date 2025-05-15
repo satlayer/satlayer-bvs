@@ -27,12 +27,16 @@ type InstantiateMsg struct {
 	// Therefore, we do not support non-standard CW20 tokens. Vault deployed with such tokens
 	// will be blacklisted in the vault-router.
 	Cw20Contract string `json:"cw20_contract"`
+	// name of the receipt token.
+	Name string `json:"name"`
 	// The address of the `operator`. Each vault is delegated to an `operator`.
 	Operator string `json:"operator"`
 	// The address of the `pauser` contract.
 	Pauser string `json:"pauser"`
 	// The address of the `router` contract.
 	Router string `json:"router"`
+	// symbol of the receipt token.
+	Symbol string `json:"symbol"`
 }
 
 // ExecuteMsg Transfer is a base message to move tokens to another account without

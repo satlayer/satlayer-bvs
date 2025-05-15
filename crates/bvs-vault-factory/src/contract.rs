@@ -7,7 +7,9 @@ use crate::state::{REGISTRY, ROUTER};
 use bvs_library::ownership;
 use bvs_pauser;
 use bvs_vault_bank::msg::InstantiateMsg as BankVaultInstantiateMsg;
+use bvs_vault_bank_tokenized::msg::InstantiateMsg as BankTokenizedVaultInstantiateMsg;
 use bvs_vault_cw20::msg::InstantiateMsg as Cw20InstantiateMsg;
+use bvs_vault_cw20_tokenized::msg::InstantiateMsg as Cw20TokenizedVaultInstantiateMsg;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response};
 
 const CONTRACT_NAME: &str = concat!("crates.io:", env!("CARGO_PKG_NAME"));
@@ -56,7 +58,17 @@ pub fn execute(
             let cw20 = deps.api.addr_validate(&cw20)?;
             execute::deploy_cw20_vault(deps, env, info, cw20)
         }
+        ExecuteMsg::DeployCw20Tokenized { symbol, name, cw20 } => {
+            let cw20 = deps.api.addr_validate(&cw20)?;
+            execute::deploy_cw20_tokenized_vault(deps, env, info, symbol, name, cw20)
+        }
         ExecuteMsg::DeployBank { denom } => execute::deploy_bank_vault(deps, env, info, denom),
+        ExecuteMsg::DeployBankTokenized {
+            denom,
+            decimals,
+            symbol,
+            name,
+        } => execute::deploy_bank_tokenized_vault(deps, env, info, denom, decimals, symbol, name),
         ExecuteMsg::SetCodeId {
             code_id,
             vault_type,
@@ -151,6 +163,105 @@ mod execute {
                 Event::new("DeployVault")
                     .add_attribute("type", "bank")
                     .add_attribute("denom", denom)
+                    .add_attribute("operator", operator.to_string()),
+            ))
+    }
+
+    pub fn deploy_cw20_tokenized_vault(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        symbol: String,
+        name: String,
+        cw20: Addr,
+    ) -> Result<Response, ContractError> {
+        auth::assert_operator(deps.as_ref(), &info)?;
+
+        if !symbol.starts_with("sat") {
+            return Err(ContractError::VaultError {
+                msg: "Symbol must start with 'sat'".to_string(),
+            });
+        }
+
+        let operator = info.sender;
+        let msg = Cw20TokenizedVaultInstantiateMsg {
+            pauser: bvs_pauser::api::get_pauser(deps.storage)?.to_string(),
+            router: ROUTER.load(deps.storage)?.to_string(),
+            operator: operator.to_string(),
+            symbol: symbol.clone(),
+            name: name.clone(),
+            cw20_contract: cw20.to_string(),
+        };
+
+        let code_id = get_code_id(deps.storage, &VaultType::Cw20Tokenized)?;
+
+        let instantiate_msg = cosmwasm_std::WasmMsg::Instantiate {
+            admin: Some(env.contract.address.to_string()),
+            code_id,
+            msg: to_json_binary(&msg)?,
+            funds: vec![],
+            label: "BVS CW20 Tokenized Vault".to_string(),
+        };
+
+        Ok(Response::new()
+            .add_submessage(cosmwasm_std::SubMsg::new(instantiate_msg))
+            .add_event(
+                Event::new("DeployVault")
+                    .add_attribute("type", "cw20_tokenized")
+                    .add_attribute("cw20", cw20.to_string())
+                    .add_attribute("symbol", symbol)
+                    .add_attribute("name", name)
+                    .add_attribute("operator", operator.to_string()),
+            ))
+    }
+
+    pub fn deploy_bank_tokenized_vault(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        denom: String,
+        decimals: u8,
+        symbol: String,
+        name: String,
+    ) -> Result<Response, ContractError> {
+        auth::assert_operator(deps.as_ref(), &info)?;
+
+        if !symbol.starts_with("sat") {
+            return Err(ContractError::VaultError {
+                msg: "Symbol must start with 'sat'".to_string(),
+            });
+        }
+
+        let operator = info.sender;
+        let msg = BankTokenizedVaultInstantiateMsg {
+            pauser: bvs_pauser::api::get_pauser(deps.storage)?.to_string(),
+            router: ROUTER.load(deps.storage)?.to_string(),
+            operator: operator.to_string(),
+            denom: denom.clone(),
+            decimals,
+            symbol: symbol.clone(),
+            name: name.clone(),
+        };
+
+        let code_id = get_code_id(deps.storage, &VaultType::BankTokenized)?;
+
+        let instantiate_msg = cosmwasm_std::WasmMsg::Instantiate {
+            admin: Some(env.contract.address.to_string()),
+            code_id,
+            msg: to_json_binary(&msg)?,
+            funds: vec![],
+            label: format!("BVS Bank Tokenized Vault: {}", denom),
+        };
+
+        Ok(Response::new()
+            .add_submessage(cosmwasm_std::SubMsg::new(instantiate_msg))
+            .add_event(
+                Event::new("DeployVault")
+                    .add_attribute("type", "bank_tokenized")
+                    .add_attribute("denom", denom)
+                    .add_attribute("decimals", decimals.to_string())
+                    .add_attribute("symbol", symbol)
+                    .add_attribute("name", name)
                     .add_attribute("operator", operator.to_string()),
             ))
     }
