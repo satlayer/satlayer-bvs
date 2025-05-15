@@ -72,6 +72,21 @@ type IsWhitelistedResponse = boolean;
  * mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`
  * instance.
  *
+ * A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that
+ * the full u128 range can be used for clients that convert JSON numbers to floats, like
+ * JavaScript and jq.
+ *
+ * # Examples
+ *
+ * Use `from` to create instances of this and `u128` to get the value out:
+ *
+ * ``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(),
+ * 123);
+ *
+ * let b = Uint128::from(42u64); assert_eq!(b.u128(), 42);
+ *
+ * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
+ *
  * The timestamp after which the request is no longer valid. This will be `request_time` +
  * `resolution_window` * 2 (as per current slashing parameters)
  *
@@ -119,12 +134,16 @@ export interface InstantiateMsg {
  *
  * #### Returns On success, returns events with a data field set as
  * [`RequestSlashingResponse`] containing the generated slashing request ID.
+ *
+ * ExecuteMsg LockSlashing initiates the movement of slashed collateral from vaults to the
+ * router which will later be finalized and handle according to the service slashing rules.
  */
 export interface ExecuteMsg {
   set_vault?: SetVault;
   set_withdrawal_lock_period?: string;
   transfer_ownership?: TransferOwnership;
   request_slashing?: RequestSlashingClass;
+  lock_slashing?: string;
 }
 
 export interface RequestSlashingClass {
@@ -192,6 +211,7 @@ export interface QueryMsg {
   withdrawal_lock_period?: WithdrawalLockPeriod;
   slashing_request_id?: SlashingRequestID;
   slashing_request?: string;
+  slashing_locked?: SlashingLocked;
 }
 
 export interface IsValidating {
@@ -213,6 +233,10 @@ export interface ListVaultsByOperator {
   start_after?: null | string;
 }
 
+export interface SlashingLocked {
+  slashing_request_id: string;
+}
+
 export interface SlashingRequestID {
   operator: string;
   service: string;
@@ -227,6 +251,11 @@ export interface WithdrawalLockPeriod {}
 export interface VaultListResponse {
   vault: string;
   whitelisted: boolean;
+}
+
+export interface SlashingLockedResponse {
+  amount: string;
+  vault: string;
 }
 
 export interface SlashingRequestResponse {

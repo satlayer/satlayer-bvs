@@ -1,8 +1,10 @@
 use crate::msg::RequestSlashingPayload;
 use bvs_library::addr::{Operator, Service};
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_json_vec, Addr, HexBinary, StdError, StdResult, Storage, Timestamp, Uint64};
-use cw_storage_plus::{Item, Key, KeyDeserialize, Map, PrimaryKey};
+use cosmwasm_std::{
+    to_json_vec, Addr, HexBinary, StdError, StdResult, Storage, Timestamp, Uint128, Uint64,
+};
+use cw_storage_plus::{Item, Key, KeyDeserialize, Map, Prefixer, PrimaryKey};
 use sha3::Digest;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
@@ -174,6 +176,12 @@ impl PrimaryKey<'_> for SlashingRequestId {
     }
 }
 
+impl Prefixer<'_> for SlashingRequestId {
+    fn prefix(&self) -> Vec<Key> {
+        vec![Key::Ref(self.0.as_slice())]
+    }
+}
+
 impl KeyDeserialize for SlashingRequestId {
     type Output = Self;
 
@@ -235,6 +243,13 @@ pub(crate) fn save_slashing_request(
 
     Ok(slashing_id)
 }
+
+/// Stores the slashed collaterals locked into the router
+/// Mapped slash request id and vault address to the absolute amount of that vault
+/// The total asset each vault hold may vary such that even if slash bips is the same
+/// the absolute number to be slashed translated from bip is varying vault by vault for the same
+/// slash request entry.
+pub(crate) const SLASH_LOCKED: Map<(SlashingRequestId, &Addr), Uint128> = Map::new("slash_locked");
 
 #[cfg(test)]
 mod test {

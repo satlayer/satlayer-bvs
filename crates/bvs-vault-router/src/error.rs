@@ -17,4 +17,7 @@ pub enum ContractError {
 
     #[error("Invalid slashing request: {msg}")]
     InvalidSlashingRequest { msg: String },
+
+    #[error("Unauthorized: {msg}")]
+    Unauthorized { msg: String },
 }

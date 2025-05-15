@@ -39,3 +39,6 @@ prost = { workspace = true }
 [dev-dependencies]
 bvs-vault-cw20 = { workspace = true }
 bvs-vault-bank = { workspace = true }
+bvs-vault-base = { workspace = true }
+cw20 = { workspace = true }
+cw20-base = { workspace = true }

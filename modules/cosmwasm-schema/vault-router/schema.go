@@ -9,6 +9,8 @@ type IsWhitelistedResponse bool
 
 type VaultListResponse []Vault
 
+type SlashingLockedResponse []SlashingLockedResponseItem
+
 type WithdrawalLockPeriodResponse string
 
 type InstantiateMsg struct {
@@ -45,11 +47,15 @@ type InstantiateMsg struct {
 //
 // #### Returns On success, returns events with a data field set as
 // [`RequestSlashingResponse`] containing the generated slashing request ID.
+//
+// ExecuteMsg LockSlashing initiates the movement of slashed collateral from vaults to the
+// router which will later be finalized and handle according to the service slashing rules.
 type ExecuteMsg struct {
 	SetVault                *SetVault             `json:"set_vault,omitempty"`
 	SetWithdrawalLockPeriod *string               `json:"set_withdrawal_lock_period,omitempty"`
 	TransferOwnership       *TransferOwnership    `json:"transfer_ownership,omitempty"`
 	RequestSlashing         *RequestSlashingClass `json:"request_slashing,omitempty"`
+	LockSlashing            *string               `json:"lock_slashing,omitempty"`
 }
 
 type RequestSlashingClass struct {
@@ -103,6 +109,7 @@ type QueryMsg struct {
 	WithdrawalLockPeriod *WithdrawalLockPeriod `json:"withdrawal_lock_period,omitempty"`
 	SlashingRequestID    *SlashingRequestID    `json:"slashing_request_id,omitempty"`
 	SlashingRequest      *string               `json:"slashing_request,omitempty"`
+	SlashingLocked       *SlashingLocked       `json:"slashing_locked,omitempty"`
 }
 
 type IsValidating struct {
@@ -124,6 +131,10 @@ type ListVaultsByOperator struct {
 	StartAfter *string `json:"start_after"`
 }
 
+type SlashingLocked struct {
+	SlashingRequestID string `json:"slashing_request_id"`
+}
+
 type SlashingRequestID struct {
 	Operator string `json:"operator"`
 	Service  string `json:"service"`
@@ -137,6 +148,11 @@ type WithdrawalLockPeriod struct {
 type Vault struct {
 	Vault       string `json:"vault"`
 	Whitelisted bool   `json:"whitelisted"`
+}
+
+type SlashingLockedResponseItem struct {
+	Amount string `json:"amount"`
+	Vault  string `json:"vault"`
 }
 
 type SlashingRequest struct {

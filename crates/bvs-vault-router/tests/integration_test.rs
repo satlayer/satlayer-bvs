@@ -8,6 +8,7 @@ use bvs_registry::msg::Metadata;
 use bvs_registry::testing::RegistryContract;
 use bvs_registry::SlashingParameters;
 use bvs_vault_bank::testing::VaultBankContract;
+use bvs_vault_base::msg::RecipientAmount;
 use bvs_vault_cw20::testing::VaultCw20Contract;
 use bvs_vault_router::msg::{
     RequestSlashingPayload, SlashingMetadata, SlashingRequestIdResponse, SlashingRequestResponse,
@@ -19,26 +20,34 @@ use bvs_vault_router::{
     testing::VaultRouterContract,
     ContractError,
 };
+use cosmwasm_std::{coin, coins, BalanceResponse, BankQuery, QueryRequest, Uint128};
 use cosmwasm_std::{from_json, testing::mock_env, Binary, Event, HexBinary, Uint64};
-use cw_multi_test::App;
+use cw_multi_test::{App, Executor};
 
 struct TestContracts {
     vault_router: VaultRouterContract,
     bank_vault: VaultBankContract,
     cw20_vault: VaultCw20Contract,
     registry: RegistryContract,
+    cw20: Cw20TokenContract,
 }
 
 impl TestContracts {
     fn init() -> (App, TestContracts) {
-        let mut app = App::default();
+        let mut app = App::new(|router, api, storage| {
+            let owner = api.addr_make("owner");
+            router
+                .bank
+                .init_balance(storage, &owner, coins(Uint128::MAX.u128(), "denom"))
+                .unwrap();
+        });
         let env = mock_env();
 
         let _ = PauserContract::new(&mut app, &env, None);
         let registry = RegistryContract::new(&mut app, &env, None);
         let vault_router = VaultRouterContract::new(&mut app, &env, None);
         let bank_vault = VaultBankContract::new(&mut app, &env, None);
-        let _ = Cw20TokenContract::new(&mut app, &env, None);
+        let cw20 = Cw20TokenContract::new(&mut app, &env, None);
         let cw20_vault = VaultCw20Contract::new(&mut app, &env, None);
 
         (
@@ -48,6 +57,7 @@ impl TestContracts {
                 bank_vault,
                 cw20_vault,
                 registry,
+                cw20,
             },
         )
     }
@@ -867,6 +877,594 @@ fn request_slashing_lifecycle() {
                     )
                     .add_attribute("reason", "test2"),
             ]
+        );
+    }
+}
+
+#[test]
+fn test_slash_locking() {
+    let (mut app, tc) = TestContracts::init();
+
+    let operator = app.api().addr_make("operator");
+    let service = app.api().addr_make("service");
+
+    // register operator + service
+    {
+        tc.registry
+            .execute(
+                &mut app,
+                &operator,
+                &bvs_registry::msg::ExecuteMsg::RegisterAsOperator {
+                    metadata: Metadata {
+                        name: Some("operator".to_string()),
+                        uri: None,
+                    },
+                },
+            )
+            .expect("failed to register operator");
+
+        tc.registry
+            .execute(
+                &mut app,
+                &service,
+                &bvs_registry::msg::ExecuteMsg::RegisterAsService {
+                    metadata: Metadata {
+                        name: Some("service".to_string()),
+                        uri: None,
+                    },
+                },
+            )
+            .expect("failed to register service");
+
+        let owner = app.api().addr_make("owner");
+
+        let msg = &ExecuteMsg::SetVault {
+            vault: tc.bank_vault.addr().to_string(),
+            whitelisted: true,
+        };
+
+        tc.vault_router.execute(&mut app, &owner, msg).unwrap();
+
+        let msg = &ExecuteMsg::SetVault {
+            vault: tc.cw20_vault.addr().to_string(),
+            whitelisted: true,
+        };
+
+        tc.vault_router.execute(&mut app, &owner, msg).unwrap();
+    }
+
+    // stake funds
+    {
+        let owner = app.api().addr_make("owner");
+        let denom = "denom";
+
+        let staker = app.api().addr_make("staker");
+        let msg = bvs_vault_cw20::msg::ExecuteMsg::DepositFor(RecipientAmount {
+            recipient: staker.clone(),
+            amount: Uint128::new(300_u128),
+        });
+        tc.cw20
+            .increase_allowance(&mut app, &staker, tc.cw20_vault.addr(), 300_u128);
+        tc.cw20.fund(&mut app, &staker, 300_u128);
+        tc.cw20_vault.execute(&mut app, &staker, &msg).unwrap();
+
+        // Fund the staker with some initial tokens
+        app.send_tokens(owner.clone(), staker.clone(), &coins(1_000_000_000, denom))
+            .unwrap();
+
+        // Deposit 115_687_654 tokens from staker to Vault
+        let msg = bvs_vault_bank::msg::ExecuteMsg::DepositFor(RecipientAmount {
+            recipient: staker.clone(),
+            amount: Uint128::new(200),
+        });
+        tc.bank_vault
+            .execute_with_funds(&mut app, &staker, &msg, coins(200, denom))
+            .unwrap();
+
+        let bank_vault_info = tc
+            .bank_vault
+            .query::<bvs_vault_base::msg::VaultInfoResponse>(
+                &mut app,
+                &bvs_vault_bank::msg::QueryMsg::VaultInfo {},
+            )
+            .unwrap();
+        let cw20_vault_info = tc
+            .cw20_vault
+            .query::<bvs_vault_base::msg::VaultInfoResponse>(
+                &mut app,
+                &bvs_vault_bank::msg::QueryMsg::VaultInfo {},
+            )
+            .unwrap();
+
+        assert_eq!(bank_vault_info.total_assets, Uint128::new(200));
+        assert_eq!(cw20_vault_info.total_assets, Uint128::new(300));
+    }
+
+    // service enable slashing
+    {
+        let msg = &bvs_registry::msg::ExecuteMsg::EnableSlashing {
+            slashing_parameters: SlashingParameters {
+                destination: Some(service.clone()),
+                max_slashing_bips: 5000,
+                resolution_window: 100,
+            },
+        };
+        tc.registry
+            .execute(&mut app, &service, msg)
+            .expect("failed to enable slashing");
+    }
+
+    app.update_block(|block| {
+        block.height += 1;
+        block.time = block.time.plus_seconds(10);
+    });
+
+    // register operator to service for active status
+    {
+        let msg = &bvs_registry::msg::ExecuteMsg::RegisterOperatorToService {
+            operator: operator.to_string(),
+        };
+        tc.registry
+            .execute(&mut app, &service, msg)
+            .expect("failed to register operator to service");
+
+        let msg = &bvs_registry::msg::ExecuteMsg::RegisterServiceToOperator {
+            service: service.to_string(),
+        };
+        tc.registry
+            .execute(&mut app, &operator, msg)
+            .expect("failed to register service to operator");
+    }
+
+    app.update_block(|block| {
+        block.height += 1;
+        block.time = block.time.plus_seconds(10);
+    });
+
+    // service request slashing
+    let slashing_request_payload = RequestSlashingPayload {
+        operator: operator.to_string(),
+        bips: 100,
+        timestamp: app.block_info().time,
+        metadata: SlashingMetadata {
+            reason: "test".to_string(),
+        },
+    };
+
+    let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
+    tc.vault_router.execute(&mut app, &service, msg).unwrap();
+
+    // query slashing request id
+    let msg = QueryMsg::SlashingRequestId {
+        service: service.to_string(),
+        operator: operator.to_string(),
+    };
+    let slashing_request_id: SlashingRequestIdResponse =
+        tc.vault_router.query(&mut app, &msg).unwrap();
+
+    {
+        // pass the resolution window
+        app.update_block(|block| {
+            block.height += 10;
+            block.time = block.time.plus_seconds(100);
+        });
+
+        let msg = ExecuteMsg::LockSlashing(slashing_request_id.clone().0.unwrap());
+        let res = tc.vault_router.execute(&mut app, &service, &msg).unwrap();
+
+        assert_eq!(
+            res.events,
+            vec![
+                Event::new("execute").add_attribute(
+                    "_contract_address",
+                    "cosmwasm1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sgetes3"
+                ),
+                Event::new("wasm-LockSlashing")
+                    .add_attribute(
+                        "_contract_address",
+                        "cosmwasm1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sgetes3"
+                    )
+                    .add_attribute(
+                        "service",
+                        "cosmwasm1nhmtqf4gcmpxu0p6e53hpgtwj0llmsqptl6mmpujrpugqfwmq2qqnhnz62"
+                    )
+                    .add_attribute(
+                        "operator",
+                        "cosmwasm1qmj4kce5s8mmkpef2l4teugse9ewse53c087m2lq3qpyhlly9u3s0hztgj"
+                    )
+                    .add_attribute(
+                        "slashing_request_id",
+                        "e99316f1087d1365c4e1c4a2d82de63c4029cd51cd7b6a1bccd42bfbad9d310d"
+                    )
+                    .add_attribute("bips", "100")
+                    .add_attribute("affected_vaults", "2"),
+                Event::new("execute").add_attribute(
+                    "_contract_address",
+                    "cosmwasm1mf6ptkssddfmxvhdx0ech0k03ktp6kf9yk59renau2gvht3nq2gq7z7vxe"
+                ),
+                Event::new("wasm-SlashLocked")
+                    .add_attribute(
+                        "_contract_address",
+                        "cosmwasm1mf6ptkssddfmxvhdx0ech0k03ktp6kf9yk59renau2gvht3nq2gq7z7vxe"
+                    )
+                    .add_attribute(
+                        "sender",
+                        "cosmwasm1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sgetes3"
+                    )
+                    .add_attribute("amount", "3")
+                    .add_attribute(
+                        "token",
+                        "cosmwasm1436kxs0w2es6xlqpp9rd35e3d0cjnw4sv8j3a7483sgks29jqwgsy4c2hs"
+                    ),
+                Event::new("execute").add_attribute(
+                    "_contract_address",
+                    "cosmwasm1436kxs0w2es6xlqpp9rd35e3d0cjnw4sv8j3a7483sgks29jqwgsy4c2hs"
+                ),
+                Event::new("wasm")
+                    .add_attribute(
+                        "_contract_address",
+                        "cosmwasm1436kxs0w2es6xlqpp9rd35e3d0cjnw4sv8j3a7483sgks29jqwgsy4c2hs"
+                    )
+                    .add_attribute("action", "transfer")
+                    .add_attribute(
+                        "from",
+                        "cosmwasm1mf6ptkssddfmxvhdx0ech0k03ktp6kf9yk59renau2gvht3nq2gq7z7vxe"
+                    )
+                    .add_attribute(
+                        "to",
+                        "cosmwasm1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sgetes3"
+                    )
+                    .add_attribute("amount", "3"),
+                Event::new("execute").add_attribute(
+                    "_contract_address",
+                    "cosmwasm1zwv6feuzhy6a9wekh96cd57lsarmqlwxdypdsplw6zhfncqw6ftqnzgsl6"
+                ),
+                Event::new("wasm-SlashLocked")
+                    .add_attribute(
+                        "_contract_address",
+                        "cosmwasm1zwv6feuzhy6a9wekh96cd57lsarmqlwxdypdsplw6zhfncqw6ftqnzgsl6"
+                    )
+                    .add_attribute(
+                        "sender",
+                        "cosmwasm1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sgetes3"
+                    )
+                    .add_attribute("amount", "2")
+                    .add_attribute("denom", "denom"),
+                Event::new("transfer")
+                    .add_attribute(
+                        "recipient",
+                        "cosmwasm1qg5ega6dykkxc307y25pecuufrjkxkaggkkxh7nad0vhyhtuhw3sgetes3"
+                    )
+                    .add_attribute(
+                        "sender",
+                        "cosmwasm1zwv6feuzhy6a9wekh96cd57lsarmqlwxdypdsplw6zhfncqw6ftqnzgsl6"
+                    )
+                    .add_attribute("amount", "2denom"),
+            ]
+        );
+
+        let bank_vault_info = tc
+            .bank_vault
+            .query::<bvs_vault_base::msg::VaultInfoResponse>(
+                &mut app,
+                &bvs_vault_bank::msg::QueryMsg::VaultInfo {},
+            )
+            .unwrap();
+        let cw20_vault_info = tc
+            .cw20_vault
+            .query::<bvs_vault_base::msg::VaultInfoResponse>(
+                &mut app,
+                &bvs_vault_bank::msg::QueryMsg::VaultInfo {},
+            )
+            .unwrap();
+        assert_eq!(bank_vault_info.total_assets, Uint128::from(198_u128));
+        assert_eq!(cw20_vault_info.total_assets, Uint128::from(297_u128));
+
+        let query = BankQuery::Balance {
+            address: tc.vault_router.addr().to_string(),
+            denom: "denom".to_string(),
+        };
+
+        let router_bank_balance: BalanceResponse =
+            app.wrap().query(&QueryRequest::Bank(query)).unwrap();
+
+        assert_eq!(router_bank_balance.amount, coin(2, "denom")); // 1% of 200
+
+        let router_cw20_balance = tc.cw20.balance(&app, tc.vault_router.addr());
+
+        // due to the decimal
+        assert_eq!(router_cw20_balance, 3_u128); // 1% of 300
+    }
+}
+
+#[test]
+fn test_slash_locking_negative() {
+    let (mut app, tc) = TestContracts::init();
+
+    let operator = app.api().addr_make("operator");
+    let service = app.api().addr_make("service");
+
+    // register operator + service
+    {
+        tc.registry
+            .execute(
+                &mut app,
+                &operator,
+                &bvs_registry::msg::ExecuteMsg::RegisterAsOperator {
+                    metadata: Metadata {
+                        name: Some("operator".to_string()),
+                        uri: None,
+                    },
+                },
+            )
+            .expect("failed to register operator");
+
+        tc.registry
+            .execute(
+                &mut app,
+                &service,
+                &bvs_registry::msg::ExecuteMsg::RegisterAsService {
+                    metadata: Metadata {
+                        name: Some("service".to_string()),
+                        uri: None,
+                    },
+                },
+            )
+            .expect("failed to register service");
+
+        let owner = app.api().addr_make("owner");
+
+        let msg = &ExecuteMsg::SetVault {
+            vault: tc.bank_vault.addr().to_string(),
+            whitelisted: true,
+        };
+
+        tc.vault_router.execute(&mut app, &owner, msg).unwrap();
+
+        let msg = &ExecuteMsg::SetVault {
+            vault: tc.cw20_vault.addr().to_string(),
+            whitelisted: true,
+        };
+
+        tc.vault_router.execute(&mut app, &owner, msg).unwrap();
+    }
+
+    // stake funds but only to bank vault
+    {
+        let owner = app.api().addr_make("owner");
+        let denom = "denom";
+
+        let staker = app.api().addr_make("staker");
+
+        // Fund the staker with some initial tokens
+        app.send_tokens(owner.clone(), staker.clone(), &coins(1_000_000_000, denom))
+            .unwrap();
+
+        // Deposit 115_687_654 tokens from staker to Vault
+        let msg = bvs_vault_bank::msg::ExecuteMsg::DepositFor(RecipientAmount {
+            recipient: staker.clone(),
+            amount: Uint128::new(200),
+        });
+        tc.bank_vault
+            .execute_with_funds(&mut app, &staker, &msg, coins(200, denom))
+            .unwrap();
+
+        let bank_vault_info = tc
+            .bank_vault
+            .query::<bvs_vault_base::msg::VaultInfoResponse>(
+                &mut app,
+                &bvs_vault_bank::msg::QueryMsg::VaultInfo {},
+            )
+            .unwrap();
+        let cw20_vault_info = tc
+            .cw20_vault
+            .query::<bvs_vault_base::msg::VaultInfoResponse>(
+                &mut app,
+                &bvs_vault_bank::msg::QueryMsg::VaultInfo {},
+            )
+            .unwrap();
+
+        assert_eq!(bank_vault_info.total_assets, Uint128::new(200));
+        assert_eq!(cw20_vault_info.total_assets, Uint128::new(0));
+    }
+
+    // service enable slashing
+    {
+        let msg = &bvs_registry::msg::ExecuteMsg::EnableSlashing {
+            slashing_parameters: SlashingParameters {
+                destination: Some(service.clone()),
+                max_slashing_bips: 5000,
+                resolution_window: 100,
+            },
+        };
+        tc.registry
+            .execute(&mut app, &service, msg)
+            .expect("failed to enable slashing");
+    }
+
+    app.update_block(|block| {
+        block.height += 1;
+        block.time = block.time.plus_seconds(10);
+    });
+
+    // register operator to service for active status
+    {
+        let msg = &bvs_registry::msg::ExecuteMsg::RegisterOperatorToService {
+            operator: operator.to_string(),
+        };
+        tc.registry
+            .execute(&mut app, &service, msg)
+            .expect("failed to register operator to service");
+
+        let msg = &bvs_registry::msg::ExecuteMsg::RegisterServiceToOperator {
+            service: service.to_string(),
+        };
+        tc.registry
+            .execute(&mut app, &operator, msg)
+            .expect("failed to register service to operator");
+    }
+
+    app.update_block(|block| {
+        block.height += 1;
+        block.time = block.time.plus_seconds(10);
+    });
+
+    // service request slashing
+    let slashing_request_payload = RequestSlashingPayload {
+        operator: operator.to_string(),
+        bips: 100,
+        timestamp: app.block_info().time,
+        metadata: SlashingMetadata {
+            reason: "test".to_string(),
+        },
+    };
+
+    let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
+    tc.vault_router.execute(&mut app, &service, msg).unwrap();
+
+    let msg = QueryMsg::SlashingRequestId {
+        service: service.to_string(),
+        operator: operator.to_string(),
+    };
+    let slashing_request_id1: SlashingRequestIdResponse =
+        tc.vault_router.query(&mut app, &msg).unwrap();
+
+    {
+        // the slash hasn't aged for resolution_window yet
+        // so it should fail
+        let msg = ExecuteMsg::LockSlashing(slashing_request_id1.clone().0.unwrap());
+        let res = tc
+            .vault_router
+            .execute(&mut app, &service, &msg)
+            .unwrap_err();
+        assert_eq!(
+            res.root_cause().to_string(),
+            ContractError::InvalidSlashingRequest {
+                msg: "Resolution window for this slashing has not passed".to_string(),
+            }
+            .to_string()
+        );
+    }
+
+    {
+        // Unauthorized slash locker
+        let rogue_service = app.api().addr_make("rogue_service");
+        let msg = ExecuteMsg::LockSlashing(slashing_request_id1.clone().0.unwrap());
+        let res = tc
+            .vault_router
+            .execute(&mut app, &rogue_service, &msg)
+            .unwrap_err();
+        assert_eq!(
+            res.root_cause().to_string(),
+            ContractError::InvalidSlashingRequest {
+                msg: "Service has not enabled slashing at timestamp.".to_string(),
+            }
+            .to_string()
+        );
+    }
+
+    // cw20 vault has zero asset
+    // slash lock should skip over that vault and only slash bank
+    // The whole slashing should not fail just because a vault is zero.
+    {
+        app.update_block(|block| {
+            block.height += 10;
+            block.time = block.time.plus_seconds(100);
+        });
+
+        let msg = ExecuteMsg::LockSlashing(slashing_request_id1.clone().0.unwrap());
+        tc.vault_router.execute(&mut app, &service, &msg).unwrap();
+
+        let bank_vault_info = tc
+            .bank_vault
+            .query::<bvs_vault_base::msg::VaultInfoResponse>(
+                &mut app,
+                &bvs_vault_bank::msg::QueryMsg::VaultInfo {},
+            )
+            .unwrap();
+        let cw20_vault_info = tc
+            .cw20_vault
+            .query::<bvs_vault_base::msg::VaultInfoResponse>(
+                &mut app,
+                &bvs_vault_bank::msg::QueryMsg::VaultInfo {},
+            )
+            .unwrap();
+        assert_eq!(bank_vault_info.total_assets, Uint128::from(198_u128));
+        assert_eq!(cw20_vault_info.total_assets, Uint128::from(0_u128));
+
+        let query = BankQuery::Balance {
+            address: tc.vault_router.addr().to_string(),
+            denom: "denom".to_string(),
+        };
+
+        let router_bank_balance: BalanceResponse =
+            app.wrap().query(&QueryRequest::Bank(query)).unwrap();
+
+        assert_eq!(router_bank_balance.amount, coin(2, "denom"));
+
+        let router_cw20_balance = tc.cw20.balance(&app, tc.vault_router.addr());
+
+        // due to the decimal
+        assert_eq!(router_cw20_balance, 0_u128);
+    }
+
+    // slash replay should fail
+    {
+        let msg = ExecuteMsg::LockSlashing(slashing_request_id1.clone().0.unwrap());
+        let res = tc
+            .vault_router
+            .execute(&mut app, &service, &msg)
+            .unwrap_err();
+        assert_eq!(
+            res.root_cause().to_string(),
+            ContractError::InvalidSlashingRequest {
+                msg: "Slashing request is already locked".to_string(),
+            }
+            .to_string()
+        );
+    }
+
+    app.update_block(|block| {
+        block.height += 60;
+        block.time = block.time.plus_seconds(600);
+    });
+
+    // expired slash should fail
+    {
+        let slashing_request_payload = RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 100,
+            timestamp: app.block_info().time,
+            metadata: SlashingMetadata {
+                reason: "test".to_string(),
+            },
+        };
+
+        let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
+        tc.vault_router.execute(&mut app, &service, msg).unwrap();
+
+        let msg = QueryMsg::SlashingRequestId {
+            service: service.to_string(),
+            operator: operator.to_string(),
+        };
+        let slashing_request_id2: SlashingRequestIdResponse =
+            tc.vault_router.query(&mut app, &msg).unwrap();
+
+        app.update_block(|block| {
+            block.height += 50;
+            block.time = block.time.plus_seconds(500);
+        });
+        let msg = ExecuteMsg::LockSlashing(slashing_request_id2.0.unwrap());
+        let res = tc
+            .vault_router
+            .execute(&mut app, &service, &msg)
+            .unwrap_err();
+        assert_eq!(
+            res.root_cause().to_string(),
+            ContractError::InvalidSlashingRequest {
+                msg: "Slashing has expired".to_string(),
+            }
+            .to_string()
         );
     }
 }
