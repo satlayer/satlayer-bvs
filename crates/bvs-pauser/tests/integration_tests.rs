@@ -34,6 +34,8 @@ fn pause_unpause() {
             Event::new("wasm")
                 .add_attribute("_contract_address", contract.addr.to_string())
                 .add_attribute("method", "pause")
+                .add_attribute("contract", downstream_contract.to_string())
+                .add_attribute("paused_method", "any")
                 .add_attribute("sender", app.api().addr_make("owner").to_string())
         );
     }
@@ -72,6 +74,11 @@ fn pause_unpause() {
             Event::new("wasm")
                 .add_attribute("_contract_address", contract.addr.to_string())
                 .add_attribute("method", "unpause")
+                .add_attribute(
+                    "contract",
+                    app.api().addr_make("downstream_contract").to_string()
+                )
+                .add_attribute("unpaused_method", "any")
                 .add_attribute("sender", app.api().addr_make("owner").to_string())
         );
     }

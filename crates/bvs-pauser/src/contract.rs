@@ -73,15 +73,14 @@ mod execute {
 
         // Check if the contract's func is already paused
         // Only mutate the state if it is not already paused
-        if PAUSED_CONTRACT_METHOD
-            .load(deps.storage, (&contract, &method))
-            .is_err()
-        {
+        if !PAUSED_CONTRACT_METHOD.has(deps.storage, (&contract, &method)) {
             PAUSED_CONTRACT_METHOD.save(deps.storage, (&contract, &method), &env.block.height)?;
         }
 
         Ok(Response::new()
             .add_attribute("method", "pause")
+            .add_attribute("contract", contract)
+            .add_attribute("paused_method", method)
             .add_attribute("sender", info.sender))
     }
 
@@ -95,15 +94,14 @@ mod execute {
 
         // Check if the contract is already unpaused
         // Only mutate the state if it is not already unpaused
-        if PAUSED_CONTRACT_METHOD
-            .load(deps.storage, (&contract, &method))
-            .is_ok()
-        {
+        if PAUSED_CONTRACT_METHOD.has(deps.storage, (&contract, &method)) {
             PAUSED_CONTRACT_METHOD.remove(deps.storage, (&contract, &method));
         }
 
         Ok(Response::new()
             .add_attribute("method", "unpause")
+            .add_attribute("contract", contract)
+            .add_attribute("unpaused_method", method)
             .add_attribute("sender", info.sender))
     }
 
@@ -162,9 +160,7 @@ mod query {
             return Ok(IsPausedResponse::new(true));
         }
 
-        let is_paused = PAUSED_CONTRACT_METHOD
-            .load(deps.storage, (&contract, &method))
-            .is_ok();
+        let is_paused = PAUSED_CONTRACT_METHOD.has(deps.storage, (&contract, &method));
 
         Ok(IsPausedResponse::new(is_paused))
     }
@@ -181,9 +177,7 @@ mod query {
             return Ok(CanExecuteFlag::Paused.into());
         }
 
-        let is_paused = PAUSED_CONTRACT_METHOD
-            .load(deps.storage, (&contract, &method))
-            .is_ok();
+        let is_paused = PAUSED_CONTRACT_METHOD.has(deps.storage, (&contract, &method));
 
         if is_paused {
             return Ok(CanExecuteFlag::Paused.into());
