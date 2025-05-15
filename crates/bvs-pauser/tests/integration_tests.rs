@@ -101,6 +101,11 @@ fn pause_unpause() {
         let flag: CanExecuteFlag = res.into();
         assert_eq!(flag, CanExecuteFlag::CanExecute);
     }
+}
+
+#[test]
+fn test_globally_pause_unpause() {
+    let (mut app, contract) = instantiate(None);
 
     // globally pause
     {
