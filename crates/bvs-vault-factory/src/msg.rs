@@ -34,7 +34,7 @@ pub enum ExecuteMsg {
     DeployBank { denom: String },
 
     /// ExecuteMsg DeployBankTokenized
-    /// Deploy a Bank vault contract, the operator will be the sender of this message.
+    /// Deploy a Bank tokenized vault contract, the operator will be the sender of this message.
     /// The `denom` is the denomination of the native token, e.g. "ubbn" for Babylon native token.
     /// The `decimals` is the number of decimals for the receipt token
     /// The `symbol` is the symbol for the receipt token.
