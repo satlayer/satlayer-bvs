@@ -90,6 +90,9 @@ type IsWhitelistedResponse = boolean;
  * The timestamp after which the request is no longer valid. This will be `request_time` +
  * `resolution_window` * 2 (as per current slashing parameters)
  *
+ * The timestamp when the request resolution window will end and becomes eligible for
+ * locking. This will be `request_time` + `resolution_window`
+ *
  * The timestamp when the request was submitted.
  *
  * The service that initiated the slashing request.
@@ -268,6 +271,11 @@ export interface SlashingRequestResponse {
    * `resolution_window` * 2 (as per current slashing parameters)
    */
   request_expiry: string;
+  /**
+   * The timestamp when the request resolution window will end and becomes eligible for
+   * locking. This will be `request_time` + `resolution_window`
+   */
+  request_resolution: string;
   /**
    * The timestamp when the request was submitted.
    */
