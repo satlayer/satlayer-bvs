@@ -403,7 +403,7 @@ mod tests {
 
         assert_eq!(flag, CanExecuteFlag::Paused);
 
-        // unauthorized global unpause
+        // unauthorized global pause
         {
             let not_owner = deps.api.addr_make("not_owner");
             let info = message_info(&not_owner, &[]);
