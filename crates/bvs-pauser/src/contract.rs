@@ -151,6 +151,10 @@ mod query {
     use crate::state::{PAUSED, PAUSED_CONTRACT_METHOD};
     use cosmwasm_std::Addr;
 
+    /// TODO(future): The _sender is currently not used.
+    ///  To implement checking of paused status against contract and method.
+    ///  Added for future compatibility, not yet utilized—current design pauses method and contract.
+    ///  Global pause takes precedence over contract and method pause.
     pub fn is_paused(deps: Deps, contract: Addr, method: String) -> StdResult<IsPausedResponse> {
         let is_paused_globally = PAUSED.load(deps.storage)?;
 
@@ -165,6 +169,10 @@ mod query {
         Ok(IsPausedResponse::new(is_paused))
     }
 
+    /// TODO(future): The _sender is currently not used.
+    ///  To implement checking of paused status against contract and method.
+    ///  Added for future compatibility, not yet utilized—current design pauses method and contract.
+    ///  Global pause takes precedence over contract and method pause.
     pub fn can_execute(
         deps: Deps,
         contract: Addr,

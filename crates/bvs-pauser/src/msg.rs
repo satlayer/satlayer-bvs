@@ -10,6 +10,7 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
+    /// ExecuteMsg Pause pauses a method on a contract.
     /// Callable by the owner of the pauser contract
     Pause {
         /// address of the contract to be paused
@@ -18,6 +19,7 @@ pub enum ExecuteMsg {
         method: String,
     },
 
+    /// ExecuteMsg UnPause unpauses a method on a contract.
     /// Callable by the owner of the pauser contract
     Unpause {
         /// address of the contract to be unpaused
@@ -26,10 +28,12 @@ pub enum ExecuteMsg {
         method: String,
     },
 
-    /// ExecuteMsg PauseGlobal Callable by the owner of the pauser contract
+    /// ExecuteMsg PauseGlobal pauses all execution.
+    /// Callable by the owner of the pauser contract
     /// Pauses Globally: Pause all contracts and methods.
     PauseGlobal {},
 
+    /// ExecuteMsg UnpauseGlobal unpauses all execution.
     /// Callable by the owner of the pauser contract
     /// Unpauses Globally
     UnpauseGlobal {},
