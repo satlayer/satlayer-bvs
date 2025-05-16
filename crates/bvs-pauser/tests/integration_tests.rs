@@ -59,6 +59,19 @@ fn pause_unpause() {
         assert_eq!(flag, CanExecuteFlag::Paused);
     }
 
+    // the method "any" is paused but the method "other" is not
+    {
+        let msg = QueryMsg::CanExecute {
+            contract: app.api().addr_make("downstream_contract").to_string(),
+            sender: app.api().addr_make("sender").to_string(),
+            method: "other".to_string(),
+        };
+        let res: CanExecuteResponse = contract.query(&app, &msg).unwrap();
+        assert_eq!(res.0, 0);
+        let flag: CanExecuteFlag = res.into();
+        assert_eq!(flag, CanExecuteFlag::CanExecute);
+    }
+
     {
         let owner = app.api().addr_make("owner");
         let msg = &ExecuteMsg::Unpause {
