@@ -61,6 +61,9 @@ pub fn execute(
         }
         ExecuteMsg::RequestSlashing(payload) => execute::request_slashing(deps, env, info, payload),
         ExecuteMsg::LockSlashing(id) => execute::lock_slashing(deps, env, info, id),
+        ExecuteMsg::CancelSlashing(slashing_request_id) => {
+            execute::cancel_slashing(deps, env, info, slashing_request_id)
+        }
     }
 }
 
@@ -106,9 +109,10 @@ mod execute {
     use crate::contract::query::get_withdrawal_lock_period;
     use crate::error::ContractError;
     use crate::msg::{RequestSlashingPayload, RequestSlashingResponse};
-    use crate::state::SLASH_LOCKED;
-    use crate::state::{self, SlashingRequestStatus, DEFAULT_WITHDRAWAL_LOCK_PERIOD};
-    use crate::state::{SlashingRequest, WITHDRAWAL_LOCK_PERIOD};
+    use crate::state::{
+        self, SlashingRequest, SlashingRequestId, SlashingRequestStatus,
+        DEFAULT_WITHDRAWAL_LOCK_PERIOD, SLASHING_REQUESTS, SLASH_LOCKED, WITHDRAWAL_LOCK_PERIOD,
+    };
     use crate::ContractError::InvalidSlashingRequest;
     use bvs_library::addr::Operator;
     use bvs_library::ownership;
@@ -459,6 +463,53 @@ mod execute {
                     .add_attribute("affected_vaults", messages.len().to_string()),
             )
             .add_messages(messages))
+    }
+
+    /// Cancel a resolved slashing request that an operator has already resolved the issue.
+    pub fn cancel_slashing(
+        deps: DepsMut,
+        _env: Env,
+        info: MessageInfo,
+        slashing_request_id: SlashingRequestId,
+    ) -> Result<Response, ContractError> {
+        // service should be the sender
+        let service = info.sender;
+
+        let slashing_request = SLASHING_REQUESTS
+            .may_load(deps.storage, slashing_request_id.clone())?
+            .ok_or(ContractError::InvalidSlashingRequest {
+                msg: "No slashing request found by slashing request id".to_string(),
+            })?;
+
+        if slashing_request.service != service {
+            return Err(ContractError::InvalidSlashingRequest {
+                msg: "Invalid service sends a cancel slashing request".to_string(),
+            });
+        }
+
+        match slashing_request.status {
+            status if status != SlashingRequestStatus::Pending => {
+                return Err(ContractError::InvalidSlashingRequest {
+                    msg: "Canceled slashing request status should be pending".to_string(),
+                });
+            }
+            _ => {}
+        }
+
+        let operator = deps.api.addr_validate(&slashing_request.request.operator)?;
+        state::remove_slashing_request_id(deps.storage, &service, &operator);
+        state::update_slashing_request_status(
+            deps.storage,
+            slashing_request_id.clone(),
+            SlashingRequestStatus::Canceled,
+        )?;
+
+        Ok(Response::new().add_event(
+            Event::new("CancelSlashing")
+                .add_attribute("service", service)
+                .add_attribute("operator", operator)
+                .add_attribute("slashing_request_id", slashing_request_id.to_string()),
+        ))
     }
 }
 

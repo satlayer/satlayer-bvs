@@ -51,6 +51,12 @@ pub enum ExecuteMsg {
     /// router which will later be finalized and handle according to the service slashing
     /// rules.
     LockSlashing(SlashingRequestId),
+
+    /// ExecuteMsg CancelSlashing cancels a resolved slashing request.
+    ///
+    /// The service (slash initiator) should cancel the slashing process if the operator
+    /// has resolved the issue. The definition of “resolved” is up to the service to define.
+    CancelSlashing(SlashingRequestId),
 }
 
 #[cw_serde]

@@ -50,12 +50,18 @@ type InstantiateMsg struct {
 //
 // ExecuteMsg LockSlashing initiates the movement of slashed collateral from vaults to the
 // router which will later be finalized and handle according to the service slashing rules.
+//
+// ExecuteMsg CancelSlashing cancels a resolved slashing request.
+//
+// The service (slash initiator) should cancel the slashing process if the operator has
+// resolved the issue. The definition of “resolved” is up to the service to define.
 type ExecuteMsg struct {
 	SetVault                *SetVault             `json:"set_vault,omitempty"`
 	SetWithdrawalLockPeriod *string               `json:"set_withdrawal_lock_period,omitempty"`
 	TransferOwnership       *TransferOwnership    `json:"transfer_ownership,omitempty"`
 	RequestSlashing         *RequestSlashingClass `json:"request_slashing,omitempty"`
 	LockSlashing            *string               `json:"lock_slashing,omitempty"`
+	CancelSlashing          *string               `json:"cancel_slashing,omitempty"`
 }
 
 type RequestSlashingClass struct {
