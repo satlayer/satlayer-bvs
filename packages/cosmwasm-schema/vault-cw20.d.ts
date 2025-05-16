@@ -695,6 +695,10 @@ export interface VaultInfoResponse {
    */
   asset_id: string;
   /**
+   * The asset reference stores the cw20 contract address or the bank denom.
+   */
+  asset_reference: string;
+  /**
    * The asset type, either `AssetType::Cw20` or `AssetType::Bank`.
    */
   asset_type: AssetType;

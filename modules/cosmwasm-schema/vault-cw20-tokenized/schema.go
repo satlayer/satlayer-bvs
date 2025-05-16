@@ -372,6 +372,8 @@ type TokenInfoResponse struct {
 type VaultInfoResponse struct {
 	// Asset identifier, using the CAIP-19 format.
 	AssetID string `json:"asset_id"`
+	// The asset reference stores the cw20 contract address or the bank denom.
+	AssetReference string `json:"asset_reference"`
 	// The asset type, either `AssetType::Cw20` or `AssetType::Bank`.
 	AssetType AssetType `json:"asset_type"`
 	// The name of the vault contract, see [`cw2::set_contract_version`] for more information.
