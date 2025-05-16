@@ -1,7 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, StdResult, Storage};
 
-use bvs_vault_router::state::SlashingRequestId;
+use bvs_library::slashing::SlashingRequestId;
 use cw3::{Ballot, Proposal};
 use cw4::{
     MEMBERS_CHANGELOG, MEMBERS_CHECKPOINTS, MEMBERS_KEY, TOTAL_KEY, TOTAL_KEY_CHANGELOG,

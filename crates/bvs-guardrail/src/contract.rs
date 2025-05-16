@@ -88,7 +88,7 @@ mod execute {
         get_voting_power, next_id, BALLOTS, PROPOSALS, SLASHING_REQUEST_TO_PROPOSAL,
     };
     use bvs_library::ownership::assert_owner;
-    use bvs_vault_router::state::SlashingRequestId;
+    use bvs_library::slashing::SlashingRequestId;
     use cosmwasm_std::Event;
     use cw3::{Ballot, Proposal, Status, Vote, Votes};
     use cw4::Member;
@@ -344,7 +344,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 mod query {
     use super::*;
     use crate::state::{ProposalId, BALLOTS, PROPOSALS, SLASHING_REQUEST_TO_PROPOSAL};
-    use bvs_vault_router::state::SlashingRequestId;
+    use bvs_library::slashing::SlashingRequestId;
     use cosmwasm_std::{BlockInfo, Deps, Order, StdError};
     use cw3::{
         Proposal, ProposalListResponse, ProposalResponse, VoteInfo, VoteListResponse, VoteResponse,
@@ -523,7 +523,7 @@ mod query {
 mod tests {
     use super::*;
     use crate::state::{PROPOSALS, SLASHING_REQUEST_TO_PROPOSAL};
-    use bvs_vault_router::state::SlashingRequestId;
+    use bvs_library::slashing::SlashingRequestId;
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
     use cosmwasm_std::{Decimal, Event, Order};
     use cw2::{get_contract_version, ContractVersion};

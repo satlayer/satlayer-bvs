@@ -1,4 +1,5 @@
-use crate::state::{SlashingRequest, SlashingRequestId};
+use crate::state::SlashingRequest;
+use bvs_library::slashing::SlashingRequestId;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{from_json, to_json_binary, Addr, Binary, Timestamp, Uint128, Uint64};
 

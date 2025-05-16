@@ -5,7 +5,7 @@ use bvs_registry::testing::RegistryContract;
 use bvs_vault_bank_tokenized::msg::{ExecuteMsg, QueryMsg};
 use bvs_vault_bank_tokenized::testing::VaultBankTokenizedContract;
 use bvs_vault_base::error::VaultError;
-use bvs_vault_base::msg::{Amount, Recipient, RecipientAmount, VaultInfoResponse};
+use bvs_vault_base::msg::{Amount, AssetType, Recipient, RecipientAmount, VaultInfoResponse};
 use bvs_vault_base::shares::QueuedWithdrawalInfo;
 use bvs_vault_router::{msg::ExecuteMsg as RouterExecuteMsg, testing::VaultRouterContract};
 use cosmwasm_std::testing::mock_env;
@@ -1071,6 +1071,7 @@ fn test_vault_info() {
             pauser: tc.pauser.addr,
             operator: app.api().addr_make("operator"),
             asset_id: "cosmos:cosmos-testnet-14002/bank:denom".to_string(),
+            asset_type: AssetType::Bank,
             contract: "crates.io:bvs-vault-bank-tokenized".to_string(),
             version: env!("CARGO_PKG_VERSION").to_string(),
         }

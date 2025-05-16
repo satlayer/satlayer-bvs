@@ -335,12 +335,14 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 mod query {
     use crate::bank;
-    use bvs_vault_base::msg::VaultInfoResponse;
+    use bvs_library::asset_id::AssetId;
+    use bvs_vault_base::msg::{AssetType, VaultInfoResponse};
     use bvs_vault_base::{
         offset,
         shares::{self, QueuedWithdrawalInfo},
     };
     use cosmwasm_std::{Addr, Deps, Env, StdResult, Uint128};
+    use std::str::FromStr;
 
     /// Get the shares of a staker.
     pub fn shares(deps: Deps, staker: Addr) -> StdResult<Uint128> {
@@ -388,13 +390,20 @@ mod query {
         let vault = offset::TotalShares::load(&deps, balance)?;
         let denom = bank::get_denom(deps.storage)?;
         let version = cw2::get_contract_version(deps.storage)?;
+        let asset_id = AssetId::from_str(&format!(
+            "cosmos:{}/bank:{}",
+            env.block.chain_id,
+            denom.as_str()
+        ))
+        .unwrap();
         Ok(VaultInfoResponse {
             total_shares: vault.total_shares(),
             total_assets: vault.total_assets(),
             router: bvs_vault_base::router::get_router(deps.storage)?,
             pauser: bvs_pauser::api::get_pauser(deps.storage)?,
             operator: bvs_vault_base::router::get_operator(deps.storage)?,
-            asset_id: format!("cosmos:{}/bank:{}", env.block.chain_id, denom.as_str()),
+            asset_id: asset_id.to_string(),
+            asset_type: AssetType::Bank,
             contract: version.contract,
             version: version.version,
         })

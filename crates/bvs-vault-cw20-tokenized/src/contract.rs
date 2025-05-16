@@ -505,7 +505,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<cosmwasm_std::Bin
 }
 
 mod vault_query {
-    use bvs_vault_base::msg::VaultInfoResponse;
+    use bvs_library::asset_id::AssetId;
+    use bvs_vault_base::msg::{AssetType, VaultInfoResponse};
     use bvs_vault_base::{
         offset,
         shares::{self, QueuedWithdrawalInfo},
@@ -513,6 +514,7 @@ mod vault_query {
     use bvs_vault_cw20::token as UnderlyingToken;
     use cosmwasm_std::{Addr, Deps, Env, StdResult, Uint128};
     use cw20_base::contract::query_balance;
+    use std::str::FromStr;
 
     /// Get receipt token balance of the staker
     /// Since this vault is tokenized, shares are practically the receipt token.
@@ -580,17 +582,20 @@ mod vault_query {
         let receipt_token_supply = cw20_base::contract::query_token_info(deps)?.total_supply;
         let cw20_contract = UnderlyingToken::get_cw20_contract(deps.storage)?;
         let version = cw2::get_contract_version(deps.storage)?;
+        let asset_id = AssetId::from_str(&format!(
+            "cosmos:{}/cw20:{}",
+            env.block.chain_id,
+            cw20_contract.as_str()
+        ))
+        .unwrap();
         Ok(VaultInfoResponse {
             total_shares: receipt_token_supply,
             total_assets: balance,
             router: bvs_vault_base::router::get_router(deps.storage)?,
             pauser: bvs_pauser::api::get_pauser(deps.storage)?,
             operator: bvs_vault_base::router::get_operator(deps.storage)?,
-            asset_id: format!(
-                "cosmos:{}/cw20:{}",
-                env.block.chain_id,
-                cw20_contract.as_str()
-            ),
+            asset_id: asset_id.to_string(),
+            asset_type: AssetType::Cw20,
             contract: version.contract,
             version: version.version,
         })

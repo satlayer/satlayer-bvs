@@ -1,7 +1,7 @@
 use bvs_guardrail::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use bvs_guardrail::testing::GuardrailContract;
+use bvs_library::slashing::SlashingRequestId;
 use bvs_library::testing::TestingContract;
-use bvs_vault_router::state::SlashingRequestId;
 use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::{Decimal, Event};
 use cw3::{ProposalResponse, Status, Vote};
