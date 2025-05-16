@@ -40,7 +40,7 @@ func GetWasmExecuteContractMessageType(rawContractMsg []byte) string {
 	messageType := ""
 
 	if rawContractMsg != nil {
-		var msg map[string]interface{}
+		var msg map[string]any
 		_ = json.Unmarshal(rawContractMsg, &msg)
 
 		if len(msg) > 0 {

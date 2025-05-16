@@ -8,49 +8,47 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-// FindEventByType returns the event with the given type
-func FindEventByType(events sdk.StringEvents, eventType string) (sdk.StringEvent, bool) {
+// FindWASMEvents returns the WASM events
+func FindWASMEvents(events sdk.StringEvents) (sdk.StringEvents, bool) {
+	var wasmEvents sdk.StringEvents
 	for _, event := range events {
-		if event.Type == eventType {
-			return event, true
+		if event.Type == wasmtypes.WasmModuleEventType {
+			wasmEvents = append(wasmEvents, event)
+			continue
 		}
 	}
-	return sdk.StringEvent{}, false
+	return wasmEvents, false
 }
 
-// FindCustomWASMEvent returns the event with the custom WASM type
-func FindCustomWASMEvent(events sdk.StringEvents) (sdk.StringEvent, bool) {
+// FindCustomWASMEvents returns the custom WASM events
+func FindCustomWASMEvents(events sdk.StringEvents) (sdk.StringEvents, bool) {
+	var customWASMEvents sdk.StringEvents
 	for _, event := range events {
 		if strings.Contains(event.Type, wasmtypes.CustomContractEventPrefix) {
-			return event, true
+			customWASMEvents = append(customWASMEvents, event)
+			continue
 		}
 	}
-	return sdk.StringEvent{}, false
-}
-
-// FindAttributeByKey returns the attribute with the given key
-func FindAttributeByKey(event sdk.StringEvent, key string) (sdk.Attribute, bool) {
-	for _, attribute := range event.Attributes {
-		if attribute.Key == key {
-			return attribute, true
-		}
-	}
-	return sdk.Attribute{}, false
+	return customWASMEvents, false
 }
 
 // ExtractStringEvent extracts key-value pairs from StringEvent "attributes" field.
-func ExtractStringEvent(event sdk.StringEvent) ([]byte, error) {
-	newAttrs := make([]map[string]string, 0, len(event.Attributes))
-	for _, attr := range event.Attributes {
-		newAttrs = append(newAttrs, map[string]string{
-			attr.Key: attr.Value,
-		})
+func ExtractStringEvents(events sdk.StringEvents) ([]byte, error) {
+	resultArray := make([]map[string]any, 0, len(events))
+	for i, event := range events {
+		newAttrs := make([]map[string]string, 0, len(event.Attributes))
+		for _, attr := range event.Attributes {
+			newAttrs = append(newAttrs, map[string]string{
+				attr.Key: attr.Value,
+			})
+		}
+
+		result := map[string]any{
+			"type":       event.Type,
+			"attributes": newAttrs,
+		}
+		resultArray[i] = result
 	}
 
-	result := map[string]interface{}{
-		"type":       event.Type,
-		"attributes": newAttrs,
-	}
-
-	return json.Marshal(result)
+	return json.Marshal(resultArray)
 }
