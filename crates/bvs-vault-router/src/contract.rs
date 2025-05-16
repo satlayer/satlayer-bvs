@@ -487,10 +487,7 @@ mod execute {
         }
 
         match slashing_request.status {
-            status
-                if status == SlashingRequestStatus::Finalized
-                    || status == SlashingRequestStatus::Locked =>
-            {
+            status if status != SlashingRequestStatus::Pending => {
                 return Err(ContractError::InvalidSlashingRequest {
                     msg: "Slashing resolution window has passed, cancellation is not allowed"
                         .to_string(),
