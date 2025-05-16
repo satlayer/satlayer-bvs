@@ -107,7 +107,7 @@ func pauserExecute() *cobra.Command {
 	})
 
 	command.AddCommand(&cobra.Command{
-		Use:   "global-pause",
+		Use:   "pause-global",
 		Short: "To pause all contracts in the ecosystem.",
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {

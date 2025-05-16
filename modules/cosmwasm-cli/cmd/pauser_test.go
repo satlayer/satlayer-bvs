@@ -82,7 +82,7 @@ func (s *PauserTestSuite) Test_Pause_Global() {
 	s.Require().NoError(kr.ImportPrivKeyHex(from, privKey, algoStr))
 
 	rootCmd.SetArgs([]string{
-		"pauser", "execute", "global-pause",
+		"pauser", "execute", "pause-global",
 		"--keyring-backend=test",
 		"--from=" + from,
 		"--contract=" + s.pauser.Address,
