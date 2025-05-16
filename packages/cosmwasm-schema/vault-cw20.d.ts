@@ -695,6 +695,10 @@ export interface VaultInfoResponse {
    */
   asset_id: string;
   /**
+   * The asset type, either `AssetType::Cw20` or `AssetType::Bank`.
+   */
+  asset_type: AssetType;
+  /**
    * The name of the vault contract, see [`cw2::set_contract_version`] for more information.
    */
   contract: string;
@@ -722,4 +726,12 @@ export interface VaultInfoResponse {
    * The version of the vault contract, see [`cw2::set_contract_version`] for more information.
    */
   version: string;
+}
+
+/**
+ * The asset type, either `AssetType::Cw20` or `AssetType::Bank`.
+ */
+export enum AssetType {
+  Bank = "bank",
+  Cw20 = "cw20",
 }

@@ -372,6 +372,8 @@ type TokenInfoResponse struct {
 type VaultInfoResponse struct {
 	// Asset identifier, using the CAIP-19 format.
 	AssetID string `json:"asset_id"`
+	// The asset type, either `AssetType::Cw20` or `AssetType::Bank`.
+	AssetType AssetType `json:"asset_type"`
 	// The name of the vault contract, see [`cw2::set_contract_version`] for more information.
 	Contract string `json:"contract"`
 	// The `operator` that this vault is delegated to
@@ -387,3 +389,11 @@ type VaultInfoResponse struct {
 	// The version of the vault contract, see [`cw2::set_contract_version`] for more information.
 	Version string `json:"version"`
 }
+
+// The asset type, either `AssetType::Cw20` or `AssetType::Bank`.
+type AssetType string
+
+const (
+	Bank AssetType = "bank"
+	Cw20 AssetType = "cw20"
+)

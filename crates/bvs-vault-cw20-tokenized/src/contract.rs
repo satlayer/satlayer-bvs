@@ -586,8 +586,7 @@ mod vault_query {
             "cosmos:{}/cw20:{}",
             env.block.chain_id,
             cw20_contract.as_str()
-        ))
-        .unwrap();
+        ))?;
         Ok(VaultInfoResponse {
             total_shares: receipt_token_supply,
             total_assets: balance,

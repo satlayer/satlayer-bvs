@@ -1,16 +1,10 @@
 use cosmwasm_schema::cw_serde;
+use cosmwasm_std::StdError;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::fmt;
 use std::str::FromStr;
 use thiserror::Error;
-
-/// Error type for AssetId operations
-#[derive(Error, Debug, PartialEq)]
-pub enum AssetIdError {
-    #[error("Invalid AssetId format: {0}")]
-    InvalidFormat(String),
-}
 
 /// Represents a CAIP-19 asset ID
 ///
@@ -172,6 +166,19 @@ impl fmt::Display for AssetId {
             "{}/{}:{}",
             self.chain_id, self.asset_namespace, self.asset_reference
         )
+    }
+}
+
+/// Error type for AssetId operations
+#[derive(Error, Debug, PartialEq)]
+pub enum AssetIdError {
+    #[error("Invalid AssetId format: {0}")]
+    InvalidFormat(String),
+}
+
+impl From<AssetIdError> for StdError {
+    fn from(err: AssetIdError) -> Self {
+        StdError::generic_err(format!("Asset ID error: {}", err))
     }
 }
 

@@ -394,8 +394,7 @@ mod query {
             "cosmos:{}/bank:{}",
             env.block.chain_id,
             denom.as_str()
-        ))
-        .unwrap();
+        ))?;
         Ok(VaultInfoResponse {
             total_shares: vault.total_shares(),
             total_assets: vault.total_assets(),

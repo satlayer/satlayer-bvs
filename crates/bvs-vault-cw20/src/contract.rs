@@ -403,8 +403,7 @@ mod query {
             "cosmos:{}/cw20:{}",
             env.block.chain_id,
             cw20_contract.as_str()
-        ))
-        .unwrap();
+        ))?;
         Ok(VaultInfoResponse {
             total_shares: vault.total_shares(),
             total_assets: vault.total_assets(),

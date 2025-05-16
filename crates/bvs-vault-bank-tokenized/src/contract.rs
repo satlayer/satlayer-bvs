@@ -573,8 +573,7 @@ mod vault_query {
             "cosmos:{}/bank:{}",
             env.block.chain_id,
             underlying_token.as_str()
-        ))
-        .unwrap();
+        ))?;
         Ok(VaultInfoResponse {
             total_shares: receipt_token_supply,
             total_assets: balance,
