@@ -361,6 +361,7 @@ mod test {
         let slashing_request = SlashingRequest {
             request: data.clone(),
             request_time: env.block.time,
+            request_resolution: env.block.time.plus_seconds(50),
             request_expiry: env.block.time.plus_seconds(100),
             status: SlashingRequestStatus::Pending.into(),
             service: service.clone(),
