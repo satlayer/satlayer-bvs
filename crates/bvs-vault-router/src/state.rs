@@ -202,7 +202,8 @@ pub(crate) fn remove_slashing_request_id(
     service: &Service,
     operator: &Operator,
 ) -> StdResult<()> {
-    Ok(SLASHING_REQUEST_IDS.remove(store, (service, operator)))
+    SLASHING_REQUEST_IDS.remove(store, (service, operator));
+    Ok(())
 }
 
 /// Stores the slashed collaterals locked into the router
@@ -216,7 +217,8 @@ pub(crate) fn remove_all_slash_locked_by_id(
     store: &mut dyn Storage,
     slashing_request_id: SlashingRequestId,
 ) -> StdResult<()> {
-    Ok(SLASH_LOCKED.prefix(slashing_request_id).clear(store, None))
+    SLASH_LOCKED.prefix(slashing_request_id).clear(store, None);
+    Ok(())
 }
 
 #[cfg(test)]
