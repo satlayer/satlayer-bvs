@@ -69,3 +69,25 @@ func (s *PauserTestSuite) Test_Pause() {
 	})
 	s.NoError(rootCmd.Execute())
 }
+
+func (s *PauserTestSuite) Test_Pause_Global() {
+	rootCmd := RootCmd()
+	from := strconv.Itoa(rand.Intn(1000000000))
+
+	owner := s.container.GenerateAddress("owner")
+	s.container.FundAddressUbbn(owner.String(), 1000000000000)
+	privKey, algoStr := s.container.ExportPrivKeyHex("owner")
+
+	kr := s.container.NewKeyring("satlayer", "test", "")
+	s.Require().NoError(kr.ImportPrivKeyHex(from, privKey, algoStr))
+
+	rootCmd.SetArgs([]string{
+		"pauser", "execute", "global-pause",
+		"--keyring-backend=test",
+		"--from=" + from,
+		"--contract=" + s.pauser.Address,
+		"--node=" + s.container.RpcUri,
+		"--chain-id=" + s.container.ChainId,
+	})
+	s.NoError(rootCmd.Execute())
+}

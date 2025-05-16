@@ -96,13 +96,29 @@ func (s *ClientTestSuite) TestExecute() {
 		Attributes: []abci.EventAttribute{
 			{Key: "_contract_address", Value: s.pauser.Address},
 			{Key: "method", Value: "pause"},
+			{Key: "contract", Value: contract.String()},
+			{Key: "paused_method", Value: "Deposit"},
 			{Key: "sender", Value: owner.String()},
 			{Key: "msg_index", Value: strconv.Itoa(0)},
 		},
 	}
 
 	// Compare the specific event
-	actualEvent := response.TxResult.Events[9]
+	var actualEvent abci.Event
+	for _, evt := range response.TxResult.Events {
+		if evt.Type == "wasm" {
+			for _, attr := range evt.Attributes {
+				if attr.Key == "method" && attr.Value == "pause" {
+					actualEvent = evt
+					break
+				}
+			}
+			if len(actualEvent.Attributes) > 0 {
+				break
+			}
+		}
+	}
+	s.Require().NotEmpty(actualEvent.Attributes, "pause event not found")
 	s.Equal(expectedEvent.Type, actualEvent.Type)
 
 	// Compare attributes individually
