@@ -14,12 +14,17 @@ type InstantiateMsg struct {
 	Owner string `json:"owner"`
 }
 
-// Callable by the owner of the pauser contract
+// ExecuteMsg Pause pauses a method on a contract. Callable by the owner of the pauser
+// contract
 //
-// ExecuteMsg PauseGlobal Callable by the owner of the pauser contract Pauses Globally:
-// Pause all contracts and methods.
+// ExecuteMsg UnPause unpauses a method on a contract. Callable by the owner of the pauser
+// contract
 //
-// Callable by the owner of the pauser contract Unpauses Globally
+// ExecuteMsg PauseGlobal pauses all execution. Callable by the owner of the pauser contract
+// Pauses Globally: Pause all contracts and methods.
+//
+// ExecuteMsg UnpauseGlobal unpauses all execution. Callable by the owner of the pauser
+// contract Unpauses Globally
 type ExecuteMsg struct {
 	Pause             *Pause             `json:"pause,omitempty"`
 	Unpause           *Unpause           `json:"unpause,omitempty"`
