@@ -16,7 +16,8 @@ type InstantiateMsg struct {
 
 // Callable by the owner of the pauser contract
 //
-// # Callable by the owner of the pauser contract Pauses Globally
+// ExecuteMsg PauseGlobal Callable by the owner of the pauser contract Pauses Globally:
+// Pause all contracts and methods.
 //
 // Callable by the owner of the pauser contract Unpauses Globally
 type ExecuteMsg struct {
