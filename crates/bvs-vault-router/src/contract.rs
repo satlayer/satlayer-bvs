@@ -110,8 +110,8 @@ mod execute {
     use crate::error::ContractError;
     use crate::msg::{RequestSlashingPayload, RequestSlashingResponse};
     use crate::state::{
-        self, SlashingRequest, SlashingRequestId, SlashingRequestStatus,
-        DEFAULT_WITHDRAWAL_LOCK_PERIOD, SLASHING_REQUESTS, SLASH_LOCKED, WITHDRAWAL_LOCK_PERIOD,
+        self, SlashingRequest, SlashingRequestStatus, DEFAULT_WITHDRAWAL_LOCK_PERIOD,
+        SLASHING_REQUESTS, SLASH_LOCKED, WITHDRAWAL_LOCK_PERIOD,
     };
     use crate::ContractError::InvalidSlashingRequest;
     use bvs_library::addr::Operator;
