@@ -320,7 +320,7 @@ mod execute {
                 }
                 SlashingRequestStatus::Locked => {
                     return Err(ContractError::InvalidSlashingRequest {
-                        msg: "Previous slashing request is still has not finalized".to_string(),
+                        msg: "Previous slashing request is in progress".to_string(),
                     });
                 }
                 SlashingRequestStatus::Canceled => {}
