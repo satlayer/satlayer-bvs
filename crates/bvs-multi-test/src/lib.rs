@@ -1,6 +1,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 // Only exposed on unit and integration testing, not compiled to Wasm.
 
+use bvs_guardrail::testing::GuardrailContract;
 pub use bvs_library::testing::{Cw20TokenContract, TestingContract};
 pub use bvs_pauser::testing::PauserContract;
 pub use bvs_registry::testing::RegistryContract;
@@ -14,6 +15,7 @@ use cw_multi_test::App;
 pub struct BvsMultiTest {
     pub pauser: PauserContract,
     pub registry: RegistryContract,
+    pub guardrail: GuardrailContract,
     pub vault_router: VaultRouterContract,
 }
 
@@ -25,11 +27,13 @@ impl BvsMultiTest {
     pub fn new(app: &mut App, env: &Env) -> Self {
         let pauser = PauserContract::new(app, env, None);
         let registry = RegistryContract::new(app, env, None);
+        let guardrail = GuardrailContract::new(app, env, None);
         let vault_router = VaultRouterContract::new(app, env, None);
 
         Self {
             pauser,
             registry,
+            guardrail,
             vault_router,
         }
     }
