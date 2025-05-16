@@ -61,7 +61,7 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 		"contract label name", labelName, "index", index)
 
 	// Parse the ExecuteContract message body
-	var msgJSON map[string]interface{}
+	var msgJSON map[string]any
 	err := json.Unmarshal(msg.Msg, &msgJSON)
 	if err != nil {
 		slog.Error("Failed to parse JSON message", "error", err)
@@ -88,30 +88,30 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 
 	txEvents := sdktypes.StringifyEvents(tx.Events)
 
-	wasmEvent, found := utils.FindEventByType(txEvents, wasmtypes.WasmModuleEventType)
-	wasmByteEvent := emptyJSONBytes
+	wasmEvents, found := utils.FindWASMEvents(txEvents)
+	wasmByteEvents := emptyJSONBytes
 	if found {
-		if wasmByteEvent, err = utils.ExtractStringEvent(wasmEvent); err != nil {
+		if wasmByteEvents, err = utils.ExtractStringEvents(wasmEvents); err != nil {
 			slog.Error("Failed to extract WASM event", "error", err)
-			wasmByteEvent = emptyJSONBytes
+			wasmByteEvents = emptyJSONBytes
 		}
 	} else {
 		slog.Warn("Not found WASM event in execute events")
 	}
 
-	customWASMEvent, found := utils.FindCustomWASMEvent(txEvents)
-	customWASMByteEvent := emptyJSONBytes
+	customWASMEvents, found := utils.FindCustomWASMEvents(txEvents)
+	customWASMByteEvents := emptyJSONBytes
 	if found {
-		if customWASMByteEvent, err = utils.ExtractStringEvent(customWASMEvent); err != nil {
+		if customWASMByteEvents, err = utils.ExtractStringEvents(customWASMEvents); err != nil {
 			slog.Error("Failed to extract custom WASM event", "error", err)
-			customWASMByteEvent = emptyJSONBytes
+			customWASMByteEvents = emptyJSONBytes
 		}
 	} else {
 		slog.Warn("Not found custom WASM event in execute events")
 	}
 
-	slog.Info("Execute events", slog.Any("all events", txEvents), slog.Any("wasmEvent", wasmEvent),
-		slog.Any("customWASMEvent", customWASMEvent))
+	slog.Info("Execute events", slog.Any("all events", txEvents), slog.Any("wasmEvents", wasmEvents),
+		slog.Any("customWASMEvents", customWASMEvents))
 
 	timestamp, err := time.Parse(time.RFC3339, tx.Timestamp)
 	if err != nil {
@@ -119,7 +119,7 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 		return err
 	}
 
-	execute := types.NewWASMExecuteContract(msg.Sender, msg.Contract, msg.Msg, wasmByteEvent, customWASMByteEvent,
+	execute := types.NewWASMExecuteContract(msg.Sender, msg.Contract, msg.Msg, wasmByteEvents, customWASMByteEvents,
 		timestamp, int64(tx.Height), tx.TxHash)
 
 	if err = m.db.SaveWASMExecuteContract(execute); err != nil {
