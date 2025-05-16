@@ -344,14 +344,12 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 mod query {
     use crate::token;
-    use bvs_library::asset_id::AssetId;
     use bvs_vault_base::msg::{AssetType, VaultInfoResponse};
     use bvs_vault_base::{
         offset,
         shares::{self, QueuedWithdrawalInfo},
     };
     use cosmwasm_std::{Addr, Deps, Env, StdResult, Uint128};
-    use std::str::FromStr;
 
     /// Get shares of the staker
     pub fn shares(deps: Deps, staker: Addr) -> StdResult<Uint128> {
@@ -399,19 +397,19 @@ mod query {
         let vault = offset::TotalShares::load(&deps, balance)?;
         let cw20_contract = token::get_cw20_contract(deps.storage)?;
         let version = cw2::get_contract_version(deps.storage)?;
-        let asset_id = AssetId::from_str(&format!(
-            "cosmos:{}/cw20:{}",
-            env.block.chain_id,
-            cw20_contract.as_str()
-        ))?;
         Ok(VaultInfoResponse {
             total_shares: vault.total_shares(),
             total_assets: vault.total_assets(),
             router: bvs_vault_base::router::get_router(deps.storage)?,
             pauser: bvs_pauser::api::get_pauser(deps.storage)?,
             operator: bvs_vault_base::router::get_operator(deps.storage)?,
-            asset_id: asset_id.to_string(),
+            asset_id: format!(
+                "cosmos:{}/cw20:{}",
+                env.block.chain_id,
+                cw20_contract.as_str()
+            ),
             asset_type: AssetType::Cw20,
+            asset_reference: cw20_contract.to_string(),
             contract: version.contract,
             version: version.version,
         })

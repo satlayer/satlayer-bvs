@@ -1024,6 +1024,7 @@ fn test_vault_info() {
             operator: app.api().addr_make("operator"),
             asset_id: "cosmos:cosmos-testnet-14002/bank:denom".to_string(),
             asset_type: AssetType::Bank,
+            asset_reference: "denom".to_string(),
             contract: "crates.io:bvs-vault-bank".to_string(),
             version: env!("CARGO_PKG_VERSION").to_string(),
         }

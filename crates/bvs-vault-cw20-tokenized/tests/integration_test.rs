@@ -1022,6 +1022,7 @@ fn test_vault_info() {
             operator: app.api().addr_make("operator"),
             asset_id: format!("cosmos:cosmos-testnet-14002/cw20:{}", tc.cw20.addr).to_string(),
             asset_type: AssetType::Cw20,
+            asset_reference: tc.cw20.addr.to_string(),
             contract: "crates.io:bvs-vault-cw20-tokenized".to_string(),
             version: env!("CARGO_PKG_VERSION").to_string(),
         }

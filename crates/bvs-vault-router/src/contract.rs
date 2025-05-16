@@ -463,7 +463,7 @@ mod execute {
 }
 
 /// Snipped implementation of Vault's API
-pub mod vault {
+pub(crate) mod vault {
     use crate::error::ContractError;
     use cosmwasm_schema::cw_serde;
     use cosmwasm_std::{Addr, Deps, Uint128};
@@ -489,6 +489,9 @@ pub mod vault {
 
         /// The asset type, either `AssetType::Cw20` or `AssetType::Bank`.
         pub asset_type: AssetType,
+
+        /// The asset reference, either the token contract address or the bank denom.
+        pub asset_reference: String,
     }
 
     /// see [`bvs_vault_base::msg`] for more information.
@@ -797,6 +800,7 @@ mod tests {
                                     operator: deps.api.addr_make("operator"),
                                     total_assets: Uint128::zero(),
                                     asset_type: AssetType::Cw20,
+                                    asset_reference: deps.api.addr_make("vault").to_string(),
                                 };
                                 SystemResult::Ok(ContractResult::Ok(
                                     to_json_binary(&response).unwrap(),
@@ -923,6 +927,7 @@ mod tests {
                                         operator: operator_addr.clone(),
                                         total_assets: Uint128::zero(),
                                         asset_type: AssetType::Cw20,
+                                        asset_reference: deps.api.addr_make("vault").to_string(),
                                     };
                                     SystemResult::Ok(ContractResult::Ok(
                                         to_json_binary(&response).unwrap(),
@@ -1279,6 +1284,7 @@ mod tests {
                                     operator: operator_addr,
                                     total_assets: Uint128::zero(),
                                     asset_type: AssetType::Cw20,
+                                    asset_reference: contract_addr,
                                 };
                                 SystemResult::Ok(ContractResult::Ok(
                                     to_json_binary(&response).unwrap(),
