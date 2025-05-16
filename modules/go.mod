@@ -7,7 +7,7 @@ toolchain go1.24.1
 require (
 	cosmossdk.io/errors v1.0.2
 	cosmossdk.io/math v1.5.3
-	github.com/CosmWasm/wasmd v0.52.0
+	github.com/CosmWasm/wasmd v0.54.0
 	github.com/cometbft/cometbft v0.38.17
 	github.com/cosmos/cosmos-sdk v0.53.0
 	github.com/cosmos/gogoproto v1.7.0
@@ -42,13 +42,13 @@ require (
 	cosmossdk.io/x/evidence v0.1.1 // indirect
 	cosmossdk.io/x/feegrant v0.1.1 // indirect
 	cosmossdk.io/x/tx v0.14.0 // indirect
-	cosmossdk.io/x/upgrade v0.1.3 // indirect
+	cosmossdk.io/x/upgrade v0.1.4 // indirect
 	dario.cat/mergo v1.0.1 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
 	github.com/99designs/keyring v1.2.2 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
-	github.com/CosmWasm/wasmvm/v2 v2.1.0 // indirect
+	github.com/CosmWasm/wasmvm/v2 v2.2.1 // indirect
 	github.com/DataDog/datadog-go v3.2.0+incompatible // indirect
 	github.com/DataDog/zstd v1.5.7 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.26.0 // indirect
