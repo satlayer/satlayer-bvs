@@ -219,7 +219,6 @@ name = "bvs-guardrail"
 version = "0.0.0"
 dependencies = [
  "bvs-library",
- "bvs-vault-router",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
@@ -240,6 +239,7 @@ dependencies = [
  "base64",
  "bech32 0.8.1",
  "cosmwasm-crypto",
+ "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus",

@@ -112,6 +112,7 @@ mod execute {
     use crate::ContractError::InvalidSlashingRequest;
     use bvs_library::addr::Operator;
     use bvs_library::ownership;
+    use bvs_library::slashing::SlashingRequestId;
     use bvs_registry::msg::{
         IsOperatorOptedInToSlashingResponse, SlashingParametersResponse, StatusResponse,
     };
@@ -344,7 +345,7 @@ mod execute {
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        id: state::SlashingRequestId,
+        id: SlashingRequestId,
     ) -> Result<Response, ContractError> {
         let slash_req = match state::SLASHING_REQUESTS.may_load(deps.storage, id.clone())? {
             Some(slash_req) => slash_req,
@@ -462,7 +463,7 @@ mod execute {
 }
 
 /// Snipped implementation of Vault's API
-pub mod vault {
+pub(crate) mod vault {
     use crate::error::ContractError;
     use cosmwasm_schema::cw_serde;
     use cosmwasm_std::{Addr, Deps, Uint128};
@@ -485,6 +486,19 @@ pub mod vault {
 
         /// Total assets in the vault
         pub total_assets: Uint128,
+
+        /// The asset type, either `AssetType::Cw20` or `AssetType::Bank`.
+        pub asset_type: AssetType,
+
+        /// The asset reference, either the token contract address or the bank denom.
+        pub asset_reference: String,
+    }
+
+    /// see [`bvs_vault_base::msg`] for more information.
+    #[cw_serde]
+    pub enum AssetType {
+        Cw20,
+        Bank,
     }
 
     #[cw_serde]
@@ -565,9 +579,9 @@ mod query {
         SlashingRequestResponse, Vault, VaultListResponse,
     };
     use crate::state::{
-        self, SlashingRequestId, DEFAULT_WITHDRAWAL_LOCK_PERIOD, SLASHING_REQUESTS,
-        SLASHING_REQUEST_IDS,
+        self, DEFAULT_WITHDRAWAL_LOCK_PERIOD, SLASHING_REQUESTS, SLASHING_REQUEST_IDS,
     };
+    use bvs_library::slashing::SlashingRequestId;
     use bvs_registry::msg::QueryMsg;
     use cosmwasm_std::{Addr, Deps, StdResult, Uint64};
     use cw_storage_plus::Bound;
@@ -698,7 +712,7 @@ mod query {
 
 #[cfg(test)]
 mod tests {
-    use super::vault::{VaultInfoQueryMsg, VaultInfoResponse};
+    use super::vault::{AssetType, VaultInfoQueryMsg, VaultInfoResponse};
     use super::*;
     use super::{
         execute::{set_vault, set_withdrawal_lock_period},
@@ -708,9 +722,8 @@ mod tests {
     use crate::msg::SlashingMetadata;
     use crate::msg::{InstantiateMsg, SlashingRequestIdResponse, SlashingRequestResponse};
     use crate::state::{self, SlashingRequest, SlashingRequestStatus, SLASHING_REQUESTS};
-    use crate::state::{
-        SlashingRequestId, Vault, OPERATOR_VAULTS, REGISTRY, SLASHING_REQUEST_IDS, VAULTS,
-    };
+    use crate::state::{Vault, OPERATOR_VAULTS, REGISTRY, SLASHING_REQUEST_IDS, VAULTS};
+    use bvs_library::slashing::SlashingRequestId;
     use bvs_registry::msg::{IsOperatorActiveResponse, QueryMsg as RegistryQueryMsg};
     use cosmwasm_std::testing::{
         message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
@@ -786,6 +799,8 @@ mod tests {
                                     router: moved_env.contract.address.clone(),
                                     operator: deps.api.addr_make("operator"),
                                     total_assets: Uint128::zero(),
+                                    asset_type: AssetType::Cw20,
+                                    asset_reference: deps.api.addr_make("vault").to_string(),
                                 };
                                 SystemResult::Ok(ContractResult::Ok(
                                     to_json_binary(&response).unwrap(),
@@ -911,6 +926,8 @@ mod tests {
                                         router: vault_contract_addr.clone(),
                                         operator: operator_addr.clone(),
                                         total_assets: Uint128::zero(),
+                                        asset_type: AssetType::Cw20,
+                                        asset_reference: deps.api.addr_make("vault").to_string(),
                                     };
                                     SystemResult::Ok(ContractResult::Ok(
                                         to_json_binary(&response).unwrap(),
@@ -1266,6 +1283,8 @@ mod tests {
                                     router: deps.api.addr_make("router"),
                                     operator: operator_addr,
                                     total_assets: Uint128::zero(),
+                                    asset_type: AssetType::Cw20,
+                                    asset_reference: contract_addr,
                                 };
                                 SystemResult::Ok(ContractResult::Ok(
                                     to_json_binary(&response).unwrap(),

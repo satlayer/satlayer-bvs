@@ -1,13 +1,10 @@
 use crate::msg::RequestSlashingPayload;
 use bvs_library::addr::{Operator, Service};
+use bvs_library::slashing::SlashingRequestId;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{
-    to_json_vec, Addr, HexBinary, StdError, StdResult, Storage, Timestamp, Uint128, Uint64,
-};
-use cw_storage_plus::{Item, Key, KeyDeserialize, Map, Prefixer, PrimaryKey};
+use cosmwasm_std::{to_json_vec, Addr, StdError, StdResult, Storage, Timestamp, Uint128, Uint64};
+use cw_storage_plus::{Item, Map};
 use sha3::Digest;
-use std::fmt;
-use std::ops::{Deref, DerefMut};
 
 /// Mapping of vault's Addr to Vault
 pub(crate) const VAULTS: Map<&Addr, Vault> = Map::new("vaults");
@@ -108,93 +105,17 @@ impl PartialEq<SlashingRequestStatus> for u8 {
     }
 }
 
-/// SlashingRequestId stores the id in hexbinary. It's a 32-byte hash of the slashing request
-#[cw_serde]
-pub struct SlashingRequestId(pub HexBinary);
-
-impl SlashingRequestId {
-    /// Returns the hex string representation of the slashing request id
-    pub fn to_hex(&self) -> String {
-        self.0.to_hex()
-    }
-
+pub trait SlashingRequestIdHasher {
     /// Generate a slashing request id from the service and slashing request data
-    pub fn new(data: &SlashingRequest) -> StdResult<Self> {
+    fn hash(data: &SlashingRequest) -> StdResult<SlashingRequestId> {
         let mut hasher = sha3::Sha3_256::new();
         hasher.update(to_json_vec(data)?);
 
         Ok(<[u8; 32]>::from(hasher.finalize()).into())
     }
-
-    /// Create a SlashingRequestId from its hex string representation
-    pub fn from_hex(hex: &str) -> StdResult<Self> {
-        let bytes = HexBinary::from_hex(hex)?;
-        if bytes.len() != 32 {
-            return Err(StdError::generic_err("Invalid hex length"));
-        }
-        Ok(SlashingRequestId(bytes))
-    }
 }
 
-impl fmt::Display for SlashingRequestId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0.to_hex())
-    }
-}
-
-impl Deref for SlashingRequestId {
-    type Target = HexBinary;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for SlashingRequestId {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl From<HexBinary> for SlashingRequestId {
-    fn from(bytes: HexBinary) -> Self {
-        Self(bytes)
-    }
-}
-
-impl From<[u8; 32]> for SlashingRequestId {
-    fn from(bytes: [u8; 32]) -> Self {
-        Self(HexBinary::from(bytes))
-    }
-}
-
-impl PrimaryKey<'_> for SlashingRequestId {
-    type Prefix = ();
-    type SubPrefix = ();
-    type Suffix = Self;
-    type SuperSuffix = Self;
-
-    fn key(&self) -> Vec<Key> {
-        vec![Key::Ref(self.0.as_slice())]
-    }
-}
-
-impl Prefixer<'_> for SlashingRequestId {
-    fn prefix(&self) -> Vec<Key> {
-        vec![Key::Ref(self.0.as_slice())]
-    }
-}
-
-impl KeyDeserialize for SlashingRequestId {
-    type Output = Self;
-
-    const KEY_ELEMS: u16 = 1;
-
-    #[inline(always)]
-    fn from_vec(value: Vec<u8>) -> StdResult<Self::Output> {
-        Ok(SlashingRequestId(HexBinary::from(value)))
-    }
-}
+impl SlashingRequestIdHasher for SlashingRequestId {}
 
 /// Stores the pending slashing request id for a given service and operator.
 ///
@@ -236,7 +157,7 @@ pub(crate) fn save_slashing_request(
     data: &SlashingRequest,
 ) -> StdResult<SlashingRequestId> {
     // generate slashing_id
-    let slashing_id = SlashingRequestId::new(data)?;
+    let slashing_id = SlashingRequestId::hash(data)?;
 
     // save slashing id
     SLASHING_REQUEST_IDS.save(store, (service, operator), &slashing_id)?;
@@ -286,7 +207,7 @@ mod test {
         let res = save_slashing_request(&mut deps.storage, &service, &operator, &slashing_request)
             .unwrap();
 
-        assert_eq!(res, SlashingRequestId::new(&slashing_request).unwrap());
+        assert_eq!(res, SlashingRequestId::hash(&slashing_request).unwrap());
         assert_eq!(
             res.to_string(),
             "4a8ac4cd4fb81675fcdf97b5c25dc6240545016bab314c93cb97461b292fe098",

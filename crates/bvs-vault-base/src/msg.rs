@@ -186,9 +186,21 @@ pub struct VaultInfoResponse {
     /// Asset identifier, using the CAIP-19 format.
     pub asset_id: String,
 
+    /// The asset type, either `AssetType::Cw20` or `AssetType::Bank`.
+    pub asset_type: AssetType,
+
+    /// The asset reference stores the cw20 contract address or the bank denom.
+    pub asset_reference: String,
+
     /// The name of the vault contract, see [`cw2::set_contract_version`] for more information.
     pub contract: String,
 
     /// The version of the vault contract, see [`cw2::set_contract_version`] for more information.
     pub version: String,
+}
+
+#[cw_serde]
+pub enum AssetType {
+    Cw20,
+    Bank,
 }

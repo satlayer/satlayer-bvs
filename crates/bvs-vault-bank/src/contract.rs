@@ -335,7 +335,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 mod query {
     use crate::bank;
-    use bvs_vault_base::msg::VaultInfoResponse;
+    use bvs_vault_base::msg::{AssetType, VaultInfoResponse};
     use bvs_vault_base::{
         offset,
         shares::{self, QueuedWithdrawalInfo},
@@ -395,6 +395,8 @@ mod query {
             pauser: bvs_pauser::api::get_pauser(deps.storage)?,
             operator: bvs_vault_base::router::get_operator(deps.storage)?,
             asset_id: format!("cosmos:{}/bank:{}", env.block.chain_id, denom.as_str()),
+            asset_type: AssetType::Bank,
+            asset_reference: denom.to_string(),
             contract: version.contract,
             version: version.version,
         })

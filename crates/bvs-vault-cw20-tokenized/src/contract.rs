@@ -505,7 +505,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<cosmwasm_std::Bin
 }
 
 mod vault_query {
-    use bvs_vault_base::msg::VaultInfoResponse;
+    use bvs_vault_base::msg::{AssetType, VaultInfoResponse};
     use bvs_vault_base::{
         offset,
         shares::{self, QueuedWithdrawalInfo},
@@ -591,6 +591,8 @@ mod vault_query {
                 env.block.chain_id,
                 cw20_contract.as_str()
             ),
+            asset_type: AssetType::Cw20,
+            asset_reference: cw20_contract.to_string(),
             contract: version.contract,
             version: version.version,
         })

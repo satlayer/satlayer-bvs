@@ -2,7 +2,7 @@ use bvs_library::testing::{Cw20TokenContract, TestingContract};
 use bvs_pauser::testing::PauserContract;
 use bvs_registry::msg::Metadata;
 use bvs_registry::testing::RegistryContract;
-use bvs_vault_base::msg::{Amount, Recipient, RecipientAmount, VaultInfoResponse};
+use bvs_vault_base::msg::{Amount, AssetType, Recipient, RecipientAmount, VaultInfoResponse};
 use bvs_vault_base::shares::QueuedWithdrawalInfo;
 use bvs_vault_base::VaultError;
 use bvs_vault_cw20_tokenized::msg::{ExecuteMsg, QueryMsg};
@@ -1021,6 +1021,8 @@ fn test_vault_info() {
             pauser: tc.pauser.addr,
             operator: app.api().addr_make("operator"),
             asset_id: format!("cosmos:cosmos-testnet-14002/cw20:{}", tc.cw20.addr).to_string(),
+            asset_type: AssetType::Cw20,
+            asset_reference: tc.cw20.addr.to_string(),
             contract: "crates.io:bvs-vault-cw20-tokenized".to_string(),
             version: env!("CARGO_PKG_VERSION").to_string(),
         }

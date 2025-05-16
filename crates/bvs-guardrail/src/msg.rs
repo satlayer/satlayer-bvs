@@ -1,5 +1,5 @@
 use crate::state::ProposalId;
-use bvs_vault_router::state::SlashingRequestId;
+use bvs_library::slashing::SlashingRequestId;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw3::Vote;
 use cw4::Member;
