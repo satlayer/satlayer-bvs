@@ -11,6 +11,7 @@ pub struct InstantiateMsg {
     pub owner: String,
     pub registry: String,
     pub pauser: String,
+    pub guardrail: String,
 }
 
 #[cw_serde]
@@ -57,6 +58,9 @@ pub enum ExecuteMsg {
     /// The service (slash initiator) should cancel the slashing process if the operator
     /// has resolved the issue. The definition of “resolved” is up to the service to define.
     CancelSlashing(SlashingRequestId),
+
+    /// ExecuteMsg FinalizeSlashing TODO ADD COMMENTS
+    FinalizeSlashing(SlashingRequestId),
 }
 
 #[cw_serde]

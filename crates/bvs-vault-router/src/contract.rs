@@ -3,7 +3,7 @@ use cosmwasm_std::entry_point;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::state::set_registry;
+use crate::state::{set_registry, GUARDRAIL};
 use bvs_library::ownership;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
@@ -30,6 +30,9 @@ pub fn instantiate(
 
     let pauser = deps.api.addr_validate(&msg.pauser)?;
     bvs_pauser::api::set_pauser(deps.storage, &pauser)?;
+
+    let guardrail = deps.api.addr_validate(&msg.guardrail)?;
+    GUARDRAIL.save(deps.storage, &guardrail)?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
@@ -64,6 +67,7 @@ pub fn execute(
         ExecuteMsg::CancelSlashing(slashing_request_id) => {
             execute::cancel_slashing(deps, env, info, slashing_request_id)
         }
+        ExecuteMsg::FinalizeSlashing(id) => execute::finalize_slashing(deps, info, id),
     }
 }
 
@@ -77,7 +81,7 @@ pub fn execute(
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     let old_version =
         cw2::ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
+    // TODO: migrate to save guardrail contract
     match old_version.major {
         1 => migrate::vaults_to_index_operator(deps),
         _ => Ok(Response::default()),
@@ -107,6 +111,7 @@ mod migrate {
 mod execute {
     use super::*;
     use crate::contract::query::get_withdrawal_lock_period;
+    use crate::contract::vault::AssetType;
     use crate::error::ContractError;
     use crate::msg::{RequestSlashingPayload, RequestSlashingResponse};
     use crate::state::{
@@ -121,7 +126,11 @@ mod execute {
         IsOperatorOptedInToSlashingResponse, SlashingParametersResponse, StatusResponse,
     };
     use bvs_registry::RegistrationStatus;
-    use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Response, Uint128, Uint64};
+    use cosmwasm_std::{
+        Addr, BankMsg, Coin, CosmosMsg, DepsMut, Empty, Env, Event, MessageInfo, Response, Uint128,
+        Uint64,
+    };
+    use cw3::ProposalResponse;
 
     /// Set the vault contract in the router and whitelist (true/false) it.
     /// Only the `owner` can call this message.
@@ -526,7 +535,7 @@ mod execute {
         }
 
         let operator = deps.api.addr_validate(&slashing_request.request.operator)?;
-        state::remove_slashing_request_id(deps.storage, &service, &operator);
+        state::remove_slashing_request_id(deps.storage, &service, &operator)?;
         state::update_slashing_request_status(
             deps.storage,
             slashing_request_id.clone(),
@@ -539,6 +548,164 @@ mod execute {
                 .add_attribute("operator", operator)
                 .add_attribute("slashing_request_id", slashing_request_id.to_string()),
         ))
+    }
+
+    pub fn finalize_slashing(
+        deps: DepsMut,
+        info: MessageInfo,
+        id: SlashingRequestId,
+    ) -> Result<Response, ContractError> {
+        // Service is the sender
+        let service = info.sender;
+
+        // Check guardrail contract that slashing request is passed
+        let guardrail = GUARDRAIL.load(deps.storage)?;
+        let ProposalResponse {
+            status: guardrail_proposal_status,
+            ..
+        }: ProposalResponse<Empty> = deps.querier.query_wasm_smart(
+            guardrail.to_string(),
+            &bvs_guardrail::msg::QueryMsg::ProposalBySlashingRequestId {
+                slashing_request_id: id.clone(),
+            },
+        )?;
+        if guardrail_proposal_status != cw3::Status::Passed {
+            return Err(ContractError::InvalidSlashingRequest {
+                msg: "Slashing request has not passed by guardrail".to_string(), // TODO: fix wording
+            });
+        }
+
+        // Get slashing request
+        let slash_req = match SLASHING_REQUESTS.may_load(deps.storage, id.clone())? {
+            Some(slash_req) => slash_req,
+            None => {
+                return Err(InvalidSlashingRequest {
+                    msg: "Id does not exist".to_string(),
+                })
+            }
+        };
+
+        // Only service that requested slashing can finalize
+        if slash_req.service != service {
+            return Err(InvalidSlashingRequest {
+                msg: "Only the service that requested slashing can finalize it.".to_string(),
+            });
+        }
+
+        let operator = deps
+            .api
+            .addr_validate(slash_req.request.operator.as_str())?;
+
+        let registry = state::get_registry(deps.storage)?;
+        // Get slashing params of the service at the given timestamp
+        let SlashingParametersResponse(slashing_parameters) = deps.querier.query_wasm_smart(
+            registry.clone(),
+            &bvs_registry::msg::QueryMsg::SlashingParameters {
+                service: service.to_string(),
+                timestamp: Some(slash_req.request.timestamp.seconds()),
+            },
+        )?;
+        let slashing_parameters = match slashing_parameters {
+            Some(x) => x,
+            None => {
+                return Err(InvalidSlashingRequest {
+                    msg: "Service has not enabled slashing at timestamp.".to_string(),
+                })
+            }
+        };
+
+        // transfer all slashed assets to the destination
+        let mut transfer_msgs: Vec<CosmosMsg> = vec![];
+        for locked_vault_amount in SLASH_LOCKED.prefix(id.clone()).range(
+            deps.storage,
+            None,
+            None,
+            cosmwasm_std::Order::Ascending,
+        ) {
+            let (affected_vault, locked_amount) = locked_vault_amount?;
+            let vault_info = vault::get_vault_info(deps.as_ref(), &affected_vault)?;
+
+            match vault_info.asset_type {
+                AssetType::Cw20 => match slashing_parameters.destination {
+                    Some(ref destination) => {
+                        // craft cw20 transfer msg
+                        let msg = &cw20::Cw20ExecuteMsg::Transfer {
+                            recipient: destination.to_string(),
+                            amount: locked_amount,
+                        };
+                        // convert to CosmosMsg
+                        let exec_msg = cosmwasm_std::WasmMsg::Execute {
+                            contract_addr: vault_info.asset_reference.to_string(),
+                            msg: to_json_binary(msg)?,
+                            funds: vec![],
+                        };
+                        transfer_msgs.push(exec_msg.into());
+                    }
+                    None => {
+                        // No destination => BURN 🔥
+                        let msg = &cw20::Cw20ExecuteMsg::Burn {
+                            amount: locked_amount,
+                        };
+                        // convert to CosmosMsg
+                        let exec_msg = cosmwasm_std::WasmMsg::Execute {
+                            contract_addr: vault_info.asset_reference.to_string(),
+                            msg: to_json_binary(msg)?,
+                            funds: vec![],
+                        };
+                        transfer_msgs.push(exec_msg.into());
+                    }
+                },
+                AssetType::Bank => {
+                    match slashing_parameters.destination {
+                        Some(ref destination) => {
+                            // craft bank transfer msg
+                            let exec_msg = BankMsg::Send {
+                                to_address: destination.to_string(),
+                                amount: vec![Coin {
+                                    denom: vault_info.asset_reference,
+                                    amount: locked_amount,
+                                }],
+                            };
+                            // convert to CosmosMsg
+                            transfer_msgs.push(exec_msg.into());
+                        }
+                        None => {
+                            // No destination => BURN 🔥
+                            // for bank, there is no way to burn so this is just a no-op
+                        }
+                    }
+                }
+            };
+        }
+
+        // Remove all slash locked for the given slashing id
+        state::remove_all_slash_locked_by_id(deps.storage, id.clone())?;
+
+        // Update slash req status to `SlashingRequestStatus::Finalized`
+        state::update_slashing_request_status(
+            deps.storage,
+            id.clone(),
+            SlashingRequestStatus::Finalized,
+        )?;
+
+        // Remove (service,operator) -> slashing request id mapping
+        state::remove_slashing_request_id(deps.storage, &service, &operator)?;
+
+        Ok(Response::new()
+            .add_event(
+                Event::new("FinalizeSlashing")
+                    .add_attribute("service", service)
+                    .add_attribute("operator", operator)
+                    .add_attribute("slashing_request_id", id.to_string())
+                    .add_attribute(
+                        "destination",
+                        slashing_parameters
+                            .destination
+                            .unwrap_or(Addr::unchecked("".to_string())),
+                    )
+                    .add_attribute("affected_vaults", transfer_msgs.len().to_string()),
+            )
+            .add_messages(transfer_msgs))
     }
 }
 
@@ -820,12 +987,14 @@ mod tests {
         let owner = deps.api.addr_make("owner");
         let registry = deps.api.addr_make("registry");
         let pauser = deps.api.addr_make("pauser");
+        let guardrail = deps.api.addr_make("guardrail");
         let owner_info = message_info(&owner, &[]);
 
         let msg = InstantiateMsg {
             owner: owner.to_string(),
             registry: registry.to_string(),
             pauser: pauser.to_string(),
+            guardrail: guardrail.to_string(),
         };
 
         let response = instantiate(deps.as_mut(), env, owner_info, msg).unwrap();
@@ -850,12 +1019,14 @@ mod tests {
         let owner = deps.api.addr_make("owner");
         let registry = deps.api.addr_make("registry");
         let pauser = deps.api.addr_make("pauser");
+        let guardrail = deps.api.addr_make("guardrail");
         let owner_info = message_info(&owner, &[]);
 
         let msg = InstantiateMsg {
             owner: owner.to_string(),
             registry: registry.to_string(),
             pauser: pauser.to_string(),
+            guardrail: guardrail.to_string(),
         };
 
         instantiate(deps.as_mut(), env.clone(), owner_info.clone(), msg).unwrap();

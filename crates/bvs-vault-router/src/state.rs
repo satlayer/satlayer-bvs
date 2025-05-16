@@ -11,6 +11,10 @@ pub(crate) const VAULTS: Map<&Addr, Vault> = Map::new("vaults");
 
 /// Storage for the router address
 pub(crate) const REGISTRY: Item<Addr> = Item::new("registry");
+
+/// Storage for the guardrail contract address
+pub(crate) const GUARDRAIL: Item<Addr> = Item::new("guardrail");
+
 #[cw_serde]
 pub struct Vault {
     pub whitelisted: bool,
@@ -183,10 +187,13 @@ pub(crate) fn update_slashing_request_status(
     status: SlashingRequestStatus,
 ) -> StdResult<SlashingRequest> {
     SLASHING_REQUESTS.update(store, slashing_request_id.clone(), |slashing_request| {
-        let mut slashing_request =
-            slashing_request.ok_or_else(|| StdError::not_found("Slashing request id not found"))?;
-        slashing_request.status = status.into();
-        Ok(slashing_request)
+        match slashing_request {
+            Some(mut slashing_request) => {
+                slashing_request.status = status.into();
+                Ok(slashing_request)
+            }
+            None => Err(StdError::not_found("Slashing request id not found")),
+        }
     })
 }
 
@@ -194,8 +201,8 @@ pub(crate) fn remove_slashing_request_id(
     store: &mut dyn Storage,
     service: &Service,
     operator: &Operator,
-) {
-    SLASHING_REQUEST_IDS.remove(store, (service, operator));
+) -> StdResult<()> {
+    Ok(SLASHING_REQUEST_IDS.remove(store, (service, operator)))
 }
 
 /// Stores the slashed collaterals locked into the router
@@ -204,6 +211,13 @@ pub(crate) fn remove_slashing_request_id(
 /// the absolute number to be slashed translated from bip is varying vault by vault for the same
 /// slash request entry.
 pub(crate) const SLASH_LOCKED: Map<(SlashingRequestId, &Addr), Uint128> = Map::new("slash_locked");
+
+pub(crate) fn remove_all_slash_locked_by_id(
+    store: &mut dyn Storage,
+    slashing_request_id: SlashingRequestId,
+) -> StdResult<()> {
+    Ok(SLASH_LOCKED.prefix(slashing_request_id).clear(store, None))
+}
 
 #[cfg(test)]
 mod test {
@@ -312,8 +326,108 @@ mod test {
         .unwrap();
         assert_eq!(response.status, SlashingRequestStatus::Canceled);
 
-        remove_slashing_request_id(&mut deps.storage, &service, &operator);
+        let _ = remove_slashing_request_id(&mut deps.storage, &service, &operator);
 
         assert!(SLASHING_REQUEST_IDS.is_empty(&deps.storage));
+    }
+
+    #[test]
+    fn test_remove_all_slash_locked_by_id() {
+        let mut deps = mock_dependencies();
+
+        // Create a slashing request ID
+        let slashing_request_id = SlashingRequestId::from([1u8; 32]);
+
+        // Create multiple vault addresses
+        let vault1 = deps.api.addr_make("vault1");
+        let vault2 = deps.api.addr_make("vault2");
+        let vault3 = deps.api.addr_make("vault3");
+
+        // Add entries to SLASH_LOCKED with the same slashing request ID
+        SLASH_LOCKED
+            .save(
+                &mut deps.storage,
+                (slashing_request_id.clone(), &vault1),
+                &Uint128::new(100),
+            )
+            .unwrap();
+        SLASH_LOCKED
+            .save(
+                &mut deps.storage,
+                (slashing_request_id.clone(), &vault2),
+                &Uint128::new(200),
+            )
+            .unwrap();
+        SLASH_LOCKED
+            .save(
+                &mut deps.storage,
+                (slashing_request_id.clone(), &vault3),
+                &Uint128::new(300),
+            )
+            .unwrap();
+
+        // Create a different slashing request ID to test that it's not affected
+        let different_slashing_request_id = SlashingRequestId::from([2u8; 32]);
+        SLASH_LOCKED
+            .save(
+                &mut deps.storage,
+                (different_slashing_request_id.clone(), &vault1),
+                &Uint128::new(400),
+            )
+            .unwrap();
+
+        // Verify entries are stored correctly
+        assert_eq!(
+            SLASH_LOCKED
+                .load(&deps.storage, (slashing_request_id.clone(), &vault1))
+                .unwrap(),
+            Uint128::new(100)
+        );
+        assert_eq!(
+            SLASH_LOCKED
+                .load(&deps.storage, (slashing_request_id.clone(), &vault2))
+                .unwrap(),
+            Uint128::new(200)
+        );
+        assert_eq!(
+            SLASH_LOCKED
+                .load(&deps.storage, (slashing_request_id.clone(), &vault3))
+                .unwrap(),
+            Uint128::new(300)
+        );
+        assert_eq!(
+            SLASH_LOCKED
+                .load(
+                    &deps.storage,
+                    (different_slashing_request_id.clone(), &vault1)
+                )
+                .unwrap(),
+            Uint128::new(400)
+        );
+
+        // Call the function to remove all entries with the specific slashing request ID
+        remove_all_slash_locked_by_id(&mut deps.storage, slashing_request_id.clone()).unwrap();
+
+        // Verify all entries with the specific ID are removed
+        assert!(SLASH_LOCKED
+            .may_load(&deps.storage, (slashing_request_id.clone(), &vault1))
+            .unwrap()
+            .is_none());
+        assert!(SLASH_LOCKED
+            .may_load(&deps.storage, (slashing_request_id.clone(), &vault2))
+            .unwrap()
+            .is_none());
+        assert!(SLASH_LOCKED
+            .may_load(&deps.storage, (slashing_request_id.clone(), &vault3))
+            .unwrap()
+            .is_none());
+
+        // Verify that entries with different IDs are not affected
+        assert_eq!(
+            SLASH_LOCKED
+                .load(&deps.storage, (different_slashing_request_id, &vault1))
+                .unwrap(),
+            Uint128::new(400)
+        );
     }
 }

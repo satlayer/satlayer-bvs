@@ -1,3 +1,4 @@
+use bvs_guardrail::testing::GuardrailContract;
 use bvs_library::testing::{Cw20TokenContract, TestingContract};
 use bvs_pauser::testing::PauserContract;
 use bvs_registry::msg::Metadata;
@@ -25,6 +26,7 @@ impl TestContracts {
         let env = mock_env();
 
         let pauser = PauserContract::new(app, &env, None);
+        let _ = GuardrailContract::new(app, &env, None);
         let registry = RegistryContract::new(app, &env, None);
         let router = VaultRouterContract::new(app, &env, None);
         let cw20 = Cw20TokenContract::new(app, &env, None);
@@ -54,6 +56,7 @@ fn test_not_whitelisted() {
     let env = mock_env();
 
     let _ = PauserContract::new(app, &env, None);
+    let _ = GuardrailContract::new(app, &env, None);
     let _ = RegistryContract::new(app, &env, None);
     let _ = VaultRouterContract::new(app, &env, None);
     let cw20 = Cw20TokenContract::new(app, &env, None);

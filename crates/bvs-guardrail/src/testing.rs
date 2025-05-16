@@ -25,7 +25,28 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg, Empty> for GuardrailC
     fn default_init(app: &mut App, _env: &Env) -> InstantiateMsg {
         InstantiateMsg {
             owner: app.api().addr_make("owner").to_string(),
-            members: vec![],
+            members: vec![
+                cw4::Member {
+                    addr: app.api().addr_make("voter1").to_string(),
+                    weight: 1,
+                },
+                cw4::Member {
+                    addr: app.api().addr_make("voter2").to_string(),
+                    weight: 1,
+                },
+                cw4::Member {
+                    addr: app.api().addr_make("voter3").to_string(),
+                    weight: 1,
+                },
+                cw4::Member {
+                    addr: app.api().addr_make("voter4").to_string(),
+                    weight: 1,
+                },
+                cw4::Member {
+                    addr: app.api().addr_make("owner").to_string(),
+                    weight: 0,
+                },
+            ],
             threshold: Threshold::AbsolutePercentage {
                 percentage: Decimal::percent(50),
             },
