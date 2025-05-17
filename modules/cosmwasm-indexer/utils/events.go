@@ -9,7 +9,7 @@ import (
 )
 
 // FindWASMEvents returns the WASM events
-func FindWASMEvents(events sdk.StringEvents) (sdk.StringEvents, bool) {
+func FindWASMEvents(events sdk.StringEvents) sdk.StringEvents {
 	var wasmEvents sdk.StringEvents
 	for _, event := range events {
 		if event.Type == wasmtypes.WasmModuleEventType {
@@ -17,11 +17,11 @@ func FindWASMEvents(events sdk.StringEvents) (sdk.StringEvents, bool) {
 			continue
 		}
 	}
-	return wasmEvents, false
+	return wasmEvents
 }
 
 // FindCustomWASMEvents returns the custom WASM events
-func FindCustomWASMEvents(events sdk.StringEvents) (sdk.StringEvents, bool) {
+func FindCustomWASMEvents(events sdk.StringEvents) sdk.StringEvents {
 	var customWASMEvents sdk.StringEvents
 	for _, event := range events {
 		if strings.Contains(event.Type, wasmtypes.CustomContractEventPrefix) {
@@ -29,7 +29,7 @@ func FindCustomWASMEvents(events sdk.StringEvents) (sdk.StringEvents, bool) {
 			continue
 		}
 	}
-	return customWASMEvents, false
+	return customWASMEvents
 }
 
 // ExtractStringEvent extracts key-value pairs from StringEvent "attributes" field.
