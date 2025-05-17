@@ -88,26 +88,26 @@ func (m *Module) HandleMsgExecuteContract(index int, tx *junotypes.Transaction, 
 
 	txEvents := sdktypes.StringifyEvents(tx.Events)
 
-	wasmEvents, found := utils.FindWASMEvents(txEvents)
+	wasmEvents := utils.FindWASMEvents(txEvents)
 	wasmByteEvents := emptyJSONBytes
-	if found {
+	if len(wasmEvents) > 0 {
 		if wasmByteEvents, err = utils.ExtractStringEvents(wasmEvents); err != nil {
 			slog.Error("Failed to extract WASM event", "error", err)
 			wasmByteEvents = emptyJSONBytes
 		}
 	} else {
-		slog.Warn("Not found WASM event in execute events")
+		slog.Warn("No WASM events found in execute events")
 	}
 
-	customWASMEvents, found := utils.FindCustomWASMEvents(txEvents)
+	customWASMEvents := utils.FindCustomWASMEvents(txEvents)
 	customWASMByteEvents := emptyJSONBytes
-	if found {
+	if len(customWASMEvents) > 0 {
 		if customWASMByteEvents, err = utils.ExtractStringEvents(customWASMEvents); err != nil {
 			slog.Error("Failed to extract custom WASM event", "error", err)
 			customWASMByteEvents = emptyJSONBytes
 		}
 	} else {
-		slog.Warn("Not found custom WASM event in execute events")
+		slog.Warn("No custom WASM events found in execute events")
 	}
 
 	slog.Info("Execute events", slog.Any("all events", txEvents), slog.Any("wasmEvents", wasmEvents),
