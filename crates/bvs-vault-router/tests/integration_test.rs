@@ -1745,3 +1745,178 @@ fn cancel_slashing_error_cases() {
         );
     }
 }
+
+#[test]
+fn test_slash_request_during_phases() {
+    let (mut app, tc) = TestContracts::init();
+
+    let operator = app.api().addr_make("operator");
+    let service = app.api().addr_make("service");
+
+    // register operator + service
+    {
+        tc.registry
+            .execute(
+                &mut app,
+                &operator,
+                &bvs_registry::msg::ExecuteMsg::RegisterAsOperator {
+                    metadata: Metadata {
+                        name: Some("operator".to_string()),
+                        uri: None,
+                    },
+                },
+            )
+            .expect("failed to register operator");
+
+        tc.registry
+            .execute(
+                &mut app,
+                &service,
+                &bvs_registry::msg::ExecuteMsg::RegisterAsService {
+                    metadata: Metadata {
+                        name: Some("service".to_string()),
+                        uri: None,
+                    },
+                },
+            )
+            .expect("failed to register service");
+
+        let owner = app.api().addr_make("owner");
+
+        let msg = &ExecuteMsg::SetVault {
+            vault: tc.bank_vault.addr().to_string(),
+            whitelisted: true,
+        };
+
+        tc.vault_router.execute(&mut app, &owner, msg).unwrap();
+
+        let msg = &ExecuteMsg::SetVault {
+            vault: tc.cw20_vault.addr().to_string(),
+            whitelisted: true,
+        };
+
+        tc.vault_router.execute(&mut app, &owner, msg).unwrap();
+    }
+
+    // stake funds
+    {
+        let owner = app.api().addr_make("owner");
+        let denom = "denom";
+
+        let staker = app.api().addr_make("staker");
+        let msg = bvs_vault_cw20::msg::ExecuteMsg::DepositFor(RecipientAmount {
+            recipient: staker.clone(),
+            amount: Uint128::new(300_u128),
+        });
+        tc.cw20
+            .increase_allowance(&mut app, &staker, tc.cw20_vault.addr(), 300_u128);
+        tc.cw20.fund(&mut app, &staker, 300_u128);
+        tc.cw20_vault.execute(&mut app, &staker, &msg).unwrap();
+
+        // Fund the staker with some initial tokens
+        app.send_tokens(owner.clone(), staker.clone(), &coins(1_000_000_000, denom))
+            .unwrap();
+
+        // Deposit 115_687_654 tokens from staker to Vault
+        let msg = bvs_vault_bank::msg::ExecuteMsg::DepositFor(RecipientAmount {
+            recipient: staker.clone(),
+            amount: Uint128::new(200),
+        });
+        tc.bank_vault
+            .execute_with_funds(&mut app, &staker, &msg, coins(200, denom))
+            .unwrap();
+
+        let bank_vault_info = tc
+            .bank_vault
+            .query::<bvs_vault_base::msg::VaultInfoResponse>(
+                &mut app,
+                &bvs_vault_bank::msg::QueryMsg::VaultInfo {},
+            )
+            .unwrap();
+        let cw20_vault_info = tc
+            .cw20_vault
+            .query::<bvs_vault_base::msg::VaultInfoResponse>(
+                &mut app,
+                &bvs_vault_bank::msg::QueryMsg::VaultInfo {},
+            )
+            .unwrap();
+
+        assert_eq!(bank_vault_info.total_assets, Uint128::new(200));
+        assert_eq!(cw20_vault_info.total_assets, Uint128::new(300));
+    }
+
+    // service enable slashing
+    {
+        let msg = &bvs_registry::msg::ExecuteMsg::EnableSlashing {
+            slashing_parameters: SlashingParameters {
+                destination: Some(service.clone()),
+                max_slashing_bips: 5000,
+                resolution_window: 100,
+            },
+        };
+        tc.registry
+            .execute(&mut app, &service, msg)
+            .expect("failed to enable slashing");
+    }
+
+    app.update_block(|block| {
+        block.height += 1;
+        block.time = block.time.plus_seconds(10);
+    });
+
+    // register operator to service for active status
+    {
+        let msg = &bvs_registry::msg::ExecuteMsg::RegisterOperatorToService {
+            operator: operator.to_string(),
+        };
+        tc.registry
+            .execute(&mut app, &service, msg)
+            .expect("failed to register operator to service");
+
+        let msg = &bvs_registry::msg::ExecuteMsg::RegisterServiceToOperator {
+            service: service.to_string(),
+        };
+        tc.registry
+            .execute(&mut app, &operator, msg)
+            .expect("failed to register service to operator");
+    }
+
+    app.update_block(|block| {
+        block.height += 1;
+        block.time = block.time.plus_seconds(10);
+    });
+
+    // service request slashing
+    let slashing_request_payload = RequestSlashingPayload {
+        operator: operator.to_string(),
+        bips: 100,
+        timestamp: app.block_info().time,
+        metadata: SlashingMetadata {
+            reason: "test".to_string(),
+        },
+    };
+
+    let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
+    tc.vault_router.execute(&mut app, &service, msg).unwrap();
+
+    // query slashing request id
+    let msg = QueryMsg::SlashingRequestId {
+        service: service.to_string(),
+        operator: operator.to_string(),
+    };
+    let slashing_request_id: SlashingRequestIdResponse =
+        tc.vault_router.query(&mut app, &msg).unwrap();
+
+    {
+        // pass the resolution window
+        app.update_block(|block| {
+            block.height += 10;
+            block.time = block.time.plus_seconds(100);
+        });
+
+        let msg = ExecuteMsg::LockSlashing(slashing_request_id.clone().0.unwrap());
+        let res = tc.vault_router.execute(&mut app, &service, &msg);
+
+        assert!(res);
+    }
+}
