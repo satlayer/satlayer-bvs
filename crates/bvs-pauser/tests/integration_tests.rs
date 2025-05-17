@@ -20,7 +20,12 @@ fn pause_unpause() {
 
     {
         let owner = app.api().addr_make("owner");
-        let msg = &ExecuteMsg::Pause {};
+        let downstream_contract = app.api().addr_make("downstream_contract");
+        let method = "any";
+        let msg = &ExecuteMsg::Pause {
+            contract: downstream_contract.to_string(),
+            method: method.to_string(),
+        };
         let res = contract.execute(&mut app, &owner, msg).unwrap();
 
         assert_eq!(res.events.len(), 2);
@@ -29,20 +34,22 @@ fn pause_unpause() {
             Event::new("wasm")
                 .add_attribute("_contract_address", contract.addr.to_string())
                 .add_attribute("method", "pause")
+                .add_attribute("contract", downstream_contract.to_string())
+                .add_attribute("paused_method", "any")
                 .add_attribute("sender", app.api().addr_make("owner").to_string())
         );
     }
 
     {
         let msg = QueryMsg::IsPaused {
-            contract: app.api().addr_make("caller").to_string(),
+            contract: app.api().addr_make("downstream_contract").to_string(),
             method: "any".to_string(),
         };
         let res: IsPausedResponse = contract.query(&app, &msg).unwrap();
         assert!(res.is_paused());
 
         let msg = QueryMsg::CanExecute {
-            contract: app.api().addr_make("caller").to_string(),
+            contract: app.api().addr_make("downstream_contract").to_string(),
             sender: app.api().addr_make("sender").to_string(),
             method: "any".to_string(),
         };
@@ -52,9 +59,25 @@ fn pause_unpause() {
         assert_eq!(flag, CanExecuteFlag::Paused);
     }
 
+    // the method "any" is paused but the method "other" is not
+    {
+        let msg = QueryMsg::CanExecute {
+            contract: app.api().addr_make("downstream_contract").to_string(),
+            sender: app.api().addr_make("sender").to_string(),
+            method: "other".to_string(),
+        };
+        let res: CanExecuteResponse = contract.query(&app, &msg).unwrap();
+        assert_eq!(res.0, 0);
+        let flag: CanExecuteFlag = res.into();
+        assert_eq!(flag, CanExecuteFlag::CanExecute);
+    }
+
     {
         let owner = app.api().addr_make("owner");
-        let msg = &ExecuteMsg::Unpause {};
+        let msg = &ExecuteMsg::Unpause {
+            contract: app.api().addr_make("downstream_contract").to_string(),
+            method: "any".to_string(),
+        };
         let res = contract.execute(&mut app, &owner, msg).unwrap();
 
         assert_eq!(res.events.len(), 2);
@@ -64,20 +87,25 @@ fn pause_unpause() {
             Event::new("wasm")
                 .add_attribute("_contract_address", contract.addr.to_string())
                 .add_attribute("method", "unpause")
+                .add_attribute(
+                    "contract",
+                    app.api().addr_make("downstream_contract").to_string()
+                )
+                .add_attribute("unpaused_method", "any")
                 .add_attribute("sender", app.api().addr_make("owner").to_string())
         );
     }
 
     {
         let msg = QueryMsg::IsPaused {
-            contract: app.api().addr_make("caller").to_string(),
+            contract: app.api().addr_make("downstream_contract").to_string(),
             method: "any".to_string(),
         };
         let res: IsPausedResponse = contract.query(&app, &msg).unwrap();
         assert!(!res.is_paused());
 
         let msg = QueryMsg::CanExecute {
-            contract: app.api().addr_make("caller").to_string(),
+            contract: app.api().addr_make("downstream_contract").to_string(),
             sender: app.api().addr_make("sender").to_string(),
             method: "any".to_string(),
         };
@@ -85,6 +113,53 @@ fn pause_unpause() {
         assert_eq!(res.0, 0);
         let flag: CanExecuteFlag = res.into();
         assert_eq!(flag, CanExecuteFlag::CanExecute);
+    }
+}
+
+#[test]
+fn test_globally_pause_unpause() {
+    let (mut app, contract) = instantiate(None);
+
+    // globally pause
+    {
+        let owner = app.api().addr_make("owner");
+        let downstream_contract = app.api().addr_make("downstream_contract");
+        let method = "any";
+
+        let msg = ExecuteMsg::PauseGlobal {};
+        let res = contract.execute(&mut app, &owner, &msg).unwrap();
+
+        assert_eq!(res.events.len(), 2);
+
+        let msg = QueryMsg::IsPaused {
+            contract: downstream_contract.to_string(),
+            method: method.to_string(),
+        };
+
+        let res: IsPausedResponse = contract.query(&app, &msg).unwrap();
+
+        assert!(res.is_paused());
+    }
+
+    // globally unpause
+    {
+        let owner = app.api().addr_make("owner");
+        let downstream_contract = app.api().addr_make("downstream_contract");
+        let method = "any";
+
+        let msg = ExecuteMsg::UnpauseGlobal {};
+        let res = contract.execute(&mut app, &owner, &msg).unwrap();
+
+        assert_eq!(res.events.len(), 2);
+
+        let msg = QueryMsg::IsPaused {
+            contract: downstream_contract.to_string(),
+            method: method.to_string(),
+        };
+
+        let res: IsPausedResponse = contract.query(&app, &msg).unwrap();
+
+        assert!(!res.is_paused());
     }
 }
 
@@ -95,9 +170,15 @@ fn unauthorized_pause() {
         initial_paused: false,
     }));
 
+    let downstream_contract = app.api().addr_make("downstream_contract");
+    let method = "any";
+    let sender = app.api().addr_make("random");
+
     {
-        let sender = app.api().addr_make("random");
-        let msg = ExecuteMsg::Pause {};
+        let msg = ExecuteMsg::Pause {
+            contract: downstream_contract.to_string(),
+            method: method.to_string(),
+        };
         let err = contract.execute(&mut app, &sender, &msg).unwrap_err();
 
         assert_eq!(
@@ -108,34 +189,50 @@ fn unauthorized_pause() {
 
     {
         let msg = QueryMsg::IsPaused {
-            contract: app.api().addr_make("caller").to_string(),
-            method: "any".to_string(),
+            contract: downstream_contract.to_string(),
+            method: method.to_string(),
         };
         let res: IsPausedResponse = contract.query(&app, &msg).unwrap();
         assert!(!res.is_paused());
 
         let msg = QueryMsg::CanExecute {
-            contract: app.api().addr_make("caller").to_string(),
-            sender: app.api().addr_make("sender").to_string(),
-            method: "any".to_string(),
+            contract: downstream_contract.to_string(),
+            sender: sender.to_string(),
+            method: method.to_string(),
         };
         let res: CanExecuteResponse = contract.query(&app, &msg).unwrap();
         assert_eq!(res.0, 0);
         let flag: CanExecuteFlag = res.into();
         assert_eq!(flag, CanExecuteFlag::CanExecute);
     }
+
+    {
+        let msg = ExecuteMsg::PauseGlobal {};
+        let err = contract.execute(&mut app, &sender, &msg).unwrap_err();
+
+        assert_eq!(
+            err.root_cause().to_string(),
+            bvs_pauser::PauserError::Unauthorized {}.to_string()
+        );
+    }
 }
 
 #[test]
 fn unauthorized_unpause() {
     let (mut app, contract) = instantiate(Some(InstantiateMsg {
+        initial_paused: false,
         owner: App::default().api().addr_make("owner").to_string(),
-        initial_paused: true,
     }));
+
+    let downstream_contract = app.api().addr_make("downstream_contract");
+    let method = "any";
 
     {
         let sender = app.api().addr_make("not_authorized");
-        let msg = ExecuteMsg::Pause {};
+        let msg = ExecuteMsg::Pause {
+            contract: downstream_contract.to_string(),
+            method: method.to_string(),
+        };
         let err = contract.execute(&mut app, &sender, &msg).unwrap_err();
 
         assert_eq!(
@@ -146,22 +243,22 @@ fn unauthorized_unpause() {
 
     {
         let msg = QueryMsg::IsPaused {
-            contract: app.api().addr_make("caller").to_string(),
-            method: "any".to_string(),
+            contract: downstream_contract.to_string(),
+            method: method.to_string(),
         };
         let res: IsPausedResponse = contract.query(&app, &msg).unwrap();
 
-        assert!(res.is_paused());
+        assert!(!res.is_paused());
 
         let msg = QueryMsg::CanExecute {
-            contract: app.api().addr_make("caller").to_string(),
+            contract: downstream_contract.to_string(),
             sender: app.api().addr_make("sender").to_string(),
-            method: "any".to_string(),
+            method: method.to_string(),
         };
         let res: CanExecuteResponse = contract.query(&app, &msg).unwrap();
-        assert_eq!(res.0, 1);
+        assert_eq!(res.0, 0);
         let flag: CanExecuteFlag = res.into();
-        assert_eq!(flag, CanExecuteFlag::Paused);
+        assert_eq!(flag, CanExecuteFlag::CanExecute);
     }
 }
 

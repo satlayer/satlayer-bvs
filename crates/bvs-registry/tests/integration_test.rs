@@ -64,7 +64,14 @@ fn register_service_but_paused() {
     };
 
     pauser
-        .execute(&mut app, &owner, &bvs_pauser::msg::ExecuteMsg::Pause {})
+        .execute(
+            &mut app,
+            &owner,
+            &bvs_pauser::msg::ExecuteMsg::Pause {
+                method: "RegisterAsService".to_string(),
+                contract: registry.addr.to_string(),
+            },
+        )
         .unwrap();
 
     let err = registry

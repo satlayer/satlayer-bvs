@@ -4,15 +4,39 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 pub struct InstantiateMsg {
     /// Owner of this contract, who can pause and unpause
     pub owner: String,
-    /// Initial pause state
+    /// The initial paused state of satlayer contracts
     pub initial_paused: bool,
 }
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    Pause {},
+    /// ExecuteMsg Pause pauses a method on a contract.
+    /// Callable by the owner of the pauser contract
+    Pause {
+        /// address of the contract to be paused
+        contract: String,
+        /// method of a particular contract to be paused
+        method: String,
+    },
 
-    Unpause {},
+    /// ExecuteMsg UnPause unpauses a method on a contract.
+    /// Callable by the owner of the pauser contract
+    Unpause {
+        /// address of the contract to be unpaused
+        contract: String,
+        /// method of a particular contract to be unpaused
+        method: String,
+    },
+
+    /// ExecuteMsg PauseGlobal pauses all execution.
+    /// Callable by the owner of the pauser contract
+    /// Pauses Globally: Pause all contracts and methods.
+    PauseGlobal {},
+
+    /// ExecuteMsg UnpauseGlobal unpauses all execution.
+    /// Callable by the owner of the pauser contract
+    /// Unpauses Globally
+    UnpauseGlobal {},
 
     TransferOwnership {
         /// See [`bvs_library::ownership::transfer_ownership`] for more information on this field
