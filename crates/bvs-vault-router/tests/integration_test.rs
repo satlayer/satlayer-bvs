@@ -1,3 +1,4 @@
+use bvs_library::slashing::SlashingRequestId;
 use bvs_library::time::DAYS;
 use bvs_library::{
     ownership::OwnershipError,
@@ -14,7 +15,7 @@ use bvs_vault_router::msg::{
     RequestSlashingPayload, SlashingMetadata, SlashingRequestIdResponse, SlashingRequestResponse,
     Vault,
 };
-use bvs_vault_router::state::{SlashingRequestId, SlashingRequestStatus};
+use bvs_vault_router::state::SlashingRequestStatus;
 use bvs_vault_router::{
     msg::{ExecuteMsg, QueryMsg, VaultListResponse},
     testing::VaultRouterContract,
