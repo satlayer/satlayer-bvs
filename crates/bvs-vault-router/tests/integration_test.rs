@@ -1023,7 +1023,7 @@ fn test_slash_locking() {
         block.time = block.time.plus_seconds(10);
     });
 
-    // Pending slash request that are idle beyond expiry
+    // Pending slashing requests that are idle beyond expiry
     // should not block new slashing requests
     // and will be transitioned implicitly to cancel status
     let active_slashing_id;
