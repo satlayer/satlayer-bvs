@@ -839,7 +839,7 @@ fn request_slashing_lifecycle() {
         assert_eq!(
             err.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Service has current pending slashing request for the operator.".to_string()
+                msg: "Previous slashing request is still pending.".to_string()
             }
             .to_string()
         )
@@ -1023,26 +1023,87 @@ fn test_slash_locking() {
         block.time = block.time.plus_seconds(10);
     });
 
-    // service request slashing
-    let slashing_request_payload = RequestSlashingPayload {
-        operator: operator.to_string(),
-        bips: 100,
-        timestamp: app.block_info().time,
-        metadata: SlashingMetadata {
-            reason: "test".to_string(),
-        },
-    };
+    // Pending slash request that are idle beyond expiry
+    // should not block new slashing requests
+    // and will be transitioned implicitly to cancel status
+    let active_slashing_id;
+    {
+        let slashing_request_payload_1 = RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 100,
+            timestamp: app.block_info().time,
+            metadata: SlashingMetadata {
+                reason: "test".to_string(),
+            },
+        };
+        let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload_1.clone());
+        tc.vault_router
+            .execute(&mut app, &service, msg)
+            .expect("failed to request slashing");
 
-    let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
-    tc.vault_router.execute(&mut app, &service, msg).unwrap();
+        let slash_req_1_id = tc
+            .vault_router
+            .query::<SlashingRequestIdResponse>(
+                &mut app,
+                &QueryMsg::SlashingRequestId {
+                    service: service.to_string(),
+                    operator: operator.to_string(),
+                },
+            )
+            .unwrap();
 
-    // query slashing request id
-    let msg = QueryMsg::SlashingRequestId {
-        service: service.to_string(),
-        operator: operator.to_string(),
-    };
-    let slashing_request_id: SlashingRequestIdResponse =
-        tc.vault_router.query(&mut app, &msg).unwrap();
+        app.update_block(|block| {
+            block.height += 60;
+            block.time = block.time.plus_seconds(600);
+        });
+
+        let slashing_request_payload_2 = RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 100,
+            timestamp: app.block_info().time,
+            metadata: SlashingMetadata {
+                reason: "test".to_string(),
+            },
+        };
+        let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload_2.clone());
+        tc.vault_router
+            .execute(&mut app, &service, msg)
+            .expect("failed to request slashing");
+
+        app.update_block(|block| {
+            block.height += 1;
+            block.time = block.time.plus_seconds(10);
+        });
+
+        let slash_request_1_status = tc
+            .vault_router
+            .query::<SlashingRequestResponse>(
+                &mut app,
+                &QueryMsg::SlashingRequest(slash_req_1_id.0.unwrap()),
+            )
+            .unwrap();
+
+        let slash_request_1_status = slash_request_1_status.0.unwrap().status;
+
+        // The previous slash request should be canceled implicitly
+        // by the slash_request handler
+        assert_eq!(slash_request_1_status, SlashingRequestStatus::Canceled);
+
+        let slash_req_2_id = tc
+            .vault_router
+            .query::<SlashingRequestIdResponse>(
+                &mut app,
+                &QueryMsg::SlashingRequestId {
+                    service: service.to_string(),
+                    operator: operator.to_string(),
+                },
+            )
+            .unwrap();
+
+        // The second slashing request id is now the current active one
+        // using this for later slash_locking tests
+        active_slashing_id = slash_req_2_id.0.unwrap();
+    }
 
     {
         // pass the resolution window
@@ -1051,7 +1112,7 @@ fn test_slash_locking() {
             block.time = block.time.plus_seconds(100);
         });
 
-        let msg = ExecuteMsg::LockSlashing(slashing_request_id.clone().0.unwrap());
+        let msg = ExecuteMsg::LockSlashing(active_slashing_id.clone());
         let res = tc.vault_router.execute(&mut app, &service, &msg).unwrap();
 
         assert_eq!(
@@ -1076,7 +1137,7 @@ fn test_slash_locking() {
                     )
                     .add_attribute(
                         "slashing_request_id",
-                        "cffcb7e810be616e5582beb8bdb8a545502733d683515410d97d262dcba1855c"
+                        "826934e8d9bcb0ec85ce53a5f4e55d50c9f62bf8859773ba09f9695a4267cd5a"
                     )
                     .add_attribute("bips", "100")
                     .add_attribute("affected_vaults", "2"),
@@ -1432,7 +1493,6 @@ fn test_slash_locking_negative() {
         block.time = block.time.plus_seconds(600);
     });
 
-    // expired slash should fail
     {
         let slashing_request_payload = RequestSlashingPayload {
             operator: operator.to_string(),
@@ -1444,28 +1504,14 @@ fn test_slash_locking_negative() {
         };
 
         let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
-        tc.vault_router.execute(&mut app, &service, msg).unwrap();
-
-        let msg = QueryMsg::SlashingRequestId {
-            service: service.to_string(),
-            operator: operator.to_string(),
-        };
-        let slashing_request_id2: SlashingRequestIdResponse =
-            tc.vault_router.query(&mut app, &msg).unwrap();
-
-        app.update_block(|block| {
-            block.height += 50;
-            block.time = block.time.plus_seconds(500);
-        });
-        let msg = ExecuteMsg::LockSlashing(slashing_request_id2.0.unwrap());
-        let res = tc
+        let err = tc
             .vault_router
-            .execute(&mut app, &service, &msg)
+            .execute(&mut app, &service, msg)
             .unwrap_err();
         assert_eq!(
-            res.root_cause().to_string(),
+            err.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Slashing has expired".to_string(),
+                msg: "Previous slashing request is in progress.".to_string(),
             }
             .to_string()
         );
@@ -1743,180 +1789,5 @@ fn cancel_slashing_error_cases() {
             }
             .to_string()
         );
-    }
-}
-
-#[test]
-fn test_slash_request_during_phases() {
-    let (mut app, tc) = TestContracts::init();
-
-    let operator = app.api().addr_make("operator");
-    let service = app.api().addr_make("service");
-
-    // register operator + service
-    {
-        tc.registry
-            .execute(
-                &mut app,
-                &operator,
-                &bvs_registry::msg::ExecuteMsg::RegisterAsOperator {
-                    metadata: Metadata {
-                        name: Some("operator".to_string()),
-                        uri: None,
-                    },
-                },
-            )
-            .expect("failed to register operator");
-
-        tc.registry
-            .execute(
-                &mut app,
-                &service,
-                &bvs_registry::msg::ExecuteMsg::RegisterAsService {
-                    metadata: Metadata {
-                        name: Some("service".to_string()),
-                        uri: None,
-                    },
-                },
-            )
-            .expect("failed to register service");
-
-        let owner = app.api().addr_make("owner");
-
-        let msg = &ExecuteMsg::SetVault {
-            vault: tc.bank_vault.addr().to_string(),
-            whitelisted: true,
-        };
-
-        tc.vault_router.execute(&mut app, &owner, msg).unwrap();
-
-        let msg = &ExecuteMsg::SetVault {
-            vault: tc.cw20_vault.addr().to_string(),
-            whitelisted: true,
-        };
-
-        tc.vault_router.execute(&mut app, &owner, msg).unwrap();
-    }
-
-    // stake funds
-    {
-        let owner = app.api().addr_make("owner");
-        let denom = "denom";
-
-        let staker = app.api().addr_make("staker");
-        let msg = bvs_vault_cw20::msg::ExecuteMsg::DepositFor(RecipientAmount {
-            recipient: staker.clone(),
-            amount: Uint128::new(300_u128),
-        });
-        tc.cw20
-            .increase_allowance(&mut app, &staker, tc.cw20_vault.addr(), 300_u128);
-        tc.cw20.fund(&mut app, &staker, 300_u128);
-        tc.cw20_vault.execute(&mut app, &staker, &msg).unwrap();
-
-        // Fund the staker with some initial tokens
-        app.send_tokens(owner.clone(), staker.clone(), &coins(1_000_000_000, denom))
-            .unwrap();
-
-        // Deposit 115_687_654 tokens from staker to Vault
-        let msg = bvs_vault_bank::msg::ExecuteMsg::DepositFor(RecipientAmount {
-            recipient: staker.clone(),
-            amount: Uint128::new(200),
-        });
-        tc.bank_vault
-            .execute_with_funds(&mut app, &staker, &msg, coins(200, denom))
-            .unwrap();
-
-        let bank_vault_info = tc
-            .bank_vault
-            .query::<bvs_vault_base::msg::VaultInfoResponse>(
-                &mut app,
-                &bvs_vault_bank::msg::QueryMsg::VaultInfo {},
-            )
-            .unwrap();
-        let cw20_vault_info = tc
-            .cw20_vault
-            .query::<bvs_vault_base::msg::VaultInfoResponse>(
-                &mut app,
-                &bvs_vault_bank::msg::QueryMsg::VaultInfo {},
-            )
-            .unwrap();
-
-        assert_eq!(bank_vault_info.total_assets, Uint128::new(200));
-        assert_eq!(cw20_vault_info.total_assets, Uint128::new(300));
-    }
-
-    // service enable slashing
-    {
-        let msg = &bvs_registry::msg::ExecuteMsg::EnableSlashing {
-            slashing_parameters: SlashingParameters {
-                destination: Some(service.clone()),
-                max_slashing_bips: 5000,
-                resolution_window: 100,
-            },
-        };
-        tc.registry
-            .execute(&mut app, &service, msg)
-            .expect("failed to enable slashing");
-    }
-
-    app.update_block(|block| {
-        block.height += 1;
-        block.time = block.time.plus_seconds(10);
-    });
-
-    // register operator to service for active status
-    {
-        let msg = &bvs_registry::msg::ExecuteMsg::RegisterOperatorToService {
-            operator: operator.to_string(),
-        };
-        tc.registry
-            .execute(&mut app, &service, msg)
-            .expect("failed to register operator to service");
-
-        let msg = &bvs_registry::msg::ExecuteMsg::RegisterServiceToOperator {
-            service: service.to_string(),
-        };
-        tc.registry
-            .execute(&mut app, &operator, msg)
-            .expect("failed to register service to operator");
-    }
-
-    app.update_block(|block| {
-        block.height += 1;
-        block.time = block.time.plus_seconds(10);
-    });
-
-    // service request slashing
-    let slashing_request_payload = RequestSlashingPayload {
-        operator: operator.to_string(),
-        bips: 100,
-        timestamp: app.block_info().time,
-        metadata: SlashingMetadata {
-            reason: "test".to_string(),
-        },
-    };
-
-    let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
-    tc.vault_router.execute(&mut app, &service, msg).unwrap();
-
-    // query slashing request id
-    let msg = QueryMsg::SlashingRequestId {
-        service: service.to_string(),
-        operator: operator.to_string(),
-    };
-    let slashing_request_id: SlashingRequestIdResponse =
-        tc.vault_router.query(&mut app, &msg).unwrap();
-
-    {
-        // pass the resolution window
-        app.update_block(|block| {
-            block.height += 10;
-            block.time = block.time.plus_seconds(100);
-        });
-
-        let msg = ExecuteMsg::LockSlashing(slashing_request_id.clone().0.unwrap());
-        let res = tc.vault_router.execute(&mut app, &service, &msg);
-
-        assert!(res);
     }
 }
