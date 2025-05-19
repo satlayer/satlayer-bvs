@@ -22,9 +22,10 @@ use bvs_vault_router::{
     testing::VaultRouterContract,
     ContractError,
 };
-use cosmwasm_std::{coin, coins, BalanceResponse, BankQuery, QueryRequest, Uint128};
+use cosmwasm_std::{coin, coins, BalanceResponse, BankQuery, Decimal, QueryRequest, Uint128};
 use cosmwasm_std::{testing::mock_env, Event, HexBinary, Uint64};
 use cw_multi_test::{App, Executor};
+use cw_utils::Threshold;
 
 struct TestContracts {
     guardrail: GuardrailContract,
@@ -46,9 +47,45 @@ impl TestContracts {
         });
         let env = mock_env();
 
+        let owner = app.api().addr_make("owner");
+        let voter1 = app.api().addr_make("voter1");
+        let voter2 = app.api().addr_make("voter2");
+        let voter3 = app.api().addr_make("voter3");
+        let voter4 = app.api().addr_make("voter4");
+
+        let guardrail_init_msg = bvs_guardrail::msg::InstantiateMsg {
+            owner: owner.to_string(),
+            members: vec![
+                cw4::Member {
+                    addr: voter1.to_string(),
+                    weight: 1,
+                },
+                cw4::Member {
+                    addr: voter2.to_string(),
+                    weight: 1,
+                },
+                cw4::Member {
+                    addr: voter3.to_string(),
+                    weight: 1,
+                },
+                cw4::Member {
+                    addr: voter4.to_string(),
+                    weight: 1,
+                },
+                cw4::Member {
+                    addr: owner.to_string(),
+                    weight: 0,
+                },
+            ],
+            threshold: Threshold::AbsolutePercentage {
+                percentage: Decimal::percent(50),
+            },
+            default_expiration: 100,
+        };
+
         let _ = PauserContract::new(&mut app, &env, None);
         let registry = RegistryContract::new(&mut app, &env, None);
-        let guardrail = GuardrailContract::new(&mut app, &env, None);
+        let guardrail = GuardrailContract::new(&mut app, &env, Some(guardrail_init_msg));
         let vault_router = VaultRouterContract::new(&mut app, &env, None);
         let bank_vault = VaultBankContract::new(&mut app, &env, None);
         let cw20 = Cw20TokenContract::new(&mut app, &env, None);

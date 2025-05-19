@@ -1,4 +1,3 @@
-use bvs_guardrail::testing::GuardrailContract;
 use bvs_library::testing::TestingContract;
 use bvs_pauser::testing::PauserContract;
 use bvs_registry::msg::Metadata;
@@ -63,7 +62,6 @@ impl TestContracts {
         let env = mock_env();
 
         let pauser = PauserContract::new(&mut app, &env, None);
-        let _ = GuardrailContract::new(&mut app, &env, None);
         let registry = RegistryContract::new(&mut app, &env, None);
         let router = VaultRouterContract::new(&mut app, &env, None);
         let vault = VaultBankTokenizedContract::new(&mut app, &env, None);

@@ -324,7 +324,6 @@ dependencies = [
 name = "bvs-vault-bank"
 version = "0.0.0"
 dependencies = [
- "bvs-guardrail",
  "bvs-library",
  "bvs-pauser",
  "bvs-registry",
@@ -345,7 +344,6 @@ dependencies = [
 name = "bvs-vault-bank-tokenized"
 version = "0.0.0"
 dependencies = [
- "bvs-guardrail",
  "bvs-library",
  "bvs-pauser",
  "bvs-registry",
@@ -385,7 +383,6 @@ dependencies = [
 name = "bvs-vault-cw20"
 version = "0.0.0"
 dependencies = [
- "bvs-guardrail",
  "bvs-library",
  "bvs-pauser",
  "bvs-registry",
@@ -406,7 +403,6 @@ dependencies = [
 name = "bvs-vault-cw20-tokenized"
 version = "0.0.0"
 dependencies = [
- "bvs-guardrail",
  "bvs-library",
  "bvs-pauser",
  "bvs-registry",
@@ -428,7 +424,6 @@ dependencies = [
 name = "bvs-vault-factory"
 version = "0.0.0"
 dependencies = [
- "bvs-guardrail",
  "bvs-library",
  "bvs-pauser",
  "bvs-registry",

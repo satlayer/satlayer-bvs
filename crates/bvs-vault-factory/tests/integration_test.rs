@@ -1,4 +1,3 @@
-use bvs_guardrail::testing::GuardrailContract;
 use bvs_library::testing::{Cw20TokenContract, TestingContract};
 use bvs_pauser::testing::PauserContract;
 use bvs_registry::testing::RegistryContract;
@@ -28,7 +27,6 @@ impl TestContracts {
         let env = mock_env();
 
         let pauser = PauserContract::new(&mut app, &env, None);
-        let _ = GuardrailContract::new(&mut app, &env, None);
         let registry = RegistryContract::new(&mut app, &env, None);
         let vault_router = VaultRouterContract::new(&mut app, &env, None);
         let cw20 = Cw20TokenContract::new(&mut app, &env, None);

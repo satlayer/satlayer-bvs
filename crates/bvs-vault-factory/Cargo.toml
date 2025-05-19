@@ -35,7 +35,6 @@ bvs-vault-bank-tokenized = { workspace = true }
 bvs-vault-cw20 = { workspace = true }
 bvs-vault-cw20-tokenized = { workspace = true }
 bvs-registry = { workspace = true }
-bvs-guardrail = { workspace = true }
 
 [target."cfg(not(target_arch = \"wasm32\"))".dependencies]
 cw-multi-test = { workspace = true }
