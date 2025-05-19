@@ -132,10 +132,10 @@ pub(crate) const SLASHING_REQUESTS: Map<SlashingRequestId, SlashingRequest> =
     Map::new("slashing_requests");
 
 /// Will return Some() when:
-/// 1.Slash is sitting idle at pending state and beyond the expiry date.
-/// 2.Slash is at pending state and within the expiry date.
-/// 3.Slash is locked and not yet finalized but within the expiry date.
-/// 4.Slash is locked and not yet finalized but beyond the expiry date.
+/// 1. Slash is sitting idle in a pending state and beyond the expiry date.
+/// 2. Slash is in a pending state and within the expiry date.
+/// 3. Slash is locked and not yet finalized, but within the expiry date.
+/// 4. Slash is locked and not yet finalized, but beyond the expiry date.
 /// Will return None when:
 /// 1. Slash is canceled
 /// 2. Slash is finalized
