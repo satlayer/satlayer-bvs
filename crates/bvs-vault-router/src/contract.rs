@@ -642,17 +642,8 @@ mod execute {
                         transfer_msgs.push(exec_msg.into());
                     }
                     None => {
-                        // No destination => BURN 🔥
-                        let msg = &cw20::Cw20ExecuteMsg::Burn {
-                            amount: locked_amount,
-                        };
-                        // convert to CosmosMsg
-                        let exec_msg = cosmwasm_std::WasmMsg::Execute {
-                            contract_addr: vault_info.asset_reference.to_string(),
-                            msg: to_json_binary(msg)?,
-                            funds: vec![],
-                        };
-                        transfer_msgs.push(exec_msg.into());
+                        // No destination => leave it in the router.
+                        // this is just a no-op
                     }
                 },
                 AssetType::Bank => {
@@ -670,8 +661,8 @@ mod execute {
                             transfer_msgs.push(exec_msg.into());
                         }
                         None => {
-                            // No destination => BURN 🔥
-                            // for bank, there is no way to burn so this is just a no-op
+                            // No destination => leave it in the router.
+                            // this is just a no-op
                         }
                     }
                 }
