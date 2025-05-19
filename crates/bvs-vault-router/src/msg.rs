@@ -4,7 +4,9 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{from_json, to_json_binary, Addr, Binary, Timestamp, Uint128, Uint64};
 
 #[cw_serde]
-pub struct MigrateMsg {}
+pub struct MigrateMsg {
+    pub guardrail: String,
+}
 
 #[cw_serde]
 pub struct InstantiateMsg {

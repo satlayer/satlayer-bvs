@@ -77,13 +77,16 @@ pub fn execute(
 /// #### 1.0.0 to 2.0.0
 /// New `OPERATOR_VAULTS: Map<(&Addr, &Addr), ()>` is created to allow vaults to be queried by
 /// operator. The existing `VAULTS` iterated over and added to `OPERATOR_VAULTS`.
+///
+/// #### 2.0.0 to 3.0.0
+/// The `GUARDRAIL` contract is added to the router.
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     let old_version =
         cw2::ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    // TODO: migrate to save guardrail contract
     match old_version.major {
         1 => migrate::vaults_to_index_operator(deps),
+        2 => migrate::add_guardrail_to_state(deps, msg),
         _ => Ok(Response::default()),
     }
 }
@@ -103,6 +106,16 @@ mod migrate {
 
             OPERATOR_VAULTS.save(deps.storage, (&vault_info.operator, &vault), &())?;
         }
+
+        Ok(Response::default())
+    }
+
+    pub fn add_guardrail_to_state(
+        deps: DepsMut,
+        msg: MigrateMsg,
+    ) -> Result<Response, ContractError> {
+        let guardrail = deps.api.addr_validate(&msg.guardrail)?;
+        GUARDRAIL.save(deps.storage, &guardrail)?;
 
         Ok(Response::default())
     }
