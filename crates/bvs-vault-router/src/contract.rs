@@ -293,15 +293,7 @@ mod execute {
         let prev_slashing_request =
             state::get_pending_slashing_request(deps.storage, &service, &operator)?;
 
-        // get_pending_slashing_request() will return Some() when:
-        // 1.Slash is sitting idle at pending state and beyond the expiry date.
-        // 2.Slash is at pending state and within the expiry date.
-        // 3.Slash is locked and not yet finalized but within the expiry date.
-        // 4.Slash is locked and not yet finalized but beyond the expiry date.
-        // get_pending_slashing_request() will return None when:
-        // 1. Slash is canceled
-        // 2. Slash is finalized
-        // 3. During locking phase the handler catches the slash is expired
+        // refer to the [get_pending_slashing_request()] function doc for Some() or None return cases
         if let Some(prev_slashing_request) = prev_slashing_request {
             match SlashingRequestStatus::try_from(prev_slashing_request.status)? {
                 SlashingRequestStatus::Pending => {
