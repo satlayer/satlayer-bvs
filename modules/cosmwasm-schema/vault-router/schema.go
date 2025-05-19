@@ -14,9 +14,10 @@ type SlashingLockedResponse []SlashingLockedResponseItem
 type WithdrawalLockPeriodResponse string
 
 type InstantiateMsg struct {
-	Owner    string `json:"owner"`
-	Pauser   string `json:"pauser"`
-	Registry string `json:"registry"`
+	Guardrail string `json:"guardrail"`
+	Owner     string `json:"owner"`
+	Pauser    string `json:"pauser"`
+	Registry  string `json:"registry"`
 }
 
 // ExecuteMsg SetVault the vault contract in the router and whitelist (true/false) it. Only
@@ -55,6 +56,13 @@ type InstantiateMsg struct {
 //
 // The service (slash initiator) should cancel the slashing process if the operator has
 // resolved the issue. The definition of “resolved” is up to the service to define.
+//
+// ExecuteMsg FinalizeSlashing moves the slashed collateral from the router to the
+// destination specified in the slashing parameters that were agreed upon by the service and
+// operator.
+//
+// This is the final step in the slashing process and should only be called after the
+// request has been locked, and the guardrail proposal has been voted on and passed.
 type ExecuteMsg struct {
 	SetVault                *SetVault             `json:"set_vault,omitempty"`
 	SetWithdrawalLockPeriod *string               `json:"set_withdrawal_lock_period,omitempty"`
@@ -62,6 +70,7 @@ type ExecuteMsg struct {
 	RequestSlashing         *RequestSlashingClass `json:"request_slashing,omitempty"`
 	LockSlashing            *string               `json:"lock_slashing,omitempty"`
 	CancelSlashing          *string               `json:"cancel_slashing,omitempty"`
+	FinalizeSlashing        *string               `json:"finalize_slashing,omitempty"`
 }
 
 type RequestSlashingClass struct {

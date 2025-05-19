@@ -103,6 +103,7 @@ type IsWhitelistedResponse = boolean;
 type WithdrawalLockPeriodResponse = string;
 
 export interface InstantiateMsg {
+  guardrail: string;
   owner: string;
   pauser: string;
   registry: string;
@@ -145,6 +146,13 @@ export interface InstantiateMsg {
  *
  * The service (slash initiator) should cancel the slashing process if the operator has
  * resolved the issue. The definition of “resolved” is up to the service to define.
+ *
+ * ExecuteMsg FinalizeSlashing moves the slashed collateral from the router to the
+ * destination specified in the slashing parameters that were agreed upon by the service and
+ * operator.
+ *
+ * This is the final step in the slashing process and should only be called after the
+ * request has been locked, and the guardrail proposal has been voted on and passed.
  */
 export interface ExecuteMsg {
   set_vault?: SetVault;
@@ -153,6 +161,7 @@ export interface ExecuteMsg {
   request_slashing?: RequestSlashingClass;
   lock_slashing?: string;
   cancel_slashing?: string;
+  finalize_slashing?: string;
 }
 
 export interface RequestSlashingClass {
