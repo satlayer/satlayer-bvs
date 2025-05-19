@@ -120,7 +120,7 @@ mod receipt_cw20_execute {
         deps: DepsMut,
         recipient: Addr,
         amount: Uint128,
-    ) -> Result<Response, cw20_base::ContractError> {
+    ) -> Result<Uint128, cw20_base::ContractError> {
         let mut config = RECEIPT_TOKEN_INFO
             .may_load(deps.storage)?
             .ok_or(cw20_base::ContractError::Unauthorized {})?;
@@ -136,11 +136,7 @@ mod receipt_cw20_execute {
             |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
         )?;
 
-        let res = Response::new()
-            .add_attribute("action", "mint")
-            .add_attribute("to", recipient)
-            .add_attribute("amount", amount);
-        Ok(res)
+        Ok(config.total_supply)
     }
 
     pub fn execute_base(
@@ -244,14 +240,11 @@ mod vault_execute {
         // critical section
         // Issue receipt token to msg.recipient
         // mint new receipt token to staker
-        super::receipt_cw20_execute::mint_internal(
+        let total_receipt_token_supply = super::receipt_cw20_execute::mint_internal(
             deps.branch(),
             msg.recipient.clone(),
             new_receipt_tokens_to_be_mint,
         )?;
-
-        let total_receipt_token_supply =
-            cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
 
         Ok(Response::new().add_event(
             Event::new("DepositFor")
