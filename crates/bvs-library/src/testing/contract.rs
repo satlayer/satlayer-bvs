@@ -5,12 +5,13 @@ use cw_multi_test::error::AnyResult;
 use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 
 /// TestingContract is a trait that provides a common interface for setting up testing contracts.
 pub trait TestingContract<IM, EM, QM, MM = Empty>
 where
     IM: serde::Serialize,
-    EM: serde::Serialize,
+    EM: serde::Serialize + Debug,
     QM: serde::Serialize,
     MM: serde::Serialize,
 {
@@ -68,14 +69,7 @@ where
         msg: &EM,
         funds: Vec<Coin>,
     ) -> AnyResult<AppResponse> {
-        let msg_bin = to_json_binary(&msg).expect("cannot serialize ExecuteMsg");
-        let execute_msg = WasmMsg::Execute {
-            contract_addr: self.addr().to_string(),
-            msg: msg_bin,
-            funds,
-        };
-
-        app.execute(sender.clone(), execute_msg.into())
+        app.execute_contract(sender.clone(), self.addr().clone(), msg, &funds)
     }
 
     fn query<T: DeserializeOwned>(&self, app: &App, msg: &QM) -> StdResult<T> {
