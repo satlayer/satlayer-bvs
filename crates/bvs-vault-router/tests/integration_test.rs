@@ -80,7 +80,7 @@ impl TestContracts {
             threshold: Threshold::AbsolutePercentage {
                 percentage: Decimal::percent(50),
             },
-            default_expiration: 100,
+            default_expiration: 1000,
         };
 
         let _ = PauserContract::new(&mut app, &env, None);
@@ -1426,6 +1426,315 @@ fn test_finalize_slashing() {
     assert_eq!(proposal.status, cw3::Status::Passed);
 
     // Finalize slashing
+    let msg = ExecuteMsg::FinalizeSlashing(slashing_request_id.clone());
+    let res = tc.vault_router.execute(&mut app, &service, &msg).unwrap();
+
+    // Verify the slashing is finalized
+    // Check events
+    assert_eq!(
+        res.events,
+        vec![
+            Event::new("execute").add_attribute("_contract_address", tc.vault_router.addr.as_str()),
+            Event::new("wasm-FinalizeSlashing")
+                .add_attribute("_contract_address", tc.vault_router.addr.as_str())
+                .add_attribute("service", service.to_string())
+                .add_attribute("operator", operator)
+                .add_attribute("slashing_request_id", slashing_request_id.to_string())
+                .add_attribute("destination", service.to_string())
+                .add_attribute("affected_vaults", 2.to_string()),
+            Event::new("transfer")
+                .add_attribute("recipient", service.to_string())
+                .add_attribute("sender", tc.vault_router.addr().to_string())
+                .add_attribute("amount", "2denom"),
+            Event::new("execute").add_attribute("_contract_address", tc.cw20.addr().to_string()),
+            Event::new("wasm")
+                .add_attribute("_contract_address", tc.cw20.addr().to_string())
+                .add_attribute("action", "transfer")
+                .add_attribute("from", tc.vault_router.addr().to_string())
+                .add_attribute("to", service.to_string())
+                .add_attribute("amount", "3"),
+        ]
+    );
+
+    // Check that the slashed assets are transferred to the destination
+    let query = BankQuery::Balance {
+        address: service.to_string(),
+        denom: "denom".to_string(),
+    };
+    let service_bank_balance: BalanceResponse =
+        app.wrap().query(&QueryRequest::Bank(query)).unwrap();
+    assert_eq!(service_bank_balance.amount, coin(2, "denom")); // 1% of 200
+
+    let service_cw20_balance = tc.cw20.balance(&app, &service);
+    assert_eq!(service_cw20_balance, 3_u128); // 1% of 300
+
+    // Check that the router no longer has the slashed assets
+    let query = BankQuery::Balance {
+        address: tc.vault_router.addr().to_string(),
+        denom: "denom".to_string(),
+    };
+    let router_bank_balance: BalanceResponse =
+        app.wrap().query(&QueryRequest::Bank(query)).unwrap();
+    assert_eq!(router_bank_balance.amount, coin(0, "denom"));
+
+    let router_cw20_balance = tc.cw20.balance(&app, tc.vault_router.addr());
+    assert_eq!(router_cw20_balance, 0_u128);
+
+    // Check that the slashing request is marked as finalized
+    let msg = QueryMsg::SlashingRequest(slashing_request_id.clone());
+    let SlashingRequestResponse(slashing_request) = tc.vault_router.query(&mut app, &msg).unwrap();
+    let slashing_request = slashing_request.unwrap();
+
+    assert_eq!(slashing_request.status, SlashingRequestStatus::Finalized);
+}
+
+#[test]
+fn test_finalize_slashing_negative() {
+    let (mut app, tc) = TestContracts::init();
+
+    let owner = app.api().addr_make("owner");
+    let operator = app.api().addr_make("operator");
+    let service = app.api().addr_make("service");
+
+    // register operator + service
+    {
+        tc.registry
+            .execute(
+                &mut app,
+                &operator,
+                &bvs_registry::msg::ExecuteMsg::RegisterAsOperator {
+                    metadata: Metadata {
+                        name: Some("operator".to_string()),
+                        uri: None,
+                    },
+                },
+            )
+            .expect("failed to register operator");
+
+        tc.registry
+            .execute(
+                &mut app,
+                &service,
+                &bvs_registry::msg::ExecuteMsg::RegisterAsService {
+                    metadata: Metadata {
+                        name: Some("service".to_string()),
+                        uri: None,
+                    },
+                },
+            )
+            .expect("failed to register service");
+
+        let owner = app.api().addr_make("owner");
+
+        let msg = &ExecuteMsg::SetVault {
+            vault: tc.bank_vault.addr().to_string(),
+            whitelisted: true,
+        };
+
+        tc.vault_router.execute(&mut app, &owner, msg).unwrap();
+
+        let msg = &ExecuteMsg::SetVault {
+            vault: tc.cw20_vault.addr().to_string(),
+            whitelisted: true,
+        };
+
+        tc.vault_router.execute(&mut app, &owner, msg).unwrap();
+    }
+
+    // stake funds
+    {
+        let owner = app.api().addr_make("owner");
+        let denom = "denom";
+
+        let staker = app.api().addr_make("staker");
+        tc.cw20
+            .increase_allowance(&mut app, &staker, tc.cw20_vault.addr(), 300_u128);
+        tc.cw20.fund(&mut app, &staker, 300_u128);
+        // staker stake 300 cw20 tokens
+        let msg = bvs_vault_cw20::msg::ExecuteMsg::DepositFor(RecipientAmount {
+            recipient: staker.clone(),
+            amount: Uint128::new(300_u128),
+        });
+        tc.cw20_vault.execute(&mut app, &staker, &msg).unwrap();
+
+        // fund the staker with some initial bank tokens
+        app.send_tokens(owner.clone(), staker.clone(), &coins(1_000_000_000, denom))
+            .unwrap();
+
+        // staker stake 200 bank token
+        let msg = bvs_vault_bank::msg::ExecuteMsg::DepositFor(RecipientAmount {
+            recipient: staker.clone(),
+            amount: Uint128::new(200),
+        });
+        tc.bank_vault
+            .execute_with_funds(&mut app, &staker, &msg, coins(200, denom))
+            .unwrap();
+    }
+
+    // service enable slashing
+    {
+        let msg = &bvs_registry::msg::ExecuteMsg::EnableSlashing {
+            slashing_parameters: SlashingParameters {
+                destination: Some(service.clone()),
+                max_slashing_bips: 5000,
+                resolution_window: 100,
+            },
+        };
+        tc.registry
+            .execute(&mut app, &service, msg)
+            .expect("failed to enable slashing");
+    }
+
+    app.update_block(|block| {
+        block.height += 1;
+        block.time = block.time.plus_seconds(10);
+    });
+
+    // register operator to service and vice versa for active status
+    {
+        let msg = &bvs_registry::msg::ExecuteMsg::RegisterOperatorToService {
+            operator: operator.to_string(),
+        };
+        tc.registry
+            .execute(&mut app, &service, msg)
+            .expect("failed to register operator to service");
+
+        let msg = &bvs_registry::msg::ExecuteMsg::RegisterServiceToOperator {
+            service: service.to_string(),
+        };
+        tc.registry
+            .execute(&mut app, &operator, msg)
+            .expect("failed to register service to operator");
+    }
+
+    app.update_block(|block| {
+        block.height += 1;
+        block.time = block.time.plus_seconds(10);
+    });
+
+    // service request slashing
+    let slashing_request_payload = RequestSlashingPayload {
+        operator: operator.to_string(),
+        bips: 100,
+        timestamp: app.block_info().time,
+        metadata: SlashingMetadata {
+            reason: "test".to_string(),
+        },
+    };
+
+    let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
+    tc.vault_router.execute(&mut app, &service, msg).unwrap();
+
+    // query slashing request id
+    let msg = QueryMsg::SlashingRequestId {
+        service: service.to_string(),
+        operator: operator.to_string(),
+    };
+    let SlashingRequestIdResponse(slashing_request_id) =
+        tc.vault_router.query(&mut app, &msg).unwrap();
+    let slashing_request_id = slashing_request_id.unwrap();
+
+    // create guardrail proposal
+    {
+        let msg = bvs_guardrail::msg::ExecuteMsg::Propose {
+            slashing_request_id: slashing_request_id.clone(),
+            reason: "test".to_string(),
+        };
+        tc.guardrail.execute(&mut app, &owner, &msg).unwrap();
+    }
+
+    // Negative - fails to Finalize slashing
+    {
+        let msg = ExecuteMsg::FinalizeSlashing(slashing_request_id.clone());
+        let err = tc
+            .vault_router
+            .execute(&mut app, &service, &msg)
+            .unwrap_err();
+        assert_eq!(
+            err.root_cause().to_string(),
+            ContractError::InvalidSlashingRequest {
+                msg: "Slashing request has not passed by guardrail".to_string()
+            }
+            .to_string()
+        );
+    }
+
+    // pass the resolution window
+    app.update_block(|block| {
+        block.height += 10;
+        block.time = block.time.plus_seconds(100);
+    });
+
+    // Pass guardrail vote
+    {
+        let voter1 = app.api().addr_make("voter1");
+        let voter2 = app.api().addr_make("voter2");
+        let voter3 = app.api().addr_make("voter3");
+
+        let msg = bvs_guardrail::msg::ExecuteMsg::Vote {
+            slashing_request_id: slashing_request_id.clone(),
+            vote: cw3::Vote::Yes,
+        };
+        tc.guardrail.execute(&mut app, &voter1, &msg).unwrap();
+        tc.guardrail.execute(&mut app, &voter2, &msg).unwrap();
+        tc.guardrail.execute(&mut app, &voter3, &msg).unwrap();
+    }
+
+    // Negative - Finalize slashing passed guardrail but fails due to request not locked
+    {
+        let msg = ExecuteMsg::FinalizeSlashing(slashing_request_id.clone());
+        let err = tc
+            .vault_router
+            .execute(&mut app, &service, &msg)
+            .unwrap_err();
+        assert_eq!(
+            err.root_cause().to_string(),
+            ContractError::InvalidSlashingRequest {
+                msg: "Slashing request is not locked".to_string()
+            }
+            .to_string()
+        );
+    }
+
+    // Lock slashing
+    let msg = ExecuteMsg::LockSlashing(slashing_request_id.clone());
+    tc.vault_router.execute(&mut app, &service, &msg).unwrap();
+
+    // pass the guardrail proposal expiry
+    app.update_block(|block| {
+        block.height += 100;
+        block.time = block.time.plus_seconds(1000);
+    });
+
+    // check that guardrail proposal is still passed
+    let proposal_status = bvs_guardrail::msg::QueryMsg::ProposalBySlashingRequestId {
+        slashing_request_id: slashing_request_id.clone(),
+    };
+    let proposal: cw3::ProposalResponse = tc.guardrail.query(&app, &proposal_status).unwrap();
+    assert_eq!(proposal.status, cw3::Status::Passed);
+
+    // Negative - Other addr calls finalize
+    {
+        let msg = ExecuteMsg::FinalizeSlashing(slashing_request_id.clone());
+        let err = tc.vault_router.execute(&mut app, &owner, &msg).unwrap_err();
+        assert_eq!(
+            err.root_cause().to_string(),
+            ContractError::Unauthorized {
+                msg: "Only the service that requested slashing can finalize it".to_string()
+            }
+            .to_string()
+        );
+    }
+
+    // Positive - service disable slashing, should not affect finalize slashing
+    {
+        let msg = &bvs_registry::msg::ExecuteMsg::DisableSlashing {};
+        tc.registry
+            .execute(&mut app, &service, msg)
+            .expect("failed to disable slashing");
+    }
+
+    // Finalize slashing should go through
     let msg = ExecuteMsg::FinalizeSlashing(slashing_request_id.clone());
     let res = tc.vault_router.execute(&mut app, &service, &msg).unwrap();
 

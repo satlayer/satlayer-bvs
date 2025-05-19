@@ -59,7 +59,12 @@ pub enum ExecuteMsg {
     /// has resolved the issue. The definition of “resolved” is up to the service to define.
     CancelSlashing(SlashingRequestId),
 
-    /// ExecuteMsg FinalizeSlashing TODO ADD COMMENTS
+    /// ExecuteMsg FinalizeSlashing moves the slashed collateral from the router to the destination
+    /// specified in the slashing parameters that were agreed upon by the service and operator.
+    ///
+    /// This is the final step in the slashing process
+    /// and should only be called after the request has been locked,
+    /// and the guardrail proposal has been voted on and passed.
     FinalizeSlashing(SlashingRequestId),
 }
 

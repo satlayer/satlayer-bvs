@@ -118,7 +118,7 @@ mod execute {
         self, SlashingRequest, SlashingRequestStatus, DEFAULT_WITHDRAWAL_LOCK_PERIOD,
         SLASHING_REQUESTS, SLASH_LOCKED, WITHDRAWAL_LOCK_PERIOD,
     };
-    use crate::ContractError::InvalidSlashingRequest;
+    use crate::ContractError::{InvalidSlashingRequest, Unauthorized};
     use bvs_library::addr::Operator;
     use bvs_library::ownership;
     use bvs_library::slashing::SlashingRequestId;
@@ -570,7 +570,7 @@ mod execute {
             },
         )?;
         if guardrail_proposal_status != cw3::Status::Passed {
-            return Err(ContractError::InvalidSlashingRequest {
+            return Err(InvalidSlashingRequest {
                 msg: "Slashing request has not passed by guardrail".to_string(), // TODO: fix wording
             });
         }
@@ -587,8 +587,15 @@ mod execute {
 
         // Only service that requested slashing can finalize
         if slash_req.service != service {
+            return Err(Unauthorized {
+                msg: "Only the service that requested slashing can finalize it".to_string(),
+            });
+        }
+
+        // Only LOCKED slashing request can be finalized
+        if slash_req.status != SlashingRequestStatus::Locked {
             return Err(InvalidSlashingRequest {
-                msg: "Only the service that requested slashing can finalize it.".to_string(),
+                msg: "Slashing request is not locked".to_string(),
             });
         }
 
