@@ -28,9 +28,8 @@ pub enum ExecuteMsg {
         method: String,
     },
 
-    /// ExecuteMsg PauseGlobal pauses all execution.
+    /// ExecuteMsg PauseGlobal pauses all execution on all contracts and methods.
     /// Callable by the owner of the pauser contract
-    /// Pauses Globally: Pause all contracts and methods.
     PauseGlobal {},
 
     /// ExecuteMsg UnpauseGlobal unpauses all execution.
