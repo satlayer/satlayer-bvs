@@ -19,7 +19,7 @@ pub enum ExecuteMsg {
         method: String,
     },
 
-    /// ExecuteMsg UnPause unpauses a method on a contract.
+    /// ExecuteMsg Unpause unpauses a method on a contract.
     /// Callable by the owner of the pauser contract
     Unpause {
         /// address of the contract to be unpaused
