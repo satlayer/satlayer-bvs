@@ -4,7 +4,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 pub struct InstantiateMsg {
     /// Owner of this contract, who can pause and unpause
     pub owner: String,
-    /// The initial paused state of satlayer contracts
+    /// The initial paused state of this contract
     pub initial_paused: bool,
 }
 
