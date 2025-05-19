@@ -12,17 +12,17 @@ use bvs_vault_bank::testing::VaultBankContract;
 use bvs_vault_base::msg::RecipientAmount;
 use bvs_vault_cw20::testing::VaultCw20Contract;
 use bvs_vault_router::msg::{
-    RequestSlashingPayload, SlashingMetadata, SlashingRequestIdResponse, SlashingRequestResponse,
-    Vault,
+    RequestSlashingPayload, RequestSlashingResponse, SlashingMetadata, SlashingRequestIdResponse,
+    SlashingRequestResponse, Vault,
 };
-use bvs_vault_router::state::SlashingRequestStatus;
+use bvs_vault_router::state::{SlashingRequest, SlashingRequestStatus};
 use bvs_vault_router::{
     msg::{ExecuteMsg, QueryMsg, VaultListResponse},
     testing::VaultRouterContract,
     ContractError,
 };
 use cosmwasm_std::{coin, coins, BalanceResponse, BankQuery, QueryRequest, Uint128};
-use cosmwasm_std::{from_json, testing::mock_env, Binary, Event, HexBinary, Uint64};
+use cosmwasm_std::{testing::mock_env, Event, HexBinary, Uint64};
 use cw_multi_test::{App, Executor};
 
 struct TestContracts {
@@ -428,28 +428,13 @@ fn request_slashing_successful() {
         ]
     );
 
-    // Needed due to bug in cw-multi-test https://github.com/CosmWasm/cw-multi-test/issues/257
-    use bvs_vault_router::state::SlashingRequest;
-    use prost::Message;
-
-    #[derive(Clone, PartialEq, Message)]
-    struct ExecuteResponse {
-        #[prost(bytes, tag = "1")]
-        pub data: Vec<u8>,
-    }
-
-    // TODO: fix assert response.data eq to slashing_id
-    let slashing_id_bin: Binary = response.data.unwrap();
-    let slashing_id_bin2 = ExecuteResponse::decode(slashing_id_bin.clone().as_slice()).unwrap();
-    let slashing_id = from_json::<Option<SlashingRequestIdResponse>>(slashing_id_bin2.data);
-    let SlashingRequestIdResponse(res) = slashing_id.unwrap().unwrap();
+    let RequestSlashingResponse(slashing_id) = response.data.unwrap().into();
     assert_eq!(
-        res,
-        Some(
-            HexBinary::from_hex("cffcb7e810be616e5582beb8bdb8a545502733d683515410d97d262dcba1855c")
-                .unwrap()
-                .into()
+        slashing_id,
+        SlashingRequestId::from_hex(
+            "cffcb7e810be616e5582beb8bdb8a545502733d683515410d97d262dcba1855c"
         )
+        .unwrap()
     );
 
     // query slashing request id
