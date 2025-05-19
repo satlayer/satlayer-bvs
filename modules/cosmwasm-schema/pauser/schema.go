@@ -8,7 +8,7 @@ type CanExecuteResponse int64
 type IsPausedResponse int64
 
 type InstantiateMsg struct {
-	// The initial paused state of satlayer contracts
+	// The initial paused state of this contract
 	InitialPaused bool `json:"initial_paused"`
 	// Owner of this contract, who can pause and unpause
 	Owner string `json:"owner"`
@@ -17,14 +17,14 @@ type InstantiateMsg struct {
 // ExecuteMsg Pause pauses a method on a contract. Callable by the owner of the pauser
 // contract
 //
-// ExecuteMsg UnPause unpauses a method on a contract. Callable by the owner of the pauser
+// ExecuteMsg Unpause unpauses a method on a contract. Callable by the owner of the pauser
 // contract
 //
-// ExecuteMsg PauseGlobal pauses all execution. Callable by the owner of the pauser contract
-// Pauses Globally: Pause all contracts and methods.
+// ExecuteMsg PauseGlobal pauses all execution on all contracts and methods. Callable by the
+// owner of the pauser contract
 //
-// ExecuteMsg UnpauseGlobal unpauses all execution. Callable by the owner of the pauser
-// contract Unpauses Globally
+// ExecuteMsg UnpauseGlobal unpauses all contracts and methods that were previously paused.
+// Callable by the owner of the pauser contract
 type ExecuteMsg struct {
 	Pause             *Pause             `json:"pause,omitempty"`
 	Unpause           *Unpause           `json:"unpause,omitempty"`
