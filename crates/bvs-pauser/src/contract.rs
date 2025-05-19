@@ -170,7 +170,6 @@ mod query {
     }
 
     /// TODO(future): The _sender is currently not used.
-    ///  To implement checking of paused status against contract and method.
     ///  Added for future compatibility, not yet utilized—current design pauses method and contract.
     ///  Global pause takes precedence over contract and method pause.
     pub fn can_execute(
