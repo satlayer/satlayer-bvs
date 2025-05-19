@@ -32,9 +32,8 @@ pub enum ExecuteMsg {
     /// Callable by the owner of the pauser contract
     PauseGlobal {},
 
-    /// ExecuteMsg UnpauseGlobal unpauses all execution.
+    /// ExecuteMsg UnpauseGlobal unpauses all contracts and methods that were previously paused.
     /// Callable by the owner of the pauser contract
-    /// Unpauses Globally
     UnpauseGlobal {},
 
     TransferOwnership {
