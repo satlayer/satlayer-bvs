@@ -1372,6 +1372,52 @@ fn test_slash_locking_negative() {
         block.time = block.time.plus_seconds(10);
     });
 
+    //expired slash should get canceled
+    {
+        let slashing_request_payload = RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 100,
+            timestamp: app.block_info().time,
+            metadata: SlashingMetadata {
+                reason: "expired test".to_string(),
+            },
+        };
+
+        let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
+        tc.vault_router.execute(&mut app, &service, msg).unwrap();
+
+        let msg = QueryMsg::SlashingRequestId {
+            service: service.to_string(),
+            operator: operator.to_string(),
+        };
+        let slashing_request_id: SlashingRequestIdResponse =
+            tc.vault_router.query(&mut app, &msg).unwrap();
+
+        // aged the slash entry to be expired
+        app.update_block(|block| {
+            block.height += 80;
+            block.time = block.time.plus_seconds(800);
+        });
+
+        let msg = ExecuteMsg::LockSlashing(slashing_request_id.clone().0.unwrap());
+        let res = tc
+            .vault_router
+            .execute(&mut app, &service, &msg)
+            .unwrap_err();
+        assert_eq!(
+            res.root_cause().to_string(),
+            ContractError::InvalidSlashingRequest {
+                msg: "Slashing has expired".to_string(),
+            }
+            .to_string()
+        );
+    }
+
+    app.update_block(|block| {
+        block.height += 1;
+        block.time = block.time.plus_seconds(10);
+    });
+
     // service request slashing
     let slashing_request_payload = RequestSlashingPayload {
         operator: operator.to_string(),

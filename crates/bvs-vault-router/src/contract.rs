@@ -331,9 +331,7 @@ mod execute {
                     // Eligible for new request
                 }
                 SlashingRequestStatus::Finalized => {
-                    // Previous slash has been finalized
-                    // Slashing lifecycle for previous slash is done
-                    // Eligible for new request
+                    // Previous slash has been finalized, eligible for new request
                 }
             }
         }
@@ -425,15 +423,6 @@ mod execute {
         let now = env.block.time;
 
         if now > slash_req.request_expiry {
-            // when slash is expired
-            // locking phase will implicitly cancel the slash
-            // clearing the way for new request
-            state::remove_slashing_request_id(deps.storage, &slash_req.service, &accused_operator);
-            state::update_slashing_request_status(
-                deps.storage,
-                id.clone(),
-                SlashingRequestStatus::Canceled,
-            )?;
             return Err(ContractError::InvalidSlashingRequest {
                 msg: "Slashing has expired".to_string(),
             });
