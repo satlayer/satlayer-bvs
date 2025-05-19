@@ -8,19 +8,39 @@ type CanExecuteResponse int64
 type IsPausedResponse int64
 
 type InstantiateMsg struct {
-	// Initial pause state
+	// The initial paused state of this contract
 	InitialPaused bool `json:"initial_paused"`
 	// Owner of this contract, who can pause and unpause
 	Owner string `json:"owner"`
 }
 
+// ExecuteMsg Pause pauses a method on a contract. Callable by the owner of the pauser
+// contract
+//
+// ExecuteMsg Unpause unpauses a method on a contract. Callable by the owner of the pauser
+// contract
+//
+// ExecuteMsg PauseGlobal pauses all execution on all contracts and methods. Callable by the
+// owner of the pauser contract
+//
+// ExecuteMsg UnpauseGlobal unpauses all contracts and methods that were previously paused.
+// Callable by the owner of the pauser contract
 type ExecuteMsg struct {
 	Pause             *Pause             `json:"pause,omitempty"`
 	Unpause           *Unpause           `json:"unpause,omitempty"`
+	PauseGlobal       *PauseGlobal       `json:"pause_global,omitempty"`
+	UnpauseGlobal     *UnpauseGlobal     `json:"unpause_global,omitempty"`
 	TransferOwnership *TransferOwnership `json:"transfer_ownership,omitempty"`
 }
 
 type Pause struct {
+	// address of the contract to be paused
+	Contract string `json:"contract"`
+	// method of a particular contract to be paused
+	Method string `json:"method"`
+}
+
+type PauseGlobal struct {
 }
 
 type TransferOwnership struct {
@@ -29,6 +49,13 @@ type TransferOwnership struct {
 }
 
 type Unpause struct {
+	// address of the contract to be unpaused
+	Contract string `json:"contract"`
+	// method of a particular contract to be unpaused
+	Method string `json:"method"`
+}
+
+type UnpauseGlobal struct {
 }
 
 type QueryMsg struct {
