@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	emptyJSONBytes = []byte("{}")
+	emptyJSONBytes = []byte("[]")
 
 	msgFilter = map[string]bool{
 		types.MsgStoreCode:            false,

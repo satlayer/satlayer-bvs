@@ -34,7 +34,7 @@ func FindCustomWASMEvents(events sdk.StringEvents) sdk.StringEvents {
 
 // ExtractStringEvent extracts key-value pairs from StringEvent "attributes" field.
 func ExtractStringEvents(events sdk.StringEvents) ([]byte, error) {
-	resultArray := make([]map[string]any, 0, len(events))
+	resultArray := make([]map[string]any, len(events))
 	for i, event := range events {
 		newAttrs := make([]map[string]string, 0, len(event.Attributes))
 		for _, attr := range event.Attributes {
