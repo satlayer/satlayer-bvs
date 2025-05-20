@@ -42,7 +42,7 @@ type CosmWasmIndexerTestSuite struct {
 }
 
 func (c *CosmWasmIndexerTestSuite) RunIndexer(ctx context.Context) error {
-	projectRoot, err := filepath.Abs("../..")
+	projectRoot, err := filepath.Abs("../../..")
 	if err != nil {
 		return fmt.Errorf("failed to generate config: %w", err)
 	}
@@ -71,7 +71,7 @@ func (c *CosmWasmIndexerTestSuite) RunIndexer(ctx context.Context) error {
 			"cd /app/cosmwasm-indexer && " +
 				"go build -v -o indexer ./cmd/indexer && " +
 				"echo 'Build completed' && " +
-				"./indexer start --home /app/cosmwasm-indexer/tests/testdata",
+				"./indexer start --home /app/cosmwasm-indexer/tests/e2e/testdata",
 		},
 		WaitingFor: wait.ForAll(
 			wait.ForLog("Build completed").WithStartupTimeout(200*time.Second),

@@ -1,17 +1,17 @@
-version: '3.8'
+version: "3.8"
 
 services:
   babylon:
     image: babylonlabs/babylond:v1.0.0-rc.6
-    working_dir: /app
-    command: ["/bin/bash", "/app/babylon.sh"]
+    working_dir: /home/babylon
+    user: babylon
+    command: ["/bin/bash", "/home/babylon/babylon.sh"]
     volumes:
-      - ./babylon.sh:/app/babylon.sh
+      - ./tests/scripts/babylon.sh:/home/babylon/babylon.sh
     ports:
-      - "26656:26656"  # P2P
-      - "26657:26657"  # RPC
-      - "1317:1317"    # API
-      - "9090:9090"    # gRPC
+      - "26657:26657"
+      - "1317:1317"
+      - "9090:9090"
 
   postgres:
     image: postgres:16-alpine3.20
@@ -22,8 +22,8 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./tests/testdata/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
-      - ./tests/testdata/postgres.conf:/etc/postgresql/postgresql.conf
+      - ./tests/e2e/testdata/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+      - ./tests/e2e/testdata/postgres.conf:/etc/postgresql/postgresql.conf
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U docker -d indexer"]
@@ -31,14 +31,20 @@ services:
       timeout: 5s
       retries: 5
 
-  # indexer:
-  #   working_dir: /app
-  #   build: .
-  #   depends_on:
-  #     babylon:
-  #       condition: service_started
-  #     postgres:
-  #       condition: service_healthy
+  indexer:
+    build: .
+    working_dir: /home/indexer
+    user: indexer
+    command: ["/bin/bash", "/home/indexer/indexer.sh"]
+    volumes:
+      - ./tests/scripts/indexer.sh:/home/indexer/indexer.sh
+    depends_on:
+      babylon:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep indexer"]
 
 volumes:
   postgres_data:

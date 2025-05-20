@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+cd /home/babylon
+
 babylond testnet --v 1 --output-dir .localnet/ --keyring-backend test --chain-id sat-bbn-localnet
 
 sed -i 's/timeout_commit = \"5s\"/timeout_commit = \"1s\"/' .localnet/node0/babylond/config/config.toml
