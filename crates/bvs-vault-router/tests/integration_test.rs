@@ -1653,7 +1653,7 @@ fn test_finalize_slashing_negative() {
         assert_eq!(
             err.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Slashing request has not passed by guardrail".to_string()
+                msg: "Slashing request has not passed the guardrail".to_string()
             }
             .to_string()
         );

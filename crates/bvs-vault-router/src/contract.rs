@@ -76,26 +76,24 @@ pub fn execute(
 ///
 /// #### 1.0.0 to 2.0.0
 /// New `OPERATOR_VAULTS: Map<(&Addr, &Addr), ()>` is created to allow vaults to be queried by
-/// operator. The existing `VAULTS` iterated over and added to `OPERATOR_VAULTS`.
-///
-/// #### 2.0.0 to 3.0.0
+/// operator.
+/// The existing `VAULTS` iterated over and added to `OPERATOR_VAULTS`.
 /// The `GUARDRAIL` contract is added to the router.
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     let old_version =
         cw2::ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     match old_version.major {
-        1 => migrate::vaults_to_index_operator(deps),
-        2 => migrate::add_guardrail_to_state(deps, msg),
+        1 => migrate::add_guardrail_to_state(deps, msg),
         _ => Ok(Response::default()),
     }
 }
 
 mod migrate {
+    use super::*;
     use crate::state::{OPERATOR_VAULTS, VAULTS};
 
-    use super::*;
-
+    #[allow(dead_code)]
     pub fn vaults_to_index_operator(deps: DepsMut) -> Result<Response, ContractError> {
         let vaults = VAULTS
             .keys(deps.storage, None, None, cosmwasm_std::Order::Ascending)
@@ -584,7 +582,7 @@ mod execute {
         )?;
         if guardrail_proposal_status != cw3::Status::Passed {
             return Err(InvalidSlashingRequest {
-                msg: "Slashing request has not passed by guardrail".to_string(), // TODO: fix wording
+                msg: "Slashing request has not passed the guardrail".to_string(),
             });
         }
 
@@ -645,12 +643,15 @@ mod execute {
             let (affected_vault, locked_amount) = locked_vault_amount?;
             let vault_info = vault::get_vault_info(deps.as_ref(), &affected_vault)?;
 
-            match vault_info.asset_type {
-                AssetType::Cw20 => match slashing_parameters.destination {
-                    Some(ref destination) => {
+            // if destination is None, leave it in the router.
+            // if destination is Some, transfer to the destination.
+            if slashing_parameters.destination.is_some() {
+                let destination = slashing_parameters.clone().destination.unwrap().to_string();
+                match vault_info.asset_type {
+                    AssetType::Cw20 => {
                         // craft cw20 transfer msg
                         let msg = &cw20::Cw20ExecuteMsg::Transfer {
-                            recipient: destination.to_string(),
+                            recipient: destination,
                             amount: locked_amount,
                         };
                         // convert to CosmosMsg
@@ -661,32 +662,20 @@ mod execute {
                         };
                         transfer_msgs.push(exec_msg.into());
                     }
-                    None => {
-                        // No destination => leave it in the router.
-                        // this is just a no-op
+                    AssetType::Bank => {
+                        // craft bank transfer msg
+                        let exec_msg = BankMsg::Send {
+                            to_address: destination,
+                            amount: vec![Coin {
+                                denom: vault_info.asset_reference,
+                                amount: locked_amount,
+                            }],
+                        };
+                        // convert to CosmosMsg
+                        transfer_msgs.push(exec_msg.into());
                     }
-                },
-                AssetType::Bank => {
-                    match slashing_parameters.destination {
-                        Some(ref destination) => {
-                            // craft bank transfer msg
-                            let exec_msg = BankMsg::Send {
-                                to_address: destination.to_string(),
-                                amount: vec![Coin {
-                                    denom: vault_info.asset_reference,
-                                    amount: locked_amount,
-                                }],
-                            };
-                            // convert to CosmosMsg
-                            transfer_msgs.push(exec_msg.into());
-                        }
-                        None => {
-                            // No destination => leave it in the router.
-                            // this is just a no-op
-                        }
-                    }
-                }
-            };
+                };
+            }
         }
 
         // Remove all slash locked for the given slashing id
