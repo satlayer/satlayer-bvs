@@ -201,8 +201,8 @@ importers:
         specifier: workspace:*
         version: link:../../crates/bvs-vault-router
       quicktype-core:
-        specifier: ^23.2.0
-        version: 23.2.0
+        specifier: ^23.2.5
+        version: 23.2.5
 
   packages/cli:
     devDependencies:
@@ -284,8 +284,8 @@ importers:
         specifier: workspace:*
         version: link:../../crates/bvs-vault-router
       quicktype-core:
-        specifier: ^23.2.0
-        version: 23.2.0
+        specifier: ^23.2.5
+        version: 23.2.5
 
   packages/testcontainers:
     dependencies:
@@ -4052,8 +4052,8 @@ packages:
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
 
-  quicktype-core@23.2.0:
-    resolution: {integrity: sha512-BPZ/dFvSCogG/MlrBCLMtB+baVM/4MoR8OmUKW3eJBso5m2TEw9aIra0ESJ8EBqSecd15SB/LtMXiH4BvGbcfg==}
+  quicktype-core@23.2.5:
+    resolution: {integrity: sha512-vbeDPIrhK3TIwU592+c5l5EAknqLhquWCEFzDeuC3cPuuK8dblMcfsnfnT5Cj7FeopDMI93Bq3ql0cMG90yFkg==}
 
   react-compiler-runtime@0.0.0-experimental-22c6e49-20241219:
     resolution: {integrity: sha512-bOAGaRL1ldfIIpbDsl+uV025Ta6RS6/cOjvvh8r2Vo7KtqB+RSvihVYRsWQz7ECKNPWdq5MClS845acwAwieDw==}
@@ -9384,7 +9384,7 @@ snapshots:
 
   queue-microtask@1.2.3: {}
 
-  quicktype-core@23.2.0:
+  quicktype-core@23.2.5:
     dependencies:
       '@glideapps/ts-necessities': 2.2.3
       browser-or-node: 3.0.0
