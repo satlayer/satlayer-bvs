@@ -80,11 +80,15 @@ pub fn execute(
 /// The existing `VAULTS` iterated over and added to `OPERATOR_VAULTS`.
 /// The `GUARDRAIL` contract is added to the router.
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     let old_version =
         cw2::ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     match old_version.major {
-        1 => migrate::add_guardrail_to_state(deps, msg),
+        1 => {
+            migrate::vaults_to_index_operator(deps.branch())?;
+            migrate::add_guardrail_to_state(deps, msg)?;
+            Ok(Response::default())
+        }
         _ => Ok(Response::default()),
     }
 }
@@ -93,7 +97,6 @@ mod migrate {
     use super::*;
     use crate::state::{OPERATOR_VAULTS, VAULTS};
 
-    #[allow(dead_code)]
     pub fn vaults_to_index_operator(deps: DepsMut) -> Result<Response, ContractError> {
         let vaults = VAULTS
             .keys(deps.storage, None, None, cosmwasm_std::Order::Ascending)
