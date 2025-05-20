@@ -333,7 +333,7 @@ mod execute {
                             .load(deps.storage, (&service, &operator))?;
                         state::update_slashing_request_status(
                             deps.storage,
-                            prev_slash_id,
+                            &prev_slash_id,
                             SlashingRequestStatus::Canceled,
                         )?;
                     }
@@ -403,7 +403,7 @@ mod execute {
         info: MessageInfo,
         id: SlashingRequestId,
     ) -> Result<Response, ContractError> {
-        let slash_req = match state::SLASHING_REQUESTS.may_load(deps.storage, id.clone())? {
+        let slash_req = match state::SLASHING_REQUESTS.may_load(deps.storage, &id)? {
             Some(slash_req) => slash_req,
             None => {
                 return Err(ContractError::InvalidSlashingRequest {
@@ -494,7 +494,7 @@ mod execute {
 
         state::SLASHING_REQUESTS.save(
             deps.storage,
-            id.clone(),
+            &id,
             &SlashingRequest {
                 service: slash_req.service,
                 request: slash_req.request.clone(),
@@ -528,7 +528,7 @@ mod execute {
         let service = info.sender;
 
         let slashing_request = SLASHING_REQUESTS
-            .may_load(deps.storage, slashing_request_id.clone())?
+            .may_load(deps.storage, &slashing_request_id)?
             .ok_or(ContractError::InvalidSlashingRequest {
                 msg: "No slashing request found by slashing request id".to_string(),
             })?;
@@ -552,7 +552,7 @@ mod execute {
         state::remove_slashing_request_id(deps.storage, &service, &operator)?;
         state::update_slashing_request_status(
             deps.storage,
-            slashing_request_id.clone(),
+            &slashing_request_id,
             SlashingRequestStatus::Canceled,
         )?;
 
@@ -590,7 +590,7 @@ mod execute {
         }
 
         // Get slashing request
-        let slash_req = match SLASHING_REQUESTS.may_load(deps.storage, id.clone())? {
+        let slash_req = match SLASHING_REQUESTS.may_load(deps.storage, &id)? {
             Some(slash_req) => slash_req,
             None => {
                 return Err(InvalidSlashingRequest {
@@ -685,11 +685,7 @@ mod execute {
         state::remove_all_slash_locked_by_id(deps.storage, id.clone())?;
 
         // Update slash req status to `SlashingRequestStatus::Finalized`
-        state::update_slashing_request_status(
-            deps.storage,
-            id.clone(),
-            SlashingRequestStatus::Finalized,
-        )?;
+        state::update_slashing_request_status(deps.storage, &id, SlashingRequestStatus::Finalized)?;
 
         // Remove (service,operator) -> slashing request id mapping
         state::remove_slashing_request_id(deps.storage, &service, &operator)?;
@@ -941,7 +937,7 @@ mod query {
         deps: Deps,
         id: impl Into<SlashingRequestId>,
     ) -> StdResult<SlashingRequestResponse> {
-        let slashing_request = SLASHING_REQUESTS.may_load(deps.storage, id.into())?;
+        let slashing_request = SLASHING_REQUESTS.may_load(deps.storage, &id.into())?;
         Ok(SlashingRequestResponse(slashing_request))
     }
 
@@ -1660,7 +1656,7 @@ mod tests {
 
         // save request_id
         SLASHING_REQUESTS
-            .save(&mut deps.storage, request_id.clone(), &slash_request)
+            .save(&mut deps.storage, &request_id, &slash_request)
             .expect("save slashing request failed");
 
         // assert request_id is saved

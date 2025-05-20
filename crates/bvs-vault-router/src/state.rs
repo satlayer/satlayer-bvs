@@ -131,7 +131,7 @@ pub(crate) const SLASHING_REQUEST_IDS: Map<(&Service, &Operator), SlashingReques
 ///
 /// Slashing request won't be removed,
 /// hence this map will store all slashing requests.
-pub(crate) const SLASHING_REQUESTS: Map<SlashingRequestId, SlashingRequest> =
+pub(crate) const SLASHING_REQUESTS: Map<&SlashingRequestId, SlashingRequest> =
     Map::new("slashing_requests");
 
 /// Will return Some() when:
@@ -156,7 +156,7 @@ pub(crate) fn get_pending_slashing_request(
     };
 
     // get pending slashing from slashing_id
-    let pending_slashing_request = SLASHING_REQUESTS.may_load(store, pending_slashing_id)?;
+    let pending_slashing_request = SLASHING_REQUESTS.may_load(store, &pending_slashing_id)?;
     match pending_slashing_request {
         Some(request) => Ok(Some(request)),
         None => Ok(None),
@@ -176,25 +176,27 @@ pub(crate) fn save_slashing_request(
     SLASHING_REQUEST_IDS.save(store, (service, operator), &slashing_id)?;
 
     // save slashing request
-    SLASHING_REQUESTS.save(store, slashing_id.clone(), data)?;
+    SLASHING_REQUESTS.save(store, &slashing_id, data)?;
 
     Ok(slashing_id)
 }
 
 pub(crate) fn update_slashing_request_status(
     store: &mut dyn Storage,
-    slashing_request_id: SlashingRequestId,
+    slashing_request_id: &SlashingRequestId,
     status: SlashingRequestStatus,
 ) -> StdResult<SlashingRequest> {
-    SLASHING_REQUESTS.update(store, slashing_request_id.clone(), |slashing_request| {
-        match slashing_request {
+    SLASHING_REQUESTS.update(
+        store,
+        slashing_request_id,
+        |slashing_request| match slashing_request {
             Some(mut slashing_request) => {
                 slashing_request.status = status.into();
                 Ok(slashing_request)
             }
             None => Err(StdError::not_found("Slashing request id not found")),
-        }
-    })
+        },
+    )
 }
 
 pub(crate) fn remove_slashing_request_id(
@@ -267,7 +269,7 @@ mod test {
         assert_eq!(Some(res.clone()), slashing_id_res);
 
         // assert that SLASHING_REQUESTS state is updated
-        let slashing_request_res = SLASHING_REQUESTS.may_load(&deps.storage, res).unwrap();
+        let slashing_request_res = SLASHING_REQUESTS.may_load(&deps.storage, &res).unwrap();
         assert_eq!(Some(slashing_request), slashing_request_res);
     }
 
@@ -322,7 +324,7 @@ mod test {
 
         let response = update_slashing_request_status(
             &mut deps.storage,
-            slashing_request_id,
+            &slashing_request_id,
             SlashingRequestStatus::Canceled,
         )
         .unwrap();
