@@ -290,22 +290,51 @@ mod execute {
         }
 
         // get current pending slashing request for (service, operator) pair
-        let pending_slashing_requests =
+        let prev_slashing_request =
             state::get_pending_slashing_request(deps.storage, &service, &operator)?;
 
-        // if pending slashing request exists and
-        // if request_expiry > now (in the future) => request hasn't expired,
-        // so the service has to manually cancel slashing request (throw Err)
-        if let Some(pending_slashing_requests) = pending_slashing_requests {
-            if pending_slashing_requests.request_expiry > env.block.time {
-                return Err(InvalidSlashingRequest {
-                    msg: "Service has current pending slashing request for the operator."
-                        .to_string(),
-                });
+        // refer to the [get_pending_slashing_request()] function doc for Some() or None return cases
+        if let Some(prev_slashing_request) = prev_slashing_request {
+            match SlashingRequestStatus::try_from(prev_slashing_request.status)? {
+                SlashingRequestStatus::Pending => {
+                    // slashing is pending within the expiry date
+                    if prev_slashing_request.request_expiry > env.block.time {
+                        return Err(ContractError::InvalidSlashingRequest {
+                            msg: "Previous slashing request is still pending.".to_string(),
+                        });
+                    } else {
+                        // In this case, new request is eligible and
+                        // will override the previous slashing request.
+                        // Put the previous slashing request to canceled state.
+                        let prev_slash_id = state::SLASHING_REQUEST_IDS
+                            .load(deps.storage, (&service, &operator))?;
+                        state::update_slashing_request_status(
+                            deps.storage,
+                            prev_slash_id,
+                            SlashingRequestStatus::Canceled,
+                        )?;
+                    }
+                }
+                SlashingRequestStatus::Locked => {
+                    // If a slash is locked that mean previous slash is
+                    // in the middle of slashing lifecycle
+                    // new request are rejected
+                    return Err(ContractError::InvalidSlashingRequest {
+                        msg: "Previous slashing request is in progress.".to_string(),
+                    });
+                }
+                SlashingRequestStatus::Canceled => {
+                    // Previous slash has been canceled
+                    // Cancellation can happen when:
+                    // 1. Operator has refute the request
+                    // 2. Slash Locking handler catches the slash is expired and cancel implicitly
+                    // Eligible for new request
+                }
+                SlashingRequestStatus::Finalized => {
+                    // Previous slash has been finalized, eligible for new request
+                }
             }
         }
-
-        // else, it will be overriden by the current slash request
 
         let request_resolution = env
             .block
@@ -360,6 +389,10 @@ mod execute {
             }
         };
 
+        let accused_operator = deps
+            .api
+            .addr_validate(slash_req.request.operator.as_str())?;
+
         match SlashingRequestStatus::try_from(slash_req.status)? {
             SlashingRequestStatus::Pending => {}
             SlashingRequestStatus::Locked => {
@@ -378,10 +411,6 @@ mod execute {
                 })
             }
         }
-
-        let accused_operator = deps
-            .api
-            .addr_validate(slash_req.request.operator.as_str())?;
 
         // Check if the id is the same as the one in the request
         if info.sender != slash_req.service {

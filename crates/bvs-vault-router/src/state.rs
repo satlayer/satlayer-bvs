@@ -11,7 +11,6 @@ pub(crate) const VAULTS: Map<&Addr, Vault> = Map::new("vaults");
 
 /// Storage for the router address
 pub(crate) const REGISTRY: Item<Addr> = Item::new("registry");
-
 #[cw_serde]
 pub struct Vault {
     pub whitelisted: bool,
@@ -131,6 +130,16 @@ pub(crate) const SLASHING_REQUEST_IDS: Map<(&Service, &Operator), SlashingReques
 pub(crate) const SLASHING_REQUESTS: Map<SlashingRequestId, SlashingRequest> =
     Map::new("slashing_requests");
 
+/// Will return Some() when:
+/// 1. Slash is sitting idle in a pending state and beyond the expiry date.
+/// 2. Slash is in a pending state and within the expiry date.
+/// 3. Slash is locked and not yet finalized, but within the expiry date.
+/// 4. Slash is locked and not yet finalized, but beyond the expiry date.
+///
+/// Will return None when:
+/// 1. Slash is canceled
+/// 2. Slash is finalized
+/// 3. During locking phase the handler catches the slash is expired
 pub(crate) fn get_pending_slashing_request(
     store: &dyn Storage,
     service: &Service,

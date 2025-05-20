@@ -824,7 +824,7 @@ fn request_slashing_lifecycle() {
         assert_eq!(
             err.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Service has current pending slashing request for the operator.".to_string()
+                msg: "Previous slashing request is still pending.".to_string()
             }
             .to_string()
         )
@@ -1008,26 +1008,87 @@ fn test_slash_locking() {
         block.time = block.time.plus_seconds(10);
     });
 
-    // service request slashing
-    let slashing_request_payload = RequestSlashingPayload {
-        operator: operator.to_string(),
-        bips: 100,
-        timestamp: app.block_info().time,
-        metadata: SlashingMetadata {
-            reason: "test".to_string(),
-        },
-    };
+    // Pending slashing requests that are idle beyond expiry
+    // should not block new slashing requests
+    // and will be transitioned implicitly to cancel status
+    let active_slashing_id;
+    {
+        let slashing_request_payload_1 = RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 100,
+            timestamp: app.block_info().time,
+            metadata: SlashingMetadata {
+                reason: "test".to_string(),
+            },
+        };
+        let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload_1.clone());
+        tc.vault_router
+            .execute(&mut app, &service, msg)
+            .expect("failed to request slashing");
 
-    let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
-    tc.vault_router.execute(&mut app, &service, msg).unwrap();
+        let slash_req_1_id = tc
+            .vault_router
+            .query::<SlashingRequestIdResponse>(
+                &mut app,
+                &QueryMsg::SlashingRequestId {
+                    service: service.to_string(),
+                    operator: operator.to_string(),
+                },
+            )
+            .unwrap();
 
-    // query slashing request id
-    let msg = QueryMsg::SlashingRequestId {
-        service: service.to_string(),
-        operator: operator.to_string(),
-    };
-    let slashing_request_id: SlashingRequestIdResponse =
-        tc.vault_router.query(&mut app, &msg).unwrap();
+        app.update_block(|block| {
+            block.height += 60;
+            block.time = block.time.plus_seconds(600);
+        });
+
+        let slashing_request_payload_2 = RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 100,
+            timestamp: app.block_info().time,
+            metadata: SlashingMetadata {
+                reason: "test".to_string(),
+            },
+        };
+        let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload_2.clone());
+        tc.vault_router
+            .execute(&mut app, &service, msg)
+            .expect("failed to request slashing");
+
+        app.update_block(|block| {
+            block.height += 1;
+            block.time = block.time.plus_seconds(10);
+        });
+
+        let slash_request_1_status = tc
+            .vault_router
+            .query::<SlashingRequestResponse>(
+                &mut app,
+                &QueryMsg::SlashingRequest(slash_req_1_id.0.unwrap()),
+            )
+            .unwrap();
+
+        let slash_request_1_status = slash_request_1_status.0.unwrap().status;
+
+        // The previous slash request should be canceled implicitly
+        // by the slash_request handler
+        assert_eq!(slash_request_1_status, SlashingRequestStatus::Canceled);
+
+        let slash_req_2_id = tc
+            .vault_router
+            .query::<SlashingRequestIdResponse>(
+                &mut app,
+                &QueryMsg::SlashingRequestId {
+                    service: service.to_string(),
+                    operator: operator.to_string(),
+                },
+            )
+            .unwrap();
+
+        // The second slashing request id is now the current active one
+        // using this for later slash_locking tests
+        active_slashing_id = slash_req_2_id.0.unwrap();
+    }
 
     {
         // pass the resolution window
@@ -1036,7 +1097,7 @@ fn test_slash_locking() {
             block.time = block.time.plus_seconds(100);
         });
 
-        let msg = ExecuteMsg::LockSlashing(slashing_request_id.clone().0.unwrap());
+        let msg = ExecuteMsg::LockSlashing(active_slashing_id.clone());
         let res = tc.vault_router.execute(&mut app, &service, &msg).unwrap();
 
         assert_eq!(
@@ -1061,7 +1122,7 @@ fn test_slash_locking() {
                     )
                     .add_attribute(
                         "slashing_request_id",
-                        "cffcb7e810be616e5582beb8bdb8a545502733d683515410d97d262dcba1855c"
+                        "826934e8d9bcb0ec85ce53a5f4e55d50c9f62bf8859773ba09f9695a4267cd5a"
                     )
                     .add_attribute("bips", "100")
                     .add_attribute("affected_vaults", "2"),
@@ -1296,6 +1357,52 @@ fn test_slash_locking_negative() {
         block.time = block.time.plus_seconds(10);
     });
 
+    //expired slash should get canceled
+    {
+        let slashing_request_payload = RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 100,
+            timestamp: app.block_info().time,
+            metadata: SlashingMetadata {
+                reason: "expired test".to_string(),
+            },
+        };
+
+        let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
+        tc.vault_router.execute(&mut app, &service, msg).unwrap();
+
+        let msg = QueryMsg::SlashingRequestId {
+            service: service.to_string(),
+            operator: operator.to_string(),
+        };
+        let slashing_request_id: SlashingRequestIdResponse =
+            tc.vault_router.query(&mut app, &msg).unwrap();
+
+        // aged the slash entry to be expired
+        app.update_block(|block| {
+            block.height += 80;
+            block.time = block.time.plus_seconds(800);
+        });
+
+        let msg = ExecuteMsg::LockSlashing(slashing_request_id.clone().0.unwrap());
+        let res = tc
+            .vault_router
+            .execute(&mut app, &service, &msg)
+            .unwrap_err();
+        assert_eq!(
+            res.root_cause().to_string(),
+            ContractError::InvalidSlashingRequest {
+                msg: "Slashing has expired".to_string(),
+            }
+            .to_string()
+        );
+    }
+
+    app.update_block(|block| {
+        block.height += 1;
+        block.time = block.time.plus_seconds(10);
+    });
+
     // service request slashing
     let slashing_request_payload = RequestSlashingPayload {
         operator: operator.to_string(),
@@ -1417,7 +1524,6 @@ fn test_slash_locking_negative() {
         block.time = block.time.plus_seconds(600);
     });
 
-    // expired slash should fail
     {
         let slashing_request_payload = RequestSlashingPayload {
             operator: operator.to_string(),
@@ -1429,28 +1535,14 @@ fn test_slash_locking_negative() {
         };
 
         let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
-        tc.vault_router.execute(&mut app, &service, msg).unwrap();
-
-        let msg = QueryMsg::SlashingRequestId {
-            service: service.to_string(),
-            operator: operator.to_string(),
-        };
-        let slashing_request_id2: SlashingRequestIdResponse =
-            tc.vault_router.query(&mut app, &msg).unwrap();
-
-        app.update_block(|block| {
-            block.height += 50;
-            block.time = block.time.plus_seconds(500);
-        });
-        let msg = ExecuteMsg::LockSlashing(slashing_request_id2.0.unwrap());
-        let res = tc
+        let err = tc
             .vault_router
-            .execute(&mut app, &service, &msg)
+            .execute(&mut app, &service, msg)
             .unwrap_err();
         assert_eq!(
-            res.root_cause().to_string(),
+            err.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Slashing has expired".to_string(),
+                msg: "Previous slashing request is in progress.".to_string(),
             }
             .to_string()
         );
