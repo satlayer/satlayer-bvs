@@ -27,6 +27,7 @@
     ]
   },
   "dependencies": {
+    "@satlayer/bvs-guardrail": "workspace:*",
     "@satlayer/bvs-pauser": "workspace:*",
     "@satlayer/bvs-registry": "workspace:*",
     "@satlayer/bvs-vault-bank": "workspace:*",

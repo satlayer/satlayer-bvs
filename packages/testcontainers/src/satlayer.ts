@@ -35,7 +35,7 @@ export class SatLayerContracts {
 
   static async bootstrap(started: StartedCosmWasmContainer): Promise<SatLayerContracts> {
     const accounts = await started.wallet.getAccounts();
-    const [cw20Upload, pauserUpload, registryUpload, routerUpload, vaultCw20Upload, vaultBankUpload] =
+    const [cw20Upload, pauserUpload, registryUpload, routerUpload, vaultCw20Upload, vaultBankUpload, guardrailUpload] =
       await Promise.all([
         uploadCw20(started.client, accounts[0].address),
         uploadBvs(started.client, accounts[1].address, "@satlayer/bvs-pauser"),
@@ -43,6 +43,7 @@ export class SatLayerContracts {
         uploadBvs(started.client, accounts[3].address, "@satlayer/bvs-vault-router"),
         uploadBvs(started.client, accounts[4].address, "@satlayer/bvs-vault-cw20"),
         uploadBvs(started.client, accounts[5].address, "@satlayer/bvs-vault-bank"),
+        uploadBvs(started.client, accounts[6].address, "@satlayer/bvs-guardrail"),
       ]);
 
     const pauserResult = await instantiateBvs(
@@ -67,6 +68,19 @@ export class SatLayerContracts {
       },
     );
 
+    const guardrailResult = await instantiateBvs(
+      started.client,
+      accounts[0].address,
+      "@satlayer/bvs-guardrail",
+      guardrailUpload.codeId,
+      {
+        owner: accounts[0].address,
+        threshold: { absolute_percentage: { percentage: "0" } },
+        default_expiration: 1000,
+        members: [{ addr: accounts[0].address, weight: 1 }],
+      },
+    );
+
     const routerResult = await instantiateBvs(
       started.client,
       accounts[0].address,
@@ -76,6 +90,7 @@ export class SatLayerContracts {
         owner: accounts[0].address,
         pauser: pauserResult.contractAddress,
         registry: registryResult.contractAddress,
+        guardrail: guardrailResult.contractAddress,
       },
     );
 

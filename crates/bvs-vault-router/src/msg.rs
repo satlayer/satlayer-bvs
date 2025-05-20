@@ -4,13 +4,16 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{from_json, to_json_binary, Addr, Binary, Timestamp, Uint128, Uint64};
 
 #[cw_serde]
-pub struct MigrateMsg {}
+pub struct MigrateMsg {
+    pub guardrail: String,
+}
 
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: String,
     pub registry: String,
     pub pauser: String,
+    pub guardrail: String,
 }
 
 #[cw_serde]
@@ -57,6 +60,14 @@ pub enum ExecuteMsg {
     /// The service (slash initiator) should cancel the slashing process if the operator
     /// has resolved the issue. The definition of “resolved” is up to the service to define.
     CancelSlashing(SlashingRequestId),
+
+    /// ExecuteMsg FinalizeSlashing moves the slashed collateral from the router to the destination
+    /// specified in the slashing parameters that were agreed upon by the service and operator.
+    ///
+    /// This is the final step in the slashing process
+    /// and should only be called after the request has been locked,
+    /// and the guardrail proposal has been voted on and passed.
+    FinalizeSlashing(SlashingRequestId),
 }
 
 #[cw_serde]

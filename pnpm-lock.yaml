@@ -289,6 +289,9 @@ importers:
 
   packages/testcontainers:
     dependencies:
+      '@satlayer/bvs-guardrail':
+        specifier: workspace:*
+        version: link:../../crates/bvs-guardrail
       '@satlayer/bvs-pauser':
         specifier: workspace:*
         version: link:../../crates/bvs-pauser

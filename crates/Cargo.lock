@@ -256,6 +256,7 @@ dependencies = [
 name = "bvs-multi-test"
 version = "0.0.0"
 dependencies = [
+ "bvs-guardrail",
  "bvs-library",
  "bvs-pauser",
  "bvs-registry",
@@ -447,6 +448,7 @@ dependencies = [
 name = "bvs-vault-router"
 version = "0.0.0"
 dependencies = [
+ "bvs-guardrail",
  "bvs-library",
  "bvs-pauser",
  "bvs-registry",
@@ -457,9 +459,12 @@ dependencies = [
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus",
+ "cw-utils",
  "cw2",
  "cw20",
  "cw20-base",
+ "cw3",
+ "cw4",
  "prost",
  "schemars",
  "serde",

@@ -52,8 +52,10 @@ where
     /// Get the contract address in the storage for the given label.
     fn get_contract_addr(app: &App, label: &str) -> Addr {
         let key = format!("CONTRACT:{}", label);
-        let value = app.storage().get(key.as_bytes()).unwrap();
-        Addr::unchecked(String::from_utf8(value).unwrap())
+        match app.storage().get(key.as_bytes()) {
+            Some(value) => Addr::unchecked(String::from_utf8(value).unwrap()),
+            None => app.api().addr_make(key.as_str()), // fallback to dummy address
+        }
     }
 
     fn addr(&self) -> &Addr;

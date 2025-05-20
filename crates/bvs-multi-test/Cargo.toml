@@ -30,3 +30,4 @@ bvs-registry = { workspace = true }
 bvs-vault-router = { workspace = true }
 bvs-vault-bank = { workspace = true }
 bvs-vault-cw20 = { workspace = true }
+bvs-guardrail = { workspace = true }
