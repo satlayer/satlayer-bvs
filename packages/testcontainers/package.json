@@ -27,6 +27,10 @@
     ]
   },
   "dependencies": {
+    "@cosmjs/cosmwasm-stargate": "^0.33.1",
+    "@cosmjs/crypto": "^0.33.1",
+    "@cosmjs/proto-signing": "^0.33.1",
+    "@cosmjs/stargate": "^0.33.1",
     "@satlayer/bvs-guardrail": "workspace:*",
     "@satlayer/bvs-pauser": "workspace:*",
     "@satlayer/bvs-registry": "workspace:*",
@@ -35,11 +39,5 @@
     "@satlayer/bvs-vault-router": "workspace:*",
     "@satlayer/cosmwasm-schema": "workspace:*",
     "testcontainers": "^10.27.0"
-  },
-  "devDependencies": {
-    "@cosmjs/cosmwasm-stargate": "^0.33.1",
-    "@cosmjs/crypto": "^0.33.1",
-    "@cosmjs/proto-signing": "^0.33.1",
-    "@cosmjs/stargate": "^0.33.1"
   }
 }
