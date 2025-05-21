@@ -289,6 +289,18 @@ importers:
 
   packages/testcontainers:
     dependencies:
+      '@cosmjs/cosmwasm-stargate':
+        specifier: ^0.33.1
+        version: 0.33.1
+      '@cosmjs/crypto':
+        specifier: ^0.33.1
+        version: 0.33.1
+      '@cosmjs/proto-signing':
+        specifier: ^0.33.1
+        version: 0.33.1
+      '@cosmjs/stargate':
+        specifier: ^0.33.1
+        version: 0.33.1
       '@satlayer/bvs-guardrail':
         specifier: workspace:*
         version: link:../../crates/bvs-guardrail
@@ -313,19 +325,6 @@ importers:
       testcontainers:
         specifier: ^10.27.0
         version: 10.27.0
-    devDependencies:
-      '@cosmjs/cosmwasm-stargate':
-        specifier: ^0.33.1
-        version: 0.33.1
-      '@cosmjs/crypto':
-        specifier: ^0.33.1
-        version: 0.33.1
-      '@cosmjs/proto-signing':
-        specifier: ^0.33.1
-        version: 0.33.1
-      '@cosmjs/stargate':
-        specifier: ^0.33.1
-        version: 0.33.1
 
 packages:
 

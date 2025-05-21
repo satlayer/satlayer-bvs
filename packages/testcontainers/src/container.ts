@@ -22,21 +22,29 @@ export class CosmWasmContainer extends GenericContainer {
 
   public override async start(): Promise<StartedCosmWasmContainer> {
     const started = await super.start();
-    const rpcEndpoint = `tcp://${started.getHost()}:${started.getMappedPort(26657)}/`;
+    const endpoint = `tcp://${started.getHost()}:${started.getMappedPort(26657)}/`;
 
-    // HD Paths m/0' to m/9' are funded for this mnemonic.
+    const wallet = await CosmWasmContainer.getDefaultWallet();
+    const client = await CosmWasmContainer.getDefaultClient(endpoint, wallet);
+    return new StartedCosmWasmContainer(started, wallet, client);
+  }
+
+  /**
+   * HD Paths m/0' to m/9' are funded for this mnemonic.
+   */
+  static async getDefaultWallet(): Promise<DirectSecp256k1HdWallet> {
     const mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon cactus";
-    const wallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
+    return await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
       prefix: "wasm",
       hdPaths: Array.from({ length: 10 }, (_, i) => [Slip10RawIndex.hardened(i)]),
     });
+  }
 
-    const client = await SigningCosmWasmClient.connectWithSigner(rpcEndpoint, wallet, {
+  static async getDefaultClient(endpoint: string, wallet: DirectSecp256k1HdWallet): Promise<SigningCosmWasmClient> {
+    return await SigningCosmWasmClient.connectWithSigner(endpoint, wallet, {
       gasPrice: GasPrice.fromString("0.002000ustake"),
       broadcastPollIntervalMs: 200,
     });
-
-    return new StartedCosmWasmContainer(started, wallet, client);
   }
 }
 
@@ -50,9 +58,17 @@ export class StartedCosmWasmContainer extends AbstractStartedContainer {
   }
 
   getRpcEndpoint(): string {
-    const host = this.startedTestContainer.getHost();
-    const port = this.startedTestContainer.getMappedPort(26657);
-    return `tcp://${host}:${port}/`;
+    const host = this.getHost();
+    const port = this.getMappedPort(26657);
+    return `http://${host}:${port}`;
+  }
+
+  getRpcPort(): number {
+    return 26657;
+  }
+
+  getChainId() {
+    return "wasm-1337";
   }
 
   async fund(coins: string, ...addresses: string[]): Promise<DeliverTxResponse> {
