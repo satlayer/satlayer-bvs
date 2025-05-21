@@ -60,7 +60,7 @@ export class StartedCosmWasmContainer extends AbstractStartedContainer {
   getRpcEndpoint(): string {
     const host = this.getHost();
     const port = this.getMappedPort(26657);
-    return `http://${host}:${port}`;
+    return `http://${host}:${port}/`;
   }
 
   getRpcPort(): number {
