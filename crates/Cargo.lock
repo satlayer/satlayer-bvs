@@ -262,6 +262,7 @@ dependencies = [
  "bvs-registry",
  "bvs-vault-bank",
  "bvs-vault-cw20",
+ "bvs-vault-factory",
  "bvs-vault-router",
  "cosmwasm-std",
  "cw-multi-test",

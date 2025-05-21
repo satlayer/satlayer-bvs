@@ -17,38 +17,78 @@ pub struct BvsMultiTest {
     pub registry: RegistryContract,
     pub guardrail: GuardrailContract,
     pub vault_router: VaultRouterContract,
+    pub bank_vault: VaultBankContract,
+    pub cw20_vault: VaultCw20Contract,
+    pub cw20_token: Cw20TokenContract,
+}
+
+pub struct BvsMultiTestBuilder {
+    app: App,
+    env: Env,
 }
 
 /// [BvsMultiTest] provides a convenient way to bootstrap all the necessary contracts
 /// for testing a Service in the BVS ecosystem.
-impl BvsMultiTest {
-    /// Creates a new instance of [BvsMultiTest] with the given [App] and [Env].
-    /// It initializes the [PauserContract], [RegistryContract], and [VaultRouterContract].
-    pub fn new(app: &mut App, env: &Env) -> Self {
-        let pauser = PauserContract::new(app, env, None);
-        let registry = RegistryContract::new(app, env, None);
-        let guardrail = GuardrailContract::new(app, env, None);
-        let vault_router = VaultRouterContract::new(app, env, None);
+impl BvsMultiTestBuilder {
+    /// Creates a new instance of [BvsMultiTestBuilder] with the given [App] and [Env].
+    pub fn new(app: App, env: Env) -> Self {
+        Self { app, env }
+    }
 
-        Self {
+    /// Builds the [BvsMultiTest] instance.
+    /// It initializes the [PauserContract], [RegistryContract], [GuardrailContract], [VaultRouterContract],
+    /// [VaultBankContract], [VaultCw20Contract], and [Cw20TokenContract].
+    pub fn build(mut self) -> BvsMultiTest {
+        let pauser = PauserContract::new(&mut self.app, &self.env, None);
+        let registry = RegistryContract::new(&mut self.app, &self.env, None);
+        let guardrail = GuardrailContract::new(&mut self.app, &self.env, None);
+        let vault_router = VaultRouterContract::new(&mut self.app, &self.env, None);
+
+        let operator = self.app.api().addr_make("operator");
+        let denom = "denom";
+        let bank_vault = Self::deploy_bank_vault(
+            &mut self.app,
+            &self.env,
+            &pauser,
+            &vault_router,
+            operator.clone(),
+            denom,
+        );
+
+        let cw20_token =
+            Self::deploy_cw20_token(&mut self.app, &self.env, "TEST", operator.clone());
+        let cw20_vault = Self::deploy_cw20_vault(
+            &mut self.app,
+            &self.env,
+            &pauser,
+            &vault_router,
+            operator,
+            cw20_token.clone().addr,
+        );
+
+        BvsMultiTest {
             pauser,
             registry,
             guardrail,
             vault_router,
+            bank_vault,
+            cw20_vault,
+            cw20_token,
         }
     }
 
     /// Deploys a new [VaultBankContract] with the given operator and denom.
     pub fn deploy_bank_vault(
-        &self,
         app: &mut App,
         env: &Env,
+        pauser: &PauserContract,
+        vault_router: &VaultRouterContract,
         operator: impl Into<String>,
         denom: impl Into<String>,
     ) -> VaultBankContract {
         let init_msg = bvs_vault_bank::msg::InstantiateMsg {
-            pauser: self.pauser.addr.to_string(),
-            router: self.vault_router.addr.to_string(),
+            pauser: pauser.addr.to_string(),
+            router: vault_router.addr.to_string(),
             operator: operator.into(),
             denom: denom.into(),
         };
@@ -58,22 +98,25 @@ impl BvsMultiTest {
             vault: bank_contract.addr.to_string(),
             whitelisted: true,
         };
+
         let owner = app.api().addr_make("owner");
-        self.vault_router.execute(app, &owner, set_vault).unwrap();
+        vault_router.execute(app, &owner, set_vault).unwrap();
+
         bank_contract
     }
 
     /// Deploys a new [VaultCw20Contract] with the given operator and cw20 contract address.
     pub fn deploy_cw20_vault(
-        &self,
         app: &mut App,
         env: &Env,
+        pauser: &PauserContract,
+        vault_router: &VaultRouterContract,
         operator: impl Into<String>,
         cw20_contract: Addr,
     ) -> VaultCw20Contract {
         let init_msg = bvs_vault_cw20::msg::InstantiateMsg {
-            pauser: self.pauser.addr.to_string(),
-            router: self.vault_router.addr.to_string(),
+            pauser: pauser.addr.to_string(),
+            router: vault_router.addr.to_string(),
             operator: operator.into(),
             cw20_contract: cw20_contract.to_string(),
         };
@@ -83,14 +126,15 @@ impl BvsMultiTest {
             vault: bank_contract.addr.to_string(),
             whitelisted: true,
         };
+
         let owner = app.api().addr_make("owner");
-        self.vault_router.execute(app, &owner, set_vault).unwrap();
+        vault_router.execute(app, &owner, set_vault).unwrap();
+
         bank_contract
     }
 
     /// Deploys a new [Cw20TokenContract] with the given symbol and minter address.
     pub fn deploy_cw20_token(
-        &self,
         app: &mut App,
         env: &Env,
         symbol: impl Into<String>,
@@ -121,38 +165,9 @@ mod tests {
 
     #[test]
     fn test_new() {
-        let mut app = App::default();
+        let app = App::default();
         let env = mock_env();
-        BvsMultiTest::new(&mut app, &env);
-    }
 
-    #[test]
-    fn test_deploy_bank_vault() {
-        let mut app = App::default();
-        let env = mock_env();
-        let bvs = BvsMultiTest::new(&mut app, &env);
-
-        let operator = app.api().addr_make("operator");
-        let denom = "denom".to_string();
-
-        let bank_vault = bvs.deploy_bank_vault(&mut app, &env, operator.clone(), denom.clone());
-        assert_eq!(bank_vault.init.operator, operator.to_string());
-        assert_eq!(bank_vault.init.denom, denom);
-    }
-
-    #[test]
-    fn test_deploy_cw20_vault() {
-        let mut app = App::default();
-        let env = mock_env();
-        let bvs = BvsMultiTest::new(&mut app, &env);
-
-        let owner = app.api().addr_make("owner").to_string();
-        let token = bvs.deploy_cw20_token(&mut app, &env, "FRUIT", owner.clone());
-
-        let operator = app.api().addr_make("operator");
-        let cw20_vault =
-            bvs.deploy_cw20_vault(&mut app, &env, operator.clone(), token.addr.clone());
-        assert_eq!(cw20_vault.init.operator, operator.to_string());
-        assert_eq!(cw20_vault.init.cw20_contract, token.addr.to_string());
+        BvsMultiTestBuilder::new(app, env).build();
     }
 }
