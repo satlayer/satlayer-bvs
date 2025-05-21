@@ -34,7 +34,7 @@
     "@satlayer/bvs-vault-cw20": "workspace:*",
     "@satlayer/bvs-vault-router": "workspace:*",
     "@satlayer/cosmwasm-schema": "workspace:*",
-    "testcontainers": "^10.26.0"
+    "testcontainers": "^10.27.0"
   },
   "devDependencies": {
     "@cosmjs/cosmwasm-stargate": "^0.33.1",
