@@ -1,0 +1,10 @@
+**/*.rs.bk
+
+.turbo/
+debug/
+dist/
+target/
+schema/
+artifacts/
+node_modules/
+tests/

@@ -1,0 +1,11 @@
+{
+  "name": "@examples/social-governance-contract",
+  "private": true,
+  "scripts": {
+    "build": "cosmwasm-optimizer",
+    "test": "cargo test"
+  },
+  "devDependencies": {
+    "@satlayer/cosmwasm-optimizer": "workspace:*"
+  }
+}
