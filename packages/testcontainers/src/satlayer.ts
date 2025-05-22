@@ -11,6 +11,7 @@ type Data = {
   cw20: { codeId: number };
   pauser: { codeId: number; address: string };
   registry: { codeId: number; address: string };
+  guardrail: { codeId: number; address: string };
   router: { codeId: number; address: string };
   vaultCw20: { codeId: number };
   vaultBank: { codeId: number };
@@ -22,6 +23,7 @@ export class SatLayerContracts {
     public readonly data: Data,
     public readonly pauser = new Pauser(started, data.pauser.address),
     public readonly registry = new Registry(started, data.registry.address),
+    public readonly guardrail = new Router(started, data.guardrail.address),
     public readonly router = new Router(started, data.router.address),
   ) {}
 
@@ -98,6 +100,7 @@ export class SatLayerContracts {
       cw20: { codeId: cw20Upload.codeId },
       pauser: { address: pauserResult.contractAddress, codeId: pauserUpload.codeId },
       registry: { address: registryResult.contractAddress, codeId: registryUpload.codeId },
+      guardrail: { address: guardrailResult.contractAddress, codeId: guardrailUpload.codeId },
       router: { address: routerResult.contractAddress, codeId: routerUpload.codeId },
       vaultBank: { codeId: vaultBankUpload.codeId },
       vaultCw20: { codeId: vaultCw20Upload.codeId },
