@@ -130,7 +130,7 @@ impl BvsMultiTestBuilder {
         for (i, &amount) in amounts.iter().enumerate() {
             let user = app.api().addr_make(&format!("user/{}", i + 1));
 
-            // trasnsfer native tokens to user
+            // transfer native tokens to user
             // NOTICE: owner must have enough native tokens
             app.send_tokens(owner.clone(), user.clone(), &coins(amount, denom))
                 .unwrap();
