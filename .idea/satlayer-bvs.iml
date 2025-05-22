@@ -4,10 +4,12 @@
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
     <content url="file://$MODULE_DIR$">
-      <excludeFolder url="file://$MODULE_DIR$/.turbo" />
       <sourceFolder url="file://$MODULE_DIR$/examples/squaring/contract/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/examples/squaring/contract/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/insurance/service/contract/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/.turbo" />
       <excludeFolder url="file://$MODULE_DIR$/examples/squaring/contract/target" />
+      <excludeFolder url="file://$MODULE_DIR$/examples/insurance/service/contract/target" />
       <excludePattern pattern=".turbo" />
       <excludePattern pattern="dist" />
       <excludePattern pattern="Cargo.lock" />
