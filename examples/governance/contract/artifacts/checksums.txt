@@ -1,0 +1,1 @@
+42c2ea4ea040b4dd8bca5faae3fae75108f08b96f46550b8c65c712de52ab332  governance_contract.wasm
