@@ -6,13 +6,14 @@ pub use bvs_library::testing::{Cw20TokenContract, TestingContract};
 pub use bvs_pauser::testing::PauserContract;
 pub use bvs_registry::testing::RegistryContract;
 pub use bvs_vault_bank::testing::VaultBankContract;
+use bvs_vault_base::msg::{RecipientAmount, VaultExecuteMsg};
 pub use bvs_vault_cw20::testing::VaultCw20Contract;
 pub use bvs_vault_router::testing::VaultRouterContract;
-use cosmwasm_std::{Addr, Env};
-use cw20::MinterResponse;
-use cw_multi_test::App;
+use cosmwasm_std::{coins, Addr, Env, Uint128};
+use cw_multi_test::{App, Executor};
 
 pub struct BvsMultiTest {
+    pub app: App,
     pub pauser: PauserContract,
     pub registry: RegistryContract,
     pub guardrail: GuardrailContract,
@@ -25,17 +26,19 @@ pub struct BvsMultiTest {
 pub struct BvsMultiTestBuilder {
     app: App,
     env: Env,
+    owner: Addr,
 }
 
 /// [BvsMultiTest] provides a convenient way to bootstrap all the necessary contracts
 /// for testing a Service in the BVS ecosystem.
 impl BvsMultiTestBuilder {
     /// Creates a new instance of [BvsMultiTestBuilder] with the given [App] and [Env].
-    pub fn new(app: App, env: Env) -> Self {
-        Self { app, env }
+    pub fn new(app: App, env: Env, owner: Addr) -> Self {
+        Self { app, env, owner }
     }
 
     /// Builds the [BvsMultiTest] instance.
+    ///
     /// It initializes the [PauserContract], [RegistryContract], [GuardrailContract], [VaultRouterContract],
     /// [VaultBankContract], [VaultCw20Contract], and [Cw20TokenContract].
     pub fn build(mut self) -> BvsMultiTest {
@@ -55,8 +58,7 @@ impl BvsMultiTestBuilder {
             denom,
         );
 
-        let cw20_token =
-            Self::deploy_cw20_token(&mut self.app, &self.env, "TEST", operator.clone());
+        let cw20_token = Self::deploy_cw20_token(&mut self.app, &self.env);
         let cw20_vault = Self::deploy_cw20_vault(
             &mut self.app,
             &self.env,
@@ -66,7 +68,16 @@ impl BvsMultiTestBuilder {
             cw20_token.clone().addr,
         );
 
+        Self::deposit_to_vault(
+            &mut self.app,
+            self.owner,
+            &bank_vault,
+            &cw20_vault,
+            &cw20_token,
+        );
+
         BvsMultiTest {
+            app: self.app,
             pauser,
             registry,
             guardrail,
@@ -78,7 +89,7 @@ impl BvsMultiTestBuilder {
     }
 
     /// Deploys a new [VaultBankContract] with the given operator and denom.
-    pub fn deploy_bank_vault(
+    fn deploy_bank_vault(
         app: &mut App,
         env: &Env,
         pauser: &PauserContract,
@@ -105,8 +116,57 @@ impl BvsMultiTestBuilder {
         bank_contract
     }
 
+    /// Creates 10 users and each deposits different amounts to the bank vault and cw20 vault.
+    fn deposit_to_vault(
+        app: &mut App,
+        owner: Addr,
+        bank_vault: &VaultBankContract,
+        cw20_vault: &VaultCw20Contract,
+        cw20_token: &Cw20TokenContract,
+    ) {
+        let denom = "denom";
+        let amounts: Vec<u128> = vec![100, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
+
+        let deposits: Vec<_> = (1..=10)
+            .map(|i| {
+                let user = app.api().addr_make(&format!("user/{}", i));
+
+                // trasnsfer native tokens to user
+                // NOTICE: owner must have enough native tokens
+                let amount = amounts[i - 1];
+                app.send_tokens(owner.clone(), user.clone(), &coins(amount, denom))
+                    .unwrap();
+
+                // mint CW20 tokens to user
+                cw20_token.fund(app, &user.clone(), amount);
+                // increase cw20 vault allowance
+                cw20_token.increase_allowance(app, &user.clone(), &cw20_vault.addr, amount);
+
+                let msg = VaultExecuteMsg::DepositFor(RecipientAmount {
+                    amount: Uint128::new(amount),
+                    recipient: user.clone(),
+                });
+
+                (user, msg, amount)
+            })
+            .collect();
+
+        deposits
+            .clone()
+            .into_iter()
+            .for_each(|(user, msg, amount)| {
+                bank_vault
+                    .execute_with_funds(app, &user, &msg, coins(amount, denom))
+                    .unwrap();
+            });
+
+        deposits.into_iter().for_each(|(user, msg, _)| {
+            cw20_vault.execute(app, &user, &msg).unwrap();
+        });
+    }
+
     /// Deploys a new [VaultCw20Contract] with the given operator and cw20 contract address.
-    pub fn deploy_cw20_vault(
+    fn deploy_cw20_vault(
         app: &mut App,
         env: &Env,
         pauser: &PauserContract,
@@ -134,40 +194,53 @@ impl BvsMultiTestBuilder {
     }
 
     /// Deploys a new [Cw20TokenContract] with the given symbol and minter address.
-    pub fn deploy_cw20_token(
-        app: &mut App,
-        env: &Env,
-        symbol: impl Into<String>,
-        minter: impl Into<String>,
-    ) -> Cw20TokenContract {
-        let symbol = symbol.into();
-        let init_msg = cw20_base::msg::InstantiateMsg {
-            symbol: symbol.clone(),
-            name: format!("Token {}", symbol),
-            decimals: 18,
-            initial_balances: vec![],
-            mint: Some(MinterResponse {
-                minter: minter.into(),
-                cap: None,
-            }),
-            marketing: None,
-        };
-
-        Cw20TokenContract::new(app, env, Some(init_msg))
+    fn deploy_cw20_token(app: &mut App, env: &Env) -> Cw20TokenContract {
+        Cw20TokenContract::new(app, env, None)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::mock_env;
+    use bvs_vault_bank::msg::QueryMsg;
+    use cosmwasm_std::{coin, testing::mock_env};
     use cw_multi_test::App;
 
     #[test]
     fn test_new() {
-        let app = App::default();
+        let app = App::new(|router, api, storage| {
+            let owner = api.addr_make("owner");
+            router
+                .bank
+                .init_balance(storage, &owner, coins(Uint128::MAX.u128(), "denom"))
+                .unwrap();
+        });
         let env = mock_env();
+        let owner = app.api().addr_make("owner");
 
-        BvsMultiTestBuilder::new(app, env).build();
+        let bvs = BvsMultiTestBuilder::new(app, env, owner).build();
+
+        let denom = "denom";
+
+        let user1 = bvs.app.api().addr_make("user/1");
+
+        // query user1 left native token balance
+        let user1_balance = bvs.app.wrap().query_balance(&user1, denom).unwrap();
+        assert_eq!(user1_balance, coin(0, denom));
+
+        // query bank vault shares
+        let query_shares = QueryMsg::Shares {
+            staker: user1.to_string(),
+        };
+        let shares: Uint128 = bvs.bank_vault.query(&bvs.app, &query_shares).unwrap();
+        assert_eq!(shares, Uint128::new(100));
+
+        // query user1 left cw20 balance
+        let user1_balance = bvs.cw20_token.balance(&bvs.app, &user1);
+        assert_eq!(user1_balance, 0);
+
+        // query cw20 vault shares
+        let shares: Uint128 = bvs.cw20_vault.query(&bvs.app, &query_shares).unwrap();
+        assert_eq!(shares, Uint128::new(100));
     }
 }
