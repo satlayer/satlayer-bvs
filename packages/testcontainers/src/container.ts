@@ -1,8 +1,8 @@
 import { join } from "node:path";
 
 import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
-import { Slip10RawIndex } from "@cosmjs/crypto";
-import { DirectSecp256k1HdWallet, OfflineSigner, parseCoins } from "@cosmjs/proto-signing";
+import { Bip39, sha256, Slip10RawIndex } from "@cosmjs/crypto";
+import { AccountData, DirectSecp256k1HdWallet, OfflineSigner, parseCoins } from "@cosmjs/proto-signing";
 import { DeliverTxResponse, GasPrice } from "@cosmjs/stargate";
 import { AbstractStartedContainer, GenericContainer, StartedTestContainer, Wait } from "testcontainers";
 
@@ -98,5 +98,18 @@ export class StartedCosmWasmContainer extends AbstractStartedContainer {
       gasPrice: GasPrice.fromString("0.002000ustake"),
       broadcastPollIntervalMs: 200,
     });
+  }
+
+  /**
+   * Generates a new account from the given seed.
+   */
+  async generateAccount(seed: string): Promise<AccountData> {
+    const seedEntropy = sha256(new TextEncoder().encode(seed));
+    const mnemonic = Bip39.encode(seedEntropy);
+    const wallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic.toString(), {
+      prefix: "wasm",
+    });
+    const accounts = await wallet.getAccounts();
+    return accounts[0];
   }
 }
