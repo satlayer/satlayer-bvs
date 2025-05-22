@@ -127,42 +127,34 @@ impl BvsMultiTestBuilder {
         let denom = "denom";
         let amounts: Vec<u128> = vec![100, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
 
-        let deposits: Vec<_> = (1..=10)
-            .map(|i| {
-                let user = app.api().addr_make(&format!("user/{}", i));
+        for (i, &amount) in amounts.iter().enumerate() {
+            let user = app.api().addr_make(&format!("user/{}", i + 1));
 
-                // trasnsfer native tokens to user
-                // NOTICE: owner must have enough native tokens
-                let amount = amounts[i - 1];
-                app.send_tokens(owner.clone(), user.clone(), &coins(amount, denom))
-                    .unwrap();
+            // trasnsfer native tokens to user
+            // NOTICE: owner must have enough native tokens
+            app.send_tokens(owner.clone(), user.clone(), &coins(amount, denom))
+                .unwrap();
 
-                // mint CW20 tokens to user
-                cw20_token.fund(app, &user.clone(), amount);
-                // increase cw20 vault allowance
-                cw20_token.increase_allowance(app, &user.clone(), &cw20_vault.addr, amount);
+            // mint CW20 tokens to user
+            cw20_token.fund(app, &user, amount);
 
-                let msg = VaultExecuteMsg::DepositFor(RecipientAmount {
-                    amount: Uint128::new(amount),
-                    recipient: user.clone(),
-                });
+            // increase cw20 vault allowance
+            cw20_token.increase_allowance(app, &user, &cw20_vault.addr, amount);
 
-                (user, msg, amount)
-            })
-            .collect();
-
-        deposits
-            .clone()
-            .into_iter()
-            .for_each(|(user, msg, amount)| {
-                bank_vault
-                    .execute_with_funds(app, &user, &msg, coins(amount, denom))
-                    .unwrap();
+            // construct DepositFor msg
+            let msg = VaultExecuteMsg::DepositFor(RecipientAmount {
+                amount: Uint128::new(amount),
+                recipient: user.clone(),
             });
 
-        deposits.into_iter().for_each(|(user, msg, _)| {
+            // deposit into bank vault
+            bank_vault
+                .execute_with_funds(app, &user, &msg, coins(amount, denom))
+                .unwrap();
+
+            // deposit into cw20 vault
             cw20_vault.execute(app, &user, &msg).unwrap();
-        });
+        }
     }
 
     /// Deploys a new [VaultCw20Contract] with the given operator and cw20 contract address.
@@ -208,7 +200,7 @@ mod tests {
     use cw_multi_test::App;
 
     #[test]
-    fn test_new() {
+    fn test_bvs_multi_test() {
         let app = App::new(|router, api, storage| {
             let owner = api.addr_make("owner");
             router
@@ -225,9 +217,9 @@ mod tests {
         let amounts: Vec<u128> = vec![100, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
 
         // test bank vault and cw20 vault
-        for i in 1..=10 {
-            let user = bvs.app.api().addr_make(&format!("user/{}", i));
-            let amount = Uint128::new(amounts[i - 1]);
+        for (i, &amount) in amounts.iter().enumerate() {
+            let user = bvs.app.api().addr_make(&format!("user/{}", i + 1));
+            let amount_uint128 = Uint128::new(amount);
 
             // these two msgs are general for bank vault and cw20 vault
             let query_shares = QueryMsg::Shares {
@@ -235,46 +227,52 @@ mod tests {
             };
             let msg = VaultExecuteMsg::WithdrawTo(RecipientAmount {
                 recipient: user.clone(),
-                amount,
+                amount: amount_uint128,
             });
 
             // bank vault test
             {
                 // query user left native token balance
-                let user_balance = bvs.app.wrap().query_balance(&user, denom).unwrap();
-                assert_eq!(user_balance, coin(0, denom));
+                assert_user_native_balance(&bvs.app, &user, denom, 0);
 
                 // query bank vault shares
                 let bank_vault_shares: Uint128 =
                     bvs.bank_vault.query(&bvs.app, &query_shares).unwrap();
-                assert_eq!(bank_vault_shares, amount);
+                assert_eq!(bank_vault_shares, amount_uint128);
 
                 // withdraw from bank vault
                 bvs.bank_vault.execute(&mut bvs.app, &user, &msg).unwrap();
 
                 // query user left native token balance
-                let user_balance = bvs.app.wrap().query_balance(&user, denom).unwrap();
-                assert_eq!(user_balance, coin(u128::from(amount), denom));
+                assert_user_native_balance(&bvs.app, &user, denom, amount);
             }
 
             // test cw20 vault
             {
                 // query user1 left cw20 balance
-                let user_balance = bvs.cw20_token.balance(&bvs.app, &user);
-                assert_eq!(user_balance, 0);
+                assert_user_cw20_balance(&bvs.cw20_token, &bvs.app, &user, 0);
 
                 // query cw20 vault shares
                 let cw20_vault_shares: Uint128 =
                     bvs.cw20_vault.query(&bvs.app, &query_shares).unwrap();
-                assert_eq!(cw20_vault_shares, amount);
+                assert_eq!(cw20_vault_shares, amount_uint128);
 
                 // withdraw from cw20 vault
                 bvs.cw20_vault.execute(&mut bvs.app, &user, &msg).unwrap();
 
                 // query user left cw20 balance
-                let user_balance = bvs.cw20_token.balance(&bvs.app, &user);
-                assert_eq!(user_balance, u128::from(amount));
+                assert_user_cw20_balance(&bvs.cw20_token, &bvs.app, &user, amount);
             }
         }
+    }
+
+    fn assert_user_native_balance(app: &App, user: &Addr, denom: &str, expected: u128) {
+        let user_balance = app.wrap().query_balance(user, denom).unwrap();
+        assert_eq!(user_balance, coin(expected, denom));
+    }
+
+    fn assert_user_cw20_balance(token: &Cw20TokenContract, app: &App, user: &Addr, expected: u128) {
+        let user_balance = token.balance(app, user);
+        assert_eq!(user_balance, expected);
     }
 }
