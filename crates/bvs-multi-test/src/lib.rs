@@ -203,6 +203,7 @@ impl BvsMultiTestBuilder {
 mod tests {
     use super::*;
     use bvs_vault_bank::msg::QueryMsg;
+    use bvs_vault_base::msg::{RecipientAmount, VaultExecuteMsg};
     use cosmwasm_std::{coin, testing::mock_env};
     use cw_multi_test::App;
 
@@ -216,31 +217,64 @@ mod tests {
                 .unwrap();
         });
         let env = mock_env();
-        let owner = app.api().addr_make("owner");
 
-        let bvs = BvsMultiTestBuilder::new(app, env, owner).build();
+        let owner = app.api().addr_make("owner");
+        let mut bvs = BvsMultiTestBuilder::new(app, env, owner).build();
 
         let denom = "denom";
+        let amounts: Vec<u128> = vec![100, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
 
-        let user1 = bvs.app.api().addr_make("user/1");
+        // test bank vault and cw20 vault
+        for i in 1..=10 {
+            let user = bvs.app.api().addr_make(&format!("user/{}", i));
+            let amount = Uint128::new(amounts[i - 1]);
 
-        // query user1 left native token balance
-        let user1_balance = bvs.app.wrap().query_balance(&user1, denom).unwrap();
-        assert_eq!(user1_balance, coin(0, denom));
+            // these two msgs are general for bank vault and cw20 vault
+            let query_shares = QueryMsg::Shares {
+                staker: user.to_string(),
+            };
+            let msg = VaultExecuteMsg::WithdrawTo(RecipientAmount {
+                recipient: user.clone(),
+                amount,
+            });
 
-        // query bank vault shares
-        let query_shares = QueryMsg::Shares {
-            staker: user1.to_string(),
-        };
-        let shares: Uint128 = bvs.bank_vault.query(&bvs.app, &query_shares).unwrap();
-        assert_eq!(shares, Uint128::new(100));
+            // bank vault test
+            {
+                // query user left native token balance
+                let user_balance = bvs.app.wrap().query_balance(&user, denom).unwrap();
+                assert_eq!(user_balance, coin(0, denom));
 
-        // query user1 left cw20 balance
-        let user1_balance = bvs.cw20_token.balance(&bvs.app, &user1);
-        assert_eq!(user1_balance, 0);
+                // query bank vault shares
+                let bank_vault_shares: Uint128 =
+                    bvs.bank_vault.query(&bvs.app, &query_shares).unwrap();
+                assert_eq!(bank_vault_shares, amount);
 
-        // query cw20 vault shares
-        let shares: Uint128 = bvs.cw20_vault.query(&bvs.app, &query_shares).unwrap();
-        assert_eq!(shares, Uint128::new(100));
+                // withdraw from bank vault
+                bvs.bank_vault.execute(&mut bvs.app, &user, &msg).unwrap();
+
+                // query user left native token balance
+                let user_balance = bvs.app.wrap().query_balance(&user, denom).unwrap();
+                assert_eq!(user_balance, coin(u128::from(amount), denom));
+            }
+
+            // test cw20 vault
+            {
+                // query user1 left cw20 balance
+                let user_balance = bvs.cw20_token.balance(&bvs.app, &user);
+                assert_eq!(user_balance, 0);
+
+                // query cw20 vault shares
+                let cw20_vault_shares: Uint128 =
+                    bvs.cw20_vault.query(&bvs.app, &query_shares).unwrap();
+                assert_eq!(cw20_vault_shares, amount);
+
+                // withdraw from cw20 vault
+                bvs.cw20_vault.execute(&mut bvs.app, &user, &msg).unwrap();
+
+                // query user left cw20 balance
+                let user_balance = bvs.cw20_token.balance(&bvs.app, &user);
+                assert_eq!(user_balance, u128::from(amount));
+            }
+        }
     }
 }
