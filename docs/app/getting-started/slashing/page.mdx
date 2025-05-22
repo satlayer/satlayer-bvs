@@ -147,7 +147,8 @@ In that case, the service can only slash with the previous set of parameters.
 ### Cancel Slashing (resolved)
 
 After the `request_slashing` message is sent, the operator has a `resolution_window` (in seconds) to respond.
-The service sets this window and can be any value greater than zero.
+The service sets this window and can be any value.
+Zero is a valid value for objectively verifiable slashing.
 **A value greater than the withdrawal delay is not recommended**.
 If promptly responded to and resolved, the service can cancel the slashing process.
 
