@@ -261,10 +261,11 @@ mod vault_execute {
         let total_supply: Uint128 = from_json(
             &response
                 .data
+                .as_ref()
                 .ok_or_else(|| StdError::not_found("Total supply not found in response"))?,
         )?;
 
-        Ok(Response::new()
+        Ok(response
             .add_event(
                 Event::new("DepositFor")
                     .add_attribute("sender", info.sender.to_string())
