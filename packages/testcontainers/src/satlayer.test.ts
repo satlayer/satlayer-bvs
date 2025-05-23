@@ -26,7 +26,7 @@ test("should bootstrap contracts", async () => {
   expect(vaults).toEqual([]);
 }, 30_000);
 
-test("should bootstrap contracts and deploy vaults", async () => {
+test("should deploy vaults", async () => {
   const operator = (await started.wallet.getAccounts())[5];
 
   const vault1 = await contracts.initVaultBank(operator.address, "ucosm");
@@ -62,6 +62,43 @@ test("should bootstrap contracts and deploy vaults", async () => {
       },
       {
         vault: vault3,
+        whitelisted: true,
+      },
+    ]),
+  );
+}, 30_000);
+
+test("should deploy tokenized vaults", async () => {
+  const operator = (await started.wallet.getAccounts())[6];
+
+  const bankVault = await contracts.initVaultBankTokenized(operator.address, "ucosm");
+
+  const cw20_address = await contracts.initCw20({
+    decimals: 8,
+    name: "JUMP",
+    symbol: "JUMP",
+    initial_balances: [
+      {
+        address: operator.address,
+        amount: "1000000000000",
+      },
+    ],
+  });
+  const cw20Vault = await contracts.initVaultCw20Tokenized(operator.address, cw20_address);
+
+  const queryMsg: RouterQueryMsg = {
+    list_vaults: {},
+  };
+
+  const vaults = await contracts.router.query(queryMsg);
+  expect(vaults).toEqual(
+    expect.arrayContaining([
+      {
+        vault: bankVault,
+        whitelisted: true,
+      },
+      {
+        vault: cw20Vault,
         whitelisted: true,
       },
     ]),
