@@ -14,7 +14,9 @@ type Data = {
   guardrail: { codeId: number; address: string };
   router: { codeId: number; address: string };
   vaultCw20: { codeId: number };
+  vaultCw20Tokenized: { codeId: number };
   vaultBank: { codeId: number };
+  vaultBankTokenized: { codeId: number };
 };
 
 export class SatLayerContracts {
@@ -37,16 +39,27 @@ export class SatLayerContracts {
 
   static async bootstrap(started: StartedCosmWasmContainer): Promise<SatLayerContracts> {
     const accounts = await started.wallet.getAccounts();
-    const [cw20Upload, pauserUpload, registryUpload, routerUpload, vaultCw20Upload, vaultBankUpload, guardrailUpload] =
-      await Promise.all([
-        uploadCw20(started.client, accounts[0].address),
-        uploadBvs(started.client, accounts[1].address, "@satlayer/bvs-pauser"),
-        uploadBvs(started.client, accounts[2].address, "@satlayer/bvs-registry"),
-        uploadBvs(started.client, accounts[3].address, "@satlayer/bvs-vault-router"),
-        uploadBvs(started.client, accounts[4].address, "@satlayer/bvs-vault-cw20"),
-        uploadBvs(started.client, accounts[5].address, "@satlayer/bvs-vault-bank"),
-        uploadBvs(started.client, accounts[6].address, "@satlayer/bvs-guardrail"),
-      ]);
+    const [
+      cw20Upload,
+      pauserUpload,
+      registryUpload,
+      routerUpload,
+      vaultCw20Upload,
+      vaultBankUpload,
+      guardrailUpload,
+      vaultCw20TokenizedUpload,
+      vaultBankTokenizedUpload,
+    ] = await Promise.all([
+      uploadCw20(started.client, accounts[0].address),
+      uploadBvs(started.client, accounts[1].address, "@satlayer/bvs-pauser"),
+      uploadBvs(started.client, accounts[2].address, "@satlayer/bvs-registry"),
+      uploadBvs(started.client, accounts[3].address, "@satlayer/bvs-vault-router"),
+      uploadBvs(started.client, accounts[4].address, "@satlayer/bvs-vault-cw20"),
+      uploadBvs(started.client, accounts[5].address, "@satlayer/bvs-vault-bank"),
+      uploadBvs(started.client, accounts[6].address, "@satlayer/bvs-guardrail"),
+      uploadBvs(started.client, accounts[7].address, "@satlayer/bvs-vault-cw20-tokenized"),
+      uploadBvs(started.client, accounts[8].address, "@satlayer/bvs-vault-bank-tokenized"),
+    ]);
 
     const pauserResult = await instantiateBvs(
       started.client,
@@ -103,7 +116,9 @@ export class SatLayerContracts {
       guardrail: { address: guardrailResult.contractAddress, codeId: guardrailUpload.codeId },
       router: { address: routerResult.contractAddress, codeId: routerUpload.codeId },
       vaultBank: { codeId: vaultBankUpload.codeId },
+      vaultBankTokenized: { codeId: vaultBankTokenizedUpload.codeId },
       vaultCw20: { codeId: vaultCw20Upload.codeId },
+      vaultCw20Tokenized: { codeId: vaultCw20TokenizedUpload.codeId },
     });
   }
 
@@ -121,6 +136,33 @@ export class SatLayerContracts {
       cw20_contract: cw20_contract,
       pauser: this.data.pauser.address,
       router: this.data.router.address,
+    });
+
+    await this.client.execute(
+      sender,
+      this.data.router.address,
+      {
+        set_vault: {
+          vault: vaultCw20.contractAddress,
+          whitelisted: true,
+        },
+      },
+      "auto",
+    );
+
+    return vaultCw20.contractAddress;
+  }
+
+  async initVaultCw20Tokenized(operator: string, cw20_contract: string, symbol = "satCWT"): Promise<string> {
+    const sender = (await this.wallet.getAccounts())[0].address;
+    const codeId = this.data.vaultCw20Tokenized.codeId;
+    const vaultCw20 = await instantiateBvs(this.client, sender, "@satlayer/bvs-vault-cw20-tokenized", codeId, {
+      operator: operator,
+      cw20_contract: cw20_contract,
+      pauser: this.data.pauser.address,
+      router: this.data.router.address,
+      name: symbol,
+      symbol: symbol,
     });
 
     await this.client.execute(
@@ -163,36 +205,9 @@ export class SatLayerContracts {
     return vaultBank.contractAddress;
   }
 
-  async initVaultCw20Tokenized(operator: string, cw20_contract: string, symbol = "CW20T"): Promise<string> {
+  async initVaultBankTokenized(operator: string, denom: string, symbol = "satBANKT"): Promise<string> {
     const sender = (await this.wallet.getAccounts())[0].address;
-    const codeId = this.data.vaultCw20.codeId;
-    const vaultCw20 = await instantiateBvs(this.client, sender, "@satlayer/bvs-vault-cw20-tokenized", codeId, {
-      operator: operator,
-      cw20_contract: cw20_contract,
-      pauser: this.data.pauser.address,
-      router: this.data.router.address,
-      name: symbol,
-      symbol: symbol,
-    });
-
-    await this.client.execute(
-      sender,
-      this.data.router.address,
-      {
-        set_vault: {
-          vault: vaultCw20.contractAddress,
-          whitelisted: true,
-        },
-      },
-      "auto",
-    );
-
-    return vaultCw20.contractAddress;
-  }
-
-  async initVaultBankTokenized(operator: string, denom: string, symbol = "BANKT"): Promise<string> {
-    const sender = (await this.wallet.getAccounts())[0].address;
-    const codeId = this.data.vaultBank.codeId;
+    const codeId = this.data.vaultBankTokenized.codeId;
     const vaultBank = await instantiateBvs(this.client, sender, "@satlayer/bvs-vault-bank-tokenized", codeId, {
       operator: operator,
       denom: denom,
