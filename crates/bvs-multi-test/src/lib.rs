@@ -201,11 +201,13 @@ mod tests {
 
     #[test]
     fn test_bvs_multi_test() {
+        let denom = "denom";
+
         let app = App::new(|router, api, storage| {
             let owner = api.addr_make("owner");
             router
                 .bank
-                .init_balance(storage, &owner, coins(Uint128::MAX.u128(), "denom"))
+                .init_balance(storage, &owner, coins(Uint128::MAX.u128(), denom))
                 .unwrap();
         });
         let env = mock_env();
@@ -213,7 +215,6 @@ mod tests {
         let owner = app.api().addr_make("owner");
         let mut bvs = BvsMultiTestBuilder::new(app, env, owner).build();
 
-        let denom = "denom";
         let amounts: Vec<u128> = vec![100, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
 
         // test bank vault and cw20 vault
