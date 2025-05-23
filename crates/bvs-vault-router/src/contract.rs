@@ -130,7 +130,7 @@ mod execute {
     use crate::msg::{RequestSlashingPayload, RequestSlashingResponse};
     use crate::state::{
         self, SlashingRequest, SlashingRequestStatus, DEFAULT_WITHDRAWAL_LOCK_PERIOD,
-        SLASHING_REQUESTS, SLASH_LOCKED, WITHDRAWAL_LOCK_PERIOD,
+        SLASHING_REQUESTS, SLASHING_REQUEST_EXPIRY_WINDOW, SLASH_LOCKED, WITHDRAWAL_LOCK_PERIOD,
     };
     use crate::ContractError::{InvalidSlashingRequest, Unauthorized};
     use bvs_library::addr::Operator;
@@ -371,7 +371,8 @@ mod execute {
         let request_expiry = env
             .block
             .time
-            .plus_seconds(slashing_parameters.resolution_window * 2);
+            .plus_seconds(slashing_parameters.resolution_window)
+            .plus_seconds(SLASHING_REQUEST_EXPIRY_WINDOW.u64());
 
         let new_request = SlashingRequest {
             request: data.clone(),
