@@ -252,7 +252,7 @@ mod vault_execute {
         )?;
 
         let total_receipt_token_supply: Uint128 = from_json(
-            &response
+            response
                 .data
                 .as_ref()
                 .ok_or_else(|| StdError::not_found("Total supply not found in response"))?,
