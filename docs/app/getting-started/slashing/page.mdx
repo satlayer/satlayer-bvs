@@ -48,7 +48,7 @@ Enabling or updating the slashing configuration does not automatically enable th
 The operator must explicitly agree to the new slashing configuration by calling `operator_opt_in_to_slashing` again. This ensures that the operator knows and has agreed to the new slashing conditions—a guardrail to prevent the spontaneous slashing of operators due to a malicious change of service operating posture.
 
 The `resolution_window` is the amount of seconds, the operator has to respond to resolve the slashing incident.
-The slashing window will automatically close after `resolution_window * 2` has elapsed.
+The slashing window will automatically close after `resolution_window` + 7 days have elapsed.
 
 ```json
 {
@@ -82,7 +82,7 @@ an EOA can govern the service for arbitrary slashing or conditions that are not 
 * An operator must be actively validating the service at the time of the accusation.
 The `query::status` must return `Active` in the Vault Router; we use checkpoints to determine the historic state.
 * Pending slashes must be canceled before a new slashing process can be initiated.
-In-progress slashing will be automatically canceled after the maximum `resolution_window * 2` expires.
+In-progress slashing will be automatically canceled after the maximum `resolution_window` + 7 days expire.
 * The operator must opt into the slashing parameters provided by the service.
 If the service has enabled slashing before the operator has registered with the service,
 the operator will automatically opt in during registration.
@@ -165,7 +165,8 @@ and operators can choose to deregister from the service if they feel the service
 
 A service cannot start a new slashing process until the current one is canceled or executed
 (for more information, see Slashing Lifecycle to understand the entity relationship between operators and services).
-Unexecuted slashing will automatically be canceled after the `resolution_window * 2` expires.
+Unexecuted slashing will expire after the `resolution_window` + 7 days
+and be canceled after a new request for the same (service, operator) pair is submitted.
 
 ```json
 {

@@ -174,7 +174,7 @@ type SlashingRequest struct {
 	// The core slashing request data including operator, bips, timestamp, and metadata.
 	Request RequestClass `json:"request"`
 	// The timestamp after which the request is no longer valid. This will be `request_time` +
-	// `resolution_window` * 2 (as per current slashing parameters)
+	// `resolution_window` + `expiry_window` (7 days default)
 	RequestExpiry string `json:"request_expiry"`
 	// The timestamp when the request resolution window will end and becomes eligible for
 	// locking. This will be `request_time` + `resolution_window`

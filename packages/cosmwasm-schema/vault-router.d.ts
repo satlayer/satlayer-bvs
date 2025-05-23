@@ -88,7 +88,7 @@ type IsWhitelistedResponse = boolean;
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
  * The timestamp after which the request is no longer valid. This will be `request_time` +
- * `resolution_window` * 2 (as per current slashing parameters)
+ * `resolution_window` + `expiry_window` (7 days default)
  *
  * The timestamp when the request resolution window will end and becomes eligible for
  * locking. This will be `request_time` + `resolution_window`
@@ -283,7 +283,7 @@ export interface SlashingRequestResponse {
   request: RequestClass;
   /**
    * The timestamp after which the request is no longer valid. This will be `request_time` +
-   * `resolution_window` * 2 (as per current slashing parameters)
+   * `resolution_window` + `expiry_window` (7 days default)
    */
   request_expiry: string;
   /**

@@ -463,7 +463,7 @@ fn request_slashing_successful() {
                 .add_attribute("operator", operator.to_string())
                 .add_attribute(
                     "slashing_request_id",
-                    "cffcb7e810be616e5582beb8bdb8a545502733d683515410d97d262dcba1855c"
+                    "63e38c2b5932a2d92f0f1473281ba2a74497ad59b7cf69a91ee3d5d371c74811"
                 )
                 .add_attribute("reason", "test"),
         ]
@@ -473,7 +473,7 @@ fn request_slashing_successful() {
     assert_eq!(
         slashing_id,
         SlashingRequestId::from_hex(
-            "cffcb7e810be616e5582beb8bdb8a545502733d683515410d97d262dcba1855c"
+            "63e38c2b5932a2d92f0f1473281ba2a74497ad59b7cf69a91ee3d5d371c74811"
         )
         .unwrap()
     );
@@ -488,7 +488,7 @@ fn request_slashing_successful() {
     assert_eq!(
         slashing_request_id,
         SlashingRequestIdResponse(Some(
-            HexBinary::from_hex("cffcb7e810be616e5582beb8bdb8a545502733d683515410d97d262dcba1855c")
+            HexBinary::from_hex("63e38c2b5932a2d92f0f1473281ba2a74497ad59b7cf69a91ee3d5d371c74811")
                 .unwrap()
                 .into()
         ))
@@ -503,7 +503,11 @@ fn request_slashing_successful() {
             request: slashing_request_payload,
             request_time: app.block_info().time,
             request_resolution: app.block_info().time.plus_seconds(100),
-            request_expiry: app.block_info().time.plus_seconds(200),
+            request_expiry: app
+                .block_info()
+                .time
+                .plus_seconds(100)
+                .plus_seconds(7 * DAYS),
             status: SlashingRequestStatus::Pending.into(),
             service,
         }
@@ -874,7 +878,7 @@ fn request_slashing_lifecycle() {
     // move blockchain after slashing request expiry
     app.update_block(|block| {
         block.height += 20;
-        block.time = block.time.plus_seconds(200); // resolution_window * 2
+        block.time = block.time.plus_seconds(100).plus_seconds(7 * DAYS); // resolution_window + 7 days
     });
 
     // service successfully request slashing after slashing request expiry
@@ -901,7 +905,7 @@ fn request_slashing_lifecycle() {
                     .add_attribute("operator", operator.to_string())
                     .add_attribute(
                         "slashing_request_id",
-                        "d049decfedeb7ea90c0d4bbe6f068ddbe20729a5a13e81478cf517cc0f86bf3c"
+                        "5ba8f0118fefaed4b4ad086e34cd2c85ddc17a1d2c17c5f66e129abf2c3ac4ea"
                     )
                     .add_attribute("reason", "test2"),
             ]
@@ -1080,7 +1084,7 @@ fn test_slash_locking() {
 
         app.update_block(|block| {
             block.height += 60;
-            block.time = block.time.plus_seconds(600);
+            block.time = block.time.plus_seconds(100).plus_seconds(7 * DAYS);
         });
 
         let slashing_request_payload_2 = RequestSlashingPayload {
@@ -1953,16 +1957,16 @@ fn test_slash_locking_negative() {
         // aged the slash entry to be expired
         app.update_block(|block| {
             block.height += 80;
-            block.time = block.time.plus_seconds(800);
+            block.time = block.time.plus_seconds(101).plus_seconds(7 * DAYS);
         });
 
         let msg = ExecuteMsg::LockSlashing(slashing_request_id.clone().0.unwrap());
-        let res = tc
+        let err = tc
             .vault_router
             .execute(&mut app, &service, &msg)
             .unwrap_err();
         assert_eq!(
-            res.root_cause().to_string(),
+            err.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
                 msg: "Slashing has expired".to_string(),
             }
