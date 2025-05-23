@@ -159,6 +159,61 @@ export class SatLayerContracts {
 
     return vaultBank.contractAddress;
   }
+
+  async initVaultCw20Tokenized(operator: string, cw20_contract: string, symbol = "CW20T"): Promise<string> {
+    const sender = (await this.wallet.getAccounts())[0].address;
+    const codeId = this.data.vaultCw20.codeId;
+    const vaultCw20 = await instantiateBvs(this.client, sender, "@satlayer/bvs-vault-cw20-tokenized", codeId, {
+      operator: operator,
+      cw20_contract: cw20_contract,
+      pauser: this.data.pauser.address,
+      router: this.data.router.address,
+      name: symbol,
+      symbol: symbol,
+    });
+
+    await this.client.execute(
+      sender,
+      this.data.router.address,
+      {
+        set_vault: {
+          vault: vaultCw20.contractAddress,
+          whitelisted: true,
+        },
+      },
+      "auto",
+    );
+
+    return vaultCw20.contractAddress;
+  }
+
+  async initVaultBankTokenized(operator: string, denom: string, symbol = "BANKT"): Promise<string> {
+    const sender = (await this.wallet.getAccounts())[0].address;
+    const codeId = this.data.vaultBank.codeId;
+    const vaultBank = await instantiateBvs(this.client, sender, "@satlayer/bvs-vault-bank-tokenized", codeId, {
+      operator: operator,
+      denom: denom,
+      pauser: this.data.pauser.address,
+      router: this.data.router.address,
+      decimals: 6,
+      name: symbol,
+      symbol: symbol,
+    });
+
+    await this.client.execute(
+      sender,
+      this.data.router.address,
+      {
+        set_vault: {
+          vault: vaultBank.contractAddress,
+          whitelisted: true,
+        },
+      },
+      "auto",
+    );
+
+    return vaultBank.contractAddress;
+  }
 }
 
 export class Pauser {
