@@ -153,7 +153,7 @@ export class SatLayerContracts {
     return vaultCw20.contractAddress;
   }
 
-  async initVaultCw20Tokenized(operator: string, cw20_contract: string, symbol = "CWT"): Promise<string> {
+  async initVaultCw20Tokenized(operator: string, cw20_contract: string, symbol = "satCWT"): Promise<string> {
     const sender = (await this.wallet.getAccounts())[0].address;
     const codeId = this.data.vaultCw20Tokenized.codeId;
     const vaultCw20 = await instantiateBvs(this.client, sender, "@satlayer/bvs-vault-cw20-tokenized", codeId, {
@@ -205,7 +205,7 @@ export class SatLayerContracts {
     return vaultBank.contractAddress;
   }
 
-  async initVaultBankTokenized(operator: string, denom: string, symbol = "BANKT"): Promise<string> {
+  async initVaultBankTokenized(operator: string, denom: string, symbol = "satBANKT"): Promise<string> {
     const sender = (await this.wallet.getAccounts())[0].address;
     const codeId = this.data.vaultBankTokenized.codeId;
     const vaultBank = await instantiateBvs(this.client, sender, "@satlayer/bvs-vault-bank-tokenized", codeId, {
