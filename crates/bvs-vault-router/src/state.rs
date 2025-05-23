@@ -56,10 +56,10 @@ pub struct SlashingRequest {
     /// The timestamp when the request was submitted.
     pub request_time: Timestamp,
     /// The timestamp when the request resolution window will end and becomes eligible for locking.
-    /// This will be `request_time` + `resolution_window`
+    /// This will be `request_time` + `resolution_window`.
     pub request_resolution: Timestamp,
     /// The timestamp after which the request is no longer valid.
-    /// This will be `request_time` + `resolution_window` + `expiry_window` (7 days default)
+    /// This will be `request_time` + `resolution_window` + `SLASHING_REQUEST_EXPIRY_WINDOW`
     pub request_expiry: Timestamp,
     /// The status of the slashing request.
     pub status: u8,
