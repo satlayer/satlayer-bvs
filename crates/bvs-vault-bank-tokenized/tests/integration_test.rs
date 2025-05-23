@@ -103,9 +103,28 @@ fn test_deposit_withdraw() {
         recipient: staker.clone(),
         amount: Uint128::new(115_687_654),
     });
-    tc.vault
+    let response = tc
+        .vault
         .execute_with_funds(app, &staker, &msg, coins(115_687_654, denom))
         .unwrap();
+    assert_eq!(
+        response.events,
+        vec![
+            Event::new("execute").add_attribute("_contract_address", tc.vault.addr.to_string()),
+            Event::new("wasm")
+                .add_attribute("_contract_address", tc.vault.addr.to_string())
+                .add_attribute("action", "mint")
+                .add_attribute("to", staker.to_string())
+                .add_attribute("amount", "115687654"),
+            Event::new("wasm-DepositFor")
+                .add_attribute("_contract_address", tc.vault.addr.to_string())
+                .add_attribute("sender", staker.to_string())
+                .add_attribute("recipient", staker.to_string())
+                .add_attribute("assets", "115687654")
+                .add_attribute("shares", "115687654")
+                .add_attribute("total_shares", "115687654")
+        ]
+    );
 
     // Assert balances and shares after Deposit
     {

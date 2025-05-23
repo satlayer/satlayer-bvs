@@ -98,7 +98,7 @@ pub fn execute(
 /// The only time receipt token total supply should be changed is through staking and unstaking
 /// More precisely, only through - deposit_for and withdraw_to and redeem_withdrawal_to
 mod receipt_cw20_execute {
-    use cosmwasm_std::{Addr, StdError, StdResult, Uint128};
+    use cosmwasm_std::{to_json_binary, Addr, StdError, StdResult, Uint128};
     use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 
     use cw20_base::contract::execute_send;
@@ -136,11 +136,12 @@ mod receipt_cw20_execute {
             |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
         )?;
 
-        let res = Response::new()
+        let data = to_json_binary(&config.total_supply)?;
+        Ok(Response::new()
+            .set_data(data)
             .add_attribute("action", "mint")
             .add_attribute("to", recipient)
-            .add_attribute("amount", amount);
-        Ok(res)
+            .add_attribute("amount", amount))
     }
 
     pub fn execute_base(
@@ -202,7 +203,7 @@ mod vault_execute {
         offset, router,
         shares::{self, QueuedWithdrawalInfo},
     };
-    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, StdError};
+    use cosmwasm_std::{from_json, DepsMut, Env, Event, MessageInfo, Response, StdError, Uint128};
     use cw20_base::contract::execute_burn as receipt_token_burn;
 
     /// This executes a bank transfer of assets from the `info.sender` to the vault contract.
@@ -244,16 +245,20 @@ mod vault_execute {
         // critical section
         // Issue receipt token to msg.recipient
         // mint new receipt token to staker
-        super::receipt_cw20_execute::mint_internal(
+        let response = super::receipt_cw20_execute::mint_internal(
             deps.branch(),
             msg.recipient.clone(),
             new_receipt_tokens_to_be_mint,
         )?;
 
-        let total_receipt_token_supply =
-            cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
+        let total_receipt_token_supply: Uint128 = from_json(
+            response
+                .data
+                .as_ref()
+                .ok_or_else(|| StdError::not_found("Total supply not found in response"))?,
+        )?;
 
-        Ok(Response::new().add_event(
+        Ok(response.add_event(
             Event::new("DepositFor")
                 .add_attribute("sender", info.sender.to_string())
                 .add_attribute("recipient", msg.recipient)
