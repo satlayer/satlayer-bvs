@@ -1,5 +1,5 @@
 use bvs_registry::SlashingParameters;
-use cosmwasm_schema::cw_serde;
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw3_fixed_multisig;
 
 /// Instantiate message for the contract.
@@ -10,8 +10,6 @@ pub struct InstantiateMsg {
     /// Used for administrative operations.
     pub owner: String,
     pub cw3_instantiate_msg: cw3_fixed_multisig::msg::InstantiateMsg,
-    pub initial_slashing_parameters: SlashingParameters,
-    pub initial_member_list: Vec<String>,
 }
 
 #[cw_serde]
@@ -21,20 +19,30 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
-pub enum ExtendedExecuteMsg {}
+pub enum ExtendedExecuteMsg {
+    EnableSlashing(SlashingParameters),
+}
 
 #[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(cw3_fixed_multisig::msg::QueryMsg)]
     Base(cw3_fixed_multisig::msg::QueryMsg),
+    #[returns(ExtendedQueryMsg)]
     Extended(ExtendedQueryMsg),
 }
 
 #[cw_serde]
+#[derive(QueryResponses)]
 pub enum ExtendedQueryMsg {
-    /// Returns the address of the router contract.
-    GetRouter {},
-    /// Returns the address of the registry contract.
-    GetRegistry {},
-    /// Returns the address of the owner of this contract.
-    GetOwner {},
+    #[returns(ServiceInfoResponse)]
+    ServiceInfo {},
+}
+
+#[cw_serde]
+pub struct ServiceInfoResponse {
+    pub owner: String,
+    pub registry: String,
+    pub router: String,
+    pub slashing_enabled: bool,
 }
