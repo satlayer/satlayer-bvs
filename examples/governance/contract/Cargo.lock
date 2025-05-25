@@ -908,8 +908,11 @@ dependencies = [
 name = "governance-contract"
 version = "0.1.0"
 dependencies = [
+ "bvs-library",
  "bvs-multi-test",
  "bvs-registry",
+ "bvs-vault-bank",
+ "bvs-vault-cw20",
  "bvs-vault-router",
  "cosmwasm-schema",
  "cosmwasm-std",

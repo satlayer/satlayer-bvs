@@ -7,7 +7,7 @@ pub enum ContractError {
     Std(#[from] StdError),
 
     #[error("{0}")]
-    Cw3Flex(#[from] cw3_flex_multisig::ContractError),
+    Cw3(#[from] cw3_fixed_multisig::ContractError),
 
     #[error("Unauthorized")]
     Unauthorized {},

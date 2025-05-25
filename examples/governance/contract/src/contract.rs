@@ -3,24 +3,22 @@ use cosmwasm_std::entry_point;
 
 use crate::{
     error::ContractError,
-    msg::{ExecuteMsg, InstantiateMsg},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
 };
 
 use crate::state::{Config, CONFIG};
-use cosmwasm_std::{to_json_binary, CosmosMsg, DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response};
 
 const CONTRACT_NAME: &str = "crates.io:bvs-governance";
 const CONTRACT_VERSION: &str = "0.0.0";
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     let config = Config {
         router: deps.api.addr_validate(&msg.router)?,
         registry: deps.api.addr_validate(&msg.registry)?,
@@ -31,7 +29,7 @@ pub fn instantiate(
 
     // Register this contract as a Service in BVS Registry
     let register_as_service: CosmosMsg = cosmwasm_std::WasmMsg::Execute {
-        contract_addr: msg.registry,
+        contract_addr: msg.registry.clone(),
         msg: to_json_binary(&bvs_registry::msg::ExecuteMsg::RegisterAsService {
             // Metadata of the service
             metadata: bvs_registry::msg::Metadata {
@@ -43,7 +41,8 @@ pub fn instantiate(
     }
     .into();
 
-    cw3_fixed_multisig::contract::instantiate(deps, _env, _info, msg.cw3_instantiate_msg)?;
+    cw3_fixed_multisig::contract::instantiate(deps.branch(), _env, _info, msg.cw3_instantiate_msg)?;
+    cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     Ok(Response::new()
         .add_message(register_as_service)
@@ -61,17 +60,29 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Base(msg) => cw3_base::execute(deps, env, info, msg).map_err(Into::into),
+        ExecuteMsg::Base(msg) => {
+            cw3_base_execute::execute(deps, env, info, msg).map_err(Into::into)
+        }
         ExecuteMsg::Extended(msg) => {
-            todo!("Extended execute message not implemented: {:?}", msg)
+            extended_execute::execute(deps, env, info, msg).map_err(Into::into)
         }
     }
 }
 
-mod cw3_base {
-    use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn query(deps: Deps, env: Env, query: QueryMsg) -> Result<Binary, ContractError> {
+    match query {
+        QueryMsg::Base(msg) => cw3_base_query::query(deps, env, msg).map_err(Into::into),
+        QueryMsg::Extended(msg) => {
+            todo!("Extended query message not implemented: {:?}", msg)
+        }
+    }
+}
 
-    use cw3_fixed_multisig::{msg::ExecuteMsg, msg::QueryMsg, ContractError};
+mod cw3_base_execute {
+    use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
+
+    use cw3_fixed_multisig::{msg::ExecuteMsg, ContractError};
 
     pub fn execute(
         deps: DepsMut,
@@ -81,8 +92,57 @@ mod cw3_base {
     ) -> Result<Response, ContractError> {
         cw3_fixed_multisig::contract::execute(deps, env, info, msg)
     }
+}
+
+mod cw3_base_query {
+    use cosmwasm_std::{Binary, Deps, Env, StdResult};
+    use cw3_fixed_multisig::msg::QueryMsg;
 
     pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         cw3_fixed_multisig::contract::query(deps, env, msg)
+    }
+}
+
+mod extended_execute {
+    use bvs_registry::SlashingParameters;
+    use cosmwasm_std::{to_json_binary, CosmosMsg, DepsMut, Env, MessageInfo, Response};
+
+    use crate::{error::ContractError, msg::ExtendedExecuteMsg, state::CONFIG};
+
+    pub fn execute(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        msg: ExtendedExecuteMsg,
+    ) -> Result<Response, ContractError> {
+        match msg {
+            ExtendedExecuteMsg::EnableSlashing(params) => enable_slashing(deps, env, info, params),
+        }
+    }
+
+    pub fn enable_slashing(
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        params: SlashingParameters,
+    ) -> Result<Response, ContractError> {
+        if info.sender == env.contract.address {
+            return Err(ContractError::Unauthorized {});
+        }
+
+        let registry = CONFIG.load(deps.storage)?.registry;
+
+        let msg: CosmosMsg = cosmwasm_std::WasmMsg::Execute {
+            contract_addr: registry.to_string(),
+            msg: to_json_binary(&bvs_registry::msg::ExecuteMsg::EnableSlashing {
+                slashing_parameters: params,
+            })?,
+            funds: vec![],
+        }
+        .into();
+
+        Ok(Response::new()
+            .add_message(msg)
+            .add_attribute("method", "enable_slashing"))
     }
 }
