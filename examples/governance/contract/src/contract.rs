@@ -64,7 +64,7 @@ pub fn execute(
             cw3_base_execute::execute(deps, env, info, msg).map_err(Into::into)
         }
         ExecuteMsg::Extended(msg) => {
-            extended_execute::execute(deps, env, info, msg).map_err(Into::into)
+            todo!("Extended execute message not implemented: {:?}", msg)
         }
     }
 }
@@ -115,34 +115,6 @@ mod extended_execute {
         info: MessageInfo,
         msg: ExtendedExecuteMsg,
     ) -> Result<Response, ContractError> {
-        match msg {
-            ExtendedExecuteMsg::EnableSlashing(params) => enable_slashing(deps, env, info, params),
-        }
-    }
-
-    pub fn enable_slashing(
-        deps: DepsMut,
-        env: Env,
-        info: MessageInfo,
-        params: SlashingParameters,
-    ) -> Result<Response, ContractError> {
-        if info.sender == env.contract.address {
-            return Err(ContractError::Unauthorized {});
-        }
-
-        let registry = CONFIG.load(deps.storage)?.registry;
-
-        let msg: CosmosMsg = cosmwasm_std::WasmMsg::Execute {
-            contract_addr: registry.to_string(),
-            msg: to_json_binary(&bvs_registry::msg::ExecuteMsg::EnableSlashing {
-                slashing_parameters: params,
-            })?,
-            funds: vec![],
-        }
-        .into();
-
-        Ok(Response::new()
-            .add_message(msg)
-            .add_attribute("method", "enable_slashing"))
+        todo!()
     }
 }
