@@ -481,7 +481,34 @@ fn test_deposit_withdraw() {
     });
     cw20.increase_allowance(app, &staker, vault.addr(), 100e15 as u128);
     cw20.fund(app, &staker, 100e15 as u128);
-    vault.execute(app, &staker, &msg).unwrap();
+    let response = vault.execute(app, &staker, &msg).unwrap();
+
+    assert_eq!(
+        response.events,
+        vec![
+            Event::new("execute").add_attribute("_contract_address", vault.addr.to_string()),
+            Event::new("wasm")
+                .add_attribute("_contract_address", vault.addr.to_string())
+                .add_attribute("action", "mint")
+                .add_attribute("to", staker.to_string())
+                .add_attribute("amount", "80189462987009847"),
+            Event::new("wasm-DepositFor")
+                .add_attribute("_contract_address", vault.addr.to_string())
+                .add_attribute("sender", staker.to_string())
+                .add_attribute("recipient", staker.to_string())
+                .add_attribute("assets", "80189462987009847")
+                .add_attribute("shares", "80189462987009847")
+                .add_attribute("total_shares", "80189462987009847"),
+            Event::new("execute").add_attribute("_contract_address", cw20.addr.to_string()),
+            Event::new("wasm")
+                .add_attribute("_contract_address", cw20.addr.to_string())
+                .add_attribute("action", "transfer_from")
+                .add_attribute("from", staker.to_string())
+                .add_attribute("to", vault.addr.to_string())
+                .add_attribute("by", vault.addr().to_string())
+                .add_attribute("amount", "80189462987009847")
+        ]
+    );
 
     {
         let staker_balance = cw20.balance(app, &staker);
