@@ -230,13 +230,13 @@ impl SlashingParameters {
         if let Some(destination) = &self.destination {
             api.addr_validate(destination.as_str()).map_err(|_| {
                 ContractError::InvalidSlashingParameters {
-                    msg: "destination address is invalid".to_string(),
+                    msg: "Invalid destination address format".to_string(),
                 }
             })?;
         }
         if self.max_slashing_bips > 10_000 {
             return Err(ContractError::InvalidSlashingParameters {
-                msg: "max_slashing_percentage is over 10_000 bips (100%)".to_string(),
+                msg: "Max slashing bips exceeds 10,000 bips (100%)".to_string(),
             });
         }
         Ok(())
@@ -480,7 +480,7 @@ mod tests {
             assert_eq!(
                 valid_slashing_parameters.validate(&deps.api).unwrap_err(),
                 ContractError::InvalidSlashingParameters {
-                    msg: "destination address is invalid".to_string()
+                    msg: "Invalid destination address format".to_string()
                 }
             );
         }
@@ -495,7 +495,7 @@ mod tests {
             assert_eq!(
                 valid_slashing_parameters.validate(&deps.api).unwrap_err(),
                 ContractError::InvalidSlashingParameters {
-                    msg: "max_slashing_percentage is over 10_000 bips (100%)".to_string()
+                    msg: "Max slashing bips exceeds 10,000 bips (100%)".to_string()
                 }
             );
         }
