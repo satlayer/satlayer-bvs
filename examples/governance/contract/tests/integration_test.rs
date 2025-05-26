@@ -2,7 +2,12 @@ use bvs_multi_test::{
     Cw20TokenContract, PauserContract, RegistryContract, TestingContract, VaultBankContract,
     VaultCw20Contract, VaultRouterContract,
 };
-use cosmwasm_std::{coins, testing::mock_env, to_json_binary, CosmosMsg, Uint128, WasmMsg};
+use bvs_registry::msg::Metadata;
+use bvs_vault_router::msg::SlashingMetadata;
+use cosmwasm_std::{
+    coins, testing::mock_env, to_json_binary, Addr, CosmosMsg, DenomMetadata, DenomUnit, Timestamp,
+    Uint128, WasmMsg,
+};
 use cw_multi_test::App;
 use governance_contract::testing::GovernanceContract;
 
@@ -17,13 +22,40 @@ struct TestContracts {
 
 impl TestContracts {
     fn init() -> (App, TestContracts) {
+        let denom_meta = DenomMetadata {
+            description: "Test Token".to_string(),
+            denom_units: vec![
+                DenomUnit {
+                    denom: "denom".to_string(),
+                    exponent: 0,
+                    aliases: vec![],
+                },
+                DenomUnit {
+                    denom: "mdenom".to_string(),
+                    exponent: 6,
+                    aliases: vec!["microdenom".to_string()],
+                },
+            ],
+            base: "mdenom".to_string(),
+            display: "denom".to_string(),
+            name: "Test Token".to_string(),
+            symbol: "TEST".to_string(),
+            uri: "".to_string(),
+            uri_hash: "".to_string(),
+        };
+
         let mut app = App::new(|router, api, storage| {
             let owner = api.addr_make("owner");
+            router
+                .bank
+                .set_denom_metadata(storage, "denom".to_string(), denom_meta)
+                .unwrap();
             router
                 .bank
                 .init_balance(storage, &owner, coins(Uint128::MAX.u128(), "denom"))
                 .unwrap();
         });
+
         let env = mock_env();
 
         let _ = PauserContract::new(&mut app, &env, None);
@@ -49,7 +81,7 @@ impl TestContracts {
 }
 
 #[test]
-fn test_enable_slashig() {
+fn test_simplified_slashing_lifecycle() {
     let (mut app, contracts) = TestContracts::init();
     let committee = vec![
         app.api().addr_make("voter1"),
@@ -60,16 +92,16 @@ fn test_enable_slashig() {
 
     let slashing_parameters = bvs_registry::SlashingParameters {
         destination: Some(contracts.governance.addr.clone()),
-        max_slashing_bips: 100,
+        max_slashing_bips: 600,
         resolution_window: 60 * 60, // in seconds, 1hr
     };
 
-    let proposal_action = governance_contract::msg::ExecuteMsg::Extended(
-        governance_contract::msg::ExtendedExecuteMsg::EnableSlashing(slashing_parameters),
-    );
+    let proposal_action = bvs_registry::msg::ExecuteMsg::EnableSlashing {
+        slashing_parameters: slashing_parameters.clone(),
+    };
 
     let proposal_msg: CosmosMsg = WasmMsg::Execute {
-        contract_addr: contracts.governance.addr.to_string(),
+        contract_addr: contracts.registry.addr.to_string(),
         msg: to_json_binary(&proposal_action).unwrap(),
         funds: vec![],
     }
@@ -113,7 +145,7 @@ fn test_enable_slashig() {
         }
     }
 
-    // execute proposal
+    // execute proposal to enable slashing
     {
         let msg = governance_contract::msg::ExecuteMsg::Base(
             cw3_fixed_multisig::msg::ExecuteMsg::Execute { proposal_id },
@@ -123,5 +155,231 @@ fn test_enable_slashig() {
             .governance
             .execute(&mut app, &committee[0], &msg)
             .expect("Failed to execute proposal");
+
+        let query_msg = bvs_registry::msg::QueryMsg::SlashingParameters {
+            service: contracts.governance.addr.to_string(),
+            timestamp: None,
+        };
+
+        let res: bvs_registry::msg::SlashingParametersResponse = contracts
+            .registry
+            .query(&app, &query_msg)
+            .expect("Failed to query slashing parameters");
+
+        assert_eq!(
+            res.0,
+            Some(slashing_parameters),
+            "Slashing parameters do not match expected values"
+        );
+    }
+
+    // setup vaults and operator
+    let operator = app.api().addr_make("operator");
+
+    contracts
+        .registry
+        .execute(
+            &mut app,
+            &operator,
+            &bvs_registry::msg::ExecuteMsg::RegisterAsOperator {
+                metadata: Metadata {
+                    name: Some("operator".to_string()),
+                    uri: None,
+                },
+            },
+        )
+        .expect("failed to register operator");
+
+    app.update_block(|block| {
+        block.height += 1;
+        block.time = block.time.plus_seconds(10);
+    });
+
+    {
+        let msg = &bvs_registry::msg::ExecuteMsg::RegisterServiceToOperator {
+            service: contracts.governance.addr().to_string(),
+        };
+        contracts
+            .registry
+            .execute(&mut app, &operator, msg)
+            .expect("failed to register service to operator");
+
+        let msg = &bvs_registry::msg::ExecuteMsg::RegisterOperatorToService {
+            operator: operator.to_string(),
+        };
+        contracts
+            .registry
+            .execute(&mut app, &contracts.governance.addr, msg)
+            .expect("failed to register operator to service");
+    }
+
+    app.update_block(|block| {
+        block.height += 10;
+        block.time = block.time.plus_seconds(100);
+    });
+
+    // operator opt-in to slashing
+    {
+        let msg = &bvs_registry::msg::ExecuteMsg::OperatorOptInToSlashing {
+            service: contracts.governance.addr().to_string(),
+        };
+        contracts
+            .registry
+            .execute(&mut app, &operator, msg)
+            .expect("failed to opt-in to slashing");
+    }
+
+    app.update_block(|block| {
+        block.height += 10;
+        block.time = block.time.plus_seconds(100);
+    });
+
+    // propse request slashing by the committee
+    {
+        let proposed_action = bvs_vault_router::msg::ExecuteMsg::RequestSlashing(
+            bvs_vault_router::msg::RequestSlashingPayload {
+                bips: 500,
+                operator: operator.to_string(),
+                timestamp: app.block_info().time,
+                metadata: SlashingMetadata {
+                    reason: "Test slashing".to_string(),
+                },
+            },
+        );
+
+        let proposal_msg: CosmosMsg = WasmMsg::Execute {
+            contract_addr: contracts.vault_router.addr.to_string(),
+            msg: to_json_binary(&proposed_action).unwrap(),
+            funds: vec![],
+        }
+        .into();
+
+        let msg = governance_contract::msg::ExecuteMsg::Base(
+            cw3_fixed_multisig::msg::ExecuteMsg::Propose {
+                title: "Request Slashing".to_string(),
+                description: "Proposal to request slashing for an operator".to_string(),
+                msgs: vec![proposal_msg],
+                latest: None,
+            },
+        );
+
+        let res = contracts
+            .governance
+            .execute(&mut app, &committee[0], &msg)
+            .expect("Failed to execute proposal");
+
+        let proposal_id: u64 = res
+            .events
+            .iter()
+            .find(|e| e.ty == "wasm")
+            .and_then(|e| e.attributes.iter().find(|a| a.key == "proposal_id"))
+            .map(|a| a.value.parse().unwrap())
+            .expect("Proposal ID not found in events");
+
+        app.update_block(|block| {
+            block.height += 1;
+            block.time = block.time.plus_seconds(10);
+        });
+
+        // vote on the proposal
+        {
+            let msg = governance_contract::msg::ExecuteMsg::Base(
+                cw3_fixed_multisig::msg::ExecuteMsg::Vote {
+                    proposal_id,
+                    vote: cw3::Vote::Yes,
+                },
+            );
+
+            // except the proposer, all other committee members vote
+            for voter in committee.iter().skip(2) {
+                contracts
+                    .governance
+                    .execute(&mut app, voter, &msg)
+                    .expect("Failed to vote");
+            }
+        }
+
+        // execute the proposal to request slashing
+        let slash_id;
+        {
+            let msg = governance_contract::msg::ExecuteMsg::Base(
+                cw3_fixed_multisig::msg::ExecuteMsg::Execute { proposal_id },
+            );
+
+            contracts
+                .governance
+                .execute(&mut app, &committee[0], &msg)
+                .expect("Failed to execute proposal");
+
+            // check if the slashing request was processed
+            let query_msg = bvs_vault_router::msg::QueryMsg::SlashingRequestId {
+                service: contracts.governance.addr.to_string(),
+                operator: operator.to_string(),
+            };
+
+            let res: bvs_vault_router::msg::SlashingRequestIdResponse = contracts
+                .vault_router
+                .query(&app, &query_msg)
+                .expect("Failed to query slashing requests");
+
+            slash_id = res.0.unwrap();
+        }
+
+        // propose to lock the slash id
+        {
+            let proposed_action = bvs_vault_router::msg::ExecuteMsg::LockSlashing(slash_id);
+
+            let proposal_msg: CosmosMsg = WasmMsg::Execute {
+                contract_addr: contracts.vault_router.addr.to_string(),
+                msg: to_json_binary(&proposed_action).unwrap(),
+                funds: vec![],
+            }
+            .into();
+
+            let msg = governance_contract::msg::ExecuteMsg::Base(
+                cw3_fixed_multisig::msg::ExecuteMsg::Propose {
+                    title: "Lock Slashing".to_string(),
+                    description: "Proposal to lock slashing for an operator".to_string(),
+                    msgs: vec![proposal_msg.into()],
+                    latest: None,
+                },
+            );
+
+            let res = contracts
+                .governance
+                .execute(&mut app, &committee[0], &msg)
+                .expect("Failed to execute proposal");
+
+            let proposal_id: u64 = res
+                .events
+                .iter()
+                .find(|e| e.ty == "wasm")
+                .and_then(|e| e.attributes.iter().find(|a| a.key == "proposal_id"))
+                .map(|a| a.value.parse().unwrap())
+                .expect("Proposal ID not found in events");
+
+            app.update_block(|block| {
+                block.height += 1;
+                block.time = block.time.plus_seconds(10);
+            });
+
+            // vote on the proposal
+            {
+                let msg = governance_contract::msg::ExecuteMsg::Base(
+                    cw3_fixed_multisig::msg::ExecuteMsg::Vote {
+                        proposal_id,
+                        vote: cw3::Vote::Yes,
+                    },
+                );
+
+                // except the proposer, all other committee members vote
+                for voter in committee.iter().skip(2) {
+                    contracts
+                        .governance
+                        .execute(&mut app, voter, &msg)
+                        .expect("Failed to vote");
+                }
+            }
+        }
     }
 }
