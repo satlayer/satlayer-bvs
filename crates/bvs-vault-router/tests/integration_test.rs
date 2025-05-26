@@ -579,7 +579,7 @@ fn request_slashing_lifecycle() {
         assert_eq!(
             err.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Reason is too long.".to_string()
+                msg: "Reason exceeds maximum allowed length".to_string()
             }
             .to_string()
         )
@@ -608,7 +608,7 @@ fn request_slashing_lifecycle() {
         assert_eq!(
             err.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Slash timestamp is outside of the allowable slash period.".to_string()
+                msg: "Slash timestamp must be within the allowable slash period".to_string()
             }
             .to_string()
         )
@@ -633,7 +633,7 @@ fn request_slashing_lifecycle() {
         assert_eq!(
             err.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Slash timestamp is outside of the allowable slash period.".to_string()
+                msg: "Slash timestamp must be within the allowable slash period".to_string()
             }
             .to_string()
         )
@@ -672,7 +672,7 @@ fn request_slashing_lifecycle() {
         assert_eq!(
             err.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Service and Operator are not active at timestamp.".to_string()
+                msg: "Service and Operator must be active at the specified timestamp".to_string()
             }
             .to_string()
         )
@@ -713,7 +713,7 @@ fn request_slashing_lifecycle() {
         assert_eq!(
             err.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Service has not enabled slashing at timestamp.".to_string()
+                msg: "Service must have slashing enabled at the specified timestamp".to_string()
             }
             .to_string()
         )
@@ -757,7 +757,7 @@ fn request_slashing_lifecycle() {
         assert_eq!(
             err.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Slashing bips is over max_slashing_bips set.".to_string()
+                msg: "Slashing bips exceeds the maximum allowed by service".to_string()
             }
             .to_string()
         )
@@ -782,7 +782,7 @@ fn request_slashing_lifecycle() {
         assert_eq!(
             err.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Operator has not opted-in to slashing at timestamp.".to_string()
+                msg: "Operator must be opted-in to slashing at the specified timestamp".to_string()
             }
             .to_string()
         )
@@ -822,7 +822,7 @@ fn request_slashing_lifecycle() {
         assert_eq!(
             err.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Operator has not opted-in to slashing at timestamp.".to_string()
+                msg: "Operator must be opted-in to slashing at the specified timestamp".to_string()
             }
             .to_string()
         )
@@ -869,7 +869,8 @@ fn request_slashing_lifecycle() {
         assert_eq!(
             err.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Previous slashing request is still pending.".to_string()
+                msg: "Cannot process new request while previous slashing request is pending"
+                    .to_string()
             }
             .to_string()
         )
@@ -1657,7 +1658,8 @@ fn test_finalize_slashing_negative() {
         assert_eq!(
             err.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Slashing request has not passed the guardrail".to_string()
+                msg: "Slashing request must pass the guardrail before it can be finalized"
+                    .to_string()
             }
             .to_string()
         );
@@ -1694,7 +1696,7 @@ fn test_finalize_slashing_negative() {
         assert_eq!(
             err.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Slashing request is not locked".to_string()
+                msg: "Slashing request must be in locked status to be finalized".to_string()
             }
             .to_string()
         );
@@ -1724,7 +1726,8 @@ fn test_finalize_slashing_negative() {
         assert_eq!(
             err.root_cause().to_string(),
             ContractError::Unauthorized {
-                msg: "Only the service that requested slashing can finalize it".to_string()
+                msg: "Only the service that initiated the slashing request can finalize it"
+                    .to_string()
             }
             .to_string()
         );
@@ -1968,7 +1971,7 @@ fn test_slash_locking_negative() {
         assert_eq!(
             err.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Slashing has expired".to_string(),
+                msg: "Cannot process a slashing request that has expired".to_string(),
             }
             .to_string()
         );
@@ -2010,7 +2013,8 @@ fn test_slash_locking_negative() {
         assert_eq!(
             res.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Slashing cannot be locked until resolution time has elapsed".to_string(),
+                msg: "Slashing request can only be locked after resolution time has elapsed"
+                    .to_string(),
             }
             .to_string()
         );
@@ -2027,8 +2031,7 @@ fn test_slash_locking_negative() {
         assert_eq!(
             res.root_cause().to_string(),
             ContractError::Unauthorized {
-                msg: "Slash locking is restricted to the service that initiated the request."
-                    .to_string(),
+                msg: "Only the service that initiated the slashing request can lock it".to_string(),
             }
             .to_string()
         );
@@ -2089,7 +2092,7 @@ fn test_slash_locking_negative() {
         assert_eq!(
             res.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Slashing request is already locked".to_string(),
+                msg: "Cannot lock a slashing request that is already locked".to_string(),
             }
             .to_string()
         );
@@ -2118,7 +2121,8 @@ fn test_slash_locking_negative() {
         assert_eq!(
             err.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Previous slashing request is in progress.".to_string(),
+                msg: "Cannot process new request while previous slashing request is in progress"
+                    .to_string(),
             }
             .to_string()
         );
@@ -2347,7 +2351,7 @@ fn cancel_slashing_error_cases() {
         assert_eq!(
             err.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "No slashing request found by slashing request id".to_string()
+                msg: "No slashing request found with the provided ID".to_string()
             }
             .to_string()
         );
@@ -2392,7 +2396,8 @@ fn cancel_slashing_error_cases() {
         assert_eq!(
             err.root_cause().to_string(),
             ContractError::InvalidSlashingRequest {
-                msg: "Invalid service sends a cancel slashing request".to_string()
+                msg: "Only the service that initiated the slashing request can cancel it"
+                    .to_string()
             }
             .to_string()
         );

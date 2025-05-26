@@ -761,7 +761,7 @@ fn enable_slashing_lifecycle() {
         assert_eq!(
             err.root_cause().to_string(),
             ContractError::InvalidSlashingOptIn {
-                msg: "Service has not enabled slashing.".to_string()
+                msg: "Cannot opt in: slashing is not enabled for this service".to_string()
             }
             .to_string()
         );
@@ -821,7 +821,7 @@ fn enable_slashing_lifecycle() {
         assert_eq!(
             err.root_cause().to_string(),
             ContractError::InvalidSlashingOptIn {
-                msg: "Service has not enabled slashing.".to_string()
+                msg: "Cannot opt in: slashing is not enabled for this service".to_string()
             }
             .to_string()
         );
@@ -881,7 +881,7 @@ fn enable_slashing_lifecycle() {
         assert_eq!(
             err.root_cause().to_string(),
             ContractError::InvalidRegistrationStatus {
-                msg: "Operator and service must have active registration.".to_string()
+                msg: "Operator and service must have active registration".to_string()
             }
             .to_string()
         );

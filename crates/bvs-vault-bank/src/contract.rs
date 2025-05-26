@@ -155,7 +155,7 @@ mod execute {
 
             let assets = vault.shares_to_assets(withdraw_shares)?;
             if assets.is_zero() {
-                return Err(VaultError::zero("Withdraw assets cannot be zero.").into());
+                return Err(VaultError::zero("Withdraw assets cannot be zero").into());
             }
 
             // Remove shares from TOTAL_SHARES
@@ -246,7 +246,7 @@ mod execute {
 
             let assets = vault.shares_to_assets(queued_shares)?;
             if assets.is_zero() {
-                return Err(VaultError::zero("Withdraw assets cannot be zero.").into());
+                return Err(VaultError::zero("Withdraw assets cannot be zero").into());
             }
 
             // Remove shares from TOTAL_SHARES

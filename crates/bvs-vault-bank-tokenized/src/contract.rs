@@ -279,7 +279,7 @@ mod vault_execute {
 
             let underlying_token = vault.shares_to_assets(receipt_tokens)?;
             if underlying_token.is_zero() {
-                return Err(VaultError::zero("Withdraw assets cannot be zero.").into());
+                return Err(VaultError::zero("Withdraw assets cannot be zero").into());
             }
 
             underlying_token
@@ -384,7 +384,7 @@ mod vault_execute {
 
             let assets = vault.shares_to_assets(queued_shares)?;
             if assets.is_zero() {
-                return Err(VaultError::zero("Withdraw assets cannot be zero.").into());
+                return Err(VaultError::zero("Withdraw assets cannot be zero").into());
             }
 
             assets

@@ -221,11 +221,11 @@ mod execute {
         let status = get_registration_status(deps.storage, key)?;
         match status {
             RegistrationStatus::Active => Err(ContractError::InvalidRegistrationStatus {
-                msg: "Registration is already active.".to_string(),
+                msg: "Registration between operator and service is already active".to_string(),
             }),
             RegistrationStatus::ServiceRegistered => {
                 Err(ContractError::InvalidRegistrationStatus {
-                    msg: "Service has already registered.".to_string(),
+                    msg: "Service has already registered this operator".to_string(),
                 })
             }
             RegistrationStatus::Inactive => {
@@ -273,7 +273,7 @@ mod execute {
 
         if status == RegistrationStatus::Inactive {
             Err(ContractError::InvalidRegistrationStatus {
-                msg: "Already deregistered.".to_string(),
+                msg: "Operator is not registered with this service".to_string(),
             })
         } else {
             set_registration_status(deps.storage, &env, key, RegistrationStatus::Inactive)?;
@@ -307,11 +307,11 @@ mod execute {
 
         match status {
             RegistrationStatus::Active => Err(ContractError::InvalidRegistrationStatus {
-                msg: "Registration is already active.".to_string(),
+                msg: "Registration between operator and service is already active".to_string(),
             }),
             RegistrationStatus::OperatorRegistered => {
                 Err(ContractError::InvalidRegistrationStatus {
-                    msg: "Operator has already registered.".to_string(),
+                    msg: "Operator has already registered this service".to_string(),
                 })
             }
             RegistrationStatus::Inactive => {
@@ -358,7 +358,7 @@ mod execute {
 
         if status == RegistrationStatus::Inactive {
             Err(ContractError::InvalidRegistrationStatus {
-                msg: "Already deregistered.".to_string(),
+                msg: "Service is not registered with this operator".to_string(),
             })
         } else {
             set_registration_status(deps.storage, &env, key, RegistrationStatus::Inactive)?;
@@ -469,7 +469,7 @@ mod execute {
         // check if the slashing is enabled for the service
         if !is_slashing_enabled(deps.storage, &service, Some(env.block.time.seconds()))? {
             return Err(ContractError::InvalidSlashingOptIn {
-                msg: "Service has not enabled slashing.".to_string(),
+                msg: "Cannot opt in: slashing is not enabled for this service".to_string(),
             });
         }
 
@@ -1065,7 +1065,7 @@ mod tests {
         assert_eq!(
             res,
             Err(ContractError::InvalidRegistrationStatus {
-                msg: "Operator has already registered.".to_string(),
+                msg: "Operator has already registered this service".to_string(),
             }),
         );
     }
@@ -1099,7 +1099,7 @@ mod tests {
         assert_eq!(
             res,
             Err(ContractError::InvalidRegistrationStatus {
-                msg: "Service has already registered.".to_string(),
+                msg: "Service has already registered this operator".to_string(),
             }),
         );
     }
@@ -1135,7 +1135,7 @@ mod tests {
         assert_eq!(
             res,
             Err(ContractError::InvalidRegistrationStatus {
-                msg: "Registration is already active.".to_string(),
+                msg: "Registration between operator and service is already active".to_string(),
             }),
         );
 
@@ -1148,7 +1148,7 @@ mod tests {
         assert_eq!(
             res,
             Err(ContractError::InvalidRegistrationStatus {
-                msg: "Registration is already active.".to_string(),
+                msg: "Registration between operator and service is already active".to_string(),
             }),
         );
     }
@@ -1272,7 +1272,7 @@ mod tests {
         assert_eq!(
             res,
             Err(ContractError::InvalidRegistrationStatus {
-                msg: "Already deregistered.".to_string(),
+                msg: "Service is not registered with this operator".to_string(),
             }),
         );
 
@@ -1285,7 +1285,7 @@ mod tests {
         assert_eq!(
             res,
             Err(ContractError::InvalidRegistrationStatus {
-                msg: "Already deregistered.".to_string(),
+                msg: "Operator is not registered with this service".to_string(),
             }),
         );
     }
@@ -1476,7 +1476,7 @@ mod tests {
             assert_eq!(
                 err,
                 ContractError::InvalidRegistrationStatus {
-                    msg: "Operator and service must have active registration.".to_string()
+                    msg: "Operator and service must have active registration".to_string()
                 }
             );
         }
@@ -1520,7 +1520,7 @@ mod tests {
             assert_eq!(
                 err,
                 ContractError::InvalidSlashingOptIn {
-                    msg: "Service has not enabled slashing.".to_string()
+                    msg: "Cannot opt in: slashing is not enabled for this service".to_string()
                 }
             );
         }
@@ -1584,7 +1584,7 @@ mod tests {
             assert_eq!(
                 err,
                 ContractError::InvalidRegistrationStatus {
-                    msg: "Operator and service must have active registration.".to_string()
+                    msg: "Operator and service must have active registration".to_string()
                 }
             );
         }
