@@ -35,3 +35,4 @@ cw-multi-test = { version = "2.4.0", features = ["cosmwasm_2_0"] }
 bvs-multi-test = { version = "0.0.0-main.170" }
 bvs-vault-bank = { version = "0.0.0-main.170" }
 bvs-vault-cw20 = { version = "0.0.0-main.170" }
+bvs-vault-base = { version = "0.0.0-main.170" }
