@@ -1,7 +1,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use bvs_library::testing::TestingContract;
-use cosmwasm_std::{Addr, Decimal, Empty, Env, Uint128};
+use cosmwasm_std::{Addr, Decimal, Empty, Env};
 use cw3_fixed_multisig;
 use cw3_fixed_multisig::msg::Voter;
 use cw_multi_test::{App, Contract, ContractWrapper};
