@@ -1,6 +1,7 @@
 use crate::msg::RequestSlashingPayload;
 use bvs_library::addr::{Operator, Service};
 use bvs_library::slashing::SlashingRequestId;
+use bvs_library::time::DAYS;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{to_json_vec, Addr, StdError, StdResult, Storage, Timestamp, Uint128, Uint64};
 use cw_storage_plus::{Item, Map};
@@ -45,6 +46,9 @@ pub const DEFAULT_WITHDRAWAL_LOCK_PERIOD: Uint64 = Uint64::new(604800);
 /// Operator to its managed vaults. Key = (OperatorAddr, VaultAddr)
 pub(crate) const OPERATOR_VAULTS: Map<(&Addr, &Addr), ()> = Map::new("operator_vaults");
 
+/// Stores the expiry window for slashing requests in seconds. Used in `request_expiry`
+pub const SLASHING_REQUEST_EXPIRY_WINDOW: Uint64 = Uint64::new(7 * DAYS);
+
 #[cw_serde]
 pub struct SlashingRequest {
     /// The core slashing request data including operator, bips, timestamp, and metadata.
@@ -52,10 +56,10 @@ pub struct SlashingRequest {
     /// The timestamp when the request was submitted.
     pub request_time: Timestamp,
     /// The timestamp when the request resolution window will end and becomes eligible for locking.
-    /// This will be `request_time` + `resolution_window`
+    /// This will be `request_time` + `resolution_window`.
     pub request_resolution: Timestamp,
     /// The timestamp after which the request is no longer valid.
-    /// This will be `request_time` + `resolution_window` * 2 (as per current slashing parameters)
+    /// This will be `request_time` + `resolution_window` + `SLASHING_REQUEST_EXPIRY_WINDOW`
     pub request_expiry: Timestamp,
     /// The status of the slashing request.
     pub status: u8,
