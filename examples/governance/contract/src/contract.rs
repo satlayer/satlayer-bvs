@@ -104,10 +104,10 @@ mod cw3_base_query {
 }
 
 mod extended_execute {
-    use bvs_registry::SlashingParameters;
-    use cosmwasm_std::{to_json_binary, CosmosMsg, DepsMut, Env, MessageInfo, Response};
 
-    use crate::{error::ContractError, msg::ExtendedExecuteMsg, state::CONFIG};
+    use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
+
+    use crate::{error::ContractError, msg::ExtendedExecuteMsg};
 
     pub fn execute(
         deps: DepsMut,

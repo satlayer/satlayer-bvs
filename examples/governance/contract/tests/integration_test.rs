@@ -7,8 +7,8 @@ use bvs_registry::msg::Metadata;
 use bvs_vault_base::msg::RecipientAmount;
 use bvs_vault_router::msg::SlashingMetadata;
 use cosmwasm_std::{
-    coin, coins, testing::mock_env, to_json_binary, Addr, BalanceResponse, BankQuery, CosmosMsg,
-    DenomMetadata, DenomUnit, QueryRequest, Timestamp, Uint128, WasmMsg,
+    coin, coins, testing::mock_env, to_json_binary, BalanceResponse, BankQuery, CosmosMsg,
+    DenomMetadata, DenomUnit, QueryRequest, Uint128, WasmMsg,
 };
 use cw_multi_test::{App, Executor};
 use governance_contract::testing::GovernanceContract;
@@ -88,7 +88,7 @@ impl TestContracts {
 #[test]
 fn test_simplified_slashing_lifecycle() {
     let (mut app, contracts) = TestContracts::init();
-    let committee = vec![
+    let committee = [
         app.api().addr_make("voter1"),
         app.api().addr_make("voter2"),
         app.api().addr_make("voter3"),
@@ -415,7 +415,7 @@ fn test_simplified_slashing_lifecycle() {
             cw3_fixed_multisig::msg::ExecuteMsg::Propose {
                 title: "Lock Slashing".to_string(),
                 description: "Proposal to lock slashing for an operator".to_string(),
-                msgs: vec![proposal_msg.into()],
+                msgs: vec![proposal_msg],
                 latest: None,
             },
         );
