@@ -163,7 +163,7 @@ pub fn require_active_registration_status(
     match get_registration_status(store, key)? {
         RegistrationStatus::Active => Ok(()),
         _ => Err(ContractError::InvalidRegistrationStatus {
-            msg: "Operator and service must have active registration.".to_string(),
+            msg: "Operator and service must have active registration".to_string(),
         }),
     }
 }

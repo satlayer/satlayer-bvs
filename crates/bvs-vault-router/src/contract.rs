@@ -173,7 +173,7 @@ mod execute {
             // The vault is not connected to this router.
             if vault_info.router != env.contract.address {
                 return Err(ContractError::VaultError {
-                    msg: "Vault is not connected to the router".to_string(),
+                    msg: "Vault must be connected to this router".to_string(),
                 });
             }
 
@@ -199,7 +199,7 @@ mod execute {
 
         if withdrawal_lock_period.is_zero() {
             return Err(ContractError::VaultError {
-                msg: "Cannot set new withdrawal lock period to zero".to_string(),
+                msg: "Withdrawal lock period must be greater than zero".to_string(),
             });
         }
 
@@ -238,7 +238,7 @@ mod execute {
         // ensure that metadata.reason does not exceed MAX_STRING_BYTES bytes
         if data.metadata.reason.len() > MAX_STRING_BYTES {
             return Err(InvalidSlashingRequest {
-                msg: "Reason is too long.".to_string(),
+                msg: "Reason exceeds maximum allowed length".to_string(),
             });
         }
 
@@ -249,7 +249,7 @@ mod execute {
             || data.timestamp > env.block.time
         {
             return Err(InvalidSlashingRequest {
-                msg: "Slash timestamp is outside of the allowable slash period.".to_string(),
+                msg: "Slash timestamp must be within the allowable slash period".to_string(),
             });
         }
 
@@ -267,7 +267,7 @@ mod execute {
         // requested the slashing
         if operator_service_status != u8::from(RegistrationStatus::Active) {
             return Err(InvalidSlashingRequest {
-                msg: "Service and Operator are not active at timestamp.".to_string(),
+                msg: "Service and Operator must be active at the specified timestamp".to_string(),
             });
         }
 
@@ -283,7 +283,8 @@ mod execute {
             Some(x) => x,
             None => {
                 return Err(InvalidSlashingRequest {
-                    msg: "Service has not enabled slashing at timestamp.".to_string(),
+                    msg: "Service must have slashing enabled at the specified timestamp"
+                        .to_string(),
                 })
             }
         };
@@ -291,7 +292,7 @@ mod execute {
         // ensure bips must not exceed max_slashing_bips set by service
         if data.bips > slashing_parameters.max_slashing_bips {
             return Err(InvalidSlashingRequest {
-                msg: "Slashing bips is over max_slashing_bips set.".to_string(),
+                msg: "Slashing bips exceeds the maximum allowed by service".to_string(),
             });
         }
 
@@ -308,7 +309,7 @@ mod execute {
 
         if !is_operator_opted_in {
             return Err(InvalidSlashingRequest {
-                msg: "Operator has not opted-in to slashing at timestamp.".to_string(),
+                msg: "Operator must be opted-in to slashing at the specified timestamp".to_string(),
             });
         }
 
@@ -323,7 +324,7 @@ mod execute {
                     // slashing is pending within the expiry date
                     if prev_slashing_request.request_expiry > env.block.time {
                         return Err(ContractError::InvalidSlashingRequest {
-                            msg: "Previous slashing request is still pending.".to_string(),
+                            msg: "Cannot process new request while previous slashing request is pending".to_string(),
                         });
                     } else {
                         // In this case, new request is eligible and
@@ -343,7 +344,7 @@ mod execute {
                     // in the middle of slashing lifecycle
                     // new request are rejected
                     return Err(ContractError::InvalidSlashingRequest {
-                        msg: "Previous slashing request is in progress.".to_string(),
+                        msg: "Cannot process new request while previous slashing request is in progress".to_string(),
                     });
                 }
                 SlashingRequestStatus::Canceled => {
@@ -408,7 +409,7 @@ mod execute {
             Some(slash_req) => slash_req,
             None => {
                 return Err(ContractError::InvalidSlashingRequest {
-                    msg: "Id does not exist".to_string(),
+                    msg: "No slashing request found with the provided ID".to_string(),
                 })
             }
         };
@@ -421,17 +422,17 @@ mod execute {
             SlashingRequestStatus::Pending => {}
             SlashingRequestStatus::Locked => {
                 return Err(ContractError::InvalidSlashingRequest {
-                    msg: "Slashing request is already locked".to_string(),
+                    msg: "Cannot lock a slashing request that is already locked".to_string(),
                 })
             }
             SlashingRequestStatus::Canceled => {
                 return Err(ContractError::InvalidSlashingRequest {
-                    msg: "Slashing request is cancelled".to_string(),
+                    msg: "Cannot process a slashing request that has been cancelled".to_string(),
                 })
             }
             SlashingRequestStatus::Finalized => {
                 return Err(ContractError::InvalidSlashingRequest {
-                    msg: "Slashing has finalized".to_string(),
+                    msg: "Cannot process a slashing request that has been finalized".to_string(),
                 })
             }
         }
@@ -439,8 +440,7 @@ mod execute {
         // Check if the id is the same as the one in the request
         if info.sender != slash_req.service {
             return Err(ContractError::Unauthorized {
-                msg: "Slash locking is restricted to the service that initiated the request."
-                    .to_string(),
+                msg: "Only the service that initiated the slashing request can lock it".to_string(),
             });
         }
 
@@ -448,13 +448,14 @@ mod execute {
 
         if now > slash_req.request_expiry {
             return Err(ContractError::InvalidSlashingRequest {
-                msg: "Slashing has expired".to_string(),
+                msg: "Cannot process a slashing request that has expired".to_string(),
             });
         };
 
         if now < slash_req.request_resolution {
             return Err(ContractError::InvalidSlashingRequest {
-                msg: "Slashing cannot be locked until resolution time has elapsed".to_string(),
+                msg: "Slashing request can only be locked after resolution time has elapsed"
+                    .to_string(),
             });
         };
 
@@ -531,19 +532,20 @@ mod execute {
         let slashing_request = SLASHING_REQUESTS
             .may_load(deps.storage, &slashing_request_id)?
             .ok_or(ContractError::InvalidSlashingRequest {
-                msg: "No slashing request found by slashing request id".to_string(),
+                msg: "No slashing request found with the provided ID".to_string(),
             })?;
 
         if slashing_request.service != service {
             return Err(ContractError::InvalidSlashingRequest {
-                msg: "Invalid service sends a cancel slashing request".to_string(),
+                msg: "Only the service that initiated the slashing request can cancel it"
+                    .to_string(),
             });
         }
 
         match slashing_request.status {
             status if status != SlashingRequestStatus::Pending => {
                 return Err(ContractError::InvalidSlashingRequest {
-                    msg: "Canceled slashing request status should be pending".to_string(),
+                    msg: "Only slashing requests in pending status can be canceled".to_string(),
                 });
             }
             _ => {}
@@ -586,7 +588,8 @@ mod execute {
         )?;
         if guardrail_proposal_status != cw3::Status::Passed {
             return Err(InvalidSlashingRequest {
-                msg: "Slashing request has not passed the guardrail".to_string(),
+                msg: "Slashing request must pass the guardrail before it can be finalized"
+                    .to_string(),
             });
         }
 
@@ -595,7 +598,7 @@ mod execute {
             Some(slash_req) => slash_req,
             None => {
                 return Err(InvalidSlashingRequest {
-                    msg: "Id does not exist".to_string(),
+                    msg: "Slashing request ID does not exist".to_string(),
                 })
             }
         };
@@ -603,14 +606,15 @@ mod execute {
         // Only service that requested slashing can finalize
         if slash_req.service != service {
             return Err(Unauthorized {
-                msg: "Only the service that requested slashing can finalize it".to_string(),
+                msg: "Only the service that initiated the slashing request can finalize it"
+                    .to_string(),
             });
         }
 
         // Only LOCKED slashing request can be finalized
         if slash_req.status != SlashingRequestStatus::Locked {
             return Err(InvalidSlashingRequest {
-                msg: "Slashing request is not locked".to_string(),
+                msg: "Slashing request must be in locked status to be finalized".to_string(),
             });
         }
 
@@ -631,7 +635,8 @@ mod execute {
             Some(x) => x,
             None => {
                 return Err(InvalidSlashingRequest {
-                    msg: "Service has not enabled slashing at timestamp.".to_string(),
+                    msg: "Service must have slashing enabled at the specified timestamp"
+                        .to_string(),
                 })
             }
         };
@@ -764,7 +769,7 @@ pub(crate) mod vault {
         {
             Ok(response) => Ok(response),
             Err(_) => Err(ContractError::VaultError {
-                msg: format!("No such contract: {}", vault).to_string(),
+                msg: format!("Contract not found at address: {}", vault).to_string(),
             }),
         }
     }
@@ -1159,7 +1164,10 @@ mod tests {
             let err = result.unwrap_err();
             assert_eq!(
                 err.to_string(),
-                format!("Vault error: No such contract: {}", empty_vault)
+                format!(
+                    "Vault error: Contract not found at address: {}",
+                    empty_vault
+                )
             );
         }
 
@@ -1210,7 +1218,7 @@ mod tests {
             assert_eq!(
                 err.to_string(),
                 ContractError::VaultError {
-                    msg: "Vault is not connected to the router".to_string()
+                    msg: "Vault must be connected to this router".to_string()
                 }
                 .to_string()
             );

@@ -43,9 +43,9 @@ pub fn get_operator(storage: &dyn Storage) -> StdResult<Addr> {
 pub fn assert_router(storage: &dyn Storage, info: &MessageInfo) -> Result<(), VaultError> {
     let router = ROUTER
         .may_load(storage)?
-        .ok_or(VaultError::unauthorized("no router set"))?;
+        .ok_or(VaultError::unauthorized("Router is not set"))?;
     if info.sender != router {
-        return Err(VaultError::unauthorized("not router"));
+        return Err(VaultError::unauthorized("Sender is not the router"));
     }
     Ok(())
 }
@@ -169,7 +169,7 @@ mod tests {
         assert_eq!(
             error.to_string(),
             VaultError::Unauthorized {
-                msg: "not router".to_string()
+                msg: "Sender is not the router".to_string()
             }
             .to_string()
         );

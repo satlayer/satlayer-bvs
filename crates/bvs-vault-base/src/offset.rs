@@ -133,7 +133,7 @@ impl TotalShares {
         shares: Uint128,
     ) -> Result<(), VaultError> {
         if shares.is_zero() {
-            return Err(VaultError::zero("Add shares cannot be zero."));
+            return Err(VaultError::zero("Add shares cannot be zero"));
         }
 
         self.0.total_shares = self
@@ -157,7 +157,7 @@ impl TotalShares {
         shares: Uint128,
     ) -> Result<(), VaultError> {
         if shares.is_zero() {
-            return Err(VaultError::zero("Sub shares cannot be zero."));
+            return Err(VaultError::zero("Sub shares cannot be zero"));
         }
 
         self.0.total_shares = self

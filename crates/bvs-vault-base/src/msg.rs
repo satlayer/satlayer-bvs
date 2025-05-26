@@ -56,7 +56,7 @@ impl Amount {
     /// The amount must be greater than zero.
     pub fn validate(&self, _api: &dyn Api) -> Result<(), VaultError> {
         if self.0.is_zero() {
-            return Err(VaultError::zero("Amount cannot be zero."));
+            return Err(VaultError::zero("Amount cannot be zero"));
         }
         Ok(())
     }
@@ -74,7 +74,7 @@ impl RecipientAmount {
     /// The recipient must be a valid [`Addr`], and the amount must be greater than zero.
     pub fn validate(&self, api: &dyn Api) -> Result<(), VaultError> {
         if self.amount.is_zero() {
-            return Err(VaultError::zero("Amount cannot be zero."));
+            return Err(VaultError::zero("Amount cannot be zero"));
         }
 
         api.addr_validate(self.recipient.as_str())?;
