@@ -406,6 +406,11 @@ mod query {
 /// This can only be called by the contract ADMIN, enforced by `wasmd` separate from cosmwasm.
 /// See https://github.com/CosmWasm/cosmwasm/issues/926#issuecomment-851259818
 ///
+/// #### 2.0.0
+/// - Vault info now return AssetType and AssetReference in VaultInfoResponse
+/// - New [ExecuteMsg::SlashLocked] for the slashing lifecycle.
+/// - No storage or breaking changes.
+///
 /// #### 0.4.0
 /// - Rename the ExecuteMsg to be more explicit.
 /// - No storage changes.
