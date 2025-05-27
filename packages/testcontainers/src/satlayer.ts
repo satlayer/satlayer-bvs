@@ -1,6 +1,9 @@
 import { SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
+import { ExecuteMsg as GuardrailExecuteMsg, QueryMsg as GuardrailQueryMsg } from "@satlayer/cosmwasm-schema/guardrail";
+import { ExecuteMsg as PauserExecuteMsg, QueryMsg as PauserQueryMsg } from "@satlayer/cosmwasm-schema/pauser";
 import { ExecuteMsg as RegistryExecuteMsg, QueryMsg as RegistryQueryMsg } from "@satlayer/cosmwasm-schema/registry";
+import { ExecuteMsg as RewardsExecuteMsg, QueryMsg as RewardsQueryMsg } from "@satlayer/cosmwasm-schema/rewards";
 import { ExecuteMsg as RouterExecuteMsg, QueryMsg as RouterQueryMsg } from "@satlayer/cosmwasm-schema/vault-router";
 
 import { instantiateBvs, uploadBvs } from "./bvs";
@@ -17,16 +20,18 @@ type Data = {
   vaultCw20Tokenized: { codeId: number };
   vaultBank: { codeId: number };
   vaultBankTokenized: { codeId: number };
+  rewards: { codeId: number; address: string };
 };
 
 export class SatLayerContracts {
   private constructor(
     public readonly started: StartedCosmWasmContainer,
     public readonly data: Data,
-    public readonly pauser = new Pauser(started, data.pauser.address),
-    public readonly registry = new Registry(started, data.registry.address),
-    public readonly guardrail = new Router(started, data.guardrail.address),
-    public readonly router = new Router(started, data.router.address),
+    public readonly pauser = new Contract<PauserExecuteMsg, PauserQueryMsg>(started, data.pauser.address),
+    public readonly registry = new Contract<RegistryExecuteMsg, RegistryQueryMsg>(started, data.registry.address),
+    public readonly guardrail = new Contract<GuardrailExecuteMsg, GuardrailQueryMsg>(started, data.guardrail.address),
+    public readonly router = new Contract<RouterExecuteMsg, RouterQueryMsg>(started, data.router.address),
+    public readonly rewards = new Contract<RewardsExecuteMsg, RewardsQueryMsg>(started, data.rewards.address),
   ) {}
 
   get client(): SigningCosmWasmClient {
@@ -49,6 +54,7 @@ export class SatLayerContracts {
       guardrailUpload,
       vaultCw20TokenizedUpload,
       vaultBankTokenizedUpload,
+      rewardsUpload,
     ] = await Promise.all([
       uploadCw20(started.client, accounts[0].address),
       uploadBvs(started.client, accounts[1].address, "@satlayer/bvs-pauser"),
@@ -59,6 +65,7 @@ export class SatLayerContracts {
       uploadBvs(started.client, accounts[6].address, "@satlayer/bvs-guardrail"),
       uploadBvs(started.client, accounts[7].address, "@satlayer/bvs-vault-cw20-tokenized"),
       uploadBvs(started.client, accounts[8].address, "@satlayer/bvs-vault-bank-tokenized"),
+      uploadBvs(started.client, accounts[9].address, "@satlayer/bvs-rewards"),
     ]);
 
     const pauserResult = await instantiateBvs(
@@ -109,6 +116,14 @@ export class SatLayerContracts {
       },
     );
 
+    const rewardsResult = await instantiateBvs(
+      started.client,
+      accounts[0].address,
+      "@satlayer/bvs-rewards",
+      rewardsUpload.codeId,
+      {},
+    );
+
     return new SatLayerContracts(started, {
       cw20: { codeId: cw20Upload.codeId },
       pauser: { address: pauserResult.contractAddress, codeId: pauserUpload.codeId },
@@ -119,6 +134,7 @@ export class SatLayerContracts {
       vaultBankTokenized: { codeId: vaultBankTokenizedUpload.codeId },
       vaultCw20: { codeId: vaultCw20Upload.codeId },
       vaultCw20Tokenized: { codeId: vaultCw20TokenizedUpload.codeId },
+      rewards: { address: rewardsResult.contractAddress, codeId: rewardsUpload.codeId },
     });
   }
 
@@ -234,39 +250,17 @@ export class SatLayerContracts {
   }
 }
 
-export class Pauser {
-  constructor(
-    public readonly started: StartedCosmWasmContainer,
-    public readonly address: string,
-  ) {}
-}
-
-export class Registry {
+export class Contract<EM, QM> {
   constructor(
     public readonly started: StartedCosmWasmContainer,
     public readonly address: string,
   ) {}
 
-  async execute(client: SigningCosmWasmClient, sender: string, executeMsg: RegistryExecuteMsg) {
+  async execute(client: SigningCosmWasmClient, sender: string, executeMsg: EM) {
     return client.execute(sender, this.address, executeMsg, "auto");
   }
 
-  async query(queryMsg: RegistryQueryMsg): Promise<any> {
-    return await this.started.client.queryContractSmart(this.address, queryMsg);
-  }
-}
-
-export class Router {
-  constructor(
-    public readonly started: StartedCosmWasmContainer,
-    public readonly address: string,
-  ) {}
-
-  async execute(client: SigningCosmWasmClient, sender: string, executeMsg: RouterExecuteMsg) {
-    return client.execute(sender, this.address, executeMsg, "auto");
-  }
-
-  async query(queryMsg: RouterQueryMsg): Promise<any> {
+  async query<T = any>(queryMsg: QM): Promise<T> {
     return await this.started.client.queryContractSmart(this.address, queryMsg);
   }
 }
