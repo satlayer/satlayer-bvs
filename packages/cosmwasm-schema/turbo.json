@@ -2,10 +2,15 @@
   "$schema": "https://turbo.build/schema.json",
   "extends": ["//"],
   "tasks": {
-    "build": {
+    "generate": {
       "inputs": ["generate.mjs"],
-      "outputs": ["*.d.ts"],
+      "outputs": ["*.ts"],
       "dependsOn": ["^build"]
+    },
+    "build": {
+      "inputs": ["*.ts"],
+      "outputs": ["*.d.ts", "*.js"],
+      "dependsOn": ["^build", "generate"]
     }
   }
 }

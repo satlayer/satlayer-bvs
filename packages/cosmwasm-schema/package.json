@@ -5,11 +5,16 @@
     "url": "git+https://github.com/satlayer/satlayer-bvs"
   },
   "license": "MIT",
+  "main": "index.js",
+  "types": "index.d.ts",
   "files": [
-    "*.d.ts"
+    "*.d.ts",
+    "*.js"
   ],
   "scripts": {
-    "build": "node generate.mjs && prettier --write *.ts"
+    "build": "tsc",
+    "clean": "tsc --build --clean",
+    "generate": "node generate.mjs && prettier --write *.ts"
   },
   "devDependencies": {
     "@satlayer/bvs-guardrail": "workspace:*",
