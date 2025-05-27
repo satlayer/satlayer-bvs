@@ -134,7 +134,7 @@ export class SatLayerContracts {
       vaultBankTokenized: { codeId: vaultBankTokenizedUpload.codeId },
       vaultCw20: { codeId: vaultCw20Upload.codeId },
       vaultCw20Tokenized: { codeId: vaultCw20TokenizedUpload.codeId },
-      rewards: { address: rewardsResult.contractAddress, codeId: vaultCw20Upload.codeId },
+      rewards: { address: rewardsResult.contractAddress, codeId: rewardsUpload.codeId },
     });
   }
 
