@@ -74,15 +74,20 @@ jobs:
       - run: pnpm --filter "@satlayer/*" exec npm version ${{ needs.version.outputs.npm }} --git-tag-version=false
 
       - uses: taiki-e/install-action@cargo-hack
+      # https://github.com/rust-lang/crates.io/blob/6bf32bab3afc21d18b307168ae78b6b07585ebd7/config/nginx.conf.erb#L269
+      # Burst of 30 crates, 1 crate limit per minute
       - run: |
           members=(
             "bvs-library"
             "bvs-pauser"
             "bvs-registry"
+            "bvs-guardrail"
             "bvs-vault-router"
             "bvs-vault-base"
             "bvs-vault-bank"
+            "bvs-vault-bank-tokenized"
             "bvs-vault-cw20"
+            "bvs-vault-cw20-tokenized"
             "bvs-rewards"
             "bvs-multi-test"
           )
