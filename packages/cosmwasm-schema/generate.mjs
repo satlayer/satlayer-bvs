@@ -36,7 +36,7 @@ async function generate(schema) {
     "",
     ...lines,
   ];
-  await writeFile(`${name}.d.ts`, content.join("\n"));
+  await writeFile(`${name}.ts`, content.join("\n"));
 }
 
 const packages = [
