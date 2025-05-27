@@ -15,6 +15,7 @@
   },
   "devDependencies": {
     "@examples/governance-contract": "workspace:*",
+    "@satlayer/cosmwasm-schema": "workspace:*",
     "@satlayer/testcontainers": "workspace:*",
     "@types/node": "^20",
     "typescript": "latest",

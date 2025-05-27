@@ -247,7 +247,7 @@ fn test_simplified_slashing_lifecycle() {
         assert_eq!(
             res.0,
             Some(slashing_parameters),
-            "Slashing parameters do not macontractsh expected values"
+            "Slashing parameters do not match expected values"
         );
     }
 

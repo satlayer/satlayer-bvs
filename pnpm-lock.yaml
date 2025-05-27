@@ -161,6 +161,9 @@ importers:
       '@satlayer/cosmwasm-optimizer':
         specifier: workspace:*
         version: link:../../../packages/cosmwasm-optimizer
+      quicktype-core:
+        specifier: ^23.2.6
+        version: 23.2.6
 
   examples/governance/service:
     dependencies:
@@ -180,6 +183,9 @@ importers:
       '@examples/governance-contract':
         specifier: workspace:*
         version: link:../contract
+      '@satlayer/cosmwasm-schema':
+        specifier: workspace:*
+        version: link:../../../packages/cosmwasm-schema
       '@satlayer/testcontainers':
         specifier: workspace:*
         version: link:../../../packages/testcontainers
