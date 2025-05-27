@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -16,15 +17,15 @@ var filePath string
 
 // MerkleProofRes is partly based on `bvs-rewards::ExecuteMsg:ClaimRewards`
 type MerkleProofRes struct {
-	ClaimRewardProof `json:"claim_reward_proof"`
-	Token            string `json:"token"`
-	Amount           string `json:"amount"`
+	ClaimRewardsProof `json:"claim_rewards_proof"`
+	Token             string `json:"token"`
+	Amount            string `json:"amount"`
 }
 
-// ClaimRewardProof based on `bvs-rewards::msg:ClaimRewardsProof`
-type ClaimRewardProof struct {
+// ClaimRewardsProof based on `bvs-rewards::msg:ClaimRewardsProof`
+type ClaimRewardsProof struct {
 	Root             string   `json:"root"`
-	Proof            [][]byte `json:"proof"`
+	Proof            []string `json:"proof"`
 	LeafIndex        uint64   `json:"leaf_index"`
 	TotalLeavesCount uint64   `json:"total_leaves_count"`
 }
@@ -177,10 +178,16 @@ func RewardsProofCmd() *cobra.Command {
 				return
 			}
 
+			// convert proof to hex strings
+			hexProof := make([]string, len(proof.Hashes))
+			for i, hash := range proof.Hashes {
+				hexProof[i] = hex.EncodeToString(hash)
+			}
+
 			merkleProofRes := MerkleProofRes{
-				ClaimRewardProof: ClaimRewardProof{
+				ClaimRewardsProof: ClaimRewardsProof{
 					Root:             rewardsTree.Tree.String(),
-					Proof:            proof.Hashes,
+					Proof:            hexProof,
 					LeafIndex:        proof.Index,
 					TotalLeavesCount: uint64(len(rewardsTree.Tree.Data)),
 				},
