@@ -11,6 +11,7 @@ type BvsInitMsg = {
   "@satlayer/bvs-vault-bank": import("@satlayer/cosmwasm-schema/vault-bank").InstantiateMsg;
   "@satlayer/bvs-vault-bank-tokenized": import("@satlayer/cosmwasm-schema/vault-bank-tokenized").InstantiateMsg;
   "@satlayer/bvs-guardrail": import("@satlayer/cosmwasm-schema/guardrail").InstantiateMsg;
+  "@satlayer/bvs-rewards": import("@satlayer/cosmwasm-schema/rewards").InstantiateMsg;
 };
 
 export async function uploadBvs<Pkg extends keyof BvsInitMsg>(
