@@ -216,7 +216,9 @@ checksum = "3e31ea183f6ee62ac8b8a8cf7feddd766317adfb13ff469de57ce033efd6a790"
 
 [[package]]
 name = "bvs-guardrail"
-version = "0.0.0"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "420c123e127cd5812291a3774e07c4b1a5779444da869207949193bec32f37ab"
 dependencies = [
  "bvs-library",
  "cosmwasm-schema",
@@ -234,7 +236,9 @@ dependencies = [
 
 [[package]]
 name = "bvs-library"
-version = "0.0.0"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c75a72c758f1c8ed3f25e5535a8ef7b3ce8fd1251045b93a0c1f0b3f71acb90"
 dependencies = [
  "base64",
  "bech32 0.8.1",
@@ -254,7 +258,9 @@ dependencies = [
 
 [[package]]
 name = "bvs-multi-test"
-version = "0.0.0"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c8ec090404ee7a7ea13deaa3604412da3eeecbaac598448b166ef4edf88acdd2"
 dependencies = [
  "bvs-guardrail",
  "bvs-library",
@@ -271,7 +277,9 @@ dependencies = [
 
 [[package]]
 name = "bvs-pauser"
-version = "0.0.0"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7481fadb5fc8bc4462757bdf772c1525f2d5ac903f21f82a4b582fc240d80243"
 dependencies = [
  "bvs-library",
  "cosmwasm-schema",
@@ -287,7 +295,9 @@ dependencies = [
 
 [[package]]
 name = "bvs-registry"
-version = "0.0.0"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09654d888551b5b84d7a23b947d2b1741f04b1b10ede54dfd0cd8539db648f0d"
 dependencies = [
  "bvs-library",
  "bvs-pauser",
@@ -303,7 +313,9 @@ dependencies = [
 
 [[package]]
 name = "bvs-vault-bank"
-version = "0.0.0"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0f9a2c68c7913b91212abb118afce9371ba96eec35d051231b6bf1d9db168ae4"
 dependencies = [
  "bvs-library",
  "bvs-pauser",
@@ -323,7 +335,9 @@ dependencies = [
 
 [[package]]
 name = "bvs-vault-base"
-version = "0.0.0"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa6446069662b4f6e561adc72b7091aa4751fb02d66c60ed8ee4eff6844721f6"
 dependencies = [
  "bvs-library",
  "bvs-pauser",
@@ -340,7 +354,9 @@ dependencies = [
 
 [[package]]
 name = "bvs-vault-cw20"
-version = "0.0.0"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38f982e4de4874336c6c78eaf43cccca53f48ad3f9c7e17dfe79eeee91fdb6c4"
 dependencies = [
  "bvs-library",
  "bvs-pauser",
@@ -360,7 +376,9 @@ dependencies = [
 
 [[package]]
 name = "bvs-vault-router"
-version = "0.0.0"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4bc2197fa87ae325898a1c4091edd7fa50439df56bd1215d2312f69e4c23704f"
 dependencies = [
  "bvs-guardrail",
  "bvs-library",
