@@ -9,7 +9,7 @@
     "*.d.ts"
   ],
   "scripts": {
-    "build": "node generate.mjs && prettier --write *.d.ts"
+    "build": "node generate.mjs && prettier --write *.ts"
   },
   "devDependencies": {
     "@satlayer/bvs-guardrail": "workspace:*",
