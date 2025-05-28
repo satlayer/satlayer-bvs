@@ -13,7 +13,9 @@
     "@cosmjs/proto-signing": "^0.33.1",
     "@cosmjs/stargate": "^0.33.1",
     "@cosmjs/utils": "^0.33.1",
-    "@satlayer/cosmwasm-schema": "workspace:*"
+    "@satlayer/cli": "^2.0.2",
+    "@satlayer/cosmwasm-schema": "workspace:*",
+    "execa": "^9.6.0"
   },
   "devDependencies": {
     "@satlayer/testcontainers": "workspace:*",

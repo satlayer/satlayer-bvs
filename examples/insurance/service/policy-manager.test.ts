@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { PolicyManager } from "./policy-manager";
 import { Api } from "./api";
 import { CosmWasmContainer, SatLayerContracts, StartedCosmWasmContainer } from "@satlayer/testcontainers";
@@ -9,6 +9,9 @@ import { ExecuteMsg as RegistryExecuteMsg } from "@satlayer/cosmwasm-schema/regi
 import { coins } from "@cosmjs/stargate";
 import { sleep } from "@cosmjs/utils";
 import { ExecuteMsg as GuardrailExecuteMsg } from "@satlayer/cosmwasm-schema/guardrail";
+import { execa } from "execa";
+import { resolve } from "path";
+import { ExecuteMsg as RewardsExecuteMsg, RewardsType } from "@satlayer/cosmwasm-schema/rewards";
 
 let policyManager: PolicyManager;
 let api: Api;
@@ -20,14 +23,16 @@ let vaultAddress: string;
 let serviceAccount: AccountData;
 let operatorAccount: AccountData;
 let ownerAccount: AccountData;
+let stakerAccount: AccountData;
+let rewardsAccount: AccountData;
 
 describe("PolicyManager", () => {
-  beforeAll(async () => {
+  beforeEach(async () => {
     // Set up CosmWasmContainer with SatLayerContracts bootstrapped
     started = await new CosmWasmContainer().start();
     contracts = await SatLayerContracts.bootstrap(started);
 
-    // A wallet with 3 accounts operator, staker and service
+    // A wallet with 4 accounts operator, staker and service
     wallet = await DirectSecp256k1HdWallet.generate(12, {
       prefix: "wasm",
       hdPaths: [stringToPath("m/0"), stringToPath("m/1"), stringToPath("m/2")],
@@ -40,12 +45,13 @@ describe("PolicyManager", () => {
     serviceAccount = service;
     operatorAccount = operator;
     ownerAccount = owner;
+    stakerAccount = staker;
 
     // Fund all 4 accounts with some tokens
-    await started.fund("10000000ustake", owner.address, operator.address, staker.address, service.address);
+    await started.fund("1000000000ustake", owner.address, operator.address, staker.address, service.address);
 
-    // Init vault bank for operator
-    vaultAddress = await contracts.initVaultBank(operator.address, "ustake");
+    // Init vault bank tokenized for operator
+    vaultAddress = await contracts.initVaultBankTokenized(operator.address, "ustake", "satUstake");
 
     // Initialize Client
     let clientSigner = await started.newSigner(wallet);
@@ -56,6 +62,7 @@ describe("PolicyManager", () => {
       router: contracts.router.address,
       operator: operator.address,
       service: service.address,
+      rewards: contracts.rewards.address,
     });
 
     // Operator register into Registry
@@ -72,11 +79,11 @@ describe("PolicyManager", () => {
     // Staker stake into vault bank
     let stakeMsg: VaultBankExecuteMsg = {
       deposit_for: {
-        amount: "10000", // stake 10_000 ustake
+        amount: "100000000", // stake 100_000_000 ustake
         recipient: staker.address,
       },
     };
-    await clientSigner.execute(staker.address, vaultAddress, stakeMsg, "auto", null, coins(10_000, "ustake"));
+    await clientSigner.execute(staker.address, vaultAddress, stakeMsg, "auto", undefined, coins(100_000_000, "ustake"));
 
     // Initialize PolicyManager
     policyManager = new PolicyManager(api, serviceAccount.address, operator.address);
@@ -93,17 +100,18 @@ describe("PolicyManager", () => {
 
   test("Lifecycle test", { timeout: 60_000 }, async () => {
     await sleep(500);
-    // Alice buys policy for 1000 coverage
+    // Alice buys policy for 1_000_000 coverage
     let alice = await started.generateAccount("alice");
-    let res = await policyManager.buyPolicy(1000, alice.address);
+    let res = await policyManager.buyPolicy(1_000_000, alice.address);
 
     expect(res).toStrictEqual({
       id: 1,
       insuree: alice.address,
-      coverage: 1000,
-      premium: 5,
+      coverage: 1_000_000,
+      premium: 20_000,
       boughtAt: expect.any(Number),
       expiryAt: expect.any(Number),
+      claimId: null,
     });
 
     await sleep(1000);
@@ -122,16 +130,185 @@ describe("PolicyManager", () => {
     };
     await started.client.execute(ownerAccount.address, contracts.guardrail.address, proposeMsg, "auto");
 
+    await sleep(1000);
+
     // proceed to process claim
     let processClaimRes = await policyManager.processClaim(claimRes);
 
     expect(processClaimRes).toStrictEqual({
       policyDetails: expect.any(Object),
       txHash: expect.any(String),
-      payout: 1000,
+      payout: 1_000_000,
       payoutAt: expect.any(Number),
     });
 
-    // check alice balance
+    // check alice balance should have 1_000_000 ustake from payout
+    let aliceBalance = await api.queryBankBalance({ address: alice.address, denom: "ustake" });
+    expect(aliceBalance).toStrictEqual({
+      amount: "1000000",
+      denom: "ustake",
+    });
+  });
+
+  test("Rewards lifecycle", { timeout: 60_000 }, async () => {
+    await sleep(500);
+    // Alice buys policy for 80_000_000 coverage
+    let alice = await started.generateAccount("alice");
+    let res = await policyManager.buyPolicy(80_000_000, alice.address);
+
+    expect(res).toStrictEqual({
+      id: 1,
+      insuree: alice.address,
+      coverage: 80_000_000,
+      premium: 1_600_000,
+      boughtAt: expect.any(Number),
+      expiryAt: expect.any(Number),
+      claimId: null,
+    });
+
+    await sleep(1000);
+
+    // calculate rewards
+    vi.useFakeTimers();
+    vi.advanceTimersByTime(24 * 60 * 60 * 1000); // advance by 24 hour
+    let distributionRewardsRes = await policyManager.calculateRewards();
+
+    expect(distributionRewardsRes).toStrictEqual({
+      rewardsToPayout: 2191,
+      durationSinceLastUpdate: expect.any(Number),
+      totalAccumulatedRewards: 2191,
+      rewardsDistribution: {
+        token: "ustake",
+        earners: [
+          {
+            earner: stakerAccount.address,
+            reward: "1972",
+          },
+          {
+            earner: operatorAccount.address,
+            reward: "219",
+          },
+        ],
+      },
+    });
+
+    vi.useRealTimers();
+    // submit rewards distribution
+    await policyManager.submitRewards({
+      amountToDistribute: distributionRewardsRes!.rewardsToPayout,
+    });
+
+    // assert that the rewards contract received the rewards distribution
+    let balance = await api.queryBankBalance({
+      address: contracts.rewards.address,
+      denom: "ustake",
+    });
+    expect(balance).toStrictEqual({
+      amount: "2191",
+      denom: "ustake",
+    });
+
+    // staker claims rewards
+    const inputFile = `dist/bbn-test-5/${serviceAccount.address}/ustake/distribution.json`;
+    const binPath = resolve(process.cwd(), "node_modules", ".bin", "satlayer");
+    const { stdout } = await execa(binPath, ["rewards", "proof", stakerAccount.address, "1972", "-f", inputFile]);
+    let proofRes = JSON.parse(stdout.trim());
+
+    let recipientAccount = await started.generateAccount("recipient");
+    let claimRewardsMsg: RewardsExecuteMsg = {
+      claim_rewards: {
+        token: proofRes.token,
+        amount: proofRes.amount,
+        recipient: recipientAccount.address,
+        reward_type: RewardsType.Bank,
+        service: serviceAccount.address,
+        claim_rewards_proof: {
+          leaf_index: proofRes.claim_rewards_proof.leaf_index,
+          proof: proofRes.claim_rewards_proof.proof,
+          root: proofRes.claim_rewards_proof.root,
+          total_leaves_count: proofRes.claim_rewards_proof.total_leaves_count,
+        },
+      },
+    };
+    let clientSigner = await started.newSigner(wallet);
+    await clientSigner.execute(stakerAccount.address, contracts.rewards.address, claimRewardsMsg, "auto");
+
+    // expect that the recipient received the rewards
+    let recipientBalance = await api.queryBankBalance({
+      address: recipientAccount.address,
+      denom: "ustake",
+    });
+    expect(recipientBalance).toStrictEqual({
+      amount: "1972",
+      denom: "ustake",
+    });
+
+    // calculate rewards for the 2nd day
+    vi.useFakeTimers();
+    vi.advanceTimersByTime(2 * 24 * 60 * 60 * 1000); // advance by 48 hour
+    let distributionRewardsRes2 = await policyManager.calculateRewards();
+
+    expect(distributionRewardsRes2).toStrictEqual({
+      rewardsToPayout: 2191,
+      durationSinceLastUpdate: expect.any(Number),
+      totalAccumulatedRewards: 4382,
+      rewardsDistribution: {
+        token: "ustake",
+        earners: [
+          {
+            earner: stakerAccount.address,
+            reward: "3944",
+          },
+          {
+            earner: operatorAccount.address,
+            reward: "438",
+          },
+        ],
+      },
+    });
+
+    vi.useRealTimers();
+    // submit rewards distribution
+    await policyManager.submitRewards({
+      amountToDistribute: distributionRewardsRes2!.rewardsToPayout,
+    });
+
+    // staker claims rewards again
+    const { stdout: stdout2 } = await execa(binPath, [
+      "rewards",
+      "proof",
+      stakerAccount.address,
+      "3944",
+      "-f",
+      inputFile,
+    ]);
+    let proofRes2 = JSON.parse(stdout2.trim());
+
+    let claimRewardsMsg2: RewardsExecuteMsg = {
+      claim_rewards: {
+        token: proofRes2.token,
+        amount: proofRes2.amount,
+        recipient: recipientAccount.address,
+        reward_type: RewardsType.Bank,
+        service: serviceAccount.address,
+        claim_rewards_proof: {
+          leaf_index: proofRes2.claim_rewards_proof.leaf_index,
+          proof: proofRes2.claim_rewards_proof.proof,
+          root: proofRes2.claim_rewards_proof.root,
+          total_leaves_count: proofRes2.claim_rewards_proof.total_leaves_count,
+        },
+      },
+    };
+    await clientSigner.execute(stakerAccount.address, contracts.rewards.address, claimRewardsMsg2, "auto");
+
+    // expect that the recipient received the rewards
+    let recipientBalance2 = await api.queryBankBalance({
+      address: recipientAccount.address,
+      denom: "ustake",
+    });
+    expect(recipientBalance2).toStrictEqual({
+      amount: "3944",
+      denom: "ustake",
+    });
   });
 });
