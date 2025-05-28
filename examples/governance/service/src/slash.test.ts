@@ -26,6 +26,8 @@ import {
 
 import { ExecuteMsg as VaultBankExecuteMsg } from "@satlayer/cosmwasm-schema/vault-bank";
 
+import { ExecuteMsg as GuardrailExecuteMsg } from "@satlayer/cosmwasm-schema/guardrail";
+
 let started: StartedCosmWasmContainer;
 let contracts: SatLayerContracts;
 let bvs_wallet: DirectSecp256k1HdWallet;
@@ -56,13 +58,26 @@ async function deployGovernanceContract(owner: string, committee: Voter[]) {
   return client.instantiate(owner, uploaded.codeId, initMsg, "governance", "auto");
 }
 
+async function guardrailApprove(slashingRequestId: string) {
+  let [satlayer_owner] = await started.wallet.getAccounts();
+
+  let msg: GuardrailExecuteMsg = {
+    propose: {
+      reason: "Approve slashing request",
+      slashing_request_id: slashingRequestId,
+    },
+  };
+
+  // let response = await client.execute(satlayer_owner.address, contracts.guardrail.address, msg, "auto");
+}
+
 async function enableSlashing() {
   let action: RegistryExecuteMsg = {
     enable_slashing: {
       slashing_parameters: {
-        max_slashing_bips: 5000, // 10%
+        max_slashing_bips: 5000, // 50%
         destination: governanceContractAddress,
-        resolution_window: 60 * 60 * 24, // 24 hours in seconds
+        resolution_window: 5,
       },
     },
   };
@@ -319,7 +334,7 @@ test("Hello World", async () => {
 }, 1200);
 
 test(
-  "Slashing Request By Committee Member",
+  "Social Committee based slashing lifecycle",
   async () => {
     await setup_staking();
 
@@ -415,6 +430,134 @@ test(
     expect(slashing_request.request.bips).toBe(500);
     expect(slashing_request.request.operator).toBe(operator.address);
     expect(slashing_request.service).toBe(governanceContractAddress);
+
+    // propose to lock the slash
+    let lock_slash_action: RouterExecuteMsg = {
+      lock_slashing: slashing_request_id,
+    };
+
+    let proposal_msg: GovernanceExecuteMsg = {
+      base: {
+        propose: {
+          title: "Lock Slashing",
+          description: "Proposal to lock slashing for operator",
+          msgs: [
+            {
+              wasm: {
+                execute: {
+                  contract_addr: contracts.router.address,
+                  msg: Buffer.from(JSON.stringify(lock_slash_action)).toString("base64"),
+                  funds: [],
+                },
+              },
+            },
+          ],
+        },
+      },
+    };
+
+    response = await client.execute(committee[0].addr, governanceContractAddress, proposal_msg, "auto");
+
+    // now committee members vote on the proposal
+    let lock_proposal_id = response.events
+      ?.find((event) => event.type === "wasm" && event.attributes.some((attr) => attr.key === "proposal_id"))
+      ?.attributes.find((attr) => attr.key === "proposal_id")?.value;
+
+    expect(lock_proposal_id).toBe("4");
+
+    // vote on the proposal
+    for (let i = 1; i < committee.length; i++) {
+      let vote: GovernanceExecuteMsg = {
+        base: {
+          vote: {
+            proposal_id: parseInt(lock_proposal_id as string),
+            vote: "yes" as Vote,
+          },
+        },
+      };
+      response = await client.execute(committee[i].addr, governanceContractAddress, vote, "auto");
+      expect(response).toBeDefined();
+    }
+
+    // execute the proposal
+    let execute_lock: GovernanceExecuteMsg = {
+      base: {
+        execute: {
+          proposal_id: parseInt(lock_proposal_id as string),
+        },
+      },
+    };
+
+    // sleep abit to let resolution window pass
+    await new Promise((resolve) => setTimeout(resolve, 6000));
+
+    response = await client.execute(committee[0].addr, governanceContractAddress, execute_lock, "auto");
+
+    // collateral are locked in the router contract
+    let router_balance = await client.getBalance(contracts.router.address, "ustake");
+    expect(router_balance.amount).toBe("150");
+
+    // let's start finalizing the slashing request that would move the funds to the governance contract
+    let finalize_slash_action: RouterExecuteMsg = {
+      finalize_slashing: slashing_request_id,
+    };
+
+    let finalize_proposal_msg: GovernanceExecuteMsg = {
+      base: {
+        propose: {
+          title: "Finalize Slashing",
+          description: "Proposal to finalize slashing for operator",
+          msgs: [
+            {
+              wasm: {
+                execute: {
+                  contract_addr: contracts.router.address,
+                  msg: Buffer.from(JSON.stringify(finalize_slash_action)).toString("base64"),
+                  funds: [],
+                },
+              },
+            },
+          ],
+        },
+      },
+    };
+
+    response = await client.execute(committee[0].addr, governanceContractAddress, finalize_proposal_msg, "auto");
+    expect(response).toBeDefined();
+
+    let finalize_proposal_id = response.events
+      ?.find((event) => event.type === "wasm" && event.attributes.some((attr) => attr.key === "proposal_id"))
+      ?.attributes.find((attr) => attr.key === "proposal_id")?.value;
+
+    expect(finalize_proposal_id).toBe("5");
+    // vote on the proposal
+    // skip the first member as they are the proposer
+    for (let i = 1; i < committee.length; i++) {
+      let vote: GovernanceExecuteMsg = {
+        base: {
+          vote: {
+            proposal_id: parseInt(finalize_proposal_id as string),
+            vote: "yes" as Vote,
+          },
+        },
+      };
+      response = await client.execute(committee[i].addr, governanceContractAddress, vote, "auto");
+      expect(response).toBeDefined();
+    }
+
+    // execute the proposal
+    let execute_finalize: GovernanceExecuteMsg = {
+      base: {
+        execute: {
+          proposal_id: parseInt(finalize_proposal_id as string),
+        },
+      },
+    };
+
+    response = await client.execute(committee[0].addr, governanceContractAddress, execute_finalize, "auto");
+
+    let governance_balance = await client.getBalance(governanceContractAddress, "ustake");
+    expect(governance_balance.amount).toBe("150");
   },
   60 * 1000,
 );
