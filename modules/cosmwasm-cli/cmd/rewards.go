@@ -307,12 +307,12 @@ func createMerkleTreeFromDistribution(dist Distribution) (*RewardsMerkleTree, er
 	var data [][]byte
 
 	for _, earner := range dist.Earners {
-		// Add each earner-reward pair as a leaf
+		// Add each earner-reward pair as a leaf hash (first hash)
 		leaf := leafHash(earner.Earner, earner.Reward)
 		data = append(data, leaf)
 	}
 
-	// Create new merkle tree with default settings
+	// Create new merkle tree with default settings - leaves are double-hashed
 	tree, err := merkletree.NewTree(
 		merkletree.WithData(data),
 		merkletree.WithHashType(sha3.New256()),

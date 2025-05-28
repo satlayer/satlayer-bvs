@@ -27,9 +27,10 @@ pub struct Leaf {
 }
 
 impl Leaf {
+    // double hash the leaf
     pub fn hash(&self) -> [u8; 32] {
         let leaf = format!("{}{}", self.earner, self.amount);
-        Sha3_256Algorithm::hash(leaf.as_bytes())
+        Sha3_256Algorithm::hash(Sha3_256Algorithm::hash(leaf.as_bytes()).as_ref())
     }
 }
 
