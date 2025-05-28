@@ -83,3 +83,6 @@ pub struct Voter {
     pub addr: String,
     pub weight: u64,
 }
+
+#[cw_serde]
+pub struct MigrateMsg {}

@@ -609,13 +609,14 @@ mod query {
 /// See https://github.com/CosmWasm/cosmwasm/issues/926#issuecomment-851259818
 ///
 /// #### 2.0.0
-/// Migrate REGISTRATION_STATUS state from Map to SnapshotMap.  
-/// Storage mapping is not needed because SnapshotMap uses a map with the same namespace.  
-/// This migration will also mean
-/// that the current state of REGISTRATION_STATUS will be the default state
-/// when querying for state from earlier timestamp.  
-/// For instance, migration happens at block 200 and Operator1 and Service1 is in Active status.
-/// When queried at genesis, the status of Operator1 and Service1 will be Active.
+/// - Internal migrate of [REGISTRATION_STATUS] state from `Map` to `SnapshotMap`.
+///   Storage mapping is not needed because SnapshotMap uses a map with the same namespace.
+///   This migration will also mean
+///   that the current state of REGISTRATION_STATUS will be the default state
+///   when querying for state from earlier timestamp.
+///   For instance, migration happens at block 200 and Operator1 and Service1 is in Active status.
+///   When queried at genesis, the status of Operator1 and Service1 will be Active.
+/// - No storage migration.
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(
     deps: DepsMut,

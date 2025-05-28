@@ -79,3 +79,6 @@ pub enum QueryMsg {
 /// This is just a wrapper around `u64`, so that the schema can be generated.
 #[cw_serde]
 struct CodeIdResponse(u64);
+
+#[cw_serde]
+pub struct MigrateMsg {}
