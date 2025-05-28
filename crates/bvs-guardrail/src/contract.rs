@@ -798,7 +798,6 @@ mod tests {
             "cdb763a239cb5c8d627c5cc85c65aac291680aced9d081ba7595c6d5138fc4fb",
         )
         .unwrap();
-        let expiration = Expiration::AtTime(env.block.time.plus_seconds(DEFAULT_EXPIRATION));
         let execute_msg = ExecuteMsg::Propose {
             slashing_request_id: slashing_request_id.clone(),
             reason: "test".to_string(),
@@ -989,7 +988,6 @@ mod tests {
         )
         .unwrap();
 
-        let expiration = Expiration::AtTime(env.block.time.plus_seconds(DEFAULT_EXPIRATION));
         let execute_msg = ExecuteMsg::Propose {
             slashing_request_id: slashing_request_id.clone(),
             reason: "test".to_string(),
@@ -1111,7 +1109,6 @@ mod tests {
             "cdb763a239cb5c8d627c5cc85c65aac291680aced9d081ba7595c6d5138fc4fb",
         )
         .unwrap();
-        let expiration = Expiration::AtTime(env.block.time.plus_seconds(DEFAULT_EXPIRATION));
         let execute_msg = ExecuteMsg::Propose {
             slashing_request_id: slashing_request_id.clone(),
             reason: "test".to_string(),
@@ -1217,7 +1214,6 @@ mod tests {
             "cdb763a239cb5c8d627c5cc85c65aac291680aced9d081ba7595c6d5138fc4fb",
         )
         .unwrap();
-        let expiration = Expiration::AtTime(env.block.time.plus_seconds(DEFAULT_EXPIRATION));
         let execute_msg = ExecuteMsg::Propose {
             slashing_request_id: slashing_request_id.clone(),
             reason: "test".to_string(),

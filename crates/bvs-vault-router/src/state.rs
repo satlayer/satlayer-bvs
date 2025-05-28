@@ -334,7 +334,7 @@ mod test {
         .unwrap();
         assert_eq!(response.status, SlashingRequestStatus::Canceled);
 
-        let _ = remove_slashing_request_id(&mut deps.storage, &service, &operator);
+        remove_slashing_request_id(&mut deps.storage, &service, &operator).unwrap();
 
         assert!(SLASHING_REQUEST_IDS.is_empty(&deps.storage));
     }

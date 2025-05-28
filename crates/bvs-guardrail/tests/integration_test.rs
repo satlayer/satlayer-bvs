@@ -189,7 +189,7 @@ fn propose_and_vote_rejected() {
         slashing_request_id: slashing_request_id.clone(),
         vote: Vote::No,
     };
-    let res = tc.guardrail.execute(&mut app, &voter1, &vote_msg).unwrap();
+    tc.guardrail.execute(&mut app, &voter1, &vote_msg).unwrap();
 
     // Voter2 votes "no"
     let vote_msg = ExecuteMsg::Vote {
@@ -261,7 +261,7 @@ fn propose_and_vote_expired() {
         slashing_request_id: slashing_request_id.clone(),
         vote: Vote::No,
     };
-    let res = tc.guardrail.execute(&mut app, &voter1, &vote_msg).unwrap();
+    tc.guardrail.execute(&mut app, &voter1, &vote_msg).unwrap();
 
     // Voter2 votes "no"
     let vote_msg = ExecuteMsg::Vote {
