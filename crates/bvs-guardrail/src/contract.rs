@@ -535,7 +535,7 @@ mod tests {
     use crate::state::{PROPOSALS, SLASHING_REQUEST_TO_PROPOSAL};
     use bvs_library::slashing::SlashingRequestId;
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
-    use cosmwasm_std::{Decimal, Event, Order};
+    use cosmwasm_std::{to_json_string, Decimal, Event, Order};
     use cw2::{get_contract_version, ContractVersion};
     use cw3::{Proposal, Status, Vote, Votes};
     use cw4::Member;
@@ -798,7 +798,6 @@ mod tests {
             "cdb763a239cb5c8d627c5cc85c65aac291680aced9d081ba7595c6d5138fc4fb",
         )
         .unwrap();
-        let expiration = Expiration::AtTime(env.block.time.plus_seconds(DEFAULT_EXPIRATION));
         let execute_msg = ExecuteMsg::Propose {
             slashing_request_id: slashing_request_id.clone(),
             reason: "test".to_string(),
@@ -989,7 +988,6 @@ mod tests {
         )
         .unwrap();
 
-        let expiration = Expiration::AtTime(env.block.time.plus_seconds(DEFAULT_EXPIRATION));
         let execute_msg = ExecuteMsg::Propose {
             slashing_request_id: slashing_request_id.clone(),
             reason: "test".to_string(),
@@ -1111,7 +1109,6 @@ mod tests {
             "cdb763a239cb5c8d627c5cc85c65aac291680aced9d081ba7595c6d5138fc4fb",
         )
         .unwrap();
-        let expiration = Expiration::AtTime(env.block.time.plus_seconds(DEFAULT_EXPIRATION));
         let execute_msg = ExecuteMsg::Propose {
             slashing_request_id: slashing_request_id.clone(),
             reason: "test".to_string(),
@@ -1217,7 +1214,6 @@ mod tests {
             "cdb763a239cb5c8d627c5cc85c65aac291680aced9d081ba7595c6d5138fc4fb",
         )
         .unwrap();
-        let expiration = Expiration::AtTime(env.block.time.plus_seconds(DEFAULT_EXPIRATION));
         let execute_msg = ExecuteMsg::Propose {
             slashing_request_id: slashing_request_id.clone(),
             reason: "test".to_string(),
@@ -1438,5 +1434,22 @@ mod tests {
         ];
         expected_members.sort();
         assert_eq!(members, expected_members);
+    }
+
+    #[test]
+    fn json() {
+        let msg = InstantiateMsg {
+            owner: "1".to_string(),
+            members: vec![cw4::Member {
+                addr: "1".to_string(),
+                weight: 1,
+            }],
+            threshold: Threshold::AbsolutePercentage {
+                percentage: Decimal::percent(50), // auto pass proposal
+            },
+            default_expiration: 100,
+        };
+        let a = to_json_string(&msg).unwrap();
+        println!("{}", a.as_str())
     }
 }
