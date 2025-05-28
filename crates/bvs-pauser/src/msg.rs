@@ -109,6 +109,9 @@ impl From<CanExecuteResponse> for CanExecuteFlag {
     }
 }
 
+#[cw_serde]
+pub struct MigrateMsg {}
+
 #[cfg(test)]
 mod tests {
     use super::*;

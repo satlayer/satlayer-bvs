@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 
 use crate::error::PauserError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::PAUSED;
 use bvs_library::ownership;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
@@ -189,6 +189,18 @@ mod query {
         }
         Ok(CanExecuteFlag::CanExecute.into())
     }
+}
+
+/// This can only be called by the contract ADMIN, enforced by `wasmd` separate from cosmwasm.
+/// See https://github.com/CosmWasm/cosmwasm/issues/926#issuecomment-851259818
+///
+/// #### 2.0.0
+/// - New [ExecuteMsg::Pause] and [ExecuteMsg::Unpause] for individual contract methods.
+/// - No storage migration.
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response> {
+    cw2::ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    Ok(Response::default())
 }
 
 #[cfg(test)]

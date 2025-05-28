@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 
 use crate::error::RewardsError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, RewardsType};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, RewardsType};
 use bvs_library::ownership;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
@@ -447,6 +447,16 @@ mod query {
             .may_load(deps.storage, (&service, &token, &earner))
             .map(|rewards| rewards.unwrap_or_default())
     }
+}
+
+/// This can only be called by the contract ADMIN, enforced by `wasmd` separate from cosmwasm.
+/// See https://github.com/CosmWasm/cosmwasm/issues/926#issuecomment-851259818
+///
+/// #### 2.0.0 (new)
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response> {
+    cw2::ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    Ok(Response::default())
 }
 
 #[cfg(test)]

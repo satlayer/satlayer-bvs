@@ -82,3 +82,6 @@ pub struct ClaimRewardsProof {
     /// total_leaves_count is the total number of leaves in the Merkle tree
     pub total_leaves_count: u32,
 }
+
+#[cw_serde]
+pub struct MigrateMsg {}

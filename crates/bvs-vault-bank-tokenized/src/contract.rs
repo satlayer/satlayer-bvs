@@ -5,7 +5,7 @@ use cw20_base::contract::instantiate as base_instantiate;
 use cw20_base::msg::InstantiateMsg as ReceiptCw20InstantiateMsg;
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg as CombinedExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg as CombinedExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use bvs_vault_bank::bank as UnderlyingToken;
 
 const CONTRACT_NAME: &str = concat!("crates.io:", env!("CARGO_PKG_NAME"));
@@ -580,4 +580,14 @@ mod vault_query {
             version: version.version,
         })
     }
+}
+
+/// This can only be called by the contract ADMIN, enforced by `wasmd` separate from cosmwasm.
+/// See https://github.com/CosmWasm/cosmwasm/issues/926#issuecomment-851259818
+///
+/// #### 2.0.0 (new)
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response> {
+    cw2::ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    Ok(Response::default())
 }
