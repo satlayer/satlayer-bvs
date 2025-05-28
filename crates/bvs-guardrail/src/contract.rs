@@ -535,7 +535,7 @@ mod tests {
     use crate::state::{PROPOSALS, SLASHING_REQUEST_TO_PROPOSAL};
     use bvs_library::slashing::SlashingRequestId;
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
-    use cosmwasm_std::{to_json_string, Decimal, Event, Order};
+    use cosmwasm_std::{Decimal, Event, Order};
     use cw2::{get_contract_version, ContractVersion};
     use cw3::{Proposal, Status, Vote, Votes};
     use cw4::Member;
@@ -1434,22 +1434,5 @@ mod tests {
         ];
         expected_members.sort();
         assert_eq!(members, expected_members);
-    }
-
-    #[test]
-    fn json() {
-        let msg = InstantiateMsg {
-            owner: "1".to_string(),
-            members: vec![cw4::Member {
-                addr: "1".to_string(),
-                weight: 1,
-            }],
-            threshold: Threshold::AbsolutePercentage {
-                percentage: Decimal::percent(50), // auto pass proposal
-            },
-            default_expiration: 100,
-        };
-        let a = to_json_string(&msg).unwrap();
-        println!("{}", a.as_str())
     }
 }
