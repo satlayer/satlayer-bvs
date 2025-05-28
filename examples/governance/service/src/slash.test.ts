@@ -31,14 +31,15 @@ import { ExecuteMsg as GuardrailExecuteMsg } from "@satlayer/cosmwasm-schema/gua
 let started: StartedCosmWasmContainer;
 let contracts: SatLayerContracts;
 let bvs_wallet: DirectSecp256k1HdWallet;
-let client: SigningCosmWasmClient;
+let satlayer_wallet: DirectSecp256k1HdWallet;
+let clientSigner: SigningCosmWasmClient;
 let governanceContractAddress: string;
 let committee: Voter[];
 let vaultBankAddress: string;
 
 async function deployGovernanceContract(owner: string, committee: Voter[]) {
   const contractPath = require.resolve("@examples/governance-contract/dist/contract.wasm");
-  const uploaded = await client.upload(owner, await readFile(contractPath), "auto");
+  const uploaded = await clientSigner.upload(owner, await readFile(contractPath), "auto");
   const initMsg: InstantiateMsg = {
     registry: contracts.registry.address,
     router: contracts.router.address,
@@ -55,20 +56,23 @@ async function deployGovernanceContract(owner: string, committee: Voter[]) {
       }, // 24 hours
     },
   };
-  return client.instantiate(owner, uploaded.codeId, initMsg, "governance", "auto");
+  return clientSigner.instantiate(owner, uploaded.codeId, initMsg, "governance", "auto");
 }
 
-async function guardrailApprove(slashingRequestId: string) {
-  let [satlayer_owner] = await started.wallet.getAccounts();
+async function satlayerGuardrailApprove(slashingRequestId: string) {
+  let satlayer_signers_client = await started.newSigner(satlayer_wallet);
 
   let msg: GuardrailExecuteMsg = {
     propose: {
-      reason: "Approve slashing request",
       slashing_request_id: slashingRequestId,
+      reason: "Finalize Slashing Approval",
     },
   };
 
-  // let response = await client.execute(satlayer_owner.address, contracts.guardrail.address, msg, "auto");
+  let [owner] = await satlayer_wallet.getAccounts();
+
+  let response = await satlayer_signers_client.execute(owner.address, contracts.guardrail.address, msg, "auto");
+  expect(response).toBeDefined();
 }
 
 async function enableSlashing() {
@@ -102,7 +106,7 @@ async function enableSlashing() {
     },
   };
 
-  let response = await client.execute(committee[0].addr, governanceContractAddress, proposal, "auto");
+  let response = await clientSigner.execute(committee[0].addr, governanceContractAddress, proposal, "auto");
 
   expect(response).toBeDefined();
 
@@ -121,7 +125,7 @@ async function enableSlashing() {
         },
       },
     };
-    response = await client.execute(committee[i].addr, governanceContractAddress, vote, "auto");
+    response = await clientSigner.execute(committee[i].addr, governanceContractAddress, vote, "auto");
     expect(response).toBeDefined();
   }
 
@@ -133,7 +137,7 @@ async function enableSlashing() {
       },
     },
   };
-  response = await client.execute(committee[0].addr, governanceContractAddress, execute, "auto");
+  response = await clientSigner.execute(committee[0].addr, governanceContractAddress, execute, "auto");
 
   let query: RegistryQueryMsg = {
     slashing_parameters: {
@@ -141,7 +145,7 @@ async function enableSlashing() {
     },
   };
 
-  let slashing_parameters = (await client.queryContractSmart(
+  let slashing_parameters = (await clientSigner.queryContractSmart(
     contracts.registry.address,
     query,
   )) as SlashingParametersResponse;
@@ -164,7 +168,7 @@ async function setup_staking() {
     amount: "3000",
   };
 
-  return client.execute(bvs_owner.address, vaultBankAddress, msg, "auto", undefined, [coin]);
+  return clientSigner.execute(bvs_owner.address, vaultBankAddress, msg, "auto", undefined, [coin]);
 }
 
 beforeAll(async () => {
@@ -199,7 +203,8 @@ beforeAll(async () => {
   );
 
   // Create a new signer with the wallet using the container as the RPC endpoint
-  client = await started.newSigner(bvs_wallet);
+  satlayer_wallet = started.wallet;
+  clientSigner = await started.newSigner(bvs_wallet);
 
   // setup committee
   committee = [
@@ -220,7 +225,7 @@ beforeAll(async () => {
     },
   };
 
-  let response = await client.execute(operator.address, contracts.registry.address, register_as_operator, "auto");
+  let response = await clientSigner.execute(operator.address, contracts.registry.address, register_as_operator, "auto");
 
   expect(response).toBeDefined();
 
@@ -230,7 +235,12 @@ beforeAll(async () => {
     },
   };
 
-  response = await client.execute(operator.address, contracts.registry.address, register_service_to_operator, "auto");
+  response = await clientSigner.execute(
+    operator.address,
+    contracts.registry.address,
+    register_service_to_operator,
+    "auto",
+  );
 
   expect(response).toBeDefined();
 
@@ -261,7 +271,7 @@ beforeAll(async () => {
     },
   };
 
-  response = await client.execute(committee[0].addr, governanceContractAddress, proposal, "auto");
+  response = await clientSigner.execute(committee[0].addr, governanceContractAddress, proposal, "auto");
 
   expect(response).toBeDefined();
 
@@ -283,7 +293,7 @@ beforeAll(async () => {
         },
       },
     };
-    response = await client.execute(committee[i].addr, governanceContractAddress, vote, "auto");
+    response = await clientSigner.execute(committee[i].addr, governanceContractAddress, vote, "auto");
     expect(response).toBeDefined();
   }
 
@@ -295,7 +305,7 @@ beforeAll(async () => {
       },
     },
   };
-  response = await client.execute(committee[0].addr, governanceContractAddress, execute, "auto");
+  response = await clientSigner.execute(committee[0].addr, governanceContractAddress, execute, "auto");
   expect(response).toBeDefined();
 
   let register_status: RegistryQueryMsg = {
@@ -305,7 +315,7 @@ beforeAll(async () => {
     },
   };
 
-  let status_response = await client.queryContractSmart(contracts.registry.address, register_status);
+  let status_response = await clientSigner.queryContractSmart(contracts.registry.address, register_status);
 
   expect(status_response).toBe(1); // 1 means Active
 
@@ -318,7 +328,7 @@ beforeAll(async () => {
       service: governanceContractAddress,
     },
   };
-  response = await client.execute(operator.address, contracts.registry.address, operator_opt_in_slashing, "auto");
+  response = await clientSigner.execute(operator.address, contracts.registry.address, operator_opt_in_slashing, "auto");
   expect(response).toBeDefined();
 
   vaultBankAddress = await contracts.initVaultBank(operator.address, "ustake");
@@ -370,7 +380,7 @@ test(
       },
     };
 
-    let response = await client.execute(committee[0].addr, governanceContractAddress, proposal, "auto");
+    let response = await clientSigner.execute(committee[0].addr, governanceContractAddress, proposal, "auto");
 
     expect(response).toBeDefined();
 
@@ -390,7 +400,7 @@ test(
           },
         },
       };
-      response = await client.execute(committee[i].addr, governanceContractAddress, vote, "auto");
+      response = await clientSigner.execute(committee[i].addr, governanceContractAddress, vote, "auto");
       expect(response).toBeDefined();
     }
 
@@ -403,7 +413,7 @@ test(
       },
     };
 
-    response = await client.execute(committee[0].addr, governanceContractAddress, execute, "auto");
+    response = await clientSigner.execute(committee[0].addr, governanceContractAddress, execute, "auto");
 
     expect(response).toBeDefined();
 
@@ -415,13 +425,13 @@ test(
       },
     };
 
-    let slashing_request_id = await client.queryContractSmart(contracts.router.address, query_msg);
+    let slashing_request_id = await clientSigner.queryContractSmart(contracts.router.address, query_msg);
 
     query_msg = {
       slashing_request: slashing_request_id,
     };
 
-    let slashing_request: SlashingRequestResponse = (await client.queryContractSmart(
+    let slashing_request: SlashingRequestResponse = (await clientSigner.queryContractSmart(
       contracts.router.address,
       query_msg,
     )) as SlashingRequestResponse;
@@ -456,7 +466,7 @@ test(
       },
     };
 
-    response = await client.execute(committee[0].addr, governanceContractAddress, proposal_msg, "auto");
+    response = await clientSigner.execute(committee[0].addr, governanceContractAddress, proposal_msg, "auto");
 
     // now committee members vote on the proposal
     let lock_proposal_id = response.events
@@ -475,7 +485,7 @@ test(
           },
         },
       };
-      response = await client.execute(committee[i].addr, governanceContractAddress, vote, "auto");
+      response = await clientSigner.execute(committee[i].addr, governanceContractAddress, vote, "auto");
       expect(response).toBeDefined();
     }
 
@@ -491,10 +501,10 @@ test(
     // sleep abit to let resolution window pass
     await new Promise((resolve) => setTimeout(resolve, 6000));
 
-    response = await client.execute(committee[0].addr, governanceContractAddress, execute_lock, "auto");
+    response = await clientSigner.execute(committee[0].addr, governanceContractAddress, execute_lock, "auto");
 
     // collateral are locked in the router contract
-    let router_balance = await client.getBalance(contracts.router.address, "ustake");
+    let router_balance = await clientSigner.getBalance(contracts.router.address, "ustake");
     expect(router_balance.amount).toBe("150");
 
     // let's start finalizing the slashing request that would move the funds to the governance contract
@@ -522,7 +532,7 @@ test(
       },
     };
 
-    response = await client.execute(committee[0].addr, governanceContractAddress, finalize_proposal_msg, "auto");
+    response = await clientSigner.execute(committee[0].addr, governanceContractAddress, finalize_proposal_msg, "auto");
     expect(response).toBeDefined();
 
     let finalize_proposal_id = response.events
@@ -541,7 +551,7 @@ test(
           },
         },
       };
-      response = await client.execute(committee[i].addr, governanceContractAddress, vote, "auto");
+      response = await clientSigner.execute(committee[i].addr, governanceContractAddress, vote, "auto");
       expect(response).toBeDefined();
     }
 
@@ -554,9 +564,11 @@ test(
       },
     };
 
-    response = await client.execute(committee[0].addr, governanceContractAddress, execute_finalize, "auto");
+    await satlayerGuardrailApprove(slashing_request_id as string);
 
-    let governance_balance = await client.getBalance(governanceContractAddress, "ustake");
+    response = await clientSigner.execute(committee[0].addr, governanceContractAddress, execute_finalize, "auto");
+
+    let governance_balance = await clientSigner.getBalance(governanceContractAddress, "ustake");
     expect(governance_balance.amount).toBe("150");
   },
   60 * 1000,
