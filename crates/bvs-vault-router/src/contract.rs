@@ -242,7 +242,7 @@ mod execute {
             });
         }
 
-        // ensure that bips is not zero
+        // ensure that bips is greater than zero
         if data.bips < 1 {
             return Err(InvalidSlashingRequest {
                 msg: "Slashing bips must be greater than zero".to_string(),
