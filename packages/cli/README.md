@@ -40,5 +40,5 @@ uses `optionalDependencies` to install the correct binary for the current platfo
 You can build the CLI for all platforms and architectures by running:
 
 ```shell
-turbo run build package
+turbo run build
 ```

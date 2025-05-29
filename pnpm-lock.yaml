@@ -205,10 +205,41 @@ importers:
         version: 23.2.6
 
   packages/cli:
+    optionalDependencies:
+      '@satlayer/cli-darwin-arm64':
+        specifier: workspace:*
+        version: link:cli-darwin-arm64
+      '@satlayer/cli-darwin-x64':
+        specifier: workspace:*
+        version: link:cli-darwin-x64
+      '@satlayer/cli-linux-arm64':
+        specifier: workspace:*
+        version: link:cli-linux-arm64
+      '@satlayer/cli-linux-x64':
+        specifier: workspace:*
+        version: link:cli-linux-x64
+      '@satlayer/cli-win32-arm64':
+        specifier: workspace:*
+        version: link:cli-win32-arm64
+      '@satlayer/cli-win32-x64':
+        specifier: workspace:*
+        version: link:cli-win32-x64
     devDependencies:
       '@modules/cosmwasm-cli':
         specifier: workspace:*
         version: link:../../modules/cosmwasm-cli
+
+  packages/cli/cli-darwin-arm64: {}
+
+  packages/cli/cli-darwin-x64: {}
+
+  packages/cli/cli-linux-arm64: {}
+
+  packages/cli/cli-linux-x64: {}
+
+  packages/cli/cli-win32-arm64: {}
+
+  packages/cli/cli-win32-x64: {}
 
   packages/config-eslint:
     dependencies:
