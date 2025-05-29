@@ -11,7 +11,9 @@
     "@cosmjs/cosmwasm-stargate": "^0.33.1",
     "@cosmjs/crypto": "^0.33.1",
     "@cosmjs/proto-signing": "^0.33.1",
-    "@cosmjs/stargate": "^0.33.1"
+    "@cosmjs/stargate": "^0.33.1",
+    "@satlayer/cli": "workspace:*",
+    "execa": "^9.6.0"
   },
   "devDependencies": {
     "@examples/governance-contract": "workspace:*",
