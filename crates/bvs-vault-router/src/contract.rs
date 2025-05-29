@@ -770,15 +770,17 @@ pub(crate) mod vault {
     pub struct Amount(pub Uint128);
 
     pub fn get_vault_info(deps: Deps, vault: &Addr) -> Result<VaultInfoResponse, ContractError> {
-        match deps
-            .querier
+        deps.querier
             .query_wasm_smart(vault.to_string(), &VaultInfoQueryMsg::VaultInfo {})
-        {
-            Ok(response) => Ok(response),
-            Err(_) => Err(ContractError::VaultError {
-                msg: format!("Contract not found at address: {}", vault).to_string(),
-            }),
-        }
+            .map_err(|e| {
+                let upstream_error = e.to_string();
+                ContractError::VaultError {
+                    msg: format!(
+                        "Failed to query vault info for {}: {}",
+                        vault, upstream_error
+                    ),
+                }
+            })
     }
 }
 
@@ -1172,7 +1174,9 @@ mod tests {
             assert_eq!(
                 err.to_string(),
                 format!(
-                    "Vault error: Contract not found at address: {}",
+                    "Vault error: Failed to query vault info for {}: {} {}",
+                    empty_vault,
+                    "Generic error: Querier system error: No such contract:",
                     empty_vault
                 )
             );
