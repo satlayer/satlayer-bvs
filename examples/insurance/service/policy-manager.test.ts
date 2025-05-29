@@ -213,7 +213,6 @@ describe("PolicyManager", () => {
       preferLocal: true,
     });
     let proofRes = JSON.parse(stdout.trim());
-    console.log("Proof result:", proofRes);
 
     let recipientAccount = await started.generateAccount("recipient");
     let claimRewardsMsg: RewardsExecuteMsg = {
