@@ -242,6 +242,13 @@ mod execute {
             });
         }
 
+        // ensure that bips is not zero
+        if data.bips < 1 {
+            return Err(InvalidSlashingRequest {
+                msg: "Slashing bips must be greater than zero".to_string(),
+            });
+        }
+
         // max_slashable_delay is equal to the withdrawal lock period (7 days default)
         let max_slashable_delay = get_withdrawal_lock_period(deps.as_ref())?;
         // ensure the timestamp of slash must not be more than MAX_SLASHABLE_DELAY before and not in the future

@@ -763,6 +763,31 @@ fn request_slashing_lifecycle() {
         )
     }
 
+    // service request slashing with bips == 0
+    {
+        let slashing_request_payload = RequestSlashingPayload {
+            operator: operator.to_string(),
+            bips: 0,
+            timestamp: app.block_info().time,
+            metadata: SlashingMetadata {
+                reason: "test".to_string(),
+            },
+        };
+
+        let msg = &ExecuteMsg::RequestSlashing(slashing_request_payload.clone());
+        let err = tc
+            .vault_router
+            .execute(&mut app, &service, msg)
+            .unwrap_err();
+        assert_eq!(
+            err.root_cause().to_string(),
+            ContractError::InvalidSlashingRequest {
+                msg: "Slashing bips must be greater than zero".to_string()
+            }
+            .to_string()
+        )
+    }
+
     // service request slashing before operator opt-in to slashing
     {
         let slashing_request_payload = RequestSlashingPayload {
