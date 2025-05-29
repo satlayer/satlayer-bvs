@@ -17,6 +17,15 @@ interface ApiServiceOptions {
 
 /*
  * Api serves as the gateway to the on-chain contract communications
+ *
+ * It provides methods to interact with SatLayer core contracts such as
+ * - Vault Bank: for managing staked assets
+ * - Router: for handling slashing requests
+ * - Rewards: for distributing rewards to stakers
+ *
+ * It abstracts the complexity of contract interactions and provides a simple interface
+ * to perform common operations such as querying balances, executing slashing requests,
+ * and distributing rewards.
  */
 export class Api {
   private readonly client: SigningCosmWasmClient;
@@ -76,6 +85,27 @@ export class Api {
     return BigInt(response) || BigInt(0); // Ensure we return a number
   }
 
+  async querySlashingRequestId({ service, operator }: { service: string; operator: string }): Promise<string> {
+    let slashingRequestIdMsg: RouterQueryMsg = {
+      slashing_request_id: {
+        service,
+        operator,
+      },
+    };
+    return await this.client.queryContractSmart(this.router, slashingRequestIdMsg);
+  }
+
+  async queryBankBalance({ address, denom }: { address: string; denom: string }): Promise<Coin> {
+    return await this.client.getBalance(address, denom);
+  }
+
+  async queryVaultAllAccounts(): Promise<AllAccountsResponse> {
+    let vaultAccountsMsg: VaultBankQueryMsg = {
+      all_accounts: {},
+    };
+    return await this.client.queryContractSmart(this.vault, vaultAccountsMsg);
+  }
+
   async executeRequestSlashing({
     payoutAmount,
     capacityFactor,
@@ -116,20 +146,6 @@ export class Api {
     return this.client.execute(this.service, this.router, slashingRequestMsg, "auto");
   }
 
-  async querySlashingRequestId({ service, operator }: { service: string; operator: string }): Promise<string> {
-    let slashingRequestIdMsg: RouterQueryMsg = {
-      slashing_request_id: {
-        service,
-        operator,
-      },
-    };
-    return await this.client.queryContractSmart(this.router, slashingRequestIdMsg);
-  }
-
-  async queryBankBalance({ address, denom }: { address: string; denom: string }): Promise<Coin> {
-    return await this.client.getBalance(address, denom);
-  }
-
   async executeLockSlashing(slashingRequestId: string): Promise<any> {
     let lockSlashingMsg: RouterExecuteMsg = {
       lock_slashing: slashingRequestId,
@@ -142,13 +158,6 @@ export class Api {
       finalize_slashing: slashingRequestId,
     };
     return this.client.execute(this.service, this.router, finalizeSlashingMsg, "auto");
-  }
-
-  async queryVaultAllAccounts(): Promise<AllAccountsResponse> {
-    let vaultAccountsMsg: VaultBankQueryMsg = {
-      all_accounts: {},
-    };
-    return await this.client.queryContractSmart(this.vault, vaultAccountsMsg);
   }
 
   async executeDistributeRewards({

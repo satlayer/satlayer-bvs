@@ -1,7 +1,6 @@
 import { Api } from "./api";
 import { ExecuteMsg as RegistryExecuteMsg } from "@satlayer/cosmwasm-schema/registry";
 import { coins } from "@cosmjs/stargate";
-import { sleep } from "@cosmjs/utils";
 import { AllAccountsResponse } from "@satlayer/cosmwasm-schema/vault-bank-tokenized";
 import * as path from "node:path";
 import * as fs from "node:fs";
@@ -13,14 +12,26 @@ type PolicyId = number;
 type ClaimId = string;
 
 /*
- * PolicyManager manages 1 policy that has automated underwriting + automated claims verification.
- * It is an off-chain service runs by the Service that interacts with the on-chain contract.
+ * PolicyManager is an off-chain service
+ * that manages insurance policies with automated underwriting and claims verification.
+ * It interacts with SatLayer core on-chain contracts to handle the entire policy lifecycle.
  *
- * The PolicyManager is responsible for:
- * - Managing the policy lifecycle (underwriting, claims verification, etc.)
- * - Interacting with the on-chain contract to perform actions such as underwriting, claims verification, etc.
+ * Key responsibilities:
+ * - Policy lifecycle management (buying policy, claims processing, and payouts)
+ * - Rewards calculation and distribution to earners (operators and stakers)
  *
- * This example assumes that all the capital is provided by the Operator.
+ * Assumptions for this example:
+ * - All capital is provided by a single Operator and a single Vault
+ * - 80% of the vault balance can be used for policy issuance and claims
+ * - Only one operator is registered to the service
+ * - The operator manages a single vault
+ * - Policies are valid for 1 year
+ * - Premiums are fixed at 2% of coverage amount
+ * - Policies claims payout 100% of the coverage amount
+ * - Policies premium is paid upfront for the entire policy duration (not included in this example)
+ * - Rewards are distributed proportionally to staked amounts
+ * - Rewards are 50% of the total premiums collected from active policies
+ * - Operators receive 10% of rewards, stakers receive 90%
  */
 export class PolicyManager {
   /* State Storage */
@@ -36,6 +47,7 @@ export class PolicyManager {
   // stores the payout history as a list
   private payoutHistory: Array<PolicyPayout> = new Array<PolicyPayout>();
 
+  // stores the rewards history for distribution
   private rewardsHistory: DistributionHistory = {
     lastUpdated: Date.now(),
     rewards: {
@@ -47,9 +59,9 @@ export class PolicyManager {
   // 80% of the vault balance can be used to issue policies
   private readonly CAPACITY_FACTOR = 0.8;
 
-  private currentPolicyId: number = 0;
-
   private readonly POLICY_DURATION = 365 * 24 * 60 * 60 * 1000; // 1 year
+
+  private currentPolicyId: number = 0;
 
   constructor(
     private readonly api: Api,
@@ -105,6 +117,10 @@ export class PolicyManager {
     };
   }
 
+  /**
+   * Generates the next unique policy ID.
+   * @private
+   */
   private getNextPolicyId(): number {
     this.currentPolicyId += 1;
     return this.currentPolicyId;
@@ -113,29 +129,29 @@ export class PolicyManager {
   /**
    * Calculates the premium for a given coverage amount for the entire policy duration.
    *
-   * Logic can be more complex based on the risk profile, duration, etc.
-   * @param coverage
+   * Uses a simple calculation of 2% of the coverage amount.
+   * In a real-world scenario,
+   * this would incorporate risk profiles, policy duration, and other factors.
+   *
+   * @param coverage The amount of coverage for which to calculate the premium
+   * @returns The calculated premium amount
    */
   public getPremium(coverage: number): number {
     let basePremiumFactor = 0.02; // 2% of coverage
-    // TODO: add more complex premium calculation logic here?
+
+    // * insert additional logic here for risk assessment, etc. *
+
     return coverage * basePremiumFactor;
   }
 
   /**
    * Buy a new insurance policy for the given coverage amount.
    *
-   * This function mostly checks if insuree is able to buy the policy and register the coverage amount.
-   * There is no on-chain interaction, other than checking vault balance to determine capacity.
+   * This function validates if the insuree is eligible to buy a policy and registers the coverage amount.
+   * It checks the vault balance to ensure there's sufficient capacity for the new policy.
    *
-   * This fn assumes:
-   *  - 80% of the vault balance can be used to issue policies and paid out in case of any claims.
-   *  - Only 1 operator is registered to the service.
-   *  - The operator only has 1 vault.
-   *  - The payout denom is the same as the coverage denom.
-   *  - The policy is valid for 1 year.
    * @param coverage The amount of coverage to buy
-   * @param insuree The address of the insuree for payout
+   * @param insuree The address of the insuree as a unique identifier and address for payout
    * @returns PolicyDetails
    */
   public async buyPolicy(coverage: number, insuree: string): Promise<PolicyDetails> {
@@ -147,7 +163,7 @@ export class PolicyManager {
     // Calculate premium
     const premium = this.getPremium(coverage);
 
-    // Check if total insured amount would exceed total vault balance capacity
+    // Check if the total insured amount would exceed total vault balance capacity
     let totalVaultBalance = await this.api.queryTotalVaultStakedAmount();
     if (this.totalInsured + coverage > totalVaultBalance * this.CAPACITY_FACTOR) {
       throw new Error("Coverage amount would exceed total insurance capacity");
@@ -178,9 +194,11 @@ export class PolicyManager {
    * Claim a policy for the given policy ID.
    *
    * This function is used in the case of a claim from the insuree.
-   * It will perform necessary checks to validate the claim.
+   * It will perform the necessary checks to validate the claim.
    * If the claim is verified, it will trigger a slashing request to the vault to initiate and lock the payout immediately.
    * The amount of payout is 100% of the coverage amount.
+   *
+   * funds flow: vault --lockSlashing--> vault-router
    *
    * Once claimed, the policy will be nulled and the insuree will not be able to claim again.
    * @param policyId The ID of the policy to claim
@@ -205,7 +223,7 @@ export class PolicyManager {
 
     // * add extra logic here for claims verification, etc. *
 
-    let isClaimedVerified = true; // assume claim is verified
+    let isClaimedVerified = true; // assume the claim is verified
 
     if (!isClaimedVerified) {
       throw new Error("Claim is rejected");
@@ -223,9 +241,6 @@ export class PolicyManager {
 
     let slashingRequestId = await this.api.querySlashingRequestId({ service: this.service, operator: this.operator });
 
-    // sleep to pass the resolution_window
-    await sleep(1000);
-
     // lock the slashing
     await this.api.executeLockSlashing(slashingRequestId);
 
@@ -240,10 +255,15 @@ export class PolicyManager {
   }
 
   /**
-   * Process the claim for the given claimId
+   * Process the claim for the given claimId and finalize the payout to the insuree.
    *
-   * This function is used to trigger the payout to the insuree after the guardrail has voted on it.
-   * @param claimId
+   * This function finalizes the slashing request and transfers the payout amount to the insuree.
+   * It also updates the internal state to reflect the completed claim and removes the policy from active policies.
+   *
+   * Funds flow: vault-router --finalizeSlashing--> service (policy manager) --transfer--> insuree
+   *
+   * @param claimId The ID of the claim to process
+   * @returns PolicyPayout Details of the processed payout
    */
   public async processClaim(claimId: ClaimId): Promise<PolicyPayout> {
     // Validate slashing request ID exists
@@ -259,10 +279,10 @@ export class PolicyManager {
     }
     let policy = this.policyMap.get(policyId)!;
 
-    // finalizes the slashing request
+    // Finalizes the slashing request
     await this.api.executeFinalizeSlashing(claimId);
 
-    // proceeed to payout slashing amount to the insuree (assumes that the slash amt has been transferred)
+    // Proceed to payout slashing amount to the insuree
     let payoutAmount = policy.coverage;
     let res = await this.api.Client.sendTokens(this.service, policy.insuree, coins(payoutAmount, "ustake"), "auto");
 
@@ -282,14 +302,11 @@ export class PolicyManager {
   }
 
   /**
-   * Calculates the rewards to be distributed to the Operators and stakers.
+   * Calculates the rewards to be distributed to the Earners (Operators and Stakers).
    *
-   * Rewards will be calculated daily and distributed to the rewards contract.
-   * Rewards will be 50% of the total premium collected from the policies.
-   * This fn assumes:
-   *  - Rewards distributed are proportional to the amount staked
-   *  - Rewards are distributed in the same denom as the vault denom and coverage denom
-   *  - Operator get 10% of the rewards from the stakers
+   * Rewards are calculated based on the time elapsed since the last distribution.
+   * The total reward amount is 50% of the premium collected from active policies,
+   * prorated for the time period since the last distribution.
    */
   public async calculateRewards(): Promise<RewardsCalculationResult> {
     let now = Date.now();
@@ -357,7 +374,7 @@ export class PolicyManager {
     accumulatedEarnerRewards.set(this.operator, operatorAccumulatedReward + BigInt(operatorRewards));
     totalAccumulatedRewards += BigInt(operatorRewards);
 
-    // convert to distribuiton.json file format
+    // convert to distribution.json file format
     let newDistributionFileData: DistributionRewards = {
       token: "ustake",
       earners: Array.from(accumulatedEarnerRewards.entries()).map(([earner, reward]) => ({
@@ -366,7 +383,7 @@ export class PolicyManager {
       })),
     };
 
-    // write the new distribution.json into dist folder
+    // write the new distribution.json into the dist folder
     const distDir = path.resolve(process.cwd(), `dist/bbn-test-5/${this.api.Service}/ustake`);
     fs.mkdirSync(distDir, { recursive: true });
 
@@ -387,6 +404,18 @@ export class PolicyManager {
     };
   }
 
+  /**
+   * Submits the rewards to the rewards contract.
+   *
+   * This function creates a Merkle tree from the distribution.json file using the satlayer CLI tool,
+   * then submits the rewards to the rewards contract.
+   *
+   * It assumes the distribution.json file is already generated by calling `calculateRewards()`
+   * and contains the rewards to be distributed.
+   * It also assumes that the service has the necessary funds and allowance to transfer the rewards amount to the rewards contract.
+   *
+   * @param amountToDistribute
+   */
   public async submitRewards({ amountToDistribute }: { amountToDistribute: number }): Promise<string> {
     // create the merkle tree and generate the root hash to submit to the rewards contract
     let merkleTreeRoot = await this.createMerkleTree(`dist/bbn-test-5/${this.api.Service}/ustake/distribution.json`);
@@ -402,7 +431,15 @@ export class PolicyManager {
     return merkleTreeRoot;
   }
 
-  // returns the merkle root
+  /**
+   * Creates a Merkle tree from the distribution.json file using the satlayer CLI tool.
+   *
+   * This function assumes that the satlayer CLI tool is installed and available in the node_modules/.bin directory.
+   * It uses the `satlayer rewards create` command to generate the Merkle root from the distribution.json file.
+   *
+   * @param inputFile The path to the distribution.json file
+   * @returns The Merkle root hash as a string
+   */
   private async createMerkleTree(inputFile: string) {
     const binPath = resolve(process.cwd(), "node_modules", ".bin", "satlayer");
     const { stdout } = await execa(binPath, ["rewards", "create", "-f", inputFile]);
