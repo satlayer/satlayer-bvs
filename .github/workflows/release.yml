@@ -49,9 +49,9 @@ jobs:
       - uses: ./.github/actions/setup
 
       - run: sed -i "s/version = \"0\.0\.0\"/version = \"${{ needs.version.outputs.crate }}\"/" crates/Cargo.toml
-      - run: pnpm --filter "@satlayer/*" exec npm version ${{ needs.version.outputs.npm }} --git-tag-version=false
+      - run: pnpm -r exec npm version ${{ needs.version.outputs.npm }} --git-tag-version=false
 
-      - run: pnpm turbo run build package --filter "@satlayer/*"
+      - run: pnpm turbo run build --filter "@satlayer/*"
 
       - run: pnpm config set "//registry.npmjs.org/:_authToken" "\${NPM_PACKAGES_TOKEN}" --location=global
 
@@ -71,7 +71,7 @@ jobs:
       - uses: ./.github/actions/setup
 
       - run: sed -i "s/version = \"0\.0\.0\"/version = \"${{ needs.version.outputs.crate }}\"/" crates/Cargo.toml
-      - run: pnpm --filter "@satlayer/*" exec npm version ${{ needs.version.outputs.npm }} --git-tag-version=false
+      - run: pnpm -r exec npm version ${{ needs.version.outputs.npm }} --git-tag-version=false
 
       - uses: taiki-e/install-action@cargo-hack
       # https://github.com/rust-lang/crates.io/blob/6bf32bab3afc21d18b307168ae78b6b07585ebd7/config/nginx.conf.erb#L269

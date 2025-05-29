@@ -1,0 +1,20 @@
+{
+  "name": "@satlayer/cli-darwin-x64",
+  "private": false,
+  "repository": {
+    "url": "git+https://github.com/satlayer/satlayer-bvs"
+  },
+  "license": "MIT",
+  "bin": {
+    "satlayer": "satlayer"
+  },
+  "files": [
+    "satlayer"
+  ],
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "x64"
+  ]
+}

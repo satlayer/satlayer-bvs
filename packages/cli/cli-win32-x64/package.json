@@ -1,0 +1,20 @@
+{
+  "name": "@satlayer/cli-win32-x64",
+  "private": false,
+  "repository": {
+    "url": "git+https://github.com/satlayer/satlayer-bvs"
+  },
+  "license": "MIT",
+  "bin": {
+    "satlayer": "satlayer"
+  },
+  "files": [
+    "satlayer"
+  ],
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ]
+}
