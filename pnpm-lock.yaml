@@ -179,6 +179,12 @@ importers:
       '@cosmjs/stargate':
         specifier: ^0.33.1
         version: 0.33.1
+      '@satlayer/cli':
+        specifier: workspace:*
+        version: link:../../../packages/cli
+      execa:
+        specifier: ^9.6.0
+        version: 9.6.0
     devDependencies:
       '@examples/governance-contract':
         specifier: workspace:*
