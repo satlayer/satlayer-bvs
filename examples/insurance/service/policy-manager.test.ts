@@ -10,7 +10,6 @@ import { coins } from "@cosmjs/stargate";
 import { sleep } from "@cosmjs/utils";
 import { ExecuteMsg as GuardrailExecuteMsg } from "@satlayer/cosmwasm-schema/guardrail";
 import { execa } from "execa";
-import { resolve } from "path";
 import { ExecuteMsg as RewardsExecuteMsg, RewardsType } from "@satlayer/cosmwasm-schema/rewards";
 
 let policyManager: PolicyManager;
@@ -210,9 +209,11 @@ describe("PolicyManager", () => {
 
     // staker claims rewards
     const inputFile = `dist/bbn-test-5/${serviceAccount.address}/ustake/distribution.json`;
-    const binPath = resolve(process.cwd(), "node_modules", ".bin", "satlayer");
-    const { stdout } = await execa(binPath, ["rewards", "proof", stakerAccount.address, "1972", "-f", inputFile]);
+    const { stdout } = await execa("satlayer", ["rewards", "proof", stakerAccount.address, "1972", "-f", inputFile], {
+      preferLocal: true,
+    });
     let proofRes = JSON.parse(stdout.trim());
+    console.log("Proof result:", proofRes);
 
     let recipientAccount = await started.generateAccount("recipient");
     let claimRewardsMsg: RewardsExecuteMsg = {
@@ -274,14 +275,11 @@ describe("PolicyManager", () => {
     });
 
     // staker claims rewards again
-    const { stdout: stdout2 } = await execa(binPath, [
-      "rewards",
-      "proof",
-      stakerAccount.address,
-      "3944",
-      "-f",
-      inputFile,
-    ]);
+    const { stdout: stdout2 } = await execa(
+      "satlayer",
+      ["rewards", "proof", stakerAccount.address, "3944", "-f", inputFile],
+      { preferLocal: true },
+    );
     let proofRes2 = JSON.parse(stdout2.trim());
 
     let claimRewardsMsg2: RewardsExecuteMsg = {

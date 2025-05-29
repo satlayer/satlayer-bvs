@@ -5,7 +5,6 @@ import { AllAccountsResponse } from "@satlayer/cosmwasm-schema/vault-bank-tokeni
 import * as path from "node:path";
 import * as fs from "node:fs";
 import { execa } from "execa";
-import { resolve } from "path";
 import { RewardsType } from "@satlayer/cosmwasm-schema/rewards";
 
 type PolicyId = number;
@@ -434,15 +433,13 @@ export class PolicyManager {
   /**
    * Creates a Merkle tree from the distribution.json file using the satlayer CLI tool.
    *
-   * This function assumes that the satlayer CLI tool is installed and available in the node_modules/.bin directory.
    * It uses the `satlayer rewards create` command to generate the Merkle root from the distribution.json file.
    *
    * @param inputFile The path to the distribution.json file
    * @returns The Merkle root hash as a string
    */
   private async createMerkleTree(inputFile: string) {
-    const binPath = resolve(process.cwd(), "node_modules", ".bin", "satlayer");
-    const { stdout } = await execa(binPath, ["rewards", "create", "-f", inputFile]);
+    const { stdout } = await execa("satlayer", ["rewards", "create", "-f", inputFile], { preferLocal: true });
 
     // Parse the Merkle root line
     const match = stdout.match(/Merkle root:\s*([0-9a-fA-F]{64})/);

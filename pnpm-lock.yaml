@@ -134,8 +134,8 @@ importers:
         specifier: ^0.33.1
         version: 0.33.1
       '@satlayer/cli':
-        specifier: ^2.0.2
-        version: 2.0.2
+        specifier: workspace:*
+        version: link:../../../packages/cli
       '@satlayer/cosmwasm-schema':
         specifier: workspace:*
         version: link:../../../packages/cosmwasm-schema
@@ -1265,46 +1265,6 @@ packages:
 
   '@rushstack/eslint-patch@1.11.0':
     resolution: {integrity: sha512-zxnHvoMQVqewTJr/W4pKjF0bMGiKJv1WX7bSrkl46Hg0QjESbzBROWK0Wg4RphzSOS5Jiy7eFimmM3UgMrMZbQ==}
-
-  '@satlayer/cli-darwin-arm64@2.0.2':
-    resolution: {integrity: sha512-EXQuYkNB+7+jC0R4oYbtZJlWBYUfW2aH/UF/XyjNDCNB74YBKP7LQxNIwD768px3Nyas0xojCk4bZ6JOMS11VQ==}
-    cpu: [arm64]
-    os: [darwin]
-    hasBin: true
-
-  '@satlayer/cli-darwin-x64@2.0.2':
-    resolution: {integrity: sha512-8cimo7FpcBfyQWcQ6sqIg8LgwP4kvmudo0SjHN6RP9MbplkEu6go6avfvkBxqR+hL/sihf8ePrGcSW8LdJpbNg==}
-    cpu: [x64]
-    os: [darwin]
-    hasBin: true
-
-  '@satlayer/cli-linux-arm64@2.0.2':
-    resolution: {integrity: sha512-aBzjEUfoQIwgTDR3vW7n2QvvAESJt5a7ohcQjHJk95OXW7hIaBdH63OFelsNXWw79lG2YVq20dKTC4o28993xg==}
-    cpu: [arm64]
-    os: [linux]
-    hasBin: true
-
-  '@satlayer/cli-linux-x64@2.0.2':
-    resolution: {integrity: sha512-ODCd0UsDiUqb5fCAk+6EazKmBCXtr1M8yxHxilyg6gnjnhiTcYWxb6gNrv8tZrKkjQt/1sK6JILkD3XxprxiFQ==}
-    cpu: [x64]
-    os: [linux]
-    hasBin: true
-
-  '@satlayer/cli-win32-arm64@2.0.2':
-    resolution: {integrity: sha512-J35O/FCEh5Vo18/MqQUm0fru4cEmjzBr9YgBABsoJipPWjpLKh29YYwo23l3c8OuT3P7QeFkTniyAYOqzLiDCQ==}
-    cpu: [arm64]
-    os: [win32]
-    hasBin: true
-
-  '@satlayer/cli-win32-x64@2.0.2':
-    resolution: {integrity: sha512-9ifPBxduMW/Nh7H1zI+eGS77yMMNITk8YIt+WvIuNo/JNQw2JdDdRbDLQlvaCocop4nMi2GUSERjFimkZfVRRg==}
-    cpu: [x64]
-    os: [win32]
-    hasBin: true
-
-  '@satlayer/cli@2.0.2':
-    resolution: {integrity: sha512-dtpR+TDFREzIYQWlAYjkz+sxlrLs4ir7nSSOjc/3katmi7S7EX6NAG0cWrW8YOg+iceKmEYzBLDL53XEaTNvXA==}
-    hasBin: true
 
   '@sec-ant/readable-stream@0.4.1':
     resolution: {integrity: sha512-831qok9r2t8AlxLko40y2ebgSDhenenCatLVeW/uBtnHPyhHOvG0C7TvfgecV+wHzIm5KUICgzmVpWS+IMEAeg==}
@@ -5964,33 +5924,6 @@ snapshots:
   '@rtsao/scc@1.1.0': {}
 
   '@rushstack/eslint-patch@1.11.0': {}
-
-  '@satlayer/cli-darwin-arm64@2.0.2':
-    optional: true
-
-  '@satlayer/cli-darwin-x64@2.0.2':
-    optional: true
-
-  '@satlayer/cli-linux-arm64@2.0.2':
-    optional: true
-
-  '@satlayer/cli-linux-x64@2.0.2':
-    optional: true
-
-  '@satlayer/cli-win32-arm64@2.0.2':
-    optional: true
-
-  '@satlayer/cli-win32-x64@2.0.2':
-    optional: true
-
-  '@satlayer/cli@2.0.2':
-    optionalDependencies:
-      '@satlayer/cli-darwin-arm64': 2.0.2
-      '@satlayer/cli-darwin-x64': 2.0.2
-      '@satlayer/cli-linux-arm64': 2.0.2
-      '@satlayer/cli-linux-x64': 2.0.2
-      '@satlayer/cli-win32-arm64': 2.0.2
-      '@satlayer/cli-win32-x64': 2.0.2
 
   '@sec-ant/readable-stream@0.4.1': {}
 
