@@ -1,10 +1,28 @@
 {
   "name": "@satlayer/cli",
-  "private": true,
+  "private": false,
+  "repository": {
+    "url": "git+https://github.com/satlayer/satlayer-bvs"
+  },
+  "license": "MIT",
+  "bin": {
+    "satlayer": "satlayer.js"
+  },
+  "files": [
+    "satlayer.js"
+  ],
   "scripts": {
-    "package": "node package.js"
+    "build": "node package.js"
   },
   "devDependencies": {
     "@modules/cosmwasm-cli": "workspace:*"
+  },
+  "optionalDependencies": {
+    "@satlayer/cli-darwin-arm64": "workspace:*",
+    "@satlayer/cli-darwin-x64": "workspace:*",
+    "@satlayer/cli-linux-arm64": "workspace:*",
+    "@satlayer/cli-linux-x64": "workspace:*",
+    "@satlayer/cli-win32-arm64": "workspace:*",
+    "@satlayer/cli-win32-x64": "workspace:*"
   }
 }
