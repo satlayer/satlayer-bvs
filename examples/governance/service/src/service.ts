@@ -22,9 +22,12 @@ export async function offChainRewardTrigger(
   callback: (merkleRoot: String, distributionData: DistributionRewards) => void,
 ) {
   const distributionFileData = await dumpRewardDistribution(api);
-  const merkleRoot = await createMerkleTree(
-    path.resolve(process.cwd(), `dist/bbn-test-5/${api.Service}/ustake/distribution.json`),
-  );
+  let distDir = `/dist`;
+  let rootDir = findProjectRoot();
+  let distributionFilePath = rootDir + distDir;
+  console.log("Distribution file data:", findProjectRoot());
+  // const distDir = require.resolve("@examples/governance-service");
+  const merkleRoot = await createMerkleTree(distributionFilePath, api.service);
 
   callback(merkleRoot, distributionFileData);
 }
@@ -48,12 +51,15 @@ function calculateReward(
  * @param inputFile The path to the distribution.json file
  * @returns The Merkle root hash as a string
  */
-async function createMerkleTree(inputFile: string) {
+async function createMerkleTree(inputFile: string, service: string): Promise<string> {
+  console.log("Creating Merkle tree from file:", inputFile);
   let binPath = require.resolve("@satlayer/cli/node_modules/@modules/cosmwasm-cli/dist/cosmwasm-cli");
-  const { stdout } = await execa(binPath, ["rewards", "create", "-f", inputFile], { preferLocal: true });
+  console.log("Using satlayer CLI binary at:", binPath);
+  const { stdout } = await execa(binPath, ["rewards", "create", "-f", inputFile, "-s", service], { preferLocal: true });
 
   // Parse the Merkle root line
   const match = stdout.match(/Merkle root:\s*([0-9a-fA-F]{64})/);
+  console.log("stdout", stdout);
   if (!match) {
     throw new Error("Failed to parse Merkle root from output");
   }
@@ -106,4 +112,16 @@ async function dumpRewardDistribution(api: Api): Promise<DistributionRewards> {
   fs.writeFileSync(filePath, JSON.stringify(newDistributionFileData, null, 2), "utf8");
 
   return newDistributionFileData;
+}
+
+function findProjectRoot(startDir = __dirname) {
+  let dir = startDir;
+  // walk up until filesystem root
+  while (dir !== path.parse(dir).root) {
+    if (fs.existsSync(path.join(dir, "package.json"))) {
+      return dir;
+    }
+    dir = path.dirname(dir);
+  }
+  throw new Error("Could not locate project root (no package.json found).");
 }
