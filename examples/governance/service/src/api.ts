@@ -28,13 +28,13 @@ interface ApiServiceOptions {
  * and distributing rewards.
  */
 export class Api {
-  private readonly client: SigningCosmWasmClient;
-  private readonly vault: string;
-  private readonly registry: string;
-  private readonly router: string;
-  private readonly operator: string;
-  private readonly service: string;
-  private readonly rewards: string;
+  readonly client: SigningCosmWasmClient;
+  readonly vault: string;
+  readonly registry: string;
+  readonly router: string;
+  readonly operator: string;
+  readonly service: string;
+  readonly rewards: string;
 
   constructor({ client, vault, registry, router, service, rewards }: ApiServiceOptions) {
     this.client = client;
