@@ -1,3 +1,4 @@
+use bvs_guardrail::testing::GuardrailContract;
 use bvs_multi_test::{
     Cw20TokenContract, PauserContract, RegistryContract, TestingContract, VaultBankContract,
     VaultCw20Contract, VaultRouterContract,
@@ -19,6 +20,7 @@ struct TestContracts {
     registry: RegistryContract,
     cw20: Cw20TokenContract,
     governance: governance_contract::testing::GovernanceContract,
+    guardrail: GuardrailContract,
 }
 
 impl TestContracts {
@@ -60,6 +62,7 @@ impl TestContracts {
         let env = mock_env();
 
         let _ = PauserContract::new(&mut app, &env, None);
+        let guardrail = GuardrailContract::new(&mut app, &env, None);
         let registry = RegistryContract::new(&mut app, &env, None);
         let vault_router = VaultRouterContract::new(&mut app, &env, None);
         let bank_vault = VaultBankContract::new(&mut app, &env, None);
@@ -76,6 +79,7 @@ impl TestContracts {
                 registry,
                 cw20,
                 governance,
+                guardrail,
             },
         )
     }
@@ -398,7 +402,7 @@ fn test_simplified_slashing_lifecycle() {
 
     // propose to lock the slash id vote and execute the slash locking
     {
-        let proposed_action = bvs_vault_router::msg::ExecuteMsg::LockSlashing(slash_id);
+        let proposed_action = bvs_vault_router::msg::ExecuteMsg::LockSlashing(slash_id.clone());
 
         let proposal_msg: CosmosMsg = WasmMsg::Execute {
             contract_addr: contracts.vault_router.addr.to_string(),
@@ -484,24 +488,98 @@ fn test_simplified_slashing_lifecycle() {
         );
     }
 
-    // slash finalize
+    // slash finalize propose by committee
     {
-        let msg = bvs_vault_router::msg::ExecuteMsg::FinalizeSlash(slash_id);
-        contracts
-            .vault_router
-            .execute(&mut app, &operator, &msg)
-            .expect("Failed to finalize slashing");
+        let action = bvs_vault_router::msg::ExecuteMsg::FinalizeSlashing(slash_id.clone());
 
-        let query_msg = bvs_vault_router::msg::QueryMsg::SlashingRequestId {
-            service: contracts.governance.addr.to_string(),
-            operator: operator.to_string(),
+        let proposal_msg: CosmosMsg = WasmMsg::Execute {
+            contract_addr: contracts.vault_router.addr.to_string(),
+            msg: to_json_binary(&action).unwrap(),
+            funds: vec![],
+        }
+        .into();
+
+        let msg = governance_contract::msg::ExecuteMsg::Base(
+            cw3_fixed_multisig::msg::ExecuteMsg::Propose {
+                title: "Finalize Slashing".to_string(),
+                description: "Proposal to finalize slashing for an operator".to_string(),
+                msgs: vec![proposal_msg],
+                latest: None,
+            },
+        );
+
+        let res = contracts
+            .governance
+            .execute(&mut app, &committee[0], &msg)
+            .expect("Failed to execute proposal");
+
+        let finalize_slash_proposal_id: u64 = res
+            .events
+            .iter()
+            .find(|e| e.ty == "wasm")
+            .and_then(|e| e.attributes.iter().find(|a| a.key == "proposal_id"))
+            .map(|a| a.value.parse().unwrap())
+            .expect("Proposal ID not found in events");
+
+        app.update_block(|block| {
+            block.height += 1;
+            block.time = block.time.plus_seconds(10);
+        });
+
+        // vote on the proposal by the governance committee
+        for voter in committee.iter().skip(2) {
+            let msg = governance_contract::msg::ExecuteMsg::Base(
+                cw3_fixed_multisig::msg::ExecuteMsg::Vote {
+                    proposal_id: finalize_slash_proposal_id,
+                    vote: cw3::Vote::Yes,
+                },
+            );
+
+            contracts
+                .governance
+                .execute(&mut app, voter, &msg)
+                .expect("Failed to vote");
+        }
+
+        // satlayer guardrail will need to approve this too
+        let guardrail_proposal = bvs_guardrail::msg::ExecuteMsg::Propose {
+            slashing_request_id: slash_id.clone(),
+            reason: "Finalize slashing".to_string(),
         };
 
-        let res: bvs_vault_router::msg::SlashingRequestIdResponse = contracts
-            .vault_router
-            .query(&app, &query_msg)
-            .expect("Failed to query slashing requests");
+        // guardrail member
+        let guardrail_member = app.api().addr_make("owner");
 
-        assert!(res.0.is_none(), "Slashing request should be cleared");
+        contracts
+            .guardrail
+            .execute(&mut app, &guardrail_member, &guardrail_proposal)
+            .expect("Failed to propose guardrail approval");
+
+        // now the bvs governance can go ahead and finalize the slashing
+        let msg = governance_contract::msg::ExecuteMsg::Base(
+            cw3_fixed_multisig::msg::ExecuteMsg::Execute {
+                proposal_id: finalize_slash_proposal_id,
+            },
+        );
+
+        contracts
+            .governance
+            .execute(&mut app, &committee[0], &msg)
+            .expect("Failed to execute proposal");
+    }
+
+    // check slashed collateral arrived at destination
+    {
+        let bank_balance = app
+            .wrap()
+            .query_balance(contracts.governance.addr(), "denom")
+            .expect("Failed to query bank balance");
+        let cw20_balance = contracts.cw20.balance(&app, &contracts.governance.addr);
+        assert_eq!(
+            bank_balance,
+            coin(15, "denom"),
+            "Bank balance should be 15 after slashing"
+        );
+        assert_eq!(cw20_balance, 15, "CW20 balance should be 15 after slashing");
     }
 }

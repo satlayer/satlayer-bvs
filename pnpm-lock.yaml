@@ -180,6 +180,12 @@ importers:
         specifier: ^3.2.4
         version: 3.2.4(@types/debug@4.1.12)(@types/node@20.17.17)(jiti@2.4.2)(lightningcss@1.30.1)(yaml@2.8.0)
 
+  examples/governance/contract:
+    devDependencies:
+      '@satlayer/cosmwasm-optimizer':
+        specifier: workspace:*
+        version: link:../../../packages/cosmwasm-optimizer
+
   examples/squaring/contract:
     devDependencies:
       '@satlayer/cosmwasm-optimizer':
