@@ -4,8 +4,8 @@ import { AllAccountsResponse } from "@satlayer/cosmwasm-schema/vault-bank-tokeni
 import * as path from "node:path";
 import * as fs from "node:fs";
 
-const APY = 0.1;
-const INTEREST_COMPUTE_INTERVAL_PER_ANNUAL = 365;
+const APY_PERCENT = 10; // 10% APY
+const INTEREST_COMPUTE_INTERVAL_PER_ANNUAL = 12;
 
 export interface DistributionRewards {
   // The token to be distributed
@@ -15,32 +15,37 @@ export interface DistributionRewards {
     earner: string; // address of the earner
     reward: string; // amount of reward in string format
   }>;
+
+  totalReward: string; // optional total reward amount
 }
 
 export async function offChainRewardTrigger(
   api: Api,
-  callback: (merkleRoot: String, distributionData: DistributionRewards) => void,
-) {
+  callback: (merkleRoot: string, distributionData: DistributionRewards) => Promise<void>,
+): Promise<{ merkleRoot: string; distributionData: DistributionRewards }> {
   const distributionFileData = await dumpRewardDistribution(api);
-  let distDir = `/dist`;
+  const distDir = `/dist/bbn-test-5/${api.Service}/ustake/distribution.json`;
   let rootDir = findProjectRoot();
   let distributionFilePath = rootDir + distDir;
-  console.log("Distribution file data:", findProjectRoot());
-  // const distDir = require.resolve("@examples/governance-service");
-  const merkleRoot = await createMerkleTree(distributionFilePath, api.service);
+  const merkleRoot = await createMerkleTree(distributionFilePath);
 
-  callback(merkleRoot, distributionFileData);
+  await callback(merkleRoot, distributionFileData);
+
+  return { merkleRoot, distributionData: distributionFileData };
 }
 
 function calculateReward(
   tvl: bigint,
-  apy: number = APY,
+  apy: number = APY_PERCENT,
   interestComputeInterval: number = INTEREST_COMPUTE_INTERVAL_PER_ANNUAL,
 ): bigint {
   // Calculate the reward based on the TVL and the APY
   // REWARD_PER_PERIOD is the daily reward rate
   // tvl is in uStake, so we need to convert it to a number for calculation
-  return tvl * BigInt(Math.floor(apy / interestComputeInterval)); // Assuming 1e6 is the scaling factor for uStake
+  const numerator = tvl * BigInt(apy);
+  const denominator = BigInt(100) * BigInt(interestComputeInterval);
+
+  return numerator / denominator; // Convert to uStake with 6 decimals
 }
 
 /**
@@ -48,22 +53,16 @@ function calculateReward(
  *
  * It uses the `satlayer rewards create` command to generate the Merkle root from the distribution.json file.
  *
- * @param inputFile The path to the distribution.json file
+ * @param distFilePath The path to the distribution.json file
  * @returns The Merkle root hash as a string
  */
-async function createMerkleTree(inputFile: string, service: string): Promise<string> {
-  console.log("Creating Merkle tree from file:", inputFile);
-  let binPath = require.resolve("@satlayer/cli/node_modules/@modules/cosmwasm-cli/dist/cosmwasm-cli");
-  console.log("Using satlayer CLI binary at:", binPath);
-  const { stdout } = await execa(binPath, ["rewards", "create", "-f", inputFile, "-s", service], { preferLocal: true });
-
+async function createMerkleTree(distFilePath: string): Promise<string> {
+  const { stdout } = await execa("satlayer", ["rewards", "create", "-f", distFilePath], { preferLocal: true });
   // Parse the Merkle root line
   const match = stdout.match(/Merkle root:\s*([0-9a-fA-F]{64})/);
-  console.log("stdout", stdout);
   if (!match) {
     throw new Error("Failed to parse Merkle root from output");
   }
-
   return match[1];
 }
 
@@ -89,10 +88,12 @@ async function dumpRewardDistribution(api: Api): Promise<DistributionRewards> {
 
   // calculate rewards for each staker proportional to their stake/balance
   let stakerRewardsMap = new Map<string, bigint>();
+  let cumulativeReward = BigInt(0);
   for (let account of allAccountsRes.accounts) {
-    let staker_tvl = stakerTvlMap.get(account) || BigInt(0);
-    let stakerRewardsAmount = calculateReward(staker_tvl); // convert to uStake
+    let staker_tvl = stakerTvlMap.get(account);
+    let stakerRewardsAmount = calculateReward(staker_tvl as bigint); // convert to uStake
     stakerRewardsMap.set(account, stakerRewardsAmount);
+    cumulativeReward += stakerRewardsAmount;
   }
 
   // convert to distribution.json file format
@@ -102,6 +103,7 @@ async function dumpRewardDistribution(api: Api): Promise<DistributionRewards> {
       earner: earner,
       reward: reward.toString(),
     })),
+    totalReward: cumulativeReward.toString(),
   };
 
   // write the new distribution.json into the dist folder
@@ -114,7 +116,7 @@ async function dumpRewardDistribution(api: Api): Promise<DistributionRewards> {
   return newDistributionFileData;
 }
 
-function findProjectRoot(startDir = __dirname) {
+export function findProjectRoot(startDir = __dirname) {
   let dir = startDir;
   // walk up until filesystem root
   while (dir !== path.parse(dir).root) {
