@@ -1,0 +1,26 @@
+{
+  "name": "@examples/governance-service",
+  "private": true,
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@cosmjs/cosmwasm-stargate": "^0.33.1",
+    "@cosmjs/crypto": "^0.33.1",
+    "@cosmjs/proto-signing": "^0.33.1",
+    "@cosmjs/stargate": "^0.33.1",
+    "@satlayer/cli": "workspace:*",
+    "execa": "^9.6.0"
+  },
+  "devDependencies": {
+    "@examples/governance-contract": "workspace:*",
+    "@satlayer/cosmwasm-schema": "workspace:*",
+    "@satlayer/testcontainers": "workspace:*",
+    "@types/node": "^20",
+    "typescript": "latest",
+    "vitest": "^3.1.4"
+  }
+}
