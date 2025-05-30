@@ -7,7 +7,7 @@ and rewards distribution.
 ## Overview
 
 In this example, operators serve as vault curators rather than node runners.
-They manage vaults and provide sufficient collateral for insurance services without needing to produce results.
+They manage vaults and provide sufficient collateral for insurance services without needing to produce results — no node operations.
 Both operators and stakers receive rewards from a portion of insurance premiums paid by insurees (BVS users).
 The system comprehensively manages the entire policy lifecycle,
 handling everything from initial purchase through claims processing to final payouts.
