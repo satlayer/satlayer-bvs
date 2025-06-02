@@ -13,21 +13,10 @@ import {
   Voter,
 } from "@examples/governance-contract/governance-contract";
 
-import {
-  ExecuteMsg as RouterExecuteMsg,
-  QueryMsg as RouterQueryMsg,
-  SlashingRequestResponse,
-} from "@satlayer/cosmwasm-schema/vault-router";
-
-import {
-  ExecuteMsg as RegistryExecuteMsg,
-  QueryMsg as RegistryQueryMsg,
-  SlashingParametersResponse,
-} from "@satlayer/cosmwasm-schema/registry";
+import { ExecuteMsg as RegistryExecuteMsg, QueryMsg as RegistryQueryMsg } from "@satlayer/cosmwasm-schema/registry";
 
 import { ExecuteMsg as VaultBankExecuteMsg } from "@satlayer/cosmwasm-schema/vault-bank";
 
-import { ExecuteMsg as GuardrailExecuteMsg } from "@satlayer/cosmwasm-schema/guardrail";
 import { Api } from "./api";
 import { DistributionRewards, findProjectRoot, offChainRewardTrigger } from "./service";
 import { execa } from "execa";
@@ -57,8 +46,8 @@ async function deployGovernanceContract(owner: string, committee: Voter[]) {
         },
       },
       max_voting_period: {
-        height: 100, // 24 hours in seconds
-      }, // 24 hours
+        height: 100,
+      },
     },
   };
   return clientSigner.instantiate(owner, uploaded.codeId, initMsg, "governance", "auto");
@@ -349,7 +338,7 @@ test("Rewards Lifecycle", async () => {
   let [owner, _operator, staker_1] = await bvs_wallet.getAccounts();
 
   // staker staked 1,000,000 ustake tokens
-  // each day reward should yield 273 based on 10% APY not considering the compounding
+  // each day reward should yield 8333 each month based on 10% APY not considering the compounds
 
   const distDir = `/dist/bbn-test-5/${api.Service}/ustake/distribution.json`;
   let rootDir = findProjectRoot();
@@ -360,13 +349,7 @@ test("Rewards Lifecycle", async () => {
     ["rewards", "proof", staker_1.address, "8333", "-f", distributionFilePath],
     { preferLocal: true },
   );
-  console.log(stdout);
   let proofRes = JSON.parse(stdout.trim());
-
-  let balance_before_claim = await api.queryBankBalance({
-    address: staker_1.address,
-    denom: proofRes.token,
-  });
 
   let claimRewardsMsg: RewardExecuteMsg = {
     claim_rewards: {
@@ -384,12 +367,7 @@ test("Rewards Lifecycle", async () => {
     },
   };
 
-  let response = await clientSigner.execute(
-    staker_1.address,
-    api.Rewards,
-    claimRewardsMsg,
-    "auto", // <-- spcifying gas for consistency in tests
-  );
+  let response = await clientSigner.execute(staker_1.address, api.Rewards, claimRewardsMsg, "auto");
 
   let balance_after_claim = await api.queryBankBalance({
     address: staker_1.address,

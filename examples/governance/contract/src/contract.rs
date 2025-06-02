@@ -1,3 +1,8 @@
+/// Example: Social governance as BVS contract integrated with Satlayer protocol
+/// The contract is a wrapper around the cw3 spec.
+/// Slashing is proposal will to be made by one of the multisig members
+/// Each of the Satlayer slashing phases will need to be proposed
+/// voted on and executed by the multisig members in this example.
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
@@ -64,6 +69,9 @@ pub fn execute(
             cw3_base_execute::execute(deps, env, info, msg).map_err(Into::into)
         }
         ExecuteMsg::Extended(msg) => {
+            // In a production BVS contract
+            // A project would implement its one extended execute messages
+            // for custom functionality
             todo!("Extended execute message not implemented: {:?}", msg)
         }
     }
@@ -110,10 +118,10 @@ mod extended_execute {
     use crate::{error::ContractError, msg::ExtendedExecuteMsg};
 
     pub fn execute(
-        deps: DepsMut,
-        env: Env,
-        info: MessageInfo,
-        msg: ExtendedExecuteMsg,
+        _deps: DepsMut,
+        _env: Env,
+        _info: MessageInfo,
+        _msg: ExtendedExecuteMsg,
     ) -> Result<Response, ContractError> {
         todo!()
     }

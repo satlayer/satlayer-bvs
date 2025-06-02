@@ -320,8 +320,8 @@ beforeAll(async () => {
   expect(status_response).toBe(1); // 1 means Active
 
   await enableSlashing();
-  // sleep for a second to ensure the slashing parameters are set
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  // sleep for a couple of second to ensure the slashing parameters are set
+  await new Promise((resolve) => setTimeout(resolve, 2000));
 
   let operator_opt_in_slashing: RegistryExecuteMsg = {
     operator_opt_in_to_slashing: {
