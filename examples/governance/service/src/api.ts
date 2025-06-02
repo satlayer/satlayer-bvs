@@ -24,8 +24,7 @@ interface ApiServiceOptions {
  * - Service: governance contract.
  *
  * It abstracts the complexity of contract interactions and provides a simple interface
- * to perform common operations such as querying balances, executing slashing requests,
- * and distributing rewards.
+ * to perform common operations such as querying balances, and staked collateral amounts.
  */
 export class Api {
   readonly client: SigningCosmWasmClient;

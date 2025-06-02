@@ -27,6 +27,7 @@ import {
 import { ExecuteMsg as VaultBankExecuteMsg } from "@satlayer/cosmwasm-schema/vault-bank";
 
 import { ExecuteMsg as GuardrailExecuteMsg } from "@satlayer/cosmwasm-schema/guardrail";
+import { Committee } from "./committee";
 
 let started: StartedCosmWasmContainer;
 let contracts: SatLayerContracts;
@@ -34,10 +35,10 @@ let bvs_wallet: DirectSecp256k1HdWallet;
 let satlayer_wallet: DirectSecp256k1HdWallet;
 let clientSigner: SigningCosmWasmClient;
 let governanceContractAddress: string;
-let committee: Voter[];
+let committee: Committee;
 let vaultBankAddress: string;
 
-async function deployGovernanceContract(owner: string, committee: Voter[]) {
+async function deployGovernanceContract(owner: string, members: Voter[]) {
   const contractPath = require.resolve("@examples/governance-contract/dist/contract.wasm");
   const uploaded = await clientSigner.upload(owner, await readFile(contractPath), "auto");
   const initMsg: InstantiateMsg = {
@@ -45,7 +46,7 @@ async function deployGovernanceContract(owner: string, committee: Voter[]) {
     router: contracts.router.address,
     owner: owner,
     cw3_instantiate_msg: {
-      voters: committee,
+      voters: members,
       threshold: {
         absolute_percentage: {
           percentage: "1",
@@ -75,7 +76,7 @@ async function satlayerGuardrailApprove(slashingRequestId: string) {
   expect(response).toBeDefined();
 }
 
-async function enableSlashing() {
+async function committeeEnableSlashing() {
   let action: RegistryExecuteMsg = {
     enable_slashing: {
       slashing_parameters: {
@@ -86,58 +87,20 @@ async function enableSlashing() {
     },
   };
 
-  let proposal: GovernanceExecuteMsg = {
-    base: {
-      propose: {
-        title: "Enable Slashing",
-        description: "Proposal to enable slashing for operators",
-        msgs: [
-          {
-            wasm: {
-              execute: {
-                contract_addr: contracts.registry.address,
-                msg: Buffer.from(JSON.stringify(action)).toString("base64"),
-                funds: [],
-              },
-            },
-          },
-        ],
-      },
-    },
-  };
-
-  let response = await clientSigner.execute(committee[0].addr, governanceContractAddress, proposal, "auto");
-
-  expect(response).toBeDefined();
+  let response = await committee.propose(
+    action,
+    "Enable Slashing",
+    "Proposal to enable slashing for the service",
+    contracts.registry.address,
+  );
 
   let proposal_id = response.events
     ?.find((event) => event.type === "wasm" && event.attributes.some((attr) => attr.key === "proposal_id"))
     ?.attributes.find((attr) => attr.key === "proposal_id")?.value;
 
-  // vote on the proposal
-  // skip the first member as they are the proposer
-  for (let i = 1; i < committee.length; i++) {
-    let vote: GovernanceExecuteMsg = {
-      base: {
-        vote: {
-          proposal_id: parseInt(proposal_id as string),
-          vote: "yes" as Vote,
-        },
-      },
-    };
-    response = await clientSigner.execute(committee[i].addr, governanceContractAddress, vote, "auto");
-    expect(response).toBeDefined();
-  }
+  await committee.all_vote_yes(parseInt(proposal_id as string));
 
-  // execute the proposal
-  let execute: GovernanceExecuteMsg = {
-    base: {
-      execute: {
-        proposal_id: parseInt(proposal_id as string),
-      },
-    },
-  };
-  response = await clientSigner.execute(committee[0].addr, governanceContractAddress, execute, "auto");
+  response = await committee.execute_proposal(parseInt(proposal_id as string));
 
   let query: RegistryQueryMsg = {
     slashing_parameters: {
@@ -207,13 +170,13 @@ beforeAll(async () => {
   clientSigner = await started.newSigner(bvs_wallet);
 
   // setup committee
-  committee = [
+  let multi_sig_members = [
     { addr: committeeMember_1.address, weight: 1 },
     { addr: committeeMember_2.address, weight: 1 },
     { addr: committeeMember_3.address, weight: 1 },
   ];
 
-  const instantiated = await deployGovernanceContract(owner.address, committee);
+  const instantiated = await deployGovernanceContract(owner.address, multi_sig_members);
 
   governanceContractAddress = instantiated.contractAddress;
 
@@ -244,6 +207,16 @@ beforeAll(async () => {
 
   expect(response).toBeDefined();
 
+  committee = new Committee({
+    client: clientSigner,
+    vault: vaultBankAddress,
+    registry: contracts.registry.address,
+    router: contracts.router.address,
+    service: governanceContractAddress,
+    rewards: contracts.rewards.address,
+    committee: multi_sig_members,
+  });
+
   // let's vote on if the operator should be registered to the service
   let action: RegistryExecuteMsg = {
     register_operator_to_service: {
@@ -251,61 +224,21 @@ beforeAll(async () => {
     },
   };
 
-  let proposal: GovernanceExecuteMsg = {
-    base: {
-      propose: {
-        title: "Register Operator to Service",
-        description: "Proposal to register operator to service",
-        msgs: [
-          {
-            wasm: {
-              execute: {
-                contract_addr: contracts.registry.address,
-                msg: Buffer.from(JSON.stringify(action)).toString("base64"),
-                funds: [],
-              },
-            },
-          },
-        ],
-      },
-    },
-  };
-
-  response = await clientSigner.execute(committee[0].addr, governanceContractAddress, proposal, "auto");
-
-  expect(response).toBeDefined();
+  response = await committee.propose(
+    action,
+    "Register Operator to Service",
+    "Proposal to register operator to the service",
+    contracts.registry.address,
+  );
 
   let proposal_id = response.events
     ?.find((event) => event.type === "wasm" && event.attributes.some((attr) => attr.key === "proposal_id"))
     ?.attributes.find((attr) => attr.key === "proposal_id")?.value;
 
-  // the first proposal was enable slashing
-  expect(proposal_id).toBe("1");
+  await committee.all_vote_yes(parseInt(proposal_id as string));
 
-  // vote on the proposal
-  // skip the first member as they are the proposer
-  for (let i = 1; i < committee.length; i++) {
-    let vote: GovernanceExecuteMsg = {
-      base: {
-        vote: {
-          proposal_id: parseInt(proposal_id as string),
-          vote: "yes" as Vote,
-        },
-      },
-    };
-    response = await clientSigner.execute(committee[i].addr, governanceContractAddress, vote, "auto");
-    expect(response).toBeDefined();
-  }
+  response = await committee.execute_proposal(parseInt(proposal_id as string));
 
-  // execute the proposal
-  let execute: GovernanceExecuteMsg = {
-    base: {
-      execute: {
-        proposal_id: parseInt(proposal_id as string),
-      },
-    },
-  };
-  response = await clientSigner.execute(committee[0].addr, governanceContractAddress, execute, "auto");
   expect(response).toBeDefined();
 
   let register_status: RegistryQueryMsg = {
@@ -319,7 +252,8 @@ beforeAll(async () => {
 
   expect(status_response).toBe(1); // 1 means Active
 
-  await enableSlashing();
+  await committeeEnableSlashing();
+
   // sleep for a couple of second to ensure the slashing parameters are set
   await new Promise((resolve) => setTimeout(resolve, 2000));
 
@@ -338,11 +272,6 @@ afterAll(async () => {
   await started.stop();
 });
 
-test("Hello World", async () => {
-  process.stdout.write("Hello World\n");
-  expect(governanceContractAddress).toBeDefined();
-}, 1200);
-
 test(
   "Social Committee based slashing lifecycle",
   async () => {
@@ -356,31 +285,15 @@ test(
           reason: "Test slashing request",
         },
         operator: operator.address,
-        // offense happened yesterday
         timestamp: (Date.now() * 1000000).toString(), // Current timestamp in nanoseconds
       },
     };
-    let proposal: GovernanceExecuteMsg = {
-      base: {
-        propose: {
-          title: "Slashing Request",
-          description: "Request to slash operator for misconduct",
-          msgs: [
-            {
-              wasm: {
-                execute: {
-                  contract_addr: contracts.router.address,
-                  msg: Buffer.from(JSON.stringify(action)).toString("base64"),
-                  funds: [],
-                },
-              },
-            },
-          ],
-        },
-      },
-    };
-
-    let response = await clientSigner.execute(committee[0].addr, governanceContractAddress, proposal, "auto");
+    let response = await committee.propose(
+      action,
+      "Request Slashing",
+      "Proposal to request slashing for the operator",
+      contracts.router.address,
+    );
 
     expect(response).toBeDefined();
 
@@ -388,36 +301,11 @@ test(
       ?.find((event) => event.type === "wasm" && event.attributes.some((attr) => attr.key === "proposal_id"))
       ?.attributes.find((attr) => attr.key === "proposal_id")?.value;
 
-    // vote on the proposal
+    await committee.all_vote_yes(parseInt(proposal_id as string));
 
-    // skip the first member as they are the proposer
-    for (let i = 1; i < committee.length; i++) {
-      let vote: GovernanceExecuteMsg = {
-        base: {
-          vote: {
-            proposal_id: parseInt(proposal_id as string),
-            vote: "yes" as Vote,
-          },
-        },
-      };
-      response = await clientSigner.execute(committee[i].addr, governanceContractAddress, vote, "auto");
-      expect(response).toBeDefined();
-    }
-
-    // execute the proposal
-    let execute: GovernanceExecuteMsg = {
-      base: {
-        execute: {
-          proposal_id: parseInt(proposal_id as string),
-        },
-      },
-    };
-
-    response = await clientSigner.execute(committee[0].addr, governanceContractAddress, execute, "auto");
-
+    response = await committee.execute_proposal(parseInt(proposal_id as string));
     expect(response).toBeDefined();
 
-    // query
     let query_msg: RouterQueryMsg = {
       slashing_request_id: {
         operator: operator.address,
@@ -446,127 +334,56 @@ test(
       lock_slashing: slashing_request_id,
     };
 
-    let proposal_msg: GovernanceExecuteMsg = {
-      base: {
-        propose: {
-          title: "Lock Slashing",
-          description: "Proposal to lock slashing for operator",
-          msgs: [
-            {
-              wasm: {
-                execute: {
-                  contract_addr: contracts.router.address,
-                  msg: Buffer.from(JSON.stringify(lock_slash_action)).toString("base64"),
-                  funds: [],
-                },
-              },
-            },
-          ],
-        },
-      },
-    };
-
-    response = await clientSigner.execute(committee[0].addr, governanceContractAddress, proposal_msg, "auto");
+    response = await committee.propose(
+      lock_slash_action,
+      "Lock Slashing",
+      "Proposal to lock slashing for the operator",
+      contracts.router.address,
+    );
 
     // now committee members vote on the proposal
     let lock_proposal_id = response.events
       ?.find((event) => event.type === "wasm" && event.attributes.some((attr) => attr.key === "proposal_id"))
       ?.attributes.find((attr) => attr.key === "proposal_id")?.value;
 
-    expect(lock_proposal_id).toBe("4");
+    await committee.all_vote_yes(parseInt(lock_proposal_id as string));
 
-    // vote on the proposal
-    for (let i = 1; i < committee.length; i++) {
-      let vote: GovernanceExecuteMsg = {
-        base: {
-          vote: {
-            proposal_id: parseInt(lock_proposal_id as string),
-            vote: "yes" as Vote,
-          },
-        },
-      };
-      response = await clientSigner.execute(committee[i].addr, governanceContractAddress, vote, "auto");
-      expect(response).toBeDefined();
-    }
-
-    // execute the proposal
-    let execute_lock: GovernanceExecuteMsg = {
-      base: {
-        execute: {
-          proposal_id: parseInt(lock_proposal_id as string),
-        },
-      },
-    };
+    expect(response).toBeDefined();
 
     // sleep abit to let resolution window pass
     await new Promise((resolve) => setTimeout(resolve, 6000));
 
-    response = await clientSigner.execute(committee[0].addr, governanceContractAddress, execute_lock, "auto");
+    response = await committee.execute_proposal(parseInt(lock_proposal_id as string));
 
-    // collateral are locked in the router contract
+    // Collateral are locked in the router contract
     let router_balance = await clientSigner.getBalance(contracts.router.address, "ustake");
     expect(router_balance.amount).toBe("150");
 
-    // let's start finalizing the slashing request that would move the funds to the governance contract
+    // Let's start finalizing the slashing request that would move the funds to the governance contract
     let finalize_slash_action: RouterExecuteMsg = {
       finalize_slashing: slashing_request_id,
     };
 
-    let finalize_proposal_msg: GovernanceExecuteMsg = {
-      base: {
-        propose: {
-          title: "Finalize Slashing",
-          description: "Proposal to finalize slashing for operator",
-          msgs: [
-            {
-              wasm: {
-                execute: {
-                  contract_addr: contracts.router.address,
-                  msg: Buffer.from(JSON.stringify(finalize_slash_action)).toString("base64"),
-                  funds: [],
-                },
-              },
-            },
-          ],
-        },
-      },
-    };
+    response = await committee.propose(
+      finalize_slash_action,
+      "Finalize Slashing",
+      "Proposal to finalize slashing for the operator",
+      contracts.router.address,
+    );
 
-    response = await clientSigner.execute(committee[0].addr, governanceContractAddress, finalize_proposal_msg, "auto");
     expect(response).toBeDefined();
 
     let finalize_proposal_id = response.events
       ?.find((event) => event.type === "wasm" && event.attributes.some((attr) => attr.key === "proposal_id"))
       ?.attributes.find((attr) => attr.key === "proposal_id")?.value;
 
-    expect(finalize_proposal_id).toBe("5");
-    // vote on the proposal
-    // skip the first member as they are the proposer
-    for (let i = 1; i < committee.length; i++) {
-      let vote: GovernanceExecuteMsg = {
-        base: {
-          vote: {
-            proposal_id: parseInt(finalize_proposal_id as string),
-            vote: "yes" as Vote,
-          },
-        },
-      };
-      response = await clientSigner.execute(committee[i].addr, governanceContractAddress, vote, "auto");
-      expect(response).toBeDefined();
-    }
+    await committee.all_vote_yes(parseInt(finalize_proposal_id as string));
 
-    // execute the proposal
-    let execute_finalize: GovernanceExecuteMsg = {
-      base: {
-        execute: {
-          proposal_id: parseInt(finalize_proposal_id as string),
-        },
-      },
-    };
-
+    // satlayer guardrail authorize the slashing finalization
     await satlayerGuardrailApprove(slashing_request_id as string);
 
-    response = await clientSigner.execute(committee[0].addr, governanceContractAddress, execute_finalize, "auto");
+    response = await committee.execute_proposal(parseInt(finalize_proposal_id as string));
+    expect(response).toBeDefined();
 
     let governance_balance = await clientSigner.getBalance(governanceContractAddress, "ustake");
     expect(governance_balance.amount).toBe("150");
