@@ -1,4 +1,3 @@
-use bvs_registry::SlashingParameters;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw3_fixed_multisig;
 
@@ -20,7 +19,7 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 pub enum ExtendedExecuteMsg {
-    EnableSlashing(SlashingParameters),
+    // Implement bvs specific custom extended execute messages here
 }
 
 #[cw_serde]
@@ -35,8 +34,7 @@ pub enum QueryMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum ExtendedQueryMsg {
-    #[returns(ServiceInfoResponse)]
-    ServiceInfo {},
+    // Implement bvs specific custom extended execute messages here
 }
 
 #[cw_serde]

@@ -9,12 +9,5 @@ pub(crate) struct Config {
     pub(crate) owner: Addr,
 }
 
-#[cw_serde]
-pub(crate) enum Offense {
-    Offline,
-    MissingBlocks,
-    DoubleSign,
-}
-
 /// Config of the contract.
 pub(crate) const CONFIG: Item<Config> = Item::new("config");

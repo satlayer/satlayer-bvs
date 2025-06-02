@@ -4,7 +4,18 @@ import { AllAccountsResponse } from "@satlayer/cosmwasm-schema/vault-bank-tokeni
 import * as path from "node:path";
 import * as fs from "node:fs";
 
-const APY_PERCENT = 10; // 10% APY
+/**
+ * Rewards are calculated and scheduled off-chain.
+ * Default is 10% APY, calculated monthly.
+ * For this example, we will emulate that
+ * Off-chain service will calculate the rewards
+ * And each month, the multi-sig member will review
+ * and approve the rewards and then inject into the BVS
+ * For the simplicity of this example, calculated reward amount each
+ * the multi sig member will pay out of pocket and fund the BVS contract
+ * Which the bvs contract will allow the stakers to claim their rewards
+ **/
+const APY_PERCENT = 10; // 10% APY, representing as full digits for ease of working with bigint.
 const INTEREST_COMPUTE_INTERVAL_PER_ANNUAL = 12;
 
 export interface DistributionRewards {
@@ -19,6 +30,16 @@ export interface DistributionRewards {
   totalReward: string; // optional total reward amount
 }
 
+/**
+ * This function is called by the off-chain service to trigger the reward distribution.
+ * It calculates the rewards based on the staked amounts and creates a Merkle tree.
+ * The Merkle root and distribution data are then passed to the callback function.
+ * For this example, the callback function will be the multi-sig member's consensus to approve the rewards.
+ *
+ * @param api - The API instance to interact with the blockchain
+ * @param callback - The callback function to handle the Merkle root and distribution data
+ * @returns An object containing the Merkle root and distribution data
+ */
 export async function offChainRewardTrigger(
   api: Api,
   callback: (merkleRoot: string, distributionData: DistributionRewards) => Promise<void>,
@@ -34,18 +55,25 @@ export async function offChainRewardTrigger(
   return { merkleRoot, distributionData: distributionFileData };
 }
 
+/**
+ * This function simply calculate how much reward a particular staker should get
+ * given their staked amount (tvl) and the APY.
+ * Meant be called once every month to calculate the rewards in this example.
+ *
+ * @param tvl - The total value locked (TVL) in the vault for the staker
+ * @param apy - The annual percentage yield (APY) in percent (default is 10%)
+ * @param interestComputeInterval - The number of intervals in a year (default is 12 for monthly)
+ * @returns The calculated reward amount in the smallest unit of the token (e.g., uStake)
+ */
 function calculateReward(
   tvl: bigint,
   apy: number = APY_PERCENT,
   interestComputeInterval: number = INTEREST_COMPUTE_INTERVAL_PER_ANNUAL,
 ): bigint {
-  // Calculate the reward based on the TVL and the APY
-  // REWARD_PER_PERIOD is the daily reward rate
-  // tvl is in uStake, so we need to convert it to a number for calculation
   const numerator = tvl * BigInt(apy);
   const denominator = BigInt(100) * BigInt(interestComputeInterval);
 
-  return numerator / denominator; // Convert to uStake with 6 decimals
+  return numerator / denominator;
 }
 
 /**
@@ -66,6 +94,18 @@ async function createMerkleTree(distFilePath: string): Promise<string> {
   return match[1];
 }
 
+/**
+ * This function dumps the reward distribution data into a JSON file.
+ * It retrieves all stakers' addresses from Satlayer protocol, calculates their staked amounts,
+ * and computes their rewards based on the APY.
+ * The resulting distribution data is saved in a file named distribution.json
+ * in the dist/bbn-test-5/{api.Service}/ustake directory.
+ * For the simplicity of this example, the operator are not rewarded, if the operator hasn't staked any tokens.
+ *
+ *
+ * @param api - The API instance to interact with the blockchain
+ * @returns The distribution rewards data
+ */
 async function dumpRewardDistribution(api: Api): Promise<DistributionRewards> {
   let now = Date.now();
 
