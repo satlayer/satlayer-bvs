@@ -3,8 +3,8 @@ use cosmwasm_std::entry_point;
 
 use crate::error::ContractError;
 use crate::migration::build_vault_migrate_msgs;
-use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::state::{REGISTRY, ROUTER};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, VaultType};
+use crate::state::{self, REGISTRY, ROUTER};
 use bvs_library::ownership;
 use bvs_pauser;
 use bvs_vault_bank::msg::InstantiateMsg as BankVaultInstantiateMsg;
@@ -301,10 +301,27 @@ mod query {
 ///
 /// #### 2.0.0 (new)
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> StdResult<Response> {
+pub fn migrate(mut deps: DepsMut, _env: Env, msg: MigrateMsg) -> StdResult<Response> {
     cw2::ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let msgs = build_vault_migrate_msgs(deps, msg)?;
+    let msgs = build_vault_migrate_msgs(deps.branch(), msg.clone())?;
+
+    // Important to set the code id only after building the migration messages for vaults,
+    state::set_code_id(deps.storage, &VaultType::Bank, &msg.new_bank_vault_code_id)?;
+
+    state::set_code_id(
+        deps.storage,
+        &VaultType::BankTokenized,
+        &msg.new_bank_tokenized_vault_code_id,
+    )?;
+
+    state::set_code_id(deps.storage, &VaultType::Cw20, &msg.new_cw20_vault_code_id)?;
+
+    state::set_code_id(
+        deps.storage,
+        &VaultType::Cw20Tokenized,
+        &msg.new_cw20_tokenized_vault_code_id,
+    )?;
 
     Ok(Response::new()
         .add_messages(msgs)
