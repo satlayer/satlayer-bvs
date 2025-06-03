@@ -2,6 +2,7 @@
 use cosmwasm_std::entry_point;
 
 use crate::error::ContractError;
+use crate::migration::build_vault_migrate_msgs;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::{REGISTRY, ROUTER};
 use bvs_library::ownership;
@@ -300,9 +301,16 @@ mod query {
 ///
 /// #### 2.0.0 (new)
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response> {
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> StdResult<Response> {
     cw2::ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    Ok(Response::default())
+
+    let msgs = build_vault_migrate_msgs(deps, msg)?;
+
+    Ok(Response::new()
+        .add_messages(msgs)
+        .add_attribute("action", "migrate")
+        .add_attribute("contract_name", CONTRACT_NAME)
+        .add_attribute("contract_version", CONTRACT_VERSION))
 }
 
 #[cfg(test)]

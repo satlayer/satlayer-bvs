@@ -67,6 +67,17 @@ pub enum VaultType {
     Cw20Tokenized,
 }
 
+impl VaultType {
+    pub const fn all_variants() -> [VaultType; 4] {
+        [
+            VaultType::Bank,
+            VaultType::Cw20,
+            VaultType::BankTokenized,
+            VaultType::Cw20Tokenized,
+        ]
+    }
+}
+
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
@@ -81,4 +92,9 @@ pub enum QueryMsg {
 struct CodeIdResponse(u64);
 
 #[cw_serde]
-pub struct MigrateMsg {}
+pub struct MigrateMsg {
+    pub new_bank_vault_code_id: u64,
+    pub new_bank_tokenized_vault_code_id: u64,
+    pub new_cw20_vault_code_id: u64,
+    pub new_cw20_tokenized_vault_code_id: u64,
+}
