@@ -204,3 +204,6 @@ pub enum AssetType {
     Cw20,
     Bank,
 }
+
+#[cw_serde]
+pub struct MigrateMsg {}
