@@ -21,6 +21,6 @@
     "@satlayer/testcontainers": "workspace:*",
     "@types/node": "^20",
     "typescript": "latest",
-    "vitest": "^3.2.1"
+    "vitest": "^3.2.2"
   }
 }
