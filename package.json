@@ -13,16 +13,17 @@
       "prettier --write --ignore-unknown"
     ]
   },
-  "prettier": "@packages/config-prettier",
   "devDependencies": {
     "@packages/config-eslint": "workspace:*",
-    "@packages/config-prettier": "workspace:*",
     "@satlayer/cosmwasm-optimizer": "workspace:*",
     "@types/node": "^20",
     "eslint": "^9",
     "husky": "^9",
     "lint-staged": "^16",
     "prettier": "^3",
+    "prettier-plugin-packagejson": "^2.5.15",
+    "prettier-plugin-tailwindcss": "^0.6.12",
+    "prettier-plugin-toml": "^2.0.5",
     "turbo": "^2.5.4",
     "typescript": "5.8.3",
     "vitest": "^3.2.3"

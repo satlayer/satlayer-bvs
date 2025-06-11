@@ -11,9 +11,6 @@ importers:
       '@packages/config-eslint':
         specifier: workspace:*
         version: link:packages/config-eslint
-      '@packages/config-prettier':
-        specifier: workspace:*
-        version: link:packages/config-prettier
       '@satlayer/cosmwasm-optimizer':
         specifier: workspace:*
         version: link:packages/cosmwasm-optimizer
@@ -32,6 +29,15 @@ importers:
       prettier:
         specifier: ^3
         version: 3.5.3
+      prettier-plugin-packagejson:
+        specifier: ^2.5.15
+        version: 2.5.15(prettier@3.5.3)
+      prettier-plugin-tailwindcss:
+        specifier: ^0.6.12
+        version: 0.6.12(prettier@3.5.3)
+      prettier-plugin-toml:
+        specifier: ^2.0.5
+        version: 2.0.5(prettier@3.5.3)
       turbo:
         specifier: ^2.5.4
         version: 2.5.4
@@ -245,6 +251,10 @@ importers:
         version: 23.2.6
 
   packages/cli:
+    devDependencies:
+      '@modules/cosmwasm-cli':
+        specifier: workspace:*
+        version: link:../../modules/cosmwasm-cli
     optionalDependencies:
       '@satlayer/cli-darwin-arm64':
         specifier: workspace:*
@@ -264,10 +274,6 @@ importers:
       '@satlayer/cli-win32-x64':
         specifier: workspace:*
         version: link:cli-win32-x64
-    devDependencies:
-      '@modules/cosmwasm-cli':
-        specifier: workspace:*
-        version: link:../../modules/cosmwasm-cli
 
   packages/cli/cli-darwin-arm64: {}
 
@@ -307,18 +313,6 @@ importers:
       typescript-eslint:
         specifier: ^8.34.0
         version: 8.34.0(eslint@9.28.0(jiti@2.4.2))(typescript@5.8.3)
-
-  packages/config-prettier:
-    dependencies:
-      prettier-plugin-packagejson:
-        specifier: ^2.5.15
-        version: 2.5.15(prettier@3.5.3)
-      prettier-plugin-tailwindcss:
-        specifier: ^0.6.12
-        version: 0.6.12(prettier@3.5.3)
-      prettier-plugin-toml:
-        specifier: ^2.0.5
-        version: 2.0.5(prettier@3.5.3)
 
   packages/cosmwasm-optimizer: {}
 
