@@ -1,4 +1,5 @@
 packages:
+  - "contracts"
   - "crates"
   - "crates/*"
   - "docs"

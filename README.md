@@ -12,7 +12,8 @@ You need to install the following tools to get started:
 1. Install Node (NVM): `https://github.com/nvm-sh/nvm?tab=readme-ov-file#install--update-script`
 2. Install Rust: `https://www.rust-lang.org/tools/install`
 3. Install Go: `https://go.dev/doc/install`
-4. Install Docker: `https://docs.docker.com/get-started/get-docker/`
+4. Install Foundry: `https://getfoundry.sh/introduction/installation/`
+5. Install Docker: `https://docs.docker.com/get-started/get-docker/`
 
 After installing the tools, you need to install `pnpm` and `turbo` globally as well as the dependencies of the project:
 

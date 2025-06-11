@@ -18,6 +18,9 @@ runs:
         go-version-file: "modules/go.mod"
         cache-dependency-path: "modules/go.sum"
 
+    # Foundry (EVM)
+    - uses: foundry-rs/foundry-toolchain@v1
+
     # Node.js, PNPM, Turbo
     - uses: actions/setup-node@v4
       with:

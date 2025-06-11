@@ -20,3 +20,7 @@ examples/*/*/schema/
 docs/public/_pagefind/
 docs/app/**/*.md
 docs/app/**/*.mdx
+contracts/lib/
+contracts/broadcast/*/*/dry-run/
+contracts/out/
+contracts/cache/

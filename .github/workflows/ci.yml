@@ -64,6 +64,16 @@ jobs:
         run: |
           echo "Changed files: $CHANGED_FILES"
 
+  lint_forge:
+    name: Lint [forge]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - run: forge fmt --check
+        working-directory: ./contracts
+
   lint_eslint:
     name: Lint [eslint]
     runs-on: ubuntu-latest
