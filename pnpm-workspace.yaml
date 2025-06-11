@@ -1,10 +1,14 @@
 packages:
-  - "contracts"
-  - "crates"
-  - "crates/*"
-  - "docs"
-  - "examples/*/*"
-  - "modules"
-  - "modules/*"
-  - "packages/*"
-  - "packages/cli/*"
+  - contracts
+  - crates
+  - crates/*
+  - docs
+  - examples/*/*
+  - modules
+  - modules/*
+  - packages/*
+  - packages/cli/*
+
+onlyBuiltDependencies:
+  - keccak
+  - secp256k1
