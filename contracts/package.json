@@ -1,5 +1,5 @@
 {
-  "name": "@satlayer/contract",
+  "name": "@satlayer/contracts",
   "private": false,
   "exports": {
     "./*": "./out/*"
