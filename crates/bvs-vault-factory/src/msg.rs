@@ -1,5 +1,6 @@
 use bvs_pauser::api::Display;
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Addr;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -56,6 +57,13 @@ pub enum ExecuteMsg {
     /// Set the code id for a vault type, allowing the factory to deploy vaults of that type.
     /// Only the `owner` can call this message.
     SetCodeId { code_id: u64, vault_type: VaultType },
+
+    /// ExecuteMsg MigrateVault
+    /// Migrate an existing vault to a new code id.
+    MigrateVault {
+        vault: String,
+        vault_type: VaultType,
+    },
 }
 
 #[cw_serde]
