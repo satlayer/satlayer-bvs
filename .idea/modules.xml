@@ -5,6 +5,7 @@
       <module fileurl="file://$PROJECT_DIR$/.idea/satlayer-bvs.iml" filepath="$PROJECT_DIR$/.idea/satlayer-bvs.iml" />
       <module fileurl="file://$PROJECT_DIR$/modules/modules.iml" filepath="$PROJECT_DIR$/modules/modules.iml" />
       <module fileurl="file://$PROJECT_DIR$/crates/crates.iml" filepath="$PROJECT_DIR$/crates/crates.iml" />
+      <module fileurl="file://$PROJECT_DIR$/contracts/contracts.iml" filepath="$PROJECT_DIR$/contracts/contracts.iml" />
     </modules>
   </component>
 </project>
