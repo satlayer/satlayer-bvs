@@ -11,7 +11,7 @@ rmSync("lib", {
 for (const pkg of Object.keys(packageJson.dependencies)) {
   if (pkg.startsWith("@")) {
     const [scope, name] = pkg.split("/");
-    cpSync(join("node_modules", scope, name), join("lib", scope.replace("@", ""), name));
+    cpSync(join("node_modules", scope, name), join("lib", scope.replace("@", "") + "-" + name));
   } else {
     cpSync(join("node_modules", pkg), join("lib", pkg));
   }
