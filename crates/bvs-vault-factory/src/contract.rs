@@ -78,6 +78,10 @@ pub fn execute(
             ownership::transfer_ownership(deps.storage, info, new_owner)
                 .map_err(ContractError::Ownership)
         }
+        ExecuteMsg::MigrateVault { vault, vault_type } => {
+            let vault = deps.api.addr_validate(&vault)?;
+            execute::migrate_vault(deps, info, vault, vault_type)
+        }
     }
 }
 
@@ -93,7 +97,47 @@ mod execute {
     use crate::msg::VaultType;
     use crate::state::get_code_id;
     use crate::{auth, state};
-    use cosmwasm_std::{Addr, Event, Response};
+    use cosmwasm_std::{Addr, ContractInfoResponse, Event, QueryRequest, Response, WasmQuery};
+
+    pub fn migrate_vault(
+        deps: DepsMut,
+        info: MessageInfo,
+        vault: Addr,
+        vault_type: VaultType,
+    ) -> Result<Response, ContractError> {
+        ownership::assert_owner(deps.storage, &info)?;
+
+        // check the vault belong to satlayer protocol
+        let msg = QueryRequest::Wasm(WasmQuery::ContractInfo {
+            contract_addr: vault.to_string(),
+        });
+
+        let router = ROUTER.load(deps.storage)?;
+
+        let contract_info: ContractInfoResponse = deps.querier.query(&msg)?;
+
+        let current_code_id = get_code_id(deps.storage, &vault_type)?;
+
+        if contract_info.code_id == current_code_id {
+            return Err(ContractError::VaultError {
+                msg: "Vault is already using the latest code".to_string(),
+            });
+        }
+
+        let msg = cosmwasm_std::WasmMsg::Migrate {
+            contract_addr: vault.to_string(),
+            new_code_id: current_code_id,
+            msg: Binary::default(),
+        };
+
+        Ok(Response::new()
+            .add_submessage(cosmwasm_std::SubMsg::new(msg))
+            .add_event(
+                Event::new("MigrateVault")
+                    .add_attribute("vault", vault.to_string())
+                    .add_attribute("type", vault_type.to_string()),
+            ))
+    }
 
     pub fn deploy_cw20_vault(
         deps: DepsMut,
