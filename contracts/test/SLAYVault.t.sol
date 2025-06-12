@@ -8,21 +8,18 @@ import {Test, console} from "forge-std/Test.sol";
 import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 
 contract SLAYVaultTest is Test {
-    SLAYVault public implementation = new SLAYVault();
-
-    address public proxy;
-    MockERC20 public token;
+    MockERC20 public underlying = new MockERC20("Mock Token", "MTK", 12);
     SLAYVault public vault;
 
     function setUp() public {
-        token = new MockERC20("Mock Token", "MTK", 18);
-        proxy = UnsafeUpgrades.deployUUPSProxy(
-            address(implementation), abi.encodeCall(SLAYVault.initialize, (token, "SLAY TokenName", "SLAY.MTK"))
+        SLAYVault implementation = new SLAYVault();
+        address proxy = UnsafeUpgrades.deployUUPSProxy(
+            address(implementation), abi.encodeCall(SLAYVault.initialize, (underlying, "SLAY TokenName", "SLAY.MTK"))
         );
         vault = SLAYVault(proxy);
     }
 
     function testDecimals() public {
-        assertEq(vault.decimals(), 18);
+        assertEq(vault.decimals(), 12);
     }
 }
