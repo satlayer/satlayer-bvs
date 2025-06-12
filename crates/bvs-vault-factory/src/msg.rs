@@ -1,6 +1,6 @@
 use bvs_pauser::api::Display;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Binary, Empty};
+use cosmwasm_std::Binary;
 
 #[cw_serde]
 pub struct InstantiateMsg {
