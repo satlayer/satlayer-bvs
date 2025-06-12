@@ -78,9 +78,13 @@ pub fn execute(
             ownership::transfer_ownership(deps.storage, info, new_owner)
                 .map_err(ContractError::Ownership)
         }
-        ExecuteMsg::MigrateVault { vault, vault_type } => {
-            let vault = deps.api.addr_validate(&vault)?;
-            execute::migrate_vault(deps, info, vault, vault_type)
+        ExecuteMsg::MigrateVault {
+            vault_address,
+            vault_type,
+            migrate_msg,
+        } => {
+            let vault = deps.api.addr_validate(&vault_address)?;
+            execute::migrate_vault(deps, info, vault, vault_type, migrate_msg)
         }
     }
 }
@@ -104,21 +108,19 @@ mod execute {
         info: MessageInfo,
         vault: Addr,
         vault_type: VaultType,
+        migrate_msg: Binary,
     ) -> Result<Response, ContractError> {
         ownership::assert_owner(deps.storage, &info)?;
 
-        // check the vault belong to satlayer protocol
         let msg = QueryRequest::Wasm(WasmQuery::ContractInfo {
             contract_addr: vault.to_string(),
         });
 
-        let router = ROUTER.load(deps.storage)?;
-
         let contract_info: ContractInfoResponse = deps.querier.query(&msg)?;
 
-        let current_code_id = get_code_id(deps.storage, &vault_type)?;
+        let code_id = get_code_id(deps.storage, &vault_type)?;
 
-        if contract_info.code_id == current_code_id {
+        if contract_info.code_id == code_id {
             return Err(ContractError::VaultError {
                 msg: "Vault is already using the latest code".to_string(),
             });
@@ -126,8 +128,8 @@ mod execute {
 
         let msg = cosmwasm_std::WasmMsg::Migrate {
             contract_addr: vault.to_string(),
-            new_code_id: current_code_id,
-            msg: Binary::default(),
+            new_code_id: code_id,
+            msg: migrate_msg,
         };
 
         Ok(Response::new()
