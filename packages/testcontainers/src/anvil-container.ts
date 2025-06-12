@@ -25,12 +25,6 @@ import {
 import { generatePrivateKey, mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
 import { arbitrum, mainnet, optimism } from "viem/chains";
 
-export enum ChainName {
-  EthereumMainnet = "ethereum-mainnet",
-  ArbitrumMainnet = "arbitrum-mainnet",
-  OptimismMainnet = "optimism-mainnet",
-}
-
 export type ChainInfo = {
   name: ChainName;
   chainId: number;
@@ -39,7 +33,19 @@ export type ChainInfo = {
   viemChain: Chain;
 };
 
-const NAME_TO_CHAIN_ID: Record<ChainName, ChainInfo> = {
+export enum ChainName {
+  EthereumMainnet = "ethereum-mainnet",
+  ArbitrumMainnet = "arbitrum-mainnet",
+  OptimismMainnet = "optimism-mainnet",
+}
+
+/**
+ * Maps chain names to their respective chain information.
+ * Update this object to add more chains as needed.
+ *
+ * `forkBlockNumber` is an arbitrary value.
+ */
+const NAME_TO_CHAIN_INFO: Record<ChainName, ChainInfo> = {
   [ChainName.EthereumMainnet]: {
     name: ChainName.EthereumMainnet,
     chainId: 1,
@@ -148,12 +154,12 @@ export class AnvilContainer extends GenericContainer {
     return new StartedAnvilContainer(started, this.forkedChainName, this.anvilPort);
   }
 
-  static getChainIdByName(name: ChainName): string {
-    return NAME_TO_CHAIN_ID[name].name;
+  static getChainIdByName(name: ChainName): number {
+    return NAME_TO_CHAIN_INFO[name].chainId;
   }
 
   static getChainInfoByName(name: ChainName): ChainInfo {
-    return NAME_TO_CHAIN_ID[name];
+    return NAME_TO_CHAIN_INFO[name];
   }
 }
 
