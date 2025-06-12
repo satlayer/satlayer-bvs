@@ -10,7 +10,6 @@
   "scripts": {
     "build": "forge build",
     "fmt": "forge fmt",
-    "prepare": "node remappings.mjs",
     "test": "forge test"
   },
   "lint-staged": {

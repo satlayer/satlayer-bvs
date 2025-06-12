@@ -1,19 +1,28 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {Test, console} from "forge-std/Test.sol";
+import "./MockERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SLAYVault} from "../src/SLAYVault.sol";
+import {Test, console} from "forge-std/Test.sol";
+import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 
 contract SLAYVaultTest is Test {
+    SLAYVault public implementation = new SLAYVault();
+
+    address public proxy;
+    MockERC20 public token;
     SLAYVault public vault;
 
     function setUp() public {
-        vault = new SLAYVault();
+        token = new MockERC20("Mock Token", "MTK", 18);
+        proxy = UnsafeUpgrades.deployUUPSProxy(
+            address(implementation), abi.encodeCall(SLAYVault.initialize, (token, "SLAY TokenName", "SLAY.MTK"))
+        );
+        vault = SLAYVault(proxy);
     }
 
     function testDecimals() public {
-        uint8 expectedDecimals = 99;
-        uint8 actualDecimals = vault.decimals();
-        assertEq(actualDecimals, expectedDecimals, "Decimals should be 99");
+        assertEq(vault.decimals(), 18);
     }
 }
