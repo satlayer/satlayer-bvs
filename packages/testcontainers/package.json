@@ -41,6 +41,7 @@
     "@satlayer/bvs-vault-cw20-tokenized": "workspace:*",
     "@satlayer/bvs-vault-router": "workspace:*",
     "@satlayer/cosmwasm-schema": "workspace:*",
-    "testcontainers": "^11.0.3"
+    "testcontainers": "^11.0.3",
+    "viem": "^2.30.6"
   }
 }
