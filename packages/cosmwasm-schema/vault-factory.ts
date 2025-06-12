@@ -38,6 +38,11 @@ export interface InstantiateMsg {
  *
  * ExecuteMsg SetCodeId Set the code id for a vault type, allowing the factory to deploy
  * vaults of that type. Only the `owner` can call this message.
+ *
+ * ExecuteMsg MigrateVault Migrate an existing vault to a new code id. The `vault` is the
+ * address of the vault to migrate. The `vault_type` is the type of the vault to migrate.
+ * Note that this execute message assume setCodeId message has been called prior with new
+ * code id for the vault type.
  */
 export interface ExecuteMsg {
   deploy_cw20?: DeployCw20;
@@ -46,6 +51,7 @@ export interface ExecuteMsg {
   deploy_bank_tokenized?: DeployBankTokenized;
   transfer_ownership?: TransferOwnership;
   set_code_id?: SetCodeID;
+  migrate_vault?: MigrateVault;
 }
 
 export interface DeployBank {
@@ -69,8 +75,9 @@ export interface DeployCw20Tokenized {
   symbol: string;
 }
 
-export interface SetCodeID {
-  code_id: number;
+export interface MigrateVault {
+  migrate_msg: string;
+  vault_address: string;
   vault_type: VaultType;
 }
 
@@ -79,6 +86,11 @@ export enum VaultType {
   BankTokenized = "bank_tokenized",
   Cw20 = "cw20",
   Cw20Tokenized = "cw20_tokenized",
+}
+
+export interface SetCodeID {
+  code_id: number;
+  vault_type: VaultType;
 }
 
 export interface TransferOwnership {
