@@ -1,6 +1,6 @@
 use bvs_pauser::api::Display;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Binary, Empty};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -60,9 +60,14 @@ pub enum ExecuteMsg {
 
     /// ExecuteMsg MigrateVault
     /// Migrate an existing vault to a new code id.
+    /// The `vault` is the address of the vault to migrate.
+    /// The `vault_type` is the type of the vault to migrate.
+    /// Note that this execute message assume setCodeId message has been called prior
+    /// with new code id for the vault type.
     MigrateVault {
-        vault: String,
+        vault_address: String,
         vault_type: VaultType,
+        migrate_msg: Binary,
     },
 }
 
