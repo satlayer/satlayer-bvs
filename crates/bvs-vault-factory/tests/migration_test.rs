@@ -72,6 +72,9 @@ fn test_bank_vault_deployment() {
             .unwrap();
     }
 
+    // old contract is a blank mocked contract with arbitrary early version
+    // old contract only has `FOO` state at this point
+    // later in this test we will migrate to new contract that has added `BAR` state
     let old_contract_code_id = app.store_code(old_contract);
 
     let owner = app.api().addr_make("owner");
@@ -104,6 +107,10 @@ fn test_bank_vault_deployment() {
         })
         .unwrap();
 
+    // new contract is pretty much identical to old contract
+    // except it has an additional `BAR` state
+    // and migration logic with version 2.0.0
+    // (old contract is version 1.0.0)
     let new_contract_code_id = app.store_code(contracts.new_contract_wrapper);
 
     factory
