@@ -41,7 +41,7 @@ export interface InstantiateMsg {
  *
  * ExecuteMsg MigrateVault Migrate an existing vault to a new code id. The `vault` is the
  * address of the vault to migrate. The `vault_type` is the type of the vault to migrate.
- * Note that this execute message assume setCodeId message has been called prior with new
+ * Note that this execute message assumes setCodeId message has been called prior with new
  * code id for the vault type.
  */
 export interface ExecuteMsg {
