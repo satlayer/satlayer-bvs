@@ -6,7 +6,9 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 contract EmptyImpl is Initializable, UUPSUpgradeable, OwnableUpgradeable {
-    /// @custom:oz-upgrades-unsafe-allow constructor
+    /**
+     * @custom:oz-upgrades-unsafe-allow constructor
+     */
     constructor() {
         _disableInitializers();
     }
