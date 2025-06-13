@@ -1,0 +1,18 @@
+{
+  "name": "@satlayer/cosmwasm-schema-cli",
+  "version": "0.0.0",
+  "private": false,
+  "repository": {
+    "url": "git+https://github.com/satlayer/satlayer-bvs"
+  },
+  "license": "MIT",
+  "bin": {
+    "schema-gen": "./schema-gen.mjs"
+  },
+  "files": [
+    "schema-gen.mjs"
+  ],
+  "dependencies": {
+    "quicktype-core": "^23.2.6"
+  }
+}
