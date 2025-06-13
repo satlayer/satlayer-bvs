@@ -159,10 +159,10 @@ pub mod new_contract {
     pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> Result<Binary, ContractError> {
         match _msg {
             QueryMsg::ShowStates {} => {
-                let foo = FOO.load(_deps.storage)?;
-                let bar = BAR.load(_deps.storage)?;
+                let var_foo = FOO.load(_deps.storage)?;
+                let var_bar = BAR.load(_deps.storage)?;
                 let resp = ShowStatesResponse {
-                    states: format!("Foo: {}, Bar: {}", foo, bar),
+                    states: format!("Foo: {}, Bar: {}", var_foo, var_bar),
                 };
 
                 Ok(to_json_binary(&resp)?)
