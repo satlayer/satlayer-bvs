@@ -12,12 +12,12 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SLAYVault} from "./SLAYVault.sol";
 
 contract SLAYVaultFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
-    UpgradeableBeacon public immutable beacon;
+    address public immutable beacon;
 
     /**
      * @custom:oz-upgrades-unsafe-allow constructor
      */
-    constructor(UpgradeableBeacon beacon_) {
+    constructor(address beacon_) {
         beacon = beacon_;
         _disableInitializers();
     }
@@ -53,7 +53,7 @@ contract SLAYVaultFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable,
     {
         // TODO: the name and symbol of the asset should be inferred and prefixed.
         bytes memory data = abi.encodeCall(SLAYVault.initialize, (asset_, name_, symbol_));
-        BeaconProxy proxy = new BeaconProxy(address(beacon), data);
+        BeaconProxy proxy = new BeaconProxy(beacon, data);
         // TODO: add to vault router.
         return address(proxy);
     }

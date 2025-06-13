@@ -21,7 +21,7 @@ contract TestSuite is Test {
     SLAYRegistry public registry;
     SLAYVaultFactory public vaultFactory;
 
-    function setUp() public {
+    function setUp() public virtual {
         bytes memory emptyData = abi.encodeCall(EmptyImpl.initialize, (owner));
 
         router = SLAYRouter(UnsafeUpgrades.deployUUPSProxy(address(emptyImpl), emptyData));
