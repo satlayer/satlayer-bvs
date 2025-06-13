@@ -8,9 +8,9 @@ import { basename, dirname, join } from "path";
  * Generate types from a schema file
  * @param {string} schemaPath - Path to the schema.json file
  * @param {string} outputDir - Optional output directory (defaults to current directory)
- * @param {string} language - Optional output language (defaults to 'go')
+ * @param {string} language - Optional output language (defaults to 'typescript')
  */
-async function generateTypesFromSchema(schemaPath, outputDir = ".", language = "go") {
+async function generateTypesFromSchema(schemaPath, outputDir = ".", language = "typescript") {
   try {
     // Read and parse the schema file
     const schemaContent = await readFile(schemaPath, "utf8");
