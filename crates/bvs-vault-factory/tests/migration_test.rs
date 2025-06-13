@@ -51,7 +51,7 @@ impl TestContracts {
 }
 
 #[test]
-fn test_bank_vault_deployment() {
+fn test_migrate_vault() {
     let (mut app, contracts) = TestContracts::init();
 
     let operator = app.api().addr_make("operator");
