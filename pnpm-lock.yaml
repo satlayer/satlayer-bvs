@@ -367,6 +367,12 @@ importers:
         specifier: ^23.2.6
         version: 23.2.6
 
+  packages/cosmwasm-schema-cli:
+    dependencies:
+      quicktype-core:
+        specifier: ^23.2.6
+        version: 23.2.6
+
   packages/testcontainers:
     dependencies:
       '@cosmjs/cosmwasm-stargate':
@@ -1964,9 +1970,6 @@ packages:
 
   '@types/node@20.17.17':
     resolution: {integrity: sha512-/WndGO4kIfMicEQLTi/mDANUu/iVUhT7KboZPdEqqHQ4aTS+3qT3U5gIqWDFV+XouorjfgGqvKILJeHhuQgFYg==}
-
-  '@types/node@24.0.0':
-    resolution: {integrity: sha512-yZQa2zm87aRVcqDyH5+4Hv9KYgSdgwX1rFnGvpbzMaC7YAljmhBET93TPiTd3ObwTL+gSpIzPKg5BqVxdCvxKg==}
 
   '@types/pbkdf2@3.1.2':
     resolution: {integrity: sha512-uRwJqmiXmh9++aSu1VNEn3iIxWOhd8AHXNSdlaLfdAAdSTY9jYVeGWnzejM3dvrkbqE3/hyQkQQ29IFATEGlew==}
@@ -5448,9 +5451,6 @@ packages:
   undici-types@6.19.8:
     resolution: {integrity: sha512-ve2KP6f/JnbPBFyobGHuerC9g1FYGn/F8n1LWTwNxCEzd6IfqTwUQcNXgEtmmQ6DlRrC1hrSrBnCZPokRrDHjw==}
 
-  undici-types@7.8.0:
-    resolution: {integrity: sha512-9UJ2xGDvQ43tYyVMpuHlsgApydB8ZKfVYTsLDhXkFL/6gfkp+U8xTGdh8pMJv1SpZna0zxG1DwsKZsreLbXBxw==}
-
   undici@7.10.0:
     resolution: {integrity: sha512-u5otvFBOBZvmdjWLVW+5DAc9Nkq8f24g0O9oY7qw2JVIF1VocIFoyz9JFkuVOS2j41AufeO0xnlweJ2RLT8nGw==}
     engines: {node: '>=20.18.1'}
@@ -7532,7 +7532,7 @@ snapshots:
 
   '@types/bn.js@5.2.0':
     dependencies:
-      '@types/node': 24.0.0
+      '@types/node': 20.17.17
 
   '@types/chai@5.2.2':
     dependencies:
@@ -7712,13 +7712,9 @@ snapshots:
     dependencies:
       undici-types: 6.19.8
 
-  '@types/node@24.0.0':
-    dependencies:
-      undici-types: 7.8.0
-
   '@types/pbkdf2@3.1.2':
     dependencies:
-      '@types/node': 24.0.0
+      '@types/node': 20.17.17
 
   '@types/react-dom@19.1.6(@types/react@19.1.8)':
     dependencies:
@@ -7730,7 +7726,7 @@ snapshots:
 
   '@types/secp256k1@4.0.6':
     dependencies:
-      '@types/node': 24.0.0
+      '@types/node': 20.17.17
 
   '@types/ssh2-streams@0.1.12':
     dependencies:
@@ -12275,8 +12271,6 @@ snapshots:
   undici-types@5.26.5: {}
 
   undici-types@6.19.8: {}
-
-  undici-types@7.8.0: {}
 
   undici@7.10.0: {}
 

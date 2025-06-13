@@ -1,0 +1,12 @@
+{
+  "name": "@satlayer/cosmwasm-schema-cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Generate CosmWasm schemas from Rust code using quicktype.",
+  "bin": {
+    "schema-gen": "./schema-gen.mjs"
+  },
+  "dependencies": {
+    "quicktype-core": "^23.2.6"
+  }
+}
