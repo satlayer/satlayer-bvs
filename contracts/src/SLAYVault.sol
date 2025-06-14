@@ -10,9 +10,23 @@ import {ERC20PermitUpgradeable} from
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import {SLAYRegistry} from "./SLAYRegistry.sol";
+import {SLAYRouter} from "./SLAYRouter.sol";
+
+/**
+ * Implementation contract for SLAYVault.
+ * This contract is not initialized directly, but through the SLAYVaultFactory using the Beacon proxy pattern.
+ */
 contract SLAYVault is Initializable, ERC20Upgradeable, ERC4626Upgradeable, ERC165Upgradeable, ERC20PermitUpgradeable {
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
+    SLAYRouter public immutable router;
+    SLAYRegistry public immutable registry;
+
+    /**
+     * @custom:oz-upgrades-unsafe-allow constructor
+     */
+    constructor(SLAYRouter router_, SLAYRegistry registry_) {
+        router = router_;
+        registry = registry_;
         _disableInitializers();
     }
 
