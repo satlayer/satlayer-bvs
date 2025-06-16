@@ -367,6 +367,12 @@ importers:
         specifier: ^23.2.6
         version: 23.2.6
 
+  packages/cosmwasm-schema-cli:
+    dependencies:
+      quicktype-core:
+        specifier: ^23.2.6
+        version: 23.2.6
+
   packages/testcontainers:
     dependencies:
       '@cosmjs/cosmwasm-stargate':
