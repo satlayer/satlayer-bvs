@@ -2,8 +2,19 @@
 src = "src"
 out = "out"
 libs = ["lib", "node_modules"]
-evm_version = 'cancun'
+solc_version = "0.8.24"
+evm_version = "cancun"
 ffi = true
 ast = true
 build_info = true
 extra_output = ["storageLayout"]
+
+[rpc_endpoints]
+mainnet = "https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
+sepolia = "https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
+holesky = "https://eth-holesky.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
+
+[etherscan]
+mainnet = { chain = 1, key = "${ETHERSCAN_API_KEY}" }
+sepolia = { chain = 11155111, key = "${ETHERSCAN_API_KEY}" }
+holesky = { chain = 17000, key = "${ETHERSCAN_API_KEY}" }
