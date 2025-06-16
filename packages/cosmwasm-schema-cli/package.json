@@ -1,6 +1,5 @@
 {
   "name": "@satlayer/cosmwasm-schema-cli",
-  "version": "0.0.0",
   "private": false,
   "repository": {
     "url": "git+https://github.com/satlayer/satlayer-bvs"
