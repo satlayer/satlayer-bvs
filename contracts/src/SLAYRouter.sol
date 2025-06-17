@@ -54,6 +54,9 @@ contract SLAYRouter is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pausa
      * Set a individual whitelist status for a vault.
      * This allows CA owner to control which vaults can be interacted with through the router.
      * For non-granular state/modifier, use {SLAYRouter-pause} to pause all vaults.
+     *
+     * @param vault_ address of the vault to set the whitelist status for.
+     * This should be a SLAYVault contract address but isn't "checked" to allow for flexible un-whitelisting of vaults.
      */
     function setWhitelist(address vault_, bool whitelisted_) external onlyOwner {
         whitelisted[vault_] = whitelisted_;
