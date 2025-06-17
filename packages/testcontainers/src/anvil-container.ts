@@ -202,6 +202,8 @@ export class StartedAnvilContainer extends AbstractStartedContainer {
       mode: "anvil",
       account: this.account,
       transport: http(this.getRpcEndpoint()),
+      pollingInterval: 100, // 100ms polling interval
+      cacheTime: 0, // disable caching
     })
       .extend(publicActions)
       .extend(walletActions);

@@ -1,0 +1,12 @@
+# Foundry
+cache/
+src/evm/out/
+broadcast/
+artifacts/
+forge-cache/
+
+dist/
+target/
+
+# Node.js
+node_modules/

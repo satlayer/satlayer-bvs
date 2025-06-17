@@ -1,0 +1,9 @@
+# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md
+
+[profile.default]
+src = "evm/contracts"
+out = "evm/out"
+libs = ["node_modules"]
+solc = "0.8.22"
+optimizer = true
+optimizer_runs = 20_000
