@@ -18,13 +18,22 @@ flowchart LR
     C --> |Delegate Stake| B
 ```
 
+BVS applications are expected to distribute their tokens as rewards to Bitcoin restakers who provide 
+collateral for cryptoeconomic security, and operators who help with the validation.
+
+To ensure a robust amount of Bitcoin assets for security and proper operator functioning, BVSs
+must reward good behavior in the form of payments made to restakers and operators. The following
+section explains how these payments work.
+
 ## Participants in the Rewards System
 
 <Callout>
     In the SatLayer ecosystem, **Operators** and **Stakers** are collectively referred to as **Earners** when discussing the rewards distribution process.
 </Callout>
 
-- **Operators** run the infrastructure and validation systems
+In general, we have the following participants:
+
+- **Operators** run the infrastructure and validation systems for the Services
 - **Stakers** delegate their assets to Operators as part of the shared security model
 - **Services** distribute rewards to both parties based on their contributions
 
