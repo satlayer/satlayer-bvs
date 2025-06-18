@@ -16,27 +16,32 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
 
     using Checkpoints for Checkpoints.Trace224;
 
+    // Service <-> Operator registration is a two sided consensus
+    // This mean both service and operator has to register to pair with each other
+    // See [`RegistrationStatus`] enum for more information
     mapping(bytes32 service_operator_hash => Checkpoints.Trace224) private registration_status;
 
     enum RegistrationStatus {
-        /// Default state when neither the Operator nor the Service has registered,
-        /// or when either the Operator or Service has unregistered
+        // Default state when neither the Operator nor the Service has registered,
+        // or when either the Operator or Service has unregistered
         Inactive,
-        /// State when both the Operator and Service have registered with each other,
-        /// indicating a fully established relationship
+        // State when both the Operator and Service have registered with each other,
+        // indicating a fully established relationship
         Active,
-        /// State when only the Operator has registered but the Service hasn't yet registered,
-        /// indicating a pending registration from the Service side
-        /// This is Operator-initiated registration, waiting for Service to finalize
+        // State when only the Operator has registered but the Service hasn't yet registered,
+        // indicating a pending registration from the Service side
+        // This is Operator-initiated registration, waiting for Service to finalize
         OperatorRegistered,
-        /// State when only the Service has registered but the Operator hasn't yet registered,
-        /// indicating a pending registration from the Operator side
-        /// This is Service-initiated registration, waiting for Operator to finalize
+        // State when only the Service has registered but the Operator hasn't yet registered,
+        // indicating a pending registration from the Operator side
+        // This is Service-initiated registration, waiting for Operator to finalize
         ServiceRegistered
     }
 
     event ServiceRegistered(address indexed service, string uri, string name);
+
     event OperatorRegistered(address indexed operator, string uri, string name);
+
     event RegistrationStatusUpdated(address indexed service, address indexed operator, RegistrationStatus status);
 
     /**
@@ -69,6 +74,10 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         emit OperatorRegistered(msg.sender, uri, name);
     }
 
+    // Register an operator to a service (info.sender is the service)
+    // Service must be registered via [`RegisterAsService()`].
+    // If the operator has registered this service, the registration status will be set to [`RegistrationStatus.Active`] (1)
+    // Else the registration status will be set to [`RegistrationStatus.ServiceRegistered`] (3)
     function registerOperatorToService(address operator) public {
         address service = msg.sender;
         require(operators[operator], "Operator not found");
@@ -112,6 +121,10 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         emit RegistrationStatusUpdated(service, operator, RegistrationStatus.Inactive);
     }
 
+    // Register a service to an operator (info.sender is the operator)
+    // Operator must be registered with [`RegisterAsOperator()`]
+    // If the service has registered this operator, the registration status will be set to [`RegistrationStatus::Active`] (1)
+    // Else the registration status will be set to [`RegistrationStatus.OperatorRegistered`] (2)
     function registerServiceToOperator(address service) public {
         address operator = msg.sender;
         require(services[service], "Service not registered");
@@ -164,12 +177,20 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         return RegistrationStatus(uint8(registration_status[key].latest()));
     }
 
-    function getRegistrationStatusAt(bytes32 key, uint256 blockNumber) public view returns (RegistrationStatus) {
-        return RegistrationStatus(uint8(registration_status[key].upperLookup(uint32(blockNumber))));
+    function getRegistrationStatusAt(bytes32 key, uint32 timestamp) public view returns (RegistrationStatus) {
+        return RegistrationStatus(uint8(registration_status[key].upperLookup(timestamp)));
     }
 
-    /// @notice Set the status for a service-operator pair at current block
+    /// @notice Set the status for a service-operator pair at current block time
     function setRegistrationStatus(bytes32 key, RegistrationStatus status) internal {
-        registration_status[key].push(uint32(block.number), uint224(uint8(status)));
+        registration_status[key].push(uint32(block.timestamp), uint224(uint8(status)));
+    }
+
+    function is_operator(address operator) public view returns (bool) {
+        return operators[operator];
+    }
+
+    function is_service(address service) public view returns (bool) {
+        return services[service];
     }
 }

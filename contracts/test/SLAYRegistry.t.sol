@@ -217,36 +217,43 @@ contract SLAYRegistryTest is Test {
 
     // --- Test Checkpoints and Status Lookups ---
 
+    function advanceBlockBy(uint256 newHeight) public {
+        uint256 currentBlockTime = block.timestamp;
+        vm.roll(block.number + newHeight);
+        vm.warp(currentBlockTime + (12 * newHeight));
+    }
+
     function test_GetRegistrationStatusAt() public {
         _registerServiceAndOperator();
-        vm.roll(block.number + 1);
+
+        advanceBlockBy(1);
         bytes32 key = registry._getKey(service, operator);
 
         // Initial state is Inactive
-        uint256 blockBeforeRegister = block.number;
+        uint32 timeBeforeRegister = uint32(block.timestamp);
         assertEq(
-            uint256(registry.getRegistrationStatusAt(key, blockBeforeRegister)),
+            uint256(registry.getRegistrationStatusAt(key, timeBeforeRegister)),
             uint256(SLAYRegistry.RegistrationStatus.Inactive),
             "Status should be Inactive because no prior history"
         );
 
+        advanceBlockBy(1);
+
         // Service initiates registration
         vm.prank(service);
         registry.registerOperatorToService(operator);
-        uint256 blockAfterServiceRegister = block.number;
+        uint32 timeAfterRegister = uint32(block.timestamp);
         assertEq(
-            uint256(registry.getRegistrationStatusAt(key, blockAfterServiceRegister)),
+            uint256(registry.getRegistrationStatusAt(key, timeAfterRegister)),
             uint256(SLAYRegistry.RegistrationStatus.ServiceRegistered),
             "Status should be ServiceRegistered"
         );
 
-        vm.roll(blockBeforeRegister + 100);
-
-        assertEq(block.number, blockBeforeRegister + 100, "Blocks should be advanced by 100");
+        advanceBlockBy(100);
 
         // Check previous block status
         assertEq(
-            uint256(registry.getRegistrationStatusAt(key, blockBeforeRegister - 1)),
+            uint256(registry.getRegistrationStatusAt(key, timeBeforeRegister)),
             uint256(SLAYRegistry.RegistrationStatus.Inactive),
             "Status should be Inactive"
         );
@@ -254,15 +261,15 @@ contract SLAYRegistryTest is Test {
         // Operator completes registration
         vm.prank(operator);
         registry.registerServiceToOperator(service);
-        uint256 blockAfterActive = block.number;
+        uint32 timeAfterActive = uint32(block.timestamp);
         assertEq(
-            uint256(registry.getRegistrationStatusAt(key, blockAfterActive)),
+            uint256(registry.getRegistrationStatusAt(key, timeAfterActive)),
             uint256(SLAYRegistry.RegistrationStatus.Active),
             "Status should be Active"
         );
         // Check previous block status
         assertEq(
-            uint256(registry.getRegistrationStatusAt(key, blockAfterServiceRegister)),
+            uint256(registry.getRegistrationStatusAt(key, timeAfterRegister)),
             uint256(SLAYRegistry.RegistrationStatus.ServiceRegistered),
             "Status should be ServiceRegistered"
         );
