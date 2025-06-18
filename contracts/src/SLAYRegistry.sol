@@ -5,14 +5,18 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol";
 
 import {SLAYRouter} from "./SLAYRouter.sol";
 
 contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
     SLAYRouter public immutable router;
-    mapping(address => bool) public services;
-    mapping(address => bool) public operators;
-    mapping(byte32 => bool) public registration_status;
+    mapping(address service => bool) public services;
+    mapping(address operator => bool) public operators;
+
+    using Checkpoints for Checkpoints.Trace224;
+
+    mapping(bytes32 service_operator_hash => Checkpoints.Trace224) private registration_status;
 
     enum RegistrationStatus {
         /// Default state when neither the Operator nor the Service has registered,
@@ -53,13 +57,13 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
-    function registerAsService(string uri, string name) public {
+    function registerAsService(string memory uri, string memory name) public {
         require(!services[msg.sender], "Service has been registered");
         services[msg.sender] = true;
         emit ServiceRegistered(msg.sender, uri, name);
     }
 
-    function registerAsOperator(string uri, string name) public {
+    function registerAsOperator(string memory uri, string memory name) public {
         require(!operators[msg.sender], "Operator has been registerd");
         operators[msg.sender] = true;
         emit OperatorRegistered(msg.sender, uri, name);
@@ -70,22 +74,23 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         require(operators[operator], "Operator not found");
         require(services[service], "Service not found");
 
-        byte32 key = _getKey(service, operator);
-        RegistrationStatus status = registration_status[key];
+        bytes32 key = _getKey(service, operator);
+        RegistrationStatus status = getLatestRegistrationStatus(key);
 
         if (status == RegistrationStatus.Active) {
             revert("Registration is already active");
         } else if (status == RegistrationStatus.ServiceRegistered) {
             revert("Service has already registered this operator");
         } else if (status == RegistrationStatus.Inactive) {
-            registration_status[key] = RegistrationStatus.ServiceRegistered;
+            setRegistrationStatus(key, RegistrationStatus.ServiceRegistered);
 
             emit RegistrationStatusUpdated(operator, service, RegistrationStatus.ServiceRegistered);
         } else if (status == RegistrationStatus.OperatorRegistered) {
-            registration_status[key] = RegistrationStatus.Active;
+            setRegistrationStatus(key, RegistrationStatus.Active);
 
             emit RegistrationStatusUpdated(operator, service, RegistrationStatus.Active);
         } else {
+            // should not branch into this.
             revert("Invalid registration state");
         }
     }
@@ -95,14 +100,14 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
 
         require(services[service], "Service not registered");
 
-        bytes32 key = _getKey(operator, service);
-        RegistrationStatus status = registration_status[key];
+        bytes32 key = _getKey(service, operator);
+        RegistrationStatus status = getLatestRegistrationStatus(key);
 
         if (status == RegistrationStatus.Inactive) {
             revert("Operator is not registered with this service");
         }
 
-        registration_status[key] = RegistrationStatus.Inactive;
+        setRegistrationStatus(key, RegistrationStatus.Inactive);
 
         emit RegistrationStatusUpdated(service, operator, RegistrationStatus.Inactive);
     }
@@ -112,47 +117,59 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         require(services[service], "Service not registered");
         require(operators[operator], "Operator not registered");
 
-        bytes32 key = _getKey(operator, service);
-        RegistrationStatus status = registration_status[key];
+        bytes32 key = _getKey(service, operator);
+        RegistrationStatus status = getLatestRegistrationStatus(key);
 
         if (status == RegistrationStatus.Active) {
             revert("Registration between operator and service is already active");
         } else if (status == RegistrationStatus.OperatorRegistered) {
             revert("Operator has already registered this service");
         } else if (status == RegistrationStatus.Inactive) {
-            registration_status[key] = RegistrationStatus.OperatorRegistered;
+            setRegistrationStatus(key, RegistrationStatus.OperatorRegistered);
 
             emit RegistrationStatusUpdated(service, operator, RegistrationStatus.OperatorRegistered);
         } else if (status == RegistrationStatus.ServiceRegistered) {
-            registration_status[key] = RegistrationStatus.Active;
+            setRegistrationStatus(key, RegistrationStatus.Active);
 
             emit RegistrationStatusUpdated(service, operator, RegistrationStatus.Active);
         } else {
-            // treat default (None) same as Inactive?
-            registration_status[key] = RegistrationStatus.OperatorRegistered;
-
-            emit RegistrationStatusUpdated(service, operator, RegistrationStatus.OperatorRegistered);
+            revert("Invalid registration state");
         }
     }
 
     function deregisterServiceFromOperator(address service) public {
         address operator = msg.sender;
         require(operators[operator], "Operator not registered");
-        require(service[service], "Service not registered to operator");
+        require(services[service], "Service not registered to operator");
 
-        byte32 key = _getKey(service, operator);
-        RegistrationStatus status = registration_status[key];
+        bytes32 key = _getKey(service, operator);
+        RegistrationStatus status = getLatestRegistrationStatus(key);
 
         if (status == RegistrationStatus.Inactive) {
             revert("Service is not registered to this operator");
         }
 
-        registration_status[key] = RegistrationStatus.Inactive;
+        setRegistrationStatus(key, RegistrationStatus.Inactive);
 
         emit RegistrationStatusUpdated(service, operator, RegistrationStatus.Inactive);
     }
 
-    function _getKey(address service, address operator) internal pure returns (byte32) {
+    function _getKey(address service, address operator) public pure returns (bytes32) {
         return keccak256(abi.encodePacked(service, operator));
+    }
+
+    function getLatestRegistrationStatus(bytes32 key) public view returns (RegistrationStatus) {
+        // checkpoint.latest() returns 0 on null cases, that nicely fit into
+        // RegistrationStatus.Inactive being 0
+        return RegistrationStatus(uint8(registration_status[key].latest()));
+    }
+
+    function getRegistrationStatusAt(bytes32 key, uint256 blockNumber) public view returns (RegistrationStatus) {
+        return RegistrationStatus(uint8(registration_status[key].upperLookup(uint32(blockNumber))));
+    }
+
+    /// @notice Set the status for a service-operator pair at current block
+    function setRegistrationStatus(bytes32 key, RegistrationStatus status) internal {
+        registration_status[key].push(uint32(block.number), uint224(uint8(status)));
     }
 }
