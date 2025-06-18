@@ -42,14 +42,14 @@ contract SLAYRouterTest is Test, TestSuite {
         vm.startPrank(owner);
 
         vm.expectEmit();
-        emit SLAYRouter.Whitelisted(vault, true);
-        router.setWhitelist(vault, true);
+        emit SLAYRouter.VaultWhitelisted(vault, true);
+        router.setVaultWhitelist(vault, true);
 
         assertTrue(router.whitelisted(vault));
 
         vm.expectEmit();
-        emit SLAYRouter.Whitelisted(vault, false);
-        router.setWhitelist(vault, false);
+        emit SLAYRouter.VaultWhitelisted(vault, false);
+        router.setVaultWhitelist(vault, false);
 
         assertFalse(router.whitelisted(vault));
     }
@@ -64,8 +64,8 @@ contract SLAYRouterTest is Test, TestSuite {
         vm.startPrank(owner);
 
         vm.expectEmit();
-        emit SLAYRouter.Whitelisted(vault, true);
-        router.setWhitelist(vault, true);
+        emit SLAYRouter.VaultWhitelisted(vault, true);
+        router.setVaultWhitelist(vault, true);
 
         assertTrue(router.whitelisted(vault));
     }
