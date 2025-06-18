@@ -36,6 +36,13 @@ contract SLAYVault is
     SLAYRegistry public immutable registry;
 
     /**
+     * @notice The `operator` is the address where the vault is delegated to.
+     * This address cannot withdraw assets from the vault.
+     * See https://build.satlayer.xyz/getting-started/operators for more information.
+     */
+    address public operator;
+
+    /**
      * @dev The operation failed because the contract is paused.
      */
     error EnforcedPause();
@@ -54,10 +61,19 @@ contract SLAYVault is
         _disableInitializers();
     }
 
-    function initialize(IERC20 asset_, string memory name_, string memory symbol_) public initializer {
+    /**
+     * @dev Initializes the SLAYVault with the given parameters.
+     * This function is called by the SLAYVaultFactory when creating a new SLAYVault instance.
+     * Not to be called directly.
+     */
+    function initialize(IERC20 asset_, address operator_, string memory name_, string memory symbol_)
+        public
+        initializer
+    {
         __ERC4626_init(asset_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
+        operator = operator_;
     }
 
     function decimals() public view override(ERC20Upgradeable, ERC4626Upgradeable, IERC20Metadata) returns (uint8) {

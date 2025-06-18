@@ -45,15 +45,26 @@ contract TestSuite is Test {
         vm.stopPrank();
     }
 
+    /**
+     * @dev Create a new SLAYVault instance for testing with default parameters.
+     * The vault will use a MockERC20 token with name "Token", symbol "TKN", and 18 decimals.
+     * The caller must be an operator.
+     * Use vm.startPrank() to set the operator before calling this function.
+     */
     function newVault() public virtual returns (SLAYVault) {
         return newVault("Token", "TKN", 18);
     }
 
+    /**
+     * @dev Create a new SLAYVault instance for testing.
+     * Params _name, _symbol, and _decimals are used to create a MockERC20 token
+     * which serves as the underlying asset for the vault.
+     * The caller must be an operator.
+     * Use vm.startPrank() to set the operator before calling this function.
+     */
     function newVault(string memory _name, string memory _symbol, uint8 _decimals) public virtual returns (SLAYVault) {
         MockERC20 underlying = new MockERC20(_name, _symbol, _decimals);
-        string memory vaultName = string(abi.encodePacked("SLAY ", _name));
-        string memory vaultSymbol = string(abi.encodePacked("SLAY.", _symbol));
-        address proxy = vaultFactory.create(underlying, vaultName, vaultSymbol);
+        address proxy = vaultFactory.create(underlying);
         return SLAYVault(proxy);
     }
 }

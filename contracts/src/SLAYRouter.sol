@@ -16,7 +16,7 @@ contract SLAYRouter is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pausa
     /**
      * @dev Emitted when the pause is triggered by `account`.
      */
-    event Whitelisted(address indexed vault, bool whitelisted);
+    event VaultWhitelisted(address indexed vault, bool whitelisted);
 
     /**
      * @dev Set the immutable SLAYRegistry proxy address for the implementation.
@@ -58,8 +58,8 @@ contract SLAYRouter is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pausa
      * @param vault_ address of the vault to set the whitelist status for.
      * This should be a SLAYVault contract address but isn't "checked" to allow for flexible un-whitelisting of vaults.
      */
-    function setWhitelist(address vault_, bool whitelisted_) external onlyOwner {
-        whitelisted[vault_] = whitelisted_;
-        emit Whitelisted(vault_, whitelisted_);
+    function setVaultWhitelist(address vault_, bool isWhitelisted) external onlyOwner {
+        whitelisted[vault_] = isWhitelisted;
+        emit VaultWhitelisted(vault_, isWhitelisted);
     }
 }
