@@ -36,8 +36,9 @@ contract SLAYVault is
     SLAYRegistry public immutable registry;
 
     /**
-     * @dev The `operator` is the address where the vault is delegated to.
+     * @notice The `operator` is the address where the vault is delegated to.
      * This address cannot withdraw assets from the vault.
+     * See https://build.satlayer.xyz/getting-started/operators for more information.
      */
     address public operator;
 
