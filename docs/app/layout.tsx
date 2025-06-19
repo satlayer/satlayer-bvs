@@ -10,8 +10,8 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   metadataBase: new URL("https://build.satlayer.xyz"),
   title: {
-    default: "SatLayer Docs",
-    template: "%s | SatLayer Docs",
+    default: "SatLayer Developer Docs",
+    template: "%s | SatLayer Developer Docs",
   },
 };
 
