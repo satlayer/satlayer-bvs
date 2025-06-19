@@ -11,8 +11,8 @@ import {SLAYRouter} from "./SLAYRouter.sol";
 
 contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
     SLAYRouter public immutable router;
-    mapping(address service => bool) public services;
-    mapping(address operator => bool) public operators;
+    mapping(address service => bool) private _services;
+    mapping(address operator => bool) private _operators;
 
     using Checkpoints for Checkpoints.Trace224;
 
@@ -41,7 +41,6 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
          */
         OperatorRegistered,
         /**
-         *
          * This state is used when the Service has registered an Operator, but the Operator hasn't yet registered,
          * indicating a pending registration from the Operator side
          * This is Service-initiated registration, waiting for Operator to finalize
@@ -73,52 +72,62 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
+    modifier onlyService(address operator) {
+        require(_services[_msgSender()], "Only registered service can call this function");
+        require(_operators[operator], "The operator being attempted to pair does not exist");
+        _;
+    }
+
+    modifier onlyOperator(address service) {
+        require(_operators[_msgSender()], "Only registered operator can call this function");
+        require(_services[service], "The service being attempted to pair does not exist");
+        _;
+    }
+
     /**
      * @dev Register as a service
      * This function allows an address to be registered as a service.
+     * @param uri uri of the service project.
+     * @param name name of the service project.
      */
     function registerAsService(string memory uri, string memory name) public {
-        require(!services[msg.sender], "Service has been registered");
-        services[msg.sender] = true;
-        emit ServiceRegistered(msg.sender, uri, name);
+        require(!_services[_msgSender()], "Already registered");
+        _services[_msgSender()] = true;
+        emit ServiceRegistered(_msgSender(), uri, name);
     }
 
     /**
      * @dev Register as a service
      * This function allows an address to be registered as an operator.
+     * @param uri uri of the operator
+     * @param name name of the operator
      */
     function registerAsOperator(string memory uri, string memory name) public {
-        require(!operators[msg.sender], "Operator has been registerd");
-        operators[msg.sender] = true;
-        emit OperatorRegistered(msg.sender, uri, name);
+        require(!_operators[_msgSender()], "Already registered");
+        _operators[_msgSender()] = true;
+        emit OperatorRegistered(_msgSender(), uri, name);
     }
 
     /**
-     * @dev Register an operator to a service (info.sender is the service)
+     * @dev Register an operator to a service (_msgSender() is the service)
      * Service must be registered via [`RegisterAsService()`].
      * If the operator has registered this service, the registration status will be set to [`RegistrationStatus.Active`] (1)
      * Else the registration status will be set to [`RegistrationStatus.ServiceRegistered`] (3)
      */
-    function registerOperatorToService(address operator) public {
-        address service = msg.sender;
-        require(operators[operator], "Operator not found");
-        require(services[service], "Service not found");
+    function registerOperatorToService(address operator) public onlyService(operator) {
+        address service = _msgSender();
 
-        bytes32 key = _getKey(service, operator);
-        RegistrationStatus status = getLatestRegistrationStatus(key);
+        bytes32 key = ServiceOperator._getKey(service, operator);
+        RegistrationStatus status = getRegistrationStatus(key);
 
         if (status == RegistrationStatus.Active) {
             revert("Registration is already active");
         } else if (status == RegistrationStatus.ServiceRegistered) {
             revert("Service has already registered this operator");
         } else if (status == RegistrationStatus.Inactive) {
-            setRegistrationStatus(key, RegistrationStatus.ServiceRegistered);
-
-            emit RegistrationStatusUpdated(operator, service, RegistrationStatus.ServiceRegistered);
+            _setRegistrationStatus(RegistrationStatus.ServiceRegistered, service, operator, key);
         } else if (status == RegistrationStatus.OperatorRegistered) {
-            setRegistrationStatus(key, RegistrationStatus.Active);
-
-            emit RegistrationStatusUpdated(operator, service, RegistrationStatus.Active);
+            _setRegistrationStatus(RegistrationStatus.Active, service, operator, key);
         } else {
             // should not branch into this.
             revert("Invalid registration state");
@@ -126,26 +135,21 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     }
 
     /**
-     * @dev Deregister an operator from a service (info.sender is the service)
+     * @dev Deregister an operator from a service (_msgSender() is the service)
      * Service must be registered via [`RegisterAsService()`].
      * If the operator is not registered with this service, it will revert.
      * If the operator is registered with this service, it will set the registration status to [`RegistrationStatus.Inactive`] (0)
      */
-    function deregisterOperatorFromService(address operator) public {
-        address service = msg.sender;
-
-        require(services[service], "Service not registered");
-
-        bytes32 key = _getKey(service, operator);
-        RegistrationStatus status = getLatestRegistrationStatus(key);
+    function deregisterOperatorFromService(address operator) public onlyService(operator) {
+        address service = _msgSender();
+        bytes32 key = ServiceOperator._getKey(service, operator);
+        RegistrationStatus status = getRegistrationStatus(key);
 
         if (status == RegistrationStatus.Inactive) {
             revert("Operator is not registered with this service");
         }
 
-        setRegistrationStatus(key, RegistrationStatus.Inactive);
-
-        emit RegistrationStatusUpdated(service, operator, RegistrationStatus.Inactive);
+        _setRegistrationStatus(RegistrationStatus.Inactive, service, operator, key);
     }
 
     /**
@@ -154,26 +158,20 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      * If the service has registered this operator, the registration status will be set to [`RegistrationStatus::Active`] (1)
      * Else the registration status will be set to [`RegistrationStatus.OperatorRegistered`] (2)
      */
-    function registerServiceToOperator(address service) public {
-        address operator = msg.sender;
-        require(services[service], "Service not registered");
-        require(operators[operator], "Operator not registered");
+    function registerServiceToOperator(address service) public onlyOperator(service) {
+        address operator = _msgSender();
 
-        bytes32 key = _getKey(service, operator);
-        RegistrationStatus status = getLatestRegistrationStatus(key);
+        bytes32 key = ServiceOperator._getKey(service, operator);
+        RegistrationStatus status = getRegistrationStatus(key);
 
         if (status == RegistrationStatus.Active) {
             revert("Registration between operator and service is already active");
         } else if (status == RegistrationStatus.OperatorRegistered) {
             revert("Operator has already registered this service");
         } else if (status == RegistrationStatus.Inactive) {
-            setRegistrationStatus(key, RegistrationStatus.OperatorRegistered);
-
-            emit RegistrationStatusUpdated(service, operator, RegistrationStatus.OperatorRegistered);
+            _setRegistrationStatus(RegistrationStatus.OperatorRegistered, service, operator, key);
         } else if (status == RegistrationStatus.ServiceRegistered) {
-            setRegistrationStatus(key, RegistrationStatus.Active);
-
-            emit RegistrationStatusUpdated(service, operator, RegistrationStatus.Active);
+            _setRegistrationStatus(RegistrationStatus.Active, service, operator, key);
         } else {
             revert("Invalid registration state");
         }
@@ -185,44 +183,48 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      * If the service is not registered to the operator, it will revert.
      * If the service is registered to the operator, it will set the registration status to [`RegistrationStatus.Inactive`] (0)
      */
-    function deregisterServiceFromOperator(address service) public {
-        address operator = msg.sender;
-        require(operators[operator], "Operator not registered");
-        require(services[service], "Service not registered to operator");
+    function deregisterServiceFromOperator(address service) public onlyOperator(service) {
+        address operator = _msgSender();
 
-        bytes32 key = _getKey(service, operator);
-        RegistrationStatus status = getLatestRegistrationStatus(key);
+        bytes32 key = ServiceOperator._getKey(service, operator);
+        RegistrationStatus status = getRegistrationStatus(key);
 
         if (status == RegistrationStatus.Inactive) {
             revert("Service is not registered to this operator");
         }
 
-        setRegistrationStatus(key, RegistrationStatus.Inactive);
-
-        emit RegistrationStatusUpdated(service, operator, RegistrationStatus.Inactive);
-    }
-
-    /**
-     * @dev Hash the service and operator addresses to create a unique key for the `registrationStatus` map.
-     */
-    function _getKey(address service, address operator) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked(service, operator));
+        _setRegistrationStatus(RegistrationStatus.Inactive, service, operator, key);
     }
 
     /**
      * @dev Get the `registrationStatus` for a given service-operator pair at the latest checkpoint.
-     * @param key The hash of the service and operator addresses. See `_getKey()`.
+     * @param key The hash of the service and operator addresses. See `ServiceOperator._getKey()`.
      * Returns the latest registration status as an enum value.
+     * Recommended to use for cases where key is already calculated before calling the function.
+     * Saves gas for hash computation.
      */
-    function getLatestRegistrationStatus(bytes32 key) public view returns (RegistrationStatus) {
+    function getRegistrationStatus(bytes32 key) public view returns (RegistrationStatus) {
         // checkpoint.latest() returns 0 on null cases, that nicely fit into
         // RegistrationStatus.Inactive being 0
         return RegistrationStatus(uint8(registrationStatus[key].latest()));
     }
 
     /**
+     * @dev Get the `registrationStatus` for a given service-operator pair at the latest checkpoint.
+     * @param service address of the service for the pair in question.
+     * @param operator address of the operator for the pair in question.
+     * Returns the latest registration status as an enum value.
+     * Exactly the same as its overloaded counter part except key is calculated on the go.
+     * Uses more gas.
+     */
+    function getRegistrationStatus(address service, address operator) public view returns (RegistrationStatus) {
+        bytes32 key = ServiceOperator._getKey(service, operator);
+        return RegistrationStatus(uint8(registrationStatus[key].latest()));
+    }
+
+    /**
      * @dev Get the registration status for a service-operator pair at a specific timestamp.
-     * @param key The hash of the service and operator addresses. See `_getKey()`.
+     * @param key The hash of the service and operator addresses. See `ServiceOperator._getKey()`.
      * @param timestamp The timestamp to check the registration status at.
      * Returns the registration status as an enum value.
      */
@@ -231,13 +233,49 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     }
 
     /**
-     * @dev Set the registration status for a service-operator pair.
-     * This function is used internally to update the registration status.
-     * @param key The hash of the service and operator addresses. See `_getKey()`.
-     * @param status The new registration status to set.
+     * @dev Get the registration status for a service-operator pair at a specific timestamp.
+     * @param service address of the service for the pair in question.
+     * @param operator address of the operator for the pair in question.
+     * Returns the registration status as an enum value.
      */
-    function setRegistrationStatus(bytes32 key, RegistrationStatus status) internal {
+    function getRegistrationStatusAt(address service, address operator, uint32 timestamp)
+        public
+        view
+        returns (RegistrationStatus)
+    {
+        bytes32 key = ServiceOperator._getKey(service, operator);
+        return RegistrationStatus(uint8(registrationStatus[key].upperLookup(timestamp)));
+    }
+
+    /**
+     * @dev Set the registration status for a service-operator pair.
+     * @param status RegistrationStatus member.
+     * @param service address of the service.
+     * @param operator address of the operator.
+     * Calculate the hash of service operator pair on the go.
+     * Uses more gas.
+     */
+    function _setRegistrationStatus(RegistrationStatus status, address service, address operator) internal {
+        bytes32 key = ServiceOperator._getKey(service, operator);
         registrationStatus[key].push(uint32(block.timestamp), uint224(uint8(status)));
+
+        emit RegistrationStatusUpdated(service, operator, status);
+    }
+
+    /**
+     * @dev Set the registration status for a service-operator pair.
+     * @param status RegistrationStatus member.
+     * @param service address of the service.
+     * @param operator address of the operator.
+     * Recommended to use for cases where key is already calculated before calling the function.
+     * Saves gas for hash computation.
+     */
+    function _setRegistrationStatus(RegistrationStatus status, address service, address operator, bytes32 key)
+        internal
+    {
+        registrationStatus[key].push(uint32(block.timestamp), uint224(uint8(status)));
+
+        emit RegistrationStatusUpdated(service, operator, status);
     }
 
     /**
@@ -246,7 +284,7 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      * @return True if the address is registered as an operator, false otherwise.
      */
     function isOperator(address operator) public view returns (bool) {
-        return operators[operator];
+        return _operators[operator];
     }
 
     /**
@@ -255,6 +293,18 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      * @return True if the address is registered as a service, false otherwise.
      */
     function isService(address service) public view returns (bool) {
-        return services[service];
+        return _services[service];
+    }
+}
+
+library ServiceOperator {
+    /**
+     * @dev Hash the service and operator addresses to create a unique key for the `registrationStatus` map.
+     * @param service address of the service.
+     * @param operator address of the operator.
+     * returns the hash (bytes32)
+     */
+    function _getKey(address service, address operator) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(service, operator));
     }
 }
