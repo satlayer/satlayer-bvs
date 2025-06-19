@@ -1,6 +1,6 @@
-# BVS Docs
+# SatLayer Developer Docs
 
-Developer docs for SatLayer.
+Developer docs for SatLayer, for developers and operators running Bitcoin Validated Services.
 
 ## How are the docs organized?
 

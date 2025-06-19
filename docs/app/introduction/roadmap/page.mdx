@@ -1,0 +1,29 @@
+---
+sidebarTitle: Roadmap
+---
+
+import { Callout } from "nextra/components";
+
+# Roadmap
+
+## Phase I
+
+In Phase I, SatLayer will enable users to deposit Bitcoin assets and LSTs to vaults on Babylon Genesis.
+These assets will accrue SatLayer rewards similarly as SatLayer deposit contracts on other chains.
+This stage purely functions as a signalling apparatus for support for the SatLayer protocol.
+
+## Phase II
+
+In Phase II, SatLayer will expand to include the following features:
+
+- Operators can create vaults via the `vault-factory`
+- Bitcoin Validated Services (BVSs) can register to vaults and get stake delegated to them
+- Slashing enabled over the operators which have delegated stake to a particular BVS using a simple quorum-based model
+- Tokenizing Babylon Genesis vaults such that receipt tokens can be issued
+
+## Phase III
+
+In Phase III, SatLayer will enable more slashing modalities, moving closer towards fully programmable slashability of
+Bitcoin collateral. It will also enable more flexible movement of slashed funds, such as capture of slashed funds into
+a pot which is controllable by unslashed validators. Operators could then vote to redistribute slashed funds over the
+remaining set of operators or use those funds for some protocol-specific function (i.e. insurance payout).
