@@ -60,7 +60,7 @@ ensuring operators and stakers receive their proportional share of premiums coll
 The API service acts as a gateway to on-chain contract communications.
 It provides methods to interact with several SatLayer core contracts.
 Through this service, the system can access the Vault Bank for managing staked assets,
-the  for handling slashing requests, and the Rewards contract for distributing rewards to stakers.
+the Router for handling slashing requests, and the Rewards contract for distributing rewards to stakers.
 This abstraction layer simplifies interactions with the blockchain.
 
 ## Policy Lifecycle
