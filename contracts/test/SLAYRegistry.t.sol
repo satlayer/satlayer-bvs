@@ -9,8 +9,6 @@ import {SLAYRouter} from "../src/SLAYRouter.sol";
 import {EmptyImpl} from "../src/EmptyImpl.sol";
 
 contract SLAYRegistryTest is Test {
-    // --- State Variables ---
-
     SLAYRegistry public registry;
     SLAYRouter public router;
 
@@ -18,8 +16,6 @@ contract SLAYRegistryTest is Test {
     address public service;
     address public operator;
     address public anotherUser;
-
-    // --- Setup ---
 
     /**
      * @dev Sets up the test environment.
@@ -34,7 +30,9 @@ contract SLAYRegistryTest is Test {
      * 6. Initialize the final Registry and Router contracts through their proxies.
      */
     function setUp() public {
-        // --- Initialize addresses ---
+        /**
+         * --- Initialize addresses ---
+         */
         owner = makeAddr("owner");
         service = makeAddr("service");
         operator = makeAddr("operator");
@@ -42,10 +40,14 @@ contract SLAYRegistryTest is Test {
 
         vm.prank(owner);
 
-        // Deploy Empty Implementation ---
+        /**
+         * Deploy Empty Implementation
+         */
         EmptyImpl emptyImpl = new EmptyImpl();
 
-        // Deploy and Initialize Proxies with EmptyImpl ---
+        /**
+         * Deploy and Initialize Proxies with EmptyImpl
+         */
         bytes memory emptyImplInitData = abi.encodeWithSelector(EmptyImpl.initialize.selector, owner);
 
         ERC1967Proxy registryProxy = new ERC1967Proxy(address(emptyImpl), emptyImplInitData);
@@ -54,25 +56,32 @@ contract SLAYRegistryTest is Test {
         ERC1967Proxy routerProxy = new ERC1967Proxy(address(emptyImpl), emptyImplInitData);
         router = SLAYRouter(address(routerProxy));
 
-        // Deploy Logic Contracts with cyclic dependency ---
+        /**
+         * Deploy Logic Contracts with cyclic dependency
+         */
         SLAYRouter routerLogic = new SLAYRouter(registry);
         SLAYRegistry registryLogic = new SLAYRegistry(router);
 
-        // Upgrade Proxies to Logic Contracts ---
+        /**
+         * Upgrade Proxies to Logic Contracts
+         */
         vm.prank(owner);
         registry.upgradeToAndCall(address(registryLogic), "");
         vm.prank(owner);
         router.upgradeToAndCall(address(routerLogic), "");
 
-        // Initialize Logic Contracts ---
+        /**
+         * Initialize Logic Contracts
+         */
         vm.prank(owner);
         registry.initialize();
         vm.prank(owner);
         router.initialize();
     }
 
-    // --- Test Registration Functions ---
-
+    /**
+     * --- Test Registration Functions ---
+     */
     function test_RegisterAsService() public {
         vm.prank(service);
         vm.expectEmit(true, true, true, true);
@@ -107,8 +116,9 @@ contract SLAYRegistryTest is Test {
         registry.registerAsOperator("operator_uri_2", "Operator X2");
     }
 
-    // --- Test Registration Flow ---
-
+    /**
+     * --- Test Registration Flow ---
+     */
     function _registerServiceAndOperator() internal {
         vm.prank(service);
         registry.registerAsService("service_uri", "Service A");
@@ -125,7 +135,9 @@ contract SLAYRegistryTest is Test {
         _registerServiceAndOperator();
         bytes32 key = registry._getKey(service, operator);
 
-        // --- Step 1: Service registers operator ---
+        /**
+         * --- Step 1: Service registers operator ---
+         */
         vm.prank(service);
         registry.registerOperatorToService(operator);
 
@@ -135,7 +147,9 @@ contract SLAYRegistryTest is Test {
             "Status should be ServiceRegistered"
         );
 
-        // --- Step 2: Operator accept and register to the service ---
+        /**
+         * --- Step 2: Operator accept and register to the service ---
+         */
         vm.prank(operator);
         registry.registerServiceToOperator(service);
         assertEq(
@@ -154,7 +168,9 @@ contract SLAYRegistryTest is Test {
         _registerServiceAndOperator();
         bytes32 key = registry._getKey(service, operator);
 
-        // --- Step 1: Operator registers service ---
+        /**
+         * --- Step 1: Operator registers service ---
+         */
         vm.prank(operator);
         vm.expectEmit(true, true, true, true);
         emit SLAYRegistry.RegistrationStatusUpdated(
@@ -168,7 +184,9 @@ contract SLAYRegistryTest is Test {
             "Status should be OperatorRegistered"
         );
 
-        // -- Step 2: Service accept and register operator
+        /**
+         * -- Step 2: Service accept and register operator
+         */
         vm.prank(service);
         registry.registerOperatorToService(operator);
 
@@ -179,14 +197,13 @@ contract SLAYRegistryTest is Test {
         );
     }
 
-    // --- Test Deregistration Functions ---
-
+    /**
+     * --- Test Deregistration Functions ---
+     */
     function test_DeregisterOperatorFromService() public {
-        // First, complete registration
         test_FullFlow_ServiceInitiatesRegistration();
         bytes32 key = registry._getKey(service, operator);
 
-        // Now, deregister
         vm.prank(service);
         registry.deregisterOperatorFromService(operator);
 
