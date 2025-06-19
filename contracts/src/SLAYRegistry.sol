@@ -21,7 +21,7 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      * This mean both service and operator has to register to pair with each other
      * See [`RegistrationStatus`] enum for more information
      */
-    mapping(bytes32 service_operator_hash => Checkpoints.Trace224) private registration_status;
+    mapping(bytes32 serviceOperatorHash => Checkpoints.Trace224) private registrationStatus;
 
     enum RegistrationStatus {
         /**
@@ -203,21 +203,21 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     }
 
     /**
-     * @dev Hash the service and operator addresses to create a unique key for the registration_status map.
+     * @dev Hash the service and operator addresses to create a unique key for the `registrationStatus` map.
      */
     function _getKey(address service, address operator) public pure returns (bytes32) {
         return keccak256(abi.encodePacked(service, operator));
     }
 
     /**
-     * @dev Get the registration_status for a given service-operator pair at the latest checkpoint.
+     * @dev Get the `registrationStatus` for a given service-operator pair at the latest checkpoint.
      * @param key The hash of the service and operator addresses. See `_getKey()`.
      * Returns the latest registration status as an enum value.
      */
     function getLatestRegistrationStatus(bytes32 key) public view returns (RegistrationStatus) {
         // checkpoint.latest() returns 0 on null cases, that nicely fit into
         // RegistrationStatus.Inactive being 0
-        return RegistrationStatus(uint8(registration_status[key].latest()));
+        return RegistrationStatus(uint8(registrationStatus[key].latest()));
     }
 
     /**
@@ -227,7 +227,7 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      * Returns the registration status as an enum value.
      */
     function getRegistrationStatusAt(bytes32 key, uint32 timestamp) public view returns (RegistrationStatus) {
-        return RegistrationStatus(uint8(registration_status[key].upperLookup(timestamp)));
+        return RegistrationStatus(uint8(registrationStatus[key].upperLookup(timestamp)));
     }
 
     /**
@@ -237,7 +237,7 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      * @param status The new registration status to set.
      */
     function setRegistrationStatus(bytes32 key, RegistrationStatus status) internal {
-        registration_status[key].push(uint32(block.timestamp), uint224(uint8(status)));
+        registrationStatus[key].push(uint32(block.timestamp), uint224(uint8(status)));
     }
 
     /**
