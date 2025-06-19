@@ -18,8 +18,8 @@ examples/*/*/target/
 examples/*/*/artifacts/
 examples/*/*/schema/
 docs/public/_pagefind/
-docs/app/**/*.md
-docs/app/**/*.mdx
+*.md
+*.mdx
 contracts/lib/
 contracts/broadcast/*/*/dry-run/
 contracts/out/
