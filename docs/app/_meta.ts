@@ -1,11 +1,18 @@
 import type { MetaRecord } from "nextra";
 
 const meta: MetaRecord = {
+  _I: {
+    type: "separator",
+    title: "Introduction",
+  },
+  index: {},
+  introduction: {
+    display: "children",
+  },
   _G: {
     type: "separator",
     title: "Getting Started",
   },
-  index: {},
   "getting-started": {
     display: "children",
   },
