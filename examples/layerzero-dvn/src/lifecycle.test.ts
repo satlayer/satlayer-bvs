@@ -174,11 +174,11 @@ test("lifecycle of sending message from ETH -> Optimism using custom DVN + BVS",
 
   // ========== Deploy DVN and SimpleOApp.sol contracts on ETH and OP chain ==========
 
-  // deploy DVNApp contract on ETH node
+  // deploy CustomDVN contract on ETH node
   let deployDvnResEth = await ethNodeStarted.deployContract({
     abi: customDVN.abi,
     bytecode: customDVN.bytecode.object as unknown as `0x${string}`,
-    salt: "dvnapp",
+    salt: "customdvn",
     constructorArgs: [
       ethLzContracts.eid,
       dvnEthId,
@@ -190,11 +190,11 @@ test("lifecycle of sending message from ETH -> Optimism using custom DVN + BVS",
   let dvnEthContractAddress = deployDvnResEth.contractAddress;
   let dvnEthContract = deployDvnResEth.contract;
 
-  // deploy DVNApp contract on Optimism node
+  // deploy CustomDVN contract on Optimism node
   let deployDvnResOp = await opNodeStarted.deployContract({
     abi: customDVN.abi,
     bytecode: customDVN.bytecode.object as unknown as `0x${string}`,
-    salt: "dvnapp",
+    salt: "customdvn",
     constructorArgs: [
       opLzContracts.eid,
       dvnOpId,
