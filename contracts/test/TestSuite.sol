@@ -64,7 +64,20 @@ contract TestSuite is Test {
      */
     function newVault(string memory _name, string memory _symbol, uint8 _decimals) public virtual returns (SLAYVault) {
         MockERC20 underlying = new MockERC20(_name, _symbol, _decimals);
-        address proxy = vaultFactory.create(underlying);
+        address proxy = vaultFactory.create(underlying, 7 days);
+        return SLAYVault(proxy);
+    }
+
+    /**
+     * @dev to specify new vault with withdrawal delay
+     */
+    function newVault(string memory _name, string memory _symbol, uint8 _decimals, uint256 withdrawalDelay)
+        public
+        virtual
+        returns (SLAYVault)
+    {
+        MockERC20 underlying = new MockERC20(_name, _symbol, _decimals);
+        address proxy = vaultFactory.create(underlying, withdrawalDelay);
         return SLAYVault(proxy);
     }
 }

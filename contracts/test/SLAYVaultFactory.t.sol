@@ -13,7 +13,7 @@ contract SLAYVaultTest is Test, TestSuite {
 
         address operator = vm.randomAddress();
         vm.startPrank(operator);
-        address proxy = vaultFactory.create(underlying);
+        address proxy = vaultFactory.create(underlying, 7 days);
         vm.stopPrank();
 
         SLAYVault vault = SLAYVault(proxy);
@@ -28,7 +28,7 @@ contract SLAYVaultTest is Test, TestSuite {
 
         address operator = vm.randomAddress();
         vm.startPrank(operator);
-        address proxy = vaultFactory.create(underlying);
+        address proxy = vaultFactory.create(underlying, 7 days);
         vm.stopPrank();
 
         SLAYVault vault = SLAYVault(proxy);
@@ -44,7 +44,7 @@ contract SLAYVaultTest is Test, TestSuite {
         address operator = vm.randomAddress();
 
         vm.startPrank(owner);
-        address proxy = vaultFactory.create(underlying, operator, "Custom Name", "Custom Symbol");
+        address proxy = vaultFactory.create(underlying, operator, "Custom Name", "Custom Symbol", 7 days);
         vm.stopPrank();
 
         SLAYVault vault = SLAYVault(proxy);
@@ -59,12 +59,12 @@ contract SLAYVaultTest is Test, TestSuite {
 
         address operator = vm.randomAddress();
         vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, address(this)));
-        vaultFactory.create(underlying, operator, "Custom Name", "Custom Symbol");
+        vaultFactory.create(underlying, operator, "Custom Name", "Custom Symbol", 7 days);
 
         vm.startPrank(operator);
         vm.expectRevert(
             abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, address(operator))
         );
-        vaultFactory.create(underlying, operator, "Name", "Symbol");
+        vaultFactory.create(underlying, operator, "Name", "Symbol", 7 days);
     }
 }
