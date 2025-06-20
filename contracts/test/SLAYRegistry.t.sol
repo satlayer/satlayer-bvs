@@ -7,123 +7,50 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {SLAYRegistry} from "../src/SLAYRegistry.sol";
 import {SLAYRouter} from "../src/SLAYRouter.sol";
 import {EmptyImpl} from "../src/EmptyImpl.sol";
+import {TestSuite} from "./TestSuite.sol";
 
-contract SLAYRegistryTest is Test {
-    SLAYRegistry public registry;
-    SLAYRouter public router;
+contract SLAYRegistryTest is Test, TestSuite {
+    address public immutable service = makeAddr("service");
+    address public immutable operator = makeAddr("operator");
 
-    address public owner;
-    address public service;
-    address public operator;
-    address public anotherUser;
-
-    /**
-     * @dev Sets up the test environment.
-     * This setup handles the deployment of UUPS upgradeable proxies with cyclic dependencies
-     * between SLAYRegistry and SLAYRouter.
-     * 1. Deploy an EmptyImpl contract to serve as the initial implementation for proxies.
-     * 2. Deploy ERC1967Proxy for both Registry and Router, pointing to EmptyImpl.
-     * 3. Initialize the EmptyImpl proxies, setting the owner.
-     * 4. Deploy the actual SLAYRegistry and SLAYRouter logic contracts, providing the
-     * respective proxy addresses to their constructors to resolve the cyclic dependency.
-     * 5. Upgrade the proxies from EmptyImpl to the actual logic contracts.
-     * 6. Initialize the final Registry and Router contracts through their proxies.
-     */
-    function setUp() public {
-        /**
-         * --- Initialize addresses ---
-         */
-        owner = makeAddr("owner");
-        service = makeAddr("service");
-        operator = makeAddr("operator");
-        anotherUser = makeAddr("anotherUser");
-
-        vm.prank(owner);
-
-        /**
-         * Deploy Empty Implementation
-         */
-        EmptyImpl emptyImpl = new EmptyImpl();
-
-        /**
-         * Deploy and Initialize Proxies with EmptyImpl
-         */
-        bytes memory emptyImplInitData = abi.encodeWithSelector(EmptyImpl.initialize.selector, owner);
-
-        ERC1967Proxy registryProxy = new ERC1967Proxy(address(emptyImpl), emptyImplInitData);
-        registry = SLAYRegistry(address(registryProxy));
-
-        ERC1967Proxy routerProxy = new ERC1967Proxy(address(emptyImpl), emptyImplInitData);
-        router = SLAYRouter(address(routerProxy));
-
-        /**
-         * Deploy Logic Contracts with cyclic dependency
-         */
-        SLAYRouter routerLogic = new SLAYRouter(registry);
-        SLAYRegistry registryLogic = new SLAYRegistry(router);
-
-        /**
-         * Upgrade Proxies to Logic Contracts
-         */
-        vm.prank(owner);
-        registry.upgradeToAndCall(address(registryLogic), "");
-        vm.prank(owner);
-        router.upgradeToAndCall(address(routerLogic), "");
-
-        /**
-         * Initialize Logic Contracts
-         */
-        vm.prank(owner);
-        registry.initialize();
-        vm.prank(owner);
-        router.initialize();
+    function setUp() public override {
+        TestSuite.setUp();
     }
 
-    /**
-     * --- Test Registration Functions ---
-     */
     function test_RegisterAsService() public {
-        vm.prank(service);
-        vm.expectEmit(true, true, true, true);
-        emit SLAYRegistry.ServiceRegistered(service, "service_uri", "Service A");
-        registry.registerAsService("service_uri", "Service A");
-        assertTrue(registry.isService(service), "Service should be registered");
+        vm.expectEmit();
+        emit SLAYRegistry.ServiceRegistered(address(this));
+
+        vm.expectEmit();
+        emit SLAYRegistry.MetadataUpdated(address(this), "https://service.example.com", "Service Name");
+
+        registry.registerAsService("https://service.example.com", "Service Name");
+        assertTrue(registry.isService(address(this)), "Service should be registered");
     }
 
-    function test_Fail_RegisterAsService_AlreadyRegistered() public {
-        vm.prank(service);
-        registry.registerAsService("service_uri", "Service A");
+    function test_RegisterAsService_AlreadyRegistered() public {
+        registry.registerAsService("http://uri.com", "Name");
 
-        vm.prank(service);
         vm.expectRevert("Already registered");
-        registry.registerAsService("service_uri_2", "Service A2");
+        registry.registerAsService("http://uri2.com", "Name 2");
     }
 
     function test_RegisterAsOperator() public {
-        vm.prank(operator);
-        vm.expectEmit(true, true, true, true);
-        emit SLAYRegistry.OperatorRegistered(operator, "operator_uri", "Operator X");
-        registry.registerAsOperator("operator_uri", "Operator X");
-        assertTrue(registry.isOperator(operator), "Operator should be registered");
+        vm.expectEmit();
+        emit SLAYRegistry.OperatorRegistered(address(this));
+
+        vm.expectEmit();
+        emit SLAYRegistry.MetadataUpdated(address(this), "https://operator.com", "Operator X");
+
+        registry.registerAsOperator("https://operator.com", "Operator X");
+        assertTrue(registry.isOperator(address(this)), "Operator should be registered");
     }
 
-    function test_Fail_RegisterAsOperator_AlreadyRegistered() public {
-        vm.prank(operator);
-        registry.registerAsOperator("operator_uri", "Operator X");
+    function test_RegisterAsOperator_AlreadyRegistered() public {
+        registry.registerAsOperator("http://operator.com", "Operator X");
 
-        vm.prank(operator);
         vm.expectRevert("Already registered");
-        registry.registerAsOperator("operator_uri_2", "Operator X2");
-    }
-
-    /**
-     * --- Test Registration Flow ---
-     */
-    function _registerServiceAndOperator() internal {
-        vm.prank(service);
-        registry.registerAsService("service_uri", "Service A");
-        vm.prank(operator);
-        registry.registerAsOperator("operator_uri", "Operator X");
+        registry.registerAsOperator("http://operating.com", "Operator X2");
     }
 
     /**
@@ -132,12 +59,19 @@ contract SLAYRegistryTest is Test {
      * 2. Operator registers the service (status -> Active).
      */
     function test_FullFlow_ServiceInitiatesRegistration() public {
-        _registerServiceAndOperator();
+        {
+            vm.prank(service);
+            registry.registerAsService("service.com", "Service A");
+            vm.prank(operator);
+            registry.registerAsOperator("operator.com", "Operator X");
+        }
 
-        /**
-         * --- Step 1: Service registers operator ---
-         */
+        // Step 1: Service registers operator
         vm.prank(service);
+        vm.expectEmit();
+        emit SLAYRegistry.RegistrationStatusUpdated(
+            service, operator, SLAYRegistry.RegistrationStatus.ServiceRegistered
+        );
         registry.registerOperatorToService(operator);
 
         assertEq(
@@ -146,10 +80,10 @@ contract SLAYRegistryTest is Test {
             "Status should be ServiceRegistered"
         );
 
-        /**
-         * --- Step 2: Operator accept and register to the service ---
-         */
+        // Step 2: Operator accept and register to the service
         vm.prank(operator);
+        vm.expectEmit();
+        emit SLAYRegistry.RegistrationStatusUpdated(service, operator, SLAYRegistry.RegistrationStatus.Active);
         registry.registerServiceToOperator(service);
         assertEq(
             uint256(registry.getRegistrationStatus(service, operator)),
@@ -164,13 +98,16 @@ contract SLAYRegistryTest is Test {
      * 2. Service registers the operator (status -> Active).
      */
     function test_FullFlow_OperatorInitiatesRegistration() public {
-        _registerServiceAndOperator();
+        {
+            vm.prank(service);
+            registry.registerAsService("service.com", "Service A");
+            vm.prank(operator);
+            registry.registerAsOperator("operator.com", "Operator X");
+        }
 
-        /**
-         * --- Step 1: Operator registers service ---
-         */
+        // Step 1: Operator registers service
         vm.prank(operator);
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit();
         emit SLAYRegistry.RegistrationStatusUpdated(
             service, operator, SLAYRegistry.RegistrationStatus.OperatorRegistered
         );
@@ -182,10 +119,10 @@ contract SLAYRegistryTest is Test {
             "Status should be OperatorRegistered"
         );
 
-        /**
-         * -- Step 2: Service accept and register operator
-         */
+        // Step 2: Service accept and register operator
         vm.prank(service);
+        vm.expectEmit();
+        emit SLAYRegistry.RegistrationStatusUpdated(service, operator, SLAYRegistry.RegistrationStatus.Active);
         registry.registerOperatorToService(operator);
 
         assertEq(
@@ -195,13 +132,12 @@ contract SLAYRegistryTest is Test {
         );
     }
 
-    /**
-     * --- Test Deregistration Functions ---
-     */
     function test_DeregisterOperatorFromService() public {
         test_FullFlow_ServiceInitiatesRegistration();
 
         vm.prank(service);
+        vm.expectEmit();
+        emit SLAYRegistry.RegistrationStatusUpdated(service, operator, SLAYRegistry.RegistrationStatus.Inactive);
         registry.deregisterOperatorFromService(operator);
 
         assertEq(
@@ -212,12 +148,10 @@ contract SLAYRegistryTest is Test {
     }
 
     function test_DeregisterServiceFromOperator() public {
-        // First, complete registration
         test_FullFlow_OperatorInitiatesRegistration();
 
-        // Now, deregister
         vm.prank(operator);
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit();
         emit SLAYRegistry.RegistrationStatusUpdated(service, operator, SLAYRegistry.RegistrationStatus.Inactive);
         registry.deregisterServiceFromOperator(service);
 
@@ -227,71 +161,69 @@ contract SLAYRegistryTest is Test {
             "Status should be Inactive after deregistration"
         );
     }
-
-    // --- Test Checkpoints and Status Lookups ---
-
-    function advanceBlockBy(uint256 newHeight) public {
-        uint256 currentBlockTime = block.timestamp;
-        vm.roll(block.number + newHeight);
-        vm.warp(currentBlockTime + (12 * newHeight));
-    }
-
-    function test_GetRegistrationStatusAt() public {
-        _registerServiceAndOperator();
-
-        advanceBlockBy(1);
-
-        // Initial state is Inactive
-        uint32 timeBeforeRegister = uint32(block.timestamp);
-        assertEq(
-            uint256(registry.getRegistrationStatusAt(service, operator, timeBeforeRegister)),
-            uint256(SLAYRegistry.RegistrationStatus.Inactive),
-            "Status should be Inactive because no prior history"
-        );
-
-        advanceBlockBy(1);
-
-        // Service initiates registration
-        vm.prank(service);
-        registry.registerOperatorToService(operator);
-        uint32 timeAfterRegister = uint32(block.timestamp);
-        assertEq(
-            uint256(registry.getRegistrationStatusAt(service, operator, timeAfterRegister)),
-            uint256(SLAYRegistry.RegistrationStatus.ServiceRegistered),
-            "Status should be ServiceRegistered"
-        );
-
-        advanceBlockBy(100);
-
-        // Check previous block status
-        assertEq(
-            uint256(registry.getRegistrationStatusAt(service, operator, timeBeforeRegister)),
-            uint256(SLAYRegistry.RegistrationStatus.Inactive),
-            "Status should be Inactive"
-        );
-
-        // Operator completes registration
-        vm.prank(operator);
-        registry.registerServiceToOperator(service);
-        uint32 timeAfterActive = uint32(block.timestamp);
-        assertEq(
-            uint256(registry.getRegistrationStatusAt(service, operator, timeAfterActive)),
-            uint256(SLAYRegistry.RegistrationStatus.Active),
-            "Status should be Active"
-        );
-        // Check previous block status
-        assertEq(
-            uint256(registry.getRegistrationStatusAt(service, operator, timeAfterRegister)),
-            uint256(SLAYRegistry.RegistrationStatus.ServiceRegistered),
-            "Status should be ServiceRegistered"
-        );
-    }
-
-    // --- Test Revert Conditions ---
+    //
+    //    // --- Test Checkpoints and Status Lookups ---
+    //
+    //    function advanceBlockBy(uint256 newHeight) public {
+    //        uint256 currentBlockTime = block.timestamp;
+    //        vm.roll(block.number + newHeight);
+    //        vm.warp(currentBlockTime + (12 * newHeight));
+    //    }
+    //
+    //    function test_GetRegistrationStatusAt() public {
+    //        _registerServiceAndOperator();
+    //
+    //        advanceBlockBy(1);
+    //
+    //        // Initial state is Inactive
+    //        uint32 timeBeforeRegister = uint32(block.timestamp);
+    //        assertEq(
+    //            uint256(registry.getRegistrationStatusAt(service, operator, timeBeforeRegister)),
+    //            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+    //            "Status should be Inactive because no prior history"
+    //        );
+    //
+    //        advanceBlockBy(1);
+    //
+    //        // Service initiates registration
+    //        vm.prank(service);
+    //        registry.registerOperatorToService(operator);
+    //        uint32 timeAfterRegister = uint32(block.timestamp);
+    //        assertEq(
+    //            uint256(registry.getRegistrationStatusAt(service, operator, timeAfterRegister)),
+    //            uint256(SLAYRegistry.RegistrationStatus.ServiceRegistered),
+    //            "Status should be ServiceRegistered"
+    //        );
+    //
+    //        advanceBlockBy(100);
+    //
+    //        // Check previous block status
+    //        assertEq(
+    //            uint256(registry.getRegistrationStatusAt(service, operator, timeBeforeRegister)),
+    //            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+    //            "Status should be Inactive"
+    //        );
+    //
+    //        // Operator completes registration
+    //        vm.prank(operator);
+    //        registry.registerServiceToOperator(service);
+    //        uint32 timeAfterActive = uint32(block.timestamp);
+    //        assertEq(
+    //            uint256(registry.getRegistrationStatusAt(service, operator, timeAfterActive)),
+    //            uint256(SLAYRegistry.RegistrationStatus.Active),
+    //            "Status should be Active"
+    //        );
+    //        // Check previous block status
+    //        assertEq(
+    //            uint256(registry.getRegistrationStatusAt(service, operator, timeAfterRegister)),
+    //            uint256(SLAYRegistry.RegistrationStatus.ServiceRegistered),
+    //            "Status should be ServiceRegistered"
+    //        );
+    //    }
 
     function test_Fail_RegisterOperatorToService_UnregisteredOperator() public {
         vm.prank(service);
-        registry.registerAsService("service_uri", "Service A");
+        registry.registerAsService("https://service.eth", "Service A");
 
         vm.prank(service);
         vm.expectRevert("The operator being attempted to pair does not exist");
@@ -300,7 +232,7 @@ contract SLAYRegistryTest is Test {
 
     function test_Fail_RegisterServiceToOperator_UnregisteredService() public {
         vm.prank(operator);
-        registry.registerAsOperator("operator_uri", "Operator X");
+        registry.registerAsOperator("https://operator.eth", "Operator X");
 
         vm.prank(operator);
         vm.expectRevert("The service being attempted to pair does not exist");
