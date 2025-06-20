@@ -54,12 +54,17 @@ contract SLAYVaultFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable,
      * @param asset The ERC20Metadata asset to be used in the vault.
      * @return The address of the newly created SLAYVault instance.
      */
-    function create(IERC20Metadata asset) public whenNotPaused onlyOperator returns (address) {
+    function create(IERC20Metadata asset, uint256 withdrawalDelay)
+        public
+        whenNotPaused
+        onlyOperator
+        returns (address)
+    {
         address operator = _msgSender();
         string memory name = string(abi.encodePacked("SatLayer ", asset.name()));
         string memory symbol = string(abi.encodePacked("sat", asset.symbol()));
 
-        bytes memory data = abi.encodeCall(SLAYVault.initialize, (asset, operator, name, symbol));
+        bytes memory data = abi.encodeCall(SLAYVault.initialize, (asset, operator, name, symbol, withdrawalDelay));
         BeaconProxy proxy = new BeaconProxy(beacon, data);
         return address(proxy);
     }
@@ -75,14 +80,14 @@ contract SLAYVaultFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable,
      * @param symbol The symbol of the tokenized vault token.
      * @return The address of the newly created SLAYVault instance.
      */
-    function create(IERC20 asset, address operator, string memory name, string memory symbol)
+    function create(IERC20 asset, address operator, string memory name, string memory symbol, uint256 withdrawalDelay)
         public
         whenNotPaused
         onlyOwner
         returns (address)
     {
         _checkOperator(operator);
-        bytes memory data = abi.encodeCall(SLAYVault.initialize, (asset, operator, name, symbol));
+        bytes memory data = abi.encodeCall(SLAYVault.initialize, (asset, operator, name, symbol, withdrawalDelay));
         BeaconProxy proxy = new BeaconProxy(beacon, data);
         return address(proxy);
     }
