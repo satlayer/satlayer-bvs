@@ -1,4 +1,4 @@
-# DVN Example
+# LayerZero DVN Example
 
 This example demonstrates how to build DVN + BVS integration with LayerZero for cross-chain packet verification
 and broadcasting leveraging on SatLayer's BVS ecosystem.
