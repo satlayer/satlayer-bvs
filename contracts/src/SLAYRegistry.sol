@@ -74,7 +74,7 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
 
     /**
      * @notice this modifier limit the sender to be registered service
-     * @param operator in addtional to sender be registered service
+     * @param operator in addition to sender be registered service
      * this param also require operator to be registered
      */
     modifier onlyServiceOperator(address operator) {
@@ -85,7 +85,7 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
 
     /**
      * @notice this modifier limit the sender to be registered operator
-     * @param service in additional to sender be registered operator
+     * @param service in addition to sender be registered operator
      * this param also require operator to be registered
      */
     modifier onlyOperatorService(address service) {
