@@ -73,8 +73,8 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /**
-     * @notice this modifier limit the sender to be registered service
-     * @param operator in addition to sender be registered service
+     * @notice this modifier limit the sender to be a registered service
+     * @param operator In addition to sender be registered service
      * this param also require operator to be registered
      */
     modifier onlyServiceOperator(address operator) {
@@ -84,8 +84,8 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     }
 
     /**
-     * @notice this modifier limit the sender to be registered operator
-     * @param service in addition to sender be registered operator
+     * @notice this modifier limit the sender to be a registered operator
+     * @param service In addition to sender be registered operator
      * this param also require operator to be registered
      */
     modifier onlyOperatorService(address service) {
