@@ -161,65 +161,115 @@ contract SLAYRegistryTest is Test, TestSuite {
             "Status should be Inactive after deregistration"
         );
     }
-    //
-    //    // --- Test Checkpoints and Status Lookups ---
-    //
-    //    function advanceBlockBy(uint256 newHeight) public {
-    //        uint256 currentBlockTime = block.timestamp;
-    //        vm.roll(block.number + newHeight);
-    //        vm.warp(currentBlockTime + (12 * newHeight));
-    //    }
-    //
-    //    function test_GetRegistrationStatusAt() public {
-    //        _registerServiceAndOperator();
-    //
-    //        advanceBlockBy(1);
-    //
-    //        // Initial state is Inactive
-    //        uint32 timeBeforeRegister = uint32(block.timestamp);
-    //        assertEq(
-    //            uint256(registry.getRegistrationStatusAt(service, operator, timeBeforeRegister)),
-    //            uint256(SLAYRegistry.RegistrationStatus.Inactive),
-    //            "Status should be Inactive because no prior history"
-    //        );
-    //
-    //        advanceBlockBy(1);
-    //
-    //        // Service initiates registration
-    //        vm.prank(service);
-    //        registry.registerOperatorToService(operator);
-    //        uint32 timeAfterRegister = uint32(block.timestamp);
-    //        assertEq(
-    //            uint256(registry.getRegistrationStatusAt(service, operator, timeAfterRegister)),
-    //            uint256(SLAYRegistry.RegistrationStatus.ServiceRegistered),
-    //            "Status should be ServiceRegistered"
-    //        );
-    //
-    //        advanceBlockBy(100);
-    //
-    //        // Check previous block status
-    //        assertEq(
-    //            uint256(registry.getRegistrationStatusAt(service, operator, timeBeforeRegister)),
-    //            uint256(SLAYRegistry.RegistrationStatus.Inactive),
-    //            "Status should be Inactive"
-    //        );
-    //
-    //        // Operator completes registration
-    //        vm.prank(operator);
-    //        registry.registerServiceToOperator(service);
-    //        uint32 timeAfterActive = uint32(block.timestamp);
-    //        assertEq(
-    //            uint256(registry.getRegistrationStatusAt(service, operator, timeAfterActive)),
-    //            uint256(SLAYRegistry.RegistrationStatus.Active),
-    //            "Status should be Active"
-    //        );
-    //        // Check previous block status
-    //        assertEq(
-    //            uint256(registry.getRegistrationStatusAt(service, operator, timeAfterRegister)),
-    //            uint256(SLAYRegistry.RegistrationStatus.ServiceRegistered),
-    //            "Status should be ServiceRegistered"
-    //        );
-    //    }
+
+    function _advanceBlockBy(uint256 newHeight) internal {
+        vm.roll(block.number + newHeight);
+        vm.warp(block.timestamp + (12 * newHeight));
+    }
+
+    function test_GetRegistrationStatusAt() public {
+        {
+            vm.prank(service);
+            registry.registerAsService("service.com", "Service A");
+            vm.prank(operator);
+            registry.registerAsOperator("operator.com", "Operator X");
+        }
+
+        _advanceBlockBy(1);
+
+        // Initial state is Inactive
+        uint32 timeBeforeRegister = uint32(block.timestamp);
+        assertEq(
+            uint256(registry.getRegistrationStatusAt(service, operator, timeBeforeRegister)),
+            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+            "Status should be Inactive because no prior history"
+        );
+
+        // Inactive at current time
+        assertEq(
+            uint256(registry.getRegistrationStatus(service, operator)),
+            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+            "Status should be Inactive because no prior history"
+        );
+
+        _advanceBlockBy(1);
+
+        // Service initiates registration
+        vm.prank(service);
+        registry.registerOperatorToService(operator);
+        uint32 timeAfterRegister = uint32(block.timestamp);
+        assertEq(
+            uint256(registry.getRegistrationStatusAt(service, operator, timeBeforeRegister)),
+            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+            "Status should be Inactive prior to registration"
+        );
+        assertEq(
+            uint256(registry.getRegistrationStatusAt(service, operator, timeAfterRegister)),
+            uint256(SLAYRegistry.RegistrationStatus.ServiceRegistered),
+            "Status should be ServiceRegistered"
+        );
+        assertEq(
+            uint256(registry.getRegistrationStatus(service, operator)),
+            uint256(SLAYRegistry.RegistrationStatus.ServiceRegistered),
+            "Status should be ServiceRegistered at current time"
+        );
+
+        _advanceBlockBy(100);
+
+        // Check previous block status
+        assertEq(
+            uint256(registry.getRegistrationStatusAt(service, operator, timeBeforeRegister)),
+            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+            "Status should still be Inactive"
+        );
+
+        // Operator completes registration
+        vm.prank(operator);
+        registry.registerServiceToOperator(service);
+        uint32 timeAfterActive = uint32(block.timestamp);
+        assertEq(
+            uint256(registry.getRegistrationStatusAt(service, operator, timeAfterActive)),
+            uint256(SLAYRegistry.RegistrationStatus.Active),
+            "Status should be Active"
+        );
+        assertEq(
+            uint256(registry.getRegistrationStatus(service, operator)),
+            uint256(SLAYRegistry.RegistrationStatus.Active),
+            "Status should be Active at current time"
+        );
+
+        // Check all previous checkpoint
+        assertEq(
+            uint256(registry.getRegistrationStatusAt(service, operator, 0)),
+            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+            "Status should be Inactive at timestamp 0"
+        );
+        assertEq(
+            uint256(registry.getRegistrationStatusAt(service, operator, timeBeforeRegister)),
+            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+            "Status should be Inactive before registration"
+        );
+        assertEq(
+            uint256(registry.getRegistrationStatusAt(service, operator, timeAfterRegister)),
+            uint256(SLAYRegistry.RegistrationStatus.ServiceRegistered),
+            "Status should be ServiceRegistered after registration"
+        );
+        assertEq(
+            uint256(registry.getRegistrationStatusAt(service, operator, timeAfterActive)),
+            uint256(SLAYRegistry.RegistrationStatus.Active),
+            "Status should be Active after mutual registration"
+        );
+        assertEq(
+            uint256(registry.getRegistrationStatusAt(service, operator, uint32(block.timestamp + 1000000000))),
+            uint256(SLAYRegistry.RegistrationStatus.Active),
+            "Status should be Active in the future"
+        );
+        assertEq(
+            uint256(registry.getRegistrationStatus(service, operator)),
+            uint256(SLAYRegistry.RegistrationStatus.Active),
+            "Status should be Active at current time"
+        );
+    }
 
     function test_Fail_RegisterOperatorToService_UnregisteredOperator() public {
         registry.registerAsService("https://service.eth", "Service A");
