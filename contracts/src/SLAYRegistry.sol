@@ -21,7 +21,7 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      * This mean both service and operator has to register to pair with each other
      * See [`RegistrationStatus`] enum for more information
      */
-    mapping(bytes32 serviceOperatorHash => Checkpoints.Trace224) private registrationStatus;
+    mapping(bytes32 serviceOperatorHash => Checkpoints.Trace224) private _registrationStatus;
 
     enum RegistrationStatus {
         /**
@@ -72,13 +72,23 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
-    modifier onlyService(address operator) {
+    /**
+     * @notice this modifier limit the sender to be registered service
+     * @param operator in addtional to sender be registered service
+     * this param also require operator to be registered
+     */
+    modifier onlyServiceOperator(address operator) {
         require(_services[_msgSender()], "Only registered service can call this function");
         require(_operators[operator], "The operator being attempted to pair does not exist");
         _;
     }
 
-    modifier onlyOperator(address service) {
+    /**
+     * @notice this modifier limit the sender to be registered operator
+     * @param service in addtional to sender be registered operator
+     * this param also require operator to be registered
+     */
+    modifier onlyOperatorService(address service) {
         require(_operators[_msgSender()], "Only registered operator can call this function");
         require(_services[service], "The service being attempted to pair does not exist");
         _;
@@ -110,11 +120,12 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
 
     /**
      * @dev Register an operator to a service (_msgSender() is the service)
+     * @param operator address of the operator to pair.
      * Service must be registered via [`RegisterAsService()`].
      * If the operator has registered this service, the registration status will be set to [`RegistrationStatus.Active`] (1)
      * Else the registration status will be set to [`RegistrationStatus.ServiceRegistered`] (3)
      */
-    function registerOperatorToService(address operator) public onlyService(operator) {
+    function registerOperatorToService(address operator) public onlyServiceOperator(operator) {
         address service = _msgSender();
 
         bytes32 key = ServiceOperator._getKey(service, operator);
@@ -136,11 +147,12 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
 
     /**
      * @dev Deregister an operator from a service (_msgSender() is the service)
+     * @param operator address of the operator to opt out of linkage.
      * Service must be registered via [`RegisterAsService()`].
      * If the operator is not registered with this service, it will revert.
      * If the operator is registered with this service, it will set the registration status to [`RegistrationStatus.Inactive`] (0)
      */
-    function deregisterOperatorFromService(address operator) public onlyService(operator) {
+    function deregisterOperatorFromService(address operator) public onlyServiceOperator(operator) {
         address service = _msgSender();
         bytes32 key = ServiceOperator._getKey(service, operator);
         RegistrationStatus status = getRegistrationStatus(key);
@@ -154,11 +166,12 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
 
     /**
      * @dev Register a service to an operator (info.sender is the operator)
+     * @param service address of the service to pair
      * Operator must be registered with [`RegisterAsOperator()`]
      * If the service has registered this operator, the registration status will be set to [`RegistrationStatus::Active`] (1)
      * Else the registration status will be set to [`RegistrationStatus.OperatorRegistered`] (2)
      */
-    function registerServiceToOperator(address service) public onlyOperator(service) {
+    function registerServiceToOperator(address service) public onlyOperatorService(service) {
         address operator = _msgSender();
 
         bytes32 key = ServiceOperator._getKey(service, operator);
@@ -179,11 +192,12 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
 
     /**
      * @dev Deregister a service from an operator (info.sender is the operator)
+     * @param service address of the service to opt out of linkage.
      * Operator must be registered with [`RegisterAsOperator()`]
      * If the service is not registered to the operator, it will revert.
      * If the service is registered to the operator, it will set the registration status to [`RegistrationStatus.Inactive`] (0)
      */
-    function deregisterServiceFromOperator(address service) public onlyOperator(service) {
+    function deregisterServiceFromOperator(address service) public onlyOperatorService(service) {
         address operator = _msgSender();
 
         bytes32 key = ServiceOperator._getKey(service, operator);
@@ -206,7 +220,7 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     function getRegistrationStatus(bytes32 key) public view returns (RegistrationStatus) {
         // checkpoint.latest() returns 0 on null cases, that nicely fit into
         // RegistrationStatus.Inactive being 0
-        return RegistrationStatus(uint8(registrationStatus[key].latest()));
+        return RegistrationStatus(uint8(_registrationStatus[key].latest()));
     }
 
     /**
@@ -219,7 +233,7 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      */
     function getRegistrationStatus(address service, address operator) public view returns (RegistrationStatus) {
         bytes32 key = ServiceOperator._getKey(service, operator);
-        return RegistrationStatus(uint8(registrationStatus[key].latest()));
+        return RegistrationStatus(uint8(_registrationStatus[key].latest()));
     }
 
     /**
@@ -229,7 +243,7 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      * Returns the registration status as an enum value.
      */
     function getRegistrationStatusAt(bytes32 key, uint32 timestamp) public view returns (RegistrationStatus) {
-        return RegistrationStatus(uint8(registrationStatus[key].upperLookup(timestamp)));
+        return RegistrationStatus(uint8(_registrationStatus[key].upperLookup(timestamp)));
     }
 
     /**
@@ -244,7 +258,7 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         returns (RegistrationStatus)
     {
         bytes32 key = ServiceOperator._getKey(service, operator);
-        return RegistrationStatus(uint8(registrationStatus[key].upperLookup(timestamp)));
+        return RegistrationStatus(uint8(_registrationStatus[key].upperLookup(timestamp)));
     }
 
     /**
@@ -257,7 +271,7 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      */
     function _setRegistrationStatus(RegistrationStatus status, address service, address operator) internal {
         bytes32 key = ServiceOperator._getKey(service, operator);
-        registrationStatus[key].push(uint32(block.timestamp), uint224(uint8(status)));
+        _registrationStatus[key].push(uint32(block.timestamp), uint224(uint8(status)));
 
         emit RegistrationStatusUpdated(service, operator, status);
     }
@@ -273,7 +287,7 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     function _setRegistrationStatus(RegistrationStatus status, address service, address operator, bytes32 key)
         internal
     {
-        registrationStatus[key].push(uint32(block.timestamp), uint224(uint8(status)));
+        _registrationStatus[key].push(uint32(block.timestamp), uint224(uint8(status)));
 
         emit RegistrationStatusUpdated(service, operator, status);
     }
