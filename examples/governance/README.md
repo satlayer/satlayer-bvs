@@ -1,7 +1,7 @@
 # Overview
 
 This example demonstrates using social committee as governing body for BVS (bitcoin validated service) integrated with Satlayer (shared security provider).
-The service for the purpose of this example is simply a cw3, fixed membership committee that can be used to govern the BVS, regarding the following:
+The service for this example is simply a CW3, fixed membership committee that can be used to govern the BVS, regarding the following:
 
 - Slashing lifecycle
 
