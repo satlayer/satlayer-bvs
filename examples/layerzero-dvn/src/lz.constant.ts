@@ -10,6 +10,9 @@ export interface LZContracts {
   LZExecutor: `0x${string}`;
 }
 
+/**
+ * Stores the LayerZero contracts addresses for each chain.
+ */
 export const LZ_CONTRACTS: Record<ChainName, LZContracts> = {
   [ChainName.EthereumMainnet]: {
     eid: 30101,
