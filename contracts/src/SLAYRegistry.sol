@@ -43,6 +43,56 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     uint32 public constant DEFAULT_WITHDRAWAL_DELAY = 7 days;
 
     /**
+     * @dev Emitted when a service is registered.
+     */
+    event ServiceRegistered(address indexed service);
+
+    /**
+     * @dev Emitted when a operator is registered.
+     */
+    event OperatorRegistered(address indexed operator);
+
+    /**
+     * @dev Emitted when a service is registered with metadata.
+     * Name and URI are not validated or stored on-chain.
+     *
+     * @param provider The address of the service/operator provider.
+     * @param uri URI of the provider's project to display in the UI.
+     * @param name Name of the provider's project to display in the UI.
+     */
+    event MetadataUpdated(address indexed provider, string uri, string name);
+
+    /**
+     * @dev Emitted when a service-operator registration status is updated.
+     * @param service The address of the service.
+     * @param operator The address of the operator.
+     * @param status The new registration status.
+     */
+    event RegistrationStatusUpdated(address indexed service, address indexed operator, RegistrationStatus status);
+
+    event SlashingParameterUpdated(
+        address indexed service, address destination, uint16 maxBip, uint64 resolutionWindow
+    );
+
+    /**
+     * @dev Set the immutable SLAYRouter proxy address for the implementation.
+     * Cyclic params in constructor are possible as an EmptyImpl is used for an initial deployment,
+     * after which all the contracts are upgraded to their respective implementations with immutable proxy addresses.
+     *
+     * @custom:oz-upgrades-unsafe-allow constructor
+     */
+    constructor(SLAYRouter router_) {
+        router = router_;
+        _disableInitializers();
+    }
+
+    function initialize() public reinitializer(2) {
+        __Pausable_init();
+    }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+
+    /**
      * @dev Modifier to check if the provided account is a registered service.
      * Reverts with `ServiceNotFound` if the account is not registered as a service.
      */
@@ -60,6 +110,14 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     modifier onlyOperator(address account) {
         if (!_operators[account]) {
             revert OperatorNotFound(account);
+        }
+        _;
+    }
+
+    modifier onlyActivelyRegistered(address service, address operator) {
+        RegistrationStatus status = getRegistrationStatus(service, operator);
+        if (status != RegistrationStatus.Active) {
+            revert("RegistrationStatus not Active");
         }
         _;
     }
@@ -274,6 +332,75 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     /// @dev Unpauses the contract.
     function unpause() external onlyOwner {
         _unpause();
+    }
+
+    function enableSlashing(slashParameter calldata parameter) public onlyService(_msgSender()) {
+        require(parameter.maxBips < 10000, "Maximum Bips cannot be more than 10_000 (100%)");
+        require(parameter.maxBips > 0, "Minimum Bips cannot be less than zero");
+        address service = _msgSender();
+        _updateSlashingParameters(service, parameter.destination, parameter.maxBips, parameter.resolutionWindow);
+    }
+
+    function _updateSlashingParameters(address service, address destination, uint16 maxBips, uint64 resolutionWindow)
+        internal
+    {
+        _slashDestinations[service].push(uint32(block.timestamp), uint224(uint160(destination)));
+        _slashMaxBips[service].push(uint32(block.timestamp), uint224(maxBips));
+        _slashResolutionWindows[service].push(uint32(block.timestamp), uint224(resolutionWindow));
+        emit SlashingParameterUpdated(service, destination, maxBips, resolutionWindow);
+    }
+
+    function getSlashingParameter(address service) public view returns (slashParameter memory) {
+        address destination = address(uint160(_slashDestinations[service].latest()));
+        uint16 maxBip = uint16(_slashMaxBips[service].latest());
+        uint64 resolutionWindow = uint64(_slashMaxBips[service].latest());
+
+        return slashParameter({destination: destination, maxBips: maxBip, resolutionWindow: resolutionWindow});
+    }
+
+    function getSlashingParameterAt(address service, uint256 timestamp) public view returns (slashParameter memory) {
+        address destination = address(uint160(_slashDestinations[service].upperLookup(uint32(timestamp))));
+        uint16 maxBip = uint16(_slashMaxBips[service].upperLookup(uint32(timestamp)));
+        uint64 resolutionWindow = uint64(_slashMaxBips[service].upperLookup(uint32(timestamp)));
+
+        return slashParameter({destination: destination, maxBips: maxBip, resolutionWindow: resolutionWindow});
+    }
+
+    function slashingOptIn(address service)
+        public
+        onlyService(service)
+        onlyOperator(_msgSender())
+        onlyActivelyRegistered(service, _msgSender())
+    {
+        address operator = _msgSender();
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
+        _updateSlashingOptIns(key, true);
+    }
+
+    function _updateSlashingOptIns(bytes32 key, bool optIn) internal {
+        _slashingOptIns[key].push(uint32(block.timestamp), uint224(optIn ? 1 : 0));
+    }
+
+    function getSlashingOptIns(bytes32 key) public view returns (bool) {
+        bool optedIn = _slashingOptIns[key].latest() == 1 ? true : false;
+        return optedIn;
+    }
+
+    function getSlashingOptIns(address service, address operator) public view returns (bool) {
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
+        bool optedIn = _slashingOptIns[key].latest() == 1 ? true : false;
+        return optedIn;
+    }
+
+    function getSlashingOptInsAt(bytes32 key, uint256 timestamp) public view returns (bool) {
+        bool optedIn = (_slashingOptIns[key].upperLookup(uint32(timestamp))) == 1 ? true : false;
+        return optedIn;
+    }
+
+    function getSlashingOptInsAt(address service, address operator, uint256 timestamp) public view returns (bool) {
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
+        bool optedIn = (_slashingOptIns[key].upperLookup(uint32(timestamp))) == 1 ? true : false;
+        return optedIn;
     }
 }
 
