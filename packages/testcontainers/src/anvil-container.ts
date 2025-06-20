@@ -23,7 +23,7 @@ import {
   walletActions,
 } from "viem";
 import { generatePrivateKey, mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
-import { arbitrum, mainnet, optimism } from "viem/chains";
+import { mainnet, optimism } from "viem/chains";
 
 export type ChainInfo = {
   name: ChainName;
@@ -35,7 +35,6 @@ export type ChainInfo = {
 
 export enum ChainName {
   EthereumMainnet = "ethereum-mainnet",
-  ArbitrumMainnet = "arbitrum-mainnet",
   OptimismMainnet = "optimism-mainnet",
 }
 
@@ -52,13 +51,6 @@ const NAME_TO_CHAIN_INFO: Record<ChainName, ChainInfo> = {
     rpcEndpoint: "https://gateway.tenderly.co/public/mainnet",
     forkBlockNumber: 22637910,
     viemChain: mainnet,
-  },
-  [ChainName.ArbitrumMainnet]: {
-    name: ChainName.ArbitrumMainnet,
-    chainId: 42161,
-    rpcEndpoint: "https://arbitrum-one-rpc.publicnode.com",
-    forkBlockNumber: 344139440,
-    viemChain: arbitrum,
   },
   [ChainName.OptimismMainnet]: {
     name: ChainName.OptimismMainnet,

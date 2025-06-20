@@ -44,7 +44,7 @@ const dvnEthId = 1;
 const dvnOpId = 2;
 
 async function deployContract(cosmosClient: SigningCosmWasmClient, owner: string) {
-  const contractPath = require.resolve("@examples/dvn/src/bvs-contract/dist/contract.wasm");
+  const contractPath = require.resolve("@examples/layerzero-dvn/src/bvs-contract/dist/contract.wasm");
   const uploaded = await cosmosClient.upload(owner, await readFile(contractPath), "auto");
   const initMsg: InstantiateMsg = {
     registry: contracts.registry.address,

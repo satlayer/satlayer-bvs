@@ -1,5 +1,5 @@
 {
-  "name": "@examples/dvn",
+  "name": "@examples/layerzero-dvn",
   "private": true,
   "scripts": {
     "build": "pnpm run build:forge && pnpm run build:cargo && pnpm run build:schema",
