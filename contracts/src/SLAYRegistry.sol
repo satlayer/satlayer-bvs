@@ -82,6 +82,8 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
 
     /**
      * @dev Emitted when a service is registered with metadata.
+     * Name and URI are not validated or stored on-chain.
+     *
      * @param provider The address of the service/operator provider.
      * @param uri URI of the provider's project to display in the UI.
      * @param name Name of the provider's project to display in the UI.
@@ -174,6 +176,8 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      * @dev Update metadata for the service or operator.
      * This function can be called by both services and operators.
      * Emits a `MetadataUpdated` event with the new URI and name.
+     *
+     * Name and URI are not validated or stored on-chain.
      *
      * @param uri URI of the provider's project to display in the UI.
      * @param name Name of the provider's project to display in the UI.

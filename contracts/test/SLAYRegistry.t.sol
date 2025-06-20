@@ -222,20 +222,16 @@ contract SLAYRegistryTest is Test, TestSuite {
     //    }
 
     function test_Fail_RegisterOperatorToService_UnregisteredOperator() public {
-        vm.prank(service);
         registry.registerAsService("https://service.eth", "Service A");
 
-        vm.prank(service);
-        vm.expectRevert("The operator being attempted to pair does not exist");
+        vm.expectRevert(abi.encodeWithSelector(SLAYRegistry.OperatorNotFound.selector, address(operator)));
         registry.registerOperatorToService(operator);
     }
 
     function test_Fail_RegisterServiceToOperator_UnregisteredService() public {
-        vm.prank(operator);
         registry.registerAsOperator("https://operator.eth", "Operator X");
 
-        vm.prank(operator);
-        vm.expectRevert("The service being attempted to pair does not exist");
+        vm.expectRevert(abi.encodeWithSelector(SLAYRegistry.ServiceNotFound.selector, address(service)));
         registry.registerServiceToOperator(service);
     }
 
@@ -243,7 +239,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         test_FullFlow_ServiceInitiatesRegistration();
 
         vm.prank(service);
-        vm.expectRevert("Registration is already active");
+        vm.expectRevert("Already active");
         registry.registerOperatorToService(operator);
     }
 
@@ -251,7 +247,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         test_FullFlow_ServiceInitiatesRegistration();
 
         vm.prank(operator);
-        vm.expectRevert("Registration between operator and service is already active");
+        vm.expectRevert("Already active");
         registry.registerServiceToOperator(service);
     }
 }
