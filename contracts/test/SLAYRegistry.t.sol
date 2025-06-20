@@ -271,6 +271,16 @@ contract SLAYRegistryTest is Test, TestSuite {
         );
     }
 
+    function test_Fail_UnregisteredService() public {
+        vm.expectRevert(abi.encodeWithSelector(SLAYRegistry.ServiceNotFound.selector, address(this)));
+        registry.registerOperatorToService(operator);
+    }
+
+    function test_Fail_UnregisteredOperator() public {
+        vm.expectRevert(abi.encodeWithSelector(SLAYRegistry.OperatorNotFound.selector, address(this)));
+        registry.registerServiceToOperator(service);
+    }
+
     function test_Fail_RegisterOperatorToService_UnregisteredOperator() public {
         registry.registerAsService("https://service.eth", "Service A");
 

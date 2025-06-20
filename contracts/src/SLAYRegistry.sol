@@ -18,7 +18,13 @@ import {SLAYRouter} from "./SLAYRouter.sol";
 contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
     SLAYRouter public immutable router;
 
+    /**
+     * @dev mapping of registered services.
+     */
     mapping(address service => bool) private _services;
+    /**
+     * @dev mapping of registered operators.
+     */
     mapping(address operator => bool) private _operators;
 
     /**
@@ -47,6 +53,7 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         /**
          * Default state when neither the Operator nor the Service has registered,
          * or when either the Operator or Service has unregistered.
+         * `uint8(0)` is used to represent this state, the default value.
          */
         Inactive,
         /**
@@ -203,7 +210,7 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     function registerOperatorToService(address operator) external onlyService(_msgSender()) onlyOperator(operator) {
         address service = _msgSender();
 
-        bytes32 key = ServiceOperator._getKey(service, operator);
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
         RegistrationStatus status = _getRegistrationStatus(key);
 
         if (status == RegistrationStatus.Active) {
@@ -233,7 +240,7 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     {
         address service = _msgSender();
 
-        bytes32 key = ServiceOperator._getKey(service, operator);
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
         if (_getRegistrationStatus(key) == RegistrationStatus.Inactive) {
             revert("Already inactive");
         }
@@ -253,10 +260,10 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      * If the service has registered this service, the registration status will be set to `RegistrationStatus.Active`.
      * Else the registration status will be set to `RegistrationStatus.OperatorRegistered`.
      */
-    function registerServiceToOperator(address service) external onlyService(service) onlyOperator(_msgSender()) {
+    function registerServiceToOperator(address service) external onlyOperator(_msgSender()) onlyService(service) {
         address operator = _msgSender();
 
-        bytes32 key = ServiceOperator._getKey(service, operator);
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
         RegistrationStatus status = _getRegistrationStatus(key);
 
         if (status == RegistrationStatus.Active) {
@@ -279,10 +286,10 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      * @dev Deregister an service from a operator (the caller is the operator).
      * @param service address of the service to opt out of the relationship.
      */
-    function deregisterServiceFromOperator(address service) external onlyService(service) onlyOperator(_msgSender()) {
+    function deregisterServiceFromOperator(address service) external onlyOperator(_msgSender()) onlyService(service) {
         address operator = _msgSender();
 
-        bytes32 key = ServiceOperator._getKey(service, operator);
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
         if (_getRegistrationStatus(key) == RegistrationStatus.Inactive) {
             revert("Already inactive");
         }
@@ -298,7 +305,7 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      * @return RegistrationStatus The latest registration status for the service-operator pair.
      */
     function getRegistrationStatus(address service, address operator) public view returns (RegistrationStatus) {
-        bytes32 key = ServiceOperator._getKey(service, operator);
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
         return RegistrationStatus(uint8(_registrationStatus[key].latest()));
     }
 
@@ -313,7 +320,7 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         view
         returns (RegistrationStatus)
     {
-        bytes32 key = ServiceOperator._getKey(service, operator);
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
         return RegistrationStatus(uint8(_registrationStatus[key].upperLookup(timestamp)));
     }
 
@@ -356,7 +363,7 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     }
 }
 
-library ServiceOperator {
+library ServiceOperatorKey {
     /**
      * @dev Hash the service and operator addresses to create a unique key for the `registrationStatus` map.
      * @param service The address of the service.
