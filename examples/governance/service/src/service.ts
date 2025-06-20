@@ -100,7 +100,7 @@ async function createMerkleTree(distFilePath: string): Promise<string> {
  * and computes their rewards based on the APY.
  * The resulting distribution data is saved in a file named distribution.json
  * in the dist/bbn-test-5/{api.Service}/ustake directory.
- * For the simplicity of this example, the operator are not rewarded, if the operator hasn't staked any tokens.
+ * For the simplicity of this example, the operator is not rewarded, if the operator hasn't staked any tokens.
  *
  *
  * @param api - The API instance to interact with the blockchain
