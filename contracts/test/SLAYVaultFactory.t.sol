@@ -55,13 +55,13 @@ contract SLAYVaultFactoryTest is Test, TestSuite {
 
     function test_create_with_not_owner() public {
         vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, address(this)));
-        vaultFactory.create(underlying, operator, "Custom Name", "Custom Symbol");
+        vaultFactory.create(underlying, operator, "Custom Name", "Custom Symbol", 7 days);
 
         vm.startPrank(operator);
         vm.expectRevert(
             abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, address(operator))
         );
-        vaultFactory.create(underlying, operator, "Name", "Symbol");
+        vaultFactory.create(underlying, operator, "Name", "Symbol", 7 days);
     }
 
     function test_create_with_operator() public {
