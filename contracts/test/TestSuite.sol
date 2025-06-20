@@ -11,7 +11,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 
 /**
- * @dev set up all the contracts needed for testing.
+ * @dev To set up all the contracts needed for testing.
  */
 contract TestSuite is Test {
     address public owner = vm.randomAddress();
@@ -30,7 +30,7 @@ contract TestSuite is Test {
 
         SLAYVault vaultImpl = new SLAYVault(router, registry);
         address beacon = UnsafeUpgrades.deployBeacon(address(vaultImpl), owner);
-        SLAYVaultFactory factoryImpl = new SLAYVaultFactory(beacon);
+        SLAYVaultFactory factoryImpl = new SLAYVaultFactory(beacon, registry);
         vaultFactory = SLAYVaultFactory(
             UnsafeUpgrades.deployUUPSProxy(address(factoryImpl), abi.encodeCall(SLAYVaultFactory.initialize, (owner)))
         );
@@ -43,28 +43,5 @@ contract TestSuite is Test {
             address(registry), address(new SLAYRegistry(router)), abi.encodeCall(SLAYRegistry.initialize, ())
         );
         vm.stopPrank();
-    }
-
-    /**
-     * @dev Create a new SLAYVault instance for testing with default parameters.
-     * The vault will use a MockERC20 token with name "Token", symbol "TKN", and 18 decimals.
-     * The caller must be an operator.
-     * Use vm.startPrank() to set the operator before calling this function.
-     */
-    function newVault() public virtual returns (SLAYVault) {
-        return newVault("Token", "TKN", 18);
-    }
-
-    /**
-     * @dev Create a new SLAYVault instance for testing.
-     * Params _name, _symbol, and _decimals are used to create a MockERC20 token
-     * which serves as the underlying asset for the vault.
-     * The caller must be an operator.
-     * Use vm.startPrank() to set the operator before calling this function.
-     */
-    function newVault(string memory _name, string memory _symbol, uint8 _decimals) public virtual returns (SLAYVault) {
-        MockERC20 underlying = new MockERC20(_name, _symbol, _decimals);
-        address proxy = vaultFactory.create(underlying);
-        return SLAYVault(proxy);
     }
 }

@@ -7,15 +7,26 @@ import {Test, console} from "forge-std/Test.sol";
 import {TestSuite} from "./TestSuite.sol";
 
 contract SLAYVaultTest is Test, TestSuite {
+    MockERC20 public underlying = new MockERC20("Wrapped Bitcoin", "WBTC", 8);
+    address public immutable operator = makeAddr("Operator Y");
+
+    function setUp() public override {
+        TestSuite.setUp();
+
+        vm.startPrank(operator);
+        registry.registerAsOperator("https://example.com", "Operator Y");
+        vm.stopPrank();
+    }
+
     function test_whitelisted() public {
-        SLAYVault vault = newVault("Bitcoin", "BTC", 8);
+        vm.prank(operator);
+        SLAYVault vault = vaultFactory.create(underlying);
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
         assertTrue(router.whitelisted(address(vault)));
         vm.stopPrank();
 
-        MockERC20 underlying = MockERC20(vault.asset());
         address account = address(this);
         underlying.mint(account, 1000 * 10 ** vault.decimals());
         underlying.approve(address(vault), type(uint256).max);
@@ -24,9 +35,9 @@ contract SLAYVaultTest is Test, TestSuite {
     }
 
     function test_notWhitelisted() public {
-        SLAYVault vault = newVault();
+        vm.prank(operator);
+        SLAYVault vault = vaultFactory.create(underlying);
 
-        MockERC20 underlying = MockERC20(vault.asset());
         address account = address(this);
 
         underlying.mint(account, 1000 * 10 ** vault.decimals());
@@ -37,14 +48,14 @@ contract SLAYVaultTest is Test, TestSuite {
     }
 
     function test_paused() public {
-        SLAYVault vault = newVault();
+        vm.prank(operator);
+        SLAYVault vault = vaultFactory.create(underlying);
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
         router.pause();
         vm.stopPrank();
 
-        MockERC20 underlying = MockERC20(vault.asset());
         address account = address(this);
 
         underlying.mint(account, 1000 * 10 ** vault.decimals());
