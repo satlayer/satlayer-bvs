@@ -48,6 +48,22 @@ interface ISLAYRegistry {
     event WithdrawalDelayUpdated(address indexed operator, uint32 delay);
 
     /**
+     * @dev Emitted when {SlashParameter.Object} for a service is updated.
+     * @param service The address of the service
+     * @param destination The address at which slash collateral will be moved.
+     * @param maxMbips The maximum slashable amount in mbips.
+     * @param resolutionWindow An operator's refutable period in seconds in the event of slash.
+     */
+    event SlashParameterUpdated(address indexed service, address destination, uint32 maxMbips, uint32 resolutionWindow);
+
+    /**
+     * @dev Emitted when operator is opt into the slashing for particular service.
+     * @param service The address of the service.
+     * @param operator The address of the operator.
+     */
+    event SlashOptIn(address indexed service, address indexed operator);
+
+    /**
      * @dev Enum representing the registration status between a service and an operator.
      * The registration status can be one of the following:
      */
