@@ -60,7 +60,7 @@ pub enum ExecuteMsg {
 
     /// ExecuteMsg MigrateVault
     /// Migrate an existing vault to a new code id.
-    /// The `vault` is the address of the vault to migrate.
+    /// The `vault_address` is the address of the vault to migrate.
     /// The `vault_type` is the type of the vault to migrate.
     /// Note that this execute message assume setCodeId message has been called prior
     /// with new code id for the vault type.
