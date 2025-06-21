@@ -11,7 +11,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 
 /**
- * @dev To set up all the contracts needed for testing.
+ * @dev This test suite set up all the contracts needed for testing.
  */
 contract TestSuite is Test {
     address public owner = vm.randomAddress();
