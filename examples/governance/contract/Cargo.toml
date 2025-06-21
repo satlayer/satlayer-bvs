@@ -1,0 +1,39 @@
+[package]
+name = "governance-contract"
+version = "0.1.0"
+edition = "2021"
+
+exclude = ["contract.wasm", "hash.txt"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+library = []
+
+[dependencies]
+cosmwasm-schema = "2.2.2"
+cosmwasm-std = { version = "2.2.2", features = ["cosmwasm_2_0"] }
+cw-storage-plus = "2.0.0"
+cw2 = "2.0.0"
+schemars = "0.8.22"
+serde = { version = "1.0.218", default-features = false, features = ["derive"] }
+thiserror = { version = "1.0.69" }
+cw3 = { version = "2.0.0" }
+cw4 = { version = "2.0.0" }
+cw4-group = { version = "2.0.0" }
+cw3-fixed-multisig = { version = "2.0.0" }
+cw-utils = { version = "2.0.0" }
+
+bvs-library = { version = "2.0.1-main.170" }
+bvs-registry = { version = "2.0.1-main.170" }
+bvs-vault-router = { version = "2.0.1-main.170" }
+
+[dev-dependencies]
+[target."cfg(not(target_arch = \"wasm32\"))".dependencies]
+cw-multi-test = { version = "2.4.0", features = ["cosmwasm_2_0"] }
+bvs-multi-test = { version = "2.0.1-main.170" }
+bvs-vault-bank = { version = "2.0.1-main.170" }
+bvs-vault-cw20 = { version = "2.0.1-main.170" }
+bvs-vault-base = { version = "2.0.1-main.170" }
+bvs-guardrail = { version = "2.0.1-main.170" }
