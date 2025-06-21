@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
+import "./MockERC20.sol";
 import "../src/SLAYRouter.sol";
 import "../src/SLAYVault.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -36,7 +37,11 @@ contract SLAYRouterTest is Test, TestSuite {
     }
 
     function test_Whitelisted() public {
-        address vault = address(newVault());
+        vm.startPrank(makeAddr("Operator Y"));
+        registry.registerAsOperator("https://example.com", "Operator Y");
+
+        MockERC20 underlying = new MockERC20("Token", "TKN", 18);
+        address vault = address(vaultFactory.create(underlying));
         assertFalse(router.whitelisted(vault));
 
         vm.startPrank(owner);
