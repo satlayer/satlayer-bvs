@@ -45,6 +45,18 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      */
     mapping(bytes32 key => Checkpoints.Trace224) private _registrationStatus;
 
+    struct slashParameter {
+        address destination;
+        uint16 maxBips;
+        uint64 resolutionWindow;
+    }
+
+    mapping(address service => Checkpoints.Trace224) private _slashDestinations;
+    mapping(address service => Checkpoints.Trace224) private _slashMaxBips;
+    mapping(address service => Checkpoints.Trace224) private _slashResolutionWindows;
+
+    mapping(bytes32 key => Checkpoints.Trace224) private _slashingOptIns;
+
     /**
      * @dev Enum representing the registration status between a service and an operator.
      * The registration status can be one of the following:
@@ -105,6 +117,10 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      */
     event RegistrationStatusUpdated(address indexed service, address indexed operator, RegistrationStatus status);
 
+    event SlashingParameterUpdated(
+        address indexed service, address destination, uint16 maxBip, uint64 resolutionWindow
+    );
+
     /**
      * @dev Set the immutable SLAYRouter proxy address for the implementation.
      * Cyclic params in constructor are possible as an EmptyImpl is used for an initial deployment,
@@ -141,6 +157,14 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     modifier onlyOperator(address account) {
         if (!_operators[account]) {
             revert OperatorNotFound(account);
+        }
+        _;
+    }
+
+    modifier onlyActivelyRegistered(address service, address operator) {
+        RegistrationStatus status = getRegistrationStatus(service, operator);
+        if (status != RegistrationStatus.Active) {
+            revert("RegistrationStatus not Active");
         }
         _;
     }
@@ -360,6 +384,75 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      */
     function isService(address account) public view returns (bool) {
         return _services[account];
+    }
+
+    function enableSlashing(slashParameter calldata parameter) public onlyService(_msgSender()) {
+        require(parameter.maxBips < 10000, "Maximum Bips cannot be more than 10_000 (100%)");
+        require(parameter.maxBips > 0, "Minimum Bips cannot be less than zero");
+        address service = _msgSender();
+        _updateSlashingParameters(service, parameter.destination, parameter.maxBips, parameter.resolutionWindow);
+    }
+
+    function _updateSlashingParameters(address service, address destination, uint16 maxBips, uint64 resolutionWindow)
+        internal
+    {
+        _slashDestinations[service].push(uint32(block.timestamp), uint224(uint160(destination)));
+        _slashMaxBips[service].push(uint32(block.timestamp), uint224(maxBips));
+        _slashResolutionWindows[service].push(uint32(block.timestamp), uint224(resolutionWindow));
+        emit SlashingParameterUpdated(service, destination, maxBips, resolutionWindow);
+    }
+
+    function getSlashingParameter(address service) public view returns (slashParameter memory) {
+        address destination = address(uint160(_slashDestinations[service].latest()));
+        uint16 maxBip = uint16(_slashMaxBips[service].latest());
+        uint64 resolutionWindow = uint64(_slashMaxBips[service].latest());
+
+        return slashParameter({destination: destination, maxBips: maxBip, resolutionWindow: resolutionWindow});
+    }
+
+    function getSlashingParameterAt(address service, uint256 timestamp) public view returns (slashParameter memory) {
+        address destination = address(uint160(_slashDestinations[service].upperLookup(uint32(timestamp))));
+        uint16 maxBip = uint16(_slashMaxBips[service].upperLookup(uint32(timestamp)));
+        uint64 resolutionWindow = uint64(_slashMaxBips[service].upperLookup(uint32(timestamp)));
+
+        return slashParameter({destination: destination, maxBips: maxBip, resolutionWindow: resolutionWindow});
+    }
+
+    function slashingOptIn(address service)
+        public
+        onlyService(service)
+        onlyOperator(_msgSender())
+        onlyActivelyRegistered(service, _msgSender())
+    {
+        address operator = _msgSender();
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
+        _updateSlashingOptIns(key, true);
+    }
+
+    function _updateSlashingOptIns(bytes32 key, bool optIn) internal {
+        _slashingOptIns[key].push(uint32(block.timestamp), uint224(optIn ? 1 : 0));
+    }
+
+    function getSlashingOptIns(bytes32 key) public view returns (bool) {
+        bool optedIn = _slashingOptIns[key].latest() == 1 ? true : false;
+        return optedIn;
+    }
+
+    function getSlashingOptIns(address service, address operator) public view returns (bool) {
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
+        bool optedIn = _slashingOptIns[key].latest() == 1 ? true : false;
+        return optedIn;
+    }
+
+    function getSlashingOptInsAt(bytes32 key, uint256 timestamp) public view returns (bool) {
+        bool optedIn = (_slashingOptIns[key].upperLookup(uint32(timestamp))) == 1 ? true : false;
+        return optedIn;
+    }
+
+    function getSlashingOptInsAt(address service, address operator, uint256 timestamp) public view returns (bool) {
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
+        bool optedIn = (_slashingOptIns[key].upperLookup(uint32(timestamp))) == 1 ? true : false;
+        return optedIn;
     }
 }
 
