@@ -310,4 +310,233 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.expectRevert("Already active");
         registry.registerServiceToOperator(service);
     }
+
+    function test_EnableSlashing() public {
+        vm.prank(service);
+        registry.registerAsService("service.com", "Service A");
+
+        address destination = makeAddr("slashDestination");
+        uint16 maxBips = 500; // 5%
+        uint64 resolutionWindow = 3600; // 1 hour
+
+        vm.prank(service);
+        vm.expectEmit();
+        emit SLAYRegistry.SlashingParameterUpdated(service, destination, maxBips, resolutionWindow);
+        registry.enableSlashing(
+            SLAYRegistry.slashParameter({destination: destination, maxBips: maxBips, resolutionWindow: resolutionWindow})
+        );
+
+        SLAYRegistry.slashParameter memory param = registry.getSlashingParameter(service);
+
+        assertEq(param.destination, destination, "Slashing destination should match");
+        assertEq(param.maxBips, maxBips, "Slashing maxBips should match");
+        assertEq(param.resolutionWindow, resolutionWindow, "Slashing resolutionWindow should match");
+    }
+
+    function test_EnableSlashing_MaxBipsEdgeCases() public {
+        vm.prank(service);
+        registry.registerAsService("service.com", "Service A");
+
+        address destination = makeAddr("slashDestination");
+        uint64 resolutionWindow = 3600;
+
+        // Test maxBips at 9999 (valid)
+        vm.prank(service);
+        registry.enableSlashing(
+            SLAYRegistry.slashParameter({destination: destination, maxBips: 9999, resolutionWindow: resolutionWindow})
+        );
+        SLAYRegistry.slashParameter memory param = registry.getSlashingParameter(service);
+        assertEq(param.maxBips, 9999, "MaxBips should be 9999");
+
+        // Test maxBips at 10000 (revert)
+        vm.prank(service);
+        vm.expectRevert("Maximum Bips cannot be more than 10_000 (100%)");
+        registry.enableSlashing(
+            SLAYRegistry.slashParameter({destination: destination, maxBips: 10000, resolutionWindow: resolutionWindow})
+        );
+
+        // Test maxBips at 0 (revert)
+        vm.prank(service);
+        vm.expectRevert("Minimum Bips cannot be less than zero");
+        registry.enableSlashing(
+            SLAYRegistry.slashParameter({destination: destination, maxBips: 0, resolutionWindow: resolutionWindow})
+        );
+    }
+
+    function test_EnableSlashing_NotService() public {
+        address nonService = makeAddr("nonService");
+        vm.prank(nonService);
+        vm.expectRevert(abi.encodeWithSelector(SLAYRegistry.ServiceNotFound.selector, nonService));
+        registry.enableSlashing(
+            SLAYRegistry.slashParameter({destination: makeAddr("dest"), maxBips: 100, resolutionWindow: 1000})
+        );
+    }
+
+    function test_GetSlashingParameterAt() public {
+        vm.prank(service);
+        registry.registerAsService("service.com", "Service A");
+
+        address destination1 = makeAddr("slashDestination1");
+        uint16 maxBips1 = 100;
+        uint64 resolutionWindow1 = 1000;
+
+        vm.prank(service);
+        registry.enableSlashing(
+            SLAYRegistry.slashParameter({
+                destination: destination1,
+                maxBips: maxBips1,
+                resolutionWindow: resolutionWindow1
+            })
+        );
+        uint32 time1 = uint32(block.timestamp);
+
+        _advanceBlockBy(10); // Advance time
+
+        address destination2 = makeAddr("slashDestination2");
+        uint16 maxBips2 = 200;
+        uint64 resolutionWindow2 = 2000;
+
+        vm.prank(service);
+        registry.enableSlashing(
+            SLAYRegistry.slashParameter({
+                destination: destination2,
+                maxBips: maxBips2,
+                resolutionWindow: resolutionWindow2
+            })
+        );
+        uint32 time2 = uint32(block.timestamp);
+
+        // Check at time1
+        SLAYRegistry.slashParameter memory param1 = registry.getSlashingParameter(service);
+        assertEq(param1.destination, destination1, "Slashing destination at time1 should match");
+        assertEq(param1.maxBips, maxBips1, "Slashing maxBips at time1 should match");
+        assertEq(param1.resolutionWindow, resolutionWindow1, "Slashing resolutionWindow at time1 should match");
+
+        // Check at time2
+        SLAYRegistry.slashParameter memory param2 = registry.getSlashingParameterAt(service, time2);
+        assertEq(param2.destination, destination2, "Slashing destination at time2 should match");
+        assertEq(param2.maxBips, maxBips2, "Slashing maxBips at time2 should match");
+        assertEq(param2.resolutionWindow, resolutionWindow2, "Slashing resolutionWindow at time2 should match");
+
+        // Check a time before any update (should return default/zero values)
+        SLAYRegistry.slashParameter memory param3 = registry.getSlashingParameterAt(service, 0);
+        assertEq(param3.destination, address(0), "Slashing destination at time 0 should be zero address");
+        assertEq(param3.maxBips, 0, "Slashing maxBips at time 0 should be 0");
+        assertEq(param3.resolutionWindow, 0, "Slashing resolutionWindow at time 0 should be 0");
+    }
+
+    function test_SlashingOptIn() public {
+        test_FullFlow_ServiceInitiatesRegistration(); // Ensures service and operator are active
+
+        vm.prank(operator);
+        vm.expectEmit();
+        emit SLAYRegistry.SlashingOptIn(service, operator);
+        registry.slashingOptIn(service);
+
+        assertTrue(registry.getSlashingOptIns(service, operator), "Operator should have opted in for slashing");
+    }
+
+    function test_SlashingOptIn_AlreadyOptedIn() public {
+        test_SlashingOptIn(); // Opt-in once
+
+        vm.prank(operator);
+        // Expect no revert, as re-opting-in should simply update the checkpoint to the current time.
+        // The current implementation allows re-opting-in without a specific revert.
+        registry.slashingOptIn(service);
+        assertTrue(registry.getSlashingOptIns(service, operator), "Operator should still be opted in for slashing");
+    }
+
+    function test_SlashingOptIn_NotService() public {
+        vm.prank(operator);
+        registry.registerAsOperator("op.com", "Op");
+
+        address nonService = makeAddr("nonService");
+
+        vm.expectRevert(abi.encodeWithSelector(SLAYRegistry.ServiceNotFound.selector, nonService));
+        registry.slashingOptIn(nonService);
+    }
+
+    function test_SlashingOptIn_NotOperator() public {
+        vm.prank(service);
+        registry.registerAsService("service.com", "Service A");
+
+        address nonOperator = makeAddr("nonOperator");
+        vm.prank(nonOperator);
+        vm.expectRevert(abi.encodeWithSelector(SLAYRegistry.OperatorNotFound.selector, nonOperator));
+        registry.slashingOptIn(service);
+    }
+
+    function test_SlashingOptIn_RegistrationNotActive() public {
+        // Service and operator are registered but not actively paired
+        vm.prank(service);
+        registry.registerAsService("service.com", "Service A");
+        vm.prank(operator);
+        registry.registerAsOperator("operator.com", "Operator X");
+
+        // Attempt opt-in when status is Inactive
+        vm.prank(operator);
+        vm.expectRevert("RegistrationStatus not Active");
+        registry.slashingOptIn(service);
+
+        // Service initiates, status is ServiceRegistered
+        vm.prank(service);
+        registry.registerOperatorToService(operator);
+
+        vm.prank(operator);
+        vm.expectRevert("RegistrationStatus not Active");
+        registry.slashingOptIn(service);
+    }
+
+    function test_GetSlashingOptInsAt() public {
+        test_FullFlow_ServiceInitiatesRegistration(); // Ensures active registration
+
+        // Initial state before opt-in
+        assertTrue(!registry.getSlashingOptInsAt(service, operator, 0), "Should not be opted in at timestamp 0");
+        assertTrue(
+            !registry.getSlashingOptInsAt(service, operator, uint32(block.timestamp)),
+            "Should not be opted in initially"
+        );
+
+        vm.prank(operator);
+        registry.slashingOptIn(service);
+        uint32 timeAfterOptIn = uint32(block.timestamp);
+
+        _advanceBlockBy(5); // Advance time
+
+        // Check after opt-in
+        assertTrue(
+            registry.getSlashingOptInsAt(service, operator, timeAfterOptIn), "Should be opted in after opt-in event"
+        );
+        assertTrue(
+            registry.getSlashingOptInsAt(service, operator, uint32(block.timestamp)),
+            "Should be opted in at current timestamp"
+        );
+
+        // Check at a future timestamp
+        assertTrue(
+            registry.getSlashingOptInsAt(service, operator, uint32(block.timestamp + 1000000)),
+            "Should be opted in at a future timestamp"
+        );
+
+        // Test with deregistration to see status change
+        vm.prank(service);
+        registry.deregisterOperatorFromService(operator);
+        uint32 timeAfterDeregistration = uint32(block.timestamp);
+
+        // Status should reflect deregistration
+        assertTrue(
+            !registry.getSlashingOptInsAt(service, operator, timeAfterDeregistration),
+            "Should not be opted in after deregistration"
+        );
+        assertTrue(
+            !registry.getSlashingOptInsAt(service, operator, uint32(block.timestamp)),
+            "Should not be opted in at current timestamp after deregistration"
+        );
+
+        // Previous opt-in status should still be retrievable
+        assertTrue(
+            registry.getSlashingOptInsAt(service, operator, timeAfterOptIn),
+            "Should still be opted in at the specific past time"
+        );
+    }
 }
