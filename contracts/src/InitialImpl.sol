@@ -5,7 +5,14 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-contract EmptyImpl is Initializable, UUPSUpgradeable, OwnableUpgradeable {
+/**
+ * @title Initial Implementation Contract
+ * @dev Used as a base for all SLAY contracts.
+ * Designed to be initialized once to get an immutable address for each subsequent contract.
+ * The immutable address (Proxies with empty implementation) is used to then set up the rest of the SLAY contracts
+ * with immutable addresses. Allowing for cyclic-dependent contracts to be deployed with immutable references.
+ */
+contract InitialImpl is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     /**
      * @custom:oz-upgrades-unsafe-allow constructor
      */

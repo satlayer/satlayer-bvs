@@ -6,7 +6,6 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 
 import {SLAYRegistry} from "../src/SLAYRegistry.sol";
 import {SLAYRouter} from "../src/SLAYRouter.sol";
-import {EmptyImpl} from "../src/EmptyImpl.sol";
 import {TestSuite} from "./TestSuite.sol";
 
 contract SLAYRegistryTest is Test, TestSuite {
