@@ -74,6 +74,8 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         address indexed service, address destination, uint16 maxBip, uint64 resolutionWindow
     );
 
+    event SlashingOptIn(address indexed service, address indexed operator);
+
     /**
      * @dev Set the immutable SLAYRouter proxy address for the implementation.
      * Cyclic params in constructor are possible as an EmptyImpl is used for an initial deployment,
@@ -375,6 +377,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         address operator = _msgSender();
         bytes32 key = ServiceOperatorKey._getKey(service, operator);
         _updateSlashingOptIns(key, true);
+        emit SlashingOptIn(service, operator);
     }
 
     function _updateSlashingOptIns(bytes32 key, bool optIn) internal {
