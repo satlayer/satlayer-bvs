@@ -29,6 +29,16 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     mapping(address operator => bool) private _operators;
 
     /**
+     * @dev mapping of withdrawal delays for all of operator's vault.
+     */
+    mapping(address operator => uint32) private withdrawalDelay;
+
+    /**
+     * @dev Default delay for operator's vault withdrawals if not set.
+     */
+    uint32 public constant DEFAULT_WITHDRAWAL_DELAY = 7 days;
+
+    /**
      * @dev Account is not registered as an operator.
      */
     error OperatorNotFound(address account);
@@ -105,6 +115,13 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      * @param status The new registration status.
      */
     event RegistrationStatusUpdated(address indexed service, address indexed operator, RegistrationStatus status);
+
+    /**
+     * @dev Emitted when an operator updates the withdrawal delay.
+     * @param operator The address of the operator setting the delay.
+     * @param delay The new withdrawal delay in seconds.
+     */
+    event WithdrawalDelayUpdated(address indexed operator, uint32 delay);
 
     /**
      * @dev Set the immutable SLAYRouter proxy address for the implementation.
@@ -368,6 +385,27 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      */
     function isService(address account) public view returns (bool) {
         return _services[account];
+    }
+
+    /**
+     * @notice Set the withdrawal delay for an operator's vault. Only the operator can set this value.
+     * @param delay The delay in seconds before a withdrawal can be processed.
+     */
+    function setWithdrawalDelay(uint32 delay) public onlyOperator(_msgSender()) {
+        require(delay >= DEFAULT_WITHDRAWAL_DELAY, "Delay must be at least more than or equal to 7 days");
+        withdrawalDelay[_msgSender()] = delay;
+        emit WithdrawalDelayUpdated(_msgSender(), delay);
+    }
+
+    /**
+     * @notice Get the withdrawal delay for an operator's vault.
+     * @dev If the delay is not set, it returns the default delay of 7 days.
+     * @param operator The address of the operator.
+     * @return uint32 The withdrawal delay in seconds.
+     */
+    function getWithdrawalDelay(address operator) public view returns (uint32) {
+        // If the delay is not set, return the default delay.
+        return withdrawalDelay[operator] == 0 ? DEFAULT_WITHDRAWAL_DELAY : withdrawalDelay[operator];
     }
 }
 

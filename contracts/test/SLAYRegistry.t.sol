@@ -309,4 +309,37 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.expectRevert("Already active");
         registry.registerServiceToOperator(service);
     }
+
+    function test_WithdrawalDelay() public {
+        uint32 newDelay = 8 days;
+        // register operator
+        vm.startPrank(operator);
+        registry.registerAsOperator("https://operator.com", "Operator X");
+
+        vm.expectEmit();
+        emit SLAYRegistry.WithdrawalDelayUpdated(operator, newDelay);
+
+        // Set the withdrawal delay to 8 days
+        registry.setWithdrawalDelay(newDelay);
+
+        assertEq(registry.getWithdrawalDelay(operator), newDelay, "Withdrawal delay should be updated");
+    }
+
+    function test_Fail_SetWithdrawalDelay_NotOperator() public {
+        vm.startPrank(operator);
+
+        vm.expectRevert(abi.encodeWithSelector(SLAYRegistry.OperatorNotFound.selector, operator));
+        registry.setWithdrawalDelay(7 days);
+    }
+
+    function test_Fail_SetWithdrawalDelay_LessThanDefault() public {
+        vm.startPrank(operator);
+        registry.registerAsOperator("https://operator.com", "Operator X");
+
+        vm.expectRevert("Delay must be at least more than or equal to 7 days");
+        registry.setWithdrawalDelay(7 days - 1);
+
+        vm.expectRevert("Delay must be at least more than or equal to 7 days");
+        registry.setWithdrawalDelay(0);
+    }
 }

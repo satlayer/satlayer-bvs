@@ -70,7 +70,7 @@ contract SLAYVaultFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable,
         string memory name = string(abi.encodePacked("SatLayer ", asset.name()));
         string memory symbol = string(abi.encodePacked("sat", asset.symbol()));
 
-        bytes memory data = abi.encodeCall(SLAYVault.initialize, (asset, operator, name, symbol, withdrawalDelay));
+        bytes memory data = abi.encodeCall(SLAYVault.initialize, (asset, operator, name, symbol));
         BeaconProxy proxy = new BeaconProxy(beacon, data);
         return SLAYVault(address(proxy));
     }
@@ -86,14 +86,14 @@ contract SLAYVaultFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable,
      * @param symbol The symbol of the tokenized vault token.
      * @return The newly created SLAYVault instance.
      */
-    function create(IERC20 asset, address operator, string memory name, string memory symbol, uint256 withdrawalDelay)
+    function create(IERC20 asset, address operator, string memory name, string memory symbol)
         public
         whenNotPaused
         onlyOwner
         returns (SLAYVault)
     {
         _checkOperator(operator);
-        bytes memory data = abi.encodeCall(SLAYVault.initialize, (asset, operator, name, symbol, withdrawalDelay));
+        bytes memory data = abi.encodeCall(SLAYVault.initialize, (asset, operator, name, symbol));
         BeaconProxy proxy = new BeaconProxy(beacon, data);
         return SLAYVault(address(proxy));
     }

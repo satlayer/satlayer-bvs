@@ -284,7 +284,7 @@ contract SLAYVaultTest is Test, TestSuite {
         vault.requestRedeem(sharesToWithdraw, firstAccount, firstAccount);
 
         // fast forward to after withdrawal delay
-        skip(vault.withdrawalDelay() + 1);
+        skip(7 days);
 
         // execute redeem request after delay
         vault.redeem(sharesToWithdraw, firstAccount, firstAccount);
@@ -325,7 +325,7 @@ contract SLAYVaultTest is Test, TestSuite {
         vault.requestRedeem(sharesToWithdraw, firstAccount, firstAccount);
 
         // fast forward to after withdrawal delay
-        skip(vault.withdrawalDelay() + 1);
+        skip(7 days);
 
         // execute withdrawal request after delay
         uint256 maxAssetToWithdraw = vault.maxWithdraw(firstAccount);
