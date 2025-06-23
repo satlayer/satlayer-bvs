@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {MockERC20} from "./MockERC20.sol";
-import {EmptyImpl} from "../src/EmptyImpl.sol";
+import {InitialImpl} from "../src/InitialImpl.sol";
 import {SLAYRegistry} from "../src/SLAYRegistry.sol";
 import {SLAYRouter} from "../src/SLAYRouter.sol";
 import {SLAYVaultFactory} from "../src/SLAYVaultFactory.sol";
@@ -16,17 +16,17 @@ import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 contract TestSuite is Test {
     address public owner = vm.randomAddress();
 
-    EmptyImpl public emptyImpl = new EmptyImpl();
+    InitialImpl public initialImpl = new InitialImpl();
 
     SLAYRouter public router;
     SLAYRegistry public registry;
     SLAYVaultFactory public vaultFactory;
 
     function setUp() public virtual {
-        bytes memory emptyData = abi.encodeCall(EmptyImpl.initialize, (owner));
+        bytes memory initialData = abi.encodeCall(InitialImpl.initialize, (owner));
 
-        router = SLAYRouter(UnsafeUpgrades.deployUUPSProxy(address(emptyImpl), emptyData));
-        registry = SLAYRegistry(UnsafeUpgrades.deployUUPSProxy(address(emptyImpl), emptyData));
+        router = SLAYRouter(UnsafeUpgrades.deployUUPSProxy(address(initialImpl), initialData));
+        registry = SLAYRegistry(UnsafeUpgrades.deployUUPSProxy(address(initialImpl), initialData));
 
         SLAYVault vaultImpl = new SLAYVault(router, registry);
         address beacon = UnsafeUpgrades.deployBeacon(address(vaultImpl), owner);

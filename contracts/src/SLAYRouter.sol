@@ -20,7 +20,7 @@ contract SLAYRouter is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pausa
 
     /**
      * @dev Set the immutable SLAYRegistry proxy address for the implementation.
-     * Cyclic params in constructor are possible as an EmptyImpl is used for an initial deployment,
+     * Cyclic params in constructor are possible as an InitialImpl (empty implementation) is used for an initial deployment,
      * after which all the contracts are upgraded to their respective implementations with immutable proxy addresses.
      *
      * @custom:oz-upgrades-unsafe-allow constructor
