@@ -5,6 +5,7 @@ import "./MockERC20.sol";
 import "../src/SLAYVault.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {TestSuite} from "./TestSuite.sol";
+import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
 contract SLAYVaultTest is Test, TestSuite {
     MockERC20 public underlying = new MockERC20("Wrapped Bitcoin", "WBTC", 8);
@@ -344,5 +345,289 @@ contract SLAYVaultTest is Test, TestSuite {
         assertEq(btcToken.balanceOf(firstAccount), 950 * 10 ** btcToken.decimals()); // mintAmount - depositAmount + sharesToWithdraw
         // assert that the account's receipt tokens are decreased by the withdraw amount
         assertEq(vault.balanceOf(firstAccount), 50 * 10 ** vault.decimals()); // depositAmount - sharesToWithdraw
+    }
+
+    /**
+     * Test lifecycle of the vault for a more complex case:
+     *  - Staker1 deposits 100 WBTC into the vault
+     *  - Staker2 deposits 1 WBTC into the vault
+     *  - Staker1 requests to withdraw 100 WBTC
+     *  - Staker3 deposits 5 WBTC into the vault
+     *  - Staker4 deposits 1 WBTC for Staker2 into the vault
+     *  - Staker2 requests to withdraw 2 WBTC
+     *  - Staker1 withdraws 100 WBTC
+     *  - Staker2 redeems 2 WBTC
+     * Because there is no donation or slashing, the exchange rate should remain 1:1 throughout the process.
+     */
+    function test_lifecycle_deposit_withdrawal() public {
+        vm.prank(operator);
+        SLAYVault vault = vaultFactory.create(underlying);
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        address staker1 = makeAddr("staker1");
+        address staker2 = makeAddr("staker2");
+        address staker3 = makeAddr("staker3");
+        address staker4 = makeAddr("staker4");
+
+        // fund staker1 with 100 WBTC
+        underlying.mint(staker1, 100 * 10 ** underlying.decimals());
+        // fund staker2 with 1 WBTC
+        underlying.mint(staker2, 1 * 10 ** underlying.decimals());
+        // fund staker3 with 5 WBTC
+        underlying.mint(staker3, 5 * 10 ** underlying.decimals());
+        // fund staker4 with 1 WBTC
+        underlying.mint(staker4, 1 * 10 ** underlying.decimals());
+
+        // staker1 deposits 100 WBTC
+        vm.startPrank(staker1);
+        underlying.approve(address(vault), 100 * 10 ** underlying.decimals());
+        vault.deposit(100 * 10 ** underlying.decimals(), staker1);
+        vm.stopPrank();
+        // assert that staker1 has 100 receipt tokens
+        assertEq(vault.balanceOf(staker1), 100 * 10 ** vault.decimals());
+        // assert that vault balance is 100 WBTC
+        assertEq(vault.totalAssets(), 100 * 10 ** underlying.decimals());
+
+        // staker2 deposits 1 WBTC
+        vm.startPrank(staker2);
+        underlying.approve(address(vault), 1 * 10 ** underlying.decimals());
+        vault.deposit(1 * 10 ** underlying.decimals(), staker2);
+        vm.stopPrank();
+        // assert that staker2 has 1 receipt token
+        assertEq(vault.balanceOf(staker2), 1 * 10 ** vault.decimals());
+        // assert that vault balance is 101 WBTC (100 + 1)
+        assertEq(vault.totalAssets(), 101 * 10 ** underlying.decimals());
+
+        // staker1 requests to withdraw 100 WBTC
+        vm.startPrank(staker1);
+        vault.requestRedeem(100 * 10 ** vault.decimals(), staker1, staker1);
+        vm.stopPrank();
+        // assert that staker1's receipt tokens are sent to the vault
+        assertEq(vault.balanceOf(staker1), 0);
+        assertEq(vault.balanceOf(address(vault)), 100 * 10 ** vault.decimals());
+        // assert that staker1's pending redeem request is 100 WBTC
+        assertEq(vault.pendingRedeemRequest(0, staker1), 100 * 10 ** vault.decimals());
+
+        // staker3 deposits 5 WBTC
+        vm.startPrank(staker3);
+        underlying.approve(address(vault), 5 * 10 ** underlying.decimals());
+        vault.deposit(5 * 10 ** underlying.decimals(), staker3);
+        vm.stopPrank();
+        // assert that staker3 has 5 receipt tokens
+        assertEq(vault.balanceOf(staker3), 5 * 10 ** vault.decimals());
+        // assert that vault balance is 106 WBTC (101 + 5)
+        assertEq(vault.totalAssets(), 106 * 10 ** underlying.decimals());
+
+        // staker4 deposits 1 WBTC for staker2
+        vm.startPrank(staker4);
+        underlying.approve(address(vault), 1 * 10 ** underlying.decimals());
+        vault.deposit(1 * 10 ** underlying.decimals(), staker2);
+        vm.stopPrank();
+        // assert that staker2 has 2 (1+1) receipt token
+        assertEq(vault.balanceOf(staker2), 2 * 10 ** vault.decimals());
+        // assert that vault balance is 107 WBTC (106 + 1)
+        assertEq(vault.totalAssets(), 107 * 10 ** underlying.decimals());
+
+        // staker2 requests to withdraw 2 WBTC
+        vm.startPrank(staker2);
+        vault.requestRedeem(2 * 10 ** vault.decimals(), staker2, staker2);
+        vm.stopPrank();
+        // assert that staker2's receipt tokens are sent to the vault
+        assertEq(vault.balanceOf(staker2), 0);
+        assertEq(vault.balanceOf(address(vault)), 102 * 10 ** vault.decimals()); // 100 + 2 (pending redeem request)
+        // assert that staker2's pending redeem request is 2 WBTC
+        assertEq(vault.pendingRedeemRequest(0, staker2), 2 * 10 ** underlying.decimals());
+
+        // fast forward to after withdrawal delay
+        skip(7 days);
+
+        // assert that staker1's redeem request is claimable
+        assertEq(vault.claimableRedeemRequest(0, staker1), 100 * 10 ** underlying.decimals());
+
+        // staker1 withdraws 100 WBTC
+        vm.startPrank(staker1);
+        vault.withdraw(100 * 10 ** underlying.decimals(), staker1, staker1);
+        vm.stopPrank();
+        // assert that staker1 received 100 WBTC
+        assertEq(underlying.balanceOf(staker1), 100 * 10 ** underlying.decimals());
+        // assert that vault's asset is 7 WBTC (107 - 100)
+        assertEq(vault.totalAssets(), 7 * 10 ** underlying.decimals());
+        // assert that staker1's redeem request is cleared
+        assertEq(vault.pendingRedeemRequest(0, staker1), 0);
+        assertEq(vault.claimableRedeemRequest(0, staker1), 0);
+
+        // assert that staker2's redeem request is claimable
+        assertEq(vault.claimableRedeemRequest(0, staker2), 2 * 10 ** underlying.decimals());
+
+        // staker2 redeems 2 WBTC
+        vm.startPrank(staker2);
+        vault.redeem(2 * 10 ** underlying.decimals(), staker2, staker2);
+        vm.stopPrank();
+        // assert that staker2 received 2 WBTC
+        assertEq(underlying.balanceOf(staker2), 2 * 10 ** underlying.decimals());
+        // assert that vault's asset is 5 WBTC (7 - 2)
+        assertEq(vault.totalAssets(), 5 * 10 ** underlying.decimals());
+        // assert that staker2's redeem request is cleared
+        assertEq(vault.pendingRedeemRequest(0, staker2), 0);
+        assertEq(vault.claimableRedeemRequest(0, staker2), 0);
+    }
+
+    /**
+     * Demonstrate for the case that controller != owner, owner's operator != controller's operator and owner will not be able to redeem.
+     * Hence, controller have all the rights to redeem/withdraw to another address.
+     * This test is to show that for requestRedeem:
+     *  - only owner can call it
+     *  - or owner's operator can call it
+     *  - or owner's has approved another address (has allowance) to call it
+     * for redeem:
+     *  - only controller or controller's operator can call it
+     *  - even original staker cannot call redeem (if owner != controller in requestRedeem)
+     */
+    function test_requestRedeem_not_operator() public {
+        vm.prank(operator);
+        SLAYVault vault = vaultFactory.create(underlying);
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        address staker1 = makeAddr("staker1");
+        address controller1 = makeAddr("staker1/controller1");
+        address operator1 = makeAddr("staker1/operator1");
+        address randomAddress = makeAddr("randomAddress");
+        address receiver = makeAddr("receiver");
+
+        // fund staker1 with 100 WBTC
+        underlying.mint(staker1, 100 * 10 ** underlying.decimals());
+
+        // staker1 deposits 100 WBTC
+        vm.startPrank(staker1);
+        underlying.approve(address(vault), 100 * 10 ** underlying.decimals());
+        vault.deposit(100 * 10 ** underlying.decimals(), staker1);
+        vm.stopPrank();
+
+        // controller1 request to withdraw 20 WBTC for staker1 as controller1 (require no allowance)
+        uint256 controller1RedeemAmount = 20 * 10 ** vault.decimals();
+        {
+            // fails because controller1 is not an operator of staker1
+            vm.startPrank(controller1);
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    IERC20Errors.ERC20InsufficientAllowance.selector, controller1, 0, controller1RedeemAmount
+                )
+            );
+            vault.requestRedeem(controller1RedeemAmount, controller1, staker1);
+            vm.stopPrank();
+        }
+        {
+            // staker1 set controller1 as operator
+            vm.startPrank(staker1);
+            vault.setOperator(controller1, true);
+            vm.stopPrank();
+        }
+        vm.startPrank(controller1);
+        vault.requestRedeem(controller1RedeemAmount, controller1, staker1);
+        vm.stopPrank();
+        // assert that staker1's receipt tokens are sent to the vault (100-20)
+        assertEq(vault.balanceOf(staker1), 80 * 10 ** vault.decimals());
+        // assert that controller1's pending redeem request is 20 WBTC
+        assertEq(vault.pendingRedeemRequest(0, controller1), 20 * 10 ** underlying.decimals());
+        // assert that staker1's pending redeem request is 0 because request made under controller1 address
+        assertEq(vault.pendingRedeemRequest(0, staker1), 0);
+
+        // operator1 requests to withdraw 10 WBTC for staker1 as controller1 (require no allowance)
+        uint256 operator1RedeemAmount = 10 * 10 ** vault.decimals();
+        {
+            // fails because operator1 is not an operator of staker1
+            vm.startPrank(operator1);
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    IERC20Errors.ERC20InsufficientAllowance.selector, operator1, 0, operator1RedeemAmount
+                )
+            );
+            vault.requestRedeem(operator1RedeemAmount, controller1, staker1);
+            vm.stopPrank();
+        }
+        {
+            // staker1 set operator1 as operator
+            vm.startPrank(staker1);
+            vault.setOperator(operator1, true);
+            vm.stopPrank();
+        }
+        vm.startPrank(operator1);
+        vault.requestRedeem(operator1RedeemAmount, controller1, staker1);
+        vm.stopPrank();
+        // assert that staker1's receipt tokens are sent to the vault (100-20-10)
+        assertEq(vault.balanceOf(staker1), 70 * 10 ** vault.decimals());
+        // assert that controller1's pending redeem request is 30 WBTC (20 + 10)
+        assertEq(vault.pendingRedeemRequest(0, controller1), 30 * 10 ** underlying.decimals());
+        // assert that staker1's pending redeem request is 0 because request made under controller1 address
+        assertEq(vault.pendingRedeemRequest(0, staker1), 0);
+
+        // random address tries to request redeem for staker1 as controller1 (should fail)
+        vm.startPrank(randomAddress);
+        uint256 failedRedeemAmount = 5 * 10 ** vault.decimals();
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IERC20Errors.ERC20InsufficientAllowance.selector, randomAddress, 0, failedRedeemAmount
+            )
+        );
+        vault.requestRedeem(failedRedeemAmount, controller1, staker1);
+        vm.stopPrank();
+
+        // staker1 setAllowance for randomAddress to requestRedeem 5 WBTC
+        vm.startPrank(staker1);
+        vault.approve(randomAddress, 5 * 10 ** vault.decimals());
+        vm.stopPrank();
+
+        // random address requests redeem for staker1 as controller1 (should succeed)
+        vm.startPrank(randomAddress);
+        vault.requestRedeem(5 * 10 ** vault.decimals(), controller1, staker1);
+        vm.stopPrank();
+
+        // fast forward to after withdrawal delay
+        skip(7 days);
+
+        // assert that controller1's redeem request is claimable (20 + 10 + 5 = 35 WBTC)
+        uint256 totalRedeemAmount = 35 * 10 ** underlying.decimals();
+        assertEq(vault.claimableRedeemRequest(0, controller1), totalRedeemAmount);
+
+        {
+            // operator1 tries to redeem for controller1 to receiver (should fail, because operator1 is not an operator of controller1)
+            vm.startPrank(operator1);
+            vm.expectRevert(SLAYVault.NotControllerOrOperator.selector);
+            vault.redeem(totalRedeemAmount, receiver, controller1);
+            vm.stopPrank();
+        }
+        {
+            // randomAddress tries to redeem for controller1 to receiver (should fail, because randomAddress is not an operator of controller1)
+            vm.startPrank(randomAddress);
+            vm.expectRevert(SLAYVault.NotControllerOrOperator.selector);
+            vault.redeem(totalRedeemAmount, receiver, controller1);
+            vm.stopPrank();
+        }
+        {
+            // staker1 tries to redeem for controller1 to receiver (should fail, because staker1 is not an operator of controller1)
+            vm.startPrank(staker1);
+            vm.expectRevert(SLAYVault.NotControllerOrOperator.selector);
+            vault.redeem(totalRedeemAmount, receiver, controller1);
+            vm.stopPrank();
+        }
+
+        // controller1 redeems to receiver
+        vm.startPrank(controller1);
+        vault.redeem(totalRedeemAmount, receiver, controller1);
+        vm.stopPrank();
+
+        // assert that receiver received 35 WBTC
+        assertEq(underlying.balanceOf(receiver), totalRedeemAmount);
+        // assert that vault's asset is 65 WBTC (100 - 35)
+        assertEq(vault.totalAssets(), 65 * 10 ** underlying.decimals());
+        // assert that controller1's redeem request is cleared
+        assertEq(vault.pendingRedeemRequest(0, controller1), 0);
+        assertEq(vault.claimableRedeemRequest(0, controller1), 0);
     }
 }

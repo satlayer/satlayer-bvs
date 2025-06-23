@@ -204,25 +204,16 @@ contract SLAYVault is
     //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IERC7540Redeem
-    function requestRedeem(uint256 shares, address controller, address owner)
-        public
-        onlyControllerOrOperator(controller)
-        returns (uint256 requestId)
-    {
+    function requestRedeem(uint256 shares, address controller, address owner) public returns (uint256 requestId) {
         // Checks
         if (shares == 0) {
             revert ZeroAmount();
         }
 
-        // spend allowance if caller is not the owner and not an operator
-        if (owner != _msgSender()) {
-            if (!isOperator[owner][_msgSender()]) {
-                _spendAllowance(owner, _msgSender(), shares);
-            }
+        // spend allowance if caller is not the owner AND not an operator
+        if (owner != _msgSender() && !isOperator[owner][_msgSender()]) {
+            _spendAllowance(owner, _msgSender(), shares);
         }
-
-        // transfer shares from owner to the contract
-        SafeERC20.safeTransferFrom(this, owner, address(this), shares);
 
         RedeemRequestStruct storage pendingRedemptionRequest = _pendingRedemption[controller];
 
@@ -236,6 +227,8 @@ contract SLAYVault is
         // update _totalPendingRedemption
         _totalPendingRedemption += shares;
 
+        // transfer shares from owner to the contract
+        _transfer(owner, address(this), shares);
         emit RedeemRequest(controller, owner, REQUEST_ID, _msgSender(), shares);
         return REQUEST_ID;
     }
