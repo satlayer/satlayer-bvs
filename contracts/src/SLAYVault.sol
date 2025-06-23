@@ -251,14 +251,6 @@ contract SLAYVault is
         return 0;
     }
 
-    function _claimableRedeemRequest(uint256 fulfilledAssets, uint256 redeemShares)
-        internal
-        pure
-        returns (uint256 shares)
-    {
-        return fulfilledAssets != 0 ? redeemShares : 0;
-    }
-
     /// @inheritdoc IERC7540Operator
     function setOperator(address operator, bool approved) public returns (bool success) {
         isOperator[_msgSender()][operator] = approved;
