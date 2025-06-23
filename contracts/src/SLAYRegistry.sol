@@ -9,13 +9,14 @@ import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol
 
 import {SLAYRouter} from "./SLAYRouter.sol";
 
-/**
- * @title SLAYRegistry
- * @dev This contract serves as a registry for services and operators in the SatLayer ecosystem.
- * It allows services and operators to register themselves, manage their relationships,
- * and track registration statuses.
- */
+/// @title SLAYRegistry
+/// @dev This contract serves as a registry for services and operators in the SatLayer ecosystem.
+/// It allows services and operators to register themselves, manage their relationships,
+/// and track registration statuses.
+///
+/// @custom:oz-upgrades-from src/InitialImpl.sol:InitialImpl
 contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     SLAYRouter public immutable router;
 
     /**
@@ -117,7 +118,14 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         _disableInitializers();
     }
 
-    function initialize() public reinitializer(2) {
+    /// @custom:oz-upgrades-validate-as-initializer
+    function initialize(address initialOwner) public reinitializer(2) {
+        __Ownable_init(initialOwner);
+        __UUPSUpgradeable_init();
+        __Pausable_init();
+    }
+
+    function initialize2() public reinitializer(2) {
         __Pausable_init();
     }
 

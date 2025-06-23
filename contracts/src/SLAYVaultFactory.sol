@@ -14,7 +14,10 @@ import {SLAYVault} from "./SLAYVault.sol";
 import {SLAYRegistry} from "./SLAYRegistry.sol";
 
 contract SLAYVaultFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     address public immutable beacon;
+
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     SLAYRegistry public immutable registry;
 
     /**
@@ -22,9 +25,7 @@ contract SLAYVaultFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable,
      */
     error NotOperator(address account);
 
-    /**
-     * @custom:oz-upgrades-unsafe-allow constructor
-     */
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address beacon_, SLAYRegistry registry_) {
         beacon = beacon_;
         registry = registry_;
