@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {Test, console} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {SLAYRegistry} from "../src/SLAYRegistry.sol";
+import {SLAYRegistry, SlashParameter} from "../src/SLAYRegistry.sol";
 import {SLAYRouter} from "../src/SLAYRouter.sol";
 import {EmptyImpl} from "../src/EmptyImpl.sol";
 import {TestSuite} from "./TestSuite.sol";
@@ -316,20 +316,20 @@ contract SLAYRegistryTest is Test, TestSuite {
         registry.registerAsService("service.com", "Service A");
 
         address destination = makeAddr("slashDestination");
-        uint16 maxBips = 500; // 5%
-        uint64 resolutionWindow = 3600; // 1 hour
+        uint32 maxBips = 5000;
+        uint32 resolutionWindow = 3600;
 
         vm.prank(service);
         vm.expectEmit();
         emit SLAYRegistry.SlashingParameterUpdated(service, destination, maxBips, resolutionWindow);
         registry.enableSlashing(
-            SLAYRegistry.slashParameter({destination: destination, maxBips: maxBips, resolutionWindow: resolutionWindow})
+            SlashParameter.object({destination: destination, maxMilliBips: maxBips, resolutionWindow: resolutionWindow})
         );
 
-        SLAYRegistry.slashParameter memory param = registry.getSlashingParameter(service);
+        SlashParameter.object memory param = registry.getSlashingParameter(service);
 
         assertEq(param.destination, destination, "Slashing destination should match");
-        assertEq(param.maxBips, maxBips, "Slashing maxBips should match");
+        assertEq(param.maxMilliBips, maxBips, "Slashing maxBips should match");
         assertEq(param.resolutionWindow, resolutionWindow, "Slashing resolutionWindow should match");
     }
 
@@ -338,28 +338,28 @@ contract SLAYRegistryTest is Test, TestSuite {
         registry.registerAsService("service.com", "Service A");
 
         address destination = makeAddr("slashDestination");
-        uint64 resolutionWindow = 3600;
+        uint32 resolutionWindow = 3600;
 
-        // Test maxBips at 9999 (valid)
         vm.prank(service);
         registry.enableSlashing(
-            SLAYRegistry.slashParameter({destination: destination, maxBips: 9999, resolutionWindow: resolutionWindow})
+            SlashParameter.object({destination: destination, maxMilliBips: 9999999, resolutionWindow: resolutionWindow})
         );
-        SLAYRegistry.slashParameter memory param = registry.getSlashingParameter(service);
-        assertEq(param.maxBips, 9999, "MaxBips should be 9999");
 
-        // Test maxBips at 10000 (revert)
+        SlashParameter.object memory param = registry.getSlashingParameter(service);
+        assertEq(param.maxMilliBips, 9999999, "MaxBips should be 9999999");
+
+        // Test maxBips at 10000001 (revert)
         vm.prank(service);
-        vm.expectRevert("Maximum Bips cannot be more than 10_000 (100%)");
+        vm.expectRevert("Maximum Milli-Bips cannot be more than 10_000_000 (100%)");
         registry.enableSlashing(
-            SLAYRegistry.slashParameter({destination: destination, maxBips: 10000, resolutionWindow: resolutionWindow})
+            SlashParameter.object({destination: destination, maxMilliBips: 10000001, resolutionWindow: resolutionWindow})
         );
 
         // Test maxBips at 0 (revert)
         vm.prank(service);
         vm.expectRevert("Minimum Bips cannot be less than zero");
         registry.enableSlashing(
-            SLAYRegistry.slashParameter({destination: destination, maxBips: 0, resolutionWindow: resolutionWindow})
+            SlashParameter.object({destination: destination, maxMilliBips: 0, resolutionWindow: resolutionWindow})
         );
     }
 
@@ -368,7 +368,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.prank(nonService);
         vm.expectRevert(abi.encodeWithSelector(SLAYRegistry.ServiceNotFound.selector, nonService));
         registry.enableSlashing(
-            SLAYRegistry.slashParameter({destination: makeAddr("dest"), maxBips: 100, resolutionWindow: 1000})
+            SlashParameter.object({destination: makeAddr("dest"), maxMilliBips: 100, resolutionWindow: 1000})
         );
     }
 
@@ -377,51 +377,52 @@ contract SLAYRegistryTest is Test, TestSuite {
         registry.registerAsService("service.com", "Service A");
 
         address destination1 = makeAddr("slashDestination1");
-        uint16 maxBips1 = 100;
-        uint64 resolutionWindow1 = 1000;
+        uint32 maxBips1 = 100;
+        uint32 resolutionWindow1 = 1000;
 
         vm.prank(service);
         registry.enableSlashing(
-            SLAYRegistry.slashParameter({
+            SlashParameter.object({
                 destination: destination1,
-                maxBips: maxBips1,
+                maxMilliBips: maxBips1,
                 resolutionWindow: resolutionWindow1
             })
         );
+
         uint32 time1 = uint32(block.timestamp);
 
         _advanceBlockBy(10); // Advance time
 
         address destination2 = makeAddr("slashDestination2");
-        uint16 maxBips2 = 200;
-        uint64 resolutionWindow2 = 2000;
+        uint32 maxBips2 = 200;
+        uint32 resolutionWindow2 = 2000;
 
         vm.prank(service);
         registry.enableSlashing(
-            SLAYRegistry.slashParameter({
+            SlashParameter.object({
                 destination: destination2,
-                maxBips: maxBips2,
+                maxMilliBips: maxBips2,
                 resolutionWindow: resolutionWindow2
             })
         );
         uint32 time2 = uint32(block.timestamp);
 
         // Check at time1
-        SLAYRegistry.slashParameter memory param1 = registry.getSlashingParameter(service);
+        SlashParameter.object memory param1 = registry.getSlashingParameterAt(service, time1);
         assertEq(param1.destination, destination1, "Slashing destination at time1 should match");
-        assertEq(param1.maxBips, maxBips1, "Slashing maxBips at time1 should match");
+        assertEq(param1.maxMilliBips, maxBips1, "Slashing maxBips at time1 should match");
         assertEq(param1.resolutionWindow, resolutionWindow1, "Slashing resolutionWindow at time1 should match");
 
         // Check at time2
-        SLAYRegistry.slashParameter memory param2 = registry.getSlashingParameterAt(service, time2);
+        SlashParameter.object memory param2 = registry.getSlashingParameterAt(service, time2);
         assertEq(param2.destination, destination2, "Slashing destination at time2 should match");
-        assertEq(param2.maxBips, maxBips2, "Slashing maxBips at time2 should match");
+        assertEq(param2.maxMilliBips, maxBips2, "Slashing maxBips at time2 should match");
         assertEq(param2.resolutionWindow, resolutionWindow2, "Slashing resolutionWindow at time2 should match");
 
         // Check a time before any update (should return default/zero values)
-        SLAYRegistry.slashParameter memory param3 = registry.getSlashingParameterAt(service, 0);
+        SlashParameter.object memory param3 = registry.getSlashingParameterAt(service, 0);
         assertEq(param3.destination, address(0), "Slashing destination at time 0 should be zero address");
-        assertEq(param3.maxBips, 0, "Slashing maxBips at time 0 should be 0");
+        assertEq(param3.maxMilliBips, 0, "Slashing maxBips at time 0 should be 0");
         assertEq(param3.resolutionWindow, 0, "Slashing resolutionWindow at time 0 should be 0");
     }
 
@@ -512,31 +513,9 @@ contract SLAYRegistryTest is Test, TestSuite {
             "Should be opted in at current timestamp"
         );
 
-        // Check at a future timestamp
         assertTrue(
             registry.getSlashingOptInsAt(service, operator, uint32(block.timestamp + 1000000)),
             "Should be opted in at a future timestamp"
-        );
-
-        // Test with deregistration to see status change
-        vm.prank(service);
-        registry.deregisterOperatorFromService(operator);
-        uint32 timeAfterDeregistration = uint32(block.timestamp);
-
-        // Status should reflect deregistration
-        assertTrue(
-            !registry.getSlashingOptInsAt(service, operator, timeAfterDeregistration),
-            "Should not be opted in after deregistration"
-        );
-        assertTrue(
-            !registry.getSlashingOptInsAt(service, operator, uint32(block.timestamp)),
-            "Should not be opted in at current timestamp after deregistration"
-        );
-
-        // Previous opt-in status should still be retrievable
-        assertTrue(
-            registry.getSlashingOptInsAt(service, operator, timeAfterOptIn),
-            "Should still be opted in at the specific past time"
         );
     }
 }

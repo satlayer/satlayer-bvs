@@ -45,16 +45,15 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      */
     mapping(bytes32 key => Checkpoints.Trace224) private _registrationStatus;
 
-    struct slashParameter {
-        address destination;
-        uint16 maxBips;
-        uint64 resolutionWindow;
-    }
+    /**
+     * @dev Stored slashing parameter for each of every slash enabled BVS services.
+     */
+    mapping(address service => Checkpoints.Trace224) private _slashParameters;
 
-    mapping(address service => Checkpoints.Trace224) private _slashDestinations;
-    mapping(address service => Checkpoints.Trace224) private _slashMaxBips;
-    mapping(address service => Checkpoints.Trace224) private _slashResolutionWindows;
-
+    /**
+     * @dev A service may enable slashing but operator will have to opt in to the slashing
+     * This map store a list of operator that has opt in to the slashing for particular service
+     */
     mapping(bytes32 key => Checkpoints.Trace224) private _slashingOptIns;
 
     /**
@@ -117,10 +116,22 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      */
     event RegistrationStatusUpdated(address indexed service, address indexed operator, RegistrationStatus status);
 
+    /**
+     * @dev Emitted when Slashing Parameter for a service is updated
+     * @param service The address of the service
+     * @param destination The address at which slash collateral will be moved.
+     * @param maxMilliBip The maximum slashable amount
+     * @param resolutionWindow An operator's refutable period in seconds in the event of slash.
+     */
     event SlashingParameterUpdated(
-        address indexed service, address destination, uint16 maxBip, uint64 resolutionWindow
+        address indexed service, address destination, uint32 maxMilliBip, uint32 resolutionWindow
     );
 
+    /**
+     * @dev Emitted when operator is opt into the slashing for particular service
+     * @param service The address of the service.
+     * @param operator The address of the operator.
+     */
     event SlashingOptIn(address indexed service, address indexed operator);
 
     /**
@@ -163,6 +174,9 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         _;
     }
 
+    /**
+     * @dev Modifier to guard if given service operator pair is Actively Paired - [`RegistrationStatus.Active`]
+     */
     modifier onlyActivelyRegistered(address service, address operator) {
         RegistrationStatus status = getRegistrationStatus(service, operator);
         if (status != RegistrationStatus.Active) {
@@ -388,38 +402,53 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         return _services[account];
     }
 
-    function enableSlashing(slashParameter calldata parameter) public onlyService(_msgSender()) {
-        require(parameter.maxBips < 10000, "Maximum Bips cannot be more than 10_000 (100%)");
-        require(parameter.maxBips > 0, "Minimum Bips cannot be less than zero");
+    /**
+     * @dev service enable slashing by providing slashing parameters
+     * _msgSender is registered service.
+     */
+    function enableSlashing(SlashParameter.object calldata parameter) public onlyService(_msgSender()) {
+        require(parameter.maxMilliBips < 10000001, "Maximum Milli-Bips cannot be more than 10_000_000 (100%)");
+        require(parameter.maxMilliBips > 0, "Minimum Bips cannot be less than zero");
         address service = _msgSender();
-        _updateSlashingParameters(service, parameter.destination, parameter.maxBips, parameter.resolutionWindow);
+        _updateSlashingParameters(service, parameter.destination, parameter.maxMilliBips, parameter.resolutionWindow);
     }
 
-    function _updateSlashingParameters(address service, address destination, uint16 maxBips, uint64 resolutionWindow)
+    /**
+     * @dev Mutate slash parameter checkpoint state for particular service
+     */
+    function _updateSlashingParameters(address service, address destination, uint32 maxBips, uint32 resolutionWindow)
         internal
     {
-        _slashDestinations[service].push(uint32(block.timestamp), uint224(uint160(destination)));
-        _slashMaxBips[service].push(uint32(block.timestamp), uint224(maxBips));
-        _slashResolutionWindows[service].push(uint32(block.timestamp), uint224(resolutionWindow));
+        uint224 parameter = SlashParameter.encode(destination, maxBips, resolutionWindow);
+        _slashParameters[service].push(uint32(block.timestamp), parameter);
         emit SlashingParameterUpdated(service, destination, maxBips, resolutionWindow);
     }
 
-    function getSlashingParameter(address service) public view returns (slashParameter memory) {
-        address destination = address(uint160(_slashDestinations[service].latest()));
-        uint16 maxBip = uint16(_slashMaxBips[service].latest());
-        uint64 resolutionWindow = uint64(_slashMaxBips[service].latest());
-
-        return slashParameter({destination: destination, maxBips: maxBip, resolutionWindow: resolutionWindow});
+    /**
+     * @dev Get latest slashing parameters for particular service
+     */
+    function getSlashingParameter(address service) public view returns (SlashParameter.object memory) {
+        SlashParameter.object memory parameter = SlashParameter.decode(_slashParameters[service].latest());
+        return parameter;
     }
 
-    function getSlashingParameterAt(address service, uint256 timestamp) public view returns (slashParameter memory) {
-        address destination = address(uint160(_slashDestinations[service].upperLookup(uint32(timestamp))));
-        uint16 maxBip = uint16(_slashMaxBips[service].upperLookup(uint32(timestamp)));
-        uint64 resolutionWindow = uint64(_slashMaxBips[service].upperLookup(uint32(timestamp)));
-
-        return slashParameter({destination: destination, maxBips: maxBip, resolutionWindow: resolutionWindow});
+    /**
+     * @dev Get slashing parameters for particular service at or near at a given point in time.
+     */
+    function getSlashingParameterAt(address service, uint256 timestamp)
+        public
+        view
+        returns (SlashParameter.object memory)
+    {
+        SlashParameter.object memory parameter =
+            SlashParameter.decode(_slashParameters[service].upperLookup(uint32(timestamp)));
+        return parameter;
     }
 
+    /**
+     * @dev An operator can opt in to slashing for particular service
+     * _msgSender() is operator
+     */
     function slashingOptIn(address service)
         public
         onlyService(service)
@@ -432,26 +461,43 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         emit SlashingOptIn(service, operator);
     }
 
+    /**
+     * @dev Mutate the operator slash opt in map at current block timestamp.
+     */
     function _updateSlashingOptIns(bytes32 key, bool optIn) internal {
         _slashingOptIns[key].push(uint32(block.timestamp), uint224(optIn ? 1 : 0));
     }
 
+    /**
+     * @dev Get if an operator is opted in to slash for particular service at current block timestamp
+     */
     function getSlashingOptIns(bytes32 key) public view returns (bool) {
         bool optedIn = _slashingOptIns[key].latest() == 1 ? true : false;
         return optedIn;
     }
 
+    /**
+     * @dev Get if an operator is opted in to slash for particular service at current block timestamp
+     */
     function getSlashingOptIns(address service, address operator) public view returns (bool) {
         bytes32 key = ServiceOperatorKey._getKey(service, operator);
         bool optedIn = _slashingOptIns[key].latest() == 1 ? true : false;
         return optedIn;
     }
 
+    /**
+     * @dev Get if an operator is opted in to slash
+     * for particular service at or near at given timestamp
+     */
     function getSlashingOptInsAt(bytes32 key, uint256 timestamp) public view returns (bool) {
         bool optedIn = (_slashingOptIns[key].upperLookup(uint32(timestamp))) == 1 ? true : false;
         return optedIn;
     }
 
+    /**
+     * @dev Get if an operator is opted in to slash
+     * for particular service at or near at given timestamp
+     */
     function getSlashingOptInsAt(address service, address operator, uint256 timestamp) public view returns (bool) {
         bytes32 key = ServiceOperatorKey._getKey(service, operator);
         bool optedIn = (_slashingOptIns[key].upperLookup(uint32(timestamp))) == 1 ? true : false;
@@ -468,5 +514,57 @@ library ServiceOperatorKey {
      */
     function _getKey(address service, address operator) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(service, operator));
+    }
+}
+
+library SlashParameter {
+    /**
+     * @dev Slash Parameters for particular service
+     */
+    struct object {
+        /**
+         * The address at which the slash collateral from the vault
+         * will be moved to at the end of slashing lifecycle
+         */
+        address destination;
+        /**
+         * The maximum slash amount represented in bips at milli unit.
+         * 1 Milli-Bip is 0.00001%
+         * At 100% - the milli bip is 10,000,000
+         */
+        uint32 maxMilliBips;
+        /**
+         * The time window in seconds at which operator can refute slash accusations.
+         * The exact mechanics are to be defined by the BVS (service).
+         */
+        uint32 resolutionWindow;
+    }
+
+    /**
+     * @dev Encode [`SlashParatmer.object`] into uint224 to be used as checkpoint value.
+     */
+    function encode(address destination, uint32 maxBip, uint32 resolutionWindow) internal pure returns (uint224) {
+        uint160 addr160 = uint160(destination);
+
+        uint224 encodedData = uint224(addr160);
+
+        encodedData |= (uint224(maxBip) << 160);
+
+        encodedData |= (uint224(resolutionWindow) << 192);
+
+        return encodedData;
+    }
+
+    /**
+     * @dev Decode uint224 from checkpoint value into [`SlashParatmer.object`].
+     */
+    function decode(uint224 encodedData) internal pure returns (SlashParameter.object memory) {
+        address addr = address(uint160(encodedData));
+
+        uint32 maxBip = uint32(encodedData >> 160);
+
+        uint32 resolutionWindow = uint32(encodedData >> 192);
+
+        return SlashParameter.object({destination: addr, maxMilliBips: maxBip, resolutionWindow: resolutionWindow});
     }
 }
