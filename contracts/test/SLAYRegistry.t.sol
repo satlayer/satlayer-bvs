@@ -316,6 +316,9 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.startPrank(operator);
         registry.registerAsOperator("https://operator.com", "Operator X");
 
+        // if delay is not updated, it should be the default 7 days
+        assertEq(registry.getWithdrawalDelay(operator), 7 days, "Default withdrawal delay should be 7 days");
+
         vm.expectEmit();
         emit SLAYRegistry.WithdrawalDelayUpdated(operator, newDelay);
 

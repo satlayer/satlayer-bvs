@@ -64,10 +64,8 @@ contract SLAYVault is
      */
     address public delegated;
 
-    /**
-     * @notice Operator approval status per controller.
-     */
-    mapping(address controller => mapping(address operator => bool)) public isOperator;
+    /// @notice Operator approval status per controller.
+    mapping(address controller => mapping(address operator => bool)) internal _isOperator;
 
     /// @notice Stores all pending redemption requests for each controller.
     mapping(address controller => RedeemRequestStruct) internal _pendingRedemption;
@@ -107,7 +105,7 @@ contract SLAYVault is
     error WithdrawRequestNotFound();
 
     modifier onlyControllerOrOperator(address controller) {
-        if (_msgSender() != controller && !isOperator[controller][_msgSender()]) {
+        if (_msgSender() != controller && !_isOperator[controller][_msgSender()]) {
             revert NotControllerOrOperator();
         }
         _;
@@ -210,7 +208,7 @@ contract SLAYVault is
         }
 
         // spend allowance if caller is not the owner AND not an operator
-        if (owner != _msgSender() && !isOperator[owner][_msgSender()]) {
+        if (owner != _msgSender() && !_isOperator[owner][_msgSender()]) {
             _spendAllowance(owner, _msgSender(), shares);
         }
 
@@ -251,10 +249,15 @@ contract SLAYVault is
     }
 
     /// @inheritdoc IERC7540Operator
-    function setOperator(address operator, bool approved) public returns (bool success) {
-        isOperator[_msgSender()][operator] = approved;
+    function setOperator(address operator, bool approved) external returns (bool success) {
+        _isOperator[_msgSender()][operator] = approved;
         emit OperatorSet(_msgSender(), operator, approved);
         return true;
+    }
+
+    /// @inheritdoc IERC7540Operator
+    function isOperator(address controller, address operator) external view returns (bool status) {
+        return _isOperator[controller][operator];
     }
 
     /*//////////////////////////////////////////////////////////////

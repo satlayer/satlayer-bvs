@@ -478,7 +478,7 @@ contract SLAYVaultTest is Test, TestSuite {
     /**
      * Demonstrate for the case that controller != owner, owner's operator != controller's operator and owner will not be able to redeem.
      * Hence, controller have all the rights to redeem/withdraw to another address.
-     * This test is to show that for requestRedeem:
+     * for requestRedeem:
      *  - only owner can call it
      *  - or owner's operator can call it
      *  - or owner's has approved another address (has allowance) to call it
