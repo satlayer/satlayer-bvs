@@ -68,7 +68,7 @@ contract SLAYVaultFactoryTest is Test, TestSuite {
         vm.prank(operator);
         SLAYVault vault = vaultFactory.create(underlying);
 
-        assertEq(vault.operator(), operator);
+        assertEq(vault.delegated(), operator);
     }
 
     function test_create_with_not_operator() public {

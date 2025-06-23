@@ -66,7 +66,8 @@ contract SLAYVaultTest is Test, TestSuite {
     }
 
     function test_deposit() public {
-        SLAYVault vault = newVault("Bitcoin", "BTC", 8);
+        vm.prank(operator);
+        SLAYVault vault = vaultFactory.create(underlying);
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -123,7 +124,8 @@ contract SLAYVaultTest is Test, TestSuite {
         // Minimum amount is 1, maximum is 1000 * 10^8 (1000 BTC)
         vm.assume(fuzzAmount > 0 && fuzzAmount <= 1000 * 10 ** 8);
 
-        SLAYVault vault = newVault("Bitcoin", "BTC", 8);
+        vm.prank(operator);
+        SLAYVault vault = vaultFactory.create(underlying);
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -164,7 +166,8 @@ contract SLAYVaultTest is Test, TestSuite {
         // Bound the fuzz amount to avoid overflows and unrealistic values
         vm.assume(fuzzAmount > 0 && fuzzAmount <= 1000 * 10 ** 8);
 
-        SLAYVault vault = newVault("Bitcoin", "BTC", 8);
+        vm.prank(operator);
+        SLAYVault vault = vaultFactory.create(underlying);
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -211,7 +214,8 @@ contract SLAYVaultTest is Test, TestSuite {
         // Deposit amount between 1 and 500 * 10^8
         vm.assume(depositAmount > 0 && depositAmount <= 500 * 10 ** 8);
 
-        SLAYVault vault = newVault("Bitcoin", "BTC", 8);
+        vm.prank(operator);
+        SLAYVault vault = vaultFactory.create(underlying);
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -258,7 +262,8 @@ contract SLAYVaultTest is Test, TestSuite {
     }
 
     function test_redeem() public {
-        SLAYVault vault = newVault("Bitcoin", "BTC", 8);
+        vm.prank(operator);
+        SLAYVault vault = vaultFactory.create(underlying);
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -299,7 +304,8 @@ contract SLAYVaultTest is Test, TestSuite {
     }
 
     function test_withdraw() public {
-        SLAYVault vault = newVault("Bitcoin", "BTC", 8);
+        vm.prank(operator);
+        SLAYVault vault = vaultFactory.create(underlying);
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
