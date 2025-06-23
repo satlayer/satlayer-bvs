@@ -17,11 +17,12 @@ import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 /// Which we use to set immutable proxy addresses for the router and registry.
 /// After which we can upgrade the proxies to the actual implementations.
 contract DeploymentScript is Script {
-    address public owner = 0x011;
+    address public owner = address(0x011);
 
     function run() public {
         vm.startBroadcast(owner);
 
+        // Create the initial implementation contract and deploy the proxies for router and registry
         address initialImpl = address(new InitialImpl());
         SLAYRouter router =
             SLAYRouter(UnsafeUpgrades.deployUUPSProxy(initialImpl, abi.encodeCall(InitialImpl.initialize, (owner))));
@@ -29,16 +30,16 @@ contract DeploymentScript is Script {
             SLAYRegistry(UnsafeUpgrades.deployUUPSProxy(initialImpl, abi.encodeCall(InitialImpl.initialize, (owner))));
 
         address vaultImpl = address(new SLAYVault(router, registry));
-        address beacon = Upgrades.deployBeacon(vaultImpl, owner);
+        address beacon = UnsafeUpgrades.deployBeacon(vaultImpl, owner);
         address factoryImpl = address(new SLAYVaultFactory(beacon, registry));
         SLAYVaultFactory vaultFactory = SLAYVaultFactory(
-            Upgrades.deployUUPSProxy(factoryImpl, abi.encodeCall(SLAYVaultFactory.initialize, (owner)))
+            UnsafeUpgrades.deployUUPSProxy(factoryImpl, abi.encodeCall(SLAYVaultFactory.initialize, (owner)))
         );
 
         address routerImpl = address(new SLAYRouter(registry));
-        Upgrades.upgradeProxy(address(router), routerImpl, abi.encodeCall(SLAYRouter.initialize, ()));
+        UnsafeUpgrades.upgradeProxy(address(router), routerImpl, abi.encodeCall(SLAYRouter.initialize, ()));
 
         address registryImpl = address(new SLAYRegistry(router));
-        Upgrades.upgradeProxy(address(registry), registryImpl, abi.encodeCall(SLAYRegistry.initialize, ()));
+        UnsafeUpgrades.upgradeProxy(address(registry), registryImpl, abi.encodeCall(SLAYRegistry.initialize, ()));
     }
 }
