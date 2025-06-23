@@ -32,7 +32,10 @@ contract SLAYVault is
     ERC20PermitUpgradeable,
     ISLAYVault
 {
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     SLAYRouter public immutable router;
+
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     SLAYRegistry public immutable registry;
 
     /**
@@ -52,9 +55,7 @@ contract SLAYVault is
      */
     error ExpectedWhitelisted();
 
-    /**
-     * @custom:oz-upgrades-unsafe-allow constructor
-     */
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(SLAYRouter router_, SLAYRegistry registry_) {
         router = router_;
         registry = registry_;
@@ -70,8 +71,8 @@ contract SLAYVault is
         public
         initializer
     {
-        __ERC4626_init(asset_);
         __ERC20_init(name_, symbol_);
+        __ERC4626_init(asset_);
         __ERC20Permit_init(name_);
         operator = operator_;
     }

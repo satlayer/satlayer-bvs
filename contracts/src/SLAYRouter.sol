@@ -8,7 +8,9 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 
 import {SLAYRegistry} from "./SLAYRegistry.sol";
 
+/// @custom:oz-upgrades-from src/InitialImpl.sol:InitialImpl
 contract SLAYRouter is Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     SLAYRegistry public immutable registry;
 
     mapping(address => bool) public whitelisted;
@@ -30,7 +32,14 @@ contract SLAYRouter is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pausa
         _disableInitializers();
     }
 
-    function initialize() public reinitializer(2) {
+    /// @custom:oz-upgrades-validate-as-initializer
+    function initialize(address initialOwner) public reinitializer(2) {
+        __Ownable_init(initialOwner);
+        __UUPSUpgradeable_init();
+        __Pausable_init();
+    }
+
+    function initialize2() public reinitializer(2) {
         __Pausable_init();
     }
 
