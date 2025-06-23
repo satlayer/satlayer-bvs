@@ -8,33 +8,37 @@ import "../src/SLAYRouter.sol";
 import "../src/SLAYRegistry.sol";
 
 import {Script, console} from "forge-std/Script.sol";
-import {Upgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
+import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 
+/// @title Deployment Script for Initialization of SatLayer Protocol
+/// @dev For deployment, we use the OpenZeppelin `UnsafeUpgrades` library to deploy UUPS proxies and beacons.
+/// Although it is "unsafe" and not recommended for production, the "safe version" does not support non-empty constructor arguments.
+/// This allow us to use the constructor arguments in the implementation contracts.
+/// Which we use to set immutable proxy addresses for the router and registry.
+/// After which we can upgrade the proxies to the actual implementations.
 contract DeploymentScript is Script {
     address public owner = 0x011;
 
     function run() public {
-        InitialImpl initialImpl = new InitialImpl();
+        vm.startBroadcast(owner);
 
-        bytes memory initialData = abi.encodeCall(InitialImpl.initialize, (owner));
+        address initialImpl = address(new InitialImpl());
+        SLAYRouter router =
+            SLAYRouter(UnsafeUpgrades.deployUUPSProxy(initialImpl, abi.encodeCall(InitialImpl.initialize, (owner))));
+        SLAYRegistry registry =
+            SLAYRegistry(UnsafeUpgrades.deployUUPSProxy(initialImpl, abi.encodeCall(InitialImpl.initialize, (owner))));
 
-        SLAYRouter router = SLAYRouter(UnsafeUpgrades.deployUUPSProxy(address(initialImpl), initialData));
-        SLAYRegistry registry = SLAYRegistry(UnsafeUpgrades.deployUUPSProxy(address(initialImpl), initialData));
-
-        SLAYVault vaultImpl = new SLAYVault(router, registry);
-        address beacon = Upgrades.deployBeacon(address(vaultImpl), owner);
-        SLAYVaultFactory factoryImpl = new SLAYVaultFactory(beacon, registry);
+        address vaultImpl = address(new SLAYVault(router, registry));
+        address beacon = Upgrades.deployBeacon(vaultImpl, owner);
+        address factoryImpl = address(new SLAYVaultFactory(beacon, registry));
         SLAYVaultFactory vaultFactory = SLAYVaultFactory(
-            Upgrades.deployUUPSProxy(address(factoryImpl), abi.encodeCall(SLAYVaultFactory.initialize, (owner)))
+            Upgrades.deployUUPSProxy(factoryImpl, abi.encodeCall(SLAYVaultFactory.initialize, (owner)))
         );
 
-        vm.startPrank(owner);
-        Upgrades.upgradeProxy(
-            address(router), address(new SLAYRouter(registry)), abi.encodeCall(SLAYRouter.initialize, ())
-        );
-        Upgrades.upgradeProxy(
-            address(registry), address(new SLAYRegistry(router)), abi.encodeCall(SLAYRegistry.initialize, ())
-        );
-        vm.stopPrank();
+        address routerImpl = address(new SLAYRouter(registry));
+        Upgrades.upgradeProxy(address(router), routerImpl, abi.encodeCall(SLAYRouter.initialize, ()));
+
+        address registryImpl = address(new SLAYRegistry(router));
+        Upgrades.upgradeProxy(address(registry), registryImpl, abi.encodeCall(SLAYRegistry.initialize, ()));
     }
 }
