@@ -416,6 +416,8 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     {
         address operator = _msgSender();
         bytes32 key = ServiceOperatorKey._getKey(service, operator);
+        bool optedIn = getSlashingOptIns(key);
+        require(optedIn == false, "Operator already opted in slashing for this service");
         _updateSlashingOptIns(key, true);
         emit SlashingOptIn(service, operator);
     }

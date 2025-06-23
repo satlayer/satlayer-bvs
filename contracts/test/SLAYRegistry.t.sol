@@ -574,8 +574,8 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.prank(operator);
         // Expect no revert, as re-opting-in should simply update the checkpoint to the current time.
         // The current implementation allows re-opting-in without a specific revert.
+        vm.expectRevert("Operator already opted in slashing for this service");
         registry.slashingOptIn(service);
-        assertTrue(registry.getSlashingOptIns(service, operator), "Operator should still be opted in for slashing");
     }
 
     function test_SlashingOptIn_NotService() public {
