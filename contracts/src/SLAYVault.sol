@@ -132,7 +132,7 @@ contract SLAYVault is
      * This function is called by the SLAYVaultFactory when creating a new SLAYVault instance.
      * Not to be called directly.
      */
-    function initialize(IERC20 asset_, address operator_, string memory name_, string memory symbol_)
+    function initialize(IERC20 asset_, address delegated_, string memory name_, string memory symbol_)
         public
         initializer
     {
