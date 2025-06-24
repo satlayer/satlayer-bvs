@@ -405,7 +405,8 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      */
     function getWithdrawalDelay(address operator) public view returns (uint32) {
         // If the delay is not set, return the default delay.
-        return _withdrawalDelay[operator] == 0 ? DEFAULT_WITHDRAWAL_DELAY : _withdrawalDelay[operator];
+        uint32 delay = _withdrawalDelay[operator];
+        return delay == 0 ? DEFAULT_WITHDRAWAL_DELAY : delay;
     }
 }
 

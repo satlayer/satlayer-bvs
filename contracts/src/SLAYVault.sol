@@ -272,7 +272,7 @@ contract SLAYVault is
             revert ZeroAmount();
         }
 
-        RedeemRequestStruct storage request = _pendingRedemption[controller];
+        RedeemRequestStruct memory request = _pendingRedemption[controller];
         if (request.claimableAt == 0) {
             revert WithdrawRequestNotFound();
         }
@@ -313,7 +313,7 @@ contract SLAYVault is
             revert ZeroAmount();
         }
 
-        RedeemRequestStruct storage request = _pendingRedemption[controller];
+        RedeemRequestStruct memory request = _pendingRedemption[controller];
         if (request.claimableAt == 0) {
             revert WithdrawRequestNotFound();
         }
@@ -359,7 +359,7 @@ contract SLAYVault is
         // transfer the assets to the receiver
         SafeERC20.safeTransfer(IERC20(asset()), receiver, assets);
 
-        emit Withdraw(_msgSender(), receiver, controller, assets, shares);
+        emit Withdraw(caller, receiver, controller, assets, shares);
     }
 
     /// @inheritdoc IERC4626
