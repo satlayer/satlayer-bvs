@@ -31,7 +31,7 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     /**
      * @dev mapping of withdrawal delays for all of operator's vault.
      */
-    mapping(address operator => uint32) private withdrawalDelay;
+    mapping(address operator => uint32) private _withdrawalDelay;
 
     /**
      * @dev Default delay for operator's vault withdrawals if not set.
@@ -393,7 +393,7 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      */
     function setWithdrawalDelay(uint32 delay) public onlyOperator(_msgSender()) {
         require(delay >= DEFAULT_WITHDRAWAL_DELAY, "Delay must be at least more than or equal to 7 days");
-        withdrawalDelay[_msgSender()] = delay;
+        _withdrawalDelay[_msgSender()] = delay;
         emit WithdrawalDelayUpdated(_msgSender(), delay);
     }
 
@@ -405,7 +405,7 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      */
     function getWithdrawalDelay(address operator) public view returns (uint32) {
         // If the delay is not set, return the default delay.
-        return withdrawalDelay[operator] == 0 ? DEFAULT_WITHDRAWAL_DELAY : withdrawalDelay[operator];
+        return _withdrawalDelay[operator] == 0 ? DEFAULT_WITHDRAWAL_DELAY : _withdrawalDelay[operator];
     }
 }
 

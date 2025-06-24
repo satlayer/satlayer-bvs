@@ -111,15 +111,6 @@ contract SLAYVault is
         _;
     }
 
-    /**
-     * @dev The event emitted when a proxy is set. Renamed from `OperatorSet` to `ProxySet`.
-     *
-     * @param controller The address of the controller.
-     * @param proxy The address of the proxy.
-     * @param approved The approval status.
-     */
-    event ProxySet(address indexed controller, address indexed proxy, bool approved);
-
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(SLAYRouter router_, SLAYRegistry registry_) {
         router = router_;
