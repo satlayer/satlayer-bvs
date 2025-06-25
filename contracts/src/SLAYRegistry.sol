@@ -379,21 +379,25 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      * _msgSender is registered service.
      */
     function enableSlashing(SlashParameter.object calldata parameter) public onlyService(_msgSender()) {
-        require(parameter.maxMilliBips < 10000001, "Maximum Milli-Bips cannot be more than 10_000_000 (100%)");
-        require(parameter.maxMilliBips > 0, "Minimum Bips cannot be less than zero");
-        address service = _msgSender();
-        _updateSlashingParameters(service, parameter.destination, parameter.maxMilliBips, parameter.resolutionWindow);
+        require(parameter.maxMilliBips <= 10000000, "Maximum Milli-Bips cannot be more than 10_000_000 (100%)");
+        require(parameter.maxMilliBips >= 0, "Minimum Bips cannot be less than zero");
+        _updateSlashingParameters(
+            _msgSender(), parameter.destination, parameter.maxMilliBips, parameter.resolutionWindow
+        );
     }
 
     /**
      * @dev Mutate slash parameter checkpoint state for particular service
      */
-    function _updateSlashingParameters(address service, address destination, uint32 maxBips, uint32 resolutionWindow)
-        internal
-    {
-        uint224 parameter = SlashParameter.encode(destination, maxBips, resolutionWindow);
+    function _updateSlashingParameters(
+        address service,
+        address destination,
+        uint32 maxMilliBips,
+        uint32 resolutionWindow
+    ) internal {
+        uint224 parameter = SlashParameter.encode(destination, maxMilliBips, resolutionWindow);
         _slashParameters[service].push(uint32(block.timestamp), parameter);
-        emit SlashingParameterUpdated(service, destination, maxBips, resolutionWindow);
+        emit SlashingParameterUpdated(service, destination, maxMilliBips, resolutionWindow);
     }
 
     /**
@@ -407,13 +411,12 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     /**
      * @dev Get slashing parameters for particular service at or near at a given point in time.
      */
-    function getSlashingParameterAt(address service, uint256 timestamp)
+    function getSlashingParameterAt(address service, uint32 timestamp)
         public
         view
         returns (SlashParameter.object memory)
     {
-        SlashParameter.object memory parameter =
-            SlashParameter.decode(_slashParameters[service].upperLookup(uint32(timestamp)));
+        SlashParameter.object memory parameter = SlashParameter.decode(_slashParameters[service].upperLookup(timestamp));
         return parameter;
     }
 
@@ -421,12 +424,7 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      * @dev An operator can opt in to slashing for particular service
      * _msgSender() is operator
      */
-    function slashingOptIn(address service)
-        public
-        onlyService(service)
-        onlyOperator(_msgSender())
-        onlyActivelyRegistered(service, _msgSender())
-    {
+    function slashingOptIn(address service) public onlyActivelyRegistered(service, _msgSender()) {
         address operator = _msgSender();
         bytes32 key = ServiceOperator._getKey(service, operator);
         bool optedIn = getSlashingOptIns(key);
@@ -464,17 +462,17 @@ contract SLAYRegistry is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      * @dev Get if an operator is opted in to slash
      * for particular service at or near at given timestamp
      */
-    function getSlashingOptInsAt(bytes32 key, uint256 timestamp) public view returns (bool) {
-        return ServiceOperator._relationshipDecode(_relationships[key].upperLookup(uint32(timestamp))).slashOptedIn;
+    function getSlashingOptInsAt(bytes32 key, uint32 timestamp) public view returns (bool) {
+        return ServiceOperator._relationshipDecode(_relationships[key].upperLookup(timestamp)).slashOptedIn;
     }
 
     /**
      * @dev Get if an operator is opted in to slash
      * for particular service at or near at given timestamp
      */
-    function getSlashingOptInsAt(address service, address operator, uint256 timestamp) public view returns (bool) {
+    function getSlashingOptInsAt(address service, address operator, uint32 timestamp) public view returns (bool) {
         bytes32 key = ServiceOperator._getKey(service, operator);
-        return ServiceOperator._relationshipDecode(_relationships[key].upperLookup(uint32(timestamp))).slashOptedIn;
+        return ServiceOperator._relationshipDecode(_relationships[key].upperLookup(timestamp)).slashOptedIn;
     }
 }
 

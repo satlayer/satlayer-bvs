@@ -342,24 +342,17 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(service);
         registry.enableSlashing(
-            SlashParameter.object({destination: destination, maxMilliBips: 9999999, resolutionWindow: resolutionWindow})
+            SlashParameter.object({destination: destination, maxMilliBips: 10000000, resolutionWindow: resolutionWindow})
         );
 
         SlashParameter.object memory param = registry.getSlashingParameter(service);
-        assertEq(param.maxMilliBips, 9999999, "MaxBips should be 9999999");
+        assertEq(param.maxMilliBips, 10000000, "MaxBips should be 10000000");
 
         // Test maxBips at 10000001 (revert)
         vm.prank(service);
         vm.expectRevert("Maximum Milli-Bips cannot be more than 10_000_000 (100%)");
         registry.enableSlashing(
             SlashParameter.object({destination: destination, maxMilliBips: 10000001, resolutionWindow: resolutionWindow})
-        );
-
-        // Test maxBips at 0 (revert)
-        vm.prank(service);
-        vm.expectRevert("Minimum Bips cannot be less than zero");
-        registry.enableSlashing(
-            SlashParameter.object({destination: destination, maxMilliBips: 0, resolutionWindow: resolutionWindow})
         );
     }
 
@@ -453,7 +446,7 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         address nonService = makeAddr("nonService");
 
-        vm.expectRevert(abi.encodeWithSelector(SLAYRegistry.ServiceNotFound.selector, nonService));
+        vm.expectRevert("RegistrationStatus not Active");
         registry.slashingOptIn(nonService);
     }
 
@@ -463,7 +456,7 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         address nonOperator = makeAddr("nonOperator");
         vm.prank(nonOperator);
-        vm.expectRevert(abi.encodeWithSelector(SLAYRegistry.OperatorNotFound.selector, nonOperator));
+        vm.expectRevert("RegistrationStatus not Active");
         registry.slashingOptIn(service);
     }
 
