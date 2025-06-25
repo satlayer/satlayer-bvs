@@ -223,7 +223,7 @@ contract SLAYVault is
 
     /// @inheritdoc IERC7540Redeem
     function pendingRedeemRequest(uint256, address controller) public view returns (uint256 pendingShares) {
-        RedeemRequestStruct memory request = _pendingRedemption[controller];
+        RedeemRequestStruct storage request = _pendingRedemption[controller];
         if (request.claimableAt > block.timestamp) {
             return request.shares;
         }
@@ -232,7 +232,7 @@ contract SLAYVault is
 
     /// @inheritdoc IERC7540Redeem
     function claimableRedeemRequest(uint256, address controller) public view returns (uint256 claimableShares) {
-        RedeemRequestStruct memory request = _pendingRedemption[controller];
+        RedeemRequestStruct storage request = _pendingRedemption[controller];
         if (request.claimableAt <= block.timestamp && request.shares > 0) {
             return request.shares;
         }
