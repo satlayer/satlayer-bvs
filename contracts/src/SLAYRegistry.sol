@@ -19,10 +19,6 @@ import {ISLAYRegistry} from "./interface/ISLAYRegistry.sol";
 contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
     using Checkpoints for Checkpoints.Trace224;
 
-    /*//////////////////////////////////////////////////////////////
-                             STATE VARIABLES
-    //////////////////////////////////////////////////////////////*/
-
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     SLAYRouter public immutable router;
 
