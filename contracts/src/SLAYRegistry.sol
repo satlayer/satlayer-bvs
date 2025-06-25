@@ -36,8 +36,9 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     /**
      * @dev Service <-> Operator registration is a two sided consensus.
      * This mean both service and operator has to register to pair with each other.
+     * Map value is encoded uint224. Contains [`RegistrationStatus`] and [`slashOptedIn`] flag
      */
-    mapping(bytes32 key => Checkpoints.Trace224) private _registrationStatus;
+    mapping(bytes32 key => Checkpoints.Trace224) private _relationships;
 
     /// @dev Default delay for operator's vault withdrawals if not set.
     uint32 public constant DEFAULT_WITHDRAWAL_DELAY = 7 days;
@@ -78,7 +79,9 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * @param operator The address of the operator.
      * @param status The new registration status.
      */
-    event RegistrationStatusUpdated(address indexed service, address indexed operator, RegistrationStatus status);
+    event RegistrationStatusUpdated(
+        address indexed service, address indexed operator, ServiceOperator.RegistrationStatus status
+    );
 
     /**
      * @dev Emitted when Slashing Parameter for a service is updated
@@ -142,8 +145,8 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * @dev Modifier to guard if given service operator pair is Actively Paired - [`RegistrationStatus.Active`]
      */
     modifier onlyActivelyRegistered(address service, address operator) {
-        RegistrationStatus status = getRegistrationStatus(service, operator);
-        if (status != RegistrationStatus.Active) {
+        ServiceOperator.RegistrationStatus status = getRegistrationStatus(service, operator);
+        if (status != ServiceOperator.RegistrationStatus.Active) {
             revert("RegistrationStatus not Active");
         }
         _;
@@ -208,19 +211,19 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     {
         address service = _msgSender();
 
-        bytes32 key = ServiceOperatorKey._getKey(service, operator);
-        RegistrationStatus status = _getRegistrationStatus(key);
+        bytes32 key = ServiceOperator._getKey(service, operator);
+        ServiceOperator.RegistrationStatus status = _getRegistrationStatus(key);
 
-        if (status == RegistrationStatus.Active) {
+        if (status == ServiceOperator.RegistrationStatus.Active) {
             revert("Already active");
-        } else if (status == RegistrationStatus.ServiceRegistered) {
+        } else if (status == ServiceOperator.RegistrationStatus.ServiceRegistered) {
             revert("Already initiated");
-        } else if (status == RegistrationStatus.Inactive) {
-            _updateRegistrationStatus(key, RegistrationStatus.ServiceRegistered);
-            emit RegistrationStatusUpdated(service, operator, RegistrationStatus.ServiceRegistered);
-        } else if (status == RegistrationStatus.OperatorRegistered) {
-            _updateRegistrationStatus(key, RegistrationStatus.Active);
-            emit RegistrationStatusUpdated(service, operator, RegistrationStatus.Active);
+        } else if (status == ServiceOperator.RegistrationStatus.Inactive) {
+            _updateRegistrationStatus(key, ServiceOperator.RegistrationStatus.ServiceRegistered);
+            emit RegistrationStatusUpdated(service, operator, ServiceOperator.RegistrationStatus.ServiceRegistered);
+        } else if (status == ServiceOperator.RegistrationStatus.OperatorRegistered) {
+            _updateRegistrationStatus(key, ServiceOperator.RegistrationStatus.Active);
+            emit RegistrationStatusUpdated(service, operator, ServiceOperator.RegistrationStatus.Active);
         } else {
             // Panic as this is not an expected state.
             revert("Invalid status");
@@ -236,13 +239,13 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     {
         address service = _msgSender();
 
-        bytes32 key = ServiceOperatorKey._getKey(service, operator);
-        if (_getRegistrationStatus(key) == RegistrationStatus.Inactive) {
+        bytes32 key = ServiceOperator._getKey(service, operator);
+        if (_getRegistrationStatus(key) == ServiceOperator.RegistrationStatus.Inactive) {
             revert("Already inactive");
         }
 
-        _updateRegistrationStatus(key, RegistrationStatus.Inactive);
-        emit RegistrationStatusUpdated(service, operator, RegistrationStatus.Inactive);
+        _updateRegistrationStatus(key, ServiceOperator.RegistrationStatus.Inactive);
+        emit RegistrationStatusUpdated(service, operator, ServiceOperator.RegistrationStatus.Inactive);
     }
 
     /// @inheritdoc ISLAYRegistry
@@ -254,19 +257,19 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     {
         address operator = _msgSender();
 
-        bytes32 key = ServiceOperatorKey._getKey(service, operator);
-        RegistrationStatus status = _getRegistrationStatus(key);
+        bytes32 key = ServiceOperator._getKey(service, operator);
+        ServiceOperator.RegistrationStatus status = _getRegistrationStatus(key);
 
-        if (status == RegistrationStatus.Active) {
+        if (status == ServiceOperator.RegistrationStatus.Active) {
             revert("Already active");
-        } else if (status == RegistrationStatus.OperatorRegistered) {
+        } else if (status == ServiceOperator.RegistrationStatus.OperatorRegistered) {
             revert("Already initiated");
-        } else if (status == RegistrationStatus.Inactive) {
-            _updateRegistrationStatus(key, RegistrationStatus.OperatorRegistered);
-            emit RegistrationStatusUpdated(service, operator, RegistrationStatus.OperatorRegistered);
-        } else if (status == RegistrationStatus.ServiceRegistered) {
-            _updateRegistrationStatus(key, RegistrationStatus.Active);
-            emit RegistrationStatusUpdated(service, operator, RegistrationStatus.Active);
+        } else if (status == ServiceOperator.RegistrationStatus.Inactive) {
+            _updateRegistrationStatus(key, ServiceOperator.RegistrationStatus.OperatorRegistered);
+            emit RegistrationStatusUpdated(service, operator, ServiceOperator.RegistrationStatus.OperatorRegistered);
+        } else if (status == ServiceOperator.RegistrationStatus.ServiceRegistered) {
+            _updateRegistrationStatus(key, ServiceOperator.RegistrationStatus.Active);
+            emit RegistrationStatusUpdated(service, operator, ServiceOperator.RegistrationStatus.Active);
         } else {
             // Panic as this is not an expected state.
             revert("Invalid status");
@@ -282,29 +285,38 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     {
         address operator = _msgSender();
 
-        bytes32 key = ServiceOperatorKey._getKey(service, operator);
-        if (_getRegistrationStatus(key) == RegistrationStatus.Inactive) {
+        bytes32 key = ServiceOperator._getKey(service, operator);
+        if (_getRegistrationStatus(key) == ServiceOperator.RegistrationStatus.Inactive) {
             revert("Already inactive");
         }
 
-        _updateRegistrationStatus(key, RegistrationStatus.Inactive);
-        emit RegistrationStatusUpdated(service, operator, RegistrationStatus.Inactive);
+        _updateRegistrationStatus(key, ServiceOperator.RegistrationStatus.Inactive);
+        emit RegistrationStatusUpdated(service, operator, ServiceOperator.RegistrationStatus.Inactive);
     }
 
-    /// @inheritdoc ISLAYRegistry
-    function getRegistrationStatus(address service, address operator) public view returns (RegistrationStatus) {
-        bytes32 key = ServiceOperatorKey._getKey(service, operator);
-        return RegistrationStatus(uint8(_registrationStatus[key].latest()));
+    /**
+     * @dev Get the `RegistrationStatus` for a given service-operator pair at the latest checkpoint.
+     * @param service The address of the service.
+     * @param operator The address of the operator.
+     * @return RegistrationStatus The latest registration status for the service-operator pair.
+     */
+    function getRegistrationStatus(address service, address operator)
+        public
+        view
+        returns (ServiceOperator.RegistrationStatus)
+    {
+        bytes32 key = ServiceOperator._getKey(service, operator);
+        return ServiceOperator._relationshipDecode(_relationships[key].latest()).status;
     }
 
     /// @inheritdoc ISLAYRegistry
     function getRegistrationStatusAt(address service, address operator, uint32 timestamp)
         public
         view
-        returns (RegistrationStatus)
+        returns (ServiceOperator.RegistrationStatus)
     {
-        bytes32 key = ServiceOperatorKey._getKey(service, operator);
-        return RegistrationStatus(uint8(_registrationStatus[key].upperLookup(timestamp)));
+        bytes32 key = ServiceOperator._getKey(service, operator);
+        return ServiceOperator._relationshipDecode(_relationships[key].upperLookup(timestamp)).status;
     }
 
     /**
@@ -312,10 +324,10 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * @param key The hash of the service and operator addresses. Use `ServiceOperator._getKey()` to generate the key.
      * @return RegistrationStatus The latest registration status for the service-operator pair.
      */
-    function _getRegistrationStatus(bytes32 key) internal view returns (RegistrationStatus) {
+    function _getRegistrationStatus(bytes32 key) internal view returns (ServiceOperator.RegistrationStatus) {
         // The method `checkpoint.latest()` returns 0 on empty checkpoint,
         // RegistrationStatus.Inactive being 0 as desired.
-        return RegistrationStatus(uint8(_registrationStatus[key].latest()));
+        return ServiceOperator._relationshipDecode(_relationships[key].latest()).status;
     }
 
     /**
@@ -323,8 +335,11 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * @param key The hash of the service and operator addresses. Use `ServiceOperator._getKey()` to generate the key.
      * @param status RegistrationStatus to set for the service-operator pair.
      */
-    function _updateRegistrationStatus(bytes32 key, RegistrationStatus status) internal {
-        _registrationStatus[key].push(uint32(block.timestamp), uint224(uint8(status)));
+    function _updateRegistrationStatus(bytes32 key, ServiceOperator.RegistrationStatus status) internal {
+        bool slashOptedIn = ServiceOperator._relationshipDecode(_relationships[key].latest()).slashOptedIn;
+        ServiceOperator.relationship memory rs =
+            ServiceOperator.relationship({status: status, slashOptedIn: slashOptedIn});
+        _relationships[key].push(uint32(block.timestamp), ServiceOperator._relationshipEncode(rs));
     }
 
     /// @inheritdoc ISLAYRegistry
@@ -415,7 +430,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         onlyActivelyRegistered(service, _msgSender())
     {
         address operator = _msgSender();
-        bytes32 key = ServiceOperatorKey._getKey(service, operator);
+        bytes32 key = ServiceOperator._getKey(service, operator);
         bool optedIn = getSlashingOptIns(key);
         require(optedIn == false, "Operator already opted in slashing for this service");
         _updateSlashingOptIns(key, true);
@@ -426,24 +441,25 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * @dev Mutate the operator slash opt in map at current block timestamp.
      */
     function _updateSlashingOptIns(bytes32 key, bool optIn) internal {
-        _slashingOptIns[key].push(uint32(block.timestamp), uint224(optIn ? 1 : 0));
+        ServiceOperator.RegistrationStatus status =
+            ServiceOperator._relationshipDecode(_relationships[key].latest()).status;
+        ServiceOperator.relationship memory new_rs = ServiceOperator.relationship({status: status, slashOptedIn: optIn});
+        _relationships[key].push(uint32(block.timestamp), ServiceOperator._relationshipEncode(new_rs));
     }
 
     /**
      * @dev Get if an operator is opted in to slash for particular service at current block timestamp
      */
     function getSlashingOptIns(bytes32 key) public view returns (bool) {
-        bool optedIn = _slashingOptIns[key].latest() == 1 ? true : false;
-        return optedIn;
+        return ServiceOperator._relationshipDecode(_relationships[key].latest()).slashOptedIn;
     }
 
     /**
      * @dev Get if an operator is opted in to slash for particular service at current block timestamp
      */
     function getSlashingOptIns(address service, address operator) public view returns (bool) {
-        bytes32 key = ServiceOperatorKey._getKey(service, operator);
-        bool optedIn = _slashingOptIns[key].latest() == 1 ? true : false;
-        return optedIn;
+        bytes32 key = ServiceOperator._getKey(service, operator);
+        return ServiceOperator._relationshipDecode(_relationships[key].latest()).slashOptedIn;
     }
 
     /**
@@ -451,8 +467,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * for particular service at or near at given timestamp
      */
     function getSlashingOptInsAt(bytes32 key, uint256 timestamp) public view returns (bool) {
-        bool optedIn = (_slashingOptIns[key].upperLookup(uint32(timestamp))) == 1 ? true : false;
-        return optedIn;
+        return ServiceOperator._relationshipDecode(_relationships[key].upperLookup(uint32(timestamp))).slashOptedIn;
     }
 
     /**
@@ -460,13 +475,69 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * for particular service at or near at given timestamp
      */
     function getSlashingOptInsAt(address service, address operator, uint256 timestamp) public view returns (bool) {
-        bytes32 key = ServiceOperatorKey._getKey(service, operator);
-        bool optedIn = (_slashingOptIns[key].upperLookup(uint32(timestamp))) == 1 ? true : false;
-        return optedIn;
+        bytes32 key = ServiceOperator._getKey(service, operator);
+        return ServiceOperator._relationshipDecode(_relationships[key].upperLookup(uint32(timestamp))).slashOptedIn;
     }
 }
 
-library ServiceOperatorKey {
+library ServiceOperator {
+    /**
+     * @dev Enum representing the registration status between a service and an operator.
+     * The registration status can be one of the following:
+     */
+    enum RegistrationStatus {
+        /**
+         * Default state when neither the Operator nor the Service has registered,
+         * or when either the Operator or Service has unregistered.
+         * `uint8(0)` is used to represent this state, the default value.
+         */
+        Inactive,
+        /**
+         * State when both the Operator and Service have registered with each other,
+         * indicating a fully established relationship.
+         */
+        Active,
+        /**
+         * This state is used when the Operator has registered an Service,
+         * but the Service hasn't yet registered,
+         * indicating a pending registration from the Service side.
+         * This is Operator-initiated registration, waiting for Service to finalize.
+         */
+        OperatorRegistered,
+        /**
+         * This state is used when the Service has registered an Operator,
+         * but the Operator hasn't yet registered,
+         * indicating a pending registration from the Operator side.
+         * This is Service-initiated registration, waiting for Operator to finalize.
+         */
+        ServiceRegistered
+    }
+
+    /**
+     * @dev Represents relationship between particular service and operator pair
+     */
+    struct relationship {
+        RegistrationStatus status;
+        /**
+         * Whether an operator as opted in to the slashing
+         */
+        bool slashOptedIn;
+    }
+
+    function _relationshipEncode(relationship memory rs) internal pure returns (uint224) {
+        uint160 status = uint160(rs.status);
+        uint224 encodedData = uint224(status);
+        encodedData |= (uint224(rs.slashOptedIn ? 1 : 0) << 160);
+        return encodedData;
+    }
+
+    function _relationshipDecode(uint224 encodedData) internal pure returns (relationship memory) {
+        uint160 status = uint160(encodedData);
+        bool slashOptedIn = uint64(encodedData >> 160) == 1 ? true : false;
+
+        return relationship({status: RegistrationStatus(status), slashOptedIn: slashOptedIn});
+    }
+
     /**
      * @dev Hash the service and operator addresses to create a unique key for the `registrationStatus` map.
      * @param service The address of the service.
