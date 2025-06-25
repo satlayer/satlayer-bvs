@@ -401,4 +401,14 @@ contract SLAYVault is
     function previewRedeem(uint256) public pure virtual override(IERC4626, ERC4626Upgradeable) returns (uint256) {
         revert PreviewNotSupported();
     }
+
+    /**
+     * @notice Returns the total amount of shares pending redemption across all controllers.
+     * This is the sum of all shares in pending and claimable redemption requests.
+     *
+     * @return The total amount of shares pending redemption.
+     */
+    function getTotalPendingRedemption() external view returns (uint256) {
+        return _totalPendingRedemption;
+    }
 }
