@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {Test, console} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {SLAYRegistry} from "../src/SLAYRegistry.sol";
+import {ISLAYRegistry} from "../src/interface/ISLAYRegistry.sol";
 import {SLAYRouter} from "../src/SLAYRouter.sol";
 import {TestSuite} from "./TestSuite.sol";
 
@@ -18,10 +18,10 @@ contract SLAYRegistryTest is Test, TestSuite {
 
     function test_RegisterAsService() public {
         vm.expectEmit();
-        emit SLAYRegistry.ServiceRegistered(address(this));
+        emit ISLAYRegistry.ServiceRegistered(address(this));
 
         vm.expectEmit();
-        emit SLAYRegistry.MetadataUpdated(address(this), "https://service.example.com", "Service Name");
+        emit ISLAYRegistry.MetadataUpdated(address(this), "https://service.example.com", "Service Name");
 
         registry.registerAsService("https://service.example.com", "Service Name");
         assertTrue(registry.isService(address(this)), "Service should be registered");
@@ -36,10 +36,10 @@ contract SLAYRegistryTest is Test, TestSuite {
 
     function test_RegisterAsOperator() public {
         vm.expectEmit();
-        emit SLAYRegistry.OperatorRegistered(address(this));
+        emit ISLAYRegistry.OperatorRegistered(address(this));
 
         vm.expectEmit();
-        emit SLAYRegistry.MetadataUpdated(address(this), "https://operator.com", "Operator X");
+        emit ISLAYRegistry.MetadataUpdated(address(this), "https://operator.com", "Operator X");
 
         registry.registerAsOperator("https://operator.com", "Operator X");
         assertTrue(registry.isOperator(address(this)), "Operator should be registered");
@@ -68,25 +68,25 @@ contract SLAYRegistryTest is Test, TestSuite {
         // Step 1: Service registers operator
         vm.prank(service);
         vm.expectEmit();
-        emit SLAYRegistry.RegistrationStatusUpdated(
-            service, operator, SLAYRegistry.RegistrationStatus.ServiceRegistered
+        emit ISLAYRegistry.RegistrationStatusUpdated(
+            service, operator, ISLAYRegistry.RegistrationStatus.ServiceRegistered
         );
         registry.registerOperatorToService(operator);
 
         assertEq(
             uint256(registry.getRegistrationStatus(service, operator)),
-            uint256(SLAYRegistry.RegistrationStatus.ServiceRegistered),
+            uint256(ISLAYRegistry.RegistrationStatus.ServiceRegistered),
             "Status should be ServiceRegistered"
         );
 
         // Step 2: Operator accept and register to the service
         vm.prank(operator);
         vm.expectEmit();
-        emit SLAYRegistry.RegistrationStatusUpdated(service, operator, SLAYRegistry.RegistrationStatus.Active);
+        emit ISLAYRegistry.RegistrationStatusUpdated(service, operator, ISLAYRegistry.RegistrationStatus.Active);
         registry.registerServiceToOperator(service);
         assertEq(
             uint256(registry.getRegistrationStatus(service, operator)),
-            uint256(SLAYRegistry.RegistrationStatus.Active),
+            uint256(ISLAYRegistry.RegistrationStatus.Active),
             "Status should be Active"
         );
     }
@@ -107,26 +107,26 @@ contract SLAYRegistryTest is Test, TestSuite {
         // Step 1: Operator registers service
         vm.prank(operator);
         vm.expectEmit();
-        emit SLAYRegistry.RegistrationStatusUpdated(
-            service, operator, SLAYRegistry.RegistrationStatus.OperatorRegistered
+        emit ISLAYRegistry.RegistrationStatusUpdated(
+            service, operator, ISLAYRegistry.RegistrationStatus.OperatorRegistered
         );
         registry.registerServiceToOperator(service);
 
         assertEq(
             uint256(registry.getRegistrationStatus(service, operator)),
-            uint256(SLAYRegistry.RegistrationStatus.OperatorRegistered),
+            uint256(ISLAYRegistry.RegistrationStatus.OperatorRegistered),
             "Status should be OperatorRegistered"
         );
 
         // Step 2: Service accept and register operator
         vm.prank(service);
         vm.expectEmit();
-        emit SLAYRegistry.RegistrationStatusUpdated(service, operator, SLAYRegistry.RegistrationStatus.Active);
+        emit ISLAYRegistry.RegistrationStatusUpdated(service, operator, ISLAYRegistry.RegistrationStatus.Active);
         registry.registerOperatorToService(operator);
 
         assertEq(
             uint256(registry.getRegistrationStatus(service, operator)),
-            uint256(SLAYRegistry.RegistrationStatus.Active),
+            uint256(ISLAYRegistry.RegistrationStatus.Active),
             "Status should be Active"
         );
     }
@@ -136,12 +136,12 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(service);
         vm.expectEmit();
-        emit SLAYRegistry.RegistrationStatusUpdated(service, operator, SLAYRegistry.RegistrationStatus.Inactive);
+        emit ISLAYRegistry.RegistrationStatusUpdated(service, operator, ISLAYRegistry.RegistrationStatus.Inactive);
         registry.deregisterOperatorFromService(operator);
 
         assertEq(
             uint256(registry.getRegistrationStatus(service, operator)),
-            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+            uint256(ISLAYRegistry.RegistrationStatus.Inactive),
             "Status should be Inactive after deregistration"
         );
     }
@@ -151,12 +151,12 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(operator);
         vm.expectEmit();
-        emit SLAYRegistry.RegistrationStatusUpdated(service, operator, SLAYRegistry.RegistrationStatus.Inactive);
+        emit ISLAYRegistry.RegistrationStatusUpdated(service, operator, ISLAYRegistry.RegistrationStatus.Inactive);
         registry.deregisterServiceFromOperator(service);
 
         assertEq(
             uint256(registry.getRegistrationStatus(service, operator)),
-            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+            uint256(ISLAYRegistry.RegistrationStatus.Inactive),
             "Status should be Inactive after deregistration"
         );
     }
@@ -180,14 +180,14 @@ contract SLAYRegistryTest is Test, TestSuite {
         uint32 timeBeforeRegister = uint32(block.timestamp);
         assertEq(
             uint256(registry.getRegistrationStatusAt(service, operator, timeBeforeRegister)),
-            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+            uint256(ISLAYRegistry.RegistrationStatus.Inactive),
             "Status should be Inactive because no prior history"
         );
 
         // Inactive at current time
         assertEq(
             uint256(registry.getRegistrationStatus(service, operator)),
-            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+            uint256(ISLAYRegistry.RegistrationStatus.Inactive),
             "Status should be Inactive because no prior history"
         );
 
@@ -199,17 +199,17 @@ contract SLAYRegistryTest is Test, TestSuite {
         uint32 timeAfterRegister = uint32(block.timestamp);
         assertEq(
             uint256(registry.getRegistrationStatusAt(service, operator, timeBeforeRegister)),
-            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+            uint256(ISLAYRegistry.RegistrationStatus.Inactive),
             "Status should be Inactive prior to registration"
         );
         assertEq(
             uint256(registry.getRegistrationStatusAt(service, operator, timeAfterRegister)),
-            uint256(SLAYRegistry.RegistrationStatus.ServiceRegistered),
+            uint256(ISLAYRegistry.RegistrationStatus.ServiceRegistered),
             "Status should be ServiceRegistered"
         );
         assertEq(
             uint256(registry.getRegistrationStatus(service, operator)),
-            uint256(SLAYRegistry.RegistrationStatus.ServiceRegistered),
+            uint256(ISLAYRegistry.RegistrationStatus.ServiceRegistered),
             "Status should be ServiceRegistered at current time"
         );
 
@@ -218,7 +218,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         // Check previous block status
         assertEq(
             uint256(registry.getRegistrationStatusAt(service, operator, timeBeforeRegister)),
-            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+            uint256(ISLAYRegistry.RegistrationStatus.Inactive),
             "Status should still be Inactive"
         );
 
@@ -228,69 +228,69 @@ contract SLAYRegistryTest is Test, TestSuite {
         uint32 timeAfterActive = uint32(block.timestamp);
         assertEq(
             uint256(registry.getRegistrationStatusAt(service, operator, timeAfterActive)),
-            uint256(SLAYRegistry.RegistrationStatus.Active),
+            uint256(ISLAYRegistry.RegistrationStatus.Active),
             "Status should be Active"
         );
         assertEq(
             uint256(registry.getRegistrationStatus(service, operator)),
-            uint256(SLAYRegistry.RegistrationStatus.Active),
+            uint256(ISLAYRegistry.RegistrationStatus.Active),
             "Status should be Active at current time"
         );
 
         // Check all previous checkpoint
         assertEq(
             uint256(registry.getRegistrationStatusAt(service, operator, 0)),
-            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+            uint256(ISLAYRegistry.RegistrationStatus.Inactive),
             "Status should be Inactive at timestamp 0"
         );
         assertEq(
             uint256(registry.getRegistrationStatusAt(service, operator, timeBeforeRegister)),
-            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+            uint256(ISLAYRegistry.RegistrationStatus.Inactive),
             "Status should be Inactive before registration"
         );
         assertEq(
             uint256(registry.getRegistrationStatusAt(service, operator, timeAfterRegister)),
-            uint256(SLAYRegistry.RegistrationStatus.ServiceRegistered),
+            uint256(ISLAYRegistry.RegistrationStatus.ServiceRegistered),
             "Status should be ServiceRegistered after registration"
         );
         assertEq(
             uint256(registry.getRegistrationStatusAt(service, operator, timeAfterActive)),
-            uint256(SLAYRegistry.RegistrationStatus.Active),
+            uint256(ISLAYRegistry.RegistrationStatus.Active),
             "Status should be Active after mutual registration"
         );
         assertEq(
             uint256(registry.getRegistrationStatusAt(service, operator, uint32(block.timestamp + 1000000000))),
-            uint256(SLAYRegistry.RegistrationStatus.Active),
+            uint256(ISLAYRegistry.RegistrationStatus.Active),
             "Status should be Active in the future"
         );
         assertEq(
             uint256(registry.getRegistrationStatus(service, operator)),
-            uint256(SLAYRegistry.RegistrationStatus.Active),
+            uint256(ISLAYRegistry.RegistrationStatus.Active),
             "Status should be Active at current time"
         );
     }
 
     function test_Fail_UnregisteredService() public {
-        vm.expectRevert(abi.encodeWithSelector(SLAYRegistry.ServiceNotFound.selector, address(this)));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistry.ServiceNotFound.selector, address(this)));
         registry.registerOperatorToService(operator);
     }
 
     function test_Fail_UnregisteredOperator() public {
-        vm.expectRevert(abi.encodeWithSelector(SLAYRegistry.OperatorNotFound.selector, address(this)));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistry.OperatorNotFound.selector, address(this)));
         registry.registerServiceToOperator(service);
     }
 
     function test_Fail_RegisterOperatorToService_UnregisteredOperator() public {
         registry.registerAsService("https://service.eth", "Service A");
 
-        vm.expectRevert(abi.encodeWithSelector(SLAYRegistry.OperatorNotFound.selector, address(operator)));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistry.OperatorNotFound.selector, address(operator)));
         registry.registerOperatorToService(operator);
     }
 
     function test_Fail_RegisterServiceToOperator_UnregisteredService() public {
         registry.registerAsOperator("https://operator.eth", "Operator X");
 
-        vm.expectRevert(abi.encodeWithSelector(SLAYRegistry.ServiceNotFound.selector, address(service)));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistry.ServiceNotFound.selector, address(service)));
         registry.registerServiceToOperator(service);
     }
 
@@ -320,7 +320,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         assertEq(registry.getWithdrawalDelay(operator), 7 days, "Default withdrawal delay should be 7 days");
 
         vm.expectEmit();
-        emit SLAYRegistry.WithdrawalDelayUpdated(operator, newDelay);
+        emit ISLAYRegistry.WithdrawalDelayUpdated(operator, newDelay);
 
         // Set the withdrawal delay to 8 days
         registry.setWithdrawalDelay(newDelay);
@@ -331,7 +331,7 @@ contract SLAYRegistryTest is Test, TestSuite {
     function test_Fail_SetWithdrawalDelay_NotOperator() public {
         vm.startPrank(operator);
 
-        vm.expectRevert(abi.encodeWithSelector(SLAYRegistry.OperatorNotFound.selector, operator));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistry.OperatorNotFound.selector, operator));
         registry.setWithdrawalDelay(7 days);
     }
 
