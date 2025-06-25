@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {Test, console} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {SLAYRegistry, SlashParameter} from "../src/SLAYRegistry.sol";
+import {SLAYRegistry, SlashParameter, ServiceOperator} from "../src/SLAYRegistry.sol";
 import {SLAYRouter} from "../src/SLAYRouter.sol";
 import {EmptyImpl} from "../src/EmptyImpl.sol";
 import {TestSuite} from "./TestSuite.sol";
@@ -70,24 +70,24 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.prank(service);
         vm.expectEmit();
         emit SLAYRegistry.RegistrationStatusUpdated(
-            service, operator, SLAYRegistry.RegistrationStatus.ServiceRegistered
+            service, operator, ServiceOperator.RegistrationStatus.ServiceRegistered
         );
         registry.registerOperatorToService(operator);
 
         assertEq(
             uint256(registry.getRegistrationStatus(service, operator)),
-            uint256(SLAYRegistry.RegistrationStatus.ServiceRegistered),
+            uint256(ServiceOperator.RegistrationStatus.ServiceRegistered),
             "Status should be ServiceRegistered"
         );
 
         // Step 2: Operator accept and register to the service
         vm.prank(operator);
         vm.expectEmit();
-        emit SLAYRegistry.RegistrationStatusUpdated(service, operator, SLAYRegistry.RegistrationStatus.Active);
+        emit SLAYRegistry.RegistrationStatusUpdated(service, operator, ServiceOperator.RegistrationStatus.Active);
         registry.registerServiceToOperator(service);
         assertEq(
             uint256(registry.getRegistrationStatus(service, operator)),
-            uint256(SLAYRegistry.RegistrationStatus.Active),
+            uint256(ServiceOperator.RegistrationStatus.Active),
             "Status should be Active"
         );
     }
@@ -109,25 +109,25 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.prank(operator);
         vm.expectEmit();
         emit SLAYRegistry.RegistrationStatusUpdated(
-            service, operator, SLAYRegistry.RegistrationStatus.OperatorRegistered
+            service, operator, ServiceOperator.RegistrationStatus.OperatorRegistered
         );
         registry.registerServiceToOperator(service);
 
         assertEq(
             uint256(registry.getRegistrationStatus(service, operator)),
-            uint256(SLAYRegistry.RegistrationStatus.OperatorRegistered),
+            uint256(ServiceOperator.RegistrationStatus.OperatorRegistered),
             "Status should be OperatorRegistered"
         );
 
         // Step 2: Service accept and register operator
         vm.prank(service);
         vm.expectEmit();
-        emit SLAYRegistry.RegistrationStatusUpdated(service, operator, SLAYRegistry.RegistrationStatus.Active);
+        emit SLAYRegistry.RegistrationStatusUpdated(service, operator, ServiceOperator.RegistrationStatus.Active);
         registry.registerOperatorToService(operator);
 
         assertEq(
             uint256(registry.getRegistrationStatus(service, operator)),
-            uint256(SLAYRegistry.RegistrationStatus.Active),
+            uint256(ServiceOperator.RegistrationStatus.Active),
             "Status should be Active"
         );
     }
@@ -137,12 +137,12 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(service);
         vm.expectEmit();
-        emit SLAYRegistry.RegistrationStatusUpdated(service, operator, SLAYRegistry.RegistrationStatus.Inactive);
+        emit SLAYRegistry.RegistrationStatusUpdated(service, operator, ServiceOperator.RegistrationStatus.Inactive);
         registry.deregisterOperatorFromService(operator);
 
         assertEq(
             uint256(registry.getRegistrationStatus(service, operator)),
-            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+            uint256(ServiceOperator.RegistrationStatus.Inactive),
             "Status should be Inactive after deregistration"
         );
     }
@@ -152,12 +152,12 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(operator);
         vm.expectEmit();
-        emit SLAYRegistry.RegistrationStatusUpdated(service, operator, SLAYRegistry.RegistrationStatus.Inactive);
+        emit SLAYRegistry.RegistrationStatusUpdated(service, operator, ServiceOperator.RegistrationStatus.Inactive);
         registry.deregisterServiceFromOperator(service);
 
         assertEq(
             uint256(registry.getRegistrationStatus(service, operator)),
-            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+            uint256(ServiceOperator.RegistrationStatus.Inactive),
             "Status should be Inactive after deregistration"
         );
     }
@@ -181,14 +181,14 @@ contract SLAYRegistryTest is Test, TestSuite {
         uint32 timeBeforeRegister = uint32(block.timestamp);
         assertEq(
             uint256(registry.getRegistrationStatusAt(service, operator, timeBeforeRegister)),
-            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+            uint256(ServiceOperator.RegistrationStatus.Inactive),
             "Status should be Inactive because no prior history"
         );
 
         // Inactive at current time
         assertEq(
             uint256(registry.getRegistrationStatus(service, operator)),
-            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+            uint256(ServiceOperator.RegistrationStatus.Inactive),
             "Status should be Inactive because no prior history"
         );
 
@@ -200,17 +200,17 @@ contract SLAYRegistryTest is Test, TestSuite {
         uint32 timeAfterRegister = uint32(block.timestamp);
         assertEq(
             uint256(registry.getRegistrationStatusAt(service, operator, timeBeforeRegister)),
-            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+            uint256(ServiceOperator.RegistrationStatus.Inactive),
             "Status should be Inactive prior to registration"
         );
         assertEq(
             uint256(registry.getRegistrationStatusAt(service, operator, timeAfterRegister)),
-            uint256(SLAYRegistry.RegistrationStatus.ServiceRegistered),
+            uint256(ServiceOperator.RegistrationStatus.ServiceRegistered),
             "Status should be ServiceRegistered"
         );
         assertEq(
             uint256(registry.getRegistrationStatus(service, operator)),
-            uint256(SLAYRegistry.RegistrationStatus.ServiceRegistered),
+            uint256(ServiceOperator.RegistrationStatus.ServiceRegistered),
             "Status should be ServiceRegistered at current time"
         );
 
@@ -219,7 +219,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         // Check previous block status
         assertEq(
             uint256(registry.getRegistrationStatusAt(service, operator, timeBeforeRegister)),
-            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+            uint256(ServiceOperator.RegistrationStatus.Inactive),
             "Status should still be Inactive"
         );
 
@@ -229,44 +229,44 @@ contract SLAYRegistryTest is Test, TestSuite {
         uint32 timeAfterActive = uint32(block.timestamp);
         assertEq(
             uint256(registry.getRegistrationStatusAt(service, operator, timeAfterActive)),
-            uint256(SLAYRegistry.RegistrationStatus.Active),
+            uint256(ServiceOperator.RegistrationStatus.Active),
             "Status should be Active"
         );
         assertEq(
             uint256(registry.getRegistrationStatus(service, operator)),
-            uint256(SLAYRegistry.RegistrationStatus.Active),
+            uint256(ServiceOperator.RegistrationStatus.Active),
             "Status should be Active at current time"
         );
 
         // Check all previous checkpoint
         assertEq(
             uint256(registry.getRegistrationStatusAt(service, operator, 0)),
-            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+            uint256(ServiceOperator.RegistrationStatus.Inactive),
             "Status should be Inactive at timestamp 0"
         );
         assertEq(
             uint256(registry.getRegistrationStatusAt(service, operator, timeBeforeRegister)),
-            uint256(SLAYRegistry.RegistrationStatus.Inactive),
+            uint256(ServiceOperator.RegistrationStatus.Inactive),
             "Status should be Inactive before registration"
         );
         assertEq(
             uint256(registry.getRegistrationStatusAt(service, operator, timeAfterRegister)),
-            uint256(SLAYRegistry.RegistrationStatus.ServiceRegistered),
+            uint256(ServiceOperator.RegistrationStatus.ServiceRegistered),
             "Status should be ServiceRegistered after registration"
         );
         assertEq(
             uint256(registry.getRegistrationStatusAt(service, operator, timeAfterActive)),
-            uint256(SLAYRegistry.RegistrationStatus.Active),
+            uint256(ServiceOperator.RegistrationStatus.Active),
             "Status should be Active after mutual registration"
         );
         assertEq(
             uint256(registry.getRegistrationStatusAt(service, operator, uint32(block.timestamp + 1000000000))),
-            uint256(SLAYRegistry.RegistrationStatus.Active),
+            uint256(ServiceOperator.RegistrationStatus.Active),
             "Status should be Active in the future"
         );
         assertEq(
             uint256(registry.getRegistrationStatus(service, operator)),
-            uint256(SLAYRegistry.RegistrationStatus.Active),
+            uint256(ServiceOperator.RegistrationStatus.Active),
             "Status should be Active at current time"
         );
     }
