@@ -10,6 +10,7 @@
       <excludeFolder url="file://$MODULE_DIR$/.turbo" />
       <excludeFolder url="file://$MODULE_DIR$/examples/squaring/contract/target" />
       <excludeFolder url="file://$MODULE_DIR$/examples/insurance/service/contract/target" />
+      <excludeFolder url="file://$MODULE_DIR$/examples/dvn/src/bvs-contract/target" />
       <excludePattern pattern=".turbo" />
       <excludePattern pattern="dist" />
       <excludePattern pattern="Cargo.lock" />

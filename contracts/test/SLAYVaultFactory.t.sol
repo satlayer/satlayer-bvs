@@ -25,7 +25,7 @@ contract SLAYVaultFactoryTest is Test, TestSuite {
         vm.prank(operator);
         SLAYVault vault = vaultFactory.create(asset);
 
-        assertEq(vault.operator(), operator);
+        assertEq(vault.delegated(), operator);
         assertEq(vault.name(), "SatLayer Mock Token");
         assertEq(vault.symbol(), "satMTK");
         assertEq(vault.decimals(), 8);
@@ -37,7 +37,7 @@ contract SLAYVaultFactoryTest is Test, TestSuite {
         vm.prank(operator);
         SLAYVault vault = vaultFactory.create(asset);
 
-        assertEq(vault.operator(), operator);
+        assertEq(vault.delegated(), operator);
         assertEq(vault.decimals(), 15);
         assertEq(vault.name(), "SatLayer Mock Bit Dollar");
         assertEq(vault.symbol(), "satBDR");
@@ -47,7 +47,7 @@ contract SLAYVaultFactoryTest is Test, TestSuite {
         vm.prank(owner);
         SLAYVault vault = vaultFactory.create(underlying, operator, "Custom Name", "Custom Symbol");
 
-        assertEq(vault.operator(), operator);
+        assertEq(vault.delegated(), operator);
         assertEq(vault.name(), "Custom Name");
         assertEq(vault.symbol(), "Custom Symbol");
         assertEq(vault.decimals(), 18);
@@ -68,7 +68,7 @@ contract SLAYVaultFactoryTest is Test, TestSuite {
         vm.prank(operator);
         SLAYVault vault = vaultFactory.create(underlying);
 
-        assertEq(vault.operator(), operator);
+        assertEq(vault.delegated(), operator);
     }
 
     function test_create_with_not_operator() public {
