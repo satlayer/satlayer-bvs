@@ -59,7 +59,7 @@ contract SLAYVaultTest is Test, TestSuite {
         underlying.mint(account, 1000 * 10 ** vault.decimals());
         underlying.approve(address(vault), type(uint256).max);
 
-        vm.expectRevert(SLAYVault.ExpectedWhitelisted.selector);
+        vm.expectRevert(ISLAYVault.ExpectedWhitelisted.selector);
         vault.deposit(100, account);
     }
 
@@ -77,7 +77,7 @@ contract SLAYVaultTest is Test, TestSuite {
         underlying.mint(account, 1000 * 10 ** vault.decimals());
         underlying.approve(address(vault), type(uint256).max);
 
-        vm.expectRevert(SLAYVault.EnforcedPause.selector);
+        vm.expectRevert(ISLAYVault.EnforcedPause.selector);
         vault.deposit(100, account);
     }
 
@@ -608,19 +608,19 @@ contract SLAYVaultTest is Test, TestSuite {
         {
             // operator1 tries to redeem for controller1 to receiver (should fail, because operator1 is not an operator of controller1)
             vm.prank(operator1);
-            vm.expectRevert(SLAYVault.NotControllerOrOperator.selector);
+            vm.expectRevert(ISLAYVault.NotControllerOrOperator.selector);
             vault.redeem(totalRedeemAmount, receiver, controller1);
         }
         {
             // randomAddress tries to redeem for controller1 to receiver (should fail, because randomAddress is not an operator of controller1)
             vm.prank(randomAddress);
-            vm.expectRevert(SLAYVault.NotControllerOrOperator.selector);
+            vm.expectRevert(ISLAYVault.NotControllerOrOperator.selector);
             vault.redeem(totalRedeemAmount, receiver, controller1);
         }
         {
             // staker1 tries to redeem for controller1 to receiver (should fail, because staker1 is not an operator of controller1)
             vm.prank(staker1);
-            vm.expectRevert(SLAYVault.NotControllerOrOperator.selector);
+            vm.expectRevert(ISLAYVault.NotControllerOrOperator.selector);
             vault.redeem(totalRedeemAmount, receiver, controller1);
         }
 
