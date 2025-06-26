@@ -16,14 +16,10 @@ interface ISLAYRegistry {
                                 EVENTS
     //////////////////////////////////////////////////////////////*/
 
-    /**
-     * @dev Emitted when a service is registered.
-     */
+    /// @dev Emitted when a service is registered.
     event ServiceRegistered(address indexed service);
 
-    /**
-     * @dev Emitted when a operator is registered.
-     */
+    /// @dev Emitted when a operator is registered.
     event OperatorRegistered(address indexed operator);
 
     /**
