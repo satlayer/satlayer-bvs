@@ -15,11 +15,7 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {SLAYRegistry} from "./SLAYRegistry.sol";
 import {SLAYRouter} from "./SLAYRouter.sol";
 import {IERC7540Redeem, IERC7540Operator} from "./interface/IERC7540.sol";
-
-/**
- * @dev Interface for the SLAYVault contract.
- */
-interface ISLAYVault is IERC20Metadata, IERC4626, IERC7540Redeem, IERC7540Operator {}
+import {ISLAYVault} from "./interface/ISLAYVault.sol";
 
 /**
  * Implementation contract for SLAYVault.
@@ -34,14 +30,6 @@ contract SLAYVault is
     ISLAYVault
 {
     using SafeERC20 for IERC20;
-
-    /// @notice Struct representing a redeem request.
-    struct RedeemRequestStruct {
-        /// @notice The total amount of shares requested for redemption.
-        uint256 shares;
-        /// @notice The timestamp when the shares can be claimed.
-        uint256 claimableAt;
-    }
 
     /*//////////////////////////////////////////////////////////////
                             STATE VARIABLES
@@ -73,41 +61,33 @@ contract SLAYVault is
     /// @notice Stores the total amount of shares pending redemption.
     uint256 internal _totalPendingRedemption;
 
-    /*//////////////////////////////////////////////////////////////
-                                ERRORS
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice The operation failed because the contract is paused.
-    error EnforcedPause();
-
-    /// @notice The operation failed because the contract is not whitelisted.
-    error ExpectedWhitelisted();
-
-    /// @notice Thrown when the amount is zero.
-    error ZeroAmount();
-
-    /// @notice Must withdraw all assets
-    error MustClaimAll();
-
-    /// @notice Thrown when assets to withdraw exceed the maximum redeemable amount.
-    error ExceededMaxRedeemable();
-
-    /// @notice Thrown when the withdrawal delay has not passed.
-    error WithdrawalDelayHasNotPassed();
-
-    /// @notice Thrown when the caller is not the controller or an approved operator.
-    error NotControllerOrOperator();
-
-    /// @notice Preview functions are not supported for async flows.
-    error PreviewNotSupported();
-
-    /// @notice Thrown when a withdraw request is not found.
-    error WithdrawRequestNotFound();
-
+    /**
+     * @dev Only allow _msgSender() to be the controller or an approved operator of the controller to call the function.
+     * @param controller The address of the controller.
+     */
     modifier onlyControllerOrOperator(address controller) {
         if (_msgSender() != controller && !_isOperator[controller][_msgSender()]) {
             revert NotControllerOrOperator();
         }
+        _;
+    }
+
+    /**
+     * @dev Modifier to make a function callable only when the SLAYRouter is not paused.
+     * SLAYVault doesn't enforce its own pause state, but relies on the SLAYRouter to manage the pause state.
+     * If the SLAYRouter is paused, all operations marked with this modifier will revert with `EnforcedPause`.
+     */
+    modifier whenNotPaused() {
+        _requireNotPaused();
+        _;
+    }
+
+    /**
+     * @dev Modifier to make a function callable only when the SLAYVault is whitelisted in the SLAYRouter.
+     * If the SLAYVault is not whitelisted, all operations marked with this modifier will revert with `ExpectedWhitelisted`.
+     */
+    modifier whenWhitelisted() {
+        _requireWhitelisted();
         _;
     }
 
@@ -150,41 +130,23 @@ contract SLAYVault is
         super._update(from, to, value);
     }
 
-    /**
-     * @dev Modifier to make a function callable only when the SLAYRouter is not paused.
-     * SLAYVault doesn't enforce its own pause state, but relies on the SLAYRouter to manage the pause state.
-     * If the SLAYRouter is paused, all operations marked with this modifier will revert with `EnforcedPause`.
-     */
-    modifier whenNotPaused() {
-        _requireNotPaused();
-        _;
-    }
-
-    /**
-     * @dev Modifier to make a function callable only when the SLAYVault is whitelisted in the SLAYRouter.
-     * If the SLAYVault is not whitelisted, all operations marked with this modifier will revert with `ExpectedWhitelisted`.
-     */
-    modifier whenWhitelisted() {
-        _requireWhitelisted();
-        _;
-    }
-
-    /**
-     * @dev Throws if the SLAYRouter is paused.
-     */
+    /// @dev Throws if the SLAYRouter is paused.
     function _requireNotPaused() internal view virtual {
         if (router.paused()) {
             revert EnforcedPause();
         }
     }
 
-    /**
-     * @dev Throws if the SLAYVault is not whitelisted in the SLAYRouter.
-     */
+    /// @dev Throws if the SLAYVault is not whitelisted in the SLAYRouter.
     function _requireWhitelisted() internal view virtual {
         if (!router.whitelisted(address(this))) {
             revert ExpectedWhitelisted();
         }
+    }
+
+    /// @inheritdoc ISLAYVault
+    function getTotalPendingRedemption() external view returns (uint256) {
+        return _totalPendingRedemption;
     }
 
     /**
@@ -412,15 +374,5 @@ contract SLAYVault is
     /// @dev For ERC7540, preview functions MUST revert for all callers and inputs.
     function previewRedeem(uint256) public pure virtual override(IERC4626, ERC4626Upgradeable) returns (uint256) {
         revert PreviewNotSupported();
-    }
-
-    /**
-     * @notice Returns the total amount of shares pending redemption across all controllers.
-     * This is the sum of all shares in pending and claimable redemption requests.
-     *
-     * @return The total amount of shares pending redemption.
-     */
-    function getTotalPendingRedemption() external view returns (uint256) {
-        return _totalPendingRedemption;
     }
 }
