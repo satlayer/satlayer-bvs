@@ -453,6 +453,11 @@ library ServiceOperator {
         bool slashOptedIn;
     }
 
+    /**
+     * @dev Encode the [`Relationship`] struct into uint224 to be fitted with checkpoint.
+     * Each state seperately has very small footprint of uint8 but it is expensive to have a dedicated checkpoint for each.
+     * Coupling and encoding two state into single Checkpoint Trace224 save gas by avoiding uncessary cold SLOAD.
+     */
     function _relationshipEncode(Relationship memory rs) internal pure returns (uint224) {
         uint8 status = uint8(rs.status);
         uint224 encodedData = uint224(status);
@@ -460,6 +465,9 @@ library ServiceOperator {
         return encodedData;
     }
 
+    /**
+     * @dev dencode the uint224 (supposedly from checkpoint value) into [`Relationship`] struct
+     */
     function _relationshipDecode(uint224 encodedData) internal pure returns (Relationship memory) {
         uint8 status = uint8(encodedData);
         bool slashOptedIn = uint64(encodedData >> 8) == 1 ? true : false;
@@ -503,6 +511,10 @@ library SlashParameter {
 
     /**
      * @dev Encode [`SlashParatmer.object`] into uint224 to be used as checkpoint value.
+     * Each data in the struct individually is smaller than uint224.
+     * Dedicating check point for each shard of data is expensive.
+     * Encoding the data in sequence avoid uncessary cold SLOAD, especially each member in the struct
+     * are access together usually.
      */
     function encode(address destination, uint32 maxBip, uint32 resolutionWindow) internal pure returns (uint224) {
         uint160 addr160 = uint160(destination);
