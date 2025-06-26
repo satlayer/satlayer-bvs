@@ -187,6 +187,14 @@ contract SLAYVault is
         }
     }
 
+    /// @inheritdoc ERC165Upgradeable
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165Upgradeable) returns (bool) {
+        return interfaceId == type(IERC20).interfaceId || interfaceId == type(IERC20Metadata).interfaceId
+            || interfaceId == type(IERC4626).interfaceId || interfaceId == type(IERC7540Redeem).interfaceId
+            || interfaceId == type(IERC7540Operator).interfaceId || interfaceId == type(ISLAYVault).interfaceId
+            || super.supportsInterface(interfaceId);
+    }
+
     /*//////////////////////////////////////////////////////////////
                               ERC7540 LOGIC
     //////////////////////////////////////////////////////////////*/

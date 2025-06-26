@@ -6,6 +6,7 @@ import "../src/SLAYVault.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {TestSuite} from "./TestSuite.sol";
 import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 contract SLAYVaultTest is Test, TestSuite {
     MockERC20 public underlying = new MockERC20("Wrapped Bitcoin", "WBTC", 8);
@@ -17,6 +18,20 @@ contract SLAYVaultTest is Test, TestSuite {
         vm.startPrank(operator);
         registry.registerAsOperator("https://example.com", "Operator Y");
         vm.stopPrank();
+    }
+
+    function test_erc165() public {
+        vm.prank(operator);
+        SLAYVault vault = vaultFactory.create(underlying);
+
+        assertTrue(vault.supportsInterface(type(IERC20).interfaceId));
+        assertTrue(vault.supportsInterface(type(IERC20Metadata).interfaceId));
+        assertTrue(vault.supportsInterface(type(IERC4626).interfaceId));
+        assertTrue(vault.supportsInterface(type(IERC7540Redeem).interfaceId));
+        assertTrue(vault.supportsInterface(type(IERC7540Operator).interfaceId));
+        assertTrue(vault.supportsInterface(type(ISLAYVault).interfaceId));
+        // super
+        assertTrue(vault.supportsInterface(type(IERC165).interfaceId));
     }
 
     function test_whitelisted() public {
