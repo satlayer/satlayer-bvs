@@ -504,7 +504,7 @@ library SlashParameter {
     }
 
     /**
-     * @dev Encode {SlashParatmer.object} into uint224 to be used as checkpoint value.
+     * @dev Encode {SlashParameter.Object} into uint224 to be used as checkpoint value.
      * Each data in the struct individually is smaller than uint224.
      * Dedicating checkpoints for each shard of data is expensive.
      * Encoding the data in sequence avoid uncessary cold SLOAD, especially each member in the struct
