@@ -455,10 +455,10 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.expectEmit();
         emit SLAYRegistry.SlashingParameterUpdated(service, destination, maxBips, resolutionWindow);
         registry.enableSlashing(
-            SlashParameter.object({destination: destination, maxMilliBips: maxBips, resolutionWindow: resolutionWindow})
+            SlashParameter.Object({destination: destination, maxMilliBips: maxBips, resolutionWindow: resolutionWindow})
         );
 
-        SlashParameter.object memory param = registry.getSlashingParameter(service);
+        SlashParameter.Object memory param = registry.getSlashingParameter(service);
 
         assertEq(param.destination, destination, "Slashing destination should match");
         assertEq(param.maxMilliBips, maxBips, "Slashing maxBips should match");
@@ -474,26 +474,26 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(service);
         registry.enableSlashing(
-            SlashParameter.object({destination: destination, maxMilliBips: 10000000, resolutionWindow: resolutionWindow})
+            SlashParameter.Object({destination: destination, maxMilliBips: 10000000, resolutionWindow: resolutionWindow})
         );
 
-        SlashParameter.object memory param = registry.getSlashingParameter(service);
+        SlashParameter.Object memory param = registry.getSlashingParameter(service);
         assertEq(param.maxMilliBips, 10000000, "MaxBips should be 10000000");
 
         // Test maxBips at 10000001 (revert)
         vm.prank(service);
         vm.expectRevert("Maximum Milli-Bips cannot be more than 10_000_000 (100%)");
         registry.enableSlashing(
-            SlashParameter.object({destination: destination, maxMilliBips: 10000001, resolutionWindow: resolutionWindow})
+            SlashParameter.Object({destination: destination, maxMilliBips: 10000001, resolutionWindow: resolutionWindow})
         );
     }
 
     function test_EnableSlashing_NotService() public {
         address nonService = makeAddr("nonService");
         vm.prank(nonService);
-        vm.expectRevert(abi.encodeWithSelector(SLAYRegistry.ServiceNotFound.selector, nonService));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistry.ServiceNotFound.selector, nonService));
         registry.enableSlashing(
-            SlashParameter.object({destination: makeAddr("dest"), maxMilliBips: 100, resolutionWindow: 1000})
+            SlashParameter.Object({destination: makeAddr("dest"), maxMilliBips: 100, resolutionWindow: 1000})
         );
     }
 
@@ -507,7 +507,7 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(service);
         registry.enableSlashing(
-            SlashParameter.object({
+            SlashParameter.Object({
                 destination: destination1,
                 maxMilliBips: maxBips1,
                 resolutionWindow: resolutionWindow1
@@ -524,7 +524,7 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(service);
         registry.enableSlashing(
-            SlashParameter.object({
+            SlashParameter.Object({
                 destination: destination2,
                 maxMilliBips: maxBips2,
                 resolutionWindow: resolutionWindow2
@@ -533,19 +533,19 @@ contract SLAYRegistryTest is Test, TestSuite {
         uint32 time2 = uint32(block.timestamp);
 
         // Check at time1
-        SlashParameter.object memory param1 = registry.getSlashingParameterAt(service, time1);
+        SlashParameter.Object memory param1 = registry.getSlashingParameterAt(service, time1);
         assertEq(param1.destination, destination1, "Slashing destination at time1 should match");
         assertEq(param1.maxMilliBips, maxBips1, "Slashing maxBips at time1 should match");
         assertEq(param1.resolutionWindow, resolutionWindow1, "Slashing resolutionWindow at time1 should match");
 
         // Check at time2
-        SlashParameter.object memory param2 = registry.getSlashingParameterAt(service, time2);
+        SlashParameter.Object memory param2 = registry.getSlashingParameterAt(service, time2);
         assertEq(param2.destination, destination2, "Slashing destination at time2 should match");
         assertEq(param2.maxMilliBips, maxBips2, "Slashing maxBips at time2 should match");
         assertEq(param2.resolutionWindow, resolutionWindow2, "Slashing resolutionWindow at time2 should match");
 
         // Check a time before any update (should return default/zero values)
-        SlashParameter.object memory param3 = registry.getSlashingParameterAt(service, 0);
+        SlashParameter.Object memory param3 = registry.getSlashingParameterAt(service, 0);
         assertEq(param3.destination, address(0), "Slashing destination at time 0 should be zero address");
         assertEq(param3.maxMilliBips, 0, "Slashing maxBips at time 0 should be 0");
         assertEq(param3.resolutionWindow, 0, "Slashing resolutionWindow at time 0 should be 0");
