@@ -18,8 +18,21 @@ import {IERC7540Redeem, IERC7540Operator} from "./interface/IERC7540.sol";
 import {ISLAYVault} from "./interface/ISLAYVault.sol";
 
 /**
- * Implementation contract for SLAYVault.
- * This contract is not initialized directly, but through the SLAYVaultFactory using the Beacon proxy pattern.
+ * @title SLAYVault
+ * @notice ERC4626-compliant tokenized vault designed for asynchronous redemption workflows.
+ * @dev
+ * - This contract is deployed via the SLAYVaultFactory using the Beacon Proxy pattern.
+ * - It integrates the ERC20, ERC4626, and ERC20Permit standards with custom logic for delayed redemptions,
+ *   as defined in the ERC7540 interface.
+ * - Redeem requests are initiated by transferring shares to the vault and can be claimed after a configurable delay.
+ * - Preview functions are intentionally disabled to prevent misuse in async flows.
+ * - Immutable dependencies (`SLAYRouter` and `SLAYRegistry`) are injected at construction for efficient immutable access.
+ *
+ * Key Features:
+ * - Asynchronous redeem request/claim pattern using `requestRedeem`, `withdraw`, and `redeem`
+ * - IERC7540Operator for request/claim with configurable controller-operator relationships
+ * - Upgradeable via Beacon Proxy pattern
+ * - Pausing and whitelisting enforced by SLAYRouter
  */
 contract SLAYVault is
     Initializable,

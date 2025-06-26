@@ -9,7 +9,13 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 import {SLAYRegistry} from "./SLAYRegistry.sol";
 import {ISLAYRouter} from "./interface/ISLAYRouter.sol";
 
-/// @custom:oz-upgrades-from src/InitialImpl.sol:InitialImpl
+/**
+ * @title SLAYRouter
+ * @dev The central point for managing interactions with SLAYVaults.
+ * This contract is designed to work with the SLAYRegistry for managing vaults and their states.
+ *
+ * @custom:oz-upgrades-from src/InitialImpl.sol:InitialImpl
+ */
 contract SLAYRouter is Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, ISLAYRouter {
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     SLAYRegistry public immutable registry;
@@ -28,17 +34,11 @@ contract SLAYRouter is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pausa
         _disableInitializers();
     }
 
-    /// @custom:oz-upgrades-validate-as-initializer
-    function initialize(address initialOwner) public reinitializer(2) {
-        __Ownable_init(initialOwner);
-        __UUPSUpgradeable_init();
-        __Pausable_init();
-    }
-
-    function initialize2() public reinitializer(2) {
-        __Pausable_init();
-    }
-
+    /**
+     * @dev Authorizes an upgrade to a new implementation.
+     * This function is required by UUPS and restricts upgradeability to the contract owner.
+     * @param newImplementation The address of the new contract implementation.
+     */
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /**
