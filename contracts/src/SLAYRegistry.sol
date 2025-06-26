@@ -36,7 +36,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     /**
      * @dev Service <-> Operator registration is a two sided consensus.
      * This mean both service and operator has to register to pair with each other.
-     * Map value is encoded uint224. Contains [`RegistrationStatus`] and [`slashOptedIn`] flag
+     * Map value is encoded uint224. Contains {RegistrationStatus} and {slashOptedIn} flag
      */
     mapping(bytes32 key => Checkpoints.Trace224) private _relationships;
 
@@ -46,12 +46,6 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * @dev Stored slashing parameter for each of every slash enabled BVS services.
      */
     mapping(address service => Checkpoints.Trace224) private _slashParameters;
-
-    /**
-     * @dev A service may enable slashing but operator will have to opt in to the slashing
-     * This map store a list of operator that has opt in to the slashing for particular service
-     */
-    mapping(bytes32 key => Checkpoints.Trace224) private _slashingOptIns;
 
     /**
      * @dev Emitted when Slashing Parameter for a service is updated
@@ -110,7 +104,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     }
 
     /**
-     * @dev Modifier to guard if given service operator pair is Actively Paired - [`RegistrationStatus.Active`]
+     * @dev Modifier to guard if given service operator pair is Actively Paired - {RegistrationStatus.Active}.
      */
     modifier onlyActivelyRegistered(address service, address operator) {
         RegistrationStatus status = getRegistrationStatus(service, operator);
@@ -454,7 +448,7 @@ library ServiceOperator {
     }
 
     /**
-     * @dev Encode the [`Relationship`] struct into uint224 to be fitted with checkpoint.
+     * @dev Encode the {Relationship} struct into uint224 to be fitted with checkpoint.
      * Each state seperately has very small footprint of uint8 but it is expensive to have a dedicated checkpoint for each.
      * Coupling and encoding two state into single Checkpoint Trace224 save gas by avoiding uncessary cold SLOAD.
      */
@@ -466,7 +460,7 @@ library ServiceOperator {
     }
 
     /**
-     * @dev dencode the uint224 (supposedly from checkpoint value) into [`Relationship`] struct
+     * @dev dencode the uint224 (supposedly from checkpoint value) into {Relationship} struct
      */
     function _relationshipDecode(uint224 encodedData) internal pure returns (Relationship memory) {
         uint8 status = uint8(encodedData);
@@ -510,9 +504,9 @@ library SlashParameter {
     }
 
     /**
-     * @dev Encode [`SlashParatmer.object`] into uint224 to be used as checkpoint value.
+     * @dev Encode {SlashParatmer.object} into uint224 to be used as checkpoint value.
      * Each data in the struct individually is smaller than uint224.
-     * Dedicating check point for each shard of data is expensive.
+     * Dedicating checkpoints for each shard of data is expensive.
      * Encoding the data in sequence avoid uncessary cold SLOAD, especially each member in the struct
      * are access together usually.
      */
@@ -529,7 +523,7 @@ library SlashParameter {
     }
 
     /**
-     * @dev Decode uint224 from checkpoint value into [`SlashParatmer.object`].
+     * @dev Decode uint224 from checkpoint value into {SlashParatmer.object}.
      */
     function decode(uint224 encodedData) internal pure returns (SlashParameter.Object memory) {
         address addr = address(uint160(encodedData));
