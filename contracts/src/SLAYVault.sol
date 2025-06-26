@@ -187,7 +187,11 @@ contract SLAYVault is
         }
     }
 
-    /// @inheritdoc ERC165Upgradeable
+    /**
+     * @dev Support the most common interfaces for SLAYVault. There might be more interfaces not listed here.
+     *
+     * @inheritdoc ERC165Upgradeable
+     */
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165Upgradeable) returns (bool) {
         return interfaceId == type(IERC20).interfaceId || interfaceId == type(IERC20Metadata).interfaceId
             || interfaceId == type(IERC4626).interfaceId || interfaceId == type(IERC7540Redeem).interfaceId
