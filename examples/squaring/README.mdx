@@ -28,7 +28,7 @@ This approach enables computational efficiency while maintaining crypto-economic
 Prerequisites for this example:
 
 1. Install Rust and Cargo: https://www.rust-lang.org/tools/install
-2. Basic understanding of [CosmWasm Contract](/developers/cosmwasm)
+2. Basic understanding of [CosmWasm contracts](/developers/cosmwasm)
 3. Node.js for development of the off-chain service: https://nodejs.org/en/download/
 4. Docker to run off-chain node: https://docs.docker.com/get-docker/
 
@@ -48,10 +48,13 @@ Clone and copy contents of `./examples/squaring` [from GitHub](https://github.co
 Install with `npm install` and `npm run test` to set up the environment.
 
 ```sh filename="run.sh"
+npm run install
 npm run test
 ```
 
 ### How to build the contract
+
+To build the CosmWasm contract, you will need to have Docker running, and then you can run the following command:
 
 ```sh filename="build.sh"
 docker run --rm -v "$(pwd)":/code \
@@ -66,7 +69,8 @@ This project demonstrates a Bitcoin Validated Service (BVS) using a simple squar
 It consists of two main components: the on-chain contract, and the off-chain service.
 
 We use squaring as a simple example to demonstrate the concept of off-chain computation with on-chain verification.
-Squaring is `n^2`, where n is the input number, and the result is the square of that number.
+Squaring is `n^2`, where `n` is the input number, and the result is the square of that number.
+
 While this example is simple and not meant for production,
 it illustrates the principles of off-chain computation and on-chain verification.
 
@@ -92,5 +96,5 @@ Located in the `contract/` directory, this Rust-based smart contract:
 Located in the `service/` directory, this Node.js service:
 
 - Continuously monitors the blockchain for new computation requests
-- Performs the actual computation (squaring numbers) off-chain
+- Performs the actual computation (i.e. squaring numbers) off-chain
 - Submits results back to the on-chain contract
