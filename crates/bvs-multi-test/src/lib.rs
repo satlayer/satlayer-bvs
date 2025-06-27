@@ -99,7 +99,7 @@ impl BvsMultiTest {
         let symbol = symbol.into();
         let init_msg = cw20_base::msg::InstantiateMsg {
             symbol: symbol.clone(),
-            name: format!("Token {}", symbol),
+            name: format!("Token {symbol}"),
             decimals: 18,
             initial_balances: vec![],
             mint: Some(MinterResponse {

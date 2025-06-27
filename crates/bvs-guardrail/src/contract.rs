@@ -115,7 +115,7 @@ mod execute {
 
         // create a proposal
         let mut prop = Proposal {
-            title: format!("Proposal To Finalize Slash {}", slashing_request_id),
+            title: format!("Proposal To Finalize Slash {slashing_request_id}"),
             description: reason,
             start_height: env.block.height,
             expires: Expiration::AtTime(env.block.time.plus_seconds(cfg.default_expiration)),
@@ -205,7 +205,7 @@ mod execute {
                 .add_attribute("proposal_id", proposal_id.to_string())
                 .add_attribute("slashing_request_id", slashing_request_id.to_string())
                 .add_attribute("status", format!("{:?}", prop.status))
-                .add_attribute("vote", format!("{:?}", vote)),
+                .add_attribute("vote", format!("{vote:?}",)),
         ))
     }
 
@@ -387,8 +387,7 @@ mod query {
         let proposal_id = SLASHING_REQUEST_TO_PROPOSAL
             .may_load(deps.storage, slashing_request_id.clone())?
             .ok_or(StdError::not_found(format!(
-                "No proposal found for slashing request id: {:?}",
-                slashing_request_id
+                "No proposal found for slashing request id: {slashing_request_id:?}",
             )))?;
         proposal(deps, env, proposal_id)
     }
@@ -455,8 +454,7 @@ mod query {
         let proposal_id = SLASHING_REQUEST_TO_PROPOSAL
             .may_load(deps.storage, slashing_request_id.clone())?
             .ok_or(StdError::not_found(format!(
-                "No proposal found for slashing request id: {:?}",
-                slashing_request_id
+                "No proposal found for slashing request id: {slashing_request_id:?}",
             )))?;
         vote(deps, proposal_id, voter)
     }

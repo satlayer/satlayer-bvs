@@ -155,7 +155,7 @@ mod tests {
         fn test_display_implementation() {
             let hex_string = "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
             let id = SlashingRequestId::from_hex(hex_string).unwrap();
-            assert_eq!(format!("{}", id), hex_string);
+            assert_eq!(format!("{id}"), hex_string);
             assert_eq!(
                 id.to_string(),
                 "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
