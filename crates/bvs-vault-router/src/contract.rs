@@ -775,10 +775,7 @@ pub(crate) mod vault {
             .map_err(|e| {
                 let upstream_error = e.to_string();
                 ContractError::VaultError {
-                    msg: format!(
-                        "Failed to query vault info for {}: {}",
-                        vault, upstream_error
-                    ),
+                    msg: format!("Failed to query vault info for {vault}: {upstream_error}"),
                 }
             })
     }
@@ -1382,7 +1379,7 @@ mod tests {
         let mut vaults = Vec::new();
 
         for i in 0..10 {
-            let vault = deps.api.addr_make(&format!("vault{}", i));
+            let vault = deps.api.addr_make(&format!("vault{i}"));
             vaults.push(vault.clone());
             VAULTS
                 .save(&mut deps.storage, &vault, &Vault { whitelisted: true })
@@ -1450,7 +1447,7 @@ mod tests {
         let mut vaults2 = Vec::new();
 
         for i in 0..10 {
-            let vault = deps.api.addr_make(&format!("vault2{}", i));
+            let vault = deps.api.addr_make(&format!("vault2{i}"));
             vaults2.push(vault.clone());
             VAULTS
                 .save(&mut deps.storage, &vault, &Vault { whitelisted: true })
@@ -1708,7 +1705,7 @@ mod tests {
         );
 
         for i in 0..10 {
-            let vault = deps.api.addr_make(&format!("vault{}", i));
+            let vault = deps.api.addr_make(&format!("vault{i}"));
             let absolute_slashed_locked = Uint128::new(1000 * (i + 1) as u128);
             state::SLASH_LOCKED
                 .save(
@@ -1720,7 +1717,7 @@ mod tests {
         }
 
         for i in 0..10 {
-            let vault = deps.api.addr_make(&format!("vault2{}", i));
+            let vault = deps.api.addr_make(&format!("vault2{i}"));
             let absolute_slashed_locked = Uint128::new(1000 * (i + 1) as u128);
             state::SLASH_LOCKED
                 .save(

@@ -118,7 +118,7 @@ mod execute {
             code_id,
             msg: to_json_binary(&msg)?,
             funds: vec![],
-            label: format!("BVS CW20 Vault: {}", cw20),
+            label: format!("BVS CW20 Vault: {cw20}"),
         };
 
         Ok(Response::new()
@@ -154,7 +154,7 @@ mod execute {
             code_id,
             msg: to_json_binary(&msg)?,
             funds: vec![],
-            label: format!("BVS Bank Vault: {}", denom),
+            label: format!("BVS Bank Vault: {denom}"),
         };
 
         Ok(Response::new()
@@ -250,7 +250,7 @@ mod execute {
             code_id,
             msg: to_json_binary(&msg)?,
             funds: vec![],
-            label: format!("BVS Bank Tokenized Vault: {}", denom),
+            label: format!("BVS Bank Tokenized Vault: {denom}"),
         };
 
         Ok(Response::new()

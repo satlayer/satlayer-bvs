@@ -214,7 +214,7 @@ fn test_multi_deposit_withdraw_non_linear_exchange_rates() {
     let staker_total = 10;
 
     for i in 0..staker_total {
-        let staker = app.api().addr_make(&format!("staker/{}", i));
+        let staker = app.api().addr_make(&format!("staker/{i}"));
         let msg = ExecuteMsg::DepositFor(RecipientAmount {
             recipient: staker.clone(),
             amount: Uint128::new(stake_amounts),
@@ -274,7 +274,7 @@ fn test_multi_deposit_withdraw_non_linear_exchange_rates() {
     let mut total_asset_withdrawn: Uint128 = Uint128::new(0);
 
     for i in 0..staker_total {
-        let staker = app.api().addr_make(&format!("staker/{}", i));
+        let staker = app.api().addr_make(&format!("staker/{i}"));
         {
             let staker_asset_profit =
                 get_staker_asset_profit(app, &vault, Uint128::new(stake_amounts));
@@ -325,7 +325,7 @@ fn test_multi_deposit_withdraw() {
     let staker_total = 500;
 
     for i in 0..staker_total {
-        let staker = app.api().addr_make(&format!("staker/{}", i));
+        let staker = app.api().addr_make(&format!("staker/{i}"));
         let msg = ExecuteMsg::DepositFor(RecipientAmount {
             recipient: staker.clone(),
             amount: Uint128::new(stake_amounts),
@@ -353,7 +353,7 @@ fn test_multi_deposit_withdraw() {
     }
 
     for i in 0..staker_total {
-        let staker = app.api().addr_make(&format!("staker/{}", i));
+        let staker = app.api().addr_make(&format!("staker/{i}"));
         {
             let msg = ExecuteMsg::WithdrawTo(RecipientAmount {
                 amount: Uint128::new(stake_amounts),

@@ -87,7 +87,7 @@ mod tests {
                 .unwrap()
                 .to_array()
                 .unwrap(),
-            Sha3_256Algorithm::hash(format!("{}{}", earner, amount).as_bytes())
+            Sha3_256Algorithm::hash(format!("{earner}{amount}").as_bytes())
         );
     }
 

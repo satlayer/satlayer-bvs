@@ -44,14 +44,14 @@ where
     /// Set the contract address in the storage for the given label.
     /// Using the storage system for easy orchestration of contract addresses for testing.
     fn set_contract_addr(app: &mut App, label: &str, addr: &Addr) {
-        let key = format!("CONTRACT:{}", label);
+        let key = format!("CONTRACT:{label}");
         let value = String::from_utf8(addr.as_bytes().to_vec()).unwrap();
         app.storage_mut().set(key.as_bytes(), value.as_bytes());
     }
 
     /// Get the contract address in the storage for the given label.
     fn get_contract_addr(app: &App, label: &str) -> Addr {
-        let key = format!("CONTRACT:{}", label);
+        let key = format!("CONTRACT:{label}");
         match app.storage().get(key.as_bytes()) {
             Some(value) => Addr::unchecked(String::from_utf8(value).unwrap()),
             None => app.api().addr_make(key.as_str()), // fallback to dummy address
