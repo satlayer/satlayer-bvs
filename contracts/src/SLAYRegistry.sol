@@ -10,12 +10,14 @@ import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol
 import {SLAYRouter} from "./SLAYRouter.sol";
 import {ISLAYRegistry} from "./interface/ISLAYRegistry.sol";
 
-/// @title SLAYRegistry
-/// @dev This contract serves as a registry for services and operators in the SatLayer ecosystem.
-/// It allows services and operators to register themselves, manage their relationships,
-/// and track registration statuses.
-///
-/// @custom:oz-upgrades-from src/InitialImpl.sol:InitialImpl
+/**
+ * @title SLAYRegistry
+ * @dev This contract serves as a registry for services and operators in the SatLayer ecosystem.
+ * It allows services and operators to register themselves, manage their relationships,
+ * and track registration statuses.
+ *
+ * @custom:oz-upgrades-from src/InitialImpl.sol:InitialImpl
+ */
 contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
     using Checkpoints for Checkpoints.Trace224;
 
@@ -67,6 +69,9 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * Cyclic params in constructor are possible as an InitialImpl (empty implementation) is used for an initial deployment,
      * after which all the contracts are upgraded to their respective implementations with immutable proxy addresses.
      *
+     * InitialImpl.initialize() is called to set the initial owner of the contract.
+     * No other initialization is required for this implementation contract.
+     *
      * @custom:oz-upgrades-unsafe-allow constructor
      */
     constructor(SLAYRouter router_) {
@@ -74,21 +79,15 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         _disableInitializers();
     }
 
-    /// @custom:oz-upgrades-validate-as-initializer
-    function initialize(address initialOwner) public reinitializer(2) {
-        __Ownable_init(initialOwner);
-        __UUPSUpgradeable_init();
-        __Pausable_init();
-    }
-
-    function initialize2() public reinitializer(2) {
-        __Pausable_init();
-    }
-
+    /**
+     * @dev Authorizes an upgrade to a new implementation.
+     * This function is required by UUPS and restricts upgradeability to the contract owner.
+     * @param newImplementation The address of the new contract implementation.
+     */
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /// @inheritdoc ISLAYRegistry
-    function registerAsService(string memory uri, string memory name) external {
+    function registerAsService(string memory uri, string memory name) external whenNotPaused {
         address service = _msgSender();
 
         require(!_services[service], "Already registered");
@@ -98,7 +97,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     }
 
     /// @inheritdoc ISLAYRegistry
-    function registerAsOperator(string memory uri, string memory name) external {
+    function registerAsOperator(string memory uri, string memory name) external whenNotPaused {
         address operator = _msgSender();
 
         require(!_operators[operator], "Already registered");
@@ -108,7 +107,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     }
 
     /// @inheritdoc ISLAYRegistry
-    function updateMetadata(string memory uri, string memory name) external {
+    function updateMetadata(string memory uri, string memory name) external whenNotPaused {
         address provider = _msgSender();
         require(_services[provider] || _operators[provider], "Not registered");
 
@@ -116,7 +115,12 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     }
 
     /// @inheritdoc ISLAYRegistry
-    function registerOperatorToService(address operator) external onlyService(_msgSender()) onlyOperator(operator) {
+    function registerOperatorToService(address operator)
+        external
+        whenNotPaused
+        onlyService(_msgSender())
+        onlyOperator(operator)
+    {
         address service = _msgSender();
 
         bytes32 key = ServiceOperatorKey._getKey(service, operator);
@@ -141,6 +145,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     /// @inheritdoc ISLAYRegistry
     function deregisterOperatorFromService(address operator)
         external
+        whenNotPaused
         onlyService(_msgSender())
         onlyOperator(operator)
     {
@@ -156,7 +161,12 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     }
 
     /// @inheritdoc ISLAYRegistry
-    function registerServiceToOperator(address service) external onlyOperator(_msgSender()) onlyService(service) {
+    function registerServiceToOperator(address service)
+        external
+        whenNotPaused
+        onlyOperator(_msgSender())
+        onlyService(service)
+    {
         address operator = _msgSender();
 
         bytes32 key = ServiceOperatorKey._getKey(service, operator);
@@ -179,7 +189,12 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     }
 
     /// @inheritdoc ISLAYRegistry
-    function deregisterServiceFromOperator(address service) external onlyOperator(_msgSender()) onlyService(service) {
+    function deregisterServiceFromOperator(address service)
+        external
+        whenNotPaused
+        onlyOperator(_msgSender())
+        onlyService(service)
+    {
         address operator = _msgSender();
 
         bytes32 key = ServiceOperatorKey._getKey(service, operator);
@@ -238,7 +253,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     }
 
     /// @inheritdoc ISLAYRegistry
-    function setWithdrawalDelay(uint32 delay) public onlyOperator(_msgSender()) {
+    function setWithdrawalDelay(uint32 delay) public whenNotPaused onlyOperator(_msgSender()) {
         require(delay >= DEFAULT_WITHDRAWAL_DELAY, "Delay must be at least more than or equal to 7 days");
         _withdrawalDelay[_msgSender()] = delay;
         emit WithdrawalDelayUpdated(_msgSender(), delay);
@@ -249,6 +264,16 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         // If the delay is not set, return the default delay.
         uint32 delay = _withdrawalDelay[operator];
         return delay == 0 ? DEFAULT_WITHDRAWAL_DELAY : delay;
+    }
+
+    /// @dev Pauses the contract.
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /// @dev Unpauses the contract.
+    function unpause() external onlyOwner {
+        _unpause();
     }
 }
 

@@ -16,9 +16,8 @@ contract SLAYRouterTest is Test, TestSuite {
     }
 
     function test_paused() public {
-        vm.startPrank(owner);
+        vm.prank(owner);
         router.pause();
-        vm.stopPrank();
 
         assertTrue(router.paused());
     }
@@ -29,9 +28,8 @@ contract SLAYRouterTest is Test, TestSuite {
     }
 
     function test_unpausedOnlyOwnerError() public {
-        vm.startPrank(owner);
+        vm.prank(owner);
         router.pause();
-        vm.stopPrank();
 
         vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, address(this)));
         router.unpause();
