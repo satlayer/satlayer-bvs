@@ -96,7 +96,8 @@ The Vault Router is a coordinator and enforces latency constraints to allow the 
 **A slashing operation is bounded between a Service and an Operator.**
 A service can actively slash multiple distinct operators at the same time.
 Multiple services can also slash an operator at the same time.
-An operator and service pair can only be slashed once every 48 hours.
+An operator and service pair can only be slashed once at a time.
+A concurrent slashing operation for the same operator and service pair will block the new slashing operation until the previous one is canceled or finalized.
 
 ```mermaid
 flowchart LR

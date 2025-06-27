@@ -366,7 +366,7 @@ fn test_deposit_with_non_linear_exchange_rate() {
         .vault
         .execute_with_funds(app, &staker, &msg, coins(1_000_000, denom))
         .unwrap();
-    println!("Deposit response: {:?}", res);
+    println!("Deposit response: {res:?}");
 
     // Assert balances and shares after Deposit
     {

@@ -7,6 +7,7 @@ import "../src/SLAYVaultFactory.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {TestSuite} from "./TestSuite.sol";
+import {ISLAYVaultFactory} from "../src/interface/ISLAYVaultFactory.sol";
 
 contract SLAYVaultFactoryTest is Test, TestSuite {
     MockERC20 public underlying = new MockERC20("Token", "TKN", 18);
@@ -25,7 +26,7 @@ contract SLAYVaultFactoryTest is Test, TestSuite {
         vm.prank(operator);
         SLAYVault vault = vaultFactory.create(asset);
 
-        assertEq(vault.operator(), operator);
+        assertEq(vault.delegated(), operator);
         assertEq(vault.name(), "SatLayer Mock Token");
         assertEq(vault.symbol(), "satMTK");
         assertEq(vault.decimals(), 8);
@@ -37,7 +38,7 @@ contract SLAYVaultFactoryTest is Test, TestSuite {
         vm.prank(operator);
         SLAYVault vault = vaultFactory.create(asset);
 
-        assertEq(vault.operator(), operator);
+        assertEq(vault.delegated(), operator);
         assertEq(vault.decimals(), 15);
         assertEq(vault.name(), "SatLayer Mock Bit Dollar");
         assertEq(vault.symbol(), "satBDR");
@@ -47,7 +48,7 @@ contract SLAYVaultFactoryTest is Test, TestSuite {
         vm.prank(owner);
         SLAYVault vault = vaultFactory.create(underlying, operator, "Custom Name", "Custom Symbol");
 
-        assertEq(vault.operator(), operator);
+        assertEq(vault.delegated(), operator);
         assertEq(vault.name(), "Custom Name");
         assertEq(vault.symbol(), "Custom Symbol");
         assertEq(vault.decimals(), 18);
@@ -68,16 +69,16 @@ contract SLAYVaultFactoryTest is Test, TestSuite {
         vm.prank(operator);
         SLAYVault vault = vaultFactory.create(underlying);
 
-        assertEq(vault.operator(), operator);
+        assertEq(vault.delegated(), operator);
     }
 
     function test_create_with_not_operator() public {
-        vm.expectRevert(abi.encodeWithSelector(SLAYVaultFactory.NotOperator.selector, address(this)));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYVaultFactory.NotOperator.selector, address(this)));
         vaultFactory.create(underlying);
 
         address notOperator = makeAddr("Not Operator");
         vm.startPrank(owner);
-        vm.expectRevert(abi.encodeWithSelector(SLAYVaultFactory.NotOperator.selector, address(notOperator)));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYVaultFactory.NotOperator.selector, address(notOperator)));
         vaultFactory.create(underlying, notOperator, "Name", "Symbol");
     }
 }

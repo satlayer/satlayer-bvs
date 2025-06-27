@@ -3,6 +3,7 @@ packages:
   - crates
   - crates/*
   - docs
+  - examples/*
   - examples/*/*
   - modules
   - modules/*

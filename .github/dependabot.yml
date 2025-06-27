@@ -41,10 +41,12 @@ updates:
           - "nextra-*"
           - "react*"
           - "@types/react*"
-
       cosmjs:
         patterns:
           - "@cosmjs/*"
+      layerzerolabs:
+        patterns:
+          - "@layerzerolabs/*"
 
   - package-ecosystem: cargo
     directory: "/crates"

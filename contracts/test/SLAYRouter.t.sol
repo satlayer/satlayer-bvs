@@ -7,6 +7,7 @@ import "../src/SLAYVault.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {TestSuite} from "./TestSuite.sol";
+import {ISLAYRouter} from "../src/interface/ISLAYRouter.sol";
 
 contract SLAYRouterTest is Test, TestSuite {
     function test_defaults() public view {
@@ -15,9 +16,8 @@ contract SLAYRouterTest is Test, TestSuite {
     }
 
     function test_paused() public {
-        vm.startPrank(owner);
+        vm.prank(owner);
         router.pause();
-        vm.stopPrank();
 
         assertTrue(router.paused());
     }
@@ -28,9 +28,8 @@ contract SLAYRouterTest is Test, TestSuite {
     }
 
     function test_unpausedOnlyOwnerError() public {
-        vm.startPrank(owner);
+        vm.prank(owner);
         router.pause();
-        vm.stopPrank();
 
         vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, address(this)));
         router.unpause();
@@ -47,13 +46,13 @@ contract SLAYRouterTest is Test, TestSuite {
         vm.startPrank(owner);
 
         vm.expectEmit();
-        emit SLAYRouter.VaultWhitelisted(vault, true);
+        emit ISLAYRouter.VaultWhitelisted(vault, true);
         router.setVaultWhitelist(vault, true);
 
         assertTrue(router.whitelisted(vault));
 
         vm.expectEmit();
-        emit SLAYRouter.VaultWhitelisted(vault, false);
+        emit ISLAYRouter.VaultWhitelisted(vault, false);
         router.setVaultWhitelist(vault, false);
 
         assertFalse(router.whitelisted(vault));
@@ -69,7 +68,7 @@ contract SLAYRouterTest is Test, TestSuite {
         vm.startPrank(owner);
 
         vm.expectEmit();
-        emit SLAYRouter.VaultWhitelisted(vault, true);
+        emit ISLAYRouter.VaultWhitelisted(vault, true);
         router.setVaultWhitelist(vault, true);
 
         assertTrue(router.whitelisted(vault));

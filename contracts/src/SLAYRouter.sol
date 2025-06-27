@@ -7,16 +7,20 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 import {SLAYRegistry} from "./SLAYRegistry.sol";
+import {ISLAYRouter} from "./interface/ISLAYRouter.sol";
 
-contract SLAYRouter is Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
+/**
+ * @title SLAYRouter
+ * @dev The central point for managing interactions with SLAYVaults.
+ * This contract is designed to work with the SLAYRegistry for managing vaults and their states.
+ *
+ * @custom:oz-upgrades-from src/InitialImpl.sol:InitialImpl
+ */
+contract SLAYRouter is Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, ISLAYRouter {
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     SLAYRegistry public immutable registry;
 
     mapping(address => bool) public whitelisted;
-
-    /**
-     * @dev Emitted when the pause is triggered by `account`.
-     */
-    event VaultWhitelisted(address indexed vault, bool whitelisted);
 
     /**
      * @dev Set the immutable SLAYRegistry proxy address for the implementation.
@@ -30,10 +34,11 @@ contract SLAYRouter is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pausa
         _disableInitializers();
     }
 
-    function initialize() public reinitializer(2) {
-        __Pausable_init();
-    }
-
+    /**
+     * @dev Authorizes an upgrade to a new implementation.
+     * This function is required by UUPS and restricts upgradeability to the contract owner.
+     * @param newImplementation The address of the new contract implementation.
+     */
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /**
@@ -50,14 +55,7 @@ contract SLAYRouter is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pausa
         _unpause();
     }
 
-    /**
-     * Set a individual whitelist status for a vault.
-     * This allows CA owner to control which vaults can be interacted with through the router.
-     * For non-granular state/modifier, use {SLAYRouter-pause} to pause all vaults.
-     *
-     * @param vault_ address of the vault to set the whitelist status for.
-     * This should be a SLAYVault contract address but isn't "checked" to allow for flexible un-whitelisting of vaults.
-     */
+    /// @inheritdoc ISLAYRouter
     function setVaultWhitelist(address vault_, bool isWhitelisted) external onlyOwner {
         whitelisted[vault_] = isWhitelisted;
         emit VaultWhitelisted(vault_, isWhitelisted);

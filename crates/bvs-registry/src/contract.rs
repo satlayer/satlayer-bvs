@@ -1383,7 +1383,7 @@ mod tests {
 
         // operators opt-in to slashing
         for i in 0..3 {
-            let operator = deps.api.addr_make(format!("operator{}", i).as_str());
+            let operator = deps.api.addr_make(format!("operator{i}").as_str());
             SLASHING_OPT_IN
                 .save(
                     &mut deps.storage,
@@ -1422,7 +1422,7 @@ mod tests {
 
         // assert that the opt-in mapping is cleared
         for i in 0..3 {
-            let operator = deps.api.addr_make(format!("operator{}", i).as_str());
+            let operator = deps.api.addr_make(format!("operator{i}").as_str());
             let opt_in = SLASHING_OPT_IN
                 .may_load(&deps.storage, (&service, &operator))
                 .unwrap();
