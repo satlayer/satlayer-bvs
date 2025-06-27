@@ -7,6 +7,7 @@ import "../src/SLAYVaultFactory.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {TestSuite} from "./TestSuite.sol";
+import {ISLAYVaultFactory} from "../src/interface/ISLAYVaultFactory.sol";
 
 contract SLAYVaultFactoryTest is Test, TestSuite {
     MockERC20 public underlying = new MockERC20("Token", "TKN", 18);
@@ -72,12 +73,12 @@ contract SLAYVaultFactoryTest is Test, TestSuite {
     }
 
     function test_create_with_not_operator() public {
-        vm.expectRevert(abi.encodeWithSelector(SLAYVaultFactory.NotOperator.selector, address(this)));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYVaultFactory.NotOperator.selector, address(this)));
         vaultFactory.create(underlying);
 
         address notOperator = makeAddr("Not Operator");
         vm.startPrank(owner);
-        vm.expectRevert(abi.encodeWithSelector(SLAYVaultFactory.NotOperator.selector, address(notOperator)));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYVaultFactory.NotOperator.selector, address(notOperator)));
         vaultFactory.create(underlying, notOperator, "Name", "Symbol");
     }
 }
