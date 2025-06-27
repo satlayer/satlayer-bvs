@@ -31,7 +31,16 @@ The payout and rewards are paid out in the same token as the vault's staked asse
 The reward structure allocates 50% of total premiums collected from active policies to be distributed as rewards.
 These rewards are shared between operators (10%) and stakers (90%), with distribution proportional to staked amounts.
 
-## Project Structure
+## Getting started
+
+Prerequisites for this example:
+
+1. Install Rust and Cargo: https://www.rust-lang.org/tools/install
+2. Basic understanding of [CosmWasm contracts](/developers/cosmwasm)
+3. Node.js for development of the off-chain service: https://nodejs.org/en/download/
+4. Docker to run off-chain node: https://docs.docker.com/get-docker/
+
+Project structure:
 
 ```txt
 insurance/
@@ -40,6 +49,27 @@ insurance/
 │   ├── policy-manager.ts       <- Core policy management functionality
 │   ├── policy-manager.test.ts  <- Lifecycle example (policy purchase, claims, payouts)
 └── README.md
+```
+
+### How to run
+
+Clone and copy contents of `./examples/insurance` [from GitHub](https://github.com/satlayer/satlayer-bvs/tree/main/examples/insurance) to your local machine.
+Install with `npm install` and `npm run test` to set up the environment.
+
+```sh filename="run.sh"
+npm run install
+npm run test
+```
+
+### How to build the contract
+
+To build the CosmWasm contract, you will need to have Docker running, and then you can run the following command:
+
+```sh filename="build.sh"
+docker run --rm -v "$(pwd)":/code \
+  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
+  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+  cosmwasm/optimizer:0.16.0
 ```
 
 ## Core Components
