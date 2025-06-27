@@ -325,13 +325,13 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     function enableSlashing(SlashParameter.Object calldata parameter) public onlyService(_msgSender()) {
         require(parameter.maxMilliBips <= 10000000, "Maximum Milli-Bips cannot be more than 10_000_000 (100%)");
         require(parameter.maxMilliBips >= 0, "Minimum Bips cannot be less than zero");
-        _updateSlashParameters(_msgSender(), parameter.destination, parameter.maxMilliBips, parameter.resolutionWindow);
+        _updateSlashParameter(_msgSender(), parameter.destination, parameter.maxMilliBips, parameter.resolutionWindow);
     }
 
     /**
      * @dev Mutate slash parameter checkpoint state for particular service
      */
-    function _updateSlashParameters(address service, address destination, uint32 maxMilliBips, uint32 resolutionWindow)
+    function _updateSlashParameter(address service, address destination, uint32 maxMilliBips, uint32 resolutionWindow)
         internal
     {
         uint224 parameter = SlashParameter.encode(destination, maxMilliBips, resolutionWindow);
