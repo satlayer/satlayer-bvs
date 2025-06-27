@@ -43,18 +43,18 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     /// @dev Default delay for operator's vault withdrawals if not set.
     uint32 public constant DEFAULT_WITHDRAWAL_DELAY = 7 days;
     /**
-     * @dev Stored slashing parameter for each of every slash enabled BVS services.
+     * @dev Store {SlashParameter} for each of every slash enabled BVS services.
      */
     mapping(address service => Checkpoints.Trace224) private _slashParameters;
 
     /**
-     * @dev Emitted when Slashing Parameter for a service is updated
+     * @dev Emitted when {SlashParameter.Object} for a service is updated
      * @param service The address of the service
      * @param destination The address at which slash collateral will be moved.
      * @param maxMilliBip The maximum slashable amount
      * @param resolutionWindow An operator's refutable period in seconds in the event of slash.
      */
-    event SlashingParameterUpdated(
+    event SlashParameterUpdated(
         address indexed service, address destination, uint32 maxMilliBip, uint32 resolutionWindow
     );
 
@@ -63,7 +63,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * @param service The address of the service.
      * @param operator The address of the operator.
      */
-    event SlashingOptIn(address indexed service, address indexed operator);
+    event SlashOptIn(address indexed service, address indexed operator);
 
     /**
      * @dev Set the immutable SLAYRouter proxy address for the implementation.
@@ -335,35 +335,30 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     }
 
     /**
-     * @dev service enable slashing by providing slashing parameters
+     * @dev service enable slashing by providing slash parameters in the form of {SlashParameter.Object}.
      * _msgSender is registered service.
      */
     function enableSlashing(SlashParameter.Object calldata parameter) public onlyService(_msgSender()) {
         require(parameter.maxMilliBips <= 10000000, "Maximum Milli-Bips cannot be more than 10_000_000 (100%)");
         require(parameter.maxMilliBips >= 0, "Minimum Bips cannot be less than zero");
-        _updateSlashingParameters(
-            _msgSender(), parameter.destination, parameter.maxMilliBips, parameter.resolutionWindow
-        );
+        _updateSlashParameters(_msgSender(), parameter.destination, parameter.maxMilliBips, parameter.resolutionWindow);
     }
 
     /**
      * @dev Mutate slash parameter checkpoint state for particular service
      */
-    function _updateSlashingParameters(
-        address service,
-        address destination,
-        uint32 maxMilliBips,
-        uint32 resolutionWindow
-    ) internal {
+    function _updateSlashParameters(address service, address destination, uint32 maxMilliBips, uint32 resolutionWindow)
+        internal
+    {
         uint224 parameter = SlashParameter.encode(destination, maxMilliBips, resolutionWindow);
         _slashParameters[service].push(uint32(block.timestamp), parameter);
-        emit SlashingParameterUpdated(service, destination, maxMilliBips, resolutionWindow);
+        emit SlashParameterUpdated(service, destination, maxMilliBips, resolutionWindow);
     }
 
     /**
-     * @dev Get latest slashing parameters for particular service
+     * @dev Get latest {SlashParameter.Object} for particular service
      */
-    function getSlashingParameter(address service) public view returns (SlashParameter.Object memory) {
+    function getSlashParameter(address service) public view returns (SlashParameter.Object memory) {
         SlashParameter.Object memory parameter = SlashParameter.decode(_slashParameters[service].latest());
         return parameter;
     }
@@ -371,7 +366,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     /**
      * @dev Get slashing parameters for particular service at or near at a given point in time.
      */
-    function getSlashingParameterAt(address service, uint32 timestamp)
+    function getSlashParameterAt(address service, uint32 timestamp)
         public
         view
         returns (SlashParameter.Object memory)
@@ -384,19 +379,19 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * @dev An operator can opt in to slashing for particular service
      * _msgSender() is operator
      */
-    function slashingOptIn(address service) public onlyActivelyRegistered(service, _msgSender()) {
+    function slashOptIn(address service) public onlyActivelyRegistered(service, _msgSender()) {
         address operator = _msgSender();
         bytes32 key = ServiceOperator._getKey(service, operator);
-        bool optedIn = getSlashingOptIns(key);
+        bool optedIn = getSlashOptIns(key);
         require(optedIn == false, "Operator already opted in slashing for this service");
-        _updateSlashingOptIns(key, true);
-        emit SlashingOptIn(service, operator);
+        _updateSlashOptIns(key, true);
+        emit SlashOptIn(service, operator);
     }
 
     /**
      * @dev Mutate the operator slash opt in map at current block timestamp.
      */
-    function _updateSlashingOptIns(bytes32 key, bool optIn) internal {
+    function _updateSlashOptIns(bytes32 key, bool optIn) internal {
         RegistrationStatus status = ServiceOperator._decodeRelationship(_relationships[key].latest()).status;
         ServiceOperator.Relationship memory new_rs = ServiceOperator.Relationship({status: status, slashOptedIn: optIn});
         _relationships[key].push(uint32(block.timestamp), ServiceOperator._encodeRelationship(new_rs));
@@ -405,14 +400,14 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     /**
      * @dev Get if an operator is opted in to slash for particular service at current block timestamp
      */
-    function getSlashingOptIns(bytes32 key) public view returns (bool) {
+    function getSlashOptIns(bytes32 key) public view returns (bool) {
         return ServiceOperator._decodeRelationship(_relationships[key].latest()).slashOptedIn;
     }
 
     /**
      * @dev Get if an operator is opted in to slash for particular service at current block timestamp
      */
-    function getSlashingOptIns(address service, address operator) public view returns (bool) {
+    function getSlashOptIns(address service, address operator) public view returns (bool) {
         bytes32 key = ServiceOperator._getKey(service, operator);
         return ServiceOperator._decodeRelationship(_relationships[key].latest()).slashOptedIn;
     }
@@ -421,7 +416,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * @dev Get if an operator is opted in to slash
      * for particular service at or near at given timestamp
      */
-    function getSlashingOptInsAt(bytes32 key, uint32 timestamp) public view returns (bool) {
+    function getSlashOptInsAt(bytes32 key, uint32 timestamp) public view returns (bool) {
         return ServiceOperator._decodeRelationship(_relationships[key].upperLookup(timestamp)).slashOptedIn;
     }
 
@@ -429,7 +424,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * @dev Get if an operator is opted in to slash
      * for particular service at or near at given timestamp
      */
-    function getSlashingOptInsAt(address service, address operator, uint32 timestamp) public view returns (bool) {
+    function getSlashOptInsAt(address service, address operator, uint32 timestamp) public view returns (bool) {
         bytes32 key = ServiceOperator._getKey(service, operator);
         return ServiceOperator._decodeRelationship(_relationships[key].upperLookup(timestamp)).slashOptedIn;
     }

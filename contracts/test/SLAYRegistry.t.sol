@@ -453,12 +453,12 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(service);
         vm.expectEmit();
-        emit SLAYRegistry.SlashingParameterUpdated(service, destination, maxBips, resolutionWindow);
+        emit SLAYRegistry.SlashParameterUpdated(service, destination, maxBips, resolutionWindow);
         registry.enableSlashing(
             SlashParameter.Object({destination: destination, maxMilliBips: maxBips, resolutionWindow: resolutionWindow})
         );
 
-        SlashParameter.Object memory param = registry.getSlashingParameter(service);
+        SlashParameter.Object memory param = registry.getSlashParameter(service);
 
         assertEq(param.destination, destination, "Slashing destination should match");
         assertEq(param.maxMilliBips, maxBips, "Slashing maxBips should match");
@@ -477,7 +477,7 @@ contract SLAYRegistryTest is Test, TestSuite {
             SlashParameter.Object({destination: destination, maxMilliBips: 10000000, resolutionWindow: resolutionWindow})
         );
 
-        SlashParameter.Object memory param = registry.getSlashingParameter(service);
+        SlashParameter.Object memory param = registry.getSlashParameter(service);
         assertEq(param.maxMilliBips, 10000000, "MaxBips should be 10000000");
 
         // Test maxBips at 10000001 (revert)
@@ -497,7 +497,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         );
     }
 
-    function test_GetSlashingParameterAt() public {
+    function test_GetSlashParameterAt() public {
         vm.prank(service);
         registry.registerAsService("service.com", "Service A");
 
@@ -533,19 +533,19 @@ contract SLAYRegistryTest is Test, TestSuite {
         uint32 time2 = uint32(block.timestamp);
 
         // Check at time1
-        SlashParameter.Object memory param1 = registry.getSlashingParameterAt(service, time1);
+        SlashParameter.Object memory param1 = registry.getSlashParameterAt(service, time1);
         assertEq(param1.destination, destination1, "Slashing destination at time1 should match");
         assertEq(param1.maxMilliBips, maxBips1, "Slashing maxBips at time1 should match");
         assertEq(param1.resolutionWindow, resolutionWindow1, "Slashing resolutionWindow at time1 should match");
 
         // Check at time2
-        SlashParameter.Object memory param2 = registry.getSlashingParameterAt(service, time2);
+        SlashParameter.Object memory param2 = registry.getSlashParameterAt(service, time2);
         assertEq(param2.destination, destination2, "Slashing destination at time2 should match");
         assertEq(param2.maxMilliBips, maxBips2, "Slashing maxBips at time2 should match");
         assertEq(param2.resolutionWindow, resolutionWindow2, "Slashing resolutionWindow at time2 should match");
 
         // Check a time before any update (should return default/zero values)
-        SlashParameter.Object memory param3 = registry.getSlashingParameterAt(service, 0);
+        SlashParameter.Object memory param3 = registry.getSlashParameterAt(service, 0);
         assertEq(param3.destination, address(0), "Slashing destination at time 0 should be zero address");
         assertEq(param3.maxMilliBips, 0, "Slashing maxBips at time 0 should be 0");
         assertEq(param3.resolutionWindow, 0, "Slashing resolutionWindow at time 0 should be 0");
@@ -556,10 +556,10 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(operator);
         vm.expectEmit();
-        emit SLAYRegistry.SlashingOptIn(service, operator);
-        registry.slashingOptIn(service);
+        emit SLAYRegistry.SlashOptIn(service, operator);
+        registry.slashOptIn(service);
 
-        assertTrue(registry.getSlashingOptIns(service, operator), "Operator should have opted in for slashing");
+        assertTrue(registry.getSlashOptIns(service, operator), "Operator should have opted in for slashing");
     }
 
     function test_SlashingOptIn_AlreadyOptedIn() public {
@@ -569,17 +569,17 @@ contract SLAYRegistryTest is Test, TestSuite {
         // Expect no revert, as re-opting-in should simply update the checkpoint to the current time.
         // The current implementation allows re-opting-in without a specific revert.
         vm.expectRevert("Operator already opted in slashing for this service");
-        registry.slashingOptIn(service);
+        registry.slashOptIn(service);
     }
 
-    function test_SlashingOptIn_NotService() public {
+    function test_SlashOptIn_NotService() public {
         vm.prank(operator);
         registry.registerAsOperator("op.com", "Op");
 
         address nonService = makeAddr("nonService");
 
         vm.expectRevert("RegistrationStatus not Active");
-        registry.slashingOptIn(nonService);
+        registry.slashOptIn(nonService);
     }
 
     function test_SlashingOptIn_NotOperator() public {
@@ -589,7 +589,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         address nonOperator = makeAddr("nonOperator");
         vm.prank(nonOperator);
         vm.expectRevert("RegistrationStatus not Active");
-        registry.slashingOptIn(service);
+        registry.slashOptIn(service);
     }
 
     function test_SlashingOptIn_RegistrationNotActive() public {
@@ -602,7 +602,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         // Attempt opt-in when status is Inactive
         vm.prank(operator);
         vm.expectRevert("RegistrationStatus not Active");
-        registry.slashingOptIn(service);
+        registry.slashOptIn(service);
 
         // Service initiates, status is ServiceRegistered
         vm.prank(service);
@@ -610,36 +610,35 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(operator);
         vm.expectRevert("RegistrationStatus not Active");
-        registry.slashingOptIn(service);
+        registry.slashOptIn(service);
     }
 
     function test_GetSlashingOptInsAt() public {
         test_FullFlow_ServiceInitiatesRegistration(); // Ensures active registration
 
         // Initial state before opt-in
-        assertTrue(!registry.getSlashingOptInsAt(service, operator, 0), "Should not be opted in at timestamp 0");
+        assertTrue(!registry.getSlashOptInsAt(service, operator, 0), "Should not be opted in at timestamp 0");
         assertTrue(
-            !registry.getSlashingOptInsAt(service, operator, uint32(block.timestamp)),
-            "Should not be opted in initially"
+            !registry.getSlashOptInsAt(service, operator, uint32(block.timestamp)), "Should not be opted in initially"
         );
 
         vm.prank(operator);
-        registry.slashingOptIn(service);
+        registry.slashOptIn(service);
         uint32 timeAfterOptIn = uint32(block.timestamp);
 
         _advanceBlockBy(5); // Advance time
 
         // Check after opt-in
         assertTrue(
-            registry.getSlashingOptInsAt(service, operator, timeAfterOptIn), "Should be opted in after opt-in event"
+            registry.getSlashOptInsAt(service, operator, timeAfterOptIn), "Should be opted in after opt-in event"
         );
         assertTrue(
-            registry.getSlashingOptInsAt(service, operator, uint32(block.timestamp)),
+            registry.getSlashOptInsAt(service, operator, uint32(block.timestamp)),
             "Should be opted in at current timestamp"
         );
 
         assertTrue(
-            registry.getSlashingOptInsAt(service, operator, uint32(block.timestamp + 1000000)),
+            registry.getSlashOptInsAt(service, operator, uint32(block.timestamp + 1000000)),
             "Should be opted in at a future timestamp"
         );
     }
