@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import {Test, console} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 import {ISLAYRegistry} from "../src/interface/ISLAYRegistry.sol";
 import {SLAYRouter} from "../src/SLAYRouter.sol";
@@ -14,6 +16,26 @@ contract SLAYRegistryTest is Test, TestSuite {
 
     function setUp() public override {
         TestSuite.setUp();
+    }
+
+    function test_paused() public {
+        vm.prank(owner);
+        registry.pause();
+
+        assertTrue(registry.paused());
+    }
+
+    function test_pausedOnlyOwnerError() public {
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, address(this)));
+        registry.pause();
+    }
+
+    function test_unpausedOnlyOwnerError() public {
+        vm.prank(owner);
+        registry.pause();
+
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, address(this)));
+        registry.unpause();
     }
 
     function test_RegisterAsService() public {
@@ -34,6 +56,25 @@ contract SLAYRegistryTest is Test, TestSuite {
         registry.registerAsService("http://uri2.com", "Name 2");
     }
 
+    function test_RegisterAsService_EmptyMetadata() public {
+        vm.prank(vm.randomAddress());
+        registry.registerAsService("https://service.example.com", "");
+
+        vm.prank(vm.randomAddress());
+        registry.registerAsService("", "Service Name");
+
+        vm.prank(vm.randomAddress());
+        registry.registerAsService("", "");
+    }
+
+    function test_RegisterAsService_Paused() public {
+        vm.prank(owner);
+        registry.pause();
+
+        vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+        registry.registerAsService("https://service.example.com", "Service Name");
+    }
+
     function test_RegisterAsOperator() public {
         vm.expectEmit();
         emit ISLAYRegistry.OperatorRegistered(address(this));
@@ -50,6 +91,25 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.expectRevert("Already registered");
         registry.registerAsOperator("http://operating.com", "Operator X2");
+    }
+
+    function test_RegisterAsOperator_EmptyMetadata() public {
+        vm.prank(vm.randomAddress());
+        registry.registerAsOperator("https://operator.com", "");
+
+        vm.prank(vm.randomAddress());
+        registry.registerAsOperator("", "Operator X");
+
+        vm.prank(vm.randomAddress());
+        registry.registerAsOperator("", "");
+    }
+
+    function test_RegisterAsOperator_Paused() public {
+        vm.prank(owner);
+        registry.pause();
+
+        vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+        registry.registerAsOperator("https://operator.com", "Operator X");
     }
 
     /**
@@ -131,6 +191,26 @@ contract SLAYRegistryTest is Test, TestSuite {
         );
     }
 
+    function test_Register_Paused() public {
+        {
+            vm.prank(service);
+            registry.registerAsService("service.com", "Service A");
+            vm.prank(operator);
+            registry.registerAsOperator("operator.com", "Operator X");
+        }
+
+        vm.prank(owner);
+        registry.pause();
+
+        vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+        vm.prank(service);
+        registry.registerOperatorToService(operator);
+
+        vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+        vm.prank(operator);
+        registry.registerServiceToOperator(service);
+    }
+
     function test_DeregisterOperatorFromService() public {
         test_FullFlow_ServiceInitiatesRegistration();
 
@@ -159,6 +239,21 @@ contract SLAYRegistryTest is Test, TestSuite {
             uint256(ISLAYRegistry.RegistrationStatus.Inactive),
             "Status should be Inactive after deregistration"
         );
+    }
+
+    function test_Deregister_Paused() public {
+        test_FullFlow_ServiceInitiatesRegistration();
+
+        vm.prank(owner);
+        registry.pause();
+
+        vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+        vm.prank(service);
+        registry.deregisterOperatorFromService(operator);
+
+        vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+        vm.prank(operator);
+        registry.deregisterServiceFromOperator(service);
     }
 
     function _advanceBlockBy(uint256 newHeight) internal {
