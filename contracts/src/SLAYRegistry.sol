@@ -66,22 +66,6 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     event SlashOptIn(address indexed service, address indexed operator);
 
     /**
-     * @dev Set the immutable SLAYRouter proxy address for the implementation.
-     * Cyclic params in constructor are possible as an EmptyImpl is used for an initial deployment,
-     * after which all the contracts are upgraded to their respective implementations with immutable proxy addresses.
-     *
-     * @custom:oz-upgrades-unsafe-allow constructor
-     */
-    constructor(SLAYRouter router_) {
-        router = router_;
-        _disableInitializers();
-    }
-
-    function initialize() public reinitializer(2) {
-        __Pausable_init();
-    }
-
-    /**
      * @dev Modifier to check if the provided account is a registered service.
      * Reverts with `ServiceNotFound` if the account is not registered as a service.
      */
