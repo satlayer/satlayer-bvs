@@ -28,16 +28,16 @@ importers:
         version: 16.1.2
       prettier:
         specifier: ^3
-        version: 3.6.1
+        version: 3.6.2
       prettier-plugin-packagejson:
         specifier: ^2.5.16
-        version: 2.5.16(prettier@3.6.1)
+        version: 2.5.16(prettier@3.6.2)
       prettier-plugin-tailwindcss:
         specifier: ^0.6.13
-        version: 0.6.13(prettier@3.6.1)
+        version: 0.6.13(prettier@3.6.2)
       prettier-plugin-toml:
         specifier: ^2.0.5
-        version: 2.0.5(prettier@3.6.1)
+        version: 2.0.5(prettier@3.6.2)
       turbo:
         specifier: ^2.5.4
         version: 2.5.4
@@ -6288,8 +6288,8 @@ packages:
     peerDependencies:
       prettier: ^3.0.3
 
-  prettier@3.6.1:
-    resolution: {integrity: sha512-5xGWRa90Sp2+x1dQtNpIpeOQpTDBs9cZDmA/qs2vDNN2i18PdapqY7CmBeyLlMuGqXJRIOPaCaVZTLNQRWUH/A==}
+  prettier@3.6.2:
+    resolution: {integrity: sha512-I7AIg5boAr5R0FFtJ6rCfD+LFsWHp81dolrFD8S79U9tb8Az2nGrJncnMSnys+bpQJfRUzqs9hnA81OAA3hCuQ==}
     engines: {node: '>=14'}
     hasBin: true
 
@@ -10906,7 +10906,7 @@ snapshots:
       pathe: 1.1.2
       picocolors: 1.1.1
       picomatch: 3.0.1
-      prettier: 3.6.1
+      prettier: 3.6.2
       viem: 2.31.4(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.24.2)
       zod: 3.24.2
     optionalDependencies:
@@ -15248,23 +15248,23 @@ snapshots:
 
   prelude-ls@1.2.1: {}
 
-  prettier-plugin-packagejson@2.5.16(prettier@3.6.1):
+  prettier-plugin-packagejson@2.5.16(prettier@3.6.2):
     dependencies:
       sort-package-json: 3.2.2
       synckit: 0.11.8
     optionalDependencies:
-      prettier: 3.6.1
+      prettier: 3.6.2
 
-  prettier-plugin-tailwindcss@0.6.13(prettier@3.6.1):
+  prettier-plugin-tailwindcss@0.6.13(prettier@3.6.2):
     dependencies:
-      prettier: 3.6.1
+      prettier: 3.6.2
 
-  prettier-plugin-toml@2.0.5(prettier@3.6.1):
+  prettier-plugin-toml@2.0.5(prettier@3.6.2):
     dependencies:
       '@taplo/lib': 0.5.0
-      prettier: 3.6.1
+      prettier: 3.6.2
 
-  prettier@3.6.1: {}
+  prettier@3.6.2: {}
 
   pretty-ms@9.2.0:
     dependencies:
