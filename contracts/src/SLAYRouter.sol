@@ -8,6 +8,7 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 
 import {SLAYRegistry} from "./SLAYRegistry.sol";
 import {ISLAYRouter} from "./interface/ISLAYRouter.sol";
+import {ISLAYRegistry} from "./interface/ISLAYRegistry.sol";
 
 /**
  * @title SLAYRouter
@@ -21,6 +22,15 @@ contract SLAYRouter is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pausa
     SLAYRegistry public immutable registry;
 
     mapping(address => bool) public whitelisted;
+
+    modifier onlyActivelyRegisteredAt(address service, address operator, uint32 timestamp) {
+        ISLAYRegistry.RegistrationStatus status = registry.getRegistrationStatusAt(service, operator, timestamp);
+        require(
+            status == ISLAYRegistry.RegistrationStatus.Active,
+            "Service and Operator must be active at the specified timestamp"
+        );
+        _;
+    }
 
     /**
      * @dev Set the immutable SLAYRegistry proxy address for the implementation.
@@ -59,5 +69,27 @@ contract SLAYRouter is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pausa
     function setVaultWhitelist(address vault_, bool isWhitelisted) external onlyOwner {
         whitelisted[vault_] = isWhitelisted;
         emit VaultWhitelisted(vault_, isWhitelisted);
+    }
+
+    function requestSlashing(Slashing.RequestPayload memory payload) public {}
+}
+
+library Slashing {
+    enum RequestStatus {
+        Pending,
+        Locked,
+        Canceled,
+        Finalized
+    }
+
+    struct RequestPayload {
+        address operator;
+        uint32 millieBips;
+        uint32 timestamp;
+        MetaData metaData;
+    }
+
+    struct MetaData {
+        string reason;
     }
 }
