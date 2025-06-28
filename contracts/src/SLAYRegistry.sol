@@ -412,6 +412,30 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         bytes32 key = ServiceOperator._getKey(service, operator);
         return ServiceOperator._decodeRelationship(_relationships[key].upperLookup(timestamp)).slashOptedIn;
     }
+
+    /**
+     * @dev Get full relationship object of given service operator pair
+     */
+    function getRelationship(address service, address operator)
+        public
+        view
+        returns (ServiceOperator.Relationship memory)
+    {
+        bytes32 key = ServiceOperator._getKey(service, operator);
+        return ServiceOperator._decodeRelationship(_relationships[key].latest());
+    }
+
+    /**
+     * @dev Get full relationship object of given service operator pair at given timestamp
+     */
+    function getRelationshipAt(address service, address operator, uint32 timestamp)
+        public
+        view
+        returns (ServiceOperator.Relationship memory)
+    {
+        bytes32 key = ServiceOperator._getKey(service, operator);
+        return ServiceOperator._decodeRelationship(_relationships[key].upperLookup(timestamp));
+    }
 }
 
 library ServiceOperator {
