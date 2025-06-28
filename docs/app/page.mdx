@@ -8,7 +8,11 @@ import {Cards} from 'nextra/components'
 
 # SatLayer Developer Documentation
 
-Welcome to the SatLayer developer documentation for BVS developers and operators!
+Welcome to the SatLayer developer documentation for BVS developers and operators! The documentation here is designed
+to help you understand how to build and operate Bitcoin Validated Services on the SatLayer platform.
+
+If you are a Bitcoin restaker looking to learn more about how to restake your Bitcoin assets, please refer to the
+[SatLayer Staking App documentation](https://docs.satlayer.xyz/) instead.
 
 ## What is SatLayer?
 
@@ -21,19 +25,20 @@ and operators who help with the validation.
 
 By expanding the ways Bitcoin can be used, SatLayer helps Bitcoin maximize its potential as a reward-generating asset.
 
-## Main Features
+## Extending Bitcoin cryptoeconomic security
 
-Some of the main SatLayer features include:
+At the core of SatLayer is the concept of **Bitcoin Validated Services**, which are applications or protocols
+secured by staked Bitcoin assets. BVSs rely on economic incentives and risk mechanisms to discourage
+malicious behavior in off-chain processes.
 
-| Feature                                            | Description                                                                                                                             |
-|:---------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------|
-| [Vaults](/getting-started/vaults)                  | The primary interface for users to deposit assets, receive shares, and withdraw assets when needed.                                     |
-| [Services](/getting-started/services)              | Applications or protocols that utilize the SatLayer ecosystem for validation and security.                                              |
-| [Operators](/getting-started/operators)            | Operators are the validators, infrastructure providers, and operational backbone of the ecosystem.                                      |
-| [Programmable Slashing](/getting-started/slashing) | A programmable interface for services to execute slashing to penalize malicious behavior or perform defaulting swaps.                   |
-| [Rewards](/getting-started/rewards)   | A system for services to distribute rewards to operators and restakers, ensuring fair and regular compensation for their contributions. |
+Each BVS enforces a set of "slashing conditions" either off-chain or on an on-chain smart contract.
+When a slashing condition is met, node operators who violate these rules have a portion or all of their stake confiscated.
+BVS developers have considerable flexibility in managing these slashing conditions and outcomes — slashed assets can be
+redirected by Vault restakers or permanently burned by sending them to a null address.
 
-## Participants
+## Key participants in the SatLayer ecosystem
+
+![SatLayer's restaking protocol, visualized in a diagram](/assets/intro-satlayer.png)
 
 The SatLayer ecosystem consists of the following participants:
 
@@ -52,6 +57,17 @@ restakers. In exchange for providing the validation service, computing resources
 node operator software required for validation (where required), these node operators take a portion of the rewards
 as their fee.
 
+## Main Features
+
+Some of the main SatLayer features include the following:
+
+| Feature                                            | Description                                                                                                                             |
+|:---------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------|
+| [Vaults](/getting-started/vaults)                  | The primary interface for users to deposit assets, receive shares, and withdraw assets when needed.                                     |
+| [Services](/getting-started/services)              | Applications or protocols that utilize the SatLayer ecosystem for validation and security.                                              |
+| [Operators](/getting-started/operators)            | Operators are the validators, infrastructure providers, and operational backbone of the ecosystem.                                      |
+| [Programmable Slashing](/getting-started/slashing) | A programmable interface for services to execute slashing to penalize malicious behavior or perform defaulting swaps.                   |
+| [Rewards](/getting-started/rewards)                | A system for services to distribute rewards to operators and restakers, ensuring fair and regular compensation for their contributions. |
 
 ## Next Steps
 
@@ -60,6 +76,6 @@ as their fee.
     <>![Restaking app screenshot](/assets/restaking-app.png)</>
   </Cards.Card>
   <Cards.Card arrow title="Developing BVS on SatLayer" href="/getting-started/services">
-    <>![Restaking app screenshot](/assets/docs-services.png)</>
+    <>![Docs screenshot](/assets/docs-services.png)</>
   </Cards.Card>
 </Cards>
