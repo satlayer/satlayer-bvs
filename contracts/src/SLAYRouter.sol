@@ -6,7 +6,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
-import {SLAYRegistry} from "./SLAYRegistry.sol";
+import {SLAYRegistry, ServiceOperator, SlashParameter} from "./SLAYRegistry.sol";
 import {ISLAYRouter} from "./interface/ISLAYRouter.sol";
 import {ISLAYRegistry} from "./interface/ISLAYRegistry.sol";
 
@@ -21,14 +21,36 @@ contract SLAYRouter is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pausa
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     SLAYRegistry public immutable registry;
 
+    /**
+     * @notice 7 days
+     */
+    uint32 public constant slashingRequestExpiryWindow = 7 * 24 * 60 * 60;
+
     mapping(address => bool) public whitelisted;
 
-    modifier onlyActivelyRegisteredAt(address service, address operator, uint32 timestamp) {
-        ISLAYRegistry.RegistrationStatus status = registry.getRegistrationStatusAt(service, operator, timestamp);
+    mapping(bytes32 serviceOperatorKey => bytes32 slashId) public slashingRequestIds;
+
+    mapping(bytes32 slashId => Slashing.RequestInfo) public slashingRequests;
+
+    modifier onlyValidSlashRequest(Slashing.RequestPayload memory request) {
+        ServiceOperator.Relationship memory rs =
+            registry.getRelationshipAt(_msgSender(), request.operator, request.timestamp);
+        require(rs.slashOptedIn == true, "Operator has not opted in to the slash at specified timestamp.");
         require(
-            status == ISLAYRegistry.RegistrationStatus.Active,
+            rs.status == ISLAYRegistry.RegistrationStatus.Active,
             "Service and Operator must be active at the specified timestamp"
         );
+        SlashParameter.Object memory param = registry.getSlashParameterAt(_msgSender(), request.timestamp);
+        require(request.millieBips <= param.maxMilliBips, "Slash requested amount is more than the service has allowed");
+
+        uint32 withdrawalDelay = registry.getWithdrawalDelay(request.operator);
+
+        require(
+            request.timestamp > (block.timestamp - withdrawalDelay),
+            "Slash timestamp must be within the allowable slash period"
+        );
+
+        require(request.timestamp <= block.timestamp, "Cannot request slash with timestamp greater than present");
         _;
     }
 
@@ -71,7 +93,51 @@ contract SLAYRouter is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pausa
         emit VaultWhitelisted(vault_, isWhitelisted);
     }
 
-    function requestSlashing(Slashing.RequestPayload memory payload) public {}
+    function requestSlashing(Slashing.RequestPayload memory payload) public onlyValidSlashRequest(payload) {
+        address service = _msgSender();
+        Slashing.RequestInfo memory pendingSlashingRequest = getPendingSlashingRequest(service, payload.operator);
+
+        if (Slashing.isRequestInfoExist(pendingSlashingRequest) == true) {
+            if (
+                pendingSlashingRequest.status == Slashing.RequestStatus.Pending
+                    && pendingSlashingRequest.requestExpiry > block.timestamp
+            ) {
+                revert("Pending Slashing Request lifecycle not completed");
+            }
+        }
+
+        uint32 requestResolution =
+            uint32(block.timestamp) + registry.getSlashParameterAt(service, payload.timestamp).resolutionWindow;
+        uint32 requestExpiry = requestResolution + slashingRequestExpiryWindow;
+
+        Slashing.RequestInfo memory newSlashingRequestInfo = Slashing.RequestInfo({
+            request: payload,
+            requestTime: uint32(block.timestamp),
+            requestResolution: requestResolution,
+            requestExpiry: requestExpiry,
+            status: Slashing.RequestStatus.Pending,
+            service: service
+        });
+
+        _updateSlashingRequest(service, payload.operator, newSlashingRequestInfo);
+    }
+
+    function getPendingSlashingRequest(address service, address operator)
+        public
+        view
+        returns (Slashing.RequestInfo memory)
+    {
+        bytes32 key = ServiceOperator._getKey(service, operator);
+        bytes32 slashId = slashingRequestIds[key];
+        return slashingRequests[slashId];
+    }
+
+    function _updateSlashingRequest(address service, address operator, Slashing.RequestInfo memory info) internal {
+        bytes32 key = ServiceOperator._getKey(service, operator);
+        bytes32 slashId = Slashing.calculateSlashingRequestId(info);
+        slashingRequestIds[key] = slashId;
+        slashingRequests[slashId] = info;
+    }
 }
 
 library Slashing {
@@ -89,7 +155,42 @@ library Slashing {
         MetaData metaData;
     }
 
+    struct RequestInfo {
+        RequestPayload request;
+        uint32 requestTime;
+        uint32 requestResolution;
+        uint32 requestExpiry;
+        RequestStatus status;
+        address service;
+    }
+
     struct MetaData {
         string reason;
+    }
+
+    function isRequestInfoExist(RequestInfo memory info) public pure returns (bool) {
+        if (
+            info.service == address(0) && info.request.operator == address(0) && info.requestTime == 0
+                && info.requestResolution == 0 && info.requestExpiry == 0
+        ) {
+            return true;
+        }
+        return false;
+    }
+
+    function calculateSlashingRequestId(RequestInfo memory info) public pure returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(
+                info.request.operator,
+                info.request.millieBips,
+                info.request.timestamp,
+                info.request.metaData.reason,
+                info.requestTime,
+                info.requestResolution,
+                info.requestExpiry,
+                uint8(info.status),
+                info.service
+            )
+        );
     }
 }
