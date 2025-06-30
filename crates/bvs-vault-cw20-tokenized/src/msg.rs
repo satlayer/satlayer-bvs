@@ -64,12 +64,6 @@ pub enum ExecuteMsg {
     /// Vault must be whitelisted in the `vault-router` to accept deposits.
     DepositFor(RecipientAmount),
 
-    /// ExecuteMsg WithdrawTo assets from the vault.
-    /// Sender must have enough shares to withdraw the requested amount to the `recipient`.
-    /// If the Vault is delegated to an `operator`, withdrawals must be queued.
-    /// Operator must not be validating any services for instant withdrawals.
-    WithdrawTo(RecipientAmount),
-
     /// ExecuteMsg QueueWithdrawalTo assets from the vault.
     /// Sender must have enough shares to queue the requested amount to the `recipient`.
     /// Once the withdrawal is queued,

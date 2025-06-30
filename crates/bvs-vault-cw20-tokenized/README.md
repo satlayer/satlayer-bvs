@@ -20,7 +20,6 @@ allowing for efficient tracking of user deposits and their corresponding value.
 ### Execute Functions
 
 - `DepositFor`: Deposit CW20 tokens into the vault for a recipient, who receives receipt tokens
-- `WithdrawTo`: Withdraw CW20 tokens from the vault to a recipient by burning receipt tokens
 - `QueueWithdrawalTo`: Queue a withdrawal request for later processing
 - `RedeemWithdrawalTo`: Process a queued withdrawal request
 - `Transfer`, `Send`, etc.: Standard CW20 operations for the receipt tokens

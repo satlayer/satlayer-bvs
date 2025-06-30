@@ -57,10 +57,6 @@ pub fn execute(
             msg.validate(deps.api)?;
             execute::deposit_for(deps, env, info, msg)
         }
-        ExecuteMsg::WithdrawTo(msg) => {
-            msg.validate(deps.api)?;
-            execute::withdraw_to(deps, env, info, msg)
-        }
         ExecuteMsg::QueueWithdrawalTo(msg) => {
             msg.validate(deps.api)?;
             execute::queue_withdrawal_to(deps, env, info, msg)
@@ -137,52 +133,6 @@ mod execute {
                     .add_attribute("recipient", msg.recipient)
                     .add_attribute("assets", assets.to_string())
                     .add_attribute("shares", new_shares.to_string())
-                    .add_attribute("total_shares", vault.total_shares().to_string()),
-            )
-            .add_message(transfer_msg))
-    }
-
-    /// Withdraw assets from the vault by burning shares.
-    ///
-    /// The shares are burned from `info.sender`.  
-    /// The resulting assets are transferred to `msg.recipient`.  
-    /// The `TOTAL_SHARE` in the vault is reduced.  
-    pub fn withdraw_to(
-        deps: DepsMut,
-        env: Env,
-        info: MessageInfo,
-        msg: RecipientAmount,
-    ) -> Result<Response, ContractError> {
-        router::assert_not_validating(&deps.as_ref())?;
-
-        // Remove shares from the info.sender
-        shares::sub_shares(deps.storage, &info.sender, msg.amount)?;
-
-        let (vault, claim_assets) = {
-            let balance = token::query_balance(&deps.as_ref(), &env)?;
-            let mut vault = offset::TotalShares::load(&deps.as_ref(), balance)?;
-
-            let assets = vault.shares_to_assets(msg.amount)?;
-            if assets.is_zero() {
-                return Err(VaultError::zero("Withdraw assets cannot be zero").into());
-            }
-
-            // Remove shares from TOTAL_SHARES
-            vault.checked_sub_shares(deps.storage, msg.amount)?;
-
-            (vault, assets)
-        };
-
-        // CW20 transfer of asset to msg.recipient
-        let transfer_msg = token::execute_new_transfer(deps.storage, &msg.recipient, claim_assets)?;
-
-        Ok(Response::new()
-            .add_event(
-                Event::new("WithdrawTo")
-                    .add_attribute("sender", info.sender.to_string())
-                    .add_attribute("recipient", msg.recipient.to_string())
-                    .add_attribute("assets", claim_assets.to_string())
-                    .add_attribute("shares", msg.amount.to_string())
                     .add_attribute("total_shares", vault.total_shares().to_string()),
             )
             .add_message(transfer_msg))

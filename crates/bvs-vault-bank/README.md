@@ -18,7 +18,6 @@ allowing for efficient tracking of user deposits and their corresponding value.
 ### Execute Functions
 
 - `DepositFor`: Deposit native tokens into the vault for a recipient
-- `WithdrawTo`: Withdraw native tokens from the vault to a recipient
 - `QueueWithdrawalTo`: Queue a withdrawal request for later processing
 - `RedeemWithdrawalTo`: Process a queued withdrawal request
 
