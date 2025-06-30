@@ -575,11 +575,6 @@ export interface InstantiateMsg {
  * contract (this is implementation agnostic). The vault contract must mint shares to the
  * `recipient`. Vault must be whitelisted in the `vault-router` to accept deposits.
  *
- * ExecuteMsg WithdrawTo assets from the vault. Sender must have enough shares to withdraw
- * the requested amount to the `recipient`. If the Vault is delegated to an `operator`,
- * withdrawals must be queued. Operator must not be validating any services for instant
- * withdrawals.
- *
  * ExecuteMsg QueueWithdrawalTo assets from the vault. Sender must have enough shares to
  * queue the requested amount to the `recipient`. Once the withdrawal is queued, the
  * `recipient` can redeem the withdrawal after the lock period. Once the withdrawal is
@@ -603,7 +598,6 @@ export interface InstantiateMsg {
  */
 export interface ExecuteMsg {
   deposit_for?: RecipientAmount;
-  withdraw_to?: RecipientAmount;
   queue_withdrawal_to?: RecipientAmount;
   redeem_withdrawal_to?: string;
   slash_locked?: string;

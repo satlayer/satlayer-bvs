@@ -20,7 +20,6 @@ allowing for efficient tracking of user deposits and their corresponding value.
 ### Execute Functions
 
 - `DepositFor`: Deposit native tokens into the vault for a recipient, who receives receipt tokens
-- `WithdrawTo`: Withdraw native tokens from the vault to a recipient by burning receipt tokens
 - `QueueWithdrawalTo`: Queue a withdrawal request for later processing
 - `RedeemWithdrawalTo`: Process a queued withdrawal request
 - `SlashLocked`: Move assets from the vault to the router contract (part of Programmable Slashing)

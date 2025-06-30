@@ -67,7 +67,6 @@ pub fn assert_whitelisted(deps: &Deps, env: &Env) -> Result<(), VaultError> {
 }
 
 /// Asserts that the vault is not actively validating any services.
-/// Used to prevent unauthorized withdrawals, actively validating vaults withdrawal must be queued.
 pub fn assert_not_validating(deps: &Deps) -> Result<(), VaultError> {
     let router = get_router(deps.storage)?;
     let operator = get_operator(deps.storage)?;

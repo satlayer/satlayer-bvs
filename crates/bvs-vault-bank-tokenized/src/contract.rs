@@ -65,10 +65,6 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     bvs_pauser::api::assert_can_execute(deps.as_ref(), &env, &info, &msg)?;
     match msg {
-        CombinedExecuteMsg::WithdrawTo(msg) => {
-            msg.validate(deps.api)?;
-            vault_execute::withdraw_to(deps, env, info, msg)
-        }
         CombinedExecuteMsg::DepositFor(msg) => {
             msg.validate(deps.api)?;
             vault_execute::deposit_for(deps, env, info, msg)
@@ -257,53 +253,6 @@ mod vault_execute {
                     .add_attribute("shares", new_receipt_tokens_to_be_mint.to_string())
                     .add_attribute("total_shares", total_supply.to_string()),
             ))
-    }
-
-    /// Withdraw assets from the vault by burning receipt token.
-    /// The resulting staked assets are now unstaked and transferred to `msg.recipient`.  
-    pub fn withdraw_to(
-        mut deps: DepsMut,
-        env: Env,
-        info: MessageInfo,
-        msg: RecipientAmount,
-    ) -> Result<Response, ContractError> {
-        router::assert_not_validating(&deps.as_ref())?;
-
-        let receipt_tokens = msg.amount;
-
-        let claim_underlying_token = {
-            let underlying_token_balance = UnderlyingToken::query_balance(&deps.as_ref(), &env)?;
-            let receipt_token_supply =
-                cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
-            let vault = offset::VirtualOffset::new(receipt_token_supply, underlying_token_balance)?;
-
-            let underlying_token = vault.shares_to_assets(receipt_tokens)?;
-            if underlying_token.is_zero() {
-                return Err(VaultError::zero("Withdraw assets cannot be zero").into());
-            }
-
-            underlying_token
-        };
-
-        // bank transfer of staking asset to msg.recipient
-        let transfer_msg =
-            UnderlyingToken::bank_send(deps.storage, &msg.recipient, claim_underlying_token)?;
-
-        // Burn the receipt token from the sender
-        receipt_token_burn(deps.branch(), env.clone(), info.clone(), receipt_tokens)?;
-
-        let total_supply = cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
-
-        Ok(Response::new()
-            .add_event(
-                Event::new("WithdrawTo")
-                    .add_attribute("sender", info.sender.to_string())
-                    .add_attribute("recipient", msg.recipient.to_string())
-                    .add_attribute("assets", claim_underlying_token.to_string())
-                    .add_attribute("shares", msg.amount.to_string())
-                    .add_attribute("total_shares", total_supply.to_string()),
-            )
-            .add_message(transfer_msg))
     }
 
     /// Queue receipt tokens to withdraw later.
