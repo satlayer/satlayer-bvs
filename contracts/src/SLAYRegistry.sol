@@ -445,7 +445,7 @@ library ServiceOperator {
     struct Relationship {
         ISLAYRegistry.RegistrationStatus status;
         /**
-         * Whether an operator as opted in to the slashing
+         * Whether an operator is opted in to the service's slash parameters
          */
         bool slashOptedIn;
     }
