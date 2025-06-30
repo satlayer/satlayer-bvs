@@ -463,11 +463,11 @@ library ServiceOperator {
     }
 
     /**
-     * @dev dencode the uint224 (supposedly from checkpoint value) into {Relationship} struct
+     * @dev decode the uint224 (supposedly from checkpoint value) into {Relationship} struct
      */
     function _decodeRelationship(uint224 encodedData) internal pure returns (Relationship memory) {
         uint8 status = uint8(encodedData);
-        bool slashOptedIn = uint64(encodedData >> 8) == 1 ? true : false;
+        bool slashOptedIn = uint8(encodedData >> 8) == 1 ? true : false;
 
         return Relationship({status: ISLAYRegistry.RegistrationStatus(status), slashOptedIn: slashOptedIn});
     }
