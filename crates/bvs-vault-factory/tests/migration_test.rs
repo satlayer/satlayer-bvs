@@ -129,7 +129,7 @@ pub mod new_contract {
                 let var_foo = FOO.load(_deps.storage)?;
                 let var_bar = BAR.load(_deps.storage)?;
                 let resp = ShowStatesResponse {
-                    states: format!("Foo: {}, Bar: {}", var_foo, var_bar),
+                    states: format!("Foo: {var_foo}, Bar: {var_bar}"),
                 };
 
                 Ok(to_json_binary(&resp)?)
