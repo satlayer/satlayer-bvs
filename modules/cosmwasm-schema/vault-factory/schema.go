@@ -36,10 +36,10 @@ type InstantiateMsg struct {
 // ExecuteMsg SetCodeId Set the code id for a vault type, allowing the factory to deploy
 // vaults of that type. Only the `owner` can call this message.
 //
-// ExecuteMsg MigrateVault Migrate an existing vault to a new code id. The `vault` is the
-// address of the vault to migrate. The `vault_type` is the type of the vault to migrate.
-// Note that this execute message assume setCodeId message has been called prior with new
-// code id for the vault type.
+// ExecuteMsg MigrateVault Migrate an existing vault to a new code id. The `vault_address`
+// is the address of the vault to migrate. The `vault_type` is the type of the vault to
+// migrate. Note that this execute message assume setCodeId message has been called prior
+// with new code id for the vault type.
 type ExecuteMsg struct {
 	DeployCw20          *DeployCw20          `json:"deploy_cw20,omitempty"`
 	DeployCw20Tokenized *DeployCw20Tokenized `json:"deploy_cw20_tokenized,omitempty"`
