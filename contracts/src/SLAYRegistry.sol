@@ -37,7 +37,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * @dev Service <-> Operator registration is a two sided consensus.
      * This mean both service and operator has to register to pair with each other.
      */
-    mapping(bytes32 key => Checkpoints.Trace224) private _relationships;
+    mapping(bytes32 key => Checkpoints.Trace224) private _registrationStatus;
 
     /// @dev Default delay for operator's vault withdrawals if not set.
     uint32 public constant DEFAULT_WITHDRAWAL_DELAY = 7 days;
@@ -56,6 +56,19 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * which could potentially hits gas ceiling.
      */
     mapping(address service => bytes32) private _slashParameterHashes;
+
+    /**
+     * @dev Incremented every time {enableSlashing} is called.
+     * This prevent implicit slash opt in for cases when
+     * service x has parameter a,b,c - all operator opted in
+     * then updated to f,g,h and finally went back to a,b,c.
+     * Without nonce tracking the operator opt in states will be
+     * 1.true for original a,b,c params they opted in
+     * 2.false for f,g,h params they have not opted in explicitly
+     * 3.true for a,b,c params they have not opted in explicitly
+     * This is checkpointed to support accurate reading for {getSlashParameterAt()}
+     */
+    mapping(address service => Checkpoints.Trace224) private _slashParameterUpdateNonce;
 
     /**
      * @dev Emitted when {SlashParameter.Object} for a service is updated
@@ -258,7 +271,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      */
     function getRegistrationStatus(address service, address operator) public view returns (RegistrationStatus) {
         bytes32 key = ServiceOperator._getKey(service, operator);
-        return RegistrationStatus(_relationships[key].latest());
+        return RegistrationStatus(_registrationStatus[key].latest());
     }
 
     /// @inheritdoc ISLAYRegistry
@@ -268,7 +281,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         returns (RegistrationStatus)
     {
         bytes32 key = ServiceOperator._getKey(service, operator);
-        return RegistrationStatus(_relationships[key].upperLookup(timestamp));
+        return RegistrationStatus(_registrationStatus[key].upperLookup(timestamp));
     }
 
     /**
@@ -279,7 +292,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     function _getRegistrationStatus(bytes32 key) internal view returns (RegistrationStatus) {
         // The method `checkpoint.latest()` returns 0 on empty checkpoint,
         // RegistrationStatus.Inactive being 0 as desired.
-        return RegistrationStatus(_relationships[key].latest());
+        return RegistrationStatus(_registrationStatus[key].latest());
     }
 
     /**
@@ -288,7 +301,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * @param status RegistrationStatus to set for the service-operator pair.
      */
     function _updateRegistrationStatus(bytes32 key, RegistrationStatus status) internal {
-        _relationships[key].push(uint32(block.timestamp), uint224(status));
+        _registrationStatus[key].push(uint32(block.timestamp), uint224(status));
     }
 
     /// @inheritdoc ISLAYRegistry
@@ -333,9 +346,6 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         require(parameter.maxMilliBips <= 10000000, "Maximum Milli-Bips cannot be more than 10_000_000 (100%)");
         require(parameter.maxMilliBips >= 0, "Minimum Bips cannot be less than zero");
         _updateSlashParameter(_msgSender(), parameter.destination, parameter.maxMilliBips, parameter.resolutionWindow);
-        _slashParameterHashes[_msgSender()] = SlashParameter._hashParameters(
-            _msgSender(), parameter.destination, parameter.maxMilliBips, parameter.resolutionWindow
-        );
     }
 
     /**
@@ -344,7 +354,6 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      */
     function disableSlashing() public onlyService(_msgSender()) {
         _updateSlashParameter(_msgSender(), address(0), uint32(0), uint32(0));
-        _slashParameterHashes[_msgSender()] = bytes32(0);
     }
 
     /**
@@ -355,6 +364,11 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     {
         uint224 parameter = SlashParameter.encode(destination, maxMilliBips, resolutionWindow);
         _slashParameters[service].push(uint32(block.timestamp), parameter);
+
+        _slashParameterHashes[service] = SlashParameter._hashParameters(
+            service, destination, maxMilliBips, resolutionWindow, _getSlashParameterNonce(service) + 1
+        );
+        _incrementSlashParameterNonce(service);
         emit SlashParameterUpdated(service, destination, maxMilliBips, resolutionWindow);
     }
 
@@ -376,6 +390,28 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     {
         SlashParameter.Object memory parameter = SlashParameter.decode(_slashParameters[service].upperLookup(timestamp));
         return parameter;
+    }
+
+    /**
+     * @dev Increment slash parameter nonce at latest timestamp
+     */
+    function _incrementSlashParameterNonce(address service) internal {
+        uint224 previousNonce = _getSlashParameterNonce(service);
+        _slashParameterUpdateNonce[service].push(uint32(block.timestamp), (previousNonce + 1));
+    }
+
+    /**
+     * @dev get slash parameter nonce at latest timestamp
+     */
+    function _getSlashParameterNonce(address service) internal view returns (uint224) {
+        return _slashParameterUpdateNonce[service].latest();
+    }
+
+    /**
+     * @dev get slash parameter nonce at given timestamp
+     */
+    function _getSlashParameterNonceAt(address service, uint32 timestamp) internal view returns (uint224) {
+        return _slashParameterUpdateNonce[service].upperLookup(timestamp);
     }
 
     /**
@@ -439,7 +475,8 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
             service,
             serviceParamsAtTimestamp.destination,
             serviceParamsAtTimestamp.maxMilliBips,
-            serviceParamsAtTimestamp.resolutionWindow
+            serviceParamsAtTimestamp.resolutionWindow,
+            _getSlashParameterNonceAt(service, timestamp)
         );
         uint224 serviceTruncatedHashAtTimestamp = uint224(uint256(fullHashOfServiceParamsAtTimestamp) >> (8 * 4));
 
@@ -516,12 +553,17 @@ library SlashParameter {
 
     /**
      * @dev Hash the slashing parameter for particular service.
+     * The hash include the nonce to avoid replay/implicit opted in for case like
+     * same service, same slash param re-occurance.
+     * Read more at {_slashParameterUpdateNonce}.
      */
-    function _hashParameters(address service, address destination, uint32 maxMilliBips, uint32 resolutionWindow)
-        internal
-        pure
-        returns (bytes32)
-    {
-        return keccak256(abi.encodePacked(service, destination, maxMilliBips, resolutionWindow));
+    function _hashParameters(
+        address service,
+        address destination,
+        uint32 maxMilliBips,
+        uint32 resolutionWindow,
+        uint256 nonce
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(service, destination, maxMilliBips, resolutionWindow, nonce));
     }
 }

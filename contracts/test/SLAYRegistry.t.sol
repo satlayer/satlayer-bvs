@@ -709,5 +709,19 @@ contract SLAYRegistryTest is Test, TestSuite {
         assertTrue(
             registry.getSlashOptInsAt(service, operator, timeAfterOptIn), "Should be opted in at the provided timestamp"
         );
+
+        _advanceBlockBy(10);
+
+        vm.prank(service);
+        // now service went back with original slash params
+        registry.enableSlashing(slashParams);
+
+        _advanceBlockBy(10);
+
+        // but consecutive parameter change are different. Should be implicit opt outs.
+        assertFalse(
+            registry.getSlashOptIns(service, operator),
+            "Should be opted out from slash for original slashing parameters implicitly"
+        );
     }
 }
