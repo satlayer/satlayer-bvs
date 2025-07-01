@@ -1,7 +1,7 @@
-/// Example: Social governance as BVS contract integrated with SatLayer protocol
+/// Example: Social governance as a BVS contract integrated with SatLayer protocol
 /// The contract is a wrapper around the cw3 spec.
-/// Slashing is proposal will to be made by one of the multisig members
-/// Each of the Satlayer slashing phases will need to be proposed
+/// Slashing is a proposal will to be made by one of the multisig members
+/// Each of the SatLayer slashing phases will need to be proposed,
 /// voted on and executed by the multisig members in this example.
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;

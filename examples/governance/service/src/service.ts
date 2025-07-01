@@ -96,11 +96,11 @@ async function createMerkleTree(distFilePath: string): Promise<string> {
 
 /**
  * This function dumps the reward distribution data into a JSON file.
- * It retrieves all stakers' addresses from Satlayer protocol, calculates their staked amounts,
+ * It retrieves all stakers' addresses from SatLayer protocol, calculates their staked amounts,
  * and computes their rewards based on the APY.
  * The resulting distribution data is saved in a file named distribution.json
  * in the dist/bbn-test-5/{api.Service}/ustake directory.
- * For the simplicity of this example, the operator is not rewarded, if the operator hasn't staked any tokens.
+ * For the simplicity of this example, the operator is not rewarded if the operator hasn't staked any tokens.
  *
  *
  * @param api - The API instance to interact with the blockchain
