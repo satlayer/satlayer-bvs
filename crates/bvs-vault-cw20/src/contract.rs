@@ -153,7 +153,7 @@ mod execute {
     ) -> Result<Response, ContractError> {
         // check if msg.recipient is info.sender or approved controller
         if msg.controller != info.sender {
-            if !controller::is_approved_controller(deps.storage, &msg.controller, &info.sender)? {
+            if !controller::is_approved_controller(deps.storage, &info.sender, &msg.controller)? {
                 return Err(VaultError::unauthorized("Unauthorized controller").into());
             }
         }
@@ -279,14 +279,14 @@ mod execute {
     pub fn approve_controller(
         deps: DepsMut,
         info: MessageInfo,
-        approved_recipient: Addr,
+        controller: Addr,
     ) -> Result<Response, ContractError> {
-        controller::set_approved_controller(deps.storage, &approved_recipient, &info.sender)?;
+        controller::set_approved_controller(deps.storage, &controller, &info.sender)?;
 
         Ok(Response::new().add_event(
-            Event::new("ApproveRecipientSender")
-                .add_attribute("sender", info.sender.to_string())
-                .add_attribute("approved_recipient", approved_recipient.to_string()),
+            Event::new("ApproveController")
+                .add_attribute("owner", info.sender.to_string())
+                .add_attribute("controller", controller.to_string()),
         ))
     }
 }
