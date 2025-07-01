@@ -281,7 +281,7 @@ mod execute {
         info: MessageInfo,
         controller: Addr,
     ) -> Result<Response, ContractError> {
-        controller::set_approved_controller(deps.storage, &controller, &info.sender)?;
+        controller::set_approved_controller(deps.storage, &info.sender, &controller)?;
 
         Ok(Response::new().add_event(
             Event::new("ApproveController")

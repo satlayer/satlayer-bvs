@@ -12,8 +12,8 @@ const APPROVED_CONTROLLER: Map<&Owner, Controller> = Map::new("approved_controll
 
 pub fn set_approved_controller(
     storage: &mut dyn Storage,
-    controller: &Addr,
     owner: &Addr,
+    controller: &Addr,
 ) -> StdResult<()> {
     APPROVED_CONTROLLER.save(storage, owner, controller)?;
     Ok(())
@@ -22,8 +22,8 @@ pub fn set_approved_controller(
 /// Return `true` if the controller is approved by the owner, otherwise `false`.
 pub fn is_approved_controller(
     storage: &dyn Storage,
-    controller: &Addr,
     owner: &Addr,
+    controller: &Addr,
 ) -> StdResult<bool> {
     let approved_controller = APPROVED_CONTROLLER.may_load(storage, owner)?;
     Ok(match approved_controller {
