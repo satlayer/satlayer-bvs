@@ -1,4 +1,4 @@
-# Overview
+# Governance as a BVS Example
 
 This example demonstrates using a social committee as the governing body for
 Bitcoin Validated Service (BVS) integrated with SatLayer (shared security provider).
