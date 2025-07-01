@@ -1,4 +1,4 @@
-/// Example: Social governance as BVS contract integrated with Satlayer protocol
+/// Example: Social governance as BVS contract integrated with SatLayer protocol
 /// The contract is a wrapper around the cw3 spec.
 /// Slashing is proposal will to be made by one of the multisig members
 /// Each of the Satlayer slashing phases will need to be proposed
