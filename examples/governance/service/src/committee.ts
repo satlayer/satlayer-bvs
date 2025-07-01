@@ -63,7 +63,7 @@ export class Committee {
     return await this.client.execute(this.committee[0].addr, this.service, proposal, "auto");
   }
 
-  async all_vote_yes(proposal_id: number): Promise<void> {
+  async allVoteYes(proposal_id: number): Promise<void> {
     // vote on the proposal
     // skip the first member as they are the proposer
     for (let i = 1; i < this.committee.length; i++) {
@@ -79,7 +79,7 @@ export class Committee {
     }
   }
 
-  async execute_proposal(proposal_id: number): Promise<ExecuteResult> {
+  async executeProposal(proposal_id: number): Promise<ExecuteResult> {
     let msg: GovernanceExecuteMsg = {
       base: {
         execute: {

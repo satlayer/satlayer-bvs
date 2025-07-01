@@ -53,7 +53,7 @@ async function deployGovernanceContract(owner: string, committee: Voter[]) {
   return clientSigner.instantiate(owner, uploaded.codeId, initMsg, "governance", "auto");
 }
 
-async function setup_staking(stake?: string) {
+async function setupStaking(stake?: string) {
   let [bvs_owner, _operator, staker_1, staker_2] = await bvs_wallet.getAccounts();
 
   let msg: VaultBankExecuteMsg = {
@@ -329,7 +329,7 @@ async function multiSigRewardDistrbution(merkleRoot: string, distributionData: D
 }
 
 test("Rewards Lifecycle", async () => {
-  await setup_staking();
+  await setupStaking();
   let data = await offChainRewardTrigger(api, multiSigRewardDistrbution);
 
   let rewards_balance = await api.queryBankBalance({ address: api.Rewards, denom: "ustake" });

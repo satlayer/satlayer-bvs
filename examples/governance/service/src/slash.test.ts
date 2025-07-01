@@ -98,9 +98,9 @@ async function committeeEnableSlashing() {
     ?.find((event) => event.type === "wasm" && event.attributes.some((attr) => attr.key === "proposal_id"))
     ?.attributes.find((attr) => attr.key === "proposal_id")?.value;
 
-  await committee.all_vote_yes(parseInt(proposal_id as string));
+  await committee.allVoteYes(parseInt(proposal_id as string));
 
-  response = await committee.execute_proposal(parseInt(proposal_id as string));
+  response = await committee.executeProposal(parseInt(proposal_id as string));
 
   let query: RegistryQueryMsg = {
     slashing_parameters: {
@@ -116,7 +116,7 @@ async function committeeEnableSlashing() {
   expect(slashing_parameters).toBeDefined();
 }
 
-async function setup_staking() {
+async function setupStaking() {
   let [bvs_owner, _operator, staker] = await bvs_wallet.getAccounts();
 
   let msg: VaultBankExecuteMsg = {
@@ -235,9 +235,9 @@ beforeAll(async () => {
     ?.find((event) => event.type === "wasm" && event.attributes.some((attr) => attr.key === "proposal_id"))
     ?.attributes.find((attr) => attr.key === "proposal_id")?.value;
 
-  await committee.all_vote_yes(parseInt(proposal_id as string));
+  await committee.allVoteYes(parseInt(proposal_id as string));
 
-  response = await committee.execute_proposal(parseInt(proposal_id as string));
+  response = await committee.executeProposal(parseInt(proposal_id as string));
 
   expect(response).toBeDefined();
 
@@ -275,7 +275,7 @@ afterAll(async () => {
 test(
   "Social Committee based slashing lifecycle",
   async () => {
-    await setup_staking();
+    await setupStaking();
 
     const [owner, operator, staker] = await bvs_wallet.getAccounts();
     let action: RouterExecuteMsg = {
@@ -301,9 +301,9 @@ test(
       ?.find((event) => event.type === "wasm" && event.attributes.some((attr) => attr.key === "proposal_id"))
       ?.attributes.find((attr) => attr.key === "proposal_id")?.value;
 
-    await committee.all_vote_yes(parseInt(proposal_id as string));
+    await committee.allVoteYes(parseInt(proposal_id as string));
 
-    response = await committee.execute_proposal(parseInt(proposal_id as string));
+    response = await committee.executeProposal(parseInt(proposal_id as string));
     expect(response).toBeDefined();
 
     let query_msg: RouterQueryMsg = {
@@ -346,14 +346,14 @@ test(
       ?.find((event) => event.type === "wasm" && event.attributes.some((attr) => attr.key === "proposal_id"))
       ?.attributes.find((attr) => attr.key === "proposal_id")?.value;
 
-    await committee.all_vote_yes(parseInt(lock_proposal_id as string));
+    await committee.allVoteYes(parseInt(lock_proposal_id as string));
 
     expect(response).toBeDefined();
 
     // sleep abit to let resolution window pass
     await new Promise((resolve) => setTimeout(resolve, 6000));
 
-    response = await committee.execute_proposal(parseInt(lock_proposal_id as string));
+    response = await committee.executeProposal(parseInt(lock_proposal_id as string));
 
     // Collateral are locked in the router contract
     let router_balance = await clientSigner.getBalance(contracts.router.address, "ustake");
@@ -377,12 +377,12 @@ test(
       ?.find((event) => event.type === "wasm" && event.attributes.some((attr) => attr.key === "proposal_id"))
       ?.attributes.find((attr) => attr.key === "proposal_id")?.value;
 
-    await committee.all_vote_yes(parseInt(finalize_proposal_id as string));
+    await committee.allVoteYes(parseInt(finalize_proposal_id as string));
 
     // satlayer guardrail authorize the slashing finalization
     await satlayerGuardrailApprove(slashing_request_id as string);
 
-    response = await committee.execute_proposal(parseInt(finalize_proposal_id as string));
+    response = await committee.executeProposal(parseInt(finalize_proposal_id as string));
     expect(response).toBeDefined();
 
     let governance_balance = await clientSigner.getBalance(governanceContractAddress, "ustake");
