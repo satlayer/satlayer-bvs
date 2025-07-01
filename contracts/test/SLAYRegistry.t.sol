@@ -554,6 +554,19 @@ contract SLAYRegistryTest is Test, TestSuite {
     function test_SlashingOptIn() public {
         test_FullFlow_ServiceInitiatesRegistration(); // Ensures service and operator are active
 
+        address destination1 = makeAddr("slashDestination1");
+        uint32 maxBips1 = 100;
+        uint32 resolutionWindow1 = 1000;
+
+        vm.prank(service);
+        registry.enableSlashing(
+            SlashParameter.Object({
+                destination: destination1,
+                maxMilliBips: maxBips1,
+                resolutionWindow: resolutionWindow1
+            })
+        );
+
         vm.prank(operator);
         vm.expectEmit();
         emit SLAYRegistry.SlashOptIn(service, operator);
@@ -616,6 +629,13 @@ contract SLAYRegistryTest is Test, TestSuite {
     function test_GetSlashingOptInsAt() public {
         test_FullFlow_ServiceInitiatesRegistration(); // Ensures active registration
 
+        _advanceBlockBy(2);
+
+        vm.prank(service);
+        SlashParameter.Object memory slashParams =
+            SlashParameter.Object({destination: address(service), maxMilliBips: 10000000, resolutionWindow: 10000000});
+        registry.enableSlashing(slashParams);
+
         // Initial state before opt-in
         assertTrue(!registry.getSlashOptInsAt(service, operator, 0), "Should not be opted in at timestamp 0");
         assertTrue(
@@ -640,6 +660,54 @@ contract SLAYRegistryTest is Test, TestSuite {
         assertTrue(
             registry.getSlashOptInsAt(service, operator, uint32(block.timestamp + 1000000)),
             "Should be opted in at a future timestamp"
+        );
+    }
+
+    function test_SlashOptOut_Implicit() public {
+        test_FullFlow_ServiceInitiatesRegistration(); // Ensures active registration
+
+        _advanceBlockBy(2);
+
+        vm.prank(service);
+        SlashParameter.Object memory slashParams =
+            SlashParameter.Object({destination: address(service), maxMilliBips: 10000000, resolutionWindow: 10000000});
+        registry.enableSlashing(slashParams);
+
+        // Initial state before opt-in
+        assertTrue(!registry.getSlashOptInsAt(service, operator, 0), "Should not be opted in at timestamp 0");
+        assertTrue(
+            !registry.getSlashOptInsAt(service, operator, uint32(block.timestamp)), "Should not be opted in initially"
+        );
+
+        vm.prank(operator);
+        registry.slashOptIn(service);
+        uint32 timeAfterOptIn = uint32(block.timestamp);
+
+        _advanceBlockBy(5); // Advance time
+
+        // Check after opt-in
+        assertTrue(
+            registry.getSlashOptInsAt(service, operator, timeAfterOptIn), "Should be opted in after opt-in event"
+        );
+
+        _advanceBlockBy(10);
+
+        vm.prank(service);
+        SlashParameter.Object memory slashParams2 =
+            SlashParameter.Object({destination: address(0), maxMilliBips: 200, resolutionWindow: 200});
+        registry.enableSlashing(slashParams2);
+
+        _advanceBlockBy(10);
+
+        // Check after new slashing parameter. Operator should be opted out implicitly.
+        assertFalse(
+            registry.getSlashOptIns(service, operator),
+            "Should be opted out from slash for new slashing parameters implicitly"
+        );
+
+        // historical check still works fine.
+        assertTrue(
+            registry.getSlashOptInsAt(service, operator, timeAfterOptIn), "Should be opted in at the provided timestamp"
         );
     }
 }

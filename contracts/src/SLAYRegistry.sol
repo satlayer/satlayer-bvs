@@ -36,16 +36,26 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     /**
      * @dev Service <-> Operator registration is a two sided consensus.
      * This mean both service and operator has to register to pair with each other.
-     * Map value is encoded uint224. Contains {RegistrationStatus} and {slashOptedIn} flag
      */
     mapping(bytes32 key => Checkpoints.Trace224) private _relationships;
 
     /// @dev Default delay for operator's vault withdrawals if not set.
     uint32 public constant DEFAULT_WITHDRAWAL_DELAY = 7 days;
+
+    mapping(bytes32 key => Checkpoints.Trace224) private _slashOptIns;
+
     /**
-     * @dev Store {SlashParameter} for each of every slash enabled BVS services.
+     * @dev Store {SlashParameter.Object} for each of every slash enabled BVS services.
      */
     mapping(address service => Checkpoints.Trace224) private _slashParameters;
+
+    /**
+     * @dev Store the hash of {SlashParameter.Object} for each of every slash enabled BVS services.
+     * When service changed the slashing parameters, operator should explicitly opt in to new parameters.
+     * This mapping helps with reseting the operator's slash optin states without having to loop through
+     * which could potentially hits gas ceiling.
+     */
+    mapping(address service => bytes32) private _slashParameterHashes;
 
     /**
      * @dev Emitted when {SlashParameter.Object} for a service is updated
@@ -248,7 +258,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      */
     function getRegistrationStatus(address service, address operator) public view returns (RegistrationStatus) {
         bytes32 key = ServiceOperator._getKey(service, operator);
-        return ServiceOperator._decodeRelationship(_relationships[key].latest()).status;
+        return RegistrationStatus(_relationships[key].latest());
     }
 
     /// @inheritdoc ISLAYRegistry
@@ -258,7 +268,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         returns (RegistrationStatus)
     {
         bytes32 key = ServiceOperator._getKey(service, operator);
-        return ServiceOperator._decodeRelationship(_relationships[key].upperLookup(timestamp)).status;
+        return RegistrationStatus(_relationships[key].upperLookup(timestamp));
     }
 
     /**
@@ -269,7 +279,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     function _getRegistrationStatus(bytes32 key) internal view returns (RegistrationStatus) {
         // The method `checkpoint.latest()` returns 0 on empty checkpoint,
         // RegistrationStatus.Inactive being 0 as desired.
-        return ServiceOperator._decodeRelationship(_relationships[key].latest()).status;
+        return RegistrationStatus(_relationships[key].latest());
     }
 
     /**
@@ -278,10 +288,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * @param status RegistrationStatus to set for the service-operator pair.
      */
     function _updateRegistrationStatus(bytes32 key, RegistrationStatus status) internal {
-        bool slashOptedIn = ServiceOperator._decodeRelationship(_relationships[key].latest()).slashOptedIn;
-        ServiceOperator.Relationship memory rs =
-            ServiceOperator.Relationship({status: status, slashOptedIn: slashOptedIn});
-        _relationships[key].push(uint32(block.timestamp), ServiceOperator._encodeRelationship(rs));
+        _relationships[key].push(uint32(block.timestamp), uint224(status));
     }
 
     /// @inheritdoc ISLAYRegistry
@@ -326,6 +333,18 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         require(parameter.maxMilliBips <= 10000000, "Maximum Milli-Bips cannot be more than 10_000_000 (100%)");
         require(parameter.maxMilliBips >= 0, "Minimum Bips cannot be less than zero");
         _updateSlashParameter(_msgSender(), parameter.destination, parameter.maxMilliBips, parameter.resolutionWindow);
+        _slashParameterHashes[_msgSender()] = SlashParameter._hashParameters(
+            _msgSender(), parameter.destination, parameter.maxMilliBips, parameter.resolutionWindow
+        );
+    }
+
+    /**
+     * @dev service disable slashing by giving soldity primitive types' null default
+     * _msgSender is registered service.
+     */
+    function disableSlashing() public onlyService(_msgSender()) {
+        _updateSlashParameter(_msgSender(), address(0), uint32(0), uint32(0));
+        _slashParameterHashes[_msgSender()] = bytes32(0);
     }
 
     /**
@@ -364,28 +383,25 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * _msgSender() is operator
      */
     function slashOptIn(address service) public onlyActivelyRegistered(service, _msgSender()) {
+        require(_slashParameterHashes[service] != bytes32(0), "Service disabled slashing");
         address operator = _msgSender();
-        bytes32 key = ServiceOperator._getKey(service, operator);
-        bool optedIn = getSlashOptIns(key);
+        bool optedIn = getSlashOptIns(service, operator);
         require(optedIn == false, "Operator already opted in slashing for this service");
-        _updateSlashOptIns(key, true);
+        _updateSlashOptIns(service, operator, true);
         emit SlashOptIn(service, operator);
     }
 
     /**
      * @dev Mutate the operator slash opt in map at current block timestamp.
      */
-    function _updateSlashOptIns(bytes32 key, bool optIn) internal {
-        RegistrationStatus status = ServiceOperator._decodeRelationship(_relationships[key].latest()).status;
-        ServiceOperator.Relationship memory new_rs = ServiceOperator.Relationship({status: status, slashOptedIn: optIn});
-        _relationships[key].push(uint32(block.timestamp), ServiceOperator._encodeRelationship(new_rs));
-    }
-
-    /**
-     * @dev Get if an operator is opted in to slash for particular service at current block timestamp
-     */
-    function getSlashOptIns(bytes32 key) public view returns (bool) {
-        return ServiceOperator._decodeRelationship(_relationships[key].latest()).slashOptedIn;
+    function _updateSlashOptIns(address service, address operator, bool optIn) internal {
+        bytes32 key = ServiceOperator._getKey(service, operator);
+        if (optIn == true) {
+            // truncating bytes32 hash into uint224.
+            _slashOptIns[key].push(uint32(block.timestamp), uint224(uint256(_slashParameterHashes[service]) >> (8 * 4)));
+        } else {
+            _slashOptIns[key].push(uint32(block.timestamp), uint224(0));
+        }
     }
 
     /**
@@ -393,15 +409,14 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      */
     function getSlashOptIns(address service, address operator) public view returns (bool) {
         bytes32 key = ServiceOperator._getKey(service, operator);
-        return ServiceOperator._decodeRelationship(_relationships[key].latest()).slashOptedIn;
-    }
+        uint224 truncated = uint224(uint256(_slashParameterHashes[service]) >> (8 * 4));
+        uint224 optedIn = _slashOptIns[key].latest();
 
-    /**
-     * @dev Get if an operator is opted in to slash
-     * for particular service at or near at given timestamp
-     */
-    function getSlashOptInsAt(bytes32 key, uint32 timestamp) public view returns (bool) {
-        return ServiceOperator._decodeRelationship(_relationships[key].upperLookup(timestamp)).slashOptedIn;
+        if (optedIn == truncated) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -410,68 +425,29 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      */
     function getSlashOptInsAt(address service, address operator, uint32 timestamp) public view returns (bool) {
         bytes32 key = ServiceOperator._getKey(service, operator);
-        return ServiceOperator._decodeRelationship(_relationships[key].upperLookup(timestamp)).slashOptedIn;
-    }
 
-    /**
-     * @dev Get full relationship object of given service operator pair
-     */
-    function getRelationship(address service, address operator)
-        public
-        view
-        returns (ServiceOperator.Relationship memory)
-    {
-        bytes32 key = ServiceOperator._getKey(service, operator);
-        return ServiceOperator._decodeRelationship(_relationships[key].latest());
-    }
+        uint224 operatorOptedInTruncatedHash = _slashOptIns[key].upperLookup(timestamp);
 
-    /**
-     * @dev Get full relationship object of given service operator pair at given timestamp
-     */
-    function getRelationshipAt(address service, address operator, uint32 timestamp)
-        public
-        view
-        returns (ServiceOperator.Relationship memory)
-    {
-        bytes32 key = ServiceOperator._getKey(service, operator);
-        return ServiceOperator._decodeRelationship(_relationships[key].upperLookup(timestamp));
+        if (operatorOptedInTruncatedHash == 0) {
+            return false;
+        }
+
+        SlashParameter.Object memory serviceParamsAtTimestamp =
+            SlashParameter.decode(_slashParameters[service].upperLookup(timestamp));
+
+        bytes32 fullHashOfServiceParamsAtTimestamp = SlashParameter._hashParameters(
+            service,
+            serviceParamsAtTimestamp.destination,
+            serviceParamsAtTimestamp.maxMilliBips,
+            serviceParamsAtTimestamp.resolutionWindow
+        );
+        uint224 serviceTruncatedHashAtTimestamp = uint224(uint256(fullHashOfServiceParamsAtTimestamp) >> (8 * 4));
+
+        return operatorOptedInTruncatedHash == serviceTruncatedHashAtTimestamp;
     }
 }
 
 library ServiceOperator {
-    /**
-     * @dev Represents relationship between particular service and operator pair
-     */
-    struct Relationship {
-        ISLAYRegistry.RegistrationStatus status;
-        /**
-         * Whether an operator is opted in to the service's slash parameters
-         */
-        bool slashOptedIn;
-    }
-
-    /**
-     * @dev Encode the {Relationship} struct into uint224 to be fitted with checkpoint.
-     * Each state seperately has very small footprint of uint8 but it is expensive to have a dedicated checkpoint for each.
-     * Coupling and encoding two state into single Checkpoint Trace224 save gas by avoiding uncessary cold SLOAD.
-     */
-    function _encodeRelationship(Relationship memory rs) internal pure returns (uint224) {
-        uint8 status = uint8(rs.status);
-        uint224 encodedData = uint224(status);
-        encodedData |= (uint224(rs.slashOptedIn ? 1 : 0) << 8);
-        return encodedData;
-    }
-
-    /**
-     * @dev decode the uint224 (supposedly from checkpoint value) into {Relationship} struct
-     */
-    function _decodeRelationship(uint224 encodedData) internal pure returns (Relationship memory) {
-        uint8 status = uint8(encodedData);
-        bool slashOptedIn = uint8(encodedData >> 8) == 1 ? true : false;
-
-        return Relationship({status: ISLAYRegistry.RegistrationStatus(status), slashOptedIn: slashOptedIn});
-    }
-
     /**
      * @dev Hash the service and operator addresses to create a unique key for the `registrationStatus` map.
      * @param service The address of the service.
@@ -536,5 +512,16 @@ library SlashParameter {
         uint32 resolutionWindow = uint32(encodedData >> 192);
 
         return SlashParameter.Object({destination: addr, maxMilliBips: maxBip, resolutionWindow: resolutionWindow});
+    }
+
+    /**
+     * @dev Hash the slashing parameter for particular service.
+     */
+    function _hashParameters(address service, address destination, uint32 maxMilliBips, uint32 resolutionWindow)
+        internal
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encodePacked(service, destination, maxMilliBips, resolutionWindow));
     }
 }
