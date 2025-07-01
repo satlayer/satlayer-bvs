@@ -60,6 +60,9 @@ pub fn execute(
             msg.validate(deps.api)?;
             execute::slash_locked(deps, env, info, msg)
         }
+        ExecuteMsg::ApproveController(recipient) => {
+            todo!("ApproveRecipientSender is not implemented yet")
+        }
     }
 }
 
@@ -68,7 +71,7 @@ mod execute {
     use crate::bank::get_denom;
     use crate::error::ContractError;
     use bvs_vault_base::error::VaultError;
-    use bvs_vault_base::msg::{Amount, Recipient, RecipientAmount};
+    use bvs_vault_base::msg::{Amount, ControllerAmount, Recipient, RecipientAmount};
     use bvs_vault_base::shares::QueuedWithdrawalInfo;
     use bvs_vault_base::{offset, router, shares};
     use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, StdError};
@@ -133,7 +136,7 @@ mod execute {
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        msg: RecipientAmount,
+        msg: ControllerAmount,
     ) -> Result<Response, ContractError> {
         // Remove shares from the info.sender
         shares::sub_shares(deps.storage, &info.sender, msg.amount)?;
@@ -150,14 +153,14 @@ mod execute {
 
         let result = shares::update_queued_withdrawal_info(
             deps.storage,
-            &msg.recipient,
+            &msg.controller,
             queued_withdrawal_info,
         )?;
 
         Ok(Response::new().add_event(
             Event::new("QueueWithdrawalTo")
                 .add_attribute("sender", info.sender.to_string())
-                .add_attribute("recipient", msg.recipient.to_string())
+                .add_attribute("recipient", msg.controller.to_string())
                 .add_attribute("queued_shares", msg.amount.to_string())
                 .add_attribute(
                     "new_unlock_timestamp",
@@ -377,7 +380,7 @@ mod tests {
     use crate::bank;
     use crate::contract::{execute, instantiate};
     use crate::msg::InstantiateMsg;
-    use bvs_vault_base::msg::{Recipient, RecipientAmount};
+    use bvs_vault_base::msg::{ControllerAmount, Recipient, RecipientAmount};
     use bvs_vault_base::{offset, router, shares};
     use bvs_vault_router::msg::QueryMsg as VaultRouterMsg;
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
@@ -623,8 +626,8 @@ mod tests {
                 deps.as_mut(),
                 env.clone(),
                 sender_info.clone(),
-                RecipientAmount {
-                    recipient: recipient.clone(),
+                ControllerAmount {
+                    controller: recipient.clone(),
                     amount: Uint128::new(10_000),
                 },
             )
@@ -654,8 +657,8 @@ mod tests {
                 deps.as_mut(),
                 env.clone(),
                 sender_info.clone(),
-                RecipientAmount {
-                    recipient: recipient.clone(),
+                ControllerAmount {
+                    controller: recipient.clone(),
                     amount: Uint128::new(12_000),
                 },
             )
@@ -758,8 +761,8 @@ mod tests {
                 deps.as_mut(),
                 env.clone(),
                 sender_info.clone(),
-                RecipientAmount {
-                    recipient: recipient.clone(),
+                ControllerAmount {
+                    controller: recipient.clone(),
                     amount: Uint128::new(10_000),
                 },
             )
@@ -838,8 +841,8 @@ mod tests {
                 deps.as_mut(),
                 env.clone(),
                 sender_info.clone(),
-                RecipientAmount {
-                    recipient: recipient.clone(),
+                ControllerAmount {
+                    controller: recipient.clone(),
                     amount: Uint128::new(10_000),
                 },
             )

@@ -188,7 +188,7 @@ mod vault_execute {
     use crate::error::ContractError;
     use bvs_vault_bank::bank as UnderlyingToken;
     use bvs_vault_base::error::VaultError;
-    use bvs_vault_base::msg::{Recipient, RecipientAmount};
+    use bvs_vault_base::msg::{ControllerAmount, Recipient, RecipientAmount};
     use bvs_vault_base::{
         offset, router,
         shares::{self, QueuedWithdrawalInfo},
@@ -262,7 +262,7 @@ mod vault_execute {
         mut deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        msg: RecipientAmount,
+        msg: ControllerAmount,
     ) -> Result<Response, ContractError> {
         // ill-liquidate the receipt token from the staker
         // by moving the asset into this vault balance.
@@ -288,14 +288,14 @@ mod vault_execute {
 
         let result = shares::update_queued_withdrawal_info(
             deps.storage,
-            &msg.recipient,
+            &msg.controller,
             new_queued_withdrawal_info,
         )?;
 
         Ok(Response::new().add_event(
             Event::new("QueueWithdrawalTo")
                 .add_attribute("sender", info.sender.to_string())
-                .add_attribute("recipient", msg.recipient.to_string())
+                .add_attribute("recipient", msg.controller.to_string())
                 .add_attribute("queued_shares", msg.amount.to_string())
                 .add_attribute(
                     "new_unlock_timestamp",

@@ -69,6 +69,10 @@ pub fn execute(
             msg.validate(deps.api)?;
             execute::slash_locked(deps, env, info, msg)
         }
+        ExecuteMsg::ApproveController(recipient) => {
+            let recipient = deps.api.addr_validate(recipient.as_str())?;
+            execute::approve_controller(deps, info, recipient)
+        }
     }
 }
 
@@ -76,12 +80,12 @@ mod execute {
     use crate::error::ContractError;
     use crate::token;
     use bvs_vault_base::error::VaultError;
-    use bvs_vault_base::msg::{Amount, Recipient, RecipientAmount};
+    use bvs_vault_base::msg::{Amount, ControllerAmount, Recipient, RecipientAmount};
     use bvs_vault_base::{
-        offset, router,
+        controller, offset, router,
         shares::{self, QueuedWithdrawalInfo},
     };
-    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response};
+    use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Response};
 
     /// This executes a transfer of assets from the `info.sender` to the vault contract.
     ///
@@ -145,9 +149,16 @@ mod execute {
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        msg: RecipientAmount,
+        msg: ControllerAmount,
     ) -> Result<Response, ContractError> {
-        // Remove shares from the info.sender
+        // check if msg.recipient is info.sender or approved controller
+        if msg.controller != info.sender {
+            if !controller::is_approved_controller(deps.storage, &msg.controller, &info.sender)? {
+                return Err(VaultError::unauthorized("Unauthorized controller").into());
+            }
+        }
+
+        // Remove shares from the info.sender (owner)
         shares::sub_shares(deps.storage, &info.sender, msg.amount)?;
 
         let withdrawal_lock_period: u64 =
@@ -162,14 +173,14 @@ mod execute {
 
         let result = shares::update_queued_withdrawal_info(
             deps.storage,
-            &msg.recipient,
+            &msg.controller,
             new_queued_withdrawal_info,
         )?;
 
         Ok(Response::new().add_event(
             Event::new("QueueWithdrawalTo")
                 .add_attribute("sender", info.sender.to_string())
-                .add_attribute("recipient", msg.recipient.to_string())
+                .add_attribute("controller", msg.controller.to_string())
                 .add_attribute("queued_shares", msg.amount.to_string())
                 .add_attribute(
                     "new_unlock_timestamp",
@@ -180,14 +191,15 @@ mod execute {
     }
 
     /// Redeem all queued shares to assets for `msg.recipient`.
-    /// The `info.sender` must be equal to the `msg.recipient` in [`queue_withdrawal_to`].
+    /// The `info.sender` must be the `controller`.
     pub fn redeem_withdrawal_to(
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
         msg: Recipient,
     ) -> Result<Response, ContractError> {
-        let withdrawal_info = shares::get_queued_withdrawal_info(deps.storage, &info.sender)?;
+        let controller = info.sender;
+        let withdrawal_info = shares::get_queued_withdrawal_info(deps.storage, &controller)?;
         let queued_shares = withdrawal_info.queued_shares;
         let unlock_timestamp = withdrawal_info.unlock_timestamp;
 
@@ -218,12 +230,12 @@ mod execute {
         let transfer_msg = token::execute_new_transfer(deps.storage, &msg.0, claimed_assets)?;
 
         // Remove staker's info
-        shares::remove_queued_withdrawal_info(deps.storage, &info.sender);
+        shares::remove_queued_withdrawal_info(deps.storage, &controller);
 
         Ok(Response::new()
             .add_event(
                 Event::new("RedeemWithdrawalTo")
-                    .add_attribute("sender", info.sender.to_string())
+                    .add_attribute("controller", controller.to_string())
                     .add_attribute("recipient", msg.0.to_string())
                     .add_attribute("sub_shares", queued_shares.to_string())
                     .add_attribute("claimed_assets", claimed_assets.to_string())
@@ -262,6 +274,20 @@ mod execute {
             .add_attribute("token", token::get_cw20_contract(deps.storage)?.to_string());
 
         Ok(Response::new().add_event(event).add_message(transfer_msg))
+    }
+
+    pub fn approve_controller(
+        deps: DepsMut,
+        info: MessageInfo,
+        approved_recipient: Addr,
+    ) -> Result<Response, ContractError> {
+        controller::set_approved_controller(deps.storage, &approved_recipient, &info.sender)?;
+
+        Ok(Response::new().add_event(
+            Event::new("ApproveRecipientSender")
+                .add_attribute("sender", info.sender.to_string())
+                .add_attribute("approved_recipient", approved_recipient.to_string()),
+        ))
     }
 }
 

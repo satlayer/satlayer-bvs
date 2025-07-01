@@ -1,6 +1,6 @@
 use bvs_pauser::api::Display;
 use bvs_vault_base::msg::{
-    Amount, AssetsResponse, ConvertToAssetsResponse, ConvertToSharesResponse,
+    Amount, AssetsResponse, ControllerAmount, ConvertToAssetsResponse, ConvertToSharesResponse,
     QueuedWithdrawalResponse, Recipient, RecipientAmount, SharesResponse, TotalAssetsResponse,
     TotalSharesResponse, VaultInfoResponse,
 };
@@ -65,17 +65,17 @@ pub enum ExecuteMsg {
     DepositFor(RecipientAmount),
 
     /// ExecuteMsg QueueWithdrawalTo assets from the vault.
-    /// Sender must have enough shares to queue the requested amount to the `recipient`.
+    /// Sender must have enough shares to queue the requested amount to the `controller`.
     /// Once the withdrawal is queued,
-    /// the `recipient` can redeem the withdrawal after the lock period.
+    /// the `controller` can redeem the withdrawal after the lock period.
     /// Once the withdrawal is locked,
     /// the `sender` cannot cancel the withdrawal.
     /// The time-lock is enforced by the vault and cannot be changed retroactively.
     ///
     /// ### Lock Period Extension
     /// New withdrawals will extend the lock period of any existing withdrawals.
-    /// You can queue the withdrawal to a different `recipient` than the `sender` to avoid this.
-    QueueWithdrawalTo(RecipientAmount),
+    /// You can queue the withdrawal to a different `controller` than the `sender` to avoid this.
+    QueueWithdrawalTo(ControllerAmount),
 
     /// ExecuteMsg RedeemWithdrawalTo all queued shares into assets from the vault for withdrawal.
     /// After the lock period, the `sender` (must be the `recipient` of the original withdrawal)

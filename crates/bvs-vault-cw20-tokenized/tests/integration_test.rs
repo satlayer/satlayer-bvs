@@ -1,7 +1,9 @@
 use bvs_library::testing::{Cw20TokenContract, TestingContract};
 use bvs_pauser::testing::PauserContract;
 use bvs_registry::testing::RegistryContract;
-use bvs_vault_base::msg::{Amount, AssetType, Recipient, RecipientAmount, VaultInfoResponse};
+use bvs_vault_base::msg::{
+    Amount, AssetType, ControllerAmount, Recipient, RecipientAmount, VaultInfoResponse,
+};
 use bvs_vault_base::shares::QueuedWithdrawalInfo;
 use bvs_vault_base::VaultError;
 use bvs_vault_cw20_tokenized::msg::{ExecuteMsg, QueryMsg};
@@ -122,8 +124,8 @@ fn test_queue_withdrawal_to_successfully() {
     let msg = RouterExecuteMsg::SetWithdrawalLockPeriod(Uint64::new(100));
     router.execute(app, &owner, &msg).unwrap();
 
-    let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
-        recipient: staker.clone(),
+    let msg = ExecuteMsg::QueueWithdrawalTo(ControllerAmount {
+        controller: staker.clone(),
         amount: Uint128::new(10000),
     });
     let result = vault.execute(app, &staker, &msg);
@@ -137,7 +139,7 @@ fn test_queue_withdrawal_to_successfully() {
             Event::new("wasm-QueueWithdrawalTo")
                 .add_attribute("_contract_address", vault.addr.to_string())
                 .add_attribute("sender", staker.to_string())
-                .add_attribute("recipient", staker.to_string())
+                .add_attribute("controller", staker.to_string())
                 .add_attribute("queued_shares", "10000")
                 .add_attribute("new_unlock_timestamp", "1571797519")
                 .add_attribute("total_queued_shares", "10000")
@@ -186,8 +188,8 @@ fn test_redeem_withdrawal_to_successfully() {
         let msg = RouterExecuteMsg::SetWithdrawalLockPeriod(Uint64::new(100));
         router.execute(app, &owner, &msg).unwrap();
 
-        let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
-            recipient: staker.clone(),
+        let msg = ExecuteMsg::QueueWithdrawalTo(ControllerAmount {
+            controller: staker.clone(),
             amount: Uint128::new(10000),
         });
         vault.execute(app, &staker, &msg).unwrap();
@@ -282,8 +284,8 @@ fn test_redeem_withdrawal_to_locked_shares_error() {
 
     // queue withdrawal to
     {
-        let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
-            recipient: staker.clone(),
+        let msg = ExecuteMsg::QueueWithdrawalTo(ControllerAmount {
+            controller: staker.clone(),
             amount: Uint128::new(10000),
         });
         vault.execute(app, &staker, &msg).unwrap();
@@ -334,8 +336,8 @@ fn test_redeem_withdrawal_future_time_to_locked_shares_error() {
 
     // queue withdrawal to for the first time
     {
-        let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
-            recipient: staker.clone(),
+        let msg = ExecuteMsg::QueueWithdrawalTo(ControllerAmount {
+            controller: staker.clone(),
             amount: Uint128::new(10000),
         });
         vault.execute(app, &staker, &msg).unwrap();
@@ -347,8 +349,8 @@ fn test_redeem_withdrawal_future_time_to_locked_shares_error() {
 
     // queue withdrawal to for the second time
     {
-        let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
-            recipient: staker.clone(),
+        let msg = ExecuteMsg::QueueWithdrawalTo(ControllerAmount {
+            controller: staker.clone(),
             amount: Uint128::new(10000),
         });
         vault.execute(app, &staker, &msg).unwrap();
@@ -399,8 +401,8 @@ fn test_queue_redeem_withdrawal_with_different_recipient() {
 
     // queue and redeem withdrawal to staker
     {
-        let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
-            recipient: staker.clone(),
+        let msg = ExecuteMsg::QueueWithdrawalTo(ControllerAmount {
+            controller: staker.clone(),
             amount: Uint128::new(10000),
         });
         vault.execute(app, &staker, &msg).unwrap();
@@ -420,8 +422,8 @@ fn test_queue_redeem_withdrawal_with_different_recipient() {
 
     // queue withdrawal to staker, redeem withdrawal to new_staker
     {
-        let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
-            recipient: staker.clone(),
+        let msg = ExecuteMsg::QueueWithdrawalTo(ControllerAmount {
+            controller: staker.clone(),
             amount: Uint128::new(10000),
         });
         vault.execute(app, &staker, &msg).unwrap();
@@ -439,8 +441,8 @@ fn test_queue_redeem_withdrawal_with_different_recipient() {
 
     // queue withdrawal to staker, redeem withdrawal to staker with wrong info.sender
     {
-        let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
-            recipient: staker.clone(),
+        let msg = ExecuteMsg::QueueWithdrawalTo(ControllerAmount {
+            controller: staker.clone(),
             amount: Uint128::new(10000),
         });
         vault.execute(app, &staker, &msg).unwrap();
@@ -904,15 +906,15 @@ fn test_deposit_transfer_then_queue_redeem_withdraw() {
 
     // Fully Withdraw
     {
-        let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
+        let msg = ExecuteMsg::QueueWithdrawalTo(ControllerAmount {
             amount: Uint128::new(initial_deposit_amount - 1000),
-            recipient: staker.clone(),
+            controller: staker.clone(),
         });
         vault.execute(app, &staker, &msg).unwrap();
 
-        let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
+        let msg = ExecuteMsg::QueueWithdrawalTo(ControllerAmount {
             amount: Uint128::new(1000),
-            recipient: beneficiary.clone(),
+            controller: beneficiary.clone(),
         });
         vault.execute(app, &beneficiary, &msg).unwrap();
     }

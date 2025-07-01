@@ -1,6 +1,6 @@
 use bvs_pauser::api::Display;
 use bvs_vault_base::msg::{
-    Amount, AssetsResponse, ConvertToAssetsResponse, ConvertToSharesResponse,
+    Amount, AssetsResponse, ControllerAmount, ConvertToAssetsResponse, ConvertToSharesResponse,
     QueuedWithdrawalResponse, Recipient, RecipientAmount, SharesResponse, TotalAssetsResponse,
     TotalSharesResponse, VaultInfoResponse,
 };
@@ -75,7 +75,7 @@ pub enum ExecuteMsg {
     /// ### Lock Period Extension
     /// New withdrawals will extend the lock period of any existing withdrawals.
     /// You can queue the withdrawal to a different `recipient` than the `sender` to avoid this.
-    QueueWithdrawalTo(RecipientAmount),
+    QueueWithdrawalTo(ControllerAmount),
 
     /// ExecuteMsg RedeemWithdrawalTo all queued shares into assets from the vault for withdrawal.
     /// After the lock period, the `sender` (must be the `recipient` of the original withdrawal)

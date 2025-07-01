@@ -16,21 +16,21 @@ pub enum VaultExecuteMsg {
     DepositFor(RecipientAmount),
 
     /// ExecuteMsg QueueWithdrawalTo assets from the vault.
-    /// Sender must have enough shares to queue the requested amount to the `recipient`.
+    /// Sender must have enough shares to queue the requested amount to the `controller`.
     /// Once the withdrawal is queued,
-    /// the `recipient` can redeem the withdrawal after the lock period.
+    /// the `controller` can redeem the withdrawal after the lock period.
     /// Once the withdrawal is locked,
     /// the `sender` cannot cancel the withdrawal.
     /// The time-lock is enforced by the vault and cannot be changed retroactively.
     ///
     /// ### Lock Period Extension
     /// New withdrawals will extend the lock period of any existing withdrawals.
-    /// You can queue the withdrawal to a different `recipient` than the `sender` to avoid this.
-    QueueWithdrawalTo(RecipientAmount),
+    /// You can queue the withdrawal to a different `controller` than the `sender` to avoid this.
+    QueueWithdrawalTo(ControllerAmount),
 
     /// ExecuteMsg RedeemWithdrawalTo all queued shares into assets from the vault for withdrawal.
-    /// After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
-    /// can redeem the withdrawal.
+    /// After the lock period, the `sender` (must be the `controller` of the original withdrawal)
+    /// can redeem the withdrawal to the `recipient`
     RedeemWithdrawalTo(Recipient),
 
     /// ExecuteMsg SlashLocked moves the assets from the vault to the `vault-router` contract for custody.
@@ -39,6 +39,11 @@ pub enum VaultExecuteMsg {
     /// The amount is calculated and enforced by the router.
     /// Further utility of the assets, post-locked, is implemented and enforced on the router level.
     SlashLocked(Amount),
+
+    /// ExecuteMsg ApproveController allows the `controller`
+    /// to queue withdrawal and redeem withdrawal on behalf of the `owner`.
+    /// `info.sender` is the `owner` of the shares.
+    ApproveController(Addr),
 }
 
 #[cw_serde]
@@ -52,6 +57,26 @@ impl Amount {
         if self.0.is_zero() {
             return Err(VaultError::zero("Amount cannot be zero"));
         }
+        Ok(())
+    }
+}
+
+/// This struct is used to represent the controller and amount fields together.
+#[cw_serde]
+pub struct ControllerAmount {
+    pub controller: Addr,
+    pub amount: Uint128,
+}
+
+impl ControllerAmount {
+    /// Validate the controller: [`Addr`] and amount: [`Uint128`] fields.
+    /// The controller must be a valid [`Addr`], and the amount must be greater than zero.
+    pub fn validate(&self, api: &dyn Api) -> Result<(), VaultError> {
+        if self.amount.is_zero() {
+            return Err(VaultError::zero("Amount cannot be zero"));
+        }
+
+        api.addr_validate(self.controller.as_str())?;
         Ok(())
     }
 }
