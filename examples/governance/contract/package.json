@@ -1,0 +1,13 @@
+{
+  "name": "@examples/governance-contract",
+  "private": true,
+  "scripts": {
+    "build": "cosmwasm-optimizer && npm run gen:type",
+    "gen:type": "node generate-type.mjs && prettier --write *.d.ts",
+    "test": "cargo test"
+  },
+  "devDependencies": {
+    "@satlayer/cosmwasm-optimizer": "workspace:*",
+    "quicktype-core": "^23.2.6"
+  }
+}

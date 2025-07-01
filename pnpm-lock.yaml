@@ -140,6 +140,55 @@ importers:
         specifier: ^1.3.0
         version: 1.3.0
 
+  examples/governance/contract:
+    devDependencies:
+      '@satlayer/cosmwasm-optimizer':
+        specifier: workspace:*
+        version: link:../../../packages/cosmwasm-optimizer
+      quicktype-core:
+        specifier: ^23.2.6
+        version: 23.2.6
+
+  examples/governance/service:
+    dependencies:
+      '@cosmjs/cosmwasm-stargate':
+        specifier: ^0.33.1
+        version: 0.33.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      '@cosmjs/crypto':
+        specifier: ^0.33.1
+        version: 0.33.1
+      '@cosmjs/proto-signing':
+        specifier: ^0.33.1
+        version: 0.33.1
+      '@cosmjs/stargate':
+        specifier: ^0.33.1
+        version: 0.33.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      '@satlayer/cli':
+        specifier: workspace:*
+        version: link:../../../packages/cli
+      execa:
+        specifier: ^9.6.0
+        version: 9.6.0
+    devDependencies:
+      '@examples/governance-contract':
+        specifier: workspace:*
+        version: link:../contract
+      '@satlayer/cosmwasm-schema':
+        specifier: workspace:*
+        version: link:../../../packages/cosmwasm-schema
+      '@satlayer/testcontainers':
+        specifier: workspace:*
+        version: link:../../../packages/testcontainers
+      '@types/node':
+        specifier: ^20
+        version: 20.17.17
+      typescript:
+        specifier: latest
+        version: 5.8.3
+      vitest:
+        specifier: ^3.1.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@20.17.17)(jiti@2.4.2)(lightningcss@1.30.1)(yaml@2.8.0)
+
   examples/insurance/service:
     dependencies:
       '@cosmjs/cosmwasm-stargate':
