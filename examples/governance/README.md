@@ -1,5 +1,7 @@
 # Governance as a BVS Example
 
+## Overview
+
 This example demonstrates using a social committee as the governing body for
 Bitcoin Validated Service (BVS) integrated with SatLayer (shared security provider).
 The service for this example is simply a CW3,
@@ -21,13 +23,13 @@ a fixed membership committee that can be used to govern the BVS, for the followi
   - The example also assumes that the reward node runners are required to curate vaults on BVS.
   - Operators are free to stake to their own delegated vaults to earn additional rewards.
 
-# Disclaimer
+## Disclaimer
 
 This example in particular is designed to serve as supplementary material for BVS developers looking to integrate with SatLayer.
 Such that the social committee, as a governing body, is purely an arbitrary pick for this example, for simplicity.
 The example does not attempt to suggest any reward/slash strategy but rather gets developers familiar with BVS to SatLayer integration.
 
-# Directory Guide
+## Directory Guide
 
 ```
 .
