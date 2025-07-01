@@ -6,7 +6,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
-import {SLAYRegistry, SlashParameter, ServiceOperator} from "../src/SLAYRegistry.sol";
+import {SLAYRegistry, SlashParameter, ServiceOperatorKey} from "../src/SLAYRegistry.sol";
 import {ISLAYRegistry} from "../src/interface/ISLAYRegistry.sol";
 import {SLAYRegistry, SlashParameter} from "../src/SLAYRegistry.sol";
 import {SLAYRouter} from "../src/SLAYRouter.sol";

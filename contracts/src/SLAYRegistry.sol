@@ -180,7 +180,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     {
         address service = _msgSender();
 
-        bytes32 key = ServiceOperator._getKey(service, operator);
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
         RegistrationStatus status = _getRegistrationStatus(key);
 
         if (status == RegistrationStatus.Active) {
@@ -208,7 +208,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     {
         address service = _msgSender();
 
-        bytes32 key = ServiceOperator._getKey(service, operator);
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
         if (_getRegistrationStatus(key) == RegistrationStatus.Inactive) {
             revert("Already inactive");
         }
@@ -226,7 +226,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     {
         address operator = _msgSender();
 
-        bytes32 key = ServiceOperator._getKey(service, operator);
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
         RegistrationStatus status = _getRegistrationStatus(key);
 
         if (status == RegistrationStatus.Active) {
@@ -254,7 +254,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     {
         address operator = _msgSender();
 
-        bytes32 key = ServiceOperator._getKey(service, operator);
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
         if (_getRegistrationStatus(key) == RegistrationStatus.Inactive) {
             revert("Already inactive");
         }
@@ -270,7 +270,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * @return RegistrationStatus The latest registration status for the service-operator pair.
      */
     function getRegistrationStatus(address service, address operator) public view returns (RegistrationStatus) {
-        bytes32 key = ServiceOperator._getKey(service, operator);
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
         return RegistrationStatus(_registrationStatus[key].latest());
     }
 
@@ -280,7 +280,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         view
         returns (RegistrationStatus)
     {
-        bytes32 key = ServiceOperator._getKey(service, operator);
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
         return RegistrationStatus(_registrationStatus[key].upperLookup(timestamp));
     }
 
@@ -431,7 +431,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * @dev Mutate the operator slash opt in map at current block timestamp.
      */
     function _updateSlashOptIns(address service, address operator, bool optIn) internal {
-        bytes32 key = ServiceOperator._getKey(service, operator);
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
         if (optIn == true) {
             // truncating bytes32 hash into uint224.
             _slashOptIns[key].push(uint32(block.timestamp), uint224(uint256(_slashParameterHashes[service]) >> (8 * 4)));
@@ -444,7 +444,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * @dev Get if an operator is opted in to slash for particular service at current block timestamp
      */
     function getSlashOptIns(address service, address operator) public view returns (bool) {
-        bytes32 key = ServiceOperator._getKey(service, operator);
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
         uint224 truncated = uint224(uint256(_slashParameterHashes[service]) >> (8 * 4));
         uint224 optedIn = _slashOptIns[key].latest();
 
@@ -460,7 +460,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * for particular service at or near at given timestamp
      */
     function getSlashOptInsAt(address service, address operator, uint32 timestamp) public view returns (bool) {
-        bytes32 key = ServiceOperator._getKey(service, operator);
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
 
         uint224 operatorOptedInTruncatedHash = _slashOptIns[key].upperLookup(timestamp);
 
@@ -484,7 +484,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     }
 }
 
-library ServiceOperator {
+library ServiceOperatorKey {
     /**
      * @dev Hash the service and operator addresses to create a unique key for the `registrationStatus` map.
      * @param service The address of the service.
