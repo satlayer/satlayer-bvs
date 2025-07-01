@@ -145,9 +145,6 @@ importers:
       '@satlayer/cosmwasm-optimizer':
         specifier: workspace:*
         version: link:../../../packages/cosmwasm-optimizer
-      '@satlayer/cosmwasm-schema-cli':
-        specifier: workspace:*
-        version: link:../../../packages/cosmwasm-schema-cli
       quicktype-core:
         specifier: ^23.2.6
         version: 23.2.6
