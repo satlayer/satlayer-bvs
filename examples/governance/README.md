@@ -34,7 +34,7 @@ The example does not attempt to suggest any reward/slash strategy but rather get
 ├── contract                            <-- Contains the governance contract code
 │   ├── Cargo.lock
 │   ├── Cargo.toml
-│   ├── generate.mjs
+│   ├── generate-type.mjs
 │   ├── governance-contract.d.ts
 │   ├── package.json
 │   ├── src

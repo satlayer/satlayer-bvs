@@ -19,7 +19,8 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 pub enum ExtendedExecuteMsg {
-    // Implement bvs specific custom extended execute messages here
+    /// Implement bvs specific custom extended execute messages here
+    Example {},
 }
 
 #[cw_serde]
@@ -34,7 +35,9 @@ pub enum QueryMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum ExtendedQueryMsg {
-    // Implement bvs specific custom extended execute messages here
+    /// Implement bvs specific custom extended execute messages here
+    #[returns(String)]
+    Example {},
 }
 
 #[cw_serde]

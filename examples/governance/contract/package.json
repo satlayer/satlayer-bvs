@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "cosmwasm-optimizer && npm run gen:type",
-    "gen:type": "node generate.mjs && prettier --write *.d.ts",
+    "gen:type": "node generate-type.mjs && prettier --write *.d.ts",
     "test": "cargo test"
   },
   "devDependencies": {
