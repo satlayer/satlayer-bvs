@@ -69,7 +69,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * Nonce prevents same param re-occurance implicit slash opt ins.
      * This is checkpointed to support accurate reading for {getSlashParameterAt()}
      */
-    mapping(address service => Checkpoints.Trace224) private _slashParameterUpdateNonce;
+    Checkpoints.Trace224 private _slashParameterUpdateNonce;
 
     /**
      * @dev Emitted when {SlashParameter.Object} for a service is updated
@@ -367,9 +367,9 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         _slashParameters[service].push(uint32(block.timestamp), parameter);
 
         _slashParameterHashes[service] = SlashParameter._hashParameters(
-            service, destination, maxMilliBips, resolutionWindow, _getSlashParameterNonce(service) + 1
+            service, destination, maxMilliBips, resolutionWindow, _getSlashParameterNonce() + 1
         );
-        _incrementSlashParameterNonce(service);
+        _incrementSlashParameterNonce();
         emit SlashParameterUpdated(service, destination, maxMilliBips, resolutionWindow);
     }
 
@@ -396,23 +396,23 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     /**
      * @dev Increment slash parameter nonce at latest timestamp
      */
-    function _incrementSlashParameterNonce(address service) internal {
-        uint224 previousNonce = _getSlashParameterNonce(service);
-        _slashParameterUpdateNonce[service].push(uint32(block.timestamp), (previousNonce + 1));
+    function _incrementSlashParameterNonce() internal {
+        uint224 previousNonce = _getSlashParameterNonce();
+        _slashParameterUpdateNonce.push(uint32(block.timestamp), (previousNonce + 1));
     }
 
     /**
      * @dev get slash parameter nonce at latest timestamp
      */
-    function _getSlashParameterNonce(address service) internal view returns (uint224) {
-        return _slashParameterUpdateNonce[service].latest();
+    function _getSlashParameterNonce() internal view returns (uint224) {
+        return _slashParameterUpdateNonce.latest();
     }
 
     /**
      * @dev get slash parameter nonce at given timestamp
      */
-    function _getSlashParameterNonceAt(address service, uint32 timestamp) internal view returns (uint224) {
-        return _slashParameterUpdateNonce[service].upperLookup(timestamp);
+    function _getSlashParameterNonceAt(uint32 timestamp) internal view returns (uint224) {
+        return _slashParameterUpdateNonce.upperLookup(timestamp);
     }
 
     /**
@@ -477,7 +477,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
             serviceParamsAtTimestamp.destination,
             serviceParamsAtTimestamp.maxMilliBips,
             serviceParamsAtTimestamp.resolutionWindow,
-            _getSlashParameterNonceAt(service, timestamp)
+            _getSlashParameterNonceAt(timestamp)
         );
         uint224 serviceTruncatedHashAtTimestamp = uint224(uint256(fullHashOfServiceParamsAtTimestamp) >> (8 * 4));
 
