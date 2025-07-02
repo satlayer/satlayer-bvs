@@ -60,7 +60,7 @@ pub fn execute(
             msg.validate(deps.api)?;
             execute::slash_locked(deps, env, info, msg)
         }
-        ExecuteMsg::ApproveController(recipient) => {
+        ExecuteMsg::ApproveProxy(recipient) => {
             todo!("ApproveRecipientSender is not implemented yet")
         }
     }
@@ -71,7 +71,9 @@ mod execute {
     use crate::bank::get_denom;
     use crate::error::ContractError;
     use bvs_vault_base::error::VaultError;
-    use bvs_vault_base::msg::{Amount, ControllerAmount, Recipient, RecipientAmount};
+    use bvs_vault_base::msg::{
+        Amount, QueueWithdrawalToParams, RecipientAmount, RedeemWithdrawalToParams,
+    };
     use bvs_vault_base::shares::QueuedWithdrawalInfo;
     use bvs_vault_base::{offset, router, shares};
     use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, StdError};
@@ -136,7 +138,7 @@ mod execute {
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        msg: ControllerAmount,
+        msg: QueueWithdrawalToParams,
     ) -> Result<Response, ContractError> {
         // Remove shares from the info.sender
         shares::sub_shares(deps.storage, &info.sender, msg.amount)?;
@@ -176,7 +178,7 @@ mod execute {
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        msg: Recipient,
+        msg: RedeemWithdrawalToParams,
     ) -> Result<Response, ContractError> {
         let withdrawal_info = shares::get_queued_withdrawal_info(deps.storage, &info.sender)?;
         let queued_shares = withdrawal_info.queued_shares;
@@ -275,7 +277,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::TotalShares {} => to_json_binary(&query::total_shares(deps, env)?),
         QueryMsg::TotalAssets {} => to_json_binary(&query::total_assets(deps, env)?),
-        QueryMsg::QueuedWithdrawal { staker } => {
+        QueryMsg::QueuedWithdrawal { controller: staker } => {
             let staker = deps.api.addr_validate(&staker)?;
             to_json_binary(&query::queued_withdrawal(deps, staker)?)
         }
@@ -380,7 +382,7 @@ mod tests {
     use crate::bank;
     use crate::contract::{execute, instantiate};
     use crate::msg::InstantiateMsg;
-    use bvs_vault_base::msg::{ControllerAmount, Recipient, RecipientAmount};
+    use bvs_vault_base::msg::{QueueWithdrawalToParams, RecipientAmount, RedeemWithdrawalToParams};
     use bvs_vault_base::{offset, router, shares};
     use bvs_vault_router::msg::QueryMsg as VaultRouterMsg;
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
@@ -626,7 +628,7 @@ mod tests {
                 deps.as_mut(),
                 env.clone(),
                 sender_info.clone(),
-                ControllerAmount {
+                QueueWithdrawalToParams {
                     controller: recipient.clone(),
                     amount: Uint128::new(10_000),
                 },
@@ -657,7 +659,7 @@ mod tests {
                 deps.as_mut(),
                 env.clone(),
                 sender_info.clone(),
-                ControllerAmount {
+                QueueWithdrawalToParams {
                     controller: recipient.clone(),
                     amount: Uint128::new(12_000),
                 },
@@ -761,7 +763,7 @@ mod tests {
                 deps.as_mut(),
                 env.clone(),
                 sender_info.clone(),
-                ControllerAmount {
+                QueueWithdrawalToParams {
                     controller: recipient.clone(),
                     amount: Uint128::new(10_000),
                 },
@@ -841,7 +843,7 @@ mod tests {
                 deps.as_mut(),
                 env.clone(),
                 sender_info.clone(),
-                ControllerAmount {
+                QueueWithdrawalToParams {
                     controller: recipient.clone(),
                     amount: Uint128::new(10_000),
                 },
@@ -857,7 +859,7 @@ mod tests {
             deps.as_mut(),
             new_env,
             sender_info.clone(),
-            Recipient(recipient.clone()),
+            RedeemWithdrawalToParams(recipient.clone()),
         )
         .unwrap();
 

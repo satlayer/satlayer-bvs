@@ -65,10 +65,10 @@ pub fn get_shares(storage: &dyn Storage, staker: &Addr) -> StdResult<Uint128> {
 /// Update queued withdrawal info with a new unlock timestamp for a receipent
 pub fn update_queued_withdrawal_info(
     storage: &mut dyn Storage,
-    recipient: &Addr,
+    controller: &Addr,
     queued_withdrawal_info: QueuedWithdrawalInfo,
 ) -> StdResult<QueuedWithdrawalInfo> {
-    QUEUED_WITHDRAWAL.update(storage, recipient, |existing| -> StdResult<_> {
+    QUEUED_WITHDRAWAL.update(storage, controller, |existing| -> StdResult<_> {
         match existing {
             Some(old) => {
                 let new_queued_shares = old
@@ -87,17 +87,17 @@ pub fn update_queued_withdrawal_info(
 }
 
 /// When staker redeems queued withdrawal, remove the data of staker
-pub fn remove_queued_withdrawal_info(storage: &mut dyn Storage, recipient: &Addr) {
-    QUEUED_WITHDRAWAL.remove(storage, recipient)
+pub fn remove_queued_withdrawal_info(storage: &mut dyn Storage, controller: &Addr) {
+    QUEUED_WITHDRAWAL.remove(storage, controller)
 }
 
-/// Get the queued withdrawal info and lock time for a recipient.
+/// Get the queued withdrawal info and lock time for a controller.
 pub fn get_queued_withdrawal_info(
     storage: &dyn Storage,
-    recipient: &Addr,
+    controller: &Addr,
 ) -> StdResult<QueuedWithdrawalInfo> {
     QUEUED_WITHDRAWAL
-        .may_load(storage, recipient)
+        .may_load(storage, controller)
         .map(|res| res.unwrap_or_default())
 }
 

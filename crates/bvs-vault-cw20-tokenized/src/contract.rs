@@ -191,7 +191,7 @@ mod receipt_cw20_execute {
 mod vault_execute {
     use crate::error::ContractError;
     use bvs_vault_base::error::VaultError;
-    use bvs_vault_base::msg::{ControllerAmount, Recipient, RecipientAmount};
+    use bvs_vault_base::msg::{QueueWithdrawalToParams, RecipientAmount, RedeemWithdrawalToParams};
     use bvs_vault_base::{
         offset, router,
         shares::{self, QueuedWithdrawalInfo},
@@ -269,7 +269,7 @@ mod vault_execute {
         mut deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        msg: ControllerAmount,
+        msg: QueueWithdrawalToParams,
     ) -> Result<Response, ContractError> {
         // ill-liquidate the receipt token from the staker
         // by moving the asset into this vault balance.
@@ -318,7 +318,7 @@ mod vault_execute {
         mut deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        msg: Recipient,
+        msg: RedeemWithdrawalToParams,
     ) -> Result<Response, ContractError> {
         let withdrawal_info = shares::get_queued_withdrawal_info(deps.storage, &info.sender)?;
         let queued_shares = withdrawal_info.queued_shares;

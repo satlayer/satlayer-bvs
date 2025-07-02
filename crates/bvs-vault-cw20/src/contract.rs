@@ -69,9 +69,9 @@ pub fn execute(
             msg.validate(deps.api)?;
             execute::slash_locked(deps, env, info, msg)
         }
-        ExecuteMsg::ApproveController(recipient) => {
-            let recipient = deps.api.addr_validate(recipient.as_str())?;
-            execute::approve_controller(deps, info, recipient)
+        ExecuteMsg::ApproveProxy(controller) => {
+            let controller = deps.api.addr_validate(controller.as_str())?;
+            execute::approve_proxy(deps, info, controller)
         }
     }
 }
@@ -80,9 +80,11 @@ mod execute {
     use crate::error::ContractError;
     use crate::token;
     use bvs_vault_base::error::VaultError;
-    use bvs_vault_base::msg::{Amount, ControllerAmount, Recipient, RecipientAmount};
+    use bvs_vault_base::msg::{
+        Amount, QueueWithdrawalToParams, RecipientAmount, RedeemWithdrawalToParams,
+    };
     use bvs_vault_base::{
-        controller, offset, router,
+        offset, proxy, router,
         shares::{self, QueuedWithdrawalInfo},
     };
     use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Response};
@@ -149,17 +151,24 @@ mod execute {
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        msg: ControllerAmount,
+        msg: QueueWithdrawalToParams,
     ) -> Result<Response, ContractError> {
-        // check if msg.recipient is info.sender or approved controller
+        // check if the sender is the owner or an approved proxy
+        if msg.owner != info.sender
+            && !proxy::is_approved_proxy(deps.storage, &msg.owner, &info.sender)?
+        {
+            return Err(VaultError::unauthorized("Unauthorized sender").into());
+        }
+
+        // check if the sender is the controller or an approved proxy
         if msg.controller != info.sender {
-            if !controller::is_approved_controller(deps.storage, &info.sender, &msg.controller)? {
+            if !proxy::is_approved_proxy(deps.storage, &msg.controller, &info.sender)? {
                 return Err(VaultError::unauthorized("Unauthorized controller").into());
             }
         }
 
-        // Remove shares from the info.sender (owner)
-        shares::sub_shares(deps.storage, &info.sender, msg.amount)?;
+        // Remove shares from the owner
+        shares::sub_shares(deps.storage, &msg.owner, msg.amount)?;
 
         let withdrawal_lock_period: u64 =
             router::get_withdrawal_lock_period(&deps.as_ref())?.into();
@@ -180,6 +189,7 @@ mod execute {
         Ok(Response::new().add_event(
             Event::new("QueueWithdrawalTo")
                 .add_attribute("sender", info.sender.to_string())
+                .add_attribute("owner", msg.owner.to_string())
                 .add_attribute("controller", msg.controller.to_string())
                 .add_attribute("queued_shares", msg.amount.to_string())
                 .add_attribute(
@@ -190,16 +200,22 @@ mod execute {
         ))
     }
 
-    /// Redeem all queued shares to assets for `msg.recipient`.
-    /// The `info.sender` must be the `controller`.
+    /// Redeem all queued shares to assets for `msg.controller` and send the assets to `msg.recipient`.
+    /// The `info.sender` must be the `msg.controller` or an approved proxy.
     pub fn redeem_withdrawal_to(
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        msg: Recipient,
+        msg: RedeemWithdrawalToParams,
     ) -> Result<Response, ContractError> {
-        let controller = info.sender;
-        let withdrawal_info = shares::get_queued_withdrawal_info(deps.storage, &controller)?;
+        // check if msg.controller is the sender or an approved proxy
+        if msg.controller != info.sender {
+            if !proxy::is_approved_proxy(deps.storage, &msg.controller, &info.sender)? {
+                return Err(VaultError::unauthorized("Unauthorized controller").into());
+            }
+        }
+
+        let withdrawal_info = shares::get_queued_withdrawal_info(deps.storage, &msg.controller)?;
         let queued_shares = withdrawal_info.queued_shares;
         let unlock_timestamp = withdrawal_info.unlock_timestamp;
 
@@ -227,16 +243,17 @@ mod execute {
         };
 
         // CW20 transfer of asset to msg.recipient
-        let transfer_msg = token::execute_new_transfer(deps.storage, &msg.0, claimed_assets)?;
+        let transfer_msg =
+            token::execute_new_transfer(deps.storage, &msg.recipient, claimed_assets)?;
 
         // Remove staker's info
-        shares::remove_queued_withdrawal_info(deps.storage, &controller);
+        shares::remove_queued_withdrawal_info(deps.storage, &msg.controller);
 
         Ok(Response::new()
             .add_event(
                 Event::new("RedeemWithdrawalTo")
-                    .add_attribute("controller", controller.to_string())
-                    .add_attribute("recipient", msg.0.to_string())
+                    .add_attribute("controller", msg.controller.to_string())
+                    .add_attribute("recipient", msg.recipient.to_string())
                     .add_attribute("sub_shares", queued_shares.to_string())
                     .add_attribute("claimed_assets", claimed_assets.to_string())
                     .add_attribute("total_shares", vault.total_shares().to_string()),
@@ -276,17 +293,17 @@ mod execute {
         Ok(Response::new().add_event(event).add_message(transfer_msg))
     }
 
-    pub fn approve_controller(
+    pub fn approve_proxy(
         deps: DepsMut,
         info: MessageInfo,
-        controller: Addr,
+        proxy: Addr,
     ) -> Result<Response, ContractError> {
-        controller::set_approved_controller(deps.storage, &info.sender, &controller)?;
+        proxy::set_approved_proxy(deps.storage, &info.sender, &proxy)?;
 
         Ok(Response::new().add_event(
-            Event::new("ApproveController")
+            Event::new("ApproveProxy")
                 .add_attribute("owner", info.sender.to_string())
-                .add_attribute("controller", controller.to_string()),
+                .add_attribute("proxy", proxy.to_string()),
         ))
     }
 }
@@ -310,9 +327,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::TotalShares {} => to_json_binary(&query::total_shares(deps, env)?),
         QueryMsg::TotalAssets {} => to_json_binary(&query::total_assets(deps, env)?),
-        QueryMsg::QueuedWithdrawal { staker } => {
-            let staker = deps.api.addr_validate(&staker)?;
-            to_json_binary(&query::queued_withdrawal(deps, staker)?)
+        QueryMsg::QueuedWithdrawal { controller } => {
+            let controller = deps.api.addr_validate(&controller)?;
+            to_json_binary(&query::queued_withdrawal(deps, controller)?)
         }
         QueryMsg::VaultInfo {} => to_json_binary(&query::vault_info(deps, env)?),
     }
@@ -363,8 +380,8 @@ mod query {
     }
 
     /// Get the queued withdrawal info in this vault.
-    pub fn queued_withdrawal(deps: Deps, staker: Addr) -> StdResult<QueuedWithdrawalInfo> {
-        shares::get_queued_withdrawal_info(deps.storage, &staker)
+    pub fn queued_withdrawal(deps: Deps, controller: Addr) -> StdResult<QueuedWithdrawalInfo> {
+        shares::get_queued_withdrawal_info(deps.storage, &controller)
     }
 
     /// Returns the vault information

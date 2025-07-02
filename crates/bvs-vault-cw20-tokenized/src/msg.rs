@@ -1,8 +1,8 @@
 use bvs_pauser::api::Display;
 use bvs_vault_base::msg::{
-    Amount, AssetsResponse, ControllerAmount, ConvertToAssetsResponse, ConvertToSharesResponse,
-    QueuedWithdrawalResponse, Recipient, RecipientAmount, SharesResponse, TotalAssetsResponse,
-    TotalSharesResponse, VaultInfoResponse,
+    Amount, AssetsResponse, ConvertToAssetsResponse, ConvertToSharesResponse,
+    QueueWithdrawalToParams, QueuedWithdrawalResponse, RecipientAmount, RedeemWithdrawalToParams,
+    SharesResponse, TotalAssetsResponse, TotalSharesResponse, VaultInfoResponse,
 };
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -75,12 +75,12 @@ pub enum ExecuteMsg {
     /// ### Lock Period Extension
     /// New withdrawals will extend the lock period of any existing withdrawals.
     /// You can queue the withdrawal to a different `controller` than the `sender` to avoid this.
-    QueueWithdrawalTo(ControllerAmount),
+    QueueWithdrawalTo(QueueWithdrawalToParams),
 
     /// ExecuteMsg RedeemWithdrawalTo all queued shares into assets from the vault for withdrawal.
     /// After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
     /// can redeem the withdrawal.
-    RedeemWithdrawalTo(Recipient),
+    RedeemWithdrawalTo(RedeemWithdrawalToParams),
 
     /// ExecuteMsg SlashLocked moves the assets from the vault to the `vault-router` contract for custody.
     /// Part of the [https://build.satlayer.xyz/getting-started/slashing](Programmable Slashing) lifecycle.
