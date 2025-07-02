@@ -59,13 +59,14 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
 
     /**
      * @dev Incremented every time {enableSlashing} is called.
-     * This prevent implicit slash opt in for cases when
+     * This prevents implicit slash opt in for cases when
      * service x has parameter a,b,c - all operator opted in
-     * then updated to f,g,h and finally went back to a,b,c.
+     * then service x updated to f,g,h and finally went back to a,b,c.
      * Without nonce tracking the operator opt in states will be
      * 1.true for original a,b,c params they opted in
      * 2.false for f,g,h params they have not opted in explicitly
      * 3.true for a,b,c params they have not opted in explicitly
+     * Nonce prevents same param re-occurance implicit slash opt ins.
      * This is checkpointed to support accurate reading for {getSlashParameterAt()}
      */
     mapping(address service => Checkpoints.Trace224) private _slashParameterUpdateNonce;
