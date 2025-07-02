@@ -39,9 +39,15 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      */
     mapping(bytes32 key => Checkpoints.Trace224) private _registrationStatus;
 
-    /// @dev Default delay for operator's vault withdrawals if not set.
+    /**
+     * @dev Default delay for operator's vault withdrawals if not set.
+     */
     uint32 public constant DEFAULT_WITHDRAWAL_DELAY = 7 days;
 
+    /**
+     * @dev Whether an operator has opted into the slashing particular service
+     * value is the truncated {_slashParameterHashes}.
+     */
     mapping(bytes32 key => Checkpoints.Trace224) private _slashOptIns;
 
     /**
