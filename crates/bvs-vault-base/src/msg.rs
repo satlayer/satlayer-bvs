@@ -130,6 +130,15 @@ pub struct SetApproveProxyParams {
     pub approve: bool,
 }
 
+impl SetApproveProxyParams {
+    /// Validate the proxy: [`Addr`] field.
+    /// The proxy must be a valid [`Addr`].
+    pub fn validate(&self, api: &dyn Api) -> Result<(), VaultError> {
+        api.addr_validate(self.proxy.as_str())?;
+        Ok(())
+    }
+}
+
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum VaultQueryMsg {

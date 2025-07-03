@@ -60,7 +60,10 @@ pub fn execute(
             msg.validate(deps.api)?;
             execute::slash_locked(deps, env, info, msg)
         }
-        ExecuteMsg::SetApproveProxy(msg) => execute::set_approve_proxy(deps, info, msg),
+        ExecuteMsg::SetApproveProxy(msg) => {
+            msg.validate(deps.api)?;
+            execute::set_approve_proxy(deps, info, msg)
+        }
     }
 }
 

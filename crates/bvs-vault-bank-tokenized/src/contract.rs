@@ -82,6 +82,7 @@ pub fn execute(
             vault_execute::slash_locked(deps, env, info, msg)
         }
         CombinedExecuteMsg::SetApproveProxy(msg) => {
+            msg.validate(deps.api)?;
             vault_execute::set_approve_proxy(deps, info, msg)
         }
         _ => {
