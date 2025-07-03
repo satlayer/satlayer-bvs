@@ -198,7 +198,6 @@ mod vault_execute {
         offset, proxy, router,
         shares::{self, QueuedWithdrawalInfo},
     };
-    use cosmwasm_std::testing::message_info;
     use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response, StdError};
     use cw20_base::contract::execute_burn as receipt_token_burn;
 
@@ -289,7 +288,10 @@ mod vault_execute {
         // We can't burn until the actual unstaking (redeem withdrawal) occurs.
         // due to total supply mutation can impact the exchange rate to change prematurely.
         // We are not using `TransferFrom` here because either the owner or approved proxy should not deduct the allowance.
-        let owner_info = message_info(&msg.owner, &[]);
+        let owner_info = MessageInfo {
+            sender: msg.owner.clone(),
+            funds: vec![],
+        };
         cw20_base::contract::execute_transfer(
             deps.branch(),
             env.clone(),
