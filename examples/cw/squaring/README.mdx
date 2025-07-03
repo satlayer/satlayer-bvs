@@ -47,10 +47,10 @@ squaring/
 ### How to run
 
 Clone and copy contents of `./examples/squaring` [from GitHub](https://github.com/satlayer/satlayer-bvs/tree/main/examples/squaring) to your local machine.
-Install with `npm install` and `npm run test` to set up the environment.
+Install with `pnpm install` and `pnpm run test` to set up the environment.
 
 ```sh filename="run.sh"
-cd ./examples/squaring/contracts
+cd ./examples/squaring/contract/
 pnpm run install
 pnpm run test
 ```
@@ -77,7 +77,31 @@ Squaring is `n^2`, where `n` is the input number, and the result is the square o
 While this example is simple and not meant for production,
 it illustrates the principles of off-chain computation and on-chain verification.
 
-The general request respond lifecycle is as follows:
+The general request-response lifecycle is as follows:
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant C as Smart Contract
+    participant O as Operator (Off-chain)
+
+    U->>C: Submit computation request (e.g. square n)
+    Note right of C: Request stored on-chain
+
+    O->>C: Polls for new requests
+    C-->>O: Returns pending requests
+
+    O->>O: Performs off-chain computation (n^2)
+    O->>C: Submit result to contract
+
+    alt Correct Result
+        C->>C: Verify result
+        C-->>O: Accept result
+    else Incorrect Result
+        C->>C: Trigger slashing
+        C-->>O: Slash operator stake
+    end
+```
 
 1. Users submit computation requests to the contract
 2. Operators (running the off-chain service) detect these requests
