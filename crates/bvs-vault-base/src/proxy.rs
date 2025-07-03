@@ -21,5 +21,5 @@ pub fn set_approved_proxy(
 /// Return `true` if the proxy is approved by the owner, otherwise `false`.
 pub fn is_approved_proxy(storage: &dyn Storage, owner: &Addr, proxy: &Addr) -> StdResult<bool> {
     let is_approved = APPROVED_PROXY.may_load(storage, (owner, proxy))?;
-    Ok(is_approved.unwrap_or_else(|| false))
+    Ok(is_approved.unwrap_or(false))
 }

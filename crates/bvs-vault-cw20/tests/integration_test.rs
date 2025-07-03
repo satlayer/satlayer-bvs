@@ -258,7 +258,7 @@ fn test_withdrawal_with_proxy_successfully() {
 
     // move blockchain forward
     app.update_block(|block| {
-        block.height = block.height + 10;
+        block.height += 10;
         block.time = block.time.plus_seconds(100);
     });
 
@@ -316,7 +316,7 @@ fn test_withdrawal_with_proxy_successfully() {
 
     // move blockchain forward
     app.update_block(|block| {
-        block.height = block.height + 10;
+        block.height += 10;
         block.time = block.time.plus_seconds(100);
     });
 
