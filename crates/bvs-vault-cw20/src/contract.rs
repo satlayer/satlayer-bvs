@@ -69,10 +69,7 @@ pub fn execute(
             msg.validate(deps.api)?;
             execute::slash_locked(deps, env, info, msg)
         }
-        ExecuteMsg::ApproveProxy(controller) => {
-            let controller = deps.api.addr_validate(controller.as_str())?;
-            execute::approve_proxy(deps, info, controller)
-        }
+        ExecuteMsg::SetApproveProxy(msg) => execute::set_approve_proxy(deps, info, msg),
     }
 }
 
@@ -82,12 +79,13 @@ mod execute {
     use bvs_vault_base::error::VaultError;
     use bvs_vault_base::msg::{
         Amount, QueueWithdrawalToParams, RecipientAmount, RedeemWithdrawalToParams,
+        SetApproveProxyParams,
     };
     use bvs_vault_base::{
         offset, proxy, router,
         shares::{self, QueuedWithdrawalInfo},
     };
-    use cosmwasm_std::{Addr, DepsMut, Env, Event, MessageInfo, Response};
+    use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response};
 
     /// This executes a transfer of assets from the `info.sender` to the vault contract.
     ///
@@ -146,7 +144,7 @@ mod execute {
 
     /// Queue shares to withdraw later.
     /// The shares are burned from `info.sender` and wait lock period to redeem withdrawal.
-    /// /// It doesn't remove the `total_shares` and only removes the user shares, so the exchange rate is not affected.
+    /// It doesn't remove the `total_shares` and only removes the user shares, so the exchange rate is not affected.
     pub fn queue_withdrawal_to(
         deps: DepsMut,
         env: Env,
@@ -161,10 +159,10 @@ mod execute {
         }
 
         // check if the sender is the controller or an approved proxy
-        if msg.controller != info.sender {
-            if !proxy::is_approved_proxy(deps.storage, &msg.controller, &info.sender)? {
-                return Err(VaultError::unauthorized("Unauthorized controller").into());
-            }
+        if msg.controller != info.sender
+            && !proxy::is_approved_proxy(deps.storage, &msg.controller, &info.sender)?
+        {
+            return Err(VaultError::unauthorized("Unauthorized controller").into());
         }
 
         // Remove shares from the owner
@@ -209,10 +207,10 @@ mod execute {
         msg: RedeemWithdrawalToParams,
     ) -> Result<Response, ContractError> {
         // check if msg.controller is the sender or an approved proxy
-        if msg.controller != info.sender {
-            if !proxy::is_approved_proxy(deps.storage, &msg.controller, &info.sender)? {
-                return Err(VaultError::unauthorized("Unauthorized controller").into());
-            }
+        if msg.controller != info.sender
+            && !proxy::is_approved_proxy(deps.storage, &msg.controller, &info.sender)?
+        {
+            return Err(VaultError::unauthorized("Unauthorized controller").into());
         }
 
         let withdrawal_info = shares::get_queued_withdrawal_info(deps.storage, &msg.controller)?;
@@ -246,12 +244,13 @@ mod execute {
         let transfer_msg =
             token::execute_new_transfer(deps.storage, &msg.recipient, claimed_assets)?;
 
-        // Remove staker's info
+        // Remove controller's queued withdrawal info
         shares::remove_queued_withdrawal_info(deps.storage, &msg.controller);
 
         Ok(Response::new()
             .add_event(
                 Event::new("RedeemWithdrawalTo")
+                    .add_attribute("sender", info.sender.to_string())
                     .add_attribute("controller", msg.controller.to_string())
                     .add_attribute("recipient", msg.recipient.to_string())
                     .add_attribute("sub_shares", queued_shares.to_string())
@@ -293,17 +292,19 @@ mod execute {
         Ok(Response::new().add_event(event).add_message(transfer_msg))
     }
 
-    pub fn approve_proxy(
+    pub fn set_approve_proxy(
         deps: DepsMut,
         info: MessageInfo,
-        proxy: Addr,
+        msg: SetApproveProxyParams,
     ) -> Result<Response, ContractError> {
-        proxy::set_approved_proxy(deps.storage, &info.sender, &proxy)?;
+        let proxy = deps.api.addr_validate(msg.proxy.as_str())?;
+        proxy::set_approved_proxy(deps.storage, &info.sender, &proxy, &msg.approve)?;
 
         Ok(Response::new().add_event(
-            Event::new("ApproveProxy")
+            Event::new("SetApproveProxy")
                 .add_attribute("owner", info.sender.to_string())
-                .add_attribute("proxy", proxy.to_string()),
+                .add_attribute("proxy", proxy.to_string())
+                .add_attribute("approved", msg.approve.to_string()),
         ))
     }
 }

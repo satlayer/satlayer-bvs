@@ -85,6 +85,9 @@ pub fn execute(
             msg.validate(deps.api)?;
             vault_execute::slash_locked(deps, env, info, msg)
         }
+        CombinedExecuteMsg::SetApproveProxy(msg) => {
+            vault_execute::set_approve_proxy(deps, info, msg)
+        }
         _ => {
             // cw20 compliant messages are passed to the `cw20-base` contract.
             // Except for the `Burn` and `BurnFrom` messages.
@@ -191,12 +194,15 @@ mod receipt_cw20_execute {
 mod vault_execute {
     use crate::error::ContractError;
     use bvs_vault_base::error::VaultError;
-    use bvs_vault_base::msg::{QueueWithdrawalToParams, RecipientAmount, RedeemWithdrawalToParams};
+    use bvs_vault_base::msg::{
+        QueueWithdrawalToParams, RecipientAmount, RedeemWithdrawalToParams, SetApproveProxyParams,
+    };
     use bvs_vault_base::{
-        offset, router,
+        offset, proxy, router,
         shares::{self, QueuedWithdrawalInfo},
     };
     use bvs_vault_cw20::token as UnderlyingToken;
+    use cosmwasm_std::testing::message_info;
     use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response};
     use cw20_base::contract::execute_burn as receipt_token_burn;
 
@@ -264,21 +270,37 @@ mod vault_execute {
 
     /// Queue receipt tokens to withdraw later.
     /// The receipt tokens are ill-liquidated and wait lock period to redeem withdrawal.
-    /// It doesn't impact `total_supply` and only take away the staker's receipt tokens, so the exchange rate is not affected.
+    /// It doesn't impact `total_supply` and only take away the owner's receipt tokens, so the exchange rate is not affected.
     pub fn queue_withdrawal_to(
         mut deps: DepsMut,
         env: Env,
         info: MessageInfo,
         msg: QueueWithdrawalToParams,
     ) -> Result<Response, ContractError> {
-        // ill-liquidate the receipt token from the staker
+        // check if the sender is the owner or an approved proxy
+        if msg.owner != info.sender
+            && !proxy::is_approved_proxy(deps.storage, &msg.owner, &info.sender)?
+        {
+            return Err(VaultError::unauthorized("Unauthorized sender").into());
+        }
+
+        // check if the sender is the controller or an approved proxy
+        if msg.controller != info.sender
+            && !proxy::is_approved_proxy(deps.storage, &msg.controller, &info.sender)?
+        {
+            return Err(VaultError::unauthorized("Unauthorized controller").into());
+        }
+
+        // ill-liquidate the receipt token from the owner
         // by moving the asset into this vault balance.
         // We can't burn until the actual unstaking (redeem withdrawal) occurs.
         // due to total supply mutation can impact the exchange rate to change prematurely.
+        // We are not using `TransferFrom` here because either the owner or approved proxy should not deduct the allowance.
+        let owner_info = message_info(&msg.owner, &[]);
         cw20_base::contract::execute_transfer(
             deps.branch(),
             env.clone(),
-            info.clone(),
+            owner_info,
             env.contract.address.to_string(),
             msg.amount,
         )?;
@@ -302,6 +324,7 @@ mod vault_execute {
         Ok(Response::new().add_event(
             Event::new("QueueWithdrawalTo")
                 .add_attribute("sender", info.sender.to_string())
+                .add_attribute("owner", msg.owner.to_string())
                 .add_attribute("controller", msg.controller.to_string())
                 .add_attribute("queued_shares", msg.amount.to_string())
                 .add_attribute(
@@ -312,15 +335,21 @@ mod vault_execute {
         ))
     }
 
-    /// Redeem all queued shares to assets for `msg.recipient`.
-    /// The `info.sender` must be equal to the `msg.recipient` in [`queue_withdrawal_to`].
+    /// Redeem all queued shares to assets for `msg.controller`.
+    /// The `info.sender` must be the `msg.controller` or an approved proxy.
     pub fn redeem_withdrawal_to(
         mut deps: DepsMut,
         env: Env,
         info: MessageInfo,
         msg: RedeemWithdrawalToParams,
     ) -> Result<Response, ContractError> {
-        let withdrawal_info = shares::get_queued_withdrawal_info(deps.storage, &info.sender)?;
+        // check if msg.controller is the sender or an approved proxy
+        if msg.controller != info.sender
+            && !proxy::is_approved_proxy(deps.storage, &msg.controller, &info.sender)?
+        {
+            return Err(VaultError::unauthorized("Unauthorized controller").into());
+        }
+        let withdrawal_info = shares::get_queued_withdrawal_info(deps.storage, &msg.controller)?;
         let queued_shares = withdrawal_info.queued_shares;
         let unlock_timestamp = withdrawal_info.unlock_timestamp;
 
@@ -348,7 +377,7 @@ mod vault_execute {
 
         // CW20 transfer of asset to msg.recipient
         let transfer_msg =
-            UnderlyingToken::execute_new_transfer(deps.storage, &msg.0, claimed_assets)?;
+            UnderlyingToken::execute_new_transfer(deps.storage, &msg.recipient, claimed_assets)?;
 
         // When staker queued the withdrawal
         // The receipt token is ill-liquidated from the staker
@@ -363,14 +392,15 @@ mod vault_execute {
         let receipt_token_supply =
             cw20_base::contract::query_token_info(deps.as_ref())?.total_supply;
 
-        // Remove staker's info
-        shares::remove_queued_withdrawal_info(deps.storage, &info.sender);
+        // Remove controller's queued withdrawal info
+        shares::remove_queued_withdrawal_info(deps.storage, &msg.controller);
 
         Ok(Response::new()
             .add_event(
                 Event::new("RedeemWithdrawalTo")
                     .add_attribute("sender", info.sender.to_string())
-                    .add_attribute("recipient", msg.0.to_string())
+                    .add_attribute("controller", msg.controller.to_string())
+                    .add_attribute("recipient", msg.recipient.to_string())
                     .add_attribute("sub_shares", queued_shares.to_string())
                     .add_attribute("claimed_assets", claimed_assets.to_string())
                     .add_attribute("total_shares", receipt_token_supply.to_string()),
@@ -412,6 +442,22 @@ mod vault_execute {
 
         Ok(Response::new().add_event(event).add_message(transfer_msg))
     }
+
+    pub fn set_approve_proxy(
+        deps: DepsMut,
+        info: MessageInfo,
+        msg: SetApproveProxyParams,
+    ) -> Result<Response, ContractError> {
+        let proxy = deps.api.addr_validate(msg.proxy.as_str())?;
+        proxy::set_approved_proxy(deps.storage, &info.sender, &proxy, &msg.approve)?;
+
+        Ok(Response::new().add_event(
+            Event::new("SetApproveProxy")
+                .add_attribute("owner", info.sender.to_string())
+                .add_attribute("proxy", proxy.to_string())
+                .add_attribute("approved", msg.approve.to_string()),
+        ))
+    }
 }
 
 #[entry_point]
@@ -432,9 +478,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<cosmwasm_std::Bin
             to_json_binary(&vault_query::total_receipt_token_supply(deps, env)?)
         }
         QueryMsg::TotalAssets {} => to_json_binary(&vault_query::total_assets(deps, env)?),
-        QueryMsg::QueuedWithdrawal { staker } => {
-            let staker = deps.api.addr_validate(&staker)?;
-            to_json_binary(&vault_query::queued_withdrawal(deps, staker)?)
+        QueryMsg::QueuedWithdrawal { controller } => {
+            let controller = deps.api.addr_validate(&controller)?;
+            to_json_binary(&vault_query::queued_withdrawal(deps, controller)?)
         }
         QueryMsg::VaultInfo {} => to_json_binary(&vault_query::vault_info(deps, env)?),
         _ => {
@@ -510,8 +556,8 @@ mod vault_query {
     }
 
     /// Get the queued withdrawal info in this vault.
-    pub fn queued_withdrawal(deps: Deps, staker: Addr) -> StdResult<QueuedWithdrawalInfo> {
-        shares::get_queued_withdrawal_info(deps.storage, &staker)
+    pub fn queued_withdrawal(deps: Deps, controller: Addr) -> StdResult<QueuedWithdrawalInfo> {
+        shares::get_queued_withdrawal_info(deps.storage, &controller)
     }
 
     /// Returns the vault information

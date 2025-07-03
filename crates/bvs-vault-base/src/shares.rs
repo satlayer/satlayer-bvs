@@ -5,7 +5,7 @@ use cw_storage_plus::Map;
 /// Mapping of staker to their shares in the vault
 const SHARES: Map<&Addr, Uint128> = Map::new("shares");
 
-/// Mapping of staker to their queued withdrawal associated with unlock timestamp in the vault
+/// Mapping of controller to their queued withdrawal associated with unlock timestamp in the vault
 const QUEUED_WITHDRAWAL: Map<&Addr, QueuedWithdrawalInfo> = Map::new("queued_withdrawal");
 
 #[cw_serde]

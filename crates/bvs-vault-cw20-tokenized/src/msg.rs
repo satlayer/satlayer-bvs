@@ -2,7 +2,8 @@ use bvs_pauser::api::Display;
 use bvs_vault_base::msg::{
     Amount, AssetsResponse, ConvertToAssetsResponse, ConvertToSharesResponse,
     QueueWithdrawalToParams, QueuedWithdrawalResponse, RecipientAmount, RedeemWithdrawalToParams,
-    SharesResponse, TotalAssetsResponse, TotalSharesResponse, VaultInfoResponse,
+    SetApproveProxyParams, SharesResponse, TotalAssetsResponse, TotalSharesResponse,
+    VaultInfoResponse,
 };
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -88,6 +89,10 @@ pub enum ExecuteMsg {
     /// The amount is calculated and enforced by the router.
     /// Further utility of the assets, post-locked, is implemented and enforced on the router level.
     SlashLocked(Amount),
+
+    /// ExecuteMsg ApproveProxy allows the `proxy`
+    /// to queue withdrawal and redeem withdrawal on behalf of the `owner`.
+    SetApproveProxy(SetApproveProxyParams),
 }
 
 #[cw_serde]
@@ -163,7 +168,7 @@ pub enum QueryMsg {
 
     /// QueryMsg QueuedWithdrawal: get the queued withdrawal and unlock timestamp under vault.
     #[returns(QueuedWithdrawalResponse)]
-    QueuedWithdrawal { staker: String },
+    QueuedWithdrawal { controller: String },
 
     /// QueryMsg VaultInfo: get the vault information.
     #[returns(VaultInfoResponse)]

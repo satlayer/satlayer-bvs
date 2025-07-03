@@ -42,7 +42,7 @@ pub enum VaultExecuteMsg {
 
     /// ExecuteMsg ApproveProxy allows the `proxy`
     /// to queue withdrawal and redeem withdrawal on behalf of the `owner`.
-    ApproveProxy(Addr),
+    SetApproveProxy(SetApproveProxyParams),
 }
 
 #[cw_serde]
@@ -120,6 +120,14 @@ impl RedeemWithdrawalToParams {
         api.addr_validate(self.recipient.as_str())?;
         Ok(())
     }
+}
+
+#[cw_serde]
+pub struct SetApproveProxyParams {
+    /// The proxy address that is being approved.
+    pub proxy: Addr,
+    /// whether the proxy is approved or not.
+    pub approve: bool,
 }
 
 #[cw_serde]
