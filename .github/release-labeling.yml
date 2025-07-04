@@ -16,6 +16,11 @@ labels:
     matcher:
       title: "^chore(\\(.+\\))?: .+"
 
+  - label: a/contracts
+    sync: true
+    matcher:
+      files: "contracts/**"
+
   - label: a/crates
     sync: true
     matcher:
