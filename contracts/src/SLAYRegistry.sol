@@ -39,8 +39,61 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      */
     mapping(bytes32 key => Checkpoints.Trace224) private _registrationStatus;
 
-    /// @dev Default delay for operator's vault withdrawals if not set.
+    /**
+     * @dev Default delay for operator's vault withdrawals if not set.
+     */
     uint32 public constant DEFAULT_WITHDRAWAL_DELAY = 7 days;
+
+    /**
+     * @dev Whether an operator has opted into the slashing particular service
+     * value is the truncated {_slashParameterHashes}.
+     */
+    mapping(bytes32 key => Checkpoints.Trace224) private _slashOptIns;
+
+    /**
+     * @dev Store {SlashParameter.Object} for each of every slash enabled BVS services.
+     */
+    mapping(address service => Checkpoints.Trace224) private _slashParameters;
+
+    /**
+     * @dev Store the hash of {SlashParameter.Object} for each of every slash enabled BVS services.
+     * When service changed the slashing parameters, operator should explicitly opt in to new parameters.
+     * This mapping helps with reseting the operator's slash optin states without having to loop through
+     * which could potentially hits gas ceiling.
+     */
+    mapping(address service => bytes32) private _slashParameterHashes;
+
+    /**
+     * @dev Incremented every time {enableSlashing} is called.
+     * This prevents implicit slash opt in for cases when
+     * service x has parameter a,b,c - all operator opted in
+     * then service x updated to f,g,h and finally went back to a,b,c.
+     * Without nonce tracking the operator opt in states will be
+     * 1.true for original a,b,c params they opted in
+     * 2.false for f,g,h params they have not opted in explicitly
+     * 3.true for a,b,c params they have not opted in explicitly
+     * Nonce prevents same param re-occurance implicit slash opt ins.
+     * This is checkpointed to support accurate reading for {getSlashParameterAt()}
+     */
+    Checkpoints.Trace224 private _slashParameterUpdateNonce;
+
+    /**
+     * @dev Emitted when {SlashParameter.Object} for a service is updated
+     * @param service The address of the service
+     * @param destination The address at which slash collateral will be moved.
+     * @param maxMilliBip The maximum slashable amount
+     * @param resolutionWindow An operator's refutable period in seconds in the event of slash.
+     */
+    event SlashParameterUpdated(
+        address indexed service, address destination, uint32 maxMilliBip, uint32 resolutionWindow
+    );
+
+    /**
+     * @dev Emitted when operator is opt into the slashing for particular service
+     * @param service The address of the service.
+     * @param operator The address of the operator.
+     */
+    event SlashOptIn(address indexed service, address indexed operator);
 
     /**
      * @dev Modifier to check if the provided account is a registered service.
@@ -60,6 +113,17 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     modifier onlyOperator(address account) {
         if (!_operators[account]) {
             revert OperatorNotFound(account);
+        }
+        _;
+    }
+
+    /**
+     * @dev Modifier to guard if given service operator pair is Actively Paired - {RegistrationStatus.Active}.
+     */
+    modifier onlyActivelyRegistered(address service, address operator) {
+        RegistrationStatus status = getRegistrationStatus(service, operator);
+        if (status != RegistrationStatus.Active) {
+            revert("RegistrationStatus not Active");
         }
         _;
     }
@@ -206,10 +270,15 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         emit RegistrationStatusUpdated(service, operator, RegistrationStatus.Inactive);
     }
 
-    /// @inheritdoc ISLAYRegistry
+    /**
+     * @dev Get the `RegistrationStatus` for a given service-operator pair at the latest checkpoint.
+     * @param service The address of the service.
+     * @param operator The address of the operator.
+     * @return RegistrationStatus The latest registration status for the service-operator pair.
+     */
     function getRegistrationStatus(address service, address operator) public view returns (RegistrationStatus) {
         bytes32 key = ServiceOperatorKey._getKey(service, operator);
-        return RegistrationStatus(uint8(_registrationStatus[key].latest()));
+        return RegistrationStatus(_registrationStatus[key].latest());
     }
 
     /// @inheritdoc ISLAYRegistry
@@ -219,7 +288,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         returns (RegistrationStatus)
     {
         bytes32 key = ServiceOperatorKey._getKey(service, operator);
-        return RegistrationStatus(uint8(_registrationStatus[key].upperLookup(timestamp)));
+        return RegistrationStatus(_registrationStatus[key].upperLookup(timestamp));
     }
 
     /**
@@ -230,7 +299,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     function _getRegistrationStatus(bytes32 key) internal view returns (RegistrationStatus) {
         // The method `checkpoint.latest()` returns 0 on empty checkpoint,
         // RegistrationStatus.Inactive being 0 as desired.
-        return RegistrationStatus(uint8(_registrationStatus[key].latest()));
+        return RegistrationStatus(_registrationStatus[key].latest());
     }
 
     /**
@@ -239,7 +308,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * @param status RegistrationStatus to set for the service-operator pair.
      */
     function _updateRegistrationStatus(bytes32 key, RegistrationStatus status) internal {
-        _registrationStatus[key].push(uint32(block.timestamp), uint224(uint8(status)));
+        _registrationStatus[key].push(uint32(block.timestamp), uint224(status));
     }
 
     /// @inheritdoc ISLAYRegistry
@@ -275,6 +344,151 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     function unpause() external onlyOwner {
         _unpause();
     }
+
+    /**
+     * @dev service enable slashing by providing slash parameters in the form of {SlashParameter.Object}.
+     * _msgSender is registered service.
+     */
+    function enableSlashing(SlashParameter.Object calldata parameter) public onlyService(_msgSender()) {
+        require(parameter.maxMilliBips <= 10000000, "Maximum Milli-Bips cannot be more than 10_000_000 (100%)");
+        require(parameter.maxMilliBips >= 0, "Minimum Bips cannot be less than zero");
+        _updateSlashParameter(_msgSender(), parameter.destination, parameter.maxMilliBips, parameter.resolutionWindow);
+    }
+
+    /**
+     * @dev service disable slashing by giving soldity primitive types' null default
+     * _msgSender is registered service.
+     */
+    function disableSlashing() public onlyService(_msgSender()) {
+        _updateSlashParameter(_msgSender(), address(0), uint32(0), uint32(0));
+    }
+
+    /**
+     * @dev Mutate slash parameter checkpoint state for particular service
+     */
+    function _updateSlashParameter(address service, address destination, uint32 maxMilliBips, uint32 resolutionWindow)
+        internal
+    {
+        uint224 parameter = SlashParameter.encode(destination, maxMilliBips, resolutionWindow);
+        _slashParameters[service].push(uint32(block.timestamp), parameter);
+
+        _slashParameterHashes[service] = SlashParameter._hashParameters(
+            service, destination, maxMilliBips, resolutionWindow, _getSlashParameterNonce() + 1
+        );
+        _incrementSlashParameterNonce();
+        emit SlashParameterUpdated(service, destination, maxMilliBips, resolutionWindow);
+    }
+
+    /**
+     * @dev Get latest {SlashParameter.Object} for particular service
+     */
+    function getSlashParameter(address service) public view returns (SlashParameter.Object memory) {
+        SlashParameter.Object memory parameter = SlashParameter.decode(_slashParameters[service].latest());
+        return parameter;
+    }
+
+    /**
+     * @dev Get slashing parameters for particular service at or near at a given point in time.
+     */
+    function getSlashParameterAt(address service, uint32 timestamp)
+        public
+        view
+        returns (SlashParameter.Object memory)
+    {
+        SlashParameter.Object memory parameter = SlashParameter.decode(_slashParameters[service].upperLookup(timestamp));
+        return parameter;
+    }
+
+    /**
+     * @dev Increment slash parameter nonce at latest timestamp
+     */
+    function _incrementSlashParameterNonce() internal {
+        uint224 previousNonce = _getSlashParameterNonce();
+        _slashParameterUpdateNonce.push(uint32(block.timestamp), (previousNonce + 1));
+    }
+
+    /**
+     * @dev get slash parameter nonce at latest timestamp
+     */
+    function _getSlashParameterNonce() internal view returns (uint224) {
+        return _slashParameterUpdateNonce.latest();
+    }
+
+    /**
+     * @dev get slash parameter nonce at given timestamp
+     */
+    function _getSlashParameterNonceAt(uint32 timestamp) internal view returns (uint224) {
+        return _slashParameterUpdateNonce.upperLookup(timestamp);
+    }
+
+    /**
+     * @dev An operator can opt in to slashing for particular service
+     * _msgSender() is operator
+     */
+    function slashOptIn(address service) public onlyActivelyRegistered(service, _msgSender()) {
+        require(_slashParameterHashes[service] != bytes32(0), "Service disabled slashing");
+        address operator = _msgSender();
+        bool optedIn = getSlashOptIns(service, operator);
+        require(optedIn == false, "Operator already opted in slashing for this service");
+        _updateSlashOptIns(service, operator, true);
+        emit SlashOptIn(service, operator);
+    }
+
+    /**
+     * @dev Mutate the operator slash opt in map at current block timestamp.
+     */
+    function _updateSlashOptIns(address service, address operator, bool optIn) internal {
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
+        if (optIn == true) {
+            // truncating bytes32 hash into uint224.
+            _slashOptIns[key].push(uint32(block.timestamp), uint224(uint256(_slashParameterHashes[service]) >> (8 * 4)));
+        } else {
+            _slashOptIns[key].push(uint32(block.timestamp), uint224(0));
+        }
+    }
+
+    /**
+     * @dev Get if an operator is opted in to slash for particular service at current block timestamp
+     */
+    function getSlashOptIns(address service, address operator) public view returns (bool) {
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
+        uint224 truncated = uint224(uint256(_slashParameterHashes[service]) >> (8 * 4));
+        uint224 optedIn = _slashOptIns[key].latest();
+
+        if (optedIn == truncated) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @dev Get if an operator is opted in to slash
+     * for particular service at or near at given timestamp
+     */
+    function getSlashOptInsAt(address service, address operator, uint32 timestamp) public view returns (bool) {
+        bytes32 key = ServiceOperatorKey._getKey(service, operator);
+
+        uint224 operatorOptedInTruncatedHash = _slashOptIns[key].upperLookup(timestamp);
+
+        if (operatorOptedInTruncatedHash == 0) {
+            return false;
+        }
+
+        SlashParameter.Object memory serviceParamsAtTimestamp =
+            SlashParameter.decode(_slashParameters[service].upperLookup(timestamp));
+
+        bytes32 fullHashOfServiceParamsAtTimestamp = SlashParameter._hashParameters(
+            service,
+            serviceParamsAtTimestamp.destination,
+            serviceParamsAtTimestamp.maxMilliBips,
+            serviceParamsAtTimestamp.resolutionWindow,
+            _getSlashParameterNonceAt(timestamp)
+        );
+        uint224 serviceTruncatedHashAtTimestamp = uint224(uint256(fullHashOfServiceParamsAtTimestamp) >> (8 * 4));
+
+        return operatorOptedInTruncatedHash == serviceTruncatedHashAtTimestamp;
+    }
 }
 
 library ServiceOperatorKey {
@@ -286,5 +500,77 @@ library ServiceOperatorKey {
      */
     function _getKey(address service, address operator) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(service, operator));
+    }
+}
+
+library SlashParameter {
+    /**
+     * @dev Slash Parameters for particular service
+     */
+    struct Object {
+        /**
+         * The address at which the slash collateral from the vault
+         * will be moved to at the end of slashing lifecycle
+         */
+        address destination;
+        /**
+         * The maximum slash amount represented in bips at milli unit.
+         * 1 Milli-Bip is 0.00001%
+         * At 100% - the milli bip is 10,000,000
+         */
+        uint32 maxMilliBips;
+        /**
+         * The time window in seconds at which operator can refute slash accusations.
+         * The exact mechanics are to be defined by the BVS (service).
+         */
+        uint32 resolutionWindow;
+    }
+
+    /**
+     * @dev Encode {SlashParameter.Object} into uint224 to be used as checkpoint value.
+     * Each data in the struct combined is still smaller than uint224.
+     * Dedicating checkpoints for each shard of data is expensive.
+     * Encoding the data in sequence avoid uncessary cold SLOAD, especially each member in the struct
+     * are access together usually.
+     */
+    function encode(address destination, uint32 maxBip, uint32 resolutionWindow) internal pure returns (uint224) {
+        uint160 addr160 = uint160(destination);
+
+        uint224 encodedData = uint224(addr160);
+
+        encodedData |= (uint224(maxBip) << 160);
+
+        encodedData |= (uint224(resolutionWindow) << 192);
+
+        return encodedData;
+    }
+
+    /**
+     * @dev Decode uint224 from checkpoint value into {SlashParatmer.Object}.
+     */
+    function decode(uint224 encodedData) internal pure returns (SlashParameter.Object memory) {
+        address addr = address(uint160(encodedData));
+
+        uint32 maxBip = uint32(encodedData >> 160);
+
+        uint32 resolutionWindow = uint32(encodedData >> 192);
+
+        return SlashParameter.Object({destination: addr, maxMilliBips: maxBip, resolutionWindow: resolutionWindow});
+    }
+
+    /**
+     * @dev Hash the slashing parameter for particular service.
+     * The hash include the nonce to avoid replay/implicit opted in for case like
+     * same service, same slash param re-occurance.
+     * Read more at {_slashParameterUpdateNonce}.
+     */
+    function _hashParameters(
+        address service,
+        address destination,
+        uint32 maxMilliBips,
+        uint32 resolutionWindow,
+        uint256 nonce
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(service, destination, maxMilliBips, resolutionWindow, nonce));
     }
 }
