@@ -17,6 +17,8 @@
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
+ * the amount is the amount of shares to be withdrawn
+ *
  * This struct represents amount of assets.
  *
  * Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also
@@ -66,7 +68,11 @@
  * mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`
  * instance.
  *
- * This struct is used to represent a recipient for RedeemWithdrawalTo.
+ * the controller is the address that can redeem the withdrawal after the lock period
+ *
+ * the owner is the address that owns the shares being withdrawn
+ *
+ * The proxy address that is being approved.
  *
  * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
  * schema can be generated.
@@ -114,6 +120,8 @@ type AssetsResponse = string;
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
+ * the amount is the amount of shares to be withdrawn
+ *
  * This struct represents amount of assets.
  *
  * Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also
@@ -163,7 +171,11 @@ type AssetsResponse = string;
  * mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`
  * instance.
  *
- * This struct is used to represent a recipient for RedeemWithdrawalTo.
+ * the controller is the address that can redeem the withdrawal after the lock period
+ *
+ * the owner is the address that owns the shares being withdrawn
+ *
+ * The proxy address that is being approved.
  *
  * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
  * schema can be generated.
@@ -211,6 +223,8 @@ type ConvertToAssetsResponse = string;
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
+ * the amount is the amount of shares to be withdrawn
+ *
  * This struct represents amount of assets.
  *
  * Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also
@@ -260,7 +274,11 @@ type ConvertToAssetsResponse = string;
  * mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`
  * instance.
  *
- * This struct is used to represent a recipient for RedeemWithdrawalTo.
+ * the controller is the address that can redeem the withdrawal after the lock period
+ *
+ * the owner is the address that owns the shares being withdrawn
+ *
+ * The proxy address that is being approved.
  *
  * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
  * schema can be generated.
@@ -308,6 +326,8 @@ type ConvertToSharesResponse = string;
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
+ * the amount is the amount of shares to be withdrawn
+ *
  * This struct represents amount of assets.
  *
  * Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also
@@ -357,7 +377,11 @@ type ConvertToSharesResponse = string;
  * mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`
  * instance.
  *
- * This struct is used to represent a recipient for RedeemWithdrawalTo.
+ * the controller is the address that can redeem the withdrawal after the lock period
+ *
+ * the owner is the address that owns the shares being withdrawn
+ *
+ * The proxy address that is being approved.
  *
  * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
  * schema can be generated.
@@ -405,6 +429,8 @@ type SharesResponse = string;
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
+ * the amount is the amount of shares to be withdrawn
+ *
  * This struct represents amount of assets.
  *
  * Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also
@@ -454,7 +480,11 @@ type SharesResponse = string;
  * mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`
  * instance.
  *
- * This struct is used to represent a recipient for RedeemWithdrawalTo.
+ * the controller is the address that can redeem the withdrawal after the lock period
+ *
+ * the owner is the address that owns the shares being withdrawn
+ *
+ * The proxy address that is being approved.
  *
  * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
  * schema can be generated.
@@ -502,6 +532,8 @@ type TotalAssetsResponse = string;
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
+ * the amount is the amount of shares to be withdrawn
+ *
  * This struct represents amount of assets.
  *
  * Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also
@@ -551,7 +583,11 @@ type TotalAssetsResponse = string;
  * mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`
  * instance.
  *
- * This struct is used to represent a recipient for RedeemWithdrawalTo.
+ * the controller is the address that can redeem the withdrawal after the lock period
+ *
+ * the owner is the address that owns the shares being withdrawn
+ *
+ * The proxy address that is being approved.
  *
  * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
  * schema can be generated.
@@ -659,6 +695,9 @@ export interface InstantiateMsg {
  * absolute `amount` of assets to be moved. The amount is calculated and enforced by the
  * router. Further utility of the assets, post-locked, is implemented and enforced on the
  * router level.
+ *
+ * ExecuteMsg ApproveProxy allows the `proxy` to queue withdrawal and redeem withdrawal on
+ * behalf of the `owner`.
  */
 export interface ExecuteMsg {
   transfer?: Transfer;
@@ -668,9 +707,10 @@ export interface ExecuteMsg {
   transfer_from?: TransferFrom;
   send_from?: SendFrom;
   deposit_for?: RecipientAmount;
-  queue_withdrawal_to?: RecipientAmount;
-  redeem_withdrawal_to?: string;
+  queue_withdrawal_to?: QueueWithdrawalToParams;
+  redeem_withdrawal_to?: RedeemWithdrawalToParams;
   slash_locked?: string;
+  set_approve_proxy?: SetApproveProxyParams;
 }
 
 export interface DecreaseAllowance {
@@ -708,6 +748,32 @@ export interface IncreaseAllowance {
   spender: string;
 }
 
+/**
+ * This struct is used to represent the controller and amount fields together.
+ */
+export interface QueueWithdrawalToParams {
+  /**
+   * the amount is the amount of shares to be withdrawn
+   */
+  amount: string;
+  /**
+   * the controller is the address that can redeem the withdrawal after the lock period
+   */
+  controller: string;
+  /**
+   * the owner is the address that owns the shares being withdrawn
+   */
+  owner: string;
+}
+
+/**
+ * This struct is used to represent a recipient for RedeemWithdrawalTo.
+ */
+export interface RedeemWithdrawalToParams {
+  controller: string;
+  recipient: string;
+}
+
 export interface Send {
   amount: string;
   contract: string;
@@ -719,6 +785,17 @@ export interface SendFrom {
   contract: string;
   msg: string;
   owner: string;
+}
+
+export interface SetApproveProxyParams {
+  /**
+   * whether the proxy is approved or not.
+   */
+  approve: boolean;
+  /**
+   * The proxy address that is being approved.
+   */
+  proxy: string;
 }
 
 export interface Transfer {
@@ -825,7 +902,7 @@ export interface ConvertToShares {
 }
 
 export interface QueuedWithdrawal {
-  staker: string;
+  controller: string;
 }
 
 export interface Shares {

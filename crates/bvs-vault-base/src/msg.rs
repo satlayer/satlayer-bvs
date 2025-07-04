@@ -16,22 +16,22 @@ pub enum VaultExecuteMsg {
     DepositFor(RecipientAmount),
 
     /// ExecuteMsg QueueWithdrawalTo assets from the vault.
-    /// Sender must have enough shares to queue the requested amount to the `recipient`.
+    /// Sender must have enough shares to queue the requested amount to the `controller`.
     /// Once the withdrawal is queued,
-    /// the `recipient` can redeem the withdrawal after the lock period.
+    /// the `controller` can redeem the withdrawal after the lock period.
     /// Once the withdrawal is locked,
     /// the `sender` cannot cancel the withdrawal.
     /// The time-lock is enforced by the vault and cannot be changed retroactively.
     ///
     /// ### Lock Period Extension
     /// New withdrawals will extend the lock period of any existing withdrawals.
-    /// You can queue the withdrawal to a different `recipient` than the `sender` to avoid this.
-    QueueWithdrawalTo(RecipientAmount),
+    /// You can queue the withdrawal to a different `controller` than the `sender` to avoid this.
+    QueueWithdrawalTo(QueueWithdrawalToParams),
 
     /// ExecuteMsg RedeemWithdrawalTo all queued shares into assets from the vault for withdrawal.
-    /// After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
-    /// can redeem the withdrawal.
-    RedeemWithdrawalTo(Recipient),
+    /// After the lock period, the `sender` (must be the `controller` of the original withdrawal)
+    /// can redeem the withdrawal to the `recipient`
+    RedeemWithdrawalTo(RedeemWithdrawalToParams),
 
     /// ExecuteMsg SlashLocked moves the assets from the vault to the `vault-router` contract for custody.
     /// Part of the [https://build.satlayer.xyz/getting-started/slashing](Programmable Slashing) lifecycle.
@@ -39,6 +39,10 @@ pub enum VaultExecuteMsg {
     /// The amount is calculated and enforced by the router.
     /// Further utility of the assets, post-locked, is implemented and enforced on the router level.
     SlashLocked(Amount),
+
+    /// ExecuteMsg ApproveProxy allows the `proxy`
+    /// to queue withdrawal and redeem withdrawal on behalf of the `owner`.
+    SetApproveProxy(SetApproveProxyParams),
 }
 
 #[cw_serde]
@@ -52,6 +56,31 @@ impl Amount {
         if self.0.is_zero() {
             return Err(VaultError::zero("Amount cannot be zero"));
         }
+        Ok(())
+    }
+}
+
+/// This struct is used to represent the controller and amount fields together.
+#[cw_serde]
+pub struct QueueWithdrawalToParams {
+    /// the controller is the address that can redeem the withdrawal after the lock period
+    pub controller: Addr,
+    /// the owner is the address that owns the shares being withdrawn
+    pub owner: Addr,
+    /// the amount is the amount of shares to be withdrawn
+    pub amount: Uint128,
+}
+
+impl QueueWithdrawalToParams {
+    /// Validate the controller: [`Addr`] and amount: [`Uint128`] fields.
+    /// The controller must be a valid [`Addr`], and the amount must be greater than zero.
+    pub fn validate(&self, api: &dyn Api) -> Result<(), VaultError> {
+        if self.amount.is_zero() {
+            return Err(VaultError::zero("Amount cannot be zero"));
+        }
+
+        api.addr_validate(self.controller.as_str())?;
+        api.addr_validate(self.owner.as_str())?;
         Ok(())
     }
 }
@@ -78,13 +107,34 @@ impl RecipientAmount {
 
 /// This struct is used to represent a recipient for RedeemWithdrawalTo.
 #[cw_serde]
-pub struct Recipient(pub Addr);
+pub struct RedeemWithdrawalToParams {
+    pub controller: Addr,
+    pub recipient: Addr,
+}
 
-impl Recipient {
-    /// Validate the recipient: [`Addr`] field.
+impl RedeemWithdrawalToParams {
     /// The recipient must be a valid [`Addr`].
+    /// The controller must be a valid [`Addr`].
     pub fn validate(&self, api: &dyn Api) -> Result<(), VaultError> {
-        api.addr_validate(self.0.as_str())?;
+        api.addr_validate(self.controller.as_str())?;
+        api.addr_validate(self.recipient.as_str())?;
+        Ok(())
+    }
+}
+
+#[cw_serde]
+pub struct SetApproveProxyParams {
+    /// The proxy address that is being approved.
+    pub proxy: Addr,
+    /// whether the proxy is approved or not.
+    pub approve: bool,
+}
+
+impl SetApproveProxyParams {
+    /// Validate the proxy: [`Addr`] field.
+    /// The proxy must be a valid [`Addr`].
+    pub fn validate(&self, api: &dyn Api) -> Result<(), VaultError> {
+        api.addr_validate(self.proxy.as_str())?;
         Ok(())
     }
 }
@@ -118,7 +168,7 @@ pub enum VaultQueryMsg {
 
     /// QueryMsg QueuedWithdrawal: get the queued withdrawal and unlock timestamp under vault.
     #[returns(QueuedWithdrawalResponse)]
-    QueuedWithdrawal { staker: String },
+    QueuedWithdrawal { controller: String },
 
     /// QueryMsg VaultInfo: get the vault information.
     #[returns(VaultInfoResponse)]
