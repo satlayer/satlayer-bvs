@@ -451,13 +451,12 @@ mod vault_execute {
         info: MessageInfo,
         msg: SetApproveProxyParams,
     ) -> Result<Response, ContractError> {
-        let proxy = deps.api.addr_validate(msg.proxy.as_str())?;
-        proxy::set_approved_proxy(deps.storage, &info.sender, &proxy, &msg.approve)?;
+        proxy::set_approved_proxy(deps.storage, &info.sender, &msg.proxy, &msg.approve)?;
 
         Ok(Response::new().add_event(
             Event::new("SetApproveProxy")
                 .add_attribute("owner", info.sender.to_string())
-                .add_attribute("proxy", proxy.to_string())
+                .add_attribute("proxy", msg.proxy.to_string())
                 .add_attribute("approved", msg.approve.to_string()),
         ))
     }
