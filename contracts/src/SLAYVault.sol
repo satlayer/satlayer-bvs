@@ -190,6 +190,11 @@ contract SLAYVault is
             _spendAllowance(owner, _msgSender(), shares);
         }
 
+        // if the controller is not the sender, check that the controller has msg.sender set as the operator
+        if (controller != _msgSender() && !_isOperator[controller][_msgSender()]) {
+            revert NotControllerOrOperator();
+        }
+
         RedeemRequestStruct storage pendingRedemptionRequest = _pendingRedemption[controller];
 
         // increment the shares in the pending redemption request
