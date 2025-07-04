@@ -209,7 +209,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     /// @inheritdoc ISLAYRegistry
     function getRegistrationStatus(address service, address operator) public view returns (RegistrationStatus) {
         bytes32 key = ServiceOperatorKey._getKey(service, operator);
-        return RegistrationStatus(uint8(_registrationStatus[key].latest()));
+        return RegistrationStatus(_registrationStatus[key].latest());
     }
 
     /// @inheritdoc ISLAYRegistry
@@ -219,7 +219,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         returns (RegistrationStatus)
     {
         bytes32 key = ServiceOperatorKey._getKey(service, operator);
-        return RegistrationStatus(uint8(_registrationStatus[key].upperLookup(timestamp)));
+        return RegistrationStatus(_registrationStatus[key].upperLookup(timestamp));
     }
 
     /**
@@ -230,7 +230,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     function _getRegistrationStatus(bytes32 key) internal view returns (RegistrationStatus) {
         // The method `checkpoint.latest()` returns 0 on empty checkpoint,
         // RegistrationStatus.Inactive being 0 as desired.
-        return RegistrationStatus(uint8(_registrationStatus[key].latest()));
+        return RegistrationStatus(_registrationStatus[key].latest());
     }
 
     /**
@@ -239,7 +239,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * @param status RegistrationStatus to set for the service-operator pair.
      */
     function _updateRegistrationStatus(bytes32 key, RegistrationStatus status) internal {
-        _registrationStatus[key].push(uint32(block.timestamp), uint224(uint8(status)));
+        _registrationStatus[key].push(uint32(block.timestamp), uint224(status));
     }
 
     /// @inheritdoc ISLAYRegistry
