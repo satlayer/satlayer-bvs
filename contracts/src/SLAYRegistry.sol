@@ -351,30 +351,30 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         // if the status is active, increment the relationships count for both service and operator.
         // If the status is inactive, decrement the relationships count for both service and operator.
         if (obj.status == Relationship.Status.Active) {
-            uint8 operatorCount = _operatorRelationshipsCount[operator];
-            if (operatorCount >= Relationship.MAX_ACTIVE_RELATIONSHIPS()) {
+            Operator storage operator = _operators[operator];
+            if (operator.activeServicesCount >= Relationship.MAX_ACTIVE_RELATIONSHIPS()) {
                 revert ISLAYRegistry.OperatorRelationshipsExceeded();
             }
-            uint8 serviceCount = _serviceRelationshipsCount[service];
-            if (serviceCount >= Relationship.MAX_ACTIVE_RELATIONSHIPS()) {
+            Service storage service = _services[service];
+            if (service.activeOperatorsCount >= Relationship.MAX_ACTIVE_RELATIONSHIPS()) {
                 revert ISLAYRegistry.ServiceRelationshipsExceeded();
             }
 
             // using unchecked for gas optimization as we already checked the counts above.
             unchecked {
-                _operatorRelationshipsCount[operator] = operatorCount + 1;
-                _serviceRelationshipsCount[service] = serviceCount + 1;
+                operator.activeServicesCount++;
+                service.activeOperatorsCount++;
             }
         } else if (obj.status == Relationship.Status.Inactive) {
-            uint8 operatorCount = _operatorRelationshipsCount[operator];
-            uint8 serviceCount = _serviceRelationshipsCount[service];
+            Operator storage operator = _operators[operator];
+            Service storage service = _services[service];
 
             unchecked {
-                if (operatorCount != 0) {
-                    _operatorRelationshipsCount[operator] = operatorCount - 1;
+                if (operator.activeServicesCount != 0) {
+                    operator.activeServicesCount--;
                 }
-                if (serviceCount != 0) {
-                    _serviceRelationshipsCount[service] = serviceCount - 1;
+                if (service.activeOperatorsCount != 0) {
+                    service.activeOperatorsCount--;
                 }
             }
         }

@@ -10,11 +10,15 @@ interface ISLAYRegistry {
         /// @dev Id of the slash parameter for the service. Stored in {_slashParameters} array.
         /// If slashing is disabled, this will be 0.
         uint32 slashParameterId;
+        /// @dev The number of operators actively registered to this service.
+        uint8 activeOperatorsCount;
     }
 
     struct Operator {
         /// @dev Whether the operator is registered.
         bool registered;
+        /// @dev The number of services actively registered to this operator.
+        uint8 activeServicesCount;
     }
 
     /**
