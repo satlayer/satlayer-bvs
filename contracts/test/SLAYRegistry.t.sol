@@ -129,7 +129,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         // Step 1: Service registers operator
         vm.prank(service);
         vm.expectEmit();
-        emit ISLAYRegistry.RelationshipUpdated(service, operator, Relationship.Status.ServiceRegistered);
+        emit ISLAYRegistry.RelationshipUpdated(service, operator, Relationship.Status.ServiceRegistered, 0);
         registry.registerOperatorToService(operator);
 
         assertEq(
@@ -141,7 +141,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         // Step 2: Operator accept and register to the service
         vm.prank(operator);
         vm.expectEmit();
-        emit ISLAYRegistry.RelationshipUpdated(service, operator, Relationship.Status.Active);
+        emit ISLAYRegistry.RelationshipUpdated(service, operator, Relationship.Status.Active, 0);
         registry.registerServiceToOperator(service);
         assertEq(
             uint256(registry.getRelationshipStatus(service, operator)),
@@ -166,7 +166,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         // Step 1: Operator registers service
         vm.prank(operator);
         vm.expectEmit();
-        emit ISLAYRegistry.RelationshipUpdated(service, operator, Relationship.Status.OperatorRegistered);
+        emit ISLAYRegistry.RelationshipUpdated(service, operator, Relationship.Status.OperatorRegistered, 0);
         registry.registerServiceToOperator(service);
 
         assertEq(
@@ -178,7 +178,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         // Step 2: Service accept and register operator
         vm.prank(service);
         vm.expectEmit();
-        emit ISLAYRegistry.RelationshipUpdated(service, operator, Relationship.Status.Active);
+        emit ISLAYRegistry.RelationshipUpdated(service, operator, Relationship.Status.Active, 0);
         registry.registerOperatorToService(operator);
 
         assertEq(
@@ -213,7 +213,7 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(service);
         vm.expectEmit();
-        emit ISLAYRegistry.RelationshipUpdated(service, operator, Relationship.Status.Inactive);
+        emit ISLAYRegistry.RelationshipUpdated(service, operator, Relationship.Status.Inactive, 0);
         registry.deregisterOperatorFromService(operator);
 
         assertEq(
@@ -228,7 +228,7 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(operator);
         vm.expectEmit();
-        emit ISLAYRegistry.RelationshipUpdated(service, operator, Relationship.Status.Inactive);
+        emit ISLAYRegistry.RelationshipUpdated(service, operator, Relationship.Status.Inactive, 0);
         registry.deregisterServiceFromOperator(service);
 
         assertEq(
@@ -438,7 +438,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         registry.setWithdrawalDelay(0);
     }
 
-    function test_enableSlashing() public {
+    function test_service_enableSlashing() public {
         vm.prank(service);
         registry.registerAsService("service.com", "Service A");
 
@@ -458,7 +458,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         assertEq(param.resolutionWindow, 3600);
     }
 
-    function test_enableSlashing_notService() public {
+    function test_service_enableSlashing_notService() public {
         address notService = vm.randomAddress();
         vm.prank(notService);
         vm.expectRevert(abi.encodeWithSelector(ISLAYRegistry.ServiceNotFound.selector, notService));
@@ -468,7 +468,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         );
     }
 
-    function test_enableSlashing_revert_conditions() public {
+    function test_service_enableSlashing_revert_conditions() public {
         vm.startPrank(service);
 
         registry.registerAsService("service.com", "Service A");
@@ -500,5 +500,25 @@ contract SLAYRegistryTest is Test, TestSuite {
                 resolutionWindow: 100000
             })
         );
+    }
+
+    function test_enableSlashing_lifecycle() public {
+        vm.prank(operator);
+        registry.registerAsOperator("operator.com", "Operator X");
+
+        vm.startPrank(service);
+        registry.registerAsService("service.com", "Service A");
+        registry.enableSlashing(
+            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
+        );
+        registry.registerOperatorToService(operator);
+        vm.stopPrank();
+
+        vm.prank(operator);
+        registry.registerServiceToOperator(service);
+
+        vm.prank(operator);
+        // TODO(fuxingloh): check emit
+        registry.enableSlashing(service);
     }
 }

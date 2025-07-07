@@ -29,7 +29,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     /// @dev mapping of registered operators.
     mapping(address account => Operator) private _operators;
 
-    /// @dev Slash parameters for services created by the service when {enableSlashing()} is enabled.
+    /// @dev Slash parameters for services created by the service when {enableSlashing(SlashParameter)} is enabled.
     SlashParameter[] private _slashParameters;
 
     /**
@@ -168,8 +168,9 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
             revert("Already inactive");
         }
 
-        obj.status = Relationship.Status.Inactive;
-        _updateRelationshipObject(service, operator, obj);
+        _updateRelationshipObject(
+            service, operator, Relationship.Object({status: Relationship.Status.Inactive, slashParameterId: 0})
+        );
     }
 
     /// @inheritdoc ISLAYRegistry
@@ -201,8 +202,9 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
             revert("Already inactive");
         }
 
-        obj.status = Relationship.Status.Inactive;
-        _updateRelationshipObject(service, operator, obj);
+        _updateRelationshipObject(
+            service, operator, Relationship.Object({status: Relationship.Status.Inactive, slashParameterId: 0})
+        );
     }
 
     /// @inheritdoc ISLAYRegistry
@@ -271,6 +273,20 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     }
 
     /// @inheritdoc ISLAYRegistry
+    function enableSlashing(address service) external onlyOperator(_msgSender()) whenNotPaused {
+        Service storage serviceOpts = _services[service];
+        require(serviceOpts.registered, "Service not registered");
+        require(serviceOpts.slashParameterId != 0, "Slashing not enabled");
+
+        address operator = _msgSender();
+        Relationship.Object memory obj = _getRelationshipObject(service, operator);
+        require(obj.status == Relationship.Status.Active, "Relationship not active");
+        obj.slashParameterId = serviceOpts.slashParameterId;
+
+        _updateRelationshipObject(service, operator, obj);
+    }
+
+    /// @inheritdoc ISLAYRegistry
     function getSlashParameter(address service) external view returns (SlashParameter memory) {
         uint32 slashParameterId = _services[service].slashParameterId;
         require(slashParameterId > 0, "Slashing not enabled");
@@ -332,7 +348,6 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     {
         bytes32 key = Relationship.getKey(service, operator);
         Relationship.push(_relationships[key], uint32(block.timestamp), obj);
-        // TODO: to be updated to emit more information when obj is updated.
-        emit RelationshipUpdated(service, operator, obj.status);
+        emit RelationshipUpdated(service, operator, obj.status, obj.slashParameterId);
     }
 }
