@@ -240,6 +240,13 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         _unpause();
     }
 
+    /**
+     * @dev Retrieves the relationship object for a given service-operator pair at a specific timestamp.
+     * @param service The address of the service.
+     * @param operator The address of the operator.
+     * @param timestamp The timestamp at which to retrieve the relationship status.
+     * @return Relationship.Object The relationship object containing status and other details at the specified timestamp.
+     */
     function _getRelationshipObjectAt(address service, address operator, uint32 timestamp)
         internal
         view
@@ -249,6 +256,12 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         return Relationship.upperLookup(_relationships[key], timestamp);
     }
 
+    /**
+     * @dev Retrieves the latest relationship object for a given service-operator pair.
+     * @param service The address of the service.
+     * @param operator The address of the operator.
+     * @return Relationship.Object The latest relationship object containing status and other details.
+     */
     function _getRelationshipObject(address service, address operator)
         internal
         view

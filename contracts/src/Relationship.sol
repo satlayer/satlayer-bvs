@@ -3,6 +3,13 @@ pragma solidity ^0.8.0;
 
 import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol";
 
+/**
+ * @title Relationship of Service and Operator
+ * @dev This library manages the relationship between a service and an operator,
+ * including their registration status.
+ * Relationships are tracked using a checkpoint system,
+ * allowing for efficient querying of the relationship status at different points in time.
+ */
 library Relationship {
     /**
      * @dev Enum representing the registration status between a service and an operator.
