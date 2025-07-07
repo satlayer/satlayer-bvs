@@ -45,6 +45,11 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     /// @dev Default delay for operator's vault withdrawals if not set.
     uint32 public constant DEFAULT_WITHDRAWAL_DELAY = 7 days;
 
+    /**
+     * @dev Initializes SLAYRegistry contract.
+     * Set up slash parameters array to allow the first service to register with a valid ID.
+     * As `0` is considered as "no slashing enabled" and is used to disable slashing.
+     */
     function initialize() public reinitializer(2) {
         // Push an empty slash parameter to the array to ensure that the first service can register with a valid ID.
         _slashParameters.push();
