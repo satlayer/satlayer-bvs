@@ -49,6 +49,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * @dev Initializes SLAYRegistry contract.
      * Set up slash parameters array to allow the first service to register with a valid ID.
      * As `0` is considered as "no slashing enabled" and is used to disable slashing.
+     * Instead of using offset, this is cleaner and less prone to errors.
      */
     function initialize() public reinitializer(2) {
         // Push an empty slash parameter to the array to ensure that the first service can register with a valid ID.
@@ -264,7 +265,8 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     function disableSlashing() external onlyService(_msgSender()) whenNotPaused {
         address account = _msgSender();
         Service storage service = _services[account];
-        service.slashParameterId = 0; // Resetting the slash parameter ID to disable slashing.
+        // 0 is used to indicate that slashing is disabled.
+        service.slashParameterId = 0;
         emit SlashParameterUpdated(account, address(0), 0, 0);
     }
 

@@ -238,7 +238,7 @@ interface ISLAYRegistry {
     function disableSlashing() external;
 
     /**
-     * @dev Get the slash parameters for a given service.
+     * @dev Get the current slash parameters for a given service.
      * @param service The address of the service.
      * @return SlashParameter The slash parameters for the service.
      */
