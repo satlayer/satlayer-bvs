@@ -627,4 +627,72 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.prank(operator);
         registry.enableSlashing(service);
     }
+
+    function test_Fail_MaxActiveRelationships_ServiceRelationshipsExceeded() public {
+        // Register multiple operators
+        for (uint256 i = 0; i < 6; i++) {
+            address operatorAddr = vm.addr(i + 1);
+            vm.startPrank(operatorAddr);
+            registry.registerAsOperator("https://operator.com", string(abi.encodePacked("Operator ", i)));
+            vm.stopPrank();
+        }
+
+        // Register a service
+        vm.prank(service);
+        registry.registerAsService("https://service.com", "Service A");
+
+        // Register service to the 6 operators
+        for (uint256 i = 0; i < 6; i++) {
+            address operatorAddr = vm.addr(i + 1);
+            vm.prank(operatorAddr);
+            registry.registerServiceToOperator(service);
+        }
+
+        // Register 5 operators to the service (to get 5 ACTIVE)
+        for (uint256 i = 0; i < 5; i++) {
+            address operatorAddr = vm.addr(i + 1);
+            vm.prank(service);
+            registry.registerOperatorToService(operatorAddr);
+        }
+
+        // expect the 6th operator to fail registration
+        address sixthOperator = vm.addr(6);
+        vm.prank(service);
+        vm.expectRevert(ISLAYRegistry.ServiceRelationshipsExceeded.selector);
+        registry.registerOperatorToService(sixthOperator);
+    }
+
+    function test_Fail_MaxActiveRelationships_OperatorRelationshipsExceeded() public {
+        // Register multiple services
+        for (uint256 i = 0; i < 6; i++) {
+            address serviceAddr = vm.addr(i + 1);
+            vm.startPrank(serviceAddr);
+            registry.registerAsService("https://service.com", string(abi.encodePacked("Service ", i)));
+            vm.stopPrank();
+        }
+
+        // Register an operator
+        vm.prank(operator);
+        registry.registerAsOperator("https://operator.com", "Operator X");
+
+        // Register operator to the 6 services
+        for (uint256 i = 0; i < 6; i++) {
+            address serviceAddr = vm.addr(i + 1);
+            vm.prank(serviceAddr);
+            registry.registerOperatorToService(operator);
+        }
+
+        // Register 5 services to the operator (to get 5 ACTIVE)
+        for (uint256 i = 0; i < 5; i++) {
+            address serviceAddr = vm.addr(i + 1);
+            vm.prank(operator);
+            registry.registerServiceToOperator(serviceAddr);
+        }
+
+        // expect the 6th service to fail registration
+        address sixthService = vm.addr(6);
+        vm.prank(operator);
+        vm.expectRevert(ISLAYRegistry.OperatorRelationshipsExceeded.selector);
+        registry.registerServiceToOperator(sixthService);
+    }
 }

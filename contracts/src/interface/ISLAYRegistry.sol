@@ -52,6 +52,12 @@ interface ISLAYRegistry {
     /// @dev Account is not registered as a service.
     error ServiceNotFound(address account);
 
+    /// @dev the operator is already actively registered to max number of services.
+    error OperatorRelationshipsExceeded();
+
+    /// @dev the service is already actively registered to max number of operators.
+    error ServiceRelationshipsExceeded();
+
     /*//////////////////////////////////////////////////////////////
                                 EVENTS
     //////////////////////////////////////////////////////////////*/

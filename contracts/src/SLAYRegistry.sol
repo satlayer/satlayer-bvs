@@ -347,6 +347,38 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     {
         bytes32 key = Relationship.getKey(service, operator);
         Relationship.push(_relationships[key], uint32(block.timestamp), obj);
+
+        // if the status is active, increment the relationships count for both service and operator.
+        // If the status is inactive, decrement the relationships count for both service and operator.
+        if (obj.status == Relationship.Status.Active) {
+            uint8 operatorCount = _operatorRelationshipsCount[operator];
+            if (operatorCount >= Relationship.MAX_ACTIVE_RELATIONSHIPS()) {
+                revert ISLAYRegistry.OperatorRelationshipsExceeded();
+            }
+            uint8 serviceCount = _serviceRelationshipsCount[service];
+            if (serviceCount >= Relationship.MAX_ACTIVE_RELATIONSHIPS()) {
+                revert ISLAYRegistry.ServiceRelationshipsExceeded();
+            }
+
+            // using unchecked for gas optimization as we already checked the counts above.
+            unchecked {
+                _operatorRelationshipsCount[operator] = operatorCount + 1;
+                _serviceRelationshipsCount[service] = serviceCount + 1;
+            }
+        } else if (obj.status == Relationship.Status.Inactive) {
+            uint8 operatorCount = _operatorRelationshipsCount[operator];
+            uint8 serviceCount = _serviceRelationshipsCount[service];
+
+            unchecked {
+                if (operatorCount != 0) {
+                    _operatorRelationshipsCount[operator] = operatorCount - 1;
+                }
+                if (serviceCount != 0) {
+                    _serviceRelationshipsCount[service] = serviceCount - 1;
+                }
+            }
+        }
+
         emit RelationshipUpdated(service, operator, obj.status, obj.slashParameterId);
     }
 }
