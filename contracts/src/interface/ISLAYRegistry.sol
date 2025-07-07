@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
+import {Relationship} from "../Relationship.sol";
+
 interface ISLAYRegistry {
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
@@ -33,12 +35,12 @@ interface ISLAYRegistry {
     event MetadataUpdated(address indexed provider, string uri, string name);
 
     /**
-     * @dev Emitted when a service-operator registration status is updated.
+     * @dev Emitted when a service-operator relationship is updated.
      * @param service The address of the service.
      * @param operator The address of the operator.
-     * @param status The new registration status.
+     * @param status The updated relationship status.
      */
-    event RegistrationStatusUpdated(address indexed service, address indexed operator, RegistrationStatus status);
+    event RelationshipUpdated(address indexed service, address indexed operator, Relationship.Status status);
 
     /**
      * @dev Emitted when an operator updates the withdrawal delay.
@@ -46,38 +48,6 @@ interface ISLAYRegistry {
      * @param delay The new withdrawal delay in seconds.
      */
     event WithdrawalDelayUpdated(address indexed operator, uint32 delay);
-
-    /**
-     * @dev Enum representing the registration status between a service and an operator.
-     * The registration status can be one of the following:
-     */
-    enum RegistrationStatus {
-        /**
-         * Default state when neither the Operator nor the Service has registered,
-         * or when either the Operator or Service has unregistered.
-         * `uint8(0)` is used to represent this state, the default value.
-         */
-        Inactive,
-        /**
-         * State when both the Operator and Service have registered with each other,
-         * indicating a fully established relationship.
-         */
-        Active,
-        /**
-         * This state is used when the Operator has registered an Service,
-         * but the Service hasn't yet registered,
-         * indicating a pending registration from the Service side.
-         * This is Operator-initiated registration, waiting for Service to finalize.
-         */
-        OperatorRegistered,
-        /**
-         * This state is used when the Service has registered an Operator,
-         * but the Operator hasn't yet registered,
-         * indicating a pending registration from the Operator side.
-         * This is Service-initiated registration, waiting for Operator to finalize.
-         */
-        ServiceRegistered
-    }
 
     /*//////////////////////////////////////////////////////////////
                                 FUNCTIONS
@@ -123,8 +93,8 @@ interface ISLAYRegistry {
      *  - Service must be registered via {registerAsService}
      *  - Operator must be registered via {registerAsOperator}
      *
-     * If the operator has registered this service, the registration status will be set to `RegistrationStatus.Active`.
-     * Else the registration status will be set to `RegistrationStatus.ServiceRegistered`.
+     * If the operator has registered this service, the relationship status will be set to `Relationship.Status.Active`.
+     * Else the relationship status will be set to `Relationship.Status.ServiceRegistered`.
      */
     function registerOperatorToService(address operator) external;
 
@@ -142,8 +112,8 @@ interface ISLAYRegistry {
      *  - Service must be registered via {registerAsService}
      *  - Operator must be registered via {registerAsOperator}
      *
-     * If the service has registered this service, the registration status will be set to `RegistrationStatus.Active`.
-     * Else the registration status will be set to `RegistrationStatus.OperatorRegistered`.
+     * If the service has registered this service, the relationship status will be set to `Relationship.Status.Active`.
+     * Else the relationship status will be set to `Relationship.Status.OperatorRegistered`.
      */
     function registerServiceToOperator(address service) external;
 
@@ -157,21 +127,21 @@ interface ISLAYRegistry {
      * @dev Get the `RegistrationStatus` for a given service-operator pair at the latest checkpoint.
      * @param service The address of the service.
      * @param operator The address of the operator.
-     * @return RegistrationStatus The latest registration status for the service-operator pair.
+     * @return Relationship.Status The latest relationship status for the service-operator pair.
      */
-    function getRegistrationStatus(address service, address operator) external view returns (RegistrationStatus);
+    function getRelationshipStatus(address service, address operator) external view returns (Relationship.Status);
 
     /**
-     * @dev Get the `RegistrationStatus` for a given service-operator pair at a specific timestamp.
+     * @dev Get the `Relationship.Status` for a given service-operator pair at a specific timestamp.
      * @param service The address of the service.
      * @param operator The address of the operator.
-     * @param timestamp The timestamp to check the registration status at.
-     * @return RegistrationStatus The registration status at the specified timestamp.
+     * @param timestamp The timestamp to check the relationship status at.
+     * @return Relationship.Status The relationship status at the specified timestamp.
      */
-    function getRegistrationStatusAt(address service, address operator, uint32 timestamp)
+    function getRelationshipStatusAt(address service, address operator, uint32 timestamp)
         external
         view
-        returns (RegistrationStatus);
+        returns (Relationship.Status);
 
     /**
      * Check if an account is registered as a operator.

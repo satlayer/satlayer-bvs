@@ -41,47 +41,61 @@ library Relationship {
         uint32 slashingId;
     }
 
-    /// @inheritdoc Checkpoints
-    function push(Checkpoints.Trace224 storage self, uint32 timestamp, Object value) internal {
-        uint224 encoded = encode(value.status, value.slashingId);
+    /**
+     * @dev Hash the service and operator addresses to create a unique key for the `Relationship` map.
+     * @param service The address of the service.
+     * @param operator The address of the operator.
+     * @return bytes32 The unique key for the service-operator pair.
+     */
+    function getKey(address service, address operator) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(service, operator));
+    }
+
+    /// @dev see Checkpoints.push
+    function push(Checkpoints.Trace224 storage self, uint32 timestamp, Object memory obj) internal {
+        uint224 encoded = encode(obj.status, obj.slashingId);
         Checkpoints.push(self, timestamp, encoded);
     }
 
-    /// @inheritdoc Checkpoints
-    function lowerLookup(Checkpoints.Trace224 storage self, uint32 timestamp) internal view returns (uint224) {
+    /// @dev see Checkpoints.pushRecent
+    function lowerLookup(Checkpoints.Trace224 storage self, uint32 timestamp) internal view returns (Object memory) {
         uint224 encoded = Checkpoints.lowerLookup(self, timestamp);
         return decode(encoded);
     }
 
-    /// @inheritdoc Checkpoints
-    function upperLookup(Checkpoints.Trace224 storage self, uint32 timestamp) internal view returns (uint224) {
+    /// @dev see Checkpoints.lowerLookupRecent
+    function upperLookup(Checkpoints.Trace224 storage self, uint32 timestamp) internal view returns (Object memory) {
         uint224 encoded = Checkpoints.upperLookup(self, timestamp);
         return decode(encoded);
     }
 
-    /// @inheritdoc Checkpoints
-    function upperLookupRecent(Checkpoints.Trace224 storage self, uint32 timestamp) internal view returns (uint224) {
+    /// @dev see Checkpoints.lowerLookupRecent
+    function upperLookupRecent(Checkpoints.Trace224 storage self, uint32 timestamp)
+        internal
+        view
+        returns (Object memory)
+    {
         uint224 encoded = Checkpoints.upperLookupRecent(self, timestamp);
         return decode(encoded);
     }
 
-    /// @inheritdoc Checkpoints
+    /// @dev see Checkpoints.latest
     function latest(Checkpoints.Trace224 storage self) internal view returns (Object memory) {
         uint224 encoded = Checkpoints.latest(self);
         return decode(encoded);
     }
 
-    /// @inheritdoc Checkpoints
+    /// @dev see Checkpoints.latestCheckpoint
     function latestCheckpoint(Checkpoints.Trace224 storage self)
         internal
         view
-        returns (bool exists, uint32 timestamp, Object memory value)
+        returns (bool exists, uint32 timestamp, Object memory obj)
     {
         (bool exists, uint32 key, uint224 encoded) = Checkpoints.latestCheckpoint(self);
         return (exists, key, decode(encoded));
     }
 
-    /// @inheritdoc Checkpoints
+    /// @dev see Checkpoints.length
     function length(Checkpoints.Trace224 storage self) internal view returns (uint256) {
         return Checkpoints.length(self);
     }
