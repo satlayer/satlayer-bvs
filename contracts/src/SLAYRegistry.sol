@@ -8,6 +8,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol";
 
 import {SLAYRouter} from "./SLAYRouter.sol";
+import {Relationship} from "./Relationship.sol";
 import {ISLAYRegistry} from "./interface/ISLAYRegistry.sol";
 
 /**
@@ -37,7 +38,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * @dev Service <-> Operator registration is a two sided consensus.
      * This mean both service and operator has to register to pair with each other.
      */
-    mapping(bytes32 key => Checkpoints.Trace224) private _registrationStatus;
+    mapping(bytes32 key => Checkpoints.Trace224) private _relationships;
 
     /// @dev Default delay for operator's vault withdrawals if not set.
     uint32 public constant DEFAULT_WITHDRAWAL_DELAY = 7 days;
@@ -122,124 +123,87 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         onlyOperator(operator)
     {
         address service = _msgSender();
+        Relationship.Object memory obj = _getRelationshipObject(service, operator);
 
-        bytes32 key = ServiceOperatorKey._getKey(service, operator);
-        RegistrationStatus status = _getRegistrationStatus(key);
-
-        if (status == RegistrationStatus.Active) {
+        if (obj.status == Relationship.Status.Active) {
             revert("Already active");
-        } else if (status == RegistrationStatus.ServiceRegistered) {
+        } else if (obj.status == Relationship.Status.ServiceRegistered) {
             revert("Already initiated");
-        } else if (status == RegistrationStatus.Inactive) {
-            _updateRegistrationStatus(key, RegistrationStatus.ServiceRegistered);
-            emit RegistrationStatusUpdated(service, operator, RegistrationStatus.ServiceRegistered);
-        } else if (status == RegistrationStatus.OperatorRegistered) {
-            _updateRegistrationStatus(key, RegistrationStatus.Active);
-            emit RegistrationStatusUpdated(service, operator, RegistrationStatus.Active);
+        } else if (obj.status == Relationship.Status.Inactive) {
+            obj.status = Relationship.Status.ServiceRegistered;
+        } else if (obj.status == Relationship.Status.OperatorRegistered) {
+            obj.status = Relationship.Status.Active;
         } else {
             // Panic as this is not an expected state.
             revert("Invalid status");
         }
+        _updateRelationshipObject(service, operator, obj);
     }
 
     /// @inheritdoc ISLAYRegistry
     function deregisterOperatorFromService(address operator)
         external
-        whenNotPaused
         onlyService(_msgSender())
         onlyOperator(operator)
     {
         address service = _msgSender();
+        Relationship.Object memory obj = _getRelationshipObject(service, operator);
 
-        bytes32 key = ServiceOperatorKey._getKey(service, operator);
-        if (_getRegistrationStatus(key) == RegistrationStatus.Inactive) {
+        if (obj.status == Relationship.Status.Inactive) {
             revert("Already inactive");
         }
 
-        _updateRegistrationStatus(key, RegistrationStatus.Inactive);
-        emit RegistrationStatusUpdated(service, operator, RegistrationStatus.Inactive);
+        obj.status = Relationship.Status.Inactive;
+        _updateRelationshipObject(service, operator, obj);
     }
 
     /// @inheritdoc ISLAYRegistry
-    function registerServiceToOperator(address service)
-        external
-        whenNotPaused
-        onlyOperator(_msgSender())
-        onlyService(service)
-    {
+    function registerServiceToOperator(address service) external onlyOperator(_msgSender()) onlyService(service) {
         address operator = _msgSender();
+        Relationship.Object memory obj = _getRelationshipObject(service, operator);
 
-        bytes32 key = ServiceOperatorKey._getKey(service, operator);
-        RegistrationStatus status = _getRegistrationStatus(key);
-
-        if (status == RegistrationStatus.Active) {
+        if (obj.status == Relationship.Status.Active) {
             revert("Already active");
-        } else if (status == RegistrationStatus.OperatorRegistered) {
+        } else if (obj.status == Relationship.Status.OperatorRegistered) {
             revert("Already initiated");
-        } else if (status == RegistrationStatus.Inactive) {
-            _updateRegistrationStatus(key, RegistrationStatus.OperatorRegistered);
-            emit RegistrationStatusUpdated(service, operator, RegistrationStatus.OperatorRegistered);
-        } else if (status == RegistrationStatus.ServiceRegistered) {
-            _updateRegistrationStatus(key, RegistrationStatus.Active);
-            emit RegistrationStatusUpdated(service, operator, RegistrationStatus.Active);
+        } else if (obj.status == Relationship.Status.Inactive) {
+            obj.status = Relationship.Status.OperatorRegistered;
+        } else if (obj.status == Relationship.Status.ServiceRegistered) {
+            obj.status = Relationship.Status.Active;
         } else {
             // Panic as this is not an expected state.
             revert("Invalid status");
         }
+        _updateRelationshipObject(service, operator, obj);
     }
 
     /// @inheritdoc ISLAYRegistry
-    function deregisterServiceFromOperator(address service)
-        external
-        whenNotPaused
-        onlyOperator(_msgSender())
-        onlyService(service)
-    {
+    function deregisterServiceFromOperator(address service) external onlyOperator(_msgSender()) onlyService(service) {
         address operator = _msgSender();
+        Relationship.Object memory obj = _getRelationshipObject(service, operator);
 
-        bytes32 key = ServiceOperatorKey._getKey(service, operator);
-        if (_getRegistrationStatus(key) == RegistrationStatus.Inactive) {
+        if (obj.status == Relationship.Status.Inactive) {
             revert("Already inactive");
         }
 
-        _updateRegistrationStatus(key, RegistrationStatus.Inactive);
-        emit RegistrationStatusUpdated(service, operator, RegistrationStatus.Inactive);
+        obj.status = Relationship.Status.Inactive;
+        _updateRelationshipObject(service, operator, obj);
     }
 
     /// @inheritdoc ISLAYRegistry
-    function getRegistrationStatus(address service, address operator) public view returns (RegistrationStatus) {
-        bytes32 key = ServiceOperatorKey._getKey(service, operator);
-        return RegistrationStatus(uint8(_registrationStatus[key].latest()));
+    function getRelationshipStatus(address service, address operator) external view returns (Relationship.Status) {
+        Relationship.Object memory obj = _getRelationshipObject(service, operator);
+        return obj.status;
     }
 
     /// @inheritdoc ISLAYRegistry
-    function getRegistrationStatusAt(address service, address operator, uint32 timestamp)
-        public
+    function getRelationshipStatusAt(address service, address operator, uint32 timestamp)
+        external
         view
-        returns (RegistrationStatus)
+        returns (Relationship.Status)
     {
-        bytes32 key = ServiceOperatorKey._getKey(service, operator);
-        return RegistrationStatus(uint8(_registrationStatus[key].upperLookup(timestamp)));
-    }
-
-    /**
-     * @dev Get the `RegistrationStatus` for a given service-operator pair at the latest checkpoint.
-     * @param key The hash of the service and operator addresses. Use `ServiceOperator._getKey()` to generate the key.
-     * @return RegistrationStatus The latest registration status for the service-operator pair.
-     */
-    function _getRegistrationStatus(bytes32 key) internal view returns (RegistrationStatus) {
-        // The method `checkpoint.latest()` returns 0 on empty checkpoint,
-        // RegistrationStatus.Inactive being 0 as desired.
-        return RegistrationStatus(uint8(_registrationStatus[key].latest()));
-    }
-
-    /**
-     * @dev Set the registration status for a service-operator pair.
-     * @param key The hash of the service and operator addresses. Use `ServiceOperator._getKey()` to generate the key.
-     * @param status RegistrationStatus to set for the service-operator pair.
-     */
-    function _updateRegistrationStatus(bytes32 key, RegistrationStatus status) internal {
-        _registrationStatus[key].push(uint32(block.timestamp), uint224(uint8(status)));
+        Relationship.Object memory obj = _getRelationshipObjectAt(service, operator, timestamp);
+        return obj.status;
     }
 
     /// @inheritdoc ISLAYRegistry
@@ -275,16 +239,53 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     function unpause() external onlyOwner {
         _unpause();
     }
-}
 
-library ServiceOperatorKey {
     /**
-     * @dev Hash the service and operator addresses to create a unique key for the `registrationStatus` map.
+     * @dev Retrieves the relationship object for a given service-operator pair at a specific timestamp.
      * @param service The address of the service.
      * @param operator The address of the operator.
-     * @return bytes32 The unique key for the service-operator pair.
+     * @param timestamp The timestamp at which to retrieve the relationship status.
+     * @return Relationship.Object The relationship object containing status and other details at the specified timestamp.
      */
-    function _getKey(address service, address operator) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(service, operator));
+    function _getRelationshipObjectAt(address service, address operator, uint32 timestamp)
+        internal
+        view
+        returns (Relationship.Object memory)
+    {
+        bytes32 key = Relationship.getKey(service, operator);
+        return Relationship.upperLookup(_relationships[key], timestamp);
+    }
+
+    /**
+     * @dev Retrieves the latest relationship object for a given service-operator pair.
+     * @param service The address of the service.
+     * @param operator The address of the operator.
+     * @return Relationship.Object The latest relationship object containing status and other details.
+     */
+    function _getRelationshipObject(address service, address operator)
+        internal
+        view
+        returns (Relationship.Object memory)
+    {
+        bytes32 key = Relationship.getKey(service, operator);
+        return Relationship.latest(_relationships[key]);
+    }
+
+    /**
+     * @dev Updates the relationship status for a given service-operator pair.
+     * We require the {service} and {operator} addresses to be passed in as parameters,
+     * instead of using a pre-computed relationship {key} to emit the event and ensure proper usage of the function.
+     * @param service The address of the service.
+     * @param operator The address of the operator.
+     * @param obj The relationship object containing the new status and other details.
+     */
+    function _updateRelationshipObject(address service, address operator, Relationship.Object memory obj)
+        internal
+        whenNotPaused
+    {
+        bytes32 key = Relationship.getKey(service, operator);
+        Relationship.push(_relationships[key], uint32(block.timestamp), obj);
+        // TODO: to be updated to emit more information when obj is updated.
+        emit RelationshipUpdated(service, operator, obj.status);
     }
 }
