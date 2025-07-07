@@ -5,11 +5,41 @@ import {Relationship} from "../Relationship.sol";
 
 interface ISLAYRegistry {
     struct Service {
+        /// @dev Whether the service is registered.
         bool registered;
+        /// @dev Id of the slash parameter for the service. Stored in {_slashParameters} array.
+        /// If slashing is disabled, this will be 0.
+        uint32 slashParameterId;
     }
 
     struct Operator {
+        /// @dev Whether the operator is registered.
         bool registered;
+    }
+
+    /**
+     * @dev The Slash Parameter for particular service.
+     * This struct defines the parameters for slashing in the ecosystem.
+     */
+    struct SlashParameter {
+        /**
+         * The address at which the slash collateral from the vault
+         * will be moved to at the end of slashing lifecycle.
+         */
+        address destination;
+        /**
+         * The maximum amount that can be slash are represented in bips at milli unit (1000x smaller than bips).
+         * Between 0.00001% to 100%: 1 to 10,000,000.
+         * - 1 bips = 1000 mbips.
+         * - 1 mbips is 0.00001%
+         * - 10,000,000 mbips is 100%
+         */
+        uint24 maxMbips;
+        /**
+         * The time window in seconds at which operator can refute slash accusations.
+         * The exact mechanics are to be defined by the service.
+         */
+        uint32 resolutionWindow;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -56,6 +86,15 @@ interface ISLAYRegistry {
      * @param delay The new withdrawal delay in seconds.
      */
     event WithdrawalDelayUpdated(address indexed operator, uint32 delay);
+
+    /**
+     * @dev Emitted when {SlashParameter} for a service is updated.
+     * @param service The address of the service
+     * @param destination The address at which slash collateral will be moved.
+     * @param maxMbips The maximum slashable amount in mbips.
+     * @param resolutionWindow An operator's refutable period in seconds in the event of slash.
+     */
+    event SlashParameterUpdated(address indexed service, address destination, uint24 maxMbips, uint32 resolutionWindow);
 
     /*//////////////////////////////////////////////////////////////
                                 FUNCTIONS
@@ -178,4 +217,30 @@ interface ISLAYRegistry {
      * @return uint32 The withdrawal delay in seconds.
      */
     function getWithdrawalDelay(address operator) external view returns (uint32);
+
+    /**
+     * @dev For services to enable slashing by providing slash parameters {SlashParameter}.
+     * The {msg.sender} must be a registered service.
+     *
+     * @param parameter The slash parameters to be set for the service.
+     * @notice
+     * - The `destination` address is where the slash collateral will be moved to at the end of the slashing lifecycle.
+     * - The `maxMbips` is the maximum slashable amount represented in bips at milli unit.
+     * 1 Milli-Bip is 0.00001%, so at 100% the milli bip is 10,000,000.
+     * - The `resolutionWindow` is the time window in seconds at which an operator can refute slash accusations.
+     */
+    function enableSlashing(SlashParameter calldata parameter) external;
+
+    /**
+     * @dev For service to disable slashing.
+     * The {msg.sender} must be a registered service.
+     */
+    function disableSlashing() external;
+
+    /**
+     * @dev Get the current slash parameters for a given service.
+     * @param service The address of the service.
+     * @return SlashParameter The slash parameters for the service.
+     */
+    function getSlashParameter(address service) external view returns (SlashParameter memory);
 }
