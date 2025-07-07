@@ -77,8 +77,11 @@ interface ISLAYRegistry {
      * @param service The address of the service.
      * @param operator The address of the operator.
      * @param status The updated relationship status.
+     * @param slashParameterId The ID of the slash parameter if slashing is enabled, otherwise 0.
      */
-    event RelationshipUpdated(address indexed service, address indexed operator, Relationship.Status status);
+    event RelationshipUpdated(
+        address indexed service, address indexed operator, Relationship.Status status, uint32 slashParameterId
+    );
 
     /**
      * @dev Emitted when an operator updates the withdrawal delay.
@@ -236,6 +239,16 @@ interface ISLAYRegistry {
      * The {msg.sender} must be a registered service.
      */
     function disableSlashing() external;
+
+    /**
+     * @dev For operator to enable slashing for a service it's validating.
+     * - The {msg.sender} must be a registered operator.
+     * - The service it intends to enable slashing for must be registered and have slashing enabled.
+     * - The service and operator must have an active relationship.
+     *
+     * @param service The address of the service for which slashing is being enabled.
+     */
+    function enableSlashing(address service) external;
 
     /**
      * @dev Get the current slash parameters for a given service.

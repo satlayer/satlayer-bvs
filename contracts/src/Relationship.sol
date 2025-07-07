@@ -45,7 +45,7 @@ library Relationship {
 
     struct Object {
         Status status;
-        uint32 slashingId;
+        uint32 slashParameterId;
     }
 
     /**
@@ -60,7 +60,7 @@ library Relationship {
 
     /// @dev see Checkpoints.push
     function push(Checkpoints.Trace224 storage self, uint32 timestamp, Object memory obj) internal {
-        uint224 encoded = encode(obj.status, obj.slashingId);
+        uint224 encoded = encode(obj.status, obj.slashParameterId);
         Checkpoints.push(self, timestamp, encoded);
     }
 
@@ -107,16 +107,16 @@ library Relationship {
         return Checkpoints.length(self);
     }
 
-    function encode(Status status, uint32 slashingId) internal pure returns (uint224) {
+    function encode(Status status, uint32 slashParameterId) internal pure returns (uint224) {
         uint224 encoded = uint224(uint8(status));
-        encoded |= (uint224(slashingId) << 8);
+        encoded |= (uint224(slashParameterId) << 8);
         return encoded;
     }
 
     function decode(uint224 encoded) internal pure returns (Object memory) {
         Object memory obj;
         obj.status = Status(uint8(encoded));
-        obj.slashingId = uint32(encoded >> 8);
+        obj.slashParameterId = uint32(encoded >> 8);
         return obj;
     }
 }
