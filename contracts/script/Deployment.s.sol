@@ -50,6 +50,6 @@ contract DeploymentScript is Script {
 
         Core.validateUpgrade("SLAYRegistry.sol:SLAYRegistry", opts);
         address registryImpl = address(new SLAYRegistry(router));
-        UnsafeUpgrades.upgradeProxy(address(registry), registryImpl, "");
+        UnsafeUpgrades.upgradeProxy(address(registry), registryImpl, abi.encodeCall(SLAYRegistry.initialize, ()));
     }
 }
