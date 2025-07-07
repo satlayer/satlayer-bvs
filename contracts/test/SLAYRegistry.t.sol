@@ -458,6 +458,20 @@ contract SLAYRegistryTest is Test, TestSuite {
         assertEq(param.resolutionWindow, 3600);
     }
 
+    function test_service_enableSlashing_but_paused() public {
+        vm.prank(service);
+        registry.registerAsService("service.com", "Service A");
+
+        vm.prank(owner);
+        registry.pause();
+
+        vm.prank(service);
+        vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+        registry.enableSlashing(
+            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 10000, resolutionWindow: 100000})
+        );
+    }
+
     function test_service_enableSlashing_notService() public {
         address notService = vm.randomAddress();
         vm.prank(notService);
@@ -518,7 +532,82 @@ contract SLAYRegistryTest is Test, TestSuite {
         registry.registerServiceToOperator(service);
 
         vm.prank(operator);
-        // TODO(fuxingloh): check emit
+        vm.expectEmit();
+        emit ISLAYRegistry.RelationshipUpdated(service, operator, Relationship.Status.Active, 1);
+        registry.enableSlashing(service);
+    }
+
+    function test_enableSlashing_lifecycle_notOperator() public {
+        vm.prank(service);
+        registry.registerAsService("service.com", "Service A");
+
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistry.OperatorNotFound.selector, address(this)));
+        registry.enableSlashing(service);
+    }
+
+    function test_enableSlashing_lifecycle_noRelationship() public {
+        vm.prank(operator);
+        registry.registerAsOperator("operator.com", "Operator X");
+
+        address someone = vm.randomAddress();
+        vm.prank(operator);
+        vm.expectRevert("Relationship not active");
+        registry.enableSlashing(someone);
+    }
+
+    function test_enableSlashing_lifecycle_but_paused() public {
+        vm.prank(operator);
+        registry.registerAsOperator("operator.com", "Operator X");
+
+        vm.prank(service);
+        registry.registerAsService("service.com", "Service A");
+
+        vm.prank(owner);
+        registry.pause();
+
+        vm.prank(operator);
+        vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+        registry.enableSlashing(service);
+    }
+
+    function test_enableSlashing_lifecycle_slashing_notEnabled() public {
+        vm.prank(operator);
+        registry.registerAsOperator("operator.com", "Operator X");
+
+        vm.startPrank(service);
+        registry.registerAsService("service.com", "Service A");
+        registry.registerOperatorToService(operator);
+        vm.stopPrank();
+
+        vm.prank(operator);
+        registry.registerServiceToOperator(service);
+
+        vm.prank(operator);
+        vm.expectRevert("Slashing not enabled");
+        registry.enableSlashing(service);
+    }
+
+    function test_enableSlashing_lifecycle_noChange() public {
+        vm.prank(operator);
+        registry.registerAsOperator("operator.com", "Operator X");
+
+        vm.startPrank(service);
+        registry.registerAsService("service.com", "Service A");
+        registry.enableSlashing(
+            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
+        );
+        registry.registerOperatorToService(operator);
+        vm.stopPrank();
+
+        vm.prank(operator);
+        registry.registerServiceToOperator(service);
+
+        vm.prank(operator);
+        registry.enableSlashing(service);
+
+        // No change in slashing parameters
+        vm.expectRevert("Same slashing parameters");
+        vm.prank(operator);
         registry.enableSlashing(service);
     }
 }
