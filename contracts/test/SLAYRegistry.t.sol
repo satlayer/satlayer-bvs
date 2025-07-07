@@ -545,7 +545,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         registry.enableSlashing(service);
     }
 
-    function test_enableSlashing_lifecycle_noRelationship() public {
+    function test_enableSlashing_lifecycle_relationship_not_active_1() public {
         vm.prank(operator);
         registry.registerAsOperator("operator.com", "Operator X");
 
@@ -553,6 +553,23 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.prank(operator);
         vm.expectRevert("Relationship not active");
         registry.enableSlashing(someone);
+    }
+
+    function test_enableSlashing_lifecycle_relationship_not_active_2() public {
+        vm.prank(operator);
+        registry.registerAsOperator("operator.com", "Operator X");
+
+        vm.startPrank(service);
+        registry.registerAsService("service.com", "Service A");
+        registry.enableSlashing(
+            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
+        );
+        registry.registerOperatorToService(operator);
+        vm.stopPrank();
+
+        vm.prank(operator);
+        vm.expectRevert("Relationship not active");
+        registry.enableSlashing(service);
     }
 
     function test_enableSlashing_lifecycle_but_paused() public {
