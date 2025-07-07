@@ -26,12 +26,13 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     SLAYRouter public immutable router;
 
     /// @dev mapping of registered services.
-    mapping(address service => bool) private _services;
+    mapping(address account => Service) private _services;
 
     /// @dev mapping of registered operators.
-    mapping(address operator => bool) private _operators;
+    mapping(address account => Operator) private _operators;
 
     /// @dev mapping of withdrawal delays for all of operator's vault.
+    /// TODO(k): move to Operator struct?
     mapping(address operator => uint32) private _withdrawalDelay;
 
     /**
@@ -48,7 +49,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * Reverts with `ServiceNotFound` if the account is not registered as a service.
      */
     modifier onlyService(address account) {
-        if (!_services[account]) {
+        if (!_services[account].registered) {
             revert ServiceNotFound(account);
         }
         _;
@@ -59,7 +60,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * Reverts with `OperatorNotFound` if the account is not registered as an operator.
      */
     modifier onlyOperator(address account) {
-        if (!_operators[account]) {
+        if (!_operators[account].registered) {
             revert OperatorNotFound(account);
         }
         _;
@@ -89,28 +90,30 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
 
     /// @inheritdoc ISLAYRegistry
     function registerAsService(string memory uri, string memory name) external whenNotPaused {
-        address service = _msgSender();
+        address account = _msgSender();
+        Service storage service = _services[account];
 
-        require(!_services[service], "Already registered");
-        _services[service] = true;
-        emit ServiceRegistered(service);
-        emit MetadataUpdated(service, uri, name);
+        require(!service.registered, "Already registered");
+        service.registered = true;
+        emit ServiceRegistered(account);
+        emit MetadataUpdated(account, uri, name);
     }
 
     /// @inheritdoc ISLAYRegistry
     function registerAsOperator(string memory uri, string memory name) external whenNotPaused {
-        address operator = _msgSender();
+        address account = _msgSender();
+        Operator storage operator = _operators[account];
 
-        require(!_operators[operator], "Already registered");
-        _operators[operator] = true;
-        emit OperatorRegistered(operator);
-        emit MetadataUpdated(operator, uri, name);
+        require(!operator.registered, "Already registered");
+        operator.registered = true;
+        emit OperatorRegistered(account);
+        emit MetadataUpdated(account, uri, name);
     }
 
     /// @inheritdoc ISLAYRegistry
     function updateMetadata(string memory uri, string memory name) external whenNotPaused {
         address provider = _msgSender();
-        require(_services[provider] || _operators[provider], "Not registered");
+        require(_services[provider].registered || _operators[provider].registered, "Not registered");
 
         emit MetadataUpdated(provider, uri, name);
     }
@@ -208,12 +211,12 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
 
     /// @inheritdoc ISLAYRegistry
     function isOperator(address account) external view returns (bool) {
-        return _operators[account];
+        return _operators[account].registered;
     }
 
     /// @inheritdoc ISLAYRegistry
     function isService(address account) external view returns (bool) {
-        return _services[account];
+        return _services[account].registered;
     }
 
     /// @inheritdoc ISLAYRegistry

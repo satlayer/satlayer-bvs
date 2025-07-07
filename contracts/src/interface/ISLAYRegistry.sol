@@ -4,6 +4,14 @@ pragma solidity ^0.8.0;
 import {Relationship} from "../Relationship.sol";
 
 interface ISLAYRegistry {
+    struct Service {
+        bool registered;
+    }
+
+    struct Operator {
+        bool registered;
+    }
+
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
     //////////////////////////////////////////////////////////////*/
