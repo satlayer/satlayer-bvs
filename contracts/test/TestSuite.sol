@@ -37,7 +37,9 @@ contract TestSuite is Test {
 
         vm.startPrank(owner);
         UnsafeUpgrades.upgradeProxy(address(router), address(new SLAYRouter(registry)), "");
-        UnsafeUpgrades.upgradeProxy(address(registry), address(new SLAYRegistry(router)), "");
+        UnsafeUpgrades.upgradeProxy(
+            address(registry), address(new SLAYRegistry(router)), abi.encodeCall(SLAYRegistry.initialize, ())
+        );
         vm.stopPrank();
     }
 }

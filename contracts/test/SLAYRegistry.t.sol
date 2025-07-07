@@ -437,4 +437,68 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.expectRevert("Delay must be at least more than or equal to 7 days");
         registry.setWithdrawalDelay(0);
     }
+
+    function test_enableSlashing() public {
+        vm.prank(service);
+        registry.registerAsService("service.com", "Service A");
+
+        address destination = vm.randomAddress();
+
+        vm.prank(service);
+        vm.expectEmit();
+        emit ISLAYRegistry.SlashParameterUpdated(service, destination, 100_000, 3600);
+        registry.enableSlashing(
+            ISLAYRegistry.SlashParameter({destination: destination, maxMbips: 100000, resolutionWindow: 3600})
+        );
+
+        ISLAYRegistry.SlashParameter memory param = registry.getSlashParameter(service);
+
+        assertEq(param.destination, destination);
+        assertEq(param.maxMbips, 100_000);
+        assertEq(param.resolutionWindow, 3600);
+    }
+
+    function test_enableSlashing_notService() public {
+        address notService = vm.randomAddress();
+        vm.prank(notService);
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistry.ServiceNotFound.selector, notService));
+
+        registry.enableSlashing(
+            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 10000, resolutionWindow: 100000})
+        );
+    }
+
+    function test_enableSlashing_revert_conditions() public {
+        vm.startPrank(service);
+
+        registry.registerAsService("service.com", "Service A");
+
+        vm.expectRevert("destination!=0");
+        registry.enableSlashing(
+            ISLAYRegistry.SlashParameter({destination: address(0), maxMbips: 10000, resolutionWindow: 100000})
+        );
+
+        vm.expectRevert("maxMbips!=0");
+        registry.enableSlashing(
+            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 0, resolutionWindow: 100000})
+        );
+
+        vm.expectRevert("maxMbips!=>10000000");
+        registry.enableSlashing(
+            ISLAYRegistry.SlashParameter({
+                destination: vm.randomAddress(),
+                maxMbips: 10_000_001,
+                resolutionWindow: 100000
+            })
+        );
+
+        vm.expectRevert("maxMbips!=>10000000");
+        registry.enableSlashing(
+            ISLAYRegistry.SlashParameter({
+                destination: vm.randomAddress(),
+                maxMbips: 15_000_000,
+                resolutionWindow: 100000
+            })
+        );
+    }
 }

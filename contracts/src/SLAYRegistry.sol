@@ -20,8 +20,6 @@ import {ISLAYRegistry} from "./interface/ISLAYRegistry.sol";
  * @custom:oz-upgrades-from src/InitialImpl.sol:InitialImpl
  */
 contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
-    using Checkpoints for Checkpoints.Trace224;
-
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     SLAYRouter public immutable router;
 
@@ -31,9 +29,8 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     /// @dev mapping of registered operators.
     mapping(address account => Operator) private _operators;
 
-    /// @dev mapping of withdrawal delays for all of operator's vault.
-    /// TODO(k): move to Operator struct?
-    mapping(address operator => uint32) private _withdrawalDelay;
+    /// @dev Slash parameters for services created by the service when {enableSlashing()} is enabled.
+    SlashParameter[] private _slashParameters;
 
     /**
      * @dev Service <-> Operator registration is a two sided consensus.
@@ -41,8 +38,17 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      */
     mapping(bytes32 key => Checkpoints.Trace224) private _relationships;
 
+    /// @dev mapping of withdrawal delays for all of operator's vault.
+    /// TODO(k): move to within Operator struct?
+    mapping(address operator => uint32) private _withdrawalDelay;
+
     /// @dev Default delay for operator's vault withdrawals if not set.
     uint32 public constant DEFAULT_WITHDRAWAL_DELAY = 7 days;
+
+    function initialize() public reinitializer(2) {
+        // Push an empty slash parameter to the array to ensure that the first service can register with a valid ID.
+        _slashParameters.push();
+    }
 
     /**
      * @dev Modifier to check if the provided account is a registered service.
@@ -231,6 +237,37 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         // If the delay is not set, return the default delay.
         uint32 delay = _withdrawalDelay[operator];
         return delay == 0 ? DEFAULT_WITHDRAWAL_DELAY : delay;
+    }
+
+    /// @inheritdoc ISLAYRegistry
+    function enableSlashing(SlashParameter calldata parameter) external onlyService(_msgSender()) whenNotPaused {
+        require(parameter.destination != address(0), "destination!=0");
+        require(parameter.maxMbips <= 10_000_000, "maxMbips!=>10000000");
+        require(parameter.maxMbips > 0, "maxMbips!=0");
+
+        uint256 length = _slashParameters.length;
+        require(length <= type(uint32).max, "Overflow");
+        _slashParameters.push(parameter);
+
+        address account = _msgSender();
+        Service storage service = _services[account];
+        service.slashParameterId = uint32(length);
+        emit SlashParameterUpdated(account, parameter.destination, parameter.maxMbips, parameter.resolutionWindow);
+    }
+
+    /// @inheritdoc ISLAYRegistry
+    function disableSlashing() external onlyService(_msgSender()) whenNotPaused {
+        address account = _msgSender();
+        Service storage service = _services[account];
+        service.slashParameterId = 0; // Resetting the slash parameter ID to disable slashing.
+        emit SlashParameterUpdated(account, address(0), 0, 0);
+    }
+
+    /// @inheritdoc ISLAYRegistry
+    function getSlashParameter(address service) external view returns (SlashParameter memory) {
+        uint32 slashParameterId = _services[service].slashParameterId;
+        require(slashParameterId > 0, "Slashing not enabled");
+        return _slashParameters[slashParameterId];
     }
 
     /// @dev Pauses the contract.
