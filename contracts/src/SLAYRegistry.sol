@@ -422,7 +422,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     function setMinWithdrawalDelay(uint32 delay) external whenNotPaused onlyService(_msgSender()) {
         require(delay > 0, "Delay must be more than 0");
 
-        // checks for each of its active operators if their withdrawal delay is less than the new minimum delay.this
+        // checks for each of its active operators if their withdrawal delay is less than the new minimum delay
         EnumerableSet.AddressSet storage activeOperators = _servicesActiveRelationships[_msgSender()];
         uint256 activeOperatorsCount = activeOperators.length();
         for (uint256 i = 0; i < activeOperatorsCount;) {
@@ -437,7 +437,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
             }
         }
 
-        // If all checks pass, set the new minimum delay for the service.
+        // If all checks pass, set the new minimum delay for the service
         _services[_msgSender()].minWithdrawalDelay = delay;
 
         emit MinWithdrawalDelayUpdated(_msgSender(), delay);
