@@ -825,4 +825,171 @@ contract SLAYRegistryTest is Test, TestSuite {
         assert(history3.maxMbips == 100);
         assert(history3.resolutionWindow == 36);
     }
+
+    function test_service_setMinWithdrawalDelay() public {
+        // register service
+        vm.prank(service);
+        registry.registerAsService("service.com", "Service A");
+
+        // register operator
+        vm.prank(operator);
+        registry.registerAsOperator("https://operator.com", "Operator X");
+
+        // register active relationship between service and operator
+        vm.prank(service);
+        registry.registerOperatorToService(operator);
+        vm.prank(operator);
+        registry.registerServiceToOperator(service);
+
+        uint32 newDelay = 6 days;
+
+        vm.prank(service);
+        vm.expectEmit();
+        emit ISLAYRegistry.MinWithdrawalDelayUpdated(service, newDelay);
+        registry.setMinWithdrawalDelay(newDelay);
+
+        assertEq(registry.getMinWithdrawalDelay(service), newDelay, "Min withdrawal delay should be updated");
+
+        // register multiple operators with different delays
+        for (uint256 i = 0; i < 4; i++) {
+            address newOperator = vm.addr(i + 1);
+            vm.startPrank(newOperator);
+            registry.registerAsOperator(
+                string(abi.encodePacked("https://operator", i, ".com")), string(abi.encodePacked("Operator ", i))
+            );
+            registry.setWithdrawalDelay(7 days + (uint32(i) * 1 days)); // 7 days, 8 days, 9 days, 10 days
+            registry.registerServiceToOperator(service);
+            vm.stopPrank();
+
+            vm.prank(service);
+            registry.registerOperatorToService(newOperator);
+        }
+
+        // service updates the min withdrawal delay again
+        uint32 newDelay2 = 7 days;
+        vm.prank(service);
+        vm.expectEmit();
+        emit ISLAYRegistry.MinWithdrawalDelayUpdated(service, newDelay2);
+        registry.setMinWithdrawalDelay(newDelay2);
+
+        assertEq(registry.getMinWithdrawalDelay(service), newDelay2, "Min withdrawal delay should be updated again");
+    }
+
+    function test_Fail_service_setMinWithdrawalDelay() public {
+        vm.prank(service);
+        registry.registerAsService("service.com", "Service A");
+
+        // register operator
+        vm.prank(operator);
+        registry.registerAsOperator("https://operator.com", "Operator X");
+
+        // register active relationship between service and operator
+        vm.prank(service);
+        registry.registerOperatorToService(operator);
+        vm.prank(operator);
+        registry.registerServiceToOperator(service);
+
+        uint32 newDelay = 8 days;
+
+        vm.prank(service);
+        vm.expectRevert(
+            "Service's minimum withdrawal delay must be less than or equal to active operator's withdrawal delay"
+        );
+        registry.setMinWithdrawalDelay(newDelay);
+
+        // register multiple operators with different delays
+        for (uint256 i = 0; i < 4; i++) {
+            address newOperator = vm.addr(i + 1);
+            vm.startPrank(newOperator);
+            registry.registerAsOperator(
+                string(abi.encodePacked("https://operator", i, ".com")), string(abi.encodePacked("Operator ", i))
+            );
+            registry.setWithdrawalDelay(7 days + (uint32(i) * 1 days)); // 7 days, 8 days, 9 days, 10 days
+            registry.registerServiceToOperator(service);
+            vm.stopPrank();
+
+            vm.prank(service);
+            registry.registerOperatorToService(newOperator);
+        }
+
+        // service updates the min withdrawal delay again
+        vm.prank(service);
+        vm.expectRevert(
+            "Service's minimum withdrawal delay must be less than or equal to active operator's withdrawal delay"
+        );
+        registry.setMinWithdrawalDelay(newDelay);
+    }
+
+    function test_operator_setWithdrawalDelay() public {
+        // register operator
+        vm.prank(operator);
+        registry.registerAsOperator("https://operator.com", "Operator X");
+
+        // update withdrawal delay to 8 days
+        uint32 newDelay = 8 days;
+        vm.prank(operator);
+        vm.expectEmit();
+        emit ISLAYRegistry.WithdrawalDelayUpdated(operator, newDelay);
+        registry.setWithdrawalDelay(newDelay);
+
+        assertEq(registry.getWithdrawalDelay(operator), newDelay, "Withdrawal delay should be updated");
+
+        // register multiple services
+        for (uint256 i = 0; i < 5; i++) {
+            address newService = vm.addr(i + 1);
+            vm.startPrank(newService);
+            registry.registerAsService(
+                string(abi.encodePacked("https://service", i, ".com")), string(abi.encodePacked("Service ", i))
+            );
+            registry.registerOperatorToService(operator);
+            registry.setMinWithdrawalDelay(7 days + (uint32(i) * 1 days)); // 7 days, 8 days, 9 days, 10 days, 11 days
+            vm.stopPrank();
+
+            vm.prank(operator);
+            registry.registerServiceToOperator(newService);
+        }
+
+        // operator updates withdrawal delay to 11 days
+        uint32 newDelay2 = 11 days;
+        vm.prank(operator);
+        vm.expectEmit();
+        emit ISLAYRegistry.WithdrawalDelayUpdated(operator, newDelay2);
+        registry.setWithdrawalDelay(newDelay2);
+    }
+
+    function test_Fail_operator_setWithdrawalDelay() public {
+        // register operator
+        vm.prank(operator);
+        registry.registerAsOperator("https://operator.com", "Operator X");
+
+        // update withdrawal delay to 8 days
+        uint32 newDelay = 8 days;
+        vm.prank(operator);
+        vm.expectEmit();
+        emit ISLAYRegistry.WithdrawalDelayUpdated(operator, newDelay);
+        registry.setWithdrawalDelay(newDelay);
+
+        // register multiple services
+        for (uint256 i = 0; i < 5; i++) {
+            address newService = vm.addr(i + 1);
+            vm.startPrank(newService);
+            registry.registerAsService(
+                string(abi.encodePacked("https://service", i, ".com")), string(abi.encodePacked("Service ", i))
+            );
+            registry.registerOperatorToService(operator);
+            registry.setMinWithdrawalDelay(7 days + (uint32(i) * 1 days)); // 7 days, 8 days, 9 days, 10 days, 11 days
+            vm.stopPrank();
+
+            vm.prank(operator);
+            registry.registerServiceToOperator(newService);
+        }
+
+        // operator updates withdrawal delay to 10 days (less than min withdrawal delay of a service)
+        uint32 newDelay2 = 10 days;
+        vm.prank(operator);
+        vm.expectRevert(
+            "Operator withdrawal delay must be more than or equal to active service's minimum withdrawal delay"
+        );
+        registry.setWithdrawalDelay(newDelay2);
+    }
 }
