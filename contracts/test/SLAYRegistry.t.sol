@@ -600,7 +600,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         registry.registerServiceToOperator(service);
 
         vm.prank(operator);
-        vm.expectRevert("Slashing not enabled");
+        vm.expectRevert("Slashing not updated");
         registry.approveSlashingFor(service);
     }
 
@@ -623,7 +623,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         registry.approveSlashingFor(service);
 
         // No change in slashing parameters
-        vm.expectRevert("Same slashing parameters");
+        vm.expectRevert("Slashing not updated");
         vm.prank(operator);
         registry.approveSlashingFor(service);
     }
