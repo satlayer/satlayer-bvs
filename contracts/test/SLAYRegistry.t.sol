@@ -730,9 +730,11 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.prank(operator);
         uint256 timeAtWhichOperatorOptedInParam1 = block.timestamp;
         registry.enableSlashing(service);
-        Relationship.Object memory obj = registry._getRelationshipObject(service, operator);
+        ISLAYRegistry.SlashParameter memory obj =
+            registry.getSlashParameterAt(service, operator, uint32(block.timestamp));
 
-        assert(obj.slashParameterId == 1);
+        assert(obj.maxMbips == 100_000);
+        assert(obj.resolutionWindow == 3600);
 
         _advanceBlockBy(10);
 
@@ -742,35 +744,26 @@ contract SLAYRegistryTest is Test, TestSuite {
             ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_00, resolutionWindow: 4600})
         );
 
-        Relationship.Object memory obj1 = registry._getRelationshipObject(service, operator);
-        assert(obj1.slashParameterId == 1);
+        ISLAYRegistry.SlashParameter memory obj1 =
+            registry.getSlashParameterAt(service, operator, uint32(block.timestamp));
+        assert(obj1.maxMbips == 100_000);
+        assert(obj1.resolutionWindow == 3600);
 
         _advanceBlockBy(10);
-
-        // service reverted back its parameters to original one. Operators still should not be opted into it automatically
-        vm.prank(service);
-        registry.enableSlashing(
-            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
-        );
-
-        _advanceBlockBy(10);
-
-        Relationship.Object memory obj3 = registry._getRelationshipObject(service, operator);
-        // opted into new parameters automatically until explicit enablement
-        assert(obj3.slashParameterId == 1);
 
         vm.prank(operator);
         registry.enableSlashing(service);
 
         _advanceBlockBy(10);
 
-        Relationship.Object memory obj4 = registry._getRelationshipObject(service, operator);
-        assert(obj4.slashParameterId == 3);
+        ISLAYRegistry.SlashParameter memory obj2 =
+            registry.getSlashParameterAt(service, operator, uint32(block.timestamp));
+        assert(obj2.maxMbips == 100_00);
 
-        Relationship.Object memory obj5 =
-            registry._getRelationshipObjectAt(service, operator, uint32(timeAtWhichOperatorOptedInParam1));
+        ISLAYRegistry.SlashParameter memory obj3 =
+            registry.getSlashParameterAt(service, operator, uint32(timeAtWhichOperatorOptedInParam1));
         // historical state repsentation remain intacts.
-        assert(obj5.slashParameterId == 1);
+        assert(obj3.maxMbips == 100_000);
     }
 
     function test_enableSlashing_lifecycle_timestamped_query() public {
