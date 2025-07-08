@@ -44,14 +44,13 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     mapping(bytes32 slashId => Slashing.RequestInfo) public slashingRequests;
 
     modifier onlyValidSlashRequest(Slashing.RequestPayload memory request) {
-        Relationship.Object memory rs =
-            registry.getRelationshipObjectAt(_msgSender(), request.operator, request.timestamp);
-        require(rs.slashOptedIn == true, "Operator has not opted in to the slash at specified timestamp.");
+        ISLAYRegistry.SlashParameter memory slashBounds =
+            registry.getSlashParameterAt(_msgSender(), request.operator, request.timestamp);
+
         require(
-            rs.status == Relationship.Status.Active, "Service and Operator must be active at the specified timestamp"
+            request.millieBips <= slashBounds.maxMbips, "Slash requested amount is more than the service has allowed"
         );
-        ISLAYRegistry.SlashParameter memory param = registry.getSlashParameter(_msgSender());
-        require(request.maxMbips <= param.maxMbips, "Slash requested amount is more than the service has allowed");
+        require(request.millieBips > 0, "Requested slashing amount in milli bips must be greater than zero");
 
         uint32 withdrawalDelay = registry.getWithdrawalDelay(request.operator);
 
@@ -61,6 +60,13 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         );
 
         require(request.timestamp <= block.timestamp, "Cannot request slash with timestamp greater than present");
+        _;
+    }
+
+    modifier onlyService(address account) {
+        if (!registry.isService(account)) {
+            revert ISLAYRegistry.ServiceNotFound(account);
+        }
         _;
     }
 
@@ -140,21 +146,34 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         return _whitelisted[vault_];
     }
 
-    function requestSlashing(Slashing.RequestPayload memory payload) public onlyValidSlashRequest(payload) {
+    function requestSlashing(Slashing.RequestPayload memory payload) external onlyValidSlashRequest(payload) {
         address service = _msgSender();
         Slashing.RequestInfo memory pendingSlashingRequest = getPendingSlashingRequest(service, payload.operator);
 
         if (Slashing.isRequestInfoExist(pendingSlashingRequest) == true) {
             if (
-                pendingSlashingRequest.status == Slashing.RequestStatus.Pending
-                    && pendingSlashingRequest.requestExpiry > block.timestamp
+                (
+                    pendingSlashingRequest.status == Slashing.RequestStatus.Pending
+                        && pendingSlashingRequest.requestExpiry > block.timestamp
+                ) || pendingSlashingRequest.status == Slashing.RequestStatus.Locked
             ) {
                 revert("Pending Slashing Request lifecycle not completed");
             }
+
+            if (
+                pendingSlashingRequest.status == Slashing.RequestStatus.Pending
+                    && pendingSlashingRequest.requestExpiry < block.timestamp
+            ) {
+                pendingSlashingRequest.status = Slashing.RequestStatus.Canceled;
+                bytes32 slashId = Slashing.calculateSlashingRequestId(pendingSlashingRequest);
+                bytes32 key = Relationship.getKey(service, payload.operator);
+                delete slashingRequestIds[key];
+                slashingRequests[slashId] = pendingSlashingRequest;
+            }
         }
 
-        uint32 requestResolution =
-            uint32(block.timestamp) + registry.getSlashParameterAt(service, payload.timestamp).resolutionWindow;
+        uint32 requestResolution = uint32(block.timestamp)
+            + registry.getSlashParameterAt(service, payload.operator, payload.timestamp).resolutionWindow;
         uint32 requestExpiry = requestResolution + slashingRequestExpiryWindow;
 
         Slashing.RequestInfo memory newSlashingRequestInfo = Slashing.RequestInfo({
@@ -169,21 +188,49 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         _updateSlashingRequest(service, payload.operator, newSlashingRequestInfo);
     }
 
+    function cancelSlashing(address operator) external onlyService(_msgSender()) {
+        address service = _msgSender();
+        Slashing.RequestInfo memory pendingSlashingRequest = getPendingSlashingRequest(service, operator);
+        require(
+            Slashing.isRequestInfoExist(pendingSlashingRequest) == true,
+            "Slashing request for given operator does not exist."
+        );
+        require(
+            pendingSlashingRequest.service == service, "Only service that has invoked the slash request can cancel."
+        );
+        require(
+            pendingSlashingRequest.status == Slashing.RequestStatus.Pending,
+            "Only slashing requests that has not progressed beyond pending can be canceled."
+        );
+
+        pendingSlashingRequest.status = Slashing.RequestStatus.Canceled;
+        bytes32 slashId = Slashing.calculateSlashingRequestId(pendingSlashingRequest);
+        bytes32 key = Relationship.getKey(service, operator);
+
+        delete slashingRequestIds[key];
+
+        slashingRequests[slashId] = pendingSlashingRequest;
+    }
+
     function getPendingSlashingRequest(address service, address operator)
         public
         view
         returns (Slashing.RequestInfo memory)
     {
-        bytes32 key = Relationship._getKey(service, operator);
+        bytes32 key = Relationship.getKey(service, operator);
         bytes32 slashId = slashingRequestIds[key];
         return slashingRequests[slashId];
     }
 
-    function _updateSlashingRequest(address service, address operator, Slashing.RequestInfo memory info) internal {
-        bytes32 key = Relationship._getKey(service, operator);
+    function _updateSlashingRequest(address service, address operator, Slashing.RequestInfo memory info)
+        internal
+        returns (bytes32)
+    {
+        bytes32 key = Relationship.getKey(service, operator);
         bytes32 slashId = Slashing.calculateSlashingRequestId(info);
         slashingRequestIds[key] = slashId;
         slashingRequests[slashId] = info;
+        return slashId;
     }
 }
 
@@ -235,7 +282,6 @@ library Slashing {
                 info.requestTime,
                 info.requestResolution,
                 info.requestExpiry,
-                uint8(info.status),
                 info.service
             )
         );
