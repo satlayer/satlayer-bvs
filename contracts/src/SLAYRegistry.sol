@@ -389,6 +389,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     /// @inheritdoc ISLAYRegistry
     function setMaxActiveRelationships(uint8 max) external onlyOwner {
         require(max > 0, "Max active relationships must be greater than 0");
+        require(max > _maxActiveRelationships, "Max active relationships must be greater than current");
         _maxActiveRelationships = max;
         emit MaxActiveRelationshipsUpdated(max);
     }

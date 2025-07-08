@@ -276,7 +276,7 @@ interface ISLAYRegistry {
     /**
      * @dev Set the maximum number of active relationships for services and operators.
      * Only the contract owner can call this function.
-     * @param maxActive The new maximum number of active relationships (must be > 0).
+     * @param maxActive The new maximum number of active relationships (must be > 0 and > current maxActive).
      */
     function setMaxActiveRelationships(uint8 maxActive) external;
 

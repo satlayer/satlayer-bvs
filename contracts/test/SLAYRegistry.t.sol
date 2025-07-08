@@ -695,4 +695,19 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.expectRevert(ISLAYRegistry.OperatorRelationshipsExceeded.selector);
         registry.registerServiceToOperator(sixthService);
     }
+
+    function test_SetMaxActiveRelationships() public {
+        // update the max active relationships to 6
+        vm.prank(owner);
+        vm.expectEmit();
+        emit ISLAYRegistry.MaxActiveRelationshipsUpdated(6);
+        registry.setMaxActiveRelationships(6);
+
+        assertEq(registry.getMaxActiveRelationships(), 6, "Max active relationships should be updated");
+
+        // update the max active relationships back to 5 (revert)
+        vm.prank(owner);
+        vm.expectRevert("Max active relationships must be greater than current");
+        registry.setMaxActiveRelationships(5);
+    }
 }
