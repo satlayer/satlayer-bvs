@@ -445,6 +445,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         emit MinWithdrawalDelayUpdated(_msgSender(), delay);
     }
 
+    /// @inheritdoc ISLAYRegistry
     function getMinWithdrawalDelay(address service) external view returns (uint32) {
         return _services[service].minWithdrawalDelay;
     }
