@@ -711,8 +711,8 @@ contract SLAYRegistryTest is Test, TestSuite {
         registry.setMaxActiveRelationships(5);
     }
 
-    function test_enableSlashing_lifecycle_but_parameterChanged() public {
-        // test operator's slash optin loyalty (past and present) throughout service's slashing parameter mutations.
+    function test_slashingLifecycle_but_parameterChanged() public {
+        // test operator's slash opt-in loyalty (past and present) throughout service's slashing parameter mutations.
         vm.prank(operator);
         registry.registerAsOperator("operator.com", "Operator X");
 
@@ -729,7 +729,7 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(operator);
         uint256 timeAtWhichOperatorOptedInParam1 = block.timestamp;
-        registry.enableSlashing(service);
+        registry.approveSlashingFor(service);
         ISLAYRegistry.SlashParameter memory obj =
             registry.getSlashParameterAt(service, operator, uint32(block.timestamp));
 
@@ -752,7 +752,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         _advanceBlockBy(10);
 
         vm.prank(operator);
-        registry.enableSlashing(service);
+        registry.approveSlashingFor(service);
 
         _advanceBlockBy(10);
 
@@ -766,7 +766,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         assert(obj3.maxMbips == 100_000);
     }
 
-    function test_enableSlashing_lifecycle_timestamped_query() public {
+    function test_slashingLifecycle_timestamped_query() public {
         vm.prank(operator);
         registry.registerAsOperator("operator.com", "Operator X");
 
@@ -783,7 +783,7 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(operator);
         uint256 timeAtWhichOperatorOptedInParam1 = block.timestamp;
-        registry.enableSlashing(service);
+        registry.approveSlashingFor(service);
 
         _advanceBlockBy(10);
 
@@ -793,7 +793,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         );
         uint256 timeAtWhichOperatorOptedInParam2 = block.timestamp;
         vm.prank(operator);
-        registry.enableSlashing(service);
+        registry.approveSlashingFor(service);
 
         _advanceBlockBy(10);
 
@@ -803,7 +803,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         );
         vm.prank(operator);
         uint256 timeAtWhichOperatorOptedInParam3 = block.timestamp;
-        registry.enableSlashing(service);
+        registry.approveSlashingFor(service);
 
         _advanceBlockBy(10);
 
