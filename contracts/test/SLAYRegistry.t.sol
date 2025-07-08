@@ -438,7 +438,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         registry.setWithdrawalDelay(0);
     }
 
-    function test_service_enableSlashing() public {
+    function test_enableSlashing() public {
         vm.prank(service);
         registry.registerAsService("service.com", "Service A");
 
@@ -458,7 +458,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         assertEq(param.resolutionWindow, 3600);
     }
 
-    function test_service_enableSlashing_but_paused() public {
+    function test_enableSlashing_but_paused() public {
         vm.prank(service);
         registry.registerAsService("service.com", "Service A");
 
@@ -472,7 +472,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         );
     }
 
-    function test_service_enableSlashing_notService() public {
+    function test_enableSlashing_notService() public {
         address notService = vm.randomAddress();
         vm.prank(notService);
         vm.expectRevert(abi.encodeWithSelector(ISLAYRegistry.ServiceNotFound.selector, notService));
@@ -482,7 +482,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         );
     }
 
-    function test_service_enableSlashing_revert_conditions() public {
+    function test_enableSlashing_revert_conditions() public {
         vm.startPrank(service);
 
         registry.registerAsService("service.com", "Service A");
@@ -534,28 +534,28 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.prank(operator);
         vm.expectEmit();
         emit ISLAYRegistry.RelationshipUpdated(service, operator, Relationship.Status.Active, 1);
-        registry.enableSlashing(service);
+        registry.approveSlashingFor(service);
     }
 
-    function test_enableSlashing_lifecycle_notOperator() public {
+    function test_approveSlashingFor_notOperator() public {
         vm.prank(service);
         registry.registerAsService("service.com", "Service A");
 
         vm.expectRevert(abi.encodeWithSelector(ISLAYRegistry.OperatorNotFound.selector, address(this)));
-        registry.enableSlashing(service);
+        registry.approveSlashingFor(service);
     }
 
-    function test_enableSlashing_lifecycle_relationship_not_active_1() public {
+    function test_approveSlashingFor_relationship_not_active_1() public {
         vm.prank(operator);
         registry.registerAsOperator("operator.com", "Operator X");
 
         address someone = vm.randomAddress();
         vm.prank(operator);
         vm.expectRevert("Relationship not active");
-        registry.enableSlashing(someone);
+        registry.approveSlashingFor(someone);
     }
 
-    function test_enableSlashing_lifecycle_relationship_not_active_2() public {
+    function test_approveSlashingFor_relationship_not_active_2() public {
         vm.prank(operator);
         registry.registerAsOperator("operator.com", "Operator X");
 
@@ -569,10 +569,10 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(operator);
         vm.expectRevert("Relationship not active");
-        registry.enableSlashing(service);
+        registry.approveSlashingFor(service);
     }
 
-    function test_enableSlashing_lifecycle_but_paused() public {
+    function test_approveSlashingFor_but_paused() public {
         vm.prank(operator);
         registry.registerAsOperator("operator.com", "Operator X");
 
@@ -584,10 +584,10 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(operator);
         vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
-        registry.enableSlashing(service);
+        registry.approveSlashingFor(service);
     }
 
-    function test_enableSlashing_lifecycle_slashing_notEnabled() public {
+    function test_approveSlashingFor_notEnabled() public {
         vm.prank(operator);
         registry.registerAsOperator("operator.com", "Operator X");
 
@@ -600,11 +600,11 @@ contract SLAYRegistryTest is Test, TestSuite {
         registry.registerServiceToOperator(service);
 
         vm.prank(operator);
-        vm.expectRevert("Slashing not enabled");
-        registry.enableSlashing(service);
+        vm.expectRevert("Slashing not updated");
+        registry.approveSlashingFor(service);
     }
 
-    function test_enableSlashing_lifecycle_noChange() public {
+    function test_approveSlashingFor_notUpdated() public {
         vm.prank(operator);
         registry.registerAsOperator("operator.com", "Operator X");
 
@@ -620,12 +620,12 @@ contract SLAYRegistryTest is Test, TestSuite {
         registry.registerServiceToOperator(service);
 
         vm.prank(operator);
-        registry.enableSlashing(service);
+        registry.approveSlashingFor(service);
 
         // No change in slashing parameters
-        vm.expectRevert("Same slashing parameters");
+        vm.expectRevert("Slashing not updated");
         vm.prank(operator);
-        registry.enableSlashing(service);
+        registry.approveSlashingFor(service);
     }
 
     function test_Fail_MaxActiveRelationships_ServiceRelationshipsExceeded() public {
@@ -711,8 +711,8 @@ contract SLAYRegistryTest is Test, TestSuite {
         registry.setMaxActiveRelationships(5);
     }
 
-    function test_enableSlashing_lifecycle_but_parameterChanged() public {
-        // test operator's slash optin loyalty (past and present) throughout service's slashing parameter mutations.
+    function test_slashingLifecycle_but_parameterChanged() public {
+        // test operator's slash opt-in loyalty (past and present) throughout service's slashing parameter mutations.
         vm.prank(operator);
         registry.registerAsOperator("operator.com", "Operator X");
 
@@ -729,7 +729,7 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(operator);
         uint256 timeAtWhichOperatorOptedInParam1 = block.timestamp;
-        registry.enableSlashing(service);
+        registry.approveSlashingFor(service);
         ISLAYRegistry.SlashParameter memory obj =
             registry.getSlashParameterAt(service, operator, uint32(block.timestamp));
 
@@ -752,7 +752,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         _advanceBlockBy(10);
 
         vm.prank(operator);
-        registry.enableSlashing(service);
+        registry.approveSlashingFor(service);
 
         _advanceBlockBy(10);
 
@@ -766,7 +766,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         assert(obj3.maxMbips == 100_000);
     }
 
-    function test_enableSlashing_lifecycle_timestamped_query() public {
+    function test_slashingLifecycle_timestamped_query() public {
         vm.prank(operator);
         registry.registerAsOperator("operator.com", "Operator X");
 
@@ -783,7 +783,7 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(operator);
         uint256 timeAtWhichOperatorOptedInParam1 = block.timestamp;
-        registry.enableSlashing(service);
+        registry.approveSlashingFor(service);
 
         _advanceBlockBy(10);
 
@@ -793,7 +793,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         );
         uint256 timeAtWhichOperatorOptedInParam2 = block.timestamp;
         vm.prank(operator);
-        registry.enableSlashing(service);
+        registry.approveSlashingFor(service);
 
         _advanceBlockBy(10);
 
@@ -803,7 +803,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         );
         vm.prank(operator);
         uint256 timeAtWhichOperatorOptedInParam3 = block.timestamp;
-        registry.enableSlashing(service);
+        registry.approveSlashingFor(service);
 
         _advanceBlockBy(10);
 

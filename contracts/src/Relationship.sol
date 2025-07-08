@@ -43,8 +43,17 @@ library Relationship {
         ServiceRegistered
     }
 
+    /**
+     * @title Object of Relationship
+     * @dev This struct represents the relationship object that contains the status
+     * - 8 bits for the {Status} enum
+     * - 32 bits for the slash parameter ID
+     * Total: 40 bits (5 bytes) used so far.
+     */
     struct Object {
+        /// @dev The registration status of the relationship.
         Status status;
+        /// @dev The ID of the slash parameter associated with this relationship.
         uint32 slashParameterId;
     }
 
@@ -107,12 +116,21 @@ library Relationship {
         return Checkpoints.length(self);
     }
 
+    /**
+     * @dev Encodes the status and slash parameter ID into a single uint224 value.
+     * Why encode into uint224, when could declare a new struct and let Solidity handle it?
+     * This is done for efficiency, by packing the Struct into uint224 allowing us to
+     * use the existing Checkpoints library which well audited and optimized for production use.
+     */
     function encode(Status status, uint32 slashParameterId) internal pure returns (uint224) {
         uint224 encoded = uint224(uint8(status));
         encoded |= (uint224(slashParameterId) << 8);
         return encoded;
     }
 
+    /**
+     * @dev Decodes a uint224 value into an Object struct.
+     */
     function decode(uint224 encoded) internal pure returns (Object memory) {
         Object memory obj;
         obj.status = Status(uint8(encoded));

@@ -251,20 +251,26 @@ interface ISLAYRegistry {
     function enableSlashing(SlashParameter calldata parameter) external;
 
     /**
-     * @dev For service to disable slashing.
-     * The {msg.sender} must be a registered service.
+     * @dev For service to disable slashing for itself.
+     * - The {msg.sender} must be a registered service.
+     * - Disabling slashing will set the slash parameter ID to 0.
+     * - This will not remove existing slash relationships
+     * - New slash relationships will not be created when operator {enableSlashing(address)} is called.
      */
     function disableSlashing() external;
 
     /**
-     * @dev For operator to enable slashing for a service it's validating.
+     * @dev For operator to approve (enable, disable or update) slashing for a service it's validating.
      * - The {msg.sender} must be a registered operator.
-     * - The service it intends to enable slashing for must be registered and have slashing enabled.
      * - The service and operator must have an active relationship.
+     * - To enable slashing, the service must have already enabled slashing via {enableSlashing(SlashParameter)}.
+     * - To disable slashing, the service must have already disabled slashing via {disableSlashing()}.
+     * - To update (set new parameters), the service must have a new set of slash parameters registered via {enableSlashing(SlashParameter)}.
+     * - If no update is registered, the function will revert.
      *
      * @param service The address of the service for which slashing is being enabled.
      */
-    function enableSlashing(address service) external;
+    function approveSlashingFor(address service) external;
 
     /**
      * @dev Get the current slash parameters for a given service.
