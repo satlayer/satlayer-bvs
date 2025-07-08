@@ -10,11 +10,15 @@ interface ISLAYRegistry {
         /// @dev Id of the slash parameter for the service. Stored in {_slashParameters} array.
         /// If slashing is disabled, this will be 0.
         uint32 slashParameterId;
+        /// @dev The number of operators actively registered to this service.
+        uint8 activeOperatorsCount;
     }
 
     struct Operator {
         /// @dev Whether the operator is registered.
         bool registered;
+        /// @dev The number of services actively registered to this operator.
+        uint8 activeServicesCount;
     }
 
     /**
@@ -51,6 +55,12 @@ interface ISLAYRegistry {
 
     /// @dev Account is not registered as a service.
     error ServiceNotFound(address account);
+
+    /// @dev the operator is already actively registered to max number of services.
+    error OperatorRelationshipsExceeded();
+
+    /// @dev the service is already actively registered to max number of operators.
+    error ServiceRelationshipsExceeded();
 
     /*//////////////////////////////////////////////////////////////
                                 EVENTS
@@ -98,6 +108,12 @@ interface ISLAYRegistry {
      * @param resolutionWindow An operator's refutable period in seconds in the event of slash.
      */
     event SlashParameterUpdated(address indexed service, address destination, uint24 maxMbips, uint32 resolutionWindow);
+
+    /**
+     * @dev Emitted when owner updates the maximum number of active relationships for a service and operator.
+     * @param maxActive The new maximum number of active relationships.
+     */
+    event MaxActiveRelationshipsUpdated(uint8 maxActive);
 
     /*//////////////////////////////////////////////////////////////
                                 FUNCTIONS
@@ -256,4 +272,17 @@ interface ISLAYRegistry {
      * @return SlashParameter The slash parameters for the service.
      */
     function getSlashParameter(address service) external view returns (SlashParameter memory);
+
+    /**
+     * @dev Set the maximum number of active relationships for services and operators.
+     * Only the contract owner can call this function.
+     * @param maxActive The new maximum number of active relationships (must be > 0 and > current maxActive).
+     */
+    function setMaxActiveRelationships(uint8 maxActive) external;
+
+    /**
+     * @dev Get the current maximum number of active relationships.
+     * @return uint8 The maximum number of active relationships allowed.
+     */
+    function getMaxActiveRelationships() external view returns (uint8);
 }

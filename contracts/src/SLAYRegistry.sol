@@ -45,6 +45,9 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     /// @dev Default delay for operator's vault withdrawals if not set.
     uint32 public constant DEFAULT_WITHDRAWAL_DELAY = 7 days;
 
+    /// @dev Returns the maximum number of active relationships allowed for a service or operator.
+    uint8 private _maxActiveRelationships;
+
     /**
      * @dev Initializes SLAYRegistry contract.
      * Set up slash parameters array to allow the first service to register with a valid ID.
@@ -54,6 +57,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     function initialize() public reinitializer(2) {
         // Push an empty slash parameter to the array to ensure that the first service can register with a valid ID.
         _slashParameters.push();
+        _maxActiveRelationships = 5;
     }
 
     /**
@@ -347,6 +351,51 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     {
         bytes32 key = Relationship.getKey(service, operator);
         Relationship.push(_relationships[key], uint32(block.timestamp), obj);
+
+        // if the status is active, increment the relationships count for both service and operator.
+        // If the status is inactive, decrement the relationships count for both service and operator.
+        if (obj.status == Relationship.Status.Active) {
+            Operator storage operatorData = _operators[operator];
+            if (operatorData.activeServicesCount >= _maxActiveRelationships) {
+                revert ISLAYRegistry.OperatorRelationshipsExceeded();
+            }
+            Service storage serviceData = _services[service];
+            if (serviceData.activeOperatorsCount >= _maxActiveRelationships) {
+                revert ISLAYRegistry.ServiceRelationshipsExceeded();
+            }
+
+            // using unchecked for gas optimization as we already checked the counts above.
+            unchecked {
+                operatorData.activeServicesCount++;
+                serviceData.activeOperatorsCount++;
+            }
+        } else if (obj.status == Relationship.Status.Inactive) {
+            Operator storage operatorData = _operators[operator];
+            Service storage serviceData = _services[service];
+
+            unchecked {
+                if (operatorData.activeServicesCount != 0) {
+                    operatorData.activeServicesCount--;
+                }
+                if (serviceData.activeOperatorsCount != 0) {
+                    serviceData.activeOperatorsCount--;
+                }
+            }
+        }
+
         emit RelationshipUpdated(service, operator, obj.status, obj.slashParameterId);
+    }
+
+    /// @inheritdoc ISLAYRegistry
+    function setMaxActiveRelationships(uint8 max) external onlyOwner {
+        require(max > 0, "Max active relationships must be greater than 0");
+        require(max > _maxActiveRelationships, "Max active relationships must be greater than current");
+        _maxActiveRelationships = max;
+        emit MaxActiveRelationshipsUpdated(max);
+    }
+
+    /// @inheritdoc ISLAYRegistry
+    function getMaxActiveRelationships() external view returns (uint8) {
+        return _maxActiveRelationships;
     }
 }
