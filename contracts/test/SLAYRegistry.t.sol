@@ -795,7 +795,6 @@ contract SLAYRegistryTest is Test, TestSuite {
         _advanceBlockBy(10);
 
         vm.prank(service);
-        // service mutate its slashing parameters. Operators should not be opted into it automatically
         registry.enableSlashing(
             ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_00, resolutionWindow: 4600})
         );
@@ -805,7 +804,6 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         _advanceBlockBy(10);
 
-        // service reverted back its parameters to original one. Operators still should not be opted into it automatically
         vm.prank(service);
         registry.enableSlashing(
             ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100, resolutionWindow: 36})
