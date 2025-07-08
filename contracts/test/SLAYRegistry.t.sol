@@ -712,7 +712,7 @@ contract SLAYRegistryTest is Test, TestSuite {
     }
 
     function test_enableSlashing_lifecycle_but_parameterChanged() public {
-        // test operator's slash optin loyalty (past and present) through out service's slashing parameter mutations.
+        // test operator's slash optin loyalty (past and present) throughout service's slashing parameter mutations.
         vm.prank(operator);
         registry.registerAsOperator("operator.com", "Operator X");
 
