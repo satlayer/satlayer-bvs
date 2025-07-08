@@ -45,6 +45,9 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     /// @dev Default delay for operator's vault withdrawals if not set.
     uint32 public constant DEFAULT_WITHDRAWAL_DELAY = 7 days;
 
+    /// @dev Returns the maximum number of active relationships allowed for a service or operator.
+    uint8 public maxActiveRelationship;
+
     /**
      * @dev Initializes SLAYRegistry contract.
      * Set up slash parameters array to allow the first service to register with a valid ID.
@@ -54,6 +57,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     function initialize() public reinitializer(2) {
         // Push an empty slash parameter to the array to ensure that the first service can register with a valid ID.
         _slashParameters.push();
+        maxActiveRelationship = 5;
     }
 
     /**
@@ -351,34 +355,40 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         // if the status is active, increment the relationships count for both service and operator.
         // If the status is inactive, decrement the relationships count for both service and operator.
         if (obj.status == Relationship.Status.Active) {
-            Operator storage operator = _operators[operator];
-            if (operator.activeServicesCount >= Relationship.MAX_ACTIVE_RELATIONSHIPS()) {
+            Operator storage operatorData = _operators[operator];
+            if (operatorData.activeServicesCount >= maxActiveRelationship) {
                 revert ISLAYRegistry.OperatorRelationshipsExceeded();
             }
-            Service storage service = _services[service];
-            if (service.activeOperatorsCount >= Relationship.MAX_ACTIVE_RELATIONSHIPS()) {
+            Service storage serviceData = _services[service];
+            if (serviceData.activeOperatorsCount >= maxActiveRelationship) {
                 revert ISLAYRegistry.ServiceRelationshipsExceeded();
             }
 
             // using unchecked for gas optimization as we already checked the counts above.
             unchecked {
-                operator.activeServicesCount++;
-                service.activeOperatorsCount++;
+                operatorData.activeServicesCount++;
+                serviceData.activeOperatorsCount++;
             }
         } else if (obj.status == Relationship.Status.Inactive) {
-            Operator storage operator = _operators[operator];
-            Service storage service = _services[service];
+            Operator storage operatorData = _operators[operator];
+            Service storage serviceData = _services[service];
 
             unchecked {
-                if (operator.activeServicesCount != 0) {
-                    operator.activeServicesCount--;
+                if (operatorData.activeServicesCount != 0) {
+                    operatorData.activeServicesCount--;
                 }
-                if (service.activeOperatorsCount != 0) {
-                    service.activeOperatorsCount--;
+                if (serviceData.activeOperatorsCount != 0) {
+                    serviceData.activeOperatorsCount--;
                 }
             }
         }
 
         emit RelationshipUpdated(service, operator, obj.status, obj.slashParameterId);
+    }
+
+    function setMaxActiveRelationship(uint8 max) external onlyOwner {
+        require(max > 0, "Max active relationships must be greater than 0");
+        maxActiveRelationship = max;
+        emit MaxActiveRelationshipUpdated(max);
     }
 }

@@ -109,6 +109,12 @@ interface ISLAYRegistry {
      */
     event SlashParameterUpdated(address indexed service, address destination, uint24 maxMbips, uint32 resolutionWindow);
 
+    /**
+     * @dev Emitted when owner updates the maximum number of active relationships for a service and operator.
+     * @param maxActive The new maximum number of active relationships.
+     */
+    event MaxActiveRelationshipUpdated(uint8 maxActive);
+
     /*//////////////////////////////////////////////////////////////
                                 FUNCTIONS
     //////////////////////////////////////////////////////////////*/

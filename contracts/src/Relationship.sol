@@ -119,9 +119,4 @@ library Relationship {
         obj.slashParameterId = uint32(encoded >> 8);
         return obj;
     }
-
-    /// @dev Returns the maximum number of active relationships allowed for a service or operator.
-    function MAX_ACTIVE_RELATIONSHIPS() internal pure returns (uint8) {
-        return 5;
-    }
 }
