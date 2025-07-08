@@ -277,7 +277,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     }
 
     /// @inheritdoc ISLAYRegistry
-    function enableSlashing(address service) external onlyOperator(_msgSender()) whenNotPaused {
+    function approveSlashingFor(address service) external onlyOperator(_msgSender()) whenNotPaused {
         address operator = _msgSender();
         Relationship.Object memory obj = _getRelationshipObject(service, operator);
         require(obj.status == Relationship.Status.Active, "Relationship not active");

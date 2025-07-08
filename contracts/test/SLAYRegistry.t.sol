@@ -534,7 +534,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.prank(operator);
         vm.expectEmit();
         emit ISLAYRegistry.RelationshipUpdated(service, operator, Relationship.Status.Active, 1);
-        registry.enableSlashing(service);
+        registry.approveSlashingFor(service);
     }
 
     function test_enableSlashing_lifecycle_notOperator() public {
@@ -542,7 +542,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         registry.registerAsService("service.com", "Service A");
 
         vm.expectRevert(abi.encodeWithSelector(ISLAYRegistry.OperatorNotFound.selector, address(this)));
-        registry.enableSlashing(service);
+        registry.approveSlashingFor(service);
     }
 
     function test_enableSlashing_lifecycle_relationship_not_active_1() public {
@@ -552,7 +552,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         address someone = vm.randomAddress();
         vm.prank(operator);
         vm.expectRevert("Relationship not active");
-        registry.enableSlashing(someone);
+        registry.approveSlashingFor(someone);
     }
 
     function test_enableSlashing_lifecycle_relationship_not_active_2() public {
@@ -569,7 +569,7 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(operator);
         vm.expectRevert("Relationship not active");
-        registry.enableSlashing(service);
+        registry.approveSlashingFor(service);
     }
 
     function test_enableSlashing_lifecycle_but_paused() public {
@@ -584,7 +584,7 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(operator);
         vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
-        registry.enableSlashing(service);
+        registry.approveSlashingFor(service);
     }
 
     function test_enableSlashing_lifecycle_slashing_notEnabled() public {
@@ -601,7 +601,7 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(operator);
         vm.expectRevert("Slashing not enabled");
-        registry.enableSlashing(service);
+        registry.approveSlashingFor(service);
     }
 
     function test_enableSlashing_lifecycle_noChange() public {
@@ -620,12 +620,12 @@ contract SLAYRegistryTest is Test, TestSuite {
         registry.registerServiceToOperator(service);
 
         vm.prank(operator);
-        registry.enableSlashing(service);
+        registry.approveSlashingFor(service);
 
         // No change in slashing parameters
         vm.expectRevert("Same slashing parameters");
         vm.prank(operator);
-        registry.enableSlashing(service);
+        registry.approveSlashingFor(service);
     }
 
     function test_Fail_MaxActiveRelationships_ServiceRelationshipsExceeded() public {
