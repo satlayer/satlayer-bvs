@@ -285,4 +285,16 @@ interface ISLAYRegistry {
      * @return uint8 The maximum number of active relationships allowed.
      */
     function getMaxActiveRelationships() external view returns (uint8);
+
+    /**
+     * @dev Get the slash parameters which an operator has opted in at given timestamp.
+     * @param service The address of the service.
+     * @param operator The address of the operator.
+     * @param timestamp The timestamp in question.
+     * @return SlashParameter The slash parameters for the service.
+     */
+    function getSlashParameterAt(address service, address operator, uint32 timestamp)
+        external
+        view
+        returns (SlashParameter memory);
 }

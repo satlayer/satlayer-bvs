@@ -710,4 +710,119 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.expectRevert("Max active relationships must be greater than current");
         registry.setMaxActiveRelationships(5);
     }
+
+    function test_enableSlashing_lifecycle_but_parameterChanged() public {
+        // test operator's slash optin loyalty (past and present) throughout service's slashing parameter mutations.
+        vm.prank(operator);
+        registry.registerAsOperator("operator.com", "Operator X");
+
+        vm.startPrank(service);
+        registry.registerAsService("service.com", "Service A");
+        registry.enableSlashing(
+            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
+        );
+        registry.registerOperatorToService(operator);
+        vm.stopPrank();
+
+        vm.prank(operator);
+        registry.registerServiceToOperator(service);
+
+        vm.prank(operator);
+        uint256 timeAtWhichOperatorOptedInParam1 = block.timestamp;
+        registry.enableSlashing(service);
+        ISLAYRegistry.SlashParameter memory obj =
+            registry.getSlashParameterAt(service, operator, uint32(block.timestamp));
+
+        assert(obj.maxMbips == 100_000);
+        assert(obj.resolutionWindow == 3600);
+
+        _advanceBlockBy(10);
+
+        vm.prank(service);
+        // service mutate its slashing parameters. Operators should not be opted into it automatically
+        registry.enableSlashing(
+            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_00, resolutionWindow: 4600})
+        );
+
+        ISLAYRegistry.SlashParameter memory obj1 =
+            registry.getSlashParameterAt(service, operator, uint32(block.timestamp));
+        assert(obj1.maxMbips == 100_000);
+        assert(obj1.resolutionWindow == 3600);
+
+        _advanceBlockBy(10);
+
+        vm.prank(operator);
+        registry.enableSlashing(service);
+
+        _advanceBlockBy(10);
+
+        ISLAYRegistry.SlashParameter memory obj2 =
+            registry.getSlashParameterAt(service, operator, uint32(block.timestamp));
+        assert(obj2.maxMbips == 100_00);
+
+        ISLAYRegistry.SlashParameter memory obj3 =
+            registry.getSlashParameterAt(service, operator, uint32(timeAtWhichOperatorOptedInParam1));
+        // historical state repsentation remain intacts.
+        assert(obj3.maxMbips == 100_000);
+    }
+
+    function test_enableSlashing_lifecycle_timestamped_query() public {
+        vm.prank(operator);
+        registry.registerAsOperator("operator.com", "Operator X");
+
+        vm.startPrank(service);
+        registry.registerAsService("service.com", "Service A");
+        registry.enableSlashing(
+            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
+        );
+        registry.registerOperatorToService(operator);
+        vm.stopPrank();
+
+        vm.prank(operator);
+        registry.registerServiceToOperator(service);
+
+        vm.prank(operator);
+        uint256 timeAtWhichOperatorOptedInParam1 = block.timestamp;
+        registry.enableSlashing(service);
+
+        _advanceBlockBy(10);
+
+        vm.prank(service);
+        registry.enableSlashing(
+            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_00, resolutionWindow: 4600})
+        );
+        uint256 timeAtWhichOperatorOptedInParam2 = block.timestamp;
+        vm.prank(operator);
+        registry.enableSlashing(service);
+
+        _advanceBlockBy(10);
+
+        vm.prank(service);
+        registry.enableSlashing(
+            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100, resolutionWindow: 36})
+        );
+        vm.prank(operator);
+        uint256 timeAtWhichOperatorOptedInParam3 = block.timestamp;
+        registry.enableSlashing(service);
+
+        _advanceBlockBy(10);
+
+        ISLAYRegistry.SlashParameter memory history1 =
+            registry.getSlashParameterAt(service, operator, uint32(timeAtWhichOperatorOptedInParam1));
+
+        assert(history1.maxMbips == 100_000);
+        assert(history1.resolutionWindow == 3600);
+
+        ISLAYRegistry.SlashParameter memory history2 =
+            registry.getSlashParameterAt(service, operator, uint32(timeAtWhichOperatorOptedInParam2));
+
+        assert(history2.maxMbips == 100_00);
+        assert(history2.resolutionWindow == 4600);
+
+        ISLAYRegistry.SlashParameter memory history3 =
+            registry.getSlashParameterAt(service, operator, uint32(timeAtWhichOperatorOptedInParam3));
+
+        assert(history3.maxMbips == 100);
+        assert(history3.resolutionWindow == 36);
+    }
 }

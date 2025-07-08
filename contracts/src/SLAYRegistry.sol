@@ -296,6 +296,17 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         return _slashParameters[slashParameterId];
     }
 
+    /// @inheritdoc ISLAYRegistry
+    function getSlashParameterAt(address service, address operator, uint32 timestamp)
+        external
+        view
+        returns (SlashParameter memory)
+    {
+        uint32 slashParameterId = _getRelationshipObjectAt(service, operator, timestamp).slashParameterId;
+        require(slashParameterId > 0, "Slashing not enabled");
+        return _slashParameters[slashParameterId];
+    }
+
     /// @dev Pauses the contract.
     function pause() external onlyOwner {
         _pause();
