@@ -6,6 +6,7 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import {SLAYRouter} from "./SLAYRouter.sol";
 import {Relationship} from "./Relationship.sol";
@@ -20,6 +21,8 @@ import {ISLAYRegistry} from "./interface/ISLAYRegistry.sol";
  * @custom:oz-upgrades-from src/InitialImpl.sol:InitialImpl
  */
 contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
+    using EnumerableSet for EnumerableSet.AddressSet;
+
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     SLAYRouter public immutable router;
 
@@ -38,9 +41,11 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      */
     mapping(bytes32 key => Checkpoints.Trace224) private _relationships;
 
-    /// @dev mapping of withdrawal delays for all of operator's vault.
-    /// TODO(k): move to within Operator struct?
-    mapping(address operator => uint32) private _withdrawalDelay;
+    /// @dev mapping of active relationships for an operator. Key is operator, value is a set of active service addresses.
+    mapping(address operator => EnumerableSet.AddressSet) private _operatorsActiveRelationships;
+
+    /// @dev mapping of active relationships for a service. Key is service, value is a set of active operator addresses.
+    mapping(address service => EnumerableSet.AddressSet) private _servicesActiveRelationships;
 
     /// @dev Default delay for operator's vault withdrawals if not set.
     uint32 public constant DEFAULT_WITHDRAWAL_DELAY = 7 days;
@@ -122,6 +127,8 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
 
         require(!operator.registered, "Already registered");
         operator.registered = true;
+        // Set the default withdrawal delay for the operator.
+        operator.withdrawalDelay = DEFAULT_WITHDRAWAL_DELAY;
         emit OperatorRegistered(account);
         emit MetadataUpdated(account, uri, name);
     }
@@ -238,17 +245,33 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     }
 
     /// @inheritdoc ISLAYRegistry
-    function setWithdrawalDelay(uint32 delay) public whenNotPaused onlyOperator(_msgSender()) {
+    function setWithdrawalDelay(uint32 delay) external whenNotPaused onlyOperator(_msgSender()) {
         require(delay >= DEFAULT_WITHDRAWAL_DELAY, "Delay must be at least more than or equal to 7 days");
-        _withdrawalDelay[_msgSender()] = delay;
+
+        // check for all active services of the operator if their minimum withdrawal delay is less than the new delay.
+        EnumerableSet.AddressSet storage activeServices = _operatorsActiveRelationships[_msgSender()];
+        uint256 activeServicesCount = activeServices.length();
+        for (uint256 i = 0; i < activeServicesCount;) {
+            address service = activeServices.at(i);
+            require(
+                _services[service].minWithdrawalDelay <= delay,
+                "Operator withdrawal delay must be more than or equal to active service's minimum withdrawal delay"
+            );
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        // update the withdrawal delay for the operator.
+        _operators[_msgSender()].withdrawalDelay = delay;
+
         emit WithdrawalDelayUpdated(_msgSender(), delay);
     }
 
     /// @inheritdoc ISLAYRegistry
-    function getWithdrawalDelay(address operator) public view returns (uint32) {
-        // If the delay is not set, return the default delay.
-        uint32 delay = _withdrawalDelay[operator];
-        return delay == 0 ? DEFAULT_WITHDRAWAL_DELAY : delay;
+    function getWithdrawalDelay(address operator) external view returns (uint32) {
+        return _operators[operator].withdrawalDelay;
     }
 
     /// @inheritdoc ISLAYRegistry
@@ -362,35 +385,21 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         bytes32 key = Relationship.getKey(service, operator);
         Relationship.push(_relationships[key], uint32(block.timestamp), obj);
 
-        // if the status is active, increment the relationships count for both service and operator.
-        // If the status is inactive, decrement the relationships count for both service and operator.
+        // if the status is active, add the service to the operator's active relationships and vice versa.
+        // If the status is inactive, remove the service from the operator's active relationships and vice versa.
         if (obj.status == Relationship.Status.Active) {
-            Operator storage operatorData = _operators[operator];
-            if (operatorData.activeServicesCount >= _maxActiveRelationships) {
+            if (_operatorsActiveRelationships[operator].length() >= _maxActiveRelationships) {
                 revert ISLAYRegistry.OperatorRelationshipsExceeded();
             }
-            Service storage serviceData = _services[service];
-            if (serviceData.activeOperatorsCount >= _maxActiveRelationships) {
+            if (_servicesActiveRelationships[service].length() >= _maxActiveRelationships) {
                 revert ISLAYRegistry.ServiceRelationshipsExceeded();
             }
 
-            // using unchecked for gas optimization as we already checked the counts above.
-            unchecked {
-                operatorData.activeServicesCount++;
-                serviceData.activeOperatorsCount++;
-            }
+            _operatorsActiveRelationships[operator].add(service);
+            _servicesActiveRelationships[service].add(operator);
         } else if (obj.status == Relationship.Status.Inactive) {
-            Operator storage operatorData = _operators[operator];
-            Service storage serviceData = _services[service];
-
-            unchecked {
-                if (operatorData.activeServicesCount != 0) {
-                    operatorData.activeServicesCount--;
-                }
-                if (serviceData.activeOperatorsCount != 0) {
-                    serviceData.activeOperatorsCount--;
-                }
-            }
+            _operatorsActiveRelationships[operator].remove(service);
+            _servicesActiveRelationships[service].remove(operator);
         }
 
         emit RelationshipUpdated(service, operator, obj.status, obj.slashParameterId);
@@ -407,5 +416,34 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     /// @inheritdoc ISLAYRegistry
     function getMaxActiveRelationships() external view returns (uint8) {
         return _maxActiveRelationships;
+    }
+
+    /// @inheritdoc ISLAYRegistry
+    function setMinWithdrawalDelay(uint32 delay) external whenNotPaused onlyService(_msgSender()) {
+        require(delay > 0, "Delay must be more than 0");
+
+        // checks for each of its active operators if their withdrawal delay is less than the new minimum delay.this
+        EnumerableSet.AddressSet storage activeOperators = _servicesActiveRelationships[_msgSender()];
+        uint256 activeOperatorsCount = activeOperators.length();
+        for (uint256 i = 0; i < activeOperatorsCount;) {
+            address operator = activeOperators.at(i);
+            require(
+                _operators[operator].withdrawalDelay >= delay,
+                "Service's minimum withdrawal delay must be less than or equal to active operator's withdrawal delay"
+            );
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        // If all checks pass, set the new minimum delay for the service.
+        _services[_msgSender()].minWithdrawalDelay = delay;
+
+        emit MinWithdrawalDelayUpdated(_msgSender(), delay);
+    }
+
+    function getMinWithdrawalDelay(address service) external view returns (uint32) {
+        return _services[service].minWithdrawalDelay;
     }
 }

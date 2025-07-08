@@ -10,15 +10,16 @@ interface ISLAYRegistry {
         /// @dev Id of the slash parameter for the service. Stored in {_slashParameters} array.
         /// If slashing is disabled, this will be 0.
         uint32 slashParameterId;
-        /// @dev The number of operators actively registered to this service.
-        uint8 activeOperatorsCount;
+        /// @dev the minimum withdrawal delay operators must have to be actively registered to this service.
+        uint32 minWithdrawalDelay;
     }
 
     struct Operator {
         /// @dev Whether the operator is registered.
         bool registered;
-        /// @dev The number of services actively registered to this operator.
-        uint8 activeServicesCount;
+        /// @dev The withdrawal delay in seconds before the stakes can be withdrawn from the vault.
+        /// By default, this will be {DEFAULT_WITHDRAWAL_DELAY} (7 days).
+        uint32 withdrawalDelay;
     }
 
     /**
@@ -99,6 +100,13 @@ interface ISLAYRegistry {
      * @param delay The new withdrawal delay in seconds.
      */
     event WithdrawalDelayUpdated(address indexed operator, uint32 delay);
+
+    /**
+     * @dev Emitted when a service updates the minimum withdrawal delay.
+     * @param service The address of the service setting the delay.
+     * @param delay The new minimum withdrawal delay in seconds.
+     */
+    event MinWithdrawalDelayUpdated(address indexed service, uint32 delay);
 
     /**
      * @dev Emitted when {SlashParameter} for a service is updated.
@@ -231,7 +239,6 @@ interface ISLAYRegistry {
 
     /**
      * @notice Get the withdrawal delay for an operator's vault.
-     * @dev If the delay is not set, it returns the default delay of 7 days.
      * @param operator The address of the operator.
      * @return uint32 The withdrawal delay in seconds.
      */
@@ -303,4 +310,18 @@ interface ISLAYRegistry {
         external
         view
         returns (SlashParameter memory);
+
+    /**
+     * @dev Set the minimum withdrawal delay for service. All of the service's active operators must respect this delay, else revert.
+     * This function can only be called by the service.
+     * @param delay The new minimum withdrawal delay in seconds.
+     */
+    function setMinWithdrawalDelay(uint32 delay) external;
+
+    /**
+     * @dev Get the minimum withdrawal delay for a service.
+     * @param service The address of the service.
+     * @return uint32 The minimum withdrawal delay in seconds.
+     */
+    function getMinWithdrawalDelay(address service) external view returns (uint32);
 }
