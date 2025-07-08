@@ -113,7 +113,7 @@ interface ISLAYRegistry {
      * @dev Emitted when owner updates the maximum number of active relationships for a service and operator.
      * @param maxActive The new maximum number of active relationships.
      */
-    event MaxActiveRelationshipUpdated(uint8 maxActive);
+    event MaxActiveRelationshipsUpdated(uint8 maxActive);
 
     /*//////////////////////////////////////////////////////////////
                                 FUNCTIONS
