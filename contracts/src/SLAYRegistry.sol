@@ -142,7 +142,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         onlyOperator(operator)
     {
         address service = _msgSender();
-        Relationship.Object memory obj = getRelationshipObject(service, operator);
+        Relationship.Object memory obj = _getRelationshipObject(service, operator);
 
         if (obj.status == Relationship.Status.Active) {
             revert("Already active");
@@ -166,7 +166,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         onlyOperator(operator)
     {
         address service = _msgSender();
-        Relationship.Object memory obj = getRelationshipObject(service, operator);
+        Relationship.Object memory obj = _getRelationshipObject(service, operator);
 
         if (obj.status == Relationship.Status.Inactive) {
             revert("Already inactive");
@@ -180,7 +180,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     /// @inheritdoc ISLAYRegistry
     function registerServiceToOperator(address service) external onlyOperator(_msgSender()) onlyService(service) {
         address operator = _msgSender();
-        Relationship.Object memory obj = getRelationshipObject(service, operator);
+        Relationship.Object memory obj = _getRelationshipObject(service, operator);
 
         if (obj.status == Relationship.Status.Active) {
             revert("Already active");
@@ -200,7 +200,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     /// @inheritdoc ISLAYRegistry
     function deregisterServiceFromOperator(address service) external onlyOperator(_msgSender()) onlyService(service) {
         address operator = _msgSender();
-        Relationship.Object memory obj = getRelationshipObject(service, operator);
+        Relationship.Object memory obj = _getRelationshipObject(service, operator);
 
         if (obj.status == Relationship.Status.Inactive) {
             revert("Already inactive");
@@ -213,7 +213,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
 
     /// @inheritdoc ISLAYRegistry
     function getRelationshipStatus(address service, address operator) external view returns (Relationship.Status) {
-        Relationship.Object memory obj = getRelationshipObject(service, operator);
+        Relationship.Object memory obj = _getRelationshipObject(service, operator);
         return obj.status;
     }
 
@@ -223,7 +223,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         view
         returns (Relationship.Status)
     {
-        Relationship.Object memory obj = getRelationshipObjectAt(service, operator, timestamp);
+        Relationship.Object memory obj = _getRelationshipObjectAt(service, operator, timestamp);
         return obj.status;
     }
 
@@ -279,7 +279,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     /// @inheritdoc ISLAYRegistry
     function enableSlashing(address service) external onlyOperator(_msgSender()) whenNotPaused {
         address operator = _msgSender();
-        Relationship.Object memory obj = getRelationshipObject(service, operator);
+        Relationship.Object memory obj = _getRelationshipObject(service, operator);
         require(obj.status == Relationship.Status.Active, "Relationship not active");
 
         uint32 slashParameterId = _services[service].slashParameterId;
@@ -302,7 +302,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         view
         returns (SlashParameter memory)
     {
-        uint32 slashParameterId = getRelationshipObjectAt(service, operator, timestamp).slashParameterId;
+        uint32 slashParameterId = _getRelationshipObjectAt(service, operator, timestamp).slashParameterId;
         require(slashParameterId > 0, "Slashing not enabled");
         return _slashParameters[slashParameterId];
     }
@@ -324,8 +324,8 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * @param timestamp The timestamp at which to retrieve the relationship status.
      * @return Relationship.Object The relationship object containing status and other details at the specified timestamp.
      */
-    function getRelationshipObjectAt(address service, address operator, uint32 timestamp)
-        public
+    function _getRelationshipObjectAt(address service, address operator, uint32 timestamp)
+        internal
         view
         returns (Relationship.Object memory)
     {
@@ -339,8 +339,8 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      * @param operator The address of the operator.
      * @return Relationship.Object The latest relationship object containing status and other details.
      */
-    function getRelationshipObject(address service, address operator)
-        public
+    function _getRelationshipObject(address service, address operator)
+        internal
         view
         returns (Relationship.Object memory)
     {

@@ -730,7 +730,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.prank(operator);
         uint256 timeAtWhichOperatorOptedInParam1 = block.timestamp;
         registry.enableSlashing(service);
-        Relationship.Object memory obj = registry.getRelationshipObject(service, operator);
+        Relationship.Object memory obj = registry._getRelationshipObject(service, operator);
 
         assert(obj.slashParameterId == 1);
 
@@ -742,7 +742,7 @@ contract SLAYRegistryTest is Test, TestSuite {
             ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_00, resolutionWindow: 4600})
         );
 
-        Relationship.Object memory obj1 = registry.getRelationshipObject(service, operator);
+        Relationship.Object memory obj1 = registry._getRelationshipObject(service, operator);
         assert(obj1.slashParameterId == 1);
 
         _advanceBlockBy(10);
@@ -755,7 +755,7 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         _advanceBlockBy(10);
 
-        Relationship.Object memory obj3 = registry.getRelationshipObject(service, operator);
+        Relationship.Object memory obj3 = registry._getRelationshipObject(service, operator);
         // opted into new parameters automatically until explicit enablement
         assert(obj3.slashParameterId == 1);
 
@@ -764,11 +764,11 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         _advanceBlockBy(10);
 
-        Relationship.Object memory obj4 = registry.getRelationshipObject(service, operator);
+        Relationship.Object memory obj4 = registry._getRelationshipObject(service, operator);
         assert(obj4.slashParameterId == 3);
 
         Relationship.Object memory obj5 =
-            registry.getRelationshipObjectAt(service, operator, uint32(timeAtWhichOperatorOptedInParam1));
+            registry._getRelationshipObjectAt(service, operator, uint32(timeAtWhichOperatorOptedInParam1));
         // historical state repsentation remain intacts.
         assert(obj5.slashParameterId == 1);
     }
