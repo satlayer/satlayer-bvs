@@ -272,4 +272,17 @@ interface ISLAYRegistry {
      * @return SlashParameter The slash parameters for the service.
      */
     function getSlashParameter(address service) external view returns (SlashParameter memory);
+
+    /**
+     * @dev Set the maximum number of active relationships for services and operators.
+     * Only the contract owner can call this function.
+     * @param maxActive The new maximum number of active relationships (must be > 0).
+     */
+    function setMaxActiveRelationships(uint8 maxActive) external;
+
+    /**
+     * @dev Get the current maximum number of active relationships.
+     * @return uint8 The maximum number of active relationships allowed.
+     */
+    function getMaxActiveRelationships() external view returns (uint8);
 }

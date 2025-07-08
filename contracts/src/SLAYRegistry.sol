@@ -46,7 +46,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     uint32 public constant DEFAULT_WITHDRAWAL_DELAY = 7 days;
 
     /// @dev Returns the maximum number of active relationships allowed for a service or operator.
-    uint8 public maxActiveRelationship;
+    uint8 private _maxActiveRelationship;
 
     /**
      * @dev Initializes SLAYRegistry contract.
@@ -57,7 +57,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     function initialize() public reinitializer(2) {
         // Push an empty slash parameter to the array to ensure that the first service can register with a valid ID.
         _slashParameters.push();
-        maxActiveRelationship = 5;
+        _maxActiveRelationship = 5;
     }
 
     /**
@@ -356,11 +356,11 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         // If the status is inactive, decrement the relationships count for both service and operator.
         if (obj.status == Relationship.Status.Active) {
             Operator storage operatorData = _operators[operator];
-            if (operatorData.activeServicesCount >= maxActiveRelationship) {
+            if (operatorData.activeServicesCount >= _maxActiveRelationship) {
                 revert ISLAYRegistry.OperatorRelationshipsExceeded();
             }
             Service storage serviceData = _services[service];
-            if (serviceData.activeOperatorsCount >= maxActiveRelationship) {
+            if (serviceData.activeOperatorsCount >= _maxActiveRelationship) {
                 revert ISLAYRegistry.ServiceRelationshipsExceeded();
             }
 
@@ -386,9 +386,15 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         emit RelationshipUpdated(service, operator, obj.status, obj.slashParameterId);
     }
 
+    /// @inheritdoc ISLAYRegistry
     function setMaxActiveRelationship(uint8 max) external onlyOwner {
         require(max > 0, "Max active relationships must be greater than 0");
-        maxActiveRelationship = max;
+        _maxActiveRelationship = max;
         emit MaxActiveRelationshipUpdated(max);
+    }
+
+    /// @inheritdoc ISLAYRegistry
+    function getMaxActiveRelationship() external view returns (uint8) {
+        return _maxActiveRelationship;
     }
 }
