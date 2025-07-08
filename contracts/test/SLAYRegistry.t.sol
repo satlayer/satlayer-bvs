@@ -711,11 +711,127 @@ contract SLAYRegistryTest is Test, TestSuite {
         registry.setMaxActiveRelationships(5);
     }
 
-    function test_slashOptIn_lifeCycle() public {}
+    function test_enableSlashing_lifecycle_but_parameterChanged() public {
+        // test operator's slash optin loyalty (past and present) through out service's slashing parameter mutations.
+        vm.prank(operator);
+        registry.registerAsOperator("operator.com", "Operator X");
 
-    function test_slashOptIn_lifeCycle_notActive() public {}
+        vm.startPrank(service);
+        registry.registerAsService("service.com", "Service A");
+        registry.enableSlashing(
+            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
+        );
+        registry.registerOperatorToService(operator);
+        vm.stopPrank();
 
-    function test_slashOptIn_lifeCycle_but_slashDisabled() public {}
+        vm.prank(operator);
+        registry.registerServiceToOperator(service);
 
-    function test_slashOptIn_lifeCycle_getAts() public {}
+        vm.prank(operator);
+        uint256 timeAtWhichOperatorOptedInParam1 = block.timestamp;
+        registry.enableSlashing(service);
+        Relationship.Object memory obj = registry.getRelationshipObject(service, operator);
+
+        assert(obj.slashParameterId == 1);
+
+        _advanceBlockBy(10);
+
+        vm.prank(service);
+        // service mutate its slashing parameters. Operators should not be opted into it automatically
+        registry.enableSlashing(
+            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_00, resolutionWindow: 4600})
+        );
+
+        Relationship.Object memory obj1 = registry.getRelationshipObject(service, operator);
+        assert(obj1.slashParameterId == 1);
+
+        _advanceBlockBy(10);
+
+        // service reverted back its parameters to original one. Operators still should not be opted into it automatically
+        vm.prank(service);
+        registry.enableSlashing(
+            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
+        );
+
+        _advanceBlockBy(10);
+
+        Relationship.Object memory obj3 = registry.getRelationshipObject(service, operator);
+        // opted into new parameters automatically until explicit enablement
+        assert(obj3.slashParameterId == 1);
+
+        vm.prank(operator);
+        registry.enableSlashing(service);
+
+        _advanceBlockBy(10);
+
+        Relationship.Object memory obj4 = registry.getRelationshipObject(service, operator);
+        assert(obj4.slashParameterId == 3);
+
+        Relationship.Object memory obj5 =
+            registry.getRelationshipObjectAt(service, operator, uint32(timeAtWhichOperatorOptedInParam1));
+        // historical state repsentation remain intacts.
+        assert(obj5.slashParameterId == 1);
+    }
+
+    function test_enableSlashing_lifecycle_timestamped_query() public {
+        vm.prank(operator);
+        registry.registerAsOperator("operator.com", "Operator X");
+
+        vm.startPrank(service);
+        registry.registerAsService("service.com", "Service A");
+        registry.enableSlashing(
+            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
+        );
+        registry.registerOperatorToService(operator);
+        vm.stopPrank();
+
+        vm.prank(operator);
+        registry.registerServiceToOperator(service);
+
+        vm.prank(operator);
+        uint256 timeAtWhichOperatorOptedInParam1 = block.timestamp;
+        registry.enableSlashing(service);
+
+        _advanceBlockBy(10);
+
+        vm.prank(service);
+        // service mutate its slashing parameters. Operators should not be opted into it automatically
+        registry.enableSlashing(
+            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_00, resolutionWindow: 4600})
+        );
+        uint256 timeAtWhichOperatorOptedInParam2 = block.timestamp;
+        vm.prank(operator);
+        registry.enableSlashing(service);
+
+        _advanceBlockBy(10);
+
+        // service reverted back its parameters to original one. Operators still should not be opted into it automatically
+        vm.prank(service);
+        registry.enableSlashing(
+            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100, resolutionWindow: 36})
+        );
+        vm.prank(operator);
+        uint256 timeAtWhichOperatorOptedInParam3 = block.timestamp;
+        registry.enableSlashing(service);
+
+        _advanceBlockBy(10);
+
+        ISLAYRegistry.SlashParameter memory history1 =
+            registry.getSlashParameterAt(service, operator, uint32(timeAtWhichOperatorOptedInParam1));
+
+        assert(history1.maxMbips == 100_000);
+        assert(history1.resolutionWindow == 3600);
+
+        ISLAYRegistry.SlashParameter memory history2 =
+            registry.getSlashParameterAt(service, operator, uint32(timeAtWhichOperatorOptedInParam2));
+
+        assert(history2.maxMbips == 100_00);
+        assert(history2.resolutionWindow == 4600);
+
+        ISLAYRegistry.SlashParameter memory history3 =
+            registry.getSlashParameterAt(service, operator, uint32(timeAtWhichOperatorOptedInParam3));
+
+        assert(history3.maxMbips == 100);
+        assert(history3.resolutionWindow == 36);
+    }
 }
