@@ -710,4 +710,12 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.expectRevert("Max active relationships must be greater than current");
         registry.setMaxActiveRelationships(5);
     }
+
+    function test_slashOptIn_lifeCycle() public {}
+
+    function test_slashOptIn_lifeCycle_notActive() public {}
+
+    function test_slashOptIn_lifeCycle_but_slashDisabled() public {}
+
+    function test_slashOptIn_lifeCycle_getAts() public {}
 }
