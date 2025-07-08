@@ -258,6 +258,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
                 "Operator withdrawal delay must be more than or equal to active service's minimum withdrawal delay"
             );
 
+            // unchecked because we are iterating over a fixed length array, not more than {_maxActiveRelationships}.
             unchecked {
                 ++i;
             }
@@ -432,6 +433,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
                 "Service's minimum withdrawal delay must be less than or equal to active operator's withdrawal delay"
             );
 
+            // unchecked because we are iterating over a fixed length array, not more than {_maxActiveRelationships}.
             unchecked {
                 ++i;
             }
