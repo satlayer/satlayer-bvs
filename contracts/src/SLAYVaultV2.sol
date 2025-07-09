@@ -26,13 +26,13 @@ import {ISLAYVaultV2} from "./interface/ISLAYVaultV2.sol";
  *   as defined in the ERC7540 interface.
  * - Redeem requests are initiated by transferring shares to the vault and can be claimed after a configurable delay.
  * - Preview functions are intentionally disabled to prevent misuse in async flows.
- * - Immutable dependencies (`SLAYRouterV2.sol` and `SLAYRegistryV2.sol`) are injected at construction for efficient immutable access.
+ * - Immutable dependencies (`SLAYRouterV2` and `SLAYRegistryV2`) are injected at construction for efficient immutable access.
  *
  * Key Features:
  * - Asynchronous redeem request/claim pattern using `requestRedeem`, `withdraw`, and `redeem`
  * - IERC7540Operator for request/claim with configurable controller-operator relationships
  * - Upgradeable via Beacon Proxy pattern
- * - Pausing and whitelisting enforced by SLAYRouterV2.sol
+ * - Pausing and whitelisting enforced by SLAYRouterV2
  */
 contract SLAYVaultV2 is
     Initializable,
@@ -86,9 +86,9 @@ contract SLAYVaultV2 is
     }
 
     /**
-     * @dev Modifier to make a function callable only when the SLAYRouterV2.sol is not paused.
-     * SLAYVault doesn't enforce its own pause state, but relies on the SLAYRouterV2.sol to manage the pause state.
-     * If the SLAYRouterV2.sol is paused, all operations marked with this modifier will revert with `EnforcedPause`.
+     * @dev Modifier to make a function callable only when the SLAYRouterV2 is not paused.
+     * SLAYVault doesn't enforce its own pause state, but relies on the SLAYRouterV2 to manage the pause state.
+     * If the SLAYRouterV2 is paused, all operations marked with this modifier will revert with `EnforcedPause`.
      */
     modifier whenNotPaused() {
         _requireNotPaused();
@@ -96,7 +96,7 @@ contract SLAYVaultV2 is
     }
 
     /**
-     * @dev Modifier to make a function callable only when the SLAYVault is whitelisted in the SLAYRouterV2.sol.
+     * @dev Modifier to make a function callable only when the SLAYVault is whitelisted in the SLAYRouterV2.
      * If the SLAYVault is not whitelisted, all operations marked with this modifier will revert with `ExpectedWhitelisted`.
      */
     modifier whenWhitelisted() {
@@ -131,26 +131,26 @@ contract SLAYVaultV2 is
     }
 
     /**
-     * @dev See {ERC20-_update} with additional requirements for the SLAYRouterV2.sol.
+     * @dev See {ERC20-_update} with additional requirements in SLAYRouterV2.
      *
      * To _update the balances of the SLAYVault (and therefore mint/deposit/withdraw/redeem),
      * the following conditions must be met:
      *
-     * - the contract must not be paused in the SLAYRouterV2.sol.
-     * - the contract must be whitelisted in the SLAYRouterV2.sol.
+     * - the contract must not be paused in the SLAYRouterV2.
+     * - the contract must be whitelisted in the SLAYRouterV2.
      */
     function _update(address from, address to, uint256 value) internal virtual override whenNotPaused whenWhitelisted {
         super._update(from, to, value);
     }
 
-    /// @dev Throws if the SLAYRouterV2.sol is paused.
+    /// @dev Throws if the SLAYRouterV2 is paused.
     function _requireNotPaused() internal view virtual {
         if (router.paused()) {
             revert EnforcedPause();
         }
     }
 
-    /// @dev Throws if the SLAYVault is not whitelisted in the SLAYRouterV2.sol.
+    /// @dev Throws if the SLAYVault is not whitelisted in the SLAYRouterV2.
     function _requireWhitelisted() internal view virtual {
         if (!router.whitelisted(address(this))) {
             revert ExpectedWhitelisted();

@@ -10,9 +10,9 @@ import {SLAYRegistryV2} from "./SLAYRegistryV2.sol";
 import {ISLAYRouterV2} from "./interface/ISLAYRouterV2.sol";
 
 /**
- * @title SLAYRouterV2.sol
+ * @title SLAYRouterV2
  * @dev The central point for managing interactions with SLAYVaults.
- * This contract is designed to work with the SLAYRegistryV2.sol for managing vaults and their states.
+ * This contract is designed to work with the SLAYRegistryV2 for managing vaults and their states.
  *
  * @custom:oz-upgrades-from src/InitialImpl.sol:InitialImpl
  */
@@ -23,7 +23,7 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     mapping(address => bool) public whitelisted;
 
     /**
-     * @dev Set the immutable SLAYRegistryV2.sol proxy address for the implementation.
+     * @dev Set the immutable SLAYRegistryV2 proxy address for the implementation.
      * Cyclic params in constructor are possible as an InitialImpl (empty implementation) is used for an initial deployment,
      * after which all the contracts are upgraded to their respective implementations with immutable proxy addresses.
      *

@@ -54,7 +54,7 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     uint8 private _maxActiveRelationships;
 
     /**
-     * @dev Initializes SLAYRegistryV2.sol contract.
+     * @dev Initializes SLAYRegistryV2 contract.
      * Set up slash parameters array to allow the first service to register with a valid ID.
      * As `0` is considered as "no slashing enabled" and is used to disable slashing.
      * Instead of using offset, this is cleaner and less prone to errors.
@@ -88,7 +88,7 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     }
 
     /**
-     * @dev Set the immutable SLAYRouterV2.sol proxy address for the implementation.
+     * @dev Set the immutable SLAYRouterV2 proxy address for the implementation.
      * Cyclic params in constructor are possible as an InitialImpl (empty implementation) is used for an initial deployment,
      * after which all the contracts are upgraded to their respective implementations with immutable proxy addresses.
      *
