@@ -18,7 +18,7 @@ import {SLAYRouterV2} from "./SLAYRouterV2.sol";
 import {ISLAYVaultV2} from "./interface/ISLAYVaultV2.sol";
 
 /**
- * @title SLAYVault
+ * @title SatLayer Vault
  * @notice ERC4626-compliant tokenized vault designed for asynchronous redemption workflows.
  * @dev
  * - This contract is deployed via the SLAYVaultFactory using the Beacon Proxy pattern.

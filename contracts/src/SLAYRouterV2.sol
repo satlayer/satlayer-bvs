@@ -10,7 +10,7 @@ import {SLAYRegistryV2} from "./SLAYRegistryV2.sol";
 import {ISLAYRouterV2} from "./interface/ISLAYRouterV2.sol";
 
 /**
- * @title SLAYRouterV2
+ * @title Vaults Router Contract
  * @dev The central point for managing interactions with SLAYVaults.
  * This contract is designed to work with the SLAYRegistryV2 for managing vaults and their states.
  *

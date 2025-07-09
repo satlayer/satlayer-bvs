@@ -13,7 +13,7 @@ import {RelationshipV2} from "./RelationshipV2.sol";
 import {ISLAYRegistryV2} from "./interface/ISLAYRegistryV2.sol";
 
 /**
- * @title SLAYRegistryV2.sol
+ * @title Services and Operators Registry Contract
  * @dev This contract serves as a registry for services and operators in the SatLayer ecosystem.
  * It allows services and operators to register themselves, manage their relationships,
  * and track registration statuses.

@@ -7,6 +7,7 @@ import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IERC7540Redeem, IERC7540Operator} from "./IERC7540.sol";
 
 /**
+ * @title SatLayer Vault Interface
  * @dev Interface for the SLAYVault contract.
  */
 interface ISLAYVaultV2 is IERC20Metadata, IERC4626, IERC7540Redeem, IERC7540Operator {

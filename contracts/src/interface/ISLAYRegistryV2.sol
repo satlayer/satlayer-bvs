@@ -3,6 +3,9 @@ pragma solidity ^0.8.0;
 
 import {RelationshipV2} from "../RelationshipV2.sol";
 
+/**
+ * @title Services and Operators Registry Interface
+ */
 interface ISLAYRegistryV2 {
     struct Service {
         /// @dev Whether the service is registered.
