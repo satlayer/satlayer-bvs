@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import {Test, console} from "forge-std/Test.sol";
 import {InitialImpl} from "../src/InitialImpl.sol";
 import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 contract InitialImplTest is Test {
@@ -91,8 +92,38 @@ contract InitialImplTest is Test {
         }
     }
 
+    /// For {test_only_owner_can_upgrade}
     function upgradeCallNonOwner(address proxy, address newImpl) external {
         vm.startPrank(address(0x123));
         UnsafeUpgrades.upgradeProxy(proxy, newImpl, "");
+    }
+
+    function test_initializable() public {
+        address proxy = UnsafeUpgrades.deployUUPSProxy(
+            address(initialImpl), abi.encodeCall(InitialImpl.initialize, (address(this)))
+        );
+    }
+
+    function test_initializable_fails_if_initialized_twice() public {
+        address proxy = UnsafeUpgrades.deployUUPSProxy(
+            address(initialImpl), abi.encodeCall(InitialImpl.initialize, (address(this)))
+        );
+        InitialImpl impl = InitialImpl(proxy);
+
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        impl.initialize(address(this));
+    }
+
+    function test_pause_post_upgrade_still_paused() public {
+        address proxy = UnsafeUpgrades.deployUUPSProxy(
+            address(initialImpl), abi.encodeCall(InitialImpl.initialize, (address(this)))
+        );
+        InitialImpl impl = InitialImpl(proxy);
+        impl.pause();
+
+        InitialImpl newImpl = new InitialImpl();
+        UnsafeUpgrades.upgradeProxy(proxy, address(newImpl), "");
+
+        assertTrue(impl.paused(), "Contract should still be paused after upgrade");
     }
 }
