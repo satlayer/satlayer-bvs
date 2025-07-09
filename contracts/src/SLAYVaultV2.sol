@@ -10,12 +10,12 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {SLAYRegistry} from "./SLAYRegistry.sol";
-import {SLAYRouter} from "./SLAYRouter.sol";
+
 import {IERC7540Redeem, IERC7540Operator} from "./interface/IERC7540.sol";
-import {ISLAYVault} from "./interface/ISLAYVault.sol";
+import {SLAYRegistryV2} from "./SLAYRegistryV2.sol";
+import {SLAYRouterV2} from "./SLAYRouterV2.sol";
+import {ISLAYVaultV2} from "./interface/ISLAYVaultV2.sol";
 
 /**
  * @title SLAYVault
@@ -26,21 +26,21 @@ import {ISLAYVault} from "./interface/ISLAYVault.sol";
  *   as defined in the ERC7540 interface.
  * - Redeem requests are initiated by transferring shares to the vault and can be claimed after a configurable delay.
  * - Preview functions are intentionally disabled to prevent misuse in async flows.
- * - Immutable dependencies (`SLAYRouter` and `SLAYRegistry`) are injected at construction for efficient immutable access.
+ * - Immutable dependencies (`SLAYRouterV2` and `SLAYRegistryV2`) are injected at construction for efficient immutable access.
  *
  * Key Features:
  * - Asynchronous redeem request/claim pattern using `requestRedeem`, `withdraw`, and `redeem`
  * - IERC7540Operator for request/claim with configurable controller-operator relationships
  * - Upgradeable via Beacon Proxy pattern
- * - Pausing and whitelisting enforced by SLAYRouter
+ * - Pausing and whitelisting enforced by SLAYRouterV2
  */
-contract SLAYVault is
+contract SLAYVaultV2 is
     Initializable,
     ERC20Upgradeable,
     ERC4626Upgradeable,
     ERC165Upgradeable,
     ERC20PermitUpgradeable,
-    ISLAYVault
+    ISLAYVaultV2
 {
     using SafeERC20 for IERC20;
 
@@ -52,10 +52,10 @@ contract SLAYVault is
     uint256 internal constant REQUEST_ID = 0;
 
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    SLAYRouter public immutable router;
+    SLAYRouterV2 public immutable router;
 
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    SLAYRegistry public immutable registry;
+    SLAYRegistryV2 public immutable registry;
 
     /**
      * @notice The `delegated` is the address where the vault is delegated to.
@@ -86,9 +86,9 @@ contract SLAYVault is
     }
 
     /**
-     * @dev Modifier to make a function callable only when the SLAYRouter is not paused.
-     * SLAYVault doesn't enforce its own pause state, but relies on the SLAYRouter to manage the pause state.
-     * If the SLAYRouter is paused, all operations marked with this modifier will revert with `EnforcedPause`.
+     * @dev Modifier to make a function callable only when the SLAYRouterV2 is not paused.
+     * SLAYVault doesn't enforce its own pause state, but relies on the SLAYRouterV2 to manage the pause state.
+     * If the SLAYRouterV2 is paused, all operations marked with this modifier will revert with `EnforcedPause`.
      */
     modifier whenNotPaused() {
         _requireNotPaused();
@@ -96,7 +96,7 @@ contract SLAYVault is
     }
 
     /**
-     * @dev Modifier to make a function callable only when the SLAYVault is whitelisted in the SLAYRouter.
+     * @dev Modifier to make a function callable only when the SLAYVault is whitelisted in the SLAYRouterV2.
      * If the SLAYVault is not whitelisted, all operations marked with this modifier will revert with `ExpectedWhitelisted`.
      */
     modifier whenWhitelisted() {
@@ -105,7 +105,7 @@ contract SLAYVault is
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor(SLAYRouter router_, SLAYRegistry registry_) {
+    constructor(SLAYRouterV2 router_, SLAYRegistryV2 registry_) {
         router = router_;
         registry = registry_;
         _disableInitializers();
@@ -131,33 +131,33 @@ contract SLAYVault is
     }
 
     /**
-     * @dev See {ERC20-_update} with additional requirements for the SLAYRouter.
+     * @dev See {ERC20-_update} with additional requirements in SLAYRouterV2.
      *
      * To _update the balances of the SLAYVault (and therefore mint/deposit/withdraw/redeem),
      * the following conditions must be met:
      *
-     * - the contract must not be paused in the SLAYRouter.
-     * - the contract must be whitelisted in the SLAYRouter.
+     * - the contract must not be paused in the SLAYRouterV2.
+     * - the contract must be whitelisted in the SLAYRouterV2.
      */
     function _update(address from, address to, uint256 value) internal virtual override whenNotPaused whenWhitelisted {
         super._update(from, to, value);
     }
 
-    /// @dev Throws if the SLAYRouter is paused.
+    /// @dev Throws if the SLAYRouterV2 is paused.
     function _requireNotPaused() internal view virtual {
         if (router.paused()) {
             revert EnforcedPause();
         }
     }
 
-    /// @dev Throws if the SLAYVault is not whitelisted in the SLAYRouter.
+    /// @dev Throws if the SLAYVault is not whitelisted in the SLAYRouterV2.
     function _requireWhitelisted() internal view virtual {
         if (!router.whitelisted(address(this))) {
             revert ExpectedWhitelisted();
         }
     }
 
-    /// @inheritdoc ISLAYVault
+    /// @inheritdoc ISLAYVaultV2
     function getTotalPendingRedemption() external view returns (uint256) {
         return _totalPendingRedemption;
     }
@@ -170,7 +170,7 @@ contract SLAYVault is
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165Upgradeable) returns (bool) {
         return interfaceId == type(IERC20).interfaceId || interfaceId == type(IERC20Metadata).interfaceId
             || interfaceId == type(IERC4626).interfaceId || interfaceId == type(IERC7540Redeem).interfaceId
-            || interfaceId == type(IERC7540Operator).interfaceId || interfaceId == type(ISLAYVault).interfaceId
+            || interfaceId == type(IERC7540Operator).interfaceId || interfaceId == type(ISLAYVaultV2).interfaceId
             || super.supportsInterface(interfaceId);
     }
 

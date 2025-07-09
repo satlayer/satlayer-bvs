@@ -6,30 +6,30 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
-import {SLAYRegistry} from "./SLAYRegistry.sol";
-import {ISLAYRouter} from "./interface/ISLAYRouter.sol";
+import {SLAYRegistryV2} from "./SLAYRegistryV2.sol";
+import {ISLAYRouterV2} from "./interface/ISLAYRouterV2.sol";
 
 /**
- * @title SLAYRouter
+ * @title SLAYRouterV2
  * @dev The central point for managing interactions with SLAYVaults.
- * This contract is designed to work with the SLAYRegistry for managing vaults and their states.
+ * This contract is designed to work with the SLAYRegistryV2 for managing vaults and their states.
  *
  * @custom:oz-upgrades-from src/InitialImpl.sol:InitialImpl
  */
-contract SLAYRouter is Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, ISLAYRouter {
+contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, ISLAYRouterV2 {
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    SLAYRegistry public immutable registry;
+    SLAYRegistryV2 public immutable registry;
 
     mapping(address => bool) public whitelisted;
 
     /**
-     * @dev Set the immutable SLAYRegistry proxy address for the implementation.
+     * @dev Set the immutable SLAYRegistryV2 proxy address for the implementation.
      * Cyclic params in constructor are possible as an InitialImpl (empty implementation) is used for an initial deployment,
      * after which all the contracts are upgraded to their respective implementations with immutable proxy addresses.
      *
      * @custom:oz-upgrades-unsafe-allow constructor
      */
-    constructor(SLAYRegistry registry_) {
+    constructor(SLAYRegistryV2 registry_) {
         registry = registry_;
         _disableInitializers();
     }
@@ -55,7 +55,7 @@ contract SLAYRouter is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pausa
         _unpause();
     }
 
-    /// @inheritdoc ISLAYRouter
+    /// @inheritdoc ISLAYRouterV2
     function setVaultWhitelist(address vault_, bool isWhitelisted) external onlyOwner {
         whitelisted[vault_] = isWhitelisted;
         emit VaultWhitelisted(vault_, isWhitelisted);

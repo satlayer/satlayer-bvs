@@ -3,13 +3,13 @@ pragma solidity ^0.8.0;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {SLAYVault} from "../SLAYVault.sol";
-import {SLAYRegistry} from "../SLAYRegistry.sol";
+import {SLAYVaultV2} from "../SLAYVaultV2.sol";
+import {SLAYRegistryV2} from "../SLAYRegistryV2.sol";
 
 /**
  * @dev Interface for the SLAYVaultFactory contract.
  */
-interface ISLAYVaultFactory {
+interface ISLAYVaultFactoryV2 {
     /*//////////////////////////////////////////////////////////////
                                 ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -31,7 +31,7 @@ interface ISLAYVaultFactory {
      * @param asset The ERC20Metadata asset to be used in the vault.
      * @return The newly created SLAYVault instance.
      */
-    function create(IERC20Metadata asset) external returns (SLAYVault);
+    function create(IERC20Metadata asset) external returns (SLAYVaultV2);
 
     /**
      * @notice For owner to create a new SLAYVault instance using the Beacon proxy pattern.
@@ -46,5 +46,5 @@ interface ISLAYVaultFactory {
      */
     function create(IERC20 asset, address operator, string memory name, string memory symbol)
         external
-        returns (SLAYVault);
+        returns (SLAYVaultV2);
 }

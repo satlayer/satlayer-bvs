@@ -2,18 +2,18 @@
 pragma solidity ^0.8.0;
 
 import "./MockERC20.sol";
-import "../src/SLAYVault.sol";
+import "../src/SLAYVaultV2.sol";
 import {Test, console} from "forge-std/Test.sol";
-import {TestSuite} from "./TestSuite.sol";
+import {TestSuiteV2} from "./TestSuiteV2.sol";
 import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
-contract SLAYVaultTest is Test, TestSuite {
+contract SLAYVaultV2Test is Test, TestSuiteV2 {
     MockERC20 public underlying = new MockERC20("Wrapped Bitcoin", "WBTC", 8);
     address public immutable operator = makeAddr("Operator Y");
 
     function setUp() public override {
-        TestSuite.setUp();
+        TestSuiteV2.setUp();
 
         vm.startPrank(operator);
         registry.registerAsOperator("https://example.com", "Operator Y");
@@ -22,21 +22,21 @@ contract SLAYVaultTest is Test, TestSuite {
 
     function test_erc165() public {
         vm.prank(operator);
-        SLAYVault vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
 
         assertTrue(vault.supportsInterface(type(IERC20).interfaceId));
         assertTrue(vault.supportsInterface(type(IERC20Metadata).interfaceId));
         assertTrue(vault.supportsInterface(type(IERC4626).interfaceId));
         assertTrue(vault.supportsInterface(type(IERC7540Redeem).interfaceId));
         assertTrue(vault.supportsInterface(type(IERC7540Operator).interfaceId));
-        assertTrue(vault.supportsInterface(type(ISLAYVault).interfaceId));
+        assertTrue(vault.supportsInterface(type(ISLAYVaultV2).interfaceId));
         // super
         assertTrue(vault.supportsInterface(type(IERC165).interfaceId));
     }
 
     function test_whitelisted() public {
         vm.prank(operator);
-        SLAYVault vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -52,20 +52,20 @@ contract SLAYVaultTest is Test, TestSuite {
 
     function test_notWhitelisted() public {
         vm.prank(operator);
-        SLAYVault vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
 
         address account = address(this);
 
         underlying.mint(account, 1000 * 10 ** vault.decimals());
         underlying.approve(address(vault), type(uint256).max);
 
-        vm.expectRevert(ISLAYVault.ExpectedWhitelisted.selector);
+        vm.expectRevert(ISLAYVaultV2.ExpectedWhitelisted.selector);
         vault.deposit(100, account);
     }
 
     function test_paused() public {
         vm.prank(operator);
-        SLAYVault vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -77,13 +77,13 @@ contract SLAYVaultTest is Test, TestSuite {
         underlying.mint(account, 1000 * 10 ** vault.decimals());
         underlying.approve(address(vault), type(uint256).max);
 
-        vm.expectRevert(ISLAYVault.EnforcedPause.selector);
+        vm.expectRevert(ISLAYVaultV2.EnforcedPause.selector);
         vault.deposit(100, account);
     }
 
     function test_deposit() public {
         vm.prank(operator);
-        SLAYVault vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -141,7 +141,7 @@ contract SLAYVaultTest is Test, TestSuite {
         vm.assume(fuzzAmount > 0 && fuzzAmount <= 1000 * 10 ** 8);
 
         vm.prank(operator);
-        SLAYVault vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -183,7 +183,7 @@ contract SLAYVaultTest is Test, TestSuite {
         vm.assume(fuzzAmount > 0 && fuzzAmount <= 1000 * 10 ** 8);
 
         vm.prank(operator);
-        SLAYVault vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -231,7 +231,7 @@ contract SLAYVaultTest is Test, TestSuite {
         vm.assume(depositAmount > 0 && depositAmount <= 500 * 10 ** 8);
 
         vm.prank(operator);
-        SLAYVault vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -279,7 +279,7 @@ contract SLAYVaultTest is Test, TestSuite {
 
     function test_redeem() public {
         vm.prank(operator);
-        SLAYVault vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
@@ -321,7 +321,7 @@ contract SLAYVaultTest is Test, TestSuite {
 
     function test_withdraw() public {
         vm.prank(operator);
-        SLAYVault vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
         uint8 vaultDecimal = vault.decimals();
         uint256 vaultMinorUnit = 10 ** vaultDecimal;
 
@@ -379,7 +379,7 @@ contract SLAYVaultTest is Test, TestSuite {
      */
     function test_lifecycle_deposit_withdrawal() public {
         vm.prank(operator);
-        SLAYVault vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
         uint8 vaultDecimal = vault.decimals();
         uint256 vaultMinorUnit = 10 ** vaultDecimal;
 
@@ -495,7 +495,7 @@ contract SLAYVaultTest is Test, TestSuite {
 
     function test_lifecycle_withdrawal_with_operator() public {
         vm.prank(operator);
-        SLAYVault vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
         uint8 vaultDecimal = vault.decimals();
         uint256 vaultMinorUnit = 10 ** vaultDecimal;
 
@@ -505,9 +505,9 @@ contract SLAYVaultTest is Test, TestSuite {
         vm.prank(owner);
         router.setVaultWhitelist(address(vault), true);
 
-        address staker1 = makeAddr("staker1");
-        address staker2 = makeAddr("staker2");
-        address operator = makeAddr("operator");
+        address staker1 = makeAddr("staker/1");
+        address staker2 = makeAddr("staker/2");
+        address operator1 = makeAddr("operator/1");
 
         // fund staker1 with 100 WBTC
         underlying.mint(staker1, 100 * underlyingMinorUnit);
@@ -536,14 +536,14 @@ contract SLAYVaultTest is Test, TestSuite {
 
         // staker1 approves operator
         vm.prank(staker1);
-        vault.setOperator(operator, true);
+        vault.setOperator(operator1, true);
 
         // staker2 approves operator
         vm.prank(staker2);
-        vault.setOperator(operator, true);
+        vault.setOperator(operator1, true);
 
         // operator requests to withdraw 100 WBTC for staker1
-        vm.prank(operator);
+        vm.prank(operator1);
         vault.requestRedeem(100 * vaultMinorUnit, staker1, staker1);
         // assert that staker1's receipt tokens are sent to the vault
         assertEq(vault.balanceOf(staker1), 0);
@@ -552,7 +552,7 @@ contract SLAYVaultTest is Test, TestSuite {
         assertEq(vault.pendingRedeemRequest(0, staker1), 100 * vaultMinorUnit);
 
         // operator requests to withdraw 5 WBTC for staker2
-        vm.prank(operator);
+        vm.prank(operator1);
         vault.requestRedeem(5 * vaultMinorUnit, staker2, staker2);
         // assert that staker2's receipt tokens are sent to the vault
         assertEq(vault.balanceOf(staker2), 0);
@@ -581,7 +581,7 @@ contract SLAYVaultTest is Test, TestSuite {
         assertEq(vault.claimableRedeemRequest(0, staker2), 5 * underlyingMinorUnit);
 
         // operator redeems 5 WBTC for staker2
-        vm.prank(operator);
+        vm.prank(operator1);
         vault.redeem(5 * underlyingMinorUnit, staker2, staker2);
         // assert that staker2 received 5 WBTC
         assertEq(underlying.balanceOf(staker2), 5 * underlyingMinorUnit);
@@ -605,7 +605,7 @@ contract SLAYVaultTest is Test, TestSuite {
      */
     function test_lifecycle_withdrawal_with_operator_reverts() public {
         vm.prank(operator);
-        SLAYVault vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
         uint8 vaultDecimal = vault.decimals();
         uint256 vaultMinorUnit = 10 ** vaultDecimal;
 
@@ -615,10 +615,10 @@ contract SLAYVaultTest is Test, TestSuite {
         vm.prank(owner);
         router.setVaultWhitelist(address(vault), true);
 
-        address staker1 = makeAddr("staker1");
-        address staker2 = makeAddr("staker2");
-        address operator = makeAddr("operator");
-        address operator2 = makeAddr("operator2");
+        address staker1 = makeAddr("staker/1");
+        address staker2 = makeAddr("staker/2");
+        address operator1 = makeAddr("operator/1");
+        address operator2 = makeAddr("operator/2");
         address randomAddress = makeAddr("randomAddress");
 
         // fund staker1 with 100 WBTC
@@ -655,19 +655,19 @@ contract SLAYVaultTest is Test, TestSuite {
         vm.stopPrank();
 
         // operator requests to withdraw 100 WBTC for staker1 (revert)
-        vm.startPrank(operator);
+        vm.startPrank(operator1);
         vm.expectRevert(
-            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, operator, 0, 100 * vaultMinorUnit)
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, operator1, 0, 100 * vaultMinorUnit)
         );
         vault.requestRedeem(100 * vaultMinorUnit, staker1, staker1);
         vm.stopPrank();
 
         // staker1 approves operator
         vm.prank(staker1);
-        vault.setOperator(operator, true);
+        vault.setOperator(operator1, true);
 
         // operator approves operator2
-        vm.prank(operator);
+        vm.prank(operator1);
         vault.setOperator(operator2, true);
 
         // operator2 requests to withdraw 100 WBTC for staker1 (revert)
@@ -684,7 +684,7 @@ contract SLAYVaultTest is Test, TestSuite {
 
         // randomAddress requests to withdraw 100 WBTC for staker1 (revert)
         vm.startPrank(randomAddress);
-        vm.expectRevert(abi.encodeWithSelector(ISLAYVault.NotControllerOrOperator.selector));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYVaultV2.NotControllerOrOperator.selector));
         vault.requestRedeem(100 * vaultMinorUnit, staker1, staker1);
         vm.stopPrank();
     }
