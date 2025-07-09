@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import {SLAYRegistryV2} from "../SLAYRegistryV2.sol";
 
 /**
+ * @title Vaults Router Interface
  * @dev Interface for the SLAYRouterV2 contract.
  */
 interface ISLAYRouterV2 {

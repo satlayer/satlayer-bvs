@@ -14,6 +14,11 @@ import {SLAYVaultV2} from "./SLAYVaultV2.sol";
 import {SLAYRegistryV2} from "./SLAYRegistryV2.sol";
 import {ISLAYVaultFactoryV2} from "./interface/ISLAYVaultFactoryV2.sol";
 
+/**
+ * @title Vault Factory Contract
+ * @dev Factory contract for creating SLAYVaultV2 instances.
+ * This contract is responsible for deploying new vaults and managing their creation.
+ */
 contract SLAYVaultFactoryV2 is
     Initializable,
     UUPSUpgradeable,

@@ -7,6 +7,7 @@ import {SLAYVaultV2} from "../SLAYVaultV2.sol";
 import {SLAYRegistryV2} from "../SLAYRegistryV2.sol";
 
 /**
+ * @title Vault Factory Interface
  * @dev Interface for the SLAYVaultFactory contract.
  */
 interface ISLAYVaultFactoryV2 {
