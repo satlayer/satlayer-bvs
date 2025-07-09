@@ -61,9 +61,9 @@ contract SLAYVaultV2 is
      * @notice The `delegated` is the address where the vault is delegated to.
      * This address cannot withdraw assets from the vault.
      * See https://build.satlayer.xyz/getting-started/operators for more information.
-     * @dev This address is the address of the SatLayer operator that is delegated to manage the vault.
+     * This delegated address (also called the Operator in SLAYRegistry) is not the same as the ERC7540 Operator.
      */
-    address public _delegated;
+    address internal _delegated;
 
     /// @notice Operator approval status per controller.
     mapping(address controller => mapping(address operator => bool)) internal _isOperator;
@@ -115,6 +115,11 @@ contract SLAYVaultV2 is
      * @dev Initializes the SLAYVault with the given parameters.
      * This function is called by the SLAYVaultFactory when creating a new SLAYVault instance.
      * Not to be called directly.
+     *
+     * @param asset_ The address of the underlying asset (ERC20 token) that the vault will hold.
+     * @param delegated_ The address of the delegated operator for this vault.
+     * @param name_ The name of the vault, used for ERC20 token metadata.
+     * @param symbol_ The symbol of the vault, used for ERC20 token metadata.
      */
     function initialize(IERC20 asset_, address delegated_, string memory name_, string memory symbol_)
         public
@@ -131,18 +136,21 @@ contract SLAYVaultV2 is
         return _delegated;
     }
 
+    /// @inheritdoc IERC20Metadata
     function decimals() public view override(ERC20Upgradeable, ERC4626Upgradeable, IERC20Metadata) returns (uint8) {
         return ERC4626Upgradeable.decimals();
     }
 
     /**
-     * @dev See {ERC20-_update} with additional requirements in SLAYRouterV2.
+     * @dev See {ERC20Upgradable-_update} and with additional requirements in SLAYRouterV2.
      *
      * To _update the balances of the SLAYVault (and therefore mint/deposit/withdraw/redeem),
      * the following conditions must be met:
      *
-     * - the contract must not be paused in the SLAYRouterV2.
-     * - the contract must be whitelisted in the SLAYRouterV2.
+     * - the contract must not be paused in the SLAYRouterV2 (whenNotPaused modifier).
+     * - the contract must be whitelisted in the SLAYRouterV2 (whenWhitelisted modifier).
+     *
+     * @inheritdoc ERC20Upgradable
      */
     function _update(address from, address to, uint256 value) internal virtual override whenNotPaused whenWhitelisted {
         super._update(from, to, value);
@@ -168,7 +176,8 @@ contract SLAYVaultV2 is
     }
 
     /**
-     * @dev Support the most common interfaces for SLAYVault. There might be more interfaces not listed here.
+     * @dev Support the most common interfaces for SLAYVault.
+     * There might be more interfaces not listed here.
      *
      * @inheritdoc ERC165Upgradeable
      */
@@ -236,14 +245,30 @@ contract SLAYVaultV2 is
         return 0;
     }
 
-    /// @inheritdoc IERC7540Operator
+    /**
+     * @notice Set an operator for a controller.
+     * This is ERC7540's Operator, not SatLayer's Operator.
+     * An Operator in this context is an account that can manage Requests on behalf of another account.
+     * This includes the ability to request and claim redemptions.
+     * You do not need to set an Operator to request or claim redemptions,
+     * this is an optional feature to allow third parties to manage redemptions on behalf of the controller.
+     * As described in the ERC7540 standard.
+     *
+     * @inheritdoc IERC7540Operator
+     */
     function setOperator(address operator, bool approved) external returns (bool success) {
         _isOperator[_msgSender()][operator] = approved;
         emit OperatorSet(_msgSender(), operator, approved);
         return true;
     }
 
-    /// @inheritdoc IERC7540Operator
+    /**
+     * @notice Check if the `operator` is an approved operator for the `controller`.
+     * Not is not the same as the SatLayer Operator.
+     * See ERC7540 for more details on Operators.
+     *
+     * @inheritdoc IERC7540Operator
+     */
     function isOperator(address controller, address operator) external view returns (bool status) {
         return _isOperator[controller][operator];
     }

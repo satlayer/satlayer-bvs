@@ -31,6 +31,10 @@ interface IERC7540Operator {
 }
 
 interface IERC7540Redeem {
+    /**
+     * @dev The `sender` has locked shares, owned by `owner`, in the Vault to Request a redemption.
+     * `controller` controls this Request, but is not necessarily the `owner`.
+     */
     event RedeemRequest(
         address indexed controller, address indexed owner, uint256 indexed requestId, address sender, uint256 assets
     );

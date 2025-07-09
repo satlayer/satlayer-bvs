@@ -24,12 +24,13 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     SLAYRegistryV2 public immutable registry;
 
+    /// @dev Whitelisted flag for each vault.
     mapping(address => bool) public whitelisted;
 
-    /// @dev Stores the vaults for each operator.
+    /// @dev Stores the EnumerableSet of vault address for each operator.
     mapping(address operator => EnumerableSet.AddressSet) private _operatorVaults;
 
-    /// @dev Return the max number of vaults allowed per operator.
+    /// @dev The max number of vaults allowed per operator.
     uint8 private _maxVaultsPerOperator;
 
     /**
@@ -46,6 +47,7 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
 
     /**
      * @dev Initializes SLAYRouterV2 contract.
+     * Set the default max vaults per operator to 10.
      */
     function initialize() public reinitializer(2) {
         _maxVaultsPerOperator = 10;
@@ -91,9 +93,9 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         EnumerableSet.AddressSet storage vaults = _operatorVaults[operator];
 
         if (isWhitelisted) {
-            if (vaults.add(vault_)) {
-                require(vaults.length() <= _maxVaultsPerOperator, "Exceeds max vaults per operator");
-            }
+            require(vaults.length() < _maxVaultsPerOperator, "Exceeds max vaults per operator");
+
+            vaults.add(vault_);
         } else {
             vaults.remove(vault_);
         }
