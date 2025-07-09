@@ -15,16 +15,17 @@ interface ISLAYRouterV2 {
     /**
      * @dev Emitted when the vault whitelist status is updated.
      */
-    event VaultWhitelisted(address indexed vault, bool whitelisted);
+    event VaultWhitelisted(address indexed operator, address vault, bool whitelisted);
 
     /*//////////////////////////////////////////////////////////////
                                 FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * Set a individual whitelist status for a vault.
+     * @dev Set the individual whitelist status for a SLAYVault.
      * This allows CA owner to control which vaults can be interacted with through the router.
      * For non-granular state/modifier, use {SLAYRouterV2-pause} to pause all vaults.
+     * When a vault is whitelisted, it can be interacted with through the router.
      *
      * @param vault_ address of the vault to set the whitelist status for.
      * This should be a SLAYVault contract address but isn't "checked" to allow for flexible un-whitelisting of vaults.

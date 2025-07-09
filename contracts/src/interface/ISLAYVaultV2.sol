@@ -55,6 +55,14 @@ interface ISLAYVaultV2 is IERC20Metadata, IERC4626, IERC7540Redeem, IERC7540Oper
     //////////////////////////////////////////////////////////////*/
 
     /**
+     * @notice The `delegated` is the address where the vault is delegated to.
+     * This address cannot withdraw assets from the vault.
+     * See https://build.satlayer.xyz/getting-started/operators for more information.
+     * @dev This address is the address of the SatLayer operator that is delegated to manage the vault.
+     */
+    function delegated() external view returns (address);
+
+    /**
      * @notice Returns the total amount of shares pending redemption across all controllers.
      * This is the sum of all shares in pending and claimable redemption requests.
      *

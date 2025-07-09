@@ -36,41 +36,89 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
     }
 
     function test_Whitelisted() public {
-        vm.startPrank(makeAddr("Operator Y"));
+        address operator = makeAddr("Operator Y");
+        vm.prank(operator);
         registry.registerAsOperator("https://example.com", "Operator Y");
 
         MockERC20 underlying = new MockERC20("Token", "TKN", 18);
+
+        vm.prank(operator);
         address vault = address(vaultFactory.create(underlying));
         assertFalse(router.whitelisted(vault));
 
-        vm.startPrank(owner);
-
+        vm.prank(owner);
         vm.expectEmit();
-        emit ISLAYRouterV2.VaultWhitelisted(vault, true);
+        emit ISLAYRouterV2.VaultWhitelisted(operator, vault, true);
         router.setVaultWhitelist(vault, true);
 
         assertTrue(router.whitelisted(vault));
 
+        vm.prank(owner);
         vm.expectEmit();
-        emit ISLAYRouterV2.VaultWhitelisted(vault, false);
+        emit ISLAYRouterV2.VaultWhitelisted(operator, vault, false);
         router.setVaultWhitelist(vault, false);
 
         assertFalse(router.whitelisted(vault));
     }
 
-    /**
-     * We allow whitelisting of fake vaults, which are not created by the factory.
-     */
-    function test_WhitelistedFakeVault() public {
+    function test_Whitelisted_NotVault() public {
         address vault = vm.randomAddress();
         assertFalse(router.whitelisted(vault));
 
-        vm.startPrank(owner);
-
-        vm.expectEmit();
-        emit ISLAYRouterV2.VaultWhitelisted(vault, true);
+        vm.prank(owner);
+        vm.expectRevert();
         router.setVaultWhitelist(vault, true);
 
+        assertFalse(router.whitelisted(vault));
+    }
+
+    function test_Whitelisted_AlreadyWhitelisted() public {
+        address operator = makeAddr("Operator Y");
+        vm.prank(operator);
+        registry.registerAsOperator("https://example.com", "Operator Y");
+
+        MockERC20 underlying = new MockERC20("Token", "TKN", 18);
+
+        vm.prank(operator);
+        address vault = address(vaultFactory.create(underlying));
+        assertFalse(router.whitelisted(vault));
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(vault, true);
         assertTrue(router.whitelisted(vault));
+
+        vm.expectRevert("Vault already in desired state");
+        router.setVaultWhitelist(vault, true);
+        assertTrue(router.whitelisted(vault));
+
+        router.setVaultWhitelist(vault, false);
+        assertFalse(router.whitelisted(vault));
+        vm.stopPrank();
+    }
+
+    function test_Whitelisted_ExceedsMaxVaultsPerOperator() public {
+        address operator = makeAddr("Operator Y");
+        vm.prank(operator);
+        registry.registerAsOperator("https://example.com", "Operator Y");
+
+        MockERC20 underlying = new MockERC20("Token", "TKN", 18);
+
+        for (uint256 i = 0; i < 10; i++) {
+            vm.prank(operator);
+            address vault = address(vaultFactory.create(underlying));
+            vm.prank(owner);
+            router.setVaultWhitelist(vault, true);
+            assertTrue(router.whitelisted(vault));
+        }
+
+        vm.prank(operator);
+        address vault = address(vaultFactory.create(underlying));
+
+        vm.prank(owner);
+
+        vm.expectRevert("Exceeds max vaults per operator");
+        router.setVaultWhitelist(vault, true);
+
+        assertFalse(router.whitelisted(vault));
     }
 }
