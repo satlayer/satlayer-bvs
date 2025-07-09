@@ -10,11 +10,11 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
+import {IERC7540Redeem, IERC7540Operator} from "./interface/IERC7540.sol";
 import {SLAYRegistryV2} from "./SLAYRegistryV2.sol";
 import {SLAYRouterV2} from "./SLAYRouterV2.sol";
-import {IERC7540Redeem, IERC7540Operator} from "./interface/IERC7540.sol";
 import {ISLAYVaultV2} from "./interface/ISLAYVaultV2.sol";
 
 /**
