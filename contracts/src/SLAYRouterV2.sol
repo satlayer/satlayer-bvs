@@ -146,6 +146,7 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         return _whitelisted[vault_];
     }
 
+    /// @inheritdoc ISLAYRouter
     function requestSlashing(Slashing.RequestPayload memory payload) external onlyValidSlashRequest(payload) {
         address service = _msgSender();
         Slashing.RequestInfo memory pendingSlashingRequest = getPendingSlashingRequest(service, payload.operator);
@@ -157,9 +158,13 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
                         && pendingSlashingRequest.requestExpiry > block.timestamp
                 ) || pendingSlashingRequest.status == Slashing.RequestStatus.Locked
             ) {
-                revert("Pending Slashing Request lifecycle not completed");
+                // previous slashing request is pending within expiry date or has locked
+                revert("Previous slashing request lifecycle not completed");
             }
 
+            // previous slashing request is pending but expired
+            // eligible for new slashing request to take place
+            // by canceling the previous slashing request.
             if (
                 pendingSlashingRequest.status == Slashing.RequestStatus.Pending
                     && pendingSlashingRequest.requestExpiry < block.timestamp
@@ -185,9 +190,10 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
             service: service
         });
 
-        _updateSlashingRequest(service, payload.operator, newSlashingRequestInfo);
+        _createNewSlashingRequest(service, payload.operator, newSlashingRequestInfo);
     }
 
+    /// @inheritdoc ISLAYRouter
     function cancelSlashing(address operator) external onlyService(_msgSender()) {
         address service = _msgSender();
         Slashing.RequestInfo memory pendingSlashingRequest = getPendingSlashingRequest(service, operator);
@@ -212,6 +218,11 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         slashingRequests[slashId] = pendingSlashingRequest;
     }
 
+    /**
+     * Gets current active slashing request for given service operator pair.
+     * @param service Address of the service.
+     * @param operator Address of the operator.
+     */
     function getPendingSlashingRequest(address service, address operator)
         public
         view
@@ -222,7 +233,13 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         return slashingRequests[slashId];
     }
 
-    function _updateSlashingRequest(address service, address operator, Slashing.RequestInfo memory info)
+    /**
+     * Create a new slashing request
+     * @param service Address of the service.
+     * @param operator Address of the operator.
+     * @param info {ISLAYRouter.Slashing.RequestInfo}
+     */
+    function _createNewSlashingRequest(address service, address operator, Slashing.RequestInfo memory info)
         internal
         returns (bytes32)
     {
@@ -231,59 +248,5 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         slashingRequestIds[key] = slashId;
         slashingRequests[slashId] = info;
         return slashId;
-    }
-}
-
-library Slashing {
-    enum RequestStatus {
-        Pending,
-        Locked,
-        Canceled,
-        Finalized
-    }
-
-    struct RequestPayload {
-        address operator;
-        uint32 millieBips;
-        uint32 timestamp;
-        MetaData metaData;
-    }
-
-    struct RequestInfo {
-        RequestPayload request;
-        uint32 requestTime;
-        uint32 requestResolution;
-        uint32 requestExpiry;
-        RequestStatus status;
-        address service;
-    }
-
-    struct MetaData {
-        string reason;
-    }
-
-    function isRequestInfoExist(RequestInfo memory info) public pure returns (bool) {
-        if (
-            info.service == address(0) && info.request.operator == address(0) && info.requestTime == 0
-                && info.requestResolution == 0 && info.requestExpiry == 0
-        ) {
-            return true;
-        }
-        return false;
-    }
-
-    function calculateSlashingRequestId(RequestInfo memory info) public pure returns (bytes32) {
-        return keccak256(
-            abi.encodePacked(
-                info.request.operator,
-                info.request.millieBips,
-                info.request.timestamp,
-                info.request.metaData.reason,
-                info.requestTime,
-                info.requestResolution,
-                info.requestExpiry,
-                info.service
-            )
-        );
     }
 }
