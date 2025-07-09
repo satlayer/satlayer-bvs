@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import "../src/InitialImpl.sol";
 import "../src/SLAYVaultV2.sol";
 import "../src/SLAYVaultFactoryV2.sol";
-import "../src/SLAYRouterV2.sol";
 import "../src/SLAYRegistryV2.sol";
 
 import {Script, console} from "forge-std/Script.sol";

@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import "./MockERC20.sol";
 import "../src/SLAYRouterV2.sol";
-import "../src/SLAYVaultV2.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {TestSuiteV2} from "./TestSuiteV2.sol";
