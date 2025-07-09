@@ -81,11 +81,11 @@ library Slashing {
          */
         Pending,
         /**
-         * Locked stage is where the slashed collateral are escrowed to SatLayer.
+         * Locked stage is where the slashed collateral are escrow to SatLayer.
          */
         Locked,
         /**
-         * Finalized stage is when slashed callateral are moved to destination address.
+         * Finalized stage is when slashed collateral are moved to destination address.
          */
         Finalized,
         /**
@@ -110,7 +110,7 @@ library Slashing {
          */
         uint32 millieBips;
         /**
-         * Timestamp at which alleged misbhaviour occurs.
+         * Timestamp at which alleged misbehaviour occurs.
          */
         uint32 timestamp;
         /**
