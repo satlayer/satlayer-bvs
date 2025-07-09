@@ -7,9 +7,10 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
+import {SLAYRegistryV2} from "./SLAYRegistryV2.sol";
 import {ISLAYRegistryV2} from "./interface/ISLAYRegistryV2.sol";
-import {ISLAYRouterV2} from "./interface/ISLAYRouterV2.sol";
-import {ISLAYVaultV2} from "./interface/ISLAYVaultV2.sol";
+import {ISLAYRouterV2, Slashing} from "./interface/ISLAYRouterV2.sol";
+import {RelationshipV2} from "./RelationshipV2.sol";
 
 /**
  * @title Vaults Router Contract
@@ -44,7 +45,7 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     mapping(bytes32 slashId => Slashing.RequestInfo) public slashingRequests;
 
     modifier onlyValidSlashRequest(Slashing.RequestPayload memory request) {
-        ISLAYRegistry.SlashParameter memory slashBounds =
+        ISLAYRegistryV2.SlashParameter memory slashBounds =
             registry.getSlashParameterAt(_msgSender(), request.operator, request.timestamp);
 
         require(
@@ -65,7 +66,7 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
 
     modifier onlyService(address account) {
         if (!registry.isService(account)) {
-            revert ISLAYRegistry.ServiceNotFound(account);
+            revert ISLAYRegistryV2.ServiceNotFound(account);
         }
         _;
     }
@@ -146,7 +147,7 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         return _whitelisted[vault_];
     }
 
-    /// @inheritdoc ISLAYRouter
+    /// @inheritdoc ISLAYRouterV2
     function requestSlashing(Slashing.RequestPayload memory payload) external onlyValidSlashRequest(payload) {
         address service = _msgSender();
         Slashing.RequestInfo memory pendingSlashingRequest = getPendingSlashingRequest(service, payload.operator);
@@ -189,7 +190,7 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         _createNewSlashingRequest(service, payload.operator, newSlashingRequestInfo);
     }
 
-    /// @inheritdoc ISLAYRouter
+    /// @inheritdoc ISLAYRouterV2
     function cancelSlashing(address operator) external onlyService(_msgSender()) {
         address service = _msgSender();
         Slashing.RequestInfo memory pendingSlashingRequest = getPendingSlashingRequest(service, operator);
@@ -218,7 +219,7 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         view
         returns (Slashing.RequestInfo memory)
     {
-        bytes32 key = Relationship.getKey(service, operator);
+        bytes32 key = RelationshipV2.getKey(service, operator);
         bytes32 slashId = slashingRequestIds[key];
         return slashingRequests[slashId];
     }
@@ -233,11 +234,11 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         internal
         returns (bytes32)
     {
-        bytes32 key = Relationship.getKey(service, operator);
+        bytes32 key = RelationshipV2.getKey(service, operator);
         bytes32 slashId = Slashing.calculateSlashingRequestId(info);
         slashingRequestIds[key] = slashId;
         slashingRequests[slashId] = info;
-        emit ISLAYRouter.NewSlashingRequest(service, operator, slashId, info);
+        emit ISLAYRouterV2.NewSlashingRequest(service, operator, slashId, info);
         return slashId;
     }
 
@@ -254,11 +255,11 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     ) internal {
         pendingSlashingRequest.status = Slashing.RequestStatus.Canceled;
         bytes32 slashId = Slashing.calculateSlashingRequestId(pendingSlashingRequest);
-        bytes32 key = Relationship.getKey(service, operator);
+        bytes32 key = RelationshipV2.getKey(service, operator);
 
         delete slashingRequestIds[key];
 
         slashingRequests[slashId] = pendingSlashingRequest;
-        emit ISLAYRouter.CancelSlashingRequest(service, operator, slashId, pendingSlashingRequest);
+        emit ISLAYRouterV2.CancelSlashingRequest(service, operator, slashId, pendingSlashingRequest);
     }
 }
