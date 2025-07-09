@@ -169,11 +169,7 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
                 pendingSlashingRequest.status == Slashing.RequestStatus.Pending
                     && pendingSlashingRequest.requestExpiry < block.timestamp
             ) {
-                pendingSlashingRequest.status = Slashing.RequestStatus.Canceled;
-                bytes32 slashId = Slashing.calculateSlashingRequestId(pendingSlashingRequest);
-                bytes32 key = Relationship.getKey(service, payload.operator);
-                delete slashingRequestIds[key];
-                slashingRequests[slashId] = pendingSlashingRequest;
+                _cancelSlashingRequest(service, payload.operator, pendingSlashingRequest);
             }
         }
 
@@ -209,13 +205,7 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
             "Only slashing requests that has not progressed beyond pending can be canceled."
         );
 
-        pendingSlashingRequest.status = Slashing.RequestStatus.Canceled;
-        bytes32 slashId = Slashing.calculateSlashingRequestId(pendingSlashingRequest);
-        bytes32 key = Relationship.getKey(service, operator);
-
-        delete slashingRequestIds[key];
-
-        slashingRequests[slashId] = pendingSlashingRequest;
+        _cancelSlashingRequest(service, operator, pendingSlashingRequest);
     }
 
     /**
@@ -247,6 +237,28 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         bytes32 slashId = Slashing.calculateSlashingRequestId(info);
         slashingRequestIds[key] = slashId;
         slashingRequests[slashId] = info;
+        emit ISLAYRouter.NewSlashingRequest(service, operator, slashId, info);
         return slashId;
+    }
+
+    /**
+     * Cancel Slashing request
+     * @param service Address of the service.
+     * @param operator Address of the operator.
+     * @param pendingSlashingRequest {ISLAYRouter.Slashing.RequestInfo}
+     */
+    function _cancelSlashingRequest(
+        address service,
+        address operator,
+        Slashing.RequestInfo memory pendingSlashingRequest
+    ) internal {
+        pendingSlashingRequest.status = Slashing.RequestStatus.Canceled;
+        bytes32 slashId = Slashing.calculateSlashingRequestId(pendingSlashingRequest);
+        bytes32 key = Relationship.getKey(service, operator);
+
+        delete slashingRequestIds[key];
+
+        slashingRequests[slashId] = pendingSlashingRequest;
+        emit ISLAYRouter.CancelSlashingRequest(service, operator, slashId, pendingSlashingRequest);
     }
 }

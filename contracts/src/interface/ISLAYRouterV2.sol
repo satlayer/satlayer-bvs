@@ -17,6 +17,20 @@ interface ISLAYRouterV2 {
      */
     event VaultWhitelisted(address indexed operator, address vault, bool whitelisted);
 
+    /**
+     * @dev Emitted when new slash request is accepted.
+     */
+    event NewSlashingRequest(
+        address indexed service, address indexed operator, bytes32 indexed slashId, Slashing.RequestInfo slashingInfo
+    );
+
+    /**
+     * @dev Emitted when new slash request is being canceled.
+     */
+    event CancelSlashingRequest(
+        address indexed service, address indexed operator, bytes32 indexed slashId, Slashing.RequestInfo slashingInfo
+    );
+
     /*//////////////////////////////////////////////////////////////
                                 FUNCTIONS
     //////////////////////////////////////////////////////////////*/
