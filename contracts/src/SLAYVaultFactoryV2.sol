@@ -45,12 +45,22 @@ contract SLAYVaultFactoryV2 is
         _disableInitializers();
     }
 
+    /**
+     * @dev Initializes the contract and sets the initial owner.
+     *
+     * @param initialOwner The address to be set as the initial owner.
+     */
     function initialize(address initialOwner) public initializer {
         __Ownable_init(initialOwner);
         __UUPSUpgradeable_init();
         __Pausable_init();
     }
 
+    /**
+     * @dev Authorizes an upgrade to a new implementation.
+     * This function is required by UUPS and restricts upgradeability to the contract owner.
+     * @param newImplementation The address of the new contract implementation.
+     */
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /// @dev Throws if the sender is not the operator.
