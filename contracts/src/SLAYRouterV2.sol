@@ -28,12 +28,11 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
 
     /// @dev Whitelisted flag for each vault.
     mapping(address => bool) internal _whitelisted;
+
     /**
      * @notice 7 days
      */
     uint32 public constant slashingRequestExpiryWindow = 7 days;
-
-    mapping(address => bool) public whitelisted;
 
     /// @dev The max number of vaults allowed per operator.
     uint8 private _maxVaultsPerOperator;
