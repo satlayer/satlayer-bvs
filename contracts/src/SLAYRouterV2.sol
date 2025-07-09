@@ -7,7 +7,7 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-import {SLAYRegistryV2} from "./SLAYRegistryV2.sol";
+import {ISLAYRegistryV2} from "./interface/ISLAYRegistryV2.sol";
 import {ISLAYRouterV2} from "./interface/ISLAYRouterV2.sol";
 import {ISLAYVaultV2} from "./interface/ISLAYVaultV2.sol";
 
@@ -22,15 +22,16 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    SLAYRegistryV2 public immutable registry;
+    ISLAYRegistryV2 public immutable registry;
 
-    mapping(address => bool) public whitelisted;
+    /// @dev Whitelisted flag for each vault.
+    mapping(address => bool) internal _whitelisted;
 
-    /// @dev Stores the vaults for each operator.
-    mapping(address operator => EnumerableSet.AddressSet) private _operatorVaults;
-
-    /// @dev Return the max number of vaults allowed per operator.
+    /// @dev The max number of vaults allowed per operator.
     uint8 private _maxVaultsPerOperator;
+
+    /// @dev Stores the EnumerableSet of vault address for each operator.
+    mapping(address operator => EnumerableSet.AddressSet) private _operatorVaults;
 
     /**
      * @dev Set the immutable SLAYRegistryV2 proxy address for the implementation.
@@ -39,13 +40,14 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      *
      * @custom:oz-upgrades-unsafe-allow constructor
      */
-    constructor(SLAYRegistryV2 registry_) {
+    constructor(ISLAYRegistryV2 registry_) {
         registry = registry_;
         _disableInitializers();
     }
 
     /**
      * @dev Initializes SLAYRouterV2 contract.
+     * Set the default max vaults per operator to 10.
      */
     function initialize() public reinitializer(2) {
         _maxVaultsPerOperator = 10;
@@ -85,20 +87,25 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
 
     /// @inheritdoc ISLAYRouterV2
     function setVaultWhitelist(address vault_, bool isWhitelisted) external onlyOwner {
-        require(whitelisted[vault_] != isWhitelisted, "Vault already in desired state");
+        require(_whitelisted[vault_] != isWhitelisted, "Vault already in desired state");
 
         address operator = ISLAYVaultV2(vault_).delegated();
         EnumerableSet.AddressSet storage vaults = _operatorVaults[operator];
 
         if (isWhitelisted) {
-            if (vaults.add(vault_)) {
-                require(vaults.length() <= _maxVaultsPerOperator, "Exceeds max vaults per operator");
-            }
+            require(vaults.length() < _maxVaultsPerOperator, "Exceeds max vaults per operator");
+
+            vaults.add(vault_);
         } else {
             vaults.remove(vault_);
         }
 
-        whitelisted[vault_] = isWhitelisted;
+        _whitelisted[vault_] = isWhitelisted;
         emit VaultWhitelisted(operator, vault_, isWhitelisted);
+    }
+
+    /// @inheritdoc ISLAYRouterV2
+    function isVaultWhitelisted(address vault_) external view returns (bool) {
+        return _whitelisted[vault_];
     }
 }

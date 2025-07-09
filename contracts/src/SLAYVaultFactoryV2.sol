@@ -11,7 +11,7 @@ import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol"
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SLAYVaultV2} from "./SLAYVaultV2.sol";
-import {SLAYRegistryV2} from "./SLAYRegistryV2.sol";
+import {ISLAYRegistryV2} from "./interface/ISLAYRegistryV2.sol";
 import {ISLAYVaultFactoryV2} from "./interface/ISLAYVaultFactoryV2.sol";
 
 /**
@@ -30,7 +30,7 @@ contract SLAYVaultFactoryV2 is
     address public immutable beacon;
 
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    SLAYRegistryV2 public immutable registry;
+    ISLAYRegistryV2 public immutable registry;
 
     /// @dev Throws if called by any account other than the operator.
     modifier onlyOperator() {
@@ -39,7 +39,7 @@ contract SLAYVaultFactoryV2 is
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor(address beacon_, SLAYRegistryV2 registry_) {
+    constructor(address beacon_, ISLAYRegistryV2 registry_) {
         beacon = beacon_;
         registry = registry_;
         _disableInitializers();
