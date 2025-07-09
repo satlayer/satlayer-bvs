@@ -150,7 +150,7 @@ contract SLAYVaultV2 is
      * - the contract must not be paused in the SLAYRouterV2 (whenNotPaused modifier).
      * - the contract must be whitelisted in the SLAYRouterV2 (whenWhitelisted modifier).
      *
-     * @inheritdoc ERC20Upgradable
+     * @inheritdoc ERC20Upgradeable
      */
     function _update(address from, address to, uint256 value) internal virtual override whenNotPaused whenWhitelisted {
         super._update(from, to, value);

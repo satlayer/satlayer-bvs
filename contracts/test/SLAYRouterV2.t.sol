@@ -197,5 +197,9 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
     function test_setMaxVaultsPerOperator_InitialValue() public {
         assertEq(router.getMaxVaultsPerOperator(), 10);
+
+        vm.prank(owner);
+        router.setMaxVaultsPerOperator(15);
+        assertEq(router.getMaxVaultsPerOperator(), 15);
     }
 }
