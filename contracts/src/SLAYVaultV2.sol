@@ -424,4 +424,15 @@ contract SLAYVaultV2 is
     function previewRedeem(uint256) public pure virtual override(IERC4626, ERC4626Upgradeable) returns (uint256) {
         revert PreviewNotSupported();
     }
+
+    /// @inheritdoc ISLAYVaultV2
+    function slashLock(uint256 amount) external {
+        if (_msgSender() != address(router)) {
+            revert NotRouter();
+        }
+
+        SafeERC20.safeTransfer(IERC20(asset()), address(router), amount);
+
+        emit SlashLock(amount);
+    }
 }

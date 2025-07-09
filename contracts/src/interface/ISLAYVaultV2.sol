@@ -42,6 +42,15 @@ interface ISLAYVaultV2 is IERC20Metadata, IERC4626, IERC7540Operator, IERC7540Re
     /// @notice Thrown when a withdraw request is not found.
     error WithdrawRequestNotFound();
 
+    /// @notice Thrown when the caller is not the router.
+    error NotRouter();
+
+    /*//////////////////////////////////////////////////////////////
+                                EVENTS
+    //////////////////////////////////////////////////////////////*/
+
+    event SlashLock(uint256 amount);
+
     /// @notice Struct representing a redeem request.
     struct RedeemRequestStruct {
         /// @notice The total amount of shares requested for redemption.
@@ -70,4 +79,11 @@ interface ISLAYVaultV2 is IERC20Metadata, IERC4626, IERC7540Operator, IERC7540Re
      * @return The total amount of shares pending redemption.
      */
     function getTotalPendingRedemption() external view returns (uint256);
+
+    /**
+     * @notice Moves assets from the vault to the router contract as part of the slashing process.
+     * @dev only callable by router
+     * @param amount The amount of underlying asset to move to the router.
+     */
+    function slashLock(uint256 amount) external;
 }
