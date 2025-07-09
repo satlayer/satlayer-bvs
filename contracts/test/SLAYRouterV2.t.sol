@@ -121,4 +121,33 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         assertFalse(router.whitelisted(vault));
     }
+
+    function test_Whitelisted_NewVaultsCanBeAddedAfterRemoval() public {
+        MockERC20 underlying = new MockERC20("Token", "TKN", 18);
+        address[] memory vaults = new address[](10);
+
+        address operator = makeAddr("Operator Y");
+        vm.prank(operator);
+        registry.registerAsOperator("https://example.com", "Operator Y");
+
+        for (uint256 i = 0; i < 10; i++) {
+            vm.prank(operator);
+            vaults[i] = address(vaultFactory.create(underlying));
+
+            vm.prank(owner);
+            router.setVaultWhitelist(vaults[i], true);
+        }
+
+        vm.prank(operator);
+        address newVault = address(vaultFactory.create(underlying));
+        assertFalse(router.whitelisted(newVault));
+
+        vm.prank(owner);
+        router.setVaultWhitelist(vaults[0], false);
+        assertFalse(router.whitelisted(vaults[0]));
+
+        vm.prank(owner);
+        router.setVaultWhitelist(newVault, true);
+        assertTrue(router.whitelisted(newVault));
+    }
 }
