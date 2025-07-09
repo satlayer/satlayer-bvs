@@ -22,6 +22,18 @@ interface ISLAYRouterV2 {
     //////////////////////////////////////////////////////////////*/
 
     /**
+     * @return The max number of vaults allowed per operator.
+     */
+    function getMaxVaultsPerOperator() external view returns (uint8);
+
+    /**
+     * @dev Update the max number of vaults allowed per operator.
+     * The new value must be greater than the previous value.
+     * @param count The new maximum number of vaults per operator.
+     */
+    function setMaxVaultsPerOperator(uint8 count) external;
+
+    /**
      * @dev Set the individual whitelist status for a SLAYVault.
      * This allows CA owner to control which vaults can be interacted with through the router.
      * For non-granular state/modifier, use {SLAYRouterV2-pause} to pause all vaults.

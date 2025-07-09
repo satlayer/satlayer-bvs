@@ -150,4 +150,52 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         router.setVaultWhitelist(newVault, true);
         assertTrue(router.whitelisted(newVault));
     }
+
+    function test_OnlyOwnerCanSetWhitelist() public {
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, address(this)));
+        router.setVaultWhitelist(address(0), true);
+    }
+
+    function test_setMaxVaultsPerOperator() public {
+        vm.prank(owner);
+        router.setMaxVaultsPerOperator(20);
+        assertEq(router.getMaxVaultsPerOperator(), 20);
+
+        address operator = makeAddr("Operator Y");
+        vm.prank(operator);
+        registry.registerAsOperator("https://example.com", "Operator Y");
+
+        MockERC20 underlying = new MockERC20("Token", "TKN", 18);
+
+        for (uint256 i = 0; i < 20; i++) {
+            vm.prank(operator);
+            address vault = address(vaultFactory.create(underlying));
+
+            vm.prank(owner);
+            router.setVaultWhitelist(vault, true);
+        }
+
+        vm.prank(operator);
+        address vault = address(vaultFactory.create(underlying));
+
+        vm.prank(owner);
+        vm.expectRevert("Exceeds max vaults per operator");
+        router.setVaultWhitelist(vault, true);
+        assertFalse(router.whitelisted(vault));
+    }
+
+    function test_setMaxVaultsPerOperator_OnlyOwner() public {
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, address(this)));
+        router.setMaxVaultsPerOperator(20);
+    }
+
+    function test_setMaxVaultsPerOperator_MustBeGreaterThanCurrent() public {
+        vm.prank(owner);
+        vm.expectRevert("Must be greater than current");
+        router.setMaxVaultsPerOperator(0);
+    }
+
+    function test_setMaxVaultsPerOperator_InitialValue() public {
+        assertEq(router.getMaxVaultsPerOperator(), 10);
+    }
 }

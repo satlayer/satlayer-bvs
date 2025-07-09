@@ -73,6 +73,17 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     }
 
     /// @inheritdoc ISLAYRouterV2
+    function getMaxVaultsPerOperator() external view returns (uint8) {
+        return _maxVaultsPerOperator;
+    }
+
+    /// @inheritdoc ISLAYRouterV2
+    function setMaxVaultsPerOperator(uint8 count) external onlyOwner {
+        require(count > _maxVaultsPerOperator, "Must be greater than current");
+        _maxVaultsPerOperator = count;
+    }
+
+    /// @inheritdoc ISLAYRouterV2
     function setVaultWhitelist(address vault_, bool isWhitelisted) external onlyOwner {
         require(whitelisted[vault_] != isWhitelisted, "Vault already in desired state");
 
