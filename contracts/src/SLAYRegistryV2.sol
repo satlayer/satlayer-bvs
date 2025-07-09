@@ -6,7 +6,7 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import {SLAYRouterV2} from "./SLAYRouterV2.sol";
 import {RelationshipV2} from "./RelationshipV2.sol";
@@ -54,18 +54,6 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     uint8 private _maxActiveRelationships;
 
     /**
-     * @dev Initializes SLAYRegistryV2 contract.
-     * Set up slash parameters array to allow the first service to register with a valid ID.
-     * As `0` is considered as "no slashing enabled" and is used to disable slashing.
-     * Instead of using offset, this is cleaner and less prone to errors.
-     */
-    function initialize() public reinitializer(2) {
-        // Push an empty slash parameter to the array to ensure that the first service can register with a valid ID.
-        _slashParameters.push();
-        _maxActiveRelationships = 5;
-    }
-
-    /**
      * @dev Modifier to check if the provided account is a registered service.
      * Reverts with `ServiceNotFound` if the account is not registered as a service.
      */
@@ -100,6 +88,19 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     constructor(SLAYRouterV2 router_) {
         router = router_;
         _disableInitializers();
+    }
+
+    /**
+     * @dev Initializes SLAYRegistryV2 contract.
+     * Set up slash parameters array to allow the first service to register with a valid ID.
+     * As `0` is considered as "no slashing enabled" and is used to disable slashing.
+     * Instead of using offset, this is cleaner and less prone to errors.
+     */
+    function initialize() public reinitializer(2) {
+        // Push an empty slash parameter to the array to ensure that the first service can register with a valid ID.
+        _slashParameters.push();
+        // Default max active relationships is set to 5.
+        _maxActiveRelationships = 5;
     }
 
     /**

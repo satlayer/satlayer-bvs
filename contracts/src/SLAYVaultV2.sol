@@ -63,7 +63,7 @@ contract SLAYVaultV2 is
      * See https://build.satlayer.xyz/getting-started/operators for more information.
      * @dev This address is the address of the SatLayer operator that is delegated to manage the vault.
      */
-    address public delegated;
+    address public _delegated;
 
     /// @notice Operator approval status per controller.
     mapping(address controller => mapping(address operator => bool)) internal _isOperator;
@@ -123,7 +123,12 @@ contract SLAYVaultV2 is
         __ERC20_init(name_, symbol_);
         __ERC4626_init(asset_);
         __ERC20Permit_init(name_);
-        delegated = delegated_;
+        _delegated = delegated_;
+    }
+
+    /// @inheritdoc ISLAYVaultV2
+    function delegated() public view override returns (address) {
+        return _delegated;
     }
 
     function decimals() public view override(ERC20Upgradeable, ERC4626Upgradeable, IERC20Metadata) returns (uint8) {
@@ -201,7 +206,7 @@ contract SLAYVaultV2 is
         pendingRedemptionRequest.shares += shares;
 
         // reset the claimableAt to the current time + withdrawalDelay
-        uint32 withdrawalDelay = registry.getWithdrawalDelay(delegated);
+        uint32 withdrawalDelay = registry.getWithdrawalDelay(_delegated);
         pendingRedemptionRequest.claimableAt = block.timestamp + withdrawalDelay;
 
         // update _totalPendingRedemption

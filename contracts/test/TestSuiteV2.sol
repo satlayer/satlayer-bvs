@@ -36,7 +36,9 @@ contract TestSuiteV2 is Test {
         );
 
         vm.startPrank(owner);
-        UnsafeUpgrades.upgradeProxy(address(router), address(new SLAYRouterV2(registry)), "");
+        UnsafeUpgrades.upgradeProxy(
+            address(router), address(new SLAYRouterV2(registry)), abi.encodeCall(SLAYRouterV2.initialize, ())
+        );
         UnsafeUpgrades.upgradeProxy(
             address(registry), address(new SLAYRegistryV2(router)), abi.encodeCall(SLAYRegistryV2.initialize, ())
         );

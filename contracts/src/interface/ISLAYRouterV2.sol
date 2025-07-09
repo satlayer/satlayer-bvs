@@ -15,16 +15,29 @@ interface ISLAYRouterV2 {
     /**
      * @dev Emitted when the vault whitelist status is updated.
      */
-    event VaultWhitelisted(address indexed vault, bool whitelisted);
+    event VaultWhitelisted(address indexed operator, address vault, bool whitelisted);
 
     /*//////////////////////////////////////////////////////////////
                                 FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * Set a individual whitelist status for a vault.
+     * @return The max number of vaults allowed per operator.
+     */
+    function getMaxVaultsPerOperator() external view returns (uint8);
+
+    /**
+     * @dev Update the max number of vaults allowed per operator.
+     * The new value must be greater than the previous value.
+     * @param count The new maximum number of vaults per operator.
+     */
+    function setMaxVaultsPerOperator(uint8 count) external;
+
+    /**
+     * @dev Set the individual whitelist status for a SLAYVault.
      * This allows CA owner to control which vaults can be interacted with through the router.
      * For non-granular state/modifier, use {SLAYRouterV2-pause} to pause all vaults.
+     * When a vault is whitelisted, it can be interacted with through the router.
      *
      * @param vault_ address of the vault to set the whitelist status for.
      * This should be a SLAYVault contract address but isn't "checked" to allow for flexible un-whitelisting of vaults.
