@@ -146,9 +146,9 @@ library Slashing {
             info.service == address(0) && info.request.operator == address(0) && info.requestTime == 0
                 && info.requestResolution == 0 && info.requestExpiry == 0
         ) {
-            return true;
+            return false;
         }
-        return false;
+        return true;
     }
 
     /**

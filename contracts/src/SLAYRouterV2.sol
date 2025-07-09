@@ -31,7 +31,7 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     /**
      * @notice 7 days
      */
-    uint32 public constant slashingRequestExpiryWindow = 7 * 24 * 60 * 60;
+    uint32 public constant slashingRequestExpiryWindow = 7 days;
 
     mapping(address => bool) public whitelisted;
 
@@ -41,8 +41,10 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     /// @dev Stores the EnumerableSet of vault address for each operator.
     mapping(address operator => EnumerableSet.AddressSet) private _operatorVaults;
 
+    /// @dev Stores the id for most recent slashing request for a given service operator pair.
     mapping(bytes32 serviceOperatorKey => bytes32 slashId) public slashingRequestIds;
 
+    /// @dev Stores the slashing requests by its id.
     mapping(bytes32 slashId => Slashing.RequestInfo) public slashingRequests;
 
     modifier onlyValidSlashRequest(Slashing.RequestPayload memory request) {
@@ -154,24 +156,20 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         Slashing.RequestInfo memory pendingSlashingRequest = getPendingSlashingRequest(service, payload.operator);
 
         if (Slashing.isRequestInfoExist(pendingSlashingRequest) == true) {
-            if (
-                (
-                    pendingSlashingRequest.status == Slashing.RequestStatus.Pending
-                        && pendingSlashingRequest.requestExpiry > block.timestamp
-                ) || pendingSlashingRequest.status == Slashing.RequestStatus.Locked
-            ) {
-                // previous slashing request is pending within expiry date or has locked
-                revert("Previous slashing request lifecycle not completed");
+            if (pendingSlashingRequest.status == Slashing.RequestStatus.Pending) {
+                if (pendingSlashingRequest.requestExpiry > uint32(block.timestamp)) {
+                    // previous slashing request is pending within expiry date or has locked
+                    revert("Previous slashing request lifecycle not completed");
+                } else {
+                    // previous slashing request is pending but expired
+                    // eligible for new slashing request to take place
+                    // by canceling the previous slashing request.
+                    _cancelSlashingRequest(service, payload.operator, pendingSlashingRequest);
+                }
             }
 
-            // previous slashing request is pending but expired
-            // eligible for new slashing request to take place
-            // by canceling the previous slashing request.
-            if (
-                pendingSlashingRequest.status == Slashing.RequestStatus.Pending
-                    && pendingSlashingRequest.requestExpiry < block.timestamp
-            ) {
-                _cancelSlashingRequest(service, payload.operator, pendingSlashingRequest);
+            if (pendingSlashingRequest.status == Slashing.RequestStatus.Locked) {
+                revert("Previous slashing request lifecycle not completed");
             }
         }
 
