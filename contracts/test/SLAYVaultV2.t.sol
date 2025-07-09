@@ -505,9 +505,9 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vm.prank(owner);
         router.setVaultWhitelist(address(vault), true);
 
-        address staker1 = makeAddr("staker1");
-        address staker2 = makeAddr("staker2");
-        address operator = makeAddr("operator");
+        address staker1 = makeAddr("staker/1");
+        address staker2 = makeAddr("staker/2");
+        address operator1 = makeAddr("operator/1");
 
         // fund staker1 with 100 WBTC
         underlying.mint(staker1, 100 * underlyingMinorUnit);
@@ -536,14 +536,14 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
         // staker1 approves operator
         vm.prank(staker1);
-        vault.setOperator(operator, true);
+        vault.setOperator(operator1, true);
 
         // staker2 approves operator
         vm.prank(staker2);
-        vault.setOperator(operator, true);
+        vault.setOperator(operator1, true);
 
         // operator requests to withdraw 100 WBTC for staker1
-        vm.prank(operator);
+        vm.prank(operator1);
         vault.requestRedeem(100 * vaultMinorUnit, staker1, staker1);
         // assert that staker1's receipt tokens are sent to the vault
         assertEq(vault.balanceOf(staker1), 0);
@@ -552,7 +552,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         assertEq(vault.pendingRedeemRequest(0, staker1), 100 * vaultMinorUnit);
 
         // operator requests to withdraw 5 WBTC for staker2
-        vm.prank(operator);
+        vm.prank(operator1);
         vault.requestRedeem(5 * vaultMinorUnit, staker2, staker2);
         // assert that staker2's receipt tokens are sent to the vault
         assertEq(vault.balanceOf(staker2), 0);
@@ -581,7 +581,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         assertEq(vault.claimableRedeemRequest(0, staker2), 5 * underlyingMinorUnit);
 
         // operator redeems 5 WBTC for staker2
-        vm.prank(operator);
+        vm.prank(operator1);
         vault.redeem(5 * underlyingMinorUnit, staker2, staker2);
         // assert that staker2 received 5 WBTC
         assertEq(underlying.balanceOf(staker2), 5 * underlyingMinorUnit);
@@ -615,10 +615,10 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vm.prank(owner);
         router.setVaultWhitelist(address(vault), true);
 
-        address staker1 = makeAddr("staker1");
-        address staker2 = makeAddr("staker2");
-        address operator = makeAddr("operator");
-        address operator2 = makeAddr("operator2");
+        address staker1 = makeAddr("staker/1");
+        address staker2 = makeAddr("staker/2");
+        address operator1 = makeAddr("operator/1");
+        address operator2 = makeAddr("operator/2");
         address randomAddress = makeAddr("randomAddress");
 
         // fund staker1 with 100 WBTC
@@ -655,19 +655,19 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vm.stopPrank();
 
         // operator requests to withdraw 100 WBTC for staker1 (revert)
-        vm.startPrank(operator);
+        vm.startPrank(operator1);
         vm.expectRevert(
-            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, operator, 0, 100 * vaultMinorUnit)
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, operator1, 0, 100 * vaultMinorUnit)
         );
         vault.requestRedeem(100 * vaultMinorUnit, staker1, staker1);
         vm.stopPrank();
 
         // staker1 approves operator
         vm.prank(staker1);
-        vault.setOperator(operator, true);
+        vault.setOperator(operator1, true);
 
         // operator approves operator2
-        vm.prank(operator);
+        vm.prank(operator1);
         vault.setOperator(operator2, true);
 
         // operator2 requests to withdraw 100 WBTC for staker1 (revert)

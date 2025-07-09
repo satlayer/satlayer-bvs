@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import {Relationship} from "../Relationship.sol";
+import {RelationshipV2} from "../RelationshipV2.sol";
 
 interface ISLAYRegistryV2 {
     struct Service {
@@ -91,7 +91,7 @@ interface ISLAYRegistryV2 {
      * @param slashParameterId The ID of the slash parameter if slashing is enabled, otherwise 0.
      */
     event RelationshipUpdated(
-        address indexed service, address indexed operator, Relationship.Status status, uint32 slashParameterId
+        address indexed service, address indexed operator, RelationshipV2.Status status, uint32 slashParameterId
     );
 
     /**
@@ -167,8 +167,8 @@ interface ISLAYRegistryV2 {
      *  - Service must be registered via {registerAsService}
      *  - Operator must be registered via {registerAsOperator}
      *
-     * If the operator has registered this service, the relationship status will be set to `Relationship.Status.Active`.
-     * Else the relationship status will be set to `Relationship.Status.ServiceRegistered`.
+     * If the operator has registered this service, the relationship status will be set to `RelationshipV2.Status.Active`.
+     * Else the relationship status will be set to `RelationshipV2.Status.ServiceRegistered`.
      */
     function registerOperatorToService(address operator) external;
 
@@ -186,8 +186,8 @@ interface ISLAYRegistryV2 {
      *  - Service must be registered via {registerAsService}
      *  - Operator must be registered via {registerAsOperator}
      *
-     * If the service has registered this service, the relationship status will be set to `Relationship.Status.Active`.
-     * Else the relationship status will be set to `Relationship.Status.OperatorRegistered`.
+     * If the service has registered this service, the relationship status will be set to `RelationshipV2.Status.Active`.
+     * Else the relationship status will be set to `RelationshipV2.Status.OperatorRegistered`.
      */
     function registerServiceToOperator(address service) external;
 
@@ -201,21 +201,21 @@ interface ISLAYRegistryV2 {
      * @dev Get the `RegistrationStatus` for a given service-operator pair at the latest checkpoint.
      * @param service The address of the service.
      * @param operator The address of the operator.
-     * @return Relationship.Status The latest relationship status for the service-operator pair.
+     * @return RelationshipV2.Status The latest relationship status for the service-operator pair.
      */
-    function getRelationshipStatus(address service, address operator) external view returns (Relationship.Status);
+    function getRelationshipStatus(address service, address operator) external view returns (RelationshipV2.Status);
 
     /**
-     * @dev Get the `Relationship.Status` for a given service-operator pair at a specific timestamp.
+     * @dev Get the `RelationshipV2.Status` for a given service-operator pair at a specific timestamp.
      * @param service The address of the service.
      * @param operator The address of the operator.
      * @param timestamp The timestamp to check the relationship status at.
-     * @return Relationship.Status The relationship status at the specified timestamp.
+     * @return RelationshipV2.Status The relationship status at the specified timestamp.
      */
     function getRelationshipStatusAt(address service, address operator, uint32 timestamp)
         external
         view
-        returns (Relationship.Status);
+        returns (RelationshipV2.Status);
 
     /**
      * Check if an account is registered as a operator.

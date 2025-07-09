@@ -9,7 +9,7 @@ import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import {SLAYRouterV2} from "./SLAYRouterV2.sol";
-import {Relationship} from "./Relationship.sol";
+import {RelationshipV2} from "./RelationshipV2.sol";
 import {ISLAYRegistryV2} from "./interface/ISLAYRegistryV2.sol";
 
 /**
@@ -149,16 +149,16 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
         onlyOperator(operator)
     {
         address service = _msgSender();
-        Relationship.Object memory obj = _getRelationshipObject(service, operator);
+        RelationshipV2.Object memory obj = _getRelationshipObject(service, operator);
 
-        if (obj.status == Relationship.Status.Active) {
+        if (obj.status == RelationshipV2.Status.Active) {
             revert("Already active");
-        } else if (obj.status == Relationship.Status.ServiceRegistered) {
+        } else if (obj.status == RelationshipV2.Status.ServiceRegistered) {
             revert("Already initiated");
-        } else if (obj.status == Relationship.Status.Inactive) {
-            obj.status = Relationship.Status.ServiceRegistered;
-        } else if (obj.status == Relationship.Status.OperatorRegistered) {
-            obj.status = Relationship.Status.Active;
+        } else if (obj.status == RelationshipV2.Status.Inactive) {
+            obj.status = RelationshipV2.Status.ServiceRegistered;
+        } else if (obj.status == RelationshipV2.Status.OperatorRegistered) {
+            obj.status = RelationshipV2.Status.Active;
         } else {
             // Panic as this is not an expected state.
             revert("Invalid status");
@@ -173,30 +173,30 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
         onlyOperator(operator)
     {
         address service = _msgSender();
-        Relationship.Object memory obj = _getRelationshipObject(service, operator);
+        RelationshipV2.Object memory obj = _getRelationshipObject(service, operator);
 
-        if (obj.status == Relationship.Status.Inactive) {
+        if (obj.status == RelationshipV2.Status.Inactive) {
             revert("Already inactive");
         }
 
         _updateRelationshipObject(
-            service, operator, Relationship.Object({status: Relationship.Status.Inactive, slashParameterId: 0})
+            service, operator, RelationshipV2.Object({status: RelationshipV2.Status.Inactive, slashParameterId: 0})
         );
     }
 
     /// @inheritdoc ISLAYRegistryV2
     function registerServiceToOperator(address service) external onlyOperator(_msgSender()) onlyService(service) {
         address operator = _msgSender();
-        Relationship.Object memory obj = _getRelationshipObject(service, operator);
+        RelationshipV2.Object memory obj = _getRelationshipObject(service, operator);
 
-        if (obj.status == Relationship.Status.Active) {
+        if (obj.status == RelationshipV2.Status.Active) {
             revert("Already active");
-        } else if (obj.status == Relationship.Status.OperatorRegistered) {
+        } else if (obj.status == RelationshipV2.Status.OperatorRegistered) {
             revert("Already initiated");
-        } else if (obj.status == Relationship.Status.Inactive) {
-            obj.status = Relationship.Status.OperatorRegistered;
-        } else if (obj.status == Relationship.Status.ServiceRegistered) {
-            obj.status = Relationship.Status.Active;
+        } else if (obj.status == RelationshipV2.Status.Inactive) {
+            obj.status = RelationshipV2.Status.OperatorRegistered;
+        } else if (obj.status == RelationshipV2.Status.ServiceRegistered) {
+            obj.status = RelationshipV2.Status.Active;
         } else {
             // Panic as this is not an expected state.
             revert("Invalid status");
@@ -207,20 +207,20 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     /// @inheritdoc ISLAYRegistryV2
     function deregisterServiceFromOperator(address service) external onlyOperator(_msgSender()) onlyService(service) {
         address operator = _msgSender();
-        Relationship.Object memory obj = _getRelationshipObject(service, operator);
+        RelationshipV2.Object memory obj = _getRelationshipObject(service, operator);
 
-        if (obj.status == Relationship.Status.Inactive) {
+        if (obj.status == RelationshipV2.Status.Inactive) {
             revert("Already inactive");
         }
 
         _updateRelationshipObject(
-            service, operator, Relationship.Object({status: Relationship.Status.Inactive, slashParameterId: 0})
+            service, operator, RelationshipV2.Object({status: RelationshipV2.Status.Inactive, slashParameterId: 0})
         );
     }
 
     /// @inheritdoc ISLAYRegistryV2
-    function getRelationshipStatus(address service, address operator) external view returns (Relationship.Status) {
-        Relationship.Object memory obj = _getRelationshipObject(service, operator);
+    function getRelationshipStatus(address service, address operator) external view returns (RelationshipV2.Status) {
+        RelationshipV2.Object memory obj = _getRelationshipObject(service, operator);
         return obj.status;
     }
 
@@ -228,9 +228,9 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     function getRelationshipStatusAt(address service, address operator, uint32 timestamp)
         external
         view
-        returns (Relationship.Status)
+        returns (RelationshipV2.Status)
     {
-        Relationship.Object memory obj = _getRelationshipObjectAt(service, operator, timestamp);
+        RelationshipV2.Object memory obj = _getRelationshipObjectAt(service, operator, timestamp);
         return obj.status;
     }
 
@@ -303,8 +303,8 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     /// @inheritdoc ISLAYRegistryV2
     function approveSlashingFor(address service) external onlyOperator(_msgSender()) whenNotPaused {
         address operator = _msgSender();
-        Relationship.Object memory obj = _getRelationshipObject(service, operator);
-        require(obj.status == Relationship.Status.Active, "Relationship not active");
+        RelationshipV2.Object memory obj = _getRelationshipObject(service, operator);
+        require(obj.status == RelationshipV2.Status.Active, "Relationship not active");
 
         uint32 slashParameterId = _services[service].slashParameterId;
         require(slashParameterId != obj.slashParameterId, "Slashing not updated");
@@ -345,30 +345,30 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
      * @param service The address of the service.
      * @param operator The address of the operator.
      * @param timestamp The timestamp at which to retrieve the relationship status.
-     * @return Relationship.Object The relationship object containing status and other details at the specified timestamp.
+     * @return RelationshipV2.Object The relationship object containing status and other details at the specified timestamp.
      */
     function _getRelationshipObjectAt(address service, address operator, uint32 timestamp)
         internal
         view
-        returns (Relationship.Object memory)
+        returns (RelationshipV2.Object memory)
     {
-        bytes32 key = Relationship.getKey(service, operator);
-        return Relationship.upperLookup(_relationships[key], timestamp);
+        bytes32 key = RelationshipV2.getKey(service, operator);
+        return RelationshipV2.upperLookup(_relationships[key], timestamp);
     }
 
     /**
      * @dev Retrieves the latest relationship object for a given service-operator pair.
      * @param service The address of the service.
      * @param operator The address of the operator.
-     * @return Relationship.Object The latest relationship object containing status and other details.
+     * @return RelationshipV2.Object The latest relationship object containing status and other details.
      */
     function _getRelationshipObject(address service, address operator)
         internal
         view
-        returns (Relationship.Object memory)
+        returns (RelationshipV2.Object memory)
     {
-        bytes32 key = Relationship.getKey(service, operator);
-        return Relationship.latest(_relationships[key]);
+        bytes32 key = RelationshipV2.getKey(service, operator);
+        return RelationshipV2.latest(_relationships[key]);
     }
 
     /**
@@ -379,16 +379,16 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
      * @param operator The address of the operator.
      * @param obj The relationship object containing the new status and other details.
      */
-    function _updateRelationshipObject(address service, address operator, Relationship.Object memory obj)
+    function _updateRelationshipObject(address service, address operator, RelationshipV2.Object memory obj)
         internal
         whenNotPaused
     {
-        bytes32 key = Relationship.getKey(service, operator);
-        Relationship.push(_relationships[key], uint32(block.timestamp), obj);
+        bytes32 key = RelationshipV2.getKey(service, operator);
+        RelationshipV2.push(_relationships[key], uint32(block.timestamp), obj);
 
         // if the status is active, add the service to the operator's active relationships and vice versa.
         // If the status is inactive, remove the service from the operator's active relationships and vice versa.
-        if (obj.status == Relationship.Status.Active) {
+        if (obj.status == RelationshipV2.Status.Active) {
             if (_operatorsActiveRelationships[operator].length() >= _maxActiveRelationships) {
                 revert ISLAYRegistryV2.OperatorRelationshipsExceeded();
             }
@@ -398,7 +398,7 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
 
             _operatorsActiveRelationships[operator].add(service);
             _servicesActiveRelationships[service].add(operator);
-        } else if (obj.status == Relationship.Status.Inactive) {
+        } else if (obj.status == RelationshipV2.Status.Inactive) {
             _operatorsActiveRelationships[operator].remove(service);
             _servicesActiveRelationships[service].remove(operator);
         }

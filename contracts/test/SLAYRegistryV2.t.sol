@@ -8,7 +8,7 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 
 import {ISLAYRegistryV2} from "../src/interface/ISLAYRegistryV2.sol";
 import {SLAYRouterV2} from "../src/SLAYRouterV2.sol";
-import {Relationship} from "../src/Relationship.sol";
+import {RelationshipV2} from "../src/RelationshipV2.sol";
 import {TestSuiteV2} from "./TestSuiteV2.sol";
 
 contract SLAYRegistryV2Test is Test, TestSuiteV2 {
@@ -129,23 +129,23 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         // Step 1: Service registers operator
         vm.prank(service);
         vm.expectEmit();
-        emit ISLAYRegistryV2.RelationshipUpdated(service, operator, Relationship.Status.ServiceRegistered, 0);
+        emit ISLAYRegistryV2.RelationshipUpdated(service, operator, RelationshipV2.Status.ServiceRegistered, 0);
         registry.registerOperatorToService(operator);
 
         assertEq(
             uint256(registry.getRelationshipStatus(service, operator)),
-            uint256(Relationship.Status.ServiceRegistered),
+            uint256(RelationshipV2.Status.ServiceRegistered),
             "Status should be ServiceRegistered"
         );
 
         // Step 2: Operator accept and register to the service
         vm.prank(operator);
         vm.expectEmit();
-        emit ISLAYRegistryV2.RelationshipUpdated(service, operator, Relationship.Status.Active, 0);
+        emit ISLAYRegistryV2.RelationshipUpdated(service, operator, RelationshipV2.Status.Active, 0);
         registry.registerServiceToOperator(service);
         assertEq(
             uint256(registry.getRelationshipStatus(service, operator)),
-            uint256(Relationship.Status.Active),
+            uint256(RelationshipV2.Status.Active),
             "Status should be Active"
         );
     }
@@ -166,24 +166,24 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         // Step 1: Operator registers service
         vm.prank(operator);
         vm.expectEmit();
-        emit ISLAYRegistryV2.RelationshipUpdated(service, operator, Relationship.Status.OperatorRegistered, 0);
+        emit ISLAYRegistryV2.RelationshipUpdated(service, operator, RelationshipV2.Status.OperatorRegistered, 0);
         registry.registerServiceToOperator(service);
 
         assertEq(
             uint256(registry.getRelationshipStatus(service, operator)),
-            uint256(Relationship.Status.OperatorRegistered),
+            uint256(RelationshipV2.Status.OperatorRegistered),
             "Status should be OperatorRegistered"
         );
 
         // Step 2: Service accept and register operator
         vm.prank(service);
         vm.expectEmit();
-        emit ISLAYRegistryV2.RelationshipUpdated(service, operator, Relationship.Status.Active, 0);
+        emit ISLAYRegistryV2.RelationshipUpdated(service, operator, RelationshipV2.Status.Active, 0);
         registry.registerOperatorToService(operator);
 
         assertEq(
             uint256(registry.getRelationshipStatus(service, operator)),
-            uint256(Relationship.Status.Active),
+            uint256(RelationshipV2.Status.Active),
             "Status should be Active"
         );
     }
@@ -213,12 +213,12 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
 
         vm.prank(service);
         vm.expectEmit();
-        emit ISLAYRegistryV2.RelationshipUpdated(service, operator, Relationship.Status.Inactive, 0);
+        emit ISLAYRegistryV2.RelationshipUpdated(service, operator, RelationshipV2.Status.Inactive, 0);
         registry.deregisterOperatorFromService(operator);
 
         assertEq(
             uint256(registry.getRelationshipStatus(service, operator)),
-            uint256(Relationship.Status.Inactive),
+            uint256(RelationshipV2.Status.Inactive),
             "Status should be Inactive after deregistration"
         );
     }
@@ -228,12 +228,12 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
 
         vm.prank(operator);
         vm.expectEmit();
-        emit ISLAYRegistryV2.RelationshipUpdated(service, operator, Relationship.Status.Inactive, 0);
+        emit ISLAYRegistryV2.RelationshipUpdated(service, operator, RelationshipV2.Status.Inactive, 0);
         registry.deregisterServiceFromOperator(service);
 
         assertEq(
             uint256(registry.getRelationshipStatus(service, operator)),
-            uint256(Relationship.Status.Inactive),
+            uint256(RelationshipV2.Status.Inactive),
             "Status should be Inactive after deregistration"
         );
     }
@@ -272,14 +272,14 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         uint32 timeBeforeRegister = uint32(block.timestamp);
         assertEq(
             uint256(registry.getRelationshipStatusAt(service, operator, timeBeforeRegister)),
-            uint256(Relationship.Status.Inactive),
+            uint256(RelationshipV2.Status.Inactive),
             "Status should be Inactive because no prior history"
         );
 
         // Inactive at current time
         assertEq(
             uint256(registry.getRelationshipStatus(service, operator)),
-            uint256(Relationship.Status.Inactive),
+            uint256(RelationshipV2.Status.Inactive),
             "Status should be Inactive because no prior history"
         );
 
@@ -291,17 +291,17 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         uint32 timeAfterRegister = uint32(block.timestamp);
         assertEq(
             uint256(registry.getRelationshipStatusAt(service, operator, timeBeforeRegister)),
-            uint256(Relationship.Status.Inactive),
+            uint256(RelationshipV2.Status.Inactive),
             "Status should be Inactive prior to registration"
         );
         assertEq(
             uint256(registry.getRelationshipStatusAt(service, operator, timeAfterRegister)),
-            uint256(Relationship.Status.ServiceRegistered),
+            uint256(RelationshipV2.Status.ServiceRegistered),
             "Status should be ServiceRegistered"
         );
         assertEq(
             uint256(registry.getRelationshipStatus(service, operator)),
-            uint256(Relationship.Status.ServiceRegistered),
+            uint256(RelationshipV2.Status.ServiceRegistered),
             "Status should be ServiceRegistered at current time"
         );
 
@@ -310,7 +310,7 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         // Check previous block status
         assertEq(
             uint256(registry.getRelationshipStatusAt(service, operator, timeBeforeRegister)),
-            uint256(Relationship.Status.Inactive),
+            uint256(RelationshipV2.Status.Inactive),
             "Status should still be Inactive"
         );
 
@@ -320,44 +320,44 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         uint32 timeAfterActive = uint32(block.timestamp);
         assertEq(
             uint256(registry.getRelationshipStatusAt(service, operator, timeAfterActive)),
-            uint256(Relationship.Status.Active),
+            uint256(RelationshipV2.Status.Active),
             "Status should be Active"
         );
         assertEq(
             uint256(registry.getRelationshipStatus(service, operator)),
-            uint256(Relationship.Status.Active),
+            uint256(RelationshipV2.Status.Active),
             "Status should be Active at current time"
         );
 
         // Check all previous checkpoint
         assertEq(
             uint256(registry.getRelationshipStatusAt(service, operator, 0)),
-            uint256(Relationship.Status.Inactive),
+            uint256(RelationshipV2.Status.Inactive),
             "Status should be Inactive at timestamp 0"
         );
         assertEq(
             uint256(registry.getRelationshipStatusAt(service, operator, timeBeforeRegister)),
-            uint256(Relationship.Status.Inactive),
+            uint256(RelationshipV2.Status.Inactive),
             "Status should be Inactive before registration"
         );
         assertEq(
             uint256(registry.getRelationshipStatusAt(service, operator, timeAfterRegister)),
-            uint256(Relationship.Status.ServiceRegistered),
+            uint256(RelationshipV2.Status.ServiceRegistered),
             "Status should be ServiceRegistered after registration"
         );
         assertEq(
             uint256(registry.getRelationshipStatusAt(service, operator, timeAfterActive)),
-            uint256(Relationship.Status.Active),
+            uint256(RelationshipV2.Status.Active),
             "Status should be Active after mutual registration"
         );
         assertEq(
             uint256(registry.getRelationshipStatusAt(service, operator, uint32(block.timestamp + 1000000000))),
-            uint256(Relationship.Status.Active),
+            uint256(RelationshipV2.Status.Active),
             "Status should be Active in the future"
         );
         assertEq(
             uint256(registry.getRelationshipStatus(service, operator)),
-            uint256(Relationship.Status.Active),
+            uint256(RelationshipV2.Status.Active),
             "Status should be Active at current time"
         );
     }
@@ -533,7 +533,7 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
 
         vm.prank(operator);
         vm.expectEmit();
-        emit ISLAYRegistryV2.RelationshipUpdated(service, operator, Relationship.Status.Active, 1);
+        emit ISLAYRegistryV2.RelationshipUpdated(service, operator, RelationshipV2.Status.Active, 1);
         registry.approveSlashingFor(service);
     }
 
