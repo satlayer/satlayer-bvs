@@ -9,7 +9,7 @@ import {IERC7540Redeem, IERC7540Operator} from "./IERC7540.sol";
 /**
  * @dev Interface for the SLAYVault contract.
  */
-interface ISLAYVault is IERC20Metadata, IERC4626, IERC7540Redeem, IERC7540Operator {
+interface ISLAYVaultV2 is IERC20Metadata, IERC4626, IERC7540Redeem, IERC7540Operator {
     /*//////////////////////////////////////////////////////////////
                                 ERRORS
     //////////////////////////////////////////////////////////////*/

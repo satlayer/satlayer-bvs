@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import {Relationship} from "../Relationship.sol";
 
-interface ISLAYRegistry {
+interface ISLAYRegistryV2 {
     struct Service {
         /// @dev Whether the service is registered.
         bool registered;

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "../src/InitialV1.sol";
-import "../src/SLAYVault.sol";
-import "../src/SLAYVaultFactory.sol";
-import "../src/SLAYRouter.sol";
-import "../src/SLAYRegistry.sol";
+import "../src/InitialImpl.sol";
+import "../src/SLAYVaultV2.sol";
+import "../src/SLAYVaultFactoryV2.sol";
+import "../src/SLAYRouterV2.sol";
+import "../src/SLAYRegistryV2.sol";
 
 import {Script, console} from "forge-std/Script.sol";
 import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
@@ -28,28 +28,28 @@ contract DeploymentScript is Script {
         vm.startBroadcast(owner);
 
         // Create the initial implementation contract and deploy the proxies for router and registry
-        Core.validateImplementation("InitialV1.sol:InitialV1", opts);
-        address initialImpl = address(new InitialV1());
+        Core.validateImplementation("InitialImpl.sol:InitialImpl", opts);
+        address initialImpl = address(new InitialImpl());
 
-        SLAYRouter router =
-            SLAYRouter(UnsafeUpgrades.deployUUPSProxy(initialImpl, abi.encodeCall(InitialV1.initialize, (owner))));
-        SLAYRegistry registry =
-            SLAYRegistry(UnsafeUpgrades.deployUUPSProxy(initialImpl, abi.encodeCall(InitialV1.initialize, (owner))));
+        SLAYRouterV2 router =
+            SLAYRouterV2(UnsafeUpgrades.deployUUPSProxy(initialImpl, abi.encodeCall(InitialImpl.initialize, (owner))));
+        SLAYRegistryV2 registry =
+            SLAYRegistryV2(UnsafeUpgrades.deployUUPSProxy(initialImpl, abi.encodeCall(InitialImpl.initialize, (owner))));
 
-        Core.validateImplementation("SLAYVault.sol:SLAYVault", opts);
-        address vaultImpl = address(new SLAYVault(router, registry));
+        Core.validateImplementation("SLAYVaultV2.sol:SLAYVaultV2", opts);
+        address vaultImpl = address(new SLAYVaultV2(router, registry));
         address beacon = UnsafeUpgrades.deployBeacon(vaultImpl, owner);
 
-        Core.validateImplementation("SLAYVaultFactory.sol:SLAYVaultFactory", opts);
-        address factoryImpl = address(new SLAYVaultFactory(beacon, registry));
-        UnsafeUpgrades.deployUUPSProxy(factoryImpl, abi.encodeCall(SLAYVaultFactory.initialize, (owner)));
+        Core.validateImplementation("SLAYVaultFactoryV2.sol:SLAYVaultFactoryV2", opts);
+        address factoryImpl = address(new SLAYVaultFactoryV2(beacon, registry));
+        UnsafeUpgrades.deployUUPSProxy(factoryImpl, abi.encodeCall(SLAYVaultFactoryV2.initialize, (owner)));
 
-        Core.validateUpgrade("SLAYRouter.sol:SLAYRouter", opts);
-        address routerImpl = address(new SLAYRouter(registry));
+        Core.validateUpgrade("SLAYRouterV2.sol:SLAYRouterV2", opts);
+        address routerImpl = address(new SLAYRouterV2(registry));
         UnsafeUpgrades.upgradeProxy(address(router), routerImpl, "");
 
-        Core.validateUpgrade("SLAYRegistry.sol:SLAYRegistry", opts);
-        address registryImpl = address(new SLAYRegistry(router));
-        UnsafeUpgrades.upgradeProxy(address(registry), registryImpl, abi.encodeCall(SLAYRegistry.initialize, ()));
+        Core.validateUpgrade("SLAYRegistryV2.sol:SLAYRegistryV2", opts);
+        address registryImpl = address(new SLAYRegistryV2(router));
+        UnsafeUpgrades.upgradeProxy(address(registry), registryImpl, abi.encodeCall(SLAYRegistryV2.initialize, ()));
     }
 }

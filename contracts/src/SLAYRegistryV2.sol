@@ -8,23 +8,23 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-import {SLAYRouter} from "./SLAYRouter.sol";
+import {SLAYRouterV2} from "./SLAYRouterV2.sol";
 import {Relationship} from "./Relationship.sol";
-import {ISLAYRegistry} from "./interface/ISLAYRegistry.sol";
+import {ISLAYRegistryV2} from "./interface/ISLAYRegistryV2.sol";
 
 /**
- * @title SLAYRegistry
+ * @title SLAYRegistryV2.sol
  * @dev This contract serves as a registry for services and operators in the SatLayer ecosystem.
  * It allows services and operators to register themselves, manage their relationships,
  * and track registration statuses.
  *
- * @custom:oz-upgrades-from src/InitialV1.sol:InitialV1
+ * @custom:oz-upgrades-from src/InitialImpl.sol:InitialImpl
  */
-contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
+contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    SLAYRouter public immutable router;
+    SLAYRouterV2 public immutable router;
 
     /// @dev mapping of registered services.
     mapping(address account => Service) private _services;
@@ -54,7 +54,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     uint8 private _maxActiveRelationships;
 
     /**
-     * @dev Initializes SLAYRegistry contract.
+     * @dev Initializes SLAYRegistryV2.sol contract.
      * Set up slash parameters array to allow the first service to register with a valid ID.
      * As `0` is considered as "no slashing enabled" and is used to disable slashing.
      * Instead of using offset, this is cleaner and less prone to errors.
@@ -88,16 +88,16 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
     }
 
     /**
-     * @dev Set the immutable SLAYRouter proxy address for the implementation.
-     * Cyclic params in constructor are possible as an InitialV1 (empty implementation) is used for an initial deployment,
+     * @dev Set the immutable SLAYRouterV2.sol proxy address for the implementation.
+     * Cyclic params in constructor are possible as an InitialImpl (empty implementation) is used for an initial deployment,
      * after which all the contracts are upgraded to their respective implementations with immutable proxy addresses.
      *
-     * InitialV1.initialize() is called to set the initial owner of the contract.
+     * InitialImpl.initialize() is called to set the initial owner of the contract.
      * No other initialization is required for this implementation contract.
      *
      * @custom:oz-upgrades-unsafe-allow constructor
      */
-    constructor(SLAYRouter router_) {
+    constructor(SLAYRouterV2 router_) {
         router = router_;
         _disableInitializers();
     }
@@ -109,7 +109,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
      */
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
-    /// @inheritdoc ISLAYRegistry
+    /// @inheritdoc ISLAYRegistryV2
     function registerAsService(string memory uri, string memory name) external whenNotPaused {
         address account = _msgSender();
         Service storage service = _services[account];
@@ -120,7 +120,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         emit MetadataUpdated(account, uri, name);
     }
 
-    /// @inheritdoc ISLAYRegistry
+    /// @inheritdoc ISLAYRegistryV2
     function registerAsOperator(string memory uri, string memory name) external whenNotPaused {
         address account = _msgSender();
         Operator storage operator = _operators[account];
@@ -133,7 +133,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         emit MetadataUpdated(account, uri, name);
     }
 
-    /// @inheritdoc ISLAYRegistry
+    /// @inheritdoc ISLAYRegistryV2
     function updateMetadata(string memory uri, string memory name) external whenNotPaused {
         address provider = _msgSender();
         require(_services[provider].registered || _operators[provider].registered, "Not registered");
@@ -141,7 +141,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         emit MetadataUpdated(provider, uri, name);
     }
 
-    /// @inheritdoc ISLAYRegistry
+    /// @inheritdoc ISLAYRegistryV2
     function registerOperatorToService(address operator)
         external
         whenNotPaused
@@ -166,7 +166,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         _updateRelationshipObject(service, operator, obj);
     }
 
-    /// @inheritdoc ISLAYRegistry
+    /// @inheritdoc ISLAYRegistryV2
     function deregisterOperatorFromService(address operator)
         external
         onlyService(_msgSender())
@@ -184,7 +184,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         );
     }
 
-    /// @inheritdoc ISLAYRegistry
+    /// @inheritdoc ISLAYRegistryV2
     function registerServiceToOperator(address service) external onlyOperator(_msgSender()) onlyService(service) {
         address operator = _msgSender();
         Relationship.Object memory obj = _getRelationshipObject(service, operator);
@@ -204,7 +204,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         _updateRelationshipObject(service, operator, obj);
     }
 
-    /// @inheritdoc ISLAYRegistry
+    /// @inheritdoc ISLAYRegistryV2
     function deregisterServiceFromOperator(address service) external onlyOperator(_msgSender()) onlyService(service) {
         address operator = _msgSender();
         Relationship.Object memory obj = _getRelationshipObject(service, operator);
@@ -218,13 +218,13 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         );
     }
 
-    /// @inheritdoc ISLAYRegistry
+    /// @inheritdoc ISLAYRegistryV2
     function getRelationshipStatus(address service, address operator) external view returns (Relationship.Status) {
         Relationship.Object memory obj = _getRelationshipObject(service, operator);
         return obj.status;
     }
 
-    /// @inheritdoc ISLAYRegistry
+    /// @inheritdoc ISLAYRegistryV2
     function getRelationshipStatusAt(address service, address operator, uint32 timestamp)
         external
         view
@@ -234,17 +234,17 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         return obj.status;
     }
 
-    /// @inheritdoc ISLAYRegistry
+    /// @inheritdoc ISLAYRegistryV2
     function isOperator(address account) external view returns (bool) {
         return _operators[account].registered;
     }
 
-    /// @inheritdoc ISLAYRegistry
+    /// @inheritdoc ISLAYRegistryV2
     function isService(address account) external view returns (bool) {
         return _services[account].registered;
     }
 
-    /// @inheritdoc ISLAYRegistry
+    /// @inheritdoc ISLAYRegistryV2
     function setWithdrawalDelay(uint32 delay) external whenNotPaused onlyOperator(_msgSender()) {
         require(delay >= DEFAULT_WITHDRAWAL_DELAY, "Delay must be at least more than or equal to 7 days");
 
@@ -270,12 +270,12 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         emit WithdrawalDelayUpdated(_msgSender(), delay);
     }
 
-    /// @inheritdoc ISLAYRegistry
+    /// @inheritdoc ISLAYRegistryV2
     function getWithdrawalDelay(address operator) external view returns (uint32) {
         return _operators[operator].withdrawalDelay;
     }
 
-    /// @inheritdoc ISLAYRegistry
+    /// @inheritdoc ISLAYRegistryV2
     function enableSlashing(SlashParameter calldata parameter) external onlyService(_msgSender()) whenNotPaused {
         require(parameter.destination != address(0), "destination!=0");
         require(parameter.maxMbips <= 10_000_000, "maxMbips!=>10000000");
@@ -291,7 +291,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         emit SlashParameterUpdated(account, parameter.destination, parameter.maxMbips, parameter.resolutionWindow);
     }
 
-    /// @inheritdoc ISLAYRegistry
+    /// @inheritdoc ISLAYRegistryV2
     function disableSlashing() external onlyService(_msgSender()) whenNotPaused {
         address account = _msgSender();
         Service storage service = _services[account];
@@ -300,7 +300,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         emit SlashParameterUpdated(account, address(0), 0, 0);
     }
 
-    /// @inheritdoc ISLAYRegistry
+    /// @inheritdoc ISLAYRegistryV2
     function approveSlashingFor(address service) external onlyOperator(_msgSender()) whenNotPaused {
         address operator = _msgSender();
         Relationship.Object memory obj = _getRelationshipObject(service, operator);
@@ -312,14 +312,14 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         _updateRelationshipObject(service, operator, obj);
     }
 
-    /// @inheritdoc ISLAYRegistry
+    /// @inheritdoc ISLAYRegistryV2
     function getSlashParameter(address service) external view returns (SlashParameter memory) {
         uint32 slashParameterId = _services[service].slashParameterId;
         require(slashParameterId > 0, "Slashing not enabled");
         return _slashParameters[slashParameterId];
     }
 
-    /// @inheritdoc ISLAYRegistry
+    /// @inheritdoc ISLAYRegistryV2
     function getSlashParameterAt(address service, address operator, uint32 timestamp)
         external
         view
@@ -390,10 +390,10 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         // If the status is inactive, remove the service from the operator's active relationships and vice versa.
         if (obj.status == Relationship.Status.Active) {
             if (_operatorsActiveRelationships[operator].length() >= _maxActiveRelationships) {
-                revert ISLAYRegistry.OperatorRelationshipsExceeded();
+                revert ISLAYRegistryV2.OperatorRelationshipsExceeded();
             }
             if (_servicesActiveRelationships[service].length() >= _maxActiveRelationships) {
-                revert ISLAYRegistry.ServiceRelationshipsExceeded();
+                revert ISLAYRegistryV2.ServiceRelationshipsExceeded();
             }
 
             _operatorsActiveRelationships[operator].add(service);
@@ -406,7 +406,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         emit RelationshipUpdated(service, operator, obj.status, obj.slashParameterId);
     }
 
-    /// @inheritdoc ISLAYRegistry
+    /// @inheritdoc ISLAYRegistryV2
     function setMaxActiveRelationships(uint8 max) external onlyOwner {
         require(max > 0, "Max active relationships must be greater than 0");
         require(max > _maxActiveRelationships, "Max active relationships must be greater than current");
@@ -414,12 +414,12 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         emit MaxActiveRelationshipsUpdated(max);
     }
 
-    /// @inheritdoc ISLAYRegistry
+    /// @inheritdoc ISLAYRegistryV2
     function getMaxActiveRelationships() external view returns (uint8) {
         return _maxActiveRelationships;
     }
 
-    /// @inheritdoc ISLAYRegistry
+    /// @inheritdoc ISLAYRegistryV2
     function setMinWithdrawalDelay(uint32 delay) external whenNotPaused onlyService(_msgSender()) {
         require(delay > 0, "Delay must be more than 0");
 
@@ -445,7 +445,7 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
         emit MinWithdrawalDelayUpdated(_msgSender(), delay);
     }
 
-    /// @inheritdoc ISLAYRegistry
+    /// @inheritdoc ISLAYRegistryV2
     function getMinWithdrawalDelay(address service) external view returns (uint32) {
         return _services[service].minWithdrawalDelay;
     }

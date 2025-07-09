@@ -2,14 +2,14 @@
 pragma solidity ^0.8.0;
 
 import "./MockERC20.sol";
-import "../src/SLAYRouter.sol";
-import "../src/SLAYVault.sol";
+import "../src/SLAYRouterV2.sol";
+import "../src/SLAYVaultV2.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {Test, console} from "forge-std/Test.sol";
-import {TestSuite} from "./TestSuite.sol";
-import {ISLAYRouter} from "../src/interface/ISLAYRouter.sol";
+import {TestSuiteV2} from "./TestSuiteV2.sol";
+import {ISLAYRouterV2} from "../src/interface/ISLAYRouterV2.sol";
 
-contract SLAYRouterTest is Test, TestSuite {
+contract SLAYRouterV2Test is Test, TestSuiteV2 {
     function test_defaults() public view {
         assertEq(router.owner(), owner);
         assertEq(router.paused(), false);
@@ -46,13 +46,13 @@ contract SLAYRouterTest is Test, TestSuite {
         vm.startPrank(owner);
 
         vm.expectEmit();
-        emit ISLAYRouter.VaultWhitelisted(vault, true);
+        emit ISLAYRouterV2.VaultWhitelisted(vault, true);
         router.setVaultWhitelist(vault, true);
 
         assertTrue(router.whitelisted(vault));
 
         vm.expectEmit();
-        emit ISLAYRouter.VaultWhitelisted(vault, false);
+        emit ISLAYRouterV2.VaultWhitelisted(vault, false);
         router.setVaultWhitelist(vault, false);
 
         assertFalse(router.whitelisted(vault));
@@ -68,7 +68,7 @@ contract SLAYRouterTest is Test, TestSuite {
         vm.startPrank(owner);
 
         vm.expectEmit();
-        emit ISLAYRouter.VaultWhitelisted(vault, true);
+        emit ISLAYRouterV2.VaultWhitelisted(vault, true);
         router.setVaultWhitelist(vault, true);
 
         assertTrue(router.whitelisted(vault));

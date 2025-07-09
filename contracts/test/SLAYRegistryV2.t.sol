@@ -6,17 +6,17 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
-import {ISLAYRegistry} from "../src/interface/ISLAYRegistry.sol";
-import {SLAYRouter} from "../src/SLAYRouter.sol";
+import {ISLAYRegistryV2} from "../src/interface/ISLAYRegistryV2.sol";
+import {SLAYRouterV2} from "../src/SLAYRouterV2.sol";
 import {Relationship} from "../src/Relationship.sol";
-import {TestSuite} from "./TestSuite.sol";
+import {TestSuiteV2} from "./TestSuiteV2.sol";
 
-contract SLAYRegistryTest is Test, TestSuite {
+contract SLAYRegistryV2Test is Test, TestSuiteV2 {
     address public immutable service = makeAddr("service");
     address public immutable operator = makeAddr("operator");
 
     function setUp() public override {
-        TestSuite.setUp();
+        TestSuiteV2.setUp();
     }
 
     function test_paused() public {
@@ -41,10 +41,10 @@ contract SLAYRegistryTest is Test, TestSuite {
 
     function test_RegisterAsService() public {
         vm.expectEmit();
-        emit ISLAYRegistry.ServiceRegistered(address(this));
+        emit ISLAYRegistryV2.ServiceRegistered(address(this));
 
         vm.expectEmit();
-        emit ISLAYRegistry.MetadataUpdated(address(this), "https://service.example.com", "Service Name");
+        emit ISLAYRegistryV2.MetadataUpdated(address(this), "https://service.example.com", "Service Name");
 
         registry.registerAsService("https://service.example.com", "Service Name");
         assertTrue(registry.isService(address(this)), "Service should be registered");
@@ -78,10 +78,10 @@ contract SLAYRegistryTest is Test, TestSuite {
 
     function test_RegisterAsOperator() public {
         vm.expectEmit();
-        emit ISLAYRegistry.OperatorRegistered(address(this));
+        emit ISLAYRegistryV2.OperatorRegistered(address(this));
 
         vm.expectEmit();
-        emit ISLAYRegistry.MetadataUpdated(address(this), "https://operator.com", "Operator X");
+        emit ISLAYRegistryV2.MetadataUpdated(address(this), "https://operator.com", "Operator X");
 
         registry.registerAsOperator("https://operator.com", "Operator X");
         assertTrue(registry.isOperator(address(this)), "Operator should be registered");
@@ -129,7 +129,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         // Step 1: Service registers operator
         vm.prank(service);
         vm.expectEmit();
-        emit ISLAYRegistry.RelationshipUpdated(service, operator, Relationship.Status.ServiceRegistered, 0);
+        emit ISLAYRegistryV2.RelationshipUpdated(service, operator, Relationship.Status.ServiceRegistered, 0);
         registry.registerOperatorToService(operator);
 
         assertEq(
@@ -141,7 +141,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         // Step 2: Operator accept and register to the service
         vm.prank(operator);
         vm.expectEmit();
-        emit ISLAYRegistry.RelationshipUpdated(service, operator, Relationship.Status.Active, 0);
+        emit ISLAYRegistryV2.RelationshipUpdated(service, operator, Relationship.Status.Active, 0);
         registry.registerServiceToOperator(service);
         assertEq(
             uint256(registry.getRelationshipStatus(service, operator)),
@@ -166,7 +166,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         // Step 1: Operator registers service
         vm.prank(operator);
         vm.expectEmit();
-        emit ISLAYRegistry.RelationshipUpdated(service, operator, Relationship.Status.OperatorRegistered, 0);
+        emit ISLAYRegistryV2.RelationshipUpdated(service, operator, Relationship.Status.OperatorRegistered, 0);
         registry.registerServiceToOperator(service);
 
         assertEq(
@@ -178,7 +178,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         // Step 2: Service accept and register operator
         vm.prank(service);
         vm.expectEmit();
-        emit ISLAYRegistry.RelationshipUpdated(service, operator, Relationship.Status.Active, 0);
+        emit ISLAYRegistryV2.RelationshipUpdated(service, operator, Relationship.Status.Active, 0);
         registry.registerOperatorToService(operator);
 
         assertEq(
@@ -213,7 +213,7 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(service);
         vm.expectEmit();
-        emit ISLAYRegistry.RelationshipUpdated(service, operator, Relationship.Status.Inactive, 0);
+        emit ISLAYRegistryV2.RelationshipUpdated(service, operator, Relationship.Status.Inactive, 0);
         registry.deregisterOperatorFromService(operator);
 
         assertEq(
@@ -228,7 +228,7 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(operator);
         vm.expectEmit();
-        emit ISLAYRegistry.RelationshipUpdated(service, operator, Relationship.Status.Inactive, 0);
+        emit ISLAYRegistryV2.RelationshipUpdated(service, operator, Relationship.Status.Inactive, 0);
         registry.deregisterServiceFromOperator(service);
 
         assertEq(
@@ -363,26 +363,26 @@ contract SLAYRegistryTest is Test, TestSuite {
     }
 
     function test_Fail_UnregisteredService() public {
-        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistry.ServiceNotFound.selector, address(this)));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistryV2.ServiceNotFound.selector, address(this)));
         registry.registerOperatorToService(operator);
     }
 
     function test_Fail_UnregisteredOperator() public {
-        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistry.OperatorNotFound.selector, address(this)));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistryV2.OperatorNotFound.selector, address(this)));
         registry.registerServiceToOperator(service);
     }
 
     function test_Fail_RegisterOperatorToService_UnregisteredOperator() public {
         registry.registerAsService("https://service.eth", "Service A");
 
-        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistry.OperatorNotFound.selector, address(operator)));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistryV2.OperatorNotFound.selector, address(operator)));
         registry.registerOperatorToService(operator);
     }
 
     function test_Fail_RegisterServiceToOperator_UnregisteredService() public {
         registry.registerAsOperator("https://operator.eth", "Operator X");
 
-        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistry.ServiceNotFound.selector, address(service)));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistryV2.ServiceNotFound.selector, address(service)));
         registry.registerServiceToOperator(service);
     }
 
@@ -412,7 +412,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         assertEq(registry.getWithdrawalDelay(operator), 7 days, "Default withdrawal delay should be 7 days");
 
         vm.expectEmit();
-        emit ISLAYRegistry.WithdrawalDelayUpdated(operator, newDelay);
+        emit ISLAYRegistryV2.WithdrawalDelayUpdated(operator, newDelay);
 
         // Set the withdrawal delay to 8 days
         registry.setWithdrawalDelay(newDelay);
@@ -423,7 +423,7 @@ contract SLAYRegistryTest is Test, TestSuite {
     function test_Fail_SetWithdrawalDelay_NotOperator() public {
         vm.startPrank(operator);
 
-        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistry.OperatorNotFound.selector, operator));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistryV2.OperatorNotFound.selector, operator));
         registry.setWithdrawalDelay(7 days);
     }
 
@@ -446,12 +446,12 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(service);
         vm.expectEmit();
-        emit ISLAYRegistry.SlashParameterUpdated(service, destination, 100_000, 3600);
+        emit ISLAYRegistryV2.SlashParameterUpdated(service, destination, 100_000, 3600);
         registry.enableSlashing(
-            ISLAYRegistry.SlashParameter({destination: destination, maxMbips: 100000, resolutionWindow: 3600})
+            ISLAYRegistryV2.SlashParameter({destination: destination, maxMbips: 100000, resolutionWindow: 3600})
         );
 
-        ISLAYRegistry.SlashParameter memory param = registry.getSlashParameter(service);
+        ISLAYRegistryV2.SlashParameter memory param = registry.getSlashParameter(service);
 
         assertEq(param.destination, destination);
         assertEq(param.maxMbips, 100_000);
@@ -468,17 +468,17 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.prank(service);
         vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
         registry.enableSlashing(
-            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 10000, resolutionWindow: 100000})
+            ISLAYRegistryV2.SlashParameter({destination: vm.randomAddress(), maxMbips: 10000, resolutionWindow: 100000})
         );
     }
 
     function test_enableSlashing_notService() public {
         address notService = vm.randomAddress();
         vm.prank(notService);
-        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistry.ServiceNotFound.selector, notService));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistryV2.ServiceNotFound.selector, notService));
 
         registry.enableSlashing(
-            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 10000, resolutionWindow: 100000})
+            ISLAYRegistryV2.SlashParameter({destination: vm.randomAddress(), maxMbips: 10000, resolutionWindow: 100000})
         );
     }
 
@@ -489,17 +489,17 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.expectRevert("destination!=0");
         registry.enableSlashing(
-            ISLAYRegistry.SlashParameter({destination: address(0), maxMbips: 10000, resolutionWindow: 100000})
+            ISLAYRegistryV2.SlashParameter({destination: address(0), maxMbips: 10000, resolutionWindow: 100000})
         );
 
         vm.expectRevert("maxMbips!=0");
         registry.enableSlashing(
-            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 0, resolutionWindow: 100000})
+            ISLAYRegistryV2.SlashParameter({destination: vm.randomAddress(), maxMbips: 0, resolutionWindow: 100000})
         );
 
         vm.expectRevert("maxMbips!=>10000000");
         registry.enableSlashing(
-            ISLAYRegistry.SlashParameter({
+            ISLAYRegistryV2.SlashParameter({
                 destination: vm.randomAddress(),
                 maxMbips: 10_000_001,
                 resolutionWindow: 100000
@@ -508,7 +508,7 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.expectRevert("maxMbips!=>10000000");
         registry.enableSlashing(
-            ISLAYRegistry.SlashParameter({
+            ISLAYRegistryV2.SlashParameter({
                 destination: vm.randomAddress(),
                 maxMbips: 15_000_000,
                 resolutionWindow: 100000
@@ -523,7 +523,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.startPrank(service);
         registry.registerAsService("service.com", "Service A");
         registry.enableSlashing(
-            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
+            ISLAYRegistryV2.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
         );
         registry.registerOperatorToService(operator);
         vm.stopPrank();
@@ -533,7 +533,7 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(operator);
         vm.expectEmit();
-        emit ISLAYRegistry.RelationshipUpdated(service, operator, Relationship.Status.Active, 1);
+        emit ISLAYRegistryV2.RelationshipUpdated(service, operator, Relationship.Status.Active, 1);
         registry.approveSlashingFor(service);
     }
 
@@ -541,7 +541,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.prank(service);
         registry.registerAsService("service.com", "Service A");
 
-        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistry.OperatorNotFound.selector, address(this)));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistryV2.OperatorNotFound.selector, address(this)));
         registry.approveSlashingFor(service);
     }
 
@@ -562,7 +562,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.startPrank(service);
         registry.registerAsService("service.com", "Service A");
         registry.enableSlashing(
-            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
+            ISLAYRegistryV2.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
         );
         registry.registerOperatorToService(operator);
         vm.stopPrank();
@@ -611,7 +611,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.startPrank(service);
         registry.registerAsService("service.com", "Service A");
         registry.enableSlashing(
-            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
+            ISLAYRegistryV2.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
         );
         registry.registerOperatorToService(operator);
         vm.stopPrank();
@@ -658,7 +658,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         // expect the 6th operator to fail registration
         address sixthOperator = vm.addr(6);
         vm.prank(service);
-        vm.expectRevert(ISLAYRegistry.ServiceRelationshipsExceeded.selector);
+        vm.expectRevert(ISLAYRegistryV2.ServiceRelationshipsExceeded.selector);
         registry.registerOperatorToService(sixthOperator);
     }
 
@@ -692,7 +692,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         // expect the 6th service to fail registration
         address sixthService = vm.addr(6);
         vm.prank(operator);
-        vm.expectRevert(ISLAYRegistry.OperatorRelationshipsExceeded.selector);
+        vm.expectRevert(ISLAYRegistryV2.OperatorRelationshipsExceeded.selector);
         registry.registerServiceToOperator(sixthService);
     }
 
@@ -700,7 +700,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         // update the max active relationships to 6
         vm.prank(owner);
         vm.expectEmit();
-        emit ISLAYRegistry.MaxActiveRelationshipsUpdated(6);
+        emit ISLAYRegistryV2.MaxActiveRelationshipsUpdated(6);
         registry.setMaxActiveRelationships(6);
 
         assertEq(registry.getMaxActiveRelationships(), 6, "Max active relationships should be updated");
@@ -719,7 +719,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.startPrank(service);
         registry.registerAsService("service.com", "Service A");
         registry.enableSlashing(
-            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
+            ISLAYRegistryV2.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
         );
         registry.registerOperatorToService(operator);
         vm.stopPrank();
@@ -730,7 +730,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.prank(operator);
         uint256 timeAtWhichOperatorOptedInParam1 = block.timestamp;
         registry.approveSlashingFor(service);
-        ISLAYRegistry.SlashParameter memory obj =
+        ISLAYRegistryV2.SlashParameter memory obj =
             registry.getSlashParameterAt(service, operator, uint32(block.timestamp));
 
         assert(obj.maxMbips == 100_000);
@@ -741,10 +741,10 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.prank(service);
         // service mutate its slashing parameters. Operators should not be opted into it automatically
         registry.enableSlashing(
-            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_00, resolutionWindow: 4600})
+            ISLAYRegistryV2.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_00, resolutionWindow: 4600})
         );
 
-        ISLAYRegistry.SlashParameter memory obj1 =
+        ISLAYRegistryV2.SlashParameter memory obj1 =
             registry.getSlashParameterAt(service, operator, uint32(block.timestamp));
         assert(obj1.maxMbips == 100_000);
         assert(obj1.resolutionWindow == 3600);
@@ -756,11 +756,11 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         _advanceBlockBy(10);
 
-        ISLAYRegistry.SlashParameter memory obj2 =
+        ISLAYRegistryV2.SlashParameter memory obj2 =
             registry.getSlashParameterAt(service, operator, uint32(block.timestamp));
         assert(obj2.maxMbips == 100_00);
 
-        ISLAYRegistry.SlashParameter memory obj3 =
+        ISLAYRegistryV2.SlashParameter memory obj3 =
             registry.getSlashParameterAt(service, operator, uint32(timeAtWhichOperatorOptedInParam1));
         // historical state repsentation remain intacts.
         assert(obj3.maxMbips == 100_000);
@@ -773,7 +773,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         vm.startPrank(service);
         registry.registerAsService("service.com", "Service A");
         registry.enableSlashing(
-            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
+            ISLAYRegistryV2.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
         );
         registry.registerOperatorToService(operator);
         vm.stopPrank();
@@ -789,7 +789,7 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(service);
         registry.enableSlashing(
-            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_00, resolutionWindow: 4600})
+            ISLAYRegistryV2.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_00, resolutionWindow: 4600})
         );
         uint256 timeAtWhichOperatorOptedInParam2 = block.timestamp;
         vm.prank(operator);
@@ -799,7 +799,7 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(service);
         registry.enableSlashing(
-            ISLAYRegistry.SlashParameter({destination: vm.randomAddress(), maxMbips: 100, resolutionWindow: 36})
+            ISLAYRegistryV2.SlashParameter({destination: vm.randomAddress(), maxMbips: 100, resolutionWindow: 36})
         );
         vm.prank(operator);
         uint256 timeAtWhichOperatorOptedInParam3 = block.timestamp;
@@ -807,19 +807,19 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         _advanceBlockBy(10);
 
-        ISLAYRegistry.SlashParameter memory history1 =
+        ISLAYRegistryV2.SlashParameter memory history1 =
             registry.getSlashParameterAt(service, operator, uint32(timeAtWhichOperatorOptedInParam1));
 
         assert(history1.maxMbips == 100_000);
         assert(history1.resolutionWindow == 3600);
 
-        ISLAYRegistry.SlashParameter memory history2 =
+        ISLAYRegistryV2.SlashParameter memory history2 =
             registry.getSlashParameterAt(service, operator, uint32(timeAtWhichOperatorOptedInParam2));
 
         assert(history2.maxMbips == 100_00);
         assert(history2.resolutionWindow == 4600);
 
-        ISLAYRegistry.SlashParameter memory history3 =
+        ISLAYRegistryV2.SlashParameter memory history3 =
             registry.getSlashParameterAt(service, operator, uint32(timeAtWhichOperatorOptedInParam3));
 
         assert(history3.maxMbips == 100);
@@ -845,7 +845,7 @@ contract SLAYRegistryTest is Test, TestSuite {
 
         vm.prank(service);
         vm.expectEmit();
-        emit ISLAYRegistry.MinWithdrawalDelayUpdated(service, newDelay);
+        emit ISLAYRegistryV2.MinWithdrawalDelayUpdated(service, newDelay);
         registry.setMinWithdrawalDelay(newDelay);
 
         assertEq(registry.getMinWithdrawalDelay(service), newDelay, "Min withdrawal delay should be updated");
@@ -869,7 +869,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         uint32 newDelay2 = 7 days;
         vm.prank(service);
         vm.expectEmit();
-        emit ISLAYRegistry.MinWithdrawalDelayUpdated(service, newDelay2);
+        emit ISLAYRegistryV2.MinWithdrawalDelayUpdated(service, newDelay2);
         registry.setMinWithdrawalDelay(newDelay2);
 
         assertEq(registry.getMinWithdrawalDelay(service), newDelay2, "Min withdrawal delay should be updated again");
@@ -929,7 +929,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         uint32 newDelay = 8 days;
         vm.prank(operator);
         vm.expectEmit();
-        emit ISLAYRegistry.WithdrawalDelayUpdated(operator, newDelay);
+        emit ISLAYRegistryV2.WithdrawalDelayUpdated(operator, newDelay);
         registry.setWithdrawalDelay(newDelay);
 
         assertEq(registry.getWithdrawalDelay(operator), newDelay, "Withdrawal delay should be updated");
@@ -953,7 +953,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         uint32 newDelay2 = 11 days;
         vm.prank(operator);
         vm.expectEmit();
-        emit ISLAYRegistry.WithdrawalDelayUpdated(operator, newDelay2);
+        emit ISLAYRegistryV2.WithdrawalDelayUpdated(operator, newDelay2);
         registry.setWithdrawalDelay(newDelay2);
     }
 
@@ -966,7 +966,7 @@ contract SLAYRegistryTest is Test, TestSuite {
         uint32 newDelay = 8 days;
         vm.prank(operator);
         vm.expectEmit();
-        emit ISLAYRegistry.WithdrawalDelayUpdated(operator, newDelay);
+        emit ISLAYRegistryV2.WithdrawalDelayUpdated(operator, newDelay);
         registry.setWithdrawalDelay(newDelay);
 
         // register multiple services
