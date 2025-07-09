@@ -165,7 +165,7 @@ contract SLAYVaultV2 is
 
     /// @dev Throws if the SLAYVault is not whitelisted in the SLAYRouterV2.
     function _requireWhitelisted() internal view virtual {
-        if (!router.whitelisted(address(this))) {
+        if (!router.isVaultWhitelisted(address(this))) {
             revert ExpectedWhitelisted();
         }
     }

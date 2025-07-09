@@ -44,4 +44,11 @@ interface ISLAYRouterV2 {
      * @param isWhitelisted The whitelist status to set.
      */
     function setVaultWhitelist(address vault_, bool isWhitelisted) external;
+
+    /**
+     * @dev Check if a vault is whitelisted.
+     * @param vault_ The address of the vault to check.
+     * @return True if the vault is whitelisted, false otherwise.
+     */
+    function isVaultWhitelisted(address vault_) external view returns (bool);
 }

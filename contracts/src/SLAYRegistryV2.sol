@@ -8,9 +8,9 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-import {SLAYRouterV2} from "./SLAYRouterV2.sol";
 import {RelationshipV2} from "./RelationshipV2.sol";
 import {ISLAYRegistryV2} from "./interface/ISLAYRegistryV2.sol";
+import {ISLAYRouterV2} from "./interface/ISLAYRouterV2.sol";
 
 /**
  * @title Services and Operators Registry Contract
@@ -24,7 +24,7 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    SLAYRouterV2 public immutable router;
+    ISLAYRouterV2 public immutable router;
 
     /// @dev mapping of registered services.
     mapping(address account => Service) private _services;
@@ -85,7 +85,7 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
      *
      * @custom:oz-upgrades-unsafe-allow constructor
      */
-    constructor(SLAYRouterV2 router_) {
+    constructor(ISLAYRouterV2 router_) {
         router = router_;
         _disableInitializers();
     }

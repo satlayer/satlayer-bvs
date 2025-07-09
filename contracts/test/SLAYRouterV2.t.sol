@@ -44,32 +44,32 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         vm.prank(operator);
         address vault = address(vaultFactory.create(underlying));
-        assertFalse(router.whitelisted(vault));
+        assertFalse(router.isVaultWhitelisted(vault));
 
         vm.prank(owner);
         vm.expectEmit();
         emit ISLAYRouterV2.VaultWhitelisted(operator, vault, true);
         router.setVaultWhitelist(vault, true);
 
-        assertTrue(router.whitelisted(vault));
+        assertTrue(router.isVaultWhitelisted(vault));
 
         vm.prank(owner);
         vm.expectEmit();
         emit ISLAYRouterV2.VaultWhitelisted(operator, vault, false);
         router.setVaultWhitelist(vault, false);
 
-        assertFalse(router.whitelisted(vault));
+        assertFalse(router.isVaultWhitelisted(vault));
     }
 
     function test_Whitelisted_NotVault() public {
         address vault = vm.randomAddress();
-        assertFalse(router.whitelisted(vault));
+        assertFalse(router.isVaultWhitelisted(vault));
 
         vm.prank(owner);
         vm.expectRevert();
         router.setVaultWhitelist(vault, true);
 
-        assertFalse(router.whitelisted(vault));
+        assertFalse(router.isVaultWhitelisted(vault));
     }
 
     function test_Whitelisted_AlreadyWhitelisted() public {
@@ -81,18 +81,18 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         vm.prank(operator);
         address vault = address(vaultFactory.create(underlying));
-        assertFalse(router.whitelisted(vault));
+        assertFalse(router.isVaultWhitelisted(vault));
 
         vm.startPrank(owner);
         router.setVaultWhitelist(vault, true);
-        assertTrue(router.whitelisted(vault));
+        assertTrue(router.isVaultWhitelisted(vault));
 
         vm.expectRevert("Vault already in desired state");
         router.setVaultWhitelist(vault, true);
-        assertTrue(router.whitelisted(vault));
+        assertTrue(router.isVaultWhitelisted(vault));
 
         router.setVaultWhitelist(vault, false);
-        assertFalse(router.whitelisted(vault));
+        assertFalse(router.isVaultWhitelisted(vault));
         vm.stopPrank();
     }
 
@@ -108,7 +108,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
             address vault = address(vaultFactory.create(underlying));
             vm.prank(owner);
             router.setVaultWhitelist(vault, true);
-            assertTrue(router.whitelisted(vault));
+            assertTrue(router.isVaultWhitelisted(vault));
         }
 
         vm.prank(operator);
@@ -119,7 +119,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         vm.expectRevert("Exceeds max vaults per operator");
         router.setVaultWhitelist(vault, true);
 
-        assertFalse(router.whitelisted(vault));
+        assertFalse(router.isVaultWhitelisted(vault));
     }
 
     function test_Whitelisted_NewVaultsCanBeAddedAfterRemoval() public {
@@ -140,15 +140,15 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         vm.prank(operator);
         address newVault = address(vaultFactory.create(underlying));
-        assertFalse(router.whitelisted(newVault));
+        assertFalse(router.isVaultWhitelisted(newVault));
 
         vm.prank(owner);
         router.setVaultWhitelist(vaults[0], false);
-        assertFalse(router.whitelisted(vaults[0]));
+        assertFalse(router.isVaultWhitelisted(vaults[0]));
 
         vm.prank(owner);
         router.setVaultWhitelist(newVault, true);
-        assertTrue(router.whitelisted(newVault));
+        assertTrue(router.isVaultWhitelisted(newVault));
     }
 
     function test_OnlyOwnerCanSetWhitelist() public {
@@ -181,7 +181,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         vm.prank(owner);
         vm.expectRevert("Exceeds max vaults per operator");
         router.setVaultWhitelist(vault, true);
-        assertFalse(router.whitelisted(vault));
+        assertFalse(router.isVaultWhitelisted(vault));
     }
 
     function test_setMaxVaultsPerOperator_OnlyOwner() public {
