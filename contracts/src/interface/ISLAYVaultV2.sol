@@ -4,13 +4,13 @@ pragma solidity ^0.8.0;
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-import {IERC7540Redeem, IERC7540Operator} from "./IERC7540.sol";
+import {IERC7540Redeem, IERC7540Operator} from "forge-std/interfaces/IERC7540.sol";
 
 /**
  * @title SatLayer Vault Interface
  * @dev Interface for the SLAYVault contract.
  */
-interface ISLAYVaultV2 is IERC20Metadata, IERC4626, IERC7540Redeem, IERC7540Operator {
+interface ISLAYVaultV2 is IERC20Metadata, IERC4626, IERC7540Operator, IERC7540Redeem {
     /*//////////////////////////////////////////////////////////////
                                 ERRORS
     //////////////////////////////////////////////////////////////*/
