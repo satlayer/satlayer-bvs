@@ -7,9 +7,10 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 /**
- * @title Initial Implementation Contract
+ * @title InitialV1 Implementation Contract
  * @dev Serves as a placeholder implementation used to reserve immutable addresses for SLAY contracts.
- * This contract is deployed once and initialized solely to assign ownership.
+ * This contract is deployed once and initialized solely to setup the initial owner and pause functionality
+ * before any actual SLAY contracts are deployed.
  * The reserved address (via proxies with this empty implementation) is later used to deploy
  * actual SLAY contracts with immutable references—enabling deployment of cyclically dependent contracts.
  *
@@ -17,7 +18,7 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
  * - SLAYRegistry.sol
  * - SLAYRouter.sol
  */
-contract InitialImpl is Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
+contract InitialV1 is Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();

@@ -18,7 +18,7 @@ import {ISLAYRegistry} from "./interface/ISLAYRegistry.sol";
  * It allows services and operators to register themselves, manage their relationships,
  * and track registration statuses.
  *
- * @custom:oz-upgrades-from src/InitialImpl.sol:InitialImpl
+ * @custom:oz-upgrades-from src/InitialV1.sol:InitialV1
  */
 contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -89,10 +89,10 @@ contract SLAYRegistry is ISLAYRegistry, Initializable, UUPSUpgradeable, OwnableU
 
     /**
      * @dev Set the immutable SLAYRouter proxy address for the implementation.
-     * Cyclic params in constructor are possible as an InitialImpl (empty implementation) is used for an initial deployment,
+     * Cyclic params in constructor are possible as an InitialV1 (empty implementation) is used for an initial deployment,
      * after which all the contracts are upgraded to their respective implementations with immutable proxy addresses.
      *
-     * InitialImpl.initialize() is called to set the initial owner of the contract.
+     * InitialV1.initialize() is called to set the initial owner of the contract.
      * No other initialization is required for this implementation contract.
      *
      * @custom:oz-upgrades-unsafe-allow constructor

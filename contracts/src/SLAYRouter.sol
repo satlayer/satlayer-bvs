@@ -14,7 +14,7 @@ import {ISLAYRouter} from "./interface/ISLAYRouter.sol";
  * @dev The central point for managing interactions with SLAYVaults.
  * This contract is designed to work with the SLAYRegistry for managing vaults and their states.
  *
- * @custom:oz-upgrades-from src/InitialImpl.sol:InitialImpl
+ * @custom:oz-upgrades-from src/InitialV1.sol:InitialV1
  */
 contract SLAYRouter is Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, ISLAYRouter {
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
@@ -24,7 +24,7 @@ contract SLAYRouter is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pausa
 
     /**
      * @dev Set the immutable SLAYRegistry proxy address for the implementation.
-     * Cyclic params in constructor are possible as an InitialImpl (empty implementation) is used for an initial deployment,
+     * Cyclic params in constructor are possible as an InitialV1 (empty implementation) is used for an initial deployment,
      * after which all the contracts are upgraded to their respective implementations with immutable proxy addresses.
      *
      * @custom:oz-upgrades-unsafe-allow constructor
