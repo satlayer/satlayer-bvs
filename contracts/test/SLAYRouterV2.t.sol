@@ -258,7 +258,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         assertEq(info.request.millieBips, 100);
         assertTrue(info.status == Slashing.RequestStatus.Pending);
         assertEq(info.requestResolution, uint32(block.timestamp) + 3600); // now + resolution window
-        assertEq(info.requestExpiry, uint32(block.timestamp) + 3600 + 7 days); // now + resolution window
+        assertEq(info.requestExpiry, uint32(block.timestamp) + 3600 + 7 days);
     }
 
     function test_slashRequest_back_to_back() public {
