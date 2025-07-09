@@ -67,12 +67,6 @@ interface ISLAYRouterV2 {
     function requestSlashing(Slashing.RequestPayload memory payload) external;
 
     /**
-     * Cancel the slashing request by the same service that requested it to an operator.
-     * @param operator Address of the operator.
-     */
-    function cancelSlashing(address operator) external;
-
-    /**
      * @dev Check if a vault is whitelisted.
      * @param vault_ The address of the vault to check.
      * @return True if the vault is whitelisted, false otherwise.

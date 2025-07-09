@@ -191,25 +191,6 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         _createNewSlashingRequest(service, payload.operator, newSlashingRequestInfo);
     }
 
-    /// @inheritdoc ISLAYRouterV2
-    function cancelSlashing(address operator) external onlyService(_msgSender()) {
-        address service = _msgSender();
-        Slashing.RequestInfo memory pendingSlashingRequest = getPendingSlashingRequest(service, operator);
-        require(
-            Slashing.isRequestInfoExist(pendingSlashingRequest) == true,
-            "Slashing request for given operator does not exist."
-        );
-        require(
-            pendingSlashingRequest.service == service, "Only service that has invoked the slash request can cancel."
-        );
-        require(
-            pendingSlashingRequest.status == Slashing.RequestStatus.Pending,
-            "Only slashing requests that has not progressed beyond pending can be canceled."
-        );
-
-        _cancelSlashingRequest(service, operator, pendingSlashingRequest);
-    }
-
     /**
      * Gets current active slashing request for given service operator pair.
      * @param service Address of the service.
