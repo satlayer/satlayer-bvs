@@ -136,29 +136,40 @@ contract SLAYRouterV2 is
     }
 
     /// @inheritdoc ISLAYSlashingV2
+    function getPendingSlashingRequest(address service, address operator)
+        public
+        view
+        returns (ISLAYSlashingV2.RequestInfo memory)
+    {
+        bytes32 slashId = _pendingSlashingRequestIds[service][operator];
+        return _slashingRequests[slashId];
+    }
+
+    /// @inheritdoc ISLAYSlashingV2
     function requestSlashing(ISLAYSlashingV2.Request calldata payload)
         external
         onlyService(_msgSender())
         whenNotPaused
     {
-        _checkSlashRequest(payload);
-        address service = _msgSender();
-        ISLAYSlashingV2.RequestInfo memory pendingSlashingRequest = getPendingSlashingRequest(service, payload.operator);
+        _checkSlashingRequest(payload);
 
-        if (SlashingRequest.isRequestInfoExist(pendingSlashingRequest) == true) {
-            if (pendingSlashingRequest.status == ISLAYSlashingV2.Status.Pending) {
-                if (pendingSlashingRequest.requestExpiry > uint32(block.timestamp)) {
+        address service = _msgSender();
+        ISLAYSlashingV2.RequestInfo memory pendingRequest = getPendingSlashingRequest(service, payload.operator);
+
+        if (SlashingRequest.isRequestInfoExist(pendingRequest) == true) {
+            if (pendingRequest.status == ISLAYSlashingV2.Status.Pending) {
+                if (pendingRequest.requestExpiry > uint32(block.timestamp)) {
                     // previous slashing request is pending within expiry date or has locked
                     revert("Previous slashing request lifecycle not completed");
                 } else {
                     // previous slashing request is pending but expired
                     // eligible for new slashing request to take place
                     // by canceling the previous slashing request.
-                    _cancelSlashingRequest(service, payload.operator, pendingSlashingRequest);
+                    _cancelSlashingRequest(service, payload.operator);
                 }
             }
 
-            if (pendingSlashingRequest.status == ISLAYSlashingV2.Status.Locked) {
+            if (pendingRequest.status == ISLAYSlashingV2.Status.Locked) {
                 revert("Previous slashing request lifecycle not completed");
             }
         }
@@ -176,30 +187,10 @@ contract SLAYRouterV2 is
             service: service
         });
 
-        _createNewSlashingRequest(service, payload.operator, newSlashingRequestInfo);
+        _createSlashingRequest(service, payload.operator, newSlashingRequestInfo);
     }
 
-    /**
-     * Gets current active slashing request for given service operator pair.
-     * @param service Address of the service.
-     * @param operator Address of the operator.
-     */
-    function getPendingSlashingRequest(address service, address operator)
-        public
-        view
-        returns (ISLAYSlashingV2.RequestInfo memory)
-    {
-        bytes32 slashId = _pendingSlashingRequestIds[service][operator];
-        return _slashingRequests[slashId];
-    }
-
-    /**
-     * Create a new slashing request
-     * @param service Address of the service.
-     * @param operator Address of the operator.
-     * @param info {ISLAYRouter.ISLAYSlashingV2.RequestInfo}
-     */
-    function _createNewSlashingRequest(address service, address operator, ISLAYSlashingV2.RequestInfo memory info)
+    function _createSlashingRequest(address service, address operator, ISLAYSlashingV2.RequestInfo memory info)
         internal
         returns (bytes32)
     {
@@ -210,30 +201,21 @@ contract SLAYRouterV2 is
         return slashId;
     }
 
-    /**
-     * Cancel Slashing request
-     * @param service Address of the service.
-     * @param operator Address of the operator.
-     * @param pendingSlashingRequest {ISLAYRouter.ISLAYSlashingV2.RequestInfo}
-     */
-    function _cancelSlashingRequest(
-        address service,
-        address operator,
-        ISLAYSlashingV2.RequestInfo memory pendingSlashingRequest
-    ) internal {
-        pendingSlashingRequest.status = ISLAYSlashingV2.Status.Canceled;
-        bytes32 slashId = SlashingRequest.calculateSlashingRequestId(pendingSlashingRequest);
-        delete _pendingSlashingRequestIds[service][operator];
+    function _cancelSlashingRequest(address service, address operator) internal {
+        bytes32 slashId = _pendingSlashingRequestIds[service][operator];
 
-        _slashingRequests[slashId] = pendingSlashingRequest;
-        emit ISLAYSlashingV2.SlashingCanceled(service, operator, slashId, pendingSlashingRequest);
+        ISLAYSlashingV2.RequestInfo storage requestInfo = _slashingRequests[slashId];
+        requestInfo.status = ISLAYSlashingV2.Status.Canceled;
+
+        delete _pendingSlashingRequestIds[service][operator];
+        emit ISLAYSlashingV2.SlashingCanceled(service, operator, slashId, requestInfo);
     }
 
-    function _checkSlashRequest(ISLAYSlashingV2.Request memory request) internal {
-        ISLAYRegistryV2.SlashParameter memory slashBounds =
+    function _checkSlashingRequest(ISLAYSlashingV2.Request calldata request) internal {
+        ISLAYRegistryV2.SlashParameter memory slashParameter =
             registry.getSlashParameterAt(_msgSender(), request.operator, request.timestamp);
 
-        require(request.mbips <= slashBounds.maxMbips, "Slash requested amount is more than the service has allowed");
+        require(request.mbips <= slashParameter.maxMbips, "Slash requested amount is more than the service has allowed");
         require(request.mbips > 0, "Requested slashing amount in milli bips must be greater than zero");
 
         uint32 withdrawalDelay = registry.getWithdrawalDelay(request.operator);
