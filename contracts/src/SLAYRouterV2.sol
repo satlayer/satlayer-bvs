@@ -10,7 +10,7 @@ import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet
 import {ISLAYRegistryV2} from "./interface/ISLAYRegistryV2.sol";
 import {ISLAYRouterV2} from "./interface/ISLAYRouterV2.sol";
 import {ISLAYVaultV2} from "./interface/ISLAYVaultV2.sol";
-import {ISLAYSlashingV2, SlashingRequest} from "./interface/ISLAYSlashingV2.sol";
+import {ISLAYSlashingV2, SlashingRequestId} from "./interface/ISLAYSlashingV2.sol";
 
 /**
  * @title Vaults Router Contract
@@ -52,6 +52,9 @@ contract SLAYRouterV2 is
     /// @dev Stores the slashing requests by its id.
     mapping(bytes32 slashId => ISLAYSlashingV2.RequestInfo) private _slashingRequests;
 
+    /// @dev Modifier to check if the caller is a registered service.
+    /// Information is sourced from checking the SLAYRegistryV2 contract.
+    /// @param account The address to check if it is a service.
     modifier onlyService(address account) {
         if (!registry.isService(account)) {
             revert ISLAYRegistryV2.ServiceNotFound(account);
@@ -156,7 +159,8 @@ contract SLAYRouterV2 is
         address service = _msgSender();
         ISLAYSlashingV2.RequestInfo memory pendingRequest = getPendingSlashingRequest(service, payload.operator);
 
-        if (SlashingRequest.isRequestInfoExist(pendingRequest) == true) {
+        // Found existing slashing request for the same service and operator pair.
+        if (pendingRequest.service != address(0)) {
             if (pendingRequest.status == ISLAYSlashingV2.Status.Pending) {
                 if (pendingRequest.requestExpiry > uint32(block.timestamp)) {
                     // previous slashing request is pending within expiry date or has locked
@@ -167,9 +171,7 @@ contract SLAYRouterV2 is
                     // by canceling the previous slashing request.
                     _cancelSlashingRequest(service, payload.operator);
                 }
-            }
-
-            if (pendingRequest.status == ISLAYSlashingV2.Status.Locked) {
+            } else if (pendingRequest.status == ISLAYSlashingV2.Status.Locked) {
                 revert("Previous slashing request lifecycle not completed");
             }
         }
@@ -194,7 +196,7 @@ contract SLAYRouterV2 is
         internal
         returns (bytes32)
     {
-        bytes32 slashId = SlashingRequest.calculateSlashingRequestId(info);
+        bytes32 slashId = SlashingRequestId.compute(info);
         _pendingSlashingRequestIds[service][operator] = slashId;
         _slashingRequests[slashId] = info;
         emit ISLAYSlashingV2.SlashingRequested(service, operator, slashId, info);
