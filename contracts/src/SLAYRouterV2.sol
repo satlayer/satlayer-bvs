@@ -7,11 +7,10 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-import {SLAYRegistryV2} from "./SLAYRegistryV2.sol";
 import {ISLAYRegistryV2} from "./interface/ISLAYRegistryV2.sol";
 import {ISLAYRouterV2, Slashing} from "./interface/ISLAYRouterV2.sol";
+import {ISLAYVaultV2} from "./interface/ISLAYVaultV2.sol";
 import {RelationshipV2} from "./RelationshipV2.sol";
-import {ISLAYVaultV2} from "./interface/ISlAYVaultV2.sol";
 
 /**
  * @title Vaults Router Contract
