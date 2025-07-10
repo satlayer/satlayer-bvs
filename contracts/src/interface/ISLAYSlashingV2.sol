@@ -12,14 +12,14 @@ interface ISLAYSlashingV2 {
      * @dev Emitted when a new slash request is created.
      */
     event SlashingRequested(
-        address indexed service, address indexed operator, bytes32 indexed slashId, RequestInfo slashingInfo
+        address indexed service, address indexed operator, bytes32 slashId, RequestInfo slashingInfo
     );
 
     /**
      * @dev Emitted when a slash request has been canceled.
      */
     event SlashingCanceled(
-        address indexed service, address indexed operator, bytes32 indexed slashId, RequestInfo slashingInfo
+        address indexed service, address indexed operator, bytes32 slashId, RequestInfo slashingInfo
     );
 
     enum Status {
@@ -82,6 +82,13 @@ interface ISLAYSlashingV2 {
         Status status;
         address service;
     }
+
+    /**
+     * @dev Get the current active slashing request for given service operator pair.
+     * @param service Address of the service.
+     * @param operator Address of the operator.
+     */
+    function getPendingSlashingRequest(address service, address operator) external view returns (RequestInfo memory);
 
     /**
      * @dev Request slashing from a service to an misbehaving operator.
