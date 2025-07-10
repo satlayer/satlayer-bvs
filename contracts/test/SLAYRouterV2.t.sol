@@ -3,11 +3,11 @@ pragma solidity ^0.8.0;
 
 import "./MockERC20.sol";
 import "../src/SLAYRouterV2.sol";
-import "../src/SLAYVaultV2.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {TestSuiteV2} from "./TestSuiteV2.sol";
 import {ISLAYRouterV2} from "../src/interface/ISLAYRouterV2.sol";
+import {ISLAYSlashingV2} from "../src/interface/ISLAYSlashingV2.sol";
 
 contract SLAYRouterV2Test is Test, TestSuiteV2 {
     function test_defaults() public view {
@@ -201,5 +201,64 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         vm.prank(owner);
         router.setMaxVaultsPerOperator(15);
         assertEq(router.getMaxVaultsPerOperator(), 15);
+    }
+
+    function _advanceBlockBy(uint256 newHeight) internal {
+        vm.roll(block.number + newHeight);
+        vm.warp(block.timestamp + (12 * newHeight));
+    }
+
+    function test_slashRequest_ideal() public {
+        _advanceBlockBy(20000000);
+        address operator = makeAddr("Operator X");
+        address service = makeAddr("Service X");
+
+        vm.prank(operator);
+        registry.registerAsOperator("operator.com", "Operator X");
+
+        vm.startPrank(service);
+        registry.registerAsService("service.com", "Service A");
+        registry.enableSlashing(
+            ISLAYRegistryV2.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
+        );
+        registry.registerOperatorToService(operator);
+        vm.stopPrank();
+
+        vm.prank(operator);
+        registry.registerServiceToOperator(service);
+
+        _advanceBlockBy(10);
+
+        vm.prank(operator);
+        registry.approveSlashingFor(service);
+
+        uint32 newDelay = 8 days;
+        vm.prank(operator);
+        registry.setWithdrawalDelay(newDelay);
+
+        _advanceBlockBy(10);
+
+        uint32 timeAtWhichOffenseOccurs = uint32(block.timestamp);
+
+        _advanceBlockBy(10);
+
+        ISLAYSlashingV2.Request memory request = ISLAYSlashingV2.Request({
+            mbips: 100,
+            timestamp: timeAtWhichOffenseOccurs,
+            operator: operator,
+            metadata: ISLAYSlashingV2.Metadata({reason: "Missing Blocks"})
+        });
+
+        vm.prank(service);
+        router.requestSlashing(request);
+
+        ISLAYSlashingV2.RequestInfo memory info = router.getPendingSlashingRequest(service, operator);
+
+        assertEq(info.request.operator, operator);
+        assertEq(info.request.timestamp, timeAtWhichOffenseOccurs);
+        assertEq(info.request.mbips, 100);
+        assertTrue(info.status == ISLAYSlashingV2.Status.Pending);
+        assertEq(info.requestResolution, uint32(block.timestamp) + 3600); // now + resolution window
+        assertEq(info.requestExpiry, uint32(block.timestamp) + 3600 + 7 days);
     }
 }
