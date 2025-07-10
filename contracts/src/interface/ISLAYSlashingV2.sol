@@ -8,6 +8,14 @@ pragma solidity ^0.8.0;
  * To be implemented on the SLAYRouter, but separated to allow for separate of slashing related concerns.
  */
 interface ISLAYSlashingV2 {
+    error LockSlashingNotAuthorized();
+
+    error LockSlashingStatusIsNotPending();
+
+    error LockSlashingExpired();
+
+    error LockSlashingResolutionNotReached();
+
     /**
      * @dev Emitted when a new slash request is created.
      */
@@ -21,6 +29,8 @@ interface ISLAYSlashingV2 {
     event SlashingCanceled(
         address indexed service, address indexed operator, bytes32 slashId, RequestInfo slashingInfo
     );
+
+    event SlashingLocked(address indexed service, address indexed operator, bytes32 slashId);
 
     /// @title Slashing Status
     /// @dev Enum representing the status of a slashing request.
@@ -104,6 +114,13 @@ interface ISLAYSlashingV2 {
      * @param payload {Slashing.RequestPayload}
      */
     function requestSlashing(Request calldata payload) external;
+
+    /**
+     * @notice Move all of operator's vaults slashed assets to the router for further processing.
+     * @dev Only callable by the service that initiated the slash request.
+     * @param slashId The unique identifier for the slash request.
+     */
+    function lockSlashing(bytes32 slashId) external;
 }
 
 /// @title Library for computing slashing request ID

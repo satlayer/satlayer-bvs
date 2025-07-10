@@ -256,4 +256,90 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         assertEq(info.requestResolution, uint32(block.timestamp) + 3600); // now + resolution window
         assertEq(info.requestExpiry, uint32(block.timestamp) + 3600 + 7 days);
     }
+
+    function test_lockSlashing() public {
+        _advanceBlockBy(20000000);
+        address operator = makeAddr("Operator X");
+        address service = makeAddr("Service X");
+        address[5] memory vaults;
+
+        // create 5 vaults for operator and fund them
+        MockERC20 underlying = new MockERC20("Token", "TKN", 18);
+        uint8 underlyingDecimal = underlying.decimals();
+        uint256 underlyingMinorUnit = 10 ** underlyingDecimal;
+
+        // register operator
+        vm.prank(operator);
+        registry.registerAsOperator("operator", "Operator X");
+
+        for (uint256 i = 0; i < 5; i++) {
+            vm.prank(operator);
+            address vault = address(vaultFactory.create(underlying));
+
+            vm.prank(owner);
+            router.setVaultWhitelist(vault, true);
+
+            underlying.mint(vault, (i + 1) * 1_000_000 * underlyingMinorUnit); // mint 1m, 2m, ..., 5m to each vault
+            vaults[i] = vault;
+        }
+
+        // register service and enable slashing
+        vm.startPrank(service);
+        registry.registerAsService("service", "Service A");
+        registry.enableSlashing(
+            ISLAYRegistryV2.SlashParameter({destination: service, maxMbips: 1_000_000, resolutionWindow: 3600})
+        );
+        vm.stopPrank();
+
+        // register service to operator and vice versa
+        vm.prank(operator);
+        registry.registerServiceToOperator(service);
+        vm.prank(service);
+        registry.registerOperatorToService(operator);
+
+        // TODO: remove after fix
+        vm.prank(operator);
+        registry.approveSlashingFor(service);
+
+        _advanceBlockBy(1000);
+
+        // Service initiates slashing request
+        ISLAYSlashingV2.Request memory request = ISLAYSlashingV2.Request({
+            mbips: 1_000_000, // 10%
+            timestamp: uint32(block.timestamp) - 100,
+            operator: operator,
+            metadata: ISLAYSlashingV2.Metadata({reason: "Missing Blocks"})
+        });
+        vm.prank(service);
+        router.requestSlashing(request);
+
+        // get the pending slashing request
+        ISLAYSlashingV2.RequestInfo memory slashRequest = router.getPendingSlashingRequest(service, operator);
+        bytes32 slashId = SlashingRequestId.compute(slashRequest);
+
+        // fast forward to after resolution window
+        _advanceBlockBy(360);
+
+        // Service initiates lock slashing
+        vm.prank(service);
+        vm.expectEmit();
+        emit ISLAYSlashingV2.SlashingLocked(service, operator, slashId);
+        router.lockSlashing(slashId);
+
+        // assert status of request is Locked
+        ISLAYSlashingV2.RequestInfo memory slashRequestAfterLock = router.getPendingSlashingRequest(service, operator);
+        assertTrue(slashRequestAfterLock.status == ISLAYSlashingV2.Status.Locked);
+
+        // assert that the slashed assets are moved to the router
+        uint256 routerBalance = MockERC20(underlying).balanceOf(address(router));
+        assertEq(routerBalance, 1_500_000 * underlyingMinorUnit); // 10% of 5 vaults
+
+        // assert that the vaults' balance are reduced by 10%
+        for (uint256 i = 0; i < 5; i++) {
+            address vault = vaults[i];
+            uint256 vaultBalance = MockERC20(underlying).balanceOf(vault);
+            uint256 balanceBeforeSlashing = (i + 1) * 1_000_000 * underlyingMinorUnit;
+            assertEq(vaultBalance, balanceBeforeSlashing * 9 / 10); // (10% slashed)
+        }
+    }
 }
