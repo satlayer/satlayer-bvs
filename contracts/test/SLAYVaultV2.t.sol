@@ -688,4 +688,66 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vault.requestRedeem(100 * vaultMinorUnit, staker1, staker1);
         vm.stopPrank();
     }
+
+    function test_slashLock() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        uint8 underlyingDecimal = underlying.decimals();
+        uint256 underlyingMinorUnit = 10 ** underlyingDecimal;
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        address staker = makeAddr("staker");
+        uint256 mintAmount = 1000 * underlyingMinorUnit;
+        underlying.mint(staker, mintAmount);
+
+        // deposit by staker
+        vm.startPrank(staker);
+        underlying.approve(address(vault), type(uint256).max);
+        uint256 depositAmount = 100 * underlyingMinorUnit;
+        vault.deposit(depositAmount, staker);
+        vm.stopPrank();
+
+        // assert that the first account btcToken balance is decreased by the deposit amount
+        assertEq(underlying.balanceOf(staker), 900 * underlyingMinorUnit); // mintAmount - depositAmount
+
+        // slash lock called by router
+        vm.prank(address(router));
+        vault.slashLock(20 * underlyingMinorUnit);
+
+        // assert that vault balance is decreased by the slash amount
+        assertEq(underlying.balanceOf(address(vault)), 80 * underlyingMinorUnit); // depositAmount - slashAmount
+
+        // assert that the router balance is increased by the slash amount
+        assertEq(underlying.balanceOf(address(router)), 20 * underlyingMinorUnit); // slashAmount
+    }
+
+    function test_revert_slashLock() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        uint8 underlyingDecimal = underlying.decimals();
+        uint256 underlyingMinorUnit = 10 ** underlyingDecimal;
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        // Attempt to call slashLock from a non-router address
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(ISLAYVaultV2.NotRouter.selector));
+        vault.slashLock(20 * underlyingMinorUnit);
+
+        // Attempt to call slashLock with zero balance
+        vm.prank(address(router));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IERC20Errors.ERC20InsufficientBalance.selector, address(vault), 0, 20 * underlyingMinorUnit
+            )
+        );
+        vault.slashLock(20 * underlyingMinorUnit);
+    }
 }
