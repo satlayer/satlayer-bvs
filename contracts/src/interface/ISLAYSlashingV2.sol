@@ -22,6 +22,8 @@ interface ISLAYSlashingV2 {
         address indexed service, address indexed operator, bytes32 slashId, RequestInfo slashingInfo
     );
 
+    /// @title Slashing Status
+    /// @dev Enum representing the status of a slashing request.
     enum Status {
         /**
          * Earliest stage of a slashing request's lifecycle.
@@ -43,19 +45,20 @@ interface ISLAYSlashingV2 {
     }
 
     /**
-     * Request is a payload for when service request slashing.
+     * @title Slashing Request
+     * @dev Payload for when a service request slashing of an operator.
      */
     struct Request {
         /**
-         * Accused Operator's address.
+         * The accused Operator's address.
          */
         address operator;
         /**
-         * Collateral amount to be slashed.
-         * Unit is in milli bips.
+         * Collateral amount to be slashed measured in milli bips.
+         * Unit is in milli bips. See {ISLAYRegistryV2.SlashParameter} for more details.
          * Cannot be more than service's slashing parameter bounds.
          */
-        uint32 mbips;
+        uint24 mbips;
         /**
          * Timestamp at which alleged misbehaviour occurs.
          */
@@ -66,6 +69,11 @@ interface ISLAYSlashingV2 {
         Metadata metadata;
     }
 
+    /**
+     * @title Slashing Metadata
+     * @dev Metadata is a struct that contains additional information about the slashing request.
+     * Does not affect protocol logic, but can be used for logging or informational purposes.
+     */
     struct Metadata {
         string reason;
     }
@@ -75,12 +83,12 @@ interface ISLAYSlashingV2 {
      * Includes additional data besides the original slashing request payload.
      */
     struct RequestInfo {
+        address service;
+        Status status;
         Request request;
         uint32 requestTime;
         uint32 requestResolution;
         uint32 requestExpiry;
-        Status status;
-        address service;
     }
 
     /**
@@ -98,28 +106,16 @@ interface ISLAYSlashingV2 {
     function requestSlashing(Request calldata payload) external;
 }
 
-library SlashingRequest {
+/// @title Library for computing slashing request ID
+library SlashingRequestId {
     /**
-     * Checks whether a given {RequestInfo} struct is solidity null defaults.
-     * @param info  {RequestInfo}
-     * Returns a boolean.
+     * Compute the ID by hashing the slashing request data to be used as an identifier within the protocol.
+     * The function exclude {RequestStatus} from the hash payload.
+     *
+     * @param info The slashing request information containing the request and its metadata.
+     * @return bytes32 The computed hash of the slashing request.
      */
-    function isRequestInfoExist(ISLAYSlashingV2.RequestInfo memory info) external pure returns (bool) {
-        if (
-            info.service == address(0) && info.request.operator == address(0) && info.requestTime == 0
-                && info.requestResolution == 0 && info.requestExpiry == 0
-        ) {
-            return false;
-        }
-        return true;
-    }
-
-    /**
-     * Hash the slashing request data to be used as an identifier within the protocol.
-     * The function dismisses {RequestStatus} from hash function.
-     * @param info  {RequestInfo}
-     */
-    function calculateSlashingRequestId(ISLAYSlashingV2.RequestInfo memory info) external pure returns (bytes32) {
+    function compute(ISLAYSlashingV2.RequestInfo memory info) external pure returns (bytes32) {
         return keccak256(
             abi.encodePacked(
                 info.request.operator,
