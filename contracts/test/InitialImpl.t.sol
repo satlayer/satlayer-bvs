@@ -80,7 +80,6 @@ contract InitialImplTest is Test {
         address proxy = UnsafeUpgrades.deployUUPSProxy(
             address(initialImpl), abi.encodeCall(InitialImpl.initialize, (address(this)))
         );
-        InitialImpl impl = InitialImpl(proxy);
 
         InitialImpl newImpl = new InitialImpl();
         try this.upgradeCallNonOwner(proxy, address(newImpl)) {
@@ -99,9 +98,7 @@ contract InitialImplTest is Test {
     }
 
     function test_initializable() public {
-        address proxy = UnsafeUpgrades.deployUUPSProxy(
-            address(initialImpl), abi.encodeCall(InitialImpl.initialize, (address(this)))
-        );
+        UnsafeUpgrades.deployUUPSProxy(address(initialImpl), abi.encodeCall(InitialImpl.initialize, (address(this))));
     }
 
     function test_initializable_fails_if_initialized_twice() public {
