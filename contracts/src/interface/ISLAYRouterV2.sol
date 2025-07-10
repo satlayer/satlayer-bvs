@@ -17,20 +17,6 @@ interface ISLAYRouterV2 {
      */
     event VaultWhitelisted(address indexed operator, address vault, bool whitelisted);
 
-    /**
-     * @dev Emitted when new slash request is accepted.
-     */
-    event NewSlashingRequest(
-        address indexed service, address indexed operator, bytes32 indexed slashId, Slashing.RequestInfo slashingInfo
-    );
-
-    /**
-     * @dev Emitted when new slash request is being canceled.
-     */
-    event CancelSlashingRequest(
-        address indexed service, address indexed operator, bytes32 indexed slashId, Slashing.RequestInfo slashingInfo
-    );
-
     /*//////////////////////////////////////////////////////////////
                                 FUNCTIONS
     //////////////////////////////////////////////////////////////*/
@@ -60,114 +46,9 @@ interface ISLAYRouterV2 {
     function setVaultWhitelist(address vault_, bool isWhitelisted) external;
 
     /**
-     * Request slashing by the service to an misbehaving operator.
-     * Slashing request for a given operator by the same service can only take place one after another.
-     * @param payload {Slashing.RequestPayload}
-     */
-    function requestSlashing(Slashing.RequestPayload memory payload) external;
-
-    /**
      * @dev Check if a vault is whitelisted.
      * @param vault_ The address of the vault to check.
      * @return True if the vault is whitelisted, false otherwise.
      */
     function isVaultWhitelisted(address vault_) external view returns (bool);
-}
-
-library Slashing {
-    enum RequestStatus {
-        /**
-         * Earliest stage of a slashing request's lifecycle.
-         */
-        Pending,
-        /**
-         * Locked stage is where the slashed collateral are escrow to SatLayer.
-         */
-        Locked,
-        /**
-         * Finalized stage is when slashed collateral are moved to destination address.
-         */
-        Finalized,
-        /**
-         * Slashing request is canceled when operator as refute adhering to BVS's protocol.
-         * Slashing request is also canceled when service has failed to take action beyond expiry.
-         */
-        Canceled
-    }
-
-    /**
-     * {RequestPayload} is a payload for when service request slashing.
-     */
-    struct RequestPayload {
-        /**
-         * Accused Operator's address.
-         */
-        address operator;
-        /**
-         * Collateral amount to be slashed.
-         * Unit is in milli bips.
-         * Cannot be more than service's slashing parameter bounds.
-         */
-        uint32 millieBips;
-        /**
-         * Timestamp at which alleged misbehaviour occurs.
-         */
-        uint32 timestamp;
-        /**
-         * Metadata associated to particular slashing request.
-         */
-        MetaData metaData;
-    }
-
-    struct MetaData {
-        string reason;
-    }
-
-    /**
-     * {RequestInfo} is a struct for internal state tracking.
-     * Includes additional data besides the original slashing request payload.
-     */
-    struct RequestInfo {
-        RequestPayload request;
-        uint32 requestTime;
-        uint32 requestResolution;
-        uint32 requestExpiry;
-        RequestStatus status;
-        address service;
-    }
-
-    /**
-     * Checks whether a given {RequestInfo} struct is solidity null defaults.
-     * @param info  {RequestInfo}
-     * Returns a boolean.
-     */
-    function isRequestInfoExist(RequestInfo memory info) public pure returns (bool) {
-        if (
-            info.service == address(0) && info.request.operator == address(0) && info.requestTime == 0
-                && info.requestResolution == 0 && info.requestExpiry == 0
-        ) {
-            return false;
-        }
-        return true;
-    }
-
-    /**
-     * Hash the slashing request data to be used as an identifier within the protocol.
-     * The function dismisses {RequestStatus} from hash function.
-     * @param info  {RequestInfo}
-     */
-    function calculateSlashingRequestId(RequestInfo memory info) public pure returns (bytes32) {
-        return keccak256(
-            abi.encodePacked(
-                info.request.operator,
-                info.request.millieBips,
-                info.request.timestamp,
-                info.request.metaData.reason,
-                info.requestTime,
-                info.requestResolution,
-                info.requestExpiry,
-                info.service
-            )
-        );
-    }
 }

@@ -8,9 +8,9 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import {ISLAYRegistryV2} from "./interface/ISLAYRegistryV2.sol";
-import {ISLAYRouterV2, Slashing} from "./interface/ISLAYRouterV2.sol";
+import {ISLAYRouterV2} from "./interface/ISLAYRouterV2.sol";
 import {ISLAYVaultV2} from "./interface/ISLAYVaultV2.sol";
-import {RelationshipV2} from "./RelationshipV2.sol";
+import {ISLAYSlashingV2, SlashingRequest} from "./interface/ISLAYSlashingV2.sol";
 
 /**
  * @title Vaults Router Contract
@@ -19,7 +19,14 @@ import {RelationshipV2} from "./RelationshipV2.sol";
  *
  * @custom:oz-upgrades-from src/InitialImpl.sol:InitialImpl
  */
-contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, ISLAYRouterV2 {
+contract SLAYRouterV2 is
+    Initializable,
+    UUPSUpgradeable,
+    OwnableUpgradeable,
+    PausableUpgradeable,
+    ISLAYRouterV2,
+    ISLAYSlashingV2
+{
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
@@ -40,30 +47,10 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     mapping(address operator => EnumerableSet.AddressSet) private _operatorVaults;
 
     /// @dev Stores the id for most recent slashing request for a given service operator pair.
-    mapping(bytes32 serviceOperatorKey => bytes32 slashId) public slashingRequestIds;
+    mapping(address service => mapping(address operator => bytes32)) private _pendingSlashingRequestIds;
 
     /// @dev Stores the slashing requests by its id.
-    mapping(bytes32 slashId => Slashing.RequestInfo) public slashingRequests;
-
-    modifier onlyValidSlashRequest(Slashing.RequestPayload memory request) {
-        ISLAYRegistryV2.SlashParameter memory slashBounds =
-            registry.getSlashParameterAt(_msgSender(), request.operator, request.timestamp);
-
-        require(
-            request.millieBips <= slashBounds.maxMbips, "Slash requested amount is more than the service has allowed"
-        );
-        require(request.millieBips > 0, "Requested slashing amount in milli bips must be greater than zero");
-
-        uint32 withdrawalDelay = registry.getWithdrawalDelay(request.operator);
-
-        require(
-            request.timestamp > (block.timestamp - withdrawalDelay),
-            "Slash timestamp must be within the allowable slash period"
-        );
-
-        require(request.timestamp <= block.timestamp, "Cannot request slash with timestamp greater than present");
-        _;
-    }
+    mapping(bytes32 slashId => ISLAYSlashingV2.RequestInfo) private _slashingRequests;
 
     modifier onlyService(address account) {
         if (!registry.isService(account)) {
@@ -148,13 +135,18 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
         return _whitelisted[vault_];
     }
 
-    /// @inheritdoc ISLAYRouterV2
-    function requestSlashing(Slashing.RequestPayload memory payload) external onlyValidSlashRequest(payload) {
+    /// @inheritdoc ISLAYSlashingV2
+    function requestSlashing(ISLAYSlashingV2.Request calldata payload)
+        external
+        onlyService(_msgSender())
+        whenNotPaused
+    {
+        _checkSlashRequest(payload);
         address service = _msgSender();
-        Slashing.RequestInfo memory pendingSlashingRequest = getPendingSlashingRequest(service, payload.operator);
+        ISLAYSlashingV2.RequestInfo memory pendingSlashingRequest = getPendingSlashingRequest(service, payload.operator);
 
-        if (Slashing.isRequestInfoExist(pendingSlashingRequest) == true) {
-            if (pendingSlashingRequest.status == Slashing.RequestStatus.Pending) {
+        if (SlashingRequest.isRequestInfoExist(pendingSlashingRequest) == true) {
+            if (pendingSlashingRequest.status == ISLAYSlashingV2.Status.Pending) {
                 if (pendingSlashingRequest.requestExpiry > uint32(block.timestamp)) {
                     // previous slashing request is pending within expiry date or has locked
                     revert("Previous slashing request lifecycle not completed");
@@ -166,7 +158,7 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
                 }
             }
 
-            if (pendingSlashingRequest.status == Slashing.RequestStatus.Locked) {
+            if (pendingSlashingRequest.status == ISLAYSlashingV2.Status.Locked) {
                 revert("Previous slashing request lifecycle not completed");
             }
         }
@@ -175,12 +167,12 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
             + registry.getSlashParameterAt(service, payload.operator, payload.timestamp).resolutionWindow;
         uint32 requestExpiry = requestResolution + slashingRequestExpiryWindow;
 
-        Slashing.RequestInfo memory newSlashingRequestInfo = Slashing.RequestInfo({
+        ISLAYSlashingV2.RequestInfo memory newSlashingRequestInfo = ISLAYSlashingV2.RequestInfo({
             request: payload,
             requestTime: uint32(block.timestamp),
             requestResolution: requestResolution,
             requestExpiry: requestExpiry,
-            status: Slashing.RequestStatus.Pending,
+            status: ISLAYSlashingV2.Status.Pending,
             service: service
         });
 
@@ -195,28 +187,26 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
     function getPendingSlashingRequest(address service, address operator)
         public
         view
-        returns (Slashing.RequestInfo memory)
+        returns (ISLAYSlashingV2.RequestInfo memory)
     {
-        bytes32 key = RelationshipV2.getKey(service, operator);
-        bytes32 slashId = slashingRequestIds[key];
-        return slashingRequests[slashId];
+        bytes32 slashId = _pendingSlashingRequestIds[service][operator];
+        return _slashingRequests[slashId];
     }
 
     /**
      * Create a new slashing request
      * @param service Address of the service.
      * @param operator Address of the operator.
-     * @param info {ISLAYRouter.Slashing.RequestInfo}
+     * @param info {ISLAYRouter.ISLAYSlashingV2.RequestInfo}
      */
-    function _createNewSlashingRequest(address service, address operator, Slashing.RequestInfo memory info)
+    function _createNewSlashingRequest(address service, address operator, ISLAYSlashingV2.RequestInfo memory info)
         internal
         returns (bytes32)
     {
-        bytes32 key = RelationshipV2.getKey(service, operator);
-        bytes32 slashId = Slashing.calculateSlashingRequestId(info);
-        slashingRequestIds[key] = slashId;
-        slashingRequests[slashId] = info;
-        emit ISLAYRouterV2.NewSlashingRequest(service, operator, slashId, info);
+        bytes32 slashId = SlashingRequest.calculateSlashingRequestId(info);
+        _pendingSlashingRequestIds[service][operator] = slashId;
+        _slashingRequests[slashId] = info;
+        emit ISLAYSlashingV2.SlashingRequested(service, operator, slashId, info);
         return slashId;
     }
 
@@ -224,20 +214,35 @@ contract SLAYRouterV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pau
      * Cancel Slashing request
      * @param service Address of the service.
      * @param operator Address of the operator.
-     * @param pendingSlashingRequest {ISLAYRouter.Slashing.RequestInfo}
+     * @param pendingSlashingRequest {ISLAYRouter.ISLAYSlashingV2.RequestInfo}
      */
     function _cancelSlashingRequest(
         address service,
         address operator,
-        Slashing.RequestInfo memory pendingSlashingRequest
+        ISLAYSlashingV2.RequestInfo memory pendingSlashingRequest
     ) internal {
-        pendingSlashingRequest.status = Slashing.RequestStatus.Canceled;
-        bytes32 slashId = Slashing.calculateSlashingRequestId(pendingSlashingRequest);
-        bytes32 key = RelationshipV2.getKey(service, operator);
+        pendingSlashingRequest.status = ISLAYSlashingV2.Status.Canceled;
+        bytes32 slashId = SlashingRequest.calculateSlashingRequestId(pendingSlashingRequest);
+        delete _pendingSlashingRequestIds[service][operator];
 
-        delete slashingRequestIds[key];
+        _slashingRequests[slashId] = pendingSlashingRequest;
+        emit ISLAYSlashingV2.SlashingCanceled(service, operator, slashId, pendingSlashingRequest);
+    }
 
-        slashingRequests[slashId] = pendingSlashingRequest;
-        emit ISLAYRouterV2.CancelSlashingRequest(service, operator, slashId, pendingSlashingRequest);
+    function _checkSlashRequest(ISLAYSlashingV2.Request memory request) internal {
+        ISLAYRegistryV2.SlashParameter memory slashBounds =
+            registry.getSlashParameterAt(_msgSender(), request.operator, request.timestamp);
+
+        require(request.mbips <= slashBounds.maxMbips, "Slash requested amount is more than the service has allowed");
+        require(request.mbips > 0, "Requested slashing amount in milli bips must be greater than zero");
+
+        uint32 withdrawalDelay = registry.getWithdrawalDelay(request.operator);
+
+        require(
+            request.timestamp > (block.timestamp - withdrawalDelay),
+            "Slash timestamp must be within the allowable slash period"
+        );
+
+        require(request.timestamp <= block.timestamp, "Cannot request slash with timestamp greater than present");
     }
 }
