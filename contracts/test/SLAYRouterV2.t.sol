@@ -105,10 +105,10 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         for (uint256 i = 0; i < 10; i++) {
             vm.prank(operator);
-            address vault = address(vaultFactory.create(underlying));
+            address vaultI = address(vaultFactory.create(underlying));
             vm.prank(owner);
-            router.setVaultWhitelist(vault, true);
-            assertTrue(router.isVaultWhitelisted(vault));
+            router.setVaultWhitelist(vaultI, true);
+            assertTrue(router.isVaultWhitelisted(vaultI));
         }
 
         vm.prank(operator);
@@ -169,10 +169,10 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         for (uint256 i = 0; i < 20; i++) {
             vm.prank(operator);
-            address vault = address(vaultFactory.create(underlying));
+            address vaultI = address(vaultFactory.create(underlying));
 
             vm.prank(owner);
-            router.setVaultWhitelist(vault, true);
+            router.setVaultWhitelist(vaultI, true);
         }
 
         vm.prank(operator);

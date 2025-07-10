@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "../src/InitialImpl.sol";
-import "../src/SLAYVaultV2.sol";
-import "../src/SLAYVaultFactoryV2.sol";
-import "../src/SLAYRouterV2.sol";
-import "../src/SLAYRegistryV2.sol";
+import {InitialImpl} from "../src/InitialImpl.sol";
+import {SLAYVaultV2} from "../src/SLAYVaultV2.sol";
+import {SLAYVaultFactoryV2} from "../src/SLAYVaultFactoryV2.sol";
+import {SLAYRouterV2} from "../src/SLAYRouterV2.sol";
+import {SLAYRegistryV2} from "../src/SLAYRegistryV2.sol";
 
 import {Script, console} from "forge-std/Script.sol";
 import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
