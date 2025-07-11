@@ -5,7 +5,7 @@ description: Off-chain computation with on-chain verification for squaring a num
 # Computational Squaring Example
 
 This example demonstrates how to use off-chain computation with on-chain verification through a
-[service](../../../getting-started/services/page.mdx). It introduces a simple squaring function (`n^2`) to illustrate the
+[service](../../../getting-started/services). It introduces a simple squaring function (`n^2`) to illustrate the
 core mechanics of SatLayer’s BVS model. Although squaring a number is a trivial task, this pattern
 generalizes to more complex use cases involving cryptographic proofs, simulations, or data aggregation.
 
@@ -31,6 +31,7 @@ Prerequisites for this example:
 2. Basic understanding of [CosmWasm contracts](/developers/cosmwasm)
 3. Node.js for development of the off-chain service: https://nodejs.org/en/download/
 4. Docker to run off-chain node: https://docs.docker.com/get-docker/
+5. Install pnpm: https://pnpm.io/installation
 
 Project structure:
 
@@ -45,11 +46,12 @@ squaring/
 ### How to run
 
 Clone and copy contents of `./examples/squaring` [from GitHub](https://github.com/satlayer/satlayer-bvs/tree/main/examples/squaring) to your local machine.
-Install with `npm install` and `npm run test` to set up the environment.
+Install with `pnpm install` and `pnpm run test` to set up the environment.
 
 ```sh filename="run.sh"
-npm run install
-npm run test
+cd ./examples/squaring/contract/
+pnpm run install
+pnpm run test
 ```
 
 ### How to build the contract
@@ -74,7 +76,31 @@ Squaring is `n^2`, where `n` is the input number, and the result is the square o
 While this example is simple and not meant for production,
 it illustrates the principles of off-chain computation and on-chain verification.
 
-The general request respond lifecycle is as follows:
+The general request-response lifecycle is as follows:
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant C as Smart Contract
+    participant O as Operator (Off-chain)
+
+    U->>C: Submit computation request (e.g. square n)
+    Note right of C: Request stored on-chain
+
+    O->>C: Polls for new requests
+    C-->>O: Returns pending requests
+
+    O->>O: Performs off-chain computation (n^2)
+    O->>C: Submit result to contract
+
+    alt Correct Result
+        C->>C: Verify result
+        C-->>O: Accept result
+    else Incorrect Result
+        C->>C: Trigger slashing
+        C-->>O: Slash operator stake
+    end
+```
 
 1. Users submit computation requests to the contract
 2. Operators (running the off-chain service) detect these requests
