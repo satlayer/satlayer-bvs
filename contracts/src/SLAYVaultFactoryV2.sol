@@ -71,7 +71,7 @@ contract SLAYVaultFactoryV2 is
     }
 
     /// @inheritdoc ISLAYVaultFactoryV2
-    function create(IERC20Metadata asset) external whenNotPaused onlyOperator returns (SLAYVaultV2) {
+    function create(IERC20Metadata asset) external override whenNotPaused onlyOperator returns (SLAYVaultV2) {
         address operator = _msgSender();
         string memory name = string(abi.encodePacked("SatLayer ", asset.name()));
         string memory symbol = string(abi.encodePacked("sat", asset.symbol()));
@@ -84,6 +84,7 @@ contract SLAYVaultFactoryV2 is
     /// @inheritdoc ISLAYVaultFactoryV2
     function create(IERC20 asset, address operator, string memory name, string memory symbol)
         external
+        override
         whenNotPaused
         onlyOwner
         returns (SLAYVaultV2)

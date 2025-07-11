@@ -201,7 +201,7 @@ contract SLAYRouterV2 is
     }
 
     /// @inheritdoc ISLAYRouterSlashingV2
-    function lockSlashing(bytes32 slashId) external whenNotPaused onlyService(_msgSender()) {
+    function lockSlashing(bytes32 slashId) external override whenNotPaused onlyService(_msgSender()) {
         ISLAYRouterSlashingV2.RequestInfo storage requestInfo = _slashingRequests[slashId];
         // Only service that initiated the slash request can call this function.
         if (requestInfo.service != _msgSender()) {
@@ -252,7 +252,12 @@ contract SLAYRouterV2 is
     }
 
     /// @inheritdoc ISLAYRouterSlashingV2
-    function getLockedAssets(bytes32 slashId) external view returns (ISLAYRouterSlashingV2.LockedAssets[] memory) {
+    function getLockedAssets(bytes32 slashId)
+        external
+        view
+        override
+        returns (ISLAYRouterSlashingV2.LockedAssets[] memory)
+    {
         return _lockedAssets[slashId];
     }
 
