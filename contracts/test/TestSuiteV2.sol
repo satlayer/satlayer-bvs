@@ -44,4 +44,9 @@ contract TestSuiteV2 is Test {
         );
         vm.stopPrank();
     }
+
+    function _advanceBlockBy(uint256 blocks) internal {
+        vm.roll(block.number + blocks);
+        vm.warp(block.timestamp + (12 * blocks));
+    }
 }
