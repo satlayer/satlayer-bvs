@@ -8,6 +8,8 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {ISLAYRegistryV2} from "./interface/ISLAYRegistryV2.sol";
 import {ISLAYRouterV2} from "./interface/ISLAYRouterV2.sol";
@@ -30,6 +32,7 @@ contract SLAYRouterV2 is
     ISLAYRouterSlashingV2
 {
     using EnumerableSet for EnumerableSet.AddressSet;
+    using SafeERC20 for IERC20;
 
     /**
      * @notice 7 days, the expiry window for slashing requests.
@@ -45,6 +48,9 @@ contract SLAYRouterV2 is
     /// @dev The max number of vaults allowed per operator.
     uint8 private _maxVaultsPerOperator;
 
+    /// @dev The address of the guardrail contract.
+    address private _guardrail;
+
     /// @dev Stores the EnumerableSet of vault address for each operator.
     mapping(address operator => EnumerableSet.AddressSet) private _operatorVaults;
 
@@ -56,6 +62,9 @@ contract SLAYRouterV2 is
 
     /// @dev Stores the locked assets for each slashing request.
     mapping(bytes32 slashId => ISLAYRouterSlashingV2.LockedAssets[]) private _lockedAssets;
+
+    /// @dev Stores the guardrail votes for each slashing request. 0 - unset, 1 - approve, 2 - reject.
+    mapping(bytes32 slashId => uint8) private _guardrailVotes;
 
     /// @dev Modifier to check if the caller is a registered service.
     /// Information is sourced from checking the SLAYRegistryV2 contract.
@@ -143,6 +152,12 @@ contract SLAYRouterV2 is
         return _whitelisted[vault_];
     }
 
+    /// @inheritdoc ISLAYRouterV2
+    function setGuardrail(address guardrail) external onlyOwner {
+        require(guardrail != address(0), "Guardrail address cannot be empty");
+        _guardrail = guardrail;
+    }
+
     /// @inheritdoc ISLAYRouterSlashingV2
     function getPendingSlashingRequest(address service, address operator)
         external
@@ -151,6 +166,16 @@ contract SLAYRouterV2 is
         returns (ISLAYRouterSlashingV2.Request memory)
     {
         bytes32 slashId = _pendingSlashingRequestIds[service][operator];
+        return _slashingRequests[slashId];
+    }
+
+    /// @inheritdoc ISLAYRouterSlashingV2
+    function getSlashingRequest(bytes32 slashId)
+        external
+        view
+        override
+        returns (ISLAYRouterSlashingV2.RequestInfo memory)
+    {
         return _slashingRequests[slashId];
     }
 
@@ -220,23 +245,23 @@ contract SLAYRouterV2 is
     function lockSlashing(bytes32 slashId) external override whenNotPaused onlyService(_msgSender()) {
         ISLAYRouterSlashingV2.Request storage request = _slashingRequests[slashId];
         // Only service that initiated the slash request can call this function.
-        if (request.service != _msgSender()) {
-            revert ISLAYRouterSlashingV2.LockSlashingNotAuthorized();
+        if (requestInfo.service != _msgSender()) {
+            revert ISLAYRouterSlashingV2.Unauthorized();
         }
 
         // Check if the slashing request is pending.
-        if (request.status != ISLAYRouterSlashingV2.Status.Pending) {
-            revert ISLAYRouterSlashingV2.LockSlashingStatusIsNotPending();
+        if (requestInfo.status != ISLAYRouterSlashingV2.Status.Pending) {
+            revert ISLAYRouterSlashingV2.InvalidStatus();
         }
 
         // Check if the slashing request has not expired
-        if (request.requestExpiry < uint32(block.timestamp)) {
-            revert ISLAYRouterSlashingV2.LockSlashingExpired();
+        if (requestInfo.requestExpiry < uint32(block.timestamp)) {
+            revert ISLAYRouterSlashingV2.SlashingRequestExpired();
         }
 
         // Check if the slashing request is after the resolution window has passed
-        if (request.requestResolution > uint32(block.timestamp)) {
-            revert ISLAYRouterSlashingV2.LockSlashingResolutionNotReached();
+        if (requestInfo.requestResolution > uint32(block.timestamp)) {
+            revert ISLAYRouterSlashingV2.SlashingResolutionNotReached();
         }
 
         // Iterate through the vaults and call lockSlashing on each of them
@@ -275,5 +300,117 @@ contract SLAYRouterV2 is
         returns (ISLAYRouterSlashingV2.LockedAssets[] memory)
     {
         return _lockedAssets[slashId];
+    }
+
+    function finalizeSlashing(bytes32 slashId) external override whenNotPaused onlyService(_msgSender()) {
+        ISLAYRouterSlashingV2.RequestInfo storage requestInfo = _slashingRequests[slashId];
+        // Only service that initiated the slash request can call this function.
+        if (requestInfo.service != _msgSender()) {
+            revert ISLAYRouterSlashingV2.Unauthorized();
+        }
+
+        // Check if the slashing request is locked.
+        if (requestInfo.status != ISLAYRouterSlashingV2.Status.Locked) {
+            revert ISLAYRouterSlashingV2.InvalidStatus();
+        }
+
+        // Check guardrail contract vote. 0 - unset, 1 - approve, 2 - reject.
+        if (_guardrailVotes[slashId] != 1) {
+            revert ISLAYRouterSlashingV2.GuardrailVoteNotApproved();
+        }
+
+        // get slash parameters
+        ISLAYRegistryV2.SlashParameter memory slashParameter = registry.getSlashParameterAt(
+            requestInfo.service, requestInfo.request.operator, requestInfo.request.timestamp
+        );
+
+        // move locked assets to the slashing param destination
+        ISLAYRouterSlashingV2.LockedAssets[] storage lockedAssets = _lockedAssets[slashId];
+        for (uint256 i = 0; i < lockedAssets.length;) {
+            ISLAYRouterSlashingV2.LockedAssets storage lockedAsset = lockedAssets[i];
+            ISLAYVaultV2 vault = ISLAYVaultV2(lockedAsset.vault);
+
+            // Transfer the locked assets to the slashing destination
+            SafeERC20.safeTransfer(IERC20(vault.asset()), slashParameter.destination, lockedAsset.amount);
+
+            // vaultsCount is bounded to _maxVaultsPerOperator
+            unchecked {
+                i++;
+            }
+        }
+        // remove the locked assets from the router
+        delete _lockedAssets[slashId];
+
+        // remove pending slashing request id for the service and operator pair
+        delete _pendingSlashingRequestIds[requestInfo.service][requestInfo.request.operator];
+
+        // update slash request to the finalized state
+        requestInfo.status = ISLAYRouterSlashingV2.Status.Finalized;
+
+        emit ISLAYRouterSlashingV2.SlashingFinalized(
+            requestInfo.service, requestInfo.request.operator, slashId, slashParameter.destination
+        );
+    }
+
+    /// @inheritdoc ISLAYRouterSlashingV2
+    function guardrailVote(bytes32 slashId, bool vote) external override whenNotPaused {
+        // Only the guardrail can call this function
+        if (_guardrail == address(0)) {
+            revert ISLAYRouterSlashingV2.Unauthorized();
+        }
+        if (_msgSender() != _guardrail) {
+            revert ISLAYRouterSlashingV2.Unauthorized();
+        }
+
+        // check if the slashing request exists.
+        // not checking status here as it will already be checked in finalizeSlashing.
+        ISLAYRouterSlashingV2.RequestInfo storage requestInfo = _slashingRequests[slashId];
+        if (requestInfo.service == address(0)) {
+            revert ISLAYRouterSlashingV2.SlashingRequestNotFound();
+        }
+
+        // check if the slashing id has already been voted on
+        if (_guardrailVotes[slashId] != 0) {
+            revert ISLAYRouterSlashingV2.SlashingRequestVoted();
+        }
+
+        // Set the guardrail vote
+        _guardrailVotes[slashId] = vote ? 1 : 2;
+
+        emit ISLAYRouterSlashingV2.GuardrailVoted(slashId, vote);
+    }
+
+    function _createSlashingRequest(address service, address operator, ISLAYRouterSlashingV2.RequestInfo memory info)
+        internal
+        returns (bytes32)
+    {
+        bytes32 slashId = SlashingRequestId.hash(info);
+        _pendingSlashingRequestIds[service][operator] = slashId;
+        _slashingRequests[slashId] = info;
+        emit ISLAYRouterSlashingV2.SlashingRequested(service, operator, slashId, info);
+        return slashId;
+    }
+
+    function _cancelSlashingRequest(address service, address operator) internal {
+        bytes32 slashId = _pendingSlashingRequestIds[service][operator];
+
+        ISLAYRouterSlashingV2.RequestInfo storage requestInfo = _slashingRequests[slashId];
+        requestInfo.status = ISLAYRouterSlashingV2.Status.Canceled;
+
+        delete _pendingSlashingRequestIds[service][operator];
+        emit ISLAYRouterSlashingV2.SlashingCanceled(service, operator, slashId);
+    }
+
+    function _checkSlashingRequest(address service, ISLAYRouterSlashingV2.Request calldata request) internal view {
+        ISLAYRegistryV2.SlashParameter memory slashParams =
+            registry.getSlashParameterAt(service, request.operator, request.timestamp);
+
+        require(request.mbips > 0, "mbips must be > 0");
+        require(request.mbips <= slashParams.maxMbips, "mbips exceeds max allowed");
+        require(bytes(request.metadata.reason).length <= 250, "reason too long");
+
+        uint32 withdrawalDelay = registry.getWithdrawalDelay(request.operator);
+        require(request.timestamp > block.timestamp - withdrawalDelay, "timestamp too old");
+        require(request.timestamp <= block.timestamp, "timestamp in future");
     }
 }

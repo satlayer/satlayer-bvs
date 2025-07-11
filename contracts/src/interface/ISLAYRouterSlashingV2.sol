@@ -11,13 +11,19 @@ interface ISLAYRouterSlashingV2 {
     /*//////////////////////////////////////////////////////////////
                                 ERRORS
     //////////////////////////////////////////////////////////////*/
-    error LockSlashingNotAuthorized();
+    error Unauthorized();
 
-    error LockSlashingStatusIsNotPending();
+    error InvalidStatus();
 
-    error LockSlashingExpired();
+    error SlashingRequestExpired();
 
-    error LockSlashingResolutionNotReached();
+    error SlashingRequestNotFound();
+
+    error SlashingResolutionNotReached();
+
+    error SlashingRequestVoted();
+
+    error GuardrailVoteNotApproved();
 
     /*//////////////////////////////////////////////////////////////
                                 EVENTS
@@ -48,6 +54,18 @@ interface ISLAYRouterSlashingV2 {
      * This event is emitted when the slashed collateral are moved from the operator's vaults to the router for further processing.
      */
     event SlashingLocked(address indexed service, address indexed operator, bytes32 indexed slashId);
+
+    /**
+     * @dev Emitted when a slash request has been finalized.
+     * This event is emitted when the slashed collateral are moved from the router to the destination address.
+     * The destination address is agreed upon by the service and the operator in the slashing parameters.
+     */
+    event SlashingFinalized(
+        address indexed service, address indexed operator, bytes32 indexed slashId, address destination
+    );
+
+    /// @dev Emitted when a slash request has been voted on by the guardrail.
+    event GuardrailVoted(bytes32 indexed slashId, bool vote);
 
     /**
      * @title Slashing Status
@@ -143,6 +161,13 @@ interface ISLAYRouterSlashingV2 {
     function getPendingSlashingRequest(address service, address operator) external view returns (Request memory);
 
     /**
+     * @dev Get the slashing request for given slashId.
+     * @param slashId The unique identifier for the slashing request.
+     * @return RequestInfo The current active slashing request information.
+     */
+    function getSlashingRequest(bytes32 slashId) external view returns (RequestInfo memory);
+
+    /**
      * @dev Get the locked assets for a given slash request.
      * @param slashId The unique identifier for the slash request.
      * @return LockedAssets[] An array of locked assets associated with the slashing request.
@@ -180,6 +205,23 @@ interface ISLAYRouterSlashingV2 {
      * @param slashId The unique identifier for the slash request.
      */
     function lockSlashing(bytes32 slashId) external;
+
+    /**
+     * @notice Finalizes a slashing request by moving the slashed collateral to the destination address.
+     * @dev This can be called by the service that initiated the slashing request.
+     * It can only be called if the slashing request has been locked and the guardrail has approved the slashing request.
+     * @param slashId The unique identifier for the slashing request.
+     */
+    function finalizeSlashing(bytes32 slashId) external;
+
+    /**
+     * @notice For the guardrail to vote on a slashing request before slashing can be finalized.
+     * Can only be called by the guardrail.
+     * @dev The guardrail can approve or reject the slashing request. The slashId will only be checked for existence.
+     * @param slashId The unique identifier for the slash request.
+     * @param vote True if the guardrail approves the slashing request, false otherwise.
+     */
+    function guardrailVote(bytes32 slashId, bool vote) external;
 }
 
 /// @title Slashing Request ID Library

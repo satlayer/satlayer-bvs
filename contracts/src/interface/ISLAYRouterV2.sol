@@ -51,4 +51,7 @@ interface ISLAYRouterV2 {
      * @return True if the vault is whitelisted, false otherwise.
      */
     function isVaultWhitelisted(address vault_) external view returns (bool);
+
+    /// @dev Set the guardrail address. Only callable by the owner.
+    function setGuardrail(address guardrail) external;
 }
