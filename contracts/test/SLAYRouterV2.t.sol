@@ -7,7 +7,7 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {Test, console} from "forge-std/Test.sol";
 import {TestSuiteV2} from "./TestSuiteV2.sol";
 import {ISLAYRouterV2} from "../src/interface/ISLAYRouterV2.sol";
-import {ISLAYSlashingV2} from "../src/interface/ISLAYSlashingV2.sol";
+import {ISLAYRouterSlashingV2} from "../src/interface/ISLAYRouterSlashingV2.sol";
 
 contract SLAYRouterV2Test is Test, TestSuiteV2 {
     function test_defaults() public view {
@@ -237,22 +237,22 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         _advanceBlockBy(10);
 
-        ISLAYSlashingV2.Request memory request = ISLAYSlashingV2.Request({
+        ISLAYRouterSlashingV2.Request memory request = ISLAYRouterSlashingV2.Request({
             mbips: 100,
             timestamp: timeAtWhichOffenseOccurs,
             operator: operator,
-            metadata: ISLAYSlashingV2.Metadata({reason: "Missing Blocks"})
+            metadata: ISLAYRouterSlashingV2.Metadata({reason: "Missing Blocks"})
         });
 
         vm.prank(service);
         router.requestSlashing(request);
 
-        ISLAYSlashingV2.RequestInfo memory info = router.getPendingSlashingRequest(service, operator);
+        ISLAYRouterSlashingV2.RequestInfo memory info = router.getPendingSlashingRequest(service, operator);
 
         assertEq(info.request.operator, operator);
         assertEq(info.request.timestamp, timeAtWhichOffenseOccurs);
         assertEq(info.request.mbips, 100);
-        assertTrue(info.status == ISLAYSlashingV2.Status.Pending);
+        assertTrue(info.status == ISLAYRouterSlashingV2.Status.Pending);
         assertEq(info.requestResolution, uint32(block.timestamp) + 3600); // now + resolution window
         assertEq(info.requestExpiry, uint32(block.timestamp) + 3600 + 7 days);
     }
@@ -304,18 +304,17 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         _advanceBlockBy(1000);
 
         // Service initiates slashing request
-        ISLAYSlashingV2.Request memory request = ISLAYSlashingV2.Request({
+        ISLAYRouterSlashingV2.Request memory request = ISLAYRouterSlashingV2.Request({
             mbips: 1_000_000, // 10%
             timestamp: uint32(block.timestamp) - 100,
             operator: operator,
-            metadata: ISLAYSlashingV2.Metadata({reason: "Missing Blocks"})
+            metadata: ISLAYRouterSlashingV2.Metadata({reason: "Missing Blocks"})
         });
         vm.prank(service);
-        router.requestSlashing(request);
+        bytes32 slashId = router.requestSlashing(request);
 
-        // get the pending slashing request
-        ISLAYSlashingV2.RequestInfo memory slashRequest = router.getPendingSlashingRequest(service, operator);
-        bytes32 slashId = SlashingRequestId.compute(slashRequest);
+        ISLAYRouterSlashingV2.RequestInfo memory pendingRequest = router.getPendingSlashingRequest(service, operator);
+        assertTrue(pendingRequest.status == ISLAYRouterSlashingV2.Status.Pending);
 
         // fast forward to after resolution window
         _advanceBlockBy(360);
@@ -323,12 +322,13 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         // Service initiates lock slashing
         vm.prank(service);
         vm.expectEmit();
-        emit ISLAYSlashingV2.SlashingLocked(service, operator, slashId);
+        emit ISLAYRouterSlashingV2.SlashingLocked(service, operator, slashId);
         router.lockSlashing(slashId);
 
         // assert status of request is Locked
-        ISLAYSlashingV2.RequestInfo memory slashRequestAfterLock = router.getPendingSlashingRequest(service, operator);
-        assertTrue(slashRequestAfterLock.status == ISLAYSlashingV2.Status.Locked);
+        ISLAYRouterSlashingV2.RequestInfo memory slashRequestAfterLock =
+            router.getPendingSlashingRequest(service, operator);
+        assertTrue(slashRequestAfterLock.status == ISLAYRouterSlashingV2.Status.Locked);
 
         // assert that the slashed assets are moved to the router
         uint256 routerBalance = MockERC20(underlying).balanceOf(address(router));
@@ -343,7 +343,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         }
 
         // assert that the internal state _lockedAssets are updated
-        ISLAYSlashingV2.LockedAssets[] memory lockedAssets = router.getLockedAssets(slashId);
+        ISLAYRouterSlashingV2.LockedAssets[] memory lockedAssets = router.getLockedAssets(slashId);
         assertEq(lockedAssets.length, 5); // 5 vaults slashed
         for (uint256 i = 0; i < 5; i++) {
             assertEq(lockedAssets[i].amount, (i + 1) * 100_000 * underlyingMinorUnit); // 10% of each vault
@@ -391,18 +391,18 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         _advanceBlockBy(1000);
 
         // Service initiates slashing request
-        ISLAYSlashingV2.Request memory request = ISLAYSlashingV2.Request({
+        ISLAYRouterSlashingV2.Request memory request = ISLAYRouterSlashingV2.Request({
             mbips: 1_000_000, // 10%
             timestamp: uint32(block.timestamp) - 100,
             operator: operator,
-            metadata: ISLAYSlashingV2.Metadata({reason: "Missing Blocks"})
+            metadata: ISLAYRouterSlashingV2.Metadata({reason: "Missing Blocks"})
         });
         vm.prank(service);
-        router.requestSlashing(request);
+        bytes32 slashId = router.requestSlashing(request);
 
         // get the pending slashing request
-        ISLAYSlashingV2.RequestInfo memory slashRequest = router.getPendingSlashingRequest(service, operator);
-        bytes32 slashId = SlashingRequestId.compute(slashRequest);
+        ISLAYRouterSlashingV2.RequestInfo memory pendingRequest = router.getPendingSlashingRequest(service, operator);
+        assertTrue(pendingRequest.status == ISLAYRouterSlashingV2.Status.Pending);
 
         // revert when non-service tries to lock slashing
         vm.prank(operator);
@@ -413,13 +413,13 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         address anotherService = makeAddr("Another Service");
         vm.startPrank(anotherService);
         registry.registerAsService("another-service", "Another Service");
-        vm.expectRevert(abi.encodeWithSelector(ISLAYSlashingV2.LockSlashingNotAuthorized.selector));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.LockSlashingNotAuthorized.selector));
         router.lockSlashing(slashId);
         vm.stopPrank();
 
         // revert when slashing request has not passed resolution window
         vm.prank(service);
-        vm.expectRevert(abi.encodeWithSelector(ISLAYSlashingV2.LockSlashingResolutionNotReached.selector));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.LockSlashingResolutionNotReached.selector));
         router.lockSlashing(slashId);
 
         // fast forward to after expiry
@@ -427,7 +427,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         // revert when slashing request has expired
         vm.prank(service);
-        vm.expectRevert(abi.encodeWithSelector(ISLAYSlashingV2.LockSlashingExpired.selector));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.LockSlashingExpired.selector));
         router.lockSlashing(slashId);
 
         // move chain back before expiry
@@ -437,12 +437,13 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         // service should successfully lock slashing now
         vm.prank(service);
         vm.expectEmit();
-        emit ISLAYSlashingV2.SlashingLocked(service, operator, slashId);
+        emit ISLAYRouterSlashingV2.SlashingLocked(service, operator, slashId);
         router.lockSlashing(slashId);
 
         // assert status of request is Locked
-        ISLAYSlashingV2.RequestInfo memory slashRequestAfterLock = router.getPendingSlashingRequest(service, operator);
-        assertTrue(slashRequestAfterLock.status == ISLAYSlashingV2.Status.Locked);
+        ISLAYRouterSlashingV2.RequestInfo memory slashRequestAfterLock =
+            router.getPendingSlashingRequest(service, operator);
+        assertTrue(slashRequestAfterLock.status == ISLAYRouterSlashingV2.Status.Locked);
 
         // assert router balance is increased
         uint256 routerBalance = MockERC20(underlying).balanceOf(address(router));
@@ -450,7 +451,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         // revert when service tries to lock slashing again
         vm.prank(service);
-        vm.expectRevert(abi.encodeWithSelector(ISLAYSlashingV2.LockSlashingStatusIsNotPending.selector));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.LockSlashingStatusIsNotPending.selector));
         router.lockSlashing(slashId);
 
         // assert that the router balance is still the same

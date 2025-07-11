@@ -111,7 +111,7 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /// @inheritdoc ISLAYRegistryV2
-    function registerAsService(string memory uri, string memory name) external whenNotPaused {
+    function registerAsService(string calldata uri, string calldata name) external override whenNotPaused {
         address account = _msgSender();
         Service storage service = _services[account];
 
@@ -122,7 +122,7 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     }
 
     /// @inheritdoc ISLAYRegistryV2
-    function registerAsOperator(string memory uri, string memory name) external whenNotPaused {
+    function registerAsOperator(string calldata uri, string calldata name) external override whenNotPaused {
         address account = _msgSender();
         Operator storage operator = _operators[account];
 
@@ -135,7 +135,7 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     }
 
     /// @inheritdoc ISLAYRegistryV2
-    function updateMetadata(string memory uri, string memory name) external whenNotPaused {
+    function updateMetadata(string calldata uri, string calldata name) external override whenNotPaused {
         address provider = _msgSender();
         require(_services[provider].registered || _operators[provider].registered, "Not registered");
 
@@ -145,6 +145,7 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     /// @inheritdoc ISLAYRegistryV2
     function registerOperatorToService(address operator)
         external
+        override
         whenNotPaused
         onlyService(_msgSender())
         onlyOperator(operator)
@@ -170,6 +171,7 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     /// @inheritdoc ISLAYRegistryV2
     function deregisterOperatorFromService(address operator)
         external
+        override
         onlyService(_msgSender())
         onlyOperator(operator)
     {
@@ -186,7 +188,12 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     }
 
     /// @inheritdoc ISLAYRegistryV2
-    function registerServiceToOperator(address service) external onlyOperator(_msgSender()) onlyService(service) {
+    function registerServiceToOperator(address service)
+        external
+        override
+        onlyOperator(_msgSender())
+        onlyService(service)
+    {
         address operator = _msgSender();
         RelationshipV2.Object memory obj = _getRelationshipObject(service, operator);
 
@@ -206,7 +213,12 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     }
 
     /// @inheritdoc ISLAYRegistryV2
-    function deregisterServiceFromOperator(address service) external onlyOperator(_msgSender()) onlyService(service) {
+    function deregisterServiceFromOperator(address service)
+        external
+        override
+        onlyOperator(_msgSender())
+        onlyService(service)
+    {
         address operator = _msgSender();
         RelationshipV2.Object memory obj = _getRelationshipObject(service, operator);
 
@@ -220,7 +232,12 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     }
 
     /// @inheritdoc ISLAYRegistryV2
-    function getRelationshipStatus(address service, address operator) external view returns (RelationshipV2.Status) {
+    function getRelationshipStatus(address service, address operator)
+        external
+        view
+        override
+        returns (RelationshipV2.Status)
+    {
         RelationshipV2.Object memory obj = _getRelationshipObject(service, operator);
         return obj.status;
     }
@@ -229,6 +246,7 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     function getRelationshipStatusAt(address service, address operator, uint32 timestamp)
         external
         view
+        override
         returns (RelationshipV2.Status)
     {
         RelationshipV2.Object memory obj = _getRelationshipObjectAt(service, operator, timestamp);
@@ -236,17 +254,17 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     }
 
     /// @inheritdoc ISLAYRegistryV2
-    function isOperator(address account) external view returns (bool) {
+    function isOperator(address account) external view override returns (bool) {
         return _operators[account].registered;
     }
 
     /// @inheritdoc ISLAYRegistryV2
-    function isService(address account) external view returns (bool) {
+    function isService(address account) external view override returns (bool) {
         return _services[account].registered;
     }
 
     /// @inheritdoc ISLAYRegistryV2
-    function setWithdrawalDelay(uint32 delay) external whenNotPaused onlyOperator(_msgSender()) {
+    function setWithdrawalDelay(uint32 delay) external override whenNotPaused onlyOperator(_msgSender()) {
         require(delay >= DEFAULT_WITHDRAWAL_DELAY, "Delay must be at least more than or equal to 7 days");
 
         // check for all active services of the operator if their minimum withdrawal delay is less than the new delay.
@@ -272,12 +290,17 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     }
 
     /// @inheritdoc ISLAYRegistryV2
-    function getWithdrawalDelay(address operator) external view returns (uint32) {
+    function getWithdrawalDelay(address operator) external view override returns (uint32) {
         return _operators[operator].withdrawalDelay;
     }
 
     /// @inheritdoc ISLAYRegistryV2
-    function enableSlashing(SlashParameter calldata parameter) external onlyService(_msgSender()) whenNotPaused {
+    function enableSlashing(SlashParameter calldata parameter)
+        external
+        override
+        onlyService(_msgSender())
+        whenNotPaused
+    {
         require(parameter.destination != address(0), "destination!=0");
         require(parameter.maxMbips <= 10_000_000, "maxMbips!=>10000000");
         require(parameter.maxMbips > 0, "maxMbips!=0");
@@ -293,7 +316,7 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     }
 
     /// @inheritdoc ISLAYRegistryV2
-    function disableSlashing() external onlyService(_msgSender()) whenNotPaused {
+    function disableSlashing() external override onlyService(_msgSender()) whenNotPaused {
         address account = _msgSender();
         Service storage service = _services[account];
         // 0 is used to indicate that slashing is disabled.
@@ -302,7 +325,7 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     }
 
     /// @inheritdoc ISLAYRegistryV2
-    function approveSlashingFor(address service) external onlyOperator(_msgSender()) whenNotPaused {
+    function approveSlashingFor(address service) external override onlyOperator(_msgSender()) whenNotPaused {
         address operator = _msgSender();
         RelationshipV2.Object memory obj = _getRelationshipObject(service, operator);
         require(obj.status == RelationshipV2.Status.Active, "Relationship not active");
@@ -314,7 +337,7 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     }
 
     /// @inheritdoc ISLAYRegistryV2
-    function getSlashParameter(address service) external view returns (SlashParameter memory) {
+    function getSlashParameter(address service) external view override returns (SlashParameter memory) {
         uint32 slashParameterId = _services[service].slashParameterId;
         require(slashParameterId > 0, "Slashing not enabled");
         return _slashParameters[slashParameterId];
@@ -324,6 +347,7 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     function getSlashParameterAt(address service, address operator, uint32 timestamp)
         external
         view
+        override
         returns (SlashParameter memory)
     {
         uint32 slashParameterId = _getRelationshipObjectAt(service, operator, timestamp).slashParameterId;
@@ -408,7 +432,7 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     }
 
     /// @inheritdoc ISLAYRegistryV2
-    function setMaxActiveRelationships(uint8 max) external onlyOwner {
+    function setMaxActiveRelationships(uint8 max) external override onlyOwner {
         require(max > 0, "Max active relationships must be greater than 0");
         require(max > _maxActiveRelationships, "Max active relationships must be greater than current");
         _maxActiveRelationships = max;
@@ -416,12 +440,12 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     }
 
     /// @inheritdoc ISLAYRegistryV2
-    function getMaxActiveRelationships() external view returns (uint8) {
+    function getMaxActiveRelationships() external view override returns (uint8) {
         return _maxActiveRelationships;
     }
 
     /// @inheritdoc ISLAYRegistryV2
-    function setMinWithdrawalDelay(uint32 delay) external whenNotPaused onlyService(_msgSender()) {
+    function setMinWithdrawalDelay(uint32 delay) external override whenNotPaused onlyService(_msgSender()) {
         require(delay > 0, "Delay must be more than 0");
 
         // checks for each of its active operators if their withdrawal delay is less than the new minimum delay
@@ -447,7 +471,7 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     }
 
     /// @inheritdoc ISLAYRegistryV2
-    function getMinWithdrawalDelay(address service) external view returns (uint32) {
+    function getMinWithdrawalDelay(address service) external view override returns (uint32) {
         return _services[service].minWithdrawalDelay;
     }
 }
