@@ -440,13 +440,13 @@ contract SLAYVaultV2 is
     }
 
     /// @inheritdoc ISLAYVaultV2
-    function slashLock(uint256 amount) external override {
+    function lockSlashing(uint256 amount) external override {
         if (_msgSender() != address(router)) {
             revert NotRouter();
         }
 
         SafeERC20.safeTransfer(IERC20(asset()), address(router), amount);
 
-        emit SlashLock(amount);
+        emit SlashingLocked(amount);
     }
 }

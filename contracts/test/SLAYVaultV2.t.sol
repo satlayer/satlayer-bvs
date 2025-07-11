@@ -691,7 +691,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vm.stopPrank();
     }
 
-    function test_slashLock() public {
+    function test_lockSlashing() public {
         vm.prank(operator);
         SLAYVaultV2 vault = vaultFactory.create(underlying);
 
@@ -718,7 +718,9 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
         // slash lock called by router
         vm.prank(address(router));
-        vault.slashLock(20 * underlyingMinorUnit);
+        vm.expectEmit();
+        emit ISLAYVaultV2.SlashingLocked(20 * underlyingMinorUnit);
+        vault.lockSlashing(20 * underlyingMinorUnit);
 
         // assert that vault balance is decreased by the slash amount
         assertEq(underlying.balanceOf(address(vault)), 80 * underlyingMinorUnit); // depositAmount - slashAmount
@@ -727,7 +729,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         assertEq(underlying.balanceOf(address(router)), 20 * underlyingMinorUnit); // slashAmount
     }
 
-    function test_revert_slashLock() public {
+    function test_revert_lockSlashing() public {
         vm.prank(operator);
         SLAYVaultV2 vault = vaultFactory.create(underlying);
 
@@ -738,18 +740,18 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         router.setVaultWhitelist(address(vault), true);
         vm.stopPrank();
 
-        // Attempt to call slashLock from a non-router address
+        // Attempt to call lockSlashing from a non-router address
         vm.prank(owner);
         vm.expectRevert(abi.encodeWithSelector(ISLAYVaultV2.NotRouter.selector));
-        vault.slashLock(20 * underlyingMinorUnit);
+        vault.lockSlashing(20 * underlyingMinorUnit);
 
-        // Attempt to call slashLock with zero balance
+        // Attempt to call lockSlashing with zero balance
         vm.prank(address(router));
         vm.expectRevert(
             abi.encodeWithSelector(
                 IERC20Errors.ERC20InsufficientBalance.selector, address(vault), 0, 20 * underlyingMinorUnit
             )
         );
-        vault.slashLock(20 * underlyingMinorUnit);
+        vault.lockSlashing(20 * underlyingMinorUnit);
     }
 }
