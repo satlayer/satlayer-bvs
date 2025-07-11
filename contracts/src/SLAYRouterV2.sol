@@ -232,6 +232,7 @@ contract SLAYRouterV2 is
         require(request.timestamp <= block.timestamp, "Cannot request slash with timestamp greater than present");
     }
 
+    /// @inheritdoc ISLAYSlashingV2
     function lockSlashing(bytes32 slashId) external whenNotPaused onlyService(_msgSender()) {
         ISLAYSlashingV2.RequestInfo storage requestInfo = _slashingRequests[slashId];
         // Only service that initiated the slash request can call this function.
@@ -244,7 +245,7 @@ contract SLAYRouterV2 is
             revert ISLAYSlashingV2.LockSlashingStatusIsNotPending();
         }
 
-        // Check if the slashing request has expired
+        // Check if the slashing request has not expired
         if (requestInfo.requestExpiry < uint32(block.timestamp)) {
             revert ISLAYSlashingV2.LockSlashingExpired();
         }
@@ -254,10 +255,11 @@ contract SLAYRouterV2 is
             revert ISLAYSlashingV2.LockSlashingResolutionNotReached();
         }
 
-        // iterate through the vaults and call slashLock on each of them
-        uint256 vaultsCount = _operatorVaults[requestInfo.request.operator].length();
+        // Iterate through the vaults and call slashLock on each of them
+        EnumerableSet.AddressSet storage operatorVaults = _operatorVaults[requestInfo.request.operator];
+        uint256 vaultsCount = operatorVaults.length();
         for (uint256 i = 0; i < vaultsCount;) {
-            address vaultAddress = _operatorVaults[requestInfo.request.operator].at(i);
+            address vaultAddress = operatorVaults.at(i);
             ISLAYVaultV2 vault = ISLAYVaultV2(vaultAddress);
 
             // calculate the slash amount from mbips

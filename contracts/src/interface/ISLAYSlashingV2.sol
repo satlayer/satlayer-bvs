@@ -117,6 +117,7 @@ interface ISLAYSlashingV2 {
 
     /**
      * @notice Move all of operator's vaults slashed assets to the router for further processing.
+     * It can only be called after the resolution window has passed and before the expiry.
      * @dev Only callable by the service that initiated the slash request.
      * @param slashId The unique identifier for the slash request.
      */
