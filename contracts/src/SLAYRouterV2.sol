@@ -200,40 +200,6 @@ contract SLAYRouterV2 is
         return _createSlashingRequest(service, request.operator, newSlashingRequestInfo);
     }
 
-    function _createSlashingRequest(address service, address operator, ISLAYRouterSlashingV2.RequestInfo memory info)
-        internal
-        returns (bytes32)
-    {
-        bytes32 slashId = SlashingRequestId.hash(info);
-        _pendingSlashingRequestIds[service][operator] = slashId;
-        _slashingRequests[slashId] = info;
-        emit ISLAYRouterSlashingV2.SlashingRequested(service, operator, slashId, info);
-        return slashId;
-    }
-
-    function _cancelSlashingRequest(address service, address operator) internal {
-        bytes32 slashId = _pendingSlashingRequestIds[service][operator];
-
-        ISLAYRouterSlashingV2.RequestInfo storage requestInfo = _slashingRequests[slashId];
-        requestInfo.status = ISLAYRouterSlashingV2.Status.Canceled;
-
-        delete _pendingSlashingRequestIds[service][operator];
-        emit ISLAYRouterSlashingV2.SlashingCanceled(service, operator, slashId);
-    }
-
-    function _checkSlashingRequest(address service, ISLAYRouterSlashingV2.Request calldata request) internal view {
-        ISLAYRegistryV2.SlashParameter memory slashParams =
-            registry.getSlashParameterAt(service, request.operator, request.timestamp);
-
-        require(request.mbips > 0, "mbips must be > 0");
-        require(request.mbips <= slashParams.maxMbips, "mbips exceeds max allowed");
-        require(bytes(request.metadata.reason).length <= 250, "reason too long");
-
-        uint32 withdrawalDelay = registry.getWithdrawalDelay(request.operator);
-        require(request.timestamp > block.timestamp - withdrawalDelay, "timestamp too old");
-        require(request.timestamp <= block.timestamp, "timestamp in future");
-    }
-
     /// @inheritdoc ISLAYRouterSlashingV2
     function lockSlashing(bytes32 slashId) external whenNotPaused onlyService(_msgSender()) {
         ISLAYRouterSlashingV2.RequestInfo storage requestInfo = _slashingRequests[slashId];
@@ -288,5 +254,39 @@ contract SLAYRouterV2 is
     /// @inheritdoc ISLAYRouterSlashingV2
     function getLockedAssets(bytes32 slashId) external view returns (ISLAYRouterSlashingV2.LockedAssets[] memory) {
         return _lockedAssets[slashId];
+    }
+
+    function _createSlashingRequest(address service, address operator, ISLAYRouterSlashingV2.RequestInfo memory info)
+        internal
+        returns (bytes32)
+    {
+        bytes32 slashId = SlashingRequestId.hash(info);
+        _pendingSlashingRequestIds[service][operator] = slashId;
+        _slashingRequests[slashId] = info;
+        emit ISLAYRouterSlashingV2.SlashingRequested(service, operator, slashId, info);
+        return slashId;
+    }
+
+    function _cancelSlashingRequest(address service, address operator) internal {
+        bytes32 slashId = _pendingSlashingRequestIds[service][operator];
+
+        ISLAYRouterSlashingV2.RequestInfo storage requestInfo = _slashingRequests[slashId];
+        requestInfo.status = ISLAYRouterSlashingV2.Status.Canceled;
+
+        delete _pendingSlashingRequestIds[service][operator];
+        emit ISLAYRouterSlashingV2.SlashingCanceled(service, operator, slashId);
+    }
+
+    function _checkSlashingRequest(address service, ISLAYRouterSlashingV2.Request calldata request) internal view {
+        ISLAYRegistryV2.SlashParameter memory slashParams =
+            registry.getSlashParameterAt(service, request.operator, request.timestamp);
+
+        require(request.mbips > 0, "mbips must be > 0");
+        require(request.mbips <= slashParams.maxMbips, "mbips exceeds max allowed");
+        require(bytes(request.metadata.reason).length <= 250, "reason too long");
+
+        uint32 withdrawalDelay = registry.getWithdrawalDelay(request.operator);
+        require(request.timestamp > block.timestamp - withdrawalDelay, "timestamp too old");
+        require(request.timestamp <= block.timestamp, "timestamp in future");
     }
 }
