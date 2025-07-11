@@ -2,16 +2,15 @@
 pragma solidity ^0.8.0;
 
 /**
- * @title SLAY Slashing V2 Interface
- * @dev Interface for the SLAYSlashingV2 contract.
+ * @title SLAY Router Slashing V2 Interface
+ * @dev Interface for the Slashing.
  * This interface defines the structure and functions for slashing requests in the SatLayer protocol.
- * To be implemented on the SLAYRouter, but separated to allow for separate of slashing related concerns.
+ * To be implemented on the SLAYRouter, but separated to allow for separation of slashing related concerns.
  */
-interface ISLAYSlashingV2 {
+interface ISLAYRouterSlashingV2 {
     /*//////////////////////////////////////////////////////////////
                                 ERRORS
     //////////////////////////////////////////////////////////////*/
-
     error LockSlashingNotAuthorized();
 
     error LockSlashingStatusIsNotPending();
@@ -98,12 +97,20 @@ interface ISLAYSlashingV2 {
      * Includes additional data besides the original slashing request payload.
      */
     struct RequestInfo {
+        /// The service that initiated the slashing request.
         address service;
+        /// The status of the slashing request.
         Status status;
-        Request request;
+        /// The timestamp when the request was submitted.
         uint32 requestTime;
+        /// The timestamp when the request resolution window will end and becomes eligible for locking.
+        /// This will be `request_time` + `resolution_window`.
         uint32 requestResolution;
+        /// The timestamp after which the request is no longer valid.
+        /// This will be `request_time` + `resolution_window` + `SLASHING_REQUEST_EXPIRY_WINDOW`
         uint32 requestExpiry;
+        /// The core slashing request data including operator, bips, timestamp, and metadata.
+        Request request;
     }
 
     /// @dev struct used internally to track locked assets in the router for further processing.
@@ -173,7 +180,7 @@ library SlashingRequestId {
      * @param info The slashing request information.
      * @return bytes32 The computed hash of the slashing request.
      */
-    function hash(ISLAYSlashingV2.RequestInfo memory info) internal pure returns (bytes32) {
+    function hash(ISLAYRouterSlashingV2.RequestInfo memory info) internal pure returns (bytes32) {
         return keccak256(
             abi.encode(
                 info.request.operator,

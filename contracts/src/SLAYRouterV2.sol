@@ -12,7 +12,7 @@ import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet
 import {ISLAYRegistryV2} from "./interface/ISLAYRegistryV2.sol";
 import {ISLAYRouterV2} from "./interface/ISLAYRouterV2.sol";
 import {ISLAYVaultV2} from "./interface/ISLAYVaultV2.sol";
-import {ISLAYSlashingV2, SlashingRequestId} from "./interface/ISLAYSlashingV2.sol";
+import {ISLAYRouterSlashingV2, SlashingRequestId} from "./interface/ISLAYRouterSlashingV2.sol";
 
 /**
  * @title Vaults Router Contract
@@ -27,20 +27,20 @@ contract SLAYRouterV2 is
     OwnableUpgradeable,
     PausableUpgradeable,
     ISLAYRouterV2,
-    ISLAYSlashingV2
+    ISLAYRouterSlashingV2
 {
     using EnumerableSet for EnumerableSet.AddressSet;
+
+    /**
+     * @notice 7 days, the expiry window for slashing requests.
+     */
+    uint32 public constant SLASHING_REQUEST_EXPIRY_WINDOW = 7 days;
 
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     ISLAYRegistryV2 public immutable registry;
 
     /// @dev Whitelisted flag for each vault.
     mapping(address => bool) internal _whitelisted;
-
-    /**
-     * @notice 7 days
-     */
-    uint32 public constant slashingRequestExpiryWindow = 7 days;
 
     /// @dev The max number of vaults allowed per operator.
     uint8 private _maxVaultsPerOperator;
@@ -52,10 +52,10 @@ contract SLAYRouterV2 is
     mapping(address service => mapping(address operator => bytes32)) private _pendingSlashingRequestIds;
 
     /// @dev Stores the slashing requests by its id.
-    mapping(bytes32 slashId => ISLAYSlashingV2.RequestInfo) private _slashingRequests;
+    mapping(bytes32 slashId => ISLAYRouterSlashingV2.RequestInfo) private _slashingRequests;
 
     /// @dev Stores the locked assets for each slashing request.
-    mapping(bytes32 slashId => ISLAYSlashingV2.LockedAssets[]) private _lockedAssets;
+    mapping(bytes32 slashId => ISLAYRouterSlashingV2.LockedAssets[]) private _lockedAssets;
 
     /// @dev Modifier to check if the caller is a registered service.
     /// Information is sourced from checking the SLAYRegistryV2 contract.
@@ -143,19 +143,19 @@ contract SLAYRouterV2 is
         return _whitelisted[vault_];
     }
 
-    /// @inheritdoc ISLAYSlashingV2
+    /// @inheritdoc ISLAYRouterSlashingV2
     function getPendingSlashingRequest(address service, address operator)
         public
         view
         override
-        returns (ISLAYSlashingV2.RequestInfo memory)
+        returns (ISLAYRouterSlashingV2.RequestInfo memory)
     {
         bytes32 slashId = _pendingSlashingRequestIds[service][operator];
         return _slashingRequests[slashId];
     }
 
-    /// @inheritdoc ISLAYSlashingV2
-    function requestSlashing(ISLAYSlashingV2.Request calldata request)
+    /// @inheritdoc ISLAYRouterSlashingV2
+    function requestSlashing(ISLAYRouterSlashingV2.Request calldata request)
         external
         override
         onlyService(_msgSender())
@@ -164,11 +164,11 @@ contract SLAYRouterV2 is
     {
         address service = _msgSender();
         _checkSlashingRequest(service, request);
-        ISLAYSlashingV2.RequestInfo memory pendingRequest = getPendingSlashingRequest(service, request.operator);
+        ISLAYRouterSlashingV2.RequestInfo memory pendingRequest = getPendingSlashingRequest(service, request.operator);
 
         // Found existing slashing request for the same service and operator pair.
         if (pendingRequest.service != address(0)) {
-            if (pendingRequest.status == ISLAYSlashingV2.Status.Pending) {
+            if (pendingRequest.status == ISLAYRouterSlashingV2.Status.Pending) {
                 if (pendingRequest.requestExpiry > uint32(block.timestamp)) {
                     // previous slashing request is pending within expiry date or has locked
                     revert("Previous slashing request lifecycle not completed");
@@ -178,49 +178,50 @@ contract SLAYRouterV2 is
                     // by canceling the previous slashing request.
                     _cancelSlashingRequest(service, request.operator);
                 }
-            } else if (pendingRequest.status == ISLAYSlashingV2.Status.Locked) {
+            } else if (pendingRequest.status == ISLAYRouterSlashingV2.Status.Locked) {
                 revert("Previous slashing request lifecycle not completed");
             }
         }
 
-        uint32 requestResolution = uint32(block.timestamp)
-            + registry.getSlashParameterAt(service, request.operator, request.timestamp).resolutionWindow;
-        uint32 requestExpiry = requestResolution + slashingRequestExpiryWindow;
+        uint32 resolutionWindow =
+            registry.getSlashParameterAt(service, request.operator, request.timestamp).resolutionWindow;
+        uint32 requestResolution = uint32(block.timestamp) + resolutionWindow;
+        uint32 requestExpiry = requestResolution + SLASHING_REQUEST_EXPIRY_WINDOW;
 
-        ISLAYSlashingV2.RequestInfo memory newSlashingRequestInfo = ISLAYSlashingV2.RequestInfo({
+        ISLAYRouterSlashingV2.RequestInfo memory newSlashingRequestInfo = ISLAYRouterSlashingV2.RequestInfo({
             request: request,
             requestTime: uint32(block.timestamp),
             requestResolution: requestResolution,
             requestExpiry: requestExpiry,
-            status: ISLAYSlashingV2.Status.Pending,
+            status: ISLAYRouterSlashingV2.Status.Pending,
             service: service
         });
 
         return _createSlashingRequest(service, request.operator, newSlashingRequestInfo);
     }
 
-    function _createSlashingRequest(address service, address operator, ISLAYSlashingV2.RequestInfo memory info)
+    function _createSlashingRequest(address service, address operator, ISLAYRouterSlashingV2.RequestInfo memory info)
         internal
         returns (bytes32)
     {
         bytes32 slashId = SlashingRequestId.hash(info);
         _pendingSlashingRequestIds[service][operator] = slashId;
         _slashingRequests[slashId] = info;
-        emit ISLAYSlashingV2.SlashingRequested(service, operator, slashId, info);
+        emit ISLAYRouterSlashingV2.SlashingRequested(service, operator, slashId, info);
         return slashId;
     }
 
     function _cancelSlashingRequest(address service, address operator) internal {
         bytes32 slashId = _pendingSlashingRequestIds[service][operator];
 
-        ISLAYSlashingV2.RequestInfo storage requestInfo = _slashingRequests[slashId];
-        requestInfo.status = ISLAYSlashingV2.Status.Canceled;
+        ISLAYRouterSlashingV2.RequestInfo storage requestInfo = _slashingRequests[slashId];
+        requestInfo.status = ISLAYRouterSlashingV2.Status.Canceled;
 
         delete _pendingSlashingRequestIds[service][operator];
-        emit ISLAYSlashingV2.SlashingCanceled(service, operator, slashId);
+        emit ISLAYRouterSlashingV2.SlashingCanceled(service, operator, slashId);
     }
 
-    function _checkSlashingRequest(address service, ISLAYSlashingV2.Request calldata request) internal {
+    function _checkSlashingRequest(address service, ISLAYRouterSlashingV2.Request calldata request) internal {
         ISLAYRegistryV2.SlashParameter memory slashParams =
             registry.getSlashParameterAt(service, request.operator, request.timestamp);
 
@@ -233,27 +234,27 @@ contract SLAYRouterV2 is
         require(request.timestamp <= block.timestamp, "timestamp in future");
     }
 
-    /// @inheritdoc ISLAYSlashingV2
+    /// @inheritdoc ISLAYRouterSlashingV2
     function lockSlashing(bytes32 slashId) external whenNotPaused onlyService(_msgSender()) {
-        ISLAYSlashingV2.RequestInfo storage requestInfo = _slashingRequests[slashId];
+        ISLAYRouterSlashingV2.RequestInfo storage requestInfo = _slashingRequests[slashId];
         // Only service that initiated the slash request can call this function.
         if (requestInfo.service != _msgSender()) {
-            revert ISLAYSlashingV2.LockSlashingNotAuthorized();
+            revert ISLAYRouterSlashingV2.LockSlashingNotAuthorized();
         }
 
         // Check if the slashing request is pending.
-        if (requestInfo.status != ISLAYSlashingV2.Status.Pending) {
-            revert ISLAYSlashingV2.LockSlashingStatusIsNotPending();
+        if (requestInfo.status != ISLAYRouterSlashingV2.Status.Pending) {
+            revert ISLAYRouterSlashingV2.LockSlashingStatusIsNotPending();
         }
 
         // Check if the slashing request has not expired
         if (requestInfo.requestExpiry < uint32(block.timestamp)) {
-            revert ISLAYSlashingV2.LockSlashingExpired();
+            revert ISLAYRouterSlashingV2.LockSlashingExpired();
         }
 
         // Check if the slashing request is after the resolution window has passed
         if (requestInfo.requestResolution > uint32(block.timestamp)) {
-            revert ISLAYSlashingV2.LockSlashingResolutionNotReached();
+            revert ISLAYRouterSlashingV2.LockSlashingResolutionNotReached();
         }
 
         // Iterate through the vaults and call lockSlashing on each of them
@@ -270,7 +271,7 @@ contract SLAYRouterV2 is
             vault.lockSlashing(slashAmount);
 
             // Store the locked assets in the router for further processing
-            _lockedAssets[slashId].push(ISLAYSlashingV2.LockedAssets({amount: slashAmount, vault: vaultAddress}));
+            _lockedAssets[slashId].push(ISLAYRouterSlashingV2.LockedAssets({amount: slashAmount, vault: vaultAddress}));
 
             // vaultsCount is bounded to _maxVaultsPerOperator
             unchecked {
@@ -279,13 +280,13 @@ contract SLAYRouterV2 is
         }
 
         // update the slashing request status to Locked
-        requestInfo.status = ISLAYSlashingV2.Status.Locked;
+        requestInfo.status = ISLAYRouterSlashingV2.Status.Locked;
 
-        emit ISLAYSlashingV2.SlashingLocked(requestInfo.service, requestInfo.request.operator, slashId);
+        emit ISLAYRouterSlashingV2.SlashingLocked(requestInfo.service, requestInfo.request.operator, slashId);
     }
 
-    /// @inheritdoc ISLAYSlashingV2
-    function getLockedAssets(bytes32 slashId) external view returns (ISLAYSlashingV2.LockedAssets[] memory) {
+    /// @inheritdoc ISLAYRouterSlashingV2
+    function getLockedAssets(bytes32 slashId) external view returns (ISLAYRouterSlashingV2.LockedAssets[] memory) {
         return _lockedAssets[slashId];
     }
 }
