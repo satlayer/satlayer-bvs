@@ -221,7 +221,7 @@ contract SLAYRouterV2 is
         emit ISLAYRouterSlashingV2.SlashingCanceled(service, operator, slashId);
     }
 
-    function _checkSlashingRequest(address service, ISLAYRouterSlashingV2.Request calldata request) internal {
+    function _checkSlashingRequest(address service, ISLAYRouterSlashingV2.Request calldata request) internal view {
         ISLAYRegistryV2.SlashParameter memory slashParams =
             registry.getSlashParameterAt(service, request.operator, request.timestamp);
 
