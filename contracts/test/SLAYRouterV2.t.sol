@@ -203,16 +203,6 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         assertEq(router.getMaxVaultsPerOperator(), 15);
     }
 
-    function _advanceBlockBy(uint256 newHeight) internal {
-        vm.roll(block.number + newHeight);
-        vm.warp(block.timestamp + (12 * newHeight));
-    }
-
-    function _advanceBlockBySeconds(uint256 newSeconds) internal {
-        vm.roll(block.number + (newSeconds / 12));
-        vm.warp(block.timestamp + newSeconds);
-    }
-
     function test_slashRequest_ideal() public {
         _advanceBlockBy(20000000);
         address operator = makeAddr("Operator X");
