@@ -26,6 +26,9 @@ interface ISLAYSlashingV2 {
 
     /**
      * @dev Emitted when a new slash request is created.
+     * @param service The address of the service that requested the slashing.
+     * @param operator The address of the operator being slashed.
+     * @param slashId The unique identifier for the slashing request.
      */
     event SlashingRequested(
         address indexed service, address indexed operator, bytes32 slashId, RequestInfo slashingInfo
@@ -33,10 +36,11 @@ interface ISLAYSlashingV2 {
 
     /**
      * @dev Emitted when a slash request has been canceled.
+     * @param service The address of the service that requested the slashing.
+     * @param operator The address of the operator being slashed.
+     * @param slashId The unique identifier for the slashing request.
      */
-    event SlashingCanceled(
-        address indexed service, address indexed operator, bytes32 slashId, RequestInfo slashingInfo
-    );
+    event SlashingCanceled(address indexed service, address indexed operator, bytes32 slashId);
 
     /**
      * @dev Emitted when a slash request has been locked.
@@ -44,25 +48,18 @@ interface ISLAYSlashingV2 {
      */
     event SlashingLocked(address indexed service, address indexed operator, bytes32 slashId);
 
-    /// @title Slashing Status
-    /// @dev Enum representing the status of a slashing request.
+    /**
+     * @title Slashing Status
+     * @dev Enum representing the status of a slashing request.
+     */
     enum Status {
-        /**
-         * Earliest stage of a slashing request's lifecycle.
-         */
+        /// The slashing request is pending and has not been processed yet.
         Pending,
-        /**
-         * Locked stage is where the slashed collateral are escrow to SatLayer.
-         */
+        /// The slashing request has been executed and funds are locked.
         Locked,
-        /**
-         * Finalized stage is when slashed collateral are moved to destination address.
-         */
+        /// The slashing request has been finalized.
         Finalized,
-        /**
-         * Slashing request is canceled when operator as refute adhering to BVS's protocol.
-         * Slashing request is also canceled when service has failed to take action beyond expiry.
-         */
+        /// The slashing request has been canceled.
         Canceled
     }
 
@@ -71,23 +68,16 @@ interface ISLAYSlashingV2 {
      * @dev Payload for when a service request slashing of an operator.
      */
     struct Request {
-        /**
-         * The accused Operator's address.
-         */
+        /// The operator address to slash.
+        /// (service, operator) must have active registration at the timestamp.
         address operator;
-        /**
-         * Collateral amount to be slashed measured in milli bips.
-         * Unit is in milli bips. See {ISLAYRegistryV2.SlashParameter} for more details.
-         * Cannot be more than service's slashing parameter bounds.
-         */
+        /// The percentage of tokens to slash in millis basis points (1/100,000th of a percent).
+        /// Max millis bips to slash is set by the service slashing parameters {ISLAYRegistryV2.SlashParameter}
+        /// at the timestamp and the operator must have opted in.
         uint24 mbips;
-        /**
-         * Timestamp at which alleged misbehaviour occurs.
-         */
+        /// The timestamp at which the slashing condition occurred.
         uint32 timestamp;
-        /**
-         * Metadata associated to particular slashing request.
-         */
+        /// Additional contextual information about the slashing request.
         Metadata metadata;
     }
 
@@ -97,11 +87,14 @@ interface ISLAYSlashingV2 {
      * Does not affect protocol logic, but can be used for logging or informational purposes.
      */
     struct Metadata {
+        /// The reason for the slashing request.
+        /// Must contain human-readable string.
+        /// Max length of 250 characters, empty string is allowed but not recommended.
         string reason;
     }
 
     /**
-     * {RequestInfo} is a struct for internal state tracking.
+     * @dev {RequestInfo} is a struct for internal state tracking.
      * Includes additional data besides the original slashing request payload.
      */
     struct RequestInfo {
@@ -157,19 +150,17 @@ interface ISLAYSlashingV2 {
 /// @title Library for computing slashing request ID
 library SlashingRequestId {
     /**
-     * Compute the ID by hashing the slashing request data to be used as an identifier within the protocol.
-     * The function exclude {RequestStatus} from the hash payload.
+     * @dev generate a unique identifier for a slashing request.
      *
-     * @param info The slashing request information containing the request and its metadata.
+     * @param info The slashing request information.
      * @return bytes32 The computed hash of the slashing request.
      */
-    function compute(ISLAYSlashingV2.RequestInfo memory info) external pure returns (bytes32) {
+    function hash(ISLAYSlashingV2.RequestInfo memory info) internal pure returns (bytes32) {
         return keccak256(
-            abi.encodePacked(
+            abi.encode(
                 info.request.operator,
                 info.request.mbips,
                 info.request.timestamp,
-                info.request.metadata.reason,
                 info.requestTime,
                 info.requestResolution,
                 info.requestExpiry,
