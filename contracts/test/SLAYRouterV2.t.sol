@@ -315,7 +315,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         // get the pending slashing request
         ISLAYSlashingV2.RequestInfo memory slashRequest = router.getPendingSlashingRequest(service, operator);
-        bytes32 slashId = SlashingRequestId.compute(slashRequest);
+        bytes32 slashId = SlashingRequestId.hash(slashRequest);
 
         // fast forward to after resolution window
         _advanceBlockBy(360);
@@ -402,7 +402,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         // get the pending slashing request
         ISLAYSlashingV2.RequestInfo memory slashRequest = router.getPendingSlashingRequest(service, operator);
-        bytes32 slashId = SlashingRequestId.compute(slashRequest);
+        bytes32 slashId = SlashingRequestId.hash(slashRequest);
 
         // revert when non-service tries to lock slashing
         vm.prank(operator);

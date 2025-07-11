@@ -122,26 +122,44 @@ interface ISLAYSlashingV2 {
      * @dev Get the current active slashing request for given service operator pair.
      * @param service Address of the service.
      * @param operator Address of the operator.
+     * @return RequestInfo The current active slashing request information.
      */
     function getPendingSlashingRequest(address service, address operator) external view returns (RequestInfo memory);
 
     /**
      * @dev Get the locked assets for a given slash request.
      * @param slashId The unique identifier for the slash request.
+     * @return LockedAssets[] An array of locked assets associated with the slashing request.
      */
     function getLockedAssets(bytes32 slashId) external view returns (LockedAssets[] memory);
 
     /**
-     * @dev Request slashing from a service to an misbehaving operator.
-     * Slashing request for a given operator by the same service can only take place one after another.
-     * @param payload {Slashing.RequestPayload}
+     * @notice Initiates a slashing request against an active operator of the service (msg.sender).
+     * This allows a registered service to request a slash of an operator's staked tokens
+     * as a penalty for violations or non-compliance. The slashing request must meet several criteria:
+     *
+     * - Only callable by registered services.
+     * - The service must be actively registered with the operator at the specified timestamp
+     * - The slashing amount (in mbips) must not exceed the maxMbips set by the service
+     * - The operator must have opted in to slashing at the specified timestamp
+     * - The timestamp must be within the allowable slashing window (not too old or in the future)
+     * - The service must not have another active slashing request against the same operator
+     * - The reason provided in metadata must not exceed the maximum allowed length
+     *
+     * When successful, this creates a slashing request with an expiry time based on the
+     * resolutionWindow parameter and returns a unique slashing request ID.
+     * @param request The slashing request payload containing operator, mbips, timestamp, and metadata.
+     * @return slashId The unique identifier for the slashing request.
      */
-    function requestSlashing(Request calldata payload) external;
+    function requestSlashing(Request calldata request) external returns (bytes32 slashId);
 
     /**
-     * @notice Move all of operator's vaults slashed assets to the router for further processing.
-     * It can only be called after the resolution window has passed and before the expiry.
-     * @dev Only callable by the service that initiated the slash request.
+     * @dev Initiates the movement of slashed collateral from vaults to the router
+     * which will later be finalized and handle according to the service slashing rules.
+     * - Move all of operator's vaults slashed assets to the router for further processing.
+     * - It can only be called after the resolution window has passed and before the expiry.
+     * - Only callable by the service that initiated the slash request.
+     *
      * @param slashId The unique identifier for the slash request.
      */
     function lockSlashing(bytes32 slashId) external;
