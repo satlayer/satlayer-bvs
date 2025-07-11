@@ -30,6 +30,10 @@ interface ISLAYSlashingV2 {
         address indexed service, address indexed operator, bytes32 slashId, RequestInfo slashingInfo
     );
 
+    /**
+     * @dev Emitted when a slash request has been locked.
+     * This event is emitted when the slashed collateral are moved from the operator's vaults to the router for further processing.
+     */
     event SlashingLocked(address indexed service, address indexed operator, bytes32 slashId);
 
     /// @title Slashing Status
@@ -101,12 +105,26 @@ interface ISLAYSlashingV2 {
         uint32 requestExpiry;
     }
 
+    /// @dev struct used internally to track locked assets in the router for further processing.
+    struct LockedAssets {
+        /// The amount of assets locked in the router.
+        uint256 amount;
+        /// The originating vault address from which the assets were slashed.
+        address vault;
+    }
+
     /**
      * @dev Get the current active slashing request for given service operator pair.
      * @param service Address of the service.
      * @param operator Address of the operator.
      */
     function getPendingSlashingRequest(address service, address operator) external view returns (RequestInfo memory);
+
+    /**
+     * @dev Get the locked assets for a given slash request.
+     * @param slashId The unique identifier for the slash request.
+     */
+    function getLockedAssets(bytes32 slashId) external view returns (LockedAssets[] memory);
 
     /**
      * @dev Request slashing from a service to an misbehaving operator.

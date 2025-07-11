@@ -341,6 +341,14 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
             uint256 balanceBeforeSlashing = (i + 1) * 1_000_000 * underlyingMinorUnit;
             assertEq(vaultBalance, balanceBeforeSlashing * 9 / 10); // (10% slashed)
         }
+
+        // assert that the internal state _lockedAssets are updated
+        ISLAYSlashingV2.LockedAssets[] memory lockedAssets = router.getLockedAssets(slashId);
+        assertEq(lockedAssets.length, 5); // 5 vaults slashed
+        for (uint256 i = 0; i < 5; i++) {
+            assertEq(lockedAssets[i].amount, (i + 1) * 100_000 * underlyingMinorUnit); // 10% of each vault
+            assertEq(lockedAssets[i].vault, vaults[i]);
+        }
     }
 
     function test_revert_lockSlashing() public {

@@ -54,6 +54,9 @@ contract SLAYRouterV2 is
     /// @dev Stores the slashing requests by its id.
     mapping(bytes32 slashId => ISLAYSlashingV2.RequestInfo) private _slashingRequests;
 
+    /// @dev Stores the locked assets for each slashing request.
+    mapping(bytes32 slashId => ISLAYSlashingV2.LockedAssets[]) private _lockedAssets;
+
     /// @dev Modifier to check if the caller is a registered service.
     /// Information is sourced from checking the SLAYRegistryV2 contract.
     /// @param account The address to check if it is a service.
@@ -268,6 +271,9 @@ contract SLAYRouterV2 is
             // Call the slashLock function on the vault
             vault.slashLock(slashAmount);
 
+            // Store the locked assets in the router for further processing
+            _lockedAssets[slashId].push(ISLAYSlashingV2.LockedAssets({amount: slashAmount, vault: vaultAddress}));
+
             // vaultsCount is bounded to _maxVaultsPerOperator
             unchecked {
                 i++;
@@ -278,5 +284,10 @@ contract SLAYRouterV2 is
         requestInfo.status = ISLAYSlashingV2.Status.Locked;
 
         emit ISLAYSlashingV2.SlashingLocked(requestInfo.service, requestInfo.request.operator, slashId);
+    }
+
+    /// @inheritdoc ISLAYSlashingV2
+    function getLockedAssets(bytes32 slashId) external view returns (ISLAYSlashingV2.LockedAssets[] memory) {
+        return _lockedAssets[slashId];
     }
 }
