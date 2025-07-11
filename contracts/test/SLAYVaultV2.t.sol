@@ -718,6 +718,8 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
         // slash lock called by router
         vm.prank(address(router));
+        vm.expectEmit();
+        emit ISLAYVaultV2.SlashingLocked(20 * underlyingMinorUnit);
         vault.lockSlashing(20 * underlyingMinorUnit);
 
         // assert that vault balance is decreased by the slash amount
