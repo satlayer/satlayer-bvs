@@ -97,10 +97,10 @@ contract SLAYVaultV2 is
     }
 
     /**
-     * @dev Modifier to make a function callable only when the SLAYVault is whitelisted in the SLAYRouterV2.
+     * @dev Modifier to make a function callable only when the SLAYVault is whitelisted in the SLAYRouter.
      * If the SLAYVault is not whitelisted, all operations marked with this modifier will revert with `ExpectedWhitelisted`.
      */
-    modifier whenWhitelisted() {
+    modifier onlyWhitelisted() {
         _requireWhitelisted();
         _;
     }
@@ -153,7 +153,7 @@ contract SLAYVaultV2 is
      *
      * @inheritdoc ERC20Upgradeable
      */
-    function _update(address from, address to, uint256 value) internal virtual override whenNotPaused whenWhitelisted {
+    function _update(address from, address to, uint256 value) internal virtual override whenNotPaused onlyWhitelisted {
         super._update(from, to, value);
     }
 
@@ -164,11 +164,16 @@ contract SLAYVaultV2 is
         }
     }
 
-    /// @dev Throws if the SLAYVault is not whitelisted in the SLAYRouterV2.
+    /// @dev Throws if the SLAYVault is not whitelisted in the SLAYRouter.
     function _requireWhitelisted() internal view virtual {
-        if (!router.isVaultWhitelisted(address(this))) {
+        if (!isWhitelisted()) {
             revert ExpectedWhitelisted();
         }
+    }
+
+    /// @inheritdoc ISLAYVaultV2
+    function isWhitelisted() public view returns (bool) {
+        return router.isVaultWhitelisted(address(this));
     }
 
     /// @inheritdoc ISLAYVaultV2

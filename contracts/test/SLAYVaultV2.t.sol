@@ -37,10 +37,12 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
     function test_whitelisted() public {
         vm.prank(operator);
         SLAYVaultV2 vault = vaultFactory.create(underlying);
+        assertFalse(vault.isWhitelisted());
 
         vm.startPrank(owner);
         router.setVaultWhitelist(address(vault), true);
         assertTrue(router.isVaultWhitelisted(address(vault)));
+        assertTrue(vault.isWhitelisted());
         vm.stopPrank();
 
         address account = address(this);

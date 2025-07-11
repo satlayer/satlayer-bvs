@@ -73,6 +73,13 @@ interface ISLAYVaultV2 is IERC20Metadata, IERC4626, IERC7540Operator, IERC7540Re
     function delegated() external view returns (address);
 
     /**
+     * @notice Returns whether the vault is whitelisted on SLAYRouter.
+     * @dev This is used to check if the vault is allowed to interact with the SLAYRouter.
+     * @return True if the vault is whitelisted, false otherwise.
+     */
+    function isWhitelisted() external view returns (bool);
+
+    /**
      * @notice Returns the total amount of shares pending redemption across all controllers.
      * This is the sum of all shares in pending and claimable redemption requests.
      *
