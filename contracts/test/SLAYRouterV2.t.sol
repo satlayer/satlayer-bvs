@@ -311,11 +311,10 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
             metadata: ISLAYRouterSlashingV2.Metadata({reason: "Missing Blocks"})
         });
         vm.prank(service);
-        router.requestSlashing(request);
+        bytes32 slashId = router.requestSlashing(request);
 
-        // get the pending slashing request
-        ISLAYRouterSlashingV2.RequestInfo memory slashRequest = router.getPendingSlashingRequest(service, operator);
-        bytes32 slashId = SlashingRequestId.hash(slashRequest);
+        ISLAYRouterSlashingV2.RequestInfo memory pendingRequest = router.getPendingSlashingRequest(service, operator);
+        assertTrue(pendingRequest.status == ISLAYRouterSlashingV2.Status.Pending);
 
         // fast forward to after resolution window
         _advanceBlockBy(360);
@@ -399,11 +398,11 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
             metadata: ISLAYRouterSlashingV2.Metadata({reason: "Missing Blocks"})
         });
         vm.prank(service);
-        router.requestSlashing(request);
+        bytes32 slashId = router.requestSlashing(request);
 
         // get the pending slashing request
-        ISLAYRouterSlashingV2.RequestInfo memory slashRequest = router.getPendingSlashingRequest(service, operator);
-        bytes32 slashId = SlashingRequestId.hash(slashRequest);
+        ISLAYRouterSlashingV2.RequestInfo memory pendingRequest = router.getPendingSlashingRequest(service, operator);
+        assertTrue(pendingRequest.status == ISLAYRouterSlashingV2.Status.Pending);
 
         // revert when non-service tries to lock slashing
         vm.prank(operator);
