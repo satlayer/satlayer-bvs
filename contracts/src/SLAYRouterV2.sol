@@ -258,7 +258,7 @@ contract SLAYRouterV2 is
             revert ISLAYSlashingV2.LockSlashingResolutionNotReached();
         }
 
-        // Iterate through the vaults and call slashLock on each of them
+        // Iterate through the vaults and call lockSlashing on each of them
         EnumerableSet.AddressSet storage operatorVaults = _operatorVaults[requestInfo.request.operator];
         uint256 vaultsCount = operatorVaults.length();
         for (uint256 i = 0; i < vaultsCount;) {
@@ -268,8 +268,8 @@ contract SLAYRouterV2 is
             // calculate the slash amount from mbips
             uint256 slashAmount = Math.mulDiv(vault.totalAssets(), requestInfo.request.mbips, 10_000_000);
 
-            // Call the slashLock function on the vault
-            vault.slashLock(slashAmount);
+            // Call the lockSlashing function on the vault
+            vault.lockSlashing(slashAmount);
 
             // Store the locked assets in the router for further processing
             _lockedAssets[slashId].push(ISLAYSlashingV2.LockedAssets({amount: slashAmount, vault: vaultAddress}));

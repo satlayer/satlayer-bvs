@@ -8,6 +8,10 @@ pragma solidity ^0.8.0;
  * To be implemented on the SLAYRouter, but separated to allow for separate of slashing related concerns.
  */
 interface ISLAYSlashingV2 {
+    /*//////////////////////////////////////////////////////////////
+                                ERRORS
+    //////////////////////////////////////////////////////////////*/
+
     error LockSlashingNotAuthorized();
 
     error LockSlashingStatusIsNotPending();
@@ -15,6 +19,10 @@ interface ISLAYSlashingV2 {
     error LockSlashingExpired();
 
     error LockSlashingResolutionNotReached();
+
+    /*//////////////////////////////////////////////////////////////
+                                EVENTS
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @dev Emitted when a new slash request is created.
@@ -112,6 +120,10 @@ interface ISLAYSlashingV2 {
         /// The originating vault address from which the assets were slashed.
         address vault;
     }
+
+    /*//////////////////////////////////////////////////////////////
+                                FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @dev Get the current active slashing request for given service operator pair.

@@ -49,7 +49,7 @@ interface ISLAYVaultV2 is IERC20Metadata, IERC4626, IERC7540Operator, IERC7540Re
                                 EVENTS
     //////////////////////////////////////////////////////////////*/
 
-    event SlashLock(uint256 amount);
+    event SlashingLocked(uint256 amount);
 
     /// @notice Struct representing a redeem request.
     struct RedeemRequestStruct {
@@ -92,5 +92,5 @@ interface ISLAYVaultV2 is IERC20Metadata, IERC4626, IERC7540Operator, IERC7540Re
      * @dev only callable by router
      * @param amount The amount of underlying asset to move to the router.
      */
-    function slashLock(uint256 amount) external;
+    function lockSlashing(uint256 amount) external;
 }
