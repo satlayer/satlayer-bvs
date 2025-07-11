@@ -27,13 +27,13 @@ import {ISLAYVaultV2} from "./interface/ISLAYVaultV2.sol";
  *   as defined in the ERC7540 interface.
  * - Redeem requests are initiated by transferring shares to the vault and can be claimed after a configurable delay.
  * - Preview functions are intentionally disabled to prevent misuse in async flows.
- * - Immutable dependencies (`SLAYRouterV2` and `SLAYRegistryV2`) are injected at construction for efficient immutable access.
+ * - Immutable dependencies (`SLAYRouter` and `SLAYRegistry`) are injected at construction for efficient immutable access.
  *
  * Key Features:
  * - Asynchronous redeem request/claim pattern using `requestRedeem`, `withdraw`, and `redeem`
  * - IERC7540Operator for request/claim with configurable controller-operator relationships
  * - Upgradeable via Beacon Proxy pattern
- * - Pausing and whitelisting enforced by SLAYRouterV2
+ * - Pausing and whitelisting enforced by SLAYRouter
  */
 contract SLAYVaultV2 is
     Initializable,
@@ -87,9 +87,9 @@ contract SLAYVaultV2 is
     }
 
     /**
-     * @dev Modifier to make a function callable only when the SLAYRouterV2 is not paused.
-     * SLAYVault doesn't enforce its own pause state, but relies on the SLAYRouterV2 to manage the pause state.
-     * If the SLAYRouterV2 is paused, all operations marked with this modifier will revert with `EnforcedPause`.
+     * @dev Modifier to make a function callable only when the SLAYRouter is not paused.
+     * SLAYVault doesn't enforce its own pause state, but relies on the SLAYRouter to manage the pause state.
+     * If the SLAYRouter is paused, all operations marked with this modifier will revert with `EnforcedPause`.
      */
     modifier whenNotPaused() {
         _requireNotPaused();
@@ -143,13 +143,13 @@ contract SLAYVaultV2 is
     }
 
     /**
-     * @dev See {ERC20Upgradable-_update} and with additional requirements in SLAYRouterV2.
+     * @dev See {ERC20Upgradable-_update} and with additional requirements in SLAYRouter.
      *
      * To _update the balances of the SLAYVault (and therefore mint/deposit/withdraw/redeem),
      * the following conditions must be met:
      *
-     * - the contract must not be paused in the SLAYRouterV2 (whenNotPaused modifier).
-     * - the contract must be whitelisted in the SLAYRouterV2 (whenWhitelisted modifier).
+     * - the contract must not be paused in the SLAYRouter (whenNotPaused modifier).
+     * - the contract must be whitelisted in the SLAYRouter (whenWhitelisted modifier).
      *
      * @inheritdoc ERC20Upgradeable
      */
@@ -157,7 +157,7 @@ contract SLAYVaultV2 is
         super._update(from, to, value);
     }
 
-    /// @dev Throws if the SLAYRouterV2 is paused.
+    /// @dev Throws if the SLAYRouter is paused.
     function _requireNotPaused() internal view virtual {
         if (router.paused()) {
             revert EnforcedPause();
@@ -172,12 +172,12 @@ contract SLAYVaultV2 is
     }
 
     /// @inheritdoc ISLAYVaultV2
-    function isWhitelisted() public view returns (bool) {
+    function isWhitelisted() public view override returns (bool) {
         return router.isVaultWhitelisted(address(this));
     }
 
     /// @inheritdoc ISLAYVaultV2
-    function getTotalPendingRedemption() external view returns (uint256) {
+    function getTotalPendingRedemption() external view override returns (uint256) {
         return _totalPendingRedemption;
     }
 
@@ -199,7 +199,11 @@ contract SLAYVaultV2 is
     //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IERC7540Redeem
-    function requestRedeem(uint256 shares, address controller, address owner) public returns (uint256 requestId) {
+    function requestRedeem(uint256 shares, address controller, address owner)
+        public
+        override
+        returns (uint256 requestId)
+    {
         // Checks
         if (shares == 0) {
             revert ZeroAmount();
@@ -234,7 +238,7 @@ contract SLAYVaultV2 is
     }
 
     /// @inheritdoc IERC7540Redeem
-    function pendingRedeemRequest(uint256, address controller) public view returns (uint256 pendingShares) {
+    function pendingRedeemRequest(uint256, address controller) public view override returns (uint256 pendingShares) {
         RedeemRequestStruct storage request = _pendingRedemption[controller];
         if (request.claimableAt > block.timestamp) {
             return request.shares;
@@ -243,7 +247,12 @@ contract SLAYVaultV2 is
     }
 
     /// @inheritdoc IERC7540Redeem
-    function claimableRedeemRequest(uint256, address controller) public view returns (uint256 claimableShares) {
+    function claimableRedeemRequest(uint256, address controller)
+        public
+        view
+        override
+        returns (uint256 claimableShares)
+    {
         RedeemRequestStruct storage request = _pendingRedemption[controller];
         if (request.claimableAt <= block.timestamp && request.shares > 0) {
             return request.shares;
@@ -262,7 +271,7 @@ contract SLAYVaultV2 is
      *
      * @inheritdoc IERC7540Operator
      */
-    function setOperator(address operator, bool approved) external returns (bool success) {
+    function setOperator(address operator, bool approved) external override returns (bool success) {
         _isOperator[_msgSender()][operator] = approved;
         emit OperatorSet(_msgSender(), operator, approved);
         return true;
@@ -275,7 +284,7 @@ contract SLAYVaultV2 is
      *
      * @inheritdoc IERC7540Operator
      */
-    function isOperator(address controller, address operator) external view returns (bool status) {
+    function isOperator(address controller, address operator) external view override returns (bool status) {
         return _isOperator[controller][operator];
     }
 
@@ -431,7 +440,7 @@ contract SLAYVaultV2 is
     }
 
     /// @inheritdoc ISLAYVaultV2
-    function slashLock(uint256 amount) external {
+    function slashLock(uint256 amount) external override {
         if (_msgSender() != address(router)) {
             revert NotRouter();
         }
