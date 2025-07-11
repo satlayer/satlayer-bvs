@@ -8,6 +8,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {TestSuiteV2} from "./TestSuiteV2.sol";
 import {ISLAYRouterV2} from "../src/interface/ISLAYRouterV2.sol";
 import {ISLAYSlashingV2} from "../src/interface/ISLAYSlashingV2.sol";
+import {ISLAYRegistryV2} from "../src/interface/ISLAYRegistryV2.sol";
 
 contract SLAYRouterV2Test is Test, TestSuiteV2 {
     function test_defaults() public view {
@@ -392,7 +393,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         });
 
         vm.prank(operator);
-        vm.expectRevert("Slashing not enabled");
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistryV2.ServiceNotFound.selector, address(operator)));
         router.requestSlashing(request);
     }
 
