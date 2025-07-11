@@ -111,7 +111,7 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /// @inheritdoc ISLAYRegistryV2
-    function registerAsService(string memory uri, string memory name) external override whenNotPaused {
+    function registerAsService(string calldata uri, string calldata name) external override whenNotPaused {
         address account = _msgSender();
         Service storage service = _services[account];
 
@@ -122,7 +122,7 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     }
 
     /// @inheritdoc ISLAYRegistryV2
-    function registerAsOperator(string memory uri, string memory name) external override whenNotPaused {
+    function registerAsOperator(string calldata uri, string calldata name) external override whenNotPaused {
         address account = _msgSender();
         Operator storage operator = _operators[account];
 
@@ -135,7 +135,7 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
     }
 
     /// @inheritdoc ISLAYRegistryV2
-    function updateMetadata(string memory uri, string memory name) external override whenNotPaused {
+    function updateMetadata(string calldata uri, string calldata name) external override whenNotPaused {
         address provider = _msgSender();
         require(_services[provider].registered || _operators[provider].registered, "Not registered");
 

@@ -138,7 +138,7 @@ interface ISLAYRegistryV2 {
      * @param uri URI of the service's project to display in the UI.
      * @param name Name of the service's project to display in the UI.
      */
-    function registerAsService(string memory uri, string memory name) external;
+    function registerAsService(string calldata uri, string calldata name) external;
 
     /**
      * Register the caller as an operator.
@@ -148,7 +148,7 @@ interface ISLAYRegistryV2 {
      * @param uri URI of the operator's project to display in the UI.
      * @param name Name of the operator's project to display in the UI.
      */
-    function registerAsOperator(string memory uri, string memory name) external;
+    function registerAsOperator(string calldata uri, string calldata name) external;
 
     /**
      * @dev Update metadata for the service or operator.
@@ -160,7 +160,7 @@ interface ISLAYRegistryV2 {
      * @param uri URI of the provider's project to display in the UI.
      * @param name Name of the provider's project to display in the UI.
      */
-    function updateMetadata(string memory uri, string memory name) external;
+    function updateMetadata(string calldata uri, string calldata name) external;
 
     /**
      * @dev To register an operator to a service (the caller is the service).
