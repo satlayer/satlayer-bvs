@@ -104,10 +104,10 @@ interface ISLAYRouterSlashingV2 {
         /// The timestamp when the request was submitted.
         uint32 requestTime;
         /// The timestamp when the request resolution window will end and becomes eligible for locking.
-        /// This will be `request_time` + `resolution_window`.
+        /// This will be `requestTime` + `resolutionWindow`.
         uint32 requestResolution;
         /// The timestamp after which the request is no longer valid.
-        /// This will be `request_time` + `resolution_window` + `SLASHING_REQUEST_EXPIRY_WINDOW`
+        /// This will be `requestTime` + `resolutionWindow` + `SLASHING_REQUEST_EXPIRY_WINDOW`
         uint32 requestExpiry;
         /// The core slashing request data including operator, bips, timestamp, and metadata.
         Request request;
