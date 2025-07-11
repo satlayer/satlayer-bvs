@@ -253,11 +253,6 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         registry.deregisterServiceFromOperator(service);
     }
 
-    function _advanceBlockBy(uint256 newHeight) internal {
-        vm.roll(block.number + newHeight);
-        vm.warp(block.timestamp + (12 * newHeight));
-    }
-
     function test_getRelationshipStatusAt() public {
         {
             vm.prank(service);
