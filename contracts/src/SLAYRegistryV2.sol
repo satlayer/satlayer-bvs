@@ -411,7 +411,7 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
         bytes32 key = RelationshipV2.getKey(service, operator);
         RelationshipV2.push(_relationships[key], uint32(block.timestamp), obj);
 
-        // if the status is active, add the service to the operator's active relationships and vice versa.
+        // If the status is active, add the service to the operator's active relationships and vice versa.
         // If the status is inactive, remove the service from the operator's active relationships and vice versa.
         if (obj.status == RelationshipV2.Status.Active) {
             if (_operatorsActiveRelationships[operator].length() >= _maxActiveRelationships) {
