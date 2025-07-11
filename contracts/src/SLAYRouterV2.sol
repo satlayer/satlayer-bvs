@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
+
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -51,6 +53,9 @@ contract SLAYRouterV2 is
 
     /// @dev Stores the slashing requests by its id.
     mapping(bytes32 slashId => ISLAYSlashingV2.RequestInfo) private _slashingRequests;
+
+    /// @dev Stores the locked assets for each slashing request.
+    mapping(bytes32 slashId => ISLAYSlashingV2.LockedAssets[]) private _lockedAssets;
 
     /// @dev Modifier to check if the caller is a registered service.
     /// Information is sourced from checking the SLAYRegistryV2 contract.
@@ -228,5 +233,61 @@ contract SLAYRouterV2 is
         );
 
         require(request.timestamp <= block.timestamp, "Cannot request slash with timestamp greater than present");
+    }
+
+    /// @inheritdoc ISLAYSlashingV2
+    function lockSlashing(bytes32 slashId) external whenNotPaused onlyService(_msgSender()) {
+        ISLAYSlashingV2.RequestInfo storage requestInfo = _slashingRequests[slashId];
+        // Only service that initiated the slash request can call this function.
+        if (requestInfo.service != _msgSender()) {
+            revert ISLAYSlashingV2.LockSlashingNotAuthorized();
+        }
+
+        // Check if the slashing request is pending.
+        if (requestInfo.status != ISLAYSlashingV2.Status.Pending) {
+            revert ISLAYSlashingV2.LockSlashingStatusIsNotPending();
+        }
+
+        // Check if the slashing request has not expired
+        if (requestInfo.requestExpiry < uint32(block.timestamp)) {
+            revert ISLAYSlashingV2.LockSlashingExpired();
+        }
+
+        // Check if the slashing request is after the resolution window has passed
+        if (requestInfo.requestResolution > uint32(block.timestamp)) {
+            revert ISLAYSlashingV2.LockSlashingResolutionNotReached();
+        }
+
+        // Iterate through the vaults and call slashLock on each of them
+        EnumerableSet.AddressSet storage operatorVaults = _operatorVaults[requestInfo.request.operator];
+        uint256 vaultsCount = operatorVaults.length();
+        for (uint256 i = 0; i < vaultsCount;) {
+            address vaultAddress = operatorVaults.at(i);
+            ISLAYVaultV2 vault = ISLAYVaultV2(vaultAddress);
+
+            // calculate the slash amount from mbips
+            uint256 slashAmount = Math.mulDiv(vault.totalAssets(), requestInfo.request.mbips, 10_000_000);
+
+            // Call the slashLock function on the vault
+            vault.slashLock(slashAmount);
+
+            // Store the locked assets in the router for further processing
+            _lockedAssets[slashId].push(ISLAYSlashingV2.LockedAssets({amount: slashAmount, vault: vaultAddress}));
+
+            // vaultsCount is bounded to _maxVaultsPerOperator
+            unchecked {
+                i++;
+            }
+        }
+
+        // update the slashing request status to Locked
+        requestInfo.status = ISLAYSlashingV2.Status.Locked;
+
+        emit ISLAYSlashingV2.SlashingLocked(requestInfo.service, requestInfo.request.operator, slashId);
+    }
+
+    /// @inheritdoc ISLAYSlashingV2
+    function getLockedAssets(bytes32 slashId) external view returns (ISLAYSlashingV2.LockedAssets[] memory) {
+        return _lockedAssets[slashId];
     }
 }

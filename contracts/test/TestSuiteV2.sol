@@ -49,4 +49,9 @@ contract TestSuiteV2 is Test {
         vm.roll(block.number + blocks);
         vm.warp(block.timestamp + (12 * blocks));
     }
+
+    function _advanceBlockBySeconds(uint256 newSeconds) internal {
+        vm.roll(block.number + (newSeconds / 12));
+        vm.warp(block.timestamp + newSeconds);
+    }
 }
