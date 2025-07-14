@@ -63,8 +63,8 @@ contract SLAYRouterV2 is
     /// @dev Stores the locked assets for each slashing request.
     mapping(bytes32 slashId => ISLAYRouterSlashingV2.LockedAssets[]) private _lockedAssets;
 
-    /// @dev Stores the guardrail confirmation for each slashing request. 0 - unset, 1 - approve, 2 - reject.
-    mapping(bytes32 slashId => uint8) private _guardrailConfirm;
+    /// @dev Stores the guardrail approval for each slashing request. 0 - unset, 1 - approve, 2 - reject.
+    mapping(bytes32 slashId => uint8) private _guardrailApproval;
 
     /// @dev Modifier to check if the caller is a registered service.
     /// Information is sourced from checking the SLAYRegistryV2 contract.
@@ -314,8 +314,8 @@ contract SLAYRouterV2 is
             revert ISLAYRouterSlashingV2.InvalidStatus();
         }
 
-        // Check guardrail confirmation. 0 - unset, 1 - approve, 2 - reject.
-        if (_guardrailConfirm[slashId] != 1) {
+        // Check guardrail approval. 0 - unset, 1 - approve, 2 - reject.
+        if (_guardrailApproval[slashId] != 1) {
             revert ISLAYRouterSlashingV2.GuardrailHaveNotApproved();
         }
 
@@ -354,7 +354,7 @@ contract SLAYRouterV2 is
     }
 
     /// @inheritdoc ISLAYRouterSlashingV2
-    function guardrailConfirm(bytes32 slashId, bool confirm) external override whenNotPaused {
+    function guardrailApprove(bytes32 slashId, bool approve) external override whenNotPaused {
         // Only the guardrail can call this function
         if (_guardrail == address(0)) {
             revert ISLAYRouterSlashingV2.Unauthorized();
@@ -370,14 +370,14 @@ contract SLAYRouterV2 is
             revert ISLAYRouterSlashingV2.SlashingRequestNotFound();
         }
 
-        // check if the slashing id has already been confirmed on by guardrail.
-        if (_guardrailConfirm[slashId] != 0) {
+        // check if the slashing id has already been approved on by guardrail.
+        if (_guardrailApproval[slashId] != 0) {
             revert ISLAYRouterSlashingV2.GuardrailHaveApproved();
         }
 
-        // Guardrail confirm are true - approve, false - reject.
-        _guardrailConfirm[slashId] = confirm ? 1 : 2;
+        // Guardrail approval are true - approve, false - reject.
+        _guardrailApproval[slashId] = approve ? 1 : 2;
 
-        emit ISLAYRouterSlashingV2.GuardrailConfirmed(slashId, confirm);
+        emit ISLAYRouterSlashingV2.GuardrailApproval(slashId, approve);
     }
 }

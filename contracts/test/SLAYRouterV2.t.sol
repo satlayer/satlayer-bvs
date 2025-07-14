@@ -520,8 +520,8 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         router.setGuardrail(guardrail);
         vm.prank(guardrail);
         vm.expectEmit();
-        emit ISLAYRouterSlashingV2.GuardrailConfirmed(slashId, true);
-        router.guardrailConfirm(slashId, true);
+        emit ISLAYRouterSlashingV2.GuardrailApproval(slashId, true);
+        router.guardrailApprove(slashId, true);
 
         // Service finalizes slashing
         vm.prank(service);
@@ -630,8 +630,8 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         router.setGuardrail(guardrail);
         vm.prank(guardrail);
         vm.expectEmit();
-        emit ISLAYRouterSlashingV2.GuardrailConfirmed(slashId, true);
-        router.guardrailConfirm(slashId, true);
+        emit ISLAYRouterSlashingV2.GuardrailApproval(slashId, true);
+        router.guardrailApprove(slashId, true);
 
         // Service finalizes slashing
         vm.prank(service);
@@ -706,7 +706,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         address guardrail = makeAddr("Guardrail");
         vm.prank(guardrail);
         vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.Unauthorized.selector));
-        router.guardrailConfirm(slashId, true);
+        router.guardrailApprove(slashId, true);
 
         // owner sets the guardrail
         vm.prank(owner);
@@ -716,28 +716,28 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         address anotherGuardrail = makeAddr("Another Guardrail");
         vm.prank(anotherGuardrail);
         vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.Unauthorized.selector));
-        router.guardrailConfirm(slashId, true);
+        router.guardrailApprove(slashId, true);
 
         // Revert when guardrail tries to confirm slashing with invalid id
         bytes32 invalidSlashId = keccak256(abi.encodePacked("invalid"));
         vm.prank(guardrail);
         vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.SlashingRequestNotFound.selector));
-        router.guardrailConfirm(invalidSlashId, true);
+        router.guardrailApprove(invalidSlashId, true);
 
         // guardrail confirms the slashing request
         vm.prank(guardrail);
         vm.expectEmit();
-        emit ISLAYRouterSlashingV2.GuardrailConfirmed(slashId, true);
-        router.guardrailConfirm(slashId, true);
+        emit ISLAYRouterSlashingV2.GuardrailApproval(slashId, true);
+        router.guardrailApprove(slashId, true);
 
         // Revert when guardrail tries to confirm slashing again
         vm.prank(guardrail);
         vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.GuardrailHaveApproved.selector));
-        router.guardrailConfirm(slashId, true);
+        router.guardrailApprove(slashId, true);
 
         // Revert when guardrail tries to change the confirm status on a slashId
         vm.prank(guardrail);
         vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.GuardrailHaveApproved.selector));
-        router.guardrailConfirm(slashId, false);
+        router.guardrailApprove(slashId, false);
     }
 }
