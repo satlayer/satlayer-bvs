@@ -906,7 +906,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         });
 
         vm.prank(service);
-        vm.expectRevert(abi.encodeWithSelector(ISLAYRouterV2.TimestampInFuture.selector));
+        vm.expectRevert("timestamp in future");
         router.requestSlashing(request);
     }
 
@@ -992,7 +992,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         _advanceBlockBy(10000000);
 
         vm.prank(service);
-        vm.expectRevert(abi.encodeWithSelector(bytes4(keccak256("Error(string)")), "timestamp too old"));
+        vm.expectRevert("timestamp too old");
         router.requestSlashing(request);
 
         ISLAYRouterSlashingV2.Payload memory request2 = ISLAYRouterSlashingV2.Payload({
@@ -1003,7 +1003,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         });
 
         vm.prank(service);
-        vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.MbipsExceedsMaxAllowed.selector));
+        vm.expectRevert("mbips exceeds max allowed");
         router.requestSlashing(request2);
     }
 }
