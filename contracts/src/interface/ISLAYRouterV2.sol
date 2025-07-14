@@ -56,4 +56,10 @@ interface ISLAYRouterV2 {
      * @dev Set the guardrail address. Only callable by the owner.
      */
     function setGuardrail(address guardrail) external;
+
+    /**
+     * Cancel the slashing request by the same service that requested it to an operator.
+     * @param operator Address of the operator.
+     */
+    function cancelSlashing(address operator) external;
 }
