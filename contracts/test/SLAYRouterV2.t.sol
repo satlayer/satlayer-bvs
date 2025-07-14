@@ -238,7 +238,13 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         _advanceBlockBy(10);
 
         vm.prank(service);
-        router.requestSlashing(operator, 100, timeAtWhichOffenseOccurs, "Missing Blocks");
+        ISLAYRouterSlashingV2.Payload memory payload = ISLAYRouterSlashingV2.Payload({
+            operator: operator,
+            mbips: 100,
+            timestamp: timeAtWhichOffenseOccurs,
+            reason: "Missing Blocks"
+        });
+        router.requestSlashing(payload);
 
         ISLAYRouterSlashingV2.Request memory info = router.getPendingSlashingRequest(service, operator);
 
@@ -298,8 +304,13 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         // Service initiates slashing request
         vm.prank(service);
-        // 10%
-        bytes32 slashId = router.requestSlashing(operator, 1_000_000, uint32(block.timestamp) - 100, "Missing Blocks");
+        ISLAYRouterSlashingV2.Payload memory payload = ISLAYRouterSlashingV2.Payload({
+            operator: operator,
+            mbips: 1_000_000, // 10%
+            timestamp: uint32(block.timestamp) - 100,
+            reason: "Missing Blocks"
+        });
+        bytes32 slashId = router.requestSlashing(payload);
 
         ISLAYRouterSlashingV2.Request memory pendingRequest = router.getPendingSlashingRequest(service, operator);
         assertTrue(pendingRequest.status == ISLAYRouterSlashingV2.Status.Pending);
@@ -379,8 +390,13 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         // Service initiates slashing request
         vm.prank(service);
-        // 10%
-        bytes32 slashId = router.requestSlashing(operator, 1_000_000, uint32(block.timestamp) - 100, "Missing Blocks");
+        ISLAYRouterSlashingV2.Payload memory payload = ISLAYRouterSlashingV2.Payload({
+            operator: operator,
+            mbips: 1_000_000, // 10%
+            timestamp: uint32(block.timestamp) - 100,
+            reason: "Missing Blocks"
+        });
+        bytes32 slashId = router.requestSlashing(payload);
 
         // get the pending slashing request
         ISLAYRouterSlashingV2.Request memory pendingRequest = router.getPendingSlashingRequest(service, operator);
