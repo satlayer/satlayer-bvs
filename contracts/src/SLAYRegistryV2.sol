@@ -8,6 +8,8 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
+import {InitialImpl} from "./InitialImpl.sol";
+
 import {RelationshipV2} from "./RelationshipV2.sol";
 import {ISLAYRegistryV2} from "./interface/ISLAYRegistryV2.sol";
 import {ISLAYRouterV2} from "./interface/ISLAYRouterV2.sol";
@@ -20,7 +22,14 @@ import {ISLAYRouterV2} from "./interface/ISLAYRouterV2.sol";
  *
  * @custom:oz-upgrades-from src/InitialImpl.sol:InitialImpl
  */
-contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
+contract SLAYRegistryV2 is
+    Initializable,
+    UUPSUpgradeable,
+    OwnableUpgradeable,
+    PausableUpgradeable,
+    InitialImpl,
+    ISLAYRegistryV2
+{
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
@@ -96,19 +105,12 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
      * As `0` is considered as "no slashing enabled" and is used to disable slashing.
      * Instead of using offset, this is cleaner and less prone to errors.
      */
-    function initialize() public reinitializer(2) {
+    function initialize2() public reinitializer(2) {
         // Push an empty slash parameter to the array to ensure that the first service can register with a valid ID.
         _slashParameters.push();
         // Default max active relationships is set to 5.
         _maxActiveRelationships = 5;
     }
-
-    /**
-     * @dev Authorizes an upgrade to a new implementation.
-     * This function is required by UUPS and restricts upgradeability to the contract owner.
-     * @param newImplementation The address of the new contract implementation.
-     */
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /// @inheritdoc ISLAYRegistryV2
     function registerAsService(string calldata uri, string calldata name) external override whenNotPaused {
@@ -353,16 +355,6 @@ contract SLAYRegistryV2 is ISLAYRegistryV2, Initializable, UUPSUpgradeable, Owna
         uint32 slashParameterId = _getRelationshipObjectAt(service, operator, timestamp).slashParameterId;
         require(slashParameterId > 0, "Slashing not enabled");
         return _slashParameters[slashParameterId];
-    }
-
-    /// @dev Pauses the contract.
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    /// @dev Unpauses the contract.
-    function unpause() external onlyOwner {
-        _unpause();
     }
 
     /**
