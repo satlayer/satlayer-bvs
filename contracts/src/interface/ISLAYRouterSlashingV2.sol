@@ -165,7 +165,7 @@ interface ISLAYRouterSlashingV2 {
     /**
      * @dev Get the slashing request for given slashId.
      * @param slashId The unique identifier for the slashing request.
-     * @return RequestInfo The current active slashing request information.
+     * @return Request The current active slashing request information.
      */
     function getSlashingRequest(bytes32 slashId) external view returns (Request memory);
 
