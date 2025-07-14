@@ -8,7 +8,6 @@ import {Test, console} from "forge-std/Test.sol";
 import {TestSuiteV2} from "./TestSuiteV2.sol";
 import {ISLAYRouterV2} from "../src/interface/ISLAYRouterV2.sol";
 import {ISLAYRouterSlashingV2} from "../src/interface/ISLAYRouterSlashingV2.sol";
-import {ISLAYSlashingV2} from "../src/interface/ISLAYSlashingV2.sol";
 import {ISLAYRegistryV2} from "../src/interface/ISLAYRegistryV2.sol";
 
 contract SLAYRouterV2Test is Test, TestSuiteV2 {
@@ -848,22 +847,22 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         _advanceBlockBy(10);
 
-        ISLAYSlashingV2.Request memory request = ISLAYSlashingV2.Request({
+        ISLAYRouterSlashingV2.Payload memory request = ISLAYRouterSlashingV2.Payload({
             mbips: 100,
             timestamp: timeAtWhichOffenseOccurs,
             operator: operator,
-            metadata: ISLAYSlashingV2.Metadata({reason: "Missing Blocks"})
+            reason: "Missing Blocks"
         });
 
         vm.prank(service);
         router.requestSlashing(request);
 
         vm.prank(service);
-        ISLAYSlashingV2.Request memory request2 = ISLAYSlashingV2.Request({
+        ISLAYRouterSlashingV2.Payload memory request2 = ISLAYRouterSlashingV2.Payload({
             mbips: 200,
             timestamp: timeAtWhichOffenseOccurs,
             operator: operator,
-            metadata: ISLAYSlashingV2.Metadata({reason: "Double Signs"})
+            reason: "Double Signs"
         });
         vm.expectRevert("Previous slashing request lifecycle not completed");
         router.requestSlashing(request2);
@@ -899,15 +898,15 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         _advanceBlockBy(10);
 
-        ISLAYSlashingV2.Request memory request = ISLAYSlashingV2.Request({
+        ISLAYRouterSlashingV2.Payload memory request = ISLAYRouterSlashingV2.Payload({
             mbips: 100,
             timestamp: uint32(block.timestamp + 12 * 2),
             operator: operator,
-            metadata: ISLAYSlashingV2.Metadata({reason: "Missing Blocks"})
+            reason: "Missing Blocks"
         });
 
         vm.prank(service);
-        vm.expectRevert("Cannot request slash with timestamp greater than present");
+        vm.expectRevert("timestamp in future");
         router.requestSlashing(request);
     }
 
@@ -941,11 +940,11 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         _advanceBlockBy(10);
 
-        ISLAYSlashingV2.Request memory request = ISLAYSlashingV2.Request({
+        ISLAYRouterSlashingV2.Payload memory request = ISLAYRouterSlashingV2.Payload({
             mbips: 100,
             timestamp: uint32(block.timestamp),
             operator: operator,
-            metadata: ISLAYSlashingV2.Metadata({reason: "Missing Blocks"})
+            reason: "Missing Blocks"
         });
 
         vm.prank(operator);
@@ -983,28 +982,28 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         _advanceBlockBy(10);
 
-        ISLAYSlashingV2.Request memory request = ISLAYSlashingV2.Request({
+        ISLAYRouterSlashingV2.Payload memory request = ISLAYRouterSlashingV2.Payload({
             mbips: 100,
             timestamp: uint32(block.timestamp),
             operator: operator,
-            metadata: ISLAYSlashingV2.Metadata({reason: "Missing Blocks"})
+            reason: "Missing Blocks"
         });
 
         _advanceBlockBy(10000000);
 
         vm.prank(service);
-        vm.expectRevert("Slash timestamp must be within the allowable slash period");
+        vm.expectRevert("timestamp too old");
         router.requestSlashing(request);
 
-        ISLAYSlashingV2.Request memory request2 = ISLAYSlashingV2.Request({
+        ISLAYRouterSlashingV2.Payload memory request2 = ISLAYRouterSlashingV2.Payload({
             mbips: 100_000,
             timestamp: uint32(block.timestamp),
             operator: operator,
-            metadata: ISLAYSlashingV2.Metadata({reason: "Missing Blocks"})
+            reason: "Missing Blocks"
         });
 
         vm.prank(service);
-        vm.expectRevert("Slash requested amount is more than the service has allowed");
+        vm.expectRevert("mbips exceeds max allowed");
         router.requestSlashing(request2);
     }
 }
