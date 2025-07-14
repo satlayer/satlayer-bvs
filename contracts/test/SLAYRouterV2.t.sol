@@ -906,7 +906,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         });
 
         vm.prank(service);
-        vm.expectRevert("timestamp in future");
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRouterV2.TimestampInFuture.selector));
         router.requestSlashing(request);
     }
 
