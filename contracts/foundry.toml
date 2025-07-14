@@ -10,11 +10,7 @@ build_info = true
 extra_output = ["storageLayout"]
 
 [rpc_endpoints]
-mainnet = "https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
-sepolia = "https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
-holesky = "https://eth-holesky.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
+slaynet = "${TENDERLY_RPC_URL}"
 
 [etherscan]
-mainnet = { chain = 1, key = "${ETHERSCAN_API_KEY}" }
-sepolia = { chain = 11155111, key = "${ETHERSCAN_API_KEY}" }
-holesky = { chain = 17000, key = "${ETHERSCAN_API_KEY}" }
+slaynet = { chain = 83766589, key = "${TENDERLY_ACCESS_KEY}", url = "${TENDERLY_RPC_URL}/verify/etherscan" }

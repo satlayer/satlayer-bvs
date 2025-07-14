@@ -11,6 +11,8 @@ import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import {InitialImpl} from "./InitialImpl.sol";
+
 import {ISLAYRegistryV2} from "./interface/ISLAYRegistryV2.sol";
 import {ISLAYRouterV2} from "./interface/ISLAYRouterV2.sol";
 import {ISLAYVaultV2} from "./interface/ISLAYVaultV2.sol";
@@ -28,6 +30,7 @@ contract SLAYRouterV2 is
     UUPSUpgradeable,
     OwnableUpgradeable,
     PausableUpgradeable,
+    InitialImpl,
     ISLAYRouterV2,
     ISLAYRouterSlashingV2
 {
@@ -92,29 +95,8 @@ contract SLAYRouterV2 is
      * @dev Initializes SLAYRouterV2 contract.
      * Set the default max vaults per operator to 10.
      */
-    function initialize() public reinitializer(2) {
+    function initialize2() public reinitializer(2) {
         _maxVaultsPerOperator = 10;
-    }
-
-    /**
-     * @dev Authorizes an upgrade to a new implementation.
-     * This function is required by UUPS and restricts upgradeability to the contract owner.
-     * @param newImplementation The address of the new contract implementation.
-     */
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
-
-    /**
-     * @dev Pauses the contract, all SLAYVaults will also be paused.
-     */
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    /**
-     * @dev Unpauses the contract, all SLAYVaults will also be unpaused.
-     */
-    function unpause() external onlyOwner {
-        _unpause();
     }
 
     /// @inheritdoc ISLAYRouterV2

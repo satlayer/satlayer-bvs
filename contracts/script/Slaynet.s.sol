@@ -12,7 +12,7 @@ import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Options} from "@openzeppelin/foundry-upgrades/Options.sol";
 import {Core} from "@openzeppelin/foundry-upgrades/internal/Core.sol";
 
-/// @title Deployment Script for Initialization of SatLayer Protocol
+/// @title Slaynet Deployment Script for Initialization of SatLayer Protocol
 /// @dev For deployment, we use the OpenZeppelin `UnsafeUpgrades` library to deploy UUPS proxies and beacons.
 /// Although it is "unsafe" and not recommended for production, the "safe version" does not support non-empty constructor arguments.
 /// This "unsafe" allow us to use the constructor arguments in the implementation contracts.
@@ -20,12 +20,17 @@ import {Core} from "@openzeppelin/foundry-upgrades/internal/Core.sol";
 /// After which we can upgrade the proxies to the actual implementations.
 /// However, to ensure the safety of the deployment, we validate each implementation (just as the "safe" version does)
 /// to ensure the implementation is valid and does not contain any unsafe code.
-contract DeploymentScript is Script {
+contract SlaynetDeployment is Script {
     Options public opts;
-    address public owner = address(0x011);
 
+    /// export PRIVATE_KEY=
+    /// export TENDERLY_RPC_URL=
+    /// export TENDERLY_ACCESS_KEY=
+    /// forge script SlaynetDeployment --rpc-url slaynet --slow --broadcast --verify
     function run() public {
-        vm.startBroadcast(owner);
+        uint256 pk = vm.envUint("PRIVATE_KEY");
+        address owner = vm.addr(pk);
+        vm.startBroadcast(pk);
 
         // Create the initial implementation contract and deploy the proxies for router and registry
         Core.validateImplementation("InitialImpl.sol:InitialImpl", opts);
@@ -46,10 +51,10 @@ contract DeploymentScript is Script {
 
         Core.validateUpgrade("SLAYRouterV2.sol:SLAYRouterV2", opts);
         address routerImpl = address(new SLAYRouterV2(registry));
-        UnsafeUpgrades.upgradeProxy(address(router), routerImpl, abi.encodeCall(SLAYRouterV2.initialize, ()));
+        UnsafeUpgrades.upgradeProxy(address(router), routerImpl, abi.encodeCall(SLAYRouterV2.initialize2, ()));
 
         Core.validateUpgrade("SLAYRegistryV2.sol:SLAYRegistryV2", opts);
         address registryImpl = address(new SLAYRegistryV2(router));
-        UnsafeUpgrades.upgradeProxy(address(registry), registryImpl, abi.encodeCall(SLAYRegistryV2.initialize, ()));
+        UnsafeUpgrades.upgradeProxy(address(registry), registryImpl, abi.encodeCall(SLAYRegistryV2.initialize2, ()));
     }
 }
