@@ -106,11 +106,8 @@ interface ISLAYRouterSlashingV2 {
         /// The service that initiated the slashing request.
         address service;
         /// The percentage of tokens to slash in millis basis points (1/100,000th of a percent).
-        /// Max millis bips to slash is set by the service slashing parameters {ISLAYRegistryV2.SlashParameter}
-        /// at the timestamp and the operator must have opted in.
         uint24 mbips;
         /// The real timestamp at which the slashing condition occurred.
-        /// This timestamp does not have to be tied to the block timestamp.
         uint32 timestamp;
         /// The timestamp when the request was submitted.
         /// This is block timestamp when the slashing request was made.
