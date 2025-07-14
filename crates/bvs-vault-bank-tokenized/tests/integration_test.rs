@@ -4,7 +4,10 @@ use bvs_registry::testing::RegistryContract;
 use bvs_vault_bank_tokenized::msg::{ExecuteMsg, QueryMsg};
 use bvs_vault_bank_tokenized::testing::VaultBankTokenizedContract;
 use bvs_vault_base::error::VaultError;
-use bvs_vault_base::msg::{Amount, AssetType, Recipient, RecipientAmount, VaultInfoResponse};
+use bvs_vault_base::msg::{
+    Amount, AssetType, QueueWithdrawalToParams, RecipientAmount, RedeemWithdrawalToParams,
+    SetApproveProxyParams, VaultInfoResponse,
+};
 use bvs_vault_base::shares::QueuedWithdrawalInfo;
 use bvs_vault_router::{msg::ExecuteMsg as RouterExecuteMsg, testing::VaultRouterContract};
 use cosmwasm_std::testing::mock_env;
@@ -218,8 +221,9 @@ fn test_queue_withdrawal_to_successfully() {
     let msg = RouterExecuteMsg::SetWithdrawalLockPeriod(Uint64::new(100));
     tc.router.execute(app, &owner, &msg).unwrap();
 
-    let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
-        recipient: staker.clone(),
+    let msg = ExecuteMsg::QueueWithdrawalTo(QueueWithdrawalToParams {
+        controller: staker.clone(),
+        owner: staker.clone(),
         amount: Uint128::new(10000),
     });
     let result = tc.vault.execute(app, &staker, &msg);
@@ -233,7 +237,8 @@ fn test_queue_withdrawal_to_successfully() {
             Event::new("wasm-QueueWithdrawalTo")
                 .add_attribute("_contract_address", tc.vault.addr.to_string())
                 .add_attribute("sender", staker.to_string())
-                .add_attribute("recipient", staker.to_string())
+                .add_attribute("owner", staker.to_string())
+                .add_attribute("controller", staker.to_string())
                 .add_attribute("queued_shares", "10000")
                 .add_attribute(
                     "new_unlock_timestamp",
@@ -248,7 +253,7 @@ fn test_queue_withdrawal_to_successfully() {
     );
 
     let msg = QueryMsg::QueuedWithdrawal {
-        staker: staker.to_string(),
+        controller: staker.to_string(),
     };
     let response: QueuedWithdrawalInfo = tc.vault.query(app, &msg).unwrap();
 
@@ -257,6 +262,425 @@ fn test_queue_withdrawal_to_successfully() {
         response.unlock_timestamp,
         Timestamp::from_nanos(1571797519879305533)
     );
+}
+
+#[test]
+fn test_withdrawal_with_proxy_successfully() {
+    let (mut app, tc) = TestContracts::init();
+    let app = &mut app;
+    let owner = app.api().addr_make("owner");
+    let staker1 = app.api().addr_make("staker");
+    let staker2 = app.api().addr_make("staker2");
+    let proxy = app.api().addr_make("proxy");
+    let recipient = app.api().addr_make("recipient");
+    let denom = "denom";
+
+    let msg = RouterExecuteMsg::SetWithdrawalLockPeriod(Uint64::new(100));
+    tc.router.execute(app, &owner, &msg).unwrap();
+
+    // Staker1 deposits tokens to the vault
+    {
+        // Fund the staker with some initial tokens
+        app.send_tokens(owner.clone(), staker1.clone(), &coins(1_000_000_000, denom))
+            .unwrap();
+
+        // Deposit 100_000_000 tokens from staker to Vault
+        let msg = ExecuteMsg::DepositFor(RecipientAmount {
+            recipient: staker1.clone(),
+            amount: Uint128::new(100_000_000),
+        });
+        tc.vault
+            .execute_with_funds(app, &staker1, &msg, coins(100_000_000, denom))
+            .expect("staker1 deposit failed");
+    }
+
+    // Staker2 deposits tokens to the vault
+    {
+        // Fund the staker with some initial tokens
+        app.send_tokens(owner.clone(), staker2.clone(), &coins(1_000_000_000, denom))
+            .unwrap();
+
+        // Deposit 99_999_999 tokens from staker to Vault
+        let msg = ExecuteMsg::DepositFor(RecipientAmount {
+            recipient: staker2.clone(),
+            amount: Uint128::new(99_999_999),
+        });
+        tc.vault
+            .execute_with_funds(app, &staker2, &msg, coins(99_999_999, denom))
+            .expect("staker2 deposit failed");
+    }
+
+    // Staker1 approves Proxy
+    {
+        let msg = ExecuteMsg::SetApproveProxy(SetApproveProxyParams {
+            proxy: proxy.clone(),
+            approve: true,
+        });
+        tc.vault.execute(app, &staker1, &msg).unwrap();
+    }
+
+    // Staker2 approves Proxy
+    {
+        let msg = ExecuteMsg::SetApproveProxy(SetApproveProxyParams {
+            proxy: proxy.clone(),
+            approve: true,
+        });
+        tc.vault.execute(app, &staker2, &msg).unwrap();
+    }
+
+    // Proxy queues withdrawal to Staker1 (owner and controller)
+    {
+        let msg = ExecuteMsg::QueueWithdrawalTo(QueueWithdrawalToParams {
+            controller: staker1.clone(),
+            owner: staker1.clone(),
+            amount: Uint128::new(10000),
+        });
+        let res = tc.vault.execute(app, &proxy, &msg).unwrap();
+        assert_eq!(
+            res.events,
+            vec![
+                Event::new("execute").add_attribute("_contract_address", tc.vault.addr.to_string()),
+                Event::new("wasm-QueueWithdrawalTo")
+                    .add_attribute("_contract_address", tc.vault.addr.to_string())
+                    .add_attribute("sender", proxy.to_string())
+                    .add_attribute("owner", staker1.to_string())
+                    .add_attribute("controller", staker1.to_string())
+                    .add_attribute("queued_shares", "10000")
+                    .add_attribute("new_unlock_timestamp", "1571797519")
+                    .add_attribute("total_queued_shares", "10000")
+            ]
+        );
+    }
+
+    // check that Staker1 has queued shares
+    {
+        let msg = QueryMsg::QueuedWithdrawal {
+            controller: staker1.to_string(),
+        };
+        let response: QueuedWithdrawalInfo = tc.vault.query(app, &msg).unwrap();
+
+        assert_eq!(response.queued_shares, Uint128::new(10_000));
+        assert_eq!(
+            response.unlock_timestamp,
+            Timestamp::from_nanos(1571797519879305533)
+        );
+    }
+
+    // move blockchain forward
+    app.update_block(|block| {
+        block.height += 10;
+        block.time = block.time.plus_seconds(100);
+    });
+
+    // Proxy queues withdrawal to Staker2 (owner and controller)
+    {
+        let msg = ExecuteMsg::QueueWithdrawalTo(QueueWithdrawalToParams {
+            controller: staker2.clone(),
+            owner: staker2.clone(),
+            amount: Uint128::new(20_000),
+        });
+        let res = tc.vault.execute(app, &proxy, &msg).unwrap();
+        assert_eq!(
+            res.events,
+            vec![
+                Event::new("execute").add_attribute("_contract_address", tc.vault.addr.to_string()),
+                Event::new("wasm-QueueWithdrawalTo")
+                    .add_attribute("_contract_address", tc.vault.addr.to_string())
+                    .add_attribute("sender", proxy.to_string())
+                    .add_attribute("owner", staker2.to_string())
+                    .add_attribute("controller", staker2.to_string())
+                    .add_attribute("queued_shares", "20000")
+                    .add_attribute("new_unlock_timestamp", "1571797619")
+                    .add_attribute("total_queued_shares", "20000")
+            ]
+        );
+    }
+
+    // check that Staker2 has queued shares
+    {
+        let msg = QueryMsg::QueuedWithdrawal {
+            controller: staker2.to_string(),
+        };
+        let response: QueuedWithdrawalInfo = tc.vault.query(app, &msg).unwrap();
+
+        assert_eq!(response.queued_shares, Uint128::new(20_000));
+        assert_eq!(
+            response.unlock_timestamp,
+            Timestamp::from_nanos(1571797619879305533)
+        );
+    }
+
+    // check that Staker1 queued shares unlock time and shares are not changed
+    {
+        let msg = QueryMsg::QueuedWithdrawal {
+            controller: staker1.to_string(),
+        };
+        let response: QueuedWithdrawalInfo = tc.vault.query(app, &msg).unwrap();
+
+        assert_eq!(response.queued_shares, Uint128::new(10_000));
+        assert_eq!(
+            response.unlock_timestamp,
+            Timestamp::from_nanos(1571797519879305533)
+        );
+    }
+
+    // move blockchain forward
+    app.update_block(|block| {
+        block.height += 10;
+        block.time = block.time.plus_seconds(100);
+    });
+
+    // Proxy redeems withdrawal to Staker1
+    {
+        let msg = ExecuteMsg::RedeemWithdrawalTo(RedeemWithdrawalToParams {
+            controller: staker1.clone(),
+            recipient: staker1.clone(),
+        });
+        let res = tc.vault.execute(app, &proxy, &msg).unwrap();
+        assert_eq!(
+            res.events,
+            vec![
+                Event::new("execute").add_attribute("_contract_address", tc.vault.addr.to_string()),
+                Event::new("wasm-RedeemWithdrawalTo")
+                    .add_attribute("_contract_address", tc.vault.addr.to_string())
+                    .add_attribute("sender", proxy.to_string())
+                    .add_attribute("controller", staker1.to_string())
+                    .add_attribute("recipient", staker1.to_string())
+                    .add_attribute("sub_shares", "10000")
+                    .add_attribute("claimed_assets", "10000")
+                    .add_attribute("total_shares", "199989999"),
+                Event::new("transfer")
+                    .add_attribute("recipient", staker1.to_string())
+                    .add_attribute("sender", tc.vault.addr.to_string())
+                    .add_attribute("amount", "10000denom")
+            ]
+        );
+
+        // check that staker1 received the assets
+        let staker1_balance = app.wrap().query_balance(staker1.clone(), denom).unwrap();
+        assert_eq!(staker1_balance, coin(900_010_000, denom)); // 1_000_000_000 - 100_000_000 + 10_000
+    }
+
+    // Staker2 redeems withdrawal to recipient
+    {
+        let msg = ExecuteMsg::RedeemWithdrawalTo(RedeemWithdrawalToParams {
+            controller: staker2.clone(),
+            recipient: recipient.clone(),
+        });
+        let res = tc.vault.execute(app, &staker2, &msg).unwrap();
+        assert_eq!(
+            res.events,
+            vec![
+                Event::new("execute").add_attribute("_contract_address", tc.vault.addr.to_string()),
+                Event::new("wasm-RedeemWithdrawalTo")
+                    .add_attribute("_contract_address", tc.vault.addr.to_string())
+                    .add_attribute("sender", staker2.to_string())
+                    .add_attribute("controller", staker2.to_string())
+                    .add_attribute("recipient", recipient.to_string())
+                    .add_attribute("sub_shares", "20000")
+                    .add_attribute("claimed_assets", "20000")
+                    .add_attribute("total_shares", "199969999"),
+                Event::new("transfer")
+                    .add_attribute("recipient", recipient.to_string())
+                    .add_attribute("sender", tc.vault.addr.to_string())
+                    .add_attribute("amount", "20000denom")
+            ]
+        );
+
+        // assert that recipient received the assets
+        let recipient_balance = app.wrap().query_balance(&recipient, denom).unwrap();
+        assert_eq!(recipient_balance, coin(20_000, denom)); // 20_000 tokens received
+    }
+
+    // check that Staker1 has no queued shares and shares are reduced
+    {
+        let msg = QueryMsg::QueuedWithdrawal {
+            controller: staker1.to_string(),
+        };
+        let response: QueuedWithdrawalInfo = tc.vault.query(app, &msg).unwrap();
+
+        assert_eq!(response.queued_shares, Uint128::new(0));
+        assert_eq!(response.unlock_timestamp, Timestamp::from_seconds(0));
+
+        // check that staker1 shares are reduced
+        let query_shares = QueryMsg::Shares {
+            staker: staker1.to_string(),
+        };
+        let shares: Uint128 = tc.vault.query(app, &query_shares).unwrap();
+        assert_eq!(shares, Uint128::new(99_990_000)); // 100_000_000 - 10_000
+    }
+
+    // check that Staker2 has no queued shares and shares are reduced
+    {
+        let msg = QueryMsg::QueuedWithdrawal {
+            controller: staker2.to_string(),
+        };
+        let response: QueuedWithdrawalInfo = tc.vault.query(app, &msg).unwrap();
+
+        assert_eq!(response.queued_shares, Uint128::new(0));
+        assert_eq!(response.unlock_timestamp, Timestamp::from_seconds(0));
+
+        // check that staker2 shares are reduced
+        let query_shares = QueryMsg::Shares {
+            staker: staker2.to_string(),
+        };
+        let shares: Uint128 = tc.vault.query(app, &query_shares).unwrap();
+        assert_eq!(shares, Uint128::new(99_979_999)); // 99_999_999 - 20_000
+    }
+}
+
+#[test]
+fn test_withdrawal_with_proxy_errors() {
+    let (mut app, tc) = TestContracts::init();
+    let app = &mut app;
+    let owner = app.api().addr_make("owner");
+    let staker1 = app.api().addr_make("staker1");
+    let staker2 = app.api().addr_make("staker2");
+    let proxy = app.api().addr_make("proxy");
+
+    // Staker1 deposits tokens to the vault
+    {
+        // Fund the staker with some initial tokens
+        app.send_tokens(
+            owner.clone(),
+            staker1.clone(),
+            &coins(1_000_000_000, "denom"),
+        )
+        .unwrap();
+
+        // Deposit 100_000_000 tokens from staker to Vault
+        let msg = ExecuteMsg::DepositFor(RecipientAmount {
+            recipient: staker1.clone(),
+            amount: Uint128::new(100_000_000),
+        });
+        tc.vault
+            .execute_with_funds(app, &staker1, &msg, coins(100_000_000, "denom"))
+            .expect("staker1 deposit failed");
+    }
+
+    // Staker2 deposits tokens to the vault
+    {
+        // Fund the staker with some initial tokens
+        app.send_tokens(
+            owner.clone(),
+            staker2.clone(),
+            &coins(1_000_000_000, "denom"),
+        )
+        .unwrap();
+
+        // Deposit 99_999_999 tokens from staker to Vault
+        let msg = ExecuteMsg::DepositFor(RecipientAmount {
+            recipient: staker2.clone(),
+            amount: Uint128::new(99_999_999),
+        });
+        tc.vault
+            .execute_with_funds(app, &staker2, &msg, coins(99_999_999, "denom"))
+            .expect("staker2 deposit failed");
+    }
+
+    // Staker1 queue withdrawal to staker2
+    {
+        let msg = ExecuteMsg::QueueWithdrawalTo(QueueWithdrawalToParams {
+            controller: staker2.clone(),
+            owner: staker2.clone(),
+            amount: Uint128::new(10000),
+        });
+        let err = tc.vault.execute(app, &staker1, &msg).unwrap_err();
+        assert_eq!(
+            err.root_cause().to_string(),
+            VaultError::Unauthorized {
+                msg: "Unauthorized sender".into()
+            }
+            .to_string()
+        );
+    }
+
+    // Staker2 queue withdrawal to staker2 with staker1 as owner
+    {
+        let msg = ExecuteMsg::QueueWithdrawalTo(QueueWithdrawalToParams {
+            controller: staker2.clone(),
+            owner: staker1.clone(),
+            amount: Uint128::new(10000),
+        });
+        let err = tc.vault.execute(app, &staker2, &msg).unwrap_err();
+        assert_eq!(
+            err.root_cause().to_string(),
+            VaultError::Unauthorized {
+                msg: "Unauthorized sender".into()
+            }
+            .to_string()
+        );
+    }
+
+    // Staker1 approves proxy
+    {
+        let msg = ExecuteMsg::SetApproveProxy(SetApproveProxyParams {
+            proxy: proxy.clone(),
+            approve: true,
+        });
+        tc.vault.execute(app, &staker1, &msg).unwrap();
+    }
+
+    // proxy queue withdrawal for staker2 with staker1 as owner
+    {
+        let msg = ExecuteMsg::QueueWithdrawalTo(QueueWithdrawalToParams {
+            controller: staker2.clone(),
+            owner: staker1.clone(),
+            amount: Uint128::new(10000),
+        });
+        let err = tc.vault.execute(app, &proxy, &msg).unwrap_err();
+        assert_eq!(
+            err.root_cause().to_string(),
+            VaultError::Unauthorized {
+                msg: "Unauthorized controller".into()
+            }
+            .to_string()
+        );
+    }
+
+    // proxy queue withdrawal for staker1 with staker2 as owner
+    {
+        let msg = ExecuteMsg::QueueWithdrawalTo(QueueWithdrawalToParams {
+            controller: staker1.clone(),
+            owner: staker2.clone(),
+            amount: Uint128::new(10_000),
+        });
+        let err = tc.vault.execute(app, &proxy, &msg).unwrap_err();
+        assert_eq!(
+            err.root_cause().to_string(),
+            VaultError::Unauthorized {
+                msg: "Unauthorized sender".into()
+            }
+            .to_string()
+        );
+    }
+
+    // staker2 tries to reset the withdrawal lock period for staker1 by QueueWithdrawalTo staker1 as controller
+    {
+        // proxy queue withdrawal for staker1 with staker1 as owner and controller
+        let msg = ExecuteMsg::QueueWithdrawalTo(QueueWithdrawalToParams {
+            controller: staker1.clone(),
+            owner: staker1.clone(),
+            amount: Uint128::new(10_000),
+        });
+        let result = tc.vault.execute(app, &proxy, &msg);
+        assert!(result.is_ok());
+
+        // staker 2 tries to grief by queueing withdrawal to staker1 as controller
+        let grief_msg = ExecuteMsg::QueueWithdrawalTo(QueueWithdrawalToParams {
+            controller: staker1.clone(),
+            owner: staker2.clone(),
+            amount: Uint128::new(1000),
+        });
+        let err = tc.vault.execute(app, &staker2, &grief_msg).unwrap_err();
+        assert_eq!(
+            err.root_cause().to_string(),
+            VaultError::Unauthorized {
+                msg: "Unauthorized controller".into()
+            }
+            .to_string()
+        );
+    }
 }
 
 #[test]
@@ -291,14 +715,18 @@ fn test_redeem_withdrawal_to_successfully() {
         let msg = RouterExecuteMsg::SetWithdrawalLockPeriod(Uint64::new(100));
         tc.router.execute(app, &owner, &msg).unwrap();
 
-        let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
-            recipient: staker.clone(),
+        let msg = ExecuteMsg::QueueWithdrawalTo(QueueWithdrawalToParams {
+            controller: staker.clone(),
+            owner: staker.clone(),
             amount: Uint128::new(10000),
         });
         tc.vault.execute(app, &staker, &msg).unwrap();
     }
 
-    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(staker.clone()));
+    let msg = ExecuteMsg::RedeemWithdrawalTo(RedeemWithdrawalToParams {
+        controller: staker.clone(),
+        recipient: staker.clone(),
+    });
 
     app.update_block(|block| {
         block.time = block.time.plus_seconds(115);
@@ -312,6 +740,7 @@ fn test_redeem_withdrawal_to_successfully() {
             Event::new("wasm-RedeemWithdrawalTo")
                 .add_attribute("_contract_address", tc.vault.addr.to_string())
                 .add_attribute("sender", staker.to_string())
+                .add_attribute("controller", staker.to_string())
                 .add_attribute("recipient", staker.to_string())
                 .add_attribute("sub_shares", "10000")
                 .add_attribute("claimed_assets", "10000")
@@ -324,7 +753,7 @@ fn test_redeem_withdrawal_to_successfully() {
     );
 
     let msg = QueryMsg::QueuedWithdrawal {
-        staker: staker.to_string(),
+        controller: staker.to_string(),
     };
     let response: QueuedWithdrawalInfo = tc.vault.query(app, &msg).unwrap();
 
@@ -338,7 +767,10 @@ fn test_redeem_withdrawal_to_no_queued_shares_error() {
     let app = &mut app;
     let staker = app.api().addr_make("staker");
 
-    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(staker.clone()));
+    let msg = ExecuteMsg::RedeemWithdrawalTo(RedeemWithdrawalToParams {
+        controller: staker.clone(),
+        recipient: staker.clone(),
+    });
 
     let err = tc.vault.execute(app, &staker, &msg).unwrap_err();
     assert_eq!(
@@ -378,14 +810,18 @@ fn test_redeem_withdrawal_to_locked_shares_error() {
         let msg = RouterExecuteMsg::SetWithdrawalLockPeriod(Uint64::new(100));
         tc.router.execute(app, &owner, &msg).unwrap();
 
-        let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
-            recipient: staker.clone(),
+        let msg = ExecuteMsg::QueueWithdrawalTo(QueueWithdrawalToParams {
+            controller: staker.clone(),
+            owner: staker.clone(),
             amount: Uint128::new(10000),
         });
         tc.vault.execute(app, &staker, &msg).unwrap();
     }
 
-    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(staker.clone()));
+    let msg = ExecuteMsg::RedeemWithdrawalTo(RedeemWithdrawalToParams {
+        controller: staker.clone(),
+        recipient: staker.clone(),
+    });
 
     let err = tc.vault.execute(app, &staker, &msg).unwrap_err();
     assert_eq!(
@@ -425,8 +861,9 @@ fn test_redeem_withdrawal_to_future_time_locked_shares_error() {
         let msg = RouterExecuteMsg::SetWithdrawalLockPeriod(Uint64::new(100));
         tc.router.execute(app, &owner, &msg).unwrap();
 
-        let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
-            recipient: staker.clone(),
+        let msg = ExecuteMsg::QueueWithdrawalTo(QueueWithdrawalToParams {
+            controller: staker.clone(),
+            owner: staker.clone(),
             amount: Uint128::new(10000),
         });
         tc.vault.execute(app, &staker, &msg).unwrap();
@@ -438,14 +875,18 @@ fn test_redeem_withdrawal_to_future_time_locked_shares_error() {
 
     // queue withdrawal to for the second time
     {
-        let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
-            recipient: staker.clone(),
+        let msg = ExecuteMsg::QueueWithdrawalTo(QueueWithdrawalToParams {
+            controller: staker.clone(),
+            owner: staker.clone(),
             amount: Uint128::new(12000),
         });
         tc.vault.execute(app, &staker, &msg).unwrap();
     }
 
-    let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(staker.clone()));
+    let msg = ExecuteMsg::RedeemWithdrawalTo(RedeemWithdrawalToParams {
+        controller: staker.clone(),
+        recipient: staker.clone(),
+    });
 
     let err = tc.vault.execute(app, &staker, &msg).unwrap_err();
     assert_eq!(
@@ -455,102 +896,6 @@ fn test_redeem_withdrawal_to_future_time_locked_shares_error() {
         }
         .to_string()
     );
-}
-
-#[test]
-fn test_queue_redeem_withdrawal_with_different_recipient() {
-    let (mut app, tc) = TestContracts::init();
-    let app = &mut app;
-    let owner = app.api().addr_make("owner");
-    let staker = app.api().addr_make("staker");
-    let denom = "denom";
-    let token_amount: u128 = 999_999_999_999;
-
-    // Fund tokens
-    {
-        app.send_tokens(owner.clone(), staker.clone(), &coins(token_amount, denom))
-            .unwrap();
-    }
-
-    // Deposit some tokens from staker to Vault
-    {
-        let msg = ExecuteMsg::DepositFor(RecipientAmount {
-            recipient: staker.clone(),
-            amount: Uint128::new(token_amount),
-        });
-        tc.vault
-            .execute_with_funds(app, &staker, &msg, coins(token_amount, denom))
-            .expect("staker deposit failed");
-    }
-
-    // set withdrawal lock period
-    {
-        let msg = RouterExecuteMsg::SetWithdrawalLockPeriod(Uint64::new(100));
-        tc.router.execute(app, &owner, &msg).unwrap();
-    }
-
-    // queue and redeem withdrawal to staker
-    {
-        let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
-            recipient: staker.clone(),
-            amount: Uint128::new(10000),
-        });
-        tc.vault.execute(app, &staker, &msg).unwrap();
-
-        let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(staker.clone()));
-
-        app.update_block(|block| {
-            block.time = block.time.plus_seconds(115);
-        });
-        tc.vault.execute(app, &staker, &msg).unwrap();
-
-        let balance = app.wrap().query_balance(&staker, denom).unwrap();
-        assert_eq!(balance.amount, Uint128::from(10000u128));
-    }
-
-    let new_staker = app.api().addr_make("new_staker");
-
-    // queue withdrawal to staker, redeem withdrawal to new_staker
-    {
-        let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
-            recipient: staker.clone(),
-            amount: Uint128::new(10000),
-        });
-        tc.vault.execute(app, &staker, &msg).unwrap();
-
-        let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(new_staker.clone()));
-
-        app.update_block(|block| {
-            block.time = block.time.plus_seconds(115);
-        });
-        tc.vault.execute(app, &staker, &msg).unwrap();
-
-        let balance = app.wrap().query_balance(&new_staker, denom).unwrap();
-        assert_eq!(balance.amount, Uint128::from(10000u128));
-    }
-
-    // queue withdrawal to staker, redeem withdrawal to staker with wrong info.sender
-    {
-        let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
-            recipient: staker.clone(),
-            amount: Uint128::new(10000),
-        });
-        tc.vault.execute(app, &staker, &msg).unwrap();
-
-        let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(new_staker.clone()));
-
-        app.update_block(|block| {
-            block.time = block.time.plus_seconds(115);
-        });
-        let err = tc.vault.execute(app, &new_staker, &msg).unwrap_err();
-        assert_eq!(
-            err.root_cause().to_string(),
-            VaultError::Zero {
-                msg: "No queued shares".into()
-            }
-            .to_string()
-        );
-    }
 }
 
 #[test]
@@ -1023,26 +1368,34 @@ fn test_deposit_transfer_then_queue_redeem_withdraw() {
 
     // Fully Withdraw
     {
-        let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
+        let msg = ExecuteMsg::QueueWithdrawalTo(QueueWithdrawalToParams {
             amount: Uint128::new(initial_deposit_amount - 1000),
-            recipient: staker.clone(),
+            owner: staker.clone(),
+            controller: staker.clone(),
         });
         vault.execute(&mut app, &staker, &msg).unwrap();
 
-        let msg = ExecuteMsg::QueueWithdrawalTo(RecipientAmount {
+        let msg = ExecuteMsg::QueueWithdrawalTo(QueueWithdrawalToParams {
             amount: Uint128::new(1000),
-            recipient: beneficiary.clone(),
+            owner: beneficiary.clone(),
+            controller: beneficiary.clone(),
         });
         vault.execute(&mut app, &beneficiary, &msg).unwrap();
     }
 
     // fail premature redeem withdrawal to
     {
-        let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(staker.clone()));
+        let msg = ExecuteMsg::RedeemWithdrawalTo(RedeemWithdrawalToParams {
+            controller: staker.clone(),
+            recipient: staker.clone(),
+        });
         let res = vault.execute(&mut app, &staker, &msg);
         assert!(res.is_err());
 
-        let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(beneficiary.clone()));
+        let msg = ExecuteMsg::RedeemWithdrawalTo(RedeemWithdrawalToParams {
+            controller: beneficiary.clone(),
+            recipient: beneficiary.clone(),
+        });
         let res = vault.execute(&mut app, &beneficiary, &msg);
         assert!(res.is_err());
     }
@@ -1057,7 +1410,10 @@ fn test_deposit_transfer_then_queue_redeem_withdraw() {
 
     // redeem withdrawal to
     {
-        let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(staker.clone()));
+        let msg = ExecuteMsg::RedeemWithdrawalTo(RedeemWithdrawalToParams {
+            controller: staker.clone(),
+            recipient: staker.clone(),
+        });
         vault.execute(&mut app, &staker, &msg).unwrap();
 
         let staker_balance = app.wrap().query_balance(&staker, "denom").unwrap();
@@ -1068,7 +1424,10 @@ fn test_deposit_transfer_then_queue_redeem_withdraw() {
             coin(30_000_000 + 70_000_000 - 1000, "denom")
         );
 
-        let msg = ExecuteMsg::RedeemWithdrawalTo(Recipient(beneficiary.clone()));
+        let msg = ExecuteMsg::RedeemWithdrawalTo(RedeemWithdrawalToParams {
+            controller: beneficiary.clone(),
+            recipient: beneficiary.clone(),
+        });
         vault.execute(&mut app, &beneficiary, &msg).unwrap();
 
         let beneficiary_balance = app.wrap().query_balance(&beneficiary, "denom").unwrap();

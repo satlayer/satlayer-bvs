@@ -12,4 +12,7 @@ pub mod offset;
 /// Accounting module for vaults that tracks staker shares.
 pub mod shares;
 
+/// Module for handling and approving proxy in the vault.
+pub mod proxy;
+
 pub use crate::error::VaultError;

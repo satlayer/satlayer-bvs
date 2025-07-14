@@ -1,8 +1,9 @@
 use bvs_pauser::api::Display;
 use bvs_vault_base::msg::{
     Amount, AssetsResponse, ConvertToAssetsResponse, ConvertToSharesResponse,
-    QueuedWithdrawalResponse, Recipient, RecipientAmount, SharesResponse, TotalAssetsResponse,
-    TotalSharesResponse, VaultInfoResponse,
+    QueueWithdrawalToParams, QueuedWithdrawalResponse, RecipientAmount, RedeemWithdrawalToParams,
+    SetApproveProxyParams, SharesResponse, TotalAssetsResponse, TotalSharesResponse,
+    VaultInfoResponse,
 };
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -75,12 +76,12 @@ pub enum ExecuteMsg {
     /// ### Lock Period Extension
     /// New withdrawals will extend the lock period of any existing withdrawals.
     /// You can queue the withdrawal to a different `recipient` than the `sender` to avoid this.
-    QueueWithdrawalTo(RecipientAmount),
+    QueueWithdrawalTo(QueueWithdrawalToParams),
 
     /// ExecuteMsg RedeemWithdrawalTo all queued shares into assets from the vault for withdrawal.
     /// After the lock period, the `sender` (must be the `recipient` of the original withdrawal)
     /// can redeem the withdrawal.
-    RedeemWithdrawalTo(Recipient),
+    RedeemWithdrawalTo(RedeemWithdrawalToParams),
 
     /// ExecuteMsg SlashLocked moves the assets from the vault to the `vault-router` contract for custody.
     /// Part of the [https://build.satlayer.xyz/getting-started/slashing](Programmable Slashing) lifecycle.
@@ -88,6 +89,10 @@ pub enum ExecuteMsg {
     /// The amount is calculated and enforced by the router.
     /// Further utility of the assets, post-locked, is implemented and enforced on the router level.
     SlashLocked(Amount),
+
+    /// ExecuteMsg ApproveProxy allows the `proxy`
+    /// to queue withdrawal and redeem withdrawal on behalf of the `owner`.
+    SetApproveProxy(SetApproveProxyParams),
 }
 
 #[cw_serde]
@@ -163,7 +168,7 @@ pub enum QueryMsg {
 
     /// QueryMsg QueuedWithdrawal: get the queued withdrawal and unlock timestamp under vault.
     #[returns(QueuedWithdrawalResponse)]
-    QueuedWithdrawal { staker: String },
+    QueuedWithdrawal { controller: String },
 
     /// QueryMsg VaultInfo: get the vault information.
     #[returns(VaultInfoResponse)]

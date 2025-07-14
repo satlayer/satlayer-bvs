@@ -64,14 +64,14 @@ type InstantiateMsg struct {
 // `recipient`. Vault must be whitelisted in the `vault-router` to accept deposits.
 //
 // ExecuteMsg QueueWithdrawalTo assets from the vault. Sender must have enough shares to
-// queue the requested amount to the `recipient`. Once the withdrawal is queued, the
-// `recipient` can redeem the withdrawal after the lock period. Once the withdrawal is
+// queue the requested amount to the `controller`. Once the withdrawal is queued, the
+// `controller` can redeem the withdrawal after the lock period. Once the withdrawal is
 // locked, the `sender` cannot cancel the withdrawal. The time-lock is enforced by the vault
 // and cannot be changed retroactively.
 //
 // ### Lock Period Extension New withdrawals will extend the lock period of any existing
-// withdrawals. You can queue the withdrawal to a different `recipient` than the `sender` to
-// avoid this.
+// withdrawals. You can queue the withdrawal to a different `controller` than the `sender`
+// to avoid this.
 //
 // ExecuteMsg RedeemWithdrawalTo all queued shares into assets from the vault for
 // withdrawal. After the lock period, the `sender` (must be the `recipient` of the original
@@ -83,17 +83,21 @@ type InstantiateMsg struct {
 // absolute `amount` of assets to be moved. The amount is calculated and enforced by the
 // router. Further utility of the assets, post-locked, is implemented and enforced on the
 // router level.
+//
+// ExecuteMsg ApproveProxy allows the `proxy` to queue withdrawal and redeem withdrawal on
+// behalf of the `owner`.
 type ExecuteMsg struct {
-	Transfer           *Transfer          `json:"transfer,omitempty"`
-	Send               *Send              `json:"send,omitempty"`
-	IncreaseAllowance  *IncreaseAllowance `json:"increase_allowance,omitempty"`
-	DecreaseAllowance  *DecreaseAllowance `json:"decrease_allowance,omitempty"`
-	TransferFrom       *TransferFrom      `json:"transfer_from,omitempty"`
-	SendFrom           *SendFrom          `json:"send_from,omitempty"`
-	DepositFor         *RecipientAmount   `json:"deposit_for,omitempty"`
-	QueueWithdrawalTo  *RecipientAmount   `json:"queue_withdrawal_to,omitempty"`
-	RedeemWithdrawalTo *string            `json:"redeem_withdrawal_to,omitempty"`
-	SlashLocked        *string            `json:"slash_locked,omitempty"`
+	Transfer           *Transfer                 `json:"transfer,omitempty"`
+	Send               *Send                     `json:"send,omitempty"`
+	IncreaseAllowance  *IncreaseAllowance        `json:"increase_allowance,omitempty"`
+	DecreaseAllowance  *DecreaseAllowance        `json:"decrease_allowance,omitempty"`
+	TransferFrom       *TransferFrom             `json:"transfer_from,omitempty"`
+	SendFrom           *SendFrom                 `json:"send_from,omitempty"`
+	DepositFor         *RecipientAmount          `json:"deposit_for,omitempty"`
+	QueueWithdrawalTo  *QueueWithdrawalToParams  `json:"queue_withdrawal_to,omitempty"`
+	RedeemWithdrawalTo *RedeemWithdrawalToParams `json:"redeem_withdrawal_to,omitempty"`
+	SlashLocked        *string                   `json:"slash_locked,omitempty"`
+	SetApproveProxy    *SetApproveProxyParams    `json:"set_approve_proxy,omitempty"`
 }
 
 type DecreaseAllowance struct {
@@ -128,6 +132,22 @@ type IncreaseAllowance struct {
 	Spender string      `json:"spender"`
 }
 
+// This struct is used to represent the controller and amount fields together.
+type QueueWithdrawalToParams struct {
+	// the amount is the amount of shares to be withdrawn
+	Amount string `json:"amount"`
+	// the controller is the address that can redeem the withdrawal after the lock period
+	Controller string `json:"controller"`
+	// the owner is the address that owns the shares being withdrawn
+	Owner string `json:"owner"`
+}
+
+// This struct is used to represent a recipient for RedeemWithdrawalTo.
+type RedeemWithdrawalToParams struct {
+	Controller string `json:"controller"`
+	Recipient  string `json:"recipient"`
+}
+
 type Send struct {
 	Amount   string `json:"amount"`
 	Contract string `json:"contract"`
@@ -139,6 +159,13 @@ type SendFrom struct {
 	Contract string `json:"contract"`
 	Msg      string `json:"msg"`
 	Owner    string `json:"owner"`
+}
+
+type SetApproveProxyParams struct {
+	// whether the proxy is approved or not.
+	Approve bool `json:"approve"`
+	// The proxy address that is being approved.
+	Proxy string `json:"proxy"`
 }
 
 type Transfer struct {
@@ -243,7 +270,7 @@ type ConvertToShares struct {
 }
 
 type QueuedWithdrawal struct {
-	Staker string `json:"staker"`
+	Controller string `json:"controller"`
 }
 
 type Shares struct {

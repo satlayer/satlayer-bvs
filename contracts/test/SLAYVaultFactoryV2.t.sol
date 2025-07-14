@@ -2,19 +2,19 @@
 pragma solidity ^0.8.0;
 
 import "./MockERC20.sol";
-import "../src/SLAYVault.sol";
-import "../src/SLAYVaultFactory.sol";
+import "../src/SLAYVaultV2.sol";
+import "../src/SLAYVaultFactoryV2.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {TestSuite} from "./TestSuite.sol";
-import {ISLAYVaultFactory} from "../src/interface/ISLAYVaultFactory.sol";
+import {TestSuiteV2} from "./TestSuiteV2.sol";
+import {ISLAYVaultFactoryV2} from "../src/interface/ISLAYVaultFactoryV2.sol";
 
-contract SLAYVaultFactoryTest is Test, TestSuite {
+contract SLAYVaultFactoryV2Test is Test, TestSuiteV2 {
     MockERC20 public underlying = new MockERC20("Token", "TKN", 18);
     address public immutable operator = makeAddr("Operator X");
 
     function setUp() public override {
-        TestSuite.setUp();
+        TestSuiteV2.setUp();
 
         vm.prank(operator);
         registry.registerAsOperator("https://example.com", "Operator X");
@@ -24,7 +24,7 @@ contract SLAYVaultFactoryTest is Test, TestSuite {
         MockERC20 asset = new MockERC20("Mock Token", "MTK", 8);
 
         vm.prank(operator);
-        SLAYVault vault = vaultFactory.create(asset);
+        SLAYVaultV2 vault = vaultFactory.create(asset);
 
         assertEq(vault.delegated(), operator);
         assertEq(vault.name(), "SatLayer Mock Token");
@@ -36,7 +36,7 @@ contract SLAYVaultFactoryTest is Test, TestSuite {
         MockERC20 asset = new MockERC20("Mock Bit Dollar", "BDR", 15);
 
         vm.prank(operator);
-        SLAYVault vault = vaultFactory.create(asset);
+        SLAYVaultV2 vault = vaultFactory.create(asset);
 
         assertEq(vault.delegated(), operator);
         assertEq(vault.decimals(), 15);
@@ -46,7 +46,7 @@ contract SLAYVaultFactoryTest is Test, TestSuite {
 
     function test_create_without_metadata() public {
         vm.prank(owner);
-        SLAYVault vault = vaultFactory.create(underlying, operator, "Custom Name", "Custom Symbol");
+        SLAYVaultV2 vault = vaultFactory.create(underlying, operator, "Custom Name", "Custom Symbol");
 
         assertEq(vault.delegated(), operator);
         assertEq(vault.name(), "Custom Name");
@@ -67,18 +67,18 @@ contract SLAYVaultFactoryTest is Test, TestSuite {
 
     function test_create_with_operator() public {
         vm.prank(operator);
-        SLAYVault vault = vaultFactory.create(underlying);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
 
         assertEq(vault.delegated(), operator);
     }
 
     function test_create_with_not_operator() public {
-        vm.expectRevert(abi.encodeWithSelector(ISLAYVaultFactory.NotOperator.selector, address(this)));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYVaultFactoryV2.NotOperator.selector, address(this)));
         vaultFactory.create(underlying);
 
         address notOperator = makeAddr("Not Operator");
         vm.startPrank(owner);
-        vm.expectRevert(abi.encodeWithSelector(ISLAYVaultFactory.NotOperator.selector, address(notOperator)));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYVaultFactoryV2.NotOperator.selector, address(notOperator)));
         vaultFactory.create(underlying, notOperator, "Name", "Symbol");
     }
 }

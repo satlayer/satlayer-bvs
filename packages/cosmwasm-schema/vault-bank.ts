@@ -17,6 +17,8 @@
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
+ * the amount is the amount of shares to be withdrawn
+ *
  * This struct represents amount of assets.
  *
  * A human readable address.
@@ -35,7 +37,11 @@
  * mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`
  * instance.
  *
- * This struct is used to represent a recipient for RedeemWithdrawalTo.
+ * the controller is the address that can redeem the withdrawal after the lock period
+ *
+ * the owner is the address that owns the shares being withdrawn
+ *
+ * The proxy address that is being approved.
  *
  * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
  * schema can be generated.
@@ -108,6 +114,8 @@ type AssetsResponse = string;
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
+ * the amount is the amount of shares to be withdrawn
+ *
  * This struct represents amount of assets.
  *
  * A human readable address.
@@ -126,7 +134,11 @@ type AssetsResponse = string;
  * mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`
  * instance.
  *
- * This struct is used to represent a recipient for RedeemWithdrawalTo.
+ * the controller is the address that can redeem the withdrawal after the lock period
+ *
+ * the owner is the address that owns the shares being withdrawn
+ *
+ * The proxy address that is being approved.
  *
  * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
  * schema can be generated.
@@ -199,6 +211,8 @@ type ConvertToAssetsResponse = string;
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
+ * the amount is the amount of shares to be withdrawn
+ *
  * This struct represents amount of assets.
  *
  * A human readable address.
@@ -217,7 +231,11 @@ type ConvertToAssetsResponse = string;
  * mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`
  * instance.
  *
- * This struct is used to represent a recipient for RedeemWithdrawalTo.
+ * the controller is the address that can redeem the withdrawal after the lock period
+ *
+ * the owner is the address that owns the shares being withdrawn
+ *
+ * The proxy address that is being approved.
  *
  * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
  * schema can be generated.
@@ -290,6 +308,8 @@ type ConvertToSharesResponse = string;
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
+ * the amount is the amount of shares to be withdrawn
+ *
  * This struct represents amount of assets.
  *
  * A human readable address.
@@ -308,7 +328,11 @@ type ConvertToSharesResponse = string;
  * mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`
  * instance.
  *
- * This struct is used to represent a recipient for RedeemWithdrawalTo.
+ * the controller is the address that can redeem the withdrawal after the lock period
+ *
+ * the owner is the address that owns the shares being withdrawn
+ *
+ * The proxy address that is being approved.
  *
  * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
  * schema can be generated.
@@ -381,6 +405,8 @@ type SharesResponse = string;
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
+ * the amount is the amount of shares to be withdrawn
+ *
  * This struct represents amount of assets.
  *
  * A human readable address.
@@ -399,7 +425,11 @@ type SharesResponse = string;
  * mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`
  * instance.
  *
- * This struct is used to represent a recipient for RedeemWithdrawalTo.
+ * the controller is the address that can redeem the withdrawal after the lock period
+ *
+ * the owner is the address that owns the shares being withdrawn
+ *
+ * The proxy address that is being approved.
  *
  * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
  * schema can be generated.
@@ -472,6 +502,8 @@ type TotalAssetsResponse = string;
  *
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  *
+ * the amount is the amount of shares to be withdrawn
+ *
  * This struct represents amount of assets.
  *
  * A human readable address.
@@ -490,7 +522,11 @@ type TotalAssetsResponse = string;
  * mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`
  * instance.
  *
- * This struct is used to represent a recipient for RedeemWithdrawalTo.
+ * the controller is the address that can redeem the withdrawal after the lock period
+ *
+ * the owner is the address that owns the shares being withdrawn
+ *
+ * The proxy address that is being approved.
  *
  * The response to the `Assets` query. This is just a wrapper around `Uint128`, so that the
  * schema can be generated.
@@ -576,18 +612,18 @@ export interface InstantiateMsg {
  * `recipient`. Vault must be whitelisted in the `vault-router` to accept deposits.
  *
  * ExecuteMsg QueueWithdrawalTo assets from the vault. Sender must have enough shares to
- * queue the requested amount to the `recipient`. Once the withdrawal is queued, the
- * `recipient` can redeem the withdrawal after the lock period. Once the withdrawal is
+ * queue the requested amount to the `controller`. Once the withdrawal is queued, the
+ * `controller` can redeem the withdrawal after the lock period. Once the withdrawal is
  * locked, the `sender` cannot cancel the withdrawal. The time-lock is enforced by the vault
  * and cannot be changed retroactively.
  *
  * ### Lock Period Extension New withdrawals will extend the lock period of any existing
- * withdrawals. You can queue the withdrawal to a different `recipient` than the `sender` to
- * avoid this.
+ * withdrawals. You can queue the withdrawal to a different `controller` than the `sender`
+ * to avoid this.
  *
  * ExecuteMsg RedeemWithdrawalTo all queued shares into assets from the vault for
- * withdrawal. After the lock period, the `sender` (must be the `recipient` of the original
- * withdrawal) can redeem the withdrawal.
+ * withdrawal. After the lock period, the `sender` (must be the `controller` of the original
+ * withdrawal) can redeem the withdrawal to the `recipient`
  *
  * ExecuteMsg SlashLocked moves the assets from the vault to the `vault-router` contract for
  * custody. Part of the [https://build.satlayer.xyz/getting-started/slashing](Programmable
@@ -595,12 +631,16 @@ export interface InstantiateMsg {
  * absolute `amount` of assets to be moved. The amount is calculated and enforced by the
  * router. Further utility of the assets, post-locked, is implemented and enforced on the
  * router level.
+ *
+ * ExecuteMsg ApproveProxy allows the `proxy` to queue withdrawal and redeem withdrawal on
+ * behalf of the `owner`.
  */
 export interface ExecuteMsg {
   deposit_for?: RecipientAmount;
-  queue_withdrawal_to?: RecipientAmount;
-  redeem_withdrawal_to?: string;
+  queue_withdrawal_to?: QueueWithdrawalToParams;
+  redeem_withdrawal_to?: RedeemWithdrawalToParams;
   slash_locked?: string;
+  set_approve_proxy?: SetApproveProxyParams;
 }
 
 /**
@@ -609,6 +649,43 @@ export interface ExecuteMsg {
 export interface RecipientAmount {
   amount: string;
   recipient: string;
+}
+
+/**
+ * This struct is used to represent the controller and amount fields together.
+ */
+export interface QueueWithdrawalToParams {
+  /**
+   * the amount is the amount of shares to be withdrawn
+   */
+  amount: string;
+  /**
+   * the controller is the address that can redeem the withdrawal after the lock period
+   */
+  controller: string;
+  /**
+   * the owner is the address that owns the shares being withdrawn
+   */
+  owner: string;
+}
+
+/**
+ * This struct is used to represent a recipient for RedeemWithdrawalTo.
+ */
+export interface RedeemWithdrawalToParams {
+  controller: string;
+  recipient: string;
+}
+
+export interface SetApproveProxyParams {
+  /**
+   * whether the proxy is approved or not.
+   */
+  approve: boolean;
+  /**
+   * The proxy address that is being approved.
+   */
+  proxy: string;
 }
 
 /**
@@ -652,7 +729,7 @@ export interface ConvertToShares {
 }
 
 export interface QueuedWithdrawal {
-  staker: string;
+  controller: string;
 }
 
 export interface Shares {

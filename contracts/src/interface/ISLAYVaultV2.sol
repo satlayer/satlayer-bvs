@@ -4,12 +4,13 @@ pragma solidity ^0.8.0;
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-import {IERC7540Redeem, IERC7540Operator} from "./IERC7540.sol";
+import {IERC7540Redeem, IERC7540Operator} from "forge-std/interfaces/IERC7540.sol";
 
 /**
+ * @title SatLayer Vault Interface
  * @dev Interface for the SLAYVault contract.
  */
-interface ISLAYVault is IERC20Metadata, IERC4626, IERC7540Redeem, IERC7540Operator {
+interface ISLAYVaultV2 is IERC20Metadata, IERC4626, IERC7540Operator, IERC7540Redeem {
     /*//////////////////////////////////////////////////////////////
                                 ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -41,6 +42,15 @@ interface ISLAYVault is IERC20Metadata, IERC4626, IERC7540Redeem, IERC7540Operat
     /// @notice Thrown when a withdraw request is not found.
     error WithdrawRequestNotFound();
 
+    /// @notice Thrown when the caller is not the router.
+    error NotRouter();
+
+    /*//////////////////////////////////////////////////////////////
+                                EVENTS
+    //////////////////////////////////////////////////////////////*/
+
+    event SlashingLocked(uint256 amount);
+
     /// @notice Struct representing a redeem request.
     struct RedeemRequestStruct {
         /// @notice The total amount of shares requested for redemption.
@@ -54,10 +64,33 @@ interface ISLAYVault is IERC20Metadata, IERC4626, IERC7540Redeem, IERC7540Operat
     //////////////////////////////////////////////////////////////*/
 
     /**
+     * @notice The `delegated` is the address where the vault is delegated to.
+     * This address cannot withdraw assets from the vault.
+     * See https://build.satlayer.xyz/getting-started/operators for more information.
+     * @dev This address is the address of the SatLayer operator that is delegated to manage the vault.
+     * @return The address of the delegated operator.
+     */
+    function delegated() external view returns (address);
+
+    /**
+     * @notice Returns whether the vault is whitelisted on SLAYRouter.
+     * @dev This is used to check if the vault is allowed to interact with the SLAYRouter.
+     * @return True if the vault is whitelisted, false otherwise.
+     */
+    function isWhitelisted() external view returns (bool);
+
+    /**
      * @notice Returns the total amount of shares pending redemption across all controllers.
      * This is the sum of all shares in pending and claimable redemption requests.
      *
      * @return The total amount of shares pending redemption.
      */
     function getTotalPendingRedemption() external view returns (uint256);
+
+    /**
+     * @notice Moves assets from the vault to the router contract as part of the slashing process.
+     * @dev only callable by router
+     * @param amount The amount of underlying asset to move to the router.
+     */
+    function lockSlashing(uint256 amount) external;
 }

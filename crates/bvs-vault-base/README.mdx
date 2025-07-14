@@ -51,6 +51,14 @@ This module provides accounting functions to track staker shares in vault contra
 - Queued withdrawal tracking
 - Withdrawal time lock management
 
+### `bvs_vault_base::proxy`
+
+This module provides a common function to manage approval of proxy which is used to execute vault operations on behalf of staker.
+It ensures that only authorized proxies can perform actions on behalf of users.
+
+- `APPROVED_PROXY` storage to store approved proxy addresses
+- Functions to add, remove, and check approved proxies
+
 ### `bvs_vault_base::error`
 
 This module defines standardized error types for vault operations, ensuring consistent error handling across all vault contracts.

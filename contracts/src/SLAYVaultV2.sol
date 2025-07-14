@@ -10,15 +10,16 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {SLAYRegistry} from "./SLAYRegistry.sol";
-import {SLAYRouter} from "./SLAYRouter.sol";
-import {IERC7540Redeem, IERC7540Operator} from "./interface/IERC7540.sol";
-import {ISLAYVault} from "./interface/ISLAYVault.sol";
+
+import {IERC7540Redeem, IERC7540Operator} from "forge-std/interfaces/IERC7540.sol";
+
+import {SLAYRegistryV2} from "./SLAYRegistryV2.sol";
+import {SLAYRouterV2} from "./SLAYRouterV2.sol";
+import {ISLAYVaultV2} from "./interface/ISLAYVaultV2.sol";
 
 /**
- * @title SLAYVault
+ * @title SatLayer Vault
  * @notice ERC4626-compliant tokenized vault designed for asynchronous redemption workflows.
  * @dev
  * - This contract is deployed via the SLAYVaultFactory using the Beacon Proxy pattern.
@@ -34,13 +35,13 @@ import {ISLAYVault} from "./interface/ISLAYVault.sol";
  * - Upgradeable via Beacon Proxy pattern
  * - Pausing and whitelisting enforced by SLAYRouter
  */
-contract SLAYVault is
+contract SLAYVaultV2 is
     Initializable,
     ERC20Upgradeable,
     ERC4626Upgradeable,
     ERC165Upgradeable,
     ERC20PermitUpgradeable,
-    ISLAYVault
+    ISLAYVaultV2
 {
     using SafeERC20 for IERC20;
 
@@ -52,18 +53,18 @@ contract SLAYVault is
     uint256 internal constant REQUEST_ID = 0;
 
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    SLAYRouter public immutable router;
+    SLAYRouterV2 public immutable router;
 
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    SLAYRegistry public immutable registry;
+    SLAYRegistryV2 public immutable registry;
 
     /**
      * @notice The `delegated` is the address where the vault is delegated to.
      * This address cannot withdraw assets from the vault.
      * See https://build.satlayer.xyz/getting-started/operators for more information.
-     * @dev This address is the address of the SatLayer operator that is delegated to manage the vault.
+     * This delegated address (also called the Operator in SLAYRegistry) is not the same as the ERC7540 Operator.
      */
-    address public delegated;
+    address internal _delegated;
 
     /// @notice Operator approval status per controller.
     mapping(address controller => mapping(address operator => bool)) internal _isOperator;
@@ -99,13 +100,13 @@ contract SLAYVault is
      * @dev Modifier to make a function callable only when the SLAYVault is whitelisted in the SLAYRouter.
      * If the SLAYVault is not whitelisted, all operations marked with this modifier will revert with `ExpectedWhitelisted`.
      */
-    modifier whenWhitelisted() {
+    modifier onlyWhitelisted() {
         _requireWhitelisted();
         _;
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor(SLAYRouter router_, SLAYRegistry registry_) {
+    constructor(SLAYRouterV2 router_, SLAYRegistryV2 registry_) {
         router = router_;
         registry = registry_;
         _disableInitializers();
@@ -115,6 +116,11 @@ contract SLAYVault is
      * @dev Initializes the SLAYVault with the given parameters.
      * This function is called by the SLAYVaultFactory when creating a new SLAYVault instance.
      * Not to be called directly.
+     *
+     * @param asset_ The address of the underlying asset (ERC20 token) that the vault will hold.
+     * @param delegated_ The address of the delegated operator for this vault.
+     * @param name_ The name of the vault, used for ERC20 token metadata.
+     * @param symbol_ The symbol of the vault, used for ERC20 token metadata.
      */
     function initialize(IERC20 asset_, address delegated_, string memory name_, string memory symbol_)
         public
@@ -123,23 +129,31 @@ contract SLAYVault is
         __ERC20_init(name_, symbol_);
         __ERC4626_init(asset_);
         __ERC20Permit_init(name_);
-        delegated = delegated_;
+        _delegated = delegated_;
     }
 
+    /// @inheritdoc ISLAYVaultV2
+    function delegated() public view override returns (address) {
+        return _delegated;
+    }
+
+    /// @inheritdoc IERC20Metadata
     function decimals() public view override(ERC20Upgradeable, ERC4626Upgradeable, IERC20Metadata) returns (uint8) {
         return ERC4626Upgradeable.decimals();
     }
 
     /**
-     * @dev See {ERC20-_update} with additional requirements for the SLAYRouter.
+     * @dev See {ERC20Upgradable-_update} and with additional requirements in SLAYRouter.
      *
      * To _update the balances of the SLAYVault (and therefore mint/deposit/withdraw/redeem),
      * the following conditions must be met:
      *
-     * - the contract must not be paused in the SLAYRouter.
-     * - the contract must be whitelisted in the SLAYRouter.
+     * - the contract must not be paused in the SLAYRouter (whenNotPaused modifier).
+     * - the contract must be whitelisted in the SLAYRouter (whenWhitelisted modifier).
+     *
+     * @inheritdoc ERC20Upgradeable
      */
-    function _update(address from, address to, uint256 value) internal virtual override whenNotPaused whenWhitelisted {
+    function _update(address from, address to, uint256 value) internal virtual override whenNotPaused onlyWhitelisted {
         super._update(from, to, value);
     }
 
@@ -152,25 +166,31 @@ contract SLAYVault is
 
     /// @dev Throws if the SLAYVault is not whitelisted in the SLAYRouter.
     function _requireWhitelisted() internal view virtual {
-        if (!router.whitelisted(address(this))) {
+        if (!isWhitelisted()) {
             revert ExpectedWhitelisted();
         }
     }
 
-    /// @inheritdoc ISLAYVault
-    function getTotalPendingRedemption() external view returns (uint256) {
+    /// @inheritdoc ISLAYVaultV2
+    function isWhitelisted() public view override returns (bool) {
+        return router.isVaultWhitelisted(address(this));
+    }
+
+    /// @inheritdoc ISLAYVaultV2
+    function getTotalPendingRedemption() external view override returns (uint256) {
         return _totalPendingRedemption;
     }
 
     /**
-     * @dev Support the most common interfaces for SLAYVault. There might be more interfaces not listed here.
+     * @dev Support the most common interfaces for SLAYVault.
+     * There might be more interfaces not listed here.
      *
      * @inheritdoc ERC165Upgradeable
      */
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165Upgradeable) returns (bool) {
         return interfaceId == type(IERC20).interfaceId || interfaceId == type(IERC20Metadata).interfaceId
             || interfaceId == type(IERC4626).interfaceId || interfaceId == type(IERC7540Redeem).interfaceId
-            || interfaceId == type(IERC7540Operator).interfaceId || interfaceId == type(ISLAYVault).interfaceId
+            || interfaceId == type(IERC7540Operator).interfaceId || interfaceId == type(ISLAYVaultV2).interfaceId
             || super.supportsInterface(interfaceId);
     }
 
@@ -179,7 +199,11 @@ contract SLAYVault is
     //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IERC7540Redeem
-    function requestRedeem(uint256 shares, address controller, address owner) public returns (uint256 requestId) {
+    function requestRedeem(uint256 shares, address controller, address owner)
+        public
+        override
+        returns (uint256 requestId)
+    {
         // Checks
         if (shares == 0) {
             revert ZeroAmount();
@@ -190,13 +214,18 @@ contract SLAYVault is
             _spendAllowance(owner, _msgSender(), shares);
         }
 
+        // if the controller is not the sender, check that the controller has msg.sender set as the operator
+        if (controller != _msgSender() && !_isOperator[controller][_msgSender()]) {
+            revert NotControllerOrOperator();
+        }
+
         RedeemRequestStruct storage pendingRedemptionRequest = _pendingRedemption[controller];
 
         // increment the shares in the pending redemption request
         pendingRedemptionRequest.shares += shares;
 
         // reset the claimableAt to the current time + withdrawalDelay
-        uint32 withdrawalDelay = registry.getWithdrawalDelay(delegated);
+        uint32 withdrawalDelay = registry.getWithdrawalDelay(_delegated);
         pendingRedemptionRequest.claimableAt = block.timestamp + withdrawalDelay;
 
         // update _totalPendingRedemption
@@ -209,7 +238,7 @@ contract SLAYVault is
     }
 
     /// @inheritdoc IERC7540Redeem
-    function pendingRedeemRequest(uint256, address controller) public view returns (uint256 pendingShares) {
+    function pendingRedeemRequest(uint256, address controller) public view override returns (uint256 pendingShares) {
         RedeemRequestStruct storage request = _pendingRedemption[controller];
         if (request.claimableAt > block.timestamp) {
             return request.shares;
@@ -218,7 +247,12 @@ contract SLAYVault is
     }
 
     /// @inheritdoc IERC7540Redeem
-    function claimableRedeemRequest(uint256, address controller) public view returns (uint256 claimableShares) {
+    function claimableRedeemRequest(uint256, address controller)
+        public
+        view
+        override
+        returns (uint256 claimableShares)
+    {
         RedeemRequestStruct storage request = _pendingRedemption[controller];
         if (request.claimableAt <= block.timestamp && request.shares > 0) {
             return request.shares;
@@ -226,15 +260,31 @@ contract SLAYVault is
         return 0;
     }
 
-    /// @inheritdoc IERC7540Operator
-    function setOperator(address operator, bool approved) external returns (bool success) {
+    /**
+     * @notice Set an operator for a controller.
+     * This is ERC7540's Operator, not SatLayer's Operator.
+     * An Operator in this context is an account that can manage Requests on behalf of another account.
+     * This includes the ability to request and claim redemptions.
+     * You do not need to set an Operator to request or claim redemptions,
+     * this is an optional feature to allow third parties to manage redemptions on behalf of the controller.
+     * As described in the ERC7540 standard.
+     *
+     * @inheritdoc IERC7540Operator
+     */
+    function setOperator(address operator, bool approved) external override returns (bool success) {
         _isOperator[_msgSender()][operator] = approved;
         emit OperatorSet(_msgSender(), operator, approved);
         return true;
     }
 
-    /// @inheritdoc IERC7540Operator
-    function isOperator(address controller, address operator) external view returns (bool status) {
+    /**
+     * @notice Check if the `operator` is an approved operator for the `controller`.
+     * Not is not the same as the SatLayer Operator.
+     * See ERC7540 for more details on Operators.
+     *
+     * @inheritdoc IERC7540Operator
+     */
+    function isOperator(address controller, address operator) external view override returns (bool status) {
         return _isOperator[controller][operator];
     }
 
@@ -387,5 +437,16 @@ contract SLAYVault is
     /// @dev For ERC7540, preview functions MUST revert for all callers and inputs.
     function previewRedeem(uint256) public pure virtual override(IERC4626, ERC4626Upgradeable) returns (uint256) {
         revert PreviewNotSupported();
+    }
+
+    /// @inheritdoc ISLAYVaultV2
+    function lockSlashing(uint256 amount) external override {
+        if (_msgSender() != address(router)) {
+            revert NotRouter();
+        }
+
+        SafeERC20.safeTransfer(IERC20(asset()), address(router), amount);
+
+        emit SlashingLocked(amount);
     }
 }

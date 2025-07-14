@@ -1,6 +1,9 @@
 name-template: "v$RESOLVED_VERSION"
 tag-template: "v$RESOLVED_VERSION"
 categories:
+  - title: "Contracts"
+    labels: ["a/contracts"]
+
   - title: "CosmWasm"
     labels: ["a/crates"]
 
@@ -20,6 +23,11 @@ categories:
   - title: "Documentation"
     collapse-after: 5
     labels: ["a/docs"]
+
+  - title: "Dependencies"
+    collapse-after: 5
+    labels: ["dependencies"]
+
 sort-by: title
 change-template: "- $TITLE @$AUTHOR (#$NUMBER)"
 change-title-escapes: '\<*_&'

@@ -363,21 +363,21 @@ func RewardsCommand() *cobra.Command {
 	command.AddCommand(rewardsProofCmd)  // add "rewards proof <earner> <reward> -f <file-path>" command
 
 	// merkle create
-	rewardsCreateCmd.PersistentFlags().StringVarP(&filePath, "file-path", "f", "./data", "Path to the distribution json file, where /<chain-id>/<service>/<token>/distribution.json will be assumed")
+	rewardsCreateCmd.PersistentFlags().StringVarP(&filePath, "file-path", "f", "./data", "Path to the distribution json file")
 	err := rewardsCreateCmd.MarkPersistentFlagRequired("file-path")
 	if err != nil {
 		fmt.Println("Error marking file-path flag as required:", err)
 	}
 
 	// merkle load
-	rewardsLoadCmd.PersistentFlags().StringVarP(&filePath, "file-path", "f", "./data", "Path to the distribution json file, where /<chain-id>/<service>/<token>/distribution.json will be assumed")
+	rewardsLoadCmd.PersistentFlags().StringVarP(&filePath, "file-path", "f", "./data", "Path to the distribution json file")
 	err = rewardsLoadCmd.MarkPersistentFlagRequired("file-path")
 	if err != nil {
 		fmt.Println("Error marking flag as required:", err)
 	}
 
 	// merkle proof
-	rewardsProofCmd.PersistentFlags().StringVarP(&filePath, "file-path", "f", "./data", "Path to the distribution json file, where /<chain-id>/<service>/<token>/distribution.json will be assumed")
+	rewardsProofCmd.PersistentFlags().StringVarP(&filePath, "file-path", "f", "./data", "Path to the distribution json file")
 	err = rewardsProofCmd.MarkPersistentFlagRequired("file-path")
 	if err != nil {
 		fmt.Println("Error marking flag as required:", err)
