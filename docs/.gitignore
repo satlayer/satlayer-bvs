@@ -1,2 +1,4 @@
 .next
 _pagefind/
+public/sitemap*.xml
+public/robots.txt
