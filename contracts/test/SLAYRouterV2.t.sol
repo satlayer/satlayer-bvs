@@ -498,14 +498,14 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         _advanceBlockBy(100);
 
         // Service initiates slashing request
-        ISLAYRouterSlashingV2.Request memory request = ISLAYRouterSlashingV2.Request({
+        ISLAYRouterSlashingV2.Payload memory requestPayload = ISLAYRouterSlashingV2.Payload({
             mbips: 1_000_000, // 10%
             timestamp: uint32(block.timestamp) - 100,
             operator: operator,
-            metadata: ISLAYRouterSlashingV2.Metadata({reason: "Missing Blocks"})
+            reason: "Missing Blocks"
         });
         vm.prank(service);
-        bytes32 slashId = router.requestSlashing(request);
+        bytes32 slashId = router.requestSlashing(requestPayload);
 
         // fast forward to after resolution window
         _advanceBlockBySeconds(3600);
@@ -521,7 +521,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         vm.prank(guardrail);
         vm.expectEmit();
         emit ISLAYRouterSlashingV2.GuardrailConfirmed(slashId, true);
-        router.guardrailVote(slashId, true);
+        router.guardrailConfirm(slashId, true);
 
         // Service finalizes slashing
         vm.prank(service);
@@ -530,11 +530,11 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         router.finalizeSlashing(slashId);
 
         // assert that the slashing request is removed from the service/operator mapping
-        ISLAYRouterSlashingV2.RequestInfo memory removedRequest = router.getPendingSlashingRequest(service, operator);
-        assertEq(removedRequest.request.operator, address(0));
+        ISLAYRouterSlashingV2.Request memory removedRequest = router.getPendingSlashingRequest(service, operator);
+        assertEq(removedRequest.operator, address(0));
 
         // assert status of request is Finalized
-        ISLAYRouterSlashingV2.RequestInfo memory slashRequestAfterFinalize = router.getSlashingRequest(slashId);
+        ISLAYRouterSlashingV2.Request memory slashRequestAfterFinalize = router.getSlashingRequest(slashId);
         assertTrue(slashRequestAfterFinalize.status == ISLAYRouterSlashingV2.Status.Finalized);
 
         // assert that the slashed assets are moved to the destination
