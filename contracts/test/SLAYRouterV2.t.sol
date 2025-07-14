@@ -520,7 +520,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         router.setGuardrail(guardrail);
         vm.prank(guardrail);
         vm.expectEmit();
-        emit ISLAYRouterSlashingV2.GuardrailVoted(slashId, true);
+        emit ISLAYRouterSlashingV2.GuardrailConfirmed(slashId, true);
         router.guardrailVote(slashId, true);
 
         // Service finalizes slashing

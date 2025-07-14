@@ -63,8 +63,8 @@ contract SLAYRouterV2 is
     /// @dev Stores the locked assets for each slashing request.
     mapping(bytes32 slashId => ISLAYRouterSlashingV2.LockedAssets[]) private _lockedAssets;
 
-    /// @dev Stores the guardrail votes for each slashing request. 0 - unset, 1 - approve, 2 - reject.
-    mapping(bytes32 slashId => uint8) private _guardrailVotes;
+    /// @dev Stores the guardrail confirmation for each slashing request. 0 - unset, 1 - approve, 2 - reject.
+    mapping(bytes32 slashId => uint8) private _guardrailConfirm;
 
     /// @dev Modifier to check if the caller is a registered service.
     /// Information is sourced from checking the SLAYRegistryV2 contract.
@@ -314,9 +314,9 @@ contract SLAYRouterV2 is
             revert ISLAYRouterSlashingV2.InvalidStatus();
         }
 
-        // Check guardrail contract vote. 0 - unset, 1 - approve, 2 - reject.
-        if (_guardrailVotes[slashId] != 1) {
-            revert ISLAYRouterSlashingV2.GuardrailVoteNotApproved();
+        // Check guardrail confirmation. 0 - unset, 1 - approve, 2 - reject.
+        if (_guardrailConfirm[slashId] != 1) {
+            revert ISLAYRouterSlashingV2.GuardrailHaveNotApproved();
         }
 
         // get slash parameters
@@ -332,6 +332,8 @@ contract SLAYRouterV2 is
 
             // Transfer the locked assets to the slashing destination
             SafeERC20.safeTransfer(IERC20(vault.asset()), slashParameter.destination, lockedAsset.amount);
+
+            delete _lockedAssets[slashId][i];
 
             // vaultsCount is bounded to _maxVaultsPerOperator
             unchecked {
@@ -353,7 +355,7 @@ contract SLAYRouterV2 is
     }
 
     /// @inheritdoc ISLAYRouterSlashingV2
-    function guardrailVote(bytes32 slashId, bool vote) external override whenNotPaused {
+    function guardrailConfirm(bytes32 slashId, bool confirm) external override whenNotPaused {
         // Only the guardrail can call this function
         if (_guardrail == address(0)) {
             revert ISLAYRouterSlashingV2.Unauthorized();
@@ -369,15 +371,15 @@ contract SLAYRouterV2 is
             revert ISLAYRouterSlashingV2.SlashingRequestNotFound();
         }
 
-        // check if the slashing id has already been voted on
-        if (_guardrailVotes[slashId] != 0) {
-            revert ISLAYRouterSlashingV2.SlashingRequestVoted();
+        // check if the slashing id has already been confirmed on by guardrail.
+        if (_guardrailConfirm[slashId] != 0) {
+            revert ISLAYRouterSlashingV2.GuardrailHaveApproved();
         }
 
-        // Set the guardrail vote
-        _guardrailVotes[slashId] = vote ? 1 : 2;
+        // Guardrail confirm are true - approve, false - reject.
+        _guardrailConfirm[slashId] = confirm ? 1 : 2;
 
-        emit ISLAYRouterSlashingV2.GuardrailVoted(slashId, vote);
+        emit ISLAYRouterSlashingV2.GuardrailConfirmed(slashId, confirm);
     }
 
     function _createSlashingRequest(address service, address operator, ISLAYRouterSlashingV2.RequestInfo memory info)

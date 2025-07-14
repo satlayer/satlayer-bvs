@@ -21,9 +21,9 @@ interface ISLAYRouterSlashingV2 {
 
     error SlashingResolutionNotReached();
 
-    error SlashingRequestVoted();
+    error GuardrailHaveApproved();
 
-    error GuardrailVoteNotApproved();
+    error GuardrailHaveNotApproved();
 
     /*//////////////////////////////////////////////////////////////
                                 EVENTS
@@ -64,8 +64,8 @@ interface ISLAYRouterSlashingV2 {
         address indexed service, address indexed operator, bytes32 indexed slashId, address destination
     );
 
-    /// @dev Emitted when a slash request has been voted on by the guardrail.
-    event GuardrailVoted(bytes32 indexed slashId, bool vote);
+    /// @dev Emitted when a slash request has been confirmed on by the guardrail.
+    event GuardrailConfirmed(bytes32 indexed slashId, bool confirm);
 
     /**
      * @title Slashing Status
@@ -215,13 +215,13 @@ interface ISLAYRouterSlashingV2 {
     function finalizeSlashing(bytes32 slashId) external;
 
     /**
-     * @notice For the guardrail to vote on a slashing request before slashing can be finalized.
+     * @notice For the guardrail to confirm on a slashing request before slashing can be finalized.
      * Can only be called by the guardrail.
      * @dev The guardrail can approve or reject the slashing request. The slashId will only be checked for existence.
      * @param slashId The unique identifier for the slash request.
-     * @param vote True if the guardrail approves the slashing request, false otherwise.
+     * @param confirm True if the guardrail approves the slashing request, false otherwise.
      */
-    function guardrailVote(bytes32 slashId, bool vote) external;
+    function guardrailConfirm(bytes32 slashId, bool confirm) external;
 }
 
 /// @title Slashing Request ID Library
