@@ -1003,7 +1003,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         });
 
         vm.prank(service);
-        vm.expectRevert("mbips exceeds max allowed");
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.MbipsExceedsMaxAllowed.selector));
         router.requestSlashing(request2);
     }
 }
