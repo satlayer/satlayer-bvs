@@ -237,21 +237,14 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         _advanceBlockBy(10);
 
-        ISLAYRouterSlashingV2.Request memory request = ISLAYRouterSlashingV2.Request({
-            mbips: 100,
-            timestamp: timeAtWhichOffenseOccurs,
-            operator: operator,
-            metadata: ISLAYRouterSlashingV2.Metadata({reason: "Missing Blocks"})
-        });
-
         vm.prank(service);
-        router.requestSlashing(request);
+        router.requestSlashing(operator, 100, timeAtWhichOffenseOccurs, "Missing Blocks");
 
-        ISLAYRouterSlashingV2.RequestInfo memory info = router.getPendingSlashingRequest(service, operator);
+        ISLAYRouterSlashingV2.Request memory info = router.getPendingSlashingRequest(service, operator);
 
-        assertEq(info.request.operator, operator);
-        assertEq(info.request.timestamp, timeAtWhichOffenseOccurs);
-        assertEq(info.request.mbips, 100);
+        assertEq(info.operator, operator);
+        assertEq(info.timestamp, timeAtWhichOffenseOccurs);
+        assertEq(info.mbips, 100);
         assertTrue(info.status == ISLAYRouterSlashingV2.Status.Pending);
         assertEq(info.requestResolution, uint32(block.timestamp) + 3600); // now + resolution window
         assertEq(info.requestExpiry, uint32(block.timestamp) + 3600 + 7 days);
@@ -304,16 +297,11 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         _advanceBlockBy(1000);
 
         // Service initiates slashing request
-        ISLAYRouterSlashingV2.Request memory request = ISLAYRouterSlashingV2.Request({
-            mbips: 1_000_000, // 10%
-            timestamp: uint32(block.timestamp) - 100,
-            operator: operator,
-            metadata: ISLAYRouterSlashingV2.Metadata({reason: "Missing Blocks"})
-        });
         vm.prank(service);
-        bytes32 slashId = router.requestSlashing(request);
+        // 10%
+        bytes32 slashId = router.requestSlashing(operator, 1_000_000, uint32(block.timestamp) - 100, "Missing Blocks");
 
-        ISLAYRouterSlashingV2.RequestInfo memory pendingRequest = router.getPendingSlashingRequest(service, operator);
+        ISLAYRouterSlashingV2.Request memory pendingRequest = router.getPendingSlashingRequest(service, operator);
         assertTrue(pendingRequest.status == ISLAYRouterSlashingV2.Status.Pending);
 
         // fast forward to after resolution window
@@ -326,8 +314,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         router.lockSlashing(slashId);
 
         // assert status of request is Locked
-        ISLAYRouterSlashingV2.RequestInfo memory slashRequestAfterLock =
-            router.getPendingSlashingRequest(service, operator);
+        ISLAYRouterSlashingV2.Request memory slashRequestAfterLock = router.getPendingSlashingRequest(service, operator);
         assertTrue(slashRequestAfterLock.status == ISLAYRouterSlashingV2.Status.Locked);
 
         // assert that the slashed assets are moved to the router
@@ -391,17 +378,12 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         _advanceBlockBy(1000);
 
         // Service initiates slashing request
-        ISLAYRouterSlashingV2.Request memory request = ISLAYRouterSlashingV2.Request({
-            mbips: 1_000_000, // 10%
-            timestamp: uint32(block.timestamp) - 100,
-            operator: operator,
-            metadata: ISLAYRouterSlashingV2.Metadata({reason: "Missing Blocks"})
-        });
         vm.prank(service);
-        bytes32 slashId = router.requestSlashing(request);
+        // 10%
+        bytes32 slashId = router.requestSlashing(operator, 1_000_000, uint32(block.timestamp) - 100, "Missing Blocks");
 
         // get the pending slashing request
-        ISLAYRouterSlashingV2.RequestInfo memory pendingRequest = router.getPendingSlashingRequest(service, operator);
+        ISLAYRouterSlashingV2.Request memory pendingRequest = router.getPendingSlashingRequest(service, operator);
         assertTrue(pendingRequest.status == ISLAYRouterSlashingV2.Status.Pending);
 
         // revert when non-service tries to lock slashing
@@ -441,8 +423,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         router.lockSlashing(slashId);
 
         // assert status of request is Locked
-        ISLAYRouterSlashingV2.RequestInfo memory slashRequestAfterLock =
-            router.getPendingSlashingRequest(service, operator);
+        ISLAYRouterSlashingV2.Request memory slashRequestAfterLock = router.getPendingSlashingRequest(service, operator);
         assertTrue(slashRequestAfterLock.status == ISLAYRouterSlashingV2.Status.Locked);
 
         // assert router balance is increased
