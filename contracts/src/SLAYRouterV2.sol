@@ -372,7 +372,7 @@ contract SLAYRouterV2 is
 
         // check if the slashing id has already been approved on by guardrail.
         if (_guardrailApproval[slashId] != 0) {
-            revert ISLAYRouterSlashingV2.GuardrailHaveApproved();
+            revert ISLAYRouterSlashingV2.GuardrailAlreadyApproved();
         }
 
         // Guardrail approval are true - approve, false - reject.

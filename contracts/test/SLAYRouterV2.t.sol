@@ -546,6 +546,77 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         assertEq(routerBalance, 0);
     }
 
+    function test_Revert_finalizeSlashing_guardrail_reject() public {
+        _advanceBlockBy(20000000);
+        address operator = makeAddr("Operator X");
+        address service = makeAddr("Service X");
+
+        // register operator
+        vm.prank(operator);
+        registry.registerAsOperator("operator", "Operator X");
+
+        // create a vault for operator and fund it
+        MockERC20 underlying = new MockERC20("Token", "TKN", 18);
+        uint8 underlyingDecimal = underlying.decimals();
+        uint256 underlyingMinorUnit = 10 ** underlyingDecimal;
+        vm.prank(operator);
+        address vault = address(vaultFactory.create(underlying));
+        vm.prank(owner);
+        router.setVaultWhitelist(vault, true);
+        underlying.mint(vault, 1_000_000 * underlyingMinorUnit); // mint 1m to the vault
+
+        // register service and enable slashing
+        vm.startPrank(service);
+        registry.registerAsService("service", "Service A");
+        registry.enableSlashing(
+            ISLAYRegistryV2.SlashParameter({destination: service, maxMbips: 1_000_000, resolutionWindow: 3600})
+        );
+        vm.stopPrank();
+
+        // register service to operator and vice versa
+        vm.prank(operator);
+        registry.registerServiceToOperator(service);
+        vm.prank(service);
+        registry.registerOperatorToService(operator);
+
+        // enable slashing for operator
+        vm.prank(operator);
+        registry.approveSlashingFor(service);
+
+        // advance time to allow slashing
+        _advanceBlockBy(100);
+
+        // Service initiates slashing request
+        ISLAYRouterSlashingV2.Payload memory requestPayload = ISLAYRouterSlashingV2.Payload({
+            mbips: 1_000_000, // 10%
+            timestamp: uint32(block.timestamp) - 100,
+            operator: operator,
+            reason: "Missing Blocks"
+        });
+        vm.prank(service);
+        bytes32 slashId = router.requestSlashing(requestPayload);
+
+        // fast forward to after resolution window
+        _advanceBlockBySeconds(3600);
+        // Service locks slashing
+        vm.prank(service);
+        router.lockSlashing(slashId);
+
+        // Guardrail rejects the slashing request
+        address guardrail = makeAddr("Guardrail");
+        vm.prank(owner);
+        router.setGuardrail(guardrail);
+        vm.prank(guardrail);
+        vm.expectEmit();
+        emit ISLAYRouterSlashingV2.GuardrailApproval(slashId, false);
+        router.guardrailApprove(slashId, false);
+
+        // Revert when service tries to finalize slashing due to guardrail rejection
+        vm.prank(service);
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.GuardrailHaveNotApproved.selector));
+        router.finalizeSlashing(slashId);
+    }
+
     function test_Revert_finalizeSlashing() public {
         _advanceBlockBy(20000000);
         address operator = makeAddr("Operator X");
@@ -732,12 +803,12 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         // Revert when guardrail tries to confirm slashing again
         vm.prank(guardrail);
-        vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.GuardrailHaveApproved.selector));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.GuardrailAlreadyApproved.selector));
         router.guardrailApprove(slashId, true);
 
         // Revert when guardrail tries to change the confirm status on a slashId
         vm.prank(guardrail);
-        vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.GuardrailHaveApproved.selector));
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.GuardrailAlreadyApproved.selector));
         router.guardrailApprove(slashId, false);
     }
 }

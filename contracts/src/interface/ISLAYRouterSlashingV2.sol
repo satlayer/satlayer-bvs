@@ -21,8 +21,8 @@ interface ISLAYRouterSlashingV2 {
 
     error SlashingResolutionNotReached();
 
-    /// @dev Error thrown when guardrail have approved/rejected the slashing request to be finalized.
-    error GuardrailHaveApproved();
+    /// @dev Error thrown when guardrail attempts to approved/rejected the slashing request more than once.
+    error GuardrailAlreadyApproved();
 
     /// @dev Error thrown when the guardrail has not approved the slashing request to be finalized.
     error GuardrailHaveNotApproved();
