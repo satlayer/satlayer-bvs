@@ -379,7 +379,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         // Service initiates slashing request
         vm.prank(service);
-        // 10this
+        // 10%
         bytes32 slashId = router.requestSlashing(operator, 1_000_000, uint32(block.timestamp) - 100, "Missing Blocks");
 
         // get the pending slashing request
