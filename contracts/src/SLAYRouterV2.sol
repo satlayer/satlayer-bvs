@@ -183,7 +183,7 @@ contract SLAYRouterV2 is
 
             if (pendingRequest.status == ISLAYRouterSlashingV2.Status.Pending) {
                 if (pendingRequest.requestExpiry > uint32(block.timestamp)) {
-                    // The previous slashing request is pending within expiry date or has locked.
+                    // The previous slashing request is pending and has not expired
                     revert("Previous slashing request lifecycle not completed");
                 } else {
                     // The previous slashing request is pending but expired
