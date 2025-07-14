@@ -32,7 +32,7 @@ interface ISLAYRouterSlashingV2 {
      * @param reason The reason for the slashing request, a human-readable string. Not stored on-chain.
      */
     event SlashingRequested(
-        address indexed service, address indexed operator, bytes32 slashId, Request request, string reason
+        address indexed service, address indexed operator, bytes32 indexed slashId, Request request, string reason
     );
 
     /**
@@ -41,13 +41,13 @@ interface ISLAYRouterSlashingV2 {
      * @param operator The address of the operator being slashed.
      * @param slashId The unique identifier for the slashing request.
      */
-    event SlashingCanceled(address indexed service, address indexed operator, bytes32 slashId);
+    event SlashingCanceled(address indexed service, address indexed operator, bytes32 indexed slashId);
 
     /**
      * @dev Emitted when a slash request has been locked.
      * This event is emitted when the slashed collateral are moved from the operator's vaults to the router for further processing.
      */
-    event SlashingLocked(address indexed service, address indexed operator, bytes32 slashId);
+    event SlashingLocked(address indexed service, address indexed operator, bytes32 indexed slashId);
 
     /**
      * @title Slashing Status
@@ -62,6 +62,26 @@ interface ISLAYRouterSlashingV2 {
         Finalized,
         /// The slashing request has been canceled.
         Canceled
+    }
+
+    /**
+     * @dev slashing request payload is a struct that contains the necessary information
+     * to initiate a slashing request. This struct is not stored on-chain, see {Request}.
+     */
+    struct Payload {
+        /// The operator address to slash.
+        /// The (service, operator) must have active registration at the timestamp.
+        address operator;
+        /// The percentage of tokens to slash in millis basis points (1/100,000th of a percent).
+        /// Max millis bips to slash is set by the service slashing parameters {ISLAYRegistryV2.SlashParameter}
+        /// at the timestamp and the operator must have opted in.
+        uint24 mbips;
+        /// The real timestamp at which the slashing condition occurred.
+        /// This timestamp does not have to be tied to the block timestamp.
+        uint32 timestamp;
+        /// The reason for the slashing request, must be a human-readable string max length of 250 characters.
+        //  The reason is for informational purposes, not stored on-chain, emitted in events.
+        string reason;
     }
 
     /**
@@ -86,17 +106,13 @@ interface ISLAYRouterSlashingV2 {
         /// The service that initiated the slashing request.
         address service;
         /// The percentage of tokens to slash in millis basis points (1/100,000th of a percent).
-        /// Max millis bips to slash is set by the service slashing parameters {ISLAYRegistryV2.SlashParameter}
-        /// at the timestamp and the operator must have opted in.
         uint24 mbips;
         /// The real timestamp at which the slashing condition occurred.
-        /// This timestamp does not have to be tied to the block timestamp.
         uint32 timestamp;
         /// The timestamp when the request was submitted.
         /// This is block timestamp when the slashing request was made.
         uint32 requestTime;
-        /// The operator address to slash.
-        /// The (service, operator) must have active registration at the timestamp.
+        /// The operator to slash.
         address operator;
         /// The timestamp when the request resolution window will end and becomes eligible for locking.
         /// This will be `requestTime` + `resolutionWindow`.
@@ -149,16 +165,10 @@ interface ISLAYRouterSlashingV2 {
      * When successful, this creates a slashing request with an expiry time based on the
      * resolutionWindow parameter and returns a unique slashing request ID.
      *
-     * @param operator The address of the operator to be slashed.
-     * @param mbips The amount to slash in millis basis points (1/100,000th of a percent).
-     * @param timestamp The timestamp when the slashing condition occurred.
-     * @param reason The reason for the slashing request, must be a human-readable string max length of 250 characters.
-     * The reason is for informational purposes, not stored on-chain, emitted in events.
+     * @param payload The slashing request payload containing the operator, mbips, timestamp, and reason.
      * @return slashId The unique identifier for the slashing request.
      */
-    function requestSlashing(address operator, uint24 mbips, uint32 timestamp, string calldata reason)
-        external
-        returns (bytes32 slashId);
+    function requestSlashing(Payload calldata payload) external returns (bytes32 slashId);
 
     /**
      * @dev Initiates the movement of slashed collateral from vaults to the router

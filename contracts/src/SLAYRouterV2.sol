@@ -155,25 +155,27 @@ contract SLAYRouterV2 is
     }
 
     /// @inheritdoc ISLAYRouterSlashingV2
-    function requestSlashing(address operator, uint24 mbips, uint32 timestamp, string calldata reason)
+    function requestSlashing(Payload calldata payload)
         external
         override
         onlyService(_msgSender())
         whenNotPaused
         returns (bytes32)
     {
-        require(bytes(reason).length <= 250, "reason too long");
-        require(mbips > 0, "mbips must be > 0");
-        require(timestamp <= block.timestamp, "timestamp in future");
+        require(bytes(payload.reason).length <= 250, "reason too long");
+        require(payload.mbips > 0, "mbips must be > 0");
+        require(payload.timestamp <= block.timestamp, "timestamp in future");
 
         address service = _msgSender();
         ISLAYRegistryV2.SlashParameter memory slashParameter =
-            registry.getSlashParameterAt(service, operator, timestamp);
+            registry.getSlashParameterAt(service, payload.operator, payload.timestamp);
 
-        require(mbips <= slashParameter.maxMbips, "mbips exceeds max allowed");
-        require(timestamp > (block.timestamp - registry.getWithdrawalDelay(operator)), "timestamp too old");
+        require(payload.mbips <= slashParameter.maxMbips, "mbips exceeds max allowed");
+        require(
+            payload.timestamp > (block.timestamp - registry.getWithdrawalDelay(payload.operator)), "timestamp too old"
+        );
 
-        bytes32 slashId = _pendingSlashingRequestIds[service][operator];
+        bytes32 slashId = _pendingSlashingRequestIds[service][payload.operator];
         if (slashId != bytes32(0)) {
             ISLAYRouterSlashingV2.Request storage pendingRequest = _slashingRequests[slashId];
 
@@ -190,7 +192,7 @@ contract SLAYRouterV2 is
                     // eligible for new slashing request to take place
                     // by canceling the previous slashing request.
                     pendingRequest.status = ISLAYRouterSlashingV2.Status.Canceled;
-                    emit ISLAYRouterSlashingV2.SlashingCanceled(service, operator, slashId);
+                    emit ISLAYRouterSlashingV2.SlashingCanceled(service, payload.operator, slashId);
                 }
             }
         }
@@ -199,18 +201,18 @@ contract SLAYRouterV2 is
         ISLAYRouterSlashingV2.Request memory request = ISLAYRouterSlashingV2.Request({
             status: ISLAYRouterSlashingV2.Status.Pending,
             service: service,
-            mbips: mbips,
-            timestamp: timestamp,
+            mbips: payload.mbips,
+            timestamp: payload.timestamp,
             requestTime: uint32(block.timestamp),
-            operator: operator,
+            operator: payload.operator,
             requestResolution: requestResolution,
             requestExpiry: requestResolution + SLASHING_REQUEST_EXPIRY_WINDOW
         });
 
         slashId = SlashingRequestId.hash(request);
-        _pendingSlashingRequestIds[service][operator] = slashId;
+        _pendingSlashingRequestIds[service][payload.operator] = slashId;
         _slashingRequests[slashId] = request;
-        emit ISLAYRouterSlashingV2.SlashingRequested(service, operator, slashId, request, reason);
+        emit ISLAYRouterSlashingV2.SlashingRequested(service, payload.operator, slashId, request, payload.reason);
         return slashId;
     }
 
