@@ -8,11 +8,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@cosmjs/cosmwasm-stargate": "^0.33.1",
-    "@cosmjs/crypto": "^0.33.1",
-    "@cosmjs/proto-signing": "^0.33.1",
-    "@cosmjs/stargate": "^0.33.1",
-    "@cosmjs/utils": "^0.33.1",
+    "@cosmjs/cosmwasm-stargate": "^0.34.0",
+    "@cosmjs/crypto": "^0.34.0",
+    "@cosmjs/proto-signing": "^0.34.0",
+    "@cosmjs/stargate": "^0.34.0",
+    "@cosmjs/utils": "^0.34.0",
     "@satlayer/cli": "workspace:*",
     "@satlayer/cosmwasm-schema": "workspace:*",
     "execa": "^9.6.0"
