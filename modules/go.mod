@@ -9,7 +9,7 @@ require (
 	cosmossdk.io/math v1.5.3
 	github.com/CosmWasm/wasmd v0.52.0
 	github.com/cometbft/cometbft v0.38.17
-	github.com/cosmos/cosmos-sdk v0.53.2
+	github.com/cosmos/cosmos-sdk v0.53.3
 	github.com/docker/go-connections v0.5.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
