@@ -339,14 +339,10 @@ contract SLAYRouterV2 is
     }
 
     /// @inheritdoc ISLAYRouterSlashingV2
-    function cancelSlashing(address operator) external override whenNotPaused onlyService(_msgSender()) {
+    function cancelSlashing(bytes32 slashId) external override whenNotPaused onlyService(_msgSender()) {
         address service = _msgSender();
-        bytes32 pendingSlashId = _pendingSlashingRequestIds[service][operator];
-        if (pendingSlashId == bytes32(0)) {
-            revert ISLAYRouterSlashingV2.SlashingRequestNotFound();
-        }
 
-        ISLAYRouterSlashingV2.Request storage pendingSlashingRequest = _slashingRequests[pendingSlashId];
+        ISLAYRouterSlashingV2.Request storage pendingSlashingRequest = _slashingRequests[slashId];
         if (pendingSlashingRequest.service != service) revert ISLAYRouterSlashingV2.Unauthorized();
 
         if (pendingSlashingRequest.status != ISLAYRouterSlashingV2.Status.Pending) {
@@ -354,7 +350,7 @@ contract SLAYRouterV2 is
         }
 
         pendingSlashingRequest.status = ISLAYRouterSlashingV2.Status.Canceled;
-        emit ISLAYRouterSlashingV2.SlashingCanceled(service, operator, pendingSlashId);
+        emit ISLAYRouterSlashingV2.SlashingCanceled(service, pendingSlashingRequest.operator, slashId);
     }
 
     /// @inheritdoc ISLAYRouterSlashingV2

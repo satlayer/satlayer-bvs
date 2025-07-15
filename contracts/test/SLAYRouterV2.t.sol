@@ -1049,7 +1049,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
             reason: "Missing Blocks"
         });
 
-        router.requestSlashing(payload);
+        bytes32 slashId = router.requestSlashing(payload);
 
         ISLAYRouterSlashingV2.Request memory info = router.getPendingSlashingRequest(service, operator);
 
@@ -1058,7 +1058,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         _advanceBlockBy(200);
 
         vm.prank(service);
-        router.cancelSlashing(operator);
+        router.cancelSlashing(slashId);
 
         ISLAYRouterSlashingV2.Request memory infoAfterCanceled = router.getPendingSlashingRequest(service, operator);
 
@@ -1135,7 +1135,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
             reason: "Missing Blocks"
         });
 
-        router.requestSlashing(payload);
+        bytes32 slashId = router.requestSlashing(payload);
 
         ISLAYRouterSlashingV2.Request memory info = router.getPendingSlashingRequest(service, operator);
 
@@ -1144,8 +1144,8 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         _advanceBlockBy(200);
 
         vm.prank(service2);
-        vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.SlashingRequestNotFound.selector));
-        router.cancelSlashing(operator);
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.Unauthorized.selector));
+        router.cancelSlashing(slashId);
 
         ISLAYRouterSlashingV2.Request memory infoAgain = router.getPendingSlashingRequest(service, operator);
 
@@ -1214,6 +1214,6 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         vm.prank(service);
         vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.InvalidStatus.selector));
-        router.cancelSlashing(operator);
+        router.cancelSlashing(slashId);
     }
 }

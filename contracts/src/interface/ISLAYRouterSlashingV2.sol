@@ -227,9 +227,9 @@ interface ISLAYRouterSlashingV2 {
 
     /**
      * Cancel the slashing request by the same service that requested it to an operator.
-     * @param operator Address of the operator.
+     * @param slashId identifier of a slash, hash of a slash request's elements.
      */
-    function cancelSlashing(address operator) external;
+    function cancelSlashing(bytes32 slashId) external;
 }
 
 /// @title Slashing Request ID Library
