@@ -338,6 +338,25 @@ contract SLAYRouterV2 is
         );
     }
 
+    /// @inheritdoc ISLAYRouterV2
+    function cancelSlashing(address operator) external onlyService(_msgSender()) {
+        address service = _msgSender();
+        bytes32 pendingSlashId = _pendingSlashingRequestIds[service][operator];
+        ISLAYRouterSlashingV2.Request memory pendingSlashingRequest = _slashingRequests[pendingSlashId];
+        require(pendingSlashId != bytes32(0), "Slashing request for given operator does not exist.");
+        require(
+            pendingSlashingRequest.service == service, "Only service that has invoked the slash request can cancel."
+        );
+        require(
+            pendingSlashingRequest.status == ISLAYRouterSlashingV2.Status.Pending,
+            "Only slashing requests that has not progressed beyond pending can be canceled."
+        );
+
+        pendingSlashingRequest.status = ISLAYRouterSlashingV2.Status.Canceled;
+        _slashingRequests[pendingSlashId] = pendingSlashingRequest;
+        emit ISLAYRouterSlashingV2.SlashingCanceled(service, operator, pendingSlashId);
+    }
+
     /// @inheritdoc ISLAYRouterSlashingV2
     function guardrailApprove(bytes32 slashId, bool approve) external override whenNotPaused {
         // Only the guardrail can call this function

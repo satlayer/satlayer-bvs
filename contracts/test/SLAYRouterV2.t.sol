@@ -1006,4 +1006,56 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         vm.expectRevert("mbips exceeds max allowed");
         router.requestSlashing(request2);
     }
+
+    function test_slashCancel_ideal() public {
+        _advanceBlockBy(20000000);
+        address operator = makeAddr("Operator X");
+        address service = makeAddr("Service X");
+
+        vm.prank(operator);
+        registry.registerAsOperator("operator.com", "Operator X");
+
+        vm.startPrank(service);
+        registry.registerAsService("service.com", "Service X");
+        registry.enableSlashing(
+            ISLAYRegistryV2.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
+        );
+        registry.registerOperatorToService(operator);
+        vm.stopPrank();
+
+        vm.prank(operator);
+        registry.registerServiceToOperator(service);
+
+        _advanceBlockBy(10);
+
+        vm.prank(operator);
+        registry.approveSlashingFor(service);
+
+        uint32 newDelay = 8 days;
+        vm.prank(operator);
+        registry.setWithdrawalDelay(newDelay);
+
+        _advanceBlockBy(10);
+
+        uint32 timeAtWhichOffenseOccurs = uint32(block.timestamp);
+
+        _advanceBlockBy(10);
+
+        vm.prank(service);
+        ISLAYRouterSlashingV2.Payload memory payload = ISLAYRouterSlashingV2.Payload({
+            operator: operator,
+            mbips: 100,
+            timestamp: timeAtWhichOffenseOccurs,
+            reason: "Missing Blocks"
+        });
+        router.requestSlashing(payload);
+
+        ISLAYRouterSlashingV2.Request memory info = router.getPendingSlashingRequest(service, operator);
+
+        assertTrue(info.status == ISLAYRouterSlashingV2.Status.Pending);
+
+        _advanceBlockBy(200);
+
+        vm.prank(service);
+    }
 }
