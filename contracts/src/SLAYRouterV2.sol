@@ -350,6 +350,7 @@ contract SLAYRouterV2 is
         }
 
         pendingSlashingRequest.status = ISLAYRouterSlashingV2.Status.Canceled;
+        delete _pendingSlashingRequestIds[service][pendingSlashingRequest.operator];
         emit ISLAYRouterSlashingV2.SlashingCanceled(service, pendingSlashingRequest.operator, slashId);
     }
 

@@ -1060,7 +1060,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         vm.prank(service);
         router.cancelSlashing(slashId);
 
-        ISLAYRouterSlashingV2.Request memory infoAfterCanceled = router.getPendingSlashingRequest(service, operator);
+        ISLAYRouterSlashingV2.Request memory infoAfterCanceled = router.getSlashingRequest(slashId);
 
         assertTrue(infoAfterCanceled.status == ISLAYRouterSlashingV2.Status.Canceled);
 
