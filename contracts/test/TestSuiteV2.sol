@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {MockERC20} from "./MockERC20.sol";
-import {InitialImpl} from "../src/InitialImpl.sol";
+import {SLAYBase} from "../src/SLAYBase.sol";
 import {SLAYRegistryV2} from "../src/SLAYRegistryV2.sol";
 import {SLAYRouterV2} from "../src/SLAYRouterV2.sol";
 import {SLAYVaultFactoryV2} from "../src/SLAYVaultFactoryV2.sol";
@@ -16,14 +16,14 @@ import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 contract TestSuiteV2 is Test {
     address public owner = vm.randomAddress();
 
-    InitialImpl public initialImpl = new InitialImpl();
+    SLAYBase public initialImpl = new SLAYBase();
 
     SLAYRouterV2 public router;
     SLAYRegistryV2 public registry;
     SLAYVaultFactoryV2 public vaultFactory;
 
     function setUp() public virtual {
-        bytes memory initialData = abi.encodeCall(InitialImpl.initialize, (owner));
+        bytes memory initialData = abi.encodeCall(SLAYBase.initialize, (owner));
 
         router = SLAYRouterV2(UnsafeUpgrades.deployUUPSProxy(address(initialImpl), initialData));
         registry = SLAYRegistryV2(UnsafeUpgrades.deployUUPSProxy(address(initialImpl), initialData));

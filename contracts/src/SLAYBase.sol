@@ -7,18 +7,21 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 /**
- * @title Initial Implementation Contract
+ * @title Base Empty Implementation Contract
  * @dev Serves as a placeholder implementation used to reserve immutable addresses for SLAY contracts.
  * This contract is deployed once and initialized solely to setup the initial owner and pause functionality
  * before any actual SLAY contracts are deployed.
  * The reserved address (via proxies with this empty implementation) is later used to deploy
  * actual SLAY contracts with immutable references—enabling deployment of cyclically dependent contracts.
  *
- * Used by:
+ * IMPORTANT: Only ERC7201 storage layout is used in this contract.
+ * DO NOT add any state variables as this is an empty implementation.
+ *
+ * Extended by:
  * - SLAYRegistryV2.sol
  * - SLAYRouterV2.sol
  */
-contract InitialImpl is Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
+contract SLAYBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -46,15 +49,15 @@ contract InitialImpl is Initializable, UUPSUpgradeable, OwnableUpgradeable, Paus
 
     /**
      * @dev Pauses the contract.
-     * Allow the contract to be paused before any upgrade to the actual implementation.
+     * The modifiers `whenNotPaused` and `whenPaused` are available for use in derived contracts.
+     * This allows the base contract to be paused before any upgrade to the actual implementation.
      */
     function pause() external onlyOwner {
         _pause();
     }
 
     /**
-     * @dev Unpauses the contract..
-     * Allow the contract to be also be unpaused—if necessary.
+     * @dev Unpauses the contract.
      */
     function unpause() external onlyOwner {
         _unpause();
