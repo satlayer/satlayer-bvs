@@ -952,7 +952,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         router.requestSlashing(request);
     }
 
-    function test_slashRequest_out_of_bounds() public {
+    function test_slashRequest_invalid() public {
         _advanceBlockBy(20000000);
         address operator = makeAddr("Operator X");
         address service = makeAddr("Service X");
