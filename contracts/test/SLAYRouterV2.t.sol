@@ -868,7 +868,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         router.requestSlashing(request2);
     }
 
-    function test_slashRequest_offense_at_future() public {
+    function test_slashRequest_future_offense() public {
         _advanceBlockBy(20000000);
         address operator = makeAddr("Operator X");
         address service = makeAddr("Service X");
