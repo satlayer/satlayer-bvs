@@ -1048,6 +1048,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
             timestamp: timeAtWhichOffenseOccurs,
             reason: "Missing Blocks"
         });
+
         router.requestSlashing(payload);
 
         ISLAYRouterSlashingV2.Request memory info = router.getPendingSlashingRequest(service, operator);
@@ -1057,5 +1058,10 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         _advanceBlockBy(200);
 
         vm.prank(service);
+        router.cancelSlashing(operator);
+
+        ISLAYRouterSlashingV2.Request memory infoAfterCanceled = router.getPendingSlashingRequest(service, operator);
+
+        assertTrue(infoAfterCanceled.status == ISLAYRouterSlashingV2.Status.Canceled);
     }
 }
