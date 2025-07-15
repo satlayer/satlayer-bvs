@@ -84,7 +84,7 @@ contract SLAYRouterV2 is
      * Cyclic params in the constructor are possible as an SLAYBase (initial base implementation) is used for the initial deployment,
      * after which all the contracts are upgraded to their respective implementations with immutable proxy addresses.
      *
-     * This contract extend SLAYBase, which provides the initial owner and pause functionality.
+     * This contract extends SLAYBase, which provides the initial owner and pause functionality.
      * SLAYBase.initialize() is called to set the initial owner of the contract.
      *
      * @custom:oz-upgrades-unsafe-allow constructor
