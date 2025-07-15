@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import {InitialImpl} from "../src/InitialImpl.sol";
+import {SLAYBase} from "../src/SLAYBase.sol";
 import {SLAYVaultV2} from "../src/SLAYVaultV2.sol";
 import {SLAYVaultFactoryV2} from "../src/SLAYVaultFactoryV2.sol";
 import {SLAYRouterV2} from "../src/SLAYRouterV2.sol";
@@ -33,13 +33,13 @@ contract SlaynetDeployment is Script {
         vm.startBroadcast(pk);
 
         // Create the initial implementation contract and deploy the proxies for router and registry
-        Core.validateImplementation("InitialImpl.sol:InitialImpl", opts);
-        address initialImpl = address(new InitialImpl());
+        Core.validateImplementation("SLAYBase.sol:SLAYBase", opts);
+        address initialImpl = address(new SLAYBase());
 
         SLAYRouterV2 router =
-            SLAYRouterV2(UnsafeUpgrades.deployUUPSProxy(initialImpl, abi.encodeCall(InitialImpl.initialize, (owner))));
+            SLAYRouterV2(UnsafeUpgrades.deployUUPSProxy(initialImpl, abi.encodeCall(SLAYBase.initialize, (owner))));
         SLAYRegistryV2 registry =
-            SLAYRegistryV2(UnsafeUpgrades.deployUUPSProxy(initialImpl, abi.encodeCall(InitialImpl.initialize, (owner))));
+            SLAYRegistryV2(UnsafeUpgrades.deployUUPSProxy(initialImpl, abi.encodeCall(SLAYBase.initialize, (owner))));
 
         Core.validateImplementation("SLAYVaultV2.sol:SLAYVaultV2", opts);
         address vaultImpl = address(new SLAYVaultV2(router, registry));

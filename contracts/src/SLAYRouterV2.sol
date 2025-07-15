@@ -11,7 +11,7 @@ import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {InitialImpl} from "./InitialImpl.sol";
+import {SLAYBase} from "./SLAYBase.sol";
 
 import {ISLAYRegistryV2} from "./interface/ISLAYRegistryV2.sol";
 import {ISLAYRouterV2} from "./interface/ISLAYRouterV2.sol";
@@ -23,14 +23,14 @@ import {ISLAYRouterSlashingV2, SlashingRequestId} from "./interface/ISLAYRouterS
  * @dev The central point for managing interactions with SLAYVaults.
  * This contract is designed to work with the SLAYRegistryV2 for managing vaults and their states.
  *
- * @custom:oz-upgrades-from src/InitialImpl.sol:InitialImpl
+ * @custom:oz-upgrades-from src/SLAYBase.sol:SLAYBase
  */
 contract SLAYRouterV2 is
     Initializable,
     UUPSUpgradeable,
     OwnableUpgradeable,
     PausableUpgradeable,
-    InitialImpl,
+    SLAYBase,
     ISLAYRouterV2,
     ISLAYRouterSlashingV2
 {
@@ -81,8 +81,11 @@ contract SLAYRouterV2 is
 
     /**
      * @dev Set the immutable SLAYRegistryV2 proxy address for the implementation.
-     * Cyclic params in constructor are possible as an InitialImpl (empty implementation) is used for an initial deployment,
+     * Cyclic params in the constructor are possible as an SLAYBase (initial base implementation) is used for the initial deployment,
      * after which all the contracts are upgraded to their respective implementations with immutable proxy addresses.
+     *
+     * This contract extend SLAYBase, which provides the initial owner and pause functionality.
+     * SLAYBase.initialize() is called to set the initial owner of the contract.
      *
      * @custom:oz-upgrades-unsafe-allow constructor
      */

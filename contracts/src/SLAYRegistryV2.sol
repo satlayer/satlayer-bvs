@@ -8,7 +8,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-import {InitialImpl} from "./InitialImpl.sol";
+import {SLAYBase} from "./SLAYBase.sol";
 
 import {RelationshipV2} from "./RelationshipV2.sol";
 import {ISLAYRegistryV2} from "./interface/ISLAYRegistryV2.sol";
@@ -20,14 +20,14 @@ import {ISLAYRouterV2} from "./interface/ISLAYRouterV2.sol";
  * It allows services and operators to register themselves, manage their relationships,
  * and track registration statuses.
  *
- * @custom:oz-upgrades-from src/InitialImpl.sol:InitialImpl
+ * @custom:oz-upgrades-from src/SLAYBase.sol:SLAYBase
  */
 contract SLAYRegistryV2 is
     Initializable,
     UUPSUpgradeable,
     OwnableUpgradeable,
     PausableUpgradeable,
-    InitialImpl,
+    SLAYBase,
     ISLAYRegistryV2
 {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -86,11 +86,11 @@ contract SLAYRegistryV2 is
 
     /**
      * @dev Set the immutable SLAYRouterV2 proxy address for the implementation.
-     * Cyclic params in constructor are possible as an InitialImpl (empty implementation) is used for an initial deployment,
+     * Cyclic params in the constructor are possible as an SLAYBase (initial base implementation) is used for the initial deployment,
      * after which all the contracts are upgraded to their respective implementations with immutable proxy addresses.
      *
-     * InitialImpl.initialize() is called to set the initial owner of the contract.
-     * No other initialization is required for this implementation contract.
+     * This contract extend SLAYBase, which provides the initial owner and pause functionality.
+     * SLAYBase.initialize() is called to set the initial owner of the contract.
      *
      * @custom:oz-upgrades-unsafe-allow constructor
      */

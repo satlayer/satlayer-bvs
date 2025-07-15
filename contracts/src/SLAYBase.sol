@@ -18,7 +18,7 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
  * - SLAYRegistryV2.sol
  * - SLAYRouterV2.sol
  */
-contract InitialImpl is Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
+contract SLAYBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
