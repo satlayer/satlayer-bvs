@@ -1007,7 +1007,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         router.requestSlashing(request2);
     }
 
-    function test_slashCancel_ideal() public {
+    function test_cancelSlashing_ideal() public {
         _advanceBlockBy(20000000);
         address operator = makeAddr("Operator X");
         address service = makeAddr("Service X");
@@ -1063,9 +1063,25 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         ISLAYRouterSlashingV2.Request memory infoAfterCanceled = router.getPendingSlashingRequest(service, operator);
 
         assertTrue(infoAfterCanceled.status == ISLAYRouterSlashingV2.Status.Canceled);
+
+        _advanceBlockBy(200);
+
+        vm.prank(service);
+        ISLAYRouterSlashingV2.Payload memory payload2 = ISLAYRouterSlashingV2.Payload({
+            operator: operator,
+            mbips: 1000,
+            timestamp: uint32(block.timestamp - 12), // last block
+            reason: "Double Signs"
+        });
+
+        router.requestSlashing(payload2);
+
+        ISLAYRouterSlashingV2.Request memory newestSlashInfo = router.getPendingSlashingRequest(service, operator);
+        assertTrue(newestSlashInfo.status == ISLAYRouterSlashingV2.Status.Pending);
+        assertTrue(newestSlashInfo.mbips == 1000);
     }
 
-    function test_slashCancel_unauthorized() public {
+    function test_cancelSlashing_unauthorized() public {
         _advanceBlockBy(20000000);
         address operator = makeAddr("Operator X");
         address service = makeAddr("Service X");
@@ -1136,7 +1152,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         assertTrue(infoAgain.status == ISLAYRouterSlashingV2.Status.Pending);
     }
 
-    function test_slashCancel_not_pending() public {
+    function test_cancelSlashing_not_pending() public {
         _advanceBlockBy(20000000);
         address operator = makeAddr("Operator X");
         address service = makeAddr("Service X");
