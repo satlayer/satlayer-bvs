@@ -342,14 +342,11 @@ contract SLAYRouterV2 is
     function cancelSlashing(address operator) external onlyService(_msgSender()) {
         address service = _msgSender();
         bytes32 pendingSlashId = _pendingSlashingRequestIds[service][operator];
-        ISLAYRouterSlashingV2.Request memory pendingSlashingRequest = _slashingRequests[pendingSlashId];
-        require(pendingSlashId != bytes32(0), "Slashing request for given operator does not exist.");
+        ISLAYRouterSlashingV2.Request storage pendingSlashingRequest = _slashingRequests[pendingSlashId];
+        require(pendingSlashId != bytes32(0), ISLAYRouterSlashingV2.SlashingRequestNotFound);
+        require(pendingSlashingRequest.service == service, ISLAYRouterSlashingV2.Unauthorized);
         require(
-            pendingSlashingRequest.service == service, "Only service that has invoked the slash request can cancel."
-        );
-        require(
-            pendingSlashingRequest.status == ISLAYRouterSlashingV2.Status.Pending,
-            "Only slashing requests that has not progressed beyond pending can be canceled."
+            pendingSlashingRequest.status == ISLAYRouterSlashingV2.Status.Pending, ISLAYRouterSlashingV2.InvalidStatus
         );
 
         pendingSlashingRequest.status = ISLAYRouterSlashingV2.Status.Canceled;
