@@ -224,6 +224,12 @@ interface ISLAYRouterSlashingV2 {
      * @param approve True if the guardrail approves the slashing request, false otherwise.
      */
     function guardrailApprove(bytes32 slashId, bool approve) external;
+
+    /**
+     * Cancel the slashing request by the same service that requested it to an operator.
+     * @param operator Address of the operator.
+     */
+    function cancelSlashing(address operator) external;
 }
 
 /// @title Slashing Request ID Library

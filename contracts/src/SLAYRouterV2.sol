@@ -338,16 +338,20 @@ contract SLAYRouterV2 is
         );
     }
 
-    /// @inheritdoc ISLAYRouterV2
+    /// @inheritdoc ISLAYRouterSlashingV2
     function cancelSlashing(address operator) external onlyService(_msgSender()) {
         address service = _msgSender();
         bytes32 pendingSlashId = _pendingSlashingRequestIds[service][operator];
+        if (pendingSlashId == bytes32(0)) {
+            revert ISLAYRouterSlashingV2.SlashingRequestNotFound();
+        }
+
         ISLAYRouterSlashingV2.Request storage pendingSlashingRequest = _slashingRequests[pendingSlashId];
-        require(pendingSlashId != bytes32(0), ISLAYRouterSlashingV2.SlashingRequestNotFound);
-        require(pendingSlashingRequest.service == service, ISLAYRouterSlashingV2.Unauthorized);
-        require(
-            pendingSlashingRequest.status == ISLAYRouterSlashingV2.Status.Pending, ISLAYRouterSlashingV2.InvalidStatus
-        );
+        if (pendingSlashingRequest.service != service) revert ISLAYRouterSlashingV2.Unauthorized();
+
+        if (pendingSlashingRequest.status != ISLAYRouterSlashingV2.Status.Pending) {
+            revert ISLAYRouterSlashingV2.InvalidStatus();
+        }
 
         pendingSlashingRequest.status = ISLAYRouterSlashingV2.Status.Canceled;
         _slashingRequests[pendingSlashId] = pendingSlashingRequest;
