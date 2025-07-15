@@ -8,6 +8,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {TestSuiteV2} from "./TestSuiteV2.sol";
 import {ISLAYRouterV2} from "../src/interface/ISLAYRouterV2.sol";
 import {ISLAYRouterSlashingV2} from "../src/interface/ISLAYRouterSlashingV2.sol";
+import {ISLAYRegistryV2} from "../src/interface/ISLAYRegistryV2.sol";
 
 contract SLAYRouterV2Test is Test, TestSuiteV2 {
     function test_defaults() public view {
@@ -810,5 +811,199 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         vm.prank(guardrail);
         vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.GuardrailAlreadyApproved.selector));
         router.guardrailApprove(slashId, false);
+    }
+
+    function test_slashRequest_back_to_back() public {
+        _advanceBlockBy(20000000);
+        address operator = makeAddr("Operator X");
+        address service = makeAddr("Service X");
+
+        vm.prank(operator);
+        registry.registerAsOperator("operator.com", "Operator X");
+
+        vm.startPrank(service);
+        registry.registerAsService("service.com", "Service A");
+        registry.enableSlashing(
+            ISLAYRegistryV2.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
+        );
+        registry.registerOperatorToService(operator);
+        vm.stopPrank();
+
+        vm.prank(operator);
+        registry.registerServiceToOperator(service);
+
+        _advanceBlockBy(10);
+
+        vm.prank(operator);
+        registry.approveSlashingFor(service);
+
+        uint32 newDelay = 8 days;
+        vm.prank(operator);
+        registry.setWithdrawalDelay(newDelay);
+
+        _advanceBlockBy(10);
+
+        uint32 timeAtWhichOffenseOccurs = uint32(block.timestamp);
+
+        _advanceBlockBy(10);
+
+        ISLAYRouterSlashingV2.Payload memory request = ISLAYRouterSlashingV2.Payload({
+            mbips: 100,
+            timestamp: timeAtWhichOffenseOccurs,
+            operator: operator,
+            reason: "Missing Blocks"
+        });
+
+        vm.prank(service);
+        router.requestSlashing(request);
+
+        vm.prank(service);
+        ISLAYRouterSlashingV2.Payload memory request2 = ISLAYRouterSlashingV2.Payload({
+            mbips: 200,
+            timestamp: timeAtWhichOffenseOccurs,
+            operator: operator,
+            reason: "Double Signs"
+        });
+        vm.expectRevert("Previous slashing request lifecycle not completed");
+        router.requestSlashing(request2);
+    }
+
+    function test_slashRequest_future_offense() public {
+        _advanceBlockBy(20000000);
+        address operator = makeAddr("Operator X");
+        address service = makeAddr("Service X");
+
+        vm.prank(operator);
+        registry.registerAsOperator("operator.com", "Operator X");
+
+        vm.startPrank(service);
+        registry.registerAsService("service.com", "Service A");
+        registry.enableSlashing(
+            ISLAYRegistryV2.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
+        );
+        registry.registerOperatorToService(operator);
+        vm.stopPrank();
+
+        vm.prank(operator);
+        registry.registerServiceToOperator(service);
+
+        _advanceBlockBy(10);
+
+        vm.prank(operator);
+        registry.approveSlashingFor(service);
+
+        uint32 newDelay = 8 days;
+        vm.prank(operator);
+        registry.setWithdrawalDelay(newDelay);
+
+        _advanceBlockBy(10);
+
+        ISLAYRouterSlashingV2.Payload memory request = ISLAYRouterSlashingV2.Payload({
+            mbips: 100,
+            timestamp: uint32(block.timestamp + 12 * 2),
+            operator: operator,
+            reason: "Missing Blocks"
+        });
+
+        vm.prank(service);
+        vm.expectRevert("timestamp in future");
+        router.requestSlashing(request);
+    }
+
+    function test_slashRequest_not_service() public {
+        _advanceBlockBy(20000000);
+        address operator = makeAddr("Operator X");
+        address service = makeAddr("Service X");
+
+        vm.prank(operator);
+        registry.registerAsOperator("operator.com", "Operator X");
+
+        vm.startPrank(service);
+        registry.registerAsService("service.com", "Service A");
+        registry.enableSlashing(
+            ISLAYRegistryV2.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_000, resolutionWindow: 3600})
+        );
+        registry.registerOperatorToService(operator);
+        vm.stopPrank();
+
+        vm.prank(operator);
+        registry.registerServiceToOperator(service);
+
+        _advanceBlockBy(10);
+
+        vm.prank(operator);
+        registry.approveSlashingFor(service);
+
+        uint32 newDelay = 8 days;
+        vm.prank(operator);
+        registry.setWithdrawalDelay(newDelay);
+
+        _advanceBlockBy(10);
+
+        ISLAYRouterSlashingV2.Payload memory request = ISLAYRouterSlashingV2.Payload({
+            mbips: 100,
+            timestamp: uint32(block.timestamp),
+            operator: operator,
+            reason: "Missing Blocks"
+        });
+
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(ISLAYRegistryV2.ServiceNotFound.selector, address(operator)));
+        router.requestSlashing(request);
+    }
+
+    function test_slashRequest_invalid() public {
+        _advanceBlockBy(20000000);
+        address operator = makeAddr("Operator X");
+        address service = makeAddr("Service X");
+
+        vm.prank(operator);
+        registry.registerAsOperator("operator.com", "Operator X");
+
+        vm.startPrank(service);
+        registry.registerAsService("service.com", "Service A");
+        registry.enableSlashing(
+            ISLAYRegistryV2.SlashParameter({destination: vm.randomAddress(), maxMbips: 100_00, resolutionWindow: 3600})
+        );
+        registry.registerOperatorToService(operator);
+        vm.stopPrank();
+
+        vm.prank(operator);
+        registry.registerServiceToOperator(service);
+
+        _advanceBlockBy(10);
+
+        vm.prank(operator);
+        registry.approveSlashingFor(service);
+
+        uint32 newDelay = 8 days;
+        vm.prank(operator);
+        registry.setWithdrawalDelay(newDelay);
+
+        _advanceBlockBy(10);
+
+        ISLAYRouterSlashingV2.Payload memory request = ISLAYRouterSlashingV2.Payload({
+            mbips: 100,
+            timestamp: uint32(block.timestamp),
+            operator: operator,
+            reason: "Missing Blocks"
+        });
+
+        _advanceBlockBy(10000000);
+
+        vm.prank(service);
+        vm.expectRevert("timestamp too old");
+        router.requestSlashing(request);
+
+        ISLAYRouterSlashingV2.Payload memory request2 = ISLAYRouterSlashingV2.Payload({
+            mbips: 100_000,
+            timestamp: uint32(block.timestamp),
+            operator: operator,
+            reason: "Missing Blocks"
+        });
+
+        vm.prank(service);
+        vm.expectRevert("mbips exceeds max allowed");
+        router.requestSlashing(request2);
     }
 }
