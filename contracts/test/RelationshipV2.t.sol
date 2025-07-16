@@ -94,7 +94,7 @@ contract RelationshipV2Test is Test {
         assertEq(result2.slashParameterId, obj1.slashParameterId);
         assertEq(uint8(result2.status), uint8(obj1.status));
 
-        // Test timestamp before all checkpoints (should no checkpoint)
+        // Test timestamp before all checkpoints (should return no checkpoint aka default)
         RelationshipV2.Object memory result3 = RelationshipV2.upperLookup(_checkpoints, 500);
         assertEq(result3.slashParameterId, 0);
         assertEq(uint8(result3.status), uint8(0));
