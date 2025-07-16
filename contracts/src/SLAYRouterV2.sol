@@ -339,6 +339,22 @@ contract SLAYRouterV2 is
     }
 
     /// @inheritdoc ISLAYRouterSlashingV2
+    function cancelSlashing(bytes32 slashId) external override whenNotPaused onlyService(_msgSender()) {
+        address service = _msgSender();
+
+        ISLAYRouterSlashingV2.Request storage pendingSlashingRequest = _slashingRequests[slashId];
+        if (pendingSlashingRequest.service != service) revert ISLAYRouterSlashingV2.Unauthorized();
+
+        if (pendingSlashingRequest.status != ISLAYRouterSlashingV2.Status.Pending) {
+            revert ISLAYRouterSlashingV2.InvalidStatus();
+        }
+
+        pendingSlashingRequest.status = ISLAYRouterSlashingV2.Status.Canceled;
+        delete _pendingSlashingRequestIds[service][pendingSlashingRequest.operator];
+        emit ISLAYRouterSlashingV2.SlashingCanceled(service, pendingSlashingRequest.operator, slashId);
+    }
+
+    /// @inheritdoc ISLAYRouterSlashingV2
     function guardrailApprove(bytes32 slashId, bool approve) external override whenNotPaused {
         // Only the guardrail can call this function
         if (_guardrail == address(0)) {
