@@ -81,4 +81,64 @@ contract SLAYVaultFactoryV2Test is Test, TestSuiteV2 {
         vm.expectRevert(abi.encodeWithSelector(ISLAYVaultFactoryV2.NotOperator.selector, address(notOperator)));
         vaultFactory.create(underlying, notOperator, "Name", "Symbol");
     }
+
+    function test_create_whenPaused() public {
+        vm.prank(owner);
+        vaultFactory.pause();
+
+        // Try to create a vault when paused
+        vm.startPrank(operator);
+        vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+        vaultFactory.create(underlying);
+        vm.stopPrank();
+
+        // Try to create a vault with custom params when paused
+        vm.startPrank(owner);
+        vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+        vaultFactory.create(underlying, operator, "Custom Name", "Custom Symbol");
+        vm.stopPrank();
+    }
+
+    function test_create_whenPausedAndUnpaused() public {
+        // Pause the contract
+        vm.prank(owner);
+        vaultFactory.pause();
+        assertTrue(vaultFactory.paused());
+
+        // Unpause the contract
+        vm.prank(owner);
+        vaultFactory.unpause();
+        assertFalse(vaultFactory.paused());
+
+        // Create a vault when unpaused
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+        assertEq(vault.delegated(), operator);
+
+        // Create a vault with custom params when unpaused
+        vm.prank(owner);
+        SLAYVaultV2 customVault = vaultFactory.create(underlying, operator, "Custom Name", "Custom Symbol");
+        assertEq(customVault.delegated(), operator);
+    }
+
+    function test_immutable_beacon() public {
+        // The beacon address should not be zero
+        assertTrue(vaultFactory.beacon() != address(0));
+    }
+
+    function test_immutable_registry() public {
+        assertEq(address(vaultFactory.registry()), address(registry));
+    }
+
+    function test_authorizeUpgrade_onlyOwner() public {
+        assertEq(vaultFactory.owner(), owner);
+
+        address mockImpl = address(new SLAYVaultFactoryV2(address(0), registry));
+
+        vm.prank(vm.randomAddress());
+        vm.expectRevert();
+        // Call the upgradeTo function directly
+        (bool success, bytes memory returnData) =
+            address(vaultFactory).call(abi.encodeWithSelector(bytes4(keccak256("upgradeTo(address)")), mockImpl));
+    }
 }
