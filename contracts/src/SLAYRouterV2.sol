@@ -138,7 +138,7 @@ contract SLAYRouterV2 is
     }
 
     /// @inheritdoc ISLAYRouterV2
-    function setGuardrail(address guardrail) external onlyOwner {
+    function setGuardrail(address guardrail) external override onlyOwner {
         require(guardrail != address(0), "Guardrail address cannot be empty");
         _guardrail = guardrail;
     }
