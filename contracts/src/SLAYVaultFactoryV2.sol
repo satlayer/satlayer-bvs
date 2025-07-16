@@ -10,6 +10,9 @@ import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol"
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+
+import {SLAYBase} from "./SLAYBase.sol";
+
 import {SLAYVaultV2} from "./SLAYVaultV2.sol";
 import {ISLAYRegistryV2} from "./interface/ISLAYRegistryV2.sol";
 import {ISLAYVaultFactoryV2} from "./interface/ISLAYVaultFactoryV2.sol";
@@ -18,27 +21,49 @@ import {ISLAYVaultFactoryV2} from "./interface/ISLAYVaultFactoryV2.sol";
  * @title Vault Factory Contract
  * @dev Factory contract for creating SLAYVaultV2 instances.
  * This contract is responsible for deploying new vaults and managing their creation.
+ * It inherits from SLAYBase which provides basic functionality like initialization,
+ * upgradeability, ownership, and pause/unpause functions.
  */
 contract SLAYVaultFactoryV2 is
     Initializable,
     UUPSUpgradeable,
     OwnableUpgradeable,
     PausableUpgradeable,
+    SLAYBase,
     ISLAYVaultFactoryV2
 {
-    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    /**
+     * @dev The address of the UpgradeableBeacon that points to the SLAYVaultV2 implementation.
+     * This is used when creating new vault instances via BeaconProxy.
+     * @custom:oz-upgrades-unsafe-allow state-variable-immutable
+     */
     address public immutable beacon;
 
-    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    /**
+     * @dev Reference to the SLAYRegistryV2 contract used for operator verification.
+     * This is used to check if an address is registered as an operator.
+     * @custom:oz-upgrades-unsafe-allow state-variable-immutable
+     */
     ISLAYRegistryV2 public immutable registry;
 
-    /// @dev Throws if called by any account other than the operator.
+    /**
+     * @dev Modifier that restricts function access to operators only.
+     * Throws if called by any account that is not registered as an operator in the SLAYRegistry.
+     * Uses the _checkOperator function to verify the caller's operator status.
+     */
     modifier onlyOperator() {
         _checkOperator(_msgSender());
         _;
     }
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
+    /**
+     * @dev Constructor for SLAYVaultFactoryV2.
+     * Sets up the immutable beacon and registry references and disables initializers.
+     *
+     * @param beacon_ The address of the UpgradeableBeacon that points to the SLAYVaultV2 implementation.
+     * @param registry_ The address of the SLAYRegistryV2 contract used for operator verification.
+     * @custom:oz-upgrades-unsafe-allow constructor
+     */
     constructor(address beacon_, ISLAYRegistryV2 registry_) {
         beacon = beacon_;
         registry = registry_;
@@ -46,24 +71,11 @@ contract SLAYVaultFactoryV2 is
     }
 
     /**
-     * @dev Initializes the contract and sets the initial owner.
+     * @dev Checks if the given account is an operator.
+     * Throws if the account is not registered as an operator in the SLAYRegistry.
      *
-     * @param initialOwner The address to be set as the initial owner.
+     * @param account The address to check if it's an operator.
      */
-    function initialize(address initialOwner) public initializer {
-        __Ownable_init(initialOwner);
-        __UUPSUpgradeable_init();
-        __Pausable_init();
-    }
-
-    /**
-     * @dev Authorizes an upgrade to a new implementation.
-     * This function is required by UUPS and restricts upgradeability to the contract owner.
-     * @param newImplementation The address of the new contract implementation.
-     */
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
-
-    /// @dev Throws if the sender is not the operator.
     function _checkOperator(address account) internal view virtual {
         if (!registry.isOperator(account)) {
             revert NotOperator(account);

@@ -16,24 +16,21 @@ import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 contract TestSuiteV2 is Test {
     address public owner = vm.randomAddress();
 
-    SLAYBase public initialImpl = new SLAYBase();
+    address public baseImpl = address(new SLAYBase());
 
     SLAYRouterV2 public router;
     SLAYRegistryV2 public registry;
     SLAYVaultFactoryV2 public vaultFactory;
 
     function setUp() public virtual {
-        bytes memory initialData = abi.encodeCall(SLAYBase.initialize, (owner));
+        bytes memory initializerData = abi.encodeCall(SLAYBase.initialize, (owner));
 
-        router = SLAYRouterV2(UnsafeUpgrades.deployUUPSProxy(address(initialImpl), initialData));
-        registry = SLAYRegistryV2(UnsafeUpgrades.deployUUPSProxy(address(initialImpl), initialData));
+        router = SLAYRouterV2(UnsafeUpgrades.deployUUPSProxy(baseImpl, initializerData));
+        registry = SLAYRegistryV2(UnsafeUpgrades.deployUUPSProxy(baseImpl, initializerData));
+        vaultFactory = SLAYVaultFactoryV2(UnsafeUpgrades.deployUUPSProxy(baseImpl, initializerData));
 
         SLAYVaultV2 vaultImpl = new SLAYVaultV2(router, registry);
         address beacon = UnsafeUpgrades.deployBeacon(address(vaultImpl), owner);
-        SLAYVaultFactoryV2 factoryImpl = new SLAYVaultFactoryV2(beacon, registry);
-        vaultFactory = SLAYVaultFactoryV2(
-            UnsafeUpgrades.deployUUPSProxy(address(factoryImpl), abi.encodeCall(SLAYVaultFactoryV2.initialize, (owner)))
-        );
 
         vm.startPrank(owner);
         UnsafeUpgrades.upgradeProxy(
@@ -42,6 +39,7 @@ contract TestSuiteV2 is Test {
         UnsafeUpgrades.upgradeProxy(
             address(registry), address(new SLAYRegistryV2(router)), abi.encodeCall(SLAYRegistryV2.initialize2, ())
         );
+        UnsafeUpgrades.upgradeProxy(address(vaultFactory), address(new SLAYVaultFactoryV2(beacon, registry)), "");
         vm.stopPrank();
     }
 
