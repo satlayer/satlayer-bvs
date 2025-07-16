@@ -22,7 +22,11 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
  * - SLAYRouterV2.sol
  */
 contract SLAYBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
-    /// @custom:oz-upgrades-unsafe-allow constructor
+    /**
+     * @dev Constructor that disables initializers to prevent the implementation contract from being initialized.
+     * This is a security measure to ensure that the implementation contract itself cannot be used directly.
+     * @custom:oz-upgrades-unsafe-allow constructor
+     */
     constructor() {
         _disableInitializers();
     }
@@ -60,6 +64,9 @@ contract SLAYBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, Pausabl
 
     /**
      * @dev Unpauses the contract.
+     * This allows normal operations to resume after the contract has been paused.
+     * The modifiers `whenNotPaused` and `whenPaused` are available for use in derived contracts.
+     * Only the owner can unpause the contract.
      */
     function unpause() external onlyOwner {
         _unpause();

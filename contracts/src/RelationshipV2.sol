@@ -26,10 +26,10 @@ library RelationshipV2 {
          */
         Active,
         /**
-         * This state is used when the Operator has registered an Service,
+         * This state is used when the Operator has registered a Service,
          * but the Service hasn't yet registered,
          * indicating a pending registration from the Service side.
-         * This is a Operator-initiated registration, waiting for Service to finalize.
+         * This is an Operator-initiated registration, waiting for Service to finalize.
          */
         OperatorRegistered,
         /**
@@ -65,63 +65,52 @@ library RelationshipV2 {
         return keccak256(abi.encodePacked(service, operator));
     }
 
-    /// @dev see Checkpoints.push
-    /// @dev Pushes a (`key`, `value`) pair into a Trace224 so that it is stored as the checkpoint.
-    /// IMPORTANT: Never accept `key` as a user input, since an arbitrary `type(uint32).max` key set will disable the
-    /// library.
+    /**
+     * @dev Pushes a relationship object into a Trace224 checkpoint at the specified timestamp.
+     * See Checkpoints.push for more details.
+     *
+     * IMPORTANT: Never accept `timestamp` as a user input, since an arbitrary `type(uint32).max` key set will disable the
+     * library.
+     *
+     * @param self The Trace224 storage to push into
+     * @param timestamp The timestamp to associate with this checkpoint
+     * @param obj The relationship object to store
+     */
     function push(Checkpoints.Trace224 storage self, uint32 timestamp, Object memory obj) internal {
         uint224 encoded = encode(obj.status, obj.slashParameterId);
         Checkpoints.push(self, timestamp, encoded);
     }
 
-    /// @dev see Checkpoints.lowerLookup
-    function lowerLookup(Checkpoints.Trace224 storage self, uint32 timestamp) internal view returns (Object memory) {
-        uint224 encoded = Checkpoints.lowerLookup(self, timestamp);
-        return decode(encoded);
-    }
-
-    /// @dev see Checkpoints.upperLookup
+    /**
+     * @dev Searches for the relationship object at the smallest key greater than or equal to the search key.
+     * See Checkpoints.upperLookup for more details.
+     *
+     * @param self The Trace224 storage to search
+     * @param timestamp The timestamp to search for
+     * @return Object The relationship object at the found checkpoint
+     */
     function upperLookup(Checkpoints.Trace224 storage self, uint32 timestamp) internal view returns (Object memory) {
         uint224 encoded = Checkpoints.upperLookup(self, timestamp);
         return decode(encoded);
     }
 
-    /// @dev see Checkpoints.lowerLookupRecent
-    function upperLookupRecent(Checkpoints.Trace224 storage self, uint32 timestamp)
-        internal
-        view
-        returns (Object memory)
-    {
-        uint224 encoded = Checkpoints.upperLookupRecent(self, timestamp);
-        return decode(encoded);
-    }
-
-    /// @dev see Checkpoints.latest
+    /**
+     * @dev Returns the latest relationship object from the checkpoint.
+     * See Checkpoints.latest for more details.
+     *
+     * @param self The Trace224 storage to get the latest value from
+     * @return Object The latest relationship object
+     */
     function latest(Checkpoints.Trace224 storage self) internal view returns (Object memory) {
         uint224 encoded = Checkpoints.latest(self);
         return decode(encoded);
     }
 
-    /// @dev see Checkpoints.latestCheckpoint
-    function latestCheckpoint(Checkpoints.Trace224 storage self)
-        internal
-        view
-        returns (bool exists, uint32 timestamp, Object memory obj)
-    {
-        (bool _exists, uint32 _key, uint224 encoded) = Checkpoints.latestCheckpoint(self);
-        return (_exists, _key, decode(encoded));
-    }
-
-    /// @dev see Checkpoints.length
-    function length(Checkpoints.Trace224 storage self) internal view returns (uint256) {
-        return Checkpoints.length(self);
-    }
-
     /**
      * @dev Encodes the status and slash parameter ID into a single uint224 value.
-     * Why encode into uint224, when could declare a new struct and let Solidity handle it?
+     * Why encode into uint224, when we could declare a new struct and let Solidity handle it?
      * This is done for efficiency, by packing the Struct into uint224 allowing us to
-     * use the existing Checkpoints library which well audited and optimized for production use.
+     * use the existing Checkpoints library which is well audited and optimized for production use.
      *
      * @param status The registration status of the relationship.
      * @param slashParameterId The ID of the slash parameter associated with this relationship.
