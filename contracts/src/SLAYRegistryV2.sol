@@ -36,10 +36,10 @@ contract SLAYRegistryV2 is
     ISLAYRouterV2 public immutable router;
 
     /// @dev mapping of registered services.
-    mapping(address account => Service) private _services;
+    mapping(address account => ServiceEntry) private _services;
 
     /// @dev mapping of registered operators.
-    mapping(address account => Operator) private _operators;
+    mapping(address account => OperatorEntry) private _operators;
 
     /// @dev Slash parameters for services created by the service when {enableSlashing(SlashParameter)} is enabled.
     SlashParameter[] private _slashParameters;
@@ -115,10 +115,10 @@ contract SLAYRegistryV2 is
     /// @inheritdoc ISLAYRegistryV2
     function registerAsService(string calldata uri, string calldata name) external override whenNotPaused {
         address account = _msgSender();
-        Service storage service = _services[account];
+        ServiceEntry storage serviceEntry = _services[account];
 
-        require(!service.registered, "Already registered");
-        service.registered = true;
+        require(!serviceEntry.registered, "Already registered");
+        serviceEntry.registered = true;
         emit ServiceRegistered(account);
         emit MetadataUpdated(account, uri, name);
     }
@@ -126,12 +126,12 @@ contract SLAYRegistryV2 is
     /// @inheritdoc ISLAYRegistryV2
     function registerAsOperator(string calldata uri, string calldata name) external override whenNotPaused {
         address account = _msgSender();
-        Operator storage operator = _operators[account];
+        OperatorEntry storage operatorEntry = _operators[account];
 
-        require(!operator.registered, "Already registered");
-        operator.registered = true;
+        require(!operatorEntry.registered, "Already registered");
+        operatorEntry.registered = true;
         // Set the default withdrawal delay for the operator.
-        operator.withdrawalDelay = DEFAULT_WITHDRAWAL_DELAY;
+        operatorEntry.withdrawalDelay = DEFAULT_WITHDRAWAL_DELAY;
         emit OperatorRegistered(account);
         emit MetadataUpdated(account, uri, name);
     }
@@ -311,19 +311,19 @@ contract SLAYRegistryV2 is
         require(length <= type(uint32).max, "Overflow");
         _slashParameters.push(parameter);
 
-        address account = _msgSender();
-        Service storage service = _services[account];
-        service.slashParameterId = uint32(length);
-        emit SlashParameterUpdated(account, parameter.destination, parameter.maxMbips, parameter.resolutionWindow);
+        address service = _msgSender();
+        ServiceEntry storage serviceEntry = _services[service];
+        serviceEntry.slashParameterId = uint32(length);
+        emit SlashParameterUpdated(service, parameter.destination, parameter.maxMbips, parameter.resolutionWindow);
     }
 
     /// @inheritdoc ISLAYRegistryV2
     function disableSlashing() external override onlyService(_msgSender()) whenNotPaused {
-        address account = _msgSender();
-        Service storage service = _services[account];
+        address service = _msgSender();
+        ServiceEntry storage serviceEntry = _services[service];
         // 0 is used to indicate that slashing is disabled.
-        service.slashParameterId = 0;
-        emit SlashParameterUpdated(account, address(0), 0, 0);
+        serviceEntry.slashParameterId = 0;
+        emit SlashParameterUpdated(service, address(0), 0, 0);
     }
 
     /// @inheritdoc ISLAYRegistryV2

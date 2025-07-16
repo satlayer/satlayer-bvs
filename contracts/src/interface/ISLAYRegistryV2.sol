@@ -7,7 +7,7 @@ import {RelationshipV2} from "../RelationshipV2.sol";
  * @title Services and Operators Registry Interface
  */
 interface ISLAYRegistryV2 {
-    struct Service {
+    struct ServiceEntry {
         /// @dev Whether the service is registered.
         bool registered;
         /// @dev Id of the slash parameter for the service. Stored in {_slashParameters} array.
@@ -17,7 +17,7 @@ interface ISLAYRegistryV2 {
         uint32 minWithdrawalDelay;
     }
 
-    struct Operator {
+    struct OperatorEntry {
         /// @dev Whether the operator is registered.
         bool registered;
         /// @dev The withdrawal delay in seconds before the stakes can be withdrawn from the vault.
@@ -26,7 +26,7 @@ interface ISLAYRegistryV2 {
     }
 
     /**
-     * @dev The Slash Parameter for particular service.
+     * @dev The Slash Parameter for a particular service.
      * This struct defines the parameters for slashing in the ecosystem.
      */
     struct SlashParameter {
