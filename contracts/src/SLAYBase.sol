@@ -18,8 +18,9 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
  * DO NOT add any state variables as this is an empty implementation.
  *
  * Extended by:
- * - SLAYRegistryV2.sol
- * - SLAYRouterV2.sol
+ * - SLAYRegistry
+ * - SLAYRouter
+ * - SLAYVaultFactory
  */
 contract SLAYBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor

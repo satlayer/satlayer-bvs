@@ -12,7 +12,7 @@ import {UnsafeUpgrades} from "@openzeppelin/foundry-upgrades/Upgrades.sol";
 import {Options} from "@openzeppelin/foundry-upgrades/Options.sol";
 import {Core} from "@openzeppelin/foundry-upgrades/internal/Core.sol";
 
-/// @title Slaynet Deployment Script for Initialization of SatLayer Protocol
+/// @title SLAYDeployment Script for Initialization of SatLayer Protocol
 /// @dev For deployment, we use the OpenZeppelin `UnsafeUpgrades` library to deploy UUPS proxies and beacons.
 /// Although it is "unsafe" and not recommended for production, the "safe version" does not support non-empty constructor arguments.
 /// This "unsafe" allow us to use the constructor arguments in the implementation contracts.
@@ -20,7 +20,7 @@ import {Core} from "@openzeppelin/foundry-upgrades/internal/Core.sol";
 /// After which we can upgrade the proxies to the actual implementations.
 /// However, to ensure the safety of the deployment, we validate each implementation (just as the "safe" version does)
 /// to ensure the implementation is valid and does not contain any unsafe code.
-contract SlaynetDeployment is Script {
+contract SLAYDeployment is Script {
     Options public opts;
 
     /// export PRIVATE_KEY=
@@ -34,20 +34,18 @@ contract SlaynetDeployment is Script {
 
         // Create the initial implementation contract and deploy the proxies for router and registry
         Core.validateImplementation("SLAYBase.sol:SLAYBase", opts);
-        address initialImpl = address(new SLAYBase());
+        address baseImpl = address(new SLAYBase());
 
         SLAYRouterV2 router =
-            SLAYRouterV2(UnsafeUpgrades.deployUUPSProxy(initialImpl, abi.encodeCall(SLAYBase.initialize, (owner))));
+            SLAYRouterV2(UnsafeUpgrades.deployUUPSProxy(baseImpl, abi.encodeCall(SLAYBase.initialize, (owner))));
         SLAYRegistryV2 registry =
-            SLAYRegistryV2(UnsafeUpgrades.deployUUPSProxy(initialImpl, abi.encodeCall(SLAYBase.initialize, (owner))));
+            SLAYRegistryV2(UnsafeUpgrades.deployUUPSProxy(baseImpl, abi.encodeCall(SLAYBase.initialize, (owner))));
+        SLAYVaultFactoryV2 vaultFactory =
+            SLAYVaultFactoryV2(UnsafeUpgrades.deployUUPSProxy(baseImpl, abi.encodeCall(SLAYBase.initialize, (owner))));
 
         Core.validateImplementation("SLAYVaultV2.sol:SLAYVaultV2", opts);
         address vaultImpl = address(new SLAYVaultV2(router, registry));
         address beacon = UnsafeUpgrades.deployBeacon(vaultImpl, owner);
-
-        Core.validateImplementation("SLAYVaultFactoryV2.sol:SLAYVaultFactoryV2", opts);
-        address factoryImpl = address(new SLAYVaultFactoryV2(beacon, registry));
-        UnsafeUpgrades.deployUUPSProxy(factoryImpl, abi.encodeCall(SLAYVaultFactoryV2.initialize, (owner)));
 
         Core.validateUpgrade("SLAYRouterV2.sol:SLAYRouterV2", opts);
         address routerImpl = address(new SLAYRouterV2(registry));
@@ -56,5 +54,9 @@ contract SlaynetDeployment is Script {
         Core.validateUpgrade("SLAYRegistryV2.sol:SLAYRegistryV2", opts);
         address registryImpl = address(new SLAYRegistryV2(router));
         UnsafeUpgrades.upgradeProxy(address(registry), registryImpl, abi.encodeCall(SLAYRegistryV2.initialize2, ()));
+
+        Core.validateImplementation("SLAYVaultFactoryV2.sol:SLAYVaultFactoryV2", opts);
+        address vaultFactoryImpl = address(new SLAYVaultFactoryV2(beacon, registry));
+        UnsafeUpgrades.upgradeProxy(address(vaultFactory), vaultFactoryImpl, "");
     }
 }

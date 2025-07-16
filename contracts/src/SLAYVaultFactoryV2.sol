@@ -10,6 +10,9 @@ import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol"
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+
+import {SLAYBase} from "./SLAYBase.sol";
+
 import {SLAYVaultV2} from "./SLAYVaultV2.sol";
 import {ISLAYRegistryV2} from "./interface/ISLAYRegistryV2.sol";
 import {ISLAYVaultFactoryV2} from "./interface/ISLAYVaultFactoryV2.sol";
@@ -24,6 +27,7 @@ contract SLAYVaultFactoryV2 is
     UUPSUpgradeable,
     OwnableUpgradeable,
     PausableUpgradeable,
+    SLAYBase,
     ISLAYVaultFactoryV2
 {
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
@@ -44,24 +48,6 @@ contract SLAYVaultFactoryV2 is
         registry = registry_;
         _disableInitializers();
     }
-
-    /**
-     * @dev Initializes the contract and sets the initial owner.
-     *
-     * @param initialOwner The address to be set as the initial owner.
-     */
-    function initialize(address initialOwner) public initializer {
-        __Ownable_init(initialOwner);
-        __UUPSUpgradeable_init();
-        __Pausable_init();
-    }
-
-    /**
-     * @dev Authorizes an upgrade to a new implementation.
-     * This function is required by UUPS and restricts upgradeability to the contract owner.
-     * @param newImplementation The address of the new contract implementation.
-     */
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /// @dev Throws if the sender is not the operator.
     function _checkOperator(address account) internal view virtual {

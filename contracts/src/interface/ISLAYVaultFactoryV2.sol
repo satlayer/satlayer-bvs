@@ -28,6 +28,9 @@ interface ISLAYVaultFactoryV2 {
      * @notice For operator (the caller) to create a new SLAYVault instance using the Beacon proxy pattern.
      * The IERC20Metadata is used to initialize the vault with its name and symbol prefixed.
      * This self-serve function allows operators to create new vaults without needing to go through the owner.
+     * For example an operator can create a vault for a new token that is IERC20Metadata compliant.
+     * Given the {ERC20.name()} is Token and {ERC20.symbol()} is TKN,
+     * the vault will be initialized with the name "SatLayer Token" and symbol "satTKN".
      *
      * @param asset The ERC20Metadata asset to be used in the vault.
      * @return The newly created SLAYVault instance.
@@ -38,6 +41,7 @@ interface ISLAYVaultFactoryV2 {
      * @notice For owner to create a new SLAYVault instance using the Beacon proxy pattern.
      * This function allows the owner to create a vault with a custom operator, name, and symbol.
      * This scenario is mainly used for creating vaults that aren't IERC20Metadata compliant.
+     * For example, an owner can create a vault for a custom token that does not implement the IERC20Metadata interface.
      *
      * @param asset The ERC20 asset to be used in the vault.
      * @param operator The address that will be the operator of the vault.
