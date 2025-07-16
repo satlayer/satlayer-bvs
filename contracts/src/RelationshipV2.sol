@@ -82,12 +82,12 @@ library RelationshipV2 {
     }
 
     /**
-     * @dev Searches for the relationship object at the smallest key greater than or equal to the search key.
+     * @dev Searches for the relationship object with key lower or equal to the given timestamp.
      * See Checkpoints.upperLookup for more details.
      *
      * @param self The Trace224 storage to search
      * @param timestamp The timestamp to search for
-     * @return Object The relationship object at the found checkpoint
+     * @return Object The relationship object at the found checkpoint (or default if not found)
      */
     function upperLookup(Checkpoints.Trace224 storage self, uint32 timestamp) internal view returns (Object memory) {
         uint224 encoded = Checkpoints.upperLookup(self, timestamp);
