@@ -1,7 +1,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use crate::error::RewardsError;
-use crate::merkle::{Leaf, Sha3_256Algorithm};
+use crate::merkle::{Keccak256Algorithm, Leaf};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use bvs_library::testing::TestingContract;
 use cosmwasm_std::{Addr, Empty, Env, HexBinary};
@@ -40,8 +40,8 @@ impl TestingContract<InstantiateMsg, ExecuteMsg, QueryMsg> for RewardsContract {
     }
 }
 
-pub fn generate_merkle_tree(leaves: &[Leaf]) -> MerkleTree<Sha3_256Algorithm> {
-    MerkleTree::<Sha3_256Algorithm>::from_leaves(
+pub fn generate_merkle_tree(leaves: &[Leaf]) -> MerkleTree<Keccak256Algorithm> {
+    MerkleTree::<Keccak256Algorithm>::from_leaves(
         leaves
             .iter()
             .map(|leaf| leaf.hash())
@@ -51,7 +51,7 @@ pub fn generate_merkle_tree(leaves: &[Leaf]) -> MerkleTree<Sha3_256Algorithm> {
 }
 
 pub fn generate_merkle_proof(
-    tree: &MerkleTree<Sha3_256Algorithm>,
+    tree: &MerkleTree<Keccak256Algorithm>,
     leaf_index: u32,
 ) -> Result<Vec<HexBinary>, RewardsError> {
     // convert leaf index into usize
