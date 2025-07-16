@@ -4,7 +4,10 @@ pragma solidity ^0.8.0;
 import {RelationshipV2} from "../RelationshipV2.sol";
 
 /**
- * @title Services and Operators Registry Interface
+ * @title SLAY Registry Interface
+ * @notice Interface for the registry that manages services and operators in the SatLayer ecosystem
+ * @dev This interface defines the contract methods for registering services and operators,
+ * managing their relationships, and handling slashing parameters
  */
 interface ISLAYRegistryV2 {
     struct ServiceEntry {
@@ -131,89 +134,98 @@ interface ISLAYRegistryV2 {
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * Register the caller as an service provider.
-     * URI and name are not stored on-chain, they're emitted in an event {MetadataUpdated} and separately indexed.
-     * The caller can both be a service and an operator. This relationship is not exclusive.
+     * @notice Registers the caller as a service provider
+     * @dev URI and name are not stored on-chain, they're emitted in an event {MetadataUpdated} and separately indexed.
+     * The caller can be both a service and an operator simultaneously. This relationship is not exclusive.
      *
-     * @param uri URI of the service's project to display in the UI.
-     * @param name Name of the service's project to display in the UI.
+     * @param uri URI of the service's project to display in the UI
+     * @param name Name of the service's project to display in the UI
      */
     function registerAsService(string calldata uri, string calldata name) external;
 
     /**
-     * Register the caller as an operator.
-     * URI and name are not stored on-chain, they're emitted in an event {MetadataUpdated} and separately indexed.
-     * The caller can both be a service and an operator. This relationship is not exclusive.
+     * @notice Registers the caller as an operator
+     * @dev URI and name are not stored on-chain, they're emitted in an event {MetadataUpdated} and separately indexed.
+     * The caller can be both a service and an operator simultaneously. This relationship is not exclusive.
      *
-     * @param uri URI of the operator's project to display in the UI.
-     * @param name Name of the operator's project to display in the UI.
+     * @param uri URI of the operator's project to display in the UI
+     * @param name Name of the operator's project to display in the UI
      */
     function registerAsOperator(string calldata uri, string calldata name) external;
 
     /**
-     * @dev Update metadata for the service or operator.
-     * This function can be called by both services and operators.
+     * @notice Updates metadata for the service or operator
+     * @dev This function can be called by both services and operators.
      * Emits a `MetadataUpdated` event with the new URI and name.
-     *
      * Name and URI are not validated or stored on-chain.
      *
-     * @param uri URI of the provider's project to display in the UI.
-     * @param name Name of the provider's project to display in the UI.
+     * @param uri URI of the provider's project to display in the UI
+     * @param name Name of the provider's project to display in the UI
      */
     function updateMetadata(string calldata uri, string calldata name) external;
 
     /**
-     * @dev To register an operator to a service (the caller is the service).
-     * @param operator address of the operator to pair with the service.
-     *
-     * To call this function, the following conditions must be met:
+     * @notice Registers an operator to a service (the caller is the service)
+     * @dev To call this function, the following conditions must be met:
      *  - Service must be registered via {registerAsService}
      *  - Operator must be registered via {registerAsOperator}
      *
      * If the operator has registered this service, the relationship status will be set to `RelationshipV2.Status.Active`.
-     * Else the relationship status will be set to `RelationshipV2.Status.ServiceRegistered`.
+     * Otherwise, the relationship status will be set to `RelationshipV2.Status.ServiceRegistered`.
+     *
+     * @param operator Address of the operator to pair with the service
      */
     function registerOperatorToService(address operator) external;
 
     /**
-     * @dev Deregister an operator from a service (the caller is the service).
-     * @param operator address of the operator to opt out of the relationship.
+     * @notice Deregisters an operator from a service (the caller is the service)
+     * @dev Sets the relationship status to `RelationshipV2.Status.Inactive` and removes the operator
+     * from the service's active relationships.
+     *
+     * @param operator Address of the operator to opt out of the relationship
      */
     function deregisterOperatorFromService(address operator) external;
 
     /**
-     * @dev To register an service to a operator (the caller is the operator).
-     * @param service address of the service to pair with the operator.
-     *
-     * To call this function, the following conditions must be met:
+     * @notice Registers a service to an operator (the caller is the operator)
+     * @dev To call this function, the following conditions must be met:
      *  - Service must be registered via {registerAsService}
      *  - Operator must be registered via {registerAsOperator}
      *
-     * If the service has registered this service, the relationship status will be set to `RelationshipV2.Status.Active`.
-     * Else the relationship status will be set to `RelationshipV2.Status.OperatorRegistered`.
+     * If the service has registered this operator, the relationship status will be set to `RelationshipV2.Status.Active`.
+     * Otherwise, the relationship status will be set to `RelationshipV2.Status.OperatorRegistered`.
+     *
+     * @param service Address of the service to pair with the operator
      */
     function registerServiceToOperator(address service) external;
 
     /**
-     * @dev Deregister an service from a operator (the caller is the operator).
-     * @param service address of the service to opt out of the relationship.
+     * @notice Deregisters a service from an operator (the caller is the operator)
+     * @dev Sets the relationship status to `RelationshipV2.Status.Inactive` and removes the service
+     * from the operator's active relationships.
+     *
+     * @param service Address of the service to opt out of the relationship
      */
     function deregisterServiceFromOperator(address service) external;
 
     /**
-     * @dev Get the `RegistrationStatus` for a given service-operator pair at the latest checkpoint.
-     * @param service The address of the service.
-     * @param operator The address of the operator.
-     * @return RelationshipV2.Status The latest relationship status for the service-operator pair.
+     * @notice Gets the current relationship status for a given service-operator pair
+     * @dev Retrieves the status from the latest checkpoint in the relationship history
+     *
+     * @param service The address of the service
+     * @param operator The address of the operator
+     * @return The latest relationship status for the service-operator pair
      */
     function getRelationshipStatus(address service, address operator) external view returns (RelationshipV2.Status);
 
     /**
-     * @dev Get the `RelationshipV2.Status` for a given service-operator pair at a specific timestamp.
-     * @param service The address of the service.
-     * @param operator The address of the operator.
-     * @param timestamp The timestamp to check the relationship status at.
-     * @return RelationshipV2.Status The relationship status at the specified timestamp.
+     * @notice Gets the relationship status for a given service-operator pair at a specific timestamp
+     * @dev Retrieves the status from the checkpoint history at the specified timestamp
+     *
+     * @param service The address of the service
+     * @param operator The address of the operator
+     * @param timestamp The timestamp to check the relationship status at
+     * @return The relationship status at the specified timestamp
      */
     function getRelationshipStatusAt(address service, address operator, uint32 timestamp)
         external
@@ -221,93 +233,113 @@ interface ISLAYRegistryV2 {
         returns (RelationshipV2.Status);
 
     /**
-     * Check if an account is registered as a operator.
-     * @param account The address to check.
-     * @return True if the address is registered as an operator, false otherwise.
+     * @notice Checks if an account is registered as an operator
+     * @dev Returns the registration status from the operators mapping
+     *
+     * @param account The address to check
+     * @return True if the address is registered as an operator, false otherwise
      */
     function isOperator(address account) external view returns (bool);
 
     /**
-     * Check if an address is registered as a service.
-     * @param account The address to check.
-     * @return True if the address is registered as a service, false otherwise.
+     * @notice Checks if an account is registered as a service
+     * @dev Returns the registration status from the services mapping
+     *
+     * @param account The address to check
+     * @return True if the address is registered as a service, false otherwise
      */
     function isService(address account) external view returns (bool);
 
     /**
-     * @notice Set the withdrawal delay for an operator's vault. Only the operator can set this value.
-     * @param delay The delay in seconds before a withdrawal can be processed.
+     * @notice Sets the withdrawal delay for an operator's vault
+     * @dev Only the operator can set this value. The delay must be at least equal to the DEFAULT_WITHDRAWAL_DELAY (7 days)
+     * and must be greater than or equal to any active service's minimum withdrawal delay.
+     *
+     * @param delay The delay in seconds before a withdrawal can be processed
      */
     function setWithdrawalDelay(uint32 delay) external;
 
     /**
-     * @notice Get the withdrawal delay for an operator's vault.
-     * @param operator The address of the operator.
-     * @return uint32 The withdrawal delay in seconds.
+     * @notice Gets the withdrawal delay for an operator's vault
+     * @dev Returns the configured withdrawal delay for the specified operator
+     *
+     * @param operator The address of the operator
+     * @return The withdrawal delay in seconds
      */
     function getWithdrawalDelay(address operator) external view returns (uint32);
 
     /**
-     * @dev For services to enable slashing by providing slash parameters {SlashParameter}.
-     * The {msg.sender} must be a registered service.
+     * @notice Enables slashing for a service by providing slash parameters
+     * @dev The caller must be a registered service. This sets up the parameters that will be used
+     * when slashing is applied to operators who have approved slashing for this service.
      *
-     * @param parameter The slash parameters to be set for the service.
-     * @notice
-     * - The `destination` address is where the slash collateral will be moved to at the end of the slashing lifecycle.
-     * - The `maxMbips` is the maximum slashable amount represented in bips at milli unit.
-     * 1 Milli-Bip is 0.00001%, so at 100% the milli bip is 10,000,000.
-     * - The `resolutionWindow` is the time window in seconds at which an operator can refute slash accusations.
+     * @param parameter The slash parameters to be set for the service, containing:
+     * - `destination`: Address where the slashed collateral will be moved to at the end of the slashing lifecycle
+     * - `maxMbips`: Maximum slashable amount in milli-bips (1 milli-bip = 0.00001%, 10,000,000 milli-bips = 100%)
+     * - `resolutionWindow`: Time window in seconds during which an operator can refute slash accusations
      */
     function enableSlashing(SlashParameter calldata parameter) external;
 
     /**
-     * @dev For service to disable slashing for itself.
-     * - The {msg.sender} must be a registered service.
-     * - Disabling slashing will set the slash parameter ID to 0.
-     * - This will not remove existing slash relationships
-     * - New slash relationships will not be created when operator {enableSlashing(address)} is called.
+     * @notice Disables slashing for a service
+     * @dev The caller must be a registered service. This function:
+     * - Sets the slash parameter ID to 0 (indicating slashing is disabled)
+     * - Does not remove existing slash relationships
+     * - Prevents new slash relationships from being created when operators call {approveSlashingFor(address)}
      */
     function disableSlashing() external;
 
     /**
-     * @dev For operator to approve (enable, disable or update) slashing for a service it's validating.
-     * - The {msg.sender} must be a registered operator.
-     * - The service and operator must have an active relationship.
-     * - To enable slashing, the service must have already enabled slashing via {enableSlashing(SlashParameter)}.
-     * - To disable slashing, the service must have already disabled slashing via {disableSlashing()}.
-     * - To update (set new parameters), the service must have a new set of slash parameters registered via {enableSlashing(SlashParameter)}.
-     * - If no update is registered, the function will revert.
+     * @notice Approves slashing parameters for a service the operator is validating
+     * @dev This function allows an operator to enable, disable, or update slashing parameters for a service.
+     * Requirements:
+     * - The caller must be a registered operator
+     * - The service and operator must have an active relationship
+     * - To enable slashing: the service must have already enabled slashing via {enableSlashing(SlashParameter)}
+     * - To disable slashing: the service must have already disabled slashing via {disableSlashing()}
+     * - To update parameters: the service must have registered new slash parameters via {enableSlashing(SlashParameter)}
+     * - The function will revert if no update is registered
      *
-     * @param service The address of the service for which slashing is being enabled.
+     * @param service The address of the service for which slashing is being approved
      */
     function approveSlashingFor(address service) external;
 
     /**
-     * @dev Get the current slash parameters for a given service.
-     * @param service The address of the service.
-     * @return SlashParameter The slash parameters for the service.
+     * @notice Gets the current slash parameters for a given service
+     * @dev Retrieves the slash parameters that are currently set for the specified service.
+     * Reverts if slashing is not enabled for the service.
+     *
+     * @param service The address of the service
+     * @return The slash parameters for the service
      */
     function getSlashParameter(address service) external view returns (SlashParameter memory);
 
     /**
-     * @dev Set the maximum number of active relationships for services and operators.
-     * Only the contract owner can call this function.
-     * @param maxActive The new maximum number of active relationships (must be > 0 and > current maxActive).
+     * @notice Sets the maximum number of active relationships allowed for services and operators
+     * @dev Only the contract owner can call this function. The new maximum must be greater than zero
+     * and greater than the current maximum.
+     *
+     * @param maxActive The new maximum number of active relationships
      */
     function setMaxActiveRelationships(uint8 maxActive) external;
 
     /**
-     * @dev Get the current maximum number of active relationships.
-     * @return uint8 The maximum number of active relationships allowed.
+     * @notice Gets the current maximum number of active relationships allowed
+     * @dev Returns the maximum number of active relationships that a service or operator can have
+     *
+     * @return The maximum number of active relationships allowed
      */
     function getMaxActiveRelationships() external view returns (uint8);
 
     /**
-     * @dev Get the slash parameters which an operator has opted in at given timestamp.
-     * @param service The address of the service.
-     * @param operator The address of the operator.
-     * @param timestamp The timestamp in question.
-     * @return SlashParameter The slash parameters for the service.
+     * @notice Gets the slash parameters that an operator had approved at a specific timestamp
+     * @dev Retrieves the historical slash parameters for a service-operator relationship at the given timestamp.
+     * Reverts if slashing was not enabled at that timestamp.
+     *
+     * @param service The address of the service
+     * @param operator The address of the operator
+     * @param timestamp The timestamp at which to check the slash parameters
+     * @return The slash parameters that were in effect at the specified timestamp
      */
     function getSlashParameterAt(address service, address operator, uint32 timestamp)
         external
@@ -315,16 +347,22 @@ interface ISLAYRegistryV2 {
         returns (SlashParameter memory);
 
     /**
-     * @dev Set the minimum withdrawal delay for service. All of the service's active operators must respect this delay, else revert.
-     * This function can only be called by the service.
-     * @param delay The new minimum withdrawal delay in seconds.
+     * @notice Sets the minimum withdrawal delay for a service
+     * @dev This function can only be called by the service. All of the service's active operators
+     * must have a withdrawal delay greater than or equal to this value, otherwise the function will revert.
+     * The delay must be greater than zero.
+     *
+     * @param delay The new minimum withdrawal delay in seconds
      */
     function setMinWithdrawalDelay(uint32 delay) external;
 
     /**
-     * @dev Get the minimum withdrawal delay for a service.
-     * @param service The address of the service.
-     * @return uint32 The minimum withdrawal delay in seconds.
+     * @notice Gets the minimum withdrawal delay for a service
+     * @dev Returns the configured minimum withdrawal delay for the specified service.
+     * This is the minimum delay that any operator working with this service must respect.
+     *
+     * @param service The address of the service
+     * @return The minimum withdrawal delay in seconds
      */
     function getMinWithdrawalDelay(address service) external view returns (uint32);
 }
