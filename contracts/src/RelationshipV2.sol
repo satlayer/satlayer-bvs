@@ -12,13 +12,12 @@ import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol
 library RelationshipV2 {
     /**
      * @dev Enum representing the registration status between a service and an operator.
-     * The registration status can be one of the following:
      */
     enum Status {
         /**
          * Default state when neither the Operator nor the Service has registered,
          * or when either the Operator or Service has unregistered.
-         * `uint8(0)` is used to represent this state, the default value.
+         * The unset value is `uint8(0)` and is used to represent this state, the default value.
          */
         Inactive,
         /**
@@ -30,14 +29,14 @@ library RelationshipV2 {
          * This state is used when the Operator has registered an Service,
          * but the Service hasn't yet registered,
          * indicating a pending registration from the Service side.
-         * This is Operator-initiated registration, waiting for Service to finalize.
+         * This is a Operator-initiated registration, waiting for Service to finalize.
          */
         OperatorRegistered,
         /**
          * This state is used when the Service has registered an Operator,
          * but the Operator hasn't yet registered,
          * indicating a pending registration from the Operator side.
-         * This is Service-initiated registration, waiting for Operator to finalize.
+         * This is a Service-initiated registration, waiting for Operator to finalize.
          */
         ServiceRegistered
     }
@@ -57,7 +56,7 @@ library RelationshipV2 {
     }
 
     /**
-     * @dev Hash the service and operator addresses to create a unique key for the `Relationship` map.
+     * @dev Hash the service and operator addresses to create a unique key for the `Relationship` mapping.
      * @param service The address of the service.
      * @param operator The address of the operator.
      * @return bytes32 The unique key for the service-operator pair.
@@ -67,18 +66,21 @@ library RelationshipV2 {
     }
 
     /// @dev see Checkpoints.push
+    /// @dev Pushes a (`key`, `value`) pair into a Trace224 so that it is stored as the checkpoint.
+    /// IMPORTANT: Never accept `key` as a user input, since an arbitrary `type(uint32).max` key set will disable the
+    /// library.
     function push(Checkpoints.Trace224 storage self, uint32 timestamp, Object memory obj) internal {
         uint224 encoded = encode(obj.status, obj.slashParameterId);
         Checkpoints.push(self, timestamp, encoded);
     }
 
-    /// @dev see Checkpoints.pushRecent
+    /// @dev see Checkpoints.lowerLookup
     function lowerLookup(Checkpoints.Trace224 storage self, uint32 timestamp) internal view returns (Object memory) {
         uint224 encoded = Checkpoints.lowerLookup(self, timestamp);
         return decode(encoded);
     }
 
-    /// @dev see Checkpoints.lowerLookupRecent
+    /// @dev see Checkpoints.upperLookup
     function upperLookup(Checkpoints.Trace224 storage self, uint32 timestamp) internal view returns (Object memory) {
         uint224 encoded = Checkpoints.upperLookup(self, timestamp);
         return decode(encoded);
@@ -120,6 +122,10 @@ library RelationshipV2 {
      * Why encode into uint224, when could declare a new struct and let Solidity handle it?
      * This is done for efficiency, by packing the Struct into uint224 allowing us to
      * use the existing Checkpoints library which well audited and optimized for production use.
+     *
+     * @param status The registration status of the relationship.
+     * @param slashParameterId The ID of the slash parameter associated with this relationship.
+     * @return uint224 The encoded value containing the status and slash parameter ID.
      */
     function encode(Status status, uint32 slashParameterId) internal pure returns (uint224) {
         uint224 encoded = uint224(uint8(status));
@@ -129,6 +135,11 @@ library RelationshipV2 {
 
     /**
      * @dev Decodes a uint224 value into an Object struct.
+     * IMPORTANT: If the encoded value is `uint224(0)`, it will decode to `Status.Inactive` and `slashParameterId = 0`.
+     * This is the default value for the `Object` struct.
+     *
+     * @param encoded The encoded value containing the status and slash parameter ID.
+     * @return obj The decoded Object struct containing the status and slash parameter ID.
      */
     function decode(uint224 encoded) internal pure returns (Object memory) {
         Object memory obj;
