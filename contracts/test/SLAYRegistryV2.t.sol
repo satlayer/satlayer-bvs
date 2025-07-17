@@ -620,12 +620,9 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         vm.stopPrank();
 
         vm.prank(operator);
-        registry.registerServiceToOperator(service);
-
-        vm.prank(operator);
         vm.expectEmit();
         emit ISLAYRegistryV2.RelationshipUpdated(service, operator, RelationshipV2.Status.Active, 1);
-        registry.approveSlashingFor(service);
+        registry.registerServiceToOperator(service);
     }
 
     function test_approveSlashingFor_notOperator() public {
@@ -709,9 +706,6 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
 
         vm.prank(operator);
         registry.registerServiceToOperator(service);
-
-        vm.prank(operator);
-        registry.approveSlashingFor(service);
 
         // No change in slashing parameters
         vm.expectRevert("Slashing not updated");
@@ -820,7 +814,6 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
 
         vm.prank(operator);
         uint256 timeAtWhichOperatorOptedInParam1 = block.timestamp;
-        registry.approveSlashingFor(service);
         ISLAYRegistryV2.SlashParameter memory obj =
             registry.getSlashParameterAt(service, operator, uint32(block.timestamp));
 
@@ -872,9 +865,7 @@ contract SLAYRegistryV2Test is Test, TestSuiteV2 {
         vm.prank(operator);
         registry.registerServiceToOperator(service);
 
-        vm.prank(operator);
         uint256 timeAtWhichOperatorOptedInParam1 = block.timestamp;
-        registry.approveSlashingFor(service);
 
         _advanceBlockBy(10);
 

@@ -226,6 +226,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         _advanceBlockBy(10);
 
         vm.prank(operator);
+        vm.expectRevert("Slashing not updated");
         registry.approveSlashingFor(service);
 
         uint32 newDelay = 8 days;
@@ -296,10 +297,6 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         registry.registerServiceToOperator(service);
         vm.prank(service);
         registry.registerOperatorToService(operator);
-
-        // TODO: remove after fix SL-620
-        vm.prank(operator);
-        registry.approveSlashingFor(service);
 
         _advanceBlockBy(1000);
 
@@ -383,8 +380,8 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         vm.prank(service);
         registry.registerOperatorToService(operator);
 
-        // TODO: remove after fix SL-620
         vm.prank(operator);
+        vm.expectRevert("Slashing not updated");
         registry.approveSlashingFor(service);
 
         _advanceBlockBy(1000);
@@ -491,10 +488,6 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         vm.prank(service);
         registry.registerOperatorToService(operator);
 
-        // enable slashing for operator
-        vm.prank(operator);
-        registry.approveSlashingFor(service);
-
         // advance time to allow slashing
         _advanceBlockBy(100);
 
@@ -582,6 +575,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         // enable slashing for operator
         vm.prank(operator);
+        vm.expectRevert("Slashing not updated");
         registry.approveSlashingFor(service);
 
         // advance time to allow slashing
@@ -650,10 +644,6 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         registry.registerServiceToOperator(service);
         vm.prank(service);
         registry.registerOperatorToService(operator);
-
-        // enable slashing for operator
-        vm.prank(operator);
-        registry.approveSlashingFor(service);
 
         // advance time to allow slashing
         _advanceBlockBy(100);
@@ -750,10 +740,6 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         vm.prank(service);
         registry.registerOperatorToService(operator);
 
-        // enable slashing for operator
-        vm.prank(operator);
-        registry.approveSlashingFor(service);
-
         // advance time to allow slashing
         _advanceBlockBy(100);
 
@@ -834,9 +820,6 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         _advanceBlockBy(10);
 
-        vm.prank(operator);
-        registry.approveSlashingFor(service);
-
         uint32 newDelay = 8 days;
         vm.prank(operator);
         registry.setWithdrawalDelay(newDelay);
@@ -890,6 +873,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         _advanceBlockBy(10);
 
         vm.prank(operator);
+        vm.expectRevert("Slashing not updated");
         registry.approveSlashingFor(service);
 
         uint32 newDelay = 8 days;
@@ -932,6 +916,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         _advanceBlockBy(10);
 
         vm.prank(operator);
+        vm.expectRevert("Slashing not updated");
         registry.approveSlashingFor(service);
 
         uint32 newDelay = 8 days;
@@ -974,6 +959,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         _advanceBlockBy(10);
 
         vm.prank(operator);
+        vm.expectRevert("Slashing not updated");
         registry.approveSlashingFor(service);
 
         uint32 newDelay = 8 days;
@@ -1027,9 +1013,6 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         registry.registerServiceToOperator(service);
 
         _advanceBlockBy(10);
-
-        vm.prank(operator);
-        registry.approveSlashingFor(service);
 
         uint32 newDelay = 8 days;
         vm.prank(operator);
@@ -1114,9 +1097,6 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         _advanceBlockBy(10);
 
-        vm.prank(operator);
-        registry.approveSlashingFor(service);
-
         uint32 newDelay = 8 days;
         vm.prank(operator);
         registry.setWithdrawalDelay(newDelay);
@@ -1185,10 +1165,6 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         registry.registerServiceToOperator(service);
         vm.prank(service);
         registry.registerOperatorToService(operator);
-
-        // enable slashing for operator
-        vm.prank(operator);
-        registry.approveSlashingFor(service);
 
         // advance time to allow slashing
         _advanceBlockBy(100);
