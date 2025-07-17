@@ -16,9 +16,13 @@ import {ISLAYRouterV2} from "./interface/ISLAYRouterV2.sol";
 
 /**
  * @title Services and Operators Registry Contract
- * @dev This contract serves as a registry for services and operators in the SatLayer ecosystem.
- * It allows services and operators to register themselves, manage their relationships,
- * and track registration statuses.
+ * @notice This contract serves as a registry for services and operators in the SatLayer ecosystem
+ * @dev Implements the ISLAYRegistryV2 interface to provide functionality for:
+ * - Service and operator registration
+ * - Relationship management between services and operators
+ * - Slashing parameter configuration and approval
+ * - Withdrawal delay settings
+ * - Active relationship limits
  *
  * @custom:oz-upgrades-from src/SLAYBase.sol:SLAYBase
  */
@@ -36,10 +40,10 @@ contract SLAYRegistryV2 is
     ISLAYRouterV2 public immutable router;
 
     /// @dev mapping of registered services.
-    mapping(address account => Service) private _services;
+    mapping(address account => ServiceEntry) private _services;
 
     /// @dev mapping of registered operators.
-    mapping(address account => Operator) private _operators;
+    mapping(address account => OperatorEntry) private _operators;
 
     /// @dev Slash parameters for services created by the service when {enableSlashing(SlashParameter)} is enabled.
     SlashParameter[] private _slashParameters;
@@ -85,13 +89,15 @@ contract SLAYRegistryV2 is
     }
 
     /**
-     * @dev Set the immutable SLAYRouterV2 proxy address for the implementation.
-     * Cyclic params in the constructor are possible as an SLAYBase (initial base implementation) is used for the initial deployment,
-     * after which all the contracts are upgraded to their respective implementations with immutable proxy addresses.
+     * @notice Constructor that sets the immutable SLAYRouterV2 proxy address
+     * @dev Cyclic parameters in the constructor are possible because an SLAYBase (initial base implementation)
+     * is used for the initial deployment, after which all contracts are upgraded to their respective
+     * implementations with immutable proxy addresses.
      *
      * This contract extends SLAYBase, which provides the initial owner and pause functionality.
      * SLAYBase.initialize() is called to set the initial owner of the contract.
      *
+     * @param router_ The address of the SLAYRouterV2 proxy
      * @custom:oz-upgrades-unsafe-allow constructor
      */
     constructor(ISLAYRouterV2 router_) {
@@ -100,10 +106,13 @@ contract SLAYRegistryV2 is
     }
 
     /**
-     * @dev Initializes SLAYRegistryV2 contract.
-     * Set up slash parameters array to allow the first service to register with a valid ID.
-     * As `0` is considered as "no slashing enabled" and is used to disable slashing.
-     * Instead of using offset, this is cleaner and less prone to errors.
+     * @notice Initializes the SLAYRegistryV2 contract with default values
+     * @dev Sets up the slash parameters array to allow the first service to register with a valid ID.
+     * Since `0` is considered as "no slashing enabled" and is used to disable slashing,
+     * we push an empty slash parameter to the array as the first element.
+     * This approach is cleaner and less prone to errors than using an offset.
+     *
+     * Also sets the default maximum active relationships to 5.
      */
     function initialize2() public reinitializer(2) {
         // Push an empty slash parameter to the array to ensure that the first service can register with a valid ID.
@@ -115,10 +124,10 @@ contract SLAYRegistryV2 is
     /// @inheritdoc ISLAYRegistryV2
     function registerAsService(string calldata uri, string calldata name) external override whenNotPaused {
         address account = _msgSender();
-        Service storage service = _services[account];
+        ServiceEntry storage serviceEntry = _services[account];
 
-        require(!service.registered, "Already registered");
-        service.registered = true;
+        require(!serviceEntry.registered, "Already registered");
+        serviceEntry.registered = true;
         emit ServiceRegistered(account);
         emit MetadataUpdated(account, uri, name);
     }
@@ -126,12 +135,12 @@ contract SLAYRegistryV2 is
     /// @inheritdoc ISLAYRegistryV2
     function registerAsOperator(string calldata uri, string calldata name) external override whenNotPaused {
         address account = _msgSender();
-        Operator storage operator = _operators[account];
+        OperatorEntry storage operatorEntry = _operators[account];
 
-        require(!operator.registered, "Already registered");
-        operator.registered = true;
+        require(!operatorEntry.registered, "Already registered");
+        operatorEntry.registered = true;
         // Set the default withdrawal delay for the operator.
-        operator.withdrawalDelay = DEFAULT_WITHDRAWAL_DELAY;
+        operatorEntry.withdrawalDelay = DEFAULT_WITHDRAWAL_DELAY;
         emit OperatorRegistered(account);
         emit MetadataUpdated(account, uri, name);
     }
@@ -311,19 +320,19 @@ contract SLAYRegistryV2 is
         require(length <= type(uint32).max, "Overflow");
         _slashParameters.push(parameter);
 
-        address account = _msgSender();
-        Service storage service = _services[account];
-        service.slashParameterId = uint32(length);
-        emit SlashParameterUpdated(account, parameter.destination, parameter.maxMbips, parameter.resolutionWindow);
+        address service = _msgSender();
+        ServiceEntry storage serviceEntry = _services[service];
+        serviceEntry.slashParameterId = uint32(length);
+        emit SlashParameterUpdated(service, parameter.destination, parameter.maxMbips, parameter.resolutionWindow);
     }
 
     /// @inheritdoc ISLAYRegistryV2
     function disableSlashing() external override onlyService(_msgSender()) whenNotPaused {
-        address account = _msgSender();
-        Service storage service = _services[account];
+        address service = _msgSender();
+        ServiceEntry storage serviceEntry = _services[service];
         // 0 is used to indicate that slashing is disabled.
-        service.slashParameterId = 0;
-        emit SlashParameterUpdated(account, address(0), 0, 0);
+        serviceEntry.slashParameterId = 0;
+        emit SlashParameterUpdated(service, address(0), 0, 0);
     }
 
     /// @inheritdoc ISLAYRegistryV2
@@ -358,11 +367,13 @@ contract SLAYRegistryV2 is
     }
 
     /**
-     * @dev Retrieves the relationship object for a given service-operator pair at a specific timestamp.
-     * @param service The address of the service.
-     * @param operator The address of the operator.
-     * @param timestamp The timestamp at which to retrieve the relationship status.
-     * @return RelationshipV2.Object The relationship object containing status and other details at the specified timestamp.
+     * @dev Retrieves the relationship object for a given service-operator pair at a specific timestamp
+     * Uses the Checkpoints library to look up the relationship status at the specified timestamp
+     *
+     * @param service The address of the service
+     * @param operator The address of the operator
+     * @param timestamp The timestamp at which to retrieve the relationship status
+     * @return The relationship object containing status and slashing parameters at the specified timestamp
      */
     function _getRelationshipObjectAt(address service, address operator, uint32 timestamp)
         internal
@@ -374,10 +385,12 @@ contract SLAYRegistryV2 is
     }
 
     /**
-     * @dev Retrieves the latest relationship object for a given service-operator pair.
-     * @param service The address of the service.
-     * @param operator The address of the operator.
-     * @return RelationshipV2.Object The latest relationship object containing status and other details.
+     * @dev Retrieves the latest relationship object for a given service-operator pair
+     * Uses the Checkpoints library to get the most recent relationship status
+     *
+     * @param service The address of the service
+     * @param operator The address of the operator
+     * @return The latest relationship object containing status and slashing parameters
      */
     function _getRelationshipObject(address service, address operator)
         internal
@@ -389,12 +402,21 @@ contract SLAYRegistryV2 is
     }
 
     /**
-     * @dev Updates the relationship status for a given service-operator pair.
+     * @dev Updates the relationship status for a given service-operator pair
+     * This function handles the relationship status changes and manages the active relationship sets.
      * We require the {service} and {operator} addresses to be passed in as parameters,
      * instead of using a pre-computed relationship {key} to emit the event and ensure proper usage of the function.
-     * @param service The address of the service.
-     * @param operator The address of the operator.
-     * @param obj The relationship object containing the new status and other details.
+     *
+     * If the status is set to Active:
+     * - Checks if maximum active relationships would be exceeded
+     * - Adds the service to the operator's active relationships and vice versa
+     *
+     * If the status is set to Inactive:
+     * - Removes the service from the operator's active relationships and vice versa
+     *
+     * @param service The address of the service
+     * @param operator The address of the operator
+     * @param obj The relationship object containing the new status and slashing parameters
      */
     function _updateRelationshipObject(address service, address operator, RelationshipV2.Object memory obj)
         internal
