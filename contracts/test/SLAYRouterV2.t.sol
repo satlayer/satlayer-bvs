@@ -1216,4 +1216,45 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.InvalidStatus.selector));
         router.cancelSlashing(slashId);
     }
+
+    function test_initialize2_Default() public {
+        assertEq(router.getMaxVaultsPerOperator(), 10, "default should be 10");
+    }
+
+    function test_setGuardrail_ZeroAddress() public {
+        vm.prank(owner);
+        vm.expectRevert("Guardrail address cannot be empty");
+        router.setGuardrail(address(0));
+    }
+
+    function test_getLockedAssets_InvalidSlashId() public {
+        bytes32 invalidSlashId = keccak256(abi.encodePacked("invalid"));
+
+        ISLAYRouterSlashingV2.LockedAssets[] memory lockedAssets = router.getLockedAssets(invalidSlashId);
+        assertEq(lockedAssets.length, 0, "Should return empty array for invalid slashId");
+    }
+
+    function test_getSlashingRequest_InvalidSlashId() public {
+        bytes32 invalidSlashId = keccak256(abi.encodePacked("invalid"));
+
+        // Should return a request with default values for non-existent
+        ISLAYRouterSlashingV2.Request memory request = router.getSlashingRequest(invalidSlashId);
+        assertEq(request.service, address(0));
+        assertEq(request.operator, address(0));
+        assertEq(uint8(request.status), uint8(ISLAYRouterSlashingV2.Status.Pending));
+        assertEq(request.mbips, 0);
+    }
+
+    function test_getPendingSlashingRequest_NonExistentPair() public {
+        address nonExistentService = makeAddr("NonExistentService");
+        address nonExistentOperator = makeAddr("NonExistentOperator");
+
+        // Should return a request with default values for non-existent
+        ISLAYRouterSlashingV2.Request memory request =
+            router.getPendingSlashingRequest(nonExistentService, nonExistentOperator);
+        assertEq(request.service, address(0));
+        assertEq(request.operator, address(0));
+        assertEq(uint8(request.status), uint8(ISLAYRouterSlashingV2.Status.Pending));
+        assertEq(request.mbips, 0);
+    }
 }
