@@ -211,18 +211,20 @@ contract SLAYVaultV2 is
         override
         returns (uint256 requestId)
     {
+        address sender = _msgSender();
+
         // Checks
         if (shares == 0) {
             revert ZeroAmount();
         }
 
         // spend allowance if caller is not the owner AND not an operator
-        if (owner != _msgSender() && !_isOperator[owner][_msgSender()]) {
-            _spendAllowance(owner, _msgSender(), shares);
+        if (owner != sender && !_isOperator[owner][sender]) {
+            _spendAllowance(owner, sender, shares);
         }
 
         // if the controller is not the sender, check that the controller has msg.sender set as the operator
-        if (controller != _msgSender() && !_isOperator[controller][_msgSender()]) {
+        if (controller != sender && !_isOperator[controller][sender]) {
             revert NotControllerOrOperator();
         }
 
@@ -237,7 +239,7 @@ contract SLAYVaultV2 is
 
         // transfer shares from owner to the contract
         _transfer(owner, address(this), shares);
-        emit RedeemRequest(controller, owner, REQUEST_ID, _msgSender(), shares);
+        emit RedeemRequest(controller, owner, REQUEST_ID, sender, shares);
         return REQUEST_ID;
     }
 
