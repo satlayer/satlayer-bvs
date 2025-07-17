@@ -123,26 +123,26 @@ contract SLAYRegistryV2 is
 
     /// @inheritdoc ISLAYRegistryV2
     function registerAsService(string calldata uri, string calldata name) external override whenNotPaused {
-        address account = _msgSender();
-        ServiceEntry storage serviceEntry = _services[account];
+        address service = _msgSender();
+        ServiceEntry storage serviceEntry = _services[service];
 
         require(!serviceEntry.registered, "Already registered");
         serviceEntry.registered = true;
-        emit ServiceRegistered(account);
-        emit MetadataUpdated(account, uri, name);
+        emit ServiceRegistered(service);
+        emit MetadataUpdated(service, uri, name);
     }
 
     /// @inheritdoc ISLAYRegistryV2
     function registerAsOperator(string calldata uri, string calldata name) external override whenNotPaused {
-        address account = _msgSender();
-        OperatorEntry storage operatorEntry = _operators[account];
+        address operator = _msgSender();
+        OperatorEntry storage operatorEntry = _operators[operator];
 
         require(!operatorEntry.registered, "Already registered");
         operatorEntry.registered = true;
         // Set the default withdrawal delay for the operator.
         operatorEntry.withdrawalDelay = DEFAULT_WITHDRAWAL_DELAY;
-        emit OperatorRegistered(account);
-        emit MetadataUpdated(account, uri, name);
+        emit OperatorRegistered(operator);
+        emit MetadataUpdated(operator, uri, name);
     }
 
     /// @inheritdoc ISLAYRegistryV2
