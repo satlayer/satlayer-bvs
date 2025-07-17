@@ -14,6 +14,8 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
     function test_defaults() public view {
         assertEq(router.owner(), owner);
         assertEq(router.paused(), false);
+        assertEq(router.getMaxVaultsPerOperator(), 10, "default should be 10");
+        assertEq(router.isVaultWhitelisted(address(0)), false);
     }
 
     function test_paused() public {
@@ -347,7 +349,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         }
     }
 
-    function test_revert_lockSlashing() public {
+    function test_lockSlashing_reverts() public {
         _advanceBlockBy(20000000);
         address operator = makeAddr("Operator X");
         address service = makeAddr("Service X");
@@ -540,7 +542,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         assertEq(routerBalance, 0);
     }
 
-    function test_Revert_finalizeSlashing_guardrail_reject() public {
+    function test_finalizeSlashing_guardrail_reject() public {
         _advanceBlockBy(20000000);
         address operator = makeAddr("Operator X");
         address service = makeAddr("Service X");
@@ -612,7 +614,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         router.finalizeSlashing(slashId);
     }
 
-    function test_Revert_finalizeSlashing() public {
+    function test_finalizeSlashing_reverts() public {
         _advanceBlockBy(20000000);
         address operator = makeAddr("Operator X");
         address service = makeAddr("Service X");
@@ -707,7 +709,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         router.finalizeSlashing(slashId);
     }
 
-    function test_Revert_guardrailConfirm() public {
+    function test_guardrailConfirm_reverts() public {
         _advanceBlockBy(20000000);
         address operator = makeAddr("Operator X");
         address service = makeAddr("Service X");
@@ -968,7 +970,13 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         _advanceBlockBy(10);
 
-        ISLAYRouterSlashingV2.Payload memory request = ISLAYRouterSlashingV2.Payload({
+        // Test with default values, should revert
+        ISLAYRouterSlashingV2.Payload memory payload;
+        vm.prank(service);
+        vm.expectRevert();
+        router.requestSlashing(payload);
+
+        payload = ISLAYRouterSlashingV2.Payload({
             mbips: 100,
             timestamp: uint32(block.timestamp),
             operator: operator,
@@ -979,9 +987,9 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         vm.prank(service);
         vm.expectRevert("timestamp too old");
-        router.requestSlashing(request);
+        router.requestSlashing(payload);
 
-        ISLAYRouterSlashingV2.Payload memory request2 = ISLAYRouterSlashingV2.Payload({
+        payload = ISLAYRouterSlashingV2.Payload({
             mbips: 100_000,
             timestamp: uint32(block.timestamp),
             operator: operator,
@@ -990,7 +998,30 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         vm.prank(service);
         vm.expectRevert("mbips exceeds max allowed");
-        router.requestSlashing(request2);
+        router.requestSlashing(payload);
+
+        payload = ISLAYRouterSlashingV2.Payload({
+            mbips: 100,
+            timestamp: uint32(block.timestamp),
+            operator: operator,
+            // Create a reason that is too long (more than 250 characters)
+            reason: "This reason is too long. It should be more than 250 characters to trigger the revert. This reason is too long. It should be more than 250 characters to trigger the revert. This reason is too long. It should be more than 250 characters to trigger the revert. This reason is too long. It should be more than 250 characters to trigger the revert."
+        });
+
+        vm.prank(service);
+        vm.expectRevert("reason too long");
+        router.requestSlashing(payload);
+
+        payload = ISLAYRouterSlashingV2.Payload({
+            mbips: 0, // Zero mbips should revert
+            timestamp: uint32(block.timestamp),
+            operator: operator,
+            reason: "Some reason"
+        });
+
+        vm.prank(service);
+        vm.expectRevert("mbips must be > 0");
+        router.requestSlashing(payload);
     }
 
     function test_cancelSlashing_ideal() public {
@@ -1191,5 +1222,42 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         vm.prank(service);
         vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.InvalidStatus.selector));
         router.cancelSlashing(slashId);
+    }
+
+    function test_setGuardrail_ZeroAddress() public {
+        vm.prank(owner);
+        vm.expectRevert("Guardrail address cannot be empty");
+        router.setGuardrail(address(0));
+    }
+
+    function test_getLockedAssets_InvalidSlashId() public {
+        bytes32 invalidSlashId = keccak256(abi.encodePacked("invalid"));
+
+        ISLAYRouterSlashingV2.LockedAssets[] memory lockedAssets = router.getLockedAssets(invalidSlashId);
+        assertEq(lockedAssets.length, 0, "Should return empty array for invalid slashId");
+    }
+
+    function test_getSlashingRequest_InvalidSlashId() public {
+        bytes32 invalidSlashId = keccak256(abi.encodePacked("invalid"));
+
+        // Should return a request with default values for non-existent
+        ISLAYRouterSlashingV2.Request memory request = router.getSlashingRequest(invalidSlashId);
+        assertEq(request.service, address(0));
+        assertEq(request.operator, address(0));
+        assertEq(uint8(request.status), uint8(ISLAYRouterSlashingV2.Status.Pending));
+        assertEq(request.mbips, 0);
+    }
+
+    function test_getPendingSlashingRequest_NonExistentPair() public {
+        address nonExistentService = makeAddr("NonExistentService");
+        address nonExistentOperator = makeAddr("NonExistentOperator");
+
+        // Should return a request with default values for non-existent
+        ISLAYRouterSlashingV2.Request memory request =
+            router.getPendingSlashingRequest(nonExistentService, nonExistentOperator);
+        assertEq(request.service, address(0));
+        assertEq(request.operator, address(0));
+        assertEq(uint8(request.status), uint8(ISLAYRouterSlashingV2.Status.Pending));
+        assertEq(request.mbips, 0);
     }
 }

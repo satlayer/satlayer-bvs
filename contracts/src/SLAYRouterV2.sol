@@ -19,9 +19,18 @@ import {ISLAYVaultV2} from "./interface/ISLAYVaultV2.sol";
 import {ISLAYRouterSlashingV2, SlashingRequestId} from "./interface/ISLAYRouterSlashingV2.sol";
 
 /**
- * @title Vaults Router Contract
- * @dev The central point for managing interactions with SLAYVaults.
- * This contract is designed to work with the SLAYRegistryV2 for managing vaults and their states.
+ * @title SLAYRouterV2 - Vaults Router Contract
+ * @dev The central point for managing interactions with SLAYVaults in the SatLayer protocol.
+ *
+ * This contract serves as the main interface for services to interact with operator vaults,
+ * providing functionality for:
+ * - Managing vault whitelisting
+ * - Enforcing limits on vaults per operator
+ * - Handling the slashing process for operator penalties
+ * - Managing guardrail approvals for security
+ *
+ * The router works closely with the SLAYRegistry for service and operator registration
+ * information, and interacts with SLAYVaults to manage assets during slashing operations.
  *
  * @custom:oz-upgrades-from src/SLAYBase.sol:SLAYBase
  */
@@ -38,40 +47,78 @@ contract SLAYRouterV2 is
     using SafeERC20 for IERC20;
 
     /**
-     * @notice 7 days, the expiry window for slashing requests.
+     * @notice The expiry window for slashing requests, set to 7 days.
+     * @dev After the resolution window has passed, services have this additional time period
+     * to lock and finalize a slashing request before it expires and becomes invalid.
      */
     uint32 public constant SLASHING_REQUEST_EXPIRY_WINDOW = 7 days;
 
-    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    /**
+     * @dev This is an immutable reference to the SLAYRegistryV2 contract, set during construction.
+     * The router uses this to verify service status and retrieve slashing parameters.
+     * @custom:oz-upgrades-unsafe-allow state-variable-immutable
+     */
     ISLAYRegistryV2 public immutable registry;
 
-    /// @dev Whitelisted flag for each vault.
+    /**
+     * @dev Mapping that stores the whitelist status for each vault address.
+     * When a vault is whitelisted (true), it can be interacted with through the router.
+     */
     mapping(address => bool) internal _whitelisted;
 
-    /// @dev The max number of vaults allowed per operator.
+    /**
+     * @dev The maximum number of vaults allowed per operator.
+     * This limit prevents a single operator from controlling too many vaults.
+     * Default value is set to 10 during initialization.
+     */
     uint8 private _maxVaultsPerOperator;
 
-    /// @dev The address of the guardrail contract.
+    /**
+     * @dev The address of the guardrail contract that provides additional security
+     * by approving or rejecting slashing requests before they can be finalized.
+     */
     address private _guardrail;
 
-    /// @dev Stores the EnumerableSet of vault address for each operator.
+    /**
+     * @dev Mapping that stores the set of vault addresses for each operator.
+     * Uses EnumerableSet for efficient iteration and membership checking.
+     */
     mapping(address operator => EnumerableSet.AddressSet) private _operatorVaults;
 
-    /// @dev Stores the id for most recent slashing request for a given service operator pair.
+    /**
+     * @dev Mapping that stores the ID of the most recent slashing request for each service-operator pair.
+     * Used to enforce the rule that a service can only have one active slashing request per operator.
+     */
     mapping(address service => mapping(address operator => bytes32)) private _pendingSlashingRequestIds;
 
-    /// @dev Stores the slashing requests by its id.
+    /**
+     * @dev Mapping that stores the complete slashing request information for each slashing ID.
+     * Contains all the details about a slashing request, including its current status.
+     * Historical requests are kept.
+     */
     mapping(bytes32 slashId => ISLAYRouterSlashingV2.Request) private _slashingRequests;
 
-    /// @dev Stores the locked assets for each slashing request.
+    /**
+     * @dev Mapping that stores the locked assets for each slashing request.
+     * When a slashing request is locked, the assets from each vault are recorded here
+     * before being transferred to the final destination during finalization.
+     */
     mapping(bytes32 slashId => ISLAYRouterSlashingV2.LockedAssets[]) private _lockedAssets;
 
-    /// @dev Stores the guardrail approval for each slashing request. 0 - unset, 1 - approve, 2 - reject.
+    /**
+     * @dev Mapping that stores the guardrail approval status for each slashing request.
+     * Values: 0 - unset (default), 1 - approved, 2 - rejected.
+     * A slashing request can only be finalized if it has been approved by the guardrail.
+     */
     mapping(bytes32 slashId => uint8) private _guardrailApproval;
 
-    /// @dev Modifier to check if the caller is a registered service.
-    /// Information is sourced from checking the SLAYRegistryV2 contract.
-    /// @param account The address to check if it is a service.
+    /**
+     * @dev Modifier that restricts function access to registered services only.
+     * Verifies that the provided account is a registered service by checking with the registry.
+     * Reverts with ServiceNotFound if the account is not a registered service.
+     *
+     * @param account The address to check if it is a registered service.
+     */
     modifier onlyService(address account) {
         if (!registry.isService(account)) {
             revert ISLAYRegistryV2.ServiceNotFound(account);
@@ -80,13 +127,18 @@ contract SLAYRouterV2 is
     }
 
     /**
-     * @dev Set the immutable SLAYRegistryV2 proxy address for the implementation.
-     * Cyclic params in the constructor are possible as an SLAYBase (initial base implementation) is used for the initial deployment,
-     * after which all the contracts are upgraded to their respective implementations with immutable proxy addresses.
+     * @notice Constructor that sets the registry contract address.
+     * @dev Sets the immutable SLAYRegistryV2 proxy address for the implementation.
+     *
+     * This contract is designed to work with the OpenZeppelin upgradeable contracts pattern.
+     * Cyclic parameters in the constructor are possible because SLAYBase (the initial base implementation)
+     * is used for the initial deployment, after which all contracts are upgraded to their
+     * respective implementations with immutable proxy addresses.
      *
      * This contract extends SLAYBase, which provides the initial owner and pause functionality.
-     * SLAYBase.initialize() is called to set the initial owner of the contract.
+     * SLAYBase.initialize() is called separately to set the initial owner of the contract.
      *
+     * @param registry_ The address of the SLAYRegistryV2 contract to use for service and operator information.
      * @custom:oz-upgrades-unsafe-allow constructor
      */
     constructor(ISLAYRegistryV2 registry_) {
@@ -95,8 +147,8 @@ contract SLAYRouterV2 is
     }
 
     /**
-     * @dev Initializes SLAYRouterV2 contract.
-     * Set the default max vaults per operator to 10.
+     * @dev This function is called during the upgrade from SLAYBase to SLAYRouterV2.
+     * It sets the default maximum number of vaults per operator to 10.
      */
     function initialize2() public reinitializer(2) {
         _maxVaultsPerOperator = 10;
@@ -117,6 +169,7 @@ contract SLAYRouterV2 is
     function setVaultWhitelist(address vault_, bool isWhitelisted) external override onlyOwner {
         require(_whitelisted[vault_] != isWhitelisted, "Vault already in desired state");
 
+        // Get the operator address from the vault contract
         address operator = ISLAYVaultV2(vault_).delegated();
         EnumerableSet.AddressSet storage vaults = _operatorVaults[operator];
 
@@ -150,6 +203,7 @@ contract SLAYRouterV2 is
         override
         returns (ISLAYRouterSlashingV2.Request memory)
     {
+        // Retrieve the current slashing request ID for the given service-operator pair
         bytes32 slashId = _pendingSlashingRequestIds[service][operator];
         return _slashingRequests[slashId];
     }
@@ -161,6 +215,8 @@ contract SLAYRouterV2 is
         override
         returns (ISLAYRouterSlashingV2.Request memory)
     {
+        // Return the complete slashing request information for the given slashId
+        // If the slashId doesn't exist, returns a request with default values
         return _slashingRequests[slashId];
     }
 
@@ -287,6 +343,7 @@ contract SLAYRouterV2 is
         return _lockedAssets[slashId];
     }
 
+    /// @inheritdoc ISLAYRouterSlashingV2
     function finalizeSlashing(bytes32 slashId) external override whenNotPaused onlyService(_msgSender()) {
         ISLAYRouterSlashingV2.Request storage request = _slashingRequests[slashId];
         // Only service that initiated the slash request can call this function.
