@@ -20,6 +20,24 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vm.stopPrank();
     }
 
+    function test_initialize() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        assertEq(vault.name(), "SatLayer Wrapped Bitcoin");
+        assertEq(vault.symbol(), "satWBTC");
+        assertEq(vault.decimals(), underlying.decimals());
+        assertEq(vault.asset(), address(underlying));
+        assertEq(vault.delegated(), operator);
+    }
+
+    function test_delegated() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        assertEq(vault.delegated(), operator);
+    }
+
     function test_erc165() public {
         vm.prank(operator);
         SLAYVaultV2 vault = vaultFactory.create(underlying);
@@ -729,7 +747,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         assertEq(underlying.balanceOf(address(router)), 20 * underlyingMinorUnit); // slashAmount
     }
 
-    function test_revert_lockSlashing() public {
+    function test_lockSlashing_reverts() public {
         vm.prank(operator);
         SLAYVaultV2 vault = vaultFactory.create(underlying);
 
@@ -753,5 +771,627 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
             )
         );
         vault.lockSlashing(20 * underlyingMinorUnit);
+    }
+
+    /// Test always revert, as required by ERC7540
+    function test_previewWithdraw_reverts() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        vm.expectRevert(ISLAYVaultV2.PreviewNotSupported.selector);
+        vault.previewWithdraw(100);
+    }
+
+    /// Test always revert, as required by ERC7540
+    function test_previewRedeem_reverts() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        vm.expectRevert(ISLAYVaultV2.PreviewNotSupported.selector);
+        vault.previewRedeem(100);
+    }
+
+    /// Not the same operator as SLAY Registry Operator
+    function test_setOperator_isOperator() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        address staker = makeAddr("staker");
+        address operatorAddress = makeAddr("operatorAddress");
+
+        assertFalse(vault.isOperator(staker, operatorAddress));
+
+        // Set operator
+        vm.prank(staker);
+        bool success = vault.setOperator(operatorAddress, true);
+
+        assertTrue(success);
+        assertTrue(vault.isOperator(staker, operatorAddress));
+
+        vm.prank(staker);
+        success = vault.setOperator(operatorAddress, false);
+
+        assertTrue(success);
+        assertFalse(vault.isOperator(staker, operatorAddress));
+    }
+
+    function test_operatorChain() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        address staker = makeAddr("staker");
+        address operator1 = makeAddr("operator1");
+        address operator2 = makeAddr("operator2");
+
+        // Staker sets operator1 as operator
+        vm.prank(staker);
+        vault.setOperator(operator1, true);
+
+        // Operator1 sets operator2 as operator
+        vm.prank(operator1);
+        vault.setOperator(operator2, true);
+
+        // Verify operator2 is not an operator for staker
+        assertFalse(vault.isOperator(staker, operator2));
+
+        // Verify operator1 is an operator for staker
+        assertTrue(vault.isOperator(staker, operator1));
+
+        // Verify operator2 is an operator for operator1
+        assertTrue(vault.isOperator(operator1, operator2));
+    }
+
+    function test_getTotalPendingRedemption() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        // Setup accounts and deposit
+        address staker1 = makeAddr("staker1");
+        address staker2 = makeAddr("staker2");
+
+        uint256 depositAmount1 = 100 * 10 ** underlying.decimals();
+        uint256 depositAmount2 = 50 * 10 ** underlying.decimals();
+
+        underlying.mint(staker1, depositAmount1);
+        underlying.mint(staker2, depositAmount2);
+
+        // Staker1 deposits
+        vm.startPrank(staker1);
+        underlying.approve(address(vault), type(uint256).max);
+        vault.deposit(depositAmount1, staker1);
+        vm.stopPrank();
+
+        // Staker2 deposits
+        vm.startPrank(staker2);
+        underlying.approve(address(vault), type(uint256).max);
+        vault.deposit(depositAmount2, staker2);
+        vm.stopPrank();
+
+        // Initial check - no pending redemptions
+        assertEq(vault.getTotalPendingRedemption(), 0);
+
+        // Staker1 requests redemption
+        vm.prank(staker1);
+        vault.requestRedeem(depositAmount1, staker1, staker1);
+
+        // Check total pending redemption after staker1's request
+        assertEq(vault.getTotalPendingRedemption(), 100 * 10 ** underlying.decimals());
+
+        // Staker2 requests redemption
+        vm.prank(staker2);
+        vault.requestRedeem(depositAmount2, staker2, staker2);
+
+        // Check total pending redemption after both requests
+        assertEq(vault.getTotalPendingRedemption(), 150 * 10 ** underlying.decimals());
+
+        // Fast forward to after withdrawal delay
+        skip(7 days);
+
+        // Staker1 redeems
+        vm.prank(staker1);
+        vault.redeem(depositAmount1, staker1, staker1);
+
+        // Check total pending redemption after staker1's redemption
+        assertEq(vault.getTotalPendingRedemption(), 50 * 10 ** underlying.decimals());
+
+        // Staker2 redeems
+        vm.prank(staker2);
+        vault.redeem(depositAmount2, staker2, staker2);
+
+        // Check total pending redemption after both redemptions
+        assertEq(vault.getTotalPendingRedemption(), 0);
+    }
+
+    function test_pendingRedeemRequest() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        // Setup account and deposit
+        address staker = makeAddr("staker");
+        uint256 depositAmount = 100 * 10 ** underlying.decimals();
+
+        underlying.mint(staker, depositAmount);
+
+        vm.startPrank(staker);
+        underlying.approve(address(vault), type(uint256).max);
+        vault.deposit(depositAmount, staker);
+
+        // Initial check - no pending redemption
+        assertEq(vault.pendingRedeemRequest(0, staker), 0);
+
+        // Request redemption
+        vault.requestRedeem(depositAmount, staker, staker);
+
+        // Check pending redemption after request
+        assertEq(vault.pendingRedeemRequest(0, staker), depositAmount);
+
+        // Fast forward to after withdrawal delay
+        skip(7 days);
+
+        // After delay, should no longer be pending
+        assertEq(vault.pendingRedeemRequest(0, staker), 0);
+        vm.stopPrank();
+    }
+
+    function test_claimableRedeemRequest() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        // Setup account and deposit
+        address staker = makeAddr("staker");
+        uint256 depositAmount = 100 * 10 ** underlying.decimals();
+
+        underlying.mint(staker, depositAmount);
+
+        vm.startPrank(staker);
+        underlying.approve(address(vault), type(uint256).max);
+        vault.deposit(depositAmount, staker);
+
+        // Initial check - no claimable redemption
+        assertEq(vault.claimableRedeemRequest(0, staker), 0);
+
+        // Request redemption
+        vault.requestRedeem(depositAmount, staker, staker);
+
+        // Check claimable redemption after request (should be 0 before delay passes)
+        assertEq(vault.claimableRedeemRequest(0, staker), 0);
+
+        // Fast forward to after withdrawal delay
+        skip(7 days);
+
+        // After delay, should be claimable
+        assertEq(vault.claimableRedeemRequest(0, staker), depositAmount);
+        vm.stopPrank();
+    }
+
+    function test_maxWithdraw() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        // Setup account and deposit
+        address staker = makeAddr("staker");
+        uint256 depositAmount = 100 * 10 ** underlying.decimals();
+
+        underlying.mint(staker, depositAmount);
+
+        vm.startPrank(staker);
+        underlying.approve(address(vault), type(uint256).max);
+        vault.deposit(depositAmount, staker);
+
+        // Initial check - maxWithdraw should be 0 before request
+        assertEq(vault.maxWithdraw(staker), 0);
+
+        // Request redemption
+        vault.requestRedeem(depositAmount, staker, staker);
+
+        // Check maxWithdraw after request (should be 0 before delay passes)
+        assertEq(vault.maxWithdraw(staker), 0);
+
+        // Fast forward to after withdrawal delay
+        skip(7 days);
+
+        // After delay, maxWithdraw should equal the deposit amount
+        assertEq(vault.maxWithdraw(staker), depositAmount);
+        vm.stopPrank();
+    }
+
+    function test_maxRedeem() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        // Setup account and deposit
+        address staker = makeAddr("staker");
+        uint256 depositAmount = 100 * 10 ** underlying.decimals();
+
+        underlying.mint(staker, depositAmount);
+
+        vm.startPrank(staker);
+        underlying.approve(address(vault), type(uint256).max);
+        vault.deposit(depositAmount, staker);
+
+        // Initial check - maxRedeem should be 0 before request
+        assertEq(vault.maxRedeem(staker), 0);
+
+        // Request redemption
+        vault.requestRedeem(depositAmount, staker, staker);
+
+        // Check maxRedeem after request (should be 0 before delay passes)
+        assertEq(vault.maxRedeem(staker), 0);
+
+        // Fast forward to after withdrawal delay
+        skip(7 days);
+
+        // After delay, maxRedeem should equal the deposit amount
+        assertEq(vault.maxRedeem(staker), depositAmount);
+        vm.stopPrank();
+    }
+
+    function test_requestRedeem_zeroAmount() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        address staker = makeAddr("staker");
+        uint256 depositAmount = 100 * 10 ** underlying.decimals();
+
+        underlying.mint(staker, depositAmount);
+
+        vm.startPrank(staker);
+        underlying.approve(address(vault), type(uint256).max);
+        vault.deposit(depositAmount, staker);
+
+        // Try to request redeem with zero amount
+        vm.expectRevert(ISLAYVaultV2.ZeroAmount.selector);
+        vault.requestRedeem(0, staker, staker);
+        vm.stopPrank();
+    }
+
+    function test_requestRedeem_insufficientAllowance() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        address staker = makeAddr("staker");
+        address otherAccount = makeAddr("otherAccount");
+        uint256 depositAmount = 100 * 10 ** underlying.decimals();
+
+        underlying.mint(staker, depositAmount);
+
+        vm.startPrank(staker);
+        underlying.approve(address(vault), type(uint256).max);
+        vault.deposit(depositAmount, staker);
+        vm.stopPrank();
+
+        // Try to request redeem from another account without allowance
+        vm.prank(otherAccount);
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, otherAccount, 0, depositAmount)
+        );
+        vault.requestRedeem(depositAmount, staker, staker);
+    }
+
+    function test_requestRedeem_notControllerOrOperator() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        address staker = makeAddr("staker");
+        address controller = makeAddr("controller");
+        uint256 depositAmount = 100 * 10 ** underlying.decimals();
+
+        underlying.mint(staker, depositAmount);
+
+        vm.startPrank(staker);
+        underlying.approve(address(vault), type(uint256).max);
+        vault.deposit(depositAmount, staker);
+
+        // Approve for the request
+        vault.approve(address(this), depositAmount);
+        vm.stopPrank();
+
+        // Try to request redeem with a different controller
+        vm.expectRevert(abi.encodeWithSelector(ISLAYVaultV2.NotControllerOrOperator.selector));
+        vault.requestRedeem(depositAmount, controller, staker);
+    }
+
+    function test_withdraw_zeroAmount() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        address staker = makeAddr("staker");
+        uint256 depositAmount = 100 * 10 ** underlying.decimals();
+
+        underlying.mint(staker, depositAmount);
+
+        vm.startPrank(staker);
+        underlying.approve(address(vault), type(uint256).max);
+        vault.deposit(depositAmount, staker);
+
+        // Request redeem
+        vault.requestRedeem(depositAmount, staker, staker);
+
+        // Fast forward to after withdrawal delay
+        skip(7 days);
+
+        // Try to withdraw with zero amount
+        vm.expectRevert(ISLAYVaultV2.ZeroAmount.selector);
+        vault.withdraw(0, staker, staker);
+        vm.stopPrank();
+    }
+
+    function test_withdraw_noRequest() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        address staker = makeAddr("staker");
+        uint256 depositAmount = 100 * 10 ** underlying.decimals();
+
+        underlying.mint(staker, depositAmount);
+
+        vm.startPrank(staker);
+        underlying.approve(address(vault), type(uint256).max);
+        vault.deposit(depositAmount, staker);
+
+        // Try to withdraw without a request
+        vm.expectRevert(ISLAYVaultV2.WithdrawRequestNotFound.selector);
+        vault.withdraw(depositAmount, staker, staker);
+        vm.stopPrank();
+    }
+
+    function test_withdraw_delayNotPassed() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        address staker = makeAddr("staker");
+        uint256 depositAmount = 100 * 10 ** underlying.decimals();
+
+        underlying.mint(staker, depositAmount);
+
+        vm.startPrank(staker);
+        underlying.approve(address(vault), type(uint256).max);
+        vault.deposit(depositAmount, staker);
+
+        // Request redeem
+        vault.requestRedeem(depositAmount, staker, staker);
+
+        // Try to withdraw before delay has passed
+        vm.expectRevert(ISLAYVaultV2.WithdrawalDelayHasNotPassed.selector);
+        vault.withdraw(depositAmount, staker, staker);
+        vm.stopPrank();
+    }
+
+    function test_withdraw_partialAmount() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        address staker = makeAddr("staker");
+        uint256 depositAmount = 100 * 10 ** underlying.decimals();
+
+        underlying.mint(staker, depositAmount);
+
+        vm.startPrank(staker);
+        underlying.approve(address(vault), type(uint256).max);
+        vault.deposit(depositAmount, staker);
+
+        // Request redeem
+        vault.requestRedeem(depositAmount, staker, staker);
+
+        // Fast forward to after withdrawal delay
+        skip(7 days);
+
+        // Try to withdraw partial amount
+        vm.expectRevert(ISLAYVaultV2.MustClaimAll.selector);
+        vault.withdraw(depositAmount / 2, staker, staker);
+        vm.stopPrank();
+    }
+
+    function test_withdraw_excessiveAmount() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        address staker = makeAddr("staker");
+        uint256 depositAmount = 100 * 10 ** underlying.decimals();
+
+        underlying.mint(staker, depositAmount);
+
+        vm.startPrank(staker);
+        underlying.approve(address(vault), type(uint256).max);
+        vault.deposit(depositAmount, staker);
+
+        // Request redeem
+        vault.requestRedeem(depositAmount, staker, staker);
+
+        // Fast forward to after withdrawal delay
+        skip(7 days);
+
+        // Try to withdraw more than requested
+        vm.expectRevert(ISLAYVaultV2.ExceededMaxRedeemable.selector);
+        vault.withdraw(depositAmount + 1, staker, staker);
+        vm.stopPrank();
+    }
+
+    function test_redeem_zeroAmount() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        address staker = makeAddr("staker");
+        uint256 depositAmount = 100 * 10 ** underlying.decimals();
+
+        underlying.mint(staker, depositAmount);
+
+        vm.startPrank(staker);
+        underlying.approve(address(vault), type(uint256).max);
+        vault.deposit(depositAmount, staker);
+
+        // Request redeem
+        vault.requestRedeem(depositAmount, staker, staker);
+
+        // Fast forward to after withdrawal delay
+        skip(7 days);
+
+        // Try to redeem with zero amount
+        vm.expectRevert(ISLAYVaultV2.ZeroAmount.selector);
+        vault.redeem(0, staker, staker);
+        vm.stopPrank();
+    }
+
+    function test_redeem_noRequest() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        address staker = makeAddr("staker");
+        uint256 depositAmount = 100 * 10 ** underlying.decimals();
+
+        underlying.mint(staker, depositAmount);
+
+        vm.startPrank(staker);
+        underlying.approve(address(vault), type(uint256).max);
+        vault.deposit(depositAmount, staker);
+
+        // Try to redeem without a request
+        vm.expectRevert(ISLAYVaultV2.WithdrawRequestNotFound.selector);
+        vault.redeem(depositAmount, staker, staker);
+        vm.stopPrank();
+    }
+
+    function test_redeem_delayNotPassed() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        address staker = makeAddr("staker");
+        uint256 depositAmount = 100 * 10 ** underlying.decimals();
+
+        underlying.mint(staker, depositAmount);
+
+        vm.startPrank(staker);
+        underlying.approve(address(vault), type(uint256).max);
+        vault.deposit(depositAmount, staker);
+
+        // Request redeem
+        vault.requestRedeem(depositAmount, staker, staker);
+
+        // Try to redeem before delay has passed
+        vm.expectRevert(ISLAYVaultV2.WithdrawalDelayHasNotPassed.selector);
+        vault.redeem(depositAmount, staker, staker);
+        vm.stopPrank();
+    }
+
+    function test_redeem_partialAmount() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        address staker = makeAddr("staker");
+        uint256 depositAmount = 100 * 10 ** underlying.decimals();
+
+        underlying.mint(staker, depositAmount);
+
+        vm.startPrank(staker);
+        underlying.approve(address(vault), type(uint256).max);
+        vault.deposit(depositAmount, staker);
+
+        // Request redeem
+        vault.requestRedeem(depositAmount, staker, staker);
+
+        // Fast forward to after withdrawal delay
+        skip(7 days);
+
+        // Try to redeem partial amount
+        vm.expectRevert(ISLAYVaultV2.MustClaimAll.selector);
+        vault.redeem(depositAmount / 2, staker, staker);
+        vm.stopPrank();
+    }
+
+    function test_redeem_excessiveAmount() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        vm.startPrank(owner);
+        router.setVaultWhitelist(address(vault), true);
+        vm.stopPrank();
+
+        address staker = makeAddr("staker");
+        uint256 depositAmount = 100 * 10 ** underlying.decimals();
+
+        underlying.mint(staker, depositAmount);
+
+        vm.startPrank(staker);
+        underlying.approve(address(vault), type(uint256).max);
+        vault.deposit(depositAmount, staker);
+
+        // Request redeem
+        vault.requestRedeem(depositAmount, staker, staker);
+
+        // Fast forward to after withdrawal delay
+        skip(7 days);
+
+        // Try to redeem more than requested
+        vm.expectRevert(ISLAYVaultV2.ExceededMaxRedeemable.selector);
+        vault.redeem(depositAmount + 1, staker, staker);
+        vm.stopPrank();
     }
 }
