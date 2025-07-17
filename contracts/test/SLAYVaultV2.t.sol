@@ -20,6 +20,24 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vm.stopPrank();
     }
 
+    function test_initialize() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        assertEq(vault.name(), "SatLayer Wrapped Bitcoin");
+        assertEq(vault.symbol(), "satWBTC");
+        assertEq(vault.decimals(), underlying.decimals());
+        assertEq(vault.asset(), address(underlying));
+        assertEq(vault.delegated(), operator);
+    }
+
+    function test_delegated() public {
+        vm.prank(operator);
+        SLAYVaultV2 vault = vaultFactory.create(underlying);
+
+        assertEq(vault.delegated(), operator);
+    }
+
     function test_erc165() public {
         vm.prank(operator);
         SLAYVaultV2 vault = vaultFactory.create(underlying);
