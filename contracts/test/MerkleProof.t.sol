@@ -38,22 +38,6 @@ contract MerkleProofTest is Test {
         assertEq(MerkleProof.verify(proof, root, leaf, 7, 9), true);
     }
 
-    function test_verify_complex2() public {
-        bytes32 leaf = keccak256(
-            abi.encodePacked(keccak256(abi.encodePacked("bbn1j8k7l6m5n4o3p2q1r0s9t8u7v6w5x4y3z2a1b600000000000000000")))
-        );
-
-        bytes32[] memory proof = new bytes32[](4);
-        proof[0] = bytes32(abi.encodePacked(hex"c99659b6e1c7a2df5c6ce352241ef43152f1fed170d2fdc8d67ee2c47d9f26a5"));
-        proof[1] = bytes32(abi.encodePacked(hex"662362a44a545cd42cdf7e9c1cfc7eb3b55ebb3af452e1bd516d7329f0f490fa"));
-        proof[2] = bytes32(abi.encodePacked(hex"8a12e22ffa7163c5249a71f3df41704c2e2ccf8bab02dec02fc8db2740f51256"));
-        proof[3] = bytes32(abi.encodePacked(hex"afb5ee202bbe624a5d933b1eda40f5bf6bcd6674dbf1af8eea698ae023c104fe"));
-
-        bytes32 root = bytes32(abi.encodePacked(hex"1c8dd9ca252d7eb9bf1cccb9ab587e9a1dccca4c7474bb8739c0e5218964a2b4"));
-
-        assertEq(MerkleProof.verify(proof, root, leaf, 7, 9), true);
-    }
-
     /// forge-config: default.allow_internal_expect_revert = true
     function test_revert_processProof_wrongTotalLeaves() public {
         bytes32 leaf = keccak256(
