@@ -8,47 +8,53 @@ import {IERC7540Redeem, IERC7540Operator} from "forge-std/interfaces/IERC7540.so
 
 /**
  * @title SatLayer Vault Interface
- * @dev Interface for the SLAYVault contract.
+ * @notice Interface defining the functionality of the SLAYVault contract
+ * @dev This interface extends ERC20Metadata, ERC4626, and ERC7540 interfaces to provide
+ * a comprehensive vault implementation with asynchronous redemption capabilities
  */
 interface ISLAYVaultV2 is IERC20Metadata, IERC4626, IERC7540Operator, IERC7540Redeem {
     /*//////////////////////////////////////////////////////////////
                                 ERRORS
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice The operation failed because the contract is paused.
+    /// @notice The operation failed because the contract is paused
     error EnforcedPause();
 
-    /// @notice The operation failed because the contract is not whitelisted.
+    /// @notice The operation failed because the contract is not whitelisted
     error ExpectedWhitelisted();
 
-    /// @notice Thrown when the amount is zero.
+    /// @notice The operation failed because the amount specified is zero
     error ZeroAmount();
 
-    /// @notice Must withdraw all assets
+    /// @notice The operation failed because all assets must be withdrawn at once
     error MustClaimAll();
 
-    /// @notice Thrown when assets to withdraw exceed the maximum redeemable amount.
+    /// @notice The operation failed because assets to withdraw exceed the maximum redeemable amount
     error ExceededMaxRedeemable();
 
-    /// @notice Thrown when the withdrawal delay has not passed.
+    /// @notice The operation failed because the withdrawal delay period has not yet passed
     error WithdrawalDelayHasNotPassed();
 
-    /// @notice Thrown when the caller is not the controller or an approved operator.
+    /// @notice The operation failed because the caller is not the controller or an approved operator
     error NotControllerOrOperator();
 
-    /// @notice Preview functions are not supported for async flows.
+    /// @notice The operation failed because preview functions are not supported for asynchronous flows
     error PreviewNotSupported();
 
-    /// @notice Thrown when a withdraw request is not found.
+    /// @notice The operation failed because the specified withdraw request was not found
     error WithdrawRequestNotFound();
 
-    /// @notice Thrown when the caller is not the router.
+    /// @notice The operation failed because the caller is not the router contract
     error NotRouter();
 
     /*//////////////////////////////////////////////////////////////
                                 EVENTS
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @notice Emitted when assets are locked for slashing
+     * @param amount The amount of assets locked for slashing
+     */
     event SlashingLocked(uint256 amount);
 
     /// @notice Struct representing a redeem request.
@@ -64,33 +70,33 @@ interface ISLAYVaultV2 is IERC20Metadata, IERC4626, IERC7540Operator, IERC7540Re
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice The `delegated` is the address where the vault is delegated to.
-     * This address cannot withdraw assets from the vault.
-     * See https://build.satlayer.xyz/getting-started/operators for more information.
-     * @dev This address is the address of the SatLayer operator that is delegated to manage the vault.
-     * @return The address of the delegated operator.
+     * @notice Returns the address where the vault is delegated to
+     * @dev This address is the SatLayer operator that is delegated to manage the vault
+     * This address cannot withdraw assets from the vault
+     * See https://build.satlayer.xyz/getting-started/operators for more information
+     * @return The address of the delegated operator
      */
     function delegated() external view returns (address);
 
     /**
-     * @notice Returns whether the vault is whitelisted on SLAYRouter.
-     * @dev This is used to check if the vault is allowed to interact with the SLAYRouter.
-     * @return True if the vault is whitelisted, false otherwise.
+     * @notice Returns whether the vault is whitelisted on SLAYRouter
+     * @dev This is used to check if the vault is allowed to interact with the SLAYRouter
+     * @return True if the vault is whitelisted, false otherwise
      */
     function isWhitelisted() external view returns (bool);
 
     /**
-     * @notice Returns the total amount of shares pending redemption across all controllers.
-     * This is the sum of all shares in pending and claimable redemption requests.
-     *
-     * @return The total amount of shares pending redemption.
+     * @notice Returns the total amount of shares pending redemption across all controllers
+     * @dev This is the sum of all shares in pending and claimable redemption requests
+     * @return The total amount of shares pending redemption
      */
     function getTotalPendingRedemption() external view returns (uint256);
 
     /**
-     * @notice Moves assets from the vault to the router contract as part of the slashing process.
-     * @dev only callable by router
-     * @param amount The amount of underlying asset to move to the router.
+     * @notice Moves assets from the vault to the router contract as part of the slashing process
+     * @dev Only callable by the router contract. This function is used during the slashing process
+     * to transfer assets from the vault to the router for penalty distribution
+     * @param amount The amount of underlying asset to move to the router
      */
     function lockSlashing(uint256 amount) external;
 }
