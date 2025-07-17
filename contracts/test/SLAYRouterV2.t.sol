@@ -14,6 +14,8 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
     function test_defaults() public view {
         assertEq(router.owner(), owner);
         assertEq(router.paused(), false);
+        assertEq(router.getMaxVaultsPerOperator(), 10, "default should be 10");
+        assertEq(router.isVaultWhitelisted(address(0)), false);
     }
 
     function test_paused() public {
@@ -982,7 +984,13 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         _advanceBlockBy(10);
 
-        ISLAYRouterSlashingV2.Payload memory request = ISLAYRouterSlashingV2.Payload({
+        // Test with default values, should revert
+        ISLAYRouterSlashingV2.Payload memory payload;
+        vm.prank(service);
+        vm.expectRevert();
+        router.requestSlashing(payload);
+
+        payload = ISLAYRouterSlashingV2.Payload({
             mbips: 100,
             timestamp: uint32(block.timestamp),
             operator: operator,
@@ -993,9 +1001,9 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         vm.prank(service);
         vm.expectRevert("timestamp too old");
-        router.requestSlashing(request);
+        router.requestSlashing(payload);
 
-        ISLAYRouterSlashingV2.Payload memory request2 = ISLAYRouterSlashingV2.Payload({
+        payload = ISLAYRouterSlashingV2.Payload({
             mbips: 100_000,
             timestamp: uint32(block.timestamp),
             operator: operator,
@@ -1004,7 +1012,30 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
 
         vm.prank(service);
         vm.expectRevert("mbips exceeds max allowed");
-        router.requestSlashing(request2);
+        router.requestSlashing(payload);
+
+        payload = ISLAYRouterSlashingV2.Payload({
+            mbips: 100,
+            timestamp: uint32(block.timestamp),
+            operator: operator,
+            // Create a reason that is too long (more than 250 characters)
+            reason: "This reason is too long. It should be more than 250 characters to trigger the revert. This reason is too long. It should be more than 250 characters to trigger the revert. This reason is too long. It should be more than 250 characters to trigger the revert. This reason is too long. It should be more than 250 characters to trigger the revert."
+        });
+
+        vm.prank(service);
+        vm.expectRevert("reason too long");
+        router.requestSlashing(payload);
+
+        payload = ISLAYRouterSlashingV2.Payload({
+            mbips: 0, // Zero mbips should revert
+            timestamp: uint32(block.timestamp),
+            operator: operator,
+            reason: "Some reason"
+        });
+
+        vm.prank(service);
+        vm.expectRevert("mbips must be > 0");
+        router.requestSlashing(payload);
     }
 
     function test_cancelSlashing_ideal() public {
@@ -1215,10 +1246,6 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         vm.prank(service);
         vm.expectRevert(abi.encodeWithSelector(ISLAYRouterSlashingV2.InvalidStatus.selector));
         router.cancelSlashing(slashId);
-    }
-
-    function test_initialize2_Default() public {
-        assertEq(router.getMaxVaultsPerOperator(), 10, "default should be 10");
     }
 
     function test_setGuardrail_ZeroAddress() public {
