@@ -172,6 +172,7 @@ contract SLAYRegistryV2 is
             obj.status = RelationshipV2.Status.ServiceRegistered;
         } else if (obj.status == RelationshipV2.Status.OperatorRegistered) {
             obj.status = RelationshipV2.Status.Active;
+            obj.slashParameterId = _services[service].slashParameterId;
         } else {
             // Panic as this is not an expected state.
             revert("Invalid status");
@@ -216,6 +217,7 @@ contract SLAYRegistryV2 is
             obj.status = RelationshipV2.Status.OperatorRegistered;
         } else if (obj.status == RelationshipV2.Status.ServiceRegistered) {
             obj.status = RelationshipV2.Status.Active;
+            obj.slashParameterId = _services[service].slashParameterId;
         } else {
             // Panic as this is not an expected state.
             revert("Invalid status");
