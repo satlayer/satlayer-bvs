@@ -77,9 +77,6 @@ contract SLAYVaultV2 is
     /// @dev Maps controller addresses to their redemption request details
     mapping(address controller => RedeemRequestStruct) internal _pendingRedemption;
 
-    /// @dev Used to track the total amount of shares that have been requested for redemption but not yet claimed
-    uint256 internal _totalPendingRedemption;
-
     /**
      * @dev Only allows _msgSender() to be the controller or an approved operator of the controller to call the function
      * @param controller The address of the controller
@@ -190,11 +187,6 @@ contract SLAYVaultV2 is
         return router.isVaultWhitelisted(address(this));
     }
 
-    /// @inheritdoc ISLAYVaultV2
-    function getTotalPendingRedemption() external view override returns (uint256) {
-        return _totalPendingRedemption;
-    }
-
     /**
      * @notice Checks if the contract supports a given interface
      * @dev Support for the most common interfaces for SLAYVault
@@ -242,9 +234,6 @@ contract SLAYVaultV2 is
         // reset the claimableAt to the current time + withdrawalDelay
         uint32 withdrawalDelay = registry.getWithdrawalDelay(_delegated);
         pendingRedemptionRequest.claimableAt = block.timestamp + withdrawalDelay;
-
-        // update _totalPendingRedemption
-        _totalPendingRedemption += shares;
 
         // transfer shares from owner to the contract
         _transfer(owner, address(this), shares);
@@ -402,9 +391,6 @@ contract SLAYVaultV2 is
     {
         // remove the request from pending redemption
         delete _pendingRedemption[controller];
-
-        // update state
-        _totalPendingRedemption -= shares;
 
         // burn shares stored in the contract
         _burn(address(this), shares);
