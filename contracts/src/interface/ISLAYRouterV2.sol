@@ -45,7 +45,12 @@ interface ISLAYRouterV2 {
      * The function will revert if the vault is already in the desired state.
      *
      * @param vault_ The address of the vault to set the whitelist status for.
-     * This should be a SLAYVault contract address but isn't strictly checked to allow for flexible un-whitelisting of vaults.
+     * This should be a SLAYVault contract address but isn't "strictly checked" (it is not possible to enforce this)
+     * to allow for flexible un-whitelisting of vaults for emergency purposes.
+     *
+     * Importantly: VaultFactory is not used to create vaults using the beacon pattern.
+     * Vaults are NOT automatically whitelisted when created to allow for vaults flexibility.
+     * This might change in the future.
      * @param isWhitelisted The whitelist status to set (true to whitelist, false to un-whitelist).
      */
     function setVaultWhitelist(address vault_, bool isWhitelisted) external;
