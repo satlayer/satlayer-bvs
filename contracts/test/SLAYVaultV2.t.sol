@@ -64,10 +64,10 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vm.stopPrank();
 
         address account = address(this);
-        underlying.mint(account, 100000000000); // 1000 * 10^8 (1000 * 10 ** vault.decimals())
+        underlying.mint(account, 1000 * 10 ** vault.decimals());
         underlying.approve(address(vault), type(uint256).max);
-        vault.deposit(10000000000, account); // 100 * 10^8 (100 * 10 ** vault.decimals())
-        assertEq(vault.balanceOf(account), 10000000000); // 100 * 10^8 (100 * 10 ** vault.decimals())
+        vault.deposit(100 * 10 ** vault.decimals(), account);
+        assertEq(vault.balanceOf(account), 100 * 10 ** vault.decimals());
     }
 
     function test_notWhitelisted() public {
@@ -773,6 +773,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vault.lockSlashing(20 * underlyingMinorUnit);
     }
 
+    /// Test always revert, as required by ERC7540
     function test_previewWithdraw_reverts() public {
         vm.prank(operator);
         SLAYVaultV2 vault = vaultFactory.create(underlying);
@@ -781,6 +782,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vault.previewWithdraw(100);
     }
 
+    /// Test always revert, as required by ERC7540
     function test_previewRedeem_reverts() public {
         vm.prank(operator);
         SLAYVaultV2 vault = vaultFactory.create(underlying);
