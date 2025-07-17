@@ -352,7 +352,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         }
     }
 
-    function test_revert_lockSlashing() public {
+    function test_lockSlashing_reverts() public {
         _advanceBlockBy(20000000);
         address operator = makeAddr("Operator X");
         address service = makeAddr("Service X");
@@ -549,7 +549,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         assertEq(routerBalance, 0);
     }
 
-    function test_Revert_finalizeSlashing_guardrail_reject() public {
+    function test_finalizeSlashing_guardrail_reject() public {
         _advanceBlockBy(20000000);
         address operator = makeAddr("Operator X");
         address service = makeAddr("Service X");
@@ -620,7 +620,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         router.finalizeSlashing(slashId);
     }
 
-    function test_Revert_finalizeSlashing() public {
+    function test_finalizeSlashing_reverts() public {
         _advanceBlockBy(20000000);
         address operator = makeAddr("Operator X");
         address service = makeAddr("Service X");
@@ -719,7 +719,7 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         router.finalizeSlashing(slashId);
     }
 
-    function test_Revert_guardrailConfirm() public {
+    function test_guardrailConfirm_reverts() public {
         _advanceBlockBy(20000000);
         address operator = makeAddr("Operator X");
         address service = makeAddr("Service X");
