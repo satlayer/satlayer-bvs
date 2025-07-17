@@ -316,7 +316,7 @@ func createMerkleTreeFromDistribution(dist Distribution) (*RewardsMerkleTree, er
 	tree, err := merkletree.NewTree(
 		merkletree.WithData(data),
 		merkletree.WithHashType(keccak256.New()),
-		merkletree.WithSorted(true),
+		merkletree.WithSorted(false),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create merkle tree: %w", err)

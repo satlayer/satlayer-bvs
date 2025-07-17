@@ -144,6 +144,32 @@ mod tests {
     }
 
     #[test]
+    fn test_verify_complex_merkle_proof_hardcoded() {
+        let root =
+            HexBinary::from_hex("1c8dd9ca252d7eb9bf1cccb9ab587e9a1dccca4c7474bb8739c0e5218964a2b4")
+                .unwrap();
+        let leaf = Leaf {
+            earner: "bbn1j8k7l6m5n4o3p2q1r0s9t8u7v6w5x4y3z2a1b".to_string(),
+            amount: Uint128::new(600000000000000000),
+        };
+        let leaf_index = 7u32;
+        let total_leaf_count = 9u32;
+
+        let proof = vec![
+            HexBinary::from_hex("c99659b6e1c7a2df5c6ce352241ef43152f1fed170d2fdc8d67ee2c47d9f26a5")
+                .unwrap(),
+            HexBinary::from_hex("662362a44a545cd42cdf7e9c1cfc7eb3b55ebb3af452e1bd516d7329f0f490fa")
+                .unwrap(),
+            HexBinary::from_hex("8a12e22ffa7163c5249a71f3df41704c2e2ccf8bab02dec02fc8db2740f51256")
+                .unwrap(),
+            HexBinary::from_hex("afb5ee202bbe624a5d933b1eda40f5bf6bcd6674dbf1af8eea698ae023c104fe")
+                .unwrap(),
+        ];
+
+        assert!(verify_merkle_proof(&root, proof, leaf, leaf_index, total_leaf_count).unwrap());
+    }
+
+    #[test]
     fn test_verify_complex_merkle_proof() {
         let leaves = vec![
             Leaf {
