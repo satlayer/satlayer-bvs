@@ -77,9 +77,6 @@ contract SLAYVaultV2 is
     /// @dev Maps controller addresses to their redemption request details
     mapping(address controller => RedeemRequestStruct) internal _pendingRedemption;
 
-    /// @dev Used to track the total amount of shares that have been requested for redemption but not yet claimed
-    uint256 internal _totalPendingRedemption;
-
     /**
      * @dev Only allows _msgSender() to be the controller or an approved operator of the controller to call the function
      * @param controller The address of the controller
@@ -190,11 +187,6 @@ contract SLAYVaultV2 is
         return router.isVaultWhitelisted(address(this));
     }
 
-    /// @inheritdoc ISLAYVaultV2
-    function getTotalPendingRedemption() external view override returns (uint256) {
-        return _totalPendingRedemption;
-    }
-
     /**
      * @notice Checks if the contract supports a given interface
      * @dev Support for the most common interfaces for SLAYVault
@@ -219,18 +211,20 @@ contract SLAYVaultV2 is
         override
         returns (uint256 requestId)
     {
+        address sender = _msgSender();
+
         // Checks
         if (shares == 0) {
             revert ZeroAmount();
         }
 
         // spend allowance if caller is not the owner AND not an operator
-        if (owner != _msgSender() && !_isOperator[owner][_msgSender()]) {
-            _spendAllowance(owner, _msgSender(), shares);
+        if (owner != sender && !_isOperator[owner][sender]) {
+            _spendAllowance(owner, sender, shares);
         }
 
         // if the controller is not the sender, check that the controller has msg.sender set as the operator
-        if (controller != _msgSender() && !_isOperator[controller][_msgSender()]) {
+        if (controller != sender && !_isOperator[controller][sender]) {
             revert NotControllerOrOperator();
         }
 
@@ -243,12 +237,9 @@ contract SLAYVaultV2 is
         uint32 withdrawalDelay = registry.getWithdrawalDelay(_delegated);
         pendingRedemptionRequest.claimableAt = block.timestamp + withdrawalDelay;
 
-        // update _totalPendingRedemption
-        _totalPendingRedemption += shares;
-
         // transfer shares from owner to the contract
         _transfer(owner, address(this), shares);
-        emit RedeemRequest(controller, owner, REQUEST_ID, _msgSender(), shares);
+        emit RedeemRequest(controller, owner, REQUEST_ID, sender, shares);
         return REQUEST_ID;
     }
 
@@ -402,9 +393,6 @@ contract SLAYVaultV2 is
     {
         // remove the request from pending redemption
         delete _pendingRedemption[controller];
-
-        // update state
-        _totalPendingRedemption -= shares;
 
         // burn shares stored in the contract
         _burn(address(this), shares);

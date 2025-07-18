@@ -86,13 +86,6 @@ interface ISLAYVaultV2 is IERC20Metadata, IERC4626, IERC7540Operator, IERC7540Re
     function isWhitelisted() external view returns (bool);
 
     /**
-     * @notice Returns the total amount of shares pending redemption across all controllers
-     * @dev This is the sum of all shares in pending and claimable redemption requests
-     * @return The total amount of shares pending redemption
-     */
-    function getTotalPendingRedemption() external view returns (uint256);
-
-    /**
      * @notice Moves assets from the vault to the router contract as part of the slashing process
      * @dev Only callable by the router contract. This function is used during the slashing process
      * to transfer assets from the vault to the router for penalty distribution
