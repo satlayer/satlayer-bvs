@@ -218,23 +218,13 @@ contract SLAYVaultV2 is
             revert ZeroAmount();
         }
 
-        bool isOperatorOfOwner = _isOperator[owner][sender];
-        bool isOperatorOfController;
-
-        // If owner == controller, reuse the same lookup (already warm)
-        if (owner == controller) {
-            isOperatorOfController = isOperatorOfOwner;
-        } else {
-            isOperatorOfController = _isOperator[controller][sender];
-        }
-
-        // Spend allowance if not owner and not operator
-        if (owner != sender && !isOperatorOfOwner) {
+        // spend allowance if caller is not the owner AND not an operator
+        if (owner != sender && !_isOperator[owner][sender]) {
             _spendAllowance(owner, sender, shares);
         }
 
-        // Ensure controller is sender or has delegated operator
-        if (controller != sender && !isOperatorOfController) {
+        // if the controller is not the sender, check that the controller has msg.sender set as the operator
+        if (controller != sender && !_isOperator[controller][sender]) {
             revert NotControllerOrOperator();
         }
 
