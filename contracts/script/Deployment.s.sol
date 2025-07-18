@@ -62,7 +62,7 @@ contract SLAYDeployment is Script {
     }
 }
 
-/// To deploy on SLAYNet, with balance top up:
+/// To deploy on SLAYNet.
 contract SLAYNetDeployment is SLAYDeployment {
     /// export TENDERLY_RPC_URL=
     /// export TENDERLY_ACCESS_KEY=
