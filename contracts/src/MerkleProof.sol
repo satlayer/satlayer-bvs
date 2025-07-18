@@ -3,6 +3,17 @@ pragma solidity ^0.8.0;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
+/**
+ * @dev These functions deal with verification of Merkle Tree proofs, adapted from OpenZeppelin Contracts.
+ *
+ * OpenZeppelin's MerkleProof library only supports commutative hash functions, which would
+ * require significant changes to our CLI and would also necessitate modifying our CosmWasm (CW) Merkle library to match.
+ * Additionally, commutative Merkle trees are less secure than traditional (non-commutative) Merkle trees
+ * unless specific conditions are strictly enforced, as noted in OpenZeppelin's own documentation.
+ * To avoid these issues and maintain compatibility and security, we implemented this Merkle proof verification logic.
+ * This implementation is adapted from OpenZeppelin's code,
+ * but modified to support non-commutative hash functions tailored to our use case.
+ */
 library MerkleProof {
     error InvalidProofLength();
 
@@ -44,8 +55,9 @@ library MerkleProof {
         uint256 treeHeight = Math.log2(totalLeaves, Math.Rounding.Ceil);
         if (treeHeight != proof.length) revert InvalidProofLength();
 
-        bytes32 computedHash = leaf;
         // hash the node with the proof to rebuild the Merkle root
+        bytes32 computedHash = leaf;
+        // in dynamic arrays, the first 32 bytes are the length of the array,
         for (uint256 i = 1; i <= proof.length; i++) {
             if (index % 2 == 0) {
                 // if index is even, then computedHash is a left sibling
