@@ -23,14 +23,15 @@ import {Core} from "@openzeppelin/foundry-upgrades/internal/Core.sol";
 contract SLAYDeployment is Script {
     Options public opts;
 
-    /// export PRIVATE_KEY=
-    /// export TENDERLY_RPC_URL=
-    /// export TENDERLY_ACCESS_KEY=
-    /// forge script SlaynetDeployment --rpc-url slaynet --slow --broadcast --verify
-    function run() public {
-        uint256 pk = vm.envUint("PRIVATE_KEY");
-        address owner = vm.addr(pk);
-        vm.startBroadcast(pk);
+    function run() public virtual {
+        address owner = vm.getWallets()[0];
+        vm.startBroadcast(owner);
+        deploy(owner);
+    }
+
+    /// forge script SLAYDeployment --rpc-url slaynet --slow --broadcast --verify
+    function deploy(address owner) public {
+        console.log("Owner:", owner);
 
         // Create the initial implementation contract and deploy the proxies for router and registry
         Core.validateImplementation("SLAYBase.sol:SLAYBase", opts);
@@ -58,5 +59,23 @@ contract SLAYDeployment is Script {
         Core.validateImplementation("SLAYVaultFactoryV2.sol:SLAYVaultFactoryV2", opts);
         address vaultFactoryImpl = address(new SLAYVaultFactoryV2(beacon, registry));
         UnsafeUpgrades.upgradeProxy(address(vaultFactory), vaultFactoryImpl, "");
+    }
+}
+
+/// To deploy on SLAYNet, with balance top up:
+contract SLAYNetDeployment is SLAYDeployment {
+    /// export TENDERLY_RPC_URL=
+    /// export TENDERLY_ACCESS_KEY=
+    /// forge script SLAYDeployment --rpc-url slaynet --slow --broadcast --verify
+    function run() public override {
+        uint256 privateKey = vm.randomUint();
+        address owner = vm.addr(privateKey);
+
+        string memory params = string(abi.encodePacked('["', vm.toString(owner), '", "0xDE0B6B3A7640000"]'));
+        bytes memory result = vm.rpc("tenderly_setBalance", params);
+        require(result.length > 0, "Failed to set balance on Tenderly");
+
+        vm.startBroadcast(privateKey);
+        super.deploy(owner);
     }
 }

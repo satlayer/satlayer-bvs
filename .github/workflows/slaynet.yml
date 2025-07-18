@@ -1,0 +1,43 @@
+name: SLAYNet
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+
+permissions:
+  contents: read
+  packages: read
+  actions: read
+  checks: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dry-run:
+    name: Dry Run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - run: forge script SLAYDeployment
+        working-directory: ./contracts
+
+  deployment:
+    name: Deployment
+    runs-on: ubuntu-latest
+    environment: SLAYNet
+    needs: dry-run
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - run: forge script SLAYNetDeployment --rpc-url slaynet --slow --broadcast --verify
+        working-directory: ./contracts
+        env:
+          TENDERLY_RPC_URL: ${{ secrets.TENDERLY_RPC_URL }}
+          TENDERLY_ACCESS_KEY: ${{ secrets.TENDERLY_ACCESS_KEY }}
