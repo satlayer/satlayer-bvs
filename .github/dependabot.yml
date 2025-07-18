@@ -47,6 +47,9 @@ updates:
       layerzerolabs:
         patterns:
           - "@layerzerolabs/*"
+      openzeppelin:
+        patterns:
+          - "@openzeppelin/*"
 
   - package-ecosystem: cargo
     directory: "/crates"
