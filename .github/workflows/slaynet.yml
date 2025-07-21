@@ -24,6 +24,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
 
+      # Install OpenZeppelin Upgrades Core for Forge. This is missing if we use pnpm.
+      - run: npm install -g @openzeppelin/upgrades-core
+
       # Random private key for dry run, not used in production.
       - run: forge script SLAYDeployment --private-key "0x0123456789abcdef012345678901234567890123456789012345678901234567"
         working-directory: ./contracts
@@ -36,6 +39,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
+
+      # Install OpenZeppelin Upgrades Core for Forge. This is missing if we use pnpm.
+      - run: npm install -g @openzeppelin/upgrades-core
 
       # These are non-production keys, we reset these occasionally.
       # Balances in these accounts are not "real", they're forked and are only used for testing.
