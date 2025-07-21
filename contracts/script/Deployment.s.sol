@@ -29,6 +29,8 @@ contract SLAYDeployment is Script {
         deploy(owner);
     }
 
+    /// @dev Deploys the SatLayer Protocol core contracts.
+    /// forge script SLAYDeployment --slow --broadcast --verify
     /// forge script SLAYDeployment --rpc-url slaynet --slow --broadcast --verify
     function deploy(address owner) public {
         console.log("Owner:", owner);
@@ -59,23 +61,5 @@ contract SLAYDeployment is Script {
         Core.validateImplementation("SLAYVaultFactoryV2.sol:SLAYVaultFactoryV2", opts);
         address vaultFactoryImpl = address(new SLAYVaultFactoryV2(beacon, registry));
         UnsafeUpgrades.upgradeProxy(address(vaultFactory), vaultFactoryImpl, "");
-    }
-}
-
-/// To deploy on SLAYNet.
-contract SLAYNetDeployment is SLAYDeployment {
-    /// export TENDERLY_RPC_URL=
-    /// export TENDERLY_ACCESS_KEY=
-    /// forge script SLAYDeployment --rpc-url slaynet --slow --broadcast --verify
-    function run() public override {
-        uint256 privateKey = vm.randomUint();
-        address owner = vm.addr(privateKey);
-
-        string memory params = string(abi.encodePacked('["', vm.toString(owner), '", "0xDE0B6B3A7640000"]'));
-        bytes memory result = vm.rpc("tenderly_setBalance", params);
-        require(result.length > 0, "Failed to set balance on Tenderly");
-
-        vm.startBroadcast(privateKey);
-        super.deploy(owner);
     }
 }
