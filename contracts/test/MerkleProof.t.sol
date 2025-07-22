@@ -279,7 +279,6 @@ contract MerkleProofTest is Test {
         uint256 leafIndex = 0; // The index doesn't strictly matter for non-existent leaf, but must be valid based on numLeaves
         bytes32[] memory proof = allProofs[leafIndex]; // Use a valid proof path from an existing leaf
 
-        console.log("\nTest: Revert on non-existent leaf");
         assertFalse(MerkleProof.verify(proof, root, nonExistentLeaf, leafIndex, numLeaves));
     }
 }
