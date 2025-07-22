@@ -27,7 +27,6 @@ thiserror = { workspace = true }
 serde = { workspace = true }
 schemars = { workspace = true }
 
-bvs-library = { workspace = true }
 bvs-pauser = { workspace = true }
 bvs-vault-router = { workspace = true }
 
