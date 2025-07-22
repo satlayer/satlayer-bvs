@@ -74,10 +74,8 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vault.deposit(depositAmount, firstAccount);
         vm.stopSnapshotGas();
 
-        // assert that the first account btcToken balance is decreased by the deposit amount
         assertEq(btcToken.balanceOf(firstAccount), 900 * 10 ** btcToken.decimals()); // mintAmount - depositAmount
 
-        // request withdraw for first account
         uint256 sharesToWithdraw = 50 * 10 ** vault.decimals();
         vault.approve(address(vault), type(uint256).max);
 
@@ -105,24 +103,19 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         uint256 mintAmount = 1000 * underlyingMinorUnit;
         underlying.mint(firstAccount, mintAmount);
 
-        // deposit by firstAccount
         vm.startPrank(firstAccount);
         underlying.approve(address(vault), type(uint256).max);
         uint256 depositAmount = 100 * underlyingMinorUnit;
         vault.deposit(depositAmount, firstAccount);
 
-        // assert that the first account underlying balance is decreased by the deposit amount
         assertEq(underlying.balanceOf(firstAccount), 900 * underlyingMinorUnit); // mintAmount - depositAmount
 
-        // request withdraw for first account
         uint256 sharesToWithdraw = 50 * vaultMinorUnit;
         vault.approve(address(vault), type(uint256).max);
         vault.requestRedeem(sharesToWithdraw, firstAccount, firstAccount);
 
-        // fast forward to after withdrawal delay
         skip(8 days);
 
-        // execute withdrawal request after delay
         uint256 maxAssetToWithdraw = vault.maxWithdraw(firstAccount);
 
         vm.startSnapshotGas("SLAYVaultV2", "withdraw()");
