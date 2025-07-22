@@ -121,12 +121,12 @@ contract SLAYVaultFactoryV2Test is Test, TestSuiteV2 {
         assertEq(customVault.delegated(), operator);
     }
 
-    function test_immutable_beacon() public {
+    function test_immutable_beacon() public view {
         // The beacon address should not be zero
         assertTrue(vaultFactory.beacon() != address(0));
     }
 
-    function test_immutable_registry() public {
+    function test_immutable_registry() public view {
         assertEq(address(vaultFactory.registry()), address(registry));
     }
 
