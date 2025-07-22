@@ -45,7 +45,7 @@ jobs:
 
       # These are non-production keys, we reset these occasionally.
       # Balances in these accounts are not "real", they're forked and are only used for testing.
-      - run: forge script SLAYDeployment --rpc-url slaynet --slow --broadcast --private-key $SLAYNET_PRIVATE_KEY --verify --verifier-url "${TENDERLY_RPC_URL}/verify/etherscan"
+      - run: forge script SLAYDeployment --rpc-url slaynet --slow --broadcast --private-key $SLAYNET_PRIVATE_KEY --verify --verifier-url "${TENDERLY_RPC_URL}/verify/etherscan" --etherscan-api-key $TENDERLY_ACCESS_KEY
         working-directory: ./contracts
         env:
           TENDERLY_RPC_URL: ${{ secrets.TENDERLY_RPC_URL }}
