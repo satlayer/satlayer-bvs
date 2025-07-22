@@ -23,14 +23,17 @@ import {Core} from "@openzeppelin/foundry-upgrades/internal/Core.sol";
 contract SLAYDeployment is Script {
     Options public opts;
 
-    /// export PRIVATE_KEY=
-    /// export TENDERLY_RPC_URL=
-    /// export TENDERLY_ACCESS_KEY=
-    /// forge script SlaynetDeployment --rpc-url slaynet --slow --broadcast --verify
-    function run() public {
-        uint256 pk = vm.envUint("PRIVATE_KEY");
-        address owner = vm.addr(pk);
-        vm.startBroadcast(pk);
+    function run() public virtual {
+        address owner = vm.getWallets()[0];
+        vm.startBroadcast(owner);
+        deploy(owner);
+    }
+
+    /// @dev Deploys the SatLayer Protocol core contracts.
+    /// forge script SLAYDeployment --slow --broadcast --verify
+    /// forge script SLAYDeployment --rpc-url slaynet --slow --broadcast --verify
+    function deploy(address owner) public {
+        console.log("Owner:", owner);
 
         // Create the initial implementation contract and deploy the proxies for router and registry
         Core.validateImplementation("SLAYBase.sol:SLAYBase", opts);
