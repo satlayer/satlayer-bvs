@@ -85,13 +85,48 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vault.requestRedeem(sharesToWithdraw, firstAccount, firstAccount);
         vm.stopSnapshotGas();
 
-        // fast forward to after withdrawal delay
         skip(10 days);
-
-        // execute redeem request after delay
 
         vm.startSnapshotGas("SLAYVaultV2", "redeem()");
         vault.redeem(sharesToWithdraw, firstAccount, firstAccount);
+        vm.stopSnapshotGas();
+
+        vm.stopPrank();
+    }
+
+    function test_gas_withdraw() public {
+        uint8 vaultDecimal = vault.decimals();
+        uint256 vaultMinorUnit = 10 ** vaultDecimal;
+
+        uint8 underlyingDecimal = underlying.decimals();
+        uint256 underlyingMinorUnit = 10 ** underlyingDecimal;
+
+        address firstAccount = makeAddr("firstAccount");
+        uint256 mintAmount = 1000 * underlyingMinorUnit;
+        underlying.mint(firstAccount, mintAmount);
+
+        // deposit by firstAccount
+        vm.startPrank(firstAccount);
+        underlying.approve(address(vault), type(uint256).max);
+        uint256 depositAmount = 100 * underlyingMinorUnit;
+        vault.deposit(depositAmount, firstAccount);
+
+        // assert that the first account underlying balance is decreased by the deposit amount
+        assertEq(underlying.balanceOf(firstAccount), 900 * underlyingMinorUnit); // mintAmount - depositAmount
+
+        // request withdraw for first account
+        uint256 sharesToWithdraw = 50 * vaultMinorUnit;
+        vault.approve(address(vault), type(uint256).max);
+        vault.requestRedeem(sharesToWithdraw, firstAccount, firstAccount);
+
+        // fast forward to after withdrawal delay
+        skip(8 days);
+
+        // execute withdrawal request after delay
+        uint256 maxAssetToWithdraw = vault.maxWithdraw(firstAccount);
+
+        vm.startSnapshotGas("SLAYVaultV2", "withdraw()");
+        vault.withdraw(maxAssetToWithdraw, firstAccount, firstAccount);
         vm.stopSnapshotGas();
 
         vm.stopPrank();
