@@ -11,6 +11,3 @@ extra_output = ["storageLayout"]
 
 [rpc_endpoints]
 slaynet = "${TENDERLY_RPC_URL}"
-
-[etherscan]
-slaynet = { chain = 83766589, key = "${TENDERLY_ACCESS_KEY}", url = "${TENDERLY_RPC_URL}/verify/etherscan" }
