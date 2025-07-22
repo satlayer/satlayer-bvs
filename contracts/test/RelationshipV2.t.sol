@@ -8,13 +8,13 @@ import {RelationshipV2} from "../src/RelationshipV2.sol";
 contract RelationshipV2Test is Test {
     Checkpoints.Trace224 internal _checkpoints;
 
-    function test_objectDefault() external {
+    function test_objectDefault() public pure {
         RelationshipV2.Object memory rel;
         assertTrue(rel.status == RelationshipV2.Status.Inactive);
         assertEq(rel.slashParameterId, 0);
     }
 
-    function test_statusUint8Values() external {
+    function test_statusUint8Values() public pure {
         assertEq(uint8(RelationshipV2.Status.Inactive), 0);
         assertEq(uint8(RelationshipV2.Status.Active), 1);
         assertEq(uint8(RelationshipV2.Status.OperatorRegistered), 2);
@@ -25,7 +25,7 @@ contract RelationshipV2Test is Test {
         assertEq(uint8(status), uint8(0));
     }
 
-    function test_getKey() external {
+    function test_getKey() public pure {
         address service = address(0x1);
         address operator = address(0x2);
 
@@ -35,7 +35,7 @@ contract RelationshipV2Test is Test {
         assertEq(key, expectedKey);
     }
 
-    function test_encode() external {
+    function test_encode() public pure {
         RelationshipV2.Status status = RelationshipV2.Status.Active;
         uint32 slashParameterId = 123;
 
@@ -48,7 +48,7 @@ contract RelationshipV2Test is Test {
         assertEq(uint32(encoded >> 8), slashParameterId);
     }
 
-    function test_decode() external {
+    function test_decode() public pure {
         RelationshipV2.Status status = RelationshipV2.Status.OperatorRegistered;
         uint32 slashParameterId = 456;
 

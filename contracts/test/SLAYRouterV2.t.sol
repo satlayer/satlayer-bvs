@@ -1230,14 +1230,14 @@ contract SLAYRouterV2Test is Test, TestSuiteV2 {
         router.setGuardrail(address(0));
     }
 
-    function test_getLockedAssets_InvalidSlashId() public {
+    function test_getLockedAssets_InvalidSlashId() public view {
         bytes32 invalidSlashId = keccak256(abi.encodePacked("invalid"));
 
         ISLAYRouterSlashingV2.LockedAssets[] memory lockedAssets = router.getLockedAssets(invalidSlashId);
         assertEq(lockedAssets.length, 0, "Should return empty array for invalid slashId");
     }
 
-    function test_getSlashingRequest_InvalidSlashId() public {
+    function test_getSlashingRequest_InvalidSlashId() public view {
         bytes32 invalidSlashId = keccak256(abi.encodePacked("invalid"));
 
         // Should return a request with default values for non-existent
