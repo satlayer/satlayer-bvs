@@ -448,6 +448,7 @@ contract SLAYVaultV2 is
     /**
      * @notice Always reverts as preview functions are not supported for asynchronous flows
      * @dev For ERC7540, preview functions MUST revert for all callers and inputs
+     * See https://eips.ethereum.org/EIPS/eip-7540#reversion-of-preview-functions-in-async-request-flows
      */
     function previewWithdraw(uint256) public pure virtual override(IERC4626, ERC4626Upgradeable) returns (uint256) {
         revert PreviewNotSupported();
@@ -456,6 +457,7 @@ contract SLAYVaultV2 is
     /**
      * @notice Always reverts as preview functions are not supported for asynchronous flows
      * @dev For ERC7540, preview functions MUST revert for all callers and inputs
+     * See https://eips.ethereum.org/EIPS/eip-7540#reversion-of-preview-functions-in-async-request-flows
      */
     function previewRedeem(uint256) public pure virtual override(IERC4626, ERC4626Upgradeable) returns (uint256) {
         revert PreviewNotSupported();
