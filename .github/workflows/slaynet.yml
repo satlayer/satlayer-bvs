@@ -27,8 +27,10 @@ jobs:
       # Install OpenZeppelin Upgrades Core for Forge. This is missing if we use pnpm.
       - run: npm install -g @openzeppelin/upgrades-core
 
-      # Random private key for dry run, not used in production.
-      - run: forge script SLAYDeployment --private-key "0x0123456789abcdef012345678901234567890123456789012345678901234567"
+      # Generate a random private key for dry run, not used in production.
+      - run: |
+          RANDOM_PRIVATE_KEY=$(openssl rand -hex 32)
+          forge script SLAYDeployment --private-key "0x$RANDOM_PRIVATE_KEY"
         working-directory: ./contracts
 
   deployment:
