@@ -47,9 +47,12 @@ contract SLAYRewardsV2 is
         _claimedRewards;
 
     /**
-     * @dev Set the immutable SLAYRegistryV2 proxy address for the implementation.
-     * Cyclic params in constructor are possible as an InitialImpl (empty implementation) is used for an initial deployment,
-     * after which all the contracts are upgraded to their respective implementations with immutable proxy addresses.
+     * @dev Cyclic parameters in the constructor are possible because an SLAYBase (initial base implementation)
+     * is used for the initial deployment, after which all contracts are upgraded to their respective
+     * implementations with immutable proxy addresses.
+     *
+     * This contract extends SLAYBase, which provides the initial owner and pause functionality.
+     * SLAYBase.initialize() is called to set the initial owner of the contract.
      *
      * @custom:oz-upgrades-unsafe-allow constructor
      */
@@ -75,11 +78,10 @@ contract SLAYRewardsV2 is
     /// @inheritdoc ISLAYRewardsV2
     function distributeRewards(address token, uint256 amount, bytes32 merkleRoot) external override whenNotPaused {
         require(merkleRoot != bytes32(0), "Merkle root cannot be empty");
+        require(token != address(0), "Token address cannot be zero");
 
         // transfer the tokens from the caller to this contract if amount is greater than zero
         if (amount > 0) {
-            require(token != address(0), "Token address cannot be zero");
-
             SafeERC20.safeTransferFrom(IERC20(token), _msgSender(), address(this), amount);
 
             // update internal state
@@ -115,8 +117,12 @@ contract SLAYRewardsV2 is
             revert AmountAlreadyClaimed(params.service, params.token, earner, params.amount);
         }
 
-        // params.amount is asserted to be greater than claimedAmount, so we can safely calculate the amount to claim
-        uint256 amountToClaim = params.amount - claimedAmount;
+        uint256 amountToClaim;
+
+        unchecked {
+            // params.amount is asserted to be greater than claimedAmount, so we can safely calculate the amount to claim
+            amountToClaim = params.amount - claimedAmount;
+        }
 
         // check if the service has enough balance to cover the claim
         uint256 serviceBalance = _balances[params.service][params.token];
@@ -133,11 +139,13 @@ contract SLAYRewardsV2 is
             revert InvalidMerkleProof();
         }
 
-        // reduce (service,token) balance. serviceBalance >= amountToClaim is checked above
-        _balances[params.service][params.token] -= amountToClaim;
+        unchecked {
+            // reduce (service,token) balance. serviceBalance >= amountToClaim is checked above
+            _balances[params.service][params.token] = serviceBalance - amountToClaim;
+        }
 
-        // increase the claimed rewards for the (service, token, earner) mapping
-        _claimedRewards[params.service][params.token][earner] += amountToClaim;
+        // set the claimed rewards for the (service, token, earner) mapping to params.amount
+        _claimedRewards[params.service][params.token][earner] = params.amount;
 
         // transfer the tokens to the recipient
         SafeERC20.safeTransfer(IERC20(params.token), params.recipient, amountToClaim);
@@ -163,9 +171,27 @@ contract SLAYRewardsV2 is
         address earner,
         uint256 amount
     ) internal pure returns (bool) {
+        bytes32 leaf = _leafHash(earner, amount);
+        return MerkleProof.verify(proof, root, leaf, index, totalLeaves);
+    }
+
+    /**
+     * @dev Internal function to hash the leaf node.
+     * The leaf is a hash of the earner's address and the amount.
+     * This is done to ensure that the leaf is unique for each (earner, amount) pair.
+     * The leaf is hashed using double keccak256.
+     *
+     * The earner and amount are converted to strings and then hashed to ensure that it conform with the tree generation code that is chain-agnostic.
+     * This will also allow future expansion into multi control plane claiming, where the earner might not be an evm address.
+     * The earner is represented as a checksum hex string to ensure that the address is in a consistent format with the rewards distribution file submitted by the service.
+     *
+     * @param earner The address of the earner.
+     * @param amount The amount associated with the earner.
+     * @return The hash of the leaf node.
+     */
+    function _leafHash(address earner, uint256 amount) internal pure returns (bytes32) {
         string memory earnerStringBytes = Strings.toChecksumHexString(earner);
         string memory amountStringBytes = Strings.toString(amount);
-        bytes32 leaf = keccak256(abi.encodePacked(keccak256(abi.encodePacked(earnerStringBytes, amountStringBytes))));
-        return MerkleProof.verify(proof, root, leaf, index, totalLeaves);
+        return keccak256(abi.encodePacked(keccak256(abi.encodePacked(earnerStringBytes, amountStringBytes))));
     }
 }

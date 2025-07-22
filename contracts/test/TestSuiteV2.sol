@@ -43,7 +43,7 @@ contract TestSuiteV2 is Test {
             address(registry), address(new SLAYRegistryV2(router)), abi.encodeCall(SLAYRegistryV2.initialize2, ())
         );
         UnsafeUpgrades.upgradeProxy(address(vaultFactory), address(new SLAYVaultFactoryV2(beacon, registry)), "");
-        UnsafeUpgrades.upgradeProxy(address(rewards), address(new SLAYRewardsV2()), new bytes(0));
+        UnsafeUpgrades.upgradeProxy(address(rewards), address(new SLAYRewardsV2()), "");
         vm.stopPrank();
     }
 
