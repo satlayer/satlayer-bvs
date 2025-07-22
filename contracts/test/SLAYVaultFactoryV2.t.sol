@@ -138,7 +138,6 @@ contract SLAYVaultFactoryV2Test is Test, TestSuiteV2 {
         vm.prank(vm.randomAddress());
         vm.expectRevert();
         // Call the upgradeTo function directly
-        (bool success, bytes memory returnData) =
-            address(vaultFactory).call(abi.encodeWithSelector(bytes4(keccak256("upgradeTo(address)")), mockImpl));
+        address(vaultFactory).call(abi.encodeWithSelector(bytes4(keccak256("upgradeTo(address)")), mockImpl));
     }
 }
