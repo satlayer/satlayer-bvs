@@ -88,7 +88,7 @@ contract SLAYRewardsV2Test is Test, TestSuiteV2 {
 
     function test_revert_distributeRewards_withZeroAllowance() public {
         // mint some rewards tokens to the service
-        rewardToken.mint(service, 12_500_000_000 * rewardTokenMinorUnit); // 12.6 Billion WBTC
+        rewardToken.mint(service, 12_500_000_000 * rewardTokenMinorUnit); // 12.5 Billion WBTC
 
         // service distributes rewards
         vm.prank(service);
@@ -105,18 +105,21 @@ contract SLAYRewardsV2Test is Test, TestSuiteV2 {
 
     function test_revert_distributeRewards_withEmptyMerkleRoot() public {
         // mint some rewards tokens to the service
-        rewardToken.mint(service, 12_500_000_000 * rewardTokenMinorUnit); // 12.6 Billion WBTC
+        rewardToken.mint(service, 12_500_000_000 * rewardTokenMinorUnit); // 12.5 Billion WBTC
+
+        bytes32 emptyMerkleRoot = bytes32(0); // empty merkle root
 
         // service distributes rewards
         vm.startPrank(service);
         rewardToken.approve(address(rewards), 12_500_000_000 * rewardTokenMinorUnit);
-        rewards.distributeRewards(address(rewardToken), 12_500_000_000 * rewardTokenMinorUnit, merkleRoot);
+        vm.expectRevert("Merkle root cannot be empty");
+        rewards.distributeRewards(address(rewardToken), 12_500_000_000 * rewardTokenMinorUnit, emptyMerkleRoot);
         vm.stopPrank();
     }
 
     function test_revert_distributeRewards_withInvalidToken() public {
         // mint some rewards tokens to the service
-        rewardToken.mint(service, 12_500_000_000 * rewardTokenMinorUnit); // 12.6 Billion WBTC
+        rewardToken.mint(service, 12_500_000_000 * rewardTokenMinorUnit); // 12.5 Billion WBTC
 
         // service distributes rewards with empty token address
         vm.startPrank(service);
