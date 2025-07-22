@@ -262,7 +262,7 @@ contract MerkleProofTest is Test {
             // This case won't be hit with numLeaves = 8
         }
 
-        console.log("\nTest: Revert on incorrect proof (tampered hash)");
+        
         assertFalse(MerkleProof.verify(proof, root, leafToVerify, leafIndex, numLeaves));
     }
 
