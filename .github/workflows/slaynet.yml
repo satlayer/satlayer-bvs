@@ -36,6 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: SLAYNet
     needs: dry-run
+    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
