@@ -60,7 +60,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         }
     }
 
-    function test_gas_withdraw() public {
+    function test_warm_up() public {
         uint8 vaultDecimal = vault.decimals();
         uint256 vaultMinorUnit = 10 ** vaultDecimal;
 
@@ -89,11 +89,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         uint256 maxAssetToWithdraw = vault.maxWithdraw(firstAccount);
 
         vm.prank(firstAccount);
-        vm.startSnapshotGas("SLAYVaultV2", "withdraw()");
         vault.withdraw(maxAssetToWithdraw, firstAccount, firstAccount);
-        vm.stopSnapshotGas();
-
-        vm.stopPrank();
     }
 
     function _assertRequestRedeemSuccess(
@@ -381,7 +377,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
     }
 
     function _assertWithdrawSuccess(
-        address caller, // msg.sender of the withdraw call
+        address sender, // msg.sender of the withdraw call
         address receiver,
         address controller,
         uint256 expectedAssetsReceived,
@@ -426,7 +422,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vm.prank(a);
         // Capture requestId if it's used to identify specific requests.
         // Assuming sequential requests and we can infer the last one by nextRequestId - 1
-        uint256 requestId_A_A_A = vault.requestRedeem(sharesToRequest, a, a);
+        vault.requestRedeem(sharesToRequest, a, a);
 
         skip(8 days); // Pass withdrawal delay
 
@@ -478,7 +474,7 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
 
         // Request redeem (Caller: A (operator for B), Controller: B, Owner: A)
         vm.prank(sender);
-        uint256 requestId_A_B_A = vault.requestRedeem(sharesToRequest, controller, owner_addr);
+        vault.requestRedeem(sharesToRequest, controller, owner_addr);
 
         skip(8 days); // Pass withdrawal delay
 
@@ -506,9 +502,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         );
     }
 
-    // Path 3: Sender: A, Controller: A, Owner: B (Owner Approved Sender for shares)
-    // Sender (A) is the Controller (A). Owner (B) has shares and approved A.
-    // ERC20 approve from B to A is NOT relevant for withdraw permission, only for requestRedeem.
     function test_withdraw_Path3_SenderIsController_OwnerDifferent_OwnerApprovedSender() public {
         address sender = makeAddr("a-w3");
         address controller = sender; // Controller is the sender
@@ -558,9 +551,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         );
     }
 
-    // Path 4: Sender: A, Controller: A, Owner: B (Owner Permitted Sender for shares)
-    // Sender (A) is the Controller (A). Owner (B) has shares and permitted A.
-    // ERC20 permit from B to A is NOT relevant for withdraw permission, only for requestRedeem.
     function test_withdraw_Path4_SenderIsController_OwnerDifferent_OwnerPermittedSender() public {
         address sender = makeAddr("a-w4");
         address controller = sender;
@@ -568,12 +558,12 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         address owner_addr = vm.addr(owner_private_key);
 
         uint256 initialDeposit = 100 * 10 ** vault.decimals();
-        uint256 sharesToRequest = 100 * 10 ** vault.decimals();
+        uint256 sharesToRequest = 50 * 10 ** vault.decimals();
 
         // Setup 1: Owner (B) deposits to get shares
         btcToken.mint(owner_addr, initialDeposit);
         vm.startPrank(owner_addr);
-        btcToken.approve(address(vault), type(uint256).max);
+        btcToken.approve(address(vault), initialDeposit);
         vault.deposit(initialDeposit, owner_addr);
         vm.stopPrank();
 
@@ -598,12 +588,13 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         // Request redeem (Caller: A, Controller: A, Owner: B) using the permit signature
         vm.prank(sender);
         vault.permit(owner_addr, sender, sharesToRequest, deadline, v, r, s); // A submits B's permit signature
+        vm.prank(sender);
         vault.requestRedeem(sharesToRequest, controller, owner_addr);
 
-        skip(8 days); // Pass withdrawal delay
+        skip(8 days);
 
         uint256 assetsToWithdraw = vault.maxWithdraw(controller);
-        uint256 receiverAssetBalanceBefore = underlying.balanceOf(sender);
+        uint256 receiverAssetBalanceBefore = underlying.balanceOf(controller);
         uint256 vaultSharesBalanceBefore = vault.balanceOf(address(vault));
         uint256 totalPendingBefore = vault.getTotalPendingRedemption();
 
@@ -626,10 +617,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         );
     }
 
-    // Path 5: Sender: A, Controller: A, Owner: B (Sender is Owner's ERC7540 Operator)
-    // Sender (A) is the Controller (A). Owner (B) has shares and set A as its operator.
-    // The owner's operator status for the sender is relevant for `requestRedeem` here,
-    // but for `withdraw`, since the `sender` IS the `controller`, the `onlyControllerOrOperator` check passes directly.
     function test_withdraw_Path5_SenderIsController_OwnerDifferent_SenderIsOwnerOperator() public {
         address sender = makeAddr("a-w5");
         address controller = sender; // Controller is the sender
@@ -676,9 +663,6 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         );
     }
 
-    // Path 6: Sender: A, Controller: C, Owner: B
-    // Sender (A) is NOT the Controller (C). Sender (A) must be an ERC7540 Operator for Controller (C).
-    // Owner (B) is different from both. This is a common scenario for a controller withdrawing for a staker.
     function test_withdraw_Path6_SenderIsControllerOperator_OwnerDifferent() public {
         address sender = makeAddr("a-w6"); // This is 'a'
         address controller = makeAddr("c-w6"); // This is 'c'
@@ -694,33 +678,26 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vault.deposit(initialDeposit, owner_addr);
         vm.stopPrank();
 
-        // Setup 2: Controller (C) approves Sender (A) as its ERC7540 Operator
         vm.startPrank(controller);
         vault.setOperator(sender, true); // C approves A as operator
         vm.stopPrank();
 
-        // Setup 3: Owner (B) must allow Controller (C) to request redeem on its behalf, or C is B's operator.
-        // For simplicity here, let's assume Controller C is an operator for Owner B
-        // OR Owner B approves Controller C to transfer its shares for the requestRedeem.
-        // Let's go with B approving C to request redeem (most flexible for testing).
         vm.prank(owner_addr);
         vault.setOperator(controller, true); // B sets C as its operator
 
-        // Request redeem (Caller: C (operator for B), Controller: C, Owner: B)
-        // Or, if B approves C for shares, then C can call requestRedeem for B.
-        vm.prank(controller); // C is calling requestRedeem, and C is operator for B
+        vm.prank(controller);
         vault.requestRedeem(sharesToRequest, controller, owner_addr);
 
-        skip(8 days); // Pass withdrawal delay
+        skip(8 days);
 
-        uint256 assetsToWithdraw = vault.maxWithdraw(controller); // Max withdraw for Controller C
-        uint256 receiverAssetBalanceBefore = underlying.balanceOf(owner_addr); // Receiver is B
+        uint256 assetsToWithdraw = vault.maxWithdraw(controller);
+        uint256 receiverAssetBalanceBefore = underlying.balanceOf(owner_addr);
         uint256 vaultSharesBalanceBefore = vault.balanceOf(address(vault));
         uint256 totalPendingBefore = vault.getTotalPendingRedemption();
 
-        vm.startPrank(sender); // Sender is A (who is operator for controller C)
+        vm.startPrank(sender);
         vm.startSnapshotGas("SLAYVaultV2", "withdraw()_sender_a_controller_c_owner_b");
-        vault.withdraw(assetsToWithdraw, owner_addr, controller); // Receiver is B, Controller is C
+        vault.withdraw(assetsToWithdraw, owner_addr, controller);
         vm.stopSnapshotGas();
         vm.stopPrank();
 
