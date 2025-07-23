@@ -7,7 +7,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {MerkleProof} from "../src/MerkleProof.sol";
 
 contract MerkleProofTest is Test {
-    function test_verify() public {
+    function test_verify_bbn() public {
         bytes32 leaf = keccak256(
             abi.encodePacked(
                 keccak256(abi.encodePacked("bbn1eywhap4hwzd3lpwee4hgt2rh0rjlsq6dqck894100000000000000000"))
@@ -20,6 +20,23 @@ contract MerkleProofTest is Test {
         bytes32 root = bytes32(abi.encodePacked(hex"4b83dc8ecaa7a9d69ac8a7c12718eed8639e1ba1a1b30a51741ccfd020255cec"));
 
         assertEq(MerkleProof.verify(proof, root, leaf, 1, 2), true);
+    }
+
+    function test_verify_evm() public {
+        bytes32 leaf = keccak256(
+            abi.encodePacked(
+                keccak256(abi.encodePacked("0x86d6Fda2f439537da03a5b76D5aE26412F4c4235200000000000000000"))
+            )
+        );
+
+        bytes32[] memory proof = new bytes32[](3);
+        proof[0] = bytes32(0xc5d11bcf5b13a6839acbf0f57fe1b202fe159e5b5b3bbbd3b9dd1a69e1aa84dc);
+        proof[1] = bytes32(0x8d25a6cb91e258d097872c7e37477e311da5fcd048037a7d729d9eac13903882);
+        proof[2] = bytes32(0x8a08f27e959995b62300cc7b9cdebb565e9ba6c0bfabf76c58da0c98ac378e81);
+
+        bytes32 root = bytes32(abi.encodePacked(hex"2016f97ae135385b6942e4aa35c97bdcfdd599c9ddcd750868f8366173d58d3c"));
+
+        assertEq(MerkleProof.verify(proof, root, leaf, 3, 5), true);
     }
 
     function test_verify_complex() public {
