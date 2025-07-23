@@ -351,7 +351,7 @@ contract SLAYRewardsV2Test is Test, TestSuiteV2 {
         tl_vars.earner2 = address(0x911E794a6E79712B1d958821f70EE8882f714906);
         tl_vars.earner3 = address(0xd9322C1D287ef984dDF049caBABAB1a5b2E85cB3);
 
-        // service distributes rewards
+        // 1. service distributes rewards
         vm.startPrank(service);
         rewardToken.approve(address(rewards), 9_000_000_000 * rewardTokenMinorUnit);
         vm.expectEmit();
@@ -366,7 +366,7 @@ contract SLAYRewardsV2Test is Test, TestSuiteV2 {
         assertEq(roots.prevRoot, bytes32(0), "Previous root should be zero");
         assertEq(roots.currentRoot, tl_vars.firstMerkleRoot, "Current root should match the distributed merkle root");
 
-        // earner1 claims rewards
+        // 2. earner1 claims rewards
         bytes32[] memory proof1 = new bytes32[](2);
         proof1[0] = bytes32(0xfcea6c7ebfa548d53603d8c1297ca2b50965faf289892fa72221569a59c64a22);
         proof1[1] = bytes32(0x40da4a5e672f95c4271b7d47b118de0d9a524bae94c57489eaff4c4b27cd4e71);
@@ -421,7 +421,7 @@ contract SLAYRewardsV2Test is Test, TestSuiteV2 {
         tl_vars.secondMerkleRoot =
             bytes32(abi.encodePacked(hex"e01fed86b0ac968f2495c422c7057214263c6f0b775965fa611b39549394f27c"));
 
-        // service distributes second rewards
+        // 3. service distributes second rewards
         vm.startPrank(service);
         rewardToken.approve(address(rewards), 2_500_000_000 * rewardTokenMinorUnit); // 2.5 Billion WBTC
         vm.expectEmit();
@@ -436,7 +436,7 @@ contract SLAYRewardsV2Test is Test, TestSuiteV2 {
         assertEq(roots2.prevRoot, tl_vars.firstMerkleRoot, "Previous root should match the first merkle root");
         assertEq(roots2.currentRoot, tl_vars.secondMerkleRoot, "Current root should match the second merkle root");
 
-        // earner2 claims rewards using the first merkle root
+        // 4. earner2 claims rewards using the first merkle root
         bytes32[] memory proof2 = new bytes32[](2);
         proof2[0] = bytes32(0x2ca7299d66e56c05cddd0e38699dc218b9e2ee1ea55d4f19837f8fb82dbd81cb);
         proof2[1] = bytes32(0x40da4a5e672f95c4271b7d47b118de0d9a524bae94c57489eaff4c4b27cd4e71);
@@ -470,7 +470,7 @@ contract SLAYRewardsV2Test is Test, TestSuiteV2 {
             recipientBalance2, 3_000_000_000 * rewardTokenMinorUnit, "Recipient balance should match the claimed amount"
         );
 
-        // earner3 claims rewards using the second merkle root
+        // 5. earner3 claims rewards using the second merkle root
         bytes32[] memory proof3 = new bytes32[](2);
         proof3[0] = bytes32(0x0000000000000000000000000000000000000000000000000000000000000000);
         proof3[1] = bytes32(0xbb394d2efc15e45004f10f3c815fb5cf9870aabc0b064b4b23f8861ad2f3cfed);
@@ -504,7 +504,7 @@ contract SLAYRewardsV2Test is Test, TestSuiteV2 {
             recipientBalance3, 6_000_000_000 * rewardTokenMinorUnit, "Recipient balance should match the claimed amount"
         );
 
-        // earner1 claims rewards again ( should receive the difference between the new and old Merkle root )
+        // 6. earner1 claims rewards again ( should receive the difference between the new and old Merkle root )
         bytes32[] memory proof4 = new bytes32[](2);
         proof4[0] = bytes32(0x33e292a8b1a6b8db8f87780db5cbd57234f81daafa95077db68d6edef27cbfdc);
         proof4[1] = bytes32(0x981a103b03f593ecae5fde2836141dc43becb1e7a758b2e0609e0f91b204d543);
@@ -541,7 +541,7 @@ contract SLAYRewardsV2Test is Test, TestSuiteV2 {
         uint256 contractBalance = rewardToken.balanceOf(address(rewards));
         assertEq(
             contractBalance,
-            1_500_000_000 * rewardTokenMinorUnit, // 11.5 - 9 - 3 - 6  + 1.5 Billion WBTC
+            1_000_000_000 * rewardTokenMinorUnit, // 11.5 - 1 - 3 - 6 - 0.5 = 1 Billion WBTC
             "Contract balance should be reduced by the claimed amounts"
         );
     }
