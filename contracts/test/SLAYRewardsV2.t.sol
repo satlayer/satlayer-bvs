@@ -303,7 +303,7 @@ contract SLAYRewardsV2Test is Test, TestSuiteV2 {
     }
 
     // init struct to prevent stack too deep errors
-    struct TestLifecyleVars {
+    struct TestLifecycleVars {
         address earner1;
         address earner2;
         address earner3;
@@ -311,7 +311,7 @@ contract SLAYRewardsV2Test is Test, TestSuiteV2 {
         bytes32 secondMerkleRoot;
     }
 
-    TestLifecyleVars public tl_vars;
+    TestLifecycleVars public tl_vars;
 
     /**
      * Test the lifecycle of the SLAYRewardsV2 contract.
@@ -525,7 +525,7 @@ contract SLAYRewardsV2Test is Test, TestSuiteV2 {
             address(rewardToken),
             tl_vars.earner1,
             tl_vars.earner1,
-            500_000_000 * rewardTokenMinorUnit,
+            500_000_000 * rewardTokenMinorUnit, // should receive 500 million WBTC (1.5 - 1)
             tl_vars.secondMerkleRoot
         );
         rewards.claimRewards(claimRewardsParams4);

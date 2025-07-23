@@ -119,8 +119,8 @@ contract SLAYRewardsV2 is
 
         uint256 amountToClaim;
 
+        // asserted params.amount > claimedAmount above, so we can safely calculate the amount to claim
         unchecked {
-            // params.amount is asserted to be greater than claimedAmount, so we can safely calculate the amount to claim
             amountToClaim = params.amount - claimedAmount;
         }
 
@@ -139,8 +139,9 @@ contract SLAYRewardsV2 is
             revert InvalidMerkleProof();
         }
 
+        // serviceBalance >= amountToClaim is asserted above
         unchecked {
-            // reduce (service,token) balance. serviceBalance >= amountToClaim is checked above
+            // reduce (service,token) balance.
             _balances[params.service][params.token] = serviceBalance - amountToClaim;
         }
 
