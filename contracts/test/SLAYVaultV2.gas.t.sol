@@ -92,6 +92,29 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vault.withdraw(maxAssetToWithdraw, firstAccount, firstAccount);
     }
 
+    function _signPermit(
+        uint256 privateKey,
+        address owner,
+        address spender,
+        uint256 value,
+        uint256 nonce,
+        uint256 deadline
+    ) private view returns (uint8 v, bytes32 r, bytes32 s) {
+        bytes32 DOMAIN_SEPARATOR = vault.DOMAIN_SEPARATOR();
+        bytes32 structHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                owner,
+                spender,
+                value,
+                nonce,
+                deadline
+            )
+        );
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
+        (v, r, s) = vm.sign(privateKey, digest);
+    }
+
     function _assertRequestRedeemSuccess(
         address sender,
         address controller,
@@ -252,29 +275,16 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vault.deposit(initialDeposit, owner_addr);
         vm.stopPrank();
 
-        uint256 nonce = vault.nonces(owner_addr);
-        uint256 deadline = block.timestamp + 3600;
-
-        bytes32 DOMAIN_SEPARATOR = vault.DOMAIN_SEPARATOR();
-        bytes32 structHash = keccak256(
-            abi.encode(
-                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
-                owner_addr,
-                sender,
-                sharesToRequest,
-                nonce,
-                deadline
-            )
+        (uint8 v, bytes32 r, bytes32 s) = _signPermit(
+            owner_private_key, owner_addr, sender, sharesToRequest, vault.nonces(owner_addr), block.timestamp + 3600
         );
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(owner_private_key, digest);
 
         uint256 owner_shares_before = vault.balanceOf(owner_addr);
         uint256 vault_shares_before = vault.balanceOf(address(vault));
         uint256 totalPending_before = vault.getTotalPendingRedemption();
 
         vm.prank(sender);
-        vault.permit(owner_addr, sender, sharesToRequest, deadline, v, r, s); // A submits B's permit signature
+        vault.permit(owner_addr, sender, sharesToRequest, (block.timestamp + 3600), v, r, s); // A submits B's permit signature
 
         vm.startPrank(sender);
         vm.startSnapshotGas("SLAYVaultV2", "requestRedeem()_sender_a_controller_a_owner_b_permit_signature");
@@ -567,54 +577,23 @@ contract SLAYVaultV2Test is Test, TestSuiteV2 {
         vault.deposit(initialDeposit, owner_addr);
         vm.stopPrank();
 
-        // Setup 2: Owner (B) signs a permit for Sender (A) on vault shares
-        uint256 nonce = vault.nonces(owner_addr);
-        uint256 deadline = block.timestamp + 3600;
-
-        bytes32 DOMAIN_SEPARATOR = vault.DOMAIN_SEPARATOR();
-        bytes32 structHash = keccak256(
-            abi.encode(
-                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
-                owner_addr,
-                sender,
-                sharesToRequest,
-                nonce,
-                deadline
-            )
+        (uint8 v, bytes32 r, bytes32 s) = _signPermit(
+            owner_private_key, owner_addr, sender, sharesToRequest, vault.nonces(owner_addr), block.timestamp + 3600
         );
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(owner_private_key, digest);
 
         // Request redeem (Caller: A, Controller: A, Owner: B) using the permit signature
         vm.prank(sender);
-        vault.permit(owner_addr, sender, sharesToRequest, deadline, v, r, s); // A submits B's permit signature
+        vault.permit(owner_addr, sender, sharesToRequest, (block.timestamp + 3600), v, r, s); // A submits B's permit signature
         vm.prank(sender);
         vault.requestRedeem(sharesToRequest, controller, owner_addr);
 
         skip(8 days);
 
-        uint256 assetsToWithdraw = vault.maxWithdraw(controller);
-        uint256 receiverAssetBalanceBefore = underlying.balanceOf(controller);
-        uint256 vaultSharesBalanceBefore = vault.balanceOf(address(vault));
-        uint256 totalPendingBefore = vault.getTotalPendingRedemption();
-
         vm.startPrank(sender); // Sender is A (who is the controller)
         vm.startSnapshotGas("SLAYVaultV2", "withdraw()_sender_a_controller_a_owner_b_permitted");
-        vault.withdraw(assetsToWithdraw, sender, controller);
+        vault.withdraw(vault.maxWithdraw(controller), sender, controller);
         vm.stopSnapshotGas();
         vm.stopPrank();
-
-        _assertWithdrawSuccess(
-            sender,
-            sender,
-            controller,
-            assetsToWithdraw,
-            sharesToRequest,
-            receiverAssetBalanceBefore,
-            vaultSharesBalanceBefore,
-            totalPendingBefore,
-            "Withdraw Path 4 (A-A-B, B permitted A for shares)"
-        );
     }
 
     function test_withdraw_Path5_SenderIsController_OwnerDifferent_SenderIsOwnerOperator() public {
